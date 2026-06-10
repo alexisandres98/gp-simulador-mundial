@@ -349,4 +349,8 @@ server.listen(PORT, () => {
   console.log(`⚽ Simulador Mundial 2026 → http://localhost:${PORT}`);
   fetchMarkets().catch(() => { });
   setInterval(() => fetchMarkets(true).then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 5 * 60 * 1000);
+  // En Render free el servicio duerme tras 15 min sin tráfico: auto-ping cada 10 min para mantenerlo 24/7
+  if (process.env.RENDER_EXTERNAL_URL) {
+    setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);
+  }
 });

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mundial 2026 · Simulador Monte Carlo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">⚽ MUNDIAL 2026 <span class="sub">SIMULADOR MONTE CARLO · ELO</span></div>
+  <nav id="tabs">
+    <button data-tab="teams" class="active">Equipos</button>
+    <button data-tab="groups">Grupos</button>
+    <button data-tab="matches">Partidos</button>
+    <button data-tab="bracket">Bracket</button>
+    <button data-tab="arb">Arbitraje</button>
+    <button data-tab="evo">Evolución</button>
+    <button data-tab="admin" id="adminTab" style="display:none">Admin</button>
+  </nav>
+  <div class="hright">
+    <span id="liveDot" class="dot" title="Conexión en tiempo real">●</span>
+    <button id="loginBtn" class="ghost">Entrar con email</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" style="display:none"></div>
+
+<main>
+  <section id="tab-teams" class="tab active"></section>
+  <section id="tab-groups" class="tab"></section>
+  <section id="tab-matches" class="tab"></section>
+  <section id="tab-bracket" class="tab"></section>
+  <section id="tab-arb" class="tab"></section>
+  <section id="tab-evo" class="tab"><canvas id="evoChart" width="1100" height="420"></canvas><div id="evoLegend"></div></section>
+  <section id="tab-admin" class="tab"></section>
+</main>
+
+<footer>
+  Modelo: Elo (eloratings.net) → goles Poisson → 10,000 torneos Monte Carlo · Mercados: Polymarket & Kalshi (públicos) ·
+  Las probabilidades se recalculan en tiempo real al registrar resultados · No es consejo financiero.
+</footer>
+
+<!-- modal login -->
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-card">
+    <button class="modal-x" onclick="closeModal()">×</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

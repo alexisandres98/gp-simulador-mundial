@@ -1,0 +1,16 @@
+# Despliegue permanente gratuito en Render.com (opcional):
+# 1. Sube esta carpeta a un repo de GitHub
+# 2. En render.com → New → Blueprint → conecta el repo
+# 3. Obtienes un dominio fijo gratis: https://<nombre>.onrender.com
+# Nota: el plan free duerme tras 15 min sin tráfico y el disco es efímero
+# (los resultados/usuarios en db.json se pierden al redesplegar).
+services:
+  - type: web
+    name: gp-simulador-mundial
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server.js
+    envVars:
+      - key: SIMS
+        value: 10000

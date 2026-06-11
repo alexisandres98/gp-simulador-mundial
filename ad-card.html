@@ -5,37 +5,42 @@ body { width: 1080px; height: 1080px; font-family: -apple-system, 'Helvetica Neu
   background: linear-gradient(160deg, #07271B 0%, #0A5C3C 50%, #0BA661 100%); color: #fff;
   display: flex; flex-direction: column; justify-content: center; padding: 80px; overflow: hidden; position: relative; }
 .live { position: absolute; left: 80px; top: 70px; background: rgba(229,72,77,.95); font-weight: 800;
-  font-size: 24px; padding: 12px 26px; border-radius: 99px; letter-spacing: 1.5px; }
-.brand { display: flex; align-items: center; gap: 18px; margin-bottom: 44px; margin-top: 60px; }
-.badge { width: 76px; height: 76px; border-radius: 22px; background: rgba(255,255,255,.14);
-  display: flex; align-items: center; justify-content: center; font-size: 42px; border: 1px solid rgba(255,255,255,.25); }
-.bname { font-size: 36px; font-weight: 800; letter-spacing: -.5px; }
-h1 { font-size: 78px; font-weight: 800; letter-spacing: -2px; line-height: 1.05; margin-bottom: 22px; }
-.sub { font-size: 31px; color: #C9F2DE; margin-bottom: 54px; font-weight: 500; line-height: 1.4; }
-.rows { display: flex; flex-direction: column; gap: 20px; }
-.row { display: flex; align-items: center; gap: 18px; font-size: 33px; font-weight: 700; }
-.flag { font-size: 44px; width: 58px; }
-.tname { width: 200px; }
-.track { flex: 1; height: 20px; background: rgba(255,255,255,.16); border-radius: 99px; overflow: hidden; }
-.fill { height: 100%; background: #fff; border-radius: 99px; }
-.p { width: 140px; text-align: right; font-size: 36px; font-weight: 800; }
-.cta { margin-top: 64px; background: #fff; color: #067647; font-size: 33px; font-weight: 800;
-  padding: 26px; border-radius: 99px; text-align: center; }
-.foot { margin-top: 22px; text-align: center; font-size: 23px; color: #A7E8C8; font-weight: 600; }
+  font-size: 26px; padding: 14px 28px; border-radius: 99px; letter-spacing: 1.5px; }
+.brand { display: flex; align-items: center; gap: 18px; margin-bottom: 40px; margin-top: 70px; }
+.badge { width: 70px; height: 70px; border-radius: 20px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 40px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 33px; font-weight: 800; letter-spacing: -.5px; }
+.match { display: flex; align-items: center; justify-content: center; gap: 40px; margin: 10px 0 36px; }
+.team { text-align: center; }
+.team .f { font-size: 110px; line-height: 1; }
+.team .n { font-size: 34px; font-weight: 800; margin-top: 10px; }
+.vs { font-size: 42px; font-weight: 800; color: #A7E8C8; }
+h1 { font-size: 56px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; text-align: center; margin-bottom: 40px; }
+h1 .big { font-size: 120px; display: block; letter-spacing: -3px; margin-top: 6px; }
+.probs { display: flex; gap: 16px; margin-bottom: 50px; }
+.pb { flex: 1; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 20px; padding: 22px; text-align: center; }
+.pb .v { font-size: 44px; font-weight: 800; }
+.pb .l { font-size: 21px; color: #C9F2DE; font-weight: 600; margin-top: 4px; }
+.cta { background: #fff; color: #067647; font-size: 34px; font-weight: 800; padding: 26px; border-radius: 99px; text-align: center; }
+.foot { margin-top: 20px; text-align: center; font-size: 23px; color: #A7E8C8; font-weight: 600; }
 </style></head>
 <body>
-  <div class="live">● HOY ARRANCA EL MUNDIAL</div>
+  <div class="live">● HOY · PARTIDO INAUGURAL</div>
   <div class="brand">
     <div class="badge">⚽</div>
     <div class="bname">GP Simulador del Mundial</div>
   </div>
-  <h1>¿Quién va a ganar el Mundial 2026?</h1>
-  <div class="sub">10,000 torneos simulados. Las probabilidades de los 48 equipos se mueven en vivo con cada gol.</div>
-  <div class="rows">
-    <div class="row"><span class="flag">🇲🇽</span><span class="tname">México hoy</span><div class="track"><div class="fill" style="width:86%"></div></div><span class="p">85.6%</span></div>
-    <div class="row"><span class="flag">🇪🇸</span><span class="tname">España</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="p">27.7%</span></div>
-    <div class="row"><span class="flag">🇦🇷</span><span class="tname">Argentina</span><div class="track"><div class="fill" style="width:68%"></div></div><span class="p">18.9%</span></div>
+  <div class="match">
+    <div class="team"><div class="f">🇲🇽</div><div class="n">México</div></div>
+    <div class="vs">VS</div>
+    <div class="team"><div class="f">🇿🇦</div><div class="n">Sudáfrica</div></div>
   </div>
-  <div class="cta">gpsimulador.com — gratis con tu email</div>
-  <div class="foot">México vs Sudáfrica: 85.6% de probabilidad de ganar hoy</div>
+  <h1>Probabilidad de que México gane hoy:<span class="big">85.6%</span></h1>
+  <div class="probs">
+    <div class="pb"><div class="v">85.6%</div><div class="l">Gana México</div></div>
+    <div class="pb"><div class="v">11.9%</div><div class="l">Empate</div></div>
+    <div class="pb"><div class="v">2.6%</div><div class="l">Gana Sudáfrica</div></div>
+  </div>
+  <div class="cta">Míralas moverse EN VIVO → gpsimulador.com</div>
+  <div class="foot">10,000 torneos simulados · los 48 equipos · gratis con tu email</div>
 </body></html>

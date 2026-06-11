@@ -9,7 +9,8 @@ const mailer = require('./mailer');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
-const DB_FILE = path.join(__dirname, 'db.json');
+// DB_FILE puede apuntar a un disco persistente montado (p.ej. /data/db.json en Render Starter)
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'db.json');
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // ---------- persistencia ----------

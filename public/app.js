@@ -25,24 +25,24 @@ function renderTeaser() {
       <div class="bar"><div style="width:${(t.champion / max * 100).toFixed(1)}%"></div></div>
     </div>`).join('');
   const wall = `
-    <div style="text-align:center;padding:30px 16px;border:1px dashed var(--border);border-radius:10px;margin-top:14px">
-      <div style="font-size:17px;font-weight:700;margin-bottom:8px">🔒 Crea tu cuenta gratis para ver todo</div>
-      <div class="muted" style="max-width:520px;margin:0 auto 16px">
-        Los ${STATE.totalTeams} equipos con sus probabilidades en vivo · marcadores en tiempo real partido a partido ·
-        grupos, bracket y evolución · oportunidades de valor frente a Polymarket y Kalshi.
-        Solo necesitas tu email — sin contraseñas.
+    <div class="wall">
+      <div class="wall-title">¿Quién va a ganar el Mundial? Descúbrelo en vivo ⚽</div>
+      <div class="wall-sub">
+        Los ${STATE.totalTeams} equipos con probabilidades que se mueven partido a partido, marcadores en tiempo real,
+        grupos, bracket completo y las oportunidades que nuestro modelo detecta frente a Polymarket y Kalshi.
+        Gratis con tu email — sin contraseñas.
       </div>
-      <button class="btn" style="max-width:320px" onclick="openLogin()">Entrar gratis con mi email</button>
+      <button class="btn" onclick="openLogin()">Crear mi cuenta gratis</button>
     </div>`;
   $('#tab-teams').innerHTML = `
     <h2>Probabilidad de ganar el Mundial 2026 · ${STATE.sims.toLocaleString()} torneos simulados</h2>
     <div class="teamgrid">${cards}</div>${wall}`;
   ['groups', 'matches', 'bracket', 'arb', 'evo', 'admin'].forEach(t => {
-    $('#tab-' + t).innerHTML = `<div style="text-align:center;padding:50px 16px">
-      <div style="font-size:30px;margin-bottom:10px">🔒</div>
-      <div style="font-weight:700;margin-bottom:8px">Esta sección es para usuarios registrados</div>
-      <div class="muted" style="margin-bottom:16px">Es gratis y solo toma 30 segundos con tu email.</div>
-      <button class="btn" style="max-width:320px" onclick="openLogin()">Entrar con mi email</button></div>`;
+    $('#tab-' + t).innerHTML = `<div class="lock">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">Esta sección es para usuarios registrados</div>
+      <div class="muted" style="margin-bottom:18px">Es gratis y solo toma 30 segundos con tu email.</div>
+      <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
   });
 }
 async function loadMe() {
@@ -281,14 +281,14 @@ async function loadArb(force = false) {
 }
 
 // ---------- EVOLUCIÓN ----------
-const PALETTE = ['#4ade80', '#60a5fa', '#f87171', '#fbbf24', '#c084fc', '#34d399', '#f472b6', '#a3e635', '#fb923c', '#22d3ee'];
+const PALETTE = ['#0BA661', '#2E7CF6', '#E5484D', '#D97706', '#8B5CF6', '#0D9488', '#DB2777', '#65A30D', '#EA580C', '#0891B2'];
 function renderEvo() {
   const cv = $('#evoChart'), ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
   const hist = STATE.history;
   if (hist.length < 2) {
-    ctx.fillStyle = '#8a919e'; ctx.font = '13px monospace';
-    ctx.fillText('La evolución aparecerá cuando se registren resultados y cambien las probabilidades.', 30, 40);
+    ctx.fillStyle = '#64748B'; ctx.font = '13px Inter, sans-serif';
+    ctx.fillText('La evolución aparecerá cuando se jueguen partidos y cambien las probabilidades.', 30, 40);
     $('#evoLegend').innerHTML = '';
     return;
   }
@@ -296,7 +296,7 @@ function renderEvo() {
   const maxP = Math.max(.05, ...hist.flatMap(h => top.map(t => h.probs[t.id] || 0))) * 1.15;
   const X = i => 50 + i / (hist.length - 1) * (cv.width - 70);
   const Y = p => cv.height - 30 - p / maxP * (cv.height - 50);
-  ctx.strokeStyle = '#262a32'; ctx.fillStyle = '#8a919e'; ctx.font = '10px monospace';
+  ctx.strokeStyle = '#E4E8EF'; ctx.fillStyle = '#64748B'; ctx.font = '11px Inter, sans-serif';
   for (let g = 0; g <= 4; g++) {
     const p = maxP * g / 4, y = Y(p);
     ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(cv.width - 20, y); ctx.stroke();

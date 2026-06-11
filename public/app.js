@@ -91,7 +91,9 @@ function renderTeams() {
 
 // ---------- detalle de equipo ----------
 async function openTeam(id) {
-  const d = await (await fetch('/api/team/' + id)).json();
+  const r = await fetch('/api/team/' + id, { headers: hdrs() });
+  if (!r.ok) { openLogin(); return; }
+  const d = await r.json();
   const t = teamOf(id), s = d.sim, c = s.counts;
   const favBtn = USER ? `<button class="ghost" onclick="toggleFav('${id}')">${(USER.favorites || []).includes(id) ? '★ Quitar favorito' : '☆ Seguir equipo'}</button>` : '';
   openModal(`
@@ -244,8 +246,15 @@ function renderBracket() {
 
 // ---------- ARBITRAJE ----------
 async function loadArb(force = false) {
-  $('#tab-arb').innerHTML = '<h2>Arbitraje · cargando mercados…</h2>';
-  ARB = await (await fetch('/api/arbitrage' + (force ? '?force=1' : ''))).json();
+  $('#tab-arb').innerHTML = '<h2>Oportunidades · cargando mercados…</h2>';
+  const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() });
+  if (!r.ok) {
+    $('#tab-arb').innerHTML = `<div class="lock"><div class="lock-icon">🔒</div>
+      <div class="lock-title">Inicia sesión para ver las oportunidades</div>
+      <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
+    return;
+  }
+  ARB = await r.json();
   const ops = [];
   ARB.rows.forEach(r => r.edges.forEach(e => ops.push({ ...e, team: r.id, model: r.model })));
   ops.sort((a, b) => (b.type === 'arbitraje') - (a.type === 'arbitraje') || b.edge - a.edge);
@@ -283,6 +292,10 @@ async function loadArb(force = false) {
 // ---------- EVOLUCIÓN ----------
 const PALETTE = ['#0BA661', '#2E7CF6', '#E5484D', '#D97706', '#8B5CF6', '#0D9488', '#DB2777', '#65A30D', '#EA580C', '#0891B2'];
 function renderEvo() {
+  // el muro de registro pudo haber reemplazado el contenido de la pestaña: reconstruir el lienzo
+  if (!$('#evoChart')) {
+    $('#tab-evo').innerHTML = '<canvas id="evoChart" width="1100" height="420"></canvas><div id="evoLegend"></div>';
+  }
   const cv = $('#evoChart'), ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
   const hist = STATE.history;

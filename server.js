@@ -142,10 +142,12 @@ function dstr(offsetDays) {
   return new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
 }
 
-async function syncFromESPN() {
+async function syncFromESPN(depth = 0) {
   try {
+    // Rango completo del torneo: si el servidor se reinicia (disco efímero en Render free),
+    // reingesta todos los resultados desde el inicio y se auto-repara.
     const url = process.env.ESPN_TEST_URL ||
-      `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${dstr(-1)}-${dstr(0)}&limit=50`;
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-${dstr(0)}&limit=250`;
     const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
     const j = await r.json();
     const bracket = resolveRealBracket();
@@ -205,6 +207,9 @@ async function syncFromESPN() {
     }
     lastSync = { ts: Date.now(), ok: true, applied: changed, error: null };
     if (changed) {
+      // segunda pasada: con los grupos ya ingresados, el bracket real se resuelve y
+      // los resultados de eliminatorias del mismo lote encuentran su llave
+      if (depth === 0) await syncFromESPN(1);
       recomputeElos();
       runSims();
       broadcast('update', { reason: 'resultados en vivo (ESPN)', ts: Date.now() });

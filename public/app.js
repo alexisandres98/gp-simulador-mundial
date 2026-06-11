@@ -10,8 +10,40 @@ const teamOf = id => STATE.teams.find(t => t.id === id);
 const tlabel = id => { const t = teamOf(id); return t ? `${t.flag} ${t.name}` : (id || '—'); };
 
 async function loadState() {
-  STATE = await (await fetch('/api/state')).json();
+  STATE = await (await fetch('/api/state', { headers: hdrs() })).json();
   renderAll();
+}
+
+// Vista para no registrados: gancho de captura
+function renderTeaser() {
+  const max = Math.max(...STATE.top.map(t => t.champion));
+  const cards = STATE.top.map(t => `
+    <div class="tcard" onclick="openLogin()">
+      <div class="trow"><span style="font-size:20px">${t.flag}</span><span class="tname">${t.name}</span>
+      <span class="telo">GRUPO ${t.group}</span></div>
+      <div class="champ">${pct(t.champion)}</div>
+      <div class="bar"><div style="width:${(t.champion / max * 100).toFixed(1)}%"></div></div>
+    </div>`).join('');
+  const wall = `
+    <div style="text-align:center;padding:30px 16px;border:1px dashed var(--border);border-radius:10px;margin-top:14px">
+      <div style="font-size:17px;font-weight:700;margin-bottom:8px">🔒 Crea tu cuenta gratis para ver todo</div>
+      <div class="muted" style="max-width:520px;margin:0 auto 16px">
+        Los ${STATE.totalTeams} equipos con sus probabilidades en vivo · marcadores en tiempo real partido a partido ·
+        grupos, bracket y evolución · oportunidades de valor frente a Polymarket y Kalshi.
+        Solo necesitas tu email — sin contraseñas.
+      </div>
+      <button class="btn" style="max-width:320px" onclick="openLogin()">Entrar gratis con mi email</button>
+    </div>`;
+  $('#tab-teams').innerHTML = `
+    <h2>Probabilidad de ganar el Mundial 2026 · ${STATE.sims.toLocaleString()} torneos simulados</h2>
+    <div class="teamgrid">${cards}</div>${wall}`;
+  ['groups', 'matches', 'bracket', 'arb', 'evo', 'admin'].forEach(t => {
+    $('#tab-' + t).innerHTML = `<div style="text-align:center;padding:50px 16px">
+      <div style="font-size:30px;margin-bottom:10px">🔒</div>
+      <div style="font-weight:700;margin-bottom:8px">Esta sección es para usuarios registrados</div>
+      <div class="muted" style="margin-bottom:16px">Es gratis y solo toma 30 segundos con tu email.</div>
+      <button class="btn" style="max-width:320px" onclick="openLogin()">Entrar con mi email</button></div>`;
+  });
 }
 async function loadMe() {
   if (!token()) return;
@@ -26,6 +58,7 @@ function renderHeader() {
 }
 
 function renderAll() {
+  if (STATE.teaser) { renderTeaser(); return; }
   renderTeams(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin();
   if ($('#tab-arb').classList.contains('active')) loadArb();
 }
@@ -333,7 +366,38 @@ function renderAdmin() {
         <button class="ghost" onclick="removeResult(false)">Eliminar resultado</button>
       </div>
     </div>
-    <div id="adminMsg" class="warn"></div>`;
+    <div id="adminMsg" class="warn"></div>
+    <div class="gcard" style="margin-top:12px">
+      <h3>BASE DE USUARIOS</h3>
+      <div id="userBase" class="muted">Cargando…</div>
+    </div>`;
+  loadUsers();
+}
+
+async function loadUsers() {
+  const r = await fetch('/api/admin/users', { headers: hdrs() });
+  if (!r.ok) { $('#userBase').textContent = 'Error al cargar usuarios.'; return; }
+  const j = await r.json();
+  const fmt = ts => new Date(ts).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('#userBase').innerHTML = `
+    <div class="formrow" style="align-items:center">
+      <span style="color:var(--text)"><b>${j.total}</b> usuarios registrados</span>
+      <button class="ghost" onclick="exportUsersCSV()">⬇ Exportar CSV</button>
+    </div>
+    <table><tr><th>Email</th><th>Registro</th><th>Última visita</th><th>Favoritos</th></tr>
+    ${j.users.map(u => `<tr><td>${u.email}</td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td><td>${u.favorites}</td></tr>`).join('')}
+    </table>`;
+  window._users = j.users;
+}
+
+function exportUsersCSV() {
+  const rows = [['email', 'registro', 'ultima_visita', 'favoritos'],
+  ...(window._users || []).map(u => [u.email, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'usuarios-gp-simulador.csv';
+  a.click();
 }
 
 async function saveResult(isGroup) {
@@ -368,9 +432,13 @@ async function requestCode() {
   const j = await r.json();
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
   $('#loginStep2').innerHTML = `
-    ${j.demo ? `<p class="warn">Modo demo (sin SMTP): tu código es <b>${j.demoCode}</b></p>` : '<p class="muted">Revisa tu correo.</p>'}
-    <div class="formrow"><input id="loginCode" placeholder="código de 6 dígitos" maxlength="6">
-    <button class="btn" onclick="verifyCode()">Verificar</button></div>`;
+    ${j.sent
+      ? `<p style="color:var(--accent)">📬 Te enviamos el código a <b>${$('#loginEmail').value.trim()}</b>.<br>
+         <span class="muted">Si no lo ves en 1 minuto, revisa Promociones o Spam.</span></p>`
+      : `<p class="warn">Modo demo (sin SMTP): tu código es <b>${j.demoCode}</b></p>`}
+    <div class="formrow"><input id="loginCode" placeholder="código de 6 dígitos" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    <button class="btn" onclick="verifyCode()">Verificar y entrar</button></div>`;
+  setTimeout(() => { const c = $('#loginCode'); if (c) c.focus(); }, 100);
 }
 async function verifyCode() {
   const r = await fetch('/api/auth/verify', {
@@ -381,9 +449,9 @@ async function verifyCode() {
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
   localStorage.setItem('wc_token', j.token);
   USER = { email: j.email, isAdmin: j.isAdmin, favorites: j.favorites };
-  closeModal(); renderHeader(); renderAll();
+  closeModal(); renderHeader(); await loadState();
 }
-function logout() { localStorage.removeItem('wc_token'); USER = null; closeModal(); renderHeader(); renderAll(); }
+async function logout() { localStorage.removeItem('wc_token'); USER = null; closeModal(); renderHeader(); await loadState(); }
 
 // ---------- modal / tabs / SSE ----------
 function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').style.display = 'flex'; }

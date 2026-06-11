@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
 const { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
+const mailer = require('./mailer');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -392,11 +393,38 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/auth/request' && req.method === 'POST') {
       const { email } = await readBody(req);
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(res, 400, { error: 'Email inválido' });
+      const e = email.toLowerCase();
+      // anti-abuso: máximo 3 códigos por email cada 10 minutos
+      const prev = db.codes[e];
+      if (prev && prev.count >= 3 && prev.exp > Date.now()) {
+        return json(res, 429, { error: 'Demasiados intentos. Espera unos minutos y vuelve a intentar.' });
+      }
       const code = String(crypto.randomInt(100000, 999999));
-      db.codes[email.toLowerCase()] = { code, exp: Date.now() + 10 * 60 * 1000 };
+      db.codes[e] = { code, exp: Date.now() + 10 * 60 * 1000, count: (prev && prev.exp > Date.now() ? prev.count : 0) + 1 };
       save();
-      console.log(`[auth] código para ${email}: ${code}`);
-      // Sin SMTP configurado, el código se devuelve en modo demo (configura SMTP para producción)
+      if (mailer.isConfigured()) {
+        try {
+          await mailer.sendMail({
+            to: e,
+            subject: `${code} es tu código · GP Simulador del Mundial`,
+            text: `¡Bienvenido al GP Simulador del Mundial 2026! ⚽\n\nTu código de acceso es: ${code}\n\nEscríbelo en la página para entrar. Vence en 10 minutos.\n\nCon tu cuenta puedes seguir en tiempo real las probabilidades de los 48 equipos, los marcadores en vivo partido a partido, y las oportunidades que nuestro modelo detecta frente a los mercados de predicción.\n\n— GP Simulador del Mundial`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">
+<h2 style="margin-bottom:4px">⚽ GP Simulador del Mundial</h2>
+<p>¡Bienvenido! Tu código de acceso es:</p>
+<p style="font-size:34px;font-weight:bold;letter-spacing:6px;background:#f4f4f4;padding:14px 20px;border-radius:8px;text-align:center">${code}</p>
+<p>Escríbelo en la página para entrar. Vence en 10 minutos.</p>
+<p style="color:#555;font-size:13px">Con tu cuenta puedes seguir en tiempo real las probabilidades de los 48 equipos del Mundial 2026, los marcadores en vivo partido a partido, y las oportunidades que nuestro modelo detecta frente a los mercados de predicción.</p>
+<p style="color:#999;font-size:12px">Si no pediste este código, ignora este correo.</p>
+</div>`,
+          });
+          console.log(`[auth] código enviado por email a ${e}`);
+          return json(res, 200, { ok: true, sent: true });
+        } catch (err) {
+          console.error('[mail] error:', err.message);
+          return json(res, 502, { error: 'No pudimos enviar el correo. Revisa que el email esté bien escrito e intenta de nuevo.' });
+        }
+      }
+      console.log(`[auth] código para ${e}: ${code} (modo demo, SMTP no configurado)`);
       return json(res, 200, { ok: true, demo: true, demoCode: code });
     }
     if (p === '/api/auth/verify' && req.method === 'POST') {
@@ -425,6 +453,15 @@ const server = http.createServer(async (req, res) => {
       save();
       return json(res, 200, { favorites: favs });
     }
+    if (p === '/api/admin/users') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const users = Object.entries(db.users).map(([email, x]) => ({
+        email, createdAt: x.createdAt, lastSeen: x.lastSeen || x.createdAt,
+        favorites: (x.favorites || []).length,
+      })).sort((a, b) => b.createdAt - a.createdAt);
+      return json(res, 200, { total: users.length, users });
+    }
     // --- datos ---
     if (p === '/api/version') {
       // endpoint ligero para el fallback de polling (cuando el SSE no atraviesa el proxy/túnel)
@@ -433,8 +470,22 @@ const server = http.createServer(async (req, res) => {
         markets: marketCache.ts,
       });
     }
-    if (p === '/api/state') return json(res, 200, buildState());
+    if (p === '/api/state') {
+      const u = getUser(req);
+      if (!u) {
+        // sin registro: vista previa limitada (gancho para crear cuenta)
+        const top = TEAMS.map(t => ({
+          id: t.id, name: t.name, flag: t.flag, group: t.group,
+          champion: simCache[t.id].champion,
+        })).sort((a, b) => b.champion - a.champion).slice(0, 6);
+        return json(res, 200, { teaser: true, top, sims: N_SIMS, totalTeams: TEAMS.length });
+      }
+      db.users[u.email].lastSeen = Date.now();
+      save();
+      return json(res, 200, buildState());
+    }
     if (p.startsWith('/api/team/')) {
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
       const id = p.split('/')[3];
       if (!teamById[id]) return json(res, 404, { error: 'Equipo no encontrado' });
       return json(res, 200, {
@@ -443,6 +494,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (p === '/api/arbitrage') {
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
       await fetchMarkets(url.searchParams.get('force') === '1');
       return json(res, 200, {
         ts: marketCache.ts, errors: marketCache.errors, rows: arbitrage(),

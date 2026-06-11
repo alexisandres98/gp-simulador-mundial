@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
-const { simulateTournament, matchProbs, eloUpdate, explainTeam, effElo } = require('./engine');
+const { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -82,6 +82,137 @@ function realStandings() {
       b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.id.localeCompare(b.id));
   });
   return out;
+}
+
+// ---------- bracket real (equipos confirmados en eliminatorias) ----------
+// Resuelve qué equipos reales ocupan cada llave a partir de resultados FINALES.
+function resolveRealBracket() {
+  const standings = realStandings();
+  const groupDone = {};
+  GROUPS.forEach(g => {
+    groupDone[g] = GROUP_FIXTURES.filter(f => f.group === g)
+      .every(f => db.results[f.id] && db.results[f.id].status === 'final');
+  });
+  const firsts = {}, seconds = {}, thirdRows = [];
+  GROUPS.forEach(g => {
+    if (!groupDone[g]) return;
+    firsts[g] = standings[g][0].id;
+    seconds[g] = standings[g][1].id;
+    const t = standings[g][2];
+    thirdRows.push({ id: t.id, pts: t.pts, gf: t.gf, ga: t.ga, _rnd: 0 });
+  });
+  let t3byMatch = {};
+  if (GROUPS.every(g => groupDone[g])) {
+    thirdRows.sort(cmpRows);
+    const qual = thirdRows.slice(0, 8).map(r => r.id);
+    const slots = KNOCKOUT.filter(k => k.away.t === 'T3').map(k => k.away);
+    const assign = assignThirds(qual, slots);
+    KNOCKOUT.filter(k => k.away.t === 'T3').forEach((k, i) => t3byMatch[k.m] = assign[i]);
+  }
+  const resolved = {}; // m -> {home, away} (solo lados conocidos)
+  const winnerOf = m => {
+    const r = db.results[String(m)];
+    if (!r || r.status !== 'final') return null;
+    return r.hg > r.ag ? r.home : r.hg < r.ag ? r.away : (r.pensHome ? r.home : r.away);
+  };
+  const loserOf = m => {
+    const r = db.results[String(m)];
+    if (!r || r.status !== 'final') return null;
+    return r.hg > r.ag ? r.away : r.hg < r.ag ? r.home : (r.pensHome ? r.away : r.home);
+  };
+  const side = (s, m) => {
+    if (s.t === 'W') return firsts[s.g] || null;
+    if (s.t === 'R') return seconds[s.g] || null;
+    if (s.t === 'T3') return t3byMatch[m] || null;
+    if (s.t === 'M') return winnerOf(s.m);
+    if (s.t === 'L') return loserOf(s.m);
+  };
+  for (const k of KNOCKOUT) {
+    resolved[k.m] = { home: side(k.home, k.m), away: side(k.away, k.m) };
+  }
+  return resolved;
+}
+
+// ---------- sincronización automática de resultados (API pública de ESPN) ----------
+const espnTeamId = {};
+TEAMS.forEach(t => [t.en, t.name, ...t.aliases].forEach(a => espnTeamId[normName(a)] = t.id));
+let lastSync = { ts: 0, ok: null, applied: 0, error: null };
+
+function dstr(offsetDays) {
+  return new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+async function syncFromESPN() {
+  try {
+    const url = process.env.ESPN_TEST_URL ||
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${dstr(-1)}-${dstr(0)}&limit=50`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const j = await r.json();
+    const bracket = resolveRealBracket();
+    let changed = 0;
+    for (const ev of j.events || []) {
+      const c = ev.competitions && ev.competitions[0];
+      if (!c) continue;
+      const state = ev.status && ev.status.type && ev.status.type.state; // pre | in | post
+      if (state !== 'in' && state !== 'post') continue;
+      const H = c.competitors.find(x => x.homeAway === 'home');
+      const A = c.competitors.find(x => x.homeAway === 'away');
+      const hId = espnTeamId[normName(H.team.displayName)] || espnTeamId[normName(H.team.name)];
+      const aId = espnTeamId[normName(A.team.displayName)] || espnTeamId[normName(A.team.name)];
+      if (!hId || !aId) continue;
+      const hg = Number(H.score) || 0, ag = Number(A.score) || 0;
+      const minute = parseInt(ev.status.displayClock) || 0;
+      const hPen = H.shootoutScore != null ? Number(H.shootoutScore) : null;
+      const aPen = A.shootoutScore != null ? Number(A.shootoutScore) : null;
+
+      // ¿partido de grupos? — el match por espnId debe coincidir también en equipos (blindaje)
+      const sameTeams = f => (f.home === hId && f.away === aId) || (f.home === aId && f.away === hId);
+      const byId = GROUP_FIXTURES.find(f => f.espnId === ev.id);
+      const gf = (byId && sameTeams(byId)) ? byId : GROUP_FIXTURES.find(sameTeams);
+      let matchId = null, payload = null;
+      if (gf) {
+        const flip = gf.home !== hId; // orientación del fixture oficial
+        payload = {
+          hg: flip ? ag : hg, ag: flip ? hg : ag,
+          status: state === 'post' ? 'final' : 'live', minute,
+        };
+        matchId = gf.id;
+      } else {
+        // eliminatoria: localizar la llave cuyos equipos reales coinciden
+        const m = Object.keys(bracket).find(m =>
+          (bracket[m].home === hId && bracket[m].away === aId) ||
+          (bracket[m].home === aId && bracket[m].away === hId));
+        if (!m) continue;
+        const flip = bracket[m].home !== hId;
+        payload = {
+          home: bracket[m].home, away: bracket[m].away,
+          hg: flip ? ag : hg, ag: flip ? hg : ag,
+          status: state === 'post' ? 'final' : 'live', minute,
+        };
+        if (hPen != null && aPen != null) {
+          payload.pensHome = flip ? aPen > hPen : hPen > aPen;
+        }
+        matchId = String(m);
+      }
+      const prev = db.results[matchId];
+      const same = prev && prev.status === payload.status && prev.hg === payload.hg &&
+        prev.ag === payload.ag && prev.minute === payload.minute && prev.pensHome === payload.pensHome;
+      if (!same) {
+        db.results[matchId] = { ...(prev || {}), ...payload, source: 'espn' };
+        changed++;
+        console.log(`[sync] ${matchId}: ${payload.hg}-${payload.ag} ${payload.status}${payload.status === 'live' ? ` ${payload.minute}'` : ''}`);
+      }
+    }
+    lastSync = { ts: Date.now(), ok: true, applied: changed, error: null };
+    if (changed) {
+      recomputeElos();
+      runSims();
+      broadcast('update', { reason: 'resultados en vivo (ESPN)', ts: Date.now() });
+    }
+  } catch (e) {
+    lastSync = { ts: Date.now(), ok: false, applied: 0, error: e.message };
+    console.error('[sync] error:', e.message);
+  }
 }
 
 // ---------- mercados (Polymarket + Kalshi) ----------
@@ -180,15 +311,24 @@ function buildState() {
   const standings = realStandings();
   const fixtures = GROUP_FIXTURES.map(f => {
     const r = db.results[f.id] || null;
-    return { ...f, result: r, probs: matchProbs(effElo(db.elos, f.home), effElo(db.elos, f.away)) };
+    const probs = (r && r.status === 'live')
+      ? liveMatchProbs(effElo(db.elos, f.home), effElo(db.elos, f.away), r.hg, r.ag, r.minute)
+      : matchProbs(effElo(db.elos, f.home), effElo(db.elos, f.away));
+    return { ...f, result: r, probs };
   });
+  const bracket = resolveRealBracket();
   const knockout = KNOCKOUT.map(k => {
     const r = db.results[String(k.m)] || null;
+    const resolved = bracket[k.m] || { home: null, away: null };
+    const h = (r && r.home) || resolved.home, a = (r && r.away) || resolved.away;
     let probs = null;
-    if (r && r.home && r.away) probs = matchProbs(effElo(db.elos, r.home), effElo(db.elos, r.away));
-    return { ...k, result: r, probs };
+    if (h && a) probs = (r && r.status === 'live')
+      ? liveMatchProbs(effElo(db.elos, h), effElo(db.elos, a), r.hg, r.ag, r.minute)
+      : matchProbs(effElo(db.elos, h), effElo(db.elos, a));
+    return { ...k, result: r, resolved, probs };
   });
   return {
+    sync: lastSync,
     teams: TEAMS.map(t => ({
       ...t, currentElo: Math.round(db.elos[t.id] * 10) / 10, eloDelta: Math.round((db.elos[t.id] - t.elo) * 10) / 10,
       sim: simCache[t.id],
@@ -349,6 +489,9 @@ server.listen(PORT, () => {
   console.log(`⚽ Simulador Mundial 2026 → http://localhost:${PORT}`);
   fetchMarkets().catch(() => { });
   setInterval(() => fetchMarkets(true).then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 5 * 60 * 1000);
+  // Sincronización automática de resultados desde ESPN cada 2 minutos
+  syncFromESPN();
+  setInterval(syncFromESPN, 2 * 60 * 1000);
   // En Render free el servicio duerme tras 15 min sin tráfico: auto-ping cada 10 min para mantenerlo 24/7
   if (process.env.RENDER_EXTERNAL_URL) {
     setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);

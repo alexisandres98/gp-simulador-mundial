@@ -1,0 +1,722 @@
+[
+ {
+  "id": "GA1",
+  "stage": "group",
+  "group": "A",
+  "matchday": 1,
+  "home": "MEX",
+  "away": "RSA",
+  "datetime": "2026-06-11T19:00Z",
+  "espnId": "760415"
+ },
+ {
+  "id": "GA2",
+  "stage": "group",
+  "group": "A",
+  "matchday": 1,
+  "home": "KOR",
+  "away": "CZE",
+  "datetime": "2026-06-12T02:00Z",
+  "espnId": "760414"
+ },
+ {
+  "id": "GB1",
+  "stage": "group",
+  "group": "B",
+  "matchday": 1,
+  "home": "CAN",
+  "away": "BIH",
+  "datetime": "2026-06-12T19:00Z",
+  "espnId": "760416"
+ },
+ {
+  "id": "GD1",
+  "stage": "group",
+  "group": "D",
+  "matchday": 1,
+  "home": "USA",
+  "away": "PAR",
+  "datetime": "2026-06-13T01:00Z",
+  "espnId": "760417"
+ },
+ {
+  "id": "GB2",
+  "stage": "group",
+  "group": "B",
+  "matchday": 1,
+  "home": "QAT",
+  "away": "SUI",
+  "datetime": "2026-06-13T19:00Z",
+  "espnId": "760420"
+ },
+ {
+  "id": "GC1",
+  "stage": "group",
+  "group": "C",
+  "matchday": 1,
+  "home": "BRA",
+  "away": "MAR",
+  "datetime": "2026-06-13T22:00Z",
+  "espnId": "760419"
+ },
+ {
+  "id": "GC2",
+  "stage": "group",
+  "group": "C",
+  "matchday": 1,
+  "home": "HAI",
+  "away": "SCO",
+  "datetime": "2026-06-14T01:00Z",
+  "espnId": "760418"
+ },
+ {
+  "id": "GD2",
+  "stage": "group",
+  "group": "D",
+  "matchday": 1,
+  "home": "AUS",
+  "away": "TUR",
+  "datetime": "2026-06-14T04:00Z",
+  "espnId": "760421"
+ },
+ {
+  "id": "GE1",
+  "stage": "group",
+  "group": "E",
+  "matchday": 1,
+  "home": "GER",
+  "away": "CUW",
+  "datetime": "2026-06-14T17:00Z",
+  "espnId": "760422"
+ },
+ {
+  "id": "GF1",
+  "stage": "group",
+  "group": "F",
+  "matchday": 1,
+  "home": "NED",
+  "away": "JPN",
+  "datetime": "2026-06-14T20:00Z",
+  "espnId": "760425"
+ },
+ {
+  "id": "GE2",
+  "stage": "group",
+  "group": "E",
+  "matchday": 1,
+  "home": "CIV",
+  "away": "ECU",
+  "datetime": "2026-06-14T23:00Z",
+  "espnId": "760423"
+ },
+ {
+  "id": "GF2",
+  "stage": "group",
+  "group": "F",
+  "matchday": 1,
+  "home": "SWE",
+  "away": "TUN",
+  "datetime": "2026-06-15T02:00Z",
+  "espnId": "760424"
+ },
+ {
+  "id": "GH1",
+  "stage": "group",
+  "group": "H",
+  "matchday": 1,
+  "home": "ESP",
+  "away": "CPV",
+  "datetime": "2026-06-15T16:00Z",
+  "espnId": "760428"
+ },
+ {
+  "id": "GG1",
+  "stage": "group",
+  "group": "G",
+  "matchday": 1,
+  "home": "BEL",
+  "away": "EGY",
+  "datetime": "2026-06-15T19:00Z",
+  "espnId": "760426"
+ },
+ {
+  "id": "GH2",
+  "stage": "group",
+  "group": "H",
+  "matchday": 1,
+  "home": "KSA",
+  "away": "URU",
+  "datetime": "2026-06-15T22:00Z",
+  "espnId": "760429"
+ },
+ {
+  "id": "GG2",
+  "stage": "group",
+  "group": "G",
+  "matchday": 1,
+  "home": "IRN",
+  "away": "NZL",
+  "datetime": "2026-06-16T01:00Z",
+  "espnId": "760427"
+ },
+ {
+  "id": "GI1",
+  "stage": "group",
+  "group": "I",
+  "matchday": 1,
+  "home": "FRA",
+  "away": "SEN",
+  "datetime": "2026-06-16T19:00Z",
+  "espnId": "760432"
+ },
+ {
+  "id": "GI2",
+  "stage": "group",
+  "group": "I",
+  "matchday": 1,
+  "home": "IRQ",
+  "away": "NOR",
+  "datetime": "2026-06-16T22:00Z",
+  "espnId": "760430"
+ },
+ {
+  "id": "GJ1",
+  "stage": "group",
+  "group": "J",
+  "matchday": 1,
+  "home": "ARG",
+  "away": "ALG",
+  "datetime": "2026-06-17T01:00Z",
+  "espnId": "760433"
+ },
+ {
+  "id": "GJ2",
+  "stage": "group",
+  "group": "J",
+  "matchday": 1,
+  "home": "AUT",
+  "away": "JOR",
+  "datetime": "2026-06-17T04:00Z",
+  "espnId": "760431"
+ },
+ {
+  "id": "GK1",
+  "stage": "group",
+  "group": "K",
+  "matchday": 1,
+  "home": "POR",
+  "away": "COD",
+  "datetime": "2026-06-17T17:00Z",
+  "espnId": "760435"
+ },
+ {
+  "id": "GL1",
+  "stage": "group",
+  "group": "L",
+  "matchday": 1,
+  "home": "ENG",
+  "away": "CRO",
+  "datetime": "2026-06-17T20:00Z",
+  "espnId": "760437"
+ },
+ {
+  "id": "GL2",
+  "stage": "group",
+  "group": "L",
+  "matchday": 1,
+  "home": "GHA",
+  "away": "PAN",
+  "datetime": "2026-06-17T23:00Z",
+  "espnId": "760434"
+ },
+ {
+  "id": "GK2",
+  "stage": "group",
+  "group": "K",
+  "matchday": 1,
+  "home": "UZB",
+  "away": "COL",
+  "datetime": "2026-06-18T02:00Z",
+  "espnId": "760436"
+ },
+ {
+  "id": "GA3",
+  "stage": "group",
+  "group": "A",
+  "matchday": 2,
+  "home": "CZE",
+  "away": "RSA",
+  "datetime": "2026-06-18T16:00Z",
+  "espnId": "760438"
+ },
+ {
+  "id": "GB3",
+  "stage": "group",
+  "group": "B",
+  "matchday": 2,
+  "home": "SUI",
+  "away": "BIH",
+  "datetime": "2026-06-18T19:00Z",
+  "espnId": "760439"
+ },
+ {
+  "id": "GB4",
+  "stage": "group",
+  "group": "B",
+  "matchday": 2,
+  "home": "CAN",
+  "away": "QAT",
+  "datetime": "2026-06-18T22:00Z",
+  "espnId": "760440"
+ },
+ {
+  "id": "GA4",
+  "stage": "group",
+  "group": "A",
+  "matchday": 2,
+  "home": "MEX",
+  "away": "KOR",
+  "datetime": "2026-06-19T01:00Z",
+  "espnId": "760441"
+ },
+ {
+  "id": "GD3",
+  "stage": "group",
+  "group": "D",
+  "matchday": 2,
+  "home": "USA",
+  "away": "AUS",
+  "datetime": "2026-06-19T19:00Z",
+  "espnId": "760442"
+ },
+ {
+  "id": "GC3",
+  "stage": "group",
+  "group": "C",
+  "matchday": 2,
+  "home": "SCO",
+  "away": "MAR",
+  "datetime": "2026-06-19T22:00Z",
+  "espnId": "760445"
+ },
+ {
+  "id": "GC4",
+  "stage": "group",
+  "group": "C",
+  "matchday": 2,
+  "home": "BRA",
+  "away": "HAI",
+  "datetime": "2026-06-20T00:30Z",
+  "espnId": "760444"
+ },
+ {
+  "id": "GD4",
+  "stage": "group",
+  "group": "D",
+  "matchday": 2,
+  "home": "TUR",
+  "away": "PAR",
+  "datetime": "2026-06-20T03:00Z",
+  "espnId": "760443"
+ },
+ {
+  "id": "GF3",
+  "stage": "group",
+  "group": "F",
+  "matchday": 2,
+  "home": "NED",
+  "away": "SWE",
+  "datetime": "2026-06-20T17:00Z",
+  "espnId": "760447"
+ },
+ {
+  "id": "GE3",
+  "stage": "group",
+  "group": "E",
+  "matchday": 2,
+  "home": "GER",
+  "away": "CIV",
+  "datetime": "2026-06-20T20:00Z",
+  "espnId": "760448"
+ },
+ {
+  "id": "GE4",
+  "stage": "group",
+  "group": "E",
+  "matchday": 2,
+  "home": "ECU",
+  "away": "CUW",
+  "datetime": "2026-06-21T00:00Z",
+  "espnId": "760446"
+ },
+ {
+  "id": "GF4",
+  "stage": "group",
+  "group": "F",
+  "matchday": 2,
+  "home": "TUN",
+  "away": "JPN",
+  "datetime": "2026-06-21T04:00Z",
+  "espnId": "760449"
+ },
+ {
+  "id": "GH3",
+  "stage": "group",
+  "group": "H",
+  "matchday": 2,
+  "home": "ESP",
+  "away": "KSA",
+  "datetime": "2026-06-21T16:00Z",
+  "espnId": "760453"
+ },
+ {
+  "id": "GG3",
+  "stage": "group",
+  "group": "G",
+  "matchday": 2,
+  "home": "BEL",
+  "away": "IRN",
+  "datetime": "2026-06-21T19:00Z",
+  "espnId": "760451"
+ },
+ {
+  "id": "GH4",
+  "stage": "group",
+  "group": "H",
+  "matchday": 2,
+  "home": "URU",
+  "away": "CPV",
+  "datetime": "2026-06-21T22:00Z",
+  "espnId": "760450"
+ },
+ {
+  "id": "GG4",
+  "stage": "group",
+  "group": "G",
+  "matchday": 2,
+  "home": "NZL",
+  "away": "EGY",
+  "datetime": "2026-06-22T01:00Z",
+  "espnId": "760452"
+ },
+ {
+  "id": "GJ3",
+  "stage": "group",
+  "group": "J",
+  "matchday": 2,
+  "home": "ARG",
+  "away": "AUT",
+  "datetime": "2026-06-22T17:00Z",
+  "espnId": "760456"
+ },
+ {
+  "id": "GI3",
+  "stage": "group",
+  "group": "I",
+  "matchday": 2,
+  "home": "FRA",
+  "away": "IRQ",
+  "datetime": "2026-06-22T21:00Z",
+  "espnId": "760457"
+ },
+ {
+  "id": "GI4",
+  "stage": "group",
+  "group": "I",
+  "matchday": 2,
+  "home": "NOR",
+  "away": "SEN",
+  "datetime": "2026-06-23T00:00Z",
+  "espnId": "760454"
+ },
+ {
+  "id": "GJ4",
+  "stage": "group",
+  "group": "J",
+  "matchday": 2,
+  "home": "JOR",
+  "away": "ALG",
+  "datetime": "2026-06-23T03:00Z",
+  "espnId": "760455"
+ },
+ {
+  "id": "GK3",
+  "stage": "group",
+  "group": "K",
+  "matchday": 2,
+  "home": "POR",
+  "away": "UZB",
+  "datetime": "2026-06-23T17:00Z",
+  "espnId": "760461"
+ },
+ {
+  "id": "GL3",
+  "stage": "group",
+  "group": "L",
+  "matchday": 2,
+  "home": "ENG",
+  "away": "GHA",
+  "datetime": "2026-06-23T20:00Z",
+  "espnId": "760458"
+ },
+ {
+  "id": "GL4",
+  "stage": "group",
+  "group": "L",
+  "matchday": 2,
+  "home": "PAN",
+  "away": "CRO",
+  "datetime": "2026-06-23T23:00Z",
+  "espnId": "760460"
+ },
+ {
+  "id": "GK4",
+  "stage": "group",
+  "group": "K",
+  "matchday": 2,
+  "home": "COL",
+  "away": "COD",
+  "datetime": "2026-06-24T02:00Z",
+  "espnId": "760459"
+ },
+ {
+  "id": "GB5",
+  "stage": "group",
+  "group": "B",
+  "matchday": 3,
+  "home": "BIH",
+  "away": "QAT",
+  "datetime": "2026-06-24T19:00Z",
+  "espnId": "760462"
+ },
+ {
+  "id": "GB6",
+  "stage": "group",
+  "group": "B",
+  "matchday": 3,
+  "home": "SUI",
+  "away": "CAN",
+  "datetime": "2026-06-24T19:00Z",
+  "espnId": "760463"
+ },
+ {
+  "id": "GC5",
+  "stage": "group",
+  "group": "C",
+  "matchday": 3,
+  "home": "MAR",
+  "away": "HAI",
+  "datetime": "2026-06-24T22:00Z",
+  "espnId": "760464"
+ },
+ {
+  "id": "GC6",
+  "stage": "group",
+  "group": "C",
+  "matchday": 3,
+  "home": "SCO",
+  "away": "BRA",
+  "datetime": "2026-06-24T22:00Z",
+  "espnId": "760465"
+ },
+ {
+  "id": "GA5",
+  "stage": "group",
+  "group": "A",
+  "matchday": 3,
+  "home": "CZE",
+  "away": "MEX",
+  "datetime": "2026-06-25T01:00Z",
+  "espnId": "760467"
+ },
+ {
+  "id": "GA6",
+  "stage": "group",
+  "group": "A",
+  "matchday": 3,
+  "home": "RSA",
+  "away": "KOR",
+  "datetime": "2026-06-25T01:00Z",
+  "espnId": "760466"
+ },
+ {
+  "id": "GE5",
+  "stage": "group",
+  "group": "E",
+  "matchday": 3,
+  "home": "CUW",
+  "away": "CIV",
+  "datetime": "2026-06-25T20:00Z",
+  "espnId": "760473"
+ },
+ {
+  "id": "GE6",
+  "stage": "group",
+  "group": "E",
+  "matchday": 3,
+  "home": "ECU",
+  "away": "GER",
+  "datetime": "2026-06-25T20:00Z",
+  "espnId": "760468"
+ },
+ {
+  "id": "GF5",
+  "stage": "group",
+  "group": "F",
+  "matchday": 3,
+  "home": "JPN",
+  "away": "SWE",
+  "datetime": "2026-06-25T23:00Z",
+  "espnId": "760471"
+ },
+ {
+  "id": "GF6",
+  "stage": "group",
+  "group": "F",
+  "matchday": 3,
+  "home": "TUN",
+  "away": "NED",
+  "datetime": "2026-06-25T23:00Z",
+  "espnId": "760472"
+ },
+ {
+  "id": "GD5",
+  "stage": "group",
+  "group": "D",
+  "matchday": 3,
+  "home": "PAR",
+  "away": "AUS",
+  "datetime": "2026-06-26T02:00Z",
+  "espnId": "760469"
+ },
+ {
+  "id": "GD6",
+  "stage": "group",
+  "group": "D",
+  "matchday": 3,
+  "home": "TUR",
+  "away": "USA",
+  "datetime": "2026-06-26T02:00Z",
+  "espnId": "760470"
+ },
+ {
+  "id": "GI5",
+  "stage": "group",
+  "group": "I",
+  "matchday": 3,
+  "home": "NOR",
+  "away": "FRA",
+  "datetime": "2026-06-26T19:00Z",
+  "espnId": "760475"
+ },
+ {
+  "id": "GI6",
+  "stage": "group",
+  "group": "I",
+  "matchday": 3,
+  "home": "SEN",
+  "away": "IRQ",
+  "datetime": "2026-06-26T19:00Z",
+  "espnId": "760474"
+ },
+ {
+  "id": "GH5",
+  "stage": "group",
+  "group": "H",
+  "matchday": 3,
+  "home": "CPV",
+  "away": "KSA",
+  "datetime": "2026-06-27T00:00Z",
+  "espnId": "760478"
+ },
+ {
+  "id": "GH6",
+  "stage": "group",
+  "group": "H",
+  "matchday": 3,
+  "home": "URU",
+  "away": "ESP",
+  "datetime": "2026-06-27T00:00Z",
+  "espnId": "760479"
+ },
+ {
+  "id": "GG5",
+  "stage": "group",
+  "group": "G",
+  "matchday": 3,
+  "home": "EGY",
+  "away": "IRN",
+  "datetime": "2026-06-27T03:00Z",
+  "espnId": "760476"
+ },
+ {
+  "id": "GG6",
+  "stage": "group",
+  "group": "G",
+  "matchday": 3,
+  "home": "NZL",
+  "away": "BEL",
+  "datetime": "2026-06-27T03:00Z",
+  "espnId": "760477"
+ },
+ {
+  "id": "GL5",
+  "stage": "group",
+  "group": "L",
+  "matchday": 3,
+  "home": "CRO",
+  "away": "GHA",
+  "datetime": "2026-06-27T21:00Z",
+  "espnId": "760480"
+ },
+ {
+  "id": "GL6",
+  "stage": "group",
+  "group": "L",
+  "matchday": 3,
+  "home": "PAN",
+  "away": "ENG",
+  "datetime": "2026-06-27T21:00Z",
+  "espnId": "760485"
+ },
+ {
+  "id": "GK5",
+  "stage": "group",
+  "group": "K",
+  "matchday": 3,
+  "home": "COL",
+  "away": "POR",
+  "datetime": "2026-06-27T23:30Z",
+  "espnId": "760481"
+ },
+ {
+  "id": "GK6",
+  "stage": "group",
+  "group": "K",
+  "matchday": 3,
+  "home": "COD",
+  "away": "UZB",
+  "datetime": "2026-06-27T23:30Z",
+  "espnId": "760482"
+ },
+ {
+  "id": "GJ5",
+  "stage": "group",
+  "group": "J",
+  "matchday": 3,
+  "home": "ALG",
+  "away": "AUT",
+  "datetime": "2026-06-28T02:00Z",
+  "espnId": "760484"
+ },
+ {
+  "id": "GJ6",
+  "stage": "group",
+  "group": "J",
+  "matchday": 3,
+  "home": "JOR",
+  "away": "ARG",
+  "datetime": "2026-06-28T02:00Z",
+  "espnId": "760483"
+ }
+]

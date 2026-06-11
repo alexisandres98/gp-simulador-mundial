@@ -132,3 +132,39 @@ h2 { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var
 #evoLegend span { display: inline-flex; align-items: center; gap: 5px; }
 #evoLegend i { width: 10px; height: 3px; display: inline-block; }
 canvas { width: 100%; max-width: 1100px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+.formrow label { display: inline-block; color: var(--dim); font-size: 10px; }
+.formrow label input, .formrow label select { margin-top: 3px; display: block; }
+.gcard { overflow-x: auto; }
+
+/* ---------- móvil ---------- */
+@media (max-width: 700px) {
+  body { font-size: 12px; }
+  header { padding: 10px 12px; gap: 10px; }
+  .brand { font-size: 13px; width: 100%; }
+  .brand .sub { display: block; margin-left: 0; margin-top: 2px; }
+  nav { width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav button { flex: 0 0 auto; padding: 6px 10px; font-size: 10px; }
+  .hright { margin-left: 0; width: 100%; justify-content: space-between; }
+  main { padding: 12px; }
+  .teamgrid, .groupgrid { grid-template-columns: 1fr; gap: 10px; }
+  .tcard .tname { font-size: 14px; }
+  .mcard { grid-template-columns: 1fr; gap: 4px; padding: 10px; text-align: center; }
+  .mcard .side, .mcard .side.away { justify-content: center; }
+  .mcard .score { order: -1; }
+  .plabels { font-size: 9px; }
+  table { font-size: 10px; }
+  th, td { padding: 3px 4px; }
+  .modal-card { width: 100%; max-height: 92vh; border-radius: 10px 10px 0 0; padding: 16px; align-self: flex-end; }
+  .modal { align-items: flex-end; }
+  .statrow { grid-template-columns: 1fr; }
+  .bigstat .val { font-size: 21px; }
+  .roundchips .chip { padding: 5px 8px; font-size: 10px; }
+  .formrow { gap: 10px; }
+  .formrow label { width: 100%; }
+  .formrow label input, .formrow label select { width: 100% !important; }
+  .btn, .ghost { width: 100%; text-align: center; }
+  .opcard .edge { font-size: 13px; }
+  .arbtable { display: block; overflow-x: auto; white-space: nowrap; }
+  footer { font-size: 9px; padding: 14px; }
+}

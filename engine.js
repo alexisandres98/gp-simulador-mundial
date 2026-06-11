@@ -53,6 +53,24 @@ function matchProbs(eloH, eloA) {
   return { home: pH / s, draw: pD / s, away: pA / s, xgHome: lh, xgAway: la, likelyScore: `${best.h}-${best.a}` };
 }
 
+// Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual)
+function liveMatchProbs(eloH, eloA, hg, ag, minute) {
+  const [lh, la] = lambdas(eloH, eloA);
+  const remain = Math.max(0, (90 - (minute || 0)) / 90);
+  const rlh = lh * remain, rla = la * remain;
+  let pH = 0, pD = 0, pA = 0;
+  const ph = [], pa = [];
+  for (let k = 0; k <= 10; k++) { ph.push(poissonPmf(rlh, k)); pa.push(poissonPmf(rla, k)); }
+  let best = { p: 0, h: 0, a: 0 };
+  for (let h = 0; h <= 10; h++) for (let a = 0; a <= 10; a++) {
+    const p = ph[h] * pa[a], th = hg + h, ta = ag + a;
+    if (th > ta) pH += p; else if (th === ta) pD += p; else pA += p;
+    if (p > best.p) best = { p, h: th, a: ta };
+  }
+  const s = pH + pD + pA;
+  return { home: pH / s, draw: pD / s, away: pA / s, xgHome: rlh, xgAway: rla, likelyScore: `${best.h}-${best.a}`, live: true };
+}
+
 // Simula un partido. Si hay marcador en vivo, condiciona en el marcador actual y simula el resto.
 function simMatch(eloH, eloA, rng, live) {
   const [lh, la] = lambdas(eloH, eloA);
@@ -264,4 +282,4 @@ function explainTeam(team, elos, sim, allSims) {
   return parts.join(' ');
 }
 
-module.exports = { simulateTournament, matchProbs, eloUpdate, explainTeam, effElo, HOME_BONUS };
+module.exports = { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS };

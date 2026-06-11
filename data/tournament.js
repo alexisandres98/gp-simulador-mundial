@@ -66,53 +66,32 @@ const TEAMS = [
 
 const GROUPS = 'ABCDEFGHIJKL'.split('');
 
-// Fixtures de grupo: 3 jornadas por grupo (fechas aproximadas dentro de la ventana real 11–27 jun).
-// Patrón round-robin: J1: 1v2, 3v4 · J2: 1v3, 4v2 · J3: 4v1, 2v3
-function buildGroupFixtures() {
-  const fixtures = [];
-  const mdWindows = [[11, 17], [18, 23], [24, 27]]; // junio 2026
-  GROUPS.forEach((g, gi) => {
-    const t = TEAMS.filter(x => x.group === g).map(x => x.id);
-    const rounds = [
-      [[t[0], t[1]], [t[2], t[3]]],
-      [[t[0], t[2]], [t[3], t[1]]],
-      [[t[3], t[0]], [t[1], t[2]]],
-    ];
-    rounds.forEach((pairs, md) => {
-      const [start, end] = mdWindows[md];
-      const day = start + (gi % (end - start + 1));
-      pairs.forEach((p, pi) => {
-        fixtures.push({
-          id: `G${g}${md * 2 + pi + 1}`,
-          stage: 'group', group: g, matchday: md + 1,
-          home: p[0], away: p[1],
-          date: `2026-06-${String(day).padStart(2, '0')}`,
-        });
-      });
-    });
-  });
-  return fixtures;
-}
+// Calendario REAL de la fase de grupos (fuente: API pública de ESPN, fifa.world scoreboard).
+// Generado por build-fixtures.js con auditoría: 72 partidos, 6 por grupo, 3 por equipo,
+// todos los cruces intra-grupo. Incluye espnId para la sincronización automática de resultados.
+const REAL_FIXTURES = require('./fixtures-real.json').map(f => ({
+  ...f, date: f.datetime.slice(0, 10),
+}));
 
 // Llaves de eliminación (estructura oficial, Wikipedia: 2026 FIFA World Cup knockout stage)
 // W=ganador de grupo, R=segundo, T3=mejor tercero (con grupos permitidos por slot)
 const KNOCKOUT = [
-  { m: 73, stage: 'R32', date: '2026-06-28', home: { t: 'R', g: 'A' }, away: { t: 'R', g: 'B' } },
-  { m: 74, stage: 'R32', date: '2026-06-29', home: { t: 'W', g: 'E' }, away: { t: 'T3', allowed: ['A', 'B', 'C', 'D', 'F'] } },
-  { m: 75, stage: 'R32', date: '2026-06-29', home: { t: 'W', g: 'F' }, away: { t: 'R', g: 'C' } },
-  { m: 76, stage: 'R32', date: '2026-06-29', home: { t: 'W', g: 'C' }, away: { t: 'R', g: 'F' } },
-  { m: 77, stage: 'R32', date: '2026-06-30', home: { t: 'W', g: 'I' }, away: { t: 'T3', allowed: ['C', 'D', 'F', 'G', 'H'] } },
-  { m: 78, stage: 'R32', date: '2026-06-30', home: { t: 'R', g: 'E' }, away: { t: 'R', g: 'I' } },
-  { m: 79, stage: 'R32', date: '2026-06-30', home: { t: 'W', g: 'A' }, away: { t: 'T3', allowed: ['C', 'E', 'F', 'H', 'I'] } },
-  { m: 80, stage: 'R32', date: '2026-07-01', home: { t: 'W', g: 'L' }, away: { t: 'T3', allowed: ['E', 'H', 'I', 'J', 'K'] } },
-  { m: 81, stage: 'R32', date: '2026-07-01', home: { t: 'W', g: 'D' }, away: { t: 'T3', allowed: ['B', 'E', 'F', 'I', 'J'] } },
-  { m: 82, stage: 'R32', date: '2026-07-01', home: { t: 'W', g: 'G' }, away: { t: 'T3', allowed: ['A', 'E', 'H', 'I', 'J'] } },
-  { m: 83, stage: 'R32', date: '2026-07-02', home: { t: 'R', g: 'K' }, away: { t: 'R', g: 'L' } },
-  { m: 84, stage: 'R32', date: '2026-07-02', home: { t: 'W', g: 'H' }, away: { t: 'R', g: 'J' } },
-  { m: 85, stage: 'R32', date: '2026-07-02', home: { t: 'W', g: 'B' }, away: { t: 'T3', allowed: ['E', 'F', 'G', 'I', 'J'] } },
-  { m: 86, stage: 'R32', date: '2026-07-03', home: { t: 'W', g: 'J' }, away: { t: 'R', g: 'H' } },
-  { m: 87, stage: 'R32', date: '2026-07-03', home: { t: 'W', g: 'K' }, away: { t: 'T3', allowed: ['D', 'E', 'I', 'J', 'L'] } },
-  { m: 88, stage: 'R32', date: '2026-07-03', home: { t: 'R', g: 'D' }, away: { t: 'R', g: 'G' } },
+  { m: 73, stage: 'R32', date: '2026-06-28', datetime: '2026-06-28T19:00Z', home: { t: 'R', g: 'A' }, away: { t: 'R', g: 'B' } },
+  { m: 74, stage: 'R32', date: '2026-06-29', datetime: '2026-06-29T20:30Z', home: { t: 'W', g: 'E' }, away: { t: 'T3', allowed: ['A', 'B', 'C', 'D', 'F'] } },
+  { m: 75, stage: 'R32', date: '2026-06-30', datetime: '2026-06-30T01:00Z', home: { t: 'W', g: 'F' }, away: { t: 'R', g: 'C' } },
+  { m: 76, stage: 'R32', date: '2026-06-29', datetime: '2026-06-29T17:00Z', home: { t: 'W', g: 'C' }, away: { t: 'R', g: 'F' } },
+  { m: 77, stage: 'R32', date: '2026-06-30', datetime: '2026-06-30T21:00Z', home: { t: 'W', g: 'I' }, away: { t: 'T3', allowed: ['C', 'D', 'F', 'G', 'H'] } },
+  { m: 78, stage: 'R32', date: '2026-06-30', datetime: '2026-06-30T17:00Z', home: { t: 'R', g: 'E' }, away: { t: 'R', g: 'I' } },
+  { m: 79, stage: 'R32', date: '2026-07-01', datetime: '2026-07-01T01:00Z', home: { t: 'W', g: 'A' }, away: { t: 'T3', allowed: ['C', 'E', 'F', 'H', 'I'] } },
+  { m: 80, stage: 'R32', date: '2026-07-01', datetime: '2026-07-01T16:00Z', home: { t: 'W', g: 'L' }, away: { t: 'T3', allowed: ['E', 'H', 'I', 'J', 'K'] } },
+  { m: 81, stage: 'R32', date: '2026-07-02', datetime: '2026-07-02T00:00Z', home: { t: 'W', g: 'D' }, away: { t: 'T3', allowed: ['B', 'E', 'F', 'I', 'J'] } },
+  { m: 82, stage: 'R32', date: '2026-07-01', datetime: '2026-07-01T20:00Z', home: { t: 'W', g: 'G' }, away: { t: 'T3', allowed: ['A', 'E', 'H', 'I', 'J'] } },
+  { m: 83, stage: 'R32', date: '2026-07-02', datetime: '2026-07-02T23:00Z', home: { t: 'R', g: 'K' }, away: { t: 'R', g: 'L' } },
+  { m: 84, stage: 'R32', date: '2026-07-02', datetime: '2026-07-02T19:00Z', home: { t: 'W', g: 'H' }, away: { t: 'R', g: 'J' } },
+  { m: 85, stage: 'R32', date: '2026-07-03', datetime: '2026-07-03T03:00Z', home: { t: 'W', g: 'B' }, away: { t: 'T3', allowed: ['E', 'F', 'G', 'I', 'J'] } },
+  { m: 86, stage: 'R32', date: '2026-07-03', datetime: '2026-07-03T22:00Z', home: { t: 'W', g: 'J' }, away: { t: 'R', g: 'H' } },
+  { m: 87, stage: 'R32', date: '2026-07-04', datetime: '2026-07-04T01:30Z', home: { t: 'W', g: 'K' }, away: { t: 'T3', allowed: ['D', 'E', 'I', 'J', 'L'] } },
+  { m: 88, stage: 'R32', date: '2026-07-03', datetime: '2026-07-03T18:00Z', home: { t: 'R', g: 'D' }, away: { t: 'R', g: 'G' } },
   { m: 89, stage: 'R16', date: '2026-07-04', home: { t: 'M', m: 74 }, away: { t: 'M', m: 77 } },
   { m: 90, stage: 'R16', date: '2026-07-04', home: { t: 'M', m: 73 }, away: { t: 'M', m: 75 } },
   { m: 91, stage: 'R16', date: '2026-07-05', home: { t: 'M', m: 76 }, away: { t: 'M', m: 78 } },
@@ -131,4 +110,4 @@ const KNOCKOUT = [
   { m: 104, stage: 'FINAL', date: '2026-07-19', home: { t: 'M', m: 101 }, away: { t: 'M', m: 102 } },
 ];
 
-module.exports = { TEAMS, GROUPS, GROUP_FIXTURES: buildGroupFixtures(), KNOCKOUT };
+module.exports = { TEAMS, GROUPS, GROUP_FIXTURES: REAL_FIXTURES, KNOCKOUT };

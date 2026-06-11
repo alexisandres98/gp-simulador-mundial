@@ -123,17 +123,26 @@ function renderGroups() {
 }
 
 // ---------- PARTIDOS ----------
+function fmtKickoff(f) {
+  if (!f.datetime) return f.date;
+  return new Date(f.datetime).toLocaleString([], {
+    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 function matchCard(f, homeId, awayId) {
   const r = f.result;
-  const score = r ? `${r.hg} - ${r.ag}` : (f.probs ? f.probs.likelyScore.replace('-', ' - ') : 'vs');
+  const score = r ? `${r.hg} - ${r.ag}` : 'vs';
+  const pens = r && r.pensHome != null && r.hg === r.ag && r.status === 'final'
+    ? `<div class="muted" style="font-size:9px">penales: ${r.pensHome ? 'local' : 'visitante'}</div>` : '';
   const status = r ? (r.status === 'live' ? `<div class="live">● EN VIVO ${r.minute}'</div>` : '<div class="muted" style="font-size:9px">FINAL</div>')
-    : `<div class="muted" style="font-size:9px">${f.date}${f.stage === 'group' ? ' (aprox)' : ''}</div>`;
+    : `<div class="muted" style="font-size:9px">${fmtKickoff(f)}</div>`;
   const probs = f.probs;
   return `<div class="mcard">
     <div class="side">${tlabel(homeId)}</div>
-    <div class="score">${score}${status}</div>
+    <div class="score">${score}${pens}${status}</div>
     <div class="side away">${tlabel(awayId)}</div>
-    ${probs ? `<div class="pbar">
+    ${probs && !(r && r.status === 'final') ? `<div class="pbar">
       <div class="ph" style="width:${probs.home * 100}%"></div>
       <div class="pd" style="width:${probs.draw * 100}%"></div>
       <div class="pa" style="width:${probs.away * 100}%"></div></div>
@@ -143,21 +152,32 @@ function matchCard(f, homeId, awayId) {
 }
 
 function renderMatches() {
-  let html = '<h2>Partidos · fase de grupos</h2>';
+  const sync = STATE.sync || {};
+  let html = `<h2>Partidos · calendario oficial</h2>
+    <div class="muted" style="margin-bottom:14px;font-size:11px">
+      ${sync.ok ? '🟢' : '🟡'} Los marcadores se sincronizan automáticamente cada 2 minutos (fuente: ESPN).
+      ${sync.ts ? 'Última sincronización: ' + new Date(sync.ts).toLocaleTimeString() + '.' : ''}
+      Horarios mostrados en tu zona horaria local.
+    </div>`;
   for (let md = 1; md <= 3; md++) {
-    html += `<div class="mday">JORNADA ${md}</div>`;
+    html += `<div class="mday">JORNADA ${md} · FASE DE GRUPOS</div>`;
     html += STATE.fixtures.filter(f => f.matchday === md)
-      .sort((a, b) => a.date.localeCompare(b.date) || a.group.localeCompare(b.group))
+      .sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''))
       .map(f => matchCard(f, f.home, f.away)).join('');
   }
-  html += '<h2 style="margin-top:30px">Eliminación directa</h2>';
-  for (const k of STATE.knockout) {
-    if (k.result && k.result.home) {
-      html += `<div class="mday">${STAGES_ES[k.stage]} · PARTIDO ${k.m}</div>` +
-        matchCard({ ...k, date: k.date }, k.result.home, k.result.away);
-    }
+  const stages = [['R32', '16AVOS DE FINAL'], ['R16', 'OCTAVOS'], ['QF', 'CUARTOS'], ['SF', 'SEMIFINALES'], ['3RD', 'TERCER PUESTO'], ['FINAL', 'FINAL']];
+  for (const [st, name] of stages) {
+    const ms = STATE.knockout.filter(k => k.stage === st);
+    html += `<div class="mday">${name}</div>`;
+    html += ms.sort((a, b) => (a.datetime || a.date).localeCompare(b.datetime || b.date)).map(k => {
+      const h = (k.result && k.result.home) || k.resolved.home;
+      const a = (k.result && k.result.away) || k.resolved.away;
+      if (h && a) return matchCard(k, h, a);
+      return `<div class="mcard"><div class="side muted">${slotDesc(k.home)}</div>
+        <div class="score"><span class="muted" style="font-size:11px">P${k.m}</span><div class="muted" style="font-size:9px">${fmtKickoff(k)}</div></div>
+        <div class="side away muted">${slotDesc(k.away)}</div></div>`;
+    }).join('');
   }
-  html += '<div class="muted" style="margin-top:10px">Los cruces de eliminación aparecen aquí cuando el admin los registra. El bracket proyectado está en la pestaña Bracket.</div>';
   $('#tab-matches').innerHTML = html;
 }
 
@@ -175,8 +195,9 @@ function renderBracket() {
     rounds.map(([st, name]) => `<div class="bround"><h4>${name}</h4>` +
       STATE.knockout.filter(k => k.stage === st).map(k => {
         const r = k.result;
-        const h = r && r.home ? tlabel(r.home) : slotDesc(k.home);
-        const a = r && r.away ? tlabel(r.away) : slotDesc(k.away);
+        const hId = (r && r.home) || k.resolved.home, aId = (r && r.away) || k.resolved.away;
+        const h = hId ? tlabel(hId) : slotDesc(k.home);
+        const a = aId ? tlabel(aId) : slotDesc(k.away);
         let hw = '', aw = '';
         if (r && r.status === 'final') {
           const homeWon = r.hg > r.ag || (r.hg === r.ag && r.pensHome);
@@ -260,36 +281,56 @@ function renderEvo() {
 // ---------- ADMIN ----------
 function renderAdmin() {
   if (!USER || !USER.isAdmin) { $('#tab-admin').innerHTML = '<div class="muted">Solo administradores.</div>'; return; }
-  const groupOpts = STATE.fixtures.map(f =>
-    `<option value="${f.id}">${f.id} · ${teamOf(f.home).name} vs ${teamOf(f.away).name}</option>`).join('');
-  const koOpts = STATE.knockout.map(k => `<option value="${k.m}">P${k.m} · ${STAGES_ES[k.stage]}</option>`).join('');
+  const sync = STATE.sync || {};
+  const groupOpts = STATE.fixtures
+    .sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''))
+    .map(f => `<option value="${f.id}">${teamOf(f.home).name} vs ${teamOf(f.away).name} · ${fmtKickoff(f)} (Grupo ${f.group})</option>`).join('');
+  const koOpts = STATE.knockout.map(k => {
+    const h = k.resolved.home ? teamOf(k.resolved.home).name : slotDesc(k.home);
+    const a = k.resolved.away ? teamOf(k.resolved.away).name : slotDesc(k.away);
+    return `<option value="${k.m}">${STAGES_ES[k.stage]} · ${h} vs ${a} · ${k.date}</option>`;
+  }).join('');
   const teamOpts = STATE.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   $('#tab-admin').innerHTML = `
-    <h2>Registrar resultado · recalcula 10,000 simulaciones y actualiza Elo en vivo</h2>
+    <div class="explain" style="border-left-color:${sync.ok ? 'var(--accent)' : 'var(--amber)'}">
+      ${sync.ok ? '🟢' : '🟡'} <b>Los resultados se cargan solos:</b> el sistema consulta los marcadores oficiales (ESPN)
+      cada 2 minutos y actualiza Elo y probabilidades automáticamente, incluso en vivo minuto a minuto.
+      ${sync.ts ? `Última sincronización: ${new Date(sync.ts).toLocaleTimeString()}${sync.error ? ' · error: ' + sync.error : ''}.` : ''}
+      <br>Este panel es solo para <b>corregir manualmente</b> un marcador si la fuente fallara.
+    </div>
     <div class="gcard">
-      <h3>FASE DE GRUPOS</h3>
+      <h3>CORREGIR PARTIDO · FASE DE GRUPOS</h3>
+      <div class="formrow"><label style="width:100%">Partido<br><select id="gMatch" style="width:100%">${groupOpts}</select></label></div>
       <div class="formrow">
-        <select id="gMatch">${groupOpts}</select>
-        <input id="gHg" type="number" min="0" style="width:60px" placeholder="local">
-        <input id="gAg" type="number" min="0" style="width:60px" placeholder="visita">
-        <select id="gStatus"><option value="final">Final</option><option value="live">En vivo</option></select>
-        <input id="gMin" type="number" min="0" max="90" style="width:70px" placeholder="minuto">
-        <button class="btn" onclick="saveResult(true)">Guardar</button>
-        <button class="ghost" onclick="removeResult(true)">Borrar resultado</button>
+        <label>Goles equipo 1 (izquierda)<br><input id="gHg" type="number" min="0" value="0" style="width:120px"></label>
+        <label>Goles equipo 2 (derecha)<br><input id="gAg" type="number" min="0" value="0" style="width:120px"></label>
+        <label>Estado del partido<br><select id="gStatus"><option value="final">Terminado (final)</option><option value="live">En juego (en vivo)</option></select></label>
+        <label>Minuto actual (solo si está en juego)<br><input id="gMin" type="number" min="0" max="90" value="0" style="width:120px"></label>
+      </div>
+      <div class="formrow">
+        <button class="btn" onclick="saveResult(true)">Guardar resultado</button>
+        <button class="ghost" onclick="removeResult(true)">Eliminar resultado de este partido</button>
       </div>
     </div>
     <div class="gcard" style="margin-top:12px">
-      <h3>ELIMINACIÓN DIRECTA</h3>
+      <h3>CORREGIR PARTIDO · ELIMINACIÓN DIRECTA</h3>
+      <div class="formrow"><label style="width:100%">Llave<br><select id="kMatch" style="width:100%">${koOpts}</select></label></div>
       <div class="formrow">
-        <select id="kMatch">${koOpts}</select>
-        <select id="kHome">${teamOpts}</select> vs <select id="kAway">${teamOpts}</select>
-        <input id="kHg" type="number" min="0" style="width:60px" placeholder="local">
-        <input id="kAg" type="number" min="0" style="width:60px" placeholder="visita">
-        <select id="kStatus"><option value="final">Final</option><option value="live">En vivo</option></select>
-        <input id="kMin" type="number" min="0" max="120" style="width:70px" placeholder="minuto">
-        <label><input type="checkbox" id="kPens"> ganó local en penales</label>
-        <button class="btn" onclick="saveResult(false)">Guardar</button>
-        <button class="ghost" onclick="removeResult(false)">Borrar</button>
+        <label>Equipo 1<br><select id="kHome">${teamOpts}</select></label>
+        <label>Equipo 2<br><select id="kAway">${teamOpts}</select></label>
+      </div>
+      <div class="formrow">
+        <label>Goles equipo 1<br><input id="kHg" type="number" min="0" value="0" style="width:120px"></label>
+        <label>Goles equipo 2<br><input id="kAg" type="number" min="0" value="0" style="width:120px"></label>
+        <label>Estado<br><select id="kStatus"><option value="final">Terminado</option><option value="live">En juego</option></select></label>
+        <label>Minuto (si está en juego)<br><input id="kMin" type="number" min="0" max="120" value="0" style="width:120px"></label>
+      </div>
+      <div class="formrow">
+        <label><input type="checkbox" id="kPens"> Si empataron: ganó el <b>equipo 1</b> en penales</label>
+      </div>
+      <div class="formrow">
+        <button class="btn" onclick="saveResult(false)">Guardar resultado</button>
+        <button class="ghost" onclick="removeResult(false)">Eliminar resultado</button>
       </div>
     </div>
     <div id="adminMsg" class="warn"></div>`;

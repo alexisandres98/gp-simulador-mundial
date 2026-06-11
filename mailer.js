@@ -78,8 +78,29 @@ function crypto_rand() {
   return require('crypto').randomBytes(8).toString('hex');
 }
 
-function isConfigured() {
-  return !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+// Relay por HTTPS (Google Apps Script): para hosts que bloquean puertos SMTP (Render free).
+// El script corre como la cuenta Gmail del dueño → misma entregabilidad que Gmail puro.
+async function sendViaWebhook({ to, subject, text, html }) {
+  const r = await fetch(process.env.MAIL_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: process.env.MAIL_WEBHOOK_TOKEN || '', to, subject, text, html }),
+    signal: AbortSignal.timeout(20000),
+    redirect: 'follow', // Apps Script responde con redirect 302
+  });
+  const body = await r.text();
+  let j = {};
+  try { j = JSON.parse(body); } catch { }
+  if (!j.ok) throw new Error('relay: ' + (j.error || body.slice(0, 120) || r.status));
 }
 
-module.exports = { sendMail, isConfigured };
+function send(opts) {
+  if (process.env.MAIL_WEBHOOK_URL) return sendViaWebhook(opts);
+  return sendMail(opts);
+}
+
+function isConfigured() {
+  return !!(process.env.MAIL_WEBHOOK_URL || (process.env.SMTP_USER && process.env.SMTP_PASS));
+}
+
+module.exports = { sendMail: send, isConfigured };

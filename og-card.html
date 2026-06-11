@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 630px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #07271B 0%, #0A5C3C 55%, #0BA661 100%); color: #fff;
+  display: flex; flex-direction: column; justify-content: center; padding: 70px 80px; overflow: hidden; }
+.brand { display: flex; align-items: center; gap: 16px; margin-bottom: 38px; }
+.badge { width: 64px; height: 64px; border-radius: 18px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 36px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 30px; font-weight: 800; letter-spacing: -.5px; }
+.btag { font-size: 16px; color: #A7E8C8; font-weight: 600; }
+h1 { font-size: 58px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.08; margin-bottom: 14px; }
+.sub { font-size: 23px; color: #C9F2DE; margin-bottom: 40px; font-weight: 500; }
+.rows { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+.row { display: flex; align-items: center; gap: 16px; font-size: 25px; font-weight: 700; }
+.flag { font-size: 32px; width: 44px; }
+.tname { width: 105px; }
+.track { flex: 1; height: 16px; background: rgba(255,255,255,.16); border-radius: 99px; overflow: hidden; }
+.fill { height: 100%; background: #fff; border-radius: 99px; }
+.p { width: 110px; text-align: right; font-size: 27px; font-weight: 800; }
+.cta { position: absolute; right: 80px; bottom: 56px; background: #fff; color: #067647;
+  font-size: 24px; font-weight: 800; padding: 18px 34px; border-radius: 99px; }
+.live { position: absolute; right: 80px; top: 64px; background: rgba(229,72,77,.95); font-weight: 800;
+  font-size: 18px; padding: 10px 20px; border-radius: 99px; letter-spacing: 1px; }
+</style></head>
+<body>
+  <div class="live">● EN VIVO · MUNDIAL 2026</div>
+  <div class="brand">
+    <div class="badge">⚽</div>
+    <div><div class="bname">GP Simulador del Mundial</div><div class="btag">10,000 torneos simulados · probabilidades en tiempo real</div></div>
+  </div>
+  <h1>¿Quién va a ganar el Mundial?</h1>
+  <div class="sub">Las probabilidades se mueven en vivo con cada gol. Gratis con tu email.</div>
+  <div class="rows">
+    <div class="row"><span class="flag">🇪🇸</span><span class="tname">España</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="p">27.7%</span></div>
+    <div class="row"><span class="flag">🇦🇷</span><span class="tname">Argentina</span><div class="track"><div class="fill" style="width:68%"></div></div><span class="p">18.9%</span></div>
+    <div class="row"><span class="flag">🇫🇷</span><span class="tname">Francia</span><div class="track"><div class="fill" style="width:44%"></div></div><span class="p">12.1%</span></div>
+  </div>
+  <div class="cta">gpsimulador.com</div>
+</body></html>

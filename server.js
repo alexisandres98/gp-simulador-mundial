@@ -284,6 +284,155 @@ async function fetchMarkets(force = false) {
   return marketCache;
 }
 
+// ---------- mercados por partido (Polymarket: fifwc-*) ----------
+// Los slugs usan códigos arbitrarios (kr, hai, rsa, che...) → descubrimiento por búsqueda
+// de nombres, cacheado permanentemente en db.matchSlugs.
+let matchMktCache = { ts: 0, matches: [] };
+db.matchSlugs = db.matchSlugs || {};
+
+function teamTokens(id) {
+  const t = teamById[id];
+  return [t.en, ...t.aliases].map(normName);
+}
+
+async function discoverMatchSlug(f) {
+  if (db.matchSlugs[f.id]) return db.matchSlugs[f.id];
+  const h = teamById[f.home], a = teamById[f.away];
+  const queries = [`${h.en} ${a.en}`, `${h.aliases[0] || h.en} ${a.aliases[0] || a.en}`];
+  const fDate = new Date(f.datetime).getTime();
+  for (const q of queries) {
+    try {
+      const r = await fetch(`https://gamma-api.polymarket.com/public-search?q=${encodeURIComponent(q)}&limit_per_type=6`,
+        { signal: AbortSignal.timeout(10000) });
+      const j = await r.json();
+      for (const ev of j.events || []) {
+        if (!/^fifwc-/.test(ev.slug)) continue;
+        const m = ev.slug.match(/(\d{4}-\d{2}-\d{2})$/);
+        if (!m) continue;
+        const dDiff = Math.abs(new Date(m[1] + 'T12:00Z').getTime() - fDate);
+        if (dDiff > 2 * 86400000) continue; // otro partido de los mismos equipos
+        const title = normName(ev.title || '');
+        const hOk = teamTokens(f.home).some(t => title.includes(t));
+        const aOk = teamTokens(f.away).some(t => title.includes(t));
+        if (hOk && aOk) {
+          db.matchSlugs[f.id] = ev.slug;
+          save();
+          console.log(`[matches] slug descubierto ${f.id} → ${ev.slug}`);
+          return ev.slug;
+        }
+      }
+    } catch { /* siguiente query */ }
+  }
+  return null;
+}
+
+async function fetchMatchMarkets(force = false) {
+  if (!force && Date.now() - matchMktCache.ts < 5 * 60 * 1000) return matchMktCache;
+  const now = Date.now();
+  // grupos con horario + eliminatorias con equipos ya resueltos
+  const bracket = resolveRealBracket();
+  const upcoming = [
+    ...GROUP_FIXTURES.map(f => ({ ...f, _h: f.home, _a: f.away })),
+    ...KNOCKOUT.filter(k => bracket[k.m] && bracket[k.m].home && bracket[k.m].away)
+      .map(k => ({ id: String(k.m), datetime: k.datetime || k.date + 'T18:00Z', _h: bracket[k.m].home, _a: bracket[k.m].away })),
+  ].filter(f => {
+    const t = new Date(f.datetime).getTime();
+    return t > now - 5 * 3600000 && t < now + 60 * 3600000; // en vivo + próximas ~2.5 jornadas
+  }).sort((x, y) => x.datetime.localeCompare(y.datetime));
+
+  const out = [];
+  let discoveries = 0;
+  for (const f of upcoming) {
+    let slug = db.matchSlugs[f.id];
+    if (!slug && discoveries < 5) { discoveries++; slug = await discoverMatchSlug({ ...f, home: f._h, away: f._a }); }
+    if (!slug) continue;
+    try {
+      const r = await fetch(`https://gamma-api.polymarket.com/events?slug=${slug}`, { signal: AbortSignal.timeout(10000) });
+      const ev = (await r.json())[0];
+      if (!ev || !ev.markets) continue;
+      const outcomes = {};
+      for (const m of ev.markets) {
+        let side = null;
+        const gt = normName(m.groupItemTitle || m.question || '');
+        if (/draw|empate/.test(gt)) side = 'draw';
+        else if (teamTokens(f._h).some(t => gt.includes(t))) side = 'home';
+        else if (teamTokens(f._a).some(t => gt.includes(t))) side = 'away';
+        if (!side) continue;
+        let price = null;
+        try { price = Number(JSON.parse(m.outcomePrices)[0]); } catch { }
+        outcomes[side] = {
+          price, bid: m.bestBid != null ? Number(m.bestBid) : price,
+          ask: m.bestAsk != null ? Number(m.bestAsk) : price,
+          volume: Number(m.volumeNum || m.volume) || 0,
+          url: `https://polymarket.com/event/${slug}/${m.slug}`,
+        };
+      }
+      if (!outcomes.home || !outcomes.away) continue;
+      // probabilidades del modelo (condicionadas al marcador si está en vivo)
+      const res = db.results[f.id];
+      const probs = (res && res.status === 'live')
+        ? liveMatchProbs(effElo(db.elos, f._h), effElo(db.elos, f._a), res.hg, res.ag, res.minute)
+        : matchProbs(effElo(db.elos, f._h), effElo(db.elos, f._a));
+      const edges = [];
+      for (const [side, label] of [['home', 'home'], ['draw', 'draw'], ['away', 'away']]) {
+        const o = outcomes[side]; if (!o) continue;
+        const p = probs[label];
+        if (o.ask > 0.001 && p - o.ask > 0.04) edges.push({ side, type: 'COMPRAR SÍ', edge: +(p - o.ask).toFixed(4) });
+        else if (o.bid > 0.001 && o.bid - p > 0.04) edges.push({ side, type: 'COMPRAR NO', edge: +(o.bid - p).toFixed(4) });
+      }
+      out.push({
+        fixtureId: f.id, home: f._h, away: f._a, datetime: f.datetime,
+        live: !!(res && res.status === 'live'), result: res || null,
+        outcomes, model: { home: probs.home, draw: probs.draw, away: probs.away }, edges,
+        eventUrl: `https://polymarket.com/event/${slug}`,
+      });
+    } catch { /* partido sin mercado accesible */ }
+  }
+  matchMktCache = { ts: Date.now(), matches: out };
+  return matchMktCache;
+}
+
+// ---------- track record público del modelo ----------
+function trackRecord() {
+  const elos = {};
+  TEAMS.forEach(t => { elos[t.id] = t.elo; });
+  const finished = [];
+  const koFin = KNOCKOUT.filter(k => {
+    const r = db.results[String(k.m)];
+    return r && r.status === 'final' && r.home && r.away;
+  }).map(k => ({ id: String(k.m), datetime: k.datetime || k.date, ko: true }));
+  const all = [
+    ...GROUP_FIXTURES.filter(f => db.results[f.id] && db.results[f.id].status === 'final')
+      .map(f => ({ id: f.id, datetime: f.datetime, home: f.home, away: f.away })),
+    ...koFin,
+  ].sort((x, y) => String(x.datetime).localeCompare(String(y.datetime)));
+  for (const f of all) {
+    const r = db.results[f.id];
+    const h = f.home || r.home, a = f.away || r.away;
+    // predicción con los Elo PREVIOS a ese partido (lo que el modelo decía antes del pitazo)
+    const probs = matchProbs(effElo(elos, h), effElo(elos, a));
+    const picks = [['home', probs.home], ['draw', probs.draw], ['away', probs.away]].sort((x, y) => y[1] - x[1]);
+    const predicted = picks[0][0];
+    const actual = r.hg > r.ag ? 'home' : r.hg < r.ag ? 'away' : 'draw';
+    finished.push({
+      id: f.id, datetime: f.datetime, home: h, away: a, hg: r.hg, ag: r.ag,
+      predicted, predictedProb: +picks[0][1].toFixed(4),
+      probs: { home: +probs.home.toFixed(4), draw: +probs.draw.toFixed(4), away: +probs.away.toFixed(4) },
+      likelyScore: probs.likelyScore,
+      correct: predicted === actual,
+      exact: probs.likelyScore === `${r.hg}-${r.ag}`,
+    });
+    const [nh, na] = eloUpdate(elos[h], elos[a], r.hg, r.ag, teamById[h].host, teamById[a].host);
+    elos[h] = nh; elos[a] = na;
+  }
+  return {
+    total: finished.length,
+    winners: finished.filter(x => x.correct).length,
+    exact: finished.filter(x => x.exact).length,
+    matches: finished.reverse(),
+  };
+}
+
 function arbitrage() {
   const rows = [];
   for (const t of TEAMS) {
@@ -454,12 +603,16 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, demo: true, demoCode: code });
     }
     if (p === '/api/auth/verify' && req.method === 'POST') {
-      const { email, code } = await readBody(req);
+      const { email, code, ref } = await readBody(req);
       const e = String(email || '').toLowerCase();
       const c = db.codes[e];
       if (!c || c.exp < Date.now() || c.code !== String(code)) return json(res, 401, { error: 'Código incorrecto o expirado' });
       delete db.codes[e];
-      if (!db.users[e]) db.users[e] = { createdAt: Date.now(), favorites: [] };
+      if (!db.users[e]) {
+        db.users[e] = { createdAt: Date.now(), favorites: [] };
+        // atribución de fuente (?ref=x / ig / wa / share...) — solo en el primer registro
+        if (ref) db.users[e].ref = String(ref).slice(0, 24).replace(/[^\w-]/g, '');
+      }
       const token = crypto.randomBytes(24).toString('hex');
       db.sessions[token] = e;
       save();
@@ -484,9 +637,11 @@ const server = http.createServer(async (req, res) => {
       if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       const users = Object.entries(db.users).map(([email, x]) => ({
         email, createdAt: x.createdAt, lastSeen: x.lastSeen || x.createdAt,
-        favorites: (x.favorites || []).length,
+        favorites: (x.favorites || []).length, ref: x.ref || 'directo',
       })).sort((a, b) => b.createdAt - a.createdAt);
-      return json(res, 200, { total: users.length, users });
+      const bySource = {};
+      users.forEach(u => bySource[u.ref] = (bySource[u.ref] || 0) + 1);
+      return json(res, 200, { total: users.length, users, bySource });
     }
     // --- datos ---
     if (p === '/api/version') {
@@ -520,11 +675,18 @@ const server = http.createServer(async (req, res) => {
         explanation: explainTeam(id, db.elos, simCache[id], simCache),
       });
     }
+    if (p === '/api/aciertos') {
+      // público a propósito: el track record es la credibilidad de la marca
+      return json(res, 200, trackRecord());
+    }
     if (p === '/api/arbitrage') {
       if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
-      await fetchMarkets(url.searchParams.get('force') === '1');
+      const force = url.searchParams.get('force') === '1';
+      await fetchMarkets(force);
+      await fetchMatchMarkets(force);
       return json(res, 200, {
         ts: marketCache.ts, errors: marketCache.errors, rows: arbitrage(),
+        matches: matchMktCache.matches,
         disclaimer: 'Estimaciones del modelo, no consejo financiero. Kalshi cobra comisiones (~7% de p·(1−p) por contrato) y Polymarket tiene spread/gas; un edge < 2-3% puede no ser rentable tras costos.',
       });
     }
@@ -572,7 +734,8 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`⚽ Simulador Mundial 2026 → http://localhost:${PORT}`);
   fetchMarkets().catch(() => { });
-  setInterval(() => fetchMarkets(true).then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 5 * 60 * 1000);
+  setInterval(() => Promise.all([fetchMarkets(true), fetchMatchMarkets(true)])
+    .then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 5 * 60 * 1000);
   // Sincronización automática de resultados desde ESPN cada 2 minutos
   syncFromESPN();
   setInterval(syncFromESPN, 2 * 60 * 1000);

@@ -259,6 +259,29 @@ canvas { width: 100%; max-width: 1100px; background: var(--card); border: 1px so
 .mlink { color: var(--text); font-weight: 700; text-decoration: none; }
 .mlink:hover { color: var(--accent-dark); }
 
+/* mercados por partido: filas 1X2 */
+.matchmkt { cursor: default; }
+.matchmkt:hover { transform: none; border-color: var(--border); }
+.oc-head, .oc-row { display: grid; grid-template-columns: 1fr 72px 72px 92px; gap: 8px; align-items: center; }
+.oc-head { font-size: 9.5px; text-transform: uppercase; letter-spacing: .7px; color: var(--dim); font-weight: 700; padding: 0 10px 6px; }
+.oc-row {
+  text-decoration: none; color: var(--text); padding: 9px 10px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 600; transition: background .12s;
+}
+.oc-row:hover { background: var(--card2); }
+.oc-row.oc-edge { background: var(--accent-soft); }
+.oc-row.oc-edge:hover { background: #D3F3E4; }
+.oc-mkt { font-family: var(--font-head); font-weight: 800; }
+.oc-model { color: var(--blue); font-weight: 700; }
+.oc-badge { color: var(--accent-dark); font-weight: 800; font-size: 12px; text-align: right; }
+.sharebtn {
+  margin-left: auto; background: var(--card2); border: none; border-radius: 99px;
+  width: 32px; height: 32px; cursor: pointer; font-size: 14px; transition: background .15s;
+}
+.sharebtn:hover { background: var(--border); }
+.mkt-top .sharebtn { margin-left: auto; }
+.mkt-stats .sharebtn { width: 28px; height: 28px; font-size: 12px; }
+
 /* ---------- teaser / muro de registro ---------- */
 .wall {
   text-align: center; padding: 36px 20px; margin-top: 18px;

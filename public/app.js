@@ -44,6 +44,41 @@ function renderTeaser() {
       <div class="muted" style="margin-bottom:18px">Es gratis y solo toma 30 segundos con tu email.</div>
       <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
   });
+  renderRecord(); // el track record es público: es la carta de presentación
+}
+
+// ---------- ACIERTOS (track record público del modelo) ----------
+async function renderRecord() {
+  const r = await fetch('/api/aciertos');
+  if (!r.ok) return;
+  const d = await r.json();
+  const pctW = d.total ? Math.round(d.winners / d.total * 100) : 0;
+  let html = `<h2>Track record del modelo · transparencia total</h2>
+    <div class="muted" style="font-size:12.5px;margin:-8px 0 16px">
+      Cada predicción queda registrada con los datos que el modelo tenía <b>antes</b> del partido. Aciertos y fallos, todo público.
+    </div>
+    <div class="statrow" style="grid-template-columns:repeat(3,1fr)">
+      <div class="bigstat"><div class="lbl">Partidos evaluados</div><div class="val">${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.winners}/${d.total}${d.total ? ` <span style="font-size:15px">(${pctW}%)</span>` : ''}</div></div>
+      <div class="bigstat"><div class="lbl">Marcador exacto 🎯</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
+    </div>
+    <div class="formrow"><button class="ghost" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>`;
+  if (!d.total) {
+    html += '<div class="muted">Los primeros resultados aparecerán al terminar los próximos partidos.</div>';
+  }
+  html += d.matches.map(m => {
+    const th = teamOf(m.home), ta = teamOf(m.away);
+    const pickLabel = m.predicted === 'home' ? `Gana ${th ? th.name : m.home}` : m.predicted === 'away' ? `Gana ${ta ? ta.name : m.away}` : 'Empate';
+    return `<div class="mcard" style="grid-template-columns:auto 1fr auto;gap:14px">
+      <div style="font-size:22px;font-weight:800;font-family:var(--font-head)">${m.correct ? '✅' : '❌'}${m.exact ? '🎯' : ''}</div>
+      <div>
+        <div style="font-weight:700">${th ? th.flag + ' ' + th.name : m.home} ${m.hg} - ${m.ag} ${ta ? ta.name + ' ' + ta.flag : m.away}</div>
+        <div class="muted" style="font-size:12px">El modelo decía: <b>${pickLabel}</b> (${pct(m.predictedProb)}) · marcador más probable ${m.likelyScore}${m.exact ? ' — <b style="color:var(--amber)">EXACTO</b>' : ''}</div>
+      </div>
+      <div class="muted" style="font-size:11px">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</div>
+    </div>`;
+  }).join('');
+  $('#tab-record').innerHTML = html;
 }
 async function loadMe() {
   if (!token()) return;
@@ -59,7 +94,7 @@ function renderHeader() {
 
 function renderAll() {
   if (STATE.teaser) { renderTeaser(); return; }
-  renderTeams(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin();
+  renderTeams(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin(); renderRecord();
   if ($('#tab-arb').classList.contains('active')) loadArb();
 }
 
@@ -295,6 +330,41 @@ async function loadArb(force = false) {
     </div>
     ${ARB.errors.length ? `<div class="warn">${ARB.errors.join(' · ')}</div>` : ''}`;
 
+  // ---- mercados por partido (Polymarket fifwc-*) ----
+  const M = ARB.matches || [];
+  if (M.length) {
+    html += `<div class="sect-title"><span style="color:var(--blue)">⚽</span> Mercados por partido · ${M.length} partidos con mercado activo</div>
+    <div class="muted" style="font-size:12px;margin:-6px 0 14px">Precio del mercado vs nuestro modelo para 1X2. Verde = el modelo ve valor (edge ≥ 4%). Toca un resultado para abrir su mercado.</div>
+    <div class="mktgrid">` + M.map(m => {
+      const th = teamOf(m.home), ta = teamOf(m.away);
+      const edgeOf = side => (m.edges.find(e => e.side === side) || {});
+      const row = (side, label, flag) => {
+        const o = m.outcomes[side]; if (!o) return '';
+        const e = edgeOf(side);
+        const p = m.model[side];
+        return `<a class="oc-row ${e.edge ? 'oc-edge' : ''}" href="${o.url}" target="_blank" rel="noopener">
+          <span class="oc-label">${flag || ''} ${label}</span>
+          <span class="oc-mkt">${cents(o.price)}</span>
+          <span class="oc-model">${pct(p)}</span>
+          <span class="oc-badge">${e.edge ? '+' + pct(e.edge) + ' ' + (e.type === 'COMPRAR NO' ? 'NO' : 'SÍ') : ''}</span>
+        </a>`;
+      };
+      const shareTxt = `⚽ ${th.name} vs ${ta.name}: el mercado paga ${cents(m.outcomes.home.price)} / ${m.outcomes.draw ? cents(m.outcomes.draw.price) : '—'} / ${cents(m.outcomes.away.price)} y nuestro modelo dice ${pct(m.model.home)} / ${pct(m.model.draw)} / ${pct(m.model.away)}.`;
+      return `<div class="mktcard matchmkt">
+        <div class="mkt-top">
+          ${venueChip('Polymarket')}
+          ${m.live ? `<span class="livepill">● EN VIVO${m.result ? ' ' + m.result.hg + '-' + m.result.ag : ''}</span>` : `<span class="muted" style="font-size:11px;font-weight:600">${fmtKickoff(m)}</span>`}
+          <button class="sharebtn" onclick="shareOp(event, '${shareTxt.replace(/'/g, '')}')">📤</button>
+        </div>
+        <div class="mkt-team" style="margin-bottom:10px"><span style="font-size:20px">${th.flag}</span><b>${th.name} vs ${ta.name}</b><span style="font-size:20px">${ta.flag}</span></div>
+        <div class="oc-head"><span></span><span>Mercado</span><span>Modelo</span><span>Edge</span></div>
+        ${row('home', th.name, th.flag)}
+        ${row('draw', 'Empate')}
+        ${row('away', ta.name, ta.flag)}
+      </div>`;
+    }).join('') + '</div>';
+  }
+
   // ---- arbitraje puro (dos plataformas, ganancia asegurada) ----
   if (pure.length) {
     html += `<div class="sect-title"><span class="dot-amber">◆</span> Arbitraje puro · ganancia asegurada entre plataformas</div>
@@ -337,6 +407,7 @@ async function loadArb(force = false) {
         <span>Vol ${fmtUsd(v.volume)}</span><span>24h ${fmtUsd(v.volume24h)}</span>
         <span>${o.venue === 'Polymarket' ? 'Liq ' + fmtUsd(v.liquidity) : 'OI ' + fmtUsd(v.openInterest)}</span>
         ${o.kelly ? `<span class="kelly">Kelly/4: ${pct(o.kelly)}</span>` : ''}
+        <button class="sharebtn" onclick="shareOp(event, '📊 ${t ? t.name : o.team} campeón del Mundial: el mercado paga ${cents(v.price)} y el modelo de 10,000 simulaciones dice ${pct(o.model)} (+${pct(o.edge)} de edge).')">📤</button>
       </div>
     </a>`;
   }).join('') + '</div>';
@@ -466,20 +537,24 @@ async function loadUsers() {
   if (!r.ok) { $('#userBase').textContent = 'Error al cargar usuarios.'; return; }
   const j = await r.json();
   const fmt = ts => new Date(ts).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const sources = Object.entries(j.bySource || {}).sort((a, b) => b[1] - a[1])
+    .map(([s, n]) => `<span class="chip"><b style="display:inline">${n}</b> ${s}</span>`).join(' ');
   $('#userBase').innerHTML = `
     <div class="formrow" style="align-items:center">
       <span style="color:var(--text)"><b>${j.total}</b> usuarios registrados</span>
       <button class="ghost" onclick="exportUsersCSV()">⬇ Exportar CSV</button>
     </div>
-    <table><tr><th>Email</th><th>Registro</th><th>Última visita</th><th>Favoritos</th></tr>
-    ${j.users.map(u => `<tr><td>${u.email}</td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td><td>${u.favorites}</td></tr>`).join('')}
+    <div class="formrow" style="gap:8px"><span class="muted" style="font-size:11px">FUENTES:</span> ${sources}</div>
+    <div class="muted" style="font-size:11px;margin-bottom:8px">Comparte links con ?ref= para atribuir: gpsimulador.com/?ref=x · ?ref=ig · ?ref=wa</div>
+    <table><tr><th>Email</th><th>Fuente</th><th>Registro</th><th>Última visita</th><th>Favoritos</th></tr>
+    ${j.users.map(u => `<tr><td>${u.email}</td><td><b>${u.ref}</b></td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td><td>${u.favorites}</td></tr>`).join('')}
     </table>`;
   window._users = j.users;
 }
 
 function exportUsersCSV() {
-  const rows = [['email', 'registro', 'ultima_visita', 'favoritos'],
-  ...(window._users || []).map(u => [u.email, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
+  const rows = [['email', 'fuente', 'registro', 'ultima_visita', 'favoritos'],
+  ...(window._users || []).map(u => [u.email, u.ref, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
   const csv = rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
@@ -530,7 +605,10 @@ async function requestCode() {
 async function verifyCode() {
   const r = await fetch('/api/auth/verify', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: $('#loginEmail').value.trim(), code: $('#loginCode').value.trim() }),
+    body: JSON.stringify({
+      email: $('#loginEmail').value.trim(), code: $('#loginCode').value.trim(),
+      ref: localStorage.getItem('wc_ref') || undefined,
+    }),
   });
   const j = await r.json();
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
@@ -552,6 +630,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
   $('#tab-' + b.dataset.tab).classList.add('active');
   if (b.dataset.tab === 'arb' && !ARB) loadArb();
   if (b.dataset.tab === 'evo') renderEvo();
+  if (b.dataset.tab === 'record') renderRecord();
 }));
 
 function notifyUpdate(reason, ts) {
@@ -601,6 +680,20 @@ function connectSSE() {
     $('#liveDot').classList.remove('on');
     gotHello ? setTimeout(connectSSE, 5000) : startPolling();
   };
+}
+
+// atribución de fuente: ?ref=x / ig / wa / share — first-touch
+(() => {
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref && !localStorage.getItem('wc_ref')) localStorage.setItem('wc_ref', ref.slice(0, 24));
+})();
+
+// compartir oportunidades (Web Share API con fallback a WhatsApp)
+function shareOp(ev, text) {
+  ev.preventDefault(); ev.stopPropagation();
+  const url = 'https://gpsimulador.com/?ref=share';
+  if (navigator.share) navigator.share({ text: text + ' ' + url }).catch(() => { });
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
 }
 
 (async () => { await loadMe(); await loadState(); connectSSE(); })();

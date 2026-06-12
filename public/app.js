@@ -245,8 +245,27 @@ function renderBracket() {
 }
 
 // ---------- ARBITRAJE ----------
+// ---- formato de números de mercado ----
+function fmtUsd(n) {
+  if (!n) return '—';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+function cents(p) { return (p * 100).toFixed(1) + '¢'; }
+function chgBadge(c) {
+  if (c == null || Math.abs(c) < 0.0005) return '<span class="chg flat">—</span>';
+  const up = c > 0;
+  return `<span class="chg ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${(Math.abs(c) * 100).toFixed(1)}%</span>`;
+}
+function venueChip(v) {
+  return v === 'Polymarket'
+    ? '<span class="vchip v-poly">◆ Polymarket</span>'
+    : '<span class="vchip v-kalshi">◆ Kalshi</span>';
+}
+
 async function loadArb(force = false) {
-  $('#tab-arb').innerHTML = '<h2>Oportunidades · cargando mercados…</h2>';
+  $('#tab-arb').innerHTML = '<h2>Oportunidades · cargando mercados en vivo…</h2>';
   const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() });
   if (!r.ok) {
     $('#tab-arb').innerHTML = `<div class="lock"><div class="lock-icon">🔒</div>
@@ -255,35 +274,90 @@ async function loadArb(force = false) {
     return;
   }
   ARB = await r.json();
-  const ops = [];
-  ARB.rows.forEach(r => r.edges.forEach(e => ops.push({ ...e, team: r.id, model: r.model })));
-  ops.sort((a, b) => (b.type === 'arbitraje') - (a.type === 'arbitraje') || b.edge - a.edge);
-  let html = `<h2>Oportunidades · modelo vs Polymarket & Kalshi</h2>
-    <div class="formrow">
-      <button class="btn" onclick="loadArb(true)">↻ Actualizar precios</button>
-      <span class="muted">Última actualización: ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'}</span>
-      ${ARB.errors.length ? `<span class="pbad">${ARB.errors.join(' · ')}</span>` : ''}
-    </div>
-    <div class="warn">⚠ ${ARB.disclaimer}</div>`;
-  if (!ops.length) html += '<div class="muted">Sin oportunidades con edge > 1.5% en este momento.</div>';
-  html += '<div class="arbops">' + ops.slice(0, 20).map(o => `
-    <div class="opcard ${o.type === 'arbitraje' ? 'pure' : ''}">
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <b>${tlabel(o.team)}</b>
-        <span class="${o.type === 'arbitraje' ? 'pmid' : 'pgood'}" style="font-size:10px;letter-spacing:1px">${o.type === 'arbitraje' ? '◆ ARBITRAJE PURO' : '● APUESTA DE VALOR'}</span>
-        <span>${o.venue} · ${o.side}</span>
-        <span class="edge" style="margin-left:auto">+${pct(o.edge)}</span>
+  const byId = Object.fromEntries(ARB.rows.map(x => [x.id, x]));
+  const pure = [], value = [];
+  ARB.rows.forEach(row => row.edges.forEach(e => {
+    (e.type === 'arbitraje' ? pure : value).push({ ...e, team: row.id, model: row.model, row });
+  }));
+  pure.sort((a, b) => b.edge - a.edge);
+  value.sort((a, b) => b.edge - a.edge);
+
+  let html = `
+    <div class="arb-head">
+      <div>
+        <h2 style="margin-bottom:2px">Mercados en vivo · Polymarket & Kalshi</h2>
+        <div class="muted" style="font-size:12px">
+          <span class="livepill">● EN VIVO</span> Última actualización ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'}
+          · se refresca cada 5 min · toca una tarjeta para abrir el mercado real
+        </div>
       </div>
-      <div class="note">${o.note}${o.kelly ? ` · Kelly/4 sugerido: ${pct(o.kelly)} del bankroll` : ''}</div>
-    </div>`).join('') + '</div>';
-  html += `<h2>Tabla completa · campeón del mundo</h2>
-    <table class="arbtable"><tr><th>Equipo</th><th>Modelo</th><th>Polymarket (bid/ask)</th><th>Kalshi (bid/ask)</th><th>Edge máx</th></tr>` +
-    ARB.rows.filter(r => r.model > 0.001 || r.polymarket || r.kalshi).map(r => {
-      const e = Math.max(0, ...r.edges.map(x => x.edge));
-      return `<tr><td class="teamcell" onclick="openTeam('${r.id}')">${tlabel(r.id)}</td>
-        <td><b>${pct(r.model)}</b></td>
-        <td>${r.polymarket ? `${pct(r.polymarket.bid)} / ${pct(r.polymarket.ask)}` : '<span class="muted">—</span>'}</td>
-        <td>${r.kalshi ? `${pct(r.kalshi.bid)} / ${pct(r.kalshi.ask)}` : '<span class="muted">—</span>'}</td>
+      <button class="ghost" onclick="loadArb(true)">↻ Actualizar</button>
+    </div>
+    ${ARB.errors.length ? `<div class="warn">${ARB.errors.join(' · ')}</div>` : ''}`;
+
+  // ---- arbitraje puro (dos plataformas, ganancia asegurada) ----
+  if (pure.length) {
+    html += `<div class="sect-title"><span class="dot-amber">◆</span> Arbitraje puro · ganancia asegurada entre plataformas</div>
+    <div class="muted" style="font-size:12px;margin:-6px 0 14px">Los precios de Polymarket y Kalshi se contradicen: comprando en ambas ganas la diferencia, gane quien gane.</div>
+    <div class="arbops">` + pure.slice(0, 6).map(o => {
+      const pm = o.row.polymarket, ks = o.row.kalshi;
+      return `<div class="dualcard">
+        <div class="dual-top">
+          <span style="font-size:22px">${teamOf(o.team) ? teamOf(o.team).flag : ''}</span>
+          <b style="font-size:16px">${teamOf(o.team) ? teamOf(o.team).name : o.team}</b>
+          <span class="purebadge">ARBITRAJE PURO</span>
+          <span class="edge-big">+${pct(o.edge)}</span>
+        </div>
+        <div class="note" style="margin:6px 0 12px">${o.note}</div>
+        <div class="dual-btns">
+          ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Abrir en Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
+          ${ks ? `<a class="venue-btn v-kalshi" href="${ks.url}" target="_blank" rel="noopener">Abrir en Kalshi · ${cents(ks.ask)} ↗</a>` : ''}
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  // ---- apuestas de valor (tarjetas de mercado clicables) ----
+  html += `<div class="sect-title"><span class="dot-green">●</span> Apuestas de valor · modelo vs mercado</div>
+    <div class="muted" style="font-size:12px;margin:-6px 0 14px">Donde nuestras 10,000 simulaciones discrepan más del precio. Toca para ir al mercado exacto.</div>`;
+  if (!value.length) html += '<div class="muted">Sin discrepancias mayores al 1.5% ahora mismo.</div>';
+  html += '<div class="mktgrid">' + value.slice(0, 12).map(o => {
+    const v = o.venue === 'Polymarket' ? o.row.polymarket : o.row.kalshi;
+    if (!v) return '';
+    const t = teamOf(o.team);
+    return `<a class="mktcard" href="${v.url}" target="_blank" rel="noopener">
+      <div class="mkt-top">${venueChip(o.venue)}${chgBadge(v.change24h)}<span class="ext">↗</span></div>
+      <div class="mkt-team"><span style="font-size:24px">${t ? t.flag : ''}</span><b>${t ? t.name : o.team}</b><span class="sidetag">${o.side}</span></div>
+      <div class="mkt-prices">
+        <div><div class="mkt-lbl">Precio</div><div class="mkt-big">${cents(v.price)}</div></div>
+        <div><div class="mkt-lbl">Modelo</div><div class="mkt-big model">${pct(o.model)}</div></div>
+        <div><div class="mkt-lbl">Edge</div><div class="mkt-big edge">+${pct(o.edge)}</div></div>
+      </div>
+      <div class="mkt-stats">
+        <span>Vol ${fmtUsd(v.volume)}</span><span>24h ${fmtUsd(v.volume24h)}</span>
+        <span>${o.venue === 'Polymarket' ? 'Liq ' + fmtUsd(v.liquidity) : 'OI ' + fmtUsd(v.openInterest)}</span>
+        ${o.kelly ? `<span class="kelly">Kelly/4: ${pct(o.kelly)}</span>` : ''}
+      </div>
+    </a>`;
+  }).join('') + '</div>';
+
+  html += `<div class="warn" style="margin-top:22px">⚠ ${ARB.disclaimer}</div>`;
+
+  // ---- tabla completa con datos de mercado ----
+  html += `<h2 style="margin-top:26px">Los 48 mercados · campeón del mundo</h2>
+    <table class="arbtable"><tr><th>Equipo</th><th>Modelo</th><th>Polymarket</th><th>24h</th><th>Vol</th><th>Kalshi</th><th>24h</th><th>Vol</th><th>Edge</th></tr>` +
+    ARB.rows.filter(r => r.model > 0.001 || r.polymarket || r.kalshi).map(row => {
+      const e = Math.max(0, ...row.edges.map(x => x.edge));
+      const pm = row.polymarket, ks = row.kalshi;
+      return `<tr>
+        <td class="teamcell" onclick="openTeam('${row.id}')">${tlabel(row.id)}</td>
+        <td><b>${pct(row.model)}</b></td>
+        <td>${pm ? `<a class="mlink" href="${pm.url}" target="_blank" rel="noopener">${cents(pm.price)} ↗</a>` : '<span class="muted">—</span>'}</td>
+        <td>${pm ? chgBadge(pm.change24h) : ''}</td>
+        <td class="muted">${pm ? fmtUsd(pm.volume) : ''}</td>
+        <td>${ks ? `<a class="mlink" href="${ks.url}" target="_blank" rel="noopener">${cents(ks.price)} ↗</a>` : '<span class="muted">—</span>'}</td>
+        <td>${ks ? chgBadge(ks.change24h) : ''}</td>
+        <td class="muted">${ks ? fmtUsd(ks.volume) : ''}</td>
         <td class="${e > 0.015 ? 'pgood' : 'muted'}">${e > 0 ? '+' + pct(e) : '—'}</td></tr>`;
     }).join('') + '</table>';
   $('#tab-arb').innerHTML = html;

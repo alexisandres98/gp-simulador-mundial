@@ -231,7 +231,7 @@ TEAMS.forEach(t => [t.en, t.name, ...t.aliases].forEach(a => aliasToId[normName(
 async function fetchMarkets(force = false) {
   if (!force && Date.now() - marketCache.ts < 5 * 60 * 1000) return marketCache;
   const next = { ts: Date.now(), polymarket: {}, kalshi: {}, errors: [] };
-  // Polymarket — Gamma API
+  // Polymarket — Gamma API (precio + volumen + liquidez + cambio 24h + link directo al mercado)
   try {
     const r = await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner', { signal: AbortSignal.timeout(15000) });
     const ev = (await r.json())[0];
@@ -242,10 +242,17 @@ async function fetchMarkets(force = false) {
       try { price = Number(JSON.parse(m.outcomePrices)[0]); } catch { }
       const bid = m.bestBid != null ? Number(m.bestBid) : price;
       const ask = m.bestAsk != null ? Number(m.bestAsk) : price;
-      if (price != null && !Number.isNaN(price)) next.polymarket[id] = { price, bid, ask };
+      if (price != null && !Number.isNaN(price)) next.polymarket[id] = {
+        price, bid, ask,
+        volume: Number(m.volumeNum || m.volume) || 0,
+        volume24h: Number(m.volume24hr) || 0,
+        liquidity: Number(m.liquidityNum || m.liquidity) || 0,
+        change24h: Number(m.oneDayPriceChange) || 0,
+        url: m.slug ? `https://polymarket.com/event/${ev.slug}/${m.slug}` : `https://polymarket.com/event/${ev.slug}`,
+      };
     }
   } catch (e) { next.errors.push('Polymarket: ' + e.message); }
-  // Kalshi — API pública
+  // Kalshi — API pública (precio + volumen + interés abierto + cambio vs cierre anterior + link al evento)
   try {
     let cursor = '', pages = 0;
     while (pages++ < 5) {
@@ -257,7 +264,16 @@ async function fetchMarkets(force = false) {
         if (!id) continue;
         const yesBid = m.yes_bid_dollars != null ? Number(m.yes_bid_dollars) : 1 - Number(m.no_ask_dollars);
         const yesAsk = m.yes_ask_dollars != null ? Number(m.yes_ask_dollars) : 1 - Number(m.no_bid_dollars);
-        next.kalshi[id] = { price: Number(m.last_price_dollars), bid: +yesBid.toFixed(4), ask: +yesAsk.toFixed(4) };
+        const last = Number(m.last_price_dollars) || 0;
+        next.kalshi[id] = {
+          price: last, bid: +yesBid.toFixed(4), ask: +yesAsk.toFixed(4),
+          volume: Number(m.volume_fp) || 0,
+          volume24h: Number(m.volume_24h_fp) || 0,
+          openInterest: Number(m.open_interest_fp) || 0,
+          change24h: +(last - (Number(m.previous_price_dollars) || last)).toFixed(4),
+          ticker: m.ticker,
+          url: 'https://kalshi.com/markets/kxmenworldcup/mens-world-cup-winner/kxmenworldcup-26',
+        };
       }
       cursor = j.cursor;
       if (!cursor) break;

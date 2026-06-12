@@ -494,6 +494,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         sim: db.history.length ? db.history[db.history.length - 1].ts : 0,
         markets: marketCache.ts,
+        users: Object.keys(db.users).length,
       });
     }
     if (p === '/api/state') {

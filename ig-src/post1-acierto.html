@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 50%, #0BA661 100%); color: #fff;
+  display: flex; flex-direction: column; justify-content: center; padding: 80px; position: relative; }
+.tag { position: absolute; left: 80px; top: 70px; background: #fff; color: #067647; font-weight: 800;
+  font-size: 26px; padding: 14px 28px; border-radius: 99px; letter-spacing: 1px; }
+.brand { position: absolute; right: 80px; top: 74px; font-size: 26px; font-weight: 800; opacity: .9; }
+h1 { font-size: 74px; font-weight: 800; letter-spacing: -2px; line-height: 1.05; margin-bottom: 50px; margin-top: 60px; }
+h1 span { color: #7CF2BC; }
+.card { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 24px;
+  padding: 30px 36px; margin-bottom: 22px; display: flex; align-items: center; gap: 26px; }
+.card .match { flex: 1; }
+.card .m { font-size: 34px; font-weight: 800; }
+.card .pred { font-size: 23px; color: #C9F2DE; margin-top: 6px; font-weight: 600; }
+.card .res { text-align: center; }
+.card .score { font-size: 52px; font-weight: 800; }
+.card .check { font-size: 26px; font-weight: 800; color: #7CF2BC; margin-top: 2px; }
+.foot { margin-top: 36px; text-align: center; font-size: 26px; color: #C9F2DE; font-weight: 600; }
+.foot b { color: #fff; }
+</style></head>
+<body>
+  <div class="tag">RESULTADOS DEL MODELO</div>
+  <div class="brand">⚽ GP Simulador</div>
+  <h1>Jornada 1:<br><span>2 de 2 aciertos</span> ✓</h1>
+  <div class="card">
+    <div class="match">
+      <div class="m">🇲🇽 México 2-0 Sudáfrica 🇿🇦</div>
+      <div class="pred">El modelo predijo: gana México 85.6% · marcador más probable 2-0</div>
+    </div>
+    <div class="res"><div class="score">2-0</div><div class="check">MARCADOR EXACTO ✓</div></div>
+  </div>
+  <div class="card">
+    <div class="match">
+      <div class="m">🇰🇷 Corea del Sur 2-1 Chequia 🇨🇿</div>
+      <div class="pred">El modelo predijo: gana Corea 41.1% (favorito del partido)</div>
+    </div>
+    <div class="res"><div class="score">2-1</div><div class="check">GANADOR ✓</div></div>
+  </div>
+  <div class="foot">10,000 torneos simulados, actualizados con cada gol<br><b>gpsimulador.com</b> · gratis con tu email</div>
+</body></html>

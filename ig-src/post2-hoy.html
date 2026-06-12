@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 50%, #0BA661 100%); color: #fff;
+  display: flex; flex-direction: column; justify-content: center; padding: 80px; position: relative; }
+.tag { position: absolute; left: 80px; top: 70px; background: rgba(229,72,77,.95); font-weight: 800;
+  font-size: 26px; padding: 14px 28px; border-radius: 99px; letter-spacing: 1px; }
+.brand { position: absolute; right: 80px; top: 74px; font-size: 26px; font-weight: 800; opacity: .9; }
+h1 { font-size: 64px; font-weight: 800; letter-spacing: -2px; margin: 50px 0 44px; }
+.m { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 22px;
+  padding: 26px 32px; margin-bottom: 20px; }
+.row { display: flex; align-items: center; justify-content: space-between; font-size: 33px; font-weight: 800; }
+.row .p { color: #7CF2BC; font-size: 36px; }
+.bar { display: flex; height: 13px; border-radius: 99px; overflow: hidden; margin-top: 16px; background: rgba(255,255,255,.15); }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.35); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; justify-content: space-between; font-size: 20px; color: #C9F2DE; margin-top: 10px; font-weight: 600; }
+.foot { margin-top: 32px; text-align: center; font-size: 25px; color: #C9F2DE; font-weight: 600; }
+.foot b { color: #fff; }
+</style></head>
+<body>
+  <div class="tag">● HOY Y MAÑANA</div>
+  <div class="brand">⚽ GP Simulador</div>
+  <h1>Lo que dice el modelo 📊</h1>
+  <div class="m">
+    <div class="row"><span>🇨🇦 Canadá vs Bosnia 🇧🇦</span><span class="p">77%</span></div>
+    <div class="bar"><div class="h" style="width:77%"></div><div class="d" style="width:17%"></div><div class="a" style="width:6%"></div></div>
+    <div class="lbl"><span>Canadá 77%</span><span>empate 17%</span><span>Bosnia 7%</span></div>
+  </div>
+  <div class="m">
+    <div class="row"><span>🇺🇸 EE.UU. vs Paraguay 🇵🇾</span><span class="p">⚖️</span></div>
+    <div class="bar"><div class="h" style="width:33%"></div><div class="d" style="width:26%"></div><div class="a" style="width:41%"></div></div>
+    <div class="lbl"><span>EE.UU. 33%</span><span>empate 26%</span><span>Paraguay 41% — ¡sorpresa!</span></div>
+  </div>
+  <div class="m">
+    <div class="row"><span>🇧🇷 Brasil vs Marruecos 🇲🇦</span><span class="p">64%</span></div>
+    <div class="bar"><div class="h" style="width:64%"></div><div class="d" style="width:21%"></div><div class="a" style="width:14%"></div></div>
+    <div class="lbl"><span>Brasil 64%</span><span>empate 21%</span><span>Marruecos 14%</span></div>
+  </div>
+  <div class="foot">Míralas moverse EN VIVO durante los partidos<br><b>gpsimulador.com</b> · link en bio</div>
+</body></html>

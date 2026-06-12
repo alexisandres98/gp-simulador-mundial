@@ -689,11 +689,19 @@ function connectSSE() {
 })();
 
 // compartir oportunidades (Web Share API con fallback a WhatsApp)
-function shareOp(ev, text) {
+async function shareOp(ev, text) {
   ev.preventDefault(); ev.stopPropagation();
   const url = 'https://gpsimulador.com/?ref=share';
-  if (navigator.share) navigator.share({ text: text + ' ' + url }).catch(() => { });
-  else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'GP Simulador del Mundial', text, url });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // el usuario cerró el menú: no es error
+      // cualquier otra falla cae a WhatsApp
+    }
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
 }
 
 (async () => { await loadMe(); await loadState(); connectSSE(); })();

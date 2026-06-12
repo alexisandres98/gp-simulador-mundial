@@ -721,7 +721,17 @@ const server = http.createServer(async (req, res) => {
     let file = p === '/' ? '/index.html' : p;
     const full = path.join(__dirname, 'public', path.normalize(file));
     if (full.startsWith(path.join(__dirname, 'public')) && fs.existsSync(full) && fs.statSync(full).isFile()) {
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(full)] || 'application/octet-stream' });
+      const ext = path.extname(full);
+      // html/js/css siempre revalidan (si no, los usuarios quedan con código viejo tras cada deploy);
+      // imágenes sí se cachean
+      const cache = ['.html', '.js', '.css'].includes(ext)
+        ? 'no-cache, must-revalidate'
+        : 'public, max-age=86400';
+      res.writeHead(200, {
+        'Content-Type': MIME[ext] || 'application/octet-stream',
+        'Cache-Control': cache,
+        'Last-Modified': fs.statSync(full).mtime.toUTCString(),
+      });
       return fs.createReadStream(full).pipe(res);
     }
     json(res, 404, { error: 'No encontrado' });

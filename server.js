@@ -416,8 +416,15 @@ const server = http.createServer(async (req, res) => {
       if (prev && prev.count >= 3 && prev.exp > Date.now()) {
         return json(res, 429, { error: 'Demasiados intentos. Espera unos minutos y vuelve a intentar.' });
       }
+      // ahorro de cuota: si hay un código vigente enviado hace <90s, no reenviar otro correo
+      if (prev && prev.exp > Date.now() && prev.ts && Date.now() - prev.ts < 90 * 1000 && prev.sent) {
+        return json(res, 200, { ok: true, sent: true, resent: true });
+      }
       const code = String(crypto.randomInt(100000, 999999));
-      db.codes[e] = { code, exp: Date.now() + 10 * 60 * 1000, count: (prev && prev.exp > Date.now() ? prev.count : 0) + 1 };
+      db.codes[e] = {
+        code, exp: Date.now() + 10 * 60 * 1000, ts: Date.now(), sent: false,
+        count: (prev && prev.exp > Date.now() ? prev.count : 0) + 1,
+      };
       save();
       if (mailer.isConfigured()) {
         try {
@@ -434,6 +441,8 @@ const server = http.createServer(async (req, res) => {
 <p style="color:#999;font-size:12px">Si no pediste este código, ignora este correo.</p>
 </div>`,
           });
+          db.codes[e].sent = true;
+          save();
           console.log(`[auth] código enviado por email a ${e}`);
           return json(res, 200, { ok: true, sent: true });
         } catch (err) {

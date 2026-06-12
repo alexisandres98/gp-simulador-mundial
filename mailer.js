@@ -94,13 +94,36 @@ async function sendViaWebhook({ to, subject, text, html }) {
   if (!j.ok) throw new Error('relay: ' + (j.error || body.slice(0, 120) || r.status));
 }
 
+// Resend (HTTPS): envío desde el dominio propio (codigo@gpsimulador.com) con SPF/DKIM del dominio.
+async function sendViaResend({ to, subject, text, html }) {
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + process.env.RESEND_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.MAIL_FROM || 'GP Simulador del Mundial <codigo@gpsimulador.com>',
+      to: [to],
+      reply_to: process.env.MAIL_REPLY_TO || undefined,
+      subject, text, html,
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!r.ok) {
+    const body = await r.text();
+    throw new Error('resend ' + r.status + ': ' + body.slice(0, 150));
+  }
+}
+
 function send(opts) {
+  if (process.env.RESEND_API_KEY) return sendViaResend(opts);
   if (process.env.MAIL_WEBHOOK_URL) return sendViaWebhook(opts);
   return sendMail(opts);
 }
 
 function isConfigured() {
-  return !!(process.env.MAIL_WEBHOOK_URL || (process.env.SMTP_USER && process.env.SMTP_PASS));
+  return !!(process.env.RESEND_API_KEY || process.env.MAIL_WEBHOOK_URL || (process.env.SMTP_USER && process.env.SMTP_PASS));
 }
 
 module.exports = { sendMail: send, isConfigured };

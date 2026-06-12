@@ -116,8 +116,14 @@ async function sendViaResend({ to, subject, text, html }) {
   }
 }
 
-function send(opts) {
-  if (process.env.RESEND_API_KEY) return sendViaResend(opts);
+async function send(opts) {
+  if (process.env.RESEND_API_KEY) {
+    try { return await sendViaResend(opts); }
+    catch (e) {
+      if (!process.env.MAIL_WEBHOOK_URL) throw e;
+      console.error('[mail] resend falló, usando relay de respaldo:', e.message);
+    }
+  }
   if (process.env.MAIL_WEBHOOK_URL) return sendViaWebhook(opts);
   return sendMail(opts);
 }

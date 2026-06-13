@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(165deg, #0B1220 0%, #0E2A1E 55%, #0A5C3C 100%); color: #fff;
+  padding: 52px 60px; position: relative; }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.badge { width: 44px; height: 44px; border-radius: 13px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 22px; font-weight: 800; }
+.tag { margin-left: auto; background: #fff; color: #0B1220; font-weight: 800; font-size: 15px; padding: 9px 18px; border-radius: 99px; letter-spacing: 1px; }
+h1 { font-size: 40px; font-weight: 800; letter-spacing: -1.2px; line-height: 1.1; margin-bottom: 22px; }
+h1 span { color: #FF6B6B; }
+.wrap { display: flex; gap: 22px; }
+.col { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+.r { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14); border-radius: 13px; padding: 12px 16px; }
+.r .ic { font-size: 19px; } .r .sc { font-size: 17px; font-weight: 700; flex: 1; }
+.box { flex: 1.1; background: rgba(124,242,188,.12); border-left: 4px solid #7CF2BC; border-radius: 14px; padding: 22px 24px; display: flex; flex-direction: column; justify-content: center; }
+.box .bt { font-size: 25px; font-weight: 800; line-height: 1.3; }
+.box .bt b { color: #7CF2BC; }
+.foot { position: absolute; bottom: 40px; left: 60px; right: 60px; display: flex; align-items: center; justify-content: space-between; }
+.cta { background: #fff; color: #067647; font-size: 20px; font-weight: 800; padding: 14px 28px; border-radius: 99px; }
+.foot .small { font-size: 16px; color: #B7C6D6; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">TRANSPARENCIA TOTAL</div></div>
+  <h1>Ayer acertamos 2 de 4. <span>Sin esconder los fallos.</span></h1>
+  <div class="wrap">
+    <div class="col">
+      <div class="r"><span class="ic">✅</span><span class="sc">🇲🇽 México 2-0 (86%, exacto 🎯)</span></div>
+      <div class="r"><span class="ic">✅</span><span class="sc">🇰🇷 Corea 2-1 (favorito)</span></div>
+      <div class="r"><span class="ic">❌</span><span class="sc">🇨🇦 Canadá 1-1 (daba 77%)</span></div>
+      <div class="r"><span class="ic">❌</span><span class="sc">🇺🇸 EE.UU. 4-1 (era un volado)</span></div>
+    </div>
+    <div class="box"><div class="bt">Un <b>77%</b> que falla no es un error.<br>Es lo que significa: <b>1 de 5 veces</b> pasa lo otro.</div></div>
+  </div>
+  <div class="foot">
+    <div class="small">Un modelo que "acierta el 100%" miente.<br>El nuestro muestra todo, siempre.</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

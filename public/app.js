@@ -284,6 +284,44 @@ function renderBracket() {
 }
 
 // ---------- ARBITRAJE ----------
+// ---- GP Take: análisis graduado modelo vs mercado (estilo analista) ----
+function gradeEdge(e) {
+  if (e >= 0.10) return { g: 'STRONG', cls: 'g-strong' };
+  if (e >= 0.06) return { g: 'LEAN', cls: 'g-lean' };
+  if (e >= 0.035) return { g: 'SLIGHT', cls: 'g-slight' };
+  return null;
+}
+// Construye el "GP Take" de un partido a partir de modelo vs precio de mercado
+function buildMatchTake(m) {
+  const th = teamOf(m.home), ta = teamOf(m.away);
+  const labelOf = s => s === 'home' ? th.name : s === 'away' ? ta.name : 'el empate';
+  const cands = [];
+  for (const side of ['home', 'draw', 'away']) {
+    const o = m.outcomes[side]; if (!o) continue;
+    const p = m.model[side];
+    if (o.ask > 0.001 && p - o.ask > 0) cands.push({ side, dir: 'back', edge: p - o.ask, price: o.ask, p });
+    if (o.bid > 0.001 && o.bid - p > 0) cands.push({ side, dir: 'fade', edge: o.bid - p, price: o.bid, p });
+  }
+  cands.sort((a, b) => b.edge - a.edge);
+  const best = cands[0];
+  const grade = best && gradeEdge(best.edge);
+  if (!grade) {
+    return { grade: 'PASS', cls: 'g-pass',
+      reason: `Modelo y mercado prácticamente coinciden. Sin ventaja clara — preferimos no jugar este partido.` };
+  }
+  const lbl = labelOf(best.side);
+  let reason;
+  if (best.dir === 'back') {
+    const ctx = best.side === 'draw'
+      ? 'el modelo ve el partido más cerrado de lo que el mercado descuenta'
+      : `el modelo le da más probabilidad a ${lbl} de la que el precio implica`;
+    reason = `Valor en <b>${lbl}</b>: el mercado lo paga a ${cents(best.price)} y nuestro modelo lo ve en ${pct(best.p)} — ${ctx}.`;
+  } else {
+    reason = `El mercado <b>sobrevalora a ${lbl}</b> (${cents(best.price)}) frente al ${pct(best.p)} del modelo — el valor está en ir en contra.`;
+  }
+  return { grade: grade.g, cls: grade.cls, side: best.side, dir: best.dir, edge: best.edge, reason };
+}
+
 // ---- formato de números de mercado ----
 function fmtUsd(n) {
   if (!n) return '—';
@@ -338,9 +376,10 @@ async function loadArb(force = false) {
   const M = ARB.matches || [];
   if (M.length) {
     html += `<div class="sect-title"><span style="color:var(--blue)">⚽</span> Mercados por partido · ${M.length} partidos con mercado activo</div>
-    <div class="muted" style="font-size:12px;margin:-6px 0 14px">Precio del mercado vs nuestro modelo para 1X2. Verde = el modelo ve valor (edge ≥ 4%). Toca un resultado para abrir su mercado.</div>
+    <div class="muted" style="font-size:12px;margin:-6px 0 14px">El <b>GP Take</b> compara nuestro modelo con el precio del mercado y gradúa la jugada. Mostramos también los PASS. Toca un resultado para abrir su mercado.</div>
     <div class="mktgrid">` + M.map(m => {
       const th = teamOf(m.home), ta = teamOf(m.away);
+      const take = buildMatchTake(m);
       const edgeOf = side => (m.edges.find(e => e.side === side) || {});
       const row = (side, label, flag) => {
         const o = m.outcomes[side]; if (!o) return '';
@@ -361,6 +400,10 @@ async function loadArb(force = false) {
           <button class="sharebtn" onclick="shareOp(event, '${shareTxt.replace(/'/g, '')}')">📤</button>
         </div>
         <div class="mkt-team" style="margin-bottom:10px"><span style="font-size:20px">${th.flag}</span><b>${th.name} vs ${ta.name}</b><span style="font-size:20px">${ta.flag}</span></div>
+        <div class="gptake">
+          <div class="gptake-head"><span class="grade ${take.cls}">${take.grade}</span><span class="gptake-title">GP TAKE</span>${take.edge ? `<span class="gptake-edge">+${pct(take.edge)}</span>` : ''}</div>
+          <div class="gptake-reason">${take.reason}</div>
+        </div>
         <div class="oc-head"><span></span><span>Mercado</span><span>Modelo</span><span>Edge</span></div>
         ${row('home', th.name, th.flag)}
         ${row('draw', 'Empate')}

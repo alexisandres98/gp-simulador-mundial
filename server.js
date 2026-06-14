@@ -425,10 +425,20 @@ function trackRecord() {
     const [nh, na] = eloUpdate(elos[h], elos[a], r.hg, r.ag, teamById[h].host, teamById[a].host);
     elos[h] = nh; elos[a] = na;
   }
+  // calibración: Brier multiclase (0=perfecto, 0.66=azar 3-vías) y prob. media al resultado real
+  let brier = 0, sumActual = 0;
+  for (const m of finished) {
+    const act = m.hg > m.ag ? 'home' : m.hg < m.ag ? 'away' : 'draw';
+    ['home', 'draw', 'away'].forEach(k => { const o = k === act ? 1 : 0; brier += (m.probs[k] - o) ** 2; });
+    sumActual += m.probs[act];
+  }
+  const n = finished.length || 1;
   return {
     total: finished.length,
     winners: finished.filter(x => x.correct).length,
     exact: finished.filter(x => x.exact).length,
+    brier: +(brier / n).toFixed(3),
+    avgProbActual: +(sumActual / n).toFixed(3),
     matches: finished.reverse(),
   };
 }

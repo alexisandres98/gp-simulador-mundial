@@ -5,6 +5,10 @@ const HOME_BONUS = 75;        // ventaja de local para los 3 anfitriones (todo e
 const TOTAL_GOALS = 2.6;      // media de goles esperada en un partido parejo
 const K_WC = 60;              // factor K de eloratings.net para Copas del Mundo
 const ELO_NOISE = 55;         // incertidumbre del rating por torneo simulado (la "forma" real del equipo)
+const GOAL_FLOOR = 0.45;      // piso de goles del equipo débil — calibrado vs ArbBets (Catar 0.40) y primeros
+                              // principios (hasta el más débil marca ~0.4-0.5 por partido). Corrige sobreconfianza.
+const DC_RHO = -0.13;         // Dixon-Coles: corrige la correlación de marcadores bajos que el Poisson
+                              // independiente subestima — infla 0-0 y 1-1 (el "empate que nos mataba"). Valor estándar.
 
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
@@ -19,9 +23,18 @@ function effElo(elos, id) {
 // Tasas de gol de cada lado a partir de la expectativa Elo
 function lambdas(eloH, eloA) {
   const we = winExpectancy(eloH - eloA);
-  const lh = Math.max(0.12, Math.min(4.8, TOTAL_GOALS * Math.pow(we, 0.93)));
-  const la = Math.max(0.12, Math.min(4.8, TOTAL_GOALS * Math.pow(1 - we, 0.93)));
+  const lh = Math.max(GOAL_FLOOR, Math.min(4.8, TOTAL_GOALS * Math.pow(we, 0.93)));
+  const la = Math.max(GOAL_FLOOR, Math.min(4.8, TOTAL_GOALS * Math.pow(1 - we, 0.93)));
   return [lh, la];
+}
+
+// Corrección Dixon-Coles: multiplica las 4 celdas de marcador bajo para inflar empates 0-0 y 1-1.
+function dcTau(h, a, lh, la) {
+  if (h === 0 && a === 0) return 1 - lh * la * DC_RHO;
+  if (h === 0 && a === 1) return 1 + lh * DC_RHO;
+  if (h === 1 && a === 0) return 1 + la * DC_RHO;
+  if (h === 1 && a === 1) return 1 - DC_RHO;
+  return 1;
 }
 
 function poissonSample(lambda, rng) {
@@ -45,7 +58,7 @@ function matchProbs(eloH, eloA) {
   for (let k = 0; k <= 12; k++) { ph.push(poissonPmf(lh, k)); pa.push(poissonPmf(la, k)); }
   let best = { p: 0, h: 0, a: 0 };
   for (let h = 0; h <= 12; h++) for (let a = 0; a <= 12; a++) {
-    const p = ph[h] * pa[a];
+    const p = ph[h] * pa[a] * dcTau(h, a, lh, la);
     if (h > a) pH += p; else if (h === a) pD += p; else pA += p;
     if (p > best.p) best = { p, h, a };
   }
@@ -63,7 +76,8 @@ function liveMatchProbs(eloH, eloA, hg, ag, minute) {
   for (let k = 0; k <= 10; k++) { ph.push(poissonPmf(rlh, k)); pa.push(poissonPmf(rla, k)); }
   let best = { p: 0, h: 0, a: 0 };
   for (let h = 0; h <= 10; h++) for (let a = 0; a <= 10; a++) {
-    const p = ph[h] * pa[a], th = hg + h, ta = ag + a;
+    const th = hg + h, ta = ag + a;
+    const p = ph[h] * pa[a] * dcTau(th, ta, lh, la); // DC sobre el marcador FINAL
     if (th > ta) pH += p; else if (th === ta) pD += p; else pA += p;
     if (p > best.p) best = { p, h: th, a: ta };
   }

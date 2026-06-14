@@ -62,7 +62,11 @@ async function renderRecord() {
       <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.winners}/${d.total}${d.total ? ` <span style="font-size:15px">(${pctW}%)</span>` : ''}</div></div>
       <div class="bigstat"><div class="lbl">Marcador exacto 🎯</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
     </div>
-    <div class="formrow"><button class="ghost" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>`;
+    <div class="formrow"><button class="ghost" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>
+    ${(USER && USER.isAdmin && d.total) ? `<div class="explain" style="border-left-color:var(--blue)">
+      📊 <b>Calibración (solo admin):</b> Brier ${d.brier} (azar 3-vías = 0.66, más bajo = mejor) ·
+      prob. media al resultado real ${pct(d.avgProbActual)} · empate medio ${pct(d.matches.reduce((s, m) => s + m.probs.draw, 0) / d.matches.length)}.
+      Métrica para medir el modelo a lo largo del torneo, no para el público.</div>` : ''}`;
   if (!d.total) {
     html += '<div class="muted">Los primeros resultados aparecerán al terminar los próximos partidos.</div>';
   }

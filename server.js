@@ -289,6 +289,7 @@ async function fetchMarkets(force = false) {
 // de nombres, cacheado permanentemente en db.matchSlugs.
 let matchMktCache = { ts: 0, matches: [] };
 db.matchSlugs = db.matchSlugs || {};
+db.marketSnapshots = db.marketSnapshots || {}; // probs implícitas del mercado capturadas antes del partido (closing line)
 
 function teamTokens(id) {
   const t = teamById[id];
@@ -373,12 +374,27 @@ async function fetchMatchMarkets(force = false) {
       const probs = (res && res.status === 'live')
         ? liveMatchProbs(effElo(db.elos, f._h), effElo(db.elos, f._a), res.hg, res.ag, res.minute)
         : matchProbs(effElo(db.elos, f._h), effElo(db.elos, f._a));
+      // Solo recomendamos respaldar un resultado con probabilidad real (≥30%): nunca un longshot,
+      // donde la mayoría de las veces se pierde y el modelo es menos fiable en los extremos.
+      const MIN_BACK = 0.30;
       const edges = [];
       for (const [side, label] of [['home', 'home'], ['draw', 'draw'], ['away', 'away']]) {
         const o = outcomes[side]; if (!o) continue;
         const p = probs[label];
-        if (o.ask > 0.001 && p - o.ask > 0.04) edges.push({ side, type: 'COMPRAR SÍ', edge: +(p - o.ask).toFixed(4) });
-        else if (o.bid > 0.001 && o.bid - p > 0.04) edges.push({ side, type: 'COMPRAR NO', edge: +(o.bid - p).toFixed(4) });
+        if (o.ask > 0.001 && p - o.ask > 0.04 && p >= MIN_BACK) edges.push({ side, type: 'COMPRAR SÍ', edge: +(p - o.ask).toFixed(4) });
+        else if (o.bid > 0.001 && o.bid - p > 0.04 && (1 - p) >= MIN_BACK) edges.push({ side, type: 'COMPRAR NO', edge: +(o.bid - p).toFixed(4) });
+      }
+      // Snapshot del mercado ANTES del kickoff (probs implícitas sin vig) para el marcador modelo-vs-mercado.
+      // Se sobreescribe hasta que arranca el partido → queda la "closing line".
+      const sumP = (outcomes.home ? outcomes.home.price : 0) + (outcomes.draw ? outcomes.draw.price : 0) + (outcomes.away ? outcomes.away.price : 0);
+      if (sumP > 0.5 && Date.now() < new Date(f.datetime).getTime()) {
+        db.marketSnapshots[f.id] = {
+          home: +((outcomes.home ? outcomes.home.price : 0) / sumP).toFixed(4),
+          draw: +((outcomes.draw ? outcomes.draw.price : 0) / sumP).toFixed(4),
+          away: +((outcomes.away ? outcomes.away.price : 0) / sumP).toFixed(4),
+          ts: Date.now(),
+        };
+        save();
       }
       out.push({
         fixtureId: f.id, home: f._h, away: f._a, datetime: f.datetime,
@@ -439,7 +455,35 @@ function trackRecord() {
     exact: finished.filter(x => x.exact).length,
     brier: +(brier / n).toFixed(3),
     avgProbActual: +(sumActual / n).toFixed(3),
+    vsMarket: scoreboard(finished),
     matches: finished.reverse(),
+  };
+}
+
+// Marcador objetivo: ¿le ganamos al mercado? Compara Brier del modelo vs Brier del mercado
+// en los partidos donde capturamos la línea de cierre (snapshot pre-partido).
+function scoreboard(finished) {
+  let mb = 0, kb = 0, nn = 0, modelWins = 0;
+  const rows = [];
+  for (const m of finished) {
+    const snap = db.marketSnapshots[m.id];
+    if (!snap) continue;
+    const act = m.hg > m.ag ? 'home' : m.hg < m.ag ? 'away' : 'draw';
+    let bm = 0, bk = 0;
+    ['home', 'draw', 'away'].forEach(k => {
+      const o = k === act ? 1 : 0;
+      bm += (m.probs[k] - o) ** 2;
+      bk += ((snap[k] || 0) - o) ** 2;
+    });
+    mb += bm; kb += bk; nn++;
+    if (bm < bk) modelWins++;
+    rows.push({ id: m.id, home: m.home, away: m.away, modelBrier: +bm.toFixed(3), marketBrier: +bk.toFixed(3), modelWon: bm < bk });
+  }
+  return {
+    n: nn,
+    modelBrier: nn ? +(mb / nn).toFixed(3) : null,
+    marketBrier: nn ? +(kb / nn).toFixed(3) : null,
+    modelWins, rows: rows.reverse(),
   };
 }
 

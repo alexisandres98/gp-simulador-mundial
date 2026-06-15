@@ -47,6 +47,22 @@ function renderTeaser() {
   renderRecord(); // el track record es público: es la carta de presentación
 }
 
+// Marcador objetivo: ¿le ganamos al mercado? (solo admin)
+function marketScoreboardHtml(vm) {
+  if (!vm || !vm.n) {
+    return `<div class="explain" style="border-left-color:var(--amber)">
+      🆚 <b>Modelo vs Mercado:</b> acumulando… Capturamos la línea de cierre de cada partido desde ahora;
+      el head-to-head aparecerá cuando terminen los próximos partidos con mercado.</div>`;
+  }
+  const winning = vm.modelBrier < vm.marketBrier;
+  return `<div class="explain" style="border-left-color:${winning ? 'var(--accent)' : 'var(--red)'}">
+    🆚 <b>Modelo vs Mercado (${vm.n} partidos):</b>
+    nuestro Brier <b>${vm.modelBrier}</b> vs mercado <b>${vm.marketBrier}</b> —
+    ${winning ? '🟢 le estamos GANANDO al mercado' : '🔴 el mercado nos gana'} ·
+    ganamos el partido en ${vm.modelWins}/${vm.n} (Brier más bajo gana).
+    <span class="muted" style="font-size:11px">Esto es la prueba objetiva de si tenemos alpha real.</span></div>`;
+}
+
 // ---------- ACIERTOS (track record público del modelo) ----------
 async function renderRecord() {
   const r = await fetch('/api/aciertos');
@@ -65,8 +81,8 @@ async function renderRecord() {
     <div class="formrow"><button class="ghost" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>
     ${(USER && USER.isAdmin && d.total) ? `<div class="explain" style="border-left-color:var(--blue)">
       📊 <b>Calibración (solo admin):</b> Brier ${d.brier} (azar 3-vías = 0.66, más bajo = mejor) ·
-      prob. media al resultado real ${pct(d.avgProbActual)} · empate medio ${pct(d.matches.reduce((s, m) => s + m.probs.draw, 0) / d.matches.length)}.
-      Métrica para medir el modelo a lo largo del torneo, no para el público.</div>` : ''}`;
+      prob. media al resultado real ${pct(d.avgProbActual)} · empate medio ${pct(d.matches.reduce((s, m) => s + m.probs.draw, 0) / d.matches.length)}.</div>
+      ${marketScoreboardHtml(d.vsMarket)}` : ''}`;
   if (!d.total) {
     html += '<div class="muted">Los primeros resultados aparecerán al terminar los próximos partidos.</div>';
   }
@@ -293,21 +309,31 @@ function gradeEdge(e) {
 }
 // Construye el "GP Take" de un partido a partir de modelo vs precio de mercado
 function buildMatchTake(m) {
+  const MIN_BACK = 0.30; // solo respaldamos resultados con probabilidad real ≥30% (nunca longshots)
   const th = teamOf(m.home), ta = teamOf(m.away);
   const labelOf = s => s === 'home' ? th.name : s === 'away' ? ta.name : 'el empate';
   const cands = [];
+  let hadLongshot = false;
   for (const side of ['home', 'draw', 'away']) {
     const o = m.outcomes[side]; if (!o) continue;
     const p = m.model[side];
-    if (o.ask > 0.001 && p - o.ask > 0) cands.push({ side, dir: 'back', edge: p - o.ask, price: o.ask, p });
-    if (o.bid > 0.001 && o.bid - p > 0) cands.push({ side, dir: 'fade', edge: o.bid - p, price: o.bid, p });
+    if (o.ask > 0.001 && p - o.ask > 0) {
+      if (p >= MIN_BACK) cands.push({ side, dir: 'back', edge: p - o.ask, price: o.ask, p });
+      else hadLongshot = true;
+    }
+    if (o.bid > 0.001 && o.bid - p > 0) {
+      if (1 - p >= MIN_BACK) cands.push({ side, dir: 'fade', edge: o.bid - p, price: o.bid, p });
+      else hadLongshot = true;
+    }
   }
   cands.sort((a, b) => b.edge - a.edge);
   const best = cands[0];
   const grade = best && gradeEdge(best.edge);
   if (!grade) {
     return { grade: 'PASS', cls: 'g-pass',
-      reason: `Modelo y mercado prácticamente coinciden. Sin ventaja clara — preferimos no jugar este partido.` };
+      reason: hadLongshot
+        ? `El único "valor" está en resultados poco probables (&lt;30%), donde lo más seguro es perder y el modelo es menos fiable. Mejor PASS.`
+        : `Modelo y mercado prácticamente coinciden. Sin ventaja clara — preferimos no jugar este partido.` };
   }
   const lbl = labelOf(best.side);
   let reason;

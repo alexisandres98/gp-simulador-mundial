@@ -53,6 +53,7 @@ function runSims() {
 }
 recomputeElos();
 runSims();
+markExistingFinalsSeen(); // no reenviar alertas de partidos ya finalizados antes de activar la feature
 
 // ---------- SSE (tiempo real) ----------
 const sseClients = new Set();
@@ -215,6 +216,8 @@ async function syncFromESPN(depth = 0) {
       recomputeElos();
       runSims();
       broadcast('update', { reason: 'resultados en vivo (ESPN)', ts: Date.now() });
+      // alertas de equipos seguidos (nunca debe romper el sync)
+      if (depth === 0) dispatchPendingAlerts().catch(e => console.error('[alert] dispatch:', e.message));
     }
   } catch (e) {
     lastSync = { ts: Date.now(), ok: false, applied: 0, error: e.message };
@@ -290,6 +293,7 @@ async function fetchMarkets(force = false) {
 let matchMktCache = { ts: 0, matches: [] };
 db.matchSlugs = db.matchSlugs || {};
 db.marketSnapshots = db.marketSnapshots || {}; // probs implícitas del mercado capturadas antes del partido (closing line)
+db.sentAlerts = db.sentAlerts || {};           // alertas ya enviadas por partido (evita reenvíos/spam)
 
 function teamTokens(id) {
   const t = teamById[id];
@@ -490,6 +494,89 @@ function scoreboard(finished) {
   };
 }
 
+// ---------- alertas por email de equipos seguidos ----------
+function matchTeams(matchId) {
+  const r = db.results[matchId];
+  if (!r || r.status !== 'final') return null;
+  if (/^G/.test(matchId)) {
+    const f = GROUP_FIXTURES.find(x => x.id === matchId);
+    return f ? { home: f.home, away: f.away, hg: r.hg, ag: r.ag } : null;
+  }
+  return (r.home && r.away) ? { home: r.home, away: r.away, hg: r.hg, ag: r.ag } : null;
+}
+
+function alertEmail(followedNames, info, champLine) {
+  const h = teamById[info.home], a = teamById[info.away];
+  const won = info.hg > info.ag ? h.name : info.hg < info.ag ? a.name : null;
+  const resLine = won ? `Ganó ${won}` : 'Terminó en empate';
+  const subject = `⚽ ${h.name} ${info.hg}-${info.ag} ${a.name}`;
+  const text = `Actualización de ${followedNames.join(' y ')}:\n\n${h.flag} ${h.name} ${info.hg} - ${info.ag} ${a.name} ${a.flag}\n${resLine}.\n\n${champLine}\n\nMira las probabilidades actualizadas: https://gpsimulador.com\n\n— GP Simulador del Mundial\n(Para dejar de recibir estas alertas, entra y desactívalas en la pestaña Seguidos.)`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#14201A">
+<h2 style="margin-bottom:4px">⚽ GP Simulador del Mundial</h2>
+<p style="color:#555">Actualización de <b>${followedNames.join(' y ')}</b></p>
+<div style="background:#0E2A1E;color:#fff;border-radius:12px;padding:18px 20px;text-align:center;margin:14px 0">
+  <div style="font-size:26px;font-weight:800">${h.flag} ${info.hg} - ${info.ag} ${a.flag}</div>
+  <div style="font-size:14px;color:#9FD9BE;margin-top:4px">${h.name} vs ${a.name} · ${resLine}</div>
+</div>
+<p style="font-size:14px">${champLine}</p>
+<p><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:99px">Ver probabilidades actualizadas →</a></p>
+<p style="color:#999;font-size:11px">Para dejar de recibir alertas, entra y desactívalas en la pestaña Seguidos.</p>
+</div>`;
+  return { subject, text, html };
+}
+
+// Envía alertas de un partido finalizado a quienes siguen alguno de los dos equipos
+async function sendTeamAlerts(matchIds) {
+  if (!mailer.isConfigured()) return;
+  for (const matchId of matchIds) {
+    if (db.sentAlerts[matchId]) continue;
+    const info = matchTeams(matchId);
+    if (!info) continue;
+    let sent = 0;
+    for (const [email, u] of Object.entries(db.users)) {
+      if (u.alerts === false) continue;
+      const favs = u.favorites || [];
+      const followed = [info.home, info.away].filter(t => favs.includes(t));
+      if (!followed.length) continue;
+      const names = followed.map(t => teamById[t].name);
+      // línea de campeonato del primer equipo seguido
+      const ft = followed[0];
+      const champ = simCache[ft] ? (simCache[ft].champion * 100).toFixed(1) : null;
+      const champLine = champ ? `Probabilidad de ${teamById[ft].name} de ser campeón ahora: ${champ}%.` : '';
+      try {
+        await mailer.sendMail({ to: email, ...alertEmail(names, info, champLine) });
+        sent++;
+      } catch (e) { console.error('[alert]', email, e.message); }
+    }
+    db.sentAlerts[matchId] = Date.now();
+    save();
+    if (sent) console.log(`[alert] ${matchId}: ${sent} correos enviados`);
+  }
+}
+
+// Revisa todos los partidos finalizados y alerta los que aún no se han notificado
+async function dispatchPendingAlerts() {
+  const finals = [];
+  for (const f of GROUP_FIXTURES) {
+    const r = db.results[f.id];
+    if (r && r.status === 'final' && !db.sentAlerts[f.id]) finals.push(f.id);
+  }
+  for (const k of KNOCKOUT) {
+    const id = String(k.m), r = db.results[id];
+    if (r && r.status === 'final' && r.home && !db.sentAlerts[id]) finals.push(id);
+  }
+  if (finals.length) await sendTeamAlerts(finals);
+}
+
+// Al arrancar: marca como "ya vistos" los partidos finalizados existentes (no reenviar histórico)
+function markExistingFinalsSeen() {
+  let n = 0;
+  const mark = id => { if (db.results[id] && db.results[id].status === 'final' && !db.sentAlerts[id]) { db.sentAlerts[id] = Date.now(); n++; } };
+  GROUP_FIXTURES.forEach(f => mark(f.id));
+  KNOCKOUT.forEach(k => mark(String(k.m)));
+  if (n) { save(); console.log(`[alert] ${n} partidos finalizados marcados como vistos (sin reenviar)`); }
+}
+
 function arbitrage() {
   const rows = [];
   for (const t of TEAMS) {
@@ -673,7 +760,7 @@ const server = http.createServer(async (req, res) => {
       const token = crypto.randomBytes(24).toString('hex');
       db.sessions[token] = e;
       save();
-      return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites });
+      return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false });
     }
     if (p === '/api/me') {
       const u = getUser(req);
@@ -686,8 +773,18 @@ const server = http.createServer(async (req, res) => {
       const favs = db.users[u.email].favorites;
       const i = favs.indexOf(teamId);
       i >= 0 ? favs.splice(i, 1) : favs.push(teamId);
+      // al seguir el primer equipo, activa alertas por defecto (opt-in al seguir)
+      if (i < 0 && db.users[u.email].alerts === undefined) db.users[u.email].alerts = true;
       save();
-      return json(res, 200, { favorites: favs });
+      return json(res, 200, { favorites: favs, alerts: db.users[u.email].alerts !== false });
+    }
+    if (p === '/api/alerts' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const { enabled } = await readBody(req);
+      db.users[u.email].alerts = !!enabled;
+      save();
+      return json(res, 200, { alerts: db.users[u.email].alerts });
     }
     if (p === '/api/admin/users') {
       const u = getUser(req);
@@ -777,6 +874,7 @@ const server = http.createServer(async (req, res) => {
       recomputeElos();
       runSims();
       broadcast('update', { reason: remove ? 'resultado eliminado' : `resultado ${matchId}`, ts: Date.now() });
+      if (!remove && status === 'final') dispatchPendingAlerts().catch(e => console.error('[alert] dispatch:', e.message));
       return json(res, 200, { ok: true });
     }
     if (p === '/api/admin/refresh-markets' && req.method === 'POST') {

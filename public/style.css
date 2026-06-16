@@ -252,6 +252,17 @@ canvas { width: 100%; max-width: 1100px; background: var(--card); border: 1px so
 .mkt-big.edge { color: var(--accent-dark); }
 .mkt-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dim); font-weight: 600; border-top: 1px solid var(--card2); padding-top: 10px; }
 .mkt-stats .kelly { margin-left: auto; color: var(--amber); }
+/* seguidos + alertas */
+.alertbar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 18px; box-shadow: var(--shadow); }
+.toggle { width: 52px; height: 30px; border-radius: 99px; border: none; background: var(--card2); cursor: pointer; position: relative; transition: background .2s; flex: 0 0 auto; }
+.toggle.on { background: var(--accent); }
+.toggle .knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.toggle.on .knob { transform: translateX(22px); }
+.unfollow { margin-left: auto; background: var(--card2); border: none; color: var(--dim); width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 12px; }
+.unfollow:hover { background: var(--red); color: #fff; }
+.nextm { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card2); }
+
 /* ticker de mercados en vivo (cabecera) */
 .ticker-wrap { border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); overflow: hidden; position: sticky; top: 0; z-index: 40; }
 .ticker-head { display: flex; align-items: center; gap: 8px; padding: 9px 24px 0; max-width: 1240px; margin: 0 auto; }

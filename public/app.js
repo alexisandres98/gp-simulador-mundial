@@ -69,7 +69,7 @@ function renderTeaser() {
         <span class="muted" style="font-size:12.5px">Sin contraseñas · solo tu email · 30 segundos</span>
       </div>
     </div>`;
-  ['groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
+  ['following', 'groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
     $('#tab-' + t).innerHTML = `<div class="lock">
       <div class="lock-icon">🔒</div>
       <div class="lock-title">Esta sección es para usuarios registrados</div>
@@ -152,8 +152,71 @@ function renderHeader() {
 
 function renderAll() {
   if (STATE.teaser) { renderTeaser(); return; }
-  renderTeams(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin(); renderRecord();
+  renderTeams(); renderFollowing(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin(); renderRecord();
   if ($('#tab-arb').classList.contains('active')) loadArb();
+}
+
+// ---------- SEGUIDOS (equipos seguidos + alertas) ----------
+function nextMatchFor(teamId) {
+  const now = Date.now();
+  return (STATE.fixtures || [])
+    .filter(f => (f.home === teamId || f.away === teamId) && (!f.result || f.result.status !== 'final'))
+    .sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''))[0] || null;
+}
+function renderFollowing() {
+  if (!USER) return; // en teaser ya está el candado
+  const favs = USER.favorites || [];
+  const alertsOn = USER.alerts !== false;
+  let html = `<h2>Mis equipos seguidos</h2>`;
+  // barra de alertas
+  html += `<div class="alertbar">
+    <div><b>Alertas por email</b><div class="muted" style="font-size:12px">Te avisamos cuando tus equipos jueguen y cómo cambian sus probabilidades.</div></div>
+    <button class="toggle ${alertsOn ? 'on' : ''}" onclick="toggleAlerts()"><span class="knob"></span></button>
+  </div>`;
+  if (!favs.length) {
+    html += `<div class="lock" style="padding:40px 16px">
+      <div class="lock-icon">⭐</div>
+      <div class="lock-title">Aún no sigues ningún equipo</div>
+      <div class="muted" style="margin-bottom:18px">Sigue a tu selección para verla aquí y recibir alertas de sus partidos.</div>
+      <button class="btn" onclick="document.querySelector('button[data-tab=&quot;teams&quot;]').click()">Ver equipos</button></div>`;
+    $('#tab-following').innerHTML = html;
+    return;
+  }
+  const teams = favs.map(id => STATE.teams.find(t => t.id === id)).filter(Boolean)
+    .sort((a, b) => b.sim.champion - a.sim.champion);
+  html += '<div class="teamgrid">' + teams.map(t => {
+    const nm = nextMatchFor(t.id);
+    let nmHtml = '<div class="muted" style="font-size:12px;margin-top:10px">Sin próximo partido programado</div>';
+    if (nm) {
+      const opp = teamOf(nm.home === t.id ? nm.away : nm.home);
+      const p = nm.probs;
+      const isHome = nm.home === t.id;
+      const myProb = isHome ? p.home : p.away;
+      nmHtml = `<div class="nextm">
+        <div class="muted" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase">Próximo · ${fmtKickoff(nm)}</div>
+        <div style="font-weight:600;margin:4px 0 6px">vs ${opp ? opp.flag + ' ' + opp.name : '—'}</div>
+        <div style="font-size:12px"><span class="pgood">${pct(myProb)} gana</span> · empate ${pct(p.draw)}</div>
+      </div>`;
+    }
+    return `<div class="tcard">
+      <div class="trow">
+        <span style="font-size:20px">${t.flag}</span>
+        <span class="tname">${t.name}</span>
+        <button class="unfollow" onclick="toggleFav('${t.id}')" title="Dejar de seguir">✕</button>
+      </div>
+      <div class="champ">${pct(t.sim.champion)}</div>
+      <div class="muted" style="font-size:11px">probabilidad de ser campeón</div>
+      ${nmHtml}
+    </div>`;
+  }).join('') + '</div>';
+  $('#tab-following').innerHTML = html;
+}
+
+async function toggleAlerts() {
+  if (!USER) return;
+  const next = !(USER.alerts !== false);
+  const r = await fetch('/api/alerts', { method: 'POST', headers: hdrs(), body: JSON.stringify({ enabled: next }) });
+  if (r.ok) { USER.alerts = (await r.json()).alerts; renderFollowing(); }
 }
 
 // ---------- EQUIPOS ----------
@@ -225,8 +288,15 @@ async function openTeam(id) {
 }
 
 async function toggleFav(id) {
+  if (!USER) { openLogin(); return; }
   const r = await fetch('/api/favorite', { method: 'POST', headers: hdrs(), body: JSON.stringify({ teamId: id }) });
-  if (r.ok) { USER.favorites = (await r.json()).favorites; closeModal(); renderTeams(); }
+  if (r.ok) {
+    const j = await r.json();
+    USER.favorites = j.favorites;
+    if (j.alerts !== undefined) USER.alerts = j.alerts;
+    if ($('#modal').style.display === 'flex') closeModal();
+    renderTeams(); renderFollowing();
+  }
 }
 
 // ---------- GRUPOS ----------
@@ -746,6 +816,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
   if (b.dataset.tab === 'arb' && !ARB) loadArb();
   if (b.dataset.tab === 'evo') renderEvo();
   if (b.dataset.tab === 'record') renderRecord();
+  if (b.dataset.tab === 'following') renderFollowing();
 }));
 
 function notifyUpdate(reason, ts) {

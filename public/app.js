@@ -588,42 +588,141 @@ function venueChip(v) {
     : '<span class="vchip v-kalshi">◆ Kalshi</span>';
 }
 
+// etiquetas de liquidez / riesgo / confianza para las tarjetas premium
+function liqLabel(usd) { return usd >= 2e6 ? 'Alta' : usd >= 4e5 ? 'Media' : 'Baja'; }
+function riskLabel(p) { return p >= 0.55 ? 'Bajo' : p >= 0.38 ? 'Medio' : 'Alto'; }
+function confLabel(edge) { return edge >= 0.10 ? 'Alta' : edge >= 0.05 ? 'Media' : 'Baja'; }
+function riskCls(l) { return l === 'Bajo' ? 'r-low' : l === 'Medio' ? 'r-mid' : 'r-high'; }
+
 async function loadArb(force = false) {
-  $('#tab-arb').innerHTML = '<h2>Oportunidades · cargando mercados en vivo…</h2>';
+  $('#tab-arb').innerHTML = '<div class="muted" style="padding:40px 0;text-align:center">Cargando mercados en vivo…</div>';
   const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() });
   if (!r.ok) {
     $('#tab-arb').innerHTML = `<div class="lock"><div class="lock-icon">🔒</div>
-      <div class="lock-title">Inicia sesión para ver las oportunidades</div>
-      <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
+      <div class="lock-title">Desbloquea las oportunidades gratis</div>
+      <div class="lock-sub">Crea tu cuenta para ver el escáner de oportunidades modelo vs mercado.</div>
+      <button class="btn" onclick="openLogin()">Crear cuenta gratis</button></div>`;
     return;
   }
   ARB = await r.json();
-  const byId = Object.fromEntries(ARB.rows.map(x => [x.id, x]));
   const pure = [], value = [];
   ARB.rows.forEach(row => row.edges.forEach(e => {
     (e.type === 'arbitraje' ? pure : value).push({ ...e, team: row.id, model: row.model, row });
   }));
   pure.sort((a, b) => b.edge - a.edge);
   value.sort((a, b) => b.edge - a.edge);
+  const M = ARB.matches || [];
 
   let html = `
     <div class="arb-head">
       <div>
-        <h2 style="margin-bottom:2px">Mercados en vivo · Polymarket & Kalshi</h2>
+        <h2 style="margin-bottom:3px">Oportunidades</h2>
         <div class="muted" style="font-size:12px">
-          <span class="livepill">● EN VIVO</span> Última actualización ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'}
-          · se refresca cada 5 min · toca una tarjeta para abrir el mercado real
+          <span class="livepill on">● EN VIVO</span> Modelo vs mercado · actualizado ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'} · refresca cada 5 min
         </div>
       </div>
       <button class="ghost" onclick="loadArb(true)">↻ Actualizar</button>
     </div>
     ${ARB.errors.length ? `<div class="warn">${ARB.errors.join(' · ')}</div>` : ''}`;
 
-  // ---- mercados por partido (Polymarket fifwc-*) ----
-  const M = ARB.matches || [];
+  // ---- 1. MEJOR OPORTUNIDAD (destacada) ----
+  const best = value[0] || pure[0];
+  if (best) {
+    if (best.type !== 'arbitraje') {
+      const v = best.venue === 'Polymarket' ? best.row.polymarket : best.row.kalshi;
+      const t = teamOf(best.team);
+      const backedP = best.side.includes('SÍ') ? best.model : 1 - best.model;
+      const liq = liqLabel(v ? v.volume : 0), risk = riskLabel(backedP), conf = confLabel(best.edge);
+      html += `<div class="sec-head"><h3>★ Mejor oportunidad</h3></div>
+      <div class="feat">
+        <div class="feat-top">
+          <span class="sig sig-edge">MODEL EDGE</span>${venueChip(best.venue)}
+          <span class="feat-edge">+${pct(best.edge)}</span>
+        </div>
+        <div class="feat-team"><span style="font-size:30px">${t ? t.flag : ''}</span>
+          <div><div class="feat-name">${t ? t.name : best.team}</div><div class="feat-side">${best.side} · campeón del Mundial</div></div>
+        </div>
+        <div class="feat-metrics">
+          <div class="metric"><div class="m-l">Precio</div><div class="m-v">${cents(best.price)}</div></div>
+          <div class="metric"><div class="m-l">Modelo</div><div class="m-v blue">${pct(best.model)}</div></div>
+          <div class="metric"><div class="m-l">Edge</div><div class="m-v green">+${pct(best.edge)}</div></div>
+          <div class="metric"><div class="m-l">Kelly/4</div><div class="m-v">${best.kelly ? pct(best.kelly) : '—'}</div></div>
+          <div class="metric"><div class="m-l">Liquidez</div><div class="m-v">${liq}</div></div>
+          <div class="metric"><div class="m-l">Riesgo</div><div class="m-v ${riskCls(risk)}">${risk}</div></div>
+          <div class="metric"><div class="m-l">Confianza</div><div class="m-v">${conf}</div></div>
+        </div>
+        <div class="feat-cta">
+          ${v ? `<a class="venue-btn v-${best.venue === 'Polymarket' ? 'poly' : 'kalshi'}" href="${v.url}" target="_blank" rel="noopener">Abrir mercado en ${best.venue} ↗</a>` : ''}
+          <button class="btn-ghost" onclick="openTeam('${best.team}')">Ver análisis</button>
+        </div>
+      </div>`;
+    } else {
+      const pm = best.row.polymarket, ks = best.row.kalshi, t = teamOf(best.team);
+      html += `<div class="sec-head"><h3>★ Mejor oportunidad</h3></div>
+      <div class="feat feat-arb">
+        <div class="feat-top"><span class="sig sig-arb">PURE ARB</span><span class="feat-edge amber">+${pct(best.edge)} neto</span></div>
+        <div class="feat-team"><span style="font-size:30px">${t ? t.flag : ''}</span>
+          <div><div class="feat-name">${t ? t.name : best.team}</div><div class="feat-side">${best.note}</div></div>
+        </div>
+        <div class="feat-cta">
+          ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
+          ${ks ? `<a class="venue-btn v-kalshi" href="${ks.url}" target="_blank" rel="noopener">Kalshi · ${cents(ks.ask)} ↗</a>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+
+  // ---- 2. ARBITRAJE PURO ----
+  if (pure.length) {
+    html += `<div class="sec-head"><h3><span class="dot-amber">◆</span> Arbitraje puro</h3><span class="sub">${pure.length} detectado${pure.length > 1 ? 's' : ''}</span></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Polymarket y Kalshi se contradicen: comprando en ambas ganas la diferencia, gane quien gane. Retorno neto estimado — depende de ejecución, fees y settlement.</div>
+    <div class="arbops">` + pure.slice(0, 6).map(o => {
+      const pm = o.row.polymarket, ks = o.row.kalshi;
+      return `<div class="dualcard">
+        <div class="dual-top">
+          <span style="font-size:22px">${teamOf(o.team) ? teamOf(o.team).flag : ''}</span>
+          <b style="font-size:16px">${teamOf(o.team) ? teamOf(o.team).name : o.team}</b>
+          <span class="purebadge">PURE ARB</span>
+          <span class="edge-big">+${pct(o.edge)}</span>
+        </div>
+        <div class="note" style="margin:6px 0 12px">${o.note}</div>
+        <div class="dual-btns">
+          ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
+          ${ks ? `<a class="venue-btn v-kalshi" href="${ks.url}" target="_blank" rel="noopener">Kalshi · ${cents(ks.ask)} ↗</a>` : ''}
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  // ---- 3. APUESTAS DE VALOR ----
+  html += `<div class="sec-head"><h3><span class="dot-green">●</span> Apuestas de valor · modelo vs mercado</h3><span class="sub">${value.length}</span></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Donde nuestras 10,000 simulaciones discrepan más del precio. Toca para ir al mercado exacto.</div>`;
+  if (!value.length) html += '<div class="muted" style="margin-bottom:8px">Sin discrepancias relevantes ahora mismo.</div>';
+  html += '<div class="mktgrid">' + value.slice(0, 9).map(o => {
+    const v = o.venue === 'Polymarket' ? o.row.polymarket : o.row.kalshi;
+    if (!v) return '';
+    const t = teamOf(o.team);
+    return `<a class="mktcard" href="${v.url}" target="_blank" rel="noopener">
+      <div class="mkt-top">${venueChip(o.venue)}${chgBadge(v.change24h)}<span class="ext">↗</span></div>
+      <div class="mkt-team"><span style="font-size:24px">${t ? t.flag : ''}</span><b>${t ? t.name : o.team}</b><span class="sidetag">${o.side}</span></div>
+      <div class="mkt-prices">
+        <div><div class="mkt-lbl">Precio</div><div class="mkt-big">${cents(v.price)}</div></div>
+        <div><div class="mkt-lbl">Modelo</div><div class="mkt-big model">${pct(o.model)}</div></div>
+        <div><div class="mkt-lbl">Edge</div><div class="mkt-big edge">+${pct(o.edge)}</div></div>
+      </div>
+      <div class="mkt-stats">
+        <span>Vol ${fmtUsd(v.volume)}</span>
+        <span>${o.venue === 'Polymarket' ? 'Liq ' + fmtUsd(v.liquidity) : 'OI ' + fmtUsd(v.openInterest)}</span>
+        ${o.kelly ? `<span class="kelly">Kelly/4 ${pct(o.kelly)}</span>` : ''}
+        <button class="sharebtn" onclick="shareOp(event, '📊 ${t ? t.name : o.team} campeón del Mundial: el mercado paga ${cents(v.price)} y el modelo de 10,000 simulaciones dice ${pct(o.model)} (+${pct(o.edge)} de edge).')">📤</button>
+      </div>
+    </a>`;
+  }).join('') + '</div>';
+
+  // ---- 4. PARTIDOS · GP TAKE ----
   if (M.length) {
-    html += `<div class="sect-title"><span style="color:var(--blue)">⚽</span> Mercados por partido · ${M.length} partidos con mercado activo</div>
-    <div class="muted" style="font-size:12px;margin:-6px 0 14px">El <b>GP Take</b> compara nuestro modelo con el precio del mercado y gradúa la jugada. Mostramos también los PASS. Toca un resultado para abrir su mercado.</div>
+    html += `<div class="sec-head"><h3><span style="color:var(--blue)">⚽</span> Partidos · GP Take</h3><span class="sub">${M.length} con mercado</span></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Nuestro modelo vs el mercado 1X2, graduado. Mostramos también los PASS. Toca un resultado para abrir su mercado.</div>
     <div class="mktgrid">` + M.map(m => {
       const th = teamOf(m.home), ta = teamOf(m.away);
       const take = buildMatchTake(m);
@@ -659,57 +758,26 @@ async function loadArb(force = false) {
     }).join('') + '</div>';
   }
 
-  // ---- arbitraje puro (dos plataformas, ganancia asegurada) ----
-  if (pure.length) {
-    html += `<div class="sect-title"><span class="dot-amber">◆</span> Arbitraje puro · ganancia asegurada entre plataformas</div>
-    <div class="muted" style="font-size:12px;margin:-6px 0 14px">Los precios de Polymarket y Kalshi se contradicen: comprando en ambas ganas la diferencia, gane quien gane.</div>
-    <div class="arbops">` + pure.slice(0, 6).map(o => {
-      const pm = o.row.polymarket, ks = o.row.kalshi;
-      return `<div class="dualcard">
-        <div class="dual-top">
-          <span style="font-size:22px">${teamOf(o.team) ? teamOf(o.team).flag : ''}</span>
-          <b style="font-size:16px">${teamOf(o.team) ? teamOf(o.team).name : o.team}</b>
-          <span class="purebadge">ARBITRAJE PURO</span>
-          <span class="edge-big">+${pct(o.edge)}</span>
-        </div>
-        <div class="note" style="margin:6px 0 12px">${o.note}</div>
-        <div class="dual-btns">
-          ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Abrir en Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
-          ${ks ? `<a class="venue-btn v-kalshi" href="${ks.url}" target="_blank" rel="noopener">Abrir en Kalshi · ${cents(ks.ask)} ↗</a>` : ''}
-        </div>
-      </div>`;
-    }).join('') + '</div>';
-  }
-
-  // ---- apuestas de valor (tarjetas de mercado clicables) ----
-  html += `<div class="sect-title"><span class="dot-green">●</span> Apuestas de valor · modelo vs mercado</div>
-    <div class="muted" style="font-size:12px;margin:-6px 0 14px">Donde nuestras 10,000 simulaciones discrepan más del precio. Toca para ir al mercado exacto.</div>`;
-  if (!value.length) html += '<div class="muted">Sin discrepancias mayores al 1.5% ahora mismo.</div>';
-  html += '<div class="mktgrid">' + value.slice(0, 12).map(o => {
-    const v = o.venue === 'Polymarket' ? o.row.polymarket : o.row.kalshi;
-    if (!v) return '';
-    const t = teamOf(o.team);
-    return `<a class="mktcard" href="${v.url}" target="_blank" rel="noopener">
-      <div class="mkt-top">${venueChip(o.venue)}${chgBadge(v.change24h)}<span class="ext">↗</span></div>
-      <div class="mkt-team"><span style="font-size:24px">${t ? t.flag : ''}</span><b>${t ? t.name : o.team}</b><span class="sidetag">${o.side}</span></div>
-      <div class="mkt-prices">
-        <div><div class="mkt-lbl">Precio</div><div class="mkt-big">${cents(v.price)}</div></div>
-        <div><div class="mkt-lbl">Modelo</div><div class="mkt-big model">${pct(o.model)}</div></div>
-        <div><div class="mkt-lbl">Edge</div><div class="mkt-big edge">+${pct(o.edge)}</div></div>
-      </div>
-      <div class="mkt-stats">
-        <span>Vol ${fmtUsd(v.volume)}</span><span>24h ${fmtUsd(v.volume24h)}</span>
-        <span>${o.venue === 'Polymarket' ? 'Liq ' + fmtUsd(v.liquidity) : 'OI ' + fmtUsd(v.openInterest)}</span>
-        ${o.kelly ? `<span class="kelly">Kelly/4: ${pct(o.kelly)}</span>` : ''}
-        <button class="sharebtn" onclick="shareOp(event, '📊 ${t ? t.name : o.team} campeón del Mundial: el mercado paga ${cents(v.price)} y el modelo de 10,000 simulaciones dice ${pct(o.model)} (+${pct(o.edge)} de edge).')">📤</button>
-      </div>
-    </a>`;
-  }).join('') + '</div>';
+  // ---- 5. FAVORITOS DEL MODELO (tabla compacta) ----
+  const favs = [...STATE.teams].sort((a, b) => b.sim.champion - a.sim.champion).slice(0, 8);
+  html += `<div class="sec-head"><h3>🏆 Favoritos del modelo</h3></div>
+    <table class="fav-tbl"><tr><th>#</th><th>Equipo</th><th>Campeón</th><th>Mercado 24h</th><th>Grupo</th></tr>` +
+    favs.map((t, i) => {
+      const m = ARB.rows.find(r => r.id === t.id);
+      const ch = m && m.polymarket ? m.polymarket.change24h : null;
+      return `<tr onclick="openTeam('${t.id}')">
+        <td class="muted">${i + 1}</td>
+        <td class="teamcell">${t.flag} ${t.name}</td>
+        <td><b>${pct(t.sim.champion)}</b></td>
+        <td>${ch != null ? chgBadge(ch) : '<span class="muted">—</span>'}</td>
+        <td class="muted">${t.group}</td></tr>`;
+    }).join('') + '</table>';
 
   html += `<div class="warn" style="margin-top:22px">⚠ ${ARB.disclaimer}</div>`;
 
   // ---- tabla completa con datos de mercado ----
-  html += `<h2 style="margin-top:26px">Los 48 mercados · campeón del mundo</h2>
+  html += `<details class="fulltbl"><summary>Los 48 mercados · campeón del mundo</summary>
+    <div style="overflow-x:auto">
     <table class="arbtable"><tr><th>Equipo</th><th>Modelo</th><th>Polymarket</th><th>24h</th><th>Vol</th><th>Kalshi</th><th>24h</th><th>Vol</th><th>Edge</th></tr>` +
     ARB.rows.filter(r => r.model > 0.001 || r.polymarket || r.kalshi).map(row => {
       const e = Math.max(0, ...row.edges.map(x => x.edge));
@@ -724,7 +792,7 @@ async function loadArb(force = false) {
         <td>${ks ? chgBadge(ks.change24h) : ''}</td>
         <td class="muted">${ks ? fmtUsd(ks.volume) : ''}</td>
         <td class="${e > 0.015 ? 'pgood' : 'muted'}">${e > 0 ? '+' + pct(e) : '—'}</td></tr>`;
-    }).join('') + '</table>';
+    }).join('') + '</table></div></details>';
   $('#tab-arb').innerHTML = html;
 }
 

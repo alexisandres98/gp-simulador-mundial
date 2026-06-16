@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP · Design Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070B0E; --ink:#EAF1F0; --dim:#7E8C92; --line:#1B2530;
+  --em:#00E58F; --em2:#0BB87A; --emdark:#04140D; --blue:#5BB0FF; --red:#FF6B6B; --amber:#FFC24B;
+  --card:rgba(255,255,255,.035); --cardbd:rgba(255,255,255,.08);
+  --mono:'IBM Plex Mono',monospace;
+}
+html,body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;width:100%;overflow-x:hidden}
+body{position:relative}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:
+  radial-gradient(900px 600px at 78% -8%, rgba(0,229,143,.16), transparent 60%),
+  radial-gradient(700px 500px at -5% 12%, rgba(11,120,90,.14), transparent 55%),
+  radial-gradient(600px 600px at 50% 115%, rgba(0,229,143,.08), transparent 60%), var(--bg)}
+.num{font-family:var(--mono);font-feature-settings:"tnum"}
+.wrap{max-width:1180px;margin:0 auto;padding:0 26px}
+
+/* top nav */
+header{position:sticky;top:0;z-index:30;background:rgba(7,11,14,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:16px;height:64px}
+.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(150deg,#00E58F,#06A86E);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emdark);font-size:16px;box-shadow:0 6px 18px rgba(0,229,143,.35)}
+.bname{font-weight:700;font-size:16px;letter-spacing:-.02em}
+.bname small{display:block;font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.28em}
+.menu{margin-left:24px;display:flex;gap:4px}
+.menu a{color:var(--dim);font-size:13.5px;font-weight:500;text-decoration:none;padding:8px 13px;border-radius:9px}
+.menu a.on{color:var(--em);background:rgba(0,229,143,.08)}
+.cta-top{margin-left:auto;background:var(--em);color:var(--emdark);font-weight:700;font-size:13.5px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;box-shadow:0 6px 18px rgba(0,229,143,.3)}
+
+/* live market ticker */
+.ticker-wrap{border-bottom:1px solid var(--line);background:rgba(255,255,255,.02);overflow:hidden}
+.ticker-head{display:flex;align-items:center;gap:8px;padding:9px 26px 0;max-width:1180px;margin:0 auto}
+.lbl{font-size:10px;letter-spacing:.22em;color:var(--dim);font-weight:700}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--em);box-shadow:0 0 10px var(--em);animation:pulse 1.8s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.ticker{display:flex;gap:10px;padding:11px 26px 13px;width:max-content;animation:scroll 38s linear infinite}
+.ticker:hover{animation-play-state:paused}
+@keyframes scroll{to{transform:translateX(-50%)}}
+.tk{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--cardbd);border-radius:12px;padding:9px 14px;white-space:nowrap}
+.tk .fl{font-size:18px}
+.tk .nm{font-size:13px;font-weight:600}
+.tk .pr{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink)}
+.tk .ch{font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 6px;border-radius:6px}
+.up{color:var(--em);background:rgba(0,229,143,.1)} .down{color:var(--red);background:rgba(255,107,107,.1)}
+
+/* hero */
+.hero{padding:54px 0 30px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.2em;color:var(--em);font-weight:700;background:rgba(0,229,143,.07);border:1px solid rgba(0,229,143,.2);padding:7px 14px;border-radius:99px;margin-bottom:22px}
+h1{font-size:52px;line-height:1.04;font-weight:800;letter-spacing:-.035em;max-width:760px}
+h1 .g{background:linear-gradient(100deg,#00E58F,#7CF2C4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin-top:18px;font-size:17px;color:var(--dim);max-width:560px;line-height:1.55;font-weight:400}
+
+/* favorites board */
+.board{margin-top:36px;display:grid;grid-template-columns:1.15fr .85fr;gap:18px;perspective:1600px}
+.lead{position:relative;background:linear-gradient(165deg,rgba(0,229,143,.14),rgba(255,255,255,.03));border:1px solid rgba(0,229,143,.28);border-radius:22px;padding:28px;overflow:hidden;transform-style:preserve-3d;transition:transform .25s ease}
+.lead::after{content:'';position:absolute;width:280px;height:280px;right:-60px;top:-80px;background:radial-gradient(circle,rgba(0,229,143,.3),transparent 65%);filter:blur(8px)}
+.lead .rk{font-size:11px;letter-spacing:.2em;color:var(--em);font-weight:700}
+.lead .team{display:flex;align-items:center;gap:14px;margin-top:14px}
+.lead .fl{font-size:54px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.4))}
+.lead .tn{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.lead .tn small{display:block;font-size:12px;color:var(--dim);font-weight:600;letter-spacing:.04em;margin-top:2px}
+.lead .big{font-family:var(--mono);font-size:68px;font-weight:600;letter-spacing:-.04em;margin-top:18px;line-height:1}
+.lead .big span{font-size:24px;color:var(--em)}
+.lead .cap{font-size:13px;color:var(--dim);margin-top:6px}
+.list{background:var(--card);border:1px solid var(--cardbd);border-radius:22px;padding:10px 6px}
+.row{display:grid;grid-template-columns:20px 26px 1fr 84px 52px;align-items:center;gap:12px;padding:13px 16px;border-radius:13px;transition:background .15s}
+.row:hover{background:rgba(255,255,255,.03)}
+.row .pos{font-family:var(--mono);font-size:13px;color:var(--dim)}
+.row .fl{font-size:24px}
+.row .nm{font-weight:600;font-size:14.5px}
+.row .track{height:6px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.row .fill{height:100%;background:linear-gradient(90deg,var(--em2),var(--em));border-radius:99px}
+.row .pc{font-family:var(--mono);font-size:14px;font-weight:600;text-align:right}
+.trust{display:flex;gap:26px;margin-top:30px;padding-top:24px;border-top:1px solid var(--line)}
+.trust .t{font-size:13px;color:var(--dim)}
+.trust .t b{display:block;font-family:var(--mono);font-size:22px;color:var(--ink);font-weight:600;letter-spacing:-.02em}
+
+/* GP Take card */
+.section{padding:30px 0 70px}
+.stitle{font-size:12px;letter-spacing:.18em;color:var(--dim);font-weight:700;margin-bottom:16px}
+.matchcard{background:var(--card);border:1px solid var(--cardbd);border-radius:20px;padding:24px;max-width:620px;transform-style:preserve-3d;transition:transform .25s ease}
+.mc-h{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:800;letter-spacing:-.03em;margin-bottom:18px}
+.mc-h .vs{color:var(--dim);font-weight:600;font-size:15px}
+.take{background:rgba(0,229,143,.07);border:1px solid rgba(0,229,143,.18);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.take .r{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.grade{background:linear-gradient(140deg,#00E58F,#06A86E);color:var(--emdark);font-weight:800;font-size:11px;padding:5px 12px;border-radius:8px;letter-spacing:.04em}
+.gt{font-size:11px;letter-spacing:.16em;color:var(--dim);font-weight:700}
+.ge{margin-left:auto;font-family:var(--mono);color:var(--em);font-weight:600;font-size:18px}
+.take p{font-size:14px;color:#B6C4C9;line-height:1.5}.take b{color:var(--ink)}
+table{width:100%;border-collapse:collapse}
+th{text-align:right;font-size:9.5px;letter-spacing:.1em;color:var(--dim);font-weight:700;padding:0 0 11px}th:first-child{text-align:left}
+td{padding:12px 0;border-top:1px solid var(--line);text-align:right;font-weight:600;font-size:14.5px}td:first-child{text-align:left}
+td.n{font-family:var(--mono)}.val td{background:rgba(0,229,143,.05)}
+.bl{color:var(--blue)}.gr{color:var(--em)}
+.note{text-align:center;color:var(--dim);font-size:12px;padding:30px 0 50px}
+@media(max-width:820px){.board{grid-template-columns:1fr}h1{font-size:38px}.lead .big{font-size:54px}}
+@media(max-width:560px){.wrap{padding:0 16px}.row{grid-template-columns:20px 26px 1fr 52px}.row .track{display:none}.trust{flex-wrap:wrap;gap:18px 26px}.menu{display:none}}
+</style></head>
+<body>
+<header><div class="wrap nav">
+  <div class="logo">GP</div>
+  <div class="bname">GP Simulador<small>DEL MUNDIAL</small></div>
+  <nav class="menu"><a class="on">Favoritos</a><a>Partidos</a><a>Oportunidades</a><a>Aciertos</a></nav>
+  <button class="cta-top">Entrar gratis</button>
+</div></header>
+
+<div class="ticker-wrap">
+  <div class="ticker-head"><span class="dot"></span><span class="lbl">MERCADOS EN VIVO · POLYMARKET</span></div>
+  <div class="ticker" id="tick"></div>
+</div>
+
+<div class="wrap hero">
+  <div class="eyebrow"><span class="dot"></span>10,000 TORNEOS SIMULADOS · ACTUALIZADO EN VIVO</div>
+  <h1>¿Quién va a ganar el <span class="g">Mundial 2026</span>?</h1>
+  <div class="sub">Nuestro modelo simula el torneo completo 10,000 veces y ajusta las probabilidades con cada gol. Esto es lo que dice hoy.</div>
+
+  <div class="board">
+    <div class="lead tilt">
+      <div class="rk">★ FAVORITO #1</div>
+      <div class="team"><div class="fl">🇪🇸</div><div class="tn">España<small>GRUPO H · ELO 2155</small></div></div>
+      <div class="big">26.9<span>%</span></div>
+      <div class="cap">probabilidad de levantar la copa</div>
+    </div>
+    <div class="list">
+      <div class="row"><span class="pos">02</span><span class="fl">🇦🇷</span><span class="nm">Argentina</span><span class="track"><span class="fill" style="width:68%"></span></span><span class="pc">18.2%</span></div>
+      <div class="row"><span class="pos">03</span><span class="fl">🇫🇷</span><span class="nm">Francia</span><span class="track"><span class="fill" style="width:46%"></span></span><span class="pc">12.3%</span></div>
+      <div class="row"><span class="pos">04</span><span class="fl">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="nm">Inglaterra</span><span class="track"><span class="fill" style="width:27%"></span></span><span class="pc">7.2%</span></div>
+      <div class="row"><span class="pos">05</span><span class="fl">🇧🇷</span><span class="nm">Brasil</span><span class="track"><span class="fill" style="width:17%"></span></span><span class="pc">4.6%</span></div>
+      <div class="row"><span class="pos">06</span><span class="fl">🇵🇹</span><span class="nm">Portugal</span><span class="track"><span class="fill" style="width:17%"></span></span><span class="pc">4.6%</span></div>
+    </div>
+  </div>
+
+  <div class="trust">
+    <div class="t"><b>104</b>partidos cubiertos</div>
+    <div class="t"><b>48</b>selecciones</div>
+    <div class="t"><b>2</b>mercados (Polymarket · Kalshi)</div>
+    <div class="t"><b>EN VIVO</b>se mueve con cada gol</div>
+  </div>
+</div>
+
+<div class="wrap section">
+  <div class="stitle">GP TAKE · MODELO vs MERCADO</div>
+  <div class="matchcard tilt">
+    <div class="mc-h">🇦🇷 Argentina <span class="vs">vs</span> Argelia 🇩🇿</div>
+    <div class="take">
+      <div class="r"><span class="grade">LEAN</span><span class="gt">GP TAKE</span><span class="ge">+8.2%</span></div>
+      <p>Valor en <b>Argentina</b>: el mercado la paga a 70.5¢ y el modelo la ve en 79.2% — infravalorada.</p>
+    </div>
+    <table>
+      <tr><th>RESULTADO</th><th>MERCADO</th><th>MODELO</th><th>EDGE</th></tr>
+      <tr class="val"><td>🇦🇷 Argentina</td><td class="n">70.5¢</td><td class="n bl">79.2%</td><td class="gr">+8.2% SÍ</td></tr>
+      <tr><td>Empate</td><td class="n">20.5¢</td><td class="n bl">16.2%</td><td></td></tr>
+      <tr class="val"><td>🇩🇿 Argelia</td><td class="n">9.5¢</td><td class="n bl">4.6%</td><td class="gr">+4.9% NO</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note">GP Simulador del Mundial · laboratorio de diseño (no es la plataforma real)</div>
+
+<script>
+const mk=[['🇪🇸','España','16.2¢','+0.4'],['🇫🇷','Francia','16.0¢','-0.2'],['🇦🇷','Argentina','8.8¢','+0.3'],['🏴󠁧󠁢󠁥󠁮󠁧󠁿','Inglaterra','10.9¢','-0.1'],['🇧🇷','Brasil','8.4¢','+0.2'],['🇵🇹','Portugal','10.6¢','-0.3'],['🇳🇱','P. Bajos','5.1¢','+0.1'],['🇩🇪','Alemania','4.8¢','-0.2'],['🇺🇾','Uruguay','3.2¢','+0.1'],['🇨🇴','Colombia','3.0¢','+0.4']];
+const tk=document.getElementById('tick');
+const cell=([f,n,p,c])=>`<div class="tk"><span class="fl">${f}</span><span class="nm">${n}</span><span class="pr">${p}</span><span class="ch ${c[0]==='+'?'up':'down'}">${c[0]==='+'?'▲':'▼'} ${c.slice(1)}%</span></div>`;
+tk.innerHTML=(mk.concat(mk)).map(cell).join('');
+document.querySelectorAll('.tilt').forEach(el=>{
+  el.addEventListener('mousemove',e=>{const r=el.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform=`rotateY(${x*6}deg) rotateX(${-y*6}deg) translateZ(8px)`});
+  el.addEventListener('mouseleave',()=>el.style.transform='');
+});
+</script>
+</body></html>

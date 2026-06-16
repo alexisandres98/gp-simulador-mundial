@@ -24,35 +24,23 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <div class="brand">
+<header id="hdr">
+  <div class="hd-brand" onclick="switchTab(USER?'arb':'teams')">
     <div class="brand-badge">GP</div>
     <div class="brand-text">
-      <div class="brand-name">GP <span>Simulador del Mundial</span></div>
-      <div class="brand-tag">Probabilidades en vivo · Mundial 2026</div>
+      <div class="brand-name">GP Simulador</div>
+      <div class="brand-tag">Simulador del Mundial</div>
     </div>
   </div>
-  <nav id="tabs">
-    <button data-tab="teams" class="active">Equipos</button>
-    <button data-tab="following">Seguidos</button>
-    <button data-tab="groups">Grupos</button>
-    <button data-tab="matches">Partidos</button>
-    <button data-tab="bracket">Bracket</button>
-    <button data-tab="arb">Oportunidades</button>
-    <button data-tab="record">Aciertos</button>
-    <button data-tab="evo">Evolución</button>
-    <button data-tab="admin" id="adminTab" style="display:none">Admin</button>
-  </nav>
-  <div class="hright">
-    <span id="liveDot" class="dot" title="Conexión en tiempo real">●</span>
-    <button id="loginBtn" class="ghost">Entrar con email</button>
-  </div>
+  <div class="hd-right" id="hdRight"></div>
 </header>
 
-<div class="ticker-wrap" id="tickerWrap" style="display:none">
-  <div class="ticker-head"><span class="tdot"></span><span class="tlbl">MERCADOS EN VIVO · POLYMARKET</span></div>
-  <div class="ticker" id="ticker"></div>
+<div class="tape" id="tickerWrap" style="display:none">
+  <span class="tape-lbl"><span class="tdot"></span>LIVE MARKETS · POLYMARKET</span>
+  <div class="tape-vp"><div class="tape-track" id="ticker"></div></div>
 </div>
+
+<nav id="topnav"></nav>
 
 <div id="banner" class="banner" style="display:none"></div>
 
@@ -69,14 +57,25 @@
 </main>
 
 <footer>
-  <b>GP Simulador del Mundial</b> · Modelo Elo + 10,000 torneos Monte Carlo · Marcadores en vivo (sincronización automática) ·
-  Precios de Polymarket y Kalshi en tiempo real · Las probabilidades son estimaciones de un modelo estadístico, no consejo financiero.
+  <b>GP Simulador</b> · Modelo Elo + 10,000 torneos Monte Carlo · Mercados en vivo ·
+  Las probabilidades son estimaciones de un modelo estadístico, no consejo financiero.
 </footer>
+
+<!-- bottom nav (móvil, logged-in) -->
+<nav id="bottomnav" style="display:none"></nav>
+
+<!-- menú de avatar -->
+<div id="avatarMenu" class="avmenu" style="display:none"></div>
+
+<!-- sheet "Más" -->
+<div id="sheet" class="sheet" style="display:none" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet-card" id="sheetBody"></div>
+</div>
 
 <!-- modal login -->
 <div id="modal" class="modal" style="display:none">
   <div class="modal-card">
-    <button class="modal-x" onclick="closeModal()">×</button>
+    <button class="modal-x" onclick="closeModal()" aria-label="Cerrar">×</button>
     <div id="modalBody"></div>
   </div>
 </div>

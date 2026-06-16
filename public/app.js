@@ -72,9 +72,10 @@ function renderTeaser() {
   ['following', 'groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
     $('#tab-' + t).innerHTML = `<div class="lock">
       <div class="lock-icon">🔒</div>
-      <div class="lock-title">Esta sección es para usuarios registrados</div>
-      <div class="muted" style="margin-bottom:18px">Es gratis y solo toma 30 segundos con tu email.</div>
-      <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
+      <div class="lock-title">Desbloquea esta sección gratis</div>
+      <div class="lock-sub">Crea tu cuenta para ver probabilidades completas, oportunidades de mercado, simulaciones y alertas en vivo.</div>
+      <button class="btn" onclick="openLogin()">Crear cuenta gratis</button>
+      <div class="lock-micro">Sin contraseña · solo tu email</div></div>`;
   });
   initTilt();
 }
@@ -139,16 +140,125 @@ async function renderRecord() {
   $('#tab-record').innerHTML = html;
 }
 async function loadMe() {
-  if (!token()) return;
-  const r = await fetch('/api/me', { headers: hdrs() });
-  if (r.ok) { USER = await r.json(); } else { localStorage.removeItem('wc_token'); USER = null; }
+  if (token()) {
+    const r = await fetch('/api/me', { headers: hdrs() });
+    if (r.ok) { USER = await r.json(); } else { localStorage.removeItem('wc_token'); USER = null; }
+  }
   renderHeader();
 }
 
+// ---------- shell de navegación ----------
+const ICON = {
+  arb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-5 4 4 8-8"/><path d="M16 8h5v5"/></svg>',
+  matches: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>',
+  teams: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>',
+  groups: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>',
+  following: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.4 7.2 18.9l.9-5.4L4.2 9.7l5.4-.8z"/></svg>',
+  bracket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h6v14H4M14 9h6M14 5v8h6"/></svg>',
+  record: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+  evo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+  alerts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+  account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+};
+const TABS = {
+  arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
+  following: 'Seguidos', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
+};
+const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
+const IN_TOPNAV = ['arb', 'matches', 'teams', 'groups', 'following', 'bracket', 'record', 'evo'];
+const BOTTOM = ['arb', 'matches', 'teams', 'groups'];
+
 function renderHeader() {
-  $('#loginBtn').textContent = USER ? USER.email : 'Entrar con email';
-  $('#adminTab').style.display = USER && USER.isAdmin ? '' : 'none';
+  const inApp = !!USER;
+  document.body.classList.toggle('logged-in', inApp);
+  document.body.classList.toggle('has-bottomnav', inApp);
+  // top nav
+  const topItems = inApp ? IN_TOPNAV.concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
+  $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${TABS[t]}</button>`).join('');
+  // right side
+  if (inApp) {
+    const initials = (USER.email || '?').slice(0, 1).toUpperCase();
+    $('#hdRight').innerHTML =
+      `<span class="live-pill" id="livePill"><span class="lp-dot"></span>LIVE</span>
+       <button class="icon-btn" aria-label="Alertas y notificaciones" onclick="switchTab('following')">${ICON.alerts}</button>
+       <button class="avatar-btn" aria-label="Tu cuenta" onclick="toggleAvatarMenu(event)">${initials}</button>`;
+  } else {
+    $('#hdRight').innerHTML = `<button class="cta-sm" onclick="openLogin()">Crear cuenta gratis</button>`;
+  }
+  // bottom nav
+  if (inApp) {
+    $('#bottomnav').innerHTML = BOTTOM.map(t =>
+      `<button data-nav="${t}" onclick="switchTab('${t}')" aria-label="${TABS[t]}">${ICON[t]}<span>${TABS[t]}</span></button>`).join('')
+      + `<button data-nav="more" onclick="openSheet()" aria-label="Más">${ICON.more}<span>Más</span></button>`;
+    $('#bottomnav').style.display = ''; // dejar que el CSS (media query) controle la visibilidad
+  } else {
+    $('#bottomnav').style.display = 'none';
+  }
+  syncNavActive();
 }
+
+function currentTab() {
+  const a = document.querySelector('.tab.active');
+  return a ? a.id.replace('tab-', '') : 'teams';
+}
+function syncNavActive() {
+  const cur = currentTab();
+  document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === cur || (b.dataset.nav === 'more' && !BOTTOM.includes(cur) && USER)));
+}
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  const sec = $('#tab-' + name); if (sec) sec.classList.add('active');
+  if (STATE && !STATE.teaser) {
+    if (name === 'arb' && !ARB) loadArb();
+    if (name === 'evo') renderEvo();
+    if (name === 'record') renderRecord();
+    if (name === 'following') renderFollowing();
+  }
+  syncNavActive(); closeAvatarMenu(); closeSheet();
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+
+function toggleAvatarMenu(e) {
+  if (e) e.stopPropagation();
+  const m = $('#avatarMenu');
+  if (m.style.display !== 'none') return closeAvatarMenu();
+  const plan = USER.isAdmin ? 'ADMIN' : 'FREE';
+  const item = (tab, icon, label) => `<button onclick="switchTab('${tab}')">${ICON[icon]}${label}</button>`;
+  m.innerHTML = `
+    <div class="avmenu-head">
+      <div class="av">${(USER.email || '?').slice(0, 1).toUpperCase()}</div>
+      <div><div class="em">${USER.email}</div><div class="plan">${plan}</div></div>
+    </div>
+    ${item('following', 'account', 'Mis seguidos')}
+    ${item('following', 'alerts', 'Alertas y notificaciones')}
+    ${item('record', 'record', 'Aciertos del modelo')}
+    ${item('evo', 'evo', 'Evolución')}
+    ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
+    <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`;
+  m.style.display = '';
+  setTimeout(() => document.addEventListener('click', closeAvatarMenu, { once: true }), 0);
+}
+function closeAvatarMenu() { const m = $('#avatarMenu'); if (m) m.style.display = 'none'; }
+
+function openSheet() {
+  const items = [['following', 'Seguidos'], ['following', 'Alertas', 'alerts'], ['bracket', 'Bracket'], ['record', 'Aciertos'], ['evo', 'Evolución'], ['account', 'Mi cuenta', 'account']];
+  let html = '<div class="sheet-grid">';
+  html += `<button onclick="switchTab('following')">${ICON.following}<span>Seguidos</span></button>`;
+  html += `<button onclick="switchTab('following')">${ICON.alerts}<span>Alertas</span></button>`;
+  html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
+  html += `<button onclick="switchTab('record')">${ICON.record}<span>Aciertos</span></button>`;
+  html += `<button onclick="switchTab('evo')">${ICON.evo}<span>Evolución</span></button>`;
+  if (USER && USER.isAdmin) html += `<button onclick="switchTab('admin')">${ICON.admin}<span>Admin</span></button>`;
+  html += `<button onclick="toggleAvatarMenu()">${ICON.account}<span>Cuenta</span></button>`;
+  html += `<button class="danger" onclick="logout()">${ICON.logout}<span>Salir</span></button>`;
+  html += '</div>';
+  $('#sheetBody').innerHTML = html;
+  $('#sheet').style.display = '';
+}
+function closeSheet() { const s = $('#sheet'); if (s) s.style.display = 'none'; }
 
 function renderAll() {
   if (STATE.teaser) { renderTeaser(); return; }
@@ -797,27 +907,15 @@ async function verifyCode() {
   const j = await r.json();
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
   localStorage.setItem('wc_token', j.token);
-  USER = { email: j.email, isAdmin: j.isAdmin, favorites: j.favorites };
-  closeModal(); renderHeader(); await loadState();
+  USER = { email: j.email, isAdmin: j.isAdmin, favorites: j.favorites, alerts: j.alerts };
+  closeModal(); renderHeader(); await loadState(); switchTab('arb');
 }
-async function logout() { localStorage.removeItem('wc_token'); USER = null; closeModal(); renderHeader(); await loadState(); }
+async function logout() { localStorage.removeItem('wc_token'); USER = null; closeAvatarMenu(); closeSheet(); renderHeader(); await loadState(); switchTab('teams'); }
 
 // ---------- modal / tabs / SSE ----------
 function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').style.display = 'flex'; }
 function closeModal() { $('#modal').style.display = 'none'; }
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
-$('#loginBtn').addEventListener('click', openLogin);
-document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-  b.classList.add('active');
-  $('#tab-' + b.dataset.tab).classList.add('active');
-  if (STATE && STATE.teaser) return; // sin registro: el candado ya está puesto, no sobreescribir
-  if (b.dataset.tab === 'arb' && !ARB) loadArb();
-  if (b.dataset.tab === 'evo') renderEvo();
-  if (b.dataset.tab === 'record') renderRecord();
-  if (b.dataset.tab === 'following') renderFollowing();
-}));
 
 function notifyUpdate(reason, ts) {
   const b = $('#banner');
@@ -828,10 +926,10 @@ function notifyUpdate(reason, ts) {
 
 // Tiempo real: SSE con fallback automático a polling (túneles/proxies que bufferean streams)
 let pollTimer = null, lastVersion = null;
+function setLive(on) { const p = $('#livePill'); if (p) p.classList.toggle('on', on); }
 function startPolling() {
   if (pollTimer) return;
-  $('#liveDot').classList.add('on');
-  $('#liveDot').title = 'Tiempo real (polling cada 10s)';
+  setLive(true);
   pollTimer = setInterval(async () => {
     try {
       const v = await (await fetch('/api/version')).json();
@@ -843,7 +941,7 @@ function startPolling() {
         loadArb();
       }
       lastVersion = v;
-    } catch { $('#liveDot').classList.remove('on'); }
+    } catch { setLive(false); }
   }, 10000);
   fetch('/api/version').then(r => r.json()).then(v => lastVersion = v).catch(() => { });
 }
@@ -852,7 +950,7 @@ function connectSSE() {
   let gotHello = false;
   const es = new EventSource('/api/stream');
   const watchdog = setTimeout(() => { if (!gotHello) { es.close(); startPolling(); } }, 8000);
-  es.addEventListener('hello', () => { gotHello = true; clearTimeout(watchdog); $('#liveDot').classList.add('on'); });
+  es.addEventListener('hello', () => { gotHello = true; clearTimeout(watchdog); setLive(true); });
   es.addEventListener('update', async e => {
     const d = JSON.parse(e.data);
     await loadState();
@@ -863,7 +961,7 @@ function connectSSE() {
   es.onerror = () => {
     clearTimeout(watchdog);
     es.close();
-    $('#liveDot').classList.remove('on');
+    setLive(false);
     gotHello ? setTimeout(connectSSE, 5000) : startPolling();
   };
 }
@@ -890,4 +988,4 @@ async function shareOp(ev, text) {
   window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
 }
 
-(async () => { await loadMe(); await loadState(); renderTicker(); connectSSE(); })();
+(async () => { await loadMe(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

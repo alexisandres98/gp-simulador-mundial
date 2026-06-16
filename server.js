@@ -17,6 +17,7 @@ const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 let db = { users: {}, sessions: {}, codes: {}, results: {}, elos: {}, history: [] };
 try { db = { ...db, ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) }; } catch { /* primera ejecución */ }
 TEAMS.forEach(t => { if (db.elos[t.id] == null) db.elos[t.id] = t.elo; });
+db.sentAlerts = db.sentAlerts || {}; // inicializado temprano: markExistingFinalsSeen() lo usa al arrancar
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);

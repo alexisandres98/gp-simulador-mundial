@@ -700,6 +700,16 @@ const server = http.createServer(async (req, res) => {
       users.forEach(u => bySource[u.ref] = (bySource[u.ref] || 0) + 1);
       return json(res, 200, { total: users.length, users, bySource });
     }
+    // ticker público de mercados en vivo (Polymarket) — para la cabecera, también sin registro
+    if (p === '/api/ticker') {
+      await fetchMarkets(false);
+      const rows = TEAMS.map(t => {
+        const pm = marketCache.polymarket[t.id];
+        if (!pm) return null;
+        return { id: t.id, flag: t.flag, name: t.name, price: pm.price, change24h: pm.change24h || 0 };
+      }).filter(Boolean).sort((a, b) => b.price - a.price).slice(0, 14);
+      return json(res, 200, { ts: marketCache.ts, rows });
+    }
     // --- datos ---
     if (p === '/api/version') {
       // endpoint ligero para el fallback de polling (cuando el SSE no atraviesa el proxy/túnel)

@@ -252,12 +252,30 @@ canvas { width: 100%; max-width: 1100px; background: var(--card); border: 1px so
 .mkt-big.edge { color: var(--accent-dark); }
 .mkt-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dim); font-weight: 600; border-top: 1px solid var(--card2); padding-top: 10px; }
 .mkt-stats .kelly { margin-left: auto; color: var(--amber); }
+/* ticker de mercados en vivo (cabecera) */
+.ticker-wrap { border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); overflow: hidden; position: sticky; top: 0; z-index: 40; }
+.ticker-head { display: flex; align-items: center; gap: 8px; padding: 9px 24px 0; max-width: 1240px; margin: 0 auto; }
+.ticker-head .tlbl { font-size: 10px; letter-spacing: .22em; color: var(--dim); font-weight: 700; }
+.ticker-head .tdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.8s infinite; }
+.ticker { display: flex; gap: 10px; padding: 11px 24px 13px; width: max-content; animation: tscroll 42s linear infinite; }
+.ticker:hover { animation-play-state: paused; }
+@keyframes tscroll { to { transform: translateX(-50%); } }
+.tk { display: flex; align-items: center; gap: 9px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 14px; white-space: nowrap; }
+.tk .tkf { font-size: 17px; } .tk .tkn { font-size: 13px; font-weight: 600; }
+.tk .tkp { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; }
+.tk .tkc { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+.tk .tkc.up { color: var(--accent); background: rgba(0,229,143,.1); }
+.tk .tkc.down { color: var(--red); background: rgba(255,107,107,.1); }
+.tk .tkc.flat { color: var(--dim); }
+@media (max-width: 700px) { .ticker-head { padding: 8px 14px 0; } .ticker { padding: 9px 14px 11px; } }
+
 .dualcard {
-  background: linear-gradient(135deg, #FFFBEB, #fff); border: 1px solid #F3E2B3; border-radius: var(--radius);
+  background: linear-gradient(150deg, rgba(255,194,75,.12), rgba(255,255,255,.03)); border: 1px solid rgba(255,194,75,.3); border-radius: var(--radius);
   padding: 18px 20px; box-shadow: var(--shadow);
 }
-.dual-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.purebadge { font-size: 10px; font-weight: 800; letter-spacing: .8px; background: var(--amber); color: #fff; padding: 4px 10px; border-radius: 99px; }
+.dualcard .note { color: #D9C9A6; }
+.dual-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 16px; }
+.purebadge { font-size: 10px; font-weight: 800; letter-spacing: .8px; background: var(--amber); color: #2A1B02; padding: 4px 10px; border-radius: 99px; }
 .edge-big { margin-left: auto; font-family: var(--font-head); font-size: 22px; font-weight: 800; color: var(--amber); }
 .dual-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 .venue-btn {

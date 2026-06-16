@@ -14,6 +14,24 @@ async function loadState() {
   renderAll();
 }
 
+// Ticker de mercados en vivo (Polymarket) en la cabecera — visible con o sin registro
+async function renderTicker() {
+  try {
+    const j = await (await fetch('/api/ticker')).json();
+    if (!j.rows || !j.rows.length) return;
+    const cents = p => (p * 100).toFixed(1) + '¢';
+    const cell = r => {
+      const c = r.change24h, cls = Math.abs(c) < 0.0005 ? 'flat' : c > 0 ? 'up' : 'down';
+      const arrow = cls === 'flat' ? '—' : c > 0 ? '▲' : '▼';
+      const ch = cls === 'flat' ? '' : ` ${(Math.abs(c) * 100).toFixed(1)}%`;
+      return `<div class="tk"><span class="tkf">${r.flag}</span><span class="tkn">${r.name}</span><span class="tkp">${cents(r.price)}</span><span class="tkc ${cls}">${arrow}${ch}</span></div>`;
+    };
+    // duplicar la lista para el scroll infinito sin saltos
+    $('#ticker').innerHTML = j.rows.concat(j.rows).map(cell).join('');
+    $('#tickerWrap').style.display = '';
+  } catch { /* sin mercados, no mostrar ticker */ }
+}
+
 // Vista para no registrados: gancho de captura
 function renderTeaser() {
   const top = STATE.top;
@@ -51,14 +69,13 @@ function renderTeaser() {
         <span class="muted" style="font-size:12.5px">Sin contraseñas · solo tu email · 30 segundos</span>
       </div>
     </div>`;
-  ['groups', 'matches', 'bracket', 'arb', 'evo', 'admin'].forEach(t => {
+  ['groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
     $('#tab-' + t).innerHTML = `<div class="lock">
       <div class="lock-icon">🔒</div>
       <div class="lock-title">Esta sección es para usuarios registrados</div>
       <div class="muted" style="margin-bottom:18px">Es gratis y solo toma 30 segundos con tu email.</div>
       <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
   });
-  renderRecord(); // el track record es público: es la carta de presentación
   initTilt();
 }
 function initTilt() {
@@ -725,6 +742,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
   $('#tab-' + b.dataset.tab).classList.add('active');
+  if (STATE && STATE.teaser) return; // sin registro: el candado ya está puesto, no sobreescribir
   if (b.dataset.tab === 'arb' && !ARB) loadArb();
   if (b.dataset.tab === 'evo') renderEvo();
   if (b.dataset.tab === 'record') renderRecord();
@@ -801,4 +819,4 @@ async function shareOp(ev, text) {
   window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
 }
 
-(async () => { await loadMe(); await loadState(); connectSSE(); })();
+(async () => { await loadMe(); await loadState(); renderTicker(); connectSSE(); })();

@@ -20,7 +20,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2300E58F'/><text x='50' y='66' font-size='40' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%2304140D'>GP</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -47,6 +47,11 @@
     <button id="loginBtn" class="ghost">Entrar con email</button>
   </div>
 </header>
+
+<div class="ticker-wrap" id="tickerWrap" style="display:none">
+  <div class="ticker-head"><span class="tdot"></span><span class="tlbl">MERCADOS EN VIVO · POLYMARKET</span></div>
+  <div class="ticker" id="ticker"></div>
+</div>
 
 <div id="banner" class="banner" style="display:none"></div>
 

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1000px; height: 1320px; font-family: 'Inter', sans-serif;
+  background: #F3F0E7; color: #14201A; }
+.serif { font-family: 'Fraunces', serif; }
+.bar { display: flex; align-items: center; gap: 13px; padding: 24px 34px; border-bottom: 2px solid #14201A; }
+.logo { width: 44px; height: 44px; border-radius: 10px; background: #0B6E47; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #F3F0E7; font-size: 19px; font-family: 'Fraunces', serif; }
+.brand { font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px; letter-spacing: -.3px; }
+.brand small { display: block; font-family: 'Inter'; font-size: 10px; color: #7C8A80; font-weight: 600; letter-spacing: 3px; }
+.nav { margin-left: auto; display: flex; gap: 22px; font-size: 13px; color: #5F6E64; font-weight: 600; }
+.nav .on { color: #0B6E47; border-bottom: 2px solid #0B6E47; padding-bottom: 3px; }
+.live { background: #0B6E47; color: #F3F0E7; padding: 7px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-left: 8px; }
+.wrap { padding: 32px 34px; }
+.h { font-size: 11px; color: #7C8A80; letter-spacing: 3px; font-weight: 700; margin-bottom: 16px; }
+.card { background: #FBFAF5; border: 1.5px solid #14201A; border-radius: 6px; padding: 26px; margin-bottom: 20px; box-shadow: 5px 5px 0 #14201A; }
+.mt { font-family: 'Fraunces', serif; display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 700; margin-bottom: 20px; letter-spacing: -.5px; }
+.take { border-left: 4px solid #0B6E47; padding: 4px 0 4px 18px; margin-bottom: 22px; }
+.take .row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.grade { background: #0B6E47; color: #F3F0E7; font-weight: 700; font-size: 12px; padding: 5px 13px; border-radius: 4px; letter-spacing: 1px; }
+.gtxt { color: #7C8A80; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+.edge { margin-left: auto; font-family: 'Fraunces', serif; color: #0B6E47; font-weight: 700; font-size: 22px; }
+.take p { color: #36443B; font-size: 15px; line-height: 1.55; }
+.take b { color: #14201A; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: right; font-size: 10px; color: #7C8A80; letter-spacing: 1.5px; padding: 0 0 12px; font-weight: 700; }
+th:first-child { text-align: left; }
+td { padding: 13px 8px; border-top: 1px solid #E0DCCF; text-align: right; font-weight: 600; font-size: 15px; }
+td:first-child { text-align: left; }
+.serifnum { font-family: 'Fraunces', serif; font-weight: 600; }
+.green { color: #0B6E47; font-weight: 700; } .blue { color: #1D5F91; }
+.rk { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #E0DCCF; }
+.rk .fl { font-size: 23px; } .rk .nm { font-weight: 600; font-size: 15px; width: 120px; }
+.track { flex: 1; height: 8px; background: #E6E1D4; border-radius: 0; overflow: hidden; }
+.fill { height: 100%; background: #0B6E47; }
+.pc { width: 64px; text-align: right; font-family: 'Fraunces', serif; font-weight: 700; }
+</style></head>
+<body>
+<div class="bar">
+  <div class="logo">GP</div>
+  <div class="brand">GP Simulador<small>DEL MUNDIAL</small></div>
+  <div class="nav"><span class="on">Oportunidades</span><span>Equipos</span><span>Partidos</span><span>Aciertos</span></div>
+  <div class="live">EN VIVO</div>
+</div>
+<div class="wrap">
+  <div class="h">OPCIÓN 4 · EDITORIAL (verde + crema, estilo Opta / data journalism)</div>
+  <div class="card">
+    <div class="mt">🇦🇷 Argentina <span style="color:#A9B3AA;font-weight:500">vs</span> Argelia 🇩🇿</div>
+    <div class="take">
+      <div class="row"><span class="grade">LEAN</span><span class="gtxt">GP TAKE</span><span class="edge">+8.2%</span></div>
+      <p>Valor en <b>Argentina</b>: el mercado la paga a 70.5¢ y el modelo la ve en 79.2% — infravalorada.</p>
+    </div>
+    <table>
+      <tr><th>RESULTADO</th><th>MERCADO</th><th>MODELO</th><th>EDGE</th></tr>
+      <tr><td>🇦🇷 Argentina</td><td class="serifnum">70.5¢</td><td class="serifnum blue">79.2%</td><td class="green">+8.2% SÍ</td></tr>
+      <tr><td>Empate</td><td class="serifnum">20.5¢</td><td class="serifnum blue">16.2%</td><td></td></tr>
+      <tr><td>🇩🇿 Argelia</td><td class="serifnum">9.5¢</td><td class="serifnum blue">4.6%</td><td class="green">+4.9% NO</td></tr>
+    </table>
+  </div>
+  <div class="h">CAMINO AL TÍTULO</div>
+  <div class="card">
+    <div class="rk"style="border-top:none"><span class="fl">🇪🇸</span><span class="nm">España</span><div class="track"><div class="fill"style="width:100%"></div></div><span class="pc green">26.9%</span></div>
+    <div class="rk"><span class="fl">🇦🇷</span><span class="nm">Argentina</span><div class="track"><div class="fill"style="width:68%"></div></div><span class="pc">18.2%</span></div>
+    <div class="rk"><span class="fl">🇫🇷</span><span class="nm">Francia</span><div class="track"><div class="fill"style="width:46%"></div></div><span class="pc">12.3%</span></div>
+    <div class="rk"><span class="fl">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="nm">Inglaterra</span><div class="track"><div class="fill"style="width:27%"></div></div><span class="pc">7.2%</span></div>
+  </div>
+</div>
+</body></html>

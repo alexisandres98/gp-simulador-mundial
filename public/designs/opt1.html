@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1000px; height: 1320px; font-family: 'Space Grotesk', sans-serif;
+  background: #0A0E12; color: #E8EDF2; padding: 0; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.bar { display: flex; align-items: center; gap: 12px; padding: 22px 30px; border-bottom: 1px solid #1A2129; }
+.logo { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg,#00E58F,#02B978); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #04140D; font-size: 19px; }
+.brand { font-weight: 700; font-size: 18px; letter-spacing: -.3px; }
+.brand small { display: block; font-size: 10px; color: #5C6B7A; font-weight: 500; letter-spacing: 2px; }
+.nav { margin-left: auto; display: flex; gap: 22px; font-size: 13px; color: #6B7A89; font-weight: 500; }
+.nav .on { color: #00E58F; }
+.pill { background: #11FF9911; border: 1px solid #00E58F44; color: #00E58F; padding: 7px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.wrap { padding: 28px 30px; }
+.h { font-size: 13px; color: #5C6B7A; letter-spacing: 2px; font-weight: 600; margin-bottom: 14px; }
+.card { background: #11161D; border: 1px solid #1E2730; border-radius: 16px; padding: 22px; margin-bottom: 18px; }
+.mt { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 700; margin-bottom: 16px; }
+.take { background: #0E1A15; border: 1px solid #163d2c; border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+.take .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.grade { background: linear-gradient(135deg,#00E58F,#02B978); color: #04140D; font-weight: 700; font-size: 12px; padding: 5px 13px; border-radius: 99px; letter-spacing: .5px; }
+.gtxt { color: #5C6B7A; font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+.edge { margin-left: auto; color: #00E58F; font-weight: 700; font-size: 18px; }
+.take p { color: #AEBCC9; font-size: 14px; line-height: 1.5; }
+.take b { color: #E8EDF2; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: right; font-size: 10px; color: #5C6B7A; letter-spacing: 1px; padding: 0 0 10px; font-weight: 600; }
+th:first-child { text-align: left; }
+td { padding: 11px 0; border-top: 1px solid #1A2129; text-align: right; font-weight: 600; font-size: 15px; }
+td:first-child { text-align: left; }
+.val { background: #00E58F0d; }
+.green { color: #00E58F; } .blue { color: #4DA6FF; }
+.rk { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-top: 1px solid #1A2129; }
+.rk .fl { font-size: 22px; } .rk .nm { font-weight: 600; font-size: 15px; width: 120px; }
+.track { flex: 1; height: 8px; background: #1A2129; border-radius: 99px; overflow: hidden; }
+.fill { height: 100%; background: linear-gradient(90deg,#02B978,#00E58F); border-radius: 99px; }
+.pc { width: 64px; text-align: right; font-weight: 700; }
+.tagopt { position: absolute; top: 20px; right: 30px; font-size: 11px; color: #5C6B7A; letter-spacing: 2px; }
+</style></head>
+<body>
+<div class="bar">
+  <div class="logo">GP</div>
+  <div class="brand">GP Simulador<small>DEL MUNDIAL</small></div>
+  <div class="nav"><span class="on">Oportunidades</span><span>Equipos</span><span>Partidos</span><span>Aciertos</span></div>
+  <div class="pill">● EN VIVO</div>
+</div>
+<div class="wrap">
+  <div class="h">OPCIÓN 1 · QUANT DARK</div>
+  <div class="card">
+    <div class="mt">🇦🇷 Argentina <span style="color:#3A4651;font-weight:500">vs</span> Argelia 🇩🇿</div>
+    <div class="take">
+      <div class="row"><span class="grade">LEAN</span><span class="gtxt">GP TAKE</span><span class="edge">+8.2%</span></div>
+      <p>Valor en <b>Argentina</b>: el mercado la paga a 70.5¢ y el modelo la ve en 79.2% — infravalorada.</p>
+    </div>
+    <table>
+      <tr><th>RESULTADO</th><th>MERCADO</th><th>MODELO</th><th>EDGE</th></tr>
+      <tr class="val"><td>🇦🇷 Argentina</td><td class="mono">70.5¢</td><td class="mono blue">79.2%</td><td class="green">+8.2% SÍ</td></tr>
+      <tr><td>Empate</td><td class="mono">20.5¢</td><td class="mono blue">16.2%</td><td></td></tr>
+      <tr class="val"><td>🇩🇿 Argelia</td><td class="mono">9.5¢</td><td class="mono blue">4.6%</td><td class="green">+4.9% NO</td></tr>
+    </table>
+  </div>
+  <div class="h">CAMINO AL TÍTULO</div>
+  <div class="card">
+    <div class="rk"style="border-top:none"><span class="fl">🇪🇸</span><span class="nm">España</span><div class="track"><div class="fill"style="width:100%"></div></div><span class="pc mono green">26.9%</span></div>
+    <div class="rk"><span class="fl">🇦🇷</span><span class="nm">Argentina</span><div class="track"><div class="fill"style="width:68%"></div></div><span class="pc mono">18.2%</span></div>
+    <div class="rk"><span class="fl">🇫🇷</span><span class="nm">Francia</span><div class="track"><div class="fill"style="width:46%"></div></div><span class="pc mono">12.3%</span></div>
+    <div class="rk"><span class="fl">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="nm">Inglaterra</span><div class="track"><div class="fill"style="width:27%"></div></div><span class="pc mono">7.2%</span></div>
+  </div>
+</div>
+</body></html>

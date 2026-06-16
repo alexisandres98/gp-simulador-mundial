@@ -374,15 +374,18 @@ async function fetchMatchMarkets(force = false) {
       const probs = (res && res.status === 'live')
         ? liveMatchProbs(effElo(db.elos, f._h), effElo(db.elos, f._a), res.hg, res.ag, res.minute)
         : matchProbs(effElo(db.elos, f._h), effElo(db.elos, f._a));
-      // Solo recomendamos respaldar un resultado con probabilidad real (≥30%): nunca un longshot,
-      // donde la mayoría de las veces se pierde y el modelo es menos fiable en los extremos.
+      // Reglas de recomendación:
+      // - COMPRAR SÍ: respaldar un resultado infravalorado por el mercado, con prob. real ≥30% (nunca longshot).
+      // - COMPRAR NO: ir contra un resultado SOBREVALORADO, pero NUNCA contra el favorito del modelo
+      //   (apostar contra tu propio pronóstico no tiene sentido).
       const MIN_BACK = 0.30;
+      const top = ['home', 'draw', 'away'].reduce((a, b) => probs[a] >= probs[b] ? a : b); // pick del modelo
       const edges = [];
-      for (const [side, label] of [['home', 'home'], ['draw', 'draw'], ['away', 'away']]) {
+      for (const side of ['home', 'draw', 'away']) {
         const o = outcomes[side]; if (!o) continue;
-        const p = probs[label];
+        const p = probs[side];
         if (o.ask > 0.001 && p - o.ask > 0.04 && p >= MIN_BACK) edges.push({ side, type: 'COMPRAR SÍ', edge: +(p - o.ask).toFixed(4) });
-        else if (o.bid > 0.001 && o.bid - p > 0.04 && (1 - p) >= MIN_BACK) edges.push({ side, type: 'COMPRAR NO', edge: +(o.bid - p).toFixed(4) });
+        else if (o.bid > 0.001 && o.bid - p > 0.04 && (1 - p) >= MIN_BACK && side !== top) edges.push({ side, type: 'COMPRAR NO', edge: +(o.bid - p).toFixed(4) });
       }
       // Snapshot del mercado ANTES del kickoff (probs implícitas sin vig) para el marcador modelo-vs-mercado.
       // Se sobreescribe hasta que arranca el partido → queda la "closing line".

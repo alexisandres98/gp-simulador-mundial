@@ -312,18 +312,21 @@ function buildMatchTake(m) {
   const MIN_BACK = 0.30; // solo respaldamos resultados con probabilidad real ≥30% (nunca longshots)
   const th = teamOf(m.home), ta = teamOf(m.away);
   const labelOf = s => s === 'home' ? th.name : s === 'away' ? ta.name : 'el empate';
+  const top = ['home', 'draw', 'away'].reduce((a, b) => m.model[a] >= m.model[b] ? a : b); // pick del modelo
   const cands = [];
-  let hadLongshot = false;
+  let rejected = false;
   for (const side of ['home', 'draw', 'away']) {
     const o = m.outcomes[side]; if (!o) continue;
     const p = m.model[side];
+    // COMPRAR SÍ: respaldar lo infravalorado (prob. real ≥30%)
     if (o.ask > 0.001 && p - o.ask > 0) {
       if (p >= MIN_BACK) cands.push({ side, dir: 'back', edge: p - o.ask, price: o.ask, p });
-      else hadLongshot = true;
+      else rejected = true;
     }
+    // COMPRAR NO: ir contra lo sobrevalorado, pero NUNCA contra el favorito del modelo
     if (o.bid > 0.001 && o.bid - p > 0) {
-      if (1 - p >= MIN_BACK) cands.push({ side, dir: 'fade', edge: o.bid - p, price: o.bid, p });
-      else hadLongshot = true;
+      if (1 - p >= MIN_BACK && side !== top) cands.push({ side, dir: 'fade', edge: o.bid - p, price: o.bid, p });
+      else rejected = true;
     }
   }
   cands.sort((a, b) => b.edge - a.edge);
@@ -331,8 +334,8 @@ function buildMatchTake(m) {
   const grade = best && gradeEdge(best.edge);
   if (!grade) {
     return { grade: 'PASS', cls: 'g-pass',
-      reason: hadLongshot
-        ? `El único "valor" está en resultados poco probables (&lt;30%), donde lo más seguro es perder y el modelo es menos fiable. Mejor PASS.`
+      reason: rejected
+        ? `Hay diferencias de precio, pero solo implicarían apostar contra el favorito o a un resultado improbable — eso no es valor real. Mejor PASS.`
         : `Modelo y mercado prácticamente coinciden. Sin ventaja clara — preferimos no jugar este partido.` };
   }
   const lbl = labelOf(best.side);

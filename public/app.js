@@ -16,27 +16,41 @@ async function loadState() {
 
 // Vista para no registrados: gancho de captura
 function renderTeaser() {
-  const max = Math.max(...STATE.top.map(t => t.champion));
-  const cards = STATE.top.map(t => `
-    <div class="tcard" onclick="openLogin()">
-      <div class="trow"><span style="font-size:20px">${t.flag}</span><span class="tname">${t.name}</span>
-      <span class="telo">GRUPO ${t.group}</span></div>
-      <div class="champ">${pct(t.champion)}</div>
-      <div class="bar"><div style="width:${(t.champion / max * 100).toFixed(1)}%"></div></div>
+  const top = STATE.top;
+  const lead = top[0];
+  const max = lead.champion;
+  const rows = top.slice(1).map((t, i) => `
+    <div class="fav-row" onclick="openLogin()">
+      <span class="pos">0${i + 2}</span><span class="fl">${t.flag}</span>
+      <span class="nm">${t.name}</span>
+      <span class="track"><span class="fill" style="width:${(t.champion / max * 100).toFixed(0)}%"></span></span>
+      <span class="pc">${pct(t.champion)}</span>
     </div>`).join('');
-  const wall = `
-    <div class="wall">
-      <div class="wall-title">¿Quién va a ganar el Mundial? Descúbrelo en vivo ⚽</div>
-      <div class="wall-sub">
-        Los ${STATE.totalTeams} equipos con probabilidades que se mueven partido a partido, marcadores en tiempo real,
-        grupos, bracket completo y las oportunidades que nuestro modelo detecta frente a Polymarket y Kalshi.
-        Gratis con tu email — sin contraseñas.
-      </div>
-      <button class="btn" onclick="openLogin()">Crear mi cuenta gratis</button>
-    </div>`;
   $('#tab-teams').innerHTML = `
-    <h2>Probabilidad de ganar el Mundial 2026 · ${STATE.sims.toLocaleString()} torneos simulados</h2>
-    <div class="teamgrid">${cards}</div>${wall}`;
+    <div class="hero">
+      <div class="hero-eyebrow"><span class="dot on"></span>${STATE.sims.toLocaleString()} TORNEOS SIMULADOS · ACTUALIZADO EN VIVO</div>
+      <h1 class="hero-h1">¿Quién va a ganar el <span class="g">Mundial 2026</span>?</h1>
+      <div class="hero-sub">Nuestro modelo simula el torneo completo ${STATE.sims.toLocaleString()} veces y ajusta las probabilidades con cada gol. Esto es lo que dice hoy.</div>
+      <div class="fav-board">
+        <div class="fav-lead tilt" onclick="openLogin()">
+          <div class="rk">★ FAVORITO #1</div>
+          <div class="lead-team"><div class="fl">${lead.flag}</div><div class="tn">${lead.name}<small>GRUPO ${lead.group}</small></div></div>
+          <div class="lead-big">${(lead.champion * 100).toFixed(1)}<span>%</span></div>
+          <div class="lead-cap">probabilidad de levantar la copa</div>
+        </div>
+        <div class="fav-list">${rows}</div>
+      </div>
+      <div class="hero-trust">
+        <div class="ht"><b>104</b>partidos cubiertos</div>
+        <div class="ht"><b>${STATE.totalTeams}</b>selecciones</div>
+        <div class="ht"><b>2</b>mercados · Polymarket y Kalshi</div>
+        <div class="ht"><b style="color:var(--accent)">EN VIVO</b>se mueve con cada gol</div>
+      </div>
+      <div class="hero-cta">
+        <button class="btn" onclick="openLogin()">Crear mi cuenta gratis</button>
+        <span class="muted" style="font-size:12.5px">Sin contraseñas · solo tu email · 30 segundos</span>
+      </div>
+    </div>`;
   ['groups', 'matches', 'bracket', 'arb', 'evo', 'admin'].forEach(t => {
     $('#tab-' + t).innerHTML = `<div class="lock">
       <div class="lock-icon">🔒</div>
@@ -45,6 +59,13 @@ function renderTeaser() {
       <button class="btn" onclick="openLogin()">Entrar con mi email</button></div>`;
   });
   renderRecord(); // el track record es público: es la carta de presentación
+  initTilt();
+}
+function initTilt() {
+  document.querySelectorAll('.tilt').forEach(el => {
+    el.onmousemove = e => { const r = el.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; el.style.transform = `perspective(1200px) rotateY(${x * 5}deg) rotateX(${-y * 5}deg)`; };
+    el.onmouseleave = () => el.style.transform = '';
+  });
 }
 
 // Marcador objetivo: ¿le ganamos al mercado? (solo admin)

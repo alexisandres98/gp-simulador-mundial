@@ -108,35 +108,32 @@ async function renderRecord() {
   if (!r.ok) return;
   const d = await r.json();
   const pctW = d.total ? Math.round(d.winners / d.total * 100) : 0;
-  let html = `<h2>Track record del modelo · transparencia total</h2>
-    <div class="muted" style="font-size:12.5px;margin:-8px 0 16px">
-      Cada predicción queda registrada con los datos que el modelo tenía <b>antes</b> del partido. Aciertos y fallos, todo público.
+  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Aciertos · rendimiento del modelo</h2>
+    <div class="muted" style="font-size:12px">Cada predicción se registra con los datos que el modelo tenía <b>antes</b> del partido. Aciertos y fallos, todo público.</div></div>
+    <div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="bigstat"><div class="lbl">Evaluados</div><div class="val">${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.total ? pctW + '%' : '—'}</div><div class="muted" style="font-size:11px">${d.winners}/${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">Marcador exacto</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
+      ${d.total ? `<div class="bigstat"><div class="lbl">Brier score</div><div class="val blue">${d.brier}</div><div class="muted" style="font-size:11px">azar = 0.66</div></div>` : ''}
     </div>
-    <div class="statrow" style="grid-template-columns:repeat(3,1fr)">
-      <div class="bigstat"><div class="lbl">Partidos evaluados</div><div class="val">${d.total}</div></div>
-      <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.winners}/${d.total}${d.total ? ` <span style="font-size:15px">(${pctW}%)</span>` : ''}</div></div>
-      <div class="bigstat"><div class="lbl">Marcador exacto 🎯</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
-    </div>
-    <div class="formrow"><button class="ghost" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>
-    ${(USER && USER.isAdmin && d.total) ? `<div class="explain" style="border-left-color:var(--blue)">
-      📊 <b>Calibración (solo admin):</b> Brier ${d.brier} (azar 3-vías = 0.66, más bajo = mejor) ·
-      prob. media al resultado real ${pct(d.avgProbActual)} · empate medio ${pct(d.matches.reduce((s, m) => s + m.probs.draw, 0) / d.matches.length)}.</div>
-      ${marketScoreboardHtml(d.vsMarket)}` : ''}`;
+    ${d.total ? `<div class="explain" style="border-left-color:var(--blue)">El % de ganador directo no mide toda la calibración. El <b>Brier score</b> mide qué tan buenas fueron las probabilidades asignadas: más bajo es mejor (0 = perfecto, 0.66 = azar a 3 vías).</div>` : ''}
+    <div class="formrow"><button class="cta-sm" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>
+    ${(USER && USER.isAdmin && d.total) ? marketScoreboardHtml(d.vsMarket) : ''}`;
   if (!d.total) {
     html += '<div class="muted">Los primeros resultados aparecerán al terminar los próximos partidos.</div>';
   }
-  html += d.matches.map(m => {
+  html += '<div class="rec-list">' + d.matches.map(m => {
     const th = teamOf(m.home), ta = teamOf(m.away);
     const pickLabel = m.predicted === 'home' ? `Gana ${th ? th.name : m.home}` : m.predicted === 'away' ? `Gana ${ta ? ta.name : m.away}` : 'Empate';
-    return `<div class="mcard" style="grid-template-columns:auto 1fr auto;gap:14px">
-      <div style="font-size:22px;font-weight:800;font-family:var(--font-head)">${m.correct ? '✅' : '❌'}${m.exact ? '🎯' : ''}</div>
-      <div>
-        <div style="font-weight:700">${th ? th.flag + ' ' + th.name : m.home} ${m.hg} - ${m.ag} ${ta ? ta.name + ' ' + ta.flag : m.away}</div>
-        <div class="muted" style="font-size:12px">El modelo decía: <b>${pickLabel}</b> (${pct(m.predictedProb)}) · marcador más probable ${m.likelyScore}${m.exact ? ' — <b style="color:var(--amber)">EXACTO</b>' : ''}</div>
+    return `<div class="rec-row">
+      <span class="rec-dot ${m.correct ? 'ok' : 'no'}"></span>
+      <div class="rec-main">
+        <div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ' <span class="exact-tag">EXACTO</span>' : ''}</div>
+        <div class="rec-pred">Modelo: ${pickLabel} (${pct(m.predictedProb)})</div>
       </div>
-      <div class="muted" style="font-size:11px">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</div>
+      <span class="rec-date">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
     </div>`;
-  }).join('');
+  }).join('') + '</div>';
   $('#tab-record').innerHTML = html;
 }
 async function loadMe() {
@@ -454,24 +451,40 @@ async function toggleFav(id) {
 }
 
 // ---------- GRUPOS ----------
+let groupSel = 'A';
+function heat(p, hue) {
+  const a = Math.min(0.30, p * 0.34);
+  const c = hue === 'g' ? `24,230,163` : hue === 'a' ? `246,200,95` : `255,107,107`;
+  return `background:rgba(${c},${a.toFixed(3)})`;
+}
+function selectGroup(g) { groupSel = g; renderGroups(); }
 function renderGroups() {
-  $('#tab-groups').innerHTML = '<h2>Fase de grupos · probabilidades de avanzar</h2><div class="groupgrid">' +
-    STATE.groups.map(g => {
-      const rows = STATE.standings[g].map(r => {
-        const t = teamOf(r.id), s = t.sim;
-        const third = Math.max(0, s.reachR32 - s.groupWin - s.groupSecond);
-        return `<tr>
-          <td class="teamcell" onclick="openTeam('${t.id}')">${t.flag} ${t.name}</td>
-          <td>${r.pj}</td><td><b>${r.pts}</b></td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td>
-          <td class="pgood">${pct(s.groupWin, 0)}</td>
-          <td>${pct(s.groupSecond, 0)}</td>
-          <td class="pmid">${pct(third, 0)}</td>
-          <td class="pbad">${pct(s.outInGroups, 0)}</td>
-        </tr>`;
-      }).join('');
-      return `<div class="gcard"><h3>GRUPO ${g}</h3>
-        <table><tr><th>Equipo</th><th>PJ</th><th>Pts</th><th>DG</th><th>1º</th><th>2º</th><th>3º clas.</th><th>Fuera</th></tr>${rows}</table></div>`;
-    }).join('') + '</div>';
+  const g = groupSel;
+  const chips = STATE.groups.map(x => `<button class="gchip ${x === g ? 'on' : ''}" onclick="selectGroup('${x}')">${x}</button>`).join('');
+  const rows = STATE.standings[g].map((r, i) => {
+    const t = teamOf(r.id), s = t.sim;
+    const third = Math.max(0, s.reachR32 - s.groupWin - s.groupSecond);
+    return `<tr onclick="openTeam('${t.id}')">
+      <td class="gpos">${i + 1}</td>
+      <td class="teamcell">${t.flag} ${t.name}</td>
+      <td>${r.pj}</td><td><b>${r.pts}</b></td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td>
+      <td style="${heat(s.groupWin, 'g')}">${pct(s.groupWin, 0)}</td>
+      <td style="${heat(s.groupSecond, 'g')}">${pct(s.groupSecond, 0)}</td>
+      <td style="${heat(third, 'a')}">${pct(third, 0)}</td>
+      <td style="${heat(s.outInGroups, 'r')}">${pct(s.outInGroups, 0)}</td>
+    </tr>`;
+  }).join('');
+  $('#tab-groups').innerHTML = `
+    <div style="margin-bottom:6px"><h2 style="margin-bottom:3px">Grupos</h2>
+      <div class="muted" style="font-size:12px">Probabilidades de clasificación · 10,000 torneos simulados</div></div>
+    <div class="gchips">${chips}</div>
+    <div class="grp-wrap">
+      <table class="grp-tbl">
+        <tr><th></th><th>Equipo</th><th>PJ</th><th>Pts</th><th>DG</th><th>1º</th><th>2º</th><th>3º cl.</th><th>Fuera</th></tr>
+        ${rows}
+      </table>
+    </div>
+    <div class="grp-legend"><span><i class="lg g"></i>Clasifica 1º/2º</span><span><i class="lg a"></i>3º (repechaje)</span><span><i class="lg r"></i>Eliminado</span></div>`;
 }
 
 // ---------- PARTIDOS ----------
@@ -543,8 +556,10 @@ function slotDesc(side) {
 }
 function renderBracket() {
   const rounds = [['R32', '16avos'], ['R16', 'Octavos'], ['QF', 'Cuartos'], ['SF', 'Semifinales'], ['3RD', '3er puesto'], ['FINAL', 'Final']];
-  $('#tab-bracket').innerHTML = '<h2>Bracket · estructura oficial FIFA</h2><div class="bracket">' +
-    rounds.map(([st, name]) => `<div class="bround"><h4>${name}</h4>` +
+  $('#tab-bracket').innerHTML = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Bracket</h2>
+    <div class="muted" style="font-size:12px">Cuadro de eliminación · estructura oficial FIFA · desliza para ver todas las rondas</div></div>
+    <div class="bracket">` +
+    rounds.map(([st, name]) => `<div class="bround ${st === 'FINAL' ? 'fin' : ''}"><h4>${name}</h4>` +
       STATE.knockout.filter(k => k.stage === st).map(k => {
         const r = k.result;
         const hId = (r && r.home) || k.resolved.home, aId = (r && r.away) || k.resolved.away;
@@ -841,38 +856,52 @@ async function loadArb(force = false) {
 }
 
 // ---------- EVOLUCIÓN ----------
-const PALETTE = ['#0BA661', '#2E7CF6', '#E5484D', '#D97706', '#8B5CF6', '#0D9488', '#DB2777', '#65A30D', '#EA580C', '#0891B2'];
+const PALETTE = ['#18E6A3', '#4DA3FF', '#F6C85F', '#FF6B6B', '#A78BFA', '#34D399', '#FF9F43', '#5BB0FF', '#DB2777', '#9AE6B4'];
+let evoFilter = 'top';
+function selectEvo(f) { evoFilter = f; renderEvo(); }
 function renderEvo() {
-  // el muro de registro pudo haber reemplazado el contenido de la pestaña: reconstruir el lienzo
-  if (!$('#evoChart')) {
-    $('#tab-evo').innerHTML = '<canvas id="evoChart" width="1100" height="420"></canvas><div id="evoLegend"></div>';
-  }
+  const mine = USER ? (USER.favorites || []) : [];
+  const useMine = evoFilter === 'mine' && mine.length;
+  const sel = (useMine ? mine.map(id => STATE.teams.find(t => t.id === id)).filter(Boolean) : [...STATE.teams])
+    .sort((a, b) => b.sim.champion - a.sim.champion).slice(0, useMine ? 8 : 10);
+  $('#tab-evo').innerHTML = `
+    <div style="margin-bottom:10px"><h2 style="margin-bottom:3px">Evolución</h2>
+      <div class="muted" style="font-size:12px">Probabilidad de campeón a lo largo del torneo</div></div>
+    <div class="gchips" style="margin-bottom:14px">
+      <button class="gchip ${evoFilter === 'top' ? 'on' : ''}" onclick="selectEvo('top')">Top 10</button>
+      <button class="gchip ${evoFilter === 'mine' ? 'on' : ''}" onclick="selectEvo('mine')">Mis seguidos</button>
+    </div>
+    <div class="evo-chart"><canvas id="evoChart" width="1120" height="420"></canvas></div>
+    <div id="evoLegend"></div>
+    <div id="evoTable"></div>`;
   const cv = $('#evoChart'), ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
-  const hist = STATE.history;
+  const hist = STATE.history || [];
   if (hist.length < 2) {
-    ctx.fillStyle = '#64748B'; ctx.font = '13px Inter, sans-serif';
-    ctx.fillText('La evolución aparecerá cuando se jueguen partidos y cambien las probabilidades.', 30, 40);
-    $('#evoLegend').innerHTML = '';
-    return;
+    ctx.fillStyle = '#6F7A82'; ctx.font = '13px Inter, sans-serif';
+    ctx.fillText('La evolución aparecerá cuando se jueguen partidos y cambien las probabilidades.', 24, 36);
+  } else {
+    const maxP = Math.max(.05, ...hist.flatMap(h => sel.map(t => h.probs[t.id] || 0))) * 1.15;
+    const X = i => 50 + i / (hist.length - 1) * (cv.width - 70);
+    const Y = p => cv.height - 28 - p / maxP * (cv.height - 48);
+    ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.fillStyle = '#6F7A82'; ctx.font = '11px Inter, sans-serif';
+    for (let g = 0; g <= 4; g++) { const p = maxP * g / 4, y = Y(p); ctx.beginPath(); ctx.moveTo(48, y); ctx.lineTo(cv.width - 16, y); ctx.stroke(); ctx.fillText(pct(p, 0), 8, y + 3); }
+    sel.forEach((t, ti) => {
+      ctx.strokeStyle = PALETTE[ti % PALETTE.length]; ctx.lineWidth = 1.8; ctx.beginPath();
+      hist.forEach((h, i) => { const y = Y(h.probs[t.id] || 0); i ? ctx.lineTo(X(i), y) : ctx.moveTo(X(i), y); });
+      ctx.stroke();
+    });
   }
-  const top = [...STATE.teams].sort((a, b) => b.sim.champion - a.sim.champion).slice(0, 10);
-  const maxP = Math.max(.05, ...hist.flatMap(h => top.map(t => h.probs[t.id] || 0))) * 1.15;
-  const X = i => 50 + i / (hist.length - 1) * (cv.width - 70);
-  const Y = p => cv.height - 30 - p / maxP * (cv.height - 50);
-  ctx.strokeStyle = '#E4E8EF'; ctx.fillStyle = '#64748B'; ctx.font = '11px Inter, sans-serif';
-  for (let g = 0; g <= 4; g++) {
-    const p = maxP * g / 4, y = Y(p);
-    ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(cv.width - 20, y); ctx.stroke();
-    ctx.fillText(pct(p, 0), 8, y + 3);
-  }
-  top.forEach((t, ti) => {
-    ctx.strokeStyle = PALETTE[ti]; ctx.lineWidth = 2; ctx.beginPath();
-    hist.forEach((h, i) => { const y = Y(h.probs[t.id] || 0); i ? ctx.lineTo(X(i), y) : ctx.moveTo(X(i), y); });
-    ctx.stroke();
-  });
-  $('#evoLegend').innerHTML = top.map((t, i) =>
-    `<span><i style="background:${PALETTE[i]}"></i>${t.flag} ${t.name} ${pct(t.sim.champion)}</span>`).join('');
+  $('#evoLegend').innerHTML = sel.map((t, i) =>
+    `<span><i style="background:${PALETTE[i % PALETTE.length]}"></i>${t.flag} ${t.name} ${pct(t.sim.champion)}</span>`).join('');
+  const start = hist.length ? hist[0].probs : {};
+  $('#evoTable').innerHTML = `<table class="fav-tbl" style="margin-top:16px">
+    <tr><th>#</th><th>Equipo</th><th>Prob actual</th><th>Desde inicio</th><th>Grupo</th></tr>` +
+    sel.map((t, i) => {
+      const d = t.sim.champion - (start[t.id] || t.sim.champion);
+      const dTxt = Math.abs(d) < 0.0005 ? '<span class="muted">—</span>' : `<span class="${d > 0 ? 'pgood' : 'pbad'}">${d > 0 ? '▲' : '▼'} ${(Math.abs(d) * 100).toFixed(1)}%</span>`;
+      return `<tr onclick="openTeam('${t.id}')"><td class="muted">${i + 1}</td><td class="teamcell">${t.flag} ${t.name}</td><td><b>${pct(t.sim.champion)}</b></td><td>${dTxt}</td><td class="muted">${t.group}</td></tr>`;
+    }).join('') + '</table>';
 }
 
 // ---------- ADMIN ----------

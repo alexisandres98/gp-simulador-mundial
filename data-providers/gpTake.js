@@ -2,15 +2,39 @@
 // Interpreta modelo vs mercado y devuelve la forma NormalizedGPTake.
 // Respeta las reglas de producto: no recomendar longshots (<30%) ni apostar
 // contra el favorito del modelo. Coherente con buildMatchTake del frontend.
+//
+// Opción C (jun 2026): las lesiones/bajas confirmadas INFORMAN la lectura
+// (drivers + confianza), pero NO cambian las probabilidades del modelo.
 
 const MIN_BACK = 0.30;
 
 function pct(p) { return (p * 100).toFixed(1) + '%'; }
 function cents(p) { return (p * 100).toFixed(1) + '¢'; }
+function lowerConf(c) { return c === 'Alta' ? 'Media' : 'Media' === c ? 'Baja' : 'Baja'; }
 
 // model: {home,draw,away}; outcomes: {home:{price,bid,ask,volume},draw,away}
-// names: {home, draw:'el empate', away}; opts: { pureArb, liquidityUsd, injuriesRisk }
+// names: {home, draw:'el empate', away}
+// opts: { pureArb, liquidityUsd, injuries: { home:{team,players:[]}, away:{team,players:[]} } }
 function generateGPTake(model, outcomes, names, opts = {}) {
+  const inj = opts.injuries || {};
+
+  // Cierre común: añade bajas como drivers (informativo) y, si respaldamos a un
+  // equipo con bajas confirmadas, baja la confianza un escalón. Nunca toca label/edge.
+  function finish(out, backedSide) {
+    for (const side of ['home', 'away']) {
+      const s = inj[side];
+      if (s && s.players && s.players.length) {
+        out.drivers.push(`Bajas en ${s.team}: ${s.players.slice(0, 3).join(', ')}${s.players.length > 3 ? '…' : ''}`);
+      }
+    }
+    if (backedSide && backedSide !== 'draw' && inj[backedSide] && inj[backedSide].players && inj[backedSide].players.length) {
+      out.confidence = lowerConf(out.confidence);
+      out.risk = out.risk === 'Bajo' ? 'Medio' : out.risk === 'Medio' ? 'Alto' : 'Alto';
+      out.drivers.push(`Confianza ajustada por bajas en ${names[backedSide]}`);
+    }
+    return out;
+  }
+
   const out = {
     label: 'WATCH', title: '', summary: '', confidence: 'Media', risk: 'Medio', drivers: [],
   };
@@ -25,19 +49,19 @@ function generateGPTake(model, outcomes, names, opts = {}) {
       out.drivers.push(`Modelo: ${names[top]} ${pct(model[top])}`);
     }
     out.drivers.push('Sin precio de mercado comparable');
-    return out;
+    return finish(out, null);
   }
 
   // Arbitraje puro tiene prioridad
   if (opts.pureArb && opts.pureArb.edge > 0) {
-    return {
+    return finish({
       label: 'PURE_ARB',
       title: 'Arbitraje puro entre plataformas',
       summary: `Polymarket y Kalshi se contradicen lo suficiente para asegurar ganancia gane quien gane (~${pct(opts.pureArb.edge)} bruto, antes de fees).`,
       confidence: 'Alta',
       risk: 'Bajo',
       drivers: [opts.pureArb.note || 'Diferencia de precio entre plataformas', 'Riesgo de modelo: ninguno', 'Depende de ejecución y fees'],
-    };
+    }, null);
   }
 
   const top = ['home', 'draw', 'away'].reduce((a, b) => model[a] >= model[b] ? a : b);
@@ -65,13 +89,12 @@ function generateGPTake(model, outcomes, names, opts = {}) {
       'Edge por debajo del umbral',
       'Mejor buscar props o entrada en vivo',
     ];
-    return out;
+    return finish(out, null);
   }
 
   // grado por edge
   const e = best.edge;
   if (e >= 0.10) out.label = 'STRONG';
-  else if (e >= 0.06) out.label = 'LEAN';
   else if (e >= 0.04) out.label = 'LEAN';
   else if (e >= 0.02) out.label = 'WATCH';
 
@@ -100,9 +123,9 @@ function generateGPTake(model, outcomes, names, opts = {}) {
     `Edge estimado: +${pct(best.edge)}`,
   ];
   if (liq) out.drivers.push(`Liquidez: ${liq >= 2e6 ? 'alta' : liq >= 4e5 ? 'media' : 'baja'}`);
-  if (opts.injuriesRisk) { out.drivers.push(`Riesgo: ${opts.injuriesRisk}`); if (out.confidence === 'Alta') out.confidence = 'Media'; }
 
-  return out;
+  // bajas: solo penaliza confianza si respaldamos (back) al equipo con bajas
+  return finish(out, best.dir === 'back' ? best.side : null);
 }
 
 module.exports = { generateGPTake };

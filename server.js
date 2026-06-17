@@ -744,11 +744,26 @@ async function buildMatchDetail(id) {
     marketPrices.push({ venue: 'Polymarket', side, price: o.price, bid: o.bid, ask: o.ask, volume: o.volume, url: o.url });
   }
 
+  // Contexto externo (lineups, eventos, stats, forma, lesiones, noticias, odds) — se obtiene
+  // ANTES del GP Take para que las bajas confirmadas puedan informar la lectura (Opción C).
+  const ctx = await providers.getMatchContext({
+    homeCode: meta.home, awayCode: meta.away,
+    homeName: th ? th.en : '', awayName: ta ? ta.en : '',
+    isoDate: meta.datetime, espnId: meta.espnId,
+    isLive: status === 'live', isFinal: status === 'final',
+  }).catch(() => null);
+
+  // Bajas confirmadas por lado: SOLO informan el GP Take (driver + confianza). NO tocan el modelo.
+  const injBySide = { home: { team: names.home, players: [] }, away: { team: names.away, players: [] } };
+  ((ctx && ctx.injuries) || []).forEach(i => {
+    if ((i.side === 'home' || i.side === 'away') && ['injured', 'suspended', 'doubt'].includes(i.status)) injBySide[i.side].players.push(i.player);
+  });
+
   // GP Take determinístico
   let gpTake = null;
   if (probs) {
     const liq = outcomes ? ['home', 'draw', 'away'].reduce((s, k) => s + (outcomes[k] ? outcomes[k].volume || 0 : 0), 0) : 0;
-    gpTake = generateGPTake({ home: probs.home, draw: probs.draw, away: probs.away }, outcomes, names, { liquidityUsd: liq });
+    gpTake = generateGPTake({ home: probs.home, draw: probs.draw, away: probs.away }, outcomes, names, { liquidityUsd: liq, injuries: injBySide });
   }
 
   // Ángulos de mercado
@@ -769,14 +784,6 @@ async function buildMatchDetail(id) {
     marketAngles.push({ market: 'Más de 2.5 goles', pick: 'Over 2.5', modelProb: gm.over25, marketPrice: null, edge: 0, grade: 'WATCH', venue: null, note: 'Estimación del modelo por ritmo de goles proyectado. Sin mercado comparable cargado.' });
     marketAngles.push({ market: 'Ambos anotan', pick: 'BTTS Sí', modelProb: gm.btts, marketPrice: null, edge: 0, grade: 'WATCH', venue: null, note: 'Estimación del modelo. Sin mercado comparable cargado.' });
   }
-
-  // Contexto externo (lineups, eventos, stats, forma, lesiones, noticias, odds)
-  const ctx = await providers.getMatchContext({
-    homeCode: meta.home, awayCode: meta.away,
-    homeName: th ? th.en : '', awayName: ta ? ta.en : '',
-    isoDate: meta.datetime, espnId: meta.espnId,
-    isLive: status === 'live', isFinal: status === 'final',
-  }).catch(() => null);
 
   return {
     id: meta.id, date: meta.datetime, status,

@@ -3,6 +3,24 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+// Carga variables desde un .env local SI existe (zero-dep, sin dotenv). En Render no hay .env:
+// las variables vienen del dashboard. No sobreescribe variables ya definidas en el entorno.
+// Debe correr ANTES de requerir data-providers (que lee process.env al cargar).
+(function loadDotEnv() {
+  try {
+    const envPath = path.join(__dirname, '.env');
+    if (!fs.existsSync(envPath)) return;
+    for (const raw of fs.readFileSync(envPath, 'utf8').split('\n')) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const m = line.match(/^([\w.-]+)\s*=\s*(.*)$/);
+      if (!m) continue;
+      const val = m[2].trim().replace(/^["']|["']$/g, '');
+      if (process.env[m[1]] === undefined) process.env[m[1]] = val;
+    }
+  } catch { /* nunca debe impedir el arranque */ }
+})();
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
 const { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');

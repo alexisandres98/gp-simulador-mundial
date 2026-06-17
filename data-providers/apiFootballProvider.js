@@ -36,7 +36,10 @@ async function call(path, params = {}) {
     Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
       .map(([k, v]) => [k, String(v)])
   ).toString();
-  const url = `https://${HOST}/v3/${path}${qs ? '?' + qs : ''}`;
+  // El host directo (v3.football.api-sports.io) YA lleva la versión en el subdominio → path sin /v3.
+  // RapidAPI sí requiere el prefijo /v3/.
+  const base = isRapid ? `https://${HOST}/v3/` : `https://${HOST}/`;
+  const url = `${base}${path}${qs ? '?' + qs : ''}`;
   const r = await fetch(url, { headers: headers(), signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`API-Football ${path} → HTTP ${r.status}`);
   const j = await r.json();

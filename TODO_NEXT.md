@@ -1,0 +1,45 @@
+# TODO_NEXT.md — GP Simulador
+
+Checkpoint tras Fase 5 del rediseño. Lo que falta, en orden.
+
+## Rediseño UI — estado por fase
+- ✅ **Fase 1** AppShell premium (header, market tape, bottom nav, avatar menu, logged-out).
+- ✅ **Fase 2** Home Oportunidades terminal (mejor oportunidad, arbitraje, valor, GP Take, favoritos).
+- ✅ **Fase 3** Alertas (pantalla dedicada) + Seguidos rediseñado.
+- ✅ **Fase 5** Grupos (heatmap), Bracket (escalonado), Aciertos (analítico+Brier), Evolución (chart dark+tabla).
+- ⏳ **Fase 4 — PENDIENTE** Página de partido y de equipo profesionales.
+
+## PRÓXIMO GRANDE: Fase 4 + Datos de equipo (la construcción que falta de la lista original del usuario)
+La Fase 4 depende de construir primero la **feature de datos de equipo** (no existe aún):
+- **Página de partido pro**: Match Hero, tabs (GP Take / Análisis / Eventos / Cuotas / Alineaciones), GP Take card de analista, "mejores ángulos", eventos en vivo (posesión/tiros/corners), **alineaciones** (XI probable), forma reciente, best odds.
+- **Página de equipo pro**: hero con seguir, tabs (Resumen / Plantilla / Forma / Resultados / Noticias / Mercados). Reemplazar el párrafo largo actual de `openTeam` por "Model read" + bullets (key drivers, risks, next checkpoint).
+- **Fuente de datos investigada:** API-Football (api-sports.io) tiene alineaciones/plantilla/forma; tier gratis limitado (~100 req/día, solo testing). xG real es de pago (Sportmonks ~€78/mo, TheStatsAPI). The Odds API = cuotas multideporte 1 suscripción. Decisión pendiente del usuario sobre gastar en data (recomendado: no gastar hasta empezar a cobrar; validar Brier vs mercado primero).
+- Alineaciones gratis alternativa: extraer el XI que publican ~1h antes (scraping/feed) y cachear; mostrar al hacer click en el partido.
+
+## Mejoras de modelo / datos (de sesiones previas)
+- **Marcador "Modelo vs Mercado"**: ya instrumentado (`scoreboard` en /api/aciertos, captura closing line por partido en `db.marketSnapshots`). Empezó tarde → necesita ~3-4 semanas de partidos para veredicto de si le ganamos al mercado. NO cobrar hasta tener esta prueba.
+- **Calibración de torneo (% campeón) sobreconcentrada**: decisión actual = NO tocar (no validable este torneo, n=1; usuario no quiere copiar a Opta). Si se retoma: subir `ELO_NOISE` (~120-150) y/o regresión a la media; medir contra Brier, no contra Opta.
+- **Señales gratis para el modelo** (de las 5 propuestas): forma ya está implícita en Elo; descanso/motivación marginales; xG e injuries son de pago. Recomendación: no agregar señales marginales sin que mejoren el Brier medido.
+
+## Crecimiento / negocio (pendientes)
+- Persistencia/backup de la base de usuarios: el disco de Render ya evita pérdidas, pero falta export diario automático al email del admin como seguro.
+- Telegram bot de alertas (canal): alto valor para esta audiencia, no construido (UI dice "próximamente").
+- Canales Telegram/Push: backend no implementado (solo UI/estado preparado en alertPrefs.channels).
+- Pantalla de "lista de espera Pro" / pricing hacia fin de Mundial para validar disposición a pagar.
+- Segundo deporte (NFL en septiembre) para el "precipicio post-Mundial".
+- Contenido de redes: hay plantillas en `public/ig/` + `ig-src/`; generar diario (post/story/X) con datos reales del día. Captions y tono "transparencia" definidos.
+
+## Bugs conocidos / riesgos
+- **Cuota de email**: Resend Pro 50k/mes (suficiente). Si se rompe, fallback a relay GAS (~100/día). Vigilar en olas de registro.
+- **db.json efímero si falla el disco**: usuarios/favoritos se perderían (resultados se auto-recuperan de ESPN). Mitigación: export CSV manual frecuente; pendiente backup automático.
+- **Autodeploy de Render a veces no dispara** → forzar por API (ver CLAUDE.md). Primer request tras deploy puede dar 502 unos segundos.
+- **SSE no atraviesa algunos proxies** → ya hay fallback a polling cada 10s.
+- **`matchProbs` aplica Dixon-Coles pero el Monte Carlo (simMatch) no** — inconsistencia menor conocida; el % de campeón usa solo el piso de goles, no DC.
+- **Página Partidos y modal de equipo** siguen con diseño/copys viejos (texto largo) → Fase 4.
+- Al desarrollar: `rm -f db.json` SOLO en local; jamás en prod. Probar en preview antes de push.
+
+## Reglas de producto a recordar (ver CLAUDE.md)
+- Nombre = "GP Simulador" (nunca GP Edge).
+- No recomendar longshots (<30% prob) ni apostar contra el favorito del modelo.
+- Login obligatorio salvo teaser top-6.
+- Español, mobile-first, sin consejo financiero.

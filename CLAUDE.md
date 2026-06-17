@@ -1,0 +1,58 @@
+# CLAUDE.md — GP Simulador
+
+> Guía para cualquier sesión de Claude Code que continúe este proyecto. Léeme primero.
+
+## Qué es
+**GP Simulador** (también "GP Simulador del Mundial") — plataforma web de *sports intelligence / prediction market scanner* para el Mundial 2026. Simula el torneo 10,000 veces (Elo → Poisson → Monte Carlo), compara sus probabilidades contra mercados en vivo (Polymarket/Kalshi) y muestra oportunidades de valor y arbitraje. Captura usuarios por email durante el Mundial para evolucionar a una plataforma de pago post-Mundial.
+
+## REGLAS DURAS (no romper)
+- **El nombre del producto es "GP Simulador". NUNCA "GP Edge" / "GP Markets" / "EDGE Terminal".** (Los mockups decían "GP EDGE" — ignorar; el usuario lo prohibió explícitamente.) Etiquetas internas SÍ permitidas: Model Edge, GP Take, Pure Arb, Market Mover, Oportunidades, Arbitraje puro.
+- **No romper la lógica del modelo, APIs, Monte Carlo, Elo, Polymarket, Kalshi ni rutas existentes** salvo que sea estrictamente necesario.
+- **No perder datos ni usuarios.** La base vive en disco persistente de Render (`/data/db.json`). Hay ~340 usuarios reales. Nunca borrar `db.json` en producción.
+- **Plataforma EN VIVO durante el Mundial.** Probar siempre en preview antes de desplegar. Render no promueve un deploy que falla el health check, pero igual: cuidado.
+- Producto en **español** (audiencia LATAM). Mobile-first, escala a desktop.
+- Sin consejo financiero: siempre el disclaimer "estimaciones de un modelo estadístico, no consejo financiero".
+
+## Stack
+- **Backend:** Node puro, sin dependencias npm (`server.js`, `engine.js`, `mailer.js`, `data/tournament.js` + `data/fixtures-real.json`). Node >= 18.
+- **Frontend:** vanilla JS (`public/index.html`, `public/app.js`, `public/style.css`). Sin framework, sin build step. SSE para tiempo real con fallback a polling.
+- **Persistencia:** `db.json` (un solo archivo). En prod: `DB_FILE=/data/db.json` (disco persistente).
+- **Hosting:** Render (plan Starter $7/mes), servicio `srv-d8krl8flk1mc73c9hbi0`, owner `tea-d8krj5v7f7vs73fc7m70`, región Oregon. Dominio: **gpsimulador.com** (Namecheap; A @ → 216.24.57.1, CNAME www → gp-simulador-mundial.onrender.com).
+- **Email:** Resend Pro (50k/mes) desde `codigo@gpsimulador.com`; fallback relay Google Apps Script. Vars: `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `MAIL_WEBHOOK_URL`, `MAIL_WEBHOOK_TOKEN`.
+- **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
+
+## Comandos
+```bash
+# correr local
+node server.js                 # http://localhost:3000  (usa db.json local)
+SIMS=20000 node server.js      # más precisión de simulación
+
+# verificar sintaxis (NO hay lint/test formal en el repo)
+node --check server.js && node --check engine.js && node --check public/app.js
+
+# preview durante desarrollo: usar las tools preview_* del harness (.claude/launch.json -> "worldcup")
+```
+**No hay build, lint ni test suite.** "Tests" = `node --check` + verificación manual en preview + scripts ad-hoc (p.ej. `backtest.js`, gitignored).
+
+## Deploy (flujo usado en toda la sesión)
+```bash
+git add <archivos> && git -c user.name="GP" -c user.email="alexisgomezico@gmail.com" commit -m "..."
+git push origin main
+# forzar deploy (el autodeploy a veces no dispara):
+curl -s -X POST "https://api.render.com/v1/services/srv-d8krl8flk1mc73c9hbi0/deploys" \
+  -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d '{}'
+# pollear estado:
+curl -s "https://api.render.com/v1/services/srv-d8krl8flk1mc73c9hbi0/deploys?limit=1" -H "Authorization: Bearer $RENDER_API_KEY"
+```
+- La **RENDER_API_KEY** la tiene el usuario (se usó en chat; pedirla si hace falta, no está versionada).
+- **Cambiar plan vía API da error 500** — hacerlo por el dashboard de Render.
+- Repo GitHub: `github.com/alexisandres98/gp-simulador-mundial` (gh CLI autenticado como alexisandres98).
+- Headers `no-cache` en html/js/css → los usuarios reciben el código nuevo en cada deploy.
+
+## Co-autoría de commits
+Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` (convención usada en la sesión).
+
+## Documentos hermanos
+- `PROJECT_STATE.md` — arquitectura, pantallas, archivos, endpoints, modelo, negocio.
+- `DESIGN_SYSTEM.md` — tokens, tipografía, componentes, layout, responsive.
+- `TODO_NEXT.md` — pendientes, bugs/riesgos, próximos pasos.

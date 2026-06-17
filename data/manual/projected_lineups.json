@@ -1,0 +1,12 @@
+{
+  "_comment": "Alineaciones probables (editorial). Formato: CODE: { formation, coach, lines: { GK:[], DEF:[], MID:[], FWD:[] } }. Se muestran como 'probable' hasta que la API confirme el XI.",
+  "ESP": {
+    "formation": "4-3-3",
+    "lines": {
+      "GK": ["Unai Simón"],
+      "DEF": ["Carvajal", "Le Normand", "Laporte", "Cucurella"],
+      "MID": ["Rodri", "Pedri", "Fabián"],
+      "FWD": ["Lamine Yamal", "Morata", "Nico Williams"]
+    }
+  }
+}

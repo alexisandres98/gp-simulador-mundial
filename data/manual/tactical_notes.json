@@ -1,0 +1,8 @@
+{
+  "_comment": "Notas tácticas editoriales por equipo. Formato: CODE: { style, strengths:[], risks:[] }.",
+  "ESP": {
+    "style": "Posesión y presión alta; busca dominar el balón y generar superioridades por fuera.",
+    "strengths": ["Control del juego", "Talento en bandas"],
+    "risks": ["Vulnerable a la contra", "Definición intermitente"]
+  }
+}

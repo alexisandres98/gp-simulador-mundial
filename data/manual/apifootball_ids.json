@@ -1,0 +1,3 @@
+{
+  "_comment": "Semilla manual opcional de IDs de equipo de API-Football (nuestro código → id numérico). El resto se descubre por búsqueda y se cachea en memoria. Formato: CODE: { \"teamId\": 9 }."
+}

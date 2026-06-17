@@ -22,6 +22,8 @@ Fuentes externas:  ESPN scoreboard (marcadores), Polymarket gamma + Kalshi (merc
 | `server.js` (~950 ln) | Servidor HTTP, todos los endpoints, auth por email, sync ESPN cada 2 min, fetch de mercados cada 5 min, alertas, Monte Carlo cacheado, persistencia db.json, sirve estáticos. |
 | `engine.js` (~299 ln) | Modelo: `simulateTournament`, `matchProbs`, `liveMatchProbs`, `eloUpdate`, `explainTeam`, `effElo`, `assignThirds`, `cmpRows`. Constantes del modelo. |
 | `mailer.js` | Envío de email: Resend (HTTPS) → fallback relay Google Apps Script → fallback SMTP. `sendMail`, `isConfigured`. |
+| `data-providers/` (Fase 4) | Capa de datos contextuales server-side. `apiFootballProvider.js` (principal, key por env), `espnProvider.js` (fallback), `manualProvider.js` (lee `data/manual/*.json`), `cache.js` (TTL en memoria), `normalizer.js` (raw→Normalized*), `gpTake.js` (`generateGPTake` determinístico), `index.js` (orquestador `getMatchContext`/`getTeamContext` con prioridad API-Football→ESPN→manual). La UI nunca los llama directo. |
+| `data/manual/*.json` (Fase 4) | Editable a mano: `team_notes`, `key_players`, `manual_injuries`, `projected_lineups`, `tactical_notes`, `squad_notes`, `team_form_cache`, `apifootball_ids` (semilla de IDs). |
 | `data/tournament.js` | TEAMS (48, con elo/grupo/flag/host/aliases), GROUPS, GROUP_FIXTURES (desde fixtures-real.json), KNOCKOUT (estructura oficial R32→FINAL con slots W/R/T3/M/L). |
 | `data/fixtures-real.json` | 72 partidos de grupos reales (de ESPN, auditados) con espnId, datetime, matchday. |
 | `build-fixtures.js` | Genera fixtures-real.json desde espn-schedule.json (script de mantenimiento). |
@@ -35,7 +37,9 @@ Fuentes externas:  ESPN scoreboard (marcadores), Polymarket gamma + Kalshi (merc
 - `GET /api/state` — sin sesión: teaser (top-6); con sesión: estado completo (teams+sim, standings, fixtures, knockout, history, sync). Marca `lastSeen`.
 - `GET /api/ticker` — **público**: top mercados Polymarket para el tape.
 - `GET /api/version` — ligero: {sim, markets, users} para polling.
-- `GET /api/team/:id` — detalle equipo (requiere sesión).
+- `GET /api/team/:id` — detalle equipo (modal legacy, requiere sesión).
+- `GET /api/match/:id` — **(Fase 4, requiere sesión)** NormalizedMatchDetail: hero, modelo 1X2, marketPrices, gpTake, marketAngles, events, statistics, lineups, recentForm, injuries, news, odds, providerStatus. Fusiona modelo/mercados existentes + capa `data-providers/`.
+- `GET /api/teamdetail/:id` — **(Fase 4, requiere sesión)** NormalizedTeamDetail: probs del modelo, Model Read, samples/counts, marketPrices (campeón), squad/keyPlayers/projectedLineup, recentForm, results/schedule, injuries/news, providerStatus.
 - `GET /api/arbitrage` — (requiere sesión) rows de campeón modelo-vs-mercado con edges, `matches` (mercados por partido 1X2), snapshots, disclaimer. Captura "closing line" de mercado por partido.
 - `GET /api/aciertos` — **público**: track record (winners, exact, brier, avgProbActual, vsMarket scoreboard, matches con prob pre-partido).
 - `POST /api/auth/request` {email} — genera código 6 díg, lo envía por email (Resend). Rate limit 3/10min, dedup <90s. Sin SMTP → modo demo devuelve `demoCode`.
@@ -72,8 +76,10 @@ Logged-in nav (bottom en móvil): Oportunidades · Partidos · Equipos · Grupos
 | Pantalla (tab id) | Estado | Notas |
 |---|---|---|
 | Oportunidades (`arb`) — HOME logged-in | ✅ Rediseñada (Fase 2) | Mejor oportunidad destacada (signal/métricas/riesgo/confianza), Arbitraje puro, Apuestas de valor, Partidos·GP Take, Favoritos del modelo, tabla 48 colapsable. |
-| Partidos (`matches`) | ⚠️ Funcional, **diseño viejo** | Calendario con matchCard (pbar 1X2). Pendiente rediseño Fase 4 (match page pro). |
-| Equipos (`teams`) | ✅ Cards + teaser hero (logged-out) | Modal de detalle de equipo (`openTeam`) aún con texto largo → pendiente Fase 4. |
+| Partidos (`matches`) | ✅ Funcional + cada partido abre la Match Detail Page | Calendario con matchCard (pbar 1X2). Las tarjetas ahora navegan a `#tab-match`. |
+| Equipos (`teams`) | ✅ Cards + teaser hero; cada equipo abre la Team Detail Page | El modal `openTeam` se reemplazó por `openTeamPage` (Fase 4), con tabs Resumen/Plantilla/Forma/Resultados/Mercados/Noticias. |
+| Partido (`match`, Fase 4) | ✅ Nueva | Match Detail Page: hero, GP Take, ángulos, eventos/stats, alineaciones, forma, modelo·mercado·cuotas, lesiones/noticias. Datos de `/api/match/:id`. |
+| Equipo (`team`, Fase 4) | ✅ Nueva | Team Detail Page: hero+Seguir, resumen del modelo (Model Read + probs + caminos simulados), plantilla/jugadores clave/XI probable, forma, resultados, mercados, noticias. Datos de `/api/teamdetail/:id`. |
 | Grupos (`groups`) | ✅ Rediseñada (Fase 5) | Chips A-L + tabla heatmap. |
 | Seguidos (`following`) | ✅ Rediseñada (Fase 3) | Tarjetas con campana por equipo + cambio de mercado. |
 | Alertas (`alerts`) | ✅ Nueva (Fase 3) | Eventos + canales (Telegram/Push = "próximamente"). |

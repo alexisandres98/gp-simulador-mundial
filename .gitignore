@@ -4,5 +4,7 @@ tunnel.log
 sse-test.txt
 node_modules/
 .DS_Store
+.env
+.env.local
 
 backtest.js

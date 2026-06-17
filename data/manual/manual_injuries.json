@@ -1,0 +1,8 @@
+{
+  "_comment": "Lesiones/suspensiones confirmadas a mano. Formato: CODE: [{ name, status, reason }]. status: injured|suspended|doubt.",
+  "ESP": [],
+  "BRA": [],
+  "ARG": [],
+  "FRA": [],
+  "ENG": []
+}

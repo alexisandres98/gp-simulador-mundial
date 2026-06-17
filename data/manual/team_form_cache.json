@@ -1,0 +1,3 @@
+{
+  "_comment": "Fallback de forma reciente cuando API-Football no responde. Formato: CODE: { results:[\"W\",\"D\",...], goalsFor, goalsAgainst, cleanSheets, avgFor, avgAgainst, streak, last:[{opponent,score,result,home}] }."
+}

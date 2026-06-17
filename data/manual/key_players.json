@@ -1,0 +1,18 @@
+{
+  "ESP": [
+    { "name": "Lamine Yamal", "position": "FW", "club": "Barcelona", "status": "available", "note": "Desequilibrio por la banda" },
+    { "name": "Pedri", "position": "MF", "club": "Barcelona", "status": "available", "note": "Motor del mediocampo" }
+  ],
+  "FRA": [
+    { "name": "Kylian Mbappé", "position": "FW", "club": "Real Madrid", "status": "available", "note": "Referencia de gol" }
+  ],
+  "ARG": [
+    { "name": "Lautaro Martínez", "position": "FW", "club": "Inter", "status": "available", "note": "Definición en área" }
+  ],
+  "BRA": [
+    { "name": "Vinícius Jr.", "position": "FW", "club": "Real Madrid", "status": "available", "note": "Profundidad por izquierda" }
+  ],
+  "ENG": [
+    { "name": "Jude Bellingham", "position": "MF", "club": "Real Madrid", "status": "available", "note": "Llegada desde segunda línea" }
+  ]
+}

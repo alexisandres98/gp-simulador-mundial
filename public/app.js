@@ -297,10 +297,10 @@ function renderFollowing() {
     if (nm) { const opp = teamOf(nm.home === t.id ? nm.away : nm.home); meta = `Próximo · vs ${opp ? opp.name : '—'} · ${fmtKickoff(nm)}`; }
     const isMuted = muted.includes(t.id);
     return `<div class="follow-card">
-      <span class="fc-flag">${t.flag}</span>
-      <div class="fc-main">
+      <span class="fc-flag" style="cursor:pointer" onclick="openTeamPage('${t.id}')">${t.flag}</span>
+      <div class="fc-main" style="cursor:pointer" onclick="openTeamPage('${t.id}')">
         <div class="fc-name">${t.name}</div>
-        <div class="fc-meta">${meta}</div>
+        <div class="fc-meta">${nm ? `<span onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer">${meta} →</span>` : meta}</div>
       </div>
       <div class="fc-prob">
         <div class="fc-pc">${pct(t.sim.champion)}</div>
@@ -396,46 +396,401 @@ function renderTeams() {
     </div>`).join('') + '</div>';
 }
 
-// ---------- detalle de equipo ----------
-async function openTeam(id) {
-  const r = await fetch('/api/team/' + id, { headers: hdrs() });
-  if (!r.ok) { openLogin(); return; }
-  const d = await r.json();
-  const t = teamOf(id), s = d.sim, c = s.counts;
-  const favBtn = USER ? `<button class="ghost" onclick="toggleFav('${id}')">${(USER.favorites || []).includes(id) ? '★ Quitar favorito' : '☆ Seguir equipo'}</button>` : '';
-  openModal(`
-    <div class="trow" style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:30px">${t.flag}</span>
-      <div><div style="font-size:20px;font-weight:700">${t.name}</div>
-      <div class="muted" style="font-size:11px">ELO ${t.currentElo} · RANK #${[...STATE.teams].sort((a,b)=>b.currentElo-a.currentElo).findIndex(x=>x.id===id)+1} · GRUPO ${t.group}</div></div>
-      <div style="margin-left:auto">${favBtn}</div>
+// ========================================================================
+// Fase 4 — PÁGINAS PROFUNDAS DE PARTIDO Y EQUIPO
+// La UI consume solo data normalizada de /api/match/:id y /api/teamdetail/:id.
+// ========================================================================
+let detailReturnTab = 'arb', CUR_MATCH = null, CUR_TEAM = null, teamTab = 'resumen';
+
+// --- helpers de UI compartidos (terminal direction; sin polish final) ---
+function du(msg) { return `<div class="du">${msg}</div>`; } // DataUnavailable elegante
+function pctD(p, d = 0) { return (p == null || isNaN(p)) ? '—' : (p * 100).toFixed(d) + '%'; }
+function gpGradeCls(label) {
+  return ({ STRONG: 'g-strong', LEAN: 'g-lean', SLIGHT: 'g-slight', WATCH: 'g-slight', PASS: 'g-pass', PURE_ARB: 'g-arb' })[label] || 'g-pass';
+}
+function gpLabelTxt(label) { return label === 'PURE_ARB' ? 'PURE ARB' : label; }
+function formChips(results) {
+  if (!results || !results.length) return '<span class="muted">—</span>';
+  return results.map(r => `<span class="fchip f-${(r || '').toLowerCase()}">${r}</span>`).join('');
+}
+function pStatusBadge(st) {
+  const m = { available: ['ok', 'Disponible'], injured: ['bad', 'Lesión'], suspended: ['bad', 'Suspendido'], doubt: ['warn', 'Duda'], unknown: ['', '—'] };
+  const [cls, lbl] = m[st] || m.unknown;
+  return `<span class="pstatus ${cls}">${lbl}</span>`;
+}
+function injuryBadge(st) {
+  const m = { injured: ['bad', '✚ Lesión'], suspended: ['bad', '⊘ Suspendido'], doubt: ['warn', '? Duda'], available: ['ok', 'Disponible'], unknown: ['', '—'] };
+  const [cls, lbl] = m[st] || m.unknown;
+  return `<span class="pstatus ${cls}">${lbl}</span>`;
+}
+function dShort(iso) { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString([], { day: 'numeric', month: 'short' }); }
+function dLong(iso) { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+function detailHead(title) { return `<div class="dh"><button class="backbtn" onclick="backFromDetail()">←</button><span class="dh-t">${title}</span></div>`; }
+function openDetailTab(name) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  const sec = $('#tab-' + name); if (sec) sec.classList.add('active');
+  syncNavActive(); closeAvatarMenu(); closeSheet();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  try { history.pushState({ detail: name }, '', '#' + name); } catch { }
+}
+function backFromDetail() { switchTab(detailReturnTab || (USER ? 'arb' : 'teams')); }
+window.addEventListener('popstate', () => {
+  const c = currentTab();
+  if (c === 'match' || c === 'team') {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    const sec = $('#tab-' + (detailReturnTab || 'arb')); if (sec) sec.classList.add('active');
+    syncNavActive();
+  }
+});
+
+// =================== PÁGINA DE PARTIDO ===================
+async function openMatchPage(id) {
+  if (!USER) { openLogin(); return; }
+  const c = currentTab(); if (c !== 'match' && c !== 'team') detailReturnTab = c;
+  openDetailTab('match');
+  $('#tab-match').innerHTML = detailHead('Partido') + '<div class="muted" style="padding:34px 0;text-align:center">Cargando partido…</div>';
+  try {
+    const r = await fetch('/api/match/' + encodeURIComponent(id), { headers: hdrs() });
+    if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
+    CUR_MATCH = await r.json();
+    renderMatchDetail(CUR_MATCH);
+  } catch { $('#tab-match').innerHTML = detailHead('Partido') + du('No se pudo cargar el partido. Intenta de nuevo.'); }
+}
+
+function renderMatchDetail(d) {
+  const th = d.homeTeam, ta = d.awayTeam, mp = d.modelProbabilities, sc = d.score;
+  const followsHome = th.id && (USER.favorites || []).includes(th.id);
+  const followsAway = ta.id && (USER.favorites || []).includes(ta.id);
+  const statusChip = d.status === 'live'
+    ? `<span class="livepill on">● EN VIVO${d.minute ? " " + d.minute + "'" : ''}</span>`
+    : d.status === 'final' ? '<span class="dchip">FINAL</span>'
+      : `<span class="dchip">${dLong(d.date)}</span>`;
+  const center = (d.status === 'live' || d.status === 'final') && sc ? `<div class="mh-score">${sc.home} <span>-</span> ${sc.away}</div>` : '<div class="mh-vs">VS</div>';
+
+  // Hero
+  let html = detailHead((d.stageLabel ? d.stageLabel : 'Partido') + (d.group ? ' · Grupo ' + d.group : ''));
+  html += `<div class="mh">
+    <div class="mh-side" onclick="${th.id ? `openTeamPage('${th.id}')` : ''}">
+      <span class="mh-flag">${th.flag}</span><span class="mh-name">${th.name}</span></div>
+    <div class="mh-mid">${statusChip}${center}</div>
+    <div class="mh-side right" onclick="${ta.id ? `openTeamPage('${ta.id}')` : ''}">
+      <span class="mh-flag">${ta.flag}</span><span class="mh-name">${ta.name}</span></div>
+  </div>`;
+  if (mp) {
+    html += `<div class="mh-probs">
+      <div class="mhp"><span class="mhp-l">Modelo</span><span class="mhp-v blue">${pctD(mp.homeWin, 1)} · ${pctD(mp.draw, 1)} · ${pctD(mp.awayWin, 1)}</span></div>`;
+    const pm = (d.marketPrices || []);
+    const ph = pm.find(x => x.side === 'home'), pd = pm.find(x => x.side === 'draw'), pa = pm.find(x => x.side === 'away');
+    if (ph || pa) html += `<div class="mhp"><span class="mhp-l">Mercado</span><span class="mhp-v">${ph ? cents(ph.price) : '—'} · ${pd ? cents(pd.price) : '—'} · ${pa ? cents(pa.price) : '—'}</span></div>`;
+    html += `<div class="mhp"><span class="mhp-l">xG proyectado</span><span class="mhp-v">${mp.xgHome != null ? mp.xgHome.toFixed(2) : '—'} – ${mp.xgAway != null ? mp.xgAway.toFixed(2) : '—'} · marcador prob. ${mp.likelyScore || '—'}</span></div>`;
+    html += `</div>`;
+  } else html += du('Modelo no disponible para este partido (equipos por definir).');
+  if (followsHome || followsAway) html += `<div class="follownote">★ Sigues a ${followsHome ? th.name : ''}${followsHome && followsAway ? ' y ' : ''}${followsAway ? ta.name : ''}</div>`;
+
+  // GP Take
+  html += matchGpTakeHtml(d.gpTake);
+  // Market Angles
+  html += marketAnglesHtml(d.marketAngles);
+  // Live events / stats
+  html += liveEventsHtml(d);
+  // Lineups
+  html += lineupsHtml(d);
+  // Recent form
+  html += matchFormHtml(d.recentForm, th, ta);
+  // Markets
+  html += matchMarketsHtml(d, mp);
+  // News / injuries
+  html += matchNewsHtml(d);
+
+  html += `<div class="disc">Las probabilidades son estimaciones de un modelo estadístico. No es consejo financiero ni recomendación de apuesta.</div>`;
+  html += providerStatusHtml(d.providerStatus);
+  $('#tab-match').innerHTML = html;
+}
+
+function panel(title, sub, body) {
+  return `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">${title}</span>${sub ? `<span class="dpanel-s">${sub}</span>` : ''}</div>${body}</div>`;
+}
+
+function matchGpTakeHtml(g) {
+  if (!g) return panel('GP Take', '', du('Sin lectura disponible todavía.'));
+  return panel('GP Take', '',
+    `<div class="gptbox">
+      <div class="gpt-top"><span class="grade ${gpGradeCls(g.label)}">${gpLabelTxt(g.label)}</span>
+        <span class="gpt-conf">Confianza: ${g.confidence}</span>${g.risk ? `<span class="gpt-risk">Riesgo: ${g.risk}</span>` : ''}</div>
+      <div class="gpt-title">${g.title}</div>
+      <div class="gpt-sum">${g.summary}</div>
+      ${(g.drivers || []).length ? `<ul class="gpt-drivers">${g.drivers.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
+    </div>`);
+}
+
+function marketAnglesHtml(angles) {
+  if (!angles || !angles.length) return panel('Ángulos de mercado', '', du('No hay ángulos disponibles para este evento.'));
+  const rows = angles.map(a => `
+    <div class="angle">
+      <div class="angle-top"><span class="grade sm ${gpGradeCls(a.grade)}">${gpLabelTxt(a.grade)}</span><span class="angle-mkt">${a.market}</span>
+        ${a.edge ? `<span class="angle-edge">+${pctD(a.edge, 1)}</span>` : ''}</div>
+      <div class="angle-pick">${a.pick}</div>
+      <div class="angle-line">Modelo <b class="blue">${pctD(a.modelProb, 0)}</b>${a.marketPrice != null ? ` · Mercado <b>${cents(a.marketPrice)}</b>` : ''}${a.venue ? ` · ${a.venue}` : ''}</div>
+      <div class="angle-note">${a.note}</div>
+    </div>`).join('');
+  return panel('Ángulos de mercado', angles.length + '', rows);
+}
+
+function liveEventsHtml(d) {
+  if (d.status === 'scheduled') return panel('Eventos', '', du('Los eventos aparecerán cuando comience el partido.'));
+  let body = '';
+  const ev = d.events || [];
+  if (ev.length) {
+    const icon = t => t === 'goal' ? '⚽' : t === 'yellow' ? '🟨' : t === 'red' ? '🟥' : t === 'subst' ? '↔' : t === 'var' ? 'VAR' : '•';
+    body += '<div class="timeline">' + ev.sort((a, b) => (a.minute || 0) - (b.minute || 0)).map(e => `
+      <div class="tl-row ${e.side || ''}">
+        <span class="tl-min">${e.minute != null ? e.minute + "'" : ''}</span>
+        <span class="tl-ic">${icon(e.type)}</span>
+        <span class="tl-txt">${e.player || ''}${e.assist ? ` <span class="muted">(asist. ${e.assist})</span>` : ''}${e.detail && e.type === 'other' ? ' ' + e.detail : ''}</span>
+      </div>`).join('') + '</div>';
+  } else body += du('Sin eventos cargados todavía.');
+  // stats
+  const st = d.statistics;
+  if (st && (st.home || st.away)) {
+    const keys = [['possession', 'Posesión'], ['shots', 'Tiros'], ['shotsOnTarget', 'Al arco'], ['corners', 'Córners'], ['fouls', 'Faltas'], ['offsides', 'Fueras de juego'], ['yellowCards', 'Amarillas'], ['redCards', 'Rojas'], ['xg', 'xG']];
+    const rows = keys.filter(([k]) => (st.home && st.home[k] != null) || (st.away && st.away[k] != null)).map(([k, lbl]) =>
+      `<div class="stat-row"><span class="st-h">${st.home && st.home[k] != null ? st.home[k] : '—'}</span><span class="st-l">${lbl}</span><span class="st-a">${st.away && st.away[k] != null ? st.away[k] : '—'}</span></div>`).join('');
+    if (rows) body += `<div class="stats-head"><span>${d.homeTeam.flag}</span><span class="muted">Estadísticas</span><span>${d.awayTeam.flag}</span></div>` + rows;
+  } else if (d.status === 'live') body += du('Stats disponibles cuando avance el partido.');
+  return panel('Eventos y estadísticas', d.status === 'live' ? 'EN VIVO' : 'FINAL', body);
+}
+
+function lineupTeamHtml(side, l, team) {
+  if (!l) return `<div class="lu-col"><div class="lu-team">${team.flag} ${team.name}</div>${du('Las alineaciones suelen confirmarse 30-60 min antes.')}</div>`;
+  const tag = l.confirmed ? '<span class="lu-tag ok">CONFIRMADA</span>' : '<span class="lu-tag">PROBABLE</span>';
+  const players = (l.startXI || []).map(p => `<div class="lu-p"><span class="lu-n">${p.number != null ? p.number : '·'}</span><span class="lu-name">${p.name}</span><span class="lu-pos">${p.position || ''}</span></div>`).join('');
+  return `<div class="lu-col">
+    <div class="lu-team">${team.flag} ${team.name} ${tag}</div>
+    <div class="lu-form">${l.formation ? 'Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>
+    ${players || du('XI pendiente.')}
+  </div>`;
+}
+function lineupsHtml(d) {
+  const lu = d.lineups || {};
+  if (!lu.home && !lu.away) return panel('Alineaciones', '', du('Las alineaciones suelen confirmarse 30-60 minutos antes del partido.'));
+  return panel('Alineaciones', '', `<div class="lu-grid">${lineupTeamHtml('home', lu.home, d.homeTeam)}${lineupTeamHtml('away', lu.away, d.awayTeam)}</div>`);
+}
+
+function formMiniHtml(f, team) {
+  if (!f) return `<div class="form-col"><div class="form-team">${team.flag} ${team.name}</div>${du('Forma pendiente de actualización.')}</div>`;
+  return `<div class="form-col">
+    <div class="form-team">${team.flag} ${team.name}</div>
+    <div class="form-chips">${formChips(f.results)}</div>
+    <div class="form-stats">
+      <span>GF <b>${f.goalsFor}</b></span><span>GC <b>${f.goalsAgainst}</b></span>
+      <span>Vallas <b>${f.cleanSheets}</b></span><span>Racha <b>${f.streak || '—'}</b></span>
+    </div></div>`;
+}
+function matchFormHtml(rf, th, ta) {
+  rf = rf || {};
+  if (!rf.home && !rf.away) return panel('Forma reciente', '', du('Forma reciente pendiente de actualización.'));
+  return panel('Forma reciente', 'últimos 5', `<div class="form-grid">${formMiniHtml(rf.home, th)}${formMiniHtml(rf.away, ta)}</div>`);
+}
+
+function matchMarketsHtml(d, mp) {
+  let body = '';
+  if (mp) body += `<div class="mk-row"><span class="mk-l blue">Modelo 1X2</span><span class="mk-v">${pctD(mp.homeWin, 1)} · ${pctD(mp.draw, 1)} · ${pctD(mp.awayWin, 1)}</span></div>`;
+  const pm = d.marketPrices || [];
+  if (pm.length) {
+    pm.forEach(o => { body += `<div class="mk-row"><span class="mk-l">${venueChip(o.venue)} ${o.side}</span><span class="mk-v">${cents(o.price)}${o.url ? ` <a class="mlink" href="${o.url}" target="_blank" rel="noopener">↗</a>` : ''}</span></div>`; });
+  } else body += du('No hay mercado de predicción activo para este evento.');
+  if (d.odds && d.odds.length) {
+    const o = d.odds[0];
+    body += `<div class="mk-row"><span class="mk-l">Cuotas (${o.book})</span><span class="mk-v">${o.home || '—'} · ${o.draw || '—'} · ${o.away || '—'}</span></div>`;
+  }
+  if (d.eventUrl) body += `<div class="formrow" style="margin-top:10px"><a class="venue-btn v-poly" href="${d.eventUrl}" target="_blank" rel="noopener">Abrir mercado en Polymarket ↗</a></div>`;
+  return panel('Modelo · Mercado · Cuotas', '', body);
+}
+
+function matchNewsHtml(d) {
+  const inj = d.injuries || [], news = d.news || [];
+  if (!inj.length && !news.length) return panel('Lesiones y noticias', '', du('No hay lesiones o noticias relevantes cargadas.'));
+  let body = '';
+  if (inj.length) body += '<div class="inj-list">' + inj.map(i => `<div class="inj-row">${injuryBadge(i.status)}<span class="inj-p">${i.player}</span><span class="muted">${i.team || ''} ${i.reason ? '· ' + i.reason : ''}</span></div>`).join('') + '</div>';
+  if (news.length) body += '<div class="news-list">' + news.map(n => `<a class="news-row" ${n.url ? `href="${n.url}" target="_blank" rel="noopener"` : ''}><div class="news-t">${n.title}</div><div class="news-m muted">${n.source}${n.published ? ' · ' + dShort(n.published) : ''}</div></a>`).join('') + '</div>';
+  return panel('Lesiones y noticias', '', body);
+}
+
+function providerStatusHtml(ps) {
+  if (!ps) return '';
+  const parts = [];
+  parts.push(ps.usedApiFootball ? 'API-Football ✓' : (ps.apiFootball === 'sin key' ? 'API-Football (sin key)' : 'API-Football —'));
+  if (ps.usedEspnFallback) parts.push('ESPN fallback');
+  if (ps.usedManualFallback) parts.push('manual');
+  return `<div class="provstat">Fuentes: ${parts.join(' · ')} · act. ${dLong(ps.lastUpdated)}</div>`;
+}
+
+// =================== PÁGINA DE EQUIPO ===================
+async function openTeamPage(id) {
+  if (!USER) { openLogin(); return; }
+  const c = currentTab(); if (c !== 'match' && c !== 'team') detailReturnTab = c;
+  teamTab = 'resumen';
+  openDetailTab('team');
+  $('#tab-team').innerHTML = detailHead('Equipo') + '<div class="muted" style="padding:34px 0;text-align:center">Cargando equipo…</div>';
+  try {
+    const r = await fetch('/api/teamdetail/' + id, { headers: hdrs() });
+    if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
+    CUR_TEAM = await r.json();
+    renderTeamDetail(CUR_TEAM);
+  } catch { $('#tab-team').innerHTML = detailHead('Equipo') + du('No se pudo cargar el equipo. Intenta de nuevo.'); }
+}
+// compat: tarjetas existentes (Equipos, Grupos, Evolución, tablas) siguen llamando openTeam()
+function openTeam(id) { return openTeamPage(id); }
+
+function renderTeamDetail(d) {
+  const followed = (USER.favorites || []).includes(d.id);
+  const deltaTxt = d.eloDelta ? ` <span class="${d.eloDelta > 0 ? 'delta-up' : 'delta-down'}">${d.eloDelta > 0 ? '+' : ''}${d.eloDelta}</span>` : '';
+  const nm = d.nextMatch;
+  let hero = detailHead('Equipo');
+  hero += `<div class="th">
+    <span class="th-flag">${d.flag}</span>
+    <div class="th-main">
+      <div class="th-name">${d.name}</div>
+      <div class="th-meta">Grupo ${d.group} · Elo ${d.elo}${deltaTxt} · Rank #${d.rank}${d.host ? ' · LOCAL' : ''}</div>
+      <div class="th-champ">${pctD(d.championProbability, 1)} <span>campeón</span></div>
     </div>
-    <div class="statrow">
-      <div class="bigstat"><div class="lbl">Mejor caso · Probabilidad de campeonato</div>
-        <div class="val pgood">${pct(s.champion)}</div>
-        <div class="muted" style="font-size:10px">IC 95% ${pct(s.ciLow)}–${pct(s.ciHigh)}</div></div>
-      <div class="bigstat"><div class="lbl">Peor caso · Eliminado en grupos</div>
-        <div class="val ${s.outInGroups > .3 ? 'pbad' : ''}">${pct(s.outInGroups)}</div>
-        <div class="muted" style="font-size:10px">gana su grupo el ${pct(s.groupWin)}</div></div>
-    </div>
-    <div class="muted" style="font-size:10px;letter-spacing:1px">EXPLORA SIMULACIONES · ${s.sims.toLocaleString()} TORNEOS</div>
-    <div class="roundchips">
-      <div class="chip"><b>${c.champion}</b>CAMPEÓN ${pct(s.champion)}</div>
-      <div class="chip"><b>${c.final - c.champion}</b>SUBCAMPEÓN</div>
-      <div class="chip"><b>${c.third}</b>3ER PUESTO</div>
-      <div class="chip"><b>${c.fourth}</b>4º PUESTO</div>
-      <div class="chip"><b>${c.qf - c.sf}</b>CUARTOS</div>
-      <div class="chip"><b>${c.r16 - c.qf}</b>OCTAVOS</div>
-      <div class="chip"><b>${c.r32 - c.r16}</b>16AVOS</div>
-      <div class="chip"><b>${c.groupOut}</b>FUERA EN GRUPOS ${pct(s.outInGroups)}</div>
-    </div>
-    <div class="explain">${d.explanation}</div>
-    ${s.samples.length ? `<div class="muted" style="font-size:10px;letter-spacing:1px;margin-top:14px">CAMPEÓN: ${c.champion} SIMULACIONES · ${s.samples.length} EJEMPLOS MUESTREADOS</div>
-    ${s.samples.map((run, i) => `<div class="simrun">#${i + 1} ${run.map(m => {
+    <button class="${followed ? 'btn-ghost on' : 'btn'}" onclick="toggleFavFromTeam('${d.id}')">${followed ? '★ Siguiendo' : '☆ Seguir'}</button>
+  </div>`;
+  if (nm) hero += `<div class="th-next" onclick="openMatchPage('${nm.id}')">Próximo · ${nm.home ? 'vs' : '@'} ${nm.opponent.flag} ${nm.opponent.name} · ${dLong(nm.datetime)} →</div>`;
+
+  const tabs = [['resumen', 'Resumen'], ['plantilla', 'Plantilla'], ['forma', 'Forma'], ['resultados', 'Resultados'], ['mercados', 'Mercados'], ['noticias', 'Noticias']];
+  const tabbar = `<div class="dtabs" id="teamTabs">${tabs.map(([k, l]) => `<button class="dtab ${k === teamTab ? 'on' : ''}" data-t="${k}" onclick="switchTeamTab('${k}')">${l}</button>`).join('')}</div>`;
+  $('#tab-team').innerHTML = hero + tabbar + '<div id="teamPanel"></div>';
+  switchTeamTab(teamTab);
+}
+function switchTeamTab(name) {
+  teamTab = name;
+  document.querySelectorAll('#teamTabs .dtab').forEach(b => b.classList.toggle('on', b.dataset.t === name));
+  $('#teamPanel').innerHTML = teamPanelHtml(CUR_TEAM, name);
+}
+async function toggleFavFromTeam(id) {
+  await toggleFav(id);
+  if (CUR_TEAM && CUR_TEAM.id === id) renderTeamDetail(CUR_TEAM);
+}
+
+function teamPanelHtml(d, tab) {
+  if (!d) return du('Sin datos.');
+  if (tab === 'resumen') return teamResumenHtml(d);
+  if (tab === 'plantilla') return teamSquadHtml(d);
+  if (tab === 'forma') return teamFormHtml(d);
+  if (tab === 'resultados') return teamResultsHtml(d);
+  if (tab === 'mercados') return teamMarketsHtml(d);
+  if (tab === 'noticias') return teamNewsHtml(d);
+  return '';
+}
+
+function teamResumenHtml(d) {
+  const probs = [['championProbability', 'Campeón'], ['finalProbability', 'Final'], ['semifinalsProbability', 'Semis'], ['quarterfinalsProbability', 'Cuartos'], ['advanceProbability', 'Avanzar'], ['groupWinProbability', 'Gana grupo'], ['outInGroupsProbability', 'Elim. grupos']];
+  let body = '<div class="prob-grid">' + probs.map(([k, l]) =>
+    `<div class="prob-cell"><div class="prob-l">${l}</div><div class="prob-v ${k === 'outInGroupsProbability' && d[k] > .3 ? 'pbad' : ''}">${pctD(d[k], 1)}</div></div>`).join('') + '</div>';
+  body += `<div class="modelread"><div class="mr-h">MODEL READ</div><div class="mr-b">${d.modelRead}</div>`;
+  if (d.keyDrivers && d.keyDrivers.length) body += `<ul class="mr-drivers">${d.keyDrivers.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  body += `</div>`;
+  if (d.likelyOpponents && d.likelyOpponents.length) {
+    body += `<div class="dsub">Cruces más probables en 16avos</div><div class="opp-list">` +
+      d.likelyOpponents.map(o => `<button class="opp" onclick="openTeamPage('${o.id}')">${o.flag} ${o.name} <span class="muted">${pctD(o.pct, 0)}</span></button>`).join('') + '</div>';
+  }
+  let out = panel('Resumen del modelo', `${(d.sims || 0).toLocaleString()} torneos`, body);
+  // caminos simulados (conserva la riqueza del modal anterior)
+  if (d.samples && d.samples.length) {
+    const runs = d.samples.slice(0, 6).map((run, i) => `<div class="simrun">#${i + 1} ${run.map(m => {
       const o = teamOf(m.vs);
       return `<span title="${STAGES_ES[m.stage] || m.stage}">${o ? o.flag : ''} ${m.score}${m.pen ? ' (pen)' : ''}</span>`;
-    }).join(' · ')}</div>`).join('')}` : '<div class="muted">Sin títulos en las simulaciones muestreadas.</div>'}
-  `);
+    }).join(' · ')}</div>`).join('');
+    out += panel('Caminos simulados al título', d.counts ? d.counts.champion + ' títulos' : '', runs);
+  }
+  if (d.explanation) out += panel('Lectura completa', '', `<div class="explain">${d.explanation}</div>`);
+  return out;
+}
+
+function teamSquadHtml(d) {
+  let body = '';
+  if (d.keyPlayers && d.keyPlayers.length) {
+    body += '<div class="dsub">Jugadores clave</div><div class="sq-list">' + d.keyPlayers.map(playerRow).join('') + '</div>';
+  }
+  if (d.squad && d.squad.length) {
+    body += '<div class="dsub">Plantilla</div><div class="sq-list">' + d.squad.map(playerRow).join('') + '</div>';
+  } else if (!d.keyPlayers || !d.keyPlayers.length) {
+    body += du('Plantilla pendiente de actualización.');
+  } else {
+    body += du('Plantilla completa pendiente de actualización.');
+  }
+  let out = panel('Plantilla', d.squad && d.squad.length ? d.squad.length + ' jug.' : '', body);
+  if (d.projectedLineup) out += projectedLineupHtml(d.projectedLineup, d);
+  return out;
+}
+function playerRow(p) {
+  return `<div class="sq-p"><span class="sq-n">${p.number != null ? p.number : '·'}</span>
+    <span class="sq-name">${p.name}</span>
+    <span class="sq-pos">${p.position || ''}${p.club ? ' · ' + p.club : ''}${p.age ? ' · ' + p.age + 'a' : ''}</span>
+    ${p.status && p.status !== 'available' ? pStatusBadge(p.status) : ''}
+    ${p.note ? `<span class="sq-note muted">${p.note}</span>` : ''}</div>`;
+}
+function projectedLineupHtml(l, d) {
+  const tag = l.confirmed ? '<span class="lu-tag ok">CONFIRMADA</span>' : '<span class="lu-tag">PROBABLE</span>';
+  const players = (l.startXI || []).map(p => `<div class="lu-p"><span class="lu-n">${p.number != null ? p.number : '·'}</span><span class="lu-name">${p.name}</span><span class="lu-pos">${p.position || ''}</span></div>`).join('');
+  const body = `<div class="lu-form">${tag}${l.formation ? ' · Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>${players || du('XI probable pendiente.')}`;
+  return panel('Alineación probable', '', body);
+}
+
+function teamFormHtml(d) {
+  const f = d.recentForm;
+  if (!f) return panel('Forma reciente', '', du('Forma reciente pendiente de actualización.'));
+  let body = `<div class="form-chips big">${formChips(f.results)}</div>
+    <div class="form-stats wide">
+      <span>Pts <b>${f.points}</b></span><span>PJ <b>${f.played}</b></span>
+      <span>GF <b>${f.goalsFor}</b></span><span>GC <b>${f.goalsAgainst}</b></span>
+      <span>Vallas <b>${f.cleanSheets}</b></span>
+      <span>Prom. GF <b>${f.avgFor}</b></span><span>Prom. GC <b>${f.avgAgainst}</b></span>
+    </div>`;
+  if (f.last && f.last.length) body += '<div class="dsub">Últimos partidos</div>' + f.last.map(m =>
+    `<div class="res-row"><span class="fchip f-${(m.result || '').toLowerCase()}">${m.result}</span><span class="res-opp">${m.home ? 'vs' : '@'} ${m.opponent || '—'}</span><span class="res-sc">${m.score}</span><span class="muted">${dShort(m.date)}</span></div>`).join('');
+  return panel('Forma reciente', '', body);
+}
+
+function teamResultsHtml(d) {
+  let body = '';
+  if (d.nextMatch) body += `<div class="dsub">Próximo partido</div><div class="res-row clk" onclick="openMatchPage('${d.nextMatch.id}')"><span class="res-opp">${d.nextMatch.home ? 'vs' : '@'} ${d.nextMatch.opponent.flag} ${d.nextMatch.opponent.name}</span><span class="muted">${dLong(d.nextMatch.datetime)} →</span></div>`;
+  const res = d.results || [];
+  if (res.length) {
+    body += '<div class="dsub">En el Mundial</div>' + res.map(r => {
+      const clk = /^G|^[0-9]/.test(r.id) ? `onclick="openMatchPage('${r.id}')"` : '';
+      return `<div class="res-row clk" ${clk}><span class="fchip f-${(r.result || '').toLowerCase()}">${r.result || ''}</span><span class="res-opp">${r.opponent ? (r.opponent.flag + ' ' + r.opponent.name) : '—'}</span><span class="res-sc">${r.score || ''}</span><span class="muted">${r.stageLabel || ''}</span></div>`;
+    }).join('');
+  } else if (!d.nextMatch) body += du('Aún no hay partidos jugados.');
+  return panel('Resultados', '', body);
+}
+
+function teamMarketsHtml(d) {
+  const mp = d.marketPrices || [];
+  if (!mp.length) return panel('Mercados', '', du('No hay mercado activo para este equipo ahora mismo.'));
+  let body = `<div class="mk-row"><span class="mk-l blue">Modelo · campeón</span><span class="mk-v">${pctD(d.championProbability, 1)}</span></div>`;
+  mp.forEach(o => {
+    const extra = o.venue === 'Polymarket' ? `Liq ${fmtUsd(o.liquidity)}` : `OI ${fmtUsd(o.openInterest)}`;
+    body += `<a class="mk-card" ${o.url ? `href="${o.url}" target="_blank" rel="noopener"` : ''}>
+      <div class="mkc-top">${venueChip(o.venue)}${chgBadge(o.change24h)}<span class="ext">↗</span></div>
+      <div class="mkc-grid"><div><div class="mkt-lbl">Precio</div><div class="mkt-big">${cents(o.price)}</div></div>
+        <div><div class="mkt-lbl">Modelo</div><div class="mkt-big model">${pctD(d.championProbability, 1)}</div></div>
+        <div><div class="mkt-lbl">Edge</div><div class="mkt-big edge">${o.edge > 0 ? '+' + pctD(o.edge, 1) : pctD(o.edge, 1)}</div></div></div>
+      <div class="mkc-foot muted">Vol ${fmtUsd(o.volume)} · ${extra}</div></a>`;
+  });
+  return panel('Mercados del equipo', '', body);
+}
+
+function teamNewsHtml(d) {
+  const inj = d.injuries || [], side = d.sidelined || [], news = d.news || [];
+  if (!inj.length && !side.length && !news.length) return panel('Noticias y lesiones', '', du('No hay noticias recientes para este equipo.'));
+  let body = '';
+  if (inj.length || side.length) body += '<div class="dsub">Lesiones y bajas</div><div class="inj-list">' +
+    inj.concat(side).map(i => `<div class="inj-row">${injuryBadge(i.status)}<span class="inj-p">${i.player}</span><span class="muted">${i.reason || ''}</span></div>`).join('') + '</div>';
+  if (news.length) body += '<div class="dsub">Noticias</div><div class="news-list">' +
+    news.map(n => `<a class="news-row" ${n.url ? `href="${n.url}" target="_blank" rel="noopener"` : ''}><div class="news-t">${n.title}</div><div class="news-m muted">${n.source}${n.published ? ' · ' + dShort(n.published) : ''}</div></a>`).join('') + '</div>';
+  return panel('Noticias y lesiones', '', body);
 }
 
 async function toggleFav(id) {
@@ -495,7 +850,7 @@ function fmtKickoff(f) {
   });
 }
 
-function matchCard(f, homeId, awayId) {
+function matchCard(f, homeId, awayId, matchId) {
   const r = f.result;
   const score = r ? `${r.hg} - ${r.ag}` : 'vs';
   const pens = r && r.pensHome != null && r.hg === r.ag && r.status === 'final'
@@ -503,7 +858,7 @@ function matchCard(f, homeId, awayId) {
   const status = r ? (r.status === 'live' ? `<div class="live">● EN VIVO ${r.minute}'</div>` : '<div class="muted" style="font-size:9px">FINAL</div>')
     : `<div class="muted" style="font-size:9px">${fmtKickoff(f)}</div>`;
   const probs = f.probs;
-  return `<div class="mcard">
+  return `<div class="mcard${matchId ? ' clk' : ''}"${matchId ? ` onclick="openMatchPage('${matchId}')"` : ''}>
     <div class="side">${tlabel(homeId)}</div>
     <div class="score">${score}${pens}${status}</div>
     <div class="side away">${tlabel(awayId)}</div>
@@ -528,7 +883,7 @@ function renderMatches() {
     html += `<div class="mday">JORNADA ${md} · FASE DE GRUPOS</div>`;
     html += STATE.fixtures.filter(f => f.matchday === md)
       .sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''))
-      .map(f => matchCard(f, f.home, f.away)).join('');
+      .map(f => matchCard(f, f.home, f.away, f.id)).join('');
   }
   const stages = [['R32', '16AVOS DE FINAL'], ['R16', 'OCTAVOS'], ['QF', 'CUARTOS'], ['SF', 'SEMIFINALES'], ['3RD', 'TERCER PUESTO'], ['FINAL', 'FINAL']];
   for (const [st, name] of stages) {
@@ -537,8 +892,8 @@ function renderMatches() {
     html += ms.sort((a, b) => (a.datetime || a.date).localeCompare(b.datetime || b.date)).map(k => {
       const h = (k.result && k.result.home) || k.resolved.home;
       const a = (k.result && k.result.away) || k.resolved.away;
-      if (h && a) return matchCard(k, h, a);
-      return `<div class="mcard"><div class="side muted">${slotDesc(k.home)}</div>
+      if (h && a) return matchCard(k, h, a, String(k.m));
+      return `<div class="mcard clk" onclick="openMatchPage('${k.m}')"><div class="side muted">${slotDesc(k.home)}</div>
         <div class="score"><span class="muted" style="font-size:11px">P${k.m}</span><div class="muted" style="font-size:9px">${fmtKickoff(k)}</div></div>
         <div class="side away muted">${slotDesc(k.away)}</div></div>`;
     }).join('');
@@ -570,7 +925,7 @@ function renderBracket() {
           const homeWon = r.hg > r.ag || (r.hg === r.ag && r.pensHome);
           hw = homeWon ? 'winner' : ''; aw = homeWon ? '' : 'winner';
         }
-        return `<div class="bmatch"><div class="num">P${k.m} · ${k.date}</div>
+        return `<div class="bmatch clk" onclick="openMatchPage('${k.m}')"><div class="num">P${k.m} · ${k.date}</div>
           <div class="${hw}">${h} ${r ? r.hg : ''}</div>
           <div class="${aw}">${a} ${r ? r.ag : ''}</div></div>`;
       }).join('') + '</div>').join('') + '</div>';
@@ -813,6 +1168,7 @@ async function loadArb(force = false) {
         ${row('home', th.name, th.flag)}
         ${row('draw', 'Empate')}
         ${row('away', ta.name, ta.flag)}
+        <button class="btn-ghost ver-mas" onclick="openMatchPage('${m.fixtureId}')">Ver análisis del partido →</button>
       </div>`;
     }).join('') + '</div>';
   }

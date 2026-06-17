@@ -4,7 +4,8 @@
   "description": "Simulador Monte Carlo del Mundial 2026 con probabilidades en tiempo real y arbitraje Polymarket/Kalshi",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:local": "node --env-file=.env server.js"
   },
   "engines": { "node": ">=18" }
 }

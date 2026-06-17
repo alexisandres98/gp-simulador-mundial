@@ -1,0 +1,27 @@
+{
+  "ESP": {
+    "modelRead": "España es de las más fuertes del modelo por su Elo y profundidad de plantel; el control de balón le da pisos altos en grupos.",
+    "keyDrivers": ["Alta probabilidad de avanzar", "Plantilla profunda", "Riesgo principal en cruces contra favoritos"],
+    "updatedAt": "2026-06-17"
+  },
+  "BRA": {
+    "modelRead": "Brasil mantiene un Elo top y un grupo accesible; el modelo lo ve como candidato claro a cuartos o más.",
+    "keyDrivers": ["Favorito de su grupo", "Pegada en ataque", "Depende de su solidez defensiva en cruces"],
+    "updatedAt": "2026-06-17"
+  },
+  "ARG": {
+    "modelRead": "Argentina, campeona vigente, sigue entre los Elo más altos. El modelo premia su consistencia en fases finales.",
+    "keyDrivers": ["Elo top-3", "Experiencia en cruces", "Riesgo de desgaste físico"],
+    "updatedAt": "2026-06-17"
+  },
+  "FRA": {
+    "modelRead": "Francia combina Elo alto y talento ofensivo; el modelo la ve sólida para llegar lejos pese a un grupo competitivo.",
+    "keyDrivers": ["Profundidad ofensiva", "Favorita de grupo", "Margen estrecho ante rivales directos"],
+    "updatedAt": "2026-06-17"
+  },
+  "ENG": {
+    "modelRead": "Inglaterra parte con Elo alto y un cuadro favorable; el modelo le da buena probabilidad de avanzar como primera.",
+    "keyDrivers": ["Plantel amplio", "Grupo accesible", "Históricamente irregular en cruces"],
+    "updatedAt": "2026-06-17"
+  }
+}

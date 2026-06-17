@@ -7,7 +7,7 @@ Checkpoint tras Fase 5 del rediseño. Lo que falta, en orden.
 - ✅ **Fase 2** Home Oportunidades terminal (mejor oportunidad, arbitraje, valor, GP Take, favoritos).
 - ✅ **Fase 3** Alertas (pantalla dedicada) + Seguidos rediseñado.
 - ✅ **Fase 5** Grupos (heatmap), Bracket (escalonado), Aciertos (analítico+Brier), Evolución (chart dark+tabla).
-- ⏳ **Fase 4 — PENDIENTE** Página de partido y de equipo profesionales.
+- ✅ **Fase 4** Páginas profundas de PARTIDO y EQUIPO + capa de datos modular (API-Football principal → ESPN → manual, providers+cache+normalizer server-side en `data-providers/`). Endpoints `/api/match/:id` y `/api/teamdetail/:id` (data normalizada). Navegación desde Partidos/Equipos/Grupos/Bracket/Seguidos/Oportunidades. GP Take determinístico, ángulos de mercado, alineaciones, forma, eventos/stats, lesiones, noticias, mercados, con fallbacks elegantes. **Falta por completar (no bloqueante):** poner `API_FOOTBALL_KEY` en Render para activar la fuente principal; llenar `data/manual/*.json` (jugadores clave, XI, lesiones, notas) para más equipos. Pendiente real: **GLOBAL TERMINAL POLISH PASS** (rediseño visual final de estas vistas).
 
 ## PRÓXIMO GRANDE: Fase 4 + Datos de equipo (la construcción que falta de la lista original del usuario)
 La Fase 4 depende de construir primero la **feature de datos de equipo** (no existe aún):

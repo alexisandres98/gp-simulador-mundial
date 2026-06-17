@@ -6,6 +6,10 @@ const crypto = require('crypto');
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
 const { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');
+// Fase 4: capa de datos contextuales (API-Football principal → ESPN → manual). La UI nunca
+// llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
+const providers = require('./data-providers');
+const { generateGPTake } = require('./data-providers/gpTake');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -661,6 +665,223 @@ function buildState() {
   };
 }
 
+// ---------- Fase 4: detalle profundo de PARTIDO y EQUIPO ----------
+// Reutiliza el modelo y los mercados existentes (no los modifica) y los fusiona con la
+// data contextual de la capa de providers. Devuelve objetos Normalized* listos para la UI.
+const STAGE_LABEL = { R32: '16avos', R16: 'Octavos', QF: 'Cuartos', SF: 'Semifinal', '3RD': '3er puesto', FINAL: 'Final', group: 'Grupos' };
+
+function findFixtureMeta(id) {
+  if (/^G/.test(id)) {
+    const f = GROUP_FIXTURES.find(x => x.id === id);
+    if (!f) return null;
+    return { id, kind: 'group', home: f.home, away: f.away, datetime: f.datetime, group: f.group, espnId: f.espnId, stage: 'group' };
+  }
+  const k = KNOCKOUT.find(x => String(x.m) === String(id));
+  if (!k) return null;
+  const bracket = resolveRealBracket();
+  const r = db.results[String(k.m)];
+  const home = (r && r.home) || (bracket[k.m] && bracket[k.m].home) || null;
+  const away = (r && r.away) || (bracket[k.m] && bracket[k.m].away) || null;
+  return { id: String(id), kind: 'ko', m: k.m, home, away, datetime: k.datetime || (k.date + 'T18:00Z'), group: null, espnId: null, stage: k.stage };
+}
+
+function modelProbsFor(home, away, result) {
+  if (!home || !away) return null;
+  return (result && result.status === 'live')
+    ? liveMatchProbs(effElo(db.elos, home), effElo(db.elos, away), result.hg, result.ag, result.minute)
+    : matchProbs(effElo(db.elos, home), effElo(db.elos, away));
+}
+
+// Mercados de goles aproximados desde las tasas Poisson (para "ángulos" sin mercado externo)
+function goalsAngles(lh, la) {
+  const pmf = (l, k) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
+  const tot = lh + la;
+  const over25 = 1 - (pmf(tot, 0) + pmf(tot, 1) + pmf(tot, 2));
+  const btts = (1 - Math.exp(-lh)) * (1 - Math.exp(-la));
+  return { over25: Math.max(0, Math.min(1, over25)), btts: Math.max(0, Math.min(1, btts)) };
+}
+function gradeLabel(edge) {
+  if (edge >= 0.10) return 'STRONG';
+  if (edge >= 0.04) return 'LEAN';
+  if (edge >= 0.02) return 'WATCH';
+  return 'PASS';
+}
+const basicTeam = id => { const t = id && teamById[id]; return t ? { id: t.id, name: t.name, flag: t.flag, group: t.group } : { id: null, name: 'Por definir', flag: '', group: null }; };
+
+async function buildMatchDetail(id) {
+  const meta = findFixtureMeta(id);
+  if (!meta) return null;
+  await fetchMatchMarkets(false).catch(() => { });
+  const result = db.results[meta.id] || null;
+  const status = result && result.status === 'live' ? 'live' : result && result.status === 'final' ? 'final' : 'scheduled';
+  const th = meta.home && teamById[meta.home], ta = meta.away && teamById[meta.away];
+  const probs = modelProbsFor(meta.home, meta.away, result);
+  const mkt = (matchMktCache.matches || []).find(m => m.fixtureId === meta.id) || null;
+  const outcomes = mkt ? mkt.outcomes : null;
+  const names = { home: th ? th.name : 'Local', away: ta ? ta.name : 'Visitante', draw: 'el empate' };
+
+  const marketPrices = [];
+  if (outcomes) for (const side of ['home', 'draw', 'away']) {
+    const o = outcomes[side]; if (!o) continue;
+    marketPrices.push({ venue: 'Polymarket', side, price: o.price, bid: o.bid, ask: o.ask, volume: o.volume, url: o.url });
+  }
+
+  // GP Take determinístico
+  let gpTake = null;
+  if (probs) {
+    const liq = outcomes ? ['home', 'draw', 'away'].reduce((s, k) => s + (outcomes[k] ? outcomes[k].volume || 0 : 0), 0) : 0;
+    gpTake = generateGPTake({ home: probs.home, draw: probs.draw, away: probs.away }, outcomes, names, { liquidityUsd: liq });
+  }
+
+  // Ángulos de mercado
+  const marketAngles = [];
+  if (probs) {
+    if (outcomes && mkt) {
+      const top = ['home', 'draw', 'away'].reduce((a, b) => probs[a] >= probs[b] ? a : b);
+      const e = (mkt.edges || []).slice().sort((x, y) => y.edge - x.edge)[0];
+      const pickSide = e ? e.side : top;
+      marketAngles.push({
+        market: 'Resultado (1X2)', pick: names[pickSide] + (e ? ` · ${e.type}` : ''),
+        modelProb: probs[pickSide], marketPrice: outcomes[pickSide] ? outcomes[pickSide].price : null,
+        edge: e ? e.edge : 0, grade: gradeLabel(e ? e.edge : 0), venue: 'Polymarket',
+        note: e ? 'El modelo difiere del precio del mercado.' : 'Modelo y mercado prácticamente alineados.',
+      });
+    }
+    const gm = goalsAngles(probs.xgHome, probs.xgAway);
+    marketAngles.push({ market: 'Más de 2.5 goles', pick: 'Over 2.5', modelProb: gm.over25, marketPrice: null, edge: 0, grade: 'WATCH', venue: null, note: 'Estimación del modelo por ritmo de goles proyectado. Sin mercado comparable cargado.' });
+    marketAngles.push({ market: 'Ambos anotan', pick: 'BTTS Sí', modelProb: gm.btts, marketPrice: null, edge: 0, grade: 'WATCH', venue: null, note: 'Estimación del modelo. Sin mercado comparable cargado.' });
+  }
+
+  // Contexto externo (lineups, eventos, stats, forma, lesiones, noticias, odds)
+  const ctx = await providers.getMatchContext({
+    homeCode: meta.home, awayCode: meta.away,
+    homeName: th ? th.en : '', awayName: ta ? ta.en : '',
+    isoDate: meta.datetime, espnId: meta.espnId,
+    isLive: status === 'live', isFinal: status === 'final',
+  }).catch(() => null);
+
+  return {
+    id: meta.id, date: meta.datetime, status,
+    minute: result ? result.minute : undefined,
+    group: meta.group, stage: meta.stage, stageLabel: STAGE_LABEL[meta.stage] || null,
+    homeTeam: basicTeam(meta.home), awayTeam: basicTeam(meta.away),
+    score: result ? { home: result.hg, away: result.ag } : undefined,
+    modelProbabilities: probs ? {
+      homeWin: probs.home, draw: probs.draw, awayWin: probs.away,
+      xgHome: probs.xgHome, xgAway: probs.xgAway, likelyScore: probs.likelyScore, live: !!probs.live,
+    } : undefined,
+    marketPrices, eventUrl: mkt ? mkt.eventUrl : null,
+    odds: ctx ? ctx.odds : [],
+    events: ctx ? ctx.events : [],
+    statistics: ctx ? ctx.statistics : null,
+    lineups: ctx ? ctx.lineups : { home: null, away: null },
+    injuries: ctx ? ctx.injuries : [],
+    recentForm: ctx ? ctx.recentForm : { home: null, away: null },
+    gpTake, marketAngles,
+    news: ctx ? ctx.news : [],
+    providerStatus: ctx ? ctx.providerStatus : null,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function nextMatchForTeam(code) {
+  const bracket = resolveRealBracket();
+  const cands = [];
+  GROUP_FIXTURES.forEach(f => {
+    if (f.home === code || f.away === code) {
+      const r = db.results[f.id];
+      if (!r || r.status !== 'final') cands.push({ id: f.id, datetime: f.datetime, home: f.home, away: f.away });
+    }
+  });
+  KNOCKOUT.forEach(k => {
+    const res = bracket[k.m];
+    if (res && (res.home === code || res.away === code)) {
+      const r = db.results[String(k.m)];
+      if (!r || r.status !== 'final') cands.push({ id: String(k.m), datetime: k.datetime || (k.date + 'T18:00Z'), home: res.home, away: res.away });
+    }
+  });
+  cands.sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''));
+  return cands[0] || null;
+}
+
+function wcResultsForTeam(code) {
+  const out = [];
+  GROUP_FIXTURES.filter(f => (f.home === code || f.away === code) && db.results[f.id] && db.results[f.id].status === 'final')
+    .forEach(f => { const r = db.results[f.id]; out.push({ id: f.id, datetime: f.datetime, home: f.home, away: f.away, hg: r.hg, ag: r.ag, stage: 'group' }); });
+  KNOCKOUT.forEach(k => {
+    const r = db.results[String(k.m)];
+    if (r && r.status === 'final' && (r.home === code || r.away === code)) out.push({ id: String(k.m), datetime: k.datetime || k.date, home: r.home, away: r.away, hg: r.hg, ag: r.ag, stage: k.stage });
+  });
+  return out.sort((a, b) => String(b.datetime).localeCompare(String(a.datetime)));
+}
+
+async function buildTeamDetail(code) {
+  const t = teamById[code];
+  if (!t) return null;
+  await fetchMarkets(false).catch(() => { });
+  const sim = simCache[code];
+  const elo = db.elos[code];
+  const rank = TEAMS.map(x => x.id).sort((a, b) => db.elos[b] - db.elos[a]).indexOf(code) + 1;
+  const fmt = p => (p * 100).toFixed(1) + '%';
+
+  const pm = marketCache.polymarket[code] || null, ks = marketCache.kalshi[code] || null;
+  const marketPrices = [];
+  if (pm) marketPrices.push({ venue: 'Polymarket', side: 'campeón', price: pm.price, bid: pm.bid, ask: pm.ask, volume: pm.volume, liquidity: pm.liquidity, change24h: pm.change24h, url: pm.url, edge: +(sim.champion - pm.ask).toFixed(4) });
+  if (ks) marketPrices.push({ venue: 'Kalshi', side: 'campeón', price: ks.price, bid: ks.bid, ask: ks.ask, volume: ks.volume, openInterest: ks.openInterest, change24h: ks.change24h, url: ks.url, edge: +(sim.champion - ks.ask).toFixed(4) });
+
+  const nm = nextMatchForTeam(code);
+  const nextMatch = nm ? {
+    id: nm.id, datetime: nm.datetime,
+    opponent: basicTeam(nm.home === code ? nm.away : nm.home),
+    home: nm.home === code,
+  } : null;
+
+  const wcResults = wcResultsForTeam(code).map(r => ({
+    id: r.id, datetime: r.datetime, stageLabel: STAGE_LABEL[r.stage] || 'Grupos',
+    opponent: basicTeam(r.home === code ? r.away : r.home),
+    score: r.home === code ? `${r.hg}-${r.ag}` : `${r.ag}-${r.hg}`,
+    result: (r.home === code ? r.hg - r.ag : r.ag - r.hg) > 0 ? 'W' : (r.hg === r.ag ? 'D' : 'L'),
+  }));
+
+  const ctx = await providers.getTeamContext({ code, name: t.en }).catch(() => null);
+
+  // Model Read: manual editorial primero; si no, derivado del modelo
+  let modelRead, keyDrivers;
+  if (ctx && ctx.notes && ctx.notes.modelRead) { modelRead = ctx.notes.modelRead; keyDrivers = ctx.notes.keyDrivers || []; }
+  else {
+    modelRead = `${t.name} tiene ${fmt(sim.champion)} de ser campeón (Elo ${Math.round(elo)}, #${rank} del torneo). Avanza de grupos el ${fmt(sim.reachR32)} y gana su grupo el ${fmt(sim.groupWin)}.`;
+    keyDrivers = [`Gana el grupo ${fmt(sim.groupWin)}`, `Avanza a 16avos ${fmt(sim.reachR32)}`, `Eliminado en grupos ${fmt(sim.outInGroups)}`];
+    if (sim.likelyR32Opponents && sim.likelyR32Opponents[0]) {
+      const o = teamById[sim.likelyR32Opponents[0].id];
+      if (o) keyDrivers.push(`Cruce más probable: ${o.name}`);
+    }
+  }
+
+  return {
+    id: code, code: t.id, name: t.name, flag: t.flag, group: t.group,
+    elo: Math.round(elo * 10) / 10, eloDelta: Math.round((elo - t.elo) * 10) / 10, rank, host: !!t.host,
+    championProbability: sim.champion, ciLow: sim.ciLow, ciHigh: sim.ciHigh,
+    finalProbability: sim.reachFinal, semifinalsProbability: sim.reachSF, quarterfinalsProbability: sim.reachQF,
+    advanceProbability: sim.reachR32, groupWinProbability: sim.groupWin, groupSecondProbability: sim.groupSecond,
+    outInGroupsProbability: sim.outInGroups,
+    counts: sim.counts, samples: sim.samples, sims: sim.sims,
+    explanation: explainTeam(code, db.elos, sim, simCache),
+    likelyOpponents: (sim.likelyR32Opponents || []).map(o => ({ ...basicTeam(o.id), pct: o.pct })),
+    marketPrices,
+    modelRead, keyDrivers, notes: keyDrivers, tactical: ctx ? ctx.tactical : null,
+    nextMatch,
+    squad: ctx ? ctx.squad : [], keyPlayers: ctx ? ctx.keyPlayers : [],
+    injuries: ctx ? ctx.injuries : [], sidelined: ctx ? ctx.sidelined : [],
+    projectedLineup: ctx ? ctx.projectedLineup : null,
+    recentForm: ctx ? ctx.recentForm : null,
+    results: wcResults.length ? wcResults : (ctx ? ctx.results : []),
+    schedule: ctx ? ctx.schedule : [],
+    news: ctx ? ctx.news : [],
+    providerStatus: ctx ? ctx.providerStatus : null,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 // ---------- auth por email ----------
 function getUser(req) {
   const tok = (req.headers.authorization || '').replace('Bearer ', '');
@@ -869,6 +1090,21 @@ const server = http.createServer(async (req, res) => {
         team: teamById[id], elo: db.elos[id], sim: simCache[id],
         explanation: explainTeam(id, db.elos, simCache[id], simCache),
       });
+    }
+    // Fase 4: detalle profundo de partido (requiere sesión, como el resto de la app)
+    if (p.startsWith('/api/match/')) {
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const id = decodeURIComponent(p.split('/')[3] || '');
+      const detail = await buildMatchDetail(id);
+      return detail ? json(res, 200, detail) : json(res, 404, { error: 'Partido no encontrado' });
+    }
+    // Fase 4: detalle profundo de equipo
+    if (p.startsWith('/api/teamdetail/')) {
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const id = (p.split('/')[3] || '').toUpperCase();
+      if (!teamById[id]) return json(res, 404, { error: 'Equipo no encontrado' });
+      const detail = await buildTeamDetail(id);
+      return json(res, 200, detail);
     }
     if (p === '/api/aciertos') {
       // público a propósito: el track record es la credibilidad de la marca

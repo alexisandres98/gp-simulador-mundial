@@ -409,9 +409,30 @@ function gpGradeCls(label) {
   return ({ STRONG: 'g-strong', LEAN: 'g-lean', SLIGHT: 'g-slight', WATCH: 'g-slight', PASS: 'g-pass', PURE_ARB: 'g-arb' })[label] || 'g-pass';
 }
 function gpLabelTxt(label) { return label === 'PURE_ARB' ? 'PURE ARB' : label; }
+function formLetter(r) { return ({ W: 'V', D: 'E', L: 'D' })[r] || r; } // V/E/D en español
 function formChips(results) {
   if (!results || !results.length) return '<span class="muted">—</span>';
-  return results.map(r => `<span class="fchip f-${(r || '').toLowerCase()}">${r}</span>`).join('');
+  return results.map(r => `<span class="fchip f-${(r || '').toLowerCase()}">${formLetter(r)}</span>`).join('');
+}
+// Cancha visual de alineación (probable o confirmada). Devuelve null si no hay XI suficiente → cae a lista.
+function posBucket(p) {
+  const s = (p || '').toUpperCase();
+  if (/^G|GK|POR/.test(s)) return 'GK';
+  if (/^D|DEF|LB|RB|CB/.test(s)) return 'DEF';
+  if (/^M|MID|MED|DM|AM/.test(s)) return 'MID';
+  if (/^F|FW|DEL|ATT|ST|LW|RW|CF/.test(s)) return 'FWD';
+  return 'MID';
+}
+function shortName(n) { if (!n) return ''; const p = n.trim().split(/\s+/); return p.length > 1 ? p[p.length - 1] : n; }
+function pitchHtml(l) {
+  const xi = (l && l.startXI) || [];
+  if (xi.length < 7) return null;
+  const b = { GK: [], DEF: [], MID: [], FWD: [] };
+  xi.forEach(p => b[posBucket(p.position)].push(p));
+  const rows = [b.FWD, b.MID, b.DEF, b.GK].filter(a => a.length);
+  if (rows.length < 2) return null;
+  const row = arr => `<div class="pitch-row">${arr.map(p => `<div class="pp"><span class="pp-num">${p.number != null ? p.number : '·'}</span><span class="pp-name">${shortName(p.name)}</span></div>`).join('')}</div>`;
+  return `<div class="pitch">${rows.map(row).join('')}</div>`;
 }
 function pStatusBadge(st) {
   const m = { available: ['ok', 'Disponible'], injured: ['bad', 'Lesión'], suspended: ['bad', 'Suspendido'], doubt: ['warn', 'Duda'], unknown: ['', '—'] };
@@ -563,11 +584,12 @@ function liveEventsHtml(d) {
 function lineupTeamHtml(side, l, team) {
   if (!l) return `<div class="lu-col"><div class="lu-team">${team.flag} ${team.name}</div>${du('Las alineaciones suelen confirmarse 30-60 min antes.')}</div>`;
   const tag = l.confirmed ? '<span class="lu-tag ok">CONFIRMADA</span>' : '<span class="lu-tag">PROBABLE</span>';
+  const pitch = pitchHtml(l);
   const players = (l.startXI || []).map(p => `<div class="lu-p"><span class="lu-n">${p.number != null ? p.number : '·'}</span><span class="lu-name">${p.name}</span><span class="lu-pos">${p.position || ''}</span></div>`).join('');
   return `<div class="lu-col">
     <div class="lu-team">${team.flag} ${team.name} ${tag}</div>
     <div class="lu-form">${l.formation ? 'Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>
-    ${players || du('XI pendiente.')}
+    ${pitch || players || du('XI pendiente.')}
   </div>`;
 }
 function lineupsHtml(d) {
@@ -733,9 +755,10 @@ function playerRow(p) {
 }
 function projectedLineupHtml(l, d) {
   const tag = l.confirmed ? '<span class="lu-tag ok">CONFIRMADA</span>' : '<span class="lu-tag">PROBABLE</span>';
+  const pitch = pitchHtml(l);
   const players = (l.startXI || []).map(p => `<div class="lu-p"><span class="lu-n">${p.number != null ? p.number : '·'}</span><span class="lu-name">${p.name}</span><span class="lu-pos">${p.position || ''}</span></div>`).join('');
-  const body = `<div class="lu-form">${tag}${l.formation ? ' · Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>${players || du('XI probable pendiente.')}`;
-  return panel('Alineación probable', '', body);
+  const body = `<div class="lu-form">${tag}${l.formation ? ' · Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>${pitch || players || du('XI probable pendiente.')}`;
+  return panel('Alineación probable', l.formation || '', body);
 }
 
 function teamFormHtml(d) {
@@ -749,7 +772,7 @@ function teamFormHtml(d) {
       <span>Prom. GF <b>${f.avgFor}</b></span><span>Prom. GC <b>${f.avgAgainst}</b></span>
     </div>`;
   if (f.last && f.last.length) body += '<div class="dsub">Últimos partidos</div>' + f.last.map(m =>
-    `<div class="res-row"><span class="fchip f-${(m.result || '').toLowerCase()}">${m.result}</span><span class="res-opp">${m.home ? 'vs' : '@'} ${m.opponent || '—'}</span><span class="res-sc">${m.score}</span><span class="muted">${dShort(m.date)}</span></div>`).join('');
+    `<div class="res-row"><span class="fchip f-${(m.result || '').toLowerCase()}">${formLetter(m.result)}</span><span class="res-opp">${m.home ? 'vs' : '@'} ${m.opponent || '—'}</span><span class="res-sc">${m.score}</span><span class="muted">${dShort(m.date)}</span></div>`).join('');
   return panel('Forma reciente', '', body);
 }
 
@@ -760,7 +783,7 @@ function teamResultsHtml(d) {
   if (res.length) {
     body += '<div class="dsub">En el Mundial</div>' + res.map(r => {
       const clk = /^G|^[0-9]/.test(r.id) ? `onclick="openMatchPage('${r.id}')"` : '';
-      return `<div class="res-row clk" ${clk}><span class="fchip f-${(r.result || '').toLowerCase()}">${r.result || ''}</span><span class="res-opp">${r.opponent ? (r.opponent.flag + ' ' + r.opponent.name) : '—'}</span><span class="res-sc">${r.score || ''}</span><span class="muted">${r.stageLabel || ''}</span></div>`;
+      return `<div class="res-row clk" ${clk}><span class="fchip f-${(r.result || '').toLowerCase()}">${formLetter(r.result)}</span><span class="res-opp">${r.opponent ? (r.opponent.flag + ' ' + r.opponent.name) : '—'}</span><span class="res-sc">${r.score || ''}</span><span class="muted">${r.stageLabel || ''}</span></div>`;
     }).join('');
   } else if (!d.nextMatch) body += du('Aún no hay partidos jugados.');
   return panel('Resultados', '', body);
@@ -808,7 +831,7 @@ async function toggleFav(id) {
 // ---------- GRUPOS ----------
 let groupSel = 'A';
 function heat(p, hue) {
-  const a = Math.min(0.30, p * 0.34);
+  const a = Math.min(0.42, p * 0.52);
   const c = hue === 'g' ? `24,230,163` : hue === 'a' ? `246,200,95` : `255,107,107`;
   return `background:rgba(${c},${a.toFixed(3)})`;
 }

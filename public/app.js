@@ -206,6 +206,7 @@ function syncNavActive() {
   document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === cur || (b.dataset.nav === 'more' && !BOTTOM.includes(cur) && USER)));
 }
 function switchTab(name) {
+  clearDetailTimer();
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   const sec = $('#tab-' + name); if (sec) sec.classList.add('active');
   if (STATE && !STATE.teaser) {
@@ -400,7 +401,8 @@ function renderTeams() {
 // Fase 4 — PÁGINAS PROFUNDAS DE PARTIDO Y EQUIPO
 // La UI consume solo data normalizada de /api/match/:id y /api/teamdetail/:id.
 // ========================================================================
-let detailReturnTab = 'arb', CUR_MATCH = null, CUR_TEAM = null, teamTab = 'resumen';
+let detailReturnTab = 'arb', CUR_MATCH = null, CUR_TEAM = null, teamTab = 'resumen', detailTimer = null;
+function clearDetailTimer() { if (detailTimer) { clearInterval(detailTimer); detailTimer = null; } }
 
 // --- helpers de UI compartidos (terminal direction; sin polish final) ---
 function du(msg) { return `<div class="du">${msg}</div>`; } // DataUnavailable elegante
@@ -448,6 +450,7 @@ function dShort(iso) { if (!iso) return '—'; const d = new Date(iso); return i
 function dLong(iso) { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 function detailHead(title) { return `<div class="dh"><button class="backbtn" onclick="backFromDetail()">←</button><span class="dh-t">${title}</span></div>`; }
 function openDetailTab(name) {
+  clearDetailTimer();
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   const sec = $('#tab-' + name); if (sec) sec.classList.add('active');
   syncNavActive(); closeAvatarMenu(); closeSheet();
@@ -475,7 +478,21 @@ async function openMatchPage(id) {
     if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
     CUR_MATCH = await r.json();
     renderMatchDetail(CUR_MATCH);
+    // partido en vivo → auto-refresco de marcador/eventos/stats cada 25s
+    if (CUR_MATCH.status === 'live') detailTimer = setInterval(() => refreshMatch(CUR_MATCH.id), 25000);
   } catch { $('#tab-match').innerHTML = detailHead('Partido') + du('No se pudo cargar el partido. Intenta de nuevo.'); }
+}
+async function refreshMatch(id) {
+  if (currentTab() !== 'match' || !CUR_MATCH || CUR_MATCH.id !== id) { clearDetailTimer(); return; }
+  try {
+    const r = await fetch('/api/match/' + encodeURIComponent(id), { headers: hdrs() });
+    if (!r.ok) return;
+    CUR_MATCH = await r.json();
+    const y = window.scrollY;
+    renderMatchDetail(CUR_MATCH);
+    window.scrollTo(0, y);
+    if (CUR_MATCH.status !== 'live') clearDetailTimer(); // partido terminó → dejar de pollear
+  } catch { /* reintenta en el próximo tick */ }
 }
 
 function renderMatchDetail(d) {
@@ -1055,7 +1072,7 @@ async function loadArb(force = false) {
       <div>
         <h2 style="margin-bottom:3px">Oportunidades</h2>
         <div class="muted" style="font-size:12px">
-          <span class="livepill on">● EN VIVO</span> Modelo vs mercado · actualizado ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'} · refresca cada 5 min
+          <span class="livepill on">● EN VIVO</span> Modelo vs mercado · actualizado ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'} · refresca cada 1 min
         </div>
       </div>
       <button class="ghost" onclick="loadArb(true)">↻ Actualizar</button>
@@ -1456,9 +1473,11 @@ function startPolling() {
       if (lastVersion && v.sim !== lastVersion.sim) {
         await loadState();
         if ($('#tab-arb').classList.contains('active')) loadArb();
+        if (currentTab() === 'match' && CUR_MATCH) refreshMatch(CUR_MATCH.id);
         notifyUpdate('nuevo resultado', v.sim);
-      } else if (lastVersion && v.markets !== lastVersion.markets && $('#tab-arb').classList.contains('active')) {
-        loadArb();
+      } else if (lastVersion && v.markets !== lastVersion.markets) {
+        if ($('#tab-arb').classList.contains('active')) loadArb();
+        if (currentTab() === 'match' && CUR_MATCH) refreshMatch(CUR_MATCH.id);
       }
       lastVersion = v;
     } catch { setLive(false); }
@@ -1475,9 +1494,13 @@ function connectSSE() {
     const d = JSON.parse(e.data);
     await loadState();
     if ($('#tab-arb').classList.contains('active')) loadArb();
+    if (currentTab() === 'match' && CUR_MATCH) refreshMatch(CUR_MATCH.id); // refresca partido abierto al instante
     notifyUpdate(d.reason, d.ts);
   });
-  es.addEventListener('markets', () => { if ($('#tab-arb').classList.contains('active')) loadArb(); });
+  es.addEventListener('markets', () => {
+    if ($('#tab-arb').classList.contains('active')) loadArb();
+    if (currentTab() === 'match' && CUR_MATCH) refreshMatch(CUR_MATCH.id);
+  });
   es.onerror = () => {
     clearTimeout(watchdog);
     es.close();

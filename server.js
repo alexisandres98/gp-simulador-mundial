@@ -178,6 +178,7 @@ async function syncFromESPN(depth = 0) {
     const j = await r.json();
     const bracket = resolveRealBracket();
     let changed = 0;
+    const liveAlerts = []; // {matchId,hId,aId,hg,ag,kind:'start'|'goal'}
     for (const ev of j.events || []) {
       const c = ev.competitions && ev.competitions[0];
       if (!c) continue;
@@ -229,6 +230,16 @@ async function syncFromESPN(depth = 0) {
         db.results[matchId] = { ...(prev || {}), ...payload, source: 'espn' };
         changed++;
         console.log(`[sync] ${matchId}: ${payload.hg}-${payload.ag} ${payload.status}${payload.status === 'live' ? ` ${payload.minute}'` : ''}`);
+        // detectar transiciones para alertas en vivo (inicio de partido / gol)
+        try {
+          const hId = gf ? gf.home : payload.home, aId = gf ? gf.away : payload.away;
+          if (hId && aId && payload.status === 'live') {
+            const wasLive = prev && (prev.status === 'live' || prev.status === 'final');
+            const total = (payload.hg || 0) + (payload.ag || 0), ptotal = ((prev && prev.hg) || 0) + ((prev && prev.ag) || 0);
+            if (!wasLive) liveAlerts.push({ matchId, hId, aId, hg: payload.hg, ag: payload.ag, kind: 'start' });
+            else if (prev && total > ptotal) liveAlerts.push({ matchId, hId, aId, hg: payload.hg, ag: payload.ag, kind: 'goal' });
+          }
+        } catch { /* nunca romper el sync */ }
       }
     }
     lastSync = { ts: Date.now(), ok: true, applied: changed, error: null };
@@ -241,6 +252,8 @@ async function syncFromESPN(depth = 0) {
       broadcast('update', { reason: 'resultados en vivo (ESPN)', ts: Date.now() });
       // alertas de equipos seguidos (nunca debe romper el sync)
       if (depth === 0) dispatchPendingAlerts().catch(e => console.error('[alert] dispatch:', e.message));
+      // alertas en vivo de inicio/gol (deduplicadas; el dedup evita dobles entre pasadas)
+      if (liveAlerts.length) dispatchLiveAlerts(liveAlerts).catch(e => console.error('[alert] live:', e.message));
     }
   } catch (e) {
     lastSync = { ts: Date.now(), ok: false, applied: 0, error: e.message };
@@ -255,7 +268,7 @@ const aliasToId = {};
 TEAMS.forEach(t => [t.en, t.name, ...t.aliases].forEach(a => aliasToId[normName(a)] = t.id));
 
 async function fetchMarkets(force = false) {
-  if (!force && Date.now() - marketCache.ts < 5 * 60 * 1000) return marketCache;
+  if (!force && Date.now() - marketCache.ts < 60 * 1000) return marketCache;
   const next = { ts: Date.now(), polymarket: {}, kalshi: {}, errors: [] };
   // Polymarket — Gamma API (precio + volumen + liquidez + cambio 24h + link directo al mercado)
   try {
@@ -355,7 +368,7 @@ async function discoverMatchSlug(f) {
 }
 
 async function fetchMatchMarkets(force = false) {
-  if (!force && Date.now() - matchMktCache.ts < 5 * 60 * 1000) return matchMktCache;
+  if (!force && Date.now() - matchMktCache.ts < 60 * 1000) return matchMktCache;
   const now = Date.now();
   // grupos con horario + eliminatorias con equipos ya resueltos
   const bracket = resolveRealBracket();
@@ -582,6 +595,53 @@ async function sendTeamAlerts(matchIds) {
   }
 }
 
+// Email de alerta en vivo (inicio de partido / gol)
+function liveAlertEmail(h, aw, a) {
+  const isGoal = a.kind === 'goal';
+  const subject = isGoal ? `⚽ GOL · ${h.name} ${a.hg}-${a.ag} ${aw.name}` : `▶ Empezó · ${h.name} vs ${aw.name}`;
+  const head = isGoal ? '⚽ ¡Gol!' : '▶ ¡Arrancó el partido!';
+  const line = isGoal ? `${h.flag} ${h.name} ${a.hg} - ${a.ag} ${aw.name} ${aw.flag}` : `${h.flag} ${h.name} vs ${aw.name} ${aw.flag}`;
+  const text = `${head}\n\n${line}\n\nSigue las probabilidades EN VIVO: https://gpsimulador.com\n\n— GP Simulador del Mundial\n(Gestiona tus alertas en la pestaña Alertas.)`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#14201A">
+<h2 style="margin-bottom:4px">${head}</h2>
+<div style="background:#0E2A1E;color:#fff;border-radius:12px;padding:18px 20px;text-align:center;margin:14px 0">
+  <div style="font-size:26px;font-weight:800">${isGoal ? `${h.flag} ${a.hg} - ${a.ag} ${aw.flag}` : `${h.flag} vs ${aw.flag}`}</div>
+  <div style="font-size:14px;color:#9FD9BE;margin-top:4px">${h.name} ${isGoal ? 'vs' : 'vs'} ${aw.name}</div>
+</div>
+<p><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:99px">Ver probabilidades EN VIVO →</a></p>
+<p style="color:#999;font-size:11px">Gestiona o desactiva tus alertas en la pestaña Alertas.</p>
+</div>`;
+  return { subject, text, html };
+}
+
+// Despacha alertas en vivo (inicio/gol) a quienes siguen alguno de los dos equipos. Deduplicado por clave.
+async function dispatchLiveAlerts(list) {
+  if (!mailer.isConfigured()) return;
+  for (const a of list) {
+    const key = a.kind === 'start' ? `${a.matchId}:start` : `${a.matchId}:g${a.hg}-${a.ag}`;
+    if (db.sentAlerts[key]) continue;
+    const h = teamById[a.hId], aw = teamById[a.aId];
+    if (!h || !aw) continue;
+    let sent = 0;
+    for (const [email, u] of Object.entries(db.users)) {
+      if (u.alerts === false) continue;
+      const prefs = u.alertPrefs || {};
+      const ev = prefs.events || {}, ch = prefs.channels || {};
+      if (ch.email === false) continue;
+      if (a.kind === 'start' && ev.matchStart === false) continue;
+      if (a.kind === 'goal' && ev.goal === false) continue;
+      const muted = prefs.mutedTeams || [];
+      const favs = u.favorites || [];
+      if (![a.hId, a.aId].some(t => favs.includes(t) && !muted.includes(t))) continue;
+      try { await mailer.sendMail({ to: email, ...liveAlertEmail(h, aw, a) }); sent++; }
+      catch (e) { console.error('[alert]', email, e.message); }
+    }
+    db.sentAlerts[key] = Date.now();
+    save();
+    if (sent) console.log(`[alert] ${a.kind} ${a.matchId}: ${sent} correos enviados`);
+  }
+}
+
 // Revisa todos los partidos finalizados y alerta los que aún no se han notificado
 async function dispatchPendingAlerts() {
   const finals = [];
@@ -746,9 +806,11 @@ async function buildMatchDetail(id) {
 
   // Contexto externo (lineups, eventos, stats, forma, lesiones, noticias, odds) — se obtiene
   // ANTES del GP Take para que las bajas confirmadas puedan informar la lectura (Opción C).
+  const namesOf = t => t ? [t.en, t.name, ...(t.aliases || [])] : [];
   const ctx = await providers.getMatchContext({
     homeCode: meta.home, awayCode: meta.away,
     homeName: th ? th.en : '', awayName: ta ? ta.en : '',
+    homeNames: namesOf(th), awayNames: namesOf(ta),
     isoDate: meta.datetime, espnId: meta.espnId,
     isLive: status === 'live', isFinal: status === 'final',
   }).catch(() => null);
@@ -868,7 +930,7 @@ async function buildTeamDetail(code) {
     result: (r.home === code ? r.hg - r.ag : r.ag - r.hg) > 0 ? 'W' : (r.hg === r.ag ? 'D' : 'L'),
   }));
 
-  const ctx = await providers.getTeamContext({ code, name: t.en }).catch(() => null);
+  const ctx = await providers.getTeamContext({ code, name: t.en, names: [t.en, t.name, ...(t.aliases || [])] }).catch(() => null);
 
   // Model Read: manual editorial primero; si no, derivado del modelo
   let modelRead, keyDrivers;
@@ -1201,11 +1263,12 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`⚽ Simulador Mundial 2026 → http://localhost:${PORT}`);
   fetchMarkets().catch(() => { });
+  // Mercados/oportunidades: refresco cada 1 min (antes 5 min)
   setInterval(() => Promise.all([fetchMarkets(true), fetchMatchMarkets(true)])
-    .then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 5 * 60 * 1000);
-  // Sincronización automática de resultados desde ESPN cada 2 minutos
+    .then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 60 * 1000);
+  // Resultados desde ESPN cada 30 s (antes 2 min) → marcador en vivo más fresco
   syncFromESPN();
-  setInterval(syncFromESPN, 2 * 60 * 1000);
+  setInterval(syncFromESPN, 30 * 1000);
   // En Render free el servicio duerme tras 15 min sin tráfico: auto-ping cada 10 min para mantenerlo 24/7
   if (process.env.RENDER_EXTERNAL_URL) {
     setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);

@@ -32,8 +32,46 @@ function normalizeOdds(afOdds) {
   } catch { return []; }
 }
 
+// Emparejamiento de nombres entre nuestros equipos y API-Football (acentos/puntuación tolerados)
+function normName(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, ''); }
+function nameInList(apiName, names) { const a = normName(apiName); return (names || []).some(n => { const x = normName(n); return x && x === a; }); }
+const AF_LIVE = ['1H', '2H', 'ET', 'BT', 'P', 'LIVE', 'HT', 'INT', 'SUSP'];
+const AF_DONE = ['FT', 'AET', 'PEN'];
+
+// Resuelve fixture + IDs de equipo desde la lista OFICIAL de fixtures del Mundial (autoritativo,
+// evita la fragilidad de buscar selecciones por nombre suelto). names = [en, name, ...aliases].
+async function resolveMatchFromLeague(ctx) {
+  const lf = await af.getFixtures();
+  if (!lf || !lf.length) return null;
+  const cands = (lf || []).filter(f => f.teams && (
+    (nameInList(f.teams.home.name, ctx.homeNames) && nameInList(f.teams.away.name, ctx.awayNames)) ||
+    (nameInList(f.teams.away.name, ctx.homeNames) && nameInList(f.teams.home.name, ctx.awayNames))));
+  if (!cands.length) return null;
+  const day = (ctx.isoDate || '').slice(0, 10);
+  if (day && cands.length > 1) {
+    const t = new Date(day + 'T12:00Z').getTime();
+    cands.sort((x, y) => Math.abs(new Date(x.fixture.date) - t) - Math.abs(new Date(y.fixture.date) - t));
+  }
+  const f = cands[0];
+  const homeIsHome = nameInList(f.teams.home.name, ctx.homeNames);
+  return {
+    fixtureApiId: f.fixture.id,
+    homeApiId: homeIsHome ? f.teams.home.id : f.teams.away.id,
+    awayApiId: homeIsHome ? f.teams.away.id : f.teams.home.id,
+    apiStatus: f.fixture.status && f.fixture.status.short,
+  };
+}
+async function resolveTeamFromLeague(names) {
+  const lf = await af.getFixtures();
+  for (const f of (lf || [])) {
+    if (f.teams && nameInList(f.teams.home.name, names)) return f.teams.home.id;
+    if (f.teams && nameInList(f.teams.away.name, names)) return f.teams.away.id;
+  }
+  return null;
+}
+
 // ---------- CONTEXTO DE PARTIDO ----------
-// ctx: { homeCode, awayCode, homeName, awayName, isoDate, espnId, isFinal, isLive }
+// ctx: { homeCode, awayCode, homeName, awayName, homeNames[], awayNames[], isoDate, espnId, isFinal, isLive }
 async function getMatchContext(ctx) {
   const status = newStatus();
   const result = {
@@ -45,15 +83,22 @@ async function getMatchContext(ctx) {
   };
   const safe = async (fn, fb) => { try { return await fn(); } catch { return fb; } };
 
-  let homeApiId = null, awayApiId = null, fixtureApiId = null;
+  let homeApiId = null, awayApiId = null, fixtureApiId = null, apiLiveOrDone = false;
   if (af.configured()) {
-    [homeApiId, awayApiId] = await Promise.all([
-      safe(() => af.resolveTeamId(ctx.homeCode, ctx.homeName), null),
-      safe(() => af.resolveTeamId(ctx.awayCode, ctx.awayName), null),
-    ]);
-    if (homeApiId && awayApiId) {
-      const fx = await safe(() => af.findFixture(homeApiId, awayApiId, ctx.isoDate), null);
-      fixtureApiId = fx && fx.fixture ? fx.fixture.id : null;
+    const m = await safe(() => resolveMatchFromLeague(ctx), null);
+    if (m) {
+      homeApiId = m.homeApiId; awayApiId = m.awayApiId; fixtureApiId = m.fixtureApiId;
+      apiLiveOrDone = AF_LIVE.includes(m.apiStatus) || AF_DONE.includes(m.apiStatus);
+    } else {
+      // fallback: búsqueda por nombre + head-to-head
+      [homeApiId, awayApiId] = await Promise.all([
+        safe(() => af.resolveTeamId(ctx.homeCode, ctx.homeName), null),
+        safe(() => af.resolveTeamId(ctx.awayCode, ctx.awayName), null),
+      ]);
+      if (homeApiId && awayApiId) {
+        const fx = await safe(() => af.findFixture(homeApiId, awayApiId, ctx.isoDate), null);
+        fixtureApiId = fx && fx.fixture ? fx.fixture.id : null;
+      }
     }
   }
 
@@ -76,8 +121,8 @@ async function getMatchContext(ctx) {
     }
   }
 
-  // ---- EVENTS + STATS (solo si hay partido en vivo/finalizado) ----
-  if (fixtureApiId && (ctx.isLive || ctx.isFinal)) {
+  // ---- EVENTS + STATS (si el partido está en vivo/finalizado según ESPN o API-Football) ----
+  if (fixtureApiId && (ctx.isLive || ctx.isFinal || apiLiveOrDone)) {
     const [evs, st] = await Promise.all([
       safe(() => af.getFixtureEvents(fixtureApiId), []),
       safe(() => af.getFixtureStatistics(fixtureApiId), []),
@@ -168,7 +213,10 @@ async function getTeamContext(ctx) {
   const safe = async (fn, fb) => { try { return await fn(); } catch { return fb; } };
 
   let apiId = null;
-  if (af.configured()) apiId = await safe(() => af.resolveTeamId(ctx.code, ctx.name), null);
+  if (af.configured()) {
+    apiId = await safe(() => resolveTeamFromLeague(ctx.names || [ctx.name]), null);
+    if (!apiId) apiId = await safe(() => af.resolveTeamId(ctx.code, ctx.name), null);
+  }
 
   // ---- SQUAD ----
   if (apiId) {

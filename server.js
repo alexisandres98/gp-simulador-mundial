@@ -536,8 +536,13 @@ async function sendTeamAlerts(matchIds) {
     let sent = 0;
     for (const [email, u] of Object.entries(db.users)) {
       if (u.alerts === false) continue;
+      const prefs = u.alertPrefs || {};
+      const ev = prefs.events || {}, ch = prefs.channels || {};
+      if (ev.result === false) continue;        // evento "resultado final" desactivado
+      if (ch.email === false) continue;          // canal email desactivado
+      const muted = prefs.mutedTeams || [];
       const favs = u.favorites || [];
-      const followed = [info.home, info.away].filter(t => favs.includes(t));
+      const followed = [info.home, info.away].filter(t => favs.includes(t) && !muted.includes(t));
       if (!followed.length) continue;
       const names = followed.map(t => teamById[t].name);
       // línea de campeonato del primer equipo seguido
@@ -786,6 +791,31 @@ const server = http.createServer(async (req, res) => {
       db.users[u.email].alerts = !!enabled;
       save();
       return json(res, 200, { alerts: db.users[u.email].alerts });
+    }
+    // preferencias de alertas (eventos + canales)
+    if (p === '/api/alertprefs' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const { events, channels } = await readBody(req);
+      const usr = db.users[u.email];
+      usr.alertPrefs = usr.alertPrefs || {};
+      if (events && typeof events === 'object') usr.alertPrefs.events = { ...(usr.alertPrefs.events || {}), ...events };
+      if (channels && typeof channels === 'object') usr.alertPrefs.channels = { ...(usr.alertPrefs.channels || {}), ...channels };
+      save();
+      return json(res, 200, { alertPrefs: usr.alertPrefs });
+    }
+    // silenciar / reactivar alertas de un equipo (campana por equipo)
+    if (p === '/api/mute' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const { teamId } = await readBody(req);
+      const usr = db.users[u.email];
+      usr.alertPrefs = usr.alertPrefs || {};
+      const muted = usr.alertPrefs.mutedTeams = usr.alertPrefs.mutedTeams || [];
+      const i = muted.indexOf(teamId);
+      i >= 0 ? muted.splice(i, 1) : muted.push(teamId);
+      save();
+      return json(res, 200, { mutedTeams: muted });
     }
     if (p === '/api/admin/users') {
       const u = getUser(req);

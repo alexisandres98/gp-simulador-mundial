@@ -69,7 +69,7 @@ function renderTeaser() {
         <span class="muted" style="font-size:12.5px">Sin contraseñas · solo tu email · 30 segundos</span>
       </div>
     </div>`;
-  ['following', 'groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
+  ['following', 'alerts', 'groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
     $('#tab-' + t).innerHTML = `<div class="lock">
       <div class="lock-icon">🔒</div>
       <div class="lock-title">Desbloquea esta sección gratis</div>
@@ -165,7 +165,7 @@ const ICON = {
 };
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
-  following: 'Seguidos', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
+  following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'groups', 'following', 'bracket', 'record', 'evo'];
@@ -183,7 +183,7 @@ function renderHeader() {
     const initials = (USER.email || '?').slice(0, 1).toUpperCase();
     $('#hdRight').innerHTML =
       `<span class="live-pill" id="livePill"><span class="lp-dot"></span>LIVE</span>
-       <button class="icon-btn" aria-label="Alertas y notificaciones" onclick="switchTab('following')">${ICON.alerts}</button>
+       <button class="icon-btn" aria-label="Alertas y notificaciones" onclick="switchTab('alerts')">${ICON.alerts}</button>
        <button class="avatar-btn" aria-label="Tu cuenta" onclick="toggleAvatarMenu(event)">${initials}</button>`;
   } else {
     $('#hdRight').innerHTML = `<button class="cta-sm" onclick="openLogin()">Crear cuenta gratis</button>`;
@@ -216,6 +216,7 @@ function switchTab(name) {
     if (name === 'evo') renderEvo();
     if (name === 'record') renderRecord();
     if (name === 'following') renderFollowing();
+    if (name === 'alerts') renderAlerts();
   }
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
@@ -233,7 +234,7 @@ function toggleAvatarMenu(e) {
       <div><div class="em">${USER.email}</div><div class="plan">${plan}</div></div>
     </div>
     ${item('following', 'account', 'Mis seguidos')}
-    ${item('following', 'alerts', 'Alertas y notificaciones')}
+    ${item('alerts', 'alerts', 'Alertas y notificaciones')}
     ${item('record', 'record', 'Aciertos del modelo')}
     ${item('evo', 'evo', 'Evolución')}
     ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
@@ -247,7 +248,7 @@ function openSheet() {
   const items = [['following', 'Seguidos'], ['following', 'Alertas', 'alerts'], ['bracket', 'Bracket'], ['record', 'Aciertos'], ['evo', 'Evolución'], ['account', 'Mi cuenta', 'account']];
   let html = '<div class="sheet-grid">';
   html += `<button onclick="switchTab('following')">${ICON.following}<span>Seguidos</span></button>`;
-  html += `<button onclick="switchTab('following')">${ICON.alerts}<span>Alertas</span></button>`;
+  html += `<button onclick="switchTab('alerts')">${ICON.alerts}<span>Alertas</span></button>`;
   html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
   html += `<button onclick="switchTab('record')">${ICON.record}<span>Aciertos</span></button>`;
   html += `<button onclick="switchTab('evo')">${ICON.evo}<span>Evolución</span></button>`;
@@ -262,7 +263,7 @@ function closeSheet() { const s = $('#sheet'); if (s) s.style.display = 'none'; 
 
 function renderAll() {
   if (STATE.teaser) { renderTeaser(); return; }
-  renderTeams(); renderFollowing(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin(); renderRecord();
+  renderTeams(); renderFollowing(); renderAlerts(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin(); renderRecord();
   if ($('#tab-arb').classList.contains('active')) loadArb();
 }
 
@@ -273,60 +274,103 @@ function nextMatchFor(teamId) {
     .filter(f => (f.home === teamId || f.away === teamId) && (!f.result || f.result.status !== 'final'))
     .sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''))[0] || null;
 }
+function mutedTeams() { return (USER && USER.alertPrefs && USER.alertPrefs.mutedTeams) || []; }
 function renderFollowing() {
   if (!USER) return; // en teaser ya está el candado
   const favs = USER.favorites || [];
-  const alertsOn = USER.alerts !== false;
-  let html = `<h2>Mis equipos seguidos</h2>`;
-  // barra de alertas
-  html += `<div class="alertbar">
-    <div><b>Alertas por email</b><div class="muted" style="font-size:12px">Te avisamos cuando tus equipos jueguen y cómo cambian sus probabilidades.</div></div>
-    <button class="toggle ${alertsOn ? 'on' : ''}" onclick="toggleAlerts()"><span class="knob"></span></button>
-  </div>`;
+  let html = `<div class="arb-head"><div><h2 style="margin-bottom:3px">Seguidos</h2>
+    <div class="muted" style="font-size:12px">${favs.length} equipo${favs.length === 1 ? '' : 's'} seguido${favs.length === 1 ? '' : 's'} · alertas de partidos y cambios de probabilidad</div></div>
+    <button class="cta-sm" onclick="switchTab('teams')">+ Seguir equipo</button></div>`;
   if (!favs.length) {
-    html += `<div class="lock" style="padding:40px 16px">
-      <div class="lock-icon">⭐</div>
-      <div class="lock-title">Aún no sigues ningún equipo</div>
-      <div class="muted" style="margin-bottom:18px">Sigue a tu selección para verla aquí y recibir alertas de sus partidos.</div>
-      <button class="btn" onclick="document.querySelector('button[data-tab=&quot;teams&quot;]').click()">Ver equipos</button></div>`;
+    html += `<div class="lock"><div class="lock-icon">★</div>
+      <div class="lock-title">Todavía no sigues equipos</div>
+      <div class="lock-sub">Sigue selecciones para recibir alertas de partidos, resultados y cambios de probabilidad.</div>
+      <button class="btn" onclick="switchTab('teams')">Explorar equipos</button></div>`;
     $('#tab-following').innerHTML = html;
     return;
   }
+  const muted = mutedTeams();
   const teams = favs.map(id => STATE.teams.find(t => t.id === id)).filter(Boolean)
     .sort((a, b) => b.sim.champion - a.sim.champion);
-  html += '<div class="teamgrid">' + teams.map(t => {
+  html += '<div class="follow-list">' + teams.map(t => {
     const nm = nextMatchFor(t.id);
-    let nmHtml = '<div class="muted" style="font-size:12px;margin-top:10px">Sin próximo partido programado</div>';
-    if (nm) {
-      const opp = teamOf(nm.home === t.id ? nm.away : nm.home);
-      const p = nm.probs;
-      const isHome = nm.home === t.id;
-      const myProb = isHome ? p.home : p.away;
-      nmHtml = `<div class="nextm">
-        <div class="muted" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase">Próximo · ${fmtKickoff(nm)}</div>
-        <div style="font-weight:600;margin:4px 0 6px">vs ${opp ? opp.flag + ' ' + opp.name : '—'}</div>
-        <div style="font-size:12px"><span class="pgood">${pct(myProb)} gana</span> · empate ${pct(p.draw)}</div>
-      </div>`;
-    }
-    return `<div class="tcard">
-      <div class="trow">
-        <span style="font-size:20px">${t.flag}</span>
-        <span class="tname">${t.name}</span>
-        <button class="unfollow" onclick="toggleFav('${t.id}')" title="Dejar de seguir">✕</button>
+    const m = (ARB && ARB.rows) ? ARB.rows.find(r => r.id === t.id) : null;
+    const ch = m && m.polymarket ? m.polymarket.change24h : null;
+    let meta = 'Sin próximo partido programado';
+    if (nm) { const opp = teamOf(nm.home === t.id ? nm.away : nm.home); meta = `Próximo · vs ${opp ? opp.name : '—'} · ${fmtKickoff(nm)}`; }
+    const isMuted = muted.includes(t.id);
+    return `<div class="follow-card">
+      <span class="fc-flag">${t.flag}</span>
+      <div class="fc-main">
+        <div class="fc-name">${t.name}</div>
+        <div class="fc-meta">${meta}</div>
       </div>
-      <div class="champ">${pct(t.sim.champion)}</div>
-      <div class="muted" style="font-size:11px">probabilidad de ser campeón</div>
-      ${nmHtml}
+      <div class="fc-prob">
+        <div class="fc-pc">${pct(t.sim.champion)}</div>
+        <div class="fc-chg">${ch != null ? chgBadge(ch) : '<span class="muted" style="font-size:11px">campeón</span>'}</div>
+      </div>
+      <button class="fc-bell ${isMuted ? '' : 'on'}" onclick="toggleMute('${t.id}')" aria-label="${isMuted ? 'Activar' : 'Silenciar'} alertas de ${t.name}">${ICON.alerts}</button>
+      <button class="fc-x" onclick="toggleFav('${t.id}')" aria-label="Dejar de seguir ${t.name}">✕</button>
     </div>`;
   }).join('') + '</div>';
+  html += `<div class="muted" style="font-size:12px;margin-top:14px;text-align:center">Configura qué eventos y canales recibir en <a onclick="switchTab('alerts')" style="color:var(--accent);cursor:pointer;font-weight:600">Alertas</a>.</div>`;
   $('#tab-following').innerHTML = html;
 }
 
-async function toggleAlerts() {
+async function toggleMute(teamId) {
+  const r = await fetch('/api/mute', { method: 'POST', headers: hdrs(), body: JSON.stringify({ teamId }) });
+  if (r.ok) { USER.alertPrefs = USER.alertPrefs || {}; USER.alertPrefs.mutedTeams = (await r.json()).mutedTeams; renderFollowing(); }
+}
+
+// ---------- ALERTAS Y NOTIFICACIONES ----------
+const ALERT_EVENTS = [
+  ['nextMatch', '📅', 'Próximo partido', 'Recibe una alerta antes del próximo partido'],
+  ['matchStart', '▶', 'Inicio de partido', 'Al comenzar el partido'],
+  ['goal', '⚽', 'Gol', 'Cada vez que marque un equipo seguido'],
+  ['result', '🏁', 'Resultado final', 'Cuando finalice el partido', true],
+  ['qualify', '🏆', 'Clasificación / eliminación', 'Cambios importantes en la tabla'],
+  ['probSwing', '📈', 'Cambio fuerte de probabilidad', 'Variaciones significativas en el modelo'],
+  ['valueOpp', '◎', 'Nueva oportunidad de valor', 'Cuando el modelo detecta value según tu perfil'],
+  ['arb', '◆', 'Arbitraje puro detectado', 'Cuando Polymarket y Kalshi se contradicen'],
+];
+const ALERT_CHANNELS = [
+  ['email', '✉', 'Email', false],
+  ['telegram', '✈', 'Telegram', true],
+  ['push', '🔔', 'Push', true],
+];
+function evOn(k) { const e = (USER.alertPrefs && USER.alertPrefs.events) || {}; return e[k] !== false; }
+function chOn(k) { const c = (USER.alertPrefs && USER.alertPrefs.channels) || {}; return k === 'email' ? c.email !== false : c[k] === true; }
+function renderAlerts() {
   if (!USER) return;
-  const next = !(USER.alerts !== false);
-  const r = await fetch('/api/alerts', { method: 'POST', headers: hdrs(), body: JSON.stringify({ enabled: next }) });
-  if (r.ok) { USER.alerts = (await r.json()).alerts; renderFollowing(); }
+  let html = `<div style="margin-bottom:6px"><h2 style="margin-bottom:3px">Alertas</h2>
+    <div class="muted" style="font-size:12px">Configura cuándo y cómo quieres recibir notificaciones de tus equipos seguidos.</div></div>`;
+  html += `<div class="sec-head"><h3>Eventos</h3></div><div class="alert-group">` +
+    ALERT_EVENTS.map(([k, ic, title, desc]) => `
+      <div class="alert-row">
+        <span class="alert-ic">${ic}</span>
+        <div class="alert-txt"><div class="alert-t">${title}</div><div class="alert-d">${desc}</div></div>
+        <button class="toggle ${evOn(k) ? 'on' : ''}" onclick="toggleEvent('${k}')" aria-label="${title}"><span class="knob"></span></button>
+      </div>`).join('') + '</div>';
+  html += `<div class="sec-head"><h3>Canales de notificación</h3></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Elige dónde quieres recibir tus alertas.</div><div class="alert-group">` +
+    ALERT_CHANNELS.map(([k, ic, title, soon]) => `
+      <div class="alert-row ${soon ? 'soon' : ''}">
+        <span class="alert-ic">${ic}</span>
+        <div class="alert-txt"><div class="alert-t">${title} ${soon ? '<span class="soon-tag">PRÓXIMAMENTE</span>' : ''}</div><div class="alert-d">${k === 'email' ? USER.email : 'Disponible pronto'}</div></div>
+        <button class="toggle ${chOn(k) ? 'on' : ''}" ${soon ? 'disabled' : ''} onclick="toggleChannel('${k}')" aria-label="${title}"><span class="knob"></span></button>
+      </div>`).join('') + '</div>';
+  html += `<div class="muted" style="font-size:11.5px;margin-top:16px">Las alertas se envían para tus equipos seguidos. Gestiona qué equipos sigues en <a onclick="switchTab('following')" style="color:var(--accent);cursor:pointer;font-weight:600">Seguidos</a>.</div>`;
+  $('#tab-alerts').innerHTML = html;
+}
+async function toggleEvent(k) {
+  const next = !evOn(k);
+  const r = await fetch('/api/alertprefs', { method: 'POST', headers: hdrs(), body: JSON.stringify({ events: { [k]: next } }) });
+  if (r.ok) { USER.alertPrefs = (await r.json()).alertPrefs; renderAlerts(); }
+}
+async function toggleChannel(k) {
+  const next = !chOn(k);
+  const r = await fetch('/api/alertprefs', { method: 'POST', headers: hdrs(), body: JSON.stringify({ channels: { [k]: next } }) });
+  if (r.ok) { USER.alertPrefs = (await r.json()).alertPrefs; renderAlerts(); }
 }
 
 // ---------- EQUIPOS ----------

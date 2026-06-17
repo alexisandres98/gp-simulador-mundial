@@ -337,13 +337,37 @@ canvas { width: 100%; max-width: 1100px; background: var(--card); border: 1px so
 .mkt-big.edge { color: var(--accent-dark); }
 .mkt-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dim); font-weight: 600; border-top: 1px solid var(--card2); padding-top: 10px; }
 .mkt-stats .kelly { margin-left: auto; color: var(--amber); }
-/* seguidos + alertas */
-.alertbar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 18px; box-shadow: var(--shadow); }
-.toggle { width: 52px; height: 30px; border-radius: 99px; border: none; background: var(--card2); cursor: pointer; position: relative; transition: background .2s; flex: 0 0 auto; }
+/* seguidos (tarjetas) */
+.follow-list { display: flex; flex-direction: column; gap: 10px; }
+.follow-card { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px 16px; }
+.fc-flag { font-size: 32px; flex: 0 0 auto; }
+.fc-main { flex: 1; min-width: 0; }
+.fc-name { font-size: 16px; font-weight: 700; }
+.fc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-prob { text-align: right; flex: 0 0 auto; }
+.fc-pc { font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--accent); }
+.fc-chg { margin-top: 2px; }
+.fc-bell { width: 40px; height: 40px; border-radius: 10px; flex: 0 0 auto; cursor: pointer; background: var(--card2); border: 1px solid var(--border-subtle); color: var(--faint); display: flex; align-items: center; justify-content: center; }
+.fc-bell svg { width: 18px; height: 18px; }
+.fc-bell.on { color: var(--accent); border-color: var(--border-green, rgba(24,230,163,.35)); background: var(--accent-soft); }
+.fc-x { width: 32px; height: 32px; border-radius: 8px; flex: 0 0 auto; cursor: pointer; background: transparent; border: none; color: var(--muted); font-size: 13px; }
+.fc-x:hover { color: var(--red); }
+
+/* alertas (eventos + canales) */
+.alert-group { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.alert-row { display: flex; align-items: center; gap: 13px; padding: 14px 16px; border-top: 1px solid var(--border-subtle); }
+.alert-row:first-child { border-top: none; }
+.alert-row.soon { opacity: .6; }
+.alert-ic { width: 34px; height: 34px; border-radius: 9px; background: var(--bg-muted); display: flex; align-items: center; justify-content: center; font-size: 16px; flex: 0 0 auto; }
+.alert-txt { flex: 1; min-width: 0; }
+.alert-t { font-size: 14px; font-weight: 600; }
+.alert-d { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.soon-tag { font-size: 8.5px; font-weight: 800; letter-spacing: .08em; color: var(--amber); background: var(--amber-soft); padding: 2px 6px; border-radius: 99px; vertical-align: middle; }
+.toggle { width: 48px; height: 28px; border-radius: 99px; border: none; background: var(--bg-muted); cursor: pointer; position: relative; transition: background .2s; flex: 0 0 auto; }
+.toggle:disabled { cursor: not-allowed; }
 .toggle.on { background: var(--accent); }
-.toggle .knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-.toggle.on .knob { transform: translateX(22px); }
+.toggle .knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.toggle.on .knob { transform: translateX(20px); }
 .unfollow { margin-left: auto; background: var(--card2); border: none; color: var(--dim); width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 12px; }
 .unfollow:hover { background: var(--red); color: #fff; }
 .nextm { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card2); }

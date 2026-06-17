@@ -183,7 +183,7 @@ function renderHeader() {
        <button class="icon-btn" aria-label="Alertas y notificaciones" onclick="switchTab('alerts')">${ICON.alerts}</button>
        <button class="avatar-btn" aria-label="Tu cuenta" onclick="toggleAvatarMenu(event)">${initials}</button>`;
   } else {
-    $('#hdRight').innerHTML = `<button class="cta-sm" onclick="openLogin()">Crear cuenta gratis</button>`;
+    $('#hdRight').innerHTML = `<button class="hd-login" onclick="openLogin()">Entrar</button><button class="cta-sm" onclick="openLogin()">Crear cuenta gratis</button>`;
   }
   // bottom nav
   if (inApp) {
@@ -1396,8 +1396,8 @@ function openLogin() {
       <div class="formrow"><button class="btn" onclick="logout()">Cerrar sesión</button></div>`);
     return;
   }
-  openModal(`<h2>Entrar con email</h2>
-    <p class="muted">Te enviamos un código de 6 dígitos para verificar tu email.</p>
+  openModal(`<h2>Entrar o crear cuenta</h2>
+    <p class="muted">Solo tu email. Te enviamos un código de 6 dígitos: sirve igual si ya tienes cuenta o si es tu primera vez.</p>
     <div class="formrow"><input id="loginEmail" type="email" placeholder="tu@email.com" style="flex:1">
     <button class="btn" onclick="requestCode()">Enviar código</button></div>
     <div id="loginStep2"></div><div id="loginMsg" class="warn"></div>`);

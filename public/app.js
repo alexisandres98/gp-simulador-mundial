@@ -10,7 +10,12 @@ const teamOf = id => STATE.teams.find(t => t.id === id);
 const tlabel = id => { const t = teamOf(id); return t ? `${t.flag} ${t.name}` : (id || '—'); };
 
 async function loadState() {
-  STATE = await (await fetch('/api/state', { headers: hdrs() })).json();
+  const s = await (await fetch('/api/state', { headers: hdrs() })).json();
+  // Ignora una respuesta "teaser" obsoleta (petición /api/state en vuelo iniciada ANTES del login,
+  // sin token) si ya hay sesión: evitaba que, tras iniciar sesión, un loadState rezagado volviera a
+  // poner el candado en Oportunidades (las demás pestañas se re-renderizaban después, pero arb no).
+  if (s && s.teaser && token()) return;
+  STATE = s;
   renderAll();
 }
 

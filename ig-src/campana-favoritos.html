@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1080px; height:1350px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:radial-gradient(820px 520px at 78% -6%, rgba(24,230,163,.16), transparent 55%), linear-gradient(168deg,#04110C 0%,#07271B 52%,#0A3D29 120%);
+  color:#fff; padding:70px 64px; position:relative; display:flex; flex-direction:column; }
+.top { display:flex; align-items:center; gap:13px; }
+.badge { width:54px; height:54px; border-radius:15px; background:linear-gradient(150deg,#18E6A3,#0B8F66);
+  display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; color:#04140D; letter-spacing:-1px; }
+.bname { font-size:25px; font-weight:800; letter-spacing:-.3px; }
+.pill { margin-left:auto; display:flex; align-items:center; gap:9px; font-size:16px; font-weight:800; letter-spacing:1.5px;
+  color:#18E6A3; background:rgba(24,230,163,.10); border:1px solid rgba(24,230,163,.32); padding:10px 18px; border-radius:99px; }
+.pdot { width:9px; height:9px; border-radius:50%; background:#18E6A3; box-shadow:0 0 12px #18E6A3; }
+h1 { font-size:78px; line-height:1.0; font-weight:800; letter-spacing:-3px; margin:46px 0 14px; }
+h1 .g { color:#18E6A3; }
+.sub { font-size:26px; color:#Bfe9d7; font-weight:600; margin-bottom:34px; }
+.board { display:flex; flex-direction:column; gap:12px; }
+.row { display:flex; align-items:center; gap:18px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09);
+  border-radius:18px; padding:16px 22px; }
+.row.lead { background:radial-gradient(420px 160px at 100% -40%, rgba(24,230,163,.18), transparent 60%), rgba(24,230,163,.07);
+  border-color:rgba(24,230,163,.42); }
+.rk { font-size:26px; font-weight:800; color:#5C6B66; width:34px; }
+.row.lead .rk { color:#18E6A3; }
+.fl { font-size:46px; line-height:1; width:58px; }
+.nm { font-size:30px; font-weight:800; letter-spacing:-.4px; min-width:230px; }
+.tag { font-size:14px; font-weight:800; letter-spacing:1px; color:#04140D; background:#18E6A3; padding:5px 11px; border-radius:99px; margin-left:8px; vertical-align:middle; }
+.track { flex:1; height:16px; background:rgba(255,255,255,.10); border-radius:99px; overflow:hidden; }
+.fill { height:100%; background:linear-gradient(90deg,#0BB87A,#2BF0B0); border-radius:99px; }
+.pc { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:30px; font-weight:800; width:118px; text-align:right; letter-spacing:-1px; }
+.row.lead .pc { color:#18E6A3; }
+.cta { margin-top:auto; }
+.hook { font-size:30px; font-weight:800; letter-spacing:-.5px; margin-bottom:16px; }
+.hook .g { color:#18E6A3; }
+.ctabtn { display:flex; align-items:center; justify-content:center; gap:12px; background:#18E6A3; color:#03150E;
+  font-size:36px; font-weight:800; padding:26px; border-radius:99px; letter-spacing:-.5px; }
+.foot { text-align:center; font-size:18px; color:#7FA99A; font-weight:600; margin-top:18px; }
+</style></head>
+<body>
+  <div class="top"><div class="badge">GP</div><div class="bname">GP Simulador del Mundial</div>
+    <div class="pill"><span class="pdot"></span>EN VIVO</div></div>
+
+  <h1>¿Quién va a ganar el <span class="g">Mundial 2026</span>?</h1>
+  <div class="sub">Simulamos el torneo <b style="color:#fff">10.000 veces</b>. Esto dice el modelo:</div>
+
+  <div class="board">
+    <div class="row lead"><div class="rk">1</div><div class="fl">🇦🇷</div><div class="nm">Argentina<span class="tag">★ FAVORITO</span></div><div class="track"><div class="fill" style="width:100%"></div></div><div class="pc">22.9%</div></div>
+    <div class="row"><div class="rk">2</div><div class="fl">🇪🇸</div><div class="nm">España</div><div class="track"><div class="fill" style="width:88.6%"></div></div><div class="pc">20.3%</div></div>
+    <div class="row"><div class="rk">3</div><div class="fl">🇫🇷</div><div class="nm">Francia</div><div class="track"><div class="fill" style="width:67.2%"></div></div><div class="pc">15.4%</div></div>
+    <div class="row"><div class="rk">4</div><div class="fl">🏴󠁧󠁢󠁥󠁮󠁧󠁿</div><div class="nm">Inglaterra</div><div class="track"><div class="fill" style="width:30.6%"></div></div><div class="pc">7.0%</div></div>
+    <div class="row"><div class="rk">5</div><div class="fl">🇵🇹</div><div class="nm">Portugal</div><div class="track"><div class="fill" style="width:21.0%"></div></div><div class="pc">4.8%</div></div>
+    <div class="row"><div class="rk">6</div><div class="fl">🇨🇴</div><div class="nm">Colombia</div><div class="track"><div class="fill" style="width:18.3%"></div></div><div class="pc">4.2%</div></div>
+  </div>
+
+  <div class="cta">
+    <div class="hook">¿Y <span class="g">tu selección</span>? Míralo gratis — las 48 al instante.</div>
+    <div class="ctabtn">gpsimulador.com →</div>
+    <div class="foot">Modelo Elo + Monte Carlo · probabilidades que se mueven con cada gol</div>
+  </div>
+</body></html>

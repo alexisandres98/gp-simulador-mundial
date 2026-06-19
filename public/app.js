@@ -1377,7 +1377,8 @@ function renderAdmin() {
     <div class="gcard" style="margin-top:12px">
       <h3>TELEGRAM</h3>
       <div class="muted" style="font-size:12px;margin-bottom:10px">Publica un mensaje de prueba al canal. Requiere TELEGRAM_BOT_TOKEN y TELEGRAM_CHANNEL en Render.</div>
-      <div class="formrow"><button class="ghost" onclick="telegramTest()">✈ Probar publicación</button></div>
+      <div class="formrow"><button class="ghost" onclick="telegramTest()">✈ Probar publicación</button><button class="ghost" onclick="telegramDaily()">📊 Publicar resumen de hoy</button></div>
+      <div class="muted" style="font-size:11.5px;margin-top:6px">Automático: finales de partidos, oportunidades fuertes y el resumen diario (mañana). Estos botones son para probar/forzar.</div>
       <div id="tgMsg" class="muted" style="font-size:12px;margin-top:8px"></div>
     </div>
     <div class="gcard" style="margin-top:12px">
@@ -1386,10 +1387,12 @@ function renderAdmin() {
     </div>`;
   loadUsers();
 }
-async function telegramTest() {
+async function telegramTest() { await tgCall('/api/admin/telegram-test'); }
+async function telegramDaily() { await tgCall('/api/admin/telegram-daily'); }
+async function tgCall(url) {
   const m = $('#tgMsg'); m.textContent = 'Publicando…';
   try {
-    const r = await fetch('/api/admin/telegram-test', { method: 'POST', headers: hdrs() });
+    const r = await fetch(url, { method: 'POST', headers: hdrs() });
     const j = await r.json();
     m.textContent = r.ok && j.ok ? '✓ Publicado en el canal. Revísalo en Telegram.' : '✗ ' + (j.error || 'no se pudo publicar');
   } catch { m.textContent = '✗ Error de red'; }

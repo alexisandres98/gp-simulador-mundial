@@ -41,6 +41,7 @@ let db = { users: {}, sessions: {}, codes: {}, results: {}, elos: {}, history: [
 try { db = { ...db, ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) }; } catch { /* primera ejecución */ }
 TEAMS.forEach(t => { if (db.elos[t.id] == null) db.elos[t.id] = t.elo; });
 db.sentAlerts = db.sentAlerts || {}; // inicializado temprano: markExistingFinalsSeen() lo usa al arrancar
+db.sentTg = db.sentTg || {};         // inicializado temprano: markExistingTgSeen() lo usa al arrancar
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
@@ -78,6 +79,7 @@ function runSims() {
 recomputeElos();
 runSims();
 markExistingFinalsSeen(); // no reenviar alertas de partidos ya finalizados antes de activar la feature
+markExistingTgSeen();     // tampoco publicar en Telegram los finales ya ocurridos
 
 // ---------- SSE (tiempo real) ----------
 const sseClients = new Set();
@@ -255,6 +257,8 @@ async function syncFromESPN(depth = 0) {
       if (depth === 0) dispatchPendingAlerts().catch(e => console.error('[alert] dispatch:', e.message));
       // alertas en vivo de inicio/gol (deduplicadas; el dedup evita dobles entre pasadas)
       if (liveAlerts.length) dispatchLiveAlerts(liveAlerts).catch(e => console.error('[alert] live:', e.message));
+      // publicar resultados finales en el canal de Telegram (deduplicado)
+      if (depth === 0) tgDispatchFinals().catch(e => console.error('[telegram] finals:', e.message));
     }
   } catch (e) {
     lastSync = { ts: Date.now(), ok: false, applied: 0, error: e.message };
@@ -614,7 +618,7 @@ async function sendTeamAlerts(matchIds) {
 // Email masivo de novedades (re-engancha a usuarios que entraron antes de las nuevas features)
 function broadcastEmail(refLink) {
   const subject = '⚽ Tu GP Simulador del Mundial ahora tiene MUCHO más';
-  const text = `Hola 👋\n\nDesde que entraste, le agregamos un montón de cosas al GP Simulador del Mundial:\n\n• Página de cada partido con alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y nuestro GP Take.\n• Página de cada selección: plantilla, jugadores clave, forma, cruces probables y mercados.\n• Alertas por email cuando empieza el partido y cuando hay GOL de tus equipos seguidos.\n• Probabilidades que se mueven en vivo con cada gol + escáner de oportunidades modelo vs mercado (Polymarket/Kalshi).\n• Track record público y honesto del modelo (Brier).\n\nEntra y míralo: https://gpsimulador.com\n\n¿Te gusta? Invita a tus amigos con tu link personal y conviértete en Embajador del GP Simulador 🏅:\n${refLink}\n\n— GP Simulador del Mundial`;
+  const text = `Hola 👋\n\nDesde que entraste, le agregamos un montón de cosas al GP Simulador del Mundial:\n\n• Página de cada partido con alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y nuestro GP Take.\n• Página de cada selección: plantilla, jugadores clave, forma, cruces probables y mercados.\n• Alertas por email cuando empieza el partido y cuando hay GOL de tus equipos seguidos.\n• Probabilidades que se mueven en vivo con cada gol + escáner de oportunidades modelo vs mercado (Polymarket/Kalshi).\n• Track record público y honesto del modelo (Brier).\n\nEntra y míralo: https://gpsimulador.com\n\n✈️ Únete a nuestro canal de Telegram para recibir oportunidades y resultados en vivo: https://t.me/gpsimulador\n\n¿Te gusta? Invita a tus amigos con tu link personal y conviértete en Embajador del GP Simulador 🏅:\n${refLink}\n\n— GP Simulador del Mundial`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#14201A">
   <h2 style="margin:0 0 6px">⚽ GP Simulador del Mundial</h2>
   <p style="color:#555;margin:0 0 16px">Desde que entraste, le agregamos <b>muchísimo</b>:</p>
@@ -627,7 +631,12 @@ function broadcastEmail(refLink) {
       <li><b>Track record</b> público y honesto del modelo.</li>
     </ul>
   </div>
-  <p style="text-align:center;margin:0 0 22px"><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:99px;font-size:15px">Ver las novedades →</a></p>
+  <p style="text-align:center;margin:0 0 18px"><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:99px;font-size:15px">Ver las novedades →</a></p>
+  <div style="background:#EAF6FF;border:1px solid #cfe6fb;border-radius:12px;padding:14px 16px;margin:0 0 18px;text-align:center">
+    <p style="font-size:14px;margin:0 0 8px;color:#14201A"><b>✈️ Únete a nuestro canal de Telegram</b></p>
+    <p style="font-size:13px;color:#555;margin:0 0 10px">Oportunidades, resultados y novedades en vivo, directo a tu teléfono.</p>
+    <a href="https://t.me/gpsimulador" style="display:inline-block;background:#229ED9;color:#fff;text-decoration:none;font-weight:700;padding:10px 22px;border-radius:99px;font-size:14px">Unirme al canal →</a>
+  </div>
   <div style="border-top:1px solid #e3e8e6;padding-top:16px">
     <p style="font-size:14px;margin:0 0 8px"><b>🎁 Invita y sube de nivel</b></p>
     <p style="font-size:13px;color:#555;margin:0 0 10px">Comparte tu link personal. Cada amigo que se una te sube como <b>Embajador</b> del GP Simulador — los Embajadores tendrán beneficios exclusivos más adelante.</p>
@@ -705,6 +714,72 @@ function markExistingFinalsSeen() {
   GROUP_FIXTURES.forEach(f => mark(f.id));
   KNOCKOUT.forEach(k => mark(String(k.m)));
   if (n) { save(); console.log(`[alert] ${n} partidos finalizados marcados como vistos (sin reenviar)`); }
+}
+
+// ---------- Telegram: auto-publicación al canal ----------
+db.sentTg = db.sentTg || {}; // dedup de lo ya publicado en Telegram
+const tgPct = v => (v * 100).toFixed(0) + '%';
+
+// "Lo que dice el modelo para hoy" — próximos partidos del día con 1X2 del modelo
+function tgDailyText() {
+  const today = new Date().toISOString().slice(0, 10);
+  const ups = GROUP_FIXTURES
+    .filter(f => f.datetime.slice(0, 10) === today && !(db.results[f.id] && db.results[f.id].status === 'final'))
+    .sort((a, b) => a.datetime.localeCompare(b.datetime)).slice(0, 6);
+  if (!ups.length) return null;
+  const lines = ups.map(f => {
+    const p = matchProbs(effElo(db.elos, f.home), effElo(db.elos, f.away));
+    const h = teamById[f.home], a = teamById[f.away];
+    return `${h.flag} <b>${h.name}</b> vs <b>${a.name}</b> ${a.flag}\n   ${tgPct(p.home)} · empate ${tgPct(p.draw)} · ${tgPct(p.away)}`;
+  });
+  return `📊 <b>Lo que dice el modelo para hoy</b>\n\n${lines.join('\n')}\n\n⚡ Se mueven en vivo con cada gol:\n👉 <a href="https://gpsimulador.com/?ref=tg">gpsimulador.com</a>`;
+}
+function tgFinalText(id) {
+  const info = matchTeams(id); if (!info) return null;
+  const h = teamById[info.home], a = teamById[info.away];
+  const won = info.hg > info.ag ? h.name : info.hg < info.ag ? a.name : null;
+  return `⚽ <b>FINAL</b>\n${h.flag} <b>${h.name} ${info.hg} - ${info.ag} ${a.name}</b> ${a.flag}\n${won ? 'Ganó ' + won : 'Terminó en empate'}\n\n👉 <a href="https://gpsimulador.com/?ref=tg">Probabilidades actualizadas</a>`;
+}
+function tgOppText(row, e) {
+  const t = teamById[row.id], pc = v => (v * 100).toFixed(1);
+  if (e.type === 'arbitraje') return `🔺 <b>Arbitraje puro</b> · ${t.flag} ${t.name}\n${e.note}\n\n👉 <a href="https://gpsimulador.com/?ref=tg">Ver en gpsimulador.com</a>`;
+  return `🟢 <b>Oportunidad de valor</b>\n${t.flag} <b>${t.name}</b> · campeón · ${e.venue}\nPrecio ${pc(e.price)}¢ · Modelo ${pc(row.model)}% · Edge +${pc(e.edge)}%\n\n👉 <a href="https://gpsimulador.com/?ref=tg">gpsimulador.com</a>`;
+}
+// Publica finales nuevos al canal (no reenvía)
+async function tgDispatchFinals() {
+  if (!telegram.configured()) return;
+  const ids = [];
+  GROUP_FIXTURES.forEach(f => { const r = db.results[f.id]; if (r && r.status === 'final' && !db.sentTg['final:' + f.id]) ids.push(f.id); });
+  KNOCKOUT.forEach(k => { const id = String(k.m), r = db.results[id]; if (r && r.status === 'final' && r.home && !db.sentTg['final:' + id]) ids.push(id); });
+  for (const id of ids) { const t = tgFinalText(id); if (t && await telegram.post(t)) { db.sentTg['final:' + id] = Date.now(); save(); } }
+}
+// Tick periódico: resumen diario (ventana mañana América) + 1 oportunidad fuerte nueva
+async function tgTick() {
+  if (!telegram.configured()) return;
+  try {
+    const now = new Date(), day = now.toISOString().slice(0, 10), h = now.getUTCHours();
+    if (h >= 13 && h < 16 && !db.sentTg['daily:' + day]) {
+      const t = tgDailyText();
+      if (t && await telegram.post(t)) { db.sentTg['daily:' + day] = Date.now(); save(); }
+    }
+    let best = null;
+    for (const row of arbitrage()) for (const e of row.edges) {
+      const strong = (e.type === 'valor' && e.edge >= 0.06) || (e.type === 'arbitraje' && e.edge >= 0.02);
+      if (!strong) continue;
+      const key = `opp:${day}:${row.id}:${e.type}:${e.venue}:${e.side}`;
+      if (db.sentTg[key]) continue;
+      if (!best || e.edge > best.e.edge) best = { row, e, key };
+    }
+    if (best) { const t = tgOppText(best.row, best.e); if (t && await telegram.post(t)) { db.sentTg[best.key] = Date.now(); save(); } }
+  } catch (e) { console.error('[telegram] tick:', e.message); }
+}
+// Al arrancar: marca finales existentes como ya publicados (no backfillear el canal)
+function markExistingTgSeen() {
+  let n = 0;
+  const mark = id => { if (db.results[id] && db.results[id].status === 'final' && !db.sentTg['final:' + id]) { db.sentTg['final:' + id] = Date.now(); n++; } };
+  GROUP_FIXTURES.forEach(f => mark(f.id));
+  KNOCKOUT.forEach(k => mark(String(k.m)));
+  if (n) save();
 }
 
 function arbitrage() {
@@ -1294,6 +1369,16 @@ const server = http.createServer(async (req, res) => {
         '✅ <b>GP Simulador del Mundial</b> conectado a Telegram.\n\nA partir de ahora publicaremos aquí oportunidades y novedades del Mundial 2026.\n\n👉 <a href="https://gpsimulador.com">gpsimulador.com</a>');
       return json(res, 200, { ok, posted: ok });
     }
+    // --- admin: publicar el resumen del día en el canal (a demanda) ---
+    if (p === '/api/admin/telegram-daily' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (!telegram.configured()) return json(res, 400, { error: 'Telegram no configurado' });
+      const t = tgDailyText();
+      if (!t) return json(res, 200, { ok: false, error: 'No hay partidos por jugar hoy' });
+      const ok = await telegram.post(t);
+      return json(res, 200, { ok, posted: ok });
+    }
     if (p === '/api/admin/refresh-markets' && req.method === 'POST') {
       await fetchMarkets(true);
       broadcast('markets', { ts: marketCache.ts });
@@ -1347,7 +1432,7 @@ server.listen(PORT, () => {
   fetchMarkets().catch(() => { });
   // Mercados/oportunidades: refresco cada 1 min (antes 5 min)
   setInterval(() => Promise.all([fetchMarkets(true), fetchMatchMarkets(true)])
-    .then(() => broadcast('markets', { ts: marketCache.ts })).catch(() => { }), 60 * 1000);
+    .then(() => { broadcast('markets', { ts: marketCache.ts }); return tgTick(); }).catch(() => { }), 60 * 1000);
   // Resultados desde ESPN cada 30 s (antes 2 min) → marcador en vivo más fresco
   syncFromESPN();
   setInterval(syncFromESPN, 30 * 1000);

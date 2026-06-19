@@ -797,3 +797,20 @@ body.has-bottomnav main { padding-bottom: 80px; }
 .pp { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; flex:1; max-width:74px; }
 .pp-num { width:28px; height:28px; border-radius:50%; background:rgba(24,230,163,.15); border:1px solid var(--border-green); color:var(--accent); font-family:var(--mono); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.3); }
 .pp-name { font-size:9.5px; color:var(--text); font-weight:600; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; letter-spacing:-.01em; }
+
+/* ---- referidos ---- */
+.ref-hero { background:radial-gradient(520px 220px at 50% -30%, rgba(24,230,163,.16), transparent 60%), var(--card2); border:1px solid var(--border-green); border-radius:var(--radius-md); padding:26px 18px; text-align:center; margin-bottom:14px; box-shadow:var(--shadow); }
+.ref-count { font-family:var(--mono); font-size:64px; font-weight:800; color:var(--accent); line-height:1; letter-spacing:-2px; }
+.ref-count-lbl { font-size:13px; color:var(--dim); font-weight:600; margin-top:4px; }
+.ref-next { margin-top:14px; font-size:13px; color:var(--text); background:rgba(255,255,255,.05); border:1px solid var(--border-subtle); border-radius:99px; padding:8px 16px; display:inline-block; }
+.ref-next b { color:var(--accent); }
+.ref-linkbox { display:flex; gap:8px; }
+.ref-linkbox input { flex:1; min-width:0; font-family:var(--mono); font-size:13px !important; }
+.ref-linkbox .btn { white-space:nowrap; padding:11px 18px; }
+.ref-tier { display:flex; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--border-subtle); }
+.ref-tier:first-child { border-top:none; }
+.ref-tier-n { width:30px; height:30px; flex:0 0 auto; border-radius:50%; background:var(--bg-muted); color:var(--muted); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; font-family:var(--mono); }
+.ref-tier.done .ref-tier-n { background:var(--accent); color:var(--ink-on-accent); }
+.ref-tier-r { flex:1; font-size:13.5px; font-weight:600; }
+.ref-tier.done .ref-tier-r { color:var(--accent); }
+.ref-tier-goal { font-size:11px; color:var(--muted); font-weight:600; white-space:nowrap; }

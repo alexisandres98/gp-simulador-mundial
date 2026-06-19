@@ -50,6 +50,14 @@ function poissonPmf(lambda, k) {
   return p;
 }
 
+// Calibración medida (jun 2026): el 1X2 estaba sobreconfiado (lo dado al 60-80% ocurría ~47%).
+// Atenuamos hacia uniforme con λ pequeño. SOLO afecta el 1X2 mostrado/edges, NO Elo ni Monte Carlo.
+const CALIB_LAMBDA = 0.15;
+function calib(pH, pD, pA) {
+  const L = CALIB_LAMBDA;
+  return { home: (1 - L) * pH + L / 3, draw: (1 - L) * pD + L / 3, away: (1 - L) * pA + L / 3 };
+}
+
 // Probabilidades 1X2 exactas (rejilla Poisson 0..12) — para mostrar por partido
 function matchProbs(eloH, eloA) {
   const [lh, la] = lambdas(eloH, eloA);
@@ -63,7 +71,8 @@ function matchProbs(eloH, eloA) {
     if (p > best.p) best = { p, h, a };
   }
   const s = pH + pD + pA;
-  return { home: pH / s, draw: pD / s, away: pA / s, xgHome: lh, xgAway: la, likelyScore: `${best.h}-${best.a}` };
+  const c = calib(pH / s, pD / s, pA / s);
+  return { home: c.home, draw: c.draw, away: c.away, xgHome: lh, xgAway: la, likelyScore: `${best.h}-${best.a}` };
 }
 
 // Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual)
@@ -82,7 +91,8 @@ function liveMatchProbs(eloH, eloA, hg, ag, minute) {
     if (p > best.p) best = { p, h: th, a: ta };
   }
   const s = pH + pD + pA;
-  return { home: pH / s, draw: pD / s, away: pA / s, xgHome: rlh, xgAway: rla, likelyScore: `${best.h}-${best.a}`, live: true };
+  const c = calib(pH / s, pD / s, pA / s);
+  return { home: c.home, draw: c.draw, away: c.away, xgHome: rlh, xgAway: rla, likelyScore: `${best.h}-${best.a}`, live: true };
 }
 
 // Simula un partido. Si hay marcador en vivo, condiciona en el marcador actual y simula el resto.

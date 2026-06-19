@@ -330,6 +330,20 @@ let matchMktCache = { ts: 0, matches: [] };
 db.matchSlugs = db.matchSlugs || {};
 db.marketSnapshots = db.marketSnapshots || {}; // probs implícitas del mercado capturadas antes del partido (closing line)
 db.sentAlerts = db.sentAlerts || {};           // alertas ya enviadas por partido (evita reenvíos/spam)
+db.refCodes = db.refCodes || {};               // referidos: code → email (lookup de quién refirió)
+
+// Genera (si falta) un código de referido único para un usuario. Link: gpsimulador.com/?ref=<code>
+function ensureRefCode(email) {
+  const u = db.users[email];
+  if (!u) return null;
+  if (!u.refCode) {
+    const base = email.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 4).toLowerCase() || 'gp';
+    let code;
+    do { code = base + crypto.randomBytes(2).toString('hex'); } while (db.refCodes[code]);
+    u.refCode = code; db.refCodes[code] = email; save();
+  }
+  return u.refCode;
+}
 
 function teamTokens(id) {
   const t = teamById[id];
@@ -596,6 +610,33 @@ async function sendTeamAlerts(matchIds) {
 }
 
 // Email de alerta en vivo (inicio de partido / gol)
+// Email masivo de novedades (re-engancha a usuarios que entraron antes de las nuevas features)
+function broadcastEmail(refLink) {
+  const subject = '⚽ Tu GP Simulador del Mundial ahora tiene MUCHO más';
+  const text = `Hola 👋\n\nDesde que entraste, le agregamos un montón de cosas al GP Simulador del Mundial:\n\n• Página de cada partido con alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y nuestro GP Take.\n• Página de cada selección: plantilla, jugadores clave, forma, cruces probables y mercados.\n• Alertas por email cuando empieza el partido y cuando hay GOL de tus equipos seguidos.\n• Probabilidades que se mueven en vivo con cada gol + escáner de oportunidades modelo vs mercado (Polymarket/Kalshi).\n• Track record público y honesto del modelo (Brier).\n\nEntra y míralo: https://gpsimulador.com\n\n¿Te gusta? Invita a tus amigos con tu link personal y asegura acceso Pro gratis cuando lancemos la versión de pago:\n${refLink}\n\n— GP Simulador del Mundial`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#14201A">
+  <h2 style="margin:0 0 6px">⚽ GP Simulador del Mundial</h2>
+  <p style="color:#555;margin:0 0 16px">Desde que entraste, le agregamos <b>muchísimo</b>:</p>
+  <div style="background:#0E2A1E;color:#fff;border-radius:14px;padding:20px 22px;margin:0 0 18px">
+    <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:14px">
+      <li><b>Página de cada partido</b>: alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y GP Take.</li>
+      <li><b>Página de cada selección</b>: plantilla, jugadores clave, forma, cruces probables y mercados.</li>
+      <li><b>Alertas</b> por email al iniciar el partido y en cada <b>gol</b> de tus equipos seguidos.</li>
+      <li><b>Oportunidades</b> modelo vs mercado (Polymarket/Kalshi) que se mueven en vivo.</li>
+      <li><b>Track record</b> público y honesto del modelo.</li>
+    </ul>
+  </div>
+  <p style="text-align:center;margin:0 0 22px"><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:99px;font-size:15px">Ver las novedades →</a></p>
+  <div style="border-top:1px solid #e3e8e6;padding-top:16px">
+    <p style="font-size:14px;margin:0 0 8px"><b>🎁 Invita y gana Pro gratis</b></p>
+    <p style="font-size:13px;color:#555;margin:0 0 10px">Comparte tu link personal. Por cada amigo que se una, te acercas a acceso <b>Pro gratis</b> cuando lancemos la versión de pago.</p>
+    <p style="font-size:13px;margin:0"><a href="${refLink}" style="color:#0E9F6E;font-weight:700">${refLink}</a></p>
+  </div>
+  <p style="color:#999;font-size:11px;margin-top:20px">Recibes esto porque tienes cuenta en GP Simulador del Mundial.</p>
+</div>`;
+  return { subject, text, html };
+}
+
 function liveAlertEmail(h, aw, a) {
   const isGoal = a.kind === 'goal';
   const subject = isGoal ? `⚽ GOL · ${h.name} ${a.hg}-${a.ag} ${aw.name}` : `▶ Empezó · ${h.name} vs ${aw.name}`;
@@ -1069,7 +1110,17 @@ const server = http.createServer(async (req, res) => {
       if (!db.users[e]) {
         db.users[e] = { createdAt: Date.now(), favorites: [] };
         // atribución de fuente (?ref=x / ig / wa / share...) — solo en el primer registro
-        if (ref) db.users[e].ref = String(ref).slice(0, 24).replace(/[^\w-]/g, '');
+        if (ref) {
+          const r = String(ref).slice(0, 24).replace(/[^\w-]/g, '');
+          db.users[e].ref = r;
+          // si el ref es un código de referido de otro usuario, acredítalo
+          const referrer = db.refCodes[r];
+          if (referrer && referrer !== e && db.users[referrer]) {
+            const ru = db.users[referrer];
+            ru.referrals = ru.referrals || [];
+            if (!ru.referrals.includes(e)) ru.referrals.push(e);
+          }
+        }
       }
       const token = crypto.randomBytes(24).toString('hex');
       db.sessions[token] = e;
@@ -1078,7 +1129,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/me') {
       const u = getUser(req);
-      return u ? json(res, 200, u) : json(res, 401, { error: 'No autenticado' });
+      if (!u) return json(res, 401, { error: 'No autenticado' });
+      const code = ensureRefCode(u.email);
+      return json(res, 200, { ...u, refCode: code, referrals: (db.users[u.email].referrals || []).length });
     }
     if (p === '/api/favorite' && req.method === 'POST') {
       const u = getUser(req);
@@ -1235,6 +1288,25 @@ const server = http.createServer(async (req, res) => {
       await fetchMarkets(true);
       broadcast('markets', { ts: marketCache.ts });
       return json(res, 200, { ok: true, ts: marketCache.ts });
+    }
+    // --- admin: email masivo de novedades a todos los usuarios ---
+    if (p === '/api/admin/broadcast' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
+      const { test } = await readBody(req);
+      const targets = test ? [u.email] : Object.keys(db.users); // test → solo al admin
+      let sent = 0, failed = 0;
+      for (const email of targets) {
+        try {
+          const link = `https://gpsimulador.com/?ref=${ensureRefCode(email)}`;
+          await mailer.sendMail({ to: email, ...broadcastEmail(link) });
+          sent++;
+          await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota
+        } catch (e) { failed++; console.error('[broadcast]', email, e.message); }
+      }
+      console.log(`[broadcast] enviados ${sent}/${targets.length} (fallos ${failed})`);
+      return json(res, 200, { ok: true, sent, failed, total: targets.length, test: !!test });
     }
     // --- estáticos ---
     let file = p === '/' ? '/index.html' : p;

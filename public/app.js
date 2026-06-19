@@ -160,6 +160,7 @@ const ICON = {
   bracket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h6v14H4M14 9h6M14 5v8h6"/></svg>',
   record: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
   evo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+  gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7S11 2 8 2 5 5 7 7M12 7s1-5 4-5 3 3 1 5"/></svg>',
   alerts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
@@ -220,6 +221,7 @@ function switchTab(name) {
     if (name === 'record') renderRecord();
     if (name === 'following') renderFollowing();
     if (name === 'alerts') renderAlerts();
+    if (name === 'referidos') renderReferidos();
   }
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
@@ -240,6 +242,7 @@ function toggleAvatarMenu(e) {
     ${item('alerts', 'alerts', 'Alertas y notificaciones')}
     ${item('record', 'record', 'Aciertos del modelo')}
     ${item('evo', 'evo', 'Evolución')}
+    ${item('referidos', 'gift', 'Invitar amigos 🎁')}
     ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
     <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`;
   m.style.display = '';
@@ -255,6 +258,7 @@ function openSheet() {
   html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
   html += `<button onclick="switchTab('record')">${ICON.record}<span>Aciertos</span></button>`;
   html += `<button onclick="switchTab('evo')">${ICON.evo}<span>Evolución</span></button>`;
+  html += `<button onclick="switchTab('referidos')">${ICON.gift}<span>Invitar</span></button>`;
   if (USER && USER.isAdmin) html += `<button onclick="switchTab('admin')">${ICON.admin}<span>Admin</span></button>`;
   html += `<button onclick="toggleAvatarMenu()">${ICON.account}<span>Cuenta</span></button>`;
   html += `<button class="danger" onclick="logout()">${ICON.logout}<span>Salir</span></button>`;
@@ -1362,10 +1366,28 @@ function renderAdmin() {
     </div>
     <div id="adminMsg" class="warn"></div>
     <div class="gcard" style="margin-top:12px">
+      <h3>EMAIL MASIVO DE NOVEDADES</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">Envía a TODOS los usuarios el correo de novedades (con su link de referido personal). Prueba primero contigo.</div>
+      <div class="formrow">
+        <button class="ghost" onclick="broadcastNews(true)">✉ Enviarme una prueba</button>
+        <button class="btn" onclick="broadcastNews(false)">📣 Enviar a TODOS</button>
+      </div>
+      <div id="bcastMsg" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+    <div class="gcard" style="margin-top:12px">
       <h3>BASE DE USUARIOS</h3>
       <div id="userBase" class="muted">Cargando…</div>
     </div>`;
   loadUsers();
+}
+async function broadcastNews(test) {
+  if (!test && !confirm('¿Enviar el email de novedades a TODOS los usuarios? Esto no se puede deshacer.')) return;
+  const msg = $('#bcastMsg'); msg.textContent = test ? 'Enviando prueba…' : 'Enviando a todos… (puede tardar)';
+  try {
+    const r = await fetch('/api/admin/broadcast', { method: 'POST', headers: hdrs(), body: JSON.stringify({ test }) });
+    const j = await r.json();
+    msg.textContent = r.ok ? `✓ Enviados ${j.sent}/${j.total}${j.failed ? ` · fallos ${j.failed}` : ''}${j.test ? ' (prueba)' : ''}` : '✗ ' + (j.error || 'error');
+  } catch { msg.textContent = '✗ Error de red'; }
 }
 
 async function loadUsers() {
@@ -1409,6 +1431,50 @@ async function removeResult(isGroup) {
   const matchId = isGroup ? $('#gMatch').value : $('#kMatch').value;
   await fetch('/api/admin/result', { method: 'POST', headers: hdrs(), body: JSON.stringify({ matchId, remove: true }) });
   $('#adminMsg').textContent = '✓ Resultado eliminado.';
+}
+
+// ---------- REFERIDOS ----------
+const REF_TIERS = [
+  { n: 1, reward: 'Insignia de Embajador 🏅' },
+  { n: 3, reward: 'Prioridad + 50% de por vida en Pro' },
+  { n: 5, reward: '1 mes de Pro GRATIS al lanzar' },
+  { n: 10, reward: 'Pro GRATIS de por vida 👑' },
+];
+function refLink() { return 'https://gpsimulador.com/?ref=' + ((USER && USER.refCode) || ''); }
+async function renderReferidos() {
+  if (!USER) return;
+  // refresca refCode + contador desde el servidor (tras login USER aún no los tiene)
+  try { const r = await fetch('/api/me', { headers: hdrs() }); if (r.ok) { const me = await r.json(); USER.refCode = me.refCode; USER.referrals = me.referrals; } } catch { }
+  const n = USER.referrals || 0;
+  const link = refLink();
+  const next = REF_TIERS.find(t => t.n > n);
+  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Invita y gana Pro gratis 🎁</h2>
+    <div class="muted" style="font-size:12px">Comparte tu link. Por cada amigo que cree su cuenta, subes de nivel.</div></div>`;
+  html += `<div class="ref-hero">
+    <div class="ref-count">${n}</div>
+    <div class="ref-count-lbl">amigo${n === 1 ? '' : 's'} invitado${n === 1 ? '' : 's'}</div>
+    <div class="ref-next">${next ? `Te falta${next.n - n === 1 ? '' : 'n'} <b>${next.n - n}</b> para: ${next.reward}` : '¡Máximo nivel desbloqueado! 👑'}</div>
+  </div>`;
+  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Tu link de invitación</span></div>
+    <div class="ref-linkbox"><input id="refLinkInput" readonly value="${link}"><button class="btn" onclick="copyRef(event)">Copiar</button></div>
+    <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="shareRef()">Compartir 📤</button></div>`;
+  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Recompensas</span></div>` +
+    REF_TIERS.map(t => `<div class="ref-tier ${n >= t.n ? 'done' : ''}"><span class="ref-tier-n">${n >= t.n ? '✓' : t.n}</span><span class="ref-tier-r">${t.reward}</span><span class="ref-tier-goal">${t.n} amigo${t.n > 1 ? 's' : ''}</span></div>`).join('') + `</div>`;
+  html += `<div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px">Las recompensas Pro se entregan al lanzar la versión de pago tras el Mundial. ¡Gracias por correr la voz! ⚽</div>`;
+  $('#tab-referidos').innerHTML = html;
+}
+function copyRef(ev) {
+  const i = $('#refLinkInput'); if (!i) return;
+  i.select(); i.setSelectionRange(0, 99999);
+  const done = () => { const b = ev && ev.currentTarget; if (b) { const o = b.textContent; b.textContent = '¡Copiado!'; setTimeout(() => b.textContent = o, 1500); } };
+  if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(done).catch(() => { try { document.execCommand('copy'); done(); } catch { } });
+  else { try { document.execCommand('copy'); done(); } catch { } }
+}
+function shareRef() {
+  const text = '⚽ Mira las probabilidades del Mundial 2026 EN VIVO (gratis) en GP Simulador:';
+  const url = refLink();
+  if (navigator.share) { navigator.share({ title: 'GP Simulador del Mundial', text, url }).catch(() => { }); }
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
 }
 
 // ---------- LOGIN ----------

@@ -1380,14 +1380,19 @@ function renderAdmin() {
     </div>`;
   loadUsers();
 }
+let bcastBusy = false;
 async function broadcastNews(test) {
+  if (bcastBusy) return; // evita doble/triple envío por clics repetidos
   if (!test && !confirm('¿Enviar el email de novedades a TODOS los usuarios? Esto no se puede deshacer.')) return;
+  bcastBusy = true;
+  document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = true);
   const msg = $('#bcastMsg'); msg.textContent = test ? 'Enviando prueba…' : 'Enviando a todos… (puede tardar)';
   try {
     const r = await fetch('/api/admin/broadcast', { method: 'POST', headers: hdrs(), body: JSON.stringify({ test }) });
     const j = await r.json();
     msg.textContent = r.ok ? `✓ Enviados ${j.sent}/${j.total}${j.failed ? ` · fallos ${j.failed}` : ''}${j.test ? ' (prueba)' : ''}` : '✗ ' + (j.error || 'error');
   } catch { msg.textContent = '✗ Error de red'; }
+  finally { bcastBusy = false; document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = false); }
 }
 
 async function loadUsers() {
@@ -1435,10 +1440,10 @@ async function removeResult(isGroup) {
 
 // ---------- REFERIDOS ----------
 const REF_TIERS = [
-  { n: 1, reward: 'Insignia de Embajador 🏅' },
-  { n: 3, reward: 'Prioridad + 50% de por vida en Pro' },
-  { n: 5, reward: '1 mes de Pro GRATIS al lanzar' },
-  { n: 10, reward: 'Pro GRATIS de por vida 👑' },
+  { n: 1, reward: 'Embajador 🏅' },
+  { n: 3, reward: 'Embajador Plata 🥈' },
+  { n: 5, reward: 'Embajador Oro 🥇' },
+  { n: 10, reward: 'Embajador Leyenda 👑' },
 ];
 function refLink() { return 'https://gpsimulador.com/?ref=' + ((USER && USER.refCode) || ''); }
 async function renderReferidos() {
@@ -1448,19 +1453,20 @@ async function renderReferidos() {
   const n = USER.referrals || 0;
   const link = refLink();
   const next = REF_TIERS.find(t => t.n > n);
-  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Invita y gana Pro gratis 🎁</h2>
-    <div class="muted" style="font-size:12px">Comparte tu link. Por cada amigo que cree su cuenta, subes de nivel.</div></div>`;
+  const level = [...REF_TIERS].reverse().find(t => n >= t.n);
+  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Invita y sube de nivel 🎁</h2>
+    <div class="muted" style="font-size:12px">Comparte tu link. Cada amigo que cree su cuenta te sube como Embajador del GP Simulador.</div></div>`;
   html += `<div class="ref-hero">
     <div class="ref-count">${n}</div>
-    <div class="ref-count-lbl">amigo${n === 1 ? '' : 's'} invitado${n === 1 ? '' : 's'}</div>
-    <div class="ref-next">${next ? `Te falta${next.n - n === 1 ? '' : 'n'} <b>${next.n - n}</b> para: ${next.reward}` : '¡Máximo nivel desbloqueado! 👑'}</div>
+    <div class="ref-count-lbl">amigo${n === 1 ? '' : 's'} invitado${n === 1 ? '' : 's'}${level ? ` · ${level.reward}` : ''}</div>
+    <div class="ref-next">${next ? `Te falta${next.n - n === 1 ? '' : 'n'} <b>${next.n - n}</b> para: ${next.reward}` : '¡Nivel máximo alcanzado! 👑'}</div>
   </div>`;
   html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Tu link de invitación</span></div>
     <div class="ref-linkbox"><input id="refLinkInput" readonly value="${link}"><button class="btn" onclick="copyRef(event)">Copiar</button></div>
     <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="shareRef()">Compartir 📤</button></div>`;
-  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Recompensas</span></div>` +
+  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Niveles de Embajador</span></div>` +
     REF_TIERS.map(t => `<div class="ref-tier ${n >= t.n ? 'done' : ''}"><span class="ref-tier-n">${n >= t.n ? '✓' : t.n}</span><span class="ref-tier-r">${t.reward}</span><span class="ref-tier-goal">${t.n} amigo${t.n > 1 ? 's' : ''}</span></div>`).join('') + `</div>`;
-  html += `<div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px">Las recompensas Pro se entregan al lanzar la versión de pago tras el Mundial. ¡Gracias por correr la voz! ⚽</div>`;
+  html += `<div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px">Los Embajadores tendrán beneficios exclusivos cuando evolucionemos la plataforma. ¡Gracias por correr la voz! ⚽</div>`;
   $('#tab-referidos').innerHTML = html;
 }
 function copyRef(ev) {

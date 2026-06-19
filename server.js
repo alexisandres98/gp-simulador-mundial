@@ -613,7 +613,7 @@ async function sendTeamAlerts(matchIds) {
 // Email masivo de novedades (re-engancha a usuarios que entraron antes de las nuevas features)
 function broadcastEmail(refLink) {
   const subject = '⚽ Tu GP Simulador del Mundial ahora tiene MUCHO más';
-  const text = `Hola 👋\n\nDesde que entraste, le agregamos un montón de cosas al GP Simulador del Mundial:\n\n• Página de cada partido con alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y nuestro GP Take.\n• Página de cada selección: plantilla, jugadores clave, forma, cruces probables y mercados.\n• Alertas por email cuando empieza el partido y cuando hay GOL de tus equipos seguidos.\n• Probabilidades que se mueven en vivo con cada gol + escáner de oportunidades modelo vs mercado (Polymarket/Kalshi).\n• Track record público y honesto del modelo (Brier).\n\nEntra y míralo: https://gpsimulador.com\n\n¿Te gusta? Invita a tus amigos con tu link personal y asegura acceso Pro gratis cuando lancemos la versión de pago:\n${refLink}\n\n— GP Simulador del Mundial`;
+  const text = `Hola 👋\n\nDesde que entraste, le agregamos un montón de cosas al GP Simulador del Mundial:\n\n• Página de cada partido con alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y nuestro GP Take.\n• Página de cada selección: plantilla, jugadores clave, forma, cruces probables y mercados.\n• Alertas por email cuando empieza el partido y cuando hay GOL de tus equipos seguidos.\n• Probabilidades que se mueven en vivo con cada gol + escáner de oportunidades modelo vs mercado (Polymarket/Kalshi).\n• Track record público y honesto del modelo (Brier).\n\nEntra y míralo: https://gpsimulador.com\n\n¿Te gusta? Invita a tus amigos con tu link personal y conviértete en Embajador del GP Simulador 🏅:\n${refLink}\n\n— GP Simulador del Mundial`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#14201A">
   <h2 style="margin:0 0 6px">⚽ GP Simulador del Mundial</h2>
   <p style="color:#555;margin:0 0 16px">Desde que entraste, le agregamos <b>muchísimo</b>:</p>
@@ -628,8 +628,8 @@ function broadcastEmail(refLink) {
   </div>
   <p style="text-align:center;margin:0 0 22px"><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:99px;font-size:15px">Ver las novedades →</a></p>
   <div style="border-top:1px solid #e3e8e6;padding-top:16px">
-    <p style="font-size:14px;margin:0 0 8px"><b>🎁 Invita y gana Pro gratis</b></p>
-    <p style="font-size:13px;color:#555;margin:0 0 10px">Comparte tu link personal. Por cada amigo que se una, te acercas a acceso <b>Pro gratis</b> cuando lancemos la versión de pago.</p>
+    <p style="font-size:14px;margin:0 0 8px"><b>🎁 Invita y sube de nivel</b></p>
+    <p style="font-size:13px;color:#555;margin:0 0 10px">Comparte tu link personal. Cada amigo que se una te sube como <b>Embajador</b> del GP Simulador — los Embajadores tendrán beneficios exclusivos más adelante.</p>
     <p style="font-size:13px;margin:0"><a href="${refLink}" style="color:#0E9F6E;font-weight:700">${refLink}</a></p>
   </div>
   <p style="color:#999;font-size:11px;margin-top:20px">Recibes esto porque tienes cuenta en GP Simulador del Mundial.</p>

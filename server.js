@@ -28,6 +28,7 @@ const mailer = require('./mailer');
 // llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
 const providers = require('./data-providers');
 const { generateGPTake } = require('./data-providers/gpTake');
+const telegram = require('./telegram');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -1283,6 +1284,15 @@ const server = http.createServer(async (req, res) => {
       broadcast('update', { reason: remove ? 'resultado eliminado' : `resultado ${matchId}`, ts: Date.now() });
       if (!remove && status === 'final') dispatchPendingAlerts().catch(e => console.error('[alert] dispatch:', e.message));
       return json(res, 200, { ok: true });
+    }
+    // --- admin: probar conexión con Telegram ---
+    if (p === '/api/admin/telegram-test' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (!telegram.configured()) return json(res, 400, { error: 'Telegram no configurado (faltan TELEGRAM_BOT_TOKEN y/o TELEGRAM_CHANNEL en Render)' });
+      const ok = await telegram.post(
+        '✅ <b>GP Simulador del Mundial</b> conectado a Telegram.\n\nA partir de ahora publicaremos aquí oportunidades y novedades del Mundial 2026.\n\n👉 <a href="https://gpsimulador.com">gpsimulador.com</a>');
+      return json(res, 200, { ok, posted: ok });
     }
     if (p === '/api/admin/refresh-markets' && req.method === 'POST') {
       await fetchMarkets(true);

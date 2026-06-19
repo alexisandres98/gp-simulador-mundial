@@ -1375,10 +1375,24 @@ function renderAdmin() {
       <div id="bcastMsg" class="muted" style="font-size:12px;margin-top:8px"></div>
     </div>
     <div class="gcard" style="margin-top:12px">
+      <h3>TELEGRAM</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">Publica un mensaje de prueba al canal. Requiere TELEGRAM_BOT_TOKEN y TELEGRAM_CHANNEL en Render.</div>
+      <div class="formrow"><button class="ghost" onclick="telegramTest()">✈ Probar publicación</button></div>
+      <div id="tgMsg" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+    <div class="gcard" style="margin-top:12px">
       <h3>BASE DE USUARIOS</h3>
       <div id="userBase" class="muted">Cargando…</div>
     </div>`;
   loadUsers();
+}
+async function telegramTest() {
+  const m = $('#tgMsg'); m.textContent = 'Publicando…';
+  try {
+    const r = await fetch('/api/admin/telegram-test', { method: 'POST', headers: hdrs() });
+    const j = await r.json();
+    m.textContent = r.ok && j.ok ? '✓ Publicado en el canal. Revísalo en Telegram.' : '✗ ' + (j.error || 'no se pudo publicar');
+  } catch { m.textContent = '✗ Error de red'; }
 }
 let bcastBusy = false;
 async function broadcastNews(test) {

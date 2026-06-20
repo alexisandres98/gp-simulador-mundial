@@ -814,3 +814,8 @@ body.has-bottomnav main { padding-bottom: 80px; }
 .ref-tier-r { flex:1; font-size:13.5px; font-weight:600; }
 .ref-tier.done .ref-tier-r { color:var(--accent); }
 .ref-tier-goal { font-size:11px; color:var(--muted); font-weight:600; white-space:nowrap; }
+
+/* buscador de equipos */
+.searchbox { width:100%; margin:6px 0 16px; background:var(--card); border:1px solid var(--border); color:var(--text); font:inherit; font-size:16px; padding:13px 16px; border-radius:var(--radius-sm); -webkit-appearance:none; }
+.searchbox:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.searchbox::placeholder { color:var(--muted); }

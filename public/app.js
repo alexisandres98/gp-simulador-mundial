@@ -388,8 +388,10 @@ function renderTeams() {
   const max = Math.max(...teams.map(t => t.sim.champion));
   $('#tab-teams').innerHTML = `
     <h2>Probabilidad de ganar la Copa del Mundo · ${STATE.sims.toLocaleString()} torneos simulados</h2>
-    <div class="teamgrid">` + teams.map(t => `
-    <div class="tcard" onclick="openTeam('${t.id}')">
+    <input id="teamSearch" class="searchbox" type="search" inputmode="search" placeholder="🔍 Busca tu selección (ej. España)…" oninput="filterTeams(this.value)" autocomplete="off">
+    <div id="teamNoRes" class="muted" style="display:none;padding:10px 2px">Sin resultados — prueba con otro nombre.</div>
+    <div class="teamgrid" id="teamGrid">` + teams.map(t => `
+    <div class="tcard" data-name="${(t.name + ' ' + t.en + ' ' + (t.aliases || []).join(' ')).toLowerCase()}" onclick="openTeam('${t.id}')">
       <div class="trow">
         <span style="font-size:20px">${t.flag}</span>
         <span class="tname">${t.name}</span>
@@ -404,6 +406,16 @@ function renderTeams() {
         <span>Elim. grupos <span class="${t.sim.outInGroups > .5 ? 'pbad' : ''}">${pct(t.sim.outInGroups)}</span></span>
       </div>
     </div>`).join('') + '</div>';
+}
+function normSearch(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+function filterTeams(q) {
+  const n = normSearch(q);
+  let shown = 0;
+  document.querySelectorAll('#teamGrid .tcard').forEach(c => {
+    const ok = !n || normSearch(c.dataset.name).includes(n);
+    c.style.display = ok ? '' : 'none'; if (ok) shown++;
+  });
+  const nr = $('#teamNoRes'); if (nr) nr.style.display = shown ? 'none' : '';
 }
 
 // ========================================================================
@@ -924,10 +936,29 @@ function renderMatches() {
   const sync = STATE.sync || {};
   let html = `<h2>Partidos · calendario oficial</h2>
     <div class="muted" style="margin-bottom:14px;font-size:11px">
-      ${sync.ok ? '🟢' : '🟡'} Los marcadores se sincronizan automáticamente cada 2 minutos (fuente: ESPN).
+      ${sync.ok ? '🟢' : '🟡'} Los marcadores se sincronizan automáticamente cada 30 segundos (fuente: ESPN).
       ${sync.ts ? 'Última sincronización: ' + new Date(sync.ts).toLocaleTimeString() + '.' : ''}
       Horarios mostrados en tu zona horaria local.
     </div>`;
+
+  // --- pin de EN VIVO + PRÓXIMOS arriba (evita scrollear entre los partidos viejos) ---
+  const now = Date.now();
+  const all = [];
+  STATE.fixtures.forEach(f => all.push({ f, home: f.home, away: f.away, id: f.id, dt: f.datetime, status: (f.result && f.result.status) || 'scheduled' }));
+  STATE.knockout.forEach(k => {
+    const h = (k.result && k.result.home) || k.resolved.home, a = (k.result && k.result.away) || k.resolved.away;
+    if (h && a) all.push({ f: k, home: h, away: a, id: String(k.m), dt: k.datetime || k.date + 'T18:00Z', status: (k.result && k.result.status) || 'scheduled' });
+  });
+  const live = all.filter(x => x.status === 'live').sort((a, b) => (a.dt || '').localeCompare(b.dt || ''));
+  const upcoming = all.filter(x => x.status !== 'final' && x.status !== 'live' && new Date(x.dt).getTime() > now - 3 * 3600000)
+    .sort((a, b) => (a.dt || '').localeCompare(b.dt || '')).slice(0, 5);
+  const pinned = [...live, ...upcoming];
+  if (pinned.length) {
+    html += `<div class="mday" style="color:var(--accent)">${live.length ? '● EN VIVO Y PRÓXIMOS' : 'PRÓXIMOS PARTIDOS'}</div>`;
+    html += pinned.map(x => matchCard(x.f, x.home, x.away, x.id)).join('');
+    html += `<div class="mday" style="margin-top:30px">CALENDARIO COMPLETO</div>`;
+  }
+
   for (let md = 1; md <= 3; md++) {
     html += `<div class="mday">JORNADA ${md} · FASE DE GRUPOS</div>`;
     html += STATE.fixtures.filter(f => f.matchday === md)

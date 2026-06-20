@@ -1570,9 +1570,11 @@ async function verifyCode() {
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
   localStorage.setItem('wc_token', j.token);
   USER = { email: j.email, isAdmin: j.isAdmin, favorites: j.favorites, alerts: j.alerts };
+  ARB = null; // fuerza recargar Oportunidades en este login (evita que quede el candado del teaser)
   closeModal(); renderHeader(); await loadState(); switchTab('arb');
+  if (currentTab() === 'arb' && !ARB) loadArb(); // garantía extra: cargar arb aunque el estado venga raro
 }
-async function logout() { localStorage.removeItem('wc_token'); USER = null; closeAvatarMenu(); closeSheet(); renderHeader(); await loadState(); switchTab('teams'); }
+async function logout() { localStorage.removeItem('wc_token'); USER = null; ARB = null; closeAvatarMenu(); closeSheet(); renderHeader(); await loadState(); switchTab('teams'); }
 
 // ---------- modal / tabs / SSE ----------
 function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').style.display = 'flex'; }

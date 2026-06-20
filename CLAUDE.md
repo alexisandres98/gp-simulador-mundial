@@ -18,7 +18,11 @@
 - **Frontend:** vanilla JS (`public/index.html`, `public/app.js`, `public/style.css`). Sin framework, sin build step. SSE para tiempo real con fallback a polling.
 - **Persistencia:** `db.json` (un solo archivo). En prod: `DB_FILE=/data/db.json` (disco persistente).
 - **Hosting:** Render (plan Starter $7/mes), servicio `srv-d8krl8flk1mc73c9hbi0`, owner `tea-d8krj5v7f7vs73fc7m70`, región Oregon. Dominio: **gpsimulador.com** (Namecheap; A @ → 216.24.57.1, CNAME www → gp-simulador-mundial.onrender.com).
-- **Email:** Resend Pro (50k/mes) desde `codigo@gpsimulador.com`; fallback relay Google Apps Script. Vars: `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `MAIL_WEBHOOK_URL`, `MAIL_WEBHOOK_TOKEN`.
+- **Email:** Resend Pro (50k/mes) desde `codigo@gpsimulador.com`; fallback relay Google Apps Script. Vars: `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `MAIL_WEBHOOK_URL`, `MAIL_WEBHOOK_TOKEN`. Alertas: código de login + resultado final + **inicio de partido + gol** (equipos seguidos). Email masivo de novedades: `/api/admin/broadcast`.
+- **Telegram (activo):** `telegram.js` publica al canal **@gpsimulador**. Vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL=@gpsimulador`. Auto-publica resumen diario + oportunidades fuertes + resultados finales (dedup en `db.sentTg`).
+- **Cache-busting:** el server inyecta `?v=<mtime>` a `app.js`/`style.css` en `index.html` → cada deploy fuerza recarga del código en todos los navegadores (no más versiones viejas en desktop).
+- **Contenido redes:** HTML en `ig-src/` → render a PNG con **Chrome headless** (renderizar de a UNO; el 2º en un script se cuelga) → servidos en `gpsimulador.com/ig/*.png`.
+- **🔑 PENDIENTE:** rotar la API key de API-Football (quedó expuesta en chat) y actualizar `API_FOOTBALL_KEY` en Render.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

@@ -1,6 +1,26 @@
 # TODO_NEXT.md — GP Simulador
 
-Checkpoint tras Fase 5 del rediseño. Lo que falta, en orden.
+## ✅ CHECKPOINT jun-20-2026 — TODO desplegado en prod (main, ~389 usuarios)
+Hecho esta sesión (ver memoria `gp-simulador-mundial.md` para detalle):
+- Fase 4 completa + **GLOBAL TERMINAL POLISH** (dark terminal premium).
+- **API-Football Pro ACTIVO** (env `API_FOOTBALL_KEY` en Render; resolución de fixture/equipos por lista oficial de fixtures).
+- **Calibración** del 1X2 (atenuación λ=0.15, Brier 0.669→~0.62). Modelo v2 EN ESPERA (muestra chica; post-Mundial).
+- Intervalos rápidos (ESPN 30s, mercados 60s). Auto-refresco de página de partido en vivo.
+- **Alertas de gol + inicio** por email (no solo final). GP Take usa lesiones (Opción C).
+- **Telegram ACTIVO** (canal @gpsimulador; auto-publica diario/oportunidades/finales; envs `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHANNEL`).
+- **Referidos** (niveles Embajador, sin promesa de pago) + **email masivo** `/api/admin/broadcast`.
+- **Buscador de equipos**, **Partidos** con EN VIVO/PRÓXIMOS arriba, **Sandbox "Simula cualquier cruce"** (`/api/h2h`).
+- Login robusto (sin candado en Oportunidades) + **cache-busting** (`?v=mtime`) + botón "Entrar" + inputs 16px.
+- Pipeline de contenido (PNGs en `/ig/`, render Chrome headless de a uno). Investigación de mercado hecha.
+
+## ⏭️ PRÓXIMOS PASOS (en orden, para la siguiente sesión)
+1. 🔑 **ROTAR la API key de API-Football** (quedó expuesta en chat) → regenerar en api-sports.io + actualizar `API_FOOTBALL_KEY` en Render.
+2. **Monetización: afiliados RevShare** (monetiza usuarios gratis ya, financia crecimiento; encaja con sitio de contenido/comparación) + **test de disposición a pagar** (la de LATAM NO está probada).
+3. **Expansión multideporte** (existencial post-Mundial — sin esto somos "novedad del Mundial"). NFL en septiembre.
+4. Opcional: backup automático diario de `db.json` al email admin; share-imagen del sandbox; props/córners; automatizar el contenido diario; Modelo v2 (señales de contexto) con más muestra.
+
+---
+(Histórico) Checkpoint tras Fase 5 del rediseño.
 
 ## Rediseño UI — estado por fase
 - ✅ **Fase 1** AppShell premium (header, market tape, bottom nav, avatar menu, logged-out).

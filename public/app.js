@@ -216,13 +216,15 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   const sec = $('#tab-' + name); if (sec) sec.classList.add('active');
   if (STATE && !STATE.teaser) {
-    if (name === 'arb' && !ARB) loadArb();
     if (name === 'evo') renderEvo();
     if (name === 'record') renderRecord();
     if (name === 'following') renderFollowing();
     if (name === 'alerts') renderAlerts();
     if (name === 'referidos') renderReferidos();
   }
+  // Oportunidades: con sesión, (re)carga si no está cargada o si quedó mostrando un candado
+  // (auto-cura cualquier carrera del login que dejaba el candado del teaser). Sin sesión, no toca.
+  if (name === 'arb' && USER && (!ARB || $('#tab-arb').querySelector('.lock'))) loadArb();
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }

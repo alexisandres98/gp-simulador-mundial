@@ -1418,6 +1418,20 @@ const server = http.createServer(async (req, res) => {
     // --- estáticos ---
     let file = p === '/' ? '/index.html' : p;
     const full = path.join(__dirname, 'public', path.normalize(file));
+    // index.html: inyecta una versión (mtime) a app.js/style.css → cache-busting automático.
+    // Garantiza que cualquier navegador (también desktop con caché agresiva) cargue el código nuevo
+    // tras cada deploy, sin tener que hacer hard-refresh.
+    if (full === path.join(__dirname, 'public', 'index.html')) {
+      try {
+        const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'app.js')).mtimeMs);
+        const vcss = Math.floor(fs.statSync(path.join(__dirname, 'public', 'style.css')).mtimeMs);
+        let html = fs.readFileSync(full, 'utf8')
+          .replace('src="app.js"', `src="app.js?v=${vjs}"`)
+          .replace('href="style.css"', `href="style.css?v=${vcss}"`);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { /* si falla, cae al servido normal */ }
+    }
     if (full.startsWith(path.join(__dirname, 'public')) && fs.existsSync(full) && fs.statSync(full).isFile()) {
       const ext = path.extname(full);
       // html/js/css siempre revalidan (si no, los usuarios quedan con código viejo tras cada deploy);

@@ -170,9 +170,10 @@ const ICON = {
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
   following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
+  sim: 'Simulador', referidos: 'Invitar',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
-const IN_TOPNAV = ['arb', 'matches', 'teams', 'groups', 'following', 'bracket', 'record', 'evo'];
+const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
 const BOTTOM = ['arb', 'matches', 'teams', 'groups'];
 
 function renderHeader() {

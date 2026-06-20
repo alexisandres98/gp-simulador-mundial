@@ -161,6 +161,7 @@ const ICON = {
   record: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
   evo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
   gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7S11 2 8 2 5 5 7 7M12 7s1-5 4-5 3 3 1 5"/></svg>',
+  sim: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M5 19l6-6M8 16l-4 4M5 21l-2-2"/></svg>',
   alerts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
@@ -221,6 +222,7 @@ function switchTab(name) {
     if (name === 'following') renderFollowing();
     if (name === 'alerts') renderAlerts();
     if (name === 'referidos') renderReferidos();
+    if (name === 'sim') renderSim();
   }
   // Oportunidades: con sesión, (re)carga si no está cargada o si quedó mostrando un candado
   // (auto-cura cualquier carrera del login que dejaba el candado del teaser). Sin sesión, no toca.
@@ -240,11 +242,12 @@ function toggleAvatarMenu(e) {
       <div class="av">${(USER.email || '?').slice(0, 1).toUpperCase()}</div>
       <div><div class="em">${USER.email}</div><div class="plan">${plan}</div></div>
     </div>
+    ${item('sim', 'sim', 'Simula cualquier cruce ⚔️')}
+    ${item('referidos', 'gift', 'Invitar amigos 🎁')}
     ${item('following', 'account', 'Mis seguidos')}
     ${item('alerts', 'alerts', 'Alertas y notificaciones')}
     ${item('record', 'record', 'Aciertos del modelo')}
     ${item('evo', 'evo', 'Evolución')}
-    ${item('referidos', 'gift', 'Invitar amigos 🎁')}
     ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
     <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`;
   m.style.display = '';
@@ -255,6 +258,7 @@ function closeAvatarMenu() { const m = $('#avatarMenu'); if (m) m.style.display 
 function openSheet() {
   const items = [['following', 'Seguidos'], ['following', 'Alertas', 'alerts'], ['bracket', 'Bracket'], ['record', 'Aciertos'], ['evo', 'Evolución'], ['account', 'Mi cuenta', 'account']];
   let html = '<div class="sheet-grid">';
+  html += `<button onclick="switchTab('sim')">${ICON.sim}<span>Simular</span></button>`;
   html += `<button onclick="switchTab('following')">${ICON.following}<span>Seguidos</span></button>`;
   html += `<button onclick="switchTab('alerts')">${ICON.alerts}<span>Alertas</span></button>`;
   html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
@@ -392,6 +396,7 @@ function renderTeams() {
     <h2>Probabilidad de ganar la Copa del Mundo · ${STATE.sims.toLocaleString()} torneos simulados</h2>
     <input id="teamSearch" class="searchbox" type="search" inputmode="search" placeholder="🔍 Busca tu selección (ej. España)…" oninput="filterTeams(this.value)" autocomplete="off">
     <div id="teamNoRes" class="muted" style="display:none;padding:10px 2px">Sin resultados — prueba con otro nombre.</div>
+    <div class="simcard" onclick="switchTab('sim')"><span class="sc-ic">⚔️</span><div class="sc-tx"><div class="sc-t">Simula cualquier cruce</div><div class="sc-s">Enfrenta a tu selección contra quien quieras</div></div><span class="sc-go">→</span></div>
     <div class="teamgrid" id="teamGrid">` + teams.map(t => `
     <div class="tcard" data-name="${(t.name + ' ' + t.en + ' ' + (t.aliases || []).join(' ')).toLowerCase()}" onclick="openTeam('${t.id}')">
       <div class="trow">
@@ -1531,6 +1536,54 @@ function shareRef() {
   const url = refLink();
   if (navigator.share) { navigator.share({ title: 'GP Simulador del Mundial', text, url }).catch(() => { }); }
   else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
+}
+
+// ---------- SIMULADOR: simula cualquier cruce ----------
+let CUR_SIM = null;
+function renderSim() {
+  if (!USER) return;
+  const teams = [...STATE.teams].sort((a, b) => a.name.localeCompare(b.name));
+  const opts = () => teams.map(t => `<option value="${t.id}">${t.flag} ${t.name}</option>`).join('');
+  $('#tab-sim').innerHTML = `
+    <div style="margin-bottom:10px"><h2 style="margin-bottom:3px">Simula cualquier cruce ⚔️</h2>
+      <div class="muted" style="font-size:12px">Enfrenta a cualquiera de las 48 selecciones — cancha neutral, según el modelo (10.000 simulaciones).</div></div>
+    <div class="sim-pick">
+      <select id="simA" class="searchbox" style="margin:0">${opts()}</select>
+      <span class="sim-vs">VS</span>
+      <select id="simB" class="searchbox" style="margin:0">${opts()}</select>
+    </div>
+    <div class="formrow" style="margin-top:12px"><button class="btn" style="width:100%" onclick="simulate()">⚔️ Simular cruce</button></div>
+    <div id="simResult"></div>`;
+  $('#simA').value = 'ARG'; $('#simB').value = 'ESP';
+  simulate();
+}
+async function simulate() {
+  const a = $('#simA').value, b = $('#simB').value;
+  if (a === b) { $('#simResult').innerHTML = du('Elige dos selecciones distintas.'); return; }
+  $('#simResult').innerHTML = '<div class="muted" style="padding:24px 0;text-align:center">Simulando…</div>';
+  try {
+    const r = await fetch(`/api/h2h?a=${a}&b=${b}`, { headers: hdrs() });
+    if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
+    CUR_SIM = await r.json();
+    const d = CUR_SIM, p = d.probs;
+    $('#simResult').innerHTML = `
+      <div class="dpanel" style="margin-top:14px">
+        <div class="sim-teams">
+          <div class="sim-side"><div class="sim-flag">${d.a.flag}</div><div class="sim-name">${d.a.name}</div><div class="muted" style="font-size:11px">Elo ${d.aElo}</div></div>
+          <div class="sim-vs2">VS</div>
+          <div class="sim-side"><div class="sim-flag">${d.b.flag}</div><div class="sim-name">${d.b.name}</div><div class="muted" style="font-size:11px">Elo ${d.bElo}</div></div>
+        </div>
+        <div class="pbar" style="margin-top:16px"><div class="ph" style="width:${p.aWin * 100}%"></div><div class="pd" style="width:${p.draw * 100}%"></div><div class="pa" style="width:${p.bWin * 100}%"></div></div>
+        <div class="plabels"><span>${pct(p.aWin)} gana</span><span>empate ${pct(p.draw)}</span><span>gana ${pct(p.bWin)}</span></div>
+        <div class="plabels" style="margin-top:6px"><span>xG ${p.xgA.toFixed(2)}</span><span class="muted">marcador prob. ${p.likely}</span><span>xG ${p.xgB.toFixed(2)}</span></div>
+        <button class="cta-sm" style="width:100%;margin-top:16px" onclick="shareSim(event)">📤 Compartir resultado</button>
+      </div>`;
+  } catch { $('#simResult').innerHTML = du('No se pudo simular. Intenta de nuevo.'); }
+}
+function shareSim(ev) {
+  if (!CUR_SIM) return; const d = CUR_SIM, p = d.probs;
+  const txt = `⚔️ ${d.a.flag} ${d.a.name} vs ${d.b.name} ${d.b.flag} — según el modelo de GP Simulador (10.000 sims):\n${d.a.name} ${pct(p.aWin)} · empate ${pct(p.draw)} · ${d.b.name} ${pct(p.bWin)} · marcador probable ${p.likely}.\nSimula tu cruce gratis:`;
+  shareOp(ev, txt);
 }
 
 // ---------- LOGIN ----------

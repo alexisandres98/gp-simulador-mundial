@@ -819,3 +819,19 @@ body.has-bottomnav main { padding-bottom: 80px; }
 .searchbox { width:100%; margin:6px 0 16px; background:var(--card); border:1px solid var(--border); color:var(--text); font:inherit; font-size:16px; padding:13px 16px; border-radius:var(--radius-sm); -webkit-appearance:none; }
 .searchbox:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
 .searchbox::placeholder { color:var(--muted); }
+
+/* ---- simulador "cualquier cruce" ---- */
+.simcard { display:flex; align-items:center; gap:14px; background:radial-gradient(420px 160px at 100% -50%, rgba(24,230,163,.14), transparent 60%), var(--card2); border:1px solid var(--border-green); border-radius:var(--radius-md); padding:16px 18px; margin:0 0 18px; cursor:pointer; box-shadow:var(--shadow-sm); }
+.simcard:hover { border-color:var(--accent); }
+.simcard .sc-ic { font-size:30px; line-height:1; }
+.simcard .sc-tx { flex:1; min-width:0; }
+.simcard .sc-t { font-weight:800; font-size:16px; letter-spacing:-.2px; }
+.simcard .sc-s { font-size:12px; color:var(--muted); margin-top:2px; }
+.simcard .sc-go { color:var(--accent); font-size:22px; font-weight:800; }
+.sim-pick { display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; }
+.sim-vs { font-family:var(--font-head); font-weight:800; color:var(--muted); font-size:14px; }
+.sim-teams { display:flex; align-items:center; justify-content:space-around; gap:10px; }
+.sim-side { text-align:center; flex:1; min-width:0; }
+.sim-flag { font-size:52px; line-height:1; }
+.sim-name { font-weight:800; font-size:15px; margin-top:6px; letter-spacing:-.2px; }
+.sim-vs2 { font-family:var(--font-head); font-weight:800; color:var(--faint); font-size:18px; }

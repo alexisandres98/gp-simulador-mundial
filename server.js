@@ -1322,6 +1322,18 @@ const server = http.createServer(async (req, res) => {
       const detail = await buildTeamDetail(id);
       return json(res, 200, detail);
     }
+    // Sandbox "simula cualquier cruce" — par de selecciones en cancha neutral (sin bono de local)
+    if (p === '/api/h2h') {
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const a = (url.searchParams.get('a') || '').toUpperCase(), b = (url.searchParams.get('b') || '').toUpperCase();
+      if (!teamById[a] || !teamById[b] || a === b) return json(res, 400, { error: 'Equipos inválidos' });
+      const pr = matchProbs(db.elos[a], db.elos[b]); // neutral: elos crudos, sin HOME_BONUS
+      return json(res, 200, {
+        a: basicTeam(a), b: basicTeam(b),
+        aElo: Math.round(db.elos[a]), bElo: Math.round(db.elos[b]),
+        probs: { aWin: pr.home, draw: pr.draw, bWin: pr.away, xgA: pr.xgHome, xgB: pr.xgAway, likely: pr.likelyScore },
+      });
+    }
     if (p === '/api/aciertos') {
       // público a propósito: el track record es la credibilidad de la marca
       return json(res, 200, trackRecord());

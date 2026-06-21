@@ -20,7 +20,18 @@ Prueba de cómo se vería la v2 desplegada a futuro, **contenida al sandbox** (n
 - **Principio clave**: cada punto de Elo movido es **trazable a una señal mostrada** (no caja negra, no texto genérico tipo ChatGPT). Determinístico, sin IA externa.
 - **UPGRADE jun-21 (marco de analista pro)**: tras feedback del usuario (un buen análisis toma en cuenta TODO). (1) **xG ESPECÍFICO POR EQUIPO**: `engine.probsFromLambdas`/`lambdas` exportados; `gpIntelligence.adjustedLambdas` combina el xG-Elo con perfil ataque/defensa real (forma, β=0.40) → resuelve el "marcador máximo 2-0" (ahora proyecta 3-0/4-0 cuando corresponde). (2) **Mercados de goles/totales** (panel "Goles y totales"): Over/Under 1.5/2.5/3.5, total más probable, **distribución de goles por equipo** (0/1/2/3+), BTTS — accionable para apostadores. (3) **Bajas ponderadas por jugador clave** (cruza `keyPlayers`×`injuries`: clave=-15, normal=-7, duda=-3/-6). (4) **Calidad de plantilla** (`providers.getSquadRating` = rating medio del XI más usado, temporada, vía `getTeamPlayers`). (5) **Descanso/carga** (`restDaysFromResults` desde fechas de resultados). (6) Monte Carlo etiquetado "contexto integrado" (siempre usó Elo+Δ). (7) TTLs endurecidos para Mundial: forma 16h→2h, lesiones 40min→20min. Verificado en preview con datos reales (FRA-ENG, BRA-QAT: Brasil 58% de 3+ goles). **PENDIENTE: desplegar a prod** (commit hecho; falta Manual Deploy).
 
+## 🟢 SPRINT 4 — Oportunidades ejecutables (capa de producto) — CONSTRUIDO, STOP antes de deploy (jun-21-2026)
+Carpeta `exec-opportunities/` + migración 012 + endpoints `server.js` + pestaña "Ejecutables" (`#tab-opex`).
+Publicación CONTROLADA (draft→approve→publish→revalidate→expire/withdraw), auditada, **sin auto-publicación**
+(`autoPublicationBlocked=true` siempre). Calculadora server-side (no guarda capital), deep links versionados
+(allowlist+HTTPS), jurisdicción informativa (selector manual de país), redacción por lista blanca.
+- **Flags** (todos default false): `EXEC_OPPORTUNITIES_{UI,ADMIN_PREVIEW,PUBLIC,MANUAL_PUBLICATION,CALCULATOR,DEEP_LINKS,GEO_FILTER}_ENABLED` + umbrales `EXEC_PUBLIC_*` (conservadores). Con todo off → app idéntica, sin rutas nuevas.
+- **Tests verdes**: `test:exec` 65, `test:optimizer` 6, `test:exec-db` 23 (embedded-postgres). 0 regresiones. UI verificada en preview móvil (0 errores consola).
+- **Docs**: `docs/sprint-4-*.md` (10). **NO desplegado, NO commit, NO push.**
+- **Pendiente del usuario para producción**: (1) activar Sprint 2 y luego Sprint 3 en Render (siguen apagados) para que el motor tenga candidatos reales; (2) aprobar deploy de Sprint 4; (3) subir flags por fase: inerte→admin preview→publicaciones internas→beta→público. Público SOLO tras ≥24h shadow + 0 falsos Pure Arb materiales.
+
 ## ⏭️ PRÓXIMOS PASOS (en orden, para la siguiente sesión)
+0. 🔌 **Activar Sprint 2 (Canonical Graph) y luego Sprint 3 (motor)** en Render — prerequisito para datos reales de arbitraje que Sprint 4 publicaría. Sprint 1 ya está activo (Postgres creado jun-21).
 1. 🔑 **ROTAR la API key de API-Football** (quedó expuesta en chat) → regenerar en api-sports.io + actualizar `API_FOOTBALL_KEY` en Render.
 2. **Monetización: afiliados RevShare** (monetiza usuarios gratis ya, financia crecimiento; encaja con sitio de contenido/comparación) + **test de disposición a pagar** (la de LATAM NO está probada).
 3. **Expansión multideporte** (existencial post-Mundial — sin esto somos "novedad del Mundial"). NFL en septiembre.

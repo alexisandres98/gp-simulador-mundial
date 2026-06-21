@@ -26,7 +26,10 @@
     "arb:status": "node arb-engine/cli.js status",
     "arb:verify": "node arb-engine/cli.js verify",
     "arb:replay": "node arb-engine/cli.js replay",
-    "arb:inspect": "node arb-engine/cli.js inspect"
+    "arb:inspect": "node arb-engine/cli.js inspect",
+    "test:exec": "node tests/exec-opportunities.test.js",
+    "test:exec-db": "node tests/exec-opportunities-db.test.js",
+    "test:optimizer": "node tests/optimizer-hardening.test.js"
   },
   "engines": {
     "node": ">=18"

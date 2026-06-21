@@ -42,6 +42,15 @@ const marketData = require('./market-data');
 const canonicalGraph = require('./canonical-graph');
 // Sprint 3 — motor de arbitraje ejecutable V1 (shadow mode, sin publicación). Aislado.
 const arbEngine = require('./arb-engine');
+// Sprint 4 — capa de producto (oportunidades ejecutables). Inerte con flags apagados; no conecta nada al requerir.
+const execOpps = require('./exec-opportunities');
+// rate limiter en memoria muy simple (clave → ventana) para la calculadora pública
+const _rl = new Map();
+function rateLimit(key, max, windowMs) {
+  const now = Date.now(); const e = _rl.get(key);
+  if (!e || e.exp < now) { _rl.set(key, { n: 1, exp: now + windowMs }); return true; }
+  if (e.n >= max) return false; e.n++; return true;
+}
 // helper de lectura para endpoints admin de arbitraje (parametrizado; devuelve filas o [] sin lanzar)
 async function dbClientSafe(sql, params) { try { const r = await require('./database/client').query(sql, params); return r.rows; } catch { return []; } }
 
@@ -1231,7 +1240,13 @@ async function buildTeamDetail(code) {
 function getUser(req) {
   const tok = (req.headers.authorization || '').replace('Bearer ', '');
   const email = db.sessions[tok];
-  return email ? { email, ...db.users[email], isAdmin: isAdmin(email) } : null;
+  if (!email) return null;
+  const admin = isAdmin(email);
+  // Sprint 4: flags de la capa de oportunidades ejecutables, para que el frontend muestre la pestaña
+  // SOLO cuando corresponde (admin preview o público). Con flags off, no aparece ninguna ruta nueva.
+  const xf = execOpps.cfg.flags;
+  const execUi = (admin && xf.adminPreviewEnabled) || xf.publicEnabled;
+  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1610,6 +1625,116 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       try { const candidates = await require('./arb-engine/candidateGenerator').generateFromDB(); const r = await arbEngine.runShadow({ candidates }); return json(res, 200, { counts: r.counts, persisted: r.persisted }); } catch (e) { return json(res, 500, { error: 'run failed' }); }
     }
+    // --- Sprint 4: capa de producto (oportunidades ejecutables). Inerte si EXEC_OPPORTUNITIES_UI_ENABLED=false ---
+    if (p.startsWith('/api/internal/executable-opportunities') || p.startsWith('/api/executable-opportunities')) {
+      if (!execOpps.cfg.flags.uiEnabled) return json(res, 404, { error: 'No encontrado' });
+    }
+    // estado + lista para revisión (admin)
+    if (p === '/api/internal/executable-opportunities' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const status = url.searchParams.get('status') || null;
+      const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 200);
+      const offset = Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0);
+      try {
+        const st = await execOpps.adminStatus();
+        const list = execOpps.cfg.platform.db.configured ? await execOpps.publication.repo.list({ status, limit, offset }) : { items: [], total: 0 };
+        return json(res, 200, { status: st, ...list });
+      } catch (e) { return json(res, 200, { status: { flags: execOpps.cfg.flags }, items: [], total: 0 }); }
+    }
+    const mXoId = p.match(/^\/api\/internal\/executable-opportunities\/([0-9a-f-]{36})$/i);
+    if (mXoId && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try {
+        const pub = await execOpps.publication.repo.findById(mXoId[1]);
+        if (!pub) return json(res, 404, { error: 'No encontrado' });
+        const history = await execOpps.publication.history.listForPublication(pub.id);
+        let diff = null;
+        try { const live = await require('./exec-opportunities/adapters').loadLiveContext(pub.opportunity_key); if (live) diff = execOpps.publication.detailDiff(pub, live.evaluationView); } catch { /* noop */ }
+        return json(res, 200, { publication: pub, history, diff });
+      } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    const mXoAction = p.match(/^\/api\/internal\/executable-opportunities\/([0-9a-f-]{36})\/(approve|publish|pause|withdraw|revalidate)$/i);
+    if (mXoAction && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const id = mXoAction[1], action = mXoAction[2].toLowerCase();
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        const pub = await execOpps.publication.repo.findById(id);
+        if (!pub) return json(res, 404, { error: 'No encontrado' });
+        if (action === 'pause') return json(res, 200, await execOpps.publication.pause(id, { actorId: u.email, reason: (body.reason || '').slice(0, 500) }));
+        if (action === 'withdraw') return json(res, 200, await execOpps.publication.withdraw(id, { actorId: u.email, reason: (body.reason || '').slice(0, 500) }));
+        // approve/publish/revalidate requieren la evaluación VIVA (datos reales)
+        const live = await require('./exec-opportunities/adapters').loadLiveContext(pub.opportunity_key);
+        if (!live) return json(res, 409, { error: 'Sin evaluación vigente para esta oportunidad (requiere datos reales del motor).' });
+        const opts = { actorId: u.email, evaluationView: live.evaluationView, context: { ...live.context, evaluationId: live.context.evaluationId }, allowExecutionSensitive: !!body.allowExecutionSensitive };
+        if (action === 'approve') return json(res, 200, await execOpps.publication.approve(id, opts));
+        if (action === 'revalidate') return json(res, 200, await execOpps.publication.revalidatePublication(id, { evaluationView: live.evaluationView, context: live.context }));
+        if (action === 'publish') return json(res, 200, await execOpps.publication.publish(id, { ...opts, visibility: body.visibility || 'public', ttlMs: body.ttlMs }));
+      } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+    // crear borrador desde una oportunidad del motor (admin)
+    if (p === '/api/internal/executable-opportunities/create' && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const body = await readBody(req).catch(() => ({}));
+      const key = (body.opportunityKey || '').slice(0, 80);
+      if (!key) return json(res, 400, { error: 'opportunityKey requerido' });
+      try {
+        const opp = (await dbClientSafe('SELECT * FROM arb_opportunities WHERE opportunity_key=$1', [key]))[0];
+        const live = await require('./exec-opportunities/adapters').loadLiveContext(key);
+        if (!live) return json(res, 409, { error: 'Sin evaluación vigente para esa oportunidad.' });
+        const draft = await execOpps.publication.createDraft({
+          opportunityId: opp && opp.id, opportunityKey: key, evaluationId: live.context.evaluationId,
+          evaluationView: live.evaluationView, context: live.context, actorId: u.email, visibility: body.visibility || 'internal',
+        });
+        return json(res, 200, draft);
+      } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+
+    // --- públicos experimentales (solo si EXEC_OPPORTUNITIES_PUBLIC_ENABLED) ---
+    if (p === '/api/executable-opportunities' && req.method === 'GET') {
+      if (!execOpps.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const country = (url.searchParams.get('country') || '').slice(0, 2).toUpperCase() || null;
+      const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 100);
+      const offset = Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0);
+      try { return json(res, 200, await execOpps.listPublicOpportunities({ country, limit, offset })); }
+      catch (e) { return json(res, 200, { items: [], enabled: true }); }
+    }
+    const mXoPub = p.match(/^\/api\/executable-opportunities\/(op_[a-f0-9]{6,})$/i);
+    if (mXoPub && req.method === 'GET') {
+      if (!execOpps.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const country = (url.searchParams.get('country') || '').slice(0, 2).toUpperCase() || null;
+      try { const r = await execOpps.getPublicOpportunity(mXoPub[1], { country }); return r.error ? json(res, 404, r) : json(res, 200, r); }
+      catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    const mXoCalc = p.match(/^\/api\/executable-opportunities\/(op_[a-f0-9]{6,})\/calculate$/i);
+    if (mXoCalc && req.method === 'POST') {
+      if (!execOpps.cfg.flags.publicEnabled || !execOpps.cfg.flags.calculatorEnabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (!rateLimit('calc:' + u.email, execOpps.cfg.calculator.rateLimitPerMin, 60000)) return json(res, 429, { error: 'Demasiados cálculos. Espera un momento.' });
+      const body = await readBody(req).catch(() => ({}));
+      // resolver de patas vivas para recálculo server-side
+      const resolver = async (publicId) => {
+        const pub = await execOpps.publication.repo.findByPublicId(publicId);
+        if (!pub) return { expired: true };
+        const expired = pub.publication_status !== 'published' || (pub.expires_at && new Date(pub.expires_at).getTime() <= Date.now());
+        const live = await require('./exec-opportunities/adapters').loadLiveContext(pub.opportunity_key);
+        if (!live) return { expired: true, evaluationId: pub.evaluation_id };
+        return { legs: live.evaluationView.evaluation.legs.map(l => ({ provider: l.provider, side: l.side, levels: [], priceSource: l.priceSource })), strategy: live.evaluationView.strategy, evaluationId: pub.evaluation_id, validUntil: pub.expires_at, expired, legMeta: live.context.legMeta };
+      };
+      try { return json(res, 200, await execOpps.calculate(mXoCalc[1], { capital: body.capital, minRoi: body.minRoi, isAdmin: u.isAdmin, executionBufferBps: body.executionBufferBps }, resolver)); }
+      catch (e) { return json(res, 400, { error: 'error' }); }
+    }
+    // analítica de producto (mínima; nunca guarda capital). Solo registra eventos permitidos.
+    if (p === '/api/executable-opportunities/event' && req.method === 'POST') {
+      if (!execOpps.cfg.flags.uiEnabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const body = await readBody(req).catch(() => ({}));
+      try { await execOpps.analytics.record(body.event, body.props || {}, { sessionRef: null }); } catch { /* noop */ }
+      return json(res, 200, { ok: true });
+    }
+
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {
       const u = getUser(req);

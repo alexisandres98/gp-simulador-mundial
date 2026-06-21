@@ -165,12 +165,13 @@ const ICON = {
   alerts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
+  opex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
   following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
-  sim: 'Simulador', referidos: 'Invitar',
+  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
@@ -180,8 +181,9 @@ function renderHeader() {
   const inApp = !!USER;
   document.body.classList.toggle('logged-in', inApp);
   document.body.classList.toggle('has-bottomnav', inApp);
-  // top nav
-  const topItems = inApp ? IN_TOPNAV.concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
+  // top nav (Sprint 4: "Ejecutables" solo aparece si la capa está activa para este usuario — flags off → no aparece)
+  const execTab = inApp && USER.execUi ? ['opex'] : [];
+  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
   $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${TABS[t]}</button>`).join('');
   // right side
   if (inApp) {
@@ -228,6 +230,7 @@ function switchTab(name) {
   // Oportunidades: con sesión, (re)carga si no está cargada o si quedó mostrando un candado
   // (auto-cura cualquier carrera del login que dejaba el candado del teaser). Sin sesión, no toca.
   if (name === 'arb' && USER && (!ARB || $('#tab-arb').querySelector('.lock'))) loadArb();
+  if (name === 'opex' && USER) loadExecOpps();
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
@@ -1897,6 +1900,231 @@ async function shareOp(ev, text) {
     }
   }
   window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
+}
+
+// ============================================================================
+// SPRINT 4 — Oportunidades ejecutables (capa de producto). Mobile-first.
+// "Simple en la superficie, riguroso al profundizar." Nunca promete ganancia garantizada.
+// ============================================================================
+let EXEC = { items: null, country: localStorage.getItem('xo_country') || '', timer: null, sort: 'net_roi', filters: {} };
+const xe = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const XO_DISCLAIMER = 'Estimación basada en precios y profundidad observados. Las condiciones pueden cambiar antes de completar ambas operaciones. Verifica fees, reglas y elegibilidad directamente con cada plataforma.';
+const COUNTRIES = [['', 'Selecciona país…'], ['MX', 'México'], ['CO', 'Colombia'], ['AR', 'Argentina'], ['CL', 'Chile'], ['PE', 'Perú'], ['ES', 'España'], ['US', 'Estados Unidos'], ['BR', 'Brasil'], ['UY', 'Uruguay'], ['OT', 'Otro']];
+
+function clearExecTimer() { if (EXEC.timer) { clearInterval(EXEC.timer); EXEC.timer = null; } }
+function xoStatusPill(st) {
+  const map = { ACTIVE: ['Activa', 'xo-st-active'], VERIFYING: ['Verificando…', 'xo-st-verifying'], AGING: ['Envejeciendo', 'xo-st-aging'], EXPIRED: ['Expirada', 'xo-st-expired'], PAUSED: ['Pausada', 'xo-st-paused'], WITHDRAWN: ['Retirada', 'xo-st-paused'] };
+  const [t, c] = map[st] || ['—', 'xo-st-paused'];
+  return `<span class="xo-pill ${c}">${t}</span>`;
+}
+function xoBadge(b) { return `<span class="xo-badge ${b === 'PURE ARB' ? 'xo-b-pure' : 'xo-b-exec'}">${xe(b)}</span>`; }
+function fmtAge(s) { if (s == null) return '—'; if (s < 60) return 'hace ' + s + 's'; const m = Math.floor(s / 60); return 'hace ' + m + ' min'; }
+
+async function loadExecOpps() {
+  clearExecTimer();
+  const root = $('#tab-opex');
+  root.innerHTML = `
+    <div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Oportunidades ejecutables</h3>
+      <span class="sec-badge">experimental</span></div>
+    <div class="explain">Arbitraje ejecutable <b>estimado</b> entre plataformas. Margen neto estimado, sujeto a precio, profundidad, fees, elegibilidad y ejecución. <b>No</b> es ganancia garantizada.</div>
+    ${USER.isAdmin ? '<div id="xoAdmin"></div>' : ''}
+    <div id="xoFilters"></div>
+    <div id="xoList"><div class="du">Cargando oportunidades verificadas…</div></div>
+    <div class="xo-foot">${xe(XO_DISCLAIMER)} · GP Simulador no acepta apuestas, no custodia fondos y no ejecuta operaciones.</div>`;
+  renderExecFilters();
+  if (USER.isAdmin) loadExecAdmin();
+  if (!USER.execPublic) { $('#xoList').innerHTML = du('La vista pública está en preparación. Como administrador puedes revisar y publicar oportunidades arriba.'); return; }
+  try {
+    const q = EXEC.country ? '?country=' + encodeURIComponent(EXEC.country) : '';
+    const r = await fetch('/api/executable-opportunities' + q, { headers: hdrs() }).then(x => x.json());
+    EXEC.items = (r && r.items) || [];
+    renderExecList();
+    EXEC.timer = setInterval(tickExecAges, 1000);
+  } catch (e) { $('#xoList').innerHTML = du('No se pudieron cargar las oportunidades. Intenta de nuevo.'); }
+}
+
+function renderExecFilters() {
+  const f = EXEC.filters;
+  const countrySel = `<select class="xo-sel" onchange="setExecCountry(this.value)">${COUNTRIES.map(([c, n]) => `<option value="${c}" ${c === EXEC.country ? 'selected' : ''}>${xe(n)}</option>`).join('')}</select>`;
+  $('#xoFilters').innerHTML = `
+    <div class="xo-filters">
+      <button class="gchip ${!f.cls ? 'active' : ''}" onclick="execFilter('cls','')">Todas</button>
+      <button class="gchip ${f.cls === 'pure_arb' ? 'active' : ''}" onclick="execFilter('cls','pure_arb')">Pure Arb</button>
+      <button class="gchip ${f.cls === 'execution_sensitive' ? 'active' : ''}" onclick="execFilter('cls','execution_sensitive')">Sensible</button>
+      <button class="gchip ${f.rules ? 'active' : ''}" onclick="execFilter('rules',!${!!f.rules})">Reglas confirmadas</button>
+      <select class="xo-sel" onchange="EXEC.sort=this.value;renderExecList()">
+        <option value="net_roi">Orden: Net ROI</option>
+        <option value="profit">Beneficio máximo</option>
+        <option value="recent">Más reciente</option>
+        <option value="confidence">Confianza</option>
+      </select>
+      <span class="xo-geo">🌎 ${countrySel}</span>
+    </div>`;
+}
+function execFilter(k, v) { EXEC.filters[k] = v; renderExecFilters(); renderExecList(); }
+function setExecCountry(c) { EXEC.country = c; localStorage.setItem('xo_country', c); loadExecOpps(); }
+
+function filteredSorted() {
+  let items = (EXEC.items || []).slice();
+  const f = EXEC.filters;
+  if (f.cls) items = items.filter(x => x.classification === f.cls);
+  if (f.rules) items = items.filter(x => x.rules_confirmed);
+  const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
+  if (EXEC.sort === 'net_roi') items.sort((a, b) => num(b.net_margin_pct) - num(a.net_margin_pct));
+  else if (EXEC.sort === 'profit') items.sort((a, b) => num(b.estimated_net_profit_at_max_display) - num(a.estimated_net_profit_at_max_display));
+  else if (EXEC.sort === 'recent') items.sort((a, b) => (a.detected_age_seconds || 0) - (b.detected_age_seconds || 0));
+  else if (EXEC.sort === 'confidence') items.sort((a, b) => ({ alta: 3, media: 2, baja: 1 }[b.confidence_label_es] || 0) - ({ alta: 3, media: 2, baja: 1 }[a.confidence_label_es] || 0));
+  return items;
+}
+
+function renderExecList() {
+  const items = filteredSorted();
+  if (!items.length) {
+    $('#xoList').innerHTML = `<div class="du" style="padding:28px 18px">No hay oportunidades ejecutables verificadas en este momento.<br><span style="color:var(--muted)">GP continúa revisando precios, profundidad, fees y reglas.</span></div>`;
+    return;
+  }
+  $('#xoList').innerHTML = items.map(execCard).join('');
+}
+
+function execCard(c) {
+  const legs = (c.legs || []).map(l => `<span class="xo-leg">${xe(l.provider_label)} · ${xe(l.outcome || '')} <b>${xe(l.best_price_cents || '')}</b></span>`).join('');
+  const juris = c.jurisdiction_status === 'restricted' ? `<div class="warn" style="margin-top:8px">Una de las plataformas puede no estar disponible en tu jurisdicción.</div>` : '';
+  return `<div class="xo-card" onclick="openExecDetail('${c.public_id}')">
+    <div class="xo-card-top">${xoBadge(c.badge)} ${xoStatusPill(c.display_status)}</div>
+    <div class="xo-ev">${xe(c.event || 'Oportunidad')}</div>
+    <div class="xo-mkt">${xe(c.market || '')}</div>
+    <div class="xo-metric"><span class="xo-m-l">Margen neto estimado</span><span class="xo-m-v green">${xe(c.net_margin_pct || '—')}</span></div>
+    <div class="xo-sub">Hasta <b>${xe(c.max_executable_capital_display || '—')}</b> · Beneficio estimado <b>${xe(c.estimated_net_profit_at_max_display || '—')}</b> · <span class="xo-val" data-vage="${c.validation_age_seconds == null ? '' : c.validation_age_seconds}">Validado ${fmtAge(c.validation_age_seconds)}</span></div>
+    <div class="xo-legs">${legs}</div>
+    <div class="xo-card-foot"><span>${c.rules_confirmed ? '✓ Reglas confirmadas' : 'Reglas no confirmadas'} · Calidad ejec.: ${xe(c.confidence_label_es || '—')}</span><span class="xo-cta">Ver desglose →</span></div>
+    ${juris}
+  </div>`;
+}
+
+function tickExecAges() {
+  document.querySelectorAll('#tab-opex .xo-val[data-vage]').forEach(el => {
+    let s = parseInt(el.dataset.vage, 10); if (isNaN(s)) return; s += 1; el.dataset.vage = s;
+    el.textContent = 'Validado ' + fmtAge(s);
+    if (s > 30) el.textContent = 'Verificando…';
+  });
+}
+
+async function openExecDetail(publicId) {
+  clearExecTimer();
+  const root = $('#tab-opex');
+  root.innerHTML = `<button class="xo-back" onclick="loadExecOpps()">← Volver</button><div id="xoDetail">${du('Cargando desglose…')}</div>`;
+  try {
+    const q = EXEC.country ? '?country=' + encodeURIComponent(EXEC.country) : '';
+    const r = await fetch('/api/executable-opportunities/' + publicId + q, { headers: hdrs() }).then(x => x.json());
+    if (r.error || !r.payload) { $('#xoDetail').innerHTML = du('Esta oportunidad ya no está disponible.'); return; }
+    renderExecDetail(r.payload, r.publication_status);
+  } catch (e) { $('#xoDetail').innerHTML = du('No se pudo cargar el desglose.'); }
+}
+
+function renderExecDetail(p, status) {
+  const ec = p.economics || {}, sz = p.sizing || {}, cf = p.confidence || {};
+  const econRow = (l, v) => `<div class="xo-row"><span>${xe(l)}</span><span class="mono">${xe(v == null ? '—' : v)}</span></div>`;
+  const legRows = (p.legs || []).map(l => `<div class="xo-leg-card">
+      <div class="xo-leg-h">${xe(l.provider_label)} · ${xe(l.outcome || l.side || '')}</div>
+      <div class="xo-leg-g">
+        ${econRow('Mejor precio', l.best_price_cents)}${econRow('VWAP', l.vwap_cents)}${econRow('Peor precio', l.worst_price_cents)}
+        ${econRow('No ejecutar por encima de', l.max_acceptable_price_cents)}${econRow('Fee', l.fee_display)}${econRow('Niveles consumidos', l.levels_consumed)}
+        ${econRow('Fuente de precio', l.price_source_label)}
+      </div></div>`).join('');
+  const risks = (p.structural_risks || []).map(r => `<li>${xe(r)}</li>`).join('');
+  const warns = (p.warnings || []).map(w => `<div class="warn">${xe(w.text)}</div>`).join('');
+  const dls = (p.deep_links || []).map(d => d.url
+    ? `<a class="venue-btn ${d.provider === 'polymarket' ? 'v-poly' : 'v-kalshi'}" href="${xe(d.url)}" target="_blank" rel="noopener noreferrer nofollow" onclick="execTrackClick('${p.public_id}','${d.provider}')">${xe(d.label || 'Abrir')} ↗</a>`
+    : `<span class="venue-btn xo-dl-off">${xe((d.label || 'Plataforma'))} — no disponible en tu jurisdicción</span>`).join('');
+  const jur = p.jurisdiction ? `<div class="${p.jurisdiction.combined === 'restricted' ? 'warn' : 'explain'}">${xe(p.jurisdiction.message)}</div>` : '';
+
+  $('#xoDetail').innerHTML = `
+    <div class="feat xo-hero">
+      <div class="xo-card-top">${xoBadge(p.badge)} ${xoStatusPill(p.display_status)}</div>
+      <div class="xo-ev" style="font-size:20px">${xe(p.event || '')}</div>
+      <div class="xo-mkt">${xe(p.market || '')}</div>
+      <div class="xo-hero-metrics">
+        <div class="xo-hm"><span class="xo-hm-l">Margen neto est.</span><span class="xo-hm-v green">${xe(ec.net_margin_pct || '—')}</span></div>
+        <div class="xo-hm"><span class="xo-hm-l">Capital máx.</span><span class="xo-hm-v">${xe(sz.max_executable_capital_display || '—')}</span></div>
+        <div class="xo-hm"><span class="xo-hm-l">Beneficio est.</span><span class="xo-hm-v">${xe(sz.estimated_net_profit_at_max_display || '—')}</span></div>
+        <div class="xo-hm"><span class="xo-hm-l">Calidad ejec.</span><span class="xo-hm-v blue">${xe(cf.label_es || '—')}</span></div>
+      </div>
+      <div class="xo-sub"><span class="xo-val" data-vage="${p.validation_age_seconds == null ? '' : p.validation_age_seconds}">Validado ${fmtAge(p.validation_age_seconds)}</span> · Detectada ${fmtAge(p.detected_age_seconds)}</div>
+    </div>
+    ${warns}
+    ${panel('Desglose económico', 'al tamaño de referencia', `
+      ${econRow('Margen bruto', ec.gross_margin_pct)}${econRow('Fees estimadas', ec.fees_total_display)}
+      ${econRow('Buffer de ejecución', ec.execution_buffer_display)}${econRow('Margen neto estimado', ec.net_margin_pct)}
+      ${econRow('Coste total (capital)', '$' + (ec.total_cost || '—'))}`)}
+    ${panel('Patas', (p.legs || []).length + ' plataformas', legRows)}
+    ${panel('Equivalencia de reglas', p.rules && p.rules.equivalence === 'confirmed' ? 'confirmada' : 'no confirmada', `
+      <div class="${p.rules && p.rules.equivalence === 'confirmed' ? 'explain' : 'warn'}">${xe(p.rules ? p.rules.label : '')}</div>
+      <div class="xo-dim">Compara: ${(p.rules && p.rules.dimensions || []).map(xe).join(' · ')}</div>`)}
+    ${USER.execCalc && p.display_status !== 'EXPIRED' ? panel('Calculadora de capital', 'recálculo server-side', `
+      <div class="xo-calc">
+        <label>Capital total (USD)<input id="xoCap" class="xo-input" inputmode="decimal" placeholder="500"></label>
+        <label>ROI mínimo % (opcional)<input id="xoRoi" class="xo-input" inputmode="decimal" placeholder="1"></label>
+        <button class="cta-sm" onclick="execCalc('${p.public_id}')">Calcular</button>
+      </div>
+      <div class="xo-note">No guardamos tu capital. No preguntamos bankroll ni patrimonio. No ejecutamos operaciones.</div>
+      <div id="xoCalcOut"></div>`) : ''}
+    ${panel('Riesgos', 'siempre presentes', `<ul class="xo-risks">${risks}</ul>`)}
+    ${dls ? panel('Abrir plataformas', 'enlaces externos', `${jur}<div class="dual-btns" style="margin-top:8px">${dls}</div><div class="xo-note">Los precios pueden haber cambiado. Revisa nuevamente antes de continuar.</div>`) : jur}
+    ${panel('Metodología', 'versiones', `${econRow('Motor', p.methodology && p.methodology.engine_version)}${econRow('Fees', p.methodology && p.methodology.fee_engine_version)}${econRow('Capa', p.methodology && p.methodology.layer_version)}${econRow('Aviso de riesgo', p.methodology && p.methodology.risk_disclosure_version)}`)}
+    <div class="xo-foot">${xe(p.disclaimer || XO_DISCLAIMER)}</div>`;
+  EXEC.timer = setInterval(tickExecAges, 1000);
+}
+
+async function execCalc(publicId) {
+  const cap = ($('#xoCap') || {}).value, roi = ($('#xoRoi') || {}).value;
+  const out = $('#xoCalcOut'); if (!out) return;
+  out.innerHTML = du('Calculando…');
+  try {
+    const r = await fetch('/api/executable-opportunities/' + publicId + '/calculate', { method: 'POST', headers: hdrs(), body: JSON.stringify({ capital: cap, minRoi: roi }) }).then(x => x.json());
+    if (r.available === false) { out.innerHTML = `<div class="warn">${xe(r.message || 'Esta oportunidad ya no está disponible con los precios observados.')}</div>`; return; }
+    if (r.feasible === false) { out.innerHTML = `<div class="warn">${xe(r.message || 'No factible con ese capital.')}</div>`; return; }
+    const legs = (r.legs || []).map(l => `<div class="xo-row"><span>${xe(l.provider_label)} · ${xe(l.outcome || '')}</span><span class="mono">${xe(l.capital_on_platform_display)} · límite ${xe(l.price_limit_cents)}</span></div>`).join('');
+    out.innerHTML = `<div class="xo-calc-res">
+      <div class="xo-row"><span>Contratos por pata</span><span class="mono">${xe(r.contracts_per_leg)}</span></div>
+      ${legs}
+      <div class="xo-row"><span>Capital requerido</span><span class="mono">${xe(r.capital_required_display)}</span></div>
+      <div class="xo-row"><span>Beneficio mínimo estimado</span><span class="mono green">${xe(r.estimated_min_profit_display)}</span></div>
+      <div class="xo-row"><span>Net ROI</span><span class="mono green">${xe(r.net_roi_pct)}</span></div>
+      <div class="xo-note">Válido hasta: ${xe(r.valid_until || 'revalidar')} · ${xe((r.warnings || [])[0] || '')}</div>
+    </div>`;
+  } catch (e) { out.innerHTML = du('No se pudo calcular.'); }
+}
+
+function execTrackClick(publicId, provider) {
+  try { fetch('/api/executable-opportunities/event', { method: 'POST', headers: hdrs(), body: JSON.stringify({ event: 'deep_link_clicked', props: { public_id: publicId, provider } }) }); } catch (e) {}
+}
+
+// ---------- panel admin de revisión (§25) ----------
+async function loadExecAdmin() {
+  const el = $('#xoAdmin'); if (!el) return;
+  el.innerHTML = du('Cargando cola de revisión…');
+  try {
+    const r = await fetch('/api/internal/executable-opportunities', { headers: hdrs() }).then(x => x.json());
+    const counts = (r.status && r.status.counts) || {};
+    const rows = (r.items || []).map(p => `<div class="xo-adm-row">
+        <div><b>${xe(p.publication_status)}</b> · ${xe((p.public_payload && p.public_payload.event) || p.opportunity_key)} <span class="xo-pill xo-st-paused">${xe(p.visibility)}</span></div>
+        <div class="xo-adm-btns">
+          <button onclick="execAdminAct('${p.id}','approve')">Aprobar</button>
+          <button onclick="execAdminAct('${p.id}','publish')">Publicar</button>
+          <button onclick="execAdminAct('${p.id}','pause')">Pausar</button>
+          <button onclick="execAdminAct('${p.id}','revalidate')">Revalidar</button>
+          <button class="danger" onclick="execAdminAct('${p.id}','withdraw')">Retirar</button>
+        </div></div>`).join('') || du('Sin publicaciones en cola.');
+    el.innerHTML = panel('Revisión administrativa', `${counts.total || 0} publicaciones · ${counts.published || 0} activas`,
+      `<div class="explain">Aprobación manual. Nada se publica automáticamente. Cada acción queda auditada.</div>${rows}`);
+  } catch (e) { el.innerHTML = du('No se pudo cargar la cola de revisión.'); }
+}
+async function execAdminAct(id, action) {
+  try {
+    const r = await fetch('/api/internal/executable-opportunities/' + id + '/' + action, { method: 'POST', headers: hdrs(), body: JSON.stringify({}) }).then(x => x.json());
+    if (r.error) alert('No se pudo: ' + r.error);
+    loadExecAdmin();
+  } catch (e) { alert('Error de red'); }
 }
 
 (async () => { await loadMe(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

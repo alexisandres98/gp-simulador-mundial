@@ -1084,7 +1084,10 @@ async function buildH2HDeep(a, b) {
   const aMeta = { code: a, name: ta.name, flag: ta.flag }, bMeta = { code: b, name: tb.name, flag: tb.flag };
   const analysis = buildH2HAnalysis({ a: aMeta, b: bMeta, base: baseLine, v2: v2Line, ctxA: csA, ctxB: csB, mc, goals, beta });
 
-  const usedApi = !!((ctxA && ctxA.providerStatus && ctxA.providerStatus.usedApiFootball) || (ctxB && ctxB.providerStatus && ctxB.providerStatus.usedApiFootball));
+  // Privacidad: nunca enviamos al cliente la FUENTE de datos ni las versiones internas del modelo
+  // (son información privada / nuestro foso). Strip de source/timestamps por factor y de versions/run/dataSource.
+  const stripF = f => { const { source, sourceUpdatedAt, fetchedAt, expiresAt, ...rest } = f; return rest; };
+  if (analysis.factors) analysis.factors = analysis.factors.map(stripF);
   const data = {
     a: { ...basicTeam(a), elo: Math.round(db.elos[a]) },
     b: { ...basicTeam(b), elo: Math.round(db.elos[b]) },
@@ -1092,16 +1095,14 @@ async function buildH2HDeep(a, b) {
     base: baseLine,                    // alias back-compat
     probs: v2Line,                     // V2 CHALLENGER — headline del sandbox
     delta: analysis.decomposition.deltaPp, // V2 vs V1 en puntos porcentuales por resultado
-    versions: VERSIONS,
-    run: { inputHash, randomSeed, simulationCount: SIMS, sanity },
     context: {
       deltaA: Math.round(csA.finalCappedTotal), deltaB: Math.round(csB.finalCappedTotal),
       signalsA: csA.signals, signalsB: csB.signals,
-      factorsA: csA.factors, factorsB: csB.factors,
+      factorsA: csA.factors.map(stripF), factorsB: csB.factors.map(stripF),
       groupsA: csA.groupCapped, groupsB: csB.groupCapped,
       dataQualityA: csA.dataQuality, dataQualityB: csB.dataQuality,
       hasData: csA.hasData || csB.hasData,
-      goalModel: beta > 0 ? 'xG específico por equipo (forma + Elo)' : 'xG por Elo (forma insuficiente)',
+      goalModel: beta > 0 ? 'xG específico por equipo' : 'xG por ranking',
     },
     goals,
     form: { a: formSummary(ctxA && ctxA.recentForm), b: formSummary(ctxB && ctxB.recentForm) },
@@ -1112,7 +1113,6 @@ async function buildH2HDeep(a, b) {
     tactical: { a: (ctxA && ctxA.tactical) || null, b: (ctxB && ctxB.tactical) || null },
     monteCarlo: mc,
     analysis,
-    dataSource: usedApi ? 'API-Football + modelo' : 'modelo + datos editoriales',
     updatedAt: nowIso,
   };
   // Logging experimental (best-effort, no rompe la simulación si falla). B2.

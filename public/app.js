@@ -1620,7 +1620,7 @@ function h2hAnalysisHtml(d) {
   // 1) VEREDICTO — confianza del MODELO y calidad de DATOS son conceptos separados (B9)
   const mConf = h.modelConfidence ? h.modelConfidence.level : '—';
   const dQual = h.dataQuality ? h.dataQuality.level : '—';
-  html += panel('GP Intelligence · Veredicto', d.dataSource, `
+  html += panel('GP Intelligence · Veredicto', '', `
     <div class="gptbox">
       <div class="gpt-top"><span class="grade ${verdictCls(h.verdictLabel)}">${h.verdictLabel}</span>
         <span class="gpt-conf">Confianza modelo: ${mConf}</span><span class="gpt-conf">Calidad datos: ${dQual}</span></div>
@@ -1741,11 +1741,9 @@ function h2hAnalysisHtml(d) {
 
 // Panel colapsable de trazabilidad: modelo base, contexto, resultado y calidad de datos (sin secretos).
 function traceabilityHtml(d) {
-  const dec = d.analysis.decomposition, ctx = d.context, run = d.run || {}, v = d.versions || {};
+  const dec = d.analysis.decomposition, ctx = d.context;
   const factorLines = side => (side || []).filter(f => f.axis === 'elo' && f.factorCode !== 'NO_CONTEXT').map(f =>
     `<div class="gpi-tr-row"><span>${labelForFactor(f.factorCode)}</span><span>${f.included ? (f.cappedContribution > 0 ? '+' : '') + f.cappedContribution + ' Elo' : '<span class="pbad">omitido (' + f.exclusionReason + ')</span>'}</span></div>`).join('');
-  const dqA = ctx.dataQualityA || {}, dqB = ctx.dataQualityB || {};
-  const omitted = [...(dqA.missing || []), ...(dqA.stale || []), ...(dqB.missing || []), ...(dqB.stale || [])];
   return `<details class="gpi-trace">
     <summary>🔎 Cómo llegó GP a este resultado</summary>
     <div class="gpi-tr-body">
@@ -1760,13 +1758,6 @@ function traceabilityHtml(d) {
       <div class="gpi-tr-h">Resultado (V2)</div>
       <div class="gpi-tr-row"><span>Elo ajustado</span><span>${d.a.elo + dec.deltaA} · ${d.b.elo + dec.deltaB}</span></div>
       <div class="gpi-tr-row"><span>Probabilidad V2</span><span>${pct(dec.v2Line.aWin, 1)} · ${pct(dec.v2Line.draw, 1)} · ${pct(dec.v2Line.bWin, 1)}</span></div>
-      <div class="gpi-tr-h">Calidad de datos</div>
-      <div class="gpi-tr-row"><span>Nivel</span><span>${(d.analysis.headline.dataQuality || {}).level || '—'}</span></div>
-      <div class="gpi-tr-row"><span>Factores omitidos</span><span>${omitted.length ? omitted.join(', ') : 'ninguno'}</span></div>
-      <div class="gpi-tr-row"><span>Fuente</span><span>${d.dataSource}</span></div>
-      <div class="gpi-tr-row"><span>Versión modelo</span><span>${v.control || '—'} / ${v.challenger || '—'}</span></div>
-      <div class="gpi-tr-row"><span>Seed · sims</span><span>${run.randomSeed != null ? run.randomSeed : '—'} · ${run.simulationCount || '—'}</span></div>
-      ${run.sanity && !run.sanity.ok ? `<div class="gpi-tr-row"><span class="pbad">Sanity</span><span class="pbad">${run.sanity.errors.join('; ')}</span></div>` : ''}
     </div>
   </details>`;
 }

@@ -40,6 +40,10 @@ const platformHealth = require('./database/health');
 const marketData = require('./market-data');
 // Sprint 2 — Canonical Event Graph (shadow mode). Aislado; requerirlo no ejecuta matching ni conecta.
 const canonicalGraph = require('./canonical-graph');
+// Sprint 3 — motor de arbitraje ejecutable V1 (shadow mode, sin publicación). Aislado.
+const arbEngine = require('./arb-engine');
+// helper de lectura para endpoints admin de arbitraje (parametrizado; devuelve filas o [] sin lanzar)
+async function dbClientSafe(sql, params) { try { const r = await require('./database/client').query(sql, params); return r.rows; } catch { return []; } }
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -1581,6 +1585,31 @@ const server = http.createServer(async (req, res) => {
       if (!decision) return json(res, 400, { error: 'decision inválida (approve|reject|conditional|dismiss)' });
       try { const r = await canonicalGraph.reviewDecide(mDecide[1], { decision, reviewedBy: u.email, notes: (body.notes || '').slice(0, 1000) }); return r ? json(res, 200, r) : json(res, 404, { error: 'No encontrado' }); } catch (e) { return json(res, 500, { error: 'error' }); }
     }
+    // --- Sprint 3: motor de arbitraje (admin-only; no ejecuta órdenes, no publica) ---
+    if (p === '/api/internal/arb/status') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await arbEngine.adminStatus()); } catch (e) { return json(res, 200, { error: 'status failed' }); }
+    }
+    if (p === '/api/internal/arb/opportunities' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 200);
+      const offset = Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0);
+      try { const r = await dbClientSafe(`SELECT * FROM arb_opportunities ORDER BY last_seen_at DESC LIMIT $1 OFFSET $2`, [limit, offset]); return json(res, 200, { items: r }); } catch (e) { return json(res, 200, { items: [] }); }
+    }
+    const mOpp = p.match(/^\/api\/internal\/arb\/opportunities\/([0-9a-f-]{36})$/i);
+    if (mOpp && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { const r = await dbClientSafe('SELECT * FROM arb_opportunities WHERE id=$1', [mOpp[1]]); return r[0] ? json(res, 200, r[0]) : json(res, 404, { error: 'No encontrado' }); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    const mEval = p.match(/^\/api\/internal\/arb\/evaluations\/([0-9a-f-]{36})$/i);
+    if (mEval && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { const ev = await dbClientSafe('SELECT * FROM arb_evaluations WHERE id=$1', [mEval[1]]); const legs = await dbClientSafe('SELECT * FROM arb_evaluation_legs WHERE evaluation_id=$1 ORDER BY leg_index', [mEval[1]]); return ev[0] ? json(res, 200, { evaluation: ev[0], legs }) : json(res, 404, { error: 'No encontrado' }); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    if (p === '/api/internal/arb/run-once' && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { const candidates = await require('./arb-engine/candidateGenerator').generateFromDB(); const r = await arbEngine.runShadow({ candidates }); return json(res, 200, { counts: r.counts, persisted: r.persisted }); } catch (e) { return json(res, 500, { error: 'run failed' }); }
+    }
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {
       const u = getUser(req);
@@ -1654,4 +1683,7 @@ server.listen(PORT, () => {
   // Sprint 1 — ingesta de mercado en shadow mode. BEST-EFFORT y AISLADA: con los flags apagados no hace
   // nada; un fallo aquí jamás debe afectar al flujo principal (de ahí el catch vacío).
   marketData.initialize().catch(() => { });
+  // Sprint 3 — scheduler del motor de arbitraje (shadow, sin publicación). Solo arranca si los flags
+  // ARB_ENGINE_* lo habilitan; best-effort, aislado del flujo principal.
+  try { require('./arb-engine/scheduler').start(); } catch { /* aislado */ }
 });

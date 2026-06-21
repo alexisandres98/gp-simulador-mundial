@@ -20,7 +20,13 @@
     "canonical:match": "node canonical-graph/cli.js match",
     "canonical:status": "node canonical-graph/cli.js status",
     "canonical:verify": "node canonical-graph/cli.js verify",
-    "canonical:review-summary": "node canonical-graph/cli.js review-summary"
+    "canonical:review-summary": "node canonical-graph/cli.js review-summary",
+    "test:arb": "node tests/arb-engine.test.js",
+    "arb:once": "node arb-engine/cli.js once",
+    "arb:status": "node arb-engine/cli.js status",
+    "arb:verify": "node arb-engine/cli.js verify",
+    "arb:replay": "node arb-engine/cli.js replay",
+    "arb:inspect": "node arb-engine/cli.js inspect"
   },
   "engines": {
     "node": ">=18"

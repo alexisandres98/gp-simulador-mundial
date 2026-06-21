@@ -1,0 +1,41 @@
+{
+  "cursor": "",
+  "markets": [
+    {
+      "ticker": "KXMENWORLDCUP-26-BRA",
+      "event_ticker": "KXMENWORLDCUP-26",
+      "title": "Brazil to win the World Cup",
+      "yes_sub_title": "Brazil",
+      "no_sub_title": "Not Brazil",
+      "last_price_dollars": "0.22",
+      "yes_bid_dollars": "0.21",
+      "yes_ask_dollars": "0.23",
+      "no_bid_dollars": "0.77",
+      "no_ask_dollars": "0.79",
+      "previous_price_dollars": "0.21",
+      "volume_fp": "45000.00",
+      "volume_24h_fp": "3200.00",
+      "open_interest_fp": "120000.00",
+      "status": "active",
+      "close_time": "2026-07-19T00:00:00Z"
+    },
+    {
+      "ticker": "KXMENWORLDCUP-26-ARG",
+      "event_ticker": "KXMENWORLDCUP-26",
+      "title": "Argentina to win the World Cup",
+      "yes_sub_title": "Argentina",
+      "no_sub_title": "Not Argentina",
+      "last_price_dollars": "0.18",
+      "yes_bid_dollars": "0.17",
+      "yes_ask_dollars": "0.19",
+      "no_bid_dollars": "0.81",
+      "no_ask_dollars": "0.83",
+      "previous_price_dollars": "0.185",
+      "volume_fp": "39000.00",
+      "volume_24h_fp": "2800.00",
+      "open_interest_fp": "98000.00",
+      "status": "active",
+      "close_time": "2026-07-19T00:00:00Z"
+    }
+  ]
+}

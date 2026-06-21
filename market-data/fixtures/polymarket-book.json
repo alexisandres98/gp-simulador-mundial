@@ -1,0 +1,19 @@
+{
+  "market": "0xCONDITION_BRA",
+  "asset_id": "100001",
+  "timestamp": "1782050000",
+  "tick_size": "0.01",
+  "min_order_size": "5",
+  "neg_risk": false,
+  "last_trade_price": "0.22",
+  "bids": [
+    { "price": "0.21", "size": "1500" },
+    { "price": "0.20", "size": "3200" },
+    { "price": "0.19", "size": "5000" }
+  ],
+  "asks": [
+    { "price": "0.23", "size": "1200" },
+    { "price": "0.24", "size": "2600" },
+    { "price": "0.25", "size": "4100" }
+  ]
+}

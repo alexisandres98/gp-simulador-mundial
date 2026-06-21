@@ -10,7 +10,11 @@
     "db:rollback": "node database/migrate.js rollback",
     "platform:health": "node database/platform-health-cli.js",
     "test:gpi": "node tests/gp-intelligence.test.js",
-    "test:db": "node tests/db-acceptance.test.js"
+    "test:db": "node tests/db-acceptance.test.js",
+    "test:market-data": "node tests/market-data.test.js",
+    "market-data:once": "node market-data/cli.js once",
+    "market-data:status": "node market-data/cli.js status",
+    "market-data:verify": "node market-data/cli.js verify"
   },
   "engines": {
     "node": ">=18"

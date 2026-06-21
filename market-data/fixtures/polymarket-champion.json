@@ -1,0 +1,46 @@
+[
+  {
+    "slug": "world-cup-winner",
+    "id": "evt_wc_winner",
+    "markets": [
+      {
+        "id": "mkt_bra",
+        "conditionId": "0xCONDITION_BRA",
+        "groupItemTitle": "Brazil",
+        "question": "Will Brazil win the World Cup?",
+        "outcomePrices": "[\"0.22\", \"0.78\"]",
+        "bestBid": "0.21",
+        "bestAsk": "0.23",
+        "volumeNum": 1250000,
+        "volume24hr": 84000,
+        "liquidityNum": 320000,
+        "oneDayPriceChange": 0.01,
+        "clobTokenIds": "[\"100001\", \"100002\"]",
+        "slug": "will-brazil-win-the-world-cup",
+        "active": true,
+        "closed": false,
+        "acceptingOrders": true,
+        "endDate": "2026-07-19T00:00:00Z"
+      },
+      {
+        "id": "mkt_arg",
+        "conditionId": "0xCONDITION_ARG",
+        "groupItemTitle": "Argentina",
+        "question": "Will Argentina win the World Cup?",
+        "outcomePrices": "[\"0.18\", \"0.82\"]",
+        "bestBid": "0.17",
+        "bestAsk": "0.19",
+        "volumeNum": 980000,
+        "volume24hr": 60000,
+        "liquidityNum": 270000,
+        "oneDayPriceChange": -0.005,
+        "clobTokenIds": "[\"100003\", \"100004\"]",
+        "slug": "will-argentina-win-the-world-cup",
+        "active": true,
+        "closed": false,
+        "acceptingOrders": true,
+        "endDate": "2026-07-19T00:00:00Z"
+      }
+    ]
+  }
+]

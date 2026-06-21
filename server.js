@@ -36,6 +36,8 @@ const telegram = require('./telegram');
 // Sprint 0 — plataforma de datos v2 (aislada tras feature flags). Requerirla NO abre conexión:
 // el pool de pg se crea de forma perezosa solo si hay DATABASE_URL y alguien consulta la capa.
 const platformHealth = require('./database/health');
+// Sprint 1 — ingesta de mercado (shadow mode). Aislada; requerirla no inicializa ni conecta nada.
+const marketData = require('./market-data');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -1545,6 +1547,13 @@ const server = http.createServer(async (req, res) => {
       try { return json(res, 200, await platformHealth.snapshot()); }
       catch (e) { return json(res, 200, { status: 'unavailable', error: 'health snapshot failed', timestamp: new Date().toISOString() }); }
     }
+    // --- Sprint 1: status de la ingesta de mercado (admin-only, sin secretos, no ejecuta ingesta) ---
+    if (p === '/api/internal/market-data-status') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await marketData.adminStatus()); }
+      catch (e) { return json(res, 200, { enabled: false, error: 'status failed', timestamp: new Date().toISOString() }); }
+    }
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {
       const u = getUser(req);
@@ -1615,4 +1624,7 @@ server.listen(PORT, () => {
   if (process.env.RENDER_EXTERNAL_URL) {
     setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);
   }
+  // Sprint 1 — ingesta de mercado en shadow mode. BEST-EFFORT y AISLADA: con los flags apagados no hace
+  // nada; un fallo aquí jamás debe afectar al flujo principal (de ahí el catch vacío).
+  marketData.initialize().catch(() => { });
 });

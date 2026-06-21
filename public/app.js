@@ -1561,29 +1561,141 @@ function renderSim() {
 async function simulate() {
   const a = $('#simA').value, b = $('#simB').value;
   if (a === b) { $('#simResult').innerHTML = du('Elige dos selecciones distintas.'); return; }
-  $('#simResult').innerHTML = '<div class="muted" style="padding:24px 0;text-align:center">Simulando…</div>';
+  $('#simResult').innerHTML = '<div class="muted" style="padding:24px 0;text-align:center">🧠 Analizando con GP Intelligence…<br><span style="font-size:11px">modelo base + contexto + 10.000 simulaciones</span></div>';
+  GPI_OPEN = false;
   try {
-    const r = await fetch(`/api/h2h?a=${a}&b=${b}`, { headers: hdrs() });
+    const r = await fetch(`/api/h2h/deep?a=${a}&b=${b}`, { headers: hdrs() });
     if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
     CUR_SIM = await r.json();
-    const d = CUR_SIM, p = d.probs;
-    $('#simResult').innerHTML = `
-      <div class="dpanel" style="margin-top:14px">
-        <div class="sim-teams">
-          <div class="sim-side"><div class="sim-flag">${d.a.flag}</div><div class="sim-name">${d.a.name}</div><div class="muted" style="font-size:11px">Elo ${d.aElo}</div></div>
-          <div class="sim-vs2">VS</div>
-          <div class="sim-side"><div class="sim-flag">${d.b.flag}</div><div class="sim-name">${d.b.name}</div><div class="muted" style="font-size:11px">Elo ${d.bElo}</div></div>
-        </div>
-        <div class="pbar" style="margin-top:16px"><div class="ph" style="width:${p.aWin * 100}%"></div><div class="pd" style="width:${p.draw * 100}%"></div><div class="pa" style="width:${p.bWin * 100}%"></div></div>
-        <div class="plabels"><span>${pct(p.aWin)} gana</span><span>empate ${pct(p.draw)}</span><span>gana ${pct(p.bWin)}</span></div>
-        <div class="plabels" style="margin-top:6px"><span>xG ${p.xgA.toFixed(2)}</span><span class="muted">marcador prob. ${p.likely}</span><span>xG ${p.xgB.toFixed(2)}</span></div>
-        <button class="cta-sm" style="width:100%;margin-top:16px" onclick="shareSim(event)">📤 Compartir resultado</button>
-      </div>`;
+    $('#simResult').innerHTML = simHeadlineHtml(CUR_SIM);
   } catch { $('#simResult').innerHTML = du('No se pudo simular. Intenta de nuevo.'); }
 }
+
+// Headline del cruce: el resultado YA es v2 (GP Intelligence). Debajo, botón para el análisis integral.
+function simHeadlineHtml(d) {
+  const p = d.probs, base = d.base, ctx = d.context;
+  const moved = Math.abs(ctx.deltaA) + Math.abs(ctx.deltaB) > 2;
+  return `
+    <div class="dpanel" style="margin-top:14px">
+      <div class="sim-teams">
+        <div class="sim-side"><div class="sim-flag">${d.a.flag}</div><div class="sim-name">${d.a.name}</div><div class="muted" style="font-size:11px">Elo ${d.a.elo}${ctx.deltaA ? ` <span class="${ctx.deltaA > 0 ? 'pgood' : 'pbad'}">${ctx.deltaA > 0 ? '+' : ''}${ctx.deltaA}</span>` : ''}</div></div>
+        <div class="sim-vs2">VS</div>
+        <div class="sim-side"><div class="sim-flag">${d.b.flag}</div><div class="sim-name">${d.b.name}</div><div class="muted" style="font-size:11px">Elo ${d.b.elo}${ctx.deltaB ? ` <span class="${ctx.deltaB > 0 ? 'pgood' : 'pbad'}">${ctx.deltaB > 0 ? '+' : ''}${ctx.deltaB}</span>` : ''}</div></div>
+      </div>
+      <div class="pbar" style="margin-top:16px"><div class="ph" style="width:${p.aWin * 100}%"></div><div class="pd" style="width:${p.draw * 100}%"></div><div class="pa" style="width:${p.bWin * 100}%"></div></div>
+      <div class="plabels"><span>${pct(p.aWin)} gana</span><span>empate ${pct(p.draw)}</span><span>gana ${pct(p.bWin)}</span></div>
+      <div class="plabels" style="margin-top:6px"><span>xG ${p.xgA.toFixed(2)}</span><span class="muted">marcador prob. ${p.likely}</span><span>xG ${p.xgB.toFixed(2)}</span></div>
+      ${moved ? `<div class="gpi-decomp">Modelo base: ${pct(base.aWin, 0)} · ${pct(base.draw, 0)} · ${pct(base.bWin, 0)} <span class="gpi-arrow">→</span> <b>GP Intelligence integra el contexto</b></div>` : ''}
+      <div class="gpi-actions">
+        <button class="btn" style="flex:1" onclick="toggleGpi()"><span id="gpiBtnTx">🧠 Ver análisis GP Intelligence</span></button>
+        <button class="cta-sm" onclick="shareSim(event)" title="Compartir">📤</button>
+      </div>
+      <div id="simAnalysis" class="gpi-wrap"></div>
+    </div>`;
+}
+
+let GPI_OPEN = false;
+function toggleGpi() {
+  GPI_OPEN = !GPI_OPEN;
+  const wrap = $('#simAnalysis'), tx = $('#gpiBtnTx');
+  if (!GPI_OPEN) { wrap.innerHTML = ''; tx.textContent = '🧠 Ver análisis GP Intelligence'; return; }
+  tx.textContent = '✕ Ocultar análisis';
+  wrap.innerHTML = h2hAnalysisHtml(CUR_SIM);
+}
+
+// Mapea la etiqueta del veredicto a una clase de "grade"
+function verdictCls(label) {
+  return ({ 'FAVORITO CLARO': 'g-strong', 'LIGERO FAVORITO': 'g-lean', 'SIN FAVORITO NETO': 'g-slight', 'CRUCE PAREJO': 'g-slight' })[label] || 'g-slight';
+}
+function impChip(n) {
+  if (!n) return `<span class="gpi-imp flat">±0</span>`;
+  return `<span class="gpi-imp ${n > 0 ? 'up' : 'down'}">${n > 0 ? '↑ +' : '↓ '}${n}</span>`;
+}
+
+// ANÁLISIS INTEGRAL — mismo lenguaje visual que la página de partido (dpanel), data-driven.
+function h2hAnalysisHtml(d) {
+  const an = d.analysis, h = an.headline, dec = an.decomposition, mc = an.monteCarlo;
+  let html = '';
+
+  // 1) VEREDICTO
+  html += panel('GP Intelligence · Veredicto', d.dataSource, `
+    <div class="gptbox">
+      <div class="gpt-top"><span class="grade ${verdictCls(h.verdictLabel)}">${h.verdictLabel}</span>
+        <span class="gpt-conf">Confianza: ${h.confidence}</span></div>
+      <div class="gpt-sum" style="margin-top:8px">${h.verdict}</div>
+    </div>`);
+
+  // 2) DESCOMPOSICIÓN base → v2 (transparencia)
+  const decRow = (lbl, line, strong) => `
+    <div class="gpi-decrow">
+      <span class="gpi-decl">${lbl}</span>
+      <div class="pbar" style="margin:0;flex:1"><div class="ph" style="width:${line.aWin * 100}%"></div><div class="pd" style="width:${line.draw * 100}%"></div><div class="pa" style="width:${line.bWin * 100}%"></div></div>
+      <span class="gpi-decv ${strong ? 'on' : ''}">${pct(line.aWin, 0)}·${pct(line.draw, 0)}·${pct(line.bWin, 0)}</span>
+    </div>`;
+  html += panel('Cómo se construye', 'base → contexto → v2', `
+    ${decRow('Modelo base', dec.baseLine, false)}
+    ${decRow('GP Intelligence', dec.v2Line, true)}
+    <div class="gpi-deltas">
+      <span>${d.a.flag} ${d.a.name}: contexto ${impChip(dec.deltaA)}</span>
+      <span>${d.b.flag} ${d.b.name}: contexto ${impChip(dec.deltaB)}</span>
+    </div>
+    <div class="gpi-note">El contexto ajusta el Elo de cada equipo dentro de una banda acotada (±55) y reconstruye la probabilidad. Cada punto es trazable a una señal de abajo.</div>`);
+
+  // 3) FACTORES CLAVE (ambos equipos, ordenados por peso)
+  if (an.factors && an.factors.length) {
+    const rows = an.factors.map(f => `
+      <div class="gpi-factor">
+        <div class="gpi-fac-h"><span class="gpi-fac-team">${f.flag} ${f.team}</span>${impChip(f.eloImpact)}</div>
+        <div class="gpi-fac-l">${f.label}</div>
+        <div class="gpi-fac-d">${f.detail}</div>
+      </div>`).join('');
+    html += panel('Factores que pesan', an.factors.length + '', `<div class="gpi-factors">${rows}</div>`);
+  }
+
+  // 4) MONTE CARLO — distribución del cruce
+  const maxP = Math.max(...mc.topScores.map(s => s.p));
+  const scoreBars = mc.topScores.map(s => `
+    <div class="gpi-sc">
+      <span class="gpi-sc-s">${s.score}</span>
+      <div class="gpi-sc-bar"><div style="width:${(s.p / maxP) * 100}%"></div></div>
+      <span class="gpi-sc-p">${pct(s.p, 0)}</span>
+    </div>`).join('');
+  html += panel('Monte Carlo · 10.000 simulaciones', '', `
+    <div class="gpi-sc-grid">${scoreBars}</div>
+    <div class="gpi-mc-stats">
+      <div class="gpi-stat"><span class="v">${pct(mc.over25, 0)}</span><span class="l">Over 2.5</span></div>
+      <div class="gpi-stat"><span class="v">${pct(mc.btts, 0)}</span><span class="l">Ambos marcan</span></div>
+      <div class="gpi-stat"><span class="v">${mc.avgTotal.toFixed(2)}</span><span class="l">Goles/partido</span></div>
+      <div class="gpi-stat"><span class="v">${mc.avgMargin.toFixed(2)}</span><span class="l">Margen prom.</span></div>
+    </div>
+    <div class="gpi-note">${an.monteCarlo.narrative}</div>`);
+
+  // 5) LECTURA TÁCTICA (si hay editorial). La nota puede ser texto o {style,strengths[],risks[]}.
+  const tacHtml = (t, team, flag) => {
+    if (!t) return '';
+    if (typeof t === 'string') return `<div class="gpi-tac"><b>${flag} ${team}:</b> ${t}</div>`;
+    const tags = (arr, cls) => (arr && arr.length) ? `<div class="gpi-tac-tags">${arr.map(x => `<span class="gpi-tag ${cls}">${x}</span>`).join('')}</div>` : '';
+    return `<div class="gpi-tac"><b>${flag} ${team}:</b> ${t.style || ''}
+      ${tags(t.strengths, 'up')}${tags(t.risks, 'down')}</div>`;
+  };
+  const tA = tacHtml(d.tactical && d.tactical.a, d.a.name, d.a.flag), tB = tacHtml(d.tactical && d.tactical.b, d.b.name, d.b.flag);
+  if (tA || tB) html += panel('Lectura táctica', '', tA + tB);
+
+  // 6) FACTORES X + QUÉ CAMBIARÍA
+  html += panel('Factores X y riesgos', '', `
+    <div class="dsub">A vigilar</div>
+    <ul class="gpt-drivers">${an.xFactors.map(x => `<li>${x}</li>`).join('')}</ul>
+    <div class="dsub" style="margin-top:10px">Qué cambiaría la lectura</div>
+    <ul class="gpt-drivers">${an.whatChanges.map(x => `<li>${x}</li>`).join('')}</ul>`);
+
+  html += `<div class="disc">Cancha neutral, sin factor localía. Estimaciones de un modelo estadístico + capa de contexto (piloto v2). No es consejo financiero ni recomendación de apuesta.</div>`;
+  return html;
+}
+
 function shareSim(ev) {
   if (!CUR_SIM) return; const d = CUR_SIM, p = d.probs;
-  const txt = `⚔️ ${d.a.flag} ${d.a.name} vs ${d.b.name} ${d.b.flag} — según el modelo de GP Simulador (10.000 sims):\n${d.a.name} ${pct(p.aWin)} · empate ${pct(p.draw)} · ${d.b.name} ${pct(p.bWin)} · marcador probable ${p.likely}.\nSimula tu cruce gratis:`;
+  const fav = p.aWin >= p.bWin ? d.a : d.b, favP = Math.max(p.aWin, p.bWin);
+  const txt = `⚔️ ${d.a.flag} ${d.a.name} vs ${d.b.name} ${d.b.flag} — análisis GP Intelligence (modelo + contexto + 10.000 sims):\n${d.a.name} ${pct(p.aWin)} · empate ${pct(p.draw)} · ${d.b.name} ${pct(p.bWin)} · marcador probable ${p.likely}.\nSimula tu cruce gratis:`;
   shareOp(ev, txt);
 }
 

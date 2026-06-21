@@ -22,12 +22,14 @@ const crypto = require('crypto');
   } catch { /* nunca debe impedir el arranque */ }
 })();
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
-const { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
+const { simulateTournament, matchProbs, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');
 // Fase 4: capa de datos contextuales (API-Football principal → ESPN → manual). La UI nunca
 // llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
 const providers = require('./data-providers');
 const { generateGPTake } = require('./data-providers/gpTake');
+// v2 piloto (solo sandbox): capa de contexto + análisis integral del cruce.
+const { contextSignals, buildH2HAnalysis } = require('./data-providers/gpIntelligence');
 const telegram = require('./telegram');
 
 const PORT = process.env.PORT || 3000;
@@ -988,6 +990,81 @@ async function buildMatchDetail(id) {
   };
 }
 
+// ---------- v2 piloto: cruce profundo del sandbox "GP Intelligence" ----------
+const h2hDeepCache = new Map(); // `${a}_${b}` -> { ts, data }
+const H2H_DEEP_TTL = 10 * 60 * 1000;
+const namesOfTeam = t => t ? [t.en, t.name, ...(t.aliases || [])].filter(Boolean) : [];
+
+function formSummary(f) {
+  if (!f || !f.played) return null;
+  return {
+    played: f.played, results: f.results || [], points: f.points,
+    goalsFor: f.goalsFor, goalsAgainst: f.goalsAgainst, cleanSheets: f.cleanSheets,
+    avgFor: f.avgFor, avgAgainst: f.avgAgainst, streak: f.streak || '',
+    last: (f.last || []).slice(0, 5),
+  };
+}
+
+async function buildH2HDeep(a, b) {
+  const key = a + '_' + b;
+  const hit = h2hDeepCache.get(key);
+  if (hit && Date.now() - hit.ts < H2H_DEEP_TTL) return hit.data;
+
+  const ta = teamById[a], tb = teamById[b];
+  // 1) PRIOR: modelo base neutral (sin bono local)
+  const base = matchProbs(db.elos[a], db.elos[b]);
+  const baseLine = { aWin: base.home, draw: base.draw, bWin: base.away, xgA: base.xgHome, xgB: base.xgAway, likely: base.likelyScore };
+
+  // 2) CONTEXTO total de ambos (forma, bajas, racha, solidez, táctica). Nunca lanza.
+  const safe = async (fn) => { try { return await fn(); } catch { return null; } };
+  const [ctxA, ctxB] = await Promise.all([
+    safe(() => providers.getTeamContext({ code: a, name: ta.en, names: namesOfTeam(ta) })),
+    safe(() => providers.getTeamContext({ code: b, name: tb.en, names: namesOfTeam(tb) })),
+  ]);
+
+  // 3) Señales → ajuste de Elo acotado por lado
+  const csA = contextSignals(ctxA, ta.name), csB = contextSignals(ctxB, tb.name);
+
+  // 4) v2: recomputar con Elo ajustado por contexto
+  const v2 = matchProbs(db.elos[a] + csA.delta, db.elos[b] + csB.delta);
+  const v2Line = { aWin: v2.home, draw: v2.draw, bWin: v2.away, xgA: v2.xgHome, xgB: v2.xgAway, likely: v2.likelyScore };
+
+  // 5) Monte Carlo dedicado del cruce con los Elo v2 (distribución completa)
+  const mc = simulateH2H(db.elos[a] + csA.delta, db.elos[b] + csB.delta, 10000);
+
+  // 6) Análisis integral determinístico
+  const aMeta = { code: a, name: ta.name, flag: ta.flag }, bMeta = { code: b, name: tb.name, flag: tb.flag };
+  const analysis = buildH2HAnalysis({
+    a: aMeta, b: bMeta, base: baseLine, v2: v2Line,
+    delta: { a: csA.delta, b: csB.delta }, sig: { a: csA.signals, b: csB.signals }, mc,
+  });
+
+  const usedApi = !!((ctxA && ctxA.providerStatus && ctxA.providerStatus.usedApiFootball) || (ctxB && ctxB.providerStatus && ctxB.providerStatus.usedApiFootball));
+  const data = {
+    a: { ...basicTeam(a), elo: Math.round(db.elos[a]) },
+    b: { ...basicTeam(b), elo: Math.round(db.elos[b]) },
+    base: baseLine,
+    probs: v2Line, // el HEADLINE del sandbox es v2
+    context: {
+      deltaA: Math.round(csA.delta), deltaB: Math.round(csB.delta),
+      signalsA: csA.signals, signalsB: csB.signals,
+      hasData: csA.hasData || csB.hasData,
+    },
+    form: { a: formSummary(ctxA && ctxA.recentForm), b: formSummary(ctxB && ctxB.recentForm) },
+    injuries: {
+      a: ((ctxA && ctxA.injuries) || []).filter(i => ['injured', 'suspended', 'doubt'].includes(i.status)).slice(0, 6),
+      b: ((ctxB && ctxB.injuries) || []).filter(i => ['injured', 'suspended', 'doubt'].includes(i.status)).slice(0, 6),
+    },
+    tactical: { a: (ctxA && ctxA.tactical) || null, b: (ctxB && ctxB.tactical) || null },
+    monteCarlo: mc,
+    analysis,
+    dataSource: usedApi ? 'API-Football + modelo' : 'modelo + datos editoriales',
+    updatedAt: new Date().toISOString(),
+  };
+  h2hDeepCache.set(key, { ts: Date.now(), data });
+  return data;
+}
+
 function nextMatchForTeam(code) {
   const bracket = resolveRealBracket();
   const cands = [];
@@ -1333,6 +1410,15 @@ const server = http.createServer(async (req, res) => {
         aElo: Math.round(db.elos[a]), bElo: Math.round(db.elos[b]),
         probs: { aWin: pr.home, draw: pr.draw, bWin: pr.away, xgA: pr.xgHome, xgB: pr.xgAway, likely: pr.likelyScore },
       });
+    }
+    // Sandbox v2 "GP Intelligence": modelo base (Elo+Poisson+DC+calibración) + Monte Carlo dedicado
+    // del cruce + capa de CONTEXTO (forma/bajas/racha/solidez) → ajuste de Elo acotado → análisis integral.
+    if (p === '/api/h2h/deep') {
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const a = (url.searchParams.get('a') || '').toUpperCase(), b = (url.searchParams.get('b') || '').toUpperCase();
+      if (!teamById[a] || !teamById[b] || a === b) return json(res, 400, { error: 'Equipos inválidos' });
+      const out = await buildH2HDeep(a, b);
+      return json(res, 200, out);
     }
     if (p === '/api/aciertos') {
       // público a propósito: el track record es la credibilidad de la marca

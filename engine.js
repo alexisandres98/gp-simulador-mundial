@@ -105,6 +105,39 @@ function simMatch(eloH, eloA, rng, live) {
   return [poissonSample(lh, rng), poissonSample(la, rng)];
 }
 
+// Monte Carlo dedicado de un cruce 1v1 (cancha neutral) — N partidos simulados con las mismas
+// tasas Poisson del modelo. Devuelve la DISTRIBUCIÓN completa (marcadores, totales, over/under,
+// BTTS), no solo el 1X2. Lo usa el sandbox "GP Intelligence" para la lectura profunda del cruce.
+function simulateH2H(eloA, eloB, N = 10000, rng = Math.random) {
+  const [la, lb] = lambdas(eloA, eloB);
+  let wa = 0, dr = 0, wb = 0, over25 = 0, btts = 0, totGoals = 0, cleanA = 0, cleanB = 0, marginSum = 0;
+  const scores = Object.create(null), totalDist = Object.create(null);
+  for (let i = 0; i < N; i++) {
+    const ga = poissonSample(la, rng), gb = poissonSample(lb, rng);
+    if (ga > gb) wa++; else if (ga < gb) wb++; else dr++;
+    const tot = ga + gb;
+    if (tot > 2) over25++;
+    if (ga > 0 && gb > 0) btts++;
+    if (gb === 0) cleanA++;
+    if (ga === 0) cleanB++;
+    totGoals += tot; marginSum += Math.abs(ga - gb);
+    const key = ga + '-' + gb;
+    scores[key] = (scores[key] || 0) + 1;
+    totalDist[tot] = (totalDist[tot] || 0) + 1;
+  }
+  const topScores = Object.keys(scores).map(s => ({ score: s, p: scores[s] / N }))
+    .sort((x, y) => y.p - x.p).slice(0, 6);
+  const totals = Object.keys(totalDist).map(g => ({ goals: +g, p: totalDist[g] / N }))
+    .sort((x, y) => x.goals - y.goals);
+  return {
+    n: N, winA: wa / N, draw: dr / N, winB: wb / N,
+    over25: over25 / N, under25: 1 - over25 / N, btts: btts / N,
+    cleanSheetA: cleanA / N, cleanSheetB: cleanB / N,
+    avgTotal: totGoals / N, avgMargin: marginSum / N, xgA: la, xgB: lb,
+    topScores, totals,
+  };
+}
+
 // Penales: ligera ventaja al mejor Elo
 function penaltyWin(eloH, eloA, rng) {
   const p = Math.min(0.65, Math.max(0.35, 0.5 + (eloH - eloA) / 4000));
@@ -306,4 +339,4 @@ function explainTeam(team, elos, sim, allSims) {
   return parts.join(' ');
 }
 
-module.exports = { simulateTournament, matchProbs, liveMatchProbs, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS };
+module.exports = { simulateTournament, matchProbs, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS };

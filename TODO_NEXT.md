@@ -13,6 +13,12 @@ Hecho esta sesión (ver memoria `gp-simulador-mundial.md` para detalle):
 - Login robusto (sin candado en Oportunidades) + **cache-busting** (`?v=mtime`) + botón "Entrar" + inputs 16px.
 - Pipeline de contenido (PNGs en `/ig/`, render Chrome headless de a uno). Investigación de mercado hecha.
 
+## 🧠 v2 PILOTO — "GP Intelligence" (jun-21, SOLO en el sandbox "Simula cualquier cruce")
+Prueba de cómo se vería la v2 desplegada a futuro, **contenida al sandbox** (no toca el resto de la plataforma: seguimos sin desplegar v2 global hasta tener más muestra para calibrar).
+- **Backend**: `engine.js` → `simulateH2H(eloA,eloB,N)` (Monte Carlo dedicado del cruce: distribución de marcadores, over/under 2.5, BTTS, goles totales, margen). Nuevo módulo `data-providers/gpIntelligence.js` (`contextSignals` → Δ Elo acotado a ±55 = ELO_NOISE, desde forma/racha/bajas/solidez reales; `buildH2HAnalysis` → análisis determinístico). Endpoint `/api/h2h/deep?a=&b=` (login req.): base `matchProbs` (prior) → `getTeamContext` de ambos → Δ contexto por lado → v2 = `matchProbs(elo+Δ)` → Monte Carlo v2 → análisis. Caché en memoria 10 min por par. `/api/h2h` viejo intacto.
+- **Frontend** (`app.js` `simulate()`): el resultado del sandbox **ya es v2** (headline con Δ Elo por contexto + descomposición "base → GP Intelligence"). Botón **"🧠 Ver análisis GP Intelligence"** despliega panel integral (mismo lenguaje `dpanel` que la página de partido): Veredicto, Cómo se construye (barras base vs v2 + Δ trazables), Factores que pesan (forma/racha/bajas/solidez con ↑/↓ y peso Elo), Monte Carlo 10.000 (distribución de marcadores + over/btts/goles/margen), Lectura táctica (style+fortalezas/riesgos), Factores X + Qué cambiaría. CSS `gpi-*` en `style.css`.
+- **Principio clave**: cada punto de Elo movido es **trazable a una señal mostrada** (no caja negra, no texto genérico tipo ChatGPT). Determinístico, sin IA externa. Verificado en preview (ARG vs ESP con datos reales API-Football, BRA vs QAT). **PENDIENTE: desplegar a prod** (commit hecho; falta Manual Deploy / rotar nada).
+
 ## ⏭️ PRÓXIMOS PASOS (en orden, para la siguiente sesión)
 1. 🔑 **ROTAR la API key de API-Football** (quedó expuesta en chat) → regenerar en api-sports.io + actualizar `API_FOOTBALL_KEY` en Render.
 2. **Monetización: afiliados RevShare** (monetiza usuarios gratis ya, financia crecimiento; encaja con sitio de contenido/comparación) + **test de disposición a pagar** (la de LATAM NO está probada).

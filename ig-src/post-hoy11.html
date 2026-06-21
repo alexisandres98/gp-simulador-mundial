@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 55%, #0BA661 120%); color: #fff;
+  display: flex; flex-direction: column; padding: 64px 60px; position: relative; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.badge { width: 46px; height: 46px; border-radius: 13px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 25px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 22px; font-weight: 800; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); font-weight: 800; font-size: 16px; padding: 10px 20px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 46px; font-weight: 800; letter-spacing: -1.3px; margin: 26px 0 22px; }
+.m { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 18px 22px; margin-bottom: 14px; }
+.mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.mh .t { font-size: 24px; font-weight: 800; }
+.mh .time { font-size: 15px; color: #C9F2DE; font-weight: 600; }
+.bar { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.14); margin-bottom: 9px; }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.38); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; justify-content: space-between; font-size: 17px; font-weight: 700; }
+.lbl .big { font-weight: 800; }
+.foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+.cta { background: #fff; color: #067647; font-size: 22px; font-weight: 800; padding: 16px 30px; border-radius: 99px; }
+.foot .small { font-size: 18px; color: #C9F2DE; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● HOY · 4 PARTIDOS</div></div>
+  <h1>Lo que dice el modelo hoy 📊</h1>
+  <div class="m">
+    <div class="mh"><div class="t">🇪🇸 España vs Arabia S. 🇸🇦</div><div class="time">12 PM ET</div></div>
+    <div class="bar"><div class="h" style="width:74.1%"></div><div class="d" style="width:17.4%"></div><div class="a" style="width:8.5%"></div></div>
+    <div class="lbl"><span class="big">🇪🇸 74.1%</span><span>X 17.4%</span><span>Arabia 8.5%</span></div>
+  </div>
+  <div class="m">
+    <div class="mh"><div class="t">🇧🇪 Bélgica vs Irán 🇮🇷</div><div class="time">3 PM ET</div></div>
+    <div class="bar"><div class="h" style="width:52.9%"></div><div class="d" style="width:27.0%"></div><div class="a" style="width:20.1%"></div></div>
+    <div class="lbl"><span class="big">🇧🇪 52.9%</span><span>X 27.0%</span><span>Irán 20.1%</span></div>
+  </div>
+  <div class="m">
+    <div class="mh"><div class="t">🇺🇾 Uruguay vs Cabo Verde 🇨🇻</div><div class="time">6 PM ET</div></div>
+    <div class="bar"><div class="h" style="width:68.4%"></div><div class="d" style="width:21.1%"></div><div class="a" style="width:10.5%"></div></div>
+    <div class="lbl"><span class="big">🇺🇾 68.4%</span><span>X 21.1%</span><span>C. Verde 10.5%</span></div>
+  </div>
+  <div class="m">
+    <div class="mh"><div class="t">🇳🇿 N. Zelanda vs Egipto 🇪🇬</div><div class="time">9 PM ET</div></div>
+    <div class="bar"><div class="h" style="width:21.0%"></div><div class="d" style="width:27.3%"></div><div class="a" style="width:51.7%"></div></div>
+    <div class="lbl"><span>N. Zelanda 21.0%</span><span>X 27.3%</span><span class="big">🇪🇬 51.7%</span></div>
+  </div>
+  <div class="foot">
+    <div class="small">Se mueven EN VIVO con cada gol</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

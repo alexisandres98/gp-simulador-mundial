@@ -44,6 +44,19 @@ function poissonSample(lambda, rng) {
   return k - 1;
 }
 
+// PRNG determinístico (mulberry32) para reproducibilidad: misma seed → misma secuencia.
+// Lo usa el sandbox v2 (GP Intelligence) para que una ejecución sea reproducible. NO afecta al
+// modelo global (que sigue usando Math.random en simulateTournament).
+function makeRng(seed) {
+  let a = (seed >>> 0) || 1;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function poissonPmf(lambda, k) {
   let p = Math.exp(-lambda);
   for (let i = 1; i <= k; i++) p *= lambda / i;
@@ -345,4 +358,4 @@ function explainTeam(team, elos, sim, allSims) {
   return parts.join(' ');
 }
 
-module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };
+module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };

@@ -1617,37 +1617,46 @@ function h2hAnalysisHtml(d) {
   const an = d.analysis, h = an.headline, dec = an.decomposition, mc = an.monteCarlo;
   let html = '';
 
-  // 1) VEREDICTO
+  // 1) VEREDICTO — confianza del MODELO y calidad de DATOS son conceptos separados (B9)
+  const mConf = h.modelConfidence ? h.modelConfidence.level : '—';
+  const dQual = h.dataQuality ? h.dataQuality.level : '—';
   html += panel('GP Intelligence · Veredicto', d.dataSource, `
     <div class="gptbox">
       <div class="gpt-top"><span class="grade ${verdictCls(h.verdictLabel)}">${h.verdictLabel}</span>
-        <span class="gpt-conf">Confianza: ${h.confidence}</span></div>
+        <span class="gpt-conf">Confianza modelo: ${mConf}</span><span class="gpt-conf">Calidad datos: ${dQual}</span></div>
       <div class="gpt-sum" style="margin-top:8px">${h.verdict}</div>
     </div>`);
 
-  // 2) DESCOMPOSICIÓN base → v2 (transparencia)
+  // 2) DESCOMPOSICIÓN V1 control → V2 challenger + delta explícito (B1)
   const decRow = (lbl, line, strong) => `
     <div class="gpi-decrow">
       <span class="gpi-decl">${lbl}</span>
       <div class="pbar" style="margin:0;flex:1"><div class="ph" style="width:${line.aWin * 100}%"></div><div class="pd" style="width:${line.draw * 100}%"></div><div class="pa" style="width:${line.bWin * 100}%"></div></div>
       <span class="gpi-decv ${strong ? 'on' : ''}">${pct(line.aWin, 0)}·${pct(line.draw, 0)}·${pct(line.bWin, 0)}</span>
     </div>`;
-  html += panel('Cómo se construye', 'base → contexto → v2', `
-    ${decRow('Modelo base', dec.baseLine, false)}
-    ${decRow('GP Intelligence', dec.v2Line, true)}
+  const dpp = dec.deltaPp || { aWin: 0, draw: 0, bWin: 0 };
+  const ppChip = v => `<span class="gpi-imp ${v > 0 ? 'up' : v < 0 ? 'down' : 'flat'}">${v > 0 ? '+' : ''}${v.toFixed(1)}pp</span>`;
+  html += panel('V1 control → V2 challenger', 'modelo base vs GP Intelligence', `
+    ${decRow('V1 (modelo base)', dec.baseLine, false)}
+    ${decRow('V2 (GP Intelligence)', dec.v2Line, true)}
     <div class="gpi-deltas">
-      <span>${d.a.flag} ${d.a.name}: contexto ${impChip(dec.deltaA)}</span>
-      <span>${d.b.flag} ${d.b.name}: contexto ${impChip(dec.deltaB)}</span>
+      <span>${d.a.flag} ${d.a.name}: ${ppChip(dpp.aWin)}</span>
+      <span>empate: ${ppChip(dpp.draw)}</span>
+      <span>${d.b.flag} ${d.b.name}: ${ppChip(dpp.bWin)}</span>
     </div>
-    <div class="gpi-note">El contexto ajusta el Elo de cada equipo dentro de una banda acotada (±55) y reconstruye la probabilidad. Cada punto es trazable a una señal de abajo.</div>`);
+    <div class="gpi-deltas">
+      <span>Contexto Elo ${d.a.name}: ${impChip(dec.deltaA)}</span>
+      <span>Contexto Elo ${d.b.name}: ${impChip(dec.deltaB)}</span>
+    </div>
+    <div class="gpi-note">El modelo global (V1) sigue siendo el control. V2 es un challenger experimental solo en este sandbox: ajusta el Elo de cada equipo (cap de seguridad) y reconstruye la probabilidad. El delta es V2 − V1 en puntos porcentuales.</div>`);
 
-  // 3) FACTORES CLAVE (ambos equipos, ordenados por peso)
+  // 3) FACTORES CLAVE (ambos equipos, ordenados por peso; excluidos atenuados)
   if (an.factors && an.factors.length) {
     const rows = an.factors.map(f => `
-      <div class="gpi-factor">
-        <div class="gpi-fac-h"><span class="gpi-fac-team">${f.flag} ${f.team}</span>${impChip(f.eloImpact)}</div>
-        <div class="gpi-fac-l">${f.label}</div>
-        <div class="gpi-fac-d">${f.detail}</div>
+      <div class="gpi-factor${f.included ? '' : ' gpi-excluded'}">
+        <div class="gpi-fac-h"><span class="gpi-fac-team">${f.flag} ${f.team}</span>${f.included ? impChip(f.eloImpact) : `<span class="gpi-imp flat">omitido</span>`}</div>
+        <div class="gpi-fac-l">${f.label}${f.group ? ` · <span class="gpi-grp">${f.group}</span>` : ''}</div>
+        <div class="gpi-fac-d">${f.detail}${f.included ? '' : ` · <span class="pbad">excluido: ${f.exclusionReason}</span>`}</div>
       </div>`).join('');
     html += panel('Factores que pesan', an.factors.length + '', `<div class="gpi-factors">${rows}</div>`);
   }
@@ -1714,15 +1723,55 @@ function h2hAnalysisHtml(d) {
   const tA = tacHtml(d.tactical && d.tactical.a, d.a.name, d.a.flag), tB = tacHtml(d.tactical && d.tactical.b, d.b.name, d.b.flag);
   if (tA || tB) html += panel('Lectura táctica', '', tA + tB);
 
-  // 6) FACTORES X + QUÉ CAMBIARÍA
-  html += panel('Factores X y riesgos', '', `
+  // 6) INSIGHTS determinísticos (anclados a métricas) + qué cambiaría
+  const insights = an.insights || [];
+  const sevCls = s => s === 'warn' ? 'down' : 'up';
+  html += panel('Lectura y riesgos', '', `
     <div class="dsub">A vigilar</div>
-    <ul class="gpt-drivers">${an.xFactors.map(x => `<li>${x}</li>`).join('')}</ul>
+    <ul class="gpt-drivers">${insights.map(i => `<li><span class="gpi-ins ${sevCls(i.severity)}">${i.text}</span></li>`).join('')}</ul>
     <div class="dsub" style="margin-top:10px">Qué cambiaría la lectura</div>
     <ul class="gpt-drivers">${an.whatChanges.map(x => `<li>${x}</li>`).join('')}</ul>`);
 
-  html += `<div class="disc">Cancha neutral, sin factor localía. Estimaciones de un modelo estadístico + capa de contexto (piloto v2). No es consejo financiero ni recomendación de apuesta.</div>`;
+  // 7) TRAZABILIDAD — "Cómo llegó GP a este resultado" (colapsable, B11)
+  html += traceabilityHtml(d);
+
+  html += `<div class="disc">V1 (modelo global) es el control; V2 (GP Intelligence) es un challenger experimental solo en este sandbox y no afecta al track record. Cancha neutral, sin factor localía. Estimaciones de un modelo estadístico + contexto. No es consejo financiero ni recomendación de apuesta.</div>`;
   return html;
+}
+
+// Panel colapsable de trazabilidad: modelo base, contexto, resultado y calidad de datos (sin secretos).
+function traceabilityHtml(d) {
+  const dec = d.analysis.decomposition, ctx = d.context, run = d.run || {}, v = d.versions || {};
+  const factorLines = side => (side || []).filter(f => f.axis === 'elo' && f.factorCode !== 'NO_CONTEXT').map(f =>
+    `<div class="gpi-tr-row"><span>${labelForFactor(f.factorCode)}</span><span>${f.included ? (f.cappedContribution > 0 ? '+' : '') + f.cappedContribution + ' Elo' : '<span class="pbad">omitido (' + f.exclusionReason + ')</span>'}</span></div>`).join('');
+  const dqA = ctx.dataQualityA || {}, dqB = ctx.dataQualityB || {};
+  const omitted = [...(dqA.missing || []), ...(dqA.stale || []), ...(dqB.missing || []), ...(dqB.stale || [])];
+  return `<details class="gpi-trace">
+    <summary>🔎 Cómo llegó GP a este resultado</summary>
+    <div class="gpi-tr-body">
+      <div class="gpi-tr-h">Modelo base (V1)</div>
+      <div class="gpi-tr-row"><span>${d.a.flag} ${d.a.name} · Elo base</span><span>${d.a.elo}</span></div>
+      <div class="gpi-tr-row"><span>${d.b.flag} ${d.b.name} · Elo base</span><span>${d.b.elo}</span></div>
+      <div class="gpi-tr-row"><span>Probabilidad V1</span><span>${pct(dec.baseLine.aWin, 1)} · ${pct(dec.baseLine.draw, 1)} · ${pct(dec.baseLine.bWin, 1)}</span></div>
+      <div class="gpi-tr-h">Contexto · ${d.a.name}</div>${factorLines(ctx.factorsA)}
+      <div class="gpi-tr-row strong"><span>Ajuste total ${d.a.name}</span><span>${dec.deltaA > 0 ? '+' : ''}${dec.deltaA} Elo</span></div>
+      <div class="gpi-tr-h">Contexto · ${d.b.name}</div>${factorLines(ctx.factorsB)}
+      <div class="gpi-tr-row strong"><span>Ajuste total ${d.b.name}</span><span>${dec.deltaB > 0 ? '+' : ''}${dec.deltaB} Elo</span></div>
+      <div class="gpi-tr-h">Resultado (V2)</div>
+      <div class="gpi-tr-row"><span>Elo ajustado</span><span>${d.a.elo + dec.deltaA} · ${d.b.elo + dec.deltaB}</span></div>
+      <div class="gpi-tr-row"><span>Probabilidad V2</span><span>${pct(dec.v2Line.aWin, 1)} · ${pct(dec.v2Line.draw, 1)} · ${pct(dec.v2Line.bWin, 1)}</span></div>
+      <div class="gpi-tr-h">Calidad de datos</div>
+      <div class="gpi-tr-row"><span>Nivel</span><span>${(d.analysis.headline.dataQuality || {}).level || '—'}</span></div>
+      <div class="gpi-tr-row"><span>Factores omitidos</span><span>${omitted.length ? omitted.join(', ') : 'ninguno'}</span></div>
+      <div class="gpi-tr-row"><span>Fuente</span><span>${d.dataSource}</span></div>
+      <div class="gpi-tr-row"><span>Versión modelo</span><span>${v.control || '—'} / ${v.challenger || '—'}</span></div>
+      <div class="gpi-tr-row"><span>Seed · sims</span><span>${run.randomSeed != null ? run.randomSeed : '—'} · ${run.simulationCount || '—'}</span></div>
+      ${run.sanity && !run.sanity.ok ? `<div class="gpi-tr-row"><span class="pbad">Sanity</span><span class="pbad">${run.sanity.errors.join('; ')}</span></div>` : ''}
+    </div>
+  </details>`;
+}
+function labelForFactor(code) {
+  return ({ FORM: 'Forma reciente', STREAK: 'Racha', SOLIDITY: 'Solidez/fragilidad', SQUAD_QUALITY: 'Calidad de plantilla', AVAILABILITY: 'Bajas y dudas', REST: 'Descanso/carga' })[code] || code;
 }
 
 function shareSim(ev) {

@@ -898,3 +898,17 @@ body.has-bottomnav main { padding-bottom: 80px; }
 .gpi-tg-c { background:var(--card2); padding:7px 4px; text-align:center; }
 .gpi-tg-c .n { display:block; font-family:var(--mono); font-size:11px; font-weight:700; color:var(--muted); }
 .gpi-tg-c .p { display:block; font-family:var(--mono); font-size:13px; font-weight:700; margin-top:2px; }
+
+/* Sprint 0.1: factores excluidos, grupos, insights, trazabilidad */
+.gpi-factor.gpi-excluded { opacity:.55; }
+.gpi-grp { font-size:9px; font-weight:800; letter-spacing:.06em; color:var(--muted); }
+.gpi-ins.down { color:var(--text); } .gpi-ins.up { color:var(--text); }
+.gpi-trace { margin-bottom:12px; background:var(--card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); overflow:hidden; }
+.gpi-trace > summary { cursor:pointer; padding:13px 16px; font-size:12px; font-weight:800; letter-spacing:.03em; color:var(--dim); list-style:none; }
+.gpi-trace > summary::-webkit-details-marker { display:none; }
+.gpi-trace[open] > summary { border-bottom:1px solid var(--border-subtle); }
+.gpi-tr-body { padding:8px 16px 14px; }
+.gpi-tr-h { font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:12px 0 6px; }
+.gpi-tr-row { display:flex; justify-content:space-between; gap:12px; font-size:11.5px; color:var(--dim); padding:3px 0; border-bottom:1px solid rgba(255,255,255,.03); }
+.gpi-tr-row span:last-child { font-family:var(--mono); text-align:right; }
+.gpi-tr-row.strong { color:var(--text); font-weight:700; }

@@ -22,15 +22,20 @@ const crypto = require('crypto');
   } catch { /* nunca debe impedir el arranque */ }
 })();
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
-const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
+const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');
 // Fase 4: capa de datos contextuales (API-Football principal → ESPN → manual). La UI nunca
 // llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
 const providers = require('./data-providers');
 const { generateGPTake } = require('./data-providers/gpTake');
 // v2 piloto (solo sandbox): capa de contexto + análisis integral del cruce.
-const { contextSignals, buildH2HAnalysis, adjustedLambdas, goalsMarkets } = require('./data-providers/gpIntelligence');
+const { contextSignals, buildH2HAnalysis, adjustedLambdas, goalsMarkets, hashInputs, deriveSeed, mathSanity, VERSIONS } = require('./data-providers/gpIntelligence');
+// v2 logging experimental (best-effort, tras feature flag).
+const gpExperiment = require('./data-providers/gpExperimentLog');
 const telegram = require('./telegram');
+// Sprint 0 — plataforma de datos v2 (aislada tras feature flags). Requerirla NO abre conexión:
+// el pool de pg se crea de forma perezosa solo si hay DATABASE_URL y alguien consulta la capa.
+const platformHealth = require('./database/health');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -1013,6 +1018,22 @@ function restDaysFromResults(results) {
   return Math.round((now - Math.max(...past)) / (24 * 3600 * 1000));
 }
 
+// Logging experimental de una ejecución de GP Intelligence (best-effort; flag + DB). NO incluye secretos.
+async function logGpIntelligenceRun({ a, b, base, v2, csA, csB, inputHash, randomSeed, SIMS, analysis }) {
+  return gpExperiment.logRun({
+    analysisType: 'h2h_sandbox', status: analysis.headline ? 'completed' : 'partial',
+    completedAt: new Date().toISOString(),
+    controlModelVersion: VERSIONS.control, challengerModelVersion: VERSIONS.challenger, factorPolicyVersion: VERSIONS.factorPolicy,
+    inputHash, randomSeed, simulationCount: SIMS,
+    teamAReference: a, teamBReference: b, eventReference: a + '_' + b,
+    inputPayload: { a, b, eloA: Math.round(db.elos[a]), eloB: Math.round(db.elos[b]) },
+    contextPayload: { factorsA: csA.factors, factorsB: csB.factors, groupsA: csA.groupCapped, groupsB: csB.groupCapped },
+    controlOutput: base, challengerOutput: v2,
+    dataQualityPayload: { a: csA.dataQuality, b: csB.dataQuality, modelConfidence: analysis.headline && analysis.headline.modelConfidence },
+    metadata: { verdictLabel: analysis.headline && analysis.headline.verdictLabel },
+  });
+}
+
 async function buildH2HDeep(a, b) {
   const key = a + '_' + b;
   const hit = h2hDeepCache.get(key);
@@ -1035,37 +1056,50 @@ async function buildH2HDeep(a, b) {
   // 3) Descanso/carga desde fechas de resultados recientes
   const restA = restDaysFromResults(ctxA && ctxA.results), restB = restDaysFromResults(ctxB && ctxB.results);
 
-  // 4) Señales → ajuste de Elo + perfil de goles por lado (forma, bajas de peso, plantilla, descanso, solidez)
-  const csA = contextSignals(ctxA, ta.name, { squadRating: sqA, restDays: restA, oppRestDays: restB });
-  const csB = contextSignals(ctxB, tb.name, { squadRating: sqB, restDays: restB, oppRestDays: restA });
-  const eloA2 = db.elos[a] + csA.delta, eloB2 = db.elos[b] + csB.delta;
+  // 4) Señales → breakdown completo por factor + ajuste de Elo (con caps por grupo + safety cap global).
+  //    Frescura: marcamos fetched_at = ahora por fuente (source_updated_at desconocido en API-Football).
+  const now = Date.now(), nowIso = new Date(now).toISOString();
+  const fetchedAt = { form: nowIso, injuries: nowIso, squad: nowIso, rest: nowIso };
+  const csA = contextSignals(ctxA, ta.name, { squadRating: sqA, restDays: restA, oppRestDays: restB, now, fetchedAt, baseElo: Math.round(db.elos[a]) });
+  const csB = contextSignals(ctxB, tb.name, { squadRating: sqB, restDays: restB, oppRestDays: restA, now, fetchedAt, baseElo: Math.round(db.elos[b]) });
+  const eloA2 = db.elos[a] + csA.finalCappedTotal, eloB2 = db.elos[b] + csB.finalCappedTotal;
 
-  // 5) xG ESPECÍFICO POR EQUIPO: combina el xG implícito por Elo con el perfil ataque/defensa de forma
+  // 5) xG ESPECÍFICO POR EQUIPO (eje xG, separado del eje Elo)
   const [lAelo, lBelo] = lambdas(eloA2, eloB2);
   const [lA, lB, beta] = adjustedLambdas(lAelo, lBelo, csA.goalProfile, csB.goalProfile);
 
-  // 6) v2: 1X2 desde las tasas ajustadas + Monte Carlo 10k con el contexto ya integrado
+  // 6) Reproducibilidad: seed determinístico desde el hash de los inputs (misma entrada → misma seed).
+  const inputHash = hashInputs({ a, b, eloA: db.elos[a], eloB: db.elos[b], dA: csA.finalCappedTotal, dB: csB.finalCappedTotal, lA: +lA.toFixed(6), lB: +lB.toFixed(6), v: VERSIONS.challenger });
+  const randomSeed = deriveSeed(inputHash);
+  const SIMS = 10000;
+
+  // 7) v2: 1X2 desde tasas ajustadas + Monte Carlo 10k REPRODUCIBLE (seed fija)
   const v2 = probsFromLambdas(lA, lB);
   const v2Line = { aWin: v2.home, draw: v2.draw, bWin: v2.away, xgA: lA, xgB: lB, likely: v2.likelyScore };
-  const mc = simulateH2H(0, 0, 10000, Math.random, [lA, lB]);
+  const mc = simulateH2H(0, 0, SIMS, makeRng(randomSeed), [lA, lB]);
   const goals = goalsMarkets(mc, lA, lB);
 
-  // 7) Análisis integral determinístico
+  // 8) Sanity matemático + análisis integral (V1 control vs V2 challenger)
+  const sanity = mathSanity({ v2: v2Line, goals, mc, deltaA: csA.finalCappedTotal, deltaB: csB.finalCappedTotal });
   const aMeta = { code: a, name: ta.name, flag: ta.flag }, bMeta = { code: b, name: tb.name, flag: tb.flag };
-  const analysis = buildH2HAnalysis({
-    a: aMeta, b: bMeta, base: baseLine, v2: v2Line,
-    delta: { a: csA.delta, b: csB.delta }, sig: { a: csA.signals, b: csB.signals }, mc, goals, beta,
-  });
+  const analysis = buildH2HAnalysis({ a: aMeta, b: bMeta, base: baseLine, v2: v2Line, ctxA: csA, ctxB: csB, mc, goals, beta });
 
   const usedApi = !!((ctxA && ctxA.providerStatus && ctxA.providerStatus.usedApiFootball) || (ctxB && ctxB.providerStatus && ctxB.providerStatus.usedApiFootball));
   const data = {
     a: { ...basicTeam(a), elo: Math.round(db.elos[a]) },
     b: { ...basicTeam(b), elo: Math.round(db.elos[b]) },
-    base: baseLine,
-    probs: v2Line, // el HEADLINE del sandbox es v2
+    control: baseLine,                 // V1 CONTROL (modelo global, no se promueve)
+    base: baseLine,                    // alias back-compat
+    probs: v2Line,                     // V2 CHALLENGER — headline del sandbox
+    delta: analysis.decomposition.deltaPp, // V2 vs V1 en puntos porcentuales por resultado
+    versions: VERSIONS,
+    run: { inputHash, randomSeed, simulationCount: SIMS, sanity },
     context: {
-      deltaA: Math.round(csA.delta), deltaB: Math.round(csB.delta),
+      deltaA: Math.round(csA.finalCappedTotal), deltaB: Math.round(csB.finalCappedTotal),
       signalsA: csA.signals, signalsB: csB.signals,
+      factorsA: csA.factors, factorsB: csB.factors,
+      groupsA: csA.groupCapped, groupsB: csB.groupCapped,
+      dataQualityA: csA.dataQuality, dataQualityB: csB.dataQuality,
       hasData: csA.hasData || csB.hasData,
       goalModel: beta > 0 ? 'xG específico por equipo (forma + Elo)' : 'xG por Elo (forma insuficiente)',
     },
@@ -1079,8 +1113,10 @@ async function buildH2HDeep(a, b) {
     monteCarlo: mc,
     analysis,
     dataSource: usedApi ? 'API-Football + modelo' : 'modelo + datos editoriales',
-    updatedAt: new Date().toISOString(),
+    updatedAt: nowIso,
   };
+  // Logging experimental (best-effort, no rompe la simulación si falla). B2.
+  logGpIntelligenceRun({ a, b, aMeta, bMeta, base: baseLine, v2: v2Line, csA, csB, inputHash, randomSeed, SIMS, analysis }).catch(() => {});
   h2hDeepCache.set(key, { ts: Date.now(), data });
   return data;
 }
@@ -1501,6 +1537,13 @@ const server = http.createServer(async (req, res) => {
       await fetchMarkets(true);
       broadcast('markets', { ts: marketCache.ts });
       return json(res, 200, { ok: true, ts: marketCache.ts });
+    }
+    // --- Sprint 0: health interno de la plataforma de datos v2 (admin-only, sin secretos) ---
+    if (p === '/api/internal/platform-health') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await platformHealth.snapshot()); }
+      catch (e) { return json(res, 200, { status: 'unavailable', error: 'health snapshot failed', timestamp: new Date().toISOString() }); }
     }
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {

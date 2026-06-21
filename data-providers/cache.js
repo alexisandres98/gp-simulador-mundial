@@ -14,10 +14,10 @@ const TTL = {
   statistics: 45 * 1000,          // stats de partido
   squad: 24 * 60 * 60 * 1000,     // plantilla
   players: 24 * 60 * 60 * 1000,   // jugadores
-  injuries: 40 * 60 * 1000,       // lesiones / sidelined
+  injuries: 20 * 60 * 1000,       // lesiones / sidelined (frescura en Mundial)
   odds: 4 * 60 * 1000,            // cuotas
   standings: 10 * 60 * 1000,      // tabla
-  form: 16 * 60 * 60 * 1000,      // forma reciente / resultados
+  form: 2 * 60 * 60 * 1000,       // forma reciente / resultados (refresca tras cada jornada)
   h2h: 16 * 60 * 60 * 1000,       // head to head
   predictions: 30 * 60 * 1000,    // predicciones API
   teamMeta: 24 * 60 * 60 * 1000,  // metadata / ids descubiertos

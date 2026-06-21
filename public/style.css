@@ -882,3 +882,19 @@ body.has-bottomnav main { padding-bottom: 80px; }
 .gpi-tag { font-size:10px; font-weight:700; padding:3px 8px; border-radius:99px; }
 .gpi-tag.up { color:var(--accent); background:rgba(24,230,163,.1); }
 .gpi-tag.down { color:var(--red); background:rgba(255,90,90,.1); }
+
+/* goles y totales */
+.gpi-ou-wrap { display:flex; flex-direction:column; gap:9px; }
+.gpi-ou { display:flex; align-items:center; gap:10px; }
+.gpi-ou-l { font-size:11px; font-weight:700; color:var(--muted); width:64px; flex:0 0 auto; }
+.gpi-ou-split { position:relative; flex:1; height:26px; border-radius:8px; overflow:hidden; background:rgba(90,174,255,.16); font-size:10.5px; font-weight:800; }
+.gpi-ou-fill { position:absolute; left:0; top:0; bottom:0; background:rgba(24,230,163,.24); }
+.gpi-ou-o, .gpi-ou-u { position:absolute; top:0; height:26px; display:flex; align-items:center; white-space:nowrap; }
+.gpi-ou-o { left:10px; color:var(--accent); }
+.gpi-ou-u { right:10px; color:var(--blue); }
+.gpi-tg { margin-top:9px; }
+.gpi-tg-h { font-size:11.5px; font-weight:800; margin-bottom:5px; }
+.gpi-tg-cells { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border-subtle); border:1px solid var(--border-subtle); border-radius:8px; overflow:hidden; }
+.gpi-tg-c { background:var(--card2); padding:7px 4px; text-align:center; }
+.gpi-tg-c .n { display:block; font-family:var(--mono); font-size:11px; font-weight:700; color:var(--muted); }
+.gpi-tg-c .p { display:block; font-family:var(--mono); font-size:13px; font-weight:700; margin-top:2px; }

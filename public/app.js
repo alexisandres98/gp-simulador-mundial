@@ -1660,7 +1660,7 @@ function h2hAnalysisHtml(d) {
       <div class="gpi-sc-bar"><div style="width:${(s.p / maxP) * 100}%"></div></div>
       <span class="gpi-sc-p">${pct(s.p, 0)}</span>
     </div>`).join('');
-  html += panel('Monte Carlo · 10.000 simulaciones', '', `
+  html += panel('Monte Carlo · 10.000 simulaciones', 'contexto integrado', `
     <div class="gpi-sc-grid">${scoreBars}</div>
     <div class="gpi-mc-stats">
       <div class="gpi-stat"><span class="v">${pct(mc.over25, 0)}</span><span class="l">Over 2.5</span></div>
@@ -1669,6 +1669,39 @@ function h2hAnalysisHtml(d) {
       <div class="gpi-stat"><span class="v">${mc.avgMargin.toFixed(2)}</span><span class="l">Margen prom.</span></div>
     </div>
     <div class="gpi-note">${an.monteCarlo.narrative}</div>`);
+
+  // 4b) GOLES Y TOTALES — mercados accionables para apostadores (Over/Under, total, distribución por equipo)
+  if (d.goals) {
+    const g = d.goals;
+    const ouRow = (label, over) => `
+      <div class="gpi-ou">
+        <span class="gpi-ou-l">${label}</span>
+        <div class="gpi-ou-split"><div class="gpi-ou-fill" style="width:${over * 100}%"></div><span class="gpi-ou-o">Over ${pct(over, 0)}</span><span class="gpi-ou-u">Under ${pct(1 - over, 0)}</span></div>
+      </div>`;
+    const teamGoals = (dist, flag, name) => `
+      <div class="gpi-tg">
+        <div class="gpi-tg-h">${flag} ${name}</div>
+        <div class="gpi-tg-cells">
+          ${[['0', dist.g0], ['1', dist.g1], ['2', dist.g2], ['3+', dist.g3]].map(([n, p]) => `<div class="gpi-tg-c"><span class="n">${n}</span><span class="p">${pct(p, 0)}</span></div>`).join('')}
+        </div>
+      </div>`;
+    html += panel('Goles y totales', 'para totales', `
+      <div class="gpi-ou-wrap">
+        ${ouRow('1.5 goles', g.over15)}
+        ${ouRow('2.5 goles', g.over25)}
+        ${ouRow('3.5 goles', g.over35)}
+      </div>
+      <div class="gpi-mc-stats" style="margin-top:13px">
+        <div class="gpi-stat"><span class="v">${g.mostLikelyTotal}</span><span class="l">Total más prob.</span></div>
+        <div class="gpi-stat"><span class="v">${pct(g.mostLikelyTotalP, 0)}</span><span class="l">Prob. de ese total</span></div>
+        <div class="gpi-stat"><span class="v">${g.avgTotal.toFixed(2)}</span><span class="l">Goles esperados</span></div>
+        <div class="gpi-stat"><span class="v">${pct(g.btts, 0)}</span><span class="l">Ambos marcan</span></div>
+      </div>
+      <div class="dsub" style="margin-top:14px">Goles por equipo (probabilidad)</div>
+      ${teamGoals(g.teamA, d.a.flag, d.a.name)}
+      ${teamGoals(g.teamB, d.b.flag, d.b.name)}
+      <div class="gpi-note">${d.context.goalModel ? 'Modelo de goles: ' + d.context.goalModel + '. ' : ''}xG ${d.probs.xgA.toFixed(2)} – ${d.probs.xgB.toFixed(2)}. Distribución de las 10.000 simulaciones.</div>`);
+  }
 
   // 5) LECTURA TÁCTICA (si hay editorial). La nota puede ser texto o {style,strengths[],risks[]}.
   const tacHtml = (t, team, flag) => {

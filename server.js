@@ -22,14 +22,14 @@ const crypto = require('crypto');
   } catch { /* nunca debe impedir el arranque */ }
 })();
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
-const { simulateTournament, matchProbs, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
+const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');
 // Fase 4: capa de datos contextuales (API-Football principal → ESPN → manual). La UI nunca
 // llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
 const providers = require('./data-providers');
 const { generateGPTake } = require('./data-providers/gpTake');
 // v2 piloto (solo sandbox): capa de contexto + análisis integral del cruce.
-const { contextSignals, buildH2HAnalysis } = require('./data-providers/gpIntelligence');
+const { contextSignals, buildH2HAnalysis, adjustedLambdas, goalsMarkets } = require('./data-providers/gpIntelligence');
 const telegram = require('./telegram');
 
 const PORT = process.env.PORT || 3000;
@@ -1005,6 +1005,14 @@ function formSummary(f) {
   };
 }
 
+function restDaysFromResults(results) {
+  if (!results || !results.length) return null;
+  const now = Date.now();
+  const past = results.map(r => new Date(r.date).getTime()).filter(t => !isNaN(t) && t <= now);
+  if (!past.length) return null;
+  return Math.round((now - Math.max(...past)) / (24 * 3600 * 1000));
+}
+
 async function buildH2HDeep(a, b) {
   const key = a + '_' + b;
   const hit = h2hDeepCache.get(key);
@@ -1015,28 +1023,38 @@ async function buildH2HDeep(a, b) {
   const base = matchProbs(db.elos[a], db.elos[b]);
   const baseLine = { aWin: base.home, draw: base.draw, bWin: base.away, xgA: base.xgHome, xgB: base.xgAway, likely: base.likelyScore };
 
-  // 2) CONTEXTO total de ambos (forma, bajas, racha, solidez, táctica). Nunca lanza.
+  // 2) CONTEXTO total de ambos + calidad de plantilla (ratings reales). Nunca lanza.
   const safe = async (fn) => { try { return await fn(); } catch { return null; } };
-  const [ctxA, ctxB] = await Promise.all([
+  const [ctxA, ctxB, sqA, sqB] = await Promise.all([
     safe(() => providers.getTeamContext({ code: a, name: ta.en, names: namesOfTeam(ta) })),
     safe(() => providers.getTeamContext({ code: b, name: tb.en, names: namesOfTeam(tb) })),
+    safe(() => providers.getSquadRating({ code: a, name: ta.en, names: namesOfTeam(ta) })),
+    safe(() => providers.getSquadRating({ code: b, name: tb.en, names: namesOfTeam(tb) })),
   ]);
 
-  // 3) Señales → ajuste de Elo acotado por lado
-  const csA = contextSignals(ctxA, ta.name), csB = contextSignals(ctxB, tb.name);
+  // 3) Descanso/carga desde fechas de resultados recientes
+  const restA = restDaysFromResults(ctxA && ctxA.results), restB = restDaysFromResults(ctxB && ctxB.results);
 
-  // 4) v2: recomputar con Elo ajustado por contexto
-  const v2 = matchProbs(db.elos[a] + csA.delta, db.elos[b] + csB.delta);
-  const v2Line = { aWin: v2.home, draw: v2.draw, bWin: v2.away, xgA: v2.xgHome, xgB: v2.xgAway, likely: v2.likelyScore };
+  // 4) Señales → ajuste de Elo + perfil de goles por lado (forma, bajas de peso, plantilla, descanso, solidez)
+  const csA = contextSignals(ctxA, ta.name, { squadRating: sqA, restDays: restA, oppRestDays: restB });
+  const csB = contextSignals(ctxB, tb.name, { squadRating: sqB, restDays: restB, oppRestDays: restA });
+  const eloA2 = db.elos[a] + csA.delta, eloB2 = db.elos[b] + csB.delta;
 
-  // 5) Monte Carlo dedicado del cruce con los Elo v2 (distribución completa)
-  const mc = simulateH2H(db.elos[a] + csA.delta, db.elos[b] + csB.delta, 10000);
+  // 5) xG ESPECÍFICO POR EQUIPO: combina el xG implícito por Elo con el perfil ataque/defensa de forma
+  const [lAelo, lBelo] = lambdas(eloA2, eloB2);
+  const [lA, lB, beta] = adjustedLambdas(lAelo, lBelo, csA.goalProfile, csB.goalProfile);
 
-  // 6) Análisis integral determinístico
+  // 6) v2: 1X2 desde las tasas ajustadas + Monte Carlo 10k con el contexto ya integrado
+  const v2 = probsFromLambdas(lA, lB);
+  const v2Line = { aWin: v2.home, draw: v2.draw, bWin: v2.away, xgA: lA, xgB: lB, likely: v2.likelyScore };
+  const mc = simulateH2H(0, 0, 10000, Math.random, [lA, lB]);
+  const goals = goalsMarkets(mc, lA, lB);
+
+  // 7) Análisis integral determinístico
   const aMeta = { code: a, name: ta.name, flag: ta.flag }, bMeta = { code: b, name: tb.name, flag: tb.flag };
   const analysis = buildH2HAnalysis({
     a: aMeta, b: bMeta, base: baseLine, v2: v2Line,
-    delta: { a: csA.delta, b: csB.delta }, sig: { a: csA.signals, b: csB.signals }, mc,
+    delta: { a: csA.delta, b: csB.delta }, sig: { a: csA.signals, b: csB.signals }, mc, goals, beta,
   });
 
   const usedApi = !!((ctxA && ctxA.providerStatus && ctxA.providerStatus.usedApiFootball) || (ctxB && ctxB.providerStatus && ctxB.providerStatus.usedApiFootball));
@@ -1049,7 +1067,9 @@ async function buildH2HDeep(a, b) {
       deltaA: Math.round(csA.delta), deltaB: Math.round(csB.delta),
       signalsA: csA.signals, signalsB: csB.signals,
       hasData: csA.hasData || csB.hasData,
+      goalModel: beta > 0 ? 'xG específico por equipo (forma + Elo)' : 'xG por Elo (forma insuficiente)',
     },
+    goals,
     form: { a: formSummary(ctxA && ctxA.recentForm), b: formSummary(ctxB && ctxB.recentForm) },
     injuries: {
       a: ((ctxA && ctxA.injuries) || []).filter(i => ['injured', 'suspended', 'doubt'].includes(i.status)).slice(0, 6),

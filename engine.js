@@ -58,9 +58,9 @@ function calib(pH, pD, pA) {
   return { home: (1 - L) * pH + L / 3, draw: (1 - L) * pD + L / 3, away: (1 - L) * pA + L / 3 };
 }
 
-// Probabilidades 1X2 exactas (rejilla Poisson 0..12) — para mostrar por partido
-function matchProbs(eloH, eloA) {
-  const [lh, la] = lambdas(eloH, eloA);
+// Probabilidades 1X2 exactas desde tasas Poisson explícitas (rejilla 0..12 + Dixon-Coles + calibración).
+// Núcleo reutilizable: matchProbs (Elo) y el sandbox v2 (xG específico por equipo) lo comparten.
+function probsFromLambdas(lh, la) {
   let pH = 0, pD = 0, pA = 0;
   const ph = [], pa = [];
   for (let k = 0; k <= 12; k++) { ph.push(poissonPmf(lh, k)); pa.push(poissonPmf(la, k)); }
@@ -73,6 +73,12 @@ function matchProbs(eloH, eloA) {
   const s = pH + pD + pA;
   const c = calib(pH / s, pD / s, pA / s);
   return { home: c.home, draw: c.draw, away: c.away, xgHome: lh, xgAway: la, likelyScore: `${best.h}-${best.a}` };
+}
+
+// Probabilidades 1X2 exactas (rejilla Poisson 0..12) — para mostrar por partido
+function matchProbs(eloH, eloA) {
+  const [lh, la] = lambdas(eloH, eloA);
+  return probsFromLambdas(lh, la);
 }
 
 // Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual)
@@ -108,8 +114,8 @@ function simMatch(eloH, eloA, rng, live) {
 // Monte Carlo dedicado de un cruce 1v1 (cancha neutral) — N partidos simulados con las mismas
 // tasas Poisson del modelo. Devuelve la DISTRIBUCIÓN completa (marcadores, totales, over/under,
 // BTTS), no solo el 1X2. Lo usa el sandbox "GP Intelligence" para la lectura profunda del cruce.
-function simulateH2H(eloA, eloB, N = 10000, rng = Math.random) {
-  const [la, lb] = lambdas(eloA, eloB);
+function simulateH2H(eloA, eloB, N = 10000, rng = Math.random, lambdasOverride = null) {
+  const [la, lb] = lambdasOverride || lambdas(eloA, eloB);
   let wa = 0, dr = 0, wb = 0, over25 = 0, btts = 0, totGoals = 0, cleanA = 0, cleanB = 0, marginSum = 0;
   const scores = Object.create(null), totalDist = Object.create(null);
   for (let i = 0; i < N; i++) {
@@ -339,4 +345,4 @@ function explainTeam(team, elos, sim, allSims) {
   return parts.join(' ');
 }
 
-module.exports = { simulateTournament, matchProbs, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS };
+module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };

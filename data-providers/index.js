@@ -296,4 +296,28 @@ async function getTeamContext(ctx) {
   return result;
 }
 
-module.exports = { getMatchContext, getTeamContext, generateGPTake, providerConfigured: af.configured };
+// ---------- CALIDAD DE PLANTILLA (sandbox v2) ----------
+// Rating medio del XI más usado de la temporada (proxy de calidad/nivel del plantel).
+// ctx: { code, name, names[] }. Devuelve { avg, n } o null si no hay datos fiables.
+async function getSquadRating(ctx) {
+  if (!af.configured()) return null;
+  const safe = async (fn) => { try { return await fn(); } catch { return null; } };
+  let apiId = await safe(() => resolveTeamFromLeague(ctx.names || [ctx.name]));
+  if (!apiId) apiId = await safe(() => af.resolveTeamId(ctx.code, ctx.name));
+  if (!apiId) return null;
+  const players = await safe(() => af.getTeamPlayers(apiId));
+  if (!players || !players.length) return null;
+  const rows = players.map(p => {
+    const st = (p.statistics || [])[0];
+    const r = st && st.games && parseFloat(st.games.rating);
+    const mins = (st && st.games && st.games.minutes) || 0;
+    return (r && !isNaN(r) && mins >= 90) ? { r, mins } : null;
+  }).filter(Boolean);
+  if (rows.length < 6) return null;
+  rows.sort((a, b) => b.mins - a.mins); // los más utilizados ≈ el XI probable
+  const top = rows.slice(0, 13);
+  const avg = top.reduce((s, x) => s + x.r, 0) / top.length;
+  return { avg, n: top.length };
+}
+
+module.exports = { getMatchContext, getTeamContext, getSquadRating, generateGPTake, providerConfigured: af.configured };

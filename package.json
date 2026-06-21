@@ -14,7 +14,13 @@
     "test:market-data": "node tests/market-data.test.js",
     "market-data:once": "node market-data/cli.js once",
     "market-data:status": "node market-data/cli.js status",
-    "market-data:verify": "node market-data/cli.js verify"
+    "market-data:verify": "node market-data/cli.js verify",
+    "test:canonical": "node tests/canonical-graph.test.js",
+    "canonical:discover": "node canonical-graph/cli.js discover",
+    "canonical:match": "node canonical-graph/cli.js match",
+    "canonical:status": "node canonical-graph/cli.js status",
+    "canonical:verify": "node canonical-graph/cli.js verify",
+    "canonical:review-summary": "node canonical-graph/cli.js review-summary"
   },
   "engines": {
     "node": ">=18"

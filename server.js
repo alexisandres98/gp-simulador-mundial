@@ -38,6 +38,8 @@ const telegram = require('./telegram');
 const platformHealth = require('./database/health');
 // Sprint 1 — ingesta de mercado (shadow mode). Aislada; requerirla no inicializa ni conecta nada.
 const marketData = require('./market-data');
+// Sprint 2 — Canonical Event Graph (shadow mode). Aislado; requerirlo no ejecuta matching ni conecta.
+const canonicalGraph = require('./canonical-graph');
 
 const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
@@ -1553,6 +1555,31 @@ const server = http.createServer(async (req, res) => {
       if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       try { return json(res, 200, await marketData.adminStatus()); }
       catch (e) { return json(res, 200, { enabled: false, error: 'status failed', timestamp: new Date().toISOString() }); }
+    }
+    // --- Sprint 2: Canonical Event Graph (admin-only; no ejecuta matching ni migra) ---
+    if (p === '/api/internal/canonical/status') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await canonicalGraph.adminStatus()); } catch (e) { return json(res, 200, { error: 'status failed' }); }
+    }
+    if (p === '/api/internal/canonical/review' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const status = (url.searchParams.get('status') || 'pending').slice(0, 20);
+      const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 200);
+      const offset = Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0);
+      try { return json(res, 200, { items: await canonicalGraph.reviewList(status, limit, offset) }); } catch (e) { return json(res, 200, { items: [] }); }
+    }
+    const mReview = p.match(/^\/api\/internal\/canonical\/review\/([0-9a-f-]{36})$/i);
+    if (mReview && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { const item = await canonicalGraph.reviewGet(mReview[1]); return item ? json(res, 200, item) : json(res, 404, { error: 'No encontrado' }); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    const mDecide = p.match(/^\/api\/internal\/canonical\/review\/([0-9a-f-]{36})\/decision$/i);
+    if (mDecide && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const body = await readBody(req);
+      const decision = ['approve', 'reject', 'conditional', 'dismiss'].includes(body.decision) ? body.decision : null;
+      if (!decision) return json(res, 400, { error: 'decision inválida (approve|reject|conditional|dismiss)' });
+      try { const r = await canonicalGraph.reviewDecide(mDecide[1], { decision, reviewedBy: u.email, notes: (body.notes || '').slice(0, 1000) }); return r ? json(res, 200, r) : json(res, 404, { error: 'No encontrado' }); } catch (e) { return json(res, 500, { error: 'error' }); }
     }
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {

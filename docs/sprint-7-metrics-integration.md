@@ -1,0 +1,4 @@
+# Sprint 7 — Integración con métricas
+
+Las Picks GP fluyen al motor de métricas (Sprint 6) **a través de su señal inmutable** `pick_gp_strong_value`: el settlement (Sprint 5) sobre esa señal permite calcular el **retorno teórico con stake unitario** (win `odds−1` / loss `−1` / void `0`), CLV (closing benchmark capturado), y closing beat rate — todo versionado y **separado** del track record V1 probabilístico (cohorte distinta).
+Requisitos: solo verified + score eligible + settlement final + desde verified epoch; todas las pérdidas permanecen; muestra + intervalos visibles. **Nunca se afirma ejecución real** (`executed_by_gp=false`). El dashboard agregado de picks (yield/drawdown/ROI teórico/rendimiento por edge) reutiliza la maquinaria de Sprint 6; su activación pública depende de tener picks reales liquidadas. No se presenta rendimiento de fixtures como real.

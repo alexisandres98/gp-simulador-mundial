@@ -15,6 +15,7 @@ const SCHEMA_VERSIONS = {
   model_prediction_v1: 'model_prediction_v1-1',
   arb_publication: 'arb_publication-1',
   gp_intelligence_experiment: 'gp_intelligence_experiment-1',
+  pick_gp_strong_value: 'pick_gp_strong_value-1', // Sprint 7
 };
 // versión metodológica del modelo oficial V1 (engine.js no la exponía; se ancla aquí para congelarla)
 const V1_METHODOLOGY_VERSION = 'gp-core-1.4.0';

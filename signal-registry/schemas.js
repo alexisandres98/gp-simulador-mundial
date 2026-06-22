@@ -30,6 +30,14 @@ function validate(signalType, payload = {}) {
     if (!Array.isArray(payload.legs) || payload.legs.length < 2) errors.push('legs_required');
     // realized_roi NUNCA debe venir poblado en publicación (GP no ejecuta)
     if (payload.realized_roi != null) errors.push('realized_roi_must_be_null');
+  } else if (signalType === 'pick_gp_strong_value') {
+    // Sprint 7: Pick GP basada en señal Strong Value. Selección + precio + probabilidades + edge congelados.
+    // La señal se crea ANTES que la pick_publication (que la referencia), por eso pick_publication_id NO es requerido aquí.
+    for (const f of ['value_evaluation_id', 'selection', 'observed_price']) {
+      if (payload[f] == null) errors.push('field_required:' + f);
+    }
+    if (payload.probabilities && !probOk(payload.probabilities.ensemble)) errors.push('invalid_ensemble_probability');
+    if (payload.realized_roi != null) errors.push('realized_roi_must_be_null'); // GP no ejecuta
   } else if (signalType === 'gp_intelligence_experiment') {
     if (payload.model_analysis_run_id == null) errors.push('field_required:model_analysis_run_id');
     // se fuerza experimental + no elegible aguas arriba (eligibility); aquí solo validamos forma

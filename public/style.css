@@ -995,3 +995,14 @@ body.has-bottomnav main { padding-bottom: 80px; }
 .perf-prov { font-size:9.5px; color:var(--amber); background:var(--amber-soft); border:1px solid rgba(246,200,95,.3); border-radius:5px; padding:1px 5px; }
 .perf-chart { padding:6px 2px; }
 @media (max-width:480px){ .perf-v{ font-size:18px; } }
+
+/* ===== Sprint 7 — Value + Picks GP (val-*) ===== */
+.val-badge { font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.06em; padding:3px 8px; border-radius:6px; }
+.val-strong { background:var(--accent-soft); color:var(--accent); border:1px solid var(--border-green); }
+.val-lean { background:var(--blue-soft); color:var(--blue); border:1px solid rgba(90,174,255,.3); }
+.val-watch { background:var(--amber-soft); color:var(--amber); border:1px solid rgba(246,200,95,.3); }
+.val-pass { background:var(--card2); color:var(--muted); border:1px solid var(--border-subtle); }
+.val-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; margin-top:10px; }
+.val-grid > div { display:flex; justify-content:space-between; font-size:12px; color:var(--dim); border-bottom:1px solid rgba(255,255,255,.04); padding-bottom:4px; }
+.val-grid > div b { color:var(--text); font-family:var(--mono); }
+.val-grid > div b.green { color:var(--accent); }

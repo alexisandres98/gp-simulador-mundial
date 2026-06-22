@@ -48,6 +48,8 @@ const execOpps = require('./exec-opportunities');
 const signalRegistry = require('./signal-registry');
 // Sprint 6 — motor de métricas / track record verificable. Inerte con flags apagados; no conecta al requerir.
 const metricsEngine = require('./metrics-engine');
+// Sprint 7 — Value Engine + Picks GP. Inerte con flags apagados; no conecta al requerir.
+const valueEngine = require('./value-engine');
 // rate limiter en memoria muy simple (clave → ventana) para la calculadora pública
 const _rl = new Map();
 function rateLimit(key, max, windowMs) {
@@ -1256,7 +1258,11 @@ function getUser(req) {
   // Sprint 6: dashboard de rendimiento (pestaña visible si público activo o admin con preview)
   const mf = metricsEngine.cfg.flags;
   const metricsUi = mf.publicEnabled || (admin && mf.adminPreviewEnabled);
-  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled };
+  // Sprint 7: Value + Picks GP (pestañas visibles si público activo o admin con preview)
+  const vf = valueEngine.cfg.flags;
+  const valueUi = vf.valuePublic || (admin && vf.valueAdminPreview);
+  const picksUi = vf.picksPublic || (admin && vf.picksAdminPreview);
+  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1851,6 +1857,61 @@ const server = http.createServer(async (req, res) => {
       } catch (e) { return json(res, 200, { error: 'error' }); }
     }
 
+    // --- Sprint 7: Value Engine + Picks GP. Inerte si VALUE_ENGINE_ENABLED / PICKS_ENABLED están apagados ---
+    if (p.startsWith('/api/internal/value') || p.startsWith('/api/internal/picks') || p.startsWith('/api/value') || p.startsWith('/api/picks')) {
+      const onV = valueEngine.cfg.flags.valueEnabled, onP = valueEngine.cfg.flags.picksEnabled;
+      if (!onV && !onP) return json(res, 404, { error: 'No encontrado' });
+    }
+    // admin Value (§44)
+    if (p.startsWith('/api/internal/value/') && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try {
+        if (p === '/api/internal/value/status') return json(res, 200, await valueEngine.adminStatus());
+        if (p === '/api/internal/value/evaluations') return json(res, 200, { items: await valueEngine.repo.evaluations.recent({ limit: 100 }) });
+        if (p === '/api/internal/value/strong') return json(res, 200, { items: await valueEngine.repo.evaluations.recent({ classification: 'strong', limit: 100 }) });
+      } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    // admin Picks (§44)
+    if (p === '/api/internal/picks/candidates' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, { items: await valueEngine.repo.candidates.list({ limit: 100 }) }); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    const mPickAct = p.match(/^\/api\/internal\/picks\/candidates\/([0-9a-f-]{36})\/(approve|reject|revalidate|publish)$/i);
+    if (mPickAct && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const id = mPickAct[1], action = mPickAct[2].toLowerCase(); const body = await readBody(req).catch(() => ({}));
+      try {
+        if (action === 'approve') return json(res, 200, await valueEngine.picks.approve(id, { actorId: u.email }));
+        if (action === 'reject') return json(res, 200, await valueEngine.picks.reject(id));
+        if (action === 'publish') { const cand = await valueEngine.repo.candidates.byId(id); const ev = cand && await valueEngine.repo.evaluations.byId(cand.value_evaluation_id); return json(res, 200, await valueEngine.picks.publish(id, { actorId: u.email, currentEvaluation: ev, eventLabel: body.eventLabel, marketLabel: body.marketLabel, rationale: body.rationale })); }
+        if (action === 'revalidate') { const cand = await valueEngine.repo.candidates.byId(id); const ev = cand && await valueEngine.repo.evaluations.byId(cand.value_evaluation_id); return json(res, 200, { classification: ev && ev.classification, strong_blockers: ev && ev.strong_blockers }); }
+      } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+    const mPickPub = p.match(/^\/api\/internal\/picks\/([0-9a-f-]{36})\/(withdraw|close)$/i);
+    if (mPickPub && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const body = await readBody(req).catch(() => ({}));
+      try { return json(res, 200, mPickPub[2] === 'withdraw' ? await valueEngine.picks.withdraw(mPickPub[1], { actorId: u.email, reason: body.reason }) : await valueEngine.picks.close(mPickPub[1], { actorId: u.email })); }
+      catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+    // público (§45)
+    if (p === '/api/value/signals' && req.method === 'GET') {
+      if (!valueEngine.cfg.flags.valuePublic) return json(res, 404, { error: 'No encontrado' });
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      try { return json(res, 200, await valueEngine.publicValueSignals({ limit: 50 })); } catch (e) { return json(res, 200, { items: [], enabled: true }); }
+    }
+    if (p === '/api/picks' && req.method === 'GET') {
+      if (!valueEngine.cfg.flags.picksPublic) return json(res, 404, { error: 'No encontrado' });
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      try { return json(res, 200, await valueEngine.publicPicks({ limit: 50 })); } catch (e) { return json(res, 200, { items: [], enabled: true }); }
+    }
+    const mPkPub = p.match(/^\/api\/picks\/(pk_[a-f0-9]{6,})$/i);
+    if (mPkPub && req.method === 'GET') {
+      if (!valueEngine.cfg.flags.picksPublic) return json(res, 404, { error: 'No encontrado' });
+      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      try { const r = await valueEngine.publicPick(mPkPub[1]); return r.error ? json(res, 404, r) : json(res, 200, r); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {
       const u = getUser(req);
@@ -1932,4 +1993,6 @@ server.listen(PORT, () => {
   try { require('./arb-engine/scheduler').start(); } catch { /* aislado */ }
   // Sprint 6 — scheduler de métricas (recalcula incremental). Solo si METRICS_ENGINE_SCHEDULER_ENABLED.
   try { require('./metrics-engine/scheduler').start(); } catch { /* aislado */ }
+  // Sprint 7 — scheduler del Value Engine + monitor de precio de picks. Solo si los flags VALUE/PICKS lo habilitan.
+  try { require('./value-engine/scheduler').start(); } catch { /* aislado */ }
 });

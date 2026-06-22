@@ -168,12 +168,14 @@ const ICON = {
   opex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>',
   registry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
   perf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><circle cx="9" cy="9" r="1.5"/><circle cx="14" cy="13" r="1.5"/><circle cx="19" cy="7" r="1.5"/></svg>',
+  value: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  picks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v4H4zM4 12h10M4 17h7M16 13l2 2 4-4"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
   following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
-  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro', perf: 'Rendimiento',
+  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro', perf: 'Rendimiento', value: 'Value', picks: 'Picks GP',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
@@ -187,7 +189,9 @@ function renderHeader() {
   const execTab = inApp && USER.execUi ? ['opex'] : [];
   const regTab = inApp && USER.registryUi ? ['registry'] : [];
   const perfTab = inApp && USER.metricsUi ? ['perf'] : [];
-  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(regTab).concat(perfTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
+  const valueTab = inApp && USER.valueUi ? ['value'] : [];
+  const picksTab = inApp && USER.picksUi ? ['picks'] : [];
+  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(regTab).concat(perfTab).concat(valueTab).concat(picksTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
   $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${TABS[t]}</button>`).join('');
   // right side
   if (inApp) {
@@ -237,6 +241,8 @@ function switchTab(name) {
   if (name === 'opex' && USER) loadExecOpps();
   if (name === 'registry' && USER) loadRegistry();
   if (name === 'perf' && USER) loadPerf();
+  if (name === 'value' && USER) loadValue();
+  if (name === 'picks' && USER) loadPicks();
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
@@ -2261,6 +2267,90 @@ function calibrationSvg(cal) {
   const ideal = `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1"/>`;
   const pts = cal.bins.map(b => `<circle cx="${x(b.predicted_average)}" cy="${y(b.observed_frequency)}" r="${Math.max(3, Math.min(9, Math.sqrt(b.sample_size)))}" fill="var(--accent)" opacity="0.8"><title>pred ${b.predicted_average.toFixed(2)} / obs ${b.observed_frequency.toFixed(2)} (n=${b.sample_size})</title></circle>`).join('');
   return `<div class="perf-chart"><svg viewBox="0 0 ${W} ${H}" width="100%"><rect x="${pad}" y="${pad}" width="${W - 2 * pad}" height="${H - 2 * pad}" fill="none" stroke="var(--border)"/>${ideal}${pts}<text x="${W / 2}" y="${H - 6}" fill="var(--muted)" font-size="9" text-anchor="middle">Probabilidad pronosticada</text></svg><div class="perf-desc">ECE: ${cal.ece != null ? cal.ece.toFixed(4) : 'N/A'} · línea punteada = calibración ideal · tamaño del punto ∝ muestra</div></div>`;
+}
+
+// ============================================================================
+// SPRINT 7 — Value Engine + Picks GP. PASS/WATCH/LEAN/STRONG. Picks manuales desde STRONG.
+// ============================================================================
+const VAL_CLS = { strong: ['STRONG', 'val-strong'], lean: ['LEAN', 'val-lean'], watch: ['WATCH', 'val-watch'], pass: ['PASS', 'val-pass'], aging: ['AGING', 'val-watch'], expired: ['EXPIRED', 'val-pass'] };
+function valBadge(c) { const [t, k] = VAL_CLS[c] || [c, 'val-pass']; return `<span class="val-badge ${k}">${xe(t)}</span>`; }
+const pp = v => v == null ? 'N/A' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + 'pp';
+const pct1 = v => v == null ? 'N/A' : (v * 100).toFixed(1) + '%';
+
+async function loadValue() {
+  const root = $('#tab-value');
+  root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Value</h3><span class="sec-badge">shadow</span></div>
+    <div class="explain">El Value Engine clasifica mercados en <b>PASS / WATCH / LEAN / STRONG</b> comparando la probabilidad del modelo, el consenso de sportsbooks sin vig y los prediction markets. <b>PASS es una decisión válida.</b> Solo STRONG puede convertirse en candidata a Pick GP.</div>
+    <div id="valBody"><div class="du">Cargando señales…</div></div>
+    <div class="xo-foot">Estimación de consenso / probabilidad ensemble estimada (no "probabilidad verdadera"). No es consejo financiero.</div>`;
+  if (!USER.valuePublic) { $('#valBody').innerHTML = du('La vista pública de Value está en preparación.'); return; }
+  try {
+    const r = await fetch('/api/value/signals', { headers: hdrs() }).then(x => x.json());
+    const items = (r && r.items) || [];
+    $('#valBody').innerHTML = items.length ? items.map(valueCard).join('') : du('No hay señales de value disponibles. Requiere cuotas de sportsbooks (proveedor pendiente de integrar).');
+  } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las señales.'); }
+}
+function valueCard(s) {
+  return `<div class="xo-card">
+    <div class="xo-card-top">${valBadge(s.classification)} <span class="reg-type">${xe(s.selection || '')}</span></div>
+    <div class="val-grid">
+      <div><span>GP</span><b>${pct1(s.gp_probability)}</b></div>
+      <div><span>Consenso no-vig</span><b>${pct1(s.sportsbook_consensus)}</b></div>
+      <div><span>Ensemble</span><b>${pct1(s.ensemble_probability)}</b></div>
+      <div><span>Mejor cuota</span><b>${s.best_decimal_odds != null ? s.best_decimal_odds.toFixed(2) : 'N/A'}</b></div>
+      <div><span>Cuota justa</span><b>${s.fair_odds != null ? s.fair_odds.toFixed(2) : 'N/A'}</b></div>
+      <div><span>Cuota mínima</span><b>${s.minimum_acceptable_odds != null ? s.minimum_acceptable_odds.toFixed(2) : 'N/A'}</b></div>
+      <div><span>Edge ajustado</span><b class="${(s.adjusted_edge_pp||0)>0?'green':''}">${pp(s.adjusted_edge_pp)}</b></div>
+      <div><span>Calidad</span><b>${s.quality_score ?? 'N/A'}</b></div>
+    </div></div>`;
+}
+
+async function loadPicks() {
+  const root = $('#tab-picks');
+  root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Picks GP</h3><span class="sec-badge">Strong Value</span></div>
+    <div id="picksBody"><div class="du">Cargando picks…</div></div>
+    <div class="xo-foot">Pick GP basada en una señal Strong Value. Cuota observada al momento de publicación. Válida únicamente mientras la cuota permanezca en o por encima del mínimo. Resultado teórico con stake unitario; GP no ejecutó esta operación.</div>`;
+  if (!USER.picksPublic) { $('#picksBody').innerHTML = du('La vista pública de Picks GP está en preparación.'); return; }
+  try {
+    const r = await fetch('/api/picks', { headers: hdrs() }).then(x => x.json());
+    const items = (r && r.items) || [];
+    $('#picksBody').innerHTML = items.length ? items.map(pickCard).join('') : `<div class="du" style="padding:28px 18px">Hoy no hay Picks GP.<br><span style="color:var(--muted)">GP analizó los mercados disponibles, pero ninguna señal superó actualmente los estándares de edge, precio, calidad de datos e incertidumbre.</span></div>`;
+  } catch (e) { $('#picksBody').innerHTML = du('No se pudieron cargar las picks.'); }
+}
+const PICK_ST = { published: ['ABIERTA', 'xo-st-active'], price_moved: ['CUOTA MOVIDA', 'xo-st-aging'], closed: ['CERRADA', 'xo-st-paused'], settlement_pending: ['LIQUIDANDO', 'xo-st-aging'], settled: ['LIQUIDADA', 'xo-st-paused'], void: ['ANULADA', 'xo-st-paused'], disputed: ['EN DISPUTA', 'xo-st-expired'] };
+function pickSt(s) { const [t, k] = PICK_ST[s] || [s, 'xo-st-paused']; return `<span class="xo-pill ${k}">${t}</span>`; }
+function pickCard(p) {
+  const odds = p.observed_odds != null;
+  return `<div class="xo-card" onclick="openPick('${p.public_id}')">
+    <div class="xo-card-top"><span class="xo-badge xo-b-pure">PICK GP — STRONG VALUE</span> ${pickSt(p.status)}</div>
+    <div class="xo-ev">${xe(p.selection || '')} ${p.event ? '· ' + xe(p.event) : ''}</div>
+    <div class="xo-mkt">${xe(p.market || '')}</div>
+    <div class="xo-sub">${odds ? `Cuota observada: <b>${p.observed_odds.toFixed(2)}</b> · Mínima: <b>${p.minimum_acceptable_odds != null ? p.minimum_acceptable_odds.toFixed(2) : '—'}</b>` : `Precio: <b>${p.observed_price}</b> · máx: <b>${p.maximum_acceptable_price}</b>`} · Edge ajustado <b class="green">${pp(p.adjusted_edge_pp)}</b></div>
+    ${p.status === 'price_moved' ? '<div class="warn" style="margin-top:8px">La pick permanece en el registro, pero la cuota actual ya no supera el mínimo de value.</div>' : ''}
+    <div class="xo-card-foot"><span>Calidad ${p.quality_score ?? '—'} · incertidumbre ${p.uncertainty_score ?? '—'}</span><span class="xo-cta">Ver pick →</span></div>
+  </div>`;
+}
+async function openPick(publicId) {
+  const root = $('#tab-picks');
+  root.innerHTML = `<button class="xo-back" onclick="loadPicks()">← Volver</button><div id="pickDetail">${du('Cargando…')}</div>`;
+  try {
+    const r = await fetch('/api/picks/' + publicId, { headers: hdrs() }).then(x => x.json());
+    if (r.error || !r.detail) { $('#pickDetail').innerHTML = du('Pick no encontrada.'); return; }
+    const d = r.detail, pr = d.probabilities || {};
+    const row = (l, v) => `<div class="xo-row"><span>${xe(l)}</span><span class="mono">${xe(v == null ? '—' : v)}</span></div>`;
+    const timeline = (d.history || []).map(e => `<div class="xo-row"><span>${xe(e.action)}</span><span class="mono">${xe(e.created_at ? new Date(e.created_at).toLocaleString() : '')}</span></div>`).join('');
+    $('#pickDetail').innerHTML = `
+      <div class="feat xo-hero"><div class="xo-card-top"><span class="xo-badge xo-b-pure">PICK GP — STRONG VALUE</span> ${pickSt(d.status)}</div>
+        <div class="xo-ev" style="font-size:20px">${xe(d.selection || '')}</div><div class="xo-mkt">${xe(d.event || '')} · ${xe(d.market || '')}</div>
+        <div class="reg-transp">${xe(d.disclaimer || '')}</div></div>
+      ${panel('Precio', 'observado y límite', `${row('Cuota observada', d.observed_odds)}${row('Cuota mínima aceptable', d.minimum_acceptable_odds)}${row('Cuota actual', d.current_odds)}${row('Cuota justa', d.fair_odds)}`)}
+      ${panel('Probabilidades', 'estimaciones', `${row('GP', pct1(pr.gp))}${row('Consenso no-vig', pct1(pr.sportsbook_consensus))}${row('Prediction markets', pct1(pr.prediction_market))}${row('Ensemble', pct1(pr.ensemble))}${row('Conservadora', pct1(pr.conservative))}`)}
+      ${panel('Value', 'edge y calidad', `${row('Edge ajustado', pp(d.adjusted_edge_pp))}${row('EV ajustado', pct1(d.adjusted_ev))}${row('Calidad', d.quality_score)}${row('Incertidumbre', d.uncertainty_score)}${row('Fuentes', d.source_count)}${row('Grupos independientes', d.independence_groups)}`)}
+      ${d.rationale ? panel('Explicación', 'determinística', `<div class="explain">${xe(d.rationale)}</div>`) : ''}
+      ${panel('Seguimiento', 'teórico', `<div class="xo-note">${xe((d.tracking && d.tracking.note) || '')}</div>`)}
+      ${panel('Historial', 'append-only', timeline)}
+      ${panel('Metodología', 'versiones', `${row('Modelo', d.versions && d.versions.model)}${row('Ensemble', d.versions && d.versions.ensemble)}${row('No-vig', d.versions && d.versions.no_vig)}`)}`;
+  } catch (e) { $('#pickDetail').innerHTML = du('No se pudo cargar la pick.'); }
 }
 
 (async () => { await loadMe(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

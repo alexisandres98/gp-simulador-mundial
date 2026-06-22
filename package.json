@@ -45,7 +45,14 @@
     "metrics:rebuild": "node metrics-engine/cli.js rebuild",
     "metrics:verify": "node metrics-engine/cli.js verify",
     "metrics:publish": "node metrics-engine/cli.js publish",
-    "metrics:exclusions": "node metrics-engine/cli.js exclusions"
+    "metrics:exclusions": "node metrics-engine/cli.js exclusions",
+    "test:value": "node tests/value-engine.test.js",
+    "test:value-db": "node tests/value-engine-db.test.js",
+    "value:status": "node value-engine/cli.js status",
+    "value:candidates": "node value-engine/cli.js candidates",
+    "value:evaluations": "node value-engine/cli.js evaluations",
+    "value:verify": "node value-engine/cli.js verify",
+    "value:inspect": "node value-engine/cli.js inspect"
   },
   "engines": {
     "node": ">=18"

@@ -46,6 +46,8 @@ const arbEngine = require('./arb-engine');
 const execOpps = require('./exec-opportunities');
 // Sprint 5 — registro inmutable y verificable de señales. Inerte con flags apagados; no conecta nada al requerir.
 const signalRegistry = require('./signal-registry');
+// Sprint 6 — motor de métricas / track record verificable. Inerte con flags apagados; no conecta al requerir.
+const metricsEngine = require('./metrics-engine');
 // rate limiter en memoria muy simple (clave → ventana) para la calculadora pública
 const _rl = new Map();
 function rateLimit(key, max, windowMs) {
@@ -1251,7 +1253,10 @@ function getUser(req) {
   // Sprint 5: registro verificable público (pestaña visible solo si el flag está activo o el usuario es admin)
   const srf = signalRegistry.cfg.flags;
   const registryUi = srf.publicEnabled || (admin && srf.enabled);
-  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled };
+  // Sprint 6: dashboard de rendimiento (pestaña visible si público activo o admin con preview)
+  const mf = metricsEngine.cfg.flags;
+  const metricsUi = mf.publicEnabled || (admin && mf.adminPreviewEnabled);
+  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1808,6 +1813,44 @@ const server = http.createServer(async (req, res) => {
       try { const r = await signalRegistry.getPublic(mSigPub[1]); return r.error ? json(res, 404, r) : json(res, 200, r); } catch (e) { return json(res, 500, { error: 'error' }); }
     }
 
+    // --- Sprint 6: motor de métricas / track record. Inerte si METRICS_ENGINE_ENABLED=false ---
+    if (p.startsWith('/api/internal/metrics') || p.startsWith('/api/metrics')) {
+      if (!metricsEngine.cfg.flags.enabled) return json(res, 404, { error: 'No encontrado' });
+    }
+    // admin (§29)
+    if (p.startsWith('/api/internal/metrics/') && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try {
+        if (p === '/api/internal/metrics/status') return json(res, 200, await metricsEngine.adminStatus());
+        if (p === '/api/internal/metrics/runs') return json(res, 200, { runs: await metricsEngine.repo.runs.recent({ limit: 20 }) });
+        if (p === '/api/internal/metrics/aggregates') return json(res, 200, { aggregates: await metricsEngine.repo.aggregates.list({ metricCode: url.searchParams.get('metric') || null }) });
+        if (p === '/api/internal/metrics/exclusions') return json(res, 200, { exclusions: await metricsEngine.repo.facts.exclusions({ limit: 200 }) });
+      } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    if (p.startsWith('/api/internal/metrics/') && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        if (p === '/api/internal/metrics/run') { await metricsEngine.seedDefinitions(); return json(res, 200, await metricsEngine.runOnce({ verifiedEpoch: body.epoch })); }
+        if (p === '/api/internal/metrics/rebuild') { await metricsEngine.seedDefinitions(); return json(res, 200, await metricsEngine.fullRebuild({ verifiedEpoch: body.epoch })); }
+        if (p === '/api/internal/metrics/publish-snapshot') return json(res, 200, await metricsEngine.publishSnapshot({ settlementCutoff: body.settlementCutoff || null }));
+        if (p === '/api/internal/metrics/verify') return json(res, 200, await metricsEngine.verify());
+      } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+    // público (§30) — solo si METRICS_PUBLIC_ENABLED
+    if (p.startsWith('/api/metrics/') && req.method === 'GET') {
+      if (!metricsEngine.cfg.flags.publicEnabled && p !== '/api/metrics/methodology') return json(res, 404, { error: 'No encontrado' });
+      try {
+        if (p === '/api/metrics/summary') return json(res, 200, await metricsEngine.publicSummary());
+        if (p === '/api/metrics/calibration') return json(res, 200, await metricsEngine.publicCalibration());
+        if (p === '/api/metrics/cohorts') return json(res, 200, { cohorts: await metricsEngine.repo.aggregates.list({}) });
+        if (p === '/api/metrics/arb') return json(res, 200, await metricsEngine.publicArb({}));
+        if (p === '/api/metrics/experimental') return json(res, 200, await metricsEngine.publicExperimental());
+        if (p === '/api/metrics/snapshots') return json(res, 200, { snapshots: await metricsEngine.listSnapshots() });
+        if (p === '/api/metrics/methodology') return json(res, 200, { definitions: metricsEngine.definitions.DEFINITIONS, methodology_version: 'metrics-1', verified_epoch: signalRegistry.cfg.params.verifiedEpoch });
+      } catch (e) { return json(res, 200, { error: 'error' }); }
+    }
+
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {
       const u = getUser(req);
@@ -1887,4 +1930,6 @@ server.listen(PORT, () => {
   // Sprint 3 — scheduler del motor de arbitraje (shadow, sin publicación). Solo arranca si los flags
   // ARB_ENGINE_* lo habilitan; best-effort, aislado del flujo principal.
   try { require('./arb-engine/scheduler').start(); } catch { /* aislado */ }
+  // Sprint 6 — scheduler de métricas (recalcula incremental). Solo si METRICS_ENGINE_SCHEDULER_ENABLED.
+  try { require('./metrics-engine/scheduler').start(); } catch { /* aislado */ }
 });

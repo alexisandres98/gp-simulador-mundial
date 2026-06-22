@@ -37,7 +37,15 @@
     "signals:verify-signal": "node signal-registry/cli.js verify-signal",
     "signals:capture-closing": "node signal-registry/cli.js capture-closing",
     "signals:settle": "node signal-registry/cli.js settle",
-    "signals:commit-day": "node signal-registry/cli.js commit-day"
+    "signals:commit-day": "node signal-registry/cli.js commit-day",
+    "test:metrics": "node tests/metrics-engine.test.js",
+    "test:metrics-db": "node tests/metrics-engine-db.test.js",
+    "metrics:status": "node metrics-engine/cli.js status",
+    "metrics:once": "node metrics-engine/cli.js once",
+    "metrics:rebuild": "node metrics-engine/cli.js rebuild",
+    "metrics:verify": "node metrics-engine/cli.js verify",
+    "metrics:publish": "node metrics-engine/cli.js publish",
+    "metrics:exclusions": "node metrics-engine/cli.js exclusions"
   },
   "engines": {
     "node": ">=18"

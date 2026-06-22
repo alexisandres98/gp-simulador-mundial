@@ -167,12 +167,13 @@ const ICON = {
   admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
   opex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>',
   registry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  perf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><circle cx="9" cy="9" r="1.5"/><circle cx="14" cy="13" r="1.5"/><circle cx="19" cy="7" r="1.5"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
   following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
-  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro',
+  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro', perf: 'Rendimiento',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
@@ -185,7 +186,8 @@ function renderHeader() {
   // top nav (Sprint 4: "Ejecutables" solo aparece si la capa está activa para este usuario — flags off → no aparece)
   const execTab = inApp && USER.execUi ? ['opex'] : [];
   const regTab = inApp && USER.registryUi ? ['registry'] : [];
-  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(regTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
+  const perfTab = inApp && USER.metricsUi ? ['perf'] : [];
+  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(regTab).concat(perfTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
   $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${TABS[t]}</button>`).join('');
   // right side
   if (inApp) {
@@ -234,6 +236,7 @@ function switchTab(name) {
   if (name === 'arb' && USER && (!ARB || $('#tab-arb').querySelector('.lock'))) loadArb();
   if (name === 'opex' && USER) loadExecOpps();
   if (name === 'registry' && USER) loadRegistry();
+  if (name === 'perf' && USER) loadPerf();
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
@@ -2196,6 +2199,68 @@ function renderSignalDetail(d, vr) {
     ${panel('Resultado', 'liquidación', settle)}
     ${panel('Historial', 'append-only', timeline)}
     ${panel('Benchmark de cierre', 'sin calcular CLV', closing)}`;
+}
+
+// ============================================================================
+// SPRINT 6 — Dashboard de rendimiento (track record verificable). N/A ≠ 0. Muestra siempre visible.
+// ============================================================================
+const SAMPLE_LABEL = { insufficient: 'muestra insuficiente', early: 'resultados iniciales', developing: 'muestra en desarrollo', established: 'muestra más estable' };
+function metricVal(m) {
+  if (!m || m.value == null || !m.available) return '<span class="perf-na">N/A</span>';
+  return `<span class="perf-v ${m.higher_is_better === false ? '' : ''}">${m.value.toFixed(4)}</span>`;
+}
+function metricCi(m) {
+  if (!m || !m.confidence_interval || m.confidence_interval.low == null) return '';
+  const c = m.confidence_interval; return `<span class="perf-ci">[${(c.low).toFixed(3)}, ${(c.high).toFixed(3)}]</span>`;
+}
+function perfCard(label, m, desc) {
+  const prov = m && m.provisional ? '<span class="perf-prov">provisional</span>' : '';
+  const n = m && m.sample_size != null ? `n=${m.sample_size}` : '';
+  return `<div class="perf-card"><div class="perf-l">${xe(label)} ${prov}</div><div class="perf-num">${metricVal(m)} ${metricCi(m)}</div><div class="perf-meta">${n}${m && m.sample_status ? ' · ' + xe(SAMPLE_LABEL[m.sample_status] || m.sample_status) : ''}</div><div class="perf-desc">${xe(desc)}</div></div>`;
+}
+
+async function loadPerf() {
+  const root = $('#tab-perf');
+  root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Track record verificable</h3><span class="sec-badge">métricas</span></div><div id="perfBody"><div class="du">Cargando métricas…</div></div>`;
+  if (!USER.metricsPublic) { $('#perfBody').innerHTML = du('El dashboard público de rendimiento está en preparación. Como admin puedes correr el motor de métricas y previsualizar.'); return; }
+  try {
+    const [sum, cal, arb, exp] = await Promise.all([
+      fetch('/api/metrics/summary', { headers: hdrs() }).then(x => x.json()).catch(() => null),
+      fetch('/api/metrics/calibration', { headers: hdrs() }).then(x => x.json()).catch(() => null),
+      fetch('/api/metrics/arb', { headers: hdrs() }).then(x => x.json()).catch(() => null),
+      fetch('/api/metrics/experimental', { headers: hdrs() }).then(x => x.json()).catch(() => null),
+    ]);
+    renderPerf(sum, cal, arb, exp);
+  } catch (e) { $('#perfBody').innerHTML = du('No se pudieron cargar las métricas.'); }
+}
+function renderPerf(sum, cal, arb, exp) {
+  const m = (sum && sum.metrics) || {};
+  const epoch = sum && sum.verified_epoch ? new Date(sum.verified_epoch).toLocaleDateString() : 'sin configurar';
+  const nMax = Math.max(...['brier_multiclass', 'log_loss', 'accuracy_top1', 'ece'].map(k => (m[k] && m[k].sample_size) || 0));
+  const header = `<div class="explain">Registro verificable desde <b>${xe(epoch)}</b> · ${nMax} señales oficiales liquidadas · ${xe((sum && sum.copy) || '')}</div>`;
+  const empty = nMax === 0 ? du('Aún no hay señales oficiales liquidadas. El motor está listo; las métricas aparecerán cuando se publiquen y liquiden señales verificadas.') : '';
+  const cards = nMax > 0 ? `<div class="perf-grid">
+    ${perfCard('Brier (1X2)', m.brier_multiclass, 'Menor es mejor. Σ(p−y)².')}
+    ${perfCard('Log loss', m.log_loss, 'Menor es mejor. −ln(p del resultado).')}
+    ${perfCard('Accuracy (2ª)', m.accuracy_top1, 'Secundaria: una predicción del 40% que pierde no fue mala.')}
+    ${perfCard('ECE (calibración)', m.ece, 'Menor es mejor. Brecha confianza vs realidad.')}
+  </div>` : '';
+  const calChart = (cal && cal.available && cal.bins && cal.bins.length) ? panel('Calibración', 'pronosticado vs observado', calibrationSvg(cal)) : '';
+  const arbBlock = arb && arb.opportunities_detected != null ? panel('Arbitraje (operativo)', 'oportunidades observadas, sin ROI realizado', `
+    <div class="xo-row"><span>Oportunidades publicadas</span><span class="mono">${arb.opportunities_published}</span></div>
+    <div class="xo-row"><span>Quoted→ejecutable</span><span class="mono">${arb.quoted_to_executable_conversion == null ? 'N/A' : (arb.quoted_to_executable_conversion * 100).toFixed(0) + '%'}</span></div>
+    <div class="xo-row"><span>Vida mediana (s)</span><span class="mono">${(arb.lifetime_seconds && arb.lifetime_seconds.p50) ?? 'N/A'}</span></div>
+    <div class="warn">Las métricas reflejan oportunidades observadas, no ejecuciones realizadas por GP. ROI realizado: N/A.</div>`) : '';
+  const expBlock = (exp && exp.enabled) ? panel('Experimental (GP Intelligence V2)', 'control V1 vs challenger V2', `<div class="warn">${xe(exp.note)}</div>`) : (exp ? `<div class="xo-foot">${xe(exp.note || '')}</div>` : '');
+  $('#perfBody').innerHTML = header + empty + cards + calChart + arbBlock + expBlock +
+    `<div class="xo-foot">Metodología ${xe((sum && sum.methodology_version) || '')}. N/A indica que la métrica no es calculable (no es cero). Las señales experimentales y legacy se muestran por separado.</div>`;
+}
+function calibrationSvg(cal) {
+  const W = 280, H = 200, pad = 28;
+  const x = p => pad + p * (W - 2 * pad), y = p => H - pad - p * (H - 2 * pad);
+  const ideal = `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1"/>`;
+  const pts = cal.bins.map(b => `<circle cx="${x(b.predicted_average)}" cy="${y(b.observed_frequency)}" r="${Math.max(3, Math.min(9, Math.sqrt(b.sample_size)))}" fill="var(--accent)" opacity="0.8"><title>pred ${b.predicted_average.toFixed(2)} / obs ${b.observed_frequency.toFixed(2)} (n=${b.sample_size})</title></circle>`).join('');
+  return `<div class="perf-chart"><svg viewBox="0 0 ${W} ${H}" width="100%"><rect x="${pad}" y="${pad}" width="${W - 2 * pad}" height="${H - 2 * pad}" fill="none" stroke="var(--border)"/>${ideal}${pts}<text x="${W / 2}" y="${H - 6}" fill="var(--muted)" font-size="9" text-anchor="middle">Probabilidad pronosticada</text></svg><div class="perf-desc">ECE: ${cal.ece != null ? cal.ece.toFixed(4) : 'N/A'} · línea punteada = calibración ideal · tamaño del punto ∝ muestra</div></div>`;
 }
 
 (async () => { await loadMe(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

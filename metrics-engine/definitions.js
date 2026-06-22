@@ -1,0 +1,19 @@
+// metrics-engine/definitions.js — Sprint 6 §6. Diccionario de métricas versionado. Fuente única de las fórmulas.
+'use strict';
+
+const DEFINITIONS = [
+  { metric_code: 'brier_multiclass', metric_version: 'brier_multiclass_v1', metric_name: 'Brier (multiclase 1X2)', signal_type: 'model_prediction_v1', calculation_type: 'per_signal', formula_description: 'Σ (p_k − y_k)² (suma, sin dividir entre clases)', eligibility_policy: 'official_verified', minimum_sample_size: 30, higher_is_better: false, unit: 'score' },
+  { metric_code: 'brier_binary', metric_version: 'brier_binary_v1', metric_name: 'Brier (binario)', signal_type: 'model_prediction_v1', calculation_type: 'per_signal', formula_description: '(p − y)²', eligibility_policy: 'official_verified', minimum_sample_size: 30, higher_is_better: false, unit: 'score' },
+  { metric_code: 'log_loss_multiclass', metric_version: 'log_loss_multiclass_v1', metric_name: 'Log loss (multiclase)', signal_type: 'model_prediction_v1', calculation_type: 'per_signal', formula_description: '−ln(p_outcome_real), con clipping ε', eligibility_policy: 'official_verified', minimum_sample_size: 30, higher_is_better: false, unit: 'nats' },
+  { metric_code: 'accuracy_top1', metric_version: 'accuracy_top1_v1', metric_name: 'Accuracy (argmax, secundaria)', signal_type: 'model_prediction_v1', calculation_type: 'per_signal', formula_description: 'predicted = argmax(probs); acierto si == outcome', eligibility_policy: 'official_verified', minimum_sample_size: 30, higher_is_better: true, unit: 'rate' },
+  { metric_code: 'ece_equal_width', metric_version: 'ece_equal_width_v1', metric_name: 'Expected Calibration Error', signal_type: 'model_prediction_v1', calculation_type: 'aggregate', formula_description: 'Σ (n_bucket/N)·|conf_bucket − acc_bucket| (equal-width)', eligibility_policy: 'official_verified', minimum_sample_size: 50, higher_is_better: false, unit: 'gap' },
+  { metric_code: 'clv_probability_points', metric_version: 'clv_probability_points_v1', metric_name: 'CLV (puntos de probabilidad)', signal_type: 'price_signal', calculation_type: 'per_signal', formula_description: 'closing_prob − entry_implied_prob', eligibility_policy: 'price_with_benchmark', minimum_sample_size: 30, higher_is_better: true, unit: 'prob_points' },
+  { metric_code: 'clv_log_odds', metric_version: 'clv_log_odds_v1', metric_name: 'CLV (log-odds)', signal_type: 'price_signal', calculation_type: 'per_signal', formula_description: 'logit(closing) − logit(entry)', eligibility_policy: 'price_with_benchmark', minimum_sample_size: 30, higher_is_better: true, unit: 'log_odds' },
+  { metric_code: 'closing_beat_rate', metric_version: 'closing_beat_rate_v1', metric_name: '% que superó el cierre', signal_type: 'price_signal', calculation_type: 'aggregate', formula_description: 'fracción con CLV_pp > 0', eligibility_policy: 'price_with_benchmark', minimum_sample_size: 30, higher_is_better: true, unit: 'rate' },
+  { metric_code: 'arb_publication_lifetime', metric_version: 'arb_publication_lifetime_v1', metric_name: 'Vida de oportunidad de arbitraje', signal_type: 'arb_publication', calculation_type: 'aggregate', formula_description: 'p25/p50/p75 de (expira − publicada)', eligibility_policy: 'arb_observed', minimum_sample_size: 10, higher_is_better: null, unit: 'seconds' },
+  { metric_code: 'arb_quoted_to_executable', metric_version: 'arb_quoted_to_executable_v1', metric_name: 'Conversión quoted→executable', signal_type: 'arb_publication', calculation_type: 'aggregate', formula_description: 'oportunidades con spread / que superaron fees+profundidad+reglas', eligibility_policy: 'arb_observed', minimum_sample_size: 10, higher_is_better: true, unit: 'rate' },
+];
+
+function byCode(code) { return DEFINITIONS.find(d => d.metric_code === code) || null; }
+
+module.exports = { DEFINITIONS, byCode };

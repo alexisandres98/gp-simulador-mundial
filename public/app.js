@@ -109,6 +109,9 @@ function marketScoreboardHtml(vm) {
 
 // ---------- ACIERTOS (track record público del modelo) ----------
 async function renderRecord() {
+  // Sprint 8.1 §5-8: con UI_VERIFIED_PERFORMANCE_ENABLED → pantalla "Rendimiento" (Verificable | Histórico).
+  // Con el flag off, se conserva exactamente la pantalla "Aciertos" de siempre.
+  if (USER && USER.uiFlags && USER.uiFlags.verifiedPerformance) return renderPerformance();
   const r = await fetch('/api/aciertos');
   if (!r.ok) return;
   const d = await r.json();
@@ -141,6 +144,141 @@ async function renderRecord() {
   }).join('') + '</div>';
   $('#tab-record').innerHTML = html;
 }
+
+// ---------- Sprint 8.1 §5-8: RENDIMIENTO (Verificable | Histórico) — gated por uiFlags.verifiedPerformance ----------
+let PERF_SEG = 'verified';
+function perfSetSeg(seg) { PERF_SEG = seg; return renderPerformance(); }
+async function renderPerformance() {
+  const C = window.COPY ? COPY.perf : {};
+  const seg = PERF_SEG;
+  const tabBtn = (id, label) => `<button class="seg-btn ${seg === id ? 'on' : ''}" role="tab" aria-selected="${seg === id}" onclick="perfSetSeg('${id}')">${label}</button>`;
+  let head = `<div style="margin-bottom:12px"><h2 style="margin-bottom:3px">${xe(C.title || 'Rendimiento del modelo')}</h2>
+    <div class="muted" style="font-size:12px">Track record verificable frente a histórico legacy. Las probabilidades son estimaciones de un modelo, no consejo financiero.</div></div>
+    <div class="seg" role="tablist" aria-label="Tipo de registro">${tabBtn('verified', C.verifiedTab || 'Verificable')}${tabBtn('legacy', C.legacyTab || 'Histórico')}</div>
+    <div id="perfSegBody"><div class="du">Cargando…</div></div>`;
+  $('#tab-record').innerHTML = head;
+  if (seg === 'verified') $('#perfSegBody').innerHTML = await perfVerifiedHtml();
+  else $('#perfSegBody').innerHTML = await perfLegacyHtml();
+}
+
+async function perfVerifiedHtml() {
+  const C = window.COPY ? COPY.perf : {};
+  let sum = null, cal = null;
+  try { sum = await fetch('/api/metrics/summary', { headers: hdrs() }).then(x => x.ok ? x.json() : null); } catch (e) { /* noop */ }
+  try { cal = await fetch('/api/metrics/calibration', { headers: hdrs() }).then(x => x.ok ? x.json() : null); } catch (e) { /* noop */ }
+  const m = (sum && sum.metrics) || {};
+  const epoch = sum && sum.verified_epoch ? new Date(sum.verified_epoch).toLocaleDateString() : null;
+  const nMax = Math.max(0, ...['brier_multiclass', 'log_loss', 'accuracy_top1', 'ece'].map(k => (m[k] && m[k].sample_size) || 0));
+  // §5: sin señales → empty verificable explícito (no ceros que parezcan resultados)
+  if (nMax === 0) {
+    return (window.UIState ? UIState.noData(C.verifiedEmpty) : `<div class="muted">${xe(C.verifiedEmpty || '')}</div>`) +
+      `<div class="muted" style="font-size:11.5px;margin-top:8px">${epoch ? 'Inicio del registro verificable: <b>' + xe(epoch) + '</b>.' : 'El registro verificable se inicia al configurar el verified epoch.'} Las métricas aparecerán cuando se publiquen y liquiden señales verificadas.</div>`;
+  }
+  // §7: jerarquía → muestra → Brier → log loss → calibración → vs-mercado → CLV → accuracy (secundaria)
+  const mc = (label, mk, help, secondary) => {
+    const v = m[mk]; const has = v && v.value != null;
+    return `<div class="perf-card ${secondary ? 'sec' : ''}"><div class="perf-l">${xe(label)}</div>
+      <div class="perf-v">${has ? (typeof v.value === 'number' ? v.value.toFixed(4) : v.value) : 'N/A'}</div>
+      <div class="perf-h">${has ? 'n=' + (v.sample_size || 0) + ' · ' + xe(help) : 'N/A no es cero — sin muestra suficiente'}</div></div>`;
+  };
+  let html = `<div class="explain">Registro verificable desde <b>${xe(epoch || '—')}</b> · <b>${nMax}</b> señales oficiales liquidadas. ${xe((sum && sum.copy) || '')}</div>
+    <div class="perf-grid">
+      <div class="perf-card hl"><div class="perf-l">Muestra (señales)</div><div class="perf-v">${nMax}</div><div class="perf-h">tamaño de muestra · base de toda métrica</div></div>
+      ${mc('Brier (1X2)', 'brier_multiclass', 'menor es mejor · Σ(p−y)²')}
+      ${mc('Log loss', 'log_loss', 'menor es mejor · −ln(p)')}
+      ${mc('ECE (calibración)', 'ece', 'menor es mejor · confianza vs realidad')}
+    </div>`;
+  if (cal && cal.available && cal.bins && cal.bins.length) html += panel('Calibración', 'pronosticado vs observado', calibrationSvg(cal));
+  html += `<div class="perf-grid" style="margin-top:10px">${mc('Accuracy (secundaria)', 'accuracy_top1', C.accuracyCaveat || 'no mide por sí sola la calidad', true)}</div>
+    <div class="explain" style="border-left-color:var(--blue)">${xe(C.accuracyCaveat || '')}</div>
+    <div class="formrow"><button class="cta-sm" onclick="sharePerf('verified', ${nMax})">📤 Compartir rendimiento verificable</button></div>
+    <div class="xo-foot">Metodología ${xe((sum && sum.methodology_version) || 'metrics-1')}. N/A indica que la métrica no es calculable (no es cero). <a href="#" onclick="switchTab('registry');return false">Ver el registro de señales →</a></div>`;
+  return html;
+}
+
+async function perfLegacyHtml() {
+  const C = window.COPY ? COPY.perf : {};
+  let d = null;
+  try { d = await fetch('/api/aciertos').then(x => x.ok ? x.json() : null); } catch (e) { /* noop */ }
+  if (!d) return window.UIState ? UIState.error() : '<div class="muted">No se pudo cargar.</div>';
+  const pctW = d.total ? Math.round(d.winners / d.total * 100) : 0;
+  // §5: aviso legacy claro arriba
+  let html = `<div class="op-state op-warn" role="status"><div class="op-state-ic">⏳</div><div class="op-state-tx">
+    <div class="op-state-t">Histórico anterior al registro verificable</div>
+    <div class="op-state-b">${xe(C.legacyNotice || '')}</div></div></div>`;
+  // §7: Brier primero, "ganador acertado" con caveat (no la cifra dominante única)
+  html += `<div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="bigstat"><div class="lbl">Evaluados</div><div class="val">${d.total}</div></div>
+      ${d.total ? `<div class="bigstat"><div class="lbl">Brier score</div><div class="val blue">${d.brier}</div><div class="muted" style="font-size:11px">${xe(C.lowerIsBetter || 'más bajo es mejor')} · azar 0.66</div></div>` : ''}
+      <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.total ? pctW + '%' : '—'}</div><div class="muted" style="font-size:11px">${d.winners}/${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">Marcador exacto</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
+    </div>
+    ${d.total ? `<div class="explain" style="border-left-color:var(--blue)">${xe(C.accuracyCaveat || '')}</div>` : ''}
+    ${(d.total && d.vsMarket) ? marketScoreboardV2(d.vsMarket) : ''}
+    <div class="formrow"><button class="cta-sm" onclick="sharePerf('legacy', ${d.total})">📤 Compartir histórico</button></div>`;
+  html += '<div class="rec-list">' + d.matches.map(m => {
+    const th = teamOf(m.home), ta = teamOf(m.away);
+    const pickLabel = m.predicted === 'home' ? `Gana ${th ? th.name : m.home}` : m.predicted === 'away' ? `Gana ${ta ? ta.name : m.away}` : 'Empate';
+    return `<div class="rec-row"><span class="rec-dot ${m.correct ? 'ok' : 'no'}"></span>
+      <div class="rec-main"><div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ' <span class="exact-tag">EXACTO</span>' : ''}</div>
+      <div class="rec-pred">Modelo: ${pickLabel} (${pct(m.predictedProb)})</div></div>
+      <span class="rec-date">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span></div>`;
+  }).join('') + '</div>';
+  return html;
+}
+
+// §6: marcador modelo-vs-mercado SIN afirmar alpha (cumple la política estadística)
+function marketScoreboardV2(vm) {
+  const C = window.COPY ? COPY.perf : {};
+  if (!vm || !vm.n) return `<div class="explain" style="border-left-color:var(--amber)">🆚 <b>Modelo vs Mercado:</b> acumulando muestra. El head-to-head aparecerá cuando terminen partidos con mercado.</div>`;
+  const marketBeats = vm.marketBrier < vm.modelBrier;
+  return `<div class="explain" style="border-left-color:var(--blue)">
+    🆚 <b>Modelo vs Mercado (${vm.n} partidos):</b> Brier modelo <b>${vm.modelBrier}</b> vs mercado <b>${vm.marketBrier}</b> (${xe(C.lowerIsBetter || 'más bajo es mejor')}).
+    ${marketBeats ? '<br><b>' + xe(C.marketBeatsModel || '') + '</b>' : ''}
+    <span class="muted" style="display:block;font-size:11.5px;margin-top:5px">${xe(C.alphaReplacement || '')} ${xe(C.noEdgeYet || '')}</span></div>`;
+}
+
+// ---------- Sprint 8.1 §36: METODOLOGÍA (transparencia de definiciones, sin IP privada) ----------
+async function renderMethodology() {
+  let epoch = null;
+  try { const r = await fetch('/api/metrics/methodology').then(x => x.ok ? x.json() : null); epoch = r && r.verified_epoch; } catch (e) { /* noop */ }
+  const def = (t, d) => `<div class="meth-item"><div class="meth-t">${xe(t)}</div><div class="meth-d">${xe(d)}</div></div>`;
+  $('#tab-methodology').innerHTML = `
+    <div style="margin-bottom:12px"><h2 style="margin-bottom:3px">Metodología</h2>
+      <div class="muted" style="font-size:12px">Qué significa cada cosa y qué garantías tiene. Transparentes sobre las definiciones; el modelo y las fuentes internas son privados.</div></div>
+    <div class="meth-sec"><h3>Modelo</h3>
+      ${def('Modelo oficial V1', 'El control oficial: Elo → Poisson/Dixon-Coles → 10.000 simulaciones Monte Carlo. Es lo que cuenta para el track record.')}
+      ${def('GP Intelligence V2 (experimental)', 'Un challenger que ajusta el Elo con contexto (forma, descanso, bajas, solidez). Es experimental, solo en el simulador, y NO alimenta las Picks GP oficiales ni el track record.')}
+    </div>
+    <div class="meth-sec"><h3>Jerarquía de oportunidades</h3>
+      ${def('Señal de Value', 'Evaluación del Value Engine: PASS (sin value) / WATCH / LEAN / STRONG. Una evaluación NO es una Pick.')}
+      ${def('Candidata a Pick GP', 'Una señal STRONG que cumple los filtros y puede revisarse manualmente. Todavía no es una Pick publicada.')}
+      ${def('Pick GP', 'Señal STRONG revisada y publicada manualmente, registrada de forma inmutable. Mantiene value solo mientras la cuota siga en o por encima del mínimo indicado.')}
+      ${def('Arbitraje ejecutable', 'Discrepancia entre plataformas que, comprando ambos lados, captura una diferencia. Retorno neto estimado, depende de ejecución/fees/settlement. GP no ejecuta operaciones.')}
+    </div>
+    <div class="meth-sec"><h3>Métricas</h3>
+      ${def('Brier score', 'Calidad de las probabilidades: Σ(p−y)². Más bajo es mejor (0 perfecto, ~0.66 azar a 3 vías).')}
+      ${def('Log loss', 'Penaliza la confianza equivocada: −ln(probabilidad del resultado real). Más bajo es mejor.')}
+      ${def('Calibración (ECE)', 'Cuánto coincide la confianza declarada con la realidad observada. Más bajo es mejor.')}
+      ${def('CLV', 'Closing Line Value: si la predicción capturó valor frente a la línea de cierre. Aparece cuando hay cierre disponible.')}
+      ${def('Retorno teórico', 'Resultado con stake unitario, no ejecutado por GP. No representa una recomendación de stake.')}
+    </div>
+    <div class="meth-sec"><h3>Track record</h3>
+      ${def('Registro verificable', 'Señales con timestamp, inputs congelados y hash, desde el verified epoch' + (epoch ? ' (' + new Date(epoch).toLocaleDateString() + ')' : '') + '. Es el track record con garantías.')}
+      ${def('Histórico legacy', 'Resultados del sistema anterior al registro. Se conservan por transparencia, pero sin las mismas garantías.')}
+      ${def('Límites del análisis', 'Las probabilidades son estimaciones de un modelo estadístico, no certezas ni consejo financiero. La evidencia de ventaja frente al mercado requiere muestra suficiente y resultados fuera de muestra.')}
+    </div>
+    <div class="xo-foot">No publicamos las fuentes internas, los pesos del modelo ni las reglas propietarias. La transparencia es sobre definiciones, no sobre propiedad intelectual.</div>`;
+}
+
+function sharePerf(kind, n) {
+  const verified = kind === 'verified';
+  const txt = verified
+    ? `📊 Rendimiento VERIFICABLE de GP Simulador · ${n} señales oficiales liquidadas desde el inicio del registro. Track record con timestamp e inputs congelados:`
+    : `📊 Histórico (legacy, anterior al registro verificable) de GP Simulador · ${n} partidos evaluados. Se conserva por transparencia:`;
+  shareOp(event, txt);
+}
+
 async function loadMe() {
   if (token()) {
     const r = await fetch('/api/me', { headers: hdrs() });
@@ -175,7 +313,7 @@ const ICON = {
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
   following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
-  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro', perf: 'Rendimiento', value: 'Value', picks: 'Picks GP',
+  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro', perf: 'Rendimiento', value: 'Value', picks: 'Picks GP', methodology: 'Metodología',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
@@ -234,6 +372,7 @@ function switchTab(name) {
     if (name === 'alerts') renderAlerts();
     if (name === 'referidos') renderReferidos();
     if (name === 'sim') renderSim();
+    if (name === 'methodology') renderMethodology();
   }
   // Oportunidades: con sesión, (re)carga si no está cargada o si quedó mostrando un candado
   // (auto-cura cualquier carrera del login que dejaba el candado del teaser). Sin sesión, no toca.
@@ -253,38 +392,59 @@ function toggleAvatarMenu(e) {
   if (m.style.display !== 'none') return closeAvatarMenu();
   const plan = USER.isAdmin ? 'ADMIN' : 'FREE';
   const item = (tab, icon, label) => `<button onclick="switchTab('${tab}')">${ICON[icon]}${label}</button>`;
+  const navClean = USER.uiFlags && USER.uiFlags.navigationCleanup;
+  // Sprint 8.1 §26: avatar reducido a Cuenta/Preferencias/Privacidad/Logout (sin duplicar todas las herramientas).
+  const body = navClean
+    ? `${item('following', 'account', 'Mi cuenta')}
+       ${item('alerts', 'alerts', 'Preferencias y alertas')}
+       ${item('methodology', 'registry', 'Privacidad y metodología')}
+       ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
+       <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`
+    : `${item('sim', 'sim', 'Simula cualquier cruce ⚔️')}
+       ${item('referidos', 'gift', 'Invitar amigos 🎁')}
+       ${item('following', 'account', 'Mis seguidos')}
+       ${item('alerts', 'alerts', 'Alertas y notificaciones')}
+       ${item('record', 'record', 'Aciertos del modelo')}
+       ${item('evo', 'evo', 'Evolución')}
+       ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
+       <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`;
   m.innerHTML = `
     <div class="avmenu-head">
       <div class="av">${(USER.email || '?').slice(0, 1).toUpperCase()}</div>
       <div><div class="em">${USER.email}</div><div class="plan">${plan}</div></div>
     </div>
-    ${item('sim', 'sim', 'Simula cualquier cruce ⚔️')}
-    ${item('referidos', 'gift', 'Invitar amigos 🎁')}
-    ${item('following', 'account', 'Mis seguidos')}
-    ${item('alerts', 'alerts', 'Alertas y notificaciones')}
-    ${item('record', 'record', 'Aciertos del modelo')}
-    ${item('evo', 'evo', 'Evolución')}
-    ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
-    <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`;
+    ${body}`;
   m.style.display = '';
   setTimeout(() => document.addEventListener('click', closeAvatarMenu, { once: true }), 0);
 }
 function closeAvatarMenu() { const m = $('#avatarMenu'); if (m) m.style.display = 'none'; }
 
 function openSheet() {
-  const items = [['following', 'Seguidos'], ['following', 'Alertas', 'alerts'], ['bracket', 'Bracket'], ['record', 'Aciertos'], ['evo', 'Evolución'], ['account', 'Mi cuenta', 'account']];
-  let html = '<div class="sheet-grid">';
-  html += `<button onclick="switchTab('sim')">${ICON.sim}<span>Simular</span></button>`;
-  html += `<button onclick="switchTab('following')">${ICON.following}<span>Seguidos</span></button>`;
-  html += `<button onclick="switchTab('alerts')">${ICON.alerts}<span>Alertas</span></button>`;
-  html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
-  html += `<button onclick="switchTab('record')">${ICON.record}<span>Aciertos</span></button>`;
-  html += `<button onclick="switchTab('evo')">${ICON.evo}<span>Evolución</span></button>`;
-  html += `<button onclick="switchTab('referidos')">${ICON.gift}<span>Invitar</span></button>`;
-  if (USER && USER.isAdmin) html += `<button onclick="switchTab('admin')">${ICON.admin}<span>Admin</span></button>`;
-  html += `<button onclick="toggleAvatarMenu()">${ICON.account}<span>Cuenta</span></button>`;
-  html += `<button class="danger" onclick="logout()">${ICON.logout}<span>Salir</span></button>`;
-  html += '</div>';
+  const navClean = USER && USER.uiFlags && USER.uiFlags.navigationCleanup;
+  const cell = (tab, icon, label) => `<button onclick="switchTab('${tab}')">${ICON[icon]}<span>${label}</span></button>`;
+  let html;
+  if (navClean) {
+    // Sprint 8.1 §26-28,§35-36: agrupado (Herramientas / Mi GP / Transparencia / Administración). Sin card "Salir"
+    // (el logout vive en el avatar). Transparencia surface: Rendimiento, Registro, Metodología.
+    const group = (title, cells) => `<div class="sheet-group"><div class="sheet-gt">${title}</div><div class="sheet-grid">${cells.join('')}</div></div>`;
+    html = group('Herramientas', [cell('sim', 'sim', 'Simular'), cell('bracket', 'bracket', 'Bracket'), cell('evo', 'evo', 'Evolución')])
+      + group('Mi GP', [cell('following', 'following', 'Seguidos'), cell('alerts', 'alerts', 'Alertas'), cell('referidos', 'gift', 'Invitar')])
+      + group('Transparencia', [cell('record', 'perf', 'Rendimiento'), cell('registry', 'registry', 'Registro'), cell('methodology', 'registry', 'Metodología')])
+      + (USER && USER.isAdmin ? group('Administración', [cell('admin', 'admin', 'Admin')]) : '');
+  } else {
+    html = '<div class="sheet-grid">';
+    html += `<button onclick="switchTab('sim')">${ICON.sim}<span>Simular</span></button>`;
+    html += `<button onclick="switchTab('following')">${ICON.following}<span>Seguidos</span></button>`;
+    html += `<button onclick="switchTab('alerts')">${ICON.alerts}<span>Alertas</span></button>`;
+    html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
+    html += `<button onclick="switchTab('record')">${ICON.record}<span>Aciertos</span></button>`;
+    html += `<button onclick="switchTab('evo')">${ICON.evo}<span>Evolución</span></button>`;
+    html += `<button onclick="switchTab('referidos')">${ICON.gift}<span>Invitar</span></button>`;
+    if (USER && USER.isAdmin) html += `<button onclick="switchTab('admin')">${ICON.admin}<span>Admin</span></button>`;
+    html += `<button onclick="toggleAvatarMenu()">${ICON.account}<span>Cuenta</span></button>`;
+    html += `<button class="danger" onclick="logout()">${ICON.logout}<span>Salir</span></button>`;
+    html += '</div>';
+  }
   $('#sheetBody').innerHTML = html;
   $('#sheet').style.display = '';
 }
@@ -325,14 +485,24 @@ function renderFollowing() {
     const nm = nextMatchFor(t.id);
     const m = (ARB && ARB.rows) ? ARB.rows.find(r => r.id === t.id) : null;
     const ch = m && m.polymarket ? m.polymarket.change24h : null;
-    let meta = 'Sin próximo partido programado';
-    if (nm) { const opp = teamOf(nm.home === t.id ? nm.away : nm.home); meta = `Próximo · vs ${opp ? opp.name : '—'} · ${fmtKickoff(nm)}`; }
+    const navClean = USER.uiFlags && USER.uiFlags.navigationCleanup;
+    const opp = nm ? teamOf(nm.home === t.id ? nm.away : nm.home) : null;
+    // §25: con el flag, meta a DOS líneas (sin truncar) con hora local del usuario; sin flag, una línea como hoy.
+    let metaHtml;
+    if (navClean) {
+      metaHtml = nm
+        ? `<div class="fc-meta fc-meta2" onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer"><span class="fc-next">Próximo: ${opp ? opp.name : '—'}</span><span class="fc-when">${fmtKickoffLocal(nm)}</span></div>`
+        : `<div class="fc-meta"><span class="muted">Sin próximo partido programado</span></div>`;
+    } else {
+      const meta = nm ? `Próximo · vs ${opp ? opp.name : '—'} · ${fmtKickoff(nm)}` : 'Sin próximo partido programado';
+      metaHtml = `<div class="fc-meta">${nm ? `<span onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer">${meta} →</span>` : meta}</div>`;
+    }
     const isMuted = muted.includes(t.id);
     return `<div class="follow-card">
       <span class="fc-flag" style="cursor:pointer" onclick="openTeamPage('${t.id}')">${t.flag}</span>
       <div class="fc-main" style="cursor:pointer" onclick="openTeamPage('${t.id}')">
         <div class="fc-name">${t.name}</div>
-        <div class="fc-meta">${nm ? `<span onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer">${meta} →</span>` : meta}</div>
+        ${metaHtml}
       </div>
       <div class="fc-prob">
         <div class="fc-pc">${pct(t.sim.champion)}</div>
@@ -933,6 +1103,14 @@ function fmtKickoff(f) {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
 }
+// §25: fecha+hora en zona horaria del usuario (la del navegador), formato largo para la 2ª línea de Seguidos.
+function fmtKickoffLocal(f) {
+  if (!f.datetime) return f.date || '—';
+  const d = new Date(f.datetime);
+  const day = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${day.charAt(0).toUpperCase() + day.slice(1)}, ${time}`;
+}
 
 function matchCard(f, homeId, awayId, matchId) {
   const r = f.result;
@@ -1112,6 +1290,8 @@ function confLabel(edge) { return edge >= 0.10 ? 'Alta' : edge >= 0.05 ? 'Media'
 function riskCls(l) { return l === 'Bajo' ? 'r-low' : l === 'Medio' ? 'r-mid' : 'r-high'; }
 
 async function loadArb(force = false) {
+  // Sprint 8.1 §9-15: Oportunidades con sub-tabs Picks GP | Value | Arbitraje (gated). Flag off → home legacy.
+  if (USER && USER.uiFlags && USER.uiFlags.opportunityTabs) return loadOpportunities(force);
   $('#tab-arb').innerHTML = '<div class="muted" style="padding:40px 0;text-align:center">Cargando mercados en vivo…</div>';
   const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() });
   if (!r.ok) {
@@ -1312,6 +1492,48 @@ async function loadArb(force = false) {
         <td class="${e > 0.015 ? 'pgood' : 'muted'}">${e > 0 ? '+' + pct(e) : '—'}</td></tr>`;
     }).join('') + '</table></div></details>';
   $('#tab-arb').innerHTML = html;
+}
+
+// ---------- Sprint 8.1 §9-15: Oportunidades con sub-tabs (Picks GP | Value | Arbitraje) — gated ----------
+let OPP_SUB = 'arb';
+function oppSetSub(s) { OPP_SUB = s; return loadOpportunities(); }
+async function loadOpportunities(force) {
+  const subs = [['picks', 'Picks GP'], ['value', 'Value'], ['arb', 'Arbitraje']];
+  const bar = subs.map(([id, l]) => `<button class="seg-btn ${OPP_SUB === id ? 'on' : ''}" role="tab" aria-selected="${OPP_SUB === id}" onclick="oppSetSub('${id}')">${l}</button>`).join('');
+  $('#tab-arb').innerHTML = `<div style="margin-bottom:10px"><h2 style="margin-bottom:3px">Oportunidades</h2>
+    <div class="muted" style="font-size:12px">Picks GP publicadas, señales de Value y arbitraje ejecutable — productos separados, no equivalentes.</div></div>
+    <div class="seg" role="tablist" aria-label="Tipo de oportunidad">${bar}</div>
+    <div id="oppBody"><div class="du">Cargando…</div></div>`;
+  if (OPP_SUB === 'picks') return loadPicks('#oppBody');
+  if (OPP_SUB === 'value') return loadValue('#oppBody');
+  return loadOppArb('#oppBody', force);
+}
+// Vista Arbitraje LIMPIA (§14): solo arbitraje. Sin Kelly, sin "COMPRAR SÍ", sin "MODEL EDGE".
+async function loadOppArb(sel, force) {
+  const root = $(sel); if (!root) return;
+  root.innerHTML = '<div class="du">Cargando arbitraje…</div>';
+  let A;
+  try { const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() }); if (!r.ok) { root.innerHTML = window.UIState ? UIState.error() : du('No disponible'); return; } A = await r.json(); ARB = A; }
+  catch (e) { root.innerHTML = window.UIState ? UIState.error() : du('No disponible'); return; }
+  const pure = [];
+  (A.rows || []).forEach(row => (row.edges || []).forEach(e => { if (e.type === 'arbitraje') pure.push({ ...e, team: row.id, row }); }));
+  pure.sort((a, b) => b.edge - a.edge);
+  let html = `<div class="explain">Arbitraje entre prediction markets (Polymarket / Kalshi): comprar ambos lados captura la diferencia, gane quien gane. Retorno neto <b>estimado</b> — depende de ejecución, fees y settlement. No es consejo financiero. GP no ejecuta operaciones.</div>`;
+  if (!pure.length) {
+    html += window.UIState ? UIState.emptyResult('No hay oportunidades de arbitraje ejecutable ahora mismo. Los mercados de campeón suelen estar alineados entre plataformas.') : du('Sin arbitraje ahora mismo.');
+  } else {
+    html += '<div class="arbops">' + pure.slice(0, 8).map(o => {
+      const pm = o.row.polymarket, ks = o.row.kalshi, t = teamOf(o.team);
+      return `<div class="dualcard">
+        <div class="dual-top"><span style="font-size:22px">${t ? t.flag : ''}</span><b style="font-size:16px">${t ? t.name : o.team}</b><span class="purebadge">ARBITRAJE</span><span class="edge-big">+${pct(o.edge)} neto</span></div>
+        <div class="note" style="margin:6px 0 12px">${xe(o.note || '')}</div>
+        <div class="dual-btns">
+          ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
+          ${ks ? `<a class="venue-btn v-kalshi" href="${ks.url}" target="_blank" rel="noopener">Kalshi · ${cents(ks.ask)} ↗</a>` : ''}
+        </div></div>`;
+    }).join('') + '</div>';
+  }
+  root.innerHTML = html;
 }
 
 // ---------- EVOLUCIÓN ----------
@@ -1590,8 +1812,12 @@ async function simulate() {
 function simHeadlineHtml(d) {
   const p = d.probs, base = d.base, ctx = d.context;
   const moved = Math.abs(ctx.deltaA) + Math.abs(ctx.deltaB) > 2;
+  // Sprint 8.1 §16: etiqueta breve y visible V2/Experimental (gated). No cambia las probabilidades V2 (siguen protagonistas).
+  const v2Label = (USER && USER.uiFlags && USER.uiFlags.gpIntelligenceLabels)
+    ? `<div class="gpi-labelrow"><span class="gpi-explabel">🧠 GP Intelligence V2 · Experimental</span></div>` : '';
   return `
     <div class="dpanel" style="margin-top:14px">
+      ${v2Label}
       <div class="sim-teams">
         <div class="sim-side"><div class="sim-flag">${d.a.flag}</div><div class="sim-name">${d.a.name}</div><div class="muted" style="font-size:11px">Elo ${d.a.elo}${ctx.deltaA ? ` <span class="${ctx.deltaA > 0 ? 'pgood' : 'pbad'}">${ctx.deltaA > 0 ? '+' : ''}${ctx.deltaA}</span>` : ''}</div></div>
         <div class="sim-vs2">VS</div>
@@ -1631,6 +1857,10 @@ function impChip(n) {
 function h2hAnalysisHtml(d) {
   const an = d.analysis, h = an.headline, dec = an.decomposition, mc = an.monteCarlo;
   let html = '';
+  // Sprint 8.1 §17: en móvil el análisis es largo. Con el flag, las secciones de detalle se colapsan en
+  // acordeones accesibles (Veredicto/Probabilidades/V1-V2/Factores/Riesgos quedan visibles). Flag off → todo expandido.
+  const acc = (label, p) => (USER && USER.uiFlags && USER.uiFlags.gpIntelligenceLabels)
+    ? `<details class="gpi-acc"><summary>${label}</summary>${p}</details>` : p;
 
   // 1) VEREDICTO — confianza del MODELO y calidad de DATOS son conceptos separados (B9)
   const mConf = h.modelConfidence ? h.modelConfidence.level : '—';
@@ -1684,7 +1914,7 @@ function h2hAnalysisHtml(d) {
       <div class="gpi-sc-bar"><div style="width:${(s.p / maxP) * 100}%"></div></div>
       <span class="gpi-sc-p">${pct(s.p, 0)}</span>
     </div>`).join('');
-  html += panel('Monte Carlo · 10.000 simulaciones', 'contexto integrado', `
+  html += acc('Ver simulaciones (Monte Carlo)', panel('Monte Carlo · 10.000 simulaciones', 'contexto integrado', `
     <div class="gpi-sc-grid">${scoreBars}</div>
     <div class="gpi-mc-stats">
       <div class="gpi-stat"><span class="v">${pct(mc.over25, 0)}</span><span class="l">Over 2.5</span></div>
@@ -1692,7 +1922,7 @@ function h2hAnalysisHtml(d) {
       <div class="gpi-stat"><span class="v">${mc.avgTotal.toFixed(2)}</span><span class="l">Goles/partido</span></div>
       <div class="gpi-stat"><span class="v">${mc.avgMargin.toFixed(2)}</span><span class="l">Margen prom.</span></div>
     </div>
-    <div class="gpi-note">${an.monteCarlo.narrative}</div>`);
+    <div class="gpi-note">${an.monteCarlo.narrative}</div>`));
 
   // 4b) GOLES Y TOTALES — mercados accionables para apostadores (Over/Under, total, distribución por equipo)
   if (d.goals) {
@@ -1709,7 +1939,7 @@ function h2hAnalysisHtml(d) {
           ${[['0', dist.g0], ['1', dist.g1], ['2', dist.g2], ['3+', dist.g3]].map(([n, p]) => `<div class="gpi-tg-c"><span class="n">${n}</span><span class="p">${pct(p, 0)}</span></div>`).join('')}
         </div>
       </div>`;
-    html += panel('Goles y totales', 'para totales', `
+    html += acc('Ver goles y totales', panel('Goles y totales', 'para totales', `
       <div class="gpi-ou-wrap">
         ${ouRow('1.5 goles', g.over15)}
         ${ouRow('2.5 goles', g.over25)}
@@ -1724,7 +1954,7 @@ function h2hAnalysisHtml(d) {
       <div class="dsub" style="margin-top:14px">Goles por equipo (probabilidad)</div>
       ${teamGoals(g.teamA, d.a.flag, d.a.name)}
       ${teamGoals(g.teamB, d.b.flag, d.b.name)}
-      <div class="gpi-note">${d.context.goalModel ? 'Modelo de goles: ' + d.context.goalModel + '. ' : ''}xG ${d.probs.xgA.toFixed(2)} – ${d.probs.xgB.toFixed(2)}. Distribución de las 10.000 simulaciones.</div>`);
+      <div class="gpi-note">${d.context.goalModel ? 'Modelo de goles: ' + d.context.goalModel + '. ' : ''}xG ${d.probs.xgA.toFixed(2)} – ${d.probs.xgB.toFixed(2)}. Distribución de las 10.000 simulaciones.</div>`));
   }
 
   // 5) LECTURA TÁCTICA (si hay editorial). La nota puede ser texto o {style,strengths[],risks[]}.
@@ -1736,7 +1966,7 @@ function h2hAnalysisHtml(d) {
       ${tags(t.strengths, 'up')}${tags(t.risks, 'down')}</div>`;
   };
   const tA = tacHtml(d.tactical && d.tactical.a, d.a.name, d.a.flag), tB = tacHtml(d.tactical && d.tactical.b, d.b.name, d.b.flag);
-  if (tA || tB) html += panel('Lectura táctica', '', tA + tB);
+  if (tA || tB) html += acc('Ver lectura táctica', panel('Lectura táctica', '', tA + tB));
 
   // 6) INSIGHTS determinísticos (anclados a métricas) + qué cambiaría
   const insights = an.insights || [];
@@ -1846,7 +2076,17 @@ function notifyUpdate(reason, ts) {
 
 // Tiempo real: SSE con fallback automático a polling (túneles/proxies que bufferean streams)
 let pollTimer = null, lastVersion = null;
-function setLive(on) { const p = $('#livePill'); if (p) p.classList.toggle('on', on); }
+// §33-34: con operationalStates, el badge refleja la frescura real (no siempre "LIVE"). Flag off → como hoy.
+function setLive(on, stale) {
+  const p = $('#livePill'); if (!p) return;
+  p.classList.toggle('on', on && !stale);
+  if (USER && USER.uiFlags && USER.uiFlags.operationalStates) {
+    p.classList.toggle('stale', !!(on && stale));
+    const label = !on ? 'SIN CONEXIÓN' : stale ? 'DATOS RETRASADOS' : 'DATOS LIVE';
+    p.innerHTML = `<span class="lp-dot"></span>${label}`;
+    const tw = $('#tickerWrap'); if (tw) tw.classList.toggle('stale', !!(on && stale));
+  }
+}
 function startPolling() {
   if (pollTimer) return;
   setLive(true);
@@ -1863,6 +2103,9 @@ function startPolling() {
         if (currentTab() === 'match' && CUR_MATCH) refreshMatch(CUR_MATCH.id);
       }
       lastVersion = v;
+      // §33-34: frescura real de mercados — si no se actualizan en >3 min, el badge deja de decir "LIVE".
+      const stale = !!(v.markets && (Date.now() - v.markets > 180000));
+      setLive(true, stale);
     } catch { setLive(false); }
   }, 10000);
   fetch('/api/version').then(r => r.json()).then(v => lastVersion = v).catch(() => { });
@@ -2277,18 +2520,20 @@ function valBadge(c) { const [t, k] = VAL_CLS[c] || [c, 'val-pass']; return `<sp
 const pp = v => v == null ? 'N/A' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + 'pp';
 const pct1 = v => v == null ? 'N/A' : (v * 100).toFixed(1) + '%';
 
-async function loadValue() {
-  const root = $('#tab-value');
+async function loadValue(rootSel) {
+  const root = $(rootSel || '#tab-value');
   root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Value</h3><span class="sec-badge">shadow</span></div>
     <div class="explain">El Value Engine clasifica mercados en <b>PASS / WATCH / LEAN / STRONG</b> comparando la probabilidad del modelo, el consenso de sportsbooks sin vig y los prediction markets. <b>PASS es una decisión válida.</b> Solo STRONG puede convertirse en candidata a Pick GP.</div>
     <div id="valBody"><div class="du">Cargando señales…</div></div>
     <div class="xo-foot">Estimación de consenso / probabilidad ensemble estimada (no "probabilidad verdadera"). No es consejo financiero.</div>`;
-  if (!USER.valuePublic) { $('#valBody').innerHTML = du('La vista pública de Value está en preparación.'); return; }
+  const opSt = USER.uiFlags && USER.uiFlags.operationalStates && window.UIState;
+  if (!USER.valuePublic) { $('#valBody').innerHTML = opSt ? UIState.featureDisabled('La vista pública de Value está en preparación.') : du('La vista pública de Value está en preparación.'); return; }
   try {
     const r = await fetch('/api/value/signals', { headers: hdrs() }).then(x => x.json());
     const items = (r && r.items) || [];
-    $('#valBody').innerHTML = items.length ? items.map(valueCard).join('') : du('No hay señales de value disponibles. Requiere cuotas de sportsbooks (proveedor pendiente de integrar).');
-  } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las señales.'); }
+    const empty = opSt ? UIState.notConfigured('Las cuotas de sportsbooks todavía no están configuradas. Las señales de Value se calcularán cuando haya consenso de casas.') : du('No hay señales de value disponibles. Requiere cuotas de sportsbooks (proveedor pendiente de integrar).');
+    $('#valBody').innerHTML = items.length ? items.map(valueCard).join('') : empty;
+  } catch (e) { $('#valBody').innerHTML = opSt ? UIState.error('No se pudieron cargar las señales.') : du('No se pudieron cargar las señales.'); }
 }
 function valueCard(s) {
   return `<div class="xo-card">
@@ -2305,17 +2550,20 @@ function valueCard(s) {
     </div></div>`;
 }
 
-async function loadPicks() {
-  const root = $('#tab-picks');
+async function loadPicks(rootSel) {
+  const root = $(rootSel || '#tab-picks');
   root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Picks GP</h3><span class="sec-badge">Strong Value</span></div>
     <div id="picksBody"><div class="du">Cargando picks…</div></div>
     <div class="xo-foot">Pick GP basada en una señal Strong Value. Cuota observada al momento de publicación. Válida únicamente mientras la cuota permanezca en o por encima del mínimo. Resultado teórico con stake unitario; GP no ejecutó esta operación.</div>`;
-  if (!USER.picksPublic) { $('#picksBody').innerHTML = du('La vista pública de Picks GP está en preparación.'); return; }
+  const opSt = USER.uiFlags && USER.uiFlags.operationalStates && window.UIState;
+  if (!USER.picksPublic) { $('#picksBody').innerHTML = opSt ? UIState.featureDisabled('La vista pública de Picks GP está en preparación.') : du('La vista pública de Picks GP está en preparación.'); return; }
   try {
     const r = await fetch('/api/picks', { headers: hdrs() }).then(x => x.json());
     const items = (r && r.items) || [];
-    $('#picksBody').innerHTML = items.length ? items.map(pickCard).join('') : `<div class="du" style="padding:28px 18px">Hoy no hay Picks GP.<br><span style="color:var(--muted)">GP analizó los mercados disponibles, pero ninguna señal superó actualmente los estándares de edge, precio, calidad de datos e incertidumbre.</span></div>`;
-  } catch (e) { $('#picksBody').innerHTML = du('No se pudieron cargar las picks.'); }
+    // §10: el vacío de Picks NO es un error — es un estado válido con su explicación.
+    const empty = `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${(window.COPY?COPY.picksEmpty:'Hoy no hay Picks GP.')}</div><div class="op-state-b">${(window.COPY?COPY.picksEmptyWhy:'Ninguna señal supera actualmente todos los criterios.')}</div></div></div>`;
+    $('#picksBody').innerHTML = items.length ? items.map(pickCard).join('') : empty;
+  } catch (e) { $('#picksBody').innerHTML = opSt ? UIState.error('No se pudieron cargar las picks.') : du('No se pudieron cargar las picks.'); }
 }
 const PICK_ST = { published: ['ABIERTA', 'xo-st-active'], price_moved: ['CUOTA MOVIDA', 'xo-st-aging'], closed: ['CERRADA', 'xo-st-paused'], settlement_pending: ['LIQUIDANDO', 'xo-st-aging'], settled: ['LIQUIDADA', 'xo-st-paused'], void: ['ANULADA', 'xo-st-paused'], disputed: ['EN DISPUTA', 'xo-st-expired'] };
 function pickSt(s) { const [t, k] = PICK_ST[s] || [s, 'xo-st-paused']; return `<span class="xo-pill ${k}">${t}</span>`; }

@@ -51,6 +51,7 @@ const metricsEngine = require('./metrics-engine');
 // Sprint 7 — Value Engine + Picks GP. Inerte con flags apagados; no conecta al requerir.
 const valueEngine = require('./value-engine');
 const operations = require('./operations'); // Sprint 8A — orquestador de jobs (INERTE si OPERATIONS_ORCHESTRATOR_ENABLED=false)
+const uiFlags = require('./ui-flags'); // Sprint 8.1 — flags de integración de UI (INERTE si UI_* off → UI idéntica)
 const userPrefs = require('./user-preferences'); // Sprint 8A — preferencias + onboarding (INERTE sin flags)
 const userAlerts = require('./alerts');           // Sprint 8A — motor de alertas de usuario (INERTE sin flags)
 const productAnalytics = require('./analytics');   // Sprint 8A — analítica de producto (INERTE sin flags)
@@ -1269,7 +1270,9 @@ function getUser(req) {
   const vf = valueEngine.cfg.flags;
   const valueUi = vf.valuePublic || (admin && vf.valueAdminPreview);
   const picksUi = vf.picksPublic || (admin && vf.picksAdminPreview);
-  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
+  // Sprint 8.1: flags de integración de UI (default off → la UI se comporta exactamente como hoy)
+  const ui = uiFlags.resolveForUser(admin);
+  return { email, ...db.users[email], isAdmin: admin, uiFlags: ui, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);

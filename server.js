@@ -50,6 +50,13 @@ const signalRegistry = require('./signal-registry');
 const metricsEngine = require('./metrics-engine');
 // Sprint 7 — Value Engine + Picks GP. Inerte con flags apagados; no conecta al requerir.
 const valueEngine = require('./value-engine');
+const operations = require('./operations'); // Sprint 8A — orquestador de jobs (INERTE si OPERATIONS_ORCHESTRATOR_ENABLED=false)
+const userPrefs = require('./user-preferences'); // Sprint 8A — preferencias + onboarding (INERTE sin flags)
+const userAlerts = require('./alerts');           // Sprint 8A — motor de alertas de usuario (INERTE sin flags)
+const productAnalytics = require('./analytics');   // Sprint 8A — analítica de producto (INERTE sin flags)
+const referrals = require('./referrals');          // Sprint 8A — referrals (INERTE sin flags)
+const entitlements = require('./entitlements');    // Sprint 8B — entitlements (no restringe si off; billing OFF)
+const proWaitlist = require('./entitlements/waitlist'); // Sprint 8B — waitlist GP Pro (sin pago)
 // rate limiter en memoria muy simple (clave → ventana) para la calculadora pública
 const _rl = new Map();
 function rateLimit(key, max, windowMs) {
@@ -1577,6 +1584,101 @@ const server = http.createServer(async (req, res) => {
       broadcast('markets', { ts: marketCache.ts });
       return json(res, 200, { ok: true, ts: marketCache.ts });
     }
+    // --- Sprint 8A: preferencias de usuario (§80). Requiere sesión. 404 si la capa está off. ---
+    if (p === '/api/me/preferences') {
+      if (!userPrefs.flags().enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (req.method === 'GET') return json(res, 200, await userPrefs.get(u.email));
+      if (req.method === 'PUT') { const body = await readBody(req).catch(() => ({})); const r = await userPrefs.update(u.email, body); return json(res, r.ok ? 200 : 400, r); }
+    }
+    if (p === '/api/me/onboarding') {
+      if (!userPrefs.flags().onboarding) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (req.method === 'GET') return json(res, 200, await userPrefs.getOnboarding(u.email));
+      if (req.method === 'PUT') { const body = await readBody(req).catch(() => ({})); const r = await userPrefs.updateOnboarding(u.email, body); return json(res, r.ok ? 200 : 400, r); }
+    }
+    // --- Sprint 8A: inbox de alertas de usuario (§81). Se generan server-side; el frontend NO crea alerts. ---
+    if (p.startsWith('/api/alerts')) {
+      if (!userAlerts.cfg.flags.enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      try {
+        if (p === '/api/alerts' && req.method === 'GET') return json(res, 200, { items: await userAlerts.repo.listForUser(u.email, { limit: 50 }), unread: await userAlerts.repo.unreadCount(u.email) });
+        if (p === '/api/alerts/read-all' && req.method === 'POST') return json(res, 200, { read: await userAlerts.repo.markAllRead(u.email) });
+        const mRead = p.match(/^\/api\/alerts\/([0-9a-f-]{36})\/read$/i);
+        if (mRead && req.method === 'POST') return json(res, 200, { ok: await userAlerts.repo.markRead(u.email, mRead[1]) });
+      } catch (e) { return json(res, 500, { error: 'error' }); }
+      return json(res, 404, { error: 'No encontrado' });
+    }
+    // --- Sprint 8A: ingest de analítica de producto (§42). Validado por lista blanca; sin PII sensible. ---
+    if (p === '/api/events' && req.method === 'POST') {
+      if (!productAnalytics.flags().enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); const body = await readBody(req).catch(() => ({}));
+      const r = await productAnalytics.record({ event_name: body.event, user_ref: u ? u.email : null, anonymous_id: body.anonymousId, session_id: body.sessionId, properties: body.properties, context: body.context });
+      return json(res, r.recorded ? 200 : 400, r);
+    }
+    // --- Sprint 8A: admin analytics (§46). Admin-only. ---
+    if (p.startsWith('/api/internal/analytics/')) {
+      if (!productAnalytics.flags().enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (p === '/api/internal/analytics/overview') return json(res, 200, await productAnalytics.overview({ days: 7 }));
+      if (p === '/api/internal/analytics/funnel') return json(res, 200, await productAnalytics.funnel({}));
+    }
+    // --- Sprint 8A: referrals (§82). track es público con rate limit; el resto requiere sesión. ---
+    if (p.startsWith('/api/referrals')) {
+      if (!referrals.flags().enabled) return json(res, 404, { error: 'No encontrado' });
+      if (p === '/api/referrals/track' && req.method === 'POST') { const body = await readBody(req).catch(() => ({})); if (!rateLimit('ref:' + (req.socket.remoteAddress || 'x'), 20, 60000)) return json(res, 429, { error: 'Demasiados intentos' }); return json(res, 200, await referrals.track({ code: body.code, anonymousId: body.anonymousId || null })); }
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (p === '/api/referrals/me' && req.method === 'GET') return json(res, 200, await referrals.status(u.email));
+      if (p === '/api/referrals/code' && req.method === 'POST') return json(res, 200, await referrals.ensureCode(u.email));
+      if (p === '/api/referrals/status' && req.method === 'GET') return json(res, 200, await referrals.status(u.email));
+    }
+    // --- Sprint 8B: waitlist GP Pro (§83). Sin pago, sin tarjeta. ---
+    if (p === '/api/pro-waitlist' && req.method === 'POST') {
+      if (!proWaitlist.flags().enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const body = await readBody(req).catch(() => ({})); const r = await proWaitlist.join(u.email, body); return json(res, r.ok ? 200 : 400, r);
+    }
+    if (p === '/api/me/pro-waitlist') {
+      if (!proWaitlist.flags().enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (req.method === 'GET') return json(res, 200, await proWaitlist.get(u.email) || { joined: false });
+      if (req.method === 'DELETE') return json(res, 200, await proWaitlist.leave(u.email));
+    }
+    // --- Sprint 8B: entitlements del usuario (§84). El frontend NO decide permisos. ---
+    if (p === '/api/me/entitlements' && req.method === 'GET') {
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      return json(res, 200, await entitlements.userEntitlements(u.email));
+    }
+    // --- Sprint 8A: health público mínimo (§25). Sin detalles sensibles. ---
+    if (p === '/api/health') {
+      return json(res, 200, { status: 'ok', version: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null, timestamp: new Date().toISOString() });
+    }
+    // --- Sprint 8A: API interna de operaciones (admin-only; 404 si OPERATIONS_ADMIN_ENABLED off). ---
+    if (p.startsWith('/api/internal/operations')) {
+      if (!operations.cfg.flags.admin) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try {
+        if (p === '/api/internal/operations/status' && req.method === 'GET') return json(res, 200, await operations.status());
+        if (p === '/api/internal/operations/health' && req.method === 'GET') return json(res, 200, await operations.health.health());
+        if (p === '/api/internal/operations/freshness' && req.method === 'GET') return json(res, 200, await operations.health.freshnessSnapshot());
+        if (p === '/api/internal/operations/jobs' && req.method === 'GET') return json(res, 200, { jobs: (await operations.status()).jobs });
+        if (p === '/api/internal/operations/dead-letters' && req.method === 'GET') return json(res, 200, { items: await require('./operations/repositories/deadLetterRepository').list({ limit: 100 }) });
+        const mJob = p.match(/^\/api\/internal\/operations\/jobs\/([a-z0-9_]+)$/i);
+        if (mJob && req.method === 'GET') { const st = await operations.status(); return json(res, 200, st.jobs.find(j => j.job_name === mJob[1]) || { error: 'unknown_job' }); }
+        const mRun = p.match(/^\/api\/internal\/operations\/jobs\/([a-z0-9_]+)\/run$/i);
+        if (mRun && req.method === 'POST') return json(res, 200, await operations.runOnce(mRun[1], { runType: 'manual' }));
+        const mDl = p.match(/^\/api\/internal\/operations\/dead-letters\/([0-9a-f-]{36})\/(retry|resolve|ignore)$/i);
+        if (mDl && req.method === 'POST') { const body = await readBody(req).catch(() => ({})); const status = mDl[2] === 'retry' ? 'retrying' : (mDl[2] === 'ignore' ? 'ignored' : 'resolved'); return json(res, 200, await require('./operations/repositories/deadLetterRepository').setStatus(mDl[1], status, body.note || null) || { error: 'not_found' }); }
+        return json(res, 404, { error: 'No encontrado' });
+      } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    // --- Sprint 8A: estado del proveedor de sportsbooks (admin-only; 404 si el proveedor está off). Sin API key. ---
+    if (p === '/api/internal/sportsbook/status') {
+      const sb = require('./sportsbook-providers');
+      if (!sb.cfg.flags.enabled) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await sb.adminStatus()); } catch (e) { return json(res, 200, { enabled: true, error: 'status failed' }); }
+    }
     // --- Sprint 0: health interno de la plataforma de datos v2 (admin-only, sin secretos) ---
     if (p === '/api/internal/platform-health') {
       const u = getUser(req);
@@ -1995,4 +2097,7 @@ server.listen(PORT, () => {
   try { require('./metrics-engine/scheduler').start(); } catch { /* aislado */ }
   // Sprint 7 — scheduler del Value Engine + monitor de precio de picks. Solo si los flags VALUE/PICKS lo habilitan.
   try { require('./value-engine/scheduler').start(); } catch { /* aislado */ }
+  // Sprint 8A — orquestador de jobs (registro de runs, heartbeats, dependencias, apagado ordenado). INERTE
+  // si OPERATIONS_ORCHESTRATOR_ENABLED=false: no arranca timers, no escribe, no toca el manejo de señales.
+  operations.initialize().catch(() => { /* aislado */ });
 });

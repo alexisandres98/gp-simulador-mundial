@@ -52,7 +52,24 @@
     "value:candidates": "node value-engine/cli.js candidates",
     "value:evaluations": "node value-engine/cli.js evaluations",
     "value:verify": "node value-engine/cli.js verify",
-    "value:inspect": "node value-engine/cli.js inspect"
+    "value:inspect": "node value-engine/cli.js inspect",
+    "test:operations": "node tests/operations.test.js",
+    "test:operations-db": "node tests/operations-db.test.js",
+    "ops:status": "node operations/cli.js status",
+    "ops:health": "node operations/cli.js health",
+    "ops:run": "node operations/cli.js run",
+    "ops:dead-letters": "node operations/cli.js dead-letters",
+    "ops:recover": "node operations/cli.js recover",
+    "test:sportsbook": "node tests/sportsbook-provider.test.js",
+    "test:sportsbook-db": "node tests/sportsbook-provider-db.test.js",
+    "sportsbook:status": "node sportsbook-providers/cli.js status",
+    "sportsbook:health": "node sportsbook-providers/cli.js health",
+    "sportsbook:once": "node sportsbook-providers/cli.js once",
+    "test:freshness": "node tests/freshness.test.js",
+    "test:alerts": "node tests/alerts.test.js",
+    "test:alerts-db": "node tests/alerts-db.test.js",
+    "test:commercial": "node tests/commercial.test.js",
+    "test:commercial-db": "node tests/commercial-db.test.js"
   },
   "engines": {
     "node": ">=18"

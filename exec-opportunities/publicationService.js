@@ -17,13 +17,15 @@ function err(code) { const e = new Error(code); e.code = code; return e; }
 function newPublicId() { return 'op_' + crypto.randomBytes(9).toString('hex'); }
 
 // Transición atómica: bloquea la fila, valida el estado origen, actualiza y audita en la misma transacción.
-async function transition(id, { from, to, action, actorId, reason, patch = {}, evaluationId, metadata }) {
+// `hook(client, updated)` opcional corre DENTRO de la misma transacción (Sprint 5: registro de señal atómico).
+async function transition(id, { from, to, action, actorId, reason, patch = {}, evaluationId, metadata, hook }) {
   return db.withTransaction(async (client) => {
     const cur = (await client.query('SELECT * FROM arb_publications WHERE id=$1 FOR UPDATE', [id])).rows[0];
     if (!cur) throw err('publication_not_found');
     if (from && !from.includes(cur.publication_status)) throw err('invalid_transition:' + cur.publication_status + '->' + to);
     const updated = await pubRepo.update(id, { status: to, ...patch }, client);
     await histRepo.insert({ publicationId: id, previousStatus: cur.publication_status, newStatus: to, action, actorId, reason, evaluationId, metadata }, client);
+    if (typeof hook === 'function') await hook(client, updated);   // si lanza → rollback de TODO (no publication)
     return updated;
   });
 }
@@ -70,6 +72,22 @@ async function publish(id, { actorId, evaluationView, context = {}, ttlMs, visib
   // Snapshot CONGELADO de lo que verá el usuario al publicar.
   const frozen = presentation.buildPublicPayload(evaluationView, { ...context, publicId, now, expiresAt });
 
+  // Sprint 5 §18: si el registro de señales está activo con auto-arb-capture, la publicación DEBE crear su
+  // señal inmutable en la MISMA transacción. Si falla → rollback de todo (no publication without signal).
+  const hook = async (client, updated) => {
+    let reg; try { reg = require('../signal-registry'); } catch { return; }
+    if (!reg.cfg.flags.autoArbCapture) return;
+    const ev = (evaluationView && evaluationView.evaluation) || {};
+    const evaluation = {
+      id: context.evaluationId, engine_version: (evaluationView && evaluationView.versions && evaluationView.versions.engine) || 'arb-engine-1',
+      net_roi: ev.netRoi, classification: evaluationView && evaluationView.classification,
+      canonical_event_id: context.canonicalEventId || null, canonical_market_id: context.canonicalMarketId || null,
+      snapshot_ids: (evaluationView && evaluationView.snapshotIds) || [],
+    };
+    const res = await reg.captureArbPublication({ publication: updated, evaluation, actorId, now, client });
+    if (!res || !res.signal) throw err('signal_registration_failed');
+  };
+
   return transition(id, { from: ['approved', 'paused'], to: 'published', action: 'publish', actorId, reason: 'manual_publish',
     patch: {
       publishedAt: new Date(now).toISOString(), expiresAt, visibility, publicPayload: frozen,
@@ -78,7 +96,7 @@ async function publish(id, { actorId, evaluationView, context = {}, ttlMs, visib
       publishedRulesFingerprint: context.currentRulesFingerprint || (evaluationView && evaluationView.rulesFingerprint) || null,
       unpublicationReason: null,
     },
-    evaluationId: context.evaluationId, metadata: { warnings: elig.warnings, visibility } });
+    evaluationId: context.evaluationId, metadata: { warnings: elig.warnings, visibility }, hook });
 }
 
 async function pause(id, { actorId, reason } = {}) {

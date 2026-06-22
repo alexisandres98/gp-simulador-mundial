@@ -166,12 +166,13 @@ const ICON = {
   account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
   opex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>',
+  registry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 const TABS = {
   arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
   following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
-  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables',
+  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro',
 };
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
@@ -183,7 +184,8 @@ function renderHeader() {
   document.body.classList.toggle('has-bottomnav', inApp);
   // top nav (Sprint 4: "Ejecutables" solo aparece si la capa está activa para este usuario — flags off → no aparece)
   const execTab = inApp && USER.execUi ? ['opex'] : [];
-  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
+  const regTab = inApp && USER.registryUi ? ['registry'] : [];
+  const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(regTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
   $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${TABS[t]}</button>`).join('');
   // right side
   if (inApp) {
@@ -231,6 +233,7 @@ function switchTab(name) {
   // (auto-cura cualquier carrera del login que dejaba el candado del teaser). Sin sesión, no toca.
   if (name === 'arb' && USER && (!ARB || $('#tab-arb').querySelector('.lock'))) loadArb();
   if (name === 'opex' && USER) loadExecOpps();
+  if (name === 'registry' && USER) loadRegistry();
   syncNavActive(); closeAvatarMenu(); closeSheet();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
@@ -2125,6 +2128,74 @@ async function execAdminAct(id, action) {
     if (r.error) alert('No se pudo: ' + r.error);
     loadExecAdmin();
   } catch (e) { alert('Error de red'); }
+}
+
+// ============================================================================
+// SPRINT 5 — Registro verificable de señales. "La señal se publica, se congela, se verifica y se liquida."
+// ============================================================================
+const REG_VERIF = { verified: ['Verificada', 'reg-verified'], late: ['Tardía', 'reg-late'], legacy_unverified: ['Legacy', 'reg-legacy'], experimental: ['Experimento', 'reg-exp'], disputed: ['En disputa', 'reg-disp'] };
+function regBadge(v) { const [t, c] = REG_VERIF[v] || [v, 'reg-legacy']; return `<span class="reg-pill ${c}">${xe(t)}</span>`; }
+function regAge(s) { if (s == null) return '—'; if (s < 90) return 'hace ' + s + 's'; if (s < 5400) return 'hace ' + Math.round(s / 60) + ' min'; if (s < 172800) return 'hace ' + Math.round(s / 3600) + ' h'; return 'hace ' + Math.round(s / 86400) + ' días'; }
+
+async function loadRegistry() {
+  const root = $('#tab-registry');
+  root.innerHTML = `
+    <div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Registro verificable</h3><span class="sec-badge">integridad</span></div>
+    <div class="explain">Cada señal se publica con su precio, probabilidad, modelo, timestamp y fuentes. <b>No</b> modificamos predicciones después del evento; cualquier corrección queda registrada en el historial.</div>
+    <div id="regList"><div class="du">Cargando registro…</div></div>
+    <div class="xo-foot">Registro con evidencia de integridad y detección de modificaciones. No es asesoría financiera.</div>`;
+  if (!USER.registryPublic) { $('#regList').innerHTML = du('La vista pública del registro está en preparación.'); return; }
+  try {
+    const r = await fetch('/api/signals?limit=50', { headers: hdrs() }).then(x => x.json());
+    const items = (r && r.items) || [];
+    $('#regList').innerHTML = items.length ? items.map(regCard).join('') : du('Aún no hay señales registradas públicamente.');
+  } catch (e) { $('#regList').innerHTML = du('No se pudo cargar el registro.'); }
+}
+function regCard(s) {
+  const result = s.settlement_status ? `<span class="reg-res">${xe(s.settlement_status)}</span>` : '<span class="reg-res reg-pend">pendiente</span>';
+  return `<div class="xo-card" onclick="openSignal('${s.public_id}')">
+    <div class="xo-card-top"><span class="reg-type">${xe(s.signal_type)}</span> ${regBadge(s.verification_status)} ${result}</div>
+    <div class="xo-ev">${xe(s.event || s.headline || 'Señal')}</div>
+    <div class="xo-mkt">${xe(s.headline || '')}${s.score_eligible ? ' · cuenta para el track record' : ''}</div>
+    <div class="xo-card-foot"><span>Publicada ${regAge(s.published_age_seconds)}</span><span class="xo-cta">Ver señal →</span></div>
+  </div>`;
+}
+async function openSignal(publicId) {
+  const root = $('#tab-registry');
+  root.innerHTML = `<button class="xo-back" onclick="loadRegistry()">← Volver</button><div id="regDetail">${du('Cargando señal…')}</div>`;
+  try {
+    const r = await fetch('/api/signals/' + publicId, { headers: hdrs() }).then(x => x.json());
+    const vr = await fetch('/api/signals/' + publicId + '/verify', { headers: hdrs() }).then(x => x.json()).catch(() => null);
+    if (r.error || !r.detail) { $('#regDetail').innerHTML = du('Señal no encontrada.'); return; }
+    renderSignalDetail(r.detail, vr);
+  } catch (e) { $('#regDetail').innerHTML = du('No se pudo cargar la señal.'); }
+}
+function renderSignalDetail(d, vr) {
+  const o = d.original || {}, intg = d.integrity || {}, st = d.status || {};
+  const row = (l, v) => `<div class="xo-row"><span>${xe(l)}</span><span class="mono">${xe(v == null ? '—' : v)}</span></div>`;
+  const pred = o.prediction && o.prediction.probabilities ? Object.entries(o.prediction.probabilities).map(([k, v]) => `${k} ${(v * 100).toFixed(0)}%`).join(' · ') : (o.headline || '—');
+  const verifBox = vr ? `<div class="${vr.valid ? 'explain' : 'warn'}">${vr.valid ? '✓ Hash verificado · integridad correcta' : '✗ Verificación falló'} · posición ${xe(intg.chain_position)}</div>` : '';
+  const timeline = (d.history || []).map(e => `<div class="xo-row"><span>${xe(e.event_type)}</span><span class="mono">${xe(e.at ? new Date(e.at).toLocaleString() : '')}</span></div>`).join('');
+  const settle = (d.settlement || []).map(s => `<div class="xo-row"><span>v${s.version} · ${xe(s.status)}${s.correction_reason ? ' (corrección)' : ''}</span><span class="mono">${xe(s.winning_outcome_id || s.result_type || '')}</span></div>`).join('') || du('Sin liquidación aún.');
+  const closing = (d.closing_benchmarks || []).map(c => `<div class="xo-row"><span>${xe(c.benchmark_type)}</span><span class="mono">${c.capture_status === 'captured' ? (c.executable_price || c.midpoint || '—') : xe(c.capture_status)}</span></div>`).join('') || du('Sin benchmark de cierre.');
+  const sources = (d.sources || []).map(s => `<span class="xo-leg">${xe(s.source_type)}${s.snapshot_timestamp ? ' · ' + new Date(s.snapshot_timestamp).toLocaleString() : ''}</span>`).join('');
+  $('#regDetail').innerHTML = `
+    <div class="feat xo-hero">
+      <div class="xo-card-top"><span class="reg-type">${xe(d.signal_type)}</span> ${regBadge(st.verification_status)}</div>
+      <div class="xo-ev" style="font-size:20px">${xe(o.event || 'Señal')}</div>
+      <div class="xo-mkt">${xe(o.market || o.headline || '')}</div>
+      ${verifBox}
+      <div class="reg-transp">${xe(d.transparency)}</div>
+    </div>
+    ${panel('Señal original (congelada)', 'antes del evento', `
+      ${row('Predicción', pred)}${row('Publicada', o.published_at ? new Date(o.published_at).toLocaleString() : '—')}
+      ${row('Modelo', o.model_version)}${row('Metodología', o.methodology_version)}${row('Corte de datos', o.input_cutoff_at ? new Date(o.input_cutoff_at).toLocaleString() : '—')}
+      ${row('Cuenta para track record', st.score_eligible ? 'sí' : 'no')}`)}
+    ${panel('Fuentes', d.sources.length + ' inputs', `<div class="xo-legs">${sources}</div>`)}
+    ${panel('Integridad', 'evidencia', `${row('Hash de registro', intg.registry_hash_short + '…')}${row('Posición en la cadena', intg.chain_position)}${row('Hash previo', (intg.previous_registry_hash_short || '—') + '…')}`)}
+    ${panel('Resultado', 'liquidación', settle)}
+    ${panel('Historial', 'append-only', timeline)}
+    ${panel('Benchmark de cierre', 'sin calcular CLV', closing)}`;
 }
 
 (async () => { await loadMe(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

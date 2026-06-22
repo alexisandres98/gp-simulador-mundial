@@ -72,7 +72,7 @@ function normalize(market = {}, providerName = null) {
 }
 
 function matchSource(t) {
-  if (has(t, /\bfifa\b/)) return 'fifa_official';
+  if (has(t, /\bfifa\b/) || has(t, /world cup/)) return 'fifa_official'; // el Mundial es competición FIFA → misma fuente en ambos proveedores
   if (has(t, /\bofficial (result|source)|governing body\b/)) return 'official';
   if (has(t, /\bespn\b/)) return 'espn';
   return null;

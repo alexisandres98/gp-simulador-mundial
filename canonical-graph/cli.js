@@ -16,16 +16,8 @@ const dbRepos = require('../database/repositories');
 function arg(name, def) { const m = process.argv.find(a => a.startsWith(`--${name}=`)); return m ? m.split('=')[1] : def; }
 
 // carga el último payload raw por mercado de un proveedor (los payloads son objetos de mercado del proveedor)
-async function loadMarkets(providerCode) {
-  const prov = await dbRepos.providers.findByCode(providerCode);
-  if (!prov) return [];
-  const r = await client.query(
-    `SELECT DISTINCT ON (external_market_id) payload FROM raw_market_snapshots
-     WHERE provider_id = $1 AND external_outcome_id IS NOT NULL ORDER BY external_market_id, received_at DESC LIMIT 2000`,
-    [prov.id]
-  );
-  return r.rows.map(x => x.payload);
-}
+// loadMarkets — fuente única en scheduler.js (lee metadata del catálogo: title + description=reglas, rápido).
+const loadMarkets = providerCode => require('./scheduler').loadMarkets(providerCode);
 
 async function runMatch(write) {
   const pa = arg('provider-a', 'polymarket'), pb = arg('provider-b', 'kalshi');

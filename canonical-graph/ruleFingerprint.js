@@ -4,12 +4,15 @@
 
 'use strict';
 const crypto = require('crypto');
-const FINGERPRINT_VERSION = 'rule-fp-1';
+const FINGERPRINT_VERSION = 'rule-fp-2';
 
-// Campos materiales que definen la exposición. Orden fijo y valores canónicos (null→'?').
+// Campos materiales que definen la EXPOSICIÓN (qué se apuesta). Orden fijo, valores canónicos (null→'?').
+// rule-fp-2: se excluyen campos OPERATIVOS/de detección (settlementTrigger, resolutionSource, postponement,
+// abandonment) que dependen del texto y de heurísticas por proveedor — dos mercados con la MISMA exposición
+// (mismo período/prórroga/penales/empate/clasificación) deben tener el mismo fingerprint aunque su texto difiera.
+// La precisión se mantiene: una diferencia de exposición real (p.ej. penales/empate distinto) SÍ cambia el hash.
 const MATERIAL_FIELDS = [
-  'marketPeriod', 'includesExtraTime', 'includesPenalties', 'drawPossible',
-  'qualificationMarket', 'settlementTrigger', 'resolutionSource', 'postponementPolicy', 'abandonmentPolicy',
+  'marketPeriod', 'includesExtraTime', 'includesPenalties', 'drawPossible', 'qualificationMarket',
 ];
 
 function canonValue(v) {

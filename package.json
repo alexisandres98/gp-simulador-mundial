@@ -29,7 +29,15 @@
     "arb:inspect": "node arb-engine/cli.js inspect",
     "test:exec": "node tests/exec-opportunities.test.js",
     "test:exec-db": "node tests/exec-opportunities-db.test.js",
-    "test:optimizer": "node tests/optimizer-hardening.test.js"
+    "test:optimizer": "node tests/optimizer-hardening.test.js",
+    "test:signals": "node tests/signal-registry.test.js",
+    "test:signals-db": "node tests/signal-registry-db.test.js",
+    "signals:status": "node signal-registry/cli.js status",
+    "signals:verify-chain": "node signal-registry/cli.js verify-chain",
+    "signals:verify-signal": "node signal-registry/cli.js verify-signal",
+    "signals:capture-closing": "node signal-registry/cli.js capture-closing",
+    "signals:settle": "node signal-registry/cli.js settle",
+    "signals:commit-day": "node signal-registry/cli.js commit-day"
   },
   "engines": {
     "node": ">=18"

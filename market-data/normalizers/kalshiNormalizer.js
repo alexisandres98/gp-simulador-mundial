@@ -56,6 +56,8 @@ function normalizeMarket(market, ctx = {}) {
     externalEventId: snapshot.externalEventId,
     externalMarketId: snapshot.externalMarketId,
     title: market.title || market.yes_sub_title || null,
+    // texto de reglas para el Canonical Graph (Kalshi lo da en `rules_primary`); sin esto el matcher marca rules_missing
+    description: market.rules_primary || market.rules_secondary || null,
     marketTypeRaw: 'binary',
     status: statusOf(market),
     closeTime: market.close_time || null,

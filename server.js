@@ -44,6 +44,8 @@ const canonicalGraph = require('./canonical-graph');
 const arbEngine = require('./arb-engine');
 // Sprint 4 — capa de producto (oportunidades ejecutables). Inerte con flags apagados; no conecta nada al requerir.
 const execOpps = require('./exec-opportunities');
+// Sprint 5 — registro inmutable y verificable de señales. Inerte con flags apagados; no conecta nada al requerir.
+const signalRegistry = require('./signal-registry');
 // rate limiter en memoria muy simple (clave → ventana) para la calculadora pública
 const _rl = new Map();
 function rateLimit(key, max, windowMs) {
@@ -1246,7 +1248,10 @@ function getUser(req) {
   // SOLO cuando corresponde (admin preview o público). Con flags off, no aparece ninguna ruta nueva.
   const xf = execOpps.cfg.flags;
   const execUi = (admin && xf.adminPreviewEnabled) || xf.publicEnabled;
-  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled };
+  // Sprint 5: registro verificable público (pestaña visible solo si el flag está activo o el usuario es admin)
+  const srf = signalRegistry.cfg.flags;
+  const registryUi = srf.publicEnabled || (admin && srf.enabled);
+  return { email, ...db.users[email], isAdmin: admin, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1735,6 +1740,74 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    // --- Sprint 5: registro inmutable de señales. Inerte si SIGNAL_REGISTRY_ENABLED=false ---
+    if (p.startsWith('/api/internal/signals') || p === '/api/signals' || p.startsWith('/api/signals/') || p === '/api/signal-registry/commitments') {
+      if (!signalRegistry.cfg.flags.enabled) return json(res, 404, { error: 'No encontrado' });
+    }
+    // admin (§32)
+    if (p === '/api/internal/signals' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 200);
+      const offset = Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0);
+      try { const st = await signalRegistry.adminStatus(); const items = signalRegistry.cfg.platform.db.configured ? await signalRegistry.repo.signals.list({ limit, offset }) : []; return json(res, 200, { status: st, items }); }
+      catch (e) { return json(res, 200, { status: { flags: signalRegistry.cfg.flags }, items: [] }); }
+    }
+    if (p === '/api/internal/signals/verify-chain' && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await signalRegistry.verifyChain()); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    if (p === '/api/internal/signals/publish-model' && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        const r = await signalRegistry.publishModelPrediction({
+          canonical_event_id: body.canonical_event_id || null, event_start_at: body.event_start_at || null, market_close_at: body.market_close_at || null,
+          input_cutoff_at: body.input_cutoff_at || null, prediction_edition: body.prediction_edition || null, supersedes_signal_id: body.supersedes_signal_id || null,
+          model_version: body.model_version || undefined, visibility: body.visibility || 'internal',
+          public_payload: body.public_payload || null, signal_payload: body.signal_payload || {},
+        }, { actorId: u.email, sourceRefs: body.source_refs || [{ source_type: 'model_output', source_id: body.model_output_id || null }] });
+        return json(res, 200, r);
+      } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+    const mSigAct = p.match(/^\/api\/internal\/signals\/([0-9a-f-]{36})\/(withdraw|add-correction|settle|capture-closing)$/i);
+    if (mSigAct && req.method === 'POST') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const id = mSigAct[1], action = mSigAct[2].toLowerCase();
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        if (action === 'withdraw') return json(res, 200, await signalRegistry.withdraw(id, { reason: (body.reason || '').slice(0, 500), actorId: u.email }));
+        if (action === 'settle') { if (!signalRegistry.cfg.flags.settlementEnabled) return json(res, 403, { error: 'SIGNAL_SETTLEMENT_ENABLED off' }); return json(res, 200, await signalRegistry.settle(id, body, { actorId: u.email })); }
+        if (action === 'capture-closing') { if (!signalRegistry.cfg.flags.closingCaptureEnabled) return json(res, 403, { error: 'SIGNAL_CLOSING_CAPTURE_ENABLED off' }); return json(res, 200, await signalRegistry.captureClosing(id, body, { actorId: u.email })); }
+        if (action === 'add-correction') return json(res, 200, await signalRegistry.addCorrection(id, { ...body }, { actorId: u.email }));
+      } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
+    }
+    const mSigGet = p.match(/^\/api\/internal\/signals\/([0-9a-f-]{36})$/i);
+    if (mSigGet && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { const sig = await signalRegistry.repo.signals.byId(mSigGet[1]); if (!sig) return json(res, 404, { error: 'No encontrado' }); return json(res, 200, { signal: sig, bundle: await signalRegistry.loadBundle(sig) }); }
+      catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    // públicos (§29) — solo si SIGNAL_REGISTRY_PUBLIC_ENABLED
+    if (p === '/api/signals' && req.method === 'GET') {
+      if (!signalRegistry.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
+      const opt = { signalType: url.searchParams.get('type') || null, verification: url.searchParams.get('verification') || null, limit: Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 100), offset: Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0) };
+      try { return json(res, 200, await signalRegistry.listPublic(opt)); } catch (e) { return json(res, 200, { items: [], enabled: true }); }
+    }
+    if (p === '/api/signal-registry/commitments' && req.method === 'GET') {
+      if (!signalRegistry.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
+      try { return json(res, 200, { commitments: await signalRegistry.listCommitments({ limit: 60 }) }); } catch (e) { return json(res, 200, { commitments: [] }); }
+    }
+    const mSigVerify = p.match(/^\/api\/signals\/(sig_[a-f0-9]{6,})\/verify$/i);
+    if (mSigVerify && req.method === 'GET') {
+      if (!signalRegistry.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
+      try { return json(res, 200, await signalRegistry.verify(mSigVerify[1])); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    const mSigPub = p.match(/^\/api\/signals\/(sig_[a-f0-9]{6,})$/i);
+    if (mSigPub && req.method === 'GET') {
+      if (!signalRegistry.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
+      try { const r = await signalRegistry.getPublic(mSigPub[1]); return r.error ? json(res, 404, r) : json(res, 200, r); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+
     // --- admin: email masivo de novedades a todos los usuarios ---
     if (p === '/api/admin/broadcast' && req.method === 'POST') {
       const u = getUser(req);
@@ -1808,6 +1881,9 @@ server.listen(PORT, () => {
   // Sprint 1 — ingesta de mercado en shadow mode. BEST-EFFORT y AISLADA: con los flags apagados no hace
   // nada; un fallo aquí jamás debe afectar al flujo principal (de ahí el catch vacío).
   marketData.initialize().catch(() => { });
+  // Sprint 2 — scheduler de matching canónico. Hace autónomo el pipeline (ingesta→match→evaluación). Solo
+  // arranca si CANONICAL_GRAPH_ENABLED+WRITE+AUTO_MATCH; best-effort, aislado, anti-solape (advisory lock).
+  try { require('./canonical-graph/scheduler').start(); } catch { /* aislado */ }
   // Sprint 3 — scheduler del motor de arbitraje (shadow, sin publicación). Solo arranca si los flags
   // ARB_ENGINE_* lo habilitan; best-effort, aislado del flujo principal.
   try { require('./arb-engine/scheduler').start(); } catch { /* aislado */ }

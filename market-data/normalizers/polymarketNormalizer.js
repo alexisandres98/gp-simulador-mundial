@@ -58,6 +58,8 @@ function normalizeMarket(market, ctx = {}) {
     externalEventId: ctx.externalEventId || null,
     externalMarketId,
     title: market.groupItemTitle || market.question || null,
+    // texto de reglas para el Canonical Graph (gamma lo da en `description`); sin esto el matcher marca rules_missing
+    description: market.description || null,
     marketTypeRaw: market.outcomes ? 'binary' : null,
     status: statusOf(market),
     closeTime: market.endDate || market.endDateIso || null,

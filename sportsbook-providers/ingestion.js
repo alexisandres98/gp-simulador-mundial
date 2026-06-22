@@ -43,7 +43,15 @@ async function runOnce({ provider = null, now = null } = {}) {
       if (lastQuota && quotaGuard.quotaCritical(lastQuota.remaining, lastQuota.used)) { summary.status = 'partial'; summary.reason = 'quota_reserve'; break; }
       let res;
       try { res = await prov.fetchQuotes(sport.key, {}); requests++; }
-      catch (e) { lastError = e; break; }
+      catch (e) {
+        lastError = e;
+        // errores GLOBALES (auth/cuota agotada) → detener todo. Error de UNA competición (p.ej. bad_request
+        // de una sport key sin cuotas h2h ahora) → registrar y seguir con la siguiente (resiliencia §22).
+        if (/auth|quota_exhausted/i.test(e.code || '')) break;
+        summary.competition_errors = (summary.competition_errors || 0) + 1;
+        if (e.quota) lastQuota = e.quota;
+        continue;
+      }
       lastQuota = res.quota || lastQuota;
 
       const rows = [];
@@ -71,7 +79,12 @@ async function runOnce({ provider = null, now = null } = {}) {
       });
       if (runId) await repo.finishRun(runId, { status: lastError ? 'partial' : summary.status, quotes: summary.quotes, complete: summary.books_complete, incomplete: summary.books_incomplete, errors: lastError ? 1 : 0 });
     }
-    if (lastError) { summary.status = 'error'; summary.error_code = lastError.code || 'error'; }
+    // estado final honesto: si una competición falló pero otras dieron datos → 'partial', no 'error'.
+    if (lastError) {
+      const hadData = summary.books_complete > 0 || summary.quotes > 0;
+      summary.status = hadData ? (summary.status === 'ok' ? 'partial' : summary.status) : 'error';
+      summary.error_code = lastError.code || 'error';
+    }
     return summary;
   } catch (e) {
     log.error('sportsbook: error de ingesta', { error: prov._redactKey ? prov._redactKey(e.message) : 'error' });

@@ -146,7 +146,9 @@ async function renderRecord() {
 }
 
 // ---------- Sprint 8.1 §5-8: RENDIMIENTO (Verificable | Histórico) — gated por uiFlags.verifiedPerformance ----------
-let PERF_SEG = 'verified';
+// Default 'legacy' mientras el registro verificable esté vacío (signals=0): el usuario ve datos reales en
+// vez de un Verificable vacío. Cuando existan señales verificadas, se puede cambiar el default a 'verified'.
+let PERF_SEG = 'legacy';
 function perfSetSeg(seg) { PERF_SEG = seg; return renderPerformance(); }
 async function renderPerformance() {
   const C = window.COPY ? COPY.perf : {};

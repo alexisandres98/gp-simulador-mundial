@@ -36,6 +36,10 @@ function resolveParams() {
     recentRunsLimit: int(process.env.OPERATIONS_RECENT_RUNS_LIMIT, 20),
     // margen de gracia para drenar jobs en vuelo durante shutdown
     shutdownDrainMs: int(process.env.OPERATIONS_SHUTDOWN_DRAIN_MS, 8 * 1000),
+    // allowlist: si está seteada (lista separada por comas), el orquestador SOLO gestiona esos jobs y deja
+    // el resto a los schedulers legacy. Permite activar p.ej. solo 'sportsbook_ingestion' sin tocar el
+    // pipeline de arbitraje vivo. Vacío = gestiona todos los jobs habilitados.
+    managedJobs: (process.env.OPERATIONS_MANAGED_JOBS || '').split(',').map(s => s.trim()).filter(Boolean),
   };
 }
 

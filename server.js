@@ -780,7 +780,7 @@ function tgFinalText(id) {
 }
 function tgOppText(row, e) {
   const t = teamById[row.id], pc = v => (v * 100).toFixed(1);
-  if (e.type === 'arbitraje') return `🔺 <b>Arbitraje puro</b> · ${t.flag} ${t.name}\n${e.note}\n\n👉 <a href="https://gpsimulador.com/?ref=tg">Ver en gpsimulador.com</a>`;
+  if (e.type === 'arbitraje') return `💸 <b>Arbitraje entre plataformas</b>\n${t.flag} <b>${t.name}</b> · campeón del Mundial\n\n${e.note}\n\n⚠️ Estimación entre Polymarket y Kalshi. El margen real depende de la ejecución, las comisiones y la liquidación de cada plataforma. No es consejo financiero.\n\n👉 <a href="https://gpsimulador.com/?ref=tg">Ver en gpsimulador.com</a>`;
   return `🟢 <b>Oportunidad de valor</b>\n${t.flag} <b>${t.name}</b> · campeón · ${e.venue}\nPrecio ${pc(e.price)}¢ · Modelo ${pc(row.model)}% · Edge +${pc(e.edge)}%\n\n👉 <a href="https://gpsimulador.com/?ref=tg">gpsimulador.com</a>`;
 }
 // Publica finales nuevos al canal (no reenvía)
@@ -846,12 +846,14 @@ function arbitrage() {
     if (pm && ks && pm.ask > 0.001 && ks.bid - pm.ask > 0.01) row.edges.push({
       type: 'arbitraje', venue: 'Poly→Kalshi', side: 'SÍ en Polymarket + NO en Kalshi',
       price: pm.ask, edge: ks.bid - pm.ask,
-      note: `Compra SÍ a ${(pm.ask * 100).toFixed(1)}¢ en Poly y NO a ${((1 - ks.bid) * 100).toFixed(1)}¢ en Kalshi → ganancia fija ${((ks.bid - pm.ask) * 100).toFixed(1)}¢`,
+      note: (() => { const cost = pm.ask + (1 - ks.bid), prof = ks.bid - pm.ask, ret = cost > 0 ? prof / cost * 100 : 0;
+        return `Comprás «sí gana» en Polymarket a ${(pm.ask * 100).toFixed(0)}¢ y «no gana» en Kalshi a ${((1 - ks.bid) * 100).toFixed(0)}¢ — cubrís los dos lados. Invertís ${(cost * 100).toFixed(0)}¢ y recuperás 100¢ gane quien gane: +${(prof * 100).toFixed(1)}¢ (~${ret.toFixed(1)}% estimado).`; })(),
     });
     if (pm && ks && ks.ask > 0.001 && pm.bid - ks.ask > 0.01) row.edges.push({
       type: 'arbitraje', venue: 'Kalshi→Poly', side: 'SÍ en Kalshi + NO en Polymarket',
       price: ks.ask, edge: pm.bid - ks.ask,
-      note: `Compra SÍ a ${(ks.ask * 100).toFixed(1)}¢ en Kalshi y NO a ${((1 - pm.bid) * 100).toFixed(1)}¢ en Poly → ganancia fija ${((pm.bid - ks.ask) * 100).toFixed(1)}¢`,
+      note: (() => { const cost = ks.ask + (1 - pm.bid), prof = pm.bid - ks.ask, ret = cost > 0 ? prof / cost * 100 : 0;
+        return `Comprás «sí gana» en Kalshi a ${(ks.ask * 100).toFixed(0)}¢ y «no gana» en Polymarket a ${((1 - pm.bid) * 100).toFixed(0)}¢ — cubrís los dos lados. Invertís ${(cost * 100).toFixed(0)}¢ y recuperás 100¢ gane quien gane: +${(prof * 100).toFixed(1)}¢ (~${ret.toFixed(1)}% estimado).`; })(),
     });
     // Kelly sugerido para apuestas de valor (fracción conservadora 1/4)
     row.edges.forEach(e => {

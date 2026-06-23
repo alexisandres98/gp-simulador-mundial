@@ -36,6 +36,10 @@ async function refreshReadiness() {
 function start() {
   if (!cfg.flags.orchestrator) return { started: false, reason: 'orchestrator_disabled' };
   jobs = buildJobs();
+  // allowlist (§12): si está configurada, el orquestador SOLO gestiona esos jobs (el resto siguen en sus
+  // schedulers legacy). Permite activar sportsbook_ingestion sin tocar el pipeline de arbitraje vivo.
+  const allow = cfg.params.managedJobs;
+  if (allow.length) jobs = jobs.filter(j => allow.includes(j.job_name));
   const cycle = depGraph.detectCycle(jobs);
   if (cycle) { log.error('operations: ciclo en el grafo de jobs', { cycle }); return { started: false, reason: 'dependency_cycle', cycle }; }
   refreshReadiness().catch(() => {});

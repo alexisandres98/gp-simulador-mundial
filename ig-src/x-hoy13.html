@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 55%, #0BA661 125%); color: #fff;
+  padding: 40px 56px; position: relative; }
+.brand { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+.badge { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 21px; font-weight: 800; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.m { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18); border-radius: 14px; padding: 14px 18px; }
+.mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.mh .t { font-size: 18px; font-weight: 800; }
+.mh .time { font-size: 13px; color: #C9F2DE; font-weight: 600; }
+.bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.14); margin-bottom: 7px; }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.38); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+.lbl .big { font-weight: 800; }
+.foot { position: absolute; bottom: 30px; left: 56px; right: 56px; display: flex; align-items: center; justify-content: space-between; }
+.cta { background: #fff; color: #067647; font-size: 19px; font-weight: 800; padding: 12px 26px; border-radius: 99px; }
+.foot .small { font-size: 15px; color: #C9F2DE; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● HOY · 4 PARTIDOS</div></div>
+  <h1>Lo que dice el modelo para hoy 📊</h1>
+  <div class="grid">
+    <div class="m">
+      <div class="mh"><div class="t">🇵🇹 Portugal vs Uzbekistán 🇺🇿</div><div class="time">1 PM ET</div></div>
+      <div class="bar"><div class="h" style="width:68.0%"></div><div class="d" style="width:21.3%"></div><div class="a" style="width:10.7%"></div></div>
+      <div class="lbl"><span class="big">🇵🇹 68.0%</span><span>X 21.3%</span><span>UZB 10.7%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra vs Ghana 🇬🇭</div><div class="time">4 PM ET</div></div>
+      <div class="bar"><div class="h" style="width:73.9%"></div><div class="d" style="width:17.6%"></div><div class="a" style="width:8.5%"></div></div>
+      <div class="lbl"><span class="big">🏴󠁧󠁢󠁥󠁮󠁧󠁿 73.9%</span><span>X 17.6%</span><span>GHA 8.5%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇵🇦 Panamá vs Croacia 🇭🇷</div><div class="time">7 PM ET</div></div>
+      <div class="bar"><div class="h" style="width:14.5%"></div><div class="d" style="width:24.2%"></div><div class="a" style="width:61.3%"></div></div>
+      <div class="lbl"><span>PAN 14.5%</span><span>X 24.2%</span><span class="big">🇭🇷 61.3%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇨🇴 Colombia vs RD Congo 🇨🇩</div><div class="time">10 PM ET</div></div>
+      <div class="bar"><div class="h" style="width:71.3%"></div><div class="d" style="width:19.5%"></div><div class="a" style="width:9.2%"></div></div>
+      <div class="lbl"><span class="big">🇨🇴 71.3%</span><span>X 19.5%</span><span>COD 9.2%</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Se mueven EN VIVO con cada gol · 10,000 simulaciones</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

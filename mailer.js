@@ -107,6 +107,12 @@ async function sendViaResend({ to, subject, text, html }) {
       to: [to],
       reply_to: process.env.MAIL_REPLY_TO || undefined,
       subject, text, html,
+      // List-Unsubscribe mejora la entregabilidad (Gmail/Outlook lo exigen para correo en volumen):
+      // reduce el filtrado a spam y la colocación en "Promociones".
+      headers: {
+        'List-Unsubscribe': `<mailto:${process.env.MAIL_REPLY_TO || 'codigo@gpsimulador.com'}?subject=baja>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     }),
     signal: AbortSignal.timeout(20000),
   });
@@ -118,13 +124,13 @@ async function sendViaResend({ to, subject, text, html }) {
 
 async function send(opts) {
   if (process.env.RESEND_API_KEY) {
-    try { return await sendViaResend(opts); }
+    try { await sendViaResend(opts); console.log('[mail] resend OK →', opts.to); return; }
     catch (e) {
       if (!process.env.MAIL_WEBHOOK_URL) throw e;
       console.error('[mail] resend falló, usando relay de respaldo:', e.message);
     }
   }
-  if (process.env.MAIL_WEBHOOK_URL) return sendViaWebhook(opts);
+  if (process.env.MAIL_WEBHOOK_URL) { await sendViaWebhook(opts); console.log('[mail] relay GAS OK →', opts.to); return; }
   return sendMail(opts);
 }
 

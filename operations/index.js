@@ -11,14 +11,14 @@ const log = require('../database/logger');
 
 // initialize() — se llama en el boot del server. Best-effort y aislada (un fallo no afecta al flujo
 // principal). Con el orquestador apagado, no arranca nada y deja el manejo de señales intacto.
-async function initialize() {
+async function initialize(opts = {}) {
   if (!cfg.flags.orchestrator) return { started: false, reason: 'orchestrator_disabled' };
   try {
     const report = await orchestrator.bootReport();
     log.info('operations: boot report', report);
     const r = orchestrator.start();
-    // apagado ordenado: drena jobs antes de cerrar el pool
-    shutdown.install({ stopFns: [() => orchestrator.stop()] });
+    // apagado ordenado: drena jobs, persiste db.json (flushDb) y cierra el pool antes de salir
+    shutdown.install({ stopFns: [() => orchestrator.stop()], preExit: opts.flushDb });
     // recuperación inicial de runs abandonadas tras un restart
     heartbeats.recoverStale().catch(() => {});
     return { started: r.started, ...report };

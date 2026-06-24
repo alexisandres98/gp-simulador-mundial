@@ -81,9 +81,24 @@ TEAMS.forEach(t => { if (db.elos[t.id] == null) db.elos[t.id] = t.elo; });
 db.sentAlerts = db.sentAlerts || {}; // inicializado temprano: markExistingFinalsSeen() lo usa al arrancar
 db.sentTg = db.sentTg || {};         // inicializado temprano: markExistingTgSeen() lo usa al arrancar
 let saveTimer = null;
+// Escritura síncrona de db.json. Con try/catch para que un fallo de disco no tumbe el proceso.
+function flushDb() {
+  saveTimer = null;
+  try { fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 1)); }
+  catch (e) { console.error('[save] error al escribir db.json:', e.message); }
+}
 function save() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 1)), 200);
+  // FIX CRÍTICO: NO reiniciar un timer ya pendiente. Garantiza que el write ocurra como máximo 200ms
+  // tras el primer cambio de una ráfaga. (Antes: clearTimeout en cada llamada → bajo tráfico alto el
+  // debounce se reseteaba indefinidamente y db.json NUNCA se persistía → se perdían usuarios nuevos.)
+  if (saveTimer) return;
+  saveTimer = setTimeout(flushDb, 200);
+}
+// Persistir db.json al recibir señal de apagado (deploy/restart) para no perder cambios en memoria.
+// Si el orquestador (Sprint 8) está activo, su shutdown coordinado llamará flushDb antes de salir; este
+// handler cubre el caso sin orquestador. Idempotente.
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, () => { try { flushDb(); } catch { /* noop */ } });
 }
 
 // Recalcula los Elo desde la base replicando todos los resultados finales (permite editar/borrar sin corromper ratings)
@@ -1478,8 +1493,11 @@ const server = http.createServer(async (req, res) => {
         })).sort((a, b) => b.champion - a.champion).slice(0, 6);
         return json(res, 200, { teaser: true, top, sims: N_SIMS, totalTeams: TEAMS.length });
       }
+      // lastSeen se actualiza en memoria siempre, pero solo se PERSISTE como máx. 1/min por usuario:
+      // /api/state es un hot path (polling); guardar en cada request presiona innecesariamente el disco.
+      const _prevSeen = db.users[u.email].lastSeen || 0;
       db.users[u.email].lastSeen = Date.now();
-      save();
+      if (Date.now() - _prevSeen > 60000) save();
       return json(res, 200, buildState());
     }
     if (p.startsWith('/api/team/')) {
@@ -2104,5 +2122,5 @@ server.listen(PORT, () => {
   try { require('./value-engine/scheduler').start(); } catch { /* aislado */ }
   // Sprint 8A — orquestador de jobs (registro de runs, heartbeats, dependencias, apagado ordenado). INERTE
   // si OPERATIONS_ORCHESTRATOR_ENABLED=false: no arranca timers, no escribe, no toca el manejo de señales.
-  operations.initialize().catch(() => { /* aislado */ });
+  operations.initialize({ flushDb }).catch(() => { /* aislado */ }); // flushDb: persistir db.json en el apagado coordinado
 });

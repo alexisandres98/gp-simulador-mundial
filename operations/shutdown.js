@@ -8,7 +8,7 @@ const log = require('../database/logger');
 
 let installed = false;
 
-function install({ stopFns = [] } = {}) {
+function install({ stopFns = [], preExit = null } = {}) {
   if (installed) return { installed: true, already: true };
   if (!cfg.flags.orchestrator) return { installed: false, reason: 'orchestrator_disabled' };
   installed = true;
@@ -22,6 +22,7 @@ function install({ stopFns = [] } = {}) {
       log.info('operations: señal de apagado, drenando jobs', { signal: sig });
       try { await Promise.race([Promise.all(stopFns.map(f => Promise.resolve().then(f))), new Promise(r => setTimeout(r, cfg.params.shutdownDrainMs + 2000))]); }
       catch (e) { log.warn('operations: error drenando', { error: String(e && e.message) }); }
+      try { if (typeof preExit === 'function') preExit(); } catch { /* persistir db.json best-effort */ }
       try { await db.close(); } catch { /* noop */ }
       log.info('operations: apagado completo', { signal: sig });
       process.exit(0);

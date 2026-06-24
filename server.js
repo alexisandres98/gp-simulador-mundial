@@ -1348,6 +1348,12 @@ const server = http.createServer(async (req, res) => {
         code, exp: Date.now() + 10 * 60 * 1000, ts: Date.now(), sent: false,
         count: (prev && prev.exp > Date.now() ? prev.count : 0) + 1,
       };
+      // CAPTURA DE LEAD: el email es válido (validado arriba) y mostró interés al pedir el código. Si aún
+      // no es usuario, lo guardamos marcado como LEAD / no verificado (puede que el código cayera en spam
+      // y no llegara a entrar; el haber dejado su correo ya denota interés → posible lead de marketing).
+      if (!db.users[e]) {
+        db.users[e] = { createdAt: Date.now(), favorites: [], verified: false, lead: true, leadAt: Date.now(), ref: 'lead' };
+      }
       save();
       if (mailer.isConfigured()) {
         try {
@@ -1382,21 +1388,25 @@ const server = http.createServer(async (req, res) => {
       const c = db.codes[e];
       if (!c || c.exp < Date.now() || c.code !== String(code)) return json(res, 401, { error: 'Código incorrecto o expirado' });
       delete db.codes[e];
-      if (!db.users[e]) {
-        db.users[e] = { createdAt: Date.now(), favorites: [] };
-        // atribución de fuente (?ref=x / ig / wa / share...) — solo en el primer registro
-        if (ref) {
-          const r = String(ref).slice(0, 24).replace(/[^\w-]/g, '');
-          db.users[e].ref = r;
-          // si el ref es un código de referido de otro usuario, acredítalo
-          const referrer = db.refCodes[r];
-          if (referrer && referrer !== e && db.users[referrer]) {
-            const ru = db.users[referrer];
-            ru.referrals = ru.referrals || [];
-            if (!ru.referrals.includes(e)) ru.referrals.push(e);
-          }
+      // ¿es un alta nueva o un LEAD que ahora sí completa? (un lead existe en db.users con lead:true)
+      const isNewOrLead = !db.users[e] || db.users[e].lead;
+      if (!db.users[e]) db.users[e] = { createdAt: Date.now(), favorites: [] };
+      // atribución de fuente (?ref=...) en el primer registro real o al convertir un lead (su ref era 'lead')
+      if (isNewOrLead && ref) {
+        const r = String(ref).slice(0, 24).replace(/[^\w-]/g, '');
+        db.users[e].ref = r;
+        const referrer = db.refCodes[r];
+        if (referrer && referrer !== e && db.users[referrer]) {
+          const ru = db.users[referrer];
+          ru.referrals = ru.referrals || [];
+          if (!ru.referrals.includes(e)) ru.referrals.push(e);
         }
       }
+      // marcar como VERIFICADO (completó el registro). Si su ref seguía siendo 'lead', pásalo a 'directo'.
+      db.users[e].verified = true;
+      db.users[e].lead = false;
+      if (!db.users[e].verifiedAt) db.users[e].verifiedAt = Date.now();
+      if (db.users[e].ref === 'lead') db.users[e].ref = 'directo';
       const token = crypto.randomBytes(24).toString('hex');
       db.sessions[token] = e;
       save();
@@ -1459,10 +1469,13 @@ const server = http.createServer(async (req, res) => {
       const users = Object.entries(db.users).map(([email, x]) => ({
         email, createdAt: x.createdAt, lastSeen: x.lastSeen || x.createdAt,
         favorites: (x.favorites || []).length, ref: x.ref || 'directo',
+        verified: !x.lead,          // false = lead (pidió código pero no completó la verificación)
+        leadAt: x.leadAt || null,
       })).sort((a, b) => b.createdAt - a.createdAt);
       const bySource = {};
       users.forEach(u => bySource[u.ref] = (bySource[u.ref] || 0) + 1);
-      return json(res, 200, { total: users.length, users, bySource });
+      const verifiedCount = users.filter(u => u.verified).length;
+      return json(res, 200, { total: users.length, verifiedCount, leadCount: users.length - verifiedCount, users, bySource });
     }
     // ticker público de mercados en vivo (Polymarket) — para la cabecera, también sin registro
     if (p === '/api/ticker') {
@@ -1480,7 +1493,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         sim: db.history.length ? db.history[db.history.length - 1].ts : 0,
         markets: marketCache.ts,
-        users: Object.keys(db.users).length,
+        users: Object.keys(db.users).filter(em => !db.users[em].lead).length, // solo verificados
       });
     }
     if (p === '/api/state') {

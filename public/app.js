@@ -1697,22 +1697,25 @@ async function loadUsers() {
   const fmt = ts => new Date(ts).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const sources = Object.entries(j.bySource || {}).sort((a, b) => b[1] - a[1])
     .map(([s, n]) => `<span class="chip"><b style="display:inline">${n}</b> ${s}</span>`).join(' ');
+  const vCount = j.verifiedCount != null ? j.verifiedCount : j.users.filter(u => u.verified !== false).length;
+  const lCount = j.leadCount != null ? j.leadCount : (j.total - vCount);
   $('#userBase').innerHTML = `
     <div class="formrow" style="align-items:center">
-      <span style="color:var(--text)"><b>${j.total}</b> usuarios registrados</span>
+      <span style="color:var(--text)"><b>${vCount}</b> verificados · <b style="color:var(--amber)">${lCount}</b> leads <span class="muted" style="font-size:11px">(${j.total} total)</span></span>
       <button class="ghost" onclick="exportUsersCSV()">⬇ Exportar CSV</button>
     </div>
+    <div class="muted" style="font-size:11px;margin:-2px 0 8px">Un <b style="color:var(--amber)">LEAD</b> dejó su correo y pidió el código pero no completó la verificación (pudo caer en spam y no entró). Igual denota interés → posible lead de marketing.</div>
     <div class="formrow" style="gap:8px"><span class="muted" style="font-size:11px">FUENTES:</span> ${sources}</div>
     <div class="muted" style="font-size:11px;margin-bottom:8px">Comparte links con ?ref= para atribuir: gpsimulador.com/?ref=x · ?ref=ig · ?ref=wa</div>
-    <table><tr><th>Email</th><th>Fuente</th><th>Registro</th><th>Última visita</th><th>Favoritos</th></tr>
-    ${j.users.map(u => `<tr><td>${u.email}</td><td><b>${u.ref}</b></td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td><td>${u.favorites}</td></tr>`).join('')}
+    <table><tr><th>Email</th><th>Estado</th><th>Fuente</th><th>Registro</th><th>Última visita</th><th>Favoritos</th></tr>
+    ${j.users.map(u => `<tr${u.verified === false ? ' style="opacity:.78"' : ''}><td>${u.email}</td><td>${u.verified === false ? '<span class="badge-lead">LEAD · no verificado</span>' : '<span class="badge-ver">✓ verificado</span>'}</td><td><b>${u.ref}</b></td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td><td>${u.favorites}</td></tr>`).join('')}
     </table>`;
   window._users = j.users;
 }
 
 function exportUsersCSV() {
-  const rows = [['email', 'fuente', 'registro', 'ultima_visita', 'favoritos'],
-  ...(window._users || []).map(u => [u.email, u.ref, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
+  const rows = [['email', 'estado', 'fuente', 'registro', 'ultima_visita', 'favoritos'],
+  ...(window._users || []).map(u => [u.email, u.verified === false ? 'lead' : 'verificado', u.ref, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
   const csv = rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);

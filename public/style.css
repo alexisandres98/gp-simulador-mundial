@@ -1081,3 +1081,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .tape.stale .tape-lbl{color:var(--amber,#f5b840)}
 .tape.stale .tdot{background:var(--amber,#f5b840);box-shadow:none;animation:none}
 .tape.stale .tape-lbl::after{content:' · DATOS RETRASADOS';font-weight:800}
+
+/* ---------- Admin: distinción lead vs verificado ---------- */
+.badge-lead{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;color:var(--amber,#f5b840);border:1px solid rgba(245,184,64,.45);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.badge-ver{display:inline-block;font-size:10px;font-weight:700;color:var(--accent,#18e6a3);white-space:nowrap}

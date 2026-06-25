@@ -16,10 +16,31 @@ function safeError(err) {
   return { code: code ? String(code).slice(0, 60) : (msg.split(/\s/)[0] || 'error').slice(0, 60), summary: msg };
 }
 
+// Legacy (se conserva por compat): NO cancela la promesa subyacente. Usar runWithAbort para jobs reales.
 function withTimeout(promise, ms, onTimeoutCode = 'timeout') {
   let t;
   const timeout = new Promise((_, rej) => { t = setTimeout(() => { const e = new Error('timed_out'); e.code = onTimeoutCode; rej(e); }, ms); });
   return Promise.race([promise.finally(() => clearTimeout(t)), timeout]);
+}
+
+// runWithAbort(runFn, ms, graceMs) — Bloque C. runFn recibe un AbortSignal. Si vence el timeout, ABORTA la
+// señal (cancelación cooperativa) y ESPERA (acotado por graceMs) a que la ejecución subyacente realmente
+// termine antes de propagar el timeout. Así no quedan escrituras en background ni se libera el lock con la
+// ejecución viva → no hay solapamiento con el siguiente intento (R4/R5).
+async function runWithAbort(runFn, ms, graceMs = 15000) {
+  const ctrl = new AbortController();
+  let timer, timedOut = false;
+  const jobPromise = Promise.resolve().then(() => runFn(ctrl.signal));
+  const settled = jobPromise.then(() => 'ok', () => 'err');  // nunca rechaza (evita unhandled)
+  try {
+    return await Promise.race([
+      jobPromise,
+      new Promise((_, rej) => { timer = setTimeout(() => { timedOut = true; ctrl.abort(); const e = new Error('timed_out'); e.code = 'timeout'; rej(e); }, ms); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    if (timedOut) await Promise.race([settled, new Promise(r => setTimeout(r, graceMs))]);
+  }
 }
 
 // runJob(job, { runType, isReady }) → resultado estructurado. NUNCA lanza (el orquestador no debe caerse).
@@ -56,10 +77,12 @@ async function runJob(job, { runType = 'scheduled', isReady = () => true } = {})
     const baseMs = (job.retry_policy && job.retry_policy.backoffBaseMs) || params.defaultBackoffBaseMs;
     const timeoutMs = job.timeout_ms || params.defaultTimeoutMs;
 
+    const graceMs = job.abort_grace_ms || params.abortGraceMs;
     let attempt = 1, lastErr = null, result = null, ok = false;
     for (;;) {
       try {
-        result = await withTimeout(Promise.resolve().then(() => job.run({ runType, attempt })), timeoutMs);
+        // pasa AbortSignal al job; tras timeout, aborta y espera terminación real antes de reintentar
+        result = await runWithAbort((signal) => job.run({ runType, attempt, signal }), timeoutMs, graceMs);
         ok = true; break;
       } catch (err) {
         lastErr = err;
@@ -89,4 +112,4 @@ async function runJob(job, { runType = 'scheduled', isReady = () => true } = {})
   return { job: job.job_name, ...r, ran: true };
 }
 
-module.exports = { runJob, safeError, withTimeout };
+module.exports = { runJob, safeError, withTimeout, runWithAbort };

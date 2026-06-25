@@ -21,7 +21,12 @@ function resolveFlags() {
     sportsbookWrite: sbEnabled && bool(process.env.SPORTSBOOK_DATA_WRITE_ENABLED, false),
     valueEnabled: veEnabled,
     valueWrite: veWrite,
-    valueScheduler: veWrite && bool(process.env.VALUE_ENGINE_SCHEDULER_ENABLED, false),
+    // Bloque K (post-shadow): el scheduler se DESACOPLA de la escritura. Con ENABLED+SCHEDULER pero WRITE=false
+    // el pipeline corre en DRY-RUN (consenso/no-vig/ensemble/clasificación) sin escribir tablas oficiales.
+    valueScheduler: veEnabled && bool(process.env.VALUE_ENGINE_SCHEDULER_ENABLED, false),
+    valueDryRun: veEnabled && !veWrite,
+    // escritura a tablas SHADOW (separadas de las oficiales); gateada y por defecto off.
+    valueShadowRuns: bool(process.env.VALUE_SHADOW_RUNS_ENABLED, false),
     valueAdminPreview: veEnabled && bool(process.env.VALUE_ADMIN_PREVIEW_ENABLED, false),
     valuePublic: veEnabled && bool(process.env.VALUE_PUBLIC_ENABLED, false),
     picksEnabled,

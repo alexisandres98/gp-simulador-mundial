@@ -1,20 +1,26 @@
 // tests/canonical-graph-db.test.js — integración del Canonical Event Graph contra PostgreSQL (Sprint 2).
-// Requiere DATABASE_URL + flags (CANONICAL_GRAPH_ENABLED/WRITE/AUTO_MATCH=true). Se envuelve con PG embebido.
+// Flags + PG embebido (base aislada compatible) se arrancan aquí, igual que el resto de tests DB.
 'use strict';
+process.env.DB_SSL = process.env.DB_SSL || 'false';
+process.env.CANONICAL_GRAPH_ENABLED = 'true';
+process.env.CANONICAL_GRAPH_WRITE_ENABLED = 'true';
+process.env.CANONICAL_AUTO_MATCH_ENABLED = 'true';
 const path = require('path');
 const R = path.join(__dirname, '..');
-const client = require(R + '/database/client');
-const migrate = require(R + '/database/migrate');
-const dbRepos = require(R + '/database/repositories');
-const graphRepo = require(R + '/canonical-graph/repositories/graphRepository');
-const index = require(R + '/canonical-graph');
-const review = require(R + '/canonical-graph/review');
+const { boot } = require('./_pg-harness');
 const { pmChamp, ksChamp, pmMatch, ksMatch } = require(R + '/canonical-graph/fixtures/golden');
 
 let pass = 0, fail = 0;
 const ok = (n, c, e = '') => { if (c) { pass++; console.log(`  ✓ ${n}`); } else { fail++; console.log(`  ✗ ${n} ${e}`); } };
 
 (async () => {
+  const _h = await boot();  // setea DATABASE_URL ANTES de requerir los módulos de DB
+  const client = require(R + '/database/client');
+  const migrate = require(R + '/database/migrate');
+  const dbRepos = require(R + '/database/repositories');
+  const graphRepo = require(R + '/canonical-graph/repositories/graphRepository');
+  const index = require(R + '/canonical-graph');
+  const review = require(R + '/canonical-graph/review');
   try {
     await migrate.up();
     console.log('Seed de participantes');
@@ -77,10 +83,12 @@ const ok = (n, c, e = '') => { if (c) { pass++; console.log(`  ✓ ${n}`); } els
 
     await client.close();
     console.log(`\n${fail === 0 ? '✅' : '❌'} Canonical Graph DB: ${pass} pasaron, ${fail} fallaron`);
+    try { await _h.stop(); } catch {}
     process.exit(fail === 0 ? 0 : 1);
   } catch (e) {
     console.error('\n❌ ERROR:', e.message); console.error(e.stack);
     try { await client.close(); } catch {}
+    try { await _h.stop(); } catch {}
     process.exit(1);
   }
 })();

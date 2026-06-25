@@ -71,6 +71,7 @@ function buildSetsForEvent(event, { catalog = {}, now = null, dataProvider = 'th
       external_event_id: event.id, market_family: '1x2', period: 'regulation', is_live: false,
       last_update: Number.isFinite(luMs) ? new Date(luMs).toISOString() : null,
       commence_time: event.commence_time, home_team: event.home_team, away_team: event.away_team,
+      competition: event.sport_title || event.competition || null,
       outcomes: o,
     });
   }
@@ -91,7 +92,8 @@ function setsToQuoteRows(sets, ingestionRunId) {
         odds_format: 'decimal', odds_decimal: oc.odds_decimal, implied_probability: oc.implied_probability, raw_implied_probability: oc.implied_probability,
         quote_status: 'open', quote_timestamp: s.last_update, stake_limit_status: 'unknown', maximum_stake: null,
         normalizer_version: cfg.NORMALIZER_VERSION, ingestion_run_id: ingestionRunId,
-        metadata: { outcome_slot: slot, outcome_name: oc.name, commence_time: s.commence_time },
+        metadata: { outcome_slot: slot, outcome_name: oc.name, commence_time: s.commence_time,
+                    home_team: s.home_team, away_team: s.away_team, competition: s.competition },
       });
     }
   }

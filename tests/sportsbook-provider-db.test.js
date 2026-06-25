@@ -44,9 +44,10 @@ function fakeProvider({ comps = [{ key: 'soccer_fifa_world_cup', active: true }]
     // ingesta con write → persiste 3 cuotas (home/draw/away) de pinnacle
     const r1 = await ingestion.runOnce({ provider: fakeProvider({ events: [event([mk('pinnacle')])], quota: { remaining: 480, used: 20, lastCost: 2 } }), now });
     ok('ingesta: status ok + 3 cuotas persistidas', r1.status === 'ok' && r1.quotes === 3 && r1.books_complete === 1);
-    const cnt = await db.query(`SELECT count(*)::int n, count(*) FILTER (WHERE metadata->>'outcome_slot'='draw')::int d FROM sportsbook_quotes WHERE external_event_id='evt1'`);
-    ok('ingesta: cuotas en DB con outcome_slot draw', cnt.rows[0].n === 3 && cnt.rows[0].d === 1);
-    const indep = await db.query(`SELECT independence_group FROM sportsbook_quotes WHERE sportsbook_code='pinnacle' LIMIT 1`);
+    // post-shadow: la ingesta ahora persiste en sportsbook_quote_current (no en el raw legacy, gateado off)
+    const cnt = await db.query(`SELECT count(*)::int n, count(*) FILTER (WHERE metadata->>'outcome_slot'='draw')::int d FROM sportsbook_quote_current WHERE external_event_id='evt1'`);
+    ok('ingesta: cuotas en current con outcome_slot draw', cnt.rows[0].n === 3 && cnt.rows[0].d === 1);
+    const indep = await db.query(`SELECT independence_group FROM sportsbook_quote_current WHERE sportsbook_code='pinnacle' LIMIT 1`);
     ok('ingesta: independence_group del catálogo aplicado', indep.rows[0].independence_group === 'g_pinnacle');
 
     // estado de cuota persistido

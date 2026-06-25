@@ -71,11 +71,15 @@ function evaluateMarket(input = {}) {
       lineupMissing: input.lineupMissing, priceStable: input.priceStable, methodDisagreement,
     });
 
+    // Bloque J (post-shadow): para STRONG cuenta el nº de grupos independientes VERIFICADOS (no los crudos).
+    // Aditivo y retrocompatible: si input.verifiedIndependenceGroups es null/undefined se usa cons.independence_groups.
+    const independenceForStrong = input.verifiedIndependenceGroups != null ? input.verifiedIndependenceGroups : cons.independence_groups;
     const cls = classification.classify({
-      adjustedEdgePp: value.adjusted_edge_pp, adjustedEv: value.adjusted_ev, sourceCount: cons.source_count, independenceGroups: cons.independence_groups,
+      adjustedEdgePp: value.adjusted_edge_pp, adjustedEv: value.adjusted_ev, sourceCount: cons.source_count, independenceGroups: independenceForStrong,
       qualityScore: quality.quality_score, uncertaintyScore: unc.uncertainty_score, mappingMatched: input.mappingMatched, outcomeMatched: input.outcomeMatched,
       hardConflicts: input.hardConflicts, freshnessOk: input.freshnessOk, priceMeetsMinimum: value.price_meets_minimum, dataQuality: input.gp && input.gp.data_quality,
       consensusComplete: consComplete, modelVersioned: !!(input.gp && input.gp.model_version), eventStarted: input.eventStarted, deepLinkVerified: bp.deepLinkVerified,
+      criticalContradiction: input.criticalContradiction === true,  // Bloque I: outlier semántico no resuelto bloquea STRONG
     });
 
     const evaluation = {

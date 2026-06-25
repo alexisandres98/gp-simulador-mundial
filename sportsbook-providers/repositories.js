@@ -3,18 +3,44 @@
 'use strict';
 const db = require('../database/client');
 
-// ---- ingestion runs (reutiliza sportsbook_ingestion_runs de mig 015) ----
+// ---- ingestion runs (sportsbook_ingestion_runs, mig 015 + heartbeat/reconcile en mig 021) ----
 async function startRun(meta = {}) {
-  const r = await db.query(`INSERT INTO sportsbook_ingestion_runs (status, metadata) VALUES ('running', $1) RETURNING *`, [JSON.stringify(meta)]);
+  const runType = meta.run_type || 'scheduled';
+  const r = await db.query(
+    `INSERT INTO sportsbook_ingestion_runs (status, run_type, heartbeat_at, metadata) VALUES ('running', $2, now(), $1) RETURNING *`,
+    [JSON.stringify(meta), runType]);
   return r.rows[0];
 }
-async function finishRun(id, { status = 'success', quotes = 0, complete = 0, incomplete = 0, errors = 0, meta = null }) {
+async function finishRun(id, { status = 'success', quotes = 0, complete = 0, incomplete = 0, errors = 0, errorCode = null, meta = null }) {
   await db.query(
-    `UPDATE sportsbook_ingestion_runs SET status=$2, quotes_ingested=$3, books_complete=$4, books_incomplete=$5, errors=$6,
-       finished_at=now(), duration_ms = (EXTRACT(EPOCH FROM (now()-started_at))*1000)::int,
+    `UPDATE sportsbook_ingestion_runs SET status=$2, quotes_ingested=$3, books_complete=$4, books_incomplete=$5, errors=$6, error_code=$8,
+       finished_at=now(), heartbeat_at=now(), duration_ms = (EXTRACT(EPOCH FROM (now()-started_at))*1000)::int,
        metadata = CASE WHEN $7::jsonb IS NULL THEN metadata ELSE metadata || $7::jsonb END WHERE id=$1`,
-    [id, status, quotes, complete, incomplete, errors, meta ? JSON.stringify(meta) : null]
+    [id, status, quotes, complete, incomplete, errors, meta ? JSON.stringify(meta) : null, errorCode]
   );
+}
+// heartbeat de un run vivo (Bloque D) — solo si sigue 'running'
+async function heartbeatRun(id) {
+  await db.query(`UPDATE sportsbook_ingestion_runs SET heartbeat_at=now() WHERE id=$1 AND status='running'`, [id]);
+}
+// reconcileOrphanRuns — Bloque D. Marca 'abandoned' los runs 'running' sin heartbeat reciente (proceso muerto).
+// NO reanuda escrituras, conserva el error/timeline, registra reconciled_at + nota. Operación administrativa
+// auditada (no editar runs a mano por SQL). Devuelve los ids reconciliados.
+async function reconcileOrphanRuns({ staleMs = 10 * 60 * 1000, note = 'reconciled: heartbeat ausente', now = null } = {}) {
+  const nowExpr = now != null ? `'${new Date(now).toISOString()}'::timestamptz` : 'now()';
+  const r = await db.query(
+    `UPDATE sportsbook_ingestion_runs
+        SET status='abandoned', finished_at=${nowExpr}, reconciled_at=${nowExpr}, reconcile_note=$2,
+            duration_ms = COALESCE(duration_ms, (EXTRACT(EPOCH FROM (${nowExpr}-started_at))*1000)::int)
+      WHERE status='running'
+        AND COALESCE(heartbeat_at, started_at) < ${nowExpr} - ($1::int || ' milliseconds')::interval
+      RETURNING id, started_at, heartbeat_at`,
+    [staleMs, note]);
+  return { reconciled: r.rowCount, ids: r.rows.map(x => x.id) };
+}
+async function listRunningRuns() {
+  const r = await db.query(`SELECT id, status, run_type, started_at, heartbeat_at FROM sportsbook_ingestion_runs WHERE status='running' ORDER BY started_at`);
+  return r.rows;
 }
 
 // ---- cuotas (idempotente por uq_sbq_book_outcome_run) ----
@@ -86,4 +112,35 @@ async function upsertSource(s, updatedBy = null) {
   return r.rows[0];
 }
 
-module.exports = { startRun, finishRun, insertQuotes, getState, upsertState, loadSourceCatalog, upsertSource };
+// ---- capabilities por sport key (Bloque E, mig 022) ----
+// keys ACTIVAS: las que no se han marcado is_active=false (default: desconocidas se intentan).
+async function loadCapabilities(provider) {
+  const r = await db.query(`SELECT * FROM sportsbook_provider_capabilities WHERE data_provider=$1`, [provider]);
+  return r.rows.reduce((a, x) => (a[x.sport_key] = x, a), {});
+}
+// registra el resultado de consultar una sport key. ok=true resetea errores; ok=false con no_h2h/bad_request
+// la desactiva (is_active=false) tras detectar que no soporta h2h, con razón auditada.
+async function recordCapability(provider, sportKey, { sportTitle = null, sportGroup = null, ok = true, status = 'ok', errorCode = null, reason = null, disable = false } = {}) {
+  const supportsH2h = ok ? true : (disable ? false : null);
+  const r = await db.query(
+    `INSERT INTO sportsbook_provider_capabilities
+       (data_provider, sport_key, sport_title, sport_group, supports_h2h, is_active, last_status, last_error_code, last_checked_at, consecutive_errors, reason)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now(),$9,$10)
+     ON CONFLICT (data_provider, sport_key) DO UPDATE SET
+       sport_title = COALESCE(EXCLUDED.sport_title, sportsbook_provider_capabilities.sport_title),
+       sport_group = COALESCE(EXCLUDED.sport_group, sportsbook_provider_capabilities.sport_group),
+       supports_h2h = CASE WHEN $5 IS NULL THEN sportsbook_provider_capabilities.supports_h2h ELSE $5 END,
+       is_active = CASE WHEN $11 THEN false ELSE sportsbook_provider_capabilities.is_active END,
+       last_status = EXCLUDED.last_status, last_error_code = EXCLUDED.last_error_code, last_checked_at = now(),
+       consecutive_errors = CASE WHEN $6 THEN 0 ELSE sportsbook_provider_capabilities.consecutive_errors + 1 END,
+       reason = COALESCE(EXCLUDED.reason, sportsbook_provider_capabilities.reason)
+     RETURNING *`,
+    [provider, sportKey, sportTitle, sportGroup, supportsH2h, !disable, status, errorCode, ok ? 0 : 1, reason, disable]);
+  return r.rows[0];
+}
+
+module.exports = {
+  startRun, finishRun, heartbeatRun, reconcileOrphanRuns, listRunningRuns,
+  insertQuotes, getState, upsertState, loadSourceCatalog, upsertSource,
+  loadCapabilities, recordCapability,
+};

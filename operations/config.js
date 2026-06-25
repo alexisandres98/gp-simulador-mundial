@@ -36,6 +36,9 @@ function resolveParams() {
     recentRunsLimit: int(process.env.OPERATIONS_RECENT_RUNS_LIMIT, 20),
     // margen de gracia para drenar jobs en vuelo durante shutdown
     shutdownDrainMs: int(process.env.OPERATIONS_SHUTDOWN_DRAIN_MS, 8 * 1000),
+    // Bloque C: tras un timeout, cuánto esperar a que la ejecución abortada termine de verdad antes de
+    // reintentar/liberar el lock. La cancelación es cooperativa (el job chequea signal.aborted).
+    abortGraceMs: int(process.env.OPERATIONS_ABORT_GRACE_MS, 15 * 1000),
     // allowlist: si está seteada (lista separada por comas), el orquestador SOLO gestiona esos jobs y deja
     // el resto a los schedulers legacy. Permite activar p.ej. solo 'sportsbook_ingestion' sin tocar el
     // pipeline de arbitraje vivo. Vacío = gestiona todos los jobs habilitados.

@@ -18,4 +18,17 @@ async function adminStatus() {
 
 async function health() { return createProvider().health(); }
 
-module.exports = { cfg, ingestion, repo, createProvider, adminStatus, health, runOnce: ingestion.runOnce };
+// módulos post-shadow (Bloques B/F/G/H/I/K)
+const retention = require('./retention');
+const sourceCatalog = require('./sourceCatalog');
+const sportsbookCanonical = require('./sportsbookCanonical');
+const valueDryRun = require('./valueDryRun');
+const setAssembly = require('./setAssembly');
+const outliers = require('./outliers');
+
+module.exports = {
+  cfg, ingestion, repo, createProvider, adminStatus, health, runOnce: ingestion.runOnce,
+  retention, sourceCatalog, sportsbookCanonical, valueDryRun, setAssembly, outliers,
+  // operaciones administrativas auditadas (Bloque D)
+  reconcileOrphanRuns: repo.reconcileOrphanRuns,
+};

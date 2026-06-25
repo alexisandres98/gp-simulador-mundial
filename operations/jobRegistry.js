@@ -48,8 +48,11 @@ function buildJobs() {
       job_name: 'sportsbook_ingestion', owner_module: 'sportsbook-providers', criticality: 'high',
       enabled: () => bool(process.env.SPORTSBOOK_PROVIDER_SCHEDULER_ENABLED, false) && bool(process.env.SPORTSBOOK_PROVIDER_ENABLED, false),
       schedule_ms: int(process.env.SPORTSBOOK_INGESTION_INTERVAL_MS, 5 * 60 * 1000),
-      dependencies: [], stale_after_ms: 10 * 60 * 1000, timeout_ms: 60 * 1000,
-      run: async () => norm(await require('../sportsbook-providers').runOnce({})),
+      // Bloque C: timeout subido de 60s → 4min (default) tras corregir el N+1 (la escritura batch de 3000
+      // cuotas tarda <1s; el resto es red: ~4 requests). Ajustable por evidencia con SPORTSBOOK_JOB_TIMEOUT_MS
+      // una vez medido p95 en el 2º shadow. La cancelación es cooperativa (runOnce respeta signal).
+      dependencies: [], stale_after_ms: 10 * 60 * 1000, timeout_ms: int(process.env.SPORTSBOOK_JOB_TIMEOUT_MS, 4 * 60 * 1000),
+      run: async ({ signal } = {}) => norm(await require('../sportsbook-providers').runOnce({ signal })),
     },
     {
       job_name: 'canonical_matching', owner_module: 'canonical-graph', criticality: 'high',

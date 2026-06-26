@@ -2562,9 +2562,9 @@ function valueCard(s) {
       <div><span>GP</span><b>${pct1(s.gp_probability)}</b></div>
       <div><span>Consenso no-vig</span><b>${pct1(s.sportsbook_consensus != null ? s.sportsbook_consensus : s.sportsbook_consensus_probability)}</b></div>
       <div><span>Ensemble</span><b>${pct1(s.ensemble_probability)}</b></div>
-      <div><span>Mejor cuota</span><b>${s.best_decimal_odds != null ? s.best_decimal_odds.toFixed(2) : 'N/A'}</b></div>
-      <div><span>Cuota justa</span><b>${s.fair_odds != null ? s.fair_odds.toFixed(2) : 'N/A'}</b></div>
-      <div><span>Cuota mínima</span><b>${s.minimum_acceptable_odds != null ? s.minimum_acceptable_odds.toFixed(2) : 'N/A'}</b></div>
+      <div><span>Mejor cuota</span><b>${s.best_decimal_odds != null ? Number(s.best_decimal_odds).toFixed(2) : 'N/A'}</b></div>
+      <div><span>Cuota justa</span><b>${s.fair_odds != null ? Number(s.fair_odds).toFixed(2) : 'N/A'}</b></div>
+      <div><span>Cuota mínima</span><b>${s.minimum_acceptable_odds != null ? Number(s.minimum_acceptable_odds).toFixed(2) : 'N/A'}</b></div>
       <div><span>Edge ajustado</span><b class="${(s.adjusted_edge_pp||0)>0?'green':''}">${pp(s.adjusted_edge_pp)}</b></div>
       <div><span>Calidad</span><b>${s.quality_score ?? 'N/A'}</b></div>
     </div></div>`;

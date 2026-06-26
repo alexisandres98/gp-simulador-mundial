@@ -15,7 +15,7 @@ const ok = (n, c, e = '') => { if (c) { pass++; console.log(`  ✓ ${n}`); } els
   const q = (s, p = []) => client.query(s, p);
   try {
     await migrate.up();
-    ok('migración 025 (25 total)', (await q(`SELECT count(*)::int n FROM schema_migrations`)).rows[0].n === 25);
+    ok('migración 026 (26 total)', (await q(`SELECT count(*)::int n FROM schema_migrations`)).rows[0].n === 26);
     ok('signal_registry_epochs existe', (await q(`SELECT to_regclass('public.signal_registry_epochs') x`)).rows[0].x != null);
     ok('registry_controls sembrado', (await q(`SELECT count(*)::int n FROM registry_controls`)).rows[0].n === 3);
 

@@ -1662,8 +1662,70 @@ function renderAdmin() {
     <div class="gcard" style="margin-top:12px">
       <h3>BASE DE USUARIOS</h3>
       <div id="userBase" class="muted">Cargando…</div>
+    </div>
+    <div class="gcard" style="margin-top:12px" id="registryAdminCard">
+      <h3>REGISTRO DE SEÑALES · CONTROL INTERNO</h3>
+      <div id="registryAdminBody" class="muted" style="font-size:12px">Cargando…</div>
     </div>`;
   loadUsers();
+  loadRegistryAdmin();
+}
+async function loadRegistryAdmin() {
+  const el = $('#registryAdminBody'); if (!el) return;
+  try {
+    const r = await fetch('/api/internal/registry/overview', { headers: hdrs() });
+    if (r.status === 404) { el.innerHTML = '<span class="muted">Registry interno apagado (SIGNAL_REGISTRY_ENABLED off).</span>'; return; }
+    if (!r.ok) { el.innerHTML = '<span class="warn">No autorizado (' + r.status + ').</span>'; return; }
+    const o = await r.json();
+    const h = o.health || {}; const ep = o.epoch || {};
+    const sg = await fetch('/api/internal/registry/signals', { headers: hdrs() }).then(x => x.json()).catch(() => ({ items: [], signals_count: 0 }));
+    const chainOk = h.audit_chain && h.audit_chain.ok;
+    const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--line)"><span class="muted">${k}</span><b>${v}</b></div>`;
+    const onoff = (b) => b ? '<span style="color:var(--amber)">SÍ</span>' : '<span style="color:var(--accent)">no</span>';
+    // controles globales con confirmación + audit (los críticos piden frase exacta)
+    const controls = `
+      <div class="formrow" style="margin-top:10px;flex-wrap:wrap;gap:8px">
+        ${h.writes_paused
+          ? `<button class="ghost" onclick="registryControl('resume_writes','Reanudar escrituras del Registry')">▶ Reanudar writes</button>`
+          : `<button class="ghost" onclick="registryControl('pause_writes','PAUSAR escrituras del Registry')">⏸ Pausar writes</button>`}
+        ${h.registry_public_hidden
+          ? `<button class="ghost" onclick="registryControl('show_public','Mostrar el Registry público')">👁 Mostrar público</button>`
+          : `<button class="ghost" onclick="registryControl('hide_public','OCULTAR el Registry público')">🙈 Ocultar público</button>`}
+        ${h.product_kill_switch
+          ? `<button class="ghost" onclick="registryControl('kill_switch_off','Desactivar el kill switch del producto')">Desactivar kill switch</button>`
+          : `<button class="btn" style="background:var(--amber)" onclick="registryControl('kill_switch_on','ACTIVAR el KILL SWITCH del producto (corta el Registry)')">🛑 Kill switch</button>`}
+      </div>`;
+    const signalsCount = sg.signals_count || 0;
+    const signalsBlock = signalsCount === 0
+      ? `<div class="explain" style="margin-top:10px">Aún no hay señales oficiales (chain válida y vacía). Las acciones por señal (quarantine / restore / retract / correct / data error / administrative void) quedan disponibles y se habilitarán por fila cuando exista la primera señal.</div>
+         <table style="width:100%;margin-top:8px;font-size:11.5px;opacity:.6"><tr class="muted"><th align="left">signal</th><th align="left">evento</th><th align="left">publicada</th><th align="left">estado</th><th align="left">seq</th><th align="left">última acción</th><th align="left">visibilidad</th></tr><tr><td colspan="7" class="muted" style="padding:10px;text-align:center">— sin señales —</td></tr></table>`
+      : `<div class="muted" style="margin-top:8px">${signalsCount} señal(es). <a onclick="loadRegistryAdmin()" style="cursor:pointer">refrescar</a></div>` +
+        sg.items.map(s => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${(s.signal_id||'').slice(0,8)}</b> · ${s.status} · ${s.visibility} · seq ${s.chain_sequence ?? '—'} <span class="muted">${s.last_admin_action||''}</span></div>`).join('');
+    el.innerHTML =
+      row('Registry interno', h.registry_enabled ? '<span style="color:var(--accent)">activo</span>' : 'apagado') +
+      row('Registry público', h.registry_public_enabled ? 'ACTIVO' : '<span style="color:var(--accent)">apagado</span>') +
+      row('Verified Epoch', ep.started_at ? new Date(ep.started_at).toISOString() : '—') +
+      row('Chain', (h.chain_status === 'valid_empty' ? 'válida y vacía' : (h.chain_status || '—')) + (chainOk === true ? ' · audit ✓' : chainOk === false ? ' · audit ✗' : '')) +
+      row('Signals', signalsCount) +
+      row('Writes paused', onoff(h.writes_paused)) +
+      row('Kill switch', onoff(h.product_kill_switch)) +
+      controls +
+      `<h4 style="margin:14px 0 4px">Señales</h4>` + signalsBlock +
+      `<div id="registryAdminMsg" class="muted" style="font-size:12px;margin-top:8px"></div>`;
+  } catch (e) { el.innerHTML = '<span class="warn">Error de red.</span>'; }
+}
+async function registryControl(control, label) {
+  const critical = control === 'kill_switch_on' || control === 'pause_writes' || control === 'hide_public';
+  if (!confirm(label + '\n\n¿Confirmás esta acción? Queda registrada en el audit log.')) return;
+  if (control === 'kill_switch_on' && prompt('Para activar el KILL SWITCH escribí exactamente: KILL') !== 'KILL') { const m = $('#registryAdminMsg'); if (m) m.textContent = 'Cancelado.'; return; }
+  const reason = prompt('Motivo (queda en el audit):', '') || '';
+  const m = $('#registryAdminMsg'); if (m) m.textContent = 'Aplicando…';
+  try {
+    const r = await fetch('/api/internal/registry/controls', { method: 'POST', headers: hdrs(), body: JSON.stringify({ control, reason }) });
+    const j = await r.json();
+    if (m) m.textContent = r.ok ? '✓ ' + control + ' = ' + j.enabled : '✗ ' + (j.error || 'error');
+    loadRegistryAdmin();
+  } catch { if (m) m.textContent = '✗ Error de red'; }
 }
 async function telegramTest() { await tgCall('/api/admin/telegram-test'); }
 async function telegramDaily() { await tgCall('/api/admin/telegram-daily'); }

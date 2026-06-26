@@ -2,12 +2,11 @@
 // audit append-only + health. NO crea señales. El epoch se genera en el momento real (sin backdating).
 'use strict';
 const db = require('../database/client');
+const { writeAudit, verifyChain } = require('./auditChain');
 
-async function audit(action, { adminId = null, targetType = null, targetId = null, reasonCode = null, reasonText = null, previousState = null, newState = null, requestId = null } = {}, client = db) {
-  await client.query(
-    `INSERT INTO signal_admin_actions (admin_id, action, target_type, target_id, reason_code, reason_text, previous_state, new_state, request_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [adminId, action, targetType, targetId, reasonCode, reasonText, previousState ? JSON.stringify(previousState) : null, newState ? JSON.stringify(newState) : null, requestId]);
+// audit() — delega en la cadena administrativa append-only (auditChain). Mantiene la firma previa.
+async function audit(action, opts = {}, client = db) {
+  return writeAudit(client, { action, ...opts });
 }
 
 // activeEpoch() → la era verificable activa (o null).
@@ -36,13 +35,20 @@ async function controls() {
   const r = await db.query(`SELECT control_key, enabled FROM registry_controls`);
   return r.rows.reduce((a, x) => (a[x.control_key] = x.enabled, a), {});
 }
-async function setControl(key, enabled, { adminId = null, reasonText = null } = {}) {
+// nombre de acción de audit por control (on/off)
+const CONTROL_ACTION = {
+  registry_writes_paused: { on: 'pause_writes', off: 'resume_writes' },
+  registry_public_hidden: { on: 'hide_public', off: 'show_public' },
+  product_kill_switch: { on: 'kill_switch_on', off: 'kill_switch_off' },
+};
+async function setControl(key, enabled, { adminId = null, reasonText = null, requestId = null } = {}) {
   return db.withTransaction(async (c) => {
     const before = (await c.query(`SELECT enabled FROM registry_controls WHERE control_key=$1`, [key])).rows[0];
+    if (!before) { const e = new Error('unknown_control'); e.code = 'unknown_control'; throw e; }
     const r = await c.query(`UPDATE registry_controls SET enabled=$2, updated_by=$3, updated_at=now() WHERE control_key=$1 RETURNING *`, [key, !!enabled, adminId]);
-    if (!r.rows[0]) { const e = new Error('unknown_control'); e.code = 'unknown_control'; throw e; }
-    await audit(enabled ? (key === 'registry_writes_paused' ? 'pause_writes' : 'hide_public') : (key === 'registry_writes_paused' ? 'resume_writes' : 'show_public'),
-      { adminId, targetType: 'control', targetId: key, reasonText, previousState: before, newState: { enabled: !!enabled } }, c);
+    const map = CONTROL_ACTION[key] || { on: 'control_on', off: 'control_off' };
+    await audit(enabled ? map.on : map.off,
+      { adminId, targetType: 'control', targetId: key, reasonText, requestId, previousState: before, newState: { enabled: !!enabled } }, c);
     return r.rows[0];
   });
 }
@@ -58,8 +64,12 @@ async function health() {
     registry_enabled: cfg.flags.enabled, registry_write_enabled: cfg.flags.writeEnabled, registry_public_enabled: cfg.flags.publicEnabled,
     verified_epoch_configured: !!ep, verified_epoch_started_at: ep ? ep.epoch_started_at_utc : null, epoch_id: ep ? ep.epoch_id : null,
     chain_status: (chain.signals || 0) === 0 ? 'valid_empty' : 'has_entries', last_sequence: chain.last_sequence || null, last_signal_at: chain.last_signal_at || null,
-    writes_paused: ctl.registry_writes_paused === true, registry_public_hidden: ctl.registry_public_hidden === true, admin_controls_available: true,
+    writes_paused: ctl.registry_writes_paused === true, registry_public_hidden: ctl.registry_public_hidden === true,
+    product_kill_switch: ctl.product_kill_switch === true, admin_controls_available: true,
+    audit_chain: await verifyChain().catch(() => ({ ok: null })),
   };
 }
 
-module.exports = { audit, activeEpoch, createEpoch, controls, setControl, writesPaused, health };
+async function killSwitchOn() { return (await controls()).product_kill_switch === true; }
+
+module.exports = { audit, activeEpoch, createEpoch, controls, setControl, writesPaused, killSwitchOn, health, verifyChain };

@@ -46,6 +46,13 @@ const arbEngine = require('./arb-engine');
 const execOpps = require('./exec-opportunities');
 // Sprint 5 — registro inmutable y verificable de señales. Inerte con flags apagados; no conecta nada al requerir.
 const signalRegistry = require('./signal-registry');
+// Fase G.1 — controles administrativos por señal (interno). Rate limit en memoria (acciones de escritura admin).
+const _registryAdminRate = new Map(); // email → [timestamps]
+function registryAdminRateOk(email, max = 30, windowMs = 60000) {
+  const now = Date.now(); const arr = (_registryAdminRate.get(email) || []).filter(t => now - t < windowMs);
+  if (arr.length >= max) { _registryAdminRate.set(email, arr); return false; }
+  arr.push(now); _registryAdminRate.set(email, arr); return true;
+}
 // Sprint 6 — motor de métricas / track record verificable. Inerte con flags apagados; no conecta al requerir.
 const metricsEngine = require('./metrics-engine');
 // Sprint 7 — Value Engine + Picks GP. Inerte con flags apagados; no conecta al requerir.
@@ -1955,6 +1962,90 @@ const server = http.createServer(async (req, res) => {
     if (mSigPub && req.method === 'GET') {
       if (!signalRegistry.cfg.flags.publicEnabled) return json(res, 404, { error: 'No encontrado' });
       try { const r = await signalRegistry.getPublic(mSigPub[1]); return r.error ? json(res, 404, r) : json(res, 200, r); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+
+    // --- Fase G.1: superficie administrativa del Registry (interna, NO pública). Controles por señal +
+    //     globales (pause/resume/kill/public-hidden) + audit. Gated por SIGNAL_REGISTRY_ENABLED. ---
+    if (p === '/api/internal/registry' || p.startsWith('/api/internal/registry/')) {
+      if (!signalRegistry.cfg.flags.enabled) return json(res, 404, { error: 'No encontrado' });
+      const RA = require('./signal-registry/registryAdmin');
+      const SA = require('./signal-registry/signalAdmin');
+      const SM = require('./signal-registry/stateMachine');
+      const authz = require('./signal-registry/authz');
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' }); // §11 no autenticado → 401
+      const superEmails = (process.env.REGISTRY_SUPERADMIN_EMAILS || process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
+      const actor = authz.buildActor({ authenticated: true, isAdmin: !!u.isAdmin, email: u.email,
+        isSuperAdmin: !!u.isAdmin && (superEmails.length === 0 || superEmails.includes(u.email)) });
+      const reqId = (req.headers['x-request-id'] || '').toString().slice(0, 80) || null;
+
+      // GET overview (§14)
+      if (p === '/api/internal/registry/overview' && req.method === 'GET') {
+        const a = authz.authorize(actor, 'registry:read'); if (!a.ok) return json(res, a.status, { error: a.error });
+        try {
+          const health = await RA.health(); const epoch = await RA.activeEpoch();
+          return json(res, 200, { health, epoch: epoch ? { epoch_id: epoch.epoch_id, started_at: epoch.epoch_started_at_utc, status: epoch.status, policy: epoch.registry_policy_version } : null, actions_available: SM.ACTION_NAMES, scopes: [...actor.scopes], is_superadmin: actor.isSuperAdmin });
+        } catch (e) { return json(res, 500, { error: 'error' }); }
+      }
+      // GET lista de señales (empty state mientras signals=0)
+      if (p === '/api/internal/registry/signals' && req.method === 'GET') {
+        const a = authz.authorize(actor, 'registry:read'); if (!a.ok) return json(res, a.status, { error: a.error });
+        const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 200);
+        const offset = Math.max(parseInt(url.searchParams.get('offset'), 10) || 0, 0);
+        try { const items = await SA.listSignals({ limit, offset }); const counts = await signalRegistry.repo.statusCounts().catch(() => ({ total: 0 })); return json(res, 200, { items, signals_count: counts.total || 0 }); }
+        catch (e) { return json(res, 200, { items: [], signals_count: 0 }); }
+      }
+      // GET audit log (§12)
+      if (p === '/api/internal/registry/audit' && req.method === 'GET') {
+        const a = authz.authorize(actor, 'audit:read'); if (!a.ok) return json(res, a.status, { error: a.error });
+        const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 100, 500);
+        try { return json(res, 200, { items: await SA.listAudit({ limit }), chain: await SA.verifyChain() }); } catch (e) { return json(res, 200, { items: [], chain: { ok: null } }); }
+      }
+      // GET detalle de señal (original + efectiva + timeline)
+      const mDet = p.match(/^\/api\/internal\/registry\/signals\/([0-9a-f-]{36})$/i);
+      if (mDet && req.method === 'GET') {
+        const a = authz.authorize(actor, 'registry:read'); if (!a.ok) return json(res, a.status, { error: a.error });
+        try { const d = await SA.getSignalDetail(mDet[1]); return d ? json(res, 200, d) : json(res, 404, { error: 'No encontrado' }); } catch (e) { return json(res, 500, { error: 'error' }); }
+      }
+      // POST controles globales (§14): pause/resume writes, kill switch, public hidden
+      if (p === '/api/internal/registry/controls' && req.method === 'POST') {
+        const a = authz.authorize(actor, 'registry:pause'); if (!a.ok) return json(res, a.status, { error: a.error });
+        if (!registryAdminRateOk(u.email)) return json(res, 429, { error: 'rate_limited' });
+        const body = await readBody(req).catch(() => ({}));
+        const MAP = { pause_writes: ['registry_writes_paused', true], resume_writes: ['registry_writes_paused', false], hide_public: ['registry_public_hidden', true], show_public: ['registry_public_hidden', false], kill_switch_on: ['product_kill_switch', true], kill_switch_off: ['product_kill_switch', false] };
+        const m = MAP[body.control]; if (!m) return json(res, 400, { error: 'control_invalido' });
+        try { const r = await RA.setControl(m[0], m[1], { adminId: u.email, reasonText: (body.reason || '').toString().slice(0, 500), requestId: reqId }); return json(res, 200, { control: m[0], enabled: r.enabled }); }
+        catch (e) { return json(res, 400, { error: e.code || 'error' }); }
+      }
+      // POST acciones por señal (§3,§15): /signals/:id/{quarantine|restore|retract|correct|data-error|administrative-void}
+      const mAct = p.match(/^\/api\/internal\/registry\/signals\/([0-9a-f-]{36})\/(quarantine|restore|retract|correct|data-error|administrative-void)$/i);
+      if (mAct && req.method === 'POST') {
+        const id = mAct[1]; const actionKey = mAct[2].toLowerCase().replace(/-/g, '_');
+        const FN = { quarantine: 'quarantine', restore: 'restore', retract: 'retract', correct: 'correct', data_error: 'dataError', administrative_void: 'administrativeVoid' };
+        const fn = FN[actionKey]; if (!fn) return json(res, 400, { error: 'accion_invalida' });
+        if (!registryAdminRateOk(u.email)) return json(res, 429, { error: 'rate_limited' });
+        const body = await readBody(req).catch(() => ({}));
+        const material = actionKey === 'correct' && SM.classifyCorrection(body.corrected_fields || {}).material;
+        const az = authz.authorizeAction(actor, actionKey, { material: !!material, postEvent: !!body.post_event });
+        if (!az.ok) return json(res, az.status, { error: az.error }); // 403 sin scope / sin superadmin
+        try {
+          const r = await SA[fn](id, {
+            adminId: u.email, reasonCode: body.reason_code || null, reasonText: body.reason_text || body.explanation || '',
+            confirmedSignalId: body.confirm_signal_id, confirmationPhrase: body.confirmation_phrase,
+            correctedFields: body.corrected_fields, quarantineRef: body.quarantine_ref,
+            idempotencyKey: (req.headers['idempotency-key'] || body.idempotency_key || '').toString().slice(0, 120) || null,
+            requestId: reqId, isSuperAdmin: actor.isSuperAdmin, postEvent: body.post_event,
+            sessionMetadata: { ua: (req.headers['user-agent'] || '').toString().slice(0, 200), request_id: reqId },
+            policyVersion: 'registry-policy-1', schemaVersion: 'signal-v1',
+          });
+          return json(res, 200, { ok: true, idempotent: !!r.idempotent, status: r.state ? r.state.admin_status : null, visibility: r.state ? r.state.visibility : null, audit_event_id: r.audit ? r.audit.audit_event_id : null, audit_hash_short: r.audit && r.audit.audit_hash ? String(r.audit.audit_hash).slice(0, 12) : null, correction_id: r.correction ? r.correction.correction_id : null });
+        } catch (e) {
+          if (e.code === 'validation_failed') return json(res, 422, { error: 'validation_failed', details: e.details || [] });
+          if (e.code === 'signal_not_found') return json(res, 404, { error: 'signal_not_found' });
+          return json(res, 400, { error: e.code || 'error' });
+        }
+      }
+      return json(res, 404, { error: 'No encontrado' });
     }
 
     // --- Sprint 6: motor de métricas / track record. Inerte si METRICS_ENGINE_ENABLED=false ---

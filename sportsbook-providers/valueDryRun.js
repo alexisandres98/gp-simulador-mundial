@@ -39,6 +39,52 @@ function bestPrices(cleanSets) {
   return bp;
 }
 
+// buildEventInput — arma el input del Value Engine para UN evento canonical-matched: sets sincronizados (H) +
+// outliers (I) + grupos verificados (J) + GP. Reutilizado por dry-run (shadow) y por el write oficial (Fase E).
+function buildEventInput(canonicalEventId, rows, { now = null, catalog = {}, gpResolver = null } = {}) {
+  const { sets, rejected } = setAssembly.assembleSets(rows, { now, maxSkewMs: vcfg.params.maxBookOutcomeSkewMs, maxAgeMs: vcfg.params.maxQuoteAgePrematchMs });
+  const od = outliers.detectOutliers(sets);
+  const clean = od.clean;
+  const cls = sourceCatalog.classify(clean.map(s => s.sportsbook), catalog);
+  const meta = rows[0] && rows[0].metadata ? rows[0].metadata : {};
+  const label = `${meta.home_team || '?'} vs ${meta.away_team || '?'}`;
+  const gp = gpResolver ? (gpResolver({ canonicalEventId, label, meta }) || null) : null;
+  const gpMeta = gp ? { model_version: gp.model_version || null, elo_snapshot: gp.elo_snapshot || null, calc_ts: gp.calc_ts || null } : null;
+  const input = {
+    canonicalEventId, canonicalMarketId: null,
+    gp, predictionMarket: null,
+    sportsbooks: clean.map(s => ({ sportsbook: s.sportsbook, independence_group: s.independence_group, quotes: s.quotes, fresh: true })),
+    bestPrices: bestPrices(clean),
+    mappingMatched: true, outcomeMatched: true, hardConflicts: 0, rulesOk: true,
+    freshnessOk: clean.length > 0, eventStarted: false,
+    mappingVersion: 'sportsbook-canonical-1', rulesVersion: 'rule-fp-2', priceStable: true,
+    snapshotIds: [],
+    verifiedIndependenceGroups: cls.verified_independence_groups,  // J: STRONG solo cuenta verificados
+    criticalContradiction: od.hasUnresolved,                       // I: outlier sin resolver bloquea STRONG
+  };
+  return { input, label, sets, clean, rejected, cls, gpMeta, outliers: od.outliers };
+}
+
+// runOfficial — Fase E (activación interna): escribe value_evaluations/value_opportunities OFICIALES internas
+// vía ve.evaluateAndPersist (idempotente por input_hash). Picks DEBE estar off → no crea candidates ni señales.
+// Requiere VALUE_ENGINE_ENABLED=true + VALUE_ENGINE_WRITE_ENABLED=true en el entorno.
+async function runOfficial({ provider = 'the_odds_api', now = null, gpResolver = null } = {}) {
+  const ve = require('../value-engine');
+  const catalog = await sourceCatalog.load(provider).catch(() => ({}));
+  const events = await linkedEvents(provider);
+  const out = { provider, events: events.size, evaluated: 0, persisted: 0, opportunities: 0, candidates: 0, by_class: {}, write_enabled: ve.cfg.flags.valueWrite, picks_enabled: ve.cfg.flags.picksEnabled, rows: [] };
+  for (const [canonicalEventId, rows] of events) {
+    const { input, label } = buildEventInput(canonicalEventId, rows, { now, catalog, gpResolver });
+    if (!input.sportsbooks.length) continue;  // sin sets frescos → no se evalúa
+    const r = await ve.evaluateAndPersist(input, {});
+    for (const o of Object.keys(r.classifications)) { out.evaluated++; const c = r.classifications[o]; out.by_class[c] = (out.by_class[c] || 0) + 1; }
+    out.persisted += (r.evaluations || []).length;
+    out.candidates += (r.candidates || []).length;
+    out.rows.push({ canonicalEventId, label, classifications: r.classifications });
+  }
+  return out;
+}
+
 // runDryRun({ provider, now, gpResolver, persistShadow }) → resumen. gpResolver(event)→gp|null (opcional).
 async function runDryRun({ provider = 'the_odds_api', now = null, gpResolver = null, persistShadow = null } = {}) {
   const catalog = await sourceCatalog.load(provider).catch(() => ({}));
@@ -47,31 +93,9 @@ async function runDryRun({ provider = 'the_odds_api', now = null, gpResolver = n
   const summary = { provider, evaluated: 0, blocked: 0, pass: 0, watch: 0, lean: 0, strong: 0, events: events.size, evaluations: [], policy_versions: policy };
 
   for (const [canonicalEventId, rows] of events) {
-    // H: sets sincronizados
-    const { sets, rejected } = setAssembly.assembleSets(rows, { now, maxSkewMs: vcfg.params.maxBookOutcomeSkewMs, maxAgeMs: vcfg.params.maxQuoteAgePrematchMs });
-    // I: outliers semánticos
-    const od = outliers.detectOutliers(sets);
-    const clean = od.clean;
-    // J: grupos independientes verificados entre las casas LIMPIAS
-    const cls = sourceCatalog.classify(clean.map(s => s.sportsbook), catalog);
-
-    const meta = rows[0] && rows[0].metadata ? rows[0].metadata : {};
-    const label = `${meta.home_team || '?'} vs ${meta.away_team || '?'}`;
-    const gp = gpResolver ? (gpResolver({ canonicalEventId, label, meta }) || null) : null;
-
-    const input = {
-      canonicalEventId, canonicalMarketId: null,
-      gp, predictionMarket: null,
-      sportsbooks: clean.map(s => ({ sportsbook: s.sportsbook, independence_group: s.independence_group, quotes: s.quotes, fresh: true })),
-      bestPrices: bestPrices(clean),
-      mappingMatched: true, outcomeMatched: true, hardConflicts: 0, rulesOk: true,
-      freshnessOk: clean.length > 0, eventStarted: false,
-      mappingVersion: 'sportsbook-canonical-1', rulesVersion: 'rule-fp-2', priceStable: true,
-      snapshotIds: [],
-      // Bloque J: STRONG cuenta SOLO grupos verificados; Bloque I: outlier sin resolver bloquea STRONG
-      verifiedIndependenceGroups: cls.verified_independence_groups,
-      criticalContradiction: od.hasUnresolved,
-    };
+    const built = buildEventInput(canonicalEventId, rows, { now, catalog, gpResolver });
+    const { input, label, sets, clean, rejected, cls, gpMeta } = built;
+    const od = { outliers: built.outliers };
 
     const result = evaluate.evaluateMarket(input);
     for (const o of OUTCOMES) {
@@ -81,16 +105,27 @@ async function runDryRun({ provider = 'the_odds_api', now = null, gpResolver = n
       summary.evaluated++;
       if (clean.length === 0) summary.blocked++;
       else summary[c] = (summary[c] || 0) + 1;
+      const md = ev._detail && ev._detail.uncertainty && Array.isArray(ev._detail.uncertainty.contributions)
+        ? (ev._detail.uncertainty.contributions.find(x => x.code === 'no_vig_method_disagreement') || {}).points || null : null;
       summary.evaluations.push({
         canonical_event_id: canonicalEventId, external_event_id: rows[0].external_event_id, selection: o,
         event_label: label, classification: clean.length === 0 ? 'blocked' : c,
         reason_codes: ev.rejection_reasons || [], strong_blockers: ev.strong_blockers || [],
+        // §6: probabilidades del pipeline
+        gp_probability: ev.gp_probability, sportsbook_consensus_probability: ev.sportsbook_consensus_probability,
+        ensemble_probability: ev.ensemble_probability, conservative_probability: ev.conservative_probability,
+        // §6: precio y value
+        best_decimal_odds: ev.best_decimal_odds, break_even_probability: ev.break_even_probability, fair_odds: ev.fair_odds,
+        minimum_acceptable_odds: ev.minimum_acceptable_odds, maximum_acceptable_price: ev.maximum_acceptable_price,
+        raw_edge_pp: ev.raw_edge_pp, adjusted_edge_pp: ev.adjusted_edge_pp, raw_ev: ev.raw_ev, adjusted_ev: ev.adjusted_ev,
+        // §6: calidad/consenso
         source_count: ev.source_count, verified_independence_groups: cls.verified_independence_groups,
         consensus_completeness: result.consensus.status === 'ok' ? 'complete' : 'incomplete',
-        no_vig_methods: { official: vcfg.OFFICIAL_NO_VIG }, method_disagreement: null,
-        ensemble_probability: ev.ensemble_probability, uncertainty_score: ev.uncertainty_score, quality_score: ev.quality_score,
-        best_decimal_odds: ev.best_decimal_odds, minimum_acceptable_odds: ev.minimum_acceptable_odds, maximum_acceptable_price: ev.maximum_acceptable_price,
-        freshness_ok: input.freshnessOk, policy_versions: policy,
+        no_vig_methods: { official: vcfg.OFFICIAL_NO_VIG, alt: vcfg.VERSIONS.noVigAlt }, method_disagreement: md,
+        uncertainty_score: ev.uncertainty_score, quality_score: ev.quality_score, freshness_ok: input.freshnessOk,
+        // §6 + regla 6: versiones + snapshot del modelo
+        policy_versions: { ...policy, mapping: ev.mapping_version, no_vig: ev.no_vig_version, classification: ev.classification_version },
+        model_version: ev.model_version, gp_meta: gpMeta,
         _diagnostics: { sets: sets.length, clean: clean.length, rejected, outliers: od.outliers },
       });
     }
@@ -126,4 +161,4 @@ async function persistShadowRun(summary) {
   });
 }
 
-module.exports = { runDryRun, linkedEvents, bestPrices };
+module.exports = { runDryRun, runOfficial, buildEventInput, linkedEvents, bestPrices };

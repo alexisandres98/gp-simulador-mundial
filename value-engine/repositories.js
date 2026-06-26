@@ -31,9 +31,11 @@ const evaluations = {
   },
   async byId(id) { return (await db.query('SELECT * FROM value_evaluations WHERE id=$1', [id])).rows[0] || null; },
   async recent({ classification = null, limit = 50 } = {}) {
-    const w = classification ? 'WHERE classification=$2' : '';
+    const w = classification ? 'WHERE ve.classification=$2' : '';
     const p = classification ? [Math.min(limit, 200), classification] : [Math.min(limit, 200)];
-    return (await db.query(`SELECT * FROM value_evaluations ${w} ORDER BY created_at DESC LIMIT $1`, p)).rows;
+    // join nombres del evento canónico para el admin preview (home/away)
+    return (await db.query(`SELECT ve.*, ce.home_participant, ce.away_participant FROM value_evaluations ve
+      LEFT JOIN canonical_events ce ON ce.id=ve.canonical_event_id ${w} ORDER BY ve.created_at DESC LIMIT $1`, p)).rows;
   },
   async counts() {
     return (await db.query(`SELECT classification, count(*)::int n FROM value_evaluations GROUP BY 1`)).rows;

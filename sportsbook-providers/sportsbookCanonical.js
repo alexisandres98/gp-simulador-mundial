@@ -107,33 +107,73 @@ async function generateCandidates(provider = 'the_odds_api', { now = null, autoM
   return out;
 }
 
-// createCanonicalEventFromSportsbook(ev, {by}) — usado al APROBAR manualmente un candidato (auditoría §18).
-// Crea el canonical_event y enlaza las quotes del evento. NO se llama automáticamente.
-async function approveEvent(externalEventId, { provider = 'the_odds_api', reviewedBy = 'admin', now = null } = {}) {
+// approveEvent — APROBACIÓN MANUAL de un candidato (Fase B activación interna). En UNA transacción crea la
+// cadena canónica completa (canonical_event + canonical_market 1x2 + outcomes home/draw/away), enlaza las
+// quotes (event+market+outcome), registra provider_event_mapping(matched), admin_audit_event, y decide el
+// review item → approved. IDEMPOTENTE (si ya está matched, no duplica). Guard: rechaza evento ya iniciado.
+async function approveEvent(externalEventId, { provider = 'the_odds_api', reviewedBy = 'admin', now = null, reason = 'manual approval (fase B activación interna)' } = {}) {
   return db.withTransaction(async (c) => {
+    const pid = await providerId(c, provider);
+    // idempotencia: si ya hay mapping matched, devolver el canonical existente (no duplicar)
+    const existing = (await c.query(
+      `SELECT canonical_event_id FROM provider_event_mappings WHERE provider_id=$1 AND external_event_id=$2 AND mapping_status='matched'`,
+      [pid, externalEventId])).rows[0];
+    if (existing) return { canonical_event_id: existing.canonical_event_id, already: true };
+
     const evs = (await c.query(
       `SELECT max(metadata->>'home_team') home_team, max(metadata->>'away_team') away_team,
               max(metadata->>'competition') competition, max(metadata->>'commence_time') commence_time
        FROM sportsbook_quote_current WHERE data_provider=$1 AND external_event_id=$2`, [provider, externalEventId])).rows[0];
-    if (!evs) { const e = new Error('event_not_found'); e.code = 'event_not_found'; throw e; }
+    if (!evs || !evs.home_team) { const e = new Error('event_not_found'); e.code = 'event_not_found'; throw e; }
     const home = aliases.resolve(evs.home_team), away = aliases.resolve(evs.away_team);
     if (!home || !away) { const e = new Error('participants_unresolved'); e.code = 'participants_unresolved'; throw e; }
+    // guard: NO aprobar eventos ya iniciados
+    const nowMs = now != null ? +new Date(now) : Date.now();
+    if (evs.commence_time && +new Date(evs.commence_time) <= nowMs) { const e = new Error('event_started'); e.code = 'event_started'; throw e; }
+
     const ce = (await c.query(
       `INSERT INTO canonical_events (event_type, sport, competition, home_participant, away_participant, scheduled_start, status, metadata)
        VALUES ('match','football',$1,$2,$3,$4,'scheduled',$5) RETURNING id`,
       [evs.competition, home.canonicalName, away.canonicalName, evs.commence_time, JSON.stringify({ source: 'sportsbook_approved', external_event_id: externalEventId })])).rows[0];
-    // enlaza quotes (current + history) a este canonical_event
-    await c.query(`UPDATE sportsbook_quote_current SET canonical_event_id=$1 WHERE data_provider=$2 AND external_event_id=$3`, [ce.id, provider, externalEventId]);
+    // canonical_market 1x2 regulation
+    const cm = (await c.query(
+      `INSERT INTO canonical_markets (canonical_event_id, market_type, period, outcome_type, draw_possible, includes_extra_time, includes_penalties, qualification_market, status, metadata)
+       VALUES ($1,'1x2','regulation_90m','categorical',true,false,false,false,'open',$2) RETURNING id`,
+      [ce.id, JSON.stringify({ source: 'sportsbook' })])).rows[0];
+    // canonical_outcomes home/draw/away
+    const oc = {};
+    for (const [code, part, ord] of [['home', home.canonicalName, 0], ['draw', null, 1], ['away', away.canonicalName, 2]]) {
+      const r = await c.query(
+        `INSERT INTO canonical_outcomes (canonical_market_id, outcome_code, outcome_name, outcome_type, participant_reference, display_order, status)
+         VALUES ($1,$2,$3,'categorical',$4,$5,'active') RETURNING id`, [cm.id, code, code, part, ord]);
+      oc[code] = r.rows[0].id;
+    }
+    // enlaza quotes current: event+market a TODAS las filas del evento, luego outcome por slot
+    await c.query(`UPDATE sportsbook_quote_current SET canonical_event_id=$1, canonical_market_id=$2 WHERE data_provider=$3 AND external_event_id=$4`, [ce.id, cm.id, provider, externalEventId]);
+    for (const slot of ['home', 'draw', 'away']) {
+      await c.query(
+        `UPDATE sportsbook_quote_current SET canonical_outcome_id=$1
+         WHERE data_provider=$2 AND external_event_id=$3 AND (metadata->>'outcome_slot')=$4`,
+        [oc[slot], provider, externalEventId, slot]);
+    }
     await c.query(`UPDATE sportsbook_quote_history SET canonical_event_id=$1 WHERE data_provider=$2 AND external_event_id=$3`, [ce.id, provider, externalEventId]);
-    // registra el mapping de evento (auditado) con el provider_id de sportsbooks
-    const pid = await providerId(c, provider);
+    // provider_event_mapping (matched, auditado)
     await c.query(
-      `INSERT INTO provider_event_mappings (provider_id, external_event_id, canonical_event_id, mapping_status, mapping_method, equivalence_score, reviewed_by, metadata)
-       VALUES ($1,$2,$3,'matched','manual',1,$4,$5)
+      `INSERT INTO provider_event_mappings (provider_id, external_event_id, canonical_event_id, mapping_status, mapping_method, equivalence_score, reviewed_by, reviewed_at, metadata)
+       VALUES ($1,$2,$3,'matched','manual',1,$4,now(),$5)
        ON CONFLICT (provider_id, external_event_id, mapping_version) DO UPDATE SET
-         canonical_event_id=EXCLUDED.canonical_event_id, mapping_status='matched', reviewed_by=EXCLUDED.reviewed_by`,
+         canonical_event_id=EXCLUDED.canonical_event_id, mapping_status='matched', reviewed_by=EXCLUDED.reviewed_by, reviewed_at=now()`,
       [pid, externalEventId, ce.id, reviewedBy, JSON.stringify({ reviewedBy })]);
-    return { canonical_event_id: ce.id, home: home.canonicalName, away: away.canonicalName };
+    // admin audit event
+    await c.query(
+      `INSERT INTO admin_audit_events (admin_user_id, action, entity_type, entity_id, after_safe, reason)
+       VALUES ($1,'approve_sportsbook_mapping','canonical_event',$2,$3,$4)`,
+      [reviewedBy, ce.id, JSON.stringify({ external_event_id: externalEventId, home: home.canonicalName, away: away.canonicalName, market: '1x2', period: 'regulation_90m' }), reason]);
+    // decide review item → approved
+    await c.query(
+      `UPDATE mapping_review_queue SET status='approved', decision='approve', reviewed_by=$3, reviewed_at=now()
+       WHERE provider_a=$1 AND external_id_a=$2 AND status='pending'`, [provider, externalEventId, reviewedBy]);
+    return { canonical_event_id: ce.id, canonical_market_id: cm.id, home: home.canonicalName, away: away.canonicalName };
   });
 }
 

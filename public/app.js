@@ -2532,7 +2532,21 @@ async function loadValue(rootSel) {
     <div id="valBody"><div class="du">Cargando señales…</div></div>
     <div class="xo-foot">Estimación de consenso / probabilidad ensemble estimada (no "probabilidad verdadera"). No es consejo financiero.</div>`;
   const opSt = USER.uiFlags && USER.uiFlags.operationalStates && window.UIState;
-  if (!USER.valuePublic) { $('#valBody').innerHTML = opSt ? UIState.featureDisabled('La vista pública de Value está en preparación.') : du('La vista pública de Value está en preparación.'); return; }
+  if (!USER.valuePublic) {
+    // admin preview interno (público off): el admin ve las evaluaciones oficiales vía el endpoint interno
+    if (USER.isAdmin && USER.valueUi) {
+      try {
+        const r = await fetch('/api/internal/value/evaluations', { headers: hdrs() }).then(x => x.json());
+        const items = (r && r.items) || [];
+        const order = { strong: 0, lean: 1, watch: 2, pass: 3 };
+        items.sort((a, b) => (order[a.classification] - order[b.classification]) || ((b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0)));
+        const head = `<div class="explain"><b>Vista admin (interna)</b> · ${items.length} evaluaciones · no pública.</div>`;
+        $('#valBody').innerHTML = items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.');
+      } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las evaluaciones internas.'); }
+      return;
+    }
+    $('#valBody').innerHTML = opSt ? UIState.featureDisabled('La vista pública de Value está en preparación.') : du('La vista pública de Value está en preparación.'); return;
+  }
   try {
     const r = await fetch('/api/value/signals', { headers: hdrs() }).then(x => x.json());
     const items = (r && r.items) || [];
@@ -2541,11 +2555,12 @@ async function loadValue(rootSel) {
   } catch (e) { $('#valBody').innerHTML = opSt ? UIState.error('No se pudieron cargar las señales.') : du('No se pudieron cargar las señales.'); }
 }
 function valueCard(s) {
+  const ev = (s.home_participant && s.away_participant) ? `<div class="muted" style="font-size:12px;margin-bottom:4px">${xe(s.home_participant)} vs ${xe(s.away_participant)}</div>` : '';
   return `<div class="xo-card">
-    <div class="xo-card-top">${valBadge(s.classification)} <span class="reg-type">${xe(s.selection || '')}</span></div>
+    ${ev}<div class="xo-card-top">${valBadge(s.classification)} <span class="reg-type">${xe(s.selection || '')}</span></div>
     <div class="val-grid">
       <div><span>GP</span><b>${pct1(s.gp_probability)}</b></div>
-      <div><span>Consenso no-vig</span><b>${pct1(s.sportsbook_consensus)}</b></div>
+      <div><span>Consenso no-vig</span><b>${pct1(s.sportsbook_consensus != null ? s.sportsbook_consensus : s.sportsbook_consensus_probability)}</b></div>
       <div><span>Ensemble</span><b>${pct1(s.ensemble_probability)}</b></div>
       <div><span>Mejor cuota</span><b>${s.best_decimal_odds != null ? s.best_decimal_odds.toFixed(2) : 'N/A'}</b></div>
       <div><span>Cuota justa</span><b>${s.fair_odds != null ? s.fair_odds.toFixed(2) : 'N/A'}</b></div>

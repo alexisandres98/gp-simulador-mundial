@@ -25,7 +25,9 @@ async function evaluateAndPersist(input, opts = {}) {
     const row = await repo.evaluations.insert(ev);
     out.evaluations.push(row);
     const oppKey = `${ev.canonical_event_id}|${ev.canonical_market_id}|${ev.selection}`;
-    const opp = await repo.opportunities.upsert({ opportunity_key: oppKey, canonical_event_id: ev.canonical_event_id, canonical_market_id: ev.canonical_market_id, canonical_outcome_id: ev.canonical_outcome_id, selection: ev.selection, status: ev.classification === 'strong' ? 'strong' : ev.classification, current_evaluation_id: row.id, best_adjusted_ev: ev.adjusted_ev, best_adjusted_edge_pp: ev.adjusted_edge_pp, best_decimal_odds: ev.best_decimal_odds });
+    // status de la oportunidad: solo watch/lean/strong son estados accionables del CHECK; PASS (sin value) → 'detected'
+    const oppStatus = ['watch', 'lean', 'strong'].includes(ev.classification) ? ev.classification : 'detected';
+    const opp = await repo.opportunities.upsert({ opportunity_key: oppKey, canonical_event_id: ev.canonical_event_id, canonical_market_id: ev.canonical_market_id, canonical_outcome_id: ev.canonical_outcome_id, selection: ev.selection, status: oppStatus, current_evaluation_id: row.id, best_adjusted_ev: ev.adjusted_ev, best_adjusted_edge_pp: ev.adjusted_edge_pp, best_decimal_odds: ev.best_decimal_odds });
     // candidata a pick SOLO si STRONG elegible y picks habilitado
     if (cfg.flags.picksEnabled && row.classification === 'strong') {
       const c = await picks.createCandidate(row, { opportunityId: opp.id, sportsbookCode: opts.sportsbookCode, deepLink: opts.deepLink, marketLabel: opts.marketLabel, contextStatus: opts.contextStatus });

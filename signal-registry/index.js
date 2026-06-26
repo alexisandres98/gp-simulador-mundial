@@ -77,6 +77,7 @@ async function withdraw(signalId, { reason, actorId } = {}) {
   return db.withTransaction(c => appendEvent(c, signalId, { eventType: 'withdrawn', reasonCode: reason || 'withdrawn', actorId, payload: { reason }, projection: { current_status: 'withdrawn' } }));
 }
 const settle = (signalId, input, opts) => settlement.settle(signalId, input, opts);
+const settleFromProvider = (signalId, input, opts) => settlement.settleFromProvider(signalId, input, opts);
 const addCorrection = (signalId, input, opts) => corrections.addCorrection(signalId, input, opts);
 const markDisputed = (signalId, input, opts) => corrections.markDisputed(signalId, input, opts);
 const captureClosing = (signalId, input, opts) => closingCapture.captureClosing(signalId, input, opts);
@@ -116,22 +117,27 @@ async function verify(publicId) { return verifier.verifySignal(publicId); }
 async function verifyChain(opts) { return verifier.verifyChain(opts); }
 async function listCommitments({ limit = 60 } = {}) { return repo.commitments.list({ limit }); }
 
-// ---------- commitment diario (§15) idempotente ----------
+// ---------- commitment diario (§15) idempotente + elegibilidad ----------
+// SOLO entran señales oficiales elegibles (excluye pre-epoch / internal_validation / V2 diagnostics / legacy /
+// no-score-eligible). Con 0 elegibles NO se fabrica un root que parezca contener señales (skipped explícito).
 async function commitDay(date) {
+  const elig = require('./lifecycleEligibility');
   const rows = await repo.signals.rangeByDate(date);
   if (!rows.length) return { skipped: true, reason: 'no_signals', date };
-  const ordered = rows.slice().sort((a, b) => Number(a.chain_position) - Number(b.chain_position));
+  const eligible = rows.filter(r => elig.commitmentEligible(r).eligible);
+  if (!eligible.length) return { skipped: true, reason: 'no_eligible_signals', date, scanned: rows.length };
+  const ordered = eligible.slice().sort((a, b) => Number(a.chain_position) - Number(b.chain_position));
   const root = hashing.merkleRoot(ordered.map(r => r.registry_hash));
   const c = await repo.commitments.upsert({
     commitment_date: date, first_chain_position: Number(ordered[0].chain_position), last_chain_position: Number(ordered[ordered.length - 1].chain_position),
     signal_count: ordered.length, root_hash: root, algorithm: cfg.COMMITMENT_ALGO,
   });
-  return c ? { commitment: c } : { skipped: true, reason: 'already_committed', date };
+  return c ? { commitment: c, eligible: ordered.length, scanned: rows.length } : { skipped: true, reason: 'already_committed', date };
 }
 
 module.exports = {
   cfg, adminStatus, publishModelPrediction, captureArbPublication, captureExperiment,
-  withdraw, settle, addCorrection, markDisputed, captureClosing,
+  withdraw, settle, settleFromProvider, addCorrection, markDisputed, captureClosing,
   listPublic, getPublic, verify, verifyChain, listCommitments, commitDay,
   repo, publisher, verifier, presentation, loadBundle,
 };

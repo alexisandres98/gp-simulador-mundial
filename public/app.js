@@ -1711,8 +1711,29 @@ async function loadRegistryAdmin() {
       row('Kill switch', onoff(h.product_kill_switch)) +
       controls +
       `<h4 style="margin:14px 0 4px">Señales</h4>` + signalsBlock +
+      lifecycleBlock(h.lifecycle || {}) +
       `<div id="registryAdminMsg" class="muted" style="font-size:12px;margin-top:8px"></div>`;
   } catch (e) { el.innerHTML = '<span class="warn">Error de red.</span>'; }
+}
+function lifecycleBlock(lc) {
+  const flag = (b) => b ? '<span style="color:var(--accent)">on</span>' : '<span class="muted">off</span>';
+  const n = (v) => (v == null ? 0 : v);
+  return `
+    <h4 style="margin:16px 0 4px">Ciclo de vida interno</h4>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11.5px">
+      <div class="explain" style="margin:0">
+        <b>Closing</b> · scheduler ${flag(lc.closing_scheduler_enabled)}<br>
+        elegibles: ${n(lc.closing_eligible)}<br>capturados: ${n(lc.closing_captured)}<br>unavailable: ${n(lc.closing_unavailable)}
+      </div>
+      <div class="explain" style="margin:0">
+        <b>Settlement</b> · scheduler ${flag(lc.settlement_scheduler_enabled)}<br>
+        pending: ${n(lc.settlement_pending)}<br>finalized: ${n(lc.settlement_finalized)}<br>unresolved: ${n(lc.settlement_unresolved)}
+      </div>
+      <div class="explain" style="margin:0">
+        <b>Commitments</b> · scheduler ${flag(lc.commitment_scheduler_enabled)}<br>
+        count: ${n(lc.commitment_count)}<br>último root: ${lc.last_commitment_root ? '<code>' + lc.last_commitment_root + '…</code>' : '—'}<br>ext-anchor: <span class="muted">off</span>
+      </div>
+    </div>`;
 }
 async function registryControl(control, label) {
   const critical = control === 'kill_switch_on' || control === 'pause_writes' || control === 'hide_public';

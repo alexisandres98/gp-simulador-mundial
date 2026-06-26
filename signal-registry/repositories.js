@@ -95,11 +95,14 @@ const settlements = {
   async insert(s, client = db) {
     const r = await client.query(
       `INSERT INTO signal_settlements (signal_id, settlement_version, settlement_status, result_type, winning_outcome_id, event_result,
-         settlement_source, source_reference, source_timestamp, settled_at, is_final, void_reason, correction_reason, realized_roi, settlement_payload, content_hash)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11,false),$12,$13,$14,COALESCE($15,'{}'::jsonb),$16) RETURNING *`,
+         settlement_source, source_reference, source_timestamp, settled_at, is_final, void_reason, correction_reason, realized_roi, settlement_payload, content_hash,
+         result_outcome, provider_result_status, result_observed_at, result_finalized_at, regulation_score, settlement_policy_version)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11,false),$12,$13,$14,COALESCE($15,'{}'::jsonb),$16,
+         $17,$18,$19,$20,$21,$22) RETURNING *`,
       [s.signal_id, s.settlement_version, s.settlement_status, s.result_type || null, s.winning_outcome_id || null, jsonOr(s.event_result),
        s.settlement_source || null, s.source_reference || null, s.source_timestamp || null, s.settled_at || null, s.is_final, s.void_reason || null, s.correction_reason || null,
-       numOr(s.realized_roi), jsonOr(s.settlement_payload), s.content_hash || null]
+       numOr(s.realized_roi), jsonOr(s.settlement_payload), s.content_hash || null,
+       s.result_outcome || null, s.provider_result_status || null, s.result_observed_at || null, s.result_finalized_at || null, jsonOr(s.regulation_score), s.settlement_policy_version || null]
     );
     return r.rows[0];
   },
@@ -112,12 +115,17 @@ const closing = {
   async insert(c, client = db) {
     const r = await client.query(
       `INSERT INTO signal_closing_snapshots (signal_id, benchmark_type, provider_id, external_market_id, external_outcome_id,
-         best_bid, best_ask, midpoint, last_trade, executable_price, snapshot_id, observed_at, event_start_at, capture_status, capture_method, metadata)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,COALESCE($14,'captured'),$15,COALESCE($16,'{}'::jsonb))
+         best_bid, best_ask, midpoint, last_trade, executable_price, snapshot_id, observed_at, event_start_at, capture_status, capture_method, metadata,
+         canonical_event_id, market, period, outcome, closing_odds, closing_probability, closing_source, provider_updated_at, kickoff_at, closing_status, closing_reason_code, closing_policy_version, clv_components)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,COALESCE($14,'captured'),$15,COALESCE($16,'{}'::jsonb),
+         $17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
        ON CONFLICT (signal_id, benchmark_type) DO NOTHING RETURNING *`,
       [c.signal_id, c.benchmark_type, uuidOrNull(c.provider_id), c.external_market_id || null, c.external_outcome_id || null,
        numOr(c.best_bid), numOr(c.best_ask), numOr(c.midpoint), numOr(c.last_trade), numOr(c.executable_price), c.snapshot_id || null,
-       c.observed_at || null, c.event_start_at || null, c.capture_status, c.capture_method || null, jsonOr(c.metadata)]
+       c.observed_at || null, c.event_start_at || null, c.capture_status, c.capture_method || null, jsonOr(c.metadata),
+       uuidOrNull(c.canonical_event_id), c.market || null, c.period || null, c.outcome || null, numOr(c.closing_odds), numOr(c.closing_probability),
+       c.closing_source || null, c.provider_updated_at || null, c.kickoff_at || null, c.closing_status || null, c.closing_reason_code || null,
+       c.closing_policy_version || null, jsonOr(c.clv_components)]
     );
     return r.rows[0] || null;
   },

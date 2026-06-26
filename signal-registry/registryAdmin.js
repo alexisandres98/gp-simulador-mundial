@@ -67,6 +67,7 @@ async function health() {
     writes_paused: ctl.registry_writes_paused === true, registry_public_hidden: ctl.registry_public_hidden === true,
     product_kill_switch: ctl.product_kill_switch === true, admin_controls_available: true,
     audit_chain: await verifyChain().catch(() => ({ ok: null })),
+    lifecycle: await require('./sweeps').lifecycleStatus().catch(() => null), // Fase H §17: closing/settlement/commitment
   };
 }
 

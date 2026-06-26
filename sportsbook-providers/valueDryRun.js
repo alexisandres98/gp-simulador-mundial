@@ -7,6 +7,7 @@ const db = require('../database/client');
 const setAssembly = require('./setAssembly');
 const outliers = require('./outliers');
 const sourceCatalog = require('./sourceCatalog');
+const valueMetadata = require('./valueMetadata');
 const evaluate = require('../value-engine/evaluate');
 const vcfg = require('../value-engine/config');
 
@@ -16,7 +17,7 @@ const OUTCOMES = ['home', 'draw', 'away'];
 async function linkedEvents(provider) {
   const r = await db.query(
     `SELECT canonical_event_id, external_event_id, sportsbook_code, independence_group, external_outcome_id,
-            odds_decimal, quote_status, is_live, provider_update, period, market_family, metadata
+            odds_decimal, quote_status, is_live, provider_update, observed_at, period, market_family, metadata
      FROM sportsbook_quote_current
      WHERE data_provider=$1 AND canonical_event_id IS NOT NULL AND market_family='1x2'
      ORDER BY canonical_event_id`, [provider]);
@@ -82,6 +83,51 @@ async function runOfficial({ provider = 'the_odds_api', now = null, gpResolver =
     out.candidates += (r.candidates || []).length;
     out.rows.push({ canonicalEventId, label, classifications: r.classifications });
   }
+  return out;
+}
+
+// writeEvalMetadata — UPDATE aditivo de las columnas de metadata (Checkpoint 2.2). NO toca probs/edges/quality_score.
+async function writeEvalMetadata(id, m) {
+  await db.query(
+    `UPDATE value_evaluations SET
+       evaluation_mode=$2, validation_run_id=$3, registry_eligible=false, pick_candidate_eligible=false, public_eligible=false,
+       official_gp_model='V1', challenger_gp_model='V2', challenger_official_weight=0,
+       best_sportsbook_code=$4, best_sportsbook_name=$5, best_price_observed_at=$6, best_price_provider_updated_at=$7, best_price_deep_link=$8,
+       raw_sportsbook_count=$9, usable_sportsbook_count=$10, verified_sportsbook_count=$11, unverified_sportsbook_count=$12, duplicate_skin_count=$13, verified_independence_group_count=$14,
+       gp_vs_consensus_pp=$15, ensemble_vs_consensus_pp=$16, consensus_vs_best_price_break_even_pp=$17, edge_source_code=$18,
+       quality_raw_points=$19, quality_max_points=$20, quality_normalized_percent=$21, quality_components=$22, quality_policy_version=$23,
+       detail = COALESCE(detail,'{}'::jsonb) || jsonb_build_object('quality_diagnostic_v2_score',$24::numeric,'quality_diagnostic_v2_components',$25::jsonb,'best_price_comparables',$26::jsonb)
+     WHERE id=$1 AND COALESCE(evaluation_mode,'') <> 'internal_validation_pre_epoch'`,
+    [id, m.evaluation_mode, m.validation_run_id, m.best_sportsbook_code, m.best_sportsbook_name, m.best_price_observed_at, m.best_price_provider_updated_at, m.best_price_deep_link,
+     m.raw_sportsbook_count, m.usable_sportsbook_count, m.verified_sportsbook_count, m.unverified_sportsbook_count, m.duplicate_skin_count, m.verified_independence_group_count,
+     m.gp_vs_consensus_pp, m.ensemble_vs_consensus_pp, m.consensus_vs_best_price_break_even_pp, m.edge_source_code,
+     m.quality_raw_points, m.quality_max_points, m.quality_normalized_percent, JSON.stringify(m.quality_components), m.quality_policy_version,
+     m.quality_diagnostic_v2_score, JSON.stringify(m.quality_diagnostic_v2_components), JSON.stringify(m._best_comparables || [])]);
+}
+
+// runValidation — Checkpoint 2.2 §12: rerun controlado. evaluateAndPersist (matemática SIN cambios) + poblado
+// de metadata aditiva. evaluation_mode='internal_validation' (NO oficial). Picks/Registry off. No crea señales.
+async function runValidation({ provider = 'the_odds_api', now = null, gpResolver = null, evaluationMode = 'internal_validation' } = {}) {
+  const ve = require('../value-engine');
+  const validationRunId = require('crypto').randomUUID();
+  const catalog = await sourceCatalog.load(provider).catch(() => ({}));
+  const events = await linkedEvents(provider);
+  const out = { provider, validation_run_id: validationRunId, events: events.size, evaluated: 0, persisted: 0, metadata_written: 0, best_book_present: 0, by_class: {}, write_enabled: ve.cfg.flags.valueWrite, picks_enabled: ve.cfg.flags.picksEnabled };
+  for (const [cei, rows] of events) {
+    const built = buildEventInput(cei, rows, { now, catalog, gpResolver });
+    if (!built.input.sportsbooks.length) continue;
+    const r = await ve.evaluateAndPersist(built.input, {});
+    for (const o of Object.keys(r.classifications)) { out.evaluated++; out.by_class[r.classifications[o]] = (out.by_class[r.classifications[o]] || 0) + 1; }
+    for (const evalRow of (r.evaluations || [])) {
+      out.persisted++;
+      const md = valueMetadata.computeMetadata(built, evalRow, { evaluationMode, validationRunId, catalog });
+      await writeEvalMetadata(evalRow.id, md);
+      out.metadata_written++;
+      if (md.best_sportsbook_code) out.best_book_present++;
+    }
+  }
+  // tag de scope SOLO en opportunities nuevas de este run (NO re-taguea las pre-epoch existentes)
+  await db.query(`UPDATE value_opportunities SET evaluation_mode=$1, registry_eligible=false, pick_candidate_eligible=false, public_eligible=false WHERE evaluation_mode IS NULL`, [evaluationMode]).catch(() => {});
   return out;
 }
 
@@ -161,4 +207,4 @@ async function persistShadowRun(summary) {
   });
 }
 
-module.exports = { runDryRun, runOfficial, buildEventInput, linkedEvents, bestPrices };
+module.exports = { runDryRun, runOfficial, runValidation, buildEventInput, linkedEvents, bestPrices };

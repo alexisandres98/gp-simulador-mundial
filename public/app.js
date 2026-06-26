@@ -2540,7 +2540,9 @@ async function loadValue(rootSel) {
         const items = (r && r.items) || [];
         const order = { strong: 0, lean: 1, watch: 2, pass: 3 };
         items.sort((a, b) => (order[a.classification] - order[b.classification]) || ((b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0)));
-        const head = `<div class="explain"><b>Vista admin (interna)</b> · ${items.length} evaluaciones · no pública.</div>`;
+        const head = `<div class="explain"><b>Vista admin (interna)</b> · ${items.length} evaluaciones · no pública.<br>
+          <b>Edge bruto</b> = combinada (ensemble) − break-even · <b>Edge ajustado</b> = conservadora − break-even. GP no es el ensemble.<br>
+          V1 es el modelo oficial usado por Value. V2 es experimental y no modifica la clasificación.</div>`;
         $('#valBody').innerHTML = items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.');
       } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las evaluaciones internas.'); }
       return;
@@ -2556,18 +2558,26 @@ async function loadValue(rootSel) {
 }
 function valueCard(s) {
   const ev = (s.home_participant && s.away_participant) ? `<div class="muted" style="font-size:12px;margin-bottom:4px">${xe(s.home_participant)} vs ${xe(s.away_participant)}</div>` : '';
+  const consensus = s.sportsbook_consensus != null ? s.sportsbook_consensus : s.sportsbook_consensus_probability;
+  const be = (s.best_decimal_odds != null && Number(s.best_decimal_odds) > 0) ? 1 / Number(s.best_decimal_odds) : null;
+  const v2 = s.detail && s.detail.quality_diagnostic_v2_score;
+  const bookLine = s.best_sportsbook_code ? `<div class="muted" style="font-size:11.5px;margin-top:6px">Mejor cuota en <b>${xe(s.best_sportsbook_name || s.best_sportsbook_code)}</b>${s.edge_source_code ? ' · '+xe(s.edge_source_code) : ''}</div>` : '';
   return `<div class="xo-card">
     ${ev}<div class="xo-card-top">${valBadge(s.classification)} <span class="reg-type">${xe(s.selection || '')}</span></div>
     <div class="val-grid">
-      <div><span>GP</span><b>${pct1(s.gp_probability)}</b></div>
-      <div><span>Consenso no-vig</span><b>${pct1(s.sportsbook_consensus != null ? s.sportsbook_consensus : s.sportsbook_consensus_probability)}</b></div>
-      <div><span>Ensemble</span><b>${pct1(s.ensemble_probability)}</b></div>
+      <div><span>GP V1</span><b>${pct1(s.gp_probability)}</b></div>
+      <div><span>Consenso no-vig</span><b>${pct1(consensus)}</b></div>
+      <div><span>Combinada (ensemble)</span><b>${pct1(s.ensemble_probability)}</b></div>
+      <div><span>Conservadora</span><b>${pct1(s.conservative_probability)}</b></div>
+      <div><span>Break-even</span><b>${pct1(be)}</b></div>
+      <div><span>GP vs consenso</span><b>${pp(s.gp_vs_consensus_pp)}</b></div>
       <div><span>Mejor cuota</span><b>${s.best_decimal_odds != null ? Number(s.best_decimal_odds).toFixed(2) : 'N/A'}</b></div>
-      <div><span>Cuota justa</span><b>${s.fair_odds != null ? Number(s.fair_odds).toFixed(2) : 'N/A'}</b></div>
       <div><span>Cuota mínima</span><b>${s.minimum_acceptable_odds != null ? Number(s.minimum_acceptable_odds).toFixed(2) : 'N/A'}</b></div>
-      <div><span>Edge ajustado</span><b class="${(s.adjusted_edge_pp||0)>0?'green':''}">${pp(s.adjusted_edge_pp)}</b></div>
-      <div><span>Calidad</span><b>${s.quality_score ?? 'N/A'}</b></div>
-    </div></div>`;
+      <div><span>Edge bruto (ens−BE)</span><b>${pp(s.raw_edge_pp)}</b></div>
+      <div><span>Edge ajustado (cons−BE)</span><b class="${(s.adjusted_edge_pp||0)>0?'green':''}">${pp(s.adjusted_edge_pp)}</b></div>
+      <div><span>Grupos verif.</span><b>${s.verified_independence_group_count ?? 'N/A'}</b></div>
+      <div><span>Calidad</span><b>${s.quality_score ?? 'N/A'}${s.quality_max_points ? ' <span class="muted" style="font-weight:500">('+(s.quality_raw_points!=null?Number(s.quality_raw_points):'?')+'/'+Number(s.quality_max_points)+(v2!=null?' · v2 '+Number(v2).toFixed(0):'')+')</span>' : ''}</b></div>
+    </div>${bookLine}</div>`;
 }
 
 async function loadPicks(rootSel) {

@@ -38,10 +38,11 @@ function assembleSets(rows, { now = null, maxSkewMs = 60000, maxAgeMs = 600000 }
     if (skew > maxSkewMs) { rejected.push({ sportsbook: book, reason: 'excessive_skew', skew }); continue; }
     const maxUp = ups.length ? Math.max(...ups) : nowMs;
     if ((nowMs - maxUp) > maxAgeMs) { rejected.push({ sportsbook: book, reason: 'stale' }); continue; }
+    const obs = ['home', 'draw', 'away'].map(s => +new Date(slots[s].observed_at)).filter(Number.isFinite);
     sets.push({
       sportsbook: book, independence_group: slots.home.independence_group || book, period: slots.home.period,
       quotes: { home: { odds: Number(slots.home.odds_decimal) }, draw: { odds: Number(slots.draw.odds_decimal) }, away: { odds: Number(slots.away.odds_decimal) } },
-      provider_update: new Date(maxUp).toISOString(), skew_ms: skew, fresh: true,
+      provider_update: new Date(maxUp).toISOString(), observed_at: obs.length ? new Date(Math.max(...obs)).toISOString() : null, skew_ms: skew, fresh: true,
     });
   }
   return { sets, rejected };

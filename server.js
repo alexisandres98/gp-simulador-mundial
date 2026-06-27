@@ -2219,14 +2219,14 @@ const server = http.createServer(async (req, res) => {
         if (!isSuper) return json(res, 403, { error: 'superadmin_required' });
         if (!registryAdminRateOk(u.email)) return json(res, 429, { error: 'rate_limited' });
         const id = mApprove[1]; const body = await readBody(req).catch(() => ({}));
-        // doble confirmación reforzada (§1): candidate_id escrito + frase exacta + motivo + nota de revisión.
-        if (body.confirm_candidate_id !== id) return json(res, 422, { error: 'candidate_id_mismatch' });
-        if (String(body.confirmation_phrase || '').trim() !== `CONFIRM ${id}`) return json(res, 422, { error: 'reinforced_confirmation_required' });
-        if (!body.reason || String(body.reason).trim().length < 4) return json(res, 422, { error: 'reason_required' });
-        if (!body.review_note || String(body.review_note).trim().length < 4) return json(res, 422, { error: 'review_note_required' });
+        // Aprobación de un clic (decisión del owner): SIN escribir candidate_id, frase "CONFIRM" ni nota humana.
+        // La doble confirmación reforzada se quitó; el sí/no vive en el frontend. El motivo se auto-rellena para
+        // mantener el rastro de auditoría (human_review_reason es NOT NULL y la Signal es inmutable). Siguen vivos
+        // los gates de seguridad: superadmin + PICK_MANUAL_CONVERSION_ENABLED + rate limit (no son fricción visible).
+        const reason = (body.reason && String(body.reason).trim().length >= 4) ? String(body.reason).trim() : `Aprobada desde el panel admin por ${u.email}`;
         try {
           const r = await require('./value-engine/pickConversion').convertToPick(id, {
-            adminId: u.email, superadmin: true, reason: body.reason, reviewNote: body.review_note, locale: body.locale === 'en' ? 'en' : 'es',
+            adminId: u.email, superadmin: true, reason, locale: body.locale === 'en' ? 'en' : 'es',
             risks: body.risks_displayed || [], idempotencyKey: req.headers['idempotency-key'] || ('convert:' + id), now: Date.now(),
           });
           return json(res, 200, { ok: true, idempotent: !!r.idempotent, pick_id: r.pick ? r.pick.pick_id : null, signal_id: r.signal_id || (r.signal && r.signal.id) || null, candidate_lifecycle: 'CONVERTED_TO_PICK' });
@@ -2244,6 +2244,11 @@ const server = http.createServer(async (req, res) => {
       }
     }
     // admin Picks (§44)
+    // Picks internas aprobadas (K.1/K.2): lista las filas de internal_picks para el panel admin (NO público).
+    if (p === '/api/internal/picks' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { return json(res, 200, await require('./value-engine/pickConversion').listPicks({ limit: 100 })); } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
     if (p === '/api/internal/picks/candidates' && req.method === 'GET') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       try { return json(res, 200, { items: await valueEngine.repo.candidates.list({ limit: 100 }) }); } catch (e) { return json(res, 500, { error: 'error' }); }

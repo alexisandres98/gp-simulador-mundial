@@ -141,4 +141,26 @@ async function convertToPick(candidateId, opts = {}) {
   });
 }
 
-module.exports = { convertToPick, displayLabel, revalidate, gpVector };
+// listPicks — lista las Picks internas aprobadas (append-only) para el panel admin. Devuelve el modelo i18n
+// NEUTRAL (display_key+args+codes+team_ids) para que el frontend renderice ES/EN en vivo, además del texto que
+// vio el admin al aprobar (auditoría). NO es público (el endpoint que la usa exige admin).
+async function listPicks({ limit = 100 } = {}) {
+  const rows = (await db.query(
+    `SELECT pick_id, candidate_id, signal_id, canonical_event_id, selection_outcome, selection_display, event_display,
+       kickoff_at, gp_probability, consensus_probability, published_odds, minimum_odds, sportsbook, deep_link,
+       adjusted_edge_pp, adjusted_ev, quality_score, verified_independence_group_count, model_version, espn_fixture_id,
+       approving_admin, human_review_reason, approval_timestamp, created_at,
+       selection_display_key, selection_display_args, outcome_code, market_code, period_code,
+       canonical_home_team_id, canonical_away_team_id, approval_locale, selection_display_at_approval
+     FROM internal_picks ORDER BY created_at DESC LIMIT $1`, [limit])).rows;
+  return {
+    enabled: true,
+    count: rows.length,
+    items: rows.map(r => ({
+      ...r,
+      selection_display_model: { display_key: r.selection_display_key, display_args: r.selection_display_args, outcome_code: r.outcome_code },
+    })),
+  };
+}
+
+module.exports = { convertToPick, displayLabel, revalidate, gpVector, listPicks };

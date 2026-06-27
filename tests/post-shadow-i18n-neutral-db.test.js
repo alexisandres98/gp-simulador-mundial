@@ -94,6 +94,16 @@ const NOW = +new Date(KICK) - 3 * 3600 * 1000;
     ok('6. conversión sigue atómica (Pick+Signal) e idempotente', !!rEs.signal && !!rEs.pick && (await conv.convertToPick(cEs, { adminId: 'a', superadmin: true, reason: 'retry idempotente', reviewNote: 'rev', locale: 'es', now: NOW })).idempotent === true);
     // columnas neutrales en la Pick
     ok('Pick guarda team_ids + outcome_code + market_code + period_code neutrales', rEs.pick.canonical_home_team_id === 'CRO' && rEs.pick.canonical_away_team_id === 'GHA' && rEs.pick.outcome_code === 'HOME' && rEs.pick.market_code === '1X2' && rEs.pick.period_code === 'REGULATION');
+    // listPicks (panel admin): lista las Picks aprobadas con el modelo NEUTRAL → renderable ES/EN en vivo
+    const lp = await conv.listPicks({ limit: 100 });
+    const pkEs = (lp.items || []).find(x => x.pick_id === rEs.pick.pick_id);
+    ok('listPicks devuelve las Picks aprobadas (count>=2)', lp.count >= 2 && !!pkEs);
+    ok('listPicks expone el modelo NEUTRAL renderable ES/EN', pkEs && pkEs.selection_display_model.display_key === 'selection.team_to_win' &&
+      i18n.renderSelection(pkEs.selection_display_model, 'es') === 'Croacia gana' && i18n.renderSelection(pkEs.selection_display_model, 'en') === 'Croatia to win');
+    // conversión de un clic: reason auto-rellenado (sin nota humana) sigue creando Pick válida con auditoría
+    const cQuick = await readyCandidate();
+    const rQuick = await conv.convertToPick(cQuick, { adminId: 'a', superadmin: true, reason: 'Aprobada desde el panel admin por a', locale: 'es', now: NOW });
+    ok('un clic: convierte con reason auto-rellenado (sin review_note) + queda en listPicks', !!rQuick.pick && !!rQuick.signal && (await conv.listPicks({ limit: 100 })).items.some(x => x.pick_id === rQuick.pick.pick_id));
 
     // ===================== SEGURIDAD / REGRESIÓN =====================
     console.log('\n§13 SEGURIDAD');

@@ -1643,6 +1643,10 @@ function renderAdmin() {
       <h3>CANDIDATE FACTORY · COLA INTERNA</h3>
       <div id="candidateBody" class="muted" style="font-size:12px">Cargando…</div>
     </div>
+    <div class="gcard" style="margin-top:12px" id="picksCard">
+      <h3>PICKS APROBADAS · INTERNAS</h3>
+      <div id="picksBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
     <div class="gcard" style="margin-top:12px" id="registryAdminCard">
       <h3>REGISTRO DE SEÑALES · CONTROL INTERNO</h3>
       <div id="registryAdminBody" class="muted" style="font-size:12px">Cargando…</div>
@@ -1709,6 +1713,7 @@ function renderAdmin() {
       <div id="userBase" class="muted">Cargando…</div>
     </div>`;
   loadCandidates();
+  loadPicks();
   loadRegistryAdmin();
   loadTrackRecord();
   loadUsers();
@@ -1749,6 +1754,8 @@ function setLang(l, bodySel) {
   I18N.setLocale(l);
   if ($('#valCandBody')) loadCandidates('#valCandBody');
   if ($('#candidateBody')) loadCandidates('#candidateBody');
+  if ($('#picksBody')) loadPicks();
+  if ($('#valPicksBody')) loadPicks('#valPicksBody');
 }
 async function candReject(id) {
   const reason = prompt('Motivo del rechazo (queda registrado):', ''); if (reason == null) return;
@@ -1756,19 +1763,43 @@ async function candReject(id) {
 }
 async function candApprove(id, selDisplay, odds) {
   const L = (k, a) => I18N.t(k, a);
+  // Aprobación de un clic: un único sí/no con el resumen (evita clics accidentales; la Pick/Signal es inmutable).
   const summary = `${selDisplay}\n${L('ui.current_odds')}: ${odds}\n${L('market.match_result')} — ${L('period.regulation')}\n${L('ui.main_risk')}: ${L('risk.LARGE_MARKET_DISAGREEMENT')}`;
-  if (!confirm(L('ui.approve_warning') + '\n\n' + summary + '\n\n¿/Continue?')) return;
-  const reason = prompt(L('confirm.reason'), ''); if (!reason || reason.trim().length < 4) { alert('—'); return; }
-  const reviewNote = prompt(L('confirm.review_note'), ''); if (!reviewNote || reviewNote.trim().length < 4) { alert('—'); return; }
-  const typedId = prompt(L('confirm.type_id'), ''); if (typedId !== id) { alert('candidate_id ✗'); return; }
-  const phrase = prompt(L('confirm.phrase', { id }), ''); if (phrase !== 'CONFIRM ' + id) { alert('CONFIRM ✗'); return; }
+  if (!confirm(L('ui.approve_warning') + '\n\n' + summary + '\n\n' + (I18N.locale === 'en' ? 'Approve this Pick?' : '¿Aprobar esta Pick?'))) return;
   try {
-    const r = await fetch('/api/internal/value/candidates/' + id + '/approve-as-pick', { method: 'POST', headers: hdrs(), body: JSON.stringify({ confirm_candidate_id: id, confirmation_phrase: 'CONFIRM ' + id, reason, review_note: reviewNote, locale: I18N.locale, risks_displayed: ['LARGE_MARKET_DISAGREEMENT'] }) });
+    const r = await fetch('/api/internal/value/candidates/' + id + '/approve-as-pick', { method: 'POST', headers: hdrs(), body: JSON.stringify({ locale: I18N.locale, risks_displayed: ['LARGE_MARKET_DISAGREEMENT'] }) });
     const j = await r.json();
-    if (r.ok) alert('✓ Pick interna creada (' + (j.pick_id || '').slice(0, 8) + ') + Signal ' + (j.signal_id || '').slice(0, 8) + '. Candidate CONVERTED_TO_PICK.');
+    if (r.ok) alert('✓ ' + (I18N.locale === 'en' ? 'Internal Pick created' : 'Pick interna creada') + ' (' + (j.pick_id || '').slice(0, 8) + ') + Signal ' + (j.signal_id || '').slice(0, 8) + '.');
     else alert('✗ ' + (j.error || 'error') + (j.blockers ? ': ' + j.blockers.join(', ') : ''));
     loadCandidates();
+    loadPicks(); loadPicks('#valPicksBody');
   } catch { alert('Error de red'); }
+}
+async function loadPicks(bodySel) {
+  const el = $(bodySel || '#picksBody'); if (!el) return;
+  const L = (k, a) => I18N.t(k, a);
+  try {
+    const r = await fetch('/api/internal/picks', { headers: hdrs() });
+    if (r.status === 404) { el.innerHTML = '<span class="muted">Value/Picks apagado.</span>'; return; }
+    if (!r.ok) { el.innerHTML = '<span class="warn">No autorizado (' + r.status + ').</span>'; return; }
+    const t = await r.json();
+    if (!t.count) { el.innerHTML = `<div class="muted" style="font-size:12px">${I18N.locale === 'en' ? 'No approved Picks yet. Approve a candidate above and it will appear here.' : 'Todavía no aprobaste ninguna Pick. Aprobá un candidato arriba y aparecerá acá.'}</div>`; return; }
+    const langSel = `<div class="formrow" style="margin-bottom:8px;align-items:center"><span class="muted" style="font-size:11px">${L('lang.label')}:</span>` +
+      ['es', 'en'].map(l => `<button class="ghost" style="${I18N.locale === l ? 'border-color:var(--accent);color:var(--accent)' : ''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>`).join('') + `</div>`;
+    const rows = (t.items || []).map(pk => {
+      const fbTeam = pk.outcome_code === 'AWAY' ? (pk.canonical_away_team_id || '') : (pk.canonical_home_team_id || '');
+      const sel = I18N.renderSelection(pk.selection_display_model, fbTeam) || pk.selection_display || pk.selection_outcome;
+      const when = pk.approval_timestamp ? new Date(pk.approval_timestamp).toLocaleString() : '';
+      return `<div class="explain" style="margin:6px 0"><b>${sel}</b> · ${L('classification.strong')}<br>` +
+        `<span class="muted" style="font-size:11px">${pk.event_display || ''} · ${L('market.match_result')} · ${L('period.regulation')}</span><br>` +
+        `${L('ui.current_odds')}: <b>${pk.published_odds ?? '—'}</b> · ${L('ui.minimum_odds')}: ${pk.minimum_odds ?? '—'} · ${L('ui.sportsbook')}: ${pk.sportsbook || '—'}<br>` +
+        `<span class="muted" style="font-size:11px">edge ${pk.adjusted_edge_pp ?? '—'} · EV ${pk.adjusted_ev ?? '—'} · GP ${pk.gp_probability ?? '—'} vs consenso ${pk.consensus_probability ?? '—'} · Pick ${(pk.pick_id || '').slice(0, 8)} · Signal ${(pk.signal_id || '').slice(0, 8)}</span><br>` +
+        `<span class="muted" style="font-size:11px">${I18N.locale === 'en' ? 'approved' : 'aprobada'}: ${when} · ${pk.approving_admin || ''}</span>` +
+        (pk.deep_link ? ` · <a href="${pk.deep_link}" target="_blank" rel="noopener">${L('ui.sportsbook')}</a>` : '') + `</div>`;
+    }).join('');
+    el.innerHTML = langSel + `<div class="muted" style="margin-bottom:6px">${I18N.locale === 'en' ? 'Approved Picks' : 'Picks aprobadas'}: ${t.count}</div>` + rows +
+      `<div class="muted" style="font-size:11px;margin-top:6px">${L('ui.disclaimer')} ${I18N.locale === 'en' ? 'Internal only — not published to users.' : 'Solo interno — no se publica a los usuarios.'}</div>`;
+  } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
 }
 async function loadTrackRecord() {
   const el = $('#trackRecordBody'); if (!el) return;
@@ -2758,8 +2789,10 @@ async function loadValue(rootSel) {
           V1 es el modelo oficial usado por Value. V2 es experimental y no modifica la clasificación.</div>`;
         // Candidatos READY (con el botón "Aprobar como Pick interna") arriba de las evaluaciones.
         const candSection = `<div class="gcard" style="margin-bottom:12px"><h3>CANDIDATOS A PICK GP (revisión humana)</h3><div id="valCandBody" class="muted" style="font-size:12px">Cargando…</div></div>`;
-        $('#valBody').innerHTML = candSection + (items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.'));
+        const picksSection = `<div class="gcard" style="margin-bottom:12px"><h3>PICKS APROBADAS · INTERNAS</h3><div id="valPicksBody" class="muted" style="font-size:12px">Cargando…</div></div>`;
+        $('#valBody').innerHTML = candSection + picksSection + (items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.'));
         loadCandidates('#valCandBody');
+        loadPicks('#valPicksBody');
       } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las evaluaciones internas.'); }
       return;
     }

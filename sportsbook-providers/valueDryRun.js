@@ -211,7 +211,7 @@ async function persistShadowRun(summary) {
 // ingesta anterior falló o está stale (§3). Tras evaluar, marca pick_candidate_eligible=true SOLO en las STRONG
 // sin blockers (la Candidate Factory toma esas). registry_eligible/public siguen false. NO crea señales ni picks.
 async function runOperational({ provider = 'the_odds_api', now = null, gpResolver = null } = {}) {
-  const st = (await db.query(`SELECT last_success_at FROM sportsbook_provider_state WHERE data_provider=$1 ORDER BY updated_at DESC LIMIT 1`, [provider]).catch(() => ({ rows: [] }))).rows[0];
+  const st = (await db.query(`SELECT last_success_at FROM sportsbook_provider_state WHERE provider_name=$1 LIMIT 1`, [provider]).catch(() => ({ rows: [] }))).rows[0];
   const maxAge = parseInt(process.env.SPORTSBOOK_MAX_QUOTE_AGE_MS, 10) || 600000;
   const nowMs = now ? +new Date(now) : Date.now();
   if (!st || !st.last_success_at || (nowMs - +new Date(st.last_success_at)) > maxAge * 2) return { skipped: true, reason: 'stale_or_failed_ingestion' };

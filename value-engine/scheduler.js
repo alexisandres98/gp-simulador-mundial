@@ -7,17 +7,31 @@ const repo = require('./repositories');
 const log = require('../database/logger');
 const state = { value: { started: false, timer: null, running: false }, monitor: { started: false, timer: null, running: false } };
 
-// tick del Value Engine: procesa mercados con quotes nuevas. Requiere proveedor de sportsbooks (hoy ausente).
+// Fase J.1: resolver oficial V1 inyectado desde server.js (donde viven engine + db.elos). Sin él, Value no evalúa
+// (no se inventa GP). gpResolver({canonicalEventId,label,meta}) → { probabilities:{home,draw,away}, model_version, ... } | null.
+let _gpResolver = null;
+function setGpResolver(fn) { _gpResolver = fn; }
+
+// tick del Value Engine (Fase J.1): tras una ingesta fresh/exitosa → V1 evalúa eventos canónicos elegibles
+// (internal_operational) → persiste → Candidate Factory. Orden garantizado: Value ANTES de la Factory. Lock
+// anti-solape. Aislado: una falla de Value no rompe la Factory y viceversa. Sin gpResolver → no evalúa.
 async function valueTick() {
   if (state.value.running) return { skipped: 'overlap' };
   state.value.running = true;
   try {
     return await locks.withLock(cfg.ADVISORY.value.resource, cfg.ADVISORY.value.op, async () => {
-      // Fase J §4-7: tras una ingesta válida, refrescar la Candidate Factory (price state + lifecycle + readiness).
-      // Aislado: una falla de la factory no rompe Value. Con 0 STRONG operativas → 0 candidates (correcto §1/§17).
+      const startedAt = Date.now();
+      let value = null;
+      if (_gpResolver) {
+        // runOperational tiene su propio gate de frescura (no evalúa sobre ingesta stale/failed) + idempotencia por input_hash.
+        try { value = await require('../sportsbook-providers/valueDryRun').runOperational({ gpResolver: _gpResolver, now: Date.now() }); }
+        catch (e) { log.error('value: error operational', { error: e.message }); value = { error: 'operational_error' }; }
+      } else { value = { skipped: true, reason: 'no_gp_resolver' }; }
+      // Candidate Factory DESPUÉS de persistir las evaluaciones (orden §3). Aislado.
       let candidates = null;
       try { candidates = await require('./candidateFactory').run({ now: Date.now() }); } catch (e) { candidates = { error: 'factory_error' }; }
-      return { evaluated: 0, reason: 'no_sportsbook_quotes', candidates };
+      state.value.lastRunAt = new Date().toISOString();
+      return { value, candidates, duration_ms: Date.now() - startedAt };
     });
   } catch (e) { log.error('value: error ciclo', { error: e.message }); return { error: 'cycle_error' }; }
   finally { state.value.running = false; }
@@ -48,4 +62,4 @@ function start() {
   return out;
 }
 function stop() { for (const k of ['value', 'monitor']) { if (state[k].timer) clearInterval(state[k].timer); state[k].timer = null; state[k].started = false; } return { stopped: true }; }
-module.exports = { start, stop, valueTick, monitorTick, status: () => ({ value: state.value.started, monitor: state.monitor.started }) };
+module.exports = { start, stop, valueTick, monitorTick, setGpResolver, hasGpResolver: () => !!_gpResolver, status: () => ({ value: state.value.started, monitor: state.monitor.started, gp_resolver_wired: !!_gpResolver, last_run_at: state.value.lastRunAt || null }) };

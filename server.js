@@ -332,6 +332,30 @@ function normName(s) { return String(s || '').toLowerCase().normalize('NFD').rep
 const aliasToId = {};
 TEAMS.forEach(t => [t.en, t.name, ...t.aliases].forEach(a => aliasToId[normName(a)] = t.id));
 
+// Fase J.1 — resolver OFICIAL V1 point-in-time para Value operativo. Mapea los nombres de equipo del evento
+// (metadata del sportsbook / label) a códigos del motor y computa la probabilidad 1X2 oficial (Elo→Poisson→DC).
+// V2 official weight = 0: NO interviene. Sin resolver ambos equipos → null (el evento se considera pero no produce
+// GP → no STRONG; no se inventa nada). SÍNCRONO (buildEventInput lo llama sin await).
+function v1GpResolver({ canonicalEventId, label, meta } = {}) {
+  try {
+    const m = meta || {};
+    const hName = m.home_team || (label ? String(label).split(' vs ')[0] : null);
+    const aName = m.away_team || (label ? String(label).split(' vs ')[1] : null);
+    const h = aliasToId[normName(hName)], a = aliasToId[normName(aName)];
+    if (!h || !a) return null;
+    const eh = effElo(db.elos, h), ea = effElo(db.elos, a);
+    const probs = matchProbs(eh, ea); // V1 oficial (mismo modelo que sirve el sitio)
+    if (!probs || !Number.isFinite(probs.home)) return null;
+    return {
+      probabilities: { home: probs.home, draw: probs.draw, away: probs.away },
+      model_version: 'gp-core-1.4.0', methodology_version: 'gp-core-1.4.0',
+      sampleStatus: 'ok', calibrationStatus: 'calibrated', data_quality: 0.7,
+      input_cutoff_at: new Date().toISOString(), calc_ts: new Date().toISOString(),
+      home_code: h, away_code: a, elo_snapshot: { home: eh, away: ea },
+    };
+  } catch { return null; }
+}
+
 async function fetchMarkets(force = false) {
   if (!force && Date.now() - marketCache.ts < 60 * 1000) return marketCache;
   const next = { ts: Date.now(), polymarket: {}, kalshi: {}, errors: [] };
@@ -2172,7 +2196,7 @@ const server = http.createServer(async (req, res) => {
       // (0 STRONG garantizado sin GP); el STRONG real requiere el gpResolver, fuera de alcance de esta ruta.
       if (p === '/api/internal/value/operational-run' && req.method === 'POST') {
         const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
-        try { const r = await require('./sportsbook-providers/valueDryRun').runOperational({}); await require('./value-engine/candidateFactory').run({ now: Date.now() }); return json(res, 200, r); }
+        try { const r = await require('./sportsbook-providers/valueDryRun').runOperational({ gpResolver: v1GpResolver }); const c = await require('./value-engine/candidateFactory').run({ now: Date.now() }); return json(res, 200, { value: r, candidates: c, gp_resolver_wired: true }); }
         catch (e) { return json(res, 400, { error: e.code || 'error' }); }
       }
     }
@@ -2317,6 +2341,8 @@ server.listen(PORT, () => {
       };
     });
   } catch { /* aislado */ }
+  // Fase J.1 — cablea el resolver oficial V1 al Value scheduler (Value operativo evalúa eventos canónicos con V1).
+  try { require('./value-engine/scheduler').setGpResolver(v1GpResolver); } catch { /* aislado */ }
   // Sprint 8A — orquestador de jobs (registro de runs, heartbeats, dependencias, apagado ordenado). INERTE
   // si OPERATIONS_ORCHESTRATOR_ENABLED=false: no arranca timers, no escribe, no toca el manejo de señales.
   operations.initialize({ flushDb }).catch(() => { /* aislado */ }); // flushDb: persistir db.json en el apagado coordinado

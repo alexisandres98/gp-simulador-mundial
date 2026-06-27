@@ -1473,16 +1473,32 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/admin/users') {
       const u = getUser(req);
       if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
-      const users = Object.entries(db.users).map(([email, x]) => ({
-        email, createdAt: x.createdAt, lastSeen: x.lastSeen || x.createdAt,
-        favorites: (x.favorites || []).length, ref: x.ref || 'directo',
-        verified: !x.lead,          // false = lead (pidió código pero no completó la verificación)
-        leadAt: x.leadAt || null,
-      })).sort((a, b) => b.createdAt - a.createdAt);
-      const bySource = {};
-      users.forEach(u => bySource[u.ref] = (bySource[u.ref] || 0) + 1);
-      const verifiedCount = users.filter(u => u.verified).length;
-      return json(res, 200, { total: users.length, verifiedCount, leadCount: users.length - verifiedCount, users, bySource });
+      try {
+        // DEFENSIVO: una sola entrada malformada en db.users (null, no-objeto, sin campos) no debe tumbar TODA la
+        // base de usuarios. Se filtran entradas inválidas y se protege cada campo. Los usuarios son lo crítico.
+        let skipped = 0;
+        const users = Object.entries(db.users || {}).map(([email, x]) => {
+          if (!email || !x || typeof x !== 'object') { skipped++; return null; }
+          const created = Number(x.createdAt) || 0;
+          return {
+            email,
+            createdAt: created,
+            lastSeen: Number(x.lastSeen || x.createdAt) || created,
+            favorites: Array.isArray(x.favorites) ? x.favorites.length : 0,
+            ref: x.ref || 'directo',
+            verified: !x.lead,          // false = lead (pidió código pero no completó la verificación)
+            leadAt: x.leadAt || null,
+          };
+        }).filter(Boolean).sort((a, b) => b.createdAt - a.createdAt);
+        const bySource = {};
+        users.forEach(uu => { bySource[uu.ref] = (bySource[uu.ref] || 0) + 1; });
+        const verifiedCount = users.filter(uu => uu.verified).length;
+        if (skipped) console.error('[admin/users] entradas malformadas omitidas:', skipped);
+        return json(res, 200, { total: users.length, verifiedCount, leadCount: users.length - verifiedCount, users, bySource, skipped });
+      } catch (e) {
+        console.error('[admin/users] error:', e.message);
+        return json(res, 500, { error: 'users_error', detail: e.message });
+      }
     }
     // ticker público de mercados en vivo (Polymarket) — para la cabecera, también sin registro
     if (p === '/api/ticker') {

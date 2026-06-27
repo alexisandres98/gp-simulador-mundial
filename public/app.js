@@ -1828,8 +1828,16 @@ async function broadcastNews(test) {
 }
 
 async function loadUsers() {
-  const r = await fetch('/api/admin/users', { headers: hdrs() });
-  if (!r.ok) { $('#userBase').textContent = 'Error al cargar usuarios.'; return; }
+  let r;
+  try { r = await fetch('/api/admin/users', { headers: hdrs() }); }
+  catch (e) { $('#userBase').textContent = 'Error de red al cargar usuarios.'; return; }
+  if (!r.ok) {
+    let detail = '';
+    try { const j = await r.json(); detail = j.detail || j.error || ''; } catch {}
+    $('#userBase').innerHTML = `<span class="warn">Error al cargar usuarios (${r.status})${detail ? ': ' + detail : ''}.</span>` +
+      (r.status === 403 ? '<br><span class="muted" style="font-size:11px">Tu sesión pudo expirar — recargá o volvé a entrar.</span>' : '');
+    return;
+  }
   const j = await r.json();
   const fmt = ts => new Date(ts).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const sources = Object.entries(j.bySource || {}).sort((a, b) => b[1] - a[1])

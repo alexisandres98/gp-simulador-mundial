@@ -170,6 +170,12 @@ async function status() {
   const rows = (await db.query(`SELECT cf.*, ce.home_participant, ce.away_participant FROM candidate_factory cf LEFT JOIN canonical_events ce ON ce.id=cf.canonical_event_id WHERE cf.superseded=false ORDER BY cf.detected_at DESC LIMIT 100`).catch(() => ({ rows: [] }))).rows;
   const by = {}; for (const r of rows) by[r.candidate_lifecycle] = (by[r.candidate_lifecycle] || 0) + 1;
   const conversionEnabled = /^(1|true|yes|on)$/i.test(String(process.env.PICK_MANUAL_CONVERSION_ENABLED || ''));
+  // clasificación VIGENTE por evento+selección (la última eval): un candidate solo sigue siendo aprobable si su
+  // evaluación más reciente sigue siendo strong + elegible. Si cayó a lean/watch/pass, deja de mostrarse.
+  const latest = (await db.query(`SELECT DISTINCT ON (canonical_event_id, selection) canonical_event_id, selection, classification, pick_candidate_eligible
+      FROM value_evaluations WHERE evaluation_mode='internal_operational' ORDER BY canonical_event_id, selection, created_at DESC`).catch(() => ({ rows: [] }))).rows;
+  const latestBy = {}; for (const e of latest) latestBy[`${e.canonical_event_id}|${e.selection}`] = e;
+  const eligibleNow = (r) => { const e = latestBy[`${r.canonical_event_id}|${r.outcome}`]; return !!(e && e.classification === 'strong' && e.pick_candidate_eligible === true); };
   return {
     candidates: rows.length, by_lifecycle: by, conversion_enabled: conversionEnabled,
     note: rows.length ? null : 'No apareció ninguna oportunidad que cumpliera los gates actuales.',
@@ -190,6 +196,10 @@ async function status() {
       adjusted_edge_pp: r.adjusted_edge_pp, adjusted_ev: r.adjusted_ev, quality: r.quality_score, verified_groups: r.verified_independence_group_count,
       edge_source: r.edge_source_code, deep_link: r.deep_link, candidate_status: r.candidate_lifecycle, readiness: r.readiness_state,
       readiness_blockers: r.readiness_blockers, detected_at: r.detected_at, last_refreshed: r.last_refreshed_at,
+      // estado VIGENTE para la UI: si ya se convirtió o si dejó de ser strong, NO se muestra en "por aprobar".
+      converted: r.candidate_lifecycle === 'CONVERTED_TO_PICK',
+      eligible_now: eligibleNow(r),
+      current_classification: (latestBy[`${r.canonical_event_id}|${r.outcome}`] || {}).classification || r.classification,
     })),
   };
 }

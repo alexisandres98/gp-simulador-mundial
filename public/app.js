@@ -1730,7 +1730,10 @@ async function loadCandidates(bodySel) {
     const L = (k, a) => I18N.t(k, a);
     const langSel = `<div class="formrow" style="margin-bottom:8px;align-items:center"><span class="muted" style="font-size:11px">${L('lang.label')}:</span>` +
       ['es', 'en'].map(l => `<button class="ghost" style="${I18N.locale === l ? 'border-color:var(--accent);color:var(--accent)' : ''}" onclick="setLang('${l}','${bodySel || '#candidateBody'}')">${l.toUpperCase()}</button>`).join('') + `</div>`;
-    const rows = (t.items || []).map(c => {
+    // Solo "por aprobar": ocultar las ya convertidas a Pick y las que dejaron de ser STRONG (eligible_now=false).
+    const visible = (t.items || []).filter(c => !c.converted && c.eligible_now !== false);
+    if (!visible.length) { el.innerHTML = langSel + `<div class="explain" style="margin:0">${I18N.locale === 'en' ? 'No candidates pending approval right now.' : 'No hay candidatos pendientes de aprobar en este momento.'}</div>`; return; }
+    const rows = visible.map(c => {
       const ready = c.candidate_status === 'READY_FOR_REVIEW';
       const fbTeam = c.selection_code === 'away' ? c.away_team : c.home_team;
       const sel = I18N.renderSelection(c.selection_display_model, fbTeam) || c.selection_display_es || c.selection_code;
@@ -1746,7 +1749,7 @@ async function loadCandidates(bodySel) {
         `<span class="muted" style="font-size:11px">código: ${c.selection_code} · edge ${c.adjusted_edge_pp ?? '—'} · EV ${c.adjusted_ev ?? '—'} · quality ${c.quality ?? '—'} · grupos ${c.verified_groups ?? '—'} · GP ${c.gp_probability ?? '—'} vs consenso ${c.consensus_probability ?? '—'} · ${c.sportsbook || '—'}</span>` +
         `<div class="formrow" style="margin-top:6px">${approveBtn}<button class="ghost" onclick="candReject('${c.candidate_id}')">${L('ui.reject')}</button><button class="ghost" onclick="loadCandidates('${bodySel || '#candidateBody'}')">${L('ui.refresh')}</button></div></div>`;
     }).join('');
-    el.innerHTML = langSel + `<div class="muted" style="margin-bottom:6px">Candidates: ${t.candidates} · ${JSON.stringify(t.by_lifecycle)} · ${convOn ? '<span style="color:var(--accent)">conversión on</span>' : 'conversión off'}</div>` + rows +
+    el.innerHTML = langSel + `<div class="muted" style="margin-bottom:6px">${I18N.locale === 'en' ? 'Pending approval' : 'Por aprobar'}: ${visible.length} · ${convOn ? '<span style="color:var(--accent)">conversión on</span>' : 'conversión off'}</div>` + rows +
       `<div class="muted" style="font-size:11px;margin-top:6px">${L('ui.disclaimer')} ${L('ui.approve_warning')}</div>`;
   } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
 }

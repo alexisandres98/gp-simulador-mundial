@@ -43,8 +43,11 @@ async function tick({ now = Date.now(), resultResolver = null } = {}) {
     if (!got) return { skipped: 'locked' };
     runId = await repo.startRun('shadow_loop');
     const sweep = await settlementSweep({ now, resultResolver });
-    await repo.finishRun(runId, { status: 'success', rows: sweep.settled || 0, metadata: sweep });
-    return { ok: true, ...sweep };
+    // Fase P.0: operación autónoma (news/weather/totals) con cadencia+lock+quota, AISLADA. Solo si refresh enabled.
+    let autonomous = null;
+    try { autonomous = await require('./autonomousOps').tick({ now }); } catch (e) { autonomous = { error: e.message }; }
+    await repo.finishRun(runId, { status: 'success', rows: sweep.settled || 0, metadata: { sweep, autonomous } });
+    return { ok: true, ...sweep, autonomous };
   } catch (e) {
     if (runId) await repo.finishRun(runId, { status: 'failed', errorReason: e.message }).catch(() => {});
     return { error: e.message };

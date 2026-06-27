@@ -42,14 +42,14 @@ function bestPrices(cleanSets) {
 
 // buildEventInput — arma el input del Value Engine para UN evento canonical-matched: sets sincronizados (H) +
 // outliers (I) + grupos verificados (J) + GP. Reutilizado por dry-run (shadow) y por el write oficial (Fase E).
-function buildEventInput(canonicalEventId, rows, { now = null, catalog = {}, gpResolver = null } = {}) {
+async function buildEventInput(canonicalEventId, rows, { now = null, catalog = {}, gpResolver = null } = {}) {
   const { sets, rejected } = setAssembly.assembleSets(rows, { now, maxSkewMs: vcfg.params.maxBookOutcomeSkewMs, maxAgeMs: vcfg.params.maxQuoteAgePrematchMs });
   const od = outliers.detectOutliers(sets);
   const clean = od.clean;
   const cls = sourceCatalog.classify(clean.map(s => s.sportsbook), catalog);
   const meta = rows[0] && rows[0].metadata ? rows[0].metadata : {};
   const label = `${meta.home_team || '?'} vs ${meta.away_team || '?'}`;
-  const gp = gpResolver ? (gpResolver({ canonicalEventId, label, meta }) || null) : null;
+  const gp = gpResolver ? ((await gpResolver({ canonicalEventId, label, meta })) || null) : null;
   const gpMeta = gp ? { model_version: gp.model_version || null, elo_snapshot: gp.elo_snapshot || null, calc_ts: gp.calc_ts || null } : null;
   const input = {
     canonicalEventId, canonicalMarketId: null,
@@ -75,7 +75,7 @@ async function runOfficial({ provider = 'the_odds_api', now = null, gpResolver =
   const events = await linkedEvents(provider);
   const out = { provider, events: events.size, evaluated: 0, persisted: 0, opportunities: 0, candidates: 0, by_class: {}, write_enabled: ve.cfg.flags.valueWrite, picks_enabled: ve.cfg.flags.picksEnabled, rows: [] };
   for (const [canonicalEventId, rows] of events) {
-    const { input, label } = buildEventInput(canonicalEventId, rows, { now, catalog, gpResolver });
+    const { input, label } = await buildEventInput(canonicalEventId, rows, { now, catalog, gpResolver });
     if (!input.sportsbooks.length) continue;  // sin sets frescos → no se evalúa
     const r = await ve.evaluateAndPersist(input, {});
     for (const o of Object.keys(r.classifications)) { out.evaluated++; const c = r.classifications[o]; out.by_class[c] = (out.by_class[c] || 0) + 1; }
@@ -88,10 +88,12 @@ async function runOfficial({ provider = 'the_odds_api', now = null, gpResolver =
 
 // writeEvalMetadata — UPDATE aditivo de las columnas de metadata (Checkpoint 2.2). NO toca probs/edges/quality_score.
 async function writeEvalMetadata(id, m) {
+  // Fase P: el modelo oficial efectivo (V1 hasta el cutover; V2 después). Enum controlado (sin inyección).
+  const OFFICIAL = /v2/i.test(process.env.GP_OFFICIAL_MODEL || 'v1') ? 'V2' : 'V1';
   await db.query(
     `UPDATE value_evaluations SET
        evaluation_mode=$2, validation_run_id=$3, registry_eligible=false, pick_candidate_eligible=false, public_eligible=false,
-       official_gp_model='V1', challenger_gp_model='V2', challenger_official_weight=0,
+       official_gp_model='${OFFICIAL}', challenger_gp_model='V2', challenger_official_weight=0,
        best_sportsbook_code=$4, best_sportsbook_name=$5, best_price_observed_at=$6, best_price_provider_updated_at=$7, best_price_deep_link=$8,
        raw_sportsbook_count=$9, usable_sportsbook_count=$10, verified_sportsbook_count=$11, unverified_sportsbook_count=$12, duplicate_skin_count=$13, verified_independence_group_count=$14,
        gp_vs_consensus_pp=$15, ensemble_vs_consensus_pp=$16, consensus_vs_best_price_break_even_pp=$17, edge_source_code=$18,
@@ -114,7 +116,7 @@ async function runValidation({ provider = 'the_odds_api', now = null, gpResolver
   const events = await linkedEvents(provider);
   const out = { provider, validation_run_id: validationRunId, events: events.size, evaluated: 0, persisted: 0, metadata_written: 0, best_book_present: 0, by_class: {}, write_enabled: ve.cfg.flags.valueWrite, picks_enabled: ve.cfg.flags.picksEnabled };
   for (const [cei, rows] of events) {
-    const built = buildEventInput(cei, rows, { now, catalog, gpResolver });
+    const built = await buildEventInput(cei, rows, { now, catalog, gpResolver });
     if (!built.input.sportsbooks.length) continue;
     const r = await ve.evaluateAndPersist(built.input, {});
     for (const o of Object.keys(r.classifications)) { out.evaluated++; out.by_class[r.classifications[o]] = (out.by_class[r.classifications[o]] || 0) + 1; }
@@ -139,7 +141,7 @@ async function runDryRun({ provider = 'the_odds_api', now = null, gpResolver = n
   const summary = { provider, evaluated: 0, blocked: 0, pass: 0, watch: 0, lean: 0, strong: 0, events: events.size, evaluations: [], policy_versions: policy };
 
   for (const [canonicalEventId, rows] of events) {
-    const built = buildEventInput(canonicalEventId, rows, { now, catalog, gpResolver });
+    const built = await buildEventInput(canonicalEventId, rows, { now, catalog, gpResolver });
     const { input, label, sets, clean, rejected, cls, gpMeta } = built;
     const od = { outliers: built.outliers };
 

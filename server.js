@@ -356,6 +356,38 @@ function v1GpResolver({ canonicalEventId, label, meta } = {}) {
   } catch { return null; }
 }
 
+// Fase P — resolver OFICIAL V2: usa la probabilidad GP Intelligence V2 (base V1 + contexto) producida por el
+// shadow autónomo y persistida en v2_probability_snapshots. Forward-only: la evaluación oficial posterior al
+// cutover lleva model_family/version V2. Si no hay snapshot V2 fresco → BASE_ONLY_FALLBACK (no inventa contexto;
+// usa la base V1 pero marca fallback → no genera STRONG). async (lee DB).
+async function v2GpResolver({ canonicalEventId, label, meta } = {}) {
+  try {
+    const dbc = require('./database/client');
+    const snap = canonicalEventId ? (await dbc.query(
+      `SELECT final_probability_vector, base_probability_vector, context_adjustments, context_state, uncertainty, model_version
+         FROM v2_probability_snapshots WHERE canonical_event_id=$1 ORDER BY created_at DESC LIMIT 1`, [canonicalEventId])).rows[0] : null;
+    if (snap && snap.final_probability_vector) {
+      const v = snap.final_probability_vector;
+      if (Number.isFinite(Number(v.home))) return {
+        probabilities: { home: Number(v.home), draw: Number(v.draw), away: Number(v.away) },
+        model_version: snap.model_version || 'gp-intelligence-v2-0.1.0', methodology_version: 'gp-intelligence-v2-0.1.0',
+        model_family: 'GP_INTELLIGENCE_V2', base_probability_vector: snap.base_probability_vector, context_adjustments: snap.context_adjustments,
+        context_state: snap.context_state || 'FULL_CONTEXT', uncertainty: snap.uncertainty != null ? Number(snap.uncertainty) : null,
+        fallback_status: 'FULL_CONTEXT', sampleStatus: 'ok', calibrationStatus: 'calibrated', data_quality: 0.7,
+        input_cutoff_at: new Date().toISOString(), calc_ts: new Date().toISOString(),
+      };
+    }
+    // sin snapshot V2 → fallback explícito a la base V1 (NO contexto inventado), marcado BASE_ONLY_FALLBACK.
+    const base = v1GpResolver({ canonicalEventId, label, meta });
+    if (!base) return null;
+    return { ...base, model_version: 'gp-intelligence-v2-0.1.0', methodology_version: 'gp-intelligence-v2-0.1.0', model_family: 'GP_INTELLIGENCE_V2', context_state: 'BASE_ONLY_FALLBACK', fallback_status: 'BASE_ONLY_FALLBACK' };
+  } catch { return null; }
+}
+// selector del resolver oficial según el modelo oficial efectivo (kill switch fuerza V1).
+function officialGpResolver() {
+  try { const eff = require('./model-registry/promotion').effectiveOfficialModel(); return eff === 'v2' ? v2GpResolver : v1GpResolver; } catch { return v1GpResolver; }
+}
+
 async function fetchMarkets(force = false) {
   if (!force && Date.now() - marketCache.ts < 60 * 1000) return marketCache;
   const next = { ts: Date.now(), polymarket: {}, kalshi: {}, errors: [] };
@@ -2411,8 +2443,13 @@ server.listen(PORT, () => {
       };
     });
   } catch { /* aislado */ }
-  // Fase J.1 — cablea el resolver oficial V1 al Value scheduler (Value operativo evalúa eventos canónicos con V1).
-  try { require('./value-engine/scheduler').setGpResolver(v1GpResolver); } catch { /* aislado */ }
+  // Fase J.1/P — cablea el resolver OFICIAL al Value scheduler. Selector por modelo oficial efectivo
+  // (v1 default; v2 tras el cutover; kill switch fuerza v1). Boot consistency check: log del modelo activo.
+  try {
+    const eff = require('./model-registry/promotion').effectiveOfficialModel();
+    require('./value-engine/scheduler').setGpResolver(officialGpResolver());
+    require('./database/logger').info('boot: official GP model', { official_model: eff });
+  } catch { /* aislado */ }
   // Fase O §16 — cablea el resultResolver real (ESPN) al shadow_loop: settlement/metrics shadow automáticos
   // cuando un evento eliminatorio finalice (regulation). AISLADO: nunca afecta el lifecycle oficial V1.
   try { require('./value-engine/scheduler').setShadowResultResolver((cid) => require('./shadow-ops/resultResolver').resolve(cid)); } catch { /* aislado */ }

@@ -1723,14 +1723,14 @@ function lifecycleBlock(lc) {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11.5px">
       <div class="explain" style="margin:0">
         <b>Closing</b> · scheduler ${flag(lc.closing_scheduler_enabled)}<br>
-        elegibles: ${n(lc.closing_eligible)}<br>capturados: ${n(lc.closing_captured)}<br>unavailable: ${n(lc.closing_unavailable)}
+        elegibles: ${n(lc.closing_eligible)}<br>auto: ${n(lc.closing_captured_automatic)} · manual: ${n(lc.closing_captured_manual)}<br>unavailable: ${n(lc.closing_unavailable)}
       </div>
       <div class="explain" style="margin:0">
-        <b>Settlement</b> · scheduler ${flag(lc.settlement_scheduler_enabled)}<br>
-        pending: ${n(lc.settlement_pending)}<br>finalized: ${n(lc.settlement_finalized)}<br>unresolved: ${n(lc.settlement_unresolved)}
+        <b>Settlement</b> · scheduler ${flag(lc.settlement_scheduler_enabled)} · result-src ${flag(lc.result_provider_wired)}<br>
+        pending: ${n(lc.settlement_pending)}<br>final auto: ${n(lc.settlement_finalized_automatic)} · manual: ${n(lc.settlement_finalized_manual)}<br>unresolved: ${n(lc.settlement_unresolved)} · fixtures: ${n(lc.fixture_mappings)}
       </div>
       <div class="explain" style="margin:0">
-        <b>Commitments</b> · scheduler ${flag(lc.commitment_scheduler_enabled)}<br>
+        <b>Commitments</b> · scheduler ${flag(lc.commitment_scheduler_enabled)} · diario<br>
         count: ${n(lc.commitment_count)}<br>último root: ${lc.last_commitment_root ? '<code>' + lc.last_commitment_root + '…</code>' : '—'}<br>ext-anchor: <span class="muted">off</span>
       </div>
     </div>`;

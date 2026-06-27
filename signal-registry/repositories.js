@@ -96,13 +96,15 @@ const settlements = {
     const r = await client.query(
       `INSERT INTO signal_settlements (signal_id, settlement_version, settlement_status, result_type, winning_outcome_id, event_result,
          settlement_source, source_reference, source_timestamp, settled_at, is_final, void_reason, correction_reason, realized_roi, settlement_payload, content_hash,
-         result_outcome, provider_result_status, result_observed_at, result_finalized_at, regulation_score, settlement_policy_version)
+         result_outcome, provider_result_status, result_observed_at, result_finalized_at, regulation_score, settlement_policy_version,
+         capture_source, provider_fixture_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11,false),$12,$13,$14,COALESCE($15,'{}'::jsonb),$16,
-         $17,$18,$19,$20,$21,$22) RETURNING *`,
+         $17,$18,$19,$20,$21,$22,COALESCE($23,'automatic'),$24) RETURNING *`,
       [s.signal_id, s.settlement_version, s.settlement_status, s.result_type || null, s.winning_outcome_id || null, jsonOr(s.event_result),
        s.settlement_source || null, s.source_reference || null, s.source_timestamp || null, s.settled_at || null, s.is_final, s.void_reason || null, s.correction_reason || null,
        numOr(s.realized_roi), jsonOr(s.settlement_payload), s.content_hash || null,
-       s.result_outcome || null, s.provider_result_status || null, s.result_observed_at || null, s.result_finalized_at || null, jsonOr(s.regulation_score), s.settlement_policy_version || null]
+       s.result_outcome || null, s.provider_result_status || null, s.result_observed_at || null, s.result_finalized_at || null, jsonOr(s.regulation_score), s.settlement_policy_version || null,
+       s.capture_source || null, s.provider_fixture_id || null]
     );
     return r.rows[0];
   },
@@ -116,16 +118,19 @@ const closing = {
     const r = await client.query(
       `INSERT INTO signal_closing_snapshots (signal_id, benchmark_type, provider_id, external_market_id, external_outcome_id,
          best_bid, best_ask, midpoint, last_trade, executable_price, snapshot_id, observed_at, event_start_at, capture_status, capture_method, metadata,
-         canonical_event_id, market, period, outcome, closing_odds, closing_probability, closing_source, provider_updated_at, kickoff_at, closing_status, closing_reason_code, closing_policy_version, clv_components)
+         canonical_event_id, market, period, outcome, closing_odds, closing_probability, closing_source, provider_updated_at, kickoff_at, closing_status, closing_reason_code, closing_policy_version, clv_components,
+         capture_source, best_closing_odds, best_closing_sportsbook, source_group_count, source_set_count)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,COALESCE($14,'captured'),$15,COALESCE($16,'{}'::jsonb),
-         $17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+         $17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,
+         COALESCE($30,'automatic'),$31,$32,$33,$34)
        ON CONFLICT (signal_id, benchmark_type) DO NOTHING RETURNING *`,
       [c.signal_id, c.benchmark_type, uuidOrNull(c.provider_id), c.external_market_id || null, c.external_outcome_id || null,
        numOr(c.best_bid), numOr(c.best_ask), numOr(c.midpoint), numOr(c.last_trade), numOr(c.executable_price), c.snapshot_id || null,
        c.observed_at || null, c.event_start_at || null, c.capture_status, c.capture_method || null, jsonOr(c.metadata),
        uuidOrNull(c.canonical_event_id), c.market || null, c.period || null, c.outcome || null, numOr(c.closing_odds), numOr(c.closing_probability),
        c.closing_source || null, c.provider_updated_at || null, c.kickoff_at || null, c.closing_status || null, c.closing_reason_code || null,
-       c.closing_policy_version || null, jsonOr(c.clv_components)]
+       c.closing_policy_version || null, jsonOr(c.clv_components),
+       c.capture_source || null, numOr(c.best_closing_odds), c.best_closing_sportsbook || null, c.source_group_count != null ? c.source_group_count : null, c.source_set_count != null ? c.source_set_count : null]
     );
     return r.rows[0] || null;
   },

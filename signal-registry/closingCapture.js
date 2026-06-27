@@ -47,6 +47,8 @@ async function captureClosing(signalId, input = {}, opts = {}) {
       closing_source: usable ? (input.closingSource || policy.OFFICIAL_CLOSING_SOURCE) : null,
       provider_updated_at: input.providerUpdatedAt || null, kickoff_at: kickoffAt,
       closing_status: closingStatus, closing_reason_code: reasonCode, closing_policy_version: policy.CLOSING_POLICY_VERSION, clv_components: clv,
+      capture_source: input.captureSource || 'automatic', best_closing_odds: usable ? input.bestClosingOdds : null,
+      best_closing_sportsbook: usable ? input.bestClosingSportsbook : null, source_group_count: input.sourceGroupCount, source_set_count: input.sourceSetCount,
     }, client);
     if (row) await appendEvent(client, signalId, { eventType: 'closing_captured', reasonCode: closingStatus, actorId: opts.actorId, payload: { benchmark_type: benchmarkType, closing_status: closingStatus, reason: reasonCode }, projection: { closing_captured: true } });
     return { closing: row, captureStatus: legacyStatus, closingStatus, reasonCode, usable };

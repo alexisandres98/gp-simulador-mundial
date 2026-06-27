@@ -2045,6 +2045,38 @@ const server = http.createServer(async (req, res) => {
           return json(res, 400, { error: e.code || 'error' });
         }
       }
+      // POST recuperación MANUAL (§8): fallback admin de closing/settlement, capture_source=manual_recovery, con reason+audit.
+      const mRec = p.match(/^\/api\/internal\/registry\/signals\/([0-9a-f-]{36})\/(recover-closing|recover-settlement)$/i);
+      if (mRec && req.method === 'POST') {
+        const az = authz.authorize(actor, 'signal:correct'); if (!az.ok) return json(res, az.status, { error: az.error });
+        if (!registryAdminRateOk(u.email)) return json(res, 429, { error: 'rate_limited' });
+        const id = mRec[1], kind = mRec[2];
+        const body = await readBody(req).catch(() => ({}));
+        if (!body.reason || String(body.reason).trim().length < 4) return json(res, 422, { error: 'reason_required' });
+        const sig = (await signalRegistry.repo.signals.byId(id).catch(() => null));
+        if (!sig) return json(res, 404, { error: 'signal_not_found' });
+        const adminState = await SA.getState(id).catch(() => null);
+        try {
+          if (kind === 'recover-closing') {
+            const catalog = await require('./sportsbook-providers/sourceCatalog').load(process.env.SPORTSBOOK_PROVIDER_KEY || 'the_odds_api').catch(() => ({}));
+            const r = await require('./signal-registry/closingResolver').resolveClosing(
+              { id: sig.id, canonical_event_id: sig.canonical_event_id, event_start_at: sig.event_start_at, signal_payload: sig.signal_payload, direction: sig.direction },
+              { now: Date.now(), catalog, captureSource: 'manual_recovery', adminStatus: adminState && adminState.admin_status, actorId: u.email });
+            return json(res, 200, { ok: true, kind, state: r.state, reason_logged: true });
+          }
+          // recover-settlement: el admin aporta el marcador reglamentario como evidencia (no infiere el sistema)
+          const rp = (body.home_goals != null && body.away_goals != null)
+            ? async () => ({ providerStatus: body.provider_status || 'post', regulationHomeGoals: Number(body.home_goals), regulationAwayGoals: Number(body.away_goals), observedAt: new Date().toISOString(), finalizedAt: (body.provider_status || 'post') === 'post' ? new Date().toISOString() : null, sourceReference: 'manual:' + u.email + ':' + Date.now() })
+            : null;
+          const r = await require('./signal-registry/resultResolver').resolveAndSettle(
+            { id: sig.id, canonical_event_id: sig.canonical_event_id, event_start_at: sig.event_start_at },
+            { now: Date.now(), resultProvider: rp, captureSource: 'manual_recovery', adminStatus: adminState && adminState.admin_status, actorId: u.email });
+          return json(res, 200, { ok: true, kind, state: r.state, settlement_status: r.settlement_status || null, reason_logged: true });
+        } catch (e) {
+          if (e.code === 'look_ahead_rejected') return json(res, 422, { error: 'look_ahead_rejected' });
+          return json(res, 400, { error: e.code || 'recover_failed' });
+        }
+      }
       return json(res, 404, { error: 'No encontrado' });
     }
 
@@ -2224,6 +2256,23 @@ server.listen(PORT, () => {
   try { require('./metrics-engine/scheduler').start(); } catch { /* aislado */ }
   // Sprint 7 — scheduler del Value Engine + monitor de precio de picks. Solo si los flags VALUE/PICKS lo habilitan.
   try { require('./value-engine/scheduler').start(); } catch { /* aislado */ }
+  // Fase H.1 — cablea el result provider del settlement automático: accesor a los resultados ESPN (db.results).
+  // Solo el marcador REGLAMENTARIO (sin prórroga ni penales): para knockout con penales → regulation null → UNRESOLVED.
+  try {
+    require('./signal-registry/sweeps').setResultProvider((fixture) => {
+      const r = db.results && db.results[fixture.fixture_id];
+      if (!r) return null;
+      const regulationKnown = !fixture.is_knockout && r.pensHome == null; // grupos = 90' reglamentarios
+      const status = r.status === 'final' ? 'post' : r.status === 'live' ? 'in' : 'pre';
+      return {
+        providerStatus: status,
+        regulationHomeGoals: regulationKnown ? r.hg : null,
+        regulationAwayGoals: regulationKnown ? r.ag : null,
+        observedAt: new Date().toISOString(),
+        finalizedAt: r.status === 'final' ? new Date().toISOString() : null,
+      };
+    });
+  } catch { /* aislado */ }
   // Sprint 8A — orquestador de jobs (registro de runs, heartbeats, dependencias, apagado ordenado). INERTE
   // si OPERATIONS_ORCHESTRATOR_ENABLED=false: no arranca timers, no escribe, no toca el manejo de señales.
   operations.initialize({ flushDb }).catch(() => { /* aislado */ }); // flushDb: persistir db.json en el apagado coordinado

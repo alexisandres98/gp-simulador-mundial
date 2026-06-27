@@ -40,6 +40,7 @@ async function settle(signalId, input = {}, opts = {}) {
       result_outcome: input.resultOutcome || null, provider_result_status: input.providerResultStatus || null,
       result_observed_at: input.resultObservedAt || null, result_finalized_at: input.resultFinalizedAt || null,
       regulation_score: input.regulationScore || null, settlement_policy_version: input.settlementPolicyVersion || null,
+      capture_source: input.captureSource || 'automatic', provider_fixture_id: input.providerFixtureId || null,
     };
     core.content_hash = hashing.settlementHash({ ...core, settled_at: undefined, created_at: undefined });
     core.settled_at = SETTLED_AT_STATUSES.includes(input.status) ? new Date().toISOString() : null;
@@ -69,6 +70,7 @@ async function settleFromProvider(signalId, providerInput = {}, opts = {}) {
     regulationScore: resolved.regulation_score || null, settlementPolicyVersion: resolved.settlement_policy_version,
     source: providerInput.source || provider.PROVIDER, sourceReference: providerInput.sourceReference || null,
     eventResult: resolved.regulation_score || null, voidReason: resolved.result_outcome === 'void' ? (providerInput.voidReason || 'event_void') : null,
+    captureSource: providerInput.captureSource || 'automatic', providerFixtureId: providerInput.providerFixtureId || null,
   }, opts);
 }
 

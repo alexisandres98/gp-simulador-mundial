@@ -166,7 +166,7 @@ const FUT = '2026-12-01T18:00:00.000Z'; // kickoff futuro
     const ctl = await RA.controls();
     ok('9/10/11. público off / billing off / auto-pub false (controles)', ctl.registry_public_hidden === true && ctl.product_kill_switch === false);
     const ls = await require(R + '/signal-registry/sweeps').lifecycleStatus();
-    ok('health lifecycle expone counts + root', typeof ls.closing_captured === 'number' && ls.commitment_count >= 1 && !!ls.last_commitment_root);
+    ok('health lifecycle expone counts + root', typeof ls.closing_captured_automatic === 'number' && ls.commitment_count >= 1 && !!ls.last_commitment_root);
 
     console.log(`\n[post-shadow-registry-lifecycle-db] ${pass} pass, ${fail} fail`);
   } catch (e) { fail++; console.error('ERROR', e.message, e.stack); }

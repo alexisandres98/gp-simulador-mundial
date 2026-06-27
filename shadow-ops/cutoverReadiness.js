@@ -20,6 +20,9 @@ async function matrix() {
   const documents = await n("SELECT count(*)::int n FROM context_source_documents").catch(() => 0);
   const claims = await n("SELECT count(*)::int n FROM context_claims").catch(() => 0);
   const weather = await n("SELECT count(*)::int n FROM weather_snapshots").catch(() => 0);
+  const weatherExact = await n("SELECT count(*)::int n FROM weather_snapshots WHERE venue_exact=true").catch(() => 0);
+  const venuesResolved = await n("SELECT count(*)::int n FROM event_venue_resolution WHERE status='resolved'").catch(() => 0);
+  const newsSources = await n("SELECT count(*)::int n FROM context_source_catalog WHERE enabled=true AND source_type='news'").catch(() => 0);
   const settlements = await n("SELECT count(*)::int n FROM shadow_settlements").catch(() => 0);
   const sig = await n("SELECT count(*)::int n FROM signals");
   const picks = await n("SELECT count(*)::int n FROM internal_picks");
@@ -44,6 +47,18 @@ async function matrix() {
       { goal_value_evals: goalValue, policy: 'goal-value-policy-shadow-1', thresholds: 'provisionales' },
       ['thresholds provisionales con muestra mínima', 'overdispersion (var real>predicha) a evaluar'],
       'medio', 'evaluar NB vs Poisson+DC + acumular muestra antes de promover thresholds'),
+    dim('SOURCES_READY', newsSources > 0 ? 'CONDITIONAL' : 'FAIL',
+      { news_sources_enabled: newsSources, total_enabled: sources },
+      newsSources === 0 ? ['sin fuentes de noticias habilitadas'] : ['allowlist inicial curada (RSS syndication)'],
+      'medio', 'ampliar/curar fuentes oficiales por federación'),
+    dim('VENUE_READY', venuesResolved > 0 ? 'CONDITIONAL' : 'FAIL',
+      { venues_resolved: venuesResolved, canonical_venues_seeded: true },
+      venuesResolved === 0 ? ['venues exactos sin resolver para los fixtures'] : [],
+      'medio', 'resolver venue exacto por fixture (ESPN/API-Football → canonical_venues)'),
+    dim('WEATHER_READY', weatherExact > 0 ? 'PASS' : (weather > 0 ? 'CONDITIONAL' : 'FAIL'),
+      { weather_exact_venue: weatherExact, weather_total: weather, representative_disabled: weather - weatherExact },
+      weatherExact === 0 ? ['clima con venue exacto pendiente (representativo NO elegible)'] : [],
+      'bajo', 'usar solo venue exacto; representativos quedan impacto 0'),
     dim('COLLECTOR_READY', (sources > 0 && (weather > 0 || documents > 0)) ? 'CONDITIONAL' : 'FAIL',
       { enabled_sources: sources, documents, claims, weather_snapshots: weather, security: 'ssrf+allowlist+sanitize' },
       sources === 0 ? ['catálogo de fuentes sin habilitar'] : ['news/RSS allowlist por curar (weather activo)'],

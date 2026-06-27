@@ -37,8 +37,9 @@ async function persistEvaluation(ev, runId) {
         mapping_version, rules_fingerprint, snapshot_ids, input_hash, leg_time_skew_ms,
         gross_margin, fee_total, book_slippage_total, execution_buffer_total, net_margin, capital_required,
         net_profit, net_roi, max_executable_size, confidence_score, confidence_label, rejection_reasons, warning_codes, engine_version,
-        semantic_ok, semantic_fatal, semantic_sub_reason, semantic_policy_version, semantic_blockers)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
+        semantic_ok, semantic_fatal, semantic_sub_reason, semantic_policy_version, semantic_blockers,
+        temporal_ok, capacity_status, confirmed_executable_size, temporal_capacity)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34)
      ON CONFLICT (input_hash) DO NOTHING RETURNING id`,
     [runId || null, ev.opportunityKey, uuidOrNull(ev.canonicalEventId), uuidOrNull(ev.canonicalMarketId), ev.strategy, ev.classification,
      ev.mappingVersion, ev.rulesFingerprint, ev.snapshotIds || [], ih, ev.legTimeSkewMs,
@@ -49,7 +50,11 @@ async function persistEvaluation(ev, runId) {
      // Fase R.1: veredicto del gate semántico (aditivo, columnas mig 038)
      ev.semantic ? ev.semantic.ok : null, ev.semantic ? ev.semantic.fatal : null,
      ev.semantic ? ev.semantic.sub_reason : null, ev.semantic ? ev.semantic.policy_version : null,
-     JSON.stringify(ev.semantic ? (ev.semantic.blockers || []) : [])]
+     JSON.stringify(ev.semantic ? (ev.semantic.blockers || []) : []),
+     // Fase R.2: contemporaneidad temporal + capacidad honesta (aditivo, columnas mig 039)
+     ev.temporal ? ev.temporal.ok : null, ev.capacity ? ev.capacity.capacity_status : null,
+     ev.capacity && ev.capacity.confirmed_executable_size != null ? String(ev.capacity.confirmed_executable_size) : null,
+     JSON.stringify({ temporal: ev.temporal || null, capacity: ev.capacity || null })]
   );
   if (!r.rowCount) return { written: false, duplicate: true, evaluationId: null };
   const evaluationId = r.rows[0].id;

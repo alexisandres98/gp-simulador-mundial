@@ -77,7 +77,8 @@
     "test:commercial-db": "node tests/commercial-db.test.js",
     "test:ui": "node tests/ui-flags.test.js",
     "test:gp-product": "node tests/gp-product.test.js",
-    "test:arb-semantic": "node tests/arb-semantic-gate.test.js"
+    "test:arb-semantic": "node tests/arb-semantic-gate.test.js",
+    "test:arb-temporal": "node tests/arb-temporal-capacity.test.js"
   },
   "engines": {
     "node": ">=18"

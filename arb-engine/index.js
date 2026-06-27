@@ -9,6 +9,8 @@ const oneXTwoArb = require('./oneXTwoArb');
 const classifier = require('./classifier');
 const confidence = require('./confidence');
 const semanticGate = require('./semanticGate');
+const temporalSync = require('./temporalSync');
+const capacityModule = require('./capacity');
 const { opportunityKey } = require('./opportunityKey');
 
 // familia de mercado por defecto según la estructura del candidato (si no viene explícita). Conservador.
@@ -88,6 +90,18 @@ function evaluateCandidate(candidate, opts = {}) {
     reasons = ['semantic_mismatch:' + (semantic.sub_reason || 'unknown')];
   }
 
+  // 3c) CONTEMPORANEIDAD TEMPORAL (Fase R.2 §9). Una combinación de precios que nunca coexistió no es activa.
+  //     Evidencia (oldest/newest/spread/max_age) + verdicto; si una leg está stale/derivada-stale/suspendida o
+  //     el evento ya inició y el candidato sería ejecutable → rejected (temporal_*). Solo añade rechazos.
+  const temporal = temporalSync.evaluate(legs, { now, params });
+  if (!temporal.ok && (classification === 'pure_arb' || classification === 'execution_sensitive')) {
+    classification = 'rejected';
+    reasons = ['temporal_' + (temporal.reasons[0] || 'mismatch').toLowerCase()];
+  }
+  // 3d) CAPACIDAD HONESTA (Fase R.2 §7/§11). No inventa capacidad: si alguna leg es UNKNOWN, no es ejecutable
+  //     garantizada (R.3 la baja a THEORETICAL_ONLY/PARTIAL). Aquí se adjunta la evaluación; no bloquea solo.
+  const capacity = capacityModule.assess(legs);
+
   // 4) confianza explicable (separada del beneficio)
   const conf = confidence.score({
     mappingStatus: candidate.mappingStatus, manualReviewApproved: candidate.manualReviewApproved,
@@ -111,6 +125,8 @@ function evaluateCandidate(candidate, opts = {}) {
     snapshotIds: legs.map(l => l.snapshotId).filter(Boolean),
     legTimeSkewMs: timeSkew.skewMs,
     semantic,  // Fase R.1: verdicto del gate semántico (ok/reason/sub_reason/blockers) — siempre presente
+    temporal,  // Fase R.2 §9: evidencia + verdicto de contemporaneidad temporal
+    capacity,  // Fase R.2 §7/§11: capacidad ejecutable honesta (CONFIRMED/CONSERVATIVE/UNKNOWN)
     evaluation, maxSize,
     confidence: conf,
     versions: VERSIONS,

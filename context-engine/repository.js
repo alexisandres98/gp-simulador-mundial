@@ -5,6 +5,7 @@
 'use strict';
 const db = require('../database/client');
 const prov = require('./provenance');
+const tstamp = require('./timestamps');
 
 const bool = (v, d = false) => (v === undefined || v === '') ? d : /^(1|true|yes|on)$/i.test(String(v).trim());
 function enabled() { return bool(process.env.CONTEXT_ENGINE_ENABLED, false); }
@@ -12,17 +13,26 @@ const DEFAULT_POLICY_VERSION = process.env.CONTEXT_POLICY_VERSION || 'context-po
 
 // Inserta una observación de contexto (append-only). Calcula evidence_hash y el applied_impact respetando el
 // cutoff point-in-time + la policy del factor. Si no es elegible (sin timestamp o posterior al cutoff) → impacto 0.
-async function recordObservation(obs, { cutoff = null, policy = {}, client = db } = {}) {
+async function recordObservation(obs, { cutoff = null, policy = {}, now = null, client = db } = {}) {
   const klass = prov.classify(obs.fact_or_inference);
-  const eff = prov.effectiveImpact({ ...obs, fact_or_inference: klass }, cutoff, policy);
+  const nowIso = now || new Date().toISOString();
+  // jerarquía de timestamps (N.2): first_seen_at = ahora si no viene (1er ingreso real); nunca se backdatea.
+  const firstSeen = tstamp.reconcileFirstSeen(obs.first_seen_at, nowIso);
+  const tsObs = { ...obs, first_seen_at: firstSeen };
+  const quality = tstamp.classifyTimestamp(tsObs);
+  let eff = prov.effectiveImpact({ ...obs, fact_or_inference: klass }, cutoff, policy);
+  // FORWARD-ONLY: si el único timestamp es de ingesta/manual, exigir usabilidad point-in-time por first_seen_at.
+  const pit = cutoff != null ? tstamp.usableAt(tsObs, cutoff) : { usable: true, quality, confidence: 0 };
+  if (!pit.usable && !eff.blocked) { eff = { ...eff, applied_impact: 0, blocked: true, reason: pit.reason }; }
+  const tconf = pit.confidence != null ? pit.confidence : (tstamp.QUALITY_CONFIDENCE[quality] || 0);
   const evidence = obs.evidence_hash || prov.evidenceHash(obs);
   const r = await client.query(
     `INSERT INTO context_observations
        (ingestion_run_id, context_policy_version, factor_code, category, subject_type, subject_id, canonical_event_id,
         source_type, source_name, source_reference, observed_at, published_at, valid_from, valid_until, confidence,
         fact_or_inference, direction, raw_value, normalized_value, proposed_impact, applied_impact, reason,
-        evidence_hash, cutoff_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING *`,
+        evidence_hash, cutoff_at, timestamp_quality, timestamp_confidence, first_seen_at, last_seen_at, provider_updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29) RETURNING *`,
     [obs.ingestion_run_id || null, obs.context_policy_version || DEFAULT_POLICY_VERSION, obs.factor_code,
      obs.category || null, obs.subject_type, obs.subject_id || null, obs.canonical_event_id || null,
      obs.source_type || 'provider', obs.source_name, obs.source_reference || null,
@@ -30,8 +40,22 @@ async function recordObservation(obs, { cutoff = null, policy = {}, client = db 
      Number(obs.confidence) || 0, klass, obs.direction || null,
      obs.raw_value != null ? JSON.stringify(obs.raw_value) : null, obs.normalized_value ?? null,
      Number(obs.proposed_impact) || 0, eff.applied_impact, eff.blocked ? `blocked:${eff.reason}` : (obs.reason || 'applied'),
-     evidence, cutoff || null]);
-  return { row: r.rows[0], applied_impact: eff.applied_impact, blocked: eff.blocked, reason: eff.reason };
+     evidence, cutoff || null, quality, tconf, firstSeen, nowIso, obs.provider_updated_at || null]);
+  return { row: r.rows[0], applied_impact: eff.applied_impact, blocked: eff.blocked, reason: eff.reason, timestamp_quality: quality };
+}
+
+// candidate V2 SHADOW (hipotético; nunca oficial).
+async function recordShadowCandidate(c, { client = db } = {}) {
+  const r = await client.query(
+    `INSERT INTO v2_shadow_candidates
+       (v2_snapshot_id,canonical_event_id,market_code,period_code,outcome,gp_probability,consensus_probability,
+        best_decimal_odds,adjusted_edge_pp,adjusted_ev,uncertainty,classification,context_state,cutoff_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+    [c.v2_snapshot_id || null, c.canonical_event_id || null, c.market_code || '1X2', c.period_code || 'REGULATION',
+     c.outcome, c.gp_probability ?? null, c.consensus_probability ?? null, c.best_decimal_odds ?? null,
+     c.adjusted_edge_pp ?? null, c.adjusted_ev ?? null, c.uncertainty ?? null, c.classification || null,
+     c.context_state || null, c.cutoff_at || null]);
+  return r.rows[0];
 }
 
 // Lee SOLO observaciones elegibles point-in-time para un evento y cutoff (anti-leakage en lectura).
@@ -121,5 +145,5 @@ async function upsertFactorPolicy(p, { client = db } = {}) {
 
 module.exports = {
   enabled, DEFAULT_POLICY_VERSION,
-  recordObservation, listEligibleObservations, recordEvaluationRun, recordV2Snapshot, upsertSource, upsertFactorPolicy,
+  recordObservation, listEligibleObservations, recordEvaluationRun, recordV2Snapshot, recordShadowCandidate, upsertSource, upsertFactorPolicy,
 };

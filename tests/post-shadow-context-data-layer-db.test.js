@@ -44,8 +44,10 @@ const POST_KICK = '2026-07-01T19:00:00.000Z';     // dato publicado después del
     await migrate.up();
     console.log('\n§M.2 MIGRACIÓN 033');
     ok('UP: 7 tablas de la data layer creadas', (await cols()) === 7);
-    const r1 = await migrate.rollback();
-    ok('DOWN: rollback revierte 033', /033/.test(r1.rolledBack || ''));
+    // rollback order-independiente (puede haber migraciones encima de 033): revertir hasta que las 7 tablas se vayan
+    let rolls = 0, last = '';
+    while ((await cols()) > 0 && rolls < 8) { const r = await migrate.rollback(); last = r.rolledBack || last; rolls++; }
+    ok('DOWN: rollback llega hasta 033', /033/.test(last));
     ok('DOWN: las 7 tablas desaparecen', (await cols()) === 0);
     await migrate.up();
     ok('RE-UP: las 7 tablas vuelven', (await cols()) === 7);

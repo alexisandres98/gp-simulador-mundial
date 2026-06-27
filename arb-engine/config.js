@@ -20,6 +20,9 @@ function resolveFlags() {
     // SIEMPRE false en Sprint 3 — no existe publicación pública. Aunque el env diga true, se ignora.
     allowAutoPublication: false,
     autoPublicationRequestedButBlocked: autoReq,
+    // Fase R.1: gate semántico estricto. Default TRUE (seguridad). Un candidato solo puede ser ejecutable si
+    // pasa el gate; ante cualquier duda semántica → rejected (semantic_mismatch). Solo añade rechazos.
+    semanticStrict: bool(process.env.GP_ARBITRAGE_SEMANTIC_STRICT, true),
   };
 }
 const flags = resolveFlags();

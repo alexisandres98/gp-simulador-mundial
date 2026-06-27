@@ -8,7 +8,11 @@ const binaryArb = require('./binaryArb');
 const oneXTwoArb = require('./oneXTwoArb');
 const classifier = require('./classifier');
 const confidence = require('./confidence');
+const semanticGate = require('./semanticGate');
 const { opportunityKey } = require('./opportunityKey');
+
+// familia de mercado por defecto según la estructura del candidato (si no viene explícita). Conservador.
+const FAMILY_BY_STRATEGY = { '1x2': 'MATCH_RESULT', binary: 'BINARY' };
 
 const VERSIONS = {
   engine: cfg.ENGINE_VERSION,
@@ -57,6 +61,33 @@ function evaluateCandidate(candidate, opts = {}) {
     classification = c.classification; reasons = c.reasons; warnings = c.warnings;
   }
 
+  // 3b) GATE SEMÁNTICO (Fase R.1). Un candidato solo puede ser EJECUTABLE (pure_arb/execution_sensitive) si
+  //     prueba cobertura exhaustiva + reglas de settlement idénticas/no-ambiguas. Ante cualquier duda → rejected
+  //     con semantic_mismatch (§2). Solo añade rechazos: nunca eleva una clasificación. Verdicto siempre adjunto.
+  const marketMeta = {
+    canonical_event_id: candidate.canonicalEventId || null,
+    market_family: candidate.marketFamily || FAMILY_BY_STRATEGY[candidate.strategy] || null,
+    period: candidate.period || null,
+    line: candidate.line != null ? candidate.line : null,
+  };
+  const identities = legs.map(l => semanticGate.legIdentity({
+    canonical_event_id: l.canonical_event_id || candidate.canonicalEventId,
+    market_family: l.market_family, period: l.period, line: l.line,
+    outcome_code: l.outcome_code, side: l.side, proposition_id: l.proposition_id, canonical_outcome_id: l.canonicalOutcomeId,
+    includes_extra_time: l.includes_extra_time, includes_penalties: l.includes_penalties, draw_possible: l.draw_possible,
+    void_policy: l.void_policy, postponement_policy: l.postponement_policy, settlement_source: l.settlement_source,
+    currency: l.currency, rulesFingerprint: l.rulesFingerprint, rules: l.rules,
+  }, marketMeta));
+  const semantic = semanticGate.checkSemantics(identities, { policy: opts.semanticPolicy });
+  const strict = opts.semanticStrict != null ? opts.semanticStrict : cfg.flags.semanticStrict;
+  // El MOTOR degrada solo ante incompatibilidad PROBADA (semantic.fatal): legs con familia/período/línea/
+  // fingerprint/reglas/outcome discordantes y NO nulos. La AMBIGÜEDAD (datos faltantes) no degrada aquí; la
+  // capa de producto (R.4) exigirá semantic.ok (sin ambigüedad) antes de mostrar una oportunidad como ejecutable.
+  if (strict && semantic.fatal && (classification === 'pure_arb' || classification === 'execution_sensitive')) {
+    classification = 'rejected';
+    reasons = ['semantic_mismatch:' + (semantic.sub_reason || 'unknown')];
+  }
+
   // 4) confianza explicable (separada del beneficio)
   const conf = confidence.score({
     mappingStatus: candidate.mappingStatus, manualReviewApproved: candidate.manualReviewApproved,
@@ -79,6 +110,7 @@ function evaluateCandidate(candidate, opts = {}) {
     rulesFingerprint: candidate.rulesFingerprint || null,
     snapshotIds: legs.map(l => l.snapshotId).filter(Boolean),
     legTimeSkewMs: timeSkew.skewMs,
+    semantic,  // Fase R.1: verdicto del gate semántico (ok/reason/sub_reason/blockers) — siempre presente
     evaluation, maxSize,
     confidence: conf,
     versions: VERSIONS,

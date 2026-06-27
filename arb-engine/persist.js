@@ -36,15 +36,20 @@ async function persistEvaluation(ev, runId) {
        (engine_run_id, opportunity_key, canonical_event_id, canonical_market_id, evaluation_type, classification,
         mapping_version, rules_fingerprint, snapshot_ids, input_hash, leg_time_skew_ms,
         gross_margin, fee_total, book_slippage_total, execution_buffer_total, net_margin, capital_required,
-        net_profit, net_roi, max_executable_size, confidence_score, confidence_label, rejection_reasons, warning_codes, engine_version)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+        net_profit, net_roi, max_executable_size, confidence_score, confidence_label, rejection_reasons, warning_codes, engine_version,
+        semantic_ok, semantic_fatal, semantic_sub_reason, semantic_policy_version, semantic_blockers)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
      ON CONFLICT (input_hash) DO NOTHING RETURNING id`,
     [runId || null, ev.opportunityKey, uuidOrNull(ev.canonicalEventId), uuidOrNull(ev.canonicalMarketId), ev.strategy, ev.classification,
      ev.mappingVersion, ev.rulesFingerprint, ev.snapshotIds || [], ih, ev.legTimeSkewMs,
      numOr(e.grossProfit), numOr(e.feeTotal), numOr(e.feeTotal /* book slippage está en el VWAP */ ? '0' : '0'), numOr(e.executionBuffer),
      numOr(e.netProfit), numOr(e.capitalRequired), numOr(e.netProfit), numOr(e.netRoi), ev.maxSize ? numOr(ev.maxSize.maxQuantity) : null,
      ev.confidence ? ev.confidence.score : null, ev.confidence ? ev.confidence.label : null,
-     JSON.stringify(ev.reasons || []), JSON.stringify(ev.warnings || []), ev.versions.engine]
+     JSON.stringify(ev.reasons || []), JSON.stringify(ev.warnings || []), ev.versions.engine,
+     // Fase R.1: veredicto del gate semántico (aditivo, columnas mig 038)
+     ev.semantic ? ev.semantic.ok : null, ev.semantic ? ev.semantic.fatal : null,
+     ev.semantic ? ev.semantic.sub_reason : null, ev.semantic ? ev.semantic.policy_version : null,
+     JSON.stringify(ev.semantic ? (ev.semantic.blockers || []) : [])]
   );
   if (!r.rowCount) return { written: false, duplicate: true, evaluationId: null };
   const evaluationId = r.rows[0].id;

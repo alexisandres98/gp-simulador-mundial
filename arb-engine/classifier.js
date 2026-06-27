@@ -7,7 +7,8 @@ const D = require('./decimal');
 // motivos de rechazo "duro" (no es el mismo mercado / no ejecutable de forma segura)
 const REJECTING = new Set(['mapping_not_matched', 'outcome_not_matched', 'hard_conflicts', 'fee_unknown',
   'currency_incompatible', 'market_not_open', 'payout_unknown', 'invalid_book', 'snapshot_stale',
-  'snapshot_unknown', 'equivalence_below_threshold', 'rules_fingerprint_missing', 'no_executable_price']);
+  'snapshot_unknown', 'equivalence_below_threshold', 'rules_fingerprint_missing', 'no_executable_price',
+  'semantic_mismatch']); // Fase R.1: falla del gate semántico = rechazo duro (nunca ejecutable)
 
 function isRejecting(reason) { return [...REJECTING].some(r => reason.startsWith(r)); }
 

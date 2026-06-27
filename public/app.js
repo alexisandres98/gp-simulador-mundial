@@ -1680,8 +1680,8 @@ function renderAdmin() {
   loadTrackRecord();
   loadCandidates();
 }
-async function loadCandidates() {
-  const el = $('#candidateBody'); if (!el) return;
+async function loadCandidates(bodySel) {
+  const el = $(bodySel || '#candidateBody'); if (!el) return;
   try {
     const r = await fetch('/api/internal/value/candidates', { headers: hdrs() });
     if (r.status === 404) { el.innerHTML = '<span class="muted">Value/Candidate Factory apagada (VALUE_ENGINE_ENABLED off).</span>'; return; }
@@ -2712,7 +2712,10 @@ async function loadValue(rootSel) {
         const head = `<div class="explain"><b>Vista admin (interna)</b> · ${items.length} evaluaciones · no pública.<br>
           <b>Edge bruto</b> = combinada (ensemble) − break-even · <b>Edge ajustado</b> = conservadora − break-even. GP no es el ensemble.<br>
           V1 es el modelo oficial usado por Value. V2 es experimental y no modifica la clasificación.</div>`;
-        $('#valBody').innerHTML = items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.');
+        // Candidatos READY (con el botón "Aprobar como Pick interna") arriba de las evaluaciones.
+        const candSection = `<div class="gcard" style="margin-bottom:12px"><h3>CANDIDATOS A PICK GP (revisión humana)</h3><div id="valCandBody" class="muted" style="font-size:12px">Cargando…</div></div>`;
+        $('#valBody').innerHTML = candSection + (items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.'));
+        loadCandidates('#valCandBody');
       } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las evaluaciones internas.'); }
       return;
     }

@@ -2259,7 +2259,10 @@ const server = http.createServer(async (req, res) => {
         const jobs = await require('./shadow-ops/repository').recentRuns({ limit: 20 }).catch(() => []);
         const cutover = await require('./shadow-ops/cutoverReadiness').matrix().catch(() => null);
         const metrics = (await dbc.query(`SELECT model_label, subject_type, count(*)::int n, round(avg(brier_score)::numeric,4) brier, round(avg(log_loss)::numeric,4) log_loss FROM shadow_metric_facts GROUP BY model_label, subject_type`).catch(() => ({ rows: [] }))).rows;
-        return json(res, 200, { events: events.rows, goal_value: goalValue, jobs, shadow_metrics: metrics, cutover, shadow: true });
+        const sources = (await dbc.query(`SELECT source_key, source_name, reliability_tier, source_type, enabled, kill_switch FROM context_source_catalog ORDER BY reliability_tier LIMIT 30`).catch(() => ({ rows: [] }))).rows;
+        const claims = (await dbc.query(`SELECT factor_code, fact_or_inference, confidence, materiality, applied, review_status FROM context_claims ORDER BY created_at DESC LIMIT 20`).catch(() => ({ rows: [] }))).rows;
+        const weather = (await dbc.query(`SELECT canonical_event_id, venue, apparent_c, precip_mm, wind_kmh, weather_factors FROM weather_snapshots ORDER BY created_at DESC LIMIT 20`).catch(() => ({ rows: [] }))).rows;
+        return json(res, 200, { events: events.rows, goal_value: goalValue, jobs, shadow_metrics: metrics, collector: { sources, claims, weather }, cutover, shadow: true });
       } catch (e) { return json(res, 500, { error: 'error' }); }
     }
     // admin Picks (§44)
@@ -2410,6 +2413,9 @@ server.listen(PORT, () => {
   } catch { /* aislado */ }
   // Fase J.1 — cablea el resolver oficial V1 al Value scheduler (Value operativo evalúa eventos canónicos con V1).
   try { require('./value-engine/scheduler').setGpResolver(v1GpResolver); } catch { /* aislado */ }
+  // Fase O §16 — cablea el resultResolver real (ESPN) al shadow_loop: settlement/metrics shadow automáticos
+  // cuando un evento eliminatorio finalice (regulation). AISLADO: nunca afecta el lifecycle oficial V1.
+  try { require('./value-engine/scheduler').setShadowResultResolver((cid) => require('./shadow-ops/resultResolver').resolve(cid)); } catch { /* aislado */ }
   // Sprint 8A — orquestador de jobs (registro de runs, heartbeats, dependencias, apagado ordenado). INERTE
   // si OPERATIONS_ORCHESTRATOR_ENABLED=false: no arranca timers, no escribe, no toca el manejo de señales.
   operations.initialize({ flushDb }).catch(() => { /* aislado */ }); // flushDb: persistir db.json en el apagado coordinado

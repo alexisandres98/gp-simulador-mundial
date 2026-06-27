@@ -22,7 +22,8 @@ async function settlementSweep({ now = Date.now(), resultResolver = null } = {})
   let settled = 0;
   for (const e of evs) {
     const res = await Promise.resolve(resultResolver(e.canonical_event_id)).catch(() => null);
-    if (!res || typeof res.homeGoals !== 'number') continue;
+    // solo liquidar mercados regulation con resultado FINAL y REGLAMENTARIO fiable (sin prórroga/penales).
+    if (!res || res.final !== true || res.regulation !== true || typeof res.homeGoals !== 'number') continue;
     const v2 = (await db.query(`SELECT base_probability_vector, final_probability_vector FROM v2_probability_snapshots WHERE canonical_event_id=$1 ORDER BY created_at DESC LIMIT 1`, [e.canonical_event_id])).rows[0];
     const gvr = (await db.query(`SELECT market_id, market_family, gp_probability FROM goal_value_shadow WHERE canonical_event_id=$1`, [e.canonical_event_id])).rows;
     const r = lc.settleEvent({ canonicalEventId: e.canonical_event_id, v1Vector: v2 && v2.base_probability_vector, v2Snapshot: v2, goalValueRows: gvr, result: { homeGoals: res.homeGoals, awayGoals: res.awayGoals, observedAt: new Date(now).toISOString() } });

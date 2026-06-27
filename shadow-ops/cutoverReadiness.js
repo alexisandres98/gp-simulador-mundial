@@ -16,6 +16,11 @@ async function matrix() {
   const shadowSettlements = await n("SELECT count(*)::int n FROM shadow_settlements").catch(() => 0);
   const shadowMetrics = await n("SELECT count(*)::int n FROM shadow_metric_facts").catch(() => 0);
   const jobRuns = await n("SELECT count(*)::int n FROM shadow_job_runs").catch(() => 0);
+  const sources = await n("SELECT count(*)::int n FROM context_source_catalog WHERE enabled=true").catch(() => 0);
+  const documents = await n("SELECT count(*)::int n FROM context_source_documents").catch(() => 0);
+  const claims = await n("SELECT count(*)::int n FROM context_claims").catch(() => 0);
+  const weather = await n("SELECT count(*)::int n FROM weather_snapshots").catch(() => 0);
+  const settlements = await n("SELECT count(*)::int n FROM shadow_settlements").catch(() => 0);
   const sig = await n("SELECT count(*)::int n FROM signals");
   const picks = await n("SELECT count(*)::int n FROM internal_picks");
 
@@ -39,6 +44,14 @@ async function matrix() {
       { goal_value_evals: goalValue, policy: 'goal-value-policy-shadow-1', thresholds: 'provisionales' },
       ['thresholds provisionales con muestra mínima', 'overdispersion (var real>predicha) a evaluar'],
       'medio', 'evaluar NB vs Poisson+DC + acumular muestra antes de promover thresholds'),
+    dim('COLLECTOR_READY', (sources > 0 && (weather > 0 || documents > 0)) ? 'CONDITIONAL' : 'FAIL',
+      { enabled_sources: sources, documents, claims, weather_snapshots: weather, security: 'ssrf+allowlist+sanitize' },
+      sources === 0 ? ['catálogo de fuentes sin habilitar'] : ['news/RSS allowlist por curar (weather activo)'],
+      'medio', 'curar allowlist de fuentes Tier1/Tier2 + observar fetches'),
+    dim('RESULT_READY', settlements > 0 ? 'PASS' : 'CONDITIONAL',
+      { result_resolver_wired: true, shadow_settlements: settlements, source: 'ESPN regulation' },
+      settlements === 0 ? ['sin eventos eliminatorios finalizados aún (kickoffs futuros)'] : [],
+      'bajo', 'esperar finalización de eliminatorias (settlement automático)'),
     dim('ROLLBACK_READY', 'PASS',
       { promotion_machinery: true, kill_switch: true, rollback_tested: true, GP_ALLOW_CUTOVER: false },
       [], 'bajo', 'n/a'),
@@ -60,4 +73,23 @@ async function matrix() {
     note: 'Cutover PROHIBIDO en esta fase. La recomendación es informativa para el GO/NO-GO de ChatGPT.',
   };
 }
-module.exports = { matrix };
+
+// cutover package §22: propuesta de promoción versionada (NO activa nada).
+async function cutoverPackage() {
+  const m = await matrix();
+  return {
+    proposal: {
+      official_model_version: 'gp-intelligence-v2-0.1.0',
+      calibrated_base_version: 'gp-base-calibrated-2.0.0-shadow (λ≈0.20, shrinkage)',
+      context_policy_version: 'context-policy-1',
+      goal_model_version: 'goal-engine-1.0.0 (poisson_dc; NB en evaluación)',
+      effective_from_proposed: null,
+      rollback_version: 'gp-core-1.4.0 (V1)',
+      kill_switches: ['GP_V2_KILL_SWITCH', 'GP_ALLOW_CUTOVER', 'GP_V2_SHADOW_ENABLED', 'context_source_catalog.kill_switch'],
+      known_limitations: ['muestra <60 para recalibración', 'goal totals clusterizan ~51% (poca separación)', 'contexto INGESTION_OBSERVED sin published_at real', 'evidencia V2 forward pendiente de eliminatorias finalizadas'],
+    },
+    readiness: m.matrix, recommendation: m.recommendation, gates: m.gates,
+    activation: 'BLOQUEADA — requiere GO explícito de ChatGPT + GP_ALLOW_CUTOVER=true.',
+  };
+}
+module.exports = { matrix, cutoverPackage };

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 55%, #0BA661 120%); color: #fff;
+  display: flex; flex-direction: column; padding: 56px 54px; position: relative; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.badge { width: 44px; height: 44px; border-radius: 13px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 21px; font-weight: 800; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); font-weight: 800; font-size: 15px; padding: 9px 18px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 40px; font-weight: 800; letter-spacing: -1.2px; margin: 22px 0 22px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.m { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 24px 26px; }
+.m.star { background: rgba(124,242,188,.16); border-color: rgba(124,242,188,.5); }
+.mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.mh .t { font-size: 23px; font-weight: 800; }
+.mh .time { font-size: 15px; color: #C9F2DE; font-weight: 600; }
+.bar { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.14); margin-bottom: 11px; }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.38); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; justify-content: space-between; font-size: 19px; font-weight: 700; }
+.lbl .big { font-weight: 800; }
+.foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 22px; }
+.cta { background: #fff; color: #067647; font-size: 21px; font-weight: 800; padding: 15px 28px; border-radius: 99px; }
+.foot .small { font-size: 17px; color: #C9F2DE; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● HOY · 4 PARTIDOS</div></div>
+  <h1>Lo que dice el modelo hoy 📊</h1>
+  <div class="grid">
+    <div class="m star">
+      <div class="mh"><div class="t">🇨🇴 Colombia vs Portugal 🇵🇹</div><div class="time">6:30 PM COL</div></div>
+      <div class="bar"><div class="h" style="width:40.2%"></div><div class="d" style="width:29.3%"></div><div class="a" style="width:30.5%"></div></div>
+      <div class="lbl"><span class="big">🇨🇴 40.2%</span><span>X 29.3%</span><span>POR 30.5%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇭🇷 Croacia vs Ghana 🇬🇭</div><div class="time">4:00 PM COL</div></div>
+      <div class="bar"><div class="h" style="width:71.5%"></div><div class="d" style="width:19.4%"></div><div class="a" style="width:9.1%"></div></div>
+      <div class="lbl"><span class="big">🇭🇷 71.5%</span><span>X 19.4%</span><span>GHA 9.2%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇵🇦 Panamá vs Inglaterra 🏴󠁧󠁢󠁥󠁮󠁧󠁿</div><div class="time">4:00 PM COL</div></div>
+      <div class="bar"><div class="h" style="width:9.0%"></div><div class="d" style="width:18.8%"></div><div class="a" style="width:72.2%"></div></div>
+      <div class="lbl"><span>PAN 9.0%</span><span>X 18.8%</span><span class="big">🏴󠁧󠁢󠁥󠁮󠁧󠁿 72.2%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇨🇩 RD Congo vs Uzbekistán 🇺🇿</div><div class="time">6:30 PM COL</div></div>
+      <div class="bar"><div class="h" style="width:31.8%"></div><div class="d" style="width:29.4%"></div><div class="a" style="width:38.8%"></div></div>
+      <div class="lbl"><span>COD 31.8%</span><span>X 29.4%</span><span class="big">🇺🇿 38.8%</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Colombia vs Portugal: el modelo lo ve parejo</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

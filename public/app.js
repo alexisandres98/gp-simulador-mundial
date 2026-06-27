@@ -1713,7 +1713,7 @@ function renderAdmin() {
       <div id="userBase" class="muted">Cargando…</div>
     </div>`;
   loadCandidates();
-  loadPicks();
+  loadApprovedPicks();
   loadRegistryAdmin();
   loadTrackRecord();
   loadUsers();
@@ -1754,8 +1754,8 @@ function setLang(l, bodySel) {
   I18N.setLocale(l);
   if ($('#valCandBody')) loadCandidates('#valCandBody');
   if ($('#candidateBody')) loadCandidates('#candidateBody');
-  if ($('#picksBody')) loadPicks();
-  if ($('#valPicksBody')) loadPicks('#valPicksBody');
+  if ($('#picksBody')) loadApprovedPicks();
+  if ($('#valPicksBody')) loadApprovedPicks('#valPicksBody');
 }
 async function candReject(id) {
   const reason = prompt('Motivo del rechazo (queda registrado):', ''); if (reason == null) return;
@@ -1772,10 +1772,10 @@ async function candApprove(id, selDisplay, odds) {
     if (r.ok) alert('✓ ' + (I18N.locale === 'en' ? 'Internal Pick created' : 'Pick interna creada') + ' (' + (j.pick_id || '').slice(0, 8) + ') + Signal ' + (j.signal_id || '').slice(0, 8) + '.');
     else alert('✗ ' + (j.error || 'error') + (j.blockers ? ': ' + j.blockers.join(', ') : ''));
     loadCandidates();
-    loadPicks(); loadPicks('#valPicksBody');
+    loadApprovedPicks(); loadApprovedPicks('#valPicksBody');
   } catch { alert('Error de red'); }
 }
-async function loadPicks(bodySel) {
+async function loadApprovedPicks(bodySel) {
   const el = $(bodySel || '#picksBody'); if (!el) return;
   const L = (k, a) => I18N.t(k, a);
   try {
@@ -2792,7 +2792,7 @@ async function loadValue(rootSel) {
         const picksSection = `<div class="gcard" style="margin-bottom:12px"><h3>PICKS APROBADAS · INTERNAS</h3><div id="valPicksBody" class="muted" style="font-size:12px">Cargando…</div></div>`;
         $('#valBody').innerHTML = candSection + picksSection + (items.length ? head + items.map(valueCard).join('') : du('No hay evaluaciones internas todavía.'));
         loadCandidates('#valCandBody');
-        loadPicks('#valPicksBody');
+        loadApprovedPicks('#valPicksBody');
       } catch (e) { $('#valBody').innerHTML = du('No se pudieron cargar las evaluaciones internas.'); }
       return;
     }

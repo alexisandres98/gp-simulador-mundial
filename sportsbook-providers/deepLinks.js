@@ -10,7 +10,29 @@ const HOMEPAGES = {
   betfair: 'https://www.betfair.com/', unibet: 'https://www.unibet.com/', betsson: 'https://www.betsson.com/',
   '888sport': 'https://www.888sport.com/', draftkings: 'https://sportsbook.draftkings.com/', fanduel: 'https://sportsbook.fanduel.com/',
   betmgm: 'https://sports.betmgm.com/', marathonbet: 'https://www.marathonbet.com/', onexbet: 'https://1xbet.com/',
+  betvictor: 'https://www.betvictor.com/', smarkets: 'https://smarkets.com/', nordicbet: 'https://www.nordicbet.com/',
+  betway: 'https://betway.com/', tipico: 'https://www.tipico.com/', betclic: 'https://www.betclic.com/',
+  matchbook: 'https://www.matchbook.com/', coral: 'https://sports.coral.co.uk/', ladbrokes: 'https://sports.ladbrokes.com/',
+  skybet: 'https://www.skybet.com/', boylesports: 'https://www.boylesports.com/',
 };
+
+// The Odds API usa códigos con variante regional o de producto (unibet_fr, betfair_ex_uk, …). Se normalizan a la
+// MARCA base documentada antes de buscar la homepage. NO se inventan dominios: si tras normalizar no hay homepage
+// conocida → null (el gate bloquea, que es lo correcto).
+const ALIASES = {
+  betfair_ex_uk: 'betfair', betfair_ex_eu: 'betfair', betfair_ex_au: 'betfair', betfair_sb: 'betfair',
+  betfair: 'betfair', sport888: '888sport', '1xbet': 'onexbet', williamhill_us: 'williamhill',
+};
+const REGION_SUFFIX = /_(fr|uk|eu|it|au|nl|se|dk|es|de|be|at|ro|us|ca|nj|pa)$/;
+function brandCode(raw) {
+  const code = (raw || '').toLowerCase();
+  if (HOMEPAGES[code] !== undefined) return code;
+  if (ALIASES[code]) return ALIASES[code];
+  const stripped = code.replace(REGION_SUFFIX, '');
+  if (HOMEPAGES[stripped] !== undefined) return stripped;
+  if (ALIASES[stripped]) return ALIASES[stripped];
+  return code;
+}
 
 // resolve(opts) → { url, level, valid, reason }
 //   opts: { providerLinks?: { outcome_deep_link, market_deep_link, event_deep_link, sportsbook_homepage, provider_sid },
@@ -18,7 +40,7 @@ const HOMEPAGES = {
 //   level ∈ outcome | market | event | homepage | null
 function resolve(opts = {}) {
   const links = opts.providerLinks || {};
-  const code = (opts.sportsbookCode || '').toLowerCase();
+  const code = brandCode(opts.sportsbookCode);
   // orden de preferencia §10: outcome → market → event → homepage segura → null
   const tryLink = (url, level) => {
     if (!url || typeof url !== 'string' || !/^https:\/\//i.test(url)) return null;

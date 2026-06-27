@@ -140,6 +140,12 @@ const NOW = KMS - 3 * 3600 * 1000; // 3h antes (kickoff suficientemente futuro)
     ok('12. Metrics unhealthy → BLOCKED_METRICS_UNHEALTHY', (await candOf(e9)).readiness_blockers.includes('BLOCKED_METRICS_UNHEALTHY'));
     process.env.METRICS_ENGINE_ENABLED = 'true';
 
+    // deep link: normalización de códigos regionales/variantes de The Odds API → marca base documentada
+    ok('deepLink betfair_ex_uk → betfair', deepLinks.resolve({ sportsbookCode: 'betfair_ex_uk' }).url === 'https://www.betfair.com/');
+    ok('deepLink unibet_fr → unibet', deepLinks.resolve({ sportsbookCode: 'unibet_fr' }).url === 'https://www.unibet.com/');
+    ok('deepLink betvictor → homepage', deepLinks.resolve({ sportsbookCode: 'betvictor' }).url === 'https://www.betvictor.com/');
+    ok('deepLink book desconocido → null (gate sigue bloqueando)', deepLinks.resolve({ sportsbookCode: 'marca_inexistente_zz' }).url === null);
+
     // ===================== ACCIONES + REGRESIÓN =====================
     console.log('\n§19 ACCIONES + REGRESIÓN');
     await cf.reject(c1.candidate_id, { adminId: 'a', reason: 'no me convence' });

@@ -196,6 +196,8 @@ async function effectiveFacts(client = db) {
 async function snapshot(opts = {}) {
   if (!cfg.flags.writeEnabled || !db.isConfigured()) return { created: 0, reason: 'disabled' };
   const facts = await effectiveFacts();
+  // §13: con cero facts NO se crea snapshot (no-op, no fabricar valores). Evita spam de snapshots N/A por tick.
+  if (!facts.length && !opts.force) return { created: 0, reason: 'no_facts', sample_size: 0 };
   const eligible = facts.filter(f => f.metrics_eligibility === 'eligible');
   const maxSeq = facts.reduce((m, f) => Math.max(m, Number(f.registry_sequence) || 0), 0) || null;
   const maxSettle = facts.reduce((m, f) => Math.max(m, Number(f.settlement_version) || 0), 0) || null;

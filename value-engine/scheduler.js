@@ -13,8 +13,11 @@ async function valueTick() {
   state.value.running = true;
   try {
     return await locks.withLock(cfg.ADVISORY.value.resource, cfg.ADVISORY.value.op, async () => {
-      // Sin proveedor de sportsbooks autorizado no hay sets 1X2 completos → nada que evaluar (honesto).
-      return { evaluated: 0, reason: 'no_sportsbook_quotes' };
+      // Fase J §4-7: tras una ingesta válida, refrescar la Candidate Factory (price state + lifecycle + readiness).
+      // Aislado: una falla de la factory no rompe Value. Con 0 STRONG operativas → 0 candidates (correcto §1/§17).
+      let candidates = null;
+      try { candidates = await require('./candidateFactory').run({ now: Date.now() }); } catch (e) { candidates = { error: 'factory_error' }; }
+      return { evaluated: 0, reason: 'no_sportsbook_quotes', candidates };
     });
   } catch (e) { log.error('value: error ciclo', { error: e.message }); return { error: 'cycle_error' }; }
   finally { state.value.running = false; }

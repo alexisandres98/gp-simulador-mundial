@@ -66,10 +66,19 @@ function buildFact(sig, closing, settlement, adminStatus, ctx = {}) {
   const closingStatus = closing ? closing.closing_status : null;
   const closingProb = closing && closingStatus === 'AVAILABLE' ? num(closing.closing_probability) : null;
   const closingOdds = closing && closingStatus === 'AVAILABLE' ? num(closing.closing_odds) : null;
-  // §9 convención: clv_probability = official_closing_probability - published_break_even_probability (>0 = batiste el cierre).
-  const clvProb = (closingProb != null && breakEven != null) ? +(closingProb - breakEven).toFixed(8) : null;
-  // clv_odds: published_odds/closing_odds - 1 (>0 = conseguiste mejor cuota que el cierre). Documentado.
-  const clvOdds = (publishedOdds && closingOdds) ? +(publishedOdds / closingOdds - 1).toFixed(8) : null;
+  // §2 semántica corregida (clv-semantics-2). NO es "no-vig vs no-vig": compara el precio de ENTRADA (1/best
+  // published odds) contra el precio JUSTO del cierre (consenso no-vig).
+  //   entry_price_vs_closing_fair_gap = official_closing_probability - published_break_even_probability (>0 = la cuota tomada era mejor que el precio justo del cierre).
+  const entryVsClosingGap = (closingProb != null && breakEven != null) ? +(closingProb - breakEven).toFixed(8) : null;
+  //   price_clv = published_odds / closing_fair_odds - 1, con closing_fair_odds = 1/official_closing_probability.
+  const closingFairOdds = closingProb ? 1 / closingProb : null;
+  const priceClv = (publishedOdds && closingFairOdds) ? +(publishedOdds / closingFairOdds - 1).toFixed(8) : null;
+  //   market_move_no_vig = closing_no_vig - publication_no_vig: SOLO si se congeló el consenso no-vig al publicar.
+  //   No se congela hoy (payload no lo trae) → null (no se inventa el dato).
+  const pubNoVig = num(payload.publication_consensus_no_vig);
+  const marketMoveNoVig = (closingProb != null && pubNoVig != null) ? +(closingProb - pubNoVig).toFixed(8) : null;
+  // aliases DEPRECADOS (clv-semantics-1) por compatibilidad — mismos valores, no es no-vig vs no-vig.
+  const clvProb = entryVsClosingGap, clvOdds = priceClv;
 
   // ROI teórico flat 1 unit (§10). theoretical, flat_1_unit_v1, executed_by_gp=false.
   let profit = null, ret = null;
@@ -92,7 +101,9 @@ function buildFact(sig, closing, settlement, adminStatus, ctx = {}) {
     closing_policy_version: closing ? closing.closing_policy_version : null, closing_snapshot_id: closing ? closing.closing_snapshot_id || closing.id || null : null,
     settlement_status: st || null, result_outcome: resultOutcome || null, settlement_result: resultOutcome || null,
     settlement_version: settlement ? settlement.settlement_version : null, settlement_policy_version: settlement ? settlement.settlement_policy_version : null,
-    brier_score: brierScore, log_loss: ll, clv_probability: clvProb, clv_odds: clvOdds, flat_unit_profit: profit, flat_unit_return: ret,
+    brier_score: brierScore, log_loss: ll, clv_probability: clvProb, clv_odds: clvOdds,
+    entry_price_vs_closing_fair_gap: entryVsClosingGap, price_clv: priceClv, market_move_no_vig: marketMoveNoVig, clv_semantics_version: 'clv-semantics-2',
+    flat_unit_profit: profit, flat_unit_return: ret,
     administrative_status: adminStatus || 'ACTIVE', metrics_eligibility: elig.eligibility, exclusion_reason: elig.reason,
     metrics_policy_version: POLICY,
   };

@@ -1670,10 +1670,37 @@ function renderAdmin() {
     <div class="gcard" style="margin-top:12px" id="trackRecordCard">
       <h3>TRACK RECORD · METRICS INTERNO</h3>
       <div id="trackRecordBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
+    <div class="gcard" style="margin-top:12px" id="candidateCard">
+      <h3>CANDIDATE FACTORY · COLA INTERNA</h3>
+      <div id="candidateBody" class="muted" style="font-size:12px">Cargando…</div>
     </div>`;
   loadUsers();
   loadRegistryAdmin();
   loadTrackRecord();
+  loadCandidates();
+}
+async function loadCandidates() {
+  const el = $('#candidateBody'); if (!el) return;
+  try {
+    const r = await fetch('/api/internal/value/candidates', { headers: hdrs() });
+    if (r.status === 404) { el.innerHTML = '<span class="muted">Value/Candidate Factory apagada (VALUE_ENGINE_ENABLED off).</span>'; return; }
+    if (!r.ok) { el.innerHTML = '<span class="warn">No autorizado (' + r.status + ').</span>'; return; }
+    const t = await r.json();
+    if (!t.candidates) { el.innerHTML = `<div class="explain" style="margin:0">${t.note || 'No apareció ninguna oportunidad que cumpliera los gates actuales.'}</div><div class="muted" style="font-size:11px;margin-top:8px">Conversión a Pick: <b>deshabilitada</b> — se habilitará en la siguiente fase.</div>`; return; }
+    const rows = (t.items || []).map(c => {
+      // product preview (§15): vista simplificada estilo usuario, sin tecnicismos.
+      const preview = `<div class="explain" style="margin:6px 0"><b>${c.selection} gana</b> · Oportunidad fuerte<br>Mejor cuota: <b>${c.best_odds ?? '—'}</b> en ${c.sportsbook || '—'}<br>Válida desde: ${c.minimum_odds ?? '—'} · Estado del precio: ${c.price_status}<br>Por qué: ${c.edge_source || '—'} · Estado: <b>${c.candidate_status}</b>${(c.readiness_blockers && c.readiness_blockers.length) ? ' · blockers: ' + c.readiness_blockers.join(', ') : ''}<br><span class="muted" style="font-size:11px">edge ${c.adjusted_edge_pp ?? '—'}pp · EV ${c.adjusted_ev ?? '—'} · quality ${c.quality ?? '—'} · grupos ${c.verified_groups ?? '—'} · ESPN ${c.readiness_blockers && c.readiness_blockers.includes('BLOCKED_MISSING_ESPN_MAPPING') ? 'falta' : 'ok'}</span>` +
+        `<div class="formrow" style="margin-top:6px"><button class="ghost" disabled title="Próxima fase">Aprobar como Pick</button><button class="ghost" onclick="candReject('${c.candidate_id}')">Rechazar</button><button class="ghost" onclick="loadCandidates()">Refrescar</button></div></div>`;
+      return preview;
+    }).join('');
+    el.innerHTML = `<div class="muted" style="margin-bottom:6px">Candidates: ${t.candidates} · por estado: ${JSON.stringify(t.by_lifecycle)}</div>` + rows +
+      `<div class="muted" style="font-size:11px;margin-top:6px">Estimaciones de un modelo estadístico, no consejo financiero. La conversión a Pick se habilitará en la siguiente fase.</div>`;
+  } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
+}
+async function candReject(id) {
+  const reason = prompt('Motivo del rechazo (queda registrado):', ''); if (reason == null) return;
+  try { await fetch('/api/internal/value/candidates/' + id + '/reject', { method: 'POST', headers: hdrs(), body: JSON.stringify({ reason }) }); loadCandidates(); } catch {}
 }
 async function loadTrackRecord() {
   const el = $('#trackRecordBody'); if (!el) return;

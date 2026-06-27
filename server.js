@@ -2135,7 +2135,30 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/internal/value/status') return json(res, 200, await valueEngine.adminStatus());
         if (p === '/api/internal/value/evaluations') return json(res, 200, { items: await valueEngine.repo.evaluations.recent({ limit: 100 }) });
         if (p === '/api/internal/value/strong') return json(res, 200, { items: await valueEngine.repo.evaluations.recent({ classification: 'strong', limit: 100 }) });
+        // Fase J §14: cola de candidates (interna). Empty (0) es correcto si no apareció un STRONG real.
+        if (p === '/api/internal/value/candidates') return json(res, 200, await require('./value-engine/candidateFactory').status());
       } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
+    // Fase J §14: acciones permitidas sobre candidates (NO approve/publish/register en esta fase).
+    {
+      const mCand = p.match(/^\/api\/internal\/value\/candidates\/([0-9a-f-]{36})\/(reject|note|refresh)$/i);
+      if (mCand && req.method === 'POST') {
+        const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+        const id = mCand[1], action = mCand[2].toLowerCase(); const body = await readBody(req).catch(() => ({}));
+        const cf = require('./value-engine/candidateFactory');
+        try {
+          if (action === 'reject') return json(res, 200, await cf.reject(id, { adminId: u.email, reason: body.reason || '' }));
+          if (action === 'note') return json(res, 200, await cf.addNote(id, { adminId: u.email, note: body.note || '' }));
+          if (action === 'refresh') { await cf.run({ now: Date.now() }); return json(res, 200, await cf.status()); }
+        } catch (e) { return json(res, 400, { error: e.code || 'error' }); }
+      }
+      // one-shot de evaluación operativa (internal_operational). gpResolver no se cablea aquí → produce evals sin GP
+      // (0 STRONG garantizado sin GP); el STRONG real requiere el gpResolver, fuera de alcance de esta ruta.
+      if (p === '/api/internal/value/operational-run' && req.method === 'POST') {
+        const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+        try { const r = await require('./sportsbook-providers/valueDryRun').runOperational({}); await require('./value-engine/candidateFactory').run({ now: Date.now() }); return json(res, 200, r); }
+        catch (e) { return json(res, 400, { error: e.code || 'error' }); }
+      }
     }
     // admin Picks (§44)
     if (p === '/api/internal/picks/candidates' && req.method === 'GET') {

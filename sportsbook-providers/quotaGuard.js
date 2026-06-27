@@ -52,4 +52,20 @@ function canCall(state, nowMs = null) {
   return { allowed: false, circuit: 'open', reason: 'circuit_open' };
 }
 
-module.exports = { quotaCritical, deriveProviderStatus, nextCircuit, canCall };
+// estimación de consumo por cadencia + límites soft/hard (§5). PURO. soft (warning, reducir agresividad) al 30%
+// remaining; hard (detener no esenciales) en la reserva configurada (default 15%). El hard real de ingestión ya
+// lo aplica quotaCritical()/circuit breaker; esto añade visibilidad + el soft.
+function cadenceEstimate({ remaining = null, used = null, requestsPerRun = 2, intervalMs = 600000 } = {}) {
+  const runsPerDay = intervalMs > 0 ? Math.round(86400000 / intervalMs) : 0;
+  const estimated_daily_usage = runsPerDay * requestsPerRun;
+  const estimated_monthly_usage = estimated_daily_usage * 30;
+  const total = (remaining || 0) + (used || 0);
+  const reserve = cfg.params.quotaReservePercent / 100;
+  const softThreshold = total ? Math.ceil(total * 0.30) : null;
+  const hardThreshold = total ? Math.ceil(total * reserve) : null;
+  const soft_limit_reached = remaining != null && softThreshold != null && remaining <= softThreshold;
+  const hard_limit_reached = remaining != null && hardThreshold != null && remaining <= hardThreshold;
+  return { runs_per_day: runsPerDay, requests_per_run: requestsPerRun, estimated_daily_usage, estimated_monthly_usage, soft_limit_reached, hard_limit_reached, quota_policy_version: 'quota-cadence-1' };
+}
+
+module.exports = { quotaCritical, deriveProviderStatus, nextCircuit, canCall, cadenceEstimate };

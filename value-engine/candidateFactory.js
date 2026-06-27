@@ -96,6 +96,13 @@ async function processStrong(ev, ctx = {}) {
   const dl = deepLinks.resolve({ sportsbookCode: ev.best_sportsbook_code || pr.best_sportsbook, providerLinks: ctx.providerLinks });
   const existing = (await db.query(`SELECT * FROM candidate_factory WHERE dedup_key=$1`, [key])).rows[0];
 
+  // Estados TERMINALES: una Pick ya convertida (CONVERTED_TO_PICK) o un candidate rechazado (REJECTED) NO se
+  // reabren en barridos posteriores. Sin este guard, el value tick re-procesaba el STRONG vigente y revertía el
+  // candidate convertido a READY_FOR_REVIEW → reaparecía como aprobable pese a tener ya su Pick/Signal.
+  if (existing && (existing.candidate_lifecycle === 'CONVERTED_TO_PICK' || existing.candidate_lifecycle === 'REJECTED')) {
+    return { created: false, updated: false, candidate_id: existing.candidate_id, lifecycle: existing.candidate_lifecycle };
+  }
+
   const base = { ...existing, canonical_event_id: ev.canonical_event_id, market: ev.market || '1x2', period: ev.period || 'regulation_90m', outcome, kickoff_at: ev.event_start_at, verified_independence_group_count: ev.verified_independence_group_count, price_state: pst, deep_link: dl.url };
   const rd = await readiness(base, { now });
   const lifecycle = lifecycleFor(pst, rd.ready, rd.blockers);

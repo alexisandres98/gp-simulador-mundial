@@ -104,6 +104,10 @@ const NOW = +new Date(KICK) - 3 * 3600 * 1000;
     const cQuick = await readyCandidate();
     const rQuick = await conv.convertToPick(cQuick, { adminId: 'a', superadmin: true, reason: 'Aprobada desde el panel admin por a', locale: 'es', now: NOW });
     ok('un clic: convierte con reason auto-rellenado (sin review_note) + queda en listPicks', !!rQuick.pick && !!rQuick.signal && (await conv.listPicks({ limit: 100 })).items.some(x => x.pick_id === rQuick.pick.pick_id));
+    // estado TERMINAL: un nuevo barrido del value tick NO debe reabrir un candidate ya convertido a READY
+    await cf.run({ now: NOW });
+    const lifeAfterRun = (await q(`SELECT candidate_lifecycle FROM candidate_factory WHERE candidate_id=$1`, [cEs])).rows[0].candidate_lifecycle;
+    ok('terminal: run() NO revierte CONVERTED_TO_PICK a READY_FOR_REVIEW', lifeAfterRun === 'CONVERTED_TO_PICK');
 
     // ===================== SEGURIDAD / REGRESIÓN =====================
     console.log('\n§13 SEGURIDAD');

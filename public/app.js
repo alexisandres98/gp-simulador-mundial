@@ -1607,7 +1607,19 @@ function renderAdmin() {
       ${sync.ts ? `Última sincronización: ${new Date(sync.ts).toLocaleTimeString()}${sync.error ? ' · error: ' + sync.error : ''}.` : ''}
       <br>Este panel es solo para <b>corregir manualmente</b> un marcador si la fuente fallara.
     </div>
-    <div class="gcard">
+    <div class="gcard" id="candidateCard">
+      <h3>CANDIDATE FACTORY · COLA INTERNA</h3>
+      <div id="candidateBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
+    <div class="gcard" style="margin-top:12px" id="registryAdminCard">
+      <h3>REGISTRO DE SEÑALES · CONTROL INTERNO</h3>
+      <div id="registryAdminBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
+    <div class="gcard" style="margin-top:12px" id="trackRecordCard">
+      <h3>TRACK RECORD · METRICS INTERNO</h3>
+      <div id="trackRecordBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
+    <div class="gcard" style="margin-top:12px">
       <h3>CORREGIR PARTIDO · FASE DE GRUPOS</h3>
       <div class="formrow"><label style="width:100%">Partido<br><select id="gMatch" style="width:100%">${groupOpts}</select></label></div>
       <div class="formrow">
@@ -1661,24 +1673,13 @@ function renderAdmin() {
     </div>
     <div class="gcard" style="margin-top:12px">
       <h3>BASE DE USUARIOS</h3>
+      <div class="muted" style="font-size:11px;margin-bottom:6px">Tu base de clientes va al final del panel: arriba quedan las herramientas internas (candidatos, registro, métricas).</div>
       <div id="userBase" class="muted">Cargando…</div>
-    </div>
-    <div class="gcard" style="margin-top:12px" id="registryAdminCard">
-      <h3>REGISTRO DE SEÑALES · CONTROL INTERNO</h3>
-      <div id="registryAdminBody" class="muted" style="font-size:12px">Cargando…</div>
-    </div>
-    <div class="gcard" style="margin-top:12px" id="trackRecordCard">
-      <h3>TRACK RECORD · METRICS INTERNO</h3>
-      <div id="trackRecordBody" class="muted" style="font-size:12px">Cargando…</div>
-    </div>
-    <div class="gcard" style="margin-top:12px" id="candidateCard">
-      <h3>CANDIDATE FACTORY · COLA INTERNA</h3>
-      <div id="candidateBody" class="muted" style="font-size:12px">Cargando…</div>
     </div>`;
-  loadUsers();
+  loadCandidates();
   loadRegistryAdmin();
   loadTrackRecord();
-  loadCandidates();
+  loadUsers();
 }
 async function loadCandidates(bodySel) {
   const el = $(bodySel || '#candidateBody'); if (!el) return;

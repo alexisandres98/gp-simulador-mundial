@@ -2192,6 +2192,35 @@ const server = http.createServer(async (req, res) => {
           if (action === 'refresh') { await cf.run({ now: Date.now() }); return json(res, 200, await cf.status()); }
         } catch (e) { return json(res, 400, { error: e.code || 'error' }); }
       }
+      // Fase K.1 §1: APPROVE_AS_INTERNAL_PICK — acción MANUAL, AUDITADA, ATÓMICA. SOLO superadmin. Doble
+      // confirmación (escribir el candidate_id + frase "CONFIRM <id>"). Crea Pick interna + Signal oficial.
+      const mApprove = p.match(/^\/api\/internal\/value\/candidates\/([0-9a-f-]{36})\/approve-as-pick$/i);
+      if (mApprove && req.method === 'POST') {
+        const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+        if (!u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+        // gate de mecanismo (la acción debe estar habilitada explícitamente; default OFF para no permitir conversión)
+        if (!/^(1|true|yes|on)$/i.test(String(process.env.PICK_MANUAL_CONVERSION_ENABLED || ''))) return json(res, 403, { error: 'pick_conversion_disabled' });
+        const superEmails = (process.env.REGISTRY_SUPERADMIN_EMAILS || process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
+        const isSuper = !!u.isAdmin && (superEmails.length === 0 || superEmails.includes(u.email));
+        if (!isSuper) return json(res, 403, { error: 'superadmin_required' });
+        if (!registryAdminRateOk(u.email)) return json(res, 429, { error: 'rate_limited' });
+        const id = mApprove[1]; const body = await readBody(req).catch(() => ({}));
+        // doble confirmación reforzada (§1): candidate_id escrito + frase exacta + motivo + nota de revisión.
+        if (body.confirm_candidate_id !== id) return json(res, 422, { error: 'candidate_id_mismatch' });
+        if (String(body.confirmation_phrase || '').trim() !== `CONFIRM ${id}`) return json(res, 422, { error: 'reinforced_confirmation_required' });
+        if (!body.reason || String(body.reason).trim().length < 4) return json(res, 422, { error: 'reason_required' });
+        if (!body.review_note || String(body.review_note).trim().length < 4) return json(res, 422, { error: 'review_note_required' });
+        try {
+          const r = await require('./value-engine/pickConversion').convertToPick(id, {
+            adminId: u.email, superadmin: true, reason: body.reason, reviewNote: body.review_note,
+            risks: body.risks_displayed || [], idempotencyKey: req.headers['idempotency-key'] || ('convert:' + id), now: Date.now(),
+          });
+          return json(res, 200, { ok: true, idempotent: !!r.idempotent, pick_id: r.pick ? r.pick.pick_id : null, signal_id: r.signal_id || (r.signal && r.signal.id) || null, candidate_lifecycle: 'CONVERTED_TO_PICK' });
+        } catch (e) {
+          if (e.code === 'revalidation_failed') return json(res, 422, { error: 'revalidation_failed', blockers: e.details || [] });
+          return json(res, 400, { error: e.code || 'error', details: e.details || null });
+        }
+      }
       // one-shot de evaluación operativa (internal_operational). gpResolver no se cablea aquí → produce evals sin GP
       // (0 STRONG garantizado sin GP); el STRONG real requiere el gpResolver, fuera de alcance de esta ruta.
       if (p === '/api/internal/value/operational-run' && req.method === 'POST') {

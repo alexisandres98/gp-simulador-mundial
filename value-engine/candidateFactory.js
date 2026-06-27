@@ -150,15 +150,29 @@ async function run(opts = {}) {
 }
 
 // status — cola admin §14 + counts. Empty (0 candidates) es correcto.
+// §2 labels en español: HOME → "Gana {home}", DRAW → "Empate", AWAY → "Gana {away}".
+function displayLabel(outcome, homeName, awayName) {
+  if (outcome === 'home') return `Gana ${homeName || 'el local'}`;
+  if (outcome === 'away') return `Gana ${awayName || 'el visitante'}`;
+  if (outcome === 'draw') return 'Empate';
+  return outcome;
+}
+
 async function status() {
   if (!db.isConfigured()) return { candidates: 0, by_lifecycle: {}, note: 'db not configured' };
-  const rows = (await db.query(`SELECT * FROM candidate_factory WHERE superseded=false ORDER BY detected_at DESC LIMIT 100`).catch(() => ({ rows: [] }))).rows;
+  const rows = (await db.query(`SELECT cf.*, ce.home_participant, ce.away_participant FROM candidate_factory cf LEFT JOIN canonical_events ce ON ce.id=cf.canonical_event_id WHERE cf.superseded=false ORDER BY cf.detected_at DESC LIMIT 100`).catch(() => ({ rows: [] }))).rows;
   const by = {}; for (const r of rows) by[r.candidate_lifecycle] = (by[r.candidate_lifecycle] || 0) + 1;
+  const conversionEnabled = /^(1|true|yes|on)$/i.test(String(process.env.PICK_MANUAL_CONVERSION_ENABLED || ''));
   return {
-    candidates: rows.length, by_lifecycle: by, conversion_enabled: false,
+    candidates: rows.length, by_lifecycle: by, conversion_enabled: conversionEnabled,
     note: rows.length ? null : 'No apareció ninguna oportunidad que cumpliera los gates actuales.',
     items: rows.map(r => ({
-      candidate_id: r.candidate_id, event: r.canonical_event_id, kickoff: r.kickoff_at, selection: r.selection, classification: r.classification,
+      candidate_id: r.candidate_id, event: r.canonical_event_id,
+      event_display: r.home_participant ? `${r.home_participant} vs ${r.away_participant}` : null,
+      home_team: r.home_participant, away_team: r.away_participant,
+      selection_display: displayLabel(r.outcome, r.home_participant, r.away_participant),  // "Croacia gana" estilo español
+      market_display: 'Resultado del partido', period_display: 'tiempo reglamentario (90 min, sin prórroga ni penales)',
+      kickoff: r.kickoff_at, selection_code: r.outcome, classification: r.classification,
       gp_probability: r.gp_probability, consensus_probability: r.consensus_probability, conservative_probability: r.conservative_probability,
       best_odds: r.current_best_odds, minimum_odds: r.minimum_odds, sportsbook: r.best_sportsbook, price_status: r.price_state,
       adjusted_edge_pp: r.adjusted_edge_pp, adjusted_ev: r.adjusted_ev, quality: r.quality_score, verified_groups: r.verified_independence_group_count,

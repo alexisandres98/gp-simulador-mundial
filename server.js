@@ -2243,6 +2243,25 @@ const server = http.createServer(async (req, res) => {
         catch (e) { return json(res, 400, { error: e.code || 'error' }); }
       }
     }
+    // Fase N.1: Admin Observatory SHADOW (interno, admin-only). V1/V2/goles/mercado/cutover. NO público.
+    if (p === '/api/internal/shadow/observatory' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try {
+        const dbc = require('./database/client');
+        const events = await dbc.query(`SELECT ce.id, ce.home_participant home, ce.away_participant away, ce.scheduled_start kickoff,
+            v.base_probability_vector v1, v.final_probability_vector v2, v.context_state, v.uncertainty,
+            g.expected_total_goals, g.over_under, g.btts, g.top_scorelines, g.final_lambda_home, g.final_lambda_away
+          FROM v2_probability_snapshots v
+          JOIN canonical_events ce ON ce.id=v.canonical_event_id
+          LEFT JOIN LATERAL (SELECT * FROM goal_model_snapshots gg WHERE gg.canonical_event_id=v.canonical_event_id ORDER BY created_at DESC LIMIT 1) g ON true
+          WHERE ce.scheduled_start > now() ORDER BY ce.scheduled_start LIMIT 30`).catch(() => ({ rows: [] }));
+        const goalValue = (await dbc.query(`SELECT canonical_event_id, market_id, gp_probability, market_consensus_probability, best_decimal_odds, adjusted_edge_pp, classification FROM goal_value_shadow ORDER BY created_at DESC LIMIT 60`).catch(() => ({ rows: [] }))).rows;
+        const jobs = await require('./shadow-ops/repository').recentRuns({ limit: 20 }).catch(() => []);
+        const cutover = await require('./shadow-ops/cutoverReadiness').matrix().catch(() => null);
+        const metrics = (await dbc.query(`SELECT model_label, subject_type, count(*)::int n, round(avg(brier_score)::numeric,4) brier, round(avg(log_loss)::numeric,4) log_loss FROM shadow_metric_facts GROUP BY model_label, subject_type`).catch(() => ({ rows: [] }))).rows;
+        return json(res, 200, { events: events.rows, goal_value: goalValue, jobs, shadow_metrics: metrics, cutover, shadow: true });
+      } catch (e) { return json(res, 500, { error: 'error' }); }
+    }
     // admin Picks (§44)
     // Picks internas aprobadas (K.1/K.2): lista las filas de internal_picks para el panel admin (NO público).
     if (p === '/api/internal/picks' && req.method === 'GET') {

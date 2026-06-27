@@ -11,6 +11,9 @@ const state = { value: { started: false, timer: null, running: false }, monitor:
 // (no se inventa GP). gpResolver({canonicalEventId,label,meta}) → { probabilities:{home,draw,away}, model_version, ... } | null.
 let _gpResolver = null;
 function setGpResolver(fn) { _gpResolver = fn; }
+// Fase N.1: resolver de resultado para shadow settlement (inyectado opcionalmente desde server.js).
+let _shadowResultResolver = null;
+function setShadowResultResolver(fn) { _shadowResultResolver = fn; }
 
 // tick del Value Engine (Fase J.1): tras una ingesta fresh/exitosa → V1 evalúa eventos canónicos elegibles
 // (internal_operational) → persiste → Candidate Factory. Orden garantizado: Value ANTES de la Factory. Lock
@@ -30,8 +33,12 @@ async function valueTick() {
       // Candidate Factory DESPUÉS de persistir las evaluaciones (orden §3). Aislado.
       let candidates = null;
       try { candidates = await require('./candidateFactory').run({ now: Date.now() }); } catch (e) { candidates = { error: 'factory_error' }; }
+      // Fase N.1: shadow ops continuo (telemetría + settlement de finalizados), AISLADO y solo si GP_V2_SHADOW_ENABLED.
+      // Cualquier error se ignora: nunca afecta al pipeline oficial V1.
+      let shadow = null;
+      try { const so = require('../shadow-ops/scheduler'); if (so.enabled()) shadow = await so.tick({ now: Date.now(), resultResolver: _shadowResultResolver }); } catch (e) { shadow = { error: 'shadow_error' }; }
       state.value.lastRunAt = new Date().toISOString();
-      return { value, candidates, duration_ms: Date.now() - startedAt };
+      return { value, candidates, shadow, duration_ms: Date.now() - startedAt };
     });
   } catch (e) { log.error('value: error ciclo', { error: e.message }); return { error: 'cycle_error' }; }
   finally { state.value.running = false; }
@@ -62,4 +69,4 @@ function start() {
   return out;
 }
 function stop() { for (const k of ['value', 'monitor']) { if (state[k].timer) clearInterval(state[k].timer); state[k].timer = null; state[k].started = false; } return { stopped: true }; }
-module.exports = { start, stop, valueTick, monitorTick, setGpResolver, hasGpResolver: () => !!_gpResolver, status: () => ({ value: state.value.started, monitor: state.monitor.started, gp_resolver_wired: !!_gpResolver, last_run_at: state.value.lastRunAt || null }) };
+module.exports = { start, stop, valueTick, monitorTick, setGpResolver, setShadowResultResolver, hasGpResolver: () => !!_gpResolver, status: () => ({ value: state.value.started, monitor: state.monitor.started, gp_resolver_wired: !!_gpResolver, last_run_at: state.value.lastRunAt || null }) };

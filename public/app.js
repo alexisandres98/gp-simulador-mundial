@@ -1647,6 +1647,10 @@ function renderAdmin() {
       <h3>PICKS APROBADAS · INTERNAS</h3>
       <div id="picksBody" class="muted" style="font-size:12px">Cargando…</div>
     </div>
+    <div class="gcard" style="margin-top:12px" id="shadowObsCard">
+      <h3>V2 SHADOW OBSERVATORY · INTERNO</h3>
+      <div id="shadowObsBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
     <div class="gcard" style="margin-top:12px" id="registryAdminCard">
       <h3>REGISTRO DE SEÑALES · CONTROL INTERNO</h3>
       <div id="registryAdminBody" class="muted" style="font-size:12px">Cargando…</div>
@@ -1714,6 +1718,7 @@ function renderAdmin() {
     </div>`;
   loadCandidates();
   loadApprovedPicks();
+  loadShadowObservatory();
   loadRegistryAdmin();
   loadTrackRecord();
   loadUsers();
@@ -1759,6 +1764,7 @@ function setLang(l, bodySel) {
   if ($('#candidateBody')) loadCandidates('#candidateBody');
   if ($('#picksBody')) loadApprovedPicks();
   if ($('#valPicksBody')) loadApprovedPicks('#valPicksBody');
+  if ($('#shadowObsBody')) loadShadowObservatory();
 }
 async function candReject(id) {
   const reason = prompt('Motivo del rechazo (queda registrado):', ''); if (reason == null) return;
@@ -1802,6 +1808,37 @@ async function loadApprovedPicks(bodySel) {
     }).join('');
     el.innerHTML = langSel + `<div class="muted" style="margin-bottom:6px">${I18N.locale === 'en' ? 'Approved Picks' : 'Picks aprobadas'}: ${t.count}</div>` + rows +
       `<div class="muted" style="font-size:11px;margin-top:6px">${L('ui.disclaimer')} ${I18N.locale === 'en' ? 'Internal only — not published to users.' : 'Solo interno — no se publica a los usuarios.'}</div>`;
+  } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
+}
+async function loadShadowObservatory() {
+  const el = $('#shadowObsBody'); if (!el) return;
+  const EN = I18N.locale === 'en';
+  try {
+    const r = await fetch('/api/internal/shadow/observatory', { headers: hdrs() });
+    if (r.status === 404) { el.innerHTML = '<span class="muted">Shadow ops off.</span>'; return; }
+    if (!r.ok) { el.innerHTML = '<span class="warn">No autorizado (' + r.status + ').</span>'; return; }
+    const t = await r.json();
+    const pct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+    const gvByEv = {}; (t.goal_value || []).forEach(g => { (gvByEv[g.canonical_event_id] = gvByEv[g.canonical_event_id] || []).push(g); });
+    const evRows = (t.events || []).map(e => {
+      const v1 = e.v1 || {}, v2 = e.v2 || {};
+      const ou25 = (e.over_under || []).find(x => x.line === 2.5);
+      const gv = (gvByEv[e.id] || []).find(g => g.market_id === 'TOTAL_GOALS_OVER_2_5');
+      return `<div class="explain" style="margin:6px 0"><b>${e.home} vs ${e.away}</b> <span class="muted" style="font-size:11px">· ${e.context_state || ''}</span><br>` +
+        `<span class="muted" style="font-size:11px">${EN ? 'home' : 'local'} V1 ${pct(v1.home)} → V2 ${pct(v2.home)} (${v2.home != null && v1.home != null ? ((v2.home - v1.home) * 100 >= 0 ? '+' : '') + ((v2.home - v1.home) * 100).toFixed(1) + 'pp' : '—'}) · unc ${e.uncertainty ?? '—'}</span><br>` +
+        `<span class="muted" style="font-size:11px">${EN ? 'exp. goals' : 'goles esp.'} ${e.expected_total_goals ?? '—'} · O2.5 ${pct(ou25 && ou25.over)} · BTTS ${pct(e.btts && e.btts.yes)}${gv ? ` · ${EN ? 'value O2.5' : 'valor O2.5'}: GP ${pct(gv.gp_probability)} vs mkt ${pct(gv.market_consensus_probability)} → <b>${gv.classification}</b>` : ''}</span></div>`;
+    }).join('');
+    const co = t.cutover;
+    const coRows = co ? co.matrix.map(d => `<span style="display:inline-block;margin:2px 6px 2px 0;font-size:11px">${d.dimension}: <b style="color:${d.status === 'PASS' ? 'var(--accent)' : d.status === 'FAIL' ? '#E5484D' : '#E0A800'}">${d.status}</b></span>`).join('') : '';
+    const mRows = (t.shadow_metrics || []).map(m => `${m.model_label}/${m.subject_type}: n${m.n} Brier ${m.brier} logloss ${m.log_loss}`).join(' · ');
+    const langSel = `<div class="formrow" style="margin-bottom:8px"><span class="muted" style="font-size:11px">${I18N.t('lang.label')}:</span>` +
+      ['es', 'en'].map(l => `<button class="ghost" style="${I18N.locale === l ? 'border-color:var(--accent);color:var(--accent)' : ''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>`).join('') + `</div>`;
+    el.innerHTML = langSel +
+      `<div class="muted" style="margin-bottom:6px">${EN ? 'Cutover readiness' : 'Listo para cutover'}: <b>${co ? co.recommendation : '—'}</b></div>` +
+      `<div style="margin-bottom:8px">${coRows}</div>` +
+      (mRows ? `<div class="muted" style="font-size:11px;margin-bottom:8px">${EN ? 'Settled shadow metrics' : 'Métricas shadow liquidadas'}: ${mRows}</div>` : '') +
+      `<div class="muted" style="font-size:11px;margin-bottom:4px">${EN ? 'Upcoming events (V1 vs V2 shadow)' : 'Eventos próximos (V1 vs V2 shadow)'}: ${(t.events || []).length}</div>` + evRows +
+      `<div class="muted" style="font-size:11px;margin-top:6px">${EN ? 'Internal shadow only — V1 is the official model. No public exposure.' : 'Solo shadow interno — V1 es el modelo oficial. Sin exposición pública.'}</div>`;
   } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
 }
 async function loadTrackRecord() {

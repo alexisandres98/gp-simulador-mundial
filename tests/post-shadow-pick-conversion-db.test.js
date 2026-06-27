@@ -61,8 +61,8 @@ const NOW = +new Date(KICK) - 3 * 3600 * 1000;
 
     // ===================== §10.16-19 LABELS (puro) =====================
     console.log('\n§10 LABELS español');
-    ok('16. HOME → "Gana Croatia"', conv.displayLabel('home', 'Croatia', 'Ghana') === 'Gana Croatia');
-    ok('17. AWAY → "Gana Ghana"', conv.displayLabel('away', 'Croatia', 'Ghana') === 'Gana Ghana');
+    ok('16. HOME → "Gana Croatia"', conv.displayLabel('home', 'Croatia', 'Ghana') === 'Croacia gana');
+    ok('17. AWAY → "Gana Ghana"', conv.displayLabel('away', 'Croatia', 'Ghana') === 'Ghana gana');
     ok('18. DRAW → "Empate"', conv.displayLabel('draw', 'Croatia', 'Ghana') === 'Empate');
 
     // ===================== §10.1 conversión atómica =====================
@@ -73,7 +73,7 @@ const NOW = +new Date(KICK) - 3 * 3600 * 1000;
     ok('1. → Pick + Signal + CONVERTED atómicamente', !!r1.pick && !!r1.signal && (await candOf(A.ev)).candidate_lifecycle === 'CONVERTED_TO_PICK');
     ok('1b. Pick enlaza Signal + snapshot congelado + executed_by_gp=false + flat_1_unit', r1.pick.signal_id === r1.signal.id && r1.pick.executed_by_gp === false && r1.pick.theoretical_stake_model === 'flat_1_unit');
     ok('1c. Signal oficial post-epoch en Registry (model_prediction_v1, score_eligible)', r1.signal.signal_type === 'model_prediction_v1' && r1.signal.score_eligible === true);
-    ok('19. period display = tiempo reglamentario sin prórroga/penales', /reglamentario/.test(r1.pick.period) && /penales/.test(r1.pick.period) && r1.pick.selection_display === 'Gana Croatia');
+    ok('19. period display = tiempo reglamentario sin prórroga/penales', /reglamentario/.test(r1.pick.period) && /penales/.test(r1.pick.period) && r1.pick.selection_display === 'Croacia gana');
     ok('15. probabilidad congelada en la Pick = vector V1 (home 0.712)', r1.pick.gp_probability_vector.home === 0.712);
 
     // ===================== §10.2 idempotencia / concurrencia =====================

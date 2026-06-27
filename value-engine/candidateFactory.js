@@ -150,12 +150,12 @@ async function run(opts = {}) {
 }
 
 // status — cola admin §14 + counts. Empty (0 candidates) es correcto.
-// §2 labels en español: HOME → "Gana {home}", DRAW → "Empate", AWAY → "Gana {away}".
-function displayLabel(outcome, homeName, awayName) {
-  if (outcome === 'home') return `Gana ${homeName || 'el local'}`;
-  if (outcome === 'away') return `Gana ${awayName || 'el visitante'}`;
-  if (outcome === 'draw') return 'Empate';
-  return outcome;
+// §2 label localizado vía i18n (default ES "Croacia gana"). El frontend re-renderiza con el modelo neutral.
+const _i18n = require('../i18n/dictionary');
+function displayLabel(outcome, homeName, awayName, locale = _i18n.DEFAULT_LOCALE) {
+  const homeId = _i18n.resolveTeamId(homeName), awayId = _i18n.resolveTeamId(awayName);
+  const model = _i18n.selectionDisplayModel(String(outcome || '').toUpperCase(), homeId, awayId);
+  return _i18n.renderSelection(model, locale, outcome === 'away' ? awayName : homeName);
 }
 
 async function status() {
@@ -170,8 +170,13 @@ async function status() {
       candidate_id: r.candidate_id, event: r.canonical_event_id,
       event_display: r.home_participant ? `${r.home_participant} vs ${r.away_participant}` : null,
       home_team: r.home_participant, away_team: r.away_participant,
-      selection_display: displayLabel(r.outcome, r.home_participant, r.away_participant),  // "Croacia gana" estilo español
-      market_display: 'Resultado del partido', period_display: 'tiempo reglamentario (90 min, sin prórroga ni penales)',
+      home_team_id: _i18n.resolveTeamId(r.home_participant), away_team_id: _i18n.resolveTeamId(r.away_participant),
+      outcome_code: String(r.outcome || '').toUpperCase(), market_code: '1X2', period_code: 'REGULATION',
+      // modelo de display NEUTRAL (el frontend lo renderiza en el idioma elegido) + ambos idiomas precomputados.
+      selection_display_model: _i18n.selectionDisplayModel(String(r.outcome || '').toUpperCase(), _i18n.resolveTeamId(r.home_participant), _i18n.resolveTeamId(r.away_participant)),
+      selection_display: displayLabel(r.outcome, r.home_participant, r.away_participant, 'es'),
+      selection_display_es: displayLabel(r.outcome, r.home_participant, r.away_participant, 'es'),
+      selection_display_en: displayLabel(r.outcome, r.home_participant, r.away_participant, 'en'),
       kickoff: r.kickoff_at, selection_code: r.outcome, classification: r.classification,
       gp_probability: r.gp_probability, consensus_probability: r.consensus_probability, conservative_probability: r.conservative_probability,
       best_odds: r.current_best_odds, minimum_odds: r.minimum_odds, sportsbook: r.best_sportsbook, price_status: r.price_state,

@@ -1320,7 +1320,7 @@ function getUser(req) {
   const picksUi = vf.picksPublic || (admin && vf.picksAdminPreview);
   // Sprint 8.1: flags de integración de UI (default off → la UI se comporta exactamente como hoy)
   const ui = uiFlags.resolveForUser(admin);
-  return { email, ...db.users[email], isAdmin: admin, uiFlags: ui, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1535,6 +1535,20 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ts: marketCache.ts, rows });
     }
     // --- datos ---
+    // Fase K.2 — diccionario i18n ES/EN (público, read-only): el frontend lo consume para localizar.
+    if (p === '/api/i18n') {
+      const d = require('./i18n/dictionary');
+      return json(res, 200, { dict: d.DICT, teams: d.TEAMS_I18N, locales: d.LOCALES, default_locale: d.DEFAULT_LOCALE, i18n_version: d.I18N_VERSION });
+    }
+    // preferencia de idioma del usuario autenticado (persiste en el perfil).
+    if (p === '/api/me/lang' && req.method === 'PUT') {
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const body = await readBody(req).catch(() => ({}));
+      const lang = body.lang === 'en' ? 'en' : (body.lang === 'es' ? 'es' : null);
+      if (!lang) return json(res, 400, { error: 'lang_invalido' });
+      if (db.users[u.email]) { db.users[u.email].lang = lang; save(); }
+      return json(res, 200, { lang });
+    }
     if (p === '/api/version') {
       // endpoint ligero para el fallback de polling (cuando el SSE no atraviesa el proxy/túnel)
       return json(res, 200, {
@@ -2212,7 +2226,7 @@ const server = http.createServer(async (req, res) => {
         if (!body.review_note || String(body.review_note).trim().length < 4) return json(res, 422, { error: 'review_note_required' });
         try {
           const r = await require('./value-engine/pickConversion').convertToPick(id, {
-            adminId: u.email, superadmin: true, reason: body.reason, reviewNote: body.review_note,
+            adminId: u.email, superadmin: true, reason: body.reason, reviewNote: body.review_note, locale: body.locale === 'en' ? 'en' : 'es',
             risks: body.risks_displayed || [], idempotencyKey: req.headers['idempotency-key'] || ('convert:' + id), now: Date.now(),
           });
           return json(res, 200, { ok: true, idempotent: !!r.idempotent, pick_id: r.pick ? r.pick.pick_id : null, signal_id: r.signal_id || (r.signal && r.signal.id) || null, candidate_lifecycle: 'CONVERTED_TO_PICK' });

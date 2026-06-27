@@ -7,15 +7,15 @@ const db = require('../database/client');
 const cfg = require('./config');
 const candidateFactory = require('./candidateFactory');
 const publisher = require('../signal-registry/publisher');
+const i18n = require('../i18n/dictionary');
 
 function err(code, details) { const e = new Error(code); e.code = code; if (details) e.details = details; return e; }
 
-// §2 labels en español. HOME → "Gana {home canónico}", DRAW → "Empate", AWAY → "Gana {away canónico}".
-function displayLabel(outcome, homeName, awayName) {
-  if (outcome === 'home') return `Gana ${homeName}`;
-  if (outcome === 'away') return `Gana ${awayName}`;
-  if (outcome === 'draw') return 'Empate';
-  return outcome;
+// §2 label localizado vía i18n (default ES correcto: "Croacia gana", no "Gana Croatia"). EN: "Croatia to win".
+function displayLabel(outcome, homeName, awayName, locale = i18n.DEFAULT_LOCALE) {
+  const homeId = i18n.resolveTeamId(homeName), awayId = i18n.resolveTeamId(awayName);
+  const model = i18n.selectionDisplayModel(String(outcome || '').toUpperCase(), homeId, awayId);
+  return i18n.renderSelection(model, locale, outcome === 'away' ? awayName : homeName);
 }
 
 // vector GP oficial {home,draw,away} reconstruido desde las evaluaciones internal_operational más recientes por
@@ -82,25 +82,35 @@ async function convertToPick(candidateId, opts = {}) {
     const probs = await gpVector(cand.canonical_event_id, c);
     if (!probs) throw err('gp_vector_incomplete');
 
-    // nombres canónicos + labels español (§2)
+    // nombres del proveedor + team IDs estables + modelo de display NEUTRAL (§2-4). El idioma NO se congela.
     const ce = (await c.query(`SELECT home_participant, away_participant FROM canonical_events WHERE id=$1`, [cand.canonical_event_id])).rows[0] || {};
-    const homeName = ce.home_participant || 'Local', awayName = ce.away_participant || 'Visitante';
-    const display = displayLabel(cand.outcome, homeName, awayName);
+    const homeName = ce.home_participant || 'Home', awayName = ce.away_participant || 'Away';
+    const homeId = i18n.resolveTeamId(homeName), awayId = i18n.resolveTeamId(awayName);
+    const outcomeCode = String(cand.outcome || 'home').toUpperCase();           // HOME|DRAW|AWAY (canónico)
+    const model = i18n.selectionDisplayModel(outcomeCode, homeId, awayId);       // {display_key, display_args, outcome_code}
+    const approvalLocale = i18n.LOCALES.includes(opts.locale) ? opts.locale : i18n.DEFAULT_LOCALE;
+    const fallbackTeam = outcomeCode === 'AWAY' ? awayName : homeName;
+    const displayAtApproval = i18n.renderSelection(model, approvalLocale, fallbackTeam); // lo que vio el admin (auditoría)
     const eventDisplay = `${homeName} vs ${awayName}`;
     const espn = (await c.query(`SELECT fixture_id, espn_id FROM signal_event_fixture_mappings WHERE canonical_event_id=$1 AND review_status='approved'`, [cand.canonical_event_id])).rows[0];
 
-    // crear la Signal oficial post-epoch en el MISMO cliente/transacción (atómico)
+    // crear la Signal oficial post-epoch en el MISMO cliente/transacción (atómico). PAYLOAD NEUTRAL: codes +
+    // team IDs + display_key (NO frase ES/EN, NO locale) → el content_hash es independiente del idioma.
     const reg = await publisher.register({
-      // canonical_outcome_id es UUID (FK); el slot 'home/draw/away' va en direction (TEXT) + payload, no aquí.
       signal_type: 'model_prediction_v1', canonical_event_id: cand.canonical_event_id, canonical_market_id: cand.canonical_market_id,
       canonical_outcome_id: null, direction: cand.outcome, event_start_at: cand.kickoff_at, model_version: cand.model_version || 'gp-core-1.4.0',
       input_cutoff_at: new Date(now).toISOString(),
       signal_payload: {
         market_type: '1x2', period: 'regulation_90m', predicted_outcome: cand.outcome, probabilities: probs,
         published_odds: String(cand.current_best_odds), published_sportsbook: cand.best_sportsbook,
-        selection_display: display, market_display: 'Resultado del partido', period_display: 'tiempo reglamentario (90 min, sin prórroga ni penales)',
+        outcome_code: outcomeCode, market_code: '1X2', period_code: 'REGULATION',
+        home_team_id: homeId, away_team_id: awayId,
+        selection_display_key: model.display_key, selection_display_args: model.display_args, i18n_version: i18n.I18N_VERSION,
       },
-      public_payload: { event: eventDisplay, selection: display, market: 'Resultado del partido', period: 'tiempo reglamentario' },
+      public_payload: {
+        home_team_id: homeId, away_team_id: awayId, outcome_code: outcomeCode, market_code: '1X2', period_code: 'REGULATION',
+        selection_display_key: model.display_key, selection_display_args: model.display_args, i18n_version: i18n.I18N_VERSION,
+      },
     }, { client: c, actorId: opts.adminId, sourceRefs: [{ source_type: 'model_output', source_id: cand.value_evaluation_id || null, source_version: cand.model_version || 'gp-core-1.4.0' }], now });
     if (!reg.signal) throw err('signal_creation_failed');
     const signal = reg.signal;
@@ -110,12 +120,16 @@ async function convertToPick(candidateId, opts = {}) {
       `INSERT INTO internal_picks (candidate_id, signal_id, value_evaluation_id, canonical_event_id, selection_outcome, selection_display, event_display,
          kickoff_at, gp_probability, gp_probability_vector, consensus_probability, ensemble_probability, conservative_probability, published_odds,
          published_break_even_probability, minimum_odds, sportsbook, deep_link, adjusted_edge_pp, adjusted_ev, uncertainty_score, quality_score,
-         verified_independence_group_count, edge_source_code, model_version, espn_fixture_id, approving_admin, human_review_reason, risks_displayed, idempotency_key)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
-      [candidateId, signal.id, cand.value_evaluation_id, cand.canonical_event_id, cand.outcome, display, eventDisplay,
+         verified_independence_group_count, edge_source_code, model_version, espn_fixture_id, approving_admin, human_review_reason, risks_displayed, idempotency_key,
+         selection_display_key, selection_display_args, selection_i18n_version, approval_locale, selection_display_at_approval,
+         canonical_home_team_id, canonical_away_team_id, outcome_code, market_code, period_code)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,
+         $31,$32,$33,$34,$35,$36,$37,$38,'1X2','REGULATION') RETURNING *`,
+      [candidateId, signal.id, cand.value_evaluation_id, cand.canonical_event_id, cand.outcome, displayAtApproval, eventDisplay,
        cand.kickoff_at, cand.gp_probability, JSON.stringify(probs), cand.consensus_probability, cand.consensus_probability, cand.conservative_probability, cand.current_best_odds,
        cand.current_best_odds ? +(1 / Number(cand.current_best_odds)).toFixed(8) : null, cand.minimum_odds, cand.best_sportsbook, cand.deep_link, cand.adjusted_edge_pp, cand.adjusted_ev, cand.uncertainty_score, cand.quality_score,
-       cand.verified_independence_group_count, cand.edge_source_code, cand.model_version, espn ? (espn.espn_id || espn.fixture_id) : null, opts.adminId, String(opts.reason).slice(0, 1000), JSON.stringify(opts.risks || []), idem])).rows[0];
+       cand.verified_independence_group_count, cand.edge_source_code, cand.model_version, espn ? (espn.espn_id || espn.fixture_id) : null, opts.adminId, String(opts.reason).slice(0, 1000), JSON.stringify(opts.risks || []), idem,
+       model.display_key, JSON.stringify(model.display_args), i18n.I18N_VERSION, approvalLocale, displayAtApproval, homeId, awayId, outcomeCode])).rows[0];
 
     // Candidate → CONVERTED_TO_PICK (preserva lineage; impide nueva conversión)
     await c.query(

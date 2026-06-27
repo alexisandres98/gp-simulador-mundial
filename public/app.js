@@ -4,6 +4,38 @@ const $ = s => document.querySelector(s);
 const pct = (p, d = 1) => (p * 100).toFixed(d) + '%';
 const token = () => localStorage.getItem('wc_token') || '';
 const hdrs = () => token() ? { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+
+// Fase K.2 — i18n ES/EN. Consume el diccionario de /api/i18n; el idioma se resuelve en presentación (los datos
+// canónicos NO se traducen). Persistencia: perfil (si auth) > localStorage > navegador (1ª visita) > 'es'.
+const I18N = {
+  dict: { es: {}, en: {} }, teams: {}, locale: 'es', ready: false,
+  async load() {
+    try { const j = await fetch('/api/i18n').then(r => r.json()); this.dict = j.dict || this.dict; this.teams = j.teams || {}; this.ready = true; } catch {}
+    this.locale = this.resolveLocale();
+  },
+  resolveLocale() {
+    const pref = (USER && USER.lang) || localStorage.getItem('gp_lang');
+    if (pref === 'es' || pref === 'en') return pref;
+    return ((navigator.language || 'es').slice(0, 2) === 'en') ? 'en' : 'es';
+  },
+  setLocale(l) {
+    if (l !== 'es' && l !== 'en') return;
+    this.locale = l; localStorage.setItem('gp_lang', l);
+    if (USER && USER.email) fetch('/api/me/lang', { method: 'PUT', headers: hdrs(), body: JSON.stringify({ lang: l }) }).catch(() => {});
+  },
+  t(key, args) {
+    const table = this.dict[this.locale] || this.dict.es || {};
+    let s = (table[key] != null) ? table[key] : (((this.dict.es || {})[key] != null) ? this.dict.es[key] : key);
+    return String(s).replace(/\{(\w+)\}/g, (m, k) => (args && args[k] != null) ? args[k] : m);
+  },
+  teamName(id, fb) { const e = this.teams[id]; return (e && e[this.locale]) || (e && e.es) || fb || id; },
+  renderSelection(model, fbTeam) {
+    if (!model || !model.display_key) return '';
+    const a = Object.assign({}, model.display_args || {});
+    if (a.team_id) a.team = this.teamName(a.team_id, fbTeam);
+    return this.t(model.display_key, a);
+  },
+};
 const STAGES_ES = { R32: '16avos', R16: 'Octavos', QF: 'Cuartos', SF: 'Semifinal', '3RD': '3er puesto', FINAL: 'FINAL', group: 'Grupos' };
 
 const teamOf = id => STATE.teams.find(t => t.id === id);
@@ -1690,37 +1722,48 @@ async function loadCandidates(bodySel) {
     const t = await r.json();
     if (!t.candidates) { el.innerHTML = `<div class="explain" style="margin:0">${t.note || 'No apareció ninguna oportunidad que cumpliera los gates actuales.'}</div><div class="muted" style="font-size:11px;margin-top:8px">Conversión a Pick: <b>deshabilitada</b> — se habilitará en la siguiente fase.</div>`; return; }
     const convOn = !!t.conversion_enabled;
+    const L = (k, a) => I18N.t(k, a);
+    const langSel = `<div class="formrow" style="margin-bottom:8px;align-items:center"><span class="muted" style="font-size:11px">${L('lang.label')}:</span>` +
+      ['es', 'en'].map(l => `<button class="ghost" style="${I18N.locale === l ? 'border-color:var(--accent);color:var(--accent)' : ''}" onclick="setLang('${l}','${bodySel || '#candidateBody'}')">${l.toUpperCase()}</button>`).join('') + `</div>`;
     const rows = (t.items || []).map(c => {
       const ready = c.candidate_status === 'READY_FOR_REVIEW';
-      // product preview (§2/§15): selección en español, sin tecnicismos; código interno solo como metadata.
+      const fbTeam = c.selection_code === 'away' ? c.away_team : c.home_team;
+      const sel = I18N.renderSelection(c.selection_display_model, fbTeam) || c.selection_display_es || c.selection_code;
+      const blockers = (c.readiness_blockers || []).map(b => L('blocker.' + b) || b).join(', ');
       const approveBtn = (ready && convOn)
-        ? `<button class="btn" onclick="candApprove('${c.candidate_id}','${(c.selection_display || '').replace(/'/g, '')}','${c.best_odds}')">Aprobar como Pick interna</button>`
-        : `<button class="ghost" disabled title="${ready ? 'Conversión deshabilitada' : 'El candidate no está READY'}">Aprobar como Pick interna</button>`;
-      return `<div class="explain" style="margin:6px 0"><b>${c.selection_display || c.selection_code}</b> · Oportunidad fuerte<br>` +
-        `<span class="muted" style="font-size:11px">${c.event_display || ''} · ${c.market_display} · ${c.period_display}</span><br>` +
-        `Cuota vigente: <b>${c.best_odds ?? '—'}</b> en ${c.sportsbook || '—'} · Cuota mínima: ${c.minimum_odds ?? '—'} · Precio: ${c.price_status}<br>` +
-        `Estado: <b>${c.candidate_status}</b>${(c.readiness_blockers && c.readiness_blockers.length) ? ' · blockers: ' + c.readiness_blockers.join(', ') : ''}<br>` +
-        `Riesgo principal: fuerte desacuerdo entre V1 y el consenso del mercado.<br>` +
-        `<span class="muted" style="font-size:11px">código interno: ${c.selection_code} · edge ${c.adjusted_edge_pp ?? '—'} · EV ${c.adjusted_ev ?? '—'} · quality ${c.quality ?? '—'} · grupos ${c.verified_groups ?? '—'} · GP ${c.gp_probability ?? '—'} vs consenso ${c.consensus_probability ?? '—'}</span>` +
-        `<div class="formrow" style="margin-top:6px">${approveBtn}<button class="ghost" onclick="candReject('${c.candidate_id}')">Rechazar</button><button class="ghost" onclick="loadCandidates()">Refrescar</button></div></div>`;
+        ? `<button class="btn" onclick="candApprove('${c.candidate_id}','${sel.replace(/'/g, '')}','${c.best_odds}')">${L('ui.approve_as_pick')}</button>`
+        : `<button class="ghost" disabled title="${ready ? L('ui.conversion_disabled') : L('ui.not_ready')}">${L('ui.approve_as_pick')}</button>`;
+      return `<div class="explain" style="margin:6px 0"><b>${sel}</b> · ${L('classification.strong')}<br>` +
+        `<span class="muted" style="font-size:11px">${c.event_display || ''} · ${L('market.match_result')} · ${L('period.regulation')}</span><br>` +
+        `${L('ui.current_odds')}: <b>${c.best_odds ?? '—'}</b> · ${L('ui.minimum_odds')}: ${c.minimum_odds ?? '—'} · ${L('ui.price_status')}: ${L('price_state.' + c.price_status) || c.price_status}<br>` +
+        `${L('lifecycle.' + c.candidate_status) || c.candidate_status}${blockers ? ' · ' + blockers : ''}<br>` +
+        `${L('ui.main_risk')}: ${L('risk.LARGE_MARKET_DISAGREEMENT')}<br>` +
+        `<span class="muted" style="font-size:11px">código: ${c.selection_code} · edge ${c.adjusted_edge_pp ?? '—'} · EV ${c.adjusted_ev ?? '—'} · quality ${c.quality ?? '—'} · grupos ${c.verified_groups ?? '—'} · GP ${c.gp_probability ?? '—'} vs consenso ${c.consensus_probability ?? '—'} · ${c.sportsbook || '—'}</span>` +
+        `<div class="formrow" style="margin-top:6px">${approveBtn}<button class="ghost" onclick="candReject('${c.candidate_id}')">${L('ui.reject')}</button><button class="ghost" onclick="loadCandidates('${bodySel || '#candidateBody'}')">${L('ui.refresh')}</button></div></div>`;
     }).join('');
-    el.innerHTML = `<div class="muted" style="margin-bottom:6px">Candidates: ${t.candidates} · por estado: ${JSON.stringify(t.by_lifecycle)} · conversión: ${convOn ? '<span style="color:var(--accent)">habilitada</span>' : 'deshabilitada'}</div>` + rows +
-      `<div class="muted" style="font-size:11px;margin-top:6px">Estimaciones de un modelo estadístico, no consejo financiero. Aprobar crea una Pick oficial interna + una Signal inmutable en el Registry (no se borra en silencio). No publica ni envía alertas.</div>`;
+    el.innerHTML = langSel + `<div class="muted" style="margin-bottom:6px">Candidates: ${t.candidates} · ${JSON.stringify(t.by_lifecycle)} · ${convOn ? '<span style="color:var(--accent)">conversión on</span>' : 'conversión off'}</div>` + rows +
+      `<div class="muted" style="font-size:11px;margin-top:6px">${L('ui.disclaimer')} ${L('ui.approve_warning')}</div>`;
   } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
+}
+function setLang(l, bodySel) {
+  I18N.setLocale(l);
+  if ($('#valCandBody')) loadCandidates('#valCandBody');
+  if ($('#candidateBody')) loadCandidates('#candidateBody');
 }
 async function candReject(id) {
   const reason = prompt('Motivo del rechazo (queda registrado):', ''); if (reason == null) return;
   try { await fetch('/api/internal/value/candidates/' + id + '/reject', { method: 'POST', headers: hdrs(), body: JSON.stringify({ reason }) }); loadCandidates(); } catch {}
 }
 async function candApprove(id, selDisplay, odds) {
-  if (!confirm(`Esta acción creará una Pick oficial interna y una Signal inmutable en el Registry.\nNo podrá borrarse silenciosamente.\n\nSelección: ${selDisplay}\nCuota vigente: ${odds}\nMercado: Resultado del partido — tiempo reglamentario\nRiesgo principal: fuerte desacuerdo entre V1 y el consenso del mercado.\n\n¿Continuar con la revisión y confirmación?`)) return;
-  const reason = prompt('Motivo de la aprobación (obligatorio):', ''); if (!reason || reason.trim().length < 4) { alert('Motivo obligatorio.'); return; }
-  const reviewNote = prompt('Nota de revisión humana (obligatoria):', ''); if (!reviewNote || reviewNote.trim().length < 4) { alert('Nota de revisión obligatoria.'); return; }
-  const typedId = prompt('Escribí el candidate_id exacto para confirmar:', ''); if (typedId !== id) { alert('candidate_id no coincide.'); return; }
-  const phrase = prompt(`Escribí exactamente:\nCONFIRM ${id}`, ''); if (phrase !== 'CONFIRM ' + id) { alert('Frase de confirmación incorrecta.'); return; }
-  const m = $('#registryAdminMsg') || $('#candidateBody');
+  const L = (k, a) => I18N.t(k, a);
+  const summary = `${selDisplay}\n${L('ui.current_odds')}: ${odds}\n${L('market.match_result')} — ${L('period.regulation')}\n${L('ui.main_risk')}: ${L('risk.LARGE_MARKET_DISAGREEMENT')}`;
+  if (!confirm(L('ui.approve_warning') + '\n\n' + summary + '\n\n¿/Continue?')) return;
+  const reason = prompt(L('confirm.reason'), ''); if (!reason || reason.trim().length < 4) { alert('—'); return; }
+  const reviewNote = prompt(L('confirm.review_note'), ''); if (!reviewNote || reviewNote.trim().length < 4) { alert('—'); return; }
+  const typedId = prompt(L('confirm.type_id'), ''); if (typedId !== id) { alert('candidate_id ✗'); return; }
+  const phrase = prompt(L('confirm.phrase', { id }), ''); if (phrase !== 'CONFIRM ' + id) { alert('CONFIRM ✗'); return; }
   try {
-    const r = await fetch('/api/internal/value/candidates/' + id + '/approve-as-pick', { method: 'POST', headers: hdrs(), body: JSON.stringify({ confirm_candidate_id: id, confirmation_phrase: 'CONFIRM ' + id, reason, review_note: reviewNote, risks_displayed: ['fuerte desacuerdo V1 vs consenso de mercado'] }) });
+    const r = await fetch('/api/internal/value/candidates/' + id + '/approve-as-pick', { method: 'POST', headers: hdrs(), body: JSON.stringify({ confirm_candidate_id: id, confirmation_phrase: 'CONFIRM ' + id, reason, review_note: reviewNote, locale: I18N.locale, risks_displayed: ['LARGE_MARKET_DISAGREEMENT'] }) });
     const j = await r.json();
     if (r.ok) alert('✓ Pick interna creada (' + (j.pick_id || '').slice(0, 8) + ') + Signal ' + (j.signal_id || '').slice(0, 8) + '. Candidate CONVERTED_TO_PICK.');
     else alert('✗ ' + (j.error || 'error') + (j.blockers ? ': ' + j.blockers.join(', ') : ''));
@@ -2804,4 +2847,4 @@ async function openPick(publicId) {
   } catch (e) { $('#pickDetail').innerHTML = du('No se pudo cargar la pick.'); }
 }
 
-(async () => { await loadMe(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();
+(async () => { await loadMe(); await I18N.load(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

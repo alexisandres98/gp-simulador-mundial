@@ -57,12 +57,13 @@ async function recordClaim(c, { client = db } = {}) {
 async function recordWeather(w, { client = db } = {}) {
   const ins = await client.query(
     `INSERT INTO weather_snapshots (canonical_event_id,venue,latitude,longitude,kickoff_local,forecast_issued_at,
-        horizon_hours,temperature_c,apparent_c,humidity_pct,precip_mm,wind_kmh,weather_factors,source,input_hash)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (input_hash) DO NOTHING RETURNING *`,
+        horizon_hours,temperature_c,apparent_c,humidity_pct,precip_mm,wind_kmh,weather_factors,source,input_hash,
+        venue_id,venue_exact,weather_status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (input_hash) DO NOTHING RETURNING *`,
     [w.canonical_event_id || null, w.venue || null, w.latitude ?? null, w.longitude ?? null, w.kickoff_local || null,
      w.forecast_issued_at || null, w.horizon_hours ?? null, w.temperature_c ?? null, w.apparent_c ?? null,
      w.humidity_pct ?? null, w.precip_mm ?? null, w.wind_kmh ?? null, JSON.stringify(w.weather_factors || []),
-     w.source || 'open-meteo', w.input_hash]);
+     w.source || 'open-meteo', w.input_hash, w.venue_id || null, w.venue_exact === true, w.weather_status || 'AVAILABLE']);
   if (ins.rows[0]) return { row: ins.rows[0], idempotent: false };
   return { row: (await client.query(`SELECT * FROM weather_snapshots WHERE input_hash=$1`, [w.input_hash])).rows[0], idempotent: true };
 }

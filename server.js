@@ -2092,6 +2092,9 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/internal/metrics/runs') return json(res, 200, { runs: await metricsEngine.repo.runs.recent({ limit: 20 }) });
         if (p === '/api/internal/metrics/aggregates') return json(res, 200, { aggregates: await metricsEngine.repo.aggregates.list({ metricCode: url.searchParams.get('metric') || null }) });
         if (p === '/api/internal/metrics/exclusions') return json(res, 200, { exclusions: await metricsEngine.repo.facts.exclusions({ limit: 200 }) });
+        // Fase I: track record reproducible (preview admin). Empty → N/A explícito, nunca ceros engañosos.
+        if (p === '/api/internal/metrics/track-record') return json(res, 200, await require('./metrics-engine/trackRecord').status());
+        if (p === '/api/internal/metrics/readiness') return json(res, 200, await require('./metrics-engine/trackRecord').readiness({ canonicalEventId: url.searchParams.get('event') || null }));
       } catch (e) { return json(res, 500, { error: 'error' }); }
     }
     if (p.startsWith('/api/internal/metrics/') && req.method === 'POST') {
@@ -2102,6 +2105,8 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/internal/metrics/rebuild') { await metricsEngine.seedDefinitions(); return json(res, 200, await metricsEngine.fullRebuild({ verifiedEpoch: body.epoch })); }
         if (p === '/api/internal/metrics/publish-snapshot') return json(res, 200, await metricsEngine.publishSnapshot({ settlementCutoff: body.settlementCutoff || null }));
         if (p === '/api/internal/metrics/verify') return json(res, 200, await metricsEngine.verify());
+        // Fase I: one-shot del track record (rebuild facts + snapshot). Con signals=0 → no-op sano.
+        if (p === '/api/internal/metrics/track-record/run') { const tr = require('./metrics-engine/trackRecord'); const rb = await tr.rebuild(); const sn = await tr.snapshot(); return json(res, 200, { rebuild: rb, snapshot: sn, status: await tr.status() }); }
       } catch (e) { return json(res, 400, { error: e.code || e.message || 'error' }); }
     }
     // público (§30) — solo si METRICS_PUBLIC_ENABLED

@@ -1666,9 +1666,36 @@ function renderAdmin() {
     <div class="gcard" style="margin-top:12px" id="registryAdminCard">
       <h3>REGISTRO DE SEÑALES · CONTROL INTERNO</h3>
       <div id="registryAdminBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
+    <div class="gcard" style="margin-top:12px" id="trackRecordCard">
+      <h3>TRACK RECORD · METRICS INTERNO</h3>
+      <div id="trackRecordBody" class="muted" style="font-size:12px">Cargando…</div>
     </div>`;
   loadUsers();
   loadRegistryAdmin();
+  loadTrackRecord();
+}
+async function loadTrackRecord() {
+  const el = $('#trackRecordBody'); if (!el) return;
+  try {
+    const r = await fetch('/api/internal/metrics/track-record', { headers: hdrs() });
+    if (r.status === 404) { el.innerHTML = '<span class="muted">Metrics interno apagado (METRICS_ENGINE_ENABLED off).</span>'; return; }
+    if (!r.ok) { el.innerHTML = '<span class="warn">No autorizado (' + r.status + ').</span>'; return; }
+    const t = await r.json();
+    const c = t.cards || {}; const co = t.cohorts || {};
+    const card = (k, v) => `<div class="explain" style="margin:0;text-align:center"><div class="muted" style="font-size:11px">${k}</div><b style="font-size:15px">${v}</b></div>`;
+    const empty = t.sample_size === 0;
+    el.innerHTML =
+      `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--line)"><span class="muted">Verified Epoch</span><b>${t.verified_epoch ? new Date(t.verified_epoch).toISOString() : '—'}</b></div>` +
+      `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--line)"><span class="muted">Señales oficiales · liquidadas elegibles · sample</span><b>${t.official_signals} · ${t.settled_eligible} · ${t.sample_size}</b></div>` +
+      (empty ? `<div class="explain" style="margin:10px 0">${t.empty_state || 'Sin señales oficiales liquidadas desde el Verified Epoch.'}</div>` : '') +
+      `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">` +
+        card('ROI teórico', c.theoretical_roi) + card('Profit (u)', c.theoretical_profit_units) + card('Brier', c.brier) + card('Log loss', c.log_loss) +
+        card('CLV medio', c.avg_clv) + card('CLV+ rate', c.positive_clv_rate) + card('ECE', c.ece) + card('Sample', t.sample_size) +
+      `</div>` +
+      `<div class="muted" style="font-size:11px;margin-top:10px">Cohortes: oficiales ${co.ALL_OFFICIAL_SIGNALS||0} · elegibles ${co.SETTLED_ELIGIBLE||0} · abiertas ${co.OPEN||0} · retractadas ${co.RETRACTED||0} · quarantine ${co.QUARANTINED||0} · data_error ${co.DATA_ERROR||0} · void ${co.ADMINISTRATIVE_VOID||0} · CLV avail ${co.CLV_AVAILABLE||0}</div>` +
+      `<div class="muted" style="font-size:11px;margin-top:4px">ROI teórico · flat 1 unit · executed_by_gp=false · público OFF. Estimaciones de un modelo estadístico, no consejo financiero.</div>`;
+  } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
 }
 async function loadRegistryAdmin() {
   const el = $('#registryAdminBody'); if (!el) return;

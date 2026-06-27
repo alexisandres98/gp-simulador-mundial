@@ -8,7 +8,15 @@ const state = { started: false, timer: null, running: false, lastRunAt: null };
 async function tick() {
   if (state.running) return { skipped: 'overlap' };
   state.running = true;
-  try { const r = await rebuild.runLocked({ runType: 'incremental' }); state.lastRunAt = new Date().toISOString(); return r; }
+  try {
+    const r = await rebuild.runLocked({ runType: 'incremental' });
+    // Fase I: track record reproducible (capa de facts inmutables + snapshot). Aislado: su error no afecta Sprint 6.
+    let track = null;
+    try { const tr = require('./trackRecord'); const rb = await tr.rebuild(); const sn = await tr.snapshot(); track = { ...rb, snapshot: sn }; }
+    catch (te) { track = { error: 'track_error' }; }
+    state.lastRunAt = new Date().toISOString();
+    return { ...r, track };
+  }
   catch (e) { log.error('metrics: error en ciclo', { error: e.message }); return { error: 'cycle_error' }; }
   finally { state.running = false; }
 }

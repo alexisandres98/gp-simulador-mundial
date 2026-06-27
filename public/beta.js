@@ -81,6 +81,7 @@
     if (g.picks) items.push({ k: 'picks', label: t('nav.picks') });
     if (g.value) items.push({ k: 'value', label: t('nav.value') });
     if (g.history) items.push({ k: 'history', label: t('nav.history') });
+    if (g.arbitrage) items.push({ k: 'arbitrage', label: t('nav.arbitrage') }); // R.4: gateado por GP_ARBITRAGE_UI_ENABLED
     return items;
   }
   function renderShell() {
@@ -341,6 +342,76 @@
     view.innerHTML = html;
   }
 
+  // ================= PÁGINA: ARBITRAJE (R.4) =================
+  const ARB_STATE_CLASS = { EXECUTABLE: 'strong', THEORETICAL_ONLY: 'watch', PARTIAL_EXECUTION_RISK: 'lean', BLOCKED: 'pass', EXPIRED: 'pass', SUSPENDED: 'pass', STALE: 'pass', DEGRADED: 'watch', DETECTED: 'neutral', VALIDATING: 'neutral', SETTLED: 'neutral' };
+  function arbStateChip(code) { return `<span class="gpb-chip ${ARB_STATE_CLASS[code] || 'neutral'}">${esc(t('arb.state.' + code, {}) !== 'arb.state.' + code ? t('arb.state.' + code) : code)}</span>`; }
+  function arbTitle(o) {
+    if (o.home.team_id || o.home.name_fallback) return `${I18N.teamName(o.home.team_id, o.home.name_fallback)} ${t('common.vs')} ${I18N.teamName(o.away.team_id, o.away.name_fallback)}`;
+    return t('arb.title') + ' · ' + (o.strategy_code || '');
+  }
+  async function renderArbitrage(view) {
+    view.innerHTML = `<h1 class="gpb-page-title">${esc(t('arb.title'))}</h1><div class="gpb-page-sub">${esc(t('arb.subtitle'))}</div>${loadingState()}`;
+    const r = await gpFetch('/api/beta/arbitrage');
+    let html = `<h1 class="gpb-page-title">${esc(t('arb.title'))}</h1><div class="gpb-page-sub">${esc(t('arb.subtitle'))}</div>`;
+    if (!r.ok) { view.innerHTML = html + errorState(); return; }
+    const d = r.data;
+    if (d.executable_count === 0) html += `<div class="gpb-risk info" style="margin-bottom:14px">${esc(t('arb.no_executable'))}</div>`;
+    html += d.items.length ? `<div class="gpb-grid cols2">${d.items.map(arbCard).join('')}</div>` : emptyState(t('arb.no_opportunities'));
+    view.innerHTML = html;
+  }
+  function arbCard(o) {
+    return `<article class="gpb-card clickable" tabindex="0" role="button" data-route="arb" data-id="${esc(o.opportunity_id)}">
+      <div class="gpb-match-head"><div class="gpb-teams"><span>${esc(arbTitle(o))}</span></div>${arbStateChip(o.state_code)}</div>
+      <div class="gpb-meta">${o.venues && o.venues.length ? esc(o.venues.join(' · ')) : ''}${o.updated_at ? ' · <span class="mono">' + esc(fmtTime(o.updated_at)) + '</span>' : ''}</div>
+      <div class="gpb-kv">
+        <span class="k">${esc(t('arb.net_return'))}</span><span class="v ${(o.net_roi || 0) > 0 ? 'pos' : 'neg'}">${esc(fmtPP(o.net_roi))}</span>
+        <span class="k">${esc(t('arb.executable_capital'))}</span><span class="v">${o.executable_capital != null ? esc(nf1().format(o.executable_capital)) : esc(t('common.na'))}</span>
+      </div></article>`;
+  }
+  async function renderArbDetail(view, id) {
+    view.innerHTML = loadingState();
+    const r = await gpFetch('/api/beta/arbitrage/' + encodeURIComponent(id));
+    if (r.status === 404) { view.innerHTML = `<button class="gpb-btn ghost" data-route="arbitrage">${esc(t('common.back'))}</button>${emptyState(t('error.not_found'))}`; return; }
+    if (!r.ok) { view.innerHTML = errorState(); return; }
+    const o = r.data;
+    let html = `<button class="gpb-btn ghost" data-route="arbitrage" style="margin-bottom:14px">← ${esc(t('common.back'))}</button>`;
+    html += `<div class="gpb-card"><div class="gpb-match-head"><div class="gpb-teams"><span>${esc(arbTitle(o))}</span></div>${arbStateChip(o.state_code)}</div>
+      <div class="gpb-meta">${o.venues && o.venues.length ? esc(o.venues.join(' · ')) : ''}</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px">${esc(t('arb.verified'))}</p></div>`;
+    // economía
+    const e = o.economics || {};
+    html += `<div class="gpb-card" style="margin-top:12px"><h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">${esc(t('arb.economics'))}</h2>
+      <div class="gpb-kv">
+        <span class="k">${esc(t('arb.gross_margin'))}</span><span class="v">${esc(fmtPP(e.gross_margin))}</span>
+        <span class="k">${esc(t('arb.net_margin'))}</span><span class="v ${(e.net_margin || 0) > 0 ? 'pos' : 'neg'}">${esc(fmtPP(e.net_margin))}</span>
+        <span class="k">${esc(t('arb.net_profit'))}</span><span class="v">${e.net_profit != null ? esc(nf1().format(e.net_profit)) : esc(t('common.na'))}</span>
+        <span class="k">${esc(t('arb.executable_capital'))}</span><span class="v">${e.executable_capital != null ? esc(nf1().format(e.executable_capital)) : esc(t('common.na'))}</span>
+        ${e.limiting_leg_index != null ? `<span class="k">${esc(t('arb.limiting_leg'))}</span><span class="v">${esc(t('arb.leg'))} ${e.limiting_leg_index + 1}</span>` : ''}
+      </div></div>`;
+    // legs
+    html += `<div class="gpb-card" style="margin-top:12px"><h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">${esc(t('arb.legs'))}</h2>`;
+    html += (o.legs || []).map((l, i) => `<div style="padding:8px 0;border-top:${i ? '1px solid var(--border-subtle)' : '0'}">
+      <div style="font-weight:700">${esc(t('arb.leg'))} ${i + 1} · ${esc(l.outcome_code || '')}</div>
+      <div class="gpb-kv"><span class="k">${esc(t('arb.venue'))}</span><span class="v">${esc(l.venue || '—')}</span>
+        <span class="k">${esc(t('arb.price'))}</span><span class="v">${l.price != null ? esc(nf1().format(l.price)) : '—'}</span>
+        ${l.fee != null ? `<span class="k">${esc(t('arb.fee'))}</span><span class="v">${esc(String(l.fee))}</span>` : ''}</div>
+      ${l.deep_link ? `<a class="gpb-btn ghost" href="${esc(l.deep_link)}" target="_blank" rel="noopener nofollow" style="margin-top:6px;font-size:12px">${esc(t('arb.open_link'))}${l.deep_link_status === 'FALLBACK_PROVIDER_HOME' ? ' ·' : ''}</a>${l.deep_link_status === 'FALLBACK_PROVIDER_HOME' ? `<div style="font-size:10.5px;color:var(--muted);margin-top:3px">${esc(t('arb.deep_link_fallback'))}</div>` : ''}` : ''}
+    </div>`).join('');
+    html += `</div>`;
+    // settlement compat
+    const s = o.settlement_compatibility || {};
+    html += `<div class="gpb-card" style="margin-top:12px"><h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">${esc(t('arb.settlement_compat'))}</h2>
+      <div class="gpb-tags">${s.semantic_ok ? `<span class="gpb-tag">✓</span>` : (s.blocker_codes || []).slice(0, 5).map(b => `<span class="gpb-tag">${esc(b)}</span>`).join('')}</div></div>`;
+    // riesgos
+    if (o.risk_codes && o.risk_codes.length) html += `<div class="gpb-card" style="margin-top:12px"><h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">${esc(t('arb.execution_risk'))}</h2><ul class="gpb-list">${o.risk_codes.map(c => `<li class="gpb-risk">${esc(t('arb.risk.' + c, {}) !== 'arb.risk.' + c ? t('arb.risk.' + c) : c)}</li>`).join('')}</ul></div>`;
+    // calculadora (no ejecuta; bloquea si no es ejecutable)
+    html += `<div class="gpb-card" style="margin-top:12px"><h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">${esc(t('arb.calculator'))}</h2>`;
+    if (!o.executable) html += `<div class="gpb-risk">${esc(t('arb.calc_blocked'))}</div>`;
+    else html += `<div class="gpb-meta">${esc(t('arb.calc_note'))}</div>`;
+    html += `</div>`;
+    view.innerHTML = html;
+  }
+
   // ================= ROUTER =================
   function parseHash() {
     const h = (location.hash || '#home').replace(/^#/, '');
@@ -358,6 +429,8 @@
     if (route.name === 'picks' && g.picks) return renderPicks(view);
     if (route.name === 'value' && g.value) return renderValue(view, 'ACTIONABLE');
     if (route.name === 'history' && g.history) return renderHistory(view);
+    if (route.name === 'arbitrage' && g.arbitrage) return renderArbitrage(view);
+    if (route.name === 'arb' && g.arbitrage) return renderArbDetail(view, route.id);
     return renderHome(view);
   }
   function go(name, id) { location.hash = '#' + name + (id ? '/' + id : ''); }

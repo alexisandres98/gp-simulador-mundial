@@ -6,6 +6,8 @@
 const dto = require('./dto');
 const repo = require('./repository');
 const flags = require('./flags');
+const arbitrage = require('./arbitrage');           // Fase R.4: capa de producto de Arbitraje
+const deepLinks = require('../exec-opportunities/deepLinks'); // deep links validados (HTTPS/allowlist/anti-redirect)
 
 // Calcula un estado de precio/lifecycle honesto para una Pick desde su estado almacenado + el evento.
 function pickLifecycle(p) {
@@ -156,6 +158,39 @@ async function handle(req, res, p, user, ctx) {
         log_loss: f.ll != null ? Number(Number(f.ll).toFixed(4)) : null,
       })),
     });
+  }
+
+  // GET /api/beta/arbitrage — lista de oportunidades (con estado §12). Gateado por GP_ARBITRAGE_UI_ENABLED.
+  if (p === '/api/beta/arbitrage' && req.method === 'GET') {
+    if (!user.beta || !user.beta.arbitrage) return json(res, 404, { error: 'No encontrado' });
+    const rows = await arbitrage.list(db, { limit: 60 });
+    const legsMap = await arbitrage.legsForMany(db, rows.map(r => r.eval_id)); // anti-N+1
+    const items = rows.map(row => arbitrage.cardDto(row, legsMap.get(row.eval_id) || [], ctx.resolveTeamId));
+    const executable = items.filter(i => i.executable);
+    return json(res, 200, { items, count: items.length, executable_count: executable.length, generated_at: new Date().toISOString() });
+  }
+
+  // GET /api/beta/arbitrage/:id — detalle (legs + economía + settlement compat + deep links validados).
+  if (p.startsWith('/api/beta/arbitrage/') && req.method === 'GET') {
+    if (!user.beta || !user.beta.arbitrage) return json(res, 404, { error: 'No encontrado' });
+    const id = decodeURIComponent(p.split('/')[4] || '');
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return json(res, 400, { error: 'id inválido' });
+    const rows = await arbitrage.list(db, { limit: 200 });
+    const row = rows.find(r => r.id === id);
+    if (!row) return json(res, 404, { error: 'Oportunidad no encontrada' });
+    const legs = await arbitrage.legsFor(db, row.eval_id);
+    const detail = arbitrage.detailDto(row, legs, ctx.resolveTeamId);
+    // resolver deep links validados por leg (HTTPS/allowlist/anti-redirect); si no hay exacto → FALLBACK_PROVIDER_HOME
+    detail.legs.forEach((l) => {
+      try {
+        const v = (l.venue || '').toLowerCase();
+        const venueCode = v.includes('kalshi') ? 'kalshi' : v.includes('poly') ? 'polymarket' : null;
+        const dl = venueCode ? deepLinks.buildDeepLink({ provider: venueCode }) : null;
+        if (dl && dl.url) { l.deep_link = dl.url; l.deep_link_status = dl.verified ? 'EXACT' : 'FALLBACK_PROVIDER_HOME'; }
+        else { l.deep_link = null; l.deep_link_status = 'UNAVAILABLE'; }
+      } catch { l.deep_link = null; l.deep_link_status = 'UNAVAILABLE'; }
+    });
+    return json(res, 200, detail);
   }
 
   return false; // no manejado

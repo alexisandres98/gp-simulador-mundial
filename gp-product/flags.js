@@ -49,7 +49,7 @@ function resolveForUser({ email = null, isAdmin = false } = {}) {
     value: beta || f.publicValue,                // superficie Value visible
     history: beta || f.publicHistory,            // superficie Historial visible
     goalInsights: !!(beta && f.goalInsights),    // Goal Insights: solo dentro de beta y con su flag on
-    arbitrage: !!f.arbitrageUi,                  // Arbitraje activo (default false → "próximamente")
+    arbitrage: !!(beta && f.arbitrageUi),        // Arbitraje: solo beta autorizado + flag (nunca público aquí)
     // espejo informativo de los flags public_* (para que el cliente sepa si algo ya es público)
     publicPicks: f.publicPicks, publicValue: f.publicValue, publicHistory: f.publicHistory,
   };

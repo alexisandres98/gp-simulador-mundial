@@ -101,7 +101,7 @@ ok('i18n: misma cantidad de keys ES/EN', es.length === en.length, `${es.length} 
 ok('i18n: ninguna key falta en EN', es.every((k) => k in d.DICT.en));
 ok('i18n: ninguna key falta en ES', en.every((k) => k in d.DICT.es));
 ok('i18n: ningún valor vacío', es.every((k) => String(d.DICT.es[k]).trim()) && en.every((k) => String(d.DICT.en[k]).trim()));
-ok('i18n: version i18n-2', d.I18N_VERSION === 'i18n-2');
+ok('i18n: version i18n-3', d.I18N_VERSION === 'i18n-3');
 // interpolación + invariancia: cambiar idioma no altera la semántica (mismos args → mismo placeholder resuelto)
 ok('i18n: interpolación {team} ES', d.t('selection.team_to_win', { team: 'Croacia' }, 'es') === 'Croacia gana');
 ok('i18n: interpolación {team} EN', d.t('selection.team_to_win', { team: 'Croatia' }, 'en') === 'Croatia to win');

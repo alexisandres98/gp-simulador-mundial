@@ -1422,6 +1422,13 @@ const server = http.createServer(async (req, res) => {
       if (handled === false) return json(res, 404, { error: 'No encontrado' });
       return;
     }
+    // --- Fase R.5 §25: Observatory de arbitraje (admin). Telemetría read-only del dry-run. ---
+    if (p === '/api/internal/arbitrage/observatory' && req.method === 'GET') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'No autorizado' });
+      const obs = await require('./gp-product/arbitrage').observatory(require('./database/client'), { windowMin: 15 });
+      return json(res, 200, obs);
+    }
     // --- auth ---
     if (p === '/api/auth/request' && req.method === 'POST') {
       const { email } = await readBody(req);

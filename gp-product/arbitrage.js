@@ -153,4 +153,34 @@ function deriveRiskCodes(row, ev) {
   return Array.from(codes);
 }
 
-module.exports = { list, legsFor, legsForMany, cardDto, detailDto, reconstructEv };
+// observatory — Fase R.5 §25. Telemetría READ-ONLY del dry-run de arbitraje (admin). Sin secretos. Reporta
+// honestamente: detectadas/bloqueadas/teóricas/ejecutables/stale + razones principales de bloqueo + frescura.
+async function observatory(db, { windowMin = 15 } = {}) {
+  const w = `created_at > now() - interval '${Number(windowMin)} minutes'`;
+  const one = async (s) => (await db.query(s).catch(() => ({ rows: [] }))).rows;
+  const [byClass, bySemantic, byTemporal, byCapacity, blockers, executable, opps, mappings, lastEval] = await Promise.all([
+    one(`SELECT classification, count(*)::int n FROM arb_evaluations WHERE ${w} GROUP BY 1 ORDER BY 2 DESC`),
+    one(`SELECT semantic_ok, semantic_fatal, count(*)::int n FROM arb_evaluations WHERE ${w} GROUP BY 1,2`),
+    one(`SELECT temporal_ok, count(*)::int n FROM arb_evaluations WHERE ${w} GROUP BY 1`),
+    one(`SELECT capacity_status, count(*)::int n FROM arb_evaluations WHERE ${w} GROUP BY 1`),
+    one(`SELECT semantic_sub_reason, count(*)::int n FROM arb_evaluations WHERE ${w} AND semantic_ok=false GROUP BY 1 ORDER BY 2 DESC LIMIT 8`),
+    one(`SELECT count(*)::int n FROM arb_evaluations WHERE classification IN ('pure_arb','execution_sensitive') AND created_at > now() - interval '60 minutes'`),
+    one(`SELECT status, count(*)::int n FROM arb_opportunities GROUP BY 1`),
+    one(`SELECT mapping_status, count(*)::int n FROM provider_market_mappings GROUP BY 1`),
+    one(`SELECT max(created_at) last FROM arb_evaluations`),
+  ]);
+  return {
+    window_minutes: windowMin,
+    evaluations_by_classification: byClass,
+    semantic: bySemantic, temporal: byTemporal, capacity: byCapacity,
+    top_block_reasons: blockers,
+    executable_candidates_60m: executable[0] ? executable[0].n : 0,   // honesto: 0 esperado
+    opportunities_by_status: opps,
+    mappings_by_status: mappings,
+    last_evaluation_at: lastEval[0] ? lastEval[0].last : null,
+    auto_execution: false, public_enabled: false,                     // INVARIANTES
+    generated_at: new Date().toISOString(),
+  };
+}
+
+module.exports = { list, legsFor, legsForMany, cardDto, detailDto, reconstructEv, observatory };

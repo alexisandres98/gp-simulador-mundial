@@ -79,7 +79,8 @@
     "test:gp-product": "node tests/gp-product.test.js",
     "test:arb-semantic": "node tests/arb-semantic-gate.test.js",
     "test:arb-temporal": "node tests/arb-temporal-capacity.test.js",
-    "test:arb-policy": "node tests/arb-policy.test.js"
+    "test:arb-policy": "node tests/arb-policy.test.js",
+    "test:arb-product": "node tests/arb-product.test.js"
   },
   "engines": {
     "node": ">=18"

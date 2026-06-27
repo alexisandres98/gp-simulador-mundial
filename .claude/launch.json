@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 3000
+    },
+    {
+      "name": "worldcup-beta",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 3007
     }
   ]
 }

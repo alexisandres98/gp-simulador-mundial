@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>GP Intelligence · Beta</title>
+<meta name="theme-color" content="#070B0E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2318E6A3'/><text x='50' y='66' font-size='40' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%2304140D'>GP</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="beta.css">
+</head>
+<body class="gpb">
+<a href="#gpb-main" class="gpb-skip">Saltar al contenido</a>
+
+<header class="gpb-header" role="banner">
+  <div class="gpb-header-in">
+    <button class="gpb-brand" data-route="home" aria-label="GP Intelligence">
+      <span class="gpb-badge">GP</span>
+      <span class="gpb-brandtext"><b id="gpb-brand-name">GP Intelligence</b><i class="gpb-beta-chip" id="gpb-beta-chip">Beta</i></span>
+    </button>
+    <nav class="gpb-nav" id="gpb-nav" role="navigation" aria-label="Principal"></nav>
+    <div class="gpb-header-right">
+      <div class="gpb-lang" id="gpb-lang" role="group" aria-label="Language"></div>
+    </div>
+  </div>
+  <nav class="gpb-tabbar" id="gpb-tabbar" role="navigation" aria-label="Principal (móvil)"></nav>
+</header>
+
+<main id="gpb-main" class="gpb-main" role="main" tabindex="-1">
+  <div id="gpb-view" aria-live="polite"></div>
+</main>
+
+<footer class="gpb-footer" role="contentinfo">
+  <p id="gpb-disclaimer" class="gpb-disclaimer"></p>
+</footer>
+
+<script src="ui-kit.js"></script>
+<script src="beta.js"></script>
+</body>
+</html>

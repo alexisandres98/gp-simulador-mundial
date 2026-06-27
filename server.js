@@ -59,6 +59,8 @@ const metricsEngine = require('./metrics-engine');
 const valueEngine = require('./value-engine');
 const operations = require('./operations'); // Sprint 8A — orquestador de jobs (INERTE si OPERATIONS_ORCHESTRATOR_ENABLED=false)
 const uiFlags = require('./ui-flags'); // Sprint 8.1 — flags de integración de UI (INERTE si UI_* off → UI idéntica)
+const gpProduct = require('./gp-product/flags'); // Fase Q — experiencia de producto beta (INERTE si GP_BETA_UI_ENABLED off)
+const gpProductApi = require('./gp-product/api'); // Fase Q — dispatcher de /api/beta/* (gateado por betaGuard)
 const userPrefs = require('./user-preferences'); // Sprint 8A — preferencias + onboarding (INERTE sin flags)
 const userAlerts = require('./alerts');           // Sprint 8A — motor de alertas de usuario (INERTE sin flags)
 const productAnalytics = require('./analytics');   // Sprint 8A — analítica de producto (INERTE sin flags)
@@ -1352,13 +1354,26 @@ function getUser(req) {
   const picksUi = vf.picksPublic || (admin && vf.picksAdminPreview);
   // Sprint 8.1: flags de integración de UI (default off → la UI se comporta exactamente como hoy)
   const ui = uiFlags.resolveForUser(admin);
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
+  // Fase Q: gating de la experiencia de producto beta (default off → beta:false, nada nuevo se monta).
+  const beta = gpProduct.resolveForUser({ email, isAdmin: admin });
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
   if (envAdmins.includes(email)) return true;
   const firstUser = Object.keys(db.users).sort((a, b) => db.users[a].createdAt - db.users[b].createdAt)[0];
   return email === firstUser; // el primer usuario registrado es admin
+}
+
+// betaGuard — Fase Q. Guard server-side de toda ruta /api/beta/*. Devuelve el user autorizado o null (y ya
+// respondió). 404 si la beta está globalmente apagada (la ruta "no existe"); 401 sin sesión; 403 si hay sesión
+// pero el usuario no es admin ni está en la allowlist de QA. NO confía en flags del cliente.
+function betaGuard(req, res) {
+  if (!gpProduct.flags().betaUi) { json(res, 404, { error: 'No encontrado' }); return null; }
+  const user = getUser(req);
+  if (!user) { json(res, 401, { error: 'Sesión requerida' }); return null; }
+  if (!user.beta || !user.beta.beta) { json(res, 403, { error: 'Acceso beta no autorizado' }); return null; }
+  return user;
 }
 
 // ---------- HTTP ----------
@@ -1390,6 +1405,21 @@ const server = http.createServer(async (req, res) => {
       res.write('event: hello\ndata: {}\n\n');
       sseClients.add(res);
       req.on('close', () => sseClients.delete(res));
+      return;
+    }
+    // --- Fase Q: experiencia de producto beta (/api/beta/*) ---
+    // betaGuard responde 404 (beta off), 401 (sin sesión) o 403 (no autorizado) y devuelve null; si pasa,
+    // devuelve el user con acceso beta. Los DTOs salen de gp-product/api (códigos neutrales, sin secretos).
+    if (p.startsWith('/api/beta/')) {
+      const betaUser = betaGuard(req, res);
+      if (!betaUser) return; // ya respondió
+      const ctx = {
+        db: require('./database/client'),
+        json,
+        resolveTeamId: (name) => aliasToId[normName(name)] || null,
+      };
+      const handled = await gpProductApi.handle(req, res, p, betaUser, ctx);
+      if (handled === false) return json(res, 404, { error: 'No encontrado' });
       return;
     }
     // --- auth ---
@@ -2362,6 +2392,25 @@ const server = http.createServer(async (req, res) => {
       console.log(`[broadcast] enviados ${sent}/${targets.length} (fallos ${failed})`);
       return json(res, 200, { ok: true, sent, failed, total: targets.length, test: !!test });
     }
+    // --- Fase Q: superficie beta (gateada por GP_BETA_UI_ENABLED; 404 si off → la ruta no existe) ---
+    // El shell HTML/JS/CSS no contiene datos sensibles (todo viene de /api/beta/* gateado por betaGuard),
+    // pero igual NO se sirve si la beta está apagada, para no exponer una superficie nueva públicamente.
+    const betaOn = gpProduct.flags().betaUi;
+    if (p === '/beta' || p === '/beta/') {
+      if (!betaOn) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const betaFull = path.join(__dirname, 'public', 'beta.html');
+        const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'beta.js')).mtimeMs);
+        const vcss = Math.floor(fs.statSync(path.join(__dirname, 'public', 'beta.css')).mtimeMs);
+        let html = fs.readFileSync(betaFull, 'utf8')
+          .replace('src="beta.js"', `src="beta.js?v=${vjs}"`)
+          .replace('href="beta.css"', `href="beta.css?v=${vcss}"`);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    // estáticos beta (beta.js / beta.css): solo si la beta está encendida.
+    if (/^\/beta\.(js|css)$/.test(p) && !betaOn) { json(res, 404, { error: 'No encontrado' }); return; }
     // --- estáticos ---
     let file = p === '/' ? '/index.html' : p;
     const full = path.join(__dirname, 'public', path.normalize(file));

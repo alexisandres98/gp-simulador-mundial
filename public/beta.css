@@ -1,0 +1,132 @@
+/* beta.css — Fase Q. Experiencia de producto beta (GP Intelligence). Hereda tokens de style.css (:root).
+   Mobile-first; escala a desktop. Profesional, deportiva, orientada a datos — sin estética de casino. */
+
+.gpb { background: var(--bg); color: var(--text); min-height: 100vh; }
+.gpb-skip { position: absolute; left: -999px; top: 0; background: var(--accent); color: var(--ink-on-accent); padding: 10px 14px; border-radius: 0 0 8px 0; z-index: 100; font-weight: 700; }
+.gpb-skip:focus { left: 0; }
+
+/* ---------- header ---------- */
+.gpb-header { position: sticky; top: 0; z-index: 40; background: rgba(7,11,14,.86); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.gpb-header-in { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; gap: 14px; padding: 11px 16px; padding-top: max(11px, env(safe-area-inset-top)); }
+.gpb-brand { display: flex; align-items: center; gap: 9px; background: none; border: 0; cursor: pointer; color: var(--text); }
+.gpb-badge { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: var(--ink-on-accent); font-weight: 900; display: grid; place-items: center; font-size: 14px; }
+.gpb-brandtext { display: flex; align-items: center; gap: 7px; }
+.gpb-brandtext b { font-size: 15px; font-weight: 800; letter-spacing: -.02em; }
+.gpb-beta-chip { font-style: normal; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 5px; }
+.gpb-nav { display: none; gap: 2px; margin-left: 8px; flex: 1; }
+.gpb-nav button { background: none; border: 0; color: var(--dim); font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 12px; border-radius: 9px; cursor: pointer; }
+.gpb-nav button:hover { color: var(--text); background: var(--bg-elevated); }
+.gpb-nav button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+.gpb-nav button.gpb-soon { color: var(--faint); cursor: default; }
+.gpb-nav button.gpb-soon span { font-size: 9px; border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; margin-left: 5px; }
+.gpb-header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.gpb-lang { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.gpb-lang button { background: none; border: 0; color: var(--dim); font: inherit; font-size: 12px; font-weight: 700; padding: 5px 9px; cursor: pointer; }
+.gpb-lang button[aria-pressed="true"] { background: var(--accent); color: var(--ink-on-accent); }
+
+/* ---------- mobile tab bar ---------- */
+.gpb-tabbar { display: flex; overflow-x: auto; gap: 2px; padding: 4px 8px; border-top: 1px solid var(--border-subtle); -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.gpb-tabbar::-webkit-scrollbar { display: none; }
+.gpb-tabbar button { white-space: nowrap; background: none; border: 0; color: var(--dim); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 11px; border-radius: 8px; cursor: pointer; }
+.gpb-tabbar button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+@media (min-width: 760px) { .gpb-nav { display: flex; } .gpb-tabbar { display: none; } }
+
+/* ---------- layout ---------- */
+.gpb-main { max-width: 1120px; margin: 0 auto; padding: 18px 16px 60px; }
+.gpb-section { margin-bottom: 28px; }
+.gpb-section > h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 12px; }
+.gpb-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .gpb-grid.cols2 { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 900px) { .gpb-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+/* ---------- card ---------- */
+.gpb-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-sm); }
+.gpb-card.clickable { cursor: pointer; transition: border-color .15s, transform .1s; }
+.gpb-card.clickable:hover { border-color: var(--border-green); }
+.gpb-card.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gpb-page-title { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 4px; }
+.gpb-page-sub { color: var(--dim); font-size: 13.5px; margin-bottom: 18px; }
+
+/* ---------- match row / header ---------- */
+.gpb-match-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gpb-teams { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.gpb-teams .vs { color: var(--muted); font-weight: 500; font-size: 12px; }
+.gpb-meta { color: var(--muted); font-size: 12px; display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.gpb-meta .mono { font-family: var(--mono); }
+
+/* ---------- probability bar ---------- */
+.gpb-prob { margin-top: 12px; }
+.gpb-prob-bar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.gpb-prob-seg { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; min-width: 2px; font-family: var(--mono); }
+.gpb-prob-seg.home { background: var(--green-soft); color: var(--ink-on-accent); }
+.gpb-prob-seg.draw { background: var(--bg-muted); color: var(--text); }
+.gpb-prob-seg.away { background: var(--blue); color: #04140d; }
+.gpb-prob-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.gpb-prob-item { flex: 1; text-align: center; }
+.gpb-prob-item .lab { font-size: 11.5px; color: var(--dim); display: block; margin-bottom: 2px; }
+.gpb-prob-item .val { font-size: 18px; font-weight: 800; font-family: var(--mono); }
+.gpb-prob-item .mkt { font-size: 10.5px; color: var(--muted); display: block; }
+.gpb-prob-item.home .val { color: var(--accent); }
+.gpb-prob-item.away .val { color: var(--blue); }
+
+/* ---------- badges / chips ---------- */
+.gpb-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .03em; }
+.gpb-chip.strong { background: var(--accent-soft); color: var(--accent); }
+.gpb-chip.lean { background: var(--blue-soft); color: var(--blue); }
+.gpb-chip.watch { background: var(--amber-soft); color: var(--amber); }
+.gpb-chip.pass { background: var(--bg-muted); color: var(--muted); }
+.gpb-chip.neutral { background: var(--bg-muted); color: var(--dim); }
+.gpb-chip.win { background: var(--accent-soft); color: var(--accent); }
+.gpb-chip.loss { background: var(--red-soft); color: var(--red); }
+.gpb-chip.pending { background: var(--bg-muted); color: var(--dim); }
+
+/* ---------- key-value rows ---------- */
+.gpb-kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin-top: 10px; }
+.gpb-kv .k { color: var(--dim); font-size: 12.5px; }
+.gpb-kv .v { font-weight: 700; font-size: 13px; text-align: right; font-family: var(--mono); }
+.gpb-kv .v.pos { color: var(--accent); }
+.gpb-kv .v.neg { color: var(--red); }
+
+/* ---------- factor / risk lists ---------- */
+.gpb-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.gpb-factor { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.gpb-factor .fc { font-weight: 600; }
+.gpb-factor .fcat { color: var(--muted); font-size: 11px; }
+.gpb-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gpb-tag { font-size: 11.5px; padding: 4px 9px; border-radius: 7px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--dim); }
+.gpb-risk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--dim); padding: 8px 10px; background: var(--amber-soft); border-radius: 8px; border-left: 3px solid var(--amber); }
+.gpb-risk.info { background: var(--blue-soft); border-left-color: var(--blue); }
+
+/* ---------- buttons / filters ---------- */
+.gpb-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--ink-on-accent); border: 0; border-radius: 9px; font: inherit; font-weight: 700; font-size: 13.5px; padding: 9px 16px; cursor: pointer; text-decoration: none; }
+.gpb-btn:hover { background: var(--accent-dark); }
+.gpb-btn.ghost { background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); }
+.gpb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gpb-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.gpb-filters button { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--dim); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 20px; cursor: pointer; }
+.gpb-filters button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--border-green); color: var(--accent); }
+
+/* ---------- goals ---------- */
+.gpb-goal { border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: 14px; margin-top: 14px; }
+.gpb-goal h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--purple); margin-bottom: 4px; }
+.gpb-goal .disc { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.gpb-xg { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.gpb-xg div { font-family: var(--mono); }
+.gpb-xg .lab { color: var(--dim); font-size: 11px; font-family: var(--font-body); }
+.gpb-ou { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.gpb-ou .cell { background: var(--bg-elevated); border-radius: 8px; padding: 8px; text-align: center; }
+.gpb-ou .cell .l { font-size: 11px; color: var(--dim); }
+.gpb-ou .cell .n { font-family: var(--mono); font-weight: 700; }
+
+/* ---------- states ---------- */
+.gpb-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.gpb-state .ic { font-size: 28px; margin-bottom: 8px; opacity: .7; }
+.gpb-state .msg { font-size: 14px; }
+.gpb-skel { background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%); background-size: 200% 100%; animation: gpb-shimmer 1.3s infinite; border-radius: var(--radius-md); height: 96px; }
+@keyframes gpb-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .gpb-skel { animation: none; } }
+
+/* ---------- footer ---------- */
+.gpb-footer { max-width: 1120px; margin: 0 auto; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border-subtle); }
+.gpb-disclaimer { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.gpb-updated { color: var(--faint); font-size: 11px; font-family: var(--mono); }

@@ -786,6 +786,14 @@ function renderMatchDetail(d) {
     html += `<div class="mhp"><span class="mhp-l">${I18N.t('mpage.xg_projected')}</span><span class="mhp-v">${mp.xgHome != null ? mp.xgHome.toFixed(2) : '—'} – ${mp.xgAway != null ? mp.xgAway.toFixed(2) : '—'} · ${I18N.t('mpage.likely_score_suffix', { score: mp.likelyScore || '—' })}</span></div>`;
     html += `</div>`;
   } else html += du(I18N.t('mpage.no_model'));
+  // Fase Q.1.1 §2: bloque GP Intelligence V2 oficial por partido (detrás de GP_MATCHES_V2_UI_ENABLED + beta).
+  // El modelo base de arriba queda claramente separado. Sin V2 válido → estado EXPLÍCITO, sin presentarlo como
+  // actualizado ni hacer fallback silencioso.
+  if (USER && USER.beta && USER.beta.matchesV2 && d.v2_requested) {
+    html += `<div class="sec-head" style="margin-top:16px"><h3>${xe(I18N.t('mpage.gp_intelligence'))}</h3></div>`;
+    if (d.v2 && d.v2.has_official_v2) html += oppMatchV2Html(d.v2, { hero: false });
+    else html += `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(I18N.t('mpage.v2_unavailable'))}</div><div class="op-state-b">${xe(I18N.t('mpage.v2_unavailable_why'))}</div></div></div>`;
+  }
   if (followsHome || followsAway) html += `<div class="follownote">${I18N.t('mpage.follow_note', { teams: `${followsHome ? thNm : ''}${followsHome && followsAway ? I18N.t('mpage.follow_and') : ''}${followsAway ? taNm : ''}` })}</div>`;
 
   // GP Take
@@ -1691,16 +1699,17 @@ async function openOppPick(id) {
 
 // ---- §10/§11: página canónica de partido (GP Intelligence) por canonical_event_id, alcanzable desde el flagship ----
 function oppOutcomeLabel(header, code) { if (code === 'DRAW') return oppT('prob.draw'); const team = code === 'AWAY' ? header.away : header.home; return I18N.teamName(team.team_id, team.name_fallback); }
-async function openMatchV2(eventId) {
-  const root = $('#oppBody') || $('#tab-arb'); if (!root) return;
-  root.innerHTML = `<button class="xo-back" onclick="loadOpportunities()">← ${xe(oppT('common.back'))}</button><div id="oppMatch">${du(oppT('common.loading'))}</div>`;
-  let m;
-  try { const r = await fetch('/api/beta/match/' + encodeURIComponent(eventId), { headers: hdrs() }); if (r.status === 404) { $('#oppMatch').innerHTML = du(oppT('error.not_found')); return; } if (!r.ok) { $('#oppMatch').innerHTML = du(oppT('common.na')); return; } m = await r.json(); }
-  catch (e) { $('#oppMatch').innerHTML = du(oppT('common.na')); return; }
+// Render del DTO V2 (GP Intelligence) → HTML. Reusado por openMatchV2 (Oportunidades) y por la página de
+// partido (Partidos, Q.1.1 §2). opts.hero=false omite el encabezado de equipos (cuando la página ya lo tiene).
+function oppMatchV2Html(m, opts) {
+  opts = opts || {};
   const h = m.header;
-  const teamLine = `${oppFlag(h.home.team_id)} ${I18N.teamName(h.home.team_id, h.home.name_fallback)} ${oppT('common.vs')} ${I18N.teamName(h.away.team_id, h.away.name_fallback)} ${oppFlag(h.away.team_id)}`;
-  let html = `<div class="feat xo-hero"><div class="feat-name" style="font-size:20px">${xe(teamLine)}</div><div class="muted" style="font-size:12px;margin-top:3px">${h.venue ? xe(h.venue) + ' · ' : ''}${h.kickoff_at ? '<span class="mono">' + oppDateTime(h.kickoff_at) + '</span>' : ''}</div></div>`;
-  if (!m.has_official_v2) { html += du(oppT('match.no_v2')); $('#oppMatch').innerHTML = html; return; }
+  let html = '';
+  if (opts.hero !== false) {
+    const teamLine = `${oppFlag(h.home.team_id)} ${I18N.teamName(h.home.team_id, h.home.name_fallback)} ${oppT('common.vs')} ${I18N.teamName(h.away.team_id, h.away.name_fallback)} ${oppFlag(h.away.team_id)}`;
+    html += `<div class="feat xo-hero"><div class="feat-name" style="font-size:20px">${xe(teamLine)}</div><div class="muted" style="font-size:12px;margin-top:3px">${h.venue ? xe(h.venue) + ' · ' : ''}${h.kickoff_at ? '<span class="mono">' + oppDateTime(h.kickoff_at) + '</span>' : ''}</div></div>`;
+  }
+  if (!m.has_official_v2) { html += du(oppT('match.no_v2')); return html; }
   // Probabilidad GP (1X2 regulación)
   const oc = {}; (m.probability && m.probability.outcomes || []).forEach(o => oc[o.outcome_code] = o);
   const gp = c => (oc[c] && oc[c].gp_probability != null) ? oc[c].gp_probability : 0;
@@ -1723,12 +1732,25 @@ async function openMatchV2(eventId) {
     }
     const adj = a.context_adjustments;
     if (adj && adj.HOME != null) inner += `<div class="gpi-deltas" style="margin-top:8px"><span>${xe(oppOutcomeLabel(h, 'HOME'))}: ${oppPP(adj.HOME)}</span><span>${xe(oppT('prob.draw'))}: ${oppPP(adj.DRAW)}</span><span>${xe(oppOutcomeLabel(h, 'AWAY'))}: ${oppPP(adj.AWAY)}</span></div>`;
+    // freshness/incertidumbre/completitud como tags (§2)
+    const tags = [];
+    if (a.data_freshness_code) tags.push(`${xe(oppT('match.data_freshness'))}: ${xe(oppTk('freshness.' + a.data_freshness_code) || a.data_freshness_code)}`);
+    if (a.context_completeness != null) tags.push(`${xe(oppT('match.context_completeness') || 'context')}: ${Math.round(a.context_completeness * 100)}%`);
+    if (tags.length) inner += `<div class="muted" style="font-size:10.5px;margin-top:8px">${tags.join(' · ')}</div>`;
     html += panel(oppT('match.context_applied'), oppTk('context_state.' + a.context_state_code) || '', inner);
   }
   if (m.risks && m.risks.length) html += panel(oppT('match.risks_title'), '', m.risks.map(c => `<div class="xo-note">${xe(oppRisk(c))}</div>`).join(''));
   if (m.goal_insights) { const g = m.goal_insights, eg = g.expected_goals || {}; html += panel(oppT('goal.section_title'), oppT('goal.disclaimer'), `<div class="xo-row"><span>${xe(oppOutcomeLabel(h, 'HOME'))}</span><span class="mono">${eg.HOME == null ? '—' : eg.HOME}</span></div><div class="xo-row"><span>${xe(oppOutcomeLabel(h, 'AWAY'))}</span><span class="mono">${eg.AWAY == null ? '—' : eg.AWAY}</span></div><div class="xo-row"><span>${xe(oppT('goal.total'))}</span><span class="mono">${eg.TOTAL == null ? '—' : eg.TOTAL}</span></div>`); }
   if (m.updated_at) html += `<div class="muted" style="font-size:11px;margin-top:10px">${xe(oppT('common.updated_at', { time: oppTime(m.updated_at) }))}</div>`;
-  $('#oppMatch').innerHTML = html;
+  return html;
+}
+async function openMatchV2(eventId) {
+  const root = $('#oppBody') || $('#tab-arb'); if (!root) return;
+  root.innerHTML = `<button class="xo-back" onclick="loadOpportunities()">← ${xe(oppT('common.back'))}</button><div id="oppMatch">${du(oppT('common.loading'))}</div>`;
+  let m;
+  try { const r = await fetch('/api/beta/match/' + encodeURIComponent(eventId), { headers: hdrs() }); if (r.status === 404) { $('#oppMatch').innerHTML = du(oppT('error.not_found')); return; } if (!r.ok) { $('#oppMatch').innerHTML = du(oppT('common.na')); return; } m = await r.json(); }
+  catch (e) { $('#oppMatch').innerHTML = du(oppT('common.na')); return; }
+  $('#oppMatch').innerHTML = oppMatchV2Html(m, { hero: true });
 }
 
 // ---- §8: Value (scanner profesional) ----

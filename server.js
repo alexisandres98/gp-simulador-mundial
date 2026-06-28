@@ -1023,7 +1023,7 @@ function gradeLabel(edge) {
 }
 const basicTeam = id => { const t = id && teamById[id]; return t ? { id: t.id, name: t.name, flag: t.flag, group: t.group } : { id: null, name: 'Por definir', flag: '', group: null }; };
 
-async function buildMatchDetail(id) {
+async function buildMatchDetail(id, user = null) {
   const meta = findFixtureMeta(id);
   if (!meta) return null;
   await fetchMatchMarkets(false).catch(() => { });
@@ -1084,6 +1084,26 @@ async function buildMatchDetail(id) {
     marketAngles.push({ market: 'Ambos anotan', pick: 'BTTS Sí', modelProb: gm.btts, marketPrice: null, edge: 0, grade: 'WATCH', venue: null, note: 'Estimación del modelo. Sin mercado comparable cargado.' });
   }
 
+  // Fase Q.1.1 §2: adjunta la probabilidad GP Intelligence V2 oficial por partido real (detrás de
+  // GP_MATCHES_V2_UI_ENABLED + acceso beta). SOLO presentación — NO altera modelProbabilities ni el modelo
+  // del backend. Sin mapping aprobado (fixture↔canonical) o sin snapshot V2 válido → v2=null y el cliente
+  // muestra un estado EXPLÍCITO ("V2 no disponible para este partido"), sin fallback silencioso a V1.
+  let v2 = null;
+  if (user && user.beta && user.beta.matchesV2) {
+    try {
+      const rr = require('./signal-registry/resultResolver');
+      const resolveTeamId = (name) => aliasToId[normName(name)] || null;
+      // 1) puente persistente por fixture_id/espn_id (grupos con ESPN id mapeado); 2) por equipos+fecha (knockouts).
+      let canonicalId = await rr.resolveCanonicalByFixture(meta.espnId);
+      if (!canonicalId && meta.id) canonicalId = await rr.resolveCanonicalByFixture(meta.id);
+      if (!canonicalId) canonicalId = await rr.resolveCanonicalByTeams(meta.home, meta.away, meta.datetime, resolveTeamId);
+      if (canonicalId) {
+        const gpCtx = { db: require('./database/client'), json, resolveTeamId };
+        v2 = await gpProductApi.buildMatch(gpCtx, canonicalId, user);
+      }
+    } catch (e) { v2 = null; }
+  }
+
   return {
     id: meta.id, date: meta.datetime, status,
     minute: result ? result.minute : undefined,
@@ -1094,6 +1114,8 @@ async function buildMatchDetail(id) {
       homeWin: probs.home, draw: probs.draw, awayWin: probs.away,
       xgHome: probs.xgHome, xgAway: probs.xgAway, likelyScore: probs.likelyScore, live: !!probs.live,
     } : undefined,
+    v2,                                  // DTO GP Intelligence V2 | null (Q.1.1 §2, solo con flag+beta)
+    v2_requested: !!(user && user.beta && user.beta.matchesV2), // el cliente sabe si debía mostrar V2
     marketPrices, eventUrl: mkt ? mkt.eventUrl : null,
     odds: ctx ? ctx.odds : [],
     events: ctx ? ctx.events : [],
@@ -1654,9 +1676,10 @@ const server = http.createServer(async (req, res) => {
     }
     // Fase 4: detalle profundo de partido (requiere sesión, como el resto de la app)
     if (p.startsWith('/api/match/')) {
-      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const mu = getUser(req);
+      if (!mu) return json(res, 401, { error: 'Inicia sesión' });
       const id = decodeURIComponent(p.split('/')[3] || '');
-      const detail = await buildMatchDetail(id);
+      const detail = await buildMatchDetail(id, mu);
       return detail ? json(res, 200, detail) : json(res, 404, { error: 'Partido no encontrado' });
     }
     // Fase 4: detalle profundo de equipo

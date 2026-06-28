@@ -14,6 +14,37 @@ async function resolveFixture(canonicalEventId, client = db) {
   return r.rows[0] || null;
 }
 
+// resolveCanonicalByFixture(fixtureId) → canonical_event_id | null. Dirección INVERSA (Fase Q.1.1 §2) para las
+// superficies de consumo (Partidos): dado el id del fixture (ESPN id), devuelve el canonical event V2 mapeado y
+// APROBADO. Solo lee el puente persistente (nunca infiere). Sin mapping aprobado → null → "V2 no disponible".
+async function resolveCanonicalByFixture(fixtureId, client = db) {
+  if (fixtureId == null) return null;
+  const r = await client.query(
+    `SELECT canonical_event_id FROM signal_event_fixture_mappings
+       WHERE (fixture_id = $1 OR espn_id = $1) AND review_status = 'approved' LIMIT 1`, [String(fixtureId)]);
+  return r.rows[0] ? r.rows[0].canonical_event_id : null;
+}
+
+// resolveCanonicalByTeams — resolución de DISPLAY (Fase Q.1.1 §2) para Partidos cuando el puente por fixture_id
+// no aplica (p.ej. knockouts, cuyo meta no lleva ESPN id). Matchea un canonical_event CON eval V2 por
+// (home,away) resueltos a códigos de equipo + ventana de fecha (±2 días). Es solo para PRESENTACIÓN (nunca
+// settlement): cada cruce del Mundial es único, así que el match por equipos+fecha es inequívoco. Sin match → null.
+async function resolveCanonicalByTeams(homeCode, awayCode, isoDate, resolveTeamId, client = db) {
+  if (!homeCode || !awayCode || typeof resolveTeamId !== 'function') return null;
+  const day = isoDate ? new Date(isoDate) : null;
+  const params = []; let where = '';
+  if (day && !isNaN(day)) { params.push(new Date(day.getTime() - 2 * 864e5), new Date(day.getTime() + 2 * 864e5)); where = 'AND ce.scheduled_start BETWEEN $1 AND $2'; }
+  const r = await client.query(
+    `SELECT ce.id, ce.home_participant, ce.away_participant FROM canonical_events ce
+       WHERE ce.id IN (SELECT DISTINCT canonical_event_id FROM value_evaluations WHERE official_gp_model='V2') ${where}`, params);
+  for (const row of r.rows) {
+    const hc = resolveTeamId(row.home_participant), ac = resolveTeamId(row.away_participant);
+    if (!hc || !ac) continue;
+    if ((hc === homeCode && ac === awayCode) || (hc === awayCode && ac === homeCode)) return row.id;
+  }
+  return null;
+}
+
 // upsertFixtureMapping(...) — registro/actualización del puente (admin/catálogo/tests). NO se usa en el sweep
 // automático de liquidación (ese solo LEE el mapping; nunca crea uno por inferencia).
 async function upsertFixtureMapping({ canonicalEventId, fixtureId, espnId = null, isKnockout = false, homeAlias = null, awayAlias = null, mappingSource = 'manual', resolvedBy = null }, client = db) {
@@ -63,4 +94,4 @@ async function resolveAndSettle(signal, opts = {}) {
   return { state, settlement_status: st, result_outcome: r.settlement.result_outcome, version: r.settlement.settlement_version, fixture_id: fixture.fixture_id };
 }
 
-module.exports = { resolveFixture, upsertFixtureMapping, resolveAndSettle };
+module.exports = { resolveFixture, resolveCanonicalByFixture, resolveCanonicalByTeams, upsertFixtureMapping, resolveAndSettle };

@@ -492,7 +492,9 @@ function closeSheet() { const s = $('#sheet'); if (s) s.style.display = 'none'; 
 function renderAll() {
   if (STATE.teaser) { renderTeaser(); return; }
   renderTeams(); renderFollowing(); renderAlerts(); renderGroups(); renderMatches(); renderBracket(); renderEvo(); renderAdmin(); renderRecord();
-  if ($('#tab-arb').classList.contains('active')) loadArb();
+  // Fix pestañeo: el refresco en vivo (SSE/polling → loadState → renderAll) NO debe reconstruir Oportunidades
+  // si el usuario está viendo un DETALLE (pick/partido) dentro de la pestaña — lo sacaría de vuelta al listado.
+  if ($('#tab-arb').classList.contains('active') && !OPP_DETAIL) loadArb();
 }
 
 // ---------- SEGUIDOS (equipos seguidos + alertas) ----------
@@ -1566,6 +1568,7 @@ async function loadArb(force = false) {
 // Consume /api/beta/{picks,value,arbitrage,dashboard} (códigos neutrales, sin "V1/V2"), localizado vía I18N,
 // con cards premium reusando el shell rico de la plataforma (.feat/.xo-card/.val-grid/.dualcard). Picks default.
 let OPP_SUB = 'picks';                                  // §4: Picks GP es el subtab por defecto
+let OPP_DETAIL = null;                                  // 'pick'|'match' cuando hay un detalle abierto (anti-pestañeo)
 const OPP = { dash: null };                             // cache liviano del dashboard (mejor pick/value/headers)
 // deep-link inicial: /#opportunities/picks|value|arbitrage
 (function () { const m = (location.hash || '').match(/opportunities\/(picks|value|arb|arbitrage)/); if (m) OPP_SUB = m[1] === 'arbitrage' ? 'arb' : m[1]; })();
@@ -1585,6 +1588,7 @@ function oppHeaderMap(d) { const m = {}; ((d && d.upcoming) || []).forEach(u => 
 
 function oppSetSub(s) { OPP_SUB = s; try { history.replaceState(null, '', '#opportunities/' + s); } catch (e) {} return loadOpportunities(); }
 async function loadOpportunities(force) {
+  OPP_DETAIL = null;                                    // volvemos al listado → el refresco en vivo puede recargar
   const g = (USER.beta && USER.beta.opportunities) || {};
   const subs = [['picks', oppT('nav.picks'), g.picks], ['value', oppT('nav.value'), g.value], ['arb', oppT('nav.arbitrage'), g.arbitrage]];
   if (!subs.find(s => s[0] === OPP_SUB && s[2])) { const first = subs.find(s => s[2]); OPP_SUB = first ? first[0] : 'picks'; }
@@ -1605,7 +1609,7 @@ async function loadOppSummary() {
   const el = $('#oppSummary'); if (!el) return;
   const d = await oppGetDash(); if (!d || !el.isConnected) { if (el) el.innerHTML = ''; return; }
   const headers = oppHeaderMap(d);
-  const bestPick = (d.recent_picks || []).filter(p => !p.result_code || p.result_code === 'PENDING')[0] || (d.recent_picks || [])[0];
+  const bestPick = (d.recent_picks || []).filter(oppPickActive)[0] || null;   // solo picks realmente activas
   const bestValue = (d.value || [])[0];
   const active = (d.recent_picks || []).length + (d.value || []).length;
   const cell = (label, val) => `<div style="flex:1;min-width:140px"><div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">${xe(label)}</div><div style="font-size:13px;font-weight:700;margin-top:2px">${val}</div></div>`;
@@ -1620,11 +1624,15 @@ async function loadOppSummary() {
 }
 
 // ---- §6/§7: Picks GP (hero premium + lista + detalle) ----
-function oppPickActive(p) { return (!p.result_code || p.result_code === 'PENDING') && p.lifecycle_code !== 'SETTLED'; }
+// Una pick está ACTIVA solo si su partido aún no comenzó (lifecycle PUBLISHED). Si el partido ya empezó/terminó
+// (EVENT_STARTED/AWAITING_SETTLEMENT) o está liquidada (SETTLED), NO es activa → no va como hero ni "mejor activa".
+function oppPickActive(p) { return p.lifecycle_code === 'PUBLISHED' && (!p.result_code || p.result_code === 'PENDING'); }
 function oppPickSelection(p) { if (p.selection_display_key) { const a = Object.assign({}, p.selection_display_args || {}); if (a.team_id) a.team = I18N.teamName(a.team_id); return I18N.t(p.selection_display_key, a); } return p.outcome_code || ''; }
 function oppPickStatus(p) {
   if (p.result_code && p.result_code !== 'PENDING') { const cls = p.result_code === 'WIN' ? 'xo-st-active' : p.result_code === 'LOSS' ? 'xo-st-expired' : 'xo-st-paused'; return `<span class="xo-pill ${cls}">${xe(oppT('result.' + p.result_code))}</span>`; }
-  return `<span class="xo-pill xo-st-active">${xe(oppT('lifecycle.' + (p.lifecycle_code || 'PUBLISHED')))}</span>`;
+  const lc = p.lifecycle_code || 'PUBLISHED';
+  const cls = lc === 'PUBLISHED' ? 'xo-st-active' : 'xo-st-paused';   // solo PUBLISHED en verde; partido ya jugado → gris
+  return `<span class="xo-pill ${cls}">${xe(oppT('lifecycle.' + lc))}</span>`;
 }
 // §6/§12: badge de PRODUCTO (Pick GP), nunca de modelo. Las picks históricas (V1) llevan SOLO una etiqueta discreta.
 function oppPickBadge(p) { return `<span class="xo-badge xo-b-pure">${xe(oppT('pick.badge'))}</span>${p.model_label_code === 'PREVIOUS' ? ` <span class="muted" style="font-size:10.5px">${xe(oppT('pick.previous_tag'))}</span>` : ''}`; }
@@ -1670,14 +1678,21 @@ async function loadOppPicks(sel) {
   try { const r = await fetch('/api/beta/picks', { headers: hdrs() }); if (!r.ok) { root.innerHTML = du(oppT('common.na')); return; } items = (await r.json()).items || []; }
   catch (e) { root.innerHTML = du(oppT('common.na')); return; }
   if (!items.length) { root.innerHTML = `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(oppT('pick.no_picks'))}</div></div></div>`; return; }
-  // §6: el hero es una Pick activa con precio válido; preferimos PUBLISHED (precio disponible) sobre EVENT_STARTED.
-  const hero = items.filter(oppPickActive).sort((a, b) => (a.lifecycle_code === 'PUBLISHED' ? 0 : 1) - (b.lifecycle_code === 'PUBLISHED' ? 0 : 1))[0] || null;
-  const rest = items.filter(p => !hero || p.pick_id !== hero.pick_id);
-  let html = hero ? oppHeroPick(hero) : '';
-  if (rest.length) html += `<div class="sec-head"><h3>${xe(oppT('pick.title'))}</h3><span class="sub">${rest.length}</span></div>` + rest.map(oppPickCard).join('');
+  // Separar ACTIVAS (partido por jugar) de NO ACTIVAS (partido ya comenzó/terminó). Una pick cuyo partido ya
+  // pasó NO se presenta como activa: se lista aparte, atenuada y con etiqueta clara (no se borra del registro).
+  const active = items.filter(oppPickActive);
+  const inactive = items.filter(p => !oppPickActive(p));
+  const hero = active[0] || null;
+  const activeRest = active.filter(p => !hero || p.pick_id !== hero.pick_id);
+  let html = hero ? oppHeroPick(hero) : `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(oppT('pick.none_active'))}</div></div></div>`;
+  if (activeRest.length) html += `<div class="sec-head"><h3>${xe(oppT('pick.active_title'))}</h3><span class="sub">${activeRest.length}</span></div>` + activeRest.map(oppPickCard).join('');
+  if (inactive.length) html += `<div class="sec-head" style="margin-top:14px"><h3>${xe(oppT('pick.inactive_title'))}</h3><span class="sub">${inactive.length}</span></div>`
+    + `<div class="muted" style="font-size:11.5px;margin:-4px 0 8px">${xe(oppT('pick.inactive_note'))}</div>`
+    + `<div style="opacity:.6">${inactive.map(oppPickCard).join('')}</div>`;
   root.innerHTML = html;
 }
 async function openOppPick(id) {
+  OPP_DETAIL = 'pick';                                  // bloquea el refresco en vivo mientras se ve el detalle
   const root = $('#oppBody') || $('#tab-arb'); if (!root) return;
   root.innerHTML = `<button class="xo-back" onclick="loadOpportunities()">← ${xe(oppT('common.back'))}</button><div id="oppPickDetail">${du(oppT('common.loading'))}</div>`;
   let p;
@@ -1745,6 +1760,7 @@ function oppMatchV2Html(m, opts) {
   return html;
 }
 async function openMatchV2(eventId) {
+  OPP_DETAIL = 'match';                                 // bloquea el refresco en vivo mientras se ve el análisis
   const root = $('#oppBody') || $('#tab-arb'); if (!root) return;
   root.innerHTML = `<button class="xo-back" onclick="loadOpportunities()">← ${xe(oppT('common.back'))}</button><div id="oppMatch">${du(oppT('common.loading'))}</div>`;
   let m;

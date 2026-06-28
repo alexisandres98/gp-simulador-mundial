@@ -24,9 +24,11 @@ async function due(jobName, intervalMs) {
 }
 function getJSON(url) { return new Promise((res, rej) => { https.get(url, { timeout: 15000 }, r => { let d = ''; r.on('data', c => d += c); r.on('end', () => { try { res({ code: r.statusCode, headers: r.headers, body: JSON.parse(d) }); } catch (e) { rej(e); } }); }).on('error', rej).on('timeout', function () { this.destroy(); rej(new Error('timeout')); }); }); }
 
-// upcoming events con v2 snapshot (prematch)
-async function upcomingEvents(limit = 6) {
-  return (await db.query(`SELECT id, home_participant h, away_participant a, scheduled_start k FROM canonical_events WHERE scheduled_start > now() AND id IN (SELECT canonical_event_id FROM v2_probability_snapshots) ORDER BY scheduled_start LIMIT $1`, [limit])).rows;
+// upcoming events — TODOS los fixtures canónicos próximos (no solo los que ya tienen snapshot). El gate anterior
+// (`AND id IN (SELECT ... FROM v2_probability_snapshots)`) congelaba el collector cuando esos eventos se jugaban
+// (huevo-y-gallina). Ahora el motor de contexto (clima/noticias) cubre todos los próximos. Cap alto razonable.
+async function upcomingEvents(limit = 200) {
+  return (await db.query(`SELECT id, home_participant h, away_participant a, scheduled_start k FROM canonical_events WHERE scheduled_start > now() ORDER BY scheduled_start LIMIT $1`, [limit])).rows;
 }
 
 // JOB: news fetch (RSS) → documentos + claims + entity. Barato.
@@ -66,7 +68,7 @@ async function jobWeather() {
   const weather = require('../collector/weather'); const crepo = require('../collector/repository');
   const rows = (await db.query(`SELECT e.canonical_event_id, ce.scheduled_start k, v.venue_id, v.canonical_name, v.latitude, v.longitude
      FROM event_venue_resolution e JOIN canonical_venues v ON v.venue_id=e.venue_id JOIN canonical_events ce ON ce.id=e.canonical_event_id
-     WHERE e.status='resolved' AND ce.scheduled_start > now() LIMIT 8`)).rows;
+     WHERE e.status='resolved' AND ce.scheduled_start > now() LIMIT 60`)).rows;
   let wx = 0;
   for (const r of rows) {
     const f = await weather.fetchForecast({ lat: Number(r.latitude), lon: Number(r.longitude), kickoffIso: r.k.toISOString() }).catch(() => ({ ok: false }));

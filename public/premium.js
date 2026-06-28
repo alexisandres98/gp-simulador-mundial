@@ -90,6 +90,30 @@
       sim_price_na: 'No se evalúa precio porque este cruce no corresponde a un mercado programado.', sim_hypo_tag: 'Hipotético', sim_runs: 'simulaciones',
       sim_montecarlo: 'Simulaciones Monte Carlo', sim_avg_goals: 'Goles promedio', sim_totals: 'Distribución de goles',
       sim_goals_disc: 'Proyección de goles en validación. Disponible para análisis; no genera Picks GP ni Value.',
+      // ---- Corte 4H: superficies de torneo ----
+      group: 'Grupo',
+      tm_champion: 'Campeón', tm_final: 'Final', tm_semi: 'Semis', tm_qf: 'Cuartos', tm_advance: 'Avanza',
+      tm_sim_note: 'Probabilidades de la simulación Monte Carlo del torneo con el contexto disponible.',
+      tm_next: 'Próximo partido', tm_recent_matches: 'Partidos recientes', tm_vs_home: 'vs (local)', tm_vs_away: 'vs (visita)',
+      grp_goals: 'GF:GC', grp_advance: 'Avanza', grp_advance_note: 'Avanza = probabilidad de pasar de fase (1º o 2º).',
+      bk_tbd: 'Por definir', bk_reg90: '90 min', bk_note: 'Probabilidad 1X2 a 90 min (no es probabilidad de avanzar).',
+      evo_insufficient: 'Evolución no disponible todavía', evo_insufficient_sub: 'Aún no hay suficientes snapshots reales ({n}). La evolución se registra a medida que el torneo avanza.',
+      evo_champion: 'Probabilidad de campeón', evo_snapshots: 'snapshots', evo_trend: 'Tendencia', evo_now: 'Ahora', evo_note: 'Solo snapshots reales registrados; sin histórico fabricado.',
+      reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
+      reg_odds: 'Cuota', reg_result: 'Resultado', reg_era: 'Modelo', reg_era_current: 'GP Intelligence', reg_era_previous: 'Etapa anterior', reg_empty: 'Aún no hay Picks registradas.',
+      reg_insufficient_note: 'Muestra insuficiente para afirmar rentabilidad; el registro crece con cada Pick liquidada.',
+      lc_pub: 'Publicada', lc_started: 'En juego', lc_await: 'Esperando liquidación', lc_settled: 'Liquidada',
+      rc_win: 'Acierto', rc_loss: 'Fallo', rc_void: 'Anulada', rc_pending: 'Pendiente', rc_settled: 'Liquidada',
+      me_gp_t: 'GP Intelligence', me_gp_b: 'Partimos de una probabilidad inicial estadística y aplicamos el contexto verificado para llegar a la Probabilidad GP final. No usamos nombres de versiones internas: lo que ves es la lectura GP vigente.',
+      me_base_t: 'Base estadística', me_base_b: 'Ratings Elo por selección, modelo de goles de Poisson/Dixon-Coles y simulación Monte Carlo del torneo (miles de corridas) para estimar resultados y caminos.',
+      me_ctx_t: 'Contexto', me_ctx_b: 'Forma reciente, disponibilidad del plantel, calidad, solidez y condiciones se evalúan y ajustan la probabilidad inicial. El efecto se refleja como ajuste neto, con su evidencia y frescura.',
+      me_market_t: 'Mercado', me_market_b: 'Comparamos la Probabilidad GP contra casas, exchanges y prediction markets, mostrando precio implícito, sin margen y mejor precio cuando es posible.',
+      me_unc_t: 'Incertidumbre', me_unc_b: 'Cada lectura incluye su nivel de confianza y los riesgos relevantes. La confianza es un único valor; nunca afirmamos un nivel y lo contradecimos en el texto.',
+      me_picks_t: 'Picks y Value', me_picks_b: 'Las Picks se publican manualmente; el Value surge de las evaluaciones cuando hay ventaja sobre el precio. Nada se auto-publica.',
+      me_goals_t: 'Proyección de goles', me_goals_b: 'La proyección de goles está en validación: es informativa y no genera Picks ni Value.',
+      me_limits_t: 'Limitaciones', me_limits_b: 'No es consejo financiero, sino estimaciones de un modelo estadístico. La cobertura de contexto y mercado depende de la disponibilidad de datos por partido.',
+      adm_observatory: 'Observatory de cobertura', adm_canonical: 'Eventos canónicos', adm_with_eval: 'Con evaluación GP', adm_upcoming_eval: 'Próximos evaluados', adm_pending: 'Próximos pendientes',
+      adm_ctx_dist: 'Distribución de contexto', adm_snap_fresh: 'Frescura de snapshots', adm_forbidden: 'Solo administradores.',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -171,6 +195,30 @@
       sim_price_na: 'Price is not evaluated because this hypothetical matchup does not correspond to a scheduled market.', sim_hypo_tag: 'Hypothetical', sim_runs: 'simulations',
       sim_montecarlo: 'Monte Carlo simulations', sim_avg_goals: 'Avg goals', sim_totals: 'Goal distribution',
       sim_goals_disc: 'Goal projection in validation. Available for analysis; does not generate GP Picks or Value.',
+      // ---- Corte 4H: tournament surfaces ----
+      group: 'Group',
+      tm_champion: 'Champion', tm_final: 'Final', tm_semi: 'Semis', tm_qf: 'Quarters', tm_advance: 'Advance',
+      tm_sim_note: 'Probabilities from the tournament Monte Carlo simulation with the available context.',
+      tm_next: 'Next match', tm_recent_matches: 'Recent matches', tm_vs_home: 'vs (home)', tm_vs_away: 'vs (away)',
+      grp_goals: 'GF:GA', grp_advance: 'Advance', grp_advance_note: 'Advance = probability of progressing (1st or 2nd).',
+      bk_tbd: 'TBD', bk_reg90: '90 min', bk_note: '1X2 probability at 90 min (not the probability of advancing).',
+      evo_insufficient: 'Evolution not available yet', evo_insufficient_sub: 'Not enough real snapshots yet ({n}). Evolution is recorded as the tournament progresses.',
+      evo_champion: 'Champion probability', evo_snapshots: 'snapshots', evo_trend: 'Trend', evo_now: 'Now', evo_note: 'Only real recorded snapshots; no fabricated history.',
+      reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
+      reg_odds: 'Odds', reg_result: 'Result', reg_era: 'Model', reg_era_current: 'GP Intelligence', reg_era_previous: 'Previous stage', reg_empty: 'No Picks recorded yet.',
+      reg_insufficient_note: 'Insufficient sample to claim profitability; the record grows with each settled Pick.',
+      lc_pub: 'Published', lc_started: 'In play', lc_await: 'Awaiting settlement', lc_settled: 'Settled',
+      rc_win: 'Win', rc_loss: 'Loss', rc_void: 'Void', rc_pending: 'Pending', rc_settled: 'Settled',
+      me_gp_t: 'GP Intelligence', me_gp_b: 'We start from a statistical initial probability and apply verified context to reach the final GP probability. We don’t expose internal version names: what you see is the current GP read.',
+      me_base_t: 'Statistical base', me_base_b: 'Per-team Elo ratings, a Poisson/Dixon-Coles goals model and a tournament Monte Carlo simulation (thousands of runs) to estimate results and paths.',
+      me_ctx_t: 'Context', me_ctx_b: 'Recent form, squad availability, quality, solidity and conditions are evaluated and adjust the initial probability. The effect is shown as a net adjustment, with its evidence and freshness.',
+      me_market_t: 'Market', me_market_b: 'We compare the GP probability against books, exchanges and prediction markets, showing implied price, no-vig and best price when possible.',
+      me_unc_t: 'Uncertainty', me_unc_b: 'Every read includes its confidence level and the relevant risks. Confidence is a single value; we never claim a level and contradict it in the text.',
+      me_picks_t: 'Picks and Value', me_picks_b: 'Picks are published manually; Value arises from evaluations when there’s an edge over the price. Nothing is auto-published.',
+      me_goals_t: 'Goal projection', me_goals_b: 'The goal projection is in validation: informational only and does not generate Picks or Value.',
+      me_limits_t: 'Limitations', me_limits_b: 'Not financial advice, but statistical model estimates. Context and market coverage depend on per-match data availability.',
+      adm_observatory: 'Coverage observatory', adm_canonical: 'Canonical events', adm_with_eval: 'With GP evaluation', adm_upcoming_eval: 'Upcoming evaluated', adm_pending: 'Upcoming pending',
+      adm_ctx_dist: 'Context distribution', adm_snap_fresh: 'Snapshot freshness', adm_forbidden: 'Admins only.',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -188,7 +236,8 @@
 
   // ---------- state ----------
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
-    cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false } };
+    cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
+    groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -198,11 +247,11 @@
   ];
   var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
-  function viewNav(v) { return v === 'matches' ? 'matches' : v === 'sim' ? 'sim' : 'opps'; }
+  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin'].indexOf(v) >= 0 ? v : 'opps'); }
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'sim']; // vistas implementadas (clickeables)
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin']; // vistas implementadas (clickeables)
     var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var nav2 = NAV2.map(function (n) { return '<div class="gx-nav">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['follow', 'dots', 'more']]
       .map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
@@ -519,11 +568,15 @@
     var h = ''; try { h = (location.hash || '').replace(/^#/, ''); } catch (e) {}
     var m = h.match(/^match\/([0-9a-f-]{36}|qa-[a-z0-9-]+|fx-[A-Za-z0-9]+)$/i);
     if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
-    if (/^matches/.test(h)) { showView('matches'); return; }
-    if (/^sim/.test(h)) { showView('sim'); return; }
+    var tm = h.match(/^team\/([A-Za-z]{2,4})$/i);
+    if (tm) { var tid = tm[1].toUpperCase(); if (!(S.view === 'team' && S.teamId === tid)) openTeam(tid, true); return; }
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin)/);
+    if (v) { showView(v[1]); return; }
     showView('board');
   }
-  function navTo(nav) { setHash(nav === 'matches' ? 'matches' : nav === 'sim' ? 'sim' : ''); }
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin' };
+  function navTo(nav) { setHash(NAV_HASH[nav] != null ? NAV_HASH[nav] : ''); }
+  function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
   function syncNavActive() {
     var cur = viewNav(S.view);
     [].forEach.call(document.querySelectorAll('.gx-nav[data-nav], .gx-bnav a[data-nav]'), function (el) { el.classList.toggle('on', el.getAttribute('data-nav') === cur); });
@@ -542,6 +595,13 @@
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
     if (v === 'matches') renderMatches();
     else if (v === 'sim') renderSim();
+    else if (v === 'teams') renderTeams();
+    else if (v === 'groups') renderGroups();
+    else if (v === 'bracket') renderBracket();
+    else if (v === 'evo') renderEvo();
+    else if (v === 'registry') renderRegistry();
+    else if (v === 'method') renderMethod();
+    else if (v === 'admin') renderAdmin();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
@@ -1162,8 +1222,229 @@
       '</div></div>';
   }
 
+  // ================= superficies de torneo (Corte 4H) =================
+  var pct1 = function (v) { return v == null ? '—' : (v * 100).toFixed(1) + '%'; };
+  function viewHead(title, extra) { return '<div class="gx-ohead"><h1>' + esc(title) + '</h1>' + (extra || '') + '</div>'; }
+  function oidFor(c) { var canon = canonFor(c); return canon ? canon.event_id : 'fx-' + c.id; }
+  function teamMatches(id) { return S.cal.filter(function (c) { return c.home === id || c.away === id; }).sort(function (a, b) { return new Date(a.datetime || 0) - new Date(b.datetime || 0); }); }
+
+  // ---- Equipos ----
+  function renderTeams() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var teams = S.stTeams.slice().filter(function (t) { return t.sim; }).sort(function (a, b) { return (b.sim.champion || 0) - (a.sim.champion || 0); });
+    if (S.tQuery) { var q = S.tQuery.toLowerCase(); teams = teams.filter(function (t) { return (teamName(t.id) + ' ' + t.id).toLowerCase().indexOf(q) >= 0; }); }
+    var maxCh = (teams[0] && teams[0].sim.champion) || 1;
+    var head = viewHead(t('nav_teams'), '<div class="gx-msearch">' + ic('search') + '<input id="gx-tsearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.tQuery || '') + '"></div><span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + teams.length + ' ' + esc(t('nav_teams').toLowerCase()) + '</span>');
+    var rows = teams.map(function (tm, i) {
+      var s = tm.sim;
+      return '<tr class="gx-row" data-nav-team="' + esc(tm.id) + '">' +
+        '<td class="gx-dim gx-mono l" style="width:30px">' + (i + 1) + '</td>' +
+        '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(tm.id) + '</span><b>' + esc(teamName(tm.id, tm.name)) + '</b></div></td>' +
+        '<td class="gx-dim l">' + esc(tm.group || '') + '</td>' +
+        '<td class="gx-mono">' + Math.round(tm.currentElo || tm.elo || 0) + '</td>' +
+        '<td class="l" style="width:160px"><div class="gx-champbar"><i style="width:' + Math.max(2, (s.champion / maxCh) * 100) + '%"></i><span class="gx-mono">' + pct1(s.champion) + '</span></div></td>' +
+        '<td class="gx-mono gx-dim">' + pct0(s.reachR32) + '</td>' +
+        '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
+    }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head +
+      '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th><th class="l">' + esc(t('group')) + '</th><th>Elo</th><th class="l">' + esc(t('tm_champion')) + '</th><th>' + esc(t('tm_advance')) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></div></div>';
+    var si = $('#gx-tsearch-i'); if (si) si.addEventListener('input', function () { S.tQuery = si.value; clearTimeout(S._tq); S._tq = setTimeout(function () { var p = si.selectionStart; renderTeams(); var n = $('#gx-tsearch-i'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} } }, 220); });
+  }
+  function renderTeam() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var id = S.teamId, td = S.tcache[id];
+    if (td === undefined) {
+      mv.innerHTML = mvShell(mvLoading()); bindBack();
+      fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.tcache[id] = m || { _empty: true }; if (S.view === 'team' && S.teamId === id) renderTeam(); });
+      return;
+    }
+    if (!td || td._empty) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    var prob = function (label, v) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + pct1(v) + '</b></div>'; };
+    var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + esc(t('comp')) + (td.group ? ' · ' + esc(t('group')) + ' ' + esc(td.group) : '') + '<span class="gx-spacer"></span>' + (td.rank ? '<span class="gx-dim">#' + td.rank + ' Elo</span>' : '') + '</div>' +
+      '<div class="gx-team-id"><span class="fl big">' + flag(id) + '</span><div><b>' + esc(teamName(id, td.name)) + '</b><span class="gx-mono gx-dim">Elo ' + Math.round(td.elo || 0) + (td.eloDelta != null ? ' · ' + (td.eloDelta >= 0 ? '+' : '') + Math.round(td.eloDelta) : '') + '</span></div></div>' +
+      '<div class="gx-hero-grid">' + prob(t('tm_champion'), td.championProbability) + prob(t('tm_final'), td.finalProbability) + prob(t('tm_semi'), td.semifinalsProbability) + prob(t('tm_qf'), td.quarterfinalsProbability) + prob(t('tm_advance'), td.advanceProbability) + '</div>' +
+      '<div class="gx-hero-note gx-dim">' + esc(t('tm_sim_note')) + '</div></div>';
+    // próximo + finalizados del calendario
+    var ms = teamMatches(id), now = Date.now();
+    var up = ms.filter(function (c) { return calStatus(c) !== 'final'; }).slice(0, 1);
+    var fin = ms.filter(function (c) { return calStatus(c) === 'final'; }).reverse().slice(0, 5);
+    var matchRow = function (c) {
+      var opp = c.home === id ? c.away : c.home, sc = mScore(c);
+      return '<div class="gx-tmatch gx-row" data-openmatch="' + esc(oidFor(c)) + '"><span class="gx-time">' + esc(fmtDate(c.datetime)) + '</span><div class="gx-cell-team"><span class="gx-dim" style="font-size:11px">' + esc(c.home === id ? t('tm_vs_home') : t('tm_vs_away')) + '</span><span class="fl">' + flag(opp) + '</span><b>' + esc(teamName(opp)) + '</b></div><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span>' : mStatusCell(c)) + ' ' + ic('chevron-right') + '</div>';
+    };
+    var nextBlock = up.length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('calendar') + esc(t('tm_next')) + '</span></div><div class="gx-mod-body" style="padding:8px 12px">' + up.map(matchRow).join('') + '</div></div>' : '';
+    var finBlock = fin.length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('history') + esc(t('tm_recent_matches')) + '</span></div><div class="gx-mod-body" style="padding:8px 12px">' + fin.map(matchRow).join('') + '</div></div>' : '';
+    // forma / bajas / noticias
+    var ctxBlocks = [];
+    var rf = td.recentForm;
+    if (rf && rf.results && rf.results.length) ctxBlocks.push(ctxBlock(t('ctx_form'), 'history', t('ctx_form_line', { team: '<b>' + esc(teamName(id)) + '</b>', rec: esc(formStr(rf.results)), n: rf.played || rf.results.length, gf: rf.goalsFor, ga: rf.goalsAgainst })));
+    var inj = (td.injuries || []).concat(td.sidelined || []);
+    if (inj.length) ctxBlocks.push(ctxBlock(t('ctx_inj'), 'first-aid-kit', '<b>' + esc(teamName(id)) + '</b>: ' + esc(inj.slice(0, 6).map(function (x) { return x.player || x.name || x; }).join(', ')) + '.'));
+    var news = td.news || [];
+    if (news.length) ctxBlocks.push(ctxBlock(t('news_title'), 'news', news.slice(0, 3).map(function (n) { return esc(n.title || ''); }).join(' · ')));
+    var ctxPanel = ctxBlocks.length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('article') + esc(t('mod_context')) + '</span></div><div class="gx-mod-body">' + ctxBlocks.join('') + '</div></div>' : '';
+    mv.innerHTML = mvShell('<div class="gx-mv-back-wrap"></div>' + hero + '<div class="gx-mv-grid"><div class="gx-mv-col">' + nextBlock + finBlock + '</div><div class="gx-mv-col">' + ctxPanel + '</div></div>');
+    bindBack();
+  }
+
+  // ---- Grupos ----
+  function renderGroups() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var simById = {}; S.stTeams.forEach(function (t) { simById[t.id] = t.sim; });
+    var blocks = (S.groups || []).map(function (g) {
+      var st = (S.standings && S.standings[g]) || [];
+      // equipos del grupo: por standings si hay, si no por stTeams.group
+      var ids = st.length ? st.map(function (r) { return r.id; }) : S.stTeams.filter(function (t) { return t.group === g; }).map(function (t) { return t.id; });
+      var stById = {}; st.forEach(function (r) { stById[r.id] = r; });
+      // ordenar por pts luego por sim.groupWin
+      ids.sort(function (a, b) { var ra = stById[a], rb = stById[b]; if (ra && rb && rb.pts !== ra.pts) return rb.pts - ra.pts; return ((simById[b] && simById[b].groupWin) || 0) - ((simById[a] && simById[a].groupWin) || 0); });
+      var rows = ids.map(function (id, i) {
+        var r = stById[id] || { pj: 0, pts: 0, gf: 0, ga: 0 }, s = simById[id] || {};
+        var adv = (s.groupWin || 0) + (s.groupSecond || 0);
+        return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="gx-dim gx-mono l" style="width:24px">' + (i + 1) + '</td>' +
+          '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td>' +
+          '<td class="gx-mono">' + r.pj + '</td><td class="gx-mono" style="color:var(--gx-text)">' + r.pts + '</td><td class="gx-mono gx-dim">' + r.gf + ':' + r.ga + '</td>' +
+          '<td class="l" style="width:120px"><div class="gx-champbar sm"><i style="width:' + Math.max(2, adv * 100) + '%"></i><span class="gx-mono">' + pct0(adv) + '</span></div></td></tr>';
+      }).join('');
+      return '<div class="gx-grp"><div class="gx-grp-h"><span>' + esc(t('group')) + ' ' + esc(g) + '</span></div>' +
+        '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th><th>PJ</th><th>Pts</th><th>' + esc(t('grp_goals')) + '</th><th class="l">' + esc(t('grp_advance')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+    }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_groups'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('grp_advance_note')) + '</span>') + '<div class="gx-grp-grid">' + blocks + '</div></div></div>';
+  }
+
+  // ---- Bracket ----
+  function renderBracket() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var STAGES = ['R32', 'R16', 'QF', 'SF', 'FINAL'];
+    var byStage = {}; (S.knockoutRaw || []).forEach(function (k) { (byStage[k.stage] = byStage[k.stage] || []).push(k); });
+    var cols = STAGES.filter(function (s) { return byStage[s]; }).map(function (s) {
+      var matches = byStage[s].map(function (k) {
+        var hi = k.resolved && k.resolved.home, ai = k.resolved && k.resolved.away;
+        var p = k.probs, sc = k.result ? (k.result.hg + '-' + k.result.ag) : null, fin = k.result && k.result.status === 'final';
+        var side = function (id, prob, win) { return '<div class="gx-bk-side' + (win ? ' win' : '') + '">' + (id ? '<span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b>' : '<span class="gx-dim">' + esc(t('bk_tbd')) + '</span>') + '<span class="gx-spacer"></span><span class="gx-mono gx-dim">' + (prob != null ? pct0(prob) : '') + '</span></div>'; };
+        var winH = fin && k.result.hg > k.result.ag, winA = fin && k.result.ag > k.result.hg;
+        var clickable = hi && ai;
+        var oid = clickable ? (canonByKey(hi, ai, (k.datetime || k.date || '').slice(0, 10)) || 'fx-' + String(k.m)) : null;
+        return '<div class="gx-bk-match' + (clickable ? '' : ' gx-bk-tbd') + '"' + (clickable ? ' data-openmatch="' + esc(oid) + '"' : '') + '>' +
+          '<div class="gx-bk-top"><span class="gx-time">' + (fin ? esc(t('st_ft')) : esc(fmtDate(k.datetime || (k.date ? k.date + 'T00:00Z' : null)))) + '</span>' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span>' : '') + '</div>' +
+          side(hi, p ? p.home : null, winH) + side(ai, p ? p.away : null, winA) +
+          (p && p.draw != null && !fin ? '<div class="gx-bk-draw gx-dim">' + esc(t('bk_reg90')) + ' · X ' + pct0(p.draw) + '</div>' : '') +
+          '</div>';
+      }).join('');
+      return '<div class="gx-bk-col"><div class="gx-bk-colh">' + esc(stageLabel(s)) + '</div>' + matches + '</div>';
+    }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_bracket'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('bk_note')) + '</span>') + '<div class="gx-bk-scroll"><div class="gx-bk">' + cols + '</div></div></div></div>';
+  }
+  function canonByKey(h, a, d) { var c = S.canonByKey[canonKey(h, a, d)]; return c ? c.event_id : null; }
+
+  // ---- Evolución (solo snapshots reales) ----
+  function renderEvo() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var hist = S.history || [];
+    var body;
+    if (hist.length < 2) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('evo_insufficient')) + '</b>' + esc(t('evo_insufficient_sub', { n: hist.length })) + '</div></div>';
+    } else {
+      var last = hist[hist.length - 1].probs || {}, first = hist[0].probs || {};
+      var top = Object.keys(last).sort(function (a, b) { return (last[b] || 0) - (last[a] || 0); }).slice(0, 10);
+      var rows = top.map(function (id) {
+        var cur = last[id] || 0, prev = first[id] || 0, d = cur - prev;
+        // sparkline simple sobre los snapshots disponibles
+        var max = Math.max.apply(null, hist.map(function (h) { return h.probs[id] || 0; }).concat([0.01]));
+        var spark = '<span class="gx-spark">' + hist.map(function (h) { var v = h.probs[id] || 0; return '<i style="height:' + Math.max(6, (v / max) * 100) + '%"></i>'; }).join('') + '</span>';
+        return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td>' +
+          '<td class="l" style="width:90px">' + spark + '</td>' +
+          '<td class="gx-mono" style="color:var(--gx-text)">' + pct1(cur) + '</td>' +
+          '<td class="gx-mono ' + (d > 0 ? 'gx-pos' : d < 0 ? 'gx-neg' : 'gx-dim') + '">' + (d === 0 ? '—' : (d > 0 ? '+' : '') + (d * 100).toFixed(1) + ' pp') + '</td></tr>';
+      }).join('');
+      body = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('evo_champion')) + '</span><span class="gx-ph-extra">' + hist.length + ' ' + esc(t('evo_snapshots')) + '</span></div><table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th class="l">' + esc(t('evo_trend')) + '</th><th>' + esc(t('evo_now')) + '</th><th>Δ</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_evo'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('evo_note')) + '</span>') + body + '</div></div>';
+  }
+
+  // ---- Registro ----
+  function renderRegistry() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.registry === null) {
+      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_registry')) + mvLoading() + '</div></div>';
+      fetch('/api/beta/history', { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.registry = m || { _empty: true }; if (S.view === 'registry') renderRegistry(); });
+      return;
+    }
+    var d = S.registry || {};
+    var insufficient = d.sample_status_code === 'INSUFFICIENT_SAMPLE';
+    var kpi = function (label, v, cls) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div></div>'; };
+    var summary = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' +
+      kpi(t('reg_picks'), d.picks_total != null ? d.picks_total : '—') +
+      kpi(t('reg_settled'), d.settled != null ? d.settled : '—') +
+      kpi(t('reg_winrate'), (insufficient || d.win_rate == null) ? '—' : pct0(d.win_rate)) +
+      kpi(t('reg_sample'), insufficient ? esc(t('reg_insufficient')) : 'OK', insufficient ? 'gx-warn' : 'gx-pos') + '</div>';
+    var rows = (d.picks || []).map(function (p) {
+      var sel = p.outcome_code === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : teamName(p.outcome_code === 'AWAY' ? p.away_team_id : p.home_team_id);
+      var lc = { PUBLISHED: 'lc_pub', EVENT_STARTED: 'lc_started', AWAITING_SETTLEMENT: 'lc_await', SETTLED: 'lc_settled' }[p.lifecycle_code] || 'lc_pub';
+      var rc = p.result_code, rcl = rc === 'WIN' ? 'gx-pos' : rc === 'LOSS' ? 'gx-neg' : 'gx-dim';
+      return '<tr><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(p.outcome_code === 'AWAY' ? p.away_team_id : p.home_team_id) + '</span><div class="gx-teamnames"><b>' + esc(sel) + '</b><span>' + esc(teamName(p.home_team_id) + ' ' + t('vs') + ' ' + teamName(p.away_team_id)) + '</span></div></div></td>' +
+        '<td class="gx-mono">' + odd(p.published_odds) + '</td>' +
+        '<td class="l"><span class="gx-dim" style="font-size:11px">' + esc(t(lc)) + '</span></td>' +
+        '<td class="l"><span class="' + rcl + '" style="font-size:11.5px;font-weight:600">' + esc(t('rc_' + (rc || 'PENDING').toLowerCase())) + '</span></td>' +
+        '<td class="gx-dim" style="font-size:10.5px">' + esc(p.model_label_code === 'CURRENT' ? t('reg_era_current') : t('reg_era_previous')) + '</td></tr>';
+    }).join('');
+    var table = (d.picks || []).length ? '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('reg_history')) + '</span></div><table class="gx-table"><thead><tr><th class="l">Pick</th><th>' + esc(t('reg_odds')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="l">' + esc(t('reg_result')) + '</th><th class="l">' + esc(t('reg_era')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="gx-panel"><div class="gx-empty">' + ic('file-check') + '<b>' + esc(t('reg_empty')) + '</b></div></div>';
+    var note = insufficient ? '<p class="gx-mod-note gx-dim" style="padding:0 2px">' + ic('info-circle') + ' ' + esc(t('reg_insufficient_note')) + '</p>' : '';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_registry')) + summary + table + note + '</div></div>';
+  }
+
+  // ---- Metodología (sin V1/V2 interno) ----
+  function renderMethod() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var sec = function (icn, title, body) { return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic(icn) + esc(title) + '</span></div><div class="gx-mod-body"><p class="gx-method-p">' + esc(body) + '</p></div></div>'; };
+    var blocks = [
+      sec('brain', t('me_gp_t'), t('me_gp_b')),
+      sec('chart-arcs', t('me_base_t'), t('me_base_b')),
+      sec('article', t('me_ctx_t'), t('me_ctx_b')),
+      sec('arrows-left-right', t('me_market_t'), t('me_market_b')),
+      sec('alert-triangle', t('me_unc_t'), t('me_unc_b')),
+      sec('target-arrow', t('me_picks_t'), t('me_picks_b')),
+      sec('ball-football', t('me_goals_t'), t('me_goals_b')),
+      sec('shield-check', t('me_limits_t'), t('me_limits_b'))
+    ].join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:860px;margin:0 auto">' + viewHead(t('nav_method')) + blocks + '</div></div>';
+  }
+
+  // ---- Admin: Observatory de cobertura (§29, solo admin) ----
+  function renderAdmin() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.obs === undefined) {
+      S.obs = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_admin')) + mvLoading() + '</div></div>';
+      fetch('/api/beta/observatory', { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : (x.status === 403 ? { _forbidden: true } : null); }).catch(function () { return null; }).then(function (m) { S.obs = m || { _empty: true }; if (S.view === 'admin') renderAdmin(); });
+      return;
+    }
+    var d = S.obs || {};
+    var body;
+    if (d._forbidden) body = '<div class="gx-panel"><div class="gx-empty">' + ic('lock') + '<b>' + esc(t('adm_forbidden')) + '</b></div></div>';
+    else if (!d.canonical_events) body = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
+    else {
+      var kpi = function (label, v, cls) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div></div>'; };
+      var ce = d.canonical_events || {}, cs = d.context_state_distribution || {}, fr = d.snapshot_freshness || {};
+      var kpis = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' +
+        kpi(t('adm_canonical'), ce.total || 0) + kpi(t('adm_with_eval'), d.with_gp_evaluation || 0, 'gx-pos') +
+        kpi(t('adm_upcoming_eval'), d.upcoming_with_evaluation || 0) + kpi(t('adm_pending'), d.upcoming_pending || 0, (d.upcoming_pending ? 'gx-warn' : '')) + '</div>';
+      var csRows = ['FULL_CONTEXT', 'PARTIAL_CONTEXT', 'BASE_ONLY'].map(function (k) { return '<div class="gx-trust-i"><span class="gx-label">' + esc(k.replace('_', ' ')) + '</span><b class="gx-mono">' + (cs[k] || 0) + '</b></div>'; }).join('');
+      var frRows = [['fresh', 'fresh_data'], ['aging', 'aging_data'], ['stale', 'stale_data']].map(function (x) { return '<div class="gx-trust-i"><span class="gx-label">' + esc(t(x[1])) + '</span><b class="gx-mono">' + (fr[x[0]] || 0) + '</b></div>'; }).join('');
+      body = kpis +
+        '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_ctx_dist')) + '</span></div><div class="gx-trust" style="margin:14px">' + csRows + '</div></div>' +
+        '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_snap_fresh')) + '</span></div><div class="gx-trust" style="margin:14px">' + frRows + '</div></div>' +
+        '<p class="gx-mod-note gx-dim" style="padding:0 2px">' + ic('info-circle') + ' ' + esc(d.note || '') + '</p>';
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin') + ' · ' + t('adm_observatory')) + body + '</div></div>';
+  }
+
   // ---------- lang ----------
-  function setLang(l) { if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l; shell(); render(); if (S.view === 'match') { applyView(); renderMatch(); } else if (S.view === 'matches') { applyView(); renderMatches(); } else if (S.view === 'sim') { applyView(); renderSim(); } }
+  function setLang(l) {
+    if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l;
+    shell(); render();
+    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin };
+    if (rr[S.view]) { applyView(); rr[S.view](); }
+  }
 
   // ---------- boot ----------
   function boot() {
@@ -1173,6 +1454,7 @@
       // flags desde el estado global (si el server los expone) — si no, fallback vacío (los nombres igual van).
       fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
         if (st && st.teams) { S.stTeams = st.teams; st.teams.forEach(function (tm) { if (tm.id && tm.flag) FLAGS[tm.id] = tm.flag; }); }
+        if (st) { S.groups = st.groups || []; S.standings = st.standings || {}; S.knockoutRaw = st.knockout || []; S.history = st.history || []; }
         // puente canónico→fixture + calendario completo (Partidos premium)
         if (st) {
           (st.fixtures || []).forEach(function (f) {
@@ -1191,6 +1473,7 @@
         shell(); load(); loadCanon();
         document.addEventListener('click', function (e) {
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); openMatch(o.getAttribute('data-openmatch')); return; }
+          var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }
           var n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); navTo(n.getAttribute('data-nav')); }
         });
         window.addEventListener('hashchange', onHash); onHash();

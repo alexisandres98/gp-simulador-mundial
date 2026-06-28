@@ -38,6 +38,11 @@ function resolveFlags() {
     picksAutoPublicationRequested: bool(process.env.PICKS_AUTO_PUBLICATION_ENABLED, false),
     // INVARIANTE: V2 experimental nunca alimenta el ensemble oficial.
     valueExperimentalV2: bool(process.env.VALUE_EXPERIMENTAL_V2_ENABLED, false),
+    // Corte 4B (aditivo, ADITIVO/INERTE por defecto): horizonte de evaluación en horas. null = comportamiento
+    // actual (solo eventos con cuota fresca). Para ampliar la cobertura a todos los fixtures canónicos dentro del
+    // horizonte hay que, además, cablear linkedEvents() + ingesta/auto-match (decisión operativa/costo). Hoy SOLO
+    // se expone la config; NO cambia el universo evaluado.
+    evaluationHorizonHours: process.env.GP_INTELLIGENCE_EVALUATION_HORIZON_HOURS != null && process.env.GP_INTELLIGENCE_EVALUATION_HORIZON_HOURS !== '' ? Number(process.env.GP_INTELLIGENCE_EVALUATION_HORIZON_HOURS) : null,
   };
 }
 

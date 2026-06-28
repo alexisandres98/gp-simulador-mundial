@@ -134,7 +134,42 @@ async function historySummary(db) {
   return { settled: settled.rows, shadow_facts: facts.rows };
 }
 
+// Observatory de cobertura (Corte 4 §29). Métricas read-only para admin: cuántos eventos canónicos hay,
+// cuántos con evaluación GP V2, distribución de context_state y frescura de snapshots, finalizados con/sin eval.
+async function coverageObservatory(db) {
+  const safe = async (q, p) => { try { return (await db.query(q, p)).rows; } catch { return []; } };
+  const ce = await safe(`SELECT count(*)::int total,
+      count(*) FILTER (WHERE scheduled_start >= now())::int upcoming,
+      count(*) FILTER (WHERE status='final' OR scheduled_start < now())::int past
+    FROM canonical_events`);
+  const evRows = await safe(`SELECT count(DISTINCT canonical_event_id)::int n FROM value_evaluations WHERE ${OPERATIONAL} AND official_gp_model='V2'`);
+  const upcomingEval = await safe(`SELECT count(DISTINCT v.canonical_event_id)::int n
+      FROM value_evaluations v JOIN canonical_events e ON e.id=v.canonical_event_id
+     WHERE v.${OPERATIONAL} AND v.official_gp_model='V2' AND e.scheduled_start >= now()`);
+  const cs = await safe(`SELECT context_state, count(*)::int n FROM (
+      SELECT DISTINCT ON (canonical_event_id) canonical_event_id, context_state
+        FROM v2_probability_snapshots ORDER BY canonical_event_id, created_at DESC) s GROUP BY 1`);
+  const fr = await safe(`SELECT count(*)::int total,
+      count(*) FILTER (WHERE data_freshness>=0.8)::int fresh,
+      count(*) FILTER (WHERE data_freshness>=0.4 AND data_freshness<0.8)::int aging,
+      count(*) FILTER (WHERE data_freshness<0.4)::int stale
+    FROM (SELECT DISTINCT ON (canonical_event_id) canonical_event_id, data_freshness
+            FROM v2_probability_snapshots ORDER BY canonical_event_id, created_at DESC) s`);
+  const ctxState = {}; cs.forEach(r => { ctxState[String(r.context_state || 'UNKNOWN').toUpperCase()] = Number(r.n); });
+  const c0 = ce[0] || {}, ev = Number((evRows[0] || {}).n || 0);
+  return {
+    canonical_events: { total: Number(c0.total || 0), upcoming: Number(c0.upcoming || 0), past: Number(c0.past || 0) },
+    with_gp_evaluation: ev,
+    upcoming_with_evaluation: Number((upcomingEval[0] || {}).n || 0),
+    upcoming_pending: Math.max(0, Number(c0.upcoming || 0) - Number((upcomingEval[0] || {}).n || 0)),
+    context_state_distribution: ctxState,
+    snapshot_freshness: fr[0] || { total: 0, fresh: 0, aging: 0, stale: 0 },
+    note: 'Cobertura limitada a eventos canónicos con cuota (the_odds_api). Ampliar requiere ingesta/auto-match (operativo).',
+    generated_at: new Date().toISOString(),
+  };
+}
+
 module.exports = {
   upcomingEvents, latestEvalsForEvents, latestSnapshots, observationsForEvent,
-  goalSnapshot, valueEvaluations, picks, pickById, eventById, historySummary,
+  goalSnapshot, valueEvaluations, picks, pickById, eventById, historySummary, coverageObservatory,
 };

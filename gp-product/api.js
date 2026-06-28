@@ -143,6 +143,13 @@ async function handle(req, res, p, user, ctx) {
     return json(res, 200, { items: Array.from(byEvent.values()), count: byEvent.size, generated_at: new Date().toISOString() });
   }
 
+  // GET /api/beta/observatory — métricas de cobertura GP (Corte 4 §29). SOLO admin.
+  if (p === '/api/beta/observatory' && req.method === 'GET') {
+    if (!user.isAdmin) return json(res, 403, { error: 'No autorizado' });
+    const obs = await repo.coverageObservatory(db);
+    return json(res, 200, obs);
+  }
+
   // GET /api/beta/value — lista con filtros (?class=STRONG|LEAN|WATCH|ALL & ?team= & ?book=).
   if (p === '/api/beta/value' && req.method === 'GET') {
     const cls = (url.searchParams.get('class') || 'ACTIONABLE').toUpperCase();

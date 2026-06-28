@@ -37,9 +37,11 @@ const I18N = {
   },
 };
 const STAGES_ES = { R32: '16avos', R16: 'Octavos', QF: 'Cuartos', SF: 'Semifinal', '3RD': '3er puesto', FINAL: 'FINAL', group: 'Grupos' };
+// §16: etiqueta de fase localizada (usa bracket.* para R32..FINAL; group con clave propia). Fallback a STAGES_ES.
+function stageLabel(st) { const k = st === 'group' ? 'stage.group_short' : 'bracket.' + st; const v = I18N.t(k); return v === k ? (STAGES_ES[st] || st) : v; }
 
 const teamOf = id => STATE.teams.find(t => t.id === id);
-const tlabel = id => { const t = teamOf(id); return t ? `${t.flag} ${t.name}` : (id || '—'); };
+const tlabel = id => { const t = teamOf(id); return t ? `${t.flag} ${I18N.teamName(t.id, t.name)}` : (id || '—'); };
 
 async function loadState() {
   const s = await (await fetch('/api/state', { headers: hdrs() })).json();
@@ -81,38 +83,39 @@ function renderTeaser() {
       <span class="track"><span class="fill" style="width:${(t.champion / max * 100).toFixed(0)}%"></span></span>
       <span class="pc">${pct(t.champion)}</span>
     </div>`).join('');
+  const simsStr = STATE.sims.toLocaleString();
   $('#tab-teams').innerHTML = `
     <div class="hero">
-      <div class="hero-eyebrow"><span class="dot on"></span>${STATE.sims.toLocaleString()} TORNEOS SIMULADOS · ACTUALIZADO EN VIVO</div>
-      <h1 class="hero-h1">¿Quién va a ganar el <span class="g">Mundial 2026</span>?</h1>
-      <div class="hero-sub">Nuestro modelo simula el torneo completo ${STATE.sims.toLocaleString()} veces y ajusta las probabilidades con cada gol. Esto es lo que dice hoy.</div>
+      <div class="hero-eyebrow"><span class="dot on"></span>${I18N.t('teaser.eyebrow', { sims: simsStr })}</div>
+      <h1 class="hero-h1">${I18N.t('teaser.headline', { wc: `<span class="g">${I18N.t('teaser.wc')}</span>` })}</h1>
+      <div class="hero-sub">${I18N.t('teaser.sub', { sims: simsStr })}</div>
       <div class="fav-board">
         <div class="fav-lead tilt" onclick="openLogin()">
-          <div class="rk">★ FAVORITO #1</div>
-          <div class="lead-team"><div class="fl">${lead.flag}</div><div class="tn">${lead.name}<small>GRUPO ${lead.group}</small></div></div>
+          <div class="rk">${I18N.t('teaser.favorite_badge')}</div>
+          <div class="lead-team"><div class="fl">${lead.flag}</div><div class="tn">${lead.name}<small>${I18N.t('teaser.group', { group: lead.group })}</small></div></div>
           <div class="lead-big">${(lead.champion * 100).toFixed(1)}<span>%</span></div>
-          <div class="lead-cap">probabilidad de levantar la copa</div>
+          <div class="lead-cap">${I18N.t('teaser.lead_cap')}</div>
         </div>
         <div class="fav-list">${rows}</div>
       </div>
       <div class="hero-trust">
-        <div class="ht"><b>104</b>partidos cubiertos</div>
-        <div class="ht"><b>${STATE.totalTeams}</b>selecciones</div>
-        <div class="ht"><b>2</b>mercados · Polymarket y Kalshi</div>
-        <div class="ht"><b style="color:var(--accent)">EN VIVO</b>se mueve con cada gol</div>
+        <div class="ht"><b>104</b>${I18N.t('teaser.trust_matches')}</div>
+        <div class="ht"><b>${STATE.totalTeams}</b>${I18N.t('teaser.trust_teams')}</div>
+        <div class="ht"><b>2</b>${I18N.t('teaser.trust_markets')}</div>
+        <div class="ht"><b style="color:var(--accent)">${I18N.t('teaser.trust_live')}</b>${I18N.t('teaser.trust_live_sub')}</div>
       </div>
       <div class="hero-cta">
-        <button class="btn" onclick="openLogin()">Crear mi cuenta gratis</button>
-        <span class="muted" style="font-size:12.5px">Sin contraseñas · solo tu email · 30 segundos</span>
+        <button class="btn" onclick="openLogin()">${I18N.t('teaser.cta')}</button>
+        <span class="muted" style="font-size:12.5px">${I18N.t('teaser.cta_micro')}</span>
       </div>
     </div>`;
   ['following', 'alerts', 'groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
     $('#tab-' + t).innerHTML = `<div class="lock">
       <div class="lock-icon">🔒</div>
-      <div class="lock-title">Desbloquea esta sección gratis</div>
-      <div class="lock-sub">Crea tu cuenta para ver probabilidades completas, oportunidades de mercado, simulaciones y alertas en vivo.</div>
-      <button class="btn" onclick="openLogin()">Crear cuenta gratis</button>
-      <div class="lock-micro">Sin contraseña · solo tu email</div></div>`;
+      <div class="lock-title">${I18N.t('teaser.lock_title')}</div>
+      <div class="lock-sub">${I18N.t('teaser.lock_sub')}</div>
+      <button class="btn" onclick="openLogin()">${I18N.t('teaser.lock_cta')}</button>
+      <div class="lock-micro">${I18N.t('teaser.lock_micro')}</div></div>`;
   });
   initTilt();
 }
@@ -126,17 +129,12 @@ function initTilt() {
 // Marcador objetivo: ¿le ganamos al mercado? (solo admin)
 function marketScoreboardHtml(vm) {
   if (!vm || !vm.n) {
-    return `<div class="explain" style="border-left-color:var(--amber)">
-      🆚 <b>Modelo vs Mercado:</b> acumulando… Capturamos la línea de cierre de cada partido desde ahora;
-      el head-to-head aparecerá cuando terminen los próximos partidos con mercado.</div>`;
+    return `<div class="explain" style="border-left-color:var(--amber)">${I18N.t('scoreboard.accruing')}</div>`;
   }
   const winning = vm.modelBrier < vm.marketBrier;
   return `<div class="explain" style="border-left-color:${winning ? 'var(--accent)' : 'var(--red)'}">
-    🆚 <b>Modelo vs Mercado (${vm.n} partidos):</b>
-    nuestro Brier <b>${vm.modelBrier}</b> vs mercado <b>${vm.marketBrier}</b> —
-    ${winning ? '🟢 le estamos GANANDO al mercado' : '🔴 el mercado nos gana'} ·
-    ganamos el partido en ${vm.modelWins}/${vm.n} (Brier más bajo gana).
-    <span class="muted" style="font-size:11px">Esto es la prueba objetiva de si tenemos alpha real.</span></div>`;
+    ${I18N.t('scoreboard.title', { n: vm.n, model: vm.modelBrier, market: vm.marketBrier, verdict: winning ? I18N.t('scoreboard.winning') : I18N.t('scoreboard.losing'), wins: vm.modelWins })}
+    <span class="muted" style="font-size:11px">${I18N.t('scoreboard.alpha_proof')}</span></div>`;
 }
 
 // ---------- ACIERTOS (track record público del modelo) ----------
@@ -148,28 +146,29 @@ async function renderRecord() {
   if (!r.ok) return;
   const d = await r.json();
   const pctW = d.total ? Math.round(d.winners / d.total * 100) : 0;
-  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Aciertos · rendimiento del modelo</h2>
-    <div class="muted" style="font-size:12px">Cada predicción se registra con los datos que el modelo tenía <b>antes</b> del partido. Aciertos y fallos, todo público.</div></div>
+  const recShare = I18N.t('record.share_text', { winners: d.winners, total: d.total, exact: d.exact }).replace(/'/g, "\\'");
+  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">${I18N.t('record.title')}</h2>
+    <div class="muted" style="font-size:12px">${I18N.t('record.subtitle')}</div></div>
     <div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      <div class="bigstat"><div class="lbl">Evaluados</div><div class="val">${d.total}</div></div>
-      <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.total ? pctW + '%' : '—'}</div><div class="muted" style="font-size:11px">${d.winners}/${d.total}</div></div>
-      <div class="bigstat"><div class="lbl">Marcador exacto</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
-      ${d.total ? `<div class="bigstat"><div class="lbl">Brier score</div><div class="val blue">${d.brier}</div><div class="muted" style="font-size:11px">azar = 0.66</div></div>` : ''}
+      <div class="bigstat"><div class="lbl">${I18N.t('record.evaluated')}</div><div class="val">${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">${I18N.t('record.winner_hit')}</div><div class="val pgood">${d.total ? pctW + '%' : '—'}</div><div class="muted" style="font-size:11px">${d.winners}/${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">${I18N.t('record.exact_score')}</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
+      ${d.total ? `<div class="bigstat"><div class="lbl">${I18N.t('record.brier')}</div><div class="val blue">${d.brier}</div><div class="muted" style="font-size:11px">${I18N.t('record.chance_066')}</div></div>` : ''}
     </div>
-    ${d.total ? `<div class="explain" style="border-left-color:var(--blue)">El % de ganador directo no mide toda la calibración. El <b>Brier score</b> mide qué tan buenas fueron las probabilidades asignadas: más bajo es mejor (0 = perfecto, 0.66 = azar a 3 vías).</div>` : ''}
-    <div class="formrow"><button class="cta-sm" onclick="shareOp(event, '⚽ El modelo de GP Simulador va ${d.winners}/${d.total} acertando ganadores del Mundial (${d.exact} marcadores exactos). Míralo en vivo:')">📤 Compartir track record</button></div>
+    ${d.total ? `<div class="explain" style="border-left-color:var(--blue)">${I18N.t('record.brier_explain')}</div>` : ''}
+    <div class="formrow"><button class="cta-sm" onclick="shareOp(event, '${recShare}')">${I18N.t('record.share_btn')}</button></div>
     ${(USER && USER.isAdmin && d.total) ? marketScoreboardHtml(d.vsMarket) : ''}`;
   if (!d.total) {
-    html += '<div class="muted">Los primeros resultados aparecerán al terminar los próximos partidos.</div>';
+    html += `<div class="muted">${I18N.t('record.empty')}</div>`;
   }
   html += '<div class="rec-list">' + d.matches.map(m => {
     const th = teamOf(m.home), ta = teamOf(m.away);
-    const pickLabel = m.predicted === 'home' ? `Gana ${th ? th.name : m.home}` : m.predicted === 'away' ? `Gana ${ta ? ta.name : m.away}` : 'Empate';
+    const pickLabel = m.predicted === 'home' ? I18N.t('record.pick_home', { team: th ? I18N.teamName(th.id, th.name) : m.home }) : m.predicted === 'away' ? I18N.t('record.pick_away', { team: ta ? I18N.teamName(ta.id, ta.name) : m.away }) : I18N.t('record.pick_draw');
     return `<div class="rec-row">
       <span class="rec-dot ${m.correct ? 'ok' : 'no'}"></span>
       <div class="rec-main">
-        <div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ' <span class="exact-tag">EXACTO</span>' : ''}</div>
-        <div class="rec-pred">Modelo: ${pickLabel} (${pct(m.predictedProb)})</div>
+        <div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ` <span class="exact-tag">${I18N.t('record.tag_exact')}</span>` : ''}</div>
+        <div class="rec-pred">${I18N.t('record.model_pred', { pick: pickLabel, prob: pct(m.predictedProb) })}</div>
       </div>
       <span class="rec-date">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
     </div>`;
@@ -183,20 +182,18 @@ async function renderRecord() {
 let PERF_SEG = 'legacy';
 function perfSetSeg(seg) { PERF_SEG = seg; return renderPerformance(); }
 async function renderPerformance() {
-  const C = window.COPY ? COPY.perf : {};
   const seg = PERF_SEG;
   const tabBtn = (id, label) => `<button class="seg-btn ${seg === id ? 'on' : ''}" role="tab" aria-selected="${seg === id}" onclick="perfSetSeg('${id}')">${label}</button>`;
-  let head = `<div style="margin-bottom:12px"><h2 style="margin-bottom:3px">${xe(C.title || 'Rendimiento del modelo')}</h2>
-    <div class="muted" style="font-size:12px">Track record verificable frente a histórico legacy. Las probabilidades son estimaciones de un modelo, no consejo financiero.</div></div>
-    <div class="seg" role="tablist" aria-label="Tipo de registro">${tabBtn('verified', C.verifiedTab || 'Verificable')}${tabBtn('legacy', C.legacyTab || 'Histórico')}</div>
-    <div id="perfSegBody"><div class="du">Cargando…</div></div>`;
+  let head = `<div style="margin-bottom:12px"><h2 style="margin-bottom:3px">${xe(I18N.t('perf.title'))}</h2>
+    <div class="muted" style="font-size:12px">${I18N.t('perf.subtitle')}</div></div>
+    <div class="seg" role="tablist" aria-label="${xe(I18N.t('perf.tablist_aria'))}">${tabBtn('verified', I18N.t('perf.verified_tab'))}${tabBtn('legacy', I18N.t('perf.legacy_tab'))}</div>
+    <div id="perfSegBody"><div class="du">${I18N.t('perf.loading')}</div></div>`;
   $('#tab-record').innerHTML = head;
   if (seg === 'verified') $('#perfSegBody').innerHTML = await perfVerifiedHtml();
   else $('#perfSegBody').innerHTML = await perfLegacyHtml();
 }
 
 async function perfVerifiedHtml() {
-  const C = window.COPY ? COPY.perf : {};
   let sum = null, cal = null;
   try { sum = await fetch('/api/metrics/summary', { headers: hdrs() }).then(x => x.ok ? x.json() : null); } catch (e) { /* noop */ }
   try { cal = await fetch('/api/metrics/calibration', { headers: hdrs() }).then(x => x.ok ? x.json() : null); } catch (e) { /* noop */ }
@@ -205,57 +202,57 @@ async function perfVerifiedHtml() {
   const nMax = Math.max(0, ...['brier_multiclass', 'log_loss', 'accuracy_top1', 'ece'].map(k => (m[k] && m[k].sample_size) || 0));
   // §5: sin señales → empty verificable explícito (no ceros que parezcan resultados)
   if (nMax === 0) {
-    return (window.UIState ? UIState.noData(C.verifiedEmpty) : `<div class="muted">${xe(C.verifiedEmpty || '')}</div>`) +
-      `<div class="muted" style="font-size:11.5px;margin-top:8px">${epoch ? 'Inicio del registro verificable: <b>' + xe(epoch) + '</b>.' : 'El registro verificable se inicia al configurar el verified epoch.'} Las métricas aparecerán cuando se publiquen y liquiden señales verificadas.</div>`;
+    const emptyMsg = I18N.t('perf.verified_empty');
+    return (window.UIState ? UIState.noData(emptyMsg) : `<div class="muted">${xe(emptyMsg)}</div>`) +
+      `<div class="muted" style="font-size:11.5px;margin-top:8px">${epoch ? I18N.t('perf.verified_epoch_start', { date: xe(epoch) }) : I18N.t('perf.verified_epoch_pending')} ${I18N.t('perf.metrics_pending')}</div>`;
   }
   // §7: jerarquía → muestra → Brier → log loss → calibración → vs-mercado → CLV → accuracy (secundaria)
   const mc = (label, mk, help, secondary) => {
     const v = m[mk]; const has = v && v.value != null;
     return `<div class="perf-card ${secondary ? 'sec' : ''}"><div class="perf-l">${xe(label)}</div>
       <div class="perf-v">${has ? (typeof v.value === 'number' ? v.value.toFixed(4) : v.value) : 'N/A'}</div>
-      <div class="perf-h">${has ? 'n=' + (v.sample_size || 0) + ' · ' + xe(help) : 'N/A no es cero — sin muestra suficiente'}</div></div>`;
+      <div class="perf-h">${has ? I18N.t('perf.card_help', { n: (v.sample_size || 0), help: xe(help) }) : I18N.t('perf.na_no_sample')}</div></div>`;
   };
-  let html = `<div class="explain">Registro verificable desde <b>${xe(epoch || '—')}</b> · <b>${nMax}</b> señales oficiales liquidadas. ${xe((sum && sum.copy) || '')}</div>
+  let html = `<div class="explain">${I18N.t('perf.verified_lead', { date: xe(epoch || '—'), n: nMax, copy: xe((sum && sum.copy) || '') })}</div>
     <div class="perf-grid">
-      <div class="perf-card hl"><div class="perf-l">Muestra (señales)</div><div class="perf-v">${nMax}</div><div class="perf-h">tamaño de muestra · base de toda métrica</div></div>
-      ${mc('Brier (1X2)', 'brier_multiclass', 'menor es mejor · Σ(p−y)²')}
-      ${mc('Log loss', 'log_loss', 'menor es mejor · −ln(p)')}
-      ${mc('ECE (calibración)', 'ece', 'menor es mejor · confianza vs realidad')}
+      <div class="perf-card hl"><div class="perf-l">${I18N.t('perf.sample_signals')}</div><div class="perf-v">${nMax}</div><div class="perf-h">${I18N.t('perf.sample_help')}</div></div>
+      ${mc(I18N.t('perf.brier_1x2'), 'brier_multiclass', I18N.t('perf.brier_help'))}
+      ${mc(I18N.t('perf.logloss'), 'log_loss', I18N.t('perf.logloss_help'))}
+      ${mc(I18N.t('perf.ece'), 'ece', I18N.t('perf.ece_help'))}
     </div>`;
-  if (cal && cal.available && cal.bins && cal.bins.length) html += panel('Calibración', 'pronosticado vs observado', calibrationSvg(cal));
-  html += `<div class="perf-grid" style="margin-top:10px">${mc('Accuracy (secundaria)', 'accuracy_top1', C.accuracyCaveat || 'no mide por sí sola la calidad', true)}</div>
-    <div class="explain" style="border-left-color:var(--blue)">${xe(C.accuracyCaveat || '')}</div>
-    <div class="formrow"><button class="cta-sm" onclick="sharePerf('verified', ${nMax})">📤 Compartir rendimiento verificable</button></div>
-    <div class="xo-foot">Metodología ${xe((sum && sum.methodology_version) || 'metrics-1')}. N/A indica que la métrica no es calculable (no es cero). <a href="#" onclick="switchTab('registry');return false">Ver el registro de señales →</a></div>`;
+  if (cal && cal.available && cal.bins && cal.bins.length) html += panel(I18N.t('perf.calibration'), I18N.t('perf.calibration_sub'), calibrationSvg(cal));
+  html += `<div class="perf-grid" style="margin-top:10px">${mc(I18N.t('perf.accuracy_secondary'), 'accuracy_top1', I18N.t('perf.accuracy_caveat'), true)}</div>
+    <div class="explain" style="border-left-color:var(--blue)">${I18N.t('perf.accuracy_caveat')}</div>
+    <div class="formrow"><button class="cta-sm" onclick="sharePerf('verified', ${nMax})">${I18N.t('perf.share_verified')}</button></div>
+    <div class="xo-foot">${I18N.t('perf.methodology_foot', { version: xe((sum && sum.methodology_version) || 'metrics-1') })}</div>`;
   return html;
 }
 
 async function perfLegacyHtml() {
-  const C = window.COPY ? COPY.perf : {};
   let d = null;
   try { d = await fetch('/api/aciertos').then(x => x.ok ? x.json() : null); } catch (e) { /* noop */ }
-  if (!d) return window.UIState ? UIState.error() : '<div class="muted">No se pudo cargar.</div>';
+  if (!d) return window.UIState ? UIState.error() : `<div class="muted">${I18N.t('perf.legacy_load_error')}</div>`;
   const pctW = d.total ? Math.round(d.winners / d.total * 100) : 0;
   // §5: aviso legacy claro arriba
   let html = `<div class="op-state op-warn" role="status"><div class="op-state-ic">⏳</div><div class="op-state-tx">
-    <div class="op-state-t">Histórico anterior al registro verificable</div>
-    <div class="op-state-b">${xe(C.legacyNotice || '')}</div></div></div>`;
+    <div class="op-state-t">${I18N.t('perf.legacy_notice_title')}</div>
+    <div class="op-state-b">${I18N.t('perf.legacy_notice')}</div></div></div>`;
   // §7: Brier primero, "ganador acertado" con caveat (no la cifra dominante única)
   html += `<div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      <div class="bigstat"><div class="lbl">Evaluados</div><div class="val">${d.total}</div></div>
-      ${d.total ? `<div class="bigstat"><div class="lbl">Brier score</div><div class="val blue">${d.brier}</div><div class="muted" style="font-size:11px">${xe(C.lowerIsBetter || 'más bajo es mejor')} · azar 0.66</div></div>` : ''}
-      <div class="bigstat"><div class="lbl">Ganador acertado</div><div class="val pgood">${d.total ? pctW + '%' : '—'}</div><div class="muted" style="font-size:11px">${d.winners}/${d.total}</div></div>
-      <div class="bigstat"><div class="lbl">Marcador exacto</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
+      <div class="bigstat"><div class="lbl">${I18N.t('record.evaluated')}</div><div class="val">${d.total}</div></div>
+      ${d.total ? `<div class="bigstat"><div class="lbl">${I18N.t('record.brier')}</div><div class="val blue">${d.brier}</div><div class="muted" style="font-size:11px">${I18N.t('perf.lower_is_better')} · ${I18N.t('perf.chance_066_inline')}</div></div>` : ''}
+      <div class="bigstat"><div class="lbl">${I18N.t('record.winner_hit')}</div><div class="val pgood">${d.total ? pctW + '%' : '—'}</div><div class="muted" style="font-size:11px">${d.winners}/${d.total}</div></div>
+      <div class="bigstat"><div class="lbl">${I18N.t('record.exact_score')}</div><div class="val" style="color:var(--amber)">${d.exact}</div></div>
     </div>
-    ${d.total ? `<div class="explain" style="border-left-color:var(--blue)">${xe(C.accuracyCaveat || '')}</div>` : ''}
+    ${d.total ? `<div class="explain" style="border-left-color:var(--blue)">${I18N.t('perf.accuracy_caveat')}</div>` : ''}
     ${(d.total && d.vsMarket) ? marketScoreboardV2(d.vsMarket) : ''}
-    <div class="formrow"><button class="cta-sm" onclick="sharePerf('legacy', ${d.total})">📤 Compartir histórico</button></div>`;
+    <div class="formrow"><button class="cta-sm" onclick="sharePerf('legacy', ${d.total})">${I18N.t('perf.share_legacy')}</button></div>`;
   html += '<div class="rec-list">' + d.matches.map(m => {
     const th = teamOf(m.home), ta = teamOf(m.away);
-    const pickLabel = m.predicted === 'home' ? `Gana ${th ? th.name : m.home}` : m.predicted === 'away' ? `Gana ${ta ? ta.name : m.away}` : 'Empate';
+    const pickLabel = m.predicted === 'home' ? I18N.t('record.pick_home', { team: th ? I18N.teamName(th.id, th.name) : m.home }) : m.predicted === 'away' ? I18N.t('record.pick_away', { team: ta ? I18N.teamName(ta.id, ta.name) : m.away }) : I18N.t('record.pick_draw');
     return `<div class="rec-row"><span class="rec-dot ${m.correct ? 'ok' : 'no'}"></span>
-      <div class="rec-main"><div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ' <span class="exact-tag">EXACTO</span>' : ''}</div>
-      <div class="rec-pred">Modelo: ${pickLabel} (${pct(m.predictedProb)})</div></div>
+      <div class="rec-main"><div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ` <span class="exact-tag">${I18N.t('record.tag_exact')}</span>` : ''}</div>
+      <div class="rec-pred">${I18N.t('record.model_pred', { pick: pickLabel, prob: pct(m.predictedProb) })}</div></div>
       <span class="rec-date">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span></div>`;
   }).join('') + '</div>';
   return html;
@@ -263,13 +260,12 @@ async function perfLegacyHtml() {
 
 // §6: marcador modelo-vs-mercado SIN afirmar alpha (cumple la política estadística)
 function marketScoreboardV2(vm) {
-  const C = window.COPY ? COPY.perf : {};
-  if (!vm || !vm.n) return `<div class="explain" style="border-left-color:var(--amber)">🆚 <b>Modelo vs Mercado:</b> acumulando muestra. El head-to-head aparecerá cuando terminen partidos con mercado.</div>`;
+  if (!vm || !vm.n) return `<div class="explain" style="border-left-color:var(--amber)">${I18N.t('perf.vs_market_accruing')}</div>`;
   const marketBeats = vm.marketBrier < vm.modelBrier;
   return `<div class="explain" style="border-left-color:var(--blue)">
-    🆚 <b>Modelo vs Mercado (${vm.n} partidos):</b> Brier modelo <b>${vm.modelBrier}</b> vs mercado <b>${vm.marketBrier}</b> (${xe(C.lowerIsBetter || 'más bajo es mejor')}).
-    ${marketBeats ? '<br><b>' + xe(C.marketBeatsModel || '') + '</b>' : ''}
-    <span class="muted" style="display:block;font-size:11.5px;margin-top:5px">${xe(C.alphaReplacement || '')} ${xe(C.noEdgeYet || '')}</span></div>`;
+    ${I18N.t('perf.vs_market_title', { n: vm.n, model: vm.modelBrier, market: vm.marketBrier, lower: I18N.t('perf.lower_is_better') })}
+    ${marketBeats ? '<br><b>' + I18N.t('perf.market_beats_model') + '</b>' : ''}
+    <span class="muted" style="display:block;font-size:11.5px;margin-top:5px">${I18N.t('perf.alpha_replacement')} ${I18N.t('perf.no_edge_yet')}</span></div>`;
 }
 
 // ---------- Sprint 8.1 §36: METODOLOGÍA (transparencia de definiciones, sin IP privada) ----------
@@ -277,31 +273,32 @@ async function renderMethodology() {
   let epoch = null;
   try { const r = await fetch('/api/metrics/methodology').then(x => x.ok ? x.json() : null); epoch = r && r.verified_epoch; } catch (e) { /* noop */ }
   const def = (t, d) => `<div class="meth-item"><div class="meth-t">${xe(t)}</div><div class="meth-d">${xe(d)}</div></div>`;
+  const epochStr = epoch ? I18N.t('meth.verifiable_epoch', { date: new Date(epoch).toLocaleDateString() }) : '';
   $('#tab-methodology').innerHTML = `
-    <div style="margin-bottom:12px"><h2 style="margin-bottom:3px">Metodología</h2>
-      <div class="muted" style="font-size:12px">Qué significa cada cosa y qué garantías tiene. Transparentes sobre las definiciones; el modelo y las fuentes internas son privados.</div></div>
-    <div class="meth-sec"><h3>Modelo</h3>
-      ${def('GP Intelligence', 'El modelo oficial de GP. Parte de una probabilidad inicial calibrada (Elo → Poisson/Dixon-Coles → 10.000 simulaciones Monte Carlo) y le aplica el contexto del partido (forma, descanso, bajas, solidez). Mostramos la probabilidad inicial, el contexto aplicado y la probabilidad GP final.')}
+    <div style="margin-bottom:12px"><h2 style="margin-bottom:3px">${xe(I18N.t('meth.title'))}</h2>
+      <div class="muted" style="font-size:12px">${xe(I18N.t('meth.subtitle'))}</div></div>
+    <div class="meth-sec"><h3>${xe(I18N.t('meth.sec_model'))}</h3>
+      ${def(I18N.t('meth.gpi_t'), I18N.t('meth.gpi_d'))}
     </div>
-    <div class="meth-sec"><h3>Jerarquía de oportunidades</h3>
-      ${def('Señal de Value', 'Evaluación del Value Engine: PASS (sin value) / WATCH / LEAN / STRONG. Una evaluación NO es una Pick.')}
-      ${def('Candidata a Pick GP', 'Una señal STRONG que cumple los filtros y puede revisarse manualmente. Todavía no es una Pick publicada.')}
-      ${def('Pick GP', 'Señal STRONG revisada y publicada manualmente, registrada de forma inmutable. Mantiene value solo mientras la cuota siga en o por encima del mínimo indicado.')}
-      ${def('Arbitraje ejecutable', 'Discrepancia entre plataformas que, comprando ambos lados, captura una diferencia. Retorno neto estimado, depende de ejecución/fees/settlement. GP no ejecuta operaciones.')}
+    <div class="meth-sec"><h3>${xe(I18N.t('meth.sec_hierarchy'))}</h3>
+      ${def(I18N.t('meth.value_signal_t'), I18N.t('meth.value_signal_d'))}
+      ${def(I18N.t('meth.candidate_t'), I18N.t('meth.candidate_d'))}
+      ${def(I18N.t('meth.pick_t'), I18N.t('meth.pick_d'))}
+      ${def(I18N.t('meth.arb_t'), I18N.t('meth.arb_d'))}
     </div>
-    <div class="meth-sec"><h3>Métricas</h3>
-      ${def('Brier score', 'Calidad de las probabilidades: Σ(p−y)². Más bajo es mejor (0 perfecto, ~0.66 azar a 3 vías).')}
-      ${def('Log loss', 'Penaliza la confianza equivocada: −ln(probabilidad del resultado real). Más bajo es mejor.')}
-      ${def('Calibración (ECE)', 'Cuánto coincide la confianza declarada con la realidad observada. Más bajo es mejor.')}
-      ${def('CLV', 'Closing Line Value: si la predicción capturó valor frente a la línea de cierre. Aparece cuando hay cierre disponible.')}
-      ${def('Retorno teórico', 'Resultado con stake unitario, no ejecutado por GP. No representa una recomendación de stake.')}
+    <div class="meth-sec"><h3>${xe(I18N.t('meth.sec_metrics'))}</h3>
+      ${def(I18N.t('meth.brier_t'), I18N.t('meth.brier_d'))}
+      ${def(I18N.t('meth.logloss_t'), I18N.t('meth.logloss_d'))}
+      ${def(I18N.t('meth.ece_t'), I18N.t('meth.ece_d'))}
+      ${def(I18N.t('meth.clv_t'), I18N.t('meth.clv_d'))}
+      ${def(I18N.t('meth.theoretical_t'), I18N.t('meth.theoretical_d'))}
     </div>
-    <div class="meth-sec"><h3>Track record</h3>
-      ${def('Registro verificable', 'Señales con timestamp, inputs congelados y hash, desde el verified epoch' + (epoch ? ' (' + new Date(epoch).toLocaleDateString() + ')' : '') + '. Es el track record con garantías.')}
-      ${def('Histórico legacy', 'Resultados del sistema anterior al registro. Se conservan por transparencia, pero sin las mismas garantías.')}
-      ${def('Límites del análisis', 'Las probabilidades son estimaciones de un modelo estadístico, no certezas ni consejo financiero. La evidencia de ventaja frente al mercado requiere muestra suficiente y resultados fuera de muestra.')}
+    <div class="meth-sec"><h3>${xe(I18N.t('meth.sec_track'))}</h3>
+      ${def(I18N.t('meth.verifiable_t'), I18N.t('meth.verifiable_d', { epoch: epochStr }))}
+      ${def(I18N.t('meth.legacy_t'), I18N.t('meth.legacy_d'))}
+      ${def(I18N.t('meth.limits_t'), I18N.t('meth.limits_d'))}
     </div>
-    <div class="xo-foot">No publicamos las fuentes internas, los pesos del modelo ni las reglas propietarias. La transparencia es sobre definiciones, no sobre propiedad intelectual.</div>`;
+    <div class="xo-foot">${xe(I18N.t('meth.footer'))}</div>`;
 }
 
 function sharePerf(kind, n) {
@@ -343,14 +340,22 @@ const ICON = {
   picks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v4H4zM4 12h10M4 17h7M16 13l2 2 4-4"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
-const TABS = {
-  arb: 'Oportunidades', matches: 'Partidos', teams: 'Equipos', groups: 'Grupos',
-  following: 'Seguidos', alerts: 'Alertas', bracket: 'Bracket', record: 'Aciertos', evo: 'Evolución', admin: 'Admin',
-  sim: 'Simulador', referidos: 'Invitar', opex: 'Ejecutables', registry: 'Registro', perf: 'Rendimiento', value: 'Value', picks: 'Picks GP', methodology: 'Metodología',
+const TAB_KEYS = {
+  arb: 'nav.opportunities', matches: 'nav.matches', teams: 'nav.teams', groups: 'nav.groups',
+  following: 'nav.following', alerts: 'nav.alerts', bracket: 'nav.bracket', record: 'nav.record', evo: 'nav.evo', admin: 'nav.admin',
+  sim: 'nav.sim', referidos: 'nav.referrals', opex: 'nav.executables', registry: 'nav.registry', perf: 'nav.performance', value: 'nav.value', picks: 'nav.picks_gp', methodology: 'nav.methodology',
 };
+const tabLabel = t => TAB_KEYS[t] ? I18N.t(TAB_KEYS[t]) : t;
 const OUT_NAV = ['teams', 'groups', 'matches', 'bracket', 'arb'];
 const IN_TOPNAV = ['arb', 'matches', 'teams', 'sim', 'groups', 'following', 'bracket', 'record', 'evo'];
 const BOTTOM = ['arb', 'matches', 'teams', 'groups'];
+
+// §16: toggle de idioma global (ES/EN) visible en el header para todas las superficies legacy.
+function langToggleHtml() {
+  const other = I18N.locale === 'en' ? 'es' : 'en';
+  // Reutiliza .icon-btn (estilo existente) para no tocar el CSS; muestra el idioma activo y togglea al otro.
+  return `<button class="icon-btn" style="font-weight:700;font-size:12px" aria-label="${I18N.t('lang.toggle_aria')}" onclick="setLang('${other}')">${I18N.locale.toUpperCase()}</button>`;
+}
 
 function renderHeader() {
   const inApp = !!USER;
@@ -363,22 +368,23 @@ function renderHeader() {
   const valueTab = inApp && USER.valueUi ? ['value'] : [];
   const picksTab = inApp && USER.picksUi ? ['picks'] : [];
   const topItems = inApp ? IN_TOPNAV.concat(execTab).concat(regTab).concat(perfTab).concat(valueTab).concat(picksTab).concat(USER.isAdmin ? ['admin'] : []) : OUT_NAV;
-  $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${TABS[t]}</button>`).join('');
+  $('#topnav').innerHTML = topItems.map(t => `<button data-nav="${t}" onclick="switchTab('${t}')">${tabLabel(t)}</button>`).join('');
   // right side
   if (inApp) {
     const initials = (USER.email || '?').slice(0, 1).toUpperCase();
     $('#hdRight').innerHTML =
       `<span class="live-pill" id="livePill"><span class="lp-dot"></span>LIVE</span>
-       <button class="icon-btn" aria-label="Alertas y notificaciones" onclick="switchTab('alerts')">${ICON.alerts}</button>
-       <button class="avatar-btn" aria-label="Tu cuenta" onclick="toggleAvatarMenu(event)">${initials}</button>`;
+       ${langToggleHtml()}
+       <button class="icon-btn" aria-label="${I18N.t('auth.alerts_aria')}" onclick="switchTab('alerts')">${ICON.alerts}</button>
+       <button class="avatar-btn" aria-label="${I18N.t('auth.account_aria')}" onclick="toggleAvatarMenu(event)">${initials}</button>`;
   } else {
-    $('#hdRight').innerHTML = `<button class="hd-login" onclick="openLogin()">Entrar</button><button class="cta-sm" onclick="openLogin()">Crear cuenta gratis</button>`;
+    $('#hdRight').innerHTML = `${langToggleHtml()}<button class="hd-login" onclick="openLogin()">${I18N.t('auth.login')}</button><button class="cta-sm" onclick="openLogin()">${I18N.t('auth.create_free')}</button>`;
   }
   // bottom nav
   if (inApp) {
     $('#bottomnav').innerHTML = BOTTOM.map(t =>
-      `<button data-nav="${t}" onclick="switchTab('${t}')" aria-label="${TABS[t]}">${ICON[t]}<span>${TABS[t]}</span></button>`).join('')
-      + `<button data-nav="more" onclick="openSheet()" aria-label="Más">${ICON.more}<span>Más</span></button>`;
+      `<button data-nav="${t}" onclick="switchTab('${t}')" aria-label="${tabLabel(t)}">${ICON[t]}<span>${tabLabel(t)}</span></button>`).join('')
+      + `<button data-nav="more" onclick="openSheet()" aria-label="${I18N.t('nav.more')}">${ICON.more}<span>${I18N.t('nav.more')}</span></button>`;
     $('#bottomnav').style.display = ''; // dejar que el CSS (media query) controle la visibilidad
   } else {
     $('#bottomnav').style.display = 'none';
@@ -423,24 +429,24 @@ function toggleAvatarMenu(e) {
   if (e) e.stopPropagation();
   const m = $('#avatarMenu');
   if (m.style.display !== 'none') return closeAvatarMenu();
-  const plan = USER.isAdmin ? 'ADMIN' : 'FREE';
+  const plan = USER.isAdmin ? I18N.t('menu.plan_admin') : I18N.t('menu.plan_free');
   const item = (tab, icon, label) => `<button onclick="switchTab('${tab}')">${ICON[icon]}${label}</button>`;
   const navClean = USER.uiFlags && USER.uiFlags.navigationCleanup;
   // Sprint 8.1 §26: avatar reducido a Cuenta/Preferencias/Privacidad/Logout (sin duplicar todas las herramientas).
   const body = navClean
-    ? `${item('following', 'account', 'Mi cuenta')}
-       ${item('alerts', 'alerts', 'Preferencias y alertas')}
-       ${item('methodology', 'registry', 'Privacidad y metodología')}
-       ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
-       <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`
-    : `${item('sim', 'sim', 'Simula cualquier cruce ⚔️')}
-       ${item('referidos', 'gift', 'Invitar amigos 🎁')}
-       ${item('following', 'account', 'Mis seguidos')}
-       ${item('alerts', 'alerts', 'Alertas y notificaciones')}
-       ${item('record', 'record', 'Aciertos del modelo')}
-       ${item('evo', 'evo', 'Evolución')}
-       ${USER.isAdmin ? item('admin', 'admin', 'Admin') : ''}
-       <button class="danger" onclick="logout()">${ICON.logout}Cerrar sesión</button>`;
+    ? `${item('following', 'account', I18N.t('menu.account'))}
+       ${item('alerts', 'alerts', I18N.t('menu.prefs_alerts'))}
+       ${item('methodology', 'registry', I18N.t('menu.privacy_methodology'))}
+       ${USER.isAdmin ? item('admin', 'admin', I18N.t('menu.admin')) : ''}
+       <button class="danger" onclick="logout()">${ICON.logout}${I18N.t('menu.logout')}</button>`
+    : `${item('sim', 'sim', I18N.t('menu.simulate_cross'))}
+       ${item('referidos', 'gift', I18N.t('menu.invite_friends'))}
+       ${item('following', 'account', I18N.t('menu.my_following'))}
+       ${item('alerts', 'alerts', I18N.t('menu.alerts_notifications'))}
+       ${item('record', 'record', I18N.t('menu.model_record'))}
+       ${item('evo', 'evo', I18N.t('menu.evolution'))}
+       ${USER.isAdmin ? item('admin', 'admin', I18N.t('menu.admin')) : ''}
+       <button class="danger" onclick="logout()">${ICON.logout}${I18N.t('menu.logout')}</button>`;
   m.innerHTML = `
     <div class="avmenu-head">
       <div class="av">${(USER.email || '?').slice(0, 1).toUpperCase()}</div>
@@ -460,22 +466,22 @@ function openSheet() {
     // Sprint 8.1 §26-28,§35-36: agrupado (Herramientas / Mi GP / Transparencia / Administración). Sin card "Salir"
     // (el logout vive en el avatar). Transparencia surface: Rendimiento, Registro, Metodología.
     const group = (title, cells) => `<div class="sheet-group"><div class="sheet-gt">${title}</div><div class="sheet-grid">${cells.join('')}</div></div>`;
-    html = group('Herramientas', [cell('sim', 'sim', 'Simular'), cell('bracket', 'bracket', 'Bracket'), cell('evo', 'evo', 'Evolución')])
-      + group('Mi GP', [cell('following', 'following', 'Seguidos'), cell('alerts', 'alerts', 'Alertas'), cell('referidos', 'gift', 'Invitar')])
-      + group('Transparencia', [cell('record', 'perf', 'Rendimiento'), cell('registry', 'registry', 'Registro'), cell('methodology', 'registry', 'Metodología')])
-      + (USER && USER.isAdmin ? group('Administración', [cell('admin', 'admin', 'Admin')]) : '');
+    html = group(I18N.t('sheet.tools'), [cell('sim', 'sim', I18N.t('sheet.simulate')), cell('bracket', 'bracket', I18N.t('sheet.bracket')), cell('evo', 'evo', I18N.t('sheet.evolution'))])
+      + group(I18N.t('sheet.my_gp'), [cell('following', 'following', I18N.t('sheet.following')), cell('alerts', 'alerts', I18N.t('sheet.alerts')), cell('referidos', 'gift', I18N.t('sheet.invite'))])
+      + group(I18N.t('sheet.transparency'), [cell('record', 'perf', I18N.t('sheet.performance')), cell('registry', 'registry', I18N.t('sheet.registry')), cell('methodology', 'registry', I18N.t('sheet.methodology'))])
+      + (USER && USER.isAdmin ? group(I18N.t('sheet.administration'), [cell('admin', 'admin', I18N.t('sheet.admin'))]) : '');
   } else {
     html = '<div class="sheet-grid">';
-    html += `<button onclick="switchTab('sim')">${ICON.sim}<span>Simular</span></button>`;
-    html += `<button onclick="switchTab('following')">${ICON.following}<span>Seguidos</span></button>`;
-    html += `<button onclick="switchTab('alerts')">${ICON.alerts}<span>Alertas</span></button>`;
-    html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>Bracket</span></button>`;
-    html += `<button onclick="switchTab('record')">${ICON.record}<span>Aciertos</span></button>`;
-    html += `<button onclick="switchTab('evo')">${ICON.evo}<span>Evolución</span></button>`;
-    html += `<button onclick="switchTab('referidos')">${ICON.gift}<span>Invitar</span></button>`;
-    if (USER && USER.isAdmin) html += `<button onclick="switchTab('admin')">${ICON.admin}<span>Admin</span></button>`;
-    html += `<button onclick="toggleAvatarMenu()">${ICON.account}<span>Cuenta</span></button>`;
-    html += `<button class="danger" onclick="logout()">${ICON.logout}<span>Salir</span></button>`;
+    html += `<button onclick="switchTab('sim')">${ICON.sim}<span>${I18N.t('sheet.simulate')}</span></button>`;
+    html += `<button onclick="switchTab('following')">${ICON.following}<span>${I18N.t('sheet.following')}</span></button>`;
+    html += `<button onclick="switchTab('alerts')">${ICON.alerts}<span>${I18N.t('sheet.alerts')}</span></button>`;
+    html += `<button onclick="switchTab('bracket')">${ICON.bracket}<span>${I18N.t('sheet.bracket')}</span></button>`;
+    html += `<button onclick="switchTab('record')">${ICON.record}<span>${I18N.t('nav.record')}</span></button>`;
+    html += `<button onclick="switchTab('evo')">${ICON.evo}<span>${I18N.t('sheet.evolution')}</span></button>`;
+    html += `<button onclick="switchTab('referidos')">${ICON.gift}<span>${I18N.t('sheet.invite')}</span></button>`;
+    if (USER && USER.isAdmin) html += `<button onclick="switchTab('admin')">${ICON.admin}<span>${I18N.t('sheet.admin')}</span></button>`;
+    html += `<button onclick="toggleAvatarMenu()">${ICON.account}<span>${I18N.t('sheet.account')}</span></button>`;
+    html += `<button class="danger" onclick="logout()">${ICON.logout}<span>${I18N.t('sheet.exit')}</span></button>`;
     html += '</div>';
   }
   $('#sheetBody').innerHTML = html;
@@ -500,14 +506,14 @@ function mutedTeams() { return (USER && USER.alertPrefs && USER.alertPrefs.muted
 function renderFollowing() {
   if (!USER) return; // en teaser ya está el candado
   const favs = USER.favorites || [];
-  let html = `<div class="arb-head"><div><h2 style="margin-bottom:3px">Seguidos</h2>
-    <div class="muted" style="font-size:12px">${favs.length} equipo${favs.length === 1 ? '' : 's'} seguido${favs.length === 1 ? '' : 's'} · alertas de partidos y cambios de probabilidad</div></div>
-    <button class="cta-sm" onclick="switchTab('teams')">+ Seguir equipo</button></div>`;
+  let html = `<div class="arb-head"><div><h2 style="margin-bottom:3px">${I18N.t('following.title')}</h2>
+    <div class="muted" style="font-size:12px">${I18N.t(favs.length === 1 ? 'following.subtitle.one' : 'following.subtitle.other', { n: favs.length })}</div></div>
+    <button class="cta-sm" onclick="switchTab('teams')">${I18N.t('following.add_team')}</button></div>`;
   if (!favs.length) {
     html += `<div class="lock"><div class="lock-icon">★</div>
-      <div class="lock-title">Todavía no sigues equipos</div>
-      <div class="lock-sub">Sigue selecciones para recibir alertas de partidos, resultados y cambios de probabilidad.</div>
-      <button class="btn" onclick="switchTab('teams')">Explorar equipos</button></div>`;
+      <div class="lock-title">${I18N.t('following.empty_title')}</div>
+      <div class="lock-sub">${I18N.t('following.empty_sub')}</div>
+      <button class="btn" onclick="switchTab('teams')">${I18N.t('following.explore')}</button></div>`;
     $('#tab-following').innerHTML = html;
     return;
   }
@@ -520,32 +526,34 @@ function renderFollowing() {
     const ch = m && m.polymarket ? m.polymarket.change24h : null;
     const navClean = USER.uiFlags && USER.uiFlags.navigationCleanup;
     const opp = nm ? teamOf(nm.home === t.id ? nm.away : nm.home) : null;
+    const oppNm = opp ? I18N.teamName(opp.id, opp.name) : '—';
+    const tNm = I18N.teamName(t.id, t.name);
     // §25: con el flag, meta a DOS líneas (sin truncar) con hora local del usuario; sin flag, una línea como hoy.
     let metaHtml;
     if (navClean) {
       metaHtml = nm
-        ? `<div class="fc-meta fc-meta2" onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer"><span class="fc-next">Próximo: ${opp ? opp.name : '—'}</span><span class="fc-when">${fmtKickoffLocal(nm)}</span></div>`
-        : `<div class="fc-meta"><span class="muted">Sin próximo partido programado</span></div>`;
+        ? `<div class="fc-meta fc-meta2" onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer"><span class="fc-next">${I18N.t('following.next_prefix', { opp: oppNm })}</span><span class="fc-when">${fmtKickoffLocal(nm)}</span></div>`
+        : `<div class="fc-meta"><span class="muted">${I18N.t('following.no_next')}</span></div>`;
     } else {
-      const meta = nm ? `Próximo · vs ${opp ? opp.name : '—'} · ${fmtKickoff(nm)}` : 'Sin próximo partido programado';
+      const meta = nm ? I18N.t('following.next_inline', { opp: oppNm, when: fmtKickoff(nm) }) : I18N.t('following.no_next');
       metaHtml = `<div class="fc-meta">${nm ? `<span onclick="event.stopPropagation();openMatchPage('${nm.id}')" style="cursor:pointer">${meta} →</span>` : meta}</div>`;
     }
     const isMuted = muted.includes(t.id);
     return `<div class="follow-card">
       <span class="fc-flag" style="cursor:pointer" onclick="openTeamPage('${t.id}')">${t.flag}</span>
       <div class="fc-main" style="cursor:pointer" onclick="openTeamPage('${t.id}')">
-        <div class="fc-name">${t.name}</div>
+        <div class="fc-name">${tNm}</div>
         ${metaHtml}
       </div>
       <div class="fc-prob">
         <div class="fc-pc">${pct(t.sim.champion)}</div>
-        <div class="fc-chg">${ch != null ? chgBadge(ch) : '<span class="muted" style="font-size:11px">campeón</span>'}</div>
+        <div class="fc-chg">${ch != null ? chgBadge(ch) : `<span class="muted" style="font-size:11px">${I18N.t('following.champion')}</span>`}</div>
       </div>
-      <button class="fc-bell ${isMuted ? '' : 'on'}" onclick="toggleMute('${t.id}')" aria-label="${isMuted ? 'Activar' : 'Silenciar'} alertas de ${t.name}">${ICON.alerts}</button>
-      <button class="fc-x" onclick="toggleFav('${t.id}')" aria-label="Dejar de seguir ${t.name}">✕</button>
+      <button class="fc-bell ${isMuted ? '' : 'on'}" onclick="toggleMute('${t.id}')" aria-label="${I18N.t(isMuted ? 'following.unmute_aria' : 'following.mute_aria', { team: tNm })}">${ICON.alerts}</button>
+      <button class="fc-x" onclick="toggleFav('${t.id}')" aria-label="${I18N.t('following.unfollow_aria', { team: tNm })}">✕</button>
     </div>`;
   }).join('') + '</div>';
-  html += `<div class="muted" style="font-size:12px;margin-top:14px;text-align:center">Configura qué eventos y canales recibir en <a onclick="switchTab('alerts')" style="color:var(--accent);cursor:pointer;font-weight:600">Alertas</a>.</div>`;
+  html += `<div class="muted" style="font-size:12px;margin-top:14px;text-align:center">${I18N.t('following.config_note', { link: `<a onclick="switchTab('alerts')" style="color:var(--accent);cursor:pointer;font-weight:600">${I18N.t('following.config_link')}</a>` })}</div>`;
   $('#tab-following').innerHTML = html;
 }
 
@@ -555,43 +563,50 @@ async function toggleMute(teamId) {
 }
 
 // ---------- ALERTAS Y NOTIFICACIONES ----------
+// §16: labels/descr vía claves i18n (alert.<k>.t / .d). El 5º elemento (default-on) se preserva.
 const ALERT_EVENTS = [
-  ['nextMatch', '📅', 'Próximo partido', 'Recibe una alerta antes del próximo partido'],
-  ['matchStart', '▶', 'Inicio de partido', 'Al comenzar el partido'],
-  ['goal', '⚽', 'Gol', 'Cada vez que marque un equipo seguido'],
-  ['result', '🏁', 'Resultado final', 'Cuando finalice el partido', true],
-  ['qualify', '🏆', 'Clasificación / eliminación', 'Cambios importantes en la tabla'],
-  ['probSwing', '📈', 'Cambio fuerte de probabilidad', 'Variaciones significativas en el modelo'],
-  ['valueOpp', '◎', 'Nueva oportunidad de valor', 'Cuando el modelo detecta value según tu perfil'],
-  ['arb', '◆', 'Arbitraje puro detectado', 'Cuando Polymarket y Kalshi se contradicen'],
+  ['nextMatch', '📅'],
+  ['matchStart', '▶'],
+  ['goal', '⚽'],
+  ['result', '🏁', true],
+  ['qualify', '🏆'],
+  ['probSwing', '📈'],
+  ['valueOpp', '◎'],
+  ['arb', '◆'],
 ];
 const ALERT_CHANNELS = [
-  ['email', '✉', 'Email', false],
-  ['telegram', '✈', 'Telegram', true],
-  ['push', '🔔', 'Push', true],
+  ['email', '✉', false],
+  ['telegram', '✈', true],
+  ['push', '🔔', true],
 ];
 function evOn(k) { const e = (USER.alertPrefs && USER.alertPrefs.events) || {}; return e[k] !== false; }
 function chOn(k) { const c = (USER.alertPrefs && USER.alertPrefs.channels) || {}; return k === 'email' ? c.email !== false : c[k] === true; }
 function renderAlerts() {
   if (!USER) return;
-  let html = `<div style="margin-bottom:6px"><h2 style="margin-bottom:3px">Alertas</h2>
-    <div class="muted" style="font-size:12px">Configura cuándo y cómo quieres recibir notificaciones de tus equipos seguidos.</div></div>`;
-  html += `<div class="sec-head"><h3>Eventos</h3></div><div class="alert-group">` +
-    ALERT_EVENTS.map(([k, ic, title, desc]) => `
+  let html = `<div style="margin-bottom:6px"><h2 style="margin-bottom:3px">${I18N.t('alerts.title')}</h2>
+    <div class="muted" style="font-size:12px">${I18N.t('alerts.subtitle')}</div></div>`;
+  html += `<div class="sec-head"><h3>${I18N.t('alerts.events')}</h3></div><div class="alert-group">` +
+    ALERT_EVENTS.map(([k, ic]) => {
+      const title = I18N.t('alert.' + k + '.t'), desc = I18N.t('alert.' + k + '.d');
+      return `
       <div class="alert-row">
         <span class="alert-ic">${ic}</span>
         <div class="alert-txt"><div class="alert-t">${title}</div><div class="alert-d">${desc}</div></div>
         <button class="toggle ${evOn(k) ? 'on' : ''}" onclick="toggleEvent('${k}')" aria-label="${title}"><span class="knob"></span></button>
-      </div>`).join('') + '</div>';
-  html += `<div class="sec-head"><h3>Canales de notificación</h3></div>
-    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Elige dónde quieres recibir tus alertas.</div><div class="alert-group">` +
-    ALERT_CHANNELS.map(([k, ic, title, soon]) => `
+      </div>`;
+    }).join('') + '</div>';
+  html += `<div class="sec-head"><h3>${I18N.t('alerts.channels')}</h3></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">${I18N.t('alerts.channels_sub')}</div><div class="alert-group">` +
+    ALERT_CHANNELS.map(([k, ic, soon]) => {
+      const title = I18N.t('channel.' + k);
+      return `
       <div class="alert-row ${soon ? 'soon' : ''}">
         <span class="alert-ic">${ic}</span>
-        <div class="alert-txt"><div class="alert-t">${title} ${soon ? '<span class="soon-tag">PRÓXIMAMENTE</span>' : ''}</div><div class="alert-d">${k === 'email' ? USER.email : 'Disponible pronto'}</div></div>
+        <div class="alert-txt"><div class="alert-t">${title} ${soon ? `<span class="soon-tag">${I18N.t('alerts.soon_tag')}</span>` : ''}</div><div class="alert-d">${k === 'email' ? USER.email : I18N.t('alerts.available_soon')}</div></div>
         <button class="toggle ${chOn(k) ? 'on' : ''}" ${soon ? 'disabled' : ''} onclick="toggleChannel('${k}')" aria-label="${title}"><span class="knob"></span></button>
-      </div>`).join('') + '</div>';
-  html += `<div class="muted" style="font-size:11.5px;margin-top:16px">Las alertas se envían para tus equipos seguidos. Gestiona qué equipos sigues en <a onclick="switchTab('following')" style="color:var(--accent);cursor:pointer;font-weight:600">Seguidos</a>.</div>`;
+      </div>`;
+    }).join('') + '</div>';
+  html += `<div class="muted" style="font-size:11.5px;margin-top:16px">${I18N.t('alerts.footer', { link: `<a onclick="switchTab('following')" style="color:var(--accent);cursor:pointer;font-weight:600">${I18N.t('alerts.footer_link')}</a>` })}</div>`;
   $('#tab-alerts').innerHTML = html;
 }
 async function toggleEvent(k) {
@@ -612,24 +627,24 @@ function renderTeams() {
     (favs.includes(b.id) - favs.includes(a.id)) || b.sim.champion - a.sim.champion);
   const max = Math.max(...teams.map(t => t.sim.champion));
   $('#tab-teams').innerHTML = `
-    <h2>Probabilidad de ganar la Copa del Mundo · ${STATE.sims.toLocaleString()} torneos simulados</h2>
-    <input id="teamSearch" class="searchbox" type="search" inputmode="search" placeholder="🔍 Busca tu selección (ej. España)…" oninput="filterTeams(this.value)" autocomplete="off">
-    <div id="teamNoRes" class="muted" style="display:none;padding:10px 2px">Sin resultados — prueba con otro nombre.</div>
-    <div class="simcard" onclick="switchTab('sim')"><span class="sc-ic">⚔️</span><div class="sc-tx"><div class="sc-t">Simula cualquier cruce</div><div class="sc-s">Enfrenta a tu selección contra quien quieras</div></div><span class="sc-go">→</span></div>
+    <h2>${I18N.t('teams.title', { n: STATE.sims.toLocaleString() })}</h2>
+    <input id="teamSearch" class="searchbox" type="search" inputmode="search" placeholder="${I18N.t('teams.search_ph')}" oninput="filterTeams(this.value)" autocomplete="off">
+    <div id="teamNoRes" class="muted" style="display:none;padding:10px 2px">${I18N.t('teams.no_results')}</div>
+    <div class="simcard" onclick="switchTab('sim')"><span class="sc-ic">⚔️</span><div class="sc-tx"><div class="sc-t">${I18N.t('teams.sim_cross_t')}</div><div class="sc-s">${I18N.t('teams.sim_cross_s')}</div></div><span class="sc-go">→</span></div>
     <div class="teamgrid" id="teamGrid">` + teams.map(t => `
     <div class="tcard" data-name="${(t.name + ' ' + t.en + ' ' + (t.aliases || []).join(' ')).toLowerCase()}" onclick="openTeam('${t.id}')">
       <div class="trow">
         <span style="font-size:20px">${t.flag}</span>
-        <span class="tname">${t.name}</span>
+        <span class="tname">${I18N.teamName(t.id, t.name)}</span>
         ${favs.includes(t.id) ? '<span class="fav">★</span>' : ''}
-        <span class="telo">ELO ${t.currentElo}${t.eloDelta ? ` <span class="${t.eloDelta > 0 ? 'delta-up' : 'delta-down'}">${t.eloDelta > 0 ? '+' : ''}${t.eloDelta}</span>` : ''}<br>GRUPO ${t.group}${t.host ? ' · LOCAL' : ''}</span>
+        <span class="telo">ELO ${t.currentElo}${t.eloDelta ? ` <span class="${t.eloDelta > 0 ? 'delta-up' : 'delta-down'}">${t.eloDelta > 0 ? '+' : ''}${t.eloDelta}</span>` : ''}<br>${I18N.t('teams.group_label')} ${t.group}${t.host ? ' · ' + I18N.t('teams.host') : ''}</span>
       </div>
       <div class="champ">${pct(t.sim.champion)}</div>
       <div class="bar"><div style="width:${(t.sim.champion / max * 100).toFixed(1)}%"></div></div>
       <div class="pcts">
-        <span>Final ${pct(t.sim.reachFinal)}</span>
-        <span>Semis ${pct(t.sim.reachSF)}</span>
-        <span>Elim. grupos <span class="${t.sim.outInGroups > .5 ? 'pbad' : ''}">${pct(t.sim.outInGroups)}</span></span>
+        <span>${I18N.t('teams.final', { p: pct(t.sim.reachFinal) })}</span>
+        <span>${I18N.t('teams.semis', { p: pct(t.sim.reachSF) })}</span>
+        <span>${I18N.t('teams.out_groups', { p: `<span class="${t.sim.outInGroups > .5 ? 'pbad' : ''}">${pct(t.sim.outInGroups)}</span>` })}</span>
       </div>
     </div>`).join('') + '</div>';
 }
@@ -658,7 +673,7 @@ function gpGradeCls(label) {
   return ({ STRONG: 'g-strong', LEAN: 'g-lean', SLIGHT: 'g-slight', WATCH: 'g-slight', PASS: 'g-pass', PURE_ARB: 'g-arb' })[label] || 'g-pass';
 }
 function gpLabelTxt(label) { return label === 'PURE_ARB' ? 'PURE ARB' : label; }
-function formLetter(r) { return ({ W: 'V', D: 'E', L: 'D' })[r] || r; } // V/E/D en español
+function formLetter(r) { const k = 'formletter.' + r; const v = I18N.t(k); return v === k ? r : v; } // V/E/D (es) · W/D/L (en)
 function formChips(results) {
   if (!results || !results.length) return '<span class="muted">—</span>';
   return results.map(r => `<span class="fchip f-${(r || '').toLowerCase()}">${formLetter(r)}</span>`).join('');
@@ -684,14 +699,14 @@ function pitchHtml(l) {
   return `<div class="pitch">${rows.map(row).join('')}</div>`;
 }
 function pStatusBadge(st) {
-  const m = { available: ['ok', 'Disponible'], injured: ['bad', 'Lesión'], suspended: ['bad', 'Suspendido'], doubt: ['warn', 'Duda'], unknown: ['', '—'] };
-  const [cls, lbl] = m[st] || m.unknown;
-  return `<span class="pstatus ${cls}">${lbl}</span>`;
+  const m = { available: ['ok', 'pstatus.available'], injured: ['bad', 'pstatus.injured'], suspended: ['bad', 'pstatus.suspended'], doubt: ['warn', 'pstatus.doubt'], unknown: ['', null] };
+  const [cls, key] = m[st] || m.unknown;
+  return `<span class="pstatus ${cls}">${key ? I18N.t(key) : '—'}</span>`;
 }
 function injuryBadge(st) {
-  const m = { injured: ['bad', '✚ Lesión'], suspended: ['bad', '⊘ Suspendido'], doubt: ['warn', '? Duda'], available: ['ok', 'Disponible'], unknown: ['', '—'] };
-  const [cls, lbl] = m[st] || m.unknown;
-  return `<span class="pstatus ${cls}">${lbl}</span>`;
+  const m = { injured: ['bad', 'pstatus.injured_x'], suspended: ['bad', 'pstatus.suspended_x'], doubt: ['warn', 'pstatus.doubt_q'], available: ['ok', 'pstatus.available'], unknown: ['', null] };
+  const [cls, key] = m[st] || m.unknown;
+  return `<span class="pstatus ${cls}">${key ? I18N.t(key) : '—'}</span>`;
 }
 function dShort(iso) { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString([], { day: 'numeric', month: 'short' }); }
 function dLong(iso) { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
@@ -719,7 +734,7 @@ async function openMatchPage(id) {
   if (!USER) { openLogin(); return; }
   const c = currentTab(); if (c !== 'match' && c !== 'team') detailReturnTab = c;
   openDetailTab('match');
-  $('#tab-match').innerHTML = detailHead('Partido') + '<div class="muted" style="padding:34px 0;text-align:center">Cargando partido…</div>';
+  $('#tab-match').innerHTML = detailHead(I18N.t('mpage.title')) + `<div class="muted" style="padding:34px 0;text-align:center">${I18N.t('mpage.loading')}</div>`;
   try {
     const r = await fetch('/api/match/' + encodeURIComponent(id), { headers: hdrs() });
     if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
@@ -727,7 +742,7 @@ async function openMatchPage(id) {
     renderMatchDetail(CUR_MATCH);
     // partido en vivo → auto-refresco de marcador/eventos/stats cada 25s
     if (CUR_MATCH.status === 'live') detailTimer = setInterval(() => refreshMatch(CUR_MATCH.id), 25000);
-  } catch { $('#tab-match').innerHTML = detailHead('Partido') + du('No se pudo cargar el partido. Intenta de nuevo.'); }
+  } catch { $('#tab-match').innerHTML = detailHead(I18N.t('mpage.title')) + du(I18N.t('mpage.load_failed')); }
 }
 async function refreshMatch(id) {
   if (currentTab() !== 'match' || !CUR_MATCH || CUR_MATCH.id !== id) { clearDetailTimer(); return; }
@@ -746,31 +761,32 @@ function renderMatchDetail(d) {
   const th = d.homeTeam, ta = d.awayTeam, mp = d.modelProbabilities, sc = d.score;
   const followsHome = th.id && (USER.favorites || []).includes(th.id);
   const followsAway = ta.id && (USER.favorites || []).includes(ta.id);
+  const thNm = th.id ? I18N.teamName(th.id, th.name) : th.name, taNm = ta.id ? I18N.teamName(ta.id, ta.name) : ta.name;
   const statusChip = d.status === 'live'
-    ? `<span class="livepill on">● EN VIVO${d.minute ? " " + d.minute + "'" : ''}</span>`
-    : d.status === 'final' ? '<span class="dchip">FINAL</span>'
+    ? `<span class="livepill on">${I18N.t('mpage.live')}${d.minute ? " " + d.minute + "'" : ''}</span>`
+    : d.status === 'final' ? `<span class="dchip">${I18N.t('mpage.final')}</span>`
       : `<span class="dchip">${dLong(d.date)}</span>`;
-  const center = (d.status === 'live' || d.status === 'final') && sc ? `<div class="mh-score">${sc.home} <span>-</span> ${sc.away}</div>` : '<div class="mh-vs">VS</div>';
+  const center = (d.status === 'live' || d.status === 'final') && sc ? `<div class="mh-score">${sc.home} <span>-</span> ${sc.away}</div>` : `<div class="mh-vs">${I18N.t('mpage.vs')}</div>`;
 
   // Hero
-  let html = detailHead((d.stageLabel ? d.stageLabel : 'Partido') + (d.group ? ' · Grupo ' + d.group : ''));
+  let html = detailHead((d.stageLabel ? d.stageLabel : I18N.t('mpage.title')) + (d.group ? ' · ' + I18N.t('mpage.group_prefix', { g: d.group }) : ''));
   html += `<div class="mh">
     <div class="mh-side" onclick="${th.id ? `openTeamPage('${th.id}')` : ''}">
-      <span class="mh-flag">${th.flag}</span><span class="mh-name">${th.name}</span></div>
+      <span class="mh-flag">${th.flag}</span><span class="mh-name">${thNm}</span></div>
     <div class="mh-mid">${statusChip}${center}</div>
     <div class="mh-side right" onclick="${ta.id ? `openTeamPage('${ta.id}')` : ''}">
-      <span class="mh-flag">${ta.flag}</span><span class="mh-name">${ta.name}</span></div>
+      <span class="mh-flag">${ta.flag}</span><span class="mh-name">${taNm}</span></div>
   </div>`;
   if (mp) {
     html += `<div class="mh-probs">
-      <div class="mhp"><span class="mhp-l">Modelo</span><span class="mhp-v blue">${pctD(mp.homeWin, 1)} · ${pctD(mp.draw, 1)} · ${pctD(mp.awayWin, 1)}</span></div>`;
+      <div class="mhp"><span class="mhp-l">${I18N.t('mpage.model')}</span><span class="mhp-v blue">${pctD(mp.homeWin, 1)} · ${pctD(mp.draw, 1)} · ${pctD(mp.awayWin, 1)}</span></div>`;
     const pm = (d.marketPrices || []);
     const ph = pm.find(x => x.side === 'home'), pd = pm.find(x => x.side === 'draw'), pa = pm.find(x => x.side === 'away');
-    if (ph || pa) html += `<div class="mhp"><span class="mhp-l">Mercado</span><span class="mhp-v">${ph ? cents(ph.price) : '—'} · ${pd ? cents(pd.price) : '—'} · ${pa ? cents(pa.price) : '—'}</span></div>`;
-    html += `<div class="mhp"><span class="mhp-l">xG proyectado</span><span class="mhp-v">${mp.xgHome != null ? mp.xgHome.toFixed(2) : '—'} – ${mp.xgAway != null ? mp.xgAway.toFixed(2) : '—'} · marcador prob. ${mp.likelyScore || '—'}</span></div>`;
+    if (ph || pa) html += `<div class="mhp"><span class="mhp-l">${I18N.t('mpage.market')}</span><span class="mhp-v">${ph ? cents(ph.price) : '—'} · ${pd ? cents(pd.price) : '—'} · ${pa ? cents(pa.price) : '—'}</span></div>`;
+    html += `<div class="mhp"><span class="mhp-l">${I18N.t('mpage.xg_projected')}</span><span class="mhp-v">${mp.xgHome != null ? mp.xgHome.toFixed(2) : '—'} – ${mp.xgAway != null ? mp.xgAway.toFixed(2) : '—'} · ${I18N.t('mpage.likely_score_suffix', { score: mp.likelyScore || '—' })}</span></div>`;
     html += `</div>`;
-  } else html += du('Modelo no disponible para este partido (equipos por definir).');
-  if (followsHome || followsAway) html += `<div class="follownote">★ Sigues a ${followsHome ? th.name : ''}${followsHome && followsAway ? ' y ' : ''}${followsAway ? ta.name : ''}</div>`;
+  } else html += du(I18N.t('mpage.no_model'));
+  if (followsHome || followsAway) html += `<div class="follownote">${I18N.t('mpage.follow_note', { teams: `${followsHome ? thNm : ''}${followsHome && followsAway ? I18N.t('mpage.follow_and') : ''}${followsAway ? taNm : ''}` })}</div>`;
 
   // GP Take
   html += matchGpTakeHtml(d.gpTake);
@@ -787,7 +803,7 @@ function renderMatchDetail(d) {
   // News / injuries
   html += matchNewsHtml(d);
 
-  html += `<div class="disc">Las probabilidades son estimaciones de un modelo estadístico. No es consejo financiero ni recomendación de apuesta.</div>`;
+  html += `<div class="disc">${I18N.t('mpage.disclaimer')}</div>`;
   html += providerStatusHtml(d.providerStatus);
   $('#tab-match').innerHTML = html;
 }
@@ -797,11 +813,11 @@ function panel(title, sub, body) {
 }
 
 function matchGpTakeHtml(g) {
-  if (!g) return panel('GP Take', '', du('Sin lectura disponible todavía.'));
-  return panel('GP Take', '',
+  if (!g) return panel(I18N.t('mpage.gp_take'), '', du(I18N.t('mpage.gp_take_empty')));
+  return panel(I18N.t('mpage.gp_take'), '',
     `<div class="gptbox">
       <div class="gpt-top"><span class="grade ${gpGradeCls(g.label)}">${gpLabelTxt(g.label)}</span>
-        <span class="gpt-conf">Confianza: ${g.confidence}</span>${g.risk ? `<span class="gpt-risk">Riesgo: ${g.risk}</span>` : ''}</div>
+        <span class="gpt-conf">${I18N.t('mpage.confidence', { v: g.confidence })}</span>${g.risk ? `<span class="gpt-risk">${I18N.t('mpage.risk', { v: g.risk })}</span>` : ''}</div>
       <div class="gpt-title">${g.title}</div>
       <div class="gpt-sum">${g.summary}</div>
       ${(g.drivers || []).length ? `<ul class="gpt-drivers">${g.drivers.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
@@ -809,20 +825,20 @@ function matchGpTakeHtml(g) {
 }
 
 function marketAnglesHtml(angles) {
-  if (!angles || !angles.length) return panel('Ángulos de mercado', '', du('No hay ángulos disponibles para este evento.'));
+  if (!angles || !angles.length) return panel(I18N.t('mpage.market_angles'), '', du(I18N.t('mpage.no_angles')));
   const rows = angles.map(a => `
     <div class="angle">
       <div class="angle-top"><span class="grade sm ${gpGradeCls(a.grade)}">${gpLabelTxt(a.grade)}</span><span class="angle-mkt">${a.market}</span>
         ${a.edge ? `<span class="angle-edge">+${pctD(a.edge, 1)}</span>` : ''}</div>
       <div class="angle-pick">${a.pick}</div>
-      <div class="angle-line">Modelo <b class="blue">${pctD(a.modelProb, 0)}</b>${a.marketPrice != null ? ` · Mercado <b>${cents(a.marketPrice)}</b>` : ''}${a.venue ? ` · ${a.venue}` : ''}</div>
+      <div class="angle-line">${I18N.t('mpage.angle_model')} <b class="blue">${pctD(a.modelProb, 0)}</b>${a.marketPrice != null ? ` · ${I18N.t('mpage.angle_market')} <b>${cents(a.marketPrice)}</b>` : ''}${a.venue ? ` · ${a.venue}` : ''}</div>
       <div class="angle-note">${a.note}</div>
     </div>`).join('');
-  return panel('Ángulos de mercado', angles.length + '', rows);
+  return panel(I18N.t('mpage.market_angles'), angles.length + '', rows);
 }
 
 function liveEventsHtml(d) {
-  if (d.status === 'scheduled') return panel('Eventos', '', du('Los eventos aparecerán cuando comience el partido.'));
+  if (d.status === 'scheduled') return panel(I18N.t('mpage.events'), '', du(I18N.t('mpage.events_scheduled')));
   let body = '';
   const ev = d.events || [];
   if (ev.length) {
@@ -831,84 +847,86 @@ function liveEventsHtml(d) {
       <div class="tl-row ${e.side || ''}">
         <span class="tl-min">${e.minute != null ? e.minute + "'" : ''}</span>
         <span class="tl-ic">${icon(e.type)}</span>
-        <span class="tl-txt">${e.player || ''}${e.assist ? ` <span class="muted">(asist. ${e.assist})</span>` : ''}${e.detail && e.type === 'other' ? ' ' + e.detail : ''}</span>
+        <span class="tl-txt">${e.player || ''}${e.assist ? ` <span class="muted">(${I18N.t('mpage.assist', { player: e.assist })})</span>` : ''}${e.detail && e.type === 'other' ? ' ' + e.detail : ''}</span>
       </div>`).join('') + '</div>';
-  } else body += du('Sin eventos cargados todavía.');
+  } else body += du(I18N.t('mpage.no_events'));
   // stats
   const st = d.statistics;
   if (st && (st.home || st.away)) {
-    const keys = [['possession', 'Posesión'], ['shots', 'Tiros'], ['shotsOnTarget', 'Al arco'], ['corners', 'Córners'], ['fouls', 'Faltas'], ['offsides', 'Fueras de juego'], ['yellowCards', 'Amarillas'], ['redCards', 'Rojas'], ['xg', 'xG']];
-    const rows = keys.filter(([k]) => (st.home && st.home[k] != null) || (st.away && st.away[k] != null)).map(([k, lbl]) =>
-      `<div class="stat-row"><span class="st-h">${st.home && st.home[k] != null ? st.home[k] : '—'}</span><span class="st-l">${lbl}</span><span class="st-a">${st.away && st.away[k] != null ? st.away[k] : '—'}</span></div>`).join('');
-    if (rows) body += `<div class="stats-head"><span>${d.homeTeam.flag}</span><span class="muted">Estadísticas</span><span>${d.awayTeam.flag}</span></div>` + rows;
-  } else if (d.status === 'live') body += du('Stats disponibles cuando avance el partido.');
-  return panel('Eventos y estadísticas', d.status === 'live' ? 'EN VIVO' : 'FINAL', body);
+    const keys = ['possession', 'shots', 'shotsOnTarget', 'corners', 'fouls', 'offsides', 'yellowCards', 'redCards', 'xg'];
+    const rows = keys.filter(k => (st.home && st.home[k] != null) || (st.away && st.away[k] != null)).map(k =>
+      `<div class="stat-row"><span class="st-h">${st.home && st.home[k] != null ? st.home[k] : '—'}</span><span class="st-l">${I18N.t('stat.' + k)}</span><span class="st-a">${st.away && st.away[k] != null ? st.away[k] : '—'}</span></div>`).join('');
+    if (rows) body += `<div class="stats-head"><span>${d.homeTeam.flag}</span><span class="muted">${I18N.t('mpage.statistics')}</span><span>${d.awayTeam.flag}</span></div>` + rows;
+  } else if (d.status === 'live') body += du(I18N.t('mpage.stats_soon'));
+  return panel(I18N.t('mpage.events_stats'), d.status === 'live' ? I18N.t('mpage.live').replace('● ', '') : I18N.t('mpage.final'), body);
 }
 
 function lineupTeamHtml(side, l, team) {
-  if (!l) return `<div class="lu-col"><div class="lu-team">${team.flag} ${team.name}</div>${du('Las alineaciones suelen confirmarse 30-60 min antes.')}</div>`;
-  const tag = l.confirmed ? '<span class="lu-tag ok">CONFIRMADA</span>' : '<span class="lu-tag">PROBABLE</span>';
+  const tNm = team.id ? I18N.teamName(team.id, team.name) : team.name;
+  if (!l) return `<div class="lu-col"><div class="lu-team">${team.flag} ${tNm}</div>${du(I18N.t('mpage.lineups_note_short'))}</div>`;
+  const tag = l.confirmed ? `<span class="lu-tag ok">${I18N.t('mpage.confirmed')}</span>` : `<span class="lu-tag">${I18N.t('mpage.probable')}</span>`;
   const pitch = pitchHtml(l);
   const players = (l.startXI || []).map(p => `<div class="lu-p"><span class="lu-n">${p.number != null ? p.number : '·'}</span><span class="lu-name">${p.name}</span><span class="lu-pos">${p.position || ''}</span></div>`).join('');
   return `<div class="lu-col">
-    <div class="lu-team">${team.flag} ${team.name} ${tag}</div>
-    <div class="lu-form">${l.formation ? 'Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>
-    ${pitch || players || du('XI pendiente.')}
+    <div class="lu-team">${team.flag} ${tNm} ${tag}</div>
+    <div class="lu-form">${l.formation ? I18N.t('mpage.formation', { f: l.formation }) : ''}${l.coach ? ' · ' + I18N.t('mpage.coach', { coach: l.coach }) : ''}</div>
+    ${pitch || players || du(I18N.t('mpage.xi_pending'))}
   </div>`;
 }
 function lineupsHtml(d) {
   const lu = d.lineups || {};
-  if (!lu.home && !lu.away) return panel('Alineaciones', '', du('Las alineaciones suelen confirmarse 30-60 minutos antes del partido.'));
-  return panel('Alineaciones', '', `<div class="lu-grid">${lineupTeamHtml('home', lu.home, d.homeTeam)}${lineupTeamHtml('away', lu.away, d.awayTeam)}</div>`);
+  if (!lu.home && !lu.away) return panel(I18N.t('mpage.lineups'), '', du(I18N.t('mpage.lineups_note')));
+  return panel(I18N.t('mpage.lineups'), '', `<div class="lu-grid">${lineupTeamHtml('home', lu.home, d.homeTeam)}${lineupTeamHtml('away', lu.away, d.awayTeam)}</div>`);
 }
 
 function formMiniHtml(f, team) {
-  if (!f) return `<div class="form-col"><div class="form-team">${team.flag} ${team.name}</div>${du('Forma pendiente de actualización.')}</div>`;
+  const tNm = team.id ? I18N.teamName(team.id, team.name) : team.name;
+  if (!f) return `<div class="form-col"><div class="form-team">${team.flag} ${tNm}</div>${du(I18N.t('mpage.form_pending'))}</div>`;
   return `<div class="form-col">
-    <div class="form-team">${team.flag} ${team.name}</div>
+    <div class="form-team">${team.flag} ${tNm}</div>
     <div class="form-chips">${formChips(f.results)}</div>
     <div class="form-stats">
-      <span>GF <b>${f.goalsFor}</b></span><span>GC <b>${f.goalsAgainst}</b></span>
-      <span>Vallas <b>${f.cleanSheets}</b></span><span>Racha <b>${f.streak || '—'}</b></span>
+      <span>${I18N.t('form.gf')} <b>${f.goalsFor}</b></span><span>${I18N.t('form.gc')} <b>${f.goalsAgainst}</b></span>
+      <span>${I18N.t('form.clean_sheets')} <b>${f.cleanSheets}</b></span><span>${I18N.t('form.streak')} <b>${f.streak || '—'}</b></span>
     </div></div>`;
 }
 function matchFormHtml(rf, th, ta) {
   rf = rf || {};
-  if (!rf.home && !rf.away) return panel('Forma reciente', '', du('Forma reciente pendiente de actualización.'));
-  return panel('Forma reciente', 'últimos 5', `<div class="form-grid">${formMiniHtml(rf.home, th)}${formMiniHtml(rf.away, ta)}</div>`);
+  if (!rf.home && !rf.away) return panel(I18N.t('mpage.form'), '', du(I18N.t('mpage.form_pending')));
+  return panel(I18N.t('mpage.form'), I18N.t('mpage.form_last5'), `<div class="form-grid">${formMiniHtml(rf.home, th)}${formMiniHtml(rf.away, ta)}</div>`);
 }
 
 function matchMarketsHtml(d, mp) {
   let body = '';
-  if (mp) body += `<div class="mk-row"><span class="mk-l blue">Modelo 1X2</span><span class="mk-v">${pctD(mp.homeWin, 1)} · ${pctD(mp.draw, 1)} · ${pctD(mp.awayWin, 1)}</span></div>`;
+  if (mp) body += `<div class="mk-row"><span class="mk-l blue">${I18N.t('mpage.model_1x2')}</span><span class="mk-v">${pctD(mp.homeWin, 1)} · ${pctD(mp.draw, 1)} · ${pctD(mp.awayWin, 1)}</span></div>`;
   const pm = d.marketPrices || [];
   if (pm.length) {
     pm.forEach(o => { body += `<div class="mk-row"><span class="mk-l">${venueChip(o.venue)} ${o.side}</span><span class="mk-v">${cents(o.price)}${o.url ? ` <a class="mlink" href="${o.url}" target="_blank" rel="noopener">↗</a>` : ''}</span></div>`; });
-  } else body += du('No hay mercado de predicción activo para este evento.');
+  } else body += du(I18N.t('mpage.no_market'));
   if (d.odds && d.odds.length) {
     const o = d.odds[0];
-    body += `<div class="mk-row"><span class="mk-l">Cuotas (${o.book})</span><span class="mk-v">${o.home || '—'} · ${o.draw || '—'} · ${o.away || '—'}</span></div>`;
+    body += `<div class="mk-row"><span class="mk-l">${I18N.t('mpage.odds_book', { book: o.book })}</span><span class="mk-v">${o.home || '—'} · ${o.draw || '—'} · ${o.away || '—'}</span></div>`;
   }
-  if (d.eventUrl) body += `<div class="formrow" style="margin-top:10px"><a class="venue-btn v-poly" href="${d.eventUrl}" target="_blank" rel="noopener">Abrir mercado en Polymarket ↗</a></div>`;
-  return panel('Modelo · Mercado · Cuotas', '', body);
+  if (d.eventUrl) body += `<div class="formrow" style="margin-top:10px"><a class="venue-btn v-poly" href="${d.eventUrl}" target="_blank" rel="noopener">${I18N.t('mpage.open_polymarket')}</a></div>`;
+  return panel(I18N.t('mpage.model_market_odds'), '', body);
 }
 
 function matchNewsHtml(d) {
   const inj = d.injuries || [], news = d.news || [];
-  if (!inj.length && !news.length) return panel('Lesiones y noticias', '', du('No hay lesiones o noticias relevantes cargadas.'));
+  if (!inj.length && !news.length) return panel(I18N.t('mpage.news_injuries'), '', du(I18N.t('mpage.no_news_injuries')));
   let body = '';
   if (inj.length) body += '<div class="inj-list">' + inj.map(i => `<div class="inj-row">${injuryBadge(i.status)}<span class="inj-p">${i.player}</span><span class="muted">${i.team || ''} ${i.reason ? '· ' + i.reason : ''}</span></div>`).join('') + '</div>';
   if (news.length) body += '<div class="news-list">' + news.map(n => `<a class="news-row" ${n.url ? `href="${n.url}" target="_blank" rel="noopener"` : ''}><div class="news-t">${n.title}</div><div class="news-m muted">${n.source}${n.published ? ' · ' + dShort(n.published) : ''}</div></a>`).join('') + '</div>';
-  return panel('Lesiones y noticias', '', body);
+  return panel(I18N.t('mpage.news_injuries'), '', body);
 }
 
 function providerStatusHtml(ps) {
   if (!ps) return '';
   const parts = [];
-  parts.push(ps.usedApiFootball ? 'API-Football ✓' : (ps.apiFootball === 'sin key' ? 'API-Football (sin key)' : 'API-Football —'));
-  if (ps.usedEspnFallback) parts.push('ESPN fallback');
-  if (ps.usedManualFallback) parts.push('manual');
-  return `<div class="provstat">Fuentes: ${parts.join(' · ')} · act. ${dLong(ps.lastUpdated)}</div>`;
+  parts.push(ps.usedApiFootball ? I18N.t('mpage.api_football_ok') : (ps.apiFootball === 'sin key' ? I18N.t('mpage.api_football_nokey') : I18N.t('mpage.api_football_none')));
+  if (ps.usedEspnFallback) parts.push(I18N.t('mpage.espn_fallback'));
+  if (ps.usedManualFallback) parts.push(I18N.t('mpage.manual'));
+  return `<div class="provstat">${I18N.t('mpage.sources', { parts: parts.join(' · '), time: dLong(ps.lastUpdated) })}</div>`;
 }
 
 // =================== PÁGINA DE EQUIPO ===================
@@ -917,13 +935,13 @@ async function openTeamPage(id) {
   const c = currentTab(); if (c !== 'match' && c !== 'team') detailReturnTab = c;
   teamTab = 'resumen';
   openDetailTab('team');
-  $('#tab-team').innerHTML = detailHead('Equipo') + '<div class="muted" style="padding:34px 0;text-align:center">Cargando equipo…</div>';
+  $('#tab-team').innerHTML = detailHead(I18N.t('tpage.title')) + `<div class="muted" style="padding:34px 0;text-align:center">${I18N.t('tpage.loading')}</div>`;
   try {
     const r = await fetch('/api/teamdetail/' + id, { headers: hdrs() });
     if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
     CUR_TEAM = await r.json();
     renderTeamDetail(CUR_TEAM);
-  } catch { $('#tab-team').innerHTML = detailHead('Equipo') + du('No se pudo cargar el equipo. Intenta de nuevo.'); }
+  } catch { $('#tab-team').innerHTML = detailHead(I18N.t('tpage.title')) + du(I18N.t('tpage.load_failed')); }
 }
 // compat: tarjetas existentes (Equipos, Grupos, Evolución, tablas) siguen llamando openTeam()
 function openTeam(id) { return openTeamPage(id); }
@@ -932,20 +950,21 @@ function renderTeamDetail(d) {
   const followed = (USER.favorites || []).includes(d.id);
   const deltaTxt = d.eloDelta ? ` <span class="${d.eloDelta > 0 ? 'delta-up' : 'delta-down'}">${d.eloDelta > 0 ? '+' : ''}${d.eloDelta}</span>` : '';
   const nm = d.nextMatch;
-  let hero = detailHead('Equipo');
+  const dNm = d.id ? I18N.teamName(d.id, d.name) : d.name;
+  let hero = detailHead(I18N.t('tpage.title'));
   hero += `<div class="th">
     <span class="th-flag">${d.flag}</span>
     <div class="th-main">
-      <div class="th-name">${d.name}</div>
-      <div class="th-meta">Grupo ${d.group} · Elo ${d.elo}${deltaTxt} · Rank #${d.rank}${d.host ? ' · LOCAL' : ''}</div>
-      <div class="th-champ">${pctD(d.championProbability, 1)} <span>campeón</span></div>
+      <div class="th-name">${dNm}</div>
+      <div class="th-meta">${I18N.t('tpage.meta', { group: d.group, elo: d.elo + deltaTxt, rank: d.rank })}${d.host ? ' · ' + I18N.t('tpage.host') : ''}</div>
+      <div class="th-champ">${pctD(d.championProbability, 1)} <span>${I18N.t('tpage.champion')}</span></div>
     </div>
-    <button class="${followed ? 'btn-ghost on' : 'btn'}" onclick="toggleFavFromTeam('${d.id}')">${followed ? '★ Siguiendo' : '☆ Seguir'}</button>
+    <button class="${followed ? 'btn-ghost on' : 'btn'}" onclick="toggleFavFromTeam('${d.id}')">${followed ? I18N.t('tpage.following') : I18N.t('tpage.follow')}</button>
   </div>`;
-  if (nm) hero += `<div class="th-next" onclick="openMatchPage('${nm.id}')">Próximo · ${nm.home ? 'vs' : '@'} ${nm.opponent.flag} ${nm.opponent.name} · ${dLong(nm.datetime)} →</div>`;
+  if (nm) { const oppNm = nm.opponent.id ? I18N.teamName(nm.opponent.id, nm.opponent.name) : nm.opponent.name; hero += `<div class="th-next" onclick="openMatchPage('${nm.id}')">${I18N.t(nm.home ? 'tpage.next_vs' : 'tpage.next_at', { opp: nm.opponent.flag + ' ' + oppNm, when: dLong(nm.datetime) })}</div>`; }
 
-  const tabs = [['resumen', 'Resumen'], ['plantilla', 'Plantilla'], ['forma', 'Forma'], ['resultados', 'Resultados'], ['mercados', 'Mercados'], ['noticias', 'Noticias']];
-  const tabbar = `<div class="dtabs" id="teamTabs">${tabs.map(([k, l]) => `<button class="dtab ${k === teamTab ? 'on' : ''}" data-t="${k}" onclick="switchTeamTab('${k}')">${l}</button>`).join('')}</div>`;
+  const tabs = ['resumen', 'plantilla', 'forma', 'resultados', 'mercados', 'noticias'];
+  const tabbar = `<div class="dtabs" id="teamTabs">${tabs.map(k => `<button class="dtab ${k === teamTab ? 'on' : ''}" data-t="${k}" onclick="switchTeamTab('${k}')">${I18N.t('tpage.tab_' + k)}</button>`).join('')}</div>`;
   $('#tab-team').innerHTML = hero + tabbar + '<div id="teamPanel"></div>';
   switchTeamTab(teamTab);
 }
@@ -960,7 +979,7 @@ async function toggleFavFromTeam(id) {
 }
 
 function teamPanelHtml(d, tab) {
-  if (!d) return du('Sin datos.');
+  if (!d) return du(I18N.t('tpage.no_data'));
   if (tab === 'resumen') return teamResumenHtml(d);
   if (tab === 'plantilla') return teamSquadHtml(d);
   if (tab === 'forma') return teamFormHtml(d);
@@ -971,113 +990,114 @@ function teamPanelHtml(d, tab) {
 }
 
 function teamResumenHtml(d) {
-  const probs = [['championProbability', 'Campeón'], ['finalProbability', 'Final'], ['semifinalsProbability', 'Semis'], ['quarterfinalsProbability', 'Cuartos'], ['advanceProbability', 'Avanzar'], ['groupWinProbability', 'Gana grupo'], ['outInGroupsProbability', 'Elim. grupos']];
-  let body = '<div class="prob-grid">' + probs.map(([k, l]) =>
-    `<div class="prob-cell"><div class="prob-l">${l}</div><div class="prob-v ${k === 'outInGroupsProbability' && d[k] > .3 ? 'pbad' : ''}">${pctD(d[k], 1)}</div></div>`).join('') + '</div>';
-  body += `<div class="modelread"><div class="mr-h">MODEL READ</div><div class="mr-b">${d.modelRead}</div>`;
+  const probs = [['championProbability', 'tprob.champion'], ['finalProbability', 'tprob.final'], ['semifinalsProbability', 'tprob.semis'], ['quarterfinalsProbability', 'tprob.quarters'], ['advanceProbability', 'tprob.advance'], ['groupWinProbability', 'tprob.group_win'], ['outInGroupsProbability', 'tprob.out_groups']];
+  let body = '<div class="prob-grid">' + probs.map(([k, lk]) =>
+    `<div class="prob-cell"><div class="prob-l">${I18N.t(lk)}</div><div class="prob-v ${k === 'outInGroupsProbability' && d[k] > .3 ? 'pbad' : ''}">${pctD(d[k], 1)}</div></div>`).join('') + '</div>';
+  body += `<div class="modelread"><div class="mr-h">${I18N.t('tpage.model_read')}</div><div class="mr-b">${d.modelRead}</div>`;
   if (d.keyDrivers && d.keyDrivers.length) body += `<ul class="mr-drivers">${d.keyDrivers.map(x => `<li>${x}</li>`).join('')}</ul>`;
   body += `</div>`;
   if (d.likelyOpponents && d.likelyOpponents.length) {
-    body += `<div class="dsub">Cruces más probables en 16avos</div><div class="opp-list">` +
-      d.likelyOpponents.map(o => `<button class="opp" onclick="openTeamPage('${o.id}')">${o.flag} ${o.name} <span class="muted">${pctD(o.pct, 0)}</span></button>`).join('') + '</div>';
+    body += `<div class="dsub">${I18N.t('tpage.likely_opps')}</div><div class="opp-list">` +
+      d.likelyOpponents.map(o => `<button class="opp" onclick="openTeamPage('${o.id}')">${o.flag} ${o.id ? I18N.teamName(o.id, o.name) : o.name} <span class="muted">${pctD(o.pct, 0)}</span></button>`).join('') + '</div>';
   }
-  let out = panel('Resumen del modelo', `${(d.sims || 0).toLocaleString()} torneos`, body);
+  let out = panel(I18N.t('tpage.model_summary'), I18N.t('tpage.tournaments', { n: (d.sims || 0).toLocaleString() }), body);
   // caminos simulados (conserva la riqueza del modal anterior)
   if (d.samples && d.samples.length) {
     const runs = d.samples.slice(0, 6).map((run, i) => `<div class="simrun">#${i + 1} ${run.map(m => {
       const o = teamOf(m.vs);
-      return `<span title="${STAGES_ES[m.stage] || m.stage}">${o ? o.flag : ''} ${m.score}${m.pen ? ' (pen)' : ''}</span>`;
+      return `<span title="${stageLabel(m.stage)}">${o ? o.flag : ''} ${m.score}${m.pen ? ' (pen)' : ''}</span>`;
     }).join(' · ')}</div>`).join('');
-    out += panel('Caminos simulados al título', d.counts ? d.counts.champion + ' títulos' : '', runs);
+    out += panel(I18N.t('tpage.title_paths'), d.counts ? I18N.t('tpage.titles_count', { n: d.counts.champion }) : '', runs);
   }
-  if (d.explanation) out += panel('Lectura completa', '', `<div class="explain">${d.explanation}</div>`);
+  if (d.explanation) out += panel(I18N.t('tpage.full_read'), '', `<div class="explain">${d.explanation}</div>`);
   return out;
 }
 
 function teamSquadHtml(d) {
   let body = '';
   if (d.keyPlayers && d.keyPlayers.length) {
-    body += '<div class="dsub">Jugadores clave</div><div class="sq-list">' + d.keyPlayers.map(playerRow).join('') + '</div>';
+    body += `<div class="dsub">${I18N.t('tpage.key_players')}</div><div class="sq-list">` + d.keyPlayers.map(playerRow).join('') + '</div>';
   }
   if (d.squad && d.squad.length) {
-    body += '<div class="dsub">Plantilla</div><div class="sq-list">' + d.squad.map(playerRow).join('') + '</div>';
+    body += `<div class="dsub">${I18N.t('tpage.squad')}</div><div class="sq-list">` + d.squad.map(playerRow).join('') + '</div>';
   } else if (!d.keyPlayers || !d.keyPlayers.length) {
-    body += du('Plantilla pendiente de actualización.');
+    body += du(I18N.t('tpage.squad_pending'));
   } else {
-    body += du('Plantilla completa pendiente de actualización.');
+    body += du(I18N.t('tpage.squad_full_pending'));
   }
-  let out = panel('Plantilla', d.squad && d.squad.length ? d.squad.length + ' jug.' : '', body);
+  let out = panel(I18N.t('tpage.squad'), d.squad && d.squad.length ? I18N.t('tpage.players_count', { n: d.squad.length }) : '', body);
   if (d.projectedLineup) out += projectedLineupHtml(d.projectedLineup, d);
   return out;
 }
 function playerRow(p) {
   return `<div class="sq-p"><span class="sq-n">${p.number != null ? p.number : '·'}</span>
     <span class="sq-name">${p.name}</span>
-    <span class="sq-pos">${p.position || ''}${p.club ? ' · ' + p.club : ''}${p.age ? ' · ' + p.age + 'a' : ''}</span>
+    <span class="sq-pos">${p.position || ''}${p.club ? ' · ' + p.club : ''}${p.age ? ' · ' + I18N.t('tpage.age_suffix', { age: p.age }) : ''}</span>
     ${p.status && p.status !== 'available' ? pStatusBadge(p.status) : ''}
     ${p.note ? `<span class="sq-note muted">${p.note}</span>` : ''}</div>`;
 }
 function projectedLineupHtml(l, d) {
-  const tag = l.confirmed ? '<span class="lu-tag ok">CONFIRMADA</span>' : '<span class="lu-tag">PROBABLE</span>';
+  const tag = l.confirmed ? `<span class="lu-tag ok">${I18N.t('mpage.confirmed')}</span>` : `<span class="lu-tag">${I18N.t('mpage.probable')}</span>`;
   const pitch = pitchHtml(l);
   const players = (l.startXI || []).map(p => `<div class="lu-p"><span class="lu-n">${p.number != null ? p.number : '·'}</span><span class="lu-name">${p.name}</span><span class="lu-pos">${p.position || ''}</span></div>`).join('');
-  const body = `<div class="lu-form">${tag}${l.formation ? ' · Formación ' + l.formation : ''}${l.coach ? ' · DT ' + l.coach : ''}</div>${pitch || players || du('XI probable pendiente.')}`;
-  return panel('Alineación probable', l.formation || '', body);
+  const body = `<div class="lu-form">${tag}${l.formation ? ' · ' + I18N.t('mpage.formation', { f: l.formation }) : ''}${l.coach ? ' · ' + I18N.t('mpage.coach', { coach: l.coach }) : ''}</div>${pitch || players || du(I18N.t('tpage.xi_probable_pending'))}`;
+  return panel(I18N.t('tpage.projected_lineup'), l.formation || '', body);
 }
 
 function teamFormHtml(d) {
   const f = d.recentForm;
-  if (!f) return panel('Forma reciente', '', du('Forma reciente pendiente de actualización.'));
+  if (!f) return panel(I18N.t('mpage.form'), '', du(I18N.t('mpage.form_pending')));
   let body = `<div class="form-chips big">${formChips(f.results)}</div>
     <div class="form-stats wide">
-      <span>Pts <b>${f.points}</b></span><span>PJ <b>${f.played}</b></span>
-      <span>GF <b>${f.goalsFor}</b></span><span>GC <b>${f.goalsAgainst}</b></span>
-      <span>Vallas <b>${f.cleanSheets}</b></span>
-      <span>Prom. GF <b>${f.avgFor}</b></span><span>Prom. GC <b>${f.avgAgainst}</b></span>
+      <span>${I18N.t('form.pts')} <b>${f.points}</b></span><span>${I18N.t('form.played')} <b>${f.played}</b></span>
+      <span>${I18N.t('form.gf')} <b>${f.goalsFor}</b></span><span>${I18N.t('form.gc')} <b>${f.goalsAgainst}</b></span>
+      <span>${I18N.t('form.clean_sheets')} <b>${f.cleanSheets}</b></span>
+      <span>${I18N.t('form.avg_for')} <b>${f.avgFor}</b></span><span>${I18N.t('form.avg_against')} <b>${f.avgAgainst}</b></span>
     </div>`;
-  if (f.last && f.last.length) body += '<div class="dsub">Últimos partidos</div>' + f.last.map(m =>
-    `<div class="res-row"><span class="fchip f-${(m.result || '').toLowerCase()}">${formLetter(m.result)}</span><span class="res-opp">${m.home ? 'vs' : '@'} ${m.opponent || '—'}</span><span class="res-sc">${m.score}</span><span class="muted">${dShort(m.date)}</span></div>`).join('');
-  return panel('Forma reciente', '', body);
+  if (f.last && f.last.length) body += `<div class="dsub">${I18N.t('tpage.last_matches')}</div>` + f.last.map(m =>
+    `<div class="res-row"><span class="fchip f-${(m.result || '').toLowerCase()}">${formLetter(m.result)}</span><span class="res-opp">${m.home ? I18N.t('matches.vs') : '@'} ${m.opponent || '—'}</span><span class="res-sc">${m.score}</span><span class="muted">${dShort(m.date)}</span></div>`).join('');
+  return panel(I18N.t('mpage.form'), '', body);
 }
 
 function teamResultsHtml(d) {
   let body = '';
-  if (d.nextMatch) body += `<div class="dsub">Próximo partido</div><div class="res-row clk" onclick="openMatchPage('${d.nextMatch.id}')"><span class="res-opp">${d.nextMatch.home ? 'vs' : '@'} ${d.nextMatch.opponent.flag} ${d.nextMatch.opponent.name}</span><span class="muted">${dLong(d.nextMatch.datetime)} →</span></div>`;
+  if (d.nextMatch) { const oppNm = d.nextMatch.opponent.id ? I18N.teamName(d.nextMatch.opponent.id, d.nextMatch.opponent.name) : d.nextMatch.opponent.name; body += `<div class="dsub">${I18N.t('tpage.next_match')}</div><div class="res-row clk" onclick="openMatchPage('${d.nextMatch.id}')"><span class="res-opp">${d.nextMatch.home ? I18N.t('matches.vs') : '@'} ${d.nextMatch.opponent.flag} ${oppNm}</span><span class="muted">${dLong(d.nextMatch.datetime)} →</span></div>`; }
   const res = d.results || [];
   if (res.length) {
-    body += '<div class="dsub">En el Mundial</div>' + res.map(r => {
+    body += `<div class="dsub">${I18N.t('tpage.in_world_cup')}</div>` + res.map(r => {
       const clk = /^G|^[0-9]/.test(r.id) ? `onclick="openMatchPage('${r.id}')"` : '';
-      return `<div class="res-row clk" ${clk}><span class="fchip f-${(r.result || '').toLowerCase()}">${formLetter(r.result)}</span><span class="res-opp">${r.opponent ? (r.opponent.flag + ' ' + r.opponent.name) : '—'}</span><span class="res-sc">${r.score || ''}</span><span class="muted">${r.stageLabel || ''}</span></div>`;
+      const oppNm = r.opponent ? (r.opponent.flag + ' ' + (r.opponent.id ? I18N.teamName(r.opponent.id, r.opponent.name) : r.opponent.name)) : '—';
+      return `<div class="res-row clk" ${clk}><span class="fchip f-${(r.result || '').toLowerCase()}">${formLetter(r.result)}</span><span class="res-opp">${oppNm}</span><span class="res-sc">${r.score || ''}</span><span class="muted">${r.stageLabel || ''}</span></div>`;
     }).join('');
-  } else if (!d.nextMatch) body += du('Aún no hay partidos jugados.');
-  return panel('Resultados', '', body);
+  } else if (!d.nextMatch) body += du(I18N.t('tpage.no_matches_played'));
+  return panel(I18N.t('tpage.results'), '', body);
 }
 
 function teamMarketsHtml(d) {
   const mp = d.marketPrices || [];
-  if (!mp.length) return panel('Mercados', '', du('No hay mercado activo para este equipo ahora mismo.'));
-  let body = `<div class="mk-row"><span class="mk-l blue">Modelo · campeón</span><span class="mk-v">${pctD(d.championProbability, 1)}</span></div>`;
+  if (!mp.length) return panel(I18N.t('tpage.markets'), '', du(I18N.t('tpage.no_market')));
+  let body = `<div class="mk-row"><span class="mk-l blue">${I18N.t('tpage.model_champion')}</span><span class="mk-v">${pctD(d.championProbability, 1)}</span></div>`;
   mp.forEach(o => {
-    const extra = o.venue === 'Polymarket' ? `Liq ${fmtUsd(o.liquidity)}` : `OI ${fmtUsd(o.openInterest)}`;
+    const extra = o.venue === 'Polymarket' ? I18N.t('legacy.liq', { v: fmtUsd(o.liquidity) }) : I18N.t('legacy.oi', { v: fmtUsd(o.openInterest) });
     body += `<a class="mk-card" ${o.url ? `href="${o.url}" target="_blank" rel="noopener"` : ''}>
       <div class="mkc-top">${venueChip(o.venue)}${chgBadge(o.change24h)}<span class="ext">↗</span></div>
-      <div class="mkc-grid"><div><div class="mkt-lbl">Precio</div><div class="mkt-big">${cents(o.price)}</div></div>
-        <div><div class="mkt-lbl">Modelo</div><div class="mkt-big model">${pctD(d.championProbability, 1)}</div></div>
-        <div><div class="mkt-lbl">Edge</div><div class="mkt-big edge">${o.edge > 0 ? '+' + pctD(o.edge, 1) : pctD(o.edge, 1)}</div></div></div>
-      <div class="mkc-foot muted">Vol ${fmtUsd(o.volume)} · ${extra}</div></a>`;
+      <div class="mkc-grid"><div><div class="mkt-lbl">${I18N.t('tpage.price')}</div><div class="mkt-big">${cents(o.price)}</div></div>
+        <div><div class="mkt-lbl">${I18N.t('tpage.model')}</div><div class="mkt-big model">${pctD(d.championProbability, 1)}</div></div>
+        <div><div class="mkt-lbl">${I18N.t('tpage.edge')}</div><div class="mkt-big edge">${o.edge > 0 ? '+' + pctD(o.edge, 1) : pctD(o.edge, 1)}</div></div></div>
+      <div class="mkc-foot muted">${I18N.t('legacy.vol', { v: fmtUsd(o.volume) })} · ${extra}</div></a>`;
   });
-  return panel('Mercados del equipo', '', body);
+  return panel(I18N.t('tpage.team_markets'), '', body);
 }
 
 function teamNewsHtml(d) {
   const inj = d.injuries || [], side = d.sidelined || [], news = d.news || [];
-  if (!inj.length && !side.length && !news.length) return panel('Noticias y lesiones', '', du('No hay noticias recientes para este equipo.'));
+  if (!inj.length && !side.length && !news.length) return panel(I18N.t('tpage.news_injuries'), '', du(I18N.t('tpage.no_news')));
   let body = '';
-  if (inj.length || side.length) body += '<div class="dsub">Lesiones y bajas</div><div class="inj-list">' +
+  if (inj.length || side.length) body += `<div class="dsub">${I18N.t('tpage.injuries_outs')}</div><div class="inj-list">` +
     inj.concat(side).map(i => `<div class="inj-row">${injuryBadge(i.status)}<span class="inj-p">${i.player}</span><span class="muted">${i.reason || ''}</span></div>`).join('') + '</div>';
-  if (news.length) body += '<div class="dsub">Noticias</div><div class="news-list">' +
+  if (news.length) body += `<div class="dsub">${I18N.t('tpage.news')}</div><div class="news-list">` +
     news.map(n => `<a class="news-row" ${n.url ? `href="${n.url}" target="_blank" rel="noopener"` : ''}><div class="news-t">${n.title}</div><div class="news-m muted">${n.source}${n.published ? ' · ' + dShort(n.published) : ''}</div></a>`).join('') + '</div>';
-  return panel('Noticias y lesiones', '', body);
+  return panel(I18N.t('tpage.news_injuries'), '', body);
 }
 
 async function toggleFav(id) {
@@ -1108,7 +1128,7 @@ function renderGroups() {
     const third = Math.max(0, s.reachR32 - s.groupWin - s.groupSecond);
     return `<tr onclick="openTeam('${t.id}')">
       <td class="gpos">${i + 1}</td>
-      <td class="teamcell">${t.flag} ${t.name}</td>
+      <td class="teamcell">${t.flag} ${I18N.teamName(t.id, t.name)}</td>
       <td>${r.pj}</td><td><b>${r.pts}</b></td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td>
       <td style="${heat(s.groupWin, 'g')}">${pct(s.groupWin, 0)}</td>
       <td style="${heat(s.groupSecond, 'g')}">${pct(s.groupSecond, 0)}</td>
@@ -1117,16 +1137,16 @@ function renderGroups() {
     </tr>`;
   }).join('');
   $('#tab-groups').innerHTML = `
-    <div style="margin-bottom:6px"><h2 style="margin-bottom:3px">Grupos</h2>
-      <div class="muted" style="font-size:12px">Probabilidades de clasificación · 10,000 torneos simulados</div></div>
+    <div style="margin-bottom:6px"><h2 style="margin-bottom:3px">${I18N.t('groups.title')}</h2>
+      <div class="muted" style="font-size:12px">${I18N.t('groups.subtitle')}</div></div>
     <div class="gchips">${chips}</div>
     <div class="grp-wrap">
       <table class="grp-tbl">
-        <tr><th></th><th>Equipo</th><th>PJ</th><th>Pts</th><th>DG</th><th>1º</th><th>2º</th><th>3º cl.</th><th>Fuera</th></tr>
+        <tr><th></th><th>${I18N.t('groups.col_team')}</th><th>${I18N.t('groups.col_pj')}</th><th>${I18N.t('groups.col_pts')}</th><th>${I18N.t('groups.col_dg')}</th><th>${I18N.t('groups.col_first')}</th><th>${I18N.t('groups.col_second')}</th><th>${I18N.t('groups.col_third')}</th><th>${I18N.t('groups.col_out')}</th></tr>
         ${rows}
       </table>
     </div>
-    <div class="grp-legend"><span><i class="lg g"></i>Clasifica 1º/2º</span><span><i class="lg a"></i>3º (repechaje)</span><span><i class="lg r"></i>Eliminado</span></div>`;
+    <div class="grp-legend"><span><i class="lg g"></i>${I18N.t('groups.legend_qualify')}</span><span><i class="lg a"></i>${I18N.t('groups.legend_third')}</span><span><i class="lg r"></i>${I18N.t('groups.legend_out')}</span></div>`;
 }
 
 // ---------- PARTIDOS ----------
@@ -1147,10 +1167,10 @@ function fmtKickoffLocal(f) {
 
 function matchCard(f, homeId, awayId, matchId) {
   const r = f.result;
-  const score = r ? `${r.hg} - ${r.ag}` : 'vs';
+  const score = r ? `${r.hg} - ${r.ag}` : I18N.t('matches.vs');
   const pens = r && r.pensHome != null && r.hg === r.ag && r.status === 'final'
-    ? `<div class="muted" style="font-size:9px">penales: ${r.pensHome ? 'local' : 'visitante'}</div>` : '';
-  const status = r ? (r.status === 'live' ? `<div class="live">● EN VIVO ${r.minute}'</div>` : '<div class="muted" style="font-size:9px">FINAL</div>')
+    ? `<div class="muted" style="font-size:9px">${I18N.t(r.pensHome ? 'matches.pens_home' : 'matches.pens_away')}</div>` : '';
+  const status = r ? (r.status === 'live' ? `<div class="live">${I18N.t('matches.live', { min: r.minute + "'" })}</div>` : `<div class="muted" style="font-size:9px">${I18N.t('matches.final')}</div>`)
     : `<div class="muted" style="font-size:9px">${fmtKickoff(f)}</div>`;
   const probs = f.probs;
   return `<div class="mcard${matchId ? ' clk' : ''}"${matchId ? ` onclick="openMatchPage('${matchId}')"` : ''}>
@@ -1161,18 +1181,18 @@ function matchCard(f, homeId, awayId, matchId) {
       <div class="ph" style="width:${probs.home * 100}%"></div>
       <div class="pd" style="width:${probs.draw * 100}%"></div>
       <div class="pa" style="width:${probs.away * 100}%"></div></div>
-    <div class="plabels"><span>${pct(probs.home)} gana</span><span>empate ${pct(probs.draw)}</span><span>gana ${pct(probs.away)}</span></div>
-    <div class="plabels"><span>xG ${probs.xgHome.toFixed(2)}</span><span class="muted">marcador más probable ${probs.likelyScore}</span><span>xG ${probs.xgAway.toFixed(2)}</span></div>` : ''}
+    <div class="plabels"><span>${I18N.t('matches.prob_home', { p: pct(probs.home) })}</span><span>${I18N.t('matches.prob_draw', { p: pct(probs.draw) })}</span><span>${I18N.t('matches.prob_away', { p: pct(probs.away) })}</span></div>
+    <div class="plabels"><span>xG ${probs.xgHome.toFixed(2)}</span><span class="muted">${I18N.t('matches.likely_score', { score: probs.likelyScore })}</span><span>xG ${probs.xgAway.toFixed(2)}</span></div>` : ''}
   </div>`;
 }
 
 function renderMatches() {
   const sync = STATE.sync || {};
-  let html = `<h2>Partidos · calendario oficial</h2>
+  let html = `<h2>${I18N.t('matches.title')}</h2>
     <div class="muted" style="margin-bottom:14px;font-size:11px">
-      ${sync.ok ? '🟢' : '🟡'} Los marcadores se sincronizan automáticamente cada 30 segundos (fuente: ESPN).
-      ${sync.ts ? 'Última sincronización: ' + new Date(sync.ts).toLocaleTimeString() + '.' : ''}
-      Horarios mostrados en tu zona horaria local.
+      ${sync.ok ? '🟢' : '🟡'} ${I18N.t('matches.sync_note')}
+      ${sync.ts ? I18N.t('matches.last_sync', { time: new Date(sync.ts).toLocaleTimeString() }) : ''}
+      ${I18N.t('matches.local_tz')}
     </div>`;
 
   // --- pin de EN VIVO + PRÓXIMOS arriba (evita scrollear entre los partidos viejos) ---
@@ -1188,21 +1208,21 @@ function renderMatches() {
     .sort((a, b) => (a.dt || '').localeCompare(b.dt || '')).slice(0, 5);
   const pinned = [...live, ...upcoming];
   if (pinned.length) {
-    html += `<div class="mday" style="color:var(--accent)">${live.length ? '● EN VIVO Y PRÓXIMOS' : 'PRÓXIMOS PARTIDOS'}</div>`;
+    html += `<div class="mday" style="color:var(--accent)">${live.length ? I18N.t('matches.live_and_next') : I18N.t('matches.upcoming')}</div>`;
     html += pinned.map(x => matchCard(x.f, x.home, x.away, x.id)).join('');
-    html += `<div class="mday" style="margin-top:30px">CALENDARIO COMPLETO</div>`;
+    html += `<div class="mday" style="margin-top:30px">${I18N.t('matches.full_calendar')}</div>`;
   }
 
   for (let md = 1; md <= 3; md++) {
-    html += `<div class="mday">JORNADA ${md} · FASE DE GRUPOS</div>`;
+    html += `<div class="mday">${I18N.t('matches.matchday', { n: md })}</div>`;
     html += STATE.fixtures.filter(f => f.matchday === md)
       .sort((a, b) => (a.datetime || '').localeCompare(b.datetime || ''))
       .map(f => matchCard(f, f.home, f.away, f.id)).join('');
   }
-  const stages = [['R32', '16AVOS DE FINAL'], ['R16', 'OCTAVOS'], ['QF', 'CUARTOS'], ['SF', 'SEMIFINALES'], ['3RD', 'TERCER PUESTO'], ['FINAL', 'FINAL']];
-  for (const [st, name] of stages) {
+  const stages = ['R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
+  for (const st of stages) {
     const ms = STATE.knockout.filter(k => k.stage === st);
-    html += `<div class="mday">${name}</div>`;
+    html += `<div class="mday">${I18N.t('stage.' + st)}</div>`;
     html += ms.sort((a, b) => (a.datetime || a.date).localeCompare(b.datetime || b.date)).map(k => {
       const h = (k.result && k.result.home) || k.resolved.home;
       const a = (k.result && k.result.away) || k.resolved.away;
@@ -1217,18 +1237,18 @@ function renderMatches() {
 
 // ---------- BRACKET ----------
 function slotDesc(side) {
-  if (side.t === 'W') return `1º Grupo ${side.g}`;
-  if (side.t === 'R') return `2º Grupo ${side.g}`;
-  if (side.t === 'T3') return `3º (${side.allowed.join('/')})`;
-  if (side.t === 'M') return `Ganador P${side.m}`;
-  if (side.t === 'L') return `Perdedor P${side.m}`;
+  if (side.t === 'W') return I18N.t('slot.group_first', { g: side.g });
+  if (side.t === 'R') return I18N.t('slot.group_second', { g: side.g });
+  if (side.t === 'T3') return I18N.t('slot.third', { groups: side.allowed.join('/') });
+  if (side.t === 'M') return I18N.t('slot.winner', { m: side.m });
+  if (side.t === 'L') return I18N.t('slot.loser', { m: side.m });
 }
 function renderBracket() {
-  const rounds = [['R32', '16avos'], ['R16', 'Octavos'], ['QF', 'Cuartos'], ['SF', 'Semifinales'], ['3RD', '3er puesto'], ['FINAL', 'Final']];
-  $('#tab-bracket').innerHTML = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Bracket</h2>
-    <div class="muted" style="font-size:12px">Cuadro de eliminación · estructura oficial FIFA · desliza para ver todas las rondas</div></div>
+  const rounds = ['R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
+  $('#tab-bracket').innerHTML = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">${I18N.t('bracket.title')}</h2>
+    <div class="muted" style="font-size:12px">${I18N.t('bracket.subtitle')}</div></div>
     <div class="bracket">` +
-    rounds.map(([st, name]) => `<div class="bround ${st === 'FINAL' ? 'fin' : ''}"><h4>${name}</h4>` +
+    rounds.map(st => `<div class="bround ${st === 'FINAL' ? 'fin' : ''}"><h4>${I18N.t('bracket.' + st)}</h4>` +
       STATE.knockout.filter(k => k.stage === st).map(k => {
         const r = k.result;
         const hId = (r && r.home) || k.resolved.home, aId = (r && r.away) || k.resolved.away;
@@ -1257,7 +1277,7 @@ function gradeEdge(e) {
 function buildMatchTake(m) {
   const MIN_BACK = 0.30; // solo respaldamos resultados con probabilidad real ≥30% (nunca longshots)
   const th = teamOf(m.home), ta = teamOf(m.away);
-  const labelOf = s => s === 'home' ? th.name : s === 'away' ? ta.name : 'el empate';
+  const labelOf = s => s === 'home' ? I18N.teamName(th.id, th.name) : s === 'away' ? I18N.teamName(ta.id, ta.name) : I18N.t('take.the_draw');
   const top = ['home', 'draw', 'away'].reduce((a, b) => m.model[a] >= m.model[b] ? a : b); // pick del modelo
   const cands = [];
   let rejected = false;
@@ -1280,19 +1300,17 @@ function buildMatchTake(m) {
   const grade = best && gradeEdge(best.edge);
   if (!grade) {
     return { grade: 'PASS', cls: 'g-pass',
-      reason: rejected
-        ? `Hay diferencias de precio, pero solo implicarían apostar contra el favorito o a un resultado improbable — eso no es valor real. Mejor PASS.`
-        : `Modelo y mercado prácticamente coinciden. Sin ventaja clara — preferimos no jugar este partido.` };
+      reason: rejected ? I18N.t('take.pass_rejected') : I18N.t('take.pass_aligned') };
   }
   const lbl = labelOf(best.side);
   let reason;
   if (best.dir === 'back') {
     const ctx = best.side === 'draw'
-      ? 'el modelo ve el partido más cerrado de lo que el mercado descuenta'
-      : `el modelo le da más probabilidad a ${lbl} de la que el precio implica`;
-    reason = `Valor en <b>${lbl}</b>: el mercado lo paga a ${cents(best.price)} y nuestro modelo lo ve en ${pct(best.p)} — ${ctx}.`;
+      ? I18N.t('take.back_draw_ctx')
+      : I18N.t('take.back_team_ctx', { team: lbl });
+    reason = I18N.t('take.back_reason', { team: lbl, price: cents(best.price), prob: pct(best.p), ctx });
   } else {
-    reason = `El mercado <b>sobrevalora a ${lbl}</b> (${cents(best.price)}) frente al ${pct(best.p)} del modelo — el valor está en ir en contra.`;
+    reason = I18N.t('take.fade_reason', { team: lbl, price: cents(best.price), prob: pct(best.p) });
   }
   return { grade: grade.g, cls: grade.cls, side: best.side, dir: best.dir, edge: best.edge, reason };
 }
@@ -1312,27 +1330,27 @@ function chgBadge(c) {
 }
 function venueChip(v) {
   return v === 'Polymarket'
-    ? '<span class="vchip v-poly">◆ Polymarket</span>'
-    : '<span class="vchip v-kalshi">◆ Kalshi</span>';
+    ? `<span class="vchip v-poly">${I18N.t('venue.poly')}</span>`
+    : `<span class="vchip v-kalshi">${I18N.t('venue.kalshi')}</span>`;
 }
 
-// etiquetas de liquidez / riesgo / confianza para las tarjetas premium
-function liqLabel(usd) { return usd >= 2e6 ? 'Alta' : usd >= 4e5 ? 'Media' : 'Baja'; }
-function riskLabel(p) { return p >= 0.55 ? 'Bajo' : p >= 0.38 ? 'Medio' : 'Alto'; }
-function confLabel(edge) { return edge >= 0.10 ? 'Alta' : edge >= 0.05 ? 'Media' : 'Baja'; }
-function riskCls(l) { return l === 'Bajo' ? 'r-low' : l === 'Medio' ? 'r-mid' : 'r-high'; }
+// etiquetas de liquidez / riesgo / confianza para las tarjetas premium (i18n)
+function liqLabel(usd) { return I18N.t(usd >= 2e6 ? 'liq.high' : usd >= 4e5 ? 'liq.medium' : 'liq.low'); }
+function riskLabel(p) { return I18N.t(p >= 0.55 ? 'risklevel.low' : p >= 0.38 ? 'risklevel.medium' : 'risklevel.high'); }
+function confLabel(edge) { return I18N.t(edge >= 0.10 ? 'label.high' : edge >= 0.05 ? 'label.medium' : 'label.low'); }
+function riskClsP(p) { return p >= 0.55 ? 'r-low' : p >= 0.38 ? 'r-mid' : 'r-high'; }
 
 async function loadArb(force = false) {
   // Fase Q.1 §4-9: Oportunidades flagship (Picks GP | Value | Arbitraje) cableado a DTOs V2. Detrás de los
   // flags §21 (GP_OPPORTUNITIES_*) + acceso beta. Con todo off → la home legacy de los ~509 usuarios intacta.
   if (USER && USER.beta && USER.beta.opportunities && USER.beta.opportunities.enabled) return loadOpportunities(force);
-  $('#tab-arb').innerHTML = '<div class="muted" style="padding:40px 0;text-align:center">Cargando mercados en vivo…</div>';
+  $('#tab-arb').innerHTML = `<div class="muted" style="padding:40px 0;text-align:center">${I18N.t('legacy.loading_markets')}</div>`;
   const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() });
   if (!r.ok) {
     $('#tab-arb').innerHTML = `<div class="lock"><div class="lock-icon">🔒</div>
-      <div class="lock-title">Desbloquea las oportunidades gratis</div>
-      <div class="lock-sub">Crea tu cuenta para ver el escáner de oportunidades modelo vs mercado.</div>
-      <button class="btn" onclick="openLogin()">Crear cuenta gratis</button></div>`;
+      <div class="lock-title">${I18N.t('legacy.unlock_title')}</div>
+      <div class="lock-sub">${I18N.t('legacy.unlock_sub')}</div>
+      <button class="btn" onclick="openLogin()">${I18N.t('auth.create_free')}</button></div>`;
     return;
   }
   ARB = await r.json();
@@ -1347,12 +1365,12 @@ async function loadArb(force = false) {
   let html = `
     <div class="arb-head">
       <div>
-        <h2 style="margin-bottom:3px">Oportunidades</h2>
+        <h2 style="margin-bottom:3px">${I18N.t('legacy.opportunities')}</h2>
         <div class="muted" style="font-size:12px">
-          <span class="livepill on">● EN VIVO</span> Modelo vs mercado · actualizado ${ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—'} · refresca cada 1 min
+          <span class="livepill on">${I18N.t('legacy.live')}</span> ${I18N.t('legacy.live_model_market', { time: ARB.ts ? new Date(ARB.ts).toLocaleTimeString() : '—' })}
         </div>
       </div>
-      <button class="ghost" onclick="loadArb(true)">↻ Actualizar</button>
+      <button class="ghost" onclick="loadArb(true)">${I18N.t('legacy.refresh')}</button>
     </div>
     ${ARB.errors.length ? `<div class="warn">${ARB.errors.join(' · ')}</div>` : ''}`;
 
@@ -1364,36 +1382,37 @@ async function loadArb(force = false) {
       const t = teamOf(best.team);
       const backedP = best.side.includes('SÍ') ? best.model : 1 - best.model;
       const liq = liqLabel(v ? v.volume : 0), risk = riskLabel(backedP), conf = confLabel(best.edge);
-      html += `<div class="sec-head"><h3>★ Mejor oportunidad</h3></div>
+      const tNm = t ? I18N.teamName(t.id, t.name) : best.team;
+      html += `<div class="sec-head"><h3>${I18N.t('legacy.best_opp')}</h3></div>
       <div class="feat">
         <div class="feat-top">
-          <span class="sig sig-edge">MODEL EDGE</span>${venueChip(best.venue)}
+          <span class="sig sig-edge">${I18N.t('legacy.model_edge')}</span>${venueChip(best.venue)}
           <span class="feat-edge">+${pct(best.edge)}</span>
         </div>
         <div class="feat-team"><span style="font-size:30px">${t ? t.flag : ''}</span>
-          <div><div class="feat-name">${t ? t.name : best.team}</div><div class="feat-side">${best.side} · campeón del Mundial</div></div>
+          <div><div class="feat-name">${tNm}</div><div class="feat-side">${I18N.t('legacy.champion_side', { side: best.side })}</div></div>
         </div>
         <div class="feat-metrics">
-          <div class="metric"><div class="m-l">Precio</div><div class="m-v">${cents(best.price)}</div></div>
-          <div class="metric"><div class="m-l">Modelo</div><div class="m-v blue">${pct(best.model)}</div></div>
-          <div class="metric"><div class="m-l">Edge</div><div class="m-v green">+${pct(best.edge)}</div></div>
+          <div class="metric"><div class="m-l">${I18N.t('legacy.price')}</div><div class="m-v">${cents(best.price)}</div></div>
+          <div class="metric"><div class="m-l">${I18N.t('legacy.model')}</div><div class="m-v blue">${pct(best.model)}</div></div>
+          <div class="metric"><div class="m-l">${I18N.t('legacy.edge')}</div><div class="m-v green">+${pct(best.edge)}</div></div>
           <div class="metric"><div class="m-l">Kelly/4</div><div class="m-v">${best.kelly ? pct(best.kelly) : '—'}</div></div>
-          <div class="metric"><div class="m-l">Liquidez</div><div class="m-v">${liq}</div></div>
-          <div class="metric"><div class="m-l">Riesgo</div><div class="m-v ${riskCls(risk)}">${risk}</div></div>
-          <div class="metric"><div class="m-l">Confianza</div><div class="m-v">${conf}</div></div>
+          <div class="metric"><div class="m-l">${I18N.t('legacy.liquidity')}</div><div class="m-v">${liq}</div></div>
+          <div class="metric"><div class="m-l">${I18N.t('legacy.risk')}</div><div class="m-v ${riskClsP(backedP)}">${risk}</div></div>
+          <div class="metric"><div class="m-l">${I18N.t('legacy.confidence')}</div><div class="m-v">${conf}</div></div>
         </div>
         <div class="feat-cta">
-          ${v ? `<a class="venue-btn v-${best.venue === 'Polymarket' ? 'poly' : 'kalshi'}" href="${v.url}" target="_blank" rel="noopener">Abrir mercado en ${best.venue} ↗</a>` : ''}
-          <button class="btn-ghost" onclick="openTeam('${best.team}')">Ver análisis</button>
+          ${v ? `<a class="venue-btn v-${best.venue === 'Polymarket' ? 'poly' : 'kalshi'}" href="${v.url}" target="_blank" rel="noopener">${I18N.t('legacy.open_market', { venue: best.venue })}</a>` : ''}
+          <button class="btn-ghost" onclick="openTeam('${best.team}')">${I18N.t('legacy.view_analysis')}</button>
         </div>
       </div>`;
     } else {
       const pm = best.row.polymarket, ks = best.row.kalshi, t = teamOf(best.team);
-      html += `<div class="sec-head"><h3>★ Mejor oportunidad</h3></div>
+      html += `<div class="sec-head"><h3>${I18N.t('legacy.best_opp')}</h3></div>
       <div class="feat feat-arb">
-        <div class="feat-top"><span class="sig sig-arb">PURE ARB</span><span class="feat-edge amber">+${pct(best.edge)} neto</span></div>
+        <div class="feat-top"><span class="sig sig-arb">${I18N.t('legacy.pure_arb')}</span><span class="feat-edge amber">+${I18N.t('legacy.net_suffix', { edge: pct(best.edge) })}</span></div>
         <div class="feat-team"><span style="font-size:30px">${t ? t.flag : ''}</span>
-          <div><div class="feat-name">${t ? t.name : best.team}</div><div class="feat-side">${best.note}</div></div>
+          <div><div class="feat-name">${t ? I18N.teamName(t.id, t.name) : best.team}</div><div class="feat-side">${best.note}</div></div>
         </div>
         <div class="feat-cta">
           ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
@@ -1405,15 +1424,15 @@ async function loadArb(force = false) {
 
   // ---- 2. ARBITRAJE PURO ----
   if (pure.length) {
-    html += `<div class="sec-head"><h3><span class="dot-amber">◆</span> Arbitraje puro</h3><span class="sub">${pure.length} detectado${pure.length > 1 ? 's' : ''}</span></div>
-    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Polymarket y Kalshi se contradicen: comprando en ambas ganas la diferencia, gane quien gane. Retorno neto estimado — depende de ejecución, fees y settlement.</div>
+    html += `<div class="sec-head"><h3><span class="dot-amber">◆</span> ${I18N.t('legacy.pure_arb_title')}</h3><span class="sub">${I18N.t(pure.length > 1 ? 'legacy.detected.other' : 'legacy.detected.one', { n: pure.length })}</span></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">${I18N.t('legacy.pure_arb_note')}</div>
     <div class="arbops">` + pure.slice(0, 6).map(o => {
       const pm = o.row.polymarket, ks = o.row.kalshi;
       return `<div class="dualcard">
         <div class="dual-top">
           <span style="font-size:22px">${teamOf(o.team) ? teamOf(o.team).flag : ''}</span>
-          <b style="font-size:16px">${teamOf(o.team) ? teamOf(o.team).name : o.team}</b>
-          <span class="purebadge">PURE ARB</span>
+          <b style="font-size:16px">${teamOf(o.team) ? I18N.teamName(o.team, teamOf(o.team).name) : o.team}</b>
+          <span class="purebadge">${I18N.t('legacy.pure_arb')}</span>
           <span class="edge-big">+${pct(o.edge)}</span>
         </div>
         <div class="note" style="margin:6px 0 12px">${o.note}</div>
@@ -1426,36 +1445,39 @@ async function loadArb(force = false) {
   }
 
   // ---- 3. APUESTAS DE VALOR ----
-  html += `<div class="sec-head"><h3><span class="dot-green">●</span> Apuestas de valor · modelo vs mercado</h3><span class="sub">${value.length}</span></div>
-    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Donde nuestras 10,000 simulaciones discrepan más del precio. Toca para ir al mercado exacto.</div>`;
-  if (!value.length) html += '<div class="muted" style="margin-bottom:8px">Sin discrepancias relevantes ahora mismo.</div>';
+  html += `<div class="sec-head"><h3><span class="dot-green">●</span> ${I18N.t('legacy.value_bets_title')}</h3><span class="sub">${value.length}</span></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">${I18N.t('legacy.value_bets_note')}</div>`;
+  if (!value.length) html += `<div class="muted" style="margin-bottom:8px">${I18N.t('legacy.no_discrepancies')}</div>`;
   html += '<div class="mktgrid">' + value.slice(0, 9).map(o => {
     const v = o.venue === 'Polymarket' ? o.row.polymarket : o.row.kalshi;
     if (!v) return '';
     const t = teamOf(o.team);
+    const tNm = t ? I18N.teamName(t.id, t.name) : o.team;
+    const shareV = I18N.t('legacy.share_value', { team: tNm, price: cents(v.price), model: pct(o.model), edge: pct(o.edge) }).replace(/'/g, '');
     return `<a class="mktcard" href="${v.url}" target="_blank" rel="noopener">
       <div class="mkt-top">${venueChip(o.venue)}${chgBadge(v.change24h)}<span class="ext">↗</span></div>
-      <div class="mkt-team"><span style="font-size:24px">${t ? t.flag : ''}</span><b>${t ? t.name : o.team}</b><span class="sidetag">${o.side}</span></div>
+      <div class="mkt-team"><span style="font-size:24px">${t ? t.flag : ''}</span><b>${tNm}</b><span class="sidetag">${o.side}</span></div>
       <div class="mkt-prices">
-        <div><div class="mkt-lbl">Precio</div><div class="mkt-big">${cents(v.price)}</div></div>
-        <div><div class="mkt-lbl">Modelo</div><div class="mkt-big model">${pct(o.model)}</div></div>
-        <div><div class="mkt-lbl">Edge</div><div class="mkt-big edge">+${pct(o.edge)}</div></div>
+        <div><div class="mkt-lbl">${I18N.t('legacy.price')}</div><div class="mkt-big">${cents(v.price)}</div></div>
+        <div><div class="mkt-lbl">${I18N.t('legacy.model')}</div><div class="mkt-big model">${pct(o.model)}</div></div>
+        <div><div class="mkt-lbl">${I18N.t('legacy.edge')}</div><div class="mkt-big edge">+${pct(o.edge)}</div></div>
       </div>
       <div class="mkt-stats">
-        <span>Vol ${fmtUsd(v.volume)}</span>
-        <span>${o.venue === 'Polymarket' ? 'Liq ' + fmtUsd(v.liquidity) : 'OI ' + fmtUsd(v.openInterest)}</span>
+        <span>${I18N.t('legacy.vol', { v: fmtUsd(v.volume) })}</span>
+        <span>${o.venue === 'Polymarket' ? I18N.t('legacy.liq', { v: fmtUsd(v.liquidity) }) : I18N.t('legacy.oi', { v: fmtUsd(v.openInterest) })}</span>
         ${o.kelly ? `<span class="kelly">Kelly/4 ${pct(o.kelly)}</span>` : ''}
-        <button class="sharebtn" onclick="shareOp(event, '📊 ${t ? t.name : o.team} campeón del Mundial: el mercado paga ${cents(v.price)} y el modelo de 10,000 simulaciones dice ${pct(o.model)} (+${pct(o.edge)} de edge).')">📤</button>
+        <button class="sharebtn" onclick="shareOp(event, '${shareV}')">📤</button>
       </div>
     </a>`;
   }).join('') + '</div>';
 
   // ---- 4. PARTIDOS · GP TAKE ----
   if (M.length) {
-    html += `<div class="sec-head"><h3><span style="color:var(--blue)">⚽</span> Partidos · GP Take</h3><span class="sub">${M.length} con mercado</span></div>
-    <div class="muted" style="font-size:12px;margin:-4px 0 12px">Nuestro modelo vs el mercado 1X2, graduado. Mostramos también los PASS. Toca un resultado para abrir su mercado.</div>
+    html += `<div class="sec-head"><h3><span style="color:var(--blue)">⚽</span> ${I18N.t('legacy.matches_gp_take')}</h3><span class="sub">${I18N.t('legacy.with_market', { n: M.length })}</span></div>
+    <div class="muted" style="font-size:12px;margin:-4px 0 12px">${I18N.t('legacy.gp_take_note')}</div>
     <div class="mktgrid">` + M.map(m => {
       const th = teamOf(m.home), ta = teamOf(m.away);
+      const thNm = I18N.teamName(th.id, th.name), taNm = I18N.teamName(ta.id, ta.name);
       const take = buildMatchTake(m);
       const edgeOf = side => (m.edges.find(e => e.side === side) || {});
       const row = (side, label, flag) => {
@@ -1469,37 +1491,41 @@ async function loadArb(force = false) {
           <span class="oc-badge">${e.edge ? '+' + pct(e.edge) + ' ' + (e.type === 'COMPRAR NO' ? 'NO' : 'SÍ') : ''}</span>
         </a>`;
       };
-      const shareTxt = `⚽ ${th.name} vs ${ta.name}: el mercado paga ${cents(m.outcomes.home.price)} / ${m.outcomes.draw ? cents(m.outcomes.draw.price) : '—'} / ${cents(m.outcomes.away.price)} y nuestro modelo dice ${pct(m.model.home)} / ${pct(m.model.draw)} / ${pct(m.model.away)}.`;
+      const shareTxt = I18N.t('legacy.share_match', {
+        home: thNm, away: taNm,
+        ph: cents(m.outcomes.home.price), pd: m.outcomes.draw ? cents(m.outcomes.draw.price) : '—', pa: cents(m.outcomes.away.price),
+        mh: pct(m.model.home), md: pct(m.model.draw), ma: pct(m.model.away),
+      });
       return `<div class="mktcard matchmkt">
         <div class="mkt-top">
           ${venueChip('Polymarket')}
-          ${m.live ? `<span class="livepill">● EN VIVO${m.result ? ' ' + m.result.hg + '-' + m.result.ag : ''}</span>` : `<span class="muted" style="font-size:11px;font-weight:600">${fmtKickoff(m)}</span>`}
+          ${m.live ? `<span class="livepill">${I18N.t('legacy.live')}${m.result ? ' ' + m.result.hg + '-' + m.result.ag : ''}</span>` : `<span class="muted" style="font-size:11px;font-weight:600">${fmtKickoff(m)}</span>`}
           <button class="sharebtn" onclick="shareOp(event, '${shareTxt.replace(/'/g, '')}')">📤</button>
         </div>
-        <div class="mkt-team" style="margin-bottom:10px"><span style="font-size:20px">${th.flag}</span><b>${th.name} vs ${ta.name}</b><span style="font-size:20px">${ta.flag}</span></div>
+        <div class="mkt-team" style="margin-bottom:10px"><span style="font-size:20px">${th.flag}</span><b>${thNm} ${I18N.t('matches.vs')} ${taNm}</b><span style="font-size:20px">${ta.flag}</span></div>
         <div class="gptake">
-          <div class="gptake-head"><span class="grade ${take.cls}">${take.grade}</span><span class="gptake-title">GP TAKE</span>${take.edge ? `<span class="gptake-edge">+${pct(take.edge)}</span>` : ''}</div>
+          <div class="gptake-head"><span class="grade ${take.cls}">${take.grade}</span><span class="gptake-title">${I18N.t('legacy.gp_take')}</span>${take.edge ? `<span class="gptake-edge">+${pct(take.edge)}</span>` : ''}</div>
           <div class="gptake-reason">${take.reason}</div>
         </div>
-        <div class="oc-head"><span></span><span>Mercado</span><span>Modelo</span><span>Edge</span></div>
-        ${row('home', th.name, th.flag)}
-        ${row('draw', 'Empate')}
-        ${row('away', ta.name, ta.flag)}
-        <button class="btn-ghost ver-mas" onclick="openMatchPage('${m.fixtureId}')">Ver análisis del partido →</button>
+        <div class="oc-head"><span></span><span>${I18N.t('legacy.market')}</span><span>${I18N.t('legacy.model')}</span><span>${I18N.t('legacy.edge')}</span></div>
+        ${row('home', thNm, th.flag)}
+        ${row('draw', I18N.t('legacy.draw'))}
+        ${row('away', taNm, ta.flag)}
+        <button class="btn-ghost ver-mas" onclick="openMatchPage('${m.fixtureId}')">${I18N.t('legacy.view_match_analysis')}</button>
       </div>`;
     }).join('') + '</div>';
   }
 
   // ---- 5. FAVORITOS DEL MODELO (tabla compacta) ----
   const favs = [...STATE.teams].sort((a, b) => b.sim.champion - a.sim.champion).slice(0, 8);
-  html += `<div class="sec-head"><h3>🏆 Favoritos del modelo</h3></div>
-    <table class="fav-tbl"><tr><th>#</th><th>Equipo</th><th>Campeón</th><th>Mercado 24h</th><th>Grupo</th></tr>` +
+  html += `<div class="sec-head"><h3>${I18N.t('legacy.model_favorites')}</h3></div>
+    <table class="fav-tbl"><tr><th>#</th><th>${I18N.t('legacy.col_team')}</th><th>${I18N.t('legacy.col_champion')}</th><th>${I18N.t('legacy.col_market_24h')}</th><th>${I18N.t('legacy.col_group')}</th></tr>` +
     favs.map((t, i) => {
       const m = ARB.rows.find(r => r.id === t.id);
       const ch = m && m.polymarket ? m.polymarket.change24h : null;
       return `<tr onclick="openTeam('${t.id}')">
         <td class="muted">${i + 1}</td>
-        <td class="teamcell">${t.flag} ${t.name}</td>
+        <td class="teamcell">${t.flag} ${I18N.teamName(t.id, t.name)}</td>
         <td><b>${pct(t.sim.champion)}</b></td>
         <td>${ch != null ? chgBadge(ch) : '<span class="muted">—</span>'}</td>
         <td class="muted">${t.group}</td></tr>`;
@@ -1508,9 +1534,9 @@ async function loadArb(force = false) {
   html += `<div class="warn" style="margin-top:22px">⚠ ${ARB.disclaimer}</div>`;
 
   // ---- tabla completa con datos de mercado ----
-  html += `<details class="fulltbl"><summary>Los 48 mercados · campeón del mundo</summary>
+  html += `<details class="fulltbl"><summary>${I18N.t('legacy.all_markets')}</summary>
     <div style="overflow-x:auto">
-    <table class="arbtable"><tr><th>Equipo</th><th>Modelo</th><th>Polymarket</th><th>24h</th><th>Vol</th><th>Kalshi</th><th>24h</th><th>Vol</th><th>Edge</th></tr>` +
+    <table class="arbtable"><tr><th>${I18N.t('legacy.col_team')}</th><th>${I18N.t('legacy.col_model')}</th><th>Polymarket</th><th>${I18N.t('legacy.col_24h')}</th><th>${I18N.t('legacy.col_vol')}</th><th>Kalshi</th><th>${I18N.t('legacy.col_24h')}</th><th>${I18N.t('legacy.col_vol')}</th><th>${I18N.t('legacy.col_edge')}</th></tr>` +
     ARB.rows.filter(r => r.model > 0.001 || r.polymarket || r.kalshi).map(row => {
       const e = Math.max(0, ...row.edges.map(x => x.edge));
       const pm = row.polymarket, ks = row.kalshi;
@@ -1775,11 +1801,11 @@ function renderEvo() {
   const sel = (useMine ? mine.map(id => STATE.teams.find(t => t.id === id)).filter(Boolean) : [...STATE.teams])
     .sort((a, b) => b.sim.champion - a.sim.champion).slice(0, useMine ? 8 : 10);
   $('#tab-evo').innerHTML = `
-    <div style="margin-bottom:10px"><h2 style="margin-bottom:3px">Evolución</h2>
-      <div class="muted" style="font-size:12px">Probabilidad de campeón a lo largo del torneo</div></div>
+    <div style="margin-bottom:10px"><h2 style="margin-bottom:3px">${I18N.t('evo.title')}</h2>
+      <div class="muted" style="font-size:12px">${I18N.t('evo.subtitle')}</div></div>
     <div class="gchips" style="margin-bottom:14px">
-      <button class="gchip ${evoFilter === 'top' ? 'on' : ''}" onclick="selectEvo('top')">Top 10</button>
-      <button class="gchip ${evoFilter === 'mine' ? 'on' : ''}" onclick="selectEvo('mine')">Mis seguidos</button>
+      <button class="gchip ${evoFilter === 'top' ? 'on' : ''}" onclick="selectEvo('top')">${I18N.t('evo.top10')}</button>
+      <button class="gchip ${evoFilter === 'mine' ? 'on' : ''}" onclick="selectEvo('mine')">${I18N.t('evo.mine')}</button>
     </div>
     <div class="evo-chart"><canvas id="evoChart" width="1120" height="420"></canvas></div>
     <div id="evoLegend"></div>
@@ -1789,7 +1815,7 @@ function renderEvo() {
   const hist = STATE.history || [];
   if (hist.length < 2) {
     ctx.fillStyle = '#6F7A82'; ctx.font = '13px Inter, sans-serif';
-    ctx.fillText('La evolución aparecerá cuando se jueguen partidos y cambien las probabilidades.', 24, 36);
+    ctx.fillText(I18N.t('evo.empty'), 24, 36);
   } else {
     const maxP = Math.max(.05, ...hist.flatMap(h => sel.map(t => h.probs[t.id] || 0))) * 1.15;
     const X = i => 50 + i / (hist.length - 1) * (cv.width - 70);
@@ -1803,14 +1829,14 @@ function renderEvo() {
     });
   }
   $('#evoLegend').innerHTML = sel.map((t, i) =>
-    `<span><i style="background:${PALETTE[i % PALETTE.length]}"></i>${t.flag} ${t.name} ${pct(t.sim.champion)}</span>`).join('');
+    `<span><i style="background:${PALETTE[i % PALETTE.length]}"></i>${t.flag} ${I18N.teamName(t.id, t.name)} ${pct(t.sim.champion)}</span>`).join('');
   const start = hist.length ? hist[0].probs : {};
   $('#evoTable').innerHTML = `<table class="fav-tbl" style="margin-top:16px">
-    <tr><th>#</th><th>Equipo</th><th>Prob actual</th><th>Desde inicio</th><th>Grupo</th></tr>` +
+    <tr><th>#</th><th>${I18N.t('evo.col_team')}</th><th>${I18N.t('evo.col_current')}</th><th>${I18N.t('evo.col_since_start')}</th><th>${I18N.t('evo.col_group')}</th></tr>` +
     sel.map((t, i) => {
       const d = t.sim.champion - (start[t.id] || t.sim.champion);
       const dTxt = Math.abs(d) < 0.0005 ? '<span class="muted">—</span>' : `<span class="${d > 0 ? 'pgood' : 'pbad'}">${d > 0 ? '▲' : '▼'} ${(Math.abs(d) * 100).toFixed(1)}%</span>`;
-      return `<tr onclick="openTeam('${t.id}')"><td class="muted">${i + 1}</td><td class="teamcell">${t.flag} ${t.name}</td><td><b>${pct(t.sim.champion)}</b></td><td>${dTxt}</td><td class="muted">${t.group}</td></tr>`;
+      return `<tr onclick="openTeam('${t.id}')"><td class="muted">${i + 1}</td><td class="teamcell">${t.flag} ${I18N.teamName(t.id, t.name)}</td><td><b>${pct(t.sim.champion)}</b></td><td>${dTxt}</td><td class="muted">${t.group}</td></tr>`;
     }).join('') + '</table>';
 }
 
@@ -1955,11 +1981,33 @@ async function loadCandidates(bodySel) {
 }
 function setLang(l, bodySel) {
   I18N.setLocale(l);
+  // Superficies admin/internas (cuando están montadas) se recargan como antes.
   if ($('#valCandBody')) loadCandidates('#valCandBody');
   if ($('#candidateBody')) loadCandidates('#candidateBody');
   if ($('#picksBody')) loadApprovedPicks();
   if ($('#valPicksBody')) loadApprovedPicks('#valPicksBody');
   if ($('#shadowObsBody')) loadShadowObservatory();
+  // §16: el toggle debe aplicar en TODAS las superficies, no solo la activa. Las estáticas (teams/matches/
+  // groups/bracket/evo/following/alerts/record/admin) se construyen una vez en renderAll() y switchTab NO las
+  // re-renderiza → hay que reconstruirlas acá. Las dinámicas (sim/methodology/detalle/perf/value/picks) se
+  // re-renderizan al navegar, pero la ACTIVA también se refresca para verla traducida al instante.
+  try {
+    renderHeader();
+    if (STATE && STATE.teaser) { renderTeaser(); return; }
+    if (STATE) {
+      renderAll();                 // reconstruye todas las superficies estáticas en el idioma nuevo
+      const cur = currentTab();
+      if (cur === 'sim') renderSim();
+      else if (cur === 'methodology') renderMethodology();
+      else if (cur === 'match' && CUR_MATCH) renderMatchDetail(CUR_MATCH);
+      else if (cur === 'team' && CUR_TEAM) renderTeamDetail(CUR_TEAM);
+      else if (cur === 'perf' && USER) loadPerf();
+      else if (cur === 'value' && USER) loadValue();
+      else if (cur === 'picks' && USER) loadPicks();
+      else if (cur === 'registry' && USER) loadRegistry();
+      // arb se recarga dentro de renderAll() si es la pestaña activa
+    }
+  } catch (e) { /* el toggle nunca debe romper la vista */ }
 }
 async function candReject(id) {
   const reason = prompt('Motivo del rechazo (queda registrado):', ''); if (reason == null) return;
@@ -2217,11 +2265,12 @@ async function removeResult(isGroup) {
 
 // ---------- REFERIDOS ----------
 const REF_TIERS = [
-  { n: 1, reward: 'Embajador 🏅' },
-  { n: 3, reward: 'Embajador Plata 🥈' },
-  { n: 5, reward: 'Embajador Oro 🥇' },
-  { n: 10, reward: 'Embajador Leyenda 👑' },
+  { n: 1, rewardKey: 'referidos.tier.amb' },
+  { n: 3, rewardKey: 'referidos.tier.silver' },
+  { n: 5, rewardKey: 'referidos.tier.gold' },
+  { n: 10, rewardKey: 'referidos.tier.legend' },
 ];
+const refReward = t => I18N.t(t.rewardKey);
 function refLink() { return 'https://gpsimulador.com/?ref=' + ((USER && USER.refCode) || ''); }
 async function renderReferidos() {
   if (!USER) return;
@@ -2231,32 +2280,33 @@ async function renderReferidos() {
   const link = refLink();
   const next = REF_TIERS.find(t => t.n > n);
   const level = [...REF_TIERS].reverse().find(t => n >= t.n);
-  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">Invita y sube de nivel 🎁</h2>
-    <div class="muted" style="font-size:12px">Comparte tu link. Cada amigo que cree su cuenta te sube como Embajador del GP Simulador.</div></div>`;
+  const levelSuffix = level ? ` · ${refReward(level)}` : '';
+  let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">${I18N.t('referidos.title')}</h2>
+    <div class="muted" style="font-size:12px">${I18N.t('referidos.subtitle')}</div></div>`;
   html += `<div class="ref-hero">
     <div class="ref-count">${n}</div>
-    <div class="ref-count-lbl">amigo${n === 1 ? '' : 's'} invitado${n === 1 ? '' : 's'}${level ? ` · ${level.reward}` : ''}</div>
-    <div class="ref-next">${next ? `Te falta${next.n - n === 1 ? '' : 'n'} <b>${next.n - n}</b> para: ${next.reward}` : '¡Nivel máximo alcanzado! 👑'}</div>
+    <div class="ref-count-lbl">${I18N.t(n === 1 ? 'referidos.count_lbl.one' : 'referidos.count_lbl.other', { level: levelSuffix })}</div>
+    <div class="ref-next">${next ? I18N.t(next.n - n === 1 ? 'referidos.next.one' : 'referidos.next.other', { n: next.n - n, reward: refReward(next) }) : I18N.t('referidos.max_level')}</div>
   </div>`;
-  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Tu link de invitación</span></div>
-    <div class="ref-linkbox"><input id="refLinkInput" readonly value="${link}"><button class="btn" onclick="copyRef(event)">Copiar</button></div>
-    <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="shareRef()">Compartir 📤</button></div>`;
-  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">Niveles de Embajador</span></div>` +
-    REF_TIERS.map(t => `<div class="ref-tier ${n >= t.n ? 'done' : ''}"><span class="ref-tier-n">${n >= t.n ? '✓' : t.n}</span><span class="ref-tier-r">${t.reward}</span><span class="ref-tier-goal">${t.n} amigo${t.n > 1 ? 's' : ''}</span></div>`).join('') + `</div>`;
-  html += `<div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px">Los Embajadores tendrán beneficios exclusivos cuando evolucionemos la plataforma. ¡Gracias por correr la voz! ⚽</div>`;
+  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">${I18N.t('referidos.your_link')}</span></div>
+    <div class="ref-linkbox"><input id="refLinkInput" readonly value="${link}"><button class="btn" onclick="copyRef(event)">${I18N.t('referidos.copy')}</button></div>
+    <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="shareRef()">${I18N.t('referidos.share')}</button></div>`;
+  html += `<div class="dpanel"><div class="dpanel-h"><span class="dpanel-t">${I18N.t('referidos.levels')}</span></div>` +
+    REF_TIERS.map(t => `<div class="ref-tier ${n >= t.n ? 'done' : ''}"><span class="ref-tier-n">${n >= t.n ? '✓' : t.n}</span><span class="ref-tier-r">${refReward(t)}</span><span class="ref-tier-goal">${I18N.t(t.n > 1 ? 'referidos.tier_goal.other' : 'referidos.tier_goal.one', { n: t.n })}</span></div>`).join('') + `</div>`;
+  html += `<div class="muted" style="font-size:11.5px;text-align:center;margin-top:8px">${I18N.t('referidos.foot')}</div>`;
   $('#tab-referidos').innerHTML = html;
 }
 function copyRef(ev) {
   const i = $('#refLinkInput'); if (!i) return;
   i.select(); i.setSelectionRange(0, 99999);
-  const done = () => { const b = ev && ev.currentTarget; if (b) { const o = b.textContent; b.textContent = '¡Copiado!'; setTimeout(() => b.textContent = o, 1500); } };
+  const done = () => { const b = ev && ev.currentTarget; if (b) { const o = b.textContent; b.textContent = I18N.t('referidos.copied'); setTimeout(() => b.textContent = o, 1500); } };
   if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(done).catch(() => { try { document.execCommand('copy'); done(); } catch { } });
   else { try { document.execCommand('copy'); done(); } catch { } }
 }
 function shareRef() {
-  const text = '⚽ Mira las probabilidades del Mundial 2026 EN VIVO (gratis) en GP Simulador:';
+  const text = I18N.t('referidos.share_text');
   const url = refLink();
-  if (navigator.share) { navigator.share({ title: 'GP Simulador del Mundial', text, url }).catch(() => { }); }
+  if (navigator.share) { navigator.share({ title: I18N.t('referidos.share_title'), text, url }).catch(() => { }); }
   else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
 }
 
@@ -2264,55 +2314,56 @@ function shareRef() {
 let CUR_SIM = null;
 function renderSim() {
   if (!USER) return;
-  const teams = [...STATE.teams].sort((a, b) => a.name.localeCompare(b.name));
-  const opts = () => teams.map(t => `<option value="${t.id}">${t.flag} ${t.name}</option>`).join('');
+  const teams = [...STATE.teams].map(t => ({ ...t, _nm: I18N.teamName(t.id, t.name) })).sort((a, b) => a._nm.localeCompare(b._nm));
+  const opts = () => teams.map(t => `<option value="${t.id}">${t.flag} ${t._nm}</option>`).join('');
   $('#tab-sim').innerHTML = `
-    <div style="margin-bottom:10px"><h2 style="margin-bottom:3px">Simula cualquier cruce ⚔️</h2>
-      <div class="muted" style="font-size:12px">Enfrenta a cualquiera de las 48 selecciones — cancha neutral, según el modelo (10.000 simulaciones).</div></div>
+    <div style="margin-bottom:10px"><h2 style="margin-bottom:3px">${I18N.t('sim.title')}</h2>
+      <div class="muted" style="font-size:12px">${I18N.t('sim.subtitle')}</div></div>
     <div class="sim-pick">
       <select id="simA" class="searchbox" style="margin:0">${opts()}</select>
-      <span class="sim-vs">VS</span>
+      <span class="sim-vs">${I18N.t('mpage.vs')}</span>
       <select id="simB" class="searchbox" style="margin:0">${opts()}</select>
     </div>
-    <div class="formrow" style="margin-top:12px"><button class="btn" style="width:100%" onclick="simulate()">⚔️ Simular cruce</button></div>
+    <div class="formrow" style="margin-top:12px"><button class="btn" style="width:100%" onclick="simulate()">${I18N.t('sim.button')}</button></div>
     <div id="simResult"></div>`;
   $('#simA').value = 'ARG'; $('#simB').value = 'ESP';
   simulate();
 }
 async function simulate() {
   const a = $('#simA').value, b = $('#simB').value;
-  if (a === b) { $('#simResult').innerHTML = du('Elige dos selecciones distintas.'); return; }
-  $('#simResult').innerHTML = '<div class="muted" style="padding:24px 0;text-align:center">🧠 Analizando con GP Intelligence…<br><span style="font-size:11px">modelo base + contexto + 10.000 simulaciones</span></div>';
+  if (a === b) { $('#simResult').innerHTML = du(I18N.t('sim.pick_distinct')); return; }
+  $('#simResult').innerHTML = `<div class="muted" style="padding:24px 0;text-align:center">${I18N.t('sim.analyzing')}<br><span style="font-size:11px">${I18N.t('sim.analyzing_sub')}</span></div>`;
   GPI_OPEN = false;
   try {
     const r = await fetch(`/api/h2h/deep?a=${a}&b=${b}`, { headers: hdrs() });
     if (!r.ok) { if (r.status === 401) { openLogin(); return; } throw 0; }
     CUR_SIM = await r.json();
     $('#simResult').innerHTML = simHeadlineHtml(CUR_SIM);
-  } catch { $('#simResult').innerHTML = du('No se pudo simular. Intenta de nuevo.'); }
+  } catch { $('#simResult').innerHTML = du(I18N.t('sim.failed')); }
 }
 
 // Headline del cruce: el resultado YA es v2 (GP Intelligence). Debajo, botón para el análisis integral.
 function simHeadlineHtml(d) {
   const p = d.probs, base = d.base, ctx = d.context;
+  const aNm = d.a.id ? I18N.teamName(d.a.id, d.a.name) : d.a.name, bNm = d.b.id ? I18N.teamName(d.b.id, d.b.name) : d.b.name;
   const moved = Math.abs(ctx.deltaA) + Math.abs(ctx.deltaB) > 2;
   // §13: el simulador usa GP Intelligence (V2 oficial). NUNCA etiquetar como "experimental"; nota honesta de hipótesis.
-  const v2Label = `<div class="gpi-labelrow"><span class="gpi-explabel">🧠 Simulación con GP Intelligence · contexto disponible actualmente</span></div>`;
+  const v2Label = `<div class="gpi-labelrow"><span class="gpi-explabel">${I18N.t('sim.label_gpi')}</span></div>`;
   return `
     <div class="dpanel" style="margin-top:14px">
       ${v2Label}
       <div class="sim-teams">
-        <div class="sim-side"><div class="sim-flag">${d.a.flag}</div><div class="sim-name">${d.a.name}</div><div class="muted" style="font-size:11px">Elo ${d.a.elo}${ctx.deltaA ? ` <span class="${ctx.deltaA > 0 ? 'pgood' : 'pbad'}">${ctx.deltaA > 0 ? '+' : ''}${ctx.deltaA}</span>` : ''}</div></div>
-        <div class="sim-vs2">VS</div>
-        <div class="sim-side"><div class="sim-flag">${d.b.flag}</div><div class="sim-name">${d.b.name}</div><div class="muted" style="font-size:11px">Elo ${d.b.elo}${ctx.deltaB ? ` <span class="${ctx.deltaB > 0 ? 'pgood' : 'pbad'}">${ctx.deltaB > 0 ? '+' : ''}${ctx.deltaB}</span>` : ''}</div></div>
+        <div class="sim-side"><div class="sim-flag">${d.a.flag}</div><div class="sim-name">${aNm}</div><div class="muted" style="font-size:11px">Elo ${d.a.elo}${ctx.deltaA ? ` <span class="${ctx.deltaA > 0 ? 'pgood' : 'pbad'}">${ctx.deltaA > 0 ? '+' : ''}${ctx.deltaA}</span>` : ''}</div></div>
+        <div class="sim-vs2">${I18N.t('mpage.vs')}</div>
+        <div class="sim-side"><div class="sim-flag">${d.b.flag}</div><div class="sim-name">${bNm}</div><div class="muted" style="font-size:11px">Elo ${d.b.elo}${ctx.deltaB ? ` <span class="${ctx.deltaB > 0 ? 'pgood' : 'pbad'}">${ctx.deltaB > 0 ? '+' : ''}${ctx.deltaB}</span>` : ''}</div></div>
       </div>
       <div class="pbar" style="margin-top:16px"><div class="ph" style="width:${p.aWin * 100}%"></div><div class="pd" style="width:${p.draw * 100}%"></div><div class="pa" style="width:${p.bWin * 100}%"></div></div>
-      <div class="plabels"><span>${pct(p.aWin)} gana</span><span>empate ${pct(p.draw)}</span><span>gana ${pct(p.bWin)}</span></div>
-      <div class="plabels" style="margin-top:6px"><span>xG ${p.xgA.toFixed(2)}</span><span class="muted">marcador prob. ${p.likely}</span><span>xG ${p.xgB.toFixed(2)}</span></div>
-      ${moved ? `<div class="gpi-decomp">Modelo base: ${pct(base.aWin, 0)} · ${pct(base.draw, 0)} · ${pct(base.bWin, 0)} <span class="gpi-arrow">→</span> <b>GP Intelligence integra el contexto</b></div>` : ''}
+      <div class="plabels"><span>${I18N.t('sim.prob_home', { p: pct(p.aWin) })}</span><span>${I18N.t('sim.prob_draw', { p: pct(p.draw) })}</span><span>${I18N.t('sim.prob_away', { p: pct(p.bWin) })}</span></div>
+      <div class="plabels" style="margin-top:6px"><span>xG ${p.xgA.toFixed(2)}</span><span class="muted">${I18N.t('sim.likely_score', { score: p.likely })}</span><span>xG ${p.xgB.toFixed(2)}</span></div>
+      ${moved ? `<div class="gpi-decomp">${I18N.t('sim.base_model', { h: pct(base.aWin, 0), d: pct(base.draw, 0), a: pct(base.bWin, 0) })} <span class="gpi-arrow">→</span> <b>${I18N.t('sim.gpi_integrates')}</b></div>` : ''}
       <div class="gpi-actions">
-        <button class="btn" style="flex:1" onclick="toggleGpi()"><span id="gpiBtnTx">🧠 Ver análisis GP Intelligence</span></button>
-        <button class="cta-sm" onclick="shareSim(event)" title="Compartir">📤</button>
+        <button class="btn" style="flex:1" onclick="toggleGpi()"><span id="gpiBtnTx">${I18N.t('sim.view_gpi')}</span></button>
+        <button class="cta-sm" onclick="shareSim(event)" title="${I18N.t('sim.share')}">📤</button>
       </div>
       <div id="simAnalysis" class="gpi-wrap"></div>
     </div>`;
@@ -2322,8 +2373,8 @@ let GPI_OPEN = false;
 function toggleGpi() {
   GPI_OPEN = !GPI_OPEN;
   const wrap = $('#simAnalysis'), tx = $('#gpiBtnTx');
-  if (!GPI_OPEN) { wrap.innerHTML = ''; tx.textContent = '🧠 Ver análisis GP Intelligence'; return; }
-  tx.textContent = '✕ Ocultar análisis';
+  if (!GPI_OPEN) { wrap.innerHTML = ''; tx.textContent = I18N.t('sim.view_gpi'); return; }
+  tx.textContent = I18N.t('sim.hide_analysis');
   wrap.innerHTML = h2hAnalysisHtml(CUR_SIM);
 }
 
@@ -2344,14 +2395,15 @@ function h2hAnalysisHtml(d) {
   // acordeones accesibles (Veredicto/Probabilidades/V1-V2/Factores/Riesgos quedan visibles). Flag off → todo expandido.
   const acc = (label, p) => (USER && USER.uiFlags && USER.uiFlags.gpIntelligenceLabels)
     ? `<details class="gpi-acc"><summary>${label}</summary>${p}</details>` : p;
+  const aNm = d.a.id ? I18N.teamName(d.a.id, d.a.name) : d.a.name, bNm = d.b.id ? I18N.teamName(d.b.id, d.b.name) : d.b.name;
 
   // 1) VEREDICTO — confianza del MODELO y calidad de DATOS son conceptos separados (B9)
   const mConf = h.modelConfidence ? h.modelConfidence.level : '—';
   const dQual = h.dataQuality ? h.dataQuality.level : '—';
-  html += panel('GP Intelligence · Veredicto', '', `
+  html += panel(I18N.t('sim.verdict_title'), '', `
     <div class="gptbox">
       <div class="gpt-top"><span class="grade ${verdictCls(h.verdictLabel)}">${h.verdictLabel}</span>
-        <span class="gpt-conf">Confianza modelo: ${mConf}</span><span class="gpt-conf">Calidad datos: ${dQual}</span></div>
+        <span class="gpt-conf">${I18N.t('sim.model_confidence', { v: mConf })}</span><span class="gpt-conf">${I18N.t('sim.data_quality', { v: dQual })}</span></div>
       <div class="gpt-sum" style="margin-top:8px">${h.verdict}</div>
     </div>`);
 
@@ -2364,29 +2416,29 @@ function h2hAnalysisHtml(d) {
     </div>`;
   const dpp = dec.deltaPp || { aWin: 0, draw: 0, bWin: 0 };
   const ppChip = v => `<span class="gpi-imp ${v > 0 ? 'up' : v < 0 ? 'down' : 'flat'}">${v > 0 ? '+' : ''}${v.toFixed(1)}pp</span>`;
-  html += panel('Probabilidad inicial → Probabilidad GP final', 'base calibrada + contexto aplicado', `
-    ${decRow('Probabilidad inicial', dec.baseLine, false)}
-    ${decRow('Probabilidad GP final', dec.v2Line, true)}
+  html += panel(I18N.t('sim.decomp_title'), I18N.t('sim.decomp_sub'), `
+    ${decRow(I18N.t('sim.initial_prob'), dec.baseLine, false)}
+    ${decRow(I18N.t('sim.gp_final_prob'), dec.v2Line, true)}
     <div class="gpi-deltas">
-      <span>${d.a.flag} ${d.a.name}: ${ppChip(dpp.aWin)}</span>
-      <span>empate: ${ppChip(dpp.draw)}</span>
-      <span>${d.b.flag} ${d.b.name}: ${ppChip(dpp.bWin)}</span>
+      <span>${d.a.flag} ${aNm}: ${ppChip(dpp.aWin)}</span>
+      <span>${I18N.t('sim.draw')}: ${ppChip(dpp.draw)}</span>
+      <span>${d.b.flag} ${bNm}: ${ppChip(dpp.bWin)}</span>
     </div>
     <div class="gpi-deltas">
-      <span>Contexto Elo ${d.a.name}: ${impChip(dec.deltaA)}</span>
-      <span>Contexto Elo ${d.b.name}: ${impChip(dec.deltaB)}</span>
+      <span>${I18N.t('sim.elo_context', { team: aNm })}${impChip(dec.deltaA)}</span>
+      <span>${I18N.t('sim.elo_context', { team: bNm })}${impChip(dec.deltaB)}</span>
     </div>
-    <div class="gpi-note">GP parte de una probabilidad inicial calibrada y le aplica el contexto de cada equipo (con un tope de seguridad) para reconstruir la probabilidad GP final. El delta es el efecto del contexto en puntos porcentuales.</div>`);
+    <div class="gpi-note">${I18N.t('sim.decomp_note')}</div>`);
 
   // 3) FACTORES CLAVE (ambos equipos, ordenados por peso; excluidos atenuados)
   if (an.factors && an.factors.length) {
     const rows = an.factors.map(f => `
       <div class="gpi-factor${f.included ? '' : ' gpi-excluded'}">
-        <div class="gpi-fac-h"><span class="gpi-fac-team">${f.flag} ${f.team}</span>${f.included ? impChip(f.eloImpact) : `<span class="gpi-imp flat">omitido</span>`}</div>
+        <div class="gpi-fac-h"><span class="gpi-fac-team">${f.flag} ${f.team}</span>${f.included ? impChip(f.eloImpact) : `<span class="gpi-imp flat">${I18N.t('sim.factor_omitted')}</span>`}</div>
         <div class="gpi-fac-l">${f.label}${f.group ? ` · <span class="gpi-grp">${f.group}</span>` : ''}</div>
-        <div class="gpi-fac-d">${f.detail}${f.included ? '' : ` · <span class="pbad">excluido: ${f.exclusionReason}</span>`}</div>
+        <div class="gpi-fac-d">${f.detail}${f.included ? '' : ` · <span class="pbad">${I18N.t('sim.factor_excluded', { reason: f.exclusionReason })}</span>`}</div>
       </div>`).join('');
-    html += panel('Factores que pesan', an.factors.length + '', `<div class="gpi-factors">${rows}</div>`);
+    html += panel(I18N.t('sim.factors_title'), an.factors.length + '', `<div class="gpi-factors">${rows}</div>`);
   }
 
   // 4) MONTE CARLO — distribución del cruce
@@ -2397,13 +2449,13 @@ function h2hAnalysisHtml(d) {
       <div class="gpi-sc-bar"><div style="width:${(s.p / maxP) * 100}%"></div></div>
       <span class="gpi-sc-p">${pct(s.p, 0)}</span>
     </div>`).join('');
-  html += acc('Ver simulaciones (Monte Carlo)', panel('Monte Carlo · 10.000 simulaciones', 'contexto integrado', `
+  html += acc(I18N.t('sim.mc_acc'), panel(I18N.t('sim.mc_title'), I18N.t('sim.mc_sub'), `
     <div class="gpi-sc-grid">${scoreBars}</div>
     <div class="gpi-mc-stats">
-      <div class="gpi-stat"><span class="v">${pct(mc.over25, 0)}</span><span class="l">Over 2.5</span></div>
-      <div class="gpi-stat"><span class="v">${pct(mc.btts, 0)}</span><span class="l">Ambos marcan</span></div>
-      <div class="gpi-stat"><span class="v">${mc.avgTotal.toFixed(2)}</span><span class="l">Goles/partido</span></div>
-      <div class="gpi-stat"><span class="v">${mc.avgMargin.toFixed(2)}</span><span class="l">Margen prom.</span></div>
+      <div class="gpi-stat"><span class="v">${pct(mc.over25, 0)}</span><span class="l">${I18N.t('sim.over25')}</span></div>
+      <div class="gpi-stat"><span class="v">${pct(mc.btts, 0)}</span><span class="l">${I18N.t('sim.btts')}</span></div>
+      <div class="gpi-stat"><span class="v">${mc.avgTotal.toFixed(2)}</span><span class="l">${I18N.t('sim.goals_per_match')}</span></div>
+      <div class="gpi-stat"><span class="v">${mc.avgMargin.toFixed(2)}</span><span class="l">${I18N.t('sim.avg_margin')}</span></div>
     </div>
     <div class="gpi-note">${an.monteCarlo.narrative}</div>`));
 
@@ -2413,7 +2465,7 @@ function h2hAnalysisHtml(d) {
     const ouRow = (label, over) => `
       <div class="gpi-ou">
         <span class="gpi-ou-l">${label}</span>
-        <div class="gpi-ou-split"><div class="gpi-ou-fill" style="width:${over * 100}%"></div><span class="gpi-ou-o">Over ${pct(over, 0)}</span><span class="gpi-ou-u">Under ${pct(1 - over, 0)}</span></div>
+        <div class="gpi-ou-split"><div class="gpi-ou-fill" style="width:${over * 100}%"></div><span class="gpi-ou-o">${I18N.t('sim.over', { p: pct(over, 0) })}</span><span class="gpi-ou-u">${I18N.t('sim.under', { p: pct(1 - over, 0) })}</span></div>
       </div>`;
     const teamGoals = (dist, flag, name) => `
       <div class="gpi-tg">
@@ -2422,22 +2474,22 @@ function h2hAnalysisHtml(d) {
           ${[['0', dist.g0], ['1', dist.g1], ['2', dist.g2], ['3+', dist.g3]].map(([n, p]) => `<div class="gpi-tg-c"><span class="n">${n}</span><span class="p">${pct(p, 0)}</span></div>`).join('')}
         </div>
       </div>`;
-    html += acc('Ver goles y totales', panel('Goles y totales', 'para totales', `
+    html += acc(I18N.t('sim.goals_acc'), panel(I18N.t('sim.goals_title'), I18N.t('sim.goals_sub'), `
       <div class="gpi-ou-wrap">
-        ${ouRow('1.5 goles', g.over15)}
-        ${ouRow('2.5 goles', g.over25)}
-        ${ouRow('3.5 goles', g.over35)}
+        ${ouRow(I18N.t('sim.goals_n', { n: '1.5' }), g.over15)}
+        ${ouRow(I18N.t('sim.goals_n', { n: '2.5' }), g.over25)}
+        ${ouRow(I18N.t('sim.goals_n', { n: '3.5' }), g.over35)}
       </div>
       <div class="gpi-mc-stats" style="margin-top:13px">
-        <div class="gpi-stat"><span class="v">${g.mostLikelyTotal}</span><span class="l">Total más prob.</span></div>
-        <div class="gpi-stat"><span class="v">${pct(g.mostLikelyTotalP, 0)}</span><span class="l">Prob. de ese total</span></div>
-        <div class="gpi-stat"><span class="v">${g.avgTotal.toFixed(2)}</span><span class="l">Goles esperados</span></div>
-        <div class="gpi-stat"><span class="v">${pct(g.btts, 0)}</span><span class="l">Ambos marcan</span></div>
+        <div class="gpi-stat"><span class="v">${g.mostLikelyTotal}</span><span class="l">${I18N.t('sim.most_likely_total')}</span></div>
+        <div class="gpi-stat"><span class="v">${pct(g.mostLikelyTotalP, 0)}</span><span class="l">${I18N.t('sim.total_prob')}</span></div>
+        <div class="gpi-stat"><span class="v">${g.avgTotal.toFixed(2)}</span><span class="l">${I18N.t('sim.expected_goals')}</span></div>
+        <div class="gpi-stat"><span class="v">${pct(g.btts, 0)}</span><span class="l">${I18N.t('sim.btts')}</span></div>
       </div>
-      <div class="dsub" style="margin-top:14px">Goles por equipo (probabilidad)</div>
-      ${teamGoals(g.teamA, d.a.flag, d.a.name)}
-      ${teamGoals(g.teamB, d.b.flag, d.b.name)}
-      <div class="gpi-note">${d.context.goalModel ? 'Modelo de goles: ' + d.context.goalModel + '. ' : ''}xG ${d.probs.xgA.toFixed(2)} – ${d.probs.xgB.toFixed(2)}. Distribución de las 10.000 simulaciones.</div>`));
+      <div class="dsub" style="margin-top:14px">${I18N.t('sim.goals_by_team')}</div>
+      ${teamGoals(g.teamA, d.a.flag, aNm)}
+      ${teamGoals(g.teamB, d.b.flag, bNm)}
+      <div class="gpi-note">${d.context.goalModel ? I18N.t('sim.goal_model', { model: d.context.goalModel }) : ''}xG ${d.probs.xgA.toFixed(2)} – ${d.probs.xgB.toFixed(2)}. ${I18N.t('sim.goals_dist_note')}</div>`));
   }
 
   // 5) LECTURA TÁCTICA (si hay editorial). La nota puede ser texto o {style,strengths[],risks[]}.
@@ -2448,69 +2500,75 @@ function h2hAnalysisHtml(d) {
     return `<div class="gpi-tac"><b>${flag} ${team}:</b> ${t.style || ''}
       ${tags(t.strengths, 'up')}${tags(t.risks, 'down')}</div>`;
   };
-  const tA = tacHtml(d.tactical && d.tactical.a, d.a.name, d.a.flag), tB = tacHtml(d.tactical && d.tactical.b, d.b.name, d.b.flag);
-  if (tA || tB) html += acc('Ver lectura táctica', panel('Lectura táctica', '', tA + tB));
+  const tA = tacHtml(d.tactical && d.tactical.a, aNm, d.a.flag), tB = tacHtml(d.tactical && d.tactical.b, bNm, d.b.flag);
+  if (tA || tB) html += acc(I18N.t('sim.tactical_acc'), panel(I18N.t('sim.tactical_title'), '', tA + tB));
 
   // 6) INSIGHTS determinísticos (anclados a métricas) + qué cambiaría
   const insights = an.insights || [];
   const sevCls = s => s === 'warn' ? 'down' : 'up';
-  html += panel('Lectura y riesgos', '', `
-    <div class="dsub">A vigilar</div>
+  html += panel(I18N.t('sim.read_risks_title'), '', `
+    <div class="dsub">${I18N.t('sim.to_watch')}</div>
     <ul class="gpt-drivers">${insights.map(i => `<li><span class="gpi-ins ${sevCls(i.severity)}">${i.text}</span></li>`).join('')}</ul>
-    <div class="dsub" style="margin-top:10px">Qué cambiaría la lectura</div>
+    <div class="dsub" style="margin-top:10px">${I18N.t('sim.what_changes')}</div>
     <ul class="gpt-drivers">${an.whatChanges.map(x => `<li>${x}</li>`).join('')}</ul>`);
 
   // 7) TRAZABILIDAD — "Cómo llegó GP a este resultado" (colapsable, B11)
   html += traceabilityHtml(d);
 
-  html += `<div class="disc">GP parte de una probabilidad inicial calibrada y le aplica el contexto del partido para reconstruir la probabilidad GP final. Cancha neutral, sin factor localía. Estimaciones de un modelo estadístico + contexto. No es consejo financiero ni recomendación de apuesta.</div>`;
+  html += `<div class="disc">${I18N.t('sim.disclaimer')}</div>`;
   return html;
 }
 
 // Panel colapsable de trazabilidad: modelo base, contexto, resultado y calidad de datos (sin secretos).
 function traceabilityHtml(d) {
   const dec = d.analysis.decomposition, ctx = d.context;
+  const aNm = d.a.id ? I18N.teamName(d.a.id, d.a.name) : d.a.name, bNm = d.b.id ? I18N.teamName(d.b.id, d.b.name) : d.b.name;
   const factorLines = side => (side || []).filter(f => f.axis === 'elo' && f.factorCode !== 'NO_CONTEXT').map(f =>
-    `<div class="gpi-tr-row"><span>${labelForFactor(f.factorCode)}</span><span>${f.included ? (f.cappedContribution > 0 ? '+' : '') + f.cappedContribution + ' Elo' : '<span class="pbad">omitido (' + f.exclusionReason + ')</span>'}</span></div>`).join('');
+    `<div class="gpi-tr-row"><span>${labelForFactor(f.factorCode)}</span><span>${f.included ? (f.cappedContribution > 0 ? '+' : '') + f.cappedContribution + ' Elo' : `<span class="pbad">${I18N.t('sim.trace_omitted', { reason: f.exclusionReason })}</span>`}</span></div>`).join('');
   return `<details class="gpi-trace">
-    <summary>🔎 Cómo llegó GP a este resultado</summary>
+    <summary>${I18N.t('sim.trace_summary')}</summary>
     <div class="gpi-tr-body">
-      <div class="gpi-tr-h">Probabilidad inicial</div>
-      <div class="gpi-tr-row"><span>${d.a.flag} ${d.a.name} · Elo base</span><span>${d.a.elo}</span></div>
-      <div class="gpi-tr-row"><span>${d.b.flag} ${d.b.name} · Elo base</span><span>${d.b.elo}</span></div>
-      <div class="gpi-tr-row"><span>Probabilidad inicial</span><span>${pct(dec.baseLine.aWin, 1)} · ${pct(dec.baseLine.draw, 1)} · ${pct(dec.baseLine.bWin, 1)}</span></div>
-      <div class="gpi-tr-h">Contexto · ${d.a.name}</div>${factorLines(ctx.factorsA)}
-      <div class="gpi-tr-row strong"><span>Ajuste total ${d.a.name}</span><span>${dec.deltaA > 0 ? '+' : ''}${dec.deltaA} Elo</span></div>
-      <div class="gpi-tr-h">Contexto · ${d.b.name}</div>${factorLines(ctx.factorsB)}
-      <div class="gpi-tr-row strong"><span>Ajuste total ${d.b.name}</span><span>${dec.deltaB > 0 ? '+' : ''}${dec.deltaB} Elo</span></div>
-      <div class="gpi-tr-h">Probabilidad GP final</div>
-      <div class="gpi-tr-row"><span>Elo ajustado</span><span>${d.a.elo + dec.deltaA} · ${d.b.elo + dec.deltaB}</span></div>
-      <div class="gpi-tr-row"><span>Probabilidad GP final</span><span>${pct(dec.v2Line.aWin, 1)} · ${pct(dec.v2Line.draw, 1)} · ${pct(dec.v2Line.bWin, 1)}</span></div>
+      <div class="gpi-tr-h">${I18N.t('sim.trace_initial')}</div>
+      <div class="gpi-tr-row"><span>${d.a.flag} ${I18N.t('sim.trace_elo_base', { team: aNm })}</span><span>${d.a.elo}</span></div>
+      <div class="gpi-tr-row"><span>${d.b.flag} ${I18N.t('sim.trace_elo_base', { team: bNm })}</span><span>${d.b.elo}</span></div>
+      <div class="gpi-tr-row"><span>${I18N.t('sim.trace_initial')}</span><span>${pct(dec.baseLine.aWin, 1)} · ${pct(dec.baseLine.draw, 1)} · ${pct(dec.baseLine.bWin, 1)}</span></div>
+      <div class="gpi-tr-h">${I18N.t('sim.trace_context', { team: aNm })}</div>${factorLines(ctx.factorsA)}
+      <div class="gpi-tr-row strong"><span>${I18N.t('sim.trace_total_adj', { team: aNm })}</span><span>${dec.deltaA > 0 ? '+' : ''}${dec.deltaA} Elo</span></div>
+      <div class="gpi-tr-h">${I18N.t('sim.trace_context', { team: bNm })}</div>${factorLines(ctx.factorsB)}
+      <div class="gpi-tr-row strong"><span>${I18N.t('sim.trace_total_adj', { team: bNm })}</span><span>${dec.deltaB > 0 ? '+' : ''}${dec.deltaB} Elo</span></div>
+      <div class="gpi-tr-h">${I18N.t('sim.trace_gp_final')}</div>
+      <div class="gpi-tr-row"><span>${I18N.t('sim.trace_adj_elo')}</span><span>${d.a.elo + dec.deltaA} · ${d.b.elo + dec.deltaB}</span></div>
+      <div class="gpi-tr-row"><span>${I18N.t('sim.trace_gp_final')}</span><span>${pct(dec.v2Line.aWin, 1)} · ${pct(dec.v2Line.draw, 1)} · ${pct(dec.v2Line.bWin, 1)}</span></div>
     </div>
   </details>`;
 }
 function labelForFactor(code) {
+  const k = 'factor.' + code; const v = I18N.t(k);
+  if (v !== k) return v;
   return ({ FORM: 'Forma reciente', STREAK: 'Racha', SOLIDITY: 'Solidez/fragilidad', SQUAD_QUALITY: 'Calidad de plantilla', AVAILABILITY: 'Bajas y dudas', REST: 'Descanso/carga' })[code] || code;
 }
 
 function shareSim(ev) {
   if (!CUR_SIM) return; const d = CUR_SIM, p = d.probs;
-  const fav = p.aWin >= p.bWin ? d.a : d.b, favP = Math.max(p.aWin, p.bWin);
-  const txt = `⚔️ ${d.a.flag} ${d.a.name} vs ${d.b.name} ${d.b.flag} — análisis GP Intelligence (modelo + contexto + 10.000 sims):\n${d.a.name} ${pct(p.aWin)} · empate ${pct(p.draw)} · ${d.b.name} ${pct(p.bWin)} · marcador probable ${p.likely}.\nSimula tu cruce gratis:`;
+  const aNm = d.a.id ? I18N.teamName(d.a.id, d.a.name) : d.a.name, bNm = d.b.id ? I18N.teamName(d.b.id, d.b.name) : d.b.name;
+  const txt = I18N.t('sim.share_text', {
+    aFlag: d.a.flag, bFlag: d.b.flag, a: aNm, b: bNm,
+    pa: pct(p.aWin), pd: pct(p.draw), pb: pct(p.bWin), score: p.likely,
+  });
   shareOp(ev, txt);
 }
 
 // ---------- LOGIN ----------
 function openLogin() {
   if (USER) {
-    openModal(`<h2>Sesión</h2><p>${USER.email}${USER.isAdmin ? ' · <span class="pgood">ADMIN</span>' : ''}</p>
-      <div class="formrow"><button class="btn" onclick="logout()">Cerrar sesión</button></div>`);
+    openModal(`<h2>${I18N.t('login.session')}</h2><p>${USER.email}${USER.isAdmin ? ` · <span class="pgood">${I18N.t('login.admin')}</span>` : ''}</p>
+      <div class="formrow"><button class="btn" onclick="logout()">${I18N.t('login.logout')}</button></div>`);
     return;
   }
-  openModal(`<h2>Entrar o crear cuenta</h2>
-    <p class="muted">Solo tu email. Te enviamos un código de 6 dígitos: sirve igual si ya tienes cuenta o si es tu primera vez.</p>
-    <div class="formrow"><input id="loginEmail" type="email" placeholder="tu@email.com" style="flex:1">
-    <button class="btn" onclick="requestCode()">Enviar código</button></div>
+  openModal(`<h2>${I18N.t('login.title')}</h2>
+    <p class="muted">${I18N.t('login.subtitle')}</p>
+    <div class="formrow"><input id="loginEmail" type="email" placeholder="${I18N.t('login.email_ph')}" style="flex:1">
+    <button class="btn" onclick="requestCode()">${I18N.t('login.send_code')}</button></div>
     <div id="loginStep2"></div><div id="loginMsg" class="warn"></div>`);
 }
 async function requestCode() {
@@ -2520,11 +2578,11 @@ async function requestCode() {
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
   $('#loginStep2').innerHTML = `
     ${j.sent
-      ? `<p style="color:var(--accent)">📬 Te enviamos el código a <b>${$('#loginEmail').value.trim()}</b>.<br>
-         <span class="muted">Si no lo ves en 1 minuto, revisa Promociones o Spam.</span></p>`
-      : `<p class="warn">Modo demo (sin SMTP): tu código es <b>${j.demoCode}</b></p>`}
-    <div class="formrow"><input id="loginCode" placeholder="código de 6 dígitos" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-    <button class="btn" onclick="verifyCode()">Verificar y entrar</button></div>`;
+      ? `<p style="color:var(--accent)">${I18N.t('login.sent', { email: $('#loginEmail').value.trim() })}<br>
+         <span class="muted">${I18N.t('login.sent_check')}</span></p>`
+      : `<p class="warn">${I18N.t('login.demo_code', { code: j.demoCode })}</p>`}
+    <div class="formrow"><input id="loginCode" placeholder="${I18N.t('login.code_ph')}" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    <button class="btn" onclick="verifyCode()">${I18N.t('login.verify')}</button></div>`;
   setTimeout(() => { const c = $('#loginCode'); if (c) c.focus(); }, 100);
 }
 async function verifyCode() {
@@ -2875,9 +2933,9 @@ function regAge(s) { if (s == null) return '—'; if (s < 90) return 'hace ' + s
 async function loadRegistry() {
   const root = $('#tab-registry');
   root.innerHTML = `
-    <div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Registro verificable</h3><span class="sec-badge">integridad</span></div>
-    <div class="explain">Cada señal se publica con su precio, probabilidad, modelo, timestamp y fuentes. <b>No</b> modificamos predicciones después del evento; cualquier corrección queda registrada en el historial.</div>
-    <div id="regList"><div class="du">Cargando registro…</div></div>
+    <div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>${xe(I18N.t('registry.section_title'))}</h3><span class="sec-badge">${xe(I18N.t('registry.section_badge'))}</span></div>
+    <div class="explain">${I18N.t('registry.intro')}</div>
+    <div id="regList"><div class="du">${xe(I18N.t('registry.loading'))}</div></div>
     <div class="xo-foot">Registro con evidencia de integridad y detección de modificaciones. No es asesoría financiera.</div>`;
   if (!USER.registryPublic) { $('#regList').innerHTML = du('La vista pública del registro está en preparación.'); return; }
   try {
@@ -2953,8 +3011,8 @@ function perfCard(label, m, desc) {
 
 async function loadPerf() {
   const root = $('#tab-perf');
-  root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>Track record verificable</h3><span class="sec-badge">métricas</span></div><div id="perfBody"><div class="du">Cargando métricas…</div></div>`;
-  if (!USER.metricsPublic) { $('#perfBody').innerHTML = du('El dashboard público de rendimiento está en preparación. Como admin puedes correr el motor de métricas y previsualizar.'); return; }
+  root.innerHTML = `<div class="sec-head"><h3><span class="dot" style="background:var(--accent)"></span>${xe(I18N.t('perf.section_title'))}</h3><span class="sec-badge">${xe(I18N.t('perf.section_badge'))}</span></div><div id="perfBody"><div class="du">${xe(I18N.t('perf.loading_metrics'))}</div></div>`;
+  if (!USER.metricsPublic) { $('#perfBody').innerHTML = du(I18N.t('perf.preview_gate')); return; }
   try {
     const [sum, cal, arb, exp] = await Promise.all([
       fetch('/api/metrics/summary', { headers: hdrs() }).then(x => x.json()).catch(() => null),

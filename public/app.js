@@ -1569,6 +1569,7 @@ async function loadArb(force = false) {
 // con cards premium reusando el shell rico de la plataforma (.feat/.xo-card/.val-grid/.dualcard). Picks default.
 let OPP_SUB = 'picks';                                  // §4: Picks GP es el subtab por defecto
 let OPP_DETAIL = null;                                  // 'pick'|'match' cuando hay un detalle abierto (anti-pestañeo)
+let VAL_FILTER = 'ACTIONABLE';                          // filtro de la subtab Value (§8)
 const OPP = { dash: null };                             // cache liviano del dashboard (mejor pick/value/headers)
 // deep-link inicial: /#opportunities/picks|value|arbitrage
 (function () { const m = (location.hash || '').match(/opportunities\/(picks|value|arb|arbitrage)/); if (m) OPP_SUB = m[1] === 'arbitrage' ? 'arb' : m[1]; })();
@@ -1792,17 +1793,24 @@ function oppValueCard(v, header) {
     ${v.event_id ? `<div class="xo-card-foot"><span></span><span class="xo-cta">${xe(oppT('value.view_analysis'))} →</span></div>` : ''}
   </div>`;
 }
+const VAL_FILTERS = [['ACTIONABLE', 'value.filter_actionable'], ['STRONG', 'value.filter_strong'], ['LEAN', 'value.filter_lean'], ['WATCH', 'value.filter_watch'], ['ALL', 'value.filter_all']];
+function oppValSetFilter(f) { VAL_FILTER = f; return loadOppValue('#oppBody'); }
 async function loadOppValue(sel) {
   const root = $(sel); if (!root) return;
   if (!((USER.beta.opportunities || {}).value)) { root.innerHTML = du(oppT('opp.coming_soon')); return; }
-  root.innerHTML = du(oppT('common.loading'));
+  // §8: filtros (Accionables/STRONG/LEAN/WATCH/Todas) — así se ve que el motor SÍ está evaluando aunque hoy
+  // no haya value accionable (todas las evals próximas en PASS/WATCH = el modelo coincide con el mercado).
+  const bar = VAL_FILTERS.map(([k, lk]) => `<button class="seg-btn ${VAL_FILTER === k ? 'on' : ''}" onclick="oppValSetFilter('${k}')">${xe(oppT(lk))}</button>`).join('');
+  root.innerHTML = `<div class="explain">${xe(oppT('value.subtitle'))}</div><div class="seg" role="tablist" style="margin-bottom:10px">${bar}</div><div id="valFlagBody">${du(oppT('common.loading'))}</div>`;
+  const body = $('#valFlagBody'); if (!body) return;
   let items = [];
-  try { const r = await fetch('/api/beta/value?class=ACTIONABLE', { headers: hdrs() }); await oppGetDash(); if (!r.ok) { root.innerHTML = du(oppT('common.na')); return; } items = (await r.json()).items || []; }
-  catch (e) { root.innerHTML = du(oppT('common.na')); return; }
+  try { const r = await fetch('/api/beta/value?class=' + VAL_FILTER, { headers: hdrs() }); await oppGetDash(); if (!r.ok) { body.innerHTML = du(oppT('common.na')); return; } items = (await r.json()).items || []; }
+  catch (e) { body.innerHTML = du(oppT('common.na')); return; }
   const headers = oppHeaderMap(OPP.dash);
-  let html = `<div class="explain">${xe(oppT('value.subtitle'))}</div>`;
-  html += items.length ? items.map(v => oppValueCard(v, headers[v.event_id])).join('') : `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(oppT('value.no_results'))}</div></div></div>`;
-  root.innerHTML = html;
+  if (items.length) { body.innerHTML = items.map(v => oppValueCard(v, headers[v.event_id])).join(''); return; }
+  // Empty INFORMATIVO: el motor está corriendo; en este filtro no hay resultados ahora.
+  const title = VAL_FILTER === 'ACTIONABLE' ? oppT('value.none_actionable') : oppT('value.no_results');
+  body.innerHTML = `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(title)}</div><div class="op-state-b">${xe(oppT('value.engine_working'))}</div></div></div>`;
 }
 
 // ---- §9: Arbitraje (integra Fase R; SOLO ejecutable/válido al cliente; bloqueados quedan en Observatory admin) ----

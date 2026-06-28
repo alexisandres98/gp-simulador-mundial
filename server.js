@@ -2505,6 +2505,17 @@ server.listen(PORT, () => {
   try { require('./metrics-engine/scheduler').start(); } catch { /* aislado */ }
   // Sprint 7 — scheduler del Value Engine + monitor de precio de picks. Solo si los flags VALUE/PICKS lo habilitan.
   try { require('./value-engine/scheduler').start(); } catch { /* aislado */ }
+  // Retención de telemetría shadow (market-data + arb-engine) — evita que la DB se llene (incidente jun-28).
+  // Solo si GP_TELEMETRY_RETENTION_ENABLED; best-effort, aislada. Corre 1 min tras arrancar y luego cada 30 min.
+  try {
+    const retention = require('./market-data/retention');
+    if (retention.enabled()) {
+      const dbc = require('./database/client');
+      const runRetention = () => retention.pruneTelemetry(dbc).then(r => console.log('[retention]', JSON.stringify(r))).catch(() => { });
+      setTimeout(runRetention, 60 * 1000);
+      setInterval(runRetention, 30 * 60 * 1000);
+    }
+  } catch { /* aislado */ }
   // Fase H.1 — cablea el result provider del settlement automático: accesor a los resultados ESPN (db.results).
   // Solo el marcador REGLAMENTARIO (sin prórroga ni penales): para knockout con penales → regulation null → UNRESOLVED.
   try {

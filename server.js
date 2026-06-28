@@ -2425,6 +2425,22 @@ const server = http.createServer(async (req, res) => {
     // --- Fase Q: superficie beta (gateada por GP_BETA_UI_ENABLED; 404 si off → la ruta no existe) ---
     // El shell HTML/JS/CSS no contiene datos sensibles (todo viene de /api/beta/* gateado por betaGuard),
     // pero igual NO se sirve si la beta está apagada, para no exponer una superficie nueva públicamente.
+    // --- capa visual premium (aislada en /x; gateada por GP_PREMIUM_UI_ENABLED; 404 si off → la ruta no existe) ---
+    const premiumOn = gpProduct.flags().premiumUi;
+    if (p === '/x' || p === '/x/') {
+      if (!premiumOn) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const pf = path.join(__dirname, 'public', 'premium.html');
+        const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'premium.js')).mtimeMs);
+        const vcss = Math.floor(fs.statSync(path.join(__dirname, 'public', 'premium.css')).mtimeMs);
+        let html = fs.readFileSync(pf, 'utf8')
+          .replace('src="premium.js"', `src="premium.js?v=${vjs}"`)
+          .replace('href="premium.css"', `href="premium.css?v=${vcss}"`);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    if (/^\/premium\.(js|css)$/.test(p) && !premiumOn) { json(res, 404, { error: 'No encontrado' }); return; }
     const betaOn = gpProduct.flags().betaUi;
     if (p === '/beta' || p === '/beta/') {
       if (!betaOn) { json(res, 404, { error: 'No encontrado' }); return; }

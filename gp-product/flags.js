@@ -30,6 +30,8 @@ function flags() {
     // (contexto point-in-time, freshness, incertidumbre, sin fallback silencioso a V1). Solo presentación+DTO;
     // NO cambia el modelo oficial del backend. Default false → Partidos queda idéntica para los ~509 usuarios.
     matchesV2Ui: bool(process.env.GP_MATCHES_V2_UI_ENABLED, false),
+    // Capa visual premium (terminal de inteligencia) aislada en /x. Default false → la ruta no existe en prod.
+    premiumUi: bool(process.env.GP_PREMIUM_UI_ENABLED, false),
   };
 }
 
@@ -63,6 +65,7 @@ function resolveForUser({ email = null, isAdmin = false } = {}) {
     goalInsights: !!(beta && f.goalInsights),    // Goal Insights: solo dentro de beta y con su flag on
     arbitrage: !!(beta && f.arbitrageUi),        // Arbitraje: solo beta autorizado + flag (nunca público aquí)
     matchesV2: !!(beta && f.matchesV2Ui),        // Fase Q.1.1 §2: Partidos con prob V2 oficial (beta + flag)
+    premium: !!(beta && f.premiumUi),            // capa visual premium /x (beta autorizado + flag)
     // Fase Q.1 §21 — superficie flagship "Oportunidades" en la plataforma principal. Cada subtab se cablea a
     // los DTOs V2 SOLO con acceso beta + su flag §21. Picks es el subtab por defecto. Arbitraje requiere
     // además el flag de UI de arbitraje ya existente. Con todo off → app.js queda byte-idéntica.

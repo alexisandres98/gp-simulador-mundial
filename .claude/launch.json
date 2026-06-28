@@ -12,6 +12,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 3007
+    },
+    {
+      "name": "worldcup-premium",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 3011
     }
   ]
 }

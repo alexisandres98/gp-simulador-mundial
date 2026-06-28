@@ -42,13 +42,39 @@
       reg90: '90 min · sin prórroga ni penales', updated_short: 'Actualizado',
       sig_strong: 'STRONG', sig_lean: 'LEAN', sig_watch: 'WATCH', sig_pass: 'PASS',
       comp: 'Copa Mundial de la FIFA 2026', none_active_pick: 'No hay Picks GP activas en este momento.',
-      below_min: 'El precio actual está por debajo de la cuota mínima requerida.', min_odds: 'Cuota mínima', cur_price: 'Mejor precio',
+      below_min: 'El precio actual está por debajo de la cuota mínima requerida.', below_min_short: 'Bajo mínimo', min_odds: 'Cuota mínima', cur_price: 'Mejor precio',
       cta_pick: 'Ver pick GP', cta_value: 'Ver oportunidad', cta_analysis: 'Ver análisis completo', cta_analyze: 'Analizar partido', cta_arb: 'Ver arbitraje', cta_state: 'Ver estado',
       unc_copy: 'Las estimaciones internas no convergen del todo, así que la confianza se mantiene moderada.',
       thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para elevar la confianza.',
       thesis_ctx2: 'GP apoya su lectura en {factors}.',
       e_na: 'Aún no disponible', e_nomarket: 'Mercado no encontrado', e_lineups: 'Esperando alineaciones', e_partial: 'Contexto parcial', e_noprice: 'Sin precio verificable',
       trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base',
+      // ---- Corte 2: Match Cockpit profundo ----
+      back: 'Oportunidades', open_cockpit: 'Abrir cockpit completo', refresh: 'Actualizar', fresh_fresh: 'Frescos', fresh_aging: 'Envejeciendo', fresh_stale: 'Desactualizados',
+      mod_memo: 'Decision memo', mod_prob: 'Probabilidad GP', mod_markets: 'Mercados', mod_context: 'Contexto', mod_goals: 'Proyección de goles', mod_live: 'En vivo',
+      hero_gp: 'Probabilidad GP', hero_mkt: 'Mercado', hero_best: 'Mejor precio', hero_xg: 'xG esperado', hero_score: 'Marcador probable', period_90: '90 min · sin prórroga ni penales',
+      ev_basis: 'Base de la evidencia',
+      ev_pick: 'Pick GP publicada con seguimiento', ev_value: 'Value accionable sobre el precio actual', ev_analysis: 'Análisis GP del partido', ev_price_only: 'Lectura basada en el precio', ev_none: 'Sin evidencia accionable todavía',
+      prob_base: 'Probabilidad base', prob_ctx: 'Ajuste de contexto', prob_final: 'Probabilidad GP',
+      prob_explain: 'Partimos de la probabilidad base del modelo y aplicamos el contexto verificado para llegar a la Probabilidad GP.',
+      prob_no_ctx: 'El contexto no movió la línea de forma material: la Probabilidad GP coincide con la base.',
+      prob_base_only: 'Sin capa de contexto aplicada todavía. Se muestra la probabilidad base del modelo.',
+      drivers: 'Factores que movieron la línea', evaluated: 'Factores evaluados', impact: 'Impacto', confidence: 'Confianza', evidence: 'Evidencia', freshness: 'Frescura',
+      ev_fact: 'Dato', ev_inference: 'Inferencia',
+      tl_title: 'Línea de tiempo', tl_now: 'Estado actual', tl_base_gp: 'Base → Probabilidad GP',
+      tl_empty: 'Aún no hay snapshots previos registrados para este partido. Los cambios de probabilidad, precio, noticias y alineaciones se registrarán a partir de ahora.',
+      mkt_sb: 'Casas de apuestas', mkt_sb_best: 'Mejor precio por casa', mkt_ex: 'Exchange', mkt_pm: 'Prediction markets',
+      col_provider: 'Fuente', col_outcome: 'Resultado', col_odds: 'Cuota', col_implied: 'Implícita', col_novig: 'Sin margen', col_move: 'Mov.', col_liq: 'Liquidez',
+      mkt_none: 'Sin mercados cargados para este partido todavía.', move_untracked: 'El movimiento de precio aún no se registra para estas fuentes.', novig_na: 'Requiere el set completo de resultados.',
+      ctx_none: 'Sin contexto verificado disponible para este partido todavía.', ctx_form: 'Forma reciente', ctx_inj: 'Bajas y disponibilidad', ctx_lineups: 'Alineaciones',
+      ctx_form_line: '{team} llega con {rec} en sus últimos {n} ({gf} a favor, {ga} en contra).', ctx_inj_line: '{team}: {players}.', no_inj: 'sin bajas reportadas',
+      goals_tag: 'En validación', goals_disc: 'Proyección estadística del modelo, en validación. No es una Pick ni un Value; sin recomendación de apuesta.',
+      g_xg: 'xG esperado', g_total: 'Total esperado', g_ou: 'Más / Menos', g_btts: 'Ambos anotan', g_scores: 'Marcadores más probables', g_over: 'Más', g_under: 'Menos', g_yes: 'Sí', g_no: 'No', goals_none: 'Sin proyección de goles disponible.',
+      live_min: 'Minuto', live_events: 'Eventos', live_stats: 'Estadísticas', live_prob: 'Probabilidad en vivo (modelo)', live_none: 'No hay datos en vivo verificados para este partido.',
+      live_stale: 'Datos en vivo posiblemente desactualizados; pueden no reflejar el estado actual.',
+      st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG',
+      evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
+      lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -82,13 +108,39 @@
       reg90: '90 min · no extra time or penalties', updated_short: 'Updated',
       sig_strong: 'STRONG', sig_lean: 'LEAN', sig_watch: 'WATCH', sig_pass: 'PASS',
       comp: 'FIFA World Cup 2026', none_active_pick: 'No active GP Picks right now.',
-      below_min: 'The current price is below the required minimum odds.', min_odds: 'Minimum odds', cur_price: 'Best price',
+      below_min: 'The current price is below the required minimum odds.', below_min_short: 'Below min', min_odds: 'Minimum odds', cur_price: 'Best price',
       cta_pick: 'View GP pick', cta_value: 'View opportunity', cta_analysis: 'View full analysis', cta_analyze: 'Analyze match', cta_arb: 'View arbitrage', cta_state: 'View status',
       unc_copy: 'Internal estimates don’t fully converge, so confidence stays moderate.',
       thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to raise confidence.',
       thesis_ctx2: 'GP backs its read on {factors}.',
       e_na: 'Not available yet', e_nomarket: 'Market not found', e_lineups: 'Awaiting lineups', e_partial: 'Partial context', e_noprice: 'No verifiable price',
       trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base',
+      // ---- Corte 2: Deep Match Cockpit ----
+      back: 'Opportunities', open_cockpit: 'Open full cockpit', refresh: 'Refresh', fresh_fresh: 'Fresh', fresh_aging: 'Aging', fresh_stale: 'Stale',
+      mod_memo: 'Decision memo', mod_prob: 'GP probability', mod_markets: 'Markets', mod_context: 'Context', mod_goals: 'Goal projection', mod_live: 'Live',
+      hero_gp: 'GP probability', hero_mkt: 'Market', hero_best: 'Best price', hero_xg: 'Expected xG', hero_score: 'Likely score', period_90: '90 min · no extra time or penalties',
+      ev_basis: 'Evidence basis',
+      ev_pick: 'Published GP Pick with tracking', ev_value: 'Actionable value over the current price', ev_analysis: 'GP match analysis', ev_price_only: 'Price-based read', ev_none: 'No actionable evidence yet',
+      prob_base: 'Base probability', prob_ctx: 'Context adjustment', prob_final: 'GP probability',
+      prob_explain: 'We start from the model’s base probability and apply verified context to reach the GP probability.',
+      prob_no_ctx: 'Context didn’t move the line materially: GP probability matches the base.',
+      prob_base_only: 'No context layer applied yet. Showing the model’s base probability.',
+      drivers: 'Factors that moved the line', evaluated: 'Evaluated factors', impact: 'Impact', confidence: 'Confidence', evidence: 'Evidence', freshness: 'Freshness',
+      ev_fact: 'Fact', ev_inference: 'Inference',
+      tl_title: 'Timeline', tl_now: 'Current state', tl_base_gp: 'Base → GP probability',
+      tl_empty: 'No prior snapshots recorded for this match yet. Probability, price, news and lineup changes will be tracked from now on.',
+      mkt_sb: 'Sportsbooks', mkt_sb_best: 'Best price per book', mkt_ex: 'Exchange', mkt_pm: 'Prediction markets',
+      col_provider: 'Source', col_outcome: 'Outcome', col_odds: 'Odds', col_implied: 'Implied', col_novig: 'No-vig', col_move: 'Move', col_liq: 'Liquidity',
+      mkt_none: 'No markets loaded for this match yet.', move_untracked: 'Price movement isn’t tracked for these sources yet.', novig_na: 'Requires the full outcome set.',
+      ctx_none: 'No verified context available for this match yet.', ctx_form: 'Recent form', ctx_inj: 'Absences & availability', ctx_lineups: 'Lineups',
+      ctx_form_line: '{team} arrives with {rec} in its last {n} ({gf} for, {ga} against).', ctx_inj_line: '{team}: {players}.', no_inj: 'no reported absences',
+      goals_tag: 'In validation', goals_disc: 'Statistical model projection, in validation. Not a Pick or Value; no betting recommendation.',
+      g_xg: 'Expected xG', g_total: 'Expected total', g_ou: 'Over / Under', g_btts: 'Both teams score', g_scores: 'Most likely scores', g_over: 'Over', g_under: 'Under', g_yes: 'Yes', g_no: 'No', goals_none: 'No goal projection available.',
+      live_min: 'Minute', live_events: 'Events', live_stats: 'Stats', live_prob: 'Live probability (model)', live_none: 'No verified live data for this match.',
+      live_stale: 'Live data may be stale; it might not reflect the current state.',
+      st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG',
+      evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
+      lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -105,7 +157,7 @@
   var fmtTime = function (iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
 
   // ---------- state ----------
-  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {} };
+  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {} };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -151,6 +203,7 @@
       '<aside class="gx-cockpit" id="gx-cockpit"></aside>' +
       '</div>' +
       '<div class="gx-vp" id="gx-vp"></div>' +
+      '<div class="gx-matchview" id="gx-matchview" hidden></div>' +
       '</div></div>' +
       '<nav class="gx-bnav">' + bnav + '</nav>';
     valueProps();
@@ -173,9 +226,13 @@
     (pv.outcomes || []).forEach(function (o) { oc[o.outcome_code] = o; });
     var vals = valByEvent[h.event_id] || [];
     var bySel = {}; vals.forEach(function (v) { bySel[v.outcome_code] = v; });
-    var bestEdge = null, signal = null, rank = { STRONG: 3, LEAN: 2, WATCH: 1, PASS: 0 };
-    vals.forEach(function (v) { if (bestEdge == null || (v.adjusted_edge_pp || -9) > bestEdge) bestEdge = v.adjusted_edge_pp; if (signal == null || rank[v.classification_code] > rank[signal]) signal = v.classification_code; });
-    return { h: h, gp: function (c) { return oc[c] ? oc[c].gp_probability : null; }, mk: function (c) { return oc[c] ? oc[c].market_probability : null; }, best: function (c) { return bySel[c] ? bySel[c].best_odds : null; }, edge: bestEdge, signal: signal, live: (h.status_code === 'LIVE'), kickoff: h.kickoff_at };
+    var bestEdge = null, signal = null, rank = { STRONG: 3, LEAN: 2, WATCH: 1, PASS: 0 }, topVal = null;
+    vals.forEach(function (v) { if (bestEdge == null || (v.adjusted_edge_pp || -9) > bestEdge) { bestEdge = v.adjusted_edge_pp; topVal = v; } if (signal == null || rank[v.classification_code] > rank[signal]) signal = v.classification_code; });
+    // estado por-fila (polish Corte 1.1): below-minimum + frescura del precio
+    var belowMin = !!(topVal && topVal.best_odds != null && topVal.minimum_odds != null && topVal.best_odds < topVal.minimum_odds);
+    var freshAt = null; vals.forEach(function (v) { if (v.price_observed_at && (!freshAt || v.price_observed_at > freshAt)) freshAt = v.price_observed_at; });
+    var fresh = freshAt ? ageFresh(freshAt) : null;
+    return { h: h, gp: function (c) { return oc[c] ? oc[c].gp_probability : null; }, mk: function (c) { return oc[c] ? oc[c].market_probability : null; }, best: function (c) { return bySel[c] ? bySel[c].best_odds : null; }, edge: bestEdge, signal: signal, live: (h.status_code === 'LIVE'), kickoff: h.kickoff_at, belowMin: belowMin, fresh: fresh };
   }
 
   function load(attempt) {
@@ -239,10 +296,11 @@
 
   function sigBadge(s) { if (!s || s === 'PASS') return s ? '<span class="gx-badge gx-b-pass">' + esc(t('sig_pass')) + '</span>' : ''; var m = { STRONG: ['gx-b-strong', 'sig_strong'], LEAN: ['gx-b-lean', 'sig_lean'], WATCH: ['gx-b-watch', 'sig_watch'] }[s]; return m ? '<span class="gx-badge ' + m[0] + '">' + esc(t(m[1])) + '</span>' : ''; }
   function stateCell(r) {
-    if (r.live) return '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>';
-    var d = r.kickoff ? new Date(r.kickoff) : null, now = new Date();
-    var lbl = t('st_today'); if (d) { var diff = (d - now) / 864e5; if (diff > 1) lbl = t('st_tom'); }
-    return '<span class="gx-dim" style="font-size:11px;font-weight:600">' + esc(lbl) + '</span>';
+    var base;
+    if (r.live) base = '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>';
+    else { var d = r.kickoff ? new Date(r.kickoff) : null, now = new Date(); var lbl = t('st_today'); if (d) { var diff = (d - now) / 864e5; if (diff > 1) lbl = t('st_tom'); } base = '<span class="gx-dim" style="font-size:11px;font-weight:600">' + esc(lbl) + '</span>'; }
+    var extra = (r.belowMin ? '<span class="gx-belowmin" title="' + esc(t('below_min')) + '">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : '') + (r.fresh ? freshChip(r.fresh) : '');
+    return extra ? '<span class="gx-rowflags"><span style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' + base + extra + '</span></span>' : base;
   }
   function board(rows) {
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
@@ -251,8 +309,13 @@
     if (!rows.length) { bd.innerHTML = '<div class="gx-empty">' + ic('chart-dots') + '<b>' + esc(t('e_na')) + '</b></div>'; return; }
     // tabla (desktop) y cards (móvil) ambas en el DOM; CSS muestra la que corresponde por viewport (confiable).
     bd.innerHTML = '<div class="gx-bd-desk">' + boardTable(rows) + '</div><div class="gx-bd-mob">' + boardCards(rows) + '</div>';
-    [].forEach.call(bd.querySelectorAll('[data-id]'), function (el) {
-      el.addEventListener('click', function () { S.sel = el.dataset.id; var rs = (S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); cockpit(rs); if (window.innerWidth <= 860) { var ck = $('#gx-cockpit'); if (ck) ck.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+    // desktop: clic en fila selecciona + previsualiza en el cockpit lateral (con botón "abrir cockpit completo")
+    [].forEach.call(bd.querySelectorAll('.gx-row[data-id]'), function (el) {
+      el.addEventListener('click', function () { S.sel = el.dataset.id; var rs = (S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); cockpit(rs); var ck = $('#gx-cockpit'); if (window.innerWidth <= 1180 && ck) ck.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    });
+    // móvil: la card abre directamente el cockpit profundo (canónico)
+    [].forEach.call(bd.querySelectorAll('.gx-mcard[data-id]'), function (el) {
+      el.addEventListener('click', function () { openMatch(el.dataset.id); });
     });
   }
   function boardTable(rows) {
@@ -326,7 +389,7 @@
       '</div>' +
       dataTrust(r, memo.ma) +
       '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
-      '<button class="gx-btn">' + esc(memo.cta) + ' ' + ic('arrow-right') + '</button></div>' +
+      '<button class="gx-btn" data-openmatch="' + esc(h.event_id) + '">' + esc(t('open_cockpit')) + ' ' + ic('arrow-right') + '</button></div>' +
       '</div>';
     // enriquece la tesis/riesgo/trust con el análisis real del partido (una vez por evento)
     if (h.event_id && !S.mc[h.event_id]) {
@@ -351,7 +414,7 @@
   function ckStat(label, v) { return '<div class="gx-ck-stat"><div class="gx-label">' + esc(label) + '</div><div class="v">' + v + '</div></div>'; }
   function memoItem(key, val, cls) { return '<div class="gx-memo-item ' + (cls || '') + '"><div class="gx-label">' + esc(t(key)) + '</div><p>' + val + '</p></div>'; }
 
-  var FACT = { es: { FORM: 'forma reciente', STREAK: 'racha', SOLIDITY: 'solidez defensiva', SQUAD_QUALITY: 'calidad de plantilla', AVAILABILITY: 'disponibilidad del plantel', REST: 'descanso', GOALKEEPER: 'el arquero', TACTICS: 'la lectura táctica', VENUE: 'el escenario', WEATHER: 'el clima', LINEUP: 'la alineación' }, en: { FORM: 'recent form', STREAK: 'streak', SOLIDITY: 'defensive solidity', SQUAD_QUALITY: 'squad quality', AVAILABILITY: 'squad availability', REST: 'rest', GOALKEEPER: 'the goalkeeper', TACTICS: 'the tactical read', VENUE: 'the venue', WEATHER: 'the weather', LINEUP: 'the lineup' } };
+  var FACT = { es: { FORM: 'forma reciente', STREAK: 'racha', SOLIDITY: 'solidez defensiva', SQUAD_QUALITY: 'calidad de plantilla', AVAILABILITY: 'disponibilidad del plantel', REST: 'descanso', GOALKEEPER: 'el arquero', TACTICS: 'la lectura táctica', VENUE: 'el escenario', WEATHER: 'el clima', LINEUP: 'la alineación', HIGH_HUMIDITY: 'humedad alta', HEAT: 'calor', HIGH_HEAT: 'calor extremo', ALTITUDE: 'altitud', COLD: 'frío', RAIN: 'lluvia', WIND: 'viento', TRAVEL: 'viaje', CONGESTION: 'congestión de partidos', MOTIVATION: 'motivación', HOME_ADVANTAGE: 'localía' }, en: { FORM: 'recent form', STREAK: 'streak', SOLIDITY: 'defensive solidity', SQUAD_QUALITY: 'squad quality', AVAILABILITY: 'squad availability', REST: 'rest', GOALKEEPER: 'the goalkeeper', TACTICS: 'the tactical read', VENUE: 'the venue', WEATHER: 'the weather', LINEUP: 'the lineup', HIGH_HUMIDITY: 'high humidity', HEAT: 'heat', HIGH_HEAT: 'extreme heat', ALTITUDE: 'altitude', COLD: 'cold', RAIN: 'rain', WIND: 'wind', TRAVEL: 'travel', CONGESTION: 'fixture congestion', MOTIVATION: 'motivation', HOME_ADVANTAGE: 'home advantage' } };
   function factLabel(c) { return (FACT[LANG] && FACT[LANG][c]) || (FACT.es[c]) || String(c || '').toLowerCase(); }
   // editorialización: sintetiza el memo desde el DTO + análisis del partido (sin inventar; honesto si falta evidencia)
   function buildMemo(r) {
@@ -386,8 +449,317 @@
   var RISK = { es: { MODEL_DISAGREEMENT: 'Las estimaciones internas no convergen del todo, así que la confianza se mantiene moderada.', LARGE_MARKET_DISAGREEMENT: 'GP y el mercado difieren mucho: mayor potencial pero también mayor riesgo.', MODEL_UNCERTAINTY: 'La incertidumbre de la estimación es elevada para este partido.', LINEUP_NOT_CONFIRMED: 'Las alineaciones aún no están confirmadas.', CONTEXT_INCOMPLETE: 'El contexto disponible es incompleto para este partido.', EARLY_TRACK_RECORD: 'El registro verificable todavía es corto.', LOWER_QUALITY_TIMESTAMP: 'Los datos tienen menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Internal estimates don’t fully converge, so confidence stays moderate.', LARGE_MARKET_DISAGREEMENT: 'GP and the market differ widely: higher upside but also higher risk.', MODEL_UNCERTAINTY: 'Estimate uncertainty is elevated for this match.', LINEUP_NOT_CONFIRMED: 'Lineups are not yet confirmed.', CONTEXT_INCOMPLETE: 'The available context is incomplete for this match.', EARLY_TRACK_RECORD: 'The verifiable track record is still short.', LOWER_QUALITY_TIMESTAMP: 'Data has lower freshness.' } };
   function riskText(c) { return (RISK[LANG] && RISK[LANG][c]) || (RISK.es[c]) || c; }
 
+  // ================= deep match cockpit (Corte 2) =================
+  function setHash(h) { try { if ((location.hash || '').replace(/^#/, '') !== h) location.hash = h; } catch (e) {} }
+  function onHash() {
+    var h = ''; try { h = (location.hash || '').replace(/^#/, ''); } catch (e) {}
+    var m = h.match(/^match\/([0-9a-f-]{36})$/i);
+    if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); }
+    else if (S.view === 'match') { closeMatch(true); }
+  }
+  function applyView() {
+    var mv = $('#gx-matchview'), main = $('.gx-main'), vp = $('#gx-vp');
+    if (!mv) return;
+    if (S.view === 'match') { mv.hidden = false; if (main) main.style.display = 'none'; if (vp) vp.style.display = 'none'; }
+    else { mv.hidden = true; mv.innerHTML = ''; if (main) main.style.display = ''; if (vp) vp.style.display = ''; }
+  }
+  function openMatch(eventId, fromHash) {
+    if (!eventId) return;
+    S.view = 'match'; S.matchId = eventId;
+    if (!fromHash) setHash('match/' + eventId);
+    applyView(); try { window.scrollTo(0, 0); } catch (e) {}
+    renderMatch();
+  }
+  function closeMatch(fromHash) { S.view = 'board'; S.matchId = null; if (!fromHash) setHash(''); applyView(); }
+  function fixtureIdFor(header) {
+    if (!header) return null;
+    var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id, d = (header.kickoff_at || '').slice(0, 10);
+    var byTeams = S.fixtures.filter(function (f) { return f.home === hid && f.away === aid; });
+    if (!byTeams.length) return null;
+    return (byTeams.filter(function (f) { return f.date === d; })[0] || byTeams[0]).id;
+  }
+  function rowFromBeta(beta) {
+    var oc = {}; ((beta.probability && beta.probability.outcomes) || []).forEach(function (o) { oc[o.outcome_code] = o; });
+    var vals = (S.value || []).filter(function (v) { return v.event_id === beta.header.event_id; });
+    var bySel = {}; vals.forEach(function (v) { bySel[v.outcome_code] = v; });
+    var bestEdge = null, signal = null, rank = { STRONG: 3, LEAN: 2, WATCH: 1, PASS: 0 };
+    vals.forEach(function (v) { if (bestEdge == null || (v.adjusted_edge_pp || -9) > bestEdge) bestEdge = v.adjusted_edge_pp; if (signal == null || rank[v.classification_code] > rank[signal]) signal = v.classification_code; });
+    return { h: beta.header, gp: function (c) { return oc[c] ? oc[c].gp_probability : null; }, mk: function (c) { return oc[c] ? oc[c].market_probability : null; }, best: function (c) { return bySel[c] ? bySel[c].best_odds : null; }, edge: bestEdge, signal: signal, live: beta.header.status_code === 'LIVE', kickoff: beta.header.kickoff_at };
+  }
+  function stageLabel(c) { if (!c) return ''; var m = { GROUP: LANG === 'en' ? 'Group stage' : 'Fase de grupos', KNOCKOUT: LANG === 'en' ? 'Knockout' : 'Eliminatorias', R32: LANG === 'en' ? 'Round of 32' : '16avos', R16: LANG === 'en' ? 'Round of 16' : 'Octavos', QF: LANG === 'en' ? 'Quarter-finals' : 'Cuartos', SF: LANG === 'en' ? 'Semi-finals' : 'Semifinal', FINAL: 'Final' }; return m[c] || c; }
+  function ocName(h, c) { return c === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : teamName(c === 'AWAY' ? h.away.team_id : h.home.team_id, c === 'AWAY' ? h.away.name_fallback : h.home.name_fallback); }
+  function ageFresh(iso) { if (!iso) return null; var ms = Date.now() - new Date(iso).getTime(); if (isNaN(ms)) return null; var h = ms / 3.6e6; return h <= 2 ? 'FRESH' : h <= 12 ? 'AGING' : 'STALE'; }
+  function freshChip(code) { if (!code) return ''; var m = { FRESH: ['fresh_fresh', 'gx-fresh'], AGING: ['fresh_aging', 'gx-aging'], STALE: ['fresh_stale', 'gx-stale'] }[code]; return m ? '<span class="gx-freshchip ' + m[1] + '">' + esc(t(m[0])) + '</span>' : ''; }
+  // no-vig SOLO con el set completo de resultados (1X2 → HOME+DRAW+AWAY); set parcial → null (no se inventa).
+  function normVec(map) { var present = ['HOME', 'DRAW', 'AWAY'].filter(function (c) { return map[c] > 0; }); if (present.length < 3) return null; var sum = present.reduce(function (a, c) { return a + map[c]; }, 0); if (sum <= 0) return null; var o = {}; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { o[c] = map[c] > 0 ? map[c] / sum : null; }); return o; }
+
+  function mvShell(body) {
+    return '<div class="gx-mv">' +
+      '<div class="gx-mv-bar"><button class="gx-mv-back">' + ic('arrow-left') + '<span>' + esc(t('back')) + '</span></button></div>' +
+      body + '</div>';
+  }
+  function mvLoading() { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('match_loading')) + '</div></div>'; }
+  function bindBack() { var b = $('.gx-mv-back'); if (b) b.addEventListener('click', function () { closeMatch(); }); }
+
+  function renderMatch() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var eid = S.matchId, beta = S.mc[eid];
+    if (beta === undefined) {
+      mv.innerHTML = mvShell(mvLoading()); bindBack();
+      fetch('/api/beta/match/' + encodeURIComponent(eid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[eid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      return;
+    }
+    if (!beta || beta._empty || !beta.header) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    var header = beta.header, fid = fixtureIdFor(header);
+    if (fid != null && S.mfix[fid] === undefined) {
+      S.mfix[fid] = null;
+      fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+    }
+    var fx = (fid != null && S.mfix[fid] && !S.mfix[fid]._empty) ? S.mfix[fid] : null;
+    var r = rowFromBeta(beta);
+    var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
+    mv.innerHTML = mvShell(
+      mvHero(beta, fx, r, live) +
+      '<div class="gx-mv-grid">' +
+      '<div class="gx-mv-col">' + mvMemo(beta, r) + mvProb(beta) + mvContext(beta, fx) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? mvLive(fx) : '') + mvMarkets(beta, fx, r) + mvGoals(beta) + '</div>' +
+      '</div>'
+    );
+    bindBack();
+  }
+
+  function mvHero(beta, fx, r, live) {
+    var h = beta.header, oc = {}; ((beta.probability && beta.probability.outcomes) || []).forEach(function (o) { oc[o.outcome_code] = o; });
+    var gpH = (oc.HOME && oc.HOME.gp_probability) || 0, gpD = (oc.DRAW && oc.DRAW.gp_probability) || 0, gpA = (oc.AWAY && oc.AWAY.gp_probability) || 0;
+    var gi = beta.goal_insights || null;
+    var xgH = gi && gi.expected_goals ? gi.expected_goals.HOME : (fx && fx.modelProbabilities ? fx.modelProbabilities.xgHome : null);
+    var xgA = gi && gi.expected_goals ? gi.expected_goals.AWAY : (fx && fx.modelProbabilities ? fx.modelProbabilities.xgAway : null);
+    var likely = (gi && gi.top_scores && gi.top_scores[0]) ? gi.top_scores[0].score : (fx && fx.modelProbabilities ? fx.modelProbabilities.likelyScore : null);
+    var fresh = beta.analysis ? beta.analysis.data_freshness_code : null;
+    var score = (live && fx && fx.score) ? (fx.score.home + ' - ' + fx.score.away) : null;
+    var minute = (live && fx && fx.minute != null) ? (fx.minute + "'") : null;
+    var meta = [esc(t('comp')), stageLabel(h.stage_code) ? esc(stageLabel(h.stage_code)) : '', h.venue ? esc(h.venue) : '', esc(fmtDate(h.kickoff_at))].filter(Boolean).join(' · ');
+    var tri = function (fn, cls, hi) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return '<span' + (hi === c ? ' class="hi"' : '') + '>' + fn(c) + '</span>'; }).join('') + '</span>'; };
+    var miniStat = function (label, v, extra) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b>' + (extra || '') + '</div>'; };
+    return '<div class="gx-panel gx-hero">' +
+      '<div class="gx-hero-meta">' + meta + '<span class="gx-spacer"></span>' + (live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '<span class="gx-dim" style="font-size:11.5px">' + esc(fmtTime(h.kickoff_at)) + '</span>') + (fresh ? freshChip(fresh) : '') + '</div>' +
+      '<div class="gx-hero-teams">' +
+      '<div class="gx-hero-side"><span class="fl">' + flag(h.home.team_id) + '</span><b>' + esc(teamName(h.home.team_id, h.home.name_fallback)) + '</b></div>' +
+      '<div class="gx-hero-mid">' + (score ? '<div class="gx-hero-score gx-mono">' + esc(score) + '</div>' + (minute ? '<div class="gx-ck-clock">' + esc(minute) + '</div>' : '') : '<div class="gx-hero-vs">' + esc(t('vs')) + '</div>') + '</div>' +
+      '<div class="gx-hero-side"><span class="fl">' + flag(h.away.team_id) + '</span><b>' + esc(teamName(h.away.team_id, h.away.name_fallback)) + '</b></div>' +
+      '</div>' +
+      '<div class="gx-pbar"><i class="h" style="width:' + (gpH * 100) + '%"></i><i class="d" style="width:' + (gpD * 100) + '%"></i><i class="a" style="width:' + (gpA * 100) + '%"></i></div>' +
+      '<div class="gx-plabels"><span>' + esc(teamName(h.home.team_id)) + ' <b>' + pct0(gpH) + '</b></span><span>X <b>' + pct0(gpD) + '</b></span><span>' + esc(teamName(h.away.team_id)) + ' <b>' + pct0(gpA) + '</b></span></div>' +
+      '<div class="gx-hero-grid">' +
+      '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_mkt')) + '</span>' + tri(function (c) { return pct0(r.mk(c)); }, '', null) + '</div>' +
+      '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_best')) + '</span>' + tri(function (c) { return odd(r.best(c)); }, 'gx-best', bestCode(r)) + '</div>' +
+      (xgH != null || xgA != null ? miniStat(t('hero_xg'), (xgH != null ? Number(xgH).toFixed(2) : '—') + ' – ' + (xgA != null ? Number(xgA).toFixed(2) : '—')) : '') +
+      (likely ? miniStat(t('hero_score'), esc(likely)) : '') +
+      '</div>' +
+      '<div class="gx-hero-note gx-dim">' + esc(t('period_90')) + '</div>' +
+      '</div>';
+  }
+
+  // ---- módulo 2: Decision Memo con reglas de evidencia ----
+  function evidenceBasis(beta) {
+    var eid = beta.header.event_id;
+    var pubPick = ((S.dash && S.dash.recent_picks) || []).filter(function (p) { return p.event_id === eid && p.lifecycle_code === 'PUBLISHED'; })[0];
+    if (pubPick) return { code: 'ev_pick', cls: 'pos', ic: 'circle-check' };
+    var vals = (S.value || []).filter(function (v) { return v.event_id === eid; });
+    var act = vals.filter(function (v) { var bm = v.best_odds != null && v.minimum_odds != null && v.best_odds < v.minimum_odds; return v.actionable && !bm; })[0];
+    if (act) return { code: 'ev_value', cls: 'pos', ic: 'trending-up' };
+    var ana = beta.analysis && (beta.analysis.context_moved_line || (beta.analysis.applied_factors && beta.analysis.applied_factors.length));
+    if (ana) return { code: 'ev_analysis', cls: 'blue', ic: 'chart-dots' };
+    if (vals.length) return { code: 'ev_price_only', cls: 'dim', ic: 'currency-dollar' };
+    return { code: 'ev_none', cls: 'dim', ic: 'help' };
+  }
+  function mvMemo(beta, r) {
+    var memo = buildMemo(r), conf = memo.conf, ev = evidenceBasis(beta);
+    return '<div class="gx-panel gx-memo gx-mv-panel">' +
+      '<div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('mod_memo')) + '</span><span class="gx-conf ' + conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + conf.label) + '</span></div>' +
+      '<div class="gx-ev-basis gx-ev-' + ev.cls + '">' + ic(ev.ic) + '<div><span class="gx-label">' + esc(t('ev_basis')) + '</span><b>' + esc(t(ev.code)) + '</b></div></div>' +
+      '<div class="gx-memo-grid">' +
+      memoItem('verdict', memo.verdict) + memoItem('price', memo.price) + memoItem('thesis', memo.thesis) + memoItem('risk', memo.risk, 'risk') + memoItem('invalidation', memo.inval, 'warn') +
+      '</div>' + dataTrust(r, memo.ma) +
+      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
+      (ev.code === 'ev_pick' || ev.code === 'ev_value' ? '<span class="gx-cta-tag gx-ev-' + ev.cls + '">' + esc(memo.cta) + '</span>' : '') + '</div>' +
+      '</div>';
+  }
+
+  // ---- módulo 3: Probabilidad base + ajustes de contexto = Probabilidad GP + timeline honesto ----
+  function tsLabel(c) { if (!c) return ''; return String(c).toLowerCase().replace(/_/g, ' ').replace(/^\w/, function (x) { return x.toUpperCase(); }); }
+  function mvProb(beta) {
+    var a = beta.analysis || {}, h = beta.header;
+    var base = a.base_vector, fin = a.final_vector, adj = a.context_adjustments;
+    var hasSnap = !!(base && fin);
+    var probBar = function (v) { v = v || {}; return '<div class="gx-pbar sm"><i class="h" style="width:' + ((v.HOME || 0) * 100) + '%"></i><i class="d" style="width:' + ((v.DRAW || 0) * 100) + '%"></i><i class="a" style="width:' + ((v.AWAY || 0) * 100) + '%"></i></div>'; };
+    var stageRow = function (label, vec, strong) {
+      return '<div class="gx-prob-stage' + (strong ? ' on' : '') + '"><div class="gx-prob-stage-h"><span class="gx-label">' + esc(label) + '</span><span class="gx-mono">' + (vec ? (pct0(vec.HOME) + ' · ' + pct0(vec.DRAW) + ' · ' + pct0(vec.AWAY)) : '—') + '</span></div>' + probBar(vec) + '</div>';
+    };
+    var body = '';
+    if (hasSnap) {
+      body += '<p class="gx-mod-intro gx-dim">' + esc(t('prob_explain')) + '</p>' +
+        stageRow(t('prob_base'), base) +
+        '<div class="gx-prob-arrow">' + ic('arrow-down') + '<span class="gx-dim">' + esc(t('prob_ctx')) + (adj ? ' · ' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return esc(ocName(h, c).slice(0, 3)) + ' ' + pp(adj[c]); }).join(' / ') : '') + '</span></div>' +
+        stageRow(t('prob_final'), fin, true);
+      if (!a.context_moved_line) body += '<p class="gx-mod-note gx-dim">' + esc(t('prob_no_ctx')) + '</p>';
+      // drivers (applied factors) o evaluated
+      var af = a.applied_factors || [];
+      if (af.length) {
+        body += '<div class="gx-label gx-mod-sub">' + esc(t('drivers')) + '</div><div class="gx-factors">' +
+          af.map(function (f) {
+            var dir = f.applied_impact >= 0 ? 'gx-pos' : 'gx-neg';
+            return '<div class="gx-factor"><div class="gx-factor-main"><b>' + esc(factLabel(f.factor_code)) + '</b>' + (f.subject_team_id ? '<span class="gx-dim"> · ' + esc(teamName(f.subject_team_id)) + '</span>' : '') + '</div>' +
+              '<div class="gx-factor-meta"><span class="gx-factor-imp ' + dir + ' gx-mono">' + (f.applied_impact >= 0 ? '+' : '') + Number(f.applied_impact).toFixed(1) + '</span>' +
+              (f.confidence != null ? '<span class="gx-dim">' + esc(t('confidence')) + ' ' + pct0(f.confidence) + '</span>' : '') +
+              '<span class="gx-evtag gx-ev-' + (f.evidence_class === 'FACT' ? 'pos' : 'blue') + '">' + esc(t(f.evidence_class === 'FACT' ? 'ev_fact' : 'ev_inference')) + '</span>' +
+              (f.timestamp_quality_code ? '<span class="gx-dim gx-ts">' + esc(tsLabel(f.timestamp_quality_code)) + '</span>' : '') + '</div></div>';
+          }).join('') + '</div>';
+      } else {
+        var evf = a.evaluated_factors || [];
+        if (evf.length) body += '<div class="gx-label gx-mod-sub">' + esc(t('evaluated')) + '</div><div class="gx-chips">' + evf.map(function (f) { return '<span class="gx-chip">' + esc(factLabel(f.factor_code)) + '</span>'; }).join('') + '</div>';
+      }
+    } else {
+      body += '<p class="gx-mod-intro gx-dim">' + esc(t('prob_base_only')) + '</p>' + stageRow(t('prob_final'), { HOME: (beta.probability.outcomes[0] || {}).gp_probability, DRAW: (beta.probability.outcomes[1] || {}).gp_probability, AWAY: (beta.probability.outcomes[2] || {}).gp_probability }, true);
+    }
+    // meta línea: factor_count / source_count / completeness
+    var ms = [];
+    if (a.factor_count) ms.push(a.factor_count + ' ' + (LANG === 'en' ? 'factors' : 'factores'));
+    if (a.source_count) ms.push(t('t_sources', { n: a.source_count }));
+    if (a.context_completeness != null) ms.push((LANG === 'en' ? 'context ' : 'contexto ') + pct0(a.context_completeness));
+    var metaLine = ms.length ? '<div class="gx-prob-metaline gx-dim">' + ms.map(esc).join(' · ') + '</div>' : '';
+    // timeline honesto: estado actual real + nota de que no hay snapshots previos (NO se fabrica histórico)
+    var timeline = '<div class="gx-mod-sub gx-label">' + esc(t('tl_title')) + '</div>' +
+      '<div class="gx-tl"><div class="gx-tl-i"><span class="gx-tl-dot on"></span><div><b>' + esc(t('tl_now')) + '</b>' + (hasSnap ? '<span class="gx-dim"> · ' + esc(t('tl_base_gp')) + '</span>' : '') + (beta.updated_at ? '<div class="gx-dim gx-ts">' + esc(fmtDateTime(beta.updated_at)) + '</div>' : '') + '</div></div>' +
+      '<div class="gx-tl-empty gx-dim">' + esc(t('tl_empty')) + '</div></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-arcs') + esc(t('mod_prob')) + '</span></div><div class="gx-mod-body">' + body + metaLine + timeline + '</div></div>';
+  }
+
+  // ---- módulo 4: Mercados matriz real (sportsbook / exchange / prediction market) ----
+  function mvMarkets(beta, fx, r) {
+    var h = beta.header, sections = [];
+    // A) Mejor precio por casa (desde value: best_odds + best_sportsbook por outcome)
+    var vals = (S.value || []).filter(function (v) { return v.event_id === h.event_id; });
+    var bySel = {}; vals.forEach(function (v) { bySel[v.outcome_code] = v; });
+    var sbOdds = {}; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { if (bySel[c] && bySel[c].best_odds) sbOdds[c] = bySel[c].best_odds; });
+    if (Object.keys(sbOdds).length) {
+      var nv = noVigFromOdds(sbOdds);
+      sections.push(mktSection(t('mkt_sb_best'), 'building-bank', ['HOME', 'DRAW', 'AWAY'].filter(function (c) { return bySel[c] && bySel[c].best_odds; }).map(function (c) {
+        var v = bySel[c];
+        return { outcome: ocName(h, c), provider: v.best_sportsbook || '—', odds: v.best_odds, implied: 1 / v.best_odds, novig: nv ? nv[c] : null, best: c === bestCode(r), liq: null, fresh: ageFresh(v.price_observed_at) };
+      })));
+    }
+    // B) Casa de referencia (odds del proveedor contextual: 1 bookmaker home/draw/away)
+    var book = fx && fx.odds && fx.odds[0];
+    if (book && (book.home || book.draw || book.away)) {
+      var bo = {}; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { var k = c.toLowerCase(); if (book[k]) bo[c] = book[k]; });
+      var nvb = noVigFromOdds(bo);
+      sections.push(mktSection(t('mkt_sb') + (book.book ? ' · ' + book.book : ''), 'coin', ['HOME', 'DRAW', 'AWAY'].filter(function (c) { return bo[c]; }).map(function (c) {
+        return { outcome: ocName(h, c), provider: book.book || '—', odds: bo[c], implied: 1 / bo[c], novig: nvb ? nvb[c] : null, best: false, liq: null, fresh: null };
+      })));
+    }
+    // C) Prediction market (Polymarket): price = prob implícita, volume = liquidez
+    var mp = (fx && fx.marketPrices) || [];
+    if (mp.length) {
+      var impMap = {}; mp.forEach(function (o) { var c = (o.side || '').toUpperCase(); if (o.price != null) impMap[c] = o.price; });
+      var nvp = normVec(impMap);
+      sections.push(mktSection(t('mkt_pm') + ' · Polymarket', 'chart-candle', mp.filter(function (o) { return o.price != null; }).map(function (o) {
+        var c = (o.side || '').toUpperCase();
+        return { outcome: ocName(h, c), provider: 'Polymarket', odds: o.price > 0 ? 1 / o.price : null, implied: o.price, novig: nvp ? nvp[c] : null, best: false, liq: o.volume != null ? o.volume : null, fresh: null };
+      })));
+    }
+    var body = sections.length ? sections.join('') + '<div class="gx-mkt-foot gx-dim">' + ic('info-circle') + esc(t('move_untracked')) + '</div>' : '<div class="gx-empty">' + ic('building-bank') + '<b>' + esc(t('mkt_none')) + '</b></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('arrows-left-right') + esc(t('mod_markets')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  function noVigFromOdds(oddsMap) { var imp = {}; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { if (oddsMap[c] > 0) imp[c] = 1 / oddsMap[c]; }); return normVec(imp); }
+  function mktSection(title, icon, rows) {
+    if (!rows.length) return '';
+    var liq = function (v) { if (v == null) return '<span class="gx-dim">—</span>'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K'; return '$' + Math.round(v); };
+    return '<div class="gx-mkt-sec"><div class="gx-mkt-sec-h">' + ic(icon) + '<span>' + esc(title) + '</span></div>' +
+      '<table class="gx-mkt-table"><thead><tr><th class="l">' + esc(t('col_outcome')) + '</th><th class="l">' + esc(t('col_provider')) + '</th><th>' + esc(t('col_odds')) + '</th><th>' + esc(t('col_implied')) + '</th><th>' + esc(t('col_novig')) + '</th><th>' + esc(t('col_liq')) + '</th><th>' + esc(t('col_move')) + '</th></tr></thead><tbody>' +
+      rows.map(function (x) {
+        return '<tr' + (x.best ? ' class="best"' : '') + '><td class="l gx-mkt-oc">' + esc(x.outcome) + (x.best ? ' ' + ic('star-filled') : '') + '</td><td class="l gx-dim">' + esc(x.provider) + '</td>' +
+          '<td class="gx-mono">' + (x.odds != null ? odd(x.odds) : '—') + '</td><td class="gx-mono gx-dim">' + (x.implied != null ? pct0(x.implied) : '—') + '</td>' +
+          '<td class="gx-mono">' + (x.novig != null ? pct0(x.novig) : '—') + '</td><td class="gx-mono gx-dim">' + liq(x.liq) + '</td>' +
+          '<td>' + (x.fresh ? freshChip(x.fresh) : '<span class="gx-dim">—</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  // ---- módulo 5: Contexto narrativo por factor ----
+  function mvContext(beta, fx) {
+    var h = beta.header, blocks = [];
+    var rf = fx && fx.recentForm;
+    if (rf && (rf.home || rf.away)) {
+      var formSent = function (side, teamId, name) {
+        var f = rf[side]; if (!f || !f.played) return '';
+        var rec = (f.results || []).join('-');
+        return t('ctx_form_line', { team: '<b>' + esc(name) + '</b>', rec: esc(rec), n: f.played, gf: f.goalsFor, ga: f.goalsAgainst });
+      };
+      var hs = formSent('home', h.home.team_id, teamName(h.home.team_id, h.home.name_fallback)), as = formSent('away', h.away.team_id, teamName(h.away.team_id, h.away.name_fallback));
+      if (hs || as) blocks.push(ctxBlock(t('ctx_form'), 'history', [hs, as].filter(Boolean).join(' ')));
+    }
+    var inj = (fx && fx.injuries) || [];
+    if (inj.length) {
+      var bySide = { home: [], away: [] }; inj.forEach(function (i) { if (bySide[i.side] && i.player && bySide[i.side].indexOf(i.player) < 0) bySide[i.side].push(i.player); });
+      var injSent = function (side, name) { var ps = bySide[side]; if (!ps || !ps.length) return ''; return t('ctx_inj_line', { team: '<b>' + esc(name) + '</b>', players: esc(ps.slice(0, 5).join(', ')) }); };
+      var ih = injSent('home', teamName(h.home.team_id)), ia = injSent('away', teamName(h.away.team_id));
+      if (ih || ia) blocks.push(ctxBlock(t('ctx_inj'), 'first-aid-kit', [ih, ia].filter(Boolean).join(' ')));
+    }
+    var lu = fx && fx.lineups;
+    if (lu && (lu.home || lu.away)) {
+      var luSent = function (side, name) { var l = lu[side]; if (!l) return ''; var tag = l.confirmed ? t('lineup_conf') : t('lineup_proj'); return '<b>' + esc(name) + '</b> — ' + esc(tag) + (l.formation ? ' · ' + esc(t('formation')) + ' ' + esc(l.formation) : '') + (l.coach ? ' · ' + esc(l.coach) : '') + '.'; };
+      var lh = luSent('home', teamName(h.home.team_id)), la = luSent('away', teamName(h.away.team_id));
+      if (lh || la) blocks.push(ctxBlock(t('ctx_lineups'), 'users-group', [lh, la].filter(Boolean).join(' ')));
+    }
+    // si no hay contexto externo pero sí factores del análisis GP, narralos
+    if (!blocks.length) {
+      var af = (beta.analysis && beta.analysis.applied_factors) || [];
+      if (af.length) blocks.push(ctxBlock(t('mod_context'), 'bulb', af.map(function (f) { return (LANG === 'en' ? 'GP weighs ' : 'GP pondera ') + factLabel(f.factor_code) + (f.subject_team_id ? ' (' + esc(teamName(f.subject_team_id)) + ')' : '') + '.'; }).join(' ')));
+    }
+    var body = blocks.length ? blocks.join('') : '<div class="gx-empty">' + ic('notes') + '<b>' + esc(t('ctx_none')) + '</b></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('article') + esc(t('mod_context')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  function ctxBlock(title, icon, html) { return '<div class="gx-ctx-block"><div class="gx-ctx-h">' + ic(icon) + esc(title) + '</div><p>' + html + '</p></div>'; }
+
+  // ---- módulo 6: Goles "en validación" (sin Pick/Value/CTA de apuesta) ----
+  function mvGoals(beta) {
+    var gi = beta.goal_insights;
+    if (!gi) return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div><div class="gx-mod-body"><div class="gx-empty">' + ic('ball-football') + '<b>' + esc(t('goals_none')) + '</b></div></div></div>';
+    var eg = gi.expected_goals || {}, ou = gi.over_under || {}, btts = gi.btts;
+    var ouRow = function (line) { var o = ou[line]; if (!o) return ''; return '<div class="gx-ou-row"><span class="gx-mono">' + line + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + ((o.over || 0) * 100) + '%"></span></div><span class="gx-mono gx-dim">' + esc(t('g_over')) + ' ' + pct0(o.over) + ' · ' + esc(t('g_under')) + ' ' + pct0(o.under != null ? o.under : (o.over != null ? 1 - o.over : null)) + '</span></div>'; };
+    var stat = function (label, v) { return '<div class="gx-g-stat"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b></div>'; };
+    var scores = (gi.top_scores || []).slice(0, 5);
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div><div class="gx-mod-body">' +
+      '<div class="gx-g-stats">' + stat(t('g_xg'), (eg.HOME != null ? Number(eg.HOME).toFixed(2) : '—') + ' – ' + (eg.AWAY != null ? Number(eg.AWAY).toFixed(2) : '—')) + stat(t('g_total'), eg.TOTAL != null ? Number(eg.TOTAL).toFixed(2) : '—') + (btts ? stat(t('g_btts'), esc(t('g_yes')) + ' ' + pct0(btts.yes)) : '') + '</div>' +
+      '<div class="gx-mod-sub gx-label">' + esc(t('g_ou')) + '</div>' + ['1.5', '2.5', '3.5'].map(ouRow).filter(Boolean).join('') +
+      (scores.length ? '<div class="gx-mod-sub gx-label">' + esc(t('g_scores')) + '</div><div class="gx-scores">' + scores.map(function (s) { return '<div class="gx-score-i"><b class="gx-mono">' + esc(s.score) + '</b><span class="gx-dim gx-mono">' + pct0(s.probability) + '</span></div>'; }).join('') + '</div>' : '') +
+      '<p class="gx-mod-note gx-dim">' + ic('alert-triangle') + ' ' + esc(t('goals_disc')) + '</p>' +
+      '</div></div>';
+  }
+
+  // ---- módulo 7: Live real (solo con fuente válida; no presentar prob prepartido como live) ----
+  function mvLive(fx) {
+    if (!fx || fx.status !== 'live') return '';
+    var mp = fx.modelProbabilities, hasLiveProb = mp && mp.live === true;
+    var stale = ageFresh(fx.updatedAt) === 'STALE';
+    var sc = fx.score ? (fx.score.home + ' - ' + fx.score.away) : '—';
+    var evs = (fx.events || []).slice(-6).reverse();
+    var st = fx.statistics;
+    var statRow = function (key, label) { if (!st || !st.home || st.home[key] == null && st.away[key] == null) return ''; return '<div class="gx-livestat"><span class="gx-mono">' + (st.home[key] != null ? st.home[key] : '—') + '</span><span class="gx-label">' + esc(label) + '</span><span class="gx-mono">' + (st.away[key] != null ? st.away[key] : '—') + '</span></div>'; };
+    var evIcon = { goal: 'ball-football', yellow: 'square-rounded', red: 'square-rounded-filled', subst: 'arrows-exchange', var: 'video' };
+    var body =
+      '<div class="gx-live-top"><span class="gx-live-pill">' + esc(t('st_live')) + '</span><b class="gx-mono gx-live-score">' + esc(sc) + '</b>' + (fx.minute != null ? '<span class="gx-ck-clock">' + esc(fx.minute + "'") + '</span>' : '') + '<span class="gx-spacer"></span>' + freshChip(ageFresh(fx.updatedAt)) + '</div>' +
+      (stale ? '<p class="gx-mod-note gx-warn">' + ic('alert-triangle') + ' ' + esc(t('live_stale')) + '</p>' : '') +
+      (hasLiveProb ? '<div class="gx-mod-sub gx-label">' + esc(t('live_prob')) + '</div><div class="gx-pbar sm"><i class="h" style="width:' + ((mp.homeWin || 0) * 100) + '%"></i><i class="d" style="width:' + ((mp.draw || 0) * 100) + '%"></i><i class="a" style="width:' + ((mp.awayWin || 0) * 100) + '%"></i></div><div class="gx-plabels"><span><b>' + pct0(mp.homeWin) + '</b></span><span>X <b>' + pct0(mp.draw) + '</b></span><span><b>' + pct0(mp.awayWin) + '</b></span></div>' : '') +
+      (st && st.home ? '<div class="gx-mod-sub gx-label">' + esc(t('live_stats')) + '</div>' + [['possession', t('st_possession')], ['shots', t('st_shots')], ['shotsOnTarget', t('st_sot')], ['corners', t('st_corners')], ['xg', t('st_xg')]].map(function (s) { return statRow(s[0], s[1]); }).filter(Boolean).join('') : '') +
+      (evs.length ? '<div class="gx-mod-sub gx-label">' + esc(t('live_events')) + '</div><div class="gx-events">' + evs.map(function (e) { return '<div class="gx-event-i"><span class="gx-mono gx-dim">' + (e.minute != null ? e.minute + "'" : '') + '</span>' + ic(evIcon[e.type] || 'point') + '<span>' + esc(e.player || e.detail || t('evk_other')) + '</span><span class="gx-dim gx-event-team">' + esc(e.teamName || '') + '</span></div>'; }).join('') + '</div>' : '');
+    return '<div class="gx-panel gx-mv-panel gx-live-panel"><div class="gx-ph"><span class="gx-label">' + ic('broadcast') + esc(t('mod_live')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  function fmtDate(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short' }); } catch (e) { return '—'; } }
+  function fmtDateTime(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
+
   // ---------- lang ----------
-  function setLang(l) { if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l; shell(); render(); }
+  function setLang(l) { if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l; shell(); render(); if (S.view === 'match') { applyView(); renderMatch(); } }
 
   // ---------- boot ----------
   function boot() {
@@ -397,10 +769,17 @@
       // flags desde el estado global (si el server los expone) — si no, fallback vacío (los nombres igual van).
       fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
         if (st && st.teams) st.teams.forEach(function (tm) { if (tm.id && tm.flag) FLAGS[tm.id] = tm.flag; });
+        // puente canónico→fixture: equipos + fecha (los códigos de equipo coinciden con el header beta)
+        if (st) {
+          (st.fixtures || []).forEach(function (f) { if (f.home && f.away) S.fixtures.push({ id: f.id, home: f.home, away: f.away, date: (f.datetime || '').slice(0, 10) }); });
+          (st.knockout || []).forEach(function (k) { var h = (k.resolved && k.resolved.home) || (k.result && k.result.home), a = (k.resolved && k.resolved.away) || (k.result && k.result.away); if (h && a) S.fixtures.push({ id: String(k.m), home: h, away: a, date: ((k.datetime || k.date || '') + '').slice(0, 10) }); });
+        }
         var pref; try { pref = localStorage.getItem('gp_lang'); } catch (e) {}
         LANG = (pref === 'en' || pref === 'es') ? pref : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
         document.documentElement.lang = LANG;
         shell(); load();
+        document.addEventListener('click', function (e) { var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); openMatch(o.getAttribute('data-openmatch')); } });
+        window.addEventListener('hashchange', onHash); onHash();
       });
     });
   }

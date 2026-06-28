@@ -41,6 +41,14 @@
       loading: 'Cargando…', no_match: 'Elegí un partido del board para ver su cockpit.',
       reg90: '90 min · sin prórroga ni penales', updated_short: 'Actualizado',
       sig_strong: 'STRONG', sig_lean: 'LEAN', sig_watch: 'WATCH', sig_pass: 'PASS',
+      comp: 'Copa Mundial de la FIFA 2026', none_active_pick: 'No hay Picks GP activas en este momento.',
+      below_min: 'El precio actual está por debajo de la cuota mínima requerida.', min_odds: 'Cuota mínima', cur_price: 'Mejor precio',
+      cta_pick: 'Ver pick GP', cta_value: 'Ver oportunidad', cta_analysis: 'Ver análisis completo', cta_analyze: 'Analizar partido', cta_arb: 'Ver arbitraje', cta_state: 'Ver estado',
+      unc_copy: 'Las estimaciones internas no convergen del todo, así que la confianza se mantiene moderada.',
+      thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para elevar la confianza.',
+      thesis_ctx2: 'GP apoya su lectura en {factors}.',
+      e_na: 'Aún no disponible', e_nomarket: 'Mercado no encontrado', e_lineups: 'Esperando alineaciones', e_partial: 'Contexto parcial', e_noprice: 'Sin precio verificable',
+      trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -73,6 +81,14 @@
       loading: 'Loading…', no_match: 'Pick a match from the board to see its cockpit.',
       reg90: '90 min · no extra time or penalties', updated_short: 'Updated',
       sig_strong: 'STRONG', sig_lean: 'LEAN', sig_watch: 'WATCH', sig_pass: 'PASS',
+      comp: 'FIFA World Cup 2026', none_active_pick: 'No active GP Picks right now.',
+      below_min: 'The current price is below the required minimum odds.', min_odds: 'Minimum odds', cur_price: 'Best price',
+      cta_pick: 'View GP pick', cta_value: 'View opportunity', cta_analysis: 'View full analysis', cta_analyze: 'Analyze match', cta_arb: 'View arbitrage', cta_state: 'View status',
+      unc_copy: 'Internal estimates don’t fully converge, so confidence stays moderate.',
+      thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to raise confidence.',
+      thesis_ctx2: 'GP backs its read on {factors}.',
+      e_na: 'Not available yet', e_nomarket: 'Market not found', e_lineups: 'Awaiting lineups', e_partial: 'Partial context', e_noprice: 'No verifiable price',
+      trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -89,7 +105,7 @@
   var fmtTime = function (iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
 
   // ---------- state ----------
-  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all' };
+  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {} };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -114,6 +130,7 @@
       '</aside>' +
       '<div class="gx-body">' +
       '<header class="gx-top">' +
+      '<div class="gx-top-brand"><div class="gx-logo">GP</div><b>GP Intelligence</b></div>' +
       '<div class="gx-search">' + ic('search') + '<span>' + esc(t('search')) + '</span></div>' +
       '<div class="gx-pulse" id="gx-pulse"></div>' +
       '<div class="gx-spacer"></div>' +
@@ -191,11 +208,11 @@
   function pulseItem(n, label, live) { return '<div class="gx-pulse-i"><b' + (live ? ' style="color:var(--gx-live)"' : '') + '>' + n + '</b>' + (live ? '<span style="color:var(--gx-live)">' + esc(label) + '</span>' : esc(label)) + '</div>'; }
 
   function kpis(d, rows) {
-    var pick = (d.recent_picks || []).filter(function (p) { return p.lifecycle_code === 'PUBLISHED'; })[0] || (d.recent_picks || [])[0];
+    var pick = (d.recent_picks || []).filter(function (p) { return p.lifecycle_code === 'PUBLISHED'; })[0]; // SOLO activa
     var val = (d.value || [])[0];
     var gap = rows.map(function (r) { var g = ['HOME', 'DRAW', 'AWAY'].map(function (c) { return { c: c, gp: r.gp(c), mk: r.mk(c) }; }).filter(function (x) { return x.gp != null && x.mk != null; }).sort(function (a, b) { return Math.abs(b.gp - b.mk) - Math.abs(a.gp - a.mk); })[0]; return g ? { r: r, g: g } : null; }).filter(Boolean).sort(function (a, b) { return Math.abs(b.g.gp - b.g.mk) - Math.abs(a.g.gp - a.g.mk); })[0];
     var cards = [];
-    cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick(pick) : kpiEmpty()));
+    cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick(pick) : '<div class="gx-kpi-sel gx-dim">' + esc(t('none_active_pick')) + '</div>'));
     cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : kpiEmpty()));
     cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty()));
     cards.push(kpiCard(t('arb_verified'), 'shield-check', '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + esc(t('no_arb')) + '</div><div class="gx-kpi-sub">' + esc(t('no_arb_sub')) + '</div></div></div>'));
@@ -230,9 +247,16 @@
   function board(rows) {
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
     $('#gx-board-count').textContent = rows.length + ' · ' + t('th_gp').toLowerCase();
-    if (!rows.length) { $('#gx-board').innerHTML = '<div class="gx-empty">' + ic('chart-dots') + '<b>' + esc(t('none')) + '</b></div>'; return; }
-    var tri = function (fn, cls, hiCode) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { var v = fn(c), best = hiCode === c; return '<span' + (best ? ' class="hi"' : (cls === 'gx-gp' && isMax(fn) === c ? ' class="hi"' : '')) + '>' + v + '</span>'; }).join('') + '</span>'; };
-    var html = '<table class="gx-table"><thead><tr>' +
+    var bd = $('#gx-board');
+    if (!rows.length) { bd.innerHTML = '<div class="gx-empty">' + ic('chart-dots') + '<b>' + esc(t('e_na')) + '</b></div>'; return; }
+    // tabla (desktop) y cards (móvil) ambas en el DOM; CSS muestra la que corresponde por viewport (confiable).
+    bd.innerHTML = '<div class="gx-bd-desk">' + boardTable(rows) + '</div><div class="gx-bd-mob">' + boardCards(rows) + '</div>';
+    [].forEach.call(bd.querySelectorAll('[data-id]'), function (el) {
+      el.addEventListener('click', function () { S.sel = el.dataset.id; var rs = (S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); cockpit(rs); if (window.innerWidth <= 860) { var ck = $('#gx-cockpit'); if (ck) ck.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+    });
+  }
+  function boardTable(rows) {
+    return '<table class="gx-table"><thead><tr>' +
       '<th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th>' +
       '<th class="grp">' + esc(t('th_gp')) + '</th><th class="grp">' + esc(t('th_market')) + '</th><th class="grp">' + esc(t('th_price')) + '</th>' +
       '<th>' + esc(t('th_edge')) + '</th><th>' + esc(t('th_signal')) + '</th></tr></thead><tbody>' +
@@ -249,8 +273,22 @@
           '<td class="l">' + (sigBadge(r.signal) || '<span class="gx-dim">—</span>') + '</td>' +
           '</tr>';
       }).join('') + '</tbody></table>';
-    $('#gx-board').innerHTML = html;
-    [].forEach.call($('#gx-board').querySelectorAll('.gx-row'), function (tr) { tr.addEventListener('click', function () { S.sel = tr.dataset.id; var rs = (S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); cockpit(rs); }); });
+  }
+  function boardCards(rows) {
+    var triM = function (fn, cls, hi) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return '<span' + (hi === c ? ' class="hi"' : '') + '>' + fn(c) + '</span>'; }).join('') + '</span>'; };
+    return rows.map(function (r) {
+      var hi = bestCode(r);
+      return '<div class="gx-mcard' + (r.h.event_id === S.sel ? ' on' : '') + '" data-id="' + esc(r.h.event_id) + '">' +
+        '<div class="gx-mcard-top"><span class="gx-time">' + esc(fmtTime(r.kickoff)) + '</span>' + stateCell(r) + '<span class="gx-spacer"></span>' + (sigBadge(r.signal) || '') + '</div>' +
+        '<div class="gx-cell-team" style="margin:6px 0"><span class="fl">' + flag(r.h.home.team_id) + '</span><div class="gx-teamnames"><b>' + esc(teamName(r.h.home.team_id, r.h.home.name_fallback)) + '</b><span>' + esc(teamName(r.h.away.team_id, r.h.away.name_fallback)) + '</span></div><span class="fl">' + flag(r.h.away.team_id) + '</span></div>' +
+        '<div class="gx-mcard-rows">' +
+        '<div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + triM(function (c) { return pct0(r.gp(c)); }, 'gx-gp', maxCode(r.gp)) + '</div>' +
+        '<div><span class="gx-label">' + esc(t('th_market')) + '</span>' + triM(function (c) { return pct0(r.mk(c)); }, '', null) + '</div>' +
+        '<div><span class="gx-label">' + esc(t('th_price')) + '</span>' + triM(function (c) { return odd(r.best(c)); }, 'gx-best', hi) + '</div>' +
+        '</div>' +
+        '<div class="gx-mcard-foot"><span class="gx-edge ' + (r.edge > 0 ? 'gx-pos' : 'gx-dim') + '">' + esc(t('th_edge')) + ' ' + (r.edge != null ? pp(r.edge) : '—') + '</span><span class="gx-mcard-cta">' + esc(t('cta_analysis')) + ' →</span></div>' +
+        '</div>';
+    }).join('');
   }
   function triCell(fn, cls, hi) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return '<span' + (hi === c ? ' class="hi"' : '') + '>' + fn(c) + '</span>'; }).join('') + '</span>'; }
   function maxCode(fn) { var best = null, bv = -1; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { var v = fn(c); if (v != null && v > bv) { bv = v; best = c; } }); return best; }
@@ -268,7 +306,7 @@
     el.innerHTML =
       '<div class="gx-panel gx-ck-score">' +
       '<div class="gx-ck-head"><span class="gx-label">' + esc(t('cockpit')) + '</span>' + (r.live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(fmtTime(r.kickoff)) + '</span>') + '</div>' +
-      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">FIFA World Cup 2026</div>' +
+      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc(t('comp')) + '</div>' +
       '<div class="gx-ck-teams"><div class="gx-ck-side"><span class="fl">' + flag(h.home.team_id) + '</span><b>' + esc(teamName(h.home.team_id, h.home.name_fallback)) + '</b></div>' +
       '<div class="gx-ck-mid"><div class="gx-ck-num">' + (r.live ? '0 - 1' : t('vs')) + '</div>' + (r.live ? '<div class="gx-ck-clock">45\'</div>' : '') + '</div>' +
       '<div class="gx-ck-side"><span class="fl">' + flag(h.away.team_id) + '</span><b>' + esc(teamName(h.away.team_id, h.away.name_fallback)) + '</b></div></div>' +
@@ -286,14 +324,36 @@
       '<div class="gx-memo-grid">' +
       memoItem('verdict', memo.verdict) + memoItem('price', memo.price) + memoItem('thesis', memo.thesis) + memoItem('risk', memo.risk, 'risk') + memoItem('invalidation', memo.inval, 'warn') +
       '</div>' +
-      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + odd(memo.bestOdds) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
-      '<button class="gx-btn">' + esc(memo.hasPick ? t('view_pick') : t('open_analysis')) + ' ' + ic('arrow-right') + '</button></div>' +
+      dataTrust(r, memo.ma) +
+      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
+      '<button class="gx-btn">' + esc(memo.cta) + ' ' + ic('arrow-right') + '</button></div>' +
       '</div>';
+    // enriquece la tesis/riesgo/trust con el análisis real del partido (una vez por evento)
+    if (h.event_id && !S.mc[h.event_id]) {
+      fetch('/api/beta/match/' + encodeURIComponent(h.event_id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) {
+        S.mc[h.event_id] = m || { _empty: true };
+        if (S.sel === h.event_id) { var rs = (S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); cockpit(rs); }
+      });
+    }
+  }
+  // Data Trust: frescura / fuentes / alineación / contexto (desde el análisis real; honesto si falta)
+  function dataTrust(r, ma) {
+    var fresh = ma && ma.analysis ? ma.analysis.data_freshness_code : null;
+    var cs = ma && ma.analysis ? ma.analysis.context_state_code : null;
+    var lineup = ma && ma.risks && ma.risks.indexOf('LINEUP_NOT_CONFIRMED') >= 0;
+    var rows = [
+      [t('trust_data'), fresh ? (fresh === 'FRESH' ? (LANG === 'en' ? 'Fresh' : 'Frescos') : fresh === 'AGING' ? (LANG === 'en' ? 'Aging' : 'Envejeciendo') : (LANG === 'en' ? 'Stale' : 'Desactualizados')) : (ma ? t('e_na') : '…')],
+      [t('trust_context'), cs === 'FULL_CONTEXT' ? t('t_broad') : cs === 'PARTIAL_CONTEXT' ? t('t_partial') : cs === 'BASE_ONLY' ? t('t_base') : (ma ? t('e_partial') : '…')],
+      [t('trust_lineup'), ma ? (lineup ? t('t_pending') : t('t_confirmed')) : '…']
+    ];
+    return '<div class="gx-trust">' + rows.map(function (x) { return '<div class="gx-trust-i"><span class="gx-label">' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>'; }).join('') + '</div>';
   }
   function ckStat(label, v) { return '<div class="gx-ck-stat"><div class="gx-label">' + esc(label) + '</div><div class="v">' + v + '</div></div>'; }
   function memoItem(key, val, cls) { return '<div class="gx-memo-item ' + (cls || '') + '"><div class="gx-label">' + esc(t(key)) + '</div><p>' + val + '</p></div>'; }
 
-  // editorialización: sintetiza el memo desde el DTO (sin inventar; honesto cuando falta data)
+  var FACT = { es: { FORM: 'forma reciente', STREAK: 'racha', SOLIDITY: 'solidez defensiva', SQUAD_QUALITY: 'calidad de plantilla', AVAILABILITY: 'disponibilidad del plantel', REST: 'descanso', GOALKEEPER: 'el arquero', TACTICS: 'la lectura táctica', VENUE: 'el escenario', WEATHER: 'el clima', LINEUP: 'la alineación' }, en: { FORM: 'recent form', STREAK: 'streak', SOLIDITY: 'defensive solidity', SQUAD_QUALITY: 'squad quality', AVAILABILITY: 'squad availability', REST: 'rest', GOALKEEPER: 'the goalkeeper', TACTICS: 'the tactical read', VENUE: 'the venue', WEATHER: 'the weather', LINEUP: 'the lineup' } };
+  function factLabel(c) { return (FACT[LANG] && FACT[LANG][c]) || (FACT.es[c]) || String(c || '').toLowerCase(); }
+  // editorialización: sintetiza el memo desde el DTO + análisis del partido (sin inventar; honesto si falta evidencia)
   function buildMemo(r) {
     var gp = { HOME: r.gp('HOME'), DRAW: r.gp('DRAW'), AWAY: r.gp('AWAY') }, mk = { HOME: r.mk('HOME'), DRAW: r.mk('DRAW'), AWAY: r.mk('AWAY') };
     var topC = maxCode(function (c) { return gp[c]; }) || 'HOME';
@@ -302,17 +362,28 @@
     var even = gap == null || Math.abs(gap) < 0.04;
     var vals = (S.value || []).filter(function (v) { return v.event_id === r.h.event_id; });
     var best = vals.filter(function (v) { return v.outcome_code === topC; })[0] || vals.sort(function (a, b) { return (b.adjusted_edge_pp || -9) - (a.adjusted_edge_pp || -9); })[0];
-    var verdict = even ? t('memo_even') : '<b>' + esc(team) + '</b> ' + t('memo_fav', { team: esc(team) }).replace(esc(team), '').replace('{team}', '').trim();
-    if (!even) verdict = t('memo_fav', { team: '<b>' + esc(team) + '</b>' });
-    var thesis = t('memo_thesis_edge');
-    var price = best && best.best_odds ? t('memo_price', { odds: '<b>' + odd(best.minimum_odds || best.best_odds) + '</b>', book: best.best_sportsbook ? ' (' + esc(best.best_sportsbook) + ')' : '' }) : t('memo_price_none');
-    var risk = (best && best.risk_codes && best.risk_codes[0]) ? riskText(best.risk_codes[0]) : t('memo_risk_default');
+    var pubPick = (S.dash && S.dash.recent_picks || []).filter(function (p) { return p.event_id === r.h.event_id && p.lifecycle_code === 'PUBLISHED'; })[0];
+    var ma = S.mc[r.h.event_id]; // match detail (analysis/risks) si ya se cargó
+    var belowMin = best && best.best_odds != null && best.minimum_odds != null && best.best_odds < best.minimum_odds;
+    var actionable = !!(best && best.actionable && !belowMin);
+    var verdict = even ? t('memo_even') : t('memo_fav', { team: '<b>' + esc(team) + '</b>' });
+    // tesis: factores reales del análisis si existen; si no, price-only honesto
+    var thesis = t('thesis_price_only');
+    if (ma && ma.analysis) {
+      var af = (ma.analysis.applied_factors || []).slice(0, 3).map(function (f) { return factLabel(f.factor_code); });
+      if (!af.length) af = (ma.analysis.evaluated_factors || []).slice(0, 3).map(function (f) { return factLabel(f.factor_code); });
+      if (af.length && ma.analysis.context_moved_line) thesis = t('thesis_ctx2', { factors: af.join(', ') });
+    }
+    var price = belowMin ? ('<b>' + odd(best.best_odds) + '</b> · ' + esc(t('below_min'))) : (best && best.best_odds ? t('memo_price', { odds: '<b>' + odd(best.minimum_odds || best.best_odds) + '</b>', book: best.best_sportsbook ? ' (' + esc(best.best_sportsbook) + ')' : '' }) : t('memo_price_none'));
+    var riskCode = (ma && ma.risks && ma.risks[0]) || (best && best.risk_codes && best.risk_codes[0]);
+    var risk = riskCode ? riskText(riskCode) : t('memo_risk_default');
     var inval = t('memo_inval');
     var edge = best ? best.adjusted_edge_pp : null;
-    var conf = edge != null && edge >= 0.05 ? { cls: 'hi', label: t('conf_hi') } : edge != null && edge > 0 ? { cls: 'mid', label: t('conf_mid') } : { cls: 'lo', label: t('conf_lo') };
-    return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? (best.best_odds) : null, book: best ? best.best_sportsbook : '', hasPick: !!best };
+    var conf = (belowMin || edge == null || edge <= 0) ? { cls: 'lo', label: t('conf_lo') } : edge >= 0.05 ? { cls: 'hi', label: t('conf_hi') } : { cls: 'mid', label: t('conf_mid') };
+    var cta = pubPick ? t('cta_pick') : actionable ? t('cta_value') : best ? t('cta_analysis') : t('cta_analyze');
+    return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? best.best_odds : null, book: best ? best.best_sportsbook : '', cta: cta, ma: ma };
   }
-  var RISK = { es: { MODEL_DISAGREEMENT: 'Desacuerdo entre métodos del modelo.', LARGE_MARKET_DISAGREEMENT: 'Gran desacuerdo con el mercado.', MODEL_UNCERTAINTY: 'Incertidumbre del modelo elevada.', LINEUP_NOT_CONFIRMED: 'Alineaciones aún sin confirmar.', CONTEXT_INCOMPLETE: 'Contexto incompleto para este partido.', EARLY_TRACK_RECORD: 'Registro verificable todavía corto.', LOWER_QUALITY_TIMESTAMP: 'Datos con menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Disagreement between model methods.', LARGE_MARKET_DISAGREEMENT: 'Large disagreement with the market.', MODEL_UNCERTAINTY: 'Elevated model uncertainty.', LINEUP_NOT_CONFIRMED: 'Lineups not yet confirmed.', CONTEXT_INCOMPLETE: 'Incomplete context for this match.', EARLY_TRACK_RECORD: 'Verifiable track record still short.', LOWER_QUALITY_TIMESTAMP: 'Lower-freshness data.' } };
+  var RISK = { es: { MODEL_DISAGREEMENT: 'Las estimaciones internas no convergen del todo, así que la confianza se mantiene moderada.', LARGE_MARKET_DISAGREEMENT: 'GP y el mercado difieren mucho: mayor potencial pero también mayor riesgo.', MODEL_UNCERTAINTY: 'La incertidumbre de la estimación es elevada para este partido.', LINEUP_NOT_CONFIRMED: 'Las alineaciones aún no están confirmadas.', CONTEXT_INCOMPLETE: 'El contexto disponible es incompleto para este partido.', EARLY_TRACK_RECORD: 'El registro verificable todavía es corto.', LOWER_QUALITY_TIMESTAMP: 'Los datos tienen menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Internal estimates don’t fully converge, so confidence stays moderate.', LARGE_MARKET_DISAGREEMENT: 'GP and the market differ widely: higher upside but also higher risk.', MODEL_UNCERTAINTY: 'Estimate uncertainty is elevated for this match.', LINEUP_NOT_CONFIRMED: 'Lineups are not yet confirmed.', CONTEXT_INCOMPLETE: 'The available context is incomplete for this match.', EARLY_TRACK_RECORD: 'The verifiable track record is still short.', LOWER_QUALITY_TIMESTAMP: 'Data has lower freshness.' } };
   function riskText(c) { return (RISK[LANG] && RISK[LANG][c]) || (RISK.es[c]) || c; }
 
   // ---------- lang ----------

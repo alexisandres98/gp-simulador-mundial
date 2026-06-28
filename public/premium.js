@@ -17,10 +17,10 @@
       search: 'Buscar equipos, partidos, mercados…', matches: 'partidos', live: 'en vivo', signals: 'señales hoy',
       title: 'Oportunidades', all: 'Todos', live_f: 'En vivo', upcoming_f: 'Próximos', picks: 'Picks GP', value: 'Value', arb: 'Arbitraje',
       updated: 'Actualizado hace {t}', board: 'Board de oportunidades',
-      best_pick: 'Mejor pick GP', best_value: 'Mejor value', top_gap: 'Mayor desacuerdo', arb_verified: 'Arbitraje verificado',
+      best_pick: 'Mejor pick GP', best_value: 'Mejor value', top_gap: 'Mayor desacuerdo GP–mercado', gap_tooltip: 'Una diferencia entre GP y el mercado no implica por sí sola una oportunidad ejecutable.', arb_verified: 'Arbitraje verificado',
       edge_adj: 'Edge ajustado', no_arb: 'Sin arbitraje ejecutable', no_arb_sub: 'GP sigue comparando precios y reglas', none: 'Sin datos aún',
       th_time: 'Hora', th_match: 'Partido', th_state: 'Estado', th_gp: 'Probabilidad GP', th_market: 'Mercado', th_price: 'Mejor precio', th_edge: 'Edge aj.', th_signal: 'Señal',
-      st_live: 'EN VIVO', st_today: 'HOY', st_tom: 'MAÑANA', vs: 'vs',
+      st_live: 'EN VIVO', st_today: 'HOY', st_tom: 'MAÑANA', st_ft: 'Finalizado', st_upcoming: 'Próximo', st_finished: 'Finalizados', vs: 'vs',
       cockpit: 'Cockpit del partido', prob_gp: 'Probabilidad GP', score_prob: 'Marcador prob.',
       tab_summary: 'Resumen', tab_markets: 'Mercados', tab_context: 'Contexto', tab_stats: 'Estadísticas', tab_events: 'Eventos',
       memo: 'Decision memo', conf: 'Confianza', conf_hi: 'Alta', conf_mid: 'Media', conf_lo: 'Baja',
@@ -36,7 +36,7 @@
       memo_thesis_edge: 'GP ve valor por la brecha entre su probabilidad y el precio implícito del mercado.',
       memo_price: 'Hay value únicamente por encima de {odds}{book}.',
       memo_price_none: 'Sin un precio que supere el umbral de value ahora mismo.',
-      memo_risk_default: 'Las dudas de disponibilidad y el desacuerdo con el mercado reducen la confianza.',
+      memo_risk_default: 'Hay dudas de disponibilidad y un desacuerdo apreciable con el mercado.',
       memo_inval: 'Revisar si cambian las alineaciones o la cuota cae por debajo del mínimo.',
       loading: 'Cargando…', no_match: 'Elegí un partido del board para ver su cockpit.',
       reg90: '90 min · sin prórroga ni penales', updated_short: 'Actualizado',
@@ -44,13 +44,15 @@
       comp: 'Copa Mundial de la FIFA 2026', none_active_pick: 'No hay Picks GP activas en este momento.',
       below_min: 'El precio actual está por debajo de la cuota mínima requerida.', below_min_short: 'Bajo mínimo', min_odds: 'Cuota mínima', cur_price: 'Mejor precio',
       cta_pick: 'Ver pick GP', cta_value: 'Ver oportunidad', cta_analysis: 'Ver análisis completo', cta_analyze: 'Analizar partido', cta_arb: 'Ver arbitraje', cta_state: 'Ver estado',
-      unc_copy: 'Las estimaciones internas no convergen del todo, así que la confianza se mantiene moderada.',
-      thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para elevar la confianza.',
+      unc_copy: 'Las estimaciones internas no convergen del todo en este partido.',
+      thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para sostener una lectura más fuerte.',
       thesis_ctx2: 'GP apoya su lectura en {factors}.',
-      e_na: 'Aún no disponible', e_nomarket: 'Mercado no encontrado', e_lineups: 'Esperando alineaciones', e_partial: 'Contexto parcial', e_noprice: 'Sin precio verificable',
-      trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base',
+      e_na: 'Datos no disponibles', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Precio no verificable', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
+      trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'No disponible', lus_stale: 'Desactualizada',
       // ---- Corte 2: Match Cockpit profundo ----
-      back: 'Oportunidades', open_cockpit: 'Abrir cockpit completo', refresh: 'Actualizar', fresh_fresh: 'Frescos', fresh_aging: 'Envejeciendo', fresh_stale: 'Desactualizados',
+      back: 'Oportunidades', open_cockpit: 'Abrir cockpit completo', refresh: 'Actualizar',
+      fresh_data: 'Datos recientes', aging_data: 'Datos envejecidos', stale_data: 'Datos desactualizados',
+      fresh_price: 'Precio reciente', aging_price: 'Precio envejecido', stale_price: 'Precio desactualizado',
       mod_memo: 'Decision memo', mod_prob: 'Probabilidad GP', mod_markets: 'Mercados', mod_context: 'Contexto', mod_goals: 'Proyección de goles', mod_live: 'En vivo',
       hero_gp: 'Probabilidad GP', hero_mkt: 'Mercado', hero_best: 'Mejor precio', hero_xg: 'xG esperado', hero_score: 'Marcador probable', period_90: '90 min · sin prórroga ni penales',
       ev_basis: 'Base de la evidencia',
@@ -64,7 +66,7 @@
       tl_title: 'Línea de tiempo', tl_now: 'Estado actual', tl_base_gp: 'Base → Probabilidad GP',
       tl_empty: 'Aún no hay snapshots previos registrados para este partido. Los cambios de probabilidad, precio, noticias y alineaciones se registrarán a partir de ahora.',
       mkt_sb: 'Casas de apuestas', mkt_sb_best: 'Mejor precio por casa', mkt_ex: 'Exchange', mkt_pm: 'Prediction markets',
-      col_provider: 'Fuente', col_outcome: 'Resultado', col_odds: 'Cuota', col_implied: 'Implícita', col_novig: 'Sin margen', col_move: 'Mov.', col_liq: 'Liquidez',
+      col_provider: 'Fuente', col_outcome: 'Resultado', col_odds: 'Cuota', col_implied: 'Implícita', col_novig: 'Sin margen', col_move: 'Movimiento', col_liq: 'Liquidez', col_fresh: 'Frescura', na_short: 'No disponible', move_na: 'No registrado',
       mkt_none: 'Sin mercados cargados para este partido todavía.', move_untracked: 'El movimiento de precio aún no se registra para estas fuentes.', novig_na: 'Requiere el set completo de resultados.',
       ctx_none: 'Sin contexto verificado disponible para este partido todavía.', ctx_form: 'Forma reciente', ctx_inj: 'Bajas y disponibilidad', ctx_lineups: 'Alineaciones',
       ctx_form_line: '{team} llega con {rec} en sus últimos {n} ({gf} a favor, {ga} en contra).', ctx_inj_line: '{team}: {players}.', no_inj: 'sin bajas reportadas',
@@ -75,6 +77,14 @@
       st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
+      // ---- Corte 3: Partidos + Simulador ----
+      g_today: 'Hoy', g_tomorrow: 'Mañana', m_stage_all: 'Todas las fases', m_search: 'Buscar equipo…', m_empty: 'No hay partidos para este filtro.',
+      sim_pick: 'Elegí un equipo', sim_swap: 'Intercambiar', sim_go: 'Simular cruce', sim_running: 'Simulando…', sim_hypo: 'Simulación hipotética con el contexto disponible actualmente.',
+      sim_empty: 'Elegí dos equipos para simular un cruce.', sim_empty_sub: 'GP cruza ambos con su contexto actual.', sim_err: 'No se pudo simular el cruce.',
+      sim_thesis_na: 'Sin lectura disponible para este cruce.', sim_risk_na: 'Sin factores de cambio destacados.', sim_verdict_na: 'Cruce sin favorito neto claro.',
+      sim_price_na: 'No se evalúa precio porque este cruce no corresponde a un mercado programado.', sim_hypo_tag: 'Hipotético', sim_runs: 'simulaciones',
+      sim_montecarlo: 'Simulaciones Monte Carlo', sim_avg_goals: 'Goles promedio', sim_totals: 'Distribución de goles',
+      sim_goals_disc: 'Proyección de goles en validación. Disponible para análisis; no genera Picks GP ni Value.',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -83,10 +93,10 @@
       search: 'Search teams, matches, markets…', matches: 'matches', live: 'live', signals: 'signals today',
       title: 'Opportunities', all: 'All', live_f: 'Live', upcoming_f: 'Upcoming', picks: 'GP Picks', value: 'Value', arb: 'Arbitrage',
       updated: 'Updated {t} ago', board: 'Opportunities board',
-      best_pick: 'Top GP pick', best_value: 'Top value', top_gap: 'Biggest disagreement', arb_verified: 'Verified arbitrage',
+      best_pick: 'Top GP pick', best_value: 'Top value', top_gap: 'Largest GP–market disagreement', gap_tooltip: 'A difference between GP and the market does not by itself imply an executable opportunity.', arb_verified: 'Verified arbitrage',
       edge_adj: 'Adjusted edge', no_arb: 'No executable arbitrage', no_arb_sub: 'GP keeps comparing prices and rules', none: 'No data yet',
       th_time: 'Time', th_match: 'Match', th_state: 'State', th_gp: 'GP probability', th_market: 'Market', th_price: 'Best price', th_edge: 'Adj. edge', th_signal: 'Signal',
-      st_live: 'LIVE', st_today: 'TODAY', st_tom: 'TOMORROW', vs: 'vs',
+      st_live: 'LIVE', st_today: 'TODAY', st_tom: 'TOMORROW', st_ft: 'Full time', st_upcoming: 'Upcoming', st_finished: 'Finished', vs: 'vs',
       cockpit: 'Match cockpit', prob_gp: 'GP probability', score_prob: 'Likely score',
       tab_summary: 'Summary', tab_markets: 'Markets', tab_context: 'Context', tab_stats: 'Stats', tab_events: 'Events',
       memo: 'Decision memo', conf: 'Confidence', conf_hi: 'High', conf_mid: 'Medium', conf_lo: 'Low',
@@ -102,7 +112,7 @@
       memo_thesis_edge: 'GP sees value in the gap between its probability and the market’s implied price.',
       memo_price: 'Value only above {odds}{book}.',
       memo_price_none: 'No price clears the value threshold right now.',
-      memo_risk_default: 'Availability doubts and market disagreement reduce confidence.',
+      memo_risk_default: 'There are availability doubts and a notable disagreement with the market.',
       memo_inval: 'Watch for lineup changes or the price dropping below the minimum.',
       loading: 'Loading…', no_match: 'Pick a match from the board to see its cockpit.',
       reg90: '90 min · no extra time or penalties', updated_short: 'Updated',
@@ -110,13 +120,15 @@
       comp: 'FIFA World Cup 2026', none_active_pick: 'No active GP Picks right now.',
       below_min: 'The current price is below the required minimum odds.', below_min_short: 'Below min', min_odds: 'Minimum odds', cur_price: 'Best price',
       cta_pick: 'View GP pick', cta_value: 'View opportunity', cta_analysis: 'View full analysis', cta_analyze: 'Analyze match', cta_arb: 'View arbitrage', cta_state: 'View status',
-      unc_copy: 'Internal estimates don’t fully converge, so confidence stays moderate.',
-      thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to raise confidence.',
+      unc_copy: 'Internal estimates don’t fully converge for this match.',
+      thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to support a stronger read.',
       thesis_ctx2: 'GP backs its read on {factors}.',
-      e_na: 'Not available yet', e_nomarket: 'Market not found', e_lineups: 'Awaiting lineups', e_partial: 'Partial context', e_noprice: 'No verifiable price',
-      trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base',
+      e_na: 'Data unavailable', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Price not verifiable', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
+      trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'Unavailable', lus_stale: 'Stale',
       // ---- Corte 2: Deep Match Cockpit ----
-      back: 'Opportunities', open_cockpit: 'Open full cockpit', refresh: 'Refresh', fresh_fresh: 'Fresh', fresh_aging: 'Aging', fresh_stale: 'Stale',
+      back: 'Opportunities', open_cockpit: 'Open full cockpit', refresh: 'Refresh',
+      fresh_data: 'Recent data', aging_data: 'Aging data', stale_data: 'Stale data',
+      fresh_price: 'Recent price', aging_price: 'Aging price', stale_price: 'Stale price',
       mod_memo: 'Decision memo', mod_prob: 'GP probability', mod_markets: 'Markets', mod_context: 'Context', mod_goals: 'Goal projection', mod_live: 'Live',
       hero_gp: 'GP probability', hero_mkt: 'Market', hero_best: 'Best price', hero_xg: 'Expected xG', hero_score: 'Likely score', period_90: '90 min · no extra time or penalties',
       ev_basis: 'Evidence basis',
@@ -130,7 +142,7 @@
       tl_title: 'Timeline', tl_now: 'Current state', tl_base_gp: 'Base → GP probability',
       tl_empty: 'No prior snapshots recorded for this match yet. Probability, price, news and lineup changes will be tracked from now on.',
       mkt_sb: 'Sportsbooks', mkt_sb_best: 'Best price per book', mkt_ex: 'Exchange', mkt_pm: 'Prediction markets',
-      col_provider: 'Source', col_outcome: 'Outcome', col_odds: 'Odds', col_implied: 'Implied', col_novig: 'No-vig', col_move: 'Move', col_liq: 'Liquidity',
+      col_provider: 'Source', col_outcome: 'Outcome', col_odds: 'Odds', col_implied: 'Implied', col_novig: 'No-vig', col_move: 'Movement', col_liq: 'Liquidity', col_fresh: 'Freshness', na_short: 'Unavailable', move_na: 'Not tracked',
       mkt_none: 'No markets loaded for this match yet.', move_untracked: 'Price movement isn’t tracked for these sources yet.', novig_na: 'Requires the full outcome set.',
       ctx_none: 'No verified context available for this match yet.', ctx_form: 'Recent form', ctx_inj: 'Absences & availability', ctx_lineups: 'Lineups',
       ctx_form_line: '{team} arrives with {rec} in its last {n} ({gf} for, {ga} against).', ctx_inj_line: '{team}: {players}.', no_inj: 'no reported absences',
@@ -141,6 +153,14 @@
       st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
+      // ---- Corte 3: Matches + Simulator ----
+      g_today: 'Today', g_tomorrow: 'Tomorrow', m_stage_all: 'All stages', m_search: 'Search team…', m_empty: 'No matches for this filter.',
+      sim_pick: 'Pick a team', sim_swap: 'Swap', sim_go: 'Simulate matchup', sim_running: 'Simulating…', sim_hypo: 'Hypothetical simulation using the context currently available.',
+      sim_empty: 'Pick two teams to simulate a matchup.', sim_empty_sub: 'GP crosses both with their current context.', sim_err: 'Couldn’t simulate the matchup.',
+      sim_thesis_na: 'No read available for this matchup.', sim_risk_na: 'No notable change factors.', sim_verdict_na: 'Matchup with no clear favorite.',
+      sim_price_na: 'Price is not evaluated because this hypothetical matchup does not correspond to a scheduled market.', sim_hypo_tag: 'Hypothetical', sim_runs: 'simulations',
+      sim_montecarlo: 'Monte Carlo simulations', sim_avg_goals: 'Avg goals', sim_totals: 'Goal distribution',
+      sim_goals_disc: 'Goal projection in validation. Available for analysis; does not generate GP Picks or Value.',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -157,7 +177,8 @@
   var fmtTime = function (iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
 
   // ---------- state ----------
-  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {} };
+  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+    cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false } };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -167,11 +188,13 @@
   ];
   var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
+  function viewNav(v) { return v === 'matches' ? 'matches' : v === 'sim' ? 'sim' : 'opps'; }
   function shell() {
-    var navHtml = NAV.map(function (n) { return '<div class="gx-nav' + (n[0] === 'opps' ? ' on' : '') + '">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'sim']; // vistas implementadas (clickeables)
+    var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var nav2 = NAV2.map(function (n) { return '<div class="gx-nav">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['teams', 'shield', 'nav_teams'], ['sim', 'arrows-shuffle', 'nav_sim'], ['follow', 'dots', 'more']]
-      .map(function (n, i) { return '<a class="' + (i === 0 ? 'on' : '') + '">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
+    var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['follow', 'dots', 'more']]
+      .map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
       '<div class="gx">' +
       '<aside class="gx-side">' +
@@ -271,11 +294,11 @@
     var cards = [];
     cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick(pick) : '<div class="gx-kpi-sel gx-dim">' + esc(t('none_active_pick')) + '</div>'));
     cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : kpiEmpty()));
-    cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty()));
+    cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty(), t('gap_tooltip')));
     cards.push(kpiCard(t('arb_verified'), 'shield-check', '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + esc(t('no_arb')) + '</div><div class="gx-kpi-sub">' + esc(t('no_arb_sub')) + '</div></div></div>'));
     $('#gx-kpis').innerHTML = cards.join('');
   }
-  function kpiCard(label, icon, body) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + ic(icon) + esc(label) + '</div>' + body + '</div>'; }
+  function kpiCard(label, icon, body, tip) { return '<div class="gx-panel gx-kpi"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><div class="gx-label">' + ic(icon) + esc(label) + (tip ? ' <i class="ti ti-info-circle gx-kpi-info" aria-hidden="true"></i>' : '') + '</div>' + body + '</div>'; }
   function kpiEmpty() { return '<div class="gx-kpi-sel gx-dim">' + esc(t('none')) + '</div>'; }
   function pickSel(p) { if (p.selection_display_key) { return p.outcome_code === 'DRAW' ? t('memo_even') : teamName(p.home_team_id) + ' / ' + teamName(p.away_team_id); } return p.outcome_code || ''; }
   function kpiPick(p) {
@@ -299,12 +322,12 @@
     var base;
     if (r.live) base = '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>';
     else { var d = r.kickoff ? new Date(r.kickoff) : null, now = new Date(); var lbl = t('st_today'); if (d) { var diff = (d - now) / 864e5; if (diff > 1) lbl = t('st_tom'); } base = '<span class="gx-dim" style="font-size:11px;font-weight:600">' + esc(lbl) + '</span>'; }
-    var extra = (r.belowMin ? '<span class="gx-belowmin" title="' + esc(t('below_min')) + '">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : '') + (r.fresh ? freshChip(r.fresh) : '');
+    var extra = (r.belowMin ? '<span class="gx-belowmin" title="' + esc(t('below_min')) + '">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : '') + (r.fresh ? freshChip(r.fresh, 'price') : '');
     return extra ? '<span class="gx-rowflags"><span style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' + base + extra + '</span></span>' : base;
   }
   function board(rows) {
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
-    $('#gx-board-count').textContent = rows.length + ' · ' + t('th_gp').toLowerCase();
+    $('#gx-board-count').textContent = rows.length + ' ' + t('matches') + ' · ' + t('th_gp');
     var bd = $('#gx-board');
     if (!rows.length) { bd.innerHTML = '<div class="gx-empty">' + ic('chart-dots') + '<b>' + esc(t('e_na')) + '</b></div>'; return; }
     // tabla (desktop) y cards (móvil) ambas en el DOM; CSS muestra la que corresponde por viewport (confiable).
@@ -400,22 +423,50 @@
     }
   }
   // Data Trust: frescura / fuentes / alineación / contexto (desde el análisis real; honesto si falta)
-  function dataTrust(r, ma) {
+  // A.5: estado de alineación con trazabilidad. CONFIRMED solo con evidencia verificable real (fx con lista
+  // confirmada). Sin fx (cockpit compacto) NUNCA afirma CONFIRMED: a lo sumo PROBABLE, o pendiente si hay riesgo.
+  function lineupState(ma, fx) {
+    if (fx && fx.lineups && (fx.lineups.home || fx.lineups.away)) {
+      var lu = fx.lineups;
+      var confirmed = (lu.home && lu.home.confirmed) || (lu.away && lu.away.confirmed);
+      var hasList = (lu.home && lu.home.startXI && lu.home.startXI.length) || (lu.away && lu.away.startXI && lu.away.startXI.length);
+      var stale = ageFresh(fx.providerStatus && fx.providerStatus.lastUpdated) === 'STALE';
+      var at = fx.providerStatus && fx.providerStatus.lastUpdated;
+      var src = lineupSource(fx);
+      if (confirmed && hasList) return { code: 'CONFIRMED', src: src, at: at, stale: stale };
+      if (hasList) return { code: 'PROBABLE', src: src, at: at, stale: stale };
+      return { code: 'UNAVAILABLE' };
+    }
+    if (ma) { var risk = ma.risks && ma.risks.indexOf('LINEUP_NOT_CONFIRMED') >= 0; return { code: risk ? 'UNAVAILABLE' : 'PROBABLE' }; }
+    return { code: null };
+  }
+  function lineupSource(fx) { var ps = fx && fx.providerStatus; if (!ps) return null; if (ps.usedApiFootball) return 'API-Football'; if (ps.usedEspnFallback) return 'ESPN'; if (ps.usedManualFallback) return LANG === 'en' ? 'Manual' : 'Manual'; return null; }
+  function luLabel(code) { return code === 'CONFIRMED' ? t('t_confirmed') : code === 'PROBABLE' ? t('lus_probable') : code === 'STALE' ? t('lus_stale') : code === 'UNAVAILABLE' ? t('lus_unavailable') : '…'; }
+  function dataTrust(r, ma, fx) {
     var fresh = ma && ma.analysis ? ma.analysis.data_freshness_code : null;
     var cs = ma && ma.analysis ? ma.analysis.context_state_code : null;
-    var lineup = ma && ma.risks && ma.risks.indexOf('LINEUP_NOT_CONFIRMED') >= 0;
+    var ls = lineupState(ma, fx);
+    var freshLbl = fresh ? t(fresh === 'FRESH' ? 'fresh_data' : fresh === 'AGING' ? 'aging_data' : 'stale_data') : (ma ? t('e_na') : '…');
+    var luTip = (ls.src || ls.at) ? [ls.src, ls.at ? (t('updated_short') + ' ' + fmtDateTime(ls.at)) : ''].filter(Boolean).join(' · ') : '';
     var rows = [
-      [t('trust_data'), fresh ? (fresh === 'FRESH' ? (LANG === 'en' ? 'Fresh' : 'Frescos') : fresh === 'AGING' ? (LANG === 'en' ? 'Aging' : 'Envejeciendo') : (LANG === 'en' ? 'Stale' : 'Desactualizados')) : (ma ? t('e_na') : '…')],
-      [t('trust_context'), cs === 'FULL_CONTEXT' ? t('t_broad') : cs === 'PARTIAL_CONTEXT' ? t('t_partial') : cs === 'BASE_ONLY' ? t('t_base') : (ma ? t('e_partial') : '…')],
-      [t('trust_lineup'), ma ? (lineup ? t('t_pending') : t('t_confirmed')) : '…']
+      [t('trust_data'), freshLbl, ''],
+      [t('trust_context'), cs === 'FULL_CONTEXT' ? t('t_broad') : cs === 'PARTIAL_CONTEXT' ? t('t_partial') : cs === 'BASE_ONLY' ? t('t_base') : (ma ? t('e_partial') : '…'), ''],
+      [t('trust_lineup'), ls.stale ? t('lus_stale') : luLabel(ls.code), luTip]
     ];
-    return '<div class="gx-trust">' + rows.map(function (x) { return '<div class="gx-trust-i"><span class="gx-label">' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>'; }).join('') + '</div>';
+    return '<div class="gx-trust">' + rows.map(function (x) { return '<div class="gx-trust-i"' + (x[2] ? ' title="' + esc(x[2]) + '"' : '') + '><span class="gx-label">' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>'; }).join('') + '</div>';
   }
   function ckStat(label, v) { return '<div class="gx-ck-stat"><div class="gx-label">' + esc(label) + '</div><div class="v">' + v + '</div></div>'; }
   function memoItem(key, val, cls) { return '<div class="gx-memo-item ' + (cls || '') + '"><div class="gx-label">' + esc(t(key)) + '</div><p>' + val + '</p></div>'; }
 
   var FACT = { es: { FORM: 'forma reciente', STREAK: 'racha', SOLIDITY: 'solidez defensiva', SQUAD_QUALITY: 'calidad de plantilla', AVAILABILITY: 'disponibilidad del plantel', REST: 'descanso', GOALKEEPER: 'el arquero', TACTICS: 'la lectura táctica', VENUE: 'el escenario', WEATHER: 'el clima', LINEUP: 'la alineación', HIGH_HUMIDITY: 'humedad alta', HEAT: 'calor', HIGH_HEAT: 'calor extremo', ALTITUDE: 'altitud', COLD: 'frío', RAIN: 'lluvia', WIND: 'viento', TRAVEL: 'viaje', CONGESTION: 'congestión de partidos', MOTIVATION: 'motivación', HOME_ADVANTAGE: 'localía' }, en: { FORM: 'recent form', STREAK: 'streak', SOLIDITY: 'defensive solidity', SQUAD_QUALITY: 'squad quality', AVAILABILITY: 'squad availability', REST: 'rest', GOALKEEPER: 'the goalkeeper', TACTICS: 'the tactical read', VENUE: 'the venue', WEATHER: 'the weather', LINEUP: 'the lineup', HIGH_HUMIDITY: 'high humidity', HEAT: 'heat', HIGH_HEAT: 'extreme heat', ALTITUDE: 'altitude', COLD: 'cold', RAIN: 'rain', WIND: 'wind', TRAVEL: 'travel', CONGESTION: 'fixture congestion', MOTIVATION: 'motivation', HOME_ADVANTAGE: 'home advantage' } };
   function factLabel(c) { return (FACT[LANG] && FACT[LANG][c]) || (FACT.es[c]) || String(c || '').toLowerCase(); }
+  // A.1: mapea el confidence_code canónico del DTO → {cls,label}. Sin valor cargado → neutro "—" (NO inventa nivel).
+  function confInfo(code) {
+    if (code === 'HIGH') return { code: 'HIGH', cls: 'hi', label: t('conf_hi') };
+    if (code === 'LOW') return { code: 'LOW', cls: 'lo', label: t('conf_lo') };
+    if (code === 'MEDIUM') return { code: 'MEDIUM', cls: 'mid', label: t('conf_mid') };
+    return { code: null, cls: 'mid', label: '—' };
+  }
   // editorialización: sintetiza el memo desde el DTO + análisis del partido (sin inventar; honesto si falta evidencia)
   function buildMemo(r) {
     var gp = { HOME: r.gp('HOME'), DRAW: r.gp('DRAW'), AWAY: r.gp('AWAY') }, mk = { HOME: r.mk('HOME'), DRAW: r.mk('DRAW'), AWAY: r.mk('AWAY') };
@@ -442,35 +493,62 @@
     var risk = riskCode ? riskText(riskCode) : t('memo_risk_default');
     var inval = t('memo_inval');
     var edge = best ? best.adjusted_edge_pp : null;
-    var conf = (belowMin || edge == null || edge <= 0) ? { cls: 'lo', label: t('conf_lo') } : edge >= 0.05 ? { cls: 'hi', label: t('conf_hi') } : { cls: 'mid', label: t('conf_mid') };
+    var conf = confInfo(ma && ma.confidence_code);  // A.1: un SOLO valor canónico del DTO controla el badge
     var cta = pubPick ? t('cta_pick') : actionable ? t('cta_value') : best ? t('cta_analysis') : t('cta_analyze');
     return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? best.best_odds : null, book: best ? best.best_sportsbook : '', cta: cta, ma: ma };
   }
-  var RISK = { es: { MODEL_DISAGREEMENT: 'Las estimaciones internas no convergen del todo, así que la confianza se mantiene moderada.', LARGE_MARKET_DISAGREEMENT: 'GP y el mercado difieren mucho: mayor potencial pero también mayor riesgo.', MODEL_UNCERTAINTY: 'La incertidumbre de la estimación es elevada para este partido.', LINEUP_NOT_CONFIRMED: 'Las alineaciones aún no están confirmadas.', CONTEXT_INCOMPLETE: 'El contexto disponible es incompleto para este partido.', EARLY_TRACK_RECORD: 'El registro verificable todavía es corto.', LOWER_QUALITY_TIMESTAMP: 'Los datos tienen menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Internal estimates don’t fully converge, so confidence stays moderate.', LARGE_MARKET_DISAGREEMENT: 'GP and the market differ widely: higher upside but also higher risk.', MODEL_UNCERTAINTY: 'Estimate uncertainty is elevated for this match.', LINEUP_NOT_CONFIRMED: 'Lineups are not yet confirmed.', CONTEXT_INCOMPLETE: 'The available context is incomplete for this match.', EARLY_TRACK_RECORD: 'The verifiable track record is still short.', LOWER_QUALITY_TIMESTAMP: 'Data has lower freshness.' } };
+  // copy de riesgo: enuncia el HECHO; NUNCA afirma un nivel de confianza (eso lo controla SOLO el badge, A.1)
+  var RISK = { es: { MODEL_DISAGREEMENT: 'Las estimaciones internas no convergen del todo.', LARGE_MARKET_DISAGREEMENT: 'GP y el mercado difieren mucho: mayor potencial pero también mayor riesgo.', MODEL_UNCERTAINTY: 'La incertidumbre de la estimación es elevada para este partido.', LINEUP_NOT_CONFIRMED: 'Las alineaciones aún no están confirmadas.', CONTEXT_INCOMPLETE: 'El contexto disponible es incompleto para este partido.', EARLY_TRACK_RECORD: 'El registro verificable todavía es corto.', LOWER_QUALITY_TIMESTAMP: 'Los datos tienen menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Internal estimates don’t fully converge.', LARGE_MARKET_DISAGREEMENT: 'GP and the market differ widely: higher upside but also higher risk.', MODEL_UNCERTAINTY: 'Estimate uncertainty is elevated for this match.', LINEUP_NOT_CONFIRMED: 'Lineups are not yet confirmed.', CONTEXT_INCOMPLETE: 'The available context is incomplete for this match.', EARLY_TRACK_RECORD: 'The verifiable track record is still short.', LOWER_QUALITY_TIMESTAMP: 'Data has lower freshness.' } };
   function riskText(c) { return (RISK[LANG] && RISK[LANG][c]) || (RISK.es[c]) || c; }
 
   // ================= deep match cockpit (Corte 2) =================
   function setHash(h) { try { if ((location.hash || '').replace(/^#/, '') !== h) location.hash = h; } catch (e) {} }
   function onHash() {
     var h = ''; try { h = (location.hash || '').replace(/^#/, ''); } catch (e) {}
-    var m = h.match(/^match\/([0-9a-f-]{36})$/i);
-    if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); }
-    else if (S.view === 'match') { closeMatch(true); }
+    var m = h.match(/^match\/([0-9a-f-]{36}|qa-[a-z0-9-]+)$/i);
+    if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
+    if (/^matches/.test(h)) { showView('matches'); return; }
+    if (/^sim/.test(h)) { showView('sim'); return; }
+    showView('board');
+  }
+  function navTo(nav) { setHash(nav === 'matches' ? 'matches' : nav === 'sim' ? 'sim' : ''); }
+  function syncNavActive() {
+    var cur = viewNav(S.view);
+    [].forEach.call(document.querySelectorAll('.gx-nav[data-nav], .gx-bnav a[data-nav]'), function (el) { el.classList.toggle('on', el.getAttribute('data-nav') === cur); });
   }
   function applyView() {
     var mv = $('#gx-matchview'), main = $('.gx-main'), vp = $('#gx-vp');
     if (!mv) return;
-    if (S.view === 'match') { mv.hidden = false; if (main) main.style.display = 'none'; if (vp) vp.style.display = 'none'; }
+    var takeover = S.view !== 'board';
+    if (takeover) { mv.hidden = false; if (main) main.style.display = 'none'; if (vp) vp.style.display = 'none'; }
     else { mv.hidden = true; mv.innerHTML = ''; if (main) main.style.display = ''; if (vp) vp.style.display = ''; }
+  }
+  function showView(v) {
+    var changed = S.view !== v;
+    S.view = v; if (v !== 'match') S.matchId = null;
+    applyView(); syncNavActive();
+    if (changed) try { window.scrollTo(0, 0); } catch (e) {}
+    if (v === 'matches') renderMatches();
+    else if (v === 'sim') renderSim();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
+    if (!fromHash) S.returnTo = (S.view === 'matches' ? 'matches' : S.view === 'sim' ? 'sim' : '');
     S.view = 'match'; S.matchId = eventId;
     if (!fromHash) setHash('match/' + eventId);
-    applyView(); try { window.scrollTo(0, 0); } catch (e) {}
+    applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {}
     renderMatch();
   }
-  function closeMatch(fromHash) { S.view = 'board'; S.matchId = null; if (!fromHash) setHash(''); applyView(); }
+  function closeMatch(fromHash) { if (!fromHash) setHash(S.returnTo || ''); else showView('board'); }
+  function loadCanon() {
+    fetch('/api/beta/matches', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+      S.canon = (j && j.items) || [];
+      S.canonByKey = {};
+      S.canon.forEach(function (c) { if (c.home_team_id && c.away_team_id) S.canonByKey[canonKey(c.home_team_id, c.away_team_id, (c.kickoff_at || '').slice(0, 10))] = c; });
+      if (S.view === 'matches') renderMatches();
+    });
+  }
+  function canonKey(h, a, d) { return h + '|' + a + '|' + (d || ''); }
   function fixtureIdFor(header) {
     if (!header) return null;
     var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id, d = (header.kickoff_at || '').slice(0, 10);
@@ -489,7 +567,8 @@
   function stageLabel(c) { if (!c) return ''; var m = { GROUP: LANG === 'en' ? 'Group stage' : 'Fase de grupos', KNOCKOUT: LANG === 'en' ? 'Knockout' : 'Eliminatorias', R32: LANG === 'en' ? 'Round of 32' : '16avos', R16: LANG === 'en' ? 'Round of 16' : 'Octavos', QF: LANG === 'en' ? 'Quarter-finals' : 'Cuartos', SF: LANG === 'en' ? 'Semi-finals' : 'Semifinal', FINAL: 'Final' }; return m[c] || c; }
   function ocName(h, c) { return c === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : teamName(c === 'AWAY' ? h.away.team_id : h.home.team_id, c === 'AWAY' ? h.away.name_fallback : h.home.name_fallback); }
   function ageFresh(iso) { if (!iso) return null; var ms = Date.now() - new Date(iso).getTime(); if (isNaN(ms)) return null; var h = ms / 3.6e6; return h <= 2 ? 'FRESH' : h <= 12 ? 'AGING' : 'STALE'; }
-  function freshChip(code) { if (!code) return ''; var m = { FRESH: ['fresh_fresh', 'gx-fresh'], AGING: ['fresh_aging', 'gx-aging'], STALE: ['fresh_stale', 'gx-stale'] }[code]; return m ? '<span class="gx-freshchip ' + m[1] + '">' + esc(t(m[0])) + '</span>' : ''; }
+  // kind: 'data' (frescura de datos) | 'price' (frescura del precio) → etiqueta acorde a lo que se califica (A.6)
+  function freshChip(code, kind) { if (!code) return ''; kind = kind === 'price' ? 'price' : 'data'; var k = { FRESH: ['fresh_' + kind, 'gx-fresh'], AGING: ['aging_' + kind, 'gx-aging'], STALE: ['stale_' + kind, 'gx-stale'] }[code]; return k ? '<span class="gx-freshchip ' + k[1] + '">' + esc(t(k[0])) + '</span>' : ''; }
   // no-vig SOLO con el set completo de resultados (1X2 → HOME+DRAW+AWAY); set parcial → null (no se inventa).
   function normVec(map) { var present = ['HOME', 'DRAW', 'AWAY'].filter(function (c) { return map[c] > 0; }); if (present.length < 3) return null; var sum = present.reduce(function (a, c) { return a + map[c]; }, 0); if (sum <= 0) return null; var o = {}; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { o[c] = map[c] > 0 ? map[c] / sum : null; }); return o; }
 
@@ -500,32 +579,60 @@
   }
   function mvLoading() { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('match_loading')) + '</div></div>'; }
   function bindBack() { var b = $('.gx-mv-back'); if (b) b.addEventListener('click', function () { closeMatch(); }); }
+  // A.7: barra de navegación de secciones (sticky desktop+móvil). Click → scroll con offset; scroll-spy marca activa.
+  function mvNav(sections) { return '<nav class="gx-mv-nav" id="gx-mv-nav">' + sections.map(function (s, i) { return '<a data-sec="sec-' + s.id + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(t(s.key)) + '</a>'; }).join('') + '</nav>'; }
+  function bindMvNav() {
+    var nav = $('#gx-mv-nav'); if (!nav) return;
+    var links = [].slice.call(nav.querySelectorAll('a'));
+    var setActive = function (id) { links.forEach(function (x) { x.classList.toggle('on', x.dataset.sec === id); var on = x.dataset.sec === id; if (on) x.scrollIntoView({ inline: 'nearest', block: 'nearest' }); }); };
+    links.forEach(function (a) { a.addEventListener('click', function () { var el = document.getElementById(a.dataset.sec); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: 'smooth' }); setActive(a.dataset.sec); }); });
+    if (S._mvObs) { try { S._mvObs.disconnect(); } catch (e) {} }
+    if ('IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(function (ents) { ents.forEach(function (e) { if (e.isIntersecting) setActive(e.target.id); }); }, { rootMargin: '-118px 0px -62% 0px', threshold: 0 });
+      [].forEach.call(document.querySelectorAll('.gx-sec'), function (s) { obs.observe(s); });
+      S._mvObs = obs;
+    }
+  }
 
   function renderMatch() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    var eid = S.matchId, beta = S.mc[eid];
-    if (beta === undefined) {
+    var eid = S.matchId;
+    // A.8 QA: escenarios determinísticos SOLO en preview interno (premium-qa.js se carga únicamente con el
+    // flag QA on en el server; en prod no existe → window.__GP_QA es undefined). NUNCA mezcla DB real.
+    var qa = (/^qa-/.test(eid) && window.__GP_QA) ? window.__GP_QA.get(eid, LANG) : null;
+    if (qa) S.mc[eid] = qa.beta;   // QA: el memo/dataTrust leen S.mc; sembrarlo para que el análisis sea consistente
+    var beta = qa ? qa.beta : S.mc[eid];
+    if (!qa && beta === undefined) {
       mv.innerHTML = mvShell(mvLoading()); bindBack();
       fetch('/api/beta/match/' + encodeURIComponent(eid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[eid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
       return;
     }
     if (!beta || beta._empty || !beta.header) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
-    var header = beta.header, fid = fixtureIdFor(header);
-    if (fid != null && S.mfix[fid] === undefined) {
-      S.mfix[fid] = null;
-      fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+    var header = beta.header, fx;
+    if (qa) { fx = qa.fx || null; }
+    else {
+      var fid = fixtureIdFor(header);
+      if (fid != null && S.mfix[fid] === undefined) {
+        S.mfix[fid] = null;
+        fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      }
+      fx = (fid != null && S.mfix[fid] && !S.mfix[fid]._empty) ? S.mfix[fid] : null;
     }
-    var fx = (fid != null && S.mfix[fid] && !S.mfix[fid]._empty) ? S.mfix[fid] : null;
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
+    // A.7: navegación interna de secciones (sticky). Las secciones presentes definen el menú.
+    var sections = [{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }, { id: 'goles', key: 'mod_goals' }];
+    if (live) sections.push({ id: 'live', key: 'mod_live' });
+    var sec = function (id, html) { return '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>'; };
     mv.innerHTML = mvShell(
       mvHero(beta, fx, r, live) +
+      mvNav(sections) +
       '<div class="gx-mv-grid">' +
-      '<div class="gx-mv-col">' + mvMemo(beta, r) + mvProb(beta) + mvContext(beta, fx) + '</div>' +
-      '<div class="gx-mv-col">' + (live ? mvLive(fx) : '') + mvMarkets(beta, fx, r) + mvGoals(beta) + '</div>' +
+      '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + sec('goles', mvGoals(beta)) + '</div>' +
       '</div>'
     );
-    bindBack();
+    bindBack(); bindMvNav();
   }
 
   function mvHero(beta, fx, r, live) {
@@ -536,13 +643,14 @@
     var xgA = gi && gi.expected_goals ? gi.expected_goals.AWAY : (fx && fx.modelProbabilities ? fx.modelProbabilities.xgAway : null);
     var likely = (gi && gi.top_scores && gi.top_scores[0]) ? gi.top_scores[0].score : (fx && fx.modelProbabilities ? fx.modelProbabilities.likelyScore : null);
     var fresh = beta.analysis ? beta.analysis.data_freshness_code : null;
-    var score = (live && fx && fx.score) ? (fx.score.home + ' - ' + fx.score.away) : null;
+    var finished = fx && fx.status === 'final';
+    var score = ((live || finished) && fx && fx.score) ? (fx.score.home + ' - ' + fx.score.away) : null;
     var minute = (live && fx && fx.minute != null) ? (fx.minute + "'") : null;
     var meta = [esc(t('comp')), stageLabel(h.stage_code) ? esc(stageLabel(h.stage_code)) : '', h.venue ? esc(h.venue) : '', esc(fmtDate(h.kickoff_at))].filter(Boolean).join(' · ');
     var tri = function (fn, cls, hi) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return '<span' + (hi === c ? ' class="hi"' : '') + '>' + fn(c) + '</span>'; }).join('') + '</span>'; };
     var miniStat = function (label, v, extra) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b>' + (extra || '') + '</div>'; };
     return '<div class="gx-panel gx-hero">' +
-      '<div class="gx-hero-meta">' + meta + '<span class="gx-spacer"></span>' + (live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '<span class="gx-dim" style="font-size:11.5px">' + esc(fmtTime(h.kickoff_at)) + '</span>') + (fresh ? freshChip(fresh) : '') + '</div>' +
+      '<div class="gx-hero-meta">' + meta + '<span class="gx-spacer"></span>' + (live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : finished ? '<span class="gx-dim" style="font-size:11.5px;font-weight:600">' + esc(t('st_ft')) + '</span>' : '<span class="gx-dim" style="font-size:11.5px">' + esc(fmtTime(h.kickoff_at)) + '</span>') + (fresh ? freshChip(fresh, 'data') : '') + '</div>' +
       '<div class="gx-hero-teams">' +
       '<div class="gx-hero-side"><span class="fl">' + flag(h.home.team_id) + '</span><b>' + esc(teamName(h.home.team_id, h.home.name_fallback)) + '</b></div>' +
       '<div class="gx-hero-mid">' + (score ? '<div class="gx-hero-score gx-mono">' + esc(score) + '</div>' + (minute ? '<div class="gx-ck-clock">' + esc(minute) + '</div>' : '') : '<div class="gx-hero-vs">' + esc(t('vs')) + '</div>') + '</div>' +
@@ -573,14 +681,14 @@
     if (vals.length) return { code: 'ev_price_only', cls: 'dim', ic: 'currency-dollar' };
     return { code: 'ev_none', cls: 'dim', ic: 'help' };
   }
-  function mvMemo(beta, r) {
+  function mvMemo(beta, r, fx) {
     var memo = buildMemo(r), conf = memo.conf, ev = evidenceBasis(beta);
     return '<div class="gx-panel gx-memo gx-mv-panel">' +
       '<div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('mod_memo')) + '</span><span class="gx-conf ' + conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + conf.label) + '</span></div>' +
       '<div class="gx-ev-basis gx-ev-' + ev.cls + '">' + ic(ev.ic) + '<div><span class="gx-label">' + esc(t('ev_basis')) + '</span><b>' + esc(t(ev.code)) + '</b></div></div>' +
       '<div class="gx-memo-grid">' +
       memoItem('verdict', memo.verdict) + memoItem('price', memo.price) + memoItem('thesis', memo.thesis) + memoItem('risk', memo.risk, 'risk') + memoItem('invalidation', memo.inval, 'warn') +
-      '</div>' + dataTrust(r, memo.ma) +
+      '</div>' + dataTrust(r, memo.ma, fx) +
       '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
       (ev.code === 'ev_pick' || ev.code === 'ev_value' ? '<span class="gx-cta-tag gx-ev-' + ev.cls + '">' + esc(memo.cta) + '</span>' : '') + '</div>' +
       '</div>';
@@ -672,17 +780,33 @@
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('arrows-left-right') + esc(t('mod_markets')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
   }
   function noVigFromOdds(oddsMap) { var imp = {}; ['HOME', 'DRAW', 'AWAY'].forEach(function (c) { if (oddsMap[c] > 0) imp[c] = 1 / oddsMap[c]; }); return normVec(imp); }
+  function mktLiq(v) { if (v == null) return null; if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K'; return '$' + Math.round(v); }
   function mktSection(title, icon, rows) {
     if (!rows.length) return '';
-    var liq = function (v) { if (v == null) return '<span class="gx-dim">—</span>'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K'; return '$' + Math.round(v); };
-    return '<div class="gx-mkt-sec"><div class="gx-mkt-sec-h">' + ic(icon) + '<span>' + esc(title) + '</span></div>' +
-      '<table class="gx-mkt-table"><thead><tr><th class="l">' + esc(t('col_outcome')) + '</th><th class="l">' + esc(t('col_provider')) + '</th><th>' + esc(t('col_odds')) + '</th><th>' + esc(t('col_implied')) + '</th><th>' + esc(t('col_novig')) + '</th><th>' + esc(t('col_liq')) + '</th><th>' + esc(t('col_move')) + '</th></tr></thead><tbody>' +
+    var liqCell = function (v) { var s = mktLiq(v); return s == null ? '<span class="gx-dim">—</span>' : s; };
+    // desktop: matriz densa tipo terminal
+    var table = '<table class="gx-mkt-table"><thead><tr><th class="l">' + esc(t('col_outcome')) + '</th><th class="l">' + esc(t('col_provider')) + '</th><th>' + esc(t('col_odds')) + '</th><th>' + esc(t('col_implied')) + '</th><th>' + esc(t('col_novig')) + '</th><th>' + esc(t('col_liq')) + '</th><th>' + esc(t('col_move')) + '</th></tr></thead><tbody>' +
       rows.map(function (x) {
         return '<tr' + (x.best ? ' class="best"' : '') + '><td class="l gx-mkt-oc">' + esc(x.outcome) + (x.best ? ' ' + ic('star-filled') : '') + '</td><td class="l gx-dim">' + esc(x.provider) + '</td>' +
           '<td class="gx-mono">' + (x.odds != null ? odd(x.odds) : '—') + '</td><td class="gx-mono gx-dim">' + (x.implied != null ? pct0(x.implied) : '—') + '</td>' +
-          '<td class="gx-mono">' + (x.novig != null ? pct0(x.novig) : '—') + '</td><td class="gx-mono gx-dim">' + liq(x.liq) + '</td>' +
-          '<td>' + (x.fresh ? freshChip(x.fresh) : '<span class="gx-dim">—</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+          '<td class="gx-mono">' + (x.novig != null ? pct0(x.novig) : '—') + '</td><td class="gx-mono gx-dim">' + liqCell(x.liq) + '</td>' +
+          '<td>' + (x.fresh ? freshChip(x.fresh, 'price') : '<span class="gx-dim">—</span>') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    // móvil: cada resultado/proveedor = card compacta apilada (A.4; sin scroll horizontal)
+    var kv = function (label, val, mono) { return '<div class="gx-mkc-kv"><span>' + esc(label) + '</span><b' + (mono ? ' class="gx-mono"' : '') + '>' + val + '</b></div>'; };
+    var cards = rows.map(function (x) {
+      return '<div class="gx-mkc' + (x.best ? ' best' : '') + '"><div class="gx-mkc-h"><b>' + esc(x.outcome) + (x.best ? ' ' + ic('star-filled') : '') + '</b><span class="gx-dim">' + esc(x.provider) + '</span></div>' +
+        '<div class="gx-mkc-grid">' +
+        kv(t('col_odds'), x.odds != null ? odd(x.odds) : '—', true) +
+        kv(t('col_implied'), x.implied != null ? pct0(x.implied) : '—', true) +
+        kv(t('col_novig'), x.novig != null ? pct0(x.novig) : '—', true) +
+        kv(t('col_liq'), mktLiq(x.liq) != null ? esc(mktLiq(x.liq)) : esc(t('na_short')), true) +
+        kv(t('col_fresh'), x.fresh ? freshChip(x.fresh, 'price') : esc(t('move_na')), false) +
+        kv(t('col_move'), esc(t('move_na')), false) +
+        '</div></div>';
+    }).join('');
+    return '<div class="gx-mkt-sec"><div class="gx-mkt-sec-h">' + ic(icon) + '<span>' + esc(title) + '</span></div>' +
+      '<div class="gx-mkt-desk">' + table + '</div><div class="gx-mkt-mob">' + cards + '</div></div>';
   }
 
   // ---- módulo 5: Contexto narrativo por factor ----
@@ -748,7 +872,7 @@
     var statRow = function (key, label) { if (!st || !st.home || st.home[key] == null && st.away[key] == null) return ''; return '<div class="gx-livestat"><span class="gx-mono">' + (st.home[key] != null ? st.home[key] : '—') + '</span><span class="gx-label">' + esc(label) + '</span><span class="gx-mono">' + (st.away[key] != null ? st.away[key] : '—') + '</span></div>'; };
     var evIcon = { goal: 'ball-football', yellow: 'square-rounded', red: 'square-rounded-filled', subst: 'arrows-exchange', var: 'video' };
     var body =
-      '<div class="gx-live-top"><span class="gx-live-pill">' + esc(t('st_live')) + '</span><b class="gx-mono gx-live-score">' + esc(sc) + '</b>' + (fx.minute != null ? '<span class="gx-ck-clock">' + esc(fx.minute + "'") + '</span>' : '') + '<span class="gx-spacer"></span>' + freshChip(ageFresh(fx.updatedAt)) + '</div>' +
+      '<div class="gx-live-top"><span class="gx-live-pill">' + esc(t('st_live')) + '</span><b class="gx-mono gx-live-score">' + esc(sc) + '</b>' + (fx.minute != null ? '<span class="gx-ck-clock">' + esc(fx.minute + "'") + '</span>' : '') + '<span class="gx-spacer"></span>' + freshChip(ageFresh(fx.updatedAt), 'data') + '</div>' +
       (stale ? '<p class="gx-mod-note gx-warn">' + ic('alert-triangle') + ' ' + esc(t('live_stale')) + '</p>' : '') +
       (hasLiveProb ? '<div class="gx-mod-sub gx-label">' + esc(t('live_prob')) + '</div><div class="gx-pbar sm"><i class="h" style="width:' + ((mp.homeWin || 0) * 100) + '%"></i><i class="d" style="width:' + ((mp.draw || 0) * 100) + '%"></i><i class="a" style="width:' + ((mp.awayWin || 0) * 100) + '%"></i></div><div class="gx-plabels"><span><b>' + pct0(mp.homeWin) + '</b></span><span>X <b>' + pct0(mp.draw) + '</b></span><span><b>' + pct0(mp.awayWin) + '</b></span></div>' : '') +
       (st && st.home ? '<div class="gx-mod-sub gx-label">' + esc(t('live_stats')) + '</div>' + [['possession', t('st_possession')], ['shots', t('st_shots')], ['shotsOnTarget', t('st_sot')], ['corners', t('st_corners')], ['xg', t('st_xg')]].map(function (s) { return statRow(s[0], s[1]); }).filter(Boolean).join('') : '') +
@@ -758,8 +882,208 @@
   function fmtDate(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short' }); } catch (e) { return '—'; } }
   function fmtDateTime(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
 
+  // ================= Partidos premium (Corte 3B) =================
+  function dayKey(iso) { return (iso || '').slice(0, 10); }
+  function dayLabel(iso) {
+    if (!iso) return t('e_na');
+    var d = new Date(iso), now = new Date();
+    var dk = dayKey(iso), tk = dayKey(now.toISOString());
+    var tm = new Date(now.getTime() + 864e5);
+    if (dk === tk) return t('g_today');
+    if (dk === dayKey(tm.toISOString())) return t('g_tomorrow');
+    try { return d.toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'long', day: '2-digit', month: 'short' }); } catch (e) { return dk; }
+  }
+  function calStatus(c) { return c.status === 'live' ? 'live' : c.status === 'final' ? 'final' : 'scheduled'; }
+  function matchRows() {
+    var rows = S.cal.filter(function (c) { return c.home && c.away && !c.pending; });
+    // filtro por pestaña
+    if (S.mFilt === 'live') rows = rows.filter(function (c) { return calStatus(c) === 'live'; });
+    else if (S.mFilt === 'up') rows = rows.filter(function (c) { return calStatus(c) === 'scheduled'; });
+    else if (S.mFilt === 'fin') rows = rows.filter(function (c) { return calStatus(c) === 'final'; });
+    if (S.mStage !== 'all') rows = rows.filter(function (c) { return c.stage === S.mStage; });
+    if (S.mQuery) { var q = S.mQuery.toLowerCase(); rows = rows.filter(function (c) { return (teamName(c.home) + ' ' + teamName(c.away) + ' ' + c.home + ' ' + c.away).toLowerCase().indexOf(q) >= 0; }); }
+    rows.sort(function (a, b) { return new Date(a.datetime || 0) - new Date(b.datetime || 0); });
+    return rows;
+  }
+  function canonFor(c) { return S.canonByKey[canonKey(c.home, c.away, dayKey(c.datetime))] || null; }
+  function mStatusCell(c) {
+    var st = calStatus(c);
+    if (st === 'live') return '<span class="gx-live-pill">' + esc(t('st_live')) + (c.minute != null ? ' ' + c.minute + "'" : '') + '</span>';
+    if (st === 'final') return '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>';
+    return '<span class="gx-dim" style="font-size:11px">' + esc(fmtTime(c.datetime)) + '</span>';
+  }
+  function mScore(c) { return c.score && c.score.home != null ? (c.score.home + ' - ' + c.score.away) : null; }
+  function renderMatches() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var rows = matchRows();
+    var stages = []; S.cal.forEach(function (c) { if (c.stage && stages.indexOf(c.stage) < 0) stages.push(c.stage); });
+    var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f'], ['fin', 'st_finished']];
+    var head =
+      '<div class="gx-ohead"><h1>' + esc(t('nav_matches')) + '</h1>' +
+      '<div class="gx-seg" id="gx-mtabs">' + tabs.map(function (x) { return '<button data-f="' + x[0] + '"' + (S.mFilt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
+      '<select class="gx-select" id="gx-mstage"><option value="all">' + esc(t('m_stage_all')) + '</option>' + stages.map(function (s) { return '<option value="' + esc(s) + '"' + (S.mStage === s ? ' selected' : '') + '>' + esc(stageLabel(s)) + '</option>'; }).join('') + '</select>' +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-msearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.mQuery) + '"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' ' + esc(t('matches')) + '</span></div>';
+    var body;
+    if (!rows.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(t('m_empty')) + '</b></div></div>';
+    else {
+      // agrupar por día
+      var groups = [], gmap = {};
+      rows.forEach(function (c) { var k = dayKey(c.datetime); if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(c.datetime), rows: [] }; groups.push(gmap[k]); } gmap[k].rows.push(c); });
+      body = groups.map(function (g) {
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(g.label) + '</span><span class="gx-dim">' + g.rows.length + '</span></div>' +
+          '<div class="gx-panel gx-board gx-matches-desk">' + matchesTable(g.rows) + '</div>' +
+          '<div class="gx-matches-mob">' + matchesCards(g.rows) + '</div></div>';
+      }).join('');
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + body + '</div></div>';
+    bindMatches();
+  }
+  function mGpCell(canon) {
+    if (canon && canon.gp && canon.gp.HOME != null) return triCell(function (cc) { return pct0(canon.gp[cc]); }, 'gx-gp', maxCode(function (cc) { return canon.gp[cc]; }));
+    return '<span class="gx-dim" style="font-size:11px">' + esc(t('e_gp_na')) + '</span>';
+  }
+  function mSignalCell(canon) {
+    if (canon && canon.value && canon.value.signal && canon.value.signal !== 'PASS') return sigBadge(canon.value.signal) + (canon.value.below_min ? ' <span class="gx-belowmin">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : '');
+    if (canon) return '<span class="gx-dim" style="font-size:11px">' + esc(t('e_nomarket')) + '</span>';
+    return '<span class="gx-dim" style="font-size:11px">—</span>';
+  }
+  function matchesTable(rows) {
+    return '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="grp">' + esc(t('th_gp')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th></th></tr></thead><tbody>' +
+      rows.map(function (c) {
+        var canon = canonFor(c), sc = mScore(c), clickable = !!canon;
+        return '<tr class="gx-row' + (clickable ? '' : ' gx-row-static') + '"' + (clickable ? ' data-openmatch="' + esc(canon.event_id) + '"' : '') + '>' +
+          '<td class="gx-time">' + esc(fmtTime(c.datetime)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(stageLabel(c.stage)) + '</div></td>' +
+          '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(c.home) + '</span><div class="gx-teamnames"><b>' + esc(teamName(c.home)) + '</b><span>' + esc(teamName(c.away)) + '</span></div><span class="fl">' + flag(c.away) + '</span></div></td>' +
+          '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + mStatusCell(c) + '</td>' +
+          '<td>' + mGpCell(canon) + '</td>' +
+          '<td class="l">' + mSignalCell(canon) + '</td>' +
+          '<td class="l">' + (clickable ? '<span class="gx-dim">' + ic('chevron-right') + '</span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function matchesCards(rows) {
+    return rows.map(function (c) {
+      var canon = canonFor(c), sc = mScore(c), clickable = !!canon;
+      return '<div class="gx-mcard' + (clickable ? '' : ' gx-mcard-static') + '"' + (clickable ? ' data-openmatch="' + esc(canon.event_id) + '"' : '') + '>' +
+        '<div class="gx-mcard-top"><span class="gx-time">' + esc(fmtTime(c.datetime)) + ' · ' + esc(stageLabel(c.stage)) + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + mStatusCell(c) + '</div>' +
+        '<div class="gx-cell-team" style="margin:8px 0"><span class="fl">' + flag(c.home) + '</span><div class="gx-teamnames"><b>' + esc(teamName(c.home)) + '</b><span>' + esc(teamName(c.away)) + '</span></div><span class="fl">' + flag(c.away) + '</span></div>' +
+        '<div class="gx-mcard-rows"><div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + mGpCell(canon) + '</div></div>' +
+        '<div class="gx-mcard-foot"><span>' + mSignalCell(canon) + '</span>' + (clickable ? '<span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(t('e_gp_na')) + '</span>') + '</div>' +
+        '</div>';
+    }).join('');
+  }
+  function bindMatches() {
+    var tb = $('#gx-mtabs'); if (tb) tb.addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (b) { S.mFilt = b.dataset.f; renderMatches(); } });
+    var st = $('#gx-mstage'); if (st) st.addEventListener('change', function () { S.mStage = st.value; renderMatches(); });
+    var si = $('#gx-msearch-i'); if (si) si.addEventListener('input', function () { S.mQuery = si.value; clearTimeout(S._mq); S._mq = setTimeout(function () { var pos = si.selectionStart; renderMatches(); var n = $('#gx-msearch-i'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }, 220); });
+  }
+
+  // ================= Simulador premium (Corte 3C) =================
+  function teamOptions(sel) { return '<option value="">' + esc(t('sim_pick')) + '</option>' + S.stTeams.slice().sort(function (a, b) { return teamName(a.id).localeCompare(teamName(b.id)); }).map(function (tm) { return '<option value="' + esc(tm.id) + '"' + (sel === tm.id ? ' selected' : '') + '>' + esc(teamName(tm.id, tm.name)) + '</option>'; }).join(''); }
+  function renderSim() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var s = S.sim;
+    var picker =
+      '<div class="gx-panel gx-sim-picker"><div class="gx-ph"><span class="gx-label">' + ic('arrows-shuffle') + esc(t('nav_sim')) + '</span></div>' +
+      '<div class="gx-sim-row">' +
+      '<div class="gx-sim-team"><span class="fl big">' + (s.a ? flag(s.a) : '🏳️') + '</span><select class="gx-select" id="gx-sim-a">' + teamOptions(s.a) + '</select>' + simElo(s.a) + '</div>' +
+      '<button class="gx-sim-swap" id="gx-sim-swap" title="' + esc(t('sim_swap')) + '">' + ic('arrows-left-right') + '</button>' +
+      '<div class="gx-sim-team"><span class="fl big">' + (s.b ? flag(s.b) : '🏳️') + '</span><select class="gx-select" id="gx-sim-b">' + teamOptions(s.b) + '</select>' + simElo(s.b) + '</div>' +
+      '</div>' +
+      '<button class="gx-btn gx-sim-go" id="gx-sim-go"' + (s.a && s.b && s.a !== s.b ? '' : ' disabled') + '>' + (s.loading ? ic('loader-2') + esc(t('sim_running')) : ic('player-play') + ' ' + esc(t('sim_go'))) + '</button>' +
+      '<div class="gx-sim-hypo">' + ic('flask') + esc(t('sim_hypo')) + '</div>' +
+      '</div>';
+    var result = s.data ? simResult(s.data) : (s.loading ? '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('sim_running')) + '</div></div>' : '<div class="gx-panel"><div class="gx-empty">' + ic('arrows-shuffle') + '<b>' + esc(t('sim_empty')) + '</b>' + esc(t('sim_empty_sub')) + '</div></div>');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:16px;max-width:1080px;margin:0 auto">' + picker + result + '</div></div>';
+    bindSim();
+  }
+  function simElo(id) { if (!id) return ''; var tm = (S.stTeams || []).filter(function (x) { return x.id === id; })[0]; if (!tm) return ''; return '<span class="gx-sim-elo gx-mono">Elo ' + Math.round(tm.currentElo || tm.elo || 0) + '</span>'; }
+  function bindSim() {
+    var a = $('#gx-sim-a'), b = $('#gx-sim-b'), sw = $('#gx-sim-swap'), go = $('#gx-sim-go');
+    if (a) a.addEventListener('change', function () { S.sim.a = a.value || null; renderSim(); });
+    if (b) b.addEventListener('change', function () { S.sim.b = b.value || null; renderSim(); });
+    if (sw) sw.addEventListener('click', function () { var t0 = S.sim.a; S.sim.a = S.sim.b; S.sim.b = t0; renderSim(); });
+    if (go) go.addEventListener('click', runSim);
+  }
+  function runSim() {
+    var s = S.sim; if (!s.a || !s.b || s.a === s.b || s.loading) return;
+    s.loading = true; s.data = null; renderSim();
+    fetch('/api/h2h/deep?a=' + encodeURIComponent(s.a) + '&b=' + encodeURIComponent(s.b), { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (d) { s.loading = false; s.data = d || { _err: true }; renderSim(); });
+  }
+  // confianza del cruce hipotético: mapea el nivel ES del backend → enum canónico (NUNCA expone V1/V2/delta)
+  function simConf(d) { var lv = d && d.analysis && d.analysis.headline && d.analysis.headline.modelConfidence && d.analysis.headline.modelConfidence.level; var code = lv === 'Alta' ? 'HIGH' : lv === 'Baja' ? 'LOW' : lv === 'Media' ? 'MEDIUM' : null; return confInfo(code); }
+  function simResult(d) {
+    if (!d || d._err || !d.probs) return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('sim_err')) + '</b></div></div>';
+    var A = d.a, B = d.b, p = d.probs, g = d.goals || {}, mc = d.monteCarlo || {}, hl = (d.analysis && d.analysis.headline) || {};
+    var pH = p.aWin || 0, pD = p.draw || 0, pA = p.bWin || 0;
+    var conf = simConf(d);
+    // hero
+    var hero = '<div class="gx-panel gx-hero"><div class="gx-hero-meta">' + ic('flask') + esc(t('sim_hypo')) + '<span class="gx-spacer"></span><span class="gx-conf ' + conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + conf.label) + '</span></div>' +
+      '<div class="gx-hero-teams"><div class="gx-hero-side"><span class="fl">' + flag(A.id) + '</span><b>' + esc(teamName(A.id, A.name)) + '</b></div><div class="gx-hero-mid"><div class="gx-hero-vs">' + esc(t('vs')) + '</div></div><div class="gx-hero-side"><span class="fl">' + flag(B.id) + '</span><b>' + esc(teamName(B.id, B.name)) + '</b></div></div>' +
+      '<div class="gx-pbar"><i class="h" style="width:' + (pH * 100) + '%"></i><i class="d" style="width:' + (pD * 100) + '%"></i><i class="a" style="width:' + (pA * 100) + '%"></i></div>' +
+      '<div class="gx-plabels"><span>' + esc(teamName(A.id)) + ' <b>' + pct0(pH) + '</b></span><span>X <b>' + pct0(pD) + '</b></span><span>' + esc(teamName(B.id)) + ' <b>' + pct0(pA) + '</b></span></div>' +
+      '<div class="gx-hero-grid"><div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_xg')) + '</span><b class="gx-mono">' + (p.xgA != null ? Number(p.xgA).toFixed(2) : '—') + ' – ' + (p.xgB != null ? Number(p.xgB).toFixed(2) : '—') + '</b></div>' +
+      '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_score')) + '</span><b class="gx-mono">' + esc(p.likely || '—') + '</b></div>' +
+      (mc.btts != null ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('g_btts')) + '</span><b class="gx-mono">' + esc(t('g_yes')) + ' ' + pct0(mc.btts) + '</b></div>' : '') +
+      (mc.n ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('sim_runs')) + '</span><b class="gx-mono">' + (mc.n >= 1000 ? (mc.n / 1000) + 'k' : mc.n) + '</b></div>' : '') +
+      '</div></div>';
+    // decision memo hipotético (sin precio/value)
+    var thesis = (hl.verdict) ? esc(hl.verdict) : esc(t('sim_thesis_na'));
+    var risk = (d.analysis && d.analysis.whatChanges && d.analysis.whatChanges[0]) ? esc(d.analysis.whatChanges[0]) : esc(t('sim_risk_na'));
+    var memo = '<div class="gx-panel gx-memo gx-mv-panel"><div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('mod_memo')) + ' · ' + esc(t('sim_hypo_tag')) + '</span><span class="gx-conf ' + conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + conf.label) + '</span></div>' +
+      '<div class="gx-memo-grid">' +
+      '<div class="gx-memo-item"><div class="gx-label">' + esc(t('verdict')) + '</div><p>' + (hl.verdictLabel ? '<b>' + esc(hl.verdictLabel) + '</b>' : esc(t('sim_verdict_na'))) + '</p></div>' +
+      '<div class="gx-memo-item"><div class="gx-label">' + esc(t('price')) + '</div><p>' + esc(t('sim_price_na')) + '</p></div>' +
+      '<div class="gx-memo-item"><div class="gx-label">' + esc(t('thesis')) + '</div><p>' + thesis + '</p></div>' +
+      '<div class="gx-memo-item risk"><div class="gx-label">' + esc(t('risk')) + '</div><p>' + risk + '</p></div>' +
+      '</div></div>';
+    return hero + '<div class="gx-mv-grid">' + '<div class="gx-mv-col">' + memo + simContext(d) + '</div>' + '<div class="gx-mv-col">' + simSims(d) + simGoals(d) + '</div>' + '</div>';
+  }
+  function simContext(d) {
+    var blocks = [];
+    var fa = d.form && d.form.a, fb = d.form && d.form.b;
+    if (fa || fb) {
+      var line = function (f, id) { if (!f || !f.played) return ''; return t('ctx_form_line', { team: '<b>' + esc(teamName(id)) + '</b>', rec: esc((f.results || []).join('-')), n: f.played, gf: f.goalsFor, ga: f.goalsAgainst }); };
+      var s = [line(fa, d.a.id), line(fb, d.b.id)].filter(Boolean).join(' ');
+      if (s) blocks.push(ctxBlock(t('ctx_form'), 'history', s));
+    }
+    var ia = (d.injuries && d.injuries.a) || [], ib = (d.injuries && d.injuries.b) || [];
+    if (ia.length || ib.length) {
+      var inj = function (arr, id) { if (!arr.length) return ''; return t('ctx_inj_line', { team: '<b>' + esc(teamName(id)) + '</b>', players: esc(arr.slice(0, 5).map(function (x) { return x.player; }).join(', ')) }); };
+      var si = [inj(ia, d.a.id), inj(ib, d.b.id)].filter(Boolean).join(' ');
+      if (si) blocks.push(ctxBlock(t('ctx_inj'), 'first-aid-kit', si));
+    }
+    // factores aplicados del análisis (sin V1/V2/delta)
+    var fac = (d.analysis && d.analysis.factors) || [];
+    if (fac.length) blocks.push(ctxBlock(t('mod_context'), 'bulb', fac.slice(0, 5).map(function (f) { return (LANG === 'en' ? 'GP weighs ' : 'GP pondera ') + factLabel(f.factorCode) + ' (' + esc(teamName(f.side === 'a' ? d.a.id : d.b.id)) + ').'; }).join(' ')));
+    var body = blocks.length ? blocks.join('') : '<div class="gx-empty">' + ic('notes') + '<b>' + esc(t('ctx_none')) + '</b></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('article') + esc(t('mod_context')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  function simSims(d) {
+    var mc = d.monteCarlo || {};
+    var top = (mc.topScores || []).slice(0, 6);
+    var totals = (mc.totals || []).slice(0, 8);
+    var maxT = totals.reduce(function (m, x) { return Math.max(m, x.p || 0); }, 0) || 1;
+    var stat = function (label, v) { return '<div class="gx-g-stat"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b></div>'; };
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('dice') + esc(t('sim_montecarlo')) + '</span><span class="gx-dim" style="font-size:10.5px">' + (mc.n ? (mc.n >= 1000 ? (mc.n / 1000) + 'k ' : mc.n + ' ') + esc(t('sim_runs')) : '') + '</span></div><div class="gx-mod-body">' +
+      '<div class="gx-g-stats">' + stat(t('g_over') + ' 2.5', pct0(mc.over25)) + stat(t('g_btts'), pct0(mc.btts)) + stat(t('sim_avg_goals'), mc.avgTotal != null ? Number(mc.avgTotal).toFixed(2) : '—') + '</div>' +
+      (top.length ? '<div class="gx-mod-sub gx-label">' + esc(t('g_scores')) + '</div><div class="gx-scores">' + top.map(function (s) { return '<div class="gx-score-i"><b class="gx-mono">' + esc(s.score) + '</b><span class="gx-dim gx-mono">' + pct0(s.p) + '</span></div>'; }).join('') + '</div>' : '') +
+      (totals.length ? '<div class="gx-mod-sub gx-label">' + esc(t('sim_totals')) + '</div><div class="gx-hist">' + totals.map(function (x) { return '<div class="gx-hist-bar"><i style="height:' + Math.round((x.p / maxT) * 100) + '%"></i><span class="gx-mono">' + x.goals + '</span></div>'; }).join('') + '</div>' : '') +
+      '</div></div>';
+  }
+  function simGoals(d) {
+    var g = d.goals || {};
+    var ouRow = function (line, over) { if (over == null) return ''; return '<div class="gx-ou-row"><span class="gx-mono">' + line + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + (over * 100) + '%"></span></div><span class="gx-mono gx-dim">' + esc(t('g_over')) + ' ' + pct0(over) + ' · ' + esc(t('g_under')) + ' ' + pct0(1 - over) + '</span></div>'; };
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div><div class="gx-mod-body">' +
+      '<div class="gx-mod-sub gx-label">' + esc(t('g_ou')) + '</div>' + ouRow('1.5', g.over15) + ouRow('2.5', g.over25) + ouRow('3.5', g.over35) +
+      '<p class="gx-mod-note gx-dim">' + ic('alert-triangle') + ' ' + esc(t('sim_goals_disc')) + '</p>' +
+      '</div></div>';
+  }
+
   // ---------- lang ----------
-  function setLang(l) { if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l; shell(); render(); if (S.view === 'match') { applyView(); renderMatch(); } }
+  function setLang(l) { if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l; shell(); render(); if (S.view === 'match') { applyView(); renderMatch(); } else if (S.view === 'matches') { applyView(); renderMatches(); } else if (S.view === 'sim') { applyView(); renderSim(); } }
 
   // ---------- boot ----------
   function boot() {
@@ -768,17 +1092,27 @@
     }).catch(function () {}).then(function () {
       // flags desde el estado global (si el server los expone) — si no, fallback vacío (los nombres igual van).
       fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
-        if (st && st.teams) st.teams.forEach(function (tm) { if (tm.id && tm.flag) FLAGS[tm.id] = tm.flag; });
-        // puente canónico→fixture: equipos + fecha (los códigos de equipo coinciden con el header beta)
+        if (st && st.teams) { S.stTeams = st.teams; st.teams.forEach(function (tm) { if (tm.id && tm.flag) FLAGS[tm.id] = tm.flag; }); }
+        // puente canónico→fixture + calendario completo (Partidos premium)
         if (st) {
-          (st.fixtures || []).forEach(function (f) { if (f.home && f.away) S.fixtures.push({ id: f.id, home: f.home, away: f.away, date: (f.datetime || '').slice(0, 10) }); });
-          (st.knockout || []).forEach(function (k) { var h = (k.resolved && k.resolved.home) || (k.result && k.result.home), a = (k.resolved && k.resolved.away) || (k.result && k.result.away); if (h && a) S.fixtures.push({ id: String(k.m), home: h, away: a, date: ((k.datetime || k.date || '') + '').slice(0, 10) }); });
+          (st.fixtures || []).forEach(function (f) {
+            if (f.home && f.away) S.fixtures.push({ id: f.id, home: f.home, away: f.away, date: (f.datetime || '').slice(0, 10) });
+            S.cal.push({ id: f.id, kind: 'group', home: f.home, away: f.away, datetime: f.datetime, stage: 'group', status: f.result ? f.result.status : 'scheduled', score: f.result ? { home: f.result.hg, away: f.result.ag } : null, minute: f.result ? f.result.minute : null, probs: f.probs || null, pending: false });
+          });
+          (st.knockout || []).forEach(function (k) {
+            var h = (k.resolved && k.resolved.home) || (k.result && k.result.home), a = (k.resolved && k.resolved.away) || (k.result && k.result.away);
+            if (h && a) S.fixtures.push({ id: String(k.m), home: h, away: a, date: ((k.datetime || k.date || '') + '').slice(0, 10) });
+            S.cal.push({ id: String(k.m), kind: 'ko', home: h, away: a, datetime: k.datetime || (k.date ? k.date + 'T18:00:00Z' : null), stage: k.stage, status: k.result ? k.result.status : 'scheduled', score: k.result ? { home: k.result.hg, away: k.result.ag } : null, minute: k.result ? k.result.minute : null, probs: k.probs || null, pending: !(h && a) });
+          });
         }
         var pref; try { pref = localStorage.getItem('gp_lang'); } catch (e) {}
         LANG = (pref === 'en' || pref === 'es') ? pref : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
         document.documentElement.lang = LANG;
-        shell(); load();
-        document.addEventListener('click', function (e) { var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); openMatch(o.getAttribute('data-openmatch')); } });
+        shell(); load(); loadCanon();
+        document.addEventListener('click', function (e) {
+          var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); openMatch(o.getAttribute('data-openmatch')); return; }
+          var n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); navTo(n.getAttribute('data-nav')); }
+        });
         window.addEventListener('hashchange', onHash); onHash();
       });
     });

@@ -32,6 +32,9 @@ function flags() {
     matchesV2Ui: bool(process.env.GP_MATCHES_V2_UI_ENABLED, false),
     // Capa visual premium (terminal de inteligencia) aislada en /x. Default false → la ruta no existe en prod.
     premiumUi: bool(process.env.GP_PREMIUM_UI_ENABLED, false),
+    // Fixtures QA del cockpit premium (escenarios live/finalizado sintéticos). SOLO preview interno; default
+    // false → premium-qa.js no se sirve ni se inyecta en prod (los usuarios nunca lo ven). NO toca la DB real.
+    premiumQa: bool(process.env.GP_PREMIUM_QA_ENABLED, false),
   };
 }
 

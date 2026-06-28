@@ -2436,11 +2436,19 @@ const server = http.createServer(async (req, res) => {
         let html = fs.readFileSync(pf, 'utf8')
           .replace('src="premium.js"', `src="premium.js?v=${vjs}"`)
           .replace('href="premium.css"', `href="premium.css?v=${vcss}"`);
+        // A.8: fixtures QA del cockpit — se inyectan SOLO con el flag GP_PREMIUM_QA_ENABLED (preview interno).
+        if (gpProduct.flags().premiumQa) {
+          try {
+            const vqa = Math.floor(fs.statSync(path.join(__dirname, 'public', 'premium-qa.js')).mtimeMs);
+            html = html.replace(`<script src="premium.js?v=${vjs}">`, `<script src="premium-qa.js?v=${vqa}"></script><script src="premium.js?v=${vjs}">`);
+          } catch {}
+        }
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
     if (/^\/premium\.(js|css)$/.test(p) && !premiumOn) { json(res, 404, { error: 'No encontrado' }); return; }
+    if (p === '/premium-qa.js' && (!premiumOn || !gpProduct.flags().premiumQa)) { json(res, 404, { error: 'No encontrado' }); return; }
     const betaOn = gpProduct.flags().betaUi;
     if (p === '/beta' || p === '/beta/') {
       if (!betaOn) { json(res, 404, { error: 'No encontrado' }); return; }

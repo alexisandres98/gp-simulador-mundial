@@ -6,6 +6,7 @@
 const dto = require('./dto');
 const repo = require('./repository');
 const flags = require('./flags');
+const confidence = require('./confidence');     // Corte 2.1 A.1: fuente única de confianza
 const arbitrage = require('./arbitrage');           // Fase R.4: capa de producto de Arbitraje
 const deepLinks = require('../exec-opportunities/deepLinks'); // deep links validados (HTTPS/allowlist/anti-redirect)
 
@@ -34,12 +35,22 @@ async function buildMatch(ctx, eventId, user) {
   const snapshot = snapMap.get(eventId) || null;
   const observations = await repo.observationsForEvent(db, eventId);
   const evalRows = Object.values(evalsByOutcome);
+  const risks = dto.riskCodes(evalRows, snapshot);
+  // Confianza canónica (A.1): un solo valor derivado del análisis controla TODA la presentación.
+  const uncertaintyScore = evalRows.reduce((m, e) => Math.max(m, Number(e.uncertainty_score) || 0), 0);
+  const confidence_code = confidence.computeConfidence({
+    uncertaintyScore: evalRows.length ? uncertaintyScore : null,
+    contextCompleteness: snapshot ? snapshot.context_completeness : null,
+    dataFreshness: snapshot ? dto._helpers.freshnessCode(snapshot.data_freshness) : null,
+    risks,
+  });
   const out = {
     header: dto.matchHeader(ev, resolveTeamId),
     probability: dto.probabilityVector(evalsByOutcome),
     qualify: null,                                       // se rellena cuando haya semántica knockout en el snapshot
     analysis: dto.analysisFactors(observations, snapshot),
-    risks: dto.riskCodes(evalRows, snapshot),
+    risks,
+    confidence_code,                                     // LOW | MEDIUM | HIGH (canónico, A.1)
     has_official_v2: evalRows.length > 0,
     updated_at: evalRows.length ? evalRows.map(e => e.created_at).sort().slice(-1)[0] : null,
   };
@@ -100,6 +111,35 @@ async function handle(req, res, p, user, ctx) {
     const m = await buildMatch(ctx, eventId, user);
     if (!m) return json(res, 404, { error: 'Evento no encontrado' });
     return json(res, 200, m);
+  }
+
+  // GET /api/beta/matches — TODOS los eventos canónicos con GP 1X2 + resumen de value (para Partidos premium).
+  // Devuelve team_ids estables para cruzar con el calendario de /api/state. Reusa los mismos DTOs neutrales.
+  if (p === '/api/beta/matches' && req.method === 'GET') {
+    const rows = await repo.valueEvaluations(db, { limit: 500 });
+    const rank = { STRONG: 3, LEAN: 2, WATCH: 1, PASS: 0 };
+    const byEvent = new Map();
+    for (const raw of rows) {
+      const card = dto.valueCard(raw, { resolveTeamId: ctx.resolveTeamId });
+      if (['HOME', 'DRAW', 'AWAY'].indexOf(card.outcome_code) < 0) continue; // solo 1X2
+      if (!byEvent.has(card.event_id)) byEvent.set(card.event_id, {
+        event_id: card.event_id,
+        home_team_id: ctx.resolveTeamId ? ctx.resolveTeamId(raw.home_participant) : null,
+        away_team_id: ctx.resolveTeamId ? ctx.resolveTeamId(raw.away_participant) : null,
+        kickoff_at: dto._helpers.iso(raw.scheduled_start),
+        stage_code: raw.stage ? String(raw.stage).toUpperCase() : null,
+        status_code: String(raw.status || 'scheduled').toUpperCase(),
+        gp: {}, market: {}, value: null,
+      });
+      const e = byEvent.get(card.event_id);
+      e.gp[card.outcome_code] = card.gp_probability;
+      e.market[card.outcome_code] = card.market_probability;
+      const belowMin = card.best_odds != null && card.minimum_odds != null && card.best_odds < card.minimum_odds;
+      const better = !e.value || rank[card.classification_code] > rank[e.value.signal] ||
+        (rank[card.classification_code] === rank[e.value.signal] && (card.adjusted_edge_pp || -9) > (e.value.edge_pp == null ? -9 : e.value.edge_pp));
+      if (better) e.value = { signal: card.classification_code, outcome_code: card.outcome_code, edge_pp: card.adjusted_edge_pp, best_odds: card.best_odds, minimum_odds: card.minimum_odds, best_sportsbook: card.best_sportsbook, below_min: belowMin, actionable: !!(card.actionable && !belowMin) };
+    }
+    return json(res, 200, { items: Array.from(byEvent.values()), count: byEvent.size, generated_at: new Date().toISOString() });
   }
 
   // GET /api/beta/value — lista con filtros (?class=STRONG|LEAN|WATCH|ALL & ?team= & ?book=).

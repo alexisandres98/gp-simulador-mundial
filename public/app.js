@@ -3194,4 +3194,7 @@ async function openPick(publicId) {
   } catch (e) { $('#pickDetail').innerHTML = du('No se pudo cargar la pick.'); }
 }
 
-(async () => { await loadMe(); await I18N.load(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();
+// loadMe() renderiza el header ANTES de que I18N.load() traiga el diccionario → el nav/login saldría con keys
+// crudas (nav.teams, auth.login). Tras cargar i18n, I18N.load() ya re-resolvió el locale (con USER.lang si hay
+// sesión) → repintamos el header para que el nav y el botón de login queden traducidos. (Fix bug Q.1.1.)
+(async () => { await loadMe(); await I18N.load(); renderHeader(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();

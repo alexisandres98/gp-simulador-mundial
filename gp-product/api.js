@@ -42,6 +42,7 @@ async function buildMatch(ctx, eventId, user) {
     uncertaintyScore: evalRows.length ? uncertaintyScore : null,
     contextCompleteness: snapshot ? snapshot.context_completeness : null,
     dataFreshness: snapshot ? dto._helpers.freshnessCode(snapshot.data_freshness) : null,
+    snapshotConfidence: snapshot && snapshot.confidence != null ? Number(snapshot.confidence) : null,
     risks,
   });
   const out = {

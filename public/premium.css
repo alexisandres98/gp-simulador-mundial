@@ -327,6 +327,21 @@ body { background:
 .gx-mv-nav a:hover { color: var(--gx-text); }
 .gx-mv-nav a.on { color: var(--gx-text); background: var(--gx-panel3); border-color: var(--gx-line2); }
 .gx-sec { scroll-margin-top: 112px; }
+/* 4G#18: scroll-snap + fade lateral para que la última pestaña no quede cortada en móvil */
+.gx-mv-nav { scroll-snap-type: x proximity; scroll-padding-left: 4px; padding-right: 18px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%); }
+.gx-mv-nav a { scroll-snap-align: start; min-height: 36px; display: inline-flex; align-items: center; }
+/* 4G#20: secciones de Mercados colapsables en móvil (<details>) */
+.gx-mkt-det { border: 1px solid var(--gx-line); border-radius: var(--gx-r); margin-bottom: 8px; overflow: hidden; }
+.gx-mkt-det:last-child { margin-bottom: 0; }
+.gx-mkt-det > summary { list-style: none; cursor: pointer; padding: 11px 12px; margin: 0; display: flex; align-items: center; gap: 8px; min-height: 44px; background: var(--gx-panel); }
+.gx-mkt-det > summary::-webkit-details-marker { display: none; }
+.gx-mkt-det > summary > span { flex: 1; }
+.gx-mkt-det > summary i:last-child { transition: transform .18s; color: var(--gx-text3); }
+.gx-mkt-det[open] > summary i:last-child { transform: rotate(180deg); }
+.gx-mkt-det > .gx-mkc { margin: 0 10px 8px; }
+.gx-mkt-det[open] > .gx-mkc:first-of-type { margin-top: 2px; }
 
 /* context narrative */
 .gx-ctx-block { padding: 11px 0; border-bottom: 1px solid var(--gx-line); }

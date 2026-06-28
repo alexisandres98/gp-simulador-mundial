@@ -83,11 +83,25 @@ function analysisFactors(observations = [], snapshot = null) {
     .sort((a, b) => Math.abs(b.applied_impact) - Math.abs(a.applied_impact));
   // Factores EVALUADOS (categorías distintas presentes en las observaciones). Se listan SIN afirmar impacto
   // per-factor cuando el applied_impact es 0; el efecto real se comunica con el ajuste NETO del snapshot.
+  // Factores evaluados con su metadata real (evidencia/confianza/freshness), SIN claim de pp per-factor cuando
+  // applied_impact=0. Se queda con la observación de mayor confianza por factor (4D#11).
   const evalSet = new Map();
   for (const o of (observations || [])) {
     const key = upper(o.factor_code);
     if (!key) continue;
-    if (!evalSet.has(key)) evalSet.set(key, { factor_code: key, category_code: upper(o.category), evidence_class: upper(o.fact_or_inference) });
+    const conf = o.confidence != null ? Number(o.confidence) : null;
+    const prev = evalSet.get(key);
+    if (!prev || (conf != null && (prev.confidence == null || conf > prev.confidence))) {
+      evalSet.set(key, {
+        factor_code: key,
+        category_code: upper(o.category),
+        evidence_class: upper(o.fact_or_inference),     // FACT / INFERENCE
+        confidence: round(conf, 2),
+        timestamp_quality_code: upper(o.timestamp_quality), // SOURCE_PUBLISHED / INGESTION_OBSERVED / ...
+        subject_team_id: o.subject_type === 'team' ? o.subject_id : null,
+        applied: false,                                  // este factor NO tiene impacto per-factor aislado
+      });
+    }
   }
   const adj = snapshot && snapshot.context_adjustments ? snapshot.context_adjustments : null;
   const adjOut = adj ? { HOME: round(adj.home, 4), DRAW: round(adj.draw, 4), AWAY: round(adj.away, 4) } : null;

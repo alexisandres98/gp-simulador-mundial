@@ -12,7 +12,16 @@ const LEVELS = ['LOW', 'MEDIUM', 'HIGH'];
 //  - contextCompleteness: 0–1 | null
 //  - dataFreshness: 'FRESH'|'AGING'|'STALE' | null
 //  - risks: array de códigos de riesgo ya calculados (LARGE_MARKET_DISAGREEMENT, etc.)
-function computeConfidence({ uncertaintyScore = null, contextCompleteness = null, dataFreshness = null, risks = [] } = {}) {
+function computeConfidence({ uncertaintyScore = null, contextCompleteness = null, dataFreshness = null, risks = [], snapshotConfidence = null } = {}) {
+  // Si el snapshot V2 ya trae una confianza real (0–1), ésa manda; los riesgos solo pueden BAJAR el nivel.
+  if (snapshotConfidence != null && Number.isFinite(Number(snapshotConfidence))) {
+    const sc = Number(snapshotConfidence);
+    let lvl = sc >= 0.7 ? 'HIGH' : sc < 0.45 ? 'LOW' : 'MEDIUM';
+    const r = new Set(risks || []);
+    const downs = (r.has('LARGE_MARKET_DISAGREEMENT') ? 1 : 0) + (r.has('LINEUP_NOT_CONFIRMED') ? 1 : 0) + (r.has('MODEL_UNCERTAINTY') ? 1 : 0) + (r.has('CONTEXT_INCOMPLETE') ? 1 : 0);
+    if (downs >= 2) lvl = lvl === 'HIGH' ? 'MEDIUM' : 'LOW';
+    return lvl;
+  }
   let score = 0;
   if (uncertaintyScore != null && Number.isFinite(Number(uncertaintyScore))) {
     const u = Number(uncertaintyScore);

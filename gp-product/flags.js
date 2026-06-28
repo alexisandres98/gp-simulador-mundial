@@ -18,6 +18,14 @@ function flags() {
     publicHistory: bool(process.env.GP_PUBLIC_HISTORY_ENABLED, false), // Historial público
     goalInsights: bool(process.env.GP_GOAL_INSIGHTS_UI_ENABLED, false), // sección Goal Insights (informativa)
     arbitrageUi: bool(process.env.GP_ARBITRAGE_UI_ENABLED, false),  // Arbitraje (off → "próximamente"/oculto)
+    // Fase Q.1 §21 — gates de la superficie flagship "Oportunidades" DENTRO de la plataforma principal
+    // (public/app.js), no de /beta. Cada subtab consume los DTOs V2 (/api/beta/*) solo si su flag está ON
+    // Y el usuario tiene acceso beta (admin/allowlist). Default false → la plataforma de ~509 usuarios queda
+    // byte-idéntica; admin/QA ven el producto unificado antes de la apertura. No sustituyen autorización.
+    betaAccess: bool(process.env.GP_BETA_ACCESS_ENABLED, false),               // acceso beta como NIVEL dentro de la plataforma
+    oppPicks: bool(process.env.GP_OPPORTUNITIES_PICKS_ENABLED, false),         // subtab Picks GP (flagship)
+    oppValue: bool(process.env.GP_OPPORTUNITIES_VALUE_ENABLED, false),         // subtab Value (flagship)
+    oppArbitrage: bool(process.env.GP_OPPORTUNITIES_ARBITRAGE_ENABLED, false), // subtab Arbitraje (flagship)
   };
 }
 
@@ -50,6 +58,15 @@ function resolveForUser({ email = null, isAdmin = false } = {}) {
     history: beta || f.publicHistory,            // superficie Historial visible
     goalInsights: !!(beta && f.goalInsights),    // Goal Insights: solo dentro de beta y con su flag on
     arbitrage: !!(beta && f.arbitrageUi),        // Arbitraje: solo beta autorizado + flag (nunca público aquí)
+    // Fase Q.1 §21 — superficie flagship "Oportunidades" en la plataforma principal. Cada subtab se cablea a
+    // los DTOs V2 SOLO con acceso beta + su flag §21. Picks es el subtab por defecto. Arbitraje requiere
+    // además el flag de UI de arbitraje ya existente. Con todo off → app.js queda byte-idéntica.
+    opportunities: {
+      enabled: !!(beta && (f.oppPicks || f.oppValue || f.oppArbitrage)), // ¿mostrar la superficie flagship?
+      picks: !!(beta && f.oppPicks),
+      value: !!(beta && f.oppValue),
+      arbitrage: !!(beta && f.oppArbitrage && f.arbitrageUi),
+    },
     // espejo informativo de los flags public_* (para que el cliente sepa si algo ya es público)
     publicPicks: f.publicPicks, publicValue: f.publicValue, publicHistory: f.publicHistory,
   };

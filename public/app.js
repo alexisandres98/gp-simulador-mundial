@@ -1324,8 +1324,9 @@ function confLabel(edge) { return edge >= 0.10 ? 'Alta' : edge >= 0.05 ? 'Media'
 function riskCls(l) { return l === 'Bajo' ? 'r-low' : l === 'Medio' ? 'r-mid' : 'r-high'; }
 
 async function loadArb(force = false) {
-  // Sprint 8.1 §9-15: Oportunidades con sub-tabs Picks GP | Value | Arbitraje (gated). Flag off → home legacy.
-  if (USER && USER.uiFlags && USER.uiFlags.opportunityTabs) return loadOpportunities(force);
+  // Fase Q.1 §4-9: Oportunidades flagship (Picks GP | Value | Arbitraje) cableado a DTOs V2. Detrás de los
+  // flags §21 (GP_OPPORTUNITIES_*) + acceso beta. Con todo off → la home legacy de los ~509 usuarios intacta.
+  if (USER && USER.beta && USER.beta.opportunities && USER.beta.opportunities.enabled) return loadOpportunities(force);
   $('#tab-arb').innerHTML = '<div class="muted" style="padding:40px 0;text-align:center">Cargando mercados en vivo…</div>';
   const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() });
   if (!r.ok) {
@@ -1528,45 +1529,197 @@ async function loadArb(force = false) {
   $('#tab-arb').innerHTML = html;
 }
 
-// ---------- Sprint 8.1 §9-15: Oportunidades con sub-tabs (Picks GP | Value | Arbitraje) — gated ----------
-let OPP_SUB = 'arb';
-function oppSetSub(s) { OPP_SUB = s; return loadOpportunities(); }
+// ---------- Fase Q.1 §4-9: Oportunidades FLAGSHIP (Picks GP | Value | Arbitraje) cableado a DTOs V2 ----------
+// Consume /api/beta/{picks,value,arbitrage,dashboard} (códigos neutrales, sin "V1/V2"), localizado vía I18N,
+// con cards premium reusando el shell rico de la plataforma (.feat/.xo-card/.val-grid/.dualcard). Picks default.
+let OPP_SUB = 'picks';                                  // §4: Picks GP es el subtab por defecto
+const OPP = { dash: null };                             // cache liviano del dashboard (mejor pick/value/headers)
+// deep-link inicial: /#opportunities/picks|value|arbitrage
+(function () { const m = (location.hash || '').match(/opportunities\/(picks|value|arb|arbitrage)/); if (m) OPP_SUB = m[1] === 'arbitrage' ? 'arb' : m[1]; })();
+
+const oppT = (k, a) => I18N.t(k, a);
+const oppTk = (k) => { const v = I18N.t(k); return v === k ? null : v; };       // null si la key no existe
+function oppPct(v) { return v == null ? oppT('common.na') : (v * 100).toFixed(1) + '%'; }
+function oppPP(v) { return v == null ? oppT('common.na') : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + ' pp'; }
+function oppOdds(v) { return v == null ? '—' : Number(v).toFixed(2); }
+function oppFlag(id) { const t = teamOf(id); return t ? t.flag : ''; }
+function oppRisk(c) { return oppTk('risk.' + c) || c; }
+function oppBlocker(b) { return oppTk('blocker.' + b) || oppTk('blocker.BLOCKED_' + b) || b; }
+function oppTime(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleTimeString(I18N.locale === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
+function oppDateTime(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleString(I18N.locale === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
+async function oppGetDash() { if (OPP.dash) return OPP.dash; try { const r = await fetch('/api/beta/dashboard', { headers: hdrs() }); if (r.ok) OPP.dash = await r.json(); } catch (e) {} return OPP.dash; }
+function oppHeaderMap(d) { const m = {}; ((d && d.upcoming) || []).forEach(u => { m[u.header.event_id] = u.header; }); return m; }
+
+function oppSetSub(s) { OPP_SUB = s; try { history.replaceState(null, '', '#opportunities/' + s); } catch (e) {} return loadOpportunities(); }
 async function loadOpportunities(force) {
-  const subs = [['picks', 'Picks GP'], ['value', 'Value'], ['arb', 'Arbitraje']];
-  const bar = subs.map(([id, l]) => `<button class="seg-btn ${OPP_SUB === id ? 'on' : ''}" role="tab" aria-selected="${OPP_SUB === id}" onclick="oppSetSub('${id}')">${l}</button>`).join('');
-  $('#tab-arb').innerHTML = `<div style="margin-bottom:10px"><h2 style="margin-bottom:3px">Oportunidades</h2>
-    <div class="muted" style="font-size:12px">Picks GP publicadas, señales de Value y arbitraje ejecutable — productos separados, no equivalentes.</div></div>
-    <div class="seg" role="tablist" aria-label="Tipo de oportunidad">${bar}</div>
-    <div id="oppBody"><div class="du">Cargando…</div></div>`;
-  if (OPP_SUB === 'picks') return loadPicks('#oppBody');
-  if (OPP_SUB === 'value') return loadValue('#oppBody');
-  return loadOppArb('#oppBody', force);
+  const g = (USER.beta && USER.beta.opportunities) || {};
+  const subs = [['picks', oppT('nav.picks'), g.picks], ['value', oppT('nav.value'), g.value], ['arb', oppT('nav.arbitrage'), g.arbitrage]];
+  if (!subs.find(s => s[0] === OPP_SUB && s[2])) { const first = subs.find(s => s[2]); OPP_SUB = first ? first[0] : 'picks'; }
+  const bar = subs.map(([id, l, on]) => on ? `<button class="seg-btn ${OPP_SUB === id ? 'on' : ''}" role="tab" aria-selected="${OPP_SUB === id}" onclick="oppSetSub('${id}')">${xe(l)}</button>` : '').join('');
+  $('#tab-arb').innerHTML = `<div style="margin-bottom:10px"><h2 style="margin-bottom:3px">${xe(oppT('opp.title'))}</h2>
+    <div class="muted" style="font-size:12px">${xe(oppT('opp.subtitle'))}</div></div>
+    <div id="oppSummary"></div>
+    <div class="seg" role="tablist" aria-label="${xe(oppT('opp.title'))}">${bar}</div>
+    <div id="oppBody"><div class="du">${xe(oppT('common.loading'))}</div></div>`;
+  loadOppSummary();
+  if (OPP_SUB === 'picks') return loadOppPicks('#oppBody');
+  if (OPP_SUB === 'value') return loadOppValue('#oppBody');
+  return loadOppArbV2('#oppBody', force);
 }
-// Vista Arbitraje LIMPIA (§14): solo arbitraje. Sin Kelly, sin "COMPRAR SÍ", sin "MODEL EDGE".
-async function loadOppArb(sel, force) {
+
+// ---- §5: home premium (mejor pick / mejor value / activas / actualización) ----
+async function loadOppSummary() {
+  const el = $('#oppSummary'); if (!el) return;
+  const d = await oppGetDash(); if (!d || !el.isConnected) { if (el) el.innerHTML = ''; return; }
+  const headers = oppHeaderMap(d);
+  const bestPick = (d.recent_picks || []).filter(p => !p.result_code || p.result_code === 'PENDING')[0] || (d.recent_picks || [])[0];
+  const bestValue = (d.value || [])[0];
+  const active = (d.recent_picks || []).length + (d.value || []).length;
+  const cell = (label, val) => `<div style="flex:1;min-width:140px"><div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">${xe(label)}</div><div style="font-size:13px;font-weight:700;margin-top:2px">${val}</div></div>`;
+  const pickV = bestPick ? xe(oppPickSelection(bestPick)) : `<span class="muted">${xe(oppT('opp.summary.none'))}</span>`;
+  const valV = bestValue ? `${xe(oppValSel(bestValue, headers[bestValue.event_id]))} <span class="green">${oppPP(bestValue.adjusted_edge_pp)}</span>` : `<span class="muted">—</span>`;
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:14px;padding:12px 14px;margin-bottom:12px;border:1px solid var(--border,#22303a);border-radius:12px;background:var(--card,#121a20)">
+    ${cell(oppT('opp.summary.best_pick'), pickV)}
+    ${cell(oppT('opp.summary.best_value'), valV)}
+    ${cell(oppT('opp.summary.active'), active)}
+    ${cell(oppT('opp.summary.updated'), d.generated_at ? oppTime(d.generated_at) : '—')}
+  </div>`;
+}
+
+// ---- §6/§7: Picks GP (hero premium + lista + detalle) ----
+function oppPickActive(p) { return (!p.result_code || p.result_code === 'PENDING') && p.lifecycle_code !== 'SETTLED'; }
+function oppPickSelection(p) { if (p.selection_display_key) { const a = Object.assign({}, p.selection_display_args || {}); if (a.team_id) a.team = I18N.teamName(a.team_id); return I18N.t(p.selection_display_key, a); } return p.outcome_code || ''; }
+function oppPickStatus(p) {
+  if (p.result_code && p.result_code !== 'PENDING') { const cls = p.result_code === 'WIN' ? 'xo-st-active' : p.result_code === 'LOSS' ? 'xo-st-expired' : 'xo-st-paused'; return `<span class="xo-pill ${cls}">${xe(oppT('result.' + p.result_code))}</span>`; }
+  return `<span class="xo-pill xo-st-active">${xe(oppT('lifecycle.' + (p.lifecycle_code || 'PUBLISHED')))}</span>`;
+}
+// §6/§12: badge de PRODUCTO (Pick GP), nunca de modelo. Las picks históricas (V1) llevan SOLO una etiqueta discreta.
+function oppPickBadge(p) { return `<span class="xo-badge xo-b-pure">${xe(oppT('pick.badge'))}</span>${p.model_label_code === 'PREVIOUS' ? ` <span class="muted" style="font-size:10.5px">${xe(oppT('pick.previous_tag'))}</span>` : ''}`; }
+function oppHeroPick(p) {
+  const ev = `${oppFlag(p.home_team_id)} ${I18N.teamName(p.home_team_id)} ${oppT('common.vs')} ${I18N.teamName(p.away_team_id)} ${oppFlag(p.away_team_id)}`;
+  const fair = p.gp_probability ? (1 / p.gp_probability) : null;
+  const gross = (p.gp_probability != null && p.consensus_probability != null) ? p.gp_probability - p.consensus_probability : null;
+  const metric = (l, v, cls) => `<div class="metric"><div class="m-l">${xe(l)}</div><div class="m-v ${cls || ''}">${v}</div></div>`;
+  const mainRisk = (p.risk_codes && p.risk_codes[0]) ? oppRisk(p.risk_codes[0]) : null;
+  return `<div class="sec-head"><h3>★ ${xe(oppT('opp.summary.best_pick'))}</h3></div>
+  <div class="feat">
+    <div class="feat-top">${oppPickBadge(p)}${oppPickStatus(p)}<span class="feat-edge">${oppPP(p.adjusted_edge_pp)}</span></div>
+    <div class="feat-team"><div><div class="feat-name">${xe(oppPickSelection(p))}</div><div class="feat-side">${xe(ev)} · <span class="mono">${oppDateTime(p.kickoff_at)}</span></div></div></div>
+    <div class="feat-metrics">
+      ${metric(oppT('pick.gp_prob'), oppPct(p.gp_probability), 'blue')}
+      ${metric(oppT('pick.market_prob'), oppPct(p.consensus_probability))}
+      ${metric(oppT('pick.diff_gross'), oppPP(gross))}
+      ${metric(oppT('pick.edge'), oppPP(p.adjusted_edge_pp), 'green')}
+      ${metric(oppT('pick.fair_odds'), oppOdds(fair))}
+      ${metric(oppT('pick.published_odds'), oppOdds(p.published_odds))}
+      ${metric(oppT('pick.min_odds'), oppOdds(p.minimum_odds))}
+      ${p.quality_score != null ? metric(oppT('value.quality'), p.quality_score) : ''}
+    </div>
+    ${mainRisk ? `<div class="muted" style="font-size:12px;margin-top:4px">${xe(oppT('pick.main_risk'))}: ${xe(mainRisk)}</div>` : ''}
+    <div class="feat-cta"><button class="venue-btn v-poly" onclick="openOppPick('${p.pick_id}')">${xe(oppT('pick.view'))} →</button></div>
+  </div>`;
+}
+function oppPickCard(p) {
+  const ev = `${I18N.teamName(p.home_team_id)} ${oppT('common.vs')} ${I18N.teamName(p.away_team_id)}`;
+  return `<div class="xo-card" onclick="openOppPick('${p.pick_id}')">
+    <div class="xo-card-top">${oppPickBadge(p)} ${oppPickStatus(p)}</div>
+    <div class="xo-ev">${xe(oppPickSelection(p))}</div>
+    <div class="xo-mkt">${xe(ev)} · <span class="mono">${oppDateTime(p.kickoff_at)}</span></div>
+    <div class="xo-sub">${xe(oppT('pick.published_odds'))}: <b>${oppOdds(p.published_odds)}</b> · ${xe(oppT('pick.min_odds'))}: <b>${oppOdds(p.minimum_odds)}</b> · ${xe(oppT('pick.edge'))} <b class="green">${oppPP(p.adjusted_edge_pp)}</b></div>
+    <div class="xo-card-foot"><span>${xe(oppT('value.quality'))} ${p.quality_score == null ? '—' : p.quality_score}</span><span class="xo-cta">${xe(oppT('pick.view'))} →</span></div>
+  </div>`;
+}
+async function loadOppPicks(sel) {
   const root = $(sel); if (!root) return;
-  root.innerHTML = '<div class="du">Cargando arbitraje…</div>';
-  let A;
-  try { const r = await fetch('/api/arbitrage' + (force ? '?force=1' : ''), { headers: hdrs() }); if (!r.ok) { root.innerHTML = window.UIState ? UIState.error() : du('No disponible'); return; } A = await r.json(); ARB = A; }
-  catch (e) { root.innerHTML = window.UIState ? UIState.error() : du('No disponible'); return; }
-  const pure = [];
-  (A.rows || []).forEach(row => (row.edges || []).forEach(e => { if (e.type === 'arbitraje') pure.push({ ...e, team: row.id, row }); }));
-  pure.sort((a, b) => b.edge - a.edge);
-  let html = `<div class="explain">Arbitraje entre prediction markets (Polymarket / Kalshi): comprar ambos lados captura la diferencia, gane quien gane. Retorno neto <b>estimado</b> — depende de ejecución, fees y settlement. No es consejo financiero. GP no ejecuta operaciones.</div>`;
-  if (!pure.length) {
-    html += window.UIState ? UIState.emptyResult('No hay oportunidades de arbitraje ejecutable ahora mismo. Los mercados de campeón suelen estar alineados entre plataformas.') : du('Sin arbitraje ahora mismo.');
-  } else {
-    html += '<div class="arbops">' + pure.slice(0, 8).map(o => {
-      const pm = o.row.polymarket, ks = o.row.kalshi, t = teamOf(o.team);
-      return `<div class="dualcard">
-        <div class="dual-top"><span style="font-size:22px">${t ? t.flag : ''}</span><b style="font-size:16px">${t ? t.name : o.team}</b><span class="purebadge">ARBITRAJE</span><span class="edge-big">+${pct(o.edge)} neto</span></div>
-        <div class="note" style="margin:6px 0 12px">${xe(o.note || '')}</div>
-        <div class="dual-btns">
-          ${pm ? `<a class="venue-btn v-poly" href="${pm.url}" target="_blank" rel="noopener">Polymarket · ${cents(pm.ask)} ↗</a>` : ''}
-          ${ks ? `<a class="venue-btn v-kalshi" href="${ks.url}" target="_blank" rel="noopener">Kalshi · ${cents(ks.ask)} ↗</a>` : ''}
-        </div></div>`;
-    }).join('') + '</div>';
-  }
+  if (!((USER.beta.opportunities || {}).picks)) { root.innerHTML = du(oppT('opp.coming_soon')); return; }
+  root.innerHTML = du(oppT('common.loading'));
+  let items = [];
+  try { const r = await fetch('/api/beta/picks', { headers: hdrs() }); if (!r.ok) { root.innerHTML = du(oppT('common.na')); return; } items = (await r.json()).items || []; }
+  catch (e) { root.innerHTML = du(oppT('common.na')); return; }
+  if (!items.length) { root.innerHTML = `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(oppT('pick.no_picks'))}</div></div></div>`; return; }
+  // §6: el hero es una Pick activa con precio válido; preferimos PUBLISHED (precio disponible) sobre EVENT_STARTED.
+  const hero = items.filter(oppPickActive).sort((a, b) => (a.lifecycle_code === 'PUBLISHED' ? 0 : 1) - (b.lifecycle_code === 'PUBLISHED' ? 0 : 1))[0] || null;
+  const rest = items.filter(p => !hero || p.pick_id !== hero.pick_id);
+  let html = hero ? oppHeroPick(hero) : '';
+  if (rest.length) html += `<div class="sec-head"><h3>${xe(oppT('pick.title'))}</h3><span class="sub">${rest.length}</span></div>` + rest.map(oppPickCard).join('');
+  root.innerHTML = html;
+}
+async function openOppPick(id) {
+  const root = $('#oppBody') || $('#tab-arb'); if (!root) return;
+  root.innerHTML = `<button class="xo-back" onclick="loadOpportunities()">← ${xe(oppT('common.back'))}</button><div id="oppPickDetail">${du(oppT('common.loading'))}</div>`;
+  let p;
+  try { const r = await fetch('/api/beta/picks/' + encodeURIComponent(id), { headers: hdrs() }); if (!r.ok) { $('#oppPickDetail').innerHTML = du(oppT('common.na')); return; } p = await r.json(); }
+  catch (e) { $('#oppPickDetail').innerHTML = du(oppT('common.na')); return; }
+  const ev = `${I18N.teamName(p.home_team_id)} ${oppT('common.vs')} ${I18N.teamName(p.away_team_id)}`;
+  const fair = p.gp_probability ? (1 / p.gp_probability) : null;
+  const gross = (p.gp_probability != null && p.consensus_probability != null) ? p.gp_probability - p.consensus_probability : null;
+  const row = (l, v) => `<div class="xo-row"><span>${xe(l)}</span><span class="mono">${v == null ? '—' : v}</span></div>`;
+  $('#oppPickDetail').innerHTML = `
+    <div class="feat xo-hero"><div class="xo-card-top">${oppPickBadge(p)} ${oppPickStatus(p)}</div>
+      <div class="xo-ev" style="font-size:20px">${xe(oppPickSelection(p))}</div><div class="xo-mkt">${xe(ev)} · <span class="mono">${oppDateTime(p.kickoff_at)}</span></div></div>
+    ${panel(oppT('pick.price_state'), '', `${row(oppT('pick.published_odds'), oppOdds(p.published_odds) + (p.sportsbook ? ' · ' + xe(p.sportsbook) : ''))}${row(oppT('pick.min_odds'), oppOdds(p.minimum_odds))}${row(oppT('pick.fair_odds'), oppOdds(fair))}${row(oppT('pick.price_state'), oppT('price_state.' + (p.price_state_code || 'AVAILABLE')))}`)}
+    ${panel(oppT('pick.intelligence'), '', `${row(oppT('pick.gp_prob'), oppPct(p.gp_probability))}${row(oppT('pick.market_prob'), oppPct(p.consensus_probability))}${row(oppT('pick.diff_gross'), oppPP(gross))}${row(oppT('pick.break_even'), oppPct(p.break_even_probability))}${row(oppT('pick.edge'), oppPP(p.adjusted_edge_pp))}${row(oppT('value.quality'), p.quality_score)}${row(oppT('value.uncertainty'), p.uncertainty_score)}`)}
+    ${(p.risk_codes && p.risk_codes.length) ? panel(oppT('match.risks_title'), '', p.risk_codes.map(c => `<div class="xo-note">${xe(oppRisk(c))}</div>`).join('')) : ''}
+    ${p.deep_link ? `<a class="venue-btn v-poly" href="${xe(p.deep_link)}" target="_blank" rel="noopener nofollow" style="margin-top:10px;display:inline-block">${xe(oppT('pick.open_link'))} ↗</a>` : ''}
+    <div class="muted" style="font-size:11.5px;margin-top:12px">${xe(oppT('pick.theoretical_note'))}<br>${xe(oppT('pick.not_advice'))}</div>`;
+}
+
+// ---- §8: Value (scanner profesional) ----
+function oppValSel(v, header) { if (v.outcome_code === 'DRAW') return oppT('prob.draw'); if (header) { const team = v.outcome_code === 'AWAY' ? header.away : header.home; return oppT('selection.team_to_win', { team: I18N.teamName(team.team_id, team.name_fallback) }); } return v.outcome_code || ''; }
+function oppValueCard(v, header) {
+  const ev = header ? `${I18N.teamName(header.home.team_id, header.home.name_fallback)} ${oppT('common.vs')} ${I18N.teamName(header.away.team_id, header.away.name_fallback)}` : '';
+  const cls = { STRONG: 'val-strong', LEAN: 'val-lean', WATCH: 'val-watch', PASS: 'val-pass' }[v.classification_code] || 'val-pass';
+  const gross = (v.gp_probability != null && v.market_probability != null) ? v.gp_probability - v.market_probability : null;
+  return `<div class="xo-card">
+    ${ev ? `<div class="muted" style="font-size:12px;margin-bottom:4px">${xe(ev)}</div>` : ''}
+    <div class="xo-card-top"><span class="val-badge ${cls}">${xe(oppT('classification.' + String(v.classification_code || '').toLowerCase()))}</span> <span class="reg-type">${xe(oppValSel(v, header))}</span>${v.actionable ? `<span class="xo-pill xo-st-active" style="margin-left:auto">${xe(oppT('value.actionable'))}</span>` : ''}</div>
+    <div class="val-grid">
+      <div><span>${xe(oppT('value.gp_prob'))}</span><b>${oppPct(v.gp_probability)}</b></div>
+      <div><span>${xe(oppT('value.market_prob'))}</span><b>${oppPct(v.market_probability)}</b></div>
+      <div><span>${xe(oppT('value.diff_gross'))}</span><b>${oppPP(gross)}</b></div>
+      <div><span>${xe(oppT('value.edge'))}</span><b class="${(v.adjusted_edge_pp || 0) > 0 ? 'green' : ''}">${oppPP(v.adjusted_edge_pp)}</b></div>
+      <div><span>${xe(oppT('value.best_odds'))}</span><b>${oppOdds(v.best_odds)}</b></div>
+      <div><span>${xe(oppT('value.min_odds'))}</span><b>${oppOdds(v.minimum_odds)}</b></div>
+      ${v.quality_score != null ? `<div><span>${xe(oppT('value.quality'))}</span><b>${v.quality_score}</b></div>` : ''}
+      ${v.best_sportsbook ? `<div><span>${xe(oppT('value.sportsbook'))}</span><b>${xe(v.best_sportsbook)}</b></div>` : ''}
+    </div>
+    ${(!v.actionable && v.blockers && v.blockers.length) ? `<div class="muted" style="font-size:11.5px;margin-top:6px">${v.blockers.map(b => xe(oppBlocker(b))).join(' · ')}</div>` : ''}
+  </div>`;
+}
+async function loadOppValue(sel) {
+  const root = $(sel); if (!root) return;
+  if (!((USER.beta.opportunities || {}).value)) { root.innerHTML = du(oppT('opp.coming_soon')); return; }
+  root.innerHTML = du(oppT('common.loading'));
+  let items = [];
+  try { const r = await fetch('/api/beta/value?class=ACTIONABLE', { headers: hdrs() }); await oppGetDash(); if (!r.ok) { root.innerHTML = du(oppT('common.na')); return; } items = (await r.json()).items || []; }
+  catch (e) { root.innerHTML = du(oppT('common.na')); return; }
+  const headers = oppHeaderMap(OPP.dash);
+  let html = `<div class="explain">${xe(oppT('value.subtitle'))}</div>`;
+  html += items.length ? items.map(v => oppValueCard(v, headers[v.event_id])).join('') : `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(oppT('value.no_results'))}</div></div></div>`;
+  root.innerHTML = html;
+}
+
+// ---- §9: Arbitraje (integra Fase R; SOLO ejecutable/válido al cliente; bloqueados quedan en Observatory admin) ----
+function oppArbTitle(o) { if (o.home && (o.home.team_id || o.home.name_fallback)) return `${I18N.teamName(o.home.team_id, o.home.name_fallback)} ${oppT('common.vs')} ${I18N.teamName(o.away.team_id, o.away.name_fallback)}`; return oppT('arb.title'); }
+function oppArbCard(o) {
+  const st = oppTk('arb.state.' + o.state_code) || o.state_code;
+  return `<div class="dualcard">
+    <div class="dual-top"><b style="font-size:16px">${xe(oppArbTitle(o))}</b><span class="purebadge">${xe(st)}</span><span class="edge-big">${oppPP(o.net_roi)} neto</span></div>
+    <div class="note" style="margin:6px 0 8px">${o.venues && o.venues.length ? xe(o.venues.join(' · ')) : ''}${o.updated_at ? ' · ' + oppTime(o.updated_at) : ''}</div>
+    <div class="xo-sub">${xe(oppT('arb.executable_capital'))}: <b>${o.executable_capital != null ? xe(String(o.executable_capital)) : oppT('common.na')}</b></div>
+  </div>`;
+}
+async function loadOppArbV2(sel) {
+  const root = $(sel); if (!root) return;
+  if (!((USER.beta.opportunities || {}).arbitrage)) { root.innerHTML = du(oppT('opp.coming_soon')); return; }
+  root.innerHTML = du(oppT('common.loading'));
+  let d;
+  try { const r = await fetch('/api/beta/arbitrage', { headers: hdrs() }); if (!r.ok) { root.innerHTML = du(oppT('common.na')); return; } d = await r.json(); }
+  catch (e) { root.innerHTML = du(oppT('common.na')); return; }
+  const items = (d.items || []).filter(o => o.executable);    // §9: nunca mostrar bloqueados/stale como ejecutables
+  let html = `<div class="explain">${xe(oppT('arb.subtitle'))}</div>`;
+  if (!items.length) html += `<div class="op-state op-info" role="status"><div class="op-state-ic">○</div><div class="op-state-tx"><div class="op-state-t">${xe(oppT('arb.no_executable'))}</div></div></div>`;
+  else html += '<div class="arbops">' + items.map(oppArbCard).join('') + '</div>';
   root.innerHTML = html;
 }
 

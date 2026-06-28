@@ -406,6 +406,61 @@ body { background:
 .gx-hist-bar i { display: block; width: 100%; max-width: 22px; background: linear-gradient(180deg, var(--gx-accent), var(--gx-accent2)); border-radius: 3px 3px 0 0; min-height: 2px; }
 .gx-hist-bar span { font-size: 10px; color: var(--gx-text3); }
 
+/* ================= cockpit: forma / alineaciones / estadísticas (Fase 5) ================= */
+.gx-formchips { display: inline-flex; gap: 4px; margin-left: auto; }
+.gx-fc { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #06120D; }
+.gx-fc-w { background: var(--gx-pos); } .gx-fc-d { background: var(--gx-text3); color: #fff; } .gx-fc-l { background: var(--gx-neg); color: #fff; }
+.gx-form-body { gap: 14px; } .gx-form-side { padding: 11px 0; border-bottom: 1px solid var(--gx-line); }
+.gx-form-side:last-child { border-bottom: 0; padding-bottom: 0; } .gx-form-side:first-child { padding-top: 0; }
+.gx-form-h { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 9px; } .gx-form-h .fl { font-size: 18px; } .gx-form-h b { font-weight: 600; }
+.gx-form-stats { display: flex; gap: 16px; font-size: 11.5px; color: var(--gx-text3); margin-bottom: 9px; } .gx-form-stats b { color: var(--gx-text); font-family: var(--gx-mono); }
+.gx-form-lasts { display: flex; flex-direction: column; gap: 4px; }
+.gx-form-last { display: flex; align-items: center; gap: 9px; font-size: 12px; } .gx-form-last b { font-weight: 500; flex: 1; } .gx-form-last .gx-mono { color: var(--gx-text2); }
+.gx-lu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.gx-lu-side { min-width: 0; } .gx-lu-h { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 6px; flex-wrap: wrap; } .gx-lu-h .fl { font-size: 18px; } .gx-lu-h b { font-weight: 600; }
+.gx-lu-meta { font-size: 11.5px; margin-bottom: 10px; } .gx-lu-meta b { color: var(--gx-text); }
+.gx-lu-xi { display: flex; flex-direction: column; gap: 1px; }
+.gx-lu-p { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 12.5px; border-bottom: 1px solid var(--gx-line); }
+.gx-lu-p:last-child { border-bottom: 0; } .gx-lu-p b { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-lu-n { width: 22px; text-align: center; color: var(--gx-accent); font-weight: 600; }
+.gx-lu-pos { font-size: 10px; } .gx-lu-sub-h { margin: 11px 0 6px; display: block; } .gx-lu-subs .gx-lu-p { opacity: .82; }
+.gx-stats { display: flex; flex-direction: column; gap: 9px; }
+.gx-stat-row { display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; gap: 12px; font-size: 13px; }
+.gx-stat-row > .gx-mono { color: var(--gx-text); font-weight: 600; } .gx-stat-row > .gx-mono:first-child { text-align: right; } .gx-stat-row > .gx-mono:last-child { text-align: left; }
+.gx-stat-mid { text-align: center; } .gx-stat-mid .gx-label { font-size: 9px; display: block; margin-bottom: 4px; }
+.gx-stat-bar { height: 6px; border-radius: 4px; background: var(--gx-blue); overflow: hidden; position: relative; }
+.gx-stat-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gx-accent); }
+.gx-ev-away { flex-direction: row-reverse; text-align: right; }
+
+/* ================= equipos tabs + cuenta (Fase 5) ================= */
+.gx-team-actions { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.gx-follow { font-size: 13px; padding: 9px 16px; }
+.gx-iconmini { background: none; border: 0; color: var(--gx-warn); cursor: pointer; font-size: 17px; padding: 4px; }
+#gx-team-tabs { position: sticky; top: 56px; z-index: 4; }
+.gx-injlist, .gx-newslist, .gx-opplist, .gx-tiers { display: flex; flex-direction: column; gap: 2px; }
+.gx-inj-i { display: flex; align-items: center; gap: 9px; padding: 7px 0; border-bottom: 1px solid var(--gx-line); font-size: 12.5px; } .gx-inj-i:last-child { border-bottom: 0; } .gx-inj-i b { font-weight: 600; }
+.gx-news-i { padding: 8px 0; border-bottom: 1px solid var(--gx-line); } .gx-news-i:last-child { border-bottom: 0; } .gx-news-i b { font-size: 13px; font-weight: 500; display: block; line-height: 1.4; } .gx-news-i span { font-size: 11px; }
+.gx-opp-i { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--gx-line); cursor: pointer; font-size: 13px; } .gx-opp-i:last-child { border-bottom: 0; } .gx-opp-i .fl { font-size: 16px; } .gx-opp-i b { font-weight: 500; }
+.gx-paths { display: flex; flex-direction: column; gap: 8px; }
+.gx-path-steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 11px; }
+.gx-path-step { background: var(--gx-panel); border: 1px solid var(--gx-line); border-radius: 6px; padding: 3px 7px; color: var(--gx-text3); } .gx-path-step b { color: var(--gx-text); font-family: var(--gx-mono); }
+.gx-path-arrow { color: var(--gx-text4); }
+/* alertas */
+.gx-altrow { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid var(--gx-line); }
+.gx-altrow:last-child { border-bottom: 0; } .gx-altl { display: flex; align-items: center; gap: 10px; font-size: 13.5px; } .gx-altl i { font-size: 17px; color: var(--gx-text3); }
+.gx-toggle { width: 42px; height: 24px; border-radius: 99px; background: var(--gx-panel3); border: 1px solid var(--gx-line2); cursor: pointer; position: relative; transition: background .16s; }
+.gx-toggle i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--gx-text3); transition: left .16s, background .16s; }
+.gx-toggle.on { background: var(--gx-accent-soft); border-color: var(--gx-accent-line); } .gx-toggle.on i { left: 20px; background: var(--gx-accent); }
+.gx-toggle.off { opacity: .5; cursor: not-allowed; }
+/* referidos */
+.gx-ref-count { display: flex; align-items: baseline; gap: 10px; } .gx-ref-count b { font-size: 34px; font-weight: 700; } .gx-ref-count span { font-size: 13px; }
+.gx-ref-link { display: flex; gap: 8px; margin-bottom: 12px; }
+.gx-ref-link input { flex: 1; background: var(--gx-panel); border: 1px solid var(--gx-line2); border-radius: var(--gx-r); color: var(--gx-text2); padding: 0 14px; font-size: 13px; font-family: var(--gx-mono); }
+.gx-tier { display: flex; align-items: center; gap: 11px; padding: 10px 2px; border-bottom: 1px solid var(--gx-line); font-size: 13px; color: var(--gx-text3); } .gx-tier:last-child { border-bottom: 0; }
+.gx-tier.on { color: var(--gx-text); } .gx-tier.on i { color: var(--gx-accent); margin-left: auto; }
+.gx-tier-n { width: 26px; height: 26px; border-radius: 7px; background: var(--gx-panel3); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+.gx-tier.on .gx-tier-n { background: var(--gx-accent-soft); color: var(--gx-accent); }
+
 /* ================= superficies de torneo (Corte 4H) ================= */
 /* barra de probabilidad campeón/avance */
 .gx-champbar { position: relative; height: 22px; border-radius: 6px; background: var(--gx-panel3); overflow: hidden; display: flex; align-items: center; }
@@ -436,9 +491,13 @@ body { background:
 .gx-bk-side .fl { font-size: 16px; } .gx-bk-side b { font-weight: 500; }
 .gx-bk-side.win b { color: var(--gx-accent); font-weight: 600; }
 .gx-bk-draw { font-size: 10px; margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--gx-line); }
-/* evolución sparkline */
+/* evolución: gráfico SVG multi-línea */
 .gx-spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 26px; }
 .gx-spark i { width: 5px; background: linear-gradient(180deg, var(--gx-accent), var(--gx-accent2)); border-radius: 2px 2px 0 0; min-height: 4px; }
+.gx-evo-svg { width: 100%; height: 240px; display: block; }
+.gx-evo-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+.gx-evo-leg { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; } .gx-evo-leg .fl { font-size: 14px; } .gx-evo-leg b { font-weight: 500; }
+.gx-evo-dot { width: 9px; height: 3px; border-radius: 2px; }
 /* metodología */
 .gx-method-p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--gx-text2); }
 
@@ -478,6 +537,7 @@ body { background:
   .gx-sim-swap { transform: rotate(90deg); margin: 0 auto; }
   /* 4H móvil */
   .gx-grp-grid { grid-template-columns: 1fr; }
+  .gx-lu-grid { grid-template-columns: 1fr; gap: 16px; }
   .gx-team-id b { font-size: 19px; }
   .gx-bk-col { flex-basis: 200px; }
 }

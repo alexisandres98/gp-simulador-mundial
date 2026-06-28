@@ -75,7 +75,9 @@
       g_xg: 'xG esperado', g_total: 'Total esperado', g_ou: 'Más / Menos', g_btts: 'Ambos anotan', g_scores: 'Marcadores más probables', g_over: 'Más', g_under: 'Menos', g_yes: 'Sí', g_no: 'No', goals_none: 'Sin proyección de goles disponible.',
       live_min: 'Minuto', live_events: 'Eventos', live_stats: 'Estadísticas', live_prob: 'Probabilidad en vivo (modelo)', live_none: 'No hay datos en vivo verificados para este partido.',
       live_stale: 'Datos en vivo posiblemente desactualizados; pueden no reflejar el estado actual.',
-      st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG',
+      st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Amarillas',
+      mod_form: 'Forma reciente', mod_lineups: 'Alineaciones', mod_stats: 'Estadísticas',
+      form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
       // ---- Corte 3: Partidos + Simulador ----
@@ -85,6 +87,7 @@
       sim_pick: 'Elegí un equipo', sim_swap: 'Intercambiar', sim_go: 'Simular cruce', sim_running: 'Simulando…', sim_hypo: 'Simulación hipotética con el contexto disponible actualmente.',
       sim_empty: 'Elegí dos equipos para simular un cruce.', sim_empty_sub: 'GP cruza ambos con su contexto actual.', sim_err: 'No se pudo simular el cruce.',
       sim_thesis_na: 'Sin lectura disponible para este cruce.', sim_risk_na: 'Sin factores de cambio destacados.', sim_verdict_na: 'Cruce sin favorito neto claro.',
+      sim_factors: 'Factores GP', sim_f_applied: 'Pesa', sim_f_neutral: 'Neutral',
       sim_v_even: 'Cruce parejo, sin favorito neto.', sim_v_clear: '{team} es favorito claro.', sim_v_slight: '{team} es ligero favorito.',
       sim_thesis: 'GP da {fav} {favp}, {dog} {dogp} y empate {drawp}.', sim_thesis_factor: 'Pesan {factors}.', sim_risk: 'Una baja de última hora o un cambio de alineación pueden estrechar el margen.',
       sim_price_na: 'No se evalúa precio porque este cruce no corresponde a un mercado programado.', sim_hypo_tag: 'Hipotético', sim_runs: 'simulaciones',
@@ -98,7 +101,7 @@
       grp_goals: 'GF:GC', grp_advance: 'Avanza', grp_advance_note: 'Avanza = probabilidad de pasar de fase (1º o 2º).',
       bk_tbd: 'Por definir', bk_reg90: '90 min', bk_note: 'Probabilidad 1X2 a 90 min (no es probabilidad de avanzar).',
       evo_insufficient: 'Evolución no disponible todavía', evo_insufficient_sub: 'Aún no hay suficientes snapshots reales ({n}). La evolución se registra a medida que el torneo avanza.',
-      evo_champion: 'Probabilidad de campeón', evo_snapshots: 'snapshots', evo_trend: 'Tendencia', evo_now: 'Ahora', evo_note: 'Solo snapshots reales registrados; sin histórico fabricado.',
+      evo_champion: 'Probabilidad de campeón', evo_snapshots: 'snapshots', evo_trend: 'Tendencia', evo_now: 'Ahora', evo_top: 'Top 10', evo_note: 'Solo snapshots reales registrados; sin histórico fabricado.',
       reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
       reg_odds: 'Cuota', reg_result: 'Resultado', reg_era: 'Modelo', reg_era_current: 'GP Intelligence', reg_era_previous: 'Etapa anterior', reg_empty: 'Aún no hay Picks registradas.',
       reg_insufficient_note: 'Muestra insuficiente para afirmar rentabilidad; el registro crece con cada Pick liquidada.',
@@ -114,6 +117,17 @@
       me_limits_t: 'Limitaciones', me_limits_b: 'No es consejo financiero, sino estimaciones de un modelo estadístico. La cobertura de contexto y mercado depende de la disponibilidad de datos por partido.',
       adm_observatory: 'Observatory de cobertura', adm_canonical: 'Eventos canónicos', adm_with_eval: 'Con evaluación GP', adm_upcoming_eval: 'Próximos evaluados', adm_pending: 'Próximos pendientes',
       adm_ctx_dist: 'Distribución de contexto', adm_snap_fresh: 'Frescura de snapshots', adm_forbidden: 'Solo administradores.',
+      // ---- Fase 5: equipos tabs + cuenta ----
+      nav_refer: 'Invitar',
+      tm_groupwin: 'Gana grupo', tm_groupsecond: '2º grupo', tm_out: 'Fuera', tm_follow: 'Seguir', tm_following: 'Siguiendo',
+      tm_tab_squad: 'Plantilla', tm_tab_results: 'Resultados', tm_keyplayers: 'Jugadores clave', tm_last5: 'Últimos 5', tm_mkt_price: 'Precio', tm_read: 'Lectura del modelo', tm_likely_opp: 'Rivales probables', tm_paths: 'Caminos simulados',
+      st_injured: 'Lesionado', st_suspended: 'Suspendido', st_doubt: 'Duda', st_available: 'Disponible',
+      fol_empty: 'Aún no sigues equipos', fol_empty_sub: 'Marca la estrella en un equipo para seguirlo.',
+      al_events: 'Eventos', al_channels: 'Canales', al_next: 'Próximo partido', al_start: 'Inicio del partido', al_goal: 'Gol', al_result: 'Resultado final', al_qualify: 'Clasificación', al_swing: 'Cambio de probabilidad', al_value: 'Oportunidad de valor', al_arb: 'Arbitraje', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Notificaciones push', al_soon: 'pronto', al_note: 'Las alertas por email están activas; Telegram y push llegan pronto.',
+      ref_verified: 'referidos verificados', ref_copy: 'Copiar enlace', ref_copied: '¡Copiado!', ref_tiers: 'Niveles', ref_rule: 'Un referido se verifica cuando tu invitado confirma su correo. Umbral de acceso: 5 referidos verificados.',
+      ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
+      perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
+      perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -180,7 +194,9 @@
       g_xg: 'Expected xG', g_total: 'Expected total', g_ou: 'Over / Under', g_btts: 'Both teams score', g_scores: 'Most likely scores', g_over: 'Over', g_under: 'Under', g_yes: 'Yes', g_no: 'No', goals_none: 'No goal projection available.',
       live_min: 'Minute', live_events: 'Events', live_stats: 'Stats', live_prob: 'Live probability (model)', live_none: 'No verified live data for this match.',
       live_stale: 'Live data may be stale; it might not reflect the current state.',
-      st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG',
+      st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Yellows',
+      mod_form: 'Recent form', mod_lineups: 'Lineups', mod_stats: 'Statistics',
+      form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
       // ---- Corte 3: Matches + Simulator ----
@@ -190,6 +206,7 @@
       sim_pick: 'Pick a team', sim_swap: 'Swap', sim_go: 'Simulate matchup', sim_running: 'Simulating…', sim_hypo: 'Hypothetical simulation using the context currently available.',
       sim_empty: 'Pick two teams to simulate a matchup.', sim_empty_sub: 'GP crosses both with their current context.', sim_err: 'Couldn’t simulate the matchup.',
       sim_thesis_na: 'No read available for this matchup.', sim_risk_na: 'No notable change factors.', sim_verdict_na: 'Matchup with no clear favorite.',
+      sim_factors: 'GP factors', sim_f_applied: 'Weighs', sim_f_neutral: 'Neutral',
       sim_v_even: 'Even matchup, no clear favorite.', sim_v_clear: '{team} is a clear favorite.', sim_v_slight: '{team} is a slight favorite.',
       sim_thesis: 'GP gives {fav} {favp}, {dog} {dogp} and a draw {drawp}.', sim_thesis_factor: 'Key factors: {factors}.', sim_risk: 'A last-minute absence or lineup change could narrow the margin.',
       sim_price_na: 'Price is not evaluated because this hypothetical matchup does not correspond to a scheduled market.', sim_hypo_tag: 'Hypothetical', sim_runs: 'simulations',
@@ -203,7 +220,7 @@
       grp_goals: 'GF:GA', grp_advance: 'Advance', grp_advance_note: 'Advance = probability of progressing (1st or 2nd).',
       bk_tbd: 'TBD', bk_reg90: '90 min', bk_note: '1X2 probability at 90 min (not the probability of advancing).',
       evo_insufficient: 'Evolution not available yet', evo_insufficient_sub: 'Not enough real snapshots yet ({n}). Evolution is recorded as the tournament progresses.',
-      evo_champion: 'Champion probability', evo_snapshots: 'snapshots', evo_trend: 'Trend', evo_now: 'Now', evo_note: 'Only real recorded snapshots; no fabricated history.',
+      evo_champion: 'Champion probability', evo_snapshots: 'snapshots', evo_trend: 'Trend', evo_now: 'Now', evo_top: 'Top 10', evo_note: 'Only real recorded snapshots; no fabricated history.',
       reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
       reg_odds: 'Odds', reg_result: 'Result', reg_era: 'Model', reg_era_current: 'GP Intelligence', reg_era_previous: 'Previous stage', reg_empty: 'No Picks recorded yet.',
       reg_insufficient_note: 'Insufficient sample to claim profitability; the record grows with each settled Pick.',
@@ -219,6 +236,17 @@
       me_limits_t: 'Limitations', me_limits_b: 'Not financial advice, but statistical model estimates. Context and market coverage depend on per-match data availability.',
       adm_observatory: 'Coverage observatory', adm_canonical: 'Canonical events', adm_with_eval: 'With GP evaluation', adm_upcoming_eval: 'Upcoming evaluated', adm_pending: 'Upcoming pending',
       adm_ctx_dist: 'Context distribution', adm_snap_fresh: 'Snapshot freshness', adm_forbidden: 'Admins only.',
+      // ---- Phase 5: team tabs + account ----
+      nav_refer: 'Invite',
+      tm_groupwin: 'Win group', tm_groupsecond: '2nd group', tm_out: 'Out', tm_follow: 'Follow', tm_following: 'Following',
+      tm_tab_squad: 'Squad', tm_tab_results: 'Results', tm_keyplayers: 'Key players', tm_last5: 'Last 5', tm_mkt_price: 'Price', tm_read: 'Model read', tm_likely_opp: 'Likely opponents', tm_paths: 'Simulated paths',
+      st_injured: 'Injured', st_suspended: 'Suspended', st_doubt: 'Doubt', st_available: 'Available',
+      fol_empty: 'You don’t follow any teams yet', fol_empty_sub: 'Tap the star on a team to follow it.',
+      al_events: 'Events', al_channels: 'Channels', al_next: 'Next match', al_start: 'Match start', al_goal: 'Goal', al_result: 'Final result', al_qualify: 'Qualification', al_swing: 'Probability swing', al_value: 'Value opportunity', al_arb: 'Arbitrage', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Push notifications', al_soon: 'soon', al_note: 'Email alerts are active; Telegram and push are coming soon.',
+      ref_verified: 'verified referrals', ref_copy: 'Copy link', ref_copied: 'Copied!', ref_tiers: 'Tiers', ref_rule: 'A referral is verified when your invitee confirms their email. Access threshold: 5 verified referrals.',
+      ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
+      perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
+      perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -237,7 +265,8 @@
   // ---------- state ----------
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
-    groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined };
+    groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top' };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -245,11 +274,11 @@
     ['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['teams', 'shield', 'nav_teams'],
     ['sim', 'arrows-shuffle', 'nav_sim'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']
   ];
-  var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
+  var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
-  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin'].indexOf(v) >= 0 ? v : 'opps'); }
+  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf'].indexOf(v) >= 0 ? v : 'opps'); }
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin']; // vistas implementadas (clickeables)
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
     var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['follow', 'dots', 'more']]
@@ -570,13 +599,23 @@
     if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
     var tm = h.match(/^team\/([A-Za-z]{2,4})$/i);
     if (tm) { var tid = tm[1].toUpperCase(); if (!(S.view === 'team' && S.teamId === tid)) openTeam(tid, true); return; }
-    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin)/);
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf)/);
     if (v) { showView(v[1]); return; }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf' };
   function navTo(nav) { setHash(NAV_HASH[nav] != null ? NAV_HASH[nav] : ''); }
-  function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
+  function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; S.teamTab = 'resumen'; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
+  function isFollowing(id) { return !!(S.me && S.me.favorites && S.me.favorites.indexOf(id) >= 0); }
+  function toggleFollow(id) {
+    if (!S.me) return; var favs = S.me.favorites || (S.me.favorites = []);
+    fetch('/api/favorite', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ teamId: id }) }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (res) {
+      if (res && res.favorites) S.me.favorites = res.favorites;
+      else { var i = favs.indexOf(id); if (i >= 0) favs.splice(i, 1); else favs.push(id); }
+      // repintar la superficie activa
+      if (S.view === 'team' && S.teamId === id) renderTeam(); else if (S.view === 'follow') renderFollow();
+    });
+  }
   function syncNavActive() {
     var cur = viewNav(S.view);
     [].forEach.call(document.querySelectorAll('.gx-nav[data-nav], .gx-bnav a[data-nav]'), function (el) { el.classList.toggle('on', el.getAttribute('data-nav') === cur); });
@@ -602,6 +641,10 @@
     else if (v === 'registry') renderRegistry();
     else if (v === 'method') renderMethod();
     else if (v === 'admin') renderAdmin();
+    else if (v === 'follow') renderFollow();
+    else if (v === 'alerts') renderAlerts();
+    else if (v === 'refer') renderRefer();
+    else if (v === 'perf') renderPerf();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
@@ -706,20 +749,72 @@
     var header = beta.header;
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
+    // disponibilidad real de cada módulo (cobertura honesta; presente sólo si hay datos)
+    var hasForm = fx && fx.recentForm && (fx.recentForm.home || fx.recentForm.away);
+    var hasLineups = fx && fx.lineups && (fx.lineups.home || fx.lineups.away);
+    var hasStats = fx && fx.statistics && fx.statistics.home;
+    var hasEvents = fx && fx.events && fx.events.length;
     // A.7: navegación interna de secciones (sticky). Las secciones presentes definen el menú.
     var sections = [{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }];
+    if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
+    if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
+    if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
     if (!gpAbsent) sections.push({ id: 'goles', key: 'mod_goals' });
     if (live) sections.push({ id: 'live', key: 'mod_live' });
-    var sec = function (id, html) { return '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>'; };
+    var sec = function (id, html) { return html ? '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>' : ''; };
     mv.innerHTML = mvShell(
       mvHero(beta, fx, r, live) +
       mvNav(sections) +
       '<div class="gx-mv-grid">' +
-      '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
+      '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
       '</div>'
     );
     bindBack(); bindMvNav();
+  }
+  // ---- forma reciente (ambos equipos) ----
+  function formResults(arr) { return '<span class="gx-formchips">' + (arr || []).slice(0, 5).map(function (x) { var c = x === 'W' ? 'w' : x === 'L' ? 'l' : 'd'; var lbl = LANG === 'en' ? x : { W: 'V', D: 'E', L: 'D' }[x] || x; return '<i class="gx-fc gx-fc-' + c + '">' + lbl + '</i>'; }).join('') + '</span>'; }
+  function mvForm(beta, fx) {
+    var h = beta.header, rf = fx.recentForm || {};
+    var side = function (sideKey, id, name) {
+      var f = rf[sideKey]; if (!f || !f.played) return '';
+      var last = (f.last || []).slice(0, 5).map(function (m) { return '<div class="gx-form-last"><span class="gx-dim">' + esc(m.home ? t('tm_vs_home') : t('tm_vs_away')) + '</span><b>' + esc(m.opponent || '') + '</b><span class="gx-mono">' + esc(m.score || '') + '</span><i class="gx-fc gx-fc-' + (m.result === 'W' ? 'w' : m.result === 'L' ? 'l' : 'd') + '">' + esc(LANG === 'en' ? m.result : { W: 'V', D: 'E', L: 'D' }[m.result] || m.result) + '</i></div>'; }).join('');
+      return '<div class="gx-form-side"><div class="gx-form-h"><span class="fl">' + flag(id) + '</span><b>' + esc(name) + '</b>' + formResults(f.results) + '</div>' +
+        '<div class="gx-form-stats"><span>' + esc(t('form_gf')) + ' <b>' + (f.goalsFor != null ? f.goalsFor : '—') + '</b></span><span>' + esc(t('form_ga')) + ' <b>' + (f.goalsAgainst != null ? f.goalsAgainst : '—') + '</b></span><span>' + esc(t('form_cs')) + ' <b>' + (f.cleanSheets != null ? f.cleanSheets : '—') + '</b></span>' + (f.avgFor != null ? '<span>' + esc(t('form_avg')) + ' <b>' + f.avgFor + '</b></span>' : '') + '</div>' + (last ? '<div class="gx-form-lasts">' + last + '</div>' : '') + '</div>';
+    };
+    var body = side('home', h.home.team_id, teamName(h.home.team_id, h.home.name_fallback)) + side('away', h.away.team_id, teamName(h.away.team_id, h.away.name_fallback));
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('history') + esc(t('mod_form')) + '</span></div><div class="gx-mod-body gx-form-body">' + (body || '<div class="gx-empty">' + esc(t('na_short')) + '</div>') + '</div></div>';
+  }
+  // ---- alineaciones (formación + XI + suplentes + DT) ----
+  function mvLineups(beta, fx) {
+    var h = beta.header, lu = fx.lineups || {};
+    var side = function (sideKey, id, name) {
+      var l = lu[sideKey]; if (!l) return '<div class="gx-lu-side"><div class="gx-lu-h"><span class="fl">' + flag(id) + '</span><b>' + esc(name) + '</b></div><div class="gx-dim" style="font-size:12px;padding:6px 0">' + esc(t('e_lineups')) + '</div></div>';
+      var tag = l.confirmed ? '<span class="gx-badge gx-b-strong">' + esc(t('lineup_conf')) + '</span>' : '<span class="gx-badge gx-b-watch">' + esc(t('lineup_proj')) + '</span>';
+      var pl = function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.number != null ? p.number : '–') + '</span><b>' + esc(p.name || '') + '</b>' + (p.position ? '<span class="gx-dim gx-lu-pos">' + esc(p.position) + '</span>' : '') + '</div>'; };
+      var xi = (l.startXI || []).map(pl).join('');
+      var subs = (l.substitutes || []).slice(0, 9).map(pl).join('');
+      return '<div class="gx-lu-side"><div class="gx-lu-h"><span class="fl">' + flag(id) + '</span><b>' + esc(name) + '</b>' + tag + '</div>' +
+        '<div class="gx-lu-meta gx-dim">' + (l.formation ? esc(t('formation')) + ' <b>' + esc(l.formation) + '</b>' : '') + (l.coach ? ' · ' + esc(l.coach) : '') + '</div>' +
+        (xi ? '<div class="gx-lu-xi">' + xi + '</div>' : '') +
+        (subs ? '<div class="gx-lu-sub-h gx-label">' + esc(t('lineup_subs')) + '</div><div class="gx-lu-subs">' + subs + '</div>' : '') + '</div>';
+    };
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('users-group') + esc(t('mod_lineups')) + '</span></div><div class="gx-mod-body gx-lu-grid">' + side('home', h.home.team_id, teamName(h.home.team_id, h.home.name_fallback)) + side('away', h.away.team_id, teamName(h.away.team_id, h.away.name_fallback)) + '</div></div>';
+  }
+  // ---- estadísticas + eventos ----
+  var STAT_ROWS = [['possession', 'st_possession', '%'], ['shots', 'st_shots', ''], ['shotsOnTarget', 'st_sot', ''], ['corners', 'st_corners', ''], ['fouls', 'st_fouls', ''], ['offsides', 'st_offsides', ''], ['yellowCards', 'st_yellow', ''], ['xg', 'st_xg', '']];
+  function mvStats(beta, fx) {
+    var st = fx.statistics, sh = st && st.home, sa = st && st.away;
+    var rows = sh ? STAT_ROWS.map(function (s) {
+      var hv = sh[s[0]], av = sa ? sa[s[0]] : null; if (hv == null && av == null) return '';
+      var tot = (Number(hv) || 0) + (Number(av) || 0), hp = tot > 0 ? (Number(hv) || 0) / tot * 100 : 50;
+      return '<div class="gx-stat-row"><span class="gx-mono">' + (hv != null ? hv + s[2] : '—') + '</span><div class="gx-stat-mid"><span class="gx-label">' + esc(t(s[1])) + '</span><div class="gx-stat-bar"><i style="width:' + hp + '%"></i></div></div><span class="gx-mono">' + (av != null ? av + s[2] : '—') + '</span></div>';
+    }).filter(Boolean).join('') : '';
+    var evIcon = { goal: 'ball-football', yellow: 'square-rounded', red: 'square-rounded-filled', subst: 'arrows-exchange', var: 'video' };
+    var evs = (fx.events || []).slice().reverse().slice(0, 14).map(function (e) { return '<div class="gx-event-i gx-ev-' + (e.side || '') + '"><span class="gx-mono gx-dim">' + (e.minute != null ? e.minute + "'" : '') + '</span>' + ic(evIcon[e.type] || 'point') + '<span>' + esc(e.player || e.detail || t('evk_other')) + '</span>' + (e.assist ? '<span class="gx-dim" style="font-size:11px">· ' + esc(e.assist) + '</span>' : '') + '<span class="gx-dim gx-event-team">' + esc(e.teamName || '') + '</span></div>'; }).join('');
+    var body = (rows ? '<div class="gx-stats">' + rows + '</div>' : '') + (evs ? '<div class="gx-mod-sub gx-label">' + esc(t('live_events')) + '</div><div class="gx-events">' + evs + '</div>' : '');
+    if (!body) body = '<div class="gx-empty">' + esc(t('na_short')) + '</div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-bar') + esc(t('mod_stats')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
   }
   // 4C#8: construye un "beta" sintético desde el fixture (/api/match) para partidos sin evaluación canónica.
   // GP probability/analysis/goal_insights quedan vacíos → el cockpit muestra estados honestos de ausencia.
@@ -1166,7 +1261,21 @@
       '<div class="gx-memo-item"><div class="gx-label">' + esc(t('thesis')) + '</div><p>' + nar.thesis + '</p></div>' +
       '<div class="gx-memo-item risk"><div class="gx-label">' + esc(t('risk')) + '</div><p>' + nar.risk + '</p></div>' +
       '</div></div>';
-    return hero + '<div class="gx-mv-grid">' + '<div class="gx-mv-col">' + memo + simContext(d) + '</div>' + '<div class="gx-mv-col">' + simSims(d) + simGoals(d) + '</div>' + '</div>';
+    return hero + '<div class="gx-mv-grid">' + '<div class="gx-mv-col">' + memo + simFactors(d) + simContext(d) + '</div>' + '<div class="gx-mv-col">' + simSims(d) + simGoals(d) + '</div>' + '</div>';
+  }
+  // factores del análisis (localizado, sin prosa ES ni deltas técnicos): label + equipo + dirección + aplicado/neutral
+  function simFactors(d) {
+    var fac = (d.analysis && d.analysis.factors) || [];
+    if (!fac.length) return '';
+    var rows = fac.slice(0, 8).map(function (f) {
+      var team = teamName(f.side === 'a' ? d.a.id : d.b.id);
+      var imp = f.eloImpact != null ? f.eloImpact : (f.cappedContribution != null ? f.cappedContribution : 0);
+      var dir = f.dir || (imp > 0 ? 'up' : imp < 0 ? 'down' : 'flat'), applied = f.included !== false && dir !== 'flat';
+      var dcls = dir === 'up' ? 'gx-pos' : dir === 'down' ? 'gx-neg' : 'gx-dim', dic = dir === 'up' ? 'arrow-up-right' : dir === 'down' ? 'arrow-down-right' : 'minus';
+      return '<div class="gx-factor"><div class="gx-factor-main"><b>' + esc(factLabel(f.factorCode)) + '</b><span class="gx-dim"> · ' + esc(team) + '</span></div>' +
+        '<div class="gx-factor-meta"><span class="' + dcls + '">' + ic(dic) + ' ' + esc(t(applied ? 'sim_f_applied' : 'sim_f_neutral')) + '</span>' + (f.category ? '<span class="gx-dim">' + esc(factLabel(f.category)) + '</span>' : '') + '</div></div>';
+    }).join('');
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-arcs') + esc(t('sim_factors')) + '</span></div><div class="gx-mod-body"><div class="gx-factors">' + rows + '</div><p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('evaluated_note')) + '</p></div></div>';
   }
   // 4F: narrativa del Simulador construida desde estructura (probs/factores), localizada en cliente. Sin prosa ES del backend.
   function simNarrative(d) {
@@ -1262,29 +1371,61 @@
     var prob = function (label, v) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + pct1(v) + '</b></div>'; };
     var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + esc(t('comp')) + (td.group ? ' · ' + esc(t('group')) + ' ' + esc(td.group) : '') + '<span class="gx-spacer"></span>' + (td.rank ? '<span class="gx-dim">#' + td.rank + ' Elo</span>' : '') + '</div>' +
       '<div class="gx-team-id"><span class="fl big">' + flag(id) + '</span><div><b>' + esc(teamName(id, td.name)) + '</b><span class="gx-mono gx-dim">Elo ' + Math.round(td.elo || 0) + (td.eloDelta != null ? ' · ' + (td.eloDelta >= 0 ? '+' : '') + Math.round(td.eloDelta) : '') + '</span></div></div>' +
-      '<div class="gx-hero-grid">' + prob(t('tm_champion'), td.championProbability) + prob(t('tm_final'), td.finalProbability) + prob(t('tm_semi'), td.semifinalsProbability) + prob(t('tm_qf'), td.quarterfinalsProbability) + prob(t('tm_advance'), td.advanceProbability) + '</div>' +
-      '<div class="gx-hero-note gx-dim">' + esc(t('tm_sim_note')) + '</div></div>';
-    // próximo + finalizados del calendario
-    var ms = teamMatches(id), now = Date.now();
-    var up = ms.filter(function (c) { return calStatus(c) !== 'final'; }).slice(0, 1);
-    var fin = ms.filter(function (c) { return calStatus(c) === 'final'; }).reverse().slice(0, 5);
-    var matchRow = function (c) {
-      var opp = c.home === id ? c.away : c.home, sc = mScore(c);
-      return '<div class="gx-tmatch gx-row" data-openmatch="' + esc(oidFor(c)) + '"><span class="gx-time">' + esc(fmtDate(c.datetime)) + '</span><div class="gx-cell-team"><span class="gx-dim" style="font-size:11px">' + esc(c.home === id ? t('tm_vs_home') : t('tm_vs_away')) + '</span><span class="fl">' + flag(opp) + '</span><b>' + esc(teamName(opp)) + '</b></div><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span>' : mStatusCell(c)) + ' ' + ic('chevron-right') + '</div>';
-    };
-    var nextBlock = up.length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('calendar') + esc(t('tm_next')) + '</span></div><div class="gx-mod-body" style="padding:8px 12px">' + up.map(matchRow).join('') + '</div></div>' : '';
-    var finBlock = fin.length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('history') + esc(t('tm_recent_matches')) + '</span></div><div class="gx-mod-body" style="padding:8px 12px">' + fin.map(matchRow).join('') + '</div></div>' : '';
-    // forma / bajas / noticias
-    var ctxBlocks = [];
-    var rf = td.recentForm;
-    if (rf && rf.results && rf.results.length) ctxBlocks.push(ctxBlock(t('ctx_form'), 'history', t('ctx_form_line', { team: '<b>' + esc(teamName(id)) + '</b>', rec: esc(formStr(rf.results)), n: rf.played || rf.results.length, gf: rf.goalsFor, ga: rf.goalsAgainst })));
-    var inj = (td.injuries || []).concat(td.sidelined || []);
-    if (inj.length) ctxBlocks.push(ctxBlock(t('ctx_inj'), 'first-aid-kit', '<b>' + esc(teamName(id)) + '</b>: ' + esc(inj.slice(0, 6).map(function (x) { return x.player || x.name || x; }).join(', ')) + '.'));
-    var news = td.news || [];
-    if (news.length) ctxBlocks.push(ctxBlock(t('news_title'), 'news', news.slice(0, 3).map(function (n) { return esc(n.title || ''); }).join(' · ')));
-    var ctxPanel = ctxBlocks.length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('article') + esc(t('mod_context')) + '</span></div><div class="gx-mod-body">' + ctxBlocks.join('') + '</div></div>' : '';
-    mv.innerHTML = mvShell('<div class="gx-mv-back-wrap"></div>' + hero + '<div class="gx-mv-grid"><div class="gx-mv-col">' + nextBlock + finBlock + '</div><div class="gx-mv-col">' + ctxPanel + '</div></div>');
+      '<div class="gx-hero-grid">' + prob(t('tm_champion'), td.championProbability) + prob(t('tm_final'), td.finalProbability) + prob(t('tm_semi'), td.semifinalsProbability) + prob(t('tm_qf'), td.quarterfinalsProbability) + prob(t('tm_advance'), td.advanceProbability) + (td.groupWinProbability != null ? prob(t('tm_groupwin'), td.groupWinProbability) : '') + '</div>' +
+      '<div class="gx-team-actions"><button class="gx-btn ghost gx-follow" data-follow="' + esc(id) + '">' + ic(isFollowing(id) ? 'star-filled' : 'star') + ' ' + esc(t(isFollowing(id) ? 'tm_following' : 'tm_follow')) + '</button><span class="gx-hero-note gx-dim">' + esc(t('tm_sim_note')) + '</span></div></div>';
+    // tabs
+    var TABS = [['resumen', 'tab_summary'], ['plantilla', 'tm_tab_squad'], ['forma', 'mod_form'], ['resultados', 'tm_tab_results'], ['mercados', 'mod_markets'], ['noticias', 'news_title']];
+    var tab = S.teamTab || 'resumen';
+    var tabNav = '<nav class="gx-mv-nav" id="gx-team-tabs">' + TABS.map(function (x) { return '<a data-ttab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</a>'; }).join('') + '</nav>';
+    mv.innerHTML = mvShell('<div></div>' + hero + tabNav + '<div id="gx-team-body">' + teamTabBody(id, td, tab) + '</div>');
     bindBack();
+    [].forEach.call(mv.querySelectorAll('[data-ttab]'), function (a) { a.addEventListener('click', function () { S.teamTab = a.getAttribute('data-ttab'); [].forEach.call(mv.querySelectorAll('[data-ttab]'), function (x) { x.classList.toggle('on', x === a); }); $('#gx-team-body').innerHTML = teamTabBody(id, td, S.teamTab); a.scrollIntoView({ inline: 'nearest', block: 'nearest' }); }); });
+  }
+  function teamMatchRow(c, id) { var opp = c.home === id ? c.away : c.home, sc = mScore(c); return '<div class="gx-tmatch gx-row" data-openmatch="' + esc(oidFor(c)) + '"><span class="gx-time">' + esc(fmtDate(c.datetime)) + '</span><div class="gx-cell-team"><span class="gx-dim" style="font-size:11px">' + esc(c.home === id ? t('tm_vs_home') : t('tm_vs_away')) + '</span><span class="fl">' + flag(opp) + '</span><b>' + esc(teamName(opp)) + '</b></div><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span>' : mStatusCell(c)) + ' ' + ic('chevron-right') + '</div>'; }
+  function teamPanel(icn, title, body) { return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic(icn) + esc(title) + '</span></div><div class="gx-mod-body">' + body + '</div></div>'; }
+  function teamTabBody(id, td, tab) {
+    if (tab === 'plantilla') {
+      var playerRow = function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.number != null ? p.number : '–') + '</span><b>' + esc(p.name || '') + '</b>' + (p.position ? '<span class="gx-dim gx-lu-pos">' + esc(p.position) + '</span>' : '') + (p.age ? '<span class="gx-dim" style="font-size:10.5px">' + p.age + '</span>' : '') + (p.status && p.status !== 'available' ? '<span class="gx-badge gx-b-watch" style="font-size:9px">' + esc(t('st_' + p.status) || p.status) + '</span>' : '') + '</div>'; };
+      var kp = (td.keyPlayers || []).length ? teamPanel('star', t('tm_keyplayers'), '<div class="gx-lu-xi">' + td.keyPlayers.map(playerRow).join('') + '</div>') : '';
+      var sq = (td.squad || []).length ? teamPanel('users-group', t('tm_tab_squad') + ' · ' + td.squad.length, '<div class="gx-lu-xi">' + td.squad.map(playerRow).join('') + '</div>') : '';
+      var pl = td.projectedLineup ? teamPanel('layout-board', td.projectedLineup.confirmed ? t('lineup_conf') : t('lineup_proj'), '<div class="gx-lu-meta gx-dim">' + (td.projectedLineup.formation ? esc(t('formation')) + ' <b>' + esc(td.projectedLineup.formation) + '</b>' : '') + (td.projectedLineup.coach ? ' · ' + esc(td.projectedLineup.coach) : '') + '</div><div class="gx-lu-xi">' + (td.projectedLineup.startXI || []).map(playerRow).join('') + '</div>') : '';
+      var body = kp + sq + pl;
+      return body || teamPanel('users-group', t('tm_tab_squad'), '<div class="gx-empty">' + esc(t('na_short')) + '</div>');
+    }
+    if (tab === 'forma') {
+      var f = td.recentForm; if (!f || !f.played) return teamPanel('history', t('mod_form'), '<div class="gx-empty">' + esc(t('na_short')) + '</div>');
+      var last = (f.last || []).slice(0, 6).map(function (m) { return '<div class="gx-form-last"><span class="gx-dim">' + esc(fmtDate(m.date)) + '</span><span class="gx-dim" style="font-size:11px">' + esc(m.home ? t('tm_vs_home') : t('tm_vs_away')) + '</span><b>' + esc(m.opponent || '') + '</b><span class="gx-mono">' + esc(m.score || '') + '</span><i class="gx-fc gx-fc-' + (m.result === 'W' ? 'w' : m.result === 'L' ? 'l' : 'd') + '">' + esc(LANG === 'en' ? m.result : { W: 'V', D: 'E', L: 'D' }[m.result] || m.result) + '</i></div>'; }).join('');
+      return teamPanel('history', t('mod_form'), '<div class="gx-form-h" style="margin-bottom:12px"><b>' + esc(t('tm_last5')) + '</b>' + formResults(f.results) + '</div><div class="gx-form-stats" style="margin-bottom:12px"><span>' + esc(t('form_gf')) + ' <b>' + (f.goalsFor != null ? f.goalsFor : '—') + '</b></span><span>' + esc(t('form_ga')) + ' <b>' + (f.goalsAgainst != null ? f.goalsAgainst : '—') + '</b></span><span>' + esc(t('form_cs')) + ' <b>' + (f.cleanSheets != null ? f.cleanSheets : '—') + '</b></span><span>' + esc(t('form_avg')) + ' <b>' + (f.avgFor != null ? f.avgFor : '—') + '</b></span></div>' + (last ? '<div class="gx-form-lasts">' + last + '</div>' : ''));
+    }
+    if (tab === 'resultados') {
+      var ms = teamMatches(id);
+      var up = ms.filter(function (c) { return calStatus(c) !== 'final'; }).slice(0, 3);
+      var fin = ms.filter(function (c) { return calStatus(c) === 'final'; }).reverse();
+      var nb = up.length ? teamPanel('calendar', t('tm_next'), up.map(function (c) { return teamMatchRow(c, id); }).join('')) : '';
+      var fb = fin.length ? teamPanel('history', t('tm_recent_matches'), fin.map(function (c) { return teamMatchRow(c, id); }).join('')) : '';
+      return (nb + fb) || teamPanel('calendar', t('tm_tab_results'), '<div class="gx-empty">' + esc(t('na_short')) + '</div>');
+    }
+    if (tab === 'mercados') {
+      var mp = td.marketPrices || []; if (!mp.length) return teamPanel('arrows-left-right', t('mod_markets'), '<div class="gx-empty">' + esc(t('mkt_none')) + '</div>');
+      var rows = mp.map(function (o) {
+        var liq = o.liquidity != null ? o.liquidity : (o.volume != null ? o.volume : null);
+        return '<tr><td class="l gx-mkt-oc">' + esc(o.venue || '—') + '</td><td class="gx-mono">' + (o.price != null ? (o.price <= 1 ? pct0(o.price) : odd(o.price)) : '—') + '</td><td class="gx-mono gx-dim">' + (o.bid != null && o.ask != null ? pct0(o.bid) + '/' + pct0(o.ask) : '—') + '</td><td class="gx-mono gx-dim">' + (liq != null ? mktLiq(liq) : '—') + '</td><td class="gx-mono ' + (o.change24h > 0 ? 'gx-pos' : o.change24h < 0 ? 'gx-neg' : 'gx-dim') + '">' + (o.change24h != null ? (o.change24h > 0 ? '+' : '') + (o.change24h * 100).toFixed(1) + '%' : '—') + '</td></tr>';
+      }).join('');
+      return teamPanel('arrows-left-right', t('mod_markets') + ' · ' + t('tm_champion'), '<table class="gx-mkt-table"><thead><tr><th class="l">' + esc(t('col_provider')) + '</th><th>' + esc(t('tm_mkt_price')) + '</th><th>Bid/Ask</th><th>' + esc(t('col_liq')) + '</th><th>Δ24h</th></tr></thead><tbody>' + rows + '</tbody></table>');
+    }
+    if (tab === 'noticias') {
+      var inj = []; var seen = {}; (td.injuries || []).concat(td.sidelined || []).forEach(function (x) { var nm = x.player || x.name; if (nm && !seen[nm]) { seen[nm] = 1; inj.push(x); } });
+      var injB = inj.length ? teamPanel('first-aid-kit', t('ctx_inj'), '<div class="gx-injlist">' + inj.slice(0, 12).map(function (x) { return '<div class="gx-inj-i"><b>' + esc(x.player || x.name) + '</b>' + (x.status ? '<span class="gx-badge gx-b-watch">' + esc(t('st_' + x.status) || x.status) + '</span>' : '') + (x.reason ? '<span class="gx-dim" style="font-size:11.5px">' + esc(x.reason) + '</span>' : '') + '</div>'; }).join('') + '</div>') : '';
+      var news = td.news || [];
+      var newsB = news.length ? teamPanel('news', t('news_title'), '<div class="gx-newslist">' + news.slice(0, 6).map(function (n) { return '<div class="gx-news-i"><b>' + esc(n.title || '') + '</b><span class="gx-dim">' + esc(n.source || '') + (n.published ? ' · ' + esc(fmtDate(n.published)) : '') + '</span></div>'; }).join('') + '</div>') : '';
+      return (injB + newsB) || teamPanel('news', t('news_title'), '<div class="gx-empty">' + esc(t('na_short')) + '</div>');
+    }
+    // Resumen (default)
+    var probGrid = '<div class="gx-hero-grid" style="margin-top:0">' + ['championProbability', 'finalProbability', 'semifinalsProbability', 'quarterfinalsProbability', 'advanceProbability', 'groupWinProbability', 'groupSecondProbability', 'outInGroupsProbability'].map(function (k) { var lbls = { championProbability: 'tm_champion', finalProbability: 'tm_final', semifinalsProbability: 'tm_semi', quarterfinalsProbability: 'tm_qf', advanceProbability: 'tm_advance', groupWinProbability: 'tm_groupwin', groupSecondProbability: 'tm_groupsecond', outInGroupsProbability: 'tm_out' }; return td[k] != null ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t(lbls[k])) + '</span><b class="gx-mono">' + pct1(td[k]) + '</b></div>' : ''; }).join('') + '</div>';
+    var read = (td.modelRead || (td.keyDrivers && td.keyDrivers.length) || td.explanation) ? teamPanel('bulb', t('tm_read'), (td.modelRead ? '<p class="gx-method-p">' + esc(td.modelRead) + '</p>' : '') + ((td.keyDrivers || []).length ? '<div class="gx-chips" style="margin-top:10px">' + td.keyDrivers.slice(0, 6).map(function (d) { return '<span class="gx-chip">' + esc(d) + '</span>'; }).join('') + '</div>' : '') + (td.explanation ? '<p class="gx-method-p gx-dim" style="margin-top:10px">' + esc(td.explanation) + '</p>' : '')) : '';
+    var opp = (td.likelyOpponents || []).length ? teamPanel('swords', t('tm_likely_opp'), '<div class="gx-opplist">' + td.likelyOpponents.slice(0, 6).map(function (o) { return '<div class="gx-opp-i" data-nav-team="' + esc(o.id) + '"><span class="fl">' + flag(o.id) + '</span><b>' + esc(teamName(o.id, o.name)) + '</b><span class="gx-spacer"></span><span class="gx-mono gx-dim">' + pct0(o.pct) + '</span></div>'; }).join('') + '</div>') : '';
+    var paths = (td.samples || []).length ? teamPanel('route', t('tm_paths') + ' · ' + (td.sims ? td.sims.toLocaleString() : '') + ' sims', '<div class="gx-paths">' + td.samples.slice(0, 5).map(function (run) { return '<div class="gx-path"><div class="gx-path-steps">' + (run || []).map(function (s) { return '<span class="gx-path-step ' + (s.score ? '' : 'gx-dim') + '">' + esc(stageLabel(s.stage) || '') + ' <b>' + esc(s.score || '') + '</b>' + (s.pen ? ' (p)' : '') + '</span>'; }).join('<i class="gx-path-arrow">›</i>') + '</div></div>'; }).join('') + '</div>') : '';
+    return teamPanel('chart-arcs', t('tab_summary'), probGrid) + read + opp + paths;
   }
 
   // ---- Grupos ----
@@ -1346,20 +1487,34 @@
       body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('evo_insufficient')) + '</b>' + esc(t('evo_insufficient_sub', { n: hist.length })) + '</div></div>';
     } else {
       var last = hist[hist.length - 1].probs || {}, first = hist[0].probs || {};
-      var top = Object.keys(last).sort(function (a, b) { return (last[b] || 0) - (last[a] || 0); }).slice(0, 10);
-      var rows = top.map(function (id) {
-        var cur = last[id] || 0, prev = first[id] || 0, d = cur - prev;
-        // sparkline simple sobre los snapshots disponibles
-        var max = Math.max.apply(null, hist.map(function (h) { return h.probs[id] || 0; }).concat([0.01]));
-        var spark = '<span class="gx-spark">' + hist.map(function (h) { var v = h.probs[id] || 0; return '<i style="height:' + Math.max(6, (v / max) * 100) + '%"></i>'; }).join('') + '</span>';
-        return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td>' +
-          '<td class="l" style="width:90px">' + spark + '</td>' +
-          '<td class="gx-mono" style="color:var(--gx-text)">' + pct1(cur) + '</td>' +
-          '<td class="gx-mono ' + (d > 0 ? 'gx-pos' : d < 0 ? 'gx-neg' : 'gx-dim') + '">' + (d === 0 ? '—' : (d > 0 ? '+' : '') + (d * 100).toFixed(1) + ' pp') + '</td></tr>';
+      var followed = (S.me && S.me.favorites) || [];
+      var filt = S.evoFilt === 'mine' && followed.length ? 'mine' : 'top';
+      var sel = filt === 'mine' ? followed.slice(0, 10) : Object.keys(last).sort(function (a, b) { return (last[b] || 0) - (last[a] || 0); }).slice(0, 10);
+      // gráfico SVG multi-línea sobre snapshots REALES
+      var W = 720, H = 240, padL = 8, padR = 8, padT = 12, padB = 8, iw = W - padL - padR, ih = H - padT - padB;
+      var ymax = Math.max.apply(null, sel.map(function (id) { return Math.max.apply(null, hist.map(function (h) { return h.probs[id] || 0; })); }).concat([0.05]));
+      var COLORS = ['#1FE3A4', '#5BA8FF', '#F2C14E', '#FF6B6B', '#34D6C8', '#B08CFF', '#FF9F5B', '#5BEFC0', '#8FE0BE', '#FF7AC8'];
+      var x = function (i) { return padL + (hist.length === 1 ? iw / 2 : i / (hist.length - 1) * iw); };
+      var y = function (v) { return padT + ih - (v / ymax) * ih; };
+      var lines = sel.map(function (id, k) {
+        var pts = hist.map(function (h, i) { return x(i) + ',' + y(h.probs[id] || 0); }).join(' ');
+        var lv = last[id] || 0;
+        return '<polyline points="' + pts + '" fill="none" stroke="' + COLORS[k % COLORS.length] + '" stroke-width="2" stroke-linejoin="round"/>' +
+          '<circle cx="' + x(hist.length - 1) + '" cy="' + y(lv) + '" r="3" fill="' + COLORS[k % COLORS.length] + '"/>';
       }).join('');
-      body = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('evo_champion')) + '</span><span class="gx-ph-extra">' + hist.length + ' ' + esc(t('evo_snapshots')) + '</span></div><table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th class="l">' + esc(t('evo_trend')) + '</th><th>' + esc(t('evo_now')) + '</th><th>Δ</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      var grid = [0.25, 0.5, 0.75].map(function (f) { var yy = padT + ih - f * ih; return '<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="rgba(255,255,255,.05)"/>'; }).join('');
+      var legend = sel.map(function (id, k) { return '<div class="gx-evo-leg" data-nav-team="' + esc(id) + '"><span class="gx-evo-dot" style="background:' + COLORS[k % COLORS.length] + '"></span><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b><span class="gx-mono gx-dim">' + pct1(last[id] || 0) + '</span></div>'; }).join('');
+      var chart = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('evo_champion')) + '</span><span class="gx-spacer"></span>' +
+        '<div class="gx-seg" id="gx-evo-seg"><button data-evo="top"' + (filt === 'top' ? ' class="on"' : '') + '>' + esc(t('evo_top')) + '</button>' + (followed.length ? '<button data-evo="mine"' + (filt === 'mine' ? ' class="on"' : '') + '>' + esc(t('nav_follow')) + '</button>' : '') + '</div>' +
+        '<span class="gx-ph-extra" style="margin-left:10px">' + hist.length + ' ' + esc(t('evo_snapshots')) + '</span></div>' +
+        '<div class="gx-mod-body"><svg class="gx-evo-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + grid + lines + '</svg><div class="gx-evo-legend">' + legend + '</div></div></div>';
+      // tabla con Δ
+      var rows = sel.map(function (id) { var cur = last[id] || 0, prev = first[id] || 0, dd = cur - prev; return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td><td class="gx-mono" style="color:var(--gx-text)">' + pct1(cur) + '</td><td class="gx-mono ' + (dd > 0 ? 'gx-pos' : dd < 0 ? 'gx-neg' : 'gx-dim') + '">' + (dd === 0 ? '—' : (dd > 0 ? '+' : '') + (dd * 100).toFixed(1) + ' pp') + '</td></tr>'; }).join('');
+      var table = '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th>' + esc(t('evo_now')) + '</th><th>Δ</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      body = chart + table;
     }
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_evo'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('evo_note')) + '</span>') + body + '</div></div>';
+    [].forEach.call(mv.querySelectorAll('[data-evo]'), function (b) { b.addEventListener('click', function () { S.evoFilt = b.getAttribute('data-evo'); renderEvo(); }); });
   }
 
   // ---- Registro ----
@@ -1410,6 +1565,92 @@
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:860px;margin:0 auto">' + viewHead(t('nav_method')) + blocks + '</div></div>';
   }
 
+  // ---- Seguidos ----
+  function renderFollow() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var favs = (S.me && S.me.favorites) || [];
+    var simById = {}; S.stTeams.forEach(function (t) { simById[t.id] = t.sim; });
+    var body;
+    if (!favs.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('star') + '<b>' + esc(t('fol_empty')) + '</b>' + esc(t('fol_empty_sub')) + '</div></div>';
+    else {
+      var rows = favs.map(function (id) {
+        var s = simById[id] || {}, ms = teamMatches(id).filter(function (c) { return calStatus(c) !== 'final'; })[0];
+        return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td>' +
+          '<td class="l gx-dim" style="font-size:11.5px">' + (ms ? esc(t('vs') + ' ' + teamName(ms.home === id ? ms.away : ms.home) + ' · ' + fmtDate(ms.datetime)) : '—') + '</td>' +
+          '<td class="gx-mono">' + pct1(s.champion) + '</td>' +
+          '<td class="l"><button class="gx-iconmini" data-follow="' + esc(id) + '" title="' + esc(t('tm_following')) + '">' + ic('star-filled') + '</button></td></tr>';
+      }).join('');
+      body = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('nav_follow')) + '</span><span class="gx-ph-extra">' + favs.length + '</span></div><table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th class="l">' + esc(t('tm_next')) + '</th><th>' + esc(t('tm_champion')) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_follow')) + body + '</div></div>';
+  }
+  // ---- Alertas ----
+  var ALERT_EVENTS = [['nextMatch', 'calendar', 'al_next'], ['matchStart', 'player-play', 'al_start'], ['goal', 'ball-football', 'al_goal'], ['result', 'flag', 'al_result'], ['qualify', 'trophy', 'al_qualify'], ['probSwing', 'trending-up', 'al_swing'], ['valueOpp', 'target-arrow', 'al_value'], ['arb', 'arrows-left-right', 'al_arb']];
+  var ALERT_CHANNELS = [['email', 'mail', 'al_email', false], ['telegram', 'brand-telegram', 'al_telegram', true], ['push', 'bell', 'al_push', true]];
+  function renderAlerts() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var prefs = (S.me && S.me.alertPrefs) || {}, ev = prefs.events || {}, ch = prefs.channels || {};
+    var evRows = ALERT_EVENTS.map(function (a) { var on = ev[a[0]] !== false && (a[0] === 'result' ? ev[a[0]] !== false : ev[a[0]] === true || (a[0] === 'result')); on = a[0] === 'result' ? (ev[a[0]] !== false) : (ev[a[0]] === true); return '<div class="gx-altrow"><span class="gx-altl">' + ic(a[1]) + esc(t(a[2])) + '</span><button class="gx-toggle' + (on ? ' on' : '') + '" data-alert-ev="' + a[0] + '"><i></i></button></div>'; }).join('');
+    var chRows = ALERT_CHANNELS.map(function (a) { var soon = a[3]; var on = a[0] === 'email' ? (ch.email !== false) : ch[a[0]] === true; return '<div class="gx-altrow"><span class="gx-altl">' + ic(a[1]) + esc(t(a[2])) + (soon ? ' <span class="gx-dim" style="font-size:10px">' + esc(t('al_soon')) + '</span>' : '') + '</span><button class="gx-toggle' + (on ? ' on' : '') + (soon ? ' off' : '') + '"' + (soon ? ' disabled' : ' data-alert-ch="' + a[0] + '"') + '><i></i></button></div>'; }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('nav_alerts')) +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_events')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + evRows + '</div></div>' +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_channels')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + chRows + '</div></div>' +
+      '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('al_note')) + '</p></div></div>';
+    [].forEach.call(mv.querySelectorAll('[data-alert-ev]'), function (b) { b.addEventListener('click', function () { toggleAlert('events', b.getAttribute('data-alert-ev'), b); }); });
+    [].forEach.call(mv.querySelectorAll('[data-alert-ch]'), function (b) { b.addEventListener('click', function () { toggleAlert('channels', b.getAttribute('data-alert-ch'), b); }); });
+  }
+  function toggleAlert(kind, key, btn) {
+    if (!S.me) return; var p = S.me.alertPrefs || (S.me.alertPrefs = { events: {}, channels: {} }); var bag = p[kind] || (p[kind] = {});
+    var cur = key === 'result' || (kind === 'channels' && key === 'email') ? bag[key] !== false : bag[key] === true;
+    bag[key] = !cur; btn.classList.toggle('on', !cur);
+    var payload = {}; payload[kind] = bag;
+    fetch('/api/alertprefs', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify(payload) }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (res) { if (res && res.alertPrefs) S.me.alertPrefs = res.alertPrefs; });
+  }
+  // ---- Invitar / Referidos ----
+  var REF_TIERS = [[1, 'ref_t1'], [3, 'ref_t3'], [5, 'ref_t5'], [10, 'ref_t10']];
+  function renderRefer() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.refer === undefined) S.refer = null;
+    var code = (S.me && S.me.refCode) || null, count = (S.me && (S.me.referrals != null ? (typeof S.me.referrals === 'number' ? S.me.referrals : (S.me.referrals.length || 0)) : 0)) || 0;
+    if (!code) {
+      fetch('/api/referrals/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) { if (st) { if (st.code) { S.me = S.me || {}; S.me.refCode = st.code; } if (st.verifiedCount != null) S.me.referrals = st.verifiedCount; if (S.view === 'refer') renderRefer(); } });
+    }
+    var link = code ? 'https://gpsimulador.com/?ref=' + code : null;
+    var nextTier = REF_TIERS.filter(function (x) { return x[0] > count; })[0];
+    var progress = nextTier ? Math.min(100, count / nextTier[0] * 100) : 100;
+    var tiers = REF_TIERS.map(function (x) { var got = count >= x[0]; return '<div class="gx-tier' + (got ? ' on' : '') + '"><span class="gx-tier-n gx-mono">' + x[0] + '</span><span>' + esc(t(x[1])) + '</span>' + (got ? ic('circle-check') : '') + '</div>'; }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('nav_refer')) +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body"><div class="gx-ref-count"><b class="gx-mono">' + count + '</b><span class="gx-dim">' + esc(t('ref_verified')) + '</span></div>' +
+      '<div class="gx-champbar" style="margin:12px 0"><i style="width:' + progress + '%"></i><span class="gx-mono">' + (nextTier ? count + '/' + nextTier[0] : '★') + '</span></div>' +
+      (link ? '<div class="gx-ref-link"><input id="gx-ref-input" readonly value="' + esc(link) + '"><button class="gx-btn" id="gx-ref-copy">' + ic('copy') + ' ' + esc(t('ref_copy')) + '</button></div>' : '<div class="gx-dim">' + esc(t('loading')) + '</div>') +
+      '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('ref_rule')) + '</p></div></div>' +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('ref_tiers')) + '</span></div><div class="gx-mod-body gx-tiers">' + tiers + '</div></div>' +
+      '</div></div>';
+    var cp = $('#gx-ref-copy'); if (cp) cp.addEventListener('click', function () { var inp = $('#gx-ref-input'); if (inp) { inp.select(); try { document.execCommand('copy'); } catch (e) {} try { navigator.clipboard.writeText(inp.value); } catch (e) {} cp.innerHTML = ic('check') + ' ' + esc(t('ref_copied')); } });
+  }
+  // ---- Rendimiento (métricas verificadas) ----
+  function renderPerf() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.perf === undefined) {
+      S.perf = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>';
+      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) { S.perf = { sum: res[0], leg: res[1] }; if (S.view === 'perf') renderPerf(); });
+      return;
+    }
+    var d = S.perf || {}, sum = d.sum, leg = d.leg;
+    var kpi = function (label, v, cls) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div></div>'; };
+    var body;
+    if (sum && sum.metrics) {
+      var m = sum.metrics, g = function (k) { return m[k] && m[k].value != null ? m[k].value : null; }, n = (m.brier_multiclass && m.brier_multiclass.sample_size) || 0;
+      body = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' + kpi(t('perf_sample'), n) + kpi('Brier', g('brier_multiclass') != null ? g('brier_multiclass').toFixed(3) : '—') + kpi('Log loss', g('log_loss') != null ? g('log_loss').toFixed(3) : '—') + kpi('ECE', g('ece') != null ? g('ece').toFixed(3) : '—') + '</div>' +
+        (n < 10 ? '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('reg_insufficient_note')) + '</p>' : '') +
+        teamPanel('book', t('perf_method'), '<p class="gx-method-p gx-dim">' + esc(t('perf_method_b')) + '</p>');
+    } else if (leg) {
+      body = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' + kpi(t('perf_total'), leg.total != null ? leg.total : '—') + kpi(t('perf_hits'), leg.winners != null ? leg.winners : '—', 'gx-pos') + kpi(t('perf_exact'), leg.exact != null ? leg.exact : '—') + kpi('Brier', leg.brier != null ? Number(leg.brier).toFixed(3) : '—') + '</div>' +
+        (leg.vsMarket ? teamPanel('arrows-left-right', t('perf_vs_market'), '<div class="gx-form-stats"><span>GP Brier <b>' + Number(leg.vsMarket.modelBrier).toFixed(3) + '</b></span><span>' + esc(t('hero_mkt')) + ' Brier <b>' + Number(leg.vsMarket.marketBrier).toFixed(3) + '</b></span><span>n <b>' + leg.vsMarket.n + '</b></span></div>') : '');
+    } else body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('na_short')) + '</b></div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_perf')) + body + '</div></div>';
+  }
+
   // ---- Admin: Observatory de cobertura (§29, solo admin) ----
   function renderAdmin() {
     var mv = $('#gx-matchview'); if (!mv) return;
@@ -1442,7 +1683,7 @@
   function setLang(l) {
     if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l;
     shell(); render();
-    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin };
+    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf };
     if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
@@ -1471,8 +1712,10 @@
         LANG = (pref === 'en' || pref === 'es') ? pref : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
         document.documentElement.lang = LANG;
         shell(); load(); loadCanon();
+        fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) { if (me) { S.me = me; if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } } });
         document.addEventListener('click', function (e) {
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); openMatch(o.getAttribute('data-openmatch')); return; }
+          var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }
           var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }
           var n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); navTo(n.getAttribute('data-nav')); }
         });

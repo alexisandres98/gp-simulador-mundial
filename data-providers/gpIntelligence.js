@@ -405,8 +405,8 @@ function buildH2HAnalysis(args) {
     : 'el contexto confirma la lectura del modelo base';
   const goalsPhrase = goals ? ` Proyección: ~${goals.avgTotal.toFixed(2)} goles (Over 2.5 al ${pct0(goals.over25)}); total más probable ${goals.mostLikelyTotal}.` : '';
   const verdict = parity
-    ? `El modelo base (V1) ya veía un duelo cerrado y ${shiftPhrase}. ${a.name} ${pct(v2.aWin)} · empate ${pct(v2.draw)} · ${b.name} ${pct(v2.bWin)}. Marcador más repetido: ${mc.topScores[0].score} (${pct(mc.topScores[0].p)}).${goalsPhrase}`
-    : `El modelo base (V1) abre con ${fav.name} a ${pct(baseFavProb)}. Integrando el contexto, ${shiftPhrase}: GP Intelligence (V2) cierra en ${fav.name} ${pct(favProb)}, empate ${pct(v2.draw)}, ${dog.name} ${pct(dogProb)}. Marcador más probable: ${mc.topScores[0].score} (${pct(mc.topScores[0].p)}).${goalsPhrase}`;
+    ? `La probabilidad inicial ya veía un duelo cerrado y ${shiftPhrase}. ${a.name} ${pct(v2.aWin)} · empate ${pct(v2.draw)} · ${b.name} ${pct(v2.bWin)}. Marcador más repetido: ${mc.topScores[0].score} (${pct(mc.topScores[0].p)}).${goalsPhrase}`
+    : `La probabilidad inicial abre con ${fav.name} a ${pct(baseFavProb)}. Integrando el contexto, ${shiftPhrase}: la probabilidad GP final cierra en ${fav.name} ${pct(favProb)}, empate ${pct(v2.draw)}, ${dog.name} ${pct(dogProb)}. Marcador más probable: ${mc.topScores[0].score} (${pct(mc.topScores[0].p)}).${goalsPhrase}`;
 
   const insights = buildInsights({ a, b, v2, goals, mc, ctxA, ctxB, beta });
 

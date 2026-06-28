@@ -281,8 +281,7 @@ async function renderMethodology() {
     <div style="margin-bottom:12px"><h2 style="margin-bottom:3px">Metodología</h2>
       <div class="muted" style="font-size:12px">Qué significa cada cosa y qué garantías tiene. Transparentes sobre las definiciones; el modelo y las fuentes internas son privados.</div></div>
     <div class="meth-sec"><h3>Modelo</h3>
-      ${def('Modelo oficial V1', 'El control oficial: Elo → Poisson/Dixon-Coles → 10.000 simulaciones Monte Carlo. Es lo que cuenta para el track record.')}
-      ${def('GP Intelligence V2 (experimental)', 'Un challenger que ajusta el Elo con contexto (forma, descanso, bajas, solidez). Es experimental, solo en el simulador, y NO alimenta las Picks GP oficiales ni el track record.')}
+      ${def('GP Intelligence', 'El modelo oficial de GP. Parte de una probabilidad inicial calibrada (Elo → Poisson/Dixon-Coles → 10.000 simulaciones Monte Carlo) y le aplica el contexto del partido (forma, descanso, bajas, solidez). Mostramos la probabilidad inicial, el contexto aplicado y la probabilidad GP final.')}
     </div>
     <div class="meth-sec"><h3>Jerarquía de oportunidades</h3>
       ${def('Señal de Value', 'Evaluación del Value Engine: PASS (sin value) / WATCH / LEAN / STRONG. Una evaluación NO es una Pick.')}
@@ -1616,7 +1615,7 @@ function oppHeroPick(p) {
       ${p.quality_score != null ? metric(oppT('value.quality'), p.quality_score) : ''}
     </div>
     ${mainRisk ? `<div class="muted" style="font-size:12px;margin-top:4px">${xe(oppT('pick.main_risk'))}: ${xe(mainRisk)}</div>` : ''}
-    <div class="feat-cta"><button class="venue-btn v-poly" onclick="openOppPick('${p.pick_id}')">${xe(oppT('pick.view'))} →</button></div>
+    <div class="feat-cta"><button class="venue-btn v-poly" onclick="openOppPick('${p.pick_id}')">${xe(oppT('pick.view'))} →</button>${p.event_id ? `<button class="btn-ghost" onclick="openMatchV2('${p.event_id}')">${xe(oppT('pick.full_analysis'))}</button>` : ''}</div>
   </div>`;
 }
 function oppPickCard(p) {
@@ -1660,8 +1659,50 @@ async function openOppPick(id) {
     ${panel(oppT('pick.price_state'), '', `${row(oppT('pick.published_odds'), oppOdds(p.published_odds) + (p.sportsbook ? ' · ' + xe(p.sportsbook) : ''))}${row(oppT('pick.min_odds'), oppOdds(p.minimum_odds))}${row(oppT('pick.fair_odds'), oppOdds(fair))}${row(oppT('pick.price_state'), oppT('price_state.' + (p.price_state_code || 'AVAILABLE')))}`)}
     ${panel(oppT('pick.intelligence'), '', `${row(oppT('pick.gp_prob'), oppPct(p.gp_probability))}${row(oppT('pick.market_prob'), oppPct(p.consensus_probability))}${row(oppT('pick.diff_gross'), oppPP(gross))}${row(oppT('pick.break_even'), oppPct(p.break_even_probability))}${row(oppT('pick.edge'), oppPP(p.adjusted_edge_pp))}${row(oppT('value.quality'), p.quality_score)}${row(oppT('value.uncertainty'), p.uncertainty_score)}`)}
     ${(p.risk_codes && p.risk_codes.length) ? panel(oppT('match.risks_title'), '', p.risk_codes.map(c => `<div class="xo-note">${xe(oppRisk(c))}</div>`).join('')) : ''}
-    ${p.deep_link ? `<a class="venue-btn v-poly" href="${xe(p.deep_link)}" target="_blank" rel="noopener nofollow" style="margin-top:10px;display:inline-block">${xe(oppT('pick.open_link'))} ↗</a>` : ''}
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${p.event_id ? `<button class="btn-ghost" onclick="openMatchV2('${p.event_id}')">${xe(oppT('pick.full_analysis'))}</button>` : ''}${p.deep_link ? `<a class="venue-btn v-poly" href="${xe(p.deep_link)}" target="_blank" rel="noopener nofollow">${xe(oppT('pick.open_link'))} ↗</a>` : ''}</div>
     <div class="muted" style="font-size:11.5px;margin-top:12px">${xe(oppT('pick.theoretical_note'))}<br>${xe(oppT('pick.not_advice'))}</div>`;
+}
+
+// ---- §10/§11: página canónica de partido (GP Intelligence) por canonical_event_id, alcanzable desde el flagship ----
+function oppOutcomeLabel(header, code) { if (code === 'DRAW') return oppT('prob.draw'); const team = code === 'AWAY' ? header.away : header.home; return I18N.teamName(team.team_id, team.name_fallback); }
+async function openMatchV2(eventId) {
+  const root = $('#oppBody') || $('#tab-arb'); if (!root) return;
+  root.innerHTML = `<button class="xo-back" onclick="loadOpportunities()">← ${xe(oppT('common.back'))}</button><div id="oppMatch">${du(oppT('common.loading'))}</div>`;
+  let m;
+  try { const r = await fetch('/api/beta/match/' + encodeURIComponent(eventId), { headers: hdrs() }); if (r.status === 404) { $('#oppMatch').innerHTML = du(oppT('error.not_found')); return; } if (!r.ok) { $('#oppMatch').innerHTML = du(oppT('common.na')); return; } m = await r.json(); }
+  catch (e) { $('#oppMatch').innerHTML = du(oppT('common.na')); return; }
+  const h = m.header;
+  const teamLine = `${oppFlag(h.home.team_id)} ${I18N.teamName(h.home.team_id, h.home.name_fallback)} ${oppT('common.vs')} ${I18N.teamName(h.away.team_id, h.away.name_fallback)} ${oppFlag(h.away.team_id)}`;
+  let html = `<div class="feat xo-hero"><div class="feat-name" style="font-size:20px">${xe(teamLine)}</div><div class="muted" style="font-size:12px;margin-top:3px">${h.venue ? xe(h.venue) + ' · ' : ''}${h.kickoff_at ? '<span class="mono">' + oppDateTime(h.kickoff_at) + '</span>' : ''}</div></div>`;
+  if (!m.has_official_v2) { html += du(oppT('match.no_v2')); $('#oppMatch').innerHTML = html; return; }
+  // Probabilidad GP (1X2 regulación)
+  const oc = {}; (m.probability && m.probability.outcomes || []).forEach(o => oc[o.outcome_code] = o);
+  const gp = c => (oc[c] && oc[c].gp_probability != null) ? oc[c].gp_probability : 0;
+  const mk = c => (oc[c] && oc[c].market_probability != null) ? oc[c].market_probability : null;
+  html += panel(oppT('match.gp_probability'), oppT('period.regulation_note'), `
+    <div class="pbar"><div class="ph" style="width:${gp('HOME') * 100}%"></div><div class="pd" style="width:${gp('DRAW') * 100}%"></div><div class="pa" style="width:${gp('AWAY') * 100}%"></div></div>
+    <div class="plabels"><span>${xe(oppOutcomeLabel(h, 'HOME'))} ${oppPct(gp('HOME'))}</span><span>${xe(oppT('prob.draw'))} ${oppPct(gp('DRAW'))}</span><span>${xe(oppOutcomeLabel(h, 'AWAY'))} ${oppPct(gp('AWAY'))}</span></div>
+    ${mk('HOME') != null ? `<div class="muted" style="font-size:11px;margin-top:6px">${xe(oppT('prob.market'))}: ${oppPct(mk('HOME'))} · ${oppPct(mk('DRAW'))} · ${oppPct(mk('AWAY'))}</div>` : ''}`);
+  // Clasificación (eliminatorias) — separada de 1X2 90'
+  if (m.qualify) html += panel(oppT('match.qualify_title'), oppT('match.qualify_note'), `<div class="xo-row"><span>${xe(oppOutcomeLabel(h, 'HOME'))}</span><span class="mono">${oppPct(m.qualify.home_qualify)}</span></div><div class="xo-row"><span>${xe(oppOutcomeLabel(h, 'AWAY'))}</span><span class="mono">${oppPct(m.qualify.away_qualify)}</span></div>`);
+  // Contexto aplicado (§12: probabilidad inicial → contexto aplicado → probabilidad GP final)
+  const a = m.analysis;
+  if (a) {
+    let inner = '';
+    if (a.applied_factors && a.applied_factors.length) {
+      inner += '<div class="gpi-factors">' + a.applied_factors.slice(0, 6).map(f => `<div class="gpi-factor"><div class="gpi-fac-l">${xe(oppTk('factor.' + f.factor_code) || f.factor_code)}</div><div class="gpi-fac-d">${f.applied_impact >= 0 ? '+' : ''}${f.applied_impact}</div></div>`).join('') + '</div>';
+    } else {
+      inner += `<div class="muted" style="font-size:12px">${xe(a.context_moved_line ? oppT('match.context_moved') : oppT('match.context_neutral'))}</div>`;
+      if (a.evaluated_factors && a.evaluated_factors.length) inner += `<div class="muted" style="font-size:11px;margin-top:6px">${xe(oppT('match.evaluated_title'))}: ${a.evaluated_factors.map(f => xe(oppTk('factor.' + f.factor_code) || f.factor_code)).join(' · ')}</div>`;
+    }
+    const adj = a.context_adjustments;
+    if (adj && adj.HOME != null) inner += `<div class="gpi-deltas" style="margin-top:8px"><span>${xe(oppOutcomeLabel(h, 'HOME'))}: ${oppPP(adj.HOME)}</span><span>${xe(oppT('prob.draw'))}: ${oppPP(adj.DRAW)}</span><span>${xe(oppOutcomeLabel(h, 'AWAY'))}: ${oppPP(adj.AWAY)}</span></div>`;
+    html += panel(oppT('match.context_applied'), oppTk('context_state.' + a.context_state_code) || '', inner);
+  }
+  if (m.risks && m.risks.length) html += panel(oppT('match.risks_title'), '', m.risks.map(c => `<div class="xo-note">${xe(oppRisk(c))}</div>`).join(''));
+  if (m.goal_insights) { const g = m.goal_insights, eg = g.expected_goals || {}; html += panel(oppT('goal.section_title'), oppT('goal.disclaimer'), `<div class="xo-row"><span>${xe(oppOutcomeLabel(h, 'HOME'))}</span><span class="mono">${eg.HOME == null ? '—' : eg.HOME}</span></div><div class="xo-row"><span>${xe(oppOutcomeLabel(h, 'AWAY'))}</span><span class="mono">${eg.AWAY == null ? '—' : eg.AWAY}</span></div><div class="xo-row"><span>${xe(oppT('goal.total'))}</span><span class="mono">${eg.TOTAL == null ? '—' : eg.TOTAL}</span></div>`); }
+  if (m.updated_at) html += `<div class="muted" style="font-size:11px;margin-top:10px">${xe(oppT('common.updated_at', { time: oppTime(m.updated_at) }))}</div>`;
+  $('#oppMatch').innerHTML = html;
 }
 
 // ---- §8: Value (scanner profesional) ----
@@ -1670,7 +1711,7 @@ function oppValueCard(v, header) {
   const ev = header ? `${I18N.teamName(header.home.team_id, header.home.name_fallback)} ${oppT('common.vs')} ${I18N.teamName(header.away.team_id, header.away.name_fallback)}` : '';
   const cls = { STRONG: 'val-strong', LEAN: 'val-lean', WATCH: 'val-watch', PASS: 'val-pass' }[v.classification_code] || 'val-pass';
   const gross = (v.gp_probability != null && v.market_probability != null) ? v.gp_probability - v.market_probability : null;
-  return `<div class="xo-card">
+  return `<div class="xo-card"${v.event_id ? ` onclick="openMatchV2('${v.event_id}')" style="cursor:pointer"` : ''}>
     ${ev ? `<div class="muted" style="font-size:12px;margin-bottom:4px">${xe(ev)}</div>` : ''}
     <div class="xo-card-top"><span class="val-badge ${cls}">${xe(oppT('classification.' + String(v.classification_code || '').toLowerCase()))}</span> <span class="reg-type">${xe(oppValSel(v, header))}</span>${v.actionable ? `<span class="xo-pill xo-st-active" style="margin-left:auto">${xe(oppT('value.actionable'))}</span>` : ''}</div>
     <div class="val-grid">
@@ -1684,6 +1725,7 @@ function oppValueCard(v, header) {
       ${v.best_sportsbook ? `<div><span>${xe(oppT('value.sportsbook'))}</span><b>${xe(v.best_sportsbook)}</b></div>` : ''}
     </div>
     ${(!v.actionable && v.blockers && v.blockers.length) ? `<div class="muted" style="font-size:11.5px;margin-top:6px">${v.blockers.map(b => xe(oppBlocker(b))).join(' · ')}</div>` : ''}
+    ${v.event_id ? `<div class="xo-card-foot"><span></span><span class="xo-cta">${xe(oppT('value.view_analysis'))} →</span></div>` : ''}
   </div>`;
 }
 async function loadOppValue(sel) {
@@ -1991,7 +2033,7 @@ async function loadShadowObservatory() {
       `<div style="margin-bottom:8px">${coRows}</div>` +
       (mRows ? `<div class="muted" style="font-size:11px;margin-bottom:8px">${EN ? 'Settled shadow metrics' : 'Métricas shadow liquidadas'}: ${mRows}</div>` : '') +
       `<div class="muted" style="font-size:11px;margin-bottom:4px">${EN ? 'Upcoming events (V1 vs V2 shadow)' : 'Eventos próximos (V1 vs V2 shadow)'}: ${(t.events || []).length}</div>` + evRows +
-      `<div class="muted" style="font-size:11px;margin-top:6px">${EN ? 'Internal shadow only — V1 is the official model. No public exposure.' : 'Solo shadow interno — V1 es el modelo oficial. Sin exposición pública.'}</div>`;
+      `<div class="muted" style="font-size:11px;margin-top:6px">${EN ? 'Internal shadow comparison only. No public exposure.' : 'Solo comparación shadow interna. Sin exposición pública.'}</div>`;
   } catch { el.innerHTML = '<span class="warn">Error de red.</span>'; }
 }
 async function loadTrackRecord() {
@@ -2254,9 +2296,8 @@ async function simulate() {
 function simHeadlineHtml(d) {
   const p = d.probs, base = d.base, ctx = d.context;
   const moved = Math.abs(ctx.deltaA) + Math.abs(ctx.deltaB) > 2;
-  // Sprint 8.1 §16: etiqueta breve y visible V2/Experimental (gated). No cambia las probabilidades V2 (siguen protagonistas).
-  const v2Label = (USER && USER.uiFlags && USER.uiFlags.gpIntelligenceLabels)
-    ? `<div class="gpi-labelrow"><span class="gpi-explabel">🧠 GP Intelligence V2 · Experimental</span></div>` : '';
+  // §13: el simulador usa GP Intelligence (V2 oficial). NUNCA etiquetar como "experimental"; nota honesta de hipótesis.
+  const v2Label = `<div class="gpi-labelrow"><span class="gpi-explabel">🧠 Simulación con GP Intelligence · contexto disponible actualmente</span></div>`;
   return `
     <div class="dpanel" style="margin-top:14px">
       ${v2Label}
@@ -2323,9 +2364,9 @@ function h2hAnalysisHtml(d) {
     </div>`;
   const dpp = dec.deltaPp || { aWin: 0, draw: 0, bWin: 0 };
   const ppChip = v => `<span class="gpi-imp ${v > 0 ? 'up' : v < 0 ? 'down' : 'flat'}">${v > 0 ? '+' : ''}${v.toFixed(1)}pp</span>`;
-  html += panel('V1 control → V2 challenger', 'modelo base vs GP Intelligence', `
-    ${decRow('V1 (modelo base)', dec.baseLine, false)}
-    ${decRow('V2 (GP Intelligence)', dec.v2Line, true)}
+  html += panel('Probabilidad inicial → Probabilidad GP final', 'base calibrada + contexto aplicado', `
+    ${decRow('Probabilidad inicial', dec.baseLine, false)}
+    ${decRow('Probabilidad GP final', dec.v2Line, true)}
     <div class="gpi-deltas">
       <span>${d.a.flag} ${d.a.name}: ${ppChip(dpp.aWin)}</span>
       <span>empate: ${ppChip(dpp.draw)}</span>
@@ -2335,7 +2376,7 @@ function h2hAnalysisHtml(d) {
       <span>Contexto Elo ${d.a.name}: ${impChip(dec.deltaA)}</span>
       <span>Contexto Elo ${d.b.name}: ${impChip(dec.deltaB)}</span>
     </div>
-    <div class="gpi-note">El modelo global (V1) sigue siendo el control. V2 es un challenger experimental solo en este sandbox: ajusta el Elo de cada equipo (cap de seguridad) y reconstruye la probabilidad. El delta es V2 − V1 en puntos porcentuales.</div>`);
+    <div class="gpi-note">GP parte de una probabilidad inicial calibrada y le aplica el contexto de cada equipo (con un tope de seguridad) para reconstruir la probabilidad GP final. El delta es el efecto del contexto en puntos porcentuales.</div>`);
 
   // 3) FACTORES CLAVE (ambos equipos, ordenados por peso; excluidos atenuados)
   if (an.factors && an.factors.length) {
@@ -2422,7 +2463,7 @@ function h2hAnalysisHtml(d) {
   // 7) TRAZABILIDAD — "Cómo llegó GP a este resultado" (colapsable, B11)
   html += traceabilityHtml(d);
 
-  html += `<div class="disc">V1 (modelo global) es el control; V2 (GP Intelligence) es un challenger experimental solo en este sandbox y no afecta al track record. Cancha neutral, sin factor localía. Estimaciones de un modelo estadístico + contexto. No es consejo financiero ni recomendación de apuesta.</div>`;
+  html += `<div class="disc">GP parte de una probabilidad inicial calibrada y le aplica el contexto del partido para reconstruir la probabilidad GP final. Cancha neutral, sin factor localía. Estimaciones de un modelo estadístico + contexto. No es consejo financiero ni recomendación de apuesta.</div>`;
   return html;
 }
 
@@ -2434,17 +2475,17 @@ function traceabilityHtml(d) {
   return `<details class="gpi-trace">
     <summary>🔎 Cómo llegó GP a este resultado</summary>
     <div class="gpi-tr-body">
-      <div class="gpi-tr-h">Modelo base (V1)</div>
+      <div class="gpi-tr-h">Probabilidad inicial</div>
       <div class="gpi-tr-row"><span>${d.a.flag} ${d.a.name} · Elo base</span><span>${d.a.elo}</span></div>
       <div class="gpi-tr-row"><span>${d.b.flag} ${d.b.name} · Elo base</span><span>${d.b.elo}</span></div>
-      <div class="gpi-tr-row"><span>Probabilidad V1</span><span>${pct(dec.baseLine.aWin, 1)} · ${pct(dec.baseLine.draw, 1)} · ${pct(dec.baseLine.bWin, 1)}</span></div>
+      <div class="gpi-tr-row"><span>Probabilidad inicial</span><span>${pct(dec.baseLine.aWin, 1)} · ${pct(dec.baseLine.draw, 1)} · ${pct(dec.baseLine.bWin, 1)}</span></div>
       <div class="gpi-tr-h">Contexto · ${d.a.name}</div>${factorLines(ctx.factorsA)}
       <div class="gpi-tr-row strong"><span>Ajuste total ${d.a.name}</span><span>${dec.deltaA > 0 ? '+' : ''}${dec.deltaA} Elo</span></div>
       <div class="gpi-tr-h">Contexto · ${d.b.name}</div>${factorLines(ctx.factorsB)}
       <div class="gpi-tr-row strong"><span>Ajuste total ${d.b.name}</span><span>${dec.deltaB > 0 ? '+' : ''}${dec.deltaB} Elo</span></div>
-      <div class="gpi-tr-h">Resultado (V2)</div>
+      <div class="gpi-tr-h">Probabilidad GP final</div>
       <div class="gpi-tr-row"><span>Elo ajustado</span><span>${d.a.elo + dec.deltaA} · ${d.b.elo + dec.deltaB}</span></div>
-      <div class="gpi-tr-row"><span>Probabilidad V2</span><span>${pct(dec.v2Line.aWin, 1)} · ${pct(dec.v2Line.draw, 1)} · ${pct(dec.v2Line.bWin, 1)}</span></div>
+      <div class="gpi-tr-row"><span>Probabilidad GP final</span><span>${pct(dec.v2Line.aWin, 1)} · ${pct(dec.v2Line.draw, 1)} · ${pct(dec.v2Line.bWin, 1)}</span></div>
     </div>
   </details>`;
 }
@@ -2942,7 +2983,7 @@ function renderPerf(sum, cal, arb, exp) {
     <div class="xo-row"><span>Quoted→ejecutable</span><span class="mono">${arb.quoted_to_executable_conversion == null ? 'N/A' : (arb.quoted_to_executable_conversion * 100).toFixed(0) + '%'}</span></div>
     <div class="xo-row"><span>Vida mediana (s)</span><span class="mono">${(arb.lifetime_seconds && arb.lifetime_seconds.p50) ?? 'N/A'}</span></div>
     <div class="warn">Las métricas reflejan oportunidades observadas, no ejecuciones realizadas por GP. ROI realizado: N/A.</div>`) : '';
-  const expBlock = (exp && exp.enabled) ? panel('Experimental (GP Intelligence V2)', 'control V1 vs challenger V2', `<div class="warn">${xe(exp.note)}</div>`) : (exp ? `<div class="xo-foot">${xe(exp.note || '')}</div>` : '');
+  const expBlock = (exp && exp.enabled) ? panel('Señales en validación', 'no afectan el modelo oficial ni el track record', `<div class="warn">${xe(exp.note)}</div>`) : (exp ? `<div class="xo-foot">${xe(exp.note || '')}</div>` : '');
   $('#perfBody').innerHTML = header + empty + cards + calChart + arbBlock + expBlock +
     `<div class="xo-foot">Metodología ${xe((sum && sum.methodology_version) || '')}. N/A indica que la métrica no es calculable (no es cero). Las señales experimentales y legacy se muestran por separado.</div>`;
 }
@@ -2979,7 +3020,7 @@ async function loadValue(rootSel) {
         items.sort((a, b) => (order[a.classification] - order[b.classification]) || ((b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0)));
         const head = `<div class="explain"><b>Vista admin (interna)</b> · ${items.length} evaluaciones · no pública.<br>
           <b>Edge bruto</b> = combinada (ensemble) − break-even · <b>Edge ajustado</b> = conservadora − break-even. GP no es el ensemble.<br>
-          V1 es el modelo oficial usado por Value. V2 es experimental y no modifica la clasificación.</div>`;
+          Diagnóstico interno del Value Engine. Probabilidad GP = modelo oficial.</div>`;
         // Candidatos READY (con el botón "Aprobar como Pick interna") arriba de las evaluaciones.
         const candSection = `<div class="gcard" style="margin-bottom:12px"><h3>CANDIDATOS A PICK GP (revisión humana)</h3><div id="valCandBody" class="muted" style="font-size:12px">Cargando…</div></div>`;
         const picksSection = `<div class="gcard" style="margin-bottom:12px"><h3>PICKS APROBADAS · INTERNAS</h3><div id="valPicksBody" class="muted" style="font-size:12px">Cargando…</div></div>`;

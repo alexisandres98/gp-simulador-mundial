@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 55%, #0BA661 125%); color: #fff;
+  padding: 26px 44px; position: relative; }
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.badge { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 19px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 19px; font-weight: 800; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); font-weight: 800; font-size: 13px; padding: 7px 14px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.m { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18); border-radius: 13px; padding: 15px 19px; }
+.m.star { background: rgba(124,242,188,.16); border-color: rgba(124,242,188,.5); }
+.mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.mh .t { font-size: 18px; font-weight: 800; }
+.mh .time { font-size: 12px; color: #C9F2DE; font-weight: 600; }
+.bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.14); margin-bottom: 8px; }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.38); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; }
+.lbl .big { font-weight: 800; }
+.foot { position: absolute; bottom: 18px; left: 44px; right: 44px; display: flex; align-items: center; justify-content: space-between; }
+.cta { background: #fff; color: #067647; font-size: 17px; font-weight: 800; padding: 10px 22px; border-radius: 99px; }
+.foot .small { font-size: 13px; color: #C9F2DE; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● 16AVOS DE FINAL</div></div>
+  <h1>Arrancan los 16avos de final 🏆</h1>
+  <div class="grid">
+    <div class="m star">
+      <div class="mh"><div class="t">🇿🇦 Sudáfrica vs Canadá 🇨🇦</div><div class="time">Hoy · 2:00 PM COL</div></div>
+      <div class="bar"><div class="h" style="width:10.9%"></div><div class="d" style="width:21.4%"></div><div class="a" style="width:67.8%"></div></div>
+      <div class="lbl"><span>SUD 10.9%</span><span>X 21.4%</span><span class="big">🇨🇦 67.8%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇧🇷 Brasil vs Japón 🇯🇵</div><div class="time">Mañana · 12:00 PM</div></div>
+      <div class="bar"><div class="h" style="width:49.2%"></div><div class="d" style="width:27.9%"></div><div class="a" style="width:22.9%"></div></div>
+      <div class="lbl"><span class="big">🇧🇷 49.2%</span><span>X 27.9%</span><span>JPN 22.9%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇩🇪 Alemania vs Suecia 🇸🇪</div><div class="time">Mañana · 3:30 PM</div></div>
+      <div class="bar"><div class="h" style="width:58.0%"></div><div class="d" style="width:25.4%"></div><div class="a" style="width:16.6%"></div></div>
+      <div class="lbl"><span class="big">🇩🇪 58.0%</span><span>X 25.4%</span><span>SUE 16.6%</span></div>
+    </div>
+    <div class="m">
+      <div class="mh"><div class="t">🇳🇱 P. Bajos vs Marruecos 🇲🇦</div><div class="time">Mañana · 8:00 PM</div></div>
+      <div class="bar"><div class="h" style="width:52.4%"></div><div class="d" style="width:27.1%"></div><div class="a" style="width:20.5%"></div></div>
+      <div class="lbl"><span class="big">🇳🇱 52.4%</span><span>X 27.1%</span><span>MAR 20.5%</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="cta">gpsimulador.com</div>
+    <div class="small">Probabilidades del modelo · se mueven EN VIVO con cada gol</div>
+  </div>
+</body></html>

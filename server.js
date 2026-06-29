@@ -839,34 +839,25 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
 // header List-Unsubscribe, que delata correo masivo). Objetivo: reenganchar a quien hace días no entra.
 function reengageEmail(referLink) {
   const subject = 'ya sé que estás perdiendo dinero apostando';
+  // SIN enlaces (los links empujan a Promociones; el email de código llega a Principal porque no tiene ninguno),
+  // corto, personal, y termina con una PREGUNTA (invitar respuesta es señal fuerte de Principal). Sin "gratis".
   const text = `Hola,
 
-Te voy a ser directo: casi todos pierden dinero apostando porque juegan contra la casa sin información real.
+Casi todos pierden plata apostando por ir contra la casa sin información real.
 
-Para eso hice GP Simulador. Simula el Mundial 10.000 veces y te muestra dónde el mercado se equivoca: qué probabilidades son realistas y dónde hay valor de verdad.
+Para eso hice GP Simulador: simula el Mundial 10.000 veces y te muestra dónde el mercado se equivoca.
 
-Hace unos días abrí la beta nueva, bastante más potente: Picks del modelo, oportunidades de valor y arbitraje, comparación entre más de 40 casas y una nueva terminal de inteligencia deportiva.
+Hace poco abrí una versión nueva, bastante más potente, y quiero que la pruebes. Entrá con tu misma cuenta en gpsimulador.com y andá a "Invitar": ahí te explico cómo activarla.
 
-Te la doy gratis si invitás a 5 amigos. Acá ves tu progreso y tu link:
-${referLink}
-
-Si tenés alguna duda, respondé este correo y te leo.
+¿La probás? Si tenés cualquier duda, respondé este correo y te leo.
 
 Alexis
 GP Simulador
 
 (Si no querés recibir más correos, respondé "baja".)`;
-  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">
-<p>Hola,</p>
-<p>Te voy a ser directo: casi todos pierden dinero apostando porque juegan contra la casa sin información real.</p>
-<p>Para eso hice <b>GP Simulador</b>. Simula el Mundial 10.000 veces y te muestra dónde el mercado se equivoca: qué probabilidades son realistas y dónde hay valor de verdad.</p>
-<p>Hace unos días abrí la <b>beta nueva</b>, bastante más potente: Picks del modelo, oportunidades de valor y arbitraje, comparación entre más de 40 casas y una nueva terminal de inteligencia deportiva.</p>
-<p>Te la doy gratis si invitás a 5 amigos. Acá ves tu progreso y tu link:<br>
-<a href="${referLink}" style="color:#0a7cff">${referLink}</a></p>
-<p>Si tenés alguna duda, respondé este correo y te leo.</p>
-<p>Alexis<br>GP Simulador</p>
-<p style="color:#999;font-size:12px">Si no querés recibir más correos, respondé "baja".</p>
-</div>`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:540px">` +
+    text.split('\n\n').map(function (p) { return '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>'; }).join('') +
+    `</div>`;
   return { subject, text, html };
 }
 const REENGAGE_FROM = 'Alexis de GP Simulador <codigo@gpsimulador.com>';

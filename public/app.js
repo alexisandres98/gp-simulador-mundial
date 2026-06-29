@@ -2731,9 +2731,10 @@ async function verifyCode() {
   const j = await r.json();
   if (!r.ok) { $('#loginMsg').textContent = j.error; return; }
   localStorage.setItem('wc_token', j.token);
-  USER = { email: j.email, isAdmin: j.isAdmin, favorites: j.favorites, alerts: j.alerts };
   ARB = null; // fuerza recargar Oportunidades en este login (evita que quede el candado del teaser)
-  closeModal(); renderHeader(); await loadState(); switchTab('arb');
+  await loadMe();            // trae el USER completo (incl. beta_access) y redirige a /x si el usuario tiene acceso
+  if (BETA_REDIRECT) return; // ya navega a la plataforma nueva
+  closeModal(); await loadState(); switchTab('arb'); gotoFromUrl();
   if (currentTab() === 'arb' && !ARB) loadArb(); // garantía extra: cargar arb aunque el estado venga raro
 }
 async function logout() { localStorage.removeItem('wc_token'); USER = null; ARB = null; closeAvatarMenu(); closeSheet(); renderHeader(); await loadState(); switchTab('teams'); }
@@ -3310,4 +3311,8 @@ async function openPick(publicId) {
 // loadMe() renderiza el header ANTES de que I18N.load() traiga el diccionario → el nav/login saldría con keys
 // crudas (nav.teams, auth.login). Tras cargar i18n, I18N.load() ya re-resolvió el locale (con USER.lang si hay
 // sesión) → repintamos el header para que el nav y el botón de login queden traducidos. (Fix bug Q.1.1.)
-(async () => { await loadMe(); await I18N.load(); renderHeader(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); renderTicker(); connectSSE(); })();
+// deep-link opcional: ?goto=<tab> (p.ej. el email de la beta enlaza a ?goto=referidos). Solo tabs seguros y con sesión.
+function gotoFromUrl() {
+  try { const g = new URLSearchParams(location.search).get('goto'); if (g && USER && ['referidos', 'following', 'alerts', 'perf', 'value', 'picks', 'arb'].indexOf(g) >= 0) switchTab(g); } catch (e) {}
+}
+(async () => { await loadMe(); if (BETA_REDIRECT) return; await I18N.load(); renderHeader(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); gotoFromUrl(); renderTicker(); connectSSE(); })();

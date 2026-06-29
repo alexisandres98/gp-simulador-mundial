@@ -766,33 +766,66 @@ async function sendTeamAlerts(matchIds) {
 
 // Email de alerta en vivo (inicio de partido / gol)
 // Email masivo de novedades (re-engancha a usuarios que entraron antes de las nuevas features)
-function broadcastEmail(refLink) {
-  const subject = '⚽ Tu GP Simulador del Mundial ahora tiene MUCHO más';
-  const text = `Hola 👋\n\nDesde que entraste, le agregamos un montón de cosas al GP Simulador del Mundial:\n\n• Página de cada partido con alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y nuestro GP Take.\n• Página de cada selección: plantilla, jugadores clave, forma, cruces probables y mercados.\n• Alertas por email cuando empieza el partido y cuando hay GOL de tus equipos seguidos.\n• Probabilidades que se mueven en vivo con cada gol + escáner de oportunidades modelo vs mercado (Polymarket/Kalshi).\n• Track record público y honesto del modelo (Brier).\n\nEntra y míralo: https://gpsimulador.com\n\n✈️ Únete a nuestro canal de Telegram para recibir oportunidades y resultados en vivo: https://t.me/gpsimulador\n\n¿Te gusta? Invita a tus amigos con tu link personal y conviértete en Embajador del GP Simulador 🏅:\n${refLink}\n\n— GP Simulador del Mundial`;
-  const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#14201A">
-  <h2 style="margin:0 0 6px">⚽ GP Simulador del Mundial</h2>
-  <p style="color:#555;margin:0 0 16px">Desde que entraste, le agregamos <b>muchísimo</b>:</p>
-  <div style="background:#0E2A1E;color:#fff;border-radius:14px;padding:20px 22px;margin:0 0 18px">
-    <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:14px">
-      <li><b>Página de cada partido</b>: alineaciones confirmadas, eventos en vivo, stats (posesión, tiros, xG) y GP Take.</li>
-      <li><b>Página de cada selección</b>: plantilla, jugadores clave, forma, cruces probables y mercados.</li>
-      <li><b>Alertas</b> por email al iniciar el partido y en cada <b>gol</b> de tus equipos seguidos.</li>
-      <li><b>Oportunidades</b> modelo vs mercado (Polymarket/Kalshi) que se mueven en vivo.</li>
-      <li><b>Track record</b> público y honesto del modelo.</li>
-    </ul>
+// Email de anuncio de la BETA (rollout por referidos). CTA → ventana de Referidos del usuario (?goto=referidos).
+// Conciso, una sola acción clara, multipart text+html (mejor entregabilidad), sin imágenes externas ni palabras
+// "spammy", con motivo de recepción + baja. El From verificado (codigo@gpsimulador.com, SPF/DKIM Resend) hace el resto.
+function broadcastEmail(referLink) {
+  const subject = 'Tu acceso anticipado a la beta de GP Intelligence';
+  const preheader = 'Invita a 5 amigos y desbloquea Picks, Value, arbitraje y la nueva terminal — gratis.';
+  const text = `Hola,
+
+Estamos abriendo la BETA de GP Intelligence: una versión nueva, mucho más potente, del GP Simulador del Mundial.
+
+Qué incluye la beta:
+• Picks GP — selecciones del modelo con seguimiento honesto.
+• Oportunidades de Value y de arbitraje (modelo vs mercado).
+• Un modelo más potente y mejor calibrado, con contexto en vivo.
+• Comparación entre más de 40 casas de apuestas.
+• Nueva terminal de inteligencia deportiva (más rápida y completa).
+
+Cómo entrar — gratis:
+Invita a 5 amigos verificados con tu link personal. Cuando se registren, se te desbloquea el acceso a la beta automáticamente. (Yo también puedo darte acceso manual.)
+
+Abre tu ventana de referidos, copia tu link y mira tu progreso (0/5):
+${referLink}
+
+Tu cuenta, tus seguidos, tu historial y tus alertas siguen igual: la beta es la misma cuenta, con una experiencia nueva.
+
+— Alexis · GP Simulador del Mundial
+
+Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde a este correo con "baja".`;
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:26px 26px 22px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">Acceso anticipado</div>
+      <h1 style="margin:8px 0 0;font-size:23px;line-height:1.25">Te invitamos a la beta de <span style="color:#18E6A3">GP Intelligence</span></h1>
+      <p style="margin:10px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">Una versión nueva y mucho más potente del GP Simulador del Mundial. La misma cuenta, una experiencia nueva.</p>
+    </div>
+    <div style="padding:22px 26px">
+      <p style="margin:0 0 12px;font-size:14px;color:#14201A;font-weight:700">Qué desbloqueas en la beta</p>
+      <ul style="margin:0 0 20px;padding-left:18px;line-height:1.7;font-size:14px;color:#2b3a33">
+        <li><b>Picks GP</b> — selecciones del modelo con seguimiento honesto.</li>
+        <li><b>Value y arbitraje</b> — oportunidades del modelo frente al mercado.</li>
+        <li><b>Modelo más potente y calibrado</b>, con contexto en vivo.</li>
+        <li>Comparación entre <b>más de 40 casas</b> de apuestas.</li>
+        <li>Nueva <b>terminal de inteligencia deportiva</b>.</li>
+      </ul>
+      <div style="background:#f0faf6;border:1px solid #cdeede;border-radius:12px;padding:16px 18px;margin:0 0 20px">
+        <p style="margin:0 0 6px;font-size:15px;color:#0E2A1E;font-weight:800">Cómo entrar — gratis</p>
+        <p style="margin:0;font-size:13.5px;color:#3a4a42;line-height:1.55">Invita a <b>5 amigos verificados</b> con tu link personal. Cuando se registren, tu acceso a la beta se desbloquea solo.</p>
+      </div>
+      <p style="text-align:center;margin:0 0 8px">
+        <a href="${referLink}" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:15px 30px;border-radius:99px;font-size:15px">Ver mi progreso e invitar →</a>
+      </p>
+      <p style="text-align:center;margin:0 0 22px;font-size:12px;color:#8a9a92">Abre tu ventana de referidos, copia tu link y mira tu progreso (0/5).</p>
+      <p style="margin:0;font-size:13px;color:#5a6a62;line-height:1.5">Tus seguidos, historial, alertas y preferencias siguen intactos. La beta es tu misma cuenta.</p>
+    </div>
+    <div style="border-top:1px solid #eef2f0;padding:16px 26px;background:#fbfcfb">
+      <p style="margin:0 0 4px;font-size:13px;color:#3a4a42">✈️ ¿Quieres oportunidades y resultados en vivo? <a href="https://t.me/gpsimulador" style="color:#0E9F6E;font-weight:700;text-decoration:none">Únete a nuestro canal de Telegram</a>.</p>
+      <p style="margin:8px 0 0;font-size:11px;color:#9aa8a1">Recibes este correo porque tienes una cuenta en GP Simulador del Mundial. Para no recibir novedades, responde con "baja".</p>
+    </div>
   </div>
-  <p style="text-align:center;margin:0 0 18px"><a href="https://gpsimulador.com" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:14px 28px;border-radius:99px;font-size:15px">Ver las novedades →</a></p>
-  <div style="background:#EAF6FF;border:1px solid #cfe6fb;border-radius:12px;padding:14px 16px;margin:0 0 18px;text-align:center">
-    <p style="font-size:14px;margin:0 0 8px;color:#14201A"><b>✈️ Únete a nuestro canal de Telegram</b></p>
-    <p style="font-size:13px;color:#555;margin:0 0 10px">Oportunidades, resultados y novedades en vivo, directo a tu teléfono.</p>
-    <a href="https://t.me/gpsimulador" style="display:inline-block;background:#229ED9;color:#fff;text-decoration:none;font-weight:700;padding:10px 22px;border-radius:99px;font-size:14px">Unirme al canal →</a>
-  </div>
-  <div style="border-top:1px solid #e3e8e6;padding-top:16px">
-    <p style="font-size:14px;margin:0 0 8px"><b>🎁 Invita y sube de nivel</b></p>
-    <p style="font-size:13px;color:#555;margin:0 0 10px">Comparte tu link personal. Cada amigo que se una te sube como <b>Embajador</b> del GP Simulador — los Embajadores tendrán beneficios exclusivos más adelante.</p>
-    <p style="font-size:13px;margin:0"><a href="${refLink}" style="color:#0E9F6E;font-weight:700">${refLink}</a></p>
-  </div>
-  <p style="color:#999;font-size:11px;margin-top:20px">Recibes esto porque tienes cuenta en GP Simulador del Mundial.</p>
 </div>`;
   return { subject, text, html };
 }
@@ -2632,7 +2665,8 @@ const server = http.createServer(async (req, res) => {
       let sent = 0, failed = 0;
       for (const email of targets) {
         try {
-          const link = `https://gpsimulador.com/?ref=${ensureRefCode(email)}`;
+          ensureRefCode(email); // asegura que el usuario tenga su código listo al abrir Referidos
+          const link = 'https://gpsimulador.com/?goto=referidos';
           await mailer.sendMail({ to: email, ...broadcastEmail(link) });
           sent++;
           await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota

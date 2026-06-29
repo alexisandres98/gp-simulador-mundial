@@ -314,8 +314,14 @@ async function loadMe() {
     const r = await fetch('/api/me', { headers: hdrs() });
     if (r.ok) { USER = await r.json(); } else { localStorage.removeItem('wc_token'); USER = null; }
   }
+  // ROUTER de la beta: misma cuenta/sesión; si el usuario tiene acceso (grant admin / 5 referidos verificados
+  // / fusión global) → entra a la plataforma nueva (/x). El no-registrado y el registrado sin acceso siguen
+  // exactamente igual en la plataforma actual (esta) + banner. No se migra nada (mismo token wc_token).
+  if (USER && USER.beta_access && !/[?&]noredir=1/.test(location.search)) { location.replace('/x' + (location.search || '')); BETA_REDIRECT = true; return; }
+  renderBetaBanner();
   renderHeader();
 }
+let BETA_REDIRECT = false;
 
 // ---------- shell de navegación ----------
 const ICON = {
@@ -389,8 +395,29 @@ function renderHeader() {
   } else {
     $('#bottomnav').style.display = 'none';
   }
+  renderBetaBanner();
   syncNavActive();
 }
+
+// Banner de la beta (solo para usuarios REGISTRADOS sin acceso beta; el no-registrado no lo ve). Aparece en
+// toda la plataforma actual, cerrable por sesión, y siempre re-accesible desde Referidos. Lleva a Referidos.
+function renderBetaBanner() {
+  const el = document.getElementById('beta-banner'); if (!el) return;
+  let closed = false; try { closed = sessionStorage.getItem('beta_banner_closed') === '1'; } catch (e) {}
+  if (!USER || USER.beta_access || closed) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const ent = USER.beta_entitlement || {};
+  const have = ent.verified_referrals || 0, need = ent.referrals_required || 5;
+  el.className = 'beta-banner';
+  el.innerHTML = `<div class="bb-in">
+    <span class="bb-ic">⚡</span>
+    <div class="bb-tx"><b>${xe(I18N.t('beta_banner.title'))}</b><span>${xe(I18N.t('beta_banner.desc'))}</span></div>
+    <span class="bb-prog" title="${xe(I18N.t('beta_banner.progress'))}">${have}/${need}</span>
+    <button class="bb-cta" onclick="switchTab('referidos')">${xe(I18N.t('beta_banner.cta'))} →</button>
+    <button class="bb-x" aria-label="${xe(I18N.t('common.close') || 'Cerrar')}" onclick="closeBetaBanner()">✕</button>
+  </div>`;
+  el.style.display = '';
+}
+function closeBetaBanner() { try { sessionStorage.setItem('beta_banner_closed', '1'); } catch (e) {} const el = document.getElementById('beta-banner'); if (el) { el.style.display = 'none'; } }
 
 function currentTab() {
   const a = document.querySelector('.tab.active');
@@ -1906,6 +1933,23 @@ function renderAdmin() {
       ${sync.ts ? `Última sincronización: ${new Date(sync.ts).toLocaleTimeString()}${sync.error ? ' · error: ' + sync.error : ''}.` : ''}
       <br>Este panel es solo para <b>corregir manualmente</b> un marcador si la fuente fallara.
     </div>
+    <div class="gcard" id="betaAdminCard">
+      <h3>ACCESO BETA · ENTITLEMENT</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Concede/revoca acceso a la plataforma nueva por email. Acceso automático: 5 referidos verificados. Fusión global: variable de entorno <b>GP_BETA_FUSION_ENABLED</b>.</div>
+      <div class="formrow" style="align-items:flex-end">
+        <label style="flex:1;min-width:180px">Email<br><input id="betaEmail" type="email" placeholder="correo@ejemplo.com" style="width:100%"></label>
+        <label style="flex:1;min-width:140px">Motivo (opcional)<br><input id="betaReason" type="text" placeholder="motivo / fuente" style="width:100%"></label>
+      </div>
+      <div class="formrow">
+        <button class="btn" onclick="betaAdmin('grant')">Conceder</button>
+        <button class="ghost" onclick="betaAdmin('suspend')">Suspender</button>
+        <button class="ghost" onclick="betaAdmin('revoke')">Revocar</button>
+        <button class="ghost" onclick="betaAdmin('reinstate')">Reactivar</button>
+        <button class="ghost" onclick="loadBetaAdmin()">↻ Refrescar</button>
+      </div>
+      <div id="betaAdminMsg" class="muted" style="font-size:12px;margin:6px 0"></div>
+      <div id="betaAdminBody" class="muted" style="font-size:12px">Cargando…</div>
+    </div>
     <div class="gcard" id="candidateCard">
       <h3>CANDIDATE FACTORY · COLA INTERNA</h3>
       <div id="candidateBody" class="muted" style="font-size:12px">Cargando…</div>
@@ -1983,12 +2027,42 @@ function renderAdmin() {
       <div class="muted" style="font-size:11px;margin-bottom:6px">Tu base de clientes va al final del panel: arriba quedan las herramientas internas (candidatos, registro, métricas).</div>
       <div id="userBase" class="muted">Cargando…</div>
     </div>`;
+  loadBetaAdmin();
   loadCandidates();
   loadApprovedPicks();
   loadShadowObservatory();
   loadRegistryAdmin();
   loadTrackRecord();
   loadUsers();
+}
+async function betaAdmin(action) {
+  const email = ($('#betaEmail') || {}).value || '';
+  const reason = ($('#betaReason') || {}).value || '';
+  const msg = $('#betaAdminMsg');
+  if (!/.+@.+\..+/.test(email)) { if (msg) msg.textContent = 'Email inválido.'; return; }
+  try {
+    const r = await fetch('/api/admin/beta/' + action, { method: 'POST', headers: hdrs(), body: JSON.stringify({ email: email.trim().toLowerCase(), reason }) });
+    const j = await r.json();
+    if (msg) msg.textContent = j.ok ? `✓ ${action} · ${email} → ${j.entitlement && j.entitlement.access ? 'CON acceso' : 'sin acceso'}` : ('Error: ' + (j.error || r.status));
+    loadBetaAdmin();
+  } catch (e) { if (msg) msg.textContent = 'Error de red.'; }
+}
+async function loadBetaAdmin() {
+  const el = $('#betaAdminBody'); if (!el) return;
+  try {
+    const r = await fetch('/api/admin/beta/list', { headers: hdrs() });
+    if (!r.ok) { el.innerHTML = '<span class="warn">No autorizado (' + r.status + ').</span>'; return; }
+    const j = await r.json();
+    const rows = (j.grants || []).concat(j.by_referral || []);
+    const head = `<div class="muted" style="font-size:11.5px;margin-bottom:6px">Fusión global: <b>${j.fusion ? 'ON (todos acceden)' : 'off'}</b> · Requisito referidos: <b>${j.referrals_required}</b> · Con acceso: <b>${j.total_with_access}</b></div>`;
+    if (!rows.length) { el.innerHTML = head + '<span class="muted">Sin grants ni usuarios calificados aún.</span>'; return; }
+    const tr = rows.map(g => {
+      const st = g.status === 'active' ? '<span class="green">activo</span>' : g.status === 'suspended' ? '<span class="amber">suspendido</span>' : g.status === 'revoked' ? '<span class="warn">revocado</span>' : g.status;
+      const dt = g.granted_at ? new Date(g.granted_at).toLocaleDateString() : '—';
+      return `<tr><td>${xe(g.email)}</td><td>${st}</td><td>${xe(g.source)}</td><td>${xe(g.granted_by || '—')}</td><td>${dt}</td><td class="mono">${g.verified_referrals}</td><td>${xe(g.reason || '—')}</td></tr>`;
+    }).join('');
+    el.innerHTML = head + `<div style="overflow:auto"><table class="dtable" style="width:100%;font-size:12px"><thead><tr><th>Email</th><th>Estado</th><th>Fuente</th><th>Concedido por</th><th>Fecha</th><th>Refs✓</th><th>Motivo</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+  } catch (e) { el.innerHTML = '<span class="warn">Error de red.</span>'; }
 }
 async function loadCandidates(bodySel) {
   const el = $(bodySel || '#candidateBody'); if (!el) return;
@@ -2320,8 +2394,8 @@ const refReward = t => I18N.t(t.rewardKey);
 function refLink() { return 'https://gpsimulador.com/?ref=' + ((USER && USER.refCode) || ''); }
 async function renderReferidos() {
   if (!USER) return;
-  // refresca refCode + contador desde el servidor (tras login USER aún no los tiene)
-  try { const r = await fetch('/api/me', { headers: hdrs() }); if (r.ok) { const me = await r.json(); USER.refCode = me.refCode; USER.referrals = me.referrals; } } catch { }
+  // refresca refCode + contador + entitlement de beta desde el servidor (tras login USER aún no los tiene)
+  try { const r = await fetch('/api/me', { headers: hdrs() }); if (r.ok) { const me = await r.json(); USER.refCode = me.refCode; USER.referrals = me.referrals; USER.beta_access = me.beta_access; USER.beta_entitlement = me.beta_entitlement; } } catch { }
   const n = USER.referrals || 0;
   const link = refLink();
   const next = REF_TIERS.find(t => t.n > n);
@@ -2329,6 +2403,21 @@ async function renderReferidos() {
   const levelSuffix = level ? ` · ${refReward(level)}` : '';
   let html = `<div style="margin-bottom:14px"><h2 style="margin-bottom:3px">${I18N.t('referidos.title')}</h2>
     <div class="muted" style="font-size:12px">${I18N.t('referidos.subtitle')}</div></div>`;
+  // panel de desbloqueo de la BETA (verificados / requeridos)
+  const ent = USER.beta_entitlement || {};
+  const have = ent.verified_referrals || 0, need = ent.referrals_required || 5;
+  const pct = Math.min(100, Math.round(have / need * 100));
+  if (USER.beta_access) {
+    html += `<div class="dpanel" style="border-color:var(--border-green,rgba(24,230,163,.35));background:linear-gradient(95deg,rgba(24,230,163,.10),transparent)">
+      <div class="dpanel-h"><span class="dpanel-t">⚡ ${xe(I18N.t('referidos.beta_unlocked'))}</span></div>
+      <div class="muted" style="font-size:12.5px">${xe(I18N.t('referidos.beta_unlocked_note'))}</div>
+      <a class="btn" style="display:inline-block;margin-top:10px;text-decoration:none" href="/x">${xe(I18N.t('referidos.beta_open'))} →</a></div>`;
+  } else {
+    html += `<div class="dpanel" style="border-color:var(--border-green,rgba(24,230,163,.35))">
+      <div class="dpanel-h"><span class="dpanel-t">⚡ ${xe(I18N.t('referidos.beta_title'))}</span><span class="mono" style="color:var(--accent);font-weight:700">${have}/${need}</span></div>
+      <div style="height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin:4px 0 8px"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px"></div></div>
+      <div class="muted" style="font-size:12px">${xe(I18N.t('referidos.beta_note', { n: Math.max(0, need - have) }))}</div></div>`;
+  }
   html += `<div class="ref-hero">
     <div class="ref-count">${n}</div>
     <div class="ref-count-lbl">${I18N.t(n === 1 ? 'referidos.count_lbl.one' : 'referidos.count_lbl.other', { level: levelSuffix })}</div>

@@ -2,7 +2,7 @@
 // cliente. El backend la usa para presentación; el frontend la consume vía GET /api/i18n. Los DATOS canónicos
 // (outcome_code HOME/DRAW/AWAY, market_code, team IDs) NO se traducen: el idioma se resuelve aquí, en presentación.
 'use strict';
-const I18N_VERSION = 'i18n-6';
+const I18N_VERSION = 'i18n-7';
 const LOCALES = ['es', 'en'];
 const DEFAULT_LOCALE = 'es';
 
@@ -313,6 +313,11 @@ const DICT = {
     'nav.methodology': 'Metodología',
     'nav.picks_gp': 'Picks GP',
     'nav.more': 'Más',
+    'beta_banner.title': 'Accede gratis a la nueva beta de GP Intelligence',
+    'beta_banner.desc': 'Invita a 5 amigos verificados y desbloquea Picks GP, oportunidades de Value, arbitraje, un modelo más potente y calibrado, comparación entre más de 40 casas y la nueva terminal de inteligencia deportiva.',
+    'beta_banner.cta': 'Ver mi progreso',
+    'beta_banner.progress': 'Referidos verificados',
+    'common.close': 'Cerrar',
     'lang.toggle_aria': 'Cambiar idioma',
     'auth.login': 'Entrar',
     'auth.create_free': 'Crear cuenta gratis',
@@ -961,6 +966,11 @@ const DICT = {
     'referidos.tier_goal.one': '{n} amigo',
     'referidos.tier_goal.other': '{n} amigos',
     'referidos.foot': 'Los Embajadores tendrán beneficios exclusivos cuando evolucionemos la plataforma. ¡Gracias por correr la voz! ⚽',
+    'referidos.beta_title': 'Desbloquea la beta de GP Intelligence',
+    'referidos.beta_note': 'Te faltan {n} referidos verificados para acceder gratis a la nueva plataforma (Picks, Value, arbitraje, modelo más potente y +40 casas).',
+    'referidos.beta_unlocked': 'Acceso beta activo',
+    'referidos.beta_unlocked_note': 'Ya tienes acceso a la nueva plataforma GP Intelligence. Entrá cuando quieras.',
+    'referidos.beta_open': 'Abrir la nueva plataforma',
     'referidos.share_text': '⚽ Mira las probabilidades del Mundial 2026 EN VIVO (gratis) en GP Simulador:',
     'referidos.share_title': 'GP Simulador del Mundial',
     'referidos.tier.amb': 'Embajador 🏅',
@@ -1273,6 +1283,11 @@ const DICT = {
     'nav.methodology': 'Methodology',
     'nav.picks_gp': 'GP Picks',
     'nav.more': 'More',
+    'beta_banner.title': 'Get free access to the new GP Intelligence beta',
+    'beta_banner.desc': 'Invite 5 verified friends and unlock GP Picks, Value opportunities, arbitrage, a more powerful and calibrated model, comparison across 40+ books and the new sports intelligence terminal.',
+    'beta_banner.cta': 'See my progress',
+    'beta_banner.progress': 'Verified referrals',
+    'common.close': 'Close',
     'lang.toggle_aria': 'Change language',
     'auth.login': 'Sign in',
     'auth.create_free': 'Create free account',
@@ -1921,6 +1936,11 @@ const DICT = {
     'referidos.tier_goal.one': '{n} friend',
     'referidos.tier_goal.other': '{n} friends',
     'referidos.foot': 'Ambassadors will get exclusive perks when we evolve the platform. Thanks for spreading the word! ⚽',
+    'referidos.beta_title': 'Unlock the GP Intelligence beta',
+    'referidos.beta_note': 'You need {n} more verified referrals to get free access to the new platform (Picks, Value, arbitrage, a more powerful model and 40+ books).',
+    'referidos.beta_unlocked': 'Beta access active',
+    'referidos.beta_unlocked_note': 'You already have access to the new GP Intelligence platform. Jump in anytime.',
+    'referidos.beta_open': 'Open the new platform',
     'referidos.share_text': '⚽ See the 2026 World Cup odds LIVE (free) on GP Simulador:',
     'referidos.share_title': 'GP Simulador del Mundial',
     'referidos.tier.amb': 'Ambassador 🏅',

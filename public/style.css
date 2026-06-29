@@ -1085,3 +1085,30 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 /* ---------- Admin: distinción lead vs verificado ---------- */
 .badge-lead{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;color:var(--amber,#f5b840);border:1px solid rgba(245,184,64,.45);border-radius:6px;padding:2px 7px;white-space:nowrap}
 .badge-ver{display:inline-block;font-size:10px;font-weight:700;color:var(--accent,#18e6a3);white-space:nowrap}
+
+/* ===== Banner beta (rollout por referidos) — plataforma actual, usuarios sin acceso beta ===== */
+.beta-banner { position: relative; z-index: 5; margin: 0 auto; max-width: 1180px; padding: 0 16px; }
+.beta-banner .bb-in { display: flex; align-items: center; gap: 14px; margin: 10px 0 2px; padding: 12px 16px;
+  background: linear-gradient(95deg, rgba(24,230,163,.14), rgba(24,230,163,.04) 60%, transparent);
+  border: 1px solid var(--border-green, rgba(24,230,163,.35)); border-radius: var(--radius-md);
+  box-shadow: 0 4px 24px rgba(24,230,163,.08); }
+.beta-banner .bb-ic { font-size: 20px; flex: 0 0 auto; filter: drop-shadow(0 0 6px rgba(24,230,163,.5)); }
+.beta-banner .bb-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.beta-banner .bb-tx b { font-size: 14px; color: var(--text); font-weight: 700; }
+.beta-banner .bb-tx span { font-size: 12px; color: var(--text-dim, #9fb0b8); line-height: 1.35; }
+.beta-banner .bb-prog { flex: 0 0 auto; font-family: var(--mono, monospace); font-size: 13px; font-weight: 700; color: var(--accent);
+  background: rgba(24,230,163,.12); border: 1px solid rgba(24,230,163,.3); border-radius: 999px; padding: 4px 11px; }
+.beta-banner .bb-cta { flex: 0 0 auto; cursor: pointer; font-size: 13px; font-weight: 700; color: #04070A;
+  background: var(--accent); border: 0; border-radius: 999px; padding: 9px 16px; white-space: nowrap; }
+.beta-banner .bb-cta:hover { filter: brightness(1.07); }
+.beta-banner .bb-x { flex: 0 0 auto; cursor: pointer; background: transparent; border: 0; color: var(--text-dim, #9fb0b8); font-size: 15px; padding: 4px 6px; line-height: 1; }
+.beta-banner .bb-x:hover { color: var(--text); }
+@media (max-width: 720px) {
+  .beta-banner { padding: 0 12px; }
+  .beta-banner .bb-in { flex-wrap: wrap; gap: 10px; padding: 11px 13px; }
+  .beta-banner .bb-tx { flex-basis: 100%; order: 1; }
+  .beta-banner .bb-ic { order: 0; }
+  .beta-banner .bb-x { order: 0; margin-left: auto; }
+  .beta-banner .bb-prog { order: 2; }
+  .beta-banner .bb-cta { order: 2; flex: 1; text-align: center; }
+}

@@ -1992,7 +1992,12 @@
         LANG = (pref === 'en' || pref === 'es') ? pref : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
         document.documentElement.lang = LANG;
         shell(); load(); loadCanon();
-        fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) { if (me) { S.me = me; if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } } });
+        fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
+          // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
+          // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
+          if (!me || (!me.beta_access && !me.isAdmin)) { if (!/[?&]noredir=1/.test(location.search)) { location.replace('/'); return; } }
+          if (me) { S.me = me; if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } }
+        });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }

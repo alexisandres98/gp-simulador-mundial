@@ -454,6 +454,38 @@ db.matchSlugs = db.matchSlugs || {};
 db.marketSnapshots = db.marketSnapshots || {}; // probs implícitas del mercado capturadas antes del partido (closing line)
 db.sentAlerts = db.sentAlerts || {};           // alertas ya enviadas por partido (evita reenvíos/spam)
 db.refCodes = db.refCodes || {};               // referidos: code → email (lookup de quién refirió)
+db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
+
+// ===== Entitlement de la BETA (rollout sin migrar usuarios) =====
+// La plataforma nueva (premium /x) y la actual (app.js) conviven; un router por usuario decide cuál mostrar.
+// Reglas: (1) GP_BETA_FUSION_ENABLED=true → fin de beta, TODOS los registrados a la nueva. (2) grant admin
+// (active) → acceso; suspended/revoked → bloqueado. (3) >= N referidos VERIFICADOS → acceso automático.
+// Misma cuenta/sesión/DB; solo cambia la interfaz. No se pierde nada (referidos/seguidos/historial/etc.).
+function betaBool(v) { return /^(1|true|yes|on)$/i.test(String(v == null ? '' : v).trim()); }
+function betaFusionOn() { return betaBool(process.env.GP_BETA_FUSION_ENABLED); }
+function betaReferralsRequired() { const n = parseInt(process.env.GP_BETA_REFERRALS_REQUIRED, 10); return Number.isFinite(n) && n > 0 ? n : 5; }
+function verifiedReferralCount(email) {
+  const u = db.users[email]; if (!u || !Array.isArray(u.referrals)) return 0;
+  return u.referrals.filter(e => db.users[e] && db.users[e].verified).length;
+}
+function betaEntitlement(email) {
+  const required = betaReferralsRequired();
+  const verified = verifiedReferralCount(email);
+  const grant = db.betaGrants[email] || null;
+  const fusion = betaFusionOn();
+  let access = false, source = null, status = grant ? grant.status : null;
+  if (fusion) { access = true; source = 'fusion'; }
+  else if (grant && (grant.status === 'suspended' || grant.status === 'revoked')) { access = false; source = grant.status; }
+  else if (grant && grant.status === 'active') { access = true; source = 'admin'; }
+  else if (verified >= required) { access = true; source = 'referrals'; }
+  return {
+    access, source, status,
+    granted_by: grant ? grant.grantedBy || null : null,
+    granted_at: grant ? grant.grantedAt || null : null,
+    reason: grant ? grant.reason || null : null,
+    verified_referrals: verified, referrals_required: required,
+  };
+}
 
 // Genera (si falta) un código de referido único para un usuario. Link: gpsimulador.com/?ref=<code>
 function ensureRefCode(email) {
@@ -1503,7 +1535,12 @@ function getUser(req) {
   const ui = uiFlags.resolveForUser(admin);
   // Fase Q: gating de la experiencia de producto beta (default off → beta:false, nada nuevo se monta).
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin });
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
+  // Rollout de la beta: el entitlement (grant admin / 5 referidos verificados / fusión) habilita el acceso a
+  // la plataforma nueva (/x). Un usuario entitled puede acceder a /api/beta/* aunque no sea admin/allowlist.
+  const ent = betaEntitlement(email);
+  beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
+  beta.entitled = ent.access;
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
 }
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1729,6 +1766,37 @@ const server = http.createServer(async (req, res) => {
       i >= 0 ? muted.splice(i, 1) : muted.push(teamId);
       save();
       return json(res, 200, { mutedTeams: muted });
+    }
+    // --- Admin: gestión del entitlement de la BETA (grant/revoke/suspend/list). Solo admin. ---
+    if (p.startsWith('/api/admin/beta/')) {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (p === '/api/admin/beta/list' && req.method === 'GET') {
+        const grants = Object.entries(db.betaGrants || {}).map(([email, g]) => ({
+          email, status: g.status, source: 'admin', granted_by: g.grantedBy || null, granted_at: g.grantedAt || null, reason: g.reason || null,
+          verified_referrals: verifiedReferralCount(email), registered: !!db.users[email],
+        }));
+        const byReferral = Object.keys(db.users || {})
+          .filter(e => !db.betaGrants[e] && verifiedReferralCount(e) >= betaReferralsRequired())
+          .map(e => ({ email: e, status: 'active', source: 'referrals', granted_by: 'system:referrals', granted_at: null, reason: null, verified_referrals: verifiedReferralCount(e), registered: true }));
+        return json(res, 200, { fusion: betaFusionOn(), referrals_required: betaReferralsRequired(), grants, by_referral: byReferral, total_with_access: grants.filter(g => g.status === 'active').length + byReferral.length });
+      }
+      if (req.method === 'POST') {
+        const body = await readBody(req).catch(() => ({}));
+        const email = String(body.email || '').trim().toLowerCase();
+        if (!email || !/.+@.+\..+/.test(email)) return json(res, 400, { error: 'Email inválido' });
+        const now = Date.now();
+        const act = p.split('/').pop();
+        const cur = db.betaGrants[email] || {};
+        if (act === 'grant') db.betaGrants[email] = { status: 'active', grantedBy: u.email, grantedAt: now, reason: body.reason || null };
+        else if (act === 'revoke') db.betaGrants[email] = { ...cur, status: 'revoked', grantedBy: u.email, grantedAt: cur.grantedAt || now, revokedAt: now, reason: body.reason || cur.reason || null };
+        else if (act === 'suspend') db.betaGrants[email] = { ...cur, status: 'suspended', grantedBy: cur.grantedBy || u.email, grantedAt: cur.grantedAt || now, suspendedAt: now, reason: body.reason || cur.reason || null };
+        else if (act === 'reinstate') db.betaGrants[email] = { ...cur, status: 'active', grantedBy: u.email, grantedAt: now, reason: body.reason || cur.reason || null };
+        else return json(res, 404, { error: 'Acción desconocida' });
+        save();
+        return json(res, 200, { ok: true, email, entitlement: betaEntitlement(email) });
+      }
+      return json(res, 404, { error: 'No encontrado' });
     }
     if (p === '/api/admin/users') {
       const u = getUser(req);

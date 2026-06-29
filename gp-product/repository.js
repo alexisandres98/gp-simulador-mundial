@@ -47,15 +47,17 @@ async function latestSnapshots(db, eventIds) {
   return m;
 }
 
-// Observaciones de contexto aplicadas (factor lineage) de un evento.
+// Observaciones de contexto (factor lineage) de un evento. Orden por created_at DESC: el dedup por factor
+// en dto.analysisFactors se queda con la observación MÁS RECIENTE (la última evaluación), de modo que la
+// evidencia mostrada (Dato/Inferencia) y la dirección reflejan el estado actual, no corridas viejas.
 async function observationsForEvent(db, eventId) {
   const r = await db.query(
     `SELECT factor_code, category, subject_type, subject_id, direction, applied_impact, proposed_impact,
             fact_or_inference, confidence, timestamp_quality
        FROM context_observations
       WHERE canonical_event_id = $1
-      ORDER BY ABS(applied_impact) DESC NULLS LAST
-      LIMIT 50`, [eventId]);
+      ORDER BY created_at DESC
+      LIMIT 80`, [eventId]);
   return r.rows;
 }
 

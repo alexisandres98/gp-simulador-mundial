@@ -766,6 +766,9 @@ async function sendTeamAlerts(matchIds) {
 
 // Email de alerta en vivo (inicio de partido / gol)
 // Email masivo de novedades (re-engancha a usuarios que entraron antes de las nuevas features)
+// Estado del envío masivo (en memoria) para el envío en segundo plano + poll de progreso desde Admin.
+let bcastState = { running: false, sent: 0, failed: 0, total: 0, startedAt: null, finishedAt: null, test: false };
+
 // Email de anuncio de la BETA (rollout por referidos). CTA → ventana de Referidos del usuario (?goto=referidos).
 // Conciso, una sola acción clara, multipart text+html (mejor entregabilidad), sin imágenes externas ni palabras
 // "spammy", con motivo de recepción + baja. El From verificado (codigo@gpsimulador.com, SPF/DKIM Resend) hace el resto.
@@ -2655,25 +2658,35 @@ const server = http.createServer(async (req, res) => {
       try { const r = await valueEngine.publicPick(mPkPub[1]); return r.error ? json(res, 404, r) : json(res, 200, r); } catch (e) { return json(res, 500, { error: 'error' }); }
     }
 
-    // --- admin: email masivo de novedades a todos los usuarios ---
-    if (p === '/api/admin/broadcast' && req.method === 'POST') {
+    // --- admin: email masivo de novedades. La PRUEBA es síncrona (1 email). El masivo corre en SEGUNDO PLANO
+    // (responde al instante) porque enviar a cientos toma minutos y el gateway cortaría la conexión del navegador
+    // (eso producía un falso "error de red" aunque el envío sí terminaba). Guard anti-doble-envío + estado por GET.
+    if (p === '/api/admin/broadcast' && (req.method === 'POST' || req.method === 'GET')) {
       const u = getUser(req);
       if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'GET') return json(res, 200, bcastState);
       if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
       const { test } = await readBody(req);
-      const targets = test ? [u.email] : Object.keys(db.users); // test → solo al admin
-      let sent = 0, failed = 0;
-      for (const email of targets) {
-        try {
-          ensureRefCode(email); // asegura que el usuario tenga su código listo al abrir Referidos
-          const link = 'https://gpsimulador.com/?goto=referidos';
-          await mailer.sendMail({ to: email, ...broadcastEmail(link) });
-          sent++;
-          await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota
-        } catch (e) { failed++; console.error('[broadcast]', email, e.message); }
+      const link = 'https://gpsimulador.com/?goto=referidos';
+      if (test) {
+        try { ensureRefCode(u.email); await mailer.sendMail({ to: u.email, ...broadcastEmail(link) }); console.log('[broadcast] enviados 1/1 (prueba)'); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true }); }
+        catch (e) { return json(res, 200, { ok: false, error: e.message, test: true }); }
       }
-      console.log(`[broadcast] enviados ${sent}/${targets.length} (fallos ${failed})`);
-      return json(res, 200, { ok: true, sent, failed, total: targets.length, test: !!test });
+      if (bcastState.running) return json(res, 200, { ok: false, error: 'Ya hay un envío en curso', state: bcastState });
+      const targets = Object.keys(db.users);
+      bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false };
+      // responder YA; enviar en segundo plano (no se await)
+      json(res, 200, { ok: true, started: true, total: targets.length });
+      (async () => {
+        for (const email of targets) {
+          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...broadcastEmail(link) }); bcastState.sent++; }
+          catch (e) { bcastState.failed++; console.error('[broadcast]', email, e.message); }
+          await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota
+        }
+        bcastState.running = false; bcastState.finishedAt = new Date().toISOString();
+        console.log(`[broadcast] enviados ${bcastState.sent}/${targets.length} (fallos ${bcastState.failed})`);
+      })().catch(e => { bcastState.running = false; bcastState.finishedAt = new Date().toISOString(); console.error('[broadcast] fatal', e.message); });
+      return;
     }
     // --- Fase Q: superficie beta (gateada por GP_BETA_UI_ENABLED; 404 si off → la ruta no existe) ---
     // El shell HTML/JS/CSS no contiene datos sensibles (todo viene de /api/beta/* gateado por betaGuard),

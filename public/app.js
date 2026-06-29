@@ -2320,13 +2320,24 @@ async function broadcastNews(test) {
   if (!test && !confirm('¿Enviar el email de novedades a TODOS los usuarios? Esto no se puede deshacer.')) return;
   bcastBusy = true;
   document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = true);
-  const msg = $('#bcastMsg'); msg.textContent = test ? 'Enviando prueba…' : 'Enviando a todos… (puede tardar)';
+  const msg = $('#bcastMsg'); msg.textContent = test ? 'Enviando prueba…' : 'Iniciando envío…';
+  const done = () => { bcastBusy = false; document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = false); };
   try {
     const r = await fetch('/api/admin/broadcast', { method: 'POST', headers: hdrs(), body: JSON.stringify({ test }) });
     const j = await r.json();
-    msg.textContent = r.ok ? `✓ Enviados ${j.sent}/${j.total}${j.failed ? ` · fallos ${j.failed}` : ''}${j.test ? ' (prueba)' : ''}` : '✗ ' + (j.error || 'error');
-  } catch { msg.textContent = '✗ Error de red'; }
-  finally { bcastBusy = false; document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = false); }
+    if (!r.ok || j.ok === false) { msg.textContent = '✗ ' + (j.error || 'error'); done(); return; }
+    if (test) { msg.textContent = `✓ Prueba enviada (${j.sent}/${j.total})`; done(); return; }
+    // masivo: corre en SEGUNDO PLANO. Poll del estado para mostrar progreso (no se cuelga el navegador).
+    msg.textContent = `Envío iniciado en segundo plano… (${j.total} usuarios)`;
+    const poll = async () => {
+      try {
+        const s = await (await fetch('/api/admin/broadcast', { headers: hdrs() })).json();
+        if (s.running) { msg.textContent = `Enviando… ${s.sent}/${s.total}${s.failed ? ` · fallos ${s.failed}` : ''}`; setTimeout(poll, 3000); }
+        else { msg.textContent = `✓ Envío completado: ${s.sent}/${s.total}${s.failed ? ` · fallos ${s.failed}` : ''}`; done(); }
+      } catch { msg.textContent = 'Envío en curso en el servidor (no se pudo leer el progreso). Revisa los logs.'; done(); }
+    };
+    setTimeout(poll, 2500);
+  } catch { msg.textContent = '✗ Error de red al iniciar'; done(); }
 }
 
 async function loadUsers() {

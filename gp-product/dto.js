@@ -99,6 +99,7 @@ function analysisFactors(observations = [], snapshot = null) {
         confidence: round(conf, 2),
         timestamp_quality_code: upper(o.timestamp_quality), // SOURCE_PUBLISHED / INGESTION_OBSERVED / ...
         subject_team_id: o.subject_type === 'team' ? o.subject_id : null,
+        direction_code: dirCode(o.direction),            // UP / DOWN / FLAT (a favor / en contra / neutral)
         applied: false,                                  // este factor NO tiene impacto per-factor aislado
       });
     }
@@ -121,6 +122,7 @@ function analysisFactors(observations = [], snapshot = null) {
   };
 }
 function pickVec(v) { return v ? { HOME: round(v.home, 4), DRAW: round(v.draw, 4), AWAY: round(v.away, 4) } : null; }
+function dirCode(d) { const s = String(d || '').toLowerCase(); if (s === 'positive' || s === 'up') return 'UP'; if (s === 'negative' || s === 'down') return 'DOWN'; if (s === 'neutral' || s === 'flat') return 'FLAT'; return null; }
 function freshnessCode(f) { if (f == null) return null; const n = Number(f); if (n >= 0.8) return 'FRESH'; if (n >= 0.4) return 'AGING'; return 'STALE'; }
 
 // --- Riesgos: códigos estructurados desde warnings/blockers/uncertainty/completeness. Sin garantías. ---

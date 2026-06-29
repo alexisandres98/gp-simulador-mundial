@@ -38,7 +38,7 @@ async function jobNews() {
   const srcs = await crepo.enabledSources(); const news = srcs.filter(s => s.source_type === 'news');
   if (!news.length) return { sources_attempted: 0, documents_new: 0, claims_extracted: 0, reason: 'no_news_sources' };
   const evs = await upcomingEvents();
-  const fixtures = evs.map(e => ({ id: e.id, home_aliases: aliasOf(aliasToId[norm(e.h)]), away_aliases: aliasOf(aliasToId[norm(e.a)]) }));
+  const fixtures = evs.map(e => ({ id: e.id, home_id: aliasToId[norm(e.h)] || null, away_id: aliasToId[norm(e.a)] || null, home_aliases: aliasOf(aliasToId[norm(e.h)]), away_aliases: aliasOf(aliasToId[norm(e.a)]) }));
   let docs = 0, claims = 0, attempted = 0, ok = 0;
   const allow = [...new Set(news.map(s => s.domain).filter(Boolean))].concat(['bbci.co.uk', 'bbc.co.uk', 'espn.com']);
   for (const s of news) {
@@ -54,13 +54,72 @@ async function jobNews() {
       const d = await crepo.recordDocument({ source_id: s.source_id, canonical_url: it.link, title: it.title, language: s.language, source_published_at: it.published_at, timestamp_quality: it.published_at ? 'SOURCE_PUBLISHED' : 'INGESTION_OBSERVED', normalized_content_hash: nh, content_excerpt: text.slice(0, 280), fetch_run_id: fr }).catch(() => ({ duplicate: true }));
       if (d.duplicate) continue; docs++;
       const ent = er.resolveEvent(text, fixtures);
+      // equipo sujeto del claim (home/away) para poder aplicarlo direccionalmente; null si es ambiguo.
+      const fixSel = ent.selected_event_id ? fixtures.find(f => f.id === ent.selected_event_id) : null;
+      const teamFocus = fixSel ? er.resolveTeamFocus(text, fixSel) : null;
       for (const c of cx.extractClaims(text, { tierClass: s.reliability_tier })) {
-        await crepo.recordClaim({ document_id: d.row.document_id, factor_code: c.factor_code, subject_type: 'team', event_id: ent.selected_event_id, fact_or_inference: c.fact_or_inference, claim_text_hash: c.claim_text_hash, confidence: c.confidence, source_published_at: it.published_at, timestamp_quality: it.published_at ? 'SOURCE_PUBLISHED' : 'INGESTION_OBSERVED', materiality: ent.selected_event_id ? 'MATERIAL' : 'NON_MATERIAL', entity_match_confidence: ent.confidence, entity_match_method: ent.method, applied: false, applied_impact: 0, review_status: ent.review_required ? 'review_required' : 'auto' }).catch(() => {});
+        await crepo.recordClaim({ document_id: d.row.document_id, factor_code: c.factor_code, subject_type: 'team', subject_id: teamFocus, team_id: teamFocus, event_id: ent.selected_event_id, fact_or_inference: c.fact_or_inference, claim_text_hash: c.claim_text_hash, confidence: c.confidence, source_published_at: it.published_at, timestamp_quality: it.published_at ? 'SOURCE_PUBLISHED' : 'INGESTION_OBSERVED', materiality: ent.selected_event_id ? 'MATERIAL' : 'NON_MATERIAL', entity_match_confidence: ent.confidence, entity_match_method: ent.method, applied: false, applied_impact: 0, review_status: ent.review_required ? 'review_required' : 'auto' }).catch(() => {});
         claims++;
       }
     }
   }
   return { sources_attempted: attempted, sources_successful: ok, documents_new: docs, claims_extracted: claims };
+}
+
+// JOB: resolver SEDES de los eventos próximos vía ESPN (sede + ciudad) → catálogo canónico de estadios.
+// Esto habilita el clima exacto (jobWeather) para MÁS partidos. Siembra las 16 sedes (idempotente) y
+// resuelve event_venue_resolution para los próximos sin resolver. NO adivina: sin sede ESPN → no resuelve.
+async function jobResolveVenues() {
+  const seed = require('../collector/venuesSeed');
+  // 1) sembrar/asegurar las 16 sedes (idempotente por canonical_name)
+  const venueId = {};
+  for (const v of seed.VENUES) {
+    const r = await db.query(
+      `INSERT INTO canonical_venues (canonical_name, aliases, city, country, latitude, longitude, timezone, source, verified_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'wc2026-seed',now())
+       ON CONFLICT (canonical_name) DO UPDATE SET latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude,
+         city=EXCLUDED.city, country=EXCLUDED.country, timezone=EXCLUDED.timezone RETURNING venue_id`,
+      [v.name, JSON.stringify(v.aliases), v.city, v.country, v.lat, v.lon, v.tz]).catch(() => null);
+    if (r && r.rows[0]) venueId[v.name] = r.rows[0].venue_id;
+  }
+  // 2) eventos próximos sin resolución
+  const evs = (await db.query(
+    `SELECT id, home_participant h, away_participant a, scheduled_start k FROM canonical_events
+      WHERE scheduled_start > now() AND id NOT IN (SELECT canonical_event_id FROM event_venue_resolution)
+      ORDER BY scheduled_start LIMIT 60`)).rows;
+  if (!evs.length) return { venues_seeded: Object.keys(venueId).length, resolved: 0, reason: 'none_pending' };
+  // 3) ESPN scoreboard en la ventana → mapa (homeNorm|awayNorm) → {fullName, city}
+  const minD = evs[0].k, maxD = evs[evs.length - 1].k;
+  const fmt = (d) => new Date(d).toISOString().slice(0, 10).replace(/-/g, '');
+  const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${fmt(minD)}-${fmt(maxD)}&limit=80`;
+  const sb = await getJSON(url).catch(() => null);
+  if (!sb || sb.code !== 200 || !sb.body) return { venues_seeded: Object.keys(venueId).length, resolved: 0, reason: 'espn_failed' };
+  const espn = [];
+  for (const e of (sb.body.events || [])) {
+    const c = e.competitions && e.competitions[0]; if (!c || !c.venue) continue;
+    const comp = c.competitors || [];
+    const home = comp.find(x => x.homeAway === 'home'), away = comp.find(x => x.homeAway === 'away');
+    if (!home || !away) continue;
+    const hNames = [home.team && home.team.displayName, home.team && home.team.name, home.team && home.team.shortDisplayName].filter(Boolean);
+    const aNames = [away.team && away.team.displayName, away.team && away.team.name, away.team && away.team.shortDisplayName].filter(Boolean);
+    espn.push({ hNames, aNames, fullName: c.venue.fullName, city: c.venue.address && c.venue.address.city });
+  }
+  let resolved = 0;
+  for (const ev of evs) {
+    const hId = aliasToId[norm(ev.h)], aId = aliasToId[norm(ev.a)];
+    const hAl = aliasOf(hId), aAl = aliasOf(aId);
+    const match = espn.find(x =>
+      x.hNames.some(n => hAl.some(al => norm(al) === norm(n))) && x.aNames.some(n => aAl.some(al => norm(al) === norm(n))));
+    if (!match) continue;
+    const v = seed.matchVenue(match.fullName, match.city);
+    if (!v || !venueId[v.name]) continue;
+    const ins = await db.query(
+      `INSERT INTO event_venue_resolution (canonical_event_id, venue_id, espn_venue_name, match_confidence, match_method, status)
+       VALUES ($1,$2,$3,$4,'espn_team_match','resolved') ON CONFLICT (canonical_event_id) DO NOTHING RETURNING resolution_id`,
+      [ev.id, venueId[v.name], match.fullName, 0.9]).catch(() => null);
+    if (ins && ins.rows[0]) resolved++;
+  }
+  return { venues_seeded: Object.keys(venueId).length, events_pending: evs.length, resolved };
 }
 
 // JOB: weather exacto para eventos con venue resuelto. Open-Meteo (sin key).
@@ -102,6 +161,7 @@ async function jobTotals() {
 async function tick({ now = Date.now() } = {}) {
   if (!refreshEnabled()) return { skipped: 'refresh_disabled' };
   const jobs = [
+    { name: 'venue_resolve', interval: 60 * 60 * 1000, fn: jobResolveVenues },
     { name: 'news_fetch', interval: 30 * 60 * 1000, fn: jobNews },
     { name: 'weather_refresh', interval: 60 * 60 * 1000, fn: jobWeather },
     { name: 'goal_market_totals', interval: 30 * 60 * 1000, fn: jobTotals },
@@ -121,4 +181,4 @@ async function tick({ now = Date.now() } = {}) {
   return out;
 }
 
-module.exports = { refreshEnabled, due, jobNews, jobWeather, jobTotals, tick };
+module.exports = { refreshEnabled, due, jobNews, jobResolveVenues, jobWeather, jobTotals, tick };

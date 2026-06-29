@@ -94,9 +94,27 @@ function matchProbs(eloH, eloA) {
   return probsFromLambdas(lh, la);
 }
 
-// Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual)
-function liveMatchProbs(eloH, eloA, hg, ag, minute) {
-  const [lh, la] = lambdas(eloH, eloA);
+// Grupo 3 (jun-29): ajuste de contexto EN VIVO por eventos del partido. Hoy la prob en vivo solo usa
+// marcador+minuto; esto deja que una TARJETA ROJA (evento inequívoco de ESPN/API-Football) penalice la
+// expectativa del equipo sancionado sobre el resto del partido. PURO. Devuelve deltas de Elo por lado.
+// Modelo: una roja ≈ perder ~0.7 goles de expectativa sobre un partido completo ≈ -150 Elo; el efecto se
+// escala solo con el tiempo restante porque liveMatchProbs ya escala las tasas por minutos restantes.
+const RED_CARD_ELO = 150;
+function liveEventAdjustments(events = []) {
+  let homeReds = 0, awayReds = 0;
+  for (const e of (events || [])) {
+    if (!e || e.type !== 'red') continue;
+    if (e.side === 'home') homeReds++; else if (e.side === 'away') awayReds++;
+  }
+  // cada roja adicional pesa un poco menos (rendimientos decrecientes); tope 2 por lado.
+  const eloFor = (n) => n <= 0 ? 0 : -(RED_CARD_ELO * (n >= 2 ? 1.7 : n));
+  return { homeElo: eloFor(Math.min(homeReds, 2)), awayElo: eloFor(Math.min(awayReds, 2)), homeReds, awayReds };
+}
+
+// Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual). opts.eloAdjH/eloAdjA = deltas de
+// Elo de contexto en vivo (p.ej. tarjeta roja) aplicados a la expectativa del resto del partido.
+function liveMatchProbs(eloH, eloA, hg, ag, minute, opts = {}) {
+  const [lh, la] = lambdas(eloH + (opts.eloAdjH || 0), eloA + (opts.eloAdjA || 0));
   const remain = Math.max(0, (90 - (minute || 0)) / 90);
   const rlh = lh * remain, rla = la * remain;
   let pH = 0, pD = 0, pA = 0;
@@ -358,4 +376,4 @@ function explainTeam(team, elos, sim, allSims) {
   return parts.join(' ');
 }
 
-module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };
+module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, liveEventAdjustments, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };

@@ -19,6 +19,20 @@ function resolveEvent(text, fixtures = []) {
   return { selected_event_id: null, candidate_events: hits, confidence: 0.4, method: 'ambiguous_multi', review_required: true }; // ambiguo → review, sin impacto
 }
 
+// resolveTeamFocus(text, fixture) → team_id del equipo SUJETO del claim, o null si es ambiguo.
+// Heurística honesta: cuenta menciones de aliases por lado; atribuye SOLO si un lado domina claramente
+// (margen ≥1 mención y al menos el doble). Ambiguo → null (NO se adivina; el factor no se aplica).
+function resolveTeamFocus(text, fixture) {
+  if (!fixture) return null;
+  const t = norm(text);
+  const count = (aliases) => (aliases || []).reduce((n, a) => { if (!a) return n; const na = norm(a); if (!na) return n; const m = t.split(na).length - 1; return n + m; }, 0);
+  const h = count(fixture.home_aliases), a = count(fixture.away_aliases);
+  if (h === 0 && a === 0) return null;
+  if (h >= a + 1 && h >= a * 2) return fixture.home_id || null;
+  if (a >= h + 1 && a >= h * 2) return fixture.away_id || null;
+  return null;
+}
+
 // clasifica propagación: ORIGINAL vs REPUBLICATION (mismo content hash) vs INDEPENDENT_CONFIRMATION (otro grupo de fuente).
 function classifyPropagation(claim, priorClaims = []) {
   const sameHash = priorClaims.find(p => p.claim_text_hash === claim.claim_text_hash);
@@ -50,4 +64,4 @@ function resolveContradictions(claims = []) {
 }
 function tierRank(t) { return { TIER_1_OFFICIAL: 4, TIER_2_HIGH_REPUTATION: 3, TIER_3_APPROVED_SPECIALIST: 2, TIER_4_UNVERIFIED: 1, BLOCKED: 0 }[t] || 1; }
 
-module.exports = { resolveEvent, classifyPropagation, resolveContradictions, tierRank };
+module.exports = { resolveEvent, resolveTeamFocus, classifyPropagation, resolveContradictions, tierRank };

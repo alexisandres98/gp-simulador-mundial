@@ -22,7 +22,7 @@ const crypto = require('crypto');
   } catch { /* nunca debe impedir el arranque */ }
 })();
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
-const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
+const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, liveEventAdjustments, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');
 // Fase 4: capa de datos contextuales (API-Football principal → ESPN → manual). La UI nunca
 // llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
@@ -1030,7 +1030,7 @@ async function buildMatchDetail(id, user = null) {
   const result = db.results[meta.id] || null;
   const status = result && result.status === 'live' ? 'live' : result && result.status === 'final' ? 'final' : 'scheduled';
   const th = meta.home && teamById[meta.home], ta = meta.away && teamById[meta.away];
-  const probs = modelProbsFor(meta.home, meta.away, result);
+  let probs = modelProbsFor(meta.home, meta.away, result);
   const mkt = (matchMktCache.matches || []).find(m => m.fixtureId === meta.id) || null;
   const outcomes = mkt ? mkt.outcomes : null;
   const names = { home: th ? th.name : 'Local', away: ta ? ta.name : 'Visitante', draw: 'el empate' };
@@ -1051,6 +1051,18 @@ async function buildMatchDetail(id, user = null) {
     isoDate: meta.datetime, espnId: meta.espnId,
     isLive: status === 'live', isFinal: status === 'final',
   }).catch(() => null);
+
+  // Grupo 3 (jun-29): CONTEXTO EN VIVO REACTIVO. Si el partido está en juego, los eventos del partido
+  // (hoy: tarjeta roja, inequívoca) ajustan la probabilidad en vivo del modelo sobre el resto del encuentro
+  // (penalizan la expectativa del equipo sancionado). Antes la prob en vivo solo usaba marcador+minuto.
+  let liveContext = null;
+  if (status === 'live' && probs && probs.live && ctx && Array.isArray(ctx.events)) {
+    const adj = liveEventAdjustments(ctx.events);
+    if (adj.homeElo || adj.awayElo) {
+      probs = liveMatchProbs(effElo(db.elos, meta.home), effElo(db.elos, meta.away), result.hg, result.ag, result.minute, { eloAdjH: adj.homeElo, eloAdjA: adj.awayElo });
+      liveContext = { home_reds: adj.homeReds, away_reds: adj.awayReds, home_team: names.home, away_team: names.away };
+    }
+  }
 
   // Bajas confirmadas por lado: SOLO informan el GP Take (driver + confianza). NO tocan el modelo.
   const injBySide = { home: { team: names.home, players: [] }, away: { team: names.away, players: [] } };
@@ -1113,6 +1125,7 @@ async function buildMatchDetail(id, user = null) {
     modelProbabilities: probs ? {
       homeWin: probs.home, draw: probs.draw, awayWin: probs.away,
       xgHome: probs.xgHome, xgAway: probs.xgAway, likelyScore: probs.likelyScore, live: !!probs.live,
+      liveContext,                       // {home_reds,away_reds,...} si un evento en vivo ajustó la prob
     } : undefined,
     v2,                                  // DTO GP Intelligence V2 | null (Q.1.1 §2, solo con flag+beta)
     v2_requested: !!(user && user.beta && user.beta.matchesV2), // el cliente sabe si debía mostrar V2
@@ -1271,6 +1284,7 @@ async function evaluateUpcomingContext({ limit = 60, throttleMs = 220 } = {}) {
     const dbcfg = require('./database/config');
     if (!dbcfg.db || !dbcfg.db.configured) { return { skipped: 'no_db' }; }
     const crepo = require('./context-engine/repository');
+    const cf = require('./context-engine/collectorFactors');
     const crypto2 = require('crypto');
     const evs = (await dbc.query(
       `SELECT id, home_participant, away_participant, scheduled_start FROM canonical_events
@@ -1283,42 +1297,76 @@ async function evaluateUpcomingContext({ limit = 60, throttleMs = 220 } = {}) {
         if (!deep || !deep.base || !deep.probs) { out.skipped++; continue; }
         const base = deep.base, v2 = deep.probs, c = deep.context || {};
         const baseVec = { home: round4(base.aWin), draw: round4(base.draw), away: round4(base.bWin) };
-        const finalVec = { home: round4(v2.aWin), draw: round4(v2.draw), away: round4(v2.bWin) };
+        const deepVec = { home: v2.aWin, draw: v2.draw, away: v2.bWin };
+        // ---- Grupo 2: fusionar observaciones del collector (clima Open-Meteo + claims de noticias) ----
+        // El clima y las noticias se escribían por separado y NO movían la probabilidad. Acá se convierten en
+        // factores que ajustan el vector final de buildH2HDeep y se persisten como observaciones (con su
+        // evidencia Dato/Inferencia derivada del origen). Cutoff = kickoff (anti-leakage en lectura aguas abajo).
+        const wRow = (await dbc.query(`SELECT weather_factors, venue, apparent_c, precip_mm, wind_kmh, humidity_pct FROM weather_snapshots WHERE canonical_event_id=$1 ORDER BY created_at DESC LIMIT 1`, [ev.id]).catch(() => ({ rows: [] }))).rows[0] || null;
+        const claimRows = (await dbc.query(`SELECT factor_code, fact_or_inference, confidence, team_id, subject_id, review_status FROM context_claims WHERE event_id=$1 AND review_status='auto' ORDER BY created_at DESC LIMIT 40`, [ev.id]).catch(() => ({ rows: [] }))).rows;
+        const fused = cf.fuse(deepVec, { weatherRow: wRow, claims: claimRows, homeId: a, awayId: b });
+        const collectorFx = fused.factors;
+        const finalVec = { home: round4(fused.adjusted.home), draw: round4(fused.adjusted.draw), away: round4(fused.adjusted.away) };
         const adj = { home: round4(finalVec.home - baseVec.home), draw: round4(finalVec.draw - baseVec.draw), away: round4(finalVec.away - baseVec.away) };
         const facA = (c.factorsA || []).map(f => ({ ...f, side: 'a', teamId: a }));
         const facB = (c.factorsB || []).map(f => ({ ...f, side: 'b', teamId: b }));
         const all = facA.concat(facB), included = all.filter(f => f.included);
         const dqA = c.dataQualityA || { score: 0 }, dqB = c.dataQualityB || { score: 0 };
         const compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
-        const hasData = !!c.hasData, moved = (Math.abs(adj.home) + Math.abs(adj.draw) + Math.abs(adj.away)) >= 0.004;
+        const hasData = !!c.hasData || collectorFx.length > 0;
+        const moved = (Math.abs(adj.home) + Math.abs(adj.draw) + Math.abs(adj.away)) >= 0.004;
         const contextState = !hasData ? 'BASE_ONLY' : moved ? 'FULL_CONTEXT' : 'PARTIAL_CONTEXT';
-        const input_hash = 'sha256:' + crypto2.createHash('sha256').update(JSON.stringify({ e: ev.id, base: baseVec, adj, v: 'live-0.2.0' })).digest('hex');
+        const srcCount = (c.hasData ? 2 : 0) + (wRow ? 1 : 0) + (claimRows.length ? 1 : 0);
+        const totalFactorCount = all.length + collectorFx.length;
+        const input_hash = 'sha256:' + crypto2.createHash('sha256').update(JSON.stringify({ e: ev.id, base: baseVec, adj, cf: collectorFx.map(f => f.rawCode + f.side), v: 'live-0.3.0' })).digest('hex');
         const run = await crepo.recordEvaluationRun({
           canonical_event_id: ev.id, context_policy_version: 'context-policy-1', cutoff_at: null,
-          observation_count: all.length, applied_factor_count: included.length, context_state: contextState,
-          context_completeness: compl, data_freshness: 1.0, missing_critical_inputs: [], notes: 'live-h2h-deep',
+          observation_count: totalFactorCount, applied_factor_count: included.length + collectorFx.length, context_state: contextState,
+          context_completeness: compl, data_freshness: 1.0, missing_critical_inputs: [], notes: 'live-h2h-deep+collector',
         }).catch(() => null);
         const snap = await crepo.recordV2Snapshot({
           context_evaluation_run_id: run ? run.run_id : null, canonical_event_id: ev.id, market_code: '1X2', period_code: 'REGULATION',
-          model_family: 'GP_INTELLIGENCE_V2', model_version: 'gp-intelligence-v2-live-0.2.0', context_policy_version: 'context-policy-1',
+          model_family: 'GP_INTELLIGENCE_V2', model_version: 'gp-intelligence-v2-live-0.3.0', context_policy_version: 'context-policy-1',
           base_probability_vector: baseVec, context_adjustments: adj, pre_uncertainty_vector: finalVec, final_probability_vector: finalVec,
           confidence: compl, uncertainty: round4(1 - compl), data_freshness: 1.0, context_completeness: compl,
-          source_count: hasData ? 2 : 0, factor_count: all.length, missing_critical_inputs: [], context_state: contextState,
+          source_count: srcCount, factor_count: totalFactorCount, missing_critical_inputs: [], context_state: contextState,
           cutoff_at: null, input_hash,
         });
         out.evaluated++;
         if (snap && !snap.idempotent) {
           out.snapshots_new++;
+          const nowIso2 = new Date().toISOString();
           for (const f of all) {
             try {
+              // FACT↔INFERENCE: un factor es DATO cuando lo respalda un dato observado real (lista de lesiones
+              // no vacía) o cuando una noticia FACT confirma la baja de ese equipo; el resto son inferencias.
+              const isAvail = f.factorCode === 'AVAILABILITY';
+              const hasRealList = isAvail && f.rawValue && Number(f.rawValue.count) > 0;
+              const confirmed = isAvail && fused.confirmedAvailability.has(f.teamId);
+              const evidence = (hasRealList || confirmed) ? 'fact' : 'inference';
               await crepo.recordObservation({
                 context_policy_version: 'context-policy-1', factor_code: f.factorCode, category: f.category || 'team',
                 subject_type: 'team', subject_id: f.teamId, canonical_event_id: ev.id, source_type: 'provider', source_name: 'gp-context-live',
-                confidence: f.confidence != null ? f.confidence : 0.6, fact_or_inference: 'inference',
+                observed_at: nowIso2, confidence: f.confidence != null ? f.confidence : (confirmed ? 0.85 : 0.6), fact_or_inference: evidence,
                 direction: f.dir === 'up' ? 'positive' : f.dir === 'down' ? 'negative' : 'neutral',
                 proposed_impact: Number(f.cappedContribution != null ? f.cappedContribution : (f.eloImpact || 0)) || 0,
                 applied_impact: Number(f.cappedContribution != null ? f.cappedContribution : (f.eloImpact || 0)) || 0,
-                raw_value: { label: f.label || null, detail: f.detail || null, included: !!f.included },
+                raw_value: { label: f.label || null, detail: f.detail || null, included: !!f.included, confirmed_by_source: !!confirmed },
+              });
+              out.observations++;
+            } catch (e) { /* dup/no-op */ }
+          }
+          // observaciones del collector (clima + noticias) con su evidencia real
+          for (const f of collectorFx) {
+            try {
+              await crepo.recordObservation({
+                context_policy_version: 'context-policy-1', factor_code: f.factorCode, category: f.category || 'conditions',
+                subject_type: f.side === 'match' ? 'match' : 'team', subject_id: f.side === 'match' ? null : f.teamId,
+                canonical_event_id: ev.id, source_type: f.source === 'open-meteo' ? 'weather' : 'news', source_name: f.source || 'collector',
+                observed_at: nowIso2, confidence: f.confidence != null ? f.confidence : 0.6, fact_or_inference: f.evidence,
+                direction: f.dir === 'positive' ? 'positive' : f.dir === 'negative' ? 'negative' : 'neutral',
+                proposed_impact: 0, applied_impact: 0,
+                raw_value: { raw_code: f.rawCode, detail: f.detail || null, pp: f.drawPp != null ? f.drawPp : (f.teamPp != null ? Math.abs(f.teamPp) : null) },
               });
               out.observations++;
             } catch (e) { /* dup/no-op */ }

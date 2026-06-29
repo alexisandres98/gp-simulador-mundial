@@ -76,6 +76,7 @@
       g_xg: 'xG esperado', g_total: 'Total esperado', g_ou: 'Más / Menos', g_btts: 'Ambos anotan', g_scores: 'Marcadores más probables', g_over: 'Más', g_under: 'Menos', g_yes: 'Sí', g_no: 'No', goals_none: 'Sin proyección de goles disponible.',
       live_min: 'Minuto', live_events: 'Eventos', live_stats: 'Estadísticas', live_prob: 'Probabilidad en vivo (modelo)', live_none: 'No hay datos en vivo verificados para este partido.',
       live_stale: 'Datos en vivo posiblemente desactualizados; pueden no reflejar el estado actual.',
+      live_ctx_red: 'Probabilidad en vivo ajustada por tarjeta roja ({team}).',
       st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Amarillas',
       mod_form: 'Forma reciente', mod_lineups: 'Alineaciones', mod_stats: 'Estadísticas',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
@@ -204,6 +205,7 @@
       g_xg: 'Expected xG', g_total: 'Expected total', g_ou: 'Over / Under', g_btts: 'Both teams score', g_scores: 'Most likely scores', g_over: 'Over', g_under: 'Under', g_yes: 'Yes', g_no: 'No', goals_none: 'No goal projection available.',
       live_min: 'Minute', live_events: 'Events', live_stats: 'Stats', live_prob: 'Live probability (model)', live_none: 'No verified live data for this match.',
       live_stale: 'Live data may be stale; it might not reflect the current state.',
+      live_ctx_red: 'Live probability adjusted for a red card ({team}).',
       st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Yellows',
       mod_form: 'Recent form', mod_lineups: 'Lineups', mod_stats: 'Statistics',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
@@ -1202,6 +1204,12 @@
   function mvLive(fx) {
     if (!fx || fx.status !== 'live') return '';
     var mp = fx.modelProbabilities, hasLiveProb = mp && mp.live === true;
+    var lc = mp && mp.liveContext;
+    var lcNote = '';
+    if (lc && (lc.home_reds || lc.away_reds)) {
+      var redTeam = lc.home_reds && lc.away_reds ? (lc.home_team + ' / ' + lc.away_team) : lc.home_reds ? lc.home_team : lc.away_team;
+      lcNote = '<p class="gx-mod-note gx-live-ctx">' + ic('square-rounded-filled') + ' ' + esc(t('live_ctx_red', { team: redTeam })) + '</p>';
+    }
     var stale = ageFresh(fx.updatedAt) === 'STALE';
     var sc = fx.score ? (fx.score.home + ' - ' + fx.score.away) : '—';
     var evs = (fx.events || []).slice(-6).reverse();
@@ -1211,7 +1219,7 @@
     var body =
       '<div class="gx-live-top"><span class="gx-live-pill">' + esc(t('st_live')) + '</span><b class="gx-mono gx-live-score">' + esc(sc) + '</b>' + (fx.minute != null ? '<span class="gx-ck-clock">' + esc(fx.minute + "'") + '</span>' : '') + '<span class="gx-spacer"></span>' + freshChip(ageFresh(fx.updatedAt), 'data') + '</div>' +
       (stale ? '<p class="gx-mod-note gx-warn">' + ic('alert-triangle') + ' ' + esc(t('live_stale')) + '</p>' : '') +
-      (hasLiveProb ? '<div class="gx-mod-sub gx-label">' + esc(t('live_prob')) + '</div><div class="gx-pbar sm"><i class="h" style="width:' + ((mp.homeWin || 0) * 100) + '%"></i><i class="d" style="width:' + ((mp.draw || 0) * 100) + '%"></i><i class="a" style="width:' + ((mp.awayWin || 0) * 100) + '%"></i></div><div class="gx-plabels"><span><b>' + pct0(mp.homeWin) + '</b></span><span>X <b>' + pct0(mp.draw) + '</b></span><span><b>' + pct0(mp.awayWin) + '</b></span></div>' : '') +
+      (hasLiveProb ? '<div class="gx-mod-sub gx-label">' + esc(t('live_prob')) + '</div><div class="gx-pbar sm"><i class="h" style="width:' + ((mp.homeWin || 0) * 100) + '%"></i><i class="d" style="width:' + ((mp.draw || 0) * 100) + '%"></i><i class="a" style="width:' + ((mp.awayWin || 0) * 100) + '%"></i></div><div class="gx-plabels"><span><b>' + pct0(mp.homeWin) + '</b></span><span>X <b>' + pct0(mp.draw) + '</b></span><span><b>' + pct0(mp.awayWin) + '</b></span></div>' + lcNote : '') +
       (st && st.home ? '<div class="gx-mod-sub gx-label">' + esc(t('live_stats')) + '</div>' + [['possession', t('st_possession')], ['shots', t('st_shots')], ['shotsOnTarget', t('st_sot')], ['corners', t('st_corners')], ['xg', t('st_xg')]].map(function (s) { return statRow(s[0], s[1]); }).filter(Boolean).join('') : '') +
       (evs.length ? '<div class="gx-mod-sub gx-label">' + esc(t('live_events')) + '</div><div class="gx-events">' + evs.map(function (e) { return '<div class="gx-event-i"><span class="gx-mono gx-dim">' + (e.minute != null ? e.minute + "'" : '') + '</span>' + ic(evIcon[e.type] || 'point') + '<span>' + esc(e.player || e.detail || t('evk_other')) + '</span><span class="gx-dim gx-event-team">' + esc(e.teamName || '') + '</span></div>'; }).join('') + '</div>' : '');
     return '<div class="gx-panel gx-mv-panel gx-live-panel"><div class="gx-ph"><span class="gx-label">' + ic('broadcast') + esc(t('mod_live')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';

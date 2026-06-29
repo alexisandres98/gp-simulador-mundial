@@ -1256,6 +1256,83 @@ async function buildH2HDeep(a, b) {
   return data;
 }
 
+// ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
+// contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
+// v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
+// base→contexto→GP en cada partido. SHADOW: no toca el modelo oficial (Value/Picks/Registry siguen igual).
+let _ctxEvalRunning = false, _ctxEvalLast = null;
+function contextEngineOn() { return /^(1|true|yes|on)$/i.test(String(process.env.CONTEXT_ENGINE_ENABLED || '')); }
+async function evaluateUpcomingContext({ limit = 60, throttleMs = 220 } = {}) {
+  if (_ctxEvalRunning) return { skipped: 'running' };
+  _ctxEvalRunning = true;
+  const out = { evaluated: 0, snapshots_new: 0, observations: 0, skipped: 0, errors: 0, started: new Date().toISOString() };
+  try {
+    const dbc = require('./database/client');
+    const dbcfg = require('./database/config');
+    if (!dbcfg.db || !dbcfg.db.configured) { return { skipped: 'no_db' }; }
+    const crepo = require('./context-engine/repository');
+    const crypto2 = require('crypto');
+    const evs = (await dbc.query(
+      `SELECT id, home_participant, away_participant, scheduled_start FROM canonical_events
+        WHERE scheduled_start > now() ORDER BY scheduled_start LIMIT $1`, [limit])).rows;
+    for (const ev of evs) {
+      try {
+        const a = aliasToId[normName(ev.home_participant)], b = aliasToId[normName(ev.away_participant)];
+        if (!a || !b || db.elos[a] == null || db.elos[b] == null) { out.skipped++; continue; }
+        const deep = await buildH2HDeep(a, b);
+        if (!deep || !deep.base || !deep.probs) { out.skipped++; continue; }
+        const base = deep.base, v2 = deep.probs, c = deep.context || {};
+        const baseVec = { home: round4(base.aWin), draw: round4(base.draw), away: round4(base.bWin) };
+        const finalVec = { home: round4(v2.aWin), draw: round4(v2.draw), away: round4(v2.bWin) };
+        const adj = { home: round4(finalVec.home - baseVec.home), draw: round4(finalVec.draw - baseVec.draw), away: round4(finalVec.away - baseVec.away) };
+        const facA = (c.factorsA || []).map(f => ({ ...f, side: 'a', teamId: a }));
+        const facB = (c.factorsB || []).map(f => ({ ...f, side: 'b', teamId: b }));
+        const all = facA.concat(facB), included = all.filter(f => f.included);
+        const dqA = c.dataQualityA || { score: 0 }, dqB = c.dataQualityB || { score: 0 };
+        const compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
+        const hasData = !!c.hasData, moved = (Math.abs(adj.home) + Math.abs(adj.draw) + Math.abs(adj.away)) >= 0.004;
+        const contextState = !hasData ? 'BASE_ONLY' : moved ? 'FULL_CONTEXT' : 'PARTIAL_CONTEXT';
+        const input_hash = 'sha256:' + crypto2.createHash('sha256').update(JSON.stringify({ e: ev.id, base: baseVec, adj, v: 'live-0.2.0' })).digest('hex');
+        const run = await crepo.recordEvaluationRun({
+          canonical_event_id: ev.id, context_policy_version: 'context-policy-1', cutoff_at: null,
+          observation_count: all.length, applied_factor_count: included.length, context_state: contextState,
+          context_completeness: compl, data_freshness: 1.0, missing_critical_inputs: [], notes: 'live-h2h-deep',
+        }).catch(() => null);
+        const snap = await crepo.recordV2Snapshot({
+          context_evaluation_run_id: run ? run.run_id : null, canonical_event_id: ev.id, market_code: '1X2', period_code: 'REGULATION',
+          model_family: 'GP_INTELLIGENCE_V2', model_version: 'gp-intelligence-v2-live-0.2.0', context_policy_version: 'context-policy-1',
+          base_probability_vector: baseVec, context_adjustments: adj, pre_uncertainty_vector: finalVec, final_probability_vector: finalVec,
+          confidence: compl, uncertainty: round4(1 - compl), data_freshness: 1.0, context_completeness: compl,
+          source_count: hasData ? 2 : 0, factor_count: all.length, missing_critical_inputs: [], context_state: contextState,
+          cutoff_at: null, input_hash,
+        });
+        out.evaluated++;
+        if (snap && !snap.idempotent) {
+          out.snapshots_new++;
+          for (const f of all) {
+            try {
+              await crepo.recordObservation({
+                context_policy_version: 'context-policy-1', factor_code: f.factorCode, category: f.category || 'team',
+                subject_type: 'team', subject_id: f.teamId, canonical_event_id: ev.id, source_type: 'provider', source_name: 'gp-context-live',
+                confidence: f.confidence != null ? f.confidence : 0.6, fact_or_inference: 'inference',
+                direction: f.dir === 'up' ? 'positive' : f.dir === 'down' ? 'negative' : 'neutral',
+                proposed_impact: Number(f.cappedContribution != null ? f.cappedContribution : (f.eloImpact || 0)) || 0,
+                applied_impact: Number(f.cappedContribution != null ? f.cappedContribution : (f.eloImpact || 0)) || 0,
+                raw_value: { label: f.label || null, detail: f.detail || null, included: !!f.included },
+              });
+              out.observations++;
+            } catch (e) { /* dup/no-op */ }
+          }
+        }
+        if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
+      } catch (e) { out.errors++; }
+    }
+  } catch (e) { out.error = e.message; }
+  finally { _ctxEvalRunning = false; out.finished = new Date().toISOString(); _ctxEvalLast = out; }
+  return out;
+}
+function round4(x) { return (x == null || !isFinite(x)) ? null : Math.round(x * 1e4) / 1e4; }
+
 function nextMatchForTeam(code) {
   const bracket = resolveRealBracket();
   const cands = [];
@@ -1804,6 +1881,12 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req); const body = await readBody(req).catch(() => ({}));
       const r = await productAnalytics.record({ event_name: body.event, user_ref: u ? u.email : null, anonymous_id: body.anonymousId, session_id: body.sessionId, properties: body.properties, context: body.context });
       return json(res, r.recorded ? 200 : 400, r);
+    }
+    // --- Motor de contexto: disparar evaluación de todos los próximos (admin). GET=estado, POST=ejecutar. ---
+    if (p === '/api/internal/context/evaluate') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'POST') { const r = await evaluateUpcomingContext({ limit: 80 }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { enabled: contextEngineOn(), running: _ctxEvalRunning, last: _ctxEvalLast });
     }
     // --- Sprint 8A: admin analytics (§46). Admin-only. ---
     if (p.startsWith('/api/internal/analytics/')) {
@@ -2538,6 +2621,16 @@ server.listen(PORT, () => {
       const runRetention = () => retention.pruneTelemetry(dbc).then(r => console.log('[retention]', JSON.stringify(r))).catch(() => { });
       setTimeout(runRetention, 60 * 1000);
       setInterval(runRetention, 30 * 60 * 1000);
+    }
+  } catch { /* aislado */ }
+  // Motor de contexto por evento (jun-28). Solo si CONTEXT_ENGINE_ENABLED. Corre 40s tras arrancar y cada 20 min:
+  // evalúa todos los fixtures canónicos próximos con la capa de contexto en vivo y persiste snapshots+observaciones.
+  // SHADOW (no toca el modelo oficial). Aislado/best-effort.
+  try {
+    if (contextEngineOn()) {
+      const runCtx = () => evaluateUpcomingContext({ limit: 60 }).then(r => console.log('[context-engine]', JSON.stringify(r))).catch(() => { });
+      setTimeout(runCtx, 40 * 1000);
+      setInterval(runCtx, 20 * 60 * 1000);
     }
   } catch { /* aislado */ }
   // Fase H.1 — cablea el result provider del settlement automático: accesor a los resultados ESPN (db.results).

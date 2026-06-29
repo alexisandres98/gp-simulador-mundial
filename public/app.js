@@ -2007,11 +2007,16 @@ function renderAdmin() {
     </div>
     <div id="adminMsg" class="warn"></div>
     <div class="gcard" style="margin-top:12px">
-      <h3>EMAIL MASIVO DE NOVEDADES</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">Envía a TODOS los usuarios el correo de novedades (con su link de referido personal). Prueba primero contigo.</div>
+      <h3>EMAIL MASIVO</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px"><b>Anuncio de la beta</b> (diseño completo). Suele caer en Promociones. Prueba primero contigo.</div>
       <div class="formrow">
-        <button class="ghost" onclick="broadcastNews(true)">✉ Enviarme una prueba</button>
-        <button class="btn" onclick="broadcastNews(false)">📣 Enviar a TODOS</button>
+        <button class="ghost" onclick="broadcastNews(true,'beta')">✉ Prueba (anuncio)</button>
+        <button class="btn" onclick="broadcastNews(false,'beta')">📣 Anuncio a TODOS</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin:14px 0 8px"><b>Reactivación (bandeja Principal)</b>: correo estilo personal para reenganchar inactivos. Optimizado para llegar a Principal, no a Promociones. Prueba primero contigo.</div>
+      <div class="formrow">
+        <button class="ghost" onclick="broadcastNews(true,'reengage')">✉ Prueba (reactivación)</button>
+        <button class="btn" onclick="broadcastNews(false,'reengage')">📣 Reactivación a TODOS</button>
       </div>
       <div id="bcastMsg" class="muted" style="font-size:12px;margin-top:8px"></div>
     </div>
@@ -2315,15 +2320,15 @@ async function tgCall(url) {
   } catch { m.textContent = '✗ Error de red'; }
 }
 let bcastBusy = false;
-async function broadcastNews(test) {
+async function broadcastNews(test, variant) {
   if (bcastBusy) return; // evita doble/triple envío por clics repetidos
-  if (!test && !confirm('¿Enviar el email de novedades a TODOS los usuarios? Esto no se puede deshacer.')) return;
+  if (!test && !confirm('¿Enviar este email a TODOS los usuarios? Esto no se puede deshacer.')) return;
   bcastBusy = true;
   document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = true);
   const msg = $('#bcastMsg'); msg.textContent = test ? 'Enviando prueba…' : 'Iniciando envío…';
   const done = () => { bcastBusy = false; document.querySelectorAll('[onclick^="broadcastNews"]').forEach(b => b.disabled = false); };
   try {
-    const r = await fetch('/api/admin/broadcast', { method: 'POST', headers: hdrs(), body: JSON.stringify({ test }) });
+    const r = await fetch('/api/admin/broadcast', { method: 'POST', headers: hdrs(), body: JSON.stringify({ test, variant }) });
     const j = await r.json();
     if (!r.ok || j.ok === false) { msg.textContent = '✗ ' + (j.error || 'error'); done(); return; }
     if (test) { msg.textContent = `✓ Prueba enviada (${j.sent}/${j.total})`; done(); return; }

@@ -833,6 +833,44 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   return { subject, text, html };
 }
 
+// Email de REACTIVACIÓN — estrategia "bandeja PRINCIPAL" (no Promociones): se ve como un correo PERSONAL 1:1,
+// no como campaña. HTML mínimo (solo párrafos, sin botones/cards/imágenes/colores), remitente con nombre de
+// persona, asunto conversacional en minúscula, un solo enlace en texto plano, y la baja en el cuerpo (sin el
+// header List-Unsubscribe, que delata correo masivo). Objetivo: reenganchar a quien hace días no entra.
+function reengageEmail(referLink) {
+  const subject = 'ya sé que estás perdiendo dinero apostando';
+  const text = `Hola,
+
+Te voy a ser directo: casi todos pierden dinero apostando porque juegan contra la casa sin información real.
+
+Para eso hice GP Simulador. Simula el Mundial 10.000 veces y te muestra dónde el mercado se equivoca: qué probabilidades son realistas y dónde hay valor de verdad.
+
+Hace unos días abrí la beta nueva, bastante más potente: Picks del modelo, oportunidades de valor y arbitraje, comparación entre más de 40 casas y una nueva terminal de inteligencia deportiva.
+
+Te la doy gratis si invitás a 5 amigos. Acá ves tu progreso y tu link:
+${referLink}
+
+Si tenés alguna duda, respondé este correo y te leo.
+
+Alexis
+GP Simulador
+
+(Si no querés recibir más correos, respondé "baja".)`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">
+<p>Hola,</p>
+<p>Te voy a ser directo: casi todos pierden dinero apostando porque juegan contra la casa sin información real.</p>
+<p>Para eso hice <b>GP Simulador</b>. Simula el Mundial 10.000 veces y te muestra dónde el mercado se equivoca: qué probabilidades son realistas y dónde hay valor de verdad.</p>
+<p>Hace unos días abrí la <b>beta nueva</b>, bastante más potente: Picks del modelo, oportunidades de valor y arbitraje, comparación entre más de 40 casas y una nueva terminal de inteligencia deportiva.</p>
+<p>Te la doy gratis si invitás a 5 amigos. Acá ves tu progreso y tu link:<br>
+<a href="${referLink}" style="color:#0a7cff">${referLink}</a></p>
+<p>Si tenés alguna duda, respondé este correo y te leo.</p>
+<p>Alexis<br>GP Simulador</p>
+<p style="color:#999;font-size:12px">Si no querés recibir más correos, respondé "baja".</p>
+</div>`;
+  return { subject, text, html };
+}
+const REENGAGE_FROM = 'Alexis de GP Simulador <codigo@gpsimulador.com>';
+
 function liveAlertEmail(h, aw, a) {
   const isGoal = a.kind === 'goal';
   const subject = isGoal ? `⚽ GOL · ${h.name} ${a.hg}-${a.ag} ${aw.name}` : `▶ Empezó · ${h.name} vs ${aw.name}`;
@@ -2666,25 +2704,29 @@ const server = http.createServer(async (req, res) => {
       if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'GET') return json(res, 200, bcastState);
       if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
-      const { test } = await readBody(req);
+      const { test, variant } = await readBody(req);
       const link = 'https://gpsimulador.com/?goto=referidos';
+      // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
+      const buildMail = (variant === 'reengage')
+        ? () => ({ ...reengageEmail(link), from: REENGAGE_FROM, noListUnsub: true })
+        : () => broadcastEmail(link);
       if (test) {
-        try { ensureRefCode(u.email); await mailer.sendMail({ to: u.email, ...broadcastEmail(link) }); console.log('[broadcast] enviados 1/1 (prueba)'); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true }); }
+        try { ensureRefCode(u.email); await mailer.sendMail({ to: u.email, ...buildMail() }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true }); }
         catch (e) { return json(res, 200, { ok: false, error: e.message, test: true }); }
       }
       if (bcastState.running) return json(res, 200, { ok: false, error: 'Ya hay un envío en curso', state: bcastState });
       const targets = Object.keys(db.users);
-      bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false };
+      bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false, variant: variant || 'beta' };
       // responder YA; enviar en segundo plano (no se await)
       json(res, 200, { ok: true, started: true, total: targets.length });
       (async () => {
         for (const email of targets) {
-          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...broadcastEmail(link) }); bcastState.sent++; }
+          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...buildMail() }); bcastState.sent++; }
           catch (e) { bcastState.failed++; console.error('[broadcast]', email, e.message); }
           await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota
         }
         bcastState.running = false; bcastState.finishedAt = new Date().toISOString();
-        console.log(`[broadcast] enviados ${bcastState.sent}/${targets.length} (fallos ${bcastState.failed})`);
+        console.log(`[broadcast] enviados ${bcastState.sent}/${targets.length} (fallos ${bcastState.failed}) [${bcastState.variant}]`);
       })().catch(e => { bcastState.running = false; bcastState.finishedAt = new Date().toISOString(); console.error('[broadcast] fatal', e.message); });
       return;
     }

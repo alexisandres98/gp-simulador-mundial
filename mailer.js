@@ -95,25 +95,30 @@ async function sendViaWebhook({ to, subject, text, html }) {
 }
 
 // Resend (HTTPS): envío desde el dominio propio (codigo@gpsimulador.com) con SPF/DKIM del dominio.
-async function sendViaResend({ to, subject, text, html }) {
+// opts.from: override del remitente (p.ej. nombre personal). opts.noListUnsub: omite el header List-Unsubscribe
+// — ese header es señal de "correo masivo" y empuja a la pestaña Promociones; para correos de estilo PERSONAL
+// (reactivación 1:1) conviene omitirlo y dejar la baja en el cuerpo, para que Gmail lo trate como Principal.
+async function sendViaResend({ to, subject, text, html, from, noListUnsub }) {
+  const payload = {
+    from: from || process.env.MAIL_FROM || 'GP Simulador del Mundial <codigo@gpsimulador.com>',
+    to: [to],
+    reply_to: process.env.MAIL_REPLY_TO || undefined,
+    subject, text, html,
+  };
+  if (!noListUnsub) {
+    // List-Unsubscribe mejora la entregabilidad anti-spam (exigido a remitentes de gran volumen):
+    payload.headers = {
+      'List-Unsubscribe': `<mailto:${process.env.MAIL_REPLY_TO || 'codigo@gpsimulador.com'}?subject=baja>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    };
+  }
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + process.env.RESEND_API_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: process.env.MAIL_FROM || 'GP Simulador del Mundial <codigo@gpsimulador.com>',
-      to: [to],
-      reply_to: process.env.MAIL_REPLY_TO || undefined,
-      subject, text, html,
-      // List-Unsubscribe mejora la entregabilidad (Gmail/Outlook lo exigen para correo en volumen):
-      // reduce el filtrado a spam y la colocación en "Promociones".
-      headers: {
-        'List-Unsubscribe': `<mailto:${process.env.MAIL_REPLY_TO || 'codigo@gpsimulador.com'}?subject=baja>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
-    }),
+    body: JSON.stringify(payload),
     signal: AbortSignal.timeout(20000),
   });
   if (!r.ok) {

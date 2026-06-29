@@ -1560,6 +1560,26 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/beta/')) {
       const betaUser = betaGuard(req, res);
       if (!betaUser) return; // ya respondió
+      // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
+      // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.
+      if (p === '/api/beta/value-outright' && req.method === 'GET') {
+        await fetchMarkets(false).catch(() => {});
+        const items = TEAMS.map(tm => {
+          const sim = simCache[tm.id]; if (!sim || sim.champion == null) return null;
+          const pm = marketCache.polymarket[tm.id] || null, ks = marketCache.kalshi[tm.id] || null;
+          const opts = [];
+          if (pm && pm.ask != null) opts.push({ book: 'Polymarket', ask: pm.ask, price: pm.price, url: pm.url, vol: pm.volume, liq: pm.liquidity });
+          if (ks && ks.ask != null) opts.push({ book: 'Kalshi', ask: ks.ask, price: ks.price, url: ks.url, vol: ks.volume });
+          if (!opts.length) return null;
+          const best = opts.sort((a, b) => a.ask - b.ask)[0];
+          return {
+            team_id: tm.id, model_pct: +Number(sim.champion).toFixed(4), market_pct: +Number(best.ask).toFixed(4),
+            edge_pp: +(sim.champion - best.ask).toFixed(4), best_book: best.book, market_url: best.url || null,
+            volume: best.vol != null ? best.vol : null, elo: Math.round(db.elos[tm.id] || 0),
+          };
+        }).filter(Boolean).sort((a, b) => b.edge_pp - a.edge_pp);
+        return json(res, 200, { items, count: items.length, market_code: 'WC_WINNER', generated_at: new Date().toISOString() });
+      }
       const ctx = {
         db: require('./database/client'),
         json,

@@ -132,8 +132,10 @@
       ref_verified: 'referidos verificados', ref_copy: 'Copiar enlace', ref_copied: '¡Copiado!', ref_tiers: 'Niveles', ref_rule: 'Un referido se verifica cuando tu invitado confirma su correo. Umbral de acceso: 5 referidos verificados.',
       ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
-      perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado',
+      perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
+      outright_title: 'Campeón del Mundial · Value', outright_sub: 'Probabilidad GP del torneo vs mercado', outright_none: 'Sin ventaja sobre el mercado para el título ahora.',
+      tm_gpi: 'GP Intelligence · título', tm_gpi_model: 'Probabilidad GP (campeón)', tm_gpi_market: 'Mercado', tm_gpi_edge: 'Ventaja GP', tm_gpi_note: 'Probabilidad de ser campeón según el modelo GP del torneo (fuerza base Elo + simulación Monte Carlo). El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit del encuentro y en el próximo partido de abajo.',
       opp_actionable: 'Accionable', opp_watch_only: 'En observación',
       opp_arb_na: 'Arbitraje no disponible', opp_arb_evaluated: 'comparaciones', opp_arb_executable: 'ejecutables', opp_arb_note: 'Cero ejecutables es un resultado válido: los mercados están alineados.', opp_arb_market: 'Mercado', opp_arb_margin: 'Margen neto',
       arbst_EXECUTABLE: 'Ejecutable', arbst_THEORETICAL_ONLY: 'Solo teórico', arbst_PARTIAL_EXECUTION_RISK: 'Ejecución parcial', arbst_BLOCKED: 'Bloqueado', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Reglas distintas', arbst_EXPIRED: 'Expirado', arbst_SUSPENDED: 'Suspendido', arbst_STALE: 'Desactualizado',
@@ -262,8 +264,10 @@
       ref_verified: 'verified referrals', ref_copy: 'Copy link', ref_copied: 'Copied!', ref_tiers: 'Tiers', ref_rule: 'A referral is verified when your invitee confirms their email. Access threshold: 5 verified referrals.',
       ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
-      perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market',
+      perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
+      outright_title: 'World Cup winner · Value', outright_sub: 'GP tournament probability vs market', outright_none: 'No edge over the market for the title right now.',
+      tm_gpi: 'GP Intelligence · title', tm_gpi_model: 'GP probability (champion)', tm_gpi_market: 'Market', tm_gpi_edge: 'GP edge', tm_gpi_note: 'Probability of winning the title per the GP tournament model (base Elo strength + Monte Carlo simulation). Each match\'s context (form, availability, weather) is applied in the match cockpit and in the next match below.',
       opp_actionable: 'Actionable', opp_watch_only: 'Watch',
       opp_arb_na: 'Arbitrage unavailable', opp_arb_evaluated: 'comparisons', opp_arb_executable: 'executable', opp_arb_note: 'Zero executable is a valid result: the markets are aligned.', opp_arb_market: 'Market', opp_arb_margin: 'Net margin',
       arbst_EXECUTABLE: 'Executable', arbst_THEORETICAL_ONLY: 'Theoretical only', arbst_PARTIAL_EXECUTION_RISK: 'Partial execution', arbst_BLOCKED: 'Blocked', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Different rules', arbst_EXPIRED: 'Expired', arbst_SUSPENDED: 'Suspended', arbst_STALE: 'Stale',
@@ -303,8 +307,9 @@
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
     var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['follow', 'dots', 'more']]
-      .map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
+    var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin'];
+    var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
+      .map(function (n) { if (n[0] === '__more') { var act = moreViews.indexOf(cur) >= 0 ? ' on' : ''; return '<a class="' + act.trim() + '" data-more="1">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; } var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
       '<div class="gx">' +
       '<aside class="gx-side">' +
@@ -316,11 +321,11 @@
       '<div class="gx-body">' +
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo">GP</div><b>GP Intelligence</b></div>' +
-      '<div class="gx-search">' + ic('search') + '<span>' + esc(t('search')) + '</span></div>' +
+      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
       '<div class="gx-pulse" id="gx-pulse"></div>' +
       '<div class="gx-spacer"></div>' +
       '<div class="gx-langs" id="gx-langs"><button data-l="es" class="' + (LANG === 'es' ? 'on' : '') + '">ES</button><button data-l="en" class="' + (LANG === 'en' ? 'on' : '') + '">EN</button></div>' +
-      '<div class="gx-iconbtn">' + ic('bell') + '<span class="gx-dot"></span></div>' +
+      '<div class="gx-iconbtn" data-nav="alerts" title="' + esc(t('nav_alerts')) + '">' + ic('bell') + '<span class="gx-dot"></span></div>' +
       '</header>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -345,6 +350,60 @@
     var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); };
     var pc = function (id, sub) { var el = $('#gx-pc-' + id); if (el) el.addEventListener('click', function () { setSub(sub); }); };
     pc('picks', 'picks'); pc('value', 'value'); pc('arb', 'arb');
+    // filtro Todos / En vivo / Próximos (estaba decorativo): setea S.filt y re-renderiza el board
+    var filt = $('#gx-filt');
+    if (filt) filt.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-f]'); if (!b) return;
+      S.filt = b.dataset.f;
+      [].forEach.call(filt.querySelectorAll('[data-f]'), function (x) { x.classList.toggle('on', x === b); });
+      var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); });
+      board(rs);
+    });
+    // buscador global (estaba decorativo): equipos + partidos → navega
+    wireSearch();
+  }
+
+  // ---------- buscador global ----------
+  function wireSearch() {
+    var inp = $('#gx-search-i'), res = $('#gx-search-res'); if (!inp || !res) return;
+    var hide = function () { res.hidden = true; res.innerHTML = ''; };
+    var run = function () {
+      var q = (inp.value || '').trim().toLowerCase(); if (q.length < 2) { hide(); return; }
+      var norm = function (s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); };
+      var nq = norm(q);
+      // equipos
+      var teams = (S.stTeams || []).filter(function (tm) { return norm(teamName(tm.id, tm.name)).indexOf(nq) >= 0; }).slice(0, 6);
+      // partidos (no jugados primero)
+      var cal = (S.cal || []).filter(function (c) { return c.home && c.away && (norm(teamName(c.home)).indexOf(nq) >= 0 || norm(teamName(c.away)).indexOf(nq) >= 0); });
+      cal.sort(function (a, b) { var fa = (a.status === 'final') ? 1 : 0, fb = (b.status === 'final') ? 1 : 0; if (fa !== fb) return fa - fb; return new Date(a.datetime || 0) - new Date(b.datetime || 0); });
+      cal = cal.slice(0, 6);
+      var html = '';
+      if (teams.length) html += '<div class="gx-sr-h">' + esc(t('nav_teams')) + '</div>' + teams.map(function (tm) { return '<div class="gx-sr-i" data-sr-team="' + esc(tm.id) + '"><span class="fl">' + flag(tm.id) + '</span><b>' + esc(teamName(tm.id, tm.name)) + '</b></div>'; }).join('');
+      if (cal.length) html += '<div class="gx-sr-h">' + esc(t('nav_matches')) + '</div>' + cal.map(function (c) { return '<div class="gx-sr-i" data-sr-match="' + esc(oidFor(c)) + '"><span class="fl">' + flag(c.home) + '</span><b>' + esc(teamName(c.home)) + '</b><span class="gx-dim" style="margin:0 4px">' + esc(t('vs')) + '</span><span class="fl">' + flag(c.away) + '</span><b>' + esc(teamName(c.away)) + '</b><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(fmtDate(c.datetime)) + '</span></div>'; }).join('');
+      if (!html) html = '<div class="gx-sr-empty gx-dim">' + esc(t('e_na')) + '</div>';
+      res.innerHTML = html; res.hidden = false;
+    };
+    inp.addEventListener('input', function () { clearTimeout(S._sq); S._sq = setTimeout(run, 160); });
+    inp.addEventListener('focus', function () { if ((inp.value || '').trim().length >= 2) run(); });
+    res.addEventListener('click', function (e) {
+      var tm = e.target.closest('[data-sr-team]'); if (tm) { inp.value = ''; hide(); openTeam(tm.getAttribute('data-sr-team')); return; }
+      var mm = e.target.closest('[data-sr-match]'); if (mm) { inp.value = ''; hide(); openMatch(mm.getAttribute('data-sr-match')); return; }
+    });
+    document.addEventListener('click', function (e) { if (!e.target.closest('.gx-search')) hide(); });
+  }
+
+  // ---------- hoja "Más" (bottom nav móvil) ----------
+  function openMoreSheet() {
+    var items = [['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
+    var existing = document.getElementById('gx-more-sheet'); if (existing) existing.remove();
+    var sheet = document.createElement('div'); sheet.id = 'gx-more-sheet'; sheet.className = 'gx-sheet-wrap';
+    sheet.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('more')) + '</b><button class="gx-sheet-x" aria-label="close">' + ic('x') + '</button></div><div class="gx-sheet-grid">' +
+      items.map(function (n) { return '<a class="gx-sheet-i" data-nav="' + n[0] + '">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('') + '</div></div>';
+    document.body.appendChild(sheet);
+    var close = function () { sheet.remove(); };
+    sheet.querySelector('.gx-sheet-bg').addEventListener('click', close);
+    sheet.querySelector('.gx-sheet-x').addEventListener('click', close);
+    sheet.addEventListener('click', function (e) { var a = e.target.closest('[data-nav]'); if (a) { close(); navTo(a.getAttribute('data-nav')); } });
   }
 
   function valueProps() {
@@ -445,6 +504,7 @@
     if (S.oppSub === 'value') { $('#gx-board-count').textContent = ''; oppValueBoard(bd); return; }
     if (S.oppSub === 'arb') { $('#gx-board-count').textContent = ''; oppArbBoard(bd); return; }
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
+    else if (S.filt === 'up') rows = rows.filter(function (r) { return !r.live; });
     $('#gx-board-count').textContent = rows.length + ' ' + t('matches') + ' · ' + t('th_gp');
     if (!rows.length) { bd.innerHTML = '<div class="gx-empty">' + ic('chart-dots') + '<b>' + esc(t('e_na')) + '</b></div>'; return; }
     // tabla (desktop) y cards (móvil) ambas en el DOM; CSS muestra la que corresponde por viewport (confiable).
@@ -458,11 +518,30 @@
       el.addEventListener('click', function () { openMatch(el.dataset.id); });
     });
   }
+  // ---- Oportunidades · Value: OUTRIGHT (campeón del Mundial) — GP% (torneo) vs mercado ----
+  function outrightValueHtml() {
+    if (S.valueOutright === undefined) {
+      S.valueOutright = null;
+      fetch('/api/beta/value-outright', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.oppSub === 'value') { var b = $('#gx-board'); if (b) oppValueBoard(b); } });
+      return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('outright_title')) + '</span></div><div class="gx-mod-body"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div></div>';
+    }
+    var all = S.valueOutright || [];
+    var pos = all.filter(function (x) { return x.edge_pp > 0.005; }).slice(0, 8);
+    if (!pos.length) return '';
+    var rowD = function (x) { return '<tr class="gx-row" data-nav-team="' + esc(x.team_id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(x.team_id) + '</span><b>' + esc(teamName(x.team_id)) + '</b></div></td>' +
+      '<td class="gx-mono gx-gp"><span class="hi">' + pct1(x.model_pct) + '</span></td><td class="gx-mono gx-dim">' + pct1(x.market_pct) + '</td>' +
+      '<td class="gx-edge gx-pos">' + pp(x.edge_pp) + '</td><td class="l gx-dim" style="font-size:11px">' + esc(x.best_book || '—') + '</td></tr>'; };
+    var desk = '<table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th>GP</th><th>' + esc(t('hero_mkt')) + '</th><th>' + esc(t('th_edge')) + '</th><th class="l">' + esc(t('col_provider')) + '</th></tr></thead><tbody>' + pos.map(rowD).join('') + '</tbody></table>';
+    var mob = pos.map(function (x) { return '<div class="gx-mcard" data-nav-team="' + esc(x.team_id) + '"><div class="gx-cell-team"><span class="fl">' + flag(x.team_id) + '</span><b>' + esc(teamName(x.team_id)) + '</b><span class="gx-spacer"></span><span class="gx-edge gx-pos">' + pp(x.edge_pp) + '</span></div>' +
+      '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct1(x.model_pct) + ' · ' + esc(t('hero_mkt')) + ' ' + pct1(x.market_pct) + '</span><span class="gx-dim" style="font-size:11px">' + esc(x.best_book || '') + '</span></div></div>'; }).join('');
+    return '<div class="gx-panel gx-board" style="margin-bottom:14px"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('outright_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('outright_sub')) + '</span></div><div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div></div>';
+  }
   // ---- Oportunidades · Value ----
   function oppValueBoard(bd) {
+    var outright = outrightValueHtml();
     var vals = (S.value || []).slice().sort(function (a, b) { return (b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0); });
     var hdr = {}; ((S.dash && S.dash.upcoming) || []).forEach(function (u) { hdr[u.header.event_id] = u.header; });
-    if (!vals.length) { bd.innerHTML = '<div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div>'; return; }
+    if (!vals.length) { bd.innerHTML = outright + '<div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div>'; return; }
     var row = function (v) {
       var h = hdr[v.event_id], oc = v.outcome_code, fid = h ? (oc === 'AWAY' ? h.away.team_id : h.home.team_id) : null;
       var name = oc === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : (h ? teamName(fid) : oc);
@@ -480,7 +559,7 @@
     var mob = rows.map(function (x) { var v = x.v; return '<div class="gx-mcard" data-openmatch="' + esc(v.event_id) + '"><div class="gx-mcard-top">' + (sigBadge(v.classification_code) || '') + '<span class="gx-spacer"></span>' + (x.bm ? '<span class="gx-belowmin">' + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '')) + '</div>' +
       '<div class="gx-cell-team" style="margin:6px 0">' + (x.fid ? '<span class="fl">' + flag(x.fid) + '</span>' : '') + '<div class="gx-teamnames"><b>' + esc(x.name) + '</b><span>' + esc(x.matchN) + '</span></div></div>' +
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div></div>'; }).join('');
-    bd.innerHTML = '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
+    bd.innerHTML = outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
   }
   // ---- Oportunidades · Arbitraje ----
   function oppArbBoard(bd) {
@@ -904,6 +983,18 @@
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('history') + esc(t('mod_form')) + '</span></div><div class="gx-mod-body gx-form-body">' + (body || '<div class="gx-empty">' + esc(t('na_short')) + '</div>') + '</div></div>';
   }
   // ---- alineaciones (formación + XI + suplentes + DT); fallback a la alineación probable de /api/teamdetail ----
+  // cancha estilo plataforma principal: ubica el XI por líneas (FWD/MID/DEF/GK arriba→abajo)
+  function posBucketP(p) { var s = (p || '').toUpperCase(); if (/^G|GK|POR/.test(s)) return 'GK'; if (/^D|DEF|LB|RB|CB/.test(s)) return 'DEF'; if (/^M|MID|MED|DM|AM/.test(s)) return 'MID'; if (/^F|FW|DEL|ATT|ST|LW|RW|CF/.test(s)) return 'FWD'; return 'MID'; }
+  function shortNameP(n) { if (!n) return ''; var p = String(n).trim().split(/\s+/); return p.length > 1 ? p[p.length - 1] : n; }
+  function pitchHtmlP(l) {
+    var xi = (l && l.startXI) || []; if (xi.length < 7) return null;
+    var b = { GK: [], DEF: [], MID: [], FWD: [] };
+    xi.forEach(function (p) { b[posBucketP(p.position)].push(p); });
+    var rows = [b.FWD, b.MID, b.DEF, b.GK].filter(function (a) { return a.length; });
+    if (rows.length < 2) return null;
+    var row = function (arr) { return '<div class="gx-pitch-row">' + arr.map(function (p) { return '<div class="gx-pp"><span class="gx-pp-num gx-mono">' + (p.number != null ? p.number : '·') + '</span><span class="gx-pp-name">' + esc(shortNameP(p.name)) + '</span></div>'; }).join('') + '</div>'; };
+    return '<div class="gx-pitch">' + rows.map(row).join('') + '</div>';
+  }
   function mvLineups(beta, fx) {
     var h = beta.header, lu = fx.lineups || {}, eid = beta.header.event_id;
     // lazy-fetch teamdetail para lados sin alineación (próximos partidos sin XI confirmado/proyectado en /api/match)
@@ -914,11 +1005,12 @@
       if (!l) return '<div class="gx-lu-side"><div class="gx-lu-h"><span class="fl">' + flag(id) + '</span><b>' + esc(name) + '</b></div><div class="gx-dim" style="font-size:12px;padding:6px 0">' + esc(S.tcache[id] === null ? t('loading') : t('e_lineups')) + '</div></div>';
       var tag = (l.confirmed && !fromTeam) ? '<span class="gx-badge gx-b-strong">' + esc(t('lineup_conf')) + '</span>' : '<span class="gx-badge gx-b-watch">' + esc(t('lineup_proj')) + '</span>';
       var pl = function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.number != null ? p.number : '–') + '</span><b>' + esc(p.name || '') + '</b>' + (p.position ? '<span class="gx-dim gx-lu-pos">' + esc(p.position) + '</span>' : '') + '</div>'; };
+      var pitch = pitchHtmlP(l);
       var xi = (l.startXI || []).map(pl).join('');
       var subs = (l.substitutes || []).slice(0, 9).map(pl).join('');
       return '<div class="gx-lu-side"><div class="gx-lu-h"><span class="fl">' + flag(id) + '</span><b>' + esc(name) + '</b>' + tag + '</div>' +
         '<div class="gx-lu-meta gx-dim">' + (l.formation ? esc(t('formation')) + ' <b>' + esc(l.formation) + '</b>' : '') + (l.coach ? ' · ' + esc(l.coach) : '') + '</div>' +
-        (xi ? '<div class="gx-lu-xi">' + xi + '</div>' : '') +
+        (pitch ? pitch : (xi ? '<div class="gx-lu-xi">' + xi + '</div>' : '')) +
         (subs ? '<div class="gx-lu-sub-h gx-label">' + esc(t('lineup_subs')) + '</div><div class="gx-lu-subs">' + subs + '</div>' : '') + '</div>';
     };
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('users-group') + esc(t('mod_lineups')) + '</span></div><div class="gx-mod-body gx-lu-grid">' + side('home', h.home.team_id, teamName(h.home.team_id, h.home.name_fallback)) + side('away', h.away.team_id, teamName(h.away.team_id, h.away.name_fallback)) + '</div></div>';
@@ -1562,7 +1654,20 @@
     var nx = teamMatches(id).filter(function (c) { return calStatus(c) !== 'final'; })[0];
     var nextCtx = nx ? teamPanel('calendar-event', t('tm_next_ctx'), teamMatchRow(nx, id) + '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('tm_ctx_note')) + '</p>') : '';
     var summaryPanel = teamPanel('chart-arcs', t('tab_summary'), probGrid + '<p class="gx-mod-note gx-dim" style="margin-top:10px">' + ic('info-circle') + ' ' + esc(t('tm_base_note')) + '</p>');
-    return summaryPanel + nextCtx + read + opp + paths;
+    // GP Intelligence del título: probabilidad GP de ser campeón vs mercado (Polymarket/Kalshi) + ventaja
+    var gpiPanel = '';
+    if (td.championProbability != null) {
+      var mkts = (td.marketPrices || []).filter(function (m) { return m.ask != null || m.price != null; });
+      var bestM = mkts.slice().sort(function (a, b) { return (a.ask != null ? a.ask : a.price) - (b.ask != null ? b.ask : b.price); })[0];
+      var mPct = bestM ? (bestM.ask != null ? bestM.ask : bestM.price) : null;
+      var edge = mPct != null ? (td.championProbability - mPct) : null;
+      var stat = function (lbl, val, cls) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(lbl) + '</span><b class="gx-mono ' + (cls || '') + '">' + val + '</b></div>'; };
+      var grid = '<div class="gx-hero-grid" style="margin-top:0">' + stat(t('tm_gpi_model'), pct1(td.championProbability), 'hi') +
+        (mPct != null ? stat(t('tm_gpi_market') + (bestM && bestM.venue ? ' · ' + esc(bestM.venue) : ''), pct1(mPct)) : '') +
+        (edge != null ? stat(t('tm_gpi_edge'), (edge >= 0 ? '+' : '') + (edge * 100).toFixed(1) + ' pp', edge > 0.005 ? 'gx-pos' : edge < -0.005 ? 'gx-neg' : 'gx-dim') : '') + '</div>';
+      gpiPanel = teamPanel('trophy', t('tm_gpi'), grid + '<p class="gx-mod-note gx-dim" style="margin-top:10px">' + ic('info-circle') + ' ' + esc(t('tm_gpi_note')) + '</p>');
+    }
+    return summaryPanel + gpiPanel + nextCtx + read + opp + paths;
   }
 
   // ---- Grupos ----
@@ -1788,17 +1893,26 @@
       return;
     }
     var d = S.perf || {}, sum = d.sum, leg = d.leg;
-    var kpi = function (label, v, cls) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div></div>'; };
-    var body;
+    var kpi = function (label, v, cls, sub) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div>' + (sub ? '<div class="gx-kpi-sub gx-dim">' + esc(sub) + '</div>' : '') + '</div>'; };
+    var body = '';
+    // % de aciertos (como la plataforma principal): predicción 1X2 acertada / total evaluado
+    if (leg && leg.total) {
+      var pctW = Math.round((leg.winners || 0) / leg.total * 100);
+      body += '<div class="gx-kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">' +
+        kpi(t('perf_hitrate'), pctW + '%', 'gx-pos', (leg.winners || 0) + '/' + leg.total) +
+        kpi(t('perf_exact'), (leg.exact != null ? leg.exact : '—') + (leg.total ? ' · ' + Math.round((leg.exact || 0) / leg.total * 100) + '%' : ''), '') +
+        kpi(t('perf_total'), leg.total != null ? leg.total : '—', '') + '</div>';
+    }
     if (sum && sum.metrics) {
       var m = sum.metrics, g = function (k) { return m[k] && m[k].value != null ? m[k].value : null; }, n = (m.brier_multiclass && m.brier_multiclass.sample_size) || 0;
-      body = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' + kpi(t('perf_sample'), n) + kpi('Brier', g('brier_multiclass') != null ? g('brier_multiclass').toFixed(3) : '—') + kpi('Log loss', g('log_loss') != null ? g('log_loss').toFixed(3) : '—') + kpi('ECE', g('ece') != null ? g('ece').toFixed(3) : '—') + '</div>' +
+      body += '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' + kpi(t('perf_sample'), n) + kpi('Brier', g('brier_multiclass') != null ? g('brier_multiclass').toFixed(3) : '—') + kpi('Log loss', g('log_loss') != null ? g('log_loss').toFixed(3) : '—') + kpi('ECE', g('ece') != null ? g('ece').toFixed(3) : '—') + '</div>' +
         (n < 10 ? '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('reg_insufficient_note')) + '</p>' : '') +
         teamPanel('book', t('perf_method'), '<p class="gx-method-p gx-dim">' + esc(t('perf_method_b')) + '</p>');
-    } else if (leg) {
-      body = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' + kpi(t('perf_total'), leg.total != null ? leg.total : '—') + kpi(t('perf_hits'), leg.winners != null ? leg.winners : '—', 'gx-pos') + kpi(t('perf_exact'), leg.exact != null ? leg.exact : '—') + kpi('Brier', leg.brier != null ? Number(leg.brier).toFixed(3) : '—') + '</div>' +
-        (leg.vsMarket ? teamPanel('arrows-left-right', t('perf_vs_market'), '<div class="gx-form-stats"><span>GP Brier <b>' + Number(leg.vsMarket.modelBrier).toFixed(3) + '</b></span><span>' + esc(t('hero_mkt')) + ' Brier <b>' + Number(leg.vsMarket.marketBrier).toFixed(3) + '</b></span><span>n <b>' + leg.vsMarket.n + '</b></span></div>') : '');
-    } else body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('na_short')) + '</b></div></div>';
+    }
+    if (leg && leg.vsMarket) {
+      body += teamPanel('arrows-left-right', t('perf_vs_market'), '<div class="gx-form-stats"><span>GP Brier <b>' + Number(leg.vsMarket.modelBrier).toFixed(3) + '</b></span><span>' + esc(t('hero_mkt')) + ' Brier <b>' + Number(leg.vsMarket.marketBrier).toFixed(3) + '</b></span><span>n <b>' + leg.vsMarket.n + '</b></span></div>');
+    }
+    if (!body) body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('na_short')) + '</b></div></div>';
     // tabla completa de TODOS los partidos evaluados (data acumulada)
     var matches = (leg && leg.matches) || [];
     if (matches.length) {
@@ -1880,6 +1994,7 @@
         shell(); load(); loadCanon();
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) { if (me) { S.me = me; if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } } });
         document.addEventListener('click', function (e) {
+          var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }
           var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }

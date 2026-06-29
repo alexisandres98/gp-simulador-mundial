@@ -63,6 +63,7 @@
       prob_base_only: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto disponible (forma, bajas, alineaciones) está en la pestaña Contexto.',
       drivers: 'Factores que movieron la línea', evaluated: 'Factores evaluados', impact: 'Impacto', confidence: 'Confianza', evidence: 'Evidencia', freshness: 'Frescura',
       evaluated_note: 'Estos factores se evaluaron; su efecto está reflejado en el ajuste neto de contexto, no como un impacto aislado por factor.',
+      fac_favors: 'a favor', fac_against: 'en contra', fac_neutral: 'neutral',
       ev_fact: 'Dato', ev_inference: 'Inferencia',
       tl_title: 'Línea de tiempo', tl_now: 'Estado actual', tl_base_gp: 'Base → Probabilidad GP',
       tl_empty: 'Aún no hay snapshots previos registrados para este partido. Los cambios de probabilidad, precio, noticias y alineaciones se registrarán a partir de ahora.',
@@ -190,6 +191,7 @@
       prob_base_only: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Available context (form, absences, lineups) is in the Context tab.',
       drivers: 'Factors that moved the line', evaluated: 'Evaluated factors', impact: 'Impact', confidence: 'Confidence', evidence: 'Evidence', freshness: 'Freshness',
       evaluated_note: 'These factors were evaluated; their effect is reflected in the net context adjustment, not as an isolated per-factor impact.',
+      fac_favors: 'favors', fac_against: 'against', fac_neutral: 'neutral',
       ev_fact: 'Fact', ev_inference: 'Inference',
       tl_title: 'Timeline', tl_now: 'Current state', tl_base_gp: 'Base → GP probability',
       tl_empty: 'No prior snapshots recorded for this match yet. Probability, price, news and lineup changes will be tracked from now on.',
@@ -282,7 +284,7 @@
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, pendingSec: null };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, pendingSec: null, h2h: {} };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -637,7 +639,7 @@
     var vals = (S.value || []).filter(function (v) { return v.event_id === r.h.event_id; });
     var best = vals.filter(function (v) { return v.outcome_code === topC; })[0] || vals.sort(function (a, b) { return (b.adjusted_edge_pp || -9) - (a.adjusted_edge_pp || -9); })[0];
     var pubPick = (S.dash && S.dash.recent_picks || []).filter(function (p) { return p.event_id === r.h.event_id && p.lifecycle_code === 'PUBLISHED'; })[0];
-    var ma = S.mc[r.h.event_id]; // match detail (analysis/risks) si ya se cargó
+    var ma = S.mc[r.h.event_id] || r._beta; // match detail (analysis/risks); fallback al beta inyectado (h2h en vivo)
     var belowMin = best && best.best_odds != null && best.minimum_odds != null && best.best_odds < best.minimum_odds;
     var actionable = !!(best && best.actionable && !belowMin);
     var verdict = even ? t('memo_even') : t('memo_fav', { team: '<b>' + esc(team) + '</b>' });
@@ -747,8 +749,35 @@
     var bySel = {}; vals.forEach(function (v) { bySel[v.outcome_code] = v; });
     var bestEdge = null, signal = null, rank = { STRONG: 3, LEAN: 2, WATCH: 1, PASS: 0 };
     vals.forEach(function (v) { if (bestEdge == null || (v.adjusted_edge_pp || -9) > bestEdge) bestEdge = v.adjusted_edge_pp; if (signal == null || rank[v.classification_code] > rank[signal]) signal = v.classification_code; });
-    return { h: beta.header, gp: function (c) { return oc[c] ? oc[c].gp_probability : null; }, mk: function (c) { return oc[c] ? oc[c].market_probability : null; }, best: function (c) { return bySel[c] ? bySel[c].best_odds : null; }, edge: bestEdge, signal: signal, live: beta.header.status_code === 'LIVE', kickoff: beta.header.kickoff_at };
+    return { h: beta.header, _beta: beta, confidence_code: beta.confidence_code || null, gp: function (c) { return oc[c] ? oc[c].gp_probability : null; }, mk: function (c) { return oc[c] ? oc[c].market_probability : null; }, best: function (c) { return bySel[c] ? bySel[c].best_odds : null; }, edge: bestEdge, signal: signal, live: beta.header.status_code === 'LIVE', kickoff: beta.header.kickoff_at };
   }
+  // ===== Contexto en vivo: convierte /api/h2h/deep en la capa de análisis GP (base→contexto→GP) para CUALQUIER
+  // partido, así el contexto aparece en TODOS (no solo los pocos con snapshot canónico). model GP = base + contexto.
+  function h2hToAnalysis(h2h) {
+    if (!h2h || !h2h.base || !h2h.probs) return null;
+    var base = { HOME: round4(h2h.base.aWin), DRAW: round4(h2h.base.draw), AWAY: round4(h2h.base.bWin) };
+    var fin = { HOME: round4(h2h.probs.aWin), DRAW: round4(h2h.probs.draw), AWAY: round4(h2h.probs.bWin) };
+    var adj = { HOME: round4(fin.HOME - base.HOME), DRAW: round4(fin.DRAW - base.DRAW), AWAY: round4(fin.AWAY - base.AWAY) };
+    var moved = (Math.abs(adj.HOME) + Math.abs(adj.DRAW) + Math.abs(adj.AWAY)) >= 0.004;
+    var c = h2h.context || {}, hasData = !!c.hasData;
+    var aId = h2h.a && h2h.a.id, bId = h2h.b && h2h.b.id;
+    var fac = (h2h.analysis && h2h.analysis.factors) || [];
+    var evaluated = fac.map(function (f) {
+      return { factor_code: f.factorCode, category_code: f.category || 'team', evidence_class: f.fact_or_inference === 'fact' ? 'FACT' : 'INFERENCE', confidence: f.confidence != null ? f.confidence : null, timestamp_quality_code: null, subject_team_id: f.side === 'a' ? aId : f.side === 'b' ? bId : null, direction_code: (f.dir === 'up' ? 'UP' : f.dir === 'down' ? 'DOWN' : 'FLAT'), included: !!f.included, detail: f.detail || null };
+    });
+    var dqA = c.dataQualityA || {}, dqB = c.dataQualityB || {};
+    var compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
+    return { context_state_code: !hasData ? 'BASE_ONLY' : moved ? 'FULL_CONTEXT' : 'PARTIAL_CONTEXT', base_vector: base, final_vector: fin, context_adjustments: adj, context_moved_line: moved, applied_factors: [], evaluated_factors: evaluated, factor_count: fac.length, source_count: hasData ? 2 : 0, data_freshness_code: 'FRESH', context_completeness: compl };
+  }
+  function h2hProbability(h2h) {
+    var p = h2h.probs || {};
+    return { market_code: '1X2', period_code: 'REGULATION', period_note_code: 'REGULATION_90', outcomes: [
+      { outcome_code: 'HOME', team_ref: 'home', gp_probability: round4(p.aWin), market_probability: null },
+      { outcome_code: 'DRAW', team_ref: null, gp_probability: round4(p.draw), market_probability: null },
+      { outcome_code: 'AWAY', team_ref: 'away', gp_probability: round4(p.bWin), market_probability: null }], sums_to_one: true };
+  }
+  function h2hConfidence(h2h) { var lv = h2h && h2h.analysis && h2h.analysis.headline && h2h.analysis.headline.modelConfidence && h2h.analysis.headline.modelConfidence.level; return lv === 'Alta' ? 'HIGH' : lv === 'Baja' ? 'LOW' : lv === 'Media' ? 'MEDIUM' : null; }
+  function round4(x) { return (x == null || !isFinite(x)) ? null : Math.round(x * 1e4) / 1e4; }
   function stageLabel(c) { if (!c) return ''; var m = { GROUP: LANG === 'en' ? 'Group stage' : 'Fase de grupos', KNOCKOUT: LANG === 'en' ? 'Knockout' : 'Eliminatorias', R32: LANG === 'en' ? 'Round of 32' : '16avos', R16: LANG === 'en' ? 'Round of 16' : 'Octavos', QF: LANG === 'en' ? 'Quarter-finals' : 'Cuartos', SF: LANG === 'en' ? 'Semi-finals' : 'Semifinal', FINAL: 'Final' }; return m[c] || c; }
   function ocName(h, c) { return c === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : teamName(c === 'AWAY' ? h.away.team_id : h.home.team_id, c === 'AWAY' ? h.away.name_fallback : h.home.name_fallback); }
   function ageFresh(iso) { if (!iso) return null; var ms = Date.now() - new Date(iso).getTime(); if (isNaN(ms)) return null; var h = ms / 3.6e6; return h <= 2 ? 'FRESH' : h <= 12 ? 'AGING' : 'STALE'; }
@@ -817,6 +846,20 @@
       }
     }
     var header = beta.header;
+    // Contexto en vivo para CUALQUIER partido: si beta no trae la capa de contexto (snapshot canónico), la
+    // derivamos de /api/h2h/deep (mismo motor) → GP+contexto en TODOS los partidos, sin "no disponible".
+    var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id, hk = hid + '_' + aid;
+    if (hid && aid && S.h2h[hk] === undefined) {
+      S.h2h[hk] = null;
+      fetch('/api/h2h/deep?a=' + encodeURIComponent(hid) + '&b=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.h2h[hk] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+    }
+    var h2h = (hid && aid && S.h2h[hk] && !S.h2h[hk]._empty) ? S.h2h[hk] : null;
+    if (h2h) {
+      if (!beta.analysis || !beta.analysis.base_vector) { var ana = h2hToAnalysis(h2h); if (ana) beta.analysis = ana; }
+      if (beta.confidence_code == null) beta.confidence_code = h2hConfidence(h2h);
+      if (!beta.probability || !beta.probability.outcomes || !beta.probability.outcomes.length || beta.probability.outcomes[0].gp_probability == null) beta.probability = h2hProbability(h2h);
+      gpAbsent = false; // ya tenemos GP+contexto en vivo → mostramos el análisis completo
+    }
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
     // disponibilidad real de cada módulo (cobertura honesta; presente sólo si hay datos)
@@ -1006,8 +1049,10 @@
         if (evf.length) {
           body += '<div class="gx-label gx-mod-sub">' + esc(t('evaluated')) + '</div><div class="gx-factors">' +
             evf.map(function (f) {
-              return '<div class="gx-factor"><div class="gx-factor-main"><b>' + esc(factLabel(f.factor_code)) + '</b>' + (f.subject_team_id ? '<span class="gx-dim"> · ' + esc(teamName(f.subject_team_id)) + '</span>' : '') + '</div>' +
+              var dc = f.direction_code, dCls = dc === 'UP' ? 'gx-pos' : dc === 'DOWN' ? 'gx-neg' : 'gx-dim', dIc = dc === 'UP' ? 'arrow-up-right' : dc === 'DOWN' ? 'arrow-down-right' : 'minus';
+              return '<div class="gx-factor"><div class="gx-factor-main">' + (dc ? '<span class="' + dCls + '" style="margin-right:5px">' + ic(dIc) + '</span>' : '') + '<b>' + esc(factLabel(f.factor_code)) + '</b>' + (f.subject_team_id ? '<span class="gx-dim"> · ' + esc(teamName(f.subject_team_id)) + '</span>' : '') + '</div>' +
                 '<div class="gx-factor-meta">' +
+                (dc ? '<span class="' + dCls + '">' + esc(t(dc === 'UP' ? 'fac_favors' : dc === 'DOWN' ? 'fac_against' : 'fac_neutral')) + '</span>' : '') +
                 (f.evidence_class ? '<span class="gx-evtag gx-ev-' + (f.evidence_class === 'FACT' ? 'pos' : 'blue') + '">' + esc(t(f.evidence_class === 'FACT' ? 'ev_fact' : 'ev_inference')) + '</span>' : '') +
                 (f.confidence != null ? '<span class="gx-dim">' + esc(t('confidence')) + ' ' + pct0(f.confidence) + '</span>' : '') +
                 (f.timestamp_quality_code ? '<span class="gx-dim gx-ts">' + esc(tsLabel(f.timestamp_quality_code)) + '</span>' : '') +
@@ -1237,8 +1282,10 @@
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + body + '</div></div>';
     bindMatches();
   }
-  function mGpCell(canon) {
+  function mGpCell(canon, c) {
     if (canon && canon.gp && canon.gp.HOME != null) return triCell(function (cc) { return pct0(canon.gp[cc]); }, 'gx-gp', maxCode(function (cc) { return canon.gp[cc]; }));
+    // sin evaluación canónica: mostramos la Probabilidad GP del modelo (base) — el desglose de contexto aparece al abrir el partido.
+    var p = c && c.probs; if (p && p.home != null) { var m = { HOME: p.home, DRAW: p.draw, AWAY: p.away }; return triCell(function (cc) { return pct0(m[cc]); }, 'gx-gp', maxCode(function (cc) { return m[cc]; })); }
     return '<span class="gx-dim" style="font-size:11px">' + esc(t('e_gp_na')) + '</span>';
   }
   function mSignalCell(canon) {
@@ -1254,7 +1301,7 @@
           '<td class="gx-time">' + esc(fmtTime(c.datetime)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(stageLabel(c.stage)) + '</div></td>' +
           '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(c.home) + '</span><div class="gx-teamnames"><b>' + esc(teamName(c.home)) + '</b><span>' + esc(teamName(c.away)) + '</span></div><span class="fl">' + flag(c.away) + '</span></div></td>' +
           '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + mStatusCell(c) + '</td>' +
-          '<td>' + mGpCell(canon) + '</td>' +
+          '<td>' + mGpCell(canon, c) + '</td>' +
           '<td class="l">' + mSignalCell(canon) + '</td>' +
           '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
       }).join('') + '</tbody></table>';
@@ -1265,7 +1312,7 @@
       return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '">' +
         '<div class="gx-mcard-top"><span class="gx-time">' + esc(fmtTime(c.datetime)) + ' · ' + esc(stageLabel(c.stage)) + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + mStatusCell(c) + '</div>' +
         '<div class="gx-cell-team" style="margin:8px 0"><span class="fl">' + flag(c.home) + '</span><div class="gx-teamnames"><b>' + esc(teamName(c.home)) + '</b><span>' + esc(teamName(c.away)) + '</span></div><span class="fl">' + flag(c.away) + '</span></div>' +
-        '<div class="gx-mcard-rows"><div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + mGpCell(canon) + '</div></div>' +
+        '<div class="gx-mcard-rows"><div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + mGpCell(canon, c) + '</div></div>' +
         '<div class="gx-mcard-foot"><span>' + mSignalCell(canon) + '</span><span class="gx-mcard-cta">' + esc(canon ? t('cta_analyze') : t('cta_view_match')) + ' →</span></div>' +
         '</div>';
     }).join('');

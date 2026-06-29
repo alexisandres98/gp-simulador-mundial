@@ -14,6 +14,7 @@
       nav_opps: 'Oportunidades', nav_matches: 'Partidos', nav_teams: 'Equipos', nav_sim: 'Simulador', nav_follow: 'Seguidos',
       nav_alerts: 'Alertas', nav_perf: 'Rendimiento', nav_groups: 'Grupos', nav_bracket: 'Bracket', nav_evo: 'Evolución',
       nav_registry: 'Registro', nav_method: 'Metodología', nav_admin: 'Admin', more: 'Más',
+      account: 'Mi cuenta', account_beta: 'BETA', logout: 'Cerrar sesión',
       search: 'Buscar equipos, partidos, mercados…', matches: 'partidos', live: 'en vivo', signals: 'señales hoy',
       title: 'Oportunidades', all: 'Todos', live_f: 'En vivo', upcoming_f: 'Próximos', picks: 'Picks GP', value: 'Value', arb: 'Arbitraje',
       updated: 'Actualizado hace {t}', board: 'Board de oportunidades',
@@ -146,6 +147,7 @@
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
       nav_alerts: 'Alerts', nav_perf: 'Performance', nav_groups: 'Groups', nav_bracket: 'Bracket', nav_evo: 'Evolution',
       nav_registry: 'Registry', nav_method: 'Methodology', nav_admin: 'Admin', more: 'More',
+      account: 'My account', account_beta: 'BETA', logout: 'Sign out',
       search: 'Search teams, matches, markets…', matches: 'matches', live: 'live', signals: 'signals today',
       title: 'Opportunities', all: 'All', live_f: 'Live', upcoming_f: 'Upcoming', picks: 'GP Picks', value: 'Value', arb: 'Arbitrage',
       updated: 'Updated {t} ago', board: 'Opportunities board',
@@ -326,6 +328,7 @@
       '<div class="gx-spacer"></div>' +
       '<div class="gx-langs" id="gx-langs"><button data-l="es" class="' + (LANG === 'es' ? 'on' : '') + '">ES</button><button data-l="en" class="' + (LANG === 'en' ? 'on' : '') + '">EN</button></div>' +
       '<div class="gx-iconbtn" data-nav="alerts" title="' + esc(t('nav_alerts')) + '">' + ic('bell') + '<span class="gx-dot"></span></div>' +
+      '<div class="gx-acct"><button class="gx-avatar-btn" id="gx-avatar-btn" aria-label="' + esc(t('account')) + '">' + ic('user') + '</button><div class="gx-acct-menu" id="gx-acct-menu" hidden></div></div>' +
       '</header>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -347,6 +350,7 @@
     valueProps();
     syncAdminUI();
     $('#gx-langs').addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
+    var avb = $('#gx-avatar-btn'); if (avb) avb.addEventListener('click', toggleAcctMenu);
     // subtabs de Oportunidades: Picks / Value / Arbitraje
     var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); };
     var pc = function (id, sub) { var el = $('#gx-pc-' + id); if (el) el.addEventListener('click', function () { setSub(sub); }); };
@@ -394,6 +398,24 @@
   }
 
   // ---------- hoja "Más" (bottom nav móvil) ----------
+  // Menú de cuenta (arriba a la derecha, junto a la campana). Misma mecánica que la plataforma principal,
+  // pero SIN repetir las opciones que ya están en "Más": solo identidad + Cerrar sesión (lo que faltaba en /x).
+  function toggleAcctMenu(e) {
+    if (e) e.stopPropagation();
+    var m = $('#gx-acct-menu'); if (!m) return;
+    if (!m.hidden) { m.hidden = true; return; }
+    var email = (S.me && S.me.email) || '';
+    var isAdmin = !!(S.me && S.me.isAdmin);
+    var role = isAdmin ? 'ADMIN' : (t('account_beta') || 'BETA');
+    m.innerHTML = '<div class="gx-acct-head"><div class="gx-avatar">' + esc(email ? email[0].toUpperCase() : 'GP') + '</div><div class="gx-acct-id"><div class="gx-acct-em">' + esc(email || '—') + '</div><div class="gx-acct-role">' + esc(role) + '</div></div></div>' +
+      '<button class="gx-acct-i gx-acct-danger" id="gx-logout">' + ic('logout') + '<span>' + esc(t('logout')) + '</span></button>';
+    var lo = m.querySelector('#gx-logout'); if (lo) lo.addEventListener('click', gxLogout);
+    m.hidden = false;
+    setTimeout(function () { document.addEventListener('click', closeAcctMenu, { once: true }); }, 0);
+  }
+  function closeAcctMenu() { var m = $('#gx-acct-menu'); if (m) m.hidden = true; }
+  function gxLogout() { try { localStorage.removeItem('wc_token'); } catch (e) {} location.replace('/'); }
+
   // Muestra/oculta las superficies SOLO-ADMIN (Admin) según la sesión. Llamado tras /api/me y en cada shell().
   function syncAdminUI() {
     var on = !!(S.me && S.me.isAdmin);

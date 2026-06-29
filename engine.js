@@ -111,12 +111,12 @@ function liveEventAdjustments(events = []) {
   return { homeElo: eloFor(Math.min(homeReds, 2)), awayElo: eloFor(Math.min(awayReds, 2)), homeReds, awayReds };
 }
 
-// Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual). opts.eloAdjH/eloAdjA = deltas de
-// Elo de contexto en vivo (p.ej. tarjeta roja) aplicados a la expectativa del resto del partido.
-function liveMatchProbs(eloH, eloA, hg, ag, minute, opts = {}) {
-  const [lh, la] = lambdas(eloH + (opts.eloAdjH || 0), eloA + (opts.eloAdjA || 0));
+// Núcleo EN VIVO desde tasas (xG) de PARTIDO COMPLETO: condiciona el 1X2 al marcador actual simulando solo
+// el tiempo RESTANTE. lh/la = xG de 90' (de Elo base O del modelo GP con contexto). opts.mulH/mulA = factores
+// sobre el xG restante (p.ej. tarjeta roja). Reutilizable por el modelo base y por el GP Intelligence en vivo.
+function liveProbsFromLambdas(lh, la, hg, ag, minute, opts = {}) {
   const remain = Math.max(0, (90 - (minute || 0)) / 90);
-  const rlh = lh * remain, rla = la * remain;
+  const rlh = Math.max(0.001, lh * (opts.mulH || 1)) * remain, rla = Math.max(0.001, la * (opts.mulA || 1)) * remain;
   let pH = 0, pD = 0, pA = 0;
   const ph = [], pa = [];
   for (let k = 0; k <= 10; k++) { ph.push(poissonPmf(rlh, k)); pa.push(poissonPmf(rla, k)); }
@@ -130,6 +130,13 @@ function liveMatchProbs(eloH, eloA, hg, ag, minute, opts = {}) {
   const s = pH + pD + pA;
   const c = calib(pH / s, pD / s, pA / s);
   return { home: c.home, draw: c.draw, away: c.away, xgHome: rlh, xgAway: rla, likelyScore: `${best.h}-${best.a}`, live: true };
+}
+
+// Probabilidades 1X2 condicionadas a un marcador en vivo (minuto actual). opts.eloAdjH/eloAdjA = deltas de
+// Elo de contexto en vivo (p.ej. tarjeta roja) aplicados a la expectativa del resto del partido.
+function liveMatchProbs(eloH, eloA, hg, ag, minute, opts = {}) {
+  const [lh, la] = lambdas(eloH + (opts.eloAdjH || 0), eloA + (opts.eloAdjA || 0));
+  return liveProbsFromLambdas(lh, la, hg, ag, minute, opts);
 }
 
 // Simula un partido. Si hay marcador en vivo, condiciona en el marcador actual y simula el resto.
@@ -376,4 +383,4 @@ function explainTeam(team, elos, sim, allSims) {
   return parts.join(' ');
 }
 
-module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, liveEventAdjustments, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };
+module.exports = { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, liveProbsFromLambdas, liveEventAdjustments, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows, HOME_BONUS, TOTAL_GOALS };

@@ -22,7 +22,7 @@ const crypto = require('crypto');
   } catch { /* nunca debe impedir el arranque */ }
 })();
 const { TEAMS, GROUPS, GROUP_FIXTURES, KNOCKOUT } = require('./data/tournament');
-const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, liveEventAdjustments, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
+const { simulateTournament, matchProbs, probsFromLambdas, lambdas, liveMatchProbs, liveProbsFromLambdas, liveEventAdjustments, simulateH2H, makeRng, eloUpdate, explainTeam, effElo, assignThirds, cmpRows } = require('./engine');
 const mailer = require('./mailer');
 // Fase 4: capa de datos contextuales (API-Football principal → ESPN → manual). La UI nunca
 // llama a estos providers ni ve la API key: solo recibe data normalizada vía /api/match y /api/teamdetail.
@@ -1047,12 +1047,20 @@ function arbitrage() {
 // ---------- estado para el cliente ----------
 function buildState() {
   const standings = realStandings();
+  // GP en vivo para el listado (barato: usa solo el xG GP cacheado de buildH2HDeep + marcador/minuto; sin
+  // recompute en este hot path). Si no hay xG GP cacheado → null y el cliente cae a la prob del modelo.
+  const gpLiveCheap = (h, a, r) => {
+    if (!h || !a || !r || r.status !== 'live') return null;
+    const xg = gpXgFromCache(h, a); if (!xg) return null;
+    const p = liveProbsFromLambdas(xg.xgA, xg.xgB, r.hg, r.ag, r.minute);
+    return { home: +p.home.toFixed(4), draw: +p.draw.toFixed(4), away: +p.away.toFixed(4), live: true };
+  };
   const fixtures = GROUP_FIXTURES.map(f => {
     const r = db.results[f.id] || null;
     const probs = (r && r.status === 'live')
       ? liveMatchProbs(effElo(db.elos, f.home), effElo(db.elos, f.away), r.hg, r.ag, r.minute)
       : matchProbs(effElo(db.elos, f.home), effElo(db.elos, f.away));
-    return { ...f, result: r, probs };
+    return { ...f, result: r, probs, gpProbs: gpLiveCheap(f.home, f.away, r) };
   });
   const bracket = resolveRealBracket();
   const knockout = KNOCKOUT.map(k => {
@@ -1063,7 +1071,7 @@ function buildState() {
     if (h && a) probs = (r && r.status === 'live')
       ? liveMatchProbs(effElo(db.elos, h), effElo(db.elos, a), r.hg, r.ag, r.minute)
       : matchProbs(effElo(db.elos, h), effElo(db.elos, a));
-    return { ...k, result: r, resolved, probs };
+    return { ...k, result: r, resolved, probs, gpProbs: gpLiveCheap(h, a, r) };
   });
   return {
     sync: lastSync,
@@ -1102,6 +1110,30 @@ function modelProbsFor(home, away, result) {
   return (result && result.status === 'live')
     ? liveMatchProbs(effElo(db.elos, home), effElo(db.elos, away), result.hg, result.ag, result.minute)
     : matchProbs(effElo(db.elos, home), effElo(db.elos, away));
+}
+
+// ===== GP Intelligence EN VIVO =====
+// La probabilidad GP (base + contexto + observables) NO debe quedar estática al pitazo: durante el partido se
+// recalcula condicionando al MARCADOR + MINUTO + EVENTOS (rojas) — exactamente como el modelo base en vivo,
+// pero usando el xG del modelo GP (que ya incorpora forma/bajas/clima/etc.) en vez del xG del Elo crudo.
+// El xG GP sale del cache de buildH2HDeep (probs.xgA/xgB). En hot paths (lista) NO se fuerza recompute.
+function gpXgFromCache(home, away) {
+  const hit = h2hDeepCache.get(home + '_' + away);
+  if (hit && hit.data && hit.data.probs && hit.data.probs.xgA != null) return { xgA: hit.data.probs.xgA, xgB: hit.data.probs.xgB };
+  return null;
+}
+async function liveGpProbs(home, away, result, events, { allowCompute = false } = {}) {
+  if (!home || !away || !result || result.status !== 'live') return null;
+  let xg = gpXgFromCache(home, away);
+  if (!xg && allowCompute) { try { const d = await buildH2HDeep(home, away); if (d && d.probs) xg = { xgA: d.probs.xgA, xgB: d.probs.xgB }; } catch { /* noop */ } }
+  if (!xg) return null;
+  const adj = liveEventAdjustments(events || []);
+  const redMul = (n) => n <= 0 ? 1 : Math.pow(0.70, Math.min(n, 2));   // equipo con roja: menos gol restante
+  const oppBoost = (n) => n <= 0 ? 1 : 1 + 0.12 * Math.min(n, 2);      // rival con un hombre de más
+  const mulH = redMul(adj.homeReds) * oppBoost(adj.awayReds);
+  const mulA = redMul(adj.awayReds) * oppBoost(adj.homeReds);
+  const p = liveProbsFromLambdas(xg.xgA, xg.xgB, result.hg, result.ag, result.minute, { mulH, mulA });
+  return { home: p.home, draw: p.draw, away: p.away, xgHome: p.xgHome, xgAway: p.xgAway, likelyScore: p.likelyScore, reds: { home: adj.homeReds, away: adj.awayReds }, live: true };
 }
 
 // Mercados de goles aproximados desde las tasas Poisson (para "ángulos" sin mercado externo)
@@ -1213,6 +1245,20 @@ async function buildMatchDetail(id, user = null) {
     } catch (e) { v2 = null; }
   }
 
+  // GP Intelligence EN VIVO: durante el partido la prob GP (base+contexto+observables) NO debe quedar estática.
+  // Se recalcula condicionando al marcador+minuto+eventos (rojas) con el xG del modelo GP, y se sobreescribe el
+  // headline del bloque V2 (final_vector + outcomes). La descomposición base→contexto sigue siendo la pre-partido.
+  let gpLive = null;
+  if (status === 'live') {
+    gpLive = await liveGpProbs(meta.home, meta.away, result, (ctx && ctx.events) || [], { allowCompute: true }).catch(() => null);
+    if (gpLive && v2 && v2.probability && Array.isArray(v2.probability.outcomes)) {
+      const map = { HOME: gpLive.home, DRAW: gpLive.draw, AWAY: gpLive.away };
+      v2.probability.outcomes = v2.probability.outcomes.map(o => map[o.outcome_code] != null ? { ...o, gp_probability: +map[o.outcome_code].toFixed(4) } : o);
+      if (v2.analysis) { v2.analysis.final_vector = { HOME: +gpLive.home.toFixed(4), DRAW: +gpLive.draw.toFixed(4), AWAY: +gpLive.away.toFixed(4) }; }
+      v2.live_adjusted = true; v2.live_minute = result.minute; v2.live_score = { home: result.hg, away: result.ag };
+    }
+  }
+
   return {
     id: meta.id, date: meta.datetime, status,
     minute: result ? result.minute : undefined,
@@ -1225,6 +1271,7 @@ async function buildMatchDetail(id, user = null) {
       liveContext,                       // {home_reds,away_reds,...} si un evento en vivo ajustó la prob
     } : undefined,
     v2,                                  // DTO GP Intelligence V2 | null (Q.1.1 §2, solo con flag+beta)
+    gpLive: gpLive ? { homeWin: gpLive.home, draw: gpLive.draw, awayWin: gpLive.away, xgHome: gpLive.xgHome, xgAway: gpLive.xgAway, likelyScore: gpLive.likelyScore, reds: gpLive.reds } : null, // GP en vivo (cockpit /x)
     v2_requested: !!(user && user.beta && user.beta.matchesV2), // el cliente sabe si debía mostrar V2
     marketPrices, eventUrl: mkt ? mkt.eventUrl : null,
     odds: ctx ? ctx.odds : [],

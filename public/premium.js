@@ -61,6 +61,7 @@
       prob_base: 'Probabilidad base', prob_ctx: 'Ajuste de contexto', prob_final: 'Probabilidad GP',
       prob_explain: 'Partimos de la probabilidad base del modelo y aplicamos el contexto verificado para llegar a la Probabilidad GP.',
       prob_no_ctx: 'El contexto no movió la línea de forma material: la Probabilidad GP coincide con la base.',
+      prob_live_adj: 'Probabilidad GP ajustada EN VIVO con el marcador, el minuto y los eventos del partido.',
       prob_base_only: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto disponible (forma, bajas, alineaciones) está en la pestaña Contexto.',
       drivers: 'Factores que movieron la línea', evaluated: 'Factores evaluados', impact: 'Impacto', confidence: 'Confianza', evidence: 'Evidencia', freshness: 'Frescura',
       evaluated_note: 'Estos factores se evaluaron; su efecto está reflejado en el ajuste neto de contexto, no como un impacto aislado por factor.',
@@ -194,6 +195,7 @@
       prob_base: 'Base probability', prob_ctx: 'Context adjustment', prob_final: 'GP probability',
       prob_explain: 'We start from the model’s base probability and apply verified context to reach the GP probability.',
       prob_no_ctx: 'Context didn’t move the line materially: GP probability matches the base.',
+      prob_live_adj: 'GP probability adjusted LIVE with the score, the minute and in-match events.',
       prob_base_only: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Available context (form, absences, lineups) is in the Context tab.',
       drivers: 'Factors that moved the line', evaluated: 'Evaluated factors', impact: 'Impact', confidence: 'Confidence', evidence: 'Evidence', freshness: 'Freshness',
       evaluated_note: 'These factors were evaluated; their effect is reflected in the net context adjustment, not as an isolated per-factor impact.',
@@ -972,6 +974,18 @@
       if (!beta.probability || !beta.probability.outcomes || !beta.probability.outcomes.length || beta.probability.outcomes[0].gp_probability == null) beta.probability = h2hProbability(h2h);
       gpAbsent = false; // ya tenemos GP+contexto en vivo → mostramos el análisis completo
     }
+    // GP Intelligence EN VIVO: si el partido está en juego y el server recalculó la prob GP (marcador+minuto+
+    // eventos), sobreescribimos el headline para que NO quede estática al pitazo. La base→contexto sigue pre-partido.
+    if (fx && fx.status === 'live' && fx.gpLive && fx.gpLive.homeWin != null) {
+      var gl = fx.gpLive;
+      var mkmap = {}; ((beta.probability && beta.probability.outcomes) || []).forEach(function (o) { mkmap[o.outcome_code] = o.market_probability; });
+      beta.probability = { market_code: '1X2', period_code: 'REGULATION', period_note_code: 'REGULATION_90', sums_to_one: true, live: true, outcomes: [
+        { outcome_code: 'HOME', team_ref: 'home', gp_probability: round4(gl.homeWin), market_probability: mkmap.HOME != null ? mkmap.HOME : null },
+        { outcome_code: 'DRAW', team_ref: null, gp_probability: round4(gl.draw), market_probability: mkmap.DRAW != null ? mkmap.DRAW : null },
+        { outcome_code: 'AWAY', team_ref: 'away', gp_probability: round4(gl.awayWin), market_probability: mkmap.AWAY != null ? mkmap.AWAY : null } ] };
+      if (beta.analysis) { beta.analysis.final_vector = { HOME: round4(gl.homeWin), DRAW: round4(gl.draw), AWAY: round4(gl.awayWin) }; beta.analysis.live_adjusted = true; }
+      beta._gpLive = gl; gpAbsent = false;
+    }
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
     // disponibilidad real de cada módulo (cobertura honesta; presente sólo si hay datos)
@@ -1156,7 +1170,8 @@
         stageRow(t('prob_base'), base) +
         '<div class="gx-prob-arrow">' + ic('arrow-down') + '<span class="gx-dim">' + esc(t('prob_ctx')) + (adj ? ' · ' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return esc(ocName(h, c).slice(0, 3)) + ' ' + pp(adj[c]); }).join(' / ') : '') + '</span></div>' +
         stageRow(t('prob_final'), fin, true);
-      if (!a.context_moved_line) body += '<p class="gx-mod-note gx-dim">' + esc(t('prob_no_ctx')) + '</p>';
+      if (a.live_adjusted) body += '<p class="gx-mod-note gx-live-ctx">' + ic('broadcast') + ' ' + esc(t('prob_live_adj')) + '</p>';
+      else if (!a.context_moved_line) body += '<p class="gx-mod-note gx-dim">' + esc(t('prob_no_ctx')) + '</p>';
       // drivers (applied factors) o evaluated
       var af = a.applied_factors || [];
       if (af.length) {
@@ -1414,6 +1429,8 @@
     bindMatches();
   }
   function mGpCell(canon, c) {
+    // EN VIVO: si el server entregó la prob GP en vivo (gpProbs) la usamos (se mueve con el partido).
+    if (c && c.gpProbs && c.gpProbs.home != null) { var gl = { HOME: c.gpProbs.home, DRAW: c.gpProbs.draw, AWAY: c.gpProbs.away }; return triCell(function (cc) { return pct0(gl[cc]); }, 'gx-gp', maxCode(function (cc) { return gl[cc]; })); }
     if (canon && canon.gp && canon.gp.HOME != null) return triCell(function (cc) { return pct0(canon.gp[cc]); }, 'gx-gp', maxCode(function (cc) { return canon.gp[cc]; }));
     // sin evaluación canónica: mostramos la Probabilidad GP del modelo (base) — el desglose de contexto aparece al abrir el partido.
     var p = c && c.probs; if (p && p.home != null) { var m = { HOME: p.home, DRAW: p.draw, AWAY: p.away }; return triCell(function (cc) { return pct0(m[cc]); }, 'gx-gp', maxCode(function (cc) { return m[cc]; })); }
@@ -1996,6 +2013,50 @@
     if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
+  // Construye S.cal/S.fixtures desde /api/state (boot Y refresco en vivo). gpProbs = prob GP en vivo del server.
+  function ingestState(st) {
+    if (!st) return;
+    if (st.teams) { S.stTeams = st.teams; st.teams.forEach(function (tm) { if (tm.id && tm.flag) FLAGS[tm.id] = tm.flag; }); }
+    S.groups = st.groups || []; S.standings = st.standings || {}; S.knockoutRaw = st.knockout || []; S.history = st.history || [];
+    S.cal = []; S.fixtures = [];
+    (st.fixtures || []).forEach(function (f) {
+      if (f.home && f.away) S.fixtures.push({ id: f.id, home: f.home, away: f.away, date: (f.datetime || '').slice(0, 10) });
+      S.cal.push({ id: f.id, kind: 'group', home: f.home, away: f.away, datetime: f.datetime, stage: 'group', status: f.result ? f.result.status : 'scheduled', score: f.result ? { home: f.result.hg, away: f.result.ag } : null, minute: f.result ? f.result.minute : null, probs: f.probs || null, gpProbs: f.gpProbs || null, pending: false });
+    });
+    (st.knockout || []).forEach(function (k) {
+      var h = (k.resolved && k.resolved.home) || (k.result && k.result.home), a = (k.resolved && k.resolved.away) || (k.result && k.result.away);
+      if (h && a) S.fixtures.push({ id: String(k.m), home: h, away: a, date: ((k.datetime || k.date || '') + '').slice(0, 10) });
+      S.cal.push({ id: String(k.m), kind: 'ko', home: h, away: a, datetime: k.datetime || (k.date ? k.date + 'T18:00:00Z' : null), stage: k.stage, status: k.result ? k.result.status : 'scheduled', score: k.result ? { home: k.result.hg, away: k.result.ag } : null, minute: k.result ? k.result.minute : null, probs: k.probs || null, gpProbs: k.gpProbs || null, pending: !(h && a) });
+    });
+  }
+  function anyLive() { return (S.cal || []).some(function (c) { return c.status === 'live'; }); }
+  // Refresco EN VIVO (premium no tenía polling → nada se movía). Cada 25s: re-trae el estado (marcadores + prob
+  // GP en vivo) y re-renderiza la vista actual; si hay un partido EN VIVO abierto, refresca su cockpit (fx+beta).
+  function refreshLive() {
+    fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
+      if (!st) return;
+      var wasLive = anyLive();
+      ingestState(st);
+      var live = anyLive();
+      if (!live && !wasLive && S.view !== 'match') return; // nada que mover
+      if (S.view === 'matches') renderMatches();
+      else if (S.view === 'opps' || S.view === 'board') load();
+      // cockpit de un partido abierto: re-fetch SILENCIOSO del fx (trae marcador/eventos/gpLive) → re-render sin flash
+      if (S.view === 'match' && S.matchId) {
+        var mid = S.matchId;
+        if (/^fx-/.test(mid)) {
+          var fxid = mid.slice(3);
+          fetch('/api/match/' + encodeURIComponent(fxid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { if (m && S.view === 'match' && S.matchId === mid) { S.mfix[fxid] = m; renderMatch(); } });
+        } else {
+          var beta = S.mc[mid];
+          var fid = (beta && beta.header) ? fixtureIdFor(beta.header) : null;
+          if (fid != null) fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { if (m && S.view === 'match' && S.matchId === mid) { S.mfix[fid] = m; renderMatch(); } });
+        }
+      }
+    });
+  }
+  function startLiveLoop() { if (S._liveTimer) return; S._liveTimer = setInterval(function () { try { refreshLive(); } catch (e) {} }, 25000); }
+
   // ---------- boot ----------
   function boot() {
     fetch('/api/i18n').then(function (r) { return r.json(); }).then(function (j) {
@@ -2003,24 +2064,11 @@
     }).catch(function () {}).then(function () {
       // flags desde el estado global (si el server los expone) — si no, fallback vacío (los nombres igual van).
       fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
-        if (st && st.teams) { S.stTeams = st.teams; st.teams.forEach(function (tm) { if (tm.id && tm.flag) FLAGS[tm.id] = tm.flag; }); }
-        if (st) { S.groups = st.groups || []; S.standings = st.standings || {}; S.knockoutRaw = st.knockout || []; S.history = st.history || []; }
-        // puente canónico→fixture + calendario completo (Partidos premium)
-        if (st) {
-          (st.fixtures || []).forEach(function (f) {
-            if (f.home && f.away) S.fixtures.push({ id: f.id, home: f.home, away: f.away, date: (f.datetime || '').slice(0, 10) });
-            S.cal.push({ id: f.id, kind: 'group', home: f.home, away: f.away, datetime: f.datetime, stage: 'group', status: f.result ? f.result.status : 'scheduled', score: f.result ? { home: f.result.hg, away: f.result.ag } : null, minute: f.result ? f.result.minute : null, probs: f.probs || null, pending: false });
-          });
-          (st.knockout || []).forEach(function (k) {
-            var h = (k.resolved && k.resolved.home) || (k.result && k.result.home), a = (k.resolved && k.resolved.away) || (k.result && k.result.away);
-            if (h && a) S.fixtures.push({ id: String(k.m), home: h, away: a, date: ((k.datetime || k.date || '') + '').slice(0, 10) });
-            S.cal.push({ id: String(k.m), kind: 'ko', home: h, away: a, datetime: k.datetime || (k.date ? k.date + 'T18:00:00Z' : null), stage: k.stage, status: k.result ? k.result.status : 'scheduled', score: k.result ? { home: k.result.hg, away: k.result.ag } : null, minute: k.result ? k.result.minute : null, probs: k.probs || null, pending: !(h && a) });
-          });
-        }
+        ingestState(st);
         var pref; try { pref = localStorage.getItem('gp_lang'); } catch (e) {}
         LANG = (pref === 'en' || pref === 'es') ? pref : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
         document.documentElement.lang = LANG;
-        shell(); load(); loadCanon();
+        shell(); load(); loadCanon(); startLiveLoop();
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).

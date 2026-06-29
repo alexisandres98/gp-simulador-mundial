@@ -3,7 +3,21 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const { liveMatchProbs, liveEventAdjustments } = require('../engine');
+const { liveMatchProbs, liveEventAdjustments, liveProbsFromLambdas } = require('../engine');
+
+test('liveProbsFromLambdas: marcador en contra mueve la prob hacia quien gana + normaliza', () => {
+  const even = liveProbsFromLambdas(1.5, 1.1, 0, 0, 30);
+  const losing = liveProbsFromLambdas(1.5, 1.1, 0, 1, 30); // local 0-1
+  assert.ok(losing.home < even.home, 'ir perdiendo baja la prob del local');
+  assert.ok(losing.away > even.away, 'ir ganando sube la prob del visitante');
+  const s = losing.home + losing.draw + losing.away;
+  assert.ok(Math.abs(s - 1) < 1e-6, 'normalizada');
+});
+test('liveProbsFromLambdas: mulH/mulA (roja) reducen la expectativa del sancionado', () => {
+  const base = liveProbsFromLambdas(1.6, 1.2, 0, 0, 40);
+  const redHome = liveProbsFromLambdas(1.6, 1.2, 0, 0, 40, { mulH: 0.7, mulA: 1.12 });
+  assert.ok(redHome.home < base.home && redHome.away > base.away);
+});
 
 test('liveEventAdjustments: cuenta rojas por lado y penaliza con Elo negativo', () => {
   const a = liveEventAdjustments([{ type: 'red', side: 'home' }, { type: 'yellow', side: 'away' }, { type: 'goal', side: 'home' }]);

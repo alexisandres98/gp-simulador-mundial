@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #06090B 0%, #0B1714 50%, #0A5C3C 140%); color: #EAF1F2;
+  padding: 38px 52px; position: relative; }
+.brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.badge { width: 40px; height: 40px; border-radius: 12px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 21px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4; font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; color:#fff; }
+.sub { font-size: 17px; color:#9DB0B5; font-weight:600; margin-bottom: 20px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; padding: 20px 22px; position: relative; overflow:hidden; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.fam { font-size: 14px; font-weight: 800; letter-spacing: 1.2px; color:#1FE3A4; text-transform:uppercase; }
+.pick.goals .fam { color:#34D6C8; }
+.match { font-size: 16px; font-weight: 700; color:#9DB0B5; margin: 4px 0 12px; }
+.bet { font-size: 30px; font-weight: 800; letter-spacing:-.5px; color:#fff; margin-bottom: 14px; }
+.row { display:flex; align-items:center; justify-content:space-between; }
+.conf { font-size: 15px; color:#9DB0B5; font-weight:600; }
+.conf b { color:#fff; }
+.odds { text-align:right; }
+.odds .ol { font-size: 12px; font-weight:700; letter-spacing:.8px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size: 34px; font-weight:800; color:#1FE3A4; letter-spacing:-.5px; }
+.foot { position:absolute; bottom: 28px; left: 52px; right: 52px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:18px; font-weight:800; padding:12px 26px; border-radius:99px; }
+.foot .small { font-size:14px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● TODAY'S PICKS</div></div>
+  <h1>Today's picks 🎯</h1>
+  <div class="sub">We follow the market · always the best odds</div>
+  <div class="grid">
+    <div class="pick">
+      <div class="fam">Winner</div>
+      <div class="match">🇫🇷 France vs Sweden 🇸🇪 · 4:00 PM</div>
+      <div class="bet">France to win</div>
+      <div class="row"><div class="conf">Confidence: <b>High</b></div><div class="odds"><div class="ol">Best odds</div><div class="ov">1.31</div></div></div>
+    </div>
+    <div class="pick goals">
+      <div class="fam">Goals</div>
+      <div class="match">🇲🇽 Mexico vs Ecuador 🇪🇨 · 8:00 PM</div>
+      <div class="bet">Over 2.5 goals</div>
+      <div class="row"><div class="conf">Confidence: <b>Medium</b></div><div class="odds"><div class="ol">Best odds</div><div class="ov">3.00</div></div></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Daily picks · clear analysis · not financial advice</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

@@ -1601,7 +1601,9 @@ async function persistGoalSnapshot(ev, deep, completeness) {
       total_goals_distribution: out.total_goals_distribution, over_under: out.over_under, btts: out.btts,
       team_totals: out.team_totals, top_scorelines: out.top_scorelines, uncertainty: out.uncertainty,
       data_completeness: completeness != null ? completeness : null,
-      factor_lineage: [{ source: 'h2h-deep', goal_model: (deep.context && deep.context.goalModel) || null }], cutoff_at: null,
+      // factor_lineage lleva los team-ids + kickoff para que la capa de Picks pueda reconstruir el evento sin
+      // depender de canonical_events (los ids de goles pueden ser sintéticos, desacoplados del grafo canónico).
+      factor_lineage: [{ source: 'h2h-deep', goal_model: (deep.context && deep.context.goalModel) || null, home_team_id: ev.homeId || null, away_team_id: ev.awayId || null, kickoff_at: ev.kickoff || null }], cutoff_at: null,
     });
   } catch (e) { return null; }
 }
@@ -1669,25 +1671,30 @@ async function evaluateGoalPicks() {
     if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
     const goalPick = require('./goal-engine/goalPick');
     const gate = require('./calibration/goalGates').report({ results: db.results || {} });
+    // Sin JOIN a canonical_events (los ids de goles pueden ser sintéticos). Los equipos + kickoff salen del
+    // factor_lineage del snapshot más reciente. Solo Value reciente (≈ partidos próximos).
     const rows = (await dbc.query(
       `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
          gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability, gv.market_consensus_probability,
          gv.best_decimal_odds, gv.adjusted_edge_pp, gv.adjusted_ev, gv.conservative_probability, gv.classification,
-         ce.home_participant, ce.away_participant, ce.scheduled_start,
-         (SELECT data_completeness FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) data_completeness,
+         s.data_completeness, s.factor_lineage,
          (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id) books
        FROM goal_value_shadow gv
-       JOIN canonical_events ce ON ce.id=gv.canonical_event_id AND ce.scheduled_start > now()
+       LEFT JOIN LATERAL (SELECT data_completeness, factor_lineage FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) s ON true
+       WHERE gv.created_at > now() - interval '2 days'
        ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
     const idx = {}; for (const p of db.goalPicks) idx[p.event.canonical_event_id + '|' + p.market_id] = p;
+    const nowMs = Date.now();
     for (const r of rows) {
       out.considered++;
       try {
         const famGate = gate.families[GOAL_GATE_FAMILY[r.market_family]] || { status: 'shadow' };
-        const a = aliasToId[normName(r.home_participant)], b = aliasToId[normName(r.away_participant)];
+        const lin = (Array.isArray(r.factor_lineage) ? r.factor_lineage[0] : null) || {};
+        const a = lin.home_team_id || null, b = lin.away_team_id || null, kickoff = lin.kickoff_at || null;
+        if (kickoff && new Date(kickoff).getTime() <= nowMs) { out.skipped++; continue; } // ya empezó → no es Pick prepartido
         const q = goalPick.qualifyPick({
           valueRow: r, gate: famGate, snapshot: { data_completeness: r.data_completeness },
-          event: { canonical_event_id: r.canonical_event_id, home_team_id: a, away_team_id: b, kickoff_at: r.scheduled_start },
+          event: { canonical_event_id: r.canonical_event_id, home_team_id: a, away_team_id: b, kickoff_at: kickoff },
           market: { books_available: r.books, best_sportsbook: null, lineup_status: 'UNKNOWN', sources: [] },
         });
         if (!q.qualifies) { out.skipped++; continue; }
@@ -1850,31 +1857,81 @@ function goalEngineOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP
 async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
   if (_goalEvalRunning) return { skipped: 'running' };
   _goalEvalRunning = true;
-  const out = { evaluated: 0, snapshots_new: 0, value_rows: 0, skipped: 0, errors: 0, started: new Date().toISOString() };
+  const out = { evaluated: 0, snapshots_new: 0, quotes: 0, value_rows: 0, skipped: 0, errors: 0, source: null, started: new Date().toISOString() };
   try {
     const dbc = require('./database/client');
     const dbcfg = require('./database/config');
     if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
-    const evs = (await dbc.query(
-      `SELECT id, home_participant, away_participant, scheduled_start FROM canonical_events
-        WHERE scheduled_start > now() ORDER BY scheduled_start LIMIT $1`, [limit])).rows;
-    for (const ev of evs) {
+    const grepo = require('./goal-engine/repository');
+    const { stableGoalEventId } = require('./goal-engine/eventKey');
+
+    // Mapa PAR-DE-EQUIPOS → id canónico (si el partido YA es canónico, reusamos su id real; si no, id sintético
+    // estable). Desacopla el pipeline de goles de la creación de canonical_events (backbone del arbitraje).
+    const canonRows = (await dbc.query(`SELECT id, home_participant, away_participant FROM canonical_events WHERE scheduled_start > now()`)).rows;
+    const canonByPair = {};
+    for (const c of canonRows) { const a = aliasToId[normName(c.home_participant)], b = aliasToId[normName(c.away_participant)]; if (a && b) canonByPair[a + '|' + b] = c.id; }
+
+    // Fuente primaria: the_odds_api lista los PRÓXIMOS reales con cuotas de totales. Resolvemos equipos por ID
+    // (aliasToId cubre los nombres del proveedor: USA→USA, Bosnia & Herzegovina→BIH, DR Congo→COD…).
+    const KEY = process.env.SPORTSBOOK_PROVIDER_API_KEY;
+    let events = null;
+    if (KEY) {
       try {
-        const a = aliasToId[normName(ev.home_participant)], b = aliasToId[normName(ev.away_participant)];
-        if (!a || !b || db.elos[a] == null || db.elos[b] == null) { out.skipped++; continue; }
-        const deep = await buildH2HDeep(a, b);
-        if (!deep || !deep.probs) { out.skipped++; continue; }
-        const dqA = (deep.context && deep.context.dataQualityA) || { score: 0 };
-        const dqB = (deep.context && deep.context.dataQualityB) || { score: 0 };
-        const compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
-        const gsnap = await persistGoalSnapshot(ev, deep, compl);
-        out.evaluated++;
-        if (gsnap && gsnap.row && !gsnap.idempotent) out.snapshots_new++;
-        // G3: value de goles vs consenso no-vig del mercado (shadow, solo si hay cuotas del evento).
-        const vrows = await persistGoalValue(ev, Number(deep.probs.xgA), Number(deep.probs.xgB), gsnap && gsnap.row ? gsnap.row.goal_snapshot_id : null);
-        out.value_rows += vrows || 0;
-        if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
-      } catch (e) { out.errors++; }
+        const reserve = Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?regions=eu,uk&markets=totals&oddsFormat=decimal&dateFormat=iso&apiKey=${KEY}`, { signal: AbortSignal.timeout(15000) });
+        const remaining = Number(r.headers.get('x-requests-remaining'));
+        if (r.ok && (!Number.isFinite(remaining) || remaining >= reserve)) {
+          const body = await r.json(); const now = Date.now();
+          events = (Array.isArray(body) ? body : []).filter(e => new Date(e.commence_time).getTime() > now);
+          out.source = 'the_odds_api'; out.credits_remaining = Number.isFinite(remaining) ? remaining : null;
+        } else if (r.ok) { out.source = 'quota_reserve'; out.credits_remaining = remaining; }
+      } catch (e) { out.fetch_error = e.message; }
+    }
+
+    const processMatch = async (a, b, eventId, kickoff, theOddsEvent) => {
+      if (!a || !b || db.elos[a] == null || db.elos[b] == null) { out.skipped++; return; }
+      const deep = await buildH2HDeep(a, b);
+      if (!deep || !deep.probs) { out.skipped++; return; }
+      const dqA = (deep.context && deep.context.dataQualityA) || { score: 0 }, dqB = (deep.context && deep.context.dataQualityB) || { score: 0 };
+      const compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
+      const gsnap = await persistGoalSnapshot({ id: eventId, homeId: a, awayId: b, kickoff }, deep, compl);
+      out.evaluated++;
+      if (gsnap && gsnap.row && !gsnap.idempotent) out.snapshots_new++;
+      // Ingerir las cuotas de totales de ESTE evento bajo el MISMO id (snapshot y cuotas alineados → Value posible).
+      if (theOddsEvent) {
+        for (const bk of theOddsEvent.bookmakers || []) for (const m of bk.markets || []) {
+          if (m.key !== 'totals') continue;
+          for (const o of m.outcomes || []) {
+            const side = String(o.name || '').toLowerCase();
+            await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: theOddsEvent.id, canonical_event_id: eventId, market_family: 'match_total', line: o.point, side, market_id: `TOTAL_GOALS_${side.toUpperCase()}_${String(o.point).replace('.', '_')}`, odds_decimal: o.price, implied_probability: o.price > 1 ? 1 / o.price : null, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+            out.quotes++;
+          }
+        }
+      }
+      const vrows = await persistGoalValue({ id: eventId }, Number(deep.probs.xgA), Number(deep.probs.xgB), gsnap && gsnap.row ? gsnap.row.goal_snapshot_id : null);
+      out.value_rows += vrows || 0;
+      if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
+    };
+
+    if (events) {
+      for (const e of events.slice(0, limit)) {
+        try {
+          const a = aliasToId[normName(e.home_team)], b = aliasToId[normName(e.away_team)];
+          const eventId = (a && b && canonByPair[a + '|' + b]) || (a && b ? stableGoalEventId(a, b) : null);
+          if (!eventId) { out.skipped++; continue; }
+          await processMatch(a, b, eventId, e.commence_time, e);
+        } catch (e2) { out.errors++; }
+      }
+    } else {
+      // Fallback: sin the_odds_api (sin key / quota / fallo), usa los canonical_events próximos (sin cuotas frescas).
+      out.source = out.source || 'canonical_fallback';
+      const evs = (await dbc.query(`SELECT id, home_participant, away_participant, scheduled_start FROM canonical_events WHERE scheduled_start > now() ORDER BY scheduled_start LIMIT $1`, [limit])).rows;
+      for (const ev of evs) {
+        try {
+          const a = aliasToId[normName(ev.home_participant)], b = aliasToId[normName(ev.away_participant)];
+          await processMatch(a, b, ev.id, ev.scheduled_start, null);
+        } catch (e) { out.errors++; }
+      }
     }
     // G5: tras refrescar Value, evalúa Picks (gated por flag) y liquida los que ya tienen resultado.
     out.picks = await evaluateGoalPicks();

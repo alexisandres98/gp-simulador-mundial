@@ -164,7 +164,8 @@ async function tick({ now = Date.now() } = {}) {
     { name: 'venue_resolve', interval: 60 * 60 * 1000, fn: jobResolveVenues },
     { name: 'news_fetch', interval: 30 * 60 * 1000, fn: jobNews },
     { name: 'weather_refresh', interval: 60 * 60 * 1000, fn: jobWeather },
-    { name: 'goal_market_totals', interval: 30 * 60 * 1000, fn: jobTotals },
+    // goal_market_totals: RETIRADO del tick — el pase de goles (evaluateUpcomingGoals) ahora ingiere las cuotas
+    // de totales bajo el id estable por par de equipos (matching por team-id, no por nombre). Evita doble fetch.
   ];
   const out = {};
   for (const j of jobs) {

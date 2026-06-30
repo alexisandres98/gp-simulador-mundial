@@ -655,3 +655,13 @@ body { background:
 .gx-pick-clickable { cursor: pointer; }
 .gx-pick-clickable:hover { border-color: var(--gx-accent-line); }
 .gx-pick-clickable:active { transform: translateY(0); }
+
+/* Color de iconos de eventos del partido (gol, tarjetas, cambio) — paridad con la plataforma principal */
+.gx-evt-ic { display: inline-flex; align-items: center; }
+.gx-evt-ic i { font-size: 15px; }
+.gx-evt-goal { color: var(--gx-accent); }
+.gx-evt-yellow { color: var(--gx-warn); }
+.gx-evt-red { color: var(--gx-neg); }
+.gx-evt-subst { color: var(--gx-blue); }
+.gx-evt-var { color: var(--gx-cyan); }
+.gx-evt-other { color: var(--gx-text3); }

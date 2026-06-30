@@ -78,6 +78,7 @@
       ctx_form_line: '{team} llega con {rec} en sus últimos {n} ({gf} a favor, {ga} en contra).', ctx_inj_line: '{team}: {players}.', no_inj: 'sin bajas reportadas',
       goals_tag: 'En validación', goals_disc: 'Proyección estadística del modelo, en validación. No es una Pick ni un Value; sin recomendación de apuesta.',
       g_xg: 'xG esperado', g_total: 'Total esperado', g_ou: 'Más / Menos', g_btts: 'Ambos anotan', g_scores: 'Marcadores más probables', g_over: 'Más', g_under: 'Menos', g_yes: 'Sí', g_no: 'No', goals_none: 'Sin proyección de goles disponible.',
+      g_dist: 'Distribución de goles', g_margin: 'Margen de victoria', g_combos: 'Combinaciones', g_either2: 'Cualquiera gana por 2+', g_team_by2: '{team} por 2+', g_draw: 'Empate', g_team_wino25: '{team} gana y +2.5', g_wintonil: 'Cualquiera gana a cero', g_team_cs: '{team} valla invicta', g_push: 'empuje', g_home: 'Local', g_away: 'Visitante',
       live_min: 'Minuto', live_events: 'Eventos', live_stats: 'Estadísticas', live_prob: 'Probabilidad en vivo (modelo)', live_none: 'No hay datos en vivo verificados para este partido.',
       live_stale: 'Datos en vivo posiblemente desactualizados; pueden no reflejar el estado actual.',
       live_ctx_red: 'Probabilidad en vivo ajustada por tarjeta roja ({team}).',
@@ -214,6 +215,7 @@
       ctx_form_line: '{team} arrives with {rec} in its last {n} ({gf} for, {ga} against).', ctx_inj_line: '{team}: {players}.', no_inj: 'no reported absences',
       goals_tag: 'In validation', goals_disc: 'Statistical model projection, in validation. Not a Pick or Value; no betting recommendation.',
       g_xg: 'Expected xG', g_total: 'Expected total', g_ou: 'Over / Under', g_btts: 'Both teams score', g_scores: 'Most likely scores', g_over: 'Over', g_under: 'Under', g_yes: 'Yes', g_no: 'No', goals_none: 'No goal projection available.',
+      g_dist: 'Goal distribution', g_margin: 'Winning margin', g_combos: 'Combinations', g_either2: 'Either team by 2+', g_team_by2: '{team} by 2+', g_draw: 'Draw', g_team_wino25: '{team} wins & over 2.5', g_wintonil: 'Either wins to nil', g_team_cs: '{team} clean sheet', g_push: 'push', g_home: 'Home', g_away: 'Away',
       live_min: 'Minute', live_events: 'Events', live_stats: 'Stats', live_prob: 'Live probability (model)', live_none: 'No verified live data for this match.',
       live_stale: 'Live data may be stale; it might not reflect the current state.',
       live_ctx_red: 'Live probability adjusted for a red card ({team}).',
@@ -1374,17 +1376,39 @@
   }
   function ctxBlock(title, icon, html) { return '<div class="gx-ctx-block"><div class="gx-ctx-h">' + ic(icon) + esc(title) + '</div><p>' + html + '</p></div>'; }
 
-  // ---- módulo 6: Goles "en validación" (sin Pick/Value/CTA de apuesta) ----
+  // ---- módulo 6: Goles "en validación" (sin Pick/Value/CTA de apuesta). TODO deriva de la misma distribución:
+  //      xG, distribución total, escalera O/U (con push en líneas enteras), margen de victoria y combinaciones. ----
   function mvGoals(beta) {
     var gi = beta.goal_insights;
-    if (!gi) return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div><div class="gx-mod-body"><div class="gx-empty">' + ic('ball-football') + '<b>' + esc(t('goals_none')) + '</b></div></div></div>';
-    var eg = gi.expected_goals || {}, ou = gi.over_under || {}, btts = gi.btts;
-    var ouRow = function (line) { var o = ou[line]; if (!o) return ''; return '<div class="gx-ou-row"><span class="gx-mono">' + line + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + ((o.over || 0) * 100) + '%"></span></div><span class="gx-mono gx-dim">' + esc(t('g_over')) + ' ' + pct0(o.over) + ' · ' + esc(t('g_under')) + ' ' + pct0(o.under != null ? o.under : (o.over != null ? 1 - o.over : null)) + '</span></div>'; };
+    var head = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div>';
+    if (!gi) return head + '<div class="gx-mod-body"><div class="gx-empty">' + ic('ball-football') + '<b>' + esc(t('goals_none')) + '</b></div></div></div>';
+    var h = beta.header || {};
+    var hN = teamName(h.home && h.home.team_id, h.home && h.home.name_fallback) || t('g_home'), aN = teamName(h.away && h.away.team_id, h.away && h.away.name_fallback) || t('g_away');
+    var eg = gi.expected_goals || {}, btts = gi.btts;
+    var asian = gi.asian_over_under || [], dist = gi.total_distribution || [], wm = gi.winning_margin || {}, cm = gi.combos || {};
     var stat = function (label, v) { return '<div class="gx-g-stat"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b></div>'; };
+    // distribución total de goles (barras relativas al pico)
+    var maxP = dist.reduce(function (m, d) { return Math.max(m, d.p || 0); }, 0.0001);
+    var distHtml = dist.map(function (d) { return '<div class="gx-ou-row"><span class="gx-mono">' + esc(d.label) + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + ((d.p / maxP) * 100) + '%"></span></div><span class="gx-mono gx-dim gx-g-pct">' + pct0(d.p) + '</span></div>'; }).join('');
+    // escalera O/U con push (líneas enteras muestran el empuje)
+    var LAD = [1.5, 2.0, 2.5, 3.0, 3.5];
+    var ladRow = function (line) {
+      var a = null; for (var i = 0; i < asian.length; i++) if (asian[i].line === line) { a = asian[i]; break; }
+      if (!a) return '';
+      var pushTxt = (a.push && a.push > 0.001) ? ' · ' + esc(t('g_push')) + ' ' + pct0(a.push) : '';
+      return '<div class="gx-ou-row"><span class="gx-mono">' + line.toFixed(1) + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + ((a.over || 0) * 100) + '%"></span></div><span class="gx-mono gx-dim">' + esc(t('g_over')) + ' ' + pct0(a.over) + ' · ' + esc(t('g_under')) + ' ' + pct0(a.under) + pushTxt + '</span></div>';
+    };
+    // fila etiqueta + barra + % (margen / combinaciones)
+    var mRow = function (label, p) { if (p == null) return ''; return '<div class="gx-ou-row"><span class="gx-g-mlabel">' + esc(label) + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + (p * 100) + '%"></span></div><span class="gx-mono gx-dim gx-g-pct">' + pct0(p) + '</span></div>'; };
+    var marginHtml = mRow(t('g_either2'), wm.either_by_2_plus) + mRow(t('g_team_by2', { team: hN }), wm.home_by_2_plus) + mRow(t('g_team_by2', { team: aN }), wm.away_by_2_plus) + mRow(t('g_draw'), wm.draw);
+    var combosHtml = mRow(t('g_team_wino25', { team: hN }), cm.home_win_and_over_2_5) + mRow(t('g_team_wino25', { team: aN }), cm.away_win_and_over_2_5) + mRow(t('g_wintonil'), cm.win_to_nil_either) + mRow(t('g_team_cs', { team: hN }), cm.home_clean_sheet) + mRow(t('g_team_cs', { team: aN }), cm.away_clean_sheet);
     var scores = (gi.top_scores || []).slice(0, 5);
-    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div><div class="gx-mod-body">' +
+    return head + '<div class="gx-mod-body">' +
       '<div class="gx-g-stats">' + stat(t('g_xg'), (eg.HOME != null ? Number(eg.HOME).toFixed(2) : '—') + ' – ' + (eg.AWAY != null ? Number(eg.AWAY).toFixed(2) : '—')) + stat(t('g_total'), eg.TOTAL != null ? Number(eg.TOTAL).toFixed(2) : '—') + (btts ? stat(t('g_btts'), esc(t('g_yes')) + ' ' + pct0(btts.yes)) : '') + '</div>' +
-      '<div class="gx-mod-sub gx-label">' + esc(t('g_ou')) + '</div>' + ['1.5', '2.5', '3.5'].map(ouRow).filter(Boolean).join('') +
+      (dist.length ? '<div class="gx-mod-sub gx-label">' + esc(t('g_dist')) + '</div>' + distHtml : '') +
+      '<div class="gx-mod-sub gx-label">' + esc(t('g_ou')) + '</div>' + LAD.map(ladRow).filter(Boolean).join('') +
+      (marginHtml ? '<div class="gx-mod-sub gx-label">' + esc(t('g_margin')) + '</div>' + marginHtml : '') +
+      (combosHtml ? '<div class="gx-mod-sub gx-label">' + esc(t('g_combos')) + '</div>' + combosHtml : '') +
       (scores.length ? '<div class="gx-mod-sub gx-label">' + esc(t('g_scores')) + '</div><div class="gx-scores">' + scores.map(function (s) { return '<div class="gx-score-i"><b class="gx-mono">' + esc(s.score) + '</b><span class="gx-dim gx-mono">' + pct0(s.probability) + '</span></div>'; }).join('') + '</div>' : '') +
       '<p class="gx-mod-note gx-dim">' + ic('alert-triangle') + ' ' + esc(t('goals_disc')) + '</p>' +
       '</div></div>';

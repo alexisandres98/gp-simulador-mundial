@@ -221,15 +221,58 @@ function pickDto(p) {
 }
 
 // --- Goal Insights (informativo, detrás de flag). Distribución, NO marcador determinista. ---
+// Las LAMBDAS son el estadístico suficiente: TODAS las familias (distribución, escalera asiática O/U, margen de
+// victoria, combinaciones) se DERIVAN de (λh, λa) con el MISMO engine — coherencia total, sin persistir columnas
+// extra. Si no hay lambdas (snapshot viejo), cae a los campos guardados. NO produce Pick/Value (eso es otra capa).
+let _ge = null, _gm = null;
+function goalEngines() {
+  if (!_ge) { try { _ge = require('../goal-engine/distribution'); _gm = require('../goal-engine/markets'); } catch { _ge = false; } }
+  return _ge ? { dist: _ge, mk: _gm } : null;
+}
 function goalInsights(g) {
   if (!g) return null;
+  const lh = Number(g.lambda_home), la = Number(g.lambda_away);
+  const eng = (Number.isFinite(lh) && Number.isFinite(la) && lh > 0 && la > 0) ? goalEngines() : null;
+  if (!eng) return goalInsightsFromStored(g); // fallback sin engine/lambdas
+  const { dist, mk } = eng;
+  const { matrix } = dist.buildMatrix(lh, la);
+  const totalDist = dist.totalGoalsDist(matrix);
+  const bucket = (d, max) => { const out = []; let tail = 0; for (const [k, p] of Object.entries(d)) { const n = Number(k); if (n < max) out[n] = (out[n] || 0) + p; else tail += p; } const arr = []; for (let i = 0; i < max; i++) arr.push({ label: String(i), p: round(out[i] || 0, 4) }); arr.push({ label: max + '+', p: round(tail, 4) }); return arr; };
+  const teamH = dist.teamGoalsDist(matrix, 'home'), teamA = dist.teamGoalsDist(matrix, 'away');
+  const bt = dist.btts(matrix);
+  const ouAt = (l) => { const o = dist.overUnder(matrix, l); return { over: round(o.over, 4), under: round(o.under, 4) }; };
+  // escalera asiática completa (con push en líneas enteras y over_fair en cuartos)
+  const asian = mk.asianTotals(matrix).map((a) => ({ line: a.line, kind: a.kind, over: round(a.over, 4), under: round(a.under, 4), push: round(a.push, 4) }));
+  const wm = mk.winningMargin(matrix); const wmGet = (id) => round((wm.find((x) => x.market_id === id) || {}).probability, 4);
+  const cm = mk.comboMarkets(matrix); const cmGet = (id) => round((cm.find((x) => x.market_id === id) || {}).probability, 4);
+  return {
+    informational: true,
+    expected_goals: { HOME: round(lh, 2), AWAY: round(la, 2), TOTAL: round(lh + la, 2) },
+    over_under: { '1.5': ouAt(1.5), '2.5': ouAt(2.5), '3.5': ouAt(3.5) }, // back-compat (mvGoals actual)
+    asian_over_under: asian,                                              // escalera completa 0.5..4.5
+    btts: { yes: round(bt.yes, 4), no: round(bt.no, 4) },
+    total_distribution: bucket(totalDist, 5),                            // 0,1,2,3,4,5+
+    team_distribution: { home: bucket(teamH, 3), away: bucket(teamA, 3) }, // 0,1,2,3+
+    winning_margin: {
+      either_by_2_plus: wmGet('WINNING_MARGIN_EITHER_BY_2_PLUS'), either_by_3_plus: wmGet('WINNING_MARGIN_EITHER_BY_3_PLUS'),
+      home_by_2_plus: wmGet('WINNING_MARGIN_HOME_BY_2_PLUS'), away_by_2_plus: wmGet('WINNING_MARGIN_AWAY_BY_2_PLUS'),
+      draw: wmGet('WINNING_MARGIN_DRAW'),
+    },
+    combos: {
+      over_2_5_and_btts: cmGet('OVER_2_5_AND_BTTS_YES'),
+      home_win_and_over_2_5: cmGet('HOME_WIN_AND_OVER_2_5'), away_win_and_over_2_5: cmGet('AWAY_WIN_AND_OVER_2_5'),
+      win_to_nil_either: cmGet('WIN_TO_NIL_EITHER'), home_clean_sheet: cmGet('HOME_CLEAN_SHEET'), away_clean_sheet: cmGet('AWAY_CLEAN_SHEET'),
+    },
+    top_scores: mk.exactScores(matrix).slice(0, 5).map((s) => ({ score: s.score, probability: round(s.probability, 4) })),
+  };
+}
+// Fallback para snapshots sin lambdas usables: usa los campos guardados (forma mínima, back-compat).
+function goalInsightsFromStored(g) {
   const ou = g.over_under || {};
   return {
-    informational: true,                                  // el cliente muestra el disclaimer experimental
+    informational: true,
     expected_goals: { HOME: round(g.lambda_home, 2), AWAY: round(g.lambda_away, 2), TOTAL: round(g.lambda_total, 2) },
-    over_under: {
-      '1.5': pct(ou['1.5']), '2.5': pct(ou['2.5']), '3.5': pct(ou['3.5']),
-    },
+    over_under: { '1.5': pct(ou['1.5']), '2.5': pct(ou['2.5']), '3.5': pct(ou['3.5']) },
     btts: g.btts ? { yes: round(g.btts.yes, 4), no: round(g.btts.no, 4) } : null,
     top_scores: (g.top_scores || []).slice(0, 5).map((s) => ({ score: s.score, probability: round(s.probability, 4) })),
   };

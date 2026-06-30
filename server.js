@@ -1577,6 +1577,34 @@ async function buildH2HDeep(a, b) {
   return data;
 }
 
+// ===== GOLES (G2): persiste el goal_model_snapshot del evento (SHADOW). Reusa las lambdas que buildH2HDeep YA
+// calculó — base (sin contexto, deep.base.xgA/xgB) vs final (con contexto, deep.probs.xgA/xgB) — y deriva la
+// matriz de marcadores + mercados de primera capa (O/U, BTTS, team totals, scorelines). Idempotente por
+// input_hash (event+modelo+lambdas finales). Best-effort: nunca rompe el loop de contexto. Sin Monte Carlo ni
+// llamadas API extra. Solo lo lee mvGoals en /x (detrás de GP_GOAL_INSIGHTS_UI_ENABLED). NO toca el modelo oficial.
+async function persistGoalSnapshot(ev, deep, completeness) {
+  try {
+    const goalDist = require('./goal-engine/distribution');
+    const grepo = require('./goal-engine/repository');
+    const baseLh = Number(deep.base && deep.base.xgA), baseLa = Number(deep.base && deep.base.xgB);
+    const lh = Number(deep.probs && deep.probs.xgA), la = Number(deep.probs && deep.probs.xgB);
+    if (!(lh > 0) || !(la > 0)) return null;
+    const MV = 'goal-engine-live-1.0.0';
+    const out = goalDist.goalModelOutput(lh, la, { modelVersion: MV });
+    const matrixHash = 'sha256:' + crypto.createHash('sha256').update(JSON.stringify({ lh: +lh.toFixed(6), la: +la.toFixed(6), mv: MV })).digest('hex');
+    return await grepo.recordGoalSnapshot({
+      canonical_event_id: ev.id, model_version: MV, period_code: 'REGULATION',
+      base_lambda_home: isFinite(baseLh) ? baseLh : null, base_lambda_away: isFinite(baseLa) ? baseLa : null,
+      context_lambda_home: lh, context_lambda_away: la, final_lambda_home: lh, final_lambda_away: la,
+      expected_total_goals: out.expected_total_goals, scoreline_matrix_hash: matrixHash,
+      total_goals_distribution: out.total_goals_distribution, over_under: out.over_under, btts: out.btts,
+      team_totals: out.team_totals, top_scorelines: out.top_scorelines, uncertainty: out.uncertainty,
+      data_completeness: completeness != null ? completeness : null,
+      factor_lineage: [{ source: 'h2h-deep', goal_model: (deep.context && deep.context.goalModel) || null }], cutoff_at: null,
+    });
+  } catch (e) { return null; }
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -1685,6 +1713,43 @@ async function evaluateUpcomingContext({ limit = 60, throttleMs = 220 } = {}) {
     }
   } catch (e) { out.error = e.message; }
   finally { _ctxEvalRunning = false; out.finished = new Date().toISOString(); _ctxEvalLast = out; }
+  return out;
+}
+
+// ===== GOLES (G2): pase de evaluación de goles, SEPARADO del loop de contexto. Itera los fixtures canónicos
+// próximos, reusa buildH2HDeep (cache TTL → barato si corre tras el pase de contexto) para las lambdas base/
+// contextuales y persiste el goal_model_snapshot (shadow, idempotente). NO escribe v2/context snapshots → seguro
+// para verificar en preview sin sobrescribir los FULL_CONTEXT de prod. Solo lo lee mvGoals en /x (flag).
+let _goalEvalRunning = false, _goalEvalLast = null;
+function goalEngineOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_GOAL_ENGINE_ENABLED || '')); }
+async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
+  if (_goalEvalRunning) return { skipped: 'running' };
+  _goalEvalRunning = true;
+  const out = { evaluated: 0, snapshots_new: 0, skipped: 0, errors: 0, started: new Date().toISOString() };
+  try {
+    const dbc = require('./database/client');
+    const dbcfg = require('./database/config');
+    if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
+    const evs = (await dbc.query(
+      `SELECT id, home_participant, away_participant, scheduled_start FROM canonical_events
+        WHERE scheduled_start > now() ORDER BY scheduled_start LIMIT $1`, [limit])).rows;
+    for (const ev of evs) {
+      try {
+        const a = aliasToId[normName(ev.home_participant)], b = aliasToId[normName(ev.away_participant)];
+        if (!a || !b || db.elos[a] == null || db.elos[b] == null) { out.skipped++; continue; }
+        const deep = await buildH2HDeep(a, b);
+        if (!deep || !deep.probs) { out.skipped++; continue; }
+        const dqA = (deep.context && deep.context.dataQualityA) || { score: 0 };
+        const dqB = (deep.context && deep.context.dataQualityB) || { score: 0 };
+        const compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
+        const gsnap = await persistGoalSnapshot(ev, deep, compl);
+        out.evaluated++;
+        if (gsnap && gsnap.row && !gsnap.idempotent) out.snapshots_new++;
+        if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
+      } catch (e) { out.errors++; }
+    }
+  } catch (e) { out.error = e.message; }
+  finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
 }
 function round4(x) { return (x == null || !isFinite(x)) ? null : Math.round(x * 1e4) / 1e4; }
@@ -2317,6 +2382,11 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateUpcomingContext({ limit: 80 }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { enabled: contextEngineOn(), running: _ctxEvalRunning, last: _ctxEvalLast });
+    }
+    if (p === '/api/internal/goals/evaluate') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'POST') { const r = await evaluateUpcomingGoals({ limit: 80 }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { enabled: goalEngineOn(), running: _goalEvalRunning, last: _goalEvalLast });
     }
     // --- Sprint 8A: admin analytics (§46). Admin-only. ---
     if (p.startsWith('/api/internal/analytics/')) {
@@ -3077,6 +3147,12 @@ server.listen(PORT, () => {
       const runCtx = () => evaluateUpcomingContext({ limit: 60 }).then(r => console.log('[context-engine]', JSON.stringify(r))).catch(() => { });
       setTimeout(runCtx, 40 * 1000);
       setInterval(runCtx, 20 * 60 * 1000);
+    }
+    // GOLES (G2): pase de goles independiente. Corre tras el de contexto (cache de buildH2HDeep caliente → barato).
+    if (goalEngineOn()) {
+      const runGoals = () => evaluateUpcomingGoals({ limit: 60 }).then(r => console.log('[goal-engine]', JSON.stringify(r))).catch(() => { });
+      setTimeout(runGoals, 55 * 1000);
+      setInterval(runGoals, 20 * 60 * 1000);
     }
   } catch { /* aislado */ }
   // Fase H.1 — cablea el result provider del settlement automático: accesor a los resultados ESPN (db.results).

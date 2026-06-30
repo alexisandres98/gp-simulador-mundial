@@ -2437,6 +2437,13 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await evaluateUpcomingGoals({ limit: 80 }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { enabled: goalEngineOn(), running: _goalEvalRunning, last: _goalEvalLast });
     }
+    // GOLES (G4): calibración POR FAMILIA + gate de publicación (replay point-in-time sin leakage sobre los
+    // resultados reales). Admin-only. Determina qué familias están APPROVED para Picks (G5). Read-only.
+    if (p === '/api/internal/goals/calibration') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      try { const rep = require('./calibration/goalGates').report({ results: db.results || {} }); rep.generated_at = new Date().toISOString(); return json(res, 200, rep); }
+      catch (e) { return json(res, 200, { error: e.message }); }
+    }
     // --- Sprint 8A: admin analytics (§46). Admin-only. ---
     if (p.startsWith('/api/internal/analytics/')) {
       if (!productAnalytics.flags().enabled) return json(res, 404, { error: 'No encontrado' });

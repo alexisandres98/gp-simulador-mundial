@@ -794,10 +794,22 @@ async function sendTeamAlerts(matchIds) {
 // Estado del envío masivo (en memoria) para el envío en segundo plano + poll de progreso desde Admin.
 let bcastState = { running: false, sent: 0, failed: 0, total: 0, startedAt: null, finishedAt: null, test: false };
 
+// Idioma del usuario para marketing: 1) idioma EXPLÍCITO elegido (perfil/toggle) — manda; 2) si no, se infiere
+// del país (es para países hispanohablantes, en para el resto); 3) default es (audiencia LATAM).
+const ES_COUNTRIES = new Set(['AR', 'BO', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'ES', 'UY', 'VE', 'GQ']);
+function userLang(email) {
+  const u = db.users[email]; if (!u) return 'es';
+  if (u.lang === 'en' || u.lang === 'es') return u.lang;
+  const c = (u.country || '').toUpperCase();
+  if (c) return ES_COUNTRIES.has(c) ? 'es' : 'en';
+  return 'es';
+}
+
 // Email de anuncio de la BETA (rollout por referidos). CTA → ventana de Referidos del usuario (?goto=referidos).
 // Conciso, una sola acción clara, multipart text+html (mejor entregabilidad), sin imágenes externas ni palabras
 // "spammy", con motivo de recepción + baja. El From verificado (codigo@gpsimulador.com, SPF/DKIM Resend) hace el resto.
-function broadcastEmail(referLink) {
+function broadcastEmail(referLink, lang) {
+  if (lang === 'en') return broadcastEmailEN(referLink);
   const subject = 'Tu acceso anticipado a la beta de GP Intelligence';
   const preheader = 'Invita a 5 amigos y desbloquea Picks, Value, arbitraje y la nueva terminal — gratis.';
   const text = `Hola,
@@ -858,11 +870,93 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   return { subject, text, html };
 }
 
+// Anuncio de la BETA — versión EN.
+function broadcastEmailEN(referLink) {
+  const subject = 'Your early access to the GP Intelligence beta';
+  const preheader = 'Invite 5 friends and unlock Picks, Value, arbitrage and the new terminal — free.';
+  const text = `Hi,
+
+We're opening the GP Intelligence beta: a new, much more powerful version of the World Cup GP Simulator.
+
+What's inside the beta:
+• GP Picks — model selections with honest tracking.
+• Value and arbitrage opportunities (model vs market).
+• A stronger, better-calibrated model with live context.
+• Comparison across 40+ sportsbooks.
+• A new sports intelligence terminal (faster and more complete).
+
+How to get in — free:
+Invite 5 verified friends with your personal link. Once they sign up, beta access unlocks automatically. (I can also grant it manually.)
+
+Open your referrals page, copy your link and see your progress (0/5):
+${referLink}
+
+Your account, follows, history and alerts stay the same: the beta is the same account, with a new experience.
+
+— Alexis · World Cup GP Simulator
+
+You're getting this because you have an account at GP Simulador. To stop receiving updates, reply "unsubscribe".`;
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:26px 26px 22px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">Early access</div>
+      <h1 style="margin:8px 0 0;font-size:23px;line-height:1.25">You're invited to the <span style="color:#18E6A3">GP Intelligence</span> beta</h1>
+      <p style="margin:10px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">A new, far more powerful version of the World Cup GP Simulator. Same account, new experience.</p>
+    </div>
+    <div style="padding:22px 26px">
+      <p style="margin:0 0 12px;font-size:14px;color:#14201A;font-weight:700">What you unlock in the beta</p>
+      <ul style="margin:0 0 20px;padding-left:18px;line-height:1.7;font-size:14px;color:#2b3a33">
+        <li><b>GP Picks</b> — model selections with honest tracking.</li>
+        <li><b>Value and arbitrage</b> — model opportunities vs the market.</li>
+        <li><b>Stronger, better-calibrated model</b>, with live context.</li>
+        <li>Comparison across <b>40+ sportsbooks</b>.</li>
+        <li>A new <b>sports intelligence terminal</b>.</li>
+      </ul>
+      <div style="background:#f0faf6;border:1px solid #cdeede;border-radius:12px;padding:16px 18px;margin:0 0 20px">
+        <p style="margin:0 0 6px;font-size:15px;color:#0E2A1E;font-weight:800">How to get in — free</p>
+        <p style="margin:0;font-size:13.5px;color:#3a4a42;line-height:1.55">Invite <b>5 verified friends</b> with your personal link. Once they sign up, your beta access unlocks automatically.</p>
+      </div>
+      <p style="text-align:center;margin:0 0 8px">
+        <a href="${referLink}" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:15px 30px;border-radius:99px;font-size:15px">See my progress & invite →</a>
+      </p>
+      <p style="text-align:center;margin:0 0 22px;font-size:12px;color:#8a9a92">Open your referrals page, copy your link and track your progress (0/5).</p>
+      <p style="margin:0;font-size:13px;color:#5a6a62;line-height:1.5">Your follows, history, alerts and preferences stay intact. The beta is your same account.</p>
+    </div>
+    <div style="border-top:1px solid #eef2f0;padding:16px 26px;background:#fbfcfb">
+      <p style="margin:0 0 4px;font-size:13px;color:#3a4a42">✈️ Want live opportunities and results? <a href="https://t.me/gpsimulador" style="color:#0E9F6E;font-weight:700;text-decoration:none">Join our Telegram channel</a>.</p>
+      <p style="margin:8px 0 0;font-size:11px;color:#9aa8a1">You're getting this because you have an account at GP Simulador. To stop receiving updates, reply "unsubscribe".</p>
+    </div>
+  </div>
+</div>`;
+  return { subject, text, html };
+}
+
 // Email de REACTIVACIÓN — estrategia "bandeja PRINCIPAL" (no Promociones): se ve como un correo PERSONAL 1:1,
 // no como campaña. HTML mínimo (solo párrafos, sin botones/cards/imágenes/colores), remitente con nombre de
 // persona, asunto conversacional en minúscula, un solo enlace en texto plano, y la baja en el cuerpo (sin el
 // header List-Unsubscribe, que delata correo masivo). Objetivo: reenganchar a quien hace días no entra.
-function reengageEmail(referLink) {
+function reengageEmail(referLink, lang) {
+  if (lang === 'en') {
+    const subject = 'I know you keep losing money betting';
+    const text = `Hi,
+
+I'll be blunt: almost everyone loses money betting because they play against the house with no real info.
+
+That's why I built GP Simulador: it simulates the World Cup 10,000 times and shows you where the market is wrong.
+
+I just opened a new, much more powerful version, and I want you to try it. Log in with your same account at gpsimulador.com and go to "Invite": I'll explain how to unlock it there.
+
+Want to try it? If you have any questions, just reply to this email.
+
+Alexis
+GP Simulador
+
+(If you'd rather not get more emails, reply "unsubscribe".)`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:540px">` +
+      text.split('\n\n').map(function (p) { return '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>'; }).join('') + `</div>`;
+    return { subject, text, html };
+  }
   const subject = 'ya sé que estás perdiendo dinero apostando';
   // SIN enlaces (los links empujan a Promociones; el email de código llega a Principal porque no tiene ninguno),
   // corto, personal, y termina con una PREGUNTA (invitar respuesta es señal fuerte de Principal). Sin "gratis".
@@ -1953,13 +2047,20 @@ const server = http.createServer(async (req, res) => {
             ref: x.ref || 'directo',
             verified: !x.lead,          // false = lead (pidió código pero no completó la verificación)
             leadAt: x.leadAt || null,
+            name: x.name || null,
+            country: x.country || null,
+            lang: x.lang || null,            // idioma EXPLÍCITO (null = no elegido)
+            mailLang: userLang(email),       // idioma efectivo para marketing (explícito o inferido del país)
           };
         }).filter(Boolean).sort((a, b) => b.createdAt - a.createdAt);
         const bySource = {};
         users.forEach(uu => { bySource[uu.ref] = (bySource[uu.ref] || 0) + 1; });
         const verifiedCount = users.filter(uu => uu.verified).length;
+        // segmentación de idioma para marketing: efectivo (mailLang) y explícito (cuántos lo eligieron)
+        const byLang = { es: 0, en: 0 }, langExplicit = { es: 0, en: 0, none: 0 };
+        users.forEach(uu => { byLang[uu.mailLang] = (byLang[uu.mailLang] || 0) + 1; langExplicit[uu.lang === 'en' ? 'en' : uu.lang === 'es' ? 'es' : 'none']++; });
         if (skipped) console.error('[admin/users] entradas malformadas omitidas:', skipped);
-        return json(res, 200, { total: users.length, verifiedCount, leadCount: users.length - verifiedCount, users, bySource, skipped });
+        return json(res, 200, { total: users.length, verifiedCount, leadCount: users.length - verifiedCount, users, bySource, byLang, langExplicit, skipped });
       } catch (e) {
         console.error('[admin/users] error:', e.message);
         return json(res, 500, { error: 'users_error', detail: e.message });
@@ -1989,6 +2090,17 @@ const server = http.createServer(async (req, res) => {
       if (!lang) return json(res, 400, { error: 'lang_invalido' });
       if (db.users[u.email]) { db.users[u.email].lang = lang; save(); }
       return json(res, 200, { lang });
+    }
+    // Perfil: nombre + país + idioma (para personalización y segmentación de marketing por idioma).
+    if (p === '/api/me/profile' && req.method === 'PUT') {
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const body = await readBody(req).catch(() => ({}));
+      const rec = db.users[u.email]; if (!rec) return json(res, 404, { error: 'no_user' });
+      if (typeof body.name === 'string') rec.name = body.name.trim().slice(0, 60);
+      if (typeof body.country === 'string') rec.country = body.country.trim().toUpperCase().slice(0, 3);
+      if (body.lang === 'en' || body.lang === 'es') rec.lang = body.lang;
+      save();
+      return json(res, 200, { ok: true, name: rec.name || null, country: rec.country || null, lang: rec.lang || null });
     }
     if (p === '/api/version') {
       // endpoint ligero para el fallback de polling (cuando el SSE no atraviesa el proxy/túnel)
@@ -2770,11 +2882,12 @@ const server = http.createServer(async (req, res) => {
       const { test, variant } = await readBody(req);
       const link = 'https://gpsimulador.com/?goto=referidos';
       // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
+      // Cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
       const buildMail = (variant === 'reengage')
-        ? () => ({ ...reengageEmail(link), from: REENGAGE_FROM, noListUnsub: true })
-        : () => broadcastEmail(link);
+        ? (lng) => ({ ...reengageEmail(link, lng), from: REENGAGE_FROM, noListUnsub: true })
+        : (lng) => broadcastEmail(link, lng);
       if (test) {
-        try { ensureRefCode(u.email); await mailer.sendMail({ to: u.email, ...buildMail() }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true }); }
+        try { ensureRefCode(u.email); await mailer.sendMail({ to: u.email, ...buildMail(userLang(u.email)) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''} ${userLang(u.email)})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true }); }
         catch (e) { return json(res, 200, { ok: false, error: e.message, test: true }); }
       }
       if (bcastState.running) return json(res, 200, { ok: false, error: 'Ya hay un envío en curso', state: bcastState });
@@ -2784,7 +2897,7 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, { ok: true, started: true, total: targets.length });
       (async () => {
         for (const email of targets) {
-          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...buildMail() }); bcastState.sent++; }
+          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...buildMail(userLang(email)) }); bcastState.sent++; }
           catch (e) { bcastState.failed++; console.error('[broadcast]', email, e.message); }
           await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota
         }

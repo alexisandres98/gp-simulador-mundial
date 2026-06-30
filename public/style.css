@@ -1112,3 +1112,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .beta-banner .bb-prog { order: 2; }
   .beta-banner .bb-cta { order: 2; flex: 1; text-align: center; }
 }
+
+/* Perfil (modal): nombre / país / idioma */
+.prof { max-width: 380px; }
+.prof-l { display: block; font-size: 12px; color: var(--muted, #8a9); font-weight: 600; margin: 12px 0 5px; }
+.prof-in { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border-subtle, #2a3a33);
+  background: var(--panel, #0e1714); color: var(--text, #eaf2ee); font-size: 14px; font-family: inherit; }
+.prof-in:focus { outline: none; border-color: var(--accent, #18e6a3); }

@@ -325,6 +325,9 @@ const DICT = {
     'auth.account_aria': 'Tu cuenta',
     // avatar / menú
     'menu.account': 'Mi cuenta',
+    'profile.menu': 'Mi perfil', 'profile.title': 'Mi perfil', 'profile.intro': 'Completa tu perfil para recibir novedades en tu idioma y contenido relevante para tu país.',
+    'profile.name': 'Nombre', 'profile.name_ph': 'Tu nombre', 'profile.country': 'País', 'profile.country_ph': 'Selecciona tu país', 'profile.language': 'Idioma', 'profile.other': 'Otro',
+    'profile.save': 'Guardar', 'profile.cancel': 'Cancelar', 'profile.saving': 'Guardando…', 'profile.saved': 'Perfil guardado', 'profile.neterr': 'Error de red',
     'menu.prefs_alerts': 'Preferencias y alertas',
     'menu.privacy_methodology': 'Privacidad y metodología',
     'menu.admin': 'Admin',
@@ -1295,6 +1298,9 @@ const DICT = {
     'auth.account_aria': 'Your account',
     // avatar / menu
     'menu.account': 'My account',
+    'profile.menu': 'My profile', 'profile.title': 'My profile', 'profile.intro': 'Complete your profile to get updates in your language and content relevant to your country.',
+    'profile.name': 'Name', 'profile.name_ph': 'Your name', 'profile.country': 'Country', 'profile.country_ph': 'Select your country', 'profile.language': 'Language', 'profile.other': 'Other',
+    'profile.save': 'Save', 'profile.cancel': 'Cancel', 'profile.saving': 'Saving…', 'profile.saved': 'Profile saved', 'profile.neterr': 'Network error',
     'menu.prefs_alerts': 'Preferences and alerts',
     'menu.privacy_methodology': 'Privacy and methodology',
     'menu.admin': 'Admin',

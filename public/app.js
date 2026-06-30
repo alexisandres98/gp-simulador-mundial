@@ -460,13 +460,15 @@ function toggleAvatarMenu(e) {
   const item = (tab, icon, label) => `<button onclick="switchTab('${tab}')">${ICON[icon]}${label}</button>`;
   const navClean = USER.uiFlags && USER.uiFlags.navigationCleanup;
   // Sprint 8.1 §26: avatar reducido a Cuenta/Preferencias/Privacidad/Logout (sin duplicar todas las herramientas).
+  const profItem = `<button onclick="openProfile()">${ICON.account}${I18N.t('profile.menu')}</button>`;
   const body = navClean
-    ? `${item('following', 'account', I18N.t('menu.account'))}
+    ? `${profItem}
        ${item('alerts', 'alerts', I18N.t('menu.prefs_alerts'))}
        ${item('methodology', 'registry', I18N.t('menu.privacy_methodology'))}
        ${USER.isAdmin ? item('admin', 'admin', I18N.t('menu.admin')) : ''}
        <button class="danger" onclick="logout()">${ICON.logout}${I18N.t('menu.logout')}</button>`
-    : `${item('sim', 'sim', I18N.t('menu.simulate_cross'))}
+    : `${profItem}
+       ${item('sim', 'sim', I18N.t('menu.simulate_cross'))}
        ${item('referidos', 'gift', I18N.t('menu.invite_friends'))}
        ${item('following', 'account', I18N.t('menu.my_following'))}
        ${item('alerts', 'alerts', I18N.t('menu.alerts_notifications'))}
@@ -2362,24 +2364,31 @@ async function loadUsers() {
     .map(([s, n]) => `<span class="chip"><b style="display:inline">${n}</b> ${s}</span>`).join(' ');
   const vCount = j.verifiedCount != null ? j.verifiedCount : j.users.filter(u => u.verified !== false).length;
   const lCount = j.leadCount != null ? j.leadCount : (j.total - vCount);
+  const bl = j.byLang || {}, le = j.langExplicit || {};
   $('#userBase').innerHTML = `
     <div class="formrow" style="align-items:center">
       <span style="color:var(--text)"><b>${vCount}</b> verificados · <b style="color:var(--amber)">${lCount}</b> leads <span class="muted" style="font-size:11px">(${j.total} total)</span></span>
       <button class="ghost" onclick="exportUsersCSV()">⬇ Exportar CSV</button>
     </div>
-    <div class="muted" style="font-size:11px;margin:-2px 0 8px">Un <b style="color:var(--amber)">LEAD</b> dejó su correo y pidió el código pero no completó la verificación (pudo caer en spam y no entró). Igual denota interés → posible lead de marketing.</div>
+    <div class="formrow" style="gap:8px;align-items:center"><span class="muted" style="font-size:11px">IDIOMA (marketing):</span>
+      <span class="chip"><b style="display:inline">${bl.es || 0}</b> 🇪🇸 Español</span>
+      <span class="chip"><b style="display:inline">${bl.en || 0}</b> 🇬🇧 English</span>
+      <span class="muted" style="font-size:11px">· elegido explícito: ${le.es || 0} ES / ${le.en || 0} EN · ${le.none || 0} inferido por país/def.</span>
+    </div>
+    <div class="muted" style="font-size:11px;margin:-2px 0 8px">Un <b style="color:var(--amber)">LEAD</b> dejó su correo y pidió el código pero no completó la verificación. Igual denota interés → posible lead de marketing. El email masivo se envía a cada uno en su idioma (columna IDIOMA).</div>
     <div class="formrow" style="gap:8px"><span class="muted" style="font-size:11px">FUENTES:</span> ${sources}</div>
     <div class="muted" style="font-size:11px;margin-bottom:8px">Comparte links con ?ref= para atribuir: gpsimulador.com/?ref=x · ?ref=ig · ?ref=wa</div>
-    <table><tr><th>Email</th><th>Estado</th><th>Fuente</th><th>Registro</th><th>Última visita</th><th>Favoritos</th></tr>
-    ${j.users.map(u => `<tr${u.verified === false ? ' style="opacity:.78"' : ''}><td>${u.email}</td><td>${u.verified === false ? '<span class="badge-lead">LEAD · no verificado</span>' : '<span class="badge-ver">✓ verificado</span>'}</td><td><b>${u.ref}</b></td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td><td>${u.favorites}</td></tr>`).join('')}
+    <table><tr><th>Email</th><th>Nombre</th><th>País</th><th>Idioma</th><th>Estado</th><th>Fuente</th><th>Registro</th><th>Última visita</th></tr>
+    ${j.users.map(u => `<tr${u.verified === false ? ' style="opacity:.78"' : ''}><td>${u.email}</td><td>${u.name ? xe(u.name) : '<span class="muted">—</span>'}</td><td>${u.country || '<span class="muted">—</span>'}</td><td><b>${(u.mailLang || 'es').toUpperCase()}</b>${u.lang ? '' : '<span class="muted" style="font-size:10px"> (inf.)</span>'}</td><td>${u.verified === false ? '<span class="badge-lead">LEAD</span>' : '<span class="badge-ver">✓</span>'}</td><td><b>${u.ref}</b></td><td>${fmt(u.createdAt)}</td><td>${fmt(u.lastSeen)}</td></tr>`).join('')}
     </table>`;
   window._users = j.users;
 }
 
 function exportUsersCSV() {
-  const rows = [['email', 'estado', 'fuente', 'registro', 'ultima_visita', 'favoritos'],
-  ...(window._users || []).map(u => [u.email, u.verified === false ? 'lead' : 'verificado', u.ref, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
-  const csv = rows.map(r => r.join(',')).join('\n');
+  const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const rows = [['email', 'nombre', 'pais', 'idioma_marketing', 'idioma_elegido', 'estado', 'fuente', 'registro', 'ultima_visita', 'favoritos'],
+  ...(window._users || []).map(u => [u.email, u.name || '', u.country || '', u.mailLang || 'es', u.lang || '', u.verified === false ? 'lead' : 'verificado', u.ref, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites])];
+  const csv = rows.map(r => r.map(esc).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'usuarios-gp-simulador.csv';
@@ -2758,6 +2767,50 @@ async function logout() { localStorage.removeItem('wc_token'); USER = null; ARB 
 // ---------- modal / tabs / SSE ----------
 function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').style.display = 'flex'; }
 function closeModal() { $('#modal').style.display = 'none'; }
+
+// Perfil: nombre + país + idioma. El idioma segmenta el marketing por correo; el país personaliza/enriquece.
+const PROFILE_COUNTRIES = [
+  ['AR', 'Argentina'], ['BO', 'Bolivia'], ['CL', 'Chile'], ['CO', 'Colombia'], ['CR', 'Costa Rica'], ['CU', 'Cuba'],
+  ['DO', 'Rep. Dominicana'], ['EC', 'Ecuador'], ['SV', 'El Salvador'], ['GT', 'Guatemala'], ['HN', 'Honduras'],
+  ['MX', 'México'], ['NI', 'Nicaragua'], ['PA', 'Panamá'], ['PY', 'Paraguay'], ['PE', 'Perú'], ['PR', 'Puerto Rico'],
+  ['ES', 'España'], ['UY', 'Uruguay'], ['VE', 'Venezuela'], ['US', 'Estados Unidos / USA'], ['BR', 'Brasil'],
+  ['CA', 'Canadá'], ['GB', 'Reino Unido / UK'], ['FR', 'Francia'], ['DE', 'Alemania'], ['IT', 'Italia'],
+  ['PT', 'Portugal'], ['NL', 'Países Bajos'],
+];
+function openProfile() {
+  closeAvatarMenu();
+  const u = USER || {};
+  const lang = u.lang === 'en' ? 'en' : (u.lang === 'es' ? 'es' : I18N.locale);
+  const countries = PROFILE_COUNTRIES.concat([['XX', I18N.t('profile.other')]]);
+  const opts = countries.map(c => `<option value="${c[0]}"${u.country === c[0] ? ' selected' : ''}>${xe(c[1])}</option>`).join('');
+  openModal(`<div class="prof">
+    <h3 style="margin:0 0 4px">${xe(I18N.t('profile.title'))}</h3>
+    <p class="muted" style="font-size:13px;margin:0 0 16px">${xe(I18N.t('profile.intro'))}</p>
+    <label class="prof-l">${xe(I18N.t('profile.name'))}</label>
+    <input id="profName" class="prof-in" maxlength="60" placeholder="${xe(I18N.t('profile.name_ph'))}" value="${xe(u.name || '')}">
+    <label class="prof-l">${xe(I18N.t('profile.country'))}</label>
+    <select id="profCountry" class="prof-in"><option value="">${xe(I18N.t('profile.country_ph'))}</option>${opts}</select>
+    <label class="prof-l">${xe(I18N.t('profile.language'))}</label>
+    <select id="profLang" class="prof-in"><option value="es"${lang === 'es' ? ' selected' : ''}>Español</option><option value="en"${lang === 'en' ? ' selected' : ''}>English</option></select>
+    <div id="profMsg" class="muted" style="font-size:12px;min-height:16px;margin:8px 0 0"></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="saveProfile()">${xe(I18N.t('profile.save'))}</button><button class="btn-ghost" onclick="closeModal()">${xe(I18N.t('profile.cancel'))}</button></div>
+  </div>`);
+}
+async function saveProfile() {
+  const name = ($('#profName').value || '').trim();
+  const country = $('#profCountry').value || '';
+  const lang = $('#profLang').value === 'en' ? 'en' : 'es';
+  const msg = $('#profMsg'); msg.textContent = I18N.t('profile.saving');
+  try {
+    const r = await fetch('/api/me/profile', { method: 'PUT', headers: hdrs(), body: JSON.stringify({ name, country, lang }) });
+    const j = await r.json();
+    if (!r.ok) { msg.textContent = '✗ ' + (j.error || 'error'); return; }
+    if (USER) { USER.name = j.name; USER.country = j.country; USER.lang = j.lang; }
+    if (lang !== I18N.locale) setLang(lang);
+    msg.textContent = '✓ ' + I18N.t('profile.saved');
+    setTimeout(closeModal, 700);
+  } catch (e) { msg.textContent = '✗ ' + I18N.t('profile.neterr'); }
+}
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 
 function notifyUpdate(reason, ts) {

@@ -14,7 +14,8 @@
       nav_opps: 'Oportunidades', nav_matches: 'Partidos', nav_teams: 'Equipos', nav_sim: 'Simulador', nav_follow: 'Seguidos',
       nav_alerts: 'Alertas', nav_perf: 'Rendimiento', nav_groups: 'Grupos', nav_bracket: 'Bracket', nav_evo: 'Evolución',
       nav_registry: 'Registro', nav_method: 'Metodología', nav_admin: 'Admin', more: 'Más',
-      account: 'Mi cuenta', account_beta: 'BETA', logout: 'Cerrar sesión',
+      account: 'Mi perfil', account_beta: 'BETA', logout: 'Cerrar sesión',
+      pf_title: 'Mi perfil', pf_intro: 'Completá tu perfil para recibir novedades en tu idioma y contenido de tu país.', pf_name: 'Nombre', pf_country: 'País', pf_country_ph: 'Seleccioná tu país', pf_lang: 'Idioma', pf_other: 'Otro', pf_save: 'Guardar', pf_saving: 'Guardando…', pf_saved: 'Perfil guardado', pf_neterr: 'Error de red',
       search: 'Buscar equipos, partidos, mercados…', matches: 'partidos', live: 'en vivo', signals: 'señales hoy',
       title: 'Oportunidades', all: 'Todos', live_f: 'En vivo', upcoming_f: 'Próximos', picks: 'Picks GP', value: 'Value', arb: 'Arbitraje',
       updated: 'Actualizado hace {t}', board: 'Board de oportunidades',
@@ -148,7 +149,8 @@
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
       nav_alerts: 'Alerts', nav_perf: 'Performance', nav_groups: 'Groups', nav_bracket: 'Bracket', nav_evo: 'Evolution',
       nav_registry: 'Registry', nav_method: 'Methodology', nav_admin: 'Admin', more: 'More',
-      account: 'My account', account_beta: 'BETA', logout: 'Sign out',
+      account: 'My profile', account_beta: 'BETA', logout: 'Sign out',
+      pf_title: 'My profile', pf_intro: 'Complete your profile to get updates in your language and content for your country.', pf_name: 'Name', pf_country: 'Country', pf_country_ph: 'Select your country', pf_lang: 'Language', pf_other: 'Other', pf_save: 'Save', pf_saving: 'Saving…', pf_saved: 'Profile saved', pf_neterr: 'Network error',
       search: 'Search teams, matches, markets…', matches: 'matches', live: 'live', signals: 'signals today',
       title: 'Opportunities', all: 'All', live_f: 'Live', upcoming_f: 'Upcoming', picks: 'GP Picks', value: 'Value', arb: 'Arbitrage',
       updated: 'Updated {t} ago', board: 'Opportunities board',
@@ -410,13 +412,47 @@
     var isAdmin = !!(S.me && S.me.isAdmin);
     var role = isAdmin ? 'ADMIN' : (t('account_beta') || 'BETA');
     m.innerHTML = '<div class="gx-acct-head"><div class="gx-avatar">' + esc(email ? email[0].toUpperCase() : 'GP') + '</div><div class="gx-acct-id"><div class="gx-acct-em">' + esc(email || '—') + '</div><div class="gx-acct-role">' + esc(role) + '</div></div></div>' +
+      '<button class="gx-acct-i" id="gx-profile">' + ic('user') + '<span>' + esc(t('account')) + '</span></button>' +
       '<button class="gx-acct-i gx-acct-danger" id="gx-logout">' + ic('logout') + '<span>' + esc(t('logout')) + '</span></button>';
+    var pf = m.querySelector('#gx-profile'); if (pf) pf.addEventListener('click', function () { closeAcctMenu(); openGxProfile(); });
     var lo = m.querySelector('#gx-logout'); if (lo) lo.addEventListener('click', gxLogout);
     m.hidden = false;
     setTimeout(function () { document.addEventListener('click', closeAcctMenu, { once: true }); }, 0);
   }
   function closeAcctMenu() { var m = $('#gx-acct-menu'); if (m) m.hidden = true; }
   function gxLogout() { try { localStorage.removeItem('wc_token'); } catch (e) {} location.replace('/'); }
+  // Perfil en /x: nombre + país + idioma (hoja). Misma data que la principal (mismo /api/me/profile).
+  var GX_COUNTRIES = [['AR', 'Argentina'], ['BO', 'Bolivia'], ['CL', 'Chile'], ['CO', 'Colombia'], ['CR', 'Costa Rica'], ['CU', 'Cuba'], ['DO', 'Rep. Dominicana'], ['EC', 'Ecuador'], ['SV', 'El Salvador'], ['GT', 'Guatemala'], ['HN', 'Honduras'], ['MX', 'México'], ['NI', 'Nicaragua'], ['PA', 'Panamá'], ['PY', 'Paraguay'], ['PE', 'Perú'], ['PR', 'Puerto Rico'], ['ES', 'España'], ['UY', 'Uruguay'], ['VE', 'Venezuela'], ['US', 'Estados Unidos / USA'], ['BR', 'Brasil'], ['CA', 'Canadá'], ['GB', 'Reino Unido / UK'], ['FR', 'Francia'], ['DE', 'Alemania'], ['IT', 'Italia'], ['PT', 'Portugal'], ['NL', 'Países Bajos']];
+  function openGxProfile() {
+    document.getElementById('gx-prof-sheet') && document.getElementById('gx-prof-sheet').remove();
+    var me = S.me || {};
+    var lng = me.lang === 'en' ? 'en' : me.lang === 'es' ? 'es' : LANG;
+    var opts = GX_COUNTRIES.concat([['XX', t('pf_other')]]).map(function (c) { return '<option value="' + c[0] + '"' + (me.country === c[0] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join('');
+    var w = document.createElement('div'); w.id = 'gx-prof-sheet'; w.className = 'gx-sheet-wrap';
+    w.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('pf_title')) + '</b><button class="gx-sheet-x">' + ic('x') + '</button></div>' +
+      '<div style="display:flex;flex-direction:column;gap:4px">' +
+      '<p class="gx-dim" style="font-size:12.5px;margin:0 0 8px">' + esc(t('pf_intro')) + '</p>' +
+      '<label class="gx-pf-l">' + esc(t('pf_name')) + '</label><input id="gx-pf-name" class="gx-pf-in" maxlength="60" value="' + esc(me.name || '') + '">' +
+      '<label class="gx-pf-l">' + esc(t('pf_country')) + '</label><select id="gx-pf-country" class="gx-pf-in"><option value="">' + esc(t('pf_country_ph')) + '</option>' + opts + '</select>' +
+      '<label class="gx-pf-l">' + esc(t('pf_lang')) + '</label><select id="gx-pf-lang" class="gx-pf-in"><option value="es"' + (lng === 'es' ? ' selected' : '') + '>Español</option><option value="en"' + (lng === 'en' ? ' selected' : '') + '>English</option></select>' +
+      '<div id="gx-pf-msg" class="gx-dim" style="font-size:12px;min-height:16px;margin-top:8px"></div>' +
+      '<button class="gx-btn-primary" id="gx-pf-save" style="margin-top:6px">' + esc(t('pf_save')) + '</button>' +
+      '</div></div>';
+    document.body.appendChild(w);
+    var close = function () { w.remove(); };
+    w.querySelector('.gx-sheet-bg').addEventListener('click', close);
+    w.querySelector('.gx-sheet-x').addEventListener('click', close);
+    w.querySelector('#gx-pf-save').addEventListener('click', function () {
+      var name = (w.querySelector('#gx-pf-name').value || '').trim(), country = w.querySelector('#gx-pf-country').value || '', lang = w.querySelector('#gx-pf-lang').value === 'en' ? 'en' : 'es';
+      var msg = w.querySelector('#gx-pf-msg'); msg.textContent = t('pf_saving');
+      fetch('/api/me/profile', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ name: name, country: country, lang: lang }) }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+        if (!j) { msg.textContent = '✗ ' + t('pf_neterr'); return; }
+        S.me = S.me || {}; S.me.name = j.name; S.me.country = j.country; S.me.lang = j.lang;
+        msg.textContent = '✓ ' + t('pf_saved');
+        if (lang !== LANG) setTimeout(function () { close(); setLang(lang); }, 600); else setTimeout(close, 600);
+      });
+    });
+  }
 
   // Muestra/oculta las superficies SOLO-ADMIN (Admin) según la sesión. Llamado tras /api/me y en cada shell().
   function syncAdminUI() {

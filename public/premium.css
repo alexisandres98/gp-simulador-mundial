@@ -602,3 +602,9 @@ body { background:
 .gx-acct-i i { font-size: 18px; }
 .gx-acct-danger { color: var(--gx-neg); }
 .gx-acct-danger:hover { background: rgba(255,107,107,.08); }
+
+/* Perfil en /x (hoja) */
+.gx-pf-l { font-size: 11.5px; color: var(--gx-text3); font-weight: 600; margin: 8px 0 4px; }
+.gx-pf-in { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--gx-line); background: var(--gx-panel2); color: var(--gx-text); font-size: 14px; font-family: inherit; }
+.gx-pf-in:focus { outline: none; border-color: var(--gx-accent-line); }
+.gx-btn-primary { width: 100%; padding: 13px; border-radius: 10px; border: 0; background: var(--gx-accent); color: #06231a; font-weight: 800; font-size: 14px; cursor: pointer; }

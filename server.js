@@ -245,10 +245,12 @@ function dstr(offsetDays) {
 
 async function syncFromESPN(depth = 0) {
   try {
-    // Rango completo del torneo: si el servidor se reinicia (disco efímero en Render free),
-    // reingesta todos los resultados desde el inicio y se auto-repara.
+    // Rango COMPLETO del torneo, incluyendo partidos FUTUROS: además de reingerir resultados (auto-reparación
+    // tras reinicios), trae los cruces YA programados por la FIFA/ESPN para anclar el bracket a la realidad
+    // (koOverride). Si el rango terminaba "hoy", los partidos de mañana en adelante caían en el bracket COMPUTADO
+    // (terceros aproximados) y mostraban cruces equivocados (p.ej. Bélgica vs Argelia en vez de Bélgica vs Senegal).
     const url = process.env.ESPN_TEST_URL ||
-      `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-${dstr(0)}&limit=250`;
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260720&limit=400`;
     const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
     const j = await r.json();
     // PASO 0: anclar los cruces de eliminatorias a la realidad de ESPN por hora de inicio (las horas de nuestro

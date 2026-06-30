@@ -422,12 +422,16 @@
   function closeAcctMenu() { var m = $('#gx-acct-menu'); if (m) m.hidden = true; }
   function gxLogout() { try { localStorage.removeItem('wc_token'); } catch (e) {} location.replace('/'); }
   // Perfil en /x: nombre + país + idioma (hoja). Misma data que la principal (mismo /api/me/profile).
-  var GX_COUNTRIES = [['AR', 'Argentina'], ['BO', 'Bolivia'], ['CL', 'Chile'], ['CO', 'Colombia'], ['CR', 'Costa Rica'], ['CU', 'Cuba'], ['DO', 'Rep. Dominicana'], ['EC', 'Ecuador'], ['SV', 'El Salvador'], ['GT', 'Guatemala'], ['HN', 'Honduras'], ['MX', 'México'], ['NI', 'Nicaragua'], ['PA', 'Panamá'], ['PY', 'Paraguay'], ['PE', 'Perú'], ['PR', 'Puerto Rico'], ['ES', 'España'], ['UY', 'Uruguay'], ['VE', 'Venezuela'], ['US', 'Estados Unidos / USA'], ['BR', 'Brasil'], ['CA', 'Canadá'], ['GB', 'Reino Unido / UK'], ['FR', 'Francia'], ['DE', 'Alemania'], ['IT', 'Italia'], ['PT', 'Portugal'], ['NL', 'Países Bajos']];
+  // Lista COMPLETA de países (ISO 3166-1 alpha-2); nombre localizado con Intl.DisplayNames según el idioma.
+  var GX_COUNTRY_CODES = 'AF AL DE AD AO AI AQ AG SA DZ AR AM AW AU AT AZ BS BD BB BH BE BZ BJ BM BY BO BA BW BR BN BG BF BI BT CV KH CM CA QA TD CL CN CY CO KM CG CD KP KR CI CR HR CU CW DK DM EC EG SV AE ER SK SI ES US EE ET PH FI FJ FR GA GM GE GH GI GD GR GL GP GU GT GF GG GN GQ GW GY HT HN HK HU IN ID IQ IR IE IS IM IL IT JM JP JE JO KZ KE KG KI KW LA LS LV LB LR LY LI LT LU MO MK MG MY MW MV ML MT MA MQ MU MR YT MX FM MD MC MN ME MS MZ MM NA NR NP NI NE NG NO NC NZ OM NL PK PW PA PG PY PE PF PL PT PR GB CF CZ DO RE RW RO RU WS AS KN SM PM VC SH LC ST SN RS SC SL SG SX SY SO LK SZ ZA SD SS SE CH SR TH TW TZ TJ IO TF PS TL TG TO TT TN TM TC TR TV UA UG UY UZ VU VA VE VN VG VI WF YE DJ ZM ZW'.split(' ');
   function openGxProfile() {
     document.getElementById('gx-prof-sheet') && document.getElementById('gx-prof-sheet').remove();
     var me = S.me || {};
     var lng = me.lang === 'en' ? 'en' : me.lang === 'es' ? 'es' : LANG;
-    var opts = GX_COUNTRIES.concat([['XX', t('pf_other')]]).map(function (c) { return '<option value="' + c[0] + '"' + (me.country === c[0] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join('');
+    var dn; try { dn = new Intl.DisplayNames([LANG, 'es'], { type: 'region' }); } catch (e) { dn = null; }
+    var clist = GX_COUNTRY_CODES.map(function (c) { return [c, (dn && dn.of(c)) || c]; }).sort(function (a, b) { return a[1].localeCompare(b[1], LANG); });
+    clist.push(['XX', t('pf_other')]);
+    var opts = clist.map(function (c) { return '<option value="' + c[0] + '"' + (me.country === c[0] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join('');
     var w = document.createElement('div'); w.id = 'gx-prof-sheet'; w.className = 'gx-sheet-wrap';
     w.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('pf_title')) + '</b><button class="gx-sheet-x">' + ic('x') + '</button></div>' +
       '<div style="display:flex;flex-direction:column;gap:4px">' +

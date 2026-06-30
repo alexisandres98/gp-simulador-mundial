@@ -2769,20 +2769,19 @@ function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').style.d
 function closeModal() { $('#modal').style.display = 'none'; }
 
 // Perfil: nombre + país + idioma. El idioma segmenta el marketing por correo; el país personaliza/enriquece.
-const PROFILE_COUNTRIES = [
-  ['AR', 'Argentina'], ['BO', 'Bolivia'], ['CL', 'Chile'], ['CO', 'Colombia'], ['CR', 'Costa Rica'], ['CU', 'Cuba'],
-  ['DO', 'Rep. Dominicana'], ['EC', 'Ecuador'], ['SV', 'El Salvador'], ['GT', 'Guatemala'], ['HN', 'Honduras'],
-  ['MX', 'México'], ['NI', 'Nicaragua'], ['PA', 'Panamá'], ['PY', 'Paraguay'], ['PE', 'Perú'], ['PR', 'Puerto Rico'],
-  ['ES', 'España'], ['UY', 'Uruguay'], ['VE', 'Venezuela'], ['US', 'Estados Unidos / USA'], ['BR', 'Brasil'],
-  ['CA', 'Canadá'], ['GB', 'Reino Unido / UK'], ['FR', 'Francia'], ['DE', 'Alemania'], ['IT', 'Italia'],
-  ['PT', 'Portugal'], ['NL', 'Países Bajos'],
-];
+// Lista COMPLETA de países (ISO 3166-1 alpha-2); el nombre se localiza con Intl.DisplayNames según el idioma.
+const COUNTRY_CODES = 'AF AL DE AD AO AI AQ AG SA DZ AR AM AW AU AT AZ BS BD BB BH BE BZ BJ BM BY BO BA BW BR BN BG BF BI BT CV KH CM CA QA TD CL CN CY CO KM CG CD KP KR CI CR HR CU CW DK DM EC EG SV AE ER SK SI ES US EE ET PH FI FJ FR GA GM GE GH GI GD GR GL GP GU GT GF GG GN GQ GW GY HT HN HK HU IN ID IQ IR IE IS IM IL IT JM JP JE JO KZ KE KG KI KW LA LS LV LB LR LY LI LT LU MO MK MG MY MW MV ML MT MA MQ MU MR YT MX FM MD MC MN ME MS MZ MM NA NR NP NI NE NG NO NC NZ OM NL PK PW PA PG PY PE PF PL PT PR GB CF CZ DO RE RW RO RU WS AS KN SM PM VC SH LC ST SN RS SC SL SG SX SY SO LK SZ ZA SD SS SE CH SR TH TW TZ TJ IO TF PS TL TG TO TT TN TM TC TR TV UA UG UY UZ VU VA VE VN VG VI WF YE DJ ZM ZW'.split(' ');
+function countryOptions(selected, otherLabel) {
+  let dn; try { dn = new Intl.DisplayNames([I18N.locale, 'es'], { type: 'region' }); } catch (e) { dn = null; }
+  const list = COUNTRY_CODES.map(c => [c, (dn && dn.of(c)) || c]).sort((a, b) => a[1].localeCompare(b[1], I18N.locale));
+  list.push(['XX', otherLabel]);
+  return list.map(c => `<option value="${c[0]}"${selected === c[0] ? ' selected' : ''}>${xe(c[1])}</option>`).join('');
+}
 function openProfile() {
   closeAvatarMenu();
   const u = USER || {};
   const lang = u.lang === 'en' ? 'en' : (u.lang === 'es' ? 'es' : I18N.locale);
-  const countries = PROFILE_COUNTRIES.concat([['XX', I18N.t('profile.other')]]);
-  const opts = countries.map(c => `<option value="${c[0]}"${u.country === c[0] ? ' selected' : ''}>${xe(c[1])}</option>`).join('');
+  const opts = countryOptions(u.country, I18N.t('profile.other'));
   openModal(`<div class="prof">
     <h3 style="margin:0 0 4px">${xe(I18N.t('profile.title'))}</h3>
     <p class="muted" style="font-size:13px;margin:0 0 16px">${xe(I18N.t('profile.intro'))}</p>

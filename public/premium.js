@@ -652,10 +652,12 @@
     var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
     var hh = teamName(p.home_team_id, p.home), aa = teamName(p.away_team_id, p.away);
     var odds = p.odds != null ? Number(p.odds).toFixed(2) : '—';
-    // Clickeable solo si el evento es canónico (el server expone event_id solo en esos): abre el cockpit del partido.
-    // Las picks de eventos sintéticos (la mayoría hoy) son informativas — evita abrir una vista vacía.
-    var clickable = !!p.event_id;
-    var openAttr = clickable ? ' data-openmatch="' + esc(p.event_id) + '"' : '';
+    // TODAS las picks abren el GP Intelligence del partido: canónicas por event_id (cockpit completo + mercados),
+    // sintéticas por team-ids (teams-HOME-AWAY → base→contexto→GP + proyección de goles, vía h2h deep). Si hay 3 picks
+    // del mismo partido, cada una abre el mismo análisis del partido.
+    var openId = p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null);
+    var clickable = !!openId;
+    var openAttr = clickable ? ' data-openmatch="' + esc(openId) + '"' : '';
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
       '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + '</span>' +
       '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span></div>' +
@@ -901,7 +903,7 @@
   function setHash(h) { try { if ((location.hash || '').replace(/^#/, '') !== h) location.hash = h; } catch (e) {} }
   function onHash() {
     var h = ''; try { h = (location.hash || '').replace(/^#/, ''); } catch (e) {}
-    var m = h.match(/^match\/([0-9a-f-]{36}|qa-[a-z0-9-]+|fx-[A-Za-z0-9]+)$/i);
+    var m = h.match(/^match\/([0-9a-f-]{36}|qa-[a-z0-9-]+|fx-[A-Za-z0-9]+|teams-[A-Za-z0-9]{2,5}-[A-Za-z0-9]{2,5})$/i);
     if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
     var tm = h.match(/^team\/([A-Za-z]{2,4})$/i);
     if (tm) { var tid = tm[1].toUpperCase(); if (!(S.view === 'team' && S.teamId === tid)) openTeam(tid, true); return; }
@@ -1052,8 +1054,15 @@
     var qa = (/^qa-/.test(eid) && window.__GP_QA) ? window.__GP_QA.get(eid, LANG) : null;
     if (qa) S.mc[eid] = qa.beta;   // QA: el memo/dataTrust leen S.mc; sembrarlo para que el análisis sea consistente
     var fixtureOnly = /^fx-/.test(eid);   // 4C#8: partido sin evaluación canónica → cockpit desde /api/match
+    var teamsOnly = /^teams-/.test(eid);  // Picks de eventos sintéticos → GP Intelligence del partido por team-ids (h2h deep)
     var fx, beta, gpAbsent = false;
-    if (fixtureOnly) {
+    if (teamsOnly) {
+      var tp = eid.slice(6).split('-'), thid = tp[0], taid = tp[1];
+      if (!thid || !taid) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+      // Header mínimo: el motor de contexto (h2h deep, más abajo) rellena base→contexto→GP + proyección de goles.
+      beta = { header: { event_id: eid, home: { team_id: thid }, away: { team_id: taid }, competition_code: 'FIFA_WORLD_CUP_2026', stage_code: null, kickoff_at: null, status_code: 'SCHEDULED' }, probability: { outcomes: [] }, analysis: { context_state_code: 'BASE_ONLY' }, risks: [], confidence_code: null, has_official_v2: false, goal_insights: null };
+      gpAbsent = true;
+    } else if (fixtureOnly) {
       var fxid = eid.slice(3);
       if (S.mfix[fxid] === undefined) {
         S.mfix[fxid] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();

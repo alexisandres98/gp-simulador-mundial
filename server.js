@@ -1819,7 +1819,17 @@ async function evaluateDailyPicks() {
       if (idx[pick.pick_id]) continue; // ya publicada → idempotente
       db.dailyPicks.push(pick); idx[pick.pick_id] = pick; out.new++;
     }
-    if (out.new) save();
+    // COHERENCIA: una sola pick ACTIVE por (evento, familia) — se conserva la MÁS RECIENTE y se supersede el resto.
+    // Evita contradicciones por acumulación (ej: Over 3.5 y Under 3.5 del mismo partido cuando el modelo se da vuelta
+    // al salir alineaciones). El combo y los goles del run más reciente quedan alineados (se construyen juntos).
+    const byEF = {};
+    for (const p of db.dailyPicks) { if (p.status !== 'ACTIVE') continue; (byEF[p.event.canonical_event_id + '|' + p.family] = byEF[p.event.canonical_event_id + '|' + p.family] || []).push(p); }
+    for (const key in byEF) {
+      const arr = byEF[key]; if (arr.length <= 1) continue;
+      arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // más reciente primero
+      for (let i = 1; i < arr.length; i++) { arr[i].status = 'SETTLED'; arr[i].result_code = 'SUPERSEDED'; arr[i].settled_at = new Date().toISOString(); out.superseded = (out.superseded || 0) + 1; }
+    }
+    if (out.new || out.superseded) save();
   } catch (e) { out.error = e.message; }
   finally { _dailyPicksRunning = false; out.finished = new Date().toISOString(); _dailyPicksLast = out; }
   return out;
@@ -1875,7 +1885,7 @@ function dailyPicksTrackRecord() {
   const fam = {};
   let n = 0, wins = 0, stake = 0, ret = 0;
   for (const p of db.dailyPicks) {
-    if (p.status !== 'SETTLED' || p.result_code === 'PUSH' || p.result_code === 'VOID') continue;
+    if (p.status !== 'SETTLED' || p.result_code === 'PUSH' || p.result_code === 'VOID' || p.result_code === 'SUPERSEDED') continue;
     const f = fam[p.family] || (fam[p.family] = { n: 0, w: 0, stake: 0, ret: 0 });
     const won = p.result_code === 'WIN';
     f.n++; f.stake += 1; n++; stake += 1;

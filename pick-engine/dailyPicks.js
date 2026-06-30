@@ -10,9 +10,10 @@ const { curate } = require('./curate');
 const { TEAMS } = require('../data/tournament');
 
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
-const ALIAS_TO_ID = {};
-TEAMS.forEach(t => [t.en, t.name, t.id, ...(t.aliases || [])].filter(Boolean).forEach(a => { ALIAS_TO_ID[norm(a)] = t.id; }));
+const ALIAS_TO_ID = {}, ID_TO_NAME = {};
+TEAMS.forEach(t => { [t.en, t.name, t.id, ...(t.aliases || [])].filter(Boolean).forEach(a => { ALIAS_TO_ID[norm(a)] = t.id; }); ID_TO_NAME[t.id] = t.name || t.en || t.id; });
 function teamId(name) { return ALIAS_TO_ID[norm(name)] || null; }
+function teamNameById(id) { return ID_TO_NAME[id] || id; }
 
 function parseGoalMid(mid) {
   const m = /^TOTAL_GOALS_(OVER|UNDER)_(\d+)_(\d+)$/.exec(String(mid || ''));
@@ -54,24 +55,31 @@ async function buildDailyPicks(deps) {
   }
   const events = Object.values(evMap);
 
-  // Goles: value de goles reciente de eventos próximos.
+  // Goles: value reciente. Los eventos de goles usan ids SINTÉTICOS (desacoplados de canonical_events), así que los
+  // equipos + kickoff salen del factor_lineage del snapshot (igual que evaluateGoalPicks), NO de un JOIN canónico
+  // (que perdería el 99% de los próximos). Filtro prepartido en JS por el kickoff del lineage.
   const rowsGoals = (await query(
     `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
        gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability::float gp,
        gv.market_consensus_probability::float mkt, gv.adjusted_edge_pp::float edge, gv.best_decimal_odds::float odds,
-       ce.home_participant, ce.away_participant, ce.scheduled_start,
+       s.factor_lineage,
        (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id) books
-     FROM goal_value_shadow gv JOIN canonical_events ce ON ce.id=gv.canonical_event_id
-     WHERE ce.scheduled_start > now() AND gv.created_at > now() - interval '2 days'
+     FROM goal_value_shadow gv
+     LEFT JOIN LATERAL (SELECT factor_lineage FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) s ON true
+     WHERE gv.created_at > now() - interval '2 days'
      ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
 
   const goalMarkets = [];
   for (const g of rowsGoals) {
     const p = parseGoalMid(g.market_id);
     if (!p) continue;
+    const lin = (Array.isArray(g.factor_lineage) ? g.factor_lineage[0] : null) || {};
+    const homeId = lin.home_team_id || null, awayId = lin.away_team_id || null, kickoff = lin.kickoff_at || null;
+    if (!homeId || !awayId) continue;                                  // sin equipos no se puede mostrar/liquidar
+    if (!kickoff || new Date(kickoff).getTime() <= nowMs) continue;    // solo prepartido
     goalMarkets.push({
-      eventId: g.canonical_event_id, home: g.home_participant, away: g.away_participant, kickoff: g.scheduled_start,
-      homeId: teamId(g.home_participant), awayId: teamId(g.away_participant),
+      eventId: g.canonical_event_id, home: teamNameById(homeId), away: teamNameById(awayId), kickoff,
+      homeId, awayId,
       marketId: g.market_id, family: g.market_family, side: p.side, line: p.line,
       modelProb: g.gp, marketProb: g.mkt, edgePp: g.edge, bestOdds: g.odds, bestBook: null,
       books: Number(g.books || 0), familyApproved: !!GOAL_FAMILY_APPROVED[g.market_family],
@@ -94,7 +102,13 @@ async function buildDailyPicks(deps) {
       model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence,
     }, s.eventId + '|SOLID|' + s.selection));
   }
+  // Una pick de GOLES por partido (la de mayor edge; desempate por confianza) → feed limpio, sin líneas redundantes.
+  const bestGoalByEvent = {};
   for (const g of res.eligible.goals) {
+    const cur = bestGoalByEvent[g.eventId];
+    if (!cur || g.edgePp > cur.edgePp || (g.edgePp === cur.edgePp && g.confidence > cur.confidence)) bestGoalByEvent[g.eventId] = g;
+  }
+  for (const g of Object.values(bestGoalByEvent)) {
     const gm = goalById[g.eventId + '|' + g.marketId] || {};
     picks.push(record('GOALS', g.eventId, {
       home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff,

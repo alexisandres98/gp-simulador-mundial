@@ -1016,6 +1016,7 @@
       if (!beta.analysis || !beta.analysis.base_vector) { var ana = h2hToAnalysis(h2h); if (ana) beta.analysis = ana; }
       if (beta.confidence_code == null) beta.confidence_code = h2hConfidence(h2h);
       if (!beta.probability || !beta.probability.outcomes || !beta.probability.outcomes.length || beta.probability.outcomes[0].gp_probability == null) beta.probability = h2hProbability(h2h);
+      if (!beta.goal_insights && h2h.goal_insights) beta.goal_insights = h2h.goal_insights; // proyección de goles en TODOS los partidos
       gpAbsent = false; // ya tenemos GP+contexto en vivo → mostramos el análisis completo
     }
     // GP Intelligence EN VIVO: si el partido está en juego y el server recalculó la prob GP (marcador+minuto+

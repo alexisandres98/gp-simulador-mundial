@@ -2408,10 +2408,20 @@ const server = http.createServer(async (req, res) => {
     // Sandbox v2 "GP Intelligence": modelo base (Elo+Poisson+DC+calibración) + Monte Carlo dedicado
     // del cruce + capa de CONTEXTO (forma/bajas/racha/solidez) → ajuste de Elo acotado → análisis integral.
     if (p === '/api/h2h/deep') {
-      if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
       const a = (url.searchParams.get('a') || '').toUpperCase(), b = (url.searchParams.get('b') || '').toUpperCase();
       if (!teamById[a] || !teamById[b] || a === b) return json(res, 400, { error: 'Equipos inválidos' });
       const out = await buildH2HDeep(a, b);
+      // GOLES: proyección derivada de las MISMAS lambdas (mismo motor que el snapshot canónico) → el módulo de
+      // goles aparece en CUALQUIER partido próximo, no solo en los pocos canonical_events. Detrás del flag del user.
+      if (u.beta && u.beta.goalInsights) {
+        try {
+          const gdto = require('./gp-product/dto');
+          const lh = out.probs && Number(out.probs.xgA), la = out.probs && Number(out.probs.xgB);
+          if (lh > 0 && la > 0) out.goal_insights = gdto.goalInsights({ lambda_home: lh, lambda_away: la, lambda_total: lh + la });
+        } catch { /* best-effort */ }
+      }
       return json(res, 200, out);
     }
     if (p === '/api/aciertos') {

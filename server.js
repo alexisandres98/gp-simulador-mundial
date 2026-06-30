@@ -502,6 +502,7 @@ db.marketSnapshots = db.marketSnapshots || {}; // probs implícitas del mercado 
 db.sentAlerts = db.sentAlerts || {};           // alertas ya enviadas por partido (evita reenvíos/spam)
 db.refCodes = db.refCodes || {};               // referidos: code → email (lookup de quién refirió)
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
+db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
 
 // ===== Entitlement de la BETA (rollout sin migrar usuarios) =====
 // La plataforma nueva (premium /x) y la actual (app.js) conviven; un router por usuario decide cuál mostrar.
@@ -1651,6 +1652,84 @@ async function persistGoalValue(ev, lh, la, goalSnapshotId) {
   } catch (e) { return 0; }
 }
 
+// ===== GOLES (G5): Picks de goles. Promueve un Value (G3) en familia APROBADA (G4) a Pick GP con el gate
+// editorial (goalPick.qualifyPick). SHADOW/admin: persiste a db.goalPicks (db.json), NO se expone a usuarios.
+// Gated por GP_GOAL_PICKS_ENABLED (default OFF → dormido aunque haya cuotas). Idempotente por (evento,mercado).
+function goalPicksOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_GOAL_PICKS_ENABLED || '')); }
+const GOAL_GATE_FAMILY = { match_total: 'TOTALS', btts: 'BTTS', team_total: 'TEAM_TOTALS', winning_margin: 'WINNING_MARGIN' };
+let _goalPicksRunning = false, _goalPicksLast = null;
+async function evaluateGoalPicks() {
+  if (!goalPicksOn()) return { skipped: 'disabled' };
+  if (_goalPicksRunning) return { skipped: 'running' };
+  _goalPicksRunning = true;
+  const out = { considered: 0, qualified: 0, new: 0, skipped: 0, errors: 0, started: new Date().toISOString() };
+  try {
+    const dbc = require('./database/client');
+    const dbcfg = require('./database/config');
+    if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
+    const goalPick = require('./goal-engine/goalPick');
+    const gate = require('./calibration/goalGates').report({ results: db.results || {} });
+    const rows = (await dbc.query(
+      `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
+         gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability, gv.market_consensus_probability,
+         gv.best_decimal_odds, gv.adjusted_edge_pp, gv.adjusted_ev, gv.conservative_probability, gv.classification,
+         ce.home_participant, ce.away_participant, ce.scheduled_start,
+         (SELECT data_completeness FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) data_completeness,
+         (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id) books
+       FROM goal_value_shadow gv
+       JOIN canonical_events ce ON ce.id=gv.canonical_event_id AND ce.scheduled_start > now()
+       ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
+    const idx = {}; for (const p of db.goalPicks) idx[p.event.canonical_event_id + '|' + p.market_id] = p;
+    for (const r of rows) {
+      out.considered++;
+      try {
+        const famGate = gate.families[GOAL_GATE_FAMILY[r.market_family]] || { status: 'shadow' };
+        const a = aliasToId[normName(r.home_participant)], b = aliasToId[normName(r.away_participant)];
+        const q = goalPick.qualifyPick({
+          valueRow: r, gate: famGate, snapshot: { data_completeness: r.data_completeness },
+          event: { canonical_event_id: r.canonical_event_id, home_team_id: a, away_team_id: b, kickoff_at: r.scheduled_start },
+          market: { books_available: r.books, best_sportsbook: null, lineup_status: 'UNKNOWN', sources: [] },
+        });
+        if (!q.qualifies) { out.skipped++; continue; }
+        out.qualified++;
+        const key = r.canonical_event_id + '|' + r.market_id;
+        if (idx[key]) continue; // ya existe → idempotente
+        const pick = { ...q.pick, pick_id: 'gpk_' + crypto.createHash('sha256').update(key).digest('hex').slice(0, 16), created_at: new Date().toISOString() };
+        db.goalPicks.push(pick); idx[key] = pick; out.new++;
+      } catch (e) { out.errors++; }
+    }
+    if (out.new) save();
+  } catch (e) { out.error = e.message; }
+  finally { _goalPicksRunning = false; out.finished = new Date().toISOString(); _goalPicksLast = out; }
+  return out;
+}
+
+// Liquida los Picks de goles PENDIENTES por el marcador REGLAMENTARIO. Solo partidos de GRUPO (90' garantizado);
+// los de eliminatoria necesitan el marcador de 90' como fuente limpia → quedan PENDING (settlement futuro).
+function goalGroupScore(homeId, awayId) {
+  for (const f of GROUP_FIXTURES) {
+    const r = db.results[f.id];
+    if (!r || r.status !== 'final' || typeof r.hg !== 'number') continue;
+    if (f.home === homeId && f.away === awayId) return { homeGoals: r.hg, awayGoals: r.ag };
+    if (f.home === awayId && f.away === homeId) return { homeGoals: r.ag, awayGoals: r.hg };
+  }
+  return null;
+}
+function settleGoalPicks() {
+  const goalPick = require('./goal-engine/goalPick');
+  let settled = 0;
+  for (const p of db.goalPicks) {
+    if (p.result_code !== 'PENDING') continue;
+    const sc = goalGroupScore(p.event.home_team_id, p.event.away_team_id);
+    if (!sc) continue;
+    const upd = goalPick.settlePick(p, sc);
+    p.result_code = upd.result_code; p.settlement_code = upd.settlement_code; p.lifecycle_code = 'SETTLED'; p.clv = upd.clv;
+    settled++;
+  }
+  if (settled) save();
+  return settled;
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -1797,6 +1876,9 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
         if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
       } catch (e) { out.errors++; }
     }
+    // G5: tras refrescar Value, evalúa Picks (gated por flag) y liquida los que ya tienen resultado.
+    out.picks = await evaluateGoalPicks();
+    out.settled = settleGoalPicks();
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
@@ -2443,6 +2525,12 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       try { const rep = require('./calibration/goalGates').report({ results: db.results || {} }); rep.generated_at = new Date().toISOString(); return json(res, 200, rep); }
       catch (e) { return json(res, 200, { error: e.message }); }
+    }
+    // GOLES (G5): Picks de goles (shadow/admin). GET lista + estado; POST fuerza una evaluación. Admin-only.
+    if (p === '/api/internal/goals/picks') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'POST') { const r = await evaluateGoalPicks().catch(e => ({ error: e.message })); settleGoalPicks(); return json(res, 200, r); }
+      return json(res, 200, { enabled: goalPicksOn(), running: _goalPicksRunning, last: _goalPicksLast, count: db.goalPicks.length, picks: db.goalPicks.slice(-100) });
     }
     // --- Sprint 8A: admin analytics (§46). Admin-only. ---
     if (p.startsWith('/api/internal/analytics/')) {

@@ -1,0 +1,159 @@
+// pick-engine/dailyPicks.js — Capa de PRODUCTO de picks diarias (visión "tipster mejorado").
+// Envuelve pick-engine/curate (selección pura, validada 12/13 en backtest) y le añade: lectura de datos en vivo
+// (value_evaluations 1X2 + goal_value_shadow goles), estructura de registro persistible, y liquidación por marcador.
+// AUTO-PUBLICACIÓN: no hay aprobación manual; lo que pasa el gate se publica. FEED EFÍMERO: el usuario solo ve las
+// picks ACTIVE (prepartido / del día); al liquidarse pasan a SETTLED y desaparecen de su feed (el track record
+// completo queda solo para admin). Gated en server.js por GP_DAILY_PICKS_ENABLED (default OFF).
+'use strict';
+const crypto = require('crypto');
+const { curate } = require('./curate');
+const { TEAMS } = require('../data/tournament');
+
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const ALIAS_TO_ID = {};
+TEAMS.forEach(t => [t.en, t.name, t.id, ...(t.aliases || [])].filter(Boolean).forEach(a => { ALIAS_TO_ID[norm(a)] = t.id; }));
+function teamId(name) { return ALIAS_TO_ID[norm(name)] || null; }
+
+function parseGoalMid(mid) {
+  const m = /^TOTAL_GOALS_(OVER|UNDER)_(\d+)_(\d+)$/.exec(String(mid || ''));
+  if (!m) return null;
+  return { side: m[1].toLowerCase(), line: Number(m[2]) + Number(m[3]) / 10 };
+}
+// Familias de goles aprobadas en calibración (G4). Hoy en DB solo fluye match_total.
+const GOAL_FAMILY_APPROVED = { match_total: true, team_total: true, winning_margin: true, btts: false };
+
+const stableId = (prefix, key) => prefix + '_' + crypto.createHash('sha256').update(key).digest('hex').slice(0, 16);
+
+// ── Construye las picks diarias ACTIVE (prepartido) a partir de datos en vivo. ───────────────────────────────
+// deps.query: fn(sql, params) -> { rows }.  deps.now: ms.  Devuelve { picks:[...], counts, considered }.
+async function buildDailyPicks(deps) {
+  const query = deps.query, nowMs = deps.now || Date.now();
+  const config = deps.config || {};
+
+  // 1X2: evaluación MÁS FRESCA por (evento, selección) de eventos PRÓXIMOS. Se usa la última (created_at DESC), no la
+  // de mayor edge (que puede ser un outlier viejo/stale). Se descartan evals corruptas (gp fuera de (0,1), p.ej. gp=0%
+  // del favorito) que romperían la coherencia de dirección.
+  const rows1x2 = (await query(
+    `SELECT DISTINCT ON (v.canonical_event_id, v.selection)
+       v.canonical_event_id, v.selection, v.gp_probability::float gp, v.sportsbook_consensus_probability::float mkt,
+       v.best_decimal_odds::float odds, v.independence_group_count::int books,
+       ce.home_participant, ce.away_participant, ce.scheduled_start
+     FROM value_evaluations v JOIN canonical_events ce ON ce.id=v.canonical_event_id
+     WHERE ce.scheduled_start > now() AND v.created_at > now() - interval '2 days'
+       AND v.gp_probability > 0 AND v.gp_probability < 1
+     ORDER BY v.canonical_event_id, v.selection, v.created_at DESC`)).rows;
+
+  const evMap = {};
+  for (const r of rows1x2) {
+    const e = evMap[r.canonical_event_id] || (evMap[r.canonical_event_id] = {
+      eventId: r.canonical_event_id, home: r.home_participant, away: r.away_participant,
+      homeId: teamId(r.home_participant), awayId: teamId(r.away_participant),
+      kickoff: r.scheduled_start, selections: {},
+    });
+    e.selections[r.selection] = { model: r.gp, market: r.mkt, bestOdds: r.odds, books: r.books };
+  }
+  const events = Object.values(evMap);
+
+  // Goles: value de goles reciente de eventos próximos.
+  const rowsGoals = (await query(
+    `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
+       gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability::float gp,
+       gv.market_consensus_probability::float mkt, gv.adjusted_edge_pp::float edge, gv.best_decimal_odds::float odds,
+       ce.home_participant, ce.away_participant, ce.scheduled_start,
+       (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id) books
+     FROM goal_value_shadow gv JOIN canonical_events ce ON ce.id=gv.canonical_event_id
+     WHERE ce.scheduled_start > now() AND gv.created_at > now() - interval '2 days'
+     ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
+
+  const goalMarkets = [];
+  for (const g of rowsGoals) {
+    const p = parseGoalMid(g.market_id);
+    if (!p) continue;
+    goalMarkets.push({
+      eventId: g.canonical_event_id, home: g.home_participant, away: g.away_participant, kickoff: g.scheduled_start,
+      homeId: teamId(g.home_participant), awayId: teamId(g.away_participant),
+      marketId: g.market_id, family: g.market_family, side: p.side, line: p.line,
+      modelProb: g.gp, marketProb: g.mkt, edgePp: g.edge, bestOdds: g.odds, bestBook: null,
+      books: Number(g.books || 0), familyApproved: !!GOAL_FAMILY_APPROVED[g.market_family],
+    });
+  }
+
+  const res = curate({ events, goalMarkets, config });
+
+  // Aplana a registros persistibles (solo ELEGIBLES; prepartido garantizado por el filtro SQL).
+  const picks = [];
+  const evById = {}; events.forEach(e => { evById[e.eventId] = e; });
+  const goalById = {}; goalMarkets.forEach(g => { goalById[g.eventId + '|' + g.marketId] = g; });
+
+  for (const s of res.eligible.solid) {
+    const ev = evById[s.eventId] || {};
+    picks.push(record('SOLID', s.eventId, {
+      home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff,
+      selection_code: s.selection,                   // 'home' | 'away' (neutral; i18n en cliente)
+      best_odds: s.bestOdds, best_book: s.bestBook, books: s.books,
+      model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence,
+    }, s.eventId + '|SOLID|' + s.selection));
+  }
+  for (const g of res.eligible.goals) {
+    const gm = goalById[g.eventId + '|' + g.marketId] || {};
+    picks.push(record('GOALS', g.eventId, {
+      home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff,
+      market_id: g.marketId, side: g.side, line: g.line,
+      best_odds: g.bestOdds, best_book: g.bestBook, books: g.books,
+      model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp,
+    }, g.eventId + '|' + g.marketId));
+  }
+  for (const c of res.eligible.combo) {
+    const ev = evById[c.eventId] || {};
+    picks.push(record('COMBO', c.eventId, {
+      home: c.home, away: c.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: c.kickoff,
+      legs: c.legs, best_odds: c.comboOdds, confidence: c.confidence,
+    }, c.eventId + '|COMBO|' + c.legs.map(l => l.selection || (l.side + l.line)).join('+')));
+  }
+
+  return { picks, counts: res.counts, considered: { events: events.length, goalMarkets: goalMarkets.length } };
+}
+
+function record(family, eventId, fields, key) {
+  return {
+    pick_id: stableId('dp', key),
+    family,
+    event: { canonical_event_id: eventId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
+    selection_code: fields.selection_code || null,
+    market_id: fields.market_id || null, side: fields.side || null, line: (fields.line != null ? fields.line : null),
+    legs: fields.legs || null,
+    best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
+    model_prob: fields.model_prob != null ? fields.model_prob : null,
+    market_prob: fields.market_prob != null ? fields.market_prob : null,
+    confidence: fields.confidence != null ? fields.confidence : null,
+    edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
+    status: 'ACTIVE', result_code: 'PENDING', settlement_code: null, clv: null,
+    created_at: new Date().toISOString(), settled_at: null,
+  };
+}
+
+// ── Liquidación ─────────────────────────────────────────────────────────────────────────────────────────────
+// score: { homeGoals, awayGoals } en 90' reglamentario (orientado al home del pick). Devuelve result_code.
+function settleOne(pick, score) {
+  const hg = score.homeGoals, ag = score.awayGoals, total = hg + ag;
+  if (pick.family === 'SOLID') {
+    const actual = hg > ag ? 'home' : hg === ag ? 'draw' : 'away';
+    return pick.selection_code === actual ? 'WIN' : 'LOSS';
+  }
+  if (pick.family === 'GOALS') {
+    if (total === pick.line) return 'PUSH';
+    const over = total > pick.line;
+    return (pick.side === 'over' ? over : !over) ? 'WIN' : 'LOSS';
+  }
+  if (pick.family === 'COMBO') {
+    let allWin = true;
+    for (const leg of (pick.legs || [])) {
+      if (leg.type === '1X2') { const actual = hg > ag ? 'home' : hg === ag ? 'draw' : 'away'; if (leg.selection !== actual) allWin = false; }
+      else if (leg.type === 'GOALS') { if (total === leg.line) return 'PUSH'; const over = total > leg.line; if (!(leg.side === 'over' ? over : !over)) allWin = false; }
+    }
+    return allWin ? 'WIN' : 'LOSS';
+  }
+  return 'PENDING';
+}
+
+module.exports = { buildDailyPicks, settleOne, teamId, GOAL_FAMILY_APPROVED };

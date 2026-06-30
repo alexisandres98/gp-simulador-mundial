@@ -5,8 +5,10 @@ const HOME_BONUS = 75;        // ventaja de local para los 3 anfitriones (todo e
 const TOTAL_GOALS = 2.6;      // media de goles esperada en un partido parejo
 const K_WC = 60;              // factor K de eloratings.net para Copas del Mundo
 const ELO_NOISE = 55;         // incertidumbre del rating por torneo simulado (la "forma" real del equipo)
-const GOAL_FLOOR = 0.45;      // piso de goles del equipo débil — calibrado vs ArbBets (Catar 0.40) y primeros
-                              // principios (hasta el más débil marca ~0.4-0.5 por partido). Corrige sobreconfianza.
+const GOAL_FLOOR = 0.65;      // piso de goles del equipo débil. Recalibrado jun-2026 (0.45→0.65) tras medir 72
+                              // partidos del Mundial: el 0.45 (calibrado vs Catar 2022, torneo de pocos goles)
+                              // subestimaba BTTS/Over ~10pp en este torneo de alto goleo. 0.65 = punto moderado
+                              // (no sobreajusta al goleo de grupos; las eliminatorias tienden a ser más cerradas).
 const DC_RHO = -0.13;         // Dixon-Coles: corrige la correlación de marcadores bajos que el Poisson
                               // independiente subestima — infla 0-0 y 1-1 (el "empate que nos mataba"). Valor estándar.
 

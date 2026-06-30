@@ -614,3 +614,44 @@ body { background:
 
 /* Eliminatoria: prórroga / penales / ganador en el hero */
 .gx-hero-ko { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--gx-accent); text-align: center; }
+
+/* ===== Feed de picks diarias (producto principal /x) ===== */
+.gx-picks-feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.gx-pick-card { position: relative; background: linear-gradient(160deg, var(--gx-panel2), var(--gx-panel));
+  border: 1px solid var(--gx-line); border-radius: var(--gx-r2); padding: 14px 15px 13px; overflow: hidden;
+  transition: border-color .18s, transform .18s; }
+.gx-pick-card:hover { border-color: var(--gx-line2); transform: translateY(-1px); }
+.gx-pick-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gx-accent); opacity: .85; }
+.gx-pick-goals::before { background: var(--gx-cyan); }
+.gx-pick-combo::before { background: var(--gx-warn); }
+.gx-pick-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.gx-pick-fam { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--gx-accent);
+  background: var(--gx-accent-soft); border: 1px solid var(--gx-accent-line); padding: 3px 8px; border-radius: 6px; }
+.gx-pick-goals .gx-pick-fam { color: var(--gx-cyan); background: rgba(52,214,200,.10); border-color: rgba(52,214,200,.30); }
+.gx-pick-combo .gx-pick-fam { color: var(--gx-warn); background: rgba(242,193,78,.10); border-color: rgba(242,193,78,.30); }
+.gx-pick-time { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gx-text3); font-family: var(--gx-mono); }
+.gx-pick-time i { font-size: 13px; }
+.gx-pick-match { display: flex; align-items: center; gap: 7px; font-size: 13.5px; margin-bottom: 12px; flex-wrap: wrap; }
+.gx-pick-match b { font-weight: 600; color: var(--gx-text); }
+.gx-pick-match .fl { font-size: 15px; }
+.gx-pick-vs { color: var(--gx-text4); font-size: 11px; margin: 0 1px; }
+.gx-pick-rec { background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 10px 12px; margin-bottom: 12px; }
+.gx-pick-rec-label { font-size: 9.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--gx-text3); display: block; margin-bottom: 3px; }
+.gx-pick-rec-text { font-size: 17px; font-weight: 650; color: var(--gx-text); letter-spacing: -.01em; line-height: 1.25; }
+.gx-pick-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gx-pick-conf { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--gx-text2); }
+.gx-pick-conf b { font-weight: 600; color: var(--gx-text); }
+.gx-pick-conf-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gx-text4); box-shadow: 0 0 0 3px rgba(255,255,255,.03); }
+.gx-conf-high .gx-pick-conf-dot { background: var(--gx-pos); box-shadow: 0 0 8px rgba(43,227,166,.5); }
+.gx-conf-med .gx-pick-conf-dot { background: var(--gx-warn); box-shadow: 0 0 8px rgba(242,193,78,.4); }
+.gx-conf-low .gx-pick-conf-dot { background: var(--gx-text3); }
+.gx-pick-odds { display: flex; align-items: baseline; gap: 6px; }
+.gx-pick-odds-label { font-size: 9.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gx-text3); }
+.gx-pick-odds-val { font-size: 18px; font-weight: 700; color: var(--gx-accent); font-family: var(--gx-mono); letter-spacing: -.02em; }
+.gx-pick-book { font-size: 11px; color: var(--gx-text3); }
+.gx-pick-disc { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gx-line); font-size: 11px; color: var(--gx-text4); line-height: 1.5; }
+.gx-pick-empty { flex-direction: column; gap: 7px; text-align: center; }
+.gx-pick-empty span { font-size: 12.5px; max-width: 340px; }
+.gx-pick-clickable { cursor: pointer; }
+.gx-pick-clickable:hover { border-color: var(--gx-accent-line); }
+.gx-pick-clickable:active { transform: translateY(0); }

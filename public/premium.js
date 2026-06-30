@@ -112,6 +112,14 @@
       evo_insufficient: 'Evolución no disponible todavía', evo_insufficient_sub: 'Aún no hay suficientes snapshots reales ({n}). La evolución se registra a medida que el torneo avanza.',
       evo_champion: 'Probabilidad de campeón', evo_snapshots: 'snapshots', evo_trend: 'Tendencia', evo_now: 'Ahora', evo_top: 'Top 10', evo_note: 'Solo snapshots reales registrados; sin histórico fabricado.',
       reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
+      // ---- Feed de picks diarias (producto) ----
+      pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa',
+      pf_empty: 'No hay picks activas ahora mismo', pf_empty_sub: 'Las picks del día aparecen aquí en cuanto se publican. Vuelve pronto.',
+      pf_fam_solid: 'Ganador', pf_fam_goals: 'Goles', pf_fam_combo: 'Combinada',
+      pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
+      pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada',
+      pf_best_odds: 'Mejor cuota', pf_at: 'en', pf_combo_and: 'y', pf_pick_label: 'Nuestra pick',
+      pf_disclaimer: 'Estimaciones de inteligencia deportiva. No es consejo financiero. Apuesta con responsabilidad.',
       reg_odds: 'Cuota', reg_result: 'Resultado', reg_era: 'Modelo', reg_era_current: 'GP Intelligence', reg_era_previous: 'Etapa anterior', reg_empty: 'Aún no hay Picks registradas.',
       reg_insufficient_note: 'Muestra insuficiente para afirmar rentabilidad; el registro crece con cada Pick liquidada.',
       lc_pub: 'Publicada', lc_started: 'En juego', lc_await: 'Esperando liquidación', lc_settled: 'Liquidada',
@@ -249,6 +257,14 @@
       evo_insufficient: 'Evolution not available yet', evo_insufficient_sub: 'Not enough real snapshots yet ({n}). Evolution is recorded as the tournament progresses.',
       evo_champion: 'Champion probability', evo_snapshots: 'snapshots', evo_trend: 'Trend', evo_now: 'Now', evo_top: 'Top 10', evo_note: 'Only real recorded snapshots; no fabricated history.',
       reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
+      // ---- Daily picks feed (product) ----
+      pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick',
+      pf_empty: 'No active picks right now', pf_empty_sub: 'Daily picks show up here as soon as they are published. Check back soon.',
+      pf_fam_solid: 'Winner', pf_fam_goals: 'Goals', pf_fam_combo: 'Combo',
+      pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
+      pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate',
+      pf_best_odds: 'Best odds', pf_at: 'at', pf_combo_and: 'and', pf_pick_label: 'Our pick',
+      pf_disclaimer: 'Sports-intelligence estimates. Not financial advice. Bet responsibly.',
       reg_odds: 'Odds', reg_result: 'Result', reg_era: 'Model', reg_era_current: 'GP Intelligence', reg_era_previous: 'Previous stage', reg_empty: 'No Picks recorded yet.',
       reg_insufficient_note: 'Insufficient sample to claim profitability; the record grows with each settled Pick.',
       lc_pub: 'Published', lc_started: 'In play', lc_await: 'Awaiting settlement', lc_settled: 'Settled',
@@ -315,8 +331,9 @@
   function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf'].indexOf(v) >= 0 ? v : 'opps'); }
   function shell() {
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
-    var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = n[0] === 'admin' ? ' gx-admin-only' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + (adminOnly ? ' style="display:none"' : '') + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
+    var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = n[0] === 'perf' ? ' gx-admin-only' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + (adminOnly ? ' style="display:none"' : '') + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + (adminOnly ? ' style="display:none"' : '') + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin'];
     var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
       .map(function (n) { if (n[0] === '__more') { var act = moreViews.indexOf(cur) >= 0 ? ' on' : ''; return '<a class="' + act.trim() + '" data-more="1">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; } var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
@@ -360,7 +377,7 @@
     $('#gx-langs').addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
     var avb = $('#gx-avatar-btn'); if (avb) avb.addEventListener('click', toggleAcctMenu);
     // subtabs de Oportunidades: Picks / Value / Arbitraje
-    var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); };
+    var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); };
     var pc = function (id, sub) { var el = $('#gx-pc-' + id); if (el) el.addEventListener('click', function () { setSub(sub); }); };
     pc('picks', 'picks'); pc('value', 'value'); pc('arb', 'arb');
     // filtro Todos / En vivo / Próximos (estaba decorativo): setea S.filt y re-renderiza el board
@@ -469,7 +486,7 @@
   }
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
-    var items = [['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method']].concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : []);
+    var items = [['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']].concat(isAdmin ? [['perf', 'chart-line', 'nav_perf'], ['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
     var existing = document.getElementById('gx-more-sheet'); if (existing) existing.remove();
     var sheet = document.createElement('div'); sheet.id = 'gx-more-sheet'; sheet.className = 'gx-sheet-wrap';
     sheet.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('more')) + '</b><button class="gx-sheet-x" aria-label="close">' + ic('x') + '</button></div><div class="gx-sheet-grid">' +
@@ -536,6 +553,8 @@
   function pulseItem(n, label, live) { return '<div class="gx-pulse-i"><b' + (live ? ' style="color:var(--gx-live)"' : '') + '>' + n + '</b>' + (live ? '<span style="color:var(--gx-live)">' + esc(label) + '</span>' : esc(label)) + '</div>'; }
 
   function kpis(d, rows) {
+    // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
+    var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
     var pick = (d.recent_picks || []).filter(function (p) { return p.lifecycle_code === 'PUBLISHED'; })[0]; // SOLO activa
     var val = (d.value || [])[0];
     var gap = rows.map(function (r) { var g = ['HOME', 'DRAW', 'AWAY'].map(function (c) { return { c: c, gp: r.gp(c), mk: r.mk(c) }; }).filter(function (x) { return x.gp != null && x.mk != null; }).sort(function (a, b) { return Math.abs(b.gp - b.mk) - Math.abs(a.gp - a.mk); })[0]; return g ? { r: r, g: g } : null; }).filter(Boolean).sort(function (a, b) { return Math.abs(b.g.gp - b.g.mk) - Math.abs(a.g.gp - a.g.mk); })[0];
@@ -578,6 +597,8 @@
     // subtabs Picks / Value / Arbitraje (prodchips). Value y Arbitraje muestran su propio contenido.
     if (S.oppSub === 'value') { $('#gx-board-count').textContent = ''; oppValueBoard(bd); return; }
     if (S.oppSub === 'arb') { $('#gx-board-count').textContent = ''; oppArbBoard(bd); return; }
+    // Picks (producto): feed de picks diarias del día (efímero). Reemplaza la tabla quant (GP%/mercado%/edge).
+    if (S.oppSub === 'picks') { picksFeed(bd); return; }
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
     else if (S.filt === 'up') rows = rows.filter(function (r) { return !r.live; });
     $('#gx-board-count').textContent = rows.length + ' ' + t('matches') + ' · ' + t('th_gp');
@@ -593,6 +614,58 @@
       el.addEventListener('click', function () { openMatch(el.dataset.id); });
     });
   }
+  // ---- Oportunidades · Picks: FEED de picks diarias (producto principal). EFÍMERO: solo ACTIVE (las liquidadas
+  // desaparecen). Lenguaje simple, sin tecnicismos: la pick + confianza + mejor cuota. Un solo "GP" (sin model%/mercado%).
+  function confBucket(c) { return c >= 0.6 ? 'high' : c >= 0.45 ? 'med' : 'low'; }
+  function picksFeed(bd) {
+    if (S.dailyPicks === undefined) {
+      S.dailyPicks = null;
+      fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+        S.dailyPicks = (j && j.picks) || [];
+        if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
+      });
+      bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
+      return;
+    }
+    var picks = S.dailyPicks || [];
+    var cc = $('#gx-board-count'); if (cc) cc.textContent = picks.length + ' ' + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
+    if (!picks.length) {
+      bd.innerHTML = '<div class="gx-empty gx-pick-empty">' + ic('ticket') + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span></div>';
+      return;
+    }
+    bd.innerHTML = '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' +
+      '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
+  }
+  function pickTeam(p, code) { return code === 'home' ? teamName(p.home_team_id, p.home) : teamName(p.away_team_id, p.away); }
+  function pickRecText(p) {
+    if (p.family === 'SOLID') return t('pf_wins', { team: pickTeam(p, p.selection_code) });
+    if (p.family === 'GOALS') return p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line });
+    if (p.family === 'COMBO') return (p.legs || []).map(function (l) {
+      if (l.type === '1X2') return t('pf_wins', { team: pickTeam(p, l.selection) });
+      return l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line });
+    }).join(' ' + t('pf_combo_and') + ' ');
+    return '';
+  }
+  function pickCard(p) {
+    var famKey = p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : 'pf_fam_combo';
+    var bucket = confBucket(p.confidence || 0);
+    var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
+    var hh = teamName(p.home_team_id, p.home), aa = teamName(p.away_team_id, p.away);
+    var odds = p.odds != null ? Number(p.odds).toFixed(2) : '—';
+    var openAttr = p.event_id ? ' data-openmatch="' + esc(p.event_id) + '"' : '';
+    return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (p.event_id ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
+      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + '</span>' +
+      '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span></div>' +
+      '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
+      '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>' +
+      '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div></div>' +
+      '<div class="gx-pick-foot">' +
+      '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>' +
+      '<div class="gx-pick-odds"><span class="gx-pick-odds-label">' + esc(t('pf_best_odds')) + '</span><span class="gx-pick-odds-val">' + esc(odds) + '</span>' +
+      (p.book ? '<span class="gx-pick-book">' + esc(t('pf_at')) + ' ' + esc(p.book) + '</span>' : '') + '</div>' +
+      '</div></div>';
+  }
+
   // ---- Oportunidades · Value: OUTRIGHT (campeón del Mundial) — GP% (torneo) vs mercado ----
   function outrightValueHtml() {
     if (S.valueOutright === undefined) {
@@ -858,6 +931,8 @@
     else { mv.hidden = true; mv.innerHTML = ''; if (main) main.style.display = ''; if (vp) vp.style.display = ''; }
   }
   function showView(v) {
+    // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
+    if (['registry', 'method', 'perf', 'admin'].indexOf(v) >= 0 && S.me && !S.me.isAdmin) { v = 'board'; }
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
@@ -2153,7 +2228,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { if (!/[?&]noredir=1/.test(location.search)) { location.replace('/'); return; } }
-          if (me) { S.me = me; syncAdminUI(); if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'perf', 'admin'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

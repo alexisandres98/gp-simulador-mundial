@@ -503,6 +503,7 @@ db.sentAlerts = db.sentAlerts || {};           // alertas ya enviadas por partid
 db.refCodes = db.refCodes || {};               // referidos: code → email (lookup de quién refirió)
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
+db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
 
 // ===== Entitlement de la BETA (rollout sin migrar usuarios) =====
 // La plataforma nueva (premium /x) y la actual (app.js) conviven; un router por usuario decide cuál mostrar.
@@ -1737,6 +1738,80 @@ function settleGoalPicks() {
   return settled;
 }
 
+// ===== PICKS DIARIAS (producto principal /x). "Tipster mejorado": sigue al mercado en 1X2 (anclaje), deja liderar
+// al modelo en goles, y arma combos. AUTO-PUBLICADAS (sin aprobación manual) vía pick-engine/curate (validado 12/13
+// en backtest). FEED EFÍMERO: el usuario solo ve ACTIVE; al liquidarse pasan a SETTLED (track record solo admin).
+// Gated por GP_DAILY_PICKS_ENABLED (default OFF → dormido). Idempotente por pick_id estable (evento|familia|selección).
+function dailyPicksOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_DAILY_PICKS_ENABLED || '')); }
+let _dailyPicksRunning = false, _dailyPicksLast = null;
+async function evaluateDailyPicks() {
+  if (!dailyPicksOn()) return { skipped: 'disabled' };
+  if (_dailyPicksRunning) return { skipped: 'running' };
+  _dailyPicksRunning = true;
+  const out = { considered: null, new: 0, started: new Date().toISOString() };
+  try {
+    const dbcfg = require('./database/config');
+    if (!dbcfg.db || !dbcfg.db.configured) { out.skipped = 'no_db'; return out; }
+    const dbc = require('./database/client');
+    const daily = require('./pick-engine/dailyPicks');
+    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now() });
+    out.considered = built.considered; out.counts = built.counts;
+    const idx = {}; for (const p of db.dailyPicks) idx[p.pick_id] = p;
+    for (const pick of built.picks) {
+      if (idx[pick.pick_id]) continue; // ya publicada → idempotente
+      db.dailyPicks.push(pick); idx[pick.pick_id] = pick; out.new++;
+    }
+    if (out.new) save();
+  } catch (e) { out.error = e.message; }
+  finally { _dailyPicksRunning = false; out.finished = new Date().toISOString(); _dailyPicksLast = out; }
+  return out;
+}
+
+// Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria (db.results[k.m]).
+function regulationScoreFor(homeId, awayId) {
+  const g = goalGroupScore(homeId, awayId);
+  if (g) return g;
+  for (const k of KNOCKOUT) {
+    const r = db.results[String(k.m)];
+    if (!r || r.status !== 'final' || typeof r.hg !== 'number' || !r.home) continue;
+    if (r.home === homeId && r.away === awayId) return { homeGoals: r.hg, awayGoals: r.ag };
+    if (r.home === awayId && r.away === homeId) return { homeGoals: r.ag, awayGoals: r.hg };
+  }
+  return null;
+}
+function settleDailyPicks() {
+  const daily = require('./pick-engine/dailyPicks');
+  let settled = 0;
+  for (const p of db.dailyPicks) {
+    if (p.status !== 'ACTIVE') continue;
+    const sc = regulationScoreFor(p.event.home_team_id, p.event.away_team_id);
+    if (!sc) continue;
+    p.result_code = daily.settleOne(p, sc);
+    p.status = 'SETTLED'; p.settled_at = new Date().toISOString();
+    settled++;
+  }
+  if (settled) save();
+  return settled;
+}
+// Track record (solo admin): acierto y rendimiento por familia sobre picks liquidadas. NO se expone al usuario.
+function dailyPicksTrackRecord() {
+  const fam = {};
+  let n = 0, wins = 0, stake = 0, ret = 0;
+  for (const p of db.dailyPicks) {
+    if (p.status !== 'SETTLED' || p.result_code === 'PUSH') continue;
+    const f = fam[p.family] || (fam[p.family] = { n: 0, w: 0, stake: 0, ret: 0 });
+    const won = p.result_code === 'WIN';
+    f.n++; f.stake += 1; n++; stake += 1;
+    if (won) { f.w++; f.ret += Number(p.best_odds || 0); wins++; ret += Number(p.best_odds || 0); }
+  }
+  const fmt = o => ({ n: o.n, wins: o.w, hit_rate: o.n ? +(o.w / o.n).toFixed(4) : null, roi_pct: o.stake ? +(((o.ret - o.stake) / o.stake) * 100).toFixed(1) : null });
+  return {
+    overall: { settled: n, wins, hit_rate: n ? +(wins / n).toFixed(4) : null, roi_pct: stake ? +(((ret - stake) / stake) * 100).toFixed(1) : null, pnl_u: +(ret - stake).toFixed(2) },
+    by_family: Object.fromEntries(Object.entries(fam).map(([k, v]) => [k, fmt(v)])),
+    active: db.dailyPicks.filter(p => p.status === 'ACTIVE').length,
+  };
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -1936,6 +2011,9 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     // G5: tras refrescar Value, evalúa Picks (gated por flag) y liquida los que ya tienen resultado.
     out.picks = await evaluateGoalPicks();
     out.settled = settleGoalPicks();
+    // Picks diarias (producto /x): auto-publica las que pasan el gate y liquida las que ya tienen marcador.
+    out.dailyPicks = await evaluateDailyPicks();
+    out.dailySettled = settleDailyPicks();
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
@@ -2126,6 +2204,21 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/beta/')) {
       const betaUser = betaGuard(req, res);
       if (!betaUser) return; // ya respondió
+      // PICKS DIARIAS (producto): feed EFÍMERO. Solo picks ACTIVE (prepartido/del día); las liquidadas desaparecen
+      // del feed del usuario (el track record queda solo para admin). Forma limpia: un solo "GP" (confianza), sin
+      // exponer model%/mercado%/deltas. Las picks pasadas y el rendimiento NO se sirven aquí por diseño.
+      if (p === '/api/beta/picks' && req.method === 'GET') {
+        const active = db.dailyPicks.filter(x => x.status === 'ACTIVE')
+          .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
+        const items = active.map(x => ({
+          pick_id: x.pick_id, family: x.family, event_id: x.event.canonical_event_id,
+          home: x.event.home, away: x.event.away,
+          home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
+          selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs,
+          odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
+        }));
+        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, generated_at: new Date().toISOString() });
+      }
       // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
       // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.
       if (p === '/api/beta/value-outright' && req.method === 'GET') {
@@ -2598,6 +2691,13 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateGoalPicks().catch(e => ({ error: e.message })); settleGoalPicks(); return json(res, 200, r); }
       return json(res, 200, { enabled: goalPicksOn(), running: _goalPicksRunning, last: _goalPicksLast, count: db.goalPicks.length, picks: db.goalPicks.slice(-100) });
+    }
+    // PICKS DIARIAS (producto /x): track record COMPLETO + estado. Admin-only. GET = estado + rendimiento + todas
+    // las picks; POST = fuerza una evaluación + liquidación inmediata (para pruebas internas).
+    if (p === '/api/internal/daily-picks') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }
+      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), picks: db.dailyPicks.slice(-200) });
     }
     // --- Sprint 8A: admin analytics (§46). Admin-only. ---
     if (p.startsWith('/api/internal/analytics/')) {

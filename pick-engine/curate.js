@@ -1,0 +1,147 @@
+// pick-engine/curate.js — Capa de SELECCIÓN del producto de picks (visión "tipster mejorado", Mundial 2026).
+// PURO: sin DB, sin red. Toma probabilidad del modelo (GP) + consenso de mercado (no-vig) por evento y produce
+// las picks diarias curadas en TRES familias. NO busca edge contra el mercado en 1X2 (mercado del Mundial = eficiente):
+// se ANCLA al mercado (sigue la dirección del consenso, regala la mejor cuota). En GOLES sí deja liderar al modelo
+// (habilidad demostrada en backtest 3/3, incluso con divergencias de 12–22pp). Las métricas/registro NO se calculan
+// aquí; esto solo SELECCIONA. La publicación (auto), el feed efímero y el track record viven en otra capa.
+'use strict';
+
+// ── Parámetros de selección (calibrables) ──────────────────────────────────
+const CONFIG = {
+  // Anclaje (market shrinkage): peso del modelo al mezclar con el mercado. blend = α·modelo + (1−α)·mercado.
+  alpha1x2: 0.25,            // 1X2: el mercado domina (eficiente). El modelo solo aporta matiz + coherencia.
+  alphaGoals: 0.55,          // Goles: el modelo lidera (mejor calibrado tras floor 0.65; backtest favorable).
+
+  // Familia SÓLIDA (1X2 anclado al mercado).
+  // Coherencia por DIRECCIÓN (no magnitud): como seguimos al favorito del MERCADO, solo exigimos que el modelo
+  // coincida en que ese lado es más probable que el rival. Un modelo "menos extremo" que el mercado en un favorito
+  // claro (ej: Argentina 74% modelo vs 84% mercado) NO es incoherencia — es la atenuación del 1X2. Solo se rechaza
+  // si el modelo apunta al OTRO lado (ej: DR Congo: mercado local favorito, modelo cree que gana el visitante).
+  solidMinConfidence: 0.45,    // no presentar volados como "sólida": confianza (blend) del favorito ≥ 45%.
+  solidMinBooks: 3,            // profundidad mínima de mercado.
+  solidMaxOdds: 3.2,           // un "favorito" no debería pagar > 3.2 (si paga más, no es favorito claro → no sólida).
+
+  // Familia GOLES (modelo lidera; SIN cap de divergencia por decisión de producto).
+  goalsMinEdgePp: 0.03,        // edge mínimo del modelo vs consenso (3pp).
+  goalsMinBooks: 3,
+  goalsRequireApprovedFamily: true, // solo familias aprobadas en calibración (TOTALS/TEAM_TOTALS/WINNING_MARGIN).
+
+  // Familia COMBO (pata 1X2 sólida + pata goles).
+  combosEnabled: true,
+  comboMinConfidence: 0.28,    // confianza combinada mínima (dos patas → más baja por naturaleza).
+};
+
+const OUTCOME = { home: 'home', draw: 'draw', away: 'away' };
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const blend = (model, market, alpha) => clamp01(alpha * model + (1 - alpha) * market);
+const pp = x => Math.round(x * 1000) / 10; // a puntos porcentuales con 1 decimal
+
+// ── Familia SÓLIDA: sigue la dirección del mercado, exige coherencia del modelo, regala la mejor cuota ──────
+// ev.selections: { home:{model,market,bestOdds,books}, draw:{...}, away:{...} }  (market = no-vig consensus)
+function solidPick(ev, cfg) {
+  const sel = ev.selections || {};
+  // Favorito = mayor probabilidad de MERCADO entre LOCAL y VISITANTE (el empate no es una "sólida" en singles).
+  const cands = [OUTCOME.home, OUTCOME.away].filter(k => sel[k] && typeof sel[k].market === 'number');
+  if (!cands.length) return null;
+  const fav = cands.sort((a, b) => sel[b].market - sel[a].market)[0];
+  const opp = fav === OUTCOME.home ? OUTCOME.away : OUTCOME.home; // el rival directo (para coherencia de dirección)
+  const s = sel[fav];
+  const books = Number(s.books || 0);
+  const odds = Number(s.bestOdds || 0);
+  const model = Number(s.model), market = Number(s.market);
+  const oppModel = sel[opp] ? Number(sel[opp].model) : 0;
+  // Coherencia de DIRECCIÓN: el modelo debe ver al favorito al menos tan probable como su rival directo.
+  const modelFightsMarket = model < oppModel;
+  const divergence = Math.abs(model - market);
+  const confidence = blend(model, market, cfg.alpha1x2);
+  const blockers = [];
+  if (books < cfg.solidMinBooks) blockers.push('FEW_BOOKS');
+  if (!(odds > 1)) blockers.push('NO_ODDS');
+  if (odds > cfg.solidMaxOdds) blockers.push('NOT_A_FAVORITE');           // si el "favorito" paga mucho, no es claro
+  if (modelFightsMarket) blockers.push('MODEL_FIGHTS_MARKET');            // el modelo apunta al rival → incoherente
+  if (confidence < cfg.solidMinConfidence) blockers.push('LOW_CONFIDENCE');
+  const eligible = blockers.length === 0;
+  return {
+    family: 'SOLID', eventId: ev.eventId, home: ev.home, away: ev.away, kickoff: ev.kickoff,
+    selection: fav,                          // 'home' | 'away'  (neutral; i18n en cliente)
+    marketProb: market, modelProb: model, confidence,
+    bestOdds: odds, bestBook: s.bestBook || null, books,
+    divergencePp: pp(divergence), eligible, blockers,
+  };
+}
+
+// ── Familia GOLES: el modelo lidera. Una pick por mercado de goles que pase el gate (sin cap de divergencia) ──
+// goalMarkets: [{ eventId, home, away, kickoff, marketId, family, side, line, modelProb, marketProb, edgePp, bestOdds, bestBook, books, familyApproved }]
+function goalPicks(goalMarkets, cfg) {
+  const out = [];
+  for (const g of (goalMarkets || [])) {
+    const books = Number(g.books || 0);
+    const edge = Number(g.edgePp || 0);     // edge en fracción (0.03 = 3pp)
+    const odds = Number(g.bestOdds || 0);
+    const blockers = [];
+    if (cfg.goalsRequireApprovedFamily && !g.familyApproved) blockers.push('FAMILY_NOT_APPROVED');
+    if (edge < cfg.goalsMinEdgePp) blockers.push('LOW_EDGE');
+    if (books < cfg.goalsMinBooks) blockers.push('FEW_BOOKS');
+    if (!(odds > 1)) blockers.push('NO_ODDS');
+    const confidence = blend(Number(g.modelProb), Number(g.marketProb), cfg.alphaGoals);
+    out.push({
+      family: 'GOALS', eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,
+      marketId: g.marketId, goalFamily: g.family, side: g.side, line: g.line,
+      modelProb: Number(g.modelProb), marketProb: Number(g.marketProb), confidence,
+      edgePp: pp(edge), bestOdds: odds, bestBook: g.bestBook || null, books,
+      divergencePp: pp(Math.abs(Number(g.modelProb) - Number(g.marketProb))),
+      eligible: blockers.length === 0, blockers,
+    });
+  }
+  return out;
+}
+
+// ── Familia COMBO: pata 1X2 sólida elegible + mejor pata de goles elegible del MISMO evento ─────────────────
+function comboPicks(solids, goals, cfg) {
+  if (!cfg.combosEnabled) return [];
+  const goalsByEvent = {};
+  for (const g of goals) { if (!g.eligible) continue; (goalsByEvent[g.eventId] = goalsByEvent[g.eventId] || []).push(g); }
+  const out = [];
+  for (const s of solids) {
+    if (!s.eligible) continue;
+    const gs = (goalsByEvent[s.eventId] || []).slice().sort((a, b) => b.edgePp - a.edgePp);
+    const g = gs[0];
+    if (!g) continue;
+    // Cuota combinada aproximada (patas tratadas como ~independientes para mostrar; el libro fija la real).
+    const comboOdds = Math.round(s.bestOdds * g.bestOdds * 100) / 100;
+    const confidence = clamp01(s.confidence * g.confidence);
+    const blockers = [];
+    if (confidence < cfg.comboMinConfidence) blockers.push('LOW_COMBINED_CONFIDENCE');
+    out.push({
+      family: 'COMBO', eventId: s.eventId, home: s.home, away: s.away, kickoff: s.kickoff,
+      legs: [
+        { type: '1X2', selection: s.selection, odds: s.bestOdds },
+        { type: 'GOALS', marketId: g.marketId, side: g.side, line: g.line, odds: g.bestOdds },
+      ],
+      confidence, comboOdds, eligible: blockers.length === 0, blockers,
+    });
+  }
+  return out;
+}
+
+// ── Orquestador: produce las 3 familias. Devuelve TODAS (con eligible/blockers) para que la capa de publicación
+//    aplique la política elegida ("publicar todo lo que pase el gate"). ───────────────────────────────────────
+function curate({ events = [], goalMarkets = [], config = {} } = {}) {
+  const cfg = Object.assign({}, CONFIG, config);
+  const solids = events.map(ev => solidPick(ev, cfg)).filter(Boolean);
+  const goals = goalPicks(goalMarkets, cfg);
+  const combos = comboPicks(solids, goals, cfg);
+  const eligible = {
+    solid: solids.filter(p => p.eligible),
+    goals: goals.filter(p => p.eligible),
+    combo: combos.filter(p => p.eligible),
+  };
+  return {
+    config: cfg,
+    all: { solid: solids, goals, combo: combos },
+    eligible,
+    counts: { solid: eligible.solid.length, goals: eligible.goals.length, combo: eligible.combo.length },
+  };
+}
+
+module.exports = { curate, solidPick, goalPicks, comboPicks, blend, CONFIG };

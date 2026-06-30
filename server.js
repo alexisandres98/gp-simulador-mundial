@@ -1605,6 +1605,52 @@ async function persistGoalSnapshot(ev, deep, completeness) {
   } catch (e) { return null; }
 }
 
+// ===== GOLES (G3): Value de goles SHADOW. Compara la prob GP del Goal Engine contra el consenso NO-VIG del
+// mercado real (sportsbook_goal_quote_current, ingerido por jobTotals) para cada línea de totales con ambos lados
+// y casas suficientes. Política propia (goal-value-policy-shadow-1), NO reutiliza thresholds 1X2. SHADOW puro:
+// registry/pick/public = false; NO genera Picks ni Value público (eso es G5, tras calibración por familia). Solo
+// lo ve el admin. Idempotente. Best-effort. NO toca el modelo oficial.
+async function persistGoalValue(ev, lh, la, goalSnapshotId) {
+  try {
+    const dbc = require('./database/client');
+    const grepo = require('./goal-engine/repository');
+    const noVig = require('./goal-engine/noVig');
+    const goalValue = require('./goal-engine/goalValue');
+    const rows = (await dbc.query(
+      `SELECT sportsbook_code, line, side, odds_decimal, quote_status, is_live
+         FROM sportsbook_goal_quote_current
+        WHERE canonical_event_id=$1 AND market_family='match_total' AND COALESCE(quote_status,'open')='open' AND COALESCE(is_live,false)=false`, [ev.id])).rows;
+    if (!rows.length) return 0;
+    const byLine = {};
+    for (const r of rows) { const k = String(Number(r.line)); (byLine[k] = byLine[k] || []).push(r); }
+    let persisted = 0;
+    for (const [lineStr, lrows] of Object.entries(byLine)) {
+      const line = Number(lineStr);
+      const lineTag = String(line).replace('.', '_');
+      const quotes = lrows.map(r => ({ sportsbook_code: r.sportsbook_code, independence_group: r.sportsbook_code, side: String(r.side).toLowerCase(), odds_decimal: Number(r.odds_decimal), quote_status: r.quote_status || 'open', is_live: !!r.is_live }));
+      const consOver = noVig.consensus(quotes, 'over', 'under', { minGroups: 3 });
+      if (!consOver.ok) continue;
+      const bestOver = Math.max(0, ...lrows.filter(r => String(r.side).toLowerCase() === 'over').map(r => Number(r.odds_decimal)));
+      const bestUnder = Math.max(0, ...lrows.filter(r => String(r.side).toLowerCase() === 'under').map(r => Number(r.odds_decimal)));
+      for (const [mid, consProb, best] of [[`TOTAL_GOALS_OVER_${lineTag}`, consOver.probability, bestOver], [`TOTAL_GOALS_UNDER_${lineTag}`, 1 - consOver.probability, bestUnder]]) {
+        if (!(best > 1)) continue;
+        const e = goalValue.evaluate({ lambdaHome: lh, lambdaAway: la, marketId: mid, marketFamily: 'match_total', consensusProb: consProb, bestOdds: best, groups: consOver.groups });
+        if (!e.ok) continue;
+        await grepo.recordGoalValue({
+          goal_snapshot_id: goalSnapshotId || null, canonical_event_id: ev.id, market_id: mid, market_family: 'match_total',
+          period_code: 'REGULATION', gp_probability: e.gp_probability, market_consensus_probability: e.market_consensus_probability,
+          best_decimal_odds: best, break_even_probability: e.break_even_probability, raw_edge_pp: e.raw_edge_pp,
+          conservative_probability: e.conservative_probability, adjusted_edge_pp: e.adjusted_edge_pp, adjusted_ev: e.adjusted_ev,
+          line_probability_sensitivity: e.line_probability_sensitivity, classification: e.classification,
+          goal_value_policy_version: e.policy_version, cutoff_at: null,
+        }).catch(() => {});
+        persisted++;
+      }
+    }
+    return persisted;
+  } catch (e) { return 0; }
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -1725,7 +1771,7 @@ function goalEngineOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP
 async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
   if (_goalEvalRunning) return { skipped: 'running' };
   _goalEvalRunning = true;
-  const out = { evaluated: 0, snapshots_new: 0, skipped: 0, errors: 0, started: new Date().toISOString() };
+  const out = { evaluated: 0, snapshots_new: 0, value_rows: 0, skipped: 0, errors: 0, started: new Date().toISOString() };
   try {
     const dbc = require('./database/client');
     const dbcfg = require('./database/config');
@@ -1745,6 +1791,9 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
         const gsnap = await persistGoalSnapshot(ev, deep, compl);
         out.evaluated++;
         if (gsnap && gsnap.row && !gsnap.idempotent) out.snapshots_new++;
+        // G3: value de goles vs consenso no-vig del mercado (shadow, solo si hay cuotas del evento).
+        const vrows = await persistGoalValue(ev, Number(deep.probs.xgA), Number(deep.probs.xgB), gsnap && gsnap.row ? gsnap.row.goal_snapshot_id : null);
+        out.value_rows += vrows || 0;
         if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
       } catch (e) { out.errors++; }
     }

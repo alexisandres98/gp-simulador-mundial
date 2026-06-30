@@ -1655,6 +1655,64 @@ async function persistGoalValue(ev, lh, la, goalSnapshotId) {
   } catch (e) { return 0; }
 }
 
+// Persiste el VALUE de GANADOR (1X2) de un partido próximo, reusando goal_value_shadow (market_family='match_winner')
+// — sin migración. Ingiere las cuotas h2h del proveedor a sportsbook_goal_quote_current (para books count + CLV),
+// calcula el consenso no-vig 3-way del mercado, y guarda model (deep.probs) vs mercado por resultado. Habilita las
+// picks SÓLIDAS en partidos NO canónicos (la mayoría de próximos usan id sintético). Idempotente por input_hash.
+async function persistMatchWinnerValue(ev, deep, theOddsEvent, goalSnapshotId) {
+  try {
+    if (!theOddsEvent || !deep || !deep.probs) return 0;
+    const grepo = require('./goal-engine/repository');
+    const homeName = normName(theOddsEvent.home_team), awayName = normName(theOddsEvent.away_team);
+    const byBook = {};
+    for (const bk of theOddsEvent.bookmakers || []) {
+      for (const m of bk.markets || []) {
+        if (m.key !== 'h2h') continue;
+        const o = {};
+        for (const oc of m.outcomes || []) {
+          const n = normName(oc.name);
+          if (n === homeName) o.home = Number(oc.price);
+          else if (n === awayName) o.away = Number(oc.price);
+          else o.draw = Number(oc.price); // 'Draw'
+        }
+        if (o.home > 1 && o.draw > 1 && o.away > 1) byBook[bk.key] = { ...o, last_update: bk.last_update };
+      }
+    }
+    const books = Object.keys(byBook);
+    if (books.length < 3) return 0; // consenso requiere ≥3 casas
+    // Ingiere las cuotas h2h (para books count consistente + CLV futuro).
+    for (const bkKey of books) {
+      const o = byBook[bkKey];
+      for (const side of ['home', 'draw', 'away']) {
+        await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bkKey, external_event_id: theOddsEvent.id, canonical_event_id: ev.id, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: o[side], implied_probability: o[side] > 1 ? 1 / o[side] : null, quote_status: 'open', is_live: false, provider_update: o.last_update }).catch(() => {});
+      }
+    }
+    // No-vig 3-way: por casa normaliza 1/odds; promedia por resultado.
+    const acc = { home: 0, draw: 0, away: 0 };
+    for (const bkKey of books) {
+      const o = byBook[bkKey], raw = { home: 1 / o.home, draw: 1 / o.draw, away: 1 / o.away };
+      const s = raw.home + raw.draw + raw.away;
+      acc.home += raw.home / s; acc.draw += raw.draw / s; acc.away += raw.away / s;
+    }
+    const n = books.length, cons = { home: acc.home / n, draw: acc.draw / n, away: acc.away / n };
+    const best = { home: Math.max(...books.map(k => byBook[k].home)), draw: Math.max(...books.map(k => byBook[k].draw)), away: Math.max(...books.map(k => byBook[k].away)) };
+    const model = { home: Number(deep.probs.aWin), draw: Number(deep.probs.draw), away: Number(deep.probs.bWin) };
+    let persisted = 0;
+    for (const side of ['home', 'draw', 'away']) {
+      const gp = model[side], bo = best[side]; if (!(bo > 1) || !(gp >= 0)) continue;
+      const be = 1 / bo;
+      await grepo.recordGoalValue({
+        goal_snapshot_id: goalSnapshotId || null, canonical_event_id: ev.id, market_id: 'MATCH_WINNER_' + side.toUpperCase(),
+        market_family: 'match_winner', period_code: 'REGULATION', gp_probability: gp, market_consensus_probability: cons[side],
+        best_decimal_odds: bo, break_even_probability: be, raw_edge_pp: gp - be, conservative_probability: gp,
+        adjusted_edge_pp: gp - be, adjusted_ev: gp * bo - 1, classification: 'shadow', goal_value_policy_version: 'match-winner-shadow-1',
+      }).catch(() => {});
+      persisted++;
+    }
+    return persisted;
+  } catch (e) { return 0; }
+}
+
 // ===== GOLES (G5): Picks de goles. Promueve un Value (G3) en familia APROBADA (G4) a Pick GP con el gate
 // editorial (goalPick.qualifyPick). SHADOW/admin: persiste a db.goalPicks (db.json), NO se expone a usuarios.
 // Gated por GP_GOAL_PICKS_ENABLED (default OFF → dormido aunque haya cuotas). Idempotente por (evento,mercado).
@@ -1953,7 +2011,7 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     if (KEY) {
       try {
         const reserve = Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
-        const r = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?regions=eu,uk&markets=totals&oddsFormat=decimal&dateFormat=iso&apiKey=${KEY}`, { signal: AbortSignal.timeout(15000) });
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?regions=eu,uk&markets=h2h,totals&oddsFormat=decimal&dateFormat=iso&apiKey=${KEY}`, { signal: AbortSignal.timeout(15000) });
         const remaining = Number(r.headers.get('x-requests-remaining'));
         if (r.ok && (!Number.isFinite(remaining) || remaining >= reserve)) {
           const body = await r.json(); const now = Date.now();
@@ -1985,6 +2043,9 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
       }
       const vrows = await persistGoalValue({ id: eventId }, Number(deep.probs.xgA), Number(deep.probs.xgB), gsnap && gsnap.row ? gsnap.row.goal_snapshot_id : null);
       out.value_rows += vrows || 0;
+      // Value de GANADOR (1X2) → habilita picks SÓLIDAS en partidos no canónicos (h2h de the_odds_api).
+      const mwRows = await persistMatchWinnerValue({ id: eventId }, deep, theOddsEvent, gsnap && gsnap.row ? gsnap.row.goal_snapshot_id : null);
+      out.value_rows += mwRows || 0;
       if (throttleMs) await new Promise(r => setTimeout(r, throttleMs));
     };
 

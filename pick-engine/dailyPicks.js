@@ -53,6 +53,32 @@ async function buildDailyPicks(deps) {
     });
     e.selections[r.selection] = { model: r.gp, market: r.mkt, bestOdds: r.odds, books: r.books };
   }
+
+  // SÓLIDAS también desde match_winner (1X2) de eventos NO canónicos (ids sintéticos, vía persistMatchWinnerValue).
+  // Equipos+kickoff del lineage. Solo se añaden eventos que NO vinieron ya de value_evaluations (canónicos primero).
+  const rowsMW = (await query(
+    `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
+       gv.canonical_event_id, gv.market_id, gv.gp_probability::float gp, gv.market_consensus_probability::float mkt,
+       gv.best_decimal_odds::float odds, s.factor_lineage,
+       (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id AND q.market_family='match_winner') books
+     FROM goal_value_shadow gv
+     LEFT JOIN LATERAL (SELECT factor_lineage FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) s ON true
+     WHERE gv.market_family='match_winner' AND gv.gp_probability > 0 AND gv.gp_probability < 1 AND gv.created_at > now() - interval '2 days'
+     ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
+  const canonicalIds = new Set(Object.keys(evMap)); // eventos que ya vinieron de value_evaluations
+  for (const r of rowsMW) {
+    if (canonicalIds.has(r.canonical_event_id)) continue; // ya canónico → no duplicar (3 filas MW comparten evento)
+    const m = /^MATCH_WINNER_(HOME|DRAW|AWAY)$/.exec(r.market_id); if (!m) continue;
+    const sel = m[1].toLowerCase();
+    const lin = (Array.isArray(r.factor_lineage) ? r.factor_lineage[0] : null) || {};
+    const homeId = lin.home_team_id || null, awayId = lin.away_team_id || null, kickoff = lin.kickoff_at || null;
+    if (!homeId || !awayId || !kickoff || new Date(kickoff).getTime() <= nowMs) continue;
+    const e = evMap[r.canonical_event_id] || (evMap[r.canonical_event_id] = {
+      eventId: r.canonical_event_id, home: teamNameById(homeId), away: teamNameById(awayId),
+      homeId, awayId, kickoff, selections: {},
+    });
+    e.selections[sel] = { model: r.gp, market: r.mkt, bestOdds: r.odds, books: Number(r.books || 0) };
+  }
   const events = Object.values(evMap);
 
   // Goles: value reciente. Los eventos de goles usan ids SINTÉTICOS (desacoplados de canonical_events), así que los

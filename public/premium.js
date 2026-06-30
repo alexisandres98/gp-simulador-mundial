@@ -652,9 +652,9 @@
     var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
     var hh = teamName(p.home_team_id, p.home), aa = teamName(p.away_team_id, p.away);
     var odds = p.odds != null ? Number(p.odds).toFixed(2) : '—';
-    // Solo SÓLIDA/COMBO son canónicas (resuelven el cockpit). GOLES usa ids sintéticos → informativa, no clickeable
-    // (evita abrir una vista de partido vacía). Se hará clickeable cuando se ingiera h2h de los próximos.
-    var clickable = p.event_id && p.family !== 'GOALS';
+    // Clickeable solo si el evento es canónico (el server expone event_id solo en esos): abre el cockpit del partido.
+    // Las picks de eventos sintéticos (la mayoría hoy) son informativas — evita abrir una vista vacía.
+    var clickable = !!p.event_id;
     var openAttr = clickable ? ' data-openmatch="' + esc(p.event_id) + '"' : '';
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
       '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + '</span>' +

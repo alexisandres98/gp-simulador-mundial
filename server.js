@@ -1825,17 +1825,31 @@ async function evaluateDailyPicks() {
   return out;
 }
 
-// Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria (db.results[k.m]).
+// Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria decidida EN 90'. Los
+// mercados "a ganar" y O/U se liquidan a 90' (full-time), NO a prórroga: si el knockout fue a ET/penales (minute>90)
+// no tenemos el marcador limpio de 90' en db.results → devuelve null (se trata como VOID en settleDailyPicks).
 function regulationScoreFor(homeId, awayId) {
   const g = goalGroupScore(homeId, awayId);
   if (g) return g;
   for (const k of KNOCKOUT) {
     const r = db.results[String(k.m)];
     if (!r || r.status !== 'final' || typeof r.hg !== 'number' || !r.home) continue;
+    if (Number(r.minute) > 90) continue; // fue a prórroga/penales → sin marcador limpio de 90'
     if (r.home === homeId && r.away === awayId) return { homeGoals: r.hg, awayGoals: r.ag };
     if (r.home === awayId && r.away === homeId) return { homeGoals: r.ag, awayGoals: r.hg };
   }
   return null;
+}
+// ¿El partido ya terminó (cualquier resultado final, decidido como sea)? Para sacar del feed picks de partidos
+// jugados que no se pueden liquidar a 90' (ET/penales) marcándolas VOID.
+function matchFinalFor(homeId, awayId) {
+  const g = goalGroupScore(homeId, awayId); if (g) return true;
+  for (const k of KNOCKOUT) {
+    const r = db.results[String(k.m)];
+    if (!r || r.status !== 'final' || !r.home) continue;
+    if ((r.home === homeId && r.away === awayId) || (r.home === awayId && r.away === homeId)) return true;
+  }
+  return false;
 }
 function settleDailyPicks() {
   const daily = require('./pick-engine/dailyPicks');
@@ -1843,10 +1857,15 @@ function settleDailyPicks() {
   for (const p of db.dailyPicks) {
     if (p.status !== 'ACTIVE') continue;
     const sc = regulationScoreFor(p.event.home_team_id, p.event.away_team_id);
-    if (!sc) continue;
-    p.result_code = daily.settleOne(p, sc);
-    p.status = 'SETTLED'; p.settled_at = new Date().toISOString();
-    settled++;
+    if (sc) {
+      p.result_code = daily.settleOne(p, sc);
+      p.status = 'SETTLED'; p.settled_at = new Date().toISOString();
+      settled++;
+    } else if (matchFinalFor(p.event.home_team_id, p.event.away_team_id)) {
+      // Partido jugado pero a ET/penales → sin 90' limpio: VOID (sale del feed, no cuenta en track record).
+      p.result_code = 'VOID'; p.status = 'SETTLED'; p.settled_at = new Date().toISOString();
+      settled++;
+    }
   }
   if (settled) save();
   return settled;
@@ -1856,7 +1875,7 @@ function dailyPicksTrackRecord() {
   const fam = {};
   let n = 0, wins = 0, stake = 0, ret = 0;
   for (const p of db.dailyPicks) {
-    if (p.status !== 'SETTLED' || p.result_code === 'PUSH') continue;
+    if (p.status !== 'SETTLED' || p.result_code === 'PUSH' || p.result_code === 'VOID') continue;
     const f = fam[p.family] || (fam[p.family] = { n: 0, w: 0, stake: 0, ret: 0 });
     const won = p.result_code === 'WIN';
     f.n++; f.stake += 1; n++; stake += 1;
@@ -2272,7 +2291,7 @@ const server = http.createServer(async (req, res) => {
         const active = db.dailyPicks.filter(x => x.status === 'ACTIVE')
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
         const items = active.map(x => ({
-          pick_id: x.pick_id, family: x.family, event_id: x.event.canonical_event_id,
+          pick_id: x.pick_id, family: x.family, event_id: x.event.is_canonical ? x.event.canonical_event_id : null,
           home: x.event.home, away: x.event.away,
           home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
           selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs,

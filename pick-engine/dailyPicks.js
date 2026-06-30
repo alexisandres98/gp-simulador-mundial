@@ -123,6 +123,7 @@ async function buildDailyPicks(deps) {
     const ev = evById[s.eventId] || {};
     picks.push(record('SOLID', s.eventId, {
       home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff,
+      is_canonical: canonicalIds.has(s.eventId),     // solo canónicos abren cockpit → clickeable
       selection_code: s.selection,                   // 'home' | 'away' (neutral; i18n en cliente)
       best_odds: s.bestOdds, best_book: s.bestBook, books: s.books,
       model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence,
@@ -138,6 +139,7 @@ async function buildDailyPicks(deps) {
     const gm = goalById[g.eventId + '|' + g.marketId] || {};
     picks.push(record('GOALS', g.eventId, {
       home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff,
+      is_canonical: canonicalIds.has(g.eventId),
       market_id: g.marketId, side: g.side, line: g.line,
       best_odds: g.bestOdds, best_book: g.bestBook, books: g.books,
       model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp,
@@ -147,6 +149,7 @@ async function buildDailyPicks(deps) {
     const ev = evById[c.eventId] || {};
     picks.push(record('COMBO', c.eventId, {
       home: c.home, away: c.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: c.kickoff,
+      is_canonical: canonicalIds.has(c.eventId),
       legs: c.legs, best_odds: c.comboOdds, confidence: c.confidence,
     }, c.eventId + '|COMBO|' + c.legs.map(l => l.selection || (l.side + l.line)).join('+')));
   }
@@ -158,7 +161,7 @@ function record(family, eventId, fields, key) {
   return {
     pick_id: stableId('dp', key),
     family,
-    event: { canonical_event_id: eventId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
+    event: { canonical_event_id: eventId, is_canonical: !!fields.is_canonical, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
     selection_code: fields.selection_code || null,
     market_id: fields.market_id || null, side: fields.side || null, line: (fields.line != null ? fields.line : null),
     legs: fields.legs || null,

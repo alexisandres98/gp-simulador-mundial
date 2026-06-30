@@ -220,6 +220,10 @@ function resolveRealBracket() {
   };
   for (const k of KNOCKOUT) {
     resolved[k.m] = { home: side(k.home, k.m), away: side(k.away, k.m) };
+    // Override anclado a ESPN: si conocemos los equipos REALES de esta llave (por hora de inicio), mandan ellos.
+    // Corrige cruces mal computados (mejores terceros / emparejamientos) y evita partidos fantasma.
+    const ov = koOverride[k.m];
+    if (ov && ov.home && ov.away) resolved[k.m] = { home: ov.home, away: ov.away };
   }
   return resolved;
 }
@@ -228,6 +232,12 @@ function resolveRealBracket() {
 const espnTeamId = {};
 TEAMS.forEach(t => [t.en, t.name, ...t.aliases].forEach(a => espnTeamId[normName(a)] = t.id));
 let lastSync = { ts: 0, ok: null, applied: 0, error: null };
+// Override de cruces de eliminatorias anclado a la REALIDAD de ESPN (por hora de inicio exacta). La asignación
+// de mejores terceros / emparejamientos puede divergir del oficial; ESPN tiene los equipos reales de cada llave.
+// m -> { home, away } (códigos nuestros). Se repuebla en cada sync. Evita mostrar/transmitir cruces equivocados.
+let koOverride = {};
+const koSlotByInstant = {};
+KNOCKOUT.forEach(k => { if (k.datetime) { const t = new Date(k.datetime).getTime(); if (!isNaN(t)) koSlotByInstant[t] = k.m; } });
 
 function dstr(offsetDays) {
   return new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
@@ -241,6 +251,19 @@ async function syncFromESPN(depth = 0) {
       `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-${dstr(0)}&limit=250`;
     const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
     const j = await r.json();
+    // PASO 0: anclar los cruces de eliminatorias a la realidad de ESPN por hora de inicio (las horas de nuestro
+    // calendario coinciden con el oficial). Así corregimos emparejamientos mal computados (p.ej. mejores terceros)
+    // ANTES de resolver el bracket → el partido real se reconoce y se ingiere/transmite correctamente.
+    for (const ev of j.events || []) {
+      const c = ev.competitions && ev.competitions[0]; if (!c || !ev.date) continue;
+      const inst = new Date(ev.date).getTime(); const m = koSlotByInstant[inst];
+      if (m == null) continue; // solo slots de eliminatoria con hora conocida (R32)
+      const H = c.competitors.find(x => x.homeAway === 'home'), A = c.competitors.find(x => x.homeAway === 'away');
+      if (!H || !A) continue;
+      const hId = espnTeamId[normName(H.team.displayName)] || espnTeamId[normName(H.team.name)];
+      const aId = espnTeamId[normName(A.team.displayName)] || espnTeamId[normName(A.team.name)];
+      if (hId && aId) koOverride[m] = { home: hId, away: aId };
+    }
     const bracket = resolveRealBracket();
     let changed = 0;
     const liveAlerts = []; // {matchId,hId,aId,hg,ag,kind:'start'|'goal'}

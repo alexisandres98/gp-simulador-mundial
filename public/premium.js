@@ -23,6 +23,7 @@
       edge_adj: 'Edge ajustado', no_arb: 'Sin arbitraje ejecutable', no_arb_sub: 'GP sigue comparando precios y reglas', none: 'Sin datos aún',
       th_time: 'Hora', th_match: 'Partido', th_state: 'Estado', th_gp: 'Probabilidad GP', th_market: 'Mercado', th_price: 'Mejor precio', th_edge: 'Edge aj.', th_signal: 'Señal',
       st_live: 'EN VIVO', st_today: 'HOY', st_tom: 'MAÑANA', st_ft: 'Finalizado', st_upcoming: 'Próximo', st_finished: 'Finalizados', vs: 'vs',
+      decided_pens: 'Penales', decided_et: 'Tras prórroga', in_et: 'Prórroga', won_by: 'Ganó {team}', pens_short: 'pen',
       cockpit: 'Cockpit del partido', prob_gp: 'Probabilidad GP', score_prob: 'Marcador prob.',
       tab_summary: 'Resumen', tab_markets: 'Mercados', tab_context: 'Contexto', tab_stats: 'Estadísticas', tab_events: 'Eventos',
       memo: 'Decision memo', conf: 'Confianza', conf_hi: 'Alta', conf_mid: 'Media', conf_lo: 'Baja',
@@ -158,6 +159,7 @@
       edge_adj: 'Adjusted edge', no_arb: 'No executable arbitrage', no_arb_sub: 'GP keeps comparing prices and rules', none: 'No data yet',
       th_time: 'Time', th_match: 'Match', th_state: 'State', th_gp: 'GP probability', th_market: 'Market', th_price: 'Best price', th_edge: 'Adj. edge', th_signal: 'Signal',
       st_live: 'LIVE', st_today: 'TODAY', st_tom: 'TOMORROW', st_ft: 'Full time', st_upcoming: 'Upcoming', st_finished: 'Finished', vs: 'vs',
+      decided_pens: 'Penalties', decided_et: 'After extra time', in_et: 'Extra time', won_by: '{team} won', pens_short: 'pen',
       cockpit: 'Match cockpit', prob_gp: 'GP probability', score_prob: 'Likely score',
       tab_summary: 'Summary', tab_markets: 'Markets', tab_context: 'Context', tab_stats: 'Stats', tab_events: 'Events',
       memo: 'Decision memo', conf: 'Confidence', conf_hi: 'High', conf_mid: 'Medium', conf_lo: 'Low',
@@ -1144,6 +1146,16 @@
     var finished = fx && fx.status === 'final';
     var score = ((live || finished) && fx && fx.score) ? (fx.score.home + ' - ' + fx.score.away) : null;
     var minute = (live && fx && fx.minute != null) ? (fx.minute + "'") : null;
+    // eliminatoria: prórroga / penales / ganador (no se corta a los 90')
+    var koLine = '';
+    if (fx && (finished || live)) {
+      var kp = [];
+      if (fx.decided === 'pens') kp.push(esc(t('decided_pens')) + (fx.penalties ? ' ' + fx.penalties.home + '-' + fx.penalties.away : ''));
+      else if (fx.decided === 'et') kp.push(esc(t('decided_et')));
+      if (finished && fx.winnerId) kp.push(esc(t('won_by', { team: teamName(fx.winnerId) })));
+      else if (live && (fx.minute || 0) > 90) kp.push(esc(t('in_et')));
+      if (kp.length) koLine = '<div class="gx-hero-ko">' + kp.join(' · ') + '</div>';
+    }
     var meta = [esc(t('comp')), stageLabel(h.stage_code) ? esc(stageLabel(h.stage_code)) : '', h.venue ? esc(h.venue) : '', esc(fmtDate(h.kickoff_at))].filter(Boolean).join(' · ');
     var tri = function (fn, cls, hi) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return '<span' + (hi === c ? ' class="hi"' : '') + '>' + fn(c) + '</span>'; }).join('') + '</span>'; };
     var miniStat = function (label, v, extra) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b>' + (extra || '') + '</div>'; };
@@ -1151,7 +1163,7 @@
       '<div class="gx-hero-meta">' + meta + '<span class="gx-spacer"></span>' + (live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : finished ? '<span class="gx-dim" style="font-size:11.5px;font-weight:600">' + esc(t('st_ft')) + '</span>' : '<span class="gx-dim" style="font-size:11.5px">' + esc(fmtTime(h.kickoff_at)) + '</span>') + (fresh ? freshChip(fresh, 'data') : '') + '</div>' +
       '<div class="gx-hero-teams">' +
       '<div class="gx-hero-side"><span class="fl">' + flag(h.home.team_id) + '</span><b>' + esc(teamName(h.home.team_id, h.home.name_fallback)) + '</b></div>' +
-      '<div class="gx-hero-mid">' + (score ? '<div class="gx-hero-score gx-mono">' + esc(score) + '</div>' + (minute ? '<div class="gx-ck-clock">' + esc(minute) + '</div>' : '') : '<div class="gx-hero-vs">' + esc(t('vs')) + '</div>') + '</div>' +
+      '<div class="gx-hero-mid">' + (score ? '<div class="gx-hero-score gx-mono">' + esc(score) + '</div>' + (minute ? '<div class="gx-ck-clock">' + esc(minute) + '</div>' : '') : '<div class="gx-hero-vs">' + esc(t('vs')) + '</div>') + koLine + '</div>' +
       '<div class="gx-hero-side"><span class="fl">' + flag(h.away.team_id) + '</span><b>' + esc(teamName(h.away.team_id, h.away.name_fallback)) + '</b></div>' +
       '</div>' +
       // barra GP 1X2 solo si hay probabilidad GP (los partidos sin evaluación no muestran barra a 0%)
@@ -2005,9 +2017,12 @@
       var ms = matches.slice().sort(function (a, b) { return new Date(b.datetime || 0) - new Date(a.datetime || 0); });
       var rows = ms.map(function (m) {
         var sc = (m.hg != null && m.ag != null) ? (m.hg + '-' + m.ag) : '—';
+        if (m.pens) sc += ' <span class="gx-dim" style="font-size:10.5px">(' + m.pens.home + '-' + m.pens.away + ' ' + esc(t('pens_short')) + ')</span>';
+        else if (m.decided === 'et') sc += ' <span class="gx-dim" style="font-size:10.5px">(' + esc(t('decided_et')) + ')</span>';
+        var winTag = (m.ko && m.winner) ? '<div class="gx-dim" style="font-size:10.5px">' + esc(t('won_by', { team: teamName(m.winner) })) + '</div>' : '';
         var predName = m.predicted === 'draw' ? (LANG === 'en' ? 'Draw' : 'Empate') : teamName(m.predicted === 'away' ? m.away : m.home);
         return '<tr class="gx-row" data-openmatch="fx-' + esc(m.id) + '"><td class="gx-time l">' + esc(fmtDate(m.datetime)) + '</td>' +
-          '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(m.home) + '</span><b>' + esc(teamName(m.home)) + '</b><span class="gx-dim" style="margin:0 4px">' + esc(t('vs')) + '</span><span class="fl">' + flag(m.away) + '</span><b>' + esc(teamName(m.away)) + '</b></div></td>' +
+          '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(m.home) + '</span><b>' + esc(teamName(m.home)) + '</b><span class="gx-dim" style="margin:0 4px">' + esc(t('vs')) + '</span><span class="fl">' + flag(m.away) + '</span><b>' + esc(teamName(m.away)) + '</b></div>' + winTag + '</td>' +
           '<td class="gx-mono" style="font-weight:600">' + sc + '</td>' +
           '<td class="l gx-dim">' + esc(predName) + ' <span class="gx-mono">' + pct0(m.predictedProb) + '</span></td>' +
           '<td class="l">' + (m.exact ? '<span class="gx-badge gx-b-strong">' + esc(t('perf_exact')) + '</span>' : m.correct ? '<span class="gx-pos" style="font-size:11.5px;font-weight:600">' + esc(t('perf_hit')) + '</span>' : '<span class="gx-neg" style="font-size:11.5px;font-weight:600">✗</span>') + '</td></tr>';

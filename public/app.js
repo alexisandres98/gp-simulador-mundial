@@ -138,6 +138,17 @@ function marketScoreboardHtml(vm) {
 }
 
 // ---------- ACIERTOS (track record público del modelo) ----------
+// Eliminatoria en el historial: sufijo de penales/prórroga junto al marcador + línea de ganador.
+function recKoSuffix(m) {
+  if (m.pens) return ` <span class="muted" style="font-size:11px">(${m.pens.home}-${m.pens.away} ${I18N.t('mpage.pens_short')})</span>`;
+  if (m.decided === 'et') return ` <span class="muted" style="font-size:11px">(${I18N.t('mpage.aet_short')})</span>`;
+  return '';
+}
+function recKoWinner(m) {
+  if (!m.ko || !m.winner) return '';
+  const w = teamOf(m.winner);
+  return `<div class="muted" style="font-size:11px">${I18N.t('mpage.won_by', { team: w ? I18N.teamName(w.id, w.name) : m.winner })}</div>`;
+}
 async function renderRecord() {
   // Sprint 8.1 §5-8: con UI_VERIFIED_PERFORMANCE_ENABLED → pantalla "Rendimiento" (Verificable | Histórico).
   // Con el flag off, se conserva exactamente la pantalla "Aciertos" de siempre.
@@ -167,7 +178,7 @@ async function renderRecord() {
     return `<div class="rec-row">
       <span class="rec-dot ${m.correct ? 'ok' : 'no'}"></span>
       <div class="rec-main">
-        <div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ` <span class="exact-tag">${I18N.t('record.tag_exact')}</span>` : ''}</div>
+        <div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ` <span class="exact-tag">${I18N.t('record.tag_exact')}</span>` : ''}${recKoSuffix(m)}</div>${recKoWinner(m)}
         <div class="rec-pred">${I18N.t('record.model_pred', { pick: pickLabel, prob: pct(m.predictedProb) })}</div>
       </div>
       <span class="rec-date">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
@@ -251,7 +262,7 @@ async function perfLegacyHtml() {
     const th = teamOf(m.home), ta = teamOf(m.away);
     const pickLabel = m.predicted === 'home' ? I18N.t('record.pick_home', { team: th ? I18N.teamName(th.id, th.name) : m.home }) : m.predicted === 'away' ? I18N.t('record.pick_away', { team: ta ? I18N.teamName(ta.id, ta.name) : m.away }) : I18N.t('record.pick_draw');
     return `<div class="rec-row"><span class="rec-dot ${m.correct ? 'ok' : 'no'}"></span>
-      <div class="rec-main"><div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ` <span class="exact-tag">${I18N.t('record.tag_exact')}</span>` : ''}</div>
+      <div class="rec-main"><div class="rec-score">${th ? th.flag : ''} ${m.home} <b>${m.hg} - ${m.ag}</b> ${m.away} ${ta ? ta.flag : ''}${m.exact ? ` <span class="exact-tag">${I18N.t('record.tag_exact')}</span>` : ''}${recKoSuffix(m)}</div>${recKoWinner(m)}
       <div class="rec-pred">${I18N.t('record.model_pred', { pick: pickLabel, prob: pct(m.predictedProb) })}</div></div>
       <span class="rec-date">${new Date(m.datetime).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span></div>`;
   }).join('') + '</div>';
@@ -797,7 +808,16 @@ function renderMatchDetail(d) {
     ? `<span class="livepill on">${I18N.t('mpage.live')}${d.minute ? " " + d.minute + "'" : ''}</span>`
     : d.status === 'final' ? `<span class="dchip">${I18N.t('mpage.final')}</span>`
       : `<span class="dchip">${dLong(d.date)}</span>`;
-  const center = (d.status === 'live' || d.status === 'final') && sc ? `<div class="mh-score">${sc.home} <span>-</span> ${sc.away}</div>` : `<div class="mh-vs">${I18N.t('mpage.vs')}</div>`;
+  // eliminatoria: prórroga / penales / ganador (no se corta a los 90')
+  let koNote = '';
+  if (d.status === 'final' && (d.penalties || d.decided === 'et' || d.winnerId)) {
+    const parts = [];
+    if (d.decided === 'pens') parts.push(I18N.t('mpage.pens') + (d.penalties ? ' ' + d.penalties.home + '-' + d.penalties.away : ''));
+    else if (d.decided === 'et') parts.push(I18N.t('mpage.aet'));
+    if (d.winnerId) parts.push(I18N.t('mpage.won_by', { team: I18N.teamName(d.winnerId, d.winnerId) }));
+    if (parts.length) koNote = `<div class="mh-ko">${parts.join(' · ')}</div>`;
+  } else if (d.status === 'live' && d.minute > 90) { koNote = `<div class="mh-ko">${I18N.t('mpage.et')}</div>`; }
+  const center = (d.status === 'live' || d.status === 'final') && sc ? `<div class="mh-score">${sc.home} <span>-</span> ${sc.away}</div>${koNote}` : `<div class="mh-vs">${I18N.t('mpage.vs')}</div>`;
 
   // Hero
   let html = detailHead((d.stageLabel ? d.stageLabel : I18N.t('mpage.title')) + (d.group ? ' · ' + I18N.t('mpage.group_prefix', { g: d.group }) : ''));

@@ -175,6 +175,18 @@ function realStandings() {
   return out;
 }
 
+// Ganador REAL de un partido (incl. prórroga y penales). r.winner es autoritativo (de ESPN); si falta, se
+// deduce del marcador y, en empate, de la tanda (pensHome). Devuelve null si fue empate sin desempate (grupos).
+function matchWinner(r, home, away) {
+  if (!r) return null;
+  if (r.winner) return r.winner;
+  if (r.hg > r.ag) return home;
+  if (r.hg < r.ag) return away;
+  if (r.pensHome === true) return home;
+  if (r.pensHome === false) return away;
+  return null; // empate genuino (fase de grupos)
+}
+
 // ---------- bracket real (equipos confirmados en eliminatorias) ----------
 // Resuelve qué equipos reales ocupan cada llave a partir de resultados FINALES.
 function resolveRealBracket() {
@@ -204,12 +216,13 @@ function resolveRealBracket() {
   const winnerOf = m => {
     const r = db.results[String(m)];
     if (!r || r.status !== 'final') return null;
-    return r.hg > r.ag ? r.home : r.hg < r.ag ? r.away : (r.pensHome ? r.home : r.away);
+    return matchWinner(r, r.home, r.away);
   };
   const loserOf = m => {
     const r = db.results[String(m)];
     if (!r || r.status !== 'final') return null;
-    return r.hg > r.ag ? r.away : r.hg < r.ag ? r.home : (r.pensHome ? r.away : r.home);
+    const w = matchWinner(r, r.home, r.away);
+    return w == null ? null : (w === r.home ? r.away : r.home);
   };
   const side = (s, m) => {
     if (s.t === 'W') return firsts[s.g] || null;
@@ -283,6 +296,9 @@ async function syncFromESPN(depth = 0) {
       const minute = parseInt(ev.status.displayClock) || 0;
       const hPen = H.shootoutScore != null ? Number(H.shootoutScore) : null;
       const aPen = A.shootoutScore != null ? Number(A.shootoutScore) : null;
+      const espnWinner = H.winner ? hId : A.winner ? aId : null;   // ganador autoritativo de ESPN (incl. prórroga/penales)
+      const period = (ev.status && ev.status.period) || 0;          // 2=reg, 3/4=prórroga, 5=tanda de penales
+      const detail = (ev.status && ev.status.type && ev.status.type.detail) || '';
 
       // ¿partido de grupos? — el match por espnId debe coincidir también en equipos (blindaje)
       const sameTeams = f => (f.home === hId && f.away === aId) || (f.home === aId && f.away === hId);
@@ -310,12 +326,18 @@ async function syncFromESPN(depth = 0) {
         };
         if (hPen != null && aPen != null) {
           payload.pensHome = flip ? aPen > hPen : hPen > aPen;
+          payload.hpen = flip ? aPen : hPen;   // tanda orientada a home/away de la llave
+          payload.apen = flip ? hPen : aPen;
         }
+        payload.winner = espnWinner || null;   // ganador real (prórroga/penales incluidos)
+        payload.decided = (hPen != null && aPen != null) || /pen/i.test(detail) || period >= 5 ? 'pens'
+          : (period === 3 || period === 4 || /\bET\b|AET|extra|prórroga|prorroga/i.test(detail)) ? 'et' : 'reg';
         matchId = String(m);
       }
       const prev = db.results[matchId];
       const same = prev && prev.status === payload.status && prev.hg === payload.hg &&
-        prev.ag === payload.ag && prev.minute === payload.minute && prev.pensHome === payload.pensHome;
+        prev.ag === payload.ag && prev.minute === payload.minute && prev.pensHome === payload.pensHome &&
+        prev.winner === payload.winner && prev.decided === payload.decided && prev.hpen === payload.hpen;
       if (!same) {
         db.results[matchId] = { ...(prev || {}), ...payload, source: 'espn' };
         changed++;
@@ -664,16 +686,32 @@ function trackRecord() {
     const h = f.home || r.home, a = f.away || r.away;
     // predicción con los Elo PREVIOS a ese partido (lo que el modelo decía antes del pitazo)
     const probs = matchProbs(effElo(elos, h), effElo(elos, a));
-    const picks = [['home', probs.home], ['draw', probs.draw], ['away', probs.away]].sort((x, y) => y[1] - x[1]);
-    const predicted = picks[0][0];
-    const actual = r.hg > r.ag ? 'home' : r.hg < r.ag ? 'away' : 'draw';
+    const isKO = !!f.ko;
+    const winner = isKO ? matchWinner(r, h, a) : (r.hg > r.ag ? h : r.hg < r.ag ? a : null);
+    const winnerSide = winner === h ? 'home' : winner === a ? 'away' : null;
+    let predicted, predictedProb, correct;
+    if (isKO) {
+      // ELIMINATORIA: no hay empate como resultado final → el modelo apuesta a quién AVANZA (favorito).
+      // Acierto si el equipo favorito efectivamente ganó la llave (en 90', prórroga o penales).
+      predicted = probs.home >= probs.away ? 'home' : 'away';
+      predictedProb = predicted === 'home' ? probs.home : probs.away;
+      correct = winnerSide != null && predicted === winnerSide;
+    } else {
+      const picks = [['home', probs.home], ['draw', probs.draw], ['away', probs.away]].sort((x, y) => y[1] - x[1]);
+      predicted = picks[0][0]; predictedProb = picks[0][1];
+      const actual = r.hg > r.ag ? 'home' : r.hg < r.ag ? 'away' : 'draw';
+      correct = predicted === actual;
+    }
     finished.push({
       id: f.id, datetime: f.datetime, home: h, away: a, hg: r.hg, ag: r.ag,
-      predicted, predictedProb: +picks[0][1].toFixed(4),
+      predicted, predictedProb: +predictedProb.toFixed(4),
       probs: { home: +probs.home.toFixed(4), draw: +probs.draw.toFixed(4), away: +probs.away.toFixed(4) },
       likelyScore: probs.likelyScore,
-      correct: predicted === actual,
+      correct,
       exact: probs.likelyScore === `${r.hg}-${r.ag}`,
+      ko: isKO, decided: r.decided || 'reg',
+      pens: (r.hpen != null && r.apen != null) ? { home: r.hpen, away: r.apen } : null,
+      winner: winner || null,
     });
     const [nh, na] = eloUpdate(elos[h], elos[a], r.hg, r.ag, teamById[h].host, teamById[a].host);
     elos[h] = nh; elos[a] = na;
@@ -1226,9 +1264,11 @@ function findFixtureMeta(id) {
 
 function modelProbsFor(home, away, result) {
   if (!home || !away) return null;
-  return (result && result.status === 'live')
-    ? liveMatchProbs(effElo(db.elos, home), effElo(db.elos, away), result.hg, result.ag, result.minute)
-    : matchProbs(effElo(db.elos, home), effElo(db.elos, away));
+  if (result && result.status === 'live') {
+    const ft = (result.minute > 90 || result.decided === 'et') ? 120 : 90; // prórroga en eliminatorias
+    return liveMatchProbs(effElo(db.elos, home), effElo(db.elos, away), result.hg, result.ag, result.minute, { fullTime: ft });
+  }
+  return matchProbs(effElo(db.elos, home), effElo(db.elos, away));
 }
 
 // ===== GP Intelligence EN VIVO =====
@@ -1251,7 +1291,8 @@ async function liveGpProbs(home, away, result, events, { allowCompute = false } 
   const oppBoost = (n) => n <= 0 ? 1 : 1 + 0.12 * Math.min(n, 2);      // rival con un hombre de más
   const mulH = redMul(adj.homeReds) * oppBoost(adj.awayReds);
   const mulA = redMul(adj.awayReds) * oppBoost(adj.homeReds);
-  const p = liveProbsFromLambdas(xg.xgA, xg.xgB, result.hg, result.ag, result.minute, { mulH, mulA });
+  const ft = (result.minute > 90 || result.decided === 'et') ? 120 : 90;
+  const p = liveProbsFromLambdas(xg.xgA, xg.xgB, result.hg, result.ag, result.minute, { mulH, mulA, fullTime: ft });
   return { home: p.home, draw: p.draw, away: p.away, xgHome: p.xgHome, xgAway: p.xgAway, likelyScore: p.likelyScore, reds: { home: adj.homeReds, away: adj.awayReds }, live: true };
 }
 
@@ -1384,6 +1425,10 @@ async function buildMatchDetail(id, user = null) {
     group: meta.group, stage: meta.stage, stageLabel: STAGE_LABEL[meta.stage] || null,
     homeTeam: basicTeam(meta.home), awayTeam: basicTeam(meta.away),
     score: result ? { home: result.hg, away: result.ag } : undefined,
+    // eliminatoria: desenlace real (prórroga/penales) + ganador, para mostrarlo más allá de los 90'
+    penalties: (result && result.hpen != null && result.apen != null) ? { home: result.hpen, away: result.apen } : null,
+    decided: result ? (result.decided || (result.status === 'final' ? 'reg' : null)) : null,
+    winnerId: (result && result.status === 'final' && meta.kind === 'ko') ? matchWinner(result, meta.home, meta.away) : null,
     modelProbabilities: probs ? {
       homeWin: probs.home, draw: probs.draw, awayWin: probs.away,
       xgHome: probs.xgHome, xgAway: probs.xgAway, likelyScore: probs.likelyScore, live: !!probs.live,

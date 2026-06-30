@@ -115,7 +115,9 @@ function liveEventAdjustments(events = []) {
 // el tiempo RESTANTE. lh/la = xG de 90' (de Elo base O del modelo GP con contexto). opts.mulH/mulA = factores
 // sobre el xG restante (p.ej. tarjeta roja). Reutilizable por el modelo base y por el GP Intelligence en vivo.
 function liveProbsFromLambdas(lh, la, hg, ag, minute, opts = {}) {
-  const remain = Math.max(0, (90 - (minute || 0)) / 90);
+  // fullTime: 90 normal; 120 en prórroga (eliminatoria) → modela los minutos restantes de tiempo extra.
+  const ft = opts.fullTime || 90;
+  const remain = Math.max(0, (ft - (minute || 0)) / 90);
   const rlh = Math.max(0.001, lh * (opts.mulH || 1)) * remain, rla = Math.max(0.001, la * (opts.mulA || 1)) * remain;
   let pH = 0, pD = 0, pA = 0;
   const ph = [], pa = [];

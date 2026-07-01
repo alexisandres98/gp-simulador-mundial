@@ -1138,16 +1138,61 @@ async function tgTick() {
       const t = tgDailyText();
       if (t && await telegram.post(t)) { db.sentTg['daily:' + day] = Date.now(); save(); }
     }
-    let best = null;
-    for (const row of arbitrage()) for (const e of row.edges) {
-      const strong = (e.type === 'valor' && e.edge >= 0.06) || (e.type === 'arbitraje' && e.edge >= 0.02);
-      if (!strong) continue;
-      const key = `opp:${day}:${row.id}:${e.type}:${e.venue}:${e.side}`;
-      if (db.sentTg[key]) continue;
-      if (!best || e.edge > best.e.edge) best = { row, e, key };
+    // ALERTAS EN TIEMPO REAL del scanner multi-venue (Fase F): surebets ejecutables + precios atrasados fuertes,
+    // ya con fees/gates (a diferencia del legacy). Dedup por oportunidad+día. Gateado por MARKET_SCANNER_ALERTS_ENABLED.
+    await tgScannerAlerts(day).catch(e => console.error('[telegram] scanner alerts:', e.message));
+    // Publicación de "oportunidades" del Sistema A legacy (arbitrage(), solo campeón Poly↔Kalshi, SIN descontar
+    // fees → falsos positivos). APAGADA por defecto: el research confirmó que anuncia arbitrajes que pierden tras
+    // la fee de Kalshi/gas. El scanner multi-venue (market-scanner, con fees/gates) lo reemplaza. Reactivar solo
+    // con LEGACY_ARB_TG_ENABLED=true (no recomendado). El resumen diario y los finales siguen publicándose.
+    if (/^(1|true|yes|on)$/i.test(String(process.env.LEGACY_ARB_TG_ENABLED || '').trim())) {
+      let best = null;
+      for (const row of arbitrage()) for (const e of row.edges) {
+        const strong = (e.type === 'valor' && e.edge >= 0.06) || (e.type === 'arbitraje' && e.edge >= 0.02);
+        if (!strong) continue;
+        const key = `opp:${day}:${row.id}:${e.type}:${e.venue}:${e.side}`;
+        if (db.sentTg[key]) continue;
+        if (!best || e.edge > best.e.edge) best = { row, e, key };
+      }
+      if (best) { const t = tgOppText(best.row, best.e); if (t && await telegram.post(t)) { db.sentTg[best.key] = Date.now(); save(); } }
     }
-    if (best) { const t = tgOppText(best.row, best.e); if (t && await telegram.post(t)) { db.sentTg[best.key] = Date.now(); save(); } }
   } catch (e) { console.error('[telegram] tick:', e.message); }
+}
+// Alertas en tiempo real del scanner multi-venue: publica a Telegram las oportunidades EJECUTABLES/FUERTES ya
+// descontadas fees y con gates (no falsos positivos). Framing honesto: arbitraje = surebet garantizado; precio
+// atrasado = value 1-pata (+EV, no libre de riesgo), con nota de gubbing. Dedup por oportunidad+día.
+async function tgScannerAlerts(day) {
+  if (!/^(1|true|yes|on)$/i.test(String(process.env.MARKET_SCANNER_ALERTS_ENABLED || '').trim())) return;
+  if (!telegram.configured()) return;
+  const scan = await getMarketScan();
+  if (!scan || scan.disabled || scan.unavailable) return;
+  const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => aliasToId[normName(name)] || null, maxItems: 40 });
+  if (!dto.available) return;
+  const nm = (id, fb) => { const tm = teamById[id]; return (tm && tm.name) || fb || id; };
+  const selName = (it, oc) => it.market_family === 'match_total'
+    ? (oc === 'over' ? `Más de ${it.line}` : `Menos de ${it.line}`)
+    : (oc === 'draw' ? 'Empate' : oc === 'home' ? nm(it.home_team_id, it.home) : nm(it.away_team_id, it.away));
+  const match = (it) => `${nm(it.home_team_id, it.home)} vs ${nm(it.away_team_id, it.away)}`;
+  // 1) surebets ejecutables (arbitraje puro) — máx 1 por tick, el de mayor ROI neto
+  const arb = (dto.arbitrage || []).filter(a => a.executable).sort((a, b) => b.net_roi - a.net_roi)[0];
+  if (arb) {
+    const key = `scan:arb:${day}:${arb.event_id}:${arb.legs.map(l => l.outcome + l.venue).join('_')}`;
+    if (!db.sentTg[key]) {
+      const legs = arb.legs.map(l => `• ${selName(arb, l.outcome)} @${Number(l.odds).toFixed(2)} (${l.venue_label || l.venue}) — poné ${Math.round(l.stake_pct)}%`).join('\n');
+      const t = `🔒 <b>Arbitraje puro (surebet)</b>\n${match(arb)}\n${legs}\n\n<b>ROI garantizado: +${(arb.net_roi * 100).toFixed(2)}%</b> pase lo que pase.\nRequiere cuenta en cada casa y actuar rápido; verificá cuotas y reglas. No es consejo financiero.`;
+      if (await telegram.post(t)) { db.sentTg[key] = Date.now(); save(); }
+    }
+  }
+  // 2) precio atrasado fuerte (soft, edge alto, prob significativa) — máx 1 por tick, el de mayor edge
+  const lag = (dto.price_lag || []).filter(l => l.is_soft && l.edge >= 0.05 && l.fair_prob >= 0.15).sort((a, b) => b.edge - a.edge)[0];
+  if (lag) {
+    const key = `scan:lag:${day}:${lag.event_id}:${lag.outcome}:${lag.venue}`;
+    if (!db.sentTg[key]) {
+      const against = !lag.is_favorite ? `\n⚠️ Va contra el favorito: en una sola apuesta lo más probable es perder. Ideal en exchange/PM para vender al reajustar; en casa soft es +EV a largo plazo (apostá poco).` : '';
+      const t = `📈 <b>Precio atrasado (value)</b>\n${match(lag)}\n${selName(lag, lag.outcome)} @${Number(lag.odds).toFixed(2)} en ${lag.venue_label || lag.venue}\nConsenso sin margen: ${Number(lag.fair_odds).toFixed(2)} · <b>+${(lag.edge * 100).toFixed(1)}% de valor</b>${against}\n\nValue de mercado (+EV), no arbitraje libre de riesgo. No es consejo financiero.`;
+      if (await telegram.post(t)) { db.sentTg[key] = Date.now(); save(); }
+    }
+  }
 }
 // Al arrancar: marca finales existentes como ya publicados (no backfillear el canal)
 function markExistingTgSeen() {

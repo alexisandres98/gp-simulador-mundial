@@ -9,8 +9,10 @@
 const D = require('./decimal');
 
 const SCHEDULES = {
-  // Polymarket: históricamente 0% de trading fee de plataforma (hay gas/spread, no fee). Verificar.
-  polymarket: { version: 'pm-fee-1', feeType: 'flat_rate', rate: '0', status: 'known', taker: true, source: 'polymarket docs (0% trading fee)', checkedAt: '2026-06-21' },
+  // Polymarket Fee V2 (30-mar-2026): la fee dejó de ser 0%. Por categoría: DEPORTES 3%, política 4%, cripto 7%.
+  // El arb-engine solo cubre mercados del Mundial (deportes) → 3%. Aparte hay gas de Polygon (no modelado aquí).
+  // Subir de 0→3% ENDURECE el gate (correcto): menos falsos "pure_arb". Fuente: docs.polymarket.com/trading/fees.
+  polymarket: { version: 'pm-fee-2', feeType: 'flat_rate', rate: '0.03', status: 'known', taker: true, source: 'polymarket Fee V2 (sports 3%)', checkedAt: '2026-07-01' },
   // Kalshi: fee taker = ceil_cents(0.07 × contracts × price × (1−price)). Fórmula pública.
   kalshi: { version: 'ks-fee-1', feeType: 'kalshi_formula', coefficient: '0.07', status: 'known', taker: true, source: 'kalshi fee schedule', checkedAt: '2026-06-21' },
 };

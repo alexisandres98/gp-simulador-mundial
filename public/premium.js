@@ -146,6 +146,7 @@
       ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
+      pp_title: 'Rendimiento de picks', pp_settled: 'Liquidadas', pp_hit: '% Aciertos', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'Por familia', pp_history: 'Historial de picks', pp_pick: 'Pick', pp_active: 'activas', pp_none: 'Aún no hay picks liquidadas.', pp_model: 'Calibración del modelo (1X2)',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
       outright_title: 'Campeón del Mundial · Value', outright_sub: 'Probabilidad GP del torneo vs mercado', outright_none: 'Sin ventaja sobre el mercado para el título ahora.',
       tm_gpi: 'GP Intelligence · título', tm_gpi_model: 'Probabilidad GP (campeón)', tm_gpi_market: 'Mercado', tm_gpi_edge: 'Ventaja GP', tm_gpi_note: 'Probabilidad de ser campeón según el modelo GP del torneo (fuerza base Elo + simulación Monte Carlo). El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit del encuentro y en el próximo partido de abajo.',
@@ -291,6 +292,7 @@
       ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
+      pp_title: 'Picks performance', pp_settled: 'Settled', pp_hit: 'Win rate', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'By family', pp_history: 'Picks history', pp_pick: 'Pick', pp_active: 'active', pp_none: 'No settled picks yet.', pp_model: 'Model calibration (1X2)',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
       outright_title: 'World Cup winner · Value', outright_sub: 'GP tournament probability vs market', outright_none: 'No edge over the market for the title right now.',
       tm_gpi: 'GP Intelligence · title', tm_gpi_model: 'GP probability (champion)', tm_gpi_market: 'Market', tm_gpi_edge: 'GP edge', tm_gpi_note: 'Probability of winning the title per the GP tournament model (base Elo strength + Monte Carlo simulation). Each match\'s context (form, availability, weather) is applied in the match cockpit and in the next match below.',
@@ -1062,6 +1064,15 @@
       // Header mínimo: el motor de contexto (h2h deep, más abajo) rellena base→contexto→GP + proyección de goles.
       beta = { header: { event_id: eid, home: { team_id: thid }, away: { team_id: taid }, competition_code: 'FIFA_WORLD_CUP_2026', stage_code: null, kickoff_at: null, status_code: 'SCHEDULED' }, probability: { outcomes: [] }, analysis: { context_state_code: 'BASE_ONLY' }, risks: [], confidence_code: null, has_official_v2: false, goal_insights: null };
       gpAbsent = true;
+      // Cargar el FIXTURE por par de equipos → marcador en vivo, alineaciones, eventos y stats (si el partido existe/está en juego).
+      var tfid = fixtureIdFor(beta.header);
+      if (tfid != null) {
+        if (S.mfix[tfid] === undefined) {
+          S.mfix[tfid] = null;
+          fetch('/api/match/' + encodeURIComponent(tfid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[tfid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+        }
+        fx = (S.mfix[tfid] && !S.mfix[tfid]._empty) ? S.mfix[tfid] : null;
+      }
     } else if (fixtureOnly) {
       var fxid = eid.slice(3);
       if (S.mfix[fxid] === undefined) {
@@ -2099,12 +2110,44 @@
     var mv = $('#gx-matchview'); if (!mv) return;
     if (S.perf === undefined) {
       S.perf = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>';
-      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) { S.perf = { sum: res[0], leg: res[1] }; if (S.view === 'perf') renderPerf(); });
+      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/internal/daily-picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; if (S.view === 'perf') renderPerf(); });
       return;
     }
     var d = S.perf || {}, sum = d.sum, leg = d.leg;
     var kpi = function (label, v, cls, sub) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div>' + (sub ? '<div class="gx-kpi-sub gx-dim">' + esc(sub) + '</div>' : '') + '</div>'; };
     var body = '';
+    // ===== Rendimiento de PICKS (solo admin): track record completo de las picks del producto (acertó/falló, ROI). =====
+    var pk = d.picks;
+    if (pk && pk.track_record) {
+      var tr = pk.track_record, ov = tr.overall || {};
+      var pctc = function (v) { return v != null ? Math.round(v * 100) + '%' : '—'; };
+      var sgn = function (v, suf) { return v != null ? (v > 0 ? '+' : '') + v + (suf || '') : '—'; };
+      body += '<div class="gx-ph" style="margin-bottom:8px"><span class="gx-label">' + ic('target-arrow') + esc(t('pp_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + (ov.settled || 0) + ' ' + esc(t('pp_settled').toLowerCase()) + ' · ' + (tr.active || 0) + ' ' + esc(t('pp_active')) + '</span></div>';
+      body += '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">' +
+        kpi(t('pp_settled'), ov.settled != null ? ov.settled : '—', '') +
+        kpi(t('pp_hit'), pctc(ov.hit_rate), 'gx-pos', ov.settled ? (ov.wins || 0) + '/' + ov.settled : '') +
+        kpi(t('pp_roi'), sgn(ov.roi_pct, '%'), (ov.roi_pct >= 0 ? 'gx-pos' : 'gx-neg')) +
+        kpi(t('pp_pnl'), sgn(ov.pnl_u, 'u'), (ov.pnl_u >= 0 ? 'gx-pos' : 'gx-neg')) + '</div>';
+      var fams = tr.by_family || {};
+      var famRows = Object.keys(fams).map(function (f) { var v = fams[f]; return '<span>' + esc(f) + ' <b>' + (v.wins || 0) + '/' + (v.n || 0) + '</b> (' + pctc(v.hit_rate) + ' · ROI ' + (v.roi_pct != null ? v.roi_pct + '%' : '—') + ')</span>'; }).join('');
+      if (famRows) body += teamPanel('layout-grid', t('pp_byfam'), '<div class="gx-form-stats">' + famRows + '</div>');
+      var settled = (pk.picks || []).filter(function (p) { return p.status === 'SETTLED' && p.result_code !== 'SUPERSEDED'; }).sort(function (a, b) { return new Date(b.settled_at || 0) - new Date(a.settled_at || 0); });
+      if (settled.length) {
+        var prows = settled.map(function (p) {
+          var hh = teamName(p.event.home_team_id, p.event.home), aa = teamName(p.event.away_team_id, p.event.away);
+          var betTxt = p.family === 'SOLID' ? t('pf_wins', { team: p.selection_code === 'home' ? hh : aa })
+            : p.family === 'GOALS' ? (p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line }))
+            : (p.legs || []).map(function (l) { return l.type === '1X2' ? t('pf_wins', { team: l.selection === 'home' ? hh : aa }) : (l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line })); }).join(' + ');
+          var res = p.result_code === 'WIN' ? '<span class="gx-pos" style="font-weight:700">✓ WIN</span>' : p.result_code === 'LOSS' ? '<span class="gx-neg" style="font-weight:700">✗ LOSS</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(p.result_code || '—') + '</span>';
+          var famChip = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : 'pf_fam_combo')) + '</span>';
+          return '<tr class="gx-row"><td class="gx-time l">' + esc(fmtDate(p.settled_at)) + '</td><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(p.event.home_team_id) + '</span><b>' + esc(hh) + '</b><span class="gx-dim" style="margin:0 3px">' + esc(t('vs')) + '</span><span class="fl">' + flag(p.event.away_team_id) + '</span><b>' + esc(aa) + '</b></div></td><td class="l">' + famChip + ' <span style="font-size:12px">' + esc(betTxt) + '</span></td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td>' + res + '</td></tr>';
+        }).join('');
+        body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('pp_history')) + '</span><span class="gx-ph-extra">' + settled.length + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('pp_pick')) + '</th><th>' + esc(t('reg_odds')) + '</th><th>' + esc(t('perf_result')) + '</th></tr></thead><tbody>' + prows + '</tbody></table></div></div>';
+      } else {
+        body += '<div class="gx-panel"><div class="gx-empty">' + ic('target-arrow') + '<b>' + esc(t('pp_none')) + '</b></div></div>';
+      }
+      body += '<div class="gx-ph" style="margin:20px 0 8px"><span class="gx-label">' + ic('chart-line') + esc(t('pp_model')) + '</span></div>';
+    }
     // % de aciertos (como la plataforma principal): predicción 1X2 acertada / total evaluado
     if (leg && leg.total) {
       var pctW = Math.round((leg.winners || 0) / leg.total * 100);

@@ -162,9 +162,9 @@ async function getTeamInjuries(teamApiId) {
     call('injuries', { team: teamApiId, league: LEAGUE, season: SEASON }));
 }
 async function getTeamSidelined(teamApiId) {
-  if (!teamApiId) return [];
-  return cache.wrap(`af:side:${teamApiId}`, cache.TTL.injuries, () =>
-    call('sidelined', { team: teamApiId }));
+  // El endpoint /sidelined de API-Football NO acepta `team` (solo player/coach) → devolvía siempre el error
+  // "The Team field do not exist" y ensuciaba el contexto. Las lesiones vigentes vienen de /injuries. Desactivado.
+  return [];
 }
 async function getTeamFixtures(teamApiId, last = 0, next = 0) {
   if (!teamApiId) return [];

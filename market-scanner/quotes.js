@@ -119,8 +119,36 @@ async function loadSportsbookTotals(db, { provider = 'the_odds_api', includePast
   });
 }
 
+// ---- Myriad (prediction market con 1X2 por partido): fusiona sus precios al mercado 1X2 de la casa por par de
+// equipos. Myriad es peer-to-peer sin vig → referencia limpia extra en el consenso, y venue tradeable (vender).
+const myriad = require('./venues/myriad');
+async function mergeMyriad(oneX2Markets, { now = Date.now() } = {}) {
+  const matches = await myriad.fetchMyriadMatches({ now }).catch(() => []);
+  if (!matches.length) return 0;
+  // índice de mercados de casa por par de equipos normalizado
+  const byPair = new Map();
+  for (const m of oneX2Markets) byPair.set(myriad.canon(m.home) + '|' + myriad.canon(m.away), m);
+  let merged = 0;
+  for (const mm of matches) {
+    const mk = byPair.get(mm.home_key + '|' + mm.away_key);
+    if (!mk) continue; // sin partido de casa que casar → se ignora (no creamos standalone de 1 solo venue)
+    for (const oc of ['home', 'draw', 'away']) {
+      const price = mm.outcomes[oc];
+      if (!(price > 0 && price < 1)) continue;
+      mk.quotes.push({
+        venue: 'myriad', venue_label: 'Myriad',
+        independence_group: 'myriad', source_role: 'prediction_market', outcome: oc,
+        odds_decimal: 1 / price, observed_at: now,
+        max_stake: mm.liquidity || null, live: false, is_exchange: false, venue_kind: 'pm',
+      });
+    }
+    merged++;
+  }
+  return merged;
+}
+
 // ---- Carga total de mercados (todos los venues habilitados) ----
-async function loadMarkets(db, { includeTotals = true, includePredictionMarkets = false } = {}) {
+async function loadMarkets(db, { includeTotals = true, includePredictionMarkets = false, includeMyriad = false, now = Date.now() } = {}) {
   const markets = [];
   const oneX2 = await loadSportsbook1x2(db, {}).catch(() => []);
   markets.push(...oneX2);
@@ -128,7 +156,9 @@ async function loadMarkets(db, { includeTotals = true, includePredictionMarkets 
     const totals = await loadSportsbookTotals(db, {}).catch(() => []);
     markets.push(...totals);
   }
-  // includePredictionMarkets: enganche para Poly/Kalshi/Myriad (se agrega en fase posterior).
+  // Myriad: fusiona su 1X2 por partido al mercado de la casa (suma un venue no-vig al consenso + arb/lag).
+  if (includeMyriad) await mergeMyriad(oneX2, { now }).catch(() => {});
+  // Poly/Kalshi (campeón) se inyectan como extraMarkets desde server (marketCache), no acá.
   return markets;
 }
 

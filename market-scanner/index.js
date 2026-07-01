@@ -16,6 +16,8 @@ async function scanNow(db, { now = Date.now(), force = false, extraMarkets = [] 
   const markets = await quotes.loadMarkets(db, {
     includeTotals: true,
     includePredictionMarkets: flags.includePredictionMarkets,
+    includeMyriad: flags.includeMyriad,
+    now,
   });
   // extraMarkets: mercados ya con forma de scanner construidos fuera (p.ej. campeón desde marketCache Poly/Kalshi).
   if (Array.isArray(extraMarkets) && extraMarkets.length) markets.push(...extraMarkets);

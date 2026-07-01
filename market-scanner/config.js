@@ -23,9 +23,11 @@ function resolveFlags() {
     writeEnabled: enabled && writeReq,
     // loop periódico. Requiere writeEnabled.
     schedulerEnabled: enabled && writeReq && schedReq,
-    // Incluir prediction markets (Polymarket/Kalshi) como venue adicional del consenso/arb. Default OFF
-    // (Fase A/B se enfocan en sportsbooks, que son el venue soft con lag ejecutable). Se enciende en fase posterior.
+    // Incluir prediction markets (Polymarket/Kalshi CAMPEÓN) como venue adicional. Default OFF (champion-only, eficiente).
     includePredictionMarkets: bool(process.env.MARKET_SCANNER_INCLUDE_PM, false),
+    // Incluir MYRIAD (prediction market con 1X2 POR PARTIDO, API gratis, sin vig). Más valioso que el campeón:
+    // suma un venue no-vig al consenso de cada partido + lag/arb tradeable. Default OFF hasta verificar en prod.
+    includeMyriad: bool(process.env.MARKET_SCANNER_INCLUDE_MYRIAD, false),
   };
 }
 

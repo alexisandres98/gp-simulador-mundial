@@ -1255,7 +1255,7 @@
     betfair_ex_eu: 'https://www.betfair.com/exchange', betfair_ex_uk: 'https://www.betfair.com/exchange', smarkets: 'https://smarkets.com', matchbook: 'https://www.matchbook.com',
     winamax_de: 'https://www.winamax.de', winamax_fr: 'https://www.winamax.fr', tipico_de: 'https://www.tipico.de', leovegas_se: 'https://www.leovegas.com', casumo: 'https://www.casumo.com',
     onexbet: 'https://1xbet.com', coolbet: 'https://www.coolbet.com', grosvenor: 'https://www.grosvenorcasinos.com', pmu_fr: 'https://www.pmu.fr', unibet_se2: 'https://www.unibet.se',
-    polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com'
+    polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com', myriad: 'https://myriad.markets'
   };
   function bookUrl(code) { return BOOK_URLS[code] || BOOK_URLS[String(code || '').replace(/_(se|nl|fr|de|uk|us|eu|au|at|es|it)$/i, '')] || null; }
   function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + ic('external-link') + esc(label || code) + '</a>'; }

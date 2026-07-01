@@ -361,7 +361,35 @@
   var pp = function (v) { return v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + ' pp'; };
   var odd = function (v) { return v == null ? '—' : Number(v).toFixed(2); };
   var FLAGS = {};
-  var flag = function (id) { return FLAGS[id] || ''; };
+  // Banderas SVG self-hosted (nítidas en todos los OS — los emoji NO renderizan en Windows). Escala con el
+  // font-size del contenedor (.fl) vía em. Fallback al emoji del server para ids fuera de los 48 del Mundial.
+  var KNOWN_FLAG = /^(MEX|KOR|CZE|RSA|SUI|CAN|BIH|QAT|BRA|MAR|SCO|HAI|TUR|PAR|AUS|USA|ECU|GER|CIV|CUW|NED|JPN|SWE|TUN|BEL|IRN|EGY|NZL|ESP|URU|CPV|KSA|FRA|NOR|SEN|IRQ|ARG|AUT|ALG|JOR|POR|COL|UZB|COD|ENG|CRO|PAN|GHA)$/;
+  var flag = function (id) { if (!id) return ''; if (KNOWN_FLAG.test(id)) return '<img class="flx" src="/flags/' + id + '.svg" alt="" draggable="false">'; return FLAGS[id] || ''; };
+  // Nombres presentables de casas/venues — NUNCA códigos crudos ("betfair_ex_uk") frente al usuario.
+  var BOOK_NAMES = {
+    pinnacle: 'Pinnacle', bet365: 'bet365', williamhill: 'William Hill', williamhill_us: 'William Hill', betway: 'Betway',
+    betvictor: 'BetVictor', betfred_uk: 'Betfred', boylesports: 'BoyleSports', unibet: 'Unibet', unibet_fr: 'Unibet FR',
+    unibet_nl: 'Unibet NL', unibet_se: 'Unibet SE', unibet_se2: 'Unibet SE', unibet_eu: 'Unibet', unibet_uk: 'Unibet UK',
+    betsson: 'Betsson', nordicbet: 'NordicBet', betclic_fr: 'Betclic', betanysports: 'BetAnySports', betonlineag: 'BetOnline',
+    draftkings: 'DraftKings', fanduel: 'FanDuel', betmgm: 'BetMGM', caesars: 'Caesars', betrivers: 'BetRivers',
+    espnbet: 'ESPN BET', fanatics: 'Fanatics', ladbrokes: 'Ladbrokes', ladbrokes_au: 'Ladbrokes AU', coral: 'Coral',
+    paddypower: 'Paddy Power', skybet: 'Sky Bet', '888sport': '888sport', sport888: '888sport', sportsbet: 'Sportsbet',
+    tab: 'TAB', neds: 'Neds', pointsbetau: 'PointsBet', betfair_ex_eu: 'Betfair Exchange', betfair_ex_uk: 'Betfair Exchange',
+    betfair_sb_uk: 'Betfair Sportsbook', betfair: 'Betfair', smarkets: 'Smarkets', matchbook: 'Matchbook',
+    winamax_de: 'Winamax DE', winamax_fr: 'Winamax FR', tipico_de: 'Tipico', leovegas: 'LeoVegas', leovegas_se: 'LeoVegas SE',
+    casumo: 'Casumo', onexbet: '1xBet', coolbet: 'Coolbet', grosvenor: 'Grosvenor', pmu_fr: 'PMU', marathonbet: 'Marathonbet',
+    mybookieag: 'MyBookie', lowvig: 'LowVig', bovada: 'Bovada', betus: 'BetUS', gtbets: 'GTbets', everygame: 'Everygame',
+    suprabets: 'Suprabets', ballybet: 'Bally Bet', betparx: 'betPARX', hardrockbet: 'Hard Rock Bet', playup: 'PlayUp',
+    polymarket: 'Polymarket', kalshi: 'Kalshi', myriad: 'Myriad', novig: 'Novig', prophetx: 'ProphetX',
+    tabtouch: 'TABtouch', betright: 'Bet Right', topsport: 'TopSport', boombet: 'BoomBet', betr_au: 'betr', dabble_au: 'Dabble'
+  };
+  function prettyBook(code) {
+    if (!code) return '';
+    var c = String(code); if (BOOK_NAMES[c]) return BOOK_NAMES[c];
+    var lc = c.toLowerCase(); if (BOOK_NAMES[lc]) return BOOK_NAMES[lc];
+    // desconocido: humanizar ("some_book_uk" → "Some Book UK") — jamás un código crudo en pantalla
+    return lc.replace(/_/g, ' ').replace(/\b[a-z]/g, function (m) { return m.toUpperCase(); }).replace(/\b(Uk|Us|Us2|Eu|Au|Fr|De|Nl|Se|Ag|Ex)\b/g, function (m) { return m.toUpperCase(); });
+  }
   var fmtTime = function (iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
 
   // ---------- state ----------
@@ -390,14 +418,14 @@
     $('#gx-root').innerHTML =
       '<div class="gx">' +
       '<aside class="gx-side">' +
-      '<div class="gx-brand"><div class="gx-logo">GP</div><div><b>GP Intelligence</b><span>Sports intelligence</span></div></div>' +
+      '<div class="gx-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><div><b>GP Intelligence</b><span>Sports intelligence</span></div></div>' +
       '<div class="gx-navgroup">' + navHtml + '</div>' +
       '<div class="gx-navgroup"><div class="gx-label">' + esc(t('more')) + '</div>' + nav2 + '</div>' +
       '<div class="gx-side-foot"><div class="gx-avatar">A</div><div style="font-size:12px"><b style="font-weight:600">Alexis</b><div class="gx-dim" style="font-size:10.5px">Superadmin</div></div></div>' +
       '</aside>' +
       '<div class="gx-body">' +
       '<header class="gx-top">' +
-      '<div class="gx-top-brand"><div class="gx-logo">GP</div><b>GP Intelligence</b></div>' +
+      '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
       '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
       '<div class="gx-pulse" id="gx-pulse"></div>' +
       '<div class="gx-spacer"></div>' +
@@ -660,7 +688,7 @@
         '<div class="gx-kpi-foot"><span class="gx-mono">' + esc(t('arb_fam_pure')) + '</span><span class="gx-pp gx-pos">+' + (it.net_roi * 100).toFixed(2) + '%</span></div>';
     }
     return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(it.home_team_id) + '</span><div><div class="gx-kpi-sel">' + esc(arbSel(it, it.outcome)) + ' @' + Number(it.odds).toFixed(2) + '</div><div class="gx-kpi-sub">' + esc(arbTitle(it)) + '</div></div></div>' +
-      '<div class="gx-kpi-foot"><span class="gx-mono">' + esc(it.venue_label || it.venue) + '</span><span class="gx-pp gx-pos">+' + (it.edge * 100).toFixed(1) + '%</span></div>';
+      '<div class="gx-kpi-foot"><span class="gx-mono">' + esc(prettyBook(it.venue_label || it.venue)) + '</span><span class="gx-pp gx-pos">+' + (it.edge * 100).toFixed(1) + '%</span></div>';
   }
   function kpiEmpty() { return '<div class="gx-kpi-sel gx-dim">' + esc(t('none')) + '</div>'; }
   function pickSel(p) { if (p.selection_display_key) { return p.outcome_code === 'DRAW' ? t('memo_even') : teamName(p.home_team_id) + ' / ' + teamName(p.away_team_id); } return p.outcome_code || ''; }
@@ -671,7 +699,7 @@
   }
   function kpiVal(v) {
     var name = v.outcome_code === 'DRAW' ? '' : (v.team_ref === 'away' ? '' : '');
-    return '<div class="gx-kpi-main"><div><div class="gx-kpi-sel">' + esc(v.outcome_code) + '</div><div class="gx-kpi-sub">' + esc((v.best_sportsbook || '')) + '</div></div></div>' +
+    return '<div class="gx-kpi-main"><div><div class="gx-kpi-sel">' + esc(v.outcome_code) + '</div><div class="gx-kpi-sub">' + esc(prettyBook(v.best_sportsbook || "")) + '</div></div></div>' +
       '<div class="gx-kpi-foot"><span class="gx-mono">' + odd(v.best_odds) + '</span><span class="gx-pp gx-pos">' + pp(v.adjusted_edge_pp) + '</span></div>';
   }
   function kpiGap(x) {
@@ -763,7 +791,7 @@
       '<div class="gx-pick-foot">' +
       '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>' +
       '<div class="gx-pick-odds"><span class="gx-pick-odds-label">' + esc(t('pf_best_odds')) + '</span><span class="gx-pick-odds-val">' + esc(odds) + '</span>' +
-      (p.book ? '<span class="gx-pick-book">' + esc(t('pf_at')) + ' ' + esc(p.book) + '</span>' : '') + '</div>' +
+      (p.book ? '<span class="gx-pick-book">' + esc(t('pf_at')) + ' ' + esc(prettyBook(p.book)) + '</span>' : '') + '</div>' +
       '</div></div>';
   }
 
@@ -804,7 +832,7 @@
         '<td class="l">' + (sigBadge(v.classification_code) || '—') + '</td><td class="gx-mono gx-gp"><span class="hi">' + pct0(v.gp_probability) + '</span></td><td class="gx-mono gx-dim">' + pct0(v.market_probability) + '</td><td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span></td>' +
         '<td class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</td>' +
         '<td class="l">' + (x.bm ? '<span class="gx-belowmin">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(t('opp_watch_only')) + '</span>')) + '</td>' +
-        '<td class="l gx-dim" style="font-size:11px">' + esc(v.best_sportsbook || '—') + '</td></tr>'; }).join('') + '</tbody></table>';
+        '<td class="l gx-dim" style="font-size:11px">' + esc(prettyBook(v.best_sportsbook) || "—") + '</td></tr>'; }).join('') + '</tbody></table>';
     var mob = rows.map(function (x) { var v = x.v; return '<div class="gx-mcard" data-openmatch="' + esc(v.event_id) + '"><div class="gx-mcard-top">' + (sigBadge(v.classification_code) || '') + '<span class="gx-spacer"></span>' + (x.bm ? '<span class="gx-belowmin">' + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '')) + '</div>' +
       '<div class="gx-cell-team" style="margin:6px 0">' + (x.fid ? '<span class="fl">' + flag(x.fid) + '</span>' : '') + '<div class="gx-teamnames"><b>' + esc(x.name) + '</b><span>' + esc(x.matchN) + '</span></div></div>' +
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div></div>'; }).join('');
@@ -830,7 +858,7 @@
     var legs = (a.legs || []).map(function (l) {
       return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(arbSel(a, l.outcome)) + '</span>' +
         '<span class="gx-arb-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
-        '<span class="gx-arb-leg-book">' + esc(l.venue_label || l.venue) + (l.is_exchange ? ' <span class="gx-arb-exch">' + esc(t('arb_exchange')) + '</span>' : '') + '</span>' +
+        '<span class="gx-arb-leg-book">' + esc(prettyBook(l.venue_label || l.venue)) + (l.is_exchange ? ' <span class="gx-arb-exch">' + esc(t('arb_exchange')) + '</span>' : '') + '</span>' +
         '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
     }).join('');
     var roi = (a.net_roi * 100);
@@ -852,7 +880,7 @@
       arbMatchRow(l) +
       '<div class="gx-lag-rec"><span class="gx-lag-sel">' + esc(arbSel(l, l.outcome)) + '</span>' +
       '<span class="gx-lag-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
-      '<span class="gx-lag-book">' + esc(t('arb_at')) + ' ' + esc(l.venue_label || l.venue) + '</span>' +
+      '<span class="gx-lag-book">' + esc(t('arb_at')) + ' ' + esc(prettyBook(l.venue_label || l.venue)) + '</span>' +
       (l.is_favorite ? '' : '<span class="gx-lag-under">' + ic('alert-triangle') + esc(t('arb_vs_fav_short')) + '</span>') + '</div>' +
       '<div class="gx-pick-foot"><div class="gx-lag-edge gx-pos">' + ic('target-arrow') + esc(t('arb_value')) + ': <b>+' + edge.toFixed(1) + '%</b>' +
       '<span class="gx-dim"> · ' + esc(t('arb_fair')) + ' ' + Number(l.fair_odds).toFixed(2) + ' · ' + esc(t('arb_consensus', { n: l.consensus_groups })) + '</span></div>' +
@@ -1094,14 +1122,14 @@
       if (!af.length) af = (ma.analysis.evaluated_factors || []).slice(0, 3).map(function (f) { return factLabel(f.factor_code); });
       if (af.length && ma.analysis.context_moved_line) thesis = t('thesis_ctx2', { factors: af.join(', ') });
     }
-    var price = belowMin ? ('<b>' + odd(best.best_odds) + '</b> · ' + esc(t('below_min'))) : (best && best.best_odds ? t('memo_price', { odds: '<b>' + odd(best.minimum_odds || best.best_odds) + '</b>', book: best.best_sportsbook ? ' (' + esc(best.best_sportsbook) + ')' : '' }) : t('memo_price_none'));
+    var price = belowMin ? ('<b>' + odd(best.best_odds) + '</b> · ' + esc(t('below_min'))) : (best && best.best_odds ? t('memo_price', { odds: '<b>' + odd(best.minimum_odds || best.best_odds) + '</b>', book: best.best_sportsbook ? " (" + esc(prettyBook(best.best_sportsbook)) + ")" : "" }) : t('memo_price_none'));
     var riskCode = (ma && ma.risks && ma.risks[0]) || (best && best.risk_codes && best.risk_codes[0]);
     var risk = riskCode ? riskText(riskCode) : t('memo_risk_default');
     var inval = t('memo_inval');
     var edge = best ? best.adjusted_edge_pp : null;
     var conf = confInfo(ma && ma.confidence_code);  // A.1: un SOLO valor canónico del DTO controla el badge
     var cta = pubPick ? t('cta_pick') : actionable ? t('cta_value') : best ? t('cta_analysis') : t('cta_analyze');
-    return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? best.best_odds : null, book: best ? best.best_sportsbook : '', cta: cta, ma: ma };
+    return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? best.best_odds : null, book: best ? prettyBook(best.best_sportsbook) : "", cta: cta, ma: ma };
   }
   // copy de riesgo: enuncia el HECHO; NUNCA afirma un nivel de confianza (eso lo controla SOLO el badge, A.1)
   var RISK = { es: { MODEL_DISAGREEMENT: 'Las estimaciones internas no convergen del todo.', LARGE_MARKET_DISAGREEMENT: 'GP y el mercado difieren mucho: mayor potencial pero también mayor riesgo.', MODEL_UNCERTAINTY: 'La incertidumbre de la estimación es elevada para este partido.', LINEUP_NOT_CONFIRMED: 'Las alineaciones aún no están confirmadas.', CONTEXT_INCOMPLETE: 'El contexto disponible es incompleto para este partido.', EARLY_TRACK_RECORD: 'El registro verificable todavía es corto.', LOWER_QUALITY_TIMESTAMP: 'Los datos tienen menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Internal estimates don’t fully converge.', LARGE_MARKET_DISAGREEMENT: 'GP and the market differ widely: higher upside but also higher risk.', MODEL_UNCERTAINTY: 'Estimate uncertainty is elevated for this match.', LINEUP_NOT_CONFIRMED: 'Lineups are not yet confirmed.', CONTEXT_INCOMPLETE: 'The available context is incomplete for this match.', EARLY_TRACK_RECORD: 'The verifiable track record is still short.', LOWER_QUALITY_TIMESTAMP: 'Data has lower freshness.' } };
@@ -1285,7 +1313,7 @@
       var roi = (opp.net_roi * 100);
       play = '<div class="gx-ov-legs">' + (opp.legs || []).map(function (l) {
         return '<div class="gx-ov-leg"><span class="gx-ov-leg-sel">' + esc(arbSel(opp, l.outcome)) + '</span>' +
-          '<span class="gx-ov-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' + venueBtn(l.venue, l.venue_label || l.venue) +
+          '<span class="gx-ov-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' + venueBtn(l.venue, prettyBook(l.venue_label || l.venue)) +
           '<span class="gx-ov-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
       }).join('') + '</div>' +
         '<div class="gx-ov-roi ' + (opp.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(opp.executable ? t('arb_roi') : t('arb_roi_theo')) + ': <b>+' + roi.toFixed(2) + '%</b></div>';
@@ -1303,8 +1331,8 @@
       play = '<div class="gx-ov-lag"><div class="gx-ov-lag-main"><span class="gx-ov-lag-sel">' + esc(arbSel(opp, opp.outcome)) + '</span>' +
         '<span class="gx-ov-lag-odds gx-mono">' + Number(opp.odds).toFixed(2) + '</span></div>' +
         '<div class="gx-ov-lag-sub gx-dim">' + esc(t('arb_value')) + ' <b class="gx-pos">+' + edge.toFixed(1) + '%</b> · ' + esc(t('arb_fair')) + ' ' + Number(opp.fair_odds).toFixed(2) + ' · ' + esc(t('arb_consensus', { n: opp.consensus_groups })) + '</div></div>';
-      venues = '<div class="gx-ov-venues">' + venueBtn(opp.venue, opp.venue_label || opp.venue) + '</div>';
-      explain = '<p>' + esc(t('arb_x_lag_1', { book: opp.venue_label || opp.venue, sel: arbSel(opp, opp.outcome), odds: Number(opp.odds).toFixed(2), n: opp.consensus_groups, fair: Number(opp.fair_odds).toFixed(2), edge: '+' + edge.toFixed(1) + '%' })) + '</p>';
+      venues = '<div class="gx-ov-venues">' + venueBtn(opp.venue, prettyBook(opp.venue_label || opp.venue)) + '</div>';
+      explain = '<p>' + esc(t('arb_x_lag_1', { book: prettyBook(opp.venue_label || opp.venue), sel: arbSel(opp, opp.outcome), odds: Number(opp.odds).toFixed(2), n: opp.consensus_groups, fair: Number(opp.fair_odds).toFixed(2), edge: '+' + edge.toFixed(1) + '%' })) + '</p>';
       if (!opp.is_favorite && favName != null) explain += '<div class="gx-ov-warn gx-ov-warn-under">' + ic('alert-triangle') + esc(t('arb_x_lag_against', { sel: arbSel(opp, opp.outcome), fav: favName, favpct: favPct != null ? favPct + '%' : '—' })) + '</div>';
       explain += '<p class="gx-ov-trade"><b>' + esc(t('arb_x_trade_title')) + '</b> ' + esc(kind === 'sportsbook' ? t('arb_x_trade_soft') : t('arb_x_trade_exch')) + '</p>';
       explain += '<div class="gx-ov-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>';
@@ -1655,7 +1683,7 @@
       var nv = noVigFromOdds(sbOdds);
       sections.push(mktSection(t('mkt_sb_best'), 'building-bank', ['HOME', 'DRAW', 'AWAY'].filter(function (c) { return bySel[c] && bySel[c].best_odds; }).map(function (c) {
         var v = bySel[c];
-        return { outcome: ocName(h, c), provider: v.best_sportsbook || '—', odds: v.best_odds, implied: 1 / v.best_odds, novig: nv ? nv[c] : null, best: c === bestCode(r), liq: null, fresh: ageFresh(v.price_observed_at) };
+        return { outcome: ocName(h, c), provider: prettyBook(v.best_sportsbook) || '—', odds: v.best_odds, implied: 1 / v.best_odds, novig: nv ? nv[c] : null, best: c === bestCode(r), liq: null, fresh: ageFresh(v.price_observed_at) };
       }), sections.length === 0));
     }
     // B) Casa de referencia (odds del proveedor contextual: 1 bookmaker home/draw/away)

@@ -2346,7 +2346,7 @@ function betaGuard(req, res) {
 }
 
 // ---------- HTTP ----------
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
 function json(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(obj));
@@ -3581,10 +3581,14 @@ const server = http.createServer(async (req, res) => {
     if (full.startsWith(path.join(__dirname, 'public')) && fs.existsSync(full) && fs.statSync(full).isFile()) {
       const ext = path.extname(full);
       // html/js/css siempre revalidan (si no, los usuarios quedan con código viejo tras cada deploy);
-      // imágenes sí se cachean
-      const cache = ['.html', '.js', '.css'].includes(ext)
-        ? 'no-cache, must-revalidate'
-        : 'public, max-age=86400';
+      // imágenes sí se cachean. EXCEPCIÓN: /vendor, /fonts y /flags son inmutables (assets versionados que no
+      // cambian entre deploys) → cache larga; clave para conexiones lentas (el css de íconos pesa ~250KB).
+      const immutableAsset = /^\/(vendor|fonts|flags)\//.test(p);
+      const cache = immutableAsset
+        ? 'public, max-age=2592000, immutable'
+        : ['.html', '.js', '.css'].includes(ext)
+          ? 'no-cache, must-revalidate'
+          : 'public, max-age=86400';
       res.writeHead(200, {
         'Content-Type': MIME[ext] || 'application/octet-stream',
         'Cache-Control': cache,

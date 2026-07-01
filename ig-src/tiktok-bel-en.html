@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(165deg, #06090B 0%, #0B1714 48%, #0A5C3C 130%); color: #EAF1F2;
+  display: flex; flex-direction: column; align-items: center; padding: 150px 70px 300px; position: relative; }
+.brand { display:flex; align-items:center; gap:12px; font-size: 30px; font-weight: 800; color:#fff; margin-bottom: 60px; }
+.badge { width: 46px; height:46px; border-radius:13px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:26px; border:1px solid rgba(31,227,164,.4); }
+.hook { text-align:center; font-size: 74px; font-weight: 800; letter-spacing:-2px; line-height:1.05; color:#fff; margin-bottom: 18px; }
+.hook .hl { color:#1FE3A4; }
+.match { text-align:center; font-size: 34px; font-weight: 700; color:#9DB0B5; margin-bottom: 20px; }
+.when { align-self:center; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#EAF1F2; font-weight:700; font-size:26px; padding:12px 28px; border-radius:99px; margin-bottom: 56px; }
+.pick { width:100%; background: linear-gradient(160deg, #131E22, #0D1417); border: 1px solid rgba(255,255,255,.12); border-radius: 28px; padding: 40px 44px; margin-bottom: 30px; position: relative; overflow: hidden; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.ptop { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.fam { font-size: 22px; font-weight: 800; letter-spacing: 1.5px; color: #1FE3A4; text-transform: uppercase; }
+.pick.goals .fam { color:#34D6C8; }
+.cf { font-size:22px; font-weight:700; color:#F2C14E; }
+.bet { font-size: 58px; font-weight: 800; letter-spacing: -1.5px; color: #fff; line-height:1.02; }
+.oddsrow { display:flex; align-items:baseline; gap:14px; margin-top:18px; }
+.ol { font-size: 22px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; }
+.ov { font-size: 62px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; }
+.pick.goals .ov { color:#34D6C8; }
+.cta { align-self:center; margin-top: 22px; background:#1FE3A4; color:#06231A; font-size:36px; font-weight:800; padding:26px 54px; border-radius:99px; }
+.hint { position:absolute; bottom: 220px; left:0; right:0; text-align:center; font-size:24px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div>GP World Cup Simulator</div>
+  <div class="hook">2 picks for<br><span class="hl">Belgium vs Senegal</span></div>
+  <div class="match">🇧🇪 Round of 16 · World Cup 2026 🇸🇳</div>
+  <div class="when">⏰ Kickoff 4:00 PM ET</div>
+  <div class="pick">
+    <div class="ptop"><span class="fam">Winner</span><span class="cf">● Medium</span></div>
+    <div class="bet">Belgium to win</div>
+    <div class="oddsrow"><span class="ol">Best odds</span><span class="ov">2.25</span></div>
+  </div>
+  <div class="pick goals">
+    <div class="ptop"><span class="fam">Goals</span><span class="cf">● Medium</span></div>
+    <div class="bet">Over 2.5 goals</div>
+    <div class="oddsrow"><span class="ol">Best odds</span><span class="ov">2.22</span></div>
+  </div>
+  <div class="cta">gpsimulador.com</div>
+  <div class="hint">not financial advice · follow for daily picks</div>
+</body></html>

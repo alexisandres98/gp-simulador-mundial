@@ -872,6 +872,19 @@
     if (S.oppSub === 'arb') { var b = $('#gx-board'); if (b) oppArbBoard(b); }
     var kp = $('#gx-kpis'); if (kp && S.oppSub !== 'picks') { var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); kpis(S.dash || {}, rs); }
   }
+  // Re-escaneo SILENCIOSO (efímero, como el feed de picks): re-fetch de /api/beta/arbitrage y re-render solo al
+  // llegar la data (sin flash de "cargando"). Las oportunidades que dejaron de ser válidas se caen solas. NO se
+  // persiste nada — el scanner es en vivo (sin registro de arbitrajes).
+  function refreshArbSilent() {
+    if (S._arbLoading) return;
+    S._arbLoading = true;
+    fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
+      S._arbLoading = false;
+      if (!m) return;
+      S.arb = m;
+      arbRefresh();
+    });
+  }
   // sub-tabs internas de Arbitraje: "Arbitraje puro" | "Precio atrasado"
   function arbSubTabs(C) {
     var tab = function (id, icon, label, n, cls) {
@@ -2527,7 +2540,7 @@
       }
     });
   }
-  function startLiveLoop() { if (S._liveTimer) return; S._liveTimer = setInterval(function () { try { refreshLive(); } catch (e) {} }, 25000); }
+  function startLiveLoop() { if (S._liveTimer) return; S._liveTimer = setInterval(function () { try { refreshLive(); } catch (e) {} try { if ((S.view === 'board' || S.view === 'opps') && S.oppSub === 'arb') refreshArbSilent(); } catch (e) {} }, 25000); }
 
   // ---------- boot ----------
   function boot() {

@@ -25,6 +25,7 @@ function buildDto(scan, { resolveTeamId = () => null, now = Date.now(), maxItems
     family: 'PURE_ARB',
     state_code: a.executable ? 'EXECUTABLE' : (a.stale ? 'STALE' : 'THEORETICAL_ONLY'),
     executable: !!a.executable,
+    unverified_depth: !!a.unverified_depth,
     gross_roi: a.gross_roi, net_roi: a.net_roi,
     sum_inverse: a.sum_inverse,
     leg_time_skew_ms: a.leg_time_skew_ms,
@@ -32,7 +33,7 @@ function buildDto(scan, { resolveTeamId = () => null, now = Date.now(), maxItems
     legs: a.legs.map(l => ({
       outcome: l.outcome, venue: l.venue, venue_label: l.venue_label,
       odds: l.odds, eff_odds: l.eff_odds, stake_pct: l.stake_pct,
-      is_exchange: !!l.is_exchange, source_role: l.source_role || null,
+      is_exchange: !!l.is_exchange, venue_kind: l.venue_kind || 'sportsbook', source_role: l.source_role || null,
       max_stake: l.max_stake ?? null,
     })),
   }));

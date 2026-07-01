@@ -153,10 +153,14 @@
       opp_actionable: 'Accionable', opp_watch_only: 'En observación',
       opp_arb_na: 'Arbitraje no disponible', opp_arb_evaluated: 'comparaciones', opp_arb_executable: 'ejecutables', opp_arb_note: 'Cero ejecutables es un resultado válido: los mercados están alineados.', opp_arb_market: 'Mercado', opp_arb_margin: 'Margen neto',
       arbst_EXECUTABLE: 'Ejecutable', arbst_THEORETICAL_ONLY: 'Solo teórico', arbst_PARTIAL_EXECUTION_RISK: 'Ejecución parcial', arbst_BLOCKED: 'Bloqueado', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Reglas distintas', arbst_EXPIRED: 'Expirado', arbst_SUSPENDED: 'Suspendido', arbst_STALE: 'Desactualizado',
-      arb_tag_1x2: '1X2', arb_tag_totals: 'Goles {line}', arb_over: 'Más de {line}', arb_under: 'Menos de {line}', arb_draw: 'Empate',
+      arb_tag_1x2: '1X2', arb_tag_totals: 'Goles {line}', arb_tag_champ: 'Campeón', arb_over: 'Más de {line}', arb_under: 'Menos de {line}', arb_draw: 'Empate',
+      arb_champ_yes: '{team} campeón', arb_champ_no: '{team} no campeón',
       arb_fam_pure: 'Arbitraje puro', arb_fam_pure_sub: 'El mercado se contradice entre casas: apostás las dos patas y ganás pase lo que pase.',
       arb_fam_lag: 'Precio atrasado', arb_fam_lag_sub: 'Una casa quedó por encima del consenso: value +EV en una sola apuesta.',
-      arb_roi: 'ROI garantizado', arb_value: 'Valor', arb_stake: 'Poné', arb_at: 'en', arb_fair: 'Cuota justa', arb_consensus: 'consenso de {n} casas', arb_exchange: 'exchange',
+      arb_roi: 'ROI garantizado', arb_roi_theo: 'ROI teórico', arb_theo_badge: 'teórico', arb_value: 'Valor', arb_stake: 'Poné', arb_at: 'en', arb_fair: 'Cuota justa', arb_consensus: 'consenso de {n} casas', arb_exchange: 'exchange',
+      arb_x_pure_theo: 'Teórico: el margen es demasiado fino y puede desaparecer al confirmar (la cuota se mueve). No es un surebet garantizado.',
+      arb_x_pure_theo_pm: 'Teórico: incluye un prediction market donde solo vemos el mejor precio, no la profundidad real ejecutable. Tras fees y liquidez el margen suele desaparecer — históricamente Poly↔Kalshi no deja arbitraje ejecutable. Verificá tamaño y fees antes de operar.',
+      arb_theo_group: '{n} teóricos (margen fino o profundidad no verificada, no garantizados)',
       arb_kpi_markets: 'mercados escaneados', arb_kpi_surebets: 'surebets', arb_kpi_lags: 'precios atrasados',
       arb_none_pure: 'Sin surebets ahora mismo', arb_none_pure_sub: 'Escaneamos {n} mercados y las casas están alineadas. Seguimos mirando.',
       arb_none_lag: 'Sin precios atrasados ahora', arb_none_lag_sub: 'Ninguna casa se salió del consenso lo suficiente. Volvé en unos minutos.',
@@ -319,10 +323,14 @@
       opp_actionable: 'Actionable', opp_watch_only: 'Watch',
       opp_arb_na: 'Arbitrage unavailable', opp_arb_evaluated: 'comparisons', opp_arb_executable: 'executable', opp_arb_note: 'Zero executable is a valid result: the markets are aligned.', opp_arb_market: 'Market', opp_arb_margin: 'Net margin',
       arbst_EXECUTABLE: 'Executable', arbst_THEORETICAL_ONLY: 'Theoretical only', arbst_PARTIAL_EXECUTION_RISK: 'Partial execution', arbst_BLOCKED: 'Blocked', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Different rules', arbst_EXPIRED: 'Expired', arbst_SUSPENDED: 'Suspended', arbst_STALE: 'Stale',
-      arb_tag_1x2: '1X2', arb_tag_totals: 'Goals {line}', arb_over: 'Over {line}', arb_under: 'Under {line}', arb_draw: 'Draw',
+      arb_tag_1x2: '1X2', arb_tag_totals: 'Goals {line}', arb_tag_champ: 'Champion', arb_over: 'Over {line}', arb_under: 'Under {line}', arb_draw: 'Draw',
+      arb_champ_yes: '{team} champion', arb_champ_no: '{team} not champion',
       arb_fam_pure: 'Pure arbitrage', arb_fam_pure_sub: 'The market contradicts itself across books: back every leg and profit no matter the result.',
       arb_fam_lag: 'Stale price', arb_fam_lag_sub: 'One book lags the consensus: +EV value on a single bet.',
-      arb_roi: 'Guaranteed ROI', arb_value: 'Value', arb_stake: 'Stake', arb_at: 'at', arb_fair: 'Fair odds', arb_consensus: '{n}-book consensus', arb_exchange: 'exchange',
+      arb_roi: 'Guaranteed ROI', arb_roi_theo: 'Theoretical ROI', arb_theo_badge: 'theoretical', arb_value: 'Value', arb_stake: 'Stake', arb_at: 'at', arb_fair: 'Fair odds', arb_consensus: '{n}-book consensus', arb_exchange: 'exchange',
+      arb_x_pure_theo: 'Theoretical: the margin is too thin and may vanish on confirmation (odds move). Not a guaranteed surebet.',
+      arb_x_pure_theo_pm: 'Theoretical: it includes a prediction market where we only see the best price, not the real executable depth. After fees and liquidity the margin usually disappears — historically Poly↔Kalshi leaves no executable arbitrage. Verify size and fees before trading.',
+      arb_theo_group: '{n} theoretical (thin margin or unverified depth, not guaranteed)',
       arb_kpi_markets: 'markets scanned', arb_kpi_surebets: 'surebets', arb_kpi_lags: 'stale prices',
       arb_none_pure: 'No surebets right now', arb_none_pure_sub: 'We scanned {n} markets and the books are aligned. Still watching.',
       arb_none_lag: 'No stale prices right now', arb_none_lag_sub: 'No book strayed far enough from consensus. Check back in a few minutes.',
@@ -807,16 +815,17 @@
   // el mercado se contradice entre casas → ganás pase lo que pase) y "Precio atrasado" (value 1-pata: una casa
   // cuelga una cuota por encima del consenso no-vig del resto → +EV en una apuesta). Sin modelo GP (eso es Value).
   function arbAgo(s) { if (s == null) return ''; if (s < 90) return t('arb_ago_now'); var m = Math.round(s / 60); if (m < 60) return t('arb_ago_min', { m: m }); return t('arb_ago_hr', { h: Math.round(m / 60) }); }
-  function arbTag(it) { return it.market_family === 'match_total' ? t('arb_tag_totals', { line: it.line }) : t('arb_tag_1x2'); }
-  function arbTitle(it) { return teamName(it.home_team_id, it.home) + ' ' + t('vs') + ' ' + teamName(it.away_team_id, it.away); }
+  function arbTag(it) { return it.market_family === 'champion' ? t('arb_tag_champ') : it.market_family === 'match_total' ? t('arb_tag_totals', { line: it.line }) : t('arb_tag_1x2'); }
+  function arbTitle(it) { return it.market_family === 'champion' ? teamName(it.home_team_id, it.home) : (teamName(it.home_team_id, it.home) + ' ' + t('vs') + ' ' + teamName(it.away_team_id, it.away)); }
   function arbSel(it, outcome) {
+    if (it.market_family === 'champion') return outcome === 'yes' ? t('arb_champ_yes', { team: teamName(it.home_team_id, it.home) }) : t('arb_champ_no', { team: teamName(it.home_team_id, it.home) });
     if (it.market_family === 'match_total') return outcome === 'over' ? t('arb_over', { line: it.line }) : t('arb_under', { line: it.line });
     if (outcome === 'draw') return t('arb_draw');
     if (outcome === 'home') return teamName(it.home_team_id, it.home);
     if (outcome === 'away') return teamName(it.away_team_id, it.away);
     return outcome;
   }
-  function arbMatchRow(it) { return '<div class="gx-arb-match"><span class="fl">' + flag(it.home_team_id) + '</span><b>' + esc(arbTitle(it)) + '</b><span class="fl">' + flag(it.away_team_id) + '</span></div>'; }
+  function arbMatchRow(it) { return '<div class="gx-arb-match"><span class="fl">' + flag(it.home_team_id) + '</span><b>' + esc(arbTitle(it)) + '</b>' + (it.market_family === 'champion' ? '' : '<span class="fl">' + flag(it.away_team_id) + '</span>') + '</div>'; }
   function arbCard(a, i) {
     var legs = (a.legs || []).map(function (l) {
       return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(arbSel(a, l.outcome)) + '</span>' +
@@ -825,12 +834,13 @@
         '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
     }).join('');
     var roi = (a.net_roi * 100);
+    var roiLbl = a.executable ? t('arb_roi') : t('arb_roi_theo');
     return '<div class="gx-arb-card gx-pick-clickable' + (a.executable ? ' gx-arb-exe' : '') + '" data-arbref="arb:' + i + '">' +
-      '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span>' +
+      '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + (a.executable ? '' : ' <span class="gx-arb-theo">' + esc(t('arb_theo_badge')) + '</span>') + '</span>' +
       '<span class="gx-pick-time">' + esc(arbTag(a)) + ' · ' + esc(fmtDateTime(a.kickoff)) + '</span></div>' +
       arbMatchRow(a) +
       '<div class="gx-arb-legs">' + legs + '</div>' +
-      '<div class="gx-pick-foot"><div class="gx-arb-roi ' + (a.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + roi.toFixed(2) + '%</b></div>' +
+      '<div class="gx-pick-foot"><div class="gx-arb-roi ' + (a.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(roiLbl) + ': <b>+' + roi.toFixed(2) + '%</b></div>' +
       '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
       '</div>';
   }
@@ -892,9 +902,13 @@
       else body += '<div class="gx-empty gx-arb-obs">' + ic('target-arrow') + '<b>' + esc(t('arb_none_lag')) + '</b><span class="gx-dim">' + esc(t('arb_none_lag_sub')) + '</span></div>';
       body += '</div>';
     } else {
+      // ejecutables (surebets) primero; teóricos (margen fino / profundidad PM no verificada) en grupo aparte.
+      var idx = arbs.map(function (a, i) { return { a: a, i: i }; });
+      var exe = idx.filter(function (x) { return x.a.executable; }), theo = idx.filter(function (x) { return !x.a.executable; });
       body = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-dim">' + esc(t('arb_fam_pure_sub')) + '</span></div>';
-      if (arbs.length) body += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + arbs.map(arbCard).join('') + '</div>';
+      if (exe.length) body += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + exe.map(function (x) { return arbCard(x.a, x.i); }).join('') + '</div>';
       else body += '<div class="gx-empty gx-arb-obs">' + ic('shield-check') + '<b>' + esc(t('arb_none_pure')) + '</b><span class="gx-dim">' + esc(t('arb_none_pure_sub', { n: C.markets_scanned || 0 })) + '</span></div>';
+      if (theo.length) body += '<div class="gx-arb-theo-h">' + ic('info-circle') + esc(t('arb_theo_group', { n: theo.length })) + '</div><div class="gx-picks-feed">' + theo.map(function (x) { return arbCard(x.a, x.i); }).join('') + '</div>';
       body += '</div>';
     }
     bd.innerHTML = head + arbSubTabs(C) + body + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
@@ -912,6 +926,8 @@
     var parts = (ref || '').split(':'), fam = parts[0], i = +parts[1];
     var d = S.arb || {}; var opp = fam === 'arb' ? (d.arbitrage || [])[i] : (d.price_lag || [])[i];
     if (!opp) return;
+    // Campeón (outright): no es un partido → abre la página del equipo (con su análisis de campeonato).
+    if (opp.market_family === 'champion') { S.arbCtx = null; openTeam(opp.home_team_id); return; }
     var openId = (opp.home_team_id && opp.away_team_id) ? 'teams-' + opp.home_team_id + '-' + opp.away_team_id : (opp.event_id || null);
     opp._openId = openId; S.arbCtx = opp;
     if (openId) openMatch(openId); else board([]);
@@ -1238,7 +1254,8 @@
     sportsbet: 'https://www.sportsbet.com.au', tab: 'https://www.tab.com.au', neds: 'https://www.neds.com.au', pointsbetau: 'https://pointsbet.com.au', ladbrokes_au: 'https://www.ladbrokes.com.au',
     betfair_ex_eu: 'https://www.betfair.com/exchange', betfair_ex_uk: 'https://www.betfair.com/exchange', smarkets: 'https://smarkets.com', matchbook: 'https://www.matchbook.com',
     winamax_de: 'https://www.winamax.de', winamax_fr: 'https://www.winamax.fr', tipico_de: 'https://www.tipico.de', leovegas_se: 'https://www.leovegas.com', casumo: 'https://www.casumo.com',
-    onexbet: 'https://1xbet.com', coolbet: 'https://www.coolbet.com', grosvenor: 'https://www.grosvenorcasinos.com', pmu_fr: 'https://www.pmu.fr', unibet_se2: 'https://www.unibet.se'
+    onexbet: 'https://1xbet.com', coolbet: 'https://www.coolbet.com', grosvenor: 'https://www.grosvenorcasinos.com', pmu_fr: 'https://www.pmu.fr', unibet_se2: 'https://www.unibet.se',
+    polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com'
   };
   function bookUrl(code) { return BOOK_URLS[code] || BOOK_URLS[String(code || '').replace(/_(se|nl|fr|de|uk|us|eu|au|at|es|it)$/i, '')] || null; }
   function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + ic('external-link') + esc(label || code) + '</a>'; }
@@ -1258,11 +1275,14 @@
           '<span class="gx-ov-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' + venueBtn(l.venue, l.venue_label || l.venue) +
           '<span class="gx-ov-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
       }).join('') + '</div>' +
-        '<div class="gx-ov-roi gx-pos">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + roi.toFixed(2) + '%</b></div>';
+        '<div class="gx-ov-roi ' + (opp.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(opp.executable ? t('arb_roi') : t('arb_roi_theo')) + ': <b>+' + roi.toFixed(2) + '%</b></div>';
       venues = '';
-      explain = '<p>' + esc(t('arb_x_pure_1', { roi: '+' + roi.toFixed(2) + '%' })) + '</p>' +
-        '<p>' + esc(t('arb_x_pure_2')) + '</p>' +
-        '<div class="gx-ov-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>';
+      if (opp.executable) {
+        explain = '<p>' + esc(t('arb_x_pure_1', { roi: '+' + roi.toFixed(2) + '%' })) + '</p>' + '<p>' + esc(t('arb_x_pure_2')) + '</p>';
+      } else {
+        explain = '<div class="gx-ov-warn">' + ic('alert-triangle') + esc(opp.unverified_depth ? t('arb_x_pure_theo_pm') : t('arb_x_pure_theo')) + '</div>';
+      }
+      explain += '<div class="gx-ov-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>';
     } else {
       var edge = (opp.edge * 100), favPct = opp.favorite_prob != null ? Math.round(opp.favorite_prob * 100) : null;
       var favName = opp.favorite_outcome ? arbSel(opp, opp.favorite_outcome) : null;

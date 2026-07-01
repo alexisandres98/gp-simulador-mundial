@@ -2295,12 +2295,40 @@ function isAdmin(email) {
 
 // Scanner multi-venue: scan con cache TTL (evita re-escanear la DB en cada request). INERTE si el flag está off
 // (scanNow devuelve {disabled:true} sin tocar la DB). Refresca a lo sumo cada MARKET_SCANNER_TTL_MS (default 45s).
+// Mercados de "campeón del Mundial" como venue del scanner: Polymarket + Kalshi (ya alineados por teamId en
+// marketCache). Cada equipo = un mercado binario Sí/No. Precios PM son probabilidades (0-1) → cuota = 1/precio.
+// YES cuesta ask; NO cuesta (1−bid). Los PMs SÍ permiten vender la posición (venue_kind='pm' → trade-out real).
+// El arb campeón Poly↔Kalshi es históricamente ~0 (mercados eficientes); se incluye para completar el multi-venue.
+function buildChampionMarkets(mc) {
+  const out = [];
+  const ids = new Set([...Object.keys(mc.polymarket || {}), ...Object.keys(mc.kalshi || {})]);
+  for (const id of ids) {
+    const tm = teamById[id]; if (!tm) continue;
+    const quotes = [];
+    const add = (venue, label, url, v) => {
+      if (!v) return;
+      if (v.ask != null && v.ask > 0 && v.ask < 1) quotes.push({ venue, venue_label: label, independence_group: venue, source_role: 'prediction_market', outcome: 'yes', odds_decimal: 1 / v.ask, observed_at: mc.ts, is_exchange: false, venue_kind: 'pm', url });
+      if (v.bid != null && v.bid > 0 && v.bid < 1) quotes.push({ venue, venue_label: label, independence_group: venue, source_role: 'prediction_market', outcome: 'no', odds_decimal: 1 / (1 - v.bid), observed_at: mc.ts, is_exchange: false, venue_kind: 'pm', url });
+    };
+    add('polymarket', 'Polymarket', (mc.polymarket[id] || {}).url, mc.polymarket[id]);
+    add('kalshi', 'Kalshi', (mc.kalshi[id] || {}).url, mc.kalshi[id]);
+    // hace falta al menos 2 venues para arb (Sí y No de distintas casas)
+    if (new Set(quotes.map(q => q.venue)).size < 2) continue;
+    out.push({ source: 'prediction_market', venue_kind: 'pm', event_id: 'champ-' + id, market_family: 'champion', period: 'tournament', line: null, universe: ['yes', 'no'], home: tm.name, home_team_id: id, away: null, kickoff: null, quotes });
+  }
+  return out;
+}
+
 let _scanCache = { at: 0, data: null, running: null };
 async function getMarketScan() {
   const ttl = parseInt(process.env.MARKET_SCANNER_TTL_MS, 10) || 45000;
   if (_scanCache.data && Date.now() - _scanCache.at < ttl) return _scanCache.data;
   if (_scanCache.running) return _scanCache.running.then(() => _scanCache.data).catch(() => _scanCache.data);
-  _scanCache.running = marketScanner.scanNow(require('./database/client'), {})
+  // Campeón (Poly/Kalshi): usa el marketCache que el loop de fondo (fetchMarkets cada 60s) mantiene caliente —
+  // NO bloqueamos el endpoint esperando un fetch externo (si está frío, simplemente no hay mercados de campeón aún).
+  const withPM = !!(marketScanner.flags && marketScanner.flags.includePredictionMarkets);
+  const extraMarkets = withPM ? buildChampionMarkets(marketCache || {}) : [];
+  _scanCache.running = marketScanner.scanNow(require('./database/client'), { extraMarkets })
     .then(scan => { _scanCache = { at: Date.now(), data: scan, running: null }; return scan; })
     .catch(err => { _scanCache.running = null; return _scanCache.data || { unavailable: 'scan_error', error: String(err && err.message || err) }; });
   return _scanCache.running;

@@ -683,6 +683,9 @@ body { background:
 .gx-arb-leg-book { font-size: 11px; color: var(--gx-text3); text-align: right; }
 .gx-arb-leg-stake { grid-column: 1 / -1; font-size: 10.5px; color: var(--gx-text4); letter-spacing: .04em; }
 .gx-arb-exch { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--gx-warn); border: 1px solid rgba(242,193,78,.3); border-radius: 4px; padding: 0 4px; }
+.gx-arb-theo { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--gx-text3); border: 1px solid var(--gx-line2); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+.gx-arb-theo-h { display: flex; align-items: center; gap: 7px; margin: 16px 0 10px; font-size: 11.5px; color: var(--gx-text3); }
+.gx-arb-theo-h i { font-size: 14px; }
 .gx-arb-roi, .gx-lag-edge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gx-text2); flex-wrap: wrap; }
 .gx-arb-roi b, .gx-lag-edge b { font-weight: 700; color: var(--gx-text); font-family: var(--gx-mono); font-size: 15px; }
 .gx-arb-roi.gx-pos b, .gx-lag-edge.gx-pos b { color: var(--gx-pos); }

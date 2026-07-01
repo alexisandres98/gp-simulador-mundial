@@ -13,14 +13,30 @@
 'use strict';
 
 const noVig = require('../value-engine/noVig');
+const feeEngine = require('../arb-engine/feeEngine'); // fees versionadas de prediction markets (Poly 3%, Kalshi fórmula)
 
 const round = (v, p = 8) => (v == null || !Number.isFinite(v)) ? null : +v.toFixed(p);
 const median = (xs) => { const a = xs.filter(Number.isFinite).slice().sort((p, q) => p - q); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
 const groupKey = (q) => q.independence_group || q.venue;
 
-// Cuota efectiva de un exchange: la cuota "back" mostrada es PRE-comisión. Neteamos para no reclamar arbitrajes
-// que la comisión se come. odds_net = 1 + (odds − 1) × (1 − commission). Casas normales: vig ya en la cuota → sin cambio.
+const PM_POLY_RATE = parseFloat((feeEngine.SCHEDULES.polymarket || {}).rate) || 0.03;
+const PM_KALSHI_COEF = parseFloat((feeEngine.SCHEDULES.kalshi || {}).coefficient) || 0.07;
+
+// Cuota EFECTIVA tras costos que la cuota mostrada NO incluye:
+//   - Exchange: la cuota "back" es PRE-comisión → odds_net = 1 + (odds−1)×(1−commission).
+//   - Prediction market: hay FEE explícita sobre el notional (a diferencia del sportsbook, donde el vig ya está en
+//     la cuota). Poly 3% plano; Kalshi ceil(0.07·p·(1−p)). Sin esto, el arb Poly↔Kalshi da falsos positivos (el
+//     Sistema A legacy caía en esa trampa). Convertimos precio→precio_con_fee→cuota.
 function netOdds(q, commissionPct) {
+  if (q.venue_kind === 'pm') {
+    const p = 1 / q.odds_decimal; // precio implícito (0-1)
+    if (!(p > 0 && p < 1)) return q.odds_decimal;
+    let pEff = p;
+    if (q.venue === 'polymarket') pEff = p * (1 + PM_POLY_RATE);
+    else if (q.venue === 'kalshi') pEff = p + PM_KALSHI_COEF * p * (1 - p);
+    else pEff = p * (1 + PM_POLY_RATE); // PM desconocido: fee conservadora tipo Poly
+    return pEff > 0 ? 1 / pEff : q.odds_decimal;
+  }
   if (!q.is_exchange || !commissionPct) return q.odds_decimal;
   return 1 + (q.odds_decimal - 1) * (1 - commissionPct);
 }
@@ -103,7 +119,7 @@ function detectArb(market, quotes, params) {
     const eff = netOdds(q, params.exchangeCommissionPct);
     if (!(eff > 1)) continue;
     if (!best[q.outcome] || eff > best[q.outcome].eff_odds) {
-      best[q.outcome] = { venue: q.venue, venue_label: q.venue_label, group: groupKey(q), outcome: q.outcome, odds: q.odds_decimal, eff_odds: eff, observed_at: q.observed_at, max_stake: q.max_stake, is_exchange: !!q.is_exchange, source_role: q.source_role };
+      best[q.outcome] = { venue: q.venue, venue_label: q.venue_label, group: groupKey(q), outcome: q.outcome, odds: q.odds_decimal, eff_odds: eff, observed_at: q.observed_at, max_stake: q.max_stake, is_exchange: !!q.is_exchange, venue_kind: q.venue_kind || 'sportsbook', source_role: q.source_role };
     }
   }
   if (!U.every(o => best[o])) return null; // universo incompleto
@@ -117,7 +133,11 @@ function detectArb(market, quotes, params) {
   const ts = legs.map(l => l.observed_at).filter(Number.isFinite);
   const skew = ts.length ? Math.max(...ts) - Math.min(...ts) : null;
   const stale = skew != null && skew > params.maxLegTimeSkewMs;
-  const executable = netRoi >= params.arbMinRoi && !stale;
+  // Profundidad NO verificada: los prediction markets solo exponen top-of-book (sin tamaño real ejecutable). El
+  // research confirmó 0 arbs Poly↔Kalshi ejecutables tras fees/depth. Un arb con pata de PM se reporta como TEÓRICO
+  // (no "ejecutable garantizado") salvo evidencia de profundidad. Las casas soft tienen cuota tomable a stake normal.
+  const unverifiedDepth = legs.some(l => l.venue_kind === 'pm');
+  const executable = netRoi >= params.arbMinRoi && !stale && !unverifiedDepth;
   if (grossRoi <= 0) return null; // ni bruto positivo → no es surebet
   // stakes normalizados a 100 unidades de inversión total
   const stakes = legs.map(l => round((1 / l.eff_odds) / S * 100, 2));
@@ -135,6 +155,7 @@ function detectArb(market, quotes, params) {
     net_roi: round(netRoi, 6),
     leg_time_skew_ms: skew,
     stale,
+    unverified_depth: unverifiedDepth,
     executable,
     distinct_books: distinctBooks,
   };

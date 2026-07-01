@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 55%, #0BA661 125%); color: #fff;
+  padding: 40px 52px; position: relative; }
+.brand { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+.badge { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 21px; font-weight: 800; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.m { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18); border-radius: 14px; padding: 18px 18px; }
+.m.star { background: rgba(124,242,188,.16); border-color: rgba(124,242,188,.5); }
+.mt { font-size: 17px; font-weight: 800; margin-bottom: 3px; }
+.mtime { font-size: 12px; color: #C9F2DE; font-weight: 600; margin-bottom: 12px; }
+.bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.14); margin-bottom: 9px; }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.38); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; flex-direction: column; gap: 3px; font-size: 14px; font-weight: 700; }
+.lbl .r { display: flex; justify-content: space-between; }
+.lbl .big { font-weight: 800; }
+.foot { position: absolute; bottom: 28px; left: 52px; right: 52px; display: flex; align-items: center; justify-content: space-between; }
+.cta { background: #fff; color: #067647; font-size: 19px; font-weight: 800; padding: 12px 26px; border-radius: 99px; }
+.foot .small { font-size: 15px; color: #C9F2DE; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● HOY · 16AVOS</div></div>
+  <h1>Lo que dice el modelo hoy 📊</h1>
+  <div class="grid">
+    <div class="m">
+      <div class="mt">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra – RD Congo 🇨🇩</div><div class="mtime">11:00 AM COL</div>
+      <div class="bar"><div class="h" style="width:63.6%"></div><div class="d" style="width:23.4%"></div><div class="a" style="width:13.0%"></div></div>
+      <div class="lbl"><div class="r"><span class="big">ING 63.6%</span></div><div class="r"><span>X 23.4%</span><span>RDC 13.0%</span></div></div>
+    </div>
+    <div class="m star">
+      <div class="mt">🇧🇪 Bélgica – Senegal 🇸🇳</div><div class="mtime">3:00 PM COL</div>
+      <div class="bar"><div class="h" style="width:51.0%"></div><div class="d" style="width:25.7%"></div><div class="a" style="width:23.3%"></div></div>
+      <div class="lbl"><div class="r"><span class="big">BEL 51.0%</span></div><div class="r"><span>X 25.7%</span><span>SEN 23.3%</span></div></div>
+    </div>
+    <div class="m">
+      <div class="mt">🇺🇸 EE.UU. – Bosnia 🇧🇦</div><div class="mtime">7:00 PM COL</div>
+      <div class="bar"><div class="h" style="width:57.7%"></div><div class="d" style="width:25.5%"></div><div class="a" style="width:16.8%"></div></div>
+      <div class="lbl"><div class="r"><span class="big">USA 57.7%</span></div><div class="r"><span>X 25.5%</span><span>BIH 16.8%</span></div></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Bélgica–Senegal, el más parejo de la jornada.</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

@@ -164,6 +164,15 @@
       arb_prep: 'Arbitraje en preparación', arb_prep_sub: 'El scanner multi-venue se está activando. Vuelve en un momento.',
       arb_disclaimer: 'Estimaciones de un scanner de precios de mercado, no consejo financiero. Verificá cuota y reglas en la casa antes de apostar.',
       arb_ago_now: 'recién', arb_ago_min: 'hace {m} min', arb_ago_hr: 'hace {h} h',
+      arb_detail_cta: 'Ver oportunidad', arb_vs_fav_short: 'Contra el favorito', arb_detected: 'Oportunidad detectada', arb_sec_opp: 'Oportunidad',
+      arb_best: 'Mejor arbitraje', arb_none_now: 'Sin oportunidad ahora', arb_scanning: 'Escaneando mercados…',
+      arb_x_pure_1: 'Cubrí las patas con el reparto indicado y ganás {roi} pase lo que pase.',
+      arb_x_pure_2: 'Necesitás cuenta en cada casa y actuar rápido: la cuota se mueve en segundos.',
+      arb_x_lag_1: '{book} cuelga {sel} a {odds}. El consenso sin margen de {n} casas lo valora en {fair} → {edge} de valor esperado.',
+      arb_x_lag_against: '{sel} NO es el favorito (lo es {fav} ~{favpct}). Vas contra la corriente: en UNA sola apuesta lo más probable es que pierdas y la cuota se vaya a 0.',
+      arb_x_trade_title: 'Cómo tomarla:',
+      arb_x_trade_exch: 'tomá el precio ahora y, cuando el venue ajuste su cuota hacia el consenso, vendé/cubrí la posición para asegurar ganancia sin importar el resultado (trading de línea). No la holdees hasta el final.',
+      arb_x_trade_soft: 'en esta casa no podés vender la posición, así que el valor se realiza a LARGO PLAZO (muchas apuestas), con varianza plena en cada una. Apostá poco; si la cuota se mueve a tu favor, algunas casas ofrecen "cash out" parcial para cerrar antes.',
       perf_matches: 'Todos los partidos evaluados', perf_predicted: 'GP', perf_result: 'Resultado', perf_hit: 'Acierto', perf_acc: 'Precisión',
       gp_pending_ctx: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto detallado (forma, bajas, etc.) está en la pestaña Contexto.',
     },
@@ -321,6 +330,15 @@
       arb_prep: 'Arbitrage warming up', arb_prep_sub: 'The multi-venue scanner is spinning up. Check back shortly.',
       arb_disclaimer: 'Estimates from a market-price scanner, not financial advice. Verify odds and rules at the book before betting.',
       arb_ago_now: 'just now', arb_ago_min: '{m} min ago', arb_ago_hr: '{h}h ago',
+      arb_detail_cta: 'View opportunity', arb_vs_fav_short: 'Against the favorite', arb_detected: 'Opportunity detected', arb_sec_opp: 'Opportunity',
+      arb_best: 'Top arbitrage', arb_none_now: 'No opportunity now', arb_scanning: 'Scanning markets…',
+      arb_x_pure_1: 'Cover every leg with the shown split and you profit {roi} no matter the result.',
+      arb_x_pure_2: 'You need an account at each book and must act fast — the odds move within seconds.',
+      arb_x_lag_1: '{book} is offering {sel} at {odds}. The no-vig consensus of {n} books values it at {fair} → {edge} expected value.',
+      arb_x_lag_against: '{sel} is NOT the favorite ({fav} ~{favpct} is). You are going against the grain: on a SINGLE bet you will most likely lose and the odds go to 0.',
+      arb_x_trade_title: 'How to take it:',
+      arb_x_trade_exch: 'take the price now and, when the venue shifts its odds toward consensus, sell/hedge the position to lock a profit regardless of the result (line trading). Do not hold it to settlement.',
+      arb_x_trade_soft: 'at this book you cannot sell the position, so value is realized over the LONG RUN (many bets), with full variance on each. Bet small; if the line moves your way, some books offer partial cash out to close early.',
       perf_matches: 'All evaluated matches', perf_predicted: 'GP', perf_result: 'Result', perf_hit: 'Hit', perf_acc: 'Accuracy',
       gp_pending_ctx: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Detailed context (form, absences, etc.) is in the Context tab.',
     }
@@ -342,7 +360,7 @@
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, pendingSec: null, h2h: {} };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {} };
 
   // ---------- icons ----------
   var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
@@ -401,7 +419,7 @@
     $('#gx-langs').addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
     var avb = $('#gx-avatar-btn'); if (avb) avb.addEventListener('click', toggleAcctMenu);
     // subtabs de Oportunidades: Picks / Value / Arbitraje
-    var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs); };
+    var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); if (sub !== 'picks') kpis(S.dash || {}, rs); board(rs); };
     var pc = function (id, sub) { var el = $('#gx-pc-' + id); if (el) el.addEventListener('click', function () { setSub(sub); }); };
     pc('picks', 'picks'); pc('value', 'value'); pc('arb', 'arb');
     // filtro Todos / En vivo / Próximos (estaba decorativo): setea S.filt y re-renderiza el board
@@ -579,17 +597,63 @@
   function kpis(d, rows) {
     // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
     var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
-    var pick = (d.recent_picks || []).filter(function (p) { return p.lifecycle_code === 'PUBLISHED'; })[0]; // SOLO activa
+    // Mejor pick: la pick diaria de mayor confianza (feed del producto). Lazy-load si aún no está.
+    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; if (S.view === 'board') kpis(S.dash || {}, rows); }); }
+    var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
     var gap = rows.map(function (r) { var g = ['HOME', 'DRAW', 'AWAY'].map(function (c) { return { c: c, gp: r.gp(c), mk: r.mk(c) }; }).filter(function (x) { return x.gp != null && x.mk != null; }).sort(function (a, b) { return Math.abs(b.gp - b.mk) - Math.abs(a.gp - a.mk); })[0]; return g ? { r: r, g: g } : null; }).filter(Boolean).sort(function (a, b) { return Math.abs(b.g.gp - b.g.mk) - Math.abs(a.g.gp - a.g.mk); })[0];
+    // Mejor oportunidad de arbitraje: surebet ejecutable > mejor precio atrasado soft. Carga compartida (loadArb).
+    loadArb();
+    var bestArb = null, bestArbRef = null;
+    if (S.arb && S.arb.available) {
+      var exeArb = (S.arb.arbitrage || []).filter(function (a) { return a.executable; })[0];
+      if (exeArb) { bestArb = { fam: 'PURE_ARB', it: exeArb }; bestArbRef = 'arb:' + (S.arb.arbitrage || []).indexOf(exeArb); }
+      else if ((S.arb.price_lag || []).length) { bestArb = { fam: 'PRICE_LAG', it: S.arb.price_lag[0] }; bestArbRef = 'lag:0'; }
+    }
     var cards = [];
-    cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick(pick) : '<div class="gx-kpi-sel gx-dim">' + esc(t('none_active_pick')) + '</div>'));
-    cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : kpiEmpty()));
+    cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick2(pick) : '<div class="gx-kpi-sel gx-dim">' + esc(t('none_active_pick')) + '</div>', null, pick ? 'picks' : null));
+    cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : kpiEmpty(), null, val ? 'value' : null));
     cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty(), t('gap_tooltip')));
-    cards.push(kpiCard(t('arb_verified'), 'shield-check', '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + esc(t('no_arb')) + '</div><div class="gx-kpi-sub">' + esc(t('no_arb_sub')) + '</div></div></div>'));
+    var arbBody = bestArb ? kpiArb(bestArb)
+      : (S.arb && S.arb.available) ? '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + esc(t('arb_none_now')) + '</div></div></div>'
+      : (S.arb === null) ? '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + ic('loader-2') + ' ' + esc(t('arb_scanning')) + '</div></div></div>'
+      : kpiEmpty();
+    cards.push(kpiCard(t('arb_best'), 'arrows-left-right', arbBody, null, bestArbRef ? ('arb:' + bestArbRef) : null));
     $('#gx-kpis').innerHTML = cards.join('');
+    // click en una caja KPI → navega a su superficie (o abre la card de la oportunidad de arbitraje)
+    [].forEach.call($('#gx-kpis').querySelectorAll('[data-kpinav]'), function (el) {
+      el.addEventListener('click', function () { kpiNav(el.getAttribute('data-kpinav')); });
+    });
   }
-  function kpiCard(label, icon, body, tip) { return '<div class="gx-panel gx-kpi"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><div class="gx-label">' + ic(icon) + esc(label) + (tip ? ' <i class="ti ti-info-circle gx-kpi-info" aria-hidden="true"></i>' : '') + '</div>' + body + '</div>'; }
+  function kpiNav(target) {
+    if (!target) return;
+    if (target.indexOf('arb:') === 0) { // arb:<ref>  (ref = "arb:N" o "lag:N")
+      var ref = target.slice(4);
+      S.oppSub = 'arb'; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === 'arb'); });
+      openArbDetail(ref); return;
+    }
+    // picks | value → cambia de subtab y renderiza
+    S.oppSub = target; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === target); });
+    var k = $('#gx-kpis'); if (k) k.style.display = (target === 'picks') ? 'none' : '';
+    var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs);
+  }
+  function kpiCard(label, icon, body, tip, nav) { return '<div class="gx-panel gx-kpi' + (nav ? ' gx-kpi-clk' : '') + '"' + (nav ? ' data-kpinav="' + esc(nav) + '"' : '') + (tip ? ' title="' + esc(tip) + '"' : '') + '><div class="gx-label">' + ic(icon) + esc(label) + (tip ? ' <i class="ti ti-info-circle gx-kpi-info" aria-hidden="true"></i>' : '') + (nav ? '<span class="gx-spacer"></span>' + ic('arrow-right') : '') + '</div>' + body + '</div>'; }
+  // pick diaria (feed del producto) en formato KPI
+  function kpiPick2(p) {
+    var sel = p.family === 'SOLID' ? (p.selection_code === 'AWAY' ? teamName(p.away_team_id, p.away) : p.selection_code === 'HOME' ? teamName(p.home_team_id, p.home) : t('memo_even')) : (p.family === 'GOALS' ? (p.side === 'over' ? t('arb_over', { line: p.line }) : t('arb_under', { line: p.line })) : t('pf_fam_combo'));
+    return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(p.home_team_id) + '</span><div><div class="gx-kpi-sel">' + esc(sel) + '</div><div class="gx-kpi-sub">' + esc(teamName(p.home_team_id, p.home) + ' ' + t('vs') + ' ' + teamName(p.away_team_id, p.away)) + '</div></div></div>' +
+      '<div class="gx-kpi-foot"><span class="gx-mono">' + odd(p.odds) + '</span><span class="gx-pp gx-pos">' + esc(t('pf_fam_' + p.family.toLowerCase())) + '</span></div>';
+  }
+  // mejor oportunidad de arbitraje en formato KPI
+  function kpiArb(b) {
+    var it = b.it;
+    if (b.fam === 'PURE_ARB') {
+      return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(it.home_team_id) + '</span><div><div class="gx-kpi-sel">' + esc(arbSel(it, it.legs[0].outcome)) + ' + …</div><div class="gx-kpi-sub">' + esc(arbTitle(it)) + '</div></div></div>' +
+        '<div class="gx-kpi-foot"><span class="gx-mono">' + esc(t('arb_fam_pure')) + '</span><span class="gx-pp gx-pos">+' + (it.net_roi * 100).toFixed(2) + '%</span></div>';
+    }
+    return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(it.home_team_id) + '</span><div><div class="gx-kpi-sel">' + esc(arbSel(it, it.outcome)) + ' @' + Number(it.odds).toFixed(2) + '</div><div class="gx-kpi-sub">' + esc(arbTitle(it)) + '</div></div></div>' +
+      '<div class="gx-kpi-foot"><span class="gx-mono">' + esc(it.venue_label || it.venue) + '</span><span class="gx-pp gx-pos">+' + (it.edge * 100).toFixed(1) + '%</span></div>';
+  }
   function kpiEmpty() { return '<div class="gx-kpi-sel gx-dim">' + esc(t('none')) + '</div>'; }
   function pickSel(p) { if (p.selection_display_key) { return p.outcome_code === 'DRAW' ? t('memo_even') : teamName(p.home_team_id) + ' / ' + teamName(p.away_team_id); } return p.outcome_code || ''; }
   function kpiPick(p) {
@@ -753,7 +817,7 @@
     return outcome;
   }
   function arbMatchRow(it) { return '<div class="gx-arb-match"><span class="fl">' + flag(it.home_team_id) + '</span><b>' + esc(arbTitle(it)) + '</b><span class="fl">' + flag(it.away_team_id) + '</span></div>'; }
-  function arbCard(a) {
+  function arbCard(a, i) {
     var legs = (a.legs || []).map(function (l) {
       return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(arbSel(a, l.outcome)) + '</span>' +
         '<span class="gx-arb-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
@@ -761,36 +825,56 @@
         '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
     }).join('');
     var roi = (a.net_roi * 100);
-    return '<div class="gx-arb-card' + (a.executable ? ' gx-arb-exe' : '') + '">' +
+    return '<div class="gx-arb-card gx-pick-clickable' + (a.executable ? ' gx-arb-exe' : '') + '" data-arbref="arb:' + i + '">' +
       '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span>' +
       '<span class="gx-pick-time">' + esc(arbTag(a)) + ' · ' + esc(fmtDateTime(a.kickoff)) + '</span></div>' +
       arbMatchRow(a) +
       '<div class="gx-arb-legs">' + legs + '</div>' +
       '<div class="gx-pick-foot"><div class="gx-arb-roi ' + (a.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + roi.toFixed(2) + '%</b></div>' +
-      '<div class="gx-arb-fresh gx-dim">' + ic('clock') + esc(arbAgo(a.freshness_s)) + '</div></div>' +
+      '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
       '</div>';
   }
-  function lagCard(l) {
+  function lagCard(l, i) {
     var edge = (l.edge * 100);
-    var openId = (l.home_team_id && l.away_team_id) ? 'teams-' + l.home_team_id + '-' + l.away_team_id : null;
-    return '<div class="gx-lag-card' + (openId ? ' gx-pick-clickable' : '') + '"' + (openId ? ' data-openmatch="' + esc(openId) + '"' : '') + '>' +
+    return '<div class="gx-lag-card gx-pick-clickable" data-arbref="lag:' + i + '">' +
       '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-lag">' + ic('trending-up') + esc(t('arb_fam_lag')) + '</span>' +
       '<span class="gx-pick-time">' + esc(arbTag(l)) + ' · ' + esc(fmtDateTime(l.kickoff)) + '</span></div>' +
       arbMatchRow(l) +
       '<div class="gx-lag-rec"><span class="gx-lag-sel">' + esc(arbSel(l, l.outcome)) + '</span>' +
       '<span class="gx-lag-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
-      '<span class="gx-lag-book">' + esc(t('arb_at')) + ' ' + esc(l.venue_label || l.venue) + '</span></div>' +
+      '<span class="gx-lag-book">' + esc(t('arb_at')) + ' ' + esc(l.venue_label || l.venue) + '</span>' +
+      (l.is_favorite ? '' : '<span class="gx-lag-under">' + ic('alert-triangle') + esc(t('arb_vs_fav_short')) + '</span>') + '</div>' +
       '<div class="gx-pick-foot"><div class="gx-lag-edge gx-pos">' + ic('target-arrow') + esc(t('arb_value')) + ': <b>+' + edge.toFixed(1) + '%</b>' +
       '<span class="gx-dim"> · ' + esc(t('arb_fair')) + ' ' + Number(l.fair_odds).toFixed(2) + ' · ' + esc(t('arb_consensus', { n: l.consensus_groups })) + '</span></div>' +
-      '<div class="gx-arb-fresh gx-dim">' + ic('clock') + esc(arbAgo(l.freshness_s)) + '</div></div>' +
+      '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
+      '</div>';
+  }
+  // Carga ÚNICA compartida de /api/beta/arbitrage (KPIs y board la usan sin pisarse). Devuelve true si ya está lista.
+  function loadArb() {
+    if (S.arb && S.arb !== null && S.arb !== undefined) return true;
+    if (S._arbLoading) return false;
+    S._arbLoading = true; S.arb = null;
+    fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) { S.arb = m || { available: false, reason: 'error' }; S._arbLoading = false; arbRefresh(); });
+    return false;
+  }
+  function arbRefresh() {
+    if (S.view !== 'board') return;
+    if (S.oppSub === 'arb') { var b = $('#gx-board'); if (b) oppArbBoard(b); }
+    var kp = $('#gx-kpis'); if (kp && S.oppSub !== 'picks') { var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); kpis(S.dash || {}, rs); }
+  }
+  // sub-tabs internas de Arbitraje: "Arbitraje puro" | "Precio atrasado"
+  function arbSubTabs(C) {
+    var tab = function (id, icon, label, n, cls) {
+      return '<button class="gx-arbsub' + (S.arbSub === id ? ' on' : '') + '" data-arbsub="' + id + '">' + ic(icon) + '<span>' + esc(label) + '</span>' +
+        '<b class="gx-arbsub-n ' + (n ? cls : 'gx-dim') + '">' + n + '</b></button>';
+    };
+    return '<div class="gx-arbsubs">' +
+      tab('pure', 'arrows-left-right', t('arb_fam_pure'), C.arb_executable || 0, 'gx-pos') +
+      tab('lag', 'trending-up', t('arb_fam_lag'), C.lag_soft || 0, 'gx-pos') +
       '</div>';
   }
   function oppArbBoard(bd) {
-    if (S.arb === undefined) {
-      S.arb = null; bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
-      fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) { S.arb = m || { available: false, reason: 'error' }; if (S.oppSub === 'arb' && S.view === 'board') board([]); });
-      return;
-    }
+    if (!loadArb()) { bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>'; return; }
     var d = S.arb || {};
     var cc = $('#gx-board-count'); if (cc) cc.textContent = '';
     if (!d.available) { bd.innerHTML = '<div class="gx-empty"><div class="gx-arb-scan-ic">' + ic('arrows-left-right') + '</div><b>' + esc(t('arb_prep')) + '</b><span class="gx-dim">' + esc(t('arb_prep_sub')) + '</span></div>'; return; }
@@ -801,17 +885,36 @@
       '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.arb_executable ? 'gx-pos' : 'gx-dim') + '">' + (C.arb_executable || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_surebets')) + '</span></div>' +
       '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.lag_soft ? 'gx-pos' : 'gx-dim') + '">' + (C.lag_soft || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_lags')) + '</span></div>' +
       '</div>';
-    // Sección 1 — Arbitraje puro
-    var sec1 = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-arb-sec-t">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span><span class="gx-dim">' + esc(t('arb_fam_pure_sub')) + '</span></div>';
-    if (arbs.length) sec1 += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + arbs.map(arbCard).join('') + '</div>';
-    else sec1 += '<div class="gx-empty gx-arb-obs">' + ic('shield-check') + '<b>' + esc(t('arb_none_pure')) + '</b><span class="gx-dim">' + esc(t('arb_none_pure_sub', { n: C.markets_scanned || 0 })) + '</span></div>';
-    sec1 += '</div>';
-    // Sección 2 — Precio atrasado
-    var sec2 = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-arb-sec-t">' + ic('trending-up') + esc(t('arb_fam_lag')) + '</span><span class="gx-dim">' + esc(t('arb_fam_lag_sub')) + '</span></div>';
-    if (lags.length) sec2 += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + lags.map(lagCard).join('') + '</div>';
-    else sec2 += '<div class="gx-empty gx-arb-obs">' + ic('target-arrow') + '<b>' + esc(t('arb_none_lag')) + '</b><span class="gx-dim">' + esc(t('arb_none_lag_sub')) + '</span></div>';
-    sec2 += '</div>';
-    bd.innerHTML = head + sec1 + sec2 + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
+    var body;
+    if (S.arbSub === 'lag') {
+      body = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-dim">' + esc(t('arb_fam_lag_sub')) + '</span></div>';
+      if (lags.length) body += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + lags.map(lagCard).join('') + '</div>';
+      else body += '<div class="gx-empty gx-arb-obs">' + ic('target-arrow') + '<b>' + esc(t('arb_none_lag')) + '</b><span class="gx-dim">' + esc(t('arb_none_lag_sub')) + '</span></div>';
+      body += '</div>';
+    } else {
+      body = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-dim">' + esc(t('arb_fam_pure_sub')) + '</span></div>';
+      if (arbs.length) body += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + arbs.map(arbCard).join('') + '</div>';
+      else body += '<div class="gx-empty gx-arb-obs">' + ic('shield-check') + '<b>' + esc(t('arb_none_pure')) + '</b><span class="gx-dim">' + esc(t('arb_none_pure_sub', { n: C.markets_scanned || 0 })) + '</span></div>';
+      body += '</div>';
+    }
+    bd.innerHTML = head + arbSubTabs(C) + body + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
+    // wiring: sub-tabs + apertura de la card de detalle
+    [].forEach.call(bd.querySelectorAll('[data-arbsub]'), function (el) {
+      el.addEventListener('click', function () { S.arbSub = el.getAttribute('data-arbsub'); oppArbBoard(bd); });
+    });
+    [].forEach.call(bd.querySelectorAll('[data-arbref]'), function (el) {
+      el.addEventListener('click', function () { openArbDetail(el.getAttribute('data-arbref')); });
+    });
+  }
+  // Abre la oportunidad como una card GP Intelligence del partido, con un panel "Oportunidad" arriba (link a la
+  // casa/exchange/mercado + explicación + trade-out). Reusa la vista de partido (teams-) que ya trae el análisis.
+  function openArbDetail(ref) {
+    var parts = (ref || '').split(':'), fam = parts[0], i = +parts[1];
+    var d = S.arb || {}; var opp = fam === 'arb' ? (d.arbitrage || [])[i] : (d.price_lag || [])[i];
+    if (!opp) return;
+    var openId = (opp.home_team_id && opp.away_team_id) ? 'teams-' + opp.home_team_id + '-' + opp.away_team_id : (opp.event_id || null);
+    opp._openId = openId; S.arbCtx = opp;
+    if (openId) openMatch(openId); else board([]);
   }
   function boardTable(rows) {
     return '<table class="gx-table"><thead><tr>' +
@@ -1122,6 +1225,65 @@
     }
   }
 
+  // Homepages de casas/exchanges para el botón "abrir" de la card de oportunidad (mejor-esfuerzo; the_odds_api no
+  // da deep-link por apuesta). Si no está en el mapa, no ponemos link (solo el nombre).
+  var BOOK_URLS = {
+    bet365: 'https://www.bet365.com', williamhill: 'https://www.williamhill.com', williamhill_us: 'https://www.williamhill.com',
+    betway: 'https://www.betway.com', betvictor: 'https://www.betvictor.com', betfred_uk: 'https://www.betfred.com',
+    boylesports: 'https://www.boylesports.com', unibet: 'https://www.unibet.com', unibet_fr: 'https://www.unibet.fr', unibet_nl: 'https://www.unibet.nl', unibet_se: 'https://www.unibet.se', unibet_eu: 'https://www.unibet.com', unibet_uk: 'https://www.unibet.co.uk',
+    betsson: 'https://www.betsson.com', nordicbet: 'https://www.nordicbet.com', betclic_fr: 'https://www.betclic.fr', betanysports: 'https://www.betanysports.eu',
+    betonlineag: 'https://www.betonline.ag', pinnacle: 'https://www.pinnacle.com', draftkings: 'https://sportsbook.draftkings.com', fanduel: 'https://sportsbook.fanduel.com',
+    betmgm: 'https://sports.betmgm.com', caesars: 'https://www.caesars.com/sportsbook', betrivers: 'https://www.betrivers.com', espnbet: 'https://espnbet.com', fanatics: 'https://sportsbook.fanatics.com',
+    ladbrokes: 'https://sports.ladbrokes.com', coral: 'https://sports.coral.co.uk', paddypower: 'https://www.paddypower.com', skybet: 'https://www.skybet.com', sport888: 'https://www.888sport.com', '888sport': 'https://www.888sport.com',
+    sportsbet: 'https://www.sportsbet.com.au', tab: 'https://www.tab.com.au', neds: 'https://www.neds.com.au', pointsbetau: 'https://pointsbet.com.au', ladbrokes_au: 'https://www.ladbrokes.com.au',
+    betfair_ex_eu: 'https://www.betfair.com/exchange', betfair_ex_uk: 'https://www.betfair.com/exchange', smarkets: 'https://smarkets.com', matchbook: 'https://www.matchbook.com',
+    winamax_de: 'https://www.winamax.de', winamax_fr: 'https://www.winamax.fr', tipico_de: 'https://www.tipico.de', leovegas_se: 'https://www.leovegas.com', casumo: 'https://www.casumo.com',
+    onexbet: 'https://1xbet.com', coolbet: 'https://www.coolbet.com', grosvenor: 'https://www.grosvenorcasinos.com', pmu_fr: 'https://www.pmu.fr', unibet_se2: 'https://www.unibet.se'
+  };
+  function bookUrl(code) { return BOOK_URLS[code] || BOOK_URLS[String(code || '').replace(/_(se|nl|fr|de|uk|us|eu|au|at|es|it)$/i, '')] || null; }
+  function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + ic('external-link') + esc(label || code) + '</a>'; }
+  // Panel "Oportunidad" de la card GP Intelligence: (1) link a la casa/exchange/mercado, (2) [el análisis del
+  // partido va debajo, reusado], (3) explicación de la oportunidad + trade-out (clave: value en contra del favorito).
+  function mvOpportunity(opp, header) {
+    if (!opp) return '';
+    var isArb = opp.family === 'PURE_ARB';
+    var famLabel = isArb ? t('arb_fam_pure') : t('arb_fam_lag');
+    var famCls = isArb ? 'gx-fam-pure' : 'gx-fam-lag';
+    // (1) venues + (parte central) el resumen de la jugada
+    var play, venues, explain;
+    if (isArb) {
+      var roi = (opp.net_roi * 100);
+      play = '<div class="gx-ov-legs">' + (opp.legs || []).map(function (l) {
+        return '<div class="gx-ov-leg"><span class="gx-ov-leg-sel">' + esc(arbSel(opp, l.outcome)) + '</span>' +
+          '<span class="gx-ov-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' + venueBtn(l.venue, l.venue_label || l.venue) +
+          '<span class="gx-ov-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
+      }).join('') + '</div>' +
+        '<div class="gx-ov-roi gx-pos">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + roi.toFixed(2) + '%</b></div>';
+      venues = '';
+      explain = '<p>' + esc(t('arb_x_pure_1', { roi: '+' + roi.toFixed(2) + '%' })) + '</p>' +
+        '<p>' + esc(t('arb_x_pure_2')) + '</p>' +
+        '<div class="gx-ov-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>';
+    } else {
+      var edge = (opp.edge * 100), favPct = opp.favorite_prob != null ? Math.round(opp.favorite_prob * 100) : null;
+      var favName = opp.favorite_outcome ? arbSel(opp, opp.favorite_outcome) : null;
+      var kind = opp.venue_kind === 'pm' ? 'pm' : (opp.is_exchange ? 'exchange' : 'sportsbook');
+      play = '<div class="gx-ov-lag"><div class="gx-ov-lag-main"><span class="gx-ov-lag-sel">' + esc(arbSel(opp, opp.outcome)) + '</span>' +
+        '<span class="gx-ov-lag-odds gx-mono">' + Number(opp.odds).toFixed(2) + '</span></div>' +
+        '<div class="gx-ov-lag-sub gx-dim">' + esc(t('arb_value')) + ' <b class="gx-pos">+' + edge.toFixed(1) + '%</b> · ' + esc(t('arb_fair')) + ' ' + Number(opp.fair_odds).toFixed(2) + ' · ' + esc(t('arb_consensus', { n: opp.consensus_groups })) + '</div></div>';
+      venues = '<div class="gx-ov-venues">' + venueBtn(opp.venue, opp.venue_label || opp.venue) + '</div>';
+      explain = '<p>' + esc(t('arb_x_lag_1', { book: opp.venue_label || opp.venue, sel: arbSel(opp, opp.outcome), odds: Number(opp.odds).toFixed(2), n: opp.consensus_groups, fair: Number(opp.fair_odds).toFixed(2), edge: '+' + edge.toFixed(1) + '%' })) + '</p>';
+      if (!opp.is_favorite && favName != null) explain += '<div class="gx-ov-warn gx-ov-warn-under">' + ic('alert-triangle') + esc(t('arb_x_lag_against', { sel: arbSel(opp, opp.outcome), fav: favName, favpct: favPct != null ? favPct + '%' : '—' })) + '</div>';
+      explain += '<p class="gx-ov-trade"><b>' + esc(t('arb_x_trade_title')) + '</b> ' + esc(kind === 'sportsbook' ? t('arb_x_trade_soft') : t('arb_x_trade_exch')) + '</p>';
+      explain += '<div class="gx-ov-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>';
+    }
+    return '<div class="gx-sec" id="sec-oportunidad"><div class="gx-panel gx-ov">' +
+      '<div class="gx-ov-head"><span class="gx-pick-fam ' + famCls + '">' + ic(isArb ? 'arrows-left-right' : 'trending-up') + esc(famLabel) + '</span>' +
+      '<span class="gx-dim" style="font-size:11px">' + esc(t('arb_detected')) + ' · ' + esc(arbAgo(opp.freshness_s)) + '</span></div>' +
+      '<div class="gx-ov-body"><div class="gx-ov-play">' + play + venues + '</div>' +
+      '<div class="gx-ov-explain">' + explain + '</div></div>' +
+      '</div></div>';
+  }
+
   function renderMatch() {
     var mv = $('#gx-matchview'); if (!mv) return;
     var eid = S.matchId;
@@ -1210,8 +1372,12 @@
     var hasLineups = !!fx; // siempre mostramos la sección para fixtures reales; mvLineups hace fallback a la probable
     var hasStats = fx && fx.statistics && fx.statistics.home;
     var hasEvents = fx && fx.events && fx.events.length;
+    // Panel de oportunidad (si llegamos acá desde una card de Arbitraje/Precio atrasado, y corresponde a ESTE partido).
+    var arbCtx = (S.arbCtx && S.arbCtx._openId === eid) ? S.arbCtx : null;
     // A.7: navegación interna de secciones (sticky). Las secciones presentes definen el menú.
-    var sections = [{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }];
+    var sections = [];
+    if (arbCtx) sections.push({ id: 'oportunidad', key: 'arb_sec_opp' });
+    sections = sections.concat([{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }]);
     if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
@@ -1221,6 +1387,7 @@
     mv.innerHTML = mvShell(
       mvHero(beta, fx, r, live) +
       mvNav(sections) +
+      (arbCtx ? mvOpportunity(arbCtx, header) : '') +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
       '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
@@ -2362,7 +2529,7 @@
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }
-          var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
+          var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }
           var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }
           var n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); navTo(n.getAttribute('data-nav')); }

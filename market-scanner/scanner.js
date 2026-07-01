@@ -169,6 +169,11 @@ function detectLag(market, quotes, params, now) {
     const refDispOut = ref.dispersion_by_outcome && ref.dispersion_by_outcome[q.outcome];
     if (Number.isFinite(refDispOut) && refDispOut / fairP > params.lagMaxRelDispersion) continue;
     const isSharp = q.source_role === 'sharp_reference' || q.is_exchange;
+    // Favorito del mercado según el consenso justo: sirve para advertir "estás apostando EN CONTRA del favorito"
+    // (clave del trade-out: si holdeás y gana el favorito, el +edge se evapora → conviene vender al reajustarse).
+    let favOutcome = null, favProb = -1;
+    for (const o of U) { const p = ref.fair && ref.fair[o]; if (Number.isFinite(p) && p > favProb) { favProb = p; favOutcome = o; } }
+    const isFavorite = favOutcome === q.outcome;
     out.push({
       family: 'PRICE_LAG',
       event_id: market.event_id,
@@ -176,6 +181,7 @@ function detectLag(market, quotes, params, now) {
       period: market.period,
       line: market.line ?? null,
       home: market.home || null, away: market.away || null, kickoff: market.kickoff || null,
+      is_favorite: isFavorite, favorite_outcome: favOutcome, favorite_prob: round(favProb, 6),
       venue: q.venue,
       venue_label: q.venue_label,
       outcome: q.outcome,
@@ -185,6 +191,7 @@ function detectLag(market, quotes, params, now) {
       edge: round(edge, 6),
       implied_prob: round(1 / q.odds_decimal, 6),
       is_soft: !isSharp,
+      is_exchange: !!q.is_exchange, venue_kind: q.venue_kind || 'sportsbook',
       source_role: q.source_role || null,
       consensus_groups: ref.groups,
       dispersion: ref.dispersion,

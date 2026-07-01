@@ -698,6 +698,54 @@ body { background:
 .gx-arb-obs { flex-direction: column; gap: 7px; text-align: center; padding: 26px 16px; }
 .gx-arb-obs b { font-size: 14px; } .gx-arb-obs span { font-size: 12.5px; max-width: 380px; }
 .gx-arb-scan-ic i { font-size: 30px; color: var(--gx-accent); opacity: .6; }
+/* sub-pestañas de Arbitraje */
+.gx-arbsubs { display: flex; gap: 8px; margin: 14px 0 4px; }
+.gx-arbsub { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px; cursor: pointer;
+  background: var(--gx-panel); border: 1px solid var(--gx-line); color: var(--gx-text2); font-size: 13px; font-weight: 600; transition: all .15s; }
+.gx-arbsub:hover { border-color: var(--gx-line2); color: var(--gx-text); }
+.gx-arbsub.on { background: var(--gx-accent-soft); border-color: var(--gx-accent-line); color: var(--gx-accent); }
+.gx-arbsub i { font-size: 15px; }
+.gx-arbsub-n { font-family: var(--gx-mono); font-size: 12px; padding: 1px 6px; border-radius: 5px; background: rgba(255,255,255,.05); }
+.gx-arbsub-n.gx-pos { color: var(--gx-pos); }
+/* etiqueta "contra el favorito" en lag card */
+.gx-lag-under { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--gx-warn); border: 1px solid rgba(242,193,78,.28); border-radius: 5px; padding: 1px 6px; margin-left: auto; }
+.gx-lag-under i { font-size: 12px; }
+/* KPI clickable */
+.gx-kpi-clk { cursor: pointer; transition: border-color .15s, transform .15s; }
+.gx-kpi-clk:hover { border-color: var(--gx-accent-line); transform: translateY(-1px); }
+.gx-kpi-clk .gx-label .ti-arrow-right { font-size: 14px; color: var(--gx-text3); }
+/* panel Oportunidad (card de detalle GP Intelligence) */
+.gx-ov { padding: 0; overflow: hidden; }
+.gx-ov-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--gx-line); background: linear-gradient(180deg, var(--gx-panel2), transparent); }
+.gx-ov-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.gx-ov-play { padding: 15px 16px; border-right: 1px solid var(--gx-line); }
+.gx-ov-explain { padding: 15px 16px; display: flex; flex-direction: column; gap: 9px; }
+.gx-ov-explain p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--gx-text2); }
+.gx-ov-explain .gx-ov-trade { color: var(--gx-text); }
+.gx-ov-explain .gx-ov-trade b { color: var(--gx-accent); }
+.gx-ov-legs { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.gx-ov-leg { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 10px; background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 9px 11px; }
+.gx-ov-leg-sel { font-size: 13px; font-weight: 600; color: var(--gx-text); }
+.gx-ov-leg-odds { font-size: 15px; font-weight: 700; color: var(--gx-accent); }
+.gx-ov-leg-stake { grid-column: 1 / -1; font-size: 10.5px; color: var(--gx-text4); }
+.gx-ov-roi { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gx-text2); } .gx-ov-roi b { font-family: var(--gx-mono); font-size: 17px; }
+.gx-ov-lag { margin-bottom: 12px; }
+.gx-ov-lag-main { display: flex; align-items: baseline; gap: 10px; }
+.gx-ov-lag-sel { font-size: 17px; font-weight: 650; color: var(--gx-text); }
+.gx-ov-lag-odds { font-size: 22px; font-weight: 700; color: var(--gx-cyan); font-family: var(--gx-mono); }
+.gx-ov-lag-sub { font-size: 12px; margin-top: 4px; }
+.gx-ov-venues { display: flex; flex-wrap: wrap; gap: 8px; }
+.gx-ov-venue { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--gx-accent);
+  background: var(--gx-accent-soft); border: 1px solid var(--gx-accent-line); border-radius: 8px; padding: 8px 12px; text-decoration: none; transition: background .15s; }
+.gx-ov-venue:hover { background: rgba(43,227,166,.16); }
+.gx-ov-venue i { font-size: 14px; }
+.gx-ov-venuex { display: inline-flex; align-items: center; font-size: 12.5px; font-weight: 600; color: var(--gx-text2); background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: 8px; padding: 8px 12px; }
+.gx-ov-leg .gx-ov-venue, .gx-ov-leg .gx-ov-venuex { padding: 4px 9px; font-size: 11.5px; justify-self: end; }
+.gx-ov-warn { display: flex; align-items: flex-start; gap: 7px; font-size: 11.5px; color: var(--gx-warn); line-height: 1.45;
+  background: rgba(242,193,78,.06); border: 1px solid rgba(242,193,78,.22); border-radius: var(--gx-r); padding: 8px 11px; }
+.gx-ov-warn i { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.gx-ov-warn-under { color: var(--gx-neg, #f2787a); background: rgba(242,120,122,.07); border-color: rgba(242,120,122,.25); }
+@media (max-width: 720px) { .gx-ov-body { grid-template-columns: 1fr; } .gx-ov-play { border-right: none; border-bottom: 1px solid var(--gx-line); } }
 
 /* Color de iconos de eventos del partido (gol, tarjetas, cambio) — paridad con la plataforma principal.
    Se apunta al <i> con MÁS especificidad que `.gx-event-i i { color: var(--gx-text3) }` (~línea 411), que si no gana y los deja grises. */

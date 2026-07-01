@@ -279,7 +279,7 @@ async function syncFromESPN(depth = 0) {
       if (!H || !A) continue;
       const hId = espnTeamId[normName(H.team.displayName)] || espnTeamId[normName(H.team.name)];
       const aId = espnTeamId[normName(A.team.displayName)] || espnTeamId[normName(A.team.name)];
-      if (hId && aId) koOverride[m] = { home: hId, away: aId };
+      if (hId && aId) koOverride[m] = { home: hId, away: aId, espnId: ev.id }; // espnId → habilita fallback de alineaciones ESPN en KO
     }
     const bracket = resolveRealBracket();
     let changed = 0;
@@ -1308,7 +1308,7 @@ function findFixtureMeta(id) {
   const r = db.results[String(k.m)];
   const home = (r && r.home) || (bracket[k.m] && bracket[k.m].home) || null;
   const away = (r && r.away) || (bracket[k.m] && bracket[k.m].away) || null;
-  return { id: String(id), kind: 'ko', m: k.m, home, away, datetime: k.datetime || (k.date + 'T18:00Z'), group: null, espnId: null, stage: k.stage };
+  return { id: String(id), kind: 'ko', m: k.m, home, away, datetime: k.datetime || (k.date + 'T18:00Z'), group: null, espnId: (koOverride[k.m] && koOverride[k.m].espnId) || null, stage: k.stage };
 }
 
 function modelProbsFor(home, away, result) {

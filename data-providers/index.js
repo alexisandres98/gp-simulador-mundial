@@ -112,7 +112,22 @@ async function getMatchContext(ctx) {
       }
     }
   }
-  // fallback: alineación probable manual
+  // fallback ESPN: si API-Football no dio alineación (p.ej. cuota diaria agotada) y hay espnId, usamos los rosters
+  // REALES del summary de ESPN (titulares confirmados + suplentes + formación). Mucho mejor que la probable manual.
+  if ((!result.lineups.home || !result.lineups.away) && ctx.espnId) {
+    const summary = await safe(() => espn.getMatchSummary(ctx.espnId), null);
+    const rosters = summary && summary.rosters;
+    if (Array.isArray(rosters)) {
+      for (const r of rosters) {
+        const side = r.homeAway === 'home' ? 'home' : r.homeAway === 'away' ? 'away' : null;
+        if (side && !result.lineups[side]) {
+          const nl = N.normalizeEspnLineup(r);
+          if (nl && nl.startXI.length) { result.lineups[side] = nl; status.usedEspnFallback = true; }
+        }
+      }
+    }
+  }
+  // fallback: alineación probable manual (último recurso)
   for (const side of ['home', 'away']) {
     if (!result.lineups[side]) {
       const code = side === 'home' ? ctx.homeCode : ctx.awayCode;

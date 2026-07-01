@@ -89,6 +89,23 @@ function normalizeProjectedLineup(manual) {
   return { confirmed: false, formation: manual.formation || null, coach: manual.coach || null, startXI: players, substitutes: [] };
 }
 
+// ---- alineación desde ESPN (rosters del summary) — fallback cuando API-Football no está (cuota agotada/sin key).
+// ESPN roster: { homeAway, formation:'4-2-3-1', roster:[{ starter, jersey, position:{abbreviation}, athlete:{id,displayName} }] }
+function normalizeEspnLineup(espnRoster) {
+  if (!espnRoster || !Array.isArray(espnRoster.roster) || !espnRoster.roster.length) return null;
+  const mapP = (p) => normalizePlayer({
+    id: p.athlete && p.athlete.id,
+    name: p.athlete && (p.athlete.displayName || p.athlete.fullName || p.athlete.shortName),
+    number: p.jersey != null ? p.jersey : (p.athlete && p.athlete.jersey),
+    position: (p.position && (p.position.abbreviation || p.position.name)) || (p.athlete && p.athlete.position && (p.athlete.position.abbreviation || p.athlete.position.name)) || null,
+  });
+  const starters = espnRoster.roster.filter(x => x.starter);
+  const subs = espnRoster.roster.filter(x => !x.starter);
+  const formation = typeof espnRoster.formation === 'string' ? espnRoster.formation : (espnRoster.formation && (espnRoster.formation.name || espnRoster.formation.abbreviation)) || null;
+  if (!starters.length) return null;
+  return { confirmed: starters.length >= 11, formation, coach: null, startXI: starters.map(mapP), substitutes: subs.map(mapP) };
+}
+
 // ---- evento de partido ----
 function normalizeEvent(af = {}) {
   const type = (af.type || '').toLowerCase();
@@ -223,7 +240,7 @@ function normalizeNews(article = {}) {
 
 module.exports = {
   normStatus, playerStatusFromReason,
-  normalizePlayer, normalizeInjury, normalizeLineup, normalizeProjectedLineup,
+  normalizePlayer, normalizeInjury, normalizeLineup, normalizeProjectedLineup, normalizeEspnLineup,
   normalizeEvent, normalizeStatistics, normalizeTeamForm, normalizeTeamFormManual,
   normalizeMatchBasic, normalizeNews,
 };

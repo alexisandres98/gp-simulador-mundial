@@ -153,6 +153,17 @@
       opp_actionable: 'Accionable', opp_watch_only: 'En observación',
       opp_arb_na: 'Arbitraje no disponible', opp_arb_evaluated: 'comparaciones', opp_arb_executable: 'ejecutables', opp_arb_note: 'Cero ejecutables es un resultado válido: los mercados están alineados.', opp_arb_market: 'Mercado', opp_arb_margin: 'Margen neto',
       arbst_EXECUTABLE: 'Ejecutable', arbst_THEORETICAL_ONLY: 'Solo teórico', arbst_PARTIAL_EXECUTION_RISK: 'Ejecución parcial', arbst_BLOCKED: 'Bloqueado', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Reglas distintas', arbst_EXPIRED: 'Expirado', arbst_SUSPENDED: 'Suspendido', arbst_STALE: 'Desactualizado',
+      arb_tag_1x2: '1X2', arb_tag_totals: 'Goles {line}', arb_over: 'Más de {line}', arb_under: 'Menos de {line}', arb_draw: 'Empate',
+      arb_fam_pure: 'Arbitraje puro', arb_fam_pure_sub: 'El mercado se contradice entre casas: apostás las dos patas y ganás pase lo que pase.',
+      arb_fam_lag: 'Precio atrasado', arb_fam_lag_sub: 'Una casa quedó por encima del consenso: value +EV en una sola apuesta.',
+      arb_roi: 'ROI garantizado', arb_value: 'Valor', arb_stake: 'Poné', arb_at: 'en', arb_fair: 'Cuota justa', arb_consensus: 'consenso de {n} casas', arb_exchange: 'exchange',
+      arb_kpi_markets: 'mercados escaneados', arb_kpi_surebets: 'surebets', arb_kpi_lags: 'precios atrasados',
+      arb_none_pure: 'Sin surebets ahora mismo', arb_none_pure_sub: 'Escaneamos {n} mercados y las casas están alineadas. Seguimos mirando.',
+      arb_none_lag: 'Sin precios atrasados ahora', arb_none_lag_sub: 'Ninguna casa se salió del consenso lo suficiente. Volvé en unos minutos.',
+      arb_gubbing: 'Ojo: las casas recreativas limitan o cierran a quien apuesta siempre con ventaja. Apostá con moderación y variá de casa.',
+      arb_prep: 'Arbitraje en preparación', arb_prep_sub: 'El scanner multi-venue se está activando. Vuelve en un momento.',
+      arb_disclaimer: 'Estimaciones de un scanner de precios de mercado, no consejo financiero. Verificá cuota y reglas en la casa antes de apostar.',
+      arb_ago_now: 'recién', arb_ago_min: 'hace {m} min', arb_ago_hr: 'hace {h} h',
       perf_matches: 'Todos los partidos evaluados', perf_predicted: 'GP', perf_result: 'Resultado', perf_hit: 'Acierto', perf_acc: 'Precisión',
       gp_pending_ctx: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto detallado (forma, bajas, etc.) está en la pestaña Contexto.',
     },
@@ -299,6 +310,17 @@
       opp_actionable: 'Actionable', opp_watch_only: 'Watch',
       opp_arb_na: 'Arbitrage unavailable', opp_arb_evaluated: 'comparisons', opp_arb_executable: 'executable', opp_arb_note: 'Zero executable is a valid result: the markets are aligned.', opp_arb_market: 'Market', opp_arb_margin: 'Net margin',
       arbst_EXECUTABLE: 'Executable', arbst_THEORETICAL_ONLY: 'Theoretical only', arbst_PARTIAL_EXECUTION_RISK: 'Partial execution', arbst_BLOCKED: 'Blocked', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Different rules', arbst_EXPIRED: 'Expired', arbst_SUSPENDED: 'Suspended', arbst_STALE: 'Stale',
+      arb_tag_1x2: '1X2', arb_tag_totals: 'Goals {line}', arb_over: 'Over {line}', arb_under: 'Under {line}', arb_draw: 'Draw',
+      arb_fam_pure: 'Pure arbitrage', arb_fam_pure_sub: 'The market contradicts itself across books: back every leg and profit no matter the result.',
+      arb_fam_lag: 'Stale price', arb_fam_lag_sub: 'One book lags the consensus: +EV value on a single bet.',
+      arb_roi: 'Guaranteed ROI', arb_value: 'Value', arb_stake: 'Stake', arb_at: 'at', arb_fair: 'Fair odds', arb_consensus: '{n}-book consensus', arb_exchange: 'exchange',
+      arb_kpi_markets: 'markets scanned', arb_kpi_surebets: 'surebets', arb_kpi_lags: 'stale prices',
+      arb_none_pure: 'No surebets right now', arb_none_pure_sub: 'We scanned {n} markets and the books are aligned. Still watching.',
+      arb_none_lag: 'No stale prices right now', arb_none_lag_sub: 'No book strayed far enough from consensus. Check back in a few minutes.',
+      arb_gubbing: 'Heads up: soft books limit or close accounts that always bet with an edge. Bet moderately and vary books.',
+      arb_prep: 'Arbitrage warming up', arb_prep_sub: 'The multi-venue scanner is spinning up. Check back shortly.',
+      arb_disclaimer: 'Estimates from a market-price scanner, not financial advice. Verify odds and rules at the book before betting.',
+      arb_ago_now: 'just now', arb_ago_min: '{m} min ago', arb_ago_hr: '{h}h ago',
       perf_matches: 'All evaluated matches', perf_predicted: 'GP', perf_result: 'Result', perf_hit: 'Hit', perf_acc: 'Accuracy',
       gp_pending_ctx: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Detailed context (form, absences, etc.) is in the Context tab.',
     }
@@ -717,27 +739,79 @@
     bd.innerHTML = outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
   }
   // ---- Oportunidades · Arbitraje ----
+  // ---- Oportunidades · Arbitraje: scanner MULTI-VENUE con dos familias. "Arbitraje puro" (surebet 2/N patas,
+  // el mercado se contradice entre casas → ganás pase lo que pase) y "Precio atrasado" (value 1-pata: una casa
+  // cuelga una cuota por encima del consenso no-vig del resto → +EV en una apuesta). Sin modelo GP (eso es Value).
+  function arbAgo(s) { if (s == null) return ''; if (s < 90) return t('arb_ago_now'); var m = Math.round(s / 60); if (m < 60) return t('arb_ago_min', { m: m }); return t('arb_ago_hr', { h: Math.round(m / 60) }); }
+  function arbTag(it) { return it.market_family === 'match_total' ? t('arb_tag_totals', { line: it.line }) : t('arb_tag_1x2'); }
+  function arbTitle(it) { return teamName(it.home_team_id, it.home) + ' ' + t('vs') + ' ' + teamName(it.away_team_id, it.away); }
+  function arbSel(it, outcome) {
+    if (it.market_family === 'match_total') return outcome === 'over' ? t('arb_over', { line: it.line }) : t('arb_under', { line: it.line });
+    if (outcome === 'draw') return t('arb_draw');
+    if (outcome === 'home') return teamName(it.home_team_id, it.home);
+    if (outcome === 'away') return teamName(it.away_team_id, it.away);
+    return outcome;
+  }
+  function arbMatchRow(it) { return '<div class="gx-arb-match"><span class="fl">' + flag(it.home_team_id) + '</span><b>' + esc(arbTitle(it)) + '</b><span class="fl">' + flag(it.away_team_id) + '</span></div>'; }
+  function arbCard(a) {
+    var legs = (a.legs || []).map(function (l) {
+      return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(arbSel(a, l.outcome)) + '</span>' +
+        '<span class="gx-arb-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
+        '<span class="gx-arb-leg-book">' + esc(l.venue_label || l.venue) + (l.is_exchange ? ' <span class="gx-arb-exch">' + esc(t('arb_exchange')) + '</span>' : '') + '</span>' +
+        '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
+    }).join('');
+    var roi = (a.net_roi * 100);
+    return '<div class="gx-arb-card' + (a.executable ? ' gx-arb-exe' : '') + '">' +
+      '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span>' +
+      '<span class="gx-pick-time">' + esc(arbTag(a)) + ' · ' + esc(fmtDateTime(a.kickoff)) + '</span></div>' +
+      arbMatchRow(a) +
+      '<div class="gx-arb-legs">' + legs + '</div>' +
+      '<div class="gx-pick-foot"><div class="gx-arb-roi ' + (a.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + roi.toFixed(2) + '%</b></div>' +
+      '<div class="gx-arb-fresh gx-dim">' + ic('clock') + esc(arbAgo(a.freshness_s)) + '</div></div>' +
+      '</div>';
+  }
+  function lagCard(l) {
+    var edge = (l.edge * 100);
+    var openId = (l.home_team_id && l.away_team_id) ? 'teams-' + l.home_team_id + '-' + l.away_team_id : null;
+    return '<div class="gx-lag-card' + (openId ? ' gx-pick-clickable' : '') + '"' + (openId ? ' data-openmatch="' + esc(openId) + '"' : '') + '>' +
+      '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-lag">' + ic('trending-up') + esc(t('arb_fam_lag')) + '</span>' +
+      '<span class="gx-pick-time">' + esc(arbTag(l)) + ' · ' + esc(fmtDateTime(l.kickoff)) + '</span></div>' +
+      arbMatchRow(l) +
+      '<div class="gx-lag-rec"><span class="gx-lag-sel">' + esc(arbSel(l, l.outcome)) + '</span>' +
+      '<span class="gx-lag-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
+      '<span class="gx-lag-book">' + esc(t('arb_at')) + ' ' + esc(l.venue_label || l.venue) + '</span></div>' +
+      '<div class="gx-pick-foot"><div class="gx-lag-edge gx-pos">' + ic('target-arrow') + esc(t('arb_value')) + ': <b>+' + edge.toFixed(1) + '%</b>' +
+      '<span class="gx-dim"> · ' + esc(t('arb_fair')) + ' ' + Number(l.fair_odds).toFixed(2) + ' · ' + esc(t('arb_consensus', { n: l.consensus_groups })) + '</span></div>' +
+      '<div class="gx-arb-fresh gx-dim">' + ic('clock') + esc(arbAgo(l.freshness_s)) + '</div></div>' +
+      '</div>';
+  }
   function oppArbBoard(bd) {
     if (S.arb === undefined) {
       S.arb = null; bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
-      fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : (r.status === 404 ? { _na: true } : null); }).catch(function () { return null; }).then(function (m) { S.arb = m || { _empty: true }; if (S.oppSub === 'arb' && S.view === 'board') board([]); });
+      fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) { S.arb = m || { available: false, reason: 'error' }; if (S.oppSub === 'arb' && S.view === 'board') board([]); });
       return;
     }
     var d = S.arb || {};
-    if (d._na) { bd.innerHTML = '<div class="gx-empty">' + ic('lock') + '<b>' + esc(t('opp_arb_na')) + '</b></div>'; return; }
-    var items = d.items || [], exe = d.executable_count || 0;
-    var head = '<div class="gx-arb-head"><div class="gx-arb-kpi"><b class="gx-mono">' + (d.count || 0) + '</b><span class="gx-dim">' + esc(t('opp_arb_evaluated')) + '</span></div><div class="gx-arb-kpi"><b class="gx-mono ' + (exe ? 'gx-pos' : 'gx-dim') + '">' + exe + '</b><span class="gx-dim">' + esc(t('opp_arb_executable')) + '</span></div><span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + esc(t('opp_arb_note')) + '</span></div>';
-    if (!items.length) { bd.innerHTML = head + '<div class="gx-empty">' + ic('shield-check') + '<b>' + esc(t('no_arb')) + '</b>' + esc(t('no_arb_sub')) + '</div>'; return; }
-    var ST = { EXECUTABLE: 'gx-b-strong', THEORETICAL_ONLY: 'gx-b-watch', PARTIAL_EXECUTION_RISK: 'gx-b-watch', BLOCKED: 'gx-b-pass', BLOCKED_SEMANTIC_MISMATCH: 'gx-b-pass', EXPIRED: 'gx-b-pass', SUSPENDED: 'gx-b-pass', STALE: 'gx-b-pass' };
-    var rows = items.slice(0, 40).map(function (a) {
-      var sc = a.state_code || a.status_code || a.classification_code || 'BLOCKED';
-      var legs = (a.legs || []).map(function (l) { return l.venue || l.provider_label || ''; }).filter(Boolean).join(' ↔ ');
-      var margin = a.economics && a.economics.net_margin != null ? a.economics.net_margin : (a.net_margin != null ? a.net_margin : null);
-      return '<tr><td class="l"><b>' + esc(a.market_label || a.event_display || a.outcome_label || legs || '—') + '</b>' + (legs ? '<div class="gx-dim" style="font-size:11px">' + esc(legs) + '</div>' : '') + '</td>' +
-        '<td class="l"><span class="gx-badge ' + (ST[sc] || 'gx-b-pass') + '">' + esc(t('arbst_' + sc) || sc.replace(/_/g, ' ')) + '</span></td>' +
-        '<td class="gx-mono ' + (margin > 0 ? 'gx-pos' : 'gx-dim') + '">' + (margin != null ? (margin * 100).toFixed(2) + '%' : '—') + '</td></tr>';
-    }).join('');
-    bd.innerHTML = head + '<table class="gx-table"><thead><tr><th class="l">' + esc(t('opp_arb_market')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th>' + esc(t('opp_arb_margin')) + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    var cc = $('#gx-board-count'); if (cc) cc.textContent = '';
+    if (!d.available) { bd.innerHTML = '<div class="gx-empty"><div class="gx-arb-scan-ic">' + ic('arrows-left-right') + '</div><b>' + esc(t('arb_prep')) + '</b><span class="gx-dim">' + esc(t('arb_prep_sub')) + '</span></div>'; return; }
+    var C = d.counts || {}, arbs = d.arbitrage || [], lags = d.price_lag || [];
+    // KPIs del observatorio
+    var head = '<div class="gx-arb-head">' +
+      '<div class="gx-arb-kpi"><b class="gx-mono">' + (C.markets_scanned || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_markets')) + '</span></div>' +
+      '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.arb_executable ? 'gx-pos' : 'gx-dim') + '">' + (C.arb_executable || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_surebets')) + '</span></div>' +
+      '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.lag_soft ? 'gx-pos' : 'gx-dim') + '">' + (C.lag_soft || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_lags')) + '</span></div>' +
+      '</div>';
+    // Sección 1 — Arbitraje puro
+    var sec1 = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-arb-sec-t">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span><span class="gx-dim">' + esc(t('arb_fam_pure_sub')) + '</span></div>';
+    if (arbs.length) sec1 += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + arbs.map(arbCard).join('') + '</div>';
+    else sec1 += '<div class="gx-empty gx-arb-obs">' + ic('shield-check') + '<b>' + esc(t('arb_none_pure')) + '</b><span class="gx-dim">' + esc(t('arb_none_pure_sub', { n: C.markets_scanned || 0 })) + '</span></div>';
+    sec1 += '</div>';
+    // Sección 2 — Precio atrasado
+    var sec2 = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-arb-sec-t">' + ic('trending-up') + esc(t('arb_fam_lag')) + '</span><span class="gx-dim">' + esc(t('arb_fam_lag_sub')) + '</span></div>';
+    if (lags.length) sec2 += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + lags.map(lagCard).join('') + '</div>';
+    else sec2 += '<div class="gx-empty gx-arb-obs">' + ic('target-arrow') + '<b>' + esc(t('arb_none_lag')) + '</b><span class="gx-dim">' + esc(t('arb_none_lag_sub')) + '</span></div>';
+    sec2 += '</div>';
+    bd.innerHTML = head + sec1 + sec2 + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
   }
   function boardTable(rows) {
     return '<table class="gx-table"><thead><tr>' +

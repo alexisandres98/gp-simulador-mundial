@@ -61,6 +61,8 @@ const operations = require('./operations'); // Sprint 8A — orquestador de jobs
 const uiFlags = require('./ui-flags'); // Sprint 8.1 — flags de integración de UI (INERTE si UI_* off → UI idéntica)
 const gpProduct = require('./gp-product/flags'); // Fase Q — experiencia de producto beta (INERTE si GP_BETA_UI_ENABLED off)
 const gpProductApi = require('./gp-product/api'); // Fase Q — dispatcher de /api/beta/* (gateado por betaGuard)
+const marketScanner = require('./market-scanner');        // Scanner multi-venue (Arbitraje puro + Precio atrasado). INERTE sin MARKET_SCANNER_ENABLED.
+const marketScannerDto = require('./market-scanner/dto');  // DTO neutral del scanner para /api/beta/arbitrage
 const userPrefs = require('./user-preferences'); // Sprint 8A — preferencias + onboarding (INERTE sin flags)
 const userAlerts = require('./alerts');           // Sprint 8A — motor de alertas de usuario (INERTE sin flags)
 const productAnalytics = require('./analytics');   // Sprint 8A — analítica de producto (INERTE sin flags)
@@ -2246,6 +2248,19 @@ function isAdmin(email) {
   return email === firstUser; // el primer usuario registrado es admin
 }
 
+// Scanner multi-venue: scan con cache TTL (evita re-escanear la DB en cada request). INERTE si el flag está off
+// (scanNow devuelve {disabled:true} sin tocar la DB). Refresca a lo sumo cada MARKET_SCANNER_TTL_MS (default 45s).
+let _scanCache = { at: 0, data: null, running: null };
+async function getMarketScan() {
+  const ttl = parseInt(process.env.MARKET_SCANNER_TTL_MS, 10) || 45000;
+  if (_scanCache.data && Date.now() - _scanCache.at < ttl) return _scanCache.data;
+  if (_scanCache.running) return _scanCache.running.then(() => _scanCache.data).catch(() => _scanCache.data);
+  _scanCache.running = marketScanner.scanNow(require('./database/client'), {})
+    .then(scan => { _scanCache = { at: Date.now(), data: scan, running: null }; return scan; })
+    .catch(err => { _scanCache.running = null; return _scanCache.data || { unavailable: 'scan_error', error: String(err && err.message || err) }; });
+  return _scanCache.running;
+}
+
 // betaGuard — Fase Q. Guard server-side de toda ruta /api/beta/*. Devuelve el user autorizado o null (y ya
 // respondió). 404 si la beta está globalmente apagada (la ruta "no existe"); 401 sin sesión; 403 si hay sesión
 // pero el usuario no es admin ni está en la allowlist de QA. NO confía en flags del cliente.
@@ -2328,6 +2343,14 @@ const server = http.createServer(async (req, res) => {
           };
         }).filter(Boolean).sort((a, b) => b.edge_pp - a.edge_pp);
         return json(res, 200, { items, count: items.length, market_code: 'WC_WINNER', generated_at: new Date().toISOString() });
+      }
+      // ARBITRAJE (scanner multi-venue): DOS familias — "Arbitraje puro" (surebet 2/N patas, cross-venue) y
+      // "Precio atrasado" (value 1-pata: casa cuya cuota rezaga el consenso no-vig del resto). Es el MERCADO
+      // contradiciéndose entre venues, sin modelo GP (Value=GP-vs-mercado vive aparte, intacto). Cache TTL.
+      if (p === '/api/beta/arbitrage' && req.method === 'GET') {
+        const scan = await getMarketScan();
+        const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => aliasToId[normName(name)] || null, maxItems: marketScanner.params.maxOpportunities });
+        return json(res, 200, dto);
       }
       const ctx = {
         db: require('./database/client'),

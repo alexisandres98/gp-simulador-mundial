@@ -180,6 +180,21 @@
       arb_x_trade_soft: 'en esta casa no podés vender la posición, así que el valor se realiza a LARGO PLAZO (muchas apuestas), con varianza plena en cada una. Apostá poco; si la cuota se mueve a tu favor, algunas casas ofrecen "cash out" parcial para cerrar antes.',
       perf_matches: 'Todos los partidos evaluados', perf_predicted: 'GP', perf_result: 'Resultado', perf_hit: 'Acierto', perf_acc: 'Precisión',
       gp_pending_ctx: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto detallado (forma, bajas, etc.) está en la pestaña Contexto.',
+      calc_nav: 'Calculadora', calc_title: 'Calculadora de stake', calc_open: 'Calcular stake', calc_open_arb: 'Repartir stake',
+      calc_bankroll: 'Tu bankroll', calc_currency: 'Moneda', calc_prob: 'Probabilidad', calc_prob_gp: 'Probabilidad GP', calc_prob_cons: 'Consenso del mercado',
+      calc_odds: 'Cuota', calc_fraction: 'Fracción Kelly', calc_full: 'Pleno',
+      calc_suggested: 'Stake sugerido', calc_of_bankroll: 'del bankroll', calc_ev: 'Ganancia esperada', calc_be: 'Prob. de equilibrio',
+      calc_noedge: 'Sin ventaja a esta cuota', calc_noedge_sub: 'La cuota no cubre la probabilidad estimada — no se sugiere stake.',
+      calc_capped: 'Limitado al {pct} del bankroll (tope de seguridad)',
+      calc_prefill_gp: 'Prellenado con la probabilidad GP', calc_prefill_cons: 'Prellenado con el consenso sin margen del mercado',
+      calc_set_bankroll: 'Ingresá tu bankroll para ver el monto', calc_kelly_note: 'Kelly fraccionado con tope del 5% — gestión de riesgo conservadora.',
+      calc_disc: 'Sugerencia educativa según tu bankroll. No es consejo financiero. Apostá con responsabilidad.',
+      calc_mode_simple: 'Apuesta simple', calc_mode_arb: 'Arbitraje',
+      calc_total: 'Monto total a repartir', calc_per_leg: 'Reparto por pata', calc_guaranteed: 'Ganancia garantizada', calc_payout: 'Retorno igual',
+      calc_put: 'Poné', calc_arb_invalid: 'Con estas cuotas no hay ganancia garantizada (margen ≥ 100%).', calc_leg: 'Pata',
+      calc_intro_simple: 'Calculá cuánto apostar según tu bankroll. Prellenamos la probabilidad con nuestro modelo — ese es el diferenciador.',
+      calc_intro_arb: 'Ingresá las cuotas de cada pata y el monto total: te repartimos cuánto poner en cada casa para asegurar la ganancia.',
+      calc_add_leg: 'Agregar pata', calc_remove: 'Quitar', calc_saved: 'Guardado en este dispositivo', calc_edge: 'Ventaja',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -351,6 +366,21 @@
       arb_x_trade_soft: 'at this book you cannot sell the position, so value is realized over the LONG RUN (many bets), with full variance on each. Bet small; if the line moves your way, some books offer partial cash out to close early.',
       perf_matches: 'All evaluated matches', perf_predicted: 'GP', perf_result: 'Result', perf_hit: 'Hit', perf_acc: 'Accuracy',
       gp_pending_ctx: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Detailed context (form, absences, etc.) is in the Context tab.',
+      calc_nav: 'Calculator', calc_title: 'Stake calculator', calc_open: 'Calculate stake', calc_open_arb: 'Split stake',
+      calc_bankroll: 'Your bankroll', calc_currency: 'Currency', calc_prob: 'Probability', calc_prob_gp: 'GP probability', calc_prob_cons: 'Market consensus',
+      calc_odds: 'Odds', calc_fraction: 'Kelly fraction', calc_full: 'Full',
+      calc_suggested: 'Suggested stake', calc_of_bankroll: 'of bankroll', calc_ev: 'Expected profit', calc_be: 'Break-even prob.',
+      calc_noedge: 'No edge at these odds', calc_noedge_sub: 'The odds don’t cover the estimated probability — no stake suggested.',
+      calc_capped: 'Capped at {pct} of bankroll (safety cap)',
+      calc_prefill_gp: 'Prefilled with the GP probability', calc_prefill_cons: 'Prefilled with the market’s no-vig consensus',
+      calc_set_bankroll: 'Enter your bankroll to see the amount', calc_kelly_note: 'Fractional Kelly capped at 5% — conservative risk management.',
+      calc_disc: 'Educational suggestion based on your bankroll. Not financial advice. Bet responsibly.',
+      calc_mode_simple: 'Single bet', calc_mode_arb: 'Arbitrage',
+      calc_total: 'Total to split', calc_per_leg: 'Split per leg', calc_guaranteed: 'Guaranteed profit', calc_payout: 'Equal payout',
+      calc_put: 'Stake', calc_arb_invalid: 'These odds don’t guarantee a profit (margin ≥ 100%).', calc_leg: 'Leg',
+      calc_intro_simple: 'Work out how much to bet based on your bankroll. We prefill the probability from our model — that’s the edge.',
+      calc_intro_arb: 'Enter each leg’s odds and your total: we split how much to stake at each book so the profit is locked in.',
+      calc_add_leg: 'Add leg', calc_remove: 'Remove', calc_saved: 'Saved on this device', calc_edge: 'Edge',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -457,7 +487,7 @@
   ];
   var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
-  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf'].indexOf(v) >= 0 ? v : 'opps'); }
+  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc'].indexOf(v) >= 0 ? v : 'opps'); }
   function shell() {
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
@@ -615,7 +645,7 @@
   }
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
-    var items = [['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']].concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
+    var items = [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']].concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
     var existing = document.getElementById('gx-more-sheet'); if (existing) existing.remove();
     var sheet = document.createElement('div'); sheet.id = 'gx-more-sheet'; sheet.className = 'gx-sheet-wrap';
     sheet.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('more')) + '</b><button class="gx-sheet-x" aria-label="close">' + ic('x') + '</button></div><div class="gx-sheet-grid">' +
@@ -872,7 +902,9 @@
       '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>' +
       '<div class="gx-pick-odds"><span class="gx-pick-odds-label">' + esc(t('pf_best_odds')) + '</span><span class="gx-pick-odds-val">' + esc(odds) + '</span>' +
       (p.book ? '<span class="gx-pick-book">' + esc(t('pf_at')) + ' ' + esc(prettyBook(p.book)) + '</span>' : '') + '</div>' +
-      '</div></div>';
+      '</div>' +
+      (p.odds != null && p.confidence != null ? '<div class="gx-calc-row">' + stakeCalcBtn(p.confidence, Number(p.odds), pickRecText(p), 'gp') + '</div>' : '') +
+      '</div>';
   }
 
   // ---- Oportunidades · Value: OUTRIGHT (campeón del Mundial) — GP% (torneo) vs mercado ----
@@ -912,10 +944,12 @@
         '<td class="l">' + (sigBadge(v.classification_code) || '—') + '</td><td class="gx-mono gx-gp"><span class="hi">' + pct0(v.gp_probability) + '</span></td><td class="gx-mono gx-dim">' + pct0(v.market_probability) + '</td><td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span></td>' +
         '<td class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</td>' +
         '<td class="l">' + (x.bm ? '<span class="gx-belowmin">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(t('opp_watch_only')) + '</span>')) + '</td>' +
-        '<td class="l gx-dim" style="font-size:11px">' + esc(prettyBook(v.best_sportsbook) || "—") + '</td></tr>'; }).join('') + '</tbody></table>';
+        '<td class="l gx-dim" style="font-size:11px">' + esc(prettyBook(v.best_sportsbook) || "—") + (v.gp_probability > 0 && v.best_odds > 1 ? ' ' + stakeCalcBtn(v.gp_probability, Number(v.best_odds), x.name + (x.matchN ? ' · ' + x.matchN : ''), 'gp') : '') + '</td></tr>'; }).join('') + '</tbody></table>';
     var mob = rows.map(function (x) { var v = x.v; return '<div class="gx-mcard" data-openmatch="' + esc(v.event_id) + '"><div class="gx-mcard-top">' + (sigBadge(v.classification_code) || '') + '<span class="gx-spacer"></span>' + (x.bm ? '<span class="gx-belowmin">' + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '')) + '</div>' +
       '<div class="gx-cell-team" style="margin:6px 0">' + (x.fid ? '<span class="fl">' + flag(x.fid) + '</span>' : '') + '<div class="gx-teamnames"><b>' + esc(x.name) + '</b><span>' + esc(x.matchN) + '</span></div></div>' +
-      '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div></div>'; }).join('');
+      '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div>' +
+      (v.gp_probability > 0 && v.best_odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v.gp_probability, Number(v.best_odds), x.name + (x.matchN ? ' · ' + x.matchN : ''), 'gp') + '</div>' : '') +
+      '</div>'; }).join('');
     bd.innerHTML = outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
   }
   // ---- Oportunidades · Arbitraje ----
@@ -950,6 +984,7 @@
       '<div class="gx-arb-legs">' + legs + '</div>' +
       '<div class="gx-pick-foot"><div class="gx-arb-roi ' + (a.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') + esc(roiLbl) + ': <b>+' + roi.toFixed(2) + '%</b></div>' +
       '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
+      ((a.legs || []).length >= 2 ? '<div class="gx-calc-row">' + arbCalcBtn(a) + '</div>' : '') +
       '</div>';
   }
   function lagCard(l, i) {
@@ -965,6 +1000,7 @@
       '<div class="gx-pick-foot"><div class="gx-lag-edge gx-pos">' + ic('target-arrow') + esc(t('arb_value')) + ': <b>+' + edge.toFixed(1) + '%</b>' +
       '<span class="gx-dim"> · ' + esc(t('arb_fair')) + ' ' + Number(l.fair_odds).toFixed(2) + ' · ' + esc(t('arb_consensus', { n: l.consensus_groups })) + '</span></div>' +
       '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
+      (l.fair_odds > 1 && l.odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(1 / Number(l.fair_odds), Number(l.odds), arbSel(l, l.outcome), 'cons') + '</div>' : '') +
       '</div>';
   }
   // Carga ÚNICA compartida de /api/beta/arbitrage (KPIs y board la usan sin pisarse). Devuelve true si ya está lista.
@@ -1061,6 +1097,252 @@
     opp._openId = openId; S.arbCtx = opp;
     openMatch(openId);
   }
+
+  // ============================ CALCULADORA DE STAKE (solo /x) ============================
+  // Prellenada con la probabilidad GP (picks/value) o el consenso sin margen del mercado (precio atrasado) —
+  // ese prellenado ES el diferenciador. Kelly fraccionado (default 1/4) con tope duro del 5% del bankroll.
+  // Arbitraje: reparte un monto total entre las patas → montos por casa + ganancia garantizada. Bankroll y
+  // moneda viven SOLO en localStorage (privado, sin servidor, sin tocar la cuenta). NUNCA en la principal.
+  var CALC_CCYS = [['USD', '$'], ['EUR', '€'], ['GBP', '£'], ['COP', '$'], ['MXN', '$'], ['ARS', '$'], ['CLP', '$'], ['PEN', 'S/'], ['BRL', 'R$'], ['NGN', '₦'], ['GHS', 'GH₵'], ['KES', 'KSh'], ['ZAR', 'R'], ['XOF', 'CFA']];
+  var CALC_KELLY_CAP = 0.05; // tope duro: nunca sugerir más del 5% del bankroll
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, String(v)); } catch (e) {} }
+  function calcCcy() { var c = lsGet('gp_calc_ccy'); for (var i = 0; i < CALC_CCYS.length; i++) if (CALC_CCYS[i][0] === c) return c; return 'USD'; }
+  function calcSym(code) { code = code || calcCcy(); for (var i = 0; i < CALC_CCYS.length; i++) if (CALC_CCYS[i][0] === code) return CALC_CCYS[i][1]; return '$'; }
+  function calcBankroll() { var v = parseFloat(lsGet('gp_calc_bankroll')); return isFinite(v) && v > 0 ? v : 0; }
+  function calcFraction() { var v = parseFloat(lsGet('gp_calc_fraction')); return (isFinite(v) && v > 0 && v <= 1) ? v : 0.25; }
+  function fmtMoney(v, code) { var sym = calcSym(code); if (!isFinite(v)) v = 0; var neg = v < 0; v = Math.abs(v); var s = v >= 1000 ? v.toFixed(0) : (Math.round(v * 100) / 100).toFixed(2); s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ','); return (neg ? '−' : '') + sym + s; }
+  var FRACS = [['0.5', '½'], ['0.25', '¼'], ['0.125', '⅛']];
+  // Kelly fraccionado con tope. p en (0,1), odds decimales. Devuelve el desglose completo.
+  function calcKelly(p, odds, bankroll, fraction) {
+    var b = odds - 1, r = { hasEdge: false, kellyFull: 0, fracPct: 0, pct: 0, capped: false, stake: 0, ev: 0, be: (odds > 0 ? 1 / odds : 0), edge: null };
+    if (!(p > 0 && p < 1) || !(odds > 1)) return r;
+    r.edge = p - 1 / odds;
+    var f = (b * p - (1 - p)) / b; r.kellyFull = f;
+    if (f <= 0) return r;
+    r.hasEdge = true;
+    var frac = f * fraction; r.fracPct = frac;
+    var pct = Math.min(frac, CALC_KELLY_CAP); r.capped = pct < frac - 1e-9; r.pct = pct;
+    r.stake = bankroll > 0 ? bankroll * pct : 0;
+    r.ev = r.stake * (p * b - (1 - p));
+    return r;
+  }
+  // Reparte 'total' entre patas de cuotas 'odds' para igualar el retorno pase lo que pase.
+  function calcArbSplit(odds, total) {
+    var inv = odds.map(function (o) { return o > 1 ? 1 / o : 0; });
+    var sum = inv.reduce(function (a, x) { return a + x; }, 0);
+    var ok = sum > 0;
+    var stakes = inv.map(function (x) { return ok ? total * x / sum : 0; });
+    var payout = ok ? total / sum : 0;
+    return { stakes: stakes, payout: payout, guaranteed: payout - total, roi: total > 0 ? (payout - total) / total : 0, sumInv: sum, valid: ok && sum < 1 };
+  }
+
+  // ---- botones que se inyectan en las cards ----
+  function stakeCalcBtn(p, odds, sel, src) {
+    if (!(p > 0 && p < 1) || !(odds > 1)) return '';
+    return '<button class="gx-calc-btn" data-calc="stake" data-p="' + p.toFixed(4) + '" data-odds="' + Number(odds).toFixed(2) + '" data-sel="' + esc(sel || '') + '" data-src="' + (src || 'gp') + '">' + ic('calculator') + '<span>' + esc(t('calc_open')) + '</span></button>';
+  }
+  function arbCalcBtn(a) {
+    var legs = a.legs || []; if (legs.length < 2) return '';
+    var odds = legs.map(function (l) { return Number(l.odds).toFixed(2); }).join(',');
+    var sels = legs.map(function (l) { return arbSel(a, l.outcome); }).join('|');
+    var books = legs.map(function (l) { return prettyBook(l.venue_label || l.venue); }).join('|');
+    return '<button class="gx-calc-btn" data-calc="arb" data-odds="' + esc(odds) + '" data-sels="' + esc(sels) + '" data-books="' + esc(books) + '">' + ic('calculator') + '<span>' + esc(t('calc_open_arb')) + '</span></button>';
+  }
+
+  // ---- toggle inline (append en cards / colspan-row en tablas) ----
+  function toggleCalc(btn) {
+    var mode = btn.getAttribute('data-calc');
+    var tr = btn.closest('tr');
+    if (tr && tr.parentNode) {
+      var nx = tr.nextElementSibling;
+      if (nx && nx.classList.contains('gx-calc-trow')) { nx.parentNode.removeChild(nx); btn.classList.remove('on'); return; }
+      var ncols = tr.children.length, row = document.createElement('tr'); row.className = 'gx-calc-trow';
+      var td = document.createElement('td'); td.colSpan = ncols; td.appendChild(buildCalcPanel(btn, mode)); row.appendChild(td);
+      tr.parentNode.insertBefore(row, tr.nextSibling); btn.classList.add('on'); return;
+    }
+    var card = btn.closest('.gx-pick-card, .gx-arb-card, .gx-lag-card, .gx-mcard');
+    if (!card) return;
+    var ex = card.querySelector(':scope > .gx-calc-holder');
+    if (ex) { card.removeChild(ex); btn.classList.remove('on'); return; }
+    card.appendChild(buildCalcPanel(btn, mode)); btn.classList.add('on');
+  }
+  function buildCalcPanel(btn, mode) {
+    var holder = document.createElement('div'); holder.className = 'gx-calc-holder';
+    if (mode === 'arb') {
+      var odds = (btn.getAttribute('data-odds') || '').split(',').map(parseFloat).filter(function (x) { return isFinite(x); });
+      var sels = (btn.getAttribute('data-sels') || '').split('|'); var books = (btn.getAttribute('data-books') || '').split('|');
+      holder.innerHTML = arbPanelHtml(odds, sels, books, '', false);
+      wireArbPanel(holder);
+    } else {
+      var p = parseFloat(btn.getAttribute('data-p')), o = parseFloat(btn.getAttribute('data-odds'));
+      var sel = btn.getAttribute('data-sel') || '', src = btn.getAttribute('data-src') || 'gp';
+      holder.innerHTML = stakePanelHtml(p, o, sel, src, '');
+      wireStakePanel(holder);
+    }
+    return holder;
+  }
+
+  // ---- panel HTML: apuesta simple (Kelly) ----
+  function ccyOptions(sel) { return CALC_CCYS.map(function (c) { return '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[0] + '</option>'; }).join(''); }
+  function fracChips(active) { return FRACS.map(function (f) { return '<button type="button" class="gx-calc-frac' + (Math.abs(parseFloat(f[0]) - active) < 1e-6 ? ' on' : '') + '" data-frac="' + f[0] + '">' + f[1] + '</button>'; }).join(''); }
+  function stakePanelHtml(p, odds, sel, src, klass) {
+    var ccy = calcCcy(), br = calcBankroll(), fr = calcFraction();
+    var prefill = src === 'cons' ? t('calc_prefill_cons') : t('calc_prefill_gp');
+    return '<div class="gx-calc' + (klass ? ' ' + klass : '') + '" data-cmode="stake">' +
+      (sel ? '<div class="gx-calc-sel">' + ic('target-arrow') + '<b>' + esc(sel) + '</b></div>' : '') +
+      '<div class="gx-calc-grid">' +
+        '<label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('calc_bankroll')) + '</span><div class="gx-calc-money"><span class="gx-calc-cur">' + esc(calcSym(ccy)) + '</span><input class="gx-calc-in" data-k="bankroll" type="number" inputmode="decimal" min="0" step="any" placeholder="0" value="' + (br > 0 ? br : '') + '"><select class="gx-calc-ccy" data-k="ccy">' + ccyOptions(ccy) + '</select></div></label>' +
+        '<label class="gx-calc-f"><span>' + esc(src === 'cons' ? t('calc_prob_cons') : t('calc_prob_gp')) + '</span><div class="gx-calc-unit"><input class="gx-calc-in" data-k="prob" type="number" inputmode="decimal" min="0.1" max="99.9" step="0.1" value="' + (p * 100).toFixed(1) + '"><i>%</i></div></label>' +
+        '<label class="gx-calc-f"><span>' + esc(t('calc_odds')) + '</span><input class="gx-calc-in" data-k="odds" type="number" inputmode="decimal" min="1.01" step="0.01" value="' + Number(odds).toFixed(2) + '"></label>' +
+      '</div>' +
+      '<div class="gx-calc-fracrow"><span class="gx-calc-lbl">' + esc(t('calc_fraction')) + '</span><div class="gx-calc-fracs">' + fracChips(fr) + '</div></div>' +
+      '<div class="gx-calc-out" data-out></div>' +
+      '<div class="gx-calc-prefill">' + ic('sparkles') + esc(prefill) + '</div>' +
+      '<div class="gx-calc-disc">' + esc(t('calc_disc')) + '</div>' +
+    '</div>';
+  }
+  function stakeOutHtml(res, ccy) {
+    if (!res.hasEdge) return '<div class="gx-calc-noedge">' + ic('alert-triangle') + '<div><b>' + esc(t('calc_noedge')) + '</b><span>' + esc(t('calc_noedge_sub')) + '</span></div></div>';
+    var br = calcBankroll();
+    var main = br > 0 ? fmtMoney(res.stake, ccy) : '—';
+    return '<div class="gx-calc-result">' +
+      '<div class="gx-calc-big"><div class="gx-calc-biglbl">' + esc(t('calc_suggested')) + '</div><div class="gx-calc-bigval gx-mono">' + main + '</div>' +
+        '<div class="gx-calc-bigsub">' + (br > 0 ? (res.pct * 100).toFixed(1) + '% ' + esc(t('calc_of_bankroll')) : esc(t('calc_set_bankroll'))) + '</div></div>' +
+      '<div class="gx-calc-stats">' +
+        '<div class="gx-calc-stat"><span>' + esc(t('calc_edge')) + '</span><b class="gx-pos gx-mono">' + (res.edge != null ? '+' + (res.edge * 100).toFixed(1) + ' pp' : '—') + '</b></div>' +
+        (br > 0 ? '<div class="gx-calc-stat"><span>' + esc(t('calc_ev')) + '</span><b class="gx-pos gx-mono">' + fmtMoney(res.ev, ccy) + '</b></div>' : '') +
+        '<div class="gx-calc-stat"><span>' + esc(t('calc_be')) + '</span><b class="gx-mono">' + (res.be * 100).toFixed(1) + '%</b></div>' +
+      '</div>' +
+      (res.capped ? '<div class="gx-calc-cap">' + ic('shield-check') + esc(t('calc_capped', { pct: (CALC_KELLY_CAP * 100) + '%' })) + '</div>' : '') +
+    '</div>';
+  }
+  function recomputeStake(root) {
+    var g = function (k) { return root.querySelector('.gx-calc-in[data-k="' + k + '"], .gx-calc-ccy[data-k="' + k + '"]'); };
+    var brEl = g('bankroll'), prEl = g('prob'), odEl = g('odds'), ccyEl = g('ccy');
+    var ccy = ccyEl ? ccyEl.value : calcCcy();
+    if (brEl) { var brv = parseFloat(brEl.value); lsSet('gp_calc_bankroll', isFinite(brv) && brv > 0 ? brv : null); }
+    lsSet('gp_calc_ccy', ccy);
+    var curEl = root.querySelector('.gx-calc-cur'); if (curEl) curEl.textContent = calcSym(ccy);
+    var p = parseFloat(prEl && prEl.value) / 100, odds = parseFloat(odEl && odEl.value), fr = calcFraction();
+    var res = calcKelly(p, odds, calcBankroll(), fr);
+    var out = root.querySelector('[data-out]'); if (out) out.innerHTML = stakeOutHtml(res, ccy);
+  }
+  function wireStakePanel(root) {
+    [].forEach.call(root.querySelectorAll('.gx-calc-in, .gx-calc-ccy'), function (el) {
+      el.addEventListener('input', function () { recomputeStake(root); });
+      el.addEventListener('change', function () { recomputeStake(root); });
+      el.addEventListener('click', function (e) { e.stopPropagation(); });
+    });
+    [].forEach.call(root.querySelectorAll('.gx-calc-frac'), function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); lsSet('gp_calc_fraction', b.getAttribute('data-frac')); [].forEach.call(root.querySelectorAll('.gx-calc-frac'), function (x) { x.classList.remove('on'); }); b.classList.add('on'); recomputeStake(root); });
+    });
+    root.addEventListener('click', function (e) { e.stopPropagation(); });
+    recomputeStake(root);
+  }
+
+  // ---- panel HTML: arbitraje (reparto). editable=true → cuotas editables + agregar/quitar patas (standalone). ----
+  function arbLegHtml(i, o, sel, book, editable, removable) {
+    var oddsCell = editable
+      ? '<div class="gx-calc-unit gx-calc-oddsin"><i>@</i><input class="gx-calc-in gx-calc-legodds" data-legodds type="number" inputmode="decimal" min="1.01" step="0.01" value="' + (isFinite(o) ? Number(o).toFixed(2) : '') + '"></div>'
+      : '<span class="gx-calc-leg-odds gx-mono">@ ' + Number(o).toFixed(2) + '</span>';
+    return '<div class="gx-calc-leg" data-leg="' + i + '" data-odds="' + (isFinite(o) ? Number(o).toFixed(2) : '') + '"><div class="gx-calc-leg-h"><span class="gx-calc-leg-sel">' + esc(sel || (t('calc_leg') + ' ' + (i + 1))) + '</span>' +
+      (book ? '<span class="gx-calc-leg-book">' + esc(book) + '</span>' : '') +
+      (editable && removable ? '<button type="button" class="gx-calc-legx" data-legrm title="' + esc(t('calc_remove')) + '">' + ic('x') + '</button>' : '') + '</div>' +
+      '<div class="gx-calc-leg-b">' + oddsCell + '<span class="gx-calc-leg-stake gx-mono" data-legstake></span></div></div>';
+  }
+  function arbPanelHtml(odds, sels, books, klass, editable) {
+    var ccy = calcCcy();
+    var last = parseFloat(lsGet('gp_calc_arb_total')); var total = (isFinite(last) && last > 0) ? last : 100;
+    var legs = odds.map(function (o, i) { return arbLegHtml(i, o, sels[i], books && books[i], editable, editable && odds.length > 2); }).join('');
+    return '<div class="gx-calc' + (klass ? ' ' + klass : '') + '" data-cmode="arb"' + (editable ? ' data-editable="1"' : '') + '>' +
+      '<label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('calc_total')) + '</span><div class="gx-calc-money"><span class="gx-calc-cur">' + esc(calcSym(ccy)) + '</span><input class="gx-calc-in" data-k="total" type="number" inputmode="decimal" min="0" step="any" value="' + total + '"><select class="gx-calc-ccy" data-k="ccy">' + ccyOptions(ccy) + '</select></div></label>' +
+      '<div class="gx-calc-legs">' + legs + '</div>' +
+      (editable ? '<button type="button" class="gx-calc-addleg" data-legadd>' + ic('plus') + esc(t('calc_add_leg')) + '</button>' : '') +
+      '<div class="gx-calc-out" data-out></div>' +
+      '<div class="gx-calc-disc">' + esc(t('calc_disc')) + '</div>' +
+    '</div>';
+  }
+  function arbReadOdds(root) {
+    return [].map.call(root.querySelectorAll('.gx-calc-leg'), function (leg) {
+      var inp = leg.querySelector('[data-legodds]');
+      return parseFloat(inp ? inp.value : leg.getAttribute('data-odds'));
+    });
+  }
+  function recomputeArb(root) {
+    var totEl = root.querySelector('.gx-calc-in[data-k="total"]'), ccyEl = root.querySelector('.gx-calc-ccy[data-k="ccy"]');
+    var ccy = ccyEl ? ccyEl.value : calcCcy(); lsSet('gp_calc_ccy', ccy);
+    var curEl = root.querySelector('.gx-calc-cur'); if (curEl) curEl.textContent = calcSym(ccy);
+    var total = parseFloat(totEl && totEl.value); if (!(total > 0)) total = 0;
+    lsSet('gp_calc_arb_total', total > 0 ? total : null);
+    var odds = arbReadOdds(root), r = calcArbSplit(odds, total);
+    [].forEach.call(root.querySelectorAll('.gx-calc-leg'), function (leg, idx) { var s = leg.querySelector('[data-legstake]'); if (s) s.textContent = total > 0 ? t('calc_put') + ' ' + fmtMoney(r.stakes[idx] || 0, ccy) : ''; });
+    var out = root.querySelector('[data-out]');
+    if (out) {
+      if (!r.valid || r.guaranteed <= 0) out.innerHTML = '<div class="gx-calc-noedge">' + ic('alert-triangle') + '<div><b>' + esc(t('calc_arb_invalid')) + '</b></div></div>';
+      else out.innerHTML = '<div class="gx-calc-result"><div class="gx-calc-big gx-calc-big-pos"><div class="gx-calc-biglbl">' + esc(t('calc_guaranteed')) + '</div><div class="gx-calc-bigval gx-mono gx-pos">' + fmtMoney(r.guaranteed, ccy) + '</div><div class="gx-calc-bigsub">+' + (r.roi * 100).toFixed(2) + '% ROI · ' + esc(t('calc_payout')) + ' ' + fmtMoney(r.payout, ccy) + '</div></div></div>';
+    }
+  }
+  function wireArbPanel(root) {
+    root.addEventListener('click', function (e) { e.stopPropagation(); });
+    var bind = function () {
+      [].forEach.call(root.querySelectorAll('.gx-calc-in, .gx-calc-ccy'), function (el) {
+        if (el._cb) return; el._cb = 1;
+        el.addEventListener('input', function () { recomputeArb(root); });
+        el.addEventListener('change', function () { recomputeArb(root); });
+      });
+    };
+    var legsWrap = root.querySelector('.gx-calc-legs');
+    var editable = root.getAttribute('data-editable') === '1';
+    if (editable) {
+      var reindex = function () {
+        var n = legsWrap.children.length;
+        [].forEach.call(legsWrap.children, function (leg, i) {
+          leg.setAttribute('data-leg', i);
+          var sel = leg.querySelector('.gx-calc-leg-sel'); if (sel) sel.textContent = t('calc_leg') + ' ' + (i + 1);
+          var rm = leg.querySelector('[data-legrm]'); if (n <= 2 && rm) rm.remove();
+        });
+      };
+      var addBtn = root.querySelector('[data-legadd]');
+      if (addBtn) addBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (legsWrap.children.length >= 4) return;
+        var tmp = document.createElement('div'); tmp.innerHTML = arbLegHtml(legsWrap.children.length, 2.00, '', '', true, true);
+        legsWrap.appendChild(tmp.firstChild);
+        // asegurar botón de quitar en la 1ª/2ª pata cuando pasamos de 2→3
+        [].forEach.call(legsWrap.children, function (leg) { if (!leg.querySelector('[data-legrm]')) { var h = leg.querySelector('.gx-calc-leg-h'); var b = document.createElement('button'); b.type = 'button'; b.className = 'gx-calc-legx'; b.setAttribute('data-legrm', ''); b.innerHTML = ic('x'); h.appendChild(b); } });
+        reindex(); bind(); recomputeArb(root);
+      });
+      legsWrap.addEventListener('click', function (e) {
+        var rm = e.target.closest('[data-legrm]'); if (!rm) return;
+        e.stopPropagation(); if (legsWrap.children.length <= 2) return;
+        rm.closest('.gx-calc-leg').remove(); reindex(); recomputeArb(root);
+      });
+    }
+    bind(); recomputeArb(root);
+  }
+
+  // ---- vista STANDALONE (desde "Más") ----
+  function renderCalc() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var mode = S.calcMode === 'arb' ? 'arb' : 'simple';
+    var tabs = '<div class="gx-calc-modes">' +
+      '<button class="gx-calc-mode' + (mode === 'simple' ? ' on' : '') + '" data-cmode-sw="simple">' + ic('target-arrow') + esc(t('calc_mode_simple')) + '</button>' +
+      '<button class="gx-calc-mode' + (mode === 'arb' ? ' on' : '') + '" data-cmode-sw="arb">' + ic('arrows-left-right') + esc(t('calc_mode_arb')) + '</button></div>';
+    var body;
+    if (mode === 'arb') {
+      body = '<p class="gx-calc-intro gx-dim">' + esc(t('calc_intro_arb')) + '</p>' + arbPanelHtml([1.90, 2.10], [t('calc_leg') + ' 1', t('calc_leg') + ' 2'], ['', ''], 'gx-calc-standalone', true);
+    } else {
+      body = '<p class="gx-calc-intro gx-dim">' + esc(t('calc_intro_simple')) + '</p>' + stakePanelHtml(0.55, 2.00, '', 'gp', 'gx-calc-standalone');
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('calc_title')) +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' + tabs + body +
+      '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('calc_kelly_note')) + '</p></div></div></div></div>';
+    [].forEach.call(mv.querySelectorAll('[data-cmode-sw]'), function (b) { b.addEventListener('click', function () { S.calcMode = b.getAttribute('data-cmode-sw'); renderCalc(); }); });
+    var holder = mv.querySelector('.gx-calc');
+    if (holder) { if (mode === 'arb') wireArbPanel(holder); else wireStakePanel(holder); }
+  }
+
   function boardTable(rows) {
     return '<table class="gx-table"><thead><tr>' +
       '<th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th>' +
@@ -1231,11 +1513,11 @@
     if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
     var tm = h.match(/^team\/([A-Za-z]{2,4})$/i);
     if (tm) { var tid = tm[1].toUpperCase(); if (!(S.view === 'team' && S.teamId === tid)) openTeam(tid, true); return; }
-    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf)/);
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc)/);
     if (v) { showView(v[1]); return; }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc' };
   function navTo(nav) { setHash(NAV_HASH[nav] != null ? NAV_HASH[nav] : ''); }
   function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; S.teamTab = 'resumen'; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
   function isFollowing(id) { return !!(S.me && S.me.favorites && S.me.favorites.indexOf(id) >= 0); }
@@ -1279,6 +1561,7 @@
     else if (v === 'alerts') renderAlerts();
     else if (v === 'refer') renderRefer();
     else if (v === 'perf') renderPerf();
+    else if (v === 'calc') renderCalc();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
@@ -2679,6 +2962,7 @@
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }
+          var cb = e.target.closest('[data-calc]'); if (cb) { e.preventDefault(); e.stopPropagation(); toggleCalc(cb); return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }
           var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }

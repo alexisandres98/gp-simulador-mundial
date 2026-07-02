@@ -399,7 +399,56 @@
     teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {} };
 
   // ---------- icons ----------
-  var ic = function (n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; };
+  // ---- iconografía PROPIA (firma visual): set dibujado a mano, dual-tone (detalle en acento vía clase .a/.af).
+  // Grammar: 24×24, stroke 1.8 redondeado, UN elemento en acento por ícono. Los nombres no cubiertos caen a Tabler.
+  var IC_SVG = {
+    'target-arrow': '<circle cx="12" cy="13" r="7.6"/><circle cx="12" cy="13" r="3.2"/><path class="a" d="M12 13l6.2-6.2M18.2 6.8h-3.6M18.2 6.8v3.6"/>',
+    'ball-football': '<circle cx="12" cy="12" r="8.4"/><path class="a" d="M12 8.3 15.4 10.8 14.1 14.7 9.9 14.7 8.6 10.8Z"/><path d="M12 3.6v4.7M4.6 9.8l4 1M6.8 18.2l3.1-3.5M17.2 18.2l-3.1-3.5M19.4 9.8l-4 1"/>',
+    'arrows-shuffle': '<path d="M4 7.2h3.2c4.2 0 5.4 9.6 9.6 9.6H20"/><path d="M4 16.8h3.2c1.7 0 2.9-1.5 3.9-3.3M20 7.2h-3.2c-1.7 0-2.9 1.5-3.9 3.3"/><path class="a" d="M20 16.8l-2.6-2.6M20 16.8l-2.6 2.6M20 7.2l-2.6-2.6M20 7.2l-2.6 2.6"/>',
+    'shield': '<path d="M12 3.6 19 6.1v5.1c0 4.5-2.9 7.5-7 9.2-4.1-1.7-7-4.7-7-9.2V6.1Z"/><path class="a" d="M9.3 11.9l1.9 1.9 3.5-3.8"/>',
+    'shield-check': '<path d="M12 3.6 19 6.1v5.1c0 4.5-2.9 7.5-7 9.2-4.1-1.7-7-4.7-7-9.2V6.1Z"/><path class="a" d="M9.3 11.9l1.9 1.9 3.5-3.8"/>',
+    'dots': '<circle cx="5.4" cy="12" r="1.5"/><circle class="af" cx="12" cy="12" r="1.5"/><circle cx="18.6" cy="12" r="1.5"/>',
+    'star': '<path d="M12 4.4 14.3 9.2 19.6 10 15.8 13.7 16.7 18.9 12 16.4 7.3 18.9 8.2 13.7 4.4 10 9.7 9.2Z"/><path class="a" d="M19.2 4.2v2.8M17.8 5.6h2.8"/>',
+    'bell': '<path d="M12 4.6c-2.9 0-4.9 2.1-4.9 4.9v3.1L5.5 15.4h13L16.9 12.6V9.5c0-2.8-2-4.9-4.9-4.9Z"/><path d="M10.1 18.3a1.9 1.9 0 0 0 3.8 0"/><path class="a" d="M18.3 5.4a6.8 6.8 0 0 1 1.7 3"/>',
+    'search': '<circle cx="11" cy="11" r="6.4"/><path d="M15.7 15.7 20 20"/><path class="a" d="M8.6 11a2.4 2.4 0 0 1 2.4-2.4"/>',
+    'user': '<circle cx="12" cy="8.5" r="3.5"/><path d="M5.2 19.3c1.3-2.9 3.8-4.5 6.8-4.5s5.5 1.6 6.8 4.5"/><circle class="af" cx="18.2" cy="17.4" r="1.7"/>',
+    'trending-up': '<path d="M4 17 9.4 11.6 12.9 15.1 20 8"/><path class="a" d="M20 8h-4M20 8v4"/>',
+    'arrows-left-right': '<path d="M20 8H7"/><path class="a" d="M7 8l3-3M7 8l3 3"/><path d="M4 16h13"/><path class="a" d="M17 16l-3-3M17 16l-3 3"/>',
+    'clipboard-text': '<rect x="6" y="5" width="12" height="15.4" rx="2"/><path d="M9.5 5a2.5 2.5 0 0 1 5 0"/><path class="a" d="M9 10.6h6M9 13.6h6M9 16.6h3.4"/>',
+    'alert-triangle': '<path d="M12 4.6 21 19.4H3Z"/><path class="a" d="M12 10v4.2M12 16.9v.2"/>',
+    'clock': '<circle cx="12" cy="12" r="8.4"/><path class="a" d="M12 7.6V12l3 2.1"/>',
+    'arrow-right': '<path d="M4.6 12H19"/><path class="a" d="M19 12l-4-4M19 12l-4 4"/>',
+    'refresh': '<path d="M18.8 8.8A7.5 7.5 0 1 0 19.5 12"/><path class="a" d="M19.5 5v3.8h-3.8"/>',
+    'ticket': '<path d="M4 8.5a2 2 0 0 0 0 7V19h16v-3.5a2 2 0 0 1 0-7V5H4Z" transform="translate(0 0)"/><path class="a" d="M12 6.5v2M12 11v2M12 15.5v2"/>',
+  };
+  var ic = function (n) {
+    var c = IC_SVG[n];
+    if (c) return '<i class="ti gxi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + c + '</svg></i>';
+    return '<i class="ti ti-' + n + '" aria-hidden="true"></i>';
+  };
+  // ---- ilustraciones de estados vacíos (line-art propio con un punto de acento — no un ícono suelto) ----
+  var ILLO = {
+    // radar: el observatorio escaneando mercados
+    radar: '<svg class="gx-illo" viewBox="0 0 140 96" fill="none" aria-hidden="true"><circle cx="70" cy="48" r="40" stroke="rgba(255,255,255,.09)"/><circle cx="70" cy="48" r="26" stroke="rgba(255,255,255,.12)"/><circle cx="70" cy="48" r="12" stroke="rgba(255,255,255,.15)"/><path d="M70 8v80M30 48h80" stroke="rgba(255,255,255,.05)"/><path d="M70 48 104 22" stroke="rgba(31,227,164,.65)" stroke-width="1.6" stroke-linecap="round"/><path d="M70 48 104 22A40 40 0 0 0 92 14Z" fill="rgba(31,227,164,.10)"/><circle cx="52" cy="60" r="2.6" fill="rgba(255,255,255,.25)"/><circle cx="88" cy="66" r="2.6" fill="rgba(255,255,255,.18)"/><circle cx="96" cy="30" r="3.2" fill="#1FE3A4"><animate attributeName="opacity" values="1;.35;1" dur="2.2s" repeatCount="indefinite"/></circle></svg>',
+    // tickets: el feed de picks sin picks activas
+    tickets: '<svg class="gx-illo" viewBox="0 0 140 96" fill="none" aria-hidden="true"><g transform="rotate(-6 70 52)"><rect x="34" y="34" width="72" height="40" rx="7" stroke="rgba(255,255,255,.10)"/></g><g transform="rotate(3 70 48)"><rect x="30" y="28" width="80" height="44" rx="7" stroke="rgba(255,255,255,.22)" fill="rgba(255,255,255,.02)"/><path d="M52 28v44" stroke="rgba(255,255,255,.14)" stroke-dasharray="3 4"/><path d="M60 42h34M60 50h24" stroke="rgba(255,255,255,.20)" stroke-linecap="round"/><circle cx="41" cy="50" r="5" stroke="rgba(31,227,164,.8)"/><path d="M38.8 50l1.6 1.6 2.8-3" stroke="#1FE3A4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
+    // línea: no hay datos aún (gráfico esperando)
+    chart: '<svg class="gx-illo" viewBox="0 0 140 96" fill="none" aria-hidden="true"><path d="M26 76h92M26 76V22" stroke="rgba(255,255,255,.12)" stroke-linecap="round"/><path d="M26 64 52 52 76 58 104 34" stroke="rgba(255,255,255,.28)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5"/><circle cx="104" cy="34" r="3.4" fill="#1FE3A4"><animate attributeName="opacity" values="1;.4;1" dur="2s" repeatCount="indefinite"/></circle></svg>',
+  };
+  var illo = function (k) { return ILLO[k] || ''; };
+  // ---- count-up: los números protagonistas cuentan hasta su valor al aparecer (respeta reduced-motion) ----
+  function animNums(root) {
+    if (!root) return;
+    try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+    [].forEach.call(root.querySelectorAll('.gx-anum'), function (el) {
+      if (el.dataset.animated) return; el.dataset.animated = '1';
+      var target = parseFloat(el.dataset.v != null ? el.dataset.v : el.textContent); if (!isFinite(target) || target === 0) return;
+      var dec = (String(el.dataset.v || el.textContent).split('.')[1] || '').length;
+      var t0 = null, dur = 620;
+      function step(ts) { if (!t0) t0 = ts; var p = Math.min(1, (ts - t0) / dur); var e = 1 - Math.pow(1 - p, 3); el.textContent = (target * e).toFixed(dec); if (p < 1) requestAnimationFrame(step); }
+      requestAnimationFrame(step);
+    });
+  }
   var NAV = [
     ['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['teams', 'shield', 'nav_teams'],
     ['sim', 'arrows-shuffle', 'nav_sim'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']
@@ -637,6 +686,9 @@
     if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; if (S.view === 'board') kpis(S.dash || {}, rows); }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
+    // Sin value de partido → fallback al mejor value OUTRIGHT (campeón), que casi siempre existe. Lazy-load.
+    if (!val && S.valueOutright === undefined) { S.valueOutright = null; fetch('/api/beta/value-outright', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.view === 'board' && S.oppSub !== 'picks') kpis(S.dash || {}, rows); }); }
+    var valOut = (!val && S.valueOutright && S.valueOutright.length) ? S.valueOutright.filter(function (x) { return x.edge_pp > 0.005; })[0] : null;
     var gap = rows.map(function (r) { var g = ['HOME', 'DRAW', 'AWAY'].map(function (c) { return { c: c, gp: r.gp(c), mk: r.mk(c) }; }).filter(function (x) { return x.gp != null && x.mk != null; }).sort(function (a, b) { return Math.abs(b.gp - b.mk) - Math.abs(a.gp - a.mk); })[0]; return g ? { r: r, g: g } : null; }).filter(Boolean).sort(function (a, b) { return Math.abs(b.g.gp - b.g.mk) - Math.abs(a.g.gp - a.g.mk); })[0];
     // Mejor oportunidad de arbitraje: surebet ejecutable > mejor precio atrasado soft. Carga compartida (loadArb).
     loadArb();
@@ -648,8 +700,8 @@
     }
     var cards = [];
     cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick2(pick) : '<div class="gx-kpi-sel gx-dim">' + esc(t('none_active_pick')) + '</div>', null, pick ? 'picks' : null));
-    cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : kpiEmpty(), null, val ? 'value' : null));
-    cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty(), t('gap_tooltip')));
+    cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : (valOut ? kpiValOutright(valOut) : kpiEmpty()), null, (val || valOut) ? 'value' : null));
+    cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty(), t('gap_tooltip'), gap ? ('match:' + gap.r.h.event_id) : null));
     var arbBody = bestArb ? kpiArb(bestArb)
       : (S.arb && S.arb.available) ? '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + esc(t('arb_none_now')) + '</div></div></div>'
       : (S.arb === null) ? '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + ic('loader-2') + ' ' + esc(t('arb_scanning')) + '</div></div></div>'
@@ -668,17 +720,26 @@
       S.oppSub = 'arb'; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === 'arb'); });
       openArbDetail(ref); return;
     }
+    if (target.indexOf('match:') === 0) { S.arbCtx = null; openMatch(target.slice(6)); return; } // mayor desacuerdo → análisis del partido
     // picks | value → cambia de subtab y renderiza
     S.oppSub = target; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === target); });
     var k = $('#gx-kpis'); if (k) k.style.display = (target === 'picks') ? 'none' : '';
     var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); board(rs);
   }
   function kpiCard(label, icon, body, tip, nav) { return '<div class="gx-panel gx-kpi' + (nav ? ' gx-kpi-clk' : '') + '"' + (nav ? ' data-kpinav="' + esc(nav) + '"' : '') + (tip ? ' title="' + esc(tip) + '"' : '') + '><div class="gx-label">' + ic(icon) + esc(label) + (tip ? ' <i class="ti ti-info-circle gx-kpi-info" aria-hidden="true"></i>' : '') + (nav ? '<span class="gx-spacer"></span>' + ic('arrow-right') : '') + '</div>' + body + '</div>'; }
-  // pick diaria (feed del producto) en formato KPI
+  // pick diaria (feed del producto) en formato KPI. selection_code viene en minúscula ('home'/'away'/'draw') del
+  // feed — normalizamos; el empate muestra "Empate" (no la frase larga del memo, que desbordaba la caja).
   function kpiPick2(p) {
-    var sel = p.family === 'SOLID' ? (p.selection_code === 'AWAY' ? teamName(p.away_team_id, p.away) : p.selection_code === 'HOME' ? teamName(p.home_team_id, p.home) : t('memo_even')) : (p.family === 'GOALS' ? (p.side === 'over' ? t('arb_over', { line: p.line }) : t('arb_under', { line: p.line })) : t('pf_fam_combo'));
-    return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(p.home_team_id) + '</span><div><div class="gx-kpi-sel">' + esc(sel) + '</div><div class="gx-kpi-sub">' + esc(teamName(p.home_team_id, p.home) + ' ' + t('vs') + ' ' + teamName(p.away_team_id, p.away)) + '</div></div></div>' +
+    var sc = String(p.selection_code || '').toUpperCase();
+    var sel = p.family === 'SOLID' ? (sc === 'AWAY' ? teamName(p.away_team_id, p.away) : sc === 'HOME' ? teamName(p.home_team_id, p.home) : t('arb_draw')) : (p.family === 'GOALS' ? (p.side === 'over' ? t('arb_over', { line: p.line }) : t('arb_under', { line: p.line })) : t('pf_fam_combo'));
+    var flagId = sc === 'AWAY' ? p.away_team_id : p.home_team_id;
+    return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(flagId) + '</span><div><div class="gx-kpi-sel">' + esc(sel) + '</div><div class="gx-kpi-sub">' + esc(teamName(p.home_team_id, p.home) + ' ' + t('vs') + ' ' + teamName(p.away_team_id, p.away)) + '</div></div></div>' +
       '<div class="gx-kpi-foot"><span class="gx-mono">' + odd(p.odds) + '</span><span class="gx-pp gx-pos">' + esc(t('pf_fam_' + p.family.toLowerCase())) + '</span></div>';
+  }
+  // mejor value OUTRIGHT (campeón) — fallback cuando no hay value de partido; clickeable → subtab Value.
+  function kpiValOutright(o) {
+    return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(o.team_id) + '</span><div><div class="gx-kpi-sel">' + esc(teamName(o.team_id)) + '</div><div class="gx-kpi-sub">' + esc(t('outright_title')) + '</div></div></div>' +
+      '<div class="gx-kpi-foot"><span class="gx-mono">GP ' + pct1(o.model_pct) + ' · ' + pct1(o.market_pct) + '</span><span class="gx-pp gx-pos">' + pp(o.edge_pp) + '</span></div>';
   }
   // mejor oportunidad de arbitraje en formato KPI
   function kpiArb(b) {
@@ -726,7 +787,7 @@
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
     else if (S.filt === 'up') rows = rows.filter(function (r) { return !r.live; });
     $('#gx-board-count').textContent = rows.length + ' ' + t('matches') + ' · ' + t('th_gp');
-    if (!rows.length) { bd.innerHTML = '<div class="gx-empty">' + ic('chart-dots') + '<b>' + esc(t('e_na')) + '</b></div>'; return; }
+    if (!rows.length) { bd.innerHTML = '<div class="gx-empty gx-empty-illo">' + illo("chart") + '<b>' + esc(t('e_na')) + '</b></div>'; return; }
     // tabla (desktop) y cards (móvil) ambas en el DOM; CSS muestra la que corresponde por viewport (confiable).
     bd.innerHTML = '<div class="gx-bd-desk">' + boardTable(rows) + '</div><div class="gx-bd-mob">' + boardCards(rows) + '</div>';
     // desktop: clic en fila selecciona + previsualiza en el cockpit lateral (con botón "abrir cockpit completo")
@@ -754,7 +815,7 @@
     var picks = S.dailyPicks || [];
     var cc = $('#gx-board-count'); if (cc) cc.textContent = picks.length + ' ' + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
     if (!picks.length) {
-      bd.innerHTML = '<div class="gx-empty gx-pick-empty">' + ic('ticket') + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span></div>';
+      bd.innerHTML = '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span></div>';
       return;
     }
     bd.innerHTML = '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' +
@@ -932,15 +993,15 @@
     var C = d.counts || {}, arbs = d.arbitrage || [], lags = d.price_lag || [];
     // KPIs del observatorio
     var head = '<div class="gx-arb-head">' +
-      '<div class="gx-arb-kpi"><b class="gx-mono">' + (C.markets_scanned || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_markets')) + '</span></div>' +
-      '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.arb_executable ? 'gx-pos' : 'gx-dim') + '">' + (C.arb_executable || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_surebets')) + '</span></div>' +
-      '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.lag_soft ? 'gx-pos' : 'gx-dim') + '">' + (C.lag_soft || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_lags')) + '</span></div>' +
+      '<div class="gx-arb-kpi"><b class="gx-mono gx-anum" data-v="' + (C.markets_scanned || 0) + '">' + (C.markets_scanned || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_markets')) + '</span></div>' +
+      '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.arb_executable ? 'gx-pos' : 'gx-dim') + ' gx-anum" data-v="' + (C.arb_executable || 0) + '">' + (C.arb_executable || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_surebets')) + '</span></div>' +
+      '<div class="gx-arb-kpi"><b class="gx-mono ' + (C.lag_soft ? 'gx-pos' : 'gx-dim') + ' gx-anum" data-v="' + (C.lag_soft || 0) + '">' + (C.lag_soft || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_lags')) + '</span></div>' +
       '</div>';
     var body;
     if (S.arbSub === 'lag') {
       body = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-dim">' + esc(t('arb_fam_lag_sub')) + '</span></div>';
       if (lags.length) body += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + lags.map(lagCard).join('') + '</div>';
-      else body += '<div class="gx-empty gx-arb-obs">' + ic('target-arrow') + '<b>' + esc(t('arb_none_lag')) + '</b><span class="gx-dim">' + esc(t('arb_none_lag_sub')) + '</span></div>';
+      else body += '<div class="gx-empty gx-arb-obs">' + illo("radar") + '<b>' + esc(t('arb_none_lag')) + '</b><span class="gx-dim">' + esc(t('arb_none_lag_sub')) + '</span></div>';
       body += '</div>';
     } else {
       // ejecutables (surebets) primero; teóricos (margen fino / profundidad PM no verificada) en grupo aparte.
@@ -948,7 +1009,7 @@
       var exe = idx.filter(function (x) { return x.a.executable; }), theo = idx.filter(function (x) { return !x.a.executable; });
       body = '<div class="gx-arb-sec"><div class="gx-arb-sec-h"><span class="gx-dim">' + esc(t('arb_fam_pure_sub')) + '</span></div>';
       if (exe.length) body += '<div class="gx-arb-warn">' + ic('alert-triangle') + esc(t('arb_gubbing')) + '</div>' + '<div class="gx-picks-feed">' + exe.map(function (x) { return arbCard(x.a, x.i); }).join('') + '</div>';
-      else body += '<div class="gx-empty gx-arb-obs">' + ic('shield-check') + '<b>' + esc(t('arb_none_pure')) + '</b><span class="gx-dim">' + esc(t('arb_none_pure_sub', { n: C.markets_scanned || 0 })) + '</span></div>';
+      else body += '<div class="gx-empty gx-arb-obs">' + illo("radar") + '<b>' + esc(t('arb_none_pure')) + '</b><span class="gx-dim">' + esc(t('arb_none_pure_sub', { n: C.markets_scanned || 0 })) + '</span></div>';
       if (theo.length) body += '<div class="gx-arb-theo-h">' + ic('info-circle') + esc(t('arb_theo_group', { n: theo.length })) + '</div><div class="gx-picks-feed">' + theo.map(function (x) { return arbCard(x.a, x.i); }).join('') + '</div>';
       body += '</div>';
     }
@@ -960,6 +1021,7 @@
     [].forEach.call(bd.querySelectorAll('[data-arbref]'), function (el) {
       el.addEventListener('click', function () { openArbDetail(el.getAttribute('data-arbref')); });
     });
+    animNums(bd);
   }
   // Abre la oportunidad como una card GP Intelligence del partido, con un panel "Oportunidad" arriba (link a la
   // casa/exchange/mercado + explicación + trade-out). Reusa la vista de partido (teams-) que ya trae el análisis.
@@ -969,9 +1031,12 @@
     if (!opp) return;
     // Campeón (outright): no es un partido → abre la página del equipo (con su análisis de campeonato).
     if (opp.market_family === 'champion') { S.arbCtx = null; openTeam(opp.home_team_id); return; }
-    var openId = (opp.home_team_id && opp.away_team_id) ? 'teams-' + opp.home_team_id + '-' + opp.away_team_id : (opp.event_id || null);
+    // SOLO navegamos con team ids resueltos (teams-X-Y abre GP Intelligence). El event_id del proveedor NO es un
+    // id de análisis — navegar con él daba "no se pudo cargar el análisis". Sin ids: la card no navega.
+    var openId = (opp.home_team_id && opp.away_team_id) ? 'teams-' + opp.home_team_id + '-' + opp.away_team_id : null;
+    if (!openId) return;
     opp._openId = openId; S.arbCtx = opp;
-    if (openId) openMatch(openId); else board([]);
+    openMatch(openId);
   }
   function boardTable(rows) {
     return '<table class="gx-table"><thead><tr>' +
@@ -1573,8 +1638,9 @@
       (hasGp ? '<div class="gx-pbar"><i class="h" style="width:' + (gpH * 100) + '%"></i><i class="d" style="width:' + (gpD * 100) + '%"></i><i class="a" style="width:' + (gpA * 100) + '%"></i></div>' +
       '<div class="gx-plabels"><span>' + esc(teamName(h.home.team_id)) + ' <b>' + pct0(gpH) + '</b></span><span>X <b>' + pct0(gpD) + '</b></span><span>' + esc(teamName(h.away.team_id)) + ' <b>' + pct0(gpA) + '</b></span></div>' : '') +
       '<div class="gx-hero-grid">' +
-      '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_mkt')) + '</span>' + tri(function (c) { return pct0(r.mk(c)); }, '', null) + '</div>' +
-      '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_best')) + '</span>' + tri(function (c) { return odd(r.best(c)); }, 'gx-best', bestCode(r)) + '</div>' +
+      // celdas de mercado/mejor precio SOLO si hay datos (la cuota prematch muere al pitazo — sin guiones vacíos)
+      (['HOME', 'DRAW', 'AWAY'].some(function (c) { return r.mk(c) != null; }) ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_mkt')) + '</span>' + tri(function (c) { return pct0(r.mk(c)); }, '', null) + '</div>' : '') +
+      (['HOME', 'DRAW', 'AWAY'].some(function (c) { return r.best(c) != null; }) ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_best')) + '</span>' + tri(function (c) { return odd(r.best(c)); }, 'gx-best', bestCode(r)) + '</div>' : '') +
       (xgH != null || xgA != null ? miniStat(t('hero_xg'), (xgH != null ? Number(xgH).toFixed(2) : '—') + ' – ' + (xgA != null ? Number(xgA).toFixed(2) : '—')) : '') +
       (likely ? miniStat(t('hero_score'), esc(likely)) : '') +
       '</div>' +

@@ -382,6 +382,18 @@ let marketCache = { ts: 0, polymarket: {}, kalshi: {}, errors: [] };
 function normName(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
 const aliasToId = {};
 TEAMS.forEach(t => [t.en, t.name, ...t.aliases].forEach(a => aliasToId[normName(a)] = t.id));
+// Resolución TOLERANTE de nombres de proveedor → team id. Los proveedores varían la forma ("Bosnia & Herzegovina"
+// vs "Bosnia and Herzegovina", guiones, "Utd"). Sin esto, un nombre no resuelto rompe la navegación de la UI
+// (card → análisis del partido) para ese evento.
+function resolveTeamIdLoose(name) {
+  if (!name) return null;
+  const n = normName(name);
+  return aliasToId[n]
+    || aliasToId[normName(String(name).replace(/&/g, 'and'))]
+    || aliasToId[normName(String(name).replace(/[-–—]/g, ' '))]
+    || aliasToId[normName(String(name).replace(/\butd\b/i, 'united'))]
+    || null;
+}
 
 // Fase J.1 — resolver OFICIAL V1 point-in-time para Value operativo. Mapea los nombres de equipo del evento
 // (metadata del sportsbook / label) a códigos del motor y computa la probabilidad 1X2 oficial (Elo→Poisson→DC).
@@ -1166,7 +1178,7 @@ async function tgScannerAlerts(day) {
   if (!telegram.configured()) return;
   const scan = await getMarketScan();
   if (!scan || scan.disabled || scan.unavailable) return;
-  const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => aliasToId[normName(name)] || null, maxItems: 40 });
+  const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => resolveTeamIdLoose(name), maxItems: 40 });
   if (!dto.available) return;
   const nm = (id, fb) => { const tm = teamById[id]; return (tm && tm.name) || fb || id; };
   const selName = (it, oc) => it.market_family === 'match_total'
@@ -1442,7 +1454,7 @@ async function buildMatchDetail(id, user = null) {
   if (user && user.beta && user.beta.matchesV2) {
     try {
       const rr = require('./signal-registry/resultResolver');
-      const resolveTeamId = (name) => aliasToId[normName(name)] || null;
+      const resolveTeamId = (name) => resolveTeamIdLoose(name);
       // 1) puente persistente por fixture_id/espn_id (grupos con ESPN id mapeado); 2) por equipos+fecha (knockouts).
       let canonicalId = await rr.resolveCanonicalByFixture(meta.espnId);
       if (!canonicalId && meta.id) canonicalId = await rr.resolveCanonicalByFixture(meta.id);
@@ -2422,13 +2434,13 @@ const server = http.createServer(async (req, res) => {
       // contradiciéndose entre venues, sin modelo GP (Value=GP-vs-mercado vive aparte, intacto). Cache TTL.
       if (p === '/api/beta/arbitrage' && req.method === 'GET') {
         const scan = await getMarketScan();
-        const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => aliasToId[normName(name)] || null, maxItems: marketScanner.params.maxOpportunities });
+        const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => resolveTeamIdLoose(name), maxItems: marketScanner.params.maxOpportunities });
         return json(res, 200, dto);
       }
       const ctx = {
         db: require('./database/client'),
         json,
-        resolveTeamId: (name) => aliasToId[normName(name)] || null,
+        resolveTeamId: (name) => resolveTeamIdLoose(name),
       };
       const handled = await gpProductApi.handle(req, res, p, betaUser, ctx);
       if (handled === false) return json(res, 404, { error: 'No encontrado' });

@@ -857,3 +857,22 @@ h1, .gx-ohead h1 { font-family: var(--gx-display); font-weight: 700; letter-spac
 /* ---- tablas: números tabulares y hover de fila más rico ---- */
 .gx-table td.gx-mono, .gx-table .gx-mono { font-variant-numeric: tabular-nums; }
 .gx-row { transition: background .12s; }
+
+/* ---- DESIGN PASS 2026 · parte 2: iconografía propia, ilustraciones, firma de data-viz ---- */
+/* íconos custom dual-tone: heredan tamaño/color del <i> contenedor; el detalle .a/.af va en acento */
+.gxi { display: inline-flex; align-items: center; justify-content: center; }
+.gxi svg { width: 1em; height: 1em; display: block; }
+.gxi .a { stroke: var(--gx-accent); }
+.gxi .af { fill: var(--gx-accent); stroke: none; }
+/* en contextos ya coloreados (warnings ámbar, badges, chips activos) el detalle sigue al color del texto */
+.gx-arb-warn .gxi .a, .gx-ov-warn .gxi .a, .gx-lag-under .gxi .a, .gx-pick-fam .gxi .a,
+.gx-badge .gxi .a, .gx-live-pill .gxi .a, .gx-conf .gxi .a { stroke: currentColor; }
+.gx-arb-warn .gxi .af, .gx-ov-warn .gxi .af, .gx-pick-fam .gxi .af, .gx-badge .gxi .af { fill: currentColor; }
+/* ilustraciones de estados vacíos */
+.gx-illo { width: 132px; height: 90px; display: block; margin: 0 auto 4px; }
+.gx-empty-illo { flex-direction: column; gap: 8px; }
+/* firma de data-viz: líneas del gráfico de evolución con glow + puntos finales */
+.gx-evo-svg polyline { filter: drop-shadow(0 0 5px rgba(31,227,164,.22)); }
+/* transición de vista: la apertura del análisis de partido entra con fade-up */
+.gx-mv { animation: gxUp .34s cubic-bezier(.22,1,.36,1) backwards; }
+@media (prefers-reduced-motion: reduce) { .gx-mv { animation: none; } }

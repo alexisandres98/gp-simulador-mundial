@@ -3609,6 +3609,16 @@ const server = http.createServer(async (req, res) => {
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
+    // Landing standalone (página de marketing dedicada, sin el shell de la app). Cache-busting de landing.js/css por mtime.
+    if (p === '/landing' || p === '/landing/') {
+      try {
+        const lf = path.join(__dirname, 'public', 'landing.html');
+        const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
     if (/^\/premium\.(js|css)$/.test(p) && !premiumOn) { json(res, 404, { error: 'No encontrado' }); return; }
     if (p === '/premium-qa.js' && (!premiumOn || !gpProduct.flags().premiumQa)) { json(res, 404, { error: 'No encontrado' }); return; }
     const betaOn = gpProduct.flags().betaUi;

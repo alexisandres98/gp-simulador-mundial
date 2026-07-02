@@ -3519,4 +3519,12 @@ async function openPick(publicId) {
 function gotoFromUrl() {
   try { const g = new URLSearchParams(location.search).get('goto'); if (g && USER && ['referidos', 'following', 'alerts', 'perf', 'value', 'picks', 'arb'].indexOf(g) >= 0) switchTab(g); } catch (e) {}
 }
-(async () => { await loadMe(); if (BETA_REDIRECT) return; await I18N.load(); renderHeader(); await loadState(); if (USER && !STATE.teaser) switchTab('arb'); gotoFromUrl(); renderTicker(); connectSSE(); })();
+(async () => {
+  await loadMe(); if (BETA_REDIRECT) return; await I18N.load(); renderHeader(); await loadState();
+  // Landing standalone: un visitante ANÓNIMO (sin sesión) con la landing v2 encendida va a /landing (página
+  // dedicada, sin el shell de la app). ?auth=1 (viene del CTA de la landing) abre el login directo sin rebotar.
+  var wantAuth = /[?&]auth=1/.test(location.search);
+  if (!USER && STATE && STATE.teaser && STATE.landing_v2 && !wantAuth && !/[?&]landing2=1/.test(location.search)) { location.replace('/landing'); return; }
+  if (USER && !STATE.teaser) switchTab('arb'); gotoFromUrl(); renderTicker(); connectSSE();
+  if (wantAuth && !USER) { try { openLogin(); } catch (e) {} }
+})();

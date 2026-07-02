@@ -73,6 +73,8 @@ async function renderTicker() {
 
 // Vista para no registrados: gancho de captura
 function renderTeaser() {
+  // Landing v2 (producto-first): con flag del server o ?landing2=1 (preview QA sin flag)
+  if ((STATE && STATE.landing_v2) || /[?&]landing2=1/.test(location.search)) return renderTeaserV2();
   const top = STATE.top;
   const lead = top[0];
   const max = lead.champion;
@@ -124,6 +126,119 @@ function initTilt() {
     el.onmousemove = e => { const r = el.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; el.style.transform = `perspective(1200px) rotateY(${x * 5}deg) rotateX(${-y * 5}deg)`; };
     el.onmouseleave = () => el.style.transform = '';
   });
+}
+
+// ---------- LANDING V2 (producto-first: picks / value / arbitraje) ----------
+// La puerta de entrada deja de ser solo "¿quién gana el Mundial?": muestra el PRODUCTO (picks de hoy con la
+// selección bloqueada, escáner en vivo, récord verificado) y convierte al registro. El simulador queda de sección.
+function t2Flag(id, emoji) { return id ? `<img class="t2-flx" src="/flags/${id}.svg" alt="" draggable="false" onerror="this.replaceWith('${emoji || ''}')">` : (emoji || ''); }
+function renderTeaserV2() {
+  const top = STATE.top, lead = top[0], max = lead.champion;
+  const simsStr = STATE.sims.toLocaleString();
+  const T = k => I18N.t(k);
+  const favRows = top.slice(1).map((t, i) => `
+    <div class="fav-row" onclick="openLogin()">
+      <span class="pos">0${i + 2}</span><span class="fl">${t2Flag(t.id, t.flag)}</span>
+      <span class="nm">${t.name}</span>
+      <span class="track"><span class="fill" style="width:${(t.champion / max * 100).toFixed(0)}%"></span></span>
+      <span class="pc">${pct(t.champion)}</span>
+    </div>`).join('');
+  $('#tab-teams').innerHTML = `
+    <div class="t2">
+      <div class="hero t2-hero">
+        <div class="hero-eyebrow"><span class="dot on"></span>${T('t2.eyebrow')}</div>
+        <h1 class="hero-h1">${I18N.t('t2.h1', { wc: `<span class="g">${T('t2.h1_wc')}</span>`, rt: `<span class="g">${T('t2.h1_rt')}</span>` })}</h1>
+        <div class="hero-sub">${T('t2.sub')}</div>
+        <div class="hero-cta">
+          <button class="btn" onclick="openLogin()">${T('t2.cta')}</button>
+          <span class="muted" style="font-size:12.5px">${T('t2.cta_micro')}</span>
+        </div>
+        <div class="hero-trust t2-trust" id="t2-trust">
+          <div class="ht"><b>40+</b>${T('t2.tr_books')}</div>
+          <div class="ht"><b style="color:var(--accent)">${T('teaser.trust_live')}</b>${T('t2.tr_picks')}</div>
+          <div class="ht"><b>ES·EN</b>${T('t2.tr_bilingual')}</div>
+        </div>
+      </div>
+      <div class="t2-sec" id="t2-picks"></div>
+      <div class="t2-sec" id="t2-scan"></div>
+      <div class="t2-sec">
+        <h2 class="t2-h2">${T('t2.sim_title')}</h2>
+        <div class="t2-sub">${I18N.t('t2.sim_sub', { sims: simsStr })}</div>
+        <div class="fav-board">
+          <div class="fav-lead tilt" onclick="openLogin()">
+            <div class="rk">${T('teaser.favorite_badge')}</div>
+            <div class="lead-team"><div class="fl">${t2Flag(lead.id, lead.flag)}</div><div class="tn">${lead.name}<small>${I18N.t('teaser.group', { group: lead.group })}</small></div></div>
+            <div class="lead-big">${(lead.champion * 100).toFixed(1)}<span>%</span></div>
+            <div class="lead-cap">${T('teaser.lead_cap')}</div>
+          </div>
+          <div class="fav-list">${favRows}</div>
+        </div>
+      </div>
+      <div class="t2-sec">
+        <h2 class="t2-h2">${T('t2.how_title')}</h2>
+        <div class="t2-how">
+          <div class="t2-step"><span class="t2-n">1</span><b>${T('t2.how_1t')}</b><span>${T('t2.how_1s')}</span></div>
+          <div class="t2-step"><span class="t2-n">2</span><b>${T('t2.how_2t')}</b><span>${T('t2.how_2s')}</span></div>
+          <div class="t2-step"><span class="t2-n">3</span><b>${T('t2.how_3t')}</b><span>${T('t2.how_3s')}</span></div>
+        </div>
+      </div>
+      <div class="t2-final">
+        <button class="btn" onclick="openLogin()">${T('t2.cta')}</button>
+        <div class="t2-disc">${T('t2.disclaimer')}</div>
+      </div>
+    </div>`;
+  // candados de las demás pestañas (idéntico a v1)
+  ['following', 'alerts', 'groups', 'matches', 'bracket', 'arb', 'record', 'evo', 'admin'].forEach(t => {
+    $('#tab-' + t).innerHTML = `<div class="lock">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">${I18N.t('teaser.lock_title')}</div>
+      <div class="lock-sub">${I18N.t('teaser.lock_sub')}</div>
+      <button class="btn" onclick="openLogin()">${I18N.t('teaser.lock_cta')}</button>
+      <div class="lock-micro">${I18N.t('teaser.lock_micro')}</div></div>`;
+  });
+  initTilt();
+  t2LoadTeaser();
+}
+// data dinámica del teaser: picks de hoy (selección bloqueada), récord verificado y contadores del escáner
+async function t2LoadTeaser() {
+  let d = null;
+  try { d = await (await fetch('/api/public/teaser')).json(); } catch { /* la landing funciona sin esto */ }
+  if (!d) return;
+  const T = k => I18N.t(k);
+  // récord en el hero (primero, para que el trust strip tenga el dato real)
+  if (d.record && d.record.total >= 20) {
+    const pctTxt = Math.round(d.record.winners / d.record.total * 100) + '%';
+    const el = $('#t2-trust');
+    if (el) el.insertAdjacentHTML('afterbegin', `<div class="ht"><b style="color:var(--accent)">${pctTxt}</b>${T('t2.tr_record')} (${d.record.winners}/${d.record.total})</div>`);
+  }
+  // picks de HOY con la selección bloqueada
+  const pk = $('#t2-picks');
+  if (pk) {
+    const famKey = f => f === 'SOLID' ? 't2.fam_solid' : f === 'GOALS' ? 't2.fam_goals' : 't2.fam_combo';
+    const confKey = c => c === 'high' ? 't2.conf_high' : c === 'med' ? 't2.conf_med' : 't2.conf_low';
+    const hhmm = iso => { try { return new Date(iso).toLocaleTimeString(I18N.locale === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+    const cards = (d.picks || []).map(p => `
+      <div class="t2-pick" onclick="openLogin()">
+        <div class="t2-pick-top"><span class="t2-fam t2-fam-${(p.family || '').toLowerCase()}">${T(famKey(p.family))}</span><span class="t2-ko">${hhmm(p.kickoff)}</span></div>
+        <div class="t2-pick-match">${t2Flag(p.home_team_id)} <b>${p.home || ''}</b><span class="t2-vs">vs</span><b>${p.away || ''}</b> ${t2Flag(p.away_team_id)}</div>
+        <div class="t2-pick-lock"><span class="t2-lockic">🔒</span><span class="t2-locktxt">${T('t2.pick_locked')}</span></div>
+        <div class="t2-pick-foot"><span class="t2-conf t2-conf-${p.confidence_bucket}"><i></i>${T('t2.pick_conf')}: <b>${T(confKey(p.confidence_bucket))}</b></span></div>
+      </div>`).join('');
+    pk.innerHTML = `<h2 class="t2-h2">${T('t2.picks_title')}</h2><div class="t2-sub">${T('t2.picks_sub')}</div>` +
+      (cards ? `<div class="t2-picks-grid">${cards}</div>`
+        : `<div class="t2-empty"><b>${T('t2.picks_empty')}</b><span>${T('t2.picks_empty_sub')}</span><button class="btn" onclick="openLogin()" style="margin-top:12px">${T('t2.cta')}</button></div>`);
+  }
+  // escáner en vivo
+  const sc = $('#t2-scan');
+  if (sc && d.scanner && d.scanner.markets > 0) {
+    sc.innerHTML = `<h2 class="t2-h2">${T('t2.scan_title')}</h2>
+      <div class="t2-scan">
+        <div class="t2-stat"><b>${d.scanner.markets}</b><span>${T('t2.scan_markets')}</span></div>
+        <div class="t2-stat"><b class="t2-glow">${d.scanner.lag}</b><span>${T('t2.scan_lag')}</span></div>
+        <div class="t2-stat"><b>${d.scanner.arb}</b><span>${T('t2.scan_arb')}</span></div>
+        <div class="t2-scan-cta"><span class="t2-sub" style="margin:0">${T('t2.scan_sub')}</span><button class="btn" onclick="openLogin()">${T('t2.pick_locked')}</button></div>
+      </div>`;
+  }
 }
 
 // Marcador objetivo: ¿le ganamos al mercado? (solo admin)

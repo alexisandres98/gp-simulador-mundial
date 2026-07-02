@@ -2713,7 +2713,10 @@ const server = http.createServer(async (req, res) => {
           id: t.id, name: t.name, flag: t.flag, group: t.group,
           champion: simCache[t.id].champion,
         })).sort((a, b) => b.champion - a.champion).slice(0, 6);
-        return json(res, 200, { teaser: true, top, sims: N_SIMS, totalTeams: TEAMS.length });
+        // landing_v2: la landing producto-first (picks/value/arbitraje). OFF hasta la fusión (se enciende con
+        // GP_LANDING_V2_ENABLED en Render); ?landing2=1 la previsualiza sin flag (QA/admin).
+        const landingV2 = /^(1|true|yes|on)$/i.test(String(process.env.GP_LANDING_V2_ENABLED || '').trim());
+        return json(res, 200, { teaser: true, top, sims: N_SIMS, totalTeams: TEAMS.length, landing_v2: landingV2 });
       }
       // lastSeen se actualiza en memoria siempre, pero solo se PERSISTE como máx. 1/min por usuario:
       // /api/state es un hot path (polling); guardar en cada request presiona innecesariamente el disco.
@@ -2781,6 +2784,32 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/aciertos') {
       // público a propósito: el track record es la credibilidad de la marca
       return json(res, 200, trackRecord());
+    }
+    // TEASER PÚBLICO de la landing (sin auth): las picks de HOY con la SELECCIÓN OCULTA (solo familia, partido,
+    // hora y confianza — "regístrate para ver la pick"), el récord del modelo y los contadores del scanner.
+    // Nada sensible: no expone selección/cuota/casa ni oportunidades. Cache 60s.
+    if (p === '/api/public/teaser') {
+      if (!global._teaserCache || Date.now() - global._teaserCache.at > 60 * 1000) {
+        const active = (db.dailyPicks || []).filter(x => x.status === 'ACTIVE')
+          .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
+          .slice(0, 6)
+          .map(x => ({
+            family: x.family,
+            home: x.event.home, away: x.event.away,
+            home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id,
+            kickoff: x.event.kickoff_at,
+            confidence_bucket: x.confidence >= 0.6 ? 'high' : x.confidence >= 0.45 ? 'med' : 'low',
+            // la selección/cuota NO viaja — es el gancho de registro
+          }));
+        const tr = trackRecord();
+        let scanner = null;
+        try {
+          const scan = await getMarketScan();
+          if (scan && !scan.disabled && !scan.unavailable) scanner = { markets: scan.markets_scanned || 0, lag: (scan.counts && scan.counts.lag_soft) || 0, arb: (scan.counts && scan.counts.arb_executable) || 0 };
+        } catch { /* scanner apagado → sección omitida */ }
+        global._teaserCache = { at: Date.now(), data: { picks: active, picks_enabled: dailyPicksOn(), record: { total: tr.total || 0, winners: tr.winners || 0 }, scanner } };
+      }
+      return json(res, 200, global._teaserCache.data);
     }
     if (p === '/api/arbitrage') {
       if (!getUser(req)) return json(res, 401, { error: 'Inicia sesión' });

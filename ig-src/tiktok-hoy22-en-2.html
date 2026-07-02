@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: radial-gradient(140% 80% at 50% 8%, #0C231B 0%, #081311 45%, #060A0C 100%); color: #EAF1F2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 74px; position: relative; overflow: hidden; }
+.glow { position:absolute; top:-140px; left:50%; transform:translateX(-50%); width:900px; height:900px; background:radial-gradient(circle, rgba(31,227,164,.16), transparent 62%); }
+.brand { position:absolute; top:118px; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:14px; font-size:31px; font-weight:800; color:#fff; z-index:2; }
+.badge { width:48px; height:48px; border-radius:14px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:27px; border:1px solid rgba(31,227,164,.42); }
+.head { z-index:2; text-align:center; margin-bottom:56px; }
+.head .kick { text-transform:uppercase; letter-spacing:5px; font-size:25px; font-weight:800; color:#1FE3A4; margin-bottom:20px; }
+.head h1 { font-size:92px; font-weight:800; letter-spacing:-3px; line-height:1; color:#fff; }
+.cards { z-index:2; width:100%; display:flex; flex-direction:column; gap:30px; margin-bottom:64px; }
+.c { background:linear-gradient(160deg, #131E22, #0D1417); border:1px solid rgba(255,255,255,.11); border-radius:30px; padding:44px 46px; position:relative; overflow:hidden; }
+.c::before { content:''; position:absolute; left:0; top:0; bottom:0; width:9px; background:#1FE3A4; }
+.c .match { font-size:31px; font-weight:700; color:#9DB0B5; margin-bottom:20px; letter-spacing:-.5px; }
+.c .prow { display:flex; align-items:center; justify-content:space-between; gap:28px; }
+.c .pick { font-size:50px; font-weight:800; letter-spacing:-1.5px; color:#fff; flex:1; min-width:0; }
+.c .pill { display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0; }
+.c .pct { font-size:60px; font-weight:800; letter-spacing:-2px; color:#1FE3A4; line-height:1; }
+.c .pctl { font-size:22px; font-weight:700; color:#5F747B; text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; }
+.cta { z-index:2; background:#1FE3A4; color:#06231A; font-size:40px; font-weight:800; padding:32px 60px; border-radius:99px; letter-spacing:-.5px; box-shadow:0 20px 60px rgba(31,227,164,.26); text-align:center; }
+.foot { z-index:2; position:absolute; bottom:98px; left:0; right:0; text-align:center; font-size:24px; color:#5F747B; font-weight:600; padding:0 74px; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="brand"><div class="badge">⚽</div>GP World Cup Simulator</div>
+  <div class="head"><div class="kick">Our projections · Round of 16</div><h1>Today's picks 🎯</h1></div>
+  <div class="cards">
+    <div class="c">
+      <div class="match">🇪🇸 Spain vs Austria 🇦🇹 · 2:00 PM ET</div>
+      <div class="prow"><div class="pick">🇪🇸 Spain to advance</div><div class="pill"><div class="pct">61%</div><div class="pctl">Projected</div></div></div>
+    </div>
+    <div class="c">
+      <div class="match">🇵🇹 Portugal vs Croatia 🇭🇷 · 6:00 PM ET</div>
+      <div class="prow"><div class="pick">🇵🇹 Portugal to advance</div><div class="pill"><div class="pct">57%</div><div class="pctl">Projected</div></div></div>
+    </div>
+    <div class="c">
+      <div class="match">🇨🇭 Switzerland vs Algeria 🇩🇿 · 10:00 PM ET</div>
+      <div class="prow"><div class="pick">🇨🇭 Switzerland to advance</div><div class="pill"><div class="pct">58%</div><div class="pctl">Projected</div></div></div>
+    </div>
+  </div>
+  <div class="cta">Full projections → gpsimulador.com</div>
+  <div class="foot">Statistical projections, not betting advice. For entertainment only.</div>
+</body></html>

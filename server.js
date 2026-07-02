@@ -251,6 +251,10 @@ let lastSync = { ts: 0, ok: null, applied: 0, error: null };
 // de mejores terceros / emparejamientos puede divergir del oficial; ESPN tiene los equipos reales de cada llave.
 // m -> { home, away } (códigos nuestros). Se repuebla en cada sync. Evita mostrar/transmitir cruces equivocados.
 let koOverride = {};
+// Horarios REALES de kickoff según ESPN (todo el torneo, refrescado cada 30s por syncFromESPN). Fuente de verdad
+// para la cadencia adaptativa de los loops: los datetimes de nuestro calendario KNOCKOUT pueden divergir del
+// horario oficial (solo R32 quedó anclado por instante) → sin esto la ventana "normal" caería a la hora equivocada.
+let espnKickoffs = [];
 const koSlotByInstant = {};
 KNOCKOUT.forEach(k => { if (k.datetime) { const t = new Date(k.datetime).getTime(); if (!isNaN(t)) koSlotByInstant[t] = k.m; } });
 
@@ -268,6 +272,8 @@ async function syncFromESPN(depth = 0) {
       `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260720&limit=400`;
     const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
     const j = await r.json();
+    // horarios reales de TODO el torneo → fuente de verdad de la cadencia adaptativa de los loops
+    { const ks = (j.events || []).map(ev => +new Date(ev.date)).filter(Number.isFinite); if (ks.length) espnKickoffs = ks; }
     // PASO 0: anclar los cruces de eliminatorias a la realidad de ESPN por hora de inicio (las horas de nuestro
     // calendario coinciden con el oficial). Así corregimos emparejamientos mal computados (p.ej. mejores terceros)
     // ANTES de resolver el bracket → el partido real se reconoce y se ingiere/transmite correctamente.
@@ -3652,21 +3658,64 @@ server.listen(PORT, () => {
       setInterval(runRetention, 30 * 60 * 1000);
     }
   } catch { /* aislado */ }
-  // Motor de contexto por evento (jun-28). Solo si CONTEXT_ENGINE_ENABLED. Corre 40s tras arrancar y cada 20 min:
-  // evalúa todos los fixtures canónicos próximos con la capa de contexto en vivo y persiste snapshots+observaciones.
-  // SHADOW (no toca el modelo oficial). Aislado/best-effort.
+  // Motores de contexto y goles con CADENCIA ADAPTATIVA (2-jul): los loops pre-computan snapshots — la navegación
+  // del usuario NO depende de ellos (fetch-on-demand con sus caches). API-Football quema ~300 req/h a cadencia
+  // fija de 20 min → el límite diario (7500, plan Pro) se agotaba casi a diario. Modo por ventana de partido:
+  //   NORMAL (20 min): desde GP_LOOP_PREMATCH_MIN (75) antes de cada kickoff hasta +150 min (partido completo)
+  //   ECO (75 min):    el resto (madrugada/huecos) — el contexto no cambia cuando no pasa nada
+  // El pase de arranque post-deploy solo corre en NORMAL (los snapshots persisten en DB; un boot en horas muertas
+  // no re-quema cuota). GP_LOOP_ADAPTIVE_ENABLED=false revierte a 20 min fijos. SHADOW, aislado/best-effort.
+  const loopAdaptiveOn = !/^(0|false|no|off)$/i.test(String(process.env.GP_LOOP_ADAPTIVE_ENABLED || 'true').trim());
+  const LOOP_NORMAL_MS = (parseInt(process.env.GP_LOOP_NORMAL_MIN, 10) || 20) * 60 * 1000;
+  const LOOP_ECO_MS = (parseInt(process.env.GP_LOOP_ECO_MIN, 10) || 75) * 60 * 1000;
+  const LOOP_PRE_MS = (parseInt(process.env.GP_LOOP_PREMATCH_MIN, 10) || 75) * 60 * 1000;
+  const LOOP_POST_MS = (parseInt(process.env.GP_LOOP_POSTKO_MIN, 10) || 150) * 60 * 1000;
+  function loopModeNow() {
+    if (!loopAdaptiveOn) return 'normal';
+    try {
+      const now = Date.now();
+      // horarios REALES de ESPN si ya llegaron (syncFromESPN corre al boot y cada 30s); si no, calendario propio.
+      let times = espnKickoffs;
+      if (!times.length) {
+        times = [];
+        for (const f of GROUP_FIXTURES) if (f.datetime) times.push(+new Date(f.datetime));
+        for (const k of KNOCKOUT) times.push(+new Date(k.datetime || (k.date + 'T18:00Z')));
+      }
+      for (const ko of times) {
+        if (isFinite(ko) && now >= ko - LOOP_PRE_MS && now <= ko + LOOP_POST_MS) return 'normal';
+      }
+      return 'eco';
+    } catch { return 'normal'; } // ante la duda, no degradar
+  }
   try {
+    let lastLoopMode = null;
+    const dueRunner = (name, fn) => {
+      let last = 0;
+      return {
+        boot() { if (loopModeNow() === 'normal') { last = Date.now(); fn(); } },
+        tick() {
+          const mode = loopModeNow();
+          if (mode !== lastLoopMode) { console.log('[loops] modo', mode, '(intervalo', (mode === 'eco' ? LOOP_ECO_MS : LOOP_NORMAL_MS) / 60000, 'min)'); lastLoopMode = mode; }
+          const iv = mode === 'eco' ? LOOP_ECO_MS : LOOP_NORMAL_MS;
+          if (Date.now() - last >= iv) { last = Date.now(); fn(); }
+        },
+      };
+    };
+    const runners = [];
     if (contextEngineOn()) {
       const runCtx = () => evaluateUpcomingContext({ limit: 60 }).then(r => console.log('[context-engine]', JSON.stringify(r))).catch(() => { });
-      setTimeout(runCtx, 40 * 1000);
-      setInterval(runCtx, 20 * 60 * 1000);
+      const rc = dueRunner('context', runCtx); runners.push(rc);
+      setTimeout(() => rc.boot(), 40 * 1000);
     }
     // GOLES (G2): pase de goles independiente. Corre tras el de contexto (cache de buildH2HDeep caliente → barato).
     if (goalEngineOn()) {
       const runGoals = () => evaluateUpcomingGoals({ limit: 60 }).then(r => console.log('[goal-engine]', JSON.stringify(r))).catch(() => { });
-      setTimeout(runGoals, 55 * 1000);
-      setInterval(runGoals, 20 * 60 * 1000);
+      const rg = dueRunner('goals', runGoals); runners.push(rg);
+      setTimeout(() => rg.boot(), 55 * 1000);
     }
+    // tick cada 4 min: cada runner corre cuando su intervalo (según modo) vence. Stagger de 75s entre runners
+    // para no lanzar los dos pases a la vez (buildH2HDeep comparte cache → el segundo es barato si va después).
+    if (runners.length) setInterval(() => { runners.forEach((r, i) => setTimeout(() => r.tick(), i * 75 * 1000)); }, 4 * 60 * 1000);
   } catch { /* aislado */ }
   // Fase H.1 — cablea el result provider del settlement automático: accesor a los resultados ESPN (db.results).
   // Solo el marcador REGLAMENTARIO (sin prórroga ni penales): para knockout con penales → regulation null → UNRESOLVED.

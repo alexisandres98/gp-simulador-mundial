@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(165deg, #06090B 0%, #0B1714 48%, #0A5C3C 130%); color: #EAF1F2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 70px; position: relative; }
+.brand { position:absolute; top:130px; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:12px; font-size: 32px; font-weight: 800; color:#fff; }
+.badge { width: 46px; height:46px; border-radius:13px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:26px; border:1px solid rgba(31,227,164,.4); }
+.tag { background: rgba(229,72,77,.95); color:#fff; font-weight: 800; font-size: 25px; padding: 13px 30px; border-radius: 99px; letter-spacing: 2px; margin-bottom: 34px; }
+h1 { text-align:center; font-size: 72px; font-weight: 800; letter-spacing:-2px; margin-bottom: 60px; color:#fff; }
+h1 .hl { color:#1FE3A4; }
+.m { width:100%; background: linear-gradient(160deg, #131E22, #0D1417); border: 1px solid rgba(255,255,255,.12); border-radius: 26px; padding: 42px 44px; margin-bottom: 30px; position:relative; overflow:hidden; }
+.m::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#1FE3A4; }
+.m.star { border-color: rgba(242,193,78,.55); }
+.m.star::before { background:#F2C14E; }
+.mh { display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px; }
+.mh .t { font-size: 37px; font-weight: 800; letter-spacing:-1px; }
+.mh .time { font-size: 22px; color:#9DB0B5; font-weight: 700; }
+.bar { display:flex; height: 24px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.1); margin-bottom: 16px; }
+.bar .h { background:#1FE3A4; } .bar .d { background: rgba(255,255,255,.32); } .bar .a { background:#5FA8FF; }
+.lbl { display:flex; justify-content:space-between; font-size: 27px; font-weight: 700; color:#9DB0B5; }
+.lbl .big { font-weight: 800; color:#1FE3A4; font-size: 29px; }
+.starnote { font-size: 22px; font-weight: 800; color:#F2C14E; margin-top: 14px; letter-spacing: 1px; }
+.cta { margin-top: 50px; background:#1FE3A4; color:#06231A; font-size:40px; font-weight:800; padding:30px 64px; border-radius:99px; }
+.hint { position:absolute; bottom: 92px; left:0; right:0; text-align:center; font-size:23px; color:#5F747B; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div>GP Simulador del Mundial</div>
+  <div class="tag">● OCTAVOS DE FINAL</div>
+  <h1>Las <span class="hl">proyecciones</span><br>de hoy 📊</h1>
+  <div class="m">
+    <div class="mh"><span class="t">🇪🇸 España vs Austria 🇦🇹</span><span class="time">2:00 PM COL</span></div>
+    <div class="bar"><div class="h" style="width:61%"></div><div class="d" style="width:23.9%"></div><div class="a" style="width:15.1%"></div></div>
+    <div class="lbl"><span class="big">🇪🇸 España 61.0%</span><span>X 23.9%</span><span>Austria 15.1%</span></div>
+  </div>
+  <div class="m star">
+    <div class="mh"><span class="t">🇵🇹 Portugal vs Croacia 🇭🇷</span><span class="time">6:00 PM COL</span></div>
+    <div class="bar"><div class="h" style="width:57%"></div><div class="d" style="width:24.9%"></div><div class="a" style="width:18.1%"></div></div>
+    <div class="lbl"><span class="big">🇵🇹 Portugal 57.0%</span><span>X 24.9%</span><span>Croacia 18.1%</span></div>
+    <div class="starnote">⭐ EL PLATO FUERTE DE LA JORNADA</div>
+  </div>
+  <div class="m">
+    <div class="mh"><span class="t">🇨🇭 Suiza vs Argelia 🇩🇿</span><span class="time">10:00 PM COL</span></div>
+    <div class="bar"><div class="h" style="width:57.6%"></div><div class="d" style="width:23.9%"></div><div class="a" style="width:18.5%"></div></div>
+    <div class="lbl"><span class="big">🇨🇭 Suiza 57.6%</span><span>X 23.9%</span><span>Argelia 18.5%</span></div>
+  </div>
+  <div class="cta">Análisis completo → gpsimulador.com</div>
+  <div class="hint">Proyecciones estadísticas · No es consejo financiero</div>
+</body></html>

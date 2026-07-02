@@ -2295,11 +2295,13 @@ function getUser(req) {
   const picksUi = vf.picksPublic || (admin && vf.picksAdminPreview);
   // Sprint 8.1: flags de integración de UI (default off → la UI se comporta exactamente como hoy)
   const ui = uiFlags.resolveForUser(admin);
-  // Fase Q: gating de la experiencia de producto beta (default off → beta:false, nada nuevo se monta).
-  const beta = gpProduct.resolveForUser({ email, isAdmin: admin });
   // Rollout de la beta: el entitlement (grant admin / 5 referidos verificados / fusión) habilita el acceso a
-  // la plataforma nueva (/x). Un usuario entitled puede acceder a /api/beta/* aunque no sea admin/allowlist.
+  // la plataforma nueva (/x). Se calcula ANTES de resolver los features: si solo se parchea beta.beta después,
+  // los features por módulo (goalInsights/arbitrage/opportunities/premium) quedan false para los entitled
+  // → entraban a /x pero sin proyección de goles ni módulos (bug reportado por Alexis, 2-jul).
   const ent = betaEntitlement(email);
+  // Fase Q: gating de la experiencia de producto beta (default off → beta:false, nada nuevo se monta).
+  const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
   return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };

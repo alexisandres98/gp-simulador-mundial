@@ -57,9 +57,13 @@ function betaAccess({ email = null, isAdmin = false } = {}) {
 // resolveForUser — objeto de gating que getUser() expone al cliente. Con todo off → { beta:false, ... } y el
 // cliente no monta nada. Las superficies internas (picks/value/history) las ve un beta autorizado aunque su
 // flag "public" esté off; los flags public_* son para abrirlas a TODOS en una fase posterior (hoy off).
-function resolveForUser({ email = null, isAdmin = false } = {}) {
+function resolveForUser({ email = null, isAdmin = false, entitled = false } = {}) {
   const f = flags();
-  const beta = betaAccess({ email, isAdmin });
+  // entitled: acceso por entitlement (grant admin / referidos / fusión). Debe contar como beta AQUÍ, ANTES de
+  // resolver los features — si se parchea beta.beta después (como hacía getUser), los features por módulo
+  // (goalInsights/arbitrage/matchesV2/opportunities/premium) quedan en false para los usuarios entitled:
+  // entraban a /x pero SIN proyección de goles ni módulos. Bug reportado por Alexis (2-jul).
+  const beta = betaAccess({ email, isAdmin }) || (!!entitled && !!email && f.betaUi);
   return {
     beta,                                        // ¿ve la experiencia beta?
     picks: beta || f.publicPicks,                // superficie Picks visible para este usuario

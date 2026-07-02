@@ -688,10 +688,14 @@
     if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null; if (S.view === 'board') kpis(S.dash || {}, rows); }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
-    // Sin value de partido → fallback al mejor value OUTRIGHT (campeón), que casi siempre existe. Lazy-load.
-    if (!val && S.valueOutright === undefined) { S.valueOutright = null; fetch('/api/beta/value-outright', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.view === 'board' && S.oppSub !== 'picks') kpis(S.dash || {}, rows); }); }
+    // OUTRIGHT (campeón GP vs mercado): fuente de los fallbacks de "Mejor value" y "Mayor desacuerdo" cuando no hay
+    // datos por-partido. Se carga siempre una vez (barato, cacheado) → ninguna caja queda "sin datos".
+    if (S.valueOutright === undefined) { S.valueOutright = null; fetch('/api/beta/value-outright', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.view === 'board' && S.oppSub !== 'picks') kpis(S.dash || {}, rows); }); }
     var valOut = (!val && S.valueOutright && S.valueOutright.length) ? S.valueOutright.filter(function (x) { return x.edge_pp > 0.005; })[0] : null;
     var gap = rows.map(function (r) { var g = ['HOME', 'DRAW', 'AWAY'].map(function (c) { return { c: c, gp: r.gp(c), mk: r.mk(c) }; }).filter(function (x) { return x.gp != null && x.mk != null; }).sort(function (a, b) { return Math.abs(b.gp - b.mk) - Math.abs(a.gp - a.mk); })[0]; return g ? { r: r, g: g } : null; }).filter(Boolean).sort(function (a, b) { return Math.abs(b.g.gp - b.g.mk) - Math.abs(a.g.gp - a.g.mk); })[0];
+    // Sin desacuerdo por-partido (el mercado 1X2 rara vez está cargado en el dashboard) → fallback al mayor
+    // desacuerdo OUTRIGHT (campeón GP vs mercado), misma fuente que "Mejor value" → casi siempre hay data.
+    var gapOut = (!gap && S.valueOutright && S.valueOutright.length) ? S.valueOutright.slice().sort(function (a, b) { return Math.abs(b.edge_pp) - Math.abs(a.edge_pp); })[0] : null;
     // Mejor oportunidad de arbitraje: surebet ejecutable > mejor precio atrasado soft. Carga compartida (loadArb).
     loadArb();
     var bestArb = null, bestArbRef = null;
@@ -703,7 +707,7 @@
     var cards = [];
     cards.push(kpiCard(t('best_pick'), 'target-arrow', pick ? kpiPick2(pick) : '<div class="gx-kpi-sel gx-dim">' + esc(t('none_active_pick')) + '</div>', null, pick ? 'picks' : null));
     cards.push(kpiCard(t('best_value'), 'trending-up', val ? kpiVal(val) : (valOut ? kpiValOutright(valOut) : kpiEmpty()), null, (val || valOut) ? 'value' : null));
-    cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : kpiEmpty(), t('gap_tooltip'), gap ? ('match:' + gap.r.h.event_id) : null));
+    cards.push(kpiCard(t('top_gap'), 'arrows-diff', gap ? kpiGap(gap) : (gapOut ? kpiGapOutright(gapOut) : kpiEmpty()), t('gap_tooltip'), gap ? ('match:' + gap.r.h.event_id) : (gapOut ? ('team:' + gapOut.team_id) : null)));
     var arbBody = bestArb ? kpiArb(bestArb)
       : (S.arb && S.arb.available) ? '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + esc(t('arb_none_now')) + '</div></div></div>'
       : (S.arb === null) ? '<div class="gx-kpi-main"><div><div class="gx-kpi-sel gx-dim">' + ic('loader-2') + ' ' + esc(t('arb_scanning')) + '</div></div></div>'
@@ -723,6 +727,7 @@
       openArbDetail(ref); return;
     }
     if (target.indexOf('match:') === 0) { S.arbCtx = null; openMatch(target.slice(6)); return; } // mayor desacuerdo → análisis del partido
+    if (target.indexOf('team:') === 0) { openTeam(target.slice(5)); return; } // desacuerdo outright → página del equipo
     // picks | value → cambia de subtab y renderiza
     S.oppSub = target; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === target); });
     var k = $('#gx-kpis'); if (k) k.style.display = (target === 'picks') ? 'none' : '';
@@ -742,6 +747,11 @@
   function kpiValOutright(o) {
     return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(o.team_id) + '</span><div><div class="gx-kpi-sel">' + esc(teamName(o.team_id)) + '</div><div class="gx-kpi-sub">' + esc(t('outright_title')) + '</div></div></div>' +
       '<div class="gx-kpi-foot"><span class="gx-mono">GP ' + pct1(o.model_pct) + ' · ' + pct1(o.market_pct) + '</span><span class="gx-pp gx-pos">' + pp(o.edge_pp) + '</span></div>';
+  }
+  // mayor desacuerdo OUTRIGHT (campeón GP vs mercado) — fallback del top_gap; clickeable → página del equipo.
+  function kpiGapOutright(o) {
+    return '<div class="gx-kpi-main"><span class="gx-kpi-flag">' + flag(o.team_id) + '</span><div><div class="gx-kpi-sel">' + esc(teamName(o.team_id)) + '</div><div class="gx-kpi-sub">' + esc(t('outright_title')) + '</div></div></div>' +
+      '<div class="gx-kpi-foot"><span class="gx-mono">GP ' + pct1(o.model_pct) + ' · ' + pct1(o.market_pct) + '</span><span class="gx-pp gx-blue">' + pp(o.edge_pp) + '</span></div>';
   }
   // mejor oportunidad de arbitraje en formato KPI
   function kpiArb(b) {

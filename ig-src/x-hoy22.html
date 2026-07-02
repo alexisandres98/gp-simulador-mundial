@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #07271B 0%, #0A5C3C 55%, #0BA661 125%); color: #fff;
+  padding: 40px 52px; position: relative; }
+.brand { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+.badge { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(255,255,255,.25); }
+.bname { font-size: 21px; font-weight: 800; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.m { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18); border-radius: 14px; padding: 18px 18px; }
+.m.star { background: rgba(124,242,188,.16); border-color: rgba(124,242,188,.5); }
+.mt { font-size: 17px; font-weight: 800; margin-bottom: 3px; }
+.mtime { font-size: 12px; color: #C9F2DE; font-weight: 600; margin-bottom: 12px; }
+.bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.14); margin-bottom: 9px; }
+.bar .h { background: #7CF2BC; } .bar .d { background: rgba(255,255,255,.38); } .bar .a { background: #5FA8FF; }
+.lbl { display: flex; flex-direction: column; gap: 3px; font-size: 14px; font-weight: 700; }
+.lbl .r { display: flex; justify-content: space-between; }
+.lbl .big { font-weight: 800; }
+.foot { position: absolute; bottom: 28px; left: 52px; right: 52px; display: flex; align-items: center; justify-content: space-between; }
+.cta { background: #fff; color: #067647; font-size: 19px; font-weight: 800; padding: 12px 26px; border-radius: 99px; }
+.foot .small { font-size: 15px; color: #C9F2DE; font-weight: 600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● HOY · 16AVOS</div></div>
+  <h1>Lo que dice el modelo hoy 📊</h1>
+  <div class="grid">
+    <div class="m">
+    <div class="mh"><div class="t">🇪🇸 España vs Austria 🇦🇹</div><div class="time">2:00 PM COL</div></div>
+    <div class="bar"><div class="h" style="width:61%"></div><div class="d" style="width:23.9%"></div><div class="a" style="width:15.1%"></div></div>
+    <div class="lbl"><span class="big">🇪🇸 61.0%</span><span>X 23.9%</span><span>Austria 15.1%</span></div>
+  </div>
+  <div class="m star">
+    <div class="mh"><div class="t">🇵🇹 Portugal vs Croacia 🇭🇷</div><div class="time">6:00 PM COL</div></div>
+    <div class="bar"><div class="h" style="width:57%"></div><div class="d" style="width:24.9%"></div><div class="a" style="width:18.1%"></div></div>
+    <div class="lbl"><span class="big">🇵🇹 57.0%</span><span>X 24.9%</span><span>Croacia 18.1%</span></div>
+  </div>
+  <div class="m">
+    <div class="mh"><div class="t">🇨🇭 Suiza vs Argelia 🇩🇿</div><div class="time">10:00 PM COL</div></div>
+    <div class="bar"><div class="h" style="width:57.6%"></div><div class="d" style="width:23.9%"></div><div class="a" style="width:18.5%"></div></div>
+    <div class="lbl"><span class="big">🇨🇭 57.6%</span><span>X 23.9%</span><span>Argelia 18.5%</span></div>
+  </div>
+
+  <div class="foot">
+    <div class="small">Portugal vs Croacia, el plato fuerte de la jornada.</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

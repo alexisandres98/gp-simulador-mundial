@@ -134,8 +134,8 @@ function initTilt() {
 function t2Flag(id, emoji) { return id ? `<img class="t2-flx" src="/flags/${id}.svg" alt="" draggable="false" onerror="this.replaceWith('${emoji || ''}')">` : (emoji || ''); }
 function renderTeaserV2() {
   const top = STATE.top, lead = top[0], max = lead.champion;
-  const simsStr = STATE.sims.toLocaleString();
   const T = k => I18N.t(k);
+  document.body.classList.add('t2mode'); // landing pura: oculta la nav de pestañas del shell viejo
   const favRows = top.slice(1).map((t, i) => `
     <div class="fav-row" onclick="openLogin()">
       <span class="pos">0${i + 2}</span><span class="fl">${t2Flag(t.id, t.flag)}</span>
@@ -147,7 +147,7 @@ function renderTeaserV2() {
     <div class="t2">
       <div class="hero t2-hero">
         <div class="hero-eyebrow"><span class="dot on"></span>${T('t2.eyebrow')}</div>
-        <h1 class="hero-h1">${I18N.t('t2.h1', { wc: `<span class="g">${T('t2.h1_wc')}</span>`, rt: `<span class="g">${T('t2.h1_rt')}</span>` })}</h1>
+        <h1 class="hero-h1 t2-h1">${I18N.t('t2.h1', { nv: `<span class="g">${T('t2.h1_nv')}</span>` })}</h1>
         <div class="hero-sub">${T('t2.sub')}</div>
         <div class="hero-cta">
           <button class="btn" onclick="openLogin()">${T('t2.cta')}</button>
@@ -155,7 +155,7 @@ function renderTeaserV2() {
         </div>
         <div class="hero-trust t2-trust" id="t2-trust">
           <div class="ht"><b>40+</b>${T('t2.tr_books')}</div>
-          <div class="ht"><b style="color:var(--accent)">${T('teaser.trust_live')}</b>${T('t2.tr_picks')}</div>
+          <div class="ht"><b style="color:var(--accent)">${T('t2.tr_live')}</b>${T('t2.tr_live_sub')}</div>
           <div class="ht"><b>ES·EN</b>${T('t2.tr_bilingual')}</div>
         </div>
       </div>
@@ -163,7 +163,7 @@ function renderTeaserV2() {
       <div class="t2-sec" id="t2-scan"></div>
       <div class="t2-sec">
         <h2 class="t2-h2">${T('t2.sim_title')}</h2>
-        <div class="t2-sub">${I18N.t('t2.sim_sub', { sims: simsStr })}</div>
+        <div class="t2-sub">${T('t2.sim_sub')}</div>
         <div class="fav-board">
           <div class="fav-lead tilt" onclick="openLogin()">
             <div class="rk">${T('teaser.favorite_badge')}</div>
@@ -175,11 +175,11 @@ function renderTeaserV2() {
         </div>
       </div>
       <div class="t2-sec">
-        <h2 class="t2-h2">${T('t2.how_title')}</h2>
+        <h2 class="t2-h2">${T('t2.why_title')}</h2>
         <div class="t2-how">
-          <div class="t2-step"><span class="t2-n">1</span><b>${T('t2.how_1t')}</b><span>${T('t2.how_1s')}</span></div>
-          <div class="t2-step"><span class="t2-n">2</span><b>${T('t2.how_2t')}</b><span>${T('t2.how_2s')}</span></div>
-          <div class="t2-step"><span class="t2-n">3</span><b>${T('t2.how_3t')}</b><span>${T('t2.how_3s')}</span></div>
+          <div class="t2-step"><span class="t2-n">✓</span><b>${T('t2.why_1t')}</b><span>${T('t2.why_1s')}</span></div>
+          <div class="t2-step"><span class="t2-n">◎</span><b>${T('t2.why_2t')}</b><span>${T('t2.why_2s')}</span></div>
+          <div class="t2-step"><span class="t2-n">⚡</span><b>${T('t2.why_3t')}</b><span>${T('t2.why_3s')}</span></div>
         </div>
       </div>
       <div class="t2-final">
@@ -493,6 +493,7 @@ function renderHeader() {
   const inApp = !!USER;
   document.body.classList.toggle('logged-in', inApp);
   document.body.classList.toggle('has-bottomnav', inApp);
+  if (inApp) document.body.classList.remove('t2mode'); // al loguear, la landing pura devuelve la nav
   // top nav (Sprint 4: "Ejecutables" solo aparece si la capa está activa para este usuario — flags off → no aparece)
   const execTab = inApp && USER.execUi ? ['opex'] : [];
   const regTab = inApp && USER.registryUi ? ['registry'] : [];

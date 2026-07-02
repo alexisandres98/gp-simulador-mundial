@@ -876,3 +876,12 @@ h1, .gx-ohead h1 { font-family: var(--gx-display); font-weight: 700; letter-spac
 /* transición de vista: la apertura del análisis de partido entra con fade-up */
 .gx-mv { animation: gxUp .34s cubic-bezier(.22,1,.36,1) backwards; }
 @media (prefers-reduced-motion: reduce) { .gx-mv { animation: none; } }
+
+/* recap de ayer + countdown del feed de picks */
+.gx-pick-recap { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--gx-text2);
+  background: var(--gx-panel); border: 1px solid var(--gx-line2); border-radius: 10px; padding: 9px 14px; margin-bottom: 14px; }
+.gx-pick-recap i { font-size: 16px; color: var(--gx-text3); }
+.gx-recap-pos { color: var(--gx-pos); border-color: rgba(43,227,166,.3); background: rgba(43,227,166,.06); }
+.gx-recap-pos i { color: var(--gx-pos); }
+.gx-pick-nextko { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--gx-accent); margin-top: 10px; font-weight: 600; }
+.gx-pick-nextko i { font-size: 14px; }

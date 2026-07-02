@@ -115,6 +115,7 @@
       // ---- Feed de picks diarias (producto) ----
       pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa',
       pf_empty: 'No hay picks activas ahora mismo', pf_empty_sub: 'Las picks del día aparecen aquí en cuanto se publican. Vuelve pronto.',
+      pf_yesterday: 'Ayer: {won} de {total} picks acertadas', pf_next_ko: 'El próximo partido es a las {time} — las picks salen unas horas antes',
       pf_fam_solid: 'Ganador', pf_fam_goals: 'Goles', pf_fam_combo: 'Combinada',
       pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
       pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada',
@@ -285,6 +286,7 @@
       // ---- Daily picks feed (product) ----
       pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick',
       pf_empty: 'No active picks right now', pf_empty_sub: 'Daily picks show up here as soon as they are published. Check back soon.',
+      pf_yesterday: 'Yesterday: {won} of {total} picks hit', pf_next_ko: 'Next match kicks off at {time} — picks drop a few hours before',
       pf_fam_solid: 'Winner', pf_fam_goals: 'Goals', pf_fam_combo: 'Combo',
       pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
       pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate',
@@ -683,7 +685,7 @@
     // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
     var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
     // Mejor pick: la pick diaria de mayor confianza (feed del producto). Lazy-load si aún no está.
-    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; if (S.view === 'board') kpis(S.dash || {}, rows); }); }
+    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null; if (S.view === 'board') kpis(S.dash || {}, rows); }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
     // Sin value de partido → fallback al mejor value OUTRIGHT (campeón), que casi siempre existe. Lazy-load.
@@ -806,7 +808,7 @@
     if (S.dailyPicks === undefined) {
       S.dailyPicks = null;
       fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
-        S.dailyPicks = (j && j.picks) || [];
+        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null;
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
       });
       bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
@@ -814,11 +816,18 @@
     }
     var picks = S.dailyPicks || [];
     var cc = $('#gx-board-count'); if (cc) cc.textContent = picks.length + ' ' + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
+    var meta = S.dailyPicksMeta || {};
+    // recap de AYER (prueba social agregada — el historial detallado sigue admin): "Ayer: 2 de 3 ✓"
+    var recap = (meta.yesterday && meta.yesterday.total > 0)
+      ? '<div class="gx-pick-recap' + (meta.yesterday.won / meta.yesterday.total >= 0.5 ? ' gx-recap-pos' : '') + '">' + ic('circle-check') + esc(t('pf_yesterday', { won: meta.yesterday.won, total: meta.yesterday.total })) + '</div>' : '';
     if (!picks.length) {
-      bd.innerHTML = '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span></div>';
+      // countdown (reversible por env GP_PICKS_COUNTDOWN_ENABLED): el vacío da una CITA, no un "vuelve pronto"
+      var ko = '';
+      if (meta.next_kickoff) { try { var hh = new Date(meta.next_kickoff).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); ko = '<span class="gx-pick-nextko">' + ic('clock') + esc(t('pf_next_ko', { time: hh })) + '</span>'; } catch (e) {} }
+      bd.innerHTML = recap + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
       return;
     }
-    bd.innerHTML = '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' +
+    bd.innerHTML = recap + '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' +
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
   }
   function pickTeam(p, code) { return code === 'home' ? teamName(p.home_team_id, p.home) : teamName(p.away_team_id, p.away); }
@@ -991,6 +1000,10 @@
     var cc = $('#gx-board-count'); if (cc) cc.textContent = '';
     if (!d.available) { bd.innerHTML = '<div class="gx-empty"><div class="gx-arb-scan-ic">' + ic('arrows-left-right') + '</div><b>' + esc(t('arb_prep')) + '</b><span class="gx-dim">' + esc(t('arb_prep_sub')) + '</span></div>'; return; }
     var C = d.counts || {}, arbs = d.arbitrage || [], lags = d.price_lag || [];
+    // default INTELIGENTE del sub-tab (si el usuario no eligió manualmente): las surebets son raras por naturaleza
+    // → aterrizar en "Arbitraje puro" vacío es mala primera impresión. Con 0 surebets ejecutables y precios
+    // atrasados disponibles → abrir en "Precio atrasado". Si hay surebet → "Arbitraje puro" (es LA noticia).
+    if (!S._arbSubUser) S.arbSub = (C.arb_executable > 0) ? 'pure' : (C.lag_soft > 0 ? 'lag' : S.arbSub);
     // KPIs del observatorio
     var head = '<div class="gx-arb-head">' +
       '<div class="gx-arb-kpi"><b class="gx-mono gx-anum" data-v="' + (C.markets_scanned || 0) + '">' + (C.markets_scanned || 0) + '</b><span class="gx-dim">' + esc(t('arb_kpi_markets')) + '</span></div>' +
@@ -1016,7 +1029,7 @@
     bd.innerHTML = head + arbSubTabs(C) + body + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
     // wiring: sub-tabs + apertura de la card de detalle
     [].forEach.call(bd.querySelectorAll('[data-arbsub]'), function (el) {
-      el.addEventListener('click', function () { S.arbSub = el.getAttribute('data-arbsub'); oppArbBoard(bd); });
+      el.addEventListener('click', function () { S.arbSub = el.getAttribute('data-arbsub'); S._arbSubUser = true; oppArbBoard(bd); });
     });
     [].forEach.call(bd.querySelectorAll('[data-arbref]'), function (el) {
       el.addEventListener('click', function () { openArbDetail(el.getAttribute('data-arbref')); });

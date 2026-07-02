@@ -1192,3 +1192,18 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .t2-scan { grid-template-columns: repeat(3, 1fr); padding: 16px; }
   .t2-stat b { font-size: 24px; }
 }
+
+/* ── t2mode: piel /x para la landing (Space Grotesk, grano, sin nav vieja) ── */
+body.t2mode #topnav { display: none; }
+body.t2mode { position: relative; }
+body.t2mode::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+body.t2mode main { position: relative; z-index: 1; }
+.t2 .hero-h1, .t2 .t2-h2, .t2 .lead-big, .t2 .t2-stat b { font-family: "Space Grotesk", -apple-system, sans-serif; }
+.t2 .hero-h1 { font-size: clamp(38px, 6vw, 64px); letter-spacing: -.03em; line-height: 1.04; }
+.t2 .hero-sub { max-width: 640px; font-size: 16.5px; line-height: 1.6; }
+.t2 .hero-eyebrow { letter-spacing: .14em; }
+.t2 .t2-h2 { letter-spacing: -.02em; }
+.t2 .btn { box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 6px 20px -6px rgba(24,230,163,.5); transition: transform .16s, filter .16s; }
+.t2 .btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.t2 .ht b { font-family: "Space Grotesk", sans-serif; font-variant-numeric: tabular-nums; }

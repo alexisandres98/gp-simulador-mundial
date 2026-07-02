@@ -2413,7 +2413,24 @@ const server = http.createServer(async (req, res) => {
           selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs,
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
         }));
-        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, generated_at: new Date().toISOString() });
+        // RECAP DE AYER (prueba social agregada): solo el marcador W/T del día anterior (UTC). El historial
+        // detallado de picks sigue siendo SOLO admin — aquí no viaja ninguna pick vieja, solo el conteo.
+        const yd = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+        let yWon = 0, yTot = 0;
+        for (const x of db.dailyPicks || []) {
+          if (x.status !== 'SETTLED' || !x.event || String(x.event.kickoff_at || '').slice(0, 10) !== yd) continue;
+          if (x.result_code === 'WIN') { yWon++; yTot++; }
+          else if (x.result_code === 'LOSS') yTot++;
+          // PUSH/VOID/SUPERSEDED no cuentan
+        }
+        // COUNTDOWN (reversible por env): hora real del próximo kickoff para que el feed vacío dé una cita.
+        let nextKo = null;
+        if (!/^(0|false|no|off)$/i.test(String(process.env.GP_PICKS_COUNTDOWN_ENABLED || 'true').trim())) {
+          const now = Date.now();
+          const fut = (espnKickoffs || []).filter(t => t > now);
+          if (fut.length) nextKo = new Date(Math.min.apply(null, fut)).toISOString();
+        }
+        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, generated_at: new Date().toISOString() });
       }
       // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
       // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.

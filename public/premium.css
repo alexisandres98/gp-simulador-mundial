@@ -178,6 +178,18 @@ body { background:
 
 /* ---------- cockpit ---------- */
 .gx-cockpit { position: sticky; top: 78px; display: flex; flex-direction: column; gap: 14px; }
+/* selector de partido del cockpit */
+.gx-ck-picker { display: flex; flex-direction: column; gap: 7px; }
+.gx-ck-selwrap { position: relative; display: flex; align-items: center; }
+.gx-ck-selwrap > i:first-child { position: absolute; left: 12px; color: var(--gx-accent); font-size: 17px; pointer-events: none; }
+.gx-ck-selwrap > i:last-child { position: absolute; right: 12px; color: var(--gx-text3); font-size: 16px; pointer-events: none; }
+.gx-ck-select { width: 100%; appearance: none; -webkit-appearance: none; background: var(--gx-panel); border: 1px solid var(--gx-line2);
+  color: var(--gx-text); font-size: 14px; font-weight: 600; font-family: var(--gx-sans); padding: 12px 38px 12px 40px; border-radius: 11px; cursor: pointer; }
+.gx-ck-select:focus { outline: none; border-color: var(--gx-accent-line); box-shadow: 0 0 0 3px var(--gx-accent-soft); }
+.gx-ck-picks { margin-top: 14px; border-top: 1px solid var(--gx-line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.gx-ck-pickrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--gx-panel); border: 1px solid var(--gx-line); border-radius: 9px; padding: 10px 12px; }
+.gx-ck-picksel { font-size: 13px; font-weight: 700; color: var(--gx-text); }
+.gx-ck-pickodds { font-size: 15px; font-weight: 800; color: var(--gx-accent); }
 .gx-ck-score { padding: 16px; }
 .gx-ck-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .gx-ck-comp { font-size: 11.5px; color: var(--gx-text3); }

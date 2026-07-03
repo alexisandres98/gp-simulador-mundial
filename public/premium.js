@@ -42,6 +42,7 @@
       memo_risk_default: 'Hay dudas de disponibilidad y un desacuerdo apreciable con el mercado.',
       memo_inval: 'Revisar si cambian las alineaciones o la cuota cae por debajo del mínimo.',
       loading: 'Cargando…', no_match: 'Elegí un partido del board para ver su cockpit.',
+      ck_choose: 'Elegí un partido', ck_over25: 'Over 2.5', ck_todaypick: 'Pick del día',
       reg90: '90 min · sin prórroga ni penales', updated_short: 'Actualizado',
       sig_strong: 'STRONG', sig_lean: 'LEAN', sig_watch: 'WATCH', sig_pass: 'PASS',
       comp: 'Copa Mundial de la FIFA 2026', none_active_pick: 'No hay Picks GP activas en este momento.',
@@ -230,6 +231,7 @@
       memo_risk_default: 'There are availability doubts and a notable disagreement with the market.',
       memo_inval: 'Watch for lineup changes or the price dropping below the minimum.',
       loading: 'Loading…', no_match: 'Pick a match from the board to see its cockpit.',
+      ck_choose: 'Pick a match', ck_over25: 'Over 2.5', ck_todaypick: 'Today’s pick',
       reg90: '90 min · no extra time or penalties', updated_short: 'Updated',
       sig_strong: 'STRONG', sig_lean: 'LEAN', sig_watch: 'WATCH', sig_pass: 'PASS',
       comp: 'FIFA World Cup 2026', none_active_pick: 'No active GP Picks right now.',
@@ -719,7 +721,7 @@
     // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
     var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
     // Mejor pick: la pick diaria de mayor confianza (feed del producto). Lazy-load si aún no está.
-    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null; if (S.view === 'board') kpis(S.dash || {}, rows); }); }
+    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
     // OUTRIGHT (campeón GP vs mercado): fuente de los fallbacks de "Mejor value" y "Mayor desacuerdo" cuando no hay
@@ -854,6 +856,7 @@
       fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
         S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null;
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
+        refreshCockpit();
       });
       bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
       return;
@@ -1409,19 +1412,93 @@
   function isMax() { return null; }
 
   // ---------- cockpit ----------
+  // Partidos seleccionables para el cockpit: los canónicos con evals V2 (dashboard.upcoming, ricos) + los partidos
+  // de las picks del día (sintéticos por team-ids; su GP viene de /api/h2h/deep). Distinct por par de equipos.
+  function cockpitMatches() {
+    var list = [], seen = {};
+    ((S.dash && S.dash.upcoming) || []).forEach(function (u) {
+      var h = u.header, hid = h.home.team_id, aid = h.away.team_id; if (!hid || !aid) return;
+      seen[hid + '|' + aid] = 1;
+      list.push({ key: 'ev:' + h.event_id, id: h.event_id, hid: hid, aid: aid, kickoff: h.kickoff_at, home: teamName(hid, h.home.name_fallback), away: teamName(aid, h.away.name_fallback), canonical: true });
+    });
+    ((S.dailyPicks) || []).forEach(function (p) {
+      var hid = p.home_team_id, aid = p.away_team_id; if (!hid || !aid || seen[hid + '|' + aid]) return;
+      seen[hid + '|' + aid] = 1;
+      list.push({ key: 'tm:' + hid + '-' + aid, id: 'teams-' + hid + '-' + aid, hid: hid, aid: aid, kickoff: p.kickoff, home: teamName(hid, p.home), away: teamName(aid, p.away), canonical: false });
+    });
+    list.sort(function (a, b) { return new Date(a.kickoff || 0) - new Date(b.kickoff || 0); });
+    return list;
+  }
+  // Re-render del cockpit desde el estado actual (usado cuando llegan picks/h2h async estando en el board).
+  function refreshCockpit() {
+    if (S.view !== 'board') return;
+    var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); });
+    cockpit(rs);
+  }
   function cockpit(rows) {
     var el = $('#gx-cockpit'); if (!el) return;
     var main = el.closest('.gx-main');
-    var r = rows.filter(function (x) { return x.h.event_id === S.sel; })[0] || rows[0];
-    // Sin partido disponible (p.ej. sin evals V2 aún) → NO mostrar un panel muerto "elegí un partido": se oculta el
-    // cockpit y el contenido ocupa todo el ancho. El análisis profundo se abre desde cualquier pick/partido.
-    if (!r) { el.style.display = 'none'; el.innerHTML = ''; if (main) main.classList.add('gx-solo'); return; }
+    var matches = cockpitMatches();
+    // Sin ningún partido (ni canónico ni de picks) → ocultar el cockpit y usar todo el ancho (sin panel muerto).
+    if (!matches.length) { el.style.display = 'none'; el.innerHTML = ''; if (main) main.classList.add('gx-solo'); return; }
     el.style.display = ''; if (main) main.classList.remove('gx-solo');
+    // partido seleccionado (persistente por S.ckSel; default = el seleccionado del board o el primero)
+    var sel = matches.filter(function (m) { return m.key === S.ckSel; })[0];
+    if (!sel) { sel = matches.filter(function (m) { return m.id === S.sel; })[0] || matches[0]; S.ckSel = sel.key; }
+    var selectorHtml = '<div class="gx-ck-picker"><span class="gx-label">' + esc(t('ck_choose')) + '</span>' +
+      '<div class="gx-ck-selwrap">' + ic('device-desktop-analytics') + '<select class="gx-ck-select" id="gx-ck-select">' +
+      matches.map(function (m) { return '<option value="' + esc(m.key) + '"' + (m.key === S.ckSel ? ' selected' : '') + '>' + esc(m.home + ' ' + t('vs') + ' ' + m.away) + '</option>'; }).join('') +
+      '</select>' + ic('chevron-down') + '</div></div>';
+    var body, canonRow = sel.canonical ? rows.filter(function (x) { return x.h.event_id === sel.id; })[0] : null;
+    if (canonRow) body = cockpitRich(canonRow);
+    else body = cockpitCompact(sel);
+    el.innerHTML = selectorHtml + body;
+    var s = $('#gx-ck-select'); if (s) s.addEventListener('change', function () { S.ckSel = s.value; refreshCockpit(); var ck = $('#gx-cockpit'); if (window.innerWidth <= 1180 && ck) ck.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    // enriquecimiento del canónico (tesis/riesgo reales) — una vez por evento
+    if (canonRow && canonRow.h.event_id && !S.mc[canonRow.h.event_id]) {
+      fetch('/api/beta/match/' + encodeURIComponent(canonRow.h.event_id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[canonRow.h.event_id] = m || { _empty: true }; refreshCockpit(); });
+    }
+  }
+  // Cockpit COMPACTO para un partido de picks (sintético): GP 1X2 (h2h/deep) + proyección de goles + pick(s) del día
+  // + botón al análisis completo. La persona lo elige en el selector y aparece acá.
+  function cockpitCompact(m) {
+    var hk = m.hid + '_' + m.aid;
+    if (S.h2h[hk] === undefined) {
+      S.h2h[hk] = null;
+      fetch('/api/h2h/deep?a=' + encodeURIComponent(m.hid) + '&b=' + encodeURIComponent(m.aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (j) { S.h2h[hk] = j || { _empty: true }; if (S.ckSel === m.key) refreshCockpit(); });
+    }
+    var h2h = (S.h2h[hk] && !S.h2h[hk]._empty) ? S.h2h[hk] : null;
+    var probs = h2h && h2h.probs ? h2h.probs : null;
+    var gpH = probs ? probs.aWin : null, gpD = probs ? probs.draw : null, gpA = probs ? probs.bWin : null;
+    var gi = h2h && h2h.goal_insights, ou = gi && gi.over_under && gi.over_under['2.5'];
+    var xg = gi && gi.expected_goals ? gi.expected_goals : null;
+    var mPicks = (S.dailyPicks || []).filter(function (p) { return p.home_team_id === m.hid && p.away_team_id === m.aid; });
+    var probBlock = probs
+      ? '<div class="gx-pbar"><i class="h" style="width:' + (gpH * 100) + '%"></i><i class="d" style="width:' + (gpD * 100) + '%"></i><i class="a" style="width:' + (gpA * 100) + '%"></i></div>' +
+        '<div class="gx-plabels"><span>' + esc(m.home) + ' <b>' + pct0(gpH) + '</b></span><span>X <b>' + pct0(gpD) + '</b></span><span>' + esc(m.away) + ' <b>' + pct0(gpA) + '</b></span></div>'
+      : '<div class="gx-empty" style="padding:14px 0">' + ic('loader-2') + esc(t('loading')) + '</div>';
+    var stats = '<div class="gx-ck-stats">' +
+      ckStat(t('prob_gp'), probs ? pct0(Math.max(gpH, gpA)) : '—') +
+      ckStat('xG', xg && xg.TOTAL != null ? Number(xg.TOTAL).toFixed(1) : '—') +
+      ckStat(t('ck_over25'), ou && ou.over != null ? pct0(ou.over) : '—') +
+      '</div>';
+    var picksHtml = mPicks.length ? '<div class="gx-ck-picks"><span class="gx-label">' + esc(t('ck_todaypick')) + '</span>' +
+      mPicks.map(function (p) { return '<div class="gx-ck-pickrow"><span class="gx-ck-picksel">' + esc(pickRecText(p)) + '</span>' + (p.odds != null ? '<span class="gx-ck-pickodds gx-mono">' + Number(p.odds).toFixed(2) + '</span>' : '') + '</div>'; }).join('') + '</div>' : '';
+    return '<div class="gx-panel gx-ck-score">' +
+      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc((stageLabel('R16') || t('comp'))) + (m.kickoff ? ' · ' + esc(fmtDateTime(m.kickoff)) : '') + '</div>' +
+      '<div class="gx-ck-teams"><div class="gx-ck-side"><span class="fl">' + flag(m.hid) + '</span><b>' + esc(m.home) + '</b></div>' +
+      '<div class="gx-ck-mid"><div class="gx-ck-num">' + t('vs') + '</div></div>' +
+      '<div class="gx-ck-side"><span class="fl">' + flag(m.aid) + '</span><b>' + esc(m.away) + '</b></div></div>' +
+      probBlock + stats + picksHtml +
+      '<button class="gx-btn" style="width:100%;justify-content:center;margin-top:14px" data-openmatch="' + esc(m.id) + '">' + esc(t('open_cockpit')) + ' ' + ic('arrow-right') + '</button>' +
+      '</div>';
+  }
+  // Cockpit RICO para un partido canónico (con evals V2): el análisis completo con memo/trust.
+  function cockpitRich(r) {
     var h = r.h, gpH = r.gp('HOME') || 0, gpD = r.gp('DRAW') || 0, gpA = r.gp('AWAY') || 0;
     var memo = buildMemo(r);
     var conf = memo.conf;
-    el.innerHTML =
-      '<div class="gx-panel gx-ck-score">' +
+    return '<div class="gx-panel gx-ck-score">' +
       '<div class="gx-ck-head"><span class="gx-label">' + esc(t('cockpit')) + '</span>' + (r.live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(fmtTime(r.kickoff)) + '</span>') + '</div>' +
       '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc(t('comp')) + '</div>' +
       '<div class="gx-ck-teams"><div class="gx-ck-side"><span class="fl">' + flag(h.home.team_id) + '</span><b>' + esc(teamName(h.home.team_id, h.home.name_fallback)) + '</b></div>' +
@@ -1445,13 +1522,6 @@
       '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
       '<button class="gx-btn" data-openmatch="' + esc(h.event_id) + '">' + esc(t('open_cockpit')) + ' ' + ic('arrow-right') + '</button></div>' +
       '</div>';
-    // enriquece la tesis/riesgo/trust con el análisis real del partido (una vez por evento)
-    if (h.event_id && !S.mc[h.event_id]) {
-      fetch('/api/beta/match/' + encodeURIComponent(h.event_id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) {
-        S.mc[h.event_id] = m || { _empty: true };
-        if (S.sel === h.event_id) { var rs = (S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); cockpit(rs); }
-      });
-    }
   }
   // Data Trust: frescura / fuentes / alineación / contexto (desde el análisis real; honesto si falta)
   // A.5: estado de alineación con trazabilidad. CONFIRMED solo con evidencia verificable real (fx con lista

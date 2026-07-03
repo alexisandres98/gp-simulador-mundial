@@ -2826,7 +2826,7 @@ const server = http.createServer(async (req, res) => {
           const scan = await getMarketScan();
           if (scan && !scan.disabled && !scan.unavailable) scanner = { markets: scan.markets_scanned || 0, lag: (scan.counts && scan.counts.lag_soft) || 0, arb: (scan.counts && scan.counts.arb_executable) || 0 };
         } catch { /* scanner apagado → sección omitida */ }
-        global._teaserCache = { at: Date.now(), data: { picks: active, picks_enabled: dailyPicksOn(), record: { total: tr.total || 0, winners: tr.winners || 0 }, scanner } };
+        global._teaserCache = { at: Date.now(), data: { picks: active, picks_enabled: dailyPicksOn(), record: { total: tr.total || 0, winners: tr.winners || 0 }, scanner, users: Object.keys(db.users || {}).length } };
       }
       return json(res, 200, global._teaserCache.data);
     }

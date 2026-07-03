@@ -1013,3 +1013,31 @@ td .gx-calc-btn span { display: none; }
 .gx-calc-intro { font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
 
 @media (max-width: 560px) { .gx-calc-grid { grid-template-columns: 1fr; } .gx-calc-bigval { font-size: 30px; } }
+
+/* ============================ ADMIN /x (post-fusión: 4 herramientas operativas) ============================ */
+.gx-adm .gx-ph { display: flex; align-items: center; justify-content: space-between; }
+.gx-adm-body { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.gx-adm-body > p { margin: 0; }
+.gx-adm-f { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; }
+.gx-adm-f > span { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--gx-text3); }
+.gx-adm-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.gx-adm-body .gx-pf-in, .gx-adm-body .gx-select { width: 100%; }
+.gx-adm-body .gx-select { padding: 11px 12px; font-size: 14px; }
+.gx-adm-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gx-text2); cursor: pointer; }
+.gx-adm-check input { width: 16px; height: 16px; accent-color: var(--gx-accent); }
+.gx-adm-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.gx-adm-msg { font-size: 13px; color: var(--gx-text2); min-height: 18px; padding: 0 2px; }
+.gx-btn.ghost { background: var(--gx-panel3); color: var(--gx-text); box-shadow: none; border: 1px solid var(--gx-line2); }
+.gx-btn.ghost:hover { border-color: var(--gx-accent-line); filter: none; }
+.gx-adm-csv { padding: 7px 13px; font-size: 12.5px; }
+.gx-adm-ucount { font-size: 15px; color: var(--gx-text); }
+.gx-adm-ucount b { font-weight: 800; font-family: var(--gx-mono); }
+.gx-adm-langs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gx-adm-chip { display: inline-flex; align-items: center; gap: 5px; background: var(--gx-panel); border: 1px solid var(--gx-line); border-radius: 8px; padding: 4px 9px; font-size: 12px; color: var(--gx-text2); }
+.gx-adm-chip b { color: var(--gx-text); font-family: var(--gx-mono); }
+.gx-adm-table-wrap { overflow-x: auto; border: 1px solid var(--gx-line); border-radius: 10px; max-height: 520px; overflow-y: auto; }
+.gx-adm-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.gx-adm-table th { position: sticky; top: 0; background: var(--gx-panel2); text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gx-text3); padding: 10px 12px; border-bottom: 1px solid var(--gx-line2); white-space: nowrap; }
+.gx-adm-table td { padding: 9px 12px; border-top: 1px solid var(--gx-line); white-space: nowrap; }
+.gx-adm-table tbody tr:hover { background: rgba(255,255,255,.02); }
+.gx-adm-lead { font-size: 10px; font-weight: 800; letter-spacing: .05em; color: var(--gx-warn); background: rgba(242,193,78,.12); border: 1px solid rgba(242,193,78,.3); padding: 2px 6px; border-radius: 5px; }

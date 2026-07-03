@@ -136,6 +136,13 @@
       me_limits_t: 'Limitaciones', me_limits_b: 'No es consejo financiero, sino estimaciones de un modelo estadístico. La cobertura de contexto y mercado depende de la disponibilidad de datos por partido.',
       adm_observatory: 'Observatory de cobertura', adm_canonical: 'Eventos canónicos', adm_with_eval: 'Con evaluación GP', adm_upcoming_eval: 'Próximos evaluados', adm_pending: 'Próximos pendientes',
       adm_ctx_dist: 'Distribución de contexto', adm_snap_fresh: 'Frescura de snapshots', adm_forbidden: 'Solo administradores.',
+      adm_fix_group: 'Corregir partido · Fase de grupos', adm_fix_ko: 'Corregir partido · Eliminación directa',
+      adm_match: 'Partido', adm_bracket: 'Llave', adm_goals_h: 'Goles equipo 1', adm_goals_a: 'Goles equipo 2', adm_status: 'Estado', adm_st_final: 'Terminado', adm_st_live: 'En juego', adm_minute: 'Minuto', adm_team1: 'Equipo 1', adm_team2: 'Equipo 2', adm_pens: 'Si empataron: ganó el equipo 1 en penales',
+      adm_save: 'Guardar resultado', adm_remove: 'Eliminar resultado', adm_saving: 'Guardando…', adm_saved: 'Guardado — probabilidades recalculadas y enviadas a todos.', adm_removed: 'Resultado eliminado.', adm_neterr: 'Error de red',
+      adm_broadcast: 'Email masivo', adm_bc_beta: 'Anuncio de la plataforma (diseño completo). Suele caer en Promociones. Prueba primero contigo.', adm_bc_reengage: 'Reactivación (bandeja Principal): correo personal para reenganchar inactivos. Prueba primero contigo.',
+      adm_bc_test: '✉ Prueba', adm_bc_send: '📣 Enviar a TODOS', adm_bc_confirm: '¿Enviar este email a TODOS los usuarios? No se puede deshacer.', adm_bc_sending_test: 'Enviando prueba…', adm_bc_starting: 'Iniciando envío…', adm_bc_test_ok: 'Prueba enviada ({sent}/{total})', adm_bc_started: 'Envío iniciado en segundo plano… ({total} usuarios)', adm_bc_progress: 'Enviando… {sent}/{total}', adm_bc_done: 'Envío completado: {sent}/{total}', adm_bc_server: 'Envío en curso en el servidor (no se pudo leer el progreso).',
+      adm_telegram: 'Telegram', adm_tg_note: 'Publica al canal @gpsimulador. Automático: finales, oportunidades fuertes y resumen diario. Estos botones son para probar/forzar.', adm_tg_test: '✈ Probar publicación', adm_tg_daily: '📊 Publicar resumen de hoy', adm_tg_sending: 'Publicando…', adm_tg_ok: 'Publicado en el canal.', adm_tg_fail: 'no se pudo publicar',
+      adm_users: 'Base de usuarios', adm_users_err: 'No se pudo cargar la base de usuarios.', adm_verified: 'verificados', adm_leads: 'leads', adm_total: 'total', adm_sources: 'Fuentes', adm_name: 'Nombre', adm_country: 'País', adm_lang: 'Idioma', adm_state: 'Estado', adm_source: 'Fuente', adm_reg: 'Registro', adm_lastseen: 'Última visita',
       // ---- Fase 5: equipos tabs + cuenta ----
       nav_refer: 'Invitar',
       tm_groupwin: 'Gana grupo', tm_groupsecond: '2º grupo', tm_out: 'Fuera', tm_follow: 'Seguir', tm_following: 'Siguiendo',
@@ -325,6 +332,13 @@
       me_limits_t: 'Limitations', me_limits_b: 'Not financial advice, but statistical model estimates. Context and market coverage depend on per-match data availability.',
       adm_observatory: 'Coverage observatory', adm_canonical: 'Canonical events', adm_with_eval: 'With GP evaluation', adm_upcoming_eval: 'Upcoming evaluated', adm_pending: 'Upcoming pending',
       adm_ctx_dist: 'Context distribution', adm_snap_fresh: 'Snapshot freshness', adm_forbidden: 'Admins only.',
+      adm_fix_group: 'Fix match · Group stage', adm_fix_ko: 'Fix match · Knockout',
+      adm_match: 'Match', adm_bracket: 'Bracket', adm_goals_h: 'Team 1 goals', adm_goals_a: 'Team 2 goals', adm_status: 'Status', adm_st_final: 'Final', adm_st_live: 'Live', adm_minute: 'Minute', adm_team1: 'Team 1', adm_team2: 'Team 2', adm_pens: 'If drawn: team 1 won on penalties',
+      adm_save: 'Save result', adm_remove: 'Remove result', adm_saving: 'Saving…', adm_saved: 'Saved — probabilities recalculated and pushed to everyone.', adm_removed: 'Result removed.', adm_neterr: 'Network error',
+      adm_broadcast: 'Mass email', adm_bc_beta: 'Platform announcement (full design). Often lands in Promotions. Test on yourself first.', adm_bc_reengage: 'Re-engagement (Primary inbox): personal-style email to win back inactives. Test on yourself first.',
+      adm_bc_test: '✉ Test', adm_bc_send: '📣 Send to ALL', adm_bc_confirm: 'Send this email to ALL users? This cannot be undone.', adm_bc_sending_test: 'Sending test…', adm_bc_starting: 'Starting send…', adm_bc_test_ok: 'Test sent ({sent}/{total})', adm_bc_started: 'Send started in background… ({total} users)', adm_bc_progress: 'Sending… {sent}/{total}', adm_bc_done: 'Send complete: {sent}/{total}', adm_bc_server: 'Send running on the server (progress unreadable).',
+      adm_telegram: 'Telegram', adm_tg_note: 'Posts to the @gpsimulador channel. Automatic: final scores, strong opportunities and the daily summary. These buttons are to test/force.', adm_tg_test: '✈ Test post', adm_tg_daily: '📊 Post today’s summary', adm_tg_sending: 'Posting…', adm_tg_ok: 'Posted to the channel.', adm_tg_fail: 'could not post',
+      adm_users: 'User base', adm_users_err: 'Could not load the user base.', adm_verified: 'verified', adm_leads: 'leads', adm_total: 'total', adm_sources: 'Sources', adm_name: 'Name', adm_country: 'Country', adm_lang: 'Language', adm_state: 'State', adm_source: 'Source', adm_reg: 'Signed up', adm_lastseen: 'Last seen',
       // ---- Phase 5: team tabs + account ----
       nav_refer: 'Invite',
       tm_groupwin: 'Win group', tm_groupsecond: '2nd group', tm_out: 'Out', tm_follow: 'Follow', tm_following: 'Following',
@@ -2962,31 +2976,151 @@
   }
 
   // ---- Admin: Observatory de cobertura (§29, solo admin) ----
+  // ADMIN (post-fusión): las 4 herramientas operativas portadas de la plataforma vieja — corregir partido,
+  // base de usuarios, email masivo, Telegram. Mismos endpoints (/api/admin/*), datos compartidos (misma DB).
+  function admStage(c) { return stageLabel(c) || ({ R32: LANG === 'en' ? 'Round of 32' : '16avos', '3RD': LANG === 'en' ? '3rd place' : '3er puesto', group: LANG === 'en' ? 'Group' : 'Grupos' }[c]) || c; }
   function renderAdmin() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    if (S.obs === undefined) {
-      S.obs = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_admin')) + mvLoading() + '</div></div>';
-      fetch('/api/beta/observatory', { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : (x.status === 403 ? { _forbidden: true } : null); }).catch(function () { return null; }).then(function (m) { S.obs = m || { _empty: true }; if (S.view === 'admin') renderAdmin(); });
+    if (!(S.me && S.me.isAdmin)) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_admin')) + '<div class="gx-panel"><div class="gx-empty">' + ic('lock') + '<b>' + esc(t('adm_forbidden')) + '</b></div></div></div></div>'; return; }
+    if (S.adminData === undefined) {
+      S.adminData = null;
+      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_admin')) + mvLoading() + '</div></div>';
+      Promise.all([
+        fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/api/admin/users', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      ]).then(function (res) { S.adminData = { state: res[0] || {}, users: res[1] }; if (S.view === 'admin') renderAdmin(); });
       return;
     }
-    var d = S.obs || {};
-    var body;
-    if (d._forbidden) body = '<div class="gx-panel"><div class="gx-empty">' + ic('lock') + '<b>' + esc(t('adm_forbidden')) + '</b></div></div>';
-    else if (!d.canonical_events) body = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
-    else {
-      var kpi = function (label, v, cls) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div></div>'; };
-      var ce = d.canonical_events || {}, cs = d.context_state_distribution || {}, fr = d.snapshot_freshness || {};
-      var kpis = '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr)">' +
-        kpi(t('adm_canonical'), ce.total || 0) + kpi(t('adm_with_eval'), d.with_gp_evaluation || 0, 'gx-pos') +
-        kpi(t('adm_upcoming_eval'), d.upcoming_with_evaluation || 0) + kpi(t('adm_pending'), d.upcoming_pending || 0, (d.upcoming_pending ? 'gx-warn' : '')) + '</div>';
-      var csRows = ['FULL_CONTEXT', 'PARTIAL_CONTEXT', 'BASE_ONLY'].map(function (k) { return '<div class="gx-trust-i"><span class="gx-label">' + esc(k.replace('_', ' ')) + '</span><b class="gx-mono">' + (cs[k] || 0) + '</b></div>'; }).join('');
-      var frRows = [['fresh', 'fresh_data'], ['aging', 'aging_data'], ['stale', 'stale_data']].map(function (x) { return '<div class="gx-trust-i"><span class="gx-label">' + esc(t(x[1])) + '</span><b class="gx-mono">' + (fr[x[0]] || 0) + '</b></div>'; }).join('');
-      body = kpis +
-        '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_ctx_dist')) + '</span></div><div class="gx-trust" style="margin:14px">' + csRows + '</div></div>' +
-        '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_snap_fresh')) + '</span></div><div class="gx-trust" style="margin:14px">' + frRows + '</div></div>' +
-        '<p class="gx-mod-note gx-dim" style="padding:0 2px">' + ic('info-circle') + ' ' + esc(d.note || '') + '</p>';
-    }
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin') + ' · ' + t('adm_observatory')) + body + '</div></div>';
+    var st = S.adminData.state || {}, uj = S.adminData.users;
+    // ---- Corregir partido ----
+    var gOpts = (st.fixtures || []).filter(function (f) { return f.home && f.away; })
+      .sort(function (a, b) { return (a.datetime || '').localeCompare(b.datetime || ''); })
+      .map(function (f) { return '<option value="' + esc(f.id) + '">' + esc(teamName(f.home) + ' vs ' + teamName(f.away) + (f.group ? ' · ' + (LANG === 'en' ? 'Group' : 'Grupo') + ' ' + f.group : '')) + '</option>'; }).join('');
+    var koOpts = (st.knockout || []).map(function (k) {
+      var h = (k.resolved && k.resolved.home) ? teamName(k.resolved.home) : (typeof k.home === 'string' ? k.home : '?');
+      var a = (k.resolved && k.resolved.away) ? teamName(k.resolved.away) : (typeof k.away === 'string' ? k.away : '?');
+      return '<option value="' + esc(k.m) + '">' + esc(admStage(k.stage) + ' · ' + h + ' vs ' + a + (k.date ? ' · ' + k.date : '')) + '</option>';
+    }).join('');
+    var teamOpts = (st.teams || []).map(function (tm) { return '<option value="' + esc(tm.id) + '">' + esc(tm.name) + '</option>'; }).join('');
+    var matchCorrect =
+      '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_fix_group')) + '</span></div><div class="gx-mod-body gx-adm-body">' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_match')) + '</span><select class="gx-select" id="gxa-gmatch">' + gOpts + '</select></label>' +
+        '<div class="gx-adm-row"><label class="gx-adm-f"><span>' + esc(t('adm_goals_h')) + '</span><input class="gx-pf-in" id="gxa-ghg" type="number" min="0" value="0"></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_goals_a')) + '</span><input class="gx-pf-in" id="gxa-gag" type="number" min="0" value="0"></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_status')) + '</span><select class="gx-select" id="gxa-gstatus"><option value="final">' + esc(t('adm_st_final')) + '</option><option value="live">' + esc(t('adm_st_live')) + '</option></select></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_minute')) + '</span><input class="gx-pf-in" id="gxa-gmin" type="number" min="0" max="90" value="0"></label></div>' +
+        '<div class="gx-adm-actions"><button class="gx-btn" data-adm="save-g">' + esc(t('adm_save')) + '</button><button class="gx-btn ghost" data-adm="rm-g">' + esc(t('adm_remove')) + '</button></div>' +
+      '</div></div>' +
+      '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_fix_ko')) + '</span></div><div class="gx-mod-body gx-adm-body">' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_bracket')) + '</span><select class="gx-select" id="gxa-kmatch">' + koOpts + '</select></label>' +
+        '<div class="gx-adm-row"><label class="gx-adm-f"><span>' + esc(t('adm_team1')) + '</span><select class="gx-select" id="gxa-khome">' + teamOpts + '</select></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_team2')) + '</span><select class="gx-select" id="gxa-kaway">' + teamOpts + '</select></label></div>' +
+        '<div class="gx-adm-row"><label class="gx-adm-f"><span>' + esc(t('adm_goals_h')) + '</span><input class="gx-pf-in" id="gxa-khg" type="number" min="0" value="0"></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_goals_a')) + '</span><input class="gx-pf-in" id="gxa-kag" type="number" min="0" value="0"></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_status')) + '</span><select class="gx-select" id="gxa-kstatus"><option value="final">' + esc(t('adm_st_final')) + '</option><option value="live">' + esc(t('adm_st_live')) + '</option></select></label>' +
+        '<label class="gx-adm-f"><span>' + esc(t('adm_minute')) + '</span><input class="gx-pf-in" id="gxa-kmin" type="number" min="0" max="120" value="0"></label></div>' +
+        '<label class="gx-adm-check"><input type="checkbox" id="gxa-kpens"> ' + esc(t('adm_pens')) + '</label>' +
+        '<div class="gx-adm-actions"><button class="gx-btn" data-adm="save-k">' + esc(t('adm_save')) + '</button><button class="gx-btn ghost" data-adm="rm-k">' + esc(t('adm_remove')) + '</button></div>' +
+      '</div></div>' +
+      '<div class="gx-adm-msg" id="gxa-msg"></div>';
+    // ---- Email masivo ----
+    var broadcast =
+      '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_broadcast')) + '</span></div><div class="gx-mod-body gx-adm-body">' +
+        '<p class="gx-dim" style="font-size:12.5px">' + esc(t('adm_bc_beta')) + '</p>' +
+        '<div class="gx-adm-actions"><button class="gx-btn ghost" data-adm="bc-test-beta">' + esc(t('adm_bc_test')) + '</button><button class="gx-btn" data-adm="bc-all-beta">' + esc(t('adm_bc_send')) + '</button></div>' +
+        '<p class="gx-dim" style="font-size:12.5px;margin-top:6px">' + esc(t('adm_bc_reengage')) + '</p>' +
+        '<div class="gx-adm-actions"><button class="gx-btn ghost" data-adm="bc-test-reengage">' + esc(t('adm_bc_test')) + '</button><button class="gx-btn" data-adm="bc-all-reengage">' + esc(t('adm_bc_send')) + '</button></div>' +
+        '<div class="gx-adm-msg" id="gxa-bcmsg"></div>' +
+      '</div></div>';
+    // ---- Telegram ----
+    var telegram =
+      '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_telegram')) + '</span></div><div class="gx-mod-body gx-adm-body">' +
+        '<p class="gx-dim" style="font-size:12.5px">' + esc(t('adm_tg_note')) + '</p>' +
+        '<div class="gx-adm-actions"><button class="gx-btn ghost" data-adm="tg-test">' + esc(t('adm_tg_test')) + '</button><button class="gx-btn ghost" data-adm="tg-daily">' + esc(t('adm_tg_daily')) + '</button></div>' +
+        '<div class="gx-adm-msg" id="gxa-tgmsg"></div>' +
+      '</div></div>';
+    // ---- Base de usuarios ----
+    var users = admUsersHtml(uj);
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + matchCorrect + users + broadcast + telegram + '</div></div>';
+    wireAdmin();
+  }
+  function admUsersHtml(uj) {
+    if (!uj) return '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_users')) + '</span></div><div class="gx-mod-body gx-adm-body"><span class="gx-dim">' + esc(t('adm_users_err')) + '</span></div></div>';
+    var fmt = function (ts) { try { return new Date(ts).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+    var vCount = uj.verifiedCount != null ? uj.verifiedCount : (uj.users || []).filter(function (u) { return u.verified !== false; }).length;
+    var lCount = uj.leadCount != null ? uj.leadCount : ((uj.total || 0) - vCount);
+    var bl = uj.byLang || {}, sources = Object.keys(uj.bySource || {}).sort(function (a, b) { return uj.bySource[b] - uj.bySource[a]; }).map(function (s) { return '<span class="gx-adm-chip"><b>' + uj.bySource[s] + '</b> ' + esc(s) + '</span>'; }).join(' ');
+    var rows = (uj.users || []).map(function (u) {
+      return '<tr' + (u.verified === false ? ' style="opacity:.72"' : '') + '><td>' + esc(u.email) + '</td><td>' + (u.name ? esc(u.name) : '—') + '</td><td>' + esc(u.country || '—') + '</td><td><b>' + esc((u.mailLang || 'es').toUpperCase()) + '</b></td><td>' + (u.verified === false ? '<span class="gx-adm-lead">LEAD</span>' : '<span class="gx-pos">✓</span>') + '</td><td>' + esc(u.ref || '') + '</td><td class="gx-dim">' + esc(fmt(u.createdAt)) + '</td><td class="gx-dim">' + esc(fmt(u.lastSeen)) + '</td></tr>';
+    }).join('');
+    S._admUsers = uj.users || [];
+    return '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_users')) + '</span>' +
+      '<button class="gx-btn ghost gx-adm-csv" data-adm="csv">' + ic('download') + ' CSV</button></div>' +
+      '<div class="gx-mod-body gx-adm-body">' +
+      '<div class="gx-adm-ucount"><b class="gx-pos">' + vCount + '</b> ' + esc(t('adm_verified')) + ' · <b class="gx-warn">' + lCount + '</b> ' + esc(t('adm_leads')) + ' <span class="gx-dim">(' + (uj.total || 0) + ' ' + esc(t('adm_total')) + ')</span></div>' +
+      '<div class="gx-adm-langs"><span class="gx-adm-chip"><b>' + (bl.es || 0) + '</b> ES</span><span class="gx-adm-chip"><b>' + (bl.en || 0) + '</b> EN</span>' + (sources ? ' <span class="gx-dim" style="font-size:11px;margin-left:6px">' + esc(t('adm_sources')) + ':</span> ' + sources : '') + '</div>' +
+      '<div class="gx-adm-table-wrap"><table class="gx-adm-table"><thead><tr><th>Email</th><th>' + esc(t('adm_name')) + '</th><th>' + esc(t('adm_country')) + '</th><th>' + esc(t('adm_lang')) + '</th><th>' + esc(t('adm_state')) + '</th><th>' + esc(t('adm_source')) + '</th><th>' + esc(t('adm_reg')) + '</th><th>' + esc(t('adm_lastseen')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '</div></div>';
+  }
+  var _admBusy = false;
+  function admMsg(id, txt) { var e = $('#' + id); if (e) e.textContent = txt; }
+  function wireAdmin() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    [].forEach.call(mv.querySelectorAll('[data-adm]'), function (b) {
+      b.addEventListener('click', function () {
+        var a = b.getAttribute('data-adm');
+        if (a === 'csv') return admExportCSV();
+        if (a === 'save-g' || a === 'rm-g' || a === 'save-k' || a === 'rm-k') return admResult(a);
+        if (a.indexOf('bc-') === 0) { var parts = a.split('-'); return admBroadcast(parts[1] === 'test', parts[2]); }
+        if (a === 'tg-test') return admTelegram('/api/admin/telegram-test');
+        if (a === 'tg-daily') return admTelegram('/api/admin/telegram-daily');
+      });
+    });
+  }
+  function admResult(a) {
+    var jhdr = Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body;
+    if (a === 'rm-g') body = { matchId: ($('#gxa-gmatch') || {}).value, remove: true };
+    else if (a === 'rm-k') body = { matchId: ($('#gxa-kmatch') || {}).value, remove: true };
+    else if (a === 'save-g') body = { matchId: $('#gxa-gmatch').value, hg: $('#gxa-ghg').value, ag: $('#gxa-gag').value, status: $('#gxa-gstatus').value, minute: $('#gxa-gmin').value };
+    else body = { matchId: $('#gxa-kmatch').value, home: $('#gxa-khome').value, away: $('#gxa-kaway').value, hg: $('#gxa-khg').value, ag: $('#gxa-kag').value, status: $('#gxa-kstatus').value, minute: $('#gxa-kmin').value, pensHome: $('#gxa-kpens').checked };
+    admMsg('gxa-msg', t('adm_saving'));
+    fetch('/api/admin/result', { method: 'POST', headers: jhdr, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) { admMsg('gxa-msg', res.ok ? (body.remove ? '✓ ' + t('adm_removed') : '✓ ' + t('adm_saved')) : '✗ ' + (res.j.error || 'error')); })
+      .catch(function () { admMsg('gxa-msg', '✗ ' + t('adm_neterr')); });
+  }
+  function admBroadcast(test, variant) {
+    if (_admBusy) return;
+    if (!test && !window.confirm(t('adm_bc_confirm'))) return;
+    _admBusy = true; admMsg('gxa-bcmsg', test ? t('adm_bc_sending_test') : t('adm_bc_starting'));
+    var done = function () { _admBusy = false; };
+    fetch('/api/admin/broadcast', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ test: test, variant: variant }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || res.j.ok === false) { admMsg('gxa-bcmsg', '✗ ' + (res.j.error || 'error')); return done(); }
+        if (test) { admMsg('gxa-bcmsg', '✓ ' + t('adm_bc_test_ok', { sent: res.j.sent, total: res.j.total })); return done(); }
+        admMsg('gxa-bcmsg', t('adm_bc_started', { total: res.j.total }));
+        var poll = function () {
+          fetch('/api/admin/broadcast', { headers: hdrs() }).then(function (r) { return r.json(); }).then(function (s) {
+            if (s.running) { admMsg('gxa-bcmsg', t('adm_bc_progress', { sent: s.sent, total: s.total }) + (s.failed ? ' · ' + s.failed + ' ✗' : '')); setTimeout(poll, 3000); }
+            else { admMsg('gxa-bcmsg', '✓ ' + t('adm_bc_done', { sent: s.sent, total: s.total }) + (s.failed ? ' · ' + s.failed + ' ✗' : '')); done(); }
+          }).catch(function () { admMsg('gxa-bcmsg', t('adm_bc_server')); done(); });
+        };
+        setTimeout(poll, 2500);
+      })
+      .catch(function () { admMsg('gxa-bcmsg', '✗ ' + t('adm_neterr')); done(); });
+  }
+  function admTelegram(url) {
+    admMsg('gxa-tgmsg', t('adm_tg_sending'));
+    fetch(url, { method: 'POST', headers: hdrs() }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) { admMsg('gxa-tgmsg', res.ok && res.j.ok ? '✓ ' + t('adm_tg_ok') : '✗ ' + (res.j.error || t('adm_tg_fail'))); })
+      .catch(function () { admMsg('gxa-tgmsg', '✗ ' + t('adm_neterr')); });
+  }
+  function admExportCSV() {
+    var q = function (v) { var s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    var rows = [['email', 'nombre', 'pais', 'idioma_marketing', 'idioma_elegido', 'estado', 'fuente', 'registro', 'ultima_visita', 'favoritos']]
+      .concat((S._admUsers || []).map(function (u) { return [u.email, u.name || '', u.country || '', u.mailLang || 'es', u.lang || '', u.verified === false ? 'lead' : 'verificado', u.ref, new Date(u.createdAt).toISOString(), new Date(u.lastSeen).toISOString(), u.favorites]; }));
+    var csv = rows.map(function (r) { return r.map(q).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = 'usuarios-gp-simulador.csv'; a.click();
   }
 
   // ---------- lang ----------
@@ -3057,7 +3191,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { if (!/[?&]noredir=1/.test(location.search)) { location.replace('/'); return; } }
-          if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'admin'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'admin'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

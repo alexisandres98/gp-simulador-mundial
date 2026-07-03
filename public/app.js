@@ -529,20 +529,9 @@ function renderHeader() {
 // Banner de la beta (solo para usuarios REGISTRADOS sin acceso beta; el no-registrado no lo ve). Aparece en
 // toda la plataforma actual, cerrable por sesión, y siempre re-accesible desde Referidos. Lleva a Referidos.
 function renderBetaBanner() {
+  // FUSIÓN: fin de la beta — ya no hay "consigue 5 referidos". El banner queda retirado (todos tienen acceso).
   const el = document.getElementById('beta-banner'); if (!el) return;
-  let closed = false; try { closed = sessionStorage.getItem('beta_banner_closed') === '1'; } catch (e) {}
-  if (!USER || USER.beta_access || closed) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  const ent = USER.beta_entitlement || {};
-  const have = ent.verified_referrals || 0, need = ent.referrals_required || 5;
-  el.className = 'beta-banner';
-  el.innerHTML = `<div class="bb-in">
-    <span class="bb-ic">⚡</span>
-    <div class="bb-tx"><b>${xe(I18N.t('beta_banner.title'))}</b><span>${xe(I18N.t('beta_banner.desc'))}</span></div>
-    <span class="bb-prog" title="${xe(I18N.t('beta_banner.progress'))}">${have}/${need}</span>
-    <button class="bb-cta" onclick="switchTab('referidos')">${xe(I18N.t('beta_banner.cta'))} →</button>
-    <button class="bb-x" aria-label="${xe(I18N.t('common.close') || 'Cerrar')}" onclick="closeBetaBanner()">✕</button>
-  </div>`;
-  el.style.display = '';
+  el.style.display = 'none'; el.innerHTML = '';
 }
 function closeBetaBanner() { try { sessionStorage.setItem('beta_banner_closed', '1'); } catch (e) {} const el = document.getElementById('beta-banner'); if (el) { el.style.display = 'none'; } }
 

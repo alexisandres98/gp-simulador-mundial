@@ -2,6 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<script>/* FUSIÓN: si ya hay sesión (localStorage) pero el server sirvió la landing porque la cookie falta o no coincide,
+   sincronizamos la cookie y recargamos → el server sirve la plataforma en la raíz. Corre ANTES de pintar; se
+   auto-detiene cuando la cookie coincide (no hay bucle). El anónimo (sin token) no hace nada y ve la landing. */
+try{var _t=localStorage.getItem('wc_token');var _c=(document.cookie.match(/(?:^|;\s*)wc_token=([^;]+)/)||[])[1];if(_t&&decodeURIComponent(_c||'')!==_t){document.cookie='wc_token='+_t+';path=/;max-age=31536000;SameSite=Lax';location.reload();}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GP · La ventaja que el mercado no ve</title>
 <meta name="description" content="Jugadas verificadas cada día, cuotas mal pagadas detectadas al instante y arbitraje entre más de 40 casas. Inteligencia deportiva de nivel institucional.">

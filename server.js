@@ -2274,6 +2274,15 @@ async function buildTeamDetail(code) {
 }
 
 // ---------- auth por email ----------
+// FUSIÓN: sesión desde la cookie wc_token (para decidir, SIN redirección, qué servir en la raíz: plataforma o landing).
+// El token es el mismo que va en localStorage/Authorization; la cookie solo hace visible la sesión al servir el HTML.
+function sessionEmailFromReq(req) {
+  const raw = req.headers.cookie || '';
+  const m = raw.match(/(?:^|;\s*)wc_token=([^;]+)/);
+  if (!m) return null;
+  let tok; try { tok = decodeURIComponent(m[1]); } catch { tok = m[1]; }
+  return db.sessions[tok] || null;
+}
 function getUser(req) {
   const tok = (req.headers.authorization || '').replace('Bearer ', '');
   const email = db.sessions[tok];
@@ -3589,7 +3598,14 @@ const server = http.createServer(async (req, res) => {
     // pero igual NO se sirve si la beta está apagada, para no exponer una superficie nueva públicamente.
     // --- capa visual premium (aislada en /x; gateada por GP_PREMIUM_UI_ENABLED; 404 si off → la ruta no existe) ---
     const premiumOn = gpProduct.flags().premiumUi;
-    if (p === '/x' || p === '/x/') {
+    const fusionOn = betaFusionOn();
+    const atRoot = (p === '/' || p === '');
+    // FUSIÓN — UN SOLO SITIO en la raíz (gpsimulador.com). /x es alias histórico → 302 a la raíz.
+    if (fusionOn && premiumOn && (p === '/x' || p === '/x/')) { res.writeHead(302, { Location: '/' + (url.search || '') }); return res.end(); }
+    // La raíz decide SIN redirección por la cookie de sesión: con sesión → plataforma; sin sesión → landing nueva EN la raíz.
+    const rootHasSession = fusionOn && premiumOn && atRoot && !!sessionEmailFromReq(req);
+    // Shell premium: en /x (pre-fusión) o en la raíz con sesión (post-fusión).
+    if ((p === '/x' || p === '/x/') || rootHasSession) {
       if (!premiumOn) { json(res, 404, { error: 'No encontrado' }); return; }
       try {
         const pf = path.join(__dirname, 'public', 'premium.html');
@@ -3608,6 +3624,16 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    // FUSIÓN — raíz SIN sesión: la landing NUEVA se sirve EN la propia raíz (gpsimulador.com), sin redirección a /landing.
+    if (fusionOn && atRoot) {
+      try {
+        const lf = path.join(__dirname, 'public', 'landing.html');
+        const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
     }
     // Landing standalone (página de marketing dedicada, sin el shell de la app). Cache-busting de landing.js/css por mtime.
     if (p === '/landing' || p === '/landing/') {

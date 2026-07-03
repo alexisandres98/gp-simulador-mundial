@@ -275,7 +275,8 @@
       .then(function (res) {
         sending = false;
         if (!res.ok || !res.j.token) { btn.disabled = false; btn.textContent = T('a_verify'); msg.className = 'm-msg err'; msg.textContent = res.j.error || T('e_code'); inp.focus(); return; }
-        try { localStorage.setItem('wc_token', res.j.token); } catch (e) {}
+        // sesión en localStorage (APIs) + cookie (el server sirve la plataforma en la raíz sin redirección)
+        try { localStorage.setItem('wc_token', res.j.token); document.cookie = 'wc_token=' + res.j.token + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
         renderAuthSuccess();
         setTimeout(function () { location.href = '/'; }, 1100);
       })

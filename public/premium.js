@@ -620,7 +620,7 @@
     setTimeout(function () { document.addEventListener('click', closeAcctMenu, { once: true }); }, 0);
   }
   function closeAcctMenu() { var m = $('#gx-acct-menu'); if (m) m.hidden = true; }
-  function gxLogout() { try { localStorage.removeItem('wc_token'); } catch (e) {} location.replace('/'); }
+  function gxLogout() { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} location.replace('/'); }
   // Perfil en /x: nombre + país + idioma (hoja). Misma data que la principal (mismo /api/me/profile).
   // Lista COMPLETA de países (ISO 3166-1 alpha-2); nombre localizado con Intl.DisplayNames según el idioma.
   var GX_COUNTRY_CODES = 'AF AL DE AD AO AI AQ AG SA DZ AR AM AW AU AT AZ BS BD BB BH BE BZ BJ BM BY BO BA BW BR BN BG BF BI BT CV KH CM CA QA TD CL CN CY CO KM CG CD KP KR CI CR HR CU CW DK DM EC EG SV AE ER SK SI ES US EE ET PH FI FJ FR GA GM GE GH GI GD GR GL GP GU GT GF GG GN GQ GW GY HT HN HK HU IN ID IQ IR IE IS IM IL IT JM JP JE JO KZ KE KG KI KW LA LS LV LB LR LY LI LT LU MO MK MG MY MW MV ML MT MA MQ MU MR YT MX FM MD MC MN ME MS MZ MM NA NR NP NI NE NG NO NC NZ OM NL PK PW PA PG PY PE PF PL PT PR GB CF CZ DO RE RW RO RU WS AS KN SM PM VC SH LC ST SN RS SC SL SG SX SY SO LK SZ ZA SD SS SE CH SR TH TW TZ TJ IO TF PS TL TG TO TT TN TM TC TR TV UA UG UY UZ VU VA VE VN VG VI WF YE DJ ZM ZW'.split(' ');
@@ -3177,6 +3177,15 @@
 
   // ---------- boot ----------
   function boot() {
+    // FUSIÓN — un solo sitio: la plataforma se sirve en la raíz (gpsimulador.com). El SERVER decide qué servir en /
+    // por la cookie de sesión (sin redirección). Acá sincronizamos cookie↔localStorage para que ambos coincidan
+    // (la cookie deja que el server sepa que hay sesión; localStorage sigue siendo la fuente para las APIs).
+    try {
+      var _ls = localStorage.getItem('wc_token');
+      var _ck = (document.cookie.match(/(?:^|;\s*)wc_token=([^;]+)/) || [])[1];
+      if (_ls && !_ck) document.cookie = 'wc_token=' + _ls + ';path=/;max-age=31536000;SameSite=Lax';
+      else if (!_ls && _ck) localStorage.setItem('wc_token', decodeURIComponent(_ck));
+    } catch (e) {}
     fetch('/api/i18n').then(function (r) { return r.json(); }).then(function (j) {
       TEAMS = j.teams || {};
     }).catch(function () {}).then(function () {
@@ -3190,7 +3199,7 @@
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
-          if (!me || (!me.beta_access && !me.isAdmin)) { if (!/[?&]noredir=1/.test(location.search)) { location.replace('/'); return; } }
+          if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
           if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'admin'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {

@@ -702,16 +702,23 @@
     return { h: h, gp: function (c) { return oc[c] ? oc[c].gp_probability : null; }, mk: function (c) { return oc[c] ? oc[c].market_probability : null; }, best: function (c) { return bySel[c] ? bySel[c].best_odds : null; }, edge: bestEdge, signal: signal, live: (h.status_code === 'LIVE'), kickoff: h.kickoff_at, belowMin: belowMin, fresh: fresh };
   }
 
-  function load(attempt) {
+  // ¿Hay una calculadora de stake abierta dentro del board? (estado solo-DOM → un re-render la mataría).
+  function calcOpenInBoard() { var b = $('#gx-board'); return !!(b && b.querySelector('.gx-calc-holder, .gx-calc-trow')); }
+  function load(attempt, silent) {
     attempt = attempt || 0;
-    if (attempt === 0) { var b = $('#gx-board'); if (b) b.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>'; }
+    // silent=true (refresco en vivo): NO mostrar el spinner — reemplazar el board por "Cargando" colapsa la altura
+    // de la página y el navegador clampa el scroll → salto a la parte de arriba (bug reportado con la calculadora).
+    if (attempt === 0 && !silent) { var b = $('#gx-board'); if (b) b.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>'; }
     Promise.all([
       fetch('/api/beta/dashboard', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
       fetch('/api/beta/value?class=ALL', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
     ]).then(function (res) {
       // server frío: el primer /api/beta/dashboard puede tardar/fallar → reintenta antes de mostrar vacío.
-      if (!res[0] && attempt < 4) { setTimeout(function () { load(attempt + 1); }, 900 + attempt * 600); return; }
+      if (!res[0] && attempt < 4) { setTimeout(function () { load(attempt + 1, silent); }, 900 + attempt * 600); return; }
       S.dash = res[0]; S.value = (res[1] && res[1].items) || [];
+      // anti-cierre: si el usuario tiene una calculadora abierta en el board, no re-renderizar (el próximo
+      // tick del loop en vivo actualiza al cerrarla). Mismo patrón que el anti-pestañeo de la plataforma vieja.
+      if (silent && calcOpenInBoard()) return;
       render();
     });
   }
@@ -1034,6 +1041,7 @@
   }
   function arbRefresh() {
     if (S.view !== 'board') return;
+    if (calcOpenInBoard()) return; // no re-renderizar con una calculadora abierta (mataría el estado del usuario)
     if (S.oppSub === 'arb') { var b = $('#gx-board'); if (b) oppArbBoard(b); }
     var kp = $('#gx-kpis'); if (kp && S.oppSub !== 'picks') { var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); kpis(S.dash || {}, rs); }
   }
@@ -3158,7 +3166,7 @@
       var live = anyLive();
       if (!live && !wasLive && S.view !== 'match') return; // nada que mover
       if (S.view === 'matches') renderMatches();
-      else if (S.view === 'opps' || S.view === 'board') load();
+      else if (S.view === 'opps' || S.view === 'board') load(0, true); // silencioso: sin spinner (no saltar el scroll ni cerrar la calculadora)
       // cockpit de un partido abierto: re-fetch SILENCIOSO del fx (trae marcador/eventos/gpLive) → re-render sin flash
       if (S.view === 'match' && S.matchId) {
         var mid = S.matchId;

@@ -195,6 +195,8 @@
       calc_intro_simple: 'Calculá cuánto apostar según tu bankroll. Prellenamos la probabilidad con nuestro modelo — ese es el diferenciador.',
       calc_intro_arb: 'Ingresá las cuotas de cada pata y el monto total: te repartimos cuánto poner en cada casa para asegurar la ganancia.',
       calc_add_leg: 'Agregar pata', calc_remove: 'Quitar', calc_saved: 'Guardado en este dispositivo', calc_edge: 'Ventaja',
+      calc_level: 'Nivel de stake', calc_value_tag: 'VALOR', calc_flat_tag: 'PLANO', calc_return_win: 'Retorno si acierta',
+      calc_flat_warn: 'Sin ventaja de valor a esta cuota (mercado eficiente). Te sugerimos un stake plano para gestión de bankroll — apostá con disciplina.',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -381,6 +383,8 @@
       calc_intro_simple: 'Work out how much to bet based on your bankroll. We prefill the probability from our model — that’s the edge.',
       calc_intro_arb: 'Enter each leg’s odds and your total: we split how much to stake at each book so the profit is locked in.',
       calc_add_leg: 'Add leg', calc_remove: 'Remove', calc_saved: 'Saved on this device', calc_edge: 'Edge',
+      calc_level: 'Stake level', calc_value_tag: 'VALUE', calc_flat_tag: 'FLAT', calc_return_win: 'Return if it wins',
+      calc_flat_warn: 'No value edge at these odds (efficient market). We suggest a flat stake for bankroll management — bet with discipline.',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -1105,6 +1109,7 @@
   // moneda viven SOLO en localStorage (privado, sin servidor, sin tocar la cuenta). NUNCA en la principal.
   var CALC_CCYS = [['USD', '$'], ['EUR', '€'], ['GBP', '£'], ['COP', '$'], ['MXN', '$'], ['ARS', '$'], ['CLP', '$'], ['PEN', 'S/'], ['BRL', 'R$'], ['NGN', '₦'], ['GHS', 'GH₵'], ['KES', 'KSh'], ['ZAR', 'R'], ['XOF', 'CFA']];
   var CALC_KELLY_CAP = 0.05; // tope duro: nunca sugerir más del 5% del bankroll
+  var CALC_FLAT_BASE = 0.08; // stake plano (sin edge): base × fracción → ½=4% ¼=2% ⅛=1%, capado al 5%
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, String(v)); } catch (e) {} }
   function calcCcy() { var c = lsGet('gp_calc_ccy'); for (var i = 0; i < CALC_CCYS.length; i++) if (CALC_CCYS[i][0] === c) return c; return 'USD'; }
@@ -1115,7 +1120,11 @@
   var FRACS = [['0.5', '½'], ['0.25', '¼'], ['0.125', '⅛']];
   // Kelly fraccionado con tope. p en (0,1), odds decimales. Devuelve el desglose completo.
   function calcKelly(p, odds, bankroll, fraction) {
-    var b = odds - 1, r = { hasEdge: false, kellyFull: 0, fracPct: 0, pct: 0, capped: false, stake: 0, ev: 0, be: (odds > 0 ? 1 / odds : 0), edge: null };
+    var b = odds - 1, r = { p: p, odds: odds, hasEdge: false, kellyFull: 0, fracPct: 0, pct: 0, capped: false, stake: 0, ev: 0, be: (odds > 0 ? 1 / odds : 0), edge: null, flatPct: 0, flatStake: 0, flatReturn: 0 };
+    // Stake plano SIEMPRE disponible (gestión de bankroll cuando no hay edge — el Mundial es eficiente por diseño).
+    r.flatPct = Math.min(CALC_FLAT_BASE * fraction, CALC_KELLY_CAP);
+    r.flatStake = bankroll > 0 ? bankroll * r.flatPct : 0;
+    r.flatReturn = r.flatStake * (odds > 1 ? odds - 1 : 0);
     if (!(p > 0 && p < 1) || !(odds > 1)) return r;
     r.edge = p - 1 / odds;
     var f = (b * p - (1 - p)) / b; r.kellyFull = f;
@@ -1196,25 +1205,40 @@
         '<label class="gx-calc-f"><span>' + esc(src === 'cons' ? t('calc_prob_cons') : t('calc_prob_gp')) + '</span><div class="gx-calc-unit"><input class="gx-calc-in" data-k="prob" type="number" inputmode="decimal" min="0.1" max="99.9" step="0.1" value="' + (p * 100).toFixed(1) + '"><i>%</i></div></label>' +
         '<label class="gx-calc-f"><span>' + esc(t('calc_odds')) + '</span><input class="gx-calc-in" data-k="odds" type="number" inputmode="decimal" min="1.01" step="0.01" value="' + Number(odds).toFixed(2) + '"></label>' +
       '</div>' +
-      '<div class="gx-calc-fracrow"><span class="gx-calc-lbl">' + esc(t('calc_fraction')) + '</span><div class="gx-calc-fracs">' + fracChips(fr) + '</div></div>' +
+      '<div class="gx-calc-fracrow"><span class="gx-calc-lbl" data-fraclbl>' + esc(t('calc_fraction')) + '</span><div class="gx-calc-fracs">' + fracChips(fr) + '</div></div>' +
       '<div class="gx-calc-out" data-out></div>' +
       '<div class="gx-calc-prefill">' + ic('sparkles') + esc(prefill) + '</div>' +
       '<div class="gx-calc-disc">' + esc(t('calc_disc')) + '</div>' +
     '</div>';
   }
+  function stakeStat(label, val, cls) { return '<div class="gx-calc-stat"><span>' + esc(label) + '</span><b class="' + (cls || '') + ' gx-mono">' + val + '</b></div>'; }
   function stakeOutHtml(res, ccy) {
-    if (!res.hasEdge) return '<div class="gx-calc-noedge">' + ic('alert-triangle') + '<div><b>' + esc(t('calc_noedge')) + '</b><span>' + esc(t('calc_noedge_sub')) + '</span></div></div>';
     var br = calcBankroll();
-    var main = br > 0 ? fmtMoney(res.stake, ccy) : '—';
+    if (res.hasEdge) {
+      // MODO VALOR — Kelly fraccionado (hay ventaja real vs la cuota)
+      var main = br > 0 ? fmtMoney(res.stake, ccy) : '—';
+      return '<div class="gx-calc-result">' +
+        '<div class="gx-calc-big"><div class="gx-calc-biglbl">' + esc(t('calc_suggested')) + ' <span class="gx-calc-vtag">' + esc(t('calc_value_tag')) + '</span></div><div class="gx-calc-bigval gx-mono">' + main + '</div>' +
+          '<div class="gx-calc-bigsub">' + (br > 0 ? (res.pct * 100).toFixed(1) + '% ' + esc(t('calc_of_bankroll')) : esc(t('calc_set_bankroll'))) + '</div></div>' +
+        '<div class="gx-calc-stats">' +
+          stakeStat(t('calc_edge'), '+' + (res.edge * 100).toFixed(1) + ' pp', 'gx-pos') +
+          (br > 0 ? stakeStat(t('calc_ev'), fmtMoney(res.ev, ccy), 'gx-pos') : '') +
+          stakeStat(t('calc_be'), (res.be * 100).toFixed(1) + '%', '') +
+        '</div>' +
+        (res.capped ? '<div class="gx-calc-cap">' + ic('shield-check') + esc(t('calc_capped', { pct: (CALC_KELLY_CAP * 100) + '%' })) + '</div>' : '') +
+      '</div>';
+    }
+    // MODO PLANO — sin ventaja de valor: igual sugiere un monto (gestión de bankroll), con advertencia honesta.
+    var main2 = br > 0 ? fmtMoney(res.flatStake, ccy) : '—';
     return '<div class="gx-calc-result">' +
-      '<div class="gx-calc-big"><div class="gx-calc-biglbl">' + esc(t('calc_suggested')) + '</div><div class="gx-calc-bigval gx-mono">' + main + '</div>' +
-        '<div class="gx-calc-bigsub">' + (br > 0 ? (res.pct * 100).toFixed(1) + '% ' + esc(t('calc_of_bankroll')) : esc(t('calc_set_bankroll'))) + '</div></div>' +
+      '<div class="gx-calc-flatwarn">' + ic('info-circle') + '<span>' + esc(t('calc_flat_warn')) + '</span></div>' +
+      '<div class="gx-calc-big gx-calc-big-flat"><div class="gx-calc-biglbl">' + esc(t('calc_suggested')) + ' <span class="gx-calc-ftag">' + esc(t('calc_flat_tag')) + '</span></div><div class="gx-calc-bigval gx-mono">' + main2 + '</div>' +
+        '<div class="gx-calc-bigsub">' + (br > 0 ? (res.flatPct * 100).toFixed(1) + '% ' + esc(t('calc_of_bankroll')) : esc(t('calc_set_bankroll'))) + '</div></div>' +
       '<div class="gx-calc-stats">' +
-        '<div class="gx-calc-stat"><span>' + esc(t('calc_edge')) + '</span><b class="gx-pos gx-mono">' + (res.edge != null ? '+' + (res.edge * 100).toFixed(1) + ' pp' : '—') + '</b></div>' +
-        (br > 0 ? '<div class="gx-calc-stat"><span>' + esc(t('calc_ev')) + '</span><b class="gx-pos gx-mono">' + fmtMoney(res.ev, ccy) + '</b></div>' : '') +
-        '<div class="gx-calc-stat"><span>' + esc(t('calc_be')) + '</span><b class="gx-mono">' + (res.be * 100).toFixed(1) + '%</b></div>' +
+        (br > 0 ? stakeStat(t('calc_return_win'), '+' + fmtMoney(res.flatReturn, ccy), 'gx-pos') : '') +
+        (res.p > 0 ? stakeStat(t('calc_prob_gp'), (res.p * 100).toFixed(1) + '%', '') : '') +
+        (res.be > 0 ? stakeStat(t('calc_be'), (res.be * 100).toFixed(1) + '%', '') : '') +
       '</div>' +
-      (res.capped ? '<div class="gx-calc-cap">' + ic('shield-check') + esc(t('calc_capped', { pct: (CALC_KELLY_CAP * 100) + '%' })) + '</div>' : '') +
     '</div>';
   }
   function recomputeStake(root) {
@@ -1227,6 +1251,7 @@
     var p = parseFloat(prEl && prEl.value) / 100, odds = parseFloat(odEl && odEl.value), fr = calcFraction();
     var res = calcKelly(p, odds, calcBankroll(), fr);
     var out = root.querySelector('[data-out]'); if (out) out.innerHTML = stakeOutHtml(res, ccy);
+    var lbl = root.querySelector('[data-fraclbl]'); if (lbl) lbl.textContent = t(res.hasEdge ? 'calc_fraction' : 'calc_level');
   }
   function wireStakePanel(root) {
     [].forEach.call(root.querySelectorAll('.gx-calc-in, .gx-calc-ccy'), function (el) {

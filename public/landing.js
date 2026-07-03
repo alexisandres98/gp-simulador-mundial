@@ -17,7 +17,7 @@
       sub: 'Jugadas verificadas cada día, cuotas mal pagadas detectadas al instante y arbitraje entre más de 40 casas. Inteligencia de nivel institucional, lista para ejecutar.',
       cta: 'Crear mi cuenta gratis', micro: 'Sin contraseña · solo tu email · 30 segundos',
       ht_users: 'usuarios activos', ht_verified: 'resultados verificados públicamente',
-      sc_tag: 'Precio atrasado', sc_live: 'en vivo', sc_edge: 'value', sc_foot: 'Consenso de {n} casas · vendes cuando el precio se corrige',
+      sc_tag: 'Precio atrasado', sc_live: 'en vivo', sc_edge: 'value', sc_fair: 'consenso · justa 10.4', sc_foot: 'Consenso de {n} casas · vendes cuando el precio se corrige',
       sc_float_l: 'cuotas mal pagadas detectadas ahora',
       tr_record: 'aciertos verificados', tr_books: 'casas monitoreadas', tr_live: '24/7', tr_live_s: 'tiempo real', tr_lang: 'español · english',
       plays_eye: 'Producto', plays_title: 'Las jugadas de hoy', plays_sub: 'Publicadas antes del partido, verificadas después. La selección se desbloquea con tu cuenta gratis.',
@@ -55,7 +55,7 @@
       sub: 'Verified plays every day, mispriced odds caught the moment they appear, and arbitrage across 40+ books. Institutional-grade intelligence, ready to execute.',
       cta: 'Create my free account', micro: 'No password · just your email · 30 seconds',
       ht_users: 'active users', ht_verified: 'publicly verified results',
-      sc_tag: 'Stale price', sc_live: 'live', sc_edge: 'value', sc_foot: '{n}-book consensus · sell when the price corrects',
+      sc_tag: 'Stale price', sc_live: 'live', sc_edge: 'value', sc_fair: 'consensus · fair 10.4', sc_foot: '{n}-book consensus · sell when the price corrects',
       sc_float_l: 'mispriced odds detected now',
       tr_record: 'verified hit rate', tr_books: 'books monitored', tr_live: '24/7', tr_live_s: 'real time', tr_lang: 'english · español',
       plays_eye: 'Product', plays_title: "Today's plays", plays_sub: 'Published before the match, verified after. The selection unlocks with your free account.',
@@ -129,7 +129,7 @@
       '<div class="sc-card">' +
       '<div class="sc-head"><span class="sc-tag">' + esc(T('sc_tag')) + '</span><span class="sc-live"><i></i>' + esc(T('sc_live')) + '</span></div>' +
       '<div class="sc-row"><span class="sc-team">' + flag('AUT') + 'Austria</span><span class="sc-odds">12.00</span></div>' +
-      '<div class="sc-row"><span class="sc-team" style="color:var(--tx3);font-size:13px">consenso · fair 10.4</span><span class="sc-edge">+15%</span></div>' +
+      '<div class="sc-row"><span class="sc-team" style="color:var(--tx3);font-size:13px">' + esc(T('sc_fair')) + '</span><span class="sc-edge">+15%</span></div>' +
       '<div class="sc-foot"><span>' + esc(T('sc_foot', { n: 33 })) + '</span></div>' +
       '</div>' +
       '<div class="sc-float"><span class="n" id="scfloat">' + lag + '</span><span class="l">' + esc(T('sc_float_l')) + '</span></div>';
@@ -171,7 +171,7 @@
       $('#plays').innerHTML = '<div class="plays">' + picks.map(function (p) {
         return '<div class="play ' + famC(p.family) + '" data-signup>' +
           '<div class="play-top"><span class="play-fam">' + esc(T(famK(p.family))) + '</span><span class="play-ko">' + esc(hh(p.kickoff)) + '</span></div>' +
-          '<div class="play-m">' + flag(p.home_team_id, 'play-fl') + '<b>' + esc(p.home || '') + '</b><span class="vs">vs</span><b>' + esc(p.away || '') + '</b>' + flag(p.away_team_id, 'play-fl') + '</div>' +
+          '<div class="play-m">' + flag(p.home_team_id, 'play-fl') + '<b>' + esc((lang === 'en' && p.home_en) ? p.home_en : (p.home || '')) + '</b><span class="vs">vs</span><b>' + esc((lang === 'en' && p.away_en) ? p.away_en : (p.away || '')) + '</b>' + flag(p.away_team_id, 'play-fl') + '</div>' +
           '<div class="play-lock"><span class="lk">🔒</span><span class="lt">' + esc(T('play_lock')) + '</span></div>' +
           '<div class="play-foot"><span class="play-conf ' + esc(p.confidence_bucket) + '"><i></i>' + esc(T('conf')) + ': <b>' + esc(T(confK(p.confidence_bucket))) + '</b></span></div>' +
           '</div>';

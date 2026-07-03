@@ -65,15 +65,23 @@ async function query(text, params = [], { retries = 1 } = {}) {
       return await p.query(text, params);
     } catch (err) {
       const transient = /ECONNREFUSED|ETIMEDOUT|terminat|Connection terminated|timeout|ENOTFOUND|EAI_AGAIN/i.test(err.message || '');
-      lastError = saneError(err);
+      // OJO: usar el error LOCAL en el log del retry — `lastError` es compartido a nivel módulo y otra query
+      // concurrente puede pisarlo durante el sleep (hacía que el retry logueara errores ajenos, p.ej. overflow).
+      const sane = saneError(err);
+      lastError = sane;
       if (transient && attempt < retries) {
         attempt++;
         await sleep(cfg.db.connectionTimeoutMs ? Math.min(1000, 200 * attempt) : 200);
-        log.warn('db: reintento por error transitorio', { attempt, error: lastError });
+        log.warn('db: reintento por error transitorio', { attempt, error: sane });
         continue;
       }
+      // errores de DATOS (clase 22: numeric overflow, invalid input, etc.) son deterministas y muchos callers
+      // los tragan con .catch() → dejar rastro de QUÉ statement falló (texto parametrizado, sin valores).
+      if (err.code && String(err.code).startsWith('22')) {
+        log.warn('db: error de datos (no transitorio)', { code: err.code, error: sane, sql: String(text).replace(/\s+/g, ' ').slice(0, 90) });
+      }
       // re-lanza un error saneado para que nunca llegue una URL con credenciales al frontend
-      const e = new Error(saneError(err)); e.code = err.code; throw e;
+      const e = new Error(sane); e.code = err.code; throw e;
     }
   }
 }

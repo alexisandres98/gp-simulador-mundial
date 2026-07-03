@@ -112,6 +112,31 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   process.on(sig, () => { try { flushDb(); } catch { /* noop */ } });
 }
 
+// ---------- backup automático de db.json (sin servicios externos, sin costo) ----------
+// Copia diaria rotativa en <dir(DB_FILE)>/backups/db-YYYY-MM-DD.json (mismo disco persistente de Render).
+// Protege contra corrupción/borrado accidental del archivo; para pérdida del disco está el download admin
+// (GET /api/admin/backup). Retención: 14 días. Idempotente por día; chequeo barato cada 6h + al boot.
+const BACKUP_DIR = path.join(path.dirname(DB_FILE), 'backups');
+const BACKUP_KEEP = 14;
+function backupDbDaily() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const dest = path.join(BACKUP_DIR, `db-${today}.json`);
+    if (fs.existsSync(dest)) return; // ya hay backup de hoy
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    // serializa el estado EN MEMORIA (más fresco que el archivo) a un tmp y renombra (write atómico)
+    const tmp = dest + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(db));
+    fs.renameSync(tmp, dest);
+    // retención: conservar los últimos BACKUP_KEEP
+    const files = fs.readdirSync(BACKUP_DIR).filter(f => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort();
+    for (const f of files.slice(0, Math.max(0, files.length - BACKUP_KEEP))) fs.unlinkSync(path.join(BACKUP_DIR, f));
+    console.log(`[backup] db.json respaldado en ${dest} (${files.length > BACKUP_KEEP ? BACKUP_KEEP : files.length} retenidos)`);
+  } catch (e) { console.error('[backup] error:', e.message); }
+}
+setTimeout(backupDbDaily, 90 * 1000);            // al boot (90s después, sin competir con el arranque)
+setInterval(backupDbDaily, 6 * 3600 * 1000);     // chequeo cada 6h (escribe solo si falta el del día)
+
 // Recalcula los Elo desde la base replicando todos los resultados finales (permite editar/borrar sin corromper ratings)
 function recomputeElos() {
   TEAMS.forEach(t => { db.elos[t.id] = t.elo; });
@@ -2679,6 +2704,24 @@ const server = http.createServer(async (req, res) => {
         return json(res, 500, { error: 'users_error', detail: e.message });
       }
     }
+    // Backup manual (admin): descarga el db.json EN MEMORIA (usuarios/sesiones/picks) para copia offsite.
+    // Complementa el backup diario rotativo en disco (backupDbDaily). GET /api/admin/backup?list=1 lista los del disco.
+    if (p === '/api/admin/backup') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo admin' });
+      if (url.searchParams.get('list') === '1') {
+        let files = [];
+        try { files = fs.readdirSync(BACKUP_DIR).filter(f => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().map(f => ({ file: f, bytes: fs.statSync(path.join(BACKUP_DIR, f)).size })); } catch { /* sin backups aún */ }
+        return json(res, 200, { dir: BACKUP_DIR, keep: BACKUP_KEEP, backups: files });
+      }
+      const body = JSON.stringify(db);
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': `attachment; filename="gp-db-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+        'Cache-Control': 'no-store',
+      });
+      return res.end(body);
+    }
     // ticker público de mercados en vivo (Polymarket) — para la cabecera, también sin registro
     if (p === '/api/ticker') {
       await fetchMarkets(false);
@@ -2811,14 +2854,19 @@ const server = http.createServer(async (req, res) => {
         const active = (db.dailyPicks || []).filter(x => x.status === 'ACTIVE')
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
           .slice(0, 6)
-          .map(x => ({
-            family: x.family,
-            home: x.event.home, away: x.event.away,
-            home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id,
-            kickoff: x.event.kickoff_at,
-            confidence_bucket: x.confidence >= 0.6 ? 'high' : x.confidence >= 0.45 ? 'med' : 'low',
-            // la selección/cuota NO viaja — es el gancho de registro
-          }));
+          .map(x => {
+            // nombres en AMBOS idiomas (la landing es ES/EN; antes solo viajaba el nombre ES → "Canadá" en inglés)
+            const dic = require('./i18n/dictionary');
+            return {
+              family: x.family,
+              home: x.event.home, away: x.event.away,
+              home_en: dic.teamName(x.event.home_team_id, 'en', x.event.home), away_en: dic.teamName(x.event.away_team_id, 'en', x.event.away),
+              home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id,
+              kickoff: x.event.kickoff_at,
+              confidence_bucket: x.confidence >= 0.6 ? 'high' : x.confidence >= 0.45 ? 'med' : 'low',
+              // la selección/cuota NO viaja — es el gancho de registro
+            };
+          });
         const tr = trackRecord();
         let scanner = null;
         try {

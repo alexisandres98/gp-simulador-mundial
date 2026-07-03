@@ -65,7 +65,7 @@
       prob_explain: 'Partimos de la probabilidad base del modelo y aplicamos el contexto verificado para llegar a la Probabilidad GP.',
       prob_no_ctx: 'El contexto no movió la línea de forma material: la Probabilidad GP coincide con la base.',
       prob_live_adj: 'Probabilidad GP ajustada EN VIVO con el marcador, el minuto y los eventos del partido.',
-      prob_base_only: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto disponible (forma, bajas, alineaciones) está en la pestaña Contexto.',
+      prob_base_only: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo GP. El contexto disponible (forma, bajas, alineaciones) está en la pestaña Contexto.',
       drivers: 'Factores que movieron la línea', evaluated: 'Factores evaluados', impact: 'Impacto', confidence: 'Confianza', evidence: 'Evidencia', freshness: 'Frescura',
       evaluated_note: 'Estos factores se evaluaron; su efecto está reflejado en el ajuste neto de contexto, no como un impacto aislado por factor.',
       fac_favors: 'a favor', fac_against: 'en contra', fac_neutral: 'neutral',
@@ -98,13 +98,13 @@
       sim_factors: 'Factores GP', sim_f_applied: 'Pesa', sim_f_neutral: 'Neutral',
       sim_v_even: 'Cruce parejo, sin favorito neto.', sim_v_clear: '{team} es favorito claro.', sim_v_slight: '{team} es ligero favorito.',
       sim_thesis: 'GP da {fav} {favp}, {dog} {dogp} y empate {drawp}.', sim_thesis_factor: 'Pesan {factors}.', sim_risk: 'Una baja de última hora o un cambio de alineación pueden estrechar el margen.',
-      sim_price_na: 'No se evalúa precio porque este cruce no corresponde a un mercado programado.', sim_hypo_tag: 'Hipotético', sim_runs: 'simulaciones',
-      sim_montecarlo: 'Simulaciones Monte Carlo', sim_avg_goals: 'Goles promedio', sim_totals: 'Distribución de goles',
+      sim_price_na: 'No se evalúa precio porque este cruce no corresponde a un mercado programado.', sim_hypo_tag: 'Hipotético', sim_runs: 'escenarios',
+      sim_montecarlo: 'Proyección de escenarios GP', sim_avg_goals: 'Goles promedio', sim_totals: 'Distribución de goles',
       sim_goals_disc: 'Proyección de goles en validación. Disponible para análisis; no genera Picks GP ni Value.',
       // ---- Corte 4H: superficies de torneo ----
       group: 'Grupo',
       tm_champion: 'Campeón', tm_final: 'Final', tm_semi: 'Semis', tm_qf: 'Cuartos', tm_advance: 'Avanza',
-      tm_sim_note: 'Probabilidades de la simulación Monte Carlo del torneo con el contexto disponible.',
+      tm_sim_note: 'Probabilidades de la proyección GP del torneo con el contexto disponible.',
       tm_next: 'Próximo partido', tm_recent_matches: 'Partidos recientes', tm_vs_home: 'vs (local)', tm_vs_away: 'vs (visita)',
       grp_goals: 'GF:GC', grp_advance: 'Avanza', grp_advance_note: 'Avanza = probabilidad de pasar de fase (1º o 2º).',
       bk_tbd: 'Por definir', bk_reg90: '90 min', bk_note: 'Probabilidad 1X2 a 90 min (no es probabilidad de avanzar).',
@@ -147,7 +147,7 @@
       nav_refer: 'Invitar',
       tm_groupwin: 'Gana grupo', tm_groupsecond: '2º grupo', tm_out: 'Fuera', tm_follow: 'Seguir', tm_following: 'Siguiendo',
       tm_tab_squad: 'Plantilla', tm_tab_results: 'Resultados', tm_keyplayers: 'Jugadores clave', tm_last5: 'Últimos 5', tm_mkt_price: 'Precio', tm_read: 'Lectura del modelo', tm_likely_opp: 'Rivales probables', tm_paths: 'Caminos simulados',
-      tm_next_ctx: 'Próximo partido · contexto GP', tm_ctx_note: 'Abrí el cockpit del partido para ver la probabilidad GP con el contexto aplicado (forma, bajas, clima).', tm_base_note: 'Las probabilidades de torneo reflejan la fuerza base del equipo (Elo + simulación). El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit de ese encuentro.',
+      tm_next_ctx: 'Próximo partido · contexto GP', tm_ctx_note: 'Abrí el cockpit del partido para ver la probabilidad GP con el contexto aplicado (forma, bajas, clima).', tm_base_note: 'Las probabilidades de torneo reflejan la fuerza base del equipo según el modelo GP. El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit de ese encuentro.',
       st_injured: 'Lesionado', st_suspended: 'Suspendido', st_doubt: 'Duda', st_available: 'Disponible',
       fol_empty: 'Aún no sigues equipos', fol_empty_sub: 'Marca la estrella en un equipo para seguirlo.',
       al_events: 'Eventos', al_channels: 'Canales', al_next: 'Próximo partido', al_start: 'Inicio del partido', al_goal: 'Gol', al_result: 'Resultado final', al_qualify: 'Clasificación', al_swing: 'Cambio de probabilidad', al_value: 'Oportunidad de valor', al_arb: 'Arbitraje', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Notificaciones push', al_soon: 'pronto', al_note: 'Las alertas por email están activas; Telegram y push llegan pronto.',
@@ -158,7 +158,7 @@
       pp_title: 'Rendimiento de picks', pp_settled: 'Liquidadas', pp_hit: '% Aciertos', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'Por familia', pp_history: 'Historial de picks', pp_pick: 'Pick', pp_active: 'activas', pp_none: 'Aún no hay picks liquidadas.', pp_model: 'Calibración del modelo (1X2)',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
       outright_title: 'Campeón del Mundial · Value', outright_sub: 'Probabilidad GP del torneo vs mercado', outright_none: 'Sin ventaja sobre el mercado para el título ahora.',
-      tm_gpi: 'GP Intelligence · título', tm_gpi_model: 'Probabilidad GP (campeón)', tm_gpi_market: 'Mercado', tm_gpi_edge: 'Ventaja GP', tm_gpi_note: 'Probabilidad de ser campeón según el modelo GP del torneo (fuerza base Elo + simulación Monte Carlo). El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit del encuentro y en el próximo partido de abajo.',
+      tm_gpi: 'GP Intelligence · título', tm_gpi_model: 'Probabilidad GP (campeón)', tm_gpi_market: 'Mercado', tm_gpi_edge: 'Ventaja GP', tm_gpi_note: 'Probabilidad de ser campeón según el modelo GP del torneo. El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit del encuentro y en el próximo partido de abajo.',
       opp_actionable: 'Accionable', opp_watch_only: 'En observación',
       opp_arb_na: 'Arbitraje no disponible', opp_arb_evaluated: 'comparaciones', opp_arb_executable: 'ejecutables', opp_arb_note: 'Cero ejecutables es un resultado válido: los mercados están alineados.', opp_arb_market: 'Mercado', opp_arb_margin: 'Margen neto',
       arbst_EXECUTABLE: 'Ejecutable', arbst_THEORETICAL_ONLY: 'Solo teórico', arbst_PARTIAL_EXECUTION_RISK: 'Ejecución parcial', arbst_BLOCKED: 'Bloqueado', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Reglas distintas', arbst_EXPIRED: 'Expirado', arbst_SUSPENDED: 'Suspendido', arbst_STALE: 'Desactualizado',
@@ -187,7 +187,7 @@
       arb_x_trade_exch: 'tomá el precio ahora y, cuando el venue ajuste su cuota hacia el consenso, vendé/cubrí la posición para asegurar ganancia sin importar el resultado (trading de línea). No la holdees hasta el final.',
       arb_x_trade_soft: 'en esta casa no podés vender la posición, así que el valor se realiza a LARGO PLAZO (muchas apuestas), con varianza plena en cada una. Apostá poco; si la cuota se mueve a tu favor, algunas casas ofrecen "cash out" parcial para cerrar antes.',
       perf_matches: 'Todos los partidos evaluados', perf_predicted: 'GP', perf_result: 'Resultado', perf_hit: 'Acierto', perf_acc: 'Precisión',
-      gp_pending_ctx: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo (Elo + Monte Carlo). El contexto detallado (forma, bajas, etc.) está en la pestaña Contexto.',
+      gp_pending_ctx: 'La evaluación de contexto GP para este partido aún no se generó; se muestra la probabilidad base del modelo GP. El contexto detallado (forma, bajas, etc.) está en la pestaña Contexto.',
       calc_nav: 'Calculadora', calc_title: 'Calculadora de stake', calc_open: 'Calcular stake', calc_open_arb: 'Repartir stake',
       calc_bankroll: 'Tu bankroll', calc_currency: 'Moneda', calc_prob: 'Probabilidad', calc_prob_gp: 'Probabilidad GP', calc_prob_cons: 'Consenso del mercado',
       calc_odds: 'Cuota', calc_fraction: 'Fracción Kelly', calc_full: 'Pleno',
@@ -261,7 +261,7 @@
       prob_explain: 'We start from the model’s base probability and apply verified context to reach the GP probability.',
       prob_no_ctx: 'Context didn’t move the line materially: GP probability matches the base.',
       prob_live_adj: 'GP probability adjusted LIVE with the score, the minute and in-match events.',
-      prob_base_only: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Available context (form, absences, lineups) is in the Context tab.',
+      prob_base_only: 'The GP context evaluation for this match hasn’t been generated yet; the GP model’s base probability is shown. Available context (form, absences, lineups) is in the Context tab.',
       drivers: 'Factors that moved the line', evaluated: 'Evaluated factors', impact: 'Impact', confidence: 'Confidence', evidence: 'Evidence', freshness: 'Freshness',
       evaluated_note: 'These factors were evaluated; their effect is reflected in the net context adjustment, not as an isolated per-factor impact.',
       fac_favors: 'favors', fac_against: 'against', fac_neutral: 'neutral',
@@ -294,13 +294,13 @@
       sim_factors: 'GP factors', sim_f_applied: 'Weighs', sim_f_neutral: 'Neutral',
       sim_v_even: 'Even matchup, no clear favorite.', sim_v_clear: '{team} is a clear favorite.', sim_v_slight: '{team} is a slight favorite.',
       sim_thesis: 'GP gives {fav} {favp}, {dog} {dogp} and a draw {drawp}.', sim_thesis_factor: 'Key factors: {factors}.', sim_risk: 'A last-minute absence or lineup change could narrow the margin.',
-      sim_price_na: 'Price is not evaluated because this hypothetical matchup does not correspond to a scheduled market.', sim_hypo_tag: 'Hypothetical', sim_runs: 'simulations',
-      sim_montecarlo: 'Monte Carlo simulations', sim_avg_goals: 'Avg goals', sim_totals: 'Goal distribution',
+      sim_price_na: 'Price is not evaluated because this hypothetical matchup does not correspond to a scheduled market.', sim_hypo_tag: 'Hypothetical', sim_runs: 'scenarios',
+      sim_montecarlo: 'GP scenario projection', sim_avg_goals: 'Avg goals', sim_totals: 'Goal distribution',
       sim_goals_disc: 'Goal projection in validation. Available for analysis; does not generate GP Picks or Value.',
       // ---- Corte 4H: tournament surfaces ----
       group: 'Group',
       tm_champion: 'Champion', tm_final: 'Final', tm_semi: 'Semis', tm_qf: 'Quarters', tm_advance: 'Advance',
-      tm_sim_note: 'Probabilities from the tournament Monte Carlo simulation with the available context.',
+      tm_sim_note: 'Probabilities from the GP tournament projection with the available context.',
       tm_next: 'Next match', tm_recent_matches: 'Recent matches', tm_vs_home: 'vs (home)', tm_vs_away: 'vs (away)',
       grp_goals: 'GF:GA', grp_advance: 'Advance', grp_advance_note: 'Advance = probability of progressing (1st or 2nd).',
       bk_tbd: 'TBD', bk_reg90: '90 min', bk_note: '1X2 probability at 90 min (not the probability of advancing).',
@@ -343,7 +343,7 @@
       nav_refer: 'Invite',
       tm_groupwin: 'Win group', tm_groupsecond: '2nd group', tm_out: 'Out', tm_follow: 'Follow', tm_following: 'Following',
       tm_tab_squad: 'Squad', tm_tab_results: 'Results', tm_keyplayers: 'Key players', tm_last5: 'Last 5', tm_mkt_price: 'Price', tm_read: 'Model read', tm_likely_opp: 'Likely opponents', tm_paths: 'Simulated paths',
-      tm_next_ctx: 'Next match · GP context', tm_ctx_note: 'Open the match cockpit to see the GP probability with context applied (form, availability, weather).', tm_base_note: "Tournament probabilities reflect the team's base strength (Elo + simulation). Each match's context (form, availability, weather) is applied in that match's cockpit.",
+      tm_next_ctx: 'Next match · GP context', tm_ctx_note: 'Open the match cockpit to see the GP probability with context applied (form, availability, weather).', tm_base_note: "Tournament probabilities reflect the team's base strength per the GP model. Each match's context (form, availability, weather) is applied in that match's cockpit.",
       st_injured: 'Injured', st_suspended: 'Suspended', st_doubt: 'Doubt', st_available: 'Available',
       fol_empty: 'You don’t follow any teams yet', fol_empty_sub: 'Tap the star on a team to follow it.',
       al_events: 'Events', al_channels: 'Channels', al_next: 'Next match', al_start: 'Match start', al_goal: 'Goal', al_result: 'Final result', al_qualify: 'Qualification', al_swing: 'Probability swing', al_value: 'Value opportunity', al_arb: 'Arbitrage', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Push notifications', al_soon: 'soon', al_note: 'Email alerts are active; Telegram and push are coming soon.',
@@ -354,7 +354,7 @@
       pp_title: 'Picks performance', pp_settled: 'Settled', pp_hit: 'Win rate', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'By family', pp_history: 'Picks history', pp_pick: 'Pick', pp_active: 'active', pp_none: 'No settled picks yet.', pp_model: 'Model calibration (1X2)',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
       outright_title: 'World Cup winner · Value', outright_sub: 'GP tournament probability vs market', outright_none: 'No edge over the market for the title right now.',
-      tm_gpi: 'GP Intelligence · title', tm_gpi_model: 'GP probability (champion)', tm_gpi_market: 'Market', tm_gpi_edge: 'GP edge', tm_gpi_note: 'Probability of winning the title per the GP tournament model (base Elo strength + Monte Carlo simulation). Each match\'s context (form, availability, weather) is applied in the match cockpit and in the next match below.',
+      tm_gpi: 'GP Intelligence · title', tm_gpi_model: 'GP probability (champion)', tm_gpi_market: 'Market', tm_gpi_edge: 'GP edge', tm_gpi_note: 'Probability of winning the title per the GP tournament model. Each match\'s context (form, availability, weather) is applied in the match cockpit and in the next match below.',
       opp_actionable: 'Actionable', opp_watch_only: 'Watch',
       opp_arb_na: 'Arbitrage unavailable', opp_arb_evaluated: 'comparisons', opp_arb_executable: 'executable', opp_arb_note: 'Zero executable is a valid result: the markets are aligned.', opp_arb_market: 'Market', opp_arb_margin: 'Net margin',
       arbst_EXECUTABLE: 'Executable', arbst_THEORETICAL_ONLY: 'Theoretical only', arbst_PARTIAL_EXECUTION_RISK: 'Partial execution', arbst_BLOCKED: 'Blocked', arbst_BLOCKED_SEMANTIC_MISMATCH: 'Different rules', arbst_EXPIRED: 'Expired', arbst_SUSPENDED: 'Suspended', arbst_STALE: 'Stale',
@@ -383,7 +383,7 @@
       arb_x_trade_exch: 'take the price now and, when the venue shifts its odds toward consensus, sell/hedge the position to lock a profit regardless of the result (line trading). Do not hold it to settlement.',
       arb_x_trade_soft: 'at this book you cannot sell the position, so value is realized over the LONG RUN (many bets), with full variance on each. Bet small; if the line moves your way, some books offer partial cash out to close early.',
       perf_matches: 'All evaluated matches', perf_predicted: 'GP', perf_result: 'Result', perf_hit: 'Hit', perf_acc: 'Accuracy',
-      gp_pending_ctx: 'The GP context evaluation for this match hasn’t been generated yet; the model’s base probability (Elo + Monte Carlo) is shown. Detailed context (form, absences, etc.) is in the Context tab.',
+      gp_pending_ctx: 'The GP context evaluation for this match hasn’t been generated yet; the GP model’s base probability is shown. Detailed context (form, absences, etc.) is in the Context tab.',
       calc_nav: 'Calculator', calc_title: 'Stake calculator', calc_open: 'Calculate stake', calc_open_arb: 'Split stake',
       calc_bankroll: 'Your bankroll', calc_currency: 'Currency', calc_prob: 'Probability', calc_prob_gp: 'GP probability', calc_prob_cons: 'Market consensus',
       calc_odds: 'Odds', calc_fraction: 'Kelly fraction', calc_full: 'Full',
@@ -1506,8 +1506,11 @@
       '</div>';
     var picksHtml = mPicks.length ? '<div class="gx-ck-picks"><span class="gx-label">' + esc(t('ck_todaypick')) + '</span>' +
       mPicks.map(function (p) { return '<div class="gx-ck-pickrow"><span class="gx-ck-picksel">' + esc(pickRecText(p)) + '</span>' + (p.odds != null ? '<span class="gx-ck-pickodds gx-mono">' + Number(p.odds).toFixed(2) + '</span>' : '') + '</div>'; }).join('') + '</div>' : '';
+    // ronda REAL del partido desde el calendario (antes estaba fija en R16 → mostraba "Octavos" en cuartos/semis)
+    var calM = (S.cal || []).filter(function (c) { return (c.home === m.hid && c.away === m.aid) || (c.home === m.aid && c.away === m.hid); })[0];
+    var stg = calM ? stageLabel(calM.stage === 'group' ? 'GROUP' : calM.stage) : '';
     return '<div class="gx-panel gx-ck-score">' +
-      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc((stageLabel('R16') || t('comp'))) + (m.kickoff ? ' · ' + esc(fmtDateTime(m.kickoff)) : '') + '</div>' +
+      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc((stg || t('comp'))) + (m.kickoff ? ' · ' + esc(fmtDateTime(m.kickoff)) : '') + '</div>' +
       '<div class="gx-ck-teams"><div class="gx-ck-side"><span class="fl">' + flag(m.hid) + '</span><b>' + esc(m.home) + '</b></div>' +
       '<div class="gx-ck-mid"><div class="gx-ck-num">' + t('vs') + '</div></div>' +
       '<div class="gx-ck-side"><span class="fl">' + flag(m.aid) + '</span><b>' + esc(m.away) + '</b></div></div>' +
@@ -1744,7 +1747,7 @@
   }
   function h2hConfidence(h2h) { var lv = h2h && h2h.analysis && h2h.analysis.headline && h2h.analysis.headline.modelConfidence && h2h.analysis.headline.modelConfidence.level; return lv === 'Alta' ? 'HIGH' : lv === 'Baja' ? 'LOW' : lv === 'Media' ? 'MEDIUM' : null; }
   function round4(x) { return (x == null || !isFinite(x)) ? null : Math.round(x * 1e4) / 1e4; }
-  function stageLabel(c) { if (!c) return ''; var m = { GROUP: LANG === 'en' ? 'Group stage' : 'Fase de grupos', KNOCKOUT: LANG === 'en' ? 'Knockout' : 'Eliminatorias', R32: LANG === 'en' ? 'Round of 32' : '16avos', R16: LANG === 'en' ? 'Round of 16' : 'Octavos', QF: LANG === 'en' ? 'Quarter-finals' : 'Cuartos', SF: LANG === 'en' ? 'Semi-finals' : 'Semifinal', FINAL: 'Final' }; return m[c] || c; }
+  function stageLabel(c) { if (!c) return ''; var m = { GROUP: LANG === 'en' ? 'Group stage' : 'Fase de grupos', KNOCKOUT: LANG === 'en' ? 'Knockout' : 'Eliminatorias', R32: LANG === 'en' ? 'Round of 32' : '16avos', R16: LANG === 'en' ? 'Round of 16' : 'Octavos', QF: LANG === 'en' ? 'Quarter-finals' : 'Cuartos', SF: LANG === 'en' ? 'Semi-finals' : 'Semifinal', '3RD': LANG === 'en' ? '3rd place' : '3er puesto', FINAL: 'Final' }; return m[c] || c; }
   function ocName(h, c) { return c === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : teamName(c === 'AWAY' ? h.away.team_id : h.home.team_id, c === 'AWAY' ? h.away.name_fallback : h.home.name_fallback); }
   function ageFresh(iso) { if (!iso) return null; var ms = Date.now() - new Date(iso).getTime(); if (isNaN(ms)) return null; var h = ms / 3.6e6; return h <= 2 ? 'FRESH' : h <= 12 ? 'AGING' : 'STALE'; }
   // kind: 'data' (frescura de datos) | 'price' (frescura del precio) → etiqueta acorde a lo que se califica (A.6)

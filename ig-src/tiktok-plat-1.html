@@ -1,0 +1,31 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/fonts/fonts.css"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1080px;height:1920px;font-family:"Inter",sans-serif;color:#EAF1F2;overflow:hidden;position:relative;
+  background:radial-gradient(130% 70% at 50% 6%,#0C231B 0%,#081311 46%,#05080A 100%)}
+.grain{position:absolute;inset:0;opacity:.4;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+.glow{position:absolute;top:-160px;left:50%;transform:translateX(-50%);width:1000px;height:1000px;background:radial-gradient(circle,rgba(31,227,164,.22),transparent 62%)}
+.brand{position:absolute;top:120px;left:0;right:0;text-align:center;font-family:"Space Grotesk",sans-serif;font-size:34px;font-weight:800;color:#fff;z-index:3}
+.wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 80px;z-index:3;text-align:center}
+.kick{text-transform:uppercase;letter-spacing:6px;font-size:27px;font-weight:800;color:#1FE3A4;margin-bottom:30px}
+h1{font-family:"Space Grotesk",sans-serif;font-size:150px;font-weight:800;letter-spacing:-6px;line-height:.9;color:#fff;margin-bottom:34px}
+h1 .g{color:#1FE3A4}
+.sub{font-size:40px;font-weight:600;color:#9DB0B5;line-height:1.4;max-width:760px;margin-bottom:60px}
+.fig{width:340px;height:auto;filter:drop-shadow(0 0 60px rgba(31,227,164,.35))}
+.flags{position:absolute;bottom:230px;left:0;right:0;text-align:center;font-size:44px;letter-spacing:8px;z-index:3}
+.swipe{position:absolute;bottom:120px;left:0;right:0;text-align:center;font-size:30px;color:#1FE3A4;font-weight:800;z-index:3}
+</style></head><body>
+<div class="grain"></div><div class="glow"></div>
+<div class="brand">⚽ GP Simulator</div>
+<div class="wrap">
+  <div class="kick">World Cup 2026 · Live</div>
+  <h1>Who wins<br><span class="g">today?</span></h1>
+  <div class="sub">We already ran the numbers on every match. No guessing.</div>
+  <svg class="fig" viewBox="0 0 220 300" fill="none"><defs><linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A5C46"/><stop offset="1" stop-color="#3E2A20"/></linearGradient></defs>
+    <path d="M80 150 L34 46" stroke="url(#sk)" stroke-width="28" stroke-linecap="round"/><path d="M140 150 L186 46" stroke="url(#sk)" stroke-width="28" stroke-linecap="round"/>
+    <circle cx="32" cy="42" r="17" fill="url(#sk)"/><circle cx="188" cy="42" r="17" fill="url(#sk)"/>
+    <circle cx="110" cy="74" r="36" fill="url(#sk)"/>
+    <path d="M72 152 Q110 116 148 152 L154 300 L66 300 Z" fill="url(#sk)"/></svg>
+</div>
+<div class="flags">🇳🇬 🇬🇭 🇰🇪 🇿🇦 🇸🇳 🇨🇮</div>
+<div class="swipe">swipe to see how →</div>
+</body></html>

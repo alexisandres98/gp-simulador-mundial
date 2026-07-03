@@ -870,26 +870,25 @@ function userLang(email) {
 // "spammy", con motivo de recepción + baja. El From verificado (codigo@gpsimulador.com, SPF/DKIM Resend) hace el resto.
 function broadcastEmail(referLink, lang) {
   if (lang === 'en') return broadcastEmailEN(referLink);
-  const subject = 'Tu acceso anticipado a la beta de GP Intelligence';
-  const preheader = 'Invita a 5 amigos y desbloquea Picks, Value, arbitraje y la nueva terminal — gratis.';
+  const url = 'https://gpsimulador.com';
+  const subject = 'Ya está aquí: la nueva plataforma de GP Simulador';
+  const preheader = 'Picks diarias, mejores cuotas entre 40+ casas, calculadora de stake y la lectura del torneo en vivo — todo en gpsimulador.com.';
   const text = `Hola,
 
-Estamos abriendo la BETA de GP Intelligence: una versión nueva, mucho más potente, del GP Simulador del Mundial.
+Se acabó la espera: la nueva plataforma de GP Simulador ya está LIVE para todos. Una sola plataforma, mucho más potente — y ahora todo vive en un mismo lugar: gpsimulador.com.
 
-Qué incluye la beta:
-• Picks GP — selecciones del modelo con seguimiento honesto.
-• Oportunidades de Value y de arbitraje (modelo vs mercado).
-• Un modelo más potente y mejor calibrado, con contexto en vivo.
-• Comparación entre más de 40 casas de apuestas.
-• Nueva terminal de inteligencia deportiva (más rápida y completa).
+Tu misma cuenta, tu historial intacto, una experiencia completamente nueva.
 
-Cómo entrar — gratis:
-Invita a 5 amigos verificados con tu link personal. Cuando se registren, se te desbloquea el acceso a la beta automáticamente. (Yo también puedo darte acceso manual.)
+Qué encontrarás:
+• Picks diarias del modelo — a quién apostar y cuántos goles, claro y directo.
+• Value y arbitraje — dónde el mercado paga de más, comparando 40+ casas por ti.
+• Calculadora de stake — cuánto apostar según tu bankroll, prellenada con la probabilidad del modelo.
+• La lectura del torneo en vivo — quién levanta la copa, recalculado con cada gol.
+• Terminal más rápida y bilingüe (ES/EN), pensada para el móvil.
 
-Abre tu ventana de referidos, copia tu link y mira tu progreso (0/5):
-${referLink}
+Entra ahora: ${url}
 
-Tu cuenta, tus seguidos, tu historial y tus alertas siguen igual: la beta es la misma cuenta, con una experiencia nueva.
+Tus seguidos, tu historial y tus alertas siguen igual. Solo entra y ya estás dentro.
 
 — Alexis · GP Simulador del Mundial
 
@@ -897,29 +896,25 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
   <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
   <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
-    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:26px 26px 22px;color:#fff">
-      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">Acceso anticipado</div>
-      <h1 style="margin:8px 0 0;font-size:23px;line-height:1.25">Te invitamos a la beta de <span style="color:#18E6A3">GP Intelligence</span></h1>
-      <p style="margin:10px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">Una versión nueva y mucho más potente del GP Simulador del Mundial. La misma cuenta, una experiencia nueva.</p>
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">Ya está live · gratis</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">La nueva plataforma de <span style="color:#18E6A3">GP Simulador</span> ya está aquí</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">Una sola plataforma, mucho más potente. Tu misma cuenta y todo tu historial — una experiencia completamente nueva.</p>
     </div>
-    <div style="padding:22px 26px">
-      <p style="margin:0 0 12px;font-size:14px;color:#14201A;font-weight:700">Qué desbloqueas en la beta</p>
-      <ul style="margin:0 0 20px;padding-left:18px;line-height:1.7;font-size:14px;color:#2b3a33">
-        <li><b>Picks GP</b> — selecciones del modelo con seguimiento honesto.</li>
-        <li><b>Value y arbitraje</b> — oportunidades del modelo frente al mercado.</li>
-        <li><b>Modelo más potente y calibrado</b>, con contexto en vivo.</li>
-        <li>Comparación entre <b>más de 40 casas</b> de apuestas.</li>
-        <li>Nueva <b>terminal de inteligencia deportiva</b>.</li>
+    <div style="padding:24px 26px">
+      <p style="margin:0 0 12px;font-size:14px;color:#14201A;font-weight:700">Qué encontrarás</p>
+      <ul style="margin:0 0 22px;padding-left:18px;line-height:1.7;font-size:14px;color:#2b3a33">
+        <li><b>Picks diarias del modelo</b> — a quién apostar y cuántos goles, claro y directo.</li>
+        <li><b>Value y arbitraje</b> — dónde el mercado paga de más, entre <b>40+ casas</b>.</li>
+        <li><b>Calculadora de stake</b> — cuánto apostar según tu bankroll, con la probabilidad del modelo.</li>
+        <li><b>La lectura del torneo en vivo</b> — quién levanta la copa, recalculado con cada gol.</li>
+        <li>Terminal más rápida, <b>bilingüe (ES/EN)</b> y pensada para el móvil.</li>
       </ul>
-      <div style="background:#f0faf6;border:1px solid #cdeede;border-radius:12px;padding:16px 18px;margin:0 0 20px">
-        <p style="margin:0 0 6px;font-size:15px;color:#0E2A1E;font-weight:800">Cómo entrar — gratis</p>
-        <p style="margin:0;font-size:13.5px;color:#3a4a42;line-height:1.55">Invita a <b>5 amigos verificados</b> con tu link personal. Cuando se registren, tu acceso a la beta se desbloquea solo.</p>
-      </div>
-      <p style="text-align:center;margin:0 0 8px">
-        <a href="${referLink}" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:15px 30px;border-radius:99px;font-size:15px">Ver mi progreso e invitar →</a>
+      <p style="text-align:center;margin:0 0 10px">
+        <a href="${url}" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:16px 34px;border-radius:99px;font-size:15px">Entrar a la plataforma →</a>
       </p>
-      <p style="text-align:center;margin:0 0 22px;font-size:12px;color:#8a9a92">Abre tu ventana de referidos, copia tu link y mira tu progreso (0/5).</p>
-      <p style="margin:0;font-size:13px;color:#5a6a62;line-height:1.5">Tus seguidos, historial, alertas y preferencias siguen intactos. La beta es tu misma cuenta.</p>
+      <p style="text-align:center;margin:0 0 22px;font-size:12px;color:#8a9a92">Un solo lugar: <b style="color:#0E2A1E">gpsimulador.com</b></p>
+      <p style="margin:0;font-size:13px;color:#5a6a62;line-height:1.5">Tus seguidos, historial, alertas y preferencias siguen intactos. Solo entra y ya estás dentro de la nueva plataforma.</p>
     </div>
     <div style="border-top:1px solid #eef2f0;padding:16px 26px;background:#fbfcfb">
       <p style="margin:0 0 4px;font-size:13px;color:#3a4a42">✈️ ¿Quieres oportunidades y resultados en vivo? <a href="https://t.me/gpsimulador" style="color:#0E9F6E;font-weight:700;text-decoration:none">Únete a nuestro canal de Telegram</a>.</p>
@@ -932,26 +927,25 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
 
 // Anuncio de la BETA — versión EN.
 function broadcastEmailEN(referLink) {
-  const subject = 'Your early access to the GP Intelligence beta';
-  const preheader = 'Invite 5 friends and unlock Picks, Value, arbitrage and the new terminal — free.';
+  const url = 'https://gpsimulador.com';
+  const subject = 'It’s here: the new GP Simulador platform';
+  const preheader = 'Daily picks, best odds across 40+ books, a stake calculator and the live tournament read — all at gpsimulador.com.';
   const text = `Hi,
 
-We're opening the GP Intelligence beta: a new, much more powerful version of the World Cup GP Simulator.
+The wait is over: the new GP Simulador platform is now LIVE for everyone. One platform, far more powerful — and now everything lives in one place: gpsimulador.com.
 
-What's inside the beta:
-• GP Picks — model selections with honest tracking.
-• Value and arbitrage opportunities (model vs market).
-• A stronger, better-calibrated model with live context.
-• Comparison across 40+ sportsbooks.
-• A new sports intelligence terminal (faster and more complete).
+Same account, history intact, a completely new experience.
 
-How to get in — free:
-Invite 5 verified friends with your personal link. Once they sign up, beta access unlocks automatically. (I can also grant it manually.)
+What you'll find:
+• Daily model picks — who to back and how many goals, clear and direct.
+• Value and arbitrage — where the market overpays, comparing 40+ books for you.
+• Stake calculator — how much to bet based on your bankroll, prefilled with the model's probability.
+• The live tournament read — who lifts the cup, recalculated with every goal.
+• A faster, bilingual (EN/ES) terminal, built for mobile.
 
-Open your referrals page, copy your link and see your progress (0/5):
-${referLink}
+Come in now: ${url}
 
-Your account, follows, history and alerts stay the same: the beta is the same account, with a new experience.
+Your follows, history and alerts stay the same. Just log in and you're already inside.
 
 — Alexis · World Cup GP Simulator
 
@@ -959,29 +953,25 @@ You're getting this because you have an account at GP Simulador. To stop receivi
   const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
   <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
   <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
-    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:26px 26px 22px;color:#fff">
-      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">Early access</div>
-      <h1 style="margin:8px 0 0;font-size:23px;line-height:1.25">You're invited to the <span style="color:#18E6A3">GP Intelligence</span> beta</h1>
-      <p style="margin:10px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">A new, far more powerful version of the World Cup GP Simulator. Same account, new experience.</p>
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">Now live · free</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">The new <span style="color:#18E6A3">GP Simulador</span> platform is here</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">One platform, far more powerful. Your same account and full history — a completely new experience.</p>
     </div>
-    <div style="padding:22px 26px">
-      <p style="margin:0 0 12px;font-size:14px;color:#14201A;font-weight:700">What you unlock in the beta</p>
-      <ul style="margin:0 0 20px;padding-left:18px;line-height:1.7;font-size:14px;color:#2b3a33">
-        <li><b>GP Picks</b> — model selections with honest tracking.</li>
-        <li><b>Value and arbitrage</b> — model opportunities vs the market.</li>
-        <li><b>Stronger, better-calibrated model</b>, with live context.</li>
-        <li>Comparison across <b>40+ sportsbooks</b>.</li>
-        <li>A new <b>sports intelligence terminal</b>.</li>
+    <div style="padding:24px 26px">
+      <p style="margin:0 0 12px;font-size:14px;color:#14201A;font-weight:700">What you'll find</p>
+      <ul style="margin:0 0 22px;padding-left:18px;line-height:1.7;font-size:14px;color:#2b3a33">
+        <li><b>Daily model picks</b> — who to back and how many goals, clear and direct.</li>
+        <li><b>Value and arbitrage</b> — where the market overpays, across <b>40+ books</b>.</li>
+        <li><b>Stake calculator</b> — how much to bet based on your bankroll, with the model's probability.</li>
+        <li><b>The live tournament read</b> — who lifts the cup, recalculated with every goal.</li>
+        <li>A faster, <b>bilingual (EN/ES)</b> terminal, built for mobile.</li>
       </ul>
-      <div style="background:#f0faf6;border:1px solid #cdeede;border-radius:12px;padding:16px 18px;margin:0 0 20px">
-        <p style="margin:0 0 6px;font-size:15px;color:#0E2A1E;font-weight:800">How to get in — free</p>
-        <p style="margin:0;font-size:13.5px;color:#3a4a42;line-height:1.55">Invite <b>5 verified friends</b> with your personal link. Once they sign up, your beta access unlocks automatically.</p>
-      </div>
-      <p style="text-align:center;margin:0 0 8px">
-        <a href="${referLink}" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:15px 30px;border-radius:99px;font-size:15px">See my progress & invite →</a>
+      <p style="text-align:center;margin:0 0 10px">
+        <a href="${url}" style="display:inline-block;background:#0E9F6E;color:#fff;text-decoration:none;font-weight:800;padding:16px 34px;border-radius:99px;font-size:15px">Enter the platform →</a>
       </p>
-      <p style="text-align:center;margin:0 0 22px;font-size:12px;color:#8a9a92">Open your referrals page, copy your link and track your progress (0/5).</p>
-      <p style="margin:0;font-size:13px;color:#5a6a62;line-height:1.5">Your follows, history, alerts and preferences stay intact. The beta is your same account.</p>
+      <p style="text-align:center;margin:0 0 22px;font-size:12px;color:#8a9a92">One place: <b style="color:#0E2A1E">gpsimulador.com</b></p>
+      <p style="margin:0;font-size:13px;color:#5a6a62;line-height:1.5">Your follows, history, alerts and preferences stay intact. Just log in and you're already inside.</p>
     </div>
     <div style="border-top:1px solid #eef2f0;padding:16px 26px;background:#fbfcfb">
       <p style="margin:0 0 4px;font-size:13px;color:#3a4a42">✈️ Want live opportunities and results? <a href="https://t.me/gpsimulador" style="color:#0E9F6E;font-weight:700;text-decoration:none">Join our Telegram channel</a>.</p>

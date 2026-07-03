@@ -103,6 +103,7 @@ body { background:
 .gx-dot { position: absolute; top: 7px; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--gx-live); }
 
 .gx-main { display: grid; grid-template-columns: minmax(0,1fr) 392px; gap: 16px; padding: 18px 22px 28px; align-items: start; }
+.gx-main.gx-solo { grid-template-columns: minmax(0,1fr); }
 .gx-content { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
 /* ---------- panels / cards ---------- */

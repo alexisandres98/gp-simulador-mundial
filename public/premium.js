@@ -1411,8 +1411,12 @@
   // ---------- cockpit ----------
   function cockpit(rows) {
     var el = $('#gx-cockpit'); if (!el) return;
+    var main = el.closest('.gx-main');
     var r = rows.filter(function (x) { return x.h.event_id === S.sel; })[0] || rows[0];
-    if (!r) { el.innerHTML = '<div class="gx-panel"><div class="gx-empty">' + ic('device-desktop-analytics') + '<b>' + esc(t('cockpit')) + '</b>' + esc(t('no_match')) + '</div></div>'; return; }
+    // Sin partido disponible (p.ej. sin evals V2 aún) → NO mostrar un panel muerto "elegí un partido": se oculta el
+    // cockpit y el contenido ocupa todo el ancho. El análisis profundo se abre desde cualquier pick/partido.
+    if (!r) { el.style.display = 'none'; el.innerHTML = ''; if (main) main.classList.add('gx-solo'); return; }
+    el.style.display = ''; if (main) main.classList.remove('gx-solo');
     var h = r.h, gpH = r.gp('HOME') || 0, gpD = r.gp('DRAW') || 0, gpA = r.gp('AWAY') || 0;
     var memo = buildMemo(r);
     var conf = memo.conf;

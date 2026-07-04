@@ -41,6 +41,7 @@
       a_email_l: 'Tu email', a_email_ph: 'tucorreo@email.com', a_send: 'Enviar código',
       a_micro: 'Gratis durante el Mundial · sin tarjeta · sin spam',
       a_sent_h: 'Revisa tu email', a_sent_sub: 'Te enviamos un código de 6 dígitos a <b>{email}</b>.',
+      a_spam: '¿No lo ves? Revisa <b>Spam</b> o <b>Promociones</b> — puede tardar hasta 1 minuto.',
       a_code_l: 'Código', a_code_ph: '••••••', a_verify: 'Entrar', a_back: 'Usar otro email',
       a_ok_h: '¡Listo!', a_ok_sub: 'Entrando a tu cuenta…',
       e_email: 'Ingresa un email válido.', e_code: 'Código incorrecto o vencido.', e_net: 'Error de conexión, intenta de nuevo.',
@@ -78,6 +79,7 @@
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
       a_micro: 'Free during the World Cup · no card · no spam',
       a_sent_h: 'Check your email', a_sent_sub: 'We sent a 6-digit code to <b>{email}</b>.',
+      a_spam: "Don't see it? Check your <b>Spam</b> or <b>Promotions</b> folder — it can take up to a minute.",
       a_code_l: 'Code', a_code_ph: '••••••', a_verify: 'Enter', a_back: 'Use another email',
       a_ok_h: "You're in!", a_ok_sub: 'Taking you to your account…',
       e_email: 'Enter a valid email.', e_code: 'Wrong or expired code.', e_net: 'Connection error, try again.',
@@ -250,6 +252,9 @@
     $('#authStep').innerHTML =
       '<div class="modal-eye"><i></i>' + esc(T('a_eye')) + '</div>' +
       '<h3>' + esc(T('a_sent_h')) + '</h3><p class="m-sub">' + T('a_sent_sub', { email: esc(authEmail) }) + '</p>' +
+      // muchos códigos caen en Spam/Promociones (sobre todo Gmail móvil en África) y el lead nunca completa →
+      // aviso sutil en la piel del modal, ANTES del campo del código.
+      '<div class="m-spam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg><span>' + T('a_spam') + '</span></div>' +
       (demoCode ? '<p class="m-msg ok">demo: ' + esc(demoCode) + '</p>' : '') +
       '<div class="m-field"><label>' + esc(T('a_code_l')) + '</label>' +
       '<input class="m-input code" id="aCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="' + esc(T('a_code_ph')) + '"></div>' +

@@ -21,7 +21,11 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--gx-bg); color: var(--gx-text); font-family: var(--gx-sans);
-  -webkit-font-smoothing: antialiased; font-size: 14px; }
+  -webkit-font-smoothing: antialiased; font-size: 14px;
+  /* candado anti-paneo horizontal (móvil): un desborde puntual de 1px dejaba la página corrida a la izquierda
+     (el header fijo se queda en su lugar y el contenido se corre). clip no crea scroll-container (no rompe
+     sticky); hidden queda de fallback. Los scrollers internos (.gx-bk-scroll, tablas admin) no se afectan. */
+  overflow-x: hidden; overflow-x: clip; }
 body { background:
   radial-gradient(1200px 600px at 18% -8%, rgba(31,227,164,.045), transparent 60%),
   radial-gradient(900px 500px at 100% 0%, rgba(52,134,255,.035), transparent 55%),

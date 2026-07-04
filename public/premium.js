@@ -1247,7 +1247,10 @@
           '<div class="gx-calc-bigsub">' + (br > 0 ? (res.pct * 100).toFixed(1) + '% ' + esc(t('calc_of_bankroll')) : esc(t('calc_set_bankroll'))) + '</div></div>' +
         '<div class="gx-calc-stats">' +
           stakeStat(t('calc_edge'), '+' + (res.edge * 100).toFixed(1) + ' pp', 'gx-pos') +
-          (br > 0 ? stakeStat(t('calc_ev'), fmtMoney(res.ev, ccy), 'gx-pos') : '') +
+          // "Retorno si acierta" TAMBIÉN en modo valor: sin esto la gente confundía "ganancia esperada" (EV,
+          // promedio a largo plazo) con lo que cobra si la apuesta gana. Se muestran ambas, claramente separadas.
+          (br > 0 ? stakeStat(t('calc_return_win'), '+' + fmtMoney(res.stake * (res.odds - 1), ccy), 'gx-pos') : '') +
+          (br > 0 ? stakeStat(t('calc_ev'), fmtMoney(res.ev, ccy), '') : '') +
           stakeStat(t('calc_be'), (res.be * 100).toFixed(1) + '%', '') +
         '</div>' +
         (res.capped ? '<div class="gx-calc-cap">' + ic('shield-check') + esc(t('calc_capped', { pct: (CALC_KELLY_CAP * 100) + '%' })) + '</div>' : '') +

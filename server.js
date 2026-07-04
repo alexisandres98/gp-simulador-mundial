@@ -280,6 +280,20 @@ let koOverride = {};
 // para la cadencia adaptativa de los loops: los datetimes de nuestro calendario KNOCKOUT pueden divergir del
 // horario oficial (solo R32 quedó anclado por instante) → sin esto la ventana "normal" caería a la hora equivocada.
 let espnKickoffs = [];
+// Horario REAL por PAR de equipos (clave ids ordenados → [ISO,...]). Fuente de verdad para los KO cuyo slot de
+// calendario no tiene datetime (R16+ solo trae fecha) → sin esto todos caían al fallback 18:00Z ("todo a las 6 PM").
+let espnKoTimes = {};
+function espnKickoffFor(h, a, aroundDate) {
+  if (!h || !a) return null;
+  const list = espnKoTimes[[h, a].sort().join('|')] || [];
+  if (!list.length) return null;
+  // mismo par puede jugar dos veces (grupos y luego eliminatoria) → elegir el evento más cercano a la fecha del slot
+  const target = aroundDate ? new Date(aroundDate + 'T12:00Z').getTime() : null;
+  if (target == null) return list[0];
+  let best = null, bd = Infinity;
+  for (const iso of list) { const d = Math.abs(new Date(iso).getTime() - target); if (d < bd) { bd = d; best = iso; } }
+  return bd <= 4 * 86400000 ? best : null; // solo si cae a ±4 días del slot (misma llave)
+}
 const koSlotByInstant = {};
 KNOCKOUT.forEach(k => { if (k.datetime) { const t = new Date(k.datetime).getTime(); if (!isNaN(t)) koSlotByInstant[t] = k.m; } });
 
@@ -302,16 +316,23 @@ async function syncFromESPN(depth = 0) {
     // PASO 0: anclar los cruces de eliminatorias a la realidad de ESPN por hora de inicio (las horas de nuestro
     // calendario coinciden con el oficial). Así corregimos emparejamientos mal computados (p.ej. mejores terceros)
     // ANTES de resolver el bracket → el partido real se reconoce y se ingiere/transmite correctamente.
+    const koTimesNew = {};
     for (const ev of j.events || []) {
       const c = ev.competitions && ev.competitions[0]; if (!c || !ev.date) continue;
-      const inst = new Date(ev.date).getTime(); const m = koSlotByInstant[inst];
-      if (m == null) continue; // solo slots de eliminatoria con hora conocida (R32)
       const H = c.competitors.find(x => x.homeAway === 'home'), A = c.competitors.find(x => x.homeAway === 'away');
       if (!H || !A) continue;
       const hId = espnTeamId[normName(H.team.displayName)] || espnTeamId[normName(H.team.name)];
       const aId = espnTeamId[normName(A.team.displayName)] || espnTeamId[normName(A.team.name)];
+      if (hId && aId) {
+        // horario REAL por par (todo el torneo) → corrige los KO sin datetime propio (fallback 18:00Z)
+        const key = [hId, aId].sort().join('|');
+        (koTimesNew[key] = koTimesNew[key] || []).push(ev.date);
+      }
+      const inst = new Date(ev.date).getTime(); const m = koSlotByInstant[inst];
+      if (m == null) continue; // solo slots de eliminatoria con hora conocida (R32)
       if (hId && aId) koOverride[m] = { home: hId, away: aId, espnId: ev.id }; // espnId → habilita fallback de alineaciones ESPN en KO
     }
+    if (Object.keys(koTimesNew).length) espnKoTimes = koTimesNew;
     const bracket = resolveRealBracket();
     let changed = 0;
     const liveAlerts = []; // {matchId,hId,aId,hg,ag,kind:'start'|'goal'}
@@ -1310,7 +1331,9 @@ function buildState() {
     if (h && a) probs = (r && r.status === 'live')
       ? liveMatchProbs(effElo(db.elos, h), effElo(db.elos, a), r.hg, r.ag, r.minute)
       : matchProbs(effElo(db.elos, h), effElo(db.elos, a));
-    return { ...k, result: r, resolved, probs, gpProbs: gpLiveCheap(h, a, r) };
+    // hora REAL de ESPN por par de equipos: los slots R16+ no traen datetime → sin esto todos salían 18:00Z
+    const realDt = espnKickoffFor(h, a, k.date);
+    return { ...k, ...(realDt ? { datetime: realDt } : {}), result: r, resolved, probs, gpProbs: gpLiveCheap(h, a, r) };
   });
   return {
     sync: lastSync,
@@ -1341,7 +1364,7 @@ function findFixtureMeta(id) {
   const r = db.results[String(k.m)];
   const home = (r && r.home) || (bracket[k.m] && bracket[k.m].home) || null;
   const away = (r && r.away) || (bracket[k.m] && bracket[k.m].away) || null;
-  return { id: String(id), kind: 'ko', m: k.m, home, away, datetime: k.datetime || (k.date + 'T18:00Z'), group: null, espnId: (koOverride[k.m] && koOverride[k.m].espnId) || null, stage: k.stage };
+  return { id: String(id), kind: 'ko', m: k.m, home, away, datetime: espnKickoffFor(home, away, k.date) || k.datetime || (k.date + 'T18:00Z'), group: null, espnId: (koOverride[k.m] && koOverride[k.m].espnId) || null, stage: k.stage };
 }
 
 function modelProbsFor(home, away, result) {

@@ -2527,9 +2527,13 @@ const server = http.createServer(async (req, res) => {
     }
     // --- auth ---
     if (p === '/api/auth/request' && req.method === 'POST') {
-      const { email } = await readBody(req);
+      const { email, lang } = await readBody(req);
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(res, 400, { error: 'Email inválido' });
       const e = email.toLowerCase();
+      // idioma del código: lo manda el cliente (landing conoce el idioma del visitante); usuario existente →
+      // su idioma efectivo; fallback ES. Antes el email era SOLO ES → los leads anglófonos (África) recibían
+      // un correo que no entendían y encima caía en Promociones por el copy de marketing.
+      const mailLang = (lang === 'en' || lang === 'es') ? lang : userLang(e);
       // anti-abuso: máximo 3 códigos por email cada 10 minutos
       const prev = db.codes[e];
       if (prev && prev.count >= 3 && prev.exp > Date.now()) {
@@ -2553,19 +2557,30 @@ const server = http.createServer(async (req, res) => {
       save();
       if (mailer.isConfigured()) {
         try {
-          await mailer.sendMail({
-            to: e,
-            subject: `${code} es tu código · GP Simulador del Mundial`,
-            text: `¡Bienvenido al GP Simulador del Mundial 2026! ⚽\n\nTu código de acceso es: ${code}\n\nEscríbelo en la página para entrar. Vence en 10 minutos.\n\nCon tu cuenta puedes seguir en tiempo real las probabilidades de los 48 equipos, los marcadores en vivo partido a partido, y las oportunidades que nuestro modelo detecta frente a los mercados de predicción.\n\n— GP Simulador del Mundial`,
-            html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">
-<h2 style="margin-bottom:4px">⚽ GP Simulador del Mundial</h2>
-<p>¡Bienvenido! Tu código de acceso es:</p>
-<p style="font-size:34px;font-weight:bold;letter-spacing:6px;background:#f4f4f4;padding:14px 20px;border-radius:8px;text-align:center">${code}</p>
-<p>Escríbelo en la página para entrar. Vence en 10 minutos.</p>
-<p style="color:#555;font-size:13px">Con tu cuenta puedes seguir en tiempo real las probabilidades de los 48 equipos del Mundial 2026, los marcadores en vivo partido a partido, y las oportunidades que nuestro modelo detecta frente a los mercados de predicción.</p>
-<p style="color:#999;font-size:12px">Si no pediste este código, ignora este correo.</p>
+          // OTP MÍNIMO transaccional (sin marketing ni emoji → Principal, no Promociones) y BILINGÜE.
+          // Aprobado por Alexis sobre pruebas reales enviadas el 4-jul.
+          const otp = mailLang === 'en' ? {
+            subject: `${code} is your GP Simulador access code`,
+            text: `Your access code is: ${code}\n\nIt expires in 10 minutes.\n\nIf you didn't request it, you can ignore this email.\n\nGP Simulador · gpsimulador.com`,
+            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:440px;margin:0 auto;color:#1a1a1a">
+<p style="margin:18px 0 6px;font-size:15px">Your access code is:</p>
+<p style="font-size:34px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:16px 20px;border-radius:10px;text-align:center;margin:8px 0 14px">${code}</p>
+<p style="margin:0 0 4px;font-size:14px;color:#444">It expires in 10 minutes.</p>
+<p style="margin:14px 0 0;font-size:12.5px;color:#999">If you didn't request this code, you can ignore this email.</p>
+<p style="margin:18px 0 0;font-size:12.5px;color:#999">GP Simulador · gpsimulador.com</p>
 </div>`,
-          });
+          } : {
+            subject: `${code} es tu código de acceso · GP Simulador`,
+            text: `Tu código de acceso es: ${code}\n\nVence en 10 minutos.\n\nSi no lo pediste, ignora este correo.\n\nGP Simulador · gpsimulador.com`,
+            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:440px;margin:0 auto;color:#1a1a1a">
+<p style="margin:18px 0 6px;font-size:15px">Tu código de acceso es:</p>
+<p style="font-size:34px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:16px 20px;border-radius:10px;text-align:center;margin:8px 0 14px">${code}</p>
+<p style="margin:0 0 4px;font-size:14px;color:#444">Vence en 10 minutos.</p>
+<p style="margin:14px 0 0;font-size:12.5px;color:#999">Si no pediste este código, ignora este correo.</p>
+<p style="margin:18px 0 0;font-size:12.5px;color:#999">GP Simulador · gpsimulador.com</p>
+</div>`,
+          };
+          await mailer.sendMail({ to: e, subject: otp.subject, text: otp.text, html: otp.html });
           db.codes[e].sent = true;
           save();
           console.log(`[auth] código enviado por email a ${e}`);

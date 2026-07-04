@@ -239,7 +239,7 @@
     var em = (inp.value || '').trim();
     if (!validEmail(em)) { msg.className = 'm-msg err'; msg.textContent = T('e_email'); inp.focus(); return; }
     authEmail = em; sending = true; btn.disabled = true; btn.innerHTML = '<span class="spin"></span>'; msg.textContent = '';
-    fetch('/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em }) })
+    fetch('/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em, lang: lang }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         sending = false;

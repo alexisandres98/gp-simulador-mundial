@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal · GP Simulador</title>
+<link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk-var.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: 'InterVar'; src: url('/fonts/inter-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+:root { --bg:#06090B; --panel:#0D1417; --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+  --tx:#EAF1F2; --tx2:#9DB0B5; --tx3:#5F747B; --ac:#1FE3A4; --acs:rgba(31,227,164,.12); --acl:rgba(31,227,164,.45);
+  --disp:'Space Grotesk',sans-serif; --sans:'InterVar',-apple-system,sans-serif; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { background:var(--bg); color:var(--tx); font-family:var(--sans); font-size:15px; -webkit-font-smoothing:antialiased; overflow-x:hidden; overflow-x:clip; }
+.wrap { max-width:760px; margin:0 auto; padding:0 22px 80px; }
+.nav { display:flex; align-items:center; gap:12px; padding:22px 0 10px; }
+.logo { display:flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:700; font-size:17px; color:var(--tx); text-decoration:none; }
+.logo i { width:34px; height:34px; border-radius:10px; background:var(--acs); border:1px solid var(--acl); display:grid; place-items:center; font-style:normal; color:var(--ac); font-size:16px; }
+.lang { margin-left:auto; display:flex; border:1px solid var(--line2); border-radius:99px; overflow:hidden; }
+.lang button { background:none; border:0; color:var(--tx3); font-family:inherit; font-weight:700; font-size:12px; padding:7px 13px; cursor:pointer; }
+.lang button.on { background:var(--acs); color:var(--ac); }
+.tabs { display:flex; gap:8px; margin:18px 0 30px; flex-wrap:wrap; }
+.tabs a { text-decoration:none; font-size:13px; font-weight:700; color:var(--tx2); border:1px solid var(--line2); padding:9px 16px; border-radius:99px; }
+.tabs a.on { color:var(--ac); border-color:var(--acl); background:var(--acs); }
+h1 { font-family:var(--disp); font-size:30px; font-weight:700; letter-spacing:-.02em; margin:26px 0 6px; }
+.upd { color:var(--tx3); font-size:12.5px; margin-bottom:22px; }
+h2 { font-family:var(--disp); font-size:17px; font-weight:700; margin:26px 0 8px; }
+p, li { color:var(--tx2); font-size:14px; line-height:1.7; }
+ul { padding-left:20px; margin:8px 0; }
+section { display:none; }
+section.on { display:block; }
+a { color:var(--ac); }
+.foot { margin-top:50px; padding-top:18px; border-top:1px solid var(--line); color:var(--tx3); font-size:12px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <a class="logo" href="/"><i>▟</i> GP Simulador</a>
+    <div class="lang" id="lang"><button data-l="es">ES</button><button data-l="en">EN</button></div>
+  </nav>
+  <div class="tabs" id="tabs">
+    <a href="/terms" data-s="terms"></a>
+    <a href="/privacy" data-s="privacy"></a>
+    <a href="/refunds" data-s="refunds"></a>
+  </div>
+  <div id="content"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+(function () {
+  var UPDATED = '2026-07-04';
+  var D = {
+    es: {
+      t_terms: 'Términos y Condiciones', t_privacy: 'Política de Privacidad', t_refunds: 'Política de Reembolso',
+      upd: 'Última actualización: ' + UPDATED,
+      foot: 'GP Simulador · gpsimulador.com · Contacto: soporte@gpsimulador.com',
+      terms: [
+        ['1. Qué es GP Simulador', 'GP Simulador (gpsimulador.com, "la Plataforma") es un servicio de información y análisis estadístico deportivo. Publicamos proyecciones, probabilidades, jugadas sugeridas ("picks") y herramientas de análisis con fines informativos y educativos.'],
+        ['2. No es consejo financiero ni de apuestas', 'Todo el contenido de la Plataforma son estimaciones estadísticas y opiniones editoriales. NO constituye consejo financiero, de inversión ni de apuestas. No garantizamos resultados ni ganancias. Las decisiones que tomes con esta información son tu exclusiva responsabilidad. Nuestro historial de aciertos es público e incluye tanto aciertos como errores.'],
+        ['3. Mayoría de edad y uso responsable', 'La Plataforma es solo para mayores de 18 años (o la mayoría de edad de tu jurisdicción, la que sea mayor). Si decidís apostar, hacelo con responsabilidad y solo con dinero que puedas permitirte perder. Es tu responsabilidad verificar que las apuestas deportivas sean legales en tu jurisdicción. GP Simulador no acepta ni gestiona apuestas de ningún tipo.'],
+        ['4. Cuentas', 'El acceso se realiza mediante verificación por email. Sos responsable de mantener el control de tu correo. Podemos suspender cuentas que abusen del servicio (scraping, reventa de contenido, fraude de referidos, uso automatizado no autorizado).'],
+        ['5. Suscripciones y pagos', 'Los planes de pago se procesan a través de Whop (whop.com), nuestro procesador de pagos. Al suscribirte aceptás también los términos de Whop. Las suscripciones se renuevan automáticamente hasta que las canceles. Podés cancelar en cualquier momento y la cancelación tiene efecto al final del ciclo ya pagado. Los precios "founder" mantienen su valor mientras la suscripción se mantenga activa e ininterrumpida.'],
+        ['6. Propiedad intelectual', 'El contenido, diseño, marca y software de la Plataforma nos pertenecen. Podés compartir capturas citando la fuente; no está permitido revender, redistribuir sistemáticamente ni extraer de forma automatizada el contenido.'],
+        ['7. Disponibilidad y limitación de responsabilidad', 'El servicio se ofrece "tal cual". Dependemos de fuentes de datos de terceros y pueden existir errores, demoras o interrupciones. En la máxima medida permitida por la ley, nuestra responsabilidad total se limita al monto pagado por el servicio en los últimos 3 meses. No respondemos por pérdidas derivadas de apuestas u otras decisiones tomadas con la información de la Plataforma.'],
+        ['8. Cambios', 'Podemos actualizar estos términos; si el cambio es sustancial lo comunicaremos por email o en la Plataforma. El uso continuado implica aceptación. Contacto: soporte@gpsimulador.com.'],
+      ],
+      privacy: [
+        ['1. Qué datos recolectamos', 'Tu email (necesario para la cuenta), y opcionalmente nombre, país e idioma si completás tu perfil. También datos de uso básicos (equipos seguidos, preferencias de alertas) para operar el servicio.'],
+        ['2. Para qué los usamos', 'Para darte acceso (códigos de verificación), enviarte las alertas que actives, novedades del producto, y — si te suscribís — gestionar tu plan. Segmentamos las comunicaciones por idioma/país para no enviarte contenido irrelevante.'],
+        ['3. Con quién se comparten', 'No vendemos tus datos. Los compartimos solo con los proveedores necesarios para operar: Resend (envío de emails), Render (hosting) y Whop (pagos, solo si te suscribís). Cada uno actúa bajo sus propias garantías de protección de datos.'],
+        ['4. Cookies y almacenamiento local', 'Usamos una cookie de sesión (wc_token) para mantenerte conectado y almacenamiento local del navegador para tus preferencias (idioma, configuración de la calculadora). No usamos cookies de publicidad de terceros.'],
+        ['5. Retención y baja', 'Conservamos tus datos mientras tengas cuenta. Podés pedir la eliminación completa de tu cuenta y datos escribiendo a soporte@gpsimulador.com desde tu email registrado; la procesamos en un máximo de 30 días.'],
+        ['6. Seguridad', 'El acceso es sin contraseña (códigos de un solo uso por email), las conexiones van cifradas (TLS) y los datos se almacenan en infraestructura de proveedores reconocidos. Ningún sistema es 100% infalible; si detectamos un incidente que te afecte, te lo comunicaremos.'],
+      ],
+      refunds: [
+        ['1. Garantía de 7 días', 'Si es tu primera suscripción a un plan de pago y no estás conforme, tenés 7 días corridos desde el primer cobro para pedir el reembolso COMPLETO, sin preguntas. Escribí a soporte@gpsimulador.com desde tu email registrado con el asunto "Reembolso".'],
+        ['2. Renovaciones', 'Las renovaciones automáticas no son reembolsables una vez iniciado el nuevo ciclo, pero podés cancelar en cualquier momento para no renovar. Si un error técnico nuestro te impidió usar el servicio de forma sustancial durante un ciclo, escribinos y lo evaluamos caso por caso (podemos acreditar días o reembolsar proporcionalmente).'],
+        ['3. Cómo se procesa', 'Los reembolsos se procesan a través de Whop al mismo medio de pago, normalmente dentro de 5-10 días hábiles según tu banco.'],
+        ['4. Precio founder', 'Si pedís reembolso de una suscripción founder, el cupo y el precio founder se liberan y no se garantiza poder recuperarlos después.'],
+        ['5. Abuso', 'Nos reservamos el derecho de rechazar reembolsos ante patrones de abuso (suscripciones repetidas con reembolso, extracción masiva de contenido durante la ventana de garantía).'],
+      ],
+    },
+    en: {
+      t_terms: 'Terms & Conditions', t_privacy: 'Privacy Policy', t_refunds: 'Refund Policy',
+      upd: 'Last updated: ' + UPDATED,
+      foot: 'GP Simulador · gpsimulador.com · Contact: soporte@gpsimulador.com',
+      terms: [
+        ['1. What GP Simulador is', 'GP Simulador (gpsimulador.com, "the Platform") is a sports information and statistical analysis service. We publish projections, probabilities, suggested plays ("picks") and analysis tools for informational and educational purposes.'],
+        ['2. Not financial or betting advice', 'All content on the Platform consists of statistical estimates and editorial opinions. It does NOT constitute financial, investment or betting advice. We do not guarantee results or profits. Any decisions you make with this information are your sole responsibility. Our track record is public and includes both hits and misses.'],
+        ['3. Age and responsible use', 'The Platform is for people 18+ only (or the age of majority in your jurisdiction, whichever is higher). If you choose to bet, do it responsibly and only with money you can afford to lose. It is your responsibility to verify that sports betting is legal in your jurisdiction. GP Simulador does not accept or manage bets of any kind.'],
+        ['4. Accounts', 'Access works through email verification. You are responsible for keeping control of your email. We may suspend accounts that abuse the service (scraping, content resale, referral fraud, unauthorized automated use).'],
+        ['5. Subscriptions and payments', 'Paid plans are processed through Whop (whop.com), our payment processor. By subscribing you also accept Whop\'s terms. Subscriptions renew automatically until cancelled. You can cancel anytime and cancellation takes effect at the end of the paid cycle. "Founder" prices keep their value as long as the subscription remains active and uninterrupted.'],
+        ['6. Intellectual property', 'The Platform\'s content, design, brand and software belong to us. You may share screenshots citing the source; reselling, systematic redistribution or automated extraction of content is not allowed.'],
+        ['7. Availability and limitation of liability', 'The service is provided "as is". We rely on third-party data sources and errors, delays or interruptions may occur. To the maximum extent permitted by law, our total liability is limited to the amount you paid for the service in the last 3 months. We are not liable for losses derived from bets or other decisions made with the Platform\'s information.'],
+        ['8. Changes', 'We may update these terms; substantial changes will be communicated by email or on the Platform. Continued use implies acceptance. Contact: soporte@gpsimulador.com.'],
+      ],
+      privacy: [
+        ['1. What we collect', 'Your email (required for the account), and optionally your name, country and language if you complete your profile. Also basic usage data (followed teams, alert preferences) to operate the service.'],
+        ['2. How we use it', 'To give you access (verification codes), send the alerts you enable, product news, and — if you subscribe — manage your plan. We segment communications by language/country to avoid sending you irrelevant content.'],
+        ['3. Who we share it with', 'We do not sell your data. We share it only with the providers needed to operate: Resend (email delivery), Render (hosting) and Whop (payments, only if you subscribe). Each operates under its own data-protection guarantees.'],
+        ['4. Cookies and local storage', 'We use one session cookie (wc_token) to keep you signed in and browser local storage for your preferences (language, calculator settings). We do not use third-party advertising cookies.'],
+        ['5. Retention and deletion', 'We keep your data while you have an account. You can request full deletion of your account and data by writing to soporte@gpsimulador.com from your registered email; we process it within 30 days.'],
+        ['6. Security', 'Access is passwordless (one-time email codes), connections are encrypted (TLS) and data is stored on recognized providers\' infrastructure. No system is 100% infallible; if we detect an incident affecting you, we will let you know.'],
+      ],
+      refunds: [
+        ['1. 7-day guarantee', 'If it\'s your first subscription to a paid plan and you\'re not satisfied, you have 7 calendar days from the first charge to request a FULL refund, no questions asked. Write to soporte@gpsimulador.com from your registered email with the subject "Refund".'],
+        ['2. Renewals', 'Automatic renewals are not refundable once the new cycle has started, but you can cancel anytime to avoid renewing. If a technical error on our side substantially prevented you from using the service during a cycle, write to us and we\'ll review it case by case (we may credit days or refund proportionally).'],
+        ['3. Processing', 'Refunds are processed through Whop to the same payment method, normally within 5-10 business days depending on your bank.'],
+        ['4. Founder price', 'If you request a refund of a founder subscription, the founder spot and price are released and recovering them later is not guaranteed.'],
+        ['5. Abuse', 'We reserve the right to refuse refunds in abuse patterns (repeated subscribe-and-refund, mass content extraction during the guarantee window).'],
+      ],
+    },
+  };
+  var lang = 'es';
+  try { var p = localStorage.getItem('gp_lang'); lang = (p === 'en' || p === 'es') ? p : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es'); } catch (e) {}
+  var sec = { '/terms': 'terms', '/privacy': 'privacy', '/refunds': 'refunds' }[location.pathname] || 'terms';
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function render() {
+    document.documentElement.lang = lang;
+    var T = D[lang];
+    document.querySelectorAll('#tabs a').forEach(function (a) {
+      var s = a.getAttribute('data-s');
+      a.textContent = T['t_' + s];
+      a.classList.toggle('on', s === sec);
+      a.onclick = function (e) { e.preventDefault(); sec = s; history.replaceState(null, '', '/' + s); render(); };
+    });
+    document.getElementById('content').innerHTML =
+      '<h1>' + T['t_' + sec] + '</h1><div class="upd">' + T.upd + '</div>' +
+      T[sec].map(function (b) { return '<h2>' + esc(b[0]) + '</h2><p>' + esc(b[1]) + '</p>'; }).join('');
+    document.getElementById('foot').textContent = T.foot;
+    document.querySelectorAll('#lang button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-l') === lang);
+      b.onclick = function () { var l = b.getAttribute('data-l'); if (l === lang) return; try { localStorage.setItem('gp_lang', l); } catch (e) {} lang = l; render(); };
+    });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

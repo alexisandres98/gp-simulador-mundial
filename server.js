@@ -570,6 +570,9 @@ db.refCodes = db.refCodes || {};               // referidos: code → email (loo
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
+db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
+db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
+db.supportMsgs = db.supportMsgs || [];         // mensajes de soporte in-platform (respaldo local; ring 200)
 
 // ===== Entitlement de la BETA (rollout sin migrar usuarios) =====
 // La plataforma nueva (premium /x) y la actual (app.js) conviven; un router por usuario decide cuál mostrar.
@@ -600,6 +603,25 @@ function betaEntitlement(email) {
     reason: grant ? grant.reason || null : null,
     verified_referrals: verified, referrals_required: required,
   };
+}
+
+// ===== PLANES / entitlements de pago (Whop) =====
+// premiumGrants es la fuente de verdad del plan de cada usuario (se alimenta por webhook de Whop o grant
+// manual admin). GP_PLANS_ENFORCED gobierna si el gating se APLICA: default OFF → durante el Mundial todos
+// tienen acceso completo (comportamiento actual intacto); se enciende en el lanzamiento de pagos.
+// El ADMIN siempre es 'sharp' y puede PREVISUALIZAR otros planes con ?asplan=free|pro (solo admin).
+function plansEnforced() { return betaBool(process.env.GP_PLANS_ENFORCED); }
+function planFor(email) {
+  if (!email) return 'free';
+  if (isAdmin(email)) return 'sharp';
+  const g = db.premiumGrants[String(email).toLowerCase()];
+  if (g && g.status === 'active' && (g.plan === 'pro' || g.plan === 'sharp')) return g.plan;
+  return 'free';
+}
+function effectivePlan(email, asplan) {
+  if (email && isAdmin(email) && (asplan === 'free' || asplan === 'pro' || asplan === 'sharp')) return asplan; // preview admin
+  if (!plansEnforced()) return 'sharp'; // pre-lanzamiento: acceso completo para todos
+  return planFor(email);
 }
 
 // Genera (si falta) un código de referido único para un usuario. Link: gpsimulador.com/?ref=<code>
@@ -2455,13 +2477,32 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/beta/picks' && req.method === 'GET') {
         const active = db.dailyPicks.filter(x => x.status === 'ACTIVE')
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
-        const items = active.map(x => ({
+        let items = active.map(x => ({
           pick_id: x.pick_id, family: x.family, event_id: x.event.is_canonical ? x.event.canonical_event_id : null,
           home: x.event.home, away: x.event.away,
           home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
           selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs,
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
         }));
+        // ===== GATING POR PLAN (inerte con GP_PLANS_ENFORCED=off → todos ven todo) =====
+        // FREE: 1 pick del día (la SOLID/ganador de mayor confianza), visible recién 60 min antes del kickoff
+        // ("con delay"). PRO: todas las familias actuales (ganador+goles+combo). SHARP: además las familias
+        // futuras (córners/tarjetas/props) cuando existan. locked_count → el cliente muestra el teaser de upgrade.
+        const plan = effectivePlan(betaUser.email, url.searchParams.get('asplan'));
+        let lockedCount = 0, planDelayed = false;
+        if (plan === 'free') {
+          const total = items.length;
+          const solid = items.filter(f => f.family === 'SOLID').sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+          const top = solid[0] || null;
+          const visible = top && (new Date(top.kickoff).getTime() - Date.now()) <= 60 * 60 * 1000;
+          planDelayed = !!(top && !visible);
+          items = visible ? [top] : [];
+          lockedCount = total - items.length;
+        } else if (plan === 'pro') {
+          const before = items.length;
+          items = items.filter(f => f.family === 'SOLID' || f.family === 'GOALS' || f.family === 'COMBO');
+          lockedCount = before - items.length; // familias Sharp futuras (córners/tarjetas/props)
+        }
         // RECAP DE AYER (prueba social agregada): solo el marcador W/T del día anterior (UTC). El historial
         // detallado de picks sigue siendo SOLO admin — aquí no viaja ninguna pick vieja, solo el conteo.
         const yd = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -2479,10 +2520,16 @@ const server = http.createServer(async (req, res) => {
           const fut = (espnKickoffs || []).filter(t => t > now);
           if (fut.length) nextKo = new Date(Math.min.apply(null, fut)).toISOString();
         }
-        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, generated_at: new Date().toISOString() });
+        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, plan, locked_count: lockedCount, plan_delayed: planDelayed, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, generated_at: new Date().toISOString() });
       }
       // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
       // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.
+      // GATE SHARP: Value y Arbitraje son del plan Sharp (inerte con GP_PLANS_ENFORCED=off).
+      // 403 {error:'upgrade'} → el cliente pinta el candado con CTA, no un error.
+      if ((p === '/api/beta/value-outright' || p === '/api/beta/value' || p === '/api/beta/arbitrage') && req.method === 'GET') {
+        const planV = effectivePlan(betaUser.email, url.searchParams.get('asplan'));
+        if (planV !== 'sharp') return json(res, 403, { error: 'upgrade', need: 'sharp', plan: planV });
+      }
       if (p === '/api/beta/value-outright' && req.method === 'GET') {
         await fetchMarkets(false).catch(() => {});
         const items = TEAMS.map(tm => {
@@ -2627,7 +2674,97 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'No autenticado' });
       const code = ensureRefCode(u.email);
-      return json(res, 200, { ...u, refCode: code, referrals: (db.users[u.email].referrals || []).length });
+      // plan (Whop): `plan` = el real del grant; `plan_effective` = el que aplica hoy (pre-lanzamiento todos sharp).
+      const g = db.premiumGrants[u.email] || null;
+      return json(res, 200, {
+        ...u, refCode: code, referrals: (db.users[u.email].referrals || []).length,
+        plan: planFor(u.email), plan_effective: effectivePlan(u.email), plans_enforced: plansEnforced(),
+        plan_founder: !!(g && g.founder), plan_status: g ? g.status : null, plan_since: g ? g.since || null : null,
+      });
+    }
+    // ===== SOPORTE in-platform: el usuario escribe desde la plataforma → email al admin (reply-to = el usuario,
+    // responder desde Gmail le llega directo). Respaldo local en db.supportMsgs. Rate limit 5/hora por usuario.
+    if (p === '/api/support' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const { message, subject } = await readBody(req).catch(() => ({}));
+      const msg = String(message || '').trim();
+      if (msg.length < 5) return json(res, 400, { error: 'short' });
+      global._supRate = global._supRate || {};
+      const nowT = Date.now(); const hits = (global._supRate[u.email] || []).filter(t => nowT - t < 3600e3);
+      if (hits.length >= 5) return json(res, 429, { error: 'rate' });
+      hits.push(nowT); global._supRate[u.email] = hits;
+      const entry = { ts: new Date().toISOString(), email: u.email, subject: String(subject || '').slice(0, 120) || null, message: msg.slice(0, 4000) };
+      db.supportMsgs.push(entry); if (db.supportMsgs.length > 200) db.supportMsgs = db.supportMsgs.slice(-200); save();
+      const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+      if (mailer.isConfigured()) {
+        try {
+          await mailer.sendMail({
+            to: adminTo, replyTo: u.email, noListUnsub: true,
+            subject: `[Soporte GP] ${entry.subject || msg.slice(0, 60)}`,
+            text: `De: ${u.email}\nPlan: ${planFor(u.email)}\nFecha: ${entry.ts}\n\n${msg}\n\n— Respondé este email y le llega directo al usuario.`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:560px;color:#1a1a1a"><p><b>De:</b> ${u.email}<br><b>Plan:</b> ${planFor(u.email)}<br><b>Fecha:</b> ${entry.ts}</p><hr><p style="white-space:pre-wrap">${msg.replace(/</g, '&lt;')}</p><hr><p style="color:#888;font-size:12px">Respondé este email y le llega directo al usuario.</p></div>`,
+          });
+        } catch (e) { console.error('[support] mail error:', e.message); }
+      }
+      return json(res, 200, { ok: true });
+    }
+    // ===== WEBHOOK DE WHOP: da/quita planes según pagos. INERTE hasta setear WHOP_WEBHOOK_KEY en Render.
+    // URL a configurar en Whop: https://gpsimulador.com/api/whop/webhook?key=<WHOP_WEBHOOK_KEY>
+    // Mapeo plan de Whop → nuestro: WHOP_PLAN_PRO_IDS / WHOP_PLAN_SHARP_IDS / WHOP_FOUNDER_PLAN_IDS (listas CSV).
+    if (p === '/api/whop/webhook' && req.method === 'POST') {
+      const wkey = process.env.WHOP_WEBHOOK_KEY;
+      if (!wkey) return json(res, 404, { error: 'No encontrado' });
+      if (url.searchParams.get('key') !== wkey) return json(res, 403, { error: 'No autorizado' });
+      const body = await readBody(req).catch(() => ({}));
+      const ev = { ts: new Date().toISOString(), action: body.action || body.event || body.type || null };
+      try {
+        const d = body.data || body;
+        const email = String((d.user && d.user.email) || d.email || (d.metadata && d.metadata.email) || '').toLowerCase();
+        const planId = String(d.plan_id || (d.plan && d.plan.id) || '');
+        const csv = (k) => (process.env[k] || '').split(',').map(s => s.trim()).filter(Boolean);
+        const plan = csv('WHOP_PLAN_SHARP_IDS').includes(planId) ? 'sharp' : csv('WHOP_PLAN_PRO_IDS').includes(planId) ? 'pro' : null;
+        const act = String(ev.action || '');
+        const valid = /went_valid|payment\.succeeded|membership\.created|activated/i.test(act);
+        const invalid = /went_invalid|cancel|expired|refund|payment_failed|past_due/i.test(act);
+        ev.parsed = { email: email || null, plan_id: planId || null, plan };
+        if (email && plan && valid) {
+          db.premiumGrants[email] = {
+            plan, status: 'active', founder: csv('WHOP_FOUNDER_PLAN_IDS').includes(planId) || undefined,
+            source: 'whop', whop_membership_id: d.id || null, whop_plan_id: planId,
+            since: (db.premiumGrants[email] && db.premiumGrants[email].since) || new Date().toISOString(), updatedAt: new Date().toISOString(),
+          };
+          ev.applied = { email, plan, status: 'active' };
+        } else if (email && invalid && db.premiumGrants[email]) {
+          db.premiumGrants[email] = { ...db.premiumGrants[email], status: /past_due|payment_failed/i.test(act) ? 'past_due' : 'cancelled', updatedAt: new Date().toISOString() };
+          ev.applied = { email, status: db.premiumGrants[email].status };
+        } else ev.applied = null;
+      } catch (e) { ev.error = e.message; }
+      db.whopEvents.push(ev); if (db.whopEvents.length > 100) db.whopEvents = db.whopEvents.slice(-100);
+      save();
+      return json(res, 200, { ok: true }); // siempre 200 (evita tormenta de reintentos); el evento queda logueado
+    }
+    // ===== PLANES: gestión manual admin (grant/revoke/lista + eventos Whop + soporte reciente) =====
+    if (p === '/api/admin/grants') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'GET') {
+        const grants = Object.entries(db.premiumGrants).map(([email, g]) => ({ email, ...g }));
+        return json(res, 200, { enforced: plansEnforced(), grants, whop_events: db.whopEvents.slice(-20), support_msgs: db.supportMsgs.slice(-20) });
+      }
+      if (req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        const email = String(b.email || '').trim().toLowerCase();
+        if (!/.+@.+\..+/.test(email)) return json(res, 400, { error: 'Email inválido' });
+        if (b.action === 'revoke') {
+          if (db.premiumGrants[email]) db.premiumGrants[email] = { ...db.premiumGrants[email], status: 'cancelled', updatedAt: new Date().toISOString() };
+        } else {
+          db.premiumGrants[email] = { plan: b.plan === 'sharp' ? 'sharp' : 'pro', status: 'active', founder: !!b.founder || undefined, source: 'admin', since: new Date().toISOString(), updatedAt: new Date().toISOString(), grantedBy: u.email };
+        }
+        save();
+        return json(res, 200, { ok: true, email, grant: db.premiumGrants[email] || null, plan: planFor(email) });
+      }
+      return json(res, 404, { error: 'No encontrado' });
     }
     if (p === '/api/favorite' && req.method === 'POST') {
       const u = getUser(req);
@@ -3722,6 +3859,14 @@ const server = http.createServer(async (req, res) => {
         const ff = path.join(__dirname, 'public', 'founder.html');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(fs.readFileSync(ff, 'utf8'));
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    // LEGALES (públicas, sin gating — deben ser accesibles antes de pagar): una sola página con secciones.
+    if (p === '/terms' || p === '/privacy' || p === '/refunds' || p === '/legal') {
+      try {
+        const lf = path.join(__dirname, 'public', 'legal.html');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(fs.readFileSync(lf, 'utf8'));
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
     // Landing standalone (página de marketing dedicada, sin el shell de la app). Cache-busting de landing.js/css por mtime.

@@ -98,11 +98,12 @@ async function sendViaWebhook({ to, subject, text, html }) {
 // opts.from: override del remitente (p.ej. nombre personal). opts.noListUnsub: omite el header List-Unsubscribe
 // — ese header es señal de "correo masivo" y empuja a la pestaña Promociones; para correos de estilo PERSONAL
 // (reactivación 1:1) conviene omitirlo y dejar la baja en el cuerpo, para que Gmail lo trate como Principal.
-async function sendViaResend({ to, subject, text, html, from, noListUnsub }) {
+async function sendViaResend({ to, subject, text, html, from, noListUnsub, replyTo }) {
   const payload = {
     from: from || process.env.MAIL_FROM || 'GP Simulador del Mundial <codigo@gpsimulador.com>',
     to: [to],
-    reply_to: process.env.MAIL_REPLY_TO || undefined,
+    // replyTo por-mensaje (p.ej. soporte: responder va directo al usuario); fallback al global.
+    reply_to: replyTo || process.env.MAIL_REPLY_TO || undefined,
     subject, text, html,
   };
   if (!noListUnsub) {

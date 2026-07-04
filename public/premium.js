@@ -15,6 +15,19 @@
       nav_alerts: 'Alertas', nav_perf: 'Rendimiento', nav_groups: 'Grupos', nav_bracket: 'Bracket', nav_evo: 'Evolución',
       nav_registry: 'Registro', nav_method: 'Metodología', nav_admin: 'Admin', more: 'Más',
       account: 'Mi perfil', account_beta: 'BETA', logout: 'Cerrar sesión',
+      sub_nav: 'Mi suscripción', sub_title: 'Mi suscripción', sub_plan: 'Plan actual', sub_founder: 'FOUNDER', sub_status: 'Estado',
+      sub_active: 'Activa', sub_cancelled: 'Cancelada', sub_pastdue: 'Pago pendiente', sub_since: 'Miembro desde',
+      sub_free_note: 'Acceso completo gratis durante el Mundial. Los planes llegan pronto — los primeros 100 tendrán precio founder de por vida.',
+      sub_upgrade: 'Ver planes', sub_manage: 'Gestionar suscripción', sub_manage_soon: 'Disponible al lanzar los pagos',
+      sub_asplan: 'Ver la plataforma como (solo admin)', sub_asplan_real: 'Real',
+      sup_nav: 'Soporte', sup_title: 'Soporte', sup_intro: 'Contanos tu problema o consulta y te respondemos por email, normalmente dentro de 24 horas.',
+      sup_subject: 'Asunto (opcional)', sup_msg: 'Tu mensaje', sup_msg_ph: 'Escribí acá tu consulta…', sup_send: 'Enviar',
+      sup_sent: 'Mensaje enviado — te respondemos a tu email. También podés escribirnos a soporte@gpsimulador.com.',
+      sup_err: 'No se pudo enviar, probá de nuevo.', sup_short: 'Contanos un poco más para poder ayudarte.', sup_rate: 'Demasiados mensajes seguidos; probá en un rato.',
+      lock_sharp_t: 'Disponible en el plan Sharp', lock_sharp_s: 'Value y arbitraje en tiempo real son parte del plan Sharp.',
+      lock_more_picks: '{n} picks más hoy', lock_more_picks_s: 'Disponibles en los planes Pro y Sharp.',
+      lock_delay: 'La pick gratis del día se desbloquea 60 minutos antes del partido.',
+      lock_cta: 'Ver planes',
       pf_title: 'Mi perfil', pf_intro: 'Completá tu perfil para recibir novedades en tu idioma y contenido de tu país.', pf_name: 'Nombre', pf_country: 'País', pf_country_ph: 'Seleccioná tu país', pf_lang: 'Idioma', pf_other: 'Otro', pf_save: 'Guardar', pf_saving: 'Guardando…', pf_saved: 'Perfil guardado', pf_neterr: 'Error de red',
       search: 'Buscar equipos, partidos, mercados…', matches: 'partidos', live: 'en vivo', signals: 'señales hoy',
       title: 'Oportunidades', all: 'Todos', live_f: 'En vivo', upcoming_f: 'Próximos', picks: 'Picks del día', value: 'Value', arb: 'Arbitraje',
@@ -211,6 +224,19 @@
       nav_alerts: 'Alerts', nav_perf: 'Performance', nav_groups: 'Groups', nav_bracket: 'Bracket', nav_evo: 'Evolution',
       nav_registry: 'Registry', nav_method: 'Methodology', nav_admin: 'Admin', more: 'More',
       account: 'My profile', account_beta: 'BETA', logout: 'Sign out',
+      sub_nav: 'My subscription', sub_title: 'My subscription', sub_plan: 'Current plan', sub_founder: 'FOUNDER', sub_status: 'Status',
+      sub_active: 'Active', sub_cancelled: 'Cancelled', sub_pastdue: 'Payment past due', sub_since: 'Member since',
+      sub_free_note: 'Full access is free during the World Cup. Plans are coming soon — the first 100 get a lifetime founder price.',
+      sub_upgrade: 'See plans', sub_manage: 'Manage subscription', sub_manage_soon: 'Available when payments launch',
+      sub_asplan: 'View the platform as (admin only)', sub_asplan_real: 'Real',
+      sup_nav: 'Support', sup_title: 'Support', sup_intro: 'Tell us your issue or question and we’ll reply by email, usually within 24 hours.',
+      sup_subject: 'Subject (optional)', sup_msg: 'Your message', sup_msg_ph: 'Write your question here…', sup_send: 'Send',
+      sup_sent: 'Message sent — we’ll reply to your email. You can also write to soporte@gpsimulador.com.',
+      sup_err: 'Couldn’t send, try again.', sup_short: 'Tell us a bit more so we can help.', sup_rate: 'Too many messages; try again later.',
+      lock_sharp_t: 'Available on the Sharp plan', lock_sharp_s: 'Real-time value and arbitrage are part of the Sharp plan.',
+      lock_more_picks: '{n} more picks today', lock_more_picks_s: 'Available on the Pro and Sharp plans.',
+      lock_delay: 'The free daily pick unlocks 60 minutes before kickoff.',
+      lock_cta: 'See plans',
       pf_title: 'My profile', pf_intro: 'Complete your profile to get updates in your language and content for your country.', pf_name: 'Name', pf_country: 'Country', pf_country_ph: 'Select your country', pf_lang: 'Language', pf_other: 'Other', pf_save: 'Save', pf_saving: 'Saving…', pf_saved: 'Profile saved', pf_neterr: 'Network error',
       search: 'Search teams, matches, markets…', matches: 'matches', live: 'live', signals: 'signals today',
       title: 'Opportunities', all: 'All', live_f: 'Live', upcoming_f: 'Upcoming', picks: "Today's picks", value: 'Value', arb: 'Arbitrage',
@@ -507,7 +533,7 @@
   ];
   var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
-  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc'].indexOf(v) >= 0 ? v : 'opps'); }
+  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support'].indexOf(v) >= 0 ? v : 'opps'); }
   function shell() {
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
@@ -613,8 +639,13 @@
     var role = isAdmin ? 'ADMIN' : (t('account_beta') || 'BETA');
     m.innerHTML = '<div class="gx-acct-head"><div class="gx-avatar">' + esc(email ? email[0].toUpperCase() : 'GP') + '</div><div class="gx-acct-id"><div class="gx-acct-em">' + esc(email || '—') + '</div><div class="gx-acct-role">' + esc(role) + '</div></div></div>' +
       '<button class="gx-acct-i" id="gx-profile">' + ic('user') + '<span>' + esc(t('account')) + '</span></button>' +
+      // Mi suscripción + Soporte: SOLO ADMIN hasta el lanzamiento de pagos (quitar el gate para abrirlos a todos).
+      (S.me && S.me.isAdmin ? '<button class="gx-acct-i" id="gx-sub">' + ic('crown') + '<span>' + esc(t('sub_nav')) + '</span></button>' +
+        '<button class="gx-acct-i" id="gx-support">' + ic('lifebuoy') + '<span>' + esc(t('sup_nav')) + '</span></button>' : '') +
       '<button class="gx-acct-i gx-acct-danger" id="gx-logout">' + ic('logout') + '<span>' + esc(t('logout')) + '</span></button>';
     var pf = m.querySelector('#gx-profile'); if (pf) pf.addEventListener('click', function () { closeAcctMenu(); openGxProfile(); });
+    var sb = m.querySelector('#gx-sub'); if (sb) sb.addEventListener('click', function () { closeAcctMenu(); navTo('sub'); });
+    var sp = m.querySelector('#gx-support'); if (sp) sp.addEventListener('click', function () { closeAcctMenu(); navTo('support'); });
     var lo = m.querySelector('#gx-logout'); if (lo) lo.addEventListener('click', gxLogout);
     m.hidden = false;
     setTimeout(function () { document.addEventListener('click', closeAcctMenu, { once: true }); }, 0);
@@ -711,7 +742,8 @@
     if (attempt === 0 && !silent) { var b = $('#gx-board'); if (b) b.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>'; }
     Promise.all([
       fetch('/api/beta/dashboard', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      fetch('/api/beta/value?class=ALL', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      // Value es plan Sharp: 403 {upgrade} → candado (no error). asplanQS = preview admin de otros planes.
+      fetch('/api/beta/value?class=ALL' + asplanQS('&'), { headers: hdrs() }).then(function (r) { if (r.status === 403) { S.valueLocked = true; return null; } S.valueLocked = false; return r.ok ? r.json() : null; }).catch(function () { return null; })
     ]).then(function (res) {
       // server frío: el primer /api/beta/dashboard puede tardar/fallar → reintenta antes de mostrar vacío.
       if (!res[0] && attempt < 4) { setTimeout(function () { load(attempt + 1, silent); }, 900 + attempt * 600); return; }
@@ -742,12 +774,12 @@
     // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
     var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
     // Mejor pick: la pick diaria de mayor confianza (feed del producto). Lazy-load si aún no está.
-    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
+    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
     // OUTRIGHT (campeón GP vs mercado): fuente de los fallbacks de "Mejor value" y "Mayor desacuerdo" cuando no hay
     // datos por-partido. Se carga siempre una vez (barato, cacheado) → ninguna caja queda "sin datos".
-    if (S.valueOutright === undefined) { S.valueOutright = null; fetch('/api/beta/value-outright', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.view === 'board' && S.oppSub !== 'picks') kpis(S.dash || {}, rows); }); }
+    if (S.valueOutright === undefined) { S.valueOutright = null; fetch('/api/beta/value-outright' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.view === 'board' && S.oppSub !== 'picks') kpis(S.dash || {}, rows); }); }
     var valOut = (!val && S.valueOutright && S.valueOutright.length) ? S.valueOutright.filter(function (x) { return x.edge_pp > 0.005; })[0] : null;
     var gap = rows.map(function (r) { var g = ['HOME', 'DRAW', 'AWAY'].map(function (c) { return { c: c, gp: r.gp(c), mk: r.mk(c) }; }).filter(function (x) { return x.gp != null && x.mk != null; }).sort(function (a, b) { return Math.abs(b.gp - b.mk) - Math.abs(a.gp - a.mk); })[0]; return g ? { r: r, g: g } : null; }).filter(Boolean).sort(function (a, b) { return Math.abs(b.g.gp - b.g.mk) - Math.abs(a.g.gp - a.g.mk); })[0];
     // Sin desacuerdo por-partido (el mercado 1X2 rara vez está cargado en el dashboard) → fallback al mayor
@@ -874,8 +906,8 @@
   function picksFeed(bd) {
     if (S.dailyPicks === undefined) {
       S.dailyPicks = null;
-      fetch('/api/beta/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
-        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null } : null;
+      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed } : null;
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
         refreshCockpit();
       });
@@ -888,14 +920,20 @@
     // recap de AYER (prueba social agregada — el historial detallado sigue admin): "Ayer: 2 de 3 ✓"
     var recap = (meta.yesterday && meta.yesterday.total > 0)
       ? '<div class="gx-pick-recap' + (meta.yesterday.won / meta.yesterday.total >= 0.5 ? ' gx-recap-pos' : '') + '">' + ic('circle-check') + esc(t('pf_yesterday', { won: meta.yesterday.won, total: meta.yesterday.total })) + '</div>' : '';
+    // teaser de upgrade (gating por plan): "N picks más hoy — en Pro/Sharp" + nota de delay del plan Free
+    var lockTeaser = '';
+    if (meta.locked_count > 0) {
+      lockTeaser = '<div class="gx-pick-lock">' + ic('lock') + '<div><b>' + esc(t('lock_more_picks', { n: meta.locked_count })) + '</b><span class="gx-dim">' + esc(t('lock_more_picks_s')) + '</span></div><a class="gx-btn gx-lock-cta" href="/founder">' + esc(t('lock_cta')) + '</a></div>';
+    }
+    if (meta.plan_delayed) lockTeaser += '<div class="gx-pick-recap">' + ic('clock') + esc(t('lock_delay')) + '</div>';
     if (!picks.length) {
       // countdown (reversible por env GP_PICKS_COUNTDOWN_ENABLED): el vacío da una CITA, no un "vuelve pronto"
       var ko = '';
       if (meta.next_kickoff) { try { var hh = new Date(meta.next_kickoff).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); ko = '<span class="gx-pick-nextko">' + ic('clock') + esc(t('pf_next_ko', { time: hh })) + '</span>'; } catch (e) {} }
-      bd.innerHTML = recap + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
+      bd.innerHTML = recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
       return;
     }
-    bd.innerHTML = recap + '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' +
+    bd.innerHTML = recap + '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' + lockTeaser +
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
   }
   function pickTeam(p, code) { return code === 'home' ? teamName(p.home_team_id, p.home) : teamName(p.away_team_id, p.away); }
@@ -939,7 +977,7 @@
   function outrightValueHtml() {
     if (S.valueOutright === undefined) {
       S.valueOutright = null;
-      fetch('/api/beta/value-outright', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.oppSub === 'value') { var b = $('#gx-board'); if (b) oppValueBoard(b); } });
+      fetch('/api/beta/value-outright' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.valueOutright = (j && j.items) || []; if (S.oppSub === 'value') { var b = $('#gx-board'); if (b) oppValueBoard(b); } });
       return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('outright_title')) + '</span></div><div class="gx-mod-body"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div></div>';
     }
     var all = S.valueOutright || [];
@@ -955,6 +993,7 @@
   }
   // ---- Oportunidades · Value ----
   function oppValueBoard(bd) {
+    if (S.valueLocked) { bd.innerHTML = lockPanel(); return; } // plan Sharp (candado con CTA)
     var outright = outrightValueHtml();
     var vals = (S.value || []).slice().sort(function (a, b) { return (b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0); });
     var hdr = {}; ((S.dash && S.dash.upcoming) || []).forEach(function (u) { hdr[u.header.event_id] = u.header; });
@@ -1036,7 +1075,8 @@
     if (S.arb && S.arb !== null && S.arb !== undefined) return true;
     if (S._arbLoading) return false;
     S._arbLoading = true; S.arb = null;
-    fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) { S.arb = m || { available: false, reason: 'error' }; S._arbLoading = false; arbRefresh(); });
+    // Arbitraje es plan Sharp: 403 {upgrade} → candado (no error). asplanQS = preview admin.
+    fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs() }).then(function (r) { if (r.status === 403) { S.arbLocked = true; return null; } S.arbLocked = false; return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) { S.arb = m || { available: false, reason: S.arbLocked ? 'locked' : 'error' }; S._arbLoading = false; arbRefresh(); });
     return false;
   }
   function arbRefresh() {
@@ -1049,9 +1089,9 @@
   // llegar la data (sin flash de "cargando"). Las oportunidades que dejaron de ser válidas se caen solas. NO se
   // persiste nada — el scanner es en vivo (sin registro de arbitrajes).
   function refreshArbSilent() {
-    if (S._arbLoading) return;
+    if (S._arbLoading || S.arbLocked) return;
     S._arbLoading = true;
-    fetch('/api/beta/arbitrage', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
+    fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
       S._arbLoading = false;
       if (!m) return;
       S.arb = m;
@@ -1070,6 +1110,7 @@
       '</div>';
   }
   function oppArbBoard(bd) {
+    if (S.arbLocked) { var cc0 = $('#gx-board-count'); if (cc0) cc0.textContent = ''; bd.innerHTML = lockPanel(); return; }
     if (!loadArb()) { bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>'; return; }
     var d = S.arb || {};
     var cc = $('#gx-board-count'); if (cc) cc.textContent = '';
@@ -1173,6 +1214,7 @@
 
   // ---- botones que se inyectan en las cards ----
   function stakeCalcBtn(p, odds, sel, src) {
+    if (uiPlan() === 'free') return ''; // la calculadora es Pro+ (gating por plan)
     if (!(p > 0 && p < 1) || !(odds > 1)) return '';
     return '<button class="gx-calc-btn" data-calc="stake" data-p="' + p.toFixed(4) + '" data-odds="' + Number(odds).toFixed(2) + '" data-sel="' + esc(sel || '') + '" data-src="' + (src || 'gp') + '">' + ic('calculator') + '<span>' + esc(t('calc_open')) + '</span></button>';
   }
@@ -1394,6 +1436,81 @@
     [].forEach.call(mv.querySelectorAll('[data-cmode-sw]'), function (b) { b.addEventListener('click', function () { S.calcMode = b.getAttribute('data-cmode-sw'); renderCalc(); }); });
     var holder = mv.querySelector('.gx-calc');
     if (holder) { if (mode === 'arb') wireArbPanel(holder); else wireStakePanel(holder); }
+  }
+
+  // ============================ PLANES: helpers + Mi suscripción + Soporte ============================
+  // uiPlan(): plan efectivo para la UI. El admin puede PREVISUALIZAR otro plan con gp_asplan (localStorage);
+  // el server honra el mismo override vía ?asplan= (solo admin). Pre-lanzamiento todos son 'sharp'.
+  function uiPlan() {
+    var as = (S.me && S.me.isAdmin) ? (lsGet('gp_asplan') || '') : '';
+    if (as === 'free' || as === 'pro' || as === 'sharp') return as;
+    return (S.me && S.me.plan_effective) || 'sharp';
+  }
+  function asplanQS(sep) {
+    var as = (S.me && S.me.isAdmin) ? (lsGet('gp_asplan') || '') : '';
+    return (as === 'free' || as === 'pro' || as === 'sharp') ? ((sep || '?') + 'asplan=' + as) : '';
+  }
+  // panel candado (Value/Arbitraje para no-Sharp) — mismo lenguaje del lock de la landing
+  function lockPanel() {
+    return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_sharp_t')) + '</b>' +
+      '<span class="gx-dim">' + esc(t('lock_sharp_s')) + '</span>' +
+      '<a class="gx-btn gx-lock-cta" href="/founder">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
+  }
+  function renderSub() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var plan = (S.me && S.me.plan) || 'free';
+    var enforced = !!(S.me && S.me.plans_enforced);
+    var founder = !!(S.me && S.me.plan_founder);
+    var status = (S.me && S.me.plan_status) || null;
+    var statusLbl = status === 'cancelled' ? t('sub_cancelled') : status === 'past_due' ? t('sub_pastdue') : t('sub_active');
+    var planName = plan === 'sharp' ? 'Sharp' : plan === 'pro' ? 'Pro' : 'Free';
+    var body = '<div class="gx-sub-row"><span class="gx-label">' + esc(t('sub_plan')) + '</span><b class="gx-sub-plan">' + planName + (founder ? ' <span class="gx-sub-founder">★ ' + esc(t('sub_founder')) + '</span>' : '') + '</b></div>' +
+      (status ? '<div class="gx-sub-row"><span class="gx-label">' + esc(t('sub_status')) + '</span><b>' + esc(statusLbl) + '</b></div>' : '') +
+      (S.me && S.me.plan_since ? '<div class="gx-sub-row"><span class="gx-label">' + esc(t('sub_since')) + '</span><b>' + esc(fmtDate(S.me.plan_since)) + '</b></div>' : '') +
+      (!enforced ? '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('sub_free_note')) + '</p>' : '') +
+      '<div class="gx-sub-actions">' +
+        '<a class="gx-btn" href="/founder">' + ic('crown') + '<span>' + esc(t('sub_upgrade')) + '</span></a>' +
+        '<button class="gx-btn" disabled title="' + esc(t('sub_manage_soon')) + '">' + ic('settings') + '<span>' + esc(t('sub_manage')) + '</span></button>' +
+      '</div>';
+    var admin = '';
+    if (S.me && S.me.isAdmin) {
+      var cur = lsGet('gp_asplan') || '';
+      var chip = function (v, lbl) { return '<button class="gx-chip gx-chip-btn' + (cur === v ? ' on' : '') + '" data-asplan="' + v + '">' + esc(lbl) + '</button>'; };
+      admin = '<div class="gx-panel" style="margin-top:14px"><div class="gx-mod-body"><span class="gx-label">' + esc(t('sub_asplan')) + '</span>' +
+        '<div class="gx-chips" style="margin-top:10px">' + chip('', t('sub_asplan_real')) + chip('free', 'Free') + chip('pro', 'Pro') + chip('sharp', 'Sharp') + '</div></div></div>';
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:640px">' + viewHead(t('sub_title')) +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' + body + '</div></div>' + admin + '</div></div>';
+    [].forEach.call(mv.querySelectorAll('[data-asplan]'), function (b) {
+      b.addEventListener('click', function () { var v = b.getAttribute('data-asplan'); lsSet('gp_asplan', v || null); location.reload(); });
+    });
+  }
+  function renderSupport() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:640px">' + viewHead(t('sup_title')) +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
+      '<p class="gx-mod-note gx-dim" style="margin-top:0">' + esc(t('sup_intro')) + '</p>' +
+      '<label class="gx-label" style="display:block;margin:12px 0 6px">' + esc(t('sup_subject')) + '</label>' +
+      '<input class="gx-pf-in" id="gx-sup-subject" maxlength="120">' +
+      '<label class="gx-label" style="display:block;margin:14px 0 6px">' + esc(t('sup_msg')) + '</label>' +
+      '<textarea class="gx-pf-in" id="gx-sup-msg" rows="6" maxlength="4000" placeholder="' + esc(t('sup_msg_ph')) + '"></textarea>' +
+      '<button class="gx-btn" id="gx-sup-send" style="margin-top:14px">' + ic('send') + '<span>' + esc(t('sup_send')) + '</span></button>' +
+      '<div class="gx-mod-note" id="gx-sup-out" style="min-height:18px"></div>' +
+      '</div></div></div></div>';
+    var btn = $('#gx-sup-send'), out = $('#gx-sup-out');
+    btn.addEventListener('click', function () {
+      var msg = ($('#gx-sup-msg').value || '').trim();
+      if (msg.length < 5) { out.style.color = '#FFC15E'; out.textContent = t('sup_short'); return; }
+      btn.disabled = true;
+      fetch('/api/support', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ message: msg, subject: ($('#gx-sup-subject').value || '').trim() }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (res.ok) { out.style.color = 'var(--gx-accent)'; out.textContent = t('sup_sent'); $('#gx-sup-msg').value = ''; $('#gx-sup-subject').value = ''; }
+          else { out.style.color = '#FF8080'; out.textContent = res.status === 429 ? t('sup_rate') : t('sup_err'); }
+        })
+        .catch(function () { btn.disabled = false; out.style.color = '#FF8080'; out.textContent = t('sup_err'); });
+    });
   }
 
   function boardTable(rows) {
@@ -1640,11 +1757,11 @@
     if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
     var tm = h.match(/^team\/([A-Za-z]{2,4})$/i);
     if (tm) { var tid = tm[1].toUpperCase(); if (!(S.view === 'team' && S.teamId === tid)) openTeam(tid, true); return; }
-    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc)/);
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub)/);
     if (v) { showView(v[1]); return; }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support' };
   function navTo(nav) { setHash(NAV_HASH[nav] != null ? NAV_HASH[nav] : ''); }
   function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; S.teamTab = 'resumen'; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
   function isFollowing(id) { return !!(S.me && S.me.favorites && S.me.favorites.indexOf(id) >= 0); }
@@ -1670,7 +1787,8 @@
   }
   function showView(v) {
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
-    if (['registry', 'method', 'admin'].indexOf(v) >= 0 && S.me && !S.me.isAdmin) { v = 'board'; }
+    // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
+    if (['registry', 'method', 'admin', 'sub', 'support'].indexOf(v) >= 0 && S.me && !S.me.isAdmin) { v = 'board'; }
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
@@ -1689,6 +1807,8 @@
     else if (v === 'refer') renderRefer();
     else if (v === 'perf') renderPerf();
     else if (v === 'calc') renderCalc();
+    else if (v === 'sub') renderSub();
+    else if (v === 'support') renderSupport();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
@@ -3141,7 +3261,7 @@
   function setLang(l) {
     if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l;
     shell(); render();
-    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf };
+    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport };
     if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
@@ -3214,7 +3334,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'admin'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'admin', 'sub', 'support'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

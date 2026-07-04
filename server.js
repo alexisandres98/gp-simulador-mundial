@@ -3857,8 +3857,11 @@ const server = http.createServer(async (req, res) => {
       if (!founderPublic && (!sessEmail || !isAdmin(sessEmail))) { json(res, 404, { error: 'No encontrado' }); return; }
       try {
         const ff = path.join(__dirname, 'public', 'founder.html');
+        // inyectar los plan IDs de Whop (envs) → la página activa los botones de checkout directo.
+        const W = { pro_m: process.env.WHOP_PLAN_PRO_M || '', pro_y: process.env.WHOP_PLAN_PRO_Y || '', sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '' };
+        const html = fs.readFileSync(ff, 'utf8').replace('</head>', `<script>window.__WHOP=${JSON.stringify(W)}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
-        return res.end(fs.readFileSync(ff, 'utf8'));
+        return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
     // LEGALES (públicas, sin gating — deben ser accesibles antes de pagar): una sola página con secciones.

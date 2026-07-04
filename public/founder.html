@@ -55,9 +55,13 @@ h1 b { color:var(--ac); }
 .feats li.on i { background:var(--acs); color:var(--ac); border:1px solid var(--acl); }
 .feats li.off i { background:rgba(255,255,255,.05); color:var(--tx3); border:1px solid var(--line); }
 .soon-tag { display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--amber); border:1px solid rgba(255,193,94,.3); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:1px; }
-.pcta { margin-top:22px; width:100%; border:0; border-radius:12px; font-family:inherit; font-weight:800; font-size:14.5px; padding:14px; cursor:not-allowed; }
+.pcta { margin-top:22px; width:100%; border:0; border-radius:12px; font-family:inherit; font-weight:800; font-size:14.5px; padding:14px; cursor:not-allowed; display:block; text-align:center; text-decoration:none; box-sizing:border-box; }
 .plan .pcta { background:rgba(255,255,255,.06); color:var(--tx3); border:1px solid var(--line2); }
 .plan.hl .pcta { background:var(--ac); color:#06231A; opacity:.55; }
+.pcta.live { cursor:pointer; background:var(--ac); color:#06231A; opacity:1; border:0; transition:transform .12s, filter .12s; }
+.pcta.live:hover { transform:translateY(-1px); filter:brightness(1.06); }
+.plan:not(.hl) .pcta.live { background:rgba(31,227,164,.14); color:var(--ac); border:1px solid var(--acl); }
+.annual a { color:var(--tx2); }
 .pcta-note { text-align:center; margin-top:9px; font-size:11px; color:var(--tx3); }
 .faq { margin-top:70px; }
 .faq h2 { font-family:var(--disp); font-size:24px; font-weight:700; letter-spacing:-.02em; text-align:center; }
@@ -114,7 +118,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Más popular',
       mo: '/mes', forever: 'de por vida, primeros 100', annual_pro: 'o $190/año (2 meses gratis)', annual_sharp: 'o $590/año (2 meses gratis)',
-      cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_note: 'El checkout se habilita en el lanzamiento',
+      cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_buy: 'Asegurar mi Founder Pass', cta_note: 'El checkout se habilita en el lanzamiento', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras', annual_link: 'anual',
       soon: 'Próximamente',
       f_free: [
         ['on', '1 pick del día (con delay) — solo ganador'],
@@ -161,7 +165,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Most popular',
       mo: '/mo', forever: 'for life, first 100', annual_pro: 'or $190/yr (2 months free)', annual_sharp: 'or $590/yr (2 months free)',
-      cta_free: 'Your current plan', cta: 'Coming soon', cta_note: 'Checkout opens at launch',
+      cta_free: 'Your current plan', cta: 'Coming soon', cta_buy: 'Lock my Founder Pass', cta_note: 'Checkout opens at launch', cta_note_live: 'Secure payment via Whop · cancel anytime', annual_link: 'annual',
       soon: 'Coming soon',
       f_free: [
         ['on', '1 pick a day (delayed) — winner only'],
@@ -204,6 +208,12 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
   function render() {
     document.documentElement.lang = lang;
     document.querySelectorAll('[data-k]').forEach(function (el) { var v = T(el.getAttribute('data-k')); if (v != null) el.innerHTML = v; });
+    // checkout REAL de Whop (los plan IDs los inyecta el server desde env; sin IDs → botón "Muy pronto")
+    var W = window.__WHOP || {};
+    var co = function (id) { return 'https://whop.com/checkout/' + id; };
+    var cta = function (mId) { return mId ? '<a class="pcta live" href="' + co(mId) + '" target="_blank" rel="noopener">' + T('cta_buy') + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>'; };
+    var note = function (mId) { return '<div class="pcta-note">' + (mId ? T('cta_note_live') : T('cta_note')) + '</div>'; };
+    var annual = function (yId, txt) { return '<div class="annual">' + (yId ? '<a href="' + co(yId) + '" target="_blank" rel="noopener">' + txt + '</a>' : txt) + '</div>'; };
     document.getElementById('plans').innerHTML =
       '<div class="plan"><div class="pname">' + T('free_name') + '</div>' +
         '<div class="price"><span class="n">$0</span></div><div class="annual">&nbsp;</div>' +
@@ -211,14 +221,14 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         '<button class="pcta" disabled>' + T('cta_free') + '</button><div class="pcta-note">&nbsp;</div></div>' +
       '<div class="plan hl" data-badge="' + T('badge') + '"><div class="pname">' + T('pro_name') + '</div>' +
         '<div class="price"><span class="n">$12</span><span class="per">' + T('mo') + '</span><span class="was">$19</span></div>' +
-        '<div class="founder-note">★ ' + T('forever') + '</div><div class="annual">' + T('annual_pro') + '</div>' +
+        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.pro_y, T('annual_pro')) +
         feats(T('f_pro')) +
-        '<button class="pcta" disabled>' + T('cta') + '</button><div class="pcta-note">' + T('cta_note') + '</div></div>' +
+        cta(W.pro_m) + note(W.pro_m) + '</div>' +
       '<div class="plan"><div class="pname">' + T('sharp_name') + '</div>' +
         '<div class="price"><span class="n">$39</span><span class="per">' + T('mo') + '</span><span class="was">$59</span></div>' +
-        '<div class="founder-note">★ ' + T('forever') + '</div><div class="annual">' + T('annual_sharp') + '</div>' +
+        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.sharp_y, T('annual_sharp')) +
         feats(T('f_sharp')) +
-        '<button class="pcta" disabled>' + T('cta') + '</button><div class="pcta-note">' + T('cta_note') + '</div></div>';
+        cta(W.sharp_m) + note(W.sharp_m) + '</div>';
     document.getElementById('faqs').innerHTML = T('faqs').map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('');
     document.querySelectorAll('#lang button').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-l') === lang);

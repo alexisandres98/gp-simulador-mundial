@@ -3711,6 +3711,19 @@ const server = http.createServer(async (req, res) => {
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
     }
+    // FOUNDER PASS (whitelist/planes) — superficie de trabajo PRE-lanzamiento, patrón /x pre-fusión:
+    // solo la ve el ADMIN con sesión (cookie); para todo el resto es 404 (ni existe). Al lanzar:
+    // GP_FOUNDER_PUBLIC_ENABLED=true la abre al público (+ checkout Whop cuando se cablee).
+    if (p === '/founder' || p === '/founder/') {
+      const founderPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim());
+      const sessEmail = sessionEmailFromReq(req);
+      if (!founderPublic && (!sessEmail || !isAdmin(sessEmail))) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const ff = path.join(__dirname, 'public', 'founder.html');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(fs.readFileSync(ff, 'utf8'));
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
     // Landing standalone (página de marketing dedicada, sin el shell de la app). Cache-busting de landing.js/css por mtime.
     if (p === '/landing' || p === '/landing/') {
       try {

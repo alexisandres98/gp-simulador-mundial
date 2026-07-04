@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #06090B 0%, #0B1714 50%, #0A5C3C 140%); color: #EAF1F2;
+  padding: 38px 52px; position: relative; }
+.brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.badge { width: 40px; height: 40px; border-radius: 12px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 21px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4; font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; color:#fff; }
+.sub { font-size: 17px; color:#9DB0B5; font-weight:600; margin-bottom: 22px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; padding: 20px 22px; position: relative; overflow:hidden; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.fam { font-size: 13px; font-weight: 800; letter-spacing: 1.2px; color:#1FE3A4; text-transform:uppercase; }
+.pick.goals .fam { color:#34D6C8; }
+.pick.combo::before { background:#F2C14E; }
+.pick.combo .fam { color:#F2C14E; }
+.pick.combo .odds .ov { color:#F2C14E; }
+.note { font-size: 14px; font-weight: 600; color:#9DB0B5; margin: 5px 0 16px; line-height:1.35; }
+.bet { font-size: 29px; font-weight: 800; letter-spacing:-.5px; color:#fff; margin-bottom: 18px; }
+.conf { font-size: 14px; color:#9DB0B5; font-weight:600; display:flex; align-items:center; gap:7px; margin-bottom:14px; }
+.conf b { color:#fff; }
+.dot { width:11px; height:11px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.odds { display:flex; align-items:baseline; gap:9px; }
+.odds .ol { font-size: 12px; font-weight:700; letter-spacing:.8px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size: 40px; font-weight:800; color:#1FE3A4; letter-spacing:-.5px; }
+.pick.goals .odds .ov { color:#34D6C8; }
+.foot { position:absolute; bottom: 30px; left: 52px; right: 52px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:18px; font-weight:800; padding:12px 26px; border-radius:99px; }
+.foot .small { font-size:14px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP World Cup Simulator</div><div class="tag">● ROUND OF 16</div></div>
+  <h1>Today's 3 best picks 🎯</h1>
+  <div class="sub">Jul 4 · we follow the market · always the best odds</div>
+  <div class="grid">
+    <div class="pick">
+      <div class="fam">Winner</div>
+      <div class="note">🇵🇾 Paraguay vs France 🇫🇷<br>The clearest call on the board</div>
+      <div class="bet">France to win</div>
+      <div class="conf"><span class="dot high"></span>Confidence: <b>High</b></div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.22</span></div>
+    </div>
+    <div class="pick goals">
+      <div class="fam">Goals</div>
+      <div class="note">🇵🇾 Paraguay vs France 🇫🇷<br>Les Bleus to pile them on</div>
+      <div class="bet">Over 2.5 goals</div>
+      <div class="conf"><span class="dot"></span>Confidence: <b>Medium</b></div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.65</span></div>
+    </div>
+    <div class="pick combo">
+      <div class="fam">Combo</div>
+      <div class="note">🇵🇾 Paraguay vs France 🇫🇷<br>Win + goals in one ticket</div>
+      <div class="bet">France + Over 2.5</div>
+      <div class="conf"><span class="dot"></span>Confidence: <b>Medium</b></div>
+      <div class="odds"><span class="ol">Combined odds</span><span class="ov">2.01</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Daily picks · clear analysis · not financial advice</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

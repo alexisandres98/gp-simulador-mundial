@@ -3015,6 +3015,8 @@ const server = http.createServer(async (req, res) => {
           if (lh > 0 && la > 0) out.goal_insights = gdto.goalInsights({ lambda_home: lh, lambda_away: la, lambda_total: lh + la });
         } catch { /* best-effort */ }
       }
+      // GATING: la proyección de goles es Pro+ → al plan Free no le viaja la data (el cliente muestra el candado).
+      if (effectivePlan(u.email, url.searchParams.get('asplan')) === 'free') delete out.goal_insights;
       return json(res, 200, out);
     }
     if (p === '/api/aciertos') {

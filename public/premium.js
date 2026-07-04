@@ -25,6 +25,7 @@
       sup_sent: 'Mensaje enviado — te respondemos a tu email. También podés escribirnos a soporte@gpsimulador.com.',
       sup_err: 'No se pudo enviar, probá de nuevo.', sup_short: 'Contanos un poco más para poder ayudarte.', sup_rate: 'Demasiados mensajes seguidos; probá en un rato.',
       lock_sharp_t: 'Disponible en el plan Sharp', lock_sharp_s: 'Value y arbitraje en tiempo real son parte del plan Sharp.',
+      lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
       lock_more_picks: '{n} picks más hoy', lock_more_picks_s: 'Disponibles en los planes Pro y Sharp.',
       lock_delay: 'La pick gratis del día se desbloquea 60 minutos antes del partido.',
       lock_cta: 'Ver planes',
@@ -234,6 +235,7 @@
       sup_sent: 'Message sent — we’ll reply to your email. You can also write to soporte@gpsimulador.com.',
       sup_err: 'Couldn’t send, try again.', sup_short: 'Tell us a bit more so we can help.', sup_rate: 'Too many messages; try again later.',
       lock_sharp_t: 'Available on the Sharp plan', lock_sharp_s: 'Real-time value and arbitrage are part of the Sharp plan.',
+      lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
       lock_more_picks: '{n} more picks today', lock_more_picks_s: 'Available on the Pro and Sharp plans.',
       lock_delay: 'The free daily pick unlocks 60 minutes before kickoff.',
       lock_cta: 'See plans',
@@ -1456,6 +1458,12 @@
       '<span class="gx-dim">' + esc(t('lock_sharp_s')) + '</span>' +
       '<a class="gx-btn gx-lock-cta" href="/founder">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
   }
+  // candado Pro (proyección de goles para el plan Free)
+  function lockPanelPro() {
+    return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_pro_t')) + '</b>' +
+      '<span class="gx-dim">' + esc(t('lock_pro_s')) + '</span>' +
+      '<a class="gx-btn gx-lock-cta" href="/founder">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
+  }
   function renderSub() {
     var mv = $('#gx-matchview'); if (!mv) return;
     var plan = (S.me && S.me.plan) || 'free';
@@ -1568,6 +1576,15 @@
       seen[hid + '|' + aid] = 1;
       list.push({ key: 'tm:' + hid + '-' + aid, id: 'teams-' + hid + '-' + aid, hid: hid, aid: aid, kickoff: p.kickoff, home: teamName(hid, p.home), away: teamName(aid, p.away), canonical: false });
     });
+    // FALLBACK calendario: partidos EN VIVO o de las próximas 48h aunque no haya picks (el cockpit vive siempre —
+    // antes, sin picks visibles (p.ej. plan Free con delay, o día sin picks) el panel desaparecía entero).
+    ((S.cal) || []).forEach(function (c) {
+      if (!c.home || !c.away || seen[c.home + '|' + c.away]) return;
+      var kt = c.datetime ? new Date(c.datetime).getTime() : 0;
+      if (!(c.status === 'live' || (kt > Date.now() - 3 * 3600e3 && kt < Date.now() + 48 * 3600e3))) return;
+      seen[c.home + '|' + c.away] = 1;
+      list.push({ key: 'cal:' + c.id, id: 'teams-' + c.home + '-' + c.away, hid: c.home, aid: c.away, kickoff: c.datetime, home: teamName(c.home), away: teamName(c.away), canonical: false });
+    });
     list.sort(function (a, b) { return new Date(a.kickoff || 0) - new Date(b.kickoff || 0); });
     return list;
   }
@@ -1607,7 +1624,7 @@
     var hk = m.hid + '_' + m.aid;
     if (S.h2h[hk] === undefined) {
       S.h2h[hk] = null;
-      fetch('/api/h2h/deep?a=' + encodeURIComponent(m.hid) + '&b=' + encodeURIComponent(m.aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (j) { S.h2h[hk] = j || { _empty: true }; if (S.ckSel === m.key) refreshCockpit(); });
+      fetch('/api/h2h/deep?a=' + encodeURIComponent(m.hid) + '&b=' + encodeURIComponent(m.aid) + asplanQS('&'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (j) { S.h2h[hk] = j || { _empty: true }; if (S.ckSel === m.key) refreshCockpit(); });
     }
     var h2h = (S.h2h[hk] && !S.h2h[hk]._empty) ? S.h2h[hk] : null;
     var probs = h2h && h2h.probs ? h2h.probs : null;
@@ -2022,7 +2039,7 @@
     var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id, hk = hid + '_' + aid;
     if (hid && aid && S.h2h[hk] === undefined) {
       S.h2h[hk] = null;
-      fetch('/api/h2h/deep?a=' + encodeURIComponent(hid) + '&b=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.h2h[hk] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      fetch('/api/h2h/deep?a=' + encodeURIComponent(hid) + '&b=' + encodeURIComponent(aid) + asplanQS('&'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.h2h[hk] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
     }
     var h2h = (hid && aid && S.h2h[hk] && !S.h2h[hk]._empty) ? S.h2h[hk] : null;
     if (h2h) {
@@ -2401,6 +2418,8 @@
   function mvGoals(beta) {
     var gi = beta.goal_insights;
     var head = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div>';
+    // GATING: la proyección de goles es Pro+ — el plan Free ve el candado con CTA (decisión Alexis 4-jul).
+    if (uiPlan() === 'free') return head + '<div class="gx-mod-body">' + lockPanelPro() + '</div></div>';
     if (!gi) return head + '<div class="gx-mod-body"><div class="gx-empty">' + ic('ball-football') + '<b>' + esc(t('goals_none')) + '</b></div></div></div>';
     var h = beta.header || {};
     var hN = teamName(h.home && h.home.team_id, h.home && h.home.name_fallback) || t('g_home'), aN = teamName(h.away && h.away.team_id, h.away && h.away.name_fallback) || t('g_away');

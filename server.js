@@ -2682,6 +2682,49 @@ const server = http.createServer(async (req, res) => {
         plan_founder: !!(g && g.founder), plan_status: g ? g.status : null, plan_since: g ? g.since || null : null,
       });
     }
+    // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
+    if (p === '/api/me/onboarded' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      db.users[u.email].onboarded = Date.now();
+      save();
+      return json(res, 200, { ok: true });
+    }
+    // ANALYTICS de retención (admin): DAU + D1/D7 + quiénes vuelven a diario. Fuente: db.dau (histórico se
+    // acumula desde el deploy de este feature; las métricas de retención maduran con los días).
+    if (p === '/api/admin/analytics') {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const days = Object.keys(db.dau || {}).sort();
+      const dayStr = (t) => new Date(t).toISOString().slice(0, 10);
+      const dau = days.slice(-21).map(d => ({ date: d, n: Object.keys(db.dau[d]).length }));
+      // retención D1/D7: usuarios creados el día D que volvieron el día D+1 / D+7 (promedio sobre días con dato)
+      const ret = (offset) => {
+        let num = 0, den = 0;
+        for (const d of days) {
+          const target = dayStr(new Date(d + 'T00:00:00Z').getTime() + offset * 86400000);
+          if (!db.dau[target]) continue;
+          const created = Object.entries(db.users).filter(([, x]) => x && x.createdAt && dayStr(x.createdAt) === d).map(([e]) => e);
+          if (!created.length) continue;
+          den += created.length;
+          num += created.filter(e => db.dau[target][e]).length;
+        }
+        return den > 0 ? { pct: +(num / den * 100).toFixed(1), sample: den } : null;
+      };
+      // "vuelven a diario": activos en >=4 de los últimos 7 días con registro
+      const last7 = days.slice(-7);
+      const counts = {};
+      last7.forEach(d => Object.keys(db.dau[d]).forEach(e => { counts[e] = (counts[e] || 0) + 1; }));
+      const habituales = Object.entries(counts).filter(([, n]) => n >= Math.min(4, last7.length)).map(([e, n]) => ({ email: e, days: n }))
+        .sort((a, b) => b.days - a.days);
+      return json(res, 200, {
+        tracking_since: days[0] || null, dau,
+        today: dau.length ? dau[dau.length - 1].n : 0,
+        d1: ret(1), d7: ret(7),
+        habituales_count: habituales.length, habituales: habituales.slice(0, 40),
+        total_users: Object.keys(db.users).length,
+      });
+    }
     // ===== SOPORTE in-platform: el usuario escribe desde la plataforma → email al admin (reply-to = el usuario,
     // responder desde Gmail le llega directo). Respaldo local en db.supportMsgs. Rate limit 5/hora por usuario.
     if (p === '/api/support' && req.method === 'POST') {
@@ -2958,6 +3001,16 @@ const server = http.createServer(async (req, res) => {
       // /api/state es un hot path (polling); guardar en cada request presiona innecesariamente el disco.
       const _prevSeen = db.users[u.email].lastSeen || 0;
       db.users[u.email].lastSeen = Date.now();
+      // ANALYTICS de retención: registro DIARIO de actividad (día UTC → usuarios que entraron). Permite DAU,
+      // D1/D7 y "quién vuelve a diario". Barato: 1 write por usuario por día; poda a 60 días al abrir día nuevo.
+      db.dau = db.dau || {};
+      const _day = new Date().toISOString().slice(0, 10);
+      if (!db.dau[_day]) {
+        db.dau[_day] = {};
+        const keep = Object.keys(db.dau).sort().slice(-60);
+        db.dau = Object.fromEntries(keep.map(k => [k, db.dau[k]]));
+      }
+      db.dau[_day][u.email] = 1;
       if (Date.now() - _prevSeen > 60000) save();
       return json(res, 200, buildState());
     }

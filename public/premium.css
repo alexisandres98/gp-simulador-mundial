@@ -1066,3 +1066,23 @@ td .gx-calc-btn span { display: none; }
 .gx-sub-actions .gx-btn[disabled] { opacity: .5; cursor: not-allowed; }
 .gx-chip-btn { cursor: pointer; font-family: inherit; }
 .gx-chip-btn.on { color: var(--gx-accent); border-color: var(--gx-accent-line, rgba(31,227,164,.45)); background: rgba(31,227,164,.08); }
+
+/* ===== ONBOARDING primer ingreso ===== */
+.gx-onb { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; }
+.gx-onb-bg { position: absolute; inset: 0; background: rgba(4,7,9,.72); backdrop-filter: blur(4px); }
+.gx-onb-card { position: relative; width: min(400px, calc(100vw - 40px)); background: linear-gradient(165deg, var(--gx-panel2), var(--gx-panel)); border: 1px solid var(--gx-line2); border-radius: 18px; padding: 30px 26px 18px; text-align: center; animation: gxUp .35s cubic-bezier(.22,1,.36,1); }
+.gx-onb-ic { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 16px; background: rgba(31,227,164,.12); border: 1px solid rgba(31,227,164,.45); display: grid; place-items: center; color: var(--gx-accent); font-size: 24px; }
+.gx-onb-card h3 { font-family: var(--gx-display, inherit); font-size: 19px; font-weight: 700; }
+.gx-onb-card p { color: var(--gx-text2); font-size: 13.5px; line-height: 1.55; margin-top: 8px; min-height: 42px; }
+.gx-onb-dots { display: flex; justify-content: center; gap: 7px; margin: 16px 0; }
+.gx-onb-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--gx-line2); }
+.gx-onb-dots i.on { background: var(--gx-accent); }
+.gx-onb-cta { width: 100%; justify-content: center; background: var(--gx-accent); color: #06231A; border: 0; font-weight: 800; }
+.gx-onb-skip { background: none; border: 0; color: var(--gx-text3); font-family: inherit; font-size: 12.5px; margin-top: 10px; cursor: pointer; padding: 6px; }
+@media (prefers-reduced-motion: reduce) { .gx-onb-card { animation: none; } }
+
+/* ===== barras DAU (admin) ===== */
+.gxa-bars { display: flex; align-items: flex-end; gap: 6px; margin-top: 14px; }
+.gxa-bar { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gxa-bar i { width: 14px; border-radius: 4px 4px 0 0; background: var(--gx-accent); opacity: .75; display: block; }
+.gxa-bar span { font-size: 9px; color: var(--gx-text3); }

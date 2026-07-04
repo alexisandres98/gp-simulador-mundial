@@ -26,6 +26,11 @@
       sup_err: 'No se pudo enviar, probá de nuevo.', sup_short: 'Contanos un poco más para poder ayudarte.', sup_rate: 'Demasiados mensajes seguidos; probá en un rato.',
       lock_sharp_t: 'Disponible en el plan Sharp', lock_sharp_s: 'Value y arbitraje en tiempo real son parte del plan Sharp.',
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
+      onb_1t: 'Tu pick del día', onb_1s: 'Cada día publicamos las jugadas del modelo — gratis durante el Mundial. La de hoy ya te espera en el board.',
+      onb_2t: 'Seguí a tu selección', onb_2s: 'Marcá tus equipos con la estrella para verlos primero y no perderte sus partidos.',
+      onb_3t: 'Activá las alertas', onb_3s: 'Goles, inicio de partido y novedades directo a tu email.',
+      onb_next: 'Siguiente', onb_done: '¡Listo, empezar!', onb_skip: 'Saltar',
+      adm_ana: 'ACTIVIDAD · RETENCIÓN', adm_ana_today: 'Activos hoy', adm_ana_d1: 'Retención D1', adm_ana_d7: 'Retención D7', adm_ana_hab: 'Vuelven a diario (4+ de 7 días)', adm_ana_since: 'Midiendo desde', adm_ana_nodata: 'Acumulando datos — las métricas maduran con los días.',
       lock_more_picks: '{n} picks más hoy', lock_more_picks_s: 'Disponibles en los planes Pro y Sharp.',
       lock_delay: 'La pick gratis del día se desbloquea 60 minutos antes del partido.',
       lock_cta: 'Ver planes',
@@ -236,6 +241,11 @@
       sup_err: 'Couldn’t send, try again.', sup_short: 'Tell us a bit more so we can help.', sup_rate: 'Too many messages; try again later.',
       lock_sharp_t: 'Available on the Sharp plan', lock_sharp_s: 'Real-time value and arbitrage are part of the Sharp plan.',
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
+      onb_1t: 'Your pick of the day', onb_1s: "Every day we publish the model's plays — free during the World Cup. Today's is already waiting on the board.",
+      onb_2t: 'Follow your team', onb_2s: 'Star your teams to see them first and never miss their matches.',
+      onb_3t: 'Turn on alerts', onb_3s: 'Goals, kickoffs and updates straight to your email.',
+      onb_next: 'Next', onb_done: "Let's go!", onb_skip: 'Skip',
+      adm_ana: 'ACTIVITY · RETENTION', adm_ana_today: 'Active today', adm_ana_d1: 'D1 retention', adm_ana_d7: 'D7 retention', adm_ana_hab: 'Daily returners (4+ of 7 days)', adm_ana_since: 'Tracking since', adm_ana_nodata: 'Accumulating data — metrics mature over the days.',
       lock_more_picks: '{n} more picks today', lock_more_picks_s: 'Available on the Pro and Sharp plans.',
       lock_delay: 'The free daily pick unlocks 60 minutes before kickoff.',
       lock_cta: 'See plans',
@@ -1438,6 +1448,47 @@
     [].forEach.call(mv.querySelectorAll('[data-cmode-sw]'), function (b) { b.addEventListener('click', function () { S.calcMode = b.getAttribute('data-cmode-sw'); renderCalc(); }); });
     var holder = mv.querySelector('.gx-calc');
     if (holder) { if (mode === 'arb') wireArbPanel(holder); else wireStakePanel(holder); }
+  }
+
+  // ============================ ONBOARDING (primer ingreso) ============================
+  // Solo cuentas creadas DESPUÉS del feature (los ~600 usuarios existentes nunca lo ven) y solo la primera vez:
+  // el "visto" se persiste por cuenta en el server (db.users.onboarded) + localStorage como respaldo.
+  var ONB_CUTOFF = Date.parse('2026-07-04T18:00:00Z');
+  function maybeOnboard() {
+    try {
+      if (!S.me || S.me.onboarded || lsGet('gp_onboarded')) return;
+      if (!(S.me.createdAt && S.me.createdAt >= ONB_CUTOFF)) return;
+      showOnboard();
+    } catch (e) {}
+  }
+  function onbFinish() {
+    lsSet('gp_onboarded', '1');
+    fetch('/api/me/onboarded', { method: 'POST', headers: hdrs() }).catch(function () {});
+    if (S.me) S.me.onboarded = Date.now();
+    var o = document.getElementById('gx-onb'); if (o) o.remove();
+  }
+  function showOnboard() {
+    if (document.getElementById('gx-onb')) return;
+    var steps = [
+      { ic: 'target-arrow', t: 'onb_1t', s: 'onb_1s' },
+      { ic: 'star', t: 'onb_2t', s: 'onb_2s' },
+      { ic: 'bell', t: 'onb_3t', s: 'onb_3s' },
+    ];
+    var i = 0;
+    var wrap = document.createElement('div'); wrap.id = 'gx-onb'; wrap.className = 'gx-onb';
+    function paint() {
+      var st = steps[i];
+      wrap.innerHTML = '<div class="gx-onb-bg"></div><div class="gx-onb-card">' +
+        '<div class="gx-onb-ic">' + ic(st.ic) + '</div>' +
+        '<h3>' + esc(t(st.t)) + '</h3><p>' + esc(t(st.s)) + '</p>' +
+        '<div class="gx-onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
+        '<button class="gx-btn gx-onb-cta" id="gx-onb-next">' + esc(t(i === steps.length - 1 ? 'onb_done' : 'onb_next')) + '</button>' +
+        '<button class="gx-onb-skip" id="gx-onb-skip">' + esc(t('onb_skip')) + '</button></div>';
+      wrap.querySelector('#gx-onb-next').addEventListener('click', function () { if (i < steps.length - 1) { i++; paint(); } else onbFinish(); });
+      wrap.querySelector('#gx-onb-skip').addEventListener('click', onbFinish);
+    }
+    paint();
+    document.body.appendChild(wrap);
   }
 
   // ============================ PLANES: helpers + Mi suscripción + Soporte ============================
@@ -3194,8 +3245,26 @@
       '</div></div>';
     // ---- Base de usuarios ----
     var users = admUsersHtml(uj);
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + matchCorrect + users + broadcast + telegram + '</div></div>';
+    // ---- Actividad/retención (lazy: carga al montar) ----
+    var analytics = '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_ana')) + '</span></div><div class="gx-mod-body gx-adm-body" id="gxa-ana">' + mvLoading() + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + analytics + matchCorrect + users + broadcast + telegram + '</div></div>';
     wireAdmin();
+    fetch('/api/admin/analytics', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (a) {
+      var el = $('#gxa-ana'); if (!el) return;
+      if (!a) { el.innerHTML = '<span class="gx-dim">—</span>'; return; }
+      var kpi = function (l, v) { return '<div class="gx-g-stat"><span class="gx-label">' + esc(l) + '</span><b class="gx-mono" style="font-size:20px">' + v + '</b></div>'; };
+      var bars = (a.dau || []).map(function (d) { var max = Math.max.apply(null, a.dau.map(function (x) { return x.n; })) || 1; return '<div class="gxa-bar" title="' + esc(d.date + ': ' + d.n) + '"><i style="height:' + Math.max(6, Math.round(d.n / max * 44)) + 'px"></i><span>' + d.date.slice(8) + '</span></div>'; }).join('');
+      el.innerHTML =
+        '<div style="display:flex;gap:18px;flex-wrap:wrap">' +
+          kpi(t('adm_ana_today'), a.today) +
+          kpi(t('adm_ana_d1'), a.d1 ? a.d1.pct + '% <span class="gx-dim" style="font-size:11px">(n=' + a.d1.sample + ')</span>' : '—') +
+          kpi(t('adm_ana_d7'), a.d7 ? a.d7.pct + '% <span class="gx-dim" style="font-size:11px">(n=' + a.d7.sample + ')</span>' : '—') +
+          kpi(t('adm_ana_hab'), a.habituales_count) +
+        '</div>' +
+        (bars ? '<div class="gxa-bars">' + bars + '</div>' : '') +
+        '<p class="gx-dim" style="font-size:11.5px;margin-top:8px">' + esc(t('adm_ana_since')) + ': ' + esc(a.tracking_since || '—') + ' · ' + esc(t('adm_ana_nodata')) + '</p>' +
+        ((a.habituales || []).length ? '<div class="gx-chips" style="margin-top:8px">' + a.habituales.slice(0, 15).map(function (h) { return '<span class="gx-chip">' + esc(h.email) + ' · ' + h.days + 'd</span>'; }).join('') + '</div>' : '');
+    });
   }
   function admUsersHtml(uj) {
     if (!uj) return '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_users')) + '</span></div><div class="gx-mod-body gx-adm-body"><span class="gx-dim">' + esc(t('adm_users_err')) + '</span></div></div>';
@@ -3353,7 +3422,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); if (['registry', 'method', 'admin', 'sub', 'support'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); maybeOnboard(); if (['registry', 'method', 'admin', 'sub', 'support'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

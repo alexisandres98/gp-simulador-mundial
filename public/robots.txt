@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /x
+Disallow: /founder
+Disallow: /api/
+Disallow: /beta
+
+Sitemap: https://gpsimulador.com/sitemap.xml

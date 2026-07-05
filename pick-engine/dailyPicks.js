@@ -31,6 +31,17 @@ async function buildDailyPicks(deps) {
   const query = deps.query, nowMs = deps.now || Date.now();
   const config = deps.config || {};
 
+  // Casas por evento en UNA pasada agrupada (antes: subquery correlacionado por fila sobre sportsbook_goal_quote_current,
+  // que al crecer la tabla a ~400K filas causó statement timeout y dejó mudo el motor de picks del 1 al 5 de julio).
+  // Dos mapas porque el conteo original es distinct por familia match_winner y distinct global (no equivalen a una suma).
+  const booksMW = {}, booksAll = {};
+  for (const b of (await query(
+    `SELECT canonical_event_id, count(distinct sportsbook_code)::int books
+     FROM sportsbook_goal_quote_current WHERE market_family='match_winner' GROUP BY 1`)).rows) booksMW[b.canonical_event_id] = b.books;
+  for (const b of (await query(
+    `SELECT canonical_event_id, count(distinct sportsbook_code)::int books
+     FROM sportsbook_goal_quote_current GROUP BY 1`)).rows) booksAll[b.canonical_event_id] = b.books;
+
   // 1X2: evaluación MÁS FRESCA por (evento, selección) de eventos PRÓXIMOS. Se usa la última (created_at DESC), no la
   // de mayor edge (que puede ser un outlier viejo/stale). Se descartan evals corruptas (gp fuera de (0,1), p.ej. gp=0%
   // del favorito) que romperían la coherencia de dirección.
@@ -55,17 +66,21 @@ async function buildDailyPicks(deps) {
   }
 
   // SÓLIDAS también desde match_winner (1X2) de eventos NO canónicos (ids sintéticos, vía persistMatchWinnerValue).
-  // Equipos+kickoff del lineage. Solo se añaden eventos que NO vinieron ya de value_evaluations (canónicos primero).
+  // Equipos+kickoff del lineage. Solo se añaden eventos que NO vinieron ya de value_evaluations (canónicos primero),
+  // ni por id NI por PAR DE EQUIPOS: desde que el mismo partido existe bajo id canónico Y sintético (canónicos
+  // aprobados 4-jul + pipeline de goles sintético), sin el dedupe por par se publicaban picks DUPLICADAS del
+  // mismo partido (una clickeable y una no).
+  const pairKey = (a, b) => [a, b].sort().join('~');
   const rowsMW = (await query(
     `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
        gv.canonical_event_id, gv.market_id, gv.gp_probability::float gp, gv.market_consensus_probability::float mkt,
-       gv.best_decimal_odds::float odds, s.factor_lineage,
-       (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id AND q.market_family='match_winner') books
+       gv.best_decimal_odds::float odds, s.factor_lineage
      FROM goal_value_shadow gv
      LEFT JOIN LATERAL (SELECT factor_lineage FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) s ON true
      WHERE gv.market_family='match_winner' AND gv.gp_probability > 0 AND gv.gp_probability < 1 AND gv.created_at > now() - interval '2 days'
      ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
   const canonicalIds = new Set(Object.keys(evMap)); // eventos que ya vinieron de value_evaluations
+  const canonicalPairs = new Set(Object.values(evMap).filter(e => e.homeId && e.awayId).map(e => pairKey(e.homeId, e.awayId)));
   for (const r of rowsMW) {
     if (canonicalIds.has(r.canonical_event_id)) continue; // ya canónico → no duplicar (3 filas MW comparten evento)
     const m = /^MATCH_WINNER_(HOME|DRAW|AWAY)$/.exec(r.market_id); if (!m) continue;
@@ -73,11 +88,12 @@ async function buildDailyPicks(deps) {
     const lin = (Array.isArray(r.factor_lineage) ? r.factor_lineage[0] : null) || {};
     const homeId = lin.home_team_id || null, awayId = lin.away_team_id || null, kickoff = lin.kickoff_at || null;
     if (!homeId || !awayId || !kickoff || new Date(kickoff).getTime() <= nowMs) continue;
+    if (canonicalPairs.has(pairKey(homeId, awayId))) continue; // mismo partido ya canónico → no duplicar
     const e = evMap[r.canonical_event_id] || (evMap[r.canonical_event_id] = {
       eventId: r.canonical_event_id, home: teamNameById(homeId), away: teamNameById(awayId),
       homeId, awayId, kickoff, selections: {},
     });
-    e.selections[sel] = { model: r.gp, market: r.mkt, bestOdds: r.odds, books: Number(r.books || 0) };
+    e.selections[sel] = { model: r.gp, market: r.mkt, bestOdds: r.odds, books: Number(booksMW[r.canonical_event_id] || 0) };
   }
   const events = Object.values(evMap);
 
@@ -88,14 +104,13 @@ async function buildDailyPicks(deps) {
     `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
        gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability::float gp,
        gv.market_consensus_probability::float mkt, gv.adjusted_edge_pp::float edge, gv.best_decimal_odds::float odds,
-       s.factor_lineage,
-       (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id) books
+       s.factor_lineage
      FROM goal_value_shadow gv
      LEFT JOIN LATERAL (SELECT factor_lineage FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) s ON true
      WHERE gv.created_at > now() - interval '2 days'
      ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
 
-  const goalMarkets = [];
+  let goalMarkets = [];
   for (const g of rowsGoals) {
     const p = parseGoalMid(g.market_id);
     if (!p) continue;
@@ -108,9 +123,13 @@ async function buildDailyPicks(deps) {
       homeId, awayId,
       marketId: g.market_id, family: g.market_family, side: p.side, line: p.line,
       modelProb: g.gp, marketProb: g.mkt, edgePp: g.edge, bestOdds: g.odds, bestBook: null,
-      books: Number(g.books || 0), familyApproved: !!GOAL_FAMILY_APPROVED[g.market_family],
+      books: Number(booksAll[g.canonical_event_id] || 0), familyApproved: !!GOAL_FAMILY_APPROVED[g.market_family],
     });
   }
+  // Dedupe por PAR DE EQUIPOS: si el mismo partido tiene mercados de goles bajo id canónico Y sintético,
+  // se queda el canónico (clickeable, abre cockpit) y se descartan los sintéticos duplicados.
+  const goalCanonPairs = new Set(goalMarkets.filter(g => canonicalIds.has(g.eventId)).map(g => pairKey(g.homeId, g.awayId)));
+  goalMarkets = goalMarkets.filter(g => canonicalIds.has(g.eventId) || !goalCanonPairs.has(pairKey(g.homeId, g.awayId)));
 
   const res = curate({ events, goalMarkets, config });
 

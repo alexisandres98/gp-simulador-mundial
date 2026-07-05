@@ -1981,12 +1981,17 @@ async function evaluateGoalPicks() {
     const gate = require('./calibration/goalGates').report({ results: db.results || {} });
     // Sin JOIN a canonical_events (los ids de goles pueden ser sintéticos). Los equipos + kickoff salen del
     // factor_lineage del snapshot más reciente. Solo Value reciente (≈ partidos próximos).
+    // Casas por evento en UNA pasada agrupada (el subquery correlacionado por fila sobre la tabla de cuotas de
+    // ~400K filas causaba statement timeout — mismo fix que buildDailyPicks, ver migración 043).
+    const booksByEvent = {};
+    for (const b of (await dbc.query(
+      `SELECT canonical_event_id, count(distinct sportsbook_code)::int books
+       FROM sportsbook_goal_quote_current GROUP BY 1`)).rows) booksByEvent[b.canonical_event_id] = b.books;
     const rows = (await dbc.query(
       `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
          gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability, gv.market_consensus_probability,
          gv.best_decimal_odds, gv.adjusted_edge_pp, gv.adjusted_ev, gv.conservative_probability, gv.classification,
-         s.data_completeness, s.factor_lineage,
-         (SELECT count(distinct sportsbook_code)::int FROM sportsbook_goal_quote_current q WHERE q.canonical_event_id=gv.canonical_event_id) books
+         s.data_completeness, s.factor_lineage
        FROM goal_value_shadow gv
        LEFT JOIN LATERAL (SELECT data_completeness, factor_lineage FROM goal_model_snapshots g WHERE g.canonical_event_id=gv.canonical_event_id ORDER BY created_at DESC LIMIT 1) s ON true
        WHERE gv.created_at > now() - interval '2 days'
@@ -2003,7 +2008,7 @@ async function evaluateGoalPicks() {
         const q = goalPick.qualifyPick({
           valueRow: r, gate: famGate, snapshot: { data_completeness: r.data_completeness },
           event: { canonical_event_id: r.canonical_event_id, home_team_id: a, away_team_id: b, kickoff_at: kickoff },
-          market: { books_available: r.books, best_sportsbook: null, lineup_status: 'UNKNOWN', sources: [] },
+          market: { books_available: Number(booksByEvent[r.canonical_event_id] || 0), best_sportsbook: null, lineup_status: 'UNKNOWN', sources: [] },
         });
         if (!q.qualifies) { out.skipped++; continue; }
         out.qualified++;
@@ -2068,11 +2073,19 @@ async function evaluateDailyPicks() {
       if (idx[pick.pick_id]) continue; // ya publicada → idempotente
       db.dailyPicks.push(pick); idx[pick.pick_id] = pick; out.new++;
     }
-    // COHERENCIA: una sola pick ACTIVE por (evento, familia) — se conserva la MÁS RECIENTE y se supersede el resto.
+    // COHERENCIA: una sola pick ACTIVE por (PARTIDO, familia) — se conserva la MÁS RECIENTE y se supersede el resto.
     // Evita contradicciones por acumulación (ej: Over 3.5 y Under 3.5 del mismo partido cuando el modelo se da vuelta
     // al salir alineaciones). El combo y los goles del run más reciente quedan alineados (se construyen juntos).
+    // La clave es el PAR DE EQUIPOS (no el event id): el mismo partido puede existir bajo id canónico Y sintético
+    // (canónicos aprobados + pipeline de goles) y agrupar por id dejaba picks duplicadas ACTIVE en el feed.
+    // Seguro contra falsos positivos: dos selecciones ya jugadas del mismo par están SETTLED (no entran aquí).
     const byEF = {};
-    for (const p of db.dailyPicks) { if (p.status !== 'ACTIVE') continue; (byEF[p.event.canonical_event_id + '|' + p.family] = byEF[p.event.canonical_event_id + '|' + p.family] || []).push(p); }
+    for (const p of db.dailyPicks) {
+      if (p.status !== 'ACTIVE') continue;
+      const ev = p.event || {};
+      const matchKey = (ev.home_team_id && ev.away_team_id) ? [ev.home_team_id, ev.away_team_id].sort().join('~') : ev.canonical_event_id;
+      (byEF[matchKey + '|' + p.family] = byEF[matchKey + '|' + p.family] || []).push(p);
+    }
     for (const key in byEF) {
       const arr = byEF[key]; if (arr.length <= 1) continue;
       arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // más reciente primero

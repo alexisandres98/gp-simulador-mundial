@@ -1389,6 +1389,130 @@ function findFixtureMeta(id) {
   return { id: String(id), kind: 'ko', m: k.m, home, away, datetime: espnKickoffFor(home, away, k.date) || k.datetime || (k.date + 'T18:00Z'), group: null, espnId: (koOverride[k.m] && koOverride[k.m].espnId) || null, stage: k.stage };
 }
 
+// ===== SEO helpers: pronósticos públicos server-rendered =====
+const SEO_STAGE = { group: { es: 'Fase de grupos', en: 'Group stage' }, R32: { es: '16avos de final', en: 'Round of 32' }, R16: { es: 'Octavos de final', en: 'Round of 16' }, QF: { es: 'Cuartos de final', en: 'Quarter-final' }, SF: { es: 'Semifinal', en: 'Semi-final' }, '3RD': { es: 'Partido por el 3er puesto', en: 'Third-place match' }, FINAL: { es: 'Final', en: 'Final' } };
+function seoSlug(name) { return String(name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+let _seoCache = { ts: 0, list: null };
+function seoMatches() {
+  if (_seoCache.list && Date.now() - _seoCache.ts < 60000) return _seoCache.list;
+  const dic = require('./i18n/dictionary');
+  const bracket = resolveRealBracket();
+  const out = [];
+  const push = (id, h, a, dt, stage, r) => {
+    if (!h || !a || !teamById[h] || !teamById[a]) return;
+    out.push({
+      id, home: h, away: a, datetime: dt, stage, result: r,
+      name: { es: dic.teamName(h, 'es') + ' vs ' + dic.teamName(a, 'es'), en: dic.teamName(h, 'en') + ' vs ' + dic.teamName(a, 'en') },
+      slug: { es: seoSlug(dic.teamName(h, 'es')) + '-vs-' + seoSlug(dic.teamName(a, 'es')), en: seoSlug(dic.teamName(h, 'en')) + '-vs-' + seoSlug(dic.teamName(a, 'en')) },
+    });
+  };
+  for (const f of GROUP_FIXTURES) push(f.id, f.home, f.away, f.datetime, 'group', db.results[f.id] || null);
+  for (const k of KNOCKOUT) {
+    const r = db.results[String(k.m)] || null;
+    const res = bracket[k.m] || {};
+    const h = (r && r.home) || res.home, a = (r && r.away) || res.away;
+    push(String(k.m), h, a, espnKickoffFor(h, a, k.date) || k.datetime || (k.date + 'T18:00Z'), k.stage, r);
+  }
+  _seoCache = { ts: Date.now(), list: out };
+  return out;
+}
+function seoShellCss() {
+  return `*{margin:0;padding:0;box-sizing:border-box}body{background:#06090B;color:#EAF1F2;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:16px;line-height:1.6}
+.wrap{max-width:720px;margin:0 auto;padding:0 20px 70px}.nav{display:flex;align-items:center;gap:10px;padding:20px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;color:#EAF1F2;text-decoration:none}.logo i{width:30px;height:30px;border-radius:9px;background:rgba(31,227,164,.14);border:1px solid rgba(31,227,164,.45);display:grid;place-items:center;font-style:normal;color:#1FE3A4;font-size:14px}
+.crumb{font-size:12.5px;color:#5F747B;margin:18px 0 6px}.crumb a{color:#5F747B}
+h1{font-size:clamp(26px,5.2vw,36px);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:4px 0 6px}
+.meta{color:#9DB0B5;font-size:14px;margin-bottom:26px}
+.card{background:linear-gradient(165deg,#111A1E,#0D1417);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:22px 22px;margin:14px 0}
+.plabel{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#5F747B;margin-bottom:12px}
+.prow{display:flex;align-items:center;gap:12px;margin:9px 0}.prow .nm{width:132px;font-weight:700;font-size:14.5px}.prow .pct{width:56px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.bar{flex:1;height:12px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}.bar i{display:block;height:100%;border-radius:99px}
+.b1 i{background:#1FE3A4}.b2 i{background:rgba(255,255,255,.35)}.b3 i{background:#5BA8FF}
+p.read{color:#B9C7CB;font-size:15.5px;margin:14px 0}
+.score{font-size:44px;font-weight:800;letter-spacing:2px;text-align:center;margin:10px 0}
+.cta{display:block;background:#1FE3A4;color:#06231A;font-weight:800;text-align:center;text-decoration:none;border-radius:12px;padding:15px;margin:22px 0 8px;font-size:15.5px}
+.ctasub{text-align:center;color:#5F747B;font-size:12.5px}
+.idx{list-style:none}.idx li{border-bottom:1px solid rgba(255,255,255,.07)}.idx a{display:flex;justify-content:space-between;gap:10px;color:#EAF1F2;text-decoration:none;padding:13px 2px;font-weight:600;font-size:15px}.idx a:hover{color:#1FE3A4}.idx .when{color:#5F747B;font-size:12.5px;font-weight:600;white-space:nowrap}
+.foot{margin-top:40px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);color:#5F747B;font-size:12px;line-height:1.7}.foot a{color:#5F747B}`;
+}
+function seoFmtDt(iso, lang) {
+  try { return new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'; } catch { return ''; }
+}
+function seoMatchHtml(m, lang) {
+  const dic = require('./i18n/dictionary');
+  const hN = dic.teamName(m.home, lang), aN = dic.teamName(m.away, lang);
+  const flags = (id) => (teamById[id] && teamById[id].flag) || '';
+  const stage = (SEO_STAGE[m.stage] || SEO_STAGE.group)[lang];
+  const base = 'https://gpsimulador.com';
+  const urlEs = base + '/pronostico/' + m.slug.es, urlEn = base + '/prediction/' + m.slug.en;
+  const url = lang === 'es' ? urlEs : urlEn;
+  const done = m.result && m.result.status === 'final';
+  const live = m.result && m.result.status === 'live';
+  const title = lang === 'es'
+    ? `Pronóstico ${hN} vs ${aN} — Mundial 2026 (${stage})`
+    : `${hN} vs ${aN} Prediction — 2026 World Cup (${stage})`;
+  let probs = null, body = '';
+  if (!done) probs = live ? liveMatchProbs(effElo(db.elos, m.home), effElo(db.elos, m.away), m.result.hg, m.result.ag, m.result.minute) : matchProbs(effElo(db.elos, m.home), effElo(db.elos, m.away));
+  const pct = (x) => Math.round(x * 100) + '%';
+  if (done) {
+    const r = m.result;
+    body = `<div class="card"><div class="plabel">${lang === 'es' ? 'Resultado final' : 'Final score'}</div><div class="score">${flags(m.home)} ${r.hg} – ${r.ag} ${flags(m.away)}</div></div>
+<p class="read">${lang === 'es' ? `El partido terminó ${r.hg}–${r.ag}. Las jugadas del día, el historial completo del modelo y las cuotas mejor pagadas de los próximos partidos están dentro de la plataforma.` : `The match ended ${r.hg}–${r.ag}. Today's plays, the model's full public record and the best-paying odds for upcoming matches are inside the platform.`}</p>`;
+  } else if (probs) {
+    const xgT = (probs.xgHome || 0) + (probs.xgAway || 0);
+    const fav = probs.home >= probs.away ? { n: hN, p: probs.home } : { n: aN, p: probs.away };
+    const goalsRead = lang === 'es'
+      ? (xgT >= 2.9 ? `Se proyecta un partido abierto, con ~${xgT.toFixed(1)} goles esperados en total.` : xgT >= 2.3 ? `Se proyecta un partido equilibrado en goles (~${xgT.toFixed(1)} esperados).` : `Se proyecta un partido cerrado, de pocos goles (~${xgT.toFixed(1)} esperados).`)
+      : (xgT >= 2.9 ? `The projection points to an open match, with ~${xgT.toFixed(1)} expected goals in total.` : xgT >= 2.3 ? `The projection points to a balanced match on goals (~${xgT.toFixed(1)} expected).` : `The projection points to a tight, low-scoring match (~${xgT.toFixed(1)} expected).`);
+    body = `<div class="card"><div class="plabel">${lang === 'es' ? 'Probabilidades del modelo' + (live ? ' · EN VIVO' : '') : 'Model probabilities' + (live ? ' · LIVE' : '')}</div>
+<div class="prow b1"><span class="nm">${flags(m.home)} ${hN}</span><span class="bar"><i style="width:${pct(probs.home)}"></i></span><span class="pct">${pct(probs.home)}</span></div>
+<div class="prow b2"><span class="nm">${lang === 'es' ? 'Empate' : 'Draw'}</span><span class="bar"><i style="width:${pct(probs.draw)}"></i></span><span class="pct">${pct(probs.draw)}</span></div>
+<div class="prow b3"><span class="nm">${flags(m.away)} ${aN}</span><span class="bar"><i style="width:${pct(probs.away)}"></i></span><span class="pct">${pct(probs.away)}</span></div></div>
+<p class="read">${lang === 'es' ? `El modelo le da a <b>${fav.n}</b> un <b>${pct(fav.p)}</b> de probabilidad de llevarse el partido en los 90 minutos; el empate corre con ${pct(probs.draw)}.` : `The model gives <b>${fav.n}</b> a <b>${pct(fav.p)}</b> chance of taking the match in 90 minutes; the draw sits at ${pct(probs.draw)}.`}</p>
+<p class="read">${goalsRead}</p>
+<p class="read">${lang === 'es' ? 'La jugada del día de este partido, el análisis completo y la mejor cuota entre más de 40 casas están dentro de la plataforma — gratis durante el Mundial.' : "Today's play for this match, the full analysis and the best odds across 40+ books are inside the platform — free during the World Cup."}</p>`;
+  }
+  const jsonld = JSON.stringify({ '@context': 'https://schema.org', '@type': 'SportsEvent', name: m.name[lang] + ' — FIFA World Cup 2026', startDate: m.datetime, sport: 'Soccer', competitor: [{ '@type': 'SportsTeam', name: hN }, { '@type': 'SportsTeam', name: aN }] });
+  const desc = done
+    ? (lang === 'es' ? `Resultado final ${hN} ${m.result.hg}-${m.result.ag} ${aN} (${stage}, Mundial 2026).` : `Final score ${hN} ${m.result.hg}-${m.result.ag} ${aN} (${stage}, 2026 World Cup).`)
+    : (lang === 'es' ? `Probabilidades ${hN} vs ${aN}: ${probs ? pct(probs.home) + ' / ' + pct(probs.draw) + ' / ' + pct(probs.away) : ''} · ${stage} del Mundial 2026. Pronóstico del modelo y mejores cuotas.` : `${hN} vs ${aN} probabilities: ${probs ? pct(probs.home) + ' / ' + pct(probs.draw) + ' / ' + pct(probs.away) : ''} · 2026 World Cup ${stage}. Model prediction and best odds.`);
+  return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title><meta name="description" content="${desc}">
+<link rel="canonical" href="${url}"><link rel="alternate" hreflang="es" href="${urlEs}"><link rel="alternate" hreflang="en" href="${urlEn}"><link rel="alternate" hreflang="x-default" href="${urlEn}">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${base}/og.png">
+<script type="application/ld+json">${jsonld}</script><style>${seoShellCss()}</style></head>
+<body><div class="wrap"><nav class="nav"><a class="logo" href="/"><i>▟</i> GP Simulador</a></nav>
+<div class="crumb"><a href="${lang === 'es' ? '/pronosticos' : '/predictions'}">${lang === 'es' ? 'Pronósticos del Mundial 2026' : '2026 World Cup predictions'}</a> · ${stage}</div>
+<h1>${lang === 'es' ? 'Pronóstico' : 'Prediction:'} ${flags(m.home)} ${hN} vs ${aN} ${flags(m.away)}</h1>
+<div class="meta">${stage} · ${seoFmtDt(m.datetime, lang)}</div>
+${body}
+<a class="cta" href="/">${lang === 'es' ? 'Ver la jugada del día → cuenta gratis' : "See today's play → free account"}</a>
+<div class="ctasub">${lang === 'es' ? 'Sin tarjeta · solo tu email · historial público y verificado' : 'No card · just your email · public, verified record'}</div>
+<div class="foot">${lang === 'es' ? 'Estimaciones de un modelo estadístico con fines informativos. No es consejo financiero. Apostá con responsabilidad. 18+.' : 'Statistical model estimates for informational purposes. Not financial advice. Bet responsibly. 18+.'}<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="${lang === 'es' ? '/predictions' : '/pronosticos'}">${lang === 'es' ? 'English version' : 'Versión en español'}</a></div>
+</div></body></html>`;
+}
+function seoIndexHtml(lang) {
+  const ms = seoMatches().slice().sort((a, b) => new Date(a.datetime || 0) - new Date(b.datetime || 0));
+  const now = Date.now();
+  const upcoming = ms.filter(m => !(m.result && m.result.status === 'final') && new Date(m.datetime).getTime() > now - 3 * 3600e3);
+  const recent = ms.filter(m => m.result && m.result.status === 'final').slice(-10).reverse();
+  const base = lang === 'es' ? '/pronostico/' : '/prediction/';
+  const li = (m, done) => `<li><a href="${base}${m.slug[lang]}"><span>${(teamById[m.home] || {}).flag || ''} ${m.name[lang]} ${(teamById[m.away] || {}).flag || ''}</span><span class="when">${done && m.result ? m.result.hg + '–' + m.result.ag : seoFmtDt(m.datetime, lang)}</span></a></li>`;
+  const title = lang === 'es' ? 'Pronósticos del Mundial 2026 — probabilidades de cada partido' : '2026 World Cup predictions — probabilities for every match';
+  return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} | GP Simulador</title><meta name="description" content="${lang === 'es' ? 'Pronóstico y probabilidades de todos los partidos del Mundial 2026, actualizados en tiempo real por el modelo de GP Simulador.' : 'Predictions and probabilities for every 2026 World Cup match, updated in real time by the GP Simulador model.'}">
+<link rel="canonical" href="https://gpsimulador.com${lang === 'es' ? '/pronosticos' : '/predictions'}"><link rel="alternate" hreflang="es" href="https://gpsimulador.com/pronosticos"><link rel="alternate" hreflang="en" href="https://gpsimulador.com/predictions"><link rel="alternate" hreflang="x-default" href="https://gpsimulador.com/predictions">
+<style>${seoShellCss()}</style></head>
+<body><div class="wrap"><nav class="nav"><a class="logo" href="/"><i>▟</i> GP Simulador</a></nav>
+<h1>${lang === 'es' ? 'Pronósticos del Mundial 2026' : '2026 World Cup Predictions'}</h1>
+<div class="meta">${lang === 'es' ? 'Probabilidades del modelo para cada partido, actualizadas en tiempo real.' : 'Model probabilities for every match, updated in real time.'}</div>
+<div class="card"><div class="plabel">${lang === 'es' ? 'Próximos partidos' : 'Upcoming matches'}</div><ul class="idx">${upcoming.map(m => li(m, false)).join('')}</ul></div>
+${recent.length ? `<div class="card"><div class="plabel">${lang === 'es' ? 'Resultados recientes' : 'Recent results'}</div><ul class="idx">${recent.map(m => li(m, true)).join('')}</ul></div>` : ''}
+<a class="cta" href="/">${lang === 'es' ? 'Ver la jugada del día → cuenta gratis' : "See today's play → free account"}</a>
+<div class="foot">${lang === 'es' ? 'Estimaciones de un modelo estadístico. No es consejo financiero. 18+.' : 'Statistical model estimates. Not financial advice. 18+.'}<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></div>
+</div></body></html>`;
+}
+
 function modelProbsFor(home, away, result) {
   if (!home || !away) return null;
   if (result && result.status === 'live') {
@@ -3918,6 +4042,42 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    // ===== SEO: páginas públicas de PRONÓSTICO por partido (server-rendered → indexables sin JS) =====
+    // /pronostico/<local>-vs-<visita> (ES) · /prediction/<home>-vs-<away> (EN) · índices · sitemap dinámico.
+    // Muestran las MISMAS probabilidades del board + lectura editorial + CTA de registro. CAJA NEGRA intacta.
+    if (p === '/sitemap.xml') {
+      const base = 'https://gpsimulador.com';
+      const ms = seoMatches();
+      const urls = [
+        `<url><loc>${base}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
+        `<url><loc>${base}/pronosticos</loc><changefreq>hourly</changefreq><priority>0.9</priority></url>`,
+        `<url><loc>${base}/predictions</loc><changefreq>hourly</changefreq><priority>0.9</priority></url>`,
+        `<url><loc>${base}/terms</loc><changefreq>monthly</changefreq><priority>0.2</priority></url>`,
+        `<url><loc>${base}/privacy</loc><changefreq>monthly</changefreq><priority>0.2</priority></url>`,
+        `<url><loc>${base}/refunds</loc><changefreq>monthly</changefreq><priority>0.2</priority></url>`,
+      ];
+      for (const m of ms) {
+        const done = m.result && m.result.status === 'final';
+        const pr = done ? '0.4' : '0.8', cf = done ? 'weekly' : 'hourly';
+        urls.push(`<url><loc>${base}/pronostico/${m.slug.es}</loc><changefreq>${cf}</changefreq><priority>${pr}</priority></url>`);
+        urls.push(`<url><loc>${base}/prediction/${m.slug.en}</loc><changefreq>${cf}</changefreq><priority>${pr}</priority></url>`);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=300' });
+      return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`);
+    }
+    if (p === '/pronosticos' || p === '/predictions') {
+      const lang = p === '/pronosticos' ? 'es' : 'en';
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=120' });
+      return res.end(seoIndexHtml(lang));
+    }
+    if (p.startsWith('/pronostico/') || p.startsWith('/prediction/')) {
+      const lang = p.startsWith('/pronostico/') ? 'es' : 'en';
+      const slug = decodeURIComponent(p.split('/')[2] || '').toLowerCase();
+      const m = seoMatches().find(x => x.slug[lang] === slug) || seoMatches().find(x => x.slug.es === slug || x.slug.en === slug);
+      if (!m) { res.writeHead(302, { Location: lang === 'es' ? '/pronosticos' : '/predictions' }); return res.end(); }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=120' });
+      return res.end(seoMatchHtml(m, lang));
     }
     // LEGALES (públicas, sin gating — deben ser accesibles antes de pagar): una sola página con secciones.
     if (p === '/terms' || p === '/privacy' || p === '/refunds' || p === '/legal') {

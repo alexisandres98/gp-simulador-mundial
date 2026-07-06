@@ -9,10 +9,21 @@ const path = require('path');
 const tsa = require('../data-providers/theStatsApi');
 const { TEAMS } = require('../data/tournament');
 
+// PIECE_LANG=en → pieza en inglés (nombres EN + textos EN + sufijo -en en el archivo). Default: español.
 const [home, away, scoreArg, hookArg] = process.argv.slice(2);
-if (!home || !away) { console.error('uso: node scripts/shotmap-content.js HOME AWAY [marcador] [gancho]'); process.exit(1); }
-const NAME = {}; TEAMS.forEach(t => NAME[t.id] = t.name || t.en);
+if (!home || !away) { console.error('uso: [PIECE_LANG=en] node scripts/shotmap-content.js HOME AWAY [marcador] [gancho]'); process.exit(1); }
+const EN = /^en$/i.test(String(process.env.PIECE_LANG || ''));
+const NAME = {}; TEAMS.forEach(t => NAME[t.id] = EN ? (t.en || t.name) : (t.name || t.en));
 const FLAG = {}; TEAMS.forEach(t => FLAG[t.id] = t.flag || '');
+const TXT = EN ? {
+  brand: 'GP World Cup Simulator', tag: '● SHOT MAP',
+  sub: 'Every bubble is a shot · the size is how big the chance was',
+  shots: 'shots', goal: 'Goal', onTarget: 'On target', off: 'Off target / blocked',
+} : {
+  brand: 'GP Simulador del Mundial', tag: '● MAPA DE REMATES',
+  sub: 'Cada burbuja es un remate · el tamaño es qué tan clara fue la ocasión',
+  shots: 'remates', goal: 'Gol', onTarget: 'Al arco', off: 'Desviado / bloqueado',
+};
 
 (async () => {
   const sm = await tsa.shotmap(home, away);
@@ -42,7 +53,7 @@ const FLAG = {}; TEAMS.forEach(t => FLAG[t.id] = t.flag || '');
       return `<div class="dot" style="left:${left.toFixed(0)}px;top:${top.toFixed(0)}px;width:${r * 2}px;height:${r * 2}px;margin:-${r}px 0 0 -${r}px;${style}" title="${s.player_name} ${s.expected_goals}"></div>`;
     }).join('');
     return `<div class="half">
-      <div class="hh">${FLAG[code] || ''} ${NAME[code] || code} <span class="hxg">${xgSum(arr).toFixed(2)} xG · ${arr.length} remates</span></div>
+      <div class="hh">${FLAG[code] || ''} ${NAME[code] || code} <span class="hxg">${xgSum(arr).toFixed(2)} xG · ${arr.length} ${TXT.shots}</span></div>
       <div class="pitch">
         <div class="goal"></div><div class="box"></div><div class="boxin"></div><div class="pen"></div>
         ${dots}
@@ -84,14 +95,14 @@ h1 { font-size:44px; font-weight:800; letter-spacing:-1.5px; color:#fff; }
 .cta { background:#1FE3A4; color:#06231A; font-size:20px; font-weight:800; padding:14px 30px; border-radius:99px; }
 </style></head>
 <body>
-  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● MAPA DE REMATES</div></div>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">${TXT.brand}</div><div class="tag">${TXT.tag}</div></div>
   <h1>${FLAG[home] || ''} ${NAME[home]} ${score || 'vs'} ${NAME[away]} ${FLAG[away] || ''}</h1>
-  <div class="sub">Cada burbuja es un remate · el tamaño es qué tan clara fue la ocasión</div>
+  <div class="sub">${TXT.sub}</div>
   <div class="halves">${panel('home', home)}${panel('away', away)}</div>
   <div class="legend">
-    <span class="li"><span class="sw" style="background:#1FE3A4"></span>Gol</span>
-    <span class="li"><span class="sw" style="background:rgba(52,214,200,.30);border:2px solid #34D6C8"></span>Al arco</span>
-    <span class="li"><span class="sw" style="background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)"></span>Desviado / bloqueado</span>
+    <span class="li"><span class="sw" style="background:#1FE3A4"></span>${TXT.goal}</span>
+    <span class="li"><span class="sw" style="background:rgba(52,214,200,.30);border:2px solid #34D6C8"></span>${TXT.onTarget}</span>
+    <span class="li"><span class="sw" style="background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)"></span>${TXT.off}</span>
   </div>
   <div class="xgbar">
     <div class="xgl"><b>${xgSum(sideShots('home')).toFixed(2)}</b> xG</div>
@@ -100,7 +111,7 @@ h1 { font-size:44px; font-weight:800; letter-spacing:-1.5px; color:#fff; }
   </div>
   <div class="foot"><div class="small">${hook}</div><div class="cta">gpsimulador.com</div></div>
 </body></html>`;
-  const slug = `shotmap-${home.toLowerCase()}-${away.toLowerCase()}`;
+  const slug = `shotmap-${home.toLowerCase()}-${away.toLowerCase()}${EN ? '-en' : ''}`;
   const dest = path.join(__dirname, '..', 'ig-src', slug + '.html');
   fs.writeFileSync(dest, html);
   console.log('generado ' + dest + ` · remates ${sideShots('home').length}+${sideShots('away').length} · xG ${xgSum(sideShots('home')).toFixed(2)}-${xgSum(sideShots('away')).toFixed(2)}`);

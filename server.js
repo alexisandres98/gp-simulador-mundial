@@ -2659,6 +2659,24 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, plan, locked_count: lockedCount, plan_delayed: planDelayed, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, generated_at: new Date().toISOString() });
       }
+      // TRACK RECORD de picks (usuarios, todos los planes): prueba social del producto. Agregados + historial de
+      // liquidadas SANEADO (sin model%/mercado%/confianza internos; solo qué se publicó, cuota y resultado).
+      // SUPERSEDED no viaja (reemplazos internos por coherencia, no picks del usuario).
+      if (p === '/api/beta/picks-record' && req.method === 'GET') {
+        const settled = (db.dailyPicks || [])
+          .filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
+          .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0))
+          .slice(0, 120)
+          .map(x => ({
+            pick_id: x.pick_id, family: x.family, status: x.status, result_code: x.result_code,
+            settled_at: x.settled_at,
+            event: { home: x.event.home, away: x.event.away, home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff_at: x.event.kickoff_at },
+            selection_code: x.selection_code, side: x.side, line: x.line,
+            legs: (x.legs || null) && x.legs.map(l => ({ type: l.type, selection: l.selection || null, side: l.side || null, line: l.line != null ? l.line : null })),
+            best_odds: x.best_odds,
+          }));
+        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(), picks: settled, generated_at: new Date().toISOString() });
+      }
       // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
       // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.
       // GATE SHARP: Value y Arbitraje son del plan Sharp (inerte con GP_PLANS_ENFORCED=off).

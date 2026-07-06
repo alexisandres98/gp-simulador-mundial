@@ -560,7 +560,7 @@
       '<div class="gx-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><div><b>GP Intelligence</b><span>Sports intelligence</span></div></div>' +
       '<div class="gx-navgroup">' + navHtml + '</div>' +
       '<div class="gx-navgroup"><div class="gx-label">' + esc(t('more')) + '</div>' + nav2 + '</div>' +
-      '<div class="gx-side-foot"><div class="gx-avatar">A</div><div style="font-size:12px"><b style="font-weight:600">Alexis</b><div class="gx-dim" style="font-size:10.5px">Superadmin</div></div></div>' +
+      '<div class="gx-side-foot"><div class="gx-avatar">' + esc(((S.me && S.me.email) || 'G').charAt(0).toUpperCase()) + '</div><div style="font-size:12px"><b style="font-weight:600">' + esc((S.me && S.me.email) ? S.me.email.split('@')[0] : 'GP') + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(S.me && S.me.isAdmin ? 'Admin' : 'GP Intelligence') + '</div></div></div>' +
       '</aside>' +
       '<div class="gx-body">' +
       '<header class="gx-top">' +
@@ -705,6 +705,12 @@
   function syncAdminUI() {
     var on = !!(S.me && S.me.isAdmin);
     [].forEach.call(document.querySelectorAll('.gx-admin-only'), function (el) { el.style.display = on ? '' : 'none'; });
+    // Identidad real en el pie del sidebar (el shell puede pintarse antes de /api/me).
+    var foot = document.querySelector('.gx-side-foot');
+    if (foot && S.me && S.me.email) {
+      var pre = S.me.email.split('@')[0];
+      foot.innerHTML = '<div class="gx-avatar">' + esc(pre.charAt(0).toUpperCase()) + '</div><div style="font-size:12px"><b style="font-weight:600">' + esc(pre) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(on ? 'Admin' : 'GP Intelligence') + '</div></div>';
+    }
   }
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
@@ -3102,13 +3108,15 @@
     if (S.perf === undefined) {
       S.perf = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>';
       var isAdm = !!(S.me && S.me.isAdmin);
-      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), isAdm ? fetch('/api/internal/daily-picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }) : Promise.resolve(null)]).then(function (res) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; if (S.view === 'perf') renderPerf(); });
+      // Track record de picks para TODOS (prueba social): admin usa el endpoint interno (más completo);
+      // el resto el endpoint saneado /api/beta/picks-record (misma forma: track_record + picks liquidadas).
+      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; if (S.view === 'perf') renderPerf(); });
       return;
     }
     var d = S.perf || {}, sum = d.sum, leg = d.leg;
     var kpi = function (label, v, cls, sub) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div>' + (sub ? '<div class="gx-kpi-sub gx-dim">' + esc(sub) + '</div>' : '') + '</div>'; };
     var body = '';
-    // ===== Rendimiento de PICKS (solo admin): track record completo de las picks del producto (acertó/falló, ROI). =====
+    // ===== Rendimiento de PICKS (todos los usuarios desde 6-jul; antes solo admin): track record del producto. =====
     var pk = d.picks;
     if (pk && pk.track_record) {
       var tr = pk.track_record, ov = tr.overall || {};

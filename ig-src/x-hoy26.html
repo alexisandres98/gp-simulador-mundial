@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #06090B 0%, #0B1714 50%, #0A5C3C 140%); color: #EAF1F2;
+  padding: 38px 52px; position: relative; }
+.brand { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.badge { width: 40px; height: 40px; border-radius: 12px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 21px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(229,72,77,.95); color:#fff; font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin-bottom: 4px; color:#fff; }
+.sub { font-size: 16px; color:#9DB0B5; font-weight:600; margin-bottom: 22px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.m { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; padding: 24px 26px; }
+.m.star { border-color: rgba(124,242,188,.45); }
+.mt { font-size: 24px; font-weight: 800; letter-spacing:-.5px; margin-bottom: 5px; }
+.mtime { font-size: 14px; color:#5F747B; font-weight: 700; margin-bottom: 18px; }
+.bar { display:flex; height: 17px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.1); margin-bottom: 16px; }
+.bar .h { background:#1FE3A4; } .bar .d { background: rgba(255,255,255,.32); } .bar .a { background:#5BA8FF; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.r { display:flex; align-items:center; justify-content:space-between; font-size:16px; font-weight:700; }
+.r .nm { color:#9DB0B5; } .r.win .nm { color:#EAF1F2; } .r.win .pc { color:#1FE3A4; }
+.r .pc { font-family: inherit; font-weight:800; font-variant-numeric: tabular-nums; }
+.foot { position:absolute; bottom: 30px; left: 52px; right: 52px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:18px; font-weight:800; padding:12px 26px; border-radius:99px; }
+.foot .small { font-size:14px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● OCTAVOS DE FINAL</div></div>
+  <h1>Lo que dice el modelo hoy 📊</h1>
+  <div class="sub">Probabilidades de los 2 partidos de la jornada · Mundial 2026</div>
+  <div class="grid">
+    <div class="m">
+      <div class="mt">🇵🇹 Portugal vs España 🇪🇸</div>
+      <div class="mtime">2:00 PM COL · AT&amp;T Stadium, Dallas</div>
+      <div class="bar"><div class="h" style="width:17.9%"></div><div class="d" style="width:26.1%"></div><div class="a" style="width:56%"></div></div>
+      <div class="rows"><div class="r"><span class="nm">🇵🇹 Portugal</span><span class="pc">17.9%</span></div><div class="r"><span class="nm">Empate</span><span class="pc">26.1%</span></div><div class="r win"><span class="nm">🇪🇸 España</span><span class="pc">56.0%</span></div></div>
+    </div>
+    <div class="m star">
+      <div class="mt">🇺🇸 USA vs Bélgica 🇧🇪</div>
+      <div class="mtime">7:00 PM COL · Lumen Field, Seattle</div>
+      <div class="bar"><div class="h" style="width:32.1%"></div><div class="d" style="width:29.4%"></div><div class="a" style="width:38.5%"></div></div>
+      <div class="rows"><div class="r"><span class="nm">🇺🇸 USA</span><span class="pc">32.1%</span></div><div class="r"><span class="nm">Empate</span><span class="pc">29.4%</span></div><div class="r win"><span class="nm">🇧🇪 Bélgica</span><span class="pc">38.5%</span></div></div>
+    </div>
+   </div>
+  <div class="foot">
+    <div class="small">Bélgica sobre el anfitrión. Ayer: Inglaterra ante México 2-3 ✓ y el Over 2.5 del Banorte pagó 2.54 ✓</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

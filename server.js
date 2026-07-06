@@ -571,6 +571,7 @@ db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: em
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
 db.tsaXg = db.tsaXg || {};                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
+db.observations = db.observations || {};       // CAPA DE OBSERVACIÓN (shadow): señales de disponibilidad por equipo desde noticias publicadas. Solo admin.
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
 db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
 db.supportMsgs = db.supportMsgs || [];         // mensajes de soporte in-platform (respaldo local; ring 200)
@@ -2162,6 +2163,82 @@ function dailyPicksTrackRecord() {
   };
 }
 
+// ===== CAPA DE OBSERVACIÓN de jugadores (6-jul, SHADOW) ======================================================
+// Captura lo PUBLICADO (Google News RSS por equipo VIVO, EN+ES) → señales de disponibilidad por jugador
+// (lesión/enfermedad/duda/sanción/descanso/vuelta) → evaluación con prob de ausencia + factor λ sugerido
+// (prop-engine/lineupAdjust). TODO SHADOW: db.observations + endpoint admin. NO toca el modelo oficial —
+// la aplicación al modelo se cablea recién cuando se encienda la capa de props (post The Odds API 100k).
+// Flag: GP_OBSERVER_ENABLED (default off). Cadencia educada: cada 3h por equipo vivo (≤8 en eliminatorias).
+function observerOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_OBSERVER_ENABLED || '')); }
+let _obsRunning = false, _obsLast = null, _obsRoster = null, _obsFit = null;
+function obsRoster() {
+  if (_obsRoster) return _obsRoster;
+  _obsRoster = {};
+  try {
+    const hist = require('./data/player-props-history.json');
+    for (const m of hist.matches) for (const p of m.players) {
+      const t = _obsRoster[p.team] || (_obsRoster[p.team] = {});
+      t[p.pid] = { pid: p.pid, name: p.name };
+    }
+    for (const t in _obsRoster) _obsRoster[t] = Object.values(_obsRoster[t]);
+  } catch { _obsRoster = {}; }
+  return _obsRoster;
+}
+function obsFit() {
+  if (_obsFit) return _obsFit;
+  try { _obsFit = require('./prop-engine/players').fitPlayers(require('./data/player-props-history.json').matches); }
+  catch { _obsFit = null; }
+  return _obsFit;
+}
+function obsAliveTeams() {
+  const bracket = resolveRealBracket();
+  const alive = new Set();
+  for (const k of KNOCKOUT) {
+    const res = bracket[k.m], r = db.results[String(k.m)];
+    if (res && res.home && res.away && (!r || r.status !== 'final')) { alive.add(res.home); alive.add(res.away); }
+  }
+  return [...alive];
+}
+async function runObserver() {
+  if (!observerOn()) return { skipped: 'disabled' };
+  if (_obsRunning) return { skipped: 'running' };
+  _obsRunning = true;
+  const out = { teams: 0, items: 0, signals: 0, errors: 0, started: new Date().toISOString() };
+  try {
+    const sources = require('./observer/sources');
+    const { extract } = require('./observer/extract');
+    const roster = obsRoster();
+    const teamName = code => { const t = TEAMS.find(x => x.id === code); return t ? { en: t.en || t.name, es: t.name || t.en } : { en: code, es: code }; };
+    for (const code of obsAliveTeams()) {
+      out.teams++;
+      const tn = teamName(code);
+      const slot = db.observations[code] || (db.observations[code] = { signals: [] });
+      const seen = new Set(slot.signals.map(s => s.title));
+      for (const q of sources.teamQueries(tn.en, tn.es)) {
+        let items = [];
+        try { items = await sources.googleNewsRss(q.q, q.lang); }
+        catch (e) { out.errors++; continue; }
+        out.items += items.length;
+        for (const it of items) {
+          if (!it.title || seen.has(it.title)) continue;
+          const sigs = extract(it, { team: code, roster: roster[code] || [] });
+          if (sigs.length) { slot.signals.push(...sigs); sigs.forEach(s => seen.add(s.title)); out.signals += sigs.length; }
+        }
+        await new Promise(r => setTimeout(r, 1200)); // educado con la fuente
+      }
+      if (slot.signals.length > 120) slot.signals = slot.signals.slice(-120); // ring por equipo
+      slot.fetched_at = new Date().toISOString();
+    }
+    if (out.signals) save();
+  } catch (e) { out.error = e.message; }
+  finally { _obsRunning = false; out.finished = new Date().toISOString(); _obsLast = out; if (out.signals || out.error) console.log('[observer]', JSON.stringify(out)); }
+  return out;
+}
+if (observerOn()) {
+  setTimeout(() => runObserver().catch(() => { }), 90 * 1000);
+  setInterval(() => runObserver().catch(() => { }), 3 * 3600 * 1000);
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -3398,6 +3475,26 @@ const server = http.createServer(async (req, res) => {
     }
     // PICKS DIARIAS (producto /x): track record COMPLETO + estado. Admin-only. GET = estado + rendimiento + todas
     // las picks; POST = fuerza una evaluación + liquidación inmediata (para pruebas internas).
+    // CAPA DE OBSERVACIÓN (shadow, solo admin): señales + disponibilidad por jugador + factor λ sugerido.
+    // POST = correr el pase ahora. NADA de esto toca el modelo oficial (aplicación pendiente de encendido).
+    if (p === '/api/internal/observer') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'POST') { const r = await runObserver().catch(e => ({ error: e.message })); return json(res, 200, r); }
+      const { assessPlayers, suggestTeamFactor } = require('./observer/assess');
+      const fit = obsFit();
+      const teams = {};
+      for (const code of Object.keys(db.observations)) {
+        const slot = db.observations[code] || {};
+        const assessments = assessPlayers(slot.signals || []);
+        teams[code] = {
+          fetched_at: slot.fetched_at || null,
+          signals: (slot.signals || []).slice(-25).reverse(),
+          players: Object.values(assessments),
+          suggested_lambda_factor: fit ? suggestTeamFactor(fit, code, assessments) : null,
+        };
+      }
+      return json(res, 200, { enabled: observerOn(), running: _obsRunning, last: _obsLast, alive_teams: obsAliveTeams(), teams });
+    }
     if (p === '/api/internal/daily-picks') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }

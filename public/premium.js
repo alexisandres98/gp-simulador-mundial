@@ -104,6 +104,7 @@
       live_ctx_red: 'Probabilidad en vivo ajustada por tarjeta roja ({team}).',
       st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Amarillas',
       mod_form: 'Forma reciente', mod_lineups: 'Alineaciones', mod_stats: 'Estadísticas',
+      mod_xg: 'xG del partido', xg_total: 'xG total', xg_h1: 'xG 1er tiempo', xg_h2: 'xG 2do tiempo', xg_bigch: 'Ocasiones claras', xg_shots: 'Remates',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
@@ -319,6 +320,7 @@
       live_ctx_red: 'Live probability adjusted for a red card ({team}).',
       st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Yellows',
       mod_form: 'Recent form', mod_lineups: 'Lineups', mod_stats: 'Statistics',
+      mod_xg: 'Match xG', xg_total: 'Total xG', xg_h1: '1st half xG', xg_h2: '2nd half xG', xg_bigch: 'Big chances', xg_shots: 'Shots',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
@@ -486,7 +488,7 @@
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {} };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {} };
 
   // ---------- icons ----------
   // ---- iconografía PROPIA (firma visual): set dibujado a mano, dual-tone (detalle en acento vía clase .a/.af).
@@ -2118,6 +2120,13 @@
       if (beta.analysis) { beta.analysis.final_vector = { HOME: round4(gl.homeWin), DRAW: round4(gl.draw), AWAY: round4(gl.awayWin) }; beta.analysis.live_adjusted = true; }
       beta._gpLive = gl; gpAbsent = false;
     }
+    // xG OBSERVADO del partido (solo TERMINADOS; el server cachea permanente, 1 fetch por partido).
+    var matchFinished = fx && fx.status === 'final';
+    if (matchFinished && hid && aid && S.xgr[hk] === undefined) {
+      S.xgr[hk] = null;
+      fetch('/api/beta/xg-report?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.xgr[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+    }
+    var xgr = (matchFinished && S.xgr[hk] && S.xgr[hk].available) ? S.xgr[hk] : null;
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
     // disponibilidad real de cada módulo (cobertura honesta; presente sólo si hay datos)
@@ -2134,6 +2143,7 @@
     if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
+    if (xgr) sections.push({ id: 'xg', key: 'mod_xg' });
     if (!gpAbsent) sections.push({ id: 'goles', key: 'mod_goals' });
     if (live) sections.push({ id: 'live', key: 'mod_live' });
     var sec = function (id, html) { return html ? '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>' : ''; };
@@ -2143,7 +2153,7 @@
       (arbCtx ? mvOpportunity(arbCtx, header) : '') +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
       '</div>'
     );
     bindBack(); bindMvNav();
@@ -2209,6 +2219,27 @@
     var body = (rows ? '<div class="gx-stats">' + rows + '</div>' : '') + (evs ? '<div class="gx-mod-sub gx-label">' + esc(t('live_events')) + '</div><div class="gx-events">' + evs + '</div>' : '');
     if (!body) body = '<div class="gx-empty">' + esc(t('na_short')) + '</div>';
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-bar') + esc(t('mod_stats')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  // xG OBSERVADO del partido (post-partido): total, por mitades y ocasiones claras. Data del server
+  // (/api/beta/xg-report, cache permanente). Muestra el RENDIMIENTO real, complementa la proyección GP.
+  function mvXg(xgr, header) {
+    var hn = teamName(header.home && header.home.team_id, header.home && header.home.name_fallback);
+    var an = teamName(header.away && header.away.team_id, header.away && header.away.name_fallback);
+    var row = function (label, pair, dec) {
+      if (!pair || pair.home == null || pair.away == null) return '';
+      var hv = Number(pair.home), av = Number(pair.away), tot = hv + av, hp = tot > 0 ? hv / tot * 100 : 50;
+      var f = function (v) { return dec ? v.toFixed(2) : String(v); };
+      return '<div class="gx-stat-row"><span class="gx-mono" style="font-weight:700">' + f(hv) + '</span><div class="gx-stat-mid"><span class="gx-label">' + esc(label) + '</span><div class="gx-stat-bar"><i style="width:' + hp + '%"></i></div></div><span class="gx-mono" style="font-weight:700">' + f(av) + '</span></div>';
+    };
+    var body = '<div class="gx-form-h" style="justify-content:space-between;margin-bottom:10px"><span><span class="fl">' + flag(header.home && header.home.team_id) + '</span> <b>' + esc(hn) + '</b></span><span><b>' + esc(an) + '</b> <span class="fl">' + flag(header.away && header.away.team_id) + '</span></span></div>' +
+      '<div class="gx-stats">' +
+      row(t('xg_total'), xgr.xg, true) +
+      row(t('xg_h1'), xgr.xg_h1, true) +
+      row(t('xg_h2'), xgr.xg_h2, true) +
+      row(t('xg_bigch'), xgr.big_chances, false) +
+      (xgr.shots ? row(t('xg_shots'), xgr.shots, false) : '') +
+      '</div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('target-arrow') + esc(t('mod_xg')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
   }
   // 4C#8: construye un "beta" sintético desde el fixture (/api/match) para partidos sin evaluación canónica.
   // GP probability/analysis/goal_insights quedan vacíos → el cockpit muestra estados honestos de ausencia.

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1080px; height:1350px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:linear-gradient(160deg,#06090B 0%,#0B1714 50%,#0A5C3C 145%); color:#EAF1F2; padding:46px 60px; position:relative; }
+.brand { display:flex; align-items:center; gap:11px; margin-bottom:16px; }
+.badge { width:42px; height:42px; border-radius:12px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:23px; border:1px solid rgba(31,227,164,.4); }
+.bname { font-size:22px; font-weight:800; color:#fff; }
+.tag { margin-left:auto; background:rgba(229,72,77,.95); color:#fff; font-weight:800; font-size:15px; padding:9px 18px; border-radius:99px; letter-spacing:1.5px; }
+h1 { font-size:44px; font-weight:800; letter-spacing:-1.5px; color:#fff; }
+.sub { font-size:19px; color:#9DB0B5; font-weight:600; margin:6px 0 26px; }
+.halves { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.half .hh { font-size:21px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.half .hxg { margin-left:auto; font-size:15px; color:#1FE3A4; font-weight:700; }
+.pitch { position:relative; height:640px; background:linear-gradient(180deg,rgba(31,227,164,.10),rgba(31,227,164,.03)); border:2px solid rgba(255,255,255,.16); border-radius:14px; overflow:hidden; }
+.goal { position:absolute; top:-2px; left:50%; width:120px; height:10px; margin-left:-60px; background:#1FE3A4; border-radius:0 0 6px 6px; opacity:.85; }
+.box { position:absolute; top:0; left:50%; width:300px; height:150px; margin-left:-150px; border:1.5px solid rgba(255,255,255,.22); border-top:none; }
+.boxin { position:absolute; top:0; left:50%; width:140px; height:56px; margin-left:-70px; border:1.5px solid rgba(255,255,255,.22); border-top:none; }
+.pen { position:absolute; top:100px; left:50%; width:5px; height:5px; margin-left:-2.5px; border-radius:50%; background:rgba(255,255,255,.5); }
+.dot { position:absolute; border-radius:50%; }
+.legend { display:flex; gap:26px; margin-top:20px; font-size:16px; color:#9DB0B5; font-weight:600; align-items:center; }
+.li { display:flex; align-items:center; gap:8px; }
+.sw { width:16px; height:16px; border-radius:50%; display:inline-block; }
+.xgbar { display:flex; align-items:center; gap:16px; margin-top:26px; }
+.xgl { font-size:24px; color:#EAF1F2; width:130px; } .xgl b { color:#1FE3A4; font-size:30px; }
+.xgtrack { flex:1; height:16px; border-radius:99px; background:rgba(91,168,255,.35); overflow:hidden; }
+.xgtrack i { display:block; height:100%; background:#1FE3A4; border-radius:99px 0 0 99px; }
+.foot { position:absolute; bottom:40px; left:60px; right:60px; display:flex; align-items:center; justify-content:space-between; }
+.small { font-size:17px; color:#9DB0B5; font-weight:600; max-width:640px; }
+.cta { background:#1FE3A4; color:#06231A; font-size:20px; font-weight:800; padding:14px 30px; border-radius:99px; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador del Mundial</div><div class="tag">● MAPA DE REMATES</div></div>
+  <h1>🇧🇷 Brasil 1 - 2 Noruega 🇳🇴</h1>
+  <div class="sub">Cada burbuja es un remate · el tamaño es qué tan clara fue la ocasión</div>
+  <div class="halves"><div class="half">
+      <div class="hh">🇧🇷 Brasil <span class="hxg">2.76 xG · 14 remates</span></div>
+      <div class="pitch">
+        <div class="goal"></div><div class="box"></div><div class="boxin"></div><div class="pen"></div>
+        <div class="dot" style="left:220px;top:183px;width:60px;height:60px;margin:-30px 0 0 -30px;background:rgba(52,214,200,.30);border:2px solid #34D6C8" title="Bruno Guimarães 0.82"></div><div class="dot" style="left:306px;top:189px;width:19.84px;height:19.84px;margin:-9.92px 0 0 -9.92px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Rayan 0.02"></div><div class="dot" style="left:290px;top:163px;width:24.44px;height:24.44px;margin:-12.22px 0 0 -12.22px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Danilo 0.07"></div><div class="dot" style="left:290px;top:145px;width:21.68px;height:21.68px;margin:-10.84px 0 0 -10.84px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Vinícius Júnior 0.04"></div><div class="dot" style="left:150px;top:151px;width:29.04px;height:29.04px;margin:-14.52px 0 0 -14.52px;background:rgba(52,214,200,.30);border:2px solid #34D6C8" title="Vinícius Júnior 0.12"></div><div class="dot" style="left:279px;top:331px;width:19.84px;height:19.84px;margin:-9.92px 0 0 -9.92px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Casemiro 0.02"></div><div class="dot" style="left:213px;top:188px;width:21.68px;height:21.68px;margin:-10.84px 0 0 -10.84px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Matheus Cunha 0.04"></div><div class="dot" style="left:169px;top:370px;width:20.759999999999998px;height:20.759999999999998px;margin:-10.379999999999999px 0 0 -10.379999999999999px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Bruno Guimarães 0.03"></div><div class="dot" style="left:227px;top:223px;width:60px;height:60px;margin:-30px 0 0 -30px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Endrick 0.64"></div><div class="dot" style="left:159px;top:301px;width:20.759999999999998px;height:20.759999999999998px;margin:-10.379999999999999px 0 0 -10.379999999999999px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Endrick 0.03"></div><div class="dot" style="left:262px;top:243px;width:24.44px;height:24.44px;margin:-12.22px 0 0 -12.22px;background:rgba(52,214,200,.30);border:2px solid #34D6C8" title="Rayan 0.07"></div><div class="dot" style="left:141px;top:102px;width:18.92px;height:18.92px;margin:-9.46px 0 0 -9.46px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Neymar 0.01"></div><div class="dot" style="left:220px;top:183px;width:60px;height:60px;margin:-30px 0 0 -30px;background:#1FE3A4;box-shadow:0 0 18px rgba(31,227,164,.65);border:2px solid #fff" title="Neymar 0.82"></div><div class="dot" style="left:296px;top:314px;width:20.759999999999998px;height:20.759999999999998px;margin:-10.379999999999999px 0 0 -10.379999999999999px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Éderson 0.03"></div>
+      </div>
+    </div><div class="half">
+      <div class="hh">🇳🇴 Noruega <span class="hxg">0.85 xG · 9 remates</span></div>
+      <div class="pitch">
+        <div class="goal"></div><div class="box"></div><div class="boxin"></div><div class="pen"></div>
+        <div class="dot" style="left:291px;top:232px;width:20.759999999999998px;height:20.759999999999998px;margin:-10.379999999999999px 0 0 -10.379999999999999px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Martin Ødegaard 0.03"></div><div class="dot" style="left:188px;top:157px;width:26.28px;height:26.28px;margin:-13.14px 0 0 -13.14px;background:rgba(52,214,200,.30);border:2px solid #34D6C8" title="Erling Haaland 0.09"></div><div class="dot" style="left:158px;top:107px;width:22.6px;height:22.6px;margin:-11.3px 0 0 -11.3px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Martin Ødegaard 0.05"></div><div class="dot" style="left:189px;top:206px;width:44.68px;height:44.68px;margin:-22.34px 0 0 -22.34px;background:rgba(52,214,200,.30);border:2px solid #34D6C8" title="Martin Ødegaard 0.29"></div><div class="dot" style="left:276px;top:327px;width:19.84px;height:19.84px;margin:-9.92px 0 0 -9.92px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Patrick Berg 0.02"></div><div class="dot" style="left:250px;top:70px;width:35.480000000000004px;height:35.480000000000004px;margin:-17.740000000000002px 0 0 -17.740000000000002px;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)" title="Erling Haaland 0.19"></div><div class="dot" style="left:161px;top:192px;width:24.44px;height:24.44px;margin:-12.22px 0 0 -12.22px;background:rgba(52,214,200,.30);border:2px solid #34D6C8" title="Andreas Schjelderup 0.07"></div><div class="dot" style="left:227px;top:146px;width:24.44px;height:24.44px;margin:-12.22px 0 0 -12.22px;background:#1FE3A4;box-shadow:0 0 18px rgba(31,227,164,.65);border:2px solid #fff" title="Erling Haaland 0.07"></div><div class="dot" style="left:154px;top:263px;width:21.68px;height:21.68px;margin:-10.84px 0 0 -10.84px;background:#1FE3A4;box-shadow:0 0 18px rgba(31,227,164,.65);border:2px solid #fff" title="Erling Haaland 0.04"></div>
+      </div>
+    </div></div>
+  <div class="legend">
+    <span class="li"><span class="sw" style="background:#1FE3A4"></span>Gol</span>
+    <span class="li"><span class="sw" style="background:rgba(52,214,200,.30);border:2px solid #34D6C8"></span>Al arco</span>
+    <span class="li"><span class="sw" style="background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.30)"></span>Desviado / bloqueado</span>
+  </div>
+  <div class="xgbar">
+    <div class="xgl"><b>2.76</b> xG</div>
+    <div class="xgtrack"><i style="width:76.5%"></i></div>
+    <div class="xgl" style="text-align:right"><b>0.85</b> xG</div>
+  </div>
+  <div class="foot"><div class="small">Brasil generó el triple de peligro y Noruega igual dio el golpe. El fútbol a veces roba; los números no. Análisis xG de cada partido dentro de la plataforma.</div><div class="cta">gpsimulador.com</div></div>
+</body></html>

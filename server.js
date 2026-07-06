@@ -570,6 +570,7 @@ db.refCodes = db.refCodes || {};               // referidos: code → email (loo
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
+db.tsaXg = db.tsaXg || {};                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
 db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
 db.supportMsgs = db.supportMsgs || [];         // mensajes de soporte in-platform (respaldo local; ring 200)
@@ -2676,6 +2677,25 @@ const server = http.createServer(async (req, res) => {
             best_odds: x.best_odds,
           }));
         return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(), picks: settled, generated_at: new Date().toISOString() });
+      }
+      // xG OBSERVADO del partido (TheStatsAPI) — SOLO partidos TERMINADOS, cache permanente en db.json
+      // (1 fetch por partido; el plan es 12 req/min → jamás en vivo ni pre-partido). Kill switch: GP_XG_PANEL_ENABLED=false.
+      if (p === '/api/beta/xg-report' && req.method === 'GET') {
+        if (/^(0|false|no|off)$/i.test(String(process.env.GP_XG_PANEL_ENABLED || 'true').trim())) return json(res, 200, { available: false });
+        const xh = String(url.searchParams.get('home') || '').toUpperCase(), xa = String(url.searchParams.get('away') || '').toUpperCase();
+        if (!/^[A-Z]{3}$/.test(xh) || !/^[A-Z]{3}$/.test(xa)) return json(res, 400, { error: 'params' });
+        const xkey = xh + '~' + xa;
+        if (db.tsaXg[xkey]) return json(res, 200, db.tsaXg[xkey]);
+        if (!matchFinalFor(xh, xa)) return json(res, 200, { available: false, reason: 'not_final' });
+        const tsa = require('./data-providers/theStatsApi');
+        if (!tsa.configured()) return json(res, 200, { available: false, reason: 'no_key' });
+        try {
+          const rep = await tsa.xgReport(xh, xa);
+          if (!rep || !rep.xg) return json(res, 200, { available: false, reason: 'not_found' });
+          const outRep = { available: true, xg: rep.xg, xg_h1: rep.xg_h1, xg_h2: rep.xg_h2, big_chances: rep.big_chances, shots: rep.shots, fetched_at: new Date().toISOString() };
+          db.tsaXg[xkey] = outRep; save();
+          return json(res, 200, outRep);
+        } catch (e) { return json(res, 200, { available: false, reason: 'error' }); }
       }
       // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
       // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.

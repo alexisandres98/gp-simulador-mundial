@@ -42,6 +42,17 @@ console.log('== projectTeam ==');
 const team = projectTeam(F, 'AAA', { teamLambda: 1.8 });
 t('devuelve jugadores del equipo ordenados por P(gol)', team.length >= 2 && team[0].pid === 'st1');
 
+console.log('== lineupAdjustment (shadow) ==');
+const { lineupAdjustment, usualXi } = require('../prop-engine/lineupAdjust');
+const xiA = usualXi(F, 'AAA');
+t('once habitual del equipo con jugadores', xiA.length >= 2 && xiA[0].team === 'AAA');
+const fullXi = lineupAdjustment(F, 'AAA', xiA.map(p => ({ pid: p.pid })));
+t('once habitual completo → factor 1', Math.abs(fullXi.factor - 1) < 1e-9);
+const sinStriker = lineupAdjustment(F, 'AAA', xiA.filter(p => p.pid !== 'st1').map(p => ({ pid: p.pid })).concat([{ name: 'Sub', pos: 'M' }]));
+t('sin el goleador → factor < 1 y aparece en missing', sinStriker.factor < 1 && sinStriker.missing.some(m => m.pid === 'st1'));
+t('clamp: factor nunca < 0.7', lineupAdjustment(F, 'AAA', [{ pos: 'G' }, { pos: 'D' }]).factor >= 0.7);
+t('sin titulares → factor neutro 1', lineupAdjustment(F, 'AAA', []).factor === 1);
+
 console.log('== backtest (dataset real) ==');
 try {
   const hist = require('../data/player-props-history.json');

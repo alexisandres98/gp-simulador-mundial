@@ -3504,6 +3504,13 @@ const server = http.createServer(async (req, res) => {
     }
     // PICKS DIARIAS (producto /x): track record COMPLETO + estado. Admin-only. GET = estado + rendimiento + todas
     // las picks; POST = fuerza una evaluación + liquidación inmediata (para pruebas internas).
+    // EXPORT read-only del historial de picks para análisis offline (bankroll/Kelly, auditorías). Gateado por
+    // clave secreta en env (patrón del webhook Whop): sin GP_EXPORT_KEY seteada el endpoint NO existe (404).
+    if (p === '/api/internal/picks-export') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), exported_at: new Date().toISOString() });
+    }
     // CAPA DE OBSERVACIÓN (shadow, solo admin): señales + disponibilidad por jugador + factor λ sugerido.
     // POST = correr el pase ahora. NADA de esto toca el modelo oficial (aplicación pendiente de encendido).
     if (p === '/api/internal/observer') {

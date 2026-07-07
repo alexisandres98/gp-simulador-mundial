@@ -29,6 +29,18 @@ const CONFIG = {
   // Familia COMBO (pata 1X2 sólida + pata goles).
   combosEnabled: true,
   comboMinConfidence: 0.28,    // confianza combinada mínima (dos patas → más baja por naturaleza).
+
+  // Familias PROPS de EQUIPO (córners/tarjetas; modelo NB calibrado con gates approved en backtest LOO).
+  propsMinEdgePp: 0.04,        // mercados más blandos que goles → exigimos 1pp más de edge.
+  propsMinBooks: 3,
+  propsOddsMin: 1.35, propsOddsMax: 4.6, // fuera de ese rango la línea está lejos de la media → ruido de cola.
+  alphaProps: 0.6,             // confianza = blend modelo/consenso (el modelo lidera, como en goles).
+
+  // Familia PROPS de JUGADOR (anytime scorer / remates). Mercado ONE-SIDED (sin under en muchas casas) →
+  // el edge se mide contra el BREAK-EVEN de la mejor cuota, no contra consenso no-vig, y se exige más.
+  playerMinEdgeBe: 0.05,       // prob modelo − 1/mejor_cuota ≥ 5pp.
+  playerMinBooks: 3,           // casas cotizando a ESE jugador en ese mercado.
+  playerOddsMin: 1.3, playerOddsMax: 9,
 };
 
 const OUTCOME = { home: 'home', draw: 'draw', away: 'away' };
@@ -124,24 +136,83 @@ function comboPicks(solids, goals, cfg) {
   return out;
 }
 
-// ── Orquestador: produce las 3 familias. Devuelve TODAS (con eligible/blockers) para que la capa de publicación
+// ── Familias PROPS de EQUIPO (córners/tarjetas): el modelo NB lidera contra el consenso no-vig ──────────────
+// propMarkets: [{ eventId, home, away, kickoff, family('corners_total'|'cards_total'), marketId, side, line,
+//                 modelProb, marketProb, edgePp (fracción), bestOdds, books, familyApproved }]
+function propPicks(propMarkets, cfg) {
+  const out = [];
+  for (const g of (propMarkets || [])) {
+    const books = Number(g.books || 0), edge = Number(g.edgePp || 0), odds = Number(g.bestOdds || 0);
+    const blockers = [];
+    if (!g.familyApproved) blockers.push('FAMILY_NOT_APPROVED');
+    if (edge < cfg.propsMinEdgePp) blockers.push('LOW_EDGE');
+    if (books < cfg.propsMinBooks) blockers.push('FEW_BOOKS');
+    if (!(odds > 1)) blockers.push('NO_ODDS');
+    if (odds > 1 && (odds < cfg.propsOddsMin || odds > cfg.propsOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
+    out.push({
+      family: g.family === 'cards_total' ? 'CARDS' : 'CORNERS',
+      eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,
+      marketId: g.marketId, side: g.side, line: g.line,
+      modelProb: Number(g.modelProb), marketProb: Number(g.marketProb),
+      confidence: blend(Number(g.modelProb), Number(g.marketProb), cfg.alphaProps),
+      edgePp: pp(edge), bestOdds: odds, bestBook: g.bestBook || null, books,
+      eligible: blockers.length === 0, blockers,
+    });
+  }
+  return out;
+}
+
+// ── Familia PROPS de JUGADOR (anytime scorer / remates): edge contra break-even de la mejor cuota ───────────
+// playerMarkets: [{ eventId, home, away, kickoff, family('player_goal'|'player_shots'|'player_sot'), marketId,
+//                   player, pid, side, line, modelProb, impliedMedian, bestOdds, books, availabilityRisk }]
+function playerPicks(playerMarkets, cfg) {
+  const out = [];
+  for (const g of (playerMarkets || [])) {
+    const books = Number(g.books || 0), odds = Number(g.bestOdds || 0);
+    const be = odds > 1 ? 1 / odds : 1;
+    const edgeBe = Number(g.modelProb) - be;
+    const blockers = [];
+    if (edgeBe < cfg.playerMinEdgeBe) blockers.push('LOW_EDGE');
+    if (books < cfg.playerMinBooks) blockers.push('FEW_BOOKS');
+    if (!(odds > 1)) blockers.push('NO_ODDS');
+    if (odds > 1 && (odds < cfg.playerOddsMin || odds > cfg.playerOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
+    if (g.availabilityRisk === 'OUT' || g.availabilityRisk === 'SUSPENDED') blockers.push('AVAILABILITY'); // capa de observación
+    out.push({
+      family: 'PLAYER',
+      eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,
+      marketId: g.marketId, playerFamily: g.family, player: g.player, pid: g.pid, side: g.side || null, line: g.line != null ? g.line : null,
+      modelProb: Number(g.modelProb), marketProb: g.impliedMedian != null ? Number(g.impliedMedian) : null,
+      confidence: Number(g.modelProb),
+      edgePp: pp(edgeBe), bestOdds: odds, bestBook: g.bestBook || null, books,
+      availabilityRisk: g.availabilityRisk || null,
+      eligible: blockers.length === 0, blockers,
+    });
+  }
+  return out;
+}
+
+// ── Orquestador: produce las familias. Devuelve TODAS (con eligible/blockers) para que la capa de publicación
 //    aplique la política elegida ("publicar todo lo que pase el gate"). ───────────────────────────────────────
-function curate({ events = [], goalMarkets = [], config = {} } = {}) {
+function curate({ events = [], goalMarkets = [], propMarkets = [], playerMarkets = [], config = {} } = {}) {
   const cfg = Object.assign({}, CONFIG, config);
   const solids = events.map(ev => solidPick(ev, cfg)).filter(Boolean);
   const goals = goalPicks(goalMarkets, cfg);
   const combos = comboPicks(solids, goals, cfg);
+  const props = propPicks(propMarkets, cfg);
+  const player = playerPicks(playerMarkets, cfg);
   const eligible = {
     solid: solids.filter(p => p.eligible),
     goals: goals.filter(p => p.eligible),
     combo: combos.filter(p => p.eligible),
+    props: props.filter(p => p.eligible),
+    player: player.filter(p => p.eligible),
   };
   return {
     config: cfg,
-    all: { solid: solids, goals, combo: combos },
+    all: { solid: solids, goals, combo: combos, props, player },
     eligible,
-    counts: { solid: eligible.solid.length, goals: eligible.goals.length, combo: eligible.combo.length },
+    counts: { solid: eligible.solid.length, goals: eligible.goals.length, combo: eligible.combo.length, props: eligible.props.length, player: eligible.player.length },
   };
 }
 
-module.exports = { curate, solidPick, goalPicks, comboPicks, blend, CONFIG };
+module.exports = { curate, solidPick, goalPicks, comboPicks, propPicks, playerPicks, blend, CONFIG };

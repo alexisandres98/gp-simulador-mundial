@@ -56,6 +56,28 @@ async function xgReport(homeCode, awayCode) {
     xg_h2: pick(ov.expected_goals, 'second_half'),
     big_chances: pick(ov.big_chances, 'all'),
     shots: pick(ov.total_shots || ov.shots, 'all'),
+    corners: pick(ov.corner_kicks, 'all'),                 // settlement de props de córners
+    yellow_cards: pick(ov.yellow_cards, 'all'),            // settlement de props de tarjetas
+    red_cards: pick(ov.red_cards, 'all'),
+  };
+}
+
+// Stats por JUGADOR del partido (settlement de props de jugador: goles/remates/al arco/minutos).
+// 1 llamada por partido terminado; el caller cachea permanente (db.tsaPlayers).
+async function playerStats(homeCode, awayCode) {
+  const idx = await ensureIndex();
+  const hit = idx.byPair[homeCode + '~' + awayCode];
+  if (!hit) return null;
+  const rows = await call(`matches/${hit.id}/player-stats`);
+  if (!rows) return null;
+  return {
+    match_id: hit.id, date: hit.date,
+    players: rows.filter(p => p.played).map(p => ({
+      name: p.player_name, min: p.minutes_played || 0,
+      goals: (p.shooting && p.shooting.goals) || 0,
+      shots: (p.shooting && p.shooting.total_shots) || 0,
+      sot: (p.shooting && p.shooting.shots_on_target) || 0,
+    })),
   };
 }
 
@@ -68,4 +90,4 @@ async function shotmap(homeCode, awayCode) {
   return shots ? { match_id: hit.id, date: hit.date, shots } : null;
 }
 
-module.exports = { configured, xgReport, shotmap };
+module.exports = { configured, xgReport, shotmap, playerStats };

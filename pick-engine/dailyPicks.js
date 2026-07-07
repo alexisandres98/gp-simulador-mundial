@@ -131,7 +131,68 @@ async function buildDailyPicks(deps) {
   const goalCanonPairs = new Set(goalMarkets.filter(g => canonicalIds.has(g.eventId)).map(g => pairKey(g.homeId, g.awayId)));
   goalMarkets = goalMarkets.filter(g => canonicalIds.has(g.eventId) || !goalCanonPairs.has(pairKey(g.homeId, g.awayId)));
 
-  const res = curate({ events, goalMarkets, config });
+  // ── PROPS de EQUIPO (córners/tarjetas) + PROPS de JUGADOR ─────────────────────────────────────────────────
+  // Estos value rows viven SIEMPRE bajo eventos CANÓNICOS (la ingesta de props solo corre para canónicos,
+  // que ahora se auto-aprueban) → join directo a canonical_events para equipos/kickoff.
+  const rowsPropsAll = (await query(
+    `SELECT DISTINCT ON (gv.canonical_event_id, gv.market_id)
+       gv.canonical_event_id, gv.market_id, gv.market_family, gv.gp_probability::float gp,
+       gv.market_consensus_probability::float mkt, gv.adjusted_edge_pp::float edge, gv.best_decimal_odds::float odds,
+       ce.home_participant, ce.away_participant, ce.scheduled_start
+     FROM goal_value_shadow gv JOIN canonical_events ce ON ce.id=gv.canonical_event_id
+     WHERE gv.market_family IN ('corners_total','cards_total','player_goal','player_shots','player_sot')
+       AND ce.scheduled_start > now() AND gv.created_at > now() - interval '36 hours'
+       AND gv.gp_probability > 0 AND gv.gp_probability < 1
+     ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
+  // casas por (evento, familia) y por (evento, familia, jugador) en una pasada agrupada
+  const booksProp = {}, booksPlayer = {};
+  for (const b of (await query(
+    `SELECT canonical_event_id, market_family, team_scope, count(distinct sportsbook_code)::int books
+     FROM sportsbook_goal_quote_current
+     WHERE market_family IN ('corners_total','cards_total','player_goal','player_shots','player_sot')
+     GROUP BY 1,2,3`)).rows) {
+    if (/^player_/.test(b.market_family)) booksPlayer[b.canonical_event_id + '|' + b.market_family + '|' + (b.team_scope || '')] = b.books;
+    else booksProp[b.canonical_event_id + '|' + b.market_family] = (booksProp[b.canonical_event_id + '|' + b.market_family] || 0) + b.books;
+  }
+  // roster (pid → nombre/equipo) para las labels de jugador
+  let ROSTER = {};
+  try {
+    const hist = require('../data/player-props-history.json');
+    for (const m of hist.matches) for (const p of m.players) ROSTER[p.pid] = { name: p.name, team: p.team };
+  } catch { /* sin dataset → picks de jugador sin nombre no se publican */ }
+  const PROP_FAMILY_APPROVED = { corners_total: true, cards_total: true }; // gates del backtest LOO del prop-engine
+  const availability = deps.playerAvailability || {}; // pid → OUT|SUSPENDED|DOUBT|REST_RISK (capa de observación)
+
+  const propMarkets = [], playerMarkets = [];
+  for (const g of rowsPropsAll) {
+    const base = {
+      eventId: g.canonical_event_id, home: g.home_participant, away: g.away_participant, kickoff: g.scheduled_start,
+      homeId: teamId(g.home_participant), awayId: teamId(g.away_participant),
+    };
+    if (!base.kickoff || new Date(base.kickoff).getTime() <= nowMs) continue;
+    if (g.market_family === 'corners_total' || g.market_family === 'cards_total') {
+      const pm = /^(CORNERS|CARDS)_(OVER|UNDER)_(\d+)_(\d+)$/.exec(g.market_id); if (!pm) continue;
+      propMarkets.push({
+        ...base, family: g.market_family, marketId: g.market_id, side: pm[2].toLowerCase(), line: Number(pm[3]) + Number(pm[4]) / 10,
+        modelProb: g.gp, marketProb: g.mkt, edgePp: g.edge, bestOdds: g.odds, bestBook: null,
+        books: Number(booksProp[g.canonical_event_id + '|' + g.market_family] || 0),
+        familyApproved: !!PROP_FAMILY_APPROVED[g.market_family],
+      });
+    } else {
+      // market_id de jugador: PLAYER_GOAL_<pid> | PLAYER_SHOTS_<pid>_2_5 | PLAYER_SOT_<pid>_1_5
+      const mm = /^PLAYER_(GOAL|SHOTS|SOT)_(pl_[A-Za-z0-9]+)(?:_(\d+)_(\d+))?$/.exec(g.market_id); if (!mm) continue;
+      const pid = mm[2], meta = ROSTER[pid]; if (!meta) continue;
+      playerMarkets.push({
+        ...base, family: g.market_family, marketId: g.market_id, player: meta.name, pid,
+        side: mm[1] === 'GOAL' ? 'yes' : 'over', line: mm[3] != null ? Number(mm[3]) + Number(mm[4]) / 10 : null,
+        modelProb: g.gp, impliedMedian: g.mkt, bestOdds: g.odds, bestBook: null,
+        books: Number(booksPlayer[g.canonical_event_id + '|' + g.market_family + '|' + pid] || 0),
+        availabilityRisk: availability[pid] || null,
+      });
+    }
+  }
+
+  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config });
 
   // Aplana a registros persistibles (solo ELEGIBLES; prepartido garantizado por el filtro SQL).
   const picks = [];
@@ -172,8 +233,42 @@ async function buildDailyPicks(deps) {
       legs: c.legs, best_odds: c.comboOdds, confidence: c.confidence,
     }, c.eventId + '|COMBO|' + c.legs.map(l => l.selection || (l.side + l.line)).join('+')));
   }
+  // PROPS de equipo: la mejor por (evento, familia) — CORNERS y CARDS por separado.
+  const propById = {}; propMarkets.forEach(g => { propById[g.eventId + '|' + g.marketId] = g; });
+  const bestPropByEF = {};
+  for (const g of res.eligible.props) {
+    const k = g.eventId + '|' + g.family;
+    if (!bestPropByEF[k] || g.edgePp > bestPropByEF[k].edgePp) bestPropByEF[k] = g;
+  }
+  for (const g of Object.values(bestPropByEF)) {
+    const gm = propById[g.eventId + '|' + g.marketId] || {};
+    picks.push(record(g.family, g.eventId, {
+      home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff,
+      is_canonical: true,
+      market_id: g.marketId, side: g.side, line: g.line,
+      best_odds: g.bestOdds, best_book: g.bestBook, books: g.books,
+      model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp,
+    }, g.eventId + '|' + g.marketId));
+  }
+  // PROPS de jugador: la mejor por evento (mayor edge contra break-even).
+  const playerById = {}; playerMarkets.forEach(g => { playerById[g.eventId + '|' + g.marketId] = g; });
+  const bestPlayerByEvent = {};
+  for (const g of res.eligible.player) {
+    if (!bestPlayerByEvent[g.eventId] || g.edgePp > bestPlayerByEvent[g.eventId].edgePp) bestPlayerByEvent[g.eventId] = g;
+  }
+  for (const g of Object.values(bestPlayerByEvent)) {
+    const gm = playerById[g.eventId + '|' + g.marketId] || {};
+    picks.push(record('PLAYER', g.eventId, {
+      home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff,
+      is_canonical: true,
+      market_id: g.marketId, side: g.side, line: g.line,
+      player_name: g.player, pid: g.pid, player_family: g.playerFamily, availability_risk: g.availabilityRisk,
+      best_odds: g.bestOdds, best_book: g.bestBook, books: g.books,
+      model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp,
+    }, g.eventId + '|' + g.marketId));
+  }
 
-  return { picks, counts: res.counts, considered: { events: events.length, goalMarkets: goalMarkets.length } };
+  return { picks, counts: res.counts, considered: { events: events.length, goalMarkets: goalMarkets.length, propMarkets: propMarkets.length, playerMarkets: playerMarkets.length } };
 }
 
 function record(family, eventId, fields, key) {
@@ -183,6 +278,8 @@ function record(family, eventId, fields, key) {
     event: { canonical_event_id: eventId, is_canonical: !!fields.is_canonical, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
     selection_code: fields.selection_code || null,
     market_id: fields.market_id || null, side: fields.side || null, line: (fields.line != null ? fields.line : null),
+    player_name: fields.player_name || null, pid: fields.pid || null, player_family: fields.player_family || null,
+    availability_risk: fields.availability_risk || null,
     legs: fields.legs || null,
     best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
     model_prob: fields.model_prob != null ? fields.model_prob : null,

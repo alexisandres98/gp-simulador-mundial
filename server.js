@@ -570,7 +570,8 @@ db.refCodes = db.refCodes || {};               // referidos: code → email (loo
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
-db.tsaXg = db.tsaXg || {};                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
+db.tsaXg = db.tsaXg || {};
+db.tsaPlayers = db.tsaPlayers || {};              // stats por jugador de partidos TERMINADOS (TheStatsAPI): cache permanente para settlement de props.                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
 db.observations = db.observations || {};       // CAPA DE OBSERVACIÓN (shadow): señales de disponibilidad por equipo desde noticias publicadas. Solo admin.
 db.momentum = db.momentum || {};               // MOMENTUM GP en vivo: serie de prob GP muestreada cada ~30s por partido (persiste post-partido para el gráfico y contenido).
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
@@ -2147,7 +2148,7 @@ async function evaluateDailyPicks() {
     if (!dbcfg.db || !dbcfg.db.configured) { out.skipped = 'no_db'; return out; }
     const dbc = require('./database/client');
     const daily = require('./pick-engine/dailyPicks');
-    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now() });
+    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now(), playerAvailability: observerAvailability() });
     out.considered = built.considered; out.counts = built.counts;
     const idx = {}; for (const p of db.dailyPicks) idx[p.pick_id] = p;
     for (const pick of built.picks) {
@@ -2209,6 +2210,7 @@ function settleDailyPicks() {
   let settled = 0;
   for (const p of db.dailyPicks) {
     if (p.status !== 'ACTIVE') continue;
+    if (PROP_FAMS.includes(p.family)) continue; // CORNERS/CARDS/PLAYER se liquidan en settlePropsPicks (TSA)
     const sc = regulationScoreFor(p.event.home_team_id, p.event.away_team_id);
     if (sc) {
       p.result_code = daily.settleOne(p, sc);
@@ -2367,6 +2369,262 @@ async function runCanonicalAuto() {
 if (canonicalAutoOn()) {
   setTimeout(() => runCanonicalAuto().catch(() => { }), 2 * 60 * 1000);
   setInterval(() => runCanonicalAuto().catch(() => { }), 60 * 60 * 1000);
+}
+
+// ===== PROPS (7-jul): córners/tarjetas/jugador END-TO-END =====================================================
+// Ingesta de cuotas (The Odds API por evento, con guard de créditos) → value contra el prop-engine calibrado
+// (backtest LOO approved) → picks CORNERS/CARDS/PLAYER (gates en pick-engine/curate) → settlement vía
+// TheStatsAPI. Familias VISIBLES SOLO PARA ADMIN hasta GP_PROPS_PICKS_PUBLIC=true (aprobación de Alexis).
+function propsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_ENABLED || '')); }
+function propsPicksPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_PICKS_PUBLIC || '')); }
+const PROP_FAMS = ['CORNERS', 'CARDS', 'PLAYER'];
+let _propsRunning = false, _propsLast = null, _propsLastRunMs = 0, _propsCredits = null;
+let _propFitCache = null;
+function propFit() {
+  if (_propFitCache) return _propFitCache;
+  try { _propFitCache = require('./prop-engine/model').fit(require('./data/props-history.json').matches); } catch { _propFitCache = null; }
+  return _propFitCache;
+}
+// Disponibilidad por jugador desde la CAPA DE OBSERVACIÓN (pid → OUT|SUSPENDED|DOUBT|REST_RISK).
+function observerAvailability() {
+  const out = {};
+  try {
+    const { assessPlayers } = require('./observer/assess');
+    for (const code of Object.keys(db.observations || {})) {
+      const a = assessPlayers((db.observations[code] || {}).signals || []);
+      for (const pid in a) if (a[pid].prob_miss > 0) out[pid] = a[pid].status;
+    }
+  } catch { /* sin observer → sin flags */ }
+  return out;
+}
+const _propNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+let _propRoster = null; // norm(nombre) → { pid, team } y último apellido → pid (por equipo)
+function propRoster() {
+  if (_propRoster) return _propRoster;
+  _propRoster = { byTeam: {} };
+  try {
+    const hist = require('./data/player-props-history.json');
+    for (const m of hist.matches) for (const p of m.players) {
+      const t = _propRoster.byTeam[p.team] || (_propRoster.byTeam[p.team] = { full: {}, last: {} });
+      const full = _propNorm(p.name);
+      t.full[full] = p.pid;
+      const last = full ? p.name.trim().split(/\s+/).pop() : null;
+      if (last && last.length >= 3) t.last[_propNorm(last)] = p.pid;
+    }
+  } catch { /* sin dataset */ }
+  return _propRoster;
+}
+function propPlayerPid(teamCode, rawName) {
+  const t = propRoster().byTeam[teamCode]; if (!t) return null;
+  const n = _propNorm(rawName);
+  if (t.full[n]) return t.full[n];
+  const last = _propNorm(String(rawName).trim().split(/\s+/).pop());
+  return t.last[last] || null;
+}
+const _median = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? (s[Math.floor((s.length - 1) / 2)] + s[Math.ceil((s.length - 1) / 2)]) / 2 : null; };
+const _nbOver = (mu, r, line) => { const { nbPmf } = require('./goal-engine/negativeBinomial'); if (!(mu > 0)) return 0; let u = 0; for (let k = 0; k <= Math.floor(line); k++) u += nbPmf(mu, r, k); return Math.max(0, Math.min(1, 1 - u)); };
+
+async function evaluateUpcomingProps() {
+  if (!propsOn()) return { skipped: 'disabled' };
+  if (_propsRunning) return { skipped: 'running' };
+  if (Date.now() - _propsLastRunMs < 100 * 60 * 1000) return { skipped: 'not_due' }; // cadencia ~100 min (créditos)
+  const KEY = process.env.SPORTSBOOK_PROVIDER_API_KEY;
+  if (!KEY) return { skipped: 'no_key' };
+  const dbcfg = require('./database/config');
+  if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
+  if (_propsCredits != null && _propsCredits < 2000) return { skipped: 'quota_reserve', credits_remaining: _propsCredits };
+  _propsRunning = true; _propsLastRunMs = Date.now();
+  const out = { events: 0, team_quotes: 0, team_value: 0, player_quotes: 0, player_value: 0, errors: 0, started: new Date().toISOString() };
+  try {
+    const dbc = require('./database/client');
+    const grepo = require('./goal-engine/repository');
+    const noVig = require('./goal-engine/noVig');
+    const propModel = require('./prop-engine/model');
+    const players = require('./prop-engine/players');
+    const F = propFit();
+    const PF = (() => { try { return players.fitPlayers(require('./data/player-props-history.json').matches); } catch { return null; } })();
+    // eventos próximos del proveedor + mapa de canónicos futuros por par
+    const evsR = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events?apiKey=${KEY}`, { signal: AbortSignal.timeout(15000) });
+    const evs = evsR.ok ? await evsR.json() : [];
+    const ces = (await dbc.query(`SELECT id, home_participant, away_participant, scheduled_start FROM canonical_events WHERE scheduled_start > now()`)).rows;
+    const ceByPair = {};
+    for (const ce of ces) {
+      const h = aliasToId[normName(ce.home_participant)], a = aliasToId[normName(ce.away_participant)];
+      if (h && a) ceByPair[h + '~' + a] = ce;
+    }
+    for (const ev of (evs || []).slice(0, 10)) {
+      if (!ev.commence_time || +new Date(ev.commence_time) <= Date.now()) continue;
+      const hCode = aliasToId[normName(ev.home_team)], aCode = aliasToId[normName(ev.away_team)];
+      const ce = hCode && aCode ? ceByPair[hCode + '~' + aCode] : null;
+      if (!ce) continue;
+      out.events++;
+      const xg = gpXgFromCache(hCode, aCode) || {};
+      const lambdas = (xg.xgA > 0 && xg.xgB > 0) ? { home: xg.xgA, away: xg.xgB } : null;
+      const proj = F ? propModel.project(F, { home: hCode, away: aCode, lambdas }) : null;
+      // ---- CÓRNERS / TARJETAS ----
+      try {
+        const r1 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk&markets=alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        const rem1 = Number(r1.headers.get('x-requests-remaining')); if (Number.isFinite(rem1)) _propsCredits = rem1;
+        const d1 = r1.ok ? await r1.json() : null;
+        const groups = {}; // fam|line → [{book, side, odds}]
+        for (const bk of (d1 && d1.bookmakers) || []) {
+          for (const m of bk.markets || []) {
+            const fam = m.key === 'alternate_totals_corners' ? 'corners_total' : m.key === 'alternate_totals_cards' ? 'cards_total' : null;
+            if (!fam) continue;
+            for (const o of m.outcomes || []) {
+              const side = /under/i.test(o.name) ? 'under' : 'over';
+              const line = Number(o.point), odds = Number(o.price);
+              if (!Number.isFinite(line) || !(odds >= 1.05 && odds <= 51)) continue;
+              if (Math.abs(line * 10 % 5) > 0.001) continue; // solo .0/.5; el settle usa .5 (sin push en .5)
+              const tag = String(line).replace('.', '_');
+              const mid = (fam === 'corners_total' ? 'CORNERS_' : 'CARDS_') + side.toUpperCase() + '_' + tag;
+              await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ce.id, market_family: fam, line, side, team_scope: 'total', market_id: mid, odds_decimal: odds, implied_probability: 1 / odds, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => { });
+              out.team_quotes++;
+              (groups[fam + '|' + line] = groups[fam + '|' + line] || []).push({ sportsbook_code: bk.key, independence_group: bk.key, side, odds_decimal: odds, quote_status: 'open', is_live: false });
+            }
+          }
+        }
+        if (proj) {
+          for (const [k, quotes] of Object.entries(groups)) {
+            const [fam, lineStr] = k.split('|'); const line = Number(lineStr);
+            if (Math.abs(line % 1 - 0.5) > 0.01) continue; // value/picks SOLO líneas .5
+            const cons = noVig.consensus(quotes, 'over', 'under', { minGroups: 3 });
+            if (!cons.ok) continue;
+            const mu = fam === 'corners_total' ? proj.corners.total : proj.cards.total;
+            const r = fam === 'corners_total' ? proj.corners.r_total : proj.cards.r_total;
+            const fairOver = _nbOver(mu, r, line);
+            const bestOver = Math.max(0, ...quotes.filter(q => q.side === 'over').map(q => q.odds_decimal));
+            const bestUnder = Math.max(0, ...quotes.filter(q => q.side === 'under').map(q => q.odds_decimal));
+            const tag = String(line).replace('.', '_'); const P = fam === 'corners_total' ? 'CORNERS_' : 'CARDS_';
+            for (const [mid, fair, consP, best] of [[P + 'OVER_' + tag, fairOver, cons.probability, bestOver], [P + 'UNDER_' + tag, 1 - fairOver, 1 - cons.probability, bestUnder]]) {
+              if (!(best > 1)) continue;
+              await grepo.recordGoalValue({
+                goal_snapshot_id: null, canonical_event_id: ce.id, market_id: mid, market_family: fam, period_code: 'REGULATION',
+                gp_probability: fair, market_consensus_probability: consP, best_decimal_odds: best, break_even_probability: 1 / best,
+                raw_edge_pp: fair - consP, conservative_probability: fair, adjusted_edge_pp: fair - consP, adjusted_ev: fair * best - 1,
+                classification: 'shadow', goal_value_policy_version: 'props-shadow-1',
+              }).catch(() => { });
+              out.team_value++;
+            }
+          }
+        }
+      } catch (e) { out.errors++; }
+      // ---- PROPS DE JUGADOR ----
+      try {
+        const r2 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk,us&markets=player_goal_scorer_anytime,player_shots,player_shots_on_target&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        const rem2 = Number(r2.headers.get('x-requests-remaining')); if (Number.isFinite(rem2)) _propsCredits = rem2;
+        const d2 = r2.ok ? await r2.json() : null;
+        const pgroups = {}; // fam|pid|line → { odds:[], side }
+        for (const bk of (d2 && d2.bookmakers) || []) {
+          for (const m of bk.markets || []) {
+            const fam = m.key === 'player_goal_scorer_anytime' ? 'player_goal' : m.key === 'player_shots' ? 'player_shots' : m.key === 'player_shots_on_target' ? 'player_sot' : null;
+            if (!fam) continue;
+            for (const o of m.outcomes || []) {
+              if (fam !== 'player_goal' && /under/i.test(o.name)) continue; // one-sided: solo over/yes
+              const raw = o.description || o.name;
+              const pid = propPlayerPid(hCode, raw) || propPlayerPid(aCode, raw);
+              if (!pid) continue;
+              const odds = Number(o.price);
+              if (!(odds >= 1.12 && odds <= 34)) continue; // filtra cuotas basura (p.ej. 1.00-1.05)
+              const line = fam === 'player_goal' ? 0 : Number(o.point);
+              if (fam !== 'player_goal' && !Number.isFinite(line)) continue;
+              const tag = fam === 'player_goal' ? '' : '_' + String(line).replace('.', '_');
+              const mid = (fam === 'player_goal' ? 'PLAYER_GOAL_' : fam === 'player_shots' ? 'PLAYER_SHOTS_' : 'PLAYER_SOT_') + pid + tag;
+              await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ce.id, market_family: fam, line, side: fam === 'player_goal' ? 'yes' : 'over', team_scope: pid, market_id: mid, odds_decimal: odds, implied_probability: 1 / odds, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => { });
+              out.player_quotes++;
+              const gk = fam + '|' + pid + '|' + line;
+              (pgroups[gk] = pgroups[gk] || { mid, fam, pid, line, odds: [] }).odds.push(odds);
+            }
+          }
+        }
+        if (PF) {
+          const roster = propRoster().byTeam;
+          const teamOf = pid => (roster[hCode] && Object.values(roster[hCode].full).includes(pid)) || (roster[hCode] && Object.values(roster[hCode].last).includes(pid)) ? 'home' : 'away';
+          for (const g of Object.values(pgroups)) {
+            if (g.odds.length < 2) continue;
+            const side = teamOf(g.pid);
+            const teamLambda = lambdas ? (side === 'home' ? lambdas.home : lambdas.away) : null;
+            const pp = players.projectPlayer(PF, g.pid, { teamLambda, willStart: true });
+            if (!pp) continue;
+            let model = null;
+            if (g.fam === 'player_goal') model = pp.anytime_goal;
+            else if (g.fam === 'player_shots') model = _nbOver(pp.shots_match, 6, g.line);
+            else model = _nbOver(pp.sot_match, 6, g.line);
+            if (!(model > 0 && model < 1)) continue;
+            const best = Math.max(...g.odds), med = _median(g.odds.map(x => 1 / x));
+            await grepo.recordGoalValue({
+              goal_snapshot_id: null, canonical_event_id: ce.id, market_id: g.mid, market_family: g.fam, period_code: 'REGULATION',
+              gp_probability: model, market_consensus_probability: med, best_decimal_odds: best, break_even_probability: 1 / best,
+              raw_edge_pp: model - 1 / best, conservative_probability: model, adjusted_edge_pp: model - 1 / best, adjusted_ev: model * best - 1,
+              classification: 'shadow', goal_value_policy_version: 'player-props-shadow-1',
+            }).catch(() => { });
+            out.player_value++;
+          }
+        }
+      } catch (e) { out.errors++; }
+      await new Promise(r => setTimeout(r, 400));
+    }
+    out.credits_remaining = _propsCredits;
+  } catch (e) { out.error = e.message; }
+  finally { _propsRunning = false; out.finished = new Date().toISOString(); _propsLast = out; if (out.team_value || out.player_value || out.error) console.log('[props]', JSON.stringify(out)); }
+  return out;
+}
+
+// Settlement de PROPS vía TheStatsAPI (1 llamada por partido terminado, cache permanente; respeta 12 req/min).
+// CORNERS/CARDS: totales del overview a 90'... el proveedor reporta el partido completo; si hubo prórroga
+// (minute>90 en db.results) → VOID, igual que goles. PLAYER: goles/remates del jugador; si no jugó → VOID.
+async function settlePropsPicks() {
+  const pending = db.dailyPicks.filter(p => p.status === 'ACTIVE' && PROP_FAMS.includes(p.family));
+  if (!pending.length) return 0;
+  const tsa = require('./data-providers/theStatsApi');
+  if (!tsa.configured()) return 0;
+  let settled = 0;
+  for (const p of pending) {
+    const h = p.event.home_team_id, a = p.event.away_team_id;
+    if (!matchFinalFor(h, a)) continue;
+    // ¿se definió en prórroga/penales? → VOID (sin 90' limpios)
+    let wentEt = false;
+    for (const k of KNOCKOUT) {
+      const r = db.results[String(k.m)];
+      if (r && r.status === 'final' && ((r.home === h && r.away === a) || (r.home === a && r.away === h)) && (Number(r.minute) > 90 || (r.decided && r.decided !== 'reg'))) wentEt = true;
+    }
+    const key = h + '~' + a;
+    try {
+      if (wentEt) { p.result_code = 'VOID'; p.status = 'SETTLED'; p.settled_at = new Date().toISOString(); settled++; continue; }
+      if (p.family === 'CORNERS' || p.family === 'CARDS') {
+        let rep = db.tsaXg[key];
+        if (!rep || !rep.corners) {
+          const fresh = await tsa.xgReport(h, a).catch(() => null);
+          if (fresh && fresh.xg) { rep = { available: true, ...fresh, fetched_at: new Date().toISOString() }; db.tsaXg[key] = rep; save(); await new Promise(r => setTimeout(r, 5500)); }
+        }
+        if (!rep || !rep.corners) continue; // aún sin stats → reintenta el próximo ciclo
+        const total = p.family === 'CORNERS'
+          ? Number(rep.corners.home) + Number(rep.corners.away)
+          : Number(rep.yellow_cards.home) + Number(rep.yellow_cards.away) + Number((rep.red_cards && rep.red_cards.home) || 0) + Number((rep.red_cards && rep.red_cards.away) || 0);
+        if (!Number.isFinite(total)) continue;
+        const over = total > Number(p.line);
+        p.result_code = (p.side === 'over' ? over : !over) ? 'WIN' : 'LOSS';
+      } else { // PLAYER
+        db.tsaPlayers = db.tsaPlayers || {};
+        let ps = db.tsaPlayers[key];
+        if (!ps) {
+          ps = await tsa.playerStats(h, a).catch(() => null);
+          if (ps) { db.tsaPlayers[key] = ps; save(); await new Promise(r => setTimeout(r, 5500)); }
+        }
+        if (!ps) continue;
+        const target = _propNorm(p.player_name);
+        const row = (ps.players || []).find(x => _propNorm(x.name) === target) ||
+          (ps.players || []).find(x => _propNorm(x.name).includes(_propNorm(String(p.player_name).trim().split(/\s+/).pop())));
+        if (!row || !(row.min > 0)) { p.result_code = 'VOID'; }
+        else if (p.player_family === 'player_goal') p.result_code = row.goals > 0 ? 'WIN' : 'LOSS';
+        else if (p.player_family === 'player_shots') p.result_code = row.shots > Number(p.line) ? 'WIN' : 'LOSS';
+        else p.result_code = row.sot > Number(p.line) ? 'WIN' : 'LOSS';
+      }
+      p.status = 'SETTLED'; p.settled_at = new Date().toISOString(); settled++;
+    } catch (e) { /* reintenta el próximo ciclo */ }
+  }
+  if (settled) save();
+  return settled;
 }
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
@@ -2574,6 +2832,9 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     // Picks diarias (producto /x): auto-publica las que pasan el gate y liquida las que ya tienen marcador.
     out.dailyPicks = await evaluateDailyPicks();
     out.dailySettled = settleDailyPicks();
+    // PROPS end-to-end (7-jul): ingesta+value (throttle interno ~100min) y settlement TSA.
+    out.props = await evaluateUpcomingProps().catch(e => ({ error: e.message }));
+    out.propsSettled = await settlePropsPicks().catch(() => 0);
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
@@ -2827,8 +3088,11 @@ const server = http.createServer(async (req, res) => {
           home: x.event.home, away: x.event.away,
           home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
           selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs,
+          player_name: x.player_name || null, player_family: x.player_family || null, availability_risk: x.availability_risk || null,
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
         }));
+        // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
+        if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);
         // ===== GATING POR PLAN (inerte con GP_PLANS_ENFORCED=off → todos ven todo) =====
         // FREE: 1 pick del día (la SOLID/ganador de mayor confianza), visible recién 60 min antes del kickoff
         // ("con delay"). PRO: todas las familias actuales (ganador+goles+combo). SHARP: además las familias
@@ -2871,8 +3135,10 @@ const server = http.createServer(async (req, res) => {
       // liquidadas SANEADO (sin model%/mercado%/confianza internos; solo qué se publicó, cuota y resultado).
       // SUPERSEDED no viaja (reemplazos internos por coherencia, no picks del usuario).
       if (p === '/api/beta/picks-record' && req.method === 'GET') {
+        const hideProps = !propsPicksPublic() && !(betaUser && betaUser.isAdmin);
         const settled = (db.dailyPicks || [])
           .filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
+          .filter(x => !hideProps || PROP_FAMS.indexOf(x.family) < 0)
           .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0))
           .slice(0, 120)
           .map(x => ({
@@ -3464,6 +3730,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/public/teaser') {
       if (!global._teaserCache || Date.now() - global._teaserCache.at > 60 * 1000) {
         const active = (db.dailyPicks || []).filter(x => x.status === 'ACTIVE')
+          .filter(x => propsPicksPublic() || PROP_FAMS.indexOf(x.family) < 0) // props admin-first: fuera del teaser público
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
           .slice(0, 6)
           .map(x => {
@@ -3611,6 +3878,18 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), exported_at: new Date().toISOString() });
+    }
+    // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
+    if (p === '/api/internal/props') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      if (req.method === 'POST') {
+        _propsLastRunMs = 0; // forzar (salta el throttle interno)
+        const r = await evaluateUpcomingProps().catch(e => ({ error: e.message }));
+        const st = await settlePropsPicks().catch(() => 0);
+        return json(res, 200, { run: r, settled: st });
+      }
+      const propPicksAll = db.dailyPicks.filter(x => PROP_FAMS.includes(x.family));
+      return json(res, 200, { enabled: propsOn(), picks_public: propsPicksPublic(), running: _propsRunning, last: _propsLast, credits_remaining: _propsCredits, prop_picks: propPicksAll.slice(-40) });
     }
     // CAPA DE OBSERVACIÓN (shadow, solo admin): señales + disponibilidad por jugador + factor λ sugerido.
     // POST = correr el pase ahora. NADA de esto toca el modelo oficial (aplicación pendiente de encendido).

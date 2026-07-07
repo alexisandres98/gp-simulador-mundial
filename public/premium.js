@@ -139,6 +139,10 @@
       pf_empty: 'No hay picks activas ahora mismo', pf_empty_sub: 'Las picks del día aparecen aquí en cuanto se publican. Vuelve pronto.',
       pf_yesterday: 'Ayer: {won} de {total} picks acertadas', pf_next_ko: 'El próximo partido es a las {time} — las picks salen unas horas antes',
       pf_fam_solid: 'Ganador', pf_fam_goals: 'Goles', pf_fam_combo: 'Combinada',
+      pf_fam_corners: 'Córners', pf_fam_cards: 'Tarjetas', pf_fam_player: 'Jugador',
+      pf_over_corners: 'Más de {line} córners', pf_under_corners: 'Menos de {line} córners',
+      pf_over_cards: 'Más de {line} tarjetas', pf_under_cards: 'Menos de {line} tarjetas',
+      pf_player_goal: '{player} anota', pf_player_shots: '{player}: más de {line} remates', pf_player_sot: '{player}: más de {line} al arco',
       pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
       pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada',
       pf_best_odds: 'Mejor cuota', pf_at: 'en', pf_combo_and: 'y', pf_pick_label: 'Nuestra pick',
@@ -356,6 +360,10 @@
       pf_empty: 'No active picks right now', pf_empty_sub: 'Daily picks show up here as soon as they are published. Check back soon.',
       pf_yesterday: 'Yesterday: {won} of {total} picks hit', pf_next_ko: 'Next match kicks off at {time} — picks drop a few hours before',
       pf_fam_solid: 'Winner', pf_fam_goals: 'Goals', pf_fam_combo: 'Combo',
+      pf_fam_corners: 'Corners', pf_fam_cards: 'Cards', pf_fam_player: 'Player',
+      pf_over_corners: 'Over {line} corners', pf_under_corners: 'Under {line} corners',
+      pf_over_cards: 'Over {line} cards', pf_under_cards: 'Under {line} cards',
+      pf_player_goal: '{player} to score', pf_player_shots: '{player}: over {line} shots', pf_player_sot: '{player}: over {line} shots on target',
       pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
       pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate',
       pf_best_odds: 'Best odds', pf_at: 'at', pf_combo_and: 'and', pf_pick_label: 'Our pick',
@@ -966,10 +974,16 @@
       if (l.type === '1X2') return t('pf_wins', { team: pickTeam(p, l.selection) });
       return l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line });
     }).join(' ' + t('pf_combo_and') + ' ');
+    if (p.family === 'CORNERS') return t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line });
+    if (p.family === 'CARDS') return t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line });
+    if (p.family === 'PLAYER') {
+      if (p.player_family === 'player_goal') return t('pf_player_goal', { player: p.player_name || '' });
+      return t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line });
+    }
     return '';
   }
   function pickCard(p) {
-    var famKey = p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : 'pf_fam_combo';
+    var famKey = p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
     var bucket = confBucket(p.confidence || 0);
     var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
     var hh = teamName(p.home_team_id, p.home), aa = teamName(p.away_team_id, p.away);
@@ -3208,9 +3222,12 @@
           var hh = teamName(p.event.home_team_id, p.event.home), aa = teamName(p.event.away_team_id, p.event.away);
           var betTxt = p.family === 'SOLID' ? t('pf_wins', { team: p.selection_code === 'home' ? hh : aa })
             : p.family === 'GOALS' ? (p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line }))
+            : p.family === 'CORNERS' ? t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line })
+            : p.family === 'CARDS' ? t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line })
+            : p.family === 'PLAYER' ? (p.player_family === 'player_goal' ? t('pf_player_goal', { player: p.player_name || '' }) : t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line }))
             : (p.legs || []).map(function (l) { return l.type === '1X2' ? t('pf_wins', { team: l.selection === 'home' ? hh : aa }) : (l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line })); }).join(' + ');
           var res = p.result_code === 'WIN' ? '<span class="gx-pos" style="font-weight:700">✓ WIN</span>' : p.result_code === 'LOSS' ? '<span class="gx-neg" style="font-weight:700">✗ LOSS</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(p.result_code || '—') + '</span>';
-          var famChip = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : 'pf_fam_combo')) + '</span>';
+          var famChip = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo')) + '</span>';
           return '<tr class="gx-row"><td class="gx-time l">' + esc(fmtDate(p.settled_at)) + '</td><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(p.event.home_team_id) + '</span><b>' + esc(hh) + '</b><span class="gx-dim" style="margin:0 3px">' + esc(t('vs')) + '</span><span class="fl">' + flag(p.event.away_team_id) + '</span><b>' + esc(aa) + '</b></div></td><td class="l">' + famChip + ' <span style="font-size:12px">' + esc(betTxt) + '</span></td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td>' + res + '</td></tr>';
         }).join('');
         body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('pp_history')) + '</span><span class="gx-ph-extra">' + settled.length + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('pp_pick')) + '</th><th>' + esc(t('reg_odds')) + '</th><th>' + esc(t('perf_result')) + '</th></tr></thead><tbody>' + prows + '</tbody></table></div></div>';

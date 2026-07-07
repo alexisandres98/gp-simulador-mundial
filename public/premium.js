@@ -105,6 +105,7 @@
       st_possession: 'Posesión', st_shots: 'Remates', st_sot: 'Al arco', st_corners: 'Córners', st_fouls: 'Faltas', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Amarillas',
       mod_form: 'Forma reciente', mod_lineups: 'Alineaciones', mod_stats: 'Estadísticas',
       mod_xg: 'xG del partido', xg_total: 'xG total', xg_h1: 'xG 1er tiempo', xg_h2: 'xG 2do tiempo', xg_bigch: 'Ocasiones claras', xg_shots: 'Remates',
+      mod_momentum: 'Evolución GP en vivo', mom_note: 'Probabilidad GP de ganar el partido, actualizada durante el juego. Los puntos marcan los goles.', hero_scores: 'Marcadores probables',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
@@ -321,6 +322,7 @@
       st_possession: 'Possession', st_shots: 'Shots', st_sot: 'On target', st_corners: 'Corners', st_fouls: 'Fouls', st_xg: 'xG', st_offsides: 'Offsides', st_yellow: 'Yellows',
       mod_form: 'Recent form', mod_lineups: 'Lineups', mod_stats: 'Statistics',
       mod_xg: 'Match xG', xg_total: 'Total xG', xg_h1: '1st half xG', xg_h2: '2nd half xG', xg_bigch: 'Big chances', xg_shots: 'Shots',
+      mod_momentum: 'Live GP momentum', mom_note: 'GP win probability, updated as the match unfolds. Dots mark goals.', hero_scores: 'Likely scores',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
@@ -2142,6 +2144,8 @@
     sections = sections.concat([{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }]);
     if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
+    var hasMom = fx && fx.momentum && fx.momentum.length > 2;
+    if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
     if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
     if (xgr) sections.push({ id: 'xg', key: 'mod_xg' });
     if (!gpAbsent) sections.push({ id: 'goles', key: 'mod_goals' });
@@ -2153,7 +2157,7 @@
       (arbCtx ? mvOpportunity(arbCtx, header) : '') +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
       '</div>'
     );
     bindBack(); bindMvNav();
@@ -2300,7 +2304,12 @@
       (['HOME', 'DRAW', 'AWAY'].some(function (c) { return r.mk(c) != null; }) ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_mkt')) + '</span>' + tri(function (c) { return pct0(r.mk(c)); }, '', null) + '</div>' : '') +
       (['HOME', 'DRAW', 'AWAY'].some(function (c) { return r.best(c) != null; }) ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_best')) + '</span>' + tri(function (c) { return odd(r.best(c)); }, 'gx-best', bestCode(r)) + '</div>' : '') +
       (xgH != null || xgA != null ? miniStat(t('hero_xg'), (xgH != null ? Number(xgH).toFixed(2) : '—') + ' – ' + (xgA != null ? Number(xgA).toFixed(2) : '—')) : '') +
-      (likely ? miniStat(t('hero_score'), esc(likely)) : '') +
+      // marcadores más probables como CHIPS (top 3 con %); sin goal_insights cae al marcador único de antes
+      ((gi && gi.top_scores && gi.top_scores.length) ?
+        '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_scores')) + '</span><span style="display:flex;gap:5px;flex-wrap:wrap">' +
+        gi.top_scores.slice(0, 3).map(function (s) { return '<span class="gx-badge" style="font-size:11px">' + esc(s.score) + (s.probability != null ? ' · ' + pct0(s.probability) : '') + '</span>'; }).join('') +
+        '</span></div>'
+        : (likely ? miniStat(t('hero_score'), esc(likely)) : '')) +
       '</div>' +
       '<div class="gx-hero-note gx-dim">' + esc(t('period_90')) + '</div>' +
       '</div>';
@@ -2542,6 +2551,37 @@
   }
 
   // ---- módulo 7: Live real (solo con fuente válida; no presentar prob prepartido como live) ----
+  // ---- MOMENTUM GP: evolución de la probabilidad en vivo (serie muestreada por el server cada ~30s). ----
+  // Dos líneas (local/visitante) + marcadores de gol donde cambia el marcador. Vive en vivo Y post-partido.
+  function mvMomentum(fx, header) {
+    var pts = fx && fx.momentum;
+    if (!pts || pts.length < 3) return '';
+    var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id;
+    var W = 620, H = 190, L = 36, R = 12, T = 14, B = 26, cw = W - L - R, ch = H - T - B;
+    var xmax = Math.max(95, pts[pts.length - 1].t + 3);
+    var X = function (t) { return L + (t / xmax) * cw; };
+    var Y = function (p) { return T + (1 - p) * ch; };
+    var line = function (key) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.t).toFixed(1) + ',' + Y(p[key]).toFixed(1); }).join(' '); };
+    // goles: donde el marcador sube respecto del punto anterior
+    var goals = [];
+    for (var i = 1; i < pts.length; i++) {
+      if (pts[i].hg > pts[i - 1].hg) goals.push({ t: pts[i].t, y: Y(pts[i].h), side: 'h' });
+      if (pts[i].ag > pts[i - 1].ag) goals.push({ t: pts[i].t, y: Y(pts[i].a), side: 'a' });
+    }
+    var grid = [0.25, 0.5, 0.75].map(function (g) { return '<line x1="' + L + '" y1="' + Y(g) + '" x2="' + (W - R) + '" y2="' + Y(g) + '" stroke="rgba(255,255,255,.07)"' + (g === 0.5 ? ' stroke-dasharray="3 3"' : '') + '/>'; }).join('');
+    var vlines = [45, 90].filter(function (m) { return m < xmax; }).map(function (m) { return '<line x1="' + X(m) + '" y1="' + T + '" x2="' + X(m) + '" y2="' + (T + ch) + '" stroke="rgba(255,255,255,.10)" stroke-dasharray="4 4"/><text x="' + X(m) + '" y="' + (H - 8) + '" fill="#5F747B" font-size="10" text-anchor="middle">' + m + '′</text>'; }).join('');
+    var dots = goals.map(function (g) { return '<circle cx="' + X(g.t).toFixed(1) + '" cy="' + g.y.toFixed(1) + '" r="5.5" fill="' + (g.side === 'h' ? '#5BA8FF' : '#1FE3A4') + '" stroke="#0B1417" stroke-width="2"/>'; }).join('');
+    var last = pts[pts.length - 1];
+    var legend = '<div class="gx-plabels" style="margin-top:8px"><span><span class="fl">' + flag(hid) + '</span> ' + esc(teamName(hid, header.home && header.home.name_fallback)) + ' <b style="color:#5BA8FF">' + pct0(last.h) + '</b></span><span>X <b>' + pct0(last.d) + '</b></span><span>' + esc(teamName(aid, header.away && header.away.name_fallback)) + ' <b style="color:#1FE3A4">' + pct0(last.a) + '</b> <span class="fl">' + flag(aid) + '</span></span></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('trending-up') + esc(t('mod_momentum')) + '</span>' + (fx.status === 'live' ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '') + '</div>' +
+      '<div class="gx-mod-body"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
+      grid + vlines +
+      '<text x="' + (L - 6) + '" y="' + (Y(0.5) + 3) + '" fill="#5F747B" font-size="10" text-anchor="end">50%</text>' +
+      '<path d="' + line('h') + '" fill="none" stroke="#5BA8FF" stroke-width="2.2" stroke-linejoin="round"/>' +
+      '<path d="' + line('a') + '" fill="none" stroke="#1FE3A4" stroke-width="2.2" stroke-linejoin="round"/>' +
+      dots + '</svg>' + legend +
+      '<p class="gx-mod-note gx-dim">' + esc(t('mom_note')) + '</p></div></div>';
+  }
   function mvLive(fx) {
     if (!fx || fx.status !== 'live') return '';
     var mp = fx.modelProbabilities, hasLiveProb = mp && mp.live === true;

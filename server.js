@@ -572,6 +572,7 @@ db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shad
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
 db.tsaXg = db.tsaXg || {};                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
 db.observations = db.observations || {};       // CAPA DE OBSERVACIÓN (shadow): señales de disponibilidad por equipo desde noticias publicadas. Solo admin.
+db.momentum = db.momentum || {};               // MOMENTUM GP en vivo: serie de prob GP muestreada cada ~30s por partido (persiste post-partido para el gráfico y contenido).
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
 db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
 db.supportMsgs = db.supportMsgs || [];         // mensajes de soporte in-platform (respaldo local; ring 200)
@@ -1689,6 +1690,7 @@ async function buildMatchDetail(id, user = null) {
     } : undefined,
     v2,                                  // DTO GP Intelligence V2 | null (Q.1.1 §2, solo con flag+beta)
     gpLive: gpLive ? { homeWin: gpLive.home, draw: gpLive.draw, awayWin: gpLive.away, xgHome: gpLive.xgHome, xgAway: gpLive.xgAway, likelyScore: gpLive.likelyScore, reds: gpLive.reds } : null, // GP en vivo (cockpit /x)
+    momentum: (db.momentum[String(meta.id)] && db.momentum[String(meta.id)].points && db.momentum[String(meta.id)].points.length > 2) ? db.momentum[String(meta.id)].points : null, // serie GP en vivo (gráfico de evolución)
     v2_requested: !!(user && user.beta && user.beta.matchesV2), // el cliente sabe si debía mostrar V2
     marketPrices, eventUrl: mkt ? mkt.eventUrl : null,
     odds: ctx ? ctx.odds : [],
@@ -2238,6 +2240,33 @@ if (observerOn()) {
   setTimeout(() => runObserver().catch(() => { }), 90 * 1000);
   setInterval(() => runObserver().catch(() => { }), 3 * 3600 * 1000);
 }
+
+// ===== MOMENTUM GP en vivo (7-jul) ==========================================================================
+// Muestrea la probabilidad GP en vivo de cada partido EN JUEGO cada ~30s y la persiste (db.momentum) para el
+// gráfico de evolución del cockpit (en vivo y post-partido) y para contenido. CERO llamadas externas nuevas:
+// usa el marcador/minuto de db.results (sync ESPN 30s ya existente) + el xG del modelo en cache (buildH2HDeep
+// se cachea al primer uso; los loops NORMAL lo mantienen caliente en ventana de partido). Sin eventos (las
+// rojas ajustan el gpLive del cockpit pero no esta serie; el driver dominante son goles+minuto).
+// Cada punto: { t: minuto, h/d/a: prob GP, hg/ag: marcador } → el cliente marca goles donde cambia el marcador.
+async function sampleMomentum() {
+  for (const id in db.results) {
+    const r = db.results[id];
+    if (!r || r.status !== 'live' || typeof r.minute !== 'number') continue;
+    const meta = findFixtureMeta(id);
+    if (!meta || !meta.home || !meta.away) continue;
+    let p = null;
+    try { p = await liveGpProbs(meta.home, meta.away, r, [], { allowCompute: true }); } catch { /* noop */ }
+    if (!p) continue;
+    const slot = db.momentum[String(id)] || (db.momentum[String(id)] = { home: meta.home, away: meta.away, points: [] });
+    const last = slot.points[slot.points.length - 1];
+    // nuevo punto si avanzó el minuto, cambió el marcador o pasaron 60s (prórroga: minute puede quedarse en 90+)
+    if (last && last.t === r.minute && last.hg === r.hg && last.ag === r.ag && Date.now() - (last.at || 0) < 60 * 1000) continue;
+    slot.points.push({ t: r.minute, h: +p.home.toFixed(4), d: +p.draw.toFixed(4), a: +p.away.toFixed(4), hg: r.hg, ag: r.ag, at: Date.now() });
+    if (slot.points.length > 400) slot.points = slot.points.slice(-400);
+    save();
+  }
+}
+setInterval(() => sampleMomentum().catch(() => { }), 30 * 1000);
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como

@@ -3451,25 +3451,44 @@
   function anyLive() { return (S.cal || []).some(function (c) { return c.status === 'live'; }); }
   // Refresco EN VIVO (premium no tenía polling → nada se movía). Cada 25s: re-trae el estado (marcadores + prob
   // GP en vivo) y re-renderiza la vista actual; si hay un partido EN VIVO abierto, refresca su cockpit (fx+beta).
+  // Ventana "sin animación de entrada" para re-renders SILENCIOSOS: el refresco en vivo redibuja el DOM y
+  // sin esto las cards REPLAYEAN el fade-up (gxUp) en cada ciclo → la página "pestañea". La clase se quita
+  // sola a los 3s (cubre el fetch+render async del reload silencioso).
+  function noAnimWindow() {
+    document.body.classList.add('gx-noanim');
+    clearTimeout(S._noanimT);
+    S._noanimT = setTimeout(function () { document.body.classList.remove('gx-noanim'); }, 3000);
+  }
   function refreshLive() {
     fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
       if (!st) return;
+      S._lastLiveAt = Date.now();
       var wasLive = anyLive();
       ingestState(st);
       var live = anyLive();
       if (!live && !wasLive && S.view !== 'match') return; // nada que mover
+      noAnimWindow();
       if (S.view === 'matches') renderMatches();
       else if (S.view === 'opps' || S.view === 'board') load(0, true); // silencioso: sin spinner (no saltar el scroll ni cerrar la calculadora)
-      // cockpit de un partido abierto: re-fetch SILENCIOSO del fx (trae marcador/eventos/gpLive) → re-render sin flash
+      // cockpit de un partido abierto: re-fetch SILENCIOSO del fx (marcador/eventos/gpLive/momentum) y
+      // re-render SOLO si el payload cambió (evita redibujar por redibujar → sin parpadeo).
       if (S.view === 'match' && S.matchId) {
         var mid = S.matchId;
+        var apply = function (cacheKey) {
+          return function (m) {
+            if (!m || S.view !== 'match' || S.matchId !== mid) return;
+            var prev = S.mfix[cacheKey];
+            try { if (prev && JSON.stringify(prev) === JSON.stringify(m)) return; } catch (e) { }
+            S.mfix[cacheKey] = m; noAnimWindow(); renderMatch();
+          };
+        };
         if (/^fx-/.test(mid)) {
           var fxid = mid.slice(3);
-          fetch('/api/match/' + encodeURIComponent(fxid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { if (m && S.view === 'match' && S.matchId === mid) { S.mfix[fxid] = m; renderMatch(); } });
+          fetch('/api/match/' + encodeURIComponent(fxid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(apply(fxid));
         } else {
           var beta = S.mc[mid];
           var fid = (beta && beta.header) ? fixtureIdFor(beta.header) : null;
-          if (fid != null) fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { if (m && S.view === 'match' && S.matchId === mid) { S.mfix[fid] = m; renderMatch(); } });
+          if (fid != null) fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(apply(fid));
         }
       }
     });
@@ -3486,6 +3505,9 @@
       es.addEventListener('update', function () {
         if (deb) return;
         deb = setTimeout(function () { deb = null; }, 1500);
+        // throttle: si el polling (u otro push) refrescó hace <10s, no redibujar de nuevo — el SSE aporta
+        // inmediatez tras un gol, no más frecuencia sostenida (evita el "pestañeo" por doble disparador).
+        if (S._lastLiveAt && Date.now() - S._lastLiveAt < 10000) return;
         try { refreshLive(); } catch (e) { }
       });
       es.onerror = function () { /* EventSource se auto-reconecta solo; el polling sigue de respaldo */ };

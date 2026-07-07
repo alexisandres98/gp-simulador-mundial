@@ -939,6 +939,83 @@ function userLang(email) {
 // Email de anuncio de la BETA (rollout por referidos). CTA → ventana de Referidos del usuario (?goto=referidos).
 // Conciso, una sola acción clara, multipart text+html (mejor entregabilidad), sin imágenes externas ni palabras
 // "spammy", con motivo de recepción + baja. El From verificado (codigo@gpsimulador.com, SPF/DKIM Resend) hace el resto.
+// Email masivo BANKROLL (7-jul): "cuanto hubieras generado siguiendo todas las picks". Idioma FIJO por
+// variante (bankroll_es / bankroll_en): TODOS los usuarios reciben ambos, por decision de Alexis.
+// PDF completo hosteado en /informes (adjuntarlo a ~1,400 envios mata entregabilidad) + tabla inline.
+function bankrollEmail(lang) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com';
+  const pdf = url + '/informes/bankroll-sim-' + (en ? 'en' : 'es') + '.pdf';
+  const subject = en
+    ? 'If you had followed every pick: $5,000 became $8,889 in one week'
+    : 'Si hubieras seguido todas las picks: $5,000 se convirtieron en $8,889 en una semana';
+  const preheader = en
+    ? '31 settled picks, 81.5% hit rate. The full report, pick by pick, in PDF.'
+    : '31 picks liquidadas, 81.5% de acierto. El informe completo, pick por pick, en PDF.';
+  const rows = [
+    ['$5,000 · Kelly 1/4', '$7,607.26', '+52.1%'],
+    ['$5,000 · Kelly 1/2', '$8,889.51', '+77.8%'],
+    ['$10,000 · Kelly 1/4', '$15,214.55', '+52.1%'],
+    ['$10,000 · Kelly 1/2', '$17,779.02', '+77.8%'],
+  ];
+  const text = en
+    ? `We ran the numbers.
+
+If a user had deposited $5,000 on June 30 and followed EVERY pick the system published, staking with the platform calculator (fractional Kelly), today they would have $8,889.51 with 1/2 Kelly (+77.8%) or $7,607.26 with 1/4 Kelly (+52.1%).
+
+With $10,000: $17,779.02 or $15,214.55.
+
+The record behind it: 31 settled picks from June 30 to July 6. 22 won, 5 lost, 4 voided. 81.5% hit rate. Every pick, stake and result is in the full report:
+
+${pdf}
+
+Today's picks are already on the board: ${url}
+
+Past performance does not guarantee future results. One week is a small sample. Not financial advice. 18+.
+
+- Alexis · GP Simulador
+
+You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".`
+    : `Corrimos los numeros.
+
+Si un usuario hubiera depositado $5,000 el 30 de junio y hubiera seguido TODAS las picks que publico el sistema, con el stake de la calculadora de la plataforma (Kelly fraccionado), hoy tendria $8,889.51 con Kelly 1/2 (+77.8%) o $7,607.26 con Kelly 1/4 (+52.1%).
+
+Con $10,000: $17,779.02 o $15,214.55.
+
+El registro detras: 31 picks liquidadas del 30 de junio al 6 de julio. 22 ganadas, 5 perdidas, 4 anuladas. 81.5% de acierto. Cada pick, stake y resultado esta en el informe completo:
+
+${pdf}
+
+Las picks de hoy ya estan en el tablero: ${url}
+
+Rendimientos pasados no garantizan resultados futuros. Una semana es una muestra corta. No es consejo financiero. 18+.
+
+- Alexis · GP Simulador
+
+Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".`;
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'The numbers are in' : 'Corrimos los numeros'}</div>
+      <h1 style="margin:8px 0 0;font-size:23px;line-height:1.25">${en ? 'If you had followed <span style="color:#18E6A3">every pick</span> of the system' : 'Si hubieras seguido <span style="color:#18E6A3">todas las picks</span> del sistema'}</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'June 30 to July 6 · 31 settled picks · 22 won, 5 lost · <b style="color:#18E6A3">81.5% hit rate</b>' : 'Del 30 de junio al 6 de julio · 31 picks liquidadas · 22 ganadas, 5 perdidas · <b style="color:#18E6A3">81.5% de acierto</b>'}</p>
+    </div>
+    <div style="padding:24px 26px">
+      <p style="margin:0 0 14px;font-size:14px;color:#2b3a33;line-height:1.6">${en ? 'A user deposits the capital, follows every pick and stakes with the platform calculator (fractional Kelly). This is where the bankroll ends up:' : 'Un usuario deposita el capital, sigue todas las picks y apuesta con la calculadora de la plataforma (Kelly fraccionado). Asi termina el bankroll:'}</p>
+      <table style="border-collapse:collapse;width:100%;font-size:14px">
+        ${rows.map(r => `<tr><td style="padding:8px 10px;border:1px solid #e6ebe9;color:#2b3a33"><b>${r[0]}</b></td><td style="padding:8px 10px;border:1px solid #e6ebe9;font-weight:800;color:#14201A">${r[1]}</td><td style="padding:8px 10px;border:1px solid #e6ebe9;color:#0a8f5b;font-weight:700">${r[2]}</td></tr>`).join('')}
+      </table>
+      <p style="margin:14px 0 20px;font-size:13px;color:#5c6f66;line-height:1.6">${en ? 'Every pick, the odds, the stake and the result, one by one, are in the full report.' : 'Cada pick, la cuota, el stake y el resultado, una por una, estan en el informe completo.'}</p>
+      <div style="text-align:center;margin-bottom:10px"><a href="${pdf}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 26px;border-radius:99px;text-decoration:none">${en ? 'Download the full report (PDF)' : 'Descargar el informe completo (PDF)'}</a></div>
+      <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;color:#0a8f5b;font-weight:700;font-size:14px;text-decoration:none">${en ? "See today's picks →" : 'Ver las picks de hoy →'}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Retrospective simulation over the real pick record. Past performance does not guarantee future results; one week is a small sample and variance is high. Not financial advice. 18+.' : 'Simulacion retrospectiva sobre el registro real de picks. Rendimientos pasados no garantizan resultados futuros; una semana es una muestra corta y la varianza es alta. No es consejo financiero. 18+.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".' : 'Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".'}</div>
+  </div></div>`;
+  return { subject, text, html };
+}
+
 function broadcastEmail(referLink, lang) {
   if (lang === 'en') return broadcastEmailEN(referLink);
   const url = 'https://gpsimulador.com';
@@ -4139,18 +4216,25 @@ const server = http.createServer(async (req, res) => {
     // (eso producía un falso "error de red" aunque el envío sí terminaba). Guard anti-doble-envío + estado por GET.
     if (p === '/api/admin/broadcast' && (req.method === 'POST' || req.method === 'GET')) {
       const u = getUser(req);
-      if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      // auth: sesión de admin O la clave de export (env GP_EXPORT_KEY) — permite operar el envío desde fuera
+      // de la UI (mismo patrón key-gated del webhook Whop; sin la env, solo admin).
+      const keyOk = !!process.env.GP_EXPORT_KEY && url.searchParams.get('key') === process.env.GP_EXPORT_KEY;
+      if ((!u || !u.isAdmin) && !keyOk) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'GET') return json(res, 200, bcastState);
       if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
       const { test, variant } = await readBody(req);
       const link = 'https://gpsimulador.com/?goto=referidos';
       // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
-      // Cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
+      // variants 'bankroll_es' / 'bankroll_en' = idioma FIJO (todos reciben ambos, decisión 7-jul).
+      // El resto: cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
       const buildMail = (variant === 'reengage')
         ? (lng) => ({ ...reengageEmail(link, lng), from: REENGAGE_FROM, noListUnsub: true })
-        : (lng) => broadcastEmail(link, lng);
+        : (variant === 'bankroll_es') ? () => bankrollEmail('es')
+          : (variant === 'bankroll_en') ? () => bankrollEmail('en')
+            : (lng) => broadcastEmail(link, lng);
+      const testTo = (u && u.email) || String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
       if (test) {
-        try { ensureRefCode(u.email); await mailer.sendMail({ to: u.email, ...buildMail(userLang(u.email)) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''} ${userLang(u.email)})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true }); }
+        try { ensureRefCode(testTo); await mailer.sendMail({ to: testTo, ...buildMail(userLang(testTo)) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''} ${userLang(testTo)})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true, to: testTo }); }
         catch (e) { return json(res, 200, { ok: false, error: e.message, test: true }); }
       }
       if (bcastState.running) return json(res, 200, { ok: false, error: 'Ya hay un envío en curso', state: bcastState });

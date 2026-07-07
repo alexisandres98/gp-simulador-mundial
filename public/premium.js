@@ -3474,7 +3474,24 @@
       }
     });
   }
-  function startLiveLoop() { if (S._liveTimer) return; S._liveTimer = setInterval(function () { try { refreshLive(); } catch (e) {} try { if ((S.view === 'board' || S.view === 'opps') && S.oppSub === 'arb') refreshArbSilent(); } catch (e) {} }, 25000); }
+  function startLiveLoop() { if (S._liveTimer) return; S._liveTimer = setInterval(function () { try { refreshLive(); } catch (e) {} try { if ((S.view === 'board' || S.view === 'opps') && S.oppSub === 'arb') refreshArbSilent(); } catch (e) {} }, 25000); startSse(); }
+  // SSE: el server EMPUJA 'update' al instante en que el sync ve un cambio (gol/minuto/final) → refresco
+  // inmediato (~10-15s tras el gol real vs hasta ~55s con solo polling). El polling de 25s QUEDA como respaldo:
+  // si SSE falla o un proxy lo corta, todo sigue funcionando exactamente como antes. Debounce 1.5s por ráfagas.
+  function startSse() {
+    if (S._sse || typeof EventSource === 'undefined') return;
+    try {
+      var es = new EventSource('/api/stream');
+      var deb = null;
+      es.addEventListener('update', function () {
+        if (deb) return;
+        deb = setTimeout(function () { deb = null; }, 1500);
+        try { refreshLive(); } catch (e) { }
+      });
+      es.onerror = function () { /* EventSource se auto-reconecta solo; el polling sigue de respaldo */ };
+      S._sse = es;
+    } catch (e) { /* navegador sin SSE → polling normal, como siempre */ }
+  }
 
   // ---------- boot ----------
   function boot() {

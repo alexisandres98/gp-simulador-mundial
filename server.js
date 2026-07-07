@@ -2830,10 +2830,10 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     out.picks = await evaluateGoalPicks();
     out.settled = settleGoalPicks();
     // Picks diarias (producto /x): auto-publica las que pasan el gate y liquida las que ya tienen marcador.
+    // PROPS end-to-end (7-jul): ingesta+value ANTES de evaluar picks (mismo ciclo publica; throttle ~100min).
+    out.props = await evaluateUpcomingProps().catch(e => ({ error: e.message }));
     out.dailyPicks = await evaluateDailyPicks();
     out.dailySettled = settleDailyPicks();
-    // PROPS end-to-end (7-jul): ingesta+value (throttle interno ~100min) y settlement TSA.
-    out.props = await evaluateUpcomingProps().catch(e => ({ error: e.message }));
     out.propsSettled = await settlePropsPicks().catch(() => 0);
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }

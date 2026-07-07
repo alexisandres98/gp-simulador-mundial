@@ -177,4 +177,26 @@ async function approveEvent(externalEventId, { provider = 'the_odds_api', review
   });
 }
 
-module.exports = { seedParticipants, buildSportsbookEvents, validateEvent, generateCandidates, approveEvent };
+// autoApprovePerfectCandidates — AUTOMATIZACIÓN (7-jul, pedido de Alexis): aprueba SOLO los candidatos
+// PERFECTOS de la review queue (resolution='resolved': 1X2 regulation, no iniciado, ambos participantes
+// resueltos por alias). Todo lo dudoso queda en la cola para revisión manual, como siempre. approveEvent
+// re-valida participantes y kickoff dentro de su transacción → doble guard. reviewedBy='auto' → auditable
+// en admin_audit_events y distinguible de las aprobaciones humanas.
+async function autoApprovePerfectCandidates({ provider = 'the_odds_api', now = null } = {}) {
+  if (!db.isConfigured()) return { skipped: 'no_db' };
+  const pending = (await db.query(
+    `SELECT external_id_a, candidate_payload FROM mapping_review_queue
+     WHERE provider_a=$1 AND entity_type='event' AND status='pending'`, [provider])).rows;
+  const out = { pending: pending.length, approved: 0, left_for_review: 0, errors: 0, events: [] };
+  for (const item of pending) {
+    const payload = typeof item.candidate_payload === 'string' ? JSON.parse(item.candidate_payload) : (item.candidate_payload || {});
+    if (payload.source !== 'sportsbook' || payload.resolution !== 'resolved') { out.left_for_review++; continue; }
+    try {
+      const r = await approveEvent(item.external_id_a, { provider, reviewedBy: 'auto', now, reason: 'auto approval: candidato perfecto (validaciones completas)' });
+      if (!r.already) { out.approved++; out.events.push(r.home + ' vs ' + r.away); }
+    } catch (e) { out.errors++; }   // guard interno falló (ej. arrancó el partido) → queda pendiente
+  }
+  return out;
+}
+
+module.exports = { seedParticipants, buildSportsbookEvents, validateEvent, generateCandidates, approveEvent, autoApprovePerfectCandidates };

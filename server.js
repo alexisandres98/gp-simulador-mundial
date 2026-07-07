@@ -2345,6 +2345,30 @@ async function sampleMomentum() {
 }
 setInterval(() => sampleMomentum().catch(() => { }), 30 * 1000);
 
+// ===== CANÓNICOS AUTOMÁTICOS (7-jul, pedido de Alexis: fin de la aprobación manual) ========================
+// Cada hora: generateCandidates (lee sportsbook_quote_current, CERO llamadas externas) + auto-aprobación de
+// los candidatos PERFECTOS (validación completa; lo dudoso queda en cola manual). Así los cruces nuevos
+// (QF/SF/Final y post-Mundial la cartelera) entran solos al grafo canónico → Value evalúa y las picks SOLID
+// nacen canónicas (clickeables) sin intervención. Kill switch: GP_CANONICAL_AUTO_APPROVE=false.
+function canonicalAutoOn() { return !/^(0|false|no|off)$/i.test(String(process.env.GP_CANONICAL_AUTO_APPROVE || 'true').trim()); }
+async function runCanonicalAuto() {
+  if (!canonicalAutoOn()) return { skipped: 'disabled' };
+  try {
+    const dbcfg = require('./database/config');
+    if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
+    const sc = require('./sportsbook-providers/sportsbookCanonical');
+    await sc.seedParticipants().catch(() => { });
+    const gen = await sc.generateCandidates('the_odds_api');
+    const app = await sc.autoApprovePerfectCandidates();
+    if (app.approved || app.errors) console.log('[canonical-auto]', JSON.stringify({ candidates: gen.candidates, approved: app.approved, left_for_review: app.left_for_review, errors: app.errors, events: app.events }));
+    return { gen, app };
+  } catch (e) { console.error('[canonical-auto]', e.message); return { error: e.message }; }
+}
+if (canonicalAutoOn()) {
+  setTimeout(() => runCanonicalAuto().catch(() => { }), 2 * 60 * 1000);
+  setInterval(() => runCanonicalAuto().catch(() => { }), 60 * 60 * 1000);
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa

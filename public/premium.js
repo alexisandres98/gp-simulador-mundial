@@ -106,6 +106,7 @@
       mod_form: 'Forma reciente', mod_lineups: 'Alineaciones', mod_stats: 'Estadísticas',
       mod_xg: 'xG del partido', xg_total: 'xG total', xg_h1: 'xG 1er tiempo', xg_h2: 'xG 2do tiempo', xg_bigch: 'Ocasiones claras', xg_shots: 'Remates',
       mod_momentum: 'Evolución GP en vivo', mom_note: 'Probabilidad GP de ganar el partido, actualizada durante el juego. Los puntos marcan los goles.', hero_scores: 'Marcadores probables',
+      mod_intel: 'Intel del partido', intel_shots: 'remates', intel_radar: 'Radar de disponibilidad', intel_miss: 'riesgo', intel_out: 'BAJA', intel_susp: 'SANCIÓN', intel_doubt: 'DUDA', intel_rest: 'ROTACIÓN', intel_factor: 'Si las ausencias se confirman, la generación del equipo caería ~{pct}%.', intel_note: 'Probabilidad de anotar y volumen de remates proyectado por jugador, con las alertas de disponibilidad detectadas en fuentes publicadas.',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
@@ -327,6 +328,7 @@
       mod_form: 'Recent form', mod_lineups: 'Lineups', mod_stats: 'Statistics',
       mod_xg: 'Match xG', xg_total: 'Total xG', xg_h1: '1st half xG', xg_h2: '2nd half xG', xg_bigch: 'Big chances', xg_shots: 'Shots',
       mod_momentum: 'Live GP momentum', mom_note: 'GP win probability, updated as the match unfolds. Dots mark goals.', hero_scores: 'Likely scores',
+      mod_intel: 'Match intel', intel_shots: 'shots', intel_radar: 'Availability radar', intel_miss: 'risk', intel_out: 'OUT', intel_susp: 'BAN', intel_doubt: 'DOUBT', intel_rest: 'ROTATION', intel_factor: 'If the absences are confirmed, team creation would drop ~{pct}%.', intel_note: 'Scoring probability and projected shot volume per player, with availability alerts detected from published sources.',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
@@ -498,7 +500,7 @@
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {} };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {} };
 
   // ---------- icons ----------
   // ---- iconografía PROPIA (firma visual): set dibujado a mano, dual-tone (detalle en acento vía clase .a/.af).
@@ -2143,6 +2145,14 @@
       fetch('/api/beta/xg-report?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.xgr[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
     }
     var xgr = (matchFinished && S.xgr[hk] && S.xgr[hk].available) ? S.xgr[hk] : null;
+    // INTEL (props de jugador + radar de observación): admin-first; el server devuelve 403 a no-admins
+    // mientras GP_PROPS_PICKS_PUBLIC este apagado → el panel simplemente no aparece.
+    var wantIntel = !matchFinished && hid && aid && S.me && S.me.isAdmin;
+    if (wantIntel && S.intel[hk] === undefined) {
+      S.intel[hk] = null;
+      fetch('/api/beta/match-intel?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.intel[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) { noAnimWindow(); renderMatch(); } });
+    }
+    var intel = (wantIntel && S.intel[hk] && S.intel[hk].available) ? S.intel[hk] : null;
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
     // disponibilidad real de cada módulo (cobertura honesta; presente sólo si hay datos)
@@ -2160,6 +2170,7 @@
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     var hasMom = fx && fx.momentum && fx.momentum.length > 2;
     if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
+    if (intel) sections.push({ id: 'intel', key: 'mod_intel' });
     if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
     if (xgr) sections.push({ id: 'xg', key: 'mod_xg' });
     if (!gpAbsent) sections.push({ id: 'goles', key: 'mod_goals' });
@@ -2171,7 +2182,7 @@
       (arbCtx ? mvOpportunity(arbCtx, header) : '') +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (intel ? sec('intel', mvIntel(intel, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
       '</div>'
     );
     bindBack(); bindMvNav();
@@ -2258,6 +2269,30 @@
       (xgr.shots ? row(t('xg_shots'), xgr.shots, false) : '') +
       '</div>';
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('target-arrow') + esc(t('mod_xg')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  // INTEL del partido (admin-first): anotadores probables (props de jugador) + radar de disponibilidad
+  // (capa de observación) con el factor λ sugerido si las ausencias se confirman.
+  function mvIntel(intel, header) {
+    var riskChip = function (r) {
+      if (!r) return '';
+      var lbl = r === 'OUT' ? t('intel_out') : r === 'SUSPENDED' ? t('intel_susp') : r === 'DOUBT' ? t('intel_doubt') : t('intel_rest');
+      return ' <span class="gx-badge" style="font-size:9px;color:#F2C14E;border-color:rgba(242,193,78,.4)">' + esc(lbl) + '</span>';
+    };
+    var sideCol = function (code, nameFallback, d) {
+      if (!d) return '';
+      var rows = (d.scorers || []).map(function (p) {
+        return '<div class="gx-stat-row" style="gap:8px"><span style="flex:1;font-size:12.5px"><b>' + esc(p.name) + '</b> <span class="gx-dim" style="font-size:10.5px">' + esc(p.pos || '') + '</span>' + riskChip(p.risk) + '</span><span class="gx-mono" style="font-weight:700;color:#1FE3A4">' + pct0(p.anytime) + '</span><span class="gx-mono gx-dim" style="font-size:11px">' + p.shots + ' ' + esc(t('intel_shots')) + '</span></div>';
+      }).join('');
+      var radar = (d.radar && d.radar.players || []).map(function (x) {
+        return '<div class="gx-stat-row" style="gap:8px"><span style="flex:1;font-size:12px">' + esc(x.player) + '</span>' + riskChip(x.status) + '<span class="gx-mono gx-dim" style="font-size:11px">' + pct0(x.prob_miss) + ' ' + esc(t('intel_miss')) + '</span></div>';
+      }).join('');
+      var factor = d.radar && d.radar.lambda_factor != null && d.radar.lambda_factor !== 1 ? '<p class="gx-mod-note gx-dim">' + esc(t('intel_factor', { pct: Math.round((1 - d.radar.lambda_factor) * 100) })) + '</p>' : '';
+      return '<div><div class="gx-form-h"><span class="fl">' + flag(code) + '</span><b>' + esc(teamName(code, nameFallback)) + '</b></div>' + rows + (radar ? '<div class="gx-mod-sub gx-label" style="margin-top:10px">' + esc(t('intel_radar')) + '</div>' + radar + factor : '') + '</div>';
+    };
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('users') + esc(t('mod_intel')) + '</span><span class="gx-badge" style="font-size:9px">ADMIN</span></div><div class="gx-mod-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+      sideCol(header.home && header.home.team_id, header.home && header.home.name_fallback, intel.home) +
+      sideCol(header.away && header.away.team_id, header.away && header.away.name_fallback, intel.away) +
+      '</div><p class="gx-mod-note gx-dim">' + esc(t('intel_note')) + '</p></div>';
   }
   // 4C#8: construye un "beta" sintético desde el fixture (/api/match) para partidos sin evaluación canónica.
   // GP probability/analysis/goal_insights quedan vacíos → el cockpit muestra estados honestos de ausencia.

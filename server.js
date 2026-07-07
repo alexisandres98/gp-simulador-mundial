@@ -3170,6 +3170,32 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, outRep);
         } catch (e) { return json(res, 200, { available: false, reason: 'error' }); }
       }
+      // INTEL del partido (7-jul): ANOTADORES PROBABLES (prop-engine de jugador + λ GP) y RADAR DE
+      // DISPONIBILIDAD (capa de observación + factor λ sugerido). Admin-first hasta GP_PROPS_PICKS_PUBLIC.
+      if (p === '/api/beta/match-intel' && req.method === 'GET') {
+        if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });
+        const ih = String(url.searchParams.get('home') || '').toUpperCase(), ia = String(url.searchParams.get('away') || '').toUpperCase();
+        if (!/^[A-Z]{3}$/.test(ih) || !/^[A-Z]{3}$/.test(ia)) return json(res, 400, { error: 'params' });
+        try {
+          const players = require('./prop-engine/players');
+          const { assessPlayers, suggestTeamFactor } = require('./observer/assess');
+          const PF = obsFit();
+          if (!PF) return json(res, 200, { available: false });
+          const xg = gpXgFromCache(ih, ia) || {};
+          const avail = observerAvailability();
+          const side = (code, lambda) => {
+            const rows = players.projectTeam(PF, code, { teamLambda: lambda || null, top: 5 }).map(r => ({
+              name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),
+              sot_o05: +r.sot_over_0_5.toFixed(3), risk: avail[r.pid] || null,
+            }));
+            const asmts = assessPlayers(((db.observations[code] || {}).signals) || []);
+            const sug = suggestTeamFactor(PF, code, asmts);
+            const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => ({ player: x.player, status: x.status, prob_miss: x.prob_miss }));
+            return { scorers: rows, radar: { players: flagged.slice(0, 6), lambda_factor: sug.factor } };
+          };
+          return json(res, 200, { available: true, home: side(ih, xg.xgA), away: side(ia, xg.xgB) });
+        } catch (e) { return json(res, 200, { available: false }); }
+      }
       // Value OUTRIGHT (campeón del Mundial): probabilidad GP del torneo (Monte Carlo) vs mercado
       // (Polymarket/Kalshi). Mismo concepto que la plataforma principal (modelo% vs mercado%). Read-only.
       // GATE SHARP: Value y Arbitraje son del plan Sharp (inerte con GP_PLANS_ENFORCED=off).

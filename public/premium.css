@@ -283,7 +283,7 @@ body { background:
   font-size: 13px; font-weight: 500; padding: 8px 14px 8px 11px; border-radius: var(--gx-r); cursor: pointer; transition: background .14s, color .14s; }
 .gx-mv-back:hover { background: var(--gx-panel3); color: var(--gx-text); }
 .gx-mv-back i { font-size: 17px; }
-.gx-mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.gx-mv-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: start; }
 .gx-mv-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .gx-mv-panel { overflow: hidden; }
 .gx-mod-body { padding: 15px 16px 16px; display: flex; flex-direction: column; }
@@ -567,7 +567,7 @@ body { background:
 .gx-bnav { display: none; }
 
 /* ---------- responsive ---------- */
-@media (max-width: 1180px) { .gx-main { grid-template-columns: 1fr; } .gx-cockpit { position: static; } .gx-kpis { grid-template-columns: repeat(2,1fr); } .gx-mv-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1180px) { .gx-main { grid-template-columns: 1fr; } .gx-cockpit { position: static; } .gx-kpis { grid-template-columns: repeat(2,1fr); } .gx-mv-grid { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 860px) {
   .gx { grid-template-columns: 1fr; }
   .gx-side { display: none; }
@@ -1091,3 +1091,25 @@ td .gx-calc-btn span { display: none; }
    el DOM y sin esto las cards replayean el fade-up en cada ciclo. La clase la pone/quita refreshLive. ---- */
 .gx-noanim .gx-picks-feed > *, .gx-noanim .gx-kpi, .gx-noanim .gx-panel.gx-ck-score, .gx-noanim .gx-memo,
 .gx-noanim .gx-sec, .gx-noanim .gx-mv-panel { animation: none !important; }
+
+/* ---- MATCH INTEL (7-jul): grilla responsive; nombres con ellipsis, columnas mono alineadas.
+   Desktop: 2 columnas (equipo por lado). Móvil (≤720px): apiladas. ---- */
+.gx-intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) { .gx-intel-grid { grid-template-columns: 1fr; } }
+.gx-intel-side { min-width: 0; }
+.gx-intel-row { display: grid; grid-template-columns: minmax(0,1fr) 52px 56px; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--gx-line); }
+.gx-intel-row:last-child { border-bottom: 0; }
+.gx-intel-row .n { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.gx-intel-row .n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.gx-intel-row .n i { font-style: normal; font-size: 10px; }
+.gx-intel-row .v { text-align: right; font-size: 12.5px; white-space: nowrap; }
+.gx-intel-head { border-bottom: 1px solid var(--gx-line); padding: 2px 0 5px; }
+.gx-intel-head .gx-label { font-size: 9.5px; }
+.gx-intel-risk { font-size: 8.5px; color: #F2C14E; border-color: rgba(242,193,78,.4); flex: none; }
+.gx-mod-sub.gx-label { margin-top: 12px; }
+
+/* ---- móvil: la tabla de mercados scrollea DENTRO de su panel (7 columnas nowrap forzaban el ancho de toda
+   la columna del match view → paneles hermanos ilegibles con valores cortados, p.ej. Match Intel). ---- */
+@media (max-width: 720px) {
+  .gx-mkt-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

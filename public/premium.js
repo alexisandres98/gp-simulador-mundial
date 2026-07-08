@@ -1091,10 +1091,10 @@
     if (!pos.length) return '';
     var rowD = function (x) { return '<tr class="gx-row" data-nav-team="' + esc(x.team_id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(x.team_id) + '</span><b>' + esc(teamName(x.team_id)) + '</b></div></td>' +
       '<td class="gx-mono gx-gp"><span class="hi">' + pct1(x.model_pct) + '</span></td><td class="gx-mono gx-dim">' + pct1(x.market_pct) + '</td>' +
-      '<td class="gx-edge gx-pos">' + pp(x.edge_pp) + '</td><td class="l gx-dim" style="font-size:11px">' + esc(x.best_book || '—') + '</td></tr>'; };
+      '<td class="gx-edge gx-pos">' + pp(x.edge_pp) + '</td><td class="l gx-dim" style="font-size:11px;white-space:nowrap">' + bookLogo(x.best_book) + esc(x.best_book || '—') + '</td></tr>'; };
     var desk = '<table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th>GP</th><th>' + esc(t('hero_mkt')) + '</th><th>' + esc(t('th_edge')) + '</th><th class="l">' + esc(t('col_provider')) + '</th></tr></thead><tbody>' + pos.map(rowD).join('') + '</tbody></table>';
     var mob = pos.map(function (x) { return '<div class="gx-mcard" data-nav-team="' + esc(x.team_id) + '"><div class="gx-cell-team"><span class="fl">' + flag(x.team_id) + '</span><b>' + esc(teamName(x.team_id)) + '</b><span class="gx-spacer"></span><span class="gx-edge gx-pos">' + pp(x.edge_pp) + '</span></div>' +
-      '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct1(x.model_pct) + ' · ' + esc(t('hero_mkt')) + ' ' + pct1(x.market_pct) + '</span><span class="gx-dim" style="font-size:11px">' + esc(x.best_book || '') + '</span></div></div>'; }).join('');
+      '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct1(x.model_pct) + ' · ' + esc(t('hero_mkt')) + ' ' + pct1(x.market_pct) + '</span><span class="gx-dim" style="font-size:11px;display:inline-flex;align-items:center">' + bookLogo(x.best_book) + esc(x.best_book || '') + '</span></div></div>'; }).join('');
     return '<div class="gx-panel gx-board" style="margin-bottom:14px"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('outright_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('outright_sub')) + '</span></div><div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div></div>';
   }
   // ---- Oportunidades · Value ----
@@ -1826,7 +1826,7 @@
       memoItem('verdict', memo.verdict) + memoItem('price', memo.price) + memoItem('thesis', memo.thesis) + memoItem('risk', memo.risk, 'risk') + memoItem('invalidation', memo.inval, 'warn') +
       '</div>' +
       dataTrust(r, memo.ma) +
-      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
+      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + bookLogo(memo.bookCode) + esc(memo.book) : '') + '</span>' +
       '<button class="gx-btn" data-openmatch="' + esc(h.event_id) + '">' + esc(t('open_cockpit')) + ' ' + ic('arrow-right') + '</button></div>' +
       '</div>';
   }
@@ -1898,14 +1898,14 @@
       if (!af.length) af = (ma.analysis.evaluated_factors || []).slice(0, 3).map(function (f) { return factLabel(f.factor_code); });
       if (af.length && ma.analysis.context_moved_line) thesis = t('thesis_ctx2', { factors: af.join(', ') });
     }
-    var price = belowMin ? ('<b>' + odd(best.best_odds) + '</b> · ' + esc(t('below_min'))) : (best && best.best_odds ? t('memo_price', { odds: '<b>' + odd(best.minimum_odds || best.best_odds) + '</b>', book: best.best_sportsbook ? " (" + esc(prettyBook(best.best_sportsbook)) + ")" : "" }) : t('memo_price_none'));
+    var price = belowMin ? ('<b>' + odd(best.best_odds) + '</b> · ' + esc(t('below_min'))) : (best && best.best_odds ? t('memo_price', { odds: '<b>' + odd(best.minimum_odds || best.best_odds) + '</b>', book: best.best_sportsbook ? " (" + bookLogo(best.best_sportsbook) + esc(prettyBook(best.best_sportsbook)) + ")" : "" }) : t('memo_price_none'));
     var riskCode = (ma && ma.risks && ma.risks[0]) || (best && best.risk_codes && best.risk_codes[0]);
     var risk = riskCode ? riskText(riskCode) : t('memo_risk_default');
     var inval = t('memo_inval');
     var edge = best ? best.adjusted_edge_pp : null;
     var conf = confInfo(ma && ma.confidence_code);  // A.1: un SOLO valor canónico del DTO controla el badge
     var cta = pubPick ? t('cta_pick') : actionable ? t('cta_value') : best ? t('cta_analysis') : t('cta_analyze');
-    return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? best.best_odds : null, book: best ? prettyBook(best.best_sportsbook) : "", cta: cta, ma: ma };
+    return { verdict: verdict, thesis: thesis, price: price, risk: risk, inval: inval, conf: conf, bestOdds: best ? best.best_odds : null, book: best ? prettyBook(best.best_sportsbook) : "", bookCode: best ? best.best_sportsbook : null, cta: cta, ma: ma };
   }
   // copy de riesgo: enuncia el HECHO; NUNCA afirma un nivel de confianza (eso lo controla SOLO el badge, A.1)
   var RISK = { es: { MODEL_DISAGREEMENT: 'Las estimaciones internas no convergen del todo.', LARGE_MARKET_DISAGREEMENT: 'GP y el mercado difieren mucho: mayor potencial pero también mayor riesgo.', MODEL_UNCERTAINTY: 'La incertidumbre de la estimación es elevada para este partido.', LINEUP_NOT_CONFIRMED: 'Las alineaciones aún no están confirmadas.', CONTEXT_INCOMPLETE: 'El contexto disponible es incompleto para este partido.', EARLY_TRACK_RECORD: 'El registro verificable todavía es corto.', LOWER_QUALITY_TIMESTAMP: 'Los datos tienen menor frescura.' }, en: { MODEL_DISAGREEMENT: 'Internal estimates don’t fully converge.', LARGE_MARKET_DISAGREEMENT: 'GP and the market differ widely: higher upside but also higher risk.', MODEL_UNCERTAINTY: 'Estimate uncertainty is elevated for this match.', LINEUP_NOT_CONFIRMED: 'Lineups are not yet confirmed.', CONTEXT_INCOMPLETE: 'The available context is incomplete for this match.', EARLY_TRACK_RECORD: 'The verifiable track record is still short.', LOWER_QUALITY_TIMESTAMP: 'Data has lower freshness.' } };
@@ -2148,7 +2148,7 @@
     polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com', myriad: 'https://myriad.markets'
   };
   function bookUrl(code) { return BOOK_URLS[code] || BOOK_URLS[String(code || '').replace(/_(se|nl|fr|de|uk|us|eu|au|at|es|it)$/i, '')] || null; }
-  function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + ic('external-link') + esc(label || code) + '</a>'; }
+  function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + bookLogo(code) + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + bookLogo(code) + ic('external-link') + esc(label || code) + '</a>'; }
   // Panel "Oportunidad" de la card GP Intelligence: (1) link a la casa/exchange/mercado, (2) [el análisis del
   // partido va debajo, reusado], (3) explicación de la oportunidad + trade-out (clave: value en contra del favorito).
   function mvOpportunity(opp, header) {
@@ -2528,7 +2528,7 @@
       '<div class="gx-memo-grid">' +
       memoItem('verdict', memo.verdict) + memoItem('price', memo.price) + memoItem('thesis', memo.thesis) + memoItem('risk', memo.risk, 'risk') + memoItem('invalidation', memo.inval, 'warn') +
       '</div>' + dataTrust(r, memo.ma, fx) +
-      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + esc(memo.book) : '') + '</span>' +
+      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + bookLogo(memo.bookCode) + esc(memo.book) : '') + '</span>' +
       (ev.code === 'ev_pick' || ev.code === 'ev_value' ? '<span class="gx-cta-tag gx-ev-' + ev.cls + '">' + esc(memo.cta) + '</span>' : '') + '</div>' +
       '</div>';
   }
@@ -3114,7 +3114,7 @@
       var mp = td.marketPrices || []; if (!mp.length) return teamPanel('arrows-left-right', t('mod_markets'), '<div class="gx-empty">' + esc(t('mkt_none')) + '</div>');
       var rows = mp.map(function (o) {
         var liq = o.liquidity != null ? o.liquidity : (o.volume != null ? o.volume : null);
-        return '<tr><td class="l gx-mkt-oc">' + esc(o.venue || '—') + '</td><td class="gx-mono">' + (o.price != null ? (o.price <= 1 ? pct0(o.price) : odd(o.price)) : '—') + '</td><td class="gx-mono gx-dim">' + (o.bid != null && o.ask != null ? pct0(o.bid) + '/' + pct0(o.ask) : '—') + '</td><td class="gx-mono gx-dim">' + (liq != null ? mktLiq(liq) : '—') + '</td><td class="gx-mono ' + (o.change24h > 0 ? 'gx-pos' : o.change24h < 0 ? 'gx-neg' : 'gx-dim') + '">' + (o.change24h != null ? (o.change24h > 0 ? '+' : '') + (o.change24h * 100).toFixed(1) + '%' : '—') + '</td></tr>';
+        return '<tr><td class="l gx-mkt-oc" style="white-space:nowrap">' + bookLogo(o.venue) + esc(o.venue || '—') + '</td><td class="gx-mono">' + (o.price != null ? (o.price <= 1 ? pct0(o.price) : odd(o.price)) : '—') + '</td><td class="gx-mono gx-dim">' + (o.bid != null && o.ask != null ? pct0(o.bid) + '/' + pct0(o.ask) : '—') + '</td><td class="gx-mono gx-dim">' + (liq != null ? mktLiq(liq) : '—') + '</td><td class="gx-mono ' + (o.change24h > 0 ? 'gx-pos' : o.change24h < 0 ? 'gx-neg' : 'gx-dim') + '">' + (o.change24h != null ? (o.change24h > 0 ? '+' : '') + (o.change24h * 100).toFixed(1) + '%' : '—') + '</td></tr>';
       }).join('');
       return teamPanel('arrows-left-right', t('mod_markets') + ' · ' + t('tm_champion'), '<table class="gx-mkt-table"><thead><tr><th class="l">' + esc(t('col_provider')) + '</th><th>' + esc(t('tm_mkt_price')) + '</th><th>Bid/Ask</th><th>' + esc(t('col_liq')) + '</th><th>Δ24h</th></tr></thead><tbody>' + rows + '</tbody></table>');
     }
@@ -3144,7 +3144,7 @@
       var edge = mPct != null ? (td.championProbability - mPct) : null;
       var stat = function (lbl, val, cls) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(lbl) + '</span><b class="gx-mono ' + (cls || '') + '">' + val + '</b></div>'; };
       var grid = '<div class="gx-hero-grid" style="margin-top:0">' + stat(t('tm_gpi_model'), pct1(td.championProbability), 'hi') +
-        (mPct != null ? stat(t('tm_gpi_market') + (bestM && bestM.venue ? ' · ' + esc(bestM.venue) : ''), pct1(mPct)) : '') +
+        (mPct != null ? '<div class="gx-hero-mini"><span class="gx-label" style="display:inline-flex;align-items:center;gap:3px">' + esc(t('tm_gpi_market')) + (bestM && bestM.venue ? ' · ' + bookLogo(bestM.venue) + esc(bestM.venue) : '') + '</span><b class="gx-mono">' + pct1(mPct) + '</b></div>' : '') +
         (edge != null ? stat(t('tm_gpi_edge'), (edge >= 0 ? '+' : '') + (edge * 100).toFixed(1) + ' pp', edge > 0.005 ? 'gx-pos' : edge < -0.005 ? 'gx-neg' : 'gx-dim') : '') + '</div>';
       gpiPanel = teamPanel('trophy', t('tm_gpi'), grid + '<p class="gx-mod-note gx-dim" style="margin-top:10px">' + ic('info-circle') + ' ' + esc(t('tm_gpi_note')) + '</p>');
     }

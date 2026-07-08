@@ -28,19 +28,31 @@ function fitDispersion(samples, { min = 2, max = 400 } = {}) {
 // partidos por equipo no hay señal de equipo a nivel total). Árbitro y paridad NO se amortiguan (multiplican
 // el total completo). Los mercados POR EQUIPO usan la señal completa (skill LOO +0.022 vs baseline).
 // RE-TUNEAR con datos de clubes post-Mundial (30+ partidos por equipo → DAMP>0 probablemente gane).
-const DEFAULTS = { PRIOR_MATCHES: 4, REF_PRIOR: 14, REF_CLAMP: 0.2, GAME_STATE_WEIGHT: 0.5, GS_CLAMP: 0.25, TOTALS_DAMP: 0 };
+// PHASE_PRIOR: peso (en partidos equivalentes) del shrinkage de los multiplicadores POR FASE. La media de
+// liga NO es estática: la eliminatoria de este Mundial trae más córners (10.0 vs 8.7) y más tarjetas (3.07
+// vs 2.61) que la fase de grupos, y el mercado lo cotiza. fit() APRENDE ese multiplicador de los propios
+// datos (nada hardcodeado) con shrinkage a 1 por muestra chica. DISEÑO MULTI-COMPETICIÓN (post-Mundial):
+// cada dataset/competición hace su propio fit y sus fases se etiquetan libres (m.phase: 'regular'|'playoff'|
+// 'group'|'knockout'|...) → el mismo código escala a decenas de torneos simultáneos sin tocar nada.
+const DEFAULTS = { PRIOR_MATCHES: 4, REF_PRIOR: 14, REF_CLAMP: 0.2, GAME_STATE_WEIGHT: 0.5, GS_CLAMP: 0.25, TOTALS_DAMP: 0, PHASE_PRIOR: 10 };
+
+// Fase de un partido del dataset: etiqueta explícita m.phase, o derivada del nombre de ronda.
+function phaseOf(m) { return m.phase || (/group|grupo|apertura|regular/i.test(m.round || '') ? 'group' : 'knockout'); }
 
 function fit(matches, opts = {}) {
   const cfg = Object.assign({}, DEFAULTS, opts);
   const ft = matches.filter(m => !m.et && m.home.corners != null && m.away.corners != null);
   const perTeam = {};   // code → { n, cornersFor[], cornersAg[], cardsFor[], cardsDrawn[] }
   const perRef = {};    // referee → { n, cards[] }
+  const perPhase = {};  // fase → { corners:[], cards:[] } (para multiplicadores aprendidos)
   const totCorners = [], totCards = [], teamCorners = [], teamCards = [];
   for (const m of ft) {
     const hc = m.home.corners, ac = m.away.corners;
     const hk = (m.home.yellows || 0) + (m.home.reds || 0), ak = (m.away.yellows || 0) + (m.away.reds || 0);
     totCorners.push(hc + ac); totCards.push(hk + ak);
     teamCorners.push(hc, ac); teamCards.push(hk, ak);
+    const ph = perPhase[phaseOf(m)] || (perPhase[phaseOf(m)] = { corners: [], cards: [] });
+    ph.corners.push(hc + ac); ph.cards.push(hk + ak);
     for (const [side, opp, c, k, oppK] of [['home', 'away', hc, hk, ak], ['away', 'home', ac, ak, hk]]) {
       const t = perTeam[m[side].code] || (perTeam[m[side].code] = { n: 0, cornersFor: [], cornersAg: [], cardsFor: [], cardsDrawn: [] });
       t.n++; t.cornersFor.push(c); t.cornersAg.push(m[opp].corners); t.cardsFor.push(k); t.cardsDrawn.push(oppK);
@@ -56,7 +68,17 @@ function fit(matches, opts = {}) {
     rCornersTeam: fitDispersion(teamCorners),
     rCardsTeam: fitDispersion(teamCards),
     matches: ft.length,
+    phaseMult: {},                                 // fase → multiplicador aprendido (shrunk a 1)
   };
+  for (const ph in perPhase) {
+    const s = perPhase[ph];
+    const w = s.corners.length / (s.corners.length + cfg.PHASE_PRIOR);
+    league.phaseMult[ph] = {
+      corners: +(1 + w * (mean(s.corners) / (league.totalCornersMean || 1) - 1)).toFixed(4),
+      cards: +(1 + w * (mean(s.cards) / (league.totalCardsMean || 1) - 1)).toFixed(4),
+      n: s.corners.length,
+    };
+  }
   // Fuerzas por equipo con shrinkage al prior de liga: ratio = (k·μ_liga + Σx) / (k + n) / μ_liga
   const K = cfg.PRIOR_MATCHES;
   const teams = {};
@@ -87,10 +109,14 @@ function fit(matches, opts = {}) {
 //   lambdas {home, away}: λ de goles del modelo GP → acople al game state.
 //   referee: nombre exacto del árbitro (dataset) → multiplicador de tarjetas.
 //   closeness1x2 {home, draw, away}: probs 1X2 del modelo → partido parejo sube tarjetas (hasta ±10%).
-function project(fitres, { home, away, lambdas = null, referee = null, closeness1x2 = null } = {}) {
+function project(fitres, { home, away, lambdas = null, referee = null, closeness1x2 = null, phase = null } = {}) {
   const { league, teams, refs, cfg } = fitres;
   const T = code => teams[code] || { cornersForRatio: 1, cornersAgainstRatio: 1, cardsForRatio: 1, cardsDrawnRatio: 1, n: 0 };
   const th = T(home), ta = T(away);
+  // Multiplicador de FASE aprendido del dataset (grupos vs eliminatoria; post-Mundial: regular vs playoff,
+  // etc.). Sin fase o fase desconocida → 1 (compat total con calibraciones existentes).
+  const pm = (phase && league.phaseMult && league.phaseMult[phase]) || null;
+  const phCorners = pm ? pm.corners : 1, phCards = pm ? pm.cards : 1;
 
   // game state (córners): dominio esperado en ataque → más córners. Exponente 0.5, clamp ±25%.
   const LEAGUE_LAMBDA = 1.4;
@@ -118,16 +144,16 @@ function project(fitres, { home, away, lambdas = null, referee = null, closeness
   // Totales con la señal de EQUIPOS amortiguada hacia la media de liga (ver TOTALS_DAMP arriba).
   const dampTotal = (rawSum, leagueMean) => leagueMean * Math.pow(rawSum / (leagueMean || 1), cfg.TOTALS_DAMP);
   return {
-    home, away,
+    home, away, phase: phase || null,
     corners: {
-      home: muCornersHome, away: muCornersAway,
-      total: dampTotal(muCornersHome + muCornersAway, league.totalCornersMean),
-      r_total: league.rCornersTotal, r_team: league.rCornersTeam,
+      home: muCornersHome * phCorners, away: muCornersAway * phCorners,
+      total: dampTotal(muCornersHome + muCornersAway, league.totalCornersMean) * phCorners,
+      r_total: league.rCornersTotal, r_team: league.rCornersTeam, phase_mult: phCorners,
     },
     cards: {
-      home: muCardsHome, away: muCardsAway,
-      total: dampTotal(baseCardsHome + baseCardsAway, league.totalCardsMean) * refMult * closeMult,
-      r_total: league.rCardsTotal, r_team: league.rCardsTeam, ref_mult: refMult, close_mult: closeMult,
+      home: muCardsHome * phCards, away: muCardsAway * phCards,
+      total: dampTotal(baseCardsHome + baseCardsAway, league.totalCardsMean) * refMult * closeMult * phCards,
+      r_total: league.rCardsTotal, r_team: league.rCardsTeam, ref_mult: refMult, close_mult: closeMult, phase_mult: phCards,
     },
     sample: { home_n: th.n, away_n: ta.n, league_matches: league.matches },
   };
@@ -141,4 +167,4 @@ function overProbNB(mu, r, line) {
   return clamp(1 - under, 0, 1);
 }
 
-module.exports = { fit, project, overProbNB, fitDispersion, DEFAULTS };
+module.exports = { fit, project, overProbNB, fitDispersion, phaseOf, DEFAULTS };

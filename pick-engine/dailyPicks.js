@@ -161,8 +161,9 @@ async function buildDailyPicks(deps) {
     for (const m of hist.matches) for (const p of m.players) ROSTER[p.pid] = { name: p.name, team: p.team };
   } catch { /* sin dataset → picks de jugador sin nombre no se publican */ }
   const PROP_FAMILY_APPROVED = { corners_total: true, cards_total: true }; // gates del backtest LOO del prop-engine
-  const availability = deps.playerAvailability || {}; // pid → OUT|SUSPENDED|DOUBT|REST_RISK (capa de observación)
+  const availability = deps.playerAvailability || {}; // pid → { status, prob_miss, corroborated } (capa de observación)
   const starters = deps.projectedStarters || null;     // Set<pid> del once probable (server); null = sin proyección
+  const confirmedXi = deps.confirmedXi || null;        // pairKey → Set<pid> del once CONFIRMADO (alineación oficial)
 
   const propMarkets = [], playerMarkets = [];
   for (const g of rowsPropsAll) {
@@ -183,13 +184,21 @@ async function buildDailyPicks(deps) {
       // market_id de jugador: PLAYER_GOAL_<pid> | PLAYER_SHOTS_<pid>_2_5 | PLAYER_SOT_<pid>_1_5
       const mm = /^PLAYER_(GOAL|SHOTS|SOT)_(pl_[A-Za-z0-9]+)(?:_(\d+)_(\d+))?$/.exec(g.market_id); if (!mm) continue;
       const pid = mm[2], meta = ROSTER[pid]; if (!meta) continue;
+      // Disponibilidad del observer: objeto { status, prob_miss, corroborated } (compat con string legado).
+      // OUT/SUSPENDED SIN corroborar (1 sola fuente) degrada a DOUBT: un titular suelto no tumba una pick,
+      // pero sí la frena si la duda es sustancial (gate en curate).
+      const avRaw = availability[pid] || null;
+      const av = typeof avRaw === 'string' ? { status: avRaw, prob_miss: 0.5, corroborated: true } : avRaw;
+      const avRisk = !av ? null : ((av.status === 'OUT' || av.status === 'SUSPENDED') && av.corroborated === false) ? 'DOUBT' : av.status;
+      // Once CONFIRMADO por alineación oficial (si ya salió) pisa a la proyección histórica.
+      const cxi = confirmedXi ? confirmedXi[pairKey(base.homeId, base.awayId)] : null;
       playerMarkets.push({
         ...base, family: g.market_family, marketId: g.market_id, player: meta.name, pid,
         side: mm[1] === 'GOAL' ? 'yes' : 'over', line: mm[3] != null ? Number(mm[3]) + Number(mm[4]) / 10 : null,
         modelProb: g.gp, impliedMedian: g.mkt, bestOdds: g.odds, bestBook: null,
         books: Number(booksPlayer[g.canonical_event_id + '|' + g.market_family + '|' + pid] || 0),
-        availabilityRisk: availability[pid] || null,
-        isStarter: starters ? starters.has(pid) : null, // proyección de once (server); false bloquea en curate
+        availabilityRisk: avRisk, availabilityMiss: av ? Number(av.prob_miss) || 0 : 0,
+        isStarter: cxi ? cxi.has(pid) : (starters ? starters.has(pid) : null),
       });
     }
   }

@@ -46,6 +46,7 @@ const CONFIG = {
   playerOddsMin: 1.4, playerOddsMax: 4.0, // ventana de producto: ni chirolas ni loterías
   playerMinProb: 0.5,          // solo picks con ≥50% de probabilidad (blend): "apuesta ganadora", no lotería
   playerMaxModelDeficitPp: 0.15, // coherencia: si el modelo está >15pp DEBAJO del mercado, no publicar
+  playerDoubtBlockMiss: 0.3,   // DUDA del observer con prob_miss ≥ 30% → no publicar (se resuelve con la alineación)
 };
 
 const OUTCOME = { home: 'home', draw: 'draw', away: 'away' };
@@ -190,6 +191,7 @@ function playerPicks(playerMarkets, cfg) {
     if (odds > 1 && (odds < cfg.playerOddsMin || odds > cfg.playerOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
     if (g.isStarter === false) blockers.push('NOT_PROJECTED_STARTER'); // el bug Doué: suplente proyectado como titular
     if (g.availabilityRisk === 'OUT' || g.availabilityRisk === 'SUSPENDED') blockers.push('AVAILABILITY'); // capa de observación
+    if (g.availabilityRisk === 'DOUBT' && Number(g.availabilityMiss || 0) >= cfg.playerDoubtBlockMiss) blockers.push('AVAILABILITY_DOUBT'); // duda sustancial → esperar alineación
     if (prob < cfg.playerMinProb) blockers.push('LOW_PROBABILITY');
     if (market != null && model < market - cfg.playerMaxModelDeficitPp) blockers.push('MODEL_FIGHTS_MARKET');
     out.push({
@@ -199,7 +201,8 @@ function playerPicks(playerMarkets, cfg) {
       modelProb: model, marketProb: market,
       confidence: prob,
       edgePp: pp(model - be), bestOdds: odds, bestBook: g.bestBook || null, books,
-      availabilityRisk: g.availabilityRisk || null, isStarter: g.isStarter != null ? g.isStarter : null,
+      availabilityRisk: g.availabilityRisk || null, availabilityMiss: Number(g.availabilityMiss || 0) || 0,
+      isStarter: g.isStarter != null ? g.isStarter : null,
       eligible: blockers.length === 0, blockers,
     });
   }

@@ -2148,7 +2148,7 @@ async function evaluateDailyPicks() {
     if (!dbcfg.db || !dbcfg.db.configured) { out.skipped = 'no_db'; return out; }
     const dbc = require('./database/client');
     const daily = require('./pick-engine/dailyPicks');
-    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now(), playerAvailability: observerAvailability(), projectedStarters: projectedStarters() });
+    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now(), playerAvailability: observerAvailability(), projectedStarters: projectedStarters(), confirmedXi: confirmedXiPids() });
     out.considered = built.considered; out.counts = built.counts;
     const idx = {}; for (const p of db.dailyPicks) idx[p.pick_id] = p;
     for (const pick of built.picks) {
@@ -2285,10 +2285,21 @@ function projectedStarters() {
   const out = new Set();
   const fit = obsFit();
   if (fit) {
+    // INTERCONEXIÓN observer→once (8-jul): un OUT/SUSPENDED corroborado (o prob_miss alta) SALE del once
+    // proyectado y su lugar lo toma el siguiente por titularidades — antes Onana (rotura de ligamentos,
+    // confirmado) seguía en el XI proyectado de Bélgica porque la proyección era 100% histórica.
+    const avail = observerAvailability();
+    const excluded = pid => {
+      const a = avail[pid]; if (!a) return false;
+      if ((a.status === 'OUT' || a.status === 'SUSPENDED') && a.corroborated) return true;
+      return a.prob_miss >= 0.6;
+    };
     const byTeam = {};
     for (const p of Object.values(fit.players)) (byTeam[p.team] = byTeam[p.team] || []).push(p);
     for (const t in byTeam) {
-      byTeam[t].sort((a, b) => (b.starts - a.starts) || (b.minutes - a.minutes)).slice(0, 11).forEach(p => out.add(p.pid));
+      byTeam[t].sort((a, b) => (b.starts - a.starts) || (b.minutes - a.minutes))
+        .filter(p => !excluded(p.pid))
+        .slice(0, 11).forEach(p => out.add(p.pid));
     }
   }
   _projStarters = out; _projStartersAt = Date.now();
@@ -2436,14 +2447,28 @@ function propFit() {
   try { _propFitCache = require('./prop-engine/model').fit(require('./data/props-history.json').matches); } catch { _propFitCache = null; }
   return _propFitCache;
 }
-// Disponibilidad por jugador desde la CAPA DE OBSERVACIÓN (pid → OUT|SUSPENDED|DOUBT|REST_RISK).
+// Fase del cruce para el prop-engine: si el par está en el bracket de eliminatoria → 'knockout'.
+// Post-Mundial esto se generaliza por competición (cada torneo etiqueta sus fases en su dataset).
+function pairPhase(h, a) {
+  try {
+    const br = resolveRealBracket();
+    for (const k of KNOCKOUT) {
+      const x = br[k.m];
+      if (x && x.home && x.away && ((x.home === h && x.away === a) || (x.home === a && x.away === h))) return 'knockout';
+    }
+  } catch { /* sin bracket → grupos */ }
+  return 'group';
+}
+// Disponibilidad por jugador desde la CAPA DE OBSERVACIÓN.
+// pid → { status, prob_miss, corroborated, source_count } (antes solo el status: ahora las capas de picks,
+// once proyectado e inteligencia consumen la evaluación completa, no un string suelto).
 function observerAvailability() {
   const out = {};
   try {
     const { assessPlayers } = require('./observer/assess');
     for (const code of Object.keys(db.observations || {})) {
       const a = assessPlayers((db.observations[code] || {}).signals || []);
-      for (const pid in a) if (a[pid].prob_miss > 0) out[pid] = a[pid].status;
+      for (const pid in a) if (a[pid].prob_miss > 0) out[pid] = { status: a[pid].status, prob_miss: a[pid].prob_miss, corroborated: a[pid].corroborated !== false, source_count: a[pid].source_count || 1 };
     }
   } catch { /* sin observer → sin flags */ }
   return out;
@@ -2456,11 +2481,17 @@ function propRoster() {
   try {
     const hist = require('./data/player-props-history.json');
     for (const m of hist.matches) for (const p of m.players) {
-      const t = _propRoster.byTeam[p.team] || (_propRoster.byTeam[p.team] = { full: {}, last: {} });
+      const t = _propRoster.byTeam[p.team] || (_propRoster.byTeam[p.team] = { full: {}, last: {}, lastDup: {} });
       const full = _propNorm(p.name);
       t.full[full] = p.pid;
       const last = full ? p.name.trim().split(/\s+/).pop() : null;
-      if (last && last.length >= 3) t.last[_propNorm(last)] = p.pid;
+      if (last && last.length >= 3) {
+        const ln = _propNorm(last);
+        // Colisión de apellidos (Theo/Lucas Hernández en FRA): si dos jugadores DISTINTOS comparten
+        // apellido, el fallback por apellido queda inválido para ese apellido (solo matchea nombre completo).
+        if (t.last[ln] && t.last[ln] !== p.pid) { t.lastDup[ln] = true; delete t.last[ln]; }
+        else if (!t.lastDup[ln]) t.last[ln] = p.pid;
+      }
     }
   } catch { /* sin dataset */ }
   return _propRoster;
@@ -2511,7 +2542,11 @@ async function evaluateUpcomingProps() {
       out.events++;
       const xg = gpXgFromCache(hCode, aCode) || {};
       const lambdas = (xg.xgA > 0 && xg.xgB > 0) ? { home: xg.xgA, away: xg.xgB } : null;
-      const proj = F ? propModel.project(F, { home: hCode, away: aCode, lambdas }) : null;
+      // Contexto del partido para el prop-engine: FASE (multiplicador aprendido grupos/eliminatoria) y
+      // PARIDAD 1X2 del modelo (partido parejo → más tarjetas). Antes se proyectaba "en el vacío".
+      let closeness = null;
+      try { const bp = matchProbs(effElo(db.elos, hCode), effElo(db.elos, aCode)); closeness = { home: bp.home, draw: bp.draw, away: bp.away }; } catch { /* sin Elo → sin paridad */ }
+      const proj = F ? propModel.project(F, { home: hCode, away: aCode, lambdas, phase: pairPhase(hCode, aCode), closeness1x2: closeness }) : null;
       // ---- CÓRNERS / TARJETAS ----
       try {
         const r1 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk&markets=alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
@@ -2680,6 +2715,83 @@ async function settlePropsPicks() {
   if (settled) save();
   return settled;
 }
+
+// ===== RE-VALIDACIÓN POR ALINEACIÓN CONFIRMADA (8-jul) =======================================================
+// El cierre del circuito de props de jugador: ~1h antes del kickoff las alineaciones oficiales salen
+// (API-Football→ESPN, ya integrado con cache). Este loop: (1) captura el once CONFIRMADO por par de equipos
+// en db.lineupXi (alimenta buildDailyPicks: pisa a la proyección histórica), y (2) si una pick PLAYER activa
+// tiene un jugador que NO está en el once confirmado → la RETIRA (VOID preventivo, NOT_IN_LINEUP) antes de
+// que arranque el partido. "Se corrobora cuando salga la alineación y se ajusta acorde" (Alexis).
+db.lineupXi = db.lineupXi || {}; // pairKey ordenado → { at, names: [{side,name}] }
+const _xiPairKey = (a, b) => [a, b].sort().join('~');
+function fixtureMetaForPair(h, a) {
+  try {
+    for (const k of KNOCKOUT) {
+      const meta = findFixtureMeta(String(k.m));
+      if (meta && meta.home && meta.away && ((meta.home === h && meta.away === a) || (meta.home === a && meta.away === h))) return meta;
+    }
+  } catch { /* sin bracket */ }
+  return null;
+}
+function confirmedXiPids() {
+  const out = {};
+  for (const key of Object.keys(db.lineupXi || {})) {
+    const xi = db.lineupXi[key]; if (!xi || !Array.isArray(xi.names)) continue;
+    const [t1, t2] = key.split('~');
+    const set = new Set();
+    for (const n of xi.names) {
+      const pid = propPlayerPid(t1, n.name) || propPlayerPid(t2, n.name);
+      if (pid) set.add(pid);
+    }
+    if (set.size >= 8) out[key] = set; // menos de 8 matcheados = mapeo poco confiable → no pisar la proyección
+  }
+  return out;
+}
+let _lineupRevalRunning = false;
+async function revalidateLineups() {
+  if (_lineupRevalRunning || !propsOn()) return;
+  _lineupRevalRunning = true;
+  try {
+    const pending = db.dailyPicks.filter(p => p.status === 'ACTIVE' && p.family === 'PLAYER');
+    for (const p of pending) {
+      const ko = new Date(p.event.kickoff_at || 0).getTime();
+      if (!(ko > Date.now()) || ko - Date.now() > 90 * 60 * 1000) continue; // ventana: últimos 90 min pre-KO
+      const h = p.event.home_team_id, a = p.event.away_team_id;
+      const key = _xiPairKey(h, a);
+      let xi = db.lineupXi[key];
+      if (!xi || Date.now() - new Date(xi.at).getTime() > 15 * 60 * 1000) {
+        const meta = fixtureMetaForPair(h, a); if (!meta) continue;
+        const th = TEAMS.find(t => t.id === h), ta = TEAMS.find(t => t.id === a);
+        const namesOf = t => t ? [t.en, t.name, ...(t.aliases || [])] : [];
+        const ctx = await providers.getMatchContext({
+          homeCode: h, awayCode: a, homeName: th ? th.en : '', awayName: ta ? ta.en : '',
+          homeNames: namesOf(th), awayNames: namesOf(ta), isoDate: meta.datetime, espnId: meta.espnId,
+          isLive: false, isFinal: false,
+        }).catch(() => null);
+        const L = ctx && ctx.lineups;
+        const names = [];
+        for (const s of ['home', 'away']) {
+          if (L && L[s] && L[s].confirmed && Array.isArray(L[s].startXI) && L[s].startXI.length >= 10) {
+            for (const pl of L[s].startXI) { const nm = pl && (pl.name || (pl.player && pl.player.name)); if (nm) names.push({ side: s, name: nm }); }
+          }
+        }
+        if (!names.length) continue; // aún sin alineación confirmada → reintentar en el próximo tick
+        xi = { at: new Date().toISOString(), names };
+        db.lineupXi[key] = xi; save();
+      }
+      const target = _propNorm(p.player_name);
+      const lastN = _propNorm(String(p.player_name || '').trim().split(/\s+/).pop());
+      const inXi = xi.names.some(n => { const nn = _propNorm(n.name); return nn === target || (lastN.length >= 4 && nn.includes(lastN)); });
+      if (!inXi) {
+        p.status = 'SETTLED'; p.result_code = 'VOID'; p.void_reason = 'NOT_IN_LINEUP'; p.settled_at = new Date().toISOString(); save();
+        console.log('[picks] PLAYER retirada por alineación confirmada (no es titular):', p.player_name, key);
+        evaluateDailyPicks().catch(() => { }); // re-curar el evento: con el once confirmado puede salir otra pick válida
+      } else if (!p.lineup_confirmed) { p.lineup_confirmed = true; save(); console.log('[picks] PLAYER confirmada en el once:', p.player_name, key); }
+    }
+  } catch (e) { console.log('[picks] revalidación alineaciones error', e.message); }
+  finally { _lineupRevalRunning = false; }
+}
+if (propsOn()) setInterval(() => revalidateLineups().catch(() => { }), 10 * 60 * 1000);
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
@@ -3235,18 +3347,30 @@ const server = http.createServer(async (req, res) => {
         try {
           const players = require('./prop-engine/players');
           const { assessPlayers, suggestTeamFactor } = require('./observer/assess');
+          const { playerIntel } = require('./player-intel/engine');
           const PF = obsFit();
           if (!PF) return json(res, 200, { available: false });
           const xg = gpXgFromCache(ih, ia) || {};
           const avail = observerAvailability();
+          const starters = projectedStarters();
+          const cxi = confirmedXiPids()[_xiPairKey(ih, ia)] || null;
           const side = (code, lambda) => {
-            const rows = players.projectTeam(PF, code, { teamLambda: lambda || null, top: 5 }).map(r => ({
-              name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),
-              sot_o05: +r.sot_over_0_5.toFixed(3), risk: avail[r.pid] || null,
-            }));
+            const rows = players.projectTeam(PF, code, { teamLambda: lambda || null, top: 5 }).map(r => {
+              const pi = playerIntel(PF, r.pid, {
+                teamLambda: lambda || null,
+                projectedStarter: starters.size ? starters.has(r.pid) : null,
+                confirmedStarter: cxi ? cxi.has(r.pid) : null,
+                availability: avail[r.pid] || null,
+              });
+              return {
+                name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),
+                sot_o05: +r.sot_over_0_5.toFixed(3), risk: (avail[r.pid] && avail[r.pid].status) || null,
+                role: pi ? pi.role : null, confidence: pi ? pi.confidence : null, reasons: pi ? pi.reasons : [],
+              };
+            });
             const asmts = assessPlayers(((db.observations[code] || {}).signals) || []);
             const sug = suggestTeamFactor(PF, code, asmts);
-            const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => ({ player: x.player, status: x.status, prob_miss: x.prob_miss }));
+            const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => ({ player: x.player, status: x.status, prob_miss: x.prob_miss, corroborated: x.corroborated !== false }));
             return { scorers: rows, radar: { players: flagged.slice(0, 6), lambda_factor: sug.factor } };
           };
           return json(res, 200, { available: true, home: side(ih, xg.xgA), away: side(ia, xg.xgB) });

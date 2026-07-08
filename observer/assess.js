@@ -40,9 +40,22 @@ function assessPlayers(signals, { now = Date.now() } = {}) {
       const p = base * decay(s.published_at, now);
       if (p > worstP) { worstP = p; worst = s; }
     }
-    out[pid] = worst && worstP >= 0.1
-      ? { pid, player: worst.player, status: worst.category, prob_miss: +worstP.toFixed(2), evidence: arr.slice(0, 3) }
-      : { pid, player: latest.player, status: 'OK', prob_miss: 0, evidence: arr.slice(0, 2) };
+    if (worst && worstP >= 0.1) {
+      // CORROBORACIÓN (8-jul): un OUT/SUSPENDED con UNA sola fuente puede ser clickbait o error de lectura.
+      // Solo con ≥2 fuentes independientes (mismo diagnóstico) se confirma la severidad completa; con una
+      // sola, la probabilidad se capea al nivel de una DUDA hasta que otra fuente lo respalde (o la
+      // alineación confirmada lo zanje). DOUBT/REST_RISK no exigen corroboración (ya son blandas).
+      let corroborated = true, srcCount = 1;
+      if (worst.category === 'OUT' || worst.category === 'SUSPENDED') {
+        const srcs = new Set(arr.filter(s => s.category === worst.category).map(s => s.source || s.title));
+        srcCount = srcs.size;
+        corroborated = srcCount >= 2;
+        if (!corroborated) worstP = Math.min(worstP, PROB_MISS.DOUBT * decay(worst.published_at, now));
+      }
+      out[pid] = { pid, player: worst.player, status: worst.category, prob_miss: +worstP.toFixed(2), corroborated, source_count: srcCount, evidence: arr.slice(0, 3) };
+    } else {
+      out[pid] = { pid, player: latest.player, status: 'OK', prob_miss: 0, corroborated: true, source_count: 0, evidence: arr.slice(0, 2) };
+    }
   }
   return out;
 }

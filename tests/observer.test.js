@@ -48,8 +48,15 @@ t('titular interrogativo degrada OUT → DOUBT', sq.length >= 1 && sq[0].categor
 
 console.log('== assess ==');
 const A1 = assessPlayers([...s1, ...s2], { now });
-t('Yamal OUT con prob_miss alta', A1.p1 && A1.p1.status === 'OUT' && A1.p1.prob_miss >= 0.7);
+t('OUT con UNA sola fuente → severidad capeada a nivel DUDA (corroborated:false)', A1.p1 && A1.p1.status === 'OUT' && A1.p1.corroborated === false && A1.p1.prob_miss <= 0.45);
 t('Mbappé DOUBT con prob_miss media', A1.p2 && A1.p2.status === 'DOUBT' && A1.p2.prob_miss > 0.2 && A1.p2.prob_miss < 0.6);
+// corroboración: el mismo OUT desde DOS fuentes independientes recupera la severidad completa
+const twoSrc = [
+  ...extract({ title: 'Lamine Yamal ruled out of the quarter final', description: '', source: 'Marca', published_at: new Date(now - 3600e3).toISOString() }, { team: 'ESP', roster: ROSTER }),
+  ...extract({ title: 'Yamal will miss the quarter final, coach confirms', description: '', source: 'BBC', published_at: new Date(now - 2 * 3600e3).toISOString() }, { team: 'ESP', roster: ROSTER }),
+];
+const A1b = assessPlayers(twoSrc, { now });
+t('OUT con DOS fuentes independientes → corroborado y prob_miss alta', A1b.p1 && A1b.p1.status === 'OUT' && A1b.p1.corroborated === true && A1b.p1.prob_miss >= 0.7);
 const A2 = assessPlayers([
   ...extract(item('Mbappé a doubt for France with a knock', 30), { team: 'FRA', roster: ROSTER }),
   ...extract(item('Mbappé declared fit to play and will start', 2), { team: 'FRA', roster: ROSTER }),

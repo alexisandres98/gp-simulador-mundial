@@ -28,6 +28,24 @@ t('desenlace positivo gana sobre keyword negativa (no sera sancionado → BACK)'
 const s6 = extract(item('Yamal declared fit after injury scare'), { team: 'ESP', roster: ROSTER });
 t('declared fit tras susto → BACK', s6.length === 1 && s6[0].category === 'BACK');
 
+console.log('== precisión (falsos positivos reales del 8-jul) ==');
+t('"sancionado el penal" (contexto arbitral) NO es SUSPENDED',
+  extract(item('La lupa sobre el penal que fallo Yamal: por que estuvo bien sancionado por el arbitro'), { team: 'ESP', roster: ROSTER })
+    .every(s => s.category !== 'SUSPENDED'));
+t('"sancionado con dos partidos" SÍ es SUSPENDED',
+  extract(item('Yamal sancionado con dos partidos por la falta'), { team: 'ESP', roster: ROSTER })
+    .some(s => s.category === 'SUSPENDED'));
+t('"sin duda es uno de mis juegos favoritos" NO genera señal',
+  extract(item('Yamal se rindio ante el rival: sin duda es uno de mis juegos favoritos'), { team: 'ESP', roster: ROSTER }).length === 0);
+t('"knock Portugal out" (eliminación) NO es DOUBT',
+  extract(item('Yamal strikes late to knock Portugal out of the World Cup'), { team: 'ESP', roster: ROSTER }).length === 0);
+t('"golpe para el equipo" (metáfora) NO genera señal',
+  extract(item('Golpe para España: el rival llega entonado'), { team: 'ESP', roster: ROSTER }).length === 0);
+t('"golpe en el tobillo" SÍ es DOUBT',
+  extract(item('Yamal recibio un golpe en el tobillo y es duda'), { team: 'ESP', roster: ROSTER }).some(s => s.category === 'DOUBT'));
+const sq = extract(item('¿Haaland no jugara contra Inglaterra? Reportan jugadores enfermos - tribuna'), { team: 'NOR', roster: ROSTER });
+t('titular interrogativo degrada OUT → DOUBT', sq.length >= 1 && sq[0].category === 'DOUBT');
+
 console.log('== assess ==');
 const A1 = assessPlayers([...s1, ...s2], { now });
 t('Yamal OUT con prob_miss alta', A1.p1 && A1.p1.status === 'OUT' && A1.p1.prob_miss >= 0.7);

@@ -2338,8 +2338,33 @@ async function runObserver() {
   finally { _obsRunning = false; out.finished = new Date().toISOString(); _obsLast = out; if (out.signals || out.error) console.log('[observer]', JSON.stringify(out)); }
   return out;
 }
+// Saneo al boot: re-valida las señales GUARDADAS con las reglas de extracción vigentes. Sin esto, un falso
+// positivo persiste en el ring ~días por el decaimiento (36h半vida) aunque el extractor ya esté arreglado —
+// caso real 8-jul: Messi quedó SUSPENDED por "estuvo bien sancionado el penal" y bloqueaba su pick.
+// Solo re-valida señales cuyo keyword vive en el TITULAR (las de description no son re-evaluables acá).
+function sanitizeObservations() {
+  try {
+    const { extract } = require('./observer/extract');
+    const roster = obsRoster();
+    const normS = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let dropped = 0;
+    for (const code of Object.keys(db.observations || {})) {
+      const slot = db.observations[code]; if (!slot || !Array.isArray(slot.signals)) continue;
+      slot.signals = slot.signals.filter(s => {
+        if (!s || !s.title) return false;
+        if (s.keyword && !normS(s.title).includes(normS(s.keyword))) return true; // matcheó en la descripción → conservar
+        const re = extract({ title: s.title, description: '' }, { team: code, roster: roster[code] || [] });
+        const ok = re.some(x => x.category === s.category && (x.pid || null) === (s.pid || null));
+        if (!ok) dropped++;
+        return ok;
+      });
+    }
+    if (dropped) { save(); console.log('[observer] saneo con reglas nuevas: ' + dropped + ' señales descartadas'); }
+    return dropped;
+  } catch (e) { console.log('[observer] saneo error', e.message); return 0; }
+}
 if (observerOn()) {
-  setTimeout(() => runObserver().catch(() => { }), 90 * 1000);
+  setTimeout(() => { sanitizeObservations(); runObserver().catch(() => { }); }, 90 * 1000);
   setInterval(() => runObserver().catch(() => { }), 3 * 3600 * 1000);
 }
 

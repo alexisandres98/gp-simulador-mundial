@@ -23,7 +23,11 @@ const RULES = [
   { category: 'CONFIRMED', severity: 0, kws: ['starting xi', 'starting lineup confirmed', 'confirmed lineup', 'will start', 'titular confirmado', 'once confirmado', 'sera titular', 'de arranque'] },
   { category: 'OUT', severity: 0.9, kws: ['ruled out', 'out of the match', 'out for the', 'will miss', 'misses the', 'sidelined', 'out injured', 'baja confirmada', 'es baja', 'se pierde el', 'fuera del partido', 'descartado', 'no jugara', 'no estara ante', 'lesion lo deja fuera'] },
   { category: 'SUSPENDED', severity: 0.95, kws: ['suspended', 'suspension', 'banned', 'accumulation of yellow', 'sancionado', 'suspendido', 'acumulacion de amarillas', 'por sancion'] },
-  { category: 'DOUBT', severity: 0.5, kws: ['doubt', 'doubtful', 'fitness test', 'questionable', 'injury concern', 'knock', 'strain', 'discomfort', 'illness', 'unwell', 'fever', 'sick', 'gastro', 'duda', 'entre algodones', 'molestias', 'sobrecarga', 'golpe', 'enfermo', 'fiebre', 'indispuesto', 'malestar', 'no completo el entrenamiento', 'entreno aparte', 'no se entreno'] },
+  // Precisión (8-jul, auditoría): keywords sueltas daban falsos positivos REALES en titulares del día —
+  // 'duda' matcheaba "SIN DUDA es uno de mis juegos favoritos" (Kane), 'knock' matcheaba "knock Portugal
+  // OUT" (eliminación, Merino), 'golpe' matcheaba "GOLPE para Inglaterra" (metáfora). Frases con contexto
+  // de fitness, nunca la palabra pelada.
+  { category: 'DOUBT', severity: 0.5, kws: ['in doubt', 'a doubt', 'doubt over', 'major doubt', 'fitness doubt', 'doubtful', 'fitness test', 'questionable', 'injury concern', 'a knock', 'knock in training', 'picked up a knock', 'strain', 'discomfort', 'illness', 'unwell', 'fever', 'gastro', 'en duda', 'es duda', 'duda para', 'duda ante', 'sigue en duda', 'mantiene en duda', 'entre algodones', 'molestias', 'sobrecarga', 'golpe en el', 'golpe en la', 'recibio un golpe', 'enfermo', 'fiebre', 'indispuesto', 'malestar', 'no completo el entrenamiento', 'entreno aparte', 'no se entreno'] },
   { category: 'REST_RISK', severity: 0.3, kws: ['rested', 'set to rotate', 'rotation', 'could be benched', 'start on the bench', 'rotacion', 'descanso para', 'iria al banco', 'seria suplente', 'dosificar'] },
 ];
 
@@ -45,15 +49,24 @@ function playerMatches(text, roster) {
 function extract(item, { team, roster } = {}) {
   const text = norm((item.title || '') + ' ' + (item.description || ''));
   const signals = [];
+  // Titular INTERROGATIVO = especulación ("¿Haaland no jugará?"), no confirmación → OUT/SUSPENDED degradan a DOUBT.
+  const interrogative = /^\s*¿/.test(String(item.title || '')) || /\?\s*$/.test(String(item.title || '').replace(/\s*-\s*[^-]*$/, ''));
   for (const rule of RULES) {
     const kw = rule.kws.find(k => text.includes(norm(k)));
     if (!kw) continue;
+    // Guard de contexto ARBITRAL (8-jul): "por qué estuvo bien SANCIONADO el penal" marcaba SUSPENDED a
+    // Messi. Si la sanción convive con lenguaje de jugada/árbitro y NO hay lenguaje de castigo por partidos,
+    // no es una suspensión de jugador → probar la siguiente regla.
+    if (rule.category === 'SUSPENDED' && /\b(penal|penalti|var|arbitr|falta|jugada)\b/.test(text)
+      && !/partidos? de (sancion|suspension)|sancionado (con|por) (un|dos|tres|\d)|acumulacion de amarillas|banned for|se pierde/.test(text)) continue;
+    let category = rule.category, severity = rule.severity;
+    if (interrogative && (category === 'OUT' || category === 'SUSPENDED')) { category = 'DOUBT'; severity = 0.5; }
     const players = playerMatches((item.title || '') + ' ' + (item.description || ''), roster);
     if (players.length) {
-      for (const p of players) signals.push({ category: rule.category, severity: rule.severity, player: p.name, pid: p.pid, team, keyword: kw, title: item.title || '', source: item.source || null, link: item.link || null, published_at: item.published_at || null });
+      for (const p of players) signals.push({ category, severity, player: p.name, pid: p.pid, team, keyword: kw, title: item.title || '', source: item.source || null, link: item.link || null, published_at: item.published_at || null });
     } else {
       // señal a nivel EQUIPO (sin jugador identificado) — útil igual ("tres jugadores con gripe")
-      signals.push({ category: rule.category, severity: rule.severity * 0.5, player: null, pid: null, team, keyword: kw, title: item.title || '', source: item.source || null, link: item.link || null, published_at: item.published_at || null });
+      signals.push({ category, severity: severity * 0.5, player: null, pid: null, team, keyword: kw, title: item.title || '', source: item.source || null, link: item.link || null, published_at: item.published_at || null });
     }
     break; // primera categoría que matchea gana (evita OUT+DOUBT del mismo titular)
   }

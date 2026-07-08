@@ -50,7 +50,12 @@ function assessPlayers(signals, { now = Date.now() } = {}) {
         const srcs = new Set(arr.filter(s => s.category === worst.category).map(s => s.source || s.title));
         srcCount = srcs.size;
         corroborated = srcCount >= 2;
-        if (!corroborated) worstP = Math.min(worstP, PROB_MISS.DOUBT * decay(worst.published_at, now));
+        if (!corroborated) {
+          // fuente única: capeo a nivel DUDA; si el CUERPO del artículo confirmó el titular (verify.js),
+          // el capeo es un poco menos severo (leyó la nota, no es solo un titular).
+          const bodyOk = arr.some(s => s.category === worst.category && s.body_check === 'confirmed');
+          worstP = Math.min(worstP, (bodyOk ? 0.55 : PROB_MISS.DOUBT) * decay(worst.published_at, now));
+        }
       }
       out[pid] = { pid, player: worst.player, status: worst.category, prob_miss: +worstP.toFixed(2), corroborated, source_count: srcCount, evidence: arr.slice(0, 3) };
     } else {

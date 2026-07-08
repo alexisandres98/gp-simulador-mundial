@@ -2322,6 +2322,7 @@ async function runObserver() {
   try {
     const sources = require('./observer/sources');
     const { extract } = require('./observer/extract');
+    const { verifyArticle } = require('./observer/verify');
     const roster = obsRoster();
     const teamName = code => { const t = TEAMS.find(x => x.id === code); return t ? { en: t.en || t.name, es: t.name || t.en } : { en: code, es: code }; };
     for (const code of obsAliveTeams()) {
@@ -2337,7 +2338,24 @@ async function runObserver() {
         for (const it of items) {
           if (!it.title || seen.has(it.title)) continue;
           const sigs = extract(it, { team: code, roster: roster[code] || [] });
-          if (sigs.length) { slot.signals.push(...sigs); sigs.forEach(s => seen.add(s.title)); out.signals += sigs.length; }
+          if (!sigs.length) continue;
+          // PUNTO 2 roadmap: VERIFICACIÓN ANTI-CLICKBAIT. Para señales negativas con jugador identificado,
+          // se intenta leer el CUERPO del artículo: si lo contradice (desenlace positivo) la señal se
+          // DESCARTA antes de guardarse; si lo confirma queda body_check='confirmed'. Presupuesto acotado
+          // por pasada (educado con las fuentes); sin lectura posible → la señal vive igual (la
+          // corroboración multi-fuente y la alineación confirmada son las otras redes).
+          const kept = [];
+          for (const s of sigs) {
+            const negative = s.category === 'OUT' || s.category === 'SUSPENDED' || s.category === 'DOUBT';
+            if (negative && s.pid && (out.verified_fetches || 0) < 12) {
+              out.verified_fetches = (out.verified_fetches || 0) + 1;
+              const v = await verifyArticle(s, { extract, roster: roster[code] || [], team: code }).catch(() => ({ status: 'unavailable' }));
+              if (v.status === 'contradicted') { out.contradicted = (out.contradicted || 0) + 1; console.log('[observer] señal descartada por cuerpo del artículo:', s.player, s.category, '"' + String(s.title).slice(0, 80) + '"'); continue; }
+              if (v.status === 'confirmed') { s.body_check = 'confirmed'; out.body_confirmed = (out.body_confirmed || 0) + 1; }
+            }
+            kept.push(s);
+          }
+          if (kept.length) { slot.signals.push(...kept); kept.forEach(s => seen.add(s.title)); out.signals += kept.length; }
         }
         await new Promise(r => setTimeout(r, 1200)); // educado con la fuente
       }
@@ -2473,6 +2491,28 @@ function observerAvailability() {
   } catch { /* sin observer → sin flags */ }
   return out;
 }
+// PUNTO 3 roadmap (8-jul, orden de Alexis "no esperes"): factor λ del OBSERVER aplicado a la capa de
+// GOLES/PROPS. Si el once habitual pierde generación (baja/duda ponderada por prob_miss), la λ del equipo
+// baja → totales, anytime y props lo reflejan. Flag GP_OBSERVER_LAMBDA_ENABLED (kill switch), clamp de
+// seguridad [0.75, 1.10]. NO toca el 1X2 oficial (esa vía ya tiene su capa de contexto propia).
+function observerLambdaOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_OBSERVER_LAMBDA_ENABLED || '')); }
+let _obsLambdaMemo = {};
+function observerLambdaFactor(code) {
+  if (!observerLambdaOn()) return 1;
+  const hit = _obsLambdaMemo[code];
+  if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.f;
+  let f = 1;
+  try {
+    const { assessPlayers, suggestTeamFactor } = require('./observer/assess');
+    const fit = obsFit();
+    if (fit && db.observations && db.observations[code]) {
+      const asmts = assessPlayers((db.observations[code] || {}).signals || []);
+      f = Math.max(0.75, Math.min(1.10, suggestTeamFactor(fit, code, asmts).factor));
+    }
+  } catch { f = 1; }
+  _obsLambdaMemo[code] = { f, at: Date.now() };
+  return f;
+}
 const _propNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 let _propRoster = null; // norm(nombre) → { pid, team } y último apellido → pid (por equipo)
 function propRoster() {
@@ -2541,7 +2581,10 @@ async function evaluateUpcomingProps() {
       if (!ce) continue;
       out.events++;
       const xg = gpXgFromCache(hCode, aCode) || {};
-      const lambdas = (xg.xgA > 0 && xg.xgB > 0) ? { home: xg.xgA, away: xg.xgB } : null;
+      // λ del partido con el factor del observer aplicado (bajas/dudas del once → menos generación).
+      const lambdas = (xg.xgA > 0 && xg.xgB > 0)
+        ? { home: xg.xgA * observerLambdaFactor(hCode), away: xg.xgB * observerLambdaFactor(aCode) }
+        : null;
       // Contexto del partido para el prop-engine: FASE (multiplicador aprendido grupos/eliminatoria) y
       // PARIDAD 1X2 del modelo (partido parejo → más tarjetas). Antes se proyectaba "en el vacío".
       let closeness = null;
@@ -2793,6 +2836,37 @@ async function revalidateLineups() {
 }
 if (propsOn()) setInterval(() => revalidateLineups().catch(() => { }), 10 * 60 * 1000);
 
+// ===== FOTOS DE JUGADOR (punto 1 roadmap: capa de inteligencia por jugador) ================================
+// Mapea pids (TheStatsAPI) → foto oficial (API-Football players/squads, cacheado por el provider) para los
+// equipos VIVOS (≤8 en eliminatorias → ~16 llamadas/día, trivial). Apellidos ambiguos no matchean (colisión
+// Theo/Lucas Hernández) → esos quedan sin foto antes que con la foto EQUIVOCADA.
+db.playerPhotos = db.playerPhotos || {};
+async function buildPlayerPhotoMap() {
+  try {
+    const af = require('./data-providers/apiFootballProvider');
+    if (!af.configured || !af.configured()) return 0;
+    let added = 0;
+    for (const code of obsAliveTeams()) {
+      const t = TEAMS.find(x => x.id === code); if (!t) continue;
+      const apiId = await af.resolveTeamId(code, t.en || t.name).catch(() => null);
+      if (!apiId) continue;
+      const squad = await af.getTeamSquad(apiId).catch(() => []);
+      for (const sp of squad || []) {
+        if (!sp || !sp.name || !sp.photo) continue;
+        const pid = propPlayerPid(code, sp.name);
+        if (pid && !db.playerPhotos[pid]) { db.playerPhotos[pid] = { photo: sp.photo, af_id: sp.id || null }; added++; }
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+    if (added) { save(); console.log('[player-intel] fotos mapeadas: +' + added + ' (total ' + Object.keys(db.playerPhotos).length + ')'); }
+    return added;
+  } catch { return 0; }
+}
+if (propsOn()) {
+  setTimeout(() => buildPlayerPhotoMap().catch(() => { }), 4 * 60 * 1000);
+  setInterval(() => buildPlayerPhotoMap().catch(() => { }), 24 * 3600 * 1000);
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -2828,7 +2902,25 @@ async function evaluateUpcomingContext({ limit = 60, throttleMs = 220 } = {}) {
         // evidencia Dato/Inferencia derivada del origen). Cutoff = kickoff (anti-leakage en lectura aguas abajo).
         const wRow = (await dbc.query(`SELECT weather_factors, venue, apparent_c, precip_mm, wind_kmh, humidity_pct FROM weather_snapshots WHERE canonical_event_id=$1 ORDER BY created_at DESC LIMIT 1`, [ev.id]).catch(() => ({ rows: [] }))).rows[0] || null;
         const claimRows = (await dbc.query(`SELECT factor_code, fact_or_inference, confidence, team_id, subject_id, review_status FROM context_claims WHERE event_id=$1 AND review_status='auto' ORDER BY created_at DESC LIMIT 40`, [ev.id]).catch(() => ({ rows: [] }))).rows;
-        const fused = cf.fuse(deepVec, { weatherRow: wRow, claims: claimRows, homeId: a, awayId: b });
+        // PUNTO 4 roadmap (8-jul): la vía de claims BBC/ESPN casi nunca atribuye equipo (team_id null) → no
+        // movía probabilidades. El OBSERVER sí sabe el equipo (consulta por equipo) y corrobora multi-fuente:
+        // sus evaluaciones se sintetizan como claims y entran por la MISMA vía newsFactors (caps y pesos ya
+        // calibrados). Corroborado → FACT (peso 100%); sin corroborar → INFERENCE (55%). Capas conectadas.
+        const obsClaims = [];
+        try {
+          const { assessPlayers } = require('./observer/assess');
+          for (const code of [a, b]) {
+            if (!db.observations || !db.observations[code]) continue;
+            const asmts = assessPlayers((db.observations[code] || {}).signals || []);
+            for (const pid in asmts) {
+              const x = asmts[pid];
+              if (!(x.prob_miss >= 0.3) || !x.player) continue;
+              const fc = x.status === 'SUSPENDED' ? 'PLAYER_SUSPENDED' : x.status === 'OUT' ? 'PLAYER_CONFIRMED_OUT' : 'PLAYER_DOUBTFUL';
+              obsClaims.push({ factor_code: fc, fact_or_inference: x.corroborated !== false ? 'FACT' : 'INFERENCE', team_id: code, subject_id: code, confidence: x.prob_miss, review_status: 'auto' });
+            }
+          }
+        } catch { /* observer apagado → sin claims sintéticos */ }
+        const fused = cf.fuse(deepVec, { weatherRow: wRow, claims: claimRows.concat(obsClaims), homeId: a, awayId: b });
         const collectorFx = fused.factors;
         const finalVec = { home: round4(fused.adjusted.home), draw: round4(fused.adjusted.draw), away: round4(fused.adjusted.away) };
         const adj = { home: round4(finalVec.home - baseVec.home), draw: round4(finalVec.draw - baseVec.draw), away: round4(finalVec.away - baseVec.away) };
@@ -2950,7 +3042,13 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
       if (!deep || !deep.probs) { out.skipped++; return; }
       const dqA = (deep.context && deep.context.dataQualityA) || { score: 0 }, dqB = (deep.context && deep.context.dataQualityB) || { score: 0 };
       const compl = round4(((Number(dqA.score) || 0) + (Number(dqB.score) || 0)) / 2);
-      const gsnap = await persistGoalSnapshot({ id: eventId, homeId: a, awayId: b, kickoff }, deep, compl);
+      // PUNTO 3: factor λ del observer sobre la capa de goles (flag + clamp). buildH2HDeep queda intacto
+      // (modelo oficial); solo el snapshot de goles/value/picks recibe la generación ajustada por bajas.
+      const fH = observerLambdaFactor(a), fA = observerLambdaFactor(b);
+      const deepG = (fH !== 1 || fA !== 1)
+        ? { ...deep, probs: { ...deep.probs, xgA: deep.probs.xgA * fH, xgB: deep.probs.xgB * fA } }
+        : deep;
+      const gsnap = await persistGoalSnapshot({ id: eventId, homeId: a, awayId: b, kickoff }, deepG, compl);
       out.evaluated++;
       if (gsnap && gsnap.row && !gsnap.idempotent) out.snapshots_new++;
       // Ingerir las cuotas de totales de ESTE evento bajo el MISMO id (snapshot y cuotas alineados → Value posible).
@@ -3340,6 +3438,57 @@ const server = http.createServer(async (req, res) => {
       }
       // INTEL del partido (7-jul): ANOTADORES PROBABLES (prop-engine de jugador + λ GP) y RADAR DE
       // DISPONIBILIDAD (capa de observación + factor λ sugerido). Admin-first hasta GP_PROPS_PICKS_PUBLIC.
+      // INTELIGENCIA POR JUGADOR (punto 1 roadmap 8-jul): perfil completo — foto, muestra, tasas por 90',
+      // forma partido a partido, disponibilidad del observer y la lectura del player-intel engine con los
+      // códigos de razón ("por qué el sistema concluye X"). Caja negra: sin fuentes ni métodos. Admin-first.
+      if (p === '/api/beta/player' && req.method === 'GET') {
+        if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });
+        const pid = String(url.searchParams.get('pid') || '');
+        if (!/^pl_[A-Za-z0-9]+$/.test(pid)) return json(res, 400, { error: 'params' });
+        try {
+          const PF = obsFit();
+          if (!PF || !PF.players[pid]) return json(res, 404, { error: 'not_found' });
+          const pl = PF.players[pid];
+          const hist = require('./data/player-props-history.json');
+          const form = [];
+          for (const m of hist.matches) {
+            const r = (m.players || []).find(x => x.pid === pid);
+            if (!r) continue;
+            form.push({ date: m.date, opponent: m.home === pl.team ? m.away : m.home, home: m.home === pl.team, started: !!r.started, min: r.min, goals: r.goals, shots: r.shots, sot: r.sot, xg: +Number(r.xg || 0).toFixed(2) });
+          }
+          form.sort((x, y) => new Date(y.date) - new Date(x.date));
+          // próximo partido del equipo (bracket vivo) → λ del modelo con el factor del observer
+          let next = null;
+          try {
+            const br = resolveRealBracket();
+            for (const k of KNOCKOUT) {
+              const x = br[k.m], rr = db.results[String(k.m)];
+              if (x && x.home && x.away && (x.home === pl.team || x.away === pl.team) && (!rr || rr.status !== 'final')) { next = { home: x.home, away: x.away }; break; }
+            }
+          } catch { /* sin bracket */ }
+          const nxg = next ? (gpXgFromCache(next.home, next.away) || {}) : {};
+          const rawLambda = next ? (pl.team === next.home ? nxg.xgA : nxg.xgB) : null;
+          const lambda = rawLambda > 0 ? rawLambda * observerLambdaFactor(pl.team) : null;
+          const avail = observerAvailability()[pid] || null;
+          const starters = projectedStarters();
+          const cxi = next ? (confirmedXiPids()[_xiPairKey(next.home, next.away)] || null) : null;
+          const intel = require('./player-intel/engine').playerIntel(PF, pid, {
+            teamLambda: lambda, projectedStarter: starters.size ? starters.has(pid) : null,
+            confirmedStarter: cxi ? cxi.has(pid) : null, availability: avail,
+          });
+          const ph = db.playerPhotos && db.playerPhotos[pid];
+          return json(res, 200, {
+            available: true,
+            profile: { pid, name: pl.name, team: pl.team, pos: pl.pos, photo: (ph && ph.photo) || null },
+            sample: { minutes: pl.minutes, apps: pl.apps, starts: pl.starts, goals: pl.goals, exp_minutes_start: Math.round(pl.exp_minutes_start) },
+            rates90: { xg: +pl.xg90.toFixed(3), shots: +pl.shots90.toFixed(2), sot: +pl.sot90.toFixed(2) },
+            form: form.slice(0, 6),
+            next_match: next ? { home: next.home, away: next.away } : null,
+            intel, availability: avail ? { status: avail.status, prob_miss: avail.prob_miss, corroborated: avail.corroborated } : null,
+            generated_at: new Date().toISOString(),
+          });
+        } catch (e) { return json(res, 200, { available: false }); }
+      }
       if (p === '/api/beta/match-intel' && req.method === 'GET') {
         if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });
         const ih = String(url.searchParams.get('home') || '').toUpperCase(), ia = String(url.searchParams.get('away') || '').toUpperCase();
@@ -3363,7 +3512,7 @@ const server = http.createServer(async (req, res) => {
                 availability: avail[r.pid] || null,
               });
               return {
-                name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),
+                pid: r.pid, name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),
                 sot_o05: +r.sot_over_0_5.toFixed(3), risk: (avail[r.pid] && avail[r.pid].status) || null,
                 role: pi ? pi.role : null, confidence: pi ? pi.confidence : null, reasons: pi ? pi.reasons : [],
               };

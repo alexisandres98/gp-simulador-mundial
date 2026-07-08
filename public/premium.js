@@ -512,7 +512,8 @@
   }
   function bookLogo(code) {
     var b = bookBrand(code); if (!b || !/^[a-z0-9]+$/.test(b)) return '';
-    return '<img class="bkx" src="/books/' + b + '.svg" alt="" draggable="false" onerror="this.remove()">';
+    // logo OFICIAL (favicon/app-icon real de la marca, self-hosted .png) → fallback tile monograma .svg → nada
+    return '<img class="bkx" src="/books/' + b + '.png" alt="" draggable="false" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src=\'/books/' + b + '.svg\'}">';
   }
   // casa con logo + nombre (para cards/tablas; en textos corridos se sigue usando prettyBook solo)
   function bookChip(code) { if (!code) return ''; return '<span class="gx-bkchip">' + bookLogo(code) + esc(prettyBook(code)) + '</span>'; }

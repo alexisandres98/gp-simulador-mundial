@@ -64,6 +64,11 @@ body { background:
 .gx-search { position: relative; }
 .gx-search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--gx-text); font-size: 13px; font-family: inherit; }
 .gx-search input::placeholder { color: var(--gx-text3); }
+/* iOS Safari: un input con fuente <16px dispara AUTO-ZOOM al enfocar y el zoom queda pegado. En pantallas
+   táctiles todo campo de texto va a 16px (el fix estándar; la plataforma principal ya lo usa). */
+@media (pointer: coarse) {
+  input[type="text"], input[type="search"], input[type="number"], input[type="email"], select, textarea { font-size: 16px !important; }
+}
 .gx-search-res { position: absolute; top: calc(100% + 7px); left: 0; right: 0; min-width: 280px; background: var(--gx-panel); border: 1px solid var(--gx-line);
   border-radius: var(--gx-r); box-shadow: 0 16px 40px rgba(0,0,0,.5); max-height: 60vh; overflow: auto; z-index: 60; padding: 6px; }
 .gx-sr-h { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--gx-text3); padding: 8px 8px 4px; font-weight: 600; }
@@ -817,9 +822,8 @@ body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-event
 
 /* logos de casas/exchanges/prediction markets: MISMA línea visual que las banderas (tiles SVG self-hosted
    en /books/, 4:3, anillo sutil). Se insertan junto al nombre de la casa en cards, KPIs y tablas. */
-.bkx { width: 1.32em; height: .99em; object-fit: cover; border-radius: .14em; display: inline-block;
-  vertical-align: -0.16em; margin-right: .38em;
-  box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 1px 3px rgba(0,0,0,.5); background: var(--gx-panel3); }
+.bkx { width: 1.22em; height: 1.22em; object-fit: contain; border-radius: .22em; display: inline-block;
+  vertical-align: -0.28em; margin-right: .38em; }
 .gx-bkchip { display: inline-flex; align-items: center; }
 
 /* links a perfil de jugador (cancha, alineaciones, plantillas, Match Intel) */

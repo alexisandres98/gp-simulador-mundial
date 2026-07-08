@@ -976,7 +976,7 @@ Past performance does not guarantee future results. One week is a small sample. 
 
 - Alexis · GP Simulador
 
-You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".`
+You are receiving this email because you have an account at GP Simulador.`
     : `Corrimos los numeros.
 
 Si un usuario hubiera depositado $5,000 el 30 de junio y hubiera seguido TODAS las picks que publico el sistema, con el stake de la calculadora de la plataforma (Kelly fraccionado), hoy tendria $8,889.51 con Kelly 1/2 (+77.8%) o $7,607.26 con Kelly 1/4 (+52.1%).
@@ -993,7 +993,7 @@ Rendimientos pasados no garantizan resultados futuros. Una semana es una muestra
 
 - Alexis · GP Simulador
 
-Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".`;
+Recibes este correo porque tienes una cuenta en GP Simulador.`;
   const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
   <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
   <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
@@ -1101,7 +1101,7 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
       <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${en ? 'Open my board' : 'Abrir mi tablero'}</a></div>
       <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.'}</p>
     </div>
-    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".' : 'Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".'}</div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</div>
   </div></div>`;
   return { subject, text, html };
 }
@@ -3579,6 +3579,15 @@ const server = http.createServer(async (req, res) => {
           const rawLambda = next ? (pl.team === next.home ? nxg.xgA : nxg.xgB) : null;
           const lambda = rawLambda > 0 ? rawLambda * observerLambdaFactor(pl.team) : null;
           const avail = observerAvailability()[pid] || null;
+          // Narrativa del hallazgo del observer para ESTE jugador (con el keyword real → naturaleza).
+          let availNarrative = null;
+          try {
+            if (avail && pl.team && db.observations && db.observations[pl.team]) {
+              const { assessPlayers } = require('./observer/assess');
+              const asm = assessPlayers((db.observations[pl.team].signals) || [])[pid];
+              if (asm) { const nar = require('./observer/narrate').narratePlayer(asm); if (nar) availNarrative = { es: nar.es, en: nar.en, reason_code: nar.reason_code }; }
+            }
+          } catch { /* sin narrativa */ }
           const starters = projectedStarters();
           const cxi = next ? (confirmedXiPids()[_xiPairKey(next.home, next.away)] || null) : null;
           const intel = require('./player-intel/engine').playerIntel(PF, pid, {
@@ -3644,7 +3653,7 @@ const server = http.createServer(async (req, res) => {
             h2h_vs_next: h2h.slice(0, 3),
             next_match: next ? { home: next.home, away: next.away } : null,
             markets,
-            intel, availability: avail ? { status: avail.status, prob_miss: avail.prob_miss, corroborated: avail.corroborated } : null,
+            intel, availability: avail ? { status: avail.status, prob_miss: avail.prob_miss, corroborated: avail.corroborated } : null, availability_narrative: availNarrative,
             generated_at: new Date().toISOString(),
           });
         } catch (e) { return json(res, 200, { available: false }); }
@@ -3657,6 +3666,7 @@ const server = http.createServer(async (req, res) => {
           const players = require('./prop-engine/players');
           const { assessPlayers, suggestTeamFactor } = require('./observer/assess');
           const { playerIntel } = require('./player-intel/engine');
+          const { narratePlayer } = require('./observer/narrate');
           const PF = obsFit();
           if (!PF) return json(res, 200, { available: false });
           const xg = gpXgFromCache(ih, ia) || {};
@@ -3679,7 +3689,12 @@ const server = http.createServer(async (req, res) => {
             });
             const asmts = assessPlayers(((db.observations[code] || {}).signals) || []);
             const sug = suggestTeamFactor(PF, code, asmts);
-            const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => ({ player: x.player, status: x.status, prob_miss: x.prob_miss, corroborated: x.corroborated !== false }));
+            // CAPA DE NARRATIVA (8-jul): cada jugador señalado lleva su EXPLICACIÓN narrada ES/EN (por qué
+            // el sistema lo marcó), sin exponer la fuente. Es lo que la gente no veía: el "porqué" del DUDA.
+            const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => {
+              const nar = narratePlayer(x) || {};
+              return { player: x.player, status: x.status, prob_miss: x.prob_miss, corroborated: x.corroborated !== false, why_es: nar.es || null, why_en: nar.en || null };
+            });
             return { scorers: rows, radar: { players: flagged.slice(0, 6), lambda_factor: sug.factor } };
           };
           return json(res, 200, { available: true, home: side(ih, xg.xgA), away: side(ia, xg.xgB) });

@@ -832,6 +832,23 @@ body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-event
 .gx-plk { color: inherit; text-decoration: none; cursor: pointer; }
 .gx-plk:hover .gx-pp-name, .gx-plk:hover b { color: var(--gx-accent, #18E6A3); }
 
+/* ---- HALLAZGOS DE INTELIGENCIA: el recuadro narrado del contexto/observación (por qué un jugador está
+   en duda, etc.). Acento teal, tono premium "briefing". ---- */
+.gx-findings { margin: 0 14px 4px; padding: 12px 14px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(24,230,163,.055), rgba(24,230,163,.02));
+  border: 1px solid rgba(24,230,163,.18); }
+.gx-findings-h { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--gx-accent, #18E6A3); margin-bottom: 9px; }
+.gx-findings-h svg { width: 15px; height: 15px; }
+.gx-finding { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 13px;
+  line-height: 1.5; color: var(--gx-text, #e8eef2); border-top: 1px solid rgba(255,255,255,.05); }
+.gx-finding:first-of-type { border-top: 0; }
+.gx-finding .fl { flex: 0 0 auto; margin-top: 2px; }
+.gx-finding-tx { min-width: 0; }
+.gx-finding-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; }
+.gx-fd-out { background: #ff5c5c; box-shadow: 0 0 0 3px rgba(255,92,92,.15); }
+.gx-fd-doubt { background: #f5a623; box-shadow: 0 0 0 3px rgba(245,166,35,.15); }
+
 /* ---- tipografía display: titulares y números protagonistas en Space Grotesk ---- */
 h1, .gx-ohead h1 { font-family: var(--gx-display); font-weight: 700; letter-spacing: -.025em; }
 .gx-brand b, .gx-top-brand b { font-family: var(--gx-display); font-weight: 600; letter-spacing: -.015em; }

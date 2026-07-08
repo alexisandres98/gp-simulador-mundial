@@ -2227,19 +2227,24 @@ function settleDailyPicks() {
 }
 // Track record (solo admin): acierto y rendimiento por familia sobre picks liquidadas. NO se expone al usuario.
 function dailyPicksTrackRecord() {
-  const fam = {};
+  // Las familias EXPERIMENTO (decisión Alexis 8-jul) se liquidan y se observan, pero NO cuentan en el
+  // track record oficial: el modelo de jugador asume titularidad para todos → edges inflados, en revisión.
+  const fam = {}, exp = {};
   let n = 0, wins = 0, stake = 0, ret = 0;
   for (const p of db.dailyPicks) {
     if (p.status !== 'SETTLED' || p.result_code === 'PUSH' || p.result_code === 'VOID' || p.result_code === 'SUPERSEDED') continue;
-    const f = fam[p.family] || (fam[p.family] = { n: 0, w: 0, stake: 0, ret: 0 });
+    const isExp = EXPERIMENT_FAMS.includes(p.family);
+    const f = (isExp ? exp : fam)[p.family] || ((isExp ? exp : fam)[p.family] = { n: 0, w: 0, stake: 0, ret: 0 });
     const won = p.result_code === 'WIN';
-    f.n++; f.stake += 1; n++; stake += 1;
-    if (won) { f.w++; f.ret += Number(p.best_odds || 0); wins++; ret += Number(p.best_odds || 0); }
+    f.n++; f.stake += 1;
+    if (won) { f.w++; f.ret += Number(p.best_odds || 0); }
+    if (!isExp) { n++; stake += 1; if (won) { wins++; ret += Number(p.best_odds || 0); } }
   }
   const fmt = o => ({ n: o.n, wins: o.w, hit_rate: o.n ? +(o.w / o.n).toFixed(4) : null, roi_pct: o.stake ? +(((o.ret - o.stake) / o.stake) * 100).toFixed(1) : null });
   return {
     overall: { settled: n, wins, hit_rate: n ? +(wins / n).toFixed(4) : null, roi_pct: stake ? +(((ret - stake) / stake) * 100).toFixed(1) : null, pnl_u: +(ret - stake).toFixed(2) },
     by_family: Object.fromEntries(Object.entries(fam).map(([k, v]) => [k, fmt(v)])),
+    experiment: Object.fromEntries(Object.entries(exp).map(([k, v]) => [k, fmt(v)])),
     active: db.dailyPicks.filter(p => p.status === 'ACTIVE').length,
   };
 }
@@ -2378,6 +2383,9 @@ if (canonicalAutoOn()) {
 function propsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_ENABLED || '')); }
 function propsPicksPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_PICKS_PUBLIC || '')); }
 const PROP_FAMS = ['CORNERS', 'CARDS', 'PLAYER'];
+// Familias en modo EXPERIMENTO: solo admin SIEMPRE (aunque GP_PROPS_PICKS_PUBLIC esté on) y fuera del
+// track record. PLAYER queda acá hasta arreglar la titularidad asumida (willStart) del prop-engine.
+const EXPERIMENT_FAMS = ['PLAYER'];
 let _propsRunning = false, _propsLast = null, _propsLastRunMs = 0, _propsCredits = null;
 let _propFitCache = null;
 function propFit() {
@@ -3093,6 +3101,7 @@ const server = http.createServer(async (req, res) => {
         }));
         // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
         if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);
+        if (!(betaUser && betaUser.isAdmin)) items = items.filter(f => EXPERIMENT_FAMS.indexOf(f.family) < 0); // experimento: solo admin, siempre
         // ===== GATING POR PLAN (inerte con GP_PLANS_ENFORCED=off → todos ven todo) =====
         // FREE: 1 pick del día (la SOLID/ganador de mayor confianza), visible recién 60 min antes del kickoff
         // ("con delay"). PRO: todas las familias actuales (ganador+goles+combo). SHARP: además las familias
@@ -3139,6 +3148,7 @@ const server = http.createServer(async (req, res) => {
         const settled = (db.dailyPicks || [])
           .filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
           .filter(x => !hideProps || PROP_FAMS.indexOf(x.family) < 0)
+          .filter(x => (betaUser && betaUser.isAdmin) || EXPERIMENT_FAMS.indexOf(x.family) < 0)
           .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0))
           .slice(0, 120)
           .map(x => ({
@@ -3757,6 +3767,7 @@ const server = http.createServer(async (req, res) => {
       if (!global._teaserCache || Date.now() - global._teaserCache.at > 60 * 1000) {
         const active = (db.dailyPicks || []).filter(x => x.status === 'ACTIVE')
           .filter(x => propsPicksPublic() || PROP_FAMS.indexOf(x.family) < 0) // props admin-first: fuera del teaser público
+          .filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0) // experimento (PLAYER): nunca en el teaser
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
           .slice(0, 6)
           .map(x => {

@@ -36,11 +36,16 @@ const CONFIG = {
   propsOddsMin: 1.35, propsOddsMax: 4.6, // fuera de ese rango la línea está lejos de la media → ruido de cola.
   alphaProps: 0.6,             // confianza = blend modelo/consenso (el modelo lidera, como en goles).
 
-  // Familia PROPS de JUGADOR (anytime scorer / remates). Mercado ONE-SIDED (sin under en muchas casas) →
-  // el edge se mide contra el BREAK-EVEN de la mejor cuota, no contra consenso no-vig, y se exige más.
-  playerMinEdgeBe: 0.05,       // prob modelo − 1/mejor_cuota ≥ 5pp.
-  playerMinBooks: 3,           // casas cotizando a ESE jugador en ese mercado.
-  playerOddsMin: 1.3, playerOddsMax: 9,
+  // Familia PROPS de JUGADOR — REDISEÑADA (8-jul, decisión de Alexis): mercado hiper-eficiente → NO cazar
+  // edge. Misma filosofía que la familia SÓLIDA: el mercado manda y elegimos LA OPCIÓN MÁS PROBABLE del menú
+  // que cotizan las casas (blend modelo/mercado con el mercado dominando + coherencia del modelo). El diseño
+  // anterior (máximo edge vs break-even) seleccionaba sistemáticamente los errores del modelo: suplentes de
+  // muestra chica con titularidad asumida (caso Doué). El edge queda solo informativo.
+  alphaPlayer: 0.3,            // peso del modelo en el blend (el mercado domina, como alpha1x2)
+  playerMinBooks: 5,           // <5 casas = mercado fino, el precio no es un consenso confiable
+  playerOddsMin: 1.4, playerOddsMax: 4.0, // ventana de producto: ni chirolas ni loterías
+  playerMinProb: 0.5,          // solo picks con ≥50% de probabilidad (blend): "apuesta ganadora", no lotería
+  playerMaxModelDeficitPp: 0.15, // coherencia: si el modelo está >15pp DEBAJO del mercado, no publicar
 };
 
 const OUTCOME = { home: 'home', draw: 'draw', away: 'away' };
@@ -162,29 +167,39 @@ function propPicks(propMarkets, cfg) {
   return out;
 }
 
-// ── Familia PROPS de JUGADOR (anytime scorer / remates): edge contra break-even de la mejor cuota ───────────
+// ── Familia PROPS de JUGADOR (anytime scorer / remates): ANCLADA AL MERCADO, probabilidad primero ───────────
+// El mercado es hiper-eficiente → entre las opciones que cotizan las casas se elige la MÁS PROBABLE (blend
+// modelo/mercado, mercado dominando), no la de mayor brecha. El modelo aporta matiz y un check de coherencia
+// (si contradice fuerte al precio, no se publica). Nota: impliedMedian trae el vig de la casa (mercados
+// one-sided no se pueden des-vigear bien) → el blend sobreestima ~3-5pp parejo entre jugadores; para RANKEAR
+// y para el piso de probabilidad es consistente. edgePp (vs break-even) queda solo informativo.
 // playerMarkets: [{ eventId, home, away, kickoff, family('player_goal'|'player_shots'|'player_sot'), marketId,
-//                   player, pid, side, line, modelProb, impliedMedian, bestOdds, books, availabilityRisk }]
+//                   player, pid, side, line, modelProb, impliedMedian, bestOdds, books, availabilityRisk,
+//                   isStarter (true/false/null = proyección de once; false bloquea) }]
 function playerPicks(playerMarkets, cfg) {
   const out = [];
   for (const g of (playerMarkets || [])) {
     const books = Number(g.books || 0), odds = Number(g.bestOdds || 0);
     const be = odds > 1 ? 1 / odds : 1;
-    const edgeBe = Number(g.modelProb) - be;
+    const model = Number(g.modelProb);
+    const market = g.impliedMedian != null ? Number(g.impliedMedian) : null;
+    const prob = market != null ? blend(model, market, cfg.alphaPlayer) : model;
     const blockers = [];
-    if (edgeBe < cfg.playerMinEdgeBe) blockers.push('LOW_EDGE');
     if (books < cfg.playerMinBooks) blockers.push('FEW_BOOKS');
     if (!(odds > 1)) blockers.push('NO_ODDS');
     if (odds > 1 && (odds < cfg.playerOddsMin || odds > cfg.playerOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
+    if (g.isStarter === false) blockers.push('NOT_PROJECTED_STARTER'); // el bug Doué: suplente proyectado como titular
     if (g.availabilityRisk === 'OUT' || g.availabilityRisk === 'SUSPENDED') blockers.push('AVAILABILITY'); // capa de observación
+    if (prob < cfg.playerMinProb) blockers.push('LOW_PROBABILITY');
+    if (market != null && model < market - cfg.playerMaxModelDeficitPp) blockers.push('MODEL_FIGHTS_MARKET');
     out.push({
       family: 'PLAYER',
       eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,
       marketId: g.marketId, playerFamily: g.family, player: g.player, pid: g.pid, side: g.side || null, line: g.line != null ? g.line : null,
-      modelProb: Number(g.modelProb), marketProb: g.impliedMedian != null ? Number(g.impliedMedian) : null,
-      confidence: Number(g.modelProb),
-      edgePp: pp(edgeBe), bestOdds: odds, bestBook: g.bestBook || null, books,
-      availabilityRisk: g.availabilityRisk || null,
+      modelProb: model, marketProb: market,
+      confidence: prob,
+      edgePp: pp(model - be), bestOdds: odds, bestBook: g.bestBook || null, books,
+      availabilityRisk: g.availabilityRisk || null, isStarter: g.isStarter != null ? g.isStarter : null,
       eligible: blockers.length === 0, blockers,
     });
   }

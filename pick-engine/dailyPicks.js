@@ -162,6 +162,7 @@ async function buildDailyPicks(deps) {
   } catch { /* sin dataset → picks de jugador sin nombre no se publican */ }
   const PROP_FAMILY_APPROVED = { corners_total: true, cards_total: true }; // gates del backtest LOO del prop-engine
   const availability = deps.playerAvailability || {}; // pid → OUT|SUSPENDED|DOUBT|REST_RISK (capa de observación)
+  const starters = deps.projectedStarters || null;     // Set<pid> del once probable (server); null = sin proyección
 
   const propMarkets = [], playerMarkets = [];
   for (const g of rowsPropsAll) {
@@ -188,6 +189,7 @@ async function buildDailyPicks(deps) {
         modelProb: g.gp, impliedMedian: g.mkt, bestOdds: g.odds, bestBook: null,
         books: Number(booksPlayer[g.canonical_event_id + '|' + g.market_family + '|' + pid] || 0),
         availabilityRisk: availability[pid] || null,
+        isStarter: starters ? starters.has(pid) : null, // proyección de once (server); false bloquea en curate
       });
     }
   }
@@ -250,11 +252,12 @@ async function buildDailyPicks(deps) {
       model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp,
     }, g.eventId + '|' + g.marketId));
   }
-  // PROPS de jugador: la mejor por evento (mayor edge contra break-even).
+  // PROPS de jugador: la más PROBABLE por evento (blend modelo/mercado; mercado eficiente → no se caza edge).
   const playerById = {}; playerMarkets.forEach(g => { playerById[g.eventId + '|' + g.marketId] = g; });
   const bestPlayerByEvent = {};
   for (const g of res.eligible.player) {
-    if (!bestPlayerByEvent[g.eventId] || g.edgePp > bestPlayerByEvent[g.eventId].edgePp) bestPlayerByEvent[g.eventId] = g;
+    const cur = bestPlayerByEvent[g.eventId];
+    if (!cur || g.confidence > cur.confidence || (g.confidence === cur.confidence && g.bestOdds > cur.bestOdds)) bestPlayerByEvent[g.eventId] = g;
   }
   for (const g of Object.values(bestPlayerByEvent)) {
     const gm = playerById[g.eventId + '|' + g.marketId] || {};

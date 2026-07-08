@@ -17,15 +17,24 @@ t('edge 2pp < 4pp → LOW_EDGE', !P[1].eligible && P[1].blockers.includes('LOW_E
 t('2 casas → FEW_BOOKS', !P[2].eligible && P[2].blockers.includes('FEW_BOOKS'));
 t('cuota 5.2 fuera de rango → ODDS_OUT_OF_RANGE', !P[3].eligible && P[3].blockers.includes('ODDS_OUT_OF_RANGE'));
 
-console.log('== playerPicks (jugador) ==');
+console.log('== playerPicks (jugador, anclada al mercado: probabilidad primero) ==');
 const J = playerPicks([
-  { ...base, family: 'player_goal', marketId: 'PLAYER_GOAL_pl_1', player: 'Mbappé', pid: 'pl_1', modelProb: 0.59, impliedMedian: 0.52, bestOdds: 1.91, books: 5, availabilityRisk: null },
-  { ...base, family: 'player_goal', marketId: 'PLAYER_GOAL_pl_2', player: 'X', pid: 'pl_2', modelProb: 0.30, impliedMedian: 0.30, bestOdds: 3.2, books: 5, availabilityRisk: null },
-  { ...base, family: 'player_shots', marketId: 'PLAYER_SHOTS_pl_3_2_5', player: 'Y', pid: 'pl_3', line: 2.5, modelProb: 0.55, impliedMedian: 0.4, bestOdds: 2.4, books: 4, availabilityRisk: 'OUT' },
+  // La estrella titular con mercado profundo: blend .3·.59+.7·.52=.541 ≥ .5 → elegible.
+  { ...base, family: 'player_goal', marketId: 'PLAYER_GOAL_pl_1', player: 'Mbappé', pid: 'pl_1', modelProb: 0.59, impliedMedian: 0.52, bestOdds: 1.91, books: 6, availabilityRisk: null, isStarter: true },
+  // Caso Doué (regresión): suplente, 3 casas, modelo inflado 52% vs mercado 27% → 3 bloqueos.
+  { ...base, family: 'player_sot', marketId: 'PLAYER_SOT_pl_2_1_5', player: 'Doué', pid: 'pl_2', line: 1.5, modelProb: 0.52, impliedMedian: 0.27, bestOdds: 3.8, books: 3, availabilityRisk: null, isStarter: false },
+  // Observer OUT bloquea aunque todo lo demás cierre.
+  { ...base, family: 'player_shots', marketId: 'PLAYER_SHOTS_pl_3_0_5', player: 'Y', pid: 'pl_3', line: 0.5, modelProb: 0.7, impliedMedian: 0.68, bestOdds: 1.5, books: 6, availabilityRisk: 'OUT', isStarter: true },
+  // Coherencia: modelo 18pp DEBAJO del mercado → MODEL_FIGHTS_MARKET (no publicamos contra nuestro propio modelo).
+  { ...base, family: 'player_shots', marketId: 'PLAYER_SHOTS_pl_4_1_5', player: 'Z', pid: 'pl_4', line: 1.5, modelProb: 0.42, impliedMedian: 0.60, bestOdds: 1.65, books: 6, availabilityRisk: null, isStarter: true },
+  // Cuota lotería fuera de ventana (caso N. González anytime @6.5).
+  { ...base, family: 'player_goal', marketId: 'PLAYER_GOAL_pl_5', player: 'W', pid: 'pl_5', modelProb: 0.25, impliedMedian: 0.16, bestOdds: 6.5, books: 6, availabilityRisk: null, isStarter: true },
 ], require('../pick-engine/curate').CONFIG);
-t('Mbappé 59% vs BE 52.4% (edge 6.7pp) → elegible', J[0].eligible && J[0].family === 'PLAYER');
-t('modelo 30% vs BE 31% → LOW_EDGE', !J[1].eligible && J[1].blockers.includes('LOW_EDGE'));
+t('titular + mercado profundo + prob 54% → elegible, confidence=blend', J[0].eligible && J[0].family === 'PLAYER' && Math.abs(J[0].confidence - 0.541) < 0.001);
+t('caso Doué: suplente+3 casas+prob baja → NOT_PROJECTED_STARTER/FEW_BOOKS/LOW_PROBABILITY', !J[1].eligible && J[1].blockers.includes('NOT_PROJECTED_STARTER') && J[1].blockers.includes('FEW_BOOKS') && J[1].blockers.includes('LOW_PROBABILITY'));
 t('observer OUT → AVAILABILITY (capa de observación bloquea)', !J[2].eligible && J[2].blockers.includes('AVAILABILITY'));
+t('modelo contradice fuerte al mercado → MODEL_FIGHTS_MARKET', !J[3].eligible && J[3].blockers.includes('MODEL_FIGHTS_MARKET'));
+t('cuota 6.5 fuera de ventana → ODDS_OUT_OF_RANGE', !J[4].eligible && J[4].blockers.includes('ODDS_OUT_OF_RANGE'));
 
 console.log('== curate integra las familias nuevas ==');
 const R = curate({ events: [], goalMarkets: [], propMarkets: [{ ...base, family: 'corners_total', marketId: 'CORNERS_OVER_8_5', side: 'over', line: 8.5, modelProb: 0.58, marketProb: 0.50, edgePp: 0.08, bestOdds: 2.0, books: 5, familyApproved: true }], playerMarkets: [] });

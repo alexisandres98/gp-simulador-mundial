@@ -2148,7 +2148,7 @@ async function evaluateDailyPicks() {
     if (!dbcfg.db || !dbcfg.db.configured) { out.skipped = 'no_db'; return out; }
     const dbc = require('./database/client');
     const daily = require('./pick-engine/dailyPicks');
-    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now(), playerAvailability: observerAvailability() });
+    const built = await daily.buildDailyPicks({ query: (sql, pr) => dbc.query(sql, pr), now: Date.now(), playerAvailability: observerAvailability(), projectedStarters: projectedStarters() });
     out.considered = built.considered; out.counts = built.counts;
     const idx = {}; for (const p of db.dailyPicks) idx[p.pick_id] = p;
     for (const pick of built.picks) {
@@ -2275,6 +2275,24 @@ function obsFit() {
   try { _obsFit = require('./prop-engine/players').fitPlayers(require('./data/player-props-history.json').matches); }
   catch { _obsFit = null; }
   return _obsFit;
+}
+// Once PROYECTADO por equipo (mismo criterio que Match Intel/projectTeam: los 11 con más titularidades,
+// desempate por minutos). Gate de las picks de jugador: proyectar como titular a cualquier cotizado era el
+// bug del caso Doué (edges inflados con suplentes). Cache simple; el dataset cambia 1 vez por jornada.
+let _projStarters = null, _projStartersAt = 0;
+function projectedStarters() {
+  if (_projStarters && Date.now() - _projStartersAt < 60 * 60 * 1000) return _projStarters;
+  const out = new Set();
+  const fit = obsFit();
+  if (fit) {
+    const byTeam = {};
+    for (const p of Object.values(fit.players)) (byTeam[p.team] = byTeam[p.team] || []).push(p);
+    for (const t in byTeam) {
+      byTeam[t].sort((a, b) => (b.starts - a.starts) || (b.minutes - a.minutes)).slice(0, 11).forEach(p => out.add(p.pid));
+    }
+  }
+  _projStarters = out; _projStartersAt = Date.now();
+  return out;
 }
 function obsAliveTeams() {
   const bracket = resolveRealBracket();
@@ -2547,12 +2565,15 @@ async function evaluateUpcomingProps() {
         }
         if (PF) {
           const roster = propRoster().byTeam;
+          const STARTERS = projectedStarters();
           const teamOf = pid => (roster[hCode] && Object.values(roster[hCode].full).includes(pid)) || (roster[hCode] && Object.values(roster[hCode].last).includes(pid)) ? 'home' : 'away';
           for (const g of Object.values(pgroups)) {
             if (g.odds.length < 2) continue;
             const side = teamOf(g.pid);
             const teamLambda = lambdas ? (side === 'home' ? lambdas.home : lambdas.away) : null;
-            const pp = players.projectPlayer(PF, g.pid, { teamLambda, willStart: true });
+            // willStart REAL desde el once proyectado (antes: true para todos = el bug de los edges inflados;
+            // suplente proyectado → 30 min → probabilidad honesta también en la capa de value shadow).
+            const pp = players.projectPlayer(PF, g.pid, { teamLambda, willStart: STARTERS.has(g.pid) });
             if (!pp) continue;
             let model = null;
             if (g.fam === 'player_goal') model = pp.anytime_goal;

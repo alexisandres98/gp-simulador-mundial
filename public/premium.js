@@ -733,9 +733,9 @@
     var role = isAdmin ? 'ADMIN' : (t('account_beta') || 'BETA');
     m.innerHTML = '<div class="gx-acct-head"><div class="gx-avatar">' + esc(email ? email[0].toUpperCase() : 'GP') + '</div><div class="gx-acct-id"><div class="gx-acct-em">' + esc(email || '—') + '</div><div class="gx-acct-role">' + esc(role) + '</div></div></div>' +
       '<button class="gx-acct-i" id="gx-profile">' + ic('user') + '<span>' + esc(t('account')) + '</span></button>' +
-      // Mi suscripción + Soporte: SOLO ADMIN hasta el lanzamiento de pagos (quitar el gate para abrirlos a todos).
-      (S.me && S.me.isAdmin ? '<button class="gx-acct-i" id="gx-sub">' + ic('crown') + '<span>' + esc(t('sub_nav')) + '</span></button>' +
-        '<button class="gx-acct-i" id="gx-support">' + ic('lifebuoy') + '<span>' + esc(t('sup_nav')) + '</span></button>' : '') +
+      // Soporte: ABIERTO a todos (8-jul). Mi suscripción sigue solo-admin hasta el lanzamiento de pagos.
+      (S.me && S.me.isAdmin ? '<button class="gx-acct-i" id="gx-sub">' + ic('crown') + '<span>' + esc(t('sub_nav')) + '</span></button>' : '') +
+      '<button class="gx-acct-i" id="gx-support">' + ic('lifebuoy') + '<span>' + esc(t('sup_nav')) + '</span></button>' +
       '<button class="gx-acct-i gx-acct-danger" id="gx-logout">' + ic('logout') + '<span>' + esc(t('logout')) + '</span></button>';
     var pf = m.querySelector('#gx-profile'); if (pf) pf.addEventListener('click', function () { closeAcctMenu(); openGxProfile(); });
     var sb = m.querySelector('#gx-sub'); if (sb) sb.addEventListener('click', function () { closeAcctMenu(); navTo('sub'); });
@@ -851,6 +851,11 @@
       // anti-cierre: si el usuario tiene una calculadora abierta en el board, no re-renderizar (el próximo
       // tick del loop en vivo actualiza al cerrarla). Mismo patrón que el anti-pestañeo de la plataforma vieja.
       if (silent && calcOpenInBoard()) return;
+      // anti-pestañeo: en refresco silencioso, si el payload no cambió no hay nada que redibujar.
+      var _bj = null;
+      try { _bj = JSON.stringify([S.dash, S.value]); } catch (e) { _bj = null; }
+      if (silent && _bj && _bj === S._lastBoardJson) return;
+      if (_bj) S._lastBoardJson = _bj;
       render();
     });
   }
@@ -1200,6 +1205,11 @@
     fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
       S._arbLoading = false;
       if (!m) return;
+      // anti-pestañeo: si solo cambiaron timestamps/frescura, no redibujar (los precios/patas mandan).
+      var _aj = null;
+      try { _aj = JSON.stringify(m).replace(/"[a-z_]*(_at|age[a-z_]*|freshness[a-z_]*)":"?[^,"}\]]*"?/g, ''); } catch (e) { _aj = null; }
+      if (_aj && _aj === S._lastArbJson) { S.arb = m; return; }
+      if (_aj) S._lastArbJson = _aj;
       S.arb = m;
       arbRefresh();
     });
@@ -1254,7 +1264,11 @@
       el.addEventListener('click', function () { S.arbSub = el.getAttribute('data-arbsub'); S._arbSubUser = true; oppArbBoard(bd); });
     });
     [].forEach.call(bd.querySelectorAll('[data-arbref]'), function (el) {
-      el.addEventListener('click', function () { openArbDetail(el.getAttribute('data-arbref')); });
+      el.addEventListener('click', function (e) {
+        // la calculadora vive DENTRO de la card: su click no debe abrir el detalle (bug reportado 8-jul)
+        if (e.target.closest('[data-calc], .gx-calc-holder, .gx-calc-trow')) return;
+        openArbDetail(el.getAttribute('data-arbref'));
+      });
     });
     animNums(bd);
   }
@@ -2019,7 +2033,7 @@
   function showView(v) {
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
-    if (['registry', 'method', 'admin', 'sub', 'support'].indexOf(v) >= 0 && S.me && !S.me.isAdmin) { v = 'board'; }
+    if (['registry', 'method', 'admin', 'sub'].indexOf(v) >= 0 && S.me && !S.me.isAdmin) { v = 'board'; }
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
@@ -2282,9 +2296,9 @@
       fetch('/api/beta/xg-report?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.xgr[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
     }
     var xgr = (matchFinished && S.xgr[hk] && S.xgr[hk].available) ? S.xgr[hk] : null;
-    // INTEL (props de jugador + radar de observación): admin-first; el server devuelve 403 a no-admins
-    // mientras GP_PROPS_PICKS_PUBLIC este apagado → el panel simplemente no aparece.
-    var wantIntel = !matchFinished && hid && aid && S.me && S.me.isAdmin;
+    // INTEL (props de jugador + radar de observación): el server decide el acceso (GP_PROPS_PICKS_PUBLIC
+    // abierto 8-jul); si devuelve 403 el panel simplemente no aparece. Se intenta para todos.
+    var wantIntel = !matchFinished && hid && aid && !!S.me;
     if (wantIntel && S.intel[hk] === undefined) {
       S.intel[hk] = null;
       fetch('/api/beta/match-intel?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.intel[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) { noAnimWindow(); renderMatch(); } });
@@ -2432,7 +2446,7 @@
       var factor = d.radar && d.radar.lambda_factor != null && d.radar.lambda_factor !== 1 ? '<p class="gx-mod-note gx-dim">' + esc(t('intel_factor', { pct: Math.round((1 - d.radar.lambda_factor) * 100) })) + '</p>' : '';
       return '<div class="gx-intel-side"><div class="gx-form-h"><span class="fl">' + flag(code) + '</span><b>' + esc(teamName(code, nameFallback)) + '</b></div>' + head + rows + (radar ? '<div class="gx-mod-sub gx-label">' + esc(t('intel_radar')) + '</div>' + radar + factor : '') + '</div>';
     };
-    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('users') + esc(t('mod_intel')) + '</span><span class="gx-badge" style="font-size:9px">ADMIN</span></div><div class="gx-mod-body gx-intel-grid">' +
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('users') + esc(t('mod_intel')) + '</span></div><div class="gx-mod-body gx-intel-grid">' +
       sideCol(header.home && header.home.team_id, header.home && header.home.name_fallback, intel.home) +
       sideCol(header.away && header.away.team_id, header.away && header.away.name_fallback, intel.away) +
       '</div><p class="gx-mod-note gx-dim">' + esc(t('intel_note')) + '</p></div>';
@@ -3658,6 +3672,13 @@
     fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
       if (!st) return;
       S._lastLiveAt = Date.now();
+      // ANTI-PESTAÑEO (8-jul): si el estado es IDÉNTICO al del último refresco (fuera del timestamp de
+      // sync, que cambia siempre), no se re-renderiza NADA. El parpadeo era el board redibujándose entero
+      // cada push/poll aunque no hubiera un solo dato nuevo.
+      var _cmp = null;
+      try { var _c = {}; for (var _k in st) if (_k !== 'sync') _c[_k] = st[_k]; _cmp = JSON.stringify(_c); } catch (e) { _cmp = null; }
+      if (_cmp && _cmp === S._lastStateJson) return;
+      if (_cmp) S._lastStateJson = _cmp;
       var wasLive = anyLive();
       ingestState(st);
       var live = anyLive();
@@ -3735,7 +3756,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); maybeOnboard(); loadPlayerIndex(); if (['registry', 'method', 'admin', 'sub', 'support'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); maybeOnboard(); loadPlayerIndex(); if (['registry', 'method', 'admin', 'sub'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

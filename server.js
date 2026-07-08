@@ -1017,6 +1017,95 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   return { subject, text, html };
 }
 
+// Email de FEATURES (8-jul): anuncia los mercados nuevos (córners, tarjetas, goleador) + perfiles de
+// jugador + intel del partido, con los cuartos de final como gancho. Idioma FIJO por variante (todos
+// reciben ambos, mismo criterio que bankroll). SIN rayitas (regla dura de textos públicos).
+function featuresEmail(lang) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com';
+  const subject = en
+    ? 'New on your account: corners, cards, goalscorers and player intelligence'
+    : 'Nuevo en tu cuenta: córners, tarjetas, goleadores y perfiles de jugador';
+  const preheader = en
+    ? 'The system now reads three new markets and every player has an intelligence profile. Live for the quarter finals.'
+    : 'El sistema ahora lee tres mercados nuevos y cada jugador tiene su perfil de inteligencia. Ya activo para los cuartos de final.';
+  const text = en
+    ? `The biggest upgrade since launch is live on your account.
+
+THREE NEW PICK MARKETS
+The same system that hit 81.5% on its settled picks now also reads corners, cards and goalscorer markets. When it finds a play worth taking, it lands on your board next to the daily picks, with the best odds and the bookmaker.
+
+PLAYER INTELLIGENCE PROFILES
+Search any player by name, or tap a name in a lineup, and you get his full profile: production per 90 minutes, match by match form, whether he is projected to start, what the market is paying for him and the system's read on why. With his photo and his numbers against the rest of his position.
+
+MATCH INTEL ON EVERY QUARTER FINAL
+Probable scorers with their goal probability, projected shot volume and an availability radar that tracks who might miss the match, updated from published sources around the clock.
+
+PICKS THAT PROTECT THEMSELVES
+If a player pick is published and the official lineup later comes out without him, the pick withdraws itself before kickoff. No dead tickets.
+
+The quarter finals start tomorrow. France vs Morocco, Spain vs Belgium, Norway vs England, Argentina vs Switzerland. The board is already loaded:
+
+${url}
+
+Also new: direct support from your profile menu. Write to us and a human answers.
+
+Past performance does not guarantee future results. Not financial advice. 18+.
+
+Alexis · GP Simulador
+
+You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".`
+    : `La actualización más grande desde el lanzamiento ya está activa en tu cuenta.
+
+TRES MERCADOS NUEVOS DE PICKS
+El mismo sistema que acertó el 81.5% de sus picks liquidadas ahora también lee córners, tarjetas y goleador del partido. Cuando encuentra una jugada que vale la pena, aparece en tu tablero junto a las picks diarias, con la mejor cuota y la casa.
+
+PERFILES DE INTELIGENCIA POR JUGADOR
+Buscá a cualquier jugador por nombre, o tocá su nombre en una alineación, y tenés su perfil completo: producción por 90 minutos, forma partido a partido, si se proyecta titular, qué está pagando el mercado por él y la lectura del sistema con sus razones. Con su foto y sus números contra el resto de su posición.
+
+INTEL DEL PARTIDO EN CADA CUARTO DE FINAL
+Anotadores probables con su probabilidad de gol, volumen de remates proyectado y un radar de disponibilidad que detecta quién puede perderse el partido, actualizado desde fuentes publicadas todo el día.
+
+PICKS QUE SE PROTEGEN SOLAS
+Si una pick de jugador está publicada y la alineación oficial sale sin él, la pick se retira sola antes del kickoff. Cero tickets muertos.
+
+Los cuartos arrancan mañana. Francia vs Marruecos, España vs Bélgica, Noruega vs Inglaterra, Argentina vs Suiza. El tablero ya está cargado:
+
+${url}
+
+También nuevo: soporte directo desde el menú de tu perfil. Escribinos y te responde un humano.
+
+Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.
+
+Alexis · GP Simulador
+
+Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".`;
+  const F = [
+    en ? ['Three new pick markets', 'Corners, cards and goalscorer of the match. Same system, more markets. Every pick lands with the best odds and the bookmaker.'] : ['Tres mercados nuevos de picks', 'Córners, tarjetas y goleador del partido. El mismo sistema, más mercados. Cada pick llega con la mejor cuota y la casa.'],
+    en ? ['Player intelligence profiles', 'Search any player or tap his name in a lineup: production per 90, match by match form, projected role, what the market pays for him and why the system reads him that way. With photo.'] : ['Perfiles de inteligencia por jugador', 'Buscá a cualquier jugador o tocá su nombre en una alineación: producción por 90, forma partido a partido, rol proyectado, qué paga el mercado por él y por qué el sistema lo lee así. Con foto.'],
+    en ? ['Match intel in every quarter final', 'Probable scorers with goal probability, projected shots and an availability radar that catches who might miss the match.'] : ['Intel del partido en cada cuarto de final', 'Anotadores probables con probabilidad de gol, remates proyectados y un radar de disponibilidad que detecta quién puede perderse el partido.'],
+    en ? ['Picks that protect themselves', 'If the official lineup comes out without the player of a pick, the pick withdraws itself before kickoff.'] : ['Picks que se protegen solas', 'Si la alineación oficial sale sin el jugador de una pick, la pick se retira sola antes del kickoff.'],
+    en ? ['Direct support', 'From your profile menu. A human answers.'] : ['Soporte directo', 'Desde el menú de tu perfil. Te responde un humano.'],
+  ];
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'Already live on your account' : 'Ya activo en tu cuenta'}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${en ? 'Corners, cards, goalscorers and <span style="color:#18E6A3">player intelligence</span>' : 'Córners, tarjetas, goleadores y <span style="color:#18E6A3">perfiles de jugador</span>'}</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'The system that hit 81.5% of its settled picks now reads three new markets and profiles every player. Live for the quarter finals.' : 'El sistema que acertó el 81.5% de sus picks liquidadas ahora lee tres mercados nuevos y perfila a cada jugador. Ya activo para los cuartos de final.'}</p>
+    </div>
+    <div style="padding:24px 26px">
+      ${F.map(f => `<div style="margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid #eef2f0"><p style="margin:0 0 4px;font-size:14.5px;color:#14201A;font-weight:800">${f[0]}</p><p style="margin:0;font-size:13.5px;color:#2b3a33;line-height:1.55">${f[1]}</p></div>`).join('')}
+      <p style="margin:2px 0 18px;font-size:14px;color:#2b3a33;line-height:1.6"><b>${en ? 'The quarter finals start tomorrow.' : 'Los cuartos arrancan mañana.'}</b> ${en ? 'France vs Morocco, Spain vs Belgium, Norway vs England, Argentina vs Switzerland. The board is already loaded.' : 'Francia vs Marruecos, España vs Bélgica, Noruega vs Inglaterra, Argentina vs Suiza. El tablero ya está cargado.'}</p>
+      <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${en ? 'Open my board' : 'Abrir mi tablero'}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".' : 'Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".'}</div>
+  </div></div>`;
+  return { subject, text, html };
+}
+
 function broadcastEmail(referLink, lang) {
   if (lang === 'en') return broadcastEmailEN(referLink);
   const url = 'https://gpsimulador.com';
@@ -2456,8 +2545,10 @@ function propsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROP
 function propsPicksPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_PICKS_PUBLIC || '')); }
 const PROP_FAMS = ['CORNERS', 'CARDS', 'PLAYER'];
 // Familias en modo EXPERIMENTO: solo admin SIEMPRE (aunque GP_PROPS_PICKS_PUBLIC esté on) y fuera del
-// track record. PLAYER queda acá hasta arreglar la titularidad asumida (willStart) del prop-engine.
-const EXPERIMENT_FAMS = ['PLAYER'];
+// track record. 8-jul: Alexis aprobó el rediseño de PLAYER (anclada al mercado + once proyectado + gates
+// de titularidad/corroboración) → sale del experimento: pública y cuenta en el track record. El mecanismo
+// queda para futuras familias nuevas (post-Mundial: agregar acá cualquier mercado en rodaje).
+const EXPERIMENT_FAMS = [];
 let _propsRunning = false, _propsLast = null, _propsLastRunMs = 0, _propsCredits = null;
 let _propFitCache = null;
 function propFit() {
@@ -4976,7 +5067,9 @@ const server = http.createServer(async (req, res) => {
         ? (lng) => ({ ...reengageEmail(link, lng), from: REENGAGE_FROM, noListUnsub: true })
         : (variant === 'bankroll_es') ? () => bankrollEmail('es')
           : (variant === 'bankroll_en') ? () => bankrollEmail('en')
-            : (lng) => broadcastEmail(link, lng);
+            : (variant === 'features_es') ? () => featuresEmail('es')
+              : (variant === 'features_en') ? () => featuresEmail('en')
+                : (lng) => broadcastEmail(link, lng);
       const testTo = (u && u.email) || String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
       if (test) {
         try { ensureRefCode(testTo); await mailer.sendMail({ to: testTo, ...buildMail(userLang(testTo)) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''} ${userLang(testTo)})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true, to: testTo }); }

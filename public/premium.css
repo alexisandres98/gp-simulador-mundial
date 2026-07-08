@@ -67,7 +67,9 @@ body { background:
 /* iOS Safari: un input con fuente <16px dispara AUTO-ZOOM al enfocar y el zoom queda pegado. En pantallas
    táctiles todo campo de texto va a 16px (el fix estándar; la plataforma principal ya lo usa). */
 @media (pointer: coarse) {
-  input[type="text"], input[type="search"], input[type="number"], input[type="email"], select, textarea { font-size: 16px !important; }
+  /* OJO: el input del buscador NO tiene atributo type → el selector por [type=...] no lo agarraba (bug
+     reportado 2 veces). Selector total: cualquier campo de texto. */
+  input, select, textarea { font-size: 16px !important; }
 }
 .gx-search-res { position: absolute; top: calc(100% + 7px); left: 0; right: 0; min-width: 280px; background: var(--gx-panel); border: 1px solid var(--gx-line);
   border-radius: var(--gx-r); box-shadow: 0 16px 40px rgba(0,0,0,.5); max-height: 60vh; overflow: auto; z-index: 60; padding: 6px; }

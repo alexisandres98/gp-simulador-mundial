@@ -3438,6 +3438,24 @@ const server = http.createServer(async (req, res) => {
       }
       // INTEL del partido (7-jul): ANOTADORES PROBABLES (prop-engine de jugador + λ GP) y RADAR DE
       // DISPONIBILIDAD (capa de observación + factor λ sugerido). Admin-first hasta GP_PROPS_PICKS_PUBLIC.
+      // ÍNDICE DE JUGADORES (descubribilidad): buscador del header + resolución nombre→pid en alineaciones
+      // y plantillas del cliente. Todos los equipos del dataset (~700 filas compactas). Mismo gate que el
+      // perfil. Cache 10 min en memoria.
+      if (p === '/api/beta/player-index' && req.method === 'GET') {
+        if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });
+        try {
+          if (!global._playerIdxCache || Date.now() - global._playerIdxCache.at > 10 * 60 * 1000) {
+            const PF0 = obsFit();
+            const ph0 = db.playerPhotos || {};
+            const players = PF0 ? Object.values(PF0.players).map(pl => ({
+              pid: pl.pid, name: pl.name, team: pl.team, pos: pl.pos,
+              min: pl.minutes, photo: ph0[pl.pid] ? 1 : 0,
+            })) : [];
+            global._playerIdxCache = { at: Date.now(), body: { players, count: players.length } };
+          }
+          return json(res, 200, global._playerIdxCache.body);
+        } catch (e) { return json(res, 200, { players: [], count: 0 }); }
+      }
       // INTELIGENCIA POR JUGADOR (punto 1 roadmap 8-jul): perfil completo — foto, muestra, tasas por 90',
       // forma partido a partido, disponibilidad del observer y la lectura del player-intel engine con los
       // códigos de razón ("por qué el sistema concluye X"). Caja negra: sin fuentes ni métodos. Admin-first.
@@ -3477,13 +3495,64 @@ const server = http.createServer(async (req, res) => {
             confirmedStarter: cxi ? cxi.has(pid) : null, availability: avail,
           });
           const ph = db.playerPhotos && db.playerPhotos[pid];
+          // PERCENTIL vs su posición (jugadores confiables del torneo): dónde está su generación.
+          const peers = Object.values(PF.players).filter(x => x.pos === pl.pos && x.reliable);
+          const pctl = (arr, v) => arr.length > 1 ? Math.round(100 * arr.filter(x => x < v).length / (arr.length - 1)) : null;
+          const percentiles = {
+            xg90: pctl(peers.map(x => x.xg90), pl.xg90),
+            shots90: pctl(peers.map(x => x.shots90), pl.shots90),
+            sot90: pctl(peers.map(x => x.sot90), pl.sot90),
+            peers: peers.length,
+          };
+          // % DEL ATAQUE: qué parte del xG del equipo generó él, en los partidos que jugó.
+          let share = null;
+          try {
+            let mine = 0, teamTot = 0;
+            for (const m of hist.matches) {
+              const r = (m.players || []).find(x => x.pid === pid);
+              if (!r || !(r.min > 0)) continue;
+              mine += r.xg || 0;
+              for (const q of m.players) if (q.team === pl.team) teamTot += q.xg || 0;
+            }
+            if (teamTot > 0) share = Math.round(100 * mine / teamTot);
+          } catch { /* informativo */ }
+          // H2H: partidos previos contra el PRÓXIMO rival (dataset del torneo).
+          const rivalCode = next ? (pl.team === next.home ? next.away : next.home) : null;
+          const h2h = rivalCode ? form.filter(f => f.opponent === rivalCode) : [];
+          // MERCADOS DEL JUGADOR: cuotas vigentes de las casas para SUS props (si el partido está cotizado)
+          // + la probabilidad del modelo (goal_value_shadow). Es la vista "inteligencia vs precio".
+          let markets = [];
+          try {
+            const dbcfg2 = require('./database/config');
+            if (dbcfg2.db && dbcfg2.db.configured && next) {
+              const dbc2 = require('./database/client');
+              const mr = (await dbc2.query(
+                `SELECT q.market_id, q.market_family, q.line,
+                        max(q.odds_decimal)::float best_odds, count(distinct q.sportsbook_code)::int books,
+                        (SELECT gv.gp_probability::float FROM goal_value_shadow gv
+                          WHERE gv.market_id = q.market_id AND gv.canonical_event_id = q.canonical_event_id
+                          ORDER BY gv.created_at DESC LIMIT 1) AS model_prob
+                 FROM sportsbook_goal_quote_current q
+                 JOIN canonical_events ce ON ce.id = q.canonical_event_id AND ce.scheduled_start > now()
+                 WHERE q.team_scope = $1
+                 GROUP BY q.market_id, q.market_family, q.line, q.canonical_event_id
+                 ORDER BY q.market_family, q.line`, [pid])).rows;
+              markets = mr.map(r => ({
+                market_id: r.market_id, family: r.market_family, line: r.line != null ? Number(r.line) : null,
+                best_odds: r.best_odds, books: r.books, model_prob: r.model_prob != null ? +Number(r.model_prob).toFixed(3) : null,
+              })).slice(0, 12);
+            }
+          } catch { /* sin DB → sin mercados */ }
           return json(res, 200, {
             available: true,
             profile: { pid, name: pl.name, team: pl.team, pos: pl.pos, photo: (ph && ph.photo) || null },
-            sample: { minutes: pl.minutes, apps: pl.apps, starts: pl.starts, goals: pl.goals, exp_minutes_start: Math.round(pl.exp_minutes_start) },
-            rates90: { xg: +pl.xg90.toFixed(3), shots: +pl.shots90.toFixed(2), sot: +pl.sot90.toFixed(2) },
+            sample: { minutes: pl.minutes, apps: pl.apps, starts: pl.starts, goals: pl.goals, assists: pl.assists || 0, yc: pl.yc || 0, rc: pl.rc || 0, exp_minutes_start: Math.round(pl.exp_minutes_start) },
+            rates90: { xg: +pl.xg90.toFixed(3), shots: +pl.shots90.toFixed(2), sot: +pl.sot90.toFixed(2), xa: +(pl.xa90 || 0).toFixed(3) },
+            percentiles, attack_share_pct: share,
             form: form.slice(0, 6),
+            h2h_vs_next: h2h.slice(0, 3),
             next_match: next ? { home: next.home, away: next.away } : null,
+            markets,
             intel, availability: avail ? { status: avail.status, prob_miss: avail.prob_miss, corroborated: avail.corroborated } : null,
             generated_at: new Date().toISOString(),
           });
@@ -5081,7 +5150,7 @@ const server = http.createServer(async (req, res) => {
       // html/js/css siempre revalidan (si no, los usuarios quedan con código viejo tras cada deploy);
       // imágenes sí se cachean. EXCEPCIÓN: /vendor, /fonts y /flags son inmutables (assets versionados que no
       // cambian entre deploys) → cache larga; clave para conexiones lentas (el css de íconos pesa ~250KB).
-      const immutableAsset = /^\/(vendor|fonts|flags)\//.test(p);
+      const immutableAsset = /^\/(vendor|fonts|flags|books)\//.test(p);
       const cache = immutableAsset
         ? 'public, max-age=2592000, immutable'
         : ['.html', '.js', '.css'].includes(ext)

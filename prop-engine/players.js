@@ -36,10 +36,12 @@ function fitPlayers(matches, opts = {}) {
       const a = acc[p.pid] || (acc[p.pid] = {
         pid: p.pid, name: p.name, team: p.team, pos: p.pos || 'M',
         min: 0, xg: 0, npxg: 0, shots: 0, sot: 0, goals: 0, starts: 0, apps: 0, minAsStarter: 0, starterApps: 0,
+        xa: 0, assists: 0, fouls: 0, yc: 0, rc: 0,
       });
       a.min += p.min; a.apps++;
       if (p.started) { a.starts++; a.starterApps++; a.minAsStarter += p.min; }
       a.xg += p.xg || 0; a.npxg += p.npxg || 0; a.shots += p.shots || 0; a.sot += p.sot || 0; a.goals += p.goals || 0;
+      a.xa += p.xa || 0; a.assists += p.assists || 0; a.fouls += p.fouls || 0; a.yc += p.yc || 0; a.rc += p.rc || 0;
       a.pos = p.pos || a.pos; a.team = p.team;
     }
   }
@@ -53,9 +55,11 @@ function fitPlayers(matches, opts = {}) {
     players[pid] = {
       pid, name: a.name, team: a.team, pos: a.pos,
       minutes: a.min, apps: a.apps, starts: a.starts, goals: a.goals,
+      assists: a.assists, fouls: a.fouls, yc: a.yc, rc: a.rc,
       xg90: rate(a.xg, prior.xg90),
       shots90: rate(a.shots, prior.shots90),
       sot90: rate(a.sot, prior.sot90),
+      xa90: a.min > 0 ? (a.xa / a.min) * 90 : 0, // creación: sin prior de posición (informativo, no mercado)
       exp_minutes_start: a.starterApps ? clamp(a.minAsStarter / a.starterApps, 45, 90) : 78,
       reliable: a.min >= cfg.MIN_MINUTES_SAMPLE,
     };

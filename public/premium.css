@@ -815,6 +815,17 @@ body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-event
 .flx { width: 1.32em; height: .99em; object-fit: cover; border-radius: .14em; display: block;
   box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 1px 3px rgba(0,0,0,.5); background: var(--gx-panel3); }
 
+/* logos de casas/exchanges/prediction markets: MISMA línea visual que las banderas (tiles SVG self-hosted
+   en /books/, 4:3, anillo sutil). Se insertan junto al nombre de la casa en cards, KPIs y tablas. */
+.bkx { width: 1.32em; height: .99em; object-fit: cover; border-radius: .14em; display: inline-block;
+  vertical-align: -0.16em; margin-right: .38em;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 1px 3px rgba(0,0,0,.5); background: var(--gx-panel3); }
+.gx-bkchip { display: inline-flex; align-items: center; }
+
+/* links a perfil de jugador (cancha, alineaciones, plantillas, Match Intel) */
+.gx-plk { color: inherit; text-decoration: none; cursor: pointer; }
+.gx-plk:hover .gx-pp-name, .gx-plk:hover b { color: var(--gx-accent, #18E6A3); }
+
 /* ---- tipografía display: titulares y números protagonistas en Space Grotesk ---- */
 h1, .gx-ohead h1 { font-family: var(--gx-display); font-weight: 700; letter-spacing: -.025em; }
 .gx-brand b, .gx-top-brand b { font-family: var(--gx-display); font-weight: 600; letter-spacing: -.015em; }

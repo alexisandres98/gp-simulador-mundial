@@ -3937,6 +3937,23 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), exported_at: new Date().toISOString() });
     }
+    // MANTENIMIENTO (one-off, misma key que el export): borra picks de una familia creadas ANTES de un corte.
+    // Uso 8-jul: eliminar las picks PLAYER del diseño viejo (edge-first) para que el admin vea solo las del
+    // rediseño anclado al mercado. POST /api/internal/picks-prune?key=...&family=PLAYER&before=<ISO>
+    if (p === '/api/internal/picks-prune' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const fam = String(url.searchParams.get('family') || '');
+      const before = new Date(String(url.searchParams.get('before') || ''));
+      if (!PROP_FAMS.includes(fam) || !(before.getTime() > 0)) return json(res, 400, { error: 'family (CORNERS|CARDS|PLAYER) y before (ISO) requeridos' });
+      const keep = [], removed = [];
+      for (const x of db.dailyPicks) {
+        if (x.family === fam && new Date(x.created_at || 0) < before) removed.push({ pick_id: x.pick_id, player: x.player_name || null, status: x.status, result_code: x.result_code || null });
+        else keep.push(x);
+      }
+      db.dailyPicks = keep; if (removed.length) save();
+      return json(res, 200, { removed: removed.length, detail: removed, remaining: db.dailyPicks.length });
+    }
     // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
     if (p === '/api/internal/props') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });

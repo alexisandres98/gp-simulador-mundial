@@ -2543,6 +2543,12 @@ if (canonicalAutoOn()) {
 // TheStatsAPI. Familias VISIBLES SOLO PARA ADMIN hasta GP_PROPS_PICKS_PUBLIC=true (aprobación de Alexis).
 function propsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_ENABLED || '')); }
 function propsPicksPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_PICKS_PUBLIC || '')); }
+// Idioma por DEFECTO del primer ingreso (visitante sin preferencia guardada). El cliente lo lee de
+// window.__GPDL. 8-jul: 'en' para el test de ads en África (la landing en español disparaba leads que
+// no entendían y no entraban). Valores: 'en' | 'es' | 'auto' (auto = según el navegador, comportamiento
+// viejo). Revertir el test = GP_DEFAULT_LANG=auto (o 'es') en Render + Manual Deploy. NO afecta a quien ya
+// eligió idioma (preferencia guardada gana) ni al toggle ES/EN.
+function defaultLang() { const v = String(process.env.GP_DEFAULT_LANG || 'en').toLowerCase(); return (v === 'es' || v === 'auto') ? v : 'en'; }
 const PROP_FAMS = ['CORNERS', 'CARDS', 'PLAYER'];
 // Familias en modo EXPERIMENTO: solo admin SIEMPRE (aunque GP_PROPS_PICKS_PUBLIC esté on) y fuera del
 // track record. 8-jul: Alexis aprobó el rediseño de PLAYER (anclada al mercado + once proyectado + gates
@@ -5126,7 +5132,8 @@ const server = http.createServer(async (req, res) => {
         const vcss = Math.floor(fs.statSync(path.join(__dirname, 'public', 'premium.css')).mtimeMs);
         let html = fs.readFileSync(pf, 'utf8')
           .replace('src="premium.js"', `src="premium.js?v=${vjs}"`)
-          .replace('href="premium.css"', `href="premium.css?v=${vcss}"`);
+          .replace('href="premium.css"', `href="premium.css?v=${vcss}"`)
+          .replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script></head>`);
         // A.8: fixtures QA del cockpit — se inyectan SOLO con el flag GP_PREMIUM_QA_ENABLED (preview interno).
         if (gpProduct.flags().premiumQa) {
           try {
@@ -5143,7 +5150,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
@@ -5213,7 +5220,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }

@@ -3772,7 +3772,7 @@
       fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
         ingestState(st);
         var pref; try { pref = localStorage.getItem('gp_lang'); } catch (e) {}
-        LANG = (pref === 'en' || pref === 'es') ? pref : ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
+        LANG = (pref === 'en' || pref === 'es') ? pref : (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})();
         document.documentElement.lang = LANG;
         shell(); load(); loadCanon(); startLiveLoop();
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {

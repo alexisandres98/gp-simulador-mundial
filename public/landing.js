@@ -87,7 +87,7 @@
       d_lag: 'Stale price', d_arb: 'Surebet', d_note: 'Illustrative scanner data. The real, live opportunities are inside your account.', d_cta: 'Sign up to see the real one',
     }
   };
-  var lang = (function () { try { var p = localStorage.getItem('gp_lang'); if (p === 'es' || p === 'en') return p; } catch (e) {} return (navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es'; })();
+  var lang = (function () { try { var p = localStorage.getItem('gp_lang'); if (p === 'es' || p === 'en') return p; } catch (e) {} return (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})(); })();
   var T = function (k, a) { var s = (DICT[lang] || DICT.es)[k]; if (s == null) s = DICT.es[k] || k; return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; }); };
 
   // capturar referido de la URL (?ref=CODE) para no perderlo en el registro desde la landing

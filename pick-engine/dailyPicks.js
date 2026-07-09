@@ -317,12 +317,16 @@ function settleOne(pick, score) {
     return (pick.side === 'over' ? over : !over) ? 'WIN' : 'LOSS';
   }
   if (pick.family === 'COMBO') {
-    let allWin = true;
+    // Cada pata gana/pierde/empuja; se decide al FINAL. Un push de la pata de goles NO puede enmascarar una
+    // pata 1X2 perdedora (bug: el return 'PUSH' cortaba el loop antes de mirar el 1X2 → inflaba el track
+    // record reembolsando combos que debían perder). Regla de casa: si alguna pata pierde → LOSS; si ninguna
+    // pierde pero hay push → PUSH (la pata push se elimina, el combo se liquida por las restantes); todas ganan → WIN.
+    let allWin = true, anyPush = false;
     for (const leg of (pick.legs || [])) {
       if (leg.type === '1X2') { const actual = hg > ag ? 'home' : hg === ag ? 'draw' : 'away'; if (leg.selection !== actual) allWin = false; }
-      else if (leg.type === 'GOALS') { if (total === leg.line) return 'PUSH'; const over = total > leg.line; if (!(leg.side === 'over' ? over : !over)) allWin = false; }
+      else if (leg.type === 'GOALS') { if (total === leg.line) { anyPush = true; } else { const over = total > leg.line; if (!(leg.side === 'over' ? over : !over)) allWin = false; } }
     }
-    return allWin ? 'WIN' : 'LOSS';
+    return !allWin ? 'LOSS' : anyPush ? 'PUSH' : 'WIN';
   }
   return 'PENDING';
 }

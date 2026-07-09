@@ -81,8 +81,17 @@ async function resolveGoogleNewsUrl(link) {
   return out;
 }
 
-async function fetchCapped(url, timeoutMs) {
-  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(timeoutMs || 8000) });
+async function fetchCapped(url, timeoutMs, hop) {
+  hop = hop || 0;
+  // redirect MANUAL: re-validar CADA salto contra el guard SSRF antes de seguirlo (con follow, un redirect
+  // intermedio a un host interno/metadata ya se ejecuta antes de poder inspeccionarlo). Máx 4 saltos.
+  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html' }, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs || 8000) });
+  if (r.status >= 300 && r.status < 400) {
+    if (hop >= 4) throw new Error('too_many_redirects');
+    const loc = r.headers.get('location'); const next = loc ? safeUrl(new URL(loc, url).toString()) : null;
+    if (!next) throw new Error('unsafe_redirect');
+    return fetchCapped(next, timeoutMs, hop + 1);
+  }
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const final = safeUrl(r.url || url);
   if (!final) throw new Error('unsafe_redirect');

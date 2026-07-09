@@ -10,3 +10,4 @@ node_modules/
 
 backtest.js
 backups/
+data/history/

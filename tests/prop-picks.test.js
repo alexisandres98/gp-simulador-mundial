@@ -27,15 +27,12 @@ const P2 = propPicks([
 t('cuota por debajo de la justa del consenso → BELOW_CONSENSUS_PRICE', !P2[0].eligible && P2[0].blockers.includes('BELOW_CONSENSUS_PRICE'));
 t('cuota justa-o-mejor → elegible (gate no bloquea)', P2[1].eligible && !P2[1].blockers.includes('BELOW_CONSENSUS_PRICE'));
 
-// PISO DE ACIERTO: confianza <55% no se publica (caso tarjetas under 2.5 @2.52: bien pagada pero moneda al aire)
+// SIN PISO DE PROBABILIDAD: una pick de bajo acierto pero bien pagada (+EV) SÍ se publica (negocio = volumen
+// de picks; una under 2.5 @2.52 a ~50% acierto es +EV y es producto válido).
 const P3 = propPicks([
-  // confianza = .6*.51+.4*.41 = .47 < .55 → LOW_CONFIDENCE (aunque paga justo: 2.52 >= 1/.41=2.44)
   { ...base, family: 'cards_total', marketId: 'CARDS_UNDER_2_5', side: 'under', line: 2.5, modelProb: 0.51, marketProb: 0.41, edgePp: 0.10, bestOdds: 2.52, books: 5, familyApproved: true },
-  // confianza = .6*.72+.4*.65 = .69 >= .55 → pasa
-  { ...base, family: 'cards_total', marketId: 'CARDS_UNDER_3_5', side: 'under', line: 3.5, modelProb: 0.72, marketProb: 0.65, edgePp: 0.07, bestOdds: 1.60, books: 5, familyApproved: true },
 ], require('../pick-engine/curate').CONFIG);
-t('confianza 47% < piso 55% → LOW_CONFIDENCE (moneda al aire no se publica)', !P3[0].eligible && P3[0].blockers.includes('LOW_CONFIDENCE'));
-t('confianza 69% >= piso → elegible', P3[1].eligible && !P3[1].blockers.includes('LOW_CONFIDENCE'));
+t('pick +EV de bajo acierto pero bien pagada → ELEGIBLE (sin piso)', P3[0].eligible && !P3[0].blockers.length);
 
 console.log('== playerPicks (jugador, anclada al mercado: probabilidad primero) ==');
 const J = playerPicks([

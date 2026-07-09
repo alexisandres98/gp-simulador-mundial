@@ -2401,6 +2401,42 @@ function dailyPicksQuant() {
   return require('./pick-engine/metrics').quantMetrics(db.dailyPicks || [], { experimentFams: EXPERIMENT_FAMS });
 }
 
+// ── Movimiento de línea de picks ACTIVAS (line-intel, SHADOW/informativo) ──────────────────────────────────
+// Para cada pick activa con kickoff futuro: consenso actual del mercado vs la prob de mercado al PUBLICAR
+// (ya guardada en la pick) → p.line_move {pp, direction, now, at}. Corre en el ciclo; el feed lo serializa.
+// NO gatea nada (regla: backtest antes de tocar gates).
+async function updateDailyPicksLineIntel() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  const metrics = require('./pick-engine/metrics');
+  const lineIntel = require('./line-intel/engine');
+  const now = Date.now();
+  let updated = 0;
+  for (const p of db.dailyPicks) {
+    if (p.status !== 'ACTIVE' || p.result_code === 'SUPERSEDED') continue;
+    const ko = Date.parse((p.event && p.event.kickoff_at) || '');
+    if (!isFinite(ko) || ko <= now) continue; // arrancado el partido, el cierre manda (captureDailyPicksClosing)
+    if (p.market_prob == null) continue;      // sin baseline de publicación (COMBO) no hay señal honesta
+    const specs = metrics.closingMarketIds(p);
+    if (!specs || specs.length !== 1) continue;
+    const r = await dbc.query(
+      `SELECT market_consensus_probability AS fair, created_at
+         FROM goal_value_shadow
+        WHERE canonical_event_id = $1 AND market_id = $2
+        ORDER BY created_at DESC LIMIT 1`,
+      [p.event.canonical_event_id, specs[0].market_id]
+    ).catch(() => null);
+    const row = r && r.rows && r.rows[0];
+    if (!row || row.fair == null) continue;
+    const mv = lineIntel.moveForPick(Number(p.market_prob), Number(row.fair));
+    if (!mv) continue;
+    p.line_move = { pp: mv.pp, direction: mv.direction, now: +Number(row.fair).toFixed(4), at: row.created_at };
+    updated++;
+  }
+  if (updated) save();
+  return { updated };
+}
+
 // Track record (solo admin): acierto y rendimiento por familia sobre picks liquidadas. NO se expone al usuario.
 function dailyPicksTrackRecord() {
   // Las familias EXPERIMENTO (decisión Alexis 8-jul) se liquidan y se observan, pero NO cuentan en el
@@ -3285,6 +3321,8 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     out.propsSettled = await settlePropsPicks().catch(() => 0);
     // Cierre + CLV: idempotente, solo picks con kickoff pasado y sin closing/clv.
     out.dailyClosing = await captureDailyPicksClosing().catch(e => ({ error: e.message }));
+    // Movimiento de línea de picks activas (informativo, no gatea).
+    out.lineIntel = await updateDailyPicksLineIntel().catch(e => ({ error: e.message }));
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
@@ -3540,6 +3578,7 @@ const server = http.createServer(async (req, res) => {
           selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs,
           player_name: x.player_name || null, player_family: x.player_family || null, availability_risk: x.availability_risk || null,
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
+          line_move: x.line_move ? { pp: x.line_move.pp, direction: x.line_move.direction } : null,
         }));
         // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
         if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);
@@ -4610,6 +4649,21 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }
       return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200) });
+    }
+    // SERIE de línea de un mercado (observatorio admin): goal_value_shadow leída como serie temporal + resumen
+    // line-intel (apertura/cierre/dirección/steam). Read-only.
+    if (p === '/api/internal/line-intel' && req.method === 'GET') {
+      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      const ev = url.searchParams.get('event'), mk = url.searchParams.get('market');
+      if (!ev || !mk) return json(res, 400, { error: 'event y market requeridos' });
+      const dbc = require('./database/client');
+      if (!dbc.isConfigured()) return json(res, 200, { event: ev, market: mk, summary: null, series: [] });
+      const r = await dbc.query(
+        `SELECT market_consensus_probability AS fair, best_decimal_odds AS odds, created_at AS at
+           FROM goal_value_shadow WHERE canonical_event_id = $1 AND market_id = $2
+          ORDER BY created_at ASC LIMIT 400`, [ev, mk]).catch(() => null);
+      const series = ((r && r.rows) || []).map(x => ({ fair: x.fair != null ? Number(x.fair) : null, odds: x.odds != null ? Number(x.odds) : null, at: x.at }));
+      return json(res, 200, { event: ev, market: mk, summary: require('./line-intel/engine').summarize(series), series });
     }
     // CIERRE + CLV retro/mantenimiento: captura la línea de cierre (goal_value_shadow) y calcula CLV para
     // picks con kickoff pasado. Idempotente; ?force=1 recalcula todo. Auth: admin o GP_EXPORT_KEY.

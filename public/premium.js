@@ -184,6 +184,7 @@
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
       pp_title: 'Rendimiento de picks', pp_settled: 'Liquidadas', pp_hit: '% Aciertos', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'Por familia', pp_history: 'Historial de picks', pp_pick: 'Pick', pp_active: 'activas', pp_none: 'Aún no hay picks liquidadas.', pp_model: 'Calibración del modelo (1X2)',
+      lm_with: 'El mercado se movió a favor ({pp}pp) desde la publicación', lm_against: 'El mercado se movió en contra ({pp}pp) desde la publicación',
       qm_title: 'Calidad de las picks vs mercado', qm_clv: 'CLV medio', qm_clv_sub: 'valor vs línea de cierre', qm_beat_close: 'Le ganó al cierre', qm_brier_gp: 'Precisión GP', qm_brier_mkt: 'Precisión consenso', qm_brier_sub: 'Brier, más bajo es mejor', qm_skill: 'Ventaja GP', qm_cal_title: 'Calibración por rangos', qm_cal_note: 'Cuando el sistema proyecta un rango de probabilidad, esto es lo que ocurrió en la realidad.', qm_cal_range: 'Proyectado', qm_cal_obs: 'Real', qm_cal_n: 'Picks', qm_clv_note: 'CLV positivo = tomamos mejor precio que el cierre del mercado. Es la medida profesional de calidad de una pick.',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
       outright_title: 'Campeón del Mundial · Value', outright_sub: 'Probabilidad GP del torneo vs mercado', outright_none: 'Sin ventaja sobre el mercado para el título ahora.',
@@ -409,6 +410,7 @@
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
       pp_title: 'Picks performance', pp_settled: 'Settled', pp_hit: 'Win rate', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'By family', pp_history: 'Picks history', pp_pick: 'Pick', pp_active: 'active', pp_none: 'No settled picks yet.', pp_model: 'Model calibration (1X2)',
+      lm_with: 'Market moved with us ({pp}pp) since publication', lm_against: 'Market moved against us ({pp}pp) since publication',
       qm_title: 'Pick quality vs the market', qm_clv: 'Avg CLV', qm_clv_sub: 'value vs closing line', qm_beat_close: 'Beat the close', qm_brier_gp: 'GP accuracy', qm_brier_mkt: 'Consensus accuracy', qm_brier_sub: 'Brier, lower is better', qm_skill: 'GP edge', qm_cal_title: 'Calibration by range', qm_cal_note: 'When the system projects a probability range, this is what actually happened.', qm_cal_range: 'Projected', qm_cal_obs: 'Actual', qm_cal_n: 'Picks', qm_clv_note: 'Positive CLV = we took a better price than the market close. It is the professional measure of pick quality.',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
       outright_title: 'World Cup winner · Value', outright_sub: 'GP tournament probability vs market', outright_none: 'No edge over the market for the title right now.',
@@ -1059,6 +1061,18 @@
     }
     return '';
   }
+  // Chip de movimiento de línea (line-intel): hacia dónde se movió el consenso del mercado desde que se
+  // publicó la pick. A favor = el mercado se acercó a nuestra selección (verde); en contra = ámbar tenue.
+  // Solo se muestra con movimiento real (direction with/against); flat no ensucia la card.
+  function lineMoveChip(p) {
+    var lm = p.line_move;
+    if (!lm || lm.direction === 'flat' || lm.pp == null) return '';
+    var withUs = lm.direction === 'with';
+    var arrow = withUs ? '▲' : '▼';
+    var txt = t(withUs ? 'lm_with' : 'lm_against', { pp: (lm.pp > 0 ? '+' : '') + lm.pp });
+    return '<div class="gx-pick-linemove ' + (withUs ? 'gx-lm-with' : 'gx-lm-against') + '">' + arrow + ' ' + esc(txt) + '</div>';
+  }
+
   function pickCard(p) {
     var famKey = p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
     var bucket = confBucket(p.confidence || 0);
@@ -1077,6 +1091,7 @@
       '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
       '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>' +
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div></div>' +
+      lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
       '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>' +
       '<div class="gx-pick-odds"><span class="gx-pick-odds-label">' + esc(t('pf_best_odds')) + '</span><span class="gx-pick-odds-val">' + esc(odds) + '</span>' +

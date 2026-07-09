@@ -86,7 +86,7 @@ const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'db.json');
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // ---------- persistencia ----------
-let db = { users: {}, sessions: {}, codes: {}, results: {}, elos: {}, history: [] };
+let db = { users: {}, sessions: {}, codes: {}, magic: {}, results: {}, elos: {}, history: [] };
 try { db = { ...db, ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) }; } catch { /* primera ejecución */ }
 TEAMS.forEach(t => { if (db.elos[t.id] == null) db.elos[t.id] = t.elo; });
 db.sentAlerts = db.sentAlerts || {}; // inicializado temprano: markExistingFinalsSeen() lo usa al arrancar
@@ -3765,20 +3765,26 @@ const server = http.createServer(async (req, res) => {
       // su idioma efectivo; fallback ES. Antes el email era SOLO ES → los leads anglófonos (África) recibían
       // un correo que no entendían y encima caía en Promociones por el copy de marketing.
       const mailLang = (lang === 'en' || lang === 'es') ? lang : userLang(e);
-      // anti-abuso: máximo 3 códigos por email cada 10 minutos
+      // anti-abuso: máximo 5 solicitudes por email cada 10 minutos (holgado para reenvíos legítimos)
       const prev = db.codes[e];
-      if (prev && prev.count >= 3 && prev.exp > Date.now()) {
+      if (prev && prev.count >= 5 && prev.exp > Date.now()) {
         return json(res, 429, { error: 'Demasiados intentos. Espera unos minutos y vuelve a intentar.' });
       }
-      // ahorro de cuota: si hay un código vigente enviado hace <90s, no reenviar otro correo
-      if (prev && prev.exp > Date.now() && prev.ts && Date.now() - prev.ts < 90 * 1000 && prev.sent) {
+      // REUSO DE CÓDIGO (8-jul): si hay un código vigente, se REUSA el mismo (el "resend" manda el MISMO
+      // código → el que ya vieron sigue sirviendo, sin confundir con dos códigos distintos). El magic link
+      // también se conserva. Anti-spam de correo: no reenviar el email si el último salió hace <20s.
+      const valid = prev && prev.exp > Date.now() && prev.code;
+      if (valid && prev.ts && Date.now() - prev.ts < 20 * 1000 && prev.sent) {
         return json(res, 200, { ok: true, sent: true, resent: true });
       }
-      const code = String(crypto.randomInt(100000, 999999));
+      const code = valid ? prev.code : String(crypto.randomInt(100000, 999999));
+      const magicTok = (valid && prev.magic) ? prev.magic : crypto.randomBytes(24).toString('hex');
       db.codes[e] = {
-        code, exp: Date.now() + 10 * 60 * 1000, ts: Date.now(), sent: false,
+        code, magic: magicTok, exp: Date.now() + 10 * 60 * 1000, ts: Date.now(), sent: false,
         count: (prev && prev.exp > Date.now() ? prev.count : 0) + 1,
       };
+      // magic link: token → email (reverso, para resolver el click desde el correo). TTL = el del código.
+      db.magic[magicTok] = { email: e, exp: db.codes[e].exp };
       // CAPTURA DE LEAD: el email es válido (validado arriba) y mostró interés al pedir el código. Si aún
       // no es usuario, lo guardamos marcado como LEAD / no verificado (puede que el código cayera en spam
       // y no llegara a entrar; el haber dejado su correo ya denota interés → posible lead de marketing).
@@ -3790,24 +3796,31 @@ const server = http.createServer(async (req, res) => {
         try {
           // OTP MÍNIMO transaccional (sin marketing ni emoji → Principal, no Promociones) y BILINGÜE.
           // Aprobado por Alexis sobre pruebas reales enviadas el 4-jul.
+          // MAGIC LINK: un toque y entra, sin copiar/pegar (mínima fricción, clave en móvil africano).
+          const mlink = `https://gpsimulador.com/api/auth/magic?t=${magicTok}`;
+          const btnStyle = 'display:inline-block;background:#0BA661;color:#fff;font-weight:bold;font-size:16px;padding:14px 34px;border-radius:99px;text-decoration:none';
           const otp = mailLang === 'en' ? {
             subject: `${code} is your GP Simulador access code`,
-            text: `Your access code is: ${code}\n\nIt expires in 10 minutes.\n\nIf you didn't request it, you can ignore this email.\n\nGP Simulador · gpsimulador.com`,
+            text: `Tap this link to log in instantly:\n${mlink}\n\nOr enter this code: ${code}\n\nBoth expire in 10 minutes.\n\nIf you didn't request it, you can ignore this email.\n\nGP Simulador · gpsimulador.com`,
             html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:440px;margin:0 auto;color:#1a1a1a">
-<p style="margin:18px 0 6px;font-size:15px">Your access code is:</p>
-<p style="font-size:34px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:16px 20px;border-radius:10px;text-align:center;margin:8px 0 14px">${code}</p>
-<p style="margin:0 0 4px;font-size:14px;color:#444">It expires in 10 minutes.</p>
-<p style="margin:14px 0 0;font-size:12.5px;color:#999">If you didn't request this code, you can ignore this email.</p>
+<p style="margin:18px 0 12px;font-size:15px">Tap to log in instantly:</p>
+<p style="text-align:center;margin:0 0 20px"><a href="${mlink}" style="${btnStyle}">Log in →</a></p>
+<p style="margin:0 0 6px;font-size:13px;color:#666">Or enter this code:</p>
+<p style="font-size:32px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:14px 20px;border-radius:10px;text-align:center;margin:6px 0 12px">${code}</p>
+<p style="margin:0 0 4px;font-size:13px;color:#444">Both expire in 10 minutes.</p>
+<p style="margin:14px 0 0;font-size:12.5px;color:#999">If you didn't request this, you can ignore this email.</p>
 <p style="margin:18px 0 0;font-size:12.5px;color:#999">GP Simulador · gpsimulador.com</p>
 </div>`,
           } : {
             subject: `${code} es tu código de acceso · GP Simulador`,
-            text: `Tu código de acceso es: ${code}\n\nVence en 10 minutos.\n\nSi no lo pediste, ignora este correo.\n\nGP Simulador · gpsimulador.com`,
+            text: `Toca este link para entrar al instante:\n${mlink}\n\nO ingresa este código: ${code}\n\nAmbos vencen en 10 minutos.\n\nSi no lo pediste, ignora este correo.\n\nGP Simulador · gpsimulador.com`,
             html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:440px;margin:0 auto;color:#1a1a1a">
-<p style="margin:18px 0 6px;font-size:15px">Tu código de acceso es:</p>
-<p style="font-size:34px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:16px 20px;border-radius:10px;text-align:center;margin:8px 0 14px">${code}</p>
-<p style="margin:0 0 4px;font-size:14px;color:#444">Vence en 10 minutos.</p>
-<p style="margin:14px 0 0;font-size:12.5px;color:#999">Si no pediste este código, ignora este correo.</p>
+<p style="margin:18px 0 12px;font-size:15px">Toca para entrar al instante:</p>
+<p style="text-align:center;margin:0 0 20px"><a href="${mlink}" style="${btnStyle}">Entrar →</a></p>
+<p style="margin:0 0 6px;font-size:13px;color:#666">O ingresa este código:</p>
+<p style="font-size:32px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:14px 20px;border-radius:10px;text-align:center;margin:6px 0 12px">${code}</p>
+<p style="margin:0 0 4px;font-size:13px;color:#444">Ambos vencen en 10 minutos.</p>
+<p style="margin:14px 0 0;font-size:12.5px;color:#999">Si no pediste esto, ignora este correo.</p>
 <p style="margin:18px 0 0;font-size:12.5px;color:#999">GP Simulador · gpsimulador.com</p>
 </div>`,
           };
@@ -3853,6 +3866,33 @@ const server = http.createServer(async (req, res) => {
       db.sessions[token] = e;
       save();
       return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false });
+    }
+    // MAGIC LINK: click desde el correo → verifica sin código, setea cookie de sesión y redirige a la
+    // plataforma (premium.js sincroniza cookie→localStorage en el boot). Mínima fricción: un toque y entra.
+    if (p === '/api/auth/magic' && req.method === 'GET') {
+      const tok = String(url.searchParams.get('t') || '');
+      const m = db.magic[tok];
+      if (!m || !m.email || (m.exp && m.exp < Date.now())) {
+        res.writeHead(302, { Location: '/?magicerr=1' });
+        return res.end();
+      }
+      const e = m.email;
+      delete db.magic[tok];
+      if (db.codes[e]) delete db.codes[e];
+      const isNewOrLead = !db.users[e] || db.users[e].lead;
+      if (!db.users[e]) db.users[e] = { createdAt: Date.now(), favorites: [] };
+      db.users[e].verified = true; db.users[e].lead = false;
+      if (!db.users[e].verifiedAt) db.users[e].verifiedAt = Date.now();
+      if (db.users[e].ref === 'lead') db.users[e].ref = 'directo';
+      const token = crypto.randomBytes(24).toString('hex');
+      db.sessions[token] = e;
+      save();
+      console.log(`[auth] magic link ${isNewOrLead ? '(alta/lead→verificado)' : ''} ${e}`);
+      res.writeHead(302, {
+        'Set-Cookie': `wc_token=${token};path=/;max-age=31536000;SameSite=Lax`,
+        Location: '/?welcome=1',
+      });
+      return res.end();
     }
     if (p === '/api/me') {
       const u = getUser(req);

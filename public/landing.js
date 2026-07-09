@@ -40,8 +40,10 @@
       a_eye: 'Acceso gratis', a_h: 'Crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
       a_email_l: 'Tu email', a_email_ph: 'tucorreo@email.com', a_send: 'Enviar código',
       a_micro: 'Gratis durante el Mundial · sin tarjeta · sin spam',
-      a_sent_h: 'Revisa tu email', a_sent_sub: 'Te enviamos un código de 6 dígitos a <b>{email}</b>.',
+      a_sent_h: 'Revisa tu email', a_sent_sub: 'Te enviamos un enlace y un código a <b>{email}</b>. Toca el enlace del correo y entras al instante.',
       a_spam: '¿No lo ves? Revisa <b>Spam</b> o <b>Promociones</b> — puede tardar hasta 1 minuto.',
+      a_open_mail: 'Abrir mi correo', a_resend: 'Reenviar código', a_resend_in: 'Reenviar en {s}s', a_resent: '✓ Correo reenviado',
+      a_or_code: 'O ingresa el código del correo:',
       a_code_l: 'Código', a_code_ph: '••••••', a_verify: 'Entrar', a_back: 'Usar otro email',
       a_ok_h: '¡Listo!', a_ok_sub: 'Entrando a tu cuenta…',
       e_email: 'Ingresa un email válido.', e_code: 'Código incorrecto o vencido.', e_net: 'Error de conexión, intenta de nuevo.',
@@ -78,8 +80,10 @@
       a_eye: 'Free access', a_h: 'Create your account', a_sub: 'No password. We email you a code and you’re in instantly.',
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
       a_micro: 'Free during the World Cup · no card · no spam',
-      a_sent_h: 'Check your email', a_sent_sub: 'We sent a 6-digit code to <b>{email}</b>.',
+      a_sent_h: 'Check your email', a_sent_sub: 'We sent a link and a code to <b>{email}</b>. Tap the link in the email to log in instantly.',
       a_spam: "Don't see it? Check your <b>Spam</b> or <b>Promotions</b> folder — it can take up to a minute.",
+      a_open_mail: 'Open my email', a_resend: 'Resend code', a_resend_in: 'Resend in {s}s', a_resent: '✓ Email resent',
+      a_or_code: 'Or enter the code from the email:',
       a_code_l: 'Code', a_code_ph: '••••••', a_verify: 'Enter', a_back: 'Use another email',
       a_ok_h: "You're in!", a_ok_sub: 'Taking you to your account…',
       e_email: 'Enter a valid email.', e_code: 'Wrong or expired code.', e_net: 'Connection error, try again.',
@@ -248,25 +252,62 @@
       })
       .catch(function () { sending = false; btn.disabled = false; btn.textContent = T('a_send'); msg.className = 'm-msg err'; msg.textContent = T('e_net'); });
   }
+  // Deep link al buzón del proveedor, BUSCANDO nuestro correo → salta la pestaña Promociones/Spam (el que
+  // llega directo a "de: gpsimulador"). Por dominio del email; desconocido → null (no se muestra el botón).
+  function mailInboxUrl(email) {
+    var d = (String(email).split('@')[1] || '').toLowerCase();
+    if (d === 'gmail.com' || d === 'googlemail.com') return 'https://mail.google.com/mail/u/0/#search/from%3Agpsimulador';
+    if (d === 'icloud.com' || d === 'me.com' || d === 'mac.com') return 'https://www.icloud.com/mail/';
+    if (d === 'outlook.com' || d === 'hotmail.com' || d === 'live.com' || d === 'msn.com') return 'https://outlook.live.com/mail/0/';
+    if (d === 'yahoo.com' || d === 'ymail.com') return 'https://mail.yahoo.com/';
+    if (d === 'proton.me' || d === 'protonmail.com') return 'https://mail.proton.me/';
+    return null;
+  }
+  var resendTimer = null;
   function renderAuthCode(demoCode) {
+    var mailUrl = mailInboxUrl(authEmail);
     $('#authStep').innerHTML =
       '<div class="modal-eye"><i></i>' + esc(T('a_eye')) + '</div>' +
       '<h3>' + esc(T('a_sent_h')) + '</h3><p class="m-sub">' + T('a_sent_sub', { email: esc(authEmail) }) + '</p>' +
-      // muchos códigos caen en Spam/Promociones (sobre todo Gmail móvil en África) y el lead nunca completa →
-      // aviso sutil en la piel del modal, ANTES del campo del código.
+      // PRIMER CTA: abrir el correo directo a la búsqueda de nuestro email (el mayor asesino de fricción en
+      // móvil africano: encuentran el correo al instante sin cazar en Promociones, y ahí toca el magic link).
+      (mailUrl ? '<a class="btn m-btn" id="aOpen" href="' + mailUrl + '" target="_blank" rel="noopener" style="text-decoration:none;display:block;text-align:center">' + esc(T('a_open_mail')) + '</a>' : '') +
       '<div class="m-spam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg><span>' + T('a_spam') + '</span></div>' +
       (demoCode ? '<p class="m-msg ok">demo: ' + esc(demoCode) + '</p>' : '') +
-      '<div class="m-field"><label>' + esc(T('a_code_l')) + '</label>' +
-      '<input class="m-input code" id="aCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="' + esc(T('a_code_ph')) + '"></div>' +
+      '<p class="m-sub" style="margin:14px 0 6px;font-size:13px;opacity:.75">' + esc(T('a_or_code')) + '</p>' +
+      '<div class="m-field"><input class="m-input code" id="aCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="' + esc(T('a_code_ph')) + '"></div>' +
       '<button class="btn m-btn" id="aVerify">' + esc(T('a_verify')) + '</button>' +
       '<div class="m-msg" id="aMsg"></div>' +
-      '<button class="m-back" id="aBack">' + esc(T('a_back')) + '</button>';
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
+        '<button class="m-back" id="aResend"></button>' +
+        '<button class="m-back" id="aBack">' + esc(T('a_back')) + '</button>' +
+      '</div>';
     var inp = $('#aCode');
     setTimeout(function () { inp.focus(); }, 60);
     $('#aVerify').onclick = doVerify;
     inp.onkeydown = function (e) { if (e.key === 'Enter') doVerify(); };
     inp.oninput = function () { inp.value = inp.value.replace(/\D/g, ''); if (inp.value.length === 6) doVerify(); };
-    $('#aBack').onclick = renderAuthEmail;
+    $('#aBack').onclick = function () { if (resendTimer) clearInterval(resendTimer); renderAuthEmail(); };
+    startResendCountdown(20);
+  }
+  // Reenvía el MISMO código/enlace; botón deshabilitado con cuenta regresiva para evitar spam.
+  function startResendCountdown(secs) {
+    var b = $('#aResend'); if (!b) return;
+    var left = secs;
+    var tick = function () {
+      if (left <= 0) { b.disabled = false; b.textContent = T('a_resend'); if (resendTimer) { clearInterval(resendTimer); resendTimer = null; } return; }
+      b.disabled = true; b.textContent = T('a_resend_in', { s: left }); left--;
+    };
+    b.disabled = true; tick();
+    if (resendTimer) clearInterval(resendTimer);
+    resendTimer = setInterval(tick, 1000);
+    b.onclick = function () {
+      if (b.disabled) return;
+      b.disabled = true; b.textContent = '…';
+      fetch('/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: authEmail, lang: lang }) })
+        .then(function () { var m = $('#aMsg'); if (m) { m.className = 'm-msg ok'; m.textContent = T('a_resent'); } startResendCountdown(30); })
+        .catch(function () { startResendCountdown(5); });
+    };
   }
   function doVerify() {
     if (sending) return;

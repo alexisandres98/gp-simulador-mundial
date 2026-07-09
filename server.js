@@ -574,6 +574,7 @@ db.tsaXg = db.tsaXg || {};
 db.tsaPlayers = db.tsaPlayers || {};              // stats por jugador de partidos TERMINADOS (TheStatsAPI): cache permanente para settlement de props.                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
 db.observations = db.observations || {};       // CAPA DE OBSERVACIÓN (shadow): señales de disponibilidad por equipo desde noticias publicadas. Solo admin.
 db.momentum = db.momentum || {};               // MOMENTUM GP en vivo: serie de prob GP muestreada cada ~30s por partido (persiste post-partido para el gráfico y contenido).
+db.fotmob = db.fotmob || { matches: [] };      // EVENT DATA incremental (FotMob): partidos terminados post-deploy (el histórico vive en data/fotmob-events.json del repo). Cache permanente por matchId.
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
 db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
 db.supportMsgs = db.supportMsgs || [];         // mensajes de soporte in-platform (respaldo local; ring 200)
@@ -2488,6 +2489,55 @@ function obsFit() {
   catch { _obsFit = null; }
   return _obsFit;
 }
+
+// ===== STYLE ENGINE (event data FotMob + props API-Football) =================================================
+// Perfil táctico por equipo (balón parado/córners/aéreo/contragolpe/zonas/volumen, ataque Y defensa) desde
+// los shotmaps con situación. Baseline del torneo en data/fotmob-events.json (repo) + incremental db.fotmob
+// (partidos que terminan post-deploy, recolectados por fotmobSweep cada 6h). SHADOW para modelos: alimenta
+// Match Intel y narrativa, NO toca gates. Kill switch: GP_FOTMOB_ENABLED=false apaga la recolección.
+function fotmobOn() { return !/^(0|false|no|off)$/i.test(String(process.env.GP_FOTMOB_ENABLED || 'true').trim()); }
+let _styleFit = null, _styleFitStamp = '';
+function styleFit() {
+  const stamp = String((db.fotmob.matches || []).length);
+  if (_styleFit && _styleFitStamp === stamp) return _styleFit;
+  try {
+    let base = [];
+    try { base = require('./data/fotmob-events.json').matches || []; } catch { /* sin baseline */ }
+    const seen = new Set(base.map(m => m.matchId));
+    const extra = (db.fotmob.matches || []).filter(m => !seen.has(m.matchId));
+    let props = null;
+    try { props = require('./data/props-history.json').matches; } catch { /* opcional */ }
+    _styleFit = require('./style-engine/profile').fitStyles(base.concat(extra), props);
+    _styleFitStamp = stamp;
+  } catch { _styleFit = null; }
+  return _styleFit;
+}
+let _fotmobSweeping = false;
+async function fotmobSweep() {
+  if (!fotmobOn() || _fotmobSweeping) return { skipped: true };
+  _fotmobSweeping = true;
+  try {
+    const fotmob = require('./data-providers/fotmob');
+    let baseIds = new Set();
+    try { baseIds = new Set((require('./data/fotmob-events.json').matches || []).map(m => m.matchId)); } catch { /* sin baseline */ }
+    const haveIds = new Set((db.fotmob.matches || []).map(m => m.matchId));
+    const days = [0, 1].map(d => new Date(Date.now() - d * 86400e3).toISOString().slice(0, 10).replace(/-/g, ''));
+    let added = 0;
+    for (const date of days) {
+      const list = await fotmob.matchesByDate(date).catch(() => []);
+      for (const m of list) {
+        if (!m.finished || baseIds.has(m.matchId) || haveIds.has(m.matchId)) continue;
+        const ev = await fotmob.matchEvents(m.matchId).catch(() => null);
+        if (!ev || !ev.shots.length) continue;
+        ev.date = date;
+        db.fotmob.matches.push(ev); haveIds.add(m.matchId); added++;
+      }
+    }
+    if (added) { save(); console.log(`[fotmob] +${added} partidos con event data (total incremental ${db.fotmob.matches.length})`); }
+    return { added };
+  } catch (e) { return { error: e.message }; }
+  finally { _fotmobSweeping = false; }
+}
 // Once PROYECTADO por equipo (mismo criterio que Match Intel/projectTeam: los 11 con más titularidades,
 // desempate por minutos). Gate de las picks de jugador: proyectar como titular a cualquier cotizado era el
 // bug del caso Doué (edges inflados con suplentes). Cache simple; el dataset cambia 1 vez por jornada.
@@ -2658,6 +2708,9 @@ async function runCanonicalAuto() {
 if (canonicalAutoOn()) {
   setTimeout(() => runCanonicalAuto().catch(() => { }), 2 * 60 * 1000);
   setInterval(() => runCanonicalAuto().catch(() => { }), 60 * 60 * 1000);
+  // Event data FotMob: barrido incremental de partidos terminados (2 fechas, ~2-6 req/pasada, educado).
+  setTimeout(() => fotmobSweep().catch(() => { }), 3 * 60 * 1000);
+  setInterval(() => fotmobSweep().catch(() => { }), 6 * 3600 * 1000);
 }
 
 // ===== PROPS (7-jul): córners/tarjetas/jugador END-TO-END =====================================================
@@ -3805,6 +3858,22 @@ const server = http.createServer(async (req, res) => {
             generated_at: new Date().toISOString(),
           });
         } catch (e) { return json(res, 200, { available: false }); }
+      }
+      // PERFIL TÁCTICO + MATCHUP (style engine, event data): ataque/defensa por situación y zona de los dos
+      // equipos + hallazgos cruzados (córners/balón parado/aéreo/contra/zona/volumen). Mismo gate que Match Intel.
+      if (p === '/api/beta/style' && req.method === 'GET') {
+        if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });
+        const sh = String(url.searchParams.get('home') || '').toUpperCase(), sa = String(url.searchParams.get('away') || '').toUpperCase();
+        if (!/^[A-Z]{3}$/.test(sh) || !/^[A-Z]{3}$/.test(sa)) return json(res, 400, { error: 'params' });
+        const S = styleFit();
+        if (!S) return json(res, 200, { available: false });
+        const home = S[sh] || null, away = S[sa] || null;
+        return json(res, 200, {
+          available: !!(home && away),
+          home: home && { team_id: sh, ...home }, away: away && { team_id: sa, ...away },
+          findings: require('./style-engine/profile').matchupFindings(home, away),
+          generated_at: new Date().toISOString(),
+        });
       }
       if (p === '/api/beta/match-intel' && req.method === 'GET') {
         if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });

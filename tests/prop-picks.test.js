@@ -7,7 +7,7 @@ function t(name, cond) { if (cond) { pass++; console.log('  ✓ ' + name); } els
 const base = { eventId: 'e1', home: 'A', away: 'B', kickoff: '2026-07-09T20:00:00Z' };
 console.log('== propPicks (córners/tarjetas) ==');
 const P = propPicks([
-  { ...base, family: 'corners_total', marketId: 'CORNERS_OVER_8_5', side: 'over', line: 8.5, modelProb: 0.58, marketProb: 0.50, edgePp: 0.08, bestOdds: 2.0, books: 5, familyApproved: true },
+  { ...base, family: 'corners_total', marketId: 'CORNERS_OVER_8_5', side: 'over', line: 8.5, modelProb: 0.62, marketProb: 0.52, edgePp: 0.10, bestOdds: 2.0, books: 5, familyApproved: true },
   { ...base, family: 'cards_total', marketId: 'CARDS_OVER_3_5', side: 'over', line: 3.5, modelProb: 0.45, marketProb: 0.43, edgePp: 0.02, bestOdds: 2.3, books: 5, familyApproved: true },
   { ...base, family: 'corners_total', marketId: 'CORNERS_UNDER_9_5', side: 'under', line: 9.5, modelProb: 0.62, marketProb: 0.55, edgePp: 0.07, bestOdds: 1.8, books: 2, familyApproved: true },
   { ...base, family: 'cards_total', marketId: 'CARDS_OVER_4_5', side: 'over', line: 4.5, modelProb: 0.30, marketProb: 0.22, edgePp: 0.08, bestOdds: 5.2, books: 5, familyApproved: true },
@@ -26,6 +26,16 @@ const P2 = propPicks([
 ], require('../pick-engine/curate').CONFIG);
 t('cuota por debajo de la justa del consenso → BELOW_CONSENSUS_PRICE', !P2[0].eligible && P2[0].blockers.includes('BELOW_CONSENSUS_PRICE'));
 t('cuota justa-o-mejor → elegible (gate no bloquea)', P2[1].eligible && !P2[1].blockers.includes('BELOW_CONSENSUS_PRICE'));
+
+// PISO DE ACIERTO: confianza <55% no se publica (caso tarjetas under 2.5 @2.52: bien pagada pero moneda al aire)
+const P3 = propPicks([
+  // confianza = .6*.51+.4*.41 = .47 < .55 → LOW_CONFIDENCE (aunque paga justo: 2.52 >= 1/.41=2.44)
+  { ...base, family: 'cards_total', marketId: 'CARDS_UNDER_2_5', side: 'under', line: 2.5, modelProb: 0.51, marketProb: 0.41, edgePp: 0.10, bestOdds: 2.52, books: 5, familyApproved: true },
+  // confianza = .6*.72+.4*.65 = .69 >= .55 → pasa
+  { ...base, family: 'cards_total', marketId: 'CARDS_UNDER_3_5', side: 'under', line: 3.5, modelProb: 0.72, marketProb: 0.65, edgePp: 0.07, bestOdds: 1.60, books: 5, familyApproved: true },
+], require('../pick-engine/curate').CONFIG);
+t('confianza 47% < piso 55% → LOW_CONFIDENCE (moneda al aire no se publica)', !P3[0].eligible && P3[0].blockers.includes('LOW_CONFIDENCE'));
+t('confianza 69% >= piso → elegible', P3[1].eligible && !P3[1].blockers.includes('LOW_CONFIDENCE'));
 
 console.log('== playerPicks (jugador, anclada al mercado: probabilidad primero) ==');
 const J = playerPicks([
@@ -47,7 +57,7 @@ t('modelo contradice fuerte al mercado → MODEL_FIGHTS_MARKET', !J[3].eligible 
 t('cuota 6.5 fuera de ventana → ODDS_OUT_OF_RANGE', !J[4].eligible && J[4].blockers.includes('ODDS_OUT_OF_RANGE'));
 
 console.log('== curate integra las familias nuevas ==');
-const R = curate({ events: [], goalMarkets: [], propMarkets: [{ ...base, family: 'corners_total', marketId: 'CORNERS_OVER_8_5', side: 'over', line: 8.5, modelProb: 0.58, marketProb: 0.50, edgePp: 0.08, bestOdds: 2.0, books: 5, familyApproved: true }], playerMarkets: [] });
+const R = curate({ events: [], goalMarkets: [], propMarkets: [{ ...base, family: 'corners_total', marketId: 'CORNERS_OVER_8_5', side: 'over', line: 8.5, modelProb: 0.62, marketProb: 0.52, edgePp: 0.10, bestOdds: 2.0, books: 5, familyApproved: true }], playerMarkets: [] });
 t('counts.props presente', R.counts.props === 1 && R.counts.player === 0);
 
 console.log(`\n[prop-picks] ${pass} pass, ${fail} fail`);

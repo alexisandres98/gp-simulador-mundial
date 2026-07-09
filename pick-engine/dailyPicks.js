@@ -246,10 +246,12 @@ async function buildDailyPicks(deps) {
   }
   // PROPS de equipo: la mejor por (evento, familia) — CORNERS y CARDS por separado.
   const propById = {}; propMarkets.forEach(g => { propById[g.eventId + '|' + g.marketId] = g; });
+  // Selección por CONFIANZA (no por edge): backtest 9-jul → elegir la línea bien pagada de MAYOR acierto
+  // (no la de mayor edge, que es donde el modelo se sobreconfía) mejora acierto Y ROI (60→73% / +26.8→+30.1%).
   const bestPropByEF = {};
   for (const g of res.eligible.props) {
     const k = g.eventId + '|' + g.family;
-    if (!bestPropByEF[k] || g.edgePp > bestPropByEF[k].edgePp) bestPropByEF[k] = g;
+    if (!bestPropByEF[k] || g.confidence > bestPropByEF[k].confidence || (g.confidence === bestPropByEF[k].confidence && g.edgePp > bestPropByEF[k].edgePp)) bestPropByEF[k] = g;
   }
   for (const g of Object.values(bestPropByEF)) {
     const gm = propById[g.eventId + '|' + g.marketId] || {};

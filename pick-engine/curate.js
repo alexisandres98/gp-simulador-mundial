@@ -37,6 +37,9 @@ const CONFIG = {
   propsRequireFairPrice: true, // REC 2 (backtest 9-jul): no publicar si la mejor cuota está POR DEBAJO de la
   // justa del consenso no-vig (1/marketProb). Evita "favoritos mal pagados" donde el edge lo crea el modelo
   // sobreproyectando, no un precio real. Validado: sube el ROI de props sin ahogar el volumen.
+  propsMinConfidence: 0.55,    // PISO DE ACIERTO (backtest 9-jul): no publicar props con confianza < 55%.
+  // El track record es público → cuidar la óptica del % de acierto sin publicar monedas al aire. Casi no
+  // cuesta ROI porque la selección por confianza ya evita las líneas de bajo acierto.
   alphaProps: 0.6,             // confianza = blend modelo/consenso (el modelo lidera, como en goles).
 
   // Familia PROPS de JUGADOR — REDISEÑADA (8-jul, decisión de Alexis): mercado hiper-eficiente → NO cazar
@@ -162,6 +165,9 @@ function propPicks(propMarkets, cfg) {
     // cuota disponible es peor que la justa, estás pagando de más → no publicar (aunque el modelo vea edge).
     const mkt = Number(g.marketProb || 0);
     if (cfg.propsRequireFairPrice && odds > 1 && mkt > 0 && mkt < 1 && odds < 1 / mkt) blockers.push('BELOW_CONSENSUS_PRICE');
+    // PISO DE ACIERTO: no publicar props con confianza (blend modelo/consenso) por debajo del mínimo.
+    const conf = blend(Number(g.modelProb), Number(g.marketProb), cfg.alphaProps);
+    if (conf < cfg.propsMinConfidence) blockers.push('LOW_CONFIDENCE');
     out.push({
       family: g.family === 'cards_total' ? 'CARDS' : 'CORNERS',
       eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,

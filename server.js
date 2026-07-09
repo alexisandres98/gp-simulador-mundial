@@ -2350,6 +2350,57 @@ function settleDailyPicks() {
   if (settled) save();
   return settled;
 }
+// ── Cierre + CLV de picks diarias ───────────────────────────────────────────────────────────────────────────
+// La serie de goal_value_shadow ya persiste consenso no-vig + mejor cuota por ciclo (20-75 min): la última
+// evaluación ANTES del kickoff ES la línea de cierre. Idempotente (solo toca picks sin closing/clv), corre en
+// el ciclo tras la liquidación y por endpoint retro (/api/internal/picks-clv). force=true recalcula todo.
+async function captureDailyPicksClosing({ force = false } = {}) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  const metrics = require('./pick-engine/metrics');
+  const now = Date.now();
+  let captured = 0, clvSet = 0, misses = 0;
+  for (const p of db.dailyPicks) {
+    if (p.result_code === 'SUPERSEDED') continue;
+    const ko = Date.parse((p.event && p.event.kickoff_at) || '');
+    if (!isFinite(ko) || ko > now) continue; // el cierre existe recién cuando el partido arrancó
+    if (!p.closing || force) {
+      const specs = metrics.closingMarketIds(p);
+      if (!specs) continue;
+      const legs = []; let ok = true;
+      for (const s of specs) {
+        const r = await dbc.query(
+          `SELECT market_consensus_probability AS fair, best_decimal_odds AS odds, created_at
+             FROM goal_value_shadow
+            WHERE canonical_event_id = $1 AND market_id = $2 AND created_at <= $3
+            ORDER BY created_at DESC LIMIT 1`,
+          [p.event.canonical_event_id, s.market_id, new Date(ko).toISOString()]
+        ).catch(() => null);
+        const row = r && r.rows && r.rows[0];
+        if (!row || row.fair == null) { ok = false; break; }
+        legs.push({ market_id: s.market_id, fair: Number(row.fair), odds: row.odds != null ? Number(row.odds) : null, at: row.created_at });
+      }
+      if (!ok) { misses++; continue; }
+      const fair = legs.reduce((a, l) => a * l.fair, 1);
+      const odds = legs.every(l => l.odds > 1) ? legs.reduce((a, l) => a * l.odds, 1) : null;
+      p.closing = {
+        fair_prob: +fair.toFixed(6), odds: odds != null ? +odds.toFixed(4) : null,
+        at: legs[legs.length - 1].at, legs: legs.length > 1 ? legs : undefined,
+      };
+      captured++;
+    }
+    if (p.closing && (p.clv == null || force) && p.best_odds) {
+      const c = metrics.computeClv(Number(p.best_odds), p.closing);
+      if (c) { p.clv = c.clv_pct; p.clv_ev_pp = c.ev_close_pp; clvSet++; }
+    }
+  }
+  if (captured || clvSet) save();
+  return { captured, clv_set: clvSet, misses };
+}
+function dailyPicksQuant() {
+  return require('./pick-engine/metrics').quantMetrics(db.dailyPicks || [], { experimentFams: EXPERIMENT_FAMS });
+}
+
 // Track record (solo admin): acierto y rendimiento por familia sobre picks liquidadas. NO se expone al usuario.
 function dailyPicksTrackRecord() {
   // Las familias EXPERIMENTO (decisión Alexis 8-jul) se liquidan y se observan, pero NO cuentan en el
@@ -3232,6 +3283,8 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     out.dailyPicks = await evaluateDailyPicks();
     out.dailySettled = settleDailyPicks();
     out.propsSettled = await settlePropsPicks().catch(() => 0);
+    // Cierre + CLV: idempotente, solo picks con kickoff pasado y sin closing/clv.
+    out.dailyClosing = await captureDailyPicksClosing().catch(e => ({ error: e.message }));
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
@@ -3547,8 +3600,20 @@ const server = http.createServer(async (req, res) => {
             selection_code: x.selection_code, side: x.side, line: x.line,
             legs: (x.legs || null) && x.legs.map(l => ({ type: l.type, selection: l.selection || null, side: l.side || null, line: l.line != null ? l.line : null })),
             best_odds: x.best_odds,
+            clv: x.clv != null ? x.clv : null,
           }));
-        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(), picks: settled, generated_at: new Date().toISOString() });
+        // Métricas quant PÚBLICAS (prueba de calidad, sin internals): CLV agregado, precisión del modelo vs
+        // el consenso del mercado (Brier/log loss sobre las mismas picks) y calibración por rangos (n>=5).
+        const q = dailyPicksQuant();
+        const quantPublic = {
+          clv: q.clv && q.clv.n ? { n: q.clv.n, avg_pct: q.clv.avg_pct, positive_rate: q.clv.positive_rate } : null,
+          model_vs_market: q.model_vs_market && q.model_vs_market.n >= 10 ? {
+            n: q.model_vs_market.n, brier_model: q.model_vs_market.brier_model,
+            brier_market: q.model_vs_market.brier_market, skill: q.model_vs_market.skill,
+          } : null,
+          calibration: (q.calibration || []).filter(b => b.n >= 5),
+        };
+        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(), quant: quantPublic, picks: settled, generated_at: new Date().toISOString() });
       }
       // xG OBSERVADO del partido (TheStatsAPI) — SOLO partidos TERMINADOS, cache permanente en db.json
       // (1 fetch por partido; el plan es 12 req/min → jamás en vivo ni pre-partido). Kill switch: GP_XG_PANEL_ENABLED=false.
@@ -4490,7 +4555,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/picks-export') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), exported_at: new Date().toISOString() });
+      return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), exported_at: new Date().toISOString() });
     }
     // MANTENIMIENTO (one-off, misma key que el export): borra picks de una familia creadas ANTES de un corte.
     // Uso 8-jul: eliminar las picks PLAYER del diseño viejo (edge-first) para que el admin vea solo las del
@@ -4544,7 +4609,16 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/daily-picks') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }
-      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), picks: db.dailyPicks.slice(-200) });
+      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200) });
+    }
+    // CIERRE + CLV retro/mantenimiento: captura la línea de cierre (goal_value_shadow) y calcula CLV para
+    // picks con kickoff pasado. Idempotente; ?force=1 recalcula todo. Auth: admin o GP_EXPORT_KEY.
+    if (p === '/api/internal/picks-clv' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const u = getUser(req);
+      if (!((u && u.isAdmin) || (xk && url.searchParams.get('key') === xk))) return json(res, 404, { error: 'No encontrado' });
+      const r = await captureDailyPicksClosing({ force: url.searchParams.get('force') === '1' }).catch(e => ({ error: e.message }));
+      return json(res, 200, { result: r, quant: dailyPicksQuant() });
     }
     // --- Sprint 8A: admin analytics (§46). Admin-only. ---
     if (p.startsWith('/api/internal/analytics/')) {

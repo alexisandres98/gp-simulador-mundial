@@ -184,6 +184,7 @@
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
       pp_title: 'Rendimiento de picks', pp_settled: 'Liquidadas', pp_hit: '% Aciertos', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'Por familia', pp_history: 'Historial de picks', pp_pick: 'Pick', pp_active: 'activas', pp_none: 'Aún no hay picks liquidadas.', pp_model: 'Calibración del modelo (1X2)',
+      qm_title: 'Calidad de las picks vs mercado', qm_clv: 'CLV medio', qm_clv_sub: 'valor vs línea de cierre', qm_beat_close: 'Le ganó al cierre', qm_brier_gp: 'Precisión GP', qm_brier_mkt: 'Precisión consenso', qm_brier_sub: 'Brier, más bajo es mejor', qm_skill: 'Ventaja GP', qm_cal_title: 'Calibración por rangos', qm_cal_note: 'Cuando el sistema proyecta un rango de probabilidad, esto es lo que ocurrió en la realidad.', qm_cal_range: 'Proyectado', qm_cal_obs: 'Real', qm_cal_n: 'Picks', qm_clv_note: 'CLV positivo = tomamos mejor precio que el cierre del mercado. Es la medida profesional de calidad de una pick.',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
       outright_title: 'Campeón del Mundial · Value', outright_sub: 'Probabilidad GP del torneo vs mercado', outright_none: 'Sin ventaja sobre el mercado para el título ahora.',
       tm_gpi: 'GP Intelligence · título', tm_gpi_model: 'Probabilidad GP (campeón)', tm_gpi_market: 'Mercado', tm_gpi_edge: 'Ventaja GP', tm_gpi_note: 'Probabilidad de ser campeón según el modelo GP del torneo. El contexto de cada partido (forma, bajas, clima) se aplica en el cockpit del encuentro y en el próximo partido de abajo.',
@@ -408,6 +409,7 @@
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
       pp_title: 'Picks performance', pp_settled: 'Settled', pp_hit: 'Win rate', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'By family', pp_history: 'Picks history', pp_pick: 'Pick', pp_active: 'active', pp_none: 'No settled picks yet.', pp_model: 'Model calibration (1X2)',
+      qm_title: 'Pick quality vs the market', qm_clv: 'Avg CLV', qm_clv_sub: 'value vs closing line', qm_beat_close: 'Beat the close', qm_brier_gp: 'GP accuracy', qm_brier_mkt: 'Consensus accuracy', qm_brier_sub: 'Brier, lower is better', qm_skill: 'GP edge', qm_cal_title: 'Calibration by range', qm_cal_note: 'When the system projects a probability range, this is what actually happened.', qm_cal_range: 'Projected', qm_cal_obs: 'Actual', qm_cal_n: 'Picks', qm_clv_note: 'Positive CLV = we took a better price than the market close. It is the professional measure of pick quality.',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
       outright_title: 'World Cup winner · Value', outright_sub: 'GP tournament probability vs market', outright_none: 'No edge over the market for the title right now.',
       tm_gpi: 'GP Intelligence · title', tm_gpi_model: 'GP probability (champion)', tm_gpi_market: 'Market', tm_gpi_edge: 'GP edge', tm_gpi_note: 'Probability of winning the title per the GP tournament model. Each match\'s context (form, availability, weather) is applied in the match cockpit and in the next match below.',
@@ -3431,6 +3433,31 @@
       var fams = tr.by_family || {};
       var famRows = Object.keys(fams).map(function (f) { var v = fams[f]; return '<span>' + esc(f) + ' <b>' + (v.wins || 0) + '/' + (v.n || 0) + '</b> (' + pctc(v.hit_rate) + ' · ROI ' + (v.roi_pct != null ? v.roi_pct + '%' : '—') + ')</span>'; }).join('');
       if (famRows) body += teamPanel('layout-grid', t('pp_byfam'), '<div class="gx-form-stats">' + famRows + '</div>');
+      // ===== Métricas quant de las picks (CLV, precisión vs consenso, calibración). Misma forma admin/público. =====
+      var q = pk.quant;
+      if (q && ((q.clv && q.clv.n) || (q.model_vs_market && q.model_vs_market.n) || (q.calibration || []).length)) {
+        var qk = '';
+        if (q.clv && q.clv.n) {
+          qk += kpi(t('qm_clv'), sgn(q.clv.avg_pct, '%'), (q.clv.avg_pct >= 0 ? 'gx-pos' : 'gx-neg'), t('qm_clv_sub') + ' · n=' + q.clv.n);
+          if (q.clv.positive_rate != null) qk += kpi(t('qm_beat_close'), pctc(q.clv.positive_rate), (q.clv.positive_rate >= 0.5 ? 'gx-pos' : ''), '');
+        }
+        if (q.model_vs_market && q.model_vs_market.n && q.model_vs_market.brier_model != null) {
+          qk += kpi(t('qm_brier_gp'), Number(q.model_vs_market.brier_model).toFixed(3), (q.model_vs_market.skill > 0 ? 'gx-pos' : ''), t('qm_brier_sub')) +
+            kpi(t('qm_brier_mkt'), Number(q.model_vs_market.brier_market).toFixed(3), '', 'n=' + q.model_vs_market.n);
+        }
+        if (qk) {
+          body += '<div class="gx-ph" style="margin:14px 0 8px"><span class="gx-label">' + ic('chart-line') + esc(t('qm_title')) + '</span></div>' +
+            '<div class="gx-kpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:10px">' + qk + '</div>' +
+            (q.clv && q.clv.n ? '<p class="gx-mod-note gx-dim" style="margin:0 0 12px">' + ic('info-circle') + ' ' + esc(t('qm_clv_note')) + '</p>' : '');
+        }
+        var cal = (q.calibration || []).filter(function (b) { return b.n >= 5; });
+        if (cal.length) {
+          var calRows = cal.map(function (b) {
+            return '<tr class="gx-row"><td class="gx-mono l">' + esc(b.range) + '%</td><td class="gx-mono">' + b.predicted + '%</td><td class="gx-mono" style="font-weight:600">' + b.observed + '%</td><td class="gx-mono ' + (Math.abs(b.gap_pp) <= 5 ? 'gx-pos' : 'gx-dim') + '">' + (b.gap_pp > 0 ? '+' : '') + b.gap_pp + 'pp</td><td class="gx-dim">' + b.n + '</td></tr>';
+          }).join('');
+          body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('qm_cal_title')) + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('qm_cal_range')) + '</th><th>GP</th><th>' + esc(t('qm_cal_obs')) + '</th><th>Δ</th><th>' + esc(t('qm_cal_n')) + '</th></tr></thead><tbody>' + calRows + '</tbody></table></div><p class="gx-mod-note gx-dim" style="margin:8px 10px">' + esc(t('qm_cal_note')) + '</p></div>';
+        }
+      }
       var settled = (pk.picks || []).filter(function (p) { return p.status === 'SETTLED' && p.result_code !== 'SUPERSEDED'; }).sort(function (a, b) { return new Date(b.settled_at || 0) - new Date(a.settled_at || 0); });
       if (settled.length) {
         var prows = settled.map(function (p) {
@@ -3443,9 +3470,10 @@
             : (p.legs || []).map(function (l) { return l.type === '1X2' ? t('pf_wins', { team: l.selection === 'home' ? hh : aa }) : (l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line })); }).join(' + ');
           var res = p.result_code === 'WIN' ? '<span class="gx-pos" style="font-weight:700">✓ WIN</span>' : p.result_code === 'LOSS' ? '<span class="gx-neg" style="font-weight:700">✗ LOSS</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(p.result_code || '—') + '</span>';
           var famChip = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo')) + '</span>';
-          return '<tr class="gx-row"><td class="gx-time l">' + esc(fmtDate(p.settled_at)) + '</td><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(p.event.home_team_id) + '</span><b>' + esc(hh) + '</b><span class="gx-dim" style="margin:0 3px">' + esc(t('vs')) + '</span><span class="fl">' + flag(p.event.away_team_id) + '</span><b>' + esc(aa) + '</b></div></td><td class="l">' + famChip + ' <span style="font-size:12px">' + esc(betTxt) + '</span></td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td>' + res + '</td></tr>';
+          var clvCell = p.clv != null ? '<span class="gx-mono ' + (p.clv >= 0 ? 'gx-pos' : 'gx-dim') + '" style="font-size:11px">' + (p.clv > 0 ? '+' : '') + Number(p.clv).toFixed(1) + '%</span>' : '<span class="gx-dim">—</span>';
+          return '<tr class="gx-row"><td class="gx-time l">' + esc(fmtDate(p.settled_at)) + '</td><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(p.event.home_team_id) + '</span><b>' + esc(hh) + '</b><span class="gx-dim" style="margin:0 3px">' + esc(t('vs')) + '</span><span class="fl">' + flag(p.event.away_team_id) + '</span><b>' + esc(aa) + '</b></div></td><td class="l">' + famChip + ' <span style="font-size:12px">' + esc(betTxt) + '</span></td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td>' + clvCell + '</td><td>' + res + '</td></tr>';
         }).join('');
-        body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('pp_history')) + '</span><span class="gx-ph-extra">' + settled.length + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('pp_pick')) + '</th><th>' + esc(t('reg_odds')) + '</th><th>' + esc(t('perf_result')) + '</th></tr></thead><tbody>' + prows + '</tbody></table></div></div>';
+        body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('pp_history')) + '</span><span class="gx-ph-extra">' + settled.length + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('pp_pick')) + '</th><th>' + esc(t('reg_odds')) + '</th><th>CLV</th><th>' + esc(t('perf_result')) + '</th></tr></thead><tbody>' + prows + '</tbody></table></div></div>';
       } else {
         body += '<div class="gx-panel"><div class="gx-empty">' + ic('target-arrow') + '<b>' + esc(t('pp_none')) + '</b></div></div>';
       }

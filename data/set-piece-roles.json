@@ -1,0 +1,133 @@
+{
+  "_meta": {
+    "scope": "Mundial 2026 — 8 selecciones de cuartos de final",
+    "updated_at": "2026-07-09",
+    "method": "Investigación web sobre crónicas y estadísticas del torneo (RotoWire tracker con conteos reales de córners, crónicas ESPN/Sky/FIFA/AlJazeera de cada partido, guías Covers/ilmargine). Confianza: alta = ejecutado en partidos del torneo o líder claro del conteo; media = designación consistente entre fuentes sin ejecución verificada; baja = inferido o pre-torneo.",
+    "note": "Los conteos de córners son reales del torneo (grupos + eliminatorias al 8-jul). Ningún reparto por lado izq/der está documentado; no se afirma."
+  },
+  "FRA": {
+    "corners": [
+      { "name": "Michael Olise", "confidence": "alta", "note": "17 córners en el torneo, lanzador principal" },
+      { "name": "Ousmane Dembélé", "confidence": "alta", "note": "13 córners, segundo lanzador" },
+      { "name": "Kylian Mbappé", "confidence": "media", "note": "4 córners, ocasional y córners cortos" }
+    ],
+    "freekicks": [
+      { "name": "Michael Olise", "confidence": "media", "note": "Designado nº1; sin gol de TL directo de Francia en el torneo" },
+      { "name": "Rayan Cherki", "confidence": "baja", "note": "Segunda opción según guías, sin ejecución verificada" }
+    ],
+    "penalties": [
+      { "name": "Kylian Mbappé", "confidence": "alta", "note": "Convirtió el penal decisivo vs Paraguay (octavos, 70')" },
+      { "name": "Ousmane Dembélé", "confidence": "media", "note": "Suplente designado, no pateó en el torneo" }
+    ]
+  },
+  "MAR": {
+    "corners": [
+      { "name": "Achraf Hakimi", "confidence": "alta", "note": "17 córners, lanza de ambos lados; córner del gol de El Aynaoui vs Países Bajos" },
+      { "name": "Bilal El Khannouss", "confidence": "media", "note": "2 córners en el torneo" },
+      { "name": "Azzedine Ounahi", "confidence": "media", "note": "2 córners en el torneo" }
+    ],
+    "freekicks": [
+      { "name": "Achraf Hakimi", "confidence": "alta", "note": "TL ofensivos vs Países Bajos y vs Canadá (asistencia del 1-0 a Ounahi en octavos)" },
+      { "name": "Brahim Díaz", "confidence": "media", "note": "Co-lanzador de directos según guías; sin gol de TL del equipo en el torneo" }
+    ],
+    "penalties": [
+      { "name": "Brahim Díaz", "confidence": "alta", "note": "Designado nº1 (consenso de guías); no ejecutó en el torneo (no hubo penal en jugada, no pateó en la tanda)" },
+      { "name": "Achraf Hakimi", "confidence": "media", "note": "Nº2; FALLÓ el 4º de la tanda vs Países Bajos (poste)" },
+      { "name": "Soufiane Rahimi", "confidence": "media", "note": "Nº3; anotó en la tanda vs Países Bajos" }
+    ]
+  },
+  "ESP": {
+    "corners": [
+      { "name": "Álex Baena", "confidence": "alta", "note": "19 córners/balón parado en el torneo, lanzador principal" },
+      { "name": "Lamine Yamal", "confidence": "alta", "note": "11 córners, segundo lanzador" },
+      { "name": "Pedri", "confidence": "media", "note": "8 córners, tercera opción" }
+    ],
+    "freekicks": [
+      { "name": "Lamine Yamal", "confidence": "media", "note": "Lanzó falta colgada vs Portugal (octavos); co-lanzador con Pedri y Baena" },
+      { "name": "Pedri", "confidence": "media", "note": "Co-lanzador según guías del torneo" },
+      { "name": "Álex Baena", "confidence": "media", "note": "Co-lanzador, alto volumen de balón parado" }
+    ],
+    "penalties": [
+      { "name": "Mikel Oyarzabal", "confidence": "alta", "note": "Nº1 designado (consenso); España no tuvo penal a favor en todo el torneo" },
+      { "name": "Lamine Yamal", "confidence": "media", "note": "Nº2 designado" },
+      { "name": "Rodri", "confidence": "media", "note": "Nº3 designado" }
+    ]
+  },
+  "BEL": {
+    "corners": [
+      { "name": "Kevin De Bruyne", "confidence": "alta", "note": "13 córners/TL en el torneo; OJO fue suplente sin minutos vs USA y salió al 56' vs Senegal" },
+      { "name": "Youri Tielemans", "confidence": "alta", "note": "5 córners/TL; asume el balón parado cuando KDB no está en cancha" },
+      { "name": "Maxim De Cuyper", "confidence": "media", "note": "4 córners/TL, zurdo" },
+      { "name": "Leandro Trossard", "confidence": "baja", "note": "Listado sin conteo" }
+    ],
+    "freekicks": [
+      { "name": "Kevin De Bruyne", "confidence": "alta", "note": "TL directo al poste vs Egipto (grupos)" },
+      { "name": "Youri Tielemans", "confidence": "media", "note": "Opción secundaria" }
+    ],
+    "penalties": [
+      { "name": "Kevin De Bruyne", "confidence": "media", "note": "Designado nº1, pero NO pateó en el Mundial y fue suplente/sustituido en la eliminación directa" },
+      { "name": "Youri Tielemans", "confidence": "alta", "note": "Único penal belga del torneo: min 125 vs Senegal (KDB ya sustituido). Si KDB no está, patea él" },
+      { "name": "Romelu Lukaku", "confidence": "media", "note": "Backup designado" }
+    ]
+  },
+  "NOR": {
+    "corners": [
+      { "name": "Martin Ødegaard", "confidence": "alta", "note": "9 córners, lanzador principal; asistencia de córner a Østigård vs Irak. Responsable de balón parado" },
+      { "name": "Patrick Berg", "confidence": "alta", "note": "7 córners; principal cuando Ødegaard rota (4 córners vs Francia)" },
+      { "name": "Julian Ryerson", "confidence": "media", "note": "6 córners, tercera opción" }
+    ],
+    "freekicks": [
+      { "name": "Martin Ødegaard", "confidence": "media", "note": "Designado; rol verificado de centrador, sin TL directo noruego en el torneo" },
+      { "name": "Patrick Berg", "confidence": "baja", "note": "Opción secundaria" }
+    ],
+    "penalties": [
+      { "name": "Erling Haaland", "confidence": "alta", "note": "Designado nº1; Noruega NO pateó ningún penal en el torneo (sus 7 goles fueron de jugada)" }
+    ]
+  },
+  "ENG": {
+    "corners": [
+      { "name": "Declan Rice", "confidence": "alta", "note": "24 córners, dominio absoluto; asistencia de córner a Kane vs Croacia" },
+      { "name": "Bukayo Saka", "confidence": "media", "note": "3 córners" },
+      { "name": "Elliot Anderson", "confidence": "media", "note": "3 córners" }
+    ],
+    "freekicks": [
+      { "name": "Marcus Rashford", "confidence": "media", "note": "Única ejecución de TL directo del torneo (al poste vs Panamá)" },
+      { "name": "Declan Rice", "confidence": "media", "note": "Libres indirectos/laterales colgados" },
+      { "name": "Harry Kane", "confidence": "baja", "note": "Proyección pre-torneo para directos" }
+    ],
+    "penalties": [
+      { "name": "Harry Kane", "confidence": "alta", "note": "2 penales del torneo, ambos suyos y convertidos (Croacia y México)" },
+      { "name": "Bukayo Saka", "confidence": "media", "note": "Suplente más citado" }
+    ]
+  },
+  "ARG": {
+    "corners": [
+      { "name": "Lionel Messi", "confidence": "alta", "note": "~20 córners, dominante de ambos lados; córners-gol vs Cabo Verde (111') y vs Egipto (cabezazo de Romero)" },
+      { "name": "Rodrigo De Paul", "confidence": "media", "note": "1 córner; segunda opción junto a Mac Allister/Paredes/Lo Celso" }
+    ],
+    "freekicks": [
+      { "name": "Lionel Messi", "confidence": "alta", "note": "Gol de TL directo vs Jordania (80')" },
+      { "name": "Giovani Lo Celso", "confidence": "alta", "note": "Gol de TL directo vs Jordania (1-0), segunda opción real" }
+    ],
+    "penalties": [
+      { "name": "Lionel Messi", "confidence": "alta", "note": "Nº1 y único ejecutor: FALLÓ vs Austria y vs Egipto (primer jugador con 2 penales fallados en un mismo Mundial). Sigue designado" },
+      { "name": "Enzo Fernández", "confidence": "media", "note": "Alternativa más probable según prensa (11/12 en su carrera); no pateó" }
+    ]
+  },
+  "SUI": {
+    "corners": [
+      { "name": "Ruben Vargas", "confidence": "alta", "note": "Lanzador principal (Qatar, Argelia); zurdo, córner desde la derecha vs Argelia" },
+      { "name": "Fabian Rieder", "confidence": "alta", "note": "Segundo lanzador (Qatar 90+7', Colombia); comparte cuando ambos están" },
+      { "name": "Michel Aebischer", "confidence": "media", "note": "Opción adicional según guías" }
+    ],
+    "freekicks": [
+      { "name": "Fabian Rieder", "confidence": "alta", "note": "Directos del torneo: vs Colombia desde ~23m rozando el palo. Principal ejecutor" },
+      { "name": "Ricardo Rodriguez", "confidence": "media", "note": "Co-lanzador según guías. Xhaka NO lanza balón parado" }
+    ],
+    "penalties": [
+      { "name": "Granit Xhaka", "confidence": "alta", "note": "Nº1: penal convertido vs Bosnia (90+7') y primero de la tanda vs Colombia (convertido)" },
+      { "name": "Breel Embolo", "confidence": "alta", "note": "Nº2: penal en juego convertido vs Qatar (17')" },
+      { "name": "Zeki Amdouni", "confidence": "media", "note": "Nº3; anotó 2º en la tanda vs Colombia" }
+    ]
+  }
+}

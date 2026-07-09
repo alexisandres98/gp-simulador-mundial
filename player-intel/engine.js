@@ -15,7 +15,8 @@ const { projectPlayer, POS_PRIOR } = require('../prop-engine/players');
 
 // availability: { status, prob_miss, corroborated } | null (observer). projectedStarter/confirmedStarter:
 // true/false/null. teamLambda: λ GP del equipo en este partido (null = liga).
-function playerIntel(fitres, pid, { teamLambda = null, projectedStarter = null, confirmedStarter = null, availability = null } = {}) {
+// setPieceReasons: códigos SET_PIECE_* precomputados por el caller (player-intel/setPieces, tabla curada).
+function playerIntel(fitres, pid, { teamLambda = null, projectedStarter = null, confirmedStarter = null, availability = null, setPieceReasons = [] } = {}) {
   const pl = fitres.players[pid];
   if (!pl) return null;
   const reasons = [];
@@ -53,6 +54,10 @@ function playerIntel(fitres, pid, { teamLambda = null, projectedStarter = null, 
     else if (st === 'DOUBT') reasons.push('AVAIL_DOUBT');
     else if (st === 'REST_RISK') reasons.push('AVAIL_REST');
   }
+
+  // Balón parado (tabla curada del torneo, vía caller): penal/tiro libre/córners suman a la lectura
+  // de gol y remates del jugador — un penalero convierte más "anytime" del que sugieren sus tasas de jugada.
+  for (const sp of (setPieceReasons || [])) if (['SET_PIECE_PEN', 'SET_PIECE_FK', 'SET_PIECE_CORNERS'].includes(sp)) reasons.push(sp);
 
   // Confianza agregada: rol conocido + muestra + sin nubarrones = alta.
   let score = 0;

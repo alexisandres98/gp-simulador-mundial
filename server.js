@@ -3739,7 +3739,9 @@ const server = http.createServer(async (req, res) => {
           const intel = require('./player-intel/engine').playerIntel(PF, pid, {
             teamLambda: lambda, projectedStarter: starters.size ? starters.has(pid) : null,
             confirmedStarter: cxi ? cxi.has(pid) : null, availability: avail,
+            setPieceReasons: require('./player-intel/setPieces').reasonsFor(pl.team, pl.name),
           });
+          const setPieceRoles = require('./player-intel/setPieces').rolesFor(pl.team, pl.name);
           const ph = db.playerPhotos && db.playerPhotos[pid];
           // PERCENTIL vs su posición (jugadores confiables del torneo): dónde está su generación.
           const peers = Object.values(PF.players).filter(x => x.pos === pl.pos && x.reliable);
@@ -3799,7 +3801,7 @@ const server = http.createServer(async (req, res) => {
             h2h_vs_next: h2h.slice(0, 3),
             next_match: next ? { home: next.home, away: next.away } : null,
             markets,
-            intel, availability: avail ? { status: avail.status, prob_miss: avail.prob_miss, corroborated: avail.corroborated } : null, availability_narrative: availNarrative,
+            intel, set_piece: setPieceRoles, availability: avail ? { status: avail.status, prob_miss: avail.prob_miss, corroborated: avail.corroborated } : null, availability_narrative: availNarrative,
             generated_at: new Date().toISOString(),
           });
         } catch (e) { return json(res, 200, { available: false }); }
@@ -3826,6 +3828,7 @@ const server = http.createServer(async (req, res) => {
                 projectedStarter: starters.size ? starters.has(r.pid) : null,
                 confirmedStarter: cxi ? cxi.has(r.pid) : null,
                 availability: avail[r.pid] || null,
+                setPieceReasons: require('./player-intel/setPieces').reasonsFor(code, r.name),
               });
               return {
                 pid: r.pid, name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),

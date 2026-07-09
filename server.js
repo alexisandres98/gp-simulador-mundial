@@ -2913,13 +2913,13 @@ async function evaluateUpcomingProps() {
       } catch (e) { out.errors++; }
       // ---- PROPS DE JUGADOR ----
       try {
-        const r2 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk,us&markets=player_goal_scorer_anytime,player_shots,player_shots_on_target&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        const r2 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk,us&markets=player_goal_scorer_anytime,player_shots,player_shots_on_target,player_assists&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
         const rem2 = Number(r2.headers.get('x-requests-remaining')); if (Number.isFinite(rem2)) _propsCredits = rem2;
         const d2 = r2.ok ? await r2.json() : null;
         const pgroups = {}; // fam|pid|line → { odds:[], side }
         for (const bk of (d2 && d2.bookmakers) || []) {
           for (const m of bk.markets || []) {
-            const fam = m.key === 'player_goal_scorer_anytime' ? 'player_goal' : m.key === 'player_shots' ? 'player_shots' : m.key === 'player_shots_on_target' ? 'player_sot' : null;
+            const fam = m.key === 'player_goal_scorer_anytime' ? 'player_goal' : m.key === 'player_shots' ? 'player_shots' : m.key === 'player_shots_on_target' ? 'player_sot' : m.key === 'player_assists' ? 'player_assist' : null;
             if (!fam) continue;
             for (const o of m.outcomes || []) {
               if (fam !== 'player_goal' && /under/i.test(o.name)) continue; // one-sided: solo over/yes
@@ -2931,7 +2931,7 @@ async function evaluateUpcomingProps() {
               const line = fam === 'player_goal' ? 0 : Number(o.point);
               if (fam !== 'player_goal' && !Number.isFinite(line)) continue;
               const tag = fam === 'player_goal' ? '' : '_' + String(line).replace('.', '_');
-              const mid = (fam === 'player_goal' ? 'PLAYER_GOAL_' : fam === 'player_shots' ? 'PLAYER_SHOTS_' : 'PLAYER_SOT_') + pid + tag;
+              const mid = (fam === 'player_goal' ? 'PLAYER_GOAL_' : fam === 'player_shots' ? 'PLAYER_SHOTS_' : fam === 'player_assist' ? 'PLAYER_ASSISTS_' : 'PLAYER_SOT_') + pid + tag;
               await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ce.id, market_family: fam, line, side: fam === 'player_goal' ? 'yes' : 'over', team_scope: pid, market_id: mid, odds_decimal: odds, implied_probability: 1 / odds, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => { });
               out.player_quotes++;
               const gk = fam + '|' + pid + '|' + line;
@@ -2954,6 +2954,7 @@ async function evaluateUpcomingProps() {
             let model = null;
             if (g.fam === 'player_goal') model = pp.anytime_goal;
             else if (g.fam === 'player_shots') model = _nbOver(pp.shots_match, 6, g.line);
+            else if (g.fam === 'player_assist') model = g.line === 0.5 ? pp.anytime_assist : null; // solo o0.5 (P(>=1) Poisson sobre xA); líneas altas sin modelo aún
             else model = _nbOver(pp.sot_match, 6, g.line);
             if (!(model > 0 && model < 1)) continue;
             const best = Math.max(...g.odds), med = _median(g.odds.map(x => 1 / x));
@@ -3023,6 +3024,7 @@ async function settlePropsPicks() {
         if (!row || !(row.min > 0)) { p.result_code = 'VOID'; }
         else if (p.player_family === 'player_goal') p.result_code = row.goals > 0 ? 'WIN' : 'LOSS';
         else if (p.player_family === 'player_shots') p.result_code = row.shots > Number(p.line) ? 'WIN' : 'LOSS';
+        else if (p.player_family === 'player_assist') p.result_code = (row.assists || 0) > Number(p.line) ? 'WIN' : 'LOSS';
         else p.result_code = row.sot > Number(p.line) ? 'WIN' : 'LOSS';
       }
       p.status = 'SETTLED'; p.settled_at = new Date().toISOString(); settled++;

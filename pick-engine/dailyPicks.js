@@ -140,7 +140,7 @@ async function buildDailyPicks(deps) {
        gv.market_consensus_probability::float mkt, gv.adjusted_edge_pp::float edge, gv.best_decimal_odds::float odds,
        ce.home_participant, ce.away_participant, ce.scheduled_start
      FROM goal_value_shadow gv JOIN canonical_events ce ON ce.id=gv.canonical_event_id
-     WHERE gv.market_family IN ('corners_total','cards_total','player_goal','player_shots','player_sot')
+     WHERE gv.market_family IN ('corners_total','cards_total','player_goal','player_shots','player_sot','player_assist')
        AND ce.scheduled_start > now() AND gv.created_at > now() - interval '36 hours'
        AND gv.gp_probability > 0 AND gv.gp_probability < 1
      ORDER BY gv.canonical_event_id, gv.market_id, gv.created_at DESC`)).rows;
@@ -149,7 +149,7 @@ async function buildDailyPicks(deps) {
   for (const b of (await query(
     `SELECT canonical_event_id, market_family, team_scope, count(distinct sportsbook_code)::int books
      FROM sportsbook_goal_quote_current
-     WHERE market_family IN ('corners_total','cards_total','player_goal','player_shots','player_sot')
+     WHERE market_family IN ('corners_total','cards_total','player_goal','player_shots','player_sot','player_assist')
      GROUP BY 1,2,3`)).rows) {
     if (/^player_/.test(b.market_family)) booksPlayer[b.canonical_event_id + '|' + b.market_family + '|' + (b.team_scope || '')] = b.books;
     else booksProp[b.canonical_event_id + '|' + b.market_family] = (booksProp[b.canonical_event_id + '|' + b.market_family] || 0) + b.books;

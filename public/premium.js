@@ -145,7 +145,7 @@
       pf_fam_corners: 'Córners', pf_fam_cards: 'Tarjetas', pf_fam_player: 'Jugador',
       pf_over_corners: 'Más de {line} córners', pf_under_corners: 'Menos de {line} córners',
       pf_over_cards: 'Más de {line} tarjetas', pf_under_cards: 'Menos de {line} tarjetas',
-      pf_player_goal: '{player} anota', pf_player_shots: '{player}: más de {line} remates', pf_player_sot: '{player}: más de {line} al arco',
+      pf_player_goal: '{player} anota', pf_player_shots: '{player}: más de {line} remates', pf_player_sot: '{player}: más de {line} al arco', pf_player_assist: '{player}: da una asistencia',
       pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
       pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada',
       pf_best_odds: 'Mejor cuota', pf_at: 'en', pf_combo_and: 'y', pf_pick_label: 'Nuestra pick',
@@ -371,7 +371,7 @@
       pf_fam_corners: 'Corners', pf_fam_cards: 'Cards', pf_fam_player: 'Player',
       pf_over_corners: 'Over {line} corners', pf_under_corners: 'Under {line} corners',
       pf_over_cards: 'Over {line} cards', pf_under_cards: 'Under {line} cards',
-      pf_player_goal: '{player} to score', pf_player_shots: '{player}: over {line} shots', pf_player_sot: '{player}: over {line} shots on target',
+      pf_player_goal: '{player} to score', pf_player_shots: '{player}: over {line} shots', pf_player_sot: '{player}: over {line} shots on target', pf_player_assist: '{player}: to provide an assist',
       pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
       pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate',
       pf_best_odds: 'Best odds', pf_at: 'at', pf_combo_and: 'and', pf_pick_label: 'Our pick',
@@ -1057,6 +1057,7 @@
     if (p.family === 'CARDS') return t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line });
     if (p.family === 'PLAYER') {
       if (p.player_family === 'player_goal') return t('pf_player_goal', { player: p.player_name || '' });
+      if (p.player_family === 'player_assist') return t('pf_player_assist', { player: p.player_name || '' });
       return t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line });
     }
     return '';
@@ -3481,7 +3482,7 @@
             : p.family === 'GOALS' ? (p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line }))
             : p.family === 'CORNERS' ? t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line })
             : p.family === 'CARDS' ? t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line })
-            : p.family === 'PLAYER' ? (p.player_family === 'player_goal' ? t('pf_player_goal', { player: p.player_name || '' }) : t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line }))
+            : p.family === 'PLAYER' ? (p.player_family === 'player_goal' ? t('pf_player_goal', { player: p.player_name || '' }) : p.player_family === 'player_assist' ? t('pf_player_assist', { player: p.player_name || '' }) : t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line }))
             : (p.legs || []).map(function (l) { return l.type === '1X2' ? t('pf_wins', { team: l.selection === 'home' ? hh : aa }) : (l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line })); }).join(' + ');
           var res = p.result_code === 'WIN' ? '<span class="gx-pos" style="font-weight:700">✓ WIN</span>' : p.result_code === 'LOSS' ? '<span class="gx-neg" style="font-weight:700">✗ LOSS</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(p.result_code || '—') + '</span>';
           var famChip = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo')) + '</span>';

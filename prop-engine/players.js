@@ -13,10 +13,10 @@ const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 // Priors por posición (por 90'): con pocos minutos el jugador cae a la tasa típica de su posición.
 // Valores del research/fútbol de selecciones; el shrinkage los mezcla con lo observado (K_MIN minutos prior).
 const POS_PRIOR = {
-  F: { xg90: 0.38, shots90: 2.4, sot90: 0.9 },
-  M: { xg90: 0.12, shots90: 1.3, sot90: 0.45 },
-  D: { xg90: 0.05, shots90: 0.6, sot90: 0.2 },
-  G: { xg90: 0.0, shots90: 0.02, sot90: 0.01 },
+  F: { xg90: 0.38, shots90: 2.4, sot90: 0.9, xa90: 0.14 },
+  M: { xg90: 0.12, shots90: 1.3, sot90: 0.45, xa90: 0.10 },
+  D: { xg90: 0.05, shots90: 0.6, sot90: 0.2, xa90: 0.04 },
+  G: { xg90: 0.0, shots90: 0.02, sot90: 0.01, xa90: 0.0 },
 };
 const DEFAULTS = {
   K_MIN: 180,            // minutos de prior en el shrinkage (2 partidos completos)
@@ -59,7 +59,7 @@ function fitPlayers(matches, opts = {}) {
       xg90: rate(a.xg, prior.xg90),
       shots90: rate(a.shots, prior.shots90),
       sot90: rate(a.sot, prior.sot90),
-      xa90: a.min > 0 ? (a.xa / a.min) * 90 : 0, // creación: sin prior de posición (informativo, no mercado)
+      xa90: rate(a.xa, prior.xa90), // creación: mismo shrinkage por posición que xg90 (mercado de assists)
       exp_minutes_start: a.starterApps ? clamp(a.minAsStarter / a.starterApps, 45, 90) : 78,
       reliable: a.min >= cfg.MIN_MINUTES_SAMPLE,
     };
@@ -84,12 +84,14 @@ function projectPlayer(fitres, pid, { teamLambda = null, willStart = true, minut
   const xgMatch = pl.xg90 * frac * adj;
   const shotsMatch = pl.shots90 * frac * adj;
   const sotMatch = pl.sot90 * frac * adj;
+  const xaMatch = pl.xa90 * frac * adj;
   const overShots = line => { let under = 0; for (let k = 0; k <= Math.floor(line); k++) under += nbPmf(shotsMatch, cfg.R_SHOTS, k); return clamp(1 - under, 0, 1); };
   const overSot = line => { let under = 0; for (let k = 0; k <= Math.floor(line); k++) under += nbPmf(sotMatch, cfg.R_SHOTS, k); return clamp(1 - under, 0, 1); };
   return {
     pid, name: pl.name, team: pl.team, pos: pl.pos, minutes, reliable: pl.reliable,
-    xg_match: xgMatch, shots_match: shotsMatch, sot_match: sotMatch, match_adj: adj,
+    xg_match: xgMatch, shots_match: shotsMatch, sot_match: sotMatch, xa_match: xaMatch, match_adj: adj,
     anytime_goal: 1 - Math.exp(-xgMatch),                    // Poisson sobre el xG del jugador
+    anytime_assist: clamp(1 - Math.exp(-xaMatch), 0, 1),     // Poisson sobre el xA (assists over 0.5)
     shots_over_0_5: overShots(0.5), shots_over_1_5: overShots(1.5), shots_over_2_5: overShots(2.5),
     sot_over_0_5: overSot(0.5), sot_over_1_5: overSot(1.5),
   };

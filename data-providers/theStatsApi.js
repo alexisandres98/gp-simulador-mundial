@@ -77,6 +77,7 @@ async function playerStats(homeCode, awayCode) {
       goals: (p.shooting && p.shooting.goals) || 0,
       shots: (p.shooting && p.shooting.total_shots) || 0,
       sot: (p.shooting && p.shooting.shots_on_target) || 0,
+      assists: (p.passing && p.passing.assists) || 0,
     })),
   };
 }

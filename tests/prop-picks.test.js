@@ -17,6 +17,16 @@ t('edge 2pp < 4pp → LOW_EDGE', !P[1].eligible && P[1].blockers.includes('LOW_E
 t('2 casas → FEW_BOOKS', !P[2].eligible && P[2].blockers.includes('FEW_BOOKS'));
 t('cuota 5.2 fuera de rango → ODDS_OUT_OF_RANGE', !P[3].eligible && P[3].blockers.includes('ODDS_OUT_OF_RANGE'));
 
+// REC 2: gate precio-vs-consenso (caso real FRA-MAR córners under 11.5 @1.30 vs consenso 73.3% → justo 1.36)
+const P2 = propPicks([
+  // por debajo de la justa (1/0.733=1.364): 1.30 < 1.364 → bloqueada aunque el modelo vea edge
+  { ...base, family: 'corners_total', marketId: 'CORNERS_UNDER_11_5', side: 'under', line: 11.5, modelProb: 0.786, marketProb: 0.733, edgePp: 0.053, bestOdds: 1.30, books: 5, familyApproved: true },
+  // fair o mejor (1/0.65=1.538): 1.64 >= 1.538 → pasa el gate
+  { ...base, family: 'corners_total', marketId: 'CORNERS_UNDER_10_5', side: 'under', line: 10.5, modelProb: 0.72, marketProb: 0.65, edgePp: 0.07, bestOdds: 1.64, books: 5, familyApproved: true },
+], require('../pick-engine/curate').CONFIG);
+t('cuota por debajo de la justa del consenso → BELOW_CONSENSUS_PRICE', !P2[0].eligible && P2[0].blockers.includes('BELOW_CONSENSUS_PRICE'));
+t('cuota justa-o-mejor → elegible (gate no bloquea)', P2[1].eligible && !P2[1].blockers.includes('BELOW_CONSENSUS_PRICE'));
+
 console.log('== playerPicks (jugador, anclada al mercado: probabilidad primero) ==');
 const J = playerPicks([
   // La estrella titular con mercado profundo: blend .3·.59+.7·.52=.541 ≥ .5 → elegible.

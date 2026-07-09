@@ -34,6 +34,9 @@ const CONFIG = {
   propsMinEdgePp: 0.04,        // mercados más blandos que goles → exigimos 1pp más de edge.
   propsMinBooks: 3,
   propsOddsMin: 1.35, propsOddsMax: 4.6, // fuera de ese rango la línea está lejos de la media → ruido de cola.
+  propsRequireFairPrice: true, // REC 2 (backtest 9-jul): no publicar si la mejor cuota está POR DEBAJO de la
+  // justa del consenso no-vig (1/marketProb). Evita "favoritos mal pagados" donde el edge lo crea el modelo
+  // sobreproyectando, no un precio real. Validado: sube el ROI de props sin ahogar el volumen.
   alphaProps: 0.6,             // confianza = blend modelo/consenso (el modelo lidera, como en goles).
 
   // Familia PROPS de JUGADOR — REDISEÑADA (8-jul, decisión de Alexis): mercado hiper-eficiente → NO cazar
@@ -155,6 +158,10 @@ function propPicks(propMarkets, cfg) {
     if (books < cfg.propsMinBooks) blockers.push('FEW_BOOKS');
     if (!(odds > 1)) blockers.push('NO_ODDS');
     if (odds > 1 && (odds < cfg.propsOddsMin || odds > cfg.propsOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
+    // REC 2: gate precio-vs-consenso. La cuota justa del lado = 1/marketProb (consenso no-vig). Si la mejor
+    // cuota disponible es peor que la justa, estás pagando de más → no publicar (aunque el modelo vea edge).
+    const mkt = Number(g.marketProb || 0);
+    if (cfg.propsRequireFairPrice && odds > 1 && mkt > 0 && mkt < 1 && odds < 1 / mkt) blockers.push('BELOW_CONSENSUS_PRICE');
     out.push({
       family: g.family === 'cards_total' ? 'CARDS' : 'CORNERS',
       eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,

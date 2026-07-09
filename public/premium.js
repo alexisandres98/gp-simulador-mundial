@@ -1062,6 +1062,13 @@
     }
     return '';
   }
+  // Narrativa multi-factor de la pick (server-side, caja negra): el "por qué" al nivel de un analista.
+  function pickWhy(p) {
+    var w = LANG === 'en' ? (p.why_en || p.why_es) : (p.why_es || p.why_en);
+    if (!w) return '';
+    return '<div class="gx-pick-why">' + esc(w) + '</div>';
+  }
+
   // Chip de movimiento de línea (line-intel): hacia dónde se movió el consenso del mercado desde que se
   // publicó la pick. A favor = el mercado se acercó a nuestra selección (verde); en contra = ámbar tenue.
   // Solo se muestra con movimiento real (direction with/against); flat no ensucia la card.
@@ -1091,7 +1098,7 @@
       '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span></div>' +
       '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
       '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>' +
-      '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div></div>' +
+      '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
       '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>' +

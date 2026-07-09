@@ -2402,6 +2402,144 @@ function dailyPicksQuant() {
   return require('./pick-engine/metrics').quantMetrics(db.dailyPicks || [], { experimentFams: EXPERIMENT_FAMS });
 }
 
+// ── NARRATIVA MULTI-FACTOR por pick (capa editorial, caja negra) ───────────────────────────────────────────
+// Ensambla FACTORES desde style-engine (event data), balón parado curado, observer y player-intel, y los
+// compone en 1-2 frases ES/EN por pick (pick-engine/narrative). Se calcula UNA vez por pick (estable) en el
+// ciclo; el feed la serializa. Sin model% en el texto; sin fuentes; sin rayitas.
+let _tournTeams = null;
+function _teamNames(code) {
+  if (!_tournTeams) { try { _tournTeams = {}; require('./data/tournament').TEAMS.forEach(t => { _tournTeams[t.id] = { es: t.name, en: t.en || t.name }; }); } catch { _tournTeams = {}; } }
+  return _tournTeams[code] || { es: code, en: code };
+}
+function dailyPickNarrativeFactors(p) {
+  const F = [];
+  const S = styleFit() || {};
+  const h = p.event.home_team_id, a = p.event.away_team_id;
+  const H = S[h], A = S[a];
+  const selCode = p.selection_code === 'home' ? h : p.selection_code === 'away' ? a : null;
+  const selProf = selCode === h ? H : selCode === a ? A : null;
+  const rivProf = selCode === h ? A : selCode === a ? H : null;
+  const rivCode = selCode === h ? a : h;
+  const nm = _teamNames, r1 = x => x != null ? +Number(x).toFixed(1) : null;
+  const pctl = (prof, side, key) => prof && prof[side] && prof[side]._pct ? prof[side]._pct[key] : null;
+
+  if (p.family === 'SOLID' && selProf) {
+    if (p.books >= 10) F.push({ code: 'MARKET_ANCHOR', w: 3, books: p.books });
+    if (p.model_prob != null && p.market_prob != null && p.model_prob > p.market_prob + 0.02) F.push({ code: 'MODEL_AGREES_UP', w: 2 });
+    if (pctl(selProf, 'defense', 'xg_p90') != null && pctl(selProf, 'defense', 'xg_p90') <= 0.3)
+      F.push({ code: 'SOLID_DEFENSE_BASE', w: 2.5, team_es: nm(selCode).es, team_en: nm(selCode).en, xga: r1(selProf.defense.xg_p90) });
+    if (pctl(selProf, 'attack', 'xg_p90') >= 0.7 && pctl(rivProf, 'defense', 'xg_p90') >= 0.6)
+      F.push({ code: 'GOALS_ATTACK_VS_LEAKY', w: 2.2, team_es: nm(selCode).es, team_en: nm(selCode).en, xg: r1(selProf.attack.xg_p90) });
+  }
+  if (p.family === 'GOALS' && H && A) {
+    if (p.side === 'over') {
+      if (pctl({ attack: H.attack }, 'attack', 'xg_p90') >= 0.5 && pctl({ attack: A.attack }, 'attack', 'xg_p90') >= 0.5)
+        F.push({ code: 'GOALS_VOLUME_BOTH', w: 3, h: r1(H.attack.xg_p90), a: r1(A.attack.xg_p90) });
+      for (const [tc, me, riv] of [[h, H, A], [a, A, H]]) {
+        if (pctl(me, 'attack', 'xg_p90') >= 0.7 && pctl(riv, 'defense', 'xg_p90') >= 0.7)
+          F.push({ code: 'GOALS_ATTACK_VS_LEAKY', w: 2.5, team_es: nm(tc).es, team_en: nm(tc).en, xg: r1(me.attack.xg_p90) });
+        if (pctl(me, 'attack', 'fastbreak_share_xg') >= 0.7 && pctl(riv, 'defense', 'fastbreak_share_xg') >= 0.7)
+          F.push({ code: 'COUNTER_GAME', w: 2, team_es: nm(tc).es, team_en: nm(tc).en });
+      }
+    } else if (pctl(H, 'defense', 'xg_p90') <= 0.35 && pctl(A, 'defense', 'xg_p90') <= 0.35) {
+      F.push({ code: 'GOALS_DEFENSES_TIGHT', w: 3 });
+    }
+    if (Number(p.edge_pp) >= 3) F.push({ code: 'PRICE_ABOVE_FAIR', w: 1.5 });
+  }
+  if (p.family === 'CORNERS' && H && A) {
+    const tot = (H.props && A.props) ? +(H.props.corners_for_p90 + A.props.corners_for_p90).toFixed(1) : null;
+    if (p.side === 'over') {
+      for (const [tc, me, riv] of [[h, H, A], [a, A, H]]) {
+        if (pctl(me, 'attack', 'corner_share_xg') >= 0.7) {
+          F.push({ code: 'CORNER_THREAT', w: 3, team_es: nm(tc).es, team_en: nm(tc).en, share: Math.round((me.attack.corner_share_xg || 0) * 100) });
+          if (pctl(riv, 'defense', 'corner_share_xg') >= 0.6) F.push({ code: 'CORNER_CONCEDE', w: 2.5, team_es: nm(tc === h ? a : h).es, team_en: nm(tc === h ? a : h).en });
+        }
+      }
+      if (tot != null && tot >= 9.5) F.push({ code: 'CORNER_VOLUME', w: 2, total: tot });
+    } else if (tot != null && tot <= 9) {
+      F.push({ code: 'CORNER_LOW_VOLUME', w: 3, total: tot });
+    }
+    if (Number(p.edge_pp) >= 4) F.push({ code: 'PRICE_ABOVE_FAIR', w: 1.8 });
+  }
+  if (p.family === 'CARDS' && H && A && H.props && A.props) {
+    const cards = +(H.props.cards_p90 + A.props.cards_p90).toFixed(1);
+    const fouls = +(H.props.fouls_p90 + A.props.fouls_p90).toFixed(0);
+    if (p.side === 'over') {
+      if (cards >= 4) F.push({ code: 'CARDS_TEAMS_HOT', w: 3, total: cards, fouls });
+      F.push({ code: 'PHASE_KO_CARDS', w: 1.5 });
+    } else if (cards <= 4) {
+      F.push({ code: 'CARDS_TEAMS_COLD', w: 3, total: cards });
+    }
+    if (Number(p.edge_pp) >= 5) F.push({ code: 'PRICE_ABOVE_FAIR', w: 1.8 });
+  }
+  if (p.family === 'PLAYER' && p.pid) {
+    try {
+      const PF = obsFit();
+      const avail = observerAvailability();
+      const starters = projectedStarters();
+      const cxi = confirmedXiPids()[_xiPairKey(h, a)] || null;
+      const pi = PF && require('./player-intel/engine').playerIntel(PF, p.pid, {
+        projectedStarter: starters.size ? starters.has(p.pid) : null,
+        confirmedStarter: cxi ? cxi.has(p.pid) : null,
+        availability: avail[p.pid] || null,
+        setPieceReasons: require('./player-intel/setPieces').reasonsFor(PF.players[p.pid] && PF.players[p.pid].team, p.player_name),
+      });
+      if (pi) {
+        if (pi.reasons.includes('ROLE_STARTER_CONFIRMED')) F.push({ code: 'PLAYER_CONFIRMED', w: 3 });
+        else if (pi.projection && pi.projection.minutes) F.push({ code: 'PLAYER_MINUTES', w: 2.5, minutes: Math.round(pi.projection.minutes) });
+        if (pi.reasons.includes('RATES_ELITE')) F.push({ code: 'PLAYER_FORM', w: 2.2, elite: true });
+        else if (pi.reasons.includes('RATES_ABOVE_POS')) F.push({ code: 'PLAYER_FORM', w: 2.2, elite: false });
+        if (pi.reasons.includes('FINISHING_HOT')) F.push({ code: 'PLAYER_FINISHING_HOT', w: 1.8 });
+        if (pi.reasons.includes('TEAM_ATTACK_UP')) F.push({ code: 'PLAYER_TEAM_ATTACK', w: 1.5 });
+        if (pi.reasons.includes('AVAIL_DOUBT')) F.push({ code: 'AVAIL_CAVEAT', w: 0, name: p.player_name });
+        const spr = require('./player-intel/setPieces').rolesFor(pi.team, p.player_name);
+        if (spr) {
+          const roles = [], rolesEn = [];
+          const strong = x => x && (x.rank === 1 || (x.rank === 2 && x.confidence === 'alta'));
+          if (strong(spr.penalties)) { roles.push('los penales'); rolesEn.push('penalties'); }
+          if (strong(spr.freekicks)) { roles.push('los tiros libres'); rolesEn.push('free kicks'); }
+          if (strong(spr.corners)) { roles.push('los córners'); rolesEn.push('corners'); }
+          if (roles.length) F.push({ code: 'PLAYER_SET_PIECE', w: 2, roles, rolesEn });
+        }
+        // Debilidad aérea del rival (solo mercado de gol) y bajas defensivas rivales corroboradas
+        const myTeam = pi.team, rival = myTeam === h ? a : h;
+        const rp = S[rival];
+        if (p.player_family === 'player_goal' && pctl(rp, 'defense', 'header_share') >= 0.7)
+          F.push({ code: 'RIVAL_DEFENSE_WEAK_AIR', w: 1.6, rival_es: nm(rival).es, rival_en: nm(rival).en });
+        if (PF) {
+          for (const [pid2, av] of Object.entries(avail)) {
+            const pl2 = PF.players[pid2];
+            if (pl2 && pl2.team === rival && pl2.pos === 'D' && (av.status === 'OUT' || av.status === 'SUSPENDED') && av.corroborated !== false) {
+              F.push({ code: 'RIVAL_ABSENCE_DEF', w: 2, name: pl2.name });
+              break;
+            }
+          }
+        }
+      }
+    } catch { /* narrativa de jugador opcional */ }
+  }
+  if (p.family === 'COMBO' && H && A) {
+    if (p.books >= 10) F.push({ code: 'MARKET_ANCHOR', w: 3, books: p.books });
+    if (pctl({ attack: H.attack }, 'attack', 'xg_p90') >= 0.5 && pctl({ attack: A.attack }, 'attack', 'xg_p90') >= 0.5)
+      F.push({ code: 'GOALS_VOLUME_BOTH', w: 2.5, h: r1(H.attack.xg_p90), a: r1(A.attack.xg_p90) });
+  }
+  return F;
+}
+function annotateDailyPicksNarrative({ force = false } = {}) {
+  const narrative = require('./pick-engine/narrative');
+  let annotated = 0;
+  for (const p of db.dailyPicks) {
+    if (p.status !== 'ACTIVE' || p.result_code === 'SUPERSEDED') continue;
+    if (p.why_es && !force) continue;
+    try {
+      const txt = narrative.compose(dailyPickNarrativeFactors(p));
+      if (txt) { p.why_es = txt.es; p.why_en = txt.en; annotated++; }
+    } catch { /* siguiente */ }
+  }
+  if (annotated) save();
+  return { annotated };
+}
+
 // ── Movimiento de línea de picks ACTIVAS (line-intel, SHADOW/informativo) ──────────────────────────────────
 // Para cada pick activa con kickoff futuro: consenso actual del mercado vs la prob de mercado al PUBLICAR
 // (ya guardada en la pick) → p.line_move {pp, direction, now, at}. Corre en el ciclo; el feed lo serializa.
@@ -3378,6 +3516,8 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     out.dailyClosing = await captureDailyPicksClosing().catch(e => ({ error: e.message }));
     // Movimiento de línea de picks activas (informativo, no gatea).
     out.lineIntel = await updateDailyPicksLineIntel().catch(e => ({ error: e.message }));
+    // Narrativa multi-factor (una vez por pick, estable).
+    out.narrative = annotateDailyPicksNarrative();
   } catch (e) { out.error = e.message; }
   finally { _goalEvalRunning = false; out.finished = new Date().toISOString(); _goalEvalLast = out; }
   return out;
@@ -3634,6 +3774,7 @@ const server = http.createServer(async (req, res) => {
           player_name: x.player_name || null, player_family: x.player_family || null, availability_risk: x.availability_risk || null,
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
           line_move: x.line_move ? { pp: x.line_move.pp, direction: x.line_move.direction } : null,
+          why_es: x.why_es || null, why_en: x.why_en || null,
         }));
         // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
         if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);

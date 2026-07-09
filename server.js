@@ -1269,6 +1269,42 @@ GP Simulador
 }
 const REENGAGE_FROM = 'Alexis de GP Simulador <codigo@gpsimulador.com>';
 
+// Email de REACTIVACIÓN de LEADS (9-jul): a quien puso su email pero nunca entró (el código cayó en spam o
+// se trabó en el copy/paste). Genera un MAGIC LINK personalizado por lead (un toque y entra, sin código),
+// TTL 7 días. Estilo personal/plano (cae en Principal, no Promociones). Solo INGLÉS (audiencia anglófona).
+function leadReactivationEmail(email) {
+  const tok = crypto.randomBytes(24).toString('hex');
+  db.magic[tok] = { email: String(email).toLowerCase(), exp: Date.now() + 7 * 24 * 3600 * 1000 };
+  const mlink = `https://gpsimulador.com/api/auth/magic?t=${tok}`;
+  const btn = 'display:inline-block;background:#0BA661;color:#fff;font-weight:bold;font-size:16px;padding:14px 32px;border-radius:99px;text-decoration:none';
+  const subject = 'Your GP Simulador access is one tap away';
+  const text = `Hi,
+
+You entered your email at GP Simulador but never made it inside — the access code probably landed in your spam or promotions folder.
+
+No code needed this time. Just tap this link and you're in:
+
+${mlink}
+
+Inside you'll find the model's picks for today's World Cup quarter-finals, the best odds across 40+ bookmakers, and the full track record: 25 of the last 30 settled picks landed (83%).
+
+See you inside,
+Alexis · GP Simulador
+
+This link logs you in directly and works for the next 7 days.`;
+  const html = `<div style="font-family:-apple-system,Arial,sans-serif;max-width:460px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">
+<p style="margin:18px 0 12px">Hi,</p>
+<p style="margin:0 0 12px">You entered your email at GP Simulador but never made it inside — the access code probably landed in your <b>spam</b> or <b>promotions</b> folder.</p>
+<p style="margin:0 0 18px">No code needed this time. Just tap the button and you're in:</p>
+<p style="text-align:center;margin:0 0 22px"><a href="${mlink}" style="${btn}">Enter the platform →</a></p>
+<p style="margin:0 0 14px">Inside you'll find the model's picks for today's World Cup quarter-finals, the best odds across 40+ bookmakers, and the full track record: <b>25 of the last 30 settled picks landed (83%)</b>.</p>
+<p style="margin:18px 0 2px">See you inside,</p>
+<p style="margin:0;color:#444">Alexis · GP Simulador</p>
+<p style="margin:20px 0 0;font-size:12px;color:#999">This link logs you in directly and works for the next 7 days.</p>
+</div>`;
+  return { subject, text, html };
+}
+
 function liveAlertEmail(h, aw, a) {
   const isGoal = a.kind === 'goal';
   const subject = isGoal ? `⚽ GOL · ${h.name} ${a.hg}-${a.ag} ${aw.name}` : `▶ Empezó · ${h.name} vs ${aw.name}`;
@@ -5124,20 +5160,27 @@ const server = http.createServer(async (req, res) => {
       // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
       // variants 'bankroll_es' / 'bankroll_en' = idioma FIJO (todos reciben ambos, decisión 7-jul).
       // El resto: cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
-      const buildMail = (variant === 'reengage')
-        ? (lng) => ({ ...reengageEmail(link, lng), from: REENGAGE_FROM, noListUnsub: true })
-        : (variant === 'bankroll_es') ? () => bankrollEmail('es')
-          : (variant === 'bankroll_en') ? () => bankrollEmail('en')
-            : (variant === 'features_es') ? () => featuresEmail('es')
-              : (variant === 'features_en') ? () => featuresEmail('en')
-                : (lng) => broadcastEmail(link, lng);
+      // buildMail recibe el EMAIL (deriva idioma adentro). 'leads_magic' genera un magic link personalizado
+      // por lead (estilo personal → Principal; sin List-Unsubscribe).
+      const buildMail = (variant === 'leads_magic')
+        ? (em) => ({ ...leadReactivationEmail(em), from: REENGAGE_FROM, noListUnsub: true })
+        : (variant === 'reengage')
+          ? (em) => ({ ...reengageEmail(link, userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
+          : (variant === 'bankroll_es') ? () => bankrollEmail('es')
+            : (variant === 'bankroll_en') ? () => bankrollEmail('en')
+              : (variant === 'features_es') ? () => featuresEmail('es')
+                : (variant === 'features_en') ? () => featuresEmail('en')
+                  : (em) => broadcastEmail(link, userLang(em));
       const testTo = (u && u.email) || String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
       if (test) {
-        try { ensureRefCode(testTo); await mailer.sendMail({ to: testTo, ...buildMail(userLang(testTo)) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''} ${userLang(testTo)})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true, to: testTo }); }
+        try { ensureRefCode(testTo); await mailer.sendMail({ to: testTo, ...buildMail(testTo) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true, to: testTo }); }
         catch (e) { return json(res, 200, { ok: false, error: e.message, test: true }); }
       }
       if (bcastState.running) return json(res, 200, { ok: false, error: 'Ya hay un envío en curso', state: bcastState });
-      const targets = Object.keys(db.users);
+      // 'leads_magic' apunta SOLO a los leads (email dejado pero nunca verificado). El resto: toda la base.
+      const targets = variant === 'leads_magic'
+        ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].verified !== true)
+        : Object.keys(db.users);
       bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false, variant: variant || 'beta' };
       // responder YA; enviar en segundo plano (no se await)
       json(res, 200, { ok: true, started: true, total: targets.length });

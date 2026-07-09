@@ -5155,8 +5155,18 @@ const server = http.createServer(async (req, res) => {
       if ((!u || !u.isAdmin) && !keyOk) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'GET') return json(res, 200, bcastState);
       if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
-      const { test, variant } = await readBody(req);
+      const { test, variant, count } = await readBody(req);
       const link = 'https://gpsimulador.com/?goto=referidos';
+      // SEGURIDAD: {count:true} devuelve a cuántos LLEGARÍA el envío SIN mandar nada (verificar el número
+      // antes de disparar un masivo, para no equivocar el target).
+      if (count) {
+        const uk = Object.keys(db.users);
+        const leads = uk.filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true).length;
+        const unverified = uk.filter(e => db.users[e] && db.users[e].verified !== true).length;
+        const verified = uk.filter(e => db.users[e] && db.users[e].verified === true).length;
+        const wouldSend = variant === 'leads_magic' ? leads : uk.length;
+        return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, verified, unverified, leads });
+      }
       // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
       // variants 'bankroll_es' / 'bankroll_en' = idioma FIJO (todos reciben ambos, decisión 7-jul).
       // El resto: cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
@@ -5177,9 +5187,11 @@ const server = http.createServer(async (req, res) => {
         catch (e) { return json(res, 200, { ok: false, error: e.message, test: true }); }
       }
       if (bcastState.running) return json(res, 200, { ok: false, error: 'Ya hay un envío en curso', state: bcastState });
-      // 'leads_magic' apunta SOLO a los leads (email dejado pero nunca verificado). El resto: toda la base.
+      // 'leads_magic' apunta SOLO a los LEADS reales (marcados lead:true por el flujo de captura), NO a todo
+      // no-verificado (eso incluía cuentas viejas sin el campo verified → falso "nunca entraste"). Guard extra:
+      // nunca a un verificado.
       const targets = variant === 'leads_magic'
-        ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].verified !== true)
+        ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true)
         : Object.keys(db.users);
       bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false, variant: variant || 'beta' };
       // responder YA; enviar en segundo plano (no se await)

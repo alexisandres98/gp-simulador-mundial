@@ -5714,6 +5714,34 @@ const server = http.createServer(async (req, res) => {
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
+    // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al
+    // mercado" (Brier GP vs consenso) + curva de calibración + CLV opcional. Admin-only hasta que Alexis lo
+    // apruebe; GP_QUALITY_PUBLIC=true lo abre. Caja negra estricta: solo resultados medidos, nunca método.
+    // Los datos se inyectan al servir (mismo patrón que /founder con Whop) → funciona sin fetch.
+    if (p === '/calidad' || p === '/calidad/' || p === '/quality' || p === '/quality/') {
+      const qualityPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_QUALITY_PUBLIC || '').trim());
+      const sessEmail = sessionEmailFromReq(req);
+      if (!qualityPublic && (!sessEmail || !isAdmin(sessEmail))) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const tr = dailyPicksTrackRecord().overall || {};
+        const q = dailyPicksQuant();
+        const mvm = q.model_vs_market || {};
+        const QD = {
+          public_preview: !qualityPublic,
+          settled: tr.settled || 0, wins: tr.wins || 0, hit_rate: tr.hit_rate, roi_pct: tr.roi_pct, pnl_u: tr.pnl_u,
+          brier_model: mvm.n >= 10 ? mvm.brier_model : null, brier_market: mvm.n >= 10 ? mvm.brier_market : null, skill: mvm.skill,
+          calibration: (q.calibration || []).filter(b => b.n >= 5).map(b => ({ range: b.range, predicted: b.predicted, observed: b.observed, n: b.n })),
+          // CLV se muestra solo si el operador lo enciende (hoy delgado → fuera de la v1 pública, se puede activar con GP_QUALITY_CLV=true)
+          show_clv: /^(1|true|yes|on)$/i.test(String(process.env.GP_QUALITY_CLV || '').trim()),
+          clv: q.clv && q.clv.n ? { avg_pct: q.clv.avg_pct, positive_rate: q.clv.positive_rate, n: q.clv.n } : null,
+          generated_at: new Date().toISOString(),
+        };
+        const qf = path.join(__dirname, 'public', 'quality.html');
+        const html = fs.readFileSync(qf, 'utf8').replace('</head>', `<script>window.__QUALITY=${JSON.stringify(QD)}</script></head>`);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
     // ===== SEO: páginas públicas de PRONÓSTICO por partido (server-rendered → indexables sin JS) =====
     // /pronostico/<local>-vs-<visita> (ES) · /prediction/<home>-vs-<away> (EN) · índices · sitemap dinámico.
     // Muestran las MISMAS probabilidades del board + lectura editorial + CTA de registro. CAJA NEGRA intacta.

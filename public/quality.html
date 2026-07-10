@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calidad medida · GP Simulador</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --bg:#050a08; --bg2:#0a140f; --line:rgba(255,255,255,.09); --tx:#eaf5ef; --tx2:#9fbcae; --tx3:#6f8a7e;
+    --pos:#2be3a6; --blue:#5fa8ff; --warn:#f2c14e; --accent:#0bA661; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:radial-gradient(1200px 700px at 50% -10%, #0c2419 0%, var(--bg) 60%); color:var(--tx);
+    font-family:'Space Grotesk',-apple-system,'Helvetica Neue',Arial,sans-serif; line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh; padding:0 20px 80px; }
+  .wrap { max-width:940px; margin:0 auto; }
+  .top { display:flex; align-items:center; justify-content:space-between; padding:26px 2px; }
+  .brand { font-weight:800; font-size:19px; letter-spacing:-.02em; display:flex; align-items:center; gap:8px; }
+  .brand .dot { width:9px; height:9px; border-radius:50%; background:var(--pos); box-shadow:0 0 12px var(--pos); }
+  .lang { display:flex; gap:2px; border:1px solid var(--line); border-radius:99px; padding:3px; }
+  .lang button { background:none; border:none; color:var(--tx3); font:inherit; font-size:12px; font-weight:700;
+    padding:5px 12px; border-radius:99px; cursor:pointer; }
+  .lang button.on { background:var(--pos); color:#04140d; }
+  .adminbar { background:rgba(242,193,78,.1); border:1px solid rgba(242,193,78,.3); color:var(--warn);
+    font-size:12.5px; font-weight:600; padding:9px 14px; border-radius:10px; margin-bottom:26px; text-align:center; }
+  .hero { text-align:center; padding:30px 0 44px; }
+  .kicker { font-size:12.5px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--pos); margin-bottom:16px; }
+  h1 { font-size:clamp(34px,6vw,54px); font-weight:800; letter-spacing:-.03em; line-height:1.05; margin-bottom:18px; }
+  h1 .g { background:linear-gradient(100deg,var(--pos),var(--blue)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .lede { font-size:clamp(16px,2.4vw,20px); color:var(--tx2); max-width:620px; margin:0 auto; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:8px 0 46px; }
+  .kpi { background:var(--bg2); border:1px solid var(--line); border-radius:18px; padding:26px 20px; text-align:center; }
+  .kpi .n { font-size:clamp(32px,6vw,46px); font-weight:800; letter-spacing:-.02em; }
+  .kpi .n.pos { color:var(--pos); } .kpi .n.blue { color:var(--blue); }
+  .kpi .k { font-size:13px; color:var(--tx3); font-weight:600; margin-top:6px; }
+  .kpi .s { font-size:12px; color:var(--tx3); margin-top:3px; }
+  section { background:var(--bg2); border:1px solid var(--line); border-radius:22px; padding:32px 28px; margin-bottom:22px; }
+  section h2 { font-size:22px; font-weight:800; letter-spacing:-.02em; margin-bottom:10px; }
+  section .p { color:var(--tx2); font-size:15px; max-width:640px; }
+  .vs { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px; }
+  .vs .card { border:1px solid var(--line); border-radius:16px; padding:22px; text-align:center; }
+  .vs .card.win { border-color:rgba(43,227,166,.4); background:rgba(43,227,166,.05); }
+  .vs .card .lab { font-size:12.5px; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:.08em; }
+  .vs .card .val { font-size:38px; font-weight:800; margin-top:8px; }
+  .vs .card.win .val { color:var(--pos); }
+  .vs .card .cap { font-size:12px; color:var(--tx3); margin-top:6px; }
+  .cal { margin-top:26px; }
+  .calrow { display:grid; grid-template-columns:120px 1fr; gap:16px; align-items:center; padding:12px 0; border-top:1px solid var(--line); }
+  .calrow .rng { font-weight:700; font-size:14px; }
+  .calrow .rng span { display:block; font-size:11.5px; color:var(--tx3); font-weight:500; }
+  .track { position:relative; height:40px; }
+  .track .b { position:absolute; top:0; height:16px; border-radius:99px; display:flex; align-items:center; }
+  .track .b.proj { background:rgba(95,168,255,.35); top:2px; }
+  .track .b.obs { background:var(--pos); top:22px; }
+  .track .tag { font-size:11px; font-weight:700; padding-left:8px; white-space:nowrap; color:#04140d; }
+  .track .b.proj .tag { color:var(--blue); padding-left:0; margin-left:8px; }
+  .legend { display:flex; gap:18px; justify-content:center; margin-top:20px; font-size:12.5px; color:var(--tx2); }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+  .foot { text-align:center; color:var(--tx3); font-size:12.5px; margin-top:36px; line-height:1.6; }
+  .cta { display:block; text-align:center; background:var(--pos); color:#04140d; font-weight:800; font-size:17px;
+    padding:18px; border-radius:99px; text-decoration:none; margin:34px auto 0; max-width:420px; }
+  .muted { opacity:.5; }
+  @media (max-width:560px){ .kpis{grid-template-columns:1fr;} .vs{grid-template-columns:1fr;} .calrow{grid-template-columns:96px 1fr;} }
+</style></head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="dot"></span> GP Simulador</div>
+    <div class="lang"><button data-lang="es" class="on">ES</button><button data-lang="en">EN</button></div>
+  </div>
+  <div class="adminbar" id="adminbar">Vista previa privada (solo admin). Se abre al público con GP_QUALITY_PUBLIC=true.</div>
+
+  <div class="hero">
+    <div class="kicker" data-t="kicker">Calidad medida, no prometida</div>
+    <h1 data-t="h1"></h1>
+    <p class="lede" data-t="lede"></p>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2 data-t="beat_h">Le ganamos al mercado</h2>
+    <p class="p" data-t="beat_p"></p>
+    <div class="vs" id="beat"></div>
+  </section>
+
+  <section>
+    <h2 data-t="cal_h">Cuando decimos que algo es probable, ocurre</h2>
+    <p class="p" data-t="cal_p"></p>
+    <div class="cal" id="cal"></div>
+    <div class="legend">
+      <span><i style="background:rgba(95,168,255,.6)"></i><span data-t="leg_proj">Lo que proyectamos</span></span>
+      <span><i style="background:var(--pos)"></i><span data-t="leg_obs">Lo que ocurrió</span></span>
+    </div>
+  </section>
+
+  <section id="clvsec">
+    <h2 data-t="clv_h">La métrica que usan los profesionales</h2>
+    <p class="p" data-t="clv_p"></p>
+    <div class="vs" id="clv"></div>
+  </section>
+
+  <a class="cta" href="/founder" data-t="cta">Asegurar mi acceso →</a>
+  <p class="foot" data-t="foot"></p>
+</div>
+
+<script>
+(function(){
+  var Q = window.__QUALITY || {};
+  var I = {
+    es: {
+      kicker:'Calidad medida, no prometida',
+      h1:'No pedimos que <span class="g">confíes</span>. Te mostramos los números.',
+      lede:'Cada pick queda registrada antes del partido y liquidada después, con su cuota y su casa. Esto es lo que dicen los resultados, medidos como se mide un fondo.',
+      k_hit:'de acierto', k_roi:'de retorno', k_settled:'picks liquidadas',
+      k_hit_s:'{w} de {n} ganadas', k_roi_s:'a stake plano', k_settled_s:'registradas y cerradas',
+      beat_h:'Le ganamos al mercado',
+      beat_p:'Tomamos las mismas picks y medimos qué tan bien predijo cada uno: nuestro sistema contra el consenso de más de 40 casas. Más bajo es mejor.',
+      beat_gp:'Nuestro sistema', beat_mkt:'Consenso del mercado', beat_cap_win:'predice mejor', beat_cap:'40+ casas',
+      cal_h:'Cuando decimos que algo es probable, ocurre',
+      cal_p:'Agrupamos las picks por la probabilidad que les dimos y miramos qué pasó en la realidad. Somos prudentes: cuando algo lo damos probable, la realidad suele superarnos.',
+      leg_proj:'Lo que proyectamos', leg_obs:'Lo que ocurrió',
+      clv_h:'La métrica que usan los profesionales',
+      clv_p:'El CLV compara el precio que tomamos contra el precio de cierre del mercado. Un CLV positivo significa que aseguramos mejor cuota que la del cierre: la señal que distingue a un operador serio.',
+      clv_avg:'CLV promedio', clv_beat:'le ganó al cierre', clv_cap:'sobre {n} picks',
+      cta:'Asegurar mi acceso →',
+      foot:'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad, +18. El registro completo vive en tu cuenta.'
+    },
+    en: {
+      kicker:'Measured quality, not promises',
+      h1:'We don\'t ask for <span class="g">trust</span>. We show you the numbers.',
+      lede:'Every pick is recorded before the match and settled after, with its odds and its book. This is what the results say, measured the way a fund is measured.',
+      k_hit:'hit rate', k_roi:'return', k_settled:'settled picks',
+      k_hit_s:'{w} of {n} won', k_roi_s:'at flat stake', k_settled_s:'recorded and closed',
+      beat_h:'We beat the market',
+      beat_p:'We take the same picks and measure how well each one forecast them: our system against the consensus of 40+ books. Lower is better.',
+      beat_gp:'Our system', beat_mkt:'Market consensus', beat_cap_win:'forecasts better', beat_cap:'40+ books',
+      cal_h:'When we call something likely, it happens',
+      cal_p:'We group picks by the probability we gave them and look at what actually happened. We run conservative: when we call something likely, reality tends to beat our estimate.',
+      leg_proj:'What we projected', leg_obs:'What happened',
+      clv_h:'The metric professionals use',
+      clv_p:'CLV compares the price we took against the market\'s closing price. Positive CLV means we locked a better price than the close: the signal that separates a serious operator.',
+      clv_avg:'Average CLV', clv_beat:'beat the close', clv_cap:'across {n} picks',
+      cta:'Secure my access →',
+      foot:'Estimates from a statistical model, not financial advice. Bet responsibly, 18+. The full record lives in your account.'
+    }
+  };
+  var lang = (navigator.language||'es').slice(0,2)==='en' ? 'en' : 'es';
+  function fmtPct(x){ return x!=null ? Math.round(x*100)+'%' : '—'; }
+  function sgn(x,suf){ return x!=null ? (x>0?'+':'')+x+(suf||'') : '—'; }
+  function fill(str,o){ return String(str).replace(/\{(\w+)\}/g,function(_,k){return o[k]!=null?o[k]:'';}); }
+
+  function render(){
+    var t = I[lang];
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-t]').forEach(function(el){ var k=el.getAttribute('data-t'); if(t[k]!=null) el.innerHTML=t[k]; });
+    document.querySelectorAll('.lang button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-lang')===lang); });
+    if (!Q.public_preview) document.getElementById('adminbar').style.display='none';
+
+    // KPIs
+    var kh = '';
+    kh += kpi((Q.hit_rate!=null?Math.round(Q.hit_rate*100):'—')+'%', t.k_hit, fill(t.k_hit_s,{w:Q.wins,n:Q.settled}), 'pos');
+    kh += kpi(sgn(Q.roi_pct,'%'), t.k_roi, t.k_roi_s, Q.roi_pct>=0?'pos':'');
+    kh += kpi(Q.settled!=null?Q.settled:'—', t.k_settled, t.k_settled_s, 'blue');
+    document.getElementById('kpis').innerHTML = kh;
+
+    // Beat the market
+    if (Q.brier_model!=null && Q.brier_market!=null) {
+      document.getElementById('beat').innerHTML =
+        '<div class="card win"><div class="lab">'+t.beat_gp+'</div><div class="val">'+Q.brier_model.toFixed(3)+'</div><div class="cap">'+t.beat_cap_win+'</div></div>'+
+        '<div class="card"><div class="lab">'+t.beat_mkt+'</div><div class="val">'+Q.brier_market.toFixed(3)+'</div><div class="cap">'+t.beat_cap+'</div></div>';
+    } else { document.getElementById('beat').closest('section').style.display='none'; }
+
+    // Calibration
+    var cal = (Q.calibration||[]).filter(function(b){return b.n>=5;});
+    if (cal.length) {
+      document.getElementById('cal').innerHTML = cal.map(function(b){
+        var pw = Math.max(6, Math.min(100, b.predicted)), ow = Math.max(6, Math.min(100, b.observed));
+        return '<div class="calrow"><div class="rng">'+b.range+'%<span>'+b.n+' picks</span></div>'+
+          '<div class="track">'+
+          '<div class="b proj" style="width:'+pw+'%"><span class="tag">'+b.predicted+'%</span></div>'+
+          '<div class="b obs" style="width:'+ow+'%"><span class="tag">'+b.observed+'%</span></div>'+
+          '</div></div>';
+      }).join('');
+    } else { document.getElementById('cal').closest('section').style.display='none'; }
+
+    // CLV (secondary; hidden if the operator disables it or no data)
+    if (Q.show_clv && Q.clv && Q.clv.n) {
+      document.getElementById('clv').innerHTML =
+        '<div class="card win"><div class="lab">'+t.clv_avg+'</div><div class="val">'+sgn(Q.clv.avg_pct,'%')+'</div><div class="cap">'+fill(t.clv_cap,{n:Q.clv.n})+'</div></div>'+
+        '<div class="card"><div class="lab">'+t.clv_beat+'</div><div class="val">'+fmtPct(Q.clv.positive_rate)+'</div><div class="cap">'+fill(t.clv_cap,{n:Q.clv.n})+'</div></div>';
+    } else { document.getElementById('clvsec').style.display='none'; }
+  }
+  function kpi(n,k,s,cls){ return '<div class="kpi"><div class="n '+(cls||'')+'">'+n+'</div><div class="k">'+k+'</div><div class="s">'+s+'</div></div>'; }
+
+  document.querySelectorAll('.lang button').forEach(function(b){ b.addEventListener('click',function(){ lang=b.getAttribute('data-lang'); render(); }); });
+  render();
+})();
+</script>
+</body></html>

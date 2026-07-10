@@ -185,6 +185,9 @@
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
       pp_title: 'Rendimiento de picks', pp_settled: 'Liquidadas', pp_hit: '% Aciertos', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'Por familia', pp_history: 'Historial de picks', pp_pick: 'Pick', pp_active: 'activas', pp_none: 'Aún no hay picks liquidadas.', pp_model: 'Calibración del modelo (1X2)',
       lm_with: 'El mercado se movió a favor ({pp}pp) desde la publicación', lm_against: 'El mercado se movió en contra ({pp}pp) desde la publicación',
+      pf_why_btn: 'Por qué esta pick', reads_title: 'Lecturas del sistema',
+      st_title: 'Perfil táctico', st_sub: 'torneo, remate a remate', st_findings: 'Hallazgos del cruce', st_xg: 'xG por partido', st_xga: 'xG en contra', st_corners_pct: 'Peligro de córners', st_sp_pct: 'Balón parado', st_counter_pct: 'Contragolpe', st_aerial: 'Juego aéreo', st_c90: 'Córners por partido', st_cards: 'Tarjetas por partido', st_note: 'Porcentajes = parte del peligro generado por esa vía. Verde = lidera la comparación.',
+      sf_corner_edge: 'Ventaja de córners para {team}: genera por esa vía justo donde el rival concede', sf_set_piece_edge: 'Ventaja de balón parado para {team}: su peligro nace donde el rival sufre', sf_aerial_edge: 'Ventaja aérea para {team}: amenaza de cabeza contra un rival que concede en ese juego', sf_counter_edge: '{team} lastima a la contra y el rival concede en transiciones', sf_zone_overlap: 'El sector favorito de ataque de {team} coincide con la zona donde el rival más concede', sf_volume_edge: '{team} genera volumen contra una defensa que viene concediendo',
       qm_title: 'Calidad de las picks vs mercado', qm_clv: 'CLV medio', qm_clv_sub: 'valor vs línea de cierre', qm_beat_close: 'Le ganó al cierre', qm_brier_gp: 'Precisión GP', qm_brier_mkt: 'Precisión consenso', qm_brier_sub: 'Brier, más bajo es mejor', qm_skill: 'Ventaja GP', qm_cal_title: 'Calibración por rangos', qm_cal_note: 'Cuando el sistema proyecta un rango de probabilidad, esto es lo que ocurrió en la realidad.', qm_cal_range: 'Proyectado', qm_cal_obs: 'Real', qm_cal_n: 'Picks', qm_clv_note: 'CLV positivo = tomamos mejor precio que el cierre del mercado. Es la medida profesional de calidad de una pick.',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
       outright_title: 'Campeón del Mundial · Value', outright_sub: 'Probabilidad GP del torneo vs mercado', outright_none: 'Sin ventaja sobre el mercado para el título ahora.',
@@ -411,6 +414,9 @@
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
       pp_title: 'Picks performance', pp_settled: 'Settled', pp_hit: 'Win rate', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'By family', pp_history: 'Picks history', pp_pick: 'Pick', pp_active: 'active', pp_none: 'No settled picks yet.', pp_model: 'Model calibration (1X2)',
       lm_with: 'Market moved with us ({pp}pp) since publication', lm_against: 'Market moved against us ({pp}pp) since publication',
+      pf_why_btn: 'Why this pick', reads_title: 'System reads',
+      st_title: 'Tactical profile', st_sub: 'tournament, shot by shot', st_findings: 'Matchup findings', st_xg: 'xG per match', st_xga: 'xG against', st_corners_pct: 'Corner threat', st_sp_pct: 'Set pieces', st_counter_pct: 'Counter attack', st_aerial: 'Aerial game', st_c90: 'Corners per match', st_cards: 'Cards per match', st_note: 'Percentages = share of threat created through that route. Green = leads the comparison.',
+      sf_corner_edge: 'Corner edge for {team}: creates from that route right where the rival concedes', sf_set_piece_edge: 'Set piece edge for {team}: their threat comes from where the rival struggles', sf_aerial_edge: 'Aerial edge for {team}: heading threat against a side that concedes in the air', sf_counter_edge: '{team} hurts on the break and the opponent concedes in transitions', sf_zone_overlap: '{team}\'s favorite attacking sector matches the zone where the rival concedes most', sf_volume_edge: '{team} creates volume against a defense that has been conceding',
       qm_title: 'Pick quality vs the market', qm_clv: 'Avg CLV', qm_clv_sub: 'value vs closing line', qm_beat_close: 'Beat the close', qm_brier_gp: 'GP accuracy', qm_brier_mkt: 'Consensus accuracy', qm_brier_sub: 'Brier, lower is better', qm_skill: 'GP edge', qm_cal_title: 'Calibration by range', qm_cal_note: 'When the system projects a probability range, this is what actually happened.', qm_cal_range: 'Projected', qm_cal_obs: 'Actual', qm_cal_n: 'Picks', qm_clv_note: 'Positive CLV = we took a better price than the market close. It is the professional measure of pick quality.',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
       outright_title: 'World Cup winner · Value', outright_sub: 'GP tournament probability vs market', outright_none: 'No edge over the market for the title right now.',
@@ -563,7 +569,7 @@
   var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {} };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
 
   // ---------- icons ----------
   // ---- iconografía PROPIA (firma visual): set dibujado a mano, dual-tone (detalle en acento vía clase .a/.af).
@@ -1063,10 +1069,13 @@
     return '';
   }
   // Narrativa multi-factor de la pick (server-side, caja negra): el "por qué" al nivel de un analista.
+  // REVELACIÓN PROGRESIVA (feedback Alexis 9-jul): cerrada por defecto tras un toggle discreto — la card
+  // mantiene su jerarquía (pick + cuota + confianza) y el que quiere profundidad la abre. La lectura
+  // completa vive además en el análisis del partido (mvPickReads).
   function pickWhy(p) {
     var w = LANG === 'en' ? (p.why_en || p.why_es) : (p.why_es || p.why_en);
     if (!w) return '';
-    return '<div class="gx-pick-why">' + esc(w) + '</div>';
+    return '<div class="gx-pick-whywrap"><button type="button" class="gx-why-btn" data-whytoggle><span class="gx-why-car">▸</span>' + esc(t('pf_why_btn')) + '</button><div class="gx-pick-why" hidden>' + esc(w) + '</div></div>';
   }
 
   // Chip de movimiento de línea (line-intel): hacia dónde se movió el consenso del mercado desde que se
@@ -2333,6 +2342,19 @@
       fetch('/api/beta/match-intel?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.intel[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) { noAnimWindow(); renderMatch(); } });
     }
     var intel = (wantIntel && S.intel[hk] && S.intel[hk].available) ? S.intel[hk] : null;
+    // PERFIL TÁCTICO (style engine, event data del torneo): mismo gate server-side que el intel (403 → no aparece).
+    if (hid && aid && S.me && S.style[hk] === undefined) {
+      S.style[hk] = null;
+      fetch('/api/beta/style?home=' + encodeURIComponent(hid) + '&away=' + encodeURIComponent(aid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.style[hk] = m || { available: false }; if (S.view === 'match' && S.matchId === eid) { noAnimWindow(); renderMatch(); } });
+    }
+    var styleD = (hid && aid && S.style[hk] && S.style[hk].available) ? S.style[hk] : null;
+    // LECTURAS DEL SISTEMA: narrativa de las picks activas de ESTE partido (destino natural del "por qué").
+    if (S.dailyPicks === undefined && S.me) {
+      S.dailyPicks = null;
+      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; if (S.view === 'match' && S.matchId === eid) { noAnimWindow(); renderMatch(); } });
+    }
+    var matchPicks = (S.dailyPicks || []).filter(function (p) { return (p.home_team_id === hid && p.away_team_id === aid) || (p.home_team_id === aid && p.away_team_id === hid); });
+    var pickReads = mvPickReads(matchPicks);
     var r = rowFromBeta(beta);
     var live = header.status_code === 'LIVE' || (fx && fx.status === 'live');
     // disponibilidad real de cada módulo (cobertura honesta; presente sólo si hay datos)
@@ -2362,7 +2384,7 @@
       (arbCtx ? mvOpportunity(arbCtx, header) : '') +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (intel ? sec('intel', mvIntel(intel, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (intel ? sec('intel', mvIntel(intel, header)) : '') + (styleD ? sec('estilo', mvStyle(styleD, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
       '</div>'
     );
     bindBack(); bindMvNav();
@@ -2453,6 +2475,54 @@
   }
   // INTEL del partido (admin-first): anotadores probables (props de jugador) + radar de disponibilidad
   // (capa de observación) con el factor λ sugerido si las ausencias se confirman.
+  // LECTURAS DEL SISTEMA: las picks activas de este partido con su narrativa completa (el "por qué" vive acá
+  // a texto completo; en la card del feed queda tras un toggle). Devuelve '' si no hay nada que contar.
+  function mvPickReads(matchPicks) {
+    var withWhy = (matchPicks || []).filter(function (p) { return p.why_es || p.why_en; });
+    if (!withWhy.length) return '';
+    var rows = withWhy.map(function (p) {
+      var famKey = p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
+      var w = LANG === 'en' ? (p.why_en || p.why_es) : (p.why_es || p.why_en);
+      return '<div class="gx-read"><div class="gx-read-h"><span class="gx-badge">' + esc(t(famKey)) + '</span><b>' + esc(pickRecText(p)) + '</b>' + (p.odds != null ? '<span class="gx-mono gx-dim" style="margin-left:auto">' + Number(p.odds).toFixed(2) + '</span>' : '') + '</div><p class="gx-read-tx">' + esc(w) + '</p></div>';
+    }).join('');
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('bulb') + esc(t('reads_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + withWhy.length + '</span></div><div class="gx-mod-body">' + rows + '</div></div>';
+  }
+
+  // PERFIL TÁCTICO (style engine): comparativa ataque/defensa de los dos equipos + hallazgos de matchup.
+  function mvStyle(st, header) {
+    var H = st.home, A = st.away;
+    if (!H || !A) return '';
+    var hn = teamName(H.team_id), an = teamName(A.team_id);
+    var pc = function (x) { return x != null ? Math.round(x * 100) + '%' : '—'; };
+    var n1 = function (x) { return x != null ? Number(x).toFixed(1) : '—'; };
+    var row = function (label, hv, av, fmt, invert) {
+      var f = fmt || n1;
+      var hRaw = hv != null ? Number(hv) : null, aRaw = av != null ? Number(av) : null;
+      var hWin = hRaw != null && aRaw != null && (invert ? hRaw < aRaw : hRaw > aRaw);
+      var aWin = hRaw != null && aRaw != null && (invert ? aRaw < hRaw : aRaw > hRaw);
+      return '<div class="gx-style-row"><span class="gx-mono v' + (hWin ? ' hi' : '') + '">' + f(hv) + '</span><span class="lbl">' + esc(label) + '</span><span class="gx-mono v' + (aWin ? ' hi' : '') + '">' + f(av) + '</span></div>';
+    };
+    var findTxt = function (f) {
+      var team = teamName(f.side === 'home' ? H.team_id : A.team_id);
+      var key = 'sf_' + String(f.code || '').toLowerCase();
+      var s = t(key, { team: team });
+      return s === key ? null : s;
+    };
+    var finds = (st.findings || []).map(findTxt).filter(Boolean).slice(0, 3);
+    var findsHtml = finds.length ? '<div class="gx-findings" style="margin:0 0 10px"><div class="gx-findings-h">' + ic('bulb') + '<span>' + esc(t('st_findings')) + '</span></div>' + finds.map(function (s) { return '<div class="gx-finding"><span class="gx-finding-dot"></span><span class="gx-finding-tx">' + esc(s) + '</span></div>'; }).join('') + '</div>' : '';
+    var head = '<div class="gx-style-row gx-style-head"><span class="v"><span class="fl">' + flag(H.team_id) + '</span> ' + esc(hn) + '</span><span class="lbl"></span><span class="v">' + esc(an) + ' <span class="fl">' + flag(A.team_id) + '</span></span></div>';
+    var body = findsHtml + head +
+      row(t('st_xg'), H.attack.xg_p90, A.attack.xg_p90) +
+      row(t('st_xga'), H.defense.xg_p90, A.defense.xg_p90, null, true) +
+      row(t('st_corners_pct'), H.attack.corner_share_xg, A.attack.corner_share_xg, pc) +
+      row(t('st_sp_pct'), H.attack.sp_share_xg, A.attack.sp_share_xg, pc) +
+      row(t('st_counter_pct'), H.attack.fastbreak_share_xg, A.attack.fastbreak_share_xg, pc) +
+      row(t('st_aerial'), H.attack.header_share, A.attack.header_share, pc) +
+      (H.props && A.props ? row(t('st_c90'), H.props.corners_for_p90, A.props.corners_for_p90) + row(t('st_cards'), H.props.cards_p90, A.props.cards_p90) : '') +
+      '<p class="gx-mod-note gx-dim">' + esc(t('st_note')) + '</p>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('layout-grid') + esc(t('st_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('st_sub')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+
   function mvIntel(intel, header) {
     var riskChip = function (r) {
       if (!r) return '';
@@ -3835,6 +3905,7 @@
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }
           var cb = e.target.closest('[data-calc]'); if (cb) { e.preventDefault(); e.stopPropagation(); toggleCalc(cb); return; }
+          var wt = e.target.closest('[data-whytoggle]'); if (wt) { e.preventDefault(); e.stopPropagation(); var wb = wt.parentNode.querySelector('.gx-pick-why'); if (wb) { wb.hidden = !wb.hidden; wt.classList.toggle('open', !wb.hidden); } return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }
           var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }

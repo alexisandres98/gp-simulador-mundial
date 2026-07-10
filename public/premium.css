@@ -662,7 +662,24 @@ body { background:
 .gx-pick-rec { background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 10px 12px; margin-bottom: 12px; }
 .gx-pick-rec-label { font-size: 9.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--gx-text3); display: block; margin-bottom: 3px; }
 .gx-pick-rec-text { font-size: 17px; font-weight: 650; color: var(--gx-text); letter-spacing: -.01em; line-height: 1.25; }
-.gx-pick-why { font-size: 12px; color: var(--gx-text2); line-height: 1.45; margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--gx-line); }
+.gx-pick-whywrap { margin-top: 7px; padding-top: 6px; border-top: 1px dashed var(--gx-line); }
+.gx-why-btn { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gx-text3); display: inline-flex; align-items: center; gap: 5px; }
+.gx-why-btn:hover { color: var(--gx-text2); }
+.gx-why-car { display: inline-block; transition: transform .18s ease; font-size: 9px; }
+.gx-why-btn.open .gx-why-car { transform: rotate(90deg); }
+.gx-pick-why { font-size: 12px; color: var(--gx-text2); line-height: 1.45; margin-top: 6px; }
+.gx-read { padding: 9px 0; border-bottom: 1px solid var(--gx-line); }
+.gx-read:last-of-type { border-bottom: none; }
+.gx-read-h { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12.5px; }
+.gx-read-tx { font-size: 12px; color: var(--gx-text2); line-height: 1.5; margin: 0; }
+.gx-style-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--gx-line); }
+.gx-style-row:last-of-type { border-bottom: none; }
+.gx-style-row .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gx-text3); text-align: center; }
+.gx-style-row .v { font-size: 13px; }
+.gx-style-row .v:first-child { text-align: left; }
+.gx-style-row .v:last-child { text-align: right; }
+.gx-style-row .v.hi { color: var(--gx-pos); font-weight: 700; }
+.gx-style-head .v { font-weight: 700; font-size: 12.5px; }
 .gx-pick-linemove { font-size: 11px; font-weight: 600; margin: -6px 0 10px; letter-spacing: .01em; }
 .gx-lm-with { color: var(--gx-pos); }
 .gx-lm-against { color: var(--gx-warn); opacity: .85; }

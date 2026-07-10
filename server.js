@@ -4469,10 +4469,14 @@ const server = http.createServer(async (req, res) => {
 <p style="margin:18px 0 0;font-size:12.5px;color:#999">GP Simulador · gpsimulador.com</p>
 </div>`,
           };
-          await mailer.sendMail({ to: e, subject: otp.subject, text: otp.text, html: otp.html });
+          // FAILOVER DE ENTREGA (10-jul): un RE-pedido de código es la señal "no me llegó" → el reenvío sale
+          // por el relay GAS (infra de Gmail, camino distinto; Resend venía encolando 60-96s post-masivos).
+          // El primer envío sigue por Resend (protege la cuota diaria del relay).
+          const preferRelay = db.codes[e].count >= 2;
+          await mailer.sendMail({ to: e, subject: otp.subject, text: otp.text, html: otp.html, prefer: preferRelay ? 'relay' : undefined });
           db.codes[e].sent = true;
           save();
-          console.log(`[auth] código enviado por email a ${e}`);
+          console.log(`[auth] código enviado por email a ${e}${preferRelay ? ' (reintento → relay)' : ''}`);
           return json(res, 200, { ok: true, sent: true });
         } catch (err) {
           console.error('[mail] error:', err.message);
@@ -5813,7 +5817,7 @@ const server = http.createServer(async (req, res) => {
       // El resto: cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
       // buildMail recibe el EMAIL (deriva idioma adentro). 'leads_magic' genera un magic link personalizado
       // por lead (estilo personal → Principal; sin List-Unsubscribe).
-      const buildMail = (variant === 'leads_magic')
+      const buildMailBase = (variant === 'leads_magic')
         ? (em) => ({ ...leadReactivationEmail(em), from: REENGAGE_FROM, noListUnsub: true })
         : (variant === 'reengage')
           ? (em) => ({ ...reengageEmail(link, userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
@@ -5822,6 +5826,15 @@ const server = http.createServer(async (req, res) => {
               : (variant === 'features_es') ? () => featuresEmail('es')
                 : (variant === 'features_en') ? () => featuresEmail('en')
                   : (em) => broadcastEmail(link, userLang(em));
+      // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
+      // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
+      // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la
+      // reputación de codigo@ queda reservada para transaccional. Sin la env, comportamiento igual que antes.
+      const buildMail = (em) => {
+        const m = buildMailBase(em);
+        if (process.env.BROADCAST_FROM && !m.from) m.from = process.env.BROADCAST_FROM;
+        return m;
+      };
       const testTo = (u && u.email) || String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
       if (test) {
         try { ensureRefCode(testTo); await mailer.sendMail({ to: testTo, ...buildMail(testTo) }); console.log(`[broadcast] enviados 1/1 (prueba${variant ? ' ' + variant : ''})`); return json(res, 200, { ok: true, sent: 1, failed: 0, total: 1, test: true, to: testTo }); }

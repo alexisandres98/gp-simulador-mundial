@@ -129,6 +129,13 @@ async function sendViaResend({ to, subject, text, html, from, noListUnsub, reply
 }
 
 async function send(opts) {
+  // opts.prefer === 'relay': intenta PRIMERO el relay GAS (infra de Gmail, camino/reputación distintos a
+  // Resend). Se usa SOLO para reenvíos de OTP ("no me llegó el código"; 10-jul: Resend encolaba 60-96s
+  // intermitente post-masivos). El relay tiene cuota diaria de Gmail → JAMÁS usarlo para masivos.
+  if (opts.prefer === 'relay' && process.env.MAIL_WEBHOOK_URL) {
+    try { await sendViaWebhook(opts); console.log('[mail] relay GAS OK (preferido) →', opts.to); return; }
+    catch (e) { console.error('[mail] relay preferido falló, sigo con resend:', e.message); }
+  }
   if (process.env.RESEND_API_KEY) {
     try { await sendViaResend(opts); console.log('[mail] resend OK →', opts.to); return; }
     catch (e) {

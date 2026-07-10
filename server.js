@@ -3201,6 +3201,33 @@ function confirmedXiPids() {
   return out;
 }
 let _lineupRevalRunning = false;
+// Captura (con cache 15 min) el once CONFIRMADO de un par de equipos. Compartida por la re-validación de
+// picks PLAYER y por la reconciliación observer↔realidad (ya NO depende de que exista una pick de jugador).
+async function captureXiForPair(h, a) {
+  const key = _xiPairKey(h, a);
+  let xi = db.lineupXi[key];
+  if (xi && Date.now() - new Date(xi.at).getTime() <= 15 * 60 * 1000) return xi;
+  const meta = fixtureMetaForPair(h, a); if (!meta) return xi || null;
+  const th = TEAMS.find(t => t.id === h), ta = TEAMS.find(t => t.id === a);
+  const namesOf = t => t ? [t.en, t.name, ...(t.aliases || [])] : [];
+  const ctx = await providers.getMatchContext({
+    homeCode: h, awayCode: a, homeName: th ? th.en : '', awayName: ta ? ta.en : '',
+    homeNames: namesOf(th), awayNames: namesOf(ta), isoDate: meta.datetime, espnId: meta.espnId,
+    isLive: false, isFinal: false,
+  }).catch(() => null);
+  const L = ctx && ctx.lineups;
+  const names = [];
+  for (const s of ['home', 'away']) {
+    if (L && L[s] && L[s].confirmed && Array.isArray(L[s].startXI) && L[s].startXI.length >= 10) {
+      for (const pl of L[s].startXI) { const nm = pl && (pl.name || (pl.player && pl.player.name)); if (nm) names.push({ side: s, name: nm }); }
+    }
+  }
+  if (!names.length) return xi || null; // aún sin alineación confirmada
+  xi = { at: new Date().toISOString(), names };
+  db.lineupXi[key] = xi; save();
+  return xi;
+}
+
 async function revalidateLineups() {
   if (_lineupRevalRunning || !propsOn()) return;
   _lineupRevalRunning = true;
@@ -3211,27 +3238,8 @@ async function revalidateLineups() {
       if (!(ko > Date.now()) || ko - Date.now() > 90 * 60 * 1000) continue; // ventana: últimos 90 min pre-KO
       const h = p.event.home_team_id, a = p.event.away_team_id;
       const key = _xiPairKey(h, a);
-      let xi = db.lineupXi[key];
-      if (!xi || Date.now() - new Date(xi.at).getTime() > 15 * 60 * 1000) {
-        const meta = fixtureMetaForPair(h, a); if (!meta) continue;
-        const th = TEAMS.find(t => t.id === h), ta = TEAMS.find(t => t.id === a);
-        const namesOf = t => t ? [t.en, t.name, ...(t.aliases || [])] : [];
-        const ctx = await providers.getMatchContext({
-          homeCode: h, awayCode: a, homeName: th ? th.en : '', awayName: ta ? ta.en : '',
-          homeNames: namesOf(th), awayNames: namesOf(ta), isoDate: meta.datetime, espnId: meta.espnId,
-          isLive: false, isFinal: false,
-        }).catch(() => null);
-        const L = ctx && ctx.lineups;
-        const names = [];
-        for (const s of ['home', 'away']) {
-          if (L && L[s] && L[s].confirmed && Array.isArray(L[s].startXI) && L[s].startXI.length >= 10) {
-            for (const pl of L[s].startXI) { const nm = pl && (pl.name || (pl.player && pl.player.name)); if (nm) names.push({ side: s, name: nm }); }
-          }
-        }
-        if (!names.length) continue; // aún sin alineación confirmada → reintentar en el próximo tick
-        xi = { at: new Date().toISOString(), names };
-        db.lineupXi[key] = xi; save();
-      }
+      const xi = await captureXiForPair(h, a);
+      if (!xi) continue; // reintentar en el próximo tick
       const target = _propNorm(p.player_name);
       const lastN = _propNorm(String(p.player_name || '').trim().split(/\s+/).pop());
       const inXi = xi.names.some(n => { const nn = _propNorm(n.name); return nn === target || (lastN.length >= 4 && nn.includes(lastN)); });
@@ -3243,6 +3251,98 @@ async function revalidateLineups() {
     }
   } catch (e) { console.log('[picks] revalidación alineaciones error', e.message); }
   finally { _lineupRevalRunning = false; }
+}
+
+// ===== RECONCILIACIÓN OBSERVER ↔ REALIDAD (10-jul, pedido de Alexis: caso Olise) =============================
+// La alineación oficial y los minutos jugados son la verdad MÁS DURA sobre disponibilidad: en cuanto llegan,
+// cualquier duda/baja previa del observer queda RESUELTA al instante (no esperando el decaimiento de 36h).
+// Mecanismo: se inyecta una señal sintética CONFIRMED (source 'alineacion_oficial' / 'jugo_minutos') en
+// db.observations; assessPlayers ya hace que la señal más reciente BACK/CONFIRMED limpie al jugador → todas
+// las superficies (Match Intel, perfil, narrativa de picks) se corrigen solas. Ventana: 90 min antes del KO
+// hasta 3h después (cubre once publicado, partido en vivo y post-partido). Corre cada 10 min.
+let _obsReconRunning = false;
+function _injectResolutionSignal(team, pid, player, source, title) {
+  const obs = db.observations[team];
+  if (!obs || !Array.isArray(obs.signals)) return false;
+  const now = Date.now();
+  // dedup: una resolución por jugador cada 6h alcanza (idempotente entre ticks)
+  const recent = obs.signals.some(s => s.pid === pid && s.source === source && now - new Date(s.published_at || 0).getTime() < 6 * 3600e3);
+  if (recent) return false;
+  obs.signals.push({ category: 'CONFIRMED', severity: 0, player, pid, team, keyword: source, title, source, link: null, published_at: new Date(now).toISOString() });
+  if (obs.signals.length > 120) obs.signals = obs.signals.slice(-120); // respeta el ring del observer
+  return true;
+}
+async function reconcileObserverReality() {
+  if (_obsReconRunning || !observerOn()) return { skipped: true };
+  _obsReconRunning = true;
+  try {
+    const { assessPlayers } = require('./observer/assess');
+    const now = Date.now();
+    let resolved = 0;
+    // pares en ventana (eliminatorias: el calendario vivo del torneo)
+    const pairs = [];
+    for (const k of KNOCKOUT) {
+      const meta = findFixtureMeta(String(k.m));
+      if (!meta || !meta.home || !meta.away || !meta.datetime) continue;
+      const ko = new Date(meta.datetime).getTime();
+      if (!isFinite(ko)) continue;
+      if (now >= ko - 90 * 60e3 && now <= ko + 3 * 3600e3) pairs.push({ h: meta.home, a: meta.away, ko });
+    }
+    // En ventana de partido el observer también RECOLECTA más seguido (la cadencia base es 3h; una noticia
+    // de última hora pre-KO no puede esperar): si la última pasada tiene >45 min, se dispara una ahora.
+    if (pairs.length && !_obsRunning) {
+      const lastRun = _obsLast && _obsLast.finished ? new Date(_obsLast.finished).getTime() : 0;
+      if (now - lastRun > 45 * 60e3) runObserver().catch(() => { });
+    }
+    for (const { h, a, ko } of pairs) {
+      // jugadores con señal de riesgo vigente en cualquiera de los dos equipos
+      const risky = {};
+      for (const team of [h, a]) {
+        const obs = db.observations[team];
+        if (!obs || !Array.isArray(obs.signals)) continue;
+        const asm = assessPlayers(obs.signals);
+        for (const pid in asm) if (asm[pid].prob_miss > 0) risky[pid] = { team, player: asm[pid].player };
+      }
+      if (!Object.keys(risky).length) continue;
+      // 1) ALINEACIÓN OFICIAL: titular confirmado → duda resuelta (independiente de que haya picks PLAYER)
+      const xi = await captureXiForPair(h, a).catch(() => null);
+      if (xi && Array.isArray(xi.names)) {
+        for (const n of xi.names) {
+          const pid = propPlayerPid(h, n.name) || propPlayerPid(a, n.name);
+          if (!pid || !risky[pid]) continue;
+          if (_injectResolutionSignal(risky[pid].team, pid, risky[pid].player || n.name, 'alineacion_oficial', 'Titular en la alineación oficial')) {
+            resolved++;
+            console.log('[observer] duda resuelta por alineación oficial:', risky[pid].player || n.name, h + '-' + a);
+          }
+        }
+      }
+      // 2) MINUTOS JUGADOS (post-partido, cubre también a los que entraron desde el banco): si el partido
+      // terminó y tenemos stats por jugador cacheadas (settlement TSA), todo el que jugó queda resuelto.
+      if (now > ko + 105 * 60e3) {
+        const ps = db.tsaPlayers[h + '~' + a] || db.tsaPlayers[a + '~' + h];
+        for (const row of (ps && ps.players) || []) {
+          if (!(row.min > 0)) continue;
+          const pid = propPlayerPid(h, row.name) || propPlayerPid(a, row.name);
+          if (!pid || !risky[pid]) continue;
+          if (_injectResolutionSignal(risky[pid].team, pid, risky[pid].player || row.name, 'jugo_minutos', 'Jugó ' + row.min + ' minutos')) resolved++;
+        }
+      }
+    }
+    if (resolved) {
+      save();
+      // las narrativas de picks pueden cargar un caveat de duda ya resuelto → re-anotar con factores frescos
+      annotateDailyPicksNarrative({ force: true });
+      // y una pick bloqueada por AVAILABILITY_DOUBT puede publicarse ahora que la duda se zanjó (solo si
+      // queda algún partido de la ventana sin arrancar; el evaluador ya es idempotente por supersede)
+      if (pairs.some(x => now < x.ko)) evaluateDailyPicks().catch(() => { });
+    }
+    return { pairs: pairs.length, resolved };
+  } catch (e) { return { error: e.message }; }
+  finally { _obsReconRunning = false; }
+}
+if (observerOn()) {
+  setTimeout(() => reconcileObserverReality().catch(() => { }), 4 * 60 * 1000);
+  setInterval(() => reconcileObserverReality().catch(() => { }), 10 * 60 * 1000);
 }
 if (propsOn()) setInterval(() => revalidateLineups().catch(() => { }), 10 * 60 * 1000);
 

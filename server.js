@@ -2447,15 +2447,12 @@ function dailyPickNarrativeFactors(p) {
     if (Number(p.edge_pp) >= 3) F.push({ code: 'PRICE_ABOVE_FAIR', w: 1.5 });
   }
   if (p.family === 'CORNERS' && H && A) {
+    // Backtest 10-jul (walk-forward n=44): el share de xG de córners correlaciona NEGATIVO con los córners
+    // reales vs el modelo (r=-0.295) → la amenaza de córners es EFICIENCIA, no volumen. Para totales de
+    // córners narra el VOLUMEN (córners por partido); el share queda para goles/aéreo donde sí aplica.
     const tot = (H.props && A.props) ? +(H.props.corners_for_p90 + A.props.corners_for_p90).toFixed(1) : null;
     if (p.side === 'over') {
-      for (const [tc, me, riv] of [[h, H, A], [a, A, H]]) {
-        if (pctl(me, 'attack', 'corner_share_xg') >= 0.7) {
-          F.push({ code: 'CORNER_THREAT', w: 3, team_es: nm(tc).es, team_en: nm(tc).en, share: Math.round((me.attack.corner_share_xg || 0) * 100) });
-          if (pctl(riv, 'defense', 'corner_share_xg') >= 0.6) F.push({ code: 'CORNER_CONCEDE', w: 2.5, team_es: nm(tc === h ? a : h).es, team_en: nm(tc === h ? a : h).en });
-        }
-      }
-      if (tot != null && tot >= 9.5) F.push({ code: 'CORNER_VOLUME', w: 2, total: tot });
+      if (tot != null && tot >= 9.5) F.push({ code: 'CORNER_VOLUME', w: 3, total: tot });
     } else if (tot != null && tot <= 9) {
       F.push({ code: 'CORNER_LOW_VOLUME', w: 3, total: tot });
     }
@@ -4879,6 +4876,14 @@ const server = http.createServer(async (req, res) => {
           ORDER BY created_at ASC LIMIT 400`, [ev, mk]).catch(() => null);
       const series = ((r && r.rows) || []).map(x => ({ fair: x.fair != null ? Number(x.fair) : null, odds: x.odds != null ? Number(x.odds) : null, at: x.at }));
       return json(res, 200, { event: ev, market: mk, summary: require('./line-intel/engine').summarize(series), series });
+    }
+    // NARRATIVA retro/mantenimiento: re-anota las picks activas (?force=1 recalcula las ya anotadas — para
+    // cuando el ensamblador de factores evoluciona). Auth: admin o GP_EXPORT_KEY.
+    if (p === '/api/internal/picks-narrative' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const u = getUser(req);
+      if (!((u && u.isAdmin) || (xk && url.searchParams.get('key') === xk))) return json(res, 404, { error: 'No encontrado' });
+      return json(res, 200, annotateDailyPicksNarrative({ force: url.searchParams.get('force') === '1' }));
     }
     // CIERRE + CLV retro/mantenimiento: captura la línea de cierre (goal_value_shadow) y calcula CLV para
     // picks con kickoff pasado. Idempotente; ?force=1 recalcula todo. Auth: admin o GP_EXPORT_KEY.

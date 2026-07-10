@@ -662,6 +662,23 @@ body { background:
 .gx-pick-rec { background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 10px 12px; margin-bottom: 12px; }
 .gx-pick-rec-label { font-size: 9.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--gx-text3); display: block; margin-bottom: 3px; }
 .gx-pick-rec-text { font-size: 17px; font-weight: 650; color: var(--gx-text); letter-spacing: -.01em; line-height: 1.25; }
+.gx-radar-wrap { display: flex; justify-content: center; padding: 4px 0 2px; }
+.gx-radar { width: min(310px, 86vw); height: auto; }
+.gx-scout-read { margin: 10px 0 2px; padding-left: 18px; }
+.gx-scout-read li { font-size: 12.5px; color: var(--gx-text2); margin: 6px 0; line-height: 1.45; }
+.gx-scout-read li.gx-scout-lim { color: var(--gx-warn); opacity: .9; }
+.gx-arch { background: rgba(43,227,166,.12); border-color: rgba(43,227,166,.45); color: var(--gx-pos); font-weight: 700; }
+.gx-feat { margin-bottom: 14px; }
+.gx-feat-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.gx-feat-card { flex: 0 0 auto; display: flex; gap: 10px; align-items: center; width: 250px; background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 10px 12px; text-decoration: none; color: inherit; transition: border-color .15s; }
+.gx-feat-card:hover { border-color: rgba(43,227,166,.4); }
+.gx-feat-card img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--gx-line); flex: 0 0 auto; }
+.gx-feat-b { min-width: 0; }
+.gx-feat-n { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.gx-feat-n b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-feat-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+.gx-feat-meta .gx-badge { font-size: 9px; }
+.gx-feat-hook { font-size: 10.5px; color: var(--gx-text3); margin-top: 4px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gx-pick-whywrap { margin-top: 7px; padding-top: 6px; border-top: 1px dashed var(--gx-line); }
 .gx-why-btn { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gx-text3); display: inline-flex; align-items: center; gap: 5px; }
 .gx-why-btn:hover { color: var(--gx-text2); }

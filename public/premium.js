@@ -108,6 +108,9 @@
       mod_momentum: 'Evolución GP en vivo', mom_note: 'Probabilidad GP de ganar el partido, actualizada durante el juego. Los puntos marcan los goles.', hero_scores: 'Marcadores probables',
       mod_intel: 'Intel del partido', intel_player: 'Jugador', intel_goal: 'Gol', intel_shots: 'Remates', intel_radar: 'Radar de disponibilidad', intel_miss: 'riesgo', intel_out: 'BAJA', intel_susp: 'SANCIÓN', intel_doubt: 'DUDA', intel_rest: 'ROTACIÓN', intel_factor: 'Si las ausencias se confirman, la generación del equipo caería ~{pct}%.', intel_note: 'Probabilidad de anotar y volumen de remates proyectado por jugador, con las alertas de disponibilidad detectadas en fuentes publicadas.', intel_findings: 'Hallazgos de inteligencia',
       pi_role_starter_confirmed: 'Titular confirmado', pi_role_starter_projected: 'Titular probable', pi_role_bench: 'Suplente probable', pi_sample_strong: 'Muestra sólida', pi_sample_thin: 'Muestra corta', pi_rates_elite: 'Producción élite', pi_rates_above_pos: 'Produce sobre su posición', pi_finishing_hot: 'Definición caliente', pi_finishing_cold: 'Definición fría', pi_team_attack_up: 'Ataque del equipo al alza', pi_team_attack_down: 'Ataque del equipo a la baja', pi_avail_out: 'Baja confirmada', pi_avail_susp: 'Sancionado', pi_avail_doubt: 'En duda', pi_avail_unverified: 'Alerta sin confirmar', pi_avail_rest: 'Riesgo de rotación', pi_set_piece_pen: 'Lanzador de penales', pi_set_piece_fk: 'Lanzador de tiros libres', pi_set_piece_corners: 'Lanzador de córners',
+      arch_star: 'Estrella', arch_clinical: 'Finalizador', arch_creator: 'Creador', arch_aerial: 'Amenaza aérea', arch_super_sub: 'Revulsivo', arch_engine: 'Motor', arch_set_piece: 'Balón parado',
+      ax_production: 'Peligro', ax_volume: 'Remates', ax_accuracy: 'Puntería', ax_creation: 'Creación', ax_finishing: 'Definición', ax_presence: 'Presencia', ax_aerial: 'Aéreo', ax_attack_share: 'Peso ofensivo',
+      pp_radar: 'Radar de scouting', pp_radar_sub: 'vs jugadores de su posición', ft_title: 'Destacados de hoy', ft_goal: 'P(gol)',
       pp_empty: 'Perfil no disponible', pp_reading: 'Lectura GP', pp_sample: 'Muestra del torneo', pp_min: 'Minutos', pp_apps: 'Titular/PJ', pp_goals: 'Goles', pp_expmin: 'Min. típicos', pp_per90: 'Producción por 90 minutos', pp_shots: 'Remates', pp_sot: 'Al arco', pp_next: 'Próximo partido · proyección', pp_pgoal: 'P(gol)', pp_proj_shots: 'Remates proy.', pp_proj_min: 'Minutos proy.', pp_form: 'Partido a partido', pp_rival: 'Rival', pp_shots_h: 'REM', pp_sot_h: 'ARCO', pp_goals_h: 'GOL', pp_conf_high: 'Confianza alta', pp_conf_med: 'Confianza media', pp_conf_low: 'Confianza baja', pp_finding: 'Hallazgo de inteligencia', sr_players: 'Jugadores', pp_markets: 'Mercados del jugador', pp_market: 'Mercado', pp_best: 'Mejor', pp_implied: 'Implícita', pp_books: 'casas', pp_mk_goal: 'Anota (anytime)', pp_h2h: 'Ante este rival', pp_share: '{pct}% del ataque de su equipo', pp_pctl: 'Top {p}% de su posición',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
@@ -337,6 +340,9 @@
       mod_momentum: 'Live GP momentum', mom_note: 'GP win probability, updated as the match unfolds. Dots mark goals.', hero_scores: 'Likely scores',
       mod_intel: 'Match intel', intel_player: 'Player', intel_goal: 'Goal', intel_shots: 'Shots', intel_radar: 'Availability radar', intel_miss: 'risk', intel_out: 'OUT', intel_susp: 'BAN', intel_doubt: 'DOUBT', intel_rest: 'ROTATION', intel_factor: 'If the absences are confirmed, team creation would drop ~{pct}%.', intel_note: 'Scoring probability and projected shot volume per player, with availability alerts detected from published sources.', intel_findings: 'Intelligence findings',
       pi_role_starter_confirmed: 'Confirmed starter', pi_role_starter_projected: 'Projected starter', pi_role_bench: 'Likely sub', pi_sample_strong: 'Solid sample', pi_sample_thin: 'Thin sample', pi_rates_elite: 'Elite output', pi_rates_above_pos: 'Above-position output', pi_finishing_hot: 'Hot finishing', pi_finishing_cold: 'Cold finishing', pi_team_attack_up: 'Team attack trending up', pi_team_attack_down: 'Team attack trending down', pi_avail_out: 'Confirmed out', pi_avail_susp: 'Suspended', pi_avail_doubt: 'Doubtful', pi_avail_unverified: 'Unverified alert', pi_avail_rest: 'Rotation risk', pi_set_piece_pen: 'Penalty taker', pi_set_piece_fk: 'Free kick taker', pi_set_piece_corners: 'Corner taker',
+      arch_star: 'Star', arch_clinical: 'Clinical finisher', arch_creator: 'Creator', arch_aerial: 'Aerial threat', arch_super_sub: 'Super sub', arch_engine: 'Engine', arch_set_piece: 'Set piece specialist',
+      ax_production: 'Threat', ax_volume: 'Shots', ax_accuracy: 'Accuracy', ax_creation: 'Creation', ax_finishing: 'Finishing', ax_presence: 'Presence', ax_aerial: 'Aerial', ax_attack_share: 'Attack share',
+      pp_radar: 'Scouting radar', pp_radar_sub: 'vs players in his position', ft_title: "Today's featured players", ft_goal: 'P(goal)',
       pp_empty: 'Profile not available', pp_reading: 'GP reading', pp_sample: 'Tournament sample', pp_min: 'Minutes', pp_apps: 'Starts/Apps', pp_goals: 'Goals', pp_expmin: 'Typical min.', pp_per90: 'Output per 90 minutes', pp_shots: 'Shots', pp_sot: 'On target', pp_next: 'Next match · projection', pp_pgoal: 'P(goal)', pp_proj_shots: 'Proj. shots', pp_proj_min: 'Proj. minutes', pp_form: 'Match by match', pp_rival: 'Opponent', pp_shots_h: 'SH', pp_sot_h: 'SOT', pp_goals_h: 'G', pp_conf_high: 'High confidence', pp_conf_med: 'Medium confidence', pp_conf_low: 'Low confidence', pp_finding: 'Intelligence finding', sr_players: 'Players', pp_markets: 'Player markets', pp_market: 'Market', pp_best: 'Best', pp_implied: 'Implied', pp_books: 'books', pp_mk_goal: 'To score (anytime)', pp_h2h: 'Vs this opponent', pp_share: '{pct}% of team attack', pp_pctl: 'Top {p}% of position',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
@@ -1048,8 +1054,32 @@
       bd.innerHTML = recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
       return;
     }
-    bd.innerHTML = recap + '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' + lockTeaser +
+    bd.innerHTML = recap + featuredStrip() + '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' + lockTeaser +
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
+  }
+  // DESTACADOS DE HOY: los jugadores del partido del día (top proyección de gol + arquetipo + gancho de
+  // scouting) en un strip horizontal sobre el feed. Cada card abre el perfil completo del jugador.
+  function featuredStrip() {
+    if (S.featured === undefined) {
+      S.featured = null;
+      fetch('/api/beta/featured-today', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+        S.featured = (j && j.available && j.players) || [];
+        if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) { noAnimWindow(); picksFeed(b); } }
+      });
+      return '';
+    }
+    var ps = S.featured || [];
+    if (!ps.length) return '';
+    var cards = ps.map(function (p) {
+      var photo = p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '';
+      var hook = LANG === 'en' ? (p.hook_en || p.hook_es) : (p.hook_es || p.hook_en);
+      var risk = p.risk ? '<span class="gx-badge gx-intel-risk">' + esc(p.risk === 'DOUBT' ? t('intel_doubt') : p.risk === 'OUT' ? t('intel_out') : t('intel_susp')) + '</span>' : '';
+      return '<a class="gx-feat-card" href="#player/' + esc(p.pid) + '">' + photo +
+        '<div class="gx-feat-b"><div class="gx-feat-n"><span class="fl">' + flag(p.team_id) + '</span><b>' + esc(p.name) + '</b></div>' +
+        '<div class="gx-feat-meta">' + archBadge(p.archetype) + risk + '<span class="gx-mono gx-pos">' + pct0(p.anytime) + '</span><span class="gx-dim" style="font-size:10px">' + esc(t('ft_goal')) + '</span></div>' +
+        (hook ? '<div class="gx-feat-hook">' + esc(hook) + '</div>' : '') + '</div></a>';
+    }).join('');
+    return '<div class="gx-feat"><div class="gx-ph" style="margin-bottom:8px"><span class="gx-label">' + ic('bulb') + esc(t('ft_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + ps.length + '</span></div><div class="gx-feat-row">' + cards + '</div></div>';
   }
   function pickTeam(p, code) { return code === 'home' ? teamName(p.home_team_id, p.home) : teamName(p.away_team_id, p.away); }
   function pickRecText(p) {
@@ -1978,6 +2008,36 @@
   function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; S.teamTab = 'resumen'; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
   // ── PERFIL DE JUGADOR (capa de inteligencia por jugador, admin-first) ─────────────────────────────────
   function openPlayer(pid, fromHash) { if (!pid) return; if (!fromHash) setHash('player/' + pid); S.view = 'player'; S.playerId = pid; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderPlayer(); }
+  // Radar SVG del jugador (misma matemática que el server para las páginas públicas; tema de la plataforma).
+  function gxRadar(axes) {
+    var n = (axes || []).length; if (n < 3) return '';
+    var size = 320, pad = 62, cx = size / 2, cy = size / 2, R = size / 2 - pad, rings = 4;
+    var ang = function (i) { return -Math.PI / 2 + (2 * Math.PI * i) / n; };
+    var pol = function (r, a) { return [(cx + r * Math.cos(a)).toFixed(1), (cy + r * Math.sin(a)).toFixed(1)]; };
+    var out = '<svg viewBox="0 0 ' + size + ' ' + size + '" class="gx-radar" role="img">';
+    for (var r = 1; r <= rings; r++) {
+      out += '<polygon points="' + axes.map(function (_, i) { return pol((R * r) / rings, ang(i)).join(','); }).join(' ') + '" fill="none" stroke="var(--gx-line)" stroke-width="1"/>';
+    }
+    for (var i = 0; i < n; i++) { var e = pol(R, ang(i)); out += '<line x1="' + cx + '" y1="' + cy + '" x2="' + e[0] + '" y2="' + e[1] + '" stroke="var(--gx-line)" stroke-width="1"/>'; }
+    var pts = axes.map(function (a, i) { return pol(R * Math.max(0.06, Math.min(1, a.pct || 0)), ang(i)).join(','); }).join(' ');
+    out += '<polygon points="' + pts + '" fill="rgba(43,227,166,.2)" stroke="var(--gx-pos)" stroke-width="2" stroke-linejoin="round"/>';
+    for (var j = 0; j < n; j++) {
+      var d = pol(R * Math.max(0.06, Math.min(1, axes[j].pct || 0)), ang(j));
+      out += '<circle cx="' + d[0] + '" cy="' + d[1] + '" r="3" fill="var(--gx-pos)"/>';
+      var a2 = ang(j), lp = pol(R + 17, a2);
+      var anchor = Math.abs(Math.cos(a2)) < 0.35 ? 'middle' : Math.cos(a2) > 0 ? 'start' : 'end';
+      var dy = Math.sin(a2) > 0.6 ? 8 : Math.sin(a2) < -0.6 ? -2 : 4;
+      var lk = 'ax_' + axes[j].key, lbl = t(lk); if (lbl === lk) lbl = axes[j].key;
+      out += '<text x="' + lp[0] + '" y="' + (parseFloat(lp[1]) + dy).toFixed(1) + '" text-anchor="' + anchor + '" font-size="10.5" font-weight="600" fill="var(--gx-text3)">' + esc(lbl) + '</text>';
+    }
+    return out + '</svg>';
+  }
+  function archBadge(code) {
+    if (!code) return '';
+    var k = 'arch_' + String(code).toLowerCase(), s = t(k);
+    return s === k ? '' : '<span class="gx-badge gx-arch">★ ' + esc(s) + '</span>';
+  }
+
   function renderPlayer() {
     var mv = $('#gx-matchview'); if (!mv) return;
     var pid = S.playerId;
@@ -1989,7 +2049,7 @@
       var photo = pr.photo ? '<img src="' + esc(pr.photo) + '" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--gx-line)" onerror="this.style.display=\'none\'">' : '';
       var confKey = it && it.confidence === 'HIGH' ? 'pp_conf_high' : it && it.confidence === 'MEDIUM' ? 'pp_conf_med' : 'pp_conf_low';
       var head = '<div class="gx-panel"><div class="gx-mod-body" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' + photo +
-        '<div style="min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:18px">' + esc(pr.name) + '</b><span class="gx-badge">' + esc(pr.pos || '') + '</span>' + (it ? '<span class="gx-badge">' + esc(t(confKey)) + '</span>' : '') + '</div>' +
+        '<div style="min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:18px">' + esc(pr.name) + '</b><span class="gx-badge">' + esc(pr.pos || '') + '</span>' + archBadge(d.scout && d.scout.archetype) + (it ? '<span class="gx-badge">' + esc(t(confKey)) + '</span>' : '') + '</div>' +
         '<div class="gx-dim" style="display:flex;align-items:center;gap:6px;margin-top:4px">' + flag(pr.team) + ' ' + esc(teamName(pr.team)) + '</div></div></div></div>';
       var reasons = it && it.reasons && it.reasons.length
         ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('pp_reading')) + '</span></div><div class="gx-mod-body" style="display:flex;gap:6px;flex-wrap:wrap">' +
@@ -2043,7 +2103,17 @@
       }).join('');
       var formHead = '<div class="gx-intel-row gx-intel-head" style="grid-template-columns:minmax(0,1fr) 40px 40px 40px 40px"><span class="n gx-label">' + esc(t('pp_rival')) + '</span><span class="v gx-label">MIN</span><span class="v gx-label">' + esc(t('pp_shots_h')) + '</span><span class="v gx-label">' + esc(t('pp_sot_h')) + '</span><span class="v gx-label">' + esc(t('pp_goals_h')) + '</span></div>';
       var form = formRows ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('pp_form')) + '</span></div><div class="gx-mod-body">' + formHead + formRows + '</div></div>' : '';
-      mv.innerHTML = mvShell(head + finding + reasons + proj + mkts + h2h + nums + form);
+      // SCOUT CARD: radar vs su posición + lectura de scouting (fortalezas/límite)
+      var scoutBlock = '';
+      if (d.scout && d.scout.axes && d.scout.axes.length >= 3) {
+        var rd = d.scout.read || { strengths: [], limit: null };
+        var sLis = (rd.strengths || []).map(function (s) { return '<li>' + esc(LANG === 'en' ? s.en : s.es) + '</li>'; }).join('');
+        var lLi = rd.limit ? '<li class="gx-scout-lim">' + esc(LANG === 'en' ? rd.limit.en : rd.limit.es) + '</li>' : '';
+        scoutBlock = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-line') + esc(t('pp_radar')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('pp_radar_sub')) + '</span></div>' +
+          '<div class="gx-mod-body"><div class="gx-radar-wrap">' + gxRadar(d.scout.axes) + '</div>' +
+          (sLis || lLi ? '<ul class="gx-scout-read">' + sLis + lLi + '</ul>' : '') + '</div></div>';
+      }
+      mv.innerHTML = mvShell(head + finding + scoutBlock + reasons + proj + mkts + h2h + nums + form);
       bindBack();
     });
   }

@@ -683,6 +683,14 @@ body { background:
 .gx-msec-meta { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .gx-msec-meta svg { width: 16px; height: 16px; color: var(--gx-text4); }
 .gx-msec-count { font-size: 11px; font-weight: 700; color: var(--gx-pos); background: rgba(43,227,166,.1); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+/* Móvil: el encabezado de sección se APILA (equipos a ancho completo arriba, hora+contador abajo) para que
+   los nombres salgan COMPLETOS — nunca "N... vs In..." (reporte Alexis 11-jul). */
+@media (max-width: 720px) {
+  .gx-msec-head { flex-direction: column; align-items: stretch; gap: 5px; padding: 10px 4px; }
+  .gx-msec-teams { flex-wrap: wrap; font-size: 14.5px; row-gap: 2px; }
+  .gx-msec-teams b { white-space: normal; overflow: visible; text-overflow: clip; }
+  .gx-msec-meta { justify-content: space-between; width: 100%; }
+}
 .gx-feat { margin-bottom: 14px; }
 .gx-feat-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
 .gx-feat-card { flex: 0 0 auto; display: flex; gap: 10px; align-items: center; width: 250px; background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 10px 12px; text-decoration: none; color: inherit; transition: border-color .15s; }

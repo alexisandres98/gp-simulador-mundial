@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: #0a0f0d; color: #fff; padding: 52px 56px; position: relative; }
+.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.brand { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 800; }
+.logo { width: 40px; height: 40px; border-radius: 11px; background: #12241c; display: flex; align-items: center; justify-content: center; font-size: 21px; box-shadow: inset 0 0 0 1px rgba(45,230,163,.35); }
+.round { color: #2de6a3; font-size: 16px; font-weight: 700; letter-spacing: 1.5px; border: 1px solid rgba(45,230,163,.4); border-radius: 99px; padding: 8px 18px; }
+h1 { font-size: 44px; font-weight: 800; letter-spacing: -1.2px; margin: 20px 0 6px; }
+.sub { font-size: 19px; color: #7d8f88; font-weight: 600; margin-bottom: 30px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.card { position: relative; background: #101915; border: 1px solid #1c2a24; border-radius: 18px; padding: 26px 26px 22px; overflow: hidden; }
+.card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #2de6a3; }
+.fam { color: #2de6a3; font-size: 14px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; margin-bottom: 11px; }
+.match { font-size: 15px; color: #9db0a8; font-weight: 600; line-height: 1.35; margin-bottom: 4px; }
+.tesis { font-size: 14px; color: #6f817a; margin-bottom: 16px; }
+.sel { font-size: 31px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 18px; line-height: 1.1; }
+.row { display: flex; align-items: flex-end; justify-content: space-between; }
+.conf { font-size: 15px; color: #9db0a8; }
+.conf b { color: #fff; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.dot.h { background: #2de6a3; } .dot.m { background: #f0b429; }
+.odds-w { text-align: right; }
+.odds-l { font-size: 12px; color: #6f817a; font-weight: 700; letter-spacing: 1px; }
+.odds { font-size: 38px; font-weight: 800; color: #2de6a3; line-height: 1.05; }
+.foot { position: absolute; bottom: 46px; left: 56px; right: 56px; display: flex; align-items: center; justify-content: space-between; }
+.foot .n { font-size: 16px; color: #6f817a; font-weight: 600; }
+.pill { background: #2de6a3; color: #05231a; font-size: 19px; font-weight: 800; padding: 13px 26px; border-radius: 99px; }
+</style></head>
+<body>
+  <div class="top">
+    <div class="brand"><div class="logo">⚽</div>GP World Cup Simulator</div>
+    <div class="round">● CUARTOS DE FINAL</div>
+  </div>
+  <h1>Las 4 mejores picks de hoy 🎯</h1>
+  <div class="sub">11 jul · doble jornada · siempre la mejor cuota</div>
+  <div class="grid">
+    <div class="card">
+      <div class="fam">Goles</div>
+      <div class="match">🇳🇴 Noruega vs Inglaterra 🏴󠁧󠁢󠁥󠁮󠁧󠁿 · hoy 4 PM COL</div>
+      <div class="tesis">Los dos generan volumen</div>
+      <div class="sel">Más de 2.5 goles</div>
+      <div class="row"><div class="conf"><span class="dot h"></span>Confianza: <b>Alta</b></div><div class="odds-w"><div class="odds-l">MEJOR CUOTA</div><div class="odds">1.79</div></div></div>
+    </div>
+    <div class="card">
+      <div class="fam">Ganador</div>
+      <div class="match">🇦🇷 Argentina vs Suiza 🇨🇭 · hoy 8 PM COL</div>
+      <div class="tesis">La albiceleste, favorita clara</div>
+      <div class="sel">Gana Argentina</div>
+      <div class="row"><div class="conf"><span class="dot m"></span>Confianza: <b>Media</b></div><div class="odds-w"><div class="odds-l">MEJOR CUOTA</div><div class="odds">1.80</div></div></div>
+    </div>
+    <div class="card">
+      <div class="fam">Goleador</div>
+      <div class="match">🇦🇷 Argentina vs Suiza 🇨🇭 · hoy 8 PM COL</div>
+      <div class="tesis">Ejecuta todo el balón parado</div>
+      <div class="sel">Messi anota</div>
+      <div class="row"><div class="conf"><span class="dot m"></span>Confianza: <b>Media</b></div><div class="odds-w"><div class="odds-l">MEJOR CUOTA</div><div class="odds">2.06</div></div></div>
+    </div>
+    <div class="card">
+      <div class="fam">Tarjetas</div>
+      <div class="match">🇦🇷 Argentina vs Suiza 🇨🇭 · hoy 8 PM COL</div>
+      <div class="tesis">Cruce limpio, paga sobre lo justo</div>
+      <div class="sel">Menos de 3.5</div>
+      <div class="row"><div class="conf"><span class="dot h"></span>Confianza: <b>Alta</b></div><div class="odds-w"><div class="odds-l">MEJOR CUOTA</div><div class="odds">1.88</div></div></div>
+    </div>
+  </div>
+  <div class="foot"><div class="n">Picks diarias · análisis claro · no es consejo financiero</div><div class="pill">gpsimulador.com</div></div>
+</body></html>

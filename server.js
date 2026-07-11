@@ -1107,6 +1107,85 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   return { subject, text, html };
 }
 
+// SECUENCIA FOUNDER (lanzamiento 12-jul): 3 correos, ES/EN, caja negra, sin rayitas. Los números
+// (track record, cupos) se resuelven AL MOMENTO DEL ENVÍO — nunca quedan viejos en el copy.
+// seq: 1 = apertura · 2 = los números (prueba) · 3 = última llamada. ctx.spotsLeft viene del contador Whop.
+function founderEmail(seq, lang, ctx = {}) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com/founder';
+  const tr = dailyPicksTrackRecord().overall || {};
+  const hit = tr.hit_rate != null ? Math.round(tr.hit_rate * 100) : null;
+  const roi = tr.roi_pct != null ? tr.roi_pct : null;
+  const spots = ctx.spotsLeft != null ? ctx.spotsLeft : 100;
+  const wrap = (kicker, h1, bodyHtml, ctaLabel) => `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${kicker}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${h1}</h1>
+    </div>
+    <div style="padding:24px 26px">
+      ${bodyHtml}
+      <div style="text-align:center;margin:20px 0 22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${ctaLabel}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+. Refunds within 24 hours of your first charge.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+. Reembolso dentro de las 24 horas del primer cobro.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</div>
+  </div></div>`;
+  const p = s => `<p style="margin:0 0 14px;font-size:14px;color:#2b3a33;line-height:1.6">${s}</p>`;
+  const li = s => `<p style="margin:0 0 8px;font-size:14px;color:#2b3a33;line-height:1.55">· ${s}</p>`;
+
+  if (seq === 1) {
+    const subject = en ? 'Founder Pass: your price locked for life (first 100)' : 'Founder Pass: tu precio de por vida (primeros 100)';
+    const text = en
+      ? `You used the full platform for free during the World Cup. That was on purpose: I wanted you to see the results before asking you for anything.\n\nToday I am opening the Founder Pass: the first 100 people in keep the founder price forever.\n\n· Pro: 12 dollars a month (going to 20 after). Every winner and goals pick, live cockpit, player profiles, stake calculator, alerts.\n· Sharp: 39 dollars a month (going to 59 after). Everything in Pro, plus corners, cards, goalscorers and assists, the mispriced odds detector, the 40+ books scanner, and new sports coming soon.\n\nThe price you lock today never goes up while you keep your subscription. Annual: 2 months free. Refund within 24 hours if it is not for you.\n\nSecure my Founder Pass: ${url}\n\nQuarterfinals are done, semifinals and the final are ahead. And after the World Cup comes the full club calendar: this platform does not shut down on the 19th, that is when it really starts.\n\nAlexis · GP Simulador`
+      : `Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.\n\nHoy abro el Founder Pass: los primeros 100 que entren se quedan con el precio fundador para siempre.\n\n· Pro: 12 dólares al mes (después será 20). Todas las picks de ganador y goles, cockpit en vivo, perfiles de jugador, calculadora de stake, alertas.\n· Sharp: 39 dólares al mes (después será 59). Todo lo de Pro, más córners, tarjetas, goleadores y asistencias, el detector de cuotas mal pagadas, el escáner de más de 40 casas, y nuevos deportes muy pronto.\n\nEl precio que asegures hoy no sube nunca mientras mantengas la suscripción. Anual: 2 meses gratis. Reembolso dentro de las 24 horas si no te convence.\n\nAsegurar mi Founder Pass: ${url}\n\nQuedan semifinales y la final. Y después del Mundial viene el calendario completo de clubes: la plataforma no se apaga el 19, ahí arranca.\n\nAlexis · GP Simulador`;
+    const html = wrap(
+      en ? 'Founder Pass · first 100' : 'Founder Pass · primeros 100',
+      en ? 'Your price, <span style="color:#18E6A3">locked for life</span>' : 'Tu precio, <span style="color:#18E6A3">congelado de por vida</span>',
+      p(en ? 'You used the full platform for free during the World Cup. That was on purpose: I wanted you to see the results before asking you for anything.' : 'Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.') +
+      p(en ? '<b>Today I open the Founder Pass:</b> the first 100 people in keep the founder price forever.' : '<b>Hoy abro el Founder Pass:</b> los primeros 100 que entren se quedan con el precio fundador para siempre.') +
+      li(en ? '<b>Pro: $12/month</b> (going to $20). Every winner and goals pick, live cockpit, player profiles, stake calculator, alerts.' : '<b>Pro: $12/mes</b> (después $20). Todas las picks de ganador y goles, cockpit en vivo, perfiles de jugador, calculadora, alertas.') +
+      li(en ? '<b>Sharp: $39/month</b> (going to $59). Everything in Pro plus corners, cards, goalscorers and assists, value detector, 40+ books scanner, and new sports coming soon.' : '<b>Sharp: $39/mes</b> (después $59). Todo lo de Pro más córners, tarjetas, goleadores y asistencias, detector de value, escáner de 40+ casas, y nuevos deportes muy pronto.') +
+      p(en ? 'The price you lock today never goes up while you keep your subscription. Annual: 2 months free. Refund within 24 hours if it is not for you.' : 'El precio que asegures hoy no sube nunca mientras mantengas tu suscripción. Anual: 2 meses gratis. Reembolso dentro de las 24 horas si no te convence.'),
+      en ? 'Secure my Founder Pass →' : 'Asegurar mi Founder Pass →'
+    );
+    return { subject, text, html };
+  }
+  if (seq === 2) {
+    const rec = hit != null ? `${tr.wins}/${tr.settled} (${hit}%)` : '';
+    const subject = en ? 'If you had followed every pick, this is what would have happened' : 'Si hubieras seguido todas las picks, esto habría pasado';
+    const pdf = en ? 'https://gpsimulador.com/informes/bankroll-sim-en.pdf' : 'https://gpsimulador.com/informes/bankroll-sim-es.pdf';
+    const text = en
+      ? `Yesterday I opened the Founder Pass and spots are going. Today I want to show you why.\n\nThe real record (check it under Performance in your account): ${tr.settled} settled picks, ${tr.wins} wins, ${hit}% hit rate, +${roi}% ROI. Published BEFORE each match, settled after. No way to cheat that.\n\nThe real money simulation: we took the full history and simulated a 5,000 dollar bankroll following every pick with conservative staking. Result: 8,890 dollars in one week. The full report, pick by pick: ${pdf}\n\nA Sharp subscription costs 39 dollars a month with the Founder Pass. ${spots} founder spots left out of 100.\n\nSecure my Founder Pass: ${url}\n\nAlexis · GP Simulador`
+      : `Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.\n\nEl registro real (podés verlo en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible.\n\nLa simulación con dinero real: tomamos el historial completo y simulamos un bankroll de 5,000 dólares siguiendo todas las picks con gestión conservadora. Resultado: 8,890 dólares en una semana. El informe completo, pick por pick: ${pdf}\n\nUna suscripción Sharp cuesta 39 dólares al mes con el Founder Pass. Quedan ${spots} cupos founder de 100.\n\nAsegurar mi Founder Pass: ${url}\n\nAlexis · GP Simulador`;
+    const html = wrap(
+      en ? 'The numbers' : 'Los números',
+      en ? `${rec} hit rate, <span style="color:#18E6A3">+${roi}% ROI</span>, all public` : `${rec} de acierto, <span style="color:#18E6A3">+${roi}% de ROI</span>, todo público`,
+      p(en ? 'Yesterday I opened the Founder Pass and spots are going. Today I want to show you why.' : 'Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.') +
+      p(en ? `<b>The real record</b> (under Performance in your account): ${tr.settled} settled picks, ${tr.wins} wins, ${hit}% hit rate, +${roi}% ROI. Published BEFORE each match, settled after. No way to cheat that.` : `<b>El registro real</b> (en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible.`) +
+      p(en ? `<b>The real money simulation:</b> a 5,000 dollar bankroll following every pick with conservative staking became <b>8,890 dollars in one week</b>. <a href="${pdf}" style="color:#0BA661;font-weight:700">Full report, pick by pick →</a>` : `<b>La simulación con dinero real:</b> un bankroll de 5,000 dólares siguiendo todas las picks con gestión conservadora se convirtió en <b>8,890 dólares en una semana</b>. <a href="${pdf}" style="color:#0BA661;font-weight:700">Informe completo, pick por pick →</a>`) +
+      p(en ? `A Sharp subscription is $39/month with the Founder Pass. <b>${spots} founder spots left out of 100.</b>` : `Una suscripción Sharp cuesta $39/mes con el Founder Pass. <b>Quedan ${spots} cupos founder de 100.</b>`),
+      en ? 'Secure my Founder Pass →' : 'Asegurar mi Founder Pass →'
+    );
+    return { subject, text, html };
+  }
+  // seq 3: última llamada
+  const subject = en ? 'Semifinals, the final, and a decision' : 'Semifinales, la final y una decisión';
+  const text = en
+    ? `This is the last week of the World Cup: semifinals and the final on Sunday the 19th. The platform will be on for every match, with picks, live odds and the scanner running.\n\nIt is also the last call for the Founder Pass. ${spots} spots left out of 100. When they are gone, prices move to the permanent ones: Pro at 20, Sharp at 59.\n\nWhat you lock in today:\n· Your price frozen for life (12 or 39 dollars a month)\n· Full access to the final week of the World Cup\n· Everything that comes after: the full club calendar, more markets, new sports. Founders get in first on all of it.\n\nIf you have been following the results, you already know what the system does. This is the window to keep it at the early price.\n\nSecure my Founder Pass: ${url}\n\nSee you at the semifinals.\nAlexis · GP Simulador`
+    : `Esta es la última semana del Mundial: semifinales y la final del domingo 19. La plataforma va a estar encendida para cada partido, con picks, cuotas en vivo y el escáner corriendo.\n\nY es también la última llamada del Founder Pass. Quedan ${spots} cupos de 100. Cuando se acaben, los precios pasan a los definitivos: Pro 20, Sharp 59.\n\nLo que asegurás hoy:\n· Tu precio congelado de por vida (12 o 39 dólares al mes)\n· Acceso completo a la última semana del Mundial\n· Todo lo que viene después: el calendario completo de clubes, más mercados, nuevos deportes. Los founders entran primero a todo.\n\nSi venís siguiendo los resultados, ya sabés lo que hace el sistema. Esta es la ventana para quedártelo al precio de los primeros.\n\nAsegurar mi Founder Pass: ${url}\n\nNos vemos en las semifinales.\nAlexis · GP Simulador`;
+  const html = wrap(
+    en ? 'Last call' : 'Última llamada',
+    en ? `${spots} founder spots left, <span style="color:#18E6A3">then prices go up</span>` : `Quedan ${spots} cupos founder, <span style="color:#18E6A3">después los precios suben</span>`,
+    p(en ? 'This is the last week of the World Cup: semifinals and the final on Sunday the 19th. The platform will be on for every match.' : 'Esta es la última semana del Mundial: semifinales y la final del domingo 19. La plataforma va a estar encendida para cada partido.') +
+    li(en ? 'Your price frozen for life ($12 or $39 a month)' : 'Tu precio congelado de por vida ($12 o $39 al mes)') +
+    li(en ? 'Full access to the final week of the World Cup' : 'Acceso completo a la última semana del Mundial') +
+    li(en ? 'Everything after: the full club calendar, more markets, new sports. Founders get in first.' : 'Todo lo que viene después: calendario completo de clubes, más mercados, nuevos deportes. Los founders entran primero.') +
+    p(en ? 'If you have been following the results, you already know what the system does. This is the window to keep it at the early price.' : 'Si venís siguiendo los resultados, ya sabés lo que hace el sistema. Esta es la ventana para quedártelo al precio de los primeros.'),
+    en ? 'Secure my Founder Pass →' : 'Asegurar mi Founder Pass →'
+  );
+  return { subject, text, html };
+}
+
 function broadcastEmail(referLink, lang) {
   if (lang === 'en') return broadcastEmailEN(referLink);
   const url = 'https://gpsimulador.com';
@@ -2994,6 +3073,28 @@ function propsPicksPublic() { return /^(1|true|yes|on)$/i.test(String(process.en
 // LAYOUT del board (10-jul, feedback pwnlord69): agrupar las picks en SECCIONES por partido con el pick del
 // día como hero arriba. Admin-first: el admin lo ve ya; GP_PICKS_SECTIONS_PUBLIC=true lo abre a todos.
 function picksSectionsPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PICKS_SECTIONS_PUBLIC || '')); }
+
+// CONTADOR REAL de cupos founder: membresías vigentes en Whop sobre los 4 planes founder (memo 5 min).
+// "Primeros 100" = 100 cupos TOTALES entre todos los planes. Fallback null (la página muestra 100/100).
+let _founderSpots = { at: 0, left: null };
+async function whopFounderSpotsLeft() {
+  if (Date.now() - _founderSpots.at < 5 * 60e3 && _founderSpots.left != null) return _founderSpots.left;
+  const key = process.env.WHOP_API_KEY;
+  const ids = String(process.env.WHOP_FOUNDER_PLAN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!key || !ids.length) return null;
+  try {
+    let sold = 0;
+    for (const pid of ids) {
+      const r = await fetch(`https://api.whop.com/api/v2/memberships?plan_id=${encodeURIComponent(pid)}&per=100`, {
+        headers: { Authorization: 'Bearer ' + key }, signal: AbortSignal.timeout(8000),
+      });
+      const j = r.ok ? await r.json() : null;
+      sold += ((j && j.data) || []).filter(m => m.valid === true || ['active', 'trialing', 'completed', 'past_due'].includes(m.status)).length;
+    }
+    _founderSpots = { at: Date.now(), left: Math.max(0, 100 - sold) };
+  } catch { _founderSpots.at = Date.now(); /* conserva el último valor conocido */ }
+  return _founderSpots.left;
+}
 // Idioma por DEFECTO del primer ingreso (visitante sin preferencia guardada). El cliente lo lee de
 // window.__GPDL. 8-jul: 'en' para el test de ads en África (la landing en español disparaba leads que
 // no entendían y no entraban). Valores: 'en' | 'es' | 'auto' (auto = según el navegador, comportamiento
@@ -4557,6 +4658,8 @@ const server = http.createServer(async (req, res) => {
         ...u, refCode: code, referrals: (db.users[u.email].referrals || []).length,
         plan: planFor(u.email), plan_effective: effectivePlan(u.email), plans_enforced: plansEnforced(),
         plan_founder: !!(g && g.founder), plan_status: g ? g.status : null, plan_since: g ? g.since || null : null,
+        // lanzamiento founder: con la env encendida, "Mi suscripción" y el CTA de upgrade se abren a todos
+        founder_public: /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim()),
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -5821,15 +5924,20 @@ const server = http.createServer(async (req, res) => {
       // El resto: cada usuario recibe el correo en SU idioma (perfil → idioma; si no, inferido del país; si no, es).
       // buildMail recibe el EMAIL (deriva idioma adentro). 'leads_magic' genera un magic link personalizado
       // por lead (estilo personal → Principal; sin List-Unsubscribe).
-      const buildMailBase = (variant === 'leads_magic')
-        ? (em) => ({ ...leadReactivationEmail(em), from: REENGAGE_FROM, noListUnsub: true })
-        : (variant === 'reengage')
-          ? (em) => ({ ...reengageEmail(link, userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
-          : (variant === 'bankroll_es') ? () => bankrollEmail('es')
-            : (variant === 'bankroll_en') ? () => bankrollEmail('en')
-              : (variant === 'features_es') ? () => featuresEmail('es')
-                : (variant === 'features_en') ? () => featuresEmail('en')
-                  : (em) => broadcastEmail(link, userLang(em));
+      // Secuencia founder: founder{1,2,3}_{es,en}. Los cupos se resuelven UNA vez por request (contador Whop).
+      const founderMatch = /^founder([123])_(es|en)$/.exec(variant || '');
+      const founderCtx = founderMatch ? { spotsLeft: await whopFounderSpotsLeft().catch(() => null) } : null;
+      const buildMailBase = founderMatch
+        ? () => founderEmail(Number(founderMatch[1]), founderMatch[2], founderCtx)
+        : (variant === 'leads_magic')
+          ? (em) => ({ ...leadReactivationEmail(em), from: REENGAGE_FROM, noListUnsub: true })
+          : (variant === 'reengage')
+            ? (em) => ({ ...reengageEmail(link, userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
+            : (variant === 'bankroll_es') ? () => bankrollEmail('es')
+              : (variant === 'bankroll_en') ? () => bankrollEmail('en')
+                : (variant === 'features_es') ? () => featuresEmail('es')
+                  : (variant === 'features_en') ? () => featuresEmail('en')
+                    : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la
@@ -5918,7 +6026,12 @@ const server = http.createServer(async (req, res) => {
       try {
         const ff = path.join(__dirname, 'public', 'founder.html');
         // inyectar los plan IDs de Whop (envs) → la página activa los botones de checkout directo.
-        const W = { pro_m: process.env.WHOP_PLAN_PRO_M || '', pro_y: process.env.WHOP_PLAN_PRO_Y || '', sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '' };
+        // + CONTADOR REAL de cupos founder (membresías vigentes en Whop, memo 5 min, fallback null → 100).
+        const W = {
+          pro_m: process.env.WHOP_PLAN_PRO_M || '', pro_y: process.env.WHOP_PLAN_PRO_Y || '',
+          sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '',
+          left: await whopFounderSpotsLeft().catch(() => null),
+        };
         const html = fs.readFileSync(ff, 'utf8').replace('</head>', `<script>window.__WHOP=${JSON.stringify(W)}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);

@@ -750,7 +750,7 @@
     m.innerHTML = '<div class="gx-acct-head"><div class="gx-avatar">' + esc(email ? email[0].toUpperCase() : 'GP') + '</div><div class="gx-acct-id"><div class="gx-acct-em">' + esc(email || '—') + '</div><div class="gx-acct-role">' + esc(role) + '</div></div></div>' +
       '<button class="gx-acct-i" id="gx-profile">' + ic('user') + '<span>' + esc(t('account')) + '</span></button>' +
       // Soporte: ABIERTO a todos (8-jul). Mi suscripción sigue solo-admin hasta el lanzamiento de pagos.
-      (S.me && S.me.isAdmin ? '<button class="gx-acct-i" id="gx-sub">' + ic('crown') + '<span>' + esc(t('sub_nav')) + '</span></button>' : '') +
+      (S.me && (S.me.isAdmin || S.me.founder_public) ? '<button class="gx-acct-i" id="gx-sub">' + ic('crown') + '<span>' + esc(t('sub_nav')) + '</span></button>' : '') +
       '<button class="gx-acct-i" id="gx-support">' + ic('lifebuoy') + '<span>' + esc(t('sup_nav')) + '</span></button>' +
       '<button class="gx-acct-i gx-acct-danger" id="gx-logout">' + ic('logout') + '<span>' + esc(t('logout')) + '</span></button>';
     var pf = m.querySelector('#gx-profile'); if (pf) pf.addEventListener('click', function () { closeAcctMenu(); openGxProfile(); });
@@ -2181,7 +2181,7 @@
   function showView(v) {
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
-    if (['registry', 'method', 'admin', 'sub'].indexOf(v) >= 0 && S.me && !S.me.isAdmin) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
@@ -4010,7 +4010,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); maybeOnboard(); loadPlayerIndex(); if (['registry', 'method', 'admin', 'sub'].indexOf(S.view) >= 0 && !me.isAdmin) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); maybeOnboard(); loadPlayerIndex(); if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

@@ -2991,6 +2991,9 @@ if (canonicalAutoOn()) {
 // TheStatsAPI. Familias VISIBLES SOLO PARA ADMIN hasta GP_PROPS_PICKS_PUBLIC=true (aprobación de Alexis).
 function propsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_ENABLED || '')); }
 function propsPicksPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PROPS_PICKS_PUBLIC || '')); }
+// LAYOUT del board (10-jul, feedback pwnlord69): agrupar las picks en SECCIONES por partido con el pick del
+// día como hero arriba. Admin-first: el admin lo ve ya; GP_PICKS_SECTIONS_PUBLIC=true lo abre a todos.
+function picksSectionsPublic() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_PICKS_SECTIONS_PUBLIC || '')); }
 // Idioma por DEFECTO del primer ingreso (visitante sin preferencia guardada). El cliente lo lee de
 // window.__GPDL. 8-jul: 'en' para el test de ads en África (la landing en español disparaba leads que
 // no entendían y no entraban). Valores: 'en' | 'es' | 'auto' (auto = según el navegador, comportamiento
@@ -4049,7 +4052,8 @@ const server = http.createServer(async (req, res) => {
           const fut = (espnKickoffs || []).filter(t => t > now);
           if (fut.length) nextKo = new Date(Math.min.apply(null, fut)).toISOString();
         }
-        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, plan, locked_count: lockedCount, plan_delayed: planDelayed, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, generated_at: new Date().toISOString() });
+        const picksLayout = (betaUser && betaUser.isAdmin) || picksSectionsPublic() ? 'sections' : 'flat';
+        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, plan, locked_count: lockedCount, plan_delayed: planDelayed, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, picks_layout: picksLayout, generated_at: new Date().toISOString() });
       }
       // TRACK RECORD de picks (usuarios, todos los planes): prueba social del producto. Agregados + historial de
       // liquidadas SANEADO (sin model%/mercado%/confianza internos; solo qué se publicó, cuota y resultado).

@@ -141,7 +141,7 @@
       evo_champion: 'Probabilidad de campeón', evo_snapshots: 'snapshots', evo_trend: 'Tendencia', evo_now: 'Ahora', evo_top: 'Top 10', evo_note: 'Solo snapshots reales registrados; sin histórico fabricado.',
       reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
       // ---- Feed de picks diarias (producto) ----
-      pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa',
+      pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa', pf_pick_of_day: 'Pick del día', pf_all_by_match: 'Todas las picks por partido',
       pf_empty: 'No hay picks activas ahora mismo', pf_empty_sub: 'Las picks del día aparecen aquí en cuanto se publican. Vuelve pronto.',
       pf_yesterday: 'Ayer: {won} de {total} picks acertadas', pf_next_ko: 'El próximo partido es a las {time} — las picks salen unas horas antes',
       pf_fam_solid: 'Ganador', pf_fam_goals: 'Goles', pf_fam_combo: 'Combinada',
@@ -373,7 +373,7 @@
       evo_champion: 'Champion probability', evo_snapshots: 'snapshots', evo_trend: 'Trend', evo_now: 'Now', evo_top: 'Top 10', evo_note: 'Only real recorded snapshots; no fabricated history.',
       reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
       // ---- Daily picks feed (product) ----
-      pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick',
+      pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick', pf_pick_of_day: 'Pick of the day', pf_all_by_match: 'All picks by match',
       pf_empty: 'No active picks right now', pf_empty_sub: 'Daily picks show up here as soon as they are published. Check back soon.',
       pf_yesterday: 'Yesterday: {won} of {total} picks hit', pf_next_ko: 'Next match kicks off at {time} — picks drop a few hours before',
       pf_fam_solid: 'Winner', pf_fam_goals: 'Goals', pf_fam_combo: 'Combo',
@@ -895,7 +895,7 @@
     // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
     var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
     // Mejor pick: la pick diaria de mayor confianza (feed del producto). Lazy-load si aún no está.
-    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
+    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, layout: j.picks_layout || 'flat' } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
     // OUTRIGHT (campeón GP vs mercado): fuente de los fallbacks de "Mejor value" y "Mayor desacuerdo" cuando no hay
@@ -1028,7 +1028,7 @@
     if (S.dailyPicks === undefined) {
       S.dailyPicks = null;
       fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
-        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed } : null;
+        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, layout: j.picks_layout || 'flat' } : null;
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
         refreshCockpit();
       });
@@ -1054,8 +1054,47 @@
       bd.innerHTML = recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
       return;
     }
-    bd.innerHTML = recap + featuredStrip() + '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>' + lockTeaser +
+    // LAYOUT (admin-first): 'sections' agrupa las picks por partido con el PICK DEL DÍA como hero arriba;
+    // 'flat' es el feed corrido de siempre (todos los no-admin hasta que GP_PICKS_SECTIONS_PUBLIC=true).
+    var picksHtml = (meta.layout === 'sections' && picks.length > 1)
+      ? picksSectioned(picks)
+      : '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>';
+    bd.innerHTML = recap + featuredStrip() + picksHtml + lockTeaser +
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
+  }
+  // Board en SECCIONES: hero "Pick del día" (mayor confianza) arriba + el resto agrupado por partido, con
+  // encabezado clickeable que abre el cockpit del partido. El hero se excluye de su sección para no duplicar.
+  function picksSectioned(picks) {
+    var sorted = picks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); });
+    var hero = sorted[0];
+    var rest = picks.filter(function (p) { return p !== hero; });
+    var groups = {}, order = [];
+    rest.forEach(function (p) {
+      var k = p.home_team_id + '~' + p.away_team_id;
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(p);
+    });
+    order.sort(function (a, b) { return new Date(groups[a][0].kickoff || 0) - new Date(groups[b][0].kickoff || 0); });
+    var html = '';
+    if (hero) {
+      html += '<div class="gx-pickday"><div class="gx-pickday-lbl">' + ic('star') + esc(t('pf_pick_of_day')) + '</div>' + pickCard(hero) + '</div>';
+    }
+    if (order.length) {
+      html += '<div class="gx-secdiv">' + esc(t('pf_all_by_match')) + '</div>';
+      order.forEach(function (k) {
+        var gp = groups[k], f = gp[0];
+        var openId = f.event_id || ((f.home_team_id && f.away_team_id) ? 'teams-' + f.home_team_id + '-' + f.away_team_id : null);
+        var when = '';
+        try { when = new Date(f.kickoff).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
+        var hh = teamName(f.home_team_id, f.home), aa = teamName(f.away_team_id, f.away);
+        var head = '<div class="gx-msec-head"' + (openId ? ' data-openmatch="' + esc(openId) + '"' : '') + '>' +
+          '<div class="gx-msec-teams"><span class="fl">' + flag(f.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
+          '<span class="gx-msec-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(f.away_team_id) + '</span></div>' +
+          '<div class="gx-msec-meta"><span class="gx-dim">' + esc(when) + '</span><span class="gx-msec-count">' + gp.length + ' ' + esc(gp.length === 1 ? t('pf_count1') : t('pf_count')) + '</span>' + ic('chevron-right') + '</div></div>';
+        html += '<div class="gx-msec">' + head + '<div class="gx-picks-feed">' + gp.map(function (p) { return pickCard(p, { hideMatch: true }); }).join('') + '</div></div>';
+      });
+    }
+    return html;
   }
   // DESTACADOS DE HOY: los jugadores del partido del día (top proyección de gol + arquetipo + gancho de
   // scouting) en un strip horizontal sobre el feed. Cada card abre el perfil completo del jugador.
@@ -1120,7 +1159,8 @@
     return '<div class="gx-pick-linemove ' + (withUs ? 'gx-lm-with' : 'gx-lm-against') + '">' + arrow + ' ' + esc(txt) + '</div>';
   }
 
-  function pickCard(p) {
+  function pickCard(p, opts) {
+    opts = opts || {};
     var famKey = p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
     var bucket = confBucket(p.confidence || 0);
     var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
@@ -1134,9 +1174,9 @@
     var openAttr = clickable ? ' data-openmatch="' + esc(openId) + '"' : '';
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
       '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + '</span>' +
-      '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span></div>' +
-      '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
-      '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>' +
+      (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') + '</div>' +
+      (opts.hideMatch ? '' : '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
+        '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>') +
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +

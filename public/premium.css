@@ -668,6 +668,21 @@ body { background:
 .gx-scout-read li { font-size: 12.5px; color: var(--gx-text2); margin: 6px 0; line-height: 1.45; }
 .gx-scout-read li.gx-scout-lim { color: var(--gx-warn); opacity: .9; }
 .gx-arch { background: rgba(43,227,166,.12); border-color: rgba(43,227,166,.45); color: var(--gx-pos); font-weight: 700; }
+.gx-pickday { margin-bottom: 18px; position: relative; }
+.gx-pickday-lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--gx-pos); margin-bottom: 8px; }
+.gx-pickday-lbl svg { width: 13px; height: 13px; }
+.gx-pickday .gx-pick-card { border-color: rgba(43,227,166,.4); box-shadow: 0 0 0 1px rgba(43,227,166,.15), 0 8px 30px rgba(43,227,166,.07); }
+.gx-secdiv { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--gx-text3); margin: 6px 0 12px; padding-top: 14px; border-top: 1px solid var(--gx-line); }
+.gx-msec { margin-bottom: 18px; }
+.gx-msec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 12px; cursor: pointer; border-radius: 10px; transition: background .15s; }
+.gx-msec-head:hover { background: var(--gx-bg2); }
+.gx-msec-teams { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 700; min-width: 0; }
+.gx-msec-teams b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-msec-teams .fl { font-size: 15px; }
+.gx-msec-vs { color: var(--gx-text4); font-size: 11px; font-weight: 500; margin: 0 1px; }
+.gx-msec-meta { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.gx-msec-meta svg { width: 16px; height: 16px; color: var(--gx-text4); }
+.gx-msec-count { font-size: 11px; font-weight: 700; color: var(--gx-pos); background: rgba(43,227,166,.1); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
 .gx-feat { margin-bottom: 14px; }
 .gx-feat-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
 .gx-feat-card { flex: 0 0 auto; display: flex; gap: 10px; align-items: center; width: 250px; background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: var(--gx-r); padding: 10px 12px; text-decoration: none; color: inherit; transition: border-color .15s; }

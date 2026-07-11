@@ -4793,12 +4793,27 @@ const server = http.createServer(async (req, res) => {
         const invalid = /went_invalid|cancel|expired|refund|payment_failed|past_due/i.test(act);
         ev.parsed = { email: email || null, plan_id: planId || null, plan };
         if (email && plan && valid) {
+          const isNewGrant = !db.premiumGrants[email] || db.premiumGrants[email].status !== 'active';
           db.premiumGrants[email] = {
             plan, status: 'active', founder: csv('WHOP_FOUNDER_PLAN_IDS').includes(planId) || undefined,
             source: 'whop', whop_membership_id: d.id || null, whop_plan_id: planId,
             since: (db.premiumGrants[email] && db.premiumGrants[email].since) || new Date().toISOString(), updatedAt: new Date().toISOString(),
           };
           ev.applied = { email, plan, status: 'active' };
+          // BIENVENIDA FOUNDER (primera activación): refuerza la compra al instante — status founder, qué
+          // tiene, y el precio congelado. Reduce el arrepentimiento post-compra. No bloquea el webhook.
+          if (isNewGrant && mailer.isConfigured()) {
+            const en = userLang(email) === 'en';
+            const planN = plan === 'sharp' ? 'Sharp' : 'Pro';
+            mailer.sendMail({
+              to: email, noListUnsub: true,
+              subject: en ? `You're in: Founder ${planN} activated ★` : `Ya estás dentro: Founder ${planN} activado ★`,
+              text: en
+                ? `Welcome to the first 100.\n\nYour Founder ${planN} is active and your price is locked for life: it will never go up while your subscription stays active, even when public prices rise after the World Cup.\n\nWhat you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.\n\nYour board: https://gpsimulador.com\nYour subscription: https://gpsimulador.com/#sub\n\nAny questions, just reply to this email.\n\nAlexis · GP Simulador`
+                : `Bienvenido a los primeros 100.\n\nTu Founder ${planN} está activo y tu precio quedó congelado de por vida: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.\n\nLo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.\n\nTu tablero: https://gpsimulador.com\nTu suscripción: https://gpsimulador.com/#sub\n\nCualquier duda, respondé este correo.\n\nAlexis · GP Simulador`,
+              html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a"><h2 style="color:#0BA661">${en ? `You're in: Founder ${planN} ★` : `Ya estás dentro: Founder ${planN} ★`}</h2><p>${en ? 'Welcome to the first 100. Your price is <b>locked for life</b>: it never goes up while your subscription stays active, even when public prices rise after the World Cup.' : 'Bienvenido a los primeros 100. Tu precio quedó <b>congelado de por vida</b>: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.'}</p><p>${en ? 'What you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.' : 'Lo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.'}</p><p style="text-align:center;margin:22px 0"><a href="https://gpsimulador.com" style="display:inline-block;background:#0BA661;color:#fff;font-weight:bold;padding:13px 30px;border-radius:99px;text-decoration:none">${en ? 'Open my board →' : 'Abrir mi tablero →'}</a></p><p style="font-size:12.5px;color:#888">${en ? 'Any questions, just reply to this email.' : 'Cualquier duda, respondé este correo.'}</p></div>`,
+            }).catch(e => console.error('[whop] welcome email falló:', e.message));
+          }
         } else if (email && invalid && db.premiumGrants[email]) {
           db.premiumGrants[email] = { ...db.premiumGrants[email], status: /past_due|payment_failed/i.test(act) ? 'past_due' : 'cancelled', updatedAt: new Date().toISOString() };
           ev.applied = { email, status: db.premiumGrants[email].status };

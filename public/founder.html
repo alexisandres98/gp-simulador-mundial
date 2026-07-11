@@ -46,7 +46,10 @@ h1 b { color:var(--ac); }
 .price .per { color:var(--tx3); font-size:13px; }
 .price .was { color:var(--tx3); font-size:16px; text-decoration:line-through; font-weight:600; }
 .founder-note { margin-top:6px; font-size:12px; font-weight:700; color:var(--amber); }
-.annual { margin-top:4px; font-size:12px; color:var(--tx3); }
+.annual { margin-top:10px; }
+.annual a, .annual span.na { display:flex; align-items:center; justify-content:center; gap:8px; border:1px dashed rgba(255,193,94,.45); background:rgba(255,193,94,.07); border-radius:10px; padding:9px 12px; font-size:12.5px; font-weight:700; color:var(--amber) !important; text-decoration:none; transition:background .15s; }
+.annual a:hover { background:rgba(255,193,94,.14); }
+.annual .save { background:var(--amber); color:#231803; font-size:9.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:99px; }
 .feats { list-style:none; margin-top:20px; display:flex; flex-direction:column; gap:11px; flex:1; }
 .feats li { display:flex; gap:10px; font-size:13.5px; color:var(--tx2); line-height:1.45; }
 .feats li.on { color:var(--tx); }
@@ -118,7 +121,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       foot_legal: 'Términos y condiciones · Política de reembolso · Privacidad — (páginas en preparación)',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Más popular',
-      mo: '/mes', forever: 'de por vida, primeros 100', annual_pro: 'o $190/año (2 meses gratis)', annual_sharp: 'o $590/año (2 meses gratis)',
+      mo: '/mes', forever: 'de por vida, primeros 100', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
       cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_buy: 'Asegurar mi Founder Pass', cta_note: 'El checkout se habilita en el lanzamiento', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras', annual_link: 'anual',
       soon: 'Próximamente',
       f_free: [
@@ -152,10 +155,10 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['on', 'Todo lo del plan Pro']
       ],
       faqs: [
-        ['¿Qué es el precio founder?', 'Los primeros 100 miembros pagan $12 (Pro) o $39 (Sharp) al mes de por vida — mientras mantengan la suscripción activa, ese precio nunca sube, aunque los planes públicos cuesten más.'],
+        ['¿Qué es el precio founder?', 'Es un precio especial de lanzamiento que SOLO existe mientras dure el Mundial. Cuando termine el torneo (19 de julio) o se llenen los 100 cupos, lo que pase primero, el Founder Pass se cierra para siempre y los precios pasan a los definitivos: $20 (Pro) y $59 (Sharp). Los primeros 100 pagan $12 y $39 de por vida: mientras tu suscripción siga activa, ese precio no sube nunca, aunque todo lo demás suba.'],
         ['¿Puedo cancelar cuando quiera?', 'Sí. Cancelás en un clic desde tu perfil y no se te cobra el mes siguiente. Sin permanencia ni letra chica.'],
         ['¿Hay reembolso?', 'Sí: si no te convence, tenés 24 horas desde el primer pago para pedir el reembolso completo, sin preguntas.'],
-        ['¿Qué pasa después del Mundial?', 'La plataforma sigue: fútbol de clubes y selecciones todo el año, con los mismos productos y nuevos mercados (córners, tarjetas, goleadores, asistencias) llegando primero a Sharp.'],
+        ['¿Qué pasa después del Mundial?', 'El Mundial fue la prueba pública del sistema, con el historial verificado a la vista. Lo que viene después es el producto completo: fútbol de clubes TODO el año (Champions, Premier, LaLiga, Serie A, Bundesliga y más), los mismos motores alimentados con muchas más ligas, picks diarias verificadas, córners, tarjetas, goleadores y asistencias, y nuevos deportes muy pronto. Tu Founder Pass cubre todo eso al precio congelado: pagás $12 o $39 para siempre por lo que los que lleguen tarde pagarán $20 o $59, o más.'],
         ['¿Esto garantiza ganancias?', 'No. Publicamos análisis y jugadas verificadas con transparencia total — el historial es público, con aciertos y errores. No es consejo financiero.']
       ]
     },
@@ -170,7 +173,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       foot_legal: 'Terms & conditions · Refund policy · Privacy — (pages in preparation)',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Most popular',
-      mo: '/mo', forever: 'for life, first 100', annual_pro: 'or $190/yr (2 months free)', annual_sharp: 'or $590/yr (2 months free)',
+      mo: '/mo', forever: 'for life, first 100', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
       cta_free: 'Your current plan', cta: 'Coming soon', cta_buy: 'Lock my Founder Pass', cta_note: 'Checkout opens at launch', cta_note_live: 'Secure payment via Whop · cancel anytime', annual_link: 'annual',
       soon: 'Coming soon',
       f_free: [
@@ -204,10 +207,10 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['on', 'Everything in Pro']
       ],
       faqs: [
-        ['What is the founder price?', 'The first 100 members pay $12 (Pro) or $39 (Sharp) per month for life — as long as your subscription stays active, that price never goes up, even when public plans cost more.'],
+        ['What is the founder price?', 'A special launch price that ONLY exists while the World Cup lasts. When the tournament ends (July 19) or the 100 spots fill, whichever comes first, the Founder Pass closes forever and prices move to the permanent ones: $20 (Pro) and $59 (Sharp). The first 100 pay $12 and $39 for life: as long as your subscription stays active, that price never goes up, even when everything else does.'],
         ['Can I cancel anytime?', 'Yes. One click from your profile and you won’t be charged the next month. No lock-in, no fine print.'],
         ['Is there a refund?', 'Yes: if it’s not for you, you have 24 hours from your first payment for a full refund, no questions asked.'],
-        ['What happens after the World Cup?', 'The platform continues: club and international football all year, same products, with new markets (corners, cards, goalscorers, assists) landing on Sharp first.'],
+        ['What happens after the World Cup?', 'The World Cup was the public proof of the system, with the verified record in plain sight. What comes next is the full product: club football ALL year (Champions League, Premier League, LaLiga, Serie A, Bundesliga and more), the same engines fed with far more leagues, daily verified picks, corners, cards, goalscorers and assists, and new sports coming soon. Your Founder Pass covers all of it at the frozen price: you pay $12 or $39 forever for what latecomers will pay $20 or $59, or more.'],
         ['Does this guarantee profits?', 'No. We publish verified analysis and plays with full transparency — the track record is public, hits and misses. Not financial advice.']
       ]
     }
@@ -226,7 +229,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     var co = function (id) { return 'https://whop.com/checkout/' + id; };
     var cta = function (mId) { return mId ? '<a class="pcta live" href="' + co(mId) + '" target="_blank" rel="noopener">' + T('cta_buy') + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>'; };
     var note = function (mId) { return '<div class="pcta-note">' + (mId ? T('cta_note_live') : T('cta_note')) + '</div>'; };
-    var annual = function (yId, txt) { return '<div class="annual">' + (yId ? '<a href="' + co(yId) + '" target="_blank" rel="noopener">' + txt + '</a>' : txt) + '</div>'; };
+    var annual = function (yId, txt) { var inner = '<span class="save">' + T('annual_save') + '</span> ' + txt; return '<div class="annual">' + (yId ? '<a href="' + co(yId) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<span class="na">' + inner + '</span>') + '</div>'; };
     document.getElementById('plans').innerHTML =
       '<div class="plan"><div class="pname">' + T('free_name') + '</div>' +
         '<div class="price"><span class="n">$0</span></div><div class="annual">&nbsp;</div>' +

@@ -4660,6 +4660,7 @@ const server = http.createServer(async (req, res) => {
         plan_founder: !!(g && g.founder), plan_status: g ? g.status : null, plan_since: g ? g.since || null : null,
         // lanzamiento founder: con la env encendida, "Mi suscripción" y el CTA de upgrade se abren a todos
         founder_public: /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim()),
+        founder_spots: await whopFounderSpotsLeft().catch(() => null),
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -4669,6 +4670,46 @@ const server = http.createServer(async (req, res) => {
       db.users[u.email].onboarded = Date.now();
       save();
       return json(res, 200, { ok: true });
+    }
+    // CANCELACIÓN de suscripción con verificación por código al email (fricción intencional + seguridad).
+    // Paso 1: POST /api/me/cancel/request → envía código. Paso 2: POST /api/me/cancel {code} → cancela el grant.
+    // Marca el grant como cancelled (mantiene acceso hasta fin de ciclo por diseño de Whop); el usuario debe
+    // además cancelar el pago recurrente en Whop (le damos el link). No borra la cuenta.
+    if (p === '/api/me/cancel/request' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const g = db.premiumGrants[u.email];
+      if (!g || g.status === 'cancelled') return json(res, 400, { error: 'No hay suscripción activa que cancelar.' });
+      db.cancelCodes = db.cancelCodes || {};
+      const code = String(crypto.randomInt(100000, 999999));
+      db.cancelCodes[u.email] = { code, exp: Date.now() + 15 * 60 * 1000 };
+      save();
+      if (mailer.isConfigured()) {
+        const en = userLang(u.email) === 'en';
+        try {
+          await mailer.sendMail({
+            to: u.email, prefer: 'relay',
+            subject: en ? `${code} is your cancellation code` : `${code} es tu código de cancelación`,
+            text: en ? `Your cancellation code is ${code}. It expires in 15 minutes. If you didn't request to cancel, ignore this email and nothing changes.` : `Tu código de cancelación es ${code}. Vence en 15 minutos. Si no pediste cancelar, ignora este correo y nada cambia.`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:440px;margin:0 auto;color:#1a1a1a"><p style="font-size:15px">${en ? 'Your cancellation code:' : 'Tu código de cancelación:'}</p><p style="font-size:32px;font-weight:bold;letter-spacing:8px;background:#f4f5f4;padding:14px 20px;border-radius:10px;text-align:center">${code}</p><p style="font-size:13px;color:#666">${en ? 'Expires in 15 minutes. If you did not request this, ignore this email and nothing changes.' : 'Vence en 15 minutos. Si no pediste esto, ignora este correo y nada cambia.'}</p></div>`,
+          });
+        } catch (e) { return json(res, 502, { error: 'No pudimos enviar el código. Intenta de nuevo.' }); }
+      }
+      return json(res, 200, { ok: true, sent: true });
+    }
+    if (p === '/api/me/cancel' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const { code } = await readBody(req);
+      const rec = (db.cancelCodes || {})[u.email];
+      if (!rec || rec.exp < Date.now() || String(code) !== rec.code) return json(res, 400, { error: 'Código inválido o vencido.' });
+      const g = db.premiumGrants[u.email];
+      if (!g) return json(res, 400, { error: 'No hay suscripción activa.' });
+      db.premiumGrants[u.email] = { ...g, status: 'cancelled', cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      delete db.cancelCodes[u.email];
+      save();
+      console.log('[sub] cancelación confirmada por', u.email);
+      return json(res, 200, { ok: true, cancelled: true });
     }
     // ANALYTICS de retención (admin): DAU + D1/D7 + quiénes vuelven a diario. Fuente: db.dau (histórico se
     // acumula desde el deploy de este feature; las métricas de retención maduran con los días).

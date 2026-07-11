@@ -18,7 +18,7 @@
       sub_nav: 'Mi suscripción', sub_title: 'Mi suscripción', sub_plan: 'Plan actual', sub_founder: 'FOUNDER', sub_status: 'Estado',
       sub_active: 'Activa', sub_cancelled: 'Cancelada', sub_pastdue: 'Pago pendiente', sub_since: 'Miembro desde',
       sub_free_note: 'Acceso completo gratis durante el Mundial. Los planes llegan pronto — los primeros 100 tendrán precio founder de por vida.',
-      sub_upgrade: 'Ver planes', sub_manage: 'Gestionar suscripción', sub_manage_soon: 'Disponible al lanzar los pagos',
+      sub_upgrade: 'Ver planes', fb_lead: 'Founder Pass abierto', fb_sub: 'Precio de por vida, solo mientras dure el Mundial', fb_spots: 'Quedan {n} de 100', fb_cta: 'Asegurar el mío', sub_up_sharp: 'Mejorar a Sharp', sub_cancel: 'Cancelar suscripción', sub_cancelled_note: 'Tu suscripción está cancelada. Mantienes el acceso hasta el fin del ciclo pagado.', cx_title: 'Cancelar suscripción', cx_step1: '¿Seguro que querés cancelar? Perderás el acceso a las picks y al análisis al terminar el ciclo actual. Por seguridad te enviaremos un código a tu correo para confirmar.', cx_keep: 'Mantener mi plan', cx_yes: 'Sí, quiero cancelar', cx_step2: 'Te enviamos un código a tu correo. Ingresalo para confirmar la cancelación.', cx_confirm: 'Confirmar cancelación', cx_code_bad: 'Ingresá el código de 6 dígitos.', cx_err: 'Algo salió mal. Intentá de nuevo.', cx_close: 'Cerrar', cx_done: 'Suscripción cancelada.', cx_done_note: 'No se te volverá a cobrar. Para detener el pago recurrente, cancelá también desde tu cuenta de Whop.', cx_whop: 'Ir a mi cuenta de Whop', sub_manage: 'Gestionar suscripción', sub_manage_soon: 'Disponible al lanzar los pagos',
       sub_asplan: 'Ver la plataforma como (solo admin)', sub_asplan_real: 'Real',
       sup_nav: 'Soporte', sup_title: 'Soporte', sup_intro: 'Contanos tu problema o consulta y te respondemos por email, normalmente dentro de 24 horas.',
       sup_subject: 'Asunto (opcional)', sup_msg: 'Tu mensaje', sup_msg_ph: 'Escribí acá tu consulta…', sup_send: 'Enviar',
@@ -250,7 +250,7 @@
       sub_nav: 'My subscription', sub_title: 'My subscription', sub_plan: 'Current plan', sub_founder: 'FOUNDER', sub_status: 'Status',
       sub_active: 'Active', sub_cancelled: 'Cancelled', sub_pastdue: 'Payment past due', sub_since: 'Member since',
       sub_free_note: 'Full access is free during the World Cup. Plans are coming soon — the first 100 get a lifetime founder price.',
-      sub_upgrade: 'See plans', sub_manage: 'Manage subscription', sub_manage_soon: 'Available when payments launch',
+      sub_upgrade: 'See plans', fb_lead: 'Founder Pass is open', fb_sub: 'Price locked for life, only while the World Cup lasts', fb_spots: '{n} of 100 left', fb_cta: 'Secure mine', sub_up_sharp: 'Upgrade to Sharp', sub_cancel: 'Cancel subscription', sub_cancelled_note: 'Your subscription is cancelled. You keep access until the end of the paid cycle.', cx_title: 'Cancel subscription', cx_step1: 'Are you sure you want to cancel? You will lose access to picks and analysis at the end of the current cycle. For your security we will email you a code to confirm.', cx_keep: 'Keep my plan', cx_yes: 'Yes, I want to cancel', cx_step2: 'We sent a code to your email. Enter it to confirm the cancellation.', cx_confirm: 'Confirm cancellation', cx_code_bad: 'Enter the 6-digit code.', cx_err: 'Something went wrong. Try again.', cx_close: 'Close', cx_done: 'Subscription cancelled.', cx_done_note: 'You will not be charged again. To stop the recurring payment, also cancel from your Whop account.', cx_whop: 'Go to my Whop account', sub_manage: 'Manage subscription', sub_manage_soon: 'Available when payments launch',
       sub_asplan: 'View the platform as (admin only)', sub_asplan_real: 'Real',
       sup_nav: 'Support', sup_title: 'Support', sup_intro: 'Tell us your issue or question and we’ll reply by email, usually within 24 hours.',
       sup_subject: 'Subject (optional)', sup_msg: 'Your message', sup_msg_ph: 'Write your question here…', sup_send: 'Send',
@@ -635,6 +635,25 @@
   var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
   function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support'].indexOf(v) >= 0 ? v : 'opps'); }
+  // BANNER FOUNDER (growth): barra superior a todo ancho anunciando el programa. Solo cuando el server
+  // enciende founder_public (lanzamiento). Cierra por sesión, pero la env manda. Click → /founder.
+  function founderBanner() {
+    if (!(S.me && S.me.founder_public)) return '';
+    if (S.me.plan === 'sharp' && S.me.plan_founder) return ''; // ya es founder Sharp: no le vendemos
+    var spots = (S.me.founder_spots != null) ? S.me.founder_spots : 100;
+    var spotTxt = t('fb_spots', { n: spots });
+    return '<a class="gx-fbanner" href="/founder">' +
+      '<span class="gx-fbanner-pulse"></span>' +
+      '<b>' + esc(t('fb_lead')) + '</b>' +
+      '<span class="gx-fbanner-sub">' + esc(t('fb_sub')) + '</span>' +
+      '<span class="gx-fbanner-spots">🔥 ' + esc(spotTxt) + '</span>' +
+      '<span class="gx-fbanner-cta">' + esc(t('fb_cta')) + ' ' + ic('arrow-right') + '</span>' +
+      '</a>';
+  }
+
+  // Rellena el slot del banner cuando llega S.me (shell se dibuja antes de /api/me).
+  function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner(); }
+
   function shell() {
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
@@ -652,6 +671,7 @@
       '<div class="gx-side-foot"><div class="gx-avatar">' + esc(((S.me && S.me.email) || 'G').charAt(0).toUpperCase()) + '</div><div style="font-size:12px"><b style="font-weight:600">' + esc((S.me && S.me.email) ? S.me.email.split('@')[0] : 'GP') + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(S.me && S.me.isAdmin ? 'Admin' : 'GP Intelligence') + '</div></div></div>' +
       '</aside>' +
       '<div class="gx-body">' +
+      '<div id="gx-fbanner-slot">' + founderBanner() + '</div>' +
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
       '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
@@ -1740,9 +1760,10 @@
       (S.me && S.me.plan_since ? '<div class="gx-sub-row"><span class="gx-label">' + esc(t('sub_since')) + '</span><b>' + esc(fmtDate(S.me.plan_since)) + '</b></div>' : '') +
       (!enforced ? '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('sub_free_note')) + '</p>' : '') +
       '<div class="gx-sub-actions">' +
-        '<a class="gx-btn" href="/founder">' + ic('crown') + '<span>' + esc(t('sub_upgrade')) + '</span></a>' +
-        '<button class="gx-btn" disabled title="' + esc(t('sub_manage_soon')) + '">' + ic('settings') + '<span>' + esc(t('sub_manage')) + '</span></button>' +
-      '</div>';
+        (plan !== 'sharp' ? '<a class="gx-btn gx-btn-ac" href="/founder">' + ic('crown') + '<span>' + esc(plan === 'pro' ? t('sub_up_sharp') : t('sub_upgrade')) + '</span></a>' : '') +
+        (plan !== 'free' && status !== 'cancelled' ? '<button class="gx-btn" id="gx-sub-cancel">' + ic('x') + '<span>' + esc(t('sub_cancel')) + '</span></button>' : '') +
+      '</div>' +
+      (status === 'cancelled' ? '<p class="gx-mod-note gx-dim" style="margin-top:10px">' + ic('info-circle') + ' ' + esc(t('sub_cancelled_note')) + '</p>' : '');
     var admin = '';
     if (S.me && S.me.isAdmin) {
       var cur = lsGet('gp_asplan') || '';
@@ -1752,10 +1773,54 @@
     }
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:640px">' + viewHead(t('sub_title')) +
       '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' + body + '</div></div>' + admin + '</div></div>';
+    var cbtn = mv.querySelector('#gx-sub-cancel');
+    if (cbtn) cbtn.addEventListener('click', openCancelFlow);
     [].forEach.call(mv.querySelectorAll('[data-asplan]'), function (b) {
       b.addEventListener('click', function () { var v = b.getAttribute('data-asplan'); lsSet('gp_asplan', v || null); location.reload(); });
     });
   }
+  // Cancelación con doble confirmación + código al email (fricción intencional y seguridad).
+  function openCancelFlow() {
+    var ov = document.createElement('div'); ov.className = 'gx-modal-ov'; ov.id = 'gx-cancel-ov';
+    ov.innerHTML = '<div class="gx-modal">' +
+      '<div class="gx-modal-h"><b>' + esc(t('cx_title')) + '</b><button class="gx-modal-x" data-cx-close>&times;</button></div>' +
+      '<div class="gx-modal-b" id="gx-cx-body">' +
+        '<p style="margin:0 0 14px;color:var(--gx-text2);font-size:14px;line-height:1.5">' + esc(t('cx_step1')) + '</p>' +
+        '<div class="gx-modal-acts"><button class="gx-btn" data-cx-close>' + esc(t('cx_keep')) + '</button>' +
+        '<button class="gx-btn gx-btn-danger" id="gx-cx-yes">' + esc(t('cx_yes')) + '</button></div>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    var close = function () { ov.remove(); };
+    [].forEach.call(ov.querySelectorAll('[data-cx-close]'), function (b) { b.addEventListener('click', close); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.querySelector('#gx-cx-yes').addEventListener('click', function () {
+      var body = ov.querySelector('#gx-cx-body');
+      body.innerHTML = '<div class="gx-empty" style="padding:20px">' + ic('loader-2') + '</div>';
+      fetch('/api/me/cancel/request', { method: 'POST', headers: hdrs() }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (res) {
+        if (!res.ok) { body.innerHTML = '<p class="gx-neg" style="font-size:14px">' + esc((res.j && res.j.error) || t('cx_err')) + '</p><div class="gx-modal-acts"><button class="gx-btn" data-cx-close>' + esc(t('cx_close')) + '</button></div>'; body.querySelector('[data-cx-close]').addEventListener('click', close); return; }
+        body.innerHTML = '<p style="margin:0 0 12px;color:var(--gx-text2);font-size:14px;line-height:1.5">' + esc(t('cx_step2')) + '</p>' +
+          '<input class="gx-pf-in" id="gx-cx-code" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;letter-spacing:8px;font-size:20px">' +
+          '<div class="gx-modal-acts" style="margin-top:14px"><button class="gx-btn" data-cx-close>' + esc(t('cx_keep')) + '</button>' +
+          '<button class="gx-btn gx-btn-danger" id="gx-cx-confirm">' + esc(t('cx_confirm')) + '</button></div>' +
+          '<div class="gx-mod-note" id="gx-cx-out" style="min-height:16px"></div>';
+        body.querySelector('[data-cx-close]').addEventListener('click', close);
+        body.querySelector('#gx-cx-confirm').addEventListener('click', function () {
+          var code = (body.querySelector('#gx-cx-code').value || '').trim();
+          var out = body.querySelector('#gx-cx-out');
+          if (!/^\d{6}$/.test(code)) { out.className = 'gx-mod-note gx-neg'; out.textContent = t('cx_code_bad'); return; }
+          out.className = 'gx-mod-note gx-dim'; out.textContent = '...';
+          fetch('/api/me/cancel', { method: 'POST', headers: hdrs(), body: JSON.stringify({ code: code }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (res2) {
+            if (!res2.ok) { out.className = 'gx-mod-note gx-neg'; out.textContent = (res2.j && res2.j.error) || t('cx_err'); return; }
+            body.innerHTML = '<p style="font-size:15px;color:var(--gx-text)">' + ic('circle-check') + ' ' + esc(t('cx_done')) + '</p>' +
+              '<p class="gx-mod-note gx-dim">' + esc(t('cx_done_note')) + '</p>' +
+              '<a class="gx-btn" href="https://whop.com/@me" target="_blank" rel="noopener">' + esc(t('cx_whop')) + '</a>';
+            loadMe();
+          });
+        });
+      });
+    });
+  }
+
   function renderSupport() {
     var mv = $('#gx-matchview'); if (!mv) return;
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:640px">' + viewHead(t('sup_title')) +
@@ -4010,7 +4075,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); maybeOnboard(); loadPlayerIndex(); if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
+          if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); loadPlayerIndex(); if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

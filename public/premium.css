@@ -668,6 +668,31 @@ body { background:
 .gx-scout-read li { font-size: 12.5px; color: var(--gx-text2); margin: 6px 0; line-height: 1.45; }
 .gx-scout-read li.gx-scout-lim { color: var(--gx-warn); opacity: .9; }
 .gx-arch { background: rgba(43,227,166,.12); border-color: rgba(43,227,166,.45); color: var(--gx-pos); font-weight: 700; }
+/* Banner founder (growth) — barra superior a todo ancho, alto contraste, click a /founder */
+.gx-fbanner { display: flex; align-items: center; gap: 12px; padding: 10px 20px; text-decoration: none;
+  background: linear-gradient(90deg, #0b7a52 0%, #12b98a 45%, #0e9e73 100%); color: #eafff7;
+  font-size: 13.5px; position: relative; overflow: hidden; border-bottom: 1px solid rgba(0,0,0,.2); }
+.gx-fbanner:hover .gx-fbanner-cta { transform: translateX(2px); }
+.gx-fbanner-pulse { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,.6); animation: fbpulse 1.8s infinite; flex: none; }
+@keyframes fbpulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.5); } 70% { box-shadow: 0 0 0 8px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+.gx-fbanner b { font-weight: 800; letter-spacing: -.01em; }
+.gx-fbanner-sub { color: rgba(255,255,255,.82); }
+.gx-fbanner-spots { margin-left: auto; font-weight: 700; background: rgba(0,0,0,.22); padding: 4px 12px; border-radius: 99px; white-space: nowrap; }
+.gx-fbanner-cta { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; background: #fff; color: #06231a; padding: 7px 16px; border-radius: 99px; white-space: nowrap; transition: transform .15s; }
+.gx-fbanner-cta svg { width: 15px; height: 15px; }
+@media (max-width: 760px) { .gx-fbanner-sub { display: none; } .gx-fbanner { gap: 9px; padding: 9px 14px; font-size: 12.5px; } .gx-fbanner-spots { margin-left: auto; } }
+@media (max-width: 460px) { .gx-fbanner-spots { display: none; } }
+/* Modal genérico (cancelación de suscripción) */
+.gx-modal-ov { position: fixed; inset: 0; background: rgba(3,7,5,.72); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.gx-modal { background: var(--gx-bg2); border: 1px solid var(--gx-line); border-radius: 18px; max-width: 420px; width: 100%; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.gx-modal-h { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--gx-line); font-size: 15px; }
+.gx-modal-x { background: none; border: none; color: var(--gx-text3); font-size: 22px; cursor: pointer; line-height: 1; }
+.gx-modal-b { padding: 20px; }
+.gx-modal-acts { display: flex; gap: 10px; margin-top: 8px; }
+.gx-modal-acts .gx-btn { flex: 1; justify-content: center; }
+.gx-btn-danger { background: rgba(232,72,72,.12) !important; border-color: rgba(232,72,72,.4) !important; color: #f08a8a !important; }
+.gx-btn-danger:hover { background: rgba(232,72,72,.2) !important; }
+.gx-btn-ac { background: var(--gx-pos) !important; color: #04140d !important; border-color: var(--gx-pos) !important; font-weight: 700; }
 .gx-pickday { margin-bottom: 18px; position: relative; }
 .gx-pickday-lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--gx-pos); margin-bottom: 8px; }
 .gx-pickday-lbl svg { width: 13px; height: 13px; }

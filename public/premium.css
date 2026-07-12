@@ -699,6 +699,11 @@ body { background:
 .gx-pickday .gx-pick-card { border-color: rgba(43,227,166,.4); box-shadow: 0 0 0 1px rgba(43,227,166,.15), 0 8px 30px rgba(43,227,166,.07); }
 .gx-secdiv { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--gx-text3); margin: 6px 0 12px; padding-top: 14px; border-top: 1px solid var(--gx-line); }
 .gx-msec { margin-bottom: 18px; }
+/* Aviso de EXPOSICIÓN: picks correlacionadas del mismo partido (se ganan/pierden juntas). Ámbar sobrio,
+   borde izquierdo, sin esquinas redondeadas en ese lado (borde de un solo lado). */
+.gx-corr { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px; padding: 9px 12px; background: rgba(240,159,39,.08); border-left: 3px solid var(--gx-warn, #f09f27); border-radius: 0 8px 8px 0; font-size: 12.5px; line-height: 1.5; color: var(--gx-text2); }
+.gx-corr svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 1px; color: var(--gx-warn, #f09f27); }
+.gx-corr b { color: var(--gx-text); font-weight: 700; }
 .gx-msec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 12px; cursor: pointer; border-radius: 10px; transition: background .15s; }
 .gx-msec-head:hover { background: var(--gx-bg2); }
 .gx-msec-teams { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 700; min-width: 0; }

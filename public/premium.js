@@ -142,6 +142,7 @@
       reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
       // ---- Feed de picks diarias (producto) ----
       pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa', pf_pick_of_day: 'Pick del día', pf_all_by_match: 'Todas las picks por partido',
+      pf_corr: 'Son del mismo partido: se resuelven juntas. Para tu stake trátalas como <b>una sola apuesta</b>, no como {n} independientes.',
       pf_empty: 'No hay picks activas ahora mismo', pf_empty_sub: 'Las picks del día aparecen aquí en cuanto se publican. Vuelve pronto.',
       pf_yesterday: 'Ayer: {won} de {total} picks acertadas', pf_next_ko: 'El próximo partido es a las {time} — las picks salen unas horas antes',
       pf_fam_solid: 'Ganador', pf_fam_goals: 'Goles', pf_fam_combo: 'Combinada',
@@ -374,6 +375,7 @@
       reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
       // ---- Daily picks feed (product) ----
       pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick', pf_pick_of_day: 'Pick of the day', pf_all_by_match: 'All picks by match',
+      pf_corr: 'Same match: they settle together. For your stake, treat them as <b>one single bet</b>, not {n} independent ones.',
       pf_empty: 'No active picks right now', pf_empty_sub: 'Daily picks show up here as soon as they are published. Check back soon.',
       pf_yesterday: 'Yesterday: {won} of {total} picks hit', pf_next_ko: 'Next match kicks off at {time} — picks drop a few hours before',
       pf_fam_solid: 'Winner', pf_fam_goals: 'Goals', pf_fam_combo: 'Combo',
@@ -1111,7 +1113,13 @@
           '<div class="gx-msec-teams"><span class="fl">' + flag(f.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
           '<span class="gx-msec-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(f.away_team_id) + '</span></div>' +
           '<div class="gx-msec-meta"><span class="gx-dim">' + esc(when) + '</span><span class="gx-msec-count">' + gp.length + ' ' + esc(gp.length === 1 ? t('pf_count1') : t('pf_count')) + '</span>' + ic('chevron-right') + '</div></div>';
-        html += '<div class="gx-msec">' + head + '<div class="gx-picks-feed">' + gp.map(function (p) { return pickCard(p, { hideMatch: true }); }).join('') + '</div></div>';
+        // EXPOSICIÓN POR PARTIDO: 2+ picks del mismo cruce están CORRELACIONADAS (se ganan/pierden juntas si el
+        // partido va como el modelo espera). Aviso honesto para que el usuario no las apueste como si fueran
+        // independientes (la lección de la noche del 11-jul: 2 partidos barrieron 11 picks).
+        var corr = gp.length >= 2
+          ? '<div class="gx-corr">' + ic('alert-triangle') + '<span>' + t('pf_corr', { n: gp.length }) + '</span></div>'
+          : '';
+        html += '<div class="gx-msec">' + head + corr + '<div class="gx-picks-feed">' + gp.map(function (p) { return pickCard(p, { hideMatch: true }); }).join('') + '</div></div>';
       });
     }
     return html;

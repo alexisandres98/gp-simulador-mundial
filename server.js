@@ -4761,11 +4761,25 @@ const server = http.createServer(async (req, res) => {
       if (!rec || rec.exp < Date.now() || String(code) !== rec.code) return json(res, 400, { error: 'Código inválido o vencido.' });
       const g = db.premiumGrants[u.email];
       if (!g) return json(res, 400, { error: 'No hay suscripción activa.' });
-      db.premiumGrants[u.email] = { ...g, status: 'cancelled', cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      // Cancelar la membresía EN WHOP (fin del ciclo pagado) vía API → el usuario nunca necesita pisar
+      // Whop: todo el ciclo de vida de la suscripción vive en gpsimulador.com. Si la API falla, el grant
+      // igual queda cancelado local y el cliente muestra la nota de respaldo (cancelar también en Whop).
+      let whopCancelled = false;
+      if (g.whop_membership_id && process.env.WHOP_API_KEY) {
+        try {
+          const r = await fetch(`https://api.whop.com/api/v2/memberships/${encodeURIComponent(g.whop_membership_id)}/cancel`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.WHOP_API_KEY}` },
+            signal: AbortSignal.timeout(8000),
+          });
+          whopCancelled = r.ok;
+        } catch { /* respaldo: nota al usuario */ }
+      }
+      db.premiumGrants[u.email] = { ...g, status: 'cancelled', cancelledAt: new Date().toISOString(), whop_cancelled: whopCancelled || undefined, updatedAt: new Date().toISOString() };
       delete db.cancelCodes[u.email];
       save();
-      console.log('[sub] cancelación confirmada por', u.email);
-      return json(res, 200, { ok: true, cancelled: true });
+      console.log('[sub] cancelación confirmada por', u.email, whopCancelled ? '(membresía Whop cancelada por API)' : '(Whop NO cancelado por API, nota de respaldo)');
+      return json(res, 200, { ok: true, cancelled: true, whop_cancelled: whopCancelled });
     }
     // ANALYTICS de retención (admin): DAU + D1/D7 + quiénes vuelven a diario. Fuente: db.dau (histórico se
     // acumula desde el deploy de este feature; las métricas de retención maduran con los días).
@@ -4865,9 +4879,9 @@ const server = http.createServer(async (req, res) => {
               to: email, noListUnsub: true,
               subject: en ? `You're in: Founder ${planN} activated ★` : `Ya estás dentro: Founder ${planN} activado ★`,
               text: en
-                ? `Welcome to the first 100.\n\nYour Founder ${planN} is active and your price is locked for life: it will never go up while your subscription stays active, even when public prices rise after the World Cup.\n\nWhat you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.\n\nYour board: https://gpsimulador.com\nYour subscription: https://gpsimulador.com/#sub\n\nAny questions, just reply to this email.\n\nAlexis · GP Simulador`
-                : `Bienvenido a los primeros 100.\n\nTu Founder ${planN} está activo y tu precio quedó congelado de por vida: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.\n\nLo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.\n\nTu tablero: https://gpsimulador.com\nTu suscripción: https://gpsimulador.com/#sub\n\nCualquier duda, respondé este correo.\n\nAlexis · GP Simulador`,
-              html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a"><h2 style="color:#0BA661">${en ? `You're in: Founder ${planN} ★` : `Ya estás dentro: Founder ${planN} ★`}</h2><p>${en ? 'Welcome to the first 100. Your price is <b>locked for life</b>: it never goes up while your subscription stays active, even when public prices rise after the World Cup.' : 'Bienvenido a los primeros 100. Tu precio quedó <b>congelado de por vida</b>: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.'}</p><p>${en ? 'What you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.' : 'Lo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.'}</p><p style="text-align:center;margin:22px 0"><a href="https://gpsimulador.com" style="display:inline-block;background:#0BA661;color:#fff;font-weight:bold;padding:13px 30px;border-radius:99px;text-decoration:none">${en ? 'Open my board →' : 'Abrir mi tablero →'}</a></p><p style="font-size:12.5px;color:#888">${en ? 'Any questions, just reply to this email.' : 'Cualquier duda, respondé este correo.'}</p></div>`,
+                ? `Welcome to the first 100.\n\nYour Founder ${planN} is active and your price is locked for life: it will never go up while your subscription stays active, even when public prices rise after the World Cup.\n\nWhat you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.\n\nOne detail: the payment is processed by Whop, so their receipt arrives in a separate email. You do not need their app or their site for anything: your subscription is fully managed inside gpsimulador.com, under My subscription.\n\nYour board: https://gpsimulador.com\nYour subscription: https://gpsimulador.com/#sub\n\nAny questions, just reply to this email.\n\nAlexis · GP Simulador`
+                : `Bienvenido a los primeros 100.\n\nTu Founder ${planN} está activo y tu precio quedó congelado de por vida: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.\n\nLo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.\n\nUn detalle: el pago lo procesa Whop, así que su recibo te llega en un correo aparte. No necesitás su app ni su web para nada: tu suscripción se gestiona completa dentro de gpsimulador.com, en Mi suscripción.\n\nTu tablero: https://gpsimulador.com\nTu suscripción: https://gpsimulador.com/#sub\n\nCualquier duda, respondé este correo.\n\nAlexis · GP Simulador`,
+              html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a"><h2 style="color:#0BA661">${en ? `You're in: Founder ${planN} ★` : `Ya estás dentro: Founder ${planN} ★`}</h2><p>${en ? 'Welcome to the first 100. Your price is <b>locked for life</b>: it never goes up while your subscription stays active, even when public prices rise after the World Cup.' : 'Bienvenido a los primeros 100. Tu precio quedó <b>congelado de por vida</b>: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.'}</p><p>${en ? 'What you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.' : 'Lo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.'}</p><p style="font-size:13px;color:#666;background:#f6f8f7;border-radius:10px;padding:10px 14px">${en ? 'One detail: the payment is processed by Whop, so their receipt arrives in a separate email. You do not need their app or their site for anything: your subscription is fully managed inside gpsimulador.com, under <b>My subscription</b>.' : 'Un detalle: el pago lo procesa Whop, así que su recibo te llega en un correo aparte. No necesitás su app ni su web para nada: tu suscripción se gestiona completa dentro de gpsimulador.com, en <b>Mi suscripción</b>.'}</p><p style="text-align:center;margin:22px 0"><a href="https://gpsimulador.com" style="display:inline-block;background:#0BA661;color:#fff;font-weight:bold;padding:13px 30px;border-radius:99px;text-decoration:none">${en ? 'Open my board →' : 'Abrir mi tablero →'}</a></p><p style="font-size:12.5px;color:#888">${en ? 'Any questions, just reply to this email.' : 'Cualquier duda, respondé este correo.'}</p></div>`,
             }).catch(e => console.error('[whop] welcome email falló:', e.message));
           }
         } else if (email && invalid && db.premiumGrants[email]) {

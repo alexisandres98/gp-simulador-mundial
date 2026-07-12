@@ -1139,13 +1139,18 @@ function founderEmail(seq, lang, ctx = {}) {
 
   if (seq === 1) {
     const subject = en ? 'Founder Pass: your price locked for life (first 100)' : 'Founder Pass: tu precio de por vida (primeros 100)';
+    // Línea de transparencia (12-jul): la peor jornada del torneo va en el email de apertura, no se esconde.
+    // Los porcentajes son vivos (track record al momento del envío); el 2 de 11 es el dato de la noche del 11-jul.
+    const transEs = `Y esos resultados incluyen lo malo: anoche tuvimos nuestra peor jornada del torneo (2 aciertos de 11) y está completa en el registro, no borramos ni maquillamos derrotas. Aun con ella, el historial va en ${hit}% de acierto con +${roi}% de ROI. Así se ve un sistema real.`;
+    const transEn = `And those results include the bad part: last night was our worst day of the tournament (2 hits out of 11) and it is fully in the record, we do not delete or dress up losses. Even with it, the history stands at ${hit}% hit rate with +${roi}% ROI. That is what a real system looks like.`;
     const text = en
-      ? `You used the full platform for free during the World Cup. That was on purpose: I wanted you to see the results before asking you for anything.\n\nToday I am opening the Founder Pass: the first 100 people in keep the founder price forever.\n\n· Pro: 12 dollars a month (going to 20 after). Every winner and goals pick, live cockpit, player profiles, stake calculator, alerts.\n· Sharp: 39 dollars a month (going to 59 after). Everything in Pro, plus corners, cards, goalscorers and assists, the mispriced odds detector, the 40+ books scanner, and new sports coming soon.\n\nThe price you lock today never goes up while you keep your subscription. Annual: 2 months free. Refund within 24 hours if it is not for you.\n\nSecure my Founder Pass: ${url}\n\nQuarterfinals are done, semifinals and the final are ahead. And after the World Cup comes the full club calendar: this platform does not shut down on the 19th, that is when it really starts.\n\nAlexis · GP Simulador`
-      : `Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.\n\nHoy abro el Founder Pass: los primeros 100 que entren se quedan con el precio fundador para siempre.\n\n· Pro: 12 dólares al mes (después será 20). Todas las picks de ganador y goles, cockpit en vivo, perfiles de jugador, calculadora de stake, alertas.\n· Sharp: 39 dólares al mes (después será 59). Todo lo de Pro, más córners, tarjetas, goleadores y asistencias, el detector de cuotas mal pagadas, el escáner de más de 40 casas, y nuevos deportes muy pronto.\n\nEl precio que asegures hoy no sube nunca mientras mantengas la suscripción. Anual: 2 meses gratis. Reembolso dentro de las 24 horas si no te convence.\n\nAsegurar mi Founder Pass: ${url}\n\nQuedan semifinales y la final. Y después del Mundial viene el calendario completo de clubes: la plataforma no se apaga el 19, ahí arranca.\n\nAlexis · GP Simulador`;
+      ? `You used the full platform for free during the World Cup. That was on purpose: I wanted you to see the results before asking you for anything.\n\n${transEn}\n\nToday I am opening the Founder Pass: the first 100 people in keep the founder price forever.\n\n· Pro: 12 dollars a month (going to 20 after). Every winner and goals pick, live cockpit, player profiles, stake calculator, alerts.\n· Sharp: 39 dollars a month (going to 59 after). Everything in Pro, plus corners, cards, goalscorers and assists, the mispriced odds detector, the 40+ books scanner, and new sports coming soon.\n\nThe price you lock today never goes up while you keep your subscription. Annual: 2 months free. Refund within 24 hours if it is not for you.\n\nSecure my Founder Pass: ${url}\n\nQuarterfinals are done, semifinals and the final are ahead. And after the World Cup comes the full club calendar: this platform does not shut down on the 19th, that is when it really starts.\n\nAlexis · GP Simulador`
+      : `Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.\n\n${transEs}\n\nHoy abro el Founder Pass: los primeros 100 que entren se quedan con el precio fundador para siempre.\n\n· Pro: 12 dólares al mes (después será 20). Todas las picks de ganador y goles, cockpit en vivo, perfiles de jugador, calculadora de stake, alertas.\n· Sharp: 39 dólares al mes (después será 59). Todo lo de Pro, más córners, tarjetas, goleadores y asistencias, el detector de cuotas mal pagadas, el escáner de más de 40 casas, y nuevos deportes muy pronto.\n\nEl precio que asegures hoy no sube nunca mientras mantengas la suscripción. Anual: 2 meses gratis. Reembolso dentro de las 24 horas si no te convence.\n\nAsegurar mi Founder Pass: ${url}\n\nQuedan semifinales y la final. Y después del Mundial viene el calendario completo de clubes: la plataforma no se apaga el 19, ahí arranca.\n\nAlexis · GP Simulador`;
     const html = wrap(
       en ? 'Founder Pass · first 100' : 'Founder Pass · primeros 100',
       en ? 'Your price, <span style="color:#18E6A3">locked for life</span>' : 'Tu precio, <span style="color:#18E6A3">congelado de por vida</span>',
       p(en ? 'You used the full platform for free during the World Cup. That was on purpose: I wanted you to see the results before asking you for anything.' : 'Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.') +
+      p(en ? transEn : transEs) +
       p(en ? '<b>Today I open the Founder Pass:</b> the first 100 people in keep the founder price forever.' : '<b>Hoy abro el Founder Pass:</b> los primeros 100 que entren se quedan con el precio fundador para siempre.') +
       li(en ? '<b>Pro: $12/month</b> (going to $20). Every winner and goals pick, live cockpit, player profiles, stake calculator, alerts.' : '<b>Pro: $12/mes</b> (después $20). Todas las picks de ganador y goles, cockpit en vivo, perfiles de jugador, calculadora, alertas.') +
       li(en ? '<b>Sharp: $39/month</b> (going to $59). Everything in Pro plus corners, cards, goalscorers and assists, value detector, 40+ books scanner, and new sports coming soon.' : '<b>Sharp: $39/mes</b> (después $59). Todo lo de Pro más córners, tarjetas, goleadores y asistencias, detector de value, escáner de 40+ casas, y nuevos deportes muy pronto.') +
@@ -5380,12 +5385,34 @@ const server = http.createServer(async (req, res) => {
           else rc = rg.scorers.some(n => _propNorm(n) === target) ? 'WIN' : 'LOSS';
         }
         if (rc == null || rc === prev) continue;
-        x.result_code = rc; x.status = 'SETTLED'; x.settled_at = new Date().toISOString();
+        // La corrección retro NO mueve la pick en el historial (que ordena por settled_at): una pick ya
+        // liquidada conserva su fecha original; solo las aún activas se estampan ahora.
+        x.result_code = rc; x.status = 'SETTLED';
+        if (!x.settled_at) x.settled_at = new Date().toISOString();
         x.resettled_reg90 = true; // marca de auditoría: liquidada con datos verificados de 90'
         changes.push({ pick_id: x.pick_id, family: x.family, market: x.market_id || x.selection_code || x.side, player: x.player_name || null, from: prev, to: rc });
       }
       if (changes.length) save();
       return json(res, 200, { pair: home + '-' + away, changed: changes.length, detail: changes, track_record: dailyPicksTrackRecord() });
+    }
+    // PARCHE settled_at (misma key, one-off de mantenimiento): restaura la fecha de liquidación ORIGINAL de
+    // picks re-liquidadas retro (la corrección del 12-jul les estampó "hoy" y el historial, que ordena por
+    // settled_at, las mostraba como si fueran de hoy). Body: { items: [{ pick_id, settled_at }] }.
+    if (p === '/api/internal/picks-patch-settled' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const b = await readBody(req).catch(() => ({}));
+      const items = Array.isArray(b.items) ? b.items : [];
+      const changed = [];
+      for (const it of items) {
+        const x = db.dailyPicks.find(q => q.pick_id === it.pick_id);
+        if (!x || x.status !== 'SETTLED' || !it.settled_at || !(new Date(it.settled_at).getTime() > 0)) continue;
+        if (x.settled_at === it.settled_at) continue;
+        changed.push({ pick_id: x.pick_id, family: x.family, from: x.settled_at, to: it.settled_at });
+        x.settled_at = it.settled_at;
+      }
+      if (changed.length) save();
+      return json(res, 200, { changed: changed.length, detail: changed });
     }
     // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
     if (p === '/api/internal/props') {

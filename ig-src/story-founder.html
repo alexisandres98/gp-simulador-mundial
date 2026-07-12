@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: radial-gradient(140% 80% at 50% 8%, #0C231B 0%, #081311 45%, #060A0C 100%); color: #EAF1F2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 72px; position: relative; overflow: hidden; }
+.glow { position:absolute; top:-140px; left:50%; transform:translateX(-50%); width:900px; height:900px; background:radial-gradient(circle, rgba(255,193,94,.14), transparent 62%); }
+.glow2 { position:absolute; bottom:-200px; left:50%; transform:translateX(-50%); width:800px; height:700px; background:radial-gradient(circle, rgba(31,227,164,.10), transparent 60%); }
+.brand { position:absolute; top:110px; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:14px; font-size:31px; font-weight:800; color:#fff; z-index:2; }
+.badge { width:48px; height:48px; border-radius:14px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:27px; border:1px solid rgba(31,227,164,.42); }
+.kicker { z-index:2; text-transform:uppercase; letter-spacing:6px; font-size:27px; font-weight:800; color:#FFC15E; margin-bottom:30px; }
+.hook { z-index:2; text-align:center; font-size:104px; font-weight:800; letter-spacing:-4px; line-height:.98; color:#fff; margin-bottom:34px; }
+.hook .hl { color:#FFC15E; }
+.sub { z-index:2; text-align:center; font-size:36px; font-weight:600; color:#9DB0B5; line-height:1.4; margin-bottom:64px; max-width:840px; }
+.sub b { color:#EAF1F2; }
+.plans { z-index:2; width:100%; display:flex; gap:24px; margin-bottom:46px; }
+.plan { flex:1; background:linear-gradient(165deg, rgba(19,30,34,.95), rgba(13,20,23,.95)); border:1px solid rgba(255,255,255,.1); border-radius:28px; padding:40px 30px 36px; text-align:center; position:relative; }
+.plan.hl { border-color:rgba(31,227,164,.5); box-shadow:0 0 0 1px rgba(31,227,164,.4), 0 24px 70px -30px rgba(31,227,164,.3); }
+.plan .name { font-size:26px; font-weight:800; letter-spacing:3px; text-transform:uppercase; color:#9DB0B5; margin-bottom:16px; }
+.plan.hl .name { color:#1FE3A4; }
+.plan .price { font-size:88px; font-weight:800; letter-spacing:-3px; color:#fff; line-height:1; }
+.plan .per { font-size:28px; color:#5F747B; font-weight:700; }
+.plan .was { margin-top:12px; font-size:29px; color:#5F747B; font-weight:700; text-decoration:line-through; }
+.plan .life { margin-top:14px; font-size:24px; font-weight:800; color:#FFC15E; }
+.proof { z-index:2; display:flex; gap:18px; margin-bottom:52px; }
+.stat { background:rgba(31,227,164,.08); border:1px solid rgba(31,227,164,.25); border-radius:20px; padding:22px 34px; text-align:center; }
+.stat .n { font-size:46px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; }
+.stat .l { font-size:21px; color:#9DB0B5; font-weight:700; margin-top:4px; }
+.counter { z-index:2; display:flex; align-items:center; gap:16px; background:rgba(255,193,94,.1); border:1px solid rgba(255,193,94,.4); border-radius:99px; padding:20px 44px; font-size:34px; font-weight:800; color:#FFC15E; margin-bottom:60px; }
+.dot { width:16px; height:16px; border-radius:50%; background:#FFC15E; box-shadow:0 0 18px rgba(255,193,94,.8); }
+.cta { z-index:2; background:#1FE3A4; color:#06231A; font-size:44px; font-weight:800; padding:32px 66px; border-radius:99px; letter-spacing:-.5px; box-shadow:0 20px 60px rgba(31,227,164,.28); }
+.foot { z-index:2; position:absolute; bottom:96px; left:0; right:0; text-align:center; font-size:23px; color:#5F747B; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow"></div><div class="glow2"></div>
+  <div class="brand"><div class="badge">⚽</div>GP Simulador</div>
+  <div class="kicker">Founder Pass · Solo 100 cupos</div>
+  <div class="hook">Tu precio,<br><span class="hl">congelado<br>de por vida</span></div>
+  <div class="sub">Los primeros 100 aseguran el precio fundador <b>para siempre</b>. Cuando se llenen, se cierra.</div>
+  <div class="plans">
+    <div class="plan hl">
+      <div class="name">Pro</div>
+      <div class="price">$12<span class="per">/mes</span></div>
+      <div class="was">después $20</div>
+      <div class="life">★ de por vida</div>
+    </div>
+    <div class="plan">
+      <div class="name">Sharp</div>
+      <div class="price">$39<span class="per">/mes</span></div>
+      <div class="was">después $59</div>
+      <div class="life">★ de por vida</div>
+    </div>
+  </div>
+  <div class="proof">
+    <div class="stat"><div class="n">67%</div><div class="l">de acierto</div></div>
+    <div class="stat"><div class="n">+36%</div><div class="l">ROI verificado</div></div>
+    <div class="stat"><div class="n">100%</div><div class="l">registro público</div></div>
+  </div>
+  <div class="counter"><div class="dot"></div>Quedan 99 de 100</div>
+  <div class="cta">gpsimulador.com/founder</div>
+  <div class="foot">Análisis estadístico, no consejo financiero · 18+</div>
+</body></html>

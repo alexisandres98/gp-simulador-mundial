@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: radial-gradient(120% 130% at 22% 0%, #0C231B 0%, #081311 48%, #060A0C 100%); color: #EAF1F2;
+  display: flex; align-items: center; padding: 0 70px; position: relative; overflow: hidden; gap: 54px; }
+.glow { position:absolute; top:-220px; left:16%; width:700px; height:700px; background:radial-gradient(circle, rgba(255,193,94,.13), transparent 62%); }
+.left { z-index:2; flex:1.15; display:flex; flex-direction:column; align-items:flex-start; }
+.brand { display:flex; align-items:center; gap:11px; font-size:23px; font-weight:800; color:#fff; margin-bottom:26px; }
+.badge { width:38px; height:38px; border-radius:11px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:20px; border:1px solid rgba(31,227,164,.42); }
+.kicker { text-transform:uppercase; letter-spacing:4px; font-size:19px; font-weight:800; color:#FFC15E; margin-bottom:14px; }
+.hook { font-size:64px; font-weight:800; letter-spacing:-2.5px; line-height:1.02; color:#fff; margin-bottom:20px; }
+.hook .hl { color:#FFC15E; }
+.sub { font-size:24px; font-weight:600; color:#9DB0B5; line-height:1.4; margin-bottom:30px; max-width:520px; }
+.sub b { color:#EAF1F2; }
+.row2 { display:flex; align-items:center; gap:16px; }
+.counter { display:flex; align-items:center; gap:10px; background:rgba(255,193,94,.1); border:1px solid rgba(255,193,94,.4); border-radius:99px; padding:13px 24px; font-size:20px; font-weight:800; color:#FFC15E; white-space:nowrap; }
+.dot { width:10px; height:10px; border-radius:50%; background:#FFC15E; box-shadow:0 0 12px rgba(255,193,94,.8); }
+.cta { background:#1FE3A4; color:#06231A; font-size:23px; font-weight:800; padding:15px 30px; border-radius:99px; box-shadow:0 14px 44px rgba(31,227,164,.26); }
+.right { z-index:2; flex:.85; display:flex; flex-direction:column; gap:16px; }
+.plan { background:linear-gradient(165deg, rgba(19,30,34,.95), rgba(13,20,23,.95)); border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:20px 26px; display:flex; align-items:center; justify-content:space-between; }
+.plan.hl { border-color:rgba(31,227,164,.5); box-shadow:0 0 0 1px rgba(31,227,164,.4); }
+.plan .name { font-size:19px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:#9DB0B5; }
+.plan.hl .name { color:#1FE3A4; }
+.plan .pr { text-align:right; }
+.plan .price { font-size:44px; font-weight:800; letter-spacing:-1.5px; color:#fff; line-height:1; }
+.plan .per { font-size:18px; color:#5F747B; font-weight:700; }
+.plan .was { font-size:17px; color:#5F747B; font-weight:700; text-decoration:line-through; }
+.plan .life { font-size:15px; font-weight:800; color:#FFC15E; margin-top:2px; }
+.proof { display:flex; gap:11px; }
+.stat { flex:1; background:rgba(31,227,164,.08); border:1px solid rgba(31,227,164,.25); border-radius:14px; padding:12px 8px; text-align:center; }
+.stat .n { font-size:27px; font-weight:800; color:#1FE3A4; letter-spacing:-.5px; }
+.stat .l { font-size:13.5px; color:#9DB0B5; font-weight:700; margin-top:2px; }
+.foot { position:absolute; bottom:22px; right:70px; font-size:14px; color:#5F747B; font-weight:600; z-index:2; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="left">
+    <div class="brand"><div class="badge">⚽</div>GP Simulador</div>
+    <div class="kicker">Founder Pass · Solo 100 cupos</div>
+    <div class="hook">Tu precio,<br><span class="hl">congelado de por vida</span></div>
+    <div class="sub">Los primeros 100 aseguran el precio fundador <b>para siempre</b>. Cuando se llenen, se cierra.</div>
+    <div class="row2">
+      <div class="counter"><div class="dot"></div>Quedan 99 de 100</div>
+      <div class="cta">gpsimulador.com/founder</div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="plan hl">
+      <div class="name">Pro</div>
+      <div class="pr"><div class="price">$12<span class="per">/mes</span></div><div class="was">después $20</div><div class="life">★ de por vida</div></div>
+    </div>
+    <div class="plan">
+      <div class="name">Sharp</div>
+      <div class="pr"><div class="price">$39<span class="per">/mes</span></div><div class="was">después $59</div><div class="life">★ de por vida</div></div>
+    </div>
+    <div class="proof">
+      <div class="stat"><div class="n">67%</div><div class="l">de acierto</div></div>
+      <div class="stat"><div class="n">+36%</div><div class="l">ROI verificado</div></div>
+      <div class="stat"><div class="n">100%</div><div class="l">registro público</div></div>
+    </div>
+  </div>
+  <div class="foot">Análisis estadístico, no consejo financiero · 18+</div>
+</body></html>

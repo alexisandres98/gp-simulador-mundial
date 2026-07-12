@@ -386,6 +386,10 @@ async function syncFromESPN(depth = 0) {
         payload.winner = espnWinner || null;   // ganador real (prórroga/penales incluidos)
         payload.decided = (hPen != null && aPen != null) || /pen/i.test(detail) || period >= 5 ? 'pens'
           : (period === 3 || period === 4 || /\bET\b|AET|extra|prórroga|prorroga/i.test(detail)) ? 'et' : 'reg';
+        // Snapshot del marcador REGLAMENTARIO: mientras el reloj no pasó de 90 (el descuento muestra "90'+X"
+        // → parseInt=90) el último marcador visto ES el de los 90'. Si el partido luego va a prórroga/penales,
+        // este snapshot permite liquidar las picks a 90' (igual que las casas) en vez de anularlas.
+        if (payload.status === 'live' && minute <= 90) payload.reg90 = { hg: payload.hg, ag: payload.ag, minute };
         matchId = String(m);
       }
       const prev = db.results[matchId];
@@ -2487,18 +2491,50 @@ async function evaluateDailyPicks() {
   return out;
 }
 
-// Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria decidida EN 90'. Los
-// mercados "a ganar" y O/U se liquidan a 90' (full-time), NO a prórroga: si el knockout fue a ET/penales (minute>90)
-// no tenemos el marcador limpio de 90' en db.results → devuelve null (se trata como VOID en settleDailyPicks).
+// Datos VERIFICADOS de 90' por par de equipos (POST /api/internal/picks-reg90): marcador reglamentario y,
+// opcionalmente, córners/tarjetas/goleadores de los 90'. Fuente prioritaria para liquidar a 90' los partidos
+// definidos en prórroga/penales. Fallback: snapshot automático reg90 del sync ESPN (último marcador con reloj
+// <=90'; se exige minute>=85 para no liquidar con un snapshot viejo por caída del sync). Orientado a (homeId, awayId).
+function reg90For(homeId, awayId) {
+  const man = (db.reg90 || {})[homeId + '~' + awayId] || (db.reg90 || {})[awayId + '~' + homeId];
+  if (man) {
+    const flip = man.home !== homeId;
+    return {
+      homeGoals: man.hg90 != null ? (flip ? man.ag90 : man.hg90) : null,
+      awayGoals: man.ag90 != null ? (flip ? man.hg90 : man.ag90) : null,
+      corners: man.corners90 != null ? Number(man.corners90) : null,
+      cards: man.cards90 != null ? Number(man.cards90) : null,
+      scorers: Array.isArray(man.scorers90) ? man.scorers90 : null,
+      nonstarters: Array.isArray(man.nonstarters90) ? man.nonstarters90 : null,
+      source: 'manual-verified',
+    };
+  }
+  for (const k of KNOCKOUT) {
+    const r = db.results[String(k.m)];
+    if (!r || r.status !== 'final' || !r.home || !r.reg90 || !(Number(r.reg90.minute) >= 85)) continue;
+    if (r.home === homeId && r.away === awayId) return { homeGoals: r.reg90.hg, awayGoals: r.reg90.ag, source: 'sync' };
+    if (r.home === awayId && r.away === homeId) return { homeGoals: r.reg90.ag, awayGoals: r.reg90.hg, source: 'sync' };
+  }
+  return null;
+}
+// Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria. Los mercados "a ganar"
+// y O/U se liquidan a 90' (full-time), NO a prórroga — igual que las casas. Si el knockout fue a ET/penales
+// (minute>90) se usa el snapshot de 90' (reg90For: dato manual verificado o captura del sync); sin ese dato
+// devuelve null (se trata como VOID en settleDailyPicks, último recurso).
 function regulationScoreFor(homeId, awayId) {
   const g = goalGroupScore(homeId, awayId);
   if (g) return g;
   for (const k of KNOCKOUT) {
     const r = db.results[String(k.m)];
     if (!r || r.status !== 'final' || typeof r.hg !== 'number' || !r.home) continue;
-    if (Number(r.minute) > 90) continue; // fue a prórroga/penales → sin marcador limpio de 90'
+    if (!((r.home === homeId && r.away === awayId) || (r.home === awayId && r.away === homeId))) continue;
+    if (Number(r.minute) > 90) {
+      const s = reg90For(homeId, awayId);
+      if (s && s.homeGoals != null && s.awayGoals != null) return { homeGoals: s.homeGoals, awayGoals: s.awayGoals };
+      continue; // fue a prórroga/penales y no hay snapshot de 90' → VOID
+    }
     if (r.home === homeId && r.away === awayId) return { homeGoals: r.hg, awayGoals: r.ag };
-    if (r.home === awayId && r.away === homeId) return { homeGoals: r.ag, awayGoals: r.hg };
+    return { homeGoals: r.ag, awayGoals: r.hg };
   }
   return null;
 }
@@ -3353,8 +3389,9 @@ async function evaluateUpcomingProps() {
 }
 
 // Settlement de PROPS vía TheStatsAPI (1 llamada por partido terminado, cache permanente; respeta 12 req/min).
-// CORNERS/CARDS: totales del overview a 90'... el proveedor reporta el partido completo; si hubo prórroga
-// (minute>90 en db.results) → VOID, igual que goles. PLAYER: goles/remates del jugador; si no jugó → VOID.
+// CORNERS/CARDS: totales del overview a 90'; el proveedor reporta el partido completo, así que si hubo prórroga
+// (minute>90 en db.results) se liquida con los datos de 90' verificados de db.reg90 (POST /api/internal/picks-reg90)
+// y solo sin ese dato → VOID (último recurso). PLAYER: goles/remates del jugador; si no jugó → VOID.
 async function settlePropsPicks() {
   const pending = db.dailyPicks.filter(p => p.status === 'ACTIVE' && PROP_FAMS.includes(p.family));
   if (!pending.length) return 0;
@@ -3372,7 +3409,21 @@ async function settlePropsPicks() {
     }
     const key = h + '~' + a;
     try {
-      if (wentEt) { p.result_code = 'VOID'; p.status = 'SETTLED'; p.settled_at = new Date().toISOString(); settled++; continue; }
+      if (wentEt) {
+        // Prórroga/penales: las stats de TSA incluyen el tiempo extra → liquidar con los datos de 90'
+        // verificados (db.reg90, cargados vía /api/internal/picks-reg90). Sin ese dato → VOID (último recurso).
+        const rg = reg90For(h, a);
+        let rc = 'VOID';
+        if (rg && (p.family === 'CORNERS' || p.family === 'CARDS')) {
+          const total = p.family === 'CORNERS' ? rg.corners : rg.cards;
+          if (Number.isFinite(total)) { const over = total > Number(p.line); rc = (p.side === 'over' ? over : !over) ? 'WIN' : 'LOSS'; }
+        } else if (rg && p.family === 'PLAYER' && p.player_family === 'player_goal' && Array.isArray(rg.scorers)) {
+          const target = _propNorm(p.player_name);
+          if ((rg.nonstarters || []).some(n => _propNorm(n) === target)) rc = 'VOID';
+          else rc = rg.scorers.some(n => _propNorm(n) === target) ? 'WIN' : 'LOSS';
+        }
+        p.result_code = rc; p.status = 'SETTLED'; p.settled_at = new Date().toISOString(); settled++; continue;
+      }
       if (p.family === 'CORNERS' || p.family === 'CARDS') {
         let rep = db.tsaXg[key];
         if (!rep || !rep.corners) {
@@ -5284,6 +5335,57 @@ const server = http.createServer(async (req, res) => {
       }
       db.dailyPicks = keep; if (removed.length) save();
       return json(res, 200, { removed: removed.length, detail: removed, remaining: db.dailyPicks.length });
+    }
+    // DATOS VERIFICADOS DE 90' (misma key que el export): carga marcador/córners/tarjetas/goleadores del
+    // reglamentario para un partido que fue a prórroga/penales y RE-LIQUIDA sus picks (las VOID por falta de
+    // 90' limpio y las aún activas) a 90', como liquidan las casas. Body JSON: { home, away, hg90, ag90,
+    // corners90?, cards90?, scorers90?:[nombres], nonstarters90?:[nombres] } — ids de equipo del dataset.
+    // Idempotente: re-postear con los mismos datos produce el mismo resultado. Auditable: db.reg90 conserva
+    // el dato, la fuente y el timestamp.
+    if (p === '/api/internal/picks-reg90' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const b = await readBody(req).catch(() => ({}));
+      const home = String(b.home || ''), away = String(b.away || '');
+      if (!home || !away || b.hg90 == null || b.ag90 == null) return json(res, 400, { error: 'home, away, hg90, ag90 requeridos' });
+      db.reg90 = db.reg90 || {};
+      db.reg90[home + '~' + away] = {
+        home, away, hg90: Number(b.hg90), ag90: Number(b.ag90),
+        corners90: b.corners90 != null ? Number(b.corners90) : null,
+        cards90: b.cards90 != null ? Number(b.cards90) : null,
+        scorers90: Array.isArray(b.scorers90) ? b.scorers90 : null,
+        nonstarters90: Array.isArray(b.nonstarters90) ? b.nonstarters90 : null,
+        source: 'manual-verified', set_at: new Date().toISOString(),
+      };
+      const daily = require('./pick-engine/dailyPicks');
+      const changes = [];
+      for (const x of db.dailyPicks) {
+        const eh = x.event && x.event.home_team_id, ea = x.event && x.event.away_team_id;
+        if (!((eh === home && ea === away) || (eh === away && ea === home))) continue;
+        // solo picks anuladas por falta de 90' o aún activas; SUPERSEDED y WIN/LOSS reales no se tocan
+        if (!(x.result_code === 'VOID' || x.status === 'ACTIVE')) continue;
+        if (x.status === 'ACTIVE' && !matchFinalFor(eh, ea)) continue; // guard: nunca liquidar un partido no terminado
+        if (x.void_reason === 'NOT_IN_LINEUP') continue; // retiro preventivo legítimo, no re-liquidar
+        const rg = reg90For(eh, ea); if (!rg) continue;
+        const prev = x.result_code;
+        let rc = null;
+        if (['SOLID', 'GOALS', 'COMBO'].includes(x.family) && rg.homeGoals != null) {
+          rc = daily.settleOne(x, { homeGoals: rg.homeGoals, awayGoals: rg.awayGoals });
+        } else if ((x.family === 'CORNERS' || x.family === 'CARDS')) {
+          const total = x.family === 'CORNERS' ? rg.corners : rg.cards;
+          if (Number.isFinite(total)) { const over = total > Number(x.line); rc = (x.side === 'over' ? over : !over) ? 'WIN' : 'LOSS'; }
+        } else if (x.family === 'PLAYER' && x.player_family === 'player_goal' && Array.isArray(rg.scorers)) {
+          const target = _propNorm(x.player_name);
+          if ((rg.nonstarters || []).some(n => _propNorm(n) === target)) rc = 'VOID';
+          else rc = rg.scorers.some(n => _propNorm(n) === target) ? 'WIN' : 'LOSS';
+        }
+        if (rc == null || rc === prev) continue;
+        x.result_code = rc; x.status = 'SETTLED'; x.settled_at = new Date().toISOString();
+        x.resettled_reg90 = true; // marca de auditoría: liquidada con datos verificados de 90'
+        changes.push({ pick_id: x.pick_id, family: x.family, market: x.market_id || x.selection_code || x.side, player: x.player_name || null, from: prev, to: rc });
+      }
+      if (changes.length) save();
+      return json(res, 200, { pair: home + '-' + away, changed: changes.length, detail: changes, track_record: dailyPicksTrackRecord() });
     }
     // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
     if (p === '/api/internal/props') {

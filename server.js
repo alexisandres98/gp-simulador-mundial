@@ -6222,6 +6222,56 @@ const server = http.createServer(async (req, res) => {
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
+    // CHECKOUT SIN FRICCIÓN (12-jul): en vez de mandar al link plano de Whop (que al pagar deja al usuario
+    // varado en la pantalla "descargá la app de Whop"), creamos una CHECKOUT SESSION con redirect_url →
+    // al completar el pago Whop lo devuelve a /founder/activo → su cuenta con la suscripción activa.
+    // Fallback: si la API de Whop falla, 302 al checkout plano (el comportamiento de siempre, nunca se rompe).
+    if (p === '/api/founder/checkout') {
+      const founderPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim());
+      if (!founderPublic) { json(res, 404, { error: 'No encontrado' }); return; }
+      const PLANS = {
+        pro_m: process.env.WHOP_PLAN_PRO_M, pro_y: process.env.WHOP_PLAN_PRO_Y,
+        sharp_m: process.env.WHOP_PLAN_SHARP_M, sharp_y: process.env.WHOP_PLAN_SHARP_Y,
+      };
+      const planId = PLANS[String(url.searchParams.get('plan') || '')];
+      if (!planId) { json(res, 400, { error: 'plan inválido' }); return; }
+      let dest = 'https://whop.com/checkout/' + planId; // fallback: link plano
+      try {
+        if (process.env.WHOP_API_KEY) {
+          const r = await fetch('https://api.whop.com/api/v2/checkout_sessions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.WHOP_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan_id: planId, redirect_url: 'https://gpsimulador.com/founder/activo' }),
+            signal: AbortSignal.timeout(6000),
+          });
+          if (r.ok) { const j = await r.json(); if (j && j.purchase_url) dest = j.purchase_url; }
+        }
+      } catch { /* fallback al link plano */ }
+      res.writeHead(302, { Location: dest, 'Cache-Control': 'no-store' });
+      return res.end();
+    }
+    // RETORNO POST-COMPRA: Whop redirige acá al completar el pago. Con sesión → "Mi suscripción" (el plan
+    // Founder ya está activo por webhook); sin sesión (compró anónimo o en otro navegador) → mensaje claro
+    // de entrar con el email de la compra. Pausa breve "activando" absorbe la latencia del webhook.
+    if (p === '/founder/activo' || p === '/founder/activo/') {
+      const en = /^en/i.test(String(req.headers['accept-language'] || ''));
+      const sessEmail = sessionEmailFromReq(req);
+      const base = `<!DOCTYPE html><html lang="${en ? 'en' : 'es'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>Founder Pass · GP Simulador</title><style>
+        html,body{margin:0;background:#06090B;color:#EAF1F2;font-family:-apple-system,'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+        .w{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+        .c{max-width:420px}.ok{width:64px;height:64px;border-radius:50%;background:rgba(31,227,164,.12);border:1px solid rgba(31,227,164,.45);display:grid;place-items:center;margin:0 auto 20px;font-size:28px;color:#1FE3A4}
+        h1{font-size:24px;margin:0 0 10px;letter-spacing:-.02em}p{color:#9DB0B5;font-size:14.5px;line-height:1.6;margin:0 0 22px}
+        .b{display:inline-block;background:#1FE3A4;color:#06231A;font-weight:800;font-size:14.5px;padding:13px 28px;border-radius:99px;text-decoration:none}
+        .sp{width:22px;height:22px;border:2.5px solid rgba(31,227,164,.25);border-top-color:#1FE3A4;border-radius:50%;margin:0 auto 18px;animation:r .8s linear infinite}@keyframes r{to{transform:rotate(360deg)}}
+      </style></head><body><div class="w"><div class="c">`;
+      if (sessEmail) {
+        // logueado: pausa de 2s (webhook) → Mi suscripción con el plan Founder ★ visible
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', Refresh: '2; url=/#sub' });
+        return res.end(base + `<div class="sp"></div><h1>${en ? 'Activating your Founder Pass' : 'Activando tu Founder Pass'}</h1><p>${en ? 'One second, we are taking you to your account.' : 'Un segundo, te llevamos a tu cuenta.'}</p></div></div></body></html>`);
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(base + `<div class="ok">✓</div><h1>${en ? 'Purchase confirmed' : 'Compra confirmada'}</h1><p>${en ? 'Your Founder Pass is active. Sign in with the same email you used at checkout and your plan will be waiting for you.' : 'Tu Founder Pass está activo. Entrá con el mismo correo que usaste al pagar y tu plan te estará esperando.'}</p><a class="b" href="/?auth=1">${en ? 'Sign in to my account' : 'Entrar a mi cuenta'}</a></div></div></body></html>`);
+    }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al
     // mercado" (Brier GP vs consenso) + curva de calibración + CLV opcional. Admin-only hasta que Alexis lo
     // apruebe; GP_QUALITY_PUBLIC=true lo abre. Caja negra estricta: solo resultados medidos, nunca método.

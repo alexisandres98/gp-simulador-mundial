@@ -228,10 +228,13 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     var W = window.__WHOP || {};
     // contador REAL de cupos (server lo inyecta desde las membresías de Whop; null → se queda el 100/100)
     if (W.left != null) { var se = document.getElementById('spots-left'); if (se) se.textContent = W.left + ' / 100'; }
-    var co = function (id) { return 'https://whop.com/checkout/' + id; };
-    var cta = function (mId) { return mId ? '<a class="pcta live" href="' + co(mId) + '" target="_blank" rel="noopener">' + T('cta_buy') + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>'; };
+    // checkout vía nuestro endpoint (crea una checkout session de Whop con redirect_url → al pagar,
+    // Whop devuelve al usuario a /founder/activo → su cuenta con el plan activo, sin fricción).
+    // MISMA pestaña a propósito: el flujo compra→retorno debe sentirse un solo viaje.
+    var co = function (key) { return '/api/founder/checkout?plan=' + key; };
+    var cta = function (mId, key) { return mId ? '<a class="pcta live" href="' + co(key) + '">' + T('cta_buy') + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>'; };
     var note = function (mId) { return '<div class="pcta-note">' + (mId ? T('cta_note_live') : T('cta_note')) + '</div>'; };
-    var annual = function (yId, txt) { var inner = '<span class="save">' + T('annual_save') + '</span> ' + txt; return '<div class="annual">' + (yId ? '<a href="' + co(yId) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<span class="na">' + inner + '</span>') + '</div>'; };
+    var annual = function (yId, key, txt) { var inner = '<span class="save">' + T('annual_save') + '</span> ' + txt; return '<div class="annual">' + (yId ? '<a href="' + co(key) + '">' + inner + '</a>' : '<span class="na">' + inner + '</span>') + '</div>'; };
     document.getElementById('plans').innerHTML =
       '<div class="plan"><div class="pname">' + T('free_name') + '</div>' +
         '<div class="price"><span class="n">$0</span></div><div class="annual">&nbsp;</div>' +
@@ -239,14 +242,14 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         '<button class="pcta" disabled>' + T('cta_free') + '</button><div class="pcta-note">&nbsp;</div></div>' +
       '<div class="plan hl" data-badge="' + T('badge') + '"><div class="pname">' + T('pro_name') + '</div>' +
         '<div class="price"><span class="n">$12</span><span class="per">' + T('mo') + '</span><span class="was">$19</span></div>' +
-        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.pro_y, T('annual_pro')) +
+        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.pro_y, 'pro_y', T('annual_pro')) +
         feats(T('f_pro')) +
-        cta(W.pro_m) + note(W.pro_m) + '</div>' +
+        cta(W.pro_m, 'pro_m') + note(W.pro_m) + '</div>' +
       '<div class="plan"><div class="pname">' + T('sharp_name') + '</div>' +
         '<div class="price"><span class="n">$39</span><span class="per">' + T('mo') + '</span><span class="was">$59</span></div>' +
-        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.sharp_y, T('annual_sharp')) +
+        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.sharp_y, 'sharp_y', T('annual_sharp')) +
         feats(T('f_sharp')) +
-        cta(W.sharp_m) + note(W.sharp_m) + '</div>';
+        cta(W.sharp_m, 'sharp_m') + note(W.sharp_m) + '</div>';
     document.getElementById('faqs').innerHTML = T('faqs').map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('');
     document.querySelectorAll('#lang button').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-l') === lang);

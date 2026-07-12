@@ -111,21 +111,21 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
 (function () {
   var D = {
     es: {
-      chip: 'Preview interno',
+      chip: 'Founder Pass abierto',
       eye: 'Founder Pass · solo los primeros 100',
       h1: 'La ventaja completa, a <b>precio de fundador</b> para siempre.',
       sub: 'Los primeros 100 miembros aseguran su precio de por vida antes de la apertura pública. Después, se acabó.',
       counter_pre: 'Quedan', counter_post: 'cupos founder', quality_link: 'Mirá la calidad del sistema, medida como un fondo →',
       faq_t: 'Preguntas frecuentes',
       foot_disc: 'Sugerencias educativas basadas en análisis estadístico. No es consejo financiero. Apostá con responsabilidad. 18+.',
-      foot_legal: 'Términos y condiciones · Política de reembolso · Privacidad — (páginas en preparación)',
+      foot_legal: '<a href="/terms" style="color:inherit">Términos y condiciones</a> · <a href="/refunds" style="color:inherit">Política de reembolso</a> · <a href="/privacy" style="color:inherit">Privacidad</a>',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Más popular',
       mo: '/mes', forever: 'de por vida, primeros 100', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
       cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_buy: 'Asegurar mi Founder Pass', cta_note: 'El checkout se habilita en el lanzamiento', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras', annual_link: 'anual',
       soon: 'Próximamente',
       f_free: [
-        ['on', '1 pick del día (con delay) — solo ganador'],
+        ['on', '1 pick del día (con delay), solo ganador'],
         ['on', 'Probabilidades de cada partido'],
         ['on', 'Marcadores en vivo y simulador'],
         ['off', 'Picks completas del día'],
@@ -134,7 +134,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['off', 'Value y arbitraje']
       ],
       f_pro: [
-        ['on', '<b>Todas las picks del día</b> — ganador y goles, sin delay'],
+        ['on', '<b>Todas las picks del día</b>: ganador y goles, sin delay'],
         ['on', 'Análisis completo de cada partido (cockpit) con el porqué de cada pick'],
         ['on', '<b>Perfiles de jugador</b> con radar de scouting y proyecciones'],
         ['on', '<b>Proyección de goles</b> de cada partido'],
@@ -147,38 +147,38 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       f_sharp: [
         ['on', '<b>Picks de córners, tarjetas, goleadores y asistencias</b>'],
         ['on', '<b>Value</b>: cuotas mal pagadas detectadas por el modelo'],
-        ['on', '<b>Arbitraje y precio atrasado</b> — scanner en tiempo real'],
-        ['on', '<b>Perfil táctico de cada cruce</b> — event data remate a remate'],
+        ['on', '<b>Arbitraje y precio atrasado</b>: scanner en tiempo real'],
+        ['on', '<b>Perfil táctico de cada cruce</b>: event data remate a remate'],
         ['on', 'Alertas prioritarias (Telegram privado)'],
         ['on', 'Acceso anticipado a cada mercado nuevo'],
-        ['on', '<b>Nuevos deportes, muy pronto</b> — los Sharp entran primero'],
+        ['on', '<b>Nuevos deportes, muy pronto</b>: los Sharp entran primero'],
         ['on', 'Todo lo del plan Pro']
       ],
       faqs: [
         ['¿Qué es el precio founder?', 'Es un precio especial de lanzamiento que SOLO existe mientras dure el Mundial. Cuando termine el torneo (19 de julio) o se llenen los 100 cupos, lo que pase primero, el Founder Pass se cierra para siempre y los precios pasan a los definitivos: $20 (Pro) y $59 (Sharp). Los primeros 100 pagan $12 y $39 de por vida: mientras tu suscripción siga activa, ese precio no sube nunca, aunque todo lo demás suba.'],
         ['¿Puedo cancelar cuando quiera?', 'Sí. Cancelás en un clic desde tu perfil y no se te cobra el mes siguiente. Sin permanencia ni letra chica.'],
-        ['Si durante el Mundial todo es gratis, ¿qué compro hoy?', 'Dos cosas. Primero: tu PRECIO congelado de por vida — cuando el Mundial termine y los planes se activen, vos ya pagás $12 o $39 mientras el resto paga $20 o $59. Segundo: tu CUPO — solo hay 100 y no vuelven. Comprás hoy el acceso barato a todo lo que viene, no el acceso de esta semana.'],
+        ['Si durante el Mundial todo es gratis, ¿qué compro hoy?', 'Dos cosas. Primero: tu PRECIO congelado de por vida: cuando el Mundial termine y los planes se activen, vos ya pagás $12 o $39 mientras el resto paga $20 o $59. Segundo: tu CUPO: solo hay 100 y no vuelven. Comprás hoy el acceso barato a todo lo que viene, no el acceso de esta semana.'],
         ['¿Hay reembolso?', 'Sí: si no te convence, tenés 24 horas desde el primer pago para pedir el reembolso completo, sin preguntas.'],
         ['¿Qué pasa después del Mundial?', 'El Mundial fue la prueba pública del sistema, con el historial verificado a la vista. Lo que viene después es el producto completo: fútbol de clubes TODO el año (Champions, Premier, LaLiga, Serie A, Bundesliga y más), los mismos motores alimentados con muchas más ligas, picks diarias verificadas, córners, tarjetas, goleadores y asistencias, y nuevos deportes muy pronto. Tu Founder Pass cubre todo eso al precio congelado: pagás $12 o $39 para siempre por lo que los que lleguen tarde pagarán $20 o $59, o más.'],
-        ['¿Esto garantiza ganancias?', 'No. Publicamos análisis y jugadas verificadas con transparencia total — el historial es público, con aciertos y errores. No es consejo financiero.']
+        ['¿Esto garantiza ganancias?', 'No. Publicamos análisis y jugadas verificadas con transparencia total: el historial es público, con aciertos y errores. No es consejo financiero.']
       ]
     },
     en: {
-      chip: 'Internal preview',
+      chip: 'Founder Pass open',
       eye: 'Founder Pass · first 100 only',
       h1: 'The full edge, at a <b>founder price</b> forever.',
       sub: 'The first 100 members lock their lifetime price before the public launch. Then it’s gone.',
       counter_pre: '', counter_post: 'founder spots left', quality_link: 'See the system quality, measured like a fund →',
       faq_t: 'Frequently asked questions',
       foot_disc: 'Educational suggestions based on statistical analysis. Not financial advice. Bet responsibly. 18+.',
-      foot_legal: 'Terms & conditions · Refund policy · Privacy — (pages in preparation)',
+      foot_legal: '<a href="/terms" style="color:inherit">Terms & conditions</a> · <a href="/refunds" style="color:inherit">Refund policy</a> · <a href="/privacy" style="color:inherit">Privacy</a>',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Most popular',
       mo: '/mo', forever: 'for life, first 100', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
       cta_free: 'Your current plan', cta: 'Coming soon', cta_buy: 'Lock my Founder Pass', cta_note: 'Checkout opens at launch', cta_note_live: 'Secure payment via Whop · cancel anytime', annual_link: 'annual',
       soon: 'Coming soon',
       f_free: [
-        ['on', '1 pick a day (delayed) — winner only'],
+        ['on', '1 pick a day (delayed), winner only'],
         ['on', 'Probabilities for every match'],
         ['on', 'Live scores and simulator'],
         ['off', 'Full daily picks'],
@@ -187,7 +187,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['off', 'Value & arbitrage']
       ],
       f_pro: [
-        ['on', '<b>All daily picks</b> — winner & goals, no delay'],
+        ['on', '<b>All daily picks</b>: winner & goals, no delay'],
         ['on', 'Full match analysis (cockpit) with the why behind every pick'],
         ['on', '<b>Player profiles</b> with scouting radar and projections'],
         ['on', '<b>Goal projection</b> for every match'],
@@ -200,20 +200,20 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       f_sharp: [
         ['on', '<b>Corners, cards, goalscorers & assists picks</b>'],
         ['on', '<b>Value</b>: mispriced odds caught by the model'],
-        ['on', '<b>Arbitrage & stale prices</b> — real-time scanner'],
-        ['on', '<b>Tactical profile of every matchup</b> — shot-by-shot event data'],
+        ['on', '<b>Arbitrage & stale prices</b>: real-time scanner'],
+        ['on', '<b>Tactical profile of every matchup</b>: shot-by-shot event data'],
         ['on', 'Priority alerts (private Telegram)'],
         ['on', 'Early access to every new market'],
-        ['on', '<b>Access to new sports, coming soon</b> — Sharp gets in first'],
+        ['on', '<b>Access to new sports, coming soon</b>: Sharp gets in first'],
         ['on', 'Everything in Pro']
       ],
       faqs: [
         ['What is the founder price?', 'A special launch price that ONLY exists while the World Cup lasts. When the tournament ends (July 19) or the 100 spots fill, whichever comes first, the Founder Pass closes forever and prices move to the permanent ones: $20 (Pro) and $59 (Sharp). The first 100 pay $12 and $39 for life: as long as your subscription stays active, that price never goes up, even when everything else does.'],
         ['Can I cancel anytime?', 'Yes. One click from your profile and you won’t be charged the next month. No lock-in, no fine print.'],
-        ['If everything is free during the World Cup, what am I buying today?', 'Two things. First: your PRICE, frozen for life — when the World Cup ends and plans activate, you pay $12 or $39 while everyone else pays $20 or $59. Second: your SPOT — there are only 100 and they do not come back. You are buying cheap access to everything that comes next, not access to this week.'],
+        ['If everything is free during the World Cup, what am I buying today?', 'Two things. First: your PRICE, frozen for life: when the World Cup ends and plans activate, you pay $12 or $39 while everyone else pays $20 or $59. Second: your SPOT: there are only 100 and they do not come back. You are buying cheap access to everything that comes next, not access to this week.'],
         ['Is there a refund?', 'Yes: if it’s not for you, you have 24 hours from your first payment for a full refund, no questions asked.'],
         ['What happens after the World Cup?', 'The World Cup was the public proof of the system, with the verified record in plain sight. What comes next is the full product: club football ALL year (Champions League, Premier League, LaLiga, Serie A, Bundesliga and more), the same engines fed with far more leagues, daily verified picks, corners, cards, goalscorers and assists, and new sports coming soon. Your Founder Pass covers all of it at the frozen price: you pay $12 or $39 forever for what latecomers will pay $20 or $59, or more.'],
-        ['Does this guarantee profits?', 'No. We publish verified analysis and plays with full transparency — the track record is public, hits and misses. Not financial advice.']
+        ['Does this guarantee profits?', 'No. We publish verified analysis and plays with full transparency: the track record is public, hits and misses. Not financial advice.']
       ]
     }
   };

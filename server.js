@@ -1121,26 +1121,24 @@ function founderEmail(seq, lang, ctx = {}) {
   const hit = tr.hit_rate != null ? Math.round(tr.hit_rate * 100) : null;
   const roi = tr.roi_pct != null ? tr.roi_pct : null;
   const spots = ctx.spotsLeft != null ? ctx.spotsLeft : 100;
-  // FORMATO CARTA (12-jul): el wrap anterior (header con gradiente oscuro, card con bordes) caía en
-  // Promociones de Gmail — las señales de template marketing (bloques de color, mucho chrome) pesan más
-  // que el remitente. Este formato es el que históricamente cae en Principal (patrón del reengage):
-  // carta limpia sobre blanco, acentos de marca mínimos (★ verde + UN solo botón), un solo link.
-  const wrap = (kicker, h1, bodyHtml, ctaLabel) => `<div style="margin:0;padding:8px 0">
-  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
-    <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#0BA661">★ ${kicker}</p>
-    <h1 style="margin:0 0 18px;font-size:21px;line-height:1.3;color:#111827">${h1}</h1>
-    ${bodyHtml}
-    <div style="margin:22px 0 24px"><a href="${url}" style="display:inline-block;background:#0BA661;color:#ffffff;font-weight:700;font-size:15px;padding:12px 26px;border-radius:99px;text-decoration:none">${ctaLabel}</a></div>
-    <p style="margin:0 0 6px;font-size:11.5px;color:#9ca3af;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+. Refunds within 24 hours of your first charge.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+. Reembolso dentro de las 24 horas del primer cobro.'}</p>
-    <p style="margin:0;font-size:11.5px;color:#9ca3af">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</p>
+  const wrap = (kicker, h1, bodyHtml, ctaLabel) => `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${kicker}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${h1}</h1>
+    </div>
+    <div style="padding:24px 26px">
+      ${bodyHtml}
+      <div style="text-align:center;margin:20px 0 22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${ctaLabel}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+. Refunds within 24 hours of your first charge.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+. Reembolso dentro de las 24 horas del primer cobro.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</div>
   </div></div>`;
-  const p = s => `<p style="margin:0 0 14px;font-size:15px;color:#1f2937;line-height:1.65">${s}</p>`;
-  const li = s => `<p style="margin:0 0 8px;font-size:15px;color:#1f2937;line-height:1.55">· ${s}</p>`;
+  const p = s => `<p style="margin:0 0 14px;font-size:14px;color:#2b3a33;line-height:1.6">${s}</p>`;
+  const li = s => `<p style="margin:0 0 8px;font-size:14px;color:#2b3a33;line-height:1.55">· ${s}</p>`;
 
   if (seq === 1) {
-    // Asunto PERSONAL a propósito (sin precio, sin oferta entre paréntesis): los asuntos tipo promo son
-    // una de las señales más fuertes de la pestaña Promociones de Gmail.
-    const subject = en ? 'I opened the Founder Pass and I want you in the first 100' : 'Abrí el Founder Pass y quiero que estés en los primeros 100';
+    const subject = en ? 'Founder Pass: your price locked for life (first 100)' : 'Founder Pass: tu precio de por vida (primeros 100)';
     // Línea de transparencia (12-jul): la peor jornada del torneo va en el email de apertura, no se esconde.
     // Los porcentajes son vivos (track record al momento del envío); el 2 de 11 es el dato de la noche del 11-jul.
     const transEs = `Y esos resultados incluyen lo malo: anoche tuvimos nuestra peor jornada del torneo (2 aciertos de 11) y está completa en el registro, no borramos ni maquillamos derrotas. Aun con ella, el historial va en ${hit}% de acierto con +${roi}% de ROI. Así se ve un sistema real.`;
@@ -1150,7 +1148,7 @@ function founderEmail(seq, lang, ctx = {}) {
       : `Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.\n\n${transEs}\n\nHoy abro el Founder Pass: los primeros 100 que entren se quedan con el precio fundador para siempre.\n\n· Pro: 12 dólares al mes (después será 20). Todas las picks de ganador y goles, cockpit en vivo, perfiles de jugador, calculadora de stake, alertas.\n· Sharp: 39 dólares al mes (después será 59). Todo lo de Pro, más córners, tarjetas, goleadores y asistencias, el detector de cuotas mal pagadas, el escáner de más de 40 casas, y nuevos deportes muy pronto.\n\nEl precio que asegures hoy no sube nunca mientras mantengas la suscripción. Anual: 2 meses gratis. Reembolso dentro de las 24 horas si no te convence.\n\nAsegurar mi Founder Pass: ${url}\n\nQuedan semifinales y la final. Y después del Mundial viene el calendario completo de clubes: la plataforma no se apaga el 19, ahí arranca.\n\nAlexis · GP Simulador`;
     const html = wrap(
       en ? 'Founder Pass · first 100' : 'Founder Pass · primeros 100',
-      en ? 'Your price, <span style="color:#0BA661">locked for life</span>' : 'Tu precio, <span style="color:#0BA661">congelado de por vida</span>',
+      en ? 'Your price, <span style="color:#18E6A3">locked for life</span>' : 'Tu precio, <span style="color:#18E6A3">congelado de por vida</span>',
       p(en ? 'You used the full platform for free during the World Cup. That was on purpose: I wanted you to see the results before asking you for anything.' : 'Durante todo el Mundial usaste la plataforma completa gratis. Eso fue a propósito: quería que vieras los resultados antes de pedirte un peso.') +
       p(en ? transEn : transEs) +
       p(en ? '<b>Today I open the Founder Pass:</b> the first 100 people in keep the founder price forever.' : '<b>Hoy abro el Founder Pass:</b> los primeros 100 que entren se quedan con el precio fundador para siempre.') +
@@ -1170,7 +1168,7 @@ function founderEmail(seq, lang, ctx = {}) {
       : `Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.\n\nEl registro real (podés verlo en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible.\n\nLa simulación con dinero real: tomamos el historial completo y simulamos un bankroll de 5,000 dólares siguiendo todas las picks con gestión conservadora. Resultado: 8,890 dólares en una semana. El informe completo, pick por pick: ${pdf}\n\nUna suscripción Sharp cuesta 39 dólares al mes con el Founder Pass. Quedan ${spots} cupos founder de 100.\n\nAsegurar mi Founder Pass: ${url}\n\nAlexis · GP Simulador`;
     const html = wrap(
       en ? 'The numbers' : 'Los números',
-      en ? `${rec} hit rate, <span style="color:#0BA661">+${roi}% ROI</span>, all public` : `${rec} de acierto, <span style="color:#0BA661">+${roi}% de ROI</span>, todo público`,
+      en ? `${rec} hit rate, <span style="color:#18E6A3">+${roi}% ROI</span>, all public` : `${rec} de acierto, <span style="color:#18E6A3">+${roi}% de ROI</span>, todo público`,
       p(en ? 'Yesterday I opened the Founder Pass and spots are going. Today I want to show you why.' : 'Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.') +
       p(en ? `<b>The real record</b> (under Performance in your account): ${tr.settled} settled picks, ${tr.wins} wins, ${hit}% hit rate, +${roi}% ROI. Published BEFORE each match, settled after. No way to cheat that.` : `<b>El registro real</b> (en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible.`) +
       p(en ? `<b>The real money simulation:</b> a 5,000 dollar bankroll following every pick with conservative staking became <b>8,890 dollars in one week</b>. <a href="${pdf}" style="color:#0BA661;font-weight:700">Full report, pick by pick →</a>` : `<b>La simulación con dinero real:</b> un bankroll de 5,000 dólares siguiendo todas las picks con gestión conservadora se convirtió en <b>8,890 dólares en una semana</b>. <a href="${pdf}" style="color:#0BA661;font-weight:700">Informe completo, pick por pick →</a>`) +
@@ -1186,7 +1184,7 @@ function founderEmail(seq, lang, ctx = {}) {
     : `Esta es la última semana del Mundial: semifinales y la final del domingo 19. La plataforma va a estar encendida para cada partido, con picks, cuotas en vivo y el escáner corriendo.\n\nY es también la última llamada del Founder Pass. Quedan ${spots} cupos de 100. Cuando se acaben, los precios pasan a los definitivos: Pro 20, Sharp 59.\n\nLo que asegurás hoy:\n· Tu precio congelado de por vida (12 o 39 dólares al mes)\n· Acceso completo a la última semana del Mundial\n· Todo lo que viene después: el calendario completo de clubes, más mercados, nuevos deportes. Los founders entran primero a todo.\n\nSi venís siguiendo los resultados, ya sabés lo que hace el sistema. Esta es la ventana para quedártelo al precio de los primeros.\n\nAsegurar mi Founder Pass: ${url}\n\nNos vemos en las semifinales.\nAlexis · GP Simulador`;
   const html = wrap(
     en ? 'Last call' : 'Última llamada',
-    en ? `${spots} founder spots left, <span style="color:#0BA661">then prices go up</span>` : `Quedan ${spots} cupos founder, <span style="color:#0BA661">después los precios suben</span>`,
+    en ? `${spots} founder spots left, <span style="color:#18E6A3">then prices go up</span>` : `Quedan ${spots} cupos founder, <span style="color:#18E6A3">después los precios suben</span>`,
     p(en ? 'This is the last week of the World Cup: semifinals and the final on Sunday the 19th. The platform will be on for every match.' : 'Esta es la última semana del Mundial: semifinales y la final del domingo 19. La plataforma va a estar encendida para cada partido.') +
     li(en ? 'Your price frozen for life ($12 or $39 a month)' : 'Tu precio congelado de por vida ($12 o $39 al mes)') +
     li(en ? 'Full access to the final week of the World Cup' : 'Acceso completo a la última semana del Mundial') +

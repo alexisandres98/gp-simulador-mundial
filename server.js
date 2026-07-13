@@ -3889,6 +3889,14 @@ if (propsOn()) {
   setTimeout(() => buildPlayerPhotoMap().catch(() => { }), 4 * 60 * 1000);
   setInterval(() => buildPlayerPhotoMap().catch(() => { }), 24 * 3600 * 1000);
 }
+// FASE CLUBES F0.2: mapa de fotos oficiales de jugadores de clubes (data/clubs/player-photos.json, generado
+// offline por scripts/gen-club-player-photos.js). Carga al boot; recarga cada 12h por si el archivo se actualizó.
+function loadClubPlayerPhotos() {
+  try { global._clubPlayerPhotos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'player-photos.json'), 'utf8')); }
+  catch { global._clubPlayerPhotos = global._clubPlayerPhotos || {}; }
+}
+loadClubPlayerPhotos();
+setInterval(loadClubPlayerPhotos, 12 * 3600 * 1000);
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
@@ -6839,7 +6847,14 @@ const server = http.createServer(async (req, res) => {
       const RT = global._clubsRatings || {};
       const L = RT.leagues && RT.leagues[league];
       const teamName = (L && L.ratings && L.ratings[teamId] && L.ratings[teamId].name) || null;
+      // F2.2: scouting nivel Yamal (stats/90 + radar + arquetipo) desde el player-history de la liga (mismos
+      // engines del Mundial). null si aún no hay backfill de esa liga → la ficha bio se sirve igual.
+      let intel = null;
+      try { intel = require('./player-intel/clubsFit').clubPlayerScout(league, pid); } catch { intel = null; }
+      const photo = (global._clubPlayerPhotos && global._clubPlayerPhotos[pid]) ? global._clubPlayerPhotos[pid].photo : null;
       return json(res, 200, {
+        photo,
+        intel, // { stats_available, xg90, shots90, ..., scout:{axes,archetype,read} }
         pid, name: p0.name, short: p0.short_name || p0.name, team_id: teamId, team_name: teamName, league,
         league_name: (L && L.name) || null,
         position: p0.position || null, age: p0.age != null ? p0.age : null,
@@ -6847,8 +6862,7 @@ const server = http.createServer(async (req, res) => {
         nationality: p0.nationality || null, nat_slug: p0.country_slug || null,
         market_value: p0.market_value != null ? p0.market_value : null, contract_until: p0.contract_until || null,
         national_team: p0.national_team || null, first_name: p0.first_name || null, last_name: p0.last_name || null,
-        // fase 2 (backfill de player-stats por liga): stats/90, radar, arquetipo, scout read
-        stats_available: false,
+        stats_available: !!(intel && intel.stats_available),
       });
     }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al

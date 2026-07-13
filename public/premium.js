@@ -156,6 +156,8 @@
       cl_age: 'Edad', cl_height: 'Altura', cl_foot: 'Pie', cl_nat: 'País', cl_contract: 'Contrato', cl_nat_team: 'Selección',
       cl_foot_l: 'Izquierdo', cl_foot_r: 'Derecho', cl_foot_b: 'Ambos',
       cl_player_soon: 'Estadísticas por 90 minutos, radar y arquetipo del jugador llegan con la ingesta de datos por partido de la liga.',
+      cl_profile: 'Perfil del jugador', cl_apps: 'partidos', cl_stats90: 'Estadísticas por 90 minutos', cl_shots90: 'Remates/90', cl_sot90: 'Al arco/90',
+      cl_ga: 'Goles / Asistencias', cl_att_share: '% del ataque', cl_scout: 'Lectura de scouting',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -405,6 +407,8 @@
       cl_age: 'Age', cl_height: 'Height', cl_foot: 'Foot', cl_nat: 'Country', cl_contract: 'Contract', cl_nat_team: 'National team',
       cl_foot_l: 'Left', cl_foot_r: 'Right', cl_foot_b: 'Both',
       cl_player_soon: 'Per-90 stats, radar and player archetype arrive with per-match data ingestion for the league.',
+      cl_profile: 'Player profile', cl_apps: 'apps', cl_stats90: 'Per-90 stats', cl_shots90: 'Shots/90', cl_sot90: 'On target/90',
+      cl_ga: 'Goals / Assists', cl_att_share: '% of attack', cl_scout: 'Scouting read',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -3808,8 +3812,10 @@
     if (!p || p._empty || p.error) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
     var mini = function (label, val) { return val == null || val === '' ? '' : '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + esc(val) + '</b></div>'; };
     var footL = { left: t('cl_foot_l'), right: t('cl_foot_r'), both: t('cl_foot_b') };
+    var iv = p.intel || {};
+    var avatar = p.photo ? '<img class="gx-cpl-photo" src="' + esc(p.photo) + '" alt="" onerror="this.style.display=\'none\'">' : '<span class="fl big">' + ic('user') + '</span>';
     var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + leagueLogo(lg) + '<span class="gx-pick-clickable" data-cteam="' + esc(lg + '|' + tid) + '" style="cursor:pointer">' + clubBadge(tid) + ' ' + esc(p.team_name || '') + '</span><span class="gx-spacer"></span>' + (p.position ? '<span class="gx-clgate sh">' + esc(p.position) + '</span>' : '') + '</div>' +
-      '<div class="gx-team-id"><span class="fl big">' + ic('user') + '</span><div><b>' + esc(p.name) + '</b>' + (p.national_team ? '<span class="gx-mono gx-dim">' + esc(t('cl_nat_team')) + ': ' + esc(p.national_team) + '</span>' : '') + '</div></div>' +
+      '<div class="gx-team-id">' + avatar + '<div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>' + esc(p.name) + '</b>' + archBadge(iv.scout && iv.scout.archetype) + '</div>' + (p.national_team ? '<span class="gx-mono gx-dim">' + esc(t('cl_nat_team')) + ': ' + esc(p.national_team) + '</span>' : '') + '</div></div>' +
       '<div class="gx-hero-grid">' +
       mini(t('cl_age'), p.age != null ? p.age + esc(t('cl_yr')) : null) +
       mini(t('cl_height'), p.height ? p.height + ' cm' : null) +
@@ -3818,8 +3824,26 @@
       mini(t('cl_value'), clubMoney(p.market_value)) +
       mini(t('cl_contract'), p.contract_until ? String(p.contract_until).slice(0, 4) : null) +
       '</div></div>';
-    var note = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
-    mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero + note + '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
+    // NIVEL YAMAL: radar + stats/90 + scout read cuando hay backfill de la liga (mismos engines del Mundial)
+    var intelHtml = '';
+    if (iv.stats_available && iv.scout) {
+      var s90 = function (label, v) { return '<div class="gx-clrow"><span>' + esc(label) + '</span><span class="gx-mono" style="font-weight:700">' + (v != null ? Number(v).toFixed(2) : '—') + '</span></div>'; };
+      var radar = (iv.scout.axes && iv.scout.axes.length >= 3) ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('radar') + esc(t('cl_profile')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + iv.minutes + '\' · ' + iv.apps + ' ' + esc(t('cl_apps')) + '</span></div><div class="gx-mod-body"><div class="gx-radar-wrap">' + gxRadar(iv.scout.axes) + '</div></div></div>' : '';
+      var stats = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-bar') + esc(t('cl_stats90')) + '</span></div><div style="padding:6px 16px 12px">' +
+        s90('xG/90', iv.xg90) + s90(t('cl_shots90'), iv.shots90) + s90(t('cl_sot90'), iv.sot90) + s90('xA/90', iv.xa90) +
+        '<div class="gx-clrow"><span>' + esc(t('cl_ga')) + '</span><span class="gx-mono" style="font-weight:700">' + (iv.goals || 0) + ' / ' + (iv.assists || 0) + '</span></div>' +
+        (iv.attack_share ? '<div class="gx-clrow"><span>' + esc(t('cl_att_share')) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(iv.attack_share) + '</span></div>' : '') + '</div></div>';
+      var read = '';
+      if (iv.scout.read) {
+        var str = (iv.scout.read.strengths || []).map(function (x) { return '<div class="gx-finding"><span class="gx-finding-dot" style="background:var(--gx-pos)"></span>' + esc(LANG === 'en' ? x.en : x.es) + '</div>'; }).join('');
+        var lim = iv.scout.read.limit ? '<div class="gx-finding"><span class="gx-finding-dot" style="background:#F09595"></span>' + esc(LANG === 'en' ? iv.scout.read.limit.en : iv.scout.read.limit.es) + '</div>' : '';
+        if (str || lim) read = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('search') + esc(t('cl_scout')) + '</span></div><div class="gx-findings" style="padding:10px 16px 12px">' + str + lim + '</div></div>';
+      }
+      intelHtml = radar + stats + read;
+    } else {
+      intelHtml = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
+    }
+    mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero + intelHtml + '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
     bindBack();
     [].forEach.call(mv.querySelectorAll('[data-cteam]'), function (el) {
       el.addEventListener('click', function () { var pp = el.getAttribute('data-cteam').split('|'); openClubTeam(pp[0], pp[1]); });

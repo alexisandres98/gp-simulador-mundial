@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Clubes · GP Simulador</title>
+<link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk-var.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: 'InterVar'; src: url('/fonts/inter-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+:root { --bg:#06090B; --panel:#0D1417; --panel2:#111A1E; --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+  --tx:#EAF1F2; --tx2:#9DB0B5; --tx3:#5F747B; --ac:#1FE3A4; --acs:rgba(31,227,164,.12); --acl:rgba(31,227,164,.45);
+  --blue:#5FA8FF; --amber:#FFC15E; --disp:'Space Grotesk',sans-serif; --sans:'InterVar',-apple-system,sans-serif; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { background:var(--bg); color:var(--tx); font-family:var(--sans); font-size:15px; -webkit-font-smoothing:antialiased; }
+body { background: radial-gradient(1100px 520px at 15% -6%, rgba(31,227,164,.06), transparent 60%), var(--bg); }
+.wrap { max-width:1120px; margin:0 auto; padding:0 22px 80px; }
+.nav { display:flex; align-items:center; gap:12px; padding:20px 0; }
+.logo { display:flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:700; font-size:17px; }
+.logo i { width:34px; height:34px; border-radius:10px; background:var(--acs); border:1px solid var(--acl); display:grid; place-items:center; font-style:normal; }
+.chip { margin-left:auto; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ac); border:1px solid var(--acl); background:var(--acs); padding:6px 12px; border-radius:99px; white-space:nowrap; }
+.sub { color:var(--tx3); font-size:12.5px; margin:2px 0 22px; }
+.pills { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+.pill { font-family:inherit; font-size:13px; font-weight:700; color:var(--tx2); background:var(--panel); border:1px solid var(--line2); border-radius:99px; padding:9px 16px; cursor:pointer; transition:all .15s; }
+.pill.on { color:var(--ac); background:var(--acs); border-color:var(--acl); }
+.pill small { color:var(--tx3); font-weight:600; margin-left:6px; }
+.grid { display:grid; grid-template-columns: 1fr 320px; gap:18px; align-items:start; }
+@media (max-width:900px){ .grid { grid-template-columns:1fr; } }
+.card { background:linear-gradient(165deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:16px; padding:18px; }
+.card h2 { font-family:var(--disp); font-size:15px; font-weight:700; letter-spacing:.04em; margin-bottom:4px; }
+.card .meta { font-size:11.5px; color:var(--tx3); margin-bottom:14px; }
+.fx { border-top:1px solid var(--line); padding:13px 2px; }
+.fx:first-of-type { border-top:0; }
+.fx .teams { display:flex; justify-content:space-between; align-items:baseline; font-size:14px; font-weight:700; margin-bottom:8px; gap:8px; }
+.fx .teams .d { color:var(--tx3); font-size:11px; font-weight:600; white-space:nowrap; }
+.fx .teams span.t { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bar { display:flex; height:9px; border-radius:99px; overflow:hidden; background:rgba(255,255,255,.08); margin-bottom:7px; }
+.bar .h { background:var(--ac); opacity:.9; } .bar .d { background:rgba(255,255,255,.30); } .bar .a { background:var(--blue); opacity:.85; }
+.pct { display:flex; justify-content:space-between; font-size:11.5px; color:var(--tx2); font-weight:600; font-variant-numeric:tabular-nums; }
+.pct b { color:var(--tx); }
+.new { font-size:10px; color:var(--amber); font-weight:700; margin-left:5px; border:1px solid rgba(255,193,94,.35); border-radius:6px; padding:1px 5px; vertical-align:1px; }
+.tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.tbl td { padding:7px 4px; border-top:1px solid var(--line); }
+.tbl tr:first-child td { border-top:0; }
+.tbl .r { text-align:right; font-family:var(--disp); font-weight:700; font-variant-numeric:tabular-nums; }
+.tbl .pos { color:var(--tx3); width:26px; font-variant-numeric:tabular-nums; }
+.empty { color:var(--tx3); font-size:13px; padding:22px 4px; text-align:center; line-height:1.5; }
+.foot { margin-top:28px; font-size:11.5px; color:var(--tx3); line-height:1.6; }
+.err { color:#F09595; padding:30px 0; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <div class="logo"><i><svg viewBox="0 0 34 34" width="26" height="26" aria-hidden="true"><defs><linearGradient id="gxgc" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxgc)"/></svg></i> GP Simulador</div>
+    <span class="chip">Clubes · build interno</span>
+  </nav>
+  <div class="sub" id="sub">Fase post-Mundial · ratings de club por liga · núcleo del modelo del Mundial</div>
+  <div class="pills" id="pills"></div>
+  <div id="body"><div class="empty">Cargando cartelera…</div></div>
+  <div class="foot">Superficie interna (solo admin). Ratings Elo por competición ajustados del historial de la temporada; ventaja de local aprendida por liga. Probabilidades del mismo núcleo del Mundial. Las PICKS por liga llegan tras el backtest con gates — nunca antes. Estimaciones de un modelo estadístico, no consejo financiero.</div>
+</div>
+<script>
+(function () {
+  var S = { data: null, sel: null };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fmtDay(u) { try { return new Date(u).toLocaleString('es-CO', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  function pct(x) { return Math.round(x * 100) + '%'; }
+  function render() {
+    var Ls = (S.data && S.data.leagues) || [];
+    var pills = document.getElementById('pills');
+    pills.innerHTML = Ls.map(function (L) {
+      return '<button class="pill' + (S.sel === L.key ? ' on' : '') + '" data-k="' + esc(L.key) + '">' + esc(L.name) + '<small>' + esc(L.country) + '</small></button>';
+    }).join('');
+    pills.querySelectorAll('.pill').forEach(function (b) { b.onclick = function () { S.sel = b.getAttribute('data-k'); render(); }; });
+    var L = Ls.find(function (x) { return x.key === S.sel; }) || Ls[0];
+    if (!L) { document.getElementById('body').innerHTML = '<div class="empty">Sin ligas todavía. Corré el fit de ratings.</div>'; return; }
+    S.sel = L.key;
+    var fx = (L.upcoming || []).map(function (f) {
+      var newH = f.home.known ? '' : '<span class="new">nuevo</span>', newA = f.away.known ? '' : '<span class="new">nuevo</span>';
+      return '<div class="fx">' +
+        '<div class="teams"><span class="t">' + esc(f.home.name) + newH + '</span><span class="d">' + esc(fmtDay(f.utc)) + '</span><span class="t" style="text-align:right">' + esc(f.away.name) + newA + '</span></div>' +
+        '<div class="bar"><div class="h" style="width:' + (f.home.prob * 100) + '%"></div><div class="d" style="width:' + (f.draw * 100) + '%"></div><div class="a" style="width:' + (f.away.prob * 100) + '%"></div></div>' +
+        '<div class="pct"><b>' + pct(f.home.prob) + '</b><span>X ' + pct(f.draw) + '</span><b>' + pct(f.away.prob) + '</b></div>' +
+        '</div>';
+    }).join('');
+    var rows = (L.table || []).slice(0, 12).map(function (t, i) {
+      return '<tr><td class="pos">' + (i + 1) + '</td><td>' + esc(t.name) + '</td><td class="r">' + t.elo + '</td></tr>';
+    }).join('');
+    document.getElementById('body').innerHTML =
+      '<div class="grid">' +
+      '<div class="card"><h2>Próximos partidos</h2><div class="meta">' + esc(L.name) + ' · localía aprendida +' + L.hfa + ' Elo · ' + L.n_matches + ' partidos en el fit</div>' +
+      (fx || '<div class="empty">Sin partidos programados en el proveedor todavía.<br>La cartelera se refresca sola cada 6 horas.</div>') + '</div>' +
+      '<div class="card"><h2>Ratings del modelo</h2><div class="meta">Elo de club · top 12</div><table class="tbl">' + rows + '</table></div>' +
+      '</div>';
+    var f = S.data && S.data.fitted_at ? new Date(S.data.fitted_at).toLocaleString('es-CO') : '';
+    document.getElementById('sub').textContent = 'Fase post-Mundial · ' + Ls.length + ' ligas · fit ' + f + ' · ' + ((S.data && S.data.engine) || '');
+  }
+  fetch('/api/clubs/state', { credentials: 'same-origin' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (j) { S.data = j; render(); })
+    .catch(function (e) { document.getElementById('body').innerHTML = '<div class="err">No se pudo cargar (' + esc(e.message) + '). ¿Sesión de admin activa?</div>'; });
+})();
+</script>
+</body>
+</html>

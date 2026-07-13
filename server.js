@@ -6286,6 +6286,63 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(base + `<div class="ok">✓</div><h1>${en ? 'Purchase confirmed' : 'Compra confirmada'}</h1><p>${en ? 'Your Founder Pass is active. Sign in with the same email you used at checkout and your plan will be waiting for you.' : 'Tu Founder Pass está activo. Entrá con el mismo correo que usaste al pagar y tu plan te estará esperando.'}</p><a class="b" href="/?auth=1">${en ? 'Sign in to my account' : 'Entrar a mi cuenta'}</a></div></div></body></html>`);
     }
+    // ===== FASE CLUBES (post-Mundial) — superficie /clubes SOLO ADMIN, patrón /x pre-fusión =====
+    // Build interno de la fase post-Mundial: cartelera multi-liga con ratings de club (clubs-engine, fit
+    // offline commiteado en data/clubs/ratings.json) y probabilidades del MISMO núcleo del Mundial
+    // (engine.matchProbs). Para no-admins NO EXISTE (404). Al aprobarse → fusión a la principal (como /x).
+    if (p === '/clubes' || p === '/clubes/' || p === '/clubs' || p === '/clubs/') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'public', 'clubs.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        return res.end(html);
+      } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    if (p === '/api/clubs/state') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        if (!global._clubsRatings) {
+          try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); }
+          catch { global._clubsRatings = { _meta: {}, leagues: {} }; }
+        }
+        const RT = global._clubsRatings;
+        global._clubsUpcoming = global._clubsUpcoming || {};
+        const tsaKey = process.env.THESTATSAPI_KEY || '';
+        const leagues = [];
+        for (const key of Object.keys(RT.leagues || {})) {
+          const L = RT.leagues[key];
+          // PRÓXIMOS de la liga: TSA status=scheduled, memo 6h (5 ligas = ~5 llamadas/6h, nada vs 12/min)
+          let up = global._clubsUpcoming[key];
+          if ((!up || Date.now() - up.at > 6 * 3600e3) && tsaKey) {
+            try {
+              const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&status=scheduled&per_page=50`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+              const j = r.ok ? await r.json().catch(() => null) : null;
+              const rows = ((j && j.data) || j || []).filter(m => m && m.utc_date).sort((a, b) => new Date(a.utc_date) - new Date(b.utc_date)).slice(0, 12);
+              up = { at: Date.now(), rows };
+              global._clubsUpcoming[key] = up;
+              await new Promise(r2 => setTimeout(r2, 1200)); // gentileza con el rate limit compartido
+            } catch { up = up || { at: Date.now(), rows: [] }; }
+          }
+          const fixtures = ((up && up.rows) || []).map(m => {
+            const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+            const rh = (L.ratings[hId] && L.ratings[hId].elo) || 1500;
+            const ra = (L.ratings[aId] && L.ratings[aId].elo) || 1500;
+            const pr = matchProbs(rh + (L.hfa || 60), ra);
+            return {
+              id: m.id, utc: m.utc_date,
+              home: { id: hId, name: (m.home_team && m.home_team.name) || '?', elo: rh, known: !!L.ratings[hId], prob: +pr.home.toFixed(3) },
+              draw: +pr.draw.toFixed(3),
+              away: { id: aId, name: (m.away_team && m.away_team.name) || '?', elo: ra, known: !!L.ratings[aId], prob: +pr.away.toFixed(3) },
+            };
+          });
+          const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t })).sort((a, b) => b.elo - a.elo);
+          leagues.push({ key, name: L.name, country: L.country, n_matches: L.n_matches, hfa: L.hfa, table, upcoming: fixtures });
+        }
+        return json(res, 200, { fitted_at: (RT._meta && RT._meta.fitted_at) || null, engine: (RT._meta && RT._meta.engine) || null, leagues });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al
     // mercado" (Brier GP vs consenso) + curva de calibración + CLV opcional. Admin-only hasta que Alexis lo
     // apruebe; GP_QUALITY_PUBLIC=true lo abre. Caja negra estricta: solo resultados medidos, nunca método.

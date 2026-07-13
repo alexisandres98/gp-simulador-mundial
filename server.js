@@ -953,48 +953,48 @@ function bankrollEmail(lang) {
   const url = 'https://gpsimulador.com';
   const pdf = url + '/informes/bankroll-sim-' + (en ? 'en' : 'es') + '.pdf';
   const subject = en
-    ? 'If you had followed every pick: $5,000 became $8,889 in one week'
-    : 'Si hubieras seguido todas las picks: $5,000 se convirtieron en $8,889 en una semana';
+    ? 'If you had followed every pick: $5,000 became $10,356 in two weeks'
+    : 'Si hubieras seguido todas las picks: $5,000 se convirtieron en $10,356 en dos semanas';
   const preheader = en
-    ? '31 settled picks, 81.5% hit rate. The full report, pick by pick, in PDF.'
-    : '31 picks liquidadas, 81.5% de acierto. El informe completo, pick por pick, en PDF.';
+    ? '52 settled picks, 67.3% hit rate, worst night included. The full report, pick by pick, in PDF.'
+    : '52 picks liquidadas, 67.3% de acierto, con la peor noche incluida. El informe completo, pick por pick, en PDF.';
   const rows = [
-    ['$5,000 · Kelly 1/4', '$7,607.26', '+52.1%'],
-    ['$5,000 · Kelly 1/2', '$8,889.51', '+77.8%'],
-    ['$10,000 · Kelly 1/4', '$15,214.55', '+52.1%'],
-    ['$10,000 · Kelly 1/2', '$17,779.02', '+77.8%'],
+    ['$5,000 · Kelly 1/4', '$8,099', '+62.0%'],
+    ['$5,000 · Kelly 1/2', '$10,356', '+107.1%'],
+    ['$10,000 · Kelly 1/4', '$16,197', '+62.0%'],
+    ['$10,000 · Kelly 1/2', '$20,712', '+107.1%'],
   ];
   const text = en
     ? `We ran the numbers.
 
-If a user had deposited $5,000 on June 30 and followed EVERY pick the system published, staking with the platform calculator (fractional Kelly), today they would have $8,889.51 with 1/2 Kelly (+77.8%) or $7,607.26 with 1/4 Kelly (+52.1%).
+If a user had deposited $5,000 on June 30 and followed EVERY pick the system published, staking with the platform calculator (fractional Kelly), today they would have $10,356 with 1/2 Kelly (+107.1%) or $8,099 with 1/4 Kelly (+62.0%).
 
-With $10,000: $17,779.02 or $15,214.55.
+With $10,000: $20,712 or $16,197.
 
-The record behind it: 31 settled picks from June 30 to July 6. 22 won, 5 lost, 4 voided. 81.5% hit rate. Every pick, stake and result is in the full report:
+The record behind it: 52 settled picks from June 30 to July 12, our worst night included. 35 won, 17 lost. 67.3% hit rate. Every pick, stake and result is in the full report:
 
 ${pdf}
 
 Today's picks are already on the board: ${url}
 
-Past performance does not guarantee future results. One week is a small sample. Not financial advice. 18+.
+Past performance does not guarantee future results. Two weeks is a small sample. Not financial advice. 18+.
 
 - Alexis · GP Simulador
 
 You are receiving this email because you have an account at GP Simulador.`
     : `Corrimos los numeros.
 
-Si un usuario hubiera depositado $5,000 el 30 de junio y hubiera seguido TODAS las picks que publico el sistema, con el stake de la calculadora de la plataforma (Kelly fraccionado), hoy tendria $8,889.51 con Kelly 1/2 (+77.8%) o $7,607.26 con Kelly 1/4 (+52.1%).
+Si un usuario hubiera depositado $5,000 el 30 de junio y hubiera seguido TODAS las picks que publico el sistema, con el stake de la calculadora de la plataforma (Kelly fraccionado), hoy tendria $10,356 con Kelly 1/2 (+107.1%) o $8,099 con Kelly 1/4 (+62.0%).
 
-Con $10,000: $17,779.02 o $15,214.55.
+Con $10,000: $20,712 o $16,197.
 
-El registro detras: 31 picks liquidadas del 30 de junio al 6 de julio. 22 ganadas, 5 perdidas, 4 anuladas. 81.5% de acierto. Cada pick, stake y resultado esta en el informe completo:
+El registro detras: 52 picks liquidadas del 30 de junio al 12 de julio, con nuestra peor noche incluida. 35 ganadas, 17 perdidas. 67.3% de acierto. Cada pick, stake y resultado esta en el informe completo:
 
 ${pdf}
 
 Las picks de hoy ya estan en el tablero: ${url}
 
-Rendimientos pasados no garantizan resultados futuros. Una semana es una muestra corta. No es consejo financiero. 18+.
+Rendimientos pasados no garantizan resultados futuros. Dos semanas es una muestra corta. No es consejo financiero. 18+.
 
 - Alexis · GP Simulador
 
@@ -1005,7 +1005,7 @@ Recibes este correo porque tienes una cuenta en GP Simulador.`;
     <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
       <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'The numbers are in' : 'Corrimos los numeros'}</div>
       <h1 style="margin:8px 0 0;font-size:23px;line-height:1.25">${en ? 'If you had followed <span style="color:#18E6A3">every pick</span> of the system' : 'Si hubieras seguido <span style="color:#18E6A3">todas las picks</span> del sistema'}</h1>
-      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'June 30 to July 6 · 31 settled picks · 22 won, 5 lost · <b style="color:#18E6A3">81.5% hit rate</b>' : 'Del 30 de junio al 6 de julio · 31 picks liquidadas · 22 ganadas, 5 perdidas · <b style="color:#18E6A3">81.5% de acierto</b>'}</p>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'June 30 to July 12 · 52 settled picks · 35 won, 17 lost · <b style="color:#18E6A3">67.3% hit rate</b>' : 'Del 30 de junio al 12 de julio · 52 picks liquidadas · 35 ganadas, 17 perdidas · <b style="color:#18E6A3">67.3% de acierto</b>'}</p>
     </div>
     <div style="padding:24px 26px">
       <p style="margin:0 0 14px;font-size:14px;color:#2b3a33;line-height:1.6">${en ? 'A user deposits the capital, follows every pick and stakes with the platform calculator (fractional Kelly). This is where the bankroll ends up:' : 'Un usuario deposita el capital, sigue todas las picks y apuesta con la calculadora de la plataforma (Kelly fraccionado). Asi termina el bankroll:'}</p>
@@ -1015,7 +1015,7 @@ Recibes este correo porque tienes una cuenta en GP Simulador.`;
       <p style="margin:14px 0 20px;font-size:13px;color:#5c6f66;line-height:1.6">${en ? 'Every pick, the odds, the stake and the result, one by one, are in the full report.' : 'Cada pick, la cuota, el stake y el resultado, una por una, estan en el informe completo.'}</p>
       <div style="text-align:center;margin-bottom:10px"><a href="${pdf}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 26px;border-radius:99px;text-decoration:none">${en ? 'Download the full report (PDF)' : 'Descargar el informe completo (PDF)'}</a></div>
       <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;color:#0a8f5b;font-weight:700;font-size:14px;text-decoration:none">${en ? "See today's picks →" : 'Ver las picks de hoy →'}</a></div>
-      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Retrospective simulation over the real pick record. Past performance does not guarantee future results; one week is a small sample and variance is high. Not financial advice. 18+.' : 'Simulacion retrospectiva sobre el registro real de picks. Rendimientos pasados no garantizan resultados futuros; una semana es una muestra corta y la varianza es alta. No es consejo financiero. 18+.'}</p>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Retrospective simulation over the real pick record. Past performance does not guarantee future results; two weeks is a small sample and variance is high. Not financial advice. 18+.' : 'Simulacion retrospectiva sobre el registro real de picks. Rendimientos pasados no garantizan resultados futuros; dos semanas es una muestra corta y la varianza es alta. No es consejo financiero. 18+.'}</p>
     </div>
     <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".' : 'Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".'}</div>
   </div></div>`;
@@ -1164,14 +1164,14 @@ function founderEmail(seq, lang, ctx = {}) {
     const subject = en ? 'If you had followed every pick, this is what would have happened' : 'Si hubieras seguido todas las picks, esto habría pasado';
     const pdf = en ? 'https://gpsimulador.com/informes/bankroll-sim-en.pdf' : 'https://gpsimulador.com/informes/bankroll-sim-es.pdf';
     const text = en
-      ? `Yesterday I opened the Founder Pass and spots are going. Today I want to show you why.\n\nThe real record (check it under Performance in your account): ${tr.settled} settled picks, ${tr.wins} wins, ${hit}% hit rate, +${roi}% ROI. Published BEFORE each match, settled after. No way to cheat that.\n\nThe real money simulation: we took the full history and simulated a 5,000 dollar bankroll following every pick with conservative staking. Result: 8,890 dollars in one week. The full report, pick by pick: ${pdf}\n\nA Sharp subscription costs 39 dollars a month with the Founder Pass. ${spots} founder spots left out of 100.\n\nSecure my Founder Pass: ${url}\n\nAlexis · GP Simulador`
-      : `Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.\n\nEl registro real (podés verlo en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible.\n\nLa simulación con dinero real: tomamos el historial completo y simulamos un bankroll de 5,000 dólares siguiendo todas las picks con gestión conservadora. Resultado: 8,890 dólares en una semana. El informe completo, pick por pick: ${pdf}\n\nUna suscripción Sharp cuesta 39 dólares al mes con el Founder Pass. Quedan ${spots} cupos founder de 100.\n\nAsegurar mi Founder Pass: ${url}\n\nAlexis · GP Simulador`;
+      ? `Yesterday I opened the Founder Pass and spots are going. Today I want to show you why.\n\nThe real record (check it under Performance in your account): ${tr.settled} settled picks, ${tr.wins} wins, ${hit}% hit rate, +${roi}% ROI. Published BEFORE each match, settled after. No way to cheat that. And it includes our worst night of the tournament, nothing was removed.\n\nThe real money simulation: we took the full history and simulated a 5,000 dollar bankroll following every pick with the platform calculator. Result: 10,356 dollars in two weeks. The full report, pick by pick: ${pdf}\n\nA Sharp subscription costs 39 dollars a month with the Founder Pass. ${spots} founder spots left out of 100.\n\nSecure my Founder Pass: ${url}\n\nAlexis · GP Simulador`
+      : `Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.\n\nEl registro real (podés verlo en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible. Y el historial incluye nuestra peor noche del torneo, no se borró nada.\n\nLa simulación con dinero real: tomamos el historial completo y simulamos un bankroll de 5,000 dólares siguiendo todas las picks con la calculadora de la plataforma. Resultado: 10,356 dólares en dos semanas. El informe completo, pick por pick: ${pdf}\n\nUna suscripción Sharp cuesta 39 dólares al mes con el Founder Pass. Quedan ${spots} cupos founder de 100.\n\nAsegurar mi Founder Pass: ${url}\n\nAlexis · GP Simulador`;
     const html = wrap(
       en ? 'The numbers' : 'Los números',
       en ? `${rec} hit rate, <span style="color:#18E6A3">+${roi}% ROI</span>, all public` : `${rec} de acierto, <span style="color:#18E6A3">+${roi}% de ROI</span>, todo público`,
       p(en ? 'Yesterday I opened the Founder Pass and spots are going. Today I want to show you why.' : 'Ayer abrí el Founder Pass y los cupos están corriendo. Hoy te muestro por qué.') +
       p(en ? `<b>The real record</b> (under Performance in your account): ${tr.settled} settled picks, ${tr.wins} wins, ${hit}% hit rate, +${roi}% ROI. Published BEFORE each match, settled after. No way to cheat that.` : `<b>El registro real</b> (en Rendimiento dentro de tu cuenta): ${tr.settled} picks liquidadas, ${tr.wins} ganadas, ${hit}% de acierto, +${roi}% de ROI. Publicadas ANTES de cada partido, liquidadas después. Sin trampa posible.`) +
-      p(en ? `<b>The real money simulation:</b> a 5,000 dollar bankroll following every pick with conservative staking became <b>8,890 dollars in one week</b>. <a href="${pdf}" style="color:#0BA661;font-weight:700">Full report, pick by pick →</a>` : `<b>La simulación con dinero real:</b> un bankroll de 5,000 dólares siguiendo todas las picks con gestión conservadora se convirtió en <b>8,890 dólares en una semana</b>. <a href="${pdf}" style="color:#0BA661;font-weight:700">Informe completo, pick por pick →</a>`) +
+      p(en ? `<b>The real money simulation:</b> a 5,000 dollar bankroll following every pick with the platform calculator became <b>10,356 dollars in two weeks</b>, worst night included. <a href="${pdf}" style="color:#0BA661;font-weight:700">Full report, pick by pick →</a>` : `<b>La simulación con dinero real:</b> un bankroll de 5,000 dólares siguiendo todas las picks con la calculadora de la plataforma se convirtió en <b>10,356 dólares en dos semanas</b>, con la peor noche incluida. <a href="${pdf}" style="color:#0BA661;font-weight:700">Informe completo, pick por pick →</a>`) +
       p(en ? `A Sharp subscription is $39/month with the Founder Pass. <b>${spots} founder spots left out of 100.</b>` : `Una suscripción Sharp cuesta $39/mes con el Founder Pass. <b>Quedan ${spots} cupos founder de 100.</b>`),
       en ? 'Secure my Founder Pass →' : 'Asegurar mi Founder Pass →'
     );

@@ -1283,6 +1283,7 @@
     var rows = ((S.clubsValue && S.clubsValue.rows) || []).filter(function (v) { return v.edge_pp > 0 && v.best_odds > 1; }).slice(0, 10);
     if (!rows.length) return '';
     var selN = function (v) { return v.outcome === 'home' ? v.home : v.outcome === 'away' ? v.away : t('arb_draw'); };
+    var selId = function (v) { return v.outcome === 'home' ? v.home_id : v.outcome === 'away' ? v.away_id : null; };
     // table-layout fixed + ellipsis: los nombres de clubes son largos (sin ids ni banderas) y en auto la tabla
     // desborda el panel sin scroll. El título completo queda en el atributo title.
     var desk = '<table class="gx-table gx-cltable" style="table-layout:fixed"><colgroup><col style="width:40%"><col style="width:36%"><col style="width:11%"><col style="width:13%"></colgroup><thead><tr><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th>' + esc(t('th_price')) + '</th><th>' + esc(t('th_edge')) + '</th></tr></thead><tbody>' +

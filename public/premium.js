@@ -152,6 +152,10 @@
       cl_upcoming: 'Próximos partidos', cl_no_upcoming: 'Sin partidos programados en la ventana del calendario.',
       cl_live_recent: 'En juego y recientes', cl_no_live: 'Ningún partido de clubes en juego ahora.', cl_no_final: 'Sin partidos finalizados recientes.',
       cl_clubs: 'Clubes',
+      cl_squad: 'Plantilla', cl_no_squad: 'Plantilla no disponible.', cl_gk: 'Arqueros', cl_def: 'Defensas', cl_mid: 'Mediocampistas', cl_fwd: 'Delanteros', cl_yr: ' años',
+      cl_age: 'Edad', cl_height: 'Altura', cl_foot: 'Pie', cl_nat: 'País', cl_contract: 'Contrato', cl_nat_team: 'Selección',
+      cl_foot_l: 'Izquierdo', cl_foot_r: 'Derecho', cl_foot_b: 'Ambos',
+      cl_player_soon: 'Estadísticas por 90 minutos, radar y arquetipo del jugador llegan con la ingesta de datos por partido de la liga.',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -397,6 +401,10 @@
       cl_upcoming: 'Upcoming matches', cl_no_upcoming: 'No matches scheduled in the calendar window.',
       cl_live_recent: 'Live and recent', cl_no_live: 'No club matches in play right now.', cl_no_final: 'No recently finished matches.',
       cl_clubs: 'Clubs',
+      cl_squad: 'Squad', cl_no_squad: 'Squad not available.', cl_gk: 'Goalkeepers', cl_def: 'Defenders', cl_mid: 'Midfielders', cl_fwd: 'Forwards', cl_yr: ' yo',
+      cl_age: 'Age', cl_height: 'Height', cl_foot: 'Foot', cl_nat: 'Country', cl_contract: 'Contract', cl_nat_team: 'National team',
+      cl_foot_l: 'Left', cl_foot_r: 'Right', cl_foot_b: 'Both',
+      cl_player_soon: 'Per-90 stats, radar and player archetype arrive with per-match data ingestion for the league.',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2196,6 +2204,9 @@
     // FASE CLUBES: perfil de club (cteam/<liga>-<tm_id>)
     var ctm = h.match(/^cteam\/([a-z0-9]+)-(tm_[A-Za-z0-9]+)$/i);
     if (ctm) { if (!(S.view === 'cteam' && S.cteamId === ctm[2] && S.cteamLg === ctm[1])) openClubTeam(ctm[1], ctm[2], true); return; }
+    // FASE CLUBES: perfil de jugador de club (cplayer/<liga>-<tm_id>-<pl_id>)
+    var cpl = h.match(/^cplayer\/([a-z0-9]+)-(tm_[A-Za-z0-9]+)-(pl_[A-Za-z0-9]+)$/i);
+    if (cpl) { if (!(S.view === 'cplayer' && S.cplPid === cpl[3])) openClubPlayer(cpl[1], cpl[2], cpl[3], true); return; }
     var pm = h.match(/^player\/(pl_[A-Za-z0-9]+)$/i);
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }
     var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub)/);
@@ -3739,10 +3750,80 @@
       var probMe = f.home.id === id ? f.home.prob : f.away.prob;
       return '<div class="gx-clrow gx-pick-clickable" data-openmatch="' + esc(oid) + '" style="cursor:pointer"><span>' + esc(fmtDateTime(f.utc)) + ' · <b>' + esc(f.home.name) + '</b> ' + esc(t('vs')) + ' <b>' + esc(f.away.name) + '</b></span><span class="gx-mono" style="font-weight:700">' + pct0(probMe) + '</span></div>';
     }).join('');
+    // PLANTILLA: lazy-load del roster (TSA) por equipo → jugadores por línea, clickeables al perfil de jugador.
+    S.csquad = S.csquad || {};
+    var sqKey = lg + '|' + id;
+    if (S.csquad[sqKey] === undefined) {
+      S.csquad[sqKey] = null;
+      fetch('/api/clubs/squad?league=' + encodeURIComponent(lg) + '&team=' + encodeURIComponent(id), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.csquad[sqKey] = j || { players: [] }; if (S.view === 'cteam' && S.cteamId === id) renderClubTeam(); });
+    }
+    var sq = S.csquad[sqKey];
+    var squadHtml;
+    if (sq === null) squadHtml = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
+    else if (!sq.players || !sq.players.length) squadHtml = '<div class="gx-empty">' + ic('users') + esc(t('cl_no_squad')) + '</div>';
+    else {
+      var GRP = [['GK', t('cl_gk')], ['DEF', t('cl_def')], ['MID', t('cl_mid')], ['FWD', t('cl_fwd')], ['OTH', '—']];
+      squadHtml = GRP.map(function (g) {
+        var ps = sq.players.filter(function (p) { return p.group === g[0]; });
+        if (!ps.length) return '';
+        return '<div class="gx-sqgrp"><div class="gx-sqgrp-h">' + esc(g[1]) + '</div>' + ps.map(function (p) {
+          return '<div class="gx-clrow gx-pick-clickable" data-cplayer="' + esc(lg + '|' + id + '|' + p.pid) + '" style="cursor:pointer">' +
+            '<span><b>' + esc(p.name) + '</b>' + (p.nat ? ' <span class="gx-dim" style="font-size:10.5px">· ' + esc(p.nat) + '</span>' : '') + '</span>' +
+            '<span class="gx-mono gx-dim" style="font-size:11px">' + (p.age != null ? p.age + esc(t('cl_yr')) : '') + (p.value ? ' · ' + clubMoney(p.value) : '') + '</span></div>';
+        }).join('') + '</div>';
+      }).join('');
+    }
     mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('calendar') + esc(t('cl_upcoming')) + '</span></div><div style="padding:6px 16px 12px">' + upHtml + '</div></div>' +
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('users') + esc(t('cl_squad')) + (sq && sq.players ? ' <span class="gx-dim">· ' + sq.players.length + '</span>' : '') + '</span></div><div style="padding:6px 16px 12px">' + squadHtml + '</div></div>' +
       '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
     bindBack(); // los [data-openmatch] los maneja el delegado global de clicks
+    [].forEach.call(mv.querySelectorAll('[data-cplayer]'), function (el) {
+      el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
+    });
+  }
+  function clubMoney(v) { v = Number(v); if (!isFinite(v) || v <= 0) return ''; if (v >= 1e6) return '€' + (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M'; if (v >= 1e3) return '€' + Math.round(v / 1e3) + 'K'; return '€' + v; }
+  // PERFIL de JUGADOR de club (shadow): ficha desde el roster + (fase 2) radar/stats cuando haya backfill.
+  function openClubPlayer(lg, tid, pid, fromHash) {
+    if (!lg || !tid || !pid) return;
+    if (!fromHash) setHash('cplayer/' + lg + '-' + tid + '-' + pid);
+    S.view = 'cplayer'; S.cplLg = lg; S.cplTeam = tid; S.cplPid = pid;
+    applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {}
+    renderClubPlayer();
+  }
+  function renderClubPlayer() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    var lg = S.cplLg, tid = S.cplTeam, pid = S.cplPid, key = lg + '|' + tid + '|' + pid;
+    S.cpl = S.cpl || {};
+    if (S.cpl[key] === undefined) {
+      S.cpl[key] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
+      fetch('/api/clubs/player?league=' + encodeURIComponent(lg) + '&team=' + encodeURIComponent(tid) + '&pid=' + encodeURIComponent(pid), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (m) { S.cpl[key] = m || { _empty: true }; if (S.view === 'cplayer' && S.cplPid === pid) renderClubPlayer(); });
+      return;
+    }
+    var p = S.cpl[key];
+    if (!p || p._empty || p.error) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    var mini = function (label, val) { return val == null || val === '' ? '' : '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + esc(val) + '</b></div>'; };
+    var footL = { left: t('cl_foot_l'), right: t('cl_foot_r'), both: t('cl_foot_b') };
+    var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + leagueLogo(lg) + '<span class="gx-pick-clickable" data-cteam="' + esc(lg + '|' + tid) + '" style="cursor:pointer">' + clubBadge(tid) + ' ' + esc(p.team_name || '') + '</span><span class="gx-spacer"></span>' + (p.position ? '<span class="gx-clgate sh">' + esc(p.position) + '</span>' : '') + '</div>' +
+      '<div class="gx-team-id"><span class="fl big">' + ic('user') + '</span><div><b>' + esc(p.name) + '</b>' + (p.national_team ? '<span class="gx-mono gx-dim">' + esc(t('cl_nat_team')) + ': ' + esc(p.national_team) + '</span>' : '') + '</div></div>' +
+      '<div class="gx-hero-grid">' +
+      mini(t('cl_age'), p.age != null ? p.age + esc(t('cl_yr')) : null) +
+      mini(t('cl_height'), p.height ? p.height + ' cm' : null) +
+      mini(t('cl_foot'), p.foot ? (footL[p.foot] || p.foot) : null) +
+      mini(t('cl_nat'), p.nationality) +
+      mini(t('cl_value'), clubMoney(p.market_value)) +
+      mini(t('cl_contract'), p.contract_until ? String(p.contract_until).slice(0, 4) : null) +
+      '</div></div>';
+    var note = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
+    mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero + note + '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
+    bindBack();
+    [].forEach.call(mv.querySelectorAll('[data-cteam]'), function (el) {
+      el.addEventListener('click', function () { var pp = el.getAttribute('data-cteam').split('|'); openClubTeam(pp[0], pp[1]); });
+    });
   }
   function renderTeam() {
     var mv = $('#gx-matchview'); if (!mv) return;

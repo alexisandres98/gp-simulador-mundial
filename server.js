@@ -6723,6 +6723,78 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { shadow: true, refreshed_at: new Date(global._clubsValue.at).toISOString(), skipped: global._clubsValue.skipped, rows: global._clubsValue.rows });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
+    // PLANTILLA de un club (shadow): roster desde TheStatsAPI (los ids tm_ de ratings.json comparten proveedor),
+    // agrupado por posición. Memo por equipo 24h. Datos ricos por jugador: posición, edad, altura, pie, país,
+    // valor de mercado, contrato, selección. Base para el perfil de jugador de club (extensión de la capa de
+    // inteligencia del Mundial a clubes).
+    if (p === '/api/clubs/squad') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const teamId = String(url.searchParams.get('team') || '');
+      if (!/^tm_[a-z0-9]+$/i.test(teamId)) return json(res, 400, { error: 'team inválido' });
+      const tsaKey = process.env.THESTATSAPI_KEY || '';
+      if (!tsaKey) return json(res, 200, { players: [], note: 'sin key' });
+      global._clubsSquad = global._clubsSquad || {};
+      let sq = global._clubsSquad[teamId];
+      if (!sq || Date.now() - sq.at > 24 * 3600e3) {
+        try {
+          const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+          const j = r.ok ? await r.json().catch(() => null) : null;
+          const rows = (j && j.data) || j || [];
+          sq = { at: Date.now(), rows: Array.isArray(rows) ? rows : [] };
+          global._clubsSquad[teamId] = sq;
+        } catch { sq = sq || { at: Date.now(), rows: [] }; }
+      }
+      // normalizar a la forma que consume la UI; agrupar por línea (POR/DEF/MED/DEL)
+      const POSGROUP = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD', A: 'FWD' };
+      const players = (sq.rows || []).map(p => ({
+        pid: p.id, name: p.short_name || p.name, full: p.name, pos: p.position || null,
+        group: POSGROUP[p.position] || 'OTH',
+        age: p.age != null ? p.age : null, height: p.height_cm || null, foot: p.preferred_foot || null,
+        nat: p.nationality || null, nat_slug: p.country_slug || null,
+        value: p.market_value != null ? p.market_value : null, contract: p.contract_until || null,
+        national: p.national_team || null,
+      }));
+      const order = { GK: 0, DEF: 1, MID: 2, FWD: 3, OTH: 4 };
+      players.sort((a, b) => (order[a.group] - order[b.group]) || String(a.name).localeCompare(String(b.name)));
+      return json(res, 200, { team: teamId, count: players.length, players, cached_at: new Date(sq.at).toISOString() });
+    }
+    // PERFIL de un jugador de club (shadow): ficha desde el roster + (fase 2) stats/90 y radar cuando haya
+    // backfill de player-stats por liga. Hoy: datos biográficos ricos del roster de TSA.
+    if (p === '/api/clubs/player') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const teamId = String(url.searchParams.get('team') || ''), pid = String(url.searchParams.get('pid') || '');
+      const league = String(url.searchParams.get('league') || '');
+      if (!/^tm_[a-z0-9]+$/i.test(teamId) || !/^pl_[a-z0-9]+$/i.test(pid)) return json(res, 400, { error: 'params inválidos' });
+      const tsaKey = process.env.THESTATSAPI_KEY || '';
+      global._clubsSquad = global._clubsSquad || {};
+      let sq = global._clubsSquad[teamId];
+      if ((!sq || Date.now() - sq.at > 24 * 3600e3) && tsaKey) {
+        try {
+          const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+          const j = r.ok ? await r.json().catch(() => null) : null;
+          sq = { at: Date.now(), rows: (j && j.data) || j || [] };
+          global._clubsSquad[teamId] = sq;
+        } catch { sq = sq || { at: Date.now(), rows: [] }; }
+      }
+      const p0 = ((sq && sq.rows) || []).find(x => x.id === pid);
+      if (!p0) return json(res, 404, { error: 'jugador no encontrado' });
+      const RT = global._clubsRatings || {};
+      const L = RT.leagues && RT.leagues[league];
+      const teamName = (L && L.ratings && L.ratings[teamId] && L.ratings[teamId].name) || null;
+      return json(res, 200, {
+        pid, name: p0.name, short: p0.short_name || p0.name, team_id: teamId, team_name: teamName, league,
+        league_name: (L && L.name) || null,
+        position: p0.position || null, age: p0.age != null ? p0.age : null,
+        dob: p0.date_of_birth || null, height: p0.height_cm || null, foot: p0.preferred_foot || null,
+        nationality: p0.nationality || null, nat_slug: p0.country_slug || null,
+        market_value: p0.market_value != null ? p0.market_value : null, contract_until: p0.contract_until || null,
+        national_team: p0.national_team || null, first_name: p0.first_name || null, last_name: p0.last_name || null,
+        // fase 2 (backfill de player-stats por liga): stats/90, radar, arquetipo, scout read
+        stats_available: false,
+      });
+    }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al
     // mercado" (Brier GP vs consenso) + curva de calibración + CLV opcional. Admin-only hasta que Alexis lo
     // apruebe; GP_QUALITY_PUBLIC=true lo abre. Caja negra estricta: solo resultados medidos, nunca método.

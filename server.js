@@ -2522,6 +2522,69 @@ function reg90For(homeId, awayId) {
   }
   return null;
 }
+// ===== FASE CLUBES: INGESTA DE CUOTAS a las tablas de la casa (shadow, cadencia ~60 min) =====
+// Punto 1 del spec de adaptación (13-jul): las cuotas de clubes viven en sportsbook_goal_quote_current
+// (match_winner + match_total, ids SINTÉTICOS por liga+par — MISMO patrón que el Mundial vía
+// stableGoalEventId, sin FK ni tocar el grafo canónico). Con eso el market-scanner (precio atrasado /
+// arbitraje, venue-agnóstico) y el futuro value multi-liga leen clubes SIN UI nueva. Inerte para el
+// pipeline del Mundial: solo se escriben QUOTES (ninguna evaluación/valor/pick).
+// Costo: h2h,totals × eu,us = 4 créditos × ligas en temporada con cuotas (~4) ≈ 16/hora.
+let _clubsQuotesLast = 0, _clubsQuotesRunning = false, _clubsQuotesOut = null;
+async function clubsQuotesSweep({ force = false } = {}) {
+  if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
+  if (_clubsQuotesRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _clubsQuotesLast < 55 * 60e3) return { skipped: 'throttle' };
+  _clubsQuotesRunning = true;
+  const out = { leagues: 0, events: 0, quotes: 0, started: new Date().toISOString() };
+  try {
+    if (!global._clubsRatings) {
+      try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); }
+      catch { global._clubsRatings = { leagues: {} }; }
+    }
+    const { stableGoalEventId } = require('./goal-engine/eventKey');
+    const grepo = require('./goal-engine/repository');
+    const inSeason = Object.values(global._clubsRatings.leagues || {}).filter(L => L.odds_key && !L.starts);
+    for (const L of inSeason) {
+      let events = null;
+      try {
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${key}&regions=eu,us&markets=h2h,totals&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        events = r.ok ? await r.json().catch(() => null) : null;
+      } catch { /* liga sin datos este ciclo */ }
+      if (!Array.isArray(events)) continue;
+      out.leagues++;
+      for (const ev of events.slice(0, 25)) {
+        const ceid = stableGoalEventId('cl:' + L.key + ':' + ev.home_team, 'cl:' + L.key + ':' + ev.away_team);
+        out.events++;
+        for (const bk of ev.bookmakers || []) {
+          for (const mk of bk.markets || []) {
+            if (mk.key === 'h2h') {
+              for (const oc of mk.outcomes || []) {
+                if (!(oc.price > 1)) continue;
+                const side = oc.name === ev.home_team ? 'home' : oc.name === ev.away_team ? 'away' : 'draw';
+                await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: oc.price, implied_probability: 1 / oc.price, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+                out.quotes++;
+              }
+            } else if (mk.key === 'totals') {
+              for (const oc of mk.outcomes || []) {
+                const line = Number(oc.point);
+                if (!Number.isFinite(line) || !(oc.price > 1)) continue;
+                const side = /over/i.test(oc.name) ? 'over' : 'under';
+                await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ceid, market_family: 'match_total', line, side, team_scope: 'total', market_id: 'TOTAL_GOALS_' + side.toUpperCase() + '_' + String(line).replace('.', '_'), odds_decimal: oc.price, implied_probability: 1 / oc.price, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+                out.quotes++;
+              }
+            }
+          }
+        }
+      }
+    }
+    _clubsQuotesLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _clubsQuotesRunning = false; out.finished = new Date().toISOString(); _clubsQuotesOut = out; }
+  console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
+  return out;
+}
 // Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria. Los mercados "a ganar"
 // y O/U se liquidan a 90' (full-time), NO a prórroga — igual que las casas. Si el knockout fue a ET/penales
 // (minute>90) se usa el snapshot de 90' (reg90For: dato manual verificado o captura del sync); sin ese dato
@@ -5432,6 +5495,13 @@ const server = http.createServer(async (req, res) => {
       if (changed.length) save();
       return json(res, 200, { changed: changed.length, detail: changed });
     }
+    // CUOTAS DE CLUBES (misma key): GET = estado del sweep; POST = forzarlo ya (salta throttle).
+    if (p === '/api/internal/clubs-quotes') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await clubsQuotesSweep({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { last: _clubsQuotesOut, last_at: _clubsQuotesLast ? new Date(_clubsQuotesLast).toISOString() : null });
+    }
     // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
     if (p === '/api/internal/props') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
@@ -6612,6 +6682,10 @@ server.listen(PORT, () => {
   // Resultados desde ESPN cada 30 s (antes 2 min) → marcador en vivo más fresco
   syncFromESPN();
   setInterval(syncFromESPN, 30 * 1000);
+  // FASE CLUBES (shadow): cuotas de clubes a las tablas de la casa. Gate por env dentro del sweep
+  // (GP_CLUBS_SHADOW_ENABLED); throttle interno 55 min — el intervalo solo "pregunta".
+  setTimeout(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 90 * 1000);
+  setInterval(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 10 * 60 * 1000);
   // En Render free el servicio duerme tras 15 min sin tráfico: auto-ping cada 10 min para mantenerlo 24/7
   if (process.env.RENDER_EXTERNAL_URL) {
     setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);

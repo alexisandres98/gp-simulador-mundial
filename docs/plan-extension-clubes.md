@@ -122,10 +122,10 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 ## FASES DE TRABAJO (orden de ejecución)
 
 ### F0 — FUNDACIONES DE DATOS (destraba todo; sin esto lo demás es cascarón)
-- [ ] **F0.1 Backfill player-stats por liga** (`scripts/clubs-player-backfill.js`, patrón player-props-backfill del Mundial): por liga activa, matches status=finished de la season → `/matches/{id}/player-stats` → `data/clubs/player-history-<liga>.json` (jugador-partido: min, titular, goles, remates, SOT, xG, npxG, xA, pases clave, tarjetas). Resumible, throttle 12 req/min. ~177 partidos BRA + MX/MLS/ARG/COL/PAR ≈ 700-900 requests ≈ 1-2h de reloj. Pase incremental diario (post-jornada) en el server.
-- [ ] **F0.2 Fotos de jugadores** (`scripts/gen-club-player-photos.js`, patrón del Mundial): AF `players/squads?team=<af_id>` por club → matchear AF↔TSA por nombre normalizado → mapa `data/clubs/player-photos.json` {pl_* → af_photo_url} + proxy/self-host. Necesita mapa tm_→AF team id por liga (por nombre, una vez, curado a JSON).
+- [x] **F0.1 Backfill player-stats por liga** (Brasileirão 177/8106, MLS en curso; resto corriendo) (`scripts/clubs-player-backfill.js`, patrón player-props-backfill del Mundial): por liga activa, matches status=finished de la season → `/matches/{id}/player-stats` → `data/clubs/player-history-<liga>.json` (jugador-partido: min, titular, goles, remates, SOT, xG, npxG, xA, pases clave, tarjetas). Resumible, throttle 12 req/min. ~177 partidos BRA + MX/MLS/ARG/COL/PAR ≈ 700-900 requests ≈ 1-2h de reloj. Pase incremental diario (post-jornada) en el server.
+- [~] **F0.2 Fotos de jugadores** (script listo; correr tras el backfill, comparte rate-limit TSA) (`scripts/gen-club-player-photos.js`, patrón del Mundial): AF `players/squads?team=<af_id>` por club → matchear AF↔TSA por nombre normalizado → mapa `data/clubs/player-photos.json` {pl_* → af_photo_url} + proxy/self-host. Necesita mapa tm_→AF team id por liga (por nombre, una vez, curado a JSON).
 - [ ] **F0.3 Snapshots para Evolución**: `db.clubHistory[liga][fecha] = {tm_id: {pos, elo, pts}}` diario (loop server, barato) → alimenta F4.2.
-- [ ] **F0.4 ELO DINÁMICO por resultado** (CRÍTICO para probabilidad honesta): al finalizar un partido de club (clubResults status final), actualizar Elo de ambos equipos (K por liga, mismo recomputeElos conceptual del Mundial; goleada/localía como el fit). Persistir en db.clubElos (overlay sobre ratings.json, nunca escribir el archivo) y usar overlay en TODAS las probs (state, match, value, scanner). Re-fit offline mensual recalibra.
+- [x] **F0.4 ELO DINÁMICO por resultado** ✔ prod eb22cc9 (CRÍTICO para probabilidad honesta): al finalizar un partido de club (clubResults status final), actualizar Elo de ambos equipos (K por liga, mismo recomputeElos conceptual del Mundial; goleada/localía como el fit). Persistir en db.clubElos (overlay sobre ratings.json, nunca escribir el archivo) y usar overlay en TODAS las probs (state, match, value, scanner). Re-fit offline mensual recalibra.
 - [ ] **F0.5 Fixtures ampliados**: ventana upcoming de 12 → toda la jornada visible + past reciente (para Forma/Resultados).
 
 ### F1 — PARTIDO DE CLUB = PARTIDO DEL MUNDIAL (cockpit)
@@ -137,7 +137,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 
 ### F2 — EQUIPOS Y JUGADORES NIVEL MUNDIAL
 - [ ] **F2.1 Vista de equipo completa**: tabs Resumen/Plantilla(fotos)/Forma/Resultados/Noticias; forma y resultados desde finished de TSA + clubResults.
-- [ ] **F2.2 Jugador nivel Yamal**: stats/90 + percentiles vs posición DE LA LIGA (player-history F0.1) + radar SVG + arquetipo + scout read + % del ataque + forma + índice global de jugadores de clubes en el buscador.
+- [x] **F2.2 Jugador nivel Yamal** ✔ prod 33f4d24 (radar+arquetipo+scout+stats/90, Brasileirão; resto con backfill): stats/90 + percentiles vs posición DE LA LIGA (player-history F0.1) + radar SVG + arquetipo + scout read + % del ataque + forma + índice global de jugadores de clubes en el buscador.
 - [ ] **F2.3 Observer multi-liga**: sources por club (Google News RSS; presupuesto: solo equipos con partido en <72h para no explotar requests), señales → disponibilidad → narrativa en cockpit + perfil.
 - [ ] **F2.4 Style engine / event data**: FotMob por liga (verificar primaryIds) → shotmaps + perfil táctico del cruce.
 - [ ] **F2.5 Follow + alertas** de clubes (inicio/gol email — la infra del Mundial es genérica).

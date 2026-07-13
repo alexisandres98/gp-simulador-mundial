@@ -2738,6 +2738,33 @@ async function clubScoresSync({ force = false } = {}) {
   if (out.changed || out.error) console.log('[clubs] scores sync:', JSON.stringify({ leagues: out.leagues, live: out.live, final: out.final, changed: out.changed, error: out.error || null }));
   return out;
 }
+// FASE CLUBES F0.3: SNAPSHOT DIARIO de posición+Elo+pts por liga → serie temporal para la Evolución por liga
+// (patrón renderEvo del Mundial). Con el Elo dinámico (F0.4) la serie tiene señal real cuando las ligas juegan.
+// db.clubHistory[liga] = [{ d:'YYYY-MM-DD', teams:{ tm_id:{pos,elo,pts} } }], una entrada por día (dedupe),
+// ventana 120 días. Barato: solo lee ratings + standings (sin APIs).
+function clubHistorySnapshot() {
+  if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return;
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return; } }
+  const RT = global._clubsRatings; db.clubHistory = db.clubHistory || {};
+  const d = new Date().toISOString().slice(0, 10);
+  let touched = false;
+  for (const [lg, L] of Object.entries(RT.leagues || {})) {
+    if (L.starts) continue; // pretemporada: aún no hay tabla que evolucione
+    const teams = {};
+    const st = (L.standings || []);
+    const posOf = {}; st.forEach((s, i) => { posOf[s.id] = i + 1; });
+    for (const [tid, t] of Object.entries(L.ratings || {})) {
+      teams[tid] = { elo: Math.round(clubElo(lg, tid)), pos: posOf[tid] || null, pts: (st.find(s => s.id === tid) || {}).pts ?? null };
+    }
+    const arr = db.clubHistory[lg] = db.clubHistory[lg] || [];
+    const last = arr[arr.length - 1];
+    if (last && last.d === d) { last.teams = teams; } // refresca el de hoy (el Elo pudo moverse)
+    else arr.push({ d, teams });
+    if (arr.length > 120) arr.splice(0, arr.length - 120);
+    touched = true;
+  }
+  if (touched) save();
+}
 // Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria. Los mercados "a ganar"
 // y O/U se liquidan a 90' (full-time), NO a prórroga — igual que las casas. Si el knockout fue a ET/penales
 // (minute>90) se usa el snapshot de 90' (reg90For: dato manual verificado o captura del sync); sin ese dato
@@ -5721,6 +5748,17 @@ const server = http.createServer(async (req, res) => {
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
     }
+    // EVOLUCIÓN por liga (F0.3+F4.2): serie temporal de Elo/posición. GET admin.
+    if (p === '/api/clubs/evolution') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const lg = String(url.searchParams.get('league') || '');
+      const RT = global._clubsRatings || {};
+      const L = RT.leagues && RT.leagues[lg];
+      const hist = (db.clubHistory && db.clubHistory[lg]) || [];
+      const nameOf = (tid) => (L && L.ratings && L.ratings[tid] && L.ratings[tid].name) || tid;
+      return json(res, 200, { league: lg, snapshots: hist.length, series: hist.map(h => ({ d: h.d, teams: h.teams })), name_of: Object.fromEntries((L ? Object.keys(L.ratings || {}) : []).map(id => [id, nameOf(id)])) });
+    }
     // ELO DINÁMICO (F0.4): estado del overlay + prueba manual (?test=lg,hId,aId,hg,ag para simular un resultado).
     if (p === '/api/internal/clubs-elo') {
       const xk = process.env.GP_EXPORT_KEY || '';
@@ -7042,6 +7080,9 @@ server.listen(PORT, () => {
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);
   setInterval(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 30 * 1000);
+  // F0.3: snapshot de la liga (posición/Elo) para la Evolución — al boot y cada 6h (dedupe por día).
+  setTimeout(() => { try { clubHistorySnapshot(); } catch (e) { console.error('[clubs] history:', e.message); } }, 120 * 1000);
+  setInterval(() => { try { clubHistorySnapshot(); } catch (e) { console.error('[clubs] history:', e.message); } }, 6 * 3600 * 1000);
   // En Render free el servicio duerme tras 15 min sin tráfico: auto-ping cada 10 min para mantenerlo 24/7
   if (process.env.RENDER_EXTERNAL_URL) {
     setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);

@@ -18,7 +18,7 @@
       sub_nav: 'Mi suscripción', sub_title: 'Mi suscripción', sub_plan: 'Plan actual', sub_founder: 'FOUNDER', sub_status: 'Estado',
       sub_active: 'Activa', sub_cancelled: 'Cancelada', sub_pastdue: 'Pago pendiente', sub_since: 'Miembro desde',
       sub_free_note: 'Acceso completo gratis durante el Mundial. Los planes llegan pronto — los primeros 100 tendrán precio founder de por vida.',
-      sub_upgrade: 'Ver planes', fb_lead: 'Founder Pass abierto', fb_sub: 'Precio de por vida, solo mientras dure el Mundial', fb_spots: 'Quedan {n} de 100', fb_cta: 'Asegurar el mío', sub_up_sharp: 'Mejorar a Sharp', sub_cancel: 'Cancelar suscripción', sub_cancelled_note: 'Tu suscripción está cancelada. Mantienes el acceso hasta el fin del ciclo pagado.', cx_title: 'Cancelar suscripción', cx_step1: '¿Seguro que querés cancelar? Perderás el acceso a las picks y al análisis al terminar el ciclo actual. Por seguridad te enviaremos un código a tu correo para confirmar.', cx_keep: 'Mantener mi plan', cx_yes: 'Sí, quiero cancelar', cx_step2: 'Te enviamos un código a tu correo. Ingresalo para confirmar la cancelación.', cx_confirm: 'Confirmar cancelación', cx_code_bad: 'Ingresá el código de 6 dígitos.', cx_err: 'Algo salió mal. Intentá de nuevo.', cx_close: 'Cerrar', cx_done: 'Suscripción cancelada.', cx_done_clean: 'Listo: no se te volverá a cobrar. Mantienes el acceso hasta el fin del ciclo pagado.', cx_done_note: 'No se te volverá a cobrar. Para detener el pago recurrente, cancelá también desde tu cuenta de Whop.', cx_whop: 'Ir a mi cuenta de Whop', sub_manage: 'Gestionar suscripción', sub_manage_soon: 'Disponible al lanzar los pagos',
+      sub_upgrade: 'Ver planes', fb_lead: 'Founder Pass abierto', fb_sub: 'Precio de por vida, solo mientras dure el Mundial', fb_spots: 'Quedan {n} de 100', fb_close: 'Cierra con la final en {t}', fb_cta: 'Asegurar el mío', sub_up_sharp: 'Mejorar a Sharp', sub_cancel: 'Cancelar suscripción', sub_cancelled_note: 'Tu suscripción está cancelada. Mantienes el acceso hasta el fin del ciclo pagado.', cx_title: 'Cancelar suscripción', cx_step1: '¿Seguro que querés cancelar? Perderás el acceso a las picks y al análisis al terminar el ciclo actual. Por seguridad te enviaremos un código a tu correo para confirmar.', cx_keep: 'Mantener mi plan', cx_yes: 'Sí, quiero cancelar', cx_step2: 'Te enviamos un código a tu correo. Ingresalo para confirmar la cancelación.', cx_confirm: 'Confirmar cancelación', cx_code_bad: 'Ingresá el código de 6 dígitos.', cx_err: 'Algo salió mal. Intentá de nuevo.', cx_close: 'Cerrar', cx_done: 'Suscripción cancelada.', cx_done_clean: 'Listo: no se te volverá a cobrar. Mantienes el acceso hasta el fin del ciclo pagado.', cx_done_note: 'No se te volverá a cobrar. Para detener el pago recurrente, cancelá también desde tu cuenta de Whop.', cx_whop: 'Ir a mi cuenta de Whop', sub_manage: 'Gestionar suscripción', sub_manage_soon: 'Disponible al lanzar los pagos',
       sub_asplan: 'Ver la plataforma como (solo admin)', sub_asplan_real: 'Real',
       sup_nav: 'Soporte', sup_title: 'Soporte', sup_intro: 'Contanos tu problema o consulta y te respondemos por email, normalmente dentro de 24 horas.',
       sup_subject: 'Asunto (opcional)', sup_msg: 'Tu mensaje', sup_msg_ph: 'Escribí acá tu consulta…', sup_send: 'Enviar',
@@ -251,7 +251,7 @@
       sub_nav: 'My subscription', sub_title: 'My subscription', sub_plan: 'Current plan', sub_founder: 'FOUNDER', sub_status: 'Status',
       sub_active: 'Active', sub_cancelled: 'Cancelled', sub_pastdue: 'Payment past due', sub_since: 'Member since',
       sub_free_note: 'Full access is free during the World Cup. Plans are coming soon — the first 100 get a lifetime founder price.',
-      sub_upgrade: 'See plans', fb_lead: 'Founder Pass is open', fb_sub: 'Price locked for life, only while the World Cup lasts', fb_spots: '{n} of 100 left', fb_cta: 'Secure mine', sub_up_sharp: 'Upgrade to Sharp', sub_cancel: 'Cancel subscription', sub_cancelled_note: 'Your subscription is cancelled. You keep access until the end of the paid cycle.', cx_title: 'Cancel subscription', cx_step1: 'Are you sure you want to cancel? You will lose access to picks and analysis at the end of the current cycle. For your security we will email you a code to confirm.', cx_keep: 'Keep my plan', cx_yes: 'Yes, I want to cancel', cx_step2: 'We sent a code to your email. Enter it to confirm the cancellation.', cx_confirm: 'Confirm cancellation', cx_code_bad: 'Enter the 6-digit code.', cx_err: 'Something went wrong. Try again.', cx_close: 'Close', cx_done: 'Subscription cancelled.', cx_done_clean: 'Done: you will not be charged again. You keep access until the end of the paid cycle.', cx_done_note: 'You will not be charged again. To stop the recurring payment, also cancel from your Whop account.', cx_whop: 'Go to my Whop account', sub_manage: 'Manage subscription', sub_manage_soon: 'Available when payments launch',
+      sub_upgrade: 'See plans', fb_lead: 'Founder Pass is open', fb_sub: 'Price locked for life, only while the World Cup lasts', fb_spots: '{n} of 100 left', fb_close: 'Closes with the final in {t}', fb_cta: 'Secure mine', sub_up_sharp: 'Upgrade to Sharp', sub_cancel: 'Cancel subscription', sub_cancelled_note: 'Your subscription is cancelled. You keep access until the end of the paid cycle.', cx_title: 'Cancel subscription', cx_step1: 'Are you sure you want to cancel? You will lose access to picks and analysis at the end of the current cycle. For your security we will email you a code to confirm.', cx_keep: 'Keep my plan', cx_yes: 'Yes, I want to cancel', cx_step2: 'We sent a code to your email. Enter it to confirm the cancellation.', cx_confirm: 'Confirm cancellation', cx_code_bad: 'Enter the 6-digit code.', cx_err: 'Something went wrong. Try again.', cx_close: 'Close', cx_done: 'Subscription cancelled.', cx_done_clean: 'Done: you will not be charged again. You keep access until the end of the paid cycle.', cx_done_note: 'You will not be charged again. To stop the recurring payment, also cancel from your Whop account.', cx_whop: 'Go to my Whop account', sub_manage: 'Manage subscription', sub_manage_soon: 'Available when payments launch',
       sub_asplan: 'View the platform as (admin only)', sub_asplan_real: 'Real',
       sup_nav: 'Support', sup_title: 'Support', sup_intro: 'Tell us your issue or question and we’ll reply by email, usually within 24 hours.',
       sup_subject: 'Subject (optional)', sup_msg: 'Your message', sup_msg_ph: 'Write your question here…', sup_send: 'Send',
@@ -642,13 +642,18 @@
   function founderBanner() {
     if (!(S.me && S.me.founder_public)) return '';
     if (S.me.plan === 'sharp' && S.me.plan_founder) return ''; // ya es founder Sharp: no le vendemos
-    var spots = (S.me.founder_spots != null) ? S.me.founder_spots : 100;
-    var spotTxt = t('fb_spots', { n: spots });
+    // Urgencia por DEADLINE real (cierra con la final 19-jul 19:00Z), no por cupos: el contador de cupos
+    // pasó a segundo plano en /founder (decisión 13-jul). Texto estático por render; el banner se
+    // redibuja con la navegación, no necesita reloj vivo.
+    var ms = Date.UTC(2026, 6, 19, 19, 0, 0) - Date.now();
+    var cdTxt = ms > 0
+      ? t('fb_close', { t: Math.floor(ms / 86400000) + 'd ' + Math.floor(ms % 86400000 / 3600000) + 'h' })
+      : t('fb_sub');
     return '<a class="gx-fbanner" href="/founder">' +
       '<span class="gx-fbanner-pulse"></span>' +
       '<b>' + esc(t('fb_lead')) + '</b>' +
       '<span class="gx-fbanner-sub">' + esc(t('fb_sub')) + '</span>' +
-      '<span class="gx-fbanner-spots">🔥 ' + esc(spotTxt) + '</span>' +
+      '<span class="gx-fbanner-spots">⏳ ' + esc(cdTxt) + '</span>' +
       '<span class="gx-fbanner-cta">' + esc(t('fb_cta')) + ' ' + ic('arrow-right') + '</span>' +
       '</a>';
   }

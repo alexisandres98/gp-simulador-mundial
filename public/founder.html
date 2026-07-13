@@ -33,7 +33,8 @@ h1 { font-family:var(--disp); font-size:clamp(34px,5.4vw,54px); font-weight:700;
 h1 b { color:var(--ac); }
 .sub { color:var(--tx2); font-size:16.5px; max-width:560px; margin:16px auto 0; line-height:1.55; }
 .counter { display:inline-flex; align-items:center; gap:10px; margin-top:22px; border:1px solid rgba(255,193,94,.28); background:rgba(255,193,94,.06); padding:10px 18px; border-radius:99px; font-size:13.5px; font-weight:600; color:var(--tx2); }
-.counter b { font-family:var(--disp); color:var(--amber); font-size:16px; white-space:nowrap; }
+.counter b { font-family:var(--disp); color:var(--amber); font-size:16px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.spots-note { margin-top:10px; font-size:12px; color:var(--tx3); }
 .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:44px; align-items:stretch; }
 @media (max-width:860px){ .plans { grid-template-columns:1fr; max-width:430px; margin-left:auto; margin-right:auto; } }
 .plan { display:flex; flex-direction:column; background:linear-gradient(165deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:18px; padding:26px 24px; position:relative; }
@@ -90,7 +91,8 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     <div class="eyebrow"><i></i><span data-k="eye"></span></div>
     <h1 data-k="h1"></h1>
     <p class="sub" data-k="sub"></p>
-    <div class="counter">🔥 <span data-k="counter_pre"></span> <b id="spots-left">100 / 100</b> <span data-k="counter_post"></span></div>
+    <div class="counter">⏳ <span data-k="cd_pre"></span> <b id="cd">…</b></div>
+    <div class="spots-note"><span data-k="counter_pre"></span> <span id="spots-left">100 / 100</span> <span data-k="counter_post"></span></div>
     <p style="margin:16px 0 0"><a href="/calidad" data-k="quality_link" style="color:var(--ac);font-weight:700;font-size:14px;text-decoration:none"></a></p>
   </header>
 
@@ -115,7 +117,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       eye: 'Founder Pass · solo los primeros 100',
       h1: 'La ventaja completa, a <b>precio de fundador</b> para siempre.',
       sub: 'Los primeros 100 miembros aseguran su precio de por vida antes de la apertura pública. Después, se acabó.',
-      counter_pre: 'Quedan', counter_post: 'cupos founder', quality_link: 'Mirá la calidad del sistema, medida como un fondo →',
+      cd_pre: 'El Founder Pass cierra con la final:', counter_pre: 'Quedan', counter_post: 'cupos founder', quality_link: 'Mirá la calidad del sistema, medida como un fondo →',
       faq_t: 'Preguntas frecuentes',
       foot_disc: 'Sugerencias educativas basadas en análisis estadístico. No es consejo financiero. Apostá con responsabilidad. 18+.',
       foot_legal: '<a href="/terms" style="color:inherit">Términos y condiciones</a> · <a href="/refunds" style="color:inherit">Política de reembolso</a> · <a href="/privacy" style="color:inherit">Privacidad</a>',
@@ -168,7 +170,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       eye: 'Founder Pass · first 100 only',
       h1: 'The full edge, at a <b>founder price</b> forever.',
       sub: 'The first 100 members lock their lifetime price before the public launch. Then it’s gone.',
-      counter_pre: '', counter_post: 'founder spots left', quality_link: 'See the system quality, measured like a fund →',
+      cd_pre: 'The Founder Pass closes with the final:', counter_pre: '', counter_post: 'founder spots left', quality_link: 'See the system quality, measured like a fund →',
       faq_t: 'Frequently asked questions',
       foot_disc: 'Educational suggestions based on statistical analysis. Not financial advice. Bet responsibly. 18+.',
       foot_legal: '<a href="/terms" style="color:inherit">Terms & conditions</a> · <a href="/refunds" style="color:inherit">Refund policy</a> · <a href="/privacy" style="color:inherit">Privacy</a>',
@@ -228,6 +230,20 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     var W = window.__WHOP || {};
     // contador REAL de cupos (server lo inyecta desde las membresías de Whop; null → se queda el 100/100)
     if (W.left != null) { var se = document.getElementById('spots-left'); if (se) se.textContent = W.left + ' / 100'; }
+    // COUNTDOWN al cierre real del Founder Pass (la final, 19-jul 19:00Z): reloj vivo, urgencia honesta.
+    if (!window.__cdT) {
+      var DEADLINE = Date.UTC(2026, 6, 19, 19, 0, 0);
+      var tick = function () {
+        var el = document.getElementById('cd'); if (!el) return;
+        var ms = DEADLINE - Date.now();
+        if (ms <= 0) { el.textContent = lang === 'en' ? 'closed' : 'cerrado'; clearInterval(window.__cdT); return; }
+        var d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000),
+            m = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000);
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        el.textContent = d + 'd ' + pad(h) + ':' + pad(m) + ':' + pad(s);
+      };
+      tick(); window.__cdT = setInterval(tick, 1000);
+    }
     // checkout vía nuestro endpoint (crea una checkout session de Whop con redirect_url → al pagar,
     // Whop devuelve al usuario a /founder/activo → su cuenta con el plan activo, sin fricción).
     // MISMA pestaña a propósito: el flujo compra→retorno debe sentirse un solo viaje.

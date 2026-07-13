@@ -143,7 +143,7 @@
       // ---- Feed de picks diarias (producto) ----
       pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa', pf_pick_of_day: 'Pick del día', pf_all_by_match: 'Todas las picks por partido',
       pf_corr: 'Son del mismo partido: se resuelven juntas. Para tu stake trátalas como <b>una sola apuesta</b>, no como {n} independientes.',
-      cl_wc: 'Mundial 2026', cl_gate_ok: 'Gate aprobado', cl_gate_sh: 'En calibración', cl_hfa: 'localía',
+      cl_wc: 'Mundial 2026', cl_all_comps: 'Todas las competiciones', cl_gate_ok: 'Gate aprobado', cl_gate_sh: 'En calibración', cl_hfa: 'localía',
       cl_states_soon: 'En vivo y finalizados de clubes llegan con la integración de marcadores.',
       cl_preseason: 'La temporada arranca pronto: ratings listos, la liga entra calibrada a su kickoff.',
       cl_value: 'Value vs mercado', cl_neutral: 'cancha neutral',
@@ -383,7 +383,7 @@
       // ---- Daily picks feed (product) ----
       pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick', pf_pick_of_day: 'Pick of the day', pf_all_by_match: 'All picks by match',
       pf_corr: 'Same match: they settle together. For your stake, treat them as <b>one single bet</b>, not {n} independent ones.',
-      cl_wc: 'World Cup 2026', cl_gate_ok: 'Gate approved', cl_gate_sh: 'Calibrating', cl_hfa: 'home edge',
+      cl_wc: 'World Cup 2026', cl_all_comps: 'All competitions', cl_gate_ok: 'Gate approved', cl_gate_sh: 'Calibrating', cl_hfa: 'home edge',
       cl_states_soon: 'Live and finished club states arrive with the scores integration.',
       cl_preseason: 'The season starts soon: ratings ready, the league enters calibrated at kickoff.',
       cl_value: 'Value vs market', cl_neutral: 'neutral venue',
@@ -3238,31 +3238,76 @@
   function clubLeague(k) { var Ls = (S.clubs && S.clubs.leagues) || []; for (var i = 0; i < Ls.length; i++) if (Ls[i].key === k) return Ls[i]; return null; }
   function clubGateChip(g) { if (!g) return ''; return g.status === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>'; }
   function clubTriCell(f) { var m = { HOME: f.home.prob, DRAW: f.draw, AWAY: f.away.prob }; return triCell(function (c) { return pct0(m[c]); }, 'gx-gp', maxCode(function (c) { return m[c]; })); }
-  function clubMatchesTable(L, rows) {
-    return '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="grp">' + esc(t('th_gp')) + '</th><th></th></tr></thead><tbody>' +
-      rows.map(function (f) {
-        var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id;
-        return '<tr class="gx-row" data-openmatch="' + esc(oid) + '">' +
-          '<td class="gx-time">' + esc(fmtTime(f.utc)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(L.name.split(' · ')[0]) + '</div></td>' +
-          '<td class="l"><div class="gx-cell-team">' + ic('shield-half') + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div></div></td>' +
-          '<td class="l"><span class="gx-status gx-st-up">' + esc(t('st_upcoming')) + '</span></td>' +
-          '<td>' + clubTriCell(f) + '</td>' +
-          '<td class="r">' + ic('chevron-right') + '</td></tr>';
-      }).join('') + '</tbody></table>';
+  function clubRowHtml(L, f) {
+    var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id;
+    return '<tr class="gx-row" data-openmatch="' + esc(oid) + '">' +
+      '<td class="gx-time">' + esc(fmtTime(f.utc)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(L.name.split(' · ')[0]) + '</div></td>' +
+      '<td class="l"><div class="gx-cell-team">' + ic('shield-half') + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div></div></td>' +
+      '<td class="l"><span class="gx-status gx-st-up">' + esc(t('st_upcoming')) + '</span></td>' +
+      '<td>' + clubTriCell(f) + '</td>' +
+      '<td class="l"><span class="gx-dim" style="font-size:11px">—</span></td>' +
+      '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
   }
-  function clubMatchesCards(L, rows) {
-    return rows.map(function (f) {
-      var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id;
-      return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + esc(L.name.split(' · ')[0]) + ' · ' + esc(fmtTime(f.utc)) + '</span></div>' +
-        '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px;margin:6px 0"><span>' + esc(f.home.name) + '</span><span style="text-align:right">' + esc(f.away.name) + '</span></div>' +
-        '<div class="gx-clbar"><span class="h" style="width:' + (f.home.prob * 100) + '%"></span><span class="d" style="width:' + (f.draw * 100) + '%"></span><span class="a" style="width:' + (f.away.prob * 100) + '%"></span></div>' +
-        '<div class="gx-clpct"><b>' + pct0(f.home.prob) + '</b><span>X ' + pct0(f.draw) + '</span><b>' + pct0(f.away.prob) + '</b></div></div>';
-    }).join('');
+  function clubMatchesTable(L, rows) { return matchesTableHead() + rows.map(function (f) { return clubRowHtml(L, f); }).join('') + '</tbody></table>'; }
+  function clubCardHtml(L, f) {
+    var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id;
+    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + esc(L.name.split(' · ')[0]) + ' · ' + esc(fmtTime(f.utc)) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px;margin:6px 0"><span>' + esc(f.home.name) + '</span><span style="text-align:right">' + esc(f.away.name) + '</span></div>' +
+      '<div class="gx-clbar"><span class="h" style="width:' + (f.home.prob * 100) + '%"></span><span class="d" style="width:' + (f.draw * 100) + '%"></span><span class="a" style="width:' + (f.away.prob * 100) + '%"></span></div>' +
+      '<div class="gx-clpct"><b>' + pct0(f.home.prob) + '</b><span>X ' + pct0(f.draw) + '</span><b>' + pct0(f.away.prob) + '</b></div></div>';
+  }
+  function clubMatchesCards(L, rows) { return rows.map(function (f) { return clubCardHtml(L, f); }).join(''); }
+  // Vista TODOS (shadow): Mundial + todas las ligas en una sola línea de tiempo, intercalados por fecha.
+  function renderAllCompMatches(mv) {
+    var Ls = (S.clubs && S.clubs.leagues) || [];
+    var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f'], ['fin', 'st_finished']];
+    var q = (S.mQuery || '').toLowerCase();
+    // Orden de la casa (Q1 4C#7): EN VIVO primero, próximos ASC (Mundial + clubes intercalados), finalizados
+    // DESC — nunca abrir con partidos antiguos.
+    var live = [], up = [], fin = [];
+    matchRows().forEach(function (c) {
+      var it = { dt: c.datetime, kind: 'wc', c: c };
+      if (c.status === 'live') live.push(it); else if (c.status === 'final') fin.push(it); else up.push(it);
+    });
+    if (S.mFilt === 'all' || S.mFilt === 'up') {
+      Ls.forEach(function (L) {
+        (L.upcoming || []).forEach(function (f) {
+          if (q && (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) < 0) return;
+          up.push({ dt: f.utc, kind: 'cl', L: L, f: f });
+        });
+      });
+    }
+    up.sort(function (a, b) { return new Date(a.dt || 0) - new Date(b.dt || 0); });
+    fin.sort(function (a, b) { return new Date(b.dt || 0) - new Date(a.dt || 0); });
+    var items = live.concat(up, fin);
+    var head =
+      '<div class="gx-ohead"><h1>' + esc(t('nav_matches')) + '</h1>' +
+      '<div class="gx-seg" id="gx-mtabs">' + tabs.map(function (x) { return '<button data-f="' + x[0] + '"' + (S.mFilt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
+      '<select class="gx-select" id="gx-mcomp"><option value="todos" selected>' + esc(t('cl_all_comps')) + '</option><option value="wc">' + esc(t('cl_wc')) + '</option>' + Ls.map(function (x) { return '<option value="' + esc(x.key) + '">' + esc(x.name.split(' · ')[0]) + (x.starts ? ' · ' + esc(x.starts) : '') + '</option>'; }).join('') + '</select>' +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-msearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.mQuery) + '"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + items.length + ' ' + esc(t('matches')) + '</span></div>';
+    var body;
+    if (!items.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(t('m_empty')) + '</b></div></div>';
+    else {
+      var groups = [], gmap = {};
+      items.forEach(function (it) { var k = dayKey(it.dt); if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(it.dt), items: [] }; groups.push(gmap[k]); } gmap[k].items.push(it); });
+      body = groups.map(function (g) {
+        var trs = g.items.map(function (it) { return it.kind === 'wc' ? wcRowHtml(it.c) : clubRowHtml(it.L, it.f); }).join('');
+        var cards = g.items.map(function (it) { return it.kind === 'wc' ? wcCardHtml(it.c) : clubCardHtml(it.L, it.f); }).join('');
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(g.label) + '</span><span class="gx-dim">' + g.items.length + '</span></div>' +
+          '<div class="gx-panel gx-board gx-matches-desk">' + matchesTableHead() + trs + '</tbody></table></div>' +
+          '<div class="gx-matches-mob">' + cards + '</div></div>';
+      }).join('');
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + body + '</div></div>';
+    bindMatches();
   }
   function renderMatches() {
     var mv = $('#gx-matchview'); if (!mv) return;
     if (clubsOn()) loadClubs();
-    // COMPETICIÓN seleccionada (shadow clubes): 'wc' = Mundial (comportamiento de siempre); una liga = su cartelera
+    // COMPETICIÓN seleccionada (shadow clubes): 'wc' = Mundial (comportamiento de siempre); 'todos' =
+    // Mundial + ligas intercalados por fecha; una liga = su cartelera
+    if (clubsOn() && S.mComp === 'todos') { renderAllCompMatches(mv); return; }
     if (clubsOn() && S.mComp && S.mComp !== 'wc') { renderClubLeagueMatches(mv); return; }
     var rows = matchRows();
     var stages = []; S.cal.forEach(function (c) { if (c.stage && stages.indexOf(c.stage) < 0) stages.push(c.stage); });
@@ -3270,7 +3315,7 @@
     var head =
       '<div class="gx-ohead"><h1>' + esc(t('nav_matches')) + '</h1>' +
       '<div class="gx-seg" id="gx-mtabs">' + tabs.map(function (x) { return '<button data-f="' + x[0] + '"' + (S.mFilt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
-      (clubsOn() ? '<select class="gx-select" id="gx-mcomp"><option value="wc">' + esc(t('cl_wc')) + '</option>' + ((S.clubs && S.clubs.leagues) || []).map(function (L) { return '<option value="' + esc(L.key) + '"' + (S.mComp === L.key ? ' selected' : '') + '>' + esc(L.name.split(' · ')[0]) + (L.starts ? ' · ' + esc(L.starts) : '') + '</option>'; }).join('') + '</select>' : '') +
+      (clubsOn() ? '<select class="gx-select" id="gx-mcomp"><option value="todos">' + esc(t('cl_all_comps')) + '</option><option value="wc" selected>' + esc(t('cl_wc')) + '</option>' + ((S.clubs && S.clubs.leagues) || []).map(function (L) { return '<option value="' + esc(L.key) + '"' + (S.mComp === L.key ? ' selected' : '') + '>' + esc(L.name.split(' · ')[0]) + (L.starts ? ' · ' + esc(L.starts) : '') + '</option>'; }).join('') + '</select>' : '') +
       '<select class="gx-select" id="gx-mstage"><option value="all">' + esc(t('m_stage_all')) + '</option>' + stages.map(function (s) { return '<option value="' + esc(s) + '"' + (S.mStage === s ? ' selected' : '') + '>' + esc(stageLabel(s)) + '</option>'; }).join('') + '</select>' +
       '<div class="gx-msearch">' + ic('search') + '<input id="gx-msearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.mQuery) + '"></div>' +
       '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' ' + esc(t('matches')) + '</span></div>';
@@ -3301,7 +3346,7 @@
     var head =
       '<div class="gx-ohead"><h1>' + esc(t('nav_matches')) + '</h1>' +
       '<div class="gx-seg" id="gx-mtabs">' + tabs.map(function (x) { return '<button data-f="' + x[0] + '"' + (S.mFilt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
-      '<select class="gx-select" id="gx-mcomp"><option value="wc">' + esc(t('cl_wc')) + '</option>' + Ls.map(function (x) { return '<option value="' + esc(x.key) + '"' + (S.mComp === x.key ? ' selected' : '') + '>' + esc(x.name.split(' · ')[0]) + (x.starts ? ' · ' + esc(x.starts) : '') + '</option>'; }).join('') + '</select>' +
+      '<select class="gx-select" id="gx-mcomp"><option value="todos">' + esc(t('cl_all_comps')) + '</option><option value="wc">' + esc(t('cl_wc')) + '</option>' + Ls.map(function (x) { return '<option value="' + esc(x.key) + '"' + (S.mComp === x.key ? ' selected' : '') + '>' + esc(x.name.split(' · ')[0]) + (x.starts ? ' · ' + esc(x.starts) : '') + '</option>'; }).join('') + '</select>' +
       '<div class="gx-msearch">' + ic('search') + '<input id="gx-msearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.mQuery) + '"></div>' +
       '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' ' + esc(t('matches')) + '</span></div>';
     var meta = L ? '<div class="gx-panel" style="padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11.5px">' + esc(L.name) + ' · ' + esc(L.country) + ' · ' + esc(t('cl_hfa')) + ' +' + L.hfa + ' Elo · ' + L.n_matches + ' ' + esc(t('matches')) + '</span></div>' : '';
@@ -3334,21 +3379,23 @@
     if (canon) return '<span class="gx-dim" style="font-size:11px">' + esc(t('e_nomarket')) + '</span>';
     return '<span class="gx-dim" style="font-size:11px">—</span>';
   }
-  function matchesTable(rows) {
-    return '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="grp">' + esc(t('th_gp')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th></th></tr></thead><tbody>' +
-      rows.map(function (c) {
-        var canon = canonFor(c), sc = mScore(c), oid = canon ? canon.event_id : 'fx-' + c.id;
-        return '<tr class="gx-row" data-openmatch="' + esc(oid) + '">' +
-          '<td class="gx-time">' + esc(fmtTime(c.datetime)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(stageLabel(c.stage)) + '</div></td>' +
-          '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(c.home) + '</span><div class="gx-teamnames"><b>' + esc(teamName(c.home)) + '</b><span>' + esc(teamName(c.away)) + '</span></div><span class="fl">' + flag(c.away) + '</span></div></td>' +
-          '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + mStatusCell(c) + '</td>' +
-          '<td>' + mGpCell(canon, c) + '</td>' +
-          '<td class="l">' + mSignalCell(canon) + '</td>' +
-          '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
-      }).join('') + '</tbody></table>';
+  function matchesTableHead() {
+    return '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="grp">' + esc(t('th_gp')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th></th></tr></thead><tbody>';
   }
-  function matchesCards(rows) {
-    return rows.map(function (c) {
+  function wcRowHtml(c) {
+    var canon = canonFor(c), sc = mScore(c), oid = canon ? canon.event_id : 'fx-' + c.id;
+    return '<tr class="gx-row" data-openmatch="' + esc(oid) + '">' +
+      '<td class="gx-time">' + esc(fmtTime(c.datetime)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(stageLabel(c.stage)) + '</div></td>' +
+      '<td class="l"><div class="gx-cell-team"><span class="fl">' + flag(c.home) + '</span><div class="gx-teamnames"><b>' + esc(teamName(c.home)) + '</b><span>' + esc(teamName(c.away)) + '</span></div><span class="fl">' + flag(c.away) + '</span></div></td>' +
+      '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + mStatusCell(c) + '</td>' +
+      '<td>' + mGpCell(canon, c) + '</td>' +
+      '<td class="l">' + mSignalCell(canon) + '</td>' +
+      '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
+  }
+  function matchesTable(rows) { return matchesTableHead() + rows.map(wcRowHtml).join('') + '</tbody></table>'; }
+  function matchesCards(rows) { return rows.map(wcCardHtml).join(''); }
+  function wcCardHtml(c) {
+    return [c].map(function (c) {
       var canon = canonFor(c), sc = mScore(c), oid = canon ? canon.event_id : 'fx-' + c.id;
       return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '">' +
         '<div class="gx-mcard-top"><span class="gx-time">' + esc(fmtTime(c.datetime)) + ' · ' + esc(stageLabel(c.stage)) + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + mStatusCell(c) + '</div>' +

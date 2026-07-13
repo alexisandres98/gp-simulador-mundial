@@ -2557,6 +2557,10 @@ async function clubsQuotesSweep({ force = false } = {}) {
       for (const ev of events.slice(0, 25)) {
         const ceid = stableGoalEventId('cl:' + L.key + ':' + ev.home_team, 'cl:' + L.key + ':' + ev.away_team);
         out.events++;
+        // metadata del evento sintético (liga, equipos, kickoff) para que el market-scanner pueda armar
+        // mercados de clubes: la tabla de quotes no guarda nombres y el JOIN de la casa no ve estos ids.
+        db.clubsQuoteEvents = db.clubsQuoteEvents || {};
+        db.clubsQuoteEvents[ceid] = { league: L.key, league_name: L.name || L.key, home: ev.home_team, away: ev.away_team, kickoff: ev.commence_time || null, at: Date.now() };
         for (const bk of ev.bookmakers || []) {
           for (const mk of bk.markets || []) {
             if (mk.key === 'h2h') {
@@ -2580,6 +2584,14 @@ async function clubsQuotesSweep({ force = false } = {}) {
       }
     }
     _clubsQuotesLast = Date.now();
+    // poda: eventos con kickoff viejo (o sin refrescar hace 48h) salen del mapa — el scanner solo mira próximos
+    if (db.clubsQuoteEvents) {
+      for (const [id, m] of Object.entries(db.clubsQuoteEvents)) {
+        const k = m.kickoff ? +new Date(m.kickoff) : 0;
+        if ((k && k < Date.now() - 36 * 3600e3) || (!k && Date.now() - (m.at || 0) > 48 * 3600e3)) delete db.clubsQuoteEvents[id];
+      }
+      save();
+    }
   } catch (e) { out.error = e.message; }
   finally { _clubsQuotesRunning = false; out.finished = new Date().toISOString(); _clubsQuotesOut = out; }
   console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
@@ -4154,6 +4166,34 @@ function buildChampionMarkets(mc) {
   return out;
 }
 
+// FASE CLUBES (shadow): scan SEPARADO sobre las cuotas de clubes que clubsQuotesSweep dejó en la DB.
+// Cache propio: el _scanCache compartido (teaser, telegram, /api/beta/arbitrage no-admin) queda byte-idéntico.
+// Frescura propia (75 min): el sweep de clubes corre ~60 min (presupuesto de créditos), no cada 20 como la casa.
+let _clubsScanCache = { at: 0, data: null, running: null };
+function clubsShadowFlagOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim()); }
+async function getClubsScan() {
+  if (!clubsShadowFlagOn()) return null;
+  const events = db.clubsQuoteEvents || {};
+  if (!Object.keys(events).length) return null;
+  const ttl = parseInt(process.env.MARKET_SCANNER_TTL_MS, 10) || 45000;
+  if (Date.now() - _clubsScanCache.at < ttl) return _clubsScanCache.data; // cachea también el "sin mercados" (null)
+  if (_clubsScanCache.running) return _clubsScanCache.running.then(() => _clubsScanCache.data).catch(() => _clubsScanCache.data);
+  _clubsScanCache.running = (async () => {
+    const dbc = require('./database/client');
+    if (!dbc.isConfigured()) return null;
+    const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events, now: Date.now() }).catch(() => []);
+    let out = null;
+    if (markets.length) {
+      const params = { ...marketScanner.params, maxQuoteAgeMs: 75 * 60e3 };
+      out = require('./market-scanner/scanner').scan(markets, { params, now: Date.now() });
+      out.scanner_version = marketScanner.SCANNER_VERSION;
+    }
+    _clubsScanCache = { at: Date.now(), data: out, running: null };
+    return out;
+  })().catch(() => { _clubsScanCache = { at: Date.now(), data: null, running: null }; return null; });
+  return _clubsScanCache.running;
+}
+
 let _scanCache = { at: 0, data: null, running: null };
 async function getMarketScan() {
   const ttl = parseInt(process.env.MARKET_SCANNER_TTL_MS, 10) || 45000;
@@ -4607,6 +4647,27 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/beta/arbitrage' && req.method === 'GET') {
         const scan = await getMarketScan();
         const dto = marketScannerDto.buildDto(scan, { resolveTeamId: (name) => resolveTeamIdLoose(name), maxItems: marketScanner.params.maxOpportunities });
+        // FASE CLUBES (shadow): merge de oportunidades de clubes SOLO para admin real (clubs_shadow) y sin
+        // preview ?asplan= (la vista "como plan X" debe ser la del usuario normal). Scan separado → el payload
+        // de no-admins es byte-idéntico. Los items de clubes viajan con competition/competition_name (liga) y
+        // team_ids null (el cliente cae a nombres crudos; la card no navega, informativa como los sintéticos).
+        if (dto.available && betaUser.isAdmin && clubsShadowFlagOn() && !url.searchParams.get('asplan')) {
+          try {
+            const cs = await getClubsScan();
+            if (cs) {
+              const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: marketScanner.params.maxOpportunities });
+              if (cdto.available && ((cdto.arbitrage || []).length || (cdto.price_lag || []).length || cdto.counts.markets_scanned)) {
+                const tag = (it) => { const m = (db.clubsQuoteEvents || {})[it.event_id] || {}; return { ...it, competition: m.league || null, competition_name: m.league_name || null }; };
+                dto.arbitrage = (dto.arbitrage || []).concat((cdto.arbitrage || []).map(tag));
+                dto.price_lag = (dto.price_lag || []).concat((cdto.price_lag || []).map(tag));
+                for (const k of ['markets_scanned', 'markets_with_consensus', 'arb_total', 'arb_executable', 'lag_total', 'lag_soft', 'lag_reference']) {
+                  dto.counts[k] = (dto.counts[k] || 0) + (cdto.counts[k] || 0);
+                }
+                dto.clubs = { markets: cdto.counts.markets_scanned || 0, lag_soft: cdto.counts.lag_soft || 0, arb_executable: cdto.counts.arb_executable || 0 };
+              }
+            }
+          } catch { /* clubes en shadow: nunca rompe el payload de la casa */ }
+        }
         return json(res, 200, dto);
       }
       const ctx = {
@@ -5500,7 +5561,18 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       if (req.method === 'POST') { const r = await clubsQuotesSweep({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
-      return json(res, 200, { last: _clubsQuotesOut, last_at: _clubsQuotesLast ? new Date(_clubsQuotesLast).toISOString() : null });
+      return json(res, 200, { last: _clubsQuotesOut, last_at: _clubsQuotesLast ? new Date(_clubsQuotesLast).toISOString() : null, events: Object.keys(db.clubsQuoteEvents || {}).length });
+    }
+    // SCAN DE CLUBES (verificación read-only, misma key): el DTO que el admin ve mergeado en /api/beta/arbitrage,
+    // sin necesitar sesión. Diagnóstico del pipeline sweep → loader → scanner.
+    if (p === '/api/internal/clubs-scan' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const cs = await getClubsScan().catch(e => ({ error: e.message }));
+      if (!cs) return json(res, 200, { available: false, events: Object.keys(db.clubsQuoteEvents || {}).length, flag: clubsShadowFlagOn() });
+      if (cs.error) return json(res, 200, { available: false, error: cs.error });
+      const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: marketScanner.params.maxOpportunities });
+      return json(res, 200, { available: cdto.available !== false, counts: cdto.counts || null, arbitrage: (cdto.arbitrage || []).length, price_lag: (cdto.price_lag || []).length, sample: (cdto.price_lag || []).slice(0, 3) });
     }
     // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
     if (p === '/api/internal/props') {
@@ -6460,6 +6532,12 @@ const server = http.createServer(async (req, res) => {
       const sessEmail = sessionEmailFromReq(req);
       if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
       try {
+        // auto-carga de ratings (mismo patrón que el sweep): sin esto, si value corre antes que /api/clubs/state
+        // (loadClubs dispara ambos en paralelo) veía leagues vacías y memoizaba 0 filas por 10 minutos.
+        if (!global._clubsRatings) {
+          try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); }
+          catch { global._clubsRatings = { _meta: {}, leagues: {} }; }
+        }
         const RT = global._clubsRatings || {};
         const oddsKeyEnv = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
         if (!oddsKeyEnv) return json(res, 200, { shadow: true, rows: [], note: 'sin key de cuotas' });

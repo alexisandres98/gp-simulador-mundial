@@ -147,6 +147,7 @@
       cl_states_soon: 'En vivo y finalizados de clubes llegan con la integración de marcadores.',
       cl_preseason: 'La temporada arranca pronto: ratings listos, la liga entra calibrada a su kickoff.',
       cl_value: 'Value vs mercado', cl_neutral: 'cancha neutral',
+      cl_value_board: 'Value de clubes por liga', cl_value_board_sub: 'Modelo GP vs consenso del mercado en las ligas en temporada. Informativo: las picks de clubes nacen cuando la liga tiene gate aprobado y el precio confirma.',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -387,6 +388,7 @@
       cl_states_soon: 'Live and finished club states arrive with the scores integration.',
       cl_preseason: 'The season starts soon: ratings ready, the league enters calibrated at kickoff.',
       cl_value: 'Value vs market', cl_neutral: 'neutral venue',
+      cl_value_board: 'Club value by league', cl_value_board_sub: 'GP model vs market consensus across in-season leagues. Informational: club picks are born once a league has an approved gate and the price confirms.',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -1253,13 +1255,40 @@
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct1(x.model_pct) + ' · ' + esc(t('hero_mkt')) + ' ' + pct1(x.market_pct) + '</span><span class="gx-dim" style="font-size:11px;display:inline-flex;align-items:center">' + bookLogo(x.best_book) + esc(x.best_book || '') + '</span></div></div>'; }).join('');
     return '<div class="gx-panel gx-board" style="margin-bottom:14px"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('outright_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('outright_sub')) + '</span></div><div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div></div>';
   }
+  // ---- Oportunidades · Value: CLUBES multi-liga (FASE CLUBES, shadow solo admin) ----
+  // Reusa S.clubsValue (cargado en boot por loadClubs). Solo edges POSITIVOS con cuota real; el chip de gate
+  // por liga recuerda dónde ya hay modelo aprobado. Informativo: sin picks hasta gate + curate (regla dura).
+  function clubsValueHtml() {
+    if (!clubsOn()) return '';
+    var rows = ((S.clubsValue && S.clubsValue.rows) || []).filter(function (v) { return v.edge_pp > 0 && v.best_odds > 1; }).slice(0, 10);
+    if (!rows.length) return '';
+    var selN = function (v) { return v.outcome === 'home' ? v.home : v.outcome === 'away' ? v.away : t('arb_draw'); };
+    // table-layout fixed + ellipsis: los nombres de clubes son largos (sin ids ni banderas) y en auto la tabla
+    // desborda el panel sin scroll. El título completo queda en el atributo title.
+    var desk = '<table class="gx-table gx-cltable" style="table-layout:fixed"><colgroup><col style="width:40%"><col style="width:36%"><col style="width:11%"><col style="width:13%"></colgroup><thead><tr><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th>' + esc(t('th_price')) + '</th><th>' + esc(t('th_edge')) + '</th></tr></thead><tbody>' +
+      rows.map(function (v) {
+        var ell = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+        return '<tr class="gx-row"><td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '">' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</b><span style="' + ell + '">' + esc(String(v.league_name || v.league).split(' · ')[0]) + ' · ' + esc(v.best_book || '—') + ' · ' + v.books + ' ' + esc(t('books')) + '</span></div></td>' +
+          '<td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(selN(v)) + '">' + esc(selN(v)) + ' ' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</b><span class="gx-mono" style="' + ell + '">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + '</span></div></td>' +
+          '<td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span></td>' +
+          '<td class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</td></tr>';
+      }).join('') + '</tbody></table>';
+    var mob = rows.map(function (v) {
+      return '<div class="gx-mcard"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">' + esc(String(v.league_name || v.league).split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</div>' +
+        '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames"><b>' + esc(selN(v)) + '</b><span>' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</span></div></div>' +
+        '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + ' · ' + odd(v.best_odds) + '</span><span class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</span></div></div>';
+    }).join('');
+    return '<div class="gx-panel gx-board" style="margin-top:14px"><div class="gx-ph"><span class="gx-label">' + ic('shield-half') + esc(t('cl_value_board')) + '</span><span class="gx-ph-extra"><span class="gx-clgate sh">SHADOW</span></span></div>' +
+      '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>' +
+      '<div class="gx-pick-disc">' + esc(t('cl_value_board_sub')) + '</div></div>';
+  }
   // ---- Oportunidades · Value ----
   function oppValueBoard(bd) {
     if (S.valueLocked) { bd.innerHTML = lockPanel(); return; } // plan Sharp (candado con CTA)
     var outright = outrightValueHtml();
     var vals = (S.value || []).slice().sort(function (a, b) { return (b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0); });
     var hdr = {}; ((S.dash && S.dash.upcoming) || []).forEach(function (u) { hdr[u.header.event_id] = u.header; });
-    if (!vals.length) { bd.innerHTML = outright + '<div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div>'; return; }
+    if (!vals.length) { bd.innerHTML = outright + '<div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div>' + clubsValueHtml(); return; }
     var row = function (v) {
       var h = hdr[v.event_id], oc = v.outcome_code, fid = h ? (oc === 'AWAY' ? h.away.team_id : h.home.team_id) : null;
       var name = oc === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : (h ? teamName(fid) : oc);
@@ -1279,14 +1308,18 @@
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div>' +
       (v.gp_probability > 0 && v.best_odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v.gp_probability, Number(v.best_odds), x.name + (x.matchN ? ' · ' + x.matchN : ''), 'gp') + '</div>' : '') +
       '</div>'; }).join('');
-    bd.innerHTML = outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
+    bd.innerHTML = outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>' + clubsValueHtml();
   }
   // ---- Oportunidades · Arbitraje ----
   // ---- Oportunidades · Arbitraje: scanner MULTI-VENUE con dos familias. "Arbitraje puro" (surebet 2/N patas,
   // el mercado se contradice entre casas → ganás pase lo que pase) y "Precio atrasado" (value 1-pata: una casa
   // cuelga una cuota por encima del consenso no-vig del resto → +EV en una apuesta). Sin modelo GP (eso es Value).
   function arbAgo(s) { if (s == null) return ''; if (s < 90) return t('arb_ago_now'); var m = Math.round(s / 60); if (m < 60) return t('arb_ago_min', { m: m }); return t('arb_ago_hr', { h: Math.round(m / 60) }); }
-  function arbTag(it) { return it.market_family === 'champion' ? t('arb_tag_champ') : it.market_family === 'match_total' ? t('arb_tag_totals', { line: it.line }) : t('arb_tag_1x2'); }
+  function arbTag(it) {
+    var base = it.market_family === 'champion' ? t('arb_tag_champ') : it.market_family === 'match_total' ? t('arb_tag_totals', { line: it.line }) : t('arb_tag_1x2');
+    // FASE CLUBES: los items de clubes viajan con competition_name (liga) → chip de contexto en la card
+    return (it.competition_name ? String(it.competition_name).split(' · ')[0] + ' · ' : '') + base;
+  }
   function arbTitle(it) { return it.market_family === 'champion' ? teamName(it.home_team_id, it.home) : (teamName(it.home_team_id, it.home) + ' ' + t('vs') + ' ' + teamName(it.away_team_id, it.away)); }
   function arbSel(it, outcome) {
     if (it.market_family === 'champion') return outcome === 'yes' ? t('arb_champ_yes', { team: teamName(it.home_team_id, it.home) }) : t('arb_champ_no', { team: teamName(it.home_team_id, it.home) });

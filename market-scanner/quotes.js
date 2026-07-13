@@ -119,6 +119,64 @@ async function loadSportsbookTotals(db, { provider = 'the_odds_api', includePast
   });
 }
 
+// ---- FASE CLUBES (shadow): mercados de clubes desde sportsbook_goal_quote_current ----
+// clubsQuotesSweep (server) ingesta h2h ('match_winner') + totals ('match_total') de clubes con canonical ids
+// SINTÉTICOS y guarda liga/equipos/kickoff en db.clubsQuoteEvents (la tabla de quotes no trae nombres y el JOIN
+// del loader de la casa no ve estos ids). Este loader arma mercados con esa metadata, etiquetados is_club +
+// competition. NO entra a loadMarkets: el server lo corre en un scan SEPARADO (cache propio, solo admin) para
+// que el scan compartido (teaser/telegram/no-admin) quede byte-idéntico.
+async function loadClubsMarkets(db, { provider = 'the_odds_api', events = {}, now = Date.now() } = {}) {
+  const ids = Object.keys(events).filter(id => {
+    const k = events[id] && events[id].kickoff ? +new Date(events[id].kickoff) : NaN;
+    return Number.isFinite(k) && k > now - 3 * 3600e3; // próximos o en juego, misma ventana que la casa
+  });
+  if (!ids.length) return [];
+  const r = await db.query(
+    `SELECT g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side,
+            g.odds_decimal, g.is_live, g.observed_at,
+            m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
+       FROM sportsbook_goal_quote_current g
+       LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
+      WHERE g.data_provider = $1 AND g.canonical_event_id = ANY($2)
+        AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'`,
+    [provider, ids]).catch(() => ({ rows: [] }));
+  const byKey = new Map();
+  for (const row of r.rows) {
+    const meta = events[row.canonical_event_id]; if (!meta) continue;
+    const is1x2 = row.market_family === 'match_winner';
+    const side = String(row.side || '').toLowerCase();
+    if (is1x2 && !['home', 'draw', 'away'].includes(side)) continue;
+    if (!is1x2 && !['over', 'under'].includes(side)) continue;
+    const line = is1x2 ? null : Number(row.line);
+    if (!is1x2 && !Number.isFinite(line)) continue;
+    const key = row.canonical_event_id + '|' + row.market_family + '|' + (line == null ? '' : line);
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        source: 'sportsbook', venue_kind: 'sportsbook', is_club: true, competition: meta.league,
+        event_id: row.canonical_event_id, market_family: is1x2 ? '1x2' : 'match_total', period: 'regulation', line,
+        universe: is1x2 ? ['home', 'draw', 'away'] : ['over', 'under'],
+        home: meta.home, away: meta.away, kickoff: meta.kickoff || null,
+        quotes: [],
+      });
+    }
+    byKey.get(key).quotes.push({
+      venue: row.sportsbook_code, venue_label: row.sportsbook_name || row.sportsbook_code,
+      independence_group: indepGroup(row),
+      source_role: row.source_role || 'market_consensus', outcome: side,
+      odds_decimal: Number(row.odds_decimal),
+      observed_at: ms(row.observed_at), max_stake: null,
+      live: !!row.is_live, is_exchange: isExchange(row.sportsbook_code),
+      venue_kind: 'sportsbook',
+    });
+  }
+  // 1X2 completo (3 outcomes, ≥2 casas por diseño del consenso); totales igual que la casa (ambos lados, ≥4).
+  return [...byKey.values()].filter(m => {
+    const sides = new Set(m.quotes.map(q => q.outcome));
+    if (m.market_family === '1x2') return sides.has('home') && sides.has('draw') && sides.has('away') && m.quotes.length >= 6;
+    return sides.has('over') && sides.has('under') && m.quotes.length >= 4;
+  });
+}
+
 // ---- Myriad (prediction market con 1X2 por partido): fusiona sus precios al mercado 1X2 de la casa por par de
 // equipos. Myriad es peer-to-peer sin vig → referencia limpia extra en el consenso, y venue tradeable (vender).
 const myriad = require('./venues/myriad');
@@ -162,4 +220,4 @@ async function loadMarkets(db, { includeTotals = true, includePredictionMarkets 
   return markets;
 }
 
-module.exports = { loadMarkets, loadSportsbook1x2, loadSportsbookTotals, isExchange, EXCHANGE_BOOKS };
+module.exports = { loadMarkets, loadSportsbook1x2, loadSportsbookTotals, loadClubsMarkets, isExchange, EXCHANGE_BOOKS };

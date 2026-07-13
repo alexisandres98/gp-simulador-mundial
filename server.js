@@ -2614,6 +2614,41 @@ function clubNorm(s) {
   return CLUB_ALIAS[n] || n;
 }
 function clubScoreKey(lg, a, b) { return lg + '|' + [a, b].sort().join('-'); }
+// ===== FASE CLUBES F0.4: ELO DINÁMICO =====
+// El ratings.json se fitea offline (base). Sin actualizar el Elo con cada resultado, la probabilidad DERIVA
+// (exactamente lo que Alexis señaló). db.clubElos es un OVERLAY sobre el base: arranca del fit y se ajusta con
+// cada partido que TRANSICIONA a final (nunca se escribe el archivo; el re-fit mensual resetea el overlay).
+// Misma matemática del Mundial (winExpectancy logística + G por margen de gol) con K de liga doméstica y la
+// localía (hfa) de cada liga en vez del HOME_BONUS del Mundial.
+const CLUB_ELO_K = 30; // ligas domésticas (eloratings.net ~20-40); el Mundial usa 60
+function clubBaseElo(lg, tid) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[lg];
+  return (L && L.ratings && L.ratings[tid] && L.ratings[tid].elo) || 1500;
+}
+function clubElo(lg, tid) {
+  return (db.clubElos && db.clubElos[tid] != null) ? db.clubElos[tid] : clubBaseElo(lg, tid);
+}
+function applyClubElo(lg, hId, aId, hg, ag) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[lg]; if (!L) return;
+  db.clubElos = db.clubElos || {};
+  const hfa = L.hfa || 60;
+  const eH = clubElo(lg, hId), eA = clubElo(lg, aId);
+  const we = 1 / (1 + Math.pow(10, -((eH + hfa) - eA) / 400)); // esperanza del local con su ventaja de cancha
+  const W = hg > ag ? 1 : hg === ag ? 0.5 : 0;
+  const margin = Math.abs(hg - ag);
+  const G = margin <= 1 ? 1 : margin === 2 ? 1.5 : (11 + margin) / 8;
+  const delta = CLUB_ELO_K * G * (W - we);
+  db.clubElos[hId] = Math.round((eH + delta) * 10) / 10;
+  db.clubElos[aId] = Math.round((eA - delta) * 10) / 10;
+}
+// resetea el overlay si el fit base cambió (nuevo ratings.json): el re-fit ya incorpora los resultados.
+function clubEloReconcileFit() {
+  const RT = global._clubsRatings || {};
+  const fa = (RT._meta && RT._meta.fitted_at) || 'none';
+  if (db.clubElosFitAt !== fa) { db.clubElos = {}; db.clubElosFitAt = fa; }
+}
 // resuelve un nombre de club a nuestro tm_ id dentro de una liga (índice normalizado cacheado por liga).
 const _clubIdIdx = {};
 function resolveClubId(league, name) {
@@ -2639,6 +2674,7 @@ async function clubScoresSync({ force = false } = {}) {
     }
     const RT = global._clubsRatings;
     db.clubResults = db.clubResults || {};
+    clubEloReconcileFit(); // F0.4: si el fit base cambió, resetear el overlay dinámico
     const fromD = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
     const toD = new Date(Date.now() + 1 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
     let anyChange = false;
@@ -2681,7 +2717,13 @@ async function clubScoresSync({ force = false } = {}) {
         if (state === 'in') out.live++; else out.final++;
         const prev = db.clubResults[key];
         const same = prev && prev.status === payload.status && prev.hg === hg && prev.ag === ag && prev.minute === payload.minute && prev.winner === payload.winner;
-        if (!same) { db.clubResults[key] = payload; out.changed++; anyChange = true; console.log(`[clubs-score] ${lgKey} ${H.team.displayName} ${hg}-${ag} ${A.team.displayName} ${payload.status}${payload.status === 'live' ? ` ${minute}'` : ''}`); }
+        if (!same) {
+          // F0.4: al TRANSICIONAR a final, actualizar el Elo dinámico (una sola vez por partido).
+          const wasFinal = prev && prev.status === 'final';
+          if (payload.status === 'final' && !wasFinal && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
+          else if (prev && prev.elo_applied) payload.elo_applied = true;
+          db.clubResults[key] = payload; out.changed++; anyChange = true; console.log(`[clubs-score] ${lgKey} ${H.team.displayName} ${hg}-${ag} ${A.team.displayName} ${payload.status}${payload.status === 'live' ? ` ${minute}'` : ''}`);
+        }
       }
     }
     // poda: resultados con más de 3h de finalizado (o sin refrescarse en 6h) salen
@@ -5671,6 +5713,21 @@ const server = http.createServer(async (req, res) => {
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
     }
+    // ELO DINÁMICO (F0.4): estado del overlay + prueba manual (?test=lg,hId,aId,hg,ag para simular un resultado).
+    if (p === '/api/internal/clubs-elo') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+      const test = url.searchParams.get('test');
+      if (test && req.method === 'POST') {
+        const [lg, hId, aId, hg, ag] = test.split(',');
+        const before = { home: clubElo(lg, hId), away: clubElo(lg, aId) };
+        applyClubElo(lg, hId, aId, Number(hg), Number(ag)); save();
+        return json(res, 200, { lg, hId, aId, score: hg + '-' + ag, before, after: { home: clubElo(lg, hId), away: clubElo(lg, aId) } });
+      }
+      const overlay = db.clubElos || {};
+      return json(res, 200, { fit_at: db.clubElosFitAt || null, adjusted: Object.keys(overlay).length, overlay });
+    }
     // SCAN DE CLUBES (verificación read-only, misma key): el DTO que el admin ve mergeado en /api/beta/arbitrage,
     // sin necesitar sesión. Diagnóstico del pipeline sweep → loader → scanner.
     if (p === '/api/internal/clubs-scan' && req.method === 'GET') {
@@ -6578,8 +6635,7 @@ const server = http.createServer(async (req, res) => {
           }
           const fixtures = ((up && up.rows) || []).map(m => {
             const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
-            const rh = (L.ratings[hId] && L.ratings[hId].elo) || 1500;
-            const ra = (L.ratings[aId] && L.ratings[aId].elo) || 1500;
+            const rh = clubElo(key, hId), ra = clubElo(key, aId); // F0.4: Elo dinámico (overlay sobre el fit)
             const pr = matchProbs(rh + (L.hfa || 60), ra);
             // marcador en vivo/finalizado (ESPN por liga, shadow) si existe para este par
             const sr = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
@@ -6592,14 +6648,14 @@ const server = http.createServer(async (req, res) => {
               result,
             };
           });
-          const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t })).sort((a, b) => b.elo - a.elo);
+          const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t, elo: clubElo(key, id), elo_base: t.elo })).sort((a, b) => b.elo - a.elo);
           // partidos EN VIVO / FINALIZADOS de la liga que ya NO están en upcoming (TSA los saca de scheduled al
           // empezar). Resueltos a nombres+probs desde ratings, ordenados live primero.
           const upPairs = new Set(fixtures.map(f => clubScoreKey(key, f.home.id, f.away.id)));
           const live = Object.entries(db.clubResults || {})
             .filter(([k, r]) => r.league === key && !upPairs.has(k))
             .map(([, r]) => {
-              const rh = (L.ratings[r.home_id] && L.ratings[r.home_id].elo) || 1500, ra = (L.ratings[r.away_id] && L.ratings[r.away_id].elo) || 1500;
+              const rh = clubElo(key, r.home_id), ra = clubElo(key, r.away_id);
               const pr = matchProbs(rh + (L.hfa || 60), ra);
               return {
                 id: null, utc: null,
@@ -6638,7 +6694,7 @@ const server = http.createServer(async (req, res) => {
         const cross = hl !== al;
         const neutral = cross || /^(1|true)$/i.test(String(url.searchParams.get('neutral') || ''));
         const hfa = neutral ? 0 : (LH.hfa || 60);
-        const rh = TH ? TH.elo : 1500, ra = TA ? TA.elo : 1500;
+        const rh = TH ? clubElo(hl, hId) : 1500, ra = TA ? clubElo(al, aId) : 1500; // F0.4: Elo dinámico
         const pr = matchProbs(rh + hfa, ra);
         const l = lambdas(rh + hfa, ra);
         const dist = require('./goal-engine/distribution');
@@ -6705,7 +6761,7 @@ const server = http.createServer(async (req, res) => {
               if (acc.home.length < 3) { skipped++; continue; }
               const med = a => { const s2 = a.slice().sort((x, y) => x - y); return s2[Math.floor(s2.length / 2)]; };
               const cons = { home: med(acc.home), draw: med(acc.draw), away: med(acc.away) };
-              const pr = matchProbs(th.elo + (L.hfa || 60), ta.elo);
+              const pr = matchProbs(clubElo(L.key, th.id) + (L.hfa || 60), clubElo(L.key, ta.id)); // F0.4: Elo dinámico
               for (const oc of ['home', 'draw', 'away']) {
                 const edge = pr[oc] - cons[oc];
                 rows.push({

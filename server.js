@@ -6695,7 +6695,7 @@ const server = http.createServer(async (req, res) => {
                 const edge = pr[oc] - cons[oc];
                 rows.push({
                   league: L.key, league_name: L.name, gate: L.backtest ? L.backtest.status : null,
-                  utc: ev.commence_time, home: th.name, away: ta.name, outcome: oc,
+                  utc: ev.commence_time, home: th.name, away: ta.name, home_id: th.id, away_id: ta.id, outcome: oc,
                   our: +pr[oc].toFixed(3), consensus: +cons[oc].toFixed(3), edge_pp: +(edge * 100).toFixed(1),
                   best_odds: best[oc][0] || null, best_book: best[oc][1] || null, books: acc.home.length,
                 });

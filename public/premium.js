@@ -557,6 +557,10 @@
   }
   // casa con logo + nombre (para cards/tablas; en textos corridos se sigue usando prettyBook solo)
   function bookChip(code) { if (!code) return ''; return '<span class="gx-bkchip">' + bookLogo(code) + esc(prettyBook(code)) + '</span>'; }
+  // FASE CLUBES: escudo OFICIAL de club (self-hosted /logos/<tm_id>.png, mismo trato que banderas/casas). Se
+  // auto-remueve si el club no tiene logo → degrada al ícono genérico sin hueco. leagueLogo = logo de la liga.
+  function clubLogo(id) { if (!id || !/^tm_[a-z0-9]+$/i.test(id)) return ''; return '<img class="clx" src="/logos/' + id + '.png" alt="" draggable="false" onerror="this.remove()">'; }
+  function leagueLogo(key) { if (!key || !/^[a-z0-9]+$/.test(key)) return ''; return '<img class="clx-lg" src="/logos/league-' + key + '.png" alt="" draggable="false" onerror="this.remove()">'; }
 
   // ---- índice de jugadores (perfil por jugador): buscador + resolución nombre→pid en alineaciones y
   // plantillas. Se carga solo si el server lo permite (mismo gate que el perfil: admin-first).
@@ -1275,13 +1279,13 @@
       rows.map(function (v) {
         var ell = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
         return '<tr class="gx-row"><td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '">' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</b><span style="' + ell + '">' + esc(String(v.league_name || v.league).split(' · ')[0]) + ' · ' + esc(v.best_book || '—') + ' · ' + v.books + ' ' + esc(t('books')) + '</span></div></td>' +
-          '<td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(selN(v)) + '">' + esc(selN(v)) + ' ' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</b><span class="gx-mono" style="' + ell + '">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + '</span></div></td>' +
+          '<td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(selN(v)) + '">' + clubBadge(selId(v)) + ' ' + esc(selN(v)) + ' ' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</b><span class="gx-mono" style="' + ell + '">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + '</span></div></td>' +
           '<td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span></td>' +
           '<td class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</td></tr>';
       }).join('') + '</tbody></table>';
     var mob = rows.map(function (v) {
-      return '<div class="gx-mcard"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">' + esc(String(v.league_name || v.league).split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</div>' +
-        '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames"><b>' + esc(selN(v)) + '</b><span>' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</span></div></div>' +
+      return '<div class="gx-mcard"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">' + leagueLogo(v.league) + esc(String(v.league_name || v.league).split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</div>' +
+        '<div class="gx-cell-team" style="margin:6px 0">' + clubBadge(selId(v)) + '<div class="gx-teamnames"><b>' + esc(selN(v)) + '</b><span>' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</span></div></div>' +
         '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + ' · ' + odd(v.best_odds) + '</span><span class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</span></div></div>';
     }).join('');
     return '<div class="gx-panel gx-board" style="margin-top:14px"><div class="gx-ph"><span class="gx-label">' + ic('shield-half') + esc(t('cl_value_board')) + '</span><span class="gx-ph-extra"><span class="gx-clgate sh">SHADOW</span></span></div>' +
@@ -2440,8 +2444,8 @@
     mv.innerHTML = mvShell(
       '<div class="gx-content" style="gap:14px">' +
       '<div class="gx-panel" style="padding:18px 20px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><span class="gx-dim" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + esc(m.home.league_name) + '</span>' + clubGateChip({ status: m.gate }) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--gx-disp);font-weight:700;font-size:clamp(17px,3vw,24px)"><span>' + esc(m.home.name) + '</span><span class="gx-dim" style="font-size:' + (cres ? '22px' : '12px') + ';font-weight:800;color:' + (cres ? 'var(--gx-text)' : 'inherit') + '">' + (cres ? esc(cres.hg + ' - ' + cres.ag) : 'VS') + '</span><span style="text-align:right">' + esc(m.away.name) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><span class="gx-dim" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + leagueLogo(lgk) + esc(m.home.league_name) + '</span>' + clubGateChip({ status: m.gate }) + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--gx-disp);font-weight:700;font-size:clamp(17px,3vw,24px)"><span style="display:inline-flex;align-items:center;gap:8px">' + clubBadge(hId) + ' ' + esc(m.home.name) + '</span><span class="gx-dim" style="font-size:' + (cres ? '22px' : '12px') + ';font-weight:800;color:' + (cres ? 'var(--gx-text)' : 'inherit') + '">' + (cres ? esc(cres.hg + ' - ' + cres.ag) : 'VS') + '</span><span style="text-align:right;display:inline-flex;align-items:center;gap:8px">' + esc(m.away.name) + ' ' + clubBadge(aId) + '</span></div>' +
       (cres ? '<div style="text-align:center;margin-top:6px">' + (cres.status === 'live' ? '<span class="gx-live-pill">' + esc(t('st_live')) + (cres.minute ? ' ' + cres.minute + "'" : '') + '</span>' : '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>') + '</div>' : '') +
       '<div class="gx-dim" style="display:flex;justify-content:space-between;font-size:10.5px;font-family:var(--gx-mono);margin-top:4px"><span>Elo ' + m.home.elo + '</span><span>Elo ' + m.away.elo + '</span></div>' +
       '</div>' +
@@ -3292,11 +3296,12 @@
     if (r && r.status === 'final') return '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>';
     return '<span class="gx-status gx-st-up">' + esc(t('st_upcoming')) + '</span>';
   }
+  function clubBadge(id) { return clubLogo(id) || ic('shield-half'); }
   function clubRowHtml(L, f) {
     var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id, sc = clubScore(f);
     return '<tr class="gx-row" data-openmatch="' + esc(oid) + '">' +
       '<td class="gx-time">' + (f.utc ? esc(fmtTime(f.utc)) : '<span class="gx-dim">·</span>') + '<div class="gx-dim" style="font-size:9.5px">' + esc(L.name.split(' · ')[0]) + '</div></td>' +
-      '<td class="l"><div class="gx-cell-team">' + ic('shield-half') + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div></div></td>' +
+      '<td class="l"><div class="gx-cell-team">' + clubBadge(f.home.id) + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div>' + clubBadge(f.away.id) + '</div></td>' +
       '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + clubStatusCell(f) + '</td>' +
       '<td>' + clubTriCell(f) + '</td>' +
       '<td class="l"><span class="gx-dim" style="font-size:11px">—</span></td>' +
@@ -3305,8 +3310,8 @@
   function clubMatchesTable(L, rows) { return matchesTableHead() + rows.map(function (f) { return clubRowHtml(L, f); }).join('') + '</tbody></table>'; }
   function clubCardHtml(L, f) {
     var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id, sc = clubScore(f);
-    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + esc(L.name.split(' · ')[0]) + (f.utc ? ' · ' + esc(fmtTime(f.utc)) : '') + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + clubStatusCell(f) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px;margin:6px 0"><span>' + esc(f.home.name) + '</span><span style="text-align:right">' + esc(f.away.name) + '</span></div>' +
+    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + leagueLogo(L.key) + esc(L.name.split(' · ')[0]) + (f.utc ? ' · ' + esc(fmtTime(f.utc)) : '') + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + clubStatusCell(f) + '</div>' +
+      '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px;margin:6px 0"><span>' + clubBadge(f.home.id) + ' ' + esc(f.home.name) + '</span><span style="text-align:right">' + esc(f.away.name) + ' ' + clubBadge(f.away.id) + '</span></div>' +
       '<div class="gx-clbar"><span class="h" style="width:' + (f.home.prob * 100) + '%"></span><span class="d" style="width:' + (f.draw * 100) + '%"></span><span class="a" style="width:' + (f.away.prob * 100) + '%"></span></div>' +
       '<div class="gx-clpct"><b>' + pct0(f.home.prob) + '</b><span>X ' + pct0(f.draw) + '</span><b>' + pct0(f.away.prob) + '</b></div></div>';
   }
@@ -3417,7 +3422,7 @@
       '<select class="gx-select" id="gx-mcomp"><option value="todos">' + esc(t('cl_all_comps')) + '</option><option value="wc">' + esc(t('cl_wc')) + '</option>' + Ls.map(function (x) { return '<option value="' + esc(x.key) + '"' + (S.mComp === x.key ? ' selected' : '') + '>' + esc(x.name.split(' · ')[0]) + (x.starts ? ' · ' + esc(x.starts) : '') + '</option>'; }).join('') + '</select>' +
       '<div class="gx-msearch">' + ic('search') + '<input id="gx-msearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.mQuery) + '"></div>' +
       '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' ' + esc(t('matches')) + '</span></div>';
-    var meta = L ? '<div class="gx-panel" style="padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11.5px">' + esc(L.name) + ' · ' + esc(L.country) + ' · ' + esc(t('cl_hfa')) + ' +' + L.hfa + ' Elo · ' + L.n_matches + ' ' + esc(t('matches')) + '</span></div>' : '';
+    var meta = L ? '<div class="gx-panel" style="padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + leagueLogo(L.key) + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11.5px">' + esc(L.name) + ' · ' + esc(L.country) + ' · ' + esc(t('cl_hfa')) + ' +' + L.hfa + ' Elo · ' + L.n_matches + ' ' + esc(t('matches')) + '</span></div>' : '';
     var body;
     if (!L) body = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>…</b></div></div>';
     else if (!rows.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(S.mFilt === 'live' ? t('cl_no_live') : S.mFilt === 'fin' ? t('cl_no_final') : (L.starts ? t('cl_preseason') : t('m_empty'))) + '</b></div></div>';
@@ -3666,7 +3671,7 @@
     var trs = rows.map(function (r) {
       return '<tr class="gx-row" data-nav-cteam="' + esc(L.key + '|' + r.id) + '">' +
         '<td class="gx-dim gx-mono l" style="width:30px">' + r.pos + '</td>' +
-        '<td class="l"><div class="gx-cell-team">' + ic('shield-half') + '<b>' + esc(r.name) + '</b></div></td>' +
+        '<td class="l"><div class="gx-cell-team">' + clubBadge(r.id) + '<b>' + esc(r.name) + '</b></div></td>' +
         (hasSt ? '<td class="gx-mono gx-dim">' + (r.pj != null ? r.pj : '·') + '</td><td class="gx-mono">' + (r.pts != null ? r.pts : '·') + '</td><td class="gx-mono gx-dim">' + (r.dif != null ? (r.dif > 0 ? '+' : '') + r.dif : '·') + '</td>' : '') +
         '<td class="gx-mono">' + (r.elo != null ? Math.round(r.elo) : '<span class="gx-dim">' + esc(t('cl_new')) + '</span>') + '</td>' +
         '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
@@ -3699,8 +3704,8 @@
     var st = (L.standings || []).find(function (s) { return s.id === id; }) || null;
     var pos = st ? (L.standings.indexOf(st) + 1) : null;
     var name = (me && me.name) || (st && st.name) || id;
-    var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + esc(L.name) + '<span class="gx-spacer"></span>' + clubGateChip(L.gate) + '</div>' +
-      '<div class="gx-team-id">' + ic('shield-half') + '<div><b>' + esc(name) + '</b><span class="gx-mono gx-dim">' + (me ? 'Elo ' + Math.round(me.elo) + (rank ? ' · #' + rank + ' ' + esc(t('cl_of')) + ' ' + tbl.length : '') : esc(t('cl_new'))) + '</span></div></div>' +
+    var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + leagueLogo(L.key) + esc(L.name) + '<span class="gx-spacer"></span>' + clubGateChip(L.gate) + '</div>' +
+      '<div class="gx-team-id"><span class="fl big">' + clubBadge(id) + '</span><div><b>' + esc(name) + '</b><span class="gx-mono gx-dim">' + (me ? 'Elo ' + Math.round(me.elo) + (rank ? ' · #' + rank + ' ' + esc(t('cl_of')) + ' ' + tbl.length : '') : esc(t('cl_new'))) + '</span></div></div>' +
       (st ? '<div class="gx-hero-grid">' +
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_pos')) + '</span><b class="gx-mono">' + pos + '°</b></div>' +
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_pts')) + '</span><b class="gx-mono">' + st.pts + '</b></div>' +

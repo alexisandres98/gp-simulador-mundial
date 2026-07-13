@@ -2597,6 +2597,94 @@ async function clubsQuotesSweep({ force = false } = {}) {
   console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
   return out;
 }
+
+// ===== FASE CLUBES: MARCADORES EN VIVO / FINALIZADOS (shadow, ESPN por liga) =====
+// Mismo pipeline probado del Mundial (syncFromESPN): scoreboard ESPN por código de liga, estado pre/in/post,
+// marcador + minuto (displayClock) + tanda de penales/prórroga. Los equipos de ESPN se matchean a NUESTROS
+// ids tm_ (TheStatsAPI, los mismos de ratings.json) por nombre normalizado + alias curados; un partido solo
+// se registra si AMBOS lados matchean a ids distintos (evita marcadores cruzados). Se guarda en
+// db.clubResults[<liga>|<idA-idB ordenados>] → lo consumen /api/clubs/state y la vista cl-. Gate por
+// GP_CLUBS_SHADOW_ENABLED; ESPN es gratis (0 créditos). Nada de esto toca el Mundial ni el pipeline de picks.
+const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1' };
+// alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
+const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior' };
+function clubNorm(s) {
+  let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  n = n.replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|cd|sc|ac|afc|ec|sad)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  return CLUB_ALIAS[n] || n;
+}
+function clubScoreKey(lg, a, b) { return lg + '|' + [a, b].sort().join('-'); }
+let _clubScoresLast = 0, _clubScoresRunning = false, _clubScoresOut = null;
+async function clubScoresSync({ force = false } = {}) {
+  if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
+  if (_clubScoresRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _clubScoresLast < 25 * 1000) return { skipped: 'throttle' };
+  _clubScoresRunning = true;
+  const out = { leagues: 0, live: 0, final: 0, changed: 0, started: new Date().toISOString() };
+  try {
+    if (!global._clubsRatings) {
+      try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); }
+      catch { global._clubsRatings = { leagues: {} }; }
+    }
+    const RT = global._clubsRatings;
+    db.clubResults = db.clubResults || {};
+    const fromD = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
+    const toD = new Date(Date.now() + 1 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
+    let anyChange = false;
+    for (const [lgKey, L] of Object.entries(RT.leagues || {})) {
+      const code = CLUB_ESPN[lgKey]; if (!code || L.starts) continue; // pretemporada: sin partidos aún
+      // índice nombre-normalizado → tm_id de la liga
+      const idx = {};
+      for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
+      const matchId = (name) => {
+        const n = clubNorm(name);
+        if (idx[n]) return idx[n];
+        for (const k in idx) { if (k && (k === n || k.includes(n) || n.includes(k))) return idx[k]; }
+        const ke = new Set(n.split(' ').filter(Boolean)); let best = null, bs = 0;
+        for (const k in idx) { const kk = new Set(k.split(' ').filter(Boolean)); let ov = 0; ke.forEach(x => { if (kk.has(x)) ov++; }); const sc = ov / Math.max(1, new Set([...ke, ...kk]).size); if (ov >= 1 && sc >= 0.5 && ov > bs) { bs = ov; best = idx[k]; } }
+        return best;
+      };
+      let events = null;
+      try {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${fromD}-${toD}&limit=80`, { signal: AbortSignal.timeout(12000) });
+        events = r.ok ? await r.json().catch(() => null) : null;
+      } catch { /* liga sin datos este ciclo */ }
+      if (!events || !Array.isArray(events.events)) continue;
+      out.leagues++;
+      for (const ev of events.events) {
+        const c = ev.competitions && ev.competitions[0]; if (!c) continue;
+        const state = ev.status && ev.status.type && ev.status.type.state; // pre|in|post
+        if (state !== 'in' && state !== 'post') continue;
+        const H = c.competitors.find(x => x.homeAway === 'home'), A = c.competitors.find(x => x.homeAway === 'away');
+        if (!H || !A) continue;
+        const hId = matchId(H.team.displayName) || matchId(H.team.name || ''), aId = matchId(A.team.displayName) || matchId(A.team.name || '');
+        if (!hId || !aId || hId === aId) continue; // ambos deben matchear a ids distintos
+        const hg = Number(H.score) || 0, ag = Number(A.score) || 0;
+        const minute = parseInt(ev.status.displayClock) || (ev.status && ev.status.period ? 0 : 0);
+        const hPen = H.shootoutScore != null ? Number(H.shootoutScore) : null, aPen = A.shootoutScore != null ? Number(A.shootoutScore) : null;
+        const winner = H.winner ? hId : A.winner ? aId : null;
+        const detail = (ev.status && ev.status.type && ev.status.type.detail) || '';
+        const key = clubScoreKey(lgKey, hId, aId);
+        const payload = { league: lgKey, home_id: hId, away_id: aId, hg, ag, status: state === 'post' ? 'final' : 'live', minute, at: Date.now() };
+        if (state === 'post') { payload.winner = winner; if (hPen != null && aPen != null) { payload.hpen = hPen; payload.apen = aPen; } payload.detail = detail; }
+        if (state === 'in') out.live++; else out.final++;
+        const prev = db.clubResults[key];
+        const same = prev && prev.status === payload.status && prev.hg === hg && prev.ag === ag && prev.minute === payload.minute && prev.winner === payload.winner;
+        if (!same) { db.clubResults[key] = payload; out.changed++; anyChange = true; console.log(`[clubs-score] ${lgKey} ${H.team.displayName} ${hg}-${ag} ${A.team.displayName} ${payload.status}${payload.status === 'live' ? ` ${minute}'` : ''}`); }
+      }
+    }
+    // poda: resultados con más de 3h de finalizado (o sin refrescarse en 6h) salen
+    for (const [k, r] of Object.entries(db.clubResults)) {
+      const age = Date.now() - (r.at || 0);
+      if ((r.status === 'final' && age > 3 * 3600e3) || age > 6 * 3600e3) delete db.clubResults[k];
+    }
+    _clubScoresLast = Date.now();
+    if (anyChange) { save(); broadcast('update', { reason: 'marcadores de clubes', ts: Date.now() }); }
+  } catch (e) { out.error = e.message; }
+  finally { _clubScoresRunning = false; out.finished = new Date().toISOString(); _clubScoresOut = out; }
+  if (out.changed || out.error) console.log('[clubs] scores sync:', JSON.stringify({ leagues: out.leagues, live: out.live, final: out.final, changed: out.changed, error: out.error || null }));
+  return out;
+}
 // Marcador REGLAMENTARIO (90') por par de equipos: grupo (goalGroupScore) o eliminatoria. Los mercados "a ganar"
 // y O/U se liquidan a 90' (full-time), NO a prórroga — igual que las casas. Si el knockout fue a ET/penales
 // (minute>90) se usa el snapshot de 90' (reg90For: dato manual verificado o captura del sync); sin ese dato
@@ -5563,6 +5651,14 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await clubsQuotesSweep({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { last: _clubsQuotesOut, last_at: _clubsQuotesLast ? new Date(_clubsQuotesLast).toISOString() : null, events: Object.keys(db.clubsQuoteEvents || {}).length });
     }
+    // MARCADORES DE CLUBES (verificación read-only + disparo manual, misma key).
+    if (p === '/api/internal/clubs-scores') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await clubScoresSync({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
+      return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
+    }
     // SCAN DE CLUBES (verificación read-only, misma key): el DTO que el admin ve mergeado en /api/beta/arbitrage,
     // sin necesitar sesión. Diagnóstico del pipeline sweep → loader → scanner.
     if (p === '/api/internal/clubs-scan' && req.method === 'GET') {
@@ -6470,19 +6566,40 @@ const server = http.createServer(async (req, res) => {
             const rh = (L.ratings[hId] && L.ratings[hId].elo) || 1500;
             const ra = (L.ratings[aId] && L.ratings[aId].elo) || 1500;
             const pr = matchProbs(rh + (L.hfa || 60), ra);
+            // marcador en vivo/finalizado (ESPN por liga, shadow) si existe para este par
+            const sr = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
+            const result = sr ? { status: sr.status, hg: sr.home_id === hId ? sr.hg : sr.ag, ag: sr.home_id === hId ? sr.ag : sr.hg, minute: sr.minute, winner: sr.winner || null } : null;
             return {
               id: m.id, utc: m.utc_date,
               home: { id: hId, name: (m.home_team && m.home_team.name) || '?', elo: rh, known: !!L.ratings[hId], prob: +pr.home.toFixed(3) },
               draw: +pr.draw.toFixed(3),
               away: { id: aId, name: (m.away_team && m.away_team.name) || '?', elo: ra, known: !!L.ratings[aId], prob: +pr.away.toFixed(3) },
+              result,
             };
           });
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t })).sort((a, b) => b.elo - a.elo);
+          // partidos EN VIVO / FINALIZADOS de la liga que ya NO están en upcoming (TSA los saca de scheduled al
+          // empezar). Resueltos a nombres+probs desde ratings, ordenados live primero.
+          const upPairs = new Set(fixtures.map(f => clubScoreKey(key, f.home.id, f.away.id)));
+          const live = Object.entries(db.clubResults || {})
+            .filter(([k, r]) => r.league === key && !upPairs.has(k))
+            .map(([, r]) => {
+              const rh = (L.ratings[r.home_id] && L.ratings[r.home_id].elo) || 1500, ra = (L.ratings[r.away_id] && L.ratings[r.away_id].elo) || 1500;
+              const pr = matchProbs(rh + (L.hfa || 60), ra);
+              return {
+                id: null, utc: null,
+                home: { id: r.home_id, name: (L.ratings[r.home_id] && L.ratings[r.home_id].name) || r.home_id, elo: rh, known: !!L.ratings[r.home_id], prob: +pr.home.toFixed(3) },
+                draw: +pr.draw.toFixed(3),
+                away: { id: r.away_id, name: (L.ratings[r.away_id] && L.ratings[r.away_id].name) || r.away_id, elo: ra, known: !!L.ratings[r.away_id], prob: +pr.away.toFixed(3) },
+                result: { status: r.status, hg: r.hg, ag: r.ag, minute: r.minute, winner: r.winner || null },
+              };
+            })
+            .sort((a, b) => (a.result.status === 'live' ? 0 : 1) - (b.result.status === 'live' ? 0 : 1));
           leagues.push({
             key, name: L.name, country: L.country, n_matches: L.n_matches, hfa: L.hfa,
             starts: L.starts || null, odds_key: L.odds_key || null,
             gate: L.backtest ? { status: L.backtest.status, n: L.backtest.n, brier: L.backtest.brier, cal_err: L.backtest.cal_err } : null,
-            table, standings: L.standings || [], upcoming: fixtures,
+            table, standings: L.standings || [], upcoming: fixtures, live,
           });
         }
         return json(res, 200, { fitted_at: (RT._meta && RT._meta.fitted_at) || null, engine: (RT._meta && RT._meta.engine) || null, leagues });
@@ -6764,6 +6881,10 @@ server.listen(PORT, () => {
   // (GP_CLUBS_SHADOW_ENABLED); throttle interno 55 min — el intervalo solo "pregunta".
   setTimeout(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 90 * 1000);
   setInterval(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 10 * 60 * 1000);
+  // FASE CLUBES (shadow): marcadores en vivo/finalizados desde ESPN por liga, cada 30 s (como el Mundial).
+  // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
+  setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);
+  setInterval(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 30 * 1000);
   // En Render free el servicio duerme tras 15 min sin tráfico: auto-ping cada 10 min para mantenerlo 24/7
   if (process.env.RENDER_EXTERNAL_URL) {
     setInterval(() => fetch(process.env.RENDER_EXTERNAL_URL + '/api/version').catch(() => { }), 10 * 60 * 1000);

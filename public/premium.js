@@ -150,6 +150,7 @@
       cl_value_board: 'Value de clubes por liga', cl_value_board_sub: 'Modelo GP vs consenso del mercado en las ligas en temporada. Informativo: las picks de clubes nacen cuando la liga tiene gate aprobado y el precio confirma.',
       cl_pj: 'PJ', cl_pts: 'Pts', cl_dif: 'DIF', cl_pos: 'Posición', cl_record: 'G-E-P', cl_goals: 'Goles', cl_of: 'de', cl_new: 'NUEVO',
       cl_upcoming: 'Próximos partidos', cl_no_upcoming: 'Sin partidos programados en la ventana del calendario.',
+      cl_live_recent: 'En juego y recientes', cl_no_live: 'Ningún partido de clubes en juego ahora.', cl_no_final: 'Sin partidos finalizados recientes.',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -393,6 +394,7 @@
       cl_value_board: 'Club value by league', cl_value_board_sub: 'GP model vs market consensus across in-season leagues. Informational: club picks are born once a league has an approved gate and the price confirms.',
       cl_pj: 'GP', cl_pts: 'Pts', cl_dif: 'GD', cl_pos: 'Position', cl_record: 'W-D-L', cl_goals: 'Goals', cl_of: 'of', cl_new: 'NEW',
       cl_upcoming: 'Upcoming matches', cl_no_upcoming: 'No matches scheduled in the calendar window.',
+      cl_live_recent: 'Live and recent', cl_no_live: 'No club matches in play right now.', cl_no_final: 'No recently finished matches.',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2424,6 +2426,9 @@
     }
     var m = S.clm[eid];
     if (!m || m._empty || m.error) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    // marcador en vivo/finalizado del cruce (si el sync de clubes lo tiene)
+    var Lm = clubLeague(lgk), fxr = Lm ? (Lm.live || []).concat(Lm.upcoming || []).find(function (f) { return f.home.id === hId && f.away.id === aId; }) : null;
+    var cres = fxr && fxr.result ? fxr.result : null;
     var vRows = ((S.clubsValue && S.clubsValue.rows) || []).filter(function (v) { return v.home === m.home.name && v.away === m.away.name; }).slice(0, 3);
     var bar = '<div class="gx-clbar" style="height:10px"><span class="h" style="width:' + (m.probs.home * 100) + '%"></span><span class="d" style="width:' + (m.probs.draw * 100) + '%"></span><span class="a" style="width:' + (m.probs.away * 100) + '%"></span></div>' +
       '<div class="gx-clpct"><b>' + esc(m.home.name) + ' ' + pct0(m.probs.home) + '</b><span>X ' + pct0(m.probs.draw) + '</span><b>' + pct0(m.probs.away) + ' ' + esc(m.away.name) + '</b></div>';
@@ -2436,8 +2441,9 @@
       '<div class="gx-content" style="gap:14px">' +
       '<div class="gx-panel" style="padding:18px 20px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><span class="gx-dim" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + esc(m.home.league_name) + '</span>' + clubGateChip({ status: m.gate }) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--gx-disp);font-weight:700;font-size:clamp(17px,3vw,24px)"><span>' + esc(m.home.name) + '</span><span class="gx-dim" style="font-size:12px">VS</span><span style="text-align:right">' + esc(m.away.name) + '</span></div>' +
-      '<div class="gx-dim" style="display:flex;justify-content:space-between;font-size:10.5px;font-family:var(--gx-mono);margin-top:2px"><span>Elo ' + m.home.elo + '</span><span>Elo ' + m.away.elo + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--gx-disp);font-weight:700;font-size:clamp(17px,3vw,24px)"><span>' + esc(m.home.name) + '</span><span class="gx-dim" style="font-size:' + (cres ? '22px' : '12px') + ';font-weight:800;color:' + (cres ? 'var(--gx-text)' : 'inherit') + '">' + (cres ? esc(cres.hg + ' - ' + cres.ag) : 'VS') + '</span><span style="text-align:right">' + esc(m.away.name) + '</span></div>' +
+      (cres ? '<div style="text-align:center;margin-top:6px">' + (cres.status === 'live' ? '<span class="gx-live-pill">' + esc(t('st_live')) + (cres.minute ? ' ' + cres.minute + "'" : '') + '</span>' : '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>') + '</div>' : '') +
+      '<div class="gx-dim" style="display:flex;justify-content:space-between;font-size:10.5px;font-family:var(--gx-mono);margin-top:4px"><span>Elo ' + m.home.elo + '</span><span>Elo ' + m.away.elo + '</span></div>' +
       '</div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('percentage') + esc(t('mod_prob')) + ' · 90 min' + (m.neutral ? ' · ' + esc(t('cl_neutral')) : '') + '</span></div><div style="padding:14px 16px">' + bar + '</div></div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span></div><div style="padding:6px 16px 12px">' +
@@ -3278,20 +3284,28 @@
   function clubLeague(k) { var Ls = (S.clubs && S.clubs.leagues) || []; for (var i = 0; i < Ls.length; i++) if (Ls[i].key === k) return Ls[i]; return null; }
   function clubGateChip(g) { if (!g) return ''; return g.status === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>'; }
   function clubTriCell(f) { var m = { HOME: f.home.prob, DRAW: f.draw, AWAY: f.away.prob }; return triCell(function (c) { return pct0(m[c]); }, 'gx-gp', maxCode(function (c) { return m[c]; })); }
+  // marcador (f.result desde ESPN por liga) o null; estado en vivo/final/próximo.
+  function clubScore(f) { return f.result && f.result.hg != null ? (f.result.hg + ' - ' + f.result.ag) : null; }
+  function clubStatusCell(f) {
+    var r = f.result;
+    if (r && r.status === 'live') return '<span class="gx-live-pill">' + esc(t('st_live')) + (r.minute ? ' ' + r.minute + "'" : '') + '</span>';
+    if (r && r.status === 'final') return '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>';
+    return '<span class="gx-status gx-st-up">' + esc(t('st_upcoming')) + '</span>';
+  }
   function clubRowHtml(L, f) {
-    var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id;
+    var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id, sc = clubScore(f);
     return '<tr class="gx-row" data-openmatch="' + esc(oid) + '">' +
-      '<td class="gx-time">' + esc(fmtTime(f.utc)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(L.name.split(' · ')[0]) + '</div></td>' +
+      '<td class="gx-time">' + (f.utc ? esc(fmtTime(f.utc)) : '<span class="gx-dim">·</span>') + '<div class="gx-dim" style="font-size:9.5px">' + esc(L.name.split(' · ')[0]) + '</div></td>' +
       '<td class="l"><div class="gx-cell-team">' + ic('shield-half') + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div></div></td>' +
-      '<td class="l"><span class="gx-status gx-st-up">' + esc(t('st_upcoming')) + '</span></td>' +
+      '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + clubStatusCell(f) + '</td>' +
       '<td>' + clubTriCell(f) + '</td>' +
       '<td class="l"><span class="gx-dim" style="font-size:11px">—</span></td>' +
       '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
   }
   function clubMatchesTable(L, rows) { return matchesTableHead() + rows.map(function (f) { return clubRowHtml(L, f); }).join('') + '</tbody></table>'; }
   function clubCardHtml(L, f) {
-    var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id;
-    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + esc(L.name.split(' · ')[0]) + ' · ' + esc(fmtTime(f.utc)) + '</span></div>' +
+    var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id, sc = clubScore(f);
+    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + esc(L.name.split(' · ')[0]) + (f.utc ? ' · ' + esc(fmtTime(f.utc)) : '') + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + clubStatusCell(f) + '</div>' +
       '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px;margin:6px 0"><span>' + esc(f.home.name) + '</span><span style="text-align:right">' + esc(f.away.name) + '</span></div>' +
       '<div class="gx-clbar"><span class="h" style="width:' + (f.home.prob * 100) + '%"></span><span class="d" style="width:' + (f.draw * 100) + '%"></span><span class="a" style="width:' + (f.away.prob * 100) + '%"></span></div>' +
       '<div class="gx-clpct"><b>' + pct0(f.home.prob) + '</b><span>X ' + pct0(f.draw) + '</span><b>' + pct0(f.away.prob) + '</b></div></div>';
@@ -3317,6 +3331,14 @@
         });
       });
     }
+    // partidos de clubes EN VIVO / FINALIZADOS (L.live) intercalados con los del Mundial
+    Ls.forEach(function (L) {
+      (L.live || []).forEach(function (f) {
+        if (q && (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) < 0) return;
+        var it = { dt: f.utc, kind: 'cl', L: L, f: f };
+        if (f.result && f.result.status === 'live') live.push(it); else fin.push(it);
+      });
+    });
     up.sort(function (a, b) { return new Date(a.dt || 0) - new Date(b.dt || 0); });
     fin.sort(function (a, b) { return new Date(b.dt || 0) - new Date(a.dt || 0); });
     var items = live.concat(up, fin);
@@ -3382,7 +3404,13 @@
     var Ls = (S.clubs && S.clubs.leagues) || [];
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f'], ['fin', 'st_finished']];
     var q = (S.mQuery || '').toLowerCase();
-    var rows = L ? (L.upcoming || []).filter(function (f) { return !q || (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) >= 0; }) : [];
+    // combinar live/finalizados (L.live) con próximos (L.upcoming); marcador viene en f.result
+    var liveRows = L ? (L.live || []) : [], upRows = L ? (L.upcoming || []) : [];
+    var all = liveRows.concat(upRows);
+    if (S.mFilt === 'live') all = liveRows.filter(function (f) { return f.result && f.result.status === 'live'; });
+    else if (S.mFilt === 'fin') all = liveRows.filter(function (f) { return f.result && f.result.status === 'final'; });
+    else if (S.mFilt === 'up') all = upRows;
+    var rows = all.filter(function (f) { return !q || (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) >= 0; });
     var head =
       '<div class="gx-ohead"><h1>' + esc(t('nav_matches')) + '</h1>' +
       '<div class="gx-seg" id="gx-mtabs">' + tabs.map(function (x) { return '<button data-f="' + x[0] + '"' + (S.mFilt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
@@ -3392,11 +3420,14 @@
     var meta = L ? '<div class="gx-panel" style="padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11.5px">' + esc(L.name) + ' · ' + esc(L.country) + ' · ' + esc(t('cl_hfa')) + ' +' + L.hfa + ' Elo · ' + L.n_matches + ' ' + esc(t('matches')) + '</span></div>' : '';
     var body;
     if (!L) body = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>…</b></div></div>';
-    else if (S.mFilt === 'live' || S.mFilt === 'fin') body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(t('cl_states_soon')) + '</b></div></div>';
-    else if (!rows.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(L.starts ? t('cl_preseason') : t('m_empty')) + '</b></div></div>';
+    else if (!rows.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(S.mFilt === 'live' ? t('cl_no_live') : S.mFilt === 'fin' ? t('cl_no_final') : (L.starts ? t('cl_preseason') : t('m_empty'))) + '</b></div></div>';
     else {
-      var groups = [], gmap = {};
-      rows.forEach(function (f) { var k = dayKey(f.utc); if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(f.utc), rows: [] }; groups.push(gmap[k]); } gmap[k].rows.push(f); });
+      // los partidos en vivo/finalizados (sin utc) van a un grupo "En juego / recientes" arriba; el resto por día
+      var groups = [], gmap = {}, liveG = null;
+      rows.forEach(function (f) {
+        if (!f.utc || (f.result && (f.result.status === 'live' || f.result.status === 'final'))) { if (!liveG) { liveG = { k: '_live', label: t('cl_live_recent'), rows: [] }; groups.push(liveG); } liveG.rows.push(f); return; }
+        var k = dayKey(f.utc); if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(f.utc), rows: [] }; groups.push(gmap[k]); } gmap[k].rows.push(f);
+      });
       body = groups.map(function (g) {
         return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(g.label) + '</span><span class="gx-dim">' + g.rows.length + '</span></div>' +
           '<div class="gx-panel gx-board gx-matches-desk">' + clubMatchesTable(L, g.rows) + '</div>' +

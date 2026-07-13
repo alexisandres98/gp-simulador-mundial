@@ -6342,12 +6342,106 @@ const server = http.createServer(async (req, res) => {
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t })).sort((a, b) => b.elo - a.elo);
           leagues.push({
             key, name: L.name, country: L.country, n_matches: L.n_matches, hfa: L.hfa,
-            starts: L.starts || null,
+            starts: L.starts || null, odds_key: L.odds_key || null,
             gate: L.backtest ? { status: L.backtest.status, n: L.backtest.n, brier: L.backtest.brier, cal_err: L.backtest.cal_err } : null,
-            table, upcoming: fixtures,
+            table, standings: L.standings || [], upcoming: fixtures,
           });
         }
         return json(res, 200, { fitted_at: (RT._meta && RT._meta.fitted_at) || null, engine: (RT._meta && RT._meta.engine) || null, leagues });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    // COCKPIT DE CLUBES: análisis de un cruce (real o hipotético, incluso ENTRE ligas) reusando los engines
+    // de la casa: matchProbs (1X2 calibrado) + lambdas (xG) + goal-engine/distribution (O/U, BTTS, marcadores).
+    // Cross-liga: cada liga se fitea alrededor de 1500 → comparación aproximada (flag cross_league, la UI avisa).
+    if (p === '/api/clubs/match') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const RT = global._clubsRatings || {};
+        const hl = String(url.searchParams.get('hl') || ''), al = String(url.searchParams.get('al') || hl);
+        const hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
+        const LH = RT.leagues && RT.leagues[hl], LA = RT.leagues && RT.leagues[al];
+        if (!LH || !LA || !LH.ratings[hId] || !LA.ratings[aId]) return json(res, 400, { error: 'equipo o liga inválidos' });
+        const cross = hl !== al;
+        const neutral = cross || /^(1|true)$/i.test(String(url.searchParams.get('neutral') || ''));
+        const hfa = neutral ? 0 : (LH.hfa || 60);
+        const rh = LH.ratings[hId].elo, ra = LA.ratings[aId].elo;
+        const pr = matchProbs(rh + hfa, ra);
+        const l = lambdas(rh + hfa, ra);
+        const dist = require('./goal-engine/distribution');
+        const g = dist.goalModelOutput(l[0], l[1]);
+        const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01) || null;
+        return json(res, 200, {
+          home: { id: hId, name: LH.ratings[hId].name, elo: rh, league: hl, league_name: LH.name },
+          away: { id: aId, name: LA.ratings[aId].name, elo: ra, league: al, league_name: LA.name },
+          cross_league: cross, neutral,
+          gate: LH.backtest ? LH.backtest.status : null,
+          probs: { home: +pr.home.toFixed(3), draw: +pr.draw.toFixed(3), away: +pr.away.toFixed(3) },
+          xg: { home: +l[0].toFixed(2), away: +l[1].toFixed(2), total: +(l[0] + l[1]).toFixed(2) },
+          over25: ou25 ? +((ou25.over != null ? ou25.over : ou25.o)).toFixed(3) : null,
+          btts: g.btts ? +g.btts.yes.toFixed(3) : null,
+          top_scores: (g.top_scorelines || []).slice(0, 3).map(s => ({ score: s.score, p: +s.probability.toFixed(3) })),
+        });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    // VALUE MULTI-LIGA (fase 3, SHADOW): consenso no-vig del mercado (The Odds API h2h) vs nuestro modelo,
+    // por liga con cuotas. SOLO informativo interno — las picks nacen cuando la liga tenga gate approved
+    // (clubs-gate-1) Y el pipeline editorial (curate) se cablee. Memo 10 min (~8 créditos por refresco).
+    if (p === '/api/clubs/value') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const RT = global._clubsRatings || {};
+        const oddsKeyEnv = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+        if (!oddsKeyEnv) return json(res, 200, { shadow: true, rows: [], note: 'sin key de cuotas' });
+        global._clubsValue = global._clubsValue || { at: 0, rows: [], skipped: 0 };
+        if (Date.now() - global._clubsValue.at > 10 * 60e3) {
+          const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/\b(fc|cf|cd|club|deportivo|sc|ac|afc|de|the)\b/g, '').replace(/[^a-z0-9]/g, '');
+          const rows = []; let skipped = 0;
+          const inSeason = Object.values(RT.leagues || {}).filter(L => L.odds_key && !L.starts);
+          for (const L of inSeason) {
+            let events = null;
+            try {
+              const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${oddsKeyEnv}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+              events = r.ok ? await r.json().catch(() => null) : null;
+            } catch { /* liga sin datos este ciclo */ }
+            if (!Array.isArray(events)) continue;
+            const byNorm = {};
+            for (const [id, t] of Object.entries(L.ratings)) byNorm[norm(t.name)] = { id, ...t };
+            const find = n => { const k = norm(n); if (byNorm[k]) return byNorm[k]; const hit = Object.keys(byNorm).find(x => x && k && (x.includes(k) || k.includes(x))); return hit ? byNorm[hit] : null; };
+            for (const ev of events.slice(0, 20)) {
+              const th = find(ev.home_team), ta = find(ev.away_team);
+              if (!th || !ta) { skipped++; continue; }
+              // consenso no-vig: por casa, prob implícita desproporcionada; mediana entre casas por outcome
+              const acc = { home: [], draw: [], away: [] }; const best = { home: [0, ''], draw: [0, ''], away: [0, ''] };
+              for (const bk of ev.bookmakers || []) {
+                const mk = (bk.markets || []).find(m => m.key === 'h2h'); if (!mk) continue;
+                const o = {}; for (const oc of mk.outcomes || []) { if (oc.name === ev.home_team) o.home = oc.price; else if (oc.name === ev.away_team) o.away = oc.price; else o.draw = oc.price; }
+                if (!(o.home > 1 && o.draw > 1 && o.away > 1)) continue;
+                const s = 1 / o.home + 1 / o.draw + 1 / o.away;
+                acc.home.push(1 / o.home / s); acc.draw.push(1 / o.draw / s); acc.away.push(1 / o.away / s);
+                if (o.home > best.home[0]) best.home = [o.home, bk.title]; if (o.draw > best.draw[0]) best.draw = [o.draw, bk.title]; if (o.away > best.away[0]) best.away = [o.away, bk.title];
+              }
+              if (acc.home.length < 3) { skipped++; continue; }
+              const med = a => { const s2 = a.slice().sort((x, y) => x - y); return s2[Math.floor(s2.length / 2)]; };
+              const cons = { home: med(acc.home), draw: med(acc.draw), away: med(acc.away) };
+              const pr = matchProbs(th.elo + (L.hfa || 60), ta.elo);
+              for (const oc of ['home', 'draw', 'away']) {
+                const edge = pr[oc] - cons[oc];
+                rows.push({
+                  league: L.key, league_name: L.name, gate: L.backtest ? L.backtest.status : null,
+                  utc: ev.commence_time, home: th.name, away: ta.name, outcome: oc,
+                  our: +pr[oc].toFixed(3), consensus: +cons[oc].toFixed(3), edge_pp: +(edge * 100).toFixed(1),
+                  best_odds: best[oc][0] || null, best_book: best[oc][1] || null, books: acc.home.length,
+                });
+              }
+            }
+          }
+          rows.sort((a, b) => Math.abs(b.edge_pp) - Math.abs(a.edge_pp));
+          global._clubsValue = { at: Date.now(), rows: rows.slice(0, 40), skipped };
+        }
+        return json(res, 200, { shadow: true, refreshed_at: new Date(global._clubsValue.at).toISOString(), skipped: global._clubsValue.skipped, rows: global._clubsValue.rows });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al

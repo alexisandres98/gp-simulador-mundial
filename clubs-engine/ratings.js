@@ -69,4 +69,75 @@ function fit(matches, opts = {}) {
   };
 }
 
-module.exports = { fit, expectedHome, BASE_ELO };
+// BACKTEST WALK-FORWARD del 1X2 (gate por liga, patrón de la casa: nunca publicar sin gate).
+// Por construcción el pase secuencial ES walk-forward: cada partido se predice con los ratings PRE-partido.
+// opts.probs = fn(eloConLocalia, eloVisita) → {home,draw,away} (se inyecta engine.matchProbs para testear el
+// modelo COMPLETO Elo→Poisson→DC→calibración, no solo el Elo). Se excluye el warmup de cada equipo (ratings
+// aún fríos) — mismo espíritu que el LOO de props.
+// Política clubs-gate-1 (inicial, revisable con más ligas): APPROVED si n>=120 y Brier(3-way)<=0.63 y
+// |gap| de calibración del favorito <=6pp. Referencias: uniforme=0.667; mercado típico 0.58-0.60.
+function backtest(matches, opts = {}) {
+  const K = opts.k != null ? opts.k : 28;
+  const WARM = opts.warmupGames != null ? opts.warmupGames : 6;
+  const probsFn = opts.probs;
+  if (typeof probsFn !== 'function') throw new Error('backtest: opts.probs requerido');
+  const rows = (matches || [])
+    .filter(m => m && m.home && m.away && Number.isFinite(Number(m.home.goals)) && Number.isFinite(Number(m.away.goals)))
+    .slice()
+    .sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
+  // hfa del fit completo (estable); el pase de predicción usa el mismo valor.
+  const full = fit(rows, opts);
+  const hfa = full.hfa;
+  const R = {}, games = {};
+  let n = 0, brier = 0, logloss = 0;
+  const favBuckets = {}; // bucket de prob del favorito → {n, hit}
+  let obsH = 0, obsD = 0, obsA = 0, prdH = 0, prdD = 0, prdA = 0;
+  for (const m of rows) {
+    const h = String(m.home.id), a = String(m.away.id);
+    if (R[h] == null) { R[h] = BASE_ELO; games[h] = 0; }
+    if (R[a] == null) { R[a] = BASE_ELO; games[a] = 0; }
+    const warm = games[h] >= WARM && games[a] >= WARM;
+    const hg = Number(m.home.goals), ag = Number(m.away.goals);
+    const yh = hg > ag ? 1 : 0, yd = hg === ag ? 1 : 0, ya = hg < ag ? 1 : 0;
+    if (warm) {
+      const pr = probsFn(R[h] + hfa, R[a]);
+      const eps = 1e-9;
+      brier += Math.pow(pr.home - yh, 2) + Math.pow(pr.draw - yd, 2) + Math.pow(pr.away - ya, 2);
+      logloss += -Math.log(Math.max(eps, yh ? pr.home : yd ? pr.draw : pr.away));
+      const fav = Math.max(pr.home, pr.draw, pr.away);
+      const hit = (fav === pr.home && yh) || (fav === pr.draw && yd) || (fav === pr.away && ya) ? 1 : 0;
+      const bk = Math.min(80, Math.floor(fav * 100 / 10) * 10);
+      (favBuckets[bk] = favBuckets[bk] || { n: 0, hit: 0, p: 0 }); favBuckets[bk].n++; favBuckets[bk].hit += hit; favBuckets[bk].p += fav;
+      obsH += yh; obsD += yd; obsA += ya; prdH += pr.home; prdD += pr.draw; prdA += pr.away;
+      n++;
+    }
+    // update Elo (igual que fit)
+    const exp = expectedHome(R[h], R[a], hfa);
+    const obs = hg > ag ? 1 : hg === ag ? 0.5 : 0;
+    const kh = games[h] < WARM ? K * 2 : K;
+    const ka = games[a] < WARM ? K * 2 : K;
+    R[h] += kh * (obs - exp); R[a] += ka * ((1 - obs) - (1 - exp));
+    games[h]++; games[a]++;
+  }
+  const calib = Object.keys(favBuckets).sort((x, y) => x - y).map(k => {
+    const b = favBuckets[k];
+    return { bucket: `${k}-${+k + 10}`, n: b.n, predicted: +(b.p / b.n).toFixed(3), observed: +(b.hit / b.n).toFixed(3) };
+  });
+  const calErr = calib.length
+    ? +(calib.reduce((s, b) => s + Math.abs(b.predicted - b.observed) * b.n, 0) / Math.max(1, n)).toFixed(4)
+    : null;
+  const out = {
+    n, hfa,
+    brier: n ? +(brier / n).toFixed(4) : null,
+    brier_uniform: 0.6667,
+    logloss: n ? +(logloss / n).toFixed(4) : null,
+    cal_err: calErr,
+    dist: n ? { obs: [+(obsH / n).toFixed(3), +(obsD / n).toFixed(3), +(obsA / n).toFixed(3)], pred: [+(prdH / n).toFixed(3), +(prdD / n).toFixed(3), +(prdA / n).toFixed(3)] } : null,
+    calibration: calib,
+  };
+  out.status = (n >= 120 && out.brier != null && out.brier <= 0.63 && (calErr == null || calErr <= 0.06)) ? 'approved' : 'shadow';
+  out.policy = 'clubs-gate-1';
+  return out;
+}
+
+module.exports = { fit, backtest, expectedHome, BASE_ELO };

@@ -6313,8 +6313,10 @@ const server = http.createServer(async (req, res) => {
         const leagues = [];
         for (const key of Object.keys(RT.leagues || {})) {
           const L = RT.leagues[key];
-          // PRÓXIMOS de la liga: TSA status=scheduled, memo 6h (5 ligas = ~5 llamadas/6h, nada vs 12/min)
+          // PRÓXIMOS de la liga: TSA status=scheduled, memo 6h. Las ligas de PRETEMPORADA (starts: 'agosto')
+          // no se consultan: su season backfilleada ya terminó y la nueva aún no existe en el proveedor.
           let up = global._clubsUpcoming[key];
+          if (L.starts) up = up || { at: Date.now(), rows: [] };
           if ((!up || Date.now() - up.at > 6 * 3600e3) && tsaKey) {
             try {
               const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&status=scheduled&per_page=50`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
@@ -6338,7 +6340,12 @@ const server = http.createServer(async (req, res) => {
             };
           });
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t })).sort((a, b) => b.elo - a.elo);
-          leagues.push({ key, name: L.name, country: L.country, n_matches: L.n_matches, hfa: L.hfa, table, upcoming: fixtures });
+          leagues.push({
+            key, name: L.name, country: L.country, n_matches: L.n_matches, hfa: L.hfa,
+            starts: L.starts || null,
+            gate: L.backtest ? { status: L.backtest.status, n: L.backtest.n, brier: L.backtest.brier, cal_err: L.backtest.cal_err } : null,
+            table, upcoming: fixtures,
+          });
         }
         return json(res, 200, { fitted_at: (RT._meta && RT._meta.fitted_at) || null, engine: (RT._meta && RT._meta.engine) || null, leagues });
       } catch (e) { return json(res, 500, { error: e.message }); }

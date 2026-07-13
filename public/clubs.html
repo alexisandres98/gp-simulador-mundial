@@ -35,6 +35,9 @@
 .cl-note { padding: 12px 16px; font-size: 11px; color: var(--gx-text3); line-height: 1.55; }
 .cl-empty { padding: 26px 16px; text-align: center; color: var(--gx-text3); font-size: 12.5px; line-height: 1.5; }
 .gx-nav.cl-soon { opacity: .38; cursor: default; }
+.cl-gate { font-size: 9.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; border-radius: 6px; padding: 2px 8px; }
+.cl-gate.ok { color: var(--gx-pos, #2BE3A6); border: 1px solid rgba(43,227,166,.4); background: rgba(43,227,166,.08); }
+.cl-gate.sh { color: var(--gx-warn, #F2C14E); border: 1px solid rgba(242,193,78,.35); background: rgba(242,193,78,.07); }
 </style>
 </head>
 <body>
@@ -55,14 +58,17 @@
 
   function shell() {
     var Ls = (S.data && S.data.leagues) || [];
-    var nav = Ls.map(function (L) {
+    var navItem = function (L) {
       return '<div class="gx-nav' + (S.sel === L.key ? ' on' : '') + '" data-lg="' + esc(L.key) + '">' + ic('shield-half') + '<span>' + esc(L.name.split(' · ')[0]) + '</span></div>';
-    }).join('');
+    };
+    var nav = Ls.filter(function (L) { return !L.starts; }).map(navItem).join('');
+    var navAug = Ls.filter(function (L) { return !!L.starts; }).map(navItem).join('');
     $('#gx-root').innerHTML =
       '<div class="gx">' +
       '<aside class="gx-side">' +
       '<div class="gx-brand">' + LOGO + '<div><b>GP Intelligence</b><span>Fase clubes · interno</span></div></div>' +
       '<div class="gx-navgroup"><div class="gx-label">Ligas en temporada</div>' + nav + '</div>' +
+      (navAug ? '<div class="gx-navgroup"><div class="gx-label">Arrancan en agosto</div>' + navAug + '</div>' : '') +
       '<div class="gx-navgroup"><div class="gx-label">En construcción</div>' +
       '<div class="gx-nav cl-soon">' + ic('target-arrow') + '<span>Picks por liga</span></div>' +
       '<div class="gx-nav cl-soon">' + ic('trending-up') + '<span>Value multi-liga</span></div>' +
@@ -104,10 +110,11 @@
 
     var totFit = Ls.reduce(function (s, x) { return s + (x.n_matches || 0); }, 0);
     var totUp = Ls.reduce(function (s, x) { return s + ((x.upcoming || []).length); }, 0);
+    var gatesOk = Ls.filter(function (x) { return x.gate && x.gate.status === 'approved'; }).length;
     $('#cl-kpis').innerHTML =
-      kpiCard('Ligas en temporada', 'shield-half', String(Ls.length), 'LATAM primero · las 5 grandes entran en agosto') +
+      kpiCard('Ligas cargadas', 'shield-half', String(Ls.length), '5 en temporada · 5 grandes en agosto') +
       kpiCard('Partidos en el fit', 'database', String(totFit), 'historial backfilleado (TSA)') +
-      kpiCard('Próximos programados', 'calendar', String(totUp), 'cartelera viva · refresco cada 6 h') +
+      kpiCard('Gates aprobados', 'shield-check', gatesOk + ' / ' + Ls.length, 'backtest walk-forward · clubs-gate-1') +
       kpiCard('Localía de ' + L.name.split(' · ')[0], 'home', '+' + L.hfa + ' Elo', 'aprendida del historial de la liga');
 
     var fx = (L.upcoming || []).map(function (f) {
@@ -118,8 +125,17 @@
         '<div class="cl-pct"><b>' + pct(f.home.prob) + '</b><span>X ' + pct(f.draw) + '</span><b>' + pct(f.away.prob) + '</b></div>' +
         '</div>';
     }).join('');
-    $('#cl-fixtures').innerHTML = fx || '<div class="cl-empty">Sin partidos programados en el proveedor todavía.<br>La cartelera se refresca sola cada 6 horas.</div>';
-    $('#cl-count').textContent = L.name + ' · ' + (L.upcoming || []).length + ' partidos';
+    var emptyMsg = L.starts
+      ? 'La temporada 26-27 arranca en ' + esc(L.starts) + '.<br>Ratings de la 25-26 completa listos: la liga entra calibrada a su kickoff.'
+      : 'Sin partidos programados en el proveedor todavía.<br>La cartelera se refresca sola cada 6 horas.';
+    $('#cl-fixtures').innerHTML = fx || '<div class="cl-empty">' + emptyMsg + '</div>';
+    var g = L.gate;
+    var gateChip = g
+      ? (g.status === 'approved'
+        ? '<span class="cl-gate ok">Gate aprobado · Brier ' + g.brier + '</span>'
+        : '<span class="cl-gate sh">En calibración · ' + (g.n < 120 ? 'muestra ' + g.n + '/120' : 'Brier ' + g.brier + ' · calErr ' + g.cal_err) + '</span>')
+      : '';
+    $('#cl-count').innerHTML = gateChip + ' <span style="margin-left:8px">' + esc(L.name) + ' · ' + (L.upcoming || []).length + ' partidos</span>';
 
     $('#cl-table').innerHTML = (L.table || []).slice(0, 12).map(function (t, i) {
       return '<div class="cl-trow"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(t.name) + '</span><span class="elo">' + t.elo + '</span></div>';

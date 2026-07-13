@@ -4717,6 +4717,10 @@ const server = http.createServer(async (req, res) => {
         // lanzamiento founder: con la env encendida, "Mi suscripción" y el CTA de upgrade se abren a todos
         founder_public: /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim()),
         founder_spots: await whopFounderSpotsLeft().catch(() => null),
+        // FASE CLUBES en SHADOW dentro de la plataforma principal (decisión 13-jul: extensión, no página
+        // aparte): solo ADMIN + flag ven las superficies de clubes; para todos los demás la plataforma es
+        // byte-idéntica hasta la fusión post-Mundial.
+        clubs_shadow: !!(u.isAdmin && /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())),
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -6286,19 +6290,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(base + `<div class="ok">✓</div><h1>${en ? 'Purchase confirmed' : 'Compra confirmada'}</h1><p>${en ? 'Your Founder Pass is active. Sign in with the same email you used at checkout and your plan will be waiting for you.' : 'Tu Founder Pass está activo. Entrá con el mismo correo que usaste al pagar y tu plan te estará esperando.'}</p><a class="b" href="/?auth=1">${en ? 'Sign in to my account' : 'Entrar a mi cuenta'}</a></div></div></body></html>`);
     }
-    // ===== FASE CLUBES (post-Mundial) — superficie /clubes SOLO ADMIN, patrón /x pre-fusión =====
-    // Build interno de la fase post-Mundial: cartelera multi-liga con ratings de club (clubs-engine, fit
-    // offline commiteado en data/clubs/ratings.json) y probabilidades del MISMO núcleo del Mundial
-    // (engine.matchProbs). Para no-admins NO EXISTE (404). Al aprobarse → fusión a la principal (como /x).
-    if (p === '/clubes' || p === '/clubes/' || p === '/clubs' || p === '/clubs/') {
-      const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
-      try {
-        const html = fs.readFileSync(path.join(__dirname, 'public', 'clubs.html'), 'utf8');
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
-        return res.end(html);
-      } catch { json(res, 404, { error: 'No encontrado' }); return; }
-    }
+    // ===== FASE CLUBES (post-Mundial) — SHADOW dentro de la plataforma principal (decisión 13-jul) =====
+    // La página /clubes se ELIMINÓ: la fase clubes se construye como extensión de la plataforma principal
+    // (premium.js) gateada por GP_CLUBS_SHADOW_ENABLED + admin (clubs_shadow en /api/me). Los endpoints
+    // /api/clubs/* de abajo son la capa de datos que consumen esas superficies: ratings/gates por liga
+    // (data/clubs/ratings.json, fit offline), cockpit de cruce (engines de la casa) y value multi-liga.
     if (p === '/api/clubs/state') {
       const sessEmail = sessionEmailFromReq(req);
       if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
@@ -6361,19 +6357,22 @@ const server = http.createServer(async (req, res) => {
         const hl = String(url.searchParams.get('hl') || ''), al = String(url.searchParams.get('al') || hl);
         const hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
         const LH = RT.leagues && RT.leagues[hl], LA = RT.leagues && RT.leagues[al];
-        if (!LH || !LA || !LH.ratings[hId] || !LA.ratings[aId]) return json(res, 400, { error: 'equipo o liga inválidos' });
+        if (!LH || !LA) return json(res, 400, { error: 'liga inválida' });
+        // Equipo SIN rating (ascendido/nuevo en la temporada) → prior 1500 con known:false, igual que la
+        // cartelera (el 400 anterior rompía el cockpit de los partidos con equipos 'NUEVO').
+        const TH = LH.ratings[hId] || null, TA = LA.ratings[aId] || null;
         const cross = hl !== al;
         const neutral = cross || /^(1|true)$/i.test(String(url.searchParams.get('neutral') || ''));
         const hfa = neutral ? 0 : (LH.hfa || 60);
-        const rh = LH.ratings[hId].elo, ra = LA.ratings[aId].elo;
+        const rh = TH ? TH.elo : 1500, ra = TA ? TA.elo : 1500;
         const pr = matchProbs(rh + hfa, ra);
         const l = lambdas(rh + hfa, ra);
         const dist = require('./goal-engine/distribution');
         const g = dist.goalModelOutput(l[0], l[1]);
         const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01) || null;
         return json(res, 200, {
-          home: { id: hId, name: LH.ratings[hId].name, elo: rh, league: hl, league_name: LH.name },
-          away: { id: aId, name: LA.ratings[aId].name, elo: ra, league: al, league_name: LA.name },
+          home: { id: hId, name: (TH && TH.name) || String(url.searchParams.get('hn') || '—'), elo: rh, known: !!TH, league: hl, league_name: LH.name },
+          away: { id: aId, name: (TA && TA.name) || String(url.searchParams.get('an') || '—'), elo: ra, known: !!TA, league: al, league_name: LA.name },
           cross_league: cross, neutral,
           gate: LH.backtest ? LH.backtest.status : null,
           probs: { home: +pr.home.toFixed(3), draw: +pr.draw.toFixed(3), away: +pr.away.toFixed(3) },

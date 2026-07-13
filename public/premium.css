@@ -1238,3 +1238,16 @@ td .gx-calc-btn span { display: none; }
 @media (max-width: 720px) {
   .gx-mkt-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+/* ===== FASE CLUBES (shadow, solo admin) — aditivo, inerte para el resto ===== */
+.gx-clgate { font-size: 9.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+.gx-clgate.ok { color: var(--gx-pos); border: 1px solid rgba(43,227,166,.4); background: rgba(43,227,166,.08); }
+.gx-clgate.sh { color: var(--gx-warn, #F2C14E); border: 1px solid rgba(242,193,78,.35); background: rgba(242,193,78,.07); }
+.gx-clbar { display: flex; height: 7px; border-radius: 99px; overflow: hidden; background: var(--gx-bg2); margin: 8px 0 7px; }
+.gx-clbar .h, .gx-clbar span.h { background: linear-gradient(90deg, #12B98A, var(--gx-pos)); display: block; }
+.gx-clbar .d, .gx-clbar span.d { background: rgba(255,255,255,.22); display: block; }
+.gx-clbar .a, .gx-clbar span.a { background: var(--gx-blue, #5FA8FF); opacity: .9; display: block; }
+.gx-clpct { display: flex; justify-content: space-between; gap: 8px; font-family: var(--gx-mono); font-size: 11px; color: var(--gx-text3); font-variant-numeric: tabular-nums; }
+.gx-clpct b { color: var(--gx-text); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-clrow { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 0; font-size: 12.5px; border-bottom: 1px solid var(--gx-line); }
+.gx-clrow:last-child { border-bottom: 0; }

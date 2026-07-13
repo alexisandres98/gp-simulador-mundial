@@ -1349,7 +1349,12 @@
     if (outcome === 'away') return teamName(it.away_team_id, it.away);
     return outcome;
   }
-  function arbMatchRow(it) { return '<div class="gx-arb-match"><span class="fl">' + flag(it.home_team_id) + '</span><b>' + esc(arbTitle(it)) + '</b>' + (it.market_family === 'champion' ? '' : '<span class="fl">' + flag(it.away_team_id) + '</span>') + '</div>'; }
+  function arbMatchRow(it) {
+    // FASE CLUBES: escudo del club (tm_ id resuelto); resto: bandera de selección
+    var badge = it.competition ? function (id) { return clubBadge(id); } : function (id) { return '<span class="fl">' + flag(id) + '</span>'; };
+    var lead = it.competition ? leagueLogo(it.competition) : '';
+    return '<div class="gx-arb-match">' + lead + badge(it.home_team_id) + '<b>' + esc(arbTitle(it)) + '</b>' + (it.market_family === 'champion' ? '' : badge(it.away_team_id)) + '</div>';
+  }
   function arbCard(a, i) {
     var legs = (a.legs || []).map(function (l) {
       return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(arbSel(a, l.outcome)) + '</span>' +
@@ -1484,6 +1489,8 @@
     if (!opp) return;
     // Campeón (outright): no es un partido → abre la página del equipo (con su análisis de campeonato).
     if (opp.market_family === 'champion') { S.arbCtx = null; openTeam(opp.home_team_id); return; }
+    // FASE CLUBES: los items de clubes traen competition + tm_ ids resueltos → cockpit del cruce cl-<liga>-<h>-<a>.
+    if (opp.competition && opp.home_team_id && opp.away_team_id) { opp._openId = 'cl-' + opp.competition + '-' + opp.home_team_id + '-' + opp.away_team_id; S.arbCtx = opp; openMatch(opp._openId); return; }
     // SOLO navegamos con team ids resueltos (teams-X-Y abre GP Intelligence). El event_id del proveedor NO es un
     // id de análisis — navegar con él daba "no se pudo cargar el análisis". Sin ids: la card no navega.
     var openId = (opp.home_team_id && opp.away_team_id) ? 'teams-' + opp.home_team_id + '-' + opp.away_team_id : null;

@@ -2614,6 +2614,17 @@ function clubNorm(s) {
   return CLUB_ALIAS[n] || n;
 }
 function clubScoreKey(lg, a, b) { return lg + '|' + [a, b].sort().join('-'); }
+// resuelve un nombre de club a nuestro tm_ id dentro de una liga (índice normalizado cacheado por liga).
+const _clubIdIdx = {};
+function resolveClubId(league, name) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[league]; if (!L) return null;
+  if (!_clubIdIdx[league]) { _clubIdIdx[league] = {}; for (const [tid, tt] of Object.entries(L.ratings || {})) _clubIdIdx[league][clubNorm(tt.name)] = tid; }
+  const idx = _clubIdIdx[league], n = clubNorm(name);
+  if (idx[n]) return idx[n];
+  for (const k in idx) { if (k && (k === n || k.includes(n) || n.includes(k))) return idx[k]; }
+  return null;
+}
 let _clubScoresLast = 0, _clubScoresRunning = false, _clubScoresOut = null;
 async function clubScoresSync({ force = false } = {}) {
   if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
@@ -4745,7 +4756,8 @@ const server = http.createServer(async (req, res) => {
             if (cs) {
               const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: marketScanner.params.maxOpportunities });
               if (cdto.available && ((cdto.arbitrage || []).length || (cdto.price_lag || []).length || cdto.counts.markets_scanned)) {
-                const tag = (it) => { const m = (db.clubsQuoteEvents || {})[it.event_id] || {}; return { ...it, competition: m.league || null, competition_name: m.league_name || null }; };
+                // resolver los tm_ ids del cruce (por nombre) para que la card navegue al cockpit cl-<liga>-<h>-<a>
+                const tag = (it) => { const m = (db.clubsQuoteEvents || {})[it.event_id] || {}; return { ...it, competition: m.league || null, competition_name: m.league_name || null, home_team_id: m.league ? resolveClubId(m.league, it.home) : null, away_team_id: m.league ? resolveClubId(m.league, it.away) : null }; };
                 dto.arbitrage = (dto.arbitrage || []).concat((cdto.arbitrage || []).map(tag));
                 dto.price_lag = (dto.price_lag || []).concat((cdto.price_lag || []).map(tag));
                 for (const k of ['markets_scanned', 'markets_with_consensus', 'arb_total', 'arb_executable', 'lag_total', 'lag_soft', 'lag_reference']) {
@@ -5664,11 +5676,14 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/clubs-scan' && req.method === 'GET') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
       const cs = await getClubsScan().catch(e => ({ error: e.message }));
       if (!cs) return json(res, 200, { available: false, events: Object.keys(db.clubsQuoteEvents || {}).length, flag: clubsShadowFlagOn() });
       if (cs.error) return json(res, 200, { available: false, error: cs.error });
       const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: marketScanner.params.maxOpportunities });
-      return json(res, 200, { available: cdto.available !== false, counts: cdto.counts || null, arbitrage: (cdto.arbitrage || []).length, price_lag: (cdto.price_lag || []).length, sample: (cdto.price_lag || []).slice(0, 3) });
+      // muestra la resolución de tm_ ids (misma lógica que el merge de /api/beta/arbitrage) → verificar navegación al cockpit
+      const withIds = (it) => { const m = (db.clubsQuoteEvents || {})[it.event_id] || {}; return { competition: m.league, home: it.home, away: it.away, home_team_id: m.league ? resolveClubId(m.league, it.home) : null, away_team_id: m.league ? resolveClubId(m.league, it.away) : null, outcome: it.outcome, odds: it.odds, edge: it.edge }; };
+      return json(res, 200, { available: cdto.available !== false, counts: cdto.counts || null, arbitrage: (cdto.arbitrage || []).length, price_lag: (cdto.price_lag || []).length, sample: (cdto.price_lag || []).slice(0, 5).map(withIds) });
     }
     // PROPS (solo admin): estado del pipeline + correr el pase ya (ingesta+value+settle).
     if (p === '/api/internal/props') {

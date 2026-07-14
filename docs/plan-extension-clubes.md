@@ -43,7 +43,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Prob 1X2 (base → CONTEXTO → GP, desglose de factores) | ½ solo base Elo. Contexto (lesiones/descanso/forma) ✘ F1.4 |
 | Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa) |
 | Momentum GP en vivo (SVG, dots de gol) | ✘ F1.2 |
-| Alineaciones (XI en cancha clickeable) + eventos + stats vivos | ✘ F1.1 (API-Football fixtures por liga) |
+| Alineaciones (XI + formación + DT) | ✔ (afc6cff); en-cancha/eventos vivos ✘ |
 | Panel xG del partido (post-partido, 1T/2T, ocasiones) | ✘ F1.3 (TSA lo da, mismo patrón xg-report) |
 | Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✘ F2.2+F2.3 |
 | Hallazgos de inteligencia (observer narrado) | ✘ F2.3 |
@@ -62,7 +62,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 - Markets → ✔ (tab, cuota+casa sin calc)
 - Context → ✘ F1.4
 - Recent form → ✔ (2d4dabe, tab Forma+H2H)
-- Lineups → ✘ F1.1
+- Lineups → ✔ (afc6cff, AF por fixture; se activa con partidos)
 - Match intel → ½ anotadores probables ✔ (f09deed); disponibilidad ✘ F2.3
 - Goal projection → ✔ (tab)
 La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board tabla, Picks cards, Arbitraje/precio-atrasado), NUNCA en el cockpit del partido.

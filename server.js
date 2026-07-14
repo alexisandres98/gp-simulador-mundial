@@ -6791,6 +6791,10 @@ const server = http.createServer(async (req, res) => {
         // por liga+par). Mejor cuota por resultado + O/U por línea, con la casa que la paga.
         let markets = null;
         if (!cross) { try { markets = await clubMatchMarkets(hl, hId, aId); } catch { markets = null; } }
+        // MATCH INTEL: anotadores probables de cada equipo (P(gol) con el λ del cruce) — mismo projectTeam del
+        // Mundial sobre el player-history de la liga. Solo intra-liga (el fit es por liga).
+        let matchIntel = null;
+        if (!cross) { try { matchIntel = require('./player-intel/clubsFit').clubMatchIntel(hl, hId, aId, l[0], l[1]); } catch { matchIntel = null; } }
         return json(res, 200, {
           home: { id: hId, name: (TH && TH.name) || String(url.searchParams.get('hn') || '—'), elo: rh, known: !!TH, league: hl, league_name: LH.name },
           away: { id: aId, name: (TA && TA.name) || String(url.searchParams.get('an') || '—'), elo: ra, known: !!TA, league: al, league_name: LA.name },
@@ -6801,9 +6805,10 @@ const server = http.createServer(async (req, res) => {
           over25: ou25 ? +((ou25.over != null ? ou25.over : ou25.o)).toFixed(3) : null,
           btts: g.btts ? +g.btts.yes.toFixed(3) : null,
           top_scores: (g.top_scorelines || []).slice(0, 3).map(s => ({ score: s.score, p: +s.probability.toFixed(3) })),
-          // prob del modelo por línea O/U (para prellenar la calculadora en la matriz de mercados)
+          // prob del modelo por línea O/U (para la matriz de mercados)
           ou_lines: (g.over_under || []).map(x => ({ line: (x.line != null ? x.line : x.l), over: +(x.over != null ? x.over : x.o).toFixed(3) })),
           markets,
+          match_intel: matchIntel,
         });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }

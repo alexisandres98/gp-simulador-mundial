@@ -159,6 +159,7 @@
       cl_profile: 'Perfil del jugador', cl_apps: 'partidos', cl_stats90: 'Estadísticas por 90 minutos', cl_shots90: 'Remates/90', cl_sot90: 'Al arco/90',
       cl_ga: 'Goles / Asistencias', cl_att_share: '% del ataque', cl_scout: 'Lectura de scouting',
       cl_markets: 'Mercados del partido', cl_best_odds: 'mejor cuota entre casas',
+      cl_intel: 'Inteligencia del partido', cl_anytime: 'prob. de marcar',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -411,6 +412,7 @@
       cl_profile: 'Player profile', cl_apps: 'apps', cl_stats90: 'Per-90 stats', cl_shots90: 'Shots/90', cl_sot90: 'On target/90',
       cl_ga: 'Goals / Assists', cl_att_share: '% of attack', cl_scout: 'Scouting read',
       cl_markets: 'Match markets', cl_best_odds: 'best odds across books',
+      cl_intel: 'Match intel', cl_anytime: 'anytime goal prob.',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2491,6 +2493,7 @@
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
       (m.top_scores || []).map(function (s) { return '<div class="gx-clrow"><span class="gx-mono">' + esc(s.score) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(s.p) + '</span></div>'; }).join('') +
       '</div></div>' +
+      clubIntelHtml(m, lgk) +
       clubMarketsHtml(m) +
       valueHtml +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '') +
@@ -2498,9 +2501,26 @@
       '</div>'
     );
     bindBack();
+    [].forEach.call(mv.querySelectorAll('[data-cplayer]'), function (el) {
+      el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
+    });
   }
-  // F1.5: matriz de mercados del cruce (mejor cuota por resultado + O/U por línea) + calculadora prellenada
-  // con la prob GP — misma calculadora del Mundial (stakeCalcBtn), datos del sweep de cuotas de clubes.
+  // MATCH INTEL de club: anotadores probables por equipo (P(gol) del modelo), clickeables al perfil del jugador.
+  // Paridad con el "Match intel" del cockpit del Mundial; reusa el mismo engine (projectTeam) sobre datos de liga.
+  function clubIntelHtml(m, lgk) {
+    var mi = m.match_intel; if (!mi || (!(mi.home || []).length && !(mi.away || []).length)) return '';
+    var side = function (teamId, teamName, list) {
+      if (!list || !list.length) return '';
+      return '<div style="margin-bottom:8px"><div class="gx-sqgrp-h">' + clubBadge(teamId) + ' ' + esc(teamName) + '</div>' +
+        list.map(function (p) {
+          return '<div class="gx-clrow gx-pick-clickable" data-cplayer="' + esc(lgk + '|' + teamId + '|' + p.pid) + '" style="cursor:pointer"><span>' + esc(p.name) + ' <span class="gx-dim" style="font-size:10.5px">· ' + esc(p.pos || '') + '</span></span><span class="gx-mono" style="font-weight:700">' + pct0(p.anytime) + '</span></div>';
+        }).join('') + '</div>';
+    };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('target-arrow') + esc(t('cl_intel')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(t('cl_anytime')) + '</span></div><div style="padding:8px 16px 12px">' +
+      side(m.home.id, m.home.name, mi.home) + side(m.away.id, m.away.name, mi.away) + '</div></div>';
+  }
+  // F1.5: matriz de mercados del cruce (mejor cuota por resultado + O/U por línea). SIN calculadora (paridad con
+  // el tab Markets del Mundial; la calc vive en Value/Picks/Arb).
   function clubMarketsHtml(m) {
     var mk = m.markets; if (!mk || (!mk.h2h && !(mk.totals || []).length)) return '';
     // matriz de mercados = paridad con el tab "Markets" del cockpit del Mundial: cuota + casa por resultado.

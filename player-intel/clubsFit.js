@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { fitPlayers } = require('../prop-engine/players');
+const { fitPlayers, projectTeam } = require('../prop-engine/players');
 const { buildScout } = require('./scout');
 
 const _cache = {}; // liga → { at, fit }
@@ -54,4 +54,17 @@ function clubPlayerScout(league, pid) {
   };
 }
 
-module.exports = { leagueFit, clubPlayerScout };
+// MATCH INTEL de un cruce: anotadores probables de cada equipo (P(gol), remates esperados) dado el λ GP del
+// partido. Mismo projectTeam del Mundial. Devuelve { home:[...], away:[...] } o null si no hay fit de la liga.
+function clubMatchIntel(league, homeId, awayId, lambdaHome, lambdaAway) {
+  const fit = leagueFit(league);
+  if (!fit) return null;
+  const side = (teamId, lam) => projectTeam(fit, teamId, { teamLambda: lam, top: 5 })
+    .filter(p => p.reliable)
+    .map(p => ({ pid: p.pid, name: p.name, pos: p.pos, anytime: +p.anytime_goal.toFixed(3), shots: +p.shots_match.toFixed(1), xg: +p.xg_match.toFixed(2) }));
+  const home = side(homeId, lambdaHome), away = side(awayId, lambdaAway);
+  if (!home.length && !away.length) return null;
+  return { home, away };
+}
+
+module.exports = { leagueFit, clubPlayerScout, clubMatchIntel };

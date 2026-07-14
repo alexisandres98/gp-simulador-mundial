@@ -2504,6 +2504,18 @@
       rowsHtml([[t('cl_xg'), m.xg.home + ' – ' + m.xg.away], [t('cl_o25'), m.over25 != null ? pct0(m.over25) : null], [t('cl_btts'), m.btts != null ? pct0(m.btts) : null]]) + '</div></div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
       (m.top_scores || []).map(function (s) { return '<div class="gx-clrow"><span class="gx-mono">' + esc(s.score) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(s.p) + '</span></div>'; }).join('') + '</div></div>';
+    // F1.2: GP EN VIVO (prob condicionada al marcador+minuto) + MOMENTUM (evolución). El gráfico reusa mvMomentum
+    // del Mundial parametrizado con escudos/nombres de club (misma función, sin bifurcar).
+    var liveProbHtml = (m.gp_live && m.gp_live.home != null) ?
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('trending-up') + esc(t('mod_prob')) + ' · ' + esc(t('st_live')) + (m.gp_live.minute ? ' ' + m.gp_live.minute + "'" : '') + '</span><span class="gx-live-pill">' + esc(t('st_live')) + '</span></div><div style="padding:14px 16px">' +
+        '<div class="gx-clbar" style="height:10px"><span class="h" style="width:' + (m.gp_live.home * 100) + '%"></span><span class="d" style="width:' + (m.gp_live.draw * 100) + '%"></span><span class="a" style="width:' + (m.gp_live.away * 100) + '%"></span></div>' +
+        '<div class="gx-clpct"><b>' + esc(m.home.name) + ' ' + pct0(m.gp_live.home) + '</b><span>X ' + pct0(m.gp_live.draw) + '</span><b>' + pct0(m.gp_live.away) + ' ' + esc(m.away.name) + '</b></div>' +
+        '</div></div>' : '';
+    var momHtml = (m.momentum && m.momentum.length > 2) ? mvMomentum(
+      { momentum: m.momentum, status: (cres && cres.status) || 'final' },
+      { home: { team_id: hId, name_fallback: m.home.name }, away: { team_id: aId, name_fallback: m.away.name } },
+      { badge: function (id) { return clubBadge(id); }, nameOf: function (id, fb) { return fb || id; } }
+    ) : '';
     var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['contexto', t('nav_context') || 'Contexto'], ['forma', t('cl_tab_form')], ['alineaciones', t('nav_lineups') || 'Alineaciones'], ['mercados', t('cl_markets')]];
     if (vRows.length) TABS.push(['value', t('cl_value')]);
     var tabNav = '<nav class="gx-mv-nav" id="gx-clm-tabs">' + TABS.map(function (x) { return '<a data-clmtab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(x[1]) + '</a>'; }).join('') + '</nav>';
@@ -2515,7 +2527,7 @@
     else if (tab === 'alineaciones') body = clubLineupsHtml(eid, lgk, hId, aId);
     else if (tab === 'mercados') body = clubMarketsHtml(m) || ('<div class="gx-panel"><div class="gx-empty">' + ic('table') + esc(t('cl_no_markets')) + '</div></div>');
     else if (tab === 'value') body = valueHtml || ('<div class="gx-panel"><div class="gx-empty">' + ic('trending-up') + esc(t('opp_value_empty')) + '</div></div>');
-    else body = probPanel + goalsPanel; // resumen
+    else body = liveProbHtml + probPanel + momHtml + goalsPanel; // resumen (GP en vivo + evolución cuando el partido juega)
     mv.innerHTML = mvShell(
       '<div class="gx-content" style="gap:14px">' + hero + tabNav + body +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '') +
@@ -3356,9 +3368,13 @@
   // ---- módulo 7: Live real (solo con fuente válida; no presentar prob prepartido como live) ----
   // ---- MOMENTUM GP: evolución de la probabilidad en vivo (serie muestreada por el server cada ~30s). ----
   // Dos líneas (local/visitante) + marcadores de gol donde cambia el marcador. Vive en vivo Y post-partido.
-  function mvMomentum(fx, header) {
+  function mvMomentum(fx, header, opts) {
     var pts = fx && fx.momentum;
     if (!pts || pts.length < 3) return '';
+    opts = opts || {};
+    // badge/nameOf parametrizables para REUSAR esta función en clubes (escudos) sin bifurcar; default = Mundial (banderas).
+    var badge = opts.badge || function (id) { return '<span class="fl">' + flag(id) + '</span>'; };
+    var nameOf = opts.nameOf || function (id, fb) { return teamName(id, fb); };
     var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id;
     var W = 620, H = 190, L = 36, R = 12, T = 14, B = 26, cw = W - L - R, ch = H - T - B;
     var xmax = Math.max(95, pts[pts.length - 1].t + 3);
@@ -3375,7 +3391,7 @@
     var vlines = [45, 90].filter(function (m) { return m < xmax; }).map(function (m) { return '<line x1="' + X(m) + '" y1="' + T + '" x2="' + X(m) + '" y2="' + (T + ch) + '" stroke="rgba(255,255,255,.10)" stroke-dasharray="4 4"/><text x="' + X(m) + '" y="' + (H - 8) + '" fill="#5F747B" font-size="10" text-anchor="middle">' + m + '′</text>'; }).join('');
     var dots = goals.map(function (g) { return '<circle cx="' + X(g.t).toFixed(1) + '" cy="' + g.y.toFixed(1) + '" r="5.5" fill="' + (g.side === 'h' ? '#5BA8FF' : '#1FE3A4') + '" stroke="#0B1417" stroke-width="2"/>'; }).join('');
     var last = pts[pts.length - 1];
-    var legend = '<div class="gx-plabels" style="margin-top:8px"><span><span class="fl">' + flag(hid) + '</span> ' + esc(teamName(hid, header.home && header.home.name_fallback)) + ' <b style="color:#5BA8FF">' + pct0(last.h) + '</b></span><span>X <b>' + pct0(last.d) + '</b></span><span>' + esc(teamName(aid, header.away && header.away.name_fallback)) + ' <b style="color:#1FE3A4">' + pct0(last.a) + '</b> <span class="fl">' + flag(aid) + '</span></span></div>';
+    var legend = '<div class="gx-plabels" style="margin-top:8px"><span>' + badge(hid) + ' ' + esc(nameOf(hid, header.home && header.home.name_fallback)) + ' <b style="color:#5BA8FF">' + pct0(last.h) + '</b></span><span>X <b>' + pct0(last.d) + '</b></span><span>' + esc(nameOf(aid, header.away && header.away.name_fallback)) + ' <b style="color:#1FE3A4">' + pct0(last.a) + '</b> ' + badge(aid) + '</span></div>';
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('trending-up') + esc(t('mod_momentum')) + '</span>' + (fx.status === 'live' ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '') + '</div>' +
       '<div class="gx-mod-body"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
       grid + vlines +
@@ -3463,7 +3479,9 @@
   }
   function clubLeague(k) { var Ls = (S.clubs && S.clubs.leagues) || []; for (var i = 0; i < Ls.length; i++) if (Ls[i].key === k) return Ls[i]; return null; }
   function clubGateChip(g) { if (!g) return ''; return g.status === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>'; }
-  function clubTriCell(f) { var m = { HOME: f.home.prob, DRAW: f.draw, AWAY: f.away.prob }; return triCell(function (c) { return pct0(m[c]); }, 'gx-gp', maxCode(function (c) { return m[c]; })); }
+  // tri-cell de la card: en vivo usa la prob GP condicionada al marcador (f.gpProbs, se mueve con el partido),
+  // igual que el Mundial; si no, la prob pre-partido a 90 min.
+  function clubTriCell(f) { var m = (f.gpProbs && f.gpProbs.home != null) ? { HOME: f.gpProbs.home, DRAW: f.gpProbs.draw, AWAY: f.gpProbs.away } : { HOME: f.home.prob, DRAW: f.draw, AWAY: f.away.prob }; return triCell(function (c) { return pct0(m[c]); }, 'gx-gp', maxCode(function (c) { return m[c]; })); }
   // marcador (f.result desde ESPN por liga) o null; estado en vivo/final/próximo.
   function clubScore(f) { return f.result && f.result.hg != null ? (f.result.hg + ' - ' + f.result.ag) : null; }
   // IDÉNTICO a mStatusCell del Mundial: live pill / Full time / y en PRÓXIMO la HORA (no "Upcoming").
@@ -4685,7 +4703,34 @@
     clearTimeout(S._noanimT);
     S._noanimT = setTimeout(function () { document.body.classList.remove('gx-noanim'); }, 3000);
   }
+  // F1.2: refresco SILENCIOSO del cockpit de club abierto (gp_live/momentum se mueven con el marcador). Mismo
+  // patrón que el re-fetch del cockpit del Mundial en refreshLive: re-render solo si el payload cambió.
+  function refreshClubMatchLive(eid) {
+    var parts = eid.slice(3).split('-'); var lgk = parts[0], hId = parts[1], aId = parts[2];
+    var Lup = clubLeague(lgk), fxm = Lup ? (Lup.upcoming || []).find(function (f) { return f.home.id === hId && f.away.id === aId; }) : null;
+    var nq = fxm ? '&hn=' + encodeURIComponent(fxm.home.name) + '&an=' + encodeURIComponent(fxm.away.name) : '';
+    fetch('/api/clubs/match?hl=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&al=' + encodeURIComponent(lgk) + '&a=' + encodeURIComponent(aId) + nq, { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (m) {
+        if (!m || S.view !== 'match' || S.matchId !== eid) return;
+        var prev = S.clm[eid];
+        try { if (prev && JSON.stringify(prev) === JSON.stringify(m)) return; } catch (e) {}
+        S.clm[eid] = m; noAnimWindow(); renderMatch();
+      });
+  }
+  // F1.2: refresca el estado de clubes en vivo (la cartelera y el cockpit) — loadClubs es one-shot, así que sin
+  // esto los marcadores/GP en vivo solo se movían al recargar. Anti-pestañeo por comparación de JSON.
+  function refreshClubsLive() {
+    if (!clubsOn()) return;
+    fetch('/api/clubs/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+      if (!j) return;
+      var js = null; try { js = JSON.stringify(j.leagues || []); } catch (e) { js = null; }
+      if (!(js && js === S._clubsJson)) { if (js) S._clubsJson = js; S.clubs = j; if (S.view === 'matches') { noAnimWindow(); renderMatches(); } }
+      if (S.view === 'match' && /^cl-/.test(S.matchId || '')) refreshClubMatchLive(S.matchId);
+    });
+  }
   function refreshLive() {
+    if (clubsOn() && (S.view === 'matches' || (S.view === 'match' && /^cl-/.test(S.matchId || '')))) refreshClubsLive();
     fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (st) {
       if (!st) return;
       S._lastLiveAt = Date.now();

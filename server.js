@@ -586,6 +586,7 @@ db.tsaXg = db.tsaXg || {};
 db.tsaPlayers = db.tsaPlayers || {};              // stats por jugador de partidos TERMINADOS (TheStatsAPI): cache permanente para settlement de props.                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
 db.observations = db.observations || {};       // CAPA DE OBSERVACIÓN (shadow): señales de disponibilidad por equipo desde noticias publicadas. Solo admin.
 db.momentum = db.momentum || {};               // MOMENTUM GP en vivo: serie de prob GP muestreada cada ~30s por partido (persiste post-partido para el gráfico y contenido).
+db.clubMomentum = db.clubMomentum || {};       // MOMENTUM GP en vivo de CLUBES (F1.2): misma serie que db.momentum pero por cruce de liga (clubScoreKey). Muestreada por clubScoresSync (30s), cero llamadas externas.
 db.fotmob = db.fotmob || { matches: [] };      // EVENT DATA incremental (FotMob): partidos terminados post-deploy (el histórico vive en data/fotmob-events.json del repo). Cache permanente por matchId.
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
 db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
@@ -2766,6 +2767,32 @@ function resolveClubId(league, name) {
   return null;
 }
 let _clubScoresLast = 0, _clubScoresRunning = false, _clubScoresOut = null;
+// FASE CLUBES F1.2: MOMENTUM GP en vivo. Misma mecánica que sampleMomentum del Mundial pero por cruce de liga:
+// para cada partido de club EN JUEGO, prob GP condicionada al marcador+minuto (liveProbsFromLambdas con los λ
+// del cruce = mismo engine). CERO llamadas externas: el marcador/minuto ya lo trajo clubScoresSync (ESPN) y los
+// λ salen del Elo dinámico en memoria. Sin eventos (las rojas en vivo llegan con F1.1 eventos; el driver
+// dominante es goles+minuto, igual que en el Mundial). Cada punto: {t,h,d,a,hg,ag,at}.
+function sampleClubMomentum(RT) {
+  db.clubMomentum = db.clubMomentum || {};
+  for (const [key, r] of Object.entries(db.clubResults || {})) {
+    if (!r || r.status !== 'live' || typeof r.minute !== 'number') continue;
+    const L = RT.leagues && RT.leagues[r.league]; if (!L) continue;
+    const rh = clubElo(r.league, r.home_id), ra = clubElo(r.league, r.away_id);
+    const l = lambdas(rh + (L.hfa || 60), ra);
+    let p; try { p = liveProbsFromLambdas(l[0], l[1], r.hg, r.ag, r.minute); } catch { continue; }
+    if (!p) continue;
+    const slot = db.clubMomentum[key] || (db.clubMomentum[key] = { league: r.league, home_id: r.home_id, away_id: r.away_id, points: [] });
+    const last = slot.points[slot.points.length - 1];
+    if (last && last.t === r.minute && last.hg === r.hg && last.ag === r.ag && Date.now() - (last.at || 0) < 60 * 1000) continue;
+    slot.points.push({ t: r.minute, h: +p.home.toFixed(4), d: +p.draw.toFixed(4), a: +p.away.toFixed(4), hg: r.hg, ag: r.ag, at: Date.now() });
+    if (slot.points.length > 400) slot.points = slot.points.slice(-400);
+  }
+  // poda: series de partidos que ya no están en clubResults (podados a las 3-6h) salen a las 12h
+  for (const [k, s] of Object.entries(db.clubMomentum)) {
+    const last = s.points && s.points[s.points.length - 1];
+    if (!db.clubResults[k] && (!last || Date.now() - (last.at || 0) > 12 * 3600e3)) delete db.clubMomentum[k];
+  }
+}
 async function clubScoresSync({ force = false } = {}) {
   if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
   if (_clubScoresRunning) return { skipped: 'running' };
@@ -2836,6 +2863,7 @@ async function clubScoresSync({ force = false } = {}) {
       const age = Date.now() - (r.at || 0);
       if ((r.status === 'final' && age > 3 * 3600e3) || age > 6 * 3600e3) delete db.clubResults[k];
     }
+    try { sampleClubMomentum(RT); } catch { /* momentum no crítico */ } // F1.2: muestrea la prob GP en vivo de los partidos en juego
     _clubScoresLast = Date.now();
     if (anyChange) { save(); broadcast('update', { reason: 'marcadores de clubes', ts: Date.now() }); }
   } catch (e) { out.error = e.message; }
@@ -6918,6 +6946,9 @@ const server = http.createServer(async (req, res) => {
         const RT = global._clubsRatings;
         global._clubsUpcoming = global._clubsUpcoming || {};
         const tsaKey = process.env.THESTATSAPI_KEY || '';
+        // F1.2: prob GP EN VIVO por partido (condicionada al marcador+minuto) para el tri-cell de la card — mismo
+        // gpLiveCheap del Mundial, con los λ del cruce. hg/ag ya orientados al home. Cero llamadas externas.
+        const clubGpLive = (rh, ra, hfa, hg, ag, minute) => { try { const l = lambdas(rh + hfa, ra); const gp = liveProbsFromLambdas(l[0], l[1], hg, ag, minute); return { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), live: true }; } catch { return null; } };
         const leagues = [];
         for (const key of Object.keys(RT.leagues || {})) {
           const L = RT.leagues[key];
@@ -6948,6 +6979,7 @@ const server = http.createServer(async (req, res) => {
               draw: +pr.draw.toFixed(3),
               away: { id: aId, name: (m.away_team && m.away_team.name) || '?', elo: ra, known: !!L.ratings[aId], prob: +pr.away.toFixed(3) },
               result,
+              gpProbs: (result && result.status === 'live') ? clubGpLive(rh, ra, L.hfa || 60, result.hg, result.ag, result.minute) : null,
             };
           });
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t, elo: clubElo(key, id), elo_base: t.elo })).sort((a, b) => b.elo - a.elo);
@@ -6965,6 +6997,7 @@ const server = http.createServer(async (req, res) => {
                 draw: +pr.draw.toFixed(3),
                 away: { id: r.away_id, name: (L.ratings[r.away_id] && L.ratings[r.away_id].name) || r.away_id, elo: ra, known: !!L.ratings[r.away_id], prob: +pr.away.toFixed(3) },
                 result: { status: r.status, hg: r.hg, ag: r.ag, minute: r.minute, winner: r.winner || null },
+                gpProbs: r.status === 'live' ? clubGpLive(rh, ra, L.hfa || 60, r.hg, r.ag, r.minute) : null,
               };
             })
             .sort((a, b) => (a.result.status === 'live' ? 0 : 1) - (b.result.status === 'live' ? 0 : 1));
@@ -7014,6 +7047,24 @@ const server = http.createServer(async (req, res) => {
         // FORMA reciente de ambos equipos + H2H (enfrentamientos directos) — desde results-<liga>.json.
         let form = null;
         if (!cross) { try { form = clubMatchForm(hl, hId, aId); } catch { form = null; } }
+        // F1.2: GP EN VIVO + MOMENTUM. Si el cruce tiene marcador en vivo, prob GP condicionada al marcador+minuto
+        // (liveProbsFromLambdas con los λ del cruce = mismo engine del Mundial). Momentum = serie muestreada por
+        // clubScoresSync. Se orienta al home solicitado (clubResults/serie guardan orientación del sync ESPN).
+        let gpLive = null, momentum = null;
+        if (!cross) {
+          const sr = (db.clubResults || {})[clubScoreKey(hl, hId, aId)] || null;
+          if (sr) {
+            const homeIsH = sr.home_id === hId;
+            const shg = homeIsH ? sr.hg : sr.ag, sag = homeIsH ? sr.ag : sr.hg;
+            if (sr.status === 'live') {
+              try { const gp = liveProbsFromLambdas(l[0], l[1], shg, sag, sr.minute); gpLive = { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), likely_score: gp.likelyScore, minute: sr.minute, live: true }; } catch { gpLive = null; }
+            }
+            const mom = (db.clubMomentum || {})[clubScoreKey(hl, hId, aId)];
+            if (mom && mom.points && mom.points.length > 2) {
+              momentum = homeIsH ? mom.points : mom.points.map(pt => ({ t: pt.t, h: pt.a, d: pt.d, a: pt.h, hg: pt.ag, ag: pt.hg, at: pt.at }));
+            }
+          }
+        }
         return json(res, 200, {
           home: { id: hId, name: (TH && TH.name) || String(url.searchParams.get('hn') || '—'), elo: rh, known: !!TH, league: hl, league_name: LH.name },
           away: { id: aId, name: (TA && TA.name) || String(url.searchParams.get('an') || '—'), elo: ra, known: !!TA, league: al, league_name: LA.name },
@@ -7029,6 +7080,8 @@ const server = http.createServer(async (req, res) => {
           markets,
           match_intel: matchIntel,
           form, // { home:[W/D/L], away:[...], h2h:[{date,hg,ag,home_id}] }
+          gp_live: gpLive, // F1.2: prob GP condicionada al marcador+minuto (solo en vivo)
+          momentum, // F1.2: serie {t,h,d,a,hg,ag} para el gráfico de evolución
         });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }

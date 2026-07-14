@@ -2649,6 +2649,38 @@ function clubEloReconcileFit() {
   const fa = (RT._meta && RT._meta.fitted_at) || 'none';
   if (db.clubElosFitAt !== fa) { db.clubElos = {}; db.clubElosFitAt = fa; }
 }
+// F1.5: MERCADOS del cruce de clubes — mejor cuota por resultado (1X2) + O/U por línea, desde las cuotas que
+// el sweep dejó en sportsbook_goal_quote_current (ids sintéticos por liga+par). Empareja el cruce (liga+ids) a
+// su ceid buscando en db.clubsQuoteEvents el evento cuyos nombres resuelven a esos ids. Read-only.
+async function clubMatchMarkets(league, homeId, awayId) {
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return null;
+  // hallar el ceid del cruce
+  let ceid = null;
+  for (const [id, m] of Object.entries(db.clubsQuoteEvents || {})) {
+    if (m.league !== league) continue;
+    const h = resolveClubId(league, m.home), a = resolveClubId(league, m.away);
+    if ((h === homeId && a === awayId) || (h === awayId && a === homeId)) { ceid = id; break; }
+  }
+  if (!ceid) return null;
+  const r = await dbc.query(
+    `SELECT market_family, side, line, MAX(odds_decimal) AS best, (array_agg(sportsbook_code ORDER BY odds_decimal DESC))[1] AS book, COUNT(DISTINCT sportsbook_code) AS books
+       FROM sportsbook_goal_quote_current
+      WHERE data_provider='the_odds_api' AND canonical_event_id=$1
+        AND market_family IN ('match_winner','match_total') AND coalesce(quote_status,'open')='open'
+      GROUP BY market_family, side, line`, [ceid]).catch(() => ({ rows: [] }));
+  const h2h = {}; const totalsMap = {};
+  for (const row of r.rows) {
+    if (row.market_family === 'match_winner') {
+      if (['home', 'draw', 'away'].includes(row.side)) h2h[row.side] = { odds: +Number(row.best).toFixed(2), book: row.book, books: Number(row.books) };
+    } else if (Number.isFinite(Number(row.line))) {
+      const ln = Number(row.line); totalsMap[ln] = totalsMap[ln] || { line: ln };
+      totalsMap[ln][row.side] = { odds: +Number(row.best).toFixed(2), book: row.book, books: Number(row.books) };
+    }
+  }
+  const totals = Object.values(totalsMap).filter(t => t.over && t.under).sort((a, b) => a.line - b.line);
+  if (!Object.keys(h2h).length && !totals.length) return null;
+  return { h2h: Object.keys(h2h).length ? h2h : null, totals };
+}
 // resuelve un nombre de club a nuestro tm_ id dentro de una liga (índice normalizado cacheado por liga).
 const _clubIdIdx = {};
 function resolveClubId(league, name) {
@@ -5748,6 +5780,14 @@ const server = http.createServer(async (req, res) => {
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
     }
+    // MERCADOS de un cruce (F1.5, verificación read-only sin sesión): ?league=&h=&a=
+    if (p === '/api/internal/clubs-market' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+      const mk = await clubMatchMarkets(String(url.searchParams.get('league') || ''), String(url.searchParams.get('h') || ''), String(url.searchParams.get('a') || '')).catch(e => ({ error: e.message }));
+      return json(res, 200, { markets: mk, events: Object.keys(db.clubsQuoteEvents || {}).length });
+    }
     // EVOLUCIÓN por liga (F0.3+F4.2): serie temporal de Elo/posición. GET admin.
     if (p === '/api/clubs/evolution') {
       const sessEmail = sessionEmailFromReq(req);
@@ -6729,6 +6769,7 @@ const server = http.createServer(async (req, res) => {
       const sessEmail = sessionEmailFromReq(req);
       if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
       try {
+        if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { _meta: {}, leagues: {} }; } }
         const RT = global._clubsRatings || {};
         const hl = String(url.searchParams.get('hl') || ''), al = String(url.searchParams.get('al') || hl);
         const hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
@@ -6746,6 +6787,10 @@ const server = http.createServer(async (req, res) => {
         const dist = require('./goal-engine/distribution');
         const g = dist.goalModelOutput(l[0], l[1]);
         const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01) || null;
+        // F1.5: MATRIZ DE MERCADOS del cruce (cuotas del sweep en la DB). Solo intra-liga (el ceid sintético es
+        // por liga+par). Mejor cuota por resultado + O/U por línea, con la casa que la paga.
+        let markets = null;
+        if (!cross) { try { markets = await clubMatchMarkets(hl, hId, aId); } catch { markets = null; } }
         return json(res, 200, {
           home: { id: hId, name: (TH && TH.name) || String(url.searchParams.get('hn') || '—'), elo: rh, known: !!TH, league: hl, league_name: LH.name },
           away: { id: aId, name: (TA && TA.name) || String(url.searchParams.get('an') || '—'), elo: ra, known: !!TA, league: al, league_name: LA.name },
@@ -6756,6 +6801,9 @@ const server = http.createServer(async (req, res) => {
           over25: ou25 ? +((ou25.over != null ? ou25.over : ou25.o)).toFixed(3) : null,
           btts: g.btts ? +g.btts.yes.toFixed(3) : null,
           top_scores: (g.top_scorelines || []).slice(0, 3).map(s => ({ score: s.score, p: +s.probability.toFixed(3) })),
+          // prob del modelo por línea O/U (para prellenar la calculadora en la matriz de mercados)
+          ou_lines: (g.over_under || []).map(x => ({ line: (x.line != null ? x.line : x.l), over: +(x.over != null ? x.over : x.o).toFixed(3) })),
+          markets,
         });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }

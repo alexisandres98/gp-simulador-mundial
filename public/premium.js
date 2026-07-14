@@ -158,6 +158,7 @@
       cl_player_soon: 'Estadísticas por 90 minutos, radar y arquetipo del jugador llegan con la ingesta de datos por partido de la liga.',
       cl_profile: 'Perfil del jugador', cl_apps: 'partidos', cl_stats90: 'Estadísticas por 90 minutos', cl_shots90: 'Remates/90', cl_sot90: 'Al arco/90',
       cl_ga: 'Goles / Asistencias', cl_att_share: '% del ataque', cl_scout: 'Lectura de scouting',
+      cl_markets: 'Mercados del partido', cl_best_odds: 'mejor cuota entre casas',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -409,6 +410,7 @@
       cl_player_soon: 'Per-90 stats, radar and player archetype arrive with per-match data ingestion for the league.',
       cl_profile: 'Player profile', cl_apps: 'apps', cl_stats90: 'Per-90 stats', cl_shots90: 'Shots/90', cl_sot90: 'On target/90',
       cl_ga: 'Goals / Assists', cl_att_share: '% of attack', cl_scout: 'Scouting read',
+      cl_markets: 'Match markets', cl_best_odds: 'best odds across books',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2489,12 +2491,34 @@
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
       (m.top_scores || []).map(function (s) { return '<div class="gx-clrow"><span class="gx-mono">' + esc(s.score) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(s.p) + '</span></div>'; }).join('') +
       '</div></div>' +
+      clubMarketsHtml(m) +
       valueHtml +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '') +
       '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_note_ctx')) + '</div></div>' +
       '</div>'
     );
-    bindBack();
+    bindBack(); // los botones data-calc los maneja el delegado global de clicks
+  }
+  // F1.5: matriz de mercados del cruce (mejor cuota por resultado + O/U por línea) + calculadora prellenada
+  // con la prob GP — misma calculadora del Mundial (stakeCalcBtn), datos del sweep de cuotas de clubes.
+  function clubMarketsHtml(m) {
+    var mk = m.markets; if (!mk || (!mk.h2h && !(mk.totals || []).length)) return '';
+    var rowMk = function (label, prob, q) {
+      if (!q) return '';
+      return '<div class="gx-clrow" style="align-items:center;gap:8px"><span>' + esc(label) + (prob != null ? ' <span class="gx-dim gx-mono" style="font-size:10.5px">GP ' + pct0(prob) + '</span>' : '') + '</span>' +
+        '<span style="display:inline-flex;align-items:center;gap:8px"><span class="gx-mono gx-best" style="font-weight:700"><span class="hi">' + Number(q.odds).toFixed(2) + '</span></span>' +
+        '<span class="gx-dim" style="font-size:10.5px;display:inline-flex;align-items:center">' + bookLogo(q.book) + esc(prettyBook(q.book) || q.book) + '</span>' +
+        (prob != null && prob > 0 && q.odds > 1 ? stakeCalcBtn(prob, Number(q.odds), label, 'gp') : '') + '</span></div>';
+    };
+    var body = '';
+    if (mk.h2h) body += rowMk(esc(m.home.name), m.probs.home, mk.h2h.home) + rowMk(t('arb_draw'), m.probs.draw, mk.h2h.draw) + rowMk(esc(m.away.name), m.probs.away, mk.h2h.away);
+    var ouProb = {}; (m.ou_lines || []).forEach(function (x) { ouProb[x.line] = x.over; });
+    (mk.totals || []).slice(0, 4).forEach(function (tt) {
+      body += rowMk((LANG === 'en' ? 'Over ' : 'Más de ') + tt.line, ouProb[tt.line] != null ? ouProb[tt.line] : null, tt.over);
+      body += rowMk((LANG === 'en' ? 'Under ' : 'Menos de ') + tt.line, ouProb[tt.line] != null ? 1 - ouProb[tt.line] : null, tt.under);
+    });
+    if (!body) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('table') + esc(t('cl_markets')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(t('cl_best_odds')) + '</span></div><div style="padding:6px 16px 12px">' + body + '</div></div>';
   }
   function mvShell(body) {
     return '<div class="gx-mv">' +

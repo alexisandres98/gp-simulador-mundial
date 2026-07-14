@@ -5780,6 +5780,30 @@ const server = http.createServer(async (req, res) => {
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
     }
+    // FORMA + RESULTADOS de un equipo de club (F2.1): últimos partidos con marcador (results-<liga>.json).
+    if (p === '/api/clubs/team-form') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const league = String(url.searchParams.get('league') || ''), teamId = String(url.searchParams.get('team') || '');
+      if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+      const L = (global._clubsRatings.leagues || {})[league];
+      const nameOf = (tid) => (L && L.ratings && L.ratings[tid] && L.ratings[tid].name) || tid;
+      global._clubsResults = global._clubsResults || {};
+      if (!global._clubsResults[league]) {
+        try { global._clubsResults[league] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', `results-${league}.json`), 'utf8')).rows || []; }
+        catch { global._clubsResults[league] = []; }
+      }
+      const mine = global._clubsResults[league]
+        .filter(r => (r.home_id === teamId || r.away_id === teamId) && r.hg != null && r.ag != null)
+        .sort((a, b) => (a.date < b.date ? 1 : -1));
+      const results = mine.map(r => {
+        const home = r.home_id === teamId;
+        const gf = home ? r.hg : r.ag, ga = home ? r.ag : r.hg;
+        return { date: r.date, opp: nameOf(home ? r.away_id : r.home_id), opp_id: home ? r.away_id : r.home_id, home, gf, ag: ga, res: gf > ga ? 'W' : gf < ga ? 'L' : 'D' };
+      });
+      const form = results.slice(0, 5).map(r => r.res);
+      return json(res, 200, { team: teamId, form, results: results.slice(0, 20) });
+    }
     // MERCADOS de un cruce (F1.5, verificación read-only sin sesión): ?league=&h=&a=
     if (p === '/api/internal/clubs-market' && req.method === 'GET') {
       const xk = process.env.GP_EXPORT_KEY || '';

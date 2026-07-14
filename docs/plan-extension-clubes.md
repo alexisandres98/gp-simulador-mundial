@@ -30,9 +30,9 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 |---|---|
 | Tabs Todos/Vivo/Próximos/Finalizados | ✔ |
 | Marcador en vivo + minuto + FT (30s) | ✔ (ESPN por liga) |
-| GP% tri-cell por partido | ✔ (Elo+hfa) — pero ver F0.4: Elo ESTÁTICO |
+| GP% tri-cell por partido | ✔ (card IDÉNTICA al Mundial: GP PROBABILITY + %, Analyze match; c6e639b) |
 | GP% EN VIVO que se mueve con el marcador (gpProbs) | ✘ F1.2 |
-| Señal Value en la fila | ✘ (columna "—") F3.2 |
+| Señal Value en la fila (WATCH) | ✘ F3.2 (única diferencia con la card del Mundial) |
 | Escudos/banderas | ✔ |
 | Buscador, selector, intercalado por fecha | ✔ |
 

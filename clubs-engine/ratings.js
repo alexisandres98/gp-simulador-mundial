@@ -146,16 +146,11 @@ function backtest(matches, opts = {}) {
 // Mismo walk-forward de Elo que backtest() (K, warmup, hfa del fit). approved: n≥120 · cal_err O/U ≤0.05 ·
 // el modelo no peor que el base-rate (predecir siempre el % de over de la liga). BTTS informativo.
 function goalsBacktest(matches, opts = {}) {
-  const K = opts.k != null ? opts.k : 28;
-  const WARM = opts.warmupGames != null ? opts.warmupGames : 6;
-  const { lambdas } = require('../engine');
   const dist = require('../goal-engine/distribution');
+  const { fitLeagueGoals, goalLambdas } = require('./goalsModel');
   const rows = (matches || [])
     .filter(m => m && m.home && m.away && Number.isFinite(Number(m.home.goals)) && Number.isFinite(Number(m.away.goals)))
     .slice().sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
-  const full = fit(rows, opts);
-  const hfa = full.hfa;
-  const R = {}, games = {};
   const mk = () => ({ n: 0, brier: 0, obs: 0, pred: 0, buckets: {} });
   const OU = mk(), BT = mk();
   const acc = (M, p, y) => {
@@ -164,26 +159,21 @@ function goalsBacktest(matches, opts = {}) {
     const b = M.buckets[bk] = M.buckets[bk] || { n: 0, hit: 0, p: 0 };
     b.n++; b.hit += y; b.p += p;
   };
-  for (const m of rows) {
-    const h = String(m.home.id), a = String(m.away.id);
-    if (R[h] == null) { R[h] = BASE_ELO; games[h] = 0; }
-    if (R[a] == null) { R[a] = BASE_ELO; games[a] = 0; }
-    const warm = games[h] >= WARM && games[a] >= WARM;
-    const hg = Number(m.home.goals), ag = Number(m.away.goals);
-    if (warm) {
-      const l = lambdas(R[h] + hfa, R[a]);
-      const g = dist.goalModelOutput(l[0], l[1]);
-      const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01);
-      const pOver = ou25 ? (ou25.over != null ? ou25.over : ou25.o) : null;
-      const pBtts = g.btts ? g.btts.yes : null;
-      if (pOver != null) acc(OU, pOver, (hg + ag) > 2.5 ? 1 : 0);
-      if (pBtts != null) acc(BT, pBtts, (hg > 0 && ag > 0) ? 1 : 0);
-    }
-    const exp = expectedHome(R[h], R[a], hfa);
-    const obs = hg > ag ? 1 : hg === ag ? 0.5 : 0;
-    const kh = games[h] < WARM ? K * 2 : K, ka = games[a] < WARM ? K * 2 : K;
-    R[h] += kh * (obs - exp); R[a] += ka * ((1 - obs) - (1 - exp));
-    games[h]++; games[a]++;
+  // walk-forward: predice cada partido con el modelo ataque/defensa fiteado SOLO en los partidos previos
+  // (refit cada 10 para no fitear 200 veces). Warmup = 35% de la temporada para que las fuerzas se estabilicen.
+  const warm = Math.max(40, Math.floor(rows.length * 0.35));
+  let gf = null;
+  for (let i = warm; i < rows.length; i++) {
+    if (!gf || (i - warm) % 10 === 0) gf = fitLeagueGoals(rows.slice(0, i));
+    const m = rows[i], hg = Number(m.home.goals), ag = Number(m.away.goals);
+    const l = gf ? goalLambdas(gf, m.home.id, m.away.id) : null;
+    if (!l) continue;
+    const g = dist.goalModelOutput(l[0], l[1]);
+    const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01);
+    const pOver = ou25 ? (ou25.over != null ? ou25.over : ou25.o) : null;
+    const pBtts = g.btts ? g.btts.yes : null;
+    if (pOver != null) acc(OU, pOver, (hg + ag) > 2.5 ? 1 : 0);
+    if (pBtts != null) acc(BT, pBtts, (hg > 0 && ag > 0) ? 1 : 0);
   }
   const summarize = (M) => {
     if (!M.n) return null;

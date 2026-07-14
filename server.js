@@ -2624,6 +2624,22 @@ function clubNorm(s) {
   return CLUB_ALIAS[n] || n;
 }
 function clubScoreKey(lg, a, b) { return lg + '|' + [a, b].sort().join('-'); }
+// F3.1: fit ataque/defensa de goles por liga (clubs-engine/goalsModel) desde results-<liga>.json. Memo 30min.
+// Da λ de goles REALISTAS por liga para la proyección del cockpit (el goal engine base sobre Elo predice ~51%
+// over en todas). El 1X2 sigue del Elo; esto NO habilita picks de goles (skill de discriminación ~0, gate shadow).
+function clubGoalsFit(league) {
+  global._clubGoalsFit = global._clubGoalsFit || {};
+  const c = global._clubGoalsFit[league];
+  if (c && Date.now() - c.at < 30 * 60e3) return c.fit;
+  let fit = null;
+  try {
+    const rows = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || [];
+    const matches = rows.filter(r => r.hg != null && r.ag != null).map(r => ({ home: { id: r.home_id, goals: r.hg }, away: { id: r.away_id, goals: r.ag } }));
+    fit = require('./clubs-engine/goalsModel').fitLeagueGoals(matches);
+  } catch { fit = null; }
+  global._clubGoalsFit[league] = { at: Date.now(), fit };
+  return fit;
+}
 // ===== FASE CLUBES F1.1: XI clickeable al perfil =====
 // El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
 // AF → pl_ id del roster TSA del equipo (misma lógica que pidxResolve del Mundial: match por nombre completo,
@@ -7239,13 +7255,19 @@ const server = http.createServer(async (req, res) => {
         const hfa = neutral ? 0 : (LH.hfa || 60);
         const rh = TH ? clubElo(hl, hId) : 1500, ra = TA ? clubElo(al, aId) : 1500; // F0.4: Elo dinámico
         const pr = matchProbs(rh + hfa, ra);
-        const l = lambdas(rh + hfa, ra);
-        // F2.3: OBSERVER — factor λ por bajas del XI (base→contexto→GP). Off (factor=1) = byte-idéntico a hoy.
-        // Con el flag GP_OBSERVER_LAMBDA_ENABLED y señales, lU/prU reflejan la disponibilidad; l/pr son la base.
+        const l = lambdas(rh + hfa, ra); // λ del Elo → 1X2 (gate-approved) + gp_live/momentum (consistencia con el 1X2)
+        // F3.1: λ de GOLES REALISTAS por liga (modelo ataque/defensa desde results-<liga>.json). El goal engine
+        // sobre Elo predice ~51% over en TODAS las ligas; este discrimina el nivel por liga/cruce. Fallback a Elo
+        // si no hay fit. SOLO mejora la proyección de goles; el 1X2/vivo siguen del Elo. No habilita picks (skill ~0).
+        let lGoal = l;
+        if (!cross) { try { const gf = clubGoalsFit(hl); if (gf) { const lg = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId); if (lg) lGoal = lg; } } catch { /* sin fit → Elo */ } }
+        // F2.3: OBSERVER — factor λ por bajas del XI (base→contexto→GP). Off (factor=1) = byte-idéntico. Ajusta
+        // ambos tracks: l1x2U (Elo→1X2/vivo) y lU (ataque/defensa→goles/intel). l/lGoal/pr son la base.
         const fH = !cross ? clubObserverLambdaFactor(hl, hId) : 1, fA = !cross ? clubObserverLambdaFactor(al, aId) : 1;
         const ctxActive = (fH !== 1 || fA !== 1);
-        const lU = ctxActive ? [l[0] * fH, l[1] * fA] : l; // lambdas USADOS aguas abajo (goles/probs/intel/vivo)
-        const prU = ctxActive ? probsFromLambdas(lU[0], lU[1]) : pr;
+        const l1x2U = ctxActive ? [l[0] * fH, l[1] * fA] : l;        // 1X2 + gp_live (Elo)
+        const lU = ctxActive ? [lGoal[0] * fH, lGoal[1] * fA] : lGoal; // goles/xg/intel (ataque/defensa)
+        const prU = ctxActive ? probsFromLambdas(l1x2U[0], l1x2U[1]) : pr;
         const dist = require('./goal-engine/distribution');
         const g = dist.goalModelOutput(lU[0], lU[1]);
         const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01) || null;
@@ -7270,7 +7292,7 @@ const server = http.createServer(async (req, res) => {
             const homeIsH = sr.home_id === hId;
             const shg = homeIsH ? sr.hg : sr.ag, sag = homeIsH ? sr.ag : sr.hg;
             if (sr.status === 'live') {
-              try { const gp = liveProbsFromLambdas(lU[0], lU[1], shg, sag, sr.minute); gpLive = { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), likely_score: gp.likelyScore, minute: sr.minute, live: true }; } catch { gpLive = null; }
+              try { const gp = liveProbsFromLambdas(l1x2U[0], l1x2U[1], shg, sag, sr.minute); gpLive = { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), likely_score: gp.likelyScore, minute: sr.minute, live: true }; } catch { gpLive = null; }
             }
             const mom = (db.clubMomentum || {})[clubScoreKey(hl, hId, aId)];
             if (mom && mom.points && mom.points.length > 2) {
@@ -7302,7 +7324,7 @@ const server = http.createServer(async (req, res) => {
           context_adjust: ctxActive ? {
             active: true,
             factor: { home: fH, away: fA },
-            base_xg: { home: +l[0].toFixed(2), away: +l[1].toFixed(2) },
+            base_xg: { home: +lGoal[0].toFixed(2), away: +lGoal[1].toFixed(2) },
             base_probs: { home: +pr.home.toFixed(3), draw: +pr.draw.toFixed(3), away: +pr.away.toFixed(3) },
             findings: { home: clubObserverFindings(hId), away: clubObserverFindings(aId) },
           } : { active: false, findings: { home: clubObserverFindings(hId), away: clubObserverFindings(aId) } },

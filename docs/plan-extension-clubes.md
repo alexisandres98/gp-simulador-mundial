@@ -83,16 +83,20 @@ La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board t
 | Pieza (Mundial: /api/beta/player nivel Yamal) | Clubes |
 |---|---|
 | Ficha bio (posición/edad/altura/pie/país/valor/contrato) | ✔ (F2-fase1; el Mundial ni tiene valor de mercado — clubes ya lo supera aquí) |
-| FOTO oficial | ✘ F0.2 |
-| Stats/90 (xG, xA, remates, minutos) + muestra | ✘ F0.1 (backfill player-stats) → F2.2 |
-| Radar percentiles vs posición | ✘ F2.2 |
-| Arquetipo ganado + scout read ES/EN | ✘ F2.2 |
-| % del ataque del equipo, forma | ✘ F2.2 |
+| FOTO oficial | ✔ (2440 fotos) |
+| Stats/90 (xG, xA, remates, minutos) + muestra | ✔ (a644057, con tiles de muestra) |
+| Radar percentiles vs posición | ✔ (percentil por stat también) |
+| Arquetipo ganado + scout read ES/EN | ✔ |
+| % del ataque del equipo, forma | ✔ % ataque; match-by-match ✔ |
 | Mercados del jugador (cuotas vs GP) | ✘ F3.4 (props ligas top) |
 | Disponibilidad narrada (observer) | ✘ F2.3 |
 | H2H vs próximo rival | ✘ F2.2 |
 | Buscador de jugadores | ½ (clubes por equipo; índice global ✘ F2.2) |
 | SEO /jugador/<slug> | ✘ F4.3 |
+
+### 4b. PERFIL DE JUGADOR — COMPARACIÓN HONESTA (Musiala Mundial vs Paulinho club, 14-jul)
+Tras a644057 el perfil de club tiene: foto+ficha bio (plus del club) · radar+percentiles · tiles de muestra (min/starts/goles/%ataque) · PER-90 con "Top X% of position" por stat · scouting read · MATCH BY MATCH (partido a partido). **A LA PAR** del Mundial en lo cuantitativo.
+FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/narrativa) · Projected starter + confidence (F1.4 context/alineación) · mercados del jugador cuotas-vs-GP (F3.4 props ligas top) · H2H vs próximo rival · disponibilidad narrada (F2.3).
 
 ### 5. PICKS (producto principal)
 | Pieza (Mundial: 6 familias + narrativa + track record) | Clubes |

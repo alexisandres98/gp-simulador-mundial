@@ -41,7 +41,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 |---|---|
 | Hero marcador vivo/final | ✔ |
 | Prob 1X2 + Contexto | ✔ tab Context (bajas AF+descanso+forma, 3ae57c5); **ajuste al modelo ✔ (F2.3, a21ee8c — base→contexto→GP tras flag)** |
-| Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa) |
+| Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa; **λ ataque/defensa por liga d595e1a — realista por liga, no ~51% constante**) |
 | Momentum GP en vivo (SVG, dots de gol) | ✔ (F1.2, 363bf59) |
 | Alineaciones (XI + formación + DT) | ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87)**; **eventos en vivo ✔ (2195df8)**; XI en-cancha (pitch) ✘ |
 | Panel xG del partido (post-partido, 1T/2T, ocasiones) | ✘ F1.3 (TSA lo da, mismo patrón xg-report) |
@@ -159,7 +159,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 - [ ] **F2.5 Follow + alertas** de clubes (inicio/gol email — la infra del Mundial es genérica).
 
 ### F3 — PICKS DE CLUBES (el producto; TODO gateado por backtest)
-- [½] **F3.1 Calibración por liga** — backtest de GOLES CORRIDO (49c1e0b, `goalsBacktest` en clubs-engine/ratings.js, gate clubs-goals-gate-1: n≥120·cal_err≤0.04·skill≥0.005, guardado como `goals_backtest` por liga en ratings.json). **HALLAZGO DURO: NINGUNA liga pasa** — el goal engine predice ~51% over en TODAS las ligas pero el over real varía 34% (argentina) a 64% (csl/bundesliga) → skill negativo/cero. Los λ salen del Elo (capturan 1X2, apenas discriminan el total). **Picks de GOLES BLOQUEADAS** hasta recalibrar el goal engine por liga (GOAL_FLOOR/scale por liga = calibración de NIVEL; y features de xG por equipo del player-history = DISCRIMINACIÓN, el trabajo grande). SOLID (1X2 anclado al mercado) SÍ está legitimado por el gate 1X2: colombia approved en-temporada (grandes en agosto).
+- [½] **F3.1 Calibración por liga** — backtest de GOLES ✔ (49c1e0b) + **MODELO ATAQUE/DEFENSA** ✔ (d595e1a). `goalsBacktest` (gate clubs-goals-gate-1: n≥120·cal_err≤0.04·skill≥0.005). Modelo nuevo `clubs-engine/goalsModel.js` (Dixon-Coles ataque/defensa por equipo con shrinkage tau=20, fiteado de results-<liga>.json) reemplaza los λ del Elo en la PROYECCIÓN de goles del cockpit → **realista por liga** (argentina over 33% real→33% modelo, csl 60%→59%, colombia 48%→46%; antes Elo 51% para todo). El 1X2 (gate-approved) y gp_live siguen del Elo. **HALLAZGO FUNDAMENTAL: cal_err de NIVEL arreglado (~0.13→~0.03) pero SKILL de discriminación O/U 2.5 sigue ~0** (ninguna liga llega a skill≥0.005 en 9 ligas con walk-forward+shrinkage — el total de goles es Poisson-ruidoso y el mercado de totales es eficiente, LÍMITE FUNDAMENTAL). **Picks de GOLES siguen BLOQUEADAS** (correcto). Caminos futuros para edge: player goal props (modelo distinto, más tratable) o picks por divergencia vs mercado en vivo (no backtesteable offline). SOLID (1X2 anclado): colombia approved en-temporada.
 - [ ] **F3.2 Señal value en fila de Partidos** + value engine formal por liga (evaluaciones persistidas, no memo).
 - [ ] **F3.3 Curate multi-liga**: SOLID/GOALS/COMBO solo ligas gate approved + anclaje al mercado (mismas reglas del Mundial); narrativa; settlement reg90 desde clubResults + TSA; track record con etiqueta de liga; board integrado.
 - [ ] **F3.4 Props de clubes**: córners/tarjetas (AF stats por fixture → props-history por liga → NB por liga → backtest → gate) + player props (The Odds API ligas top).

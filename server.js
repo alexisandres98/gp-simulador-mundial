@@ -2622,6 +2622,48 @@ function clubNorm(s) {
   return CLUB_ALIAS[n] || n;
 }
 function clubScoreKey(lg, a, b) { return lg + '|' + [a, b].sort().join('-'); }
+// ===== FASE CLUBES F1.1: XI clickeable al perfil =====
+// El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
+// AF → pl_ id del roster TSA del equipo (misma lógica que pidxResolve del Mundial: match por nombre completo,
+// luego por apellido con guarda de duplicados). Reusa el cache global._clubsSquad de /api/clubs/squad (24h).
+async function clubRosterRows(teamId) {
+  const tsaKey = process.env.THESTATSAPI_KEY || '';
+  if (!tsaKey || !/^tm_[a-z0-9]+$/i.test(teamId)) return [];
+  global._clubsSquad = global._clubsSquad || {};
+  let sq = global._clubsSquad[teamId];
+  if (!sq || Date.now() - sq.at > 24 * 3600e3) {
+    try {
+      const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      const rows = (j && j.data) || j || [];
+      sq = { at: Date.now(), rows: Array.isArray(rows) ? rows : [] };
+      global._clubsSquad[teamId] = sq;
+    } catch { sq = sq || { at: Date.now(), rows: [] }; }
+  }
+  return (sq && sq.rows) || [];
+}
+function clubRosterResolver(rows) {
+  const full = {}, last = {}, dup = {};
+  const add = (nm, pid) => { const n = normName(nm); if (n && !full[n]) full[n] = pid; };
+  for (const p of (rows || [])) {
+    if (!p || !p.id) continue;
+    add(p.name, p.id); add(p.short_name, p.id);
+    const parts = normName(p.name || p.short_name).split(/\s+/).filter(Boolean);
+    const ln = parts[parts.length - 1];
+    if (ln && ln.length >= 3) {
+      if (last[ln] && last[ln] !== p.id) { dup[ln] = 1; delete last[ln]; }
+      else if (!dup[ln]) last[ln] = p.id;
+    }
+  }
+  return function (rawName) {
+    if (!rawName) return null;
+    const n = normName(rawName);
+    if (full[n]) return full[n];
+    const parts = n.split(/\s+/).filter(Boolean);
+    const ln = parts[parts.length - 1];
+    return (ln && last[ln]) || null;
+  };
+}
 // ===== FASE CLUBES F0.4: ELO DINÁMICO =====
 // El ratings.json se fitea offline (base). Sin actualizar el Elo con cada resultado, la probabilidad DERIVA
 // (exactamente lo que Alexis señaló). db.clubElos es un OVERLAY sobre el base: arranca del fit y se ajusta con
@@ -5870,8 +5912,10 @@ const server = http.createServer(async (req, res) => {
           if (!fx) { fxs = await af(`/fixtures?team=${afH}&last=10`); fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA)); }
           if (fx) {
             const lus = await af(`/fixtures/lineups?fixture=${fx.fixture.id}`);
-            const side = (afTeamId) => { const l = lus.find(x => x.team && x.team.id === afTeamId); if (!l) return null; return { formation: l.formation || null, coach: (l.coach && l.coach.name) || null, xi: (l.startXI || []).map(p => ({ name: p.player.name, pos: p.player.pos || null, num: p.player.number || null })), bench: (l.substitutes || []).slice(0, 9).map(p => ({ name: p.player.name })) }; };
-            c.data = { fixture_date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, home: side(afH), away: side(afA) };
+            // resolver nombre AF → pl_ id del roster TSA (XI clickeable al perfil, paridad Mundial)
+            const rslvH = clubRosterResolver(await clubRosterRows(hId)), rslvA = clubRosterResolver(await clubRosterRows(aId));
+            const side = (afTeamId, resolve) => { const l = lus.find(x => x.team && x.team.id === afTeamId); if (!l) return null; return { formation: l.formation || null, coach: (l.coach && l.coach.name) || null, xi: (l.startXI || []).map(p => ({ name: p.player.name, pos: p.player.pos || null, num: p.player.number || null, pid: resolve(p.player.name) || undefined })), bench: (l.substitutes || []).slice(0, 9).map(p => ({ name: p.player.name, pid: resolve(p.player.name) || undefined })) }; };
+            c.data = { fixture_date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, home: side(afH, rslvH), away: side(afA, rslvA) };
           }
         } catch { /* AF sin datos este ciclo */ }
         global._clubLineups[ck] = c;

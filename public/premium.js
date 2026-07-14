@@ -2558,6 +2558,12 @@
   }
   // ALINEACIONES del cruce (Lineups del Mundial): XI + formación + DT de cada equipo, desde API-Football.
   // Reusa las clases gx-lu-* del Mundial. Lazy-fetch de /api/clubs/lineups.
+  // nombre de jugador de club → link al perfil (cplayer) si el server resolvió el pl_ id; si no, texto plano.
+  // Calco de playerLink del Mundial: <a href> + gx-plk; onHash ya rutea #cplayer/<lg>-<tm>-<pl>.
+  function clubPlayerLink(lgk, teamId, pid, inner) {
+    if (!pid) return inner;
+    return '<a href="#cplayer/' + esc(lgk + '-' + teamId + '-' + pid) + '" class="gx-plk">' + inner + '</a>';
+  }
   function clubLineupsHtml(eid, lgk, hId, aId) {
     S.clu = S.clu || {};
     if (S.clu[eid] === undefined) {
@@ -2572,8 +2578,8 @@
     var m = S.clm[eid] || {};
     var side = function (s, id, name) {
       if (!s) return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div><div class="gx-dim" style="font-size:12px;padding:6px 0">' + esc(t('e_lineups')) + '</div></div>';
-      var xi = (s.xi || []).map(function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.num != null ? p.num : '–') + '</span><b>' + esc(p.name) + '</b>' + (p.pos ? '<span class="gx-dim gx-lu-pos">' + esc(p.pos) + '</span>' : '') + '</div>'; }).join('');
-      var subs = (s.bench || []).map(function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">–</span><b>' + esc(p.name) + '</b></div>'; }).join('');
+      var xi = (s.xi || []).map(function (p) { var inner = '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.num != null ? p.num : '–') + '</span><b>' + esc(p.name) + '</b>' + (p.pos ? '<span class="gx-dim gx-lu-pos">' + esc(p.pos) + '</span>' : '') + '</div>'; return clubPlayerLink(lgk, id, p.pid, inner); }).join('');
+      var subs = (s.bench || []).map(function (p) { var inner = '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">–</span><b>' + esc(p.name) + '</b></div>'; return clubPlayerLink(lgk, id, p.pid, inner); }).join('');
       return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div>' +
         '<div class="gx-lu-meta gx-dim">' + (s.formation ? esc(t('formation')) + ' <b>' + esc(s.formation) + '</b>' : '') + (s.coach ? ' · ' + esc(s.coach) : '') + '</div>' +
         (xi ? '<div class="gx-lu-xi">' + xi + '</div>' : '') +

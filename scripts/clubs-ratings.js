@@ -7,7 +7,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { fit, backtest } = require('../clubs-engine/ratings');
+const { fit, backtest, goalsBacktest } = require('../clubs-engine/ratings');
 const { matchProbs } = require('../engine');
 
 const HIST = path.join(__dirname, '..', 'data', 'history');
@@ -53,6 +53,10 @@ for (const L of LEAGUES) {
   // approved → la liga puede alimentar picks/value; shadow → cartelera con "en calibración".
   let bt = null;
   try { bt = backtest(matches, { probs: matchProbs }); } catch (e) { console.log(`  (backtest ${L.key}: ${e.message})`); }
+  // GATE DE GOLES (F3.1, clubs-goals-gate-1): backtest walk-forward de la CALIBRACIÓN del goal engine en O/U 2.5.
+  // Prerequisito duro para picks de GOLES: sin skill demostrado por liga NO se emiten (approved → habilita goles).
+  let gbt = null;
+  try { gbt = goalsBacktest(matches); } catch (e) { console.log(`  (goals-backtest ${L.key}: ${e.message})`); }
   // Tabla de posiciones de la temporada ACTUAL (último archivo = temporada en curso; para las de agosto es la 25-26 final)
   const seasonMatches = loadMatches(L.ratings_from.slice(-1));
   const st = {};
@@ -65,9 +69,9 @@ for (const L of LEAGUES) {
     if (hg > ag) { H.w++; A.l++; H.pts += 3; } else if (hg < ag) { A.w++; H.l++; A.pts += 3; } else { H.d++; A.d++; H.pts++; A.pts++; }
   }
   const standings = Object.values(st).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
-  out.leagues[L.key] = { ...L, ...r, backtest: bt, standings };
+  out.leagues[L.key] = { ...L, ...r, backtest: bt, goals_backtest: gbt, standings };
   const top = Object.values(r.ratings).sort((a, b) => b.elo - a.elo).slice(0, 3).map(t => `${t.name} ${t.elo}`).join(' · ');
-  console.log(`${L.key}: ${r.n_matches} partidos | hfa ${r.hfa} | ${bt ? `gate ${bt.status.toUpperCase()} (n=${bt.n}, Brier ${bt.brier} vs 0.667 uniforme, calErr ${bt.cal_err})` : 'sin backtest'}`);
+  console.log(`${L.key}: ${r.n_matches} partidos | hfa ${r.hfa} | ${bt ? `1X2 ${bt.status.toUpperCase()} (Brier ${bt.brier}, calErr ${bt.cal_err})` : 'sin bt'} | ${gbt ? `GOLES ${gbt.status.toUpperCase()} (skill ${gbt.over25 && gbt.over25.skill}, calErr ${gbt.over25 && gbt.over25.cal_err})` : 'sin gbt'}`);
   console.log(`  top: ${top}`);
 }
 fs.writeFileSync(path.join(OUT, 'ratings.json'), JSON.stringify(out));

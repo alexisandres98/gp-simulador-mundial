@@ -140,4 +140,66 @@ function backtest(matches, opts = {}) {
   return out;
 }
 
-module.exports = { fit, backtest, expectedHome, BASE_ELO };
+// GATE DE GOLES por liga (F3.1, clubs-goals-gate-1). Backtest walk-forward del GOAL ENGINE (Elo→lambdas→
+// goalModelOutput) midiendo CALIBRACIÓN en O/U 2.5 y BTTS. Es el prerequisito de la regla dura para las picks
+// de GOLES (donde el modelo lidera): sin calibración demostrada por liga, una pick "de valor" no es +EV real.
+// Mismo walk-forward de Elo que backtest() (K, warmup, hfa del fit). approved: n≥120 · cal_err O/U ≤0.05 ·
+// el modelo no peor que el base-rate (predecir siempre el % de over de la liga). BTTS informativo.
+function goalsBacktest(matches, opts = {}) {
+  const K = opts.k != null ? opts.k : 28;
+  const WARM = opts.warmupGames != null ? opts.warmupGames : 6;
+  const { lambdas } = require('../engine');
+  const dist = require('../goal-engine/distribution');
+  const rows = (matches || [])
+    .filter(m => m && m.home && m.away && Number.isFinite(Number(m.home.goals)) && Number.isFinite(Number(m.away.goals)))
+    .slice().sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
+  const full = fit(rows, opts);
+  const hfa = full.hfa;
+  const R = {}, games = {};
+  const mk = () => ({ n: 0, brier: 0, obs: 0, pred: 0, buckets: {} });
+  const OU = mk(), BT = mk();
+  const acc = (M, p, y) => {
+    M.n++; M.brier += Math.pow(p - y, 2); M.obs += y; M.pred += p;
+    const bk = Math.min(90, Math.floor(p * 100 / 10) * 10);
+    const b = M.buckets[bk] = M.buckets[bk] || { n: 0, hit: 0, p: 0 };
+    b.n++; b.hit += y; b.p += p;
+  };
+  for (const m of rows) {
+    const h = String(m.home.id), a = String(m.away.id);
+    if (R[h] == null) { R[h] = BASE_ELO; games[h] = 0; }
+    if (R[a] == null) { R[a] = BASE_ELO; games[a] = 0; }
+    const warm = games[h] >= WARM && games[a] >= WARM;
+    const hg = Number(m.home.goals), ag = Number(m.away.goals);
+    if (warm) {
+      const l = lambdas(R[h] + hfa, R[a]);
+      const g = dist.goalModelOutput(l[0], l[1]);
+      const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01);
+      const pOver = ou25 ? (ou25.over != null ? ou25.over : ou25.o) : null;
+      const pBtts = g.btts ? g.btts.yes : null;
+      if (pOver != null) acc(OU, pOver, (hg + ag) > 2.5 ? 1 : 0);
+      if (pBtts != null) acc(BT, pBtts, (hg > 0 && ag > 0) ? 1 : 0);
+    }
+    const exp = expectedHome(R[h], R[a], hfa);
+    const obs = hg > ag ? 1 : hg === ag ? 0.5 : 0;
+    const kh = games[h] < WARM ? K * 2 : K, ka = games[a] < WARM ? K * 2 : K;
+    R[h] += kh * (obs - exp); R[a] += ka * ((1 - obs) - (1 - exp));
+    games[h]++; games[a]++;
+  }
+  const summarize = (M) => {
+    if (!M.n) return null;
+    const baseRate = M.obs / M.n;
+    const baseBrier = baseRate * (1 - baseRate); // Brier del modelo base-rate (predecir siempre el %)
+    const calib = Object.keys(M.buckets).sort((x, y) => x - y).map(k => { const b = M.buckets[k]; return { bucket: `${k}-${+k + 10}`, n: b.n, predicted: +(b.p / b.n).toFixed(3), observed: +(b.hit / b.n).toFixed(3) }; });
+    const calErr = +(calib.reduce((s, b) => s + Math.abs(b.predicted - b.observed) * b.n, 0) / M.n).toFixed(4);
+    const brier = +(M.brier / M.n).toFixed(4);
+    return { n: M.n, brier, base_brier: +baseBrier.toFixed(4), base_rate: +baseRate.toFixed(3), pred_rate: +(M.pred / M.n).toFixed(3), cal_err: calErr, skill: +(baseBrier - brier).toFixed(4), calibration: calib };
+  };
+  const ou = summarize(OU), bt = summarize(BT);
+  // approved para picks de GOLES exige SKILL REAL: el modelo debe GANARLE al base-rate (predecir siempre el %
+  // de over de la liga), no solo estar calibrado. Sin skill positivo, una pick "de valor" en O/U es ruido y
+  // sale -EV tras el margen. Umbral: n≥120 · cal_err ≤0.04 · skill ≥0.005 (edge no-ruido sobre el base-rate).
+  const status = (ou && ou.n >= 120 && ou.cal_err <= 0.04 && ou.skill >= 0.005) ? 'approved' : 'shadow';
+  return { n: ou ? ou.n : 0, over25: ou, btts: bt, status, policy: 'clubs-goals-gate-1' };
+}
+
+module.exports = { fit, backtest, goalsBacktest, expectedHome, BASE_ELO };

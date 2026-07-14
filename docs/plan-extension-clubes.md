@@ -56,15 +56,15 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | SEO /pronostico/<slug> | ✘ F4.3 |
 
 ### 2b. COCKPIT — MAPA REAL (auditoría navegando el Mundial, 14-jul)
-**Estructura**: el cockpit del Mundial usa TABS (`gx-mv-nav`): **Summary · GP probability · Markets · Context · Recent form · Lineups · Match intel · Goal projection**. El de club son paneles en scroll (GP probability · Goal projection · Markets · Value). Para PARIDAD el cockpit de club debe reestructurarse a esos 8 tabs.
-- Summary → ✘ F1.0 (vista resumen: hero+veredicto+precio+tesis)
+**Estructura**: HECHO (2d4dabe) el cockpit de club ahora usa TABS (Resumen/Goles/Inteligencia/Forma/Mercados/Value). El del Mundial usa TABS (`gx-mv-nav`): **Summary · GP probability · Markets · Context · Recent form · Lineups · Match intel · Goal projection**. El de club son paneles en scroll (GP probability · Goal projection · Markets · Value). Para PARIDAD el cockpit de club debe reestructurarse a esos 8 tabs.
+- Summary → ✔ (2d4dabe, tab Resumen)
 - GP probability → ½ (club tiene prob base; falta base→CONTEXTO→GP con factores) F1.4
-- Markets → ✔ (matriz cuota+casa, SIN calc — la calc del Mundial vive en Value/Picks/Arb)
+- Markets → ✔ (tab, cuota+casa sin calc)
 - Context → ✘ F1.4
-- Recent form → ✘ F2.1
+- Recent form → ✔ (2d4dabe, tab Forma+H2H)
 - Lineups → ✘ F1.1
 - Match intel → ½ anotadores probables ✔ (f09deed); disponibilidad ✘ F2.3
-- Goal projection → ✔
+- Goal projection → ✔ (tab)
 La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board tabla, Picks cards, Arbitraje/precio-atrasado), NUNCA en el cockpit del partido.
 
 ### 3. EQUIPOS

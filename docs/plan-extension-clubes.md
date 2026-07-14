@@ -40,7 +40,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Pieza (Mundial) | Clubes |
 |---|---|
 | Hero marcador vivo/final | ✔ |
-| Prob 1X2 (base → CONTEXTO → GP, desglose de factores) | ½ solo base Elo. Contexto (lesiones/descanso/forma) ✘ F1.4 |
+| Prob 1X2 + Contexto | ✔ tab Context (bajas AF+descanso+forma, 3ae57c5); ajuste al modelo ✘ F2.3 |
 | Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa) |
 | Momentum GP en vivo (SVG, dots de gol) | ✘ F1.2 |
 | Alineaciones (XI + formación + DT) | ✔ (afc6cff); en-cancha/eventos vivos ✘ |
@@ -60,7 +60,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 - Summary → ✔ (2d4dabe, tab Resumen)
 - GP probability → ½ (club tiene prob base; falta base→CONTEXTO→GP con factores) F1.4
 - Markets → ✔ (tab, cuota+casa sin calc)
-- Context → ✘ F1.4
+- Context → ✔ (3ae57c5, bajas+descanso+forma)
 - Recent form → ✔ (2d4dabe, tab Forma+H2H)
 - Lineups → ✔ (afc6cff, AF por fixture; se activa con partidos)
 - Match intel → ½ anotadores probables ✔ (f09deed); disponibilidad ✘ F2.3
@@ -128,7 +128,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 ### 8. ENGINE / INFRA INVISIBLE
 | Pieza (Mundial) | Clubes |
 |---|---|
-| Motor de contexto (lesiones, descanso, forma → ajuste de prob) | ✘ F1.4 |
+| Contexto (lesiones/descanso/forma) | ½ mostrado (3ae57c5); ajuste de prob ✘ F2.3 |
 | Observer (noticias → disponibilidad → λ) | ✘ F2.3 |
 | Event data (FotMob shotmaps, situaciones) | ✘ F2.4 |
 | Momentum sampler | ✘ F1.2 |

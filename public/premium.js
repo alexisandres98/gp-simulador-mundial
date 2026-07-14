@@ -3418,12 +3418,15 @@
       '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
   }
   function clubMatchesTable(L, rows) { return matchesTableHead() + rows.map(function (f) { return clubRowHtml(L, f); }).join('') + '</tbody></table>'; }
+  // MISMO markup que wcCardHtml (partido del Mundial): estado + GP PROBABILITY con los 3 % + "Analizar partido →".
   function clubCardHtml(L, f) {
     var oid = 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id, sc = clubScore(f);
-    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px">' + leagueLogo(L.key) + esc(L.name.split(' · ')[0]) + (f.utc ? ' · ' + esc(fmtTime(f.utc)) : '') + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + clubStatusCell(f) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px;margin:6px 0"><span>' + clubBadge(f.home.id) + ' ' + esc(f.home.name) + '</span><span style="text-align:right">' + esc(f.away.name) + ' ' + clubBadge(f.away.id) + '</span></div>' +
-      '<div class="gx-clbar"><span class="h" style="width:' + (f.home.prob * 100) + '%"></span><span class="d" style="width:' + (f.draw * 100) + '%"></span><span class="a" style="width:' + (f.away.prob * 100) + '%"></span></div>' +
-      '<div class="gx-clpct"><b>' + pct0(f.home.prob) + '</b><span>X ' + pct0(f.draw) + '</span><b>' + pct0(f.away.prob) + '</b></div></div>';
+    return '<div class="gx-mcard" data-openmatch="' + esc(oid) + '">' +
+      '<div class="gx-mcard-top"><span class="gx-time">' + leagueLogo(L.key) + (f.utc ? esc(fmtTime(f.utc)) + ' · ' : '') + esc(L.name.split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + clubStatusCell(f) + '</div>' +
+      '<div class="gx-cell-team" style="margin:8px 0">' + clubBadge(f.home.id) + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div>' + clubBadge(f.away.id) + '</div>' +
+      '<div class="gx-mcard-rows"><div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + clubTriCell(f) + '</div></div>' +
+      '<div class="gx-mcard-foot"><span></span><span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span></div>' +
+      '</div>';
   }
   function clubMatchesCards(L, rows) { return rows.map(function (f) { return clubCardHtml(L, f); }).join(''); }
   // Vista TODOS (shadow): Mundial + todas las ligas en una sola línea de tiempo, intercalados por fecha.

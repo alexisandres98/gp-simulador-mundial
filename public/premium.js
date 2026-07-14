@@ -163,6 +163,7 @@
       cl_top: 'Top', cl_of_pos: 'de su posición', cl_minutes: 'Minutos', cl_startsapps: 'Titular/PJ', cl_goals: 'Goles',
       cl_mbm: 'Partido a partido', cl_date: 'Fecha', cl_opp: 'Rival', cl_sh: 'REM', cl_g: 'G',
       cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_no_news: 'Sin novedades de disponibilidad por ahora.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
+      cl_season: 'Proyección de temporada', cl_champion: 'Campeón', cl_top: 'Top', cl_proj_finish: 'Posición proy.', cl_releg: 'Descenso', cl_title_race: 'Lucha por el título', cl_remaining: 'partidos restantes', cl_season_note: 'Simulación de los partidos que faltan (calendario reconstruido) con la fuerza actual. Se actualiza cada jornada.',
       cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos', cl_no_lineups: 'Alineación no publicada aún (llega cerca del partido).', nav_lineups: 'Alineaciones',
       nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas de API-Football, descanso, forma y hallazgos de disponibilidad de la capa de observación.', cl_ctx_applied: 'Contexto aplicado (disponibilidad)', cl_ctx_base: 'base',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
@@ -421,6 +422,7 @@
       cl_top: 'Top', cl_of_pos: 'of position', cl_minutes: 'Minutes', cl_startsapps: 'Starts/Apps', cl_goals: 'Goals',
       cl_mbm: 'Match by match', cl_date: 'Date', cl_opp: 'Opponent', cl_sh: 'SH', cl_g: 'G',
       cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_no_news: 'No availability news right now.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
+      cl_season: 'Season projection', cl_champion: 'Champion', cl_top: 'Top', cl_proj_finish: 'Proj. finish', cl_releg: 'Relegation', cl_title_race: 'Title race', cl_remaining: 'matches left', cl_season_note: 'Simulation of the remaining matches (schedule reconstructed) with current strength. Updates every matchday.',
       cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head', cl_no_lineups: 'Lineup not published yet (arrives near kickoff).', nav_lineups: 'Lineups',
       nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Absences from API-Football, rest, form and availability findings from the observation layer.', cl_ctx_applied: 'Context applied (availability)', cl_ctx_base: 'base',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
@@ -3970,8 +3972,27 @@
           var col = (f.status === 'OUT' || f.status === 'SUSPENDED') ? '#F09595' : f.status === 'DOUBT' ? 'var(--gx-warn)' : 'var(--gx-text3)';
           return '<div class="gx-finding"><span class="gx-finding-dot" style="background:' + col + '"></span><span>' + esc(LANG === 'en' ? f.en : f.es) + '</span></div>';
         }).join('') + '</div></div>';
-    } else { // resumen: próximos partidos
-      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('calendar') + esc(t('cl_upcoming')) + '</span></div><div style="padding:6px 16px 12px">' + upHtml + '</div></div>';
+    } else { // resumen: proyección de temporada (campeón/top/descenso, paridad Mundial) + próximos partidos
+      var seasonHtml = '';
+      if (fm && fm.season) {
+        var sp = fm.season;
+        var sStat = function (lbl, val, cls) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(lbl) + '</span><b class="gx-mono ' + (cls || '') + '">' + val + '</b></div>'; };
+        var leaders = (fm.season_leaders || []).map(function (l) {
+          var isMe = l.id === id;
+          return '<div class="gx-clrow' + (isMe ? '' : ' gx-pick-clickable') + '"' + (isMe ? '' : ' data-nav-cteam="' + esc(lg + '|' + l.id) + '"') + ' style="' + (isMe ? 'background:rgba(45,230,163,.07);border-radius:6px' : 'cursor:pointer') + '"><span>' + clubBadge(l.id) + ' <b' + (isMe ? ' style="color:var(--gx-accent)"' : '') + '>' + esc(l.name) + '</b></span><span class="gx-mono" style="font-weight:700">' + pct1(l.champion) + '</span></div>';
+        }).join('');
+        seasonHtml = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('cl_season')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + sp.remaining + ' ' + esc(t('cl_remaining')) + '</span></div><div class="gx-mod-body">' +
+          '<div class="gx-hero-grid" style="margin:0">' +
+          sStat(t('cl_champion'), pct1(sp.champion), 'hi') +
+          sStat(t('cl_top') + ' ' + sp.top_n, pct1(sp.top)) +
+          sStat(t('cl_proj_finish'), sp.exp_rank + '°') +
+          sStat(t('cl_releg'), pct1(sp.relegation), sp.relegation > 0.3 ? 'gx-neg' : '') +
+          '</div>' +
+          (leaders ? '<div class="gx-mod-sub gx-label">' + esc(t('cl_title_race')) + '</div>' + leaders : '') +
+          '<p class="gx-mod-note gx-dim" style="margin-top:8px">' + ic('info-circle') + ' ' + esc(t('cl_season_note')) + '</p>' +
+          '</div></div>';
+      }
+      body = seasonHtml + '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('calendar') + esc(t('cl_upcoming')) + '</span></div><div style="padding:6px 16px 12px">' + upHtml + '</div></div>';
     }
     mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero + tabNav + body + '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
     var tn = $('#gx-cteam-tabs'); if (tn) tn.addEventListener('click', function (e) { var a = e.target.closest('[data-cttab]'); if (a) { S.cteamTab = a.getAttribute('data-cttab'); renderClubTeam(); } });

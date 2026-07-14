@@ -2640,6 +2640,31 @@ function clubGoalsFit(league) {
   global._clubGoalsFit[league] = { at: Date.now(), fit };
   return fit;
 }
+// F4.1: SIMULADOR DE TEMPORADA por liga (Monte Carlo, mismo espíritu que el del Mundial). Reconstruye el
+// calendario restante de los resultados (round-robin) + Elo dinámico → prob campeón/top-N/descenso por equipo.
+// Se construye con la data disponible y se recomputa cuando cambian el Elo/resultados. Memo por liga (invalida
+// con la versión del overlay Elo). meetings=2 (doble round-robin, el default de casi todas; override por liga).
+const CLUB_MEETINGS = { /* overrides si alguna liga no es doble round-robin */ };
+function clubSeasonSim(league) {
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
+  const L = (global._clubsRatings.leagues || {})[league];
+  if (!L || !(L.standings || []).length) return null;
+  global._clubSeason = global._clubSeason || {};
+  const eloVer = JSON.stringify(db.clubElos || {}).length; // cambia al aplicar Elo dinámico por un resultado nuevo
+  const c = global._clubSeason[league];
+  if (c && Date.now() - c.at < 30 * 60e3 && c.eloVer === eloVer) return c.sim;
+  let sim = null;
+  try {
+    global._clubsResults = global._clubsResults || {};
+    if (!global._clubsResults[league]) { try { global._clubsResults[league] = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || []; } catch { global._clubsResults[league] = []; } }
+    sim = require('./clubs-engine/seasonSim').projectSeason({
+      standings: L.standings, eloOf: (id) => clubElo(league, id), hfa: L.hfa || 60,
+      results: global._clubsResults[league], meetings: CLUB_MEETINGS[league] || 2, sims: 5000,
+    });
+  } catch { sim = null; }
+  global._clubSeason[league] = { at: Date.now(), eloVer, sim };
+  return sim;
+}
 // ===== FASE CLUBES F1.1: XI clickeable al perfil =====
 // El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
 // AF → pl_ id del roster TSA del equipo (misma lógica que pidxResolve del Mundial: match por nombre completo,
@@ -6455,7 +6480,19 @@ const server = http.createServer(async (req, res) => {
       // News/Context del Mundial (caja negra, sin fuente). Fresco (assessPlayers es barato).
       let news = [];
       try { news = clubObserverFindings(teamId); } catch { news = []; }
-      return json(res, 200, { team: teamId, form, results: results.slice(0, 20), news });
+      // F4.1: proyección de temporada (campeón/top/descenso de ESTE equipo + líderes) — paridad con la prob de
+      // campeón del equipo del Mundial. Construida con lo disponible; se actualiza conforme llegan resultados.
+      let season = null, season_leaders = null;
+      try {
+        const sim = clubSeasonSim(league);
+        if (sim && sim.teams[teamId]) {
+          season = { ...sim.teams[teamId], remaining: sim.remaining, played: sim.played, top_n: sim.top_n, relegate: sim.relegate };
+          const nameOf2 = (tid) => (L && L.ratings && L.ratings[tid] && L.ratings[tid].name) || tid;
+          season_leaders = Object.entries(sim.teams).map(([id, v]) => ({ id, name: nameOf2(id), champion: v.champion, exp_points: v.exp_points }))
+            .sort((a, b) => b.champion - a.champion).slice(0, 6);
+        }
+      } catch { season = null; }
+      return json(res, 200, { team: teamId, form, results: results.slice(0, 20), news, season, season_leaders });
     }
     // MERCADOS de un cruce (F1.5, verificación read-only sin sesión): ?league=&h=&a=
     if (p === '/api/internal/clubs-market' && req.method === 'GET') {

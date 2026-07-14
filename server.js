@@ -6922,6 +6922,7 @@ const server = http.createServer(async (req, res) => {
       const teamId = String(url.searchParams.get('team') || ''), pid = String(url.searchParams.get('pid') || '');
       const league = String(url.searchParams.get('league') || '');
       if (!/^tm_[a-z0-9]+$/i.test(teamId) || !/^pl_[a-z0-9]+$/i.test(pid)) return json(res, 400, { error: 'params inválidos' });
+      if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
       const tsaKey = process.env.THESTATSAPI_KEY || '';
       global._clubsSquad = global._clubsSquad || {};
       let sq = global._clubsSquad[teamId];
@@ -6940,12 +6941,17 @@ const server = http.createServer(async (req, res) => {
       const teamName = (L && L.ratings && L.ratings[teamId] && L.ratings[teamId].name) || null;
       // F2.2: scouting nivel Yamal (stats/90 + radar + arquetipo) desde el player-history de la liga (mismos
       // engines del Mundial). null si aún no hay backfill de esa liga → la ficha bio se sirve igual.
-      let intel = null;
-      try { intel = require('./player-intel/clubsFit').clubPlayerScout(league, pid); } catch { intel = null; }
+      let intel = null, matches = [];
+      try {
+        const cf = require('./player-intel/clubsFit');
+        intel = cf.clubPlayerScout(league, pid);
+        matches = cf.clubPlayerMatches(league, pid, L && L.ratings); // MATCH BY MATCH (paridad con el Mundial)
+      } catch { intel = null; }
       const photo = (global._clubPlayerPhotos && global._clubPlayerPhotos[pid]) ? global._clubPlayerPhotos[pid].photo : null;
       return json(res, 200, {
         photo,
         intel, // { stats_available, xg90, shots90, ..., scout:{axes,archetype,read} }
+        matches, // [{date, opp, min, sh, sot, g, xg}]
         pid, name: p0.name, short: p0.short_name || p0.name, team_id: teamId, team_name: teamName, league,
         league_name: (L && L.name) || null,
         position: p0.position || null, age: p0.age != null ? p0.age : null,

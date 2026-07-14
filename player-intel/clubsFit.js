@@ -10,7 +10,35 @@ const { fitPlayers, projectTeam } = require('../prop-engine/players');
 const { buildScout } = require('./scout');
 
 const _cache = {}; // liga → { at, fit }
+const _rowsCache = {}; // liga → { at, rows }  (filas crudas jugador-partido, para el match-by-match)
 const TTL = 30 * 60e3;
+
+function leagueRows(league) {
+  const c = _rowsCache[league];
+  if (c && Date.now() - c.at < TTL) return c.rows;
+  const file = path.join(__dirname, '..', 'data', 'clubs', `player-history-${league}.json`);
+  let rows = [];
+  try { rows = (JSON.parse(fs.readFileSync(file, 'utf8')).rows) || []; } catch { rows = []; }
+  _rowsCache[league] = { at: Date.now(), rows };
+  return rows;
+}
+// MATCH BY MATCH de un jugador: sus partidos con oponente (el otro equipo del mismo match), más recientes primero.
+function clubPlayerMatches(league, pid, ratings) {
+  const rows = leagueRows(league);
+  const mine = rows.filter(r => r.pid === pid);
+  if (!mine.length) return [];
+  // índice de equipos por match para derivar el oponente
+  const teamsByMatch = {};
+  for (const r of rows) { (teamsByMatch[r.match] = teamsByMatch[r.match] || new Set()).add(r.team); }
+  const nameOf = (tid) => (ratings && ratings[tid] && ratings[tid].name) || tid;
+  return mine
+    .map(r => {
+      const others = [...(teamsByMatch[r.match] || [])].filter(t => t !== r.team);
+      return { date: r.date, opp: others.length ? nameOf(others[0]) : '', min: r.min, sh: r.shots, sot: r.sot, g: r.goals, xg: r.xg != null ? +Number(r.xg).toFixed(2) : null };
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .slice(0, 12);
+}
 
 // carga (memo) el fitres de una liga desde data/clubs/player-history-<liga>.json
 function leagueFit(league) {
@@ -67,4 +95,4 @@ function clubMatchIntel(league, homeId, awayId, lambdaHome, lambdaAway) {
   return { home, away };
 }
 
-module.exports = { leagueFit, clubPlayerScout, clubMatchIntel };
+module.exports = { leagueFit, clubPlayerScout, clubMatchIntel, clubPlayerMatches };

@@ -160,6 +160,8 @@
       cl_ga: 'Goles / Asistencias', cl_att_share: '% del ataque', cl_scout: 'Lectura de scouting',
       cl_markets: 'Mercados del partido', cl_best_odds: 'mejor cuota entre casas',
       cl_intel: 'Inteligencia del partido', cl_anytime: 'prob. de marcar',
+      cl_top: 'Top', cl_of_pos: 'de su posición', cl_minutes: 'Minutos', cl_startsapps: 'Titular/PJ', cl_goals: 'Goles',
+      cl_mbm: 'Partido a partido', cl_date: 'Fecha', cl_opp: 'Rival', cl_sh: 'REM', cl_g: 'G',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -413,6 +415,8 @@
       cl_ga: 'Goals / Assists', cl_att_share: '% of attack', cl_scout: 'Scouting read',
       cl_markets: 'Match markets', cl_best_odds: 'best odds across books',
       cl_intel: 'Match intel', cl_anytime: 'anytime goal prob.',
+      cl_top: 'Top', cl_of_pos: 'of position', cl_minutes: 'Minutes', cl_startsapps: 'Starts/Apps', cl_goals: 'Goals',
+      cl_mbm: 'Match by match', cl_date: 'Date', cl_opp: 'Opponent', cl_sh: 'SH', cl_g: 'G',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -3869,22 +3873,43 @@
       mini(t('cl_value'), clubMoney(p.market_value)) +
       mini(t('cl_contract'), p.contract_until ? String(p.contract_until).slice(0, 4) : null) +
       '</div></div>';
-    // NIVEL YAMAL: radar + stats/90 + scout read cuando hay backfill de la liga (mismos engines del Mundial)
+    // NIVEL YAMAL (paridad con el perfil del Mundial): tiles de muestra + radar + stats/90 CON percentil por
+    // stat + scout read + MATCH BY MATCH. Mismos engines/datos que el Mundial.
     var intelHtml = '';
     if (iv.stats_available && iv.scout) {
-      var s90 = function (label, v) { return '<div class="gx-clrow"><span>' + esc(label) + '</span><span class="gx-mono" style="font-weight:700">' + (v != null ? Number(v).toFixed(2) : '—') + '</span></div>'; };
-      var radar = (iv.scout.axes && iv.scout.axes.length >= 3) ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('radar') + esc(t('cl_profile')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + iv.minutes + '\' · ' + iv.apps + ' ' + esc(t('cl_apps')) + '</span></div><div class="gx-mod-body"><div class="gx-radar-wrap">' + gxRadar(iv.scout.axes) + '</div></div></div>' : '';
+      // percentil por stat desde los ejes del radar (production=xg90, volume=shots90, creation=xa90)
+      var axPct = {}; (iv.scout.axes || []).forEach(function (a) { axPct[a.key] = a.pct; });
+      var pctTag = function (k) { return axPct[k] != null ? '<span class="gx-dim" style="font-size:10px">' + esc(t('cl_top') + ' ' + Math.round((1 - axPct[k]) * 100) + '% ' + t('cl_of_pos')) + '</span>' : ''; };
+      var s90 = function (label, v, k) {
+        return '<div class="gx-clrow" style="align-items:baseline"><span>' + esc(label) + ' ' + pctTag(k) + '</span><span class="gx-mono" style="font-weight:700">' + (v != null ? Number(v).toFixed(2) : '—') + '</span></div>';
+      };
+      // tiles de muestra (minutos / titularidades / goles) — como el Mundial
+      var sampleTiles = '<div class="gx-hero-grid" style="margin:0 0 4px">' +
+        '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_minutes')) + '</span><b class="gx-mono">' + (iv.minutes || 0) + '\'</b></div>' +
+        '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_startsapps')) + '</span><b class="gx-mono">' + (iv.starts || 0) + '/' + (iv.apps || 0) + '</b></div>' +
+        '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_goals')) + '</span><b class="gx-mono">' + (iv.goals || 0) + '</b></div>' +
+        (iv.attack_share ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_att_share')) + '</span><b class="gx-mono">' + pct0(iv.attack_share) + '</b></div>' : '') +
+        '</div>';
+      var radar = (iv.scout.axes && iv.scout.axes.length >= 3) ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('radar') + esc(t('cl_profile')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + iv.minutes + '\' · ' + iv.apps + ' ' + esc(t('cl_apps')) + '</span></div><div class="gx-mod-body">' + sampleTiles + '<div class="gx-radar-wrap">' + gxRadar(iv.scout.axes) + '</div></div></div>' : '';
       var stats = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('chart-bar') + esc(t('cl_stats90')) + '</span></div><div style="padding:6px 16px 12px">' +
-        s90('xG/90', iv.xg90) + s90(t('cl_shots90'), iv.shots90) + s90(t('cl_sot90'), iv.sot90) + s90('xA/90', iv.xa90) +
-        '<div class="gx-clrow"><span>' + esc(t('cl_ga')) + '</span><span class="gx-mono" style="font-weight:700">' + (iv.goals || 0) + ' / ' + (iv.assists || 0) + '</span></div>' +
-        (iv.attack_share ? '<div class="gx-clrow"><span>' + esc(t('cl_att_share')) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(iv.attack_share) + '</span></div>' : '') + '</div></div>';
+        s90('xG/90', iv.xg90, 'production') + s90(t('cl_shots90'), iv.shots90, 'volume') + s90(t('cl_sot90'), iv.sot90, 'accuracy') + s90('xA/90', iv.xa90, 'creation') +
+        '<div class="gx-clrow"><span>' + esc(t('cl_ga')) + '</span><span class="gx-mono" style="font-weight:700">' + (iv.goals || 0) + ' / ' + (iv.assists || 0) + '</span></div></div></div>';
       var read = '';
       if (iv.scout.read) {
         var str = (iv.scout.read.strengths || []).map(function (x) { return '<div class="gx-finding"><span class="gx-finding-dot" style="background:var(--gx-pos)"></span>' + esc(LANG === 'en' ? x.en : x.es) + '</div>'; }).join('');
         var lim = iv.scout.read.limit ? '<div class="gx-finding"><span class="gx-finding-dot" style="background:#F09595"></span>' + esc(LANG === 'en' ? iv.scout.read.limit.en : iv.scout.read.limit.es) + '</div>' : '';
         if (str || lim) read = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('search') + esc(t('cl_scout')) + '</span></div><div class="gx-findings" style="padding:10px 16px 12px">' + str + lim + '</div></div>';
       }
-      intelHtml = radar + stats + read;
+      // MATCH BY MATCH — tabla partido a partido (como el Mundial)
+      var mbm = '';
+      if ((p.matches || []).length) {
+        var rows = p.matches.map(function (r) {
+          return '<tr><td class="l gx-dim" style="font-size:10.5px">' + esc(fmtDate(r.date)) + '</td><td class="l">' + esc(String(r.opp || '').split(' · ')[0]) + '</td><td class="gx-mono">' + (r.min || 0) + '\'</td><td class="gx-mono">' + (r.sh != null ? r.sh : '·') + '</td><td class="gx-mono">' + (r.sot != null ? r.sot : '·') + '</td><td class="gx-mono ' + (r.g ? 'gx-pos' : '') + '" style="font-weight:700">' + (r.g || 0) + '</td><td class="gx-mono gx-dim">' + (r.xg != null ? r.xg.toFixed(2) : '·') + '</td></tr>';
+        }).join('');
+        mbm = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_mbm')) + '</span></div>' +
+          '<table class="gx-table"><thead><tr><th class="l">' + esc(t('cl_date')) + '</th><th class="l">' + esc(t('cl_opp')) + '</th><th>MIN</th><th>' + esc(t('cl_sh')) + '</th><th>SOT</th><th>' + esc(t('cl_g')) + '</th><th>xG</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      }
+      intelHtml = radar + stats + read + mbm;
     } else {
       intelHtml = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
     }

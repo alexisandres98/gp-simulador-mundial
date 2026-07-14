@@ -2941,6 +2941,7 @@ async function clubScoresSync({ force = false } = {}) {
       if ((r.status === 'final' && age > 3 * 3600e3) || age > 6 * 3600e3) delete db.clubResults[k];
     }
     try { sampleClubMomentum(RT); } catch { /* momentum no crítico */ } // F1.2: muestrea la prob GP en vivo de los partidos en juego
+    try { if (anyChange) settleClubDailyPicks(); } catch { /* settle no crítico */ } // F3.3: liquida picks de clubes al llegar finales
     _clubScoresLast = Date.now();
     if (anyChange) { save(); broadcast('update', { reason: 'marcadores de clubes', ts: Date.now() }); }
   } catch (e) { out.error = e.message; }
@@ -3798,6 +3799,186 @@ function clubObserverFindings(tmId) {
     }
     return out.sort((x, y) => y.prob_miss - x.prob_miss);
   } catch { return []; }
+}
+// ===== FASE CLUBES F3.3: PICKS DE CLUBES = MISMO PIPELINE DEL MUNDIAL =====
+// curate() y settleOne() son EXACTAMENTE los del Mundial (pick-engine); solo cambia la fuente de datos:
+// mercado = cuotas del sweep de clubes (consenso no-vig + mejor cuota con las MISMAS funciones del scanner),
+// modelo = matchProbs con Elo dinámico (1X2, gate-approved por liga) + goal engine con λ de la liga (totales).
+// REGLAS DURAS de la casa intactas: SOLID solo en ligas con gate 1X2 approved (clubs-gate-1); GOALS pasa por
+// familyApproved = goals_backtest approved por liga (hoy ninguna → curate las bloquea solo, igual que el
+// GOAL_FAMILY_APPROVED del Mundial). Shadow: db.clubDailyPicks separado (el settlement del Mundial itera
+// fixtures del Mundial), mismo shape de registro; el feed las fusiona para admin.
+let _clubPicksRunning = false, _clubPicksLast = null;
+async function buildClubDailyPicks({ dryRun = false } = {}) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'sin DB' };
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return { skipped: 'sin ratings' }; } }
+  const RT = global._clubsRatings;
+  const qevents = db.clubsQuoteEvents || {};
+  if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep' };
+  const { consensus, freshQuotes } = require('./market-scanner/scanner');
+  const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events: qevents, now: Date.now() }).catch(() => []);
+  if (!markets.length) return { skipped: 'sin mercados frescos' };
+  const now = Date.now();
+  const minGroups = marketScanner.params.minIndependentGroups || 2;
+  const events = [], goalMarkets = [];
+  const out = { markets: markets.length, events_1x2: 0, goal_markets: 0, by_league: {} };
+  for (const mk of markets) {
+    const meta = qevents[mk.event_id]; if (!meta) continue;
+    const lg = meta.league, L = RT.leagues[lg]; if (!L) continue;
+    const kickoff = mk.kickoff || meta.kickoff;
+    if (!kickoff || +new Date(kickoff) <= now) continue; // solo prepartido (misma regla del Mundial)
+    const hId = resolveClubId(lg, meta.home || mk.home), aId = resolveClubId(lg, meta.away || mk.away);
+    if (!hId || !aId || hId === aId) continue;
+    const fresh = freshQuotes(mk.quotes || [], now, 75 * 60e3);
+    const cons = consensus(mk, fresh, { minGroups });
+    if (!cons || cons.status !== 'ok') continue;
+    const bestOf = (o) => { let b = null, bk = null; for (const q of fresh) { if (q.outcome === o && q.odds_decimal > (b || 0)) { b = q.odds_decimal; bk = q.venue; } } return { odds: b, book: bk }; };
+    const booksOf = (o) => new Set(fresh.filter(q => q.outcome === o).map(q => q.venue)).size;
+    const st = out.by_league[lg] = out.by_league[lg] || { solid_gate: (L.backtest && L.backtest.status) || null, goals_gate: (L.goals_backtest && L.goals_backtest.status) || null, events: 0, totals: 0 };
+    if (mk.market_family === '1x2') {
+      // gate duro por liga: SOLID (1X2 anclado al mercado) solo en ligas clubs-gate-1 approved
+      if (!(L.backtest && L.backtest.status === 'approved')) continue;
+      const rh = clubElo(lg, hId), ra = clubElo(lg, aId);
+      const pr = matchProbs(rh + (L.hfa || 60), ra); // MISMO modelo 1X2 del cockpit (Elo dinámico + hfa de liga)
+      const sel = {};
+      for (const o of ['home', 'draw', 'away']) { const b = bestOf(o); sel[o] = { model: pr[o], market: cons.fair[o], bestOdds: b.odds, bestBook: b.book, books: booksOf(o) }; }
+      events.push({ eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff, selections: sel });
+      out.events_1x2++; st.events++;
+    } else if (mk.market_family === 'match_total') {
+      // MISMO goal engine del cockpit: λ ataque/defensa de la liga (fallback Elo) + ajuste del observer si activo
+      let l = null;
+      try { const gf = clubGoalsFit(lg); if (gf) l = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId); } catch { l = null; }
+      if (!l) { const rh = clubElo(lg, hId), ra = clubElo(lg, aId); l = lambdas(rh + (L.hfa || 60), ra); }
+      const fH = clubObserverLambdaFactor(lg, hId), fA = clubObserverLambdaFactor(lg, aId);
+      const g = require('./goal-engine/distribution').goalModelOutput(l[0] * fH, l[1] * fA);
+      const ou = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - mk.line) < 0.01);
+      if (!ou) continue;
+      const famApproved = !!(L.goals_backtest && L.goals_backtest.status === 'approved');
+      for (const side of ['over', 'under']) {
+        const model = side === 'over' ? (ou.over != null ? ou.over : ou.o) : (ou.under != null ? ou.under : ou.u);
+        const market = cons.fair[side]; if (market == null) continue;
+        const b = bestOf(side);
+        goalMarkets.push({
+          eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff,
+          marketId: `TOTAL_GOALS_${side.toUpperCase()}_${String(mk.line).replace('.', '_')}`,
+          family: 'match_total', side, line: mk.line,
+          modelProb: model, marketProb: market, edgePp: model - market,
+          bestOdds: b.odds, bestBook: b.book, books: booksOf(side), familyApproved: famApproved,
+          lh: +(l[0] * fH).toFixed(2), la: +(l[1] * fA).toFixed(2), // λ del modelo (para la narrativa)
+        });
+        out.goal_markets++; st.totals++;
+      }
+    }
+  }
+  // MISMO curate del Mundial (todas sus reglas: anclaje, coherencia de dirección, edge mínimo, casas mínimas)
+  const { curate } = require('./pick-engine/curate');
+  const res = curate({ events, goalMarkets });
+  out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };
+  // dry-run: devolver candidatos + bloqueos sin persistir (verificación del mecanismo con cuotas reales)
+  if (dryRun) {
+    out.candidates = {
+      solid: res.all.solid.map(s => ({ league: (events.find(e => e.eventId === s.eventId) || {}).league, home: s.home, away: s.away, selection: s.selection, odds: s.bestOdds, conf: s.confidence != null ? +s.confidence.toFixed(3) : null, eligible: s.eligible, blockers: s.blockers })),
+      goals: res.all.goals.map(g => ({ league: (goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, eligible: g.eligible, blockers: g.blockers })),
+    };
+    return out;
+  }
+  // Persistencia: mismo shape de registro del Mundial + league; idempotente por pick_id; SUPERSEDED por
+  // (evento, familia) conservando la más reciente (misma regla anti-contradicción del Mundial).
+  const { compose } = require('./pick-engine/narrative');
+  const stable = (key) => 'cdp_' + require('crypto').createHash('sha256').update(key).digest('hex').slice(0, 16);
+  const mkRecord = (family, ev, fields, key) => ({
+    pick_id: stable(key), family, is_club: true, league: fields.league,
+    competition_name: (RT.leagues[fields.league] && RT.leagues[fields.league].name) || fields.league,
+    event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
+    selection_code: fields.selection_code || null, market_id: fields.market_id || null, side: fields.side || null, line: fields.line != null ? fields.line : null,
+    best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
+    model_prob: fields.model_prob != null ? fields.model_prob : null, market_prob: fields.market_prob != null ? fields.market_prob : null,
+    confidence: fields.confidence != null ? fields.confidence : null, edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
+    why_es: fields.why && fields.why.es, why_en: fields.why && fields.why.en,
+    status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
+  });
+  const fresh = [];
+  for (const s of res.eligible.solid) {
+    const ev = events.find(e => e.eventId === s.eventId) || {};
+    const why = compose([
+      { code: 'MARKET_ANCHOR', w: 3, books: s.books },
+      ...(s.modelProb > s.marketProb ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : []),
+    ]);
+    fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why }, s.eventId + '|SOLID|' + s.selection));
+  }
+  const bestGoalByEvent = {};
+  for (const g of res.eligible.goals) { const cur = bestGoalByEvent[g.eventId]; if (!cur || g.edgePp > cur.edgePp) bestGoalByEvent[g.eventId] = g; }
+  for (const g of Object.values(bestGoalByEvent)) {
+    const gm = goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
+    const why = compose([
+      ...(g.side === 'over' && gm.lh != null ? [{ code: 'GOALS_VOLUME_BOTH', w: 3, h: gm.lh, a: gm.la }] : []),
+      ...(g.side === 'under' ? [{ code: 'GOALS_DEFENSES_TIGHT', w: 3 }] : []),
+      ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
+    ]);
+    fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why }, g.eventId + '|GOALS|' + g.marketId));
+  }
+  db.clubDailyPicks = db.clubDailyPicks || [];
+  const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
+  let added = 0;
+  for (const p of fresh) {
+    if (byId.has(p.pick_id)) continue;
+    // anti-contradicción del Mundial: 1 ACTIVE por (evento, familia) — la nueva SUPERSEDE a la anterior
+    for (const old of db.clubDailyPicks) {
+      if (old.status === 'ACTIVE' && old.family === p.family && old.event.canonical_event_id === p.event.canonical_event_id) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); }
+    }
+    db.clubDailyPicks.push(p); added++;
+  }
+  if (added) save();
+  out.added = added; out.total = db.clubDailyPicks.length;
+  return out;
+}
+// Liquidación: MISMO settleOne del Mundial con el marcador final de clubResults (ligas domésticas = 90').
+function settleClubDailyPicks() {
+  const { settleOne } = require('./pick-engine/dailyPicks');
+  let settled = 0;
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'ACTIVE') continue;
+    const r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
+    if (!r || r.status !== 'final') continue;
+    const homeIsH = r.home_id === p.event.home_team_id;
+    const rc = settleOne(p, { homeGoals: homeIsH ? r.hg : r.ag, awayGoals: homeIsH ? r.ag : r.hg });
+    if (rc && rc !== 'PENDING') { p.status = 'SETTLED'; p.result_code = rc; p.settled_at = new Date().toISOString(); settled++; }
+  }
+  if (settled) save();
+  return { settled };
+}
+// track record de clubes por liga/familia (misma matemática de unidades del Mundial: 1u por pick)
+function clubDailyPicksTrackRecord() {
+  const agg = {};
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'SETTLED' || !['WIN', 'LOSS', 'PUSH'].includes(p.result_code)) continue;
+    for (const key of ['overall', p.league, p.family]) {
+      const a = agg[key] = agg[key] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl: 0 };
+      a.n++;
+      if (p.result_code === 'WIN') { a.wins++; a.pnl += (Number(p.best_odds) || 1) - 1; }
+      else if (p.result_code === 'LOSS') { a.losses++; a.pnl -= 1; }
+      else a.pushes++;
+    }
+  }
+  for (const k in agg) { const a = agg[k]; const dec = a.wins + a.losses; a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi = a.n ? +(a.pnl / a.n).toFixed(3) : null; a.pnl = +a.pnl.toFixed(2); }
+  return agg;
+}
+async function evaluateClubDailyPicks() {
+  if (!dailyPicksOn() || !clubsShadowOn()) return { skipped: 'off' };
+  if (_clubPicksRunning) return { skipped: 'running' };
+  _clubPicksRunning = true;
+  try {
+    const b = await buildClubDailyPicks();
+    const s = settleClubDailyPicks();
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s };
+    if (b.added || s.settled) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, eligible: b.eligible }));
+    return _clubPicksLast;
+  } finally { _clubPicksRunning = false; }
+}
+if (dailyPicksOn() && clubsShadowOn()) {
+  setTimeout(() => evaluateClubDailyPicks().catch(() => { }), 180 * 1000);
+  setInterval(() => evaluateClubDailyPicks().catch(() => { }), 15 * 60 * 1000);
 }
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
@@ -4804,6 +4985,22 @@ const server = http.createServer(async (req, res) => {
         // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
         if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);
         if (!(betaUser && betaUser.isAdmin)) items = items.filter(f => EXPERIMENT_FAMS.indexOf(f.family) < 0); // experimento: solo admin, siempre
+        // F3.3: PICKS DE CLUBES (shadow) — SOLO admin real, sin ?asplan= (no-admins byte-idénticos). Mismo shape
+        // + competition_name (chip de liga) + club_eid (el click abre el cockpit de club).
+        if (betaUser && betaUser.isAdmin && !url.searchParams.get('asplan') && clubsShadowFlagOn()) {
+          const clubActive = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE')
+            .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
+            .map(x => ({
+              pick_id: x.pick_id, family: x.family, event_id: null, club_eid: x.event.club_eid || null,
+              competition_name: x.competition_name || null,
+              home: x.event.home, away: x.event.away,
+              home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
+              selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: null,
+              odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
+              why_es: x.why_es || null, why_en: x.why_en || null,
+            }));
+          items = items.concat(clubActive);
+        }
         // ===== GATING POR PLAN (inerte con GP_PLANS_ENFORCED=off → todos ven todo) =====
         // FREE: 1 pick del día (la SOLID/ganador de mayor confianza), visible recién 60 min antes del kickoff
         // ("con delay"). PRO: todas las familias actuales (ganador+goles+combo). SHARP: además las familias
@@ -6126,6 +6323,15 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await clubScoresSync({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
+    }
+    // PICKS DE CLUBES (F3.3): verificación + dry-run + disparo manual (misma key). GET ?dry=1 muestra qué
+    // produciría curate (candidatos + blockers) SIN persistir; GET normal = estado + track record; POST = evaluar.
+    if (p === '/api/internal/clubs-picks') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await evaluateClubDailyPicks().catch(e => ({ error: e.message })); return json(res, 200, r); }
+      if (url.searchParams.get('dry')) { const r = await buildClubDailyPicks({ dryRun: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), picks: (db.clubDailyPicks || []).slice(-100) });
     }
     // OBSERVER DE CLUBES (F2.3): verificación read-only + disparo manual (misma key). GET expone assessments+λ.
     if (p === '/api/internal/clubs-observer') {

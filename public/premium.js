@@ -1273,11 +1273,12 @@
     // TODAS las picks abren el GP Intelligence del partido: canónicas por event_id (cockpit completo + mercados),
     // sintéticas por team-ids (teams-HOME-AWAY → base→contexto→GP + proyección de goles, vía h2h deep). Si hay 3 picks
     // del mismo partido, cada una abre el mismo análisis del partido.
-    var openId = p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null);
+    // picks de CLUB (shadow admin): club_eid abre el cockpit de club (mismo camino renderMatch cl-)
+    var openId = p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null);
     var clickable = !!openId;
     var openAttr = clickable ? ' data-openmatch="' + esc(openId) + '"' : '';
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
-      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + '</span>' +
+      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') + '</span>' +
       (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') + '</div>' +
       (opts.hideMatch ? '' : '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>') +

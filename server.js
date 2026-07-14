@@ -2649,6 +2649,29 @@ function clubEloReconcileFit() {
   const fa = (RT._meta && RT._meta.fitted_at) || 'none';
   if (db.clubElosFitAt !== fa) { db.clubElos = {}; db.clubElosFitAt = fa; }
 }
+// FORMA reciente de ambos equipos + H2H directo del cruce, desde results-<liga>.json (memo). Reusa el mismo
+// archivo que /api/clubs/team-form. Devuelve { home:[W/D/L de local], away:[...], h2h:[últimos directos] }.
+function clubMatchForm(league, homeId, awayId) {
+  global._clubsResults = global._clubsResults || {};
+  if (!global._clubsResults[league]) {
+    try { global._clubsResults[league] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', `results-${league}.json`), 'utf8')).rows || []; }
+    catch { global._clubsResults[league] = []; }
+  }
+  const rows = global._clubsResults[league].filter(r => r.hg != null && r.ag != null);
+  const formOf = (tid) => rows
+    .filter(r => r.home_id === tid || r.away_id === tid)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .slice(0, 5)
+    .map(r => { const gf = r.home_id === tid ? r.hg : r.ag, ga = r.home_id === tid ? r.ag : r.hg; return gf > ga ? 'W' : gf < ga ? 'L' : 'D'; });
+  const h2h = rows
+    .filter(r => (r.home_id === homeId && r.away_id === awayId) || (r.home_id === awayId && r.away_id === homeId))
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .slice(0, 5)
+    .map(r => ({ date: r.date, hg: r.hg, ag: r.ag, home_id: r.home_id }));
+  const home = formOf(homeId), away = formOf(awayId);
+  if (!home.length && !away.length && !h2h.length) return null;
+  return { home, away, h2h };
+}
 // F1.5: MERCADOS del cruce de clubes — mejor cuota por resultado (1X2) + O/U por línea, desde las cuotas que
 // el sweep dejó en sportsbook_goal_quote_current (ids sintéticos por liga+par). Empareja el cruce (liga+ids) a
 // su ceid buscando en db.clubsQuoteEvents el evento cuyos nombres resuelven a esos ids. Read-only.
@@ -6819,6 +6842,9 @@ const server = http.createServer(async (req, res) => {
         // Mundial sobre el player-history de la liga. Solo intra-liga (el fit es por liga).
         let matchIntel = null;
         if (!cross) { try { matchIntel = require('./player-intel/clubsFit').clubMatchIntel(hl, hId, aId, l[0], l[1]); } catch { matchIntel = null; } }
+        // FORMA reciente de ambos equipos + H2H (enfrentamientos directos) — desde results-<liga>.json.
+        let form = null;
+        if (!cross) { try { form = clubMatchForm(hl, hId, aId); } catch { form = null; } }
         return json(res, 200, {
           home: { id: hId, name: (TH && TH.name) || String(url.searchParams.get('hn') || '—'), elo: rh, known: !!TH, league: hl, league_name: LH.name },
           away: { id: aId, name: (TA && TA.name) || String(url.searchParams.get('an') || '—'), elo: ra, known: !!TA, league: al, league_name: LA.name },
@@ -6833,6 +6859,7 @@ const server = http.createServer(async (req, res) => {
           ou_lines: (g.over_under || []).map(x => ({ line: (x.line != null ? x.line : x.l), over: +(x.over != null ? x.over : x.o).toFixed(3) })),
           markets,
           match_intel: matchIntel,
+          form, // { home:[W/D/L], away:[...], h2h:[{date,hg,ag,home_id}] }
         });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }

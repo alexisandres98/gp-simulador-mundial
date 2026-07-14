@@ -1315,13 +1315,14 @@
         var ell = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
         return '<tr class="gx-row"><td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '">' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</b><span style="' + ell + '">' + esc(String(v.league_name || v.league).split(' · ')[0]) + ' · ' + esc(v.best_book || '—') + ' · ' + v.books + ' ' + esc(t('books')) + '</span></div></td>' +
           '<td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(selN(v)) + '">' + clubBadge(selId(v)) + ' ' + esc(selN(v)) + ' ' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</b><span class="gx-mono" style="' + ell + '">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + '</span></div></td>' +
-          '<td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span></td>' +
+          '<td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span>' + (v.our > 0 && v.best_odds > 1 ? ' ' + stakeCalcBtn(v.our, Number(v.best_odds), selN(v), 'gp') : '') + '</td>' +
           '<td class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</td></tr>';
       }).join('') + '</tbody></table>';
     var mob = rows.map(function (v) {
       return '<div class="gx-mcard"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">' + leagueLogo(v.league) + esc(String(v.league_name || v.league).split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</div>' +
         '<div class="gx-cell-team" style="margin:6px 0">' + clubBadge(selId(v)) + '<div class="gx-teamnames"><b>' + esc(selN(v)) + '</b><span>' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</span></div></div>' +
-        '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + ' · ' + odd(v.best_odds) + '</span><span class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</span></div></div>';
+        '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + ' · ' + odd(v.best_odds) + '</span><span class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</span></div>' +
+        (v.our > 0 && v.best_odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v.our, Number(v.best_odds), selN(v), 'gp') + '</div>' : '') + '</div>';
     }).join('');
     return '<div class="gx-panel gx-board" style="margin-top:14px"><div class="gx-ph"><span class="gx-label">' + ic('shield-half') + esc(t('cl_value_board')) + '</span><span class="gx-ph-extra"><span class="gx-clgate sh">SHADOW</span></span></div>' +
       '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>' +

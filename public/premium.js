@@ -163,7 +163,7 @@
       cl_top: 'Top', cl_of_pos: 'de su posición', cl_minutes: 'Minutos', cl_startsapps: 'Titular/PJ', cl_goals: 'Goles',
       cl_mbm: 'Partido a partido', cl_date: 'Fecha', cl_opp: 'Rival', cl_sh: 'REM', cl_g: 'G',
       cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
-      cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos',
+      cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos', cl_no_lineups: 'Alineación no publicada aún (llega cerca del partido).', nav_lineups: 'Alineaciones',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -420,7 +420,7 @@
       cl_top: 'Top', cl_of_pos: 'of position', cl_minutes: 'Minutes', cl_startsapps: 'Starts/Apps', cl_goals: 'Goals',
       cl_mbm: 'Match by match', cl_date: 'Date', cl_opp: 'Opponent', cl_sh: 'SH', cl_g: 'G',
       cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
-      cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head',
+      cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head', cl_no_lineups: 'Lineup not published yet (arrives near kickoff).', nav_lineups: 'Lineups',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2502,13 +2502,14 @@
       rowsHtml([[t('cl_xg'), m.xg.home + ' – ' + m.xg.away], [t('cl_o25'), m.over25 != null ? pct0(m.over25) : null], [t('cl_btts'), m.btts != null ? pct0(m.btts) : null]]) + '</div></div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
       (m.top_scores || []).map(function (s) { return '<div class="gx-clrow"><span class="gx-mono">' + esc(s.score) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(s.p) + '</span></div>'; }).join('') + '</div></div>';
-    var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['forma', t('cl_tab_form')], ['mercados', t('cl_markets')]];
+    var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['forma', t('cl_tab_form')], ['alineaciones', t('nav_lineups') || 'Alineaciones'], ['mercados', t('cl_markets')]];
     if (vRows.length) TABS.push(['value', t('cl_value')]);
     var tabNav = '<nav class="gx-mv-nav" id="gx-clm-tabs">' + TABS.map(function (x) { return '<a data-clmtab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(x[1]) + '</a>'; }).join('') + '</nav>';
     var body;
     if (tab === 'goles') body = goalsPanel;
     else if (tab === 'intel') body = clubIntelHtml(m, lgk) || ('<div class="gx-panel"><div class="gx-empty">' + ic('target-arrow') + esc(t('cl_player_soon')) + '</div></div>');
     else if (tab === 'forma') body = clubFormHtml(m);
+    else if (tab === 'alineaciones') body = clubLineupsHtml(eid, lgk, hId, aId);
     else if (tab === 'mercados') body = clubMarketsHtml(m) || ('<div class="gx-panel"><div class="gx-empty">' + ic('table') + esc(t('cl_no_markets')) + '</div></div>');
     else if (tab === 'value') body = valueHtml || ('<div class="gx-panel"><div class="gx-empty">' + ic('trending-up') + esc(t('opp_value_empty')) + '</div></div>');
     else body = probPanel + goalsPanel; // resumen
@@ -2522,6 +2523,32 @@
     [].forEach.call(mv.querySelectorAll('[data-cplayer]'), function (el) {
       el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
     });
+  }
+  // ALINEACIONES del cruce (Lineups del Mundial): XI + formación + DT de cada equipo, desde API-Football.
+  // Reusa las clases gx-lu-* del Mundial. Lazy-fetch de /api/clubs/lineups.
+  function clubLineupsHtml(eid, lgk, hId, aId) {
+    S.clu = S.clu || {};
+    if (S.clu[eid] === undefined) {
+      S.clu[eid] = null;
+      fetch('/api/clubs/lineups?league=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&a=' + encodeURIComponent(aId), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.clu[eid] = j || { available: false }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
+    }
+    var lu = S.clu[eid];
+    if (!lu || !lu.available) return '<div class="gx-panel"><div class="gx-empty">' + ic('layout-board') + esc(t('cl_no_lineups')) + '</div></div>';
+    var m = S.clm[eid] || {};
+    var side = function (s, id, name) {
+      if (!s) return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div><div class="gx-dim" style="font-size:12px;padding:6px 0">' + esc(t('e_lineups')) + '</div></div>';
+      var xi = (s.xi || []).map(function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.num != null ? p.num : '–') + '</span><b>' + esc(p.name) + '</b>' + (p.pos ? '<span class="gx-dim gx-lu-pos">' + esc(p.pos) + '</span>' : '') + '</div>'; }).join('');
+      var subs = (s.bench || []).map(function (p) { return '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">–</span><b>' + esc(p.name) + '</b></div>'; }).join('');
+      return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div>' +
+        '<div class="gx-lu-meta gx-dim">' + (s.formation ? esc(t('formation')) + ' <b>' + esc(s.formation) + '</b>' : '') + (s.coach ? ' · ' + esc(s.coach) : '') + '</div>' +
+        (xi ? '<div class="gx-lu-xi">' + xi + '</div>' : '') +
+        (subs ? '<div class="gx-lu-sub-h gx-label">' + esc(t('lineup_subs')) + '</div><div class="gx-lu-subs">' + subs + '</div>' : '') + '</div>';
+    };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('layout-board') + esc(t('nav_lineups') || 'Alineaciones') + '</span></div><div class="gx-lu-grid" style="padding:8px 14px 14px">' +
+      side(lu.home, hId, (m.home && m.home.name) || '') + side(lu.away, aId, (m.away && m.away.name) || '') + '</div></div>';
   }
   // FORMA + H2H del cruce (Recent form del Mundial): chips W/D/L de ambos equipos + últimos enfrentamientos directos.
   function clubFormHtml(m) {

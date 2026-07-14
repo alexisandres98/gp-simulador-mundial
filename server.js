@@ -3979,6 +3979,15 @@ function loadClubPlayerPhotos() {
 }
 loadClubPlayerPhotos();
 setInterval(loadClubPlayerPhotos, 12 * 3600 * 1000);
+// F1.1: mapa AF (tm_ id → af team id) por liga, para alineaciones/eventos de API-Football por fixture de club.
+function loadClubAfMap() {
+  try { global._clubAfMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'af-team-map.json'), 'utf8')); }
+  catch { global._clubAfMap = global._clubAfMap || {}; }
+}
+loadClubAfMap();
+setInterval(loadClubAfMap, 12 * 3600 * 1000);
+// liga nuestra → league id de API-Football (mismos ids del generador de fotos)
+const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61 };
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
@@ -5802,6 +5811,38 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await clubScoresSync({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
+    }
+    // ALINEACIONES de un cruce de club (F1.1): XI + formación + DT de cada equipo, desde API-Football. Busca el
+    // fixture AF del cruce (próximo o reciente) por los af team ids del mapa. Memo por cruce 30 min.
+    if (p === '/api/clubs/lineups') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const league = String(url.searchParams.get('league') || ''), hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
+      const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+      const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
+      const afH = afMap[hId] && afMap[hId].af_id, afA = afMap[aId] && afMap[aId].af_id;
+      if (!afk || !afLg || !afH || !afA) return json(res, 200, { available: false, reason: 'sin mapeo' });
+      global._clubLineups = global._clubLineups || {};
+      const ck = league + '|' + hId + '|' + aId;
+      let c = global._clubLineups[ck];
+      if (!c || Date.now() - c.at > 30 * 60e3) {
+        c = { at: Date.now(), data: null };
+        try {
+          const af = async (q) => { const r = await fetch('https://v3.football.api-sports.io' + q, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) }); const j = r.ok ? await r.json() : null; return (j && j.response) || []; };
+          // fixture del cruce: próximos del home filtrando por el away; si no, el más reciente entre ellos
+          let fxs = await af(`/fixtures?team=${afH}&next=10`);
+          let fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
+          if (!fx) { fxs = await af(`/fixtures?team=${afH}&last=10`); fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA)); }
+          if (fx) {
+            const lus = await af(`/fixtures/lineups?fixture=${fx.fixture.id}`);
+            const side = (afTeamId) => { const l = lus.find(x => x.team && x.team.id === afTeamId); if (!l) return null; return { formation: l.formation || null, coach: (l.coach && l.coach.name) || null, xi: (l.startXI || []).map(p => ({ name: p.player.name, pos: p.player.pos || null, num: p.player.number || null })), bench: (l.substitutes || []).slice(0, 9).map(p => ({ name: p.player.name })) }; };
+            c.data = { fixture_date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, home: side(afH), away: side(afA) };
+          }
+        } catch { /* AF sin datos este ciclo */ }
+        global._clubLineups[ck] = c;
+      }
+      if (!c.data || (!c.data.home && !c.data.away)) return json(res, 200, { available: false, reason: 'sin alineación publicada' });
+      return json(res, 200, { available: true, ...c.data });
     }
     // FORMA + RESULTADOS de un equipo de club (F2.1): últimos partidos con marcador (results-<liga>.json).
     if (p === '/api/clubs/team-form') {

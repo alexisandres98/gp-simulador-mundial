@@ -43,7 +43,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Prob 1X2 + Contexto | ✔ tab Context (bajas AF+descanso+forma, 3ae57c5); ajuste al modelo ✘ F2.3 |
 | Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa) |
 | Momentum GP en vivo (SVG, dots de gol) | ✘ F1.2 |
-| Alineaciones (XI + formación + DT) | ✔ (afc6cff); en-cancha/eventos vivos ✘ |
+| Alineaciones (XI + formación + DT) | ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87)**; en-cancha/eventos vivos ✘ |
 | Panel xG del partido (post-partido, 1T/2T, ocasiones) | ✘ F1.3 (TSA lo da, mismo patrón xg-report) |
 | Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✘ F2.2+F2.3 |
 | Hallazgos de inteligencia (observer narrado) | ✘ F2.3 |
@@ -145,7 +145,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 - [ ] **F0.5 Fixtures ampliados**: ventana upcoming de 12 → toda la jornada visible + past reciente (para Forma/Resultados).
 
 ### F1 — PARTIDO DE CLUB = PARTIDO DEL MUNDIAL (cockpit)
-- [ ] **F1.1 Alineaciones/eventos/stats en vivo**: data-providers AF por fixture de club (mapear fixture AF↔par TSA por liga+kickoff+nombres); XI en cancha clickeable a perfiles (cplayer), eventos (goles/cards/subs), stats del partido. Mismo normalizador del Mundial.
+- [½] **F1.1 Alineaciones/eventos/stats en vivo**: alineaciones AF por fixture ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87** — resolver nombre AF→pl_ id del roster TSA, clubRosterResolver/clubRosterRows en server, clubPlayerLink en cliente, calco de pidxResolve/playerLink del Mundial). FALTA: eventos en vivo (goles/cards/subs) + XI en-cancha (pitch) + stats del partido cuando juegan. Mismo normalizador del Mundial.
 - [ ] **F1.2 GP% en vivo + Momentum**: prob del modelo condicionada al marcador/minuto (mismo mecanismo del Mundial) + sampler momentum (db.clubMomentum) + SVG del cockpit.
 - [ ] **F1.3 xG post-partido**: TSA player-stats agregadas → panel "xG del partido" (total/por equipo/remates/ocasiones) — mismo layout del Mundial.
 - [ ] **F1.4 Motor de contexto de clubes**: lesiones AF por liga + descanso (días desde último partido, congestión) + forma (últimos 5) → ajuste base→contexto→GP con desglose visible (mismo UI del Mundial).

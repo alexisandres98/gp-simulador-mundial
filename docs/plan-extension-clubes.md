@@ -63,7 +63,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 - Context → ✘ F1.4
 - Recent form → ✘ F2.1
 - Lineups → ✘ F1.1
-- Match intel → ✘ F2.2/F2.3
+- Match intel → ½ anotadores probables ✔ (f09deed); disponibilidad ✘ F2.3
 - Goal projection → ✔
 La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board tabla, Picks cards, Arbitraje/precio-atrasado), NUNCA en el cockpit del partido.
 

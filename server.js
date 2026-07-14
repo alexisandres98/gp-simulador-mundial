@@ -83,6 +83,14 @@ const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
 // DB_FILE puede apuntar a un disco persistente montado (p.ej. /data/db.json en Render Starter)
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'db.json');
+// Datos GRANDES de clubes (player-history/results/fotos/af-map ~17MB) NO viven en git (inflaban el clone del
+// deploy a 114MB → builds de 17min). Se sirven del disco persistente <dir(DB_FILE)>/clubs/ si están ahí;
+// fallback al repo (data/clubs/) para dev y para los archivos chicos (ratings.json queda versionado).
+const CLUB_DATA_DISK = path.join(path.dirname(DB_FILE), 'clubs');
+function clubDataFile(name) {
+  try { const d = path.join(CLUB_DATA_DISK, name); if (fs.existsSync(d)) return d; } catch { /* */ }
+  return path.join(__dirname, 'data', 'clubs', name);
+}
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // ---------- persistencia ----------
@@ -2654,7 +2662,7 @@ function clubEloReconcileFit() {
 function clubMatchForm(league, homeId, awayId) {
   global._clubsResults = global._clubsResults || {};
   if (!global._clubsResults[league]) {
-    try { global._clubsResults[league] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', `results-${league}.json`), 'utf8')).rows || []; }
+    try { global._clubsResults[league] = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || []; }
     catch { global._clubsResults[league] = []; }
   }
   const rows = global._clubsResults[league].filter(r => r.hg != null && r.ag != null);
@@ -3974,14 +3982,14 @@ if (propsOn()) {
 // FASE CLUBES F0.2: mapa de fotos oficiales de jugadores de clubes (data/clubs/player-photos.json, generado
 // offline por scripts/gen-club-player-photos.js). Carga al boot; recarga cada 12h por si el archivo se actualizó.
 function loadClubPlayerPhotos() {
-  try { global._clubPlayerPhotos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'player-photos.json'), 'utf8')); }
+  try { global._clubPlayerPhotos = JSON.parse(fs.readFileSync(clubDataFile('player-photos.json'), 'utf8')); }
   catch { global._clubPlayerPhotos = global._clubPlayerPhotos || {}; }
 }
 loadClubPlayerPhotos();
 setInterval(loadClubPlayerPhotos, 12 * 3600 * 1000);
 // F1.1: mapa AF (tm_ id → af team id) por liga, para alineaciones/eventos de API-Football por fixture de club.
 function loadClubAfMap() {
-  try { global._clubAfMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'af-team-map.json'), 'utf8')); }
+  try { global._clubAfMap = JSON.parse(fs.readFileSync(clubDataFile('af-team-map.json'), 'utf8')); }
   catch { global._clubAfMap = global._clubAfMap || {}; }
 }
 loadClubAfMap();
@@ -5804,6 +5812,33 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await clubsQuotesSweep({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { last: _clubsQuotesOut, last_at: _clubsQuotesLast ? new Date(_clubsQuotesLast).toISOString() : null, events: Object.keys(db.clubsQuoteEvents || {}).length });
     }
+    // SUBIR datos grandes de clubes al disco persistente (/data/clubs/). Body: JSON crudo; ?name=<archivo>&key=.
+    // Así los player-history/results/fotos NO viven en git (deploy rápido) y persisten entre deploys.
+    if (p === '/api/internal/clubs-data' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const name = String(url.searchParams.get('name') || '');
+      if (!/^[a-z0-9_-]+\.json$/i.test(name)) return json(res, 400, { error: 'name inválido' });
+      // lector de body ampliado (los JSONs pueden pesar varios MB)
+      const buf = await new Promise((resolve, reject) => { let b = ''; req.on('data', c => { b += c; if (b.length > 30e6) req.destroy(); }); req.on('end', () => resolve(b)); req.on('error', reject); }).catch(() => null);
+      if (!buf) return json(res, 400, { error: 'body vacío o muy grande' });
+      try { JSON.parse(buf); } catch { return json(res, 400, { error: 'JSON inválido' }); }
+      try { fs.mkdirSync(CLUB_DATA_DISK, { recursive: true }); fs.writeFileSync(path.join(CLUB_DATA_DISK, name), buf); }
+      catch (e) { return json(res, 500, { error: e.message }); }
+      // invalidar memos en memoria para que el nuevo archivo se recargue
+      if (/^results-/.test(name)) { global._clubsResults = {}; }
+      if (name === 'player-photos.json') loadClubPlayerPhotos();
+      if (name === 'af-team-map.json') loadClubAfMap();
+      return json(res, 200, { ok: true, name, bytes: buf.length, dir: CLUB_DATA_DISK });
+    }
+    // LISTAR los datos de clubes en el disco (verificación).
+    if (p === '/api/internal/clubs-data' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      let files = [];
+      try { files = fs.readdirSync(CLUB_DATA_DISK).map(f => ({ name: f, bytes: fs.statSync(path.join(CLUB_DATA_DISK, f)).size })); } catch { /* dir vacío */ }
+      return json(res, 200, { dir: CLUB_DATA_DISK, files });
+    }
     // MARCADORES DE CLUBES (verificación read-only + disparo manual, misma key).
     if (p === '/api/internal/clubs-scores') {
       const xk = process.env.GP_EXPORT_KEY || '';
@@ -5883,7 +5918,7 @@ const server = http.createServer(async (req, res) => {
         // descanso: días desde el último partido (results-<liga>.json)
         try {
           global._clubsResults = global._clubsResults || {};
-          if (!global._clubsResults[league]) { try { global._clubsResults[league] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', `results-${league}.json`), 'utf8')).rows || []; } catch { global._clubsResults[league] = []; } }
+          if (!global._clubsResults[league]) { try { global._clubsResults[league] = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || []; } catch { global._clubsResults[league] = []; } }
           const lastOf = (tid) => { const rs = global._clubsResults[league].filter(r => (r.home_id === tid || r.away_id === tid) && r.hg != null).sort((a, b) => (a.date < b.date ? 1 : -1)); return rs[0] ? Math.round((Date.now() - +new Date(rs[0].date)) / 86400e3) : null; };
           c.home.rest = lastOf(hId); c.away.rest = lastOf(aId);
         } catch { /* sin results */ }
@@ -5903,7 +5938,7 @@ const server = http.createServer(async (req, res) => {
       const nameOf = (tid) => (L && L.ratings && L.ratings[tid] && L.ratings[tid].name) || tid;
       global._clubsResults = global._clubsResults || {};
       if (!global._clubsResults[league]) {
-        try { global._clubsResults[league] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', `results-${league}.json`), 'utf8')).rows || []; }
+        try { global._clubsResults[league] = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || []; }
         catch { global._clubsResults[league] = []; }
       }
       const mine = global._clubsResults[league]

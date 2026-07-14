@@ -13,12 +13,19 @@ const _cache = {}; // liga → { at, fit }
 const _rowsCache = {}; // liga → { at, rows }  (filas crudas jugador-partido, para el match-by-match)
 const TTL = 30 * 60e3;
 
+// Los player-history son grandes (~12MB total) → NO viven en git (inflan el clone del deploy). Se sirven del
+// disco persistente de Render (<dir(DB_FILE)>/clubs/) si están ahí; fallback al repo (data/clubs/) para dev.
+function clubDataFile(name) {
+  const disk = process.env.DB_FILE ? path.join(path.dirname(process.env.DB_FILE), 'clubs', name) : null;
+  if (disk) { try { if (fs.existsSync(disk)) return disk; } catch { /* */ } }
+  return path.join(__dirname, '..', 'data', 'clubs', name);
+}
+
 function leagueRows(league) {
   const c = _rowsCache[league];
   if (c && Date.now() - c.at < TTL) return c.rows;
-  const file = path.join(__dirname, '..', 'data', 'clubs', `player-history-${league}.json`);
   let rows = [];
-  try { rows = (JSON.parse(fs.readFileSync(file, 'utf8')).rows) || []; } catch { rows = []; }
+  try { rows = (JSON.parse(fs.readFileSync(clubDataFile(`player-history-${league}.json`), 'utf8')).rows) || []; } catch { rows = []; }
   _rowsCache[league] = { at: Date.now(), rows };
   return rows;
 }

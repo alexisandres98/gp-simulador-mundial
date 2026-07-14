@@ -2497,18 +2497,19 @@
       '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_note_ctx')) + '</div></div>' +
       '</div>'
     );
-    bindBack(); // los botones data-calc los maneja el delegado global de clicks
+    bindBack();
   }
   // F1.5: matriz de mercados del cruce (mejor cuota por resultado + O/U por línea) + calculadora prellenada
   // con la prob GP — misma calculadora del Mundial (stakeCalcBtn), datos del sweep de cuotas de clubes.
   function clubMarketsHtml(m) {
     var mk = m.markets; if (!mk || (!mk.h2h && !(mk.totals || []).length)) return '';
+    // matriz de mercados = paridad con el tab "Markets" del cockpit del Mundial: cuota + casa por resultado.
+    // SIN calculadora (la calc del Mundial vive en Value/Picks/Arbitraje, NO en el cockpit del partido).
     var rowMk = function (label, prob, q) {
       if (!q) return '';
       return '<div class="gx-clrow" style="align-items:center;gap:8px"><span>' + esc(label) + (prob != null ? ' <span class="gx-dim gx-mono" style="font-size:10.5px">GP ' + pct0(prob) + '</span>' : '') + '</span>' +
         '<span style="display:inline-flex;align-items:center;gap:8px"><span class="gx-mono gx-best" style="font-weight:700"><span class="hi">' + Number(q.odds).toFixed(2) + '</span></span>' +
-        '<span class="gx-dim" style="font-size:10.5px;display:inline-flex;align-items:center">' + bookLogo(q.book) + esc(prettyBook(q.book) || q.book) + '</span>' +
-        (prob != null && prob > 0 && q.odds > 1 ? stakeCalcBtn(prob, Number(q.odds), label, 'gp') : '') + '</span></div>';
+        '<span class="gx-dim" style="font-size:10.5px;display:inline-flex;align-items:center">' + bookLogo(q.book) + esc(prettyBook(q.book) || q.book) + '</span></span></div>';
     };
     var body = '';
     if (mk.h2h) body += rowMk(esc(m.home.name), m.probs.home, mk.h2h.home) + rowMk(t('arb_draw'), m.probs.draw, mk.h2h.draw) + rowMk(esc(m.away.name), m.probs.away, mk.h2h.away);

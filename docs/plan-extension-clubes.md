@@ -55,6 +55,18 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Panel Oportunidad (viniendo de arb/lag) | ✔ |
 | SEO /pronostico/<slug> | ✘ F4.3 |
 
+### 2b. COCKPIT — MAPA REAL (auditoría navegando el Mundial, 14-jul)
+**Estructura**: el cockpit del Mundial usa TABS (`gx-mv-nav`): **Summary · GP probability · Markets · Context · Recent form · Lineups · Match intel · Goal projection**. El de club son paneles en scroll (GP probability · Goal projection · Markets · Value). Para PARIDAD el cockpit de club debe reestructurarse a esos 8 tabs.
+- Summary → ✘ F1.0 (vista resumen: hero+veredicto+precio+tesis)
+- GP probability → ½ (club tiene prob base; falta base→CONTEXTO→GP con factores) F1.4
+- Markets → ✔ (matriz cuota+casa, SIN calc — la calc del Mundial vive en Value/Picks/Arb)
+- Context → ✘ F1.4
+- Recent form → ✘ F2.1
+- Lineups → ✘ F1.1
+- Match intel → ✘ F2.2/F2.3
+- Goal projection → ✔
+La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board tabla, Picks cards, Arbitraje/precio-atrasado), NUNCA en el cockpit del partido.
+
 ### 3. EQUIPOS
 | Pieza (Mundial: /api/teamdetail + tabs) | Clubes |
 |---|---|
@@ -133,7 +145,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 - [ ] **F1.2 GP% en vivo + Momentum**: prob del modelo condicionada al marcador/minuto (mismo mecanismo del Mundial) + sampler momentum (db.clubMomentum) + SVG del cockpit.
 - [ ] **F1.3 xG post-partido**: TSA player-stats agregadas → panel "xG del partido" (total/por equipo/remates/ocasiones) — mismo layout del Mundial.
 - [ ] **F1.4 Motor de contexto de clubes**: lesiones AF por liga + descanso (días desde último partido, congestión) + forma (últimos 5) → ajuste base→contexto→GP con desglose visible (mismo UI del Mundial).
-- [x] **F1.5 Matriz de mercados + calculadora** ✔ prod 945d061: cuotas del partido por casa (ya en sportsbook_goal_quote_current) → tabla mercados del cockpit + botón calculadora (prob GP prellenada).
+- [x] **F1.5 Matriz de mercados** ✔ prod (tab "Markets" del cockpit: cuota+casa por resultado, SIN calc). CORRECCIÓN 14-jul: la calc NO va en el cockpit — vive en Value/Picks/Arb (verificado navegando el Mundial: cockpit calc:0, Value calc:4): cuotas del partido por casa (ya en sportsbook_goal_quote_current) → tabla mercados del cockpit + botón calculadora (prob GP prellenada).
 
 ### F2 — EQUIPOS Y JUGADORES NIVEL MUNDIAL
 - [ ] **F2.1 Vista de equipo completa**: tabs Resumen/Plantilla(fotos)/Forma/Resultados/Noticias; forma y resultados desde finished de TSA + clubResults.

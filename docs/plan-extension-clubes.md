@@ -78,7 +78,7 @@ La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board t
 | Pieza (Mundial: /api/teamdetail + tabs) | Clubes |
 |---|---|
 | Lista con ranking/Elo/prob | ✔ (standings+Elo por liga) |
-| Hero de equipo (probs campeón/avance) | ½ (posición/pts/récord; prob de campeón de liga ✘ F4.1 simulador de temporada) |
+| Hero de equipo (probs campeón/avance) | ✔ (posición/pts/récord + **prob campeón/top/descenso ✔ F4.1 simulador de temporada, 8a1a65f**) |
 | Tab Plantilla con FOTOS clickeables | ✔ (tabs + fotos) |
 | Tab Forma (últimos 5) | ✔ (6bc4169) |
 | Tab Resultados | ✔ (6bc4169) |
@@ -129,7 +129,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 | Grupos → Tabla de posiciones por liga | ✔ (en Equipos) |
 | Bracket → Liguilla/playoffs (MX, MLS) | ✘ F4.2 |
 | Evolución (curva de prob/Elo) | ✘ F0.3 (groundwork snapshots) → F4.2 |
-| Simulador de temporada (Monte Carlo: campeón/descenso/playoffs) | ✘ F4.1 |
+| Simulador de temporada (Monte Carlo: campeón/descenso/playoffs) | ✔ (F4.1, 8a1a65f — calendario restante reconstruido de resultados round-robin) |
 | Elo DINÁMICO (se actualiza con cada resultado) | ✘✘ **F0.4 — CRÍTICO** (hoy el Elo es el del fit offline; sin update por resultado, las probs derivan → exactamente lo que Alexis señaló) |
 
 ### 8. ENGINE / INFRA INVISIBLE
@@ -173,7 +173,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 - [ ] **F3.5 Alertas de picks** por liga.
 
 ### F4 — TORNEO / PLATAFORMA / CRECIMIENTO
-- [ ] **F4.1 Simulador de temporada**: Monte Carlo de la liga (fixtures restantes + Elo dinámico) → prob campeón/top4/descenso por equipo → hero de equipo + value outright de liga (Polymarket tiene mercados de campeón de ligas top).
+- [x] **F4.1 Simulador de temporada** ✔ prod `8a1a65f` (corrección Alexis: NO descartar por data parcial). `clubs-engine/seasonSim.js` projectSeason(): reconstruye el calendario RESTANTE de los resultados jugados (round-robin: cada equipo hospeda a cada otro = doble RR, sin depender de que el proveedor liste fixtures) + Monte Carlo 5000x con Elo dinámico → prob campeón/top-N/descenso + posición proy. `clubSeasonSim(league)` memo (invalida por versión del overlay Elo → se actualiza cada jornada). Panel "Season projection" + Title race en el Summary del club team. FALTA: value outright vs Polymarket (si cotiza campeón de liga) + playoffs/liguilla (MX/MLS).
 - [ ] **F4.2 Bracket/liguilla (MX/MLS) + Evolución por liga** (con F0.3/F0.4 acumulando).
 - [ ] **F4.3 SEO clubes**: /pronostico/<slug> por partido de liga + /jugador/<slug> de clubes + sitemap (el activo compuesto post-Mundial).
 - [ ] **F4.4 Simulador H2H custom** entre clubes (ya existe cross-liga en /api/clubs/match — pulir UI en pestaña Simulador).

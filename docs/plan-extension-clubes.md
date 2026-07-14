@@ -159,7 +159,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 - [ ] **F2.5 Follow + alertas** de clubes (inicio/gol email — la infra del Mundial es genérica).
 
 ### F3 — PICKS DE CLUBES (el producto; TODO gateado por backtest)
-- [ ] **F3.1 Calibración por liga**: con player/team history, backtest walk-forward del goal engine por liga (GOAL_FLOOR/DC_RHO/damp por liga); gates 1X2 ya corridos (clubs-gate-1) — extender a goles.
+- [½] **F3.1 Calibración por liga** — backtest de GOLES CORRIDO (49c1e0b, `goalsBacktest` en clubs-engine/ratings.js, gate clubs-goals-gate-1: n≥120·cal_err≤0.04·skill≥0.005, guardado como `goals_backtest` por liga en ratings.json). **HALLAZGO DURO: NINGUNA liga pasa** — el goal engine predice ~51% over en TODAS las ligas pero el over real varía 34% (argentina) a 64% (csl/bundesliga) → skill negativo/cero. Los λ salen del Elo (capturan 1X2, apenas discriminan el total). **Picks de GOLES BLOQUEADAS** hasta recalibrar el goal engine por liga (GOAL_FLOOR/scale por liga = calibración de NIVEL; y features de xG por equipo del player-history = DISCRIMINACIÓN, el trabajo grande). SOLID (1X2 anclado al mercado) SÍ está legitimado por el gate 1X2: colombia approved en-temporada (grandes en agosto).
 - [ ] **F3.2 Señal value en fila de Partidos** + value engine formal por liga (evaluaciones persistidas, no memo).
 - [ ] **F3.3 Curate multi-liga**: SOLID/GOALS/COMBO solo ligas gate approved + anclaje al mercado (mismas reglas del Mundial); narrativa; settlement reg90 desde clubResults + TSA; track record con etiqueta de liga; board integrado.
 - [ ] **F3.4 Props de clubes**: córners/tarjetas (AF stats por fixture → props-history por liga → NB por liga → backtest → gate) + player props (The Odds API ligas top).

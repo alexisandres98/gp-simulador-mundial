@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(165deg, #06090B 0%, #0B1714 48%, #0A5C3C 130%); color: #EAF1F2;
+  padding: 150px 70px 260px; position: relative; display: flex; flex-direction: column; }
+.picks { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 40px; }
+.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 40px; }
+.badge { width: 52px; height: 52px; border-radius: 15px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 30px; border: 1px solid rgba(31,227,164,.42); }
+.bname { font-size: 30px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4; font-weight: 800; font-size: 20px; padding: 10px 20px; border-radius: 99px; letter-spacing: 1.2px; }
+h1 { font-size: 68px; font-weight: 800; letter-spacing: -2px; margin-bottom: 8px; color:#fff; line-height:1.05; }
+.sub { font-size: 27px; color:#9DB0B5; font-weight:600; margin-bottom: 54px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 26px; padding: 46px 46px; position: relative; overflow:hidden; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#34D6C8; }
+.pick.cards::before { background:#F2C14E; }
+.fam { font-size: 24px; font-weight: 800; letter-spacing: 1.3px; color:#34D6C8; text-transform:uppercase; }
+.pick.cards .fam { color:#F2C14E; }
+.note { font-size: 26px; font-weight: 600; color:#9DB0B5; margin: 10px 0 24px; line-height:1.35; }
+.bet { font-size: 60px; font-weight: 800; letter-spacing:-1px; color:#fff; margin-bottom: 28px; }
+.row { display:flex; align-items:flex-end; justify-content:space-between; }
+.conf { font-size: 25px; color:#9DB0B5; font-weight:600; display:flex; align-items:center; gap:11px; }
+.conf b { color:#fff; }
+.dot { width:15px; height:15px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; } .dot.low { background:#8A9AA0; }
+.odds { text-align:right; }
+.odds .ol { font-size: 19px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size: 66px; font-weight:800; color:#34D6C8; letter-spacing:-1px; line-height:1; }
+.pick.cards .odds .ov { color:#F2C14E; }
+.foot { position:absolute; bottom: 96px; left: 70px; right: 70px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:30px; font-weight:800; padding:22px 44px; border-radius:99px; }
+.foot .small { font-size:22px; color:#9DB0B5; font-weight:600; max-width: 500px; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP World Cup Simulator</div><div class="tag">● SEMI-FINALS</div></div>
+  <h1>Today's semifinal picks 🎯</h1>
+  <div class="sub">Jul 14 · 🇫🇷 France vs Spain 🇪🇸 · 2 PM COL · always the best odds</div>
+  <div class="picks">
+  <div class="pick">
+    <div class="fam">Corners · 🇫🇷 France vs Spain 🇪🇸</div>
+    <div class="note">2 PM COL · they average 15.2 combined corners per match</div>
+    <div class="bet">Over 8.5 corners</div>
+    <div class="row"><div class="conf"><span class="dot"></span>Confidence: <b>Medium</b></div><div class="odds"><div class="ol">Best odds</div><div class="ov">1.94</div></div></div>
+  </div>
+  <div class="pick cards">
+    <div class="fam">Cards · 🇫🇷 France vs Spain 🇪🇸</div>
+    <div class="note">2 PM COL · two disciplined sides, pays above fair</div>
+    <div class="bet">Under 2.5 cards</div>
+    <div class="row"><div class="conf"><span class="dot low"></span>Confidence: <b>Low</b></div><div class="odds"><div class="ol">Best odds</div><div class="ov">2.60</div></div></div>
+  </div>
+  </div>
+  <div class="foot">
+    <div class="small">Daily picks · clear analysis · not financial advice</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

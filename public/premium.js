@@ -3400,11 +3400,26 @@
   function clubTriCell(f) { var m = { HOME: f.home.prob, DRAW: f.draw, AWAY: f.away.prob }; return triCell(function (c) { return pct0(m[c]); }, 'gx-gp', maxCode(function (c) { return m[c]; })); }
   // marcador (f.result desde ESPN por liga) o null; estado en vivo/final/próximo.
   function clubScore(f) { return f.result && f.result.hg != null ? (f.result.hg + ' - ' + f.result.ag) : null; }
+  // IDÉNTICO a mStatusCell del Mundial: live pill / Full time / y en PRÓXIMO la HORA (no "Upcoming").
   function clubStatusCell(f) {
     var r = f.result;
     if (r && r.status === 'live') return '<span class="gx-live-pill">' + esc(t('st_live')) + (r.minute ? ' ' + r.minute + "'" : '') + '</span>';
     if (r && r.status === 'final') return '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>';
-    return '<span class="gx-status gx-st-up">' + esc(t('st_upcoming')) + '</span>';
+    return '<span class="gx-dim" style="font-size:11px">' + (f.utc ? esc(fmtTime(f.utc)) : esc(t('st_upcoming'))) + '</span>';
+  }
+  // SEÑAL de value del cruce (el WATCH/LEAN/STRONG del Mundial) derivada del value multi-liga (S.clubsValue):
+  // mismo criterio de fuerza por edge. Sin value para el cruce → sin señal (igual que un partido del Mundial
+  // sin evaluación canónica). Reusa sigBadge del Mundial.
+  function clubSignal(f) {
+    var rows = (S.clubsValue && S.clubsValue.rows) || [];
+    var best = null;
+    for (var i = 0; i < rows.length; i++) {
+      var v = rows[i];
+      if (v.home === f.home.name && v.away === f.away.name && v.edge_pp > 0 && (best == null || v.edge_pp > best)) best = v.edge_pp;
+    }
+    if (best == null) return '';
+    var sig = best >= 8 ? 'STRONG' : best >= 5 ? 'LEAN' : best >= 2.5 ? 'WATCH' : null;
+    return sig ? sigBadge(sig) : '';
   }
   function clubBadge(id) { return clubLogo(id) || ic('shield-half'); }
   function clubRowHtml(L, f) {
@@ -3414,7 +3429,7 @@
       '<td class="l"><div class="gx-cell-team">' + clubBadge(f.home.id) + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div>' + clubBadge(f.away.id) + '</div></td>' +
       '<td class="l">' + (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + clubStatusCell(f) + '</td>' +
       '<td>' + clubTriCell(f) + '</td>' +
-      '<td class="l"><span class="gx-dim" style="font-size:11px">—</span></td>' +
+      '<td class="l">' + (clubSignal(f) || '<span class="gx-dim" style="font-size:11px">—</span>') + '</td>' +
       '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
   }
   function clubMatchesTable(L, rows) { return matchesTableHead() + rows.map(function (f) { return clubRowHtml(L, f); }).join('') + '</tbody></table>'; }
@@ -3425,7 +3440,7 @@
       '<div class="gx-mcard-top"><span class="gx-time">' + leagueLogo(L.key) + (f.utc ? esc(fmtTime(f.utc)) + ' · ' : '') + esc(L.name.split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (sc ? '<span class="gx-mono" style="font-weight:600;margin-right:8px">' + esc(sc) + '</span>' : '') + clubStatusCell(f) + '</div>' +
       '<div class="gx-cell-team" style="margin:8px 0">' + clubBadge(f.home.id) + '<div class="gx-teamnames"><b>' + esc(f.home.name) + '</b><span>' + esc(f.away.name) + '</span></div>' + clubBadge(f.away.id) + '</div>' +
       '<div class="gx-mcard-rows"><div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + clubTriCell(f) + '</div></div>' +
-      '<div class="gx-mcard-foot"><span></span><span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span></div>' +
+      '<div class="gx-mcard-foot"><span>' + clubSignal(f) + '</span><span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span></div>' +
       '</div>';
   }
   function clubMatchesCards(L, rows) { return rows.map(function (f) { return clubCardHtml(L, f); }).join(''); }

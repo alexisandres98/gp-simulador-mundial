@@ -162,7 +162,7 @@
       cl_intel: 'Inteligencia del partido', cl_anytime: 'prob. de marcar',
       cl_top: 'Top', cl_of_pos: 'de su posición', cl_minutes: 'Minutos', cl_startsapps: 'Titular/PJ', cl_goals: 'Goles',
       cl_mbm: 'Partido a partido', cl_date: 'Fecha', cl_opp: 'Rival', cl_sh: 'REM', cl_g: 'G',
-      cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
+      cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_no_news: 'Sin novedades de disponibilidad por ahora.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
       cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos', cl_no_lineups: 'Alineación no publicada aún (llega cerca del partido).', nav_lineups: 'Alineaciones',
       nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas de API-Football, descanso, forma y hallazgos de disponibilidad de la capa de observación.', cl_ctx_applied: 'Contexto aplicado (disponibilidad)', cl_ctx_base: 'base',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
@@ -420,7 +420,7 @@
       cl_intel: 'Match intel', cl_anytime: 'anytime goal prob.',
       cl_top: 'Top', cl_of_pos: 'of position', cl_minutes: 'Minutes', cl_startsapps: 'Starts/Apps', cl_goals: 'Goals',
       cl_mbm: 'Match by match', cl_date: 'Date', cl_opp: 'Opponent', cl_sh: 'SH', cl_g: 'G',
-      cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
+      cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_no_news: 'No availability news right now.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
       cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head', cl_no_lineups: 'Lineup not published yet (arrives near kickoff).', nav_lineups: 'Lineups',
       nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Absences from API-Football, rest, form and availability findings from the observation layer.', cl_ctx_applied: 'Context applied (availability)', cl_ctx_base: 'base',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
@@ -3937,7 +3937,7 @@
     var fm = S.cform[sqKey];
     // TABS (paridad con la vista de equipo del Mundial: Resumen/Plantilla/Forma/Resultados)
     var tab = S.cteamTab || 'resumen';
-    var TABS = [['resumen', t('cl_tab_summary')], ['plantilla', t('cl_squad')], ['forma', t('cl_tab_form')], ['resultados', t('cl_tab_results')]];
+    var TABS = [['resumen', t('cl_tab_summary')], ['plantilla', t('cl_squad')], ['forma', t('cl_tab_form')], ['resultados', t('cl_tab_results')], ['noticias', t('news_title')]];
     var tabNav = '<nav class="gx-mv-nav" id="gx-cteam-tabs">' + TABS.map(function (x) { return '<a data-cttab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(x[1]) + '</a>'; }).join('') + '</nav>';
     // forma como chips W/D/L
     var formChips = function (arr) { return (arr || []).map(function (r) { var c = r === 'W' ? 'var(--gx-pos)' : r === 'L' ? '#F09595' : 'var(--gx-text3)'; return '<span style="display:inline-flex;width:22px;height:22px;border-radius:5px;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#06231A;background:' + c + ';margin-right:4px">' + esc(r) + '</span>'; }).join(''); };
@@ -3960,6 +3960,16 @@
           var rc = r.res === 'W' ? 'gx-pos' : r.res === 'L' ? 'gx-neg' : 'gx-dim';
           return '<tr class="gx-row" data-nav-cteam="' + esc(lg + '|' + r.opp_id) + '"><td class="l gx-dim" style="font-size:10.5px">' + esc(fmtDate(r.date)) + '</td><td class="l">' + esc(String(r.opp).split(' · ')[0]) + '</td><td class="gx-mono gx-dim">' + (r.home ? esc(t('cl_home_h')) : esc(t('cl_away_a'))) + '</td><td class="gx-mono" style="font-weight:700">' + r.gf + '-' + r.ag + '</td><td class="gx-mono ' + rc + '" style="font-weight:800">' + r.res + '</td></tr>';
         }).join('') + '</tbody></table></div>';
+    } else if (tab === 'noticias') {
+      // News = hallazgos de disponibilidad del observer (caja negra, sin fuente), como el News/Context del Mundial.
+      var av = (fm && fm.news) || [];
+      if (fm === null) body = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
+      else if (!av.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('news') + esc(t('cl_no_news')) + '</div></div>';
+      else body = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('news') + esc(t('news_title')) + '</span></div><div class="gx-findings" style="padding:10px 16px 12px">' +
+        av.map(function (f) {
+          var col = (f.status === 'OUT' || f.status === 'SUSPENDED') ? '#F09595' : f.status === 'DOUBT' ? 'var(--gx-warn)' : 'var(--gx-text3)';
+          return '<div class="gx-finding"><span class="gx-finding-dot" style="background:' + col + '"></span><span>' + esc(LANG === 'en' ? f.en : f.es) + '</span></div>';
+        }).join('') + '</div></div>';
     } else { // resumen: próximos partidos
       body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('calendar') + esc(t('cl_upcoming')) + '</span></div><div style="padding:6px 16px 12px">' + upHtml + '</div></div>';
     }
@@ -4045,7 +4055,19 @@
         mbm = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_mbm')) + '</span></div>' +
           '<table class="gx-table"><thead><tr><th class="l">' + esc(t('cl_date')) + '</th><th class="l">' + esc(t('cl_opp')) + '</th><th>MIN</th><th>' + esc(t('cl_sh')) + '</th><th>SOT</th><th>' + esc(t('cl_g')) + '</th><th>xG</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       }
-      intelHtml = radar + stats + read + mbm;
+      // NEXT MATCH · PROJECTION (paridad Mundial): P(gol)/remates/xG/min proy del próximo partido (projectTeam de liga)
+      var np = p.next_projection, nextHtml = '';
+      if (np) {
+        var oppN = (S.clubNames && S.clubNames[np.opp_id]) || np.opp;
+        var npStat = function (label, val) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + val + '</b></div>'; };
+        nextHtml = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('target-arrow') + esc(t('pp_next')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + (np.home ? '' : '@ ') + esc(oppN) + '</span></div><div class="gx-mod-body"><div class="gx-hero-grid" style="margin:0">' +
+          npStat(t('pp_pgoal'), pct0(np.anytime)) +
+          npStat(t('pp_proj_shots'), np.shots != null ? Number(np.shots).toFixed(1) : '—') +
+          npStat('xG', np.xg != null ? Number(np.xg).toFixed(2) : '—') +
+          npStat(t('pp_proj_min'), np.minutes != null ? np.minutes + "'" : '—') +
+          '</div></div></div>';
+      }
+      intelHtml = radar + nextHtml + stats + read + mbm;
     } else {
       intelHtml = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
     }

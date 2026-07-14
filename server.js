@@ -6451,7 +6451,11 @@ const server = http.createServer(async (req, res) => {
         return { date: r.date, opp: nameOf(home ? r.away_id : r.home_id), opp_id: home ? r.away_id : r.home_id, home, gf, ag: ga, res: gf > ga ? 'W' : gf < ga ? 'L' : 'D' };
       });
       const form = results.slice(0, 5).map(r => r.res);
-      return json(res, 200, { team: teamId, form, results: results.slice(0, 20) });
+      // F2.3: hallazgos del OBSERVER (disponibilidad narrada) para el tab News del equipo — mismo dato que el
+      // News/Context del Mundial (caja negra, sin fuente). Fresco (assessPlayers es barato).
+      let news = [];
+      try { news = clubObserverFindings(teamId); } catch { news = []; }
+      return json(res, 200, { team: teamId, form, results: results.slice(0, 20), news });
     }
     // MERCADOS de un cruce (F1.5, verificación read-only sin sesión): ?league=&h=&a=
     if (p === '/api/internal/clubs-market' && req.method === 'GET') {
@@ -7689,6 +7693,26 @@ const server = http.createServer(async (req, res) => {
         national_team: p0.national_team || null, first_name: p0.first_name || null, last_name: p0.last_name || null,
         stats_available: !!(intel && intel.stats_available),
         avail: clubPlayerAvail(teamId, pid), // F2.3: disponibilidad narrada del observer (o null)
+        next_projection: (() => { // paridad Mundial "Next match · projection": P(gol)/remates/xG/min del PRÓXIMO partido
+          try {
+            if (!(intel && intel.stats_available)) return null;
+            const up = ((global._clubsUpcoming || {})[league] || {}).rows || [];
+            const now = Date.now();
+            const nx = up.filter(m => m.utc_date && +new Date(m.utc_date) > now && (String((m.home_team || {}).id) === teamId || String((m.away_team || {}).id) === teamId))
+              .sort((a, b) => new Date(a.utc_date) - new Date(b.utc_date))[0];
+            if (!nx) return null;
+            const isHome = String((nx.home_team || {}).id) === teamId;
+            const oppId = String(isHome ? (nx.away_team || {}).id : (nx.home_team || {}).id);
+            const oppName = isHome ? (nx.away_team || {}).name : (nx.home_team || {}).name;
+            let lam = null;
+            try { const gf = clubGoalsFit(league); if (gf) { const lg2 = require('./clubs-engine/goalsModel').goalLambdas(gf, isHome ? teamId : oppId, isHome ? oppId : teamId); if (lg2) lam = isHome ? lg2[0] : lg2[1]; } } catch { /* fallback Elo */ }
+            if (lam == null) { const rh = clubElo(league, teamId), ra = clubElo(league, oppId); const le = lambdas(rh + (isHome ? (L.hfa || 60) : 0), ra); lam = le[0]; }
+            const fit = require('./player-intel/clubsFit').leagueFit(league);
+            const proj = fit ? require('./prop-engine/players').projectTeam(fit, teamId, { teamLambda: lam, top: 40 }).find(x => x.pid === pid) : null;
+            if (!proj) return null;
+            return { opp: oppName, opp_id: oppId, home: isHome, kickoff: nx.utc_date, anytime: +proj.anytime_goal.toFixed(3), shots: +proj.shots_match.toFixed(1), xg: +proj.xg_match.toFixed(2), minutes: proj.minutes != null ? Math.round(proj.minutes) : null };
+          } catch { return null; }
+        })(),
       });
     }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al

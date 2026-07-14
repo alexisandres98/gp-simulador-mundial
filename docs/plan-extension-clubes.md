@@ -123,7 +123,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 
 ### F0 — FUNDACIONES DE DATOS (destraba todo; sin esto lo demás es cascarón)
 - [x] **F0.1 Backfill player-stats por liga** (Brasileirão 177/8106, MLS en curso; resto corriendo) (`scripts/clubs-player-backfill.js`, patrón player-props-backfill del Mundial): por liga activa, matches status=finished de la season → `/matches/{id}/player-stats` → `data/clubs/player-history-<liga>.json` (jugador-partido: min, titular, goles, remates, SOT, xG, npxG, xA, pases clave, tarjetas). Resumible, throttle 12 req/min. ~177 partidos BRA + MX/MLS/ARG/COL/PAR ≈ 700-900 requests ≈ 1-2h de reloj. Pase incremental diario (post-jornada) en el server.
-- [~] **F0.2 Fotos de jugadores** (script listo; correr tras el backfill, comparte rate-limit TSA) (`scripts/gen-club-player-photos.js`, patrón del Mundial): AF `players/squads?team=<af_id>` por club → matchear AF↔TSA por nombre normalizado → mapa `data/clubs/player-photos.json` {pl_* → af_photo_url} + proxy/self-host. Necesita mapa tm_→AF team id por liga (por nombre, una vez, curado a JSON).
+- [x] **F0.2 Fotos de jugadores** ✔ 2440 fotos (player-photos.json) en el perfil (script listo; correr tras el backfill, comparte rate-limit TSA) (`scripts/gen-club-player-photos.js`, patrón del Mundial): AF `players/squads?team=<af_id>` por club → matchear AF↔TSA por nombre normalizado → mapa `data/clubs/player-photos.json` {pl_* → af_photo_url} + proxy/self-host. Necesita mapa tm_→AF team id por liga (por nombre, una vez, curado a JSON).
 - [ ] **F0.3 Snapshots para Evolución**: `db.clubHistory[liga][fecha] = {tm_id: {pos, elo, pts}}` diario (loop server, barato) → alimenta F4.2.
 - [x] **F0.4 ELO DINÁMICO por resultado** ✔ prod eb22cc9 (CRÍTICO para probabilidad honesta): al finalizar un partido de club (clubResults status final), actualizar Elo de ambos equipos (K por liga, mismo recomputeElos conceptual del Mundial; goleada/localía como el fit). Persistir en db.clubElos (overlay sobre ratings.json, nunca escribir el archivo) y usar overlay en TODAS las probs (state, match, value, scanner). Re-fit offline mensual recalibra.
 - [ ] **F0.5 Fixtures ampliados**: ventana upcoming de 12 → toda la jornada visible + past reciente (para Forma/Resultados).
@@ -133,7 +133,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 - [ ] **F1.2 GP% en vivo + Momentum**: prob del modelo condicionada al marcador/minuto (mismo mecanismo del Mundial) + sampler momentum (db.clubMomentum) + SVG del cockpit.
 - [ ] **F1.3 xG post-partido**: TSA player-stats agregadas → panel "xG del partido" (total/por equipo/remates/ocasiones) — mismo layout del Mundial.
 - [ ] **F1.4 Motor de contexto de clubes**: lesiones AF por liga + descanso (días desde último partido, congestión) + forma (últimos 5) → ajuste base→contexto→GP con desglose visible (mismo UI del Mundial).
-- [ ] **F1.5 Matriz de mercados + calculadora**: cuotas del partido por casa (ya en sportsbook_goal_quote_current) → tabla mercados del cockpit + botón calculadora (prob GP prellenada).
+- [x] **F1.5 Matriz de mercados + calculadora** ✔ prod 945d061: cuotas del partido por casa (ya en sportsbook_goal_quote_current) → tabla mercados del cockpit + botón calculadora (prob GP prellenada).
 
 ### F2 — EQUIPOS Y JUGADORES NIVEL MUNDIAL
 - [ ] **F2.1 Vista de equipo completa**: tabs Resumen/Plantilla(fotos)/Forma/Resultados/Noticias; forma y resultados desde finished de TSA + clubResults.

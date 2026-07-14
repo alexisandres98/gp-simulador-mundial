@@ -5844,6 +5844,55 @@ const server = http.createServer(async (req, res) => {
       if (!c.data || (!c.data.home && !c.data.away)) return json(res, 200, { available: false, reason: 'sin alineación publicada' });
       return json(res, 200, { available: true, ...c.data });
     }
+    // CONTEXTO del cruce (F1.4): bajas/lesiones (API-Football) + descanso (días desde el último partido) +
+    // forma reciente. Informativo (paridad con el tab Context del Mundial); el ajuste al modelo llega con el
+    // observer (F2.3). Memo por cruce 60 min.
+    if (p === '/api/clubs/context') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const league = String(url.searchParams.get('league') || ''), hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
+      if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+      const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+      const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
+      global._clubCtx = global._clubCtx || {};
+      const ck = league + '|' + hId + '|' + aId;
+      let c = global._clubCtx[ck];
+      if (!c || Date.now() - c.at > 60 * 60e3) {
+        c = { at: Date.now(), home: { injuries: [] }, away: { injuries: [] } };
+        // bajas/lesiones recientes (últimos 21 días, dedupe por jugador) de API-Football
+        const injOf = async (afId) => {
+          if (!afk || !afLg || !afId) return [];
+          try {
+            const r = await fetch(`https://v3.football.api-sports.io/injuries?team=${afId}&league=${afLg}&season=2026`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
+            const j = r.ok ? await r.json() : null; const resp = (j && j.response) || [];
+            const cutoff = Date.now() - 21 * 86400e3, seen = {};
+            const out = [];
+            for (const it of resp.sort((a, b) => new Date((b.fixture || {}).date || 0) - new Date((a.fixture || {}).date || 0))) {
+              const nm = it.player && it.player.name; if (!nm || seen[nm]) continue;
+              const d = (it.fixture || {}).date ? +new Date(it.fixture.date) : 0;
+              if (d && d < cutoff) continue;
+              seen[nm] = 1;
+              out.push({ name: nm, reason: (it.player && it.player.reason) || null, type: (it.player && it.player.type) || null });
+              if (out.length >= 8) break;
+            }
+            return out;
+          } catch { return []; }
+        };
+        c.home.injuries = await injOf(afMap[hId] && afMap[hId].af_id);
+        c.away.injuries = await injOf(afMap[aId] && afMap[aId].af_id);
+        // descanso: días desde el último partido (results-<liga>.json)
+        try {
+          global._clubsResults = global._clubsResults || {};
+          if (!global._clubsResults[league]) { try { global._clubsResults[league] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', `results-${league}.json`), 'utf8')).rows || []; } catch { global._clubsResults[league] = []; } }
+          const lastOf = (tid) => { const rs = global._clubsResults[league].filter(r => (r.home_id === tid || r.away_id === tid) && r.hg != null).sort((a, b) => (a.date < b.date ? 1 : -1)); return rs[0] ? Math.round((Date.now() - +new Date(rs[0].date)) / 86400e3) : null; };
+          c.home.rest = lastOf(hId); c.away.rest = lastOf(aId);
+        } catch { /* sin results */ }
+        // forma reciente (reusa clubMatchForm)
+        try { const f = clubMatchForm(league, hId, aId); if (f) { c.home.form = f.home; c.away.form = f.away; } } catch { /* sin forma */ }
+        global._clubCtx[ck] = c;
+      }
+      return json(res, 200, { home: c.home, away: c.away });
+    }
     // FORMA + RESULTADOS de un equipo de club (F2.1): últimos partidos con marcador (results-<liga>.json).
     if (p === '/api/clubs/team-form') {
       const sessEmail = sessionEmailFromReq(req);

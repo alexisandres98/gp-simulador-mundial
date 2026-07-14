@@ -164,6 +164,7 @@
       cl_mbm: 'Partido a partido', cl_date: 'Fecha', cl_opp: 'Rival', cl_sh: 'REM', cl_g: 'G',
       cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
       cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos', cl_no_lineups: 'Alineación no publicada aún (llega cerca del partido).', nav_lineups: 'Alineaciones',
+      nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas de API-Football, descanso y forma. El ajuste al modelo llega con la capa de observación.',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -421,6 +422,7 @@
       cl_mbm: 'Match by match', cl_date: 'Date', cl_opp: 'Opponent', cl_sh: 'SH', cl_g: 'G',
       cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
       cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head', cl_no_lineups: 'Lineup not published yet (arrives near kickoff).', nav_lineups: 'Lineups',
+      nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Absences from API-Football, rest and form. The model adjustment arrives with the observation layer.',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2502,12 +2504,13 @@
       rowsHtml([[t('cl_xg'), m.xg.home + ' – ' + m.xg.away], [t('cl_o25'), m.over25 != null ? pct0(m.over25) : null], [t('cl_btts'), m.btts != null ? pct0(m.btts) : null]]) + '</div></div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
       (m.top_scores || []).map(function (s) { return '<div class="gx-clrow"><span class="gx-mono">' + esc(s.score) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(s.p) + '</span></div>'; }).join('') + '</div></div>';
-    var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['forma', t('cl_tab_form')], ['alineaciones', t('nav_lineups') || 'Alineaciones'], ['mercados', t('cl_markets')]];
+    var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['contexto', t('nav_context') || 'Contexto'], ['forma', t('cl_tab_form')], ['alineaciones', t('nav_lineups') || 'Alineaciones'], ['mercados', t('cl_markets')]];
     if (vRows.length) TABS.push(['value', t('cl_value')]);
     var tabNav = '<nav class="gx-mv-nav" id="gx-clm-tabs">' + TABS.map(function (x) { return '<a data-clmtab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(x[1]) + '</a>'; }).join('') + '</nav>';
     var body;
     if (tab === 'goles') body = goalsPanel;
     else if (tab === 'intel') body = clubIntelHtml(m, lgk) || ('<div class="gx-panel"><div class="gx-empty">' + ic('target-arrow') + esc(t('cl_player_soon')) + '</div></div>');
+    else if (tab === 'contexto') body = clubContextHtml(eid, lgk, hId, aId, m);
     else if (tab === 'forma') body = clubFormHtml(m);
     else if (tab === 'alineaciones') body = clubLineupsHtml(eid, lgk, hId, aId);
     else if (tab === 'mercados') body = clubMarketsHtml(m) || ('<div class="gx-panel"><div class="gx-empty">' + ic('table') + esc(t('cl_no_markets')) + '</div></div>');
@@ -2523,6 +2526,35 @@
     [].forEach.call(mv.querySelectorAll('[data-cplayer]'), function (el) {
       el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
     });
+  }
+  // CONTEXTO del cruce (Context del Mundial): bajas/lesiones + descanso + forma de cada equipo. Lazy-fetch.
+  function clubContextHtml(eid, lgk, hId, aId, m) {
+    S.cctx = S.cctx || {};
+    if (S.cctx[eid] === undefined) {
+      S.cctx[eid] = null;
+      fetch('/api/clubs/context?league=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&a=' + encodeURIComponent(aId), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.cctx[eid] = j || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
+    }
+    var cx = S.cctx[eid];
+    if (!cx || cx._empty) return '<div class="gx-panel"><div class="gx-empty">' + ic('activity') + esc(t('cl_no_context')) + '</div></div>';
+    var chips = function (arr) { return (arr || []).map(function (r) { var c = r === 'W' ? 'var(--gx-pos)' : r === 'L' ? '#F09595' : 'var(--gx-text3)'; return '<span style="display:inline-flex;width:18px;height:18px;border-radius:4px;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#06231A;background:' + c + ';margin-left:3px">' + esc(r) + '</span>'; }).join(''); };
+    var side = function (s, id, name) {
+      s = s || {};
+      var inj = (s.injuries || []).length
+        ? (s.injuries || []).map(function (p) { return '<div class="gx-finding"><span class="gx-finding-dot" style="background:#F09595"></span>' + esc(p.name) + (p.reason ? ' <span class="gx-dim">· ' + esc(p.reason) + '</span>' : '') + '</div>'; }).join('')
+        : '<div class="gx-dim" style="font-size:11.5px;padding:4px 0">' + esc(t('cl_no_injuries')) + '</div>';
+      var meta = [];
+      if (s.rest != null) meta.push(esc(t('cl_rest')) + ': <b>' + s.rest + ' ' + esc(t('cl_days')) + '</b>');
+      if (s.form && s.form.length) meta.push(esc(t('cl_tab_form')) + ': ' + chips(s.form));
+      return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div>' +
+        (meta.length ? '<div class="gx-lu-meta gx-dim" style="margin-bottom:6px">' + meta.join(' · ') + '</div>' : '') +
+        '<div class="gx-label" style="margin:4px 0">' + esc(t('cl_injuries')) + '</div><div class="gx-findings">' + inj + '</div></div>';
+    };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('activity') + esc(t('nav_context') || 'Contexto') + '</span></div><div class="gx-lu-grid" style="padding:8px 14px 14px">' +
+      side(cx.home, hId, (m.home && m.home.name) || '') + side(cx.away, aId, (m.away && m.away.name) || '') + '</div>' +
+      '<div class="gx-pick-disc">' + esc(t('cl_context_sub')) + '</div></div>';
   }
   // ALINEACIONES del cruce (Lineups del Mundial): XI + formación + DT de cada equipo, desde API-Football.
   // Reusa las clases gx-lu-* del Mundial. Lazy-fetch de /api/clubs/lineups.

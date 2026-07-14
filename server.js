@@ -2665,6 +2665,66 @@ function clubRosterResolver(rows) {
     return (ln && last[ln]) || null;
   };
 }
+// Resuelve (y cachea 30 min) el fixture de API-Football del cruce de club por los af team ids del mapa: próximo
+// entre ambos, o el más reciente. Compartido por /api/clubs/lineups y /api/clubs/match (eventos en vivo) → una
+// sola resolución + cache para ambos. Devuelve { id, date, status, afH, afA, home_af } o null.
+async function clubAfFixture(league, hId, aId) {
+  const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+  const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
+  const afH = afMap[hId] && afMap[hId].af_id, afA = afMap[aId] && afMap[aId].af_id;
+  if (!afk || !afLg || !afH || !afA) return null;
+  global._clubAfFx = global._clubAfFx || {};
+  const ck = league + '|' + hId + '|' + aId;
+  let c = global._clubAfFx[ck];
+  if (!c || Date.now() - c.at > 30 * 60e3) {
+    c = { at: Date.now(), fx: null };
+    try {
+      const af = async (q) => { const r = await fetch('https://v3.football.api-sports.io' + q, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) }); const j = r.ok ? await r.json() : null; return (j && j.response) || []; };
+      let fxs = await af(`/fixtures?team=${afH}&next=10`);
+      let fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
+      if (!fx) { fxs = await af(`/fixtures?team=${afH}&last=10`); fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA)); }
+      if (fx) c.fx = { id: fx.fixture.id, date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, afH, afA, home_af: fx.teams.home.id };
+    } catch { /* AF sin datos este ciclo */ }
+    global._clubAfFx[ck] = c;
+  }
+  return c.fx;
+}
+// EVENTOS en vivo del cruce (F1.1b): goles/tarjetas/subs/VAR desde API-Football, normalizados al MISMO shape que
+// el Mundial ({minute,type,player,assist,teamName,side}) para reusar el componente gx-event-i del cockpit. Memo
+// ~30s por cruce (los eventos cambian en vivo). side por el home_af del fixture.
+async function clubMatchEvents(league, hId, aId) {
+  const fx = await clubAfFixture(league, hId, aId);
+  if (!fx || !fx.id) return null;
+  const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+  global._clubEvents = global._clubEvents || {};
+  const ck = league + '|' + hId + '|' + aId;
+  let c = global._clubEvents[ck];
+  if (!c || Date.now() - c.at > 30 * 1000) {
+    c = { at: Date.now(), events: null };
+    try {
+      const r = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fx.id}`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
+      const j = r.ok ? await r.json() : null; const resp = (j && j.response) || [];
+      const mapType = (e) => {
+        const ty = String(e.type || '').toLowerCase(), det = String(e.detail || '').toLowerCase();
+        if (ty === 'goal') return 'goal';
+        if (ty === 'card') return det.includes('red') ? 'red' : 'yellow';
+        if (ty === 'subst') return 'subst';
+        if (ty === 'var') return 'var';
+        return 'other';
+      };
+      c.events = resp.map(e => ({
+        minute: (e.time && e.time.elapsed != null) ? e.time.elapsed + ((e.time.extra) ? e.time.extra : 0) : null,
+        type: mapType(e),
+        player: (e.player && e.player.name) || null,
+        assist: (e.assist && e.assist.name) || null, // gol: asistente · subst: entra
+        teamName: (e.team && e.team.name) || null,
+        side: (e.team && e.team.id === fx.home_af) ? 'home' : 'away',
+      })).filter(e => e.minute != null || e.player);
+    } catch { c.events = null; }
+    global._clubEvents[ck] = c;
+  }
+  return c.events;
+}
 // ===== FASE CLUBES F0.4: ELO DINÁMICO =====
 // El ratings.json se fitea offline (base). Sin actualizar el Elo con cada resultado, la probabilidad DERIVA
 // (exactamente lo que Alexis señaló). db.clubElos es un OVERLAY sobre el base: arranca del fit y se ajusta con
@@ -5934,16 +5994,13 @@ const server = http.createServer(async (req, res) => {
         c = { at: Date.now(), data: null };
         try {
           const af = async (q) => { const r = await fetch('https://v3.football.api-sports.io' + q, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) }); const j = r.ok ? await r.json() : null; return (j && j.response) || []; };
-          // fixture del cruce: próximos del home filtrando por el away; si no, el más reciente entre ellos
-          let fxs = await af(`/fixtures?team=${afH}&next=10`);
-          let fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
-          if (!fx) { fxs = await af(`/fixtures?team=${afH}&last=10`); fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA)); }
+          const fx = await clubAfFixture(league, hId, aId); // fixture AF del cruce (resolución compartida con eventos)
           if (fx) {
-            const lus = await af(`/fixtures/lineups?fixture=${fx.fixture.id}`);
+            const lus = await af(`/fixtures/lineups?fixture=${fx.id}`);
             // resolver nombre AF → pl_ id del roster TSA (XI clickeable al perfil, paridad Mundial)
             const rslvH = clubRosterResolver(await clubRosterRows(hId)), rslvA = clubRosterResolver(await clubRosterRows(aId));
             const side = (afTeamId, resolve) => { const l = lus.find(x => x.team && x.team.id === afTeamId); if (!l) return null; return { formation: l.formation || null, coach: (l.coach && l.coach.name) || null, xi: (l.startXI || []).map(p => ({ name: p.player.name, pos: p.player.pos || null, num: p.player.number || null, pid: resolve(p.player.name) || undefined })), bench: (l.substitutes || []).slice(0, 9).map(p => ({ name: p.player.name, pid: resolve(p.player.name) || undefined })) }; };
-            c.data = { fixture_date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, home: side(afH, rslvH), away: side(afA, rslvA) };
+            c.data = { fixture_date: fx.date, status: fx.status, home: side(afH, rslvH), away: side(afA, rslvA) };
           }
         } catch { /* AF sin datos este ciclo */ }
         global._clubLineups[ck] = c;
@@ -7050,7 +7107,7 @@ const server = http.createServer(async (req, res) => {
         // F1.2: GP EN VIVO + MOMENTUM. Si el cruce tiene marcador en vivo, prob GP condicionada al marcador+minuto
         // (liveProbsFromLambdas con los λ del cruce = mismo engine del Mundial). Momentum = serie muestreada por
         // clubScoresSync. Se orienta al home solicitado (clubResults/serie guardan orientación del sync ESPN).
-        let gpLive = null, momentum = null;
+        let gpLive = null, momentum = null, events = null;
         if (!cross) {
           const sr = (db.clubResults || {})[clubScoreKey(hl, hId, aId)] || null;
           if (sr) {
@@ -7063,6 +7120,8 @@ const server = http.createServer(async (req, res) => {
             if (mom && mom.points && mom.points.length > 2) {
               momentum = homeIsH ? mom.points : mom.points.map(pt => ({ t: pt.t, h: pt.a, d: pt.d, a: pt.h, hg: pt.ag, ag: pt.hg, at: pt.at }));
             }
+            // F1.1b: eventos en vivo (goles/tarjetas/subs) desde AF, solo si el partido juega o acaba de terminar.
+            if (sr.status === 'live' || sr.status === 'final') { try { events = await clubMatchEvents(hl, hId, aId); } catch { events = null; } }
           }
         }
         return json(res, 200, {
@@ -7082,6 +7141,7 @@ const server = http.createServer(async (req, res) => {
           form, // { home:[W/D/L], away:[...], h2h:[{date,hg,ag,home_id}] }
           gp_live: gpLive, // F1.2: prob GP condicionada al marcador+minuto (solo en vivo)
           momentum, // F1.2: serie {t,h,d,a,hg,ag} para el gráfico de evolución
+          events, // F1.1b: [{minute,type,player,assist,teamName,side}] goles/tarjetas/subs en vivo
         });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }

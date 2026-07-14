@@ -2516,6 +2516,7 @@
       { home: { team_id: hId, name_fallback: m.home.name }, away: { team_id: aId, name_fallback: m.away.name } },
       { badge: function (id) { return clubBadge(id); }, nameOf: function (id, fb) { return fb || id; } }
     ) : '';
+    var eventsHtml = clubLiveEventsHtml(m.events, cres && cres.status === 'live'); // F1.1b: goles/tarjetas/subs en vivo
     var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['contexto', t('nav_context') || 'Contexto'], ['forma', t('cl_tab_form')], ['alineaciones', t('nav_lineups') || 'Alineaciones'], ['mercados', t('cl_markets')]];
     if (vRows.length) TABS.push(['value', t('cl_value')]);
     var tabNav = '<nav class="gx-mv-nav" id="gx-clm-tabs">' + TABS.map(function (x) { return '<a data-clmtab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(x[1]) + '</a>'; }).join('') + '</nav>';
@@ -2527,7 +2528,7 @@
     else if (tab === 'alineaciones') body = clubLineupsHtml(eid, lgk, hId, aId);
     else if (tab === 'mercados') body = clubMarketsHtml(m) || ('<div class="gx-panel"><div class="gx-empty">' + ic('table') + esc(t('cl_no_markets')) + '</div></div>');
     else if (tab === 'value') body = valueHtml || ('<div class="gx-panel"><div class="gx-empty">' + ic('trending-up') + esc(t('opp_value_empty')) + '</div></div>');
-    else body = liveProbHtml + probPanel + momHtml + goalsPanel; // resumen (GP en vivo + evolución cuando el partido juega)
+    else body = liveProbHtml + eventsHtml + probPanel + momHtml + goalsPanel; // resumen (GP en vivo + eventos + evolución cuando el partido juega)
     mv.innerHTML = mvShell(
       '<div class="gx-content" style="gap:14px">' + hero + tabNav + body +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '') +
@@ -2575,6 +2576,14 @@
   function clubPlayerLink(lgk, teamId, pid, inner) {
     if (!pid) return inner;
     return '<a href="#cplayer/' + esc(lgk + '-' + teamId + '-' + pid) + '" class="gx-plk">' + inner + '</a>';
+  }
+  // Eventos en vivo del cruce (goles/tarjetas/subs/VAR) reusando el MISMO markup/íconos del cockpit del Mundial
+  // (gx-event-i + evIcon). El shape viene normalizado del server {minute,type,player,assist,teamName,side}.
+  function clubLiveEventsHtml(events, live) {
+    if (!events || !events.length) return '';
+    var evIcon = { goal: 'ball-football', yellow: 'square-rounded', red: 'square-rounded-filled', subst: 'arrows-exchange', var: 'video' };
+    var evs = events.slice().reverse().slice(0, 16).map(function (e) { return '<div class="gx-event-i gx-ev-' + (e.side || '') + '"><span class="gx-mono gx-dim">' + (e.minute != null ? e.minute + "'" : '') + '</span><span class="gx-evt-ic gx-evt-' + (e.type || 'other') + '">' + ic(evIcon[e.type] || 'point') + '</span><span>' + esc(e.player || t('evk_other')) + '</span>' + (e.assist ? '<span class="gx-dim" style="font-size:11px">· ' + esc(e.assist) + '</span>' : '') + '<span class="gx-dim gx-event-team">' + esc(e.teamName || '') + '</span></div>'; }).join('');
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('broadcast') + esc(t('live_events')) + '</span>' + (live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '') + '</div><div class="gx-mod-body"><div class="gx-events">' + evs + '</div></div></div>';
   }
   function clubLineupsHtml(eid, lgk, hId, aId) {
     S.clu = S.clu || {};

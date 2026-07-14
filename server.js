@@ -7320,6 +7320,9 @@ const server = http.createServer(async (req, res) => {
           gp_live: gpLive, // F1.2: prob GP condicionada al marcador+minuto (solo en vivo)
           momentum, // F1.2: serie {t,h,d,a,hg,ag} para el gráfico de evolución
           events, // F1.1b: [{minute,type,player,assist,teamName,side}] goles/tarjetas/subs en vivo
+          // MISMO builder de goles del Mundial (gp-product/dto.goalInsights) con los λ del cruce → el cockpit de
+          // club rinde la MISMA sección Goal projection (distribución, escalera O/U, márgenes, combos, marcadores).
+          goal_insights: (() => { try { return require('./gp-product/dto').goalInsights({ lambda_home: lU[0], lambda_away: lU[1], lambda_total: lU[0] + lU[1] }); } catch { return null; } })(),
           // F2.3: OBSERVER — base→contexto→GP. active=el observer ajustó el λ (flag+señales); base_xg = sin contexto.
           context_adjust: ctxActive ? {
             active: true,

@@ -529,7 +529,9 @@
   };
   var LANG = 'es', TEAMS = {};
   var t = function (k, a) { var s = (DICT[LANG] && DICT[LANG][k]) || (DICT.es[k] != null ? DICT.es[k] : k); return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; }); };
-  var teamName = function (id, fb) { var e = TEAMS[id]; return (e && e[LANG]) || (e && e.es) || fb || id || ''; };
+  // FASE CLUBES: ids tm_ (clubes) resuelven por el índice de clubes (S.clubNames, poblado por loadClubs) → las
+  // MISMAS funciones/render del Mundial sirven partidos de club sin bifurcar (regla: extensión, no variantes).
+  var teamName = function (id, fb) { if (id && /^tm_/.test(id)) { return (S.clubNames && S.clubNames[id]) || fb || id; } var e = TEAMS[id]; return (e && e[LANG]) || (e && e.es) || fb || id || ''; };
 
   // ---------- format ----------
   var pct = function (v) { return v == null ? '—' : (v * 100).toFixed(1) + '%'; };
@@ -540,7 +542,7 @@
   // Banderas SVG self-hosted (nítidas en todos los OS — los emoji NO renderizan en Windows). Escala con el
   // font-size del contenedor (.fl) vía em. Fallback al emoji del server para ids fuera de los 48 del Mundial.
   var KNOWN_FLAG = /^(MEX|KOR|CZE|RSA|SUI|CAN|BIH|QAT|BRA|MAR|SCO|HAI|TUR|PAR|AUS|USA|ECU|GER|CIV|CUW|NED|JPN|SWE|TUN|BEL|IRN|EGY|NZL|ESP|URU|CPV|KSA|FRA|NOR|SEN|IRQ|ARG|AUT|ALG|JOR|POR|COL|UZB|COD|ENG|CRO|PAN|GHA)$/;
-  var flag = function (id) { if (!id) return ''; if (KNOWN_FLAG.test(id)) return '<img class="flx" src="/flags/' + id + '.svg" alt="" draggable="false">'; return FLAGS[id] || ''; };
+  var flag = function (id) { if (!id) return ''; if (/^tm_/.test(id)) return '<img class="clx" src="/logos/' + id + '.png" alt="" draggable="false" onerror="this.remove()">'; if (KNOWN_FLAG.test(id)) return '<img class="flx" src="/flags/' + id + '.svg" alt="" draggable="false">'; return FLAGS[id] || ''; };
   // Nombres presentables de casas/venues — NUNCA códigos crudos ("betfair_ex_uk") frente al usuario.
   var BOOK_NAMES = {
     pinnacle: 'Pinnacle', bet365: 'bet365', williamhill: 'William Hill', williamhill_us: 'William Hill', betway: 'Betway',
@@ -622,6 +624,13 @@
   }
   // nombre de jugador → link al perfil (si el índice está cargado y el nombre resuelve); si no, texto plano
   function playerLink(teamId, rawName, inner) {
+    // FASE CLUBES: para equipos tm_ el índice viene del server (pid en las alineaciones) → perfil cplayer.
+    if (teamId && /^tm_/.test(teamId)) {
+      var cx = S.clubPidx && S.clubPidx[teamId];
+      var cpid = cx && rawName ? cx.byName[pnorm(rawName)] : null;
+      if (!cpid) return inner;
+      return '<a href="#cplayer/' + esc(cx.league + '-' + teamId + '-' + cpid) + '" class="gx-plk">' + inner + '</a>';
+    }
     var pid = pidxResolve(teamId, rawName);
     if (!pid) return inner;
     return '<a href="#player/' + esc(pid) + '" class="gx-plk">' + inner + '</a>';
@@ -2463,9 +2472,12 @@
   // Vista de PARTIDO DE CLUB (shadow): id 'cl-<liga>-<homeId>-<awayId>'. Hero + probabilidad + proyección de
   // goles + marcadores del /api/clubs/match (engines de la casa) + value del cruce si el scan lo tiene.
   // Contexto/alineaciones/jugadores de clubes: en construcción (nota honesta).
+  // COCKPIT DE PARTIDO DE CLUB = ADAPTADOR al render del Mundial (regla dura de Alexis: mismo mecanismo,
+  // misma estructura, diferente data). Construye beta+fx con la MISMA forma que consume renderMatch y llama
+  // las MISMAS funciones (mvHero/mvNav/mvMemo/mvProb/mvContext/mvForm/mvLineups con cancha/mvMarkets/mvStats/
+  // mvLive/mvMomentum/mvGoals). flag()/teamName()/playerLink() ya resuelven ids tm_ → cero componentes nuevos.
   function renderClubMatch(eid, mv) {
     var parts = eid.slice(3).split('-'); var lgk = parts[0], hId = parts[1], aId = parts[2];
-    if (S._clmLastEid !== eid) { S.clmTab = 'resumen'; S._clmLastEid = eid; } // partido nuevo → tab Resumen
     S.clm = S.clm || {};
     if (S.clm[eid] === undefined) {
       S.clm[eid] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
@@ -2479,168 +2491,112 @@
     }
     var m = S.clm[eid];
     if (!m || m._empty || m.error) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
-    // marcador en vivo/finalizado del cruce (si el sync de clubes lo tiene)
-    var Lm = clubLeague(lgk), fxr = Lm ? (Lm.live || []).concat(Lm.upcoming || []).find(function (f) { return f.home.id === hId && f.away.id === aId; }) : null;
-    var cres = fxr && fxr.result ? fxr.result : null;
-    var vRows = ((S.clubsValue && S.clubsValue.rows) || []).filter(function (v) { return v.home === m.home.name && v.away === m.away.name; }).slice(0, 3);
-    var bar = '<div class="gx-clbar" style="height:10px"><span class="h" style="width:' + (m.probs.home * 100) + '%"></span><span class="d" style="width:' + (m.probs.draw * 100) + '%"></span><span class="a" style="width:' + (m.probs.away * 100) + '%"></span></div>' +
-      '<div class="gx-clpct"><b>' + esc(m.home.name) + ' ' + pct0(m.probs.home) + '</b><span>X ' + pct0(m.probs.draw) + '</span><b>' + pct0(m.probs.away) + ' ' + esc(m.away.name) + '</b></div>';
-    var rowsHtml = function (pairs) { return pairs.filter(function (p) { return p[1] != null; }).map(function (p) { return '<div class="gx-clrow"><span>' + esc(p[0]) + '</span><span class="gx-mono" style="font-weight:700">' + p[1] + '</span></div>'; }).join(''); };
-    var valueHtml = vRows.length
-      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('trending-up') + esc(t('cl_value')) + '</span><span class="gx-ph-extra"><span class="gx-clgate sh">SHADOW</span></span></div><div style="padding:6px 16px 12px">' +
-      vRows.map(function (v) { var oc = v.outcome === 'home' ? m.home.name : v.outcome === 'away' ? m.away.name : t('draw'); return '<div class="gx-clrow"><span>' + esc(oc) + ' <span class="gx-dim">@' + v.best_odds + ' · ' + v.books + ' ' + esc(t('books')) + '</span></span><span class="gx-mono" style="font-weight:800;color:' + (v.edge_pp > 0 ? 'var(--gx-pos)' : '#F09595') + '">' + (v.edge_pp > 0 ? '+' : '') + v.edge_pp + 'pp</span></div>'; }).join('') +
-      '</div></div>' : '';
-    // HERO (equipos/marcador/Elo) fijo arriba, como el cockpit del Mundial.
-    var hero = '<div class="gx-panel" style="padding:18px 20px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><span class="gx-dim" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + leagueLogo(lgk) + esc(m.home.league_name) + '</span>' + clubGateChip({ status: m.gate }) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--gx-disp);font-weight:700;font-size:clamp(17px,3vw,24px)"><span style="display:inline-flex;align-items:center;gap:8px">' + clubBadge(hId) + ' ' + esc(m.home.name) + '</span><span class="gx-dim" style="font-size:' + (cres ? '22px' : '12px') + ';font-weight:800;color:' + (cres ? 'var(--gx-text)' : 'inherit') + '">' + (cres ? esc(cres.hg + ' - ' + cres.ag) : 'VS') + '</span><span style="text-align:right;display:inline-flex;align-items:center;gap:8px">' + esc(m.away.name) + ' ' + clubBadge(aId) + '</span></div>' +
-      (cres ? '<div style="text-align:center;margin-top:6px">' + (cres.status === 'live' ? '<span class="gx-live-pill">' + esc(t('st_live')) + (cres.minute ? ' ' + cres.minute + "'" : '') + '</span>' : '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esc(t('st_ft')) + '</span>') + '</div>' : '') +
-      '<div class="gx-dim" style="display:flex;justify-content:space-between;font-size:10.5px;font-family:var(--gx-mono);margin-top:4px"><span>Elo ' + m.home.elo + '</span><span>Elo ' + m.away.elo + '</span></div>' +
-      '</div>';
-    // TABS (paridad con el cockpit del Mundial: Resumen/Goles/Inteligencia/Forma/Mercados/Value)
-    var tab = S.clmTab || 'resumen';
-    // F2.3: nota base→contexto→GP cuando el observer ajustó el λ por bajas (flag GP_OBSERVER_LAMBDA activo).
-    var ca = m.context_adjust;
-    var ctxNote = (ca && ca.active && ca.base_probs) ? (function () {
-      var dH = Math.round((1 - ca.factor.home) * 100), dA = Math.round((1 - ca.factor.away) * 100);
-      var parts = [];
-      if (dH) parts.push(esc(m.home.name) + ' ' + (dH >= 0 ? '−' : '+') + Math.abs(dH) + '%');
-      if (dA) parts.push(esc(m.away.name) + ' ' + (dA >= 0 ? '−' : '+') + Math.abs(dA) + '%');
-      return '<div class="gx-pick-disc" style="margin-top:8px">' + esc(t('cl_ctx_applied')) + (parts.length ? ': ' + parts.join(' · ') : '') +
-        ' · ' + esc(t('cl_ctx_base')) + ' ' + pct0(ca.base_probs.home) + '/' + pct0(ca.base_probs.draw) + '/' + pct0(ca.base_probs.away) +
-        ' → GP ' + pct0(m.probs.home) + '/' + pct0(m.probs.draw) + '/' + pct0(m.probs.away) + '</div>';
-    })() : '';
-    var probPanel = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('percentage') + esc(t('mod_prob')) + ' · 90 min' + (m.neutral ? ' · ' + esc(t('cl_neutral')) : '') + (ca && ca.active ? ' · ' + esc(t('cl_ctx_applied')) : '') + '</span></div><div style="padding:14px 16px">' + bar + ctxNote + '</div></div>';
-    var goalsPanel = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span></div><div style="padding:6px 16px 12px">' +
-      rowsHtml([[t('cl_xg'), m.xg.home + ' – ' + m.xg.away], [t('cl_o25'), m.over25 != null ? pct0(m.over25) : null], [t('cl_btts'), m.btts != null ? pct0(m.btts) : null]]) + '</div></div>' +
-      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
-      (m.top_scores || []).map(function (s) { return '<div class="gx-clrow"><span class="gx-mono">' + esc(s.score) + '</span><span class="gx-mono" style="font-weight:700">' + pct0(s.p) + '</span></div>'; }).join('') + '</div></div>';
-    // F1.2: GP EN VIVO (prob condicionada al marcador+minuto) + MOMENTUM (evolución). El gráfico reusa mvMomentum
-    // del Mundial parametrizado con escudos/nombres de club (misma función, sin bifurcar).
-    var liveProbHtml = (m.gp_live && m.gp_live.home != null) ?
-      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('trending-up') + esc(t('mod_prob')) + ' · ' + esc(t('st_live')) + (m.gp_live.minute ? ' ' + m.gp_live.minute + "'" : '') + '</span><span class="gx-live-pill">' + esc(t('st_live')) + '</span></div><div style="padding:14px 16px">' +
-        '<div class="gx-clbar" style="height:10px"><span class="h" style="width:' + (m.gp_live.home * 100) + '%"></span><span class="d" style="width:' + (m.gp_live.draw * 100) + '%"></span><span class="a" style="width:' + (m.gp_live.away * 100) + '%"></span></div>' +
-        '<div class="gx-clpct"><b>' + esc(m.home.name) + ' ' + pct0(m.gp_live.home) + '</b><span>X ' + pct0(m.gp_live.draw) + '</span><b>' + pct0(m.gp_live.away) + ' ' + esc(m.away.name) + '</b></div>' +
-        '</div></div>' : '';
-    var momHtml = (m.momentum && m.momentum.length > 2) ? mvMomentum(
-      { momentum: m.momentum, status: (cres && cres.status) || 'final' },
-      { home: { team_id: hId, name_fallback: m.home.name }, away: { team_id: aId, name_fallback: m.away.name } },
-      { badge: function (id) { return clubBadge(id); }, nameOf: function (id, fb) { return fb || id; } }
-    ) : '';
-    var eventsHtml = clubLiveEventsHtml(m.events, cres && cres.status === 'live'); // F1.1b: goles/tarjetas/subs en vivo
-    var TABS = [['resumen', t('cl_tab_summary')], ['goles', t('mod_goals')], ['intel', t('cl_intel')], ['contexto', t('nav_context') || 'Contexto'], ['forma', t('cl_tab_form')], ['alineaciones', t('nav_lineups') || 'Alineaciones'], ['mercados', t('cl_markets')]];
-    if (vRows.length) TABS.push(['value', t('cl_value')]);
-    var tabNav = '<nav class="gx-mv-nav" id="gx-clm-tabs">' + TABS.map(function (x) { return '<a data-clmtab="' + x[0] + '"' + (x[0] === tab ? ' class="on"' : '') + '>' + esc(x[1]) + '</a>'; }).join('') + '</nav>';
-    var body;
-    if (tab === 'goles') body = goalsPanel;
-    else if (tab === 'intel') body = clubIntelHtml(m, lgk) || ('<div class="gx-panel"><div class="gx-empty">' + ic('target-arrow') + esc(t('cl_player_soon')) + '</div></div>');
-    else if (tab === 'contexto') body = clubContextHtml(eid, lgk, hId, aId, m);
-    else if (tab === 'forma') body = clubFormHtml(m);
-    else if (tab === 'alineaciones') body = clubLineupsHtml(eid, lgk, hId, aId);
-    else if (tab === 'mercados') body = clubMarketsHtml(m) || ('<div class="gx-panel"><div class="gx-empty">' + ic('table') + esc(t('cl_no_markets')) + '</div></div>');
-    else if (tab === 'value') body = valueHtml || ('<div class="gx-panel"><div class="gx-empty">' + ic('trending-up') + esc(t('opp_value_empty')) + '</div></div>');
-    else body = liveProbHtml + eventsHtml + probPanel + momHtml + goalsPanel; // resumen (GP en vivo + eventos + evolución cuando el partido juega)
-    mv.innerHTML = mvShell(
-      '<div class="gx-content" style="gap:14px">' + hero + tabNav + body +
-      (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '') +
-      '</div>'
-    );
-    var tn = $('#gx-clm-tabs'); if (tn) tn.addEventListener('click', function (e) { var a = e.target.closest('[data-clmtab]'); if (a) { S.clmTab = a.getAttribute('data-clmtab'); renderClubMatch(eid, mv); } });
-    bindBack();
-    [].forEach.call(mv.querySelectorAll('[data-cplayer]'), function (el) {
-      el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
-    });
-  }
-  // CONTEXTO del cruce (Context del Mundial): bajas/lesiones + descanso + forma de cada equipo. Lazy-fetch.
-  function clubContextHtml(eid, lgk, hId, aId, m) {
-    S.cctx = S.cctx || {};
-    if (S.cctx[eid] === undefined) {
-      S.cctx[eid] = null;
-      fetch('/api/clubs/context?league=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&a=' + encodeURIComponent(aId), { headers: hdrs() })
-        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-        .then(function (j) { S.cctx[eid] = j || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
-      return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
-    }
-    var cx = S.cctx[eid];
-    if (!cx || cx._empty) return '<div class="gx-panel"><div class="gx-empty">' + ic('activity') + esc(t('cl_no_context')) + '</div></div>';
-    var chips = function (arr) { return (arr || []).map(function (r) { var c = r === 'W' ? 'var(--gx-pos)' : r === 'L' ? '#F09595' : 'var(--gx-text3)'; return '<span style="display:inline-flex;width:18px;height:18px;border-radius:4px;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#06231A;background:' + c + ';margin-left:3px">' + esc(r) + '</span>'; }).join(''); };
-    var side = function (s, id, name) {
-      s = s || {};
-      var inj = (s.injuries || []).length
-        ? (s.injuries || []).map(function (p) { return '<div class="gx-finding"><span class="gx-finding-dot" style="background:#F09595"></span>' + esc(p.name) + (p.reason ? ' <span class="gx-dim">· ' + esc(p.reason) + '</span>' : '') + '</div>'; }).join('')
-        : '<div class="gx-dim" style="font-size:11.5px;padding:4px 0">' + esc(t('cl_no_injuries')) + '</div>';
-      var meta = [];
-      if (s.rest != null) meta.push(esc(t('cl_rest')) + ': <b>' + s.rest + ' ' + esc(t('cl_days')) + '</b>');
-      if (s.form && s.form.length) meta.push(esc(t('cl_tab_form')) + ': ' + chips(s.form));
-      // F2.3: hallazgos narrados del OBSERVER (disponibilidad, caja negra). Color por severidad.
-      var avail = (s.avail || []).map(function (f) {
-        var txt = LANG === 'en' ? f.en : f.es;
-        var col = (f.status === 'OUT' || f.status === 'SUSPENDED') ? '#F09595' : f.status === 'DOUBT' ? 'var(--gx-warn)' : 'var(--gx-text3)';
-        return '<div class="gx-finding"><span class="gx-finding-dot" style="background:' + col + '"></span><span>' + esc(txt || f.player) + '</span></div>';
-      }).join('');
-      return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div>' +
-        (meta.length ? '<div class="gx-lu-meta gx-dim" style="margin-bottom:6px">' + meta.join(' · ') + '</div>' : '') +
-        '<div class="gx-label" style="margin:4px 0">' + esc(t('cl_injuries')) + '</div><div class="gx-findings">' + inj + '</div>' +
-        (avail ? '<div class="gx-label" style="margin:8px 0 4px">' + esc(t('intel_findings')) + '</div><div class="gx-findings">' + avail + '</div>' : '') + '</div>';
-    };
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('activity') + esc(t('nav_context') || 'Contexto') + '</span></div><div class="gx-lu-grid" style="padding:8px 14px 14px">' +
-      side(cx.home, hId, (m.home && m.home.name) || '') + side(cx.away, aId, (m.away && m.away.name) || '') + '</div>' +
-      '<div class="gx-pick-disc">' + esc(t('cl_context_sub')) + '</div></div>';
-  }
-  // ALINEACIONES del cruce (Lineups del Mundial): XI + formación + DT de cada equipo, desde API-Football.
-  // Reusa las clases gx-lu-* del Mundial. Lazy-fetch de /api/clubs/lineups.
-  // nombre de jugador de club → link al perfil (cplayer) si el server resolvió el pl_ id; si no, texto plano.
-  // Calco de playerLink del Mundial: <a href> + gx-plk; onHash ya rutea #cplayer/<lg>-<tm>-<pl>.
-  function clubPlayerLink(lgk, teamId, pid, inner) {
-    if (!pid) return inner;
-    return '<a href="#cplayer/' + esc(lgk + '-' + teamId + '-' + pid) + '" class="gx-plk">' + inner + '</a>';
-  }
-  // Eventos en vivo del cruce (goles/tarjetas/subs/VAR) reusando el MISMO markup/íconos del cockpit del Mundial
-  // (gx-event-i + evIcon). El shape viene normalizado del server {minute,type,player,assist,teamName,side}.
-  function clubLiveEventsHtml(events, live) {
-    if (!events || !events.length) return '';
-    var evIcon = { goal: 'ball-football', yellow: 'square-rounded', red: 'square-rounded-filled', subst: 'arrows-exchange', var: 'video' };
-    var evs = events.slice().reverse().slice(0, 16).map(function (e) { return '<div class="gx-event-i gx-ev-' + (e.side || '') + '"><span class="gx-mono gx-dim">' + (e.minute != null ? e.minute + "'" : '') + '</span><span class="gx-evt-ic gx-evt-' + (e.type || 'other') + '">' + ic(evIcon[e.type] || 'point') + '</span><span>' + esc(e.player || t('evk_other')) + '</span>' + (e.assist ? '<span class="gx-dim" style="font-size:11px">· ' + esc(e.assist) + '</span>' : '') + '<span class="gx-dim gx-event-team">' + esc(e.teamName || '') + '</span></div>'; }).join('');
-    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('broadcast') + esc(t('live_events')) + '</span>' + (live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '') + '</div><div class="gx-mod-body"><div class="gx-events">' + evs + '</div></div></div>';
-  }
-  function clubLineupsHtml(eid, lgk, hId, aId) {
-    S.clu = S.clu || {};
-    if (S.clu[eid] === undefined) {
+    // lazy-fetch de alineaciones y contexto del cruce (mismos endpoints; re-render al llegar)
+    S.clu = S.clu || {}; S.cctx = S.cctx || {};
+    if (!m.cross_league && S.clu[eid] === undefined) {
       S.clu[eid] = null;
       fetch('/api/clubs/lineups?league=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&a=' + encodeURIComponent(aId), { headers: hdrs() })
         .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
         .then(function (j) { S.clu[eid] = j || { available: false }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
-      return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
     }
-    var lu = S.clu[eid];
-    if (!lu || !lu.available) return '<div class="gx-panel"><div class="gx-empty">' + ic('layout-board') + esc(t('cl_no_lineups')) + '</div></div>';
-    var m = S.clm[eid] || {};
-    var side = function (s, id, name) {
-      if (!s) return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div><div class="gx-dim" style="font-size:12px;padding:6px 0">' + esc(t('e_lineups')) + '</div></div>';
-      var xi = (s.xi || []).map(function (p) { var inner = '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">' + (p.num != null ? p.num : '–') + '</span><b>' + esc(p.name) + '</b>' + (p.pos ? '<span class="gx-dim gx-lu-pos">' + esc(p.pos) + '</span>' : '') + '</div>'; return clubPlayerLink(lgk, id, p.pid, inner); }).join('');
-      var subs = (s.bench || []).map(function (p) { var inner = '<div class="gx-lu-p"><span class="gx-lu-n gx-mono">–</span><b>' + esc(p.name) + '</b></div>'; return clubPlayerLink(lgk, id, p.pid, inner); }).join('');
-      return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div>' +
-        '<div class="gx-lu-meta gx-dim">' + (s.formation ? esc(t('formation')) + ' <b>' + esc(s.formation) + '</b>' : '') + (s.coach ? ' · ' + esc(s.coach) : '') + '</div>' +
-        (xi ? '<div class="gx-lu-xi">' + xi + '</div>' : '') +
-        (subs ? '<div class="gx-lu-sub-h gx-label">' + esc(t('lineup_subs')) + '</div><div class="gx-lu-subs">' + subs + '</div>' : '') + '</div>';
+    if (!m.cross_league && S.cctx[eid] === undefined) {
+      S.cctx[eid] = null;
+      fetch('/api/clubs/context?league=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&a=' + encodeURIComponent(aId), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.cctx[eid] = j || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+    }
+    // marcador en vivo/finalizado del cruce (si el sync de clubes lo tiene)
+    var Lm = clubLeague(lgk), fxr = Lm ? (Lm.live || []).concat(Lm.upcoming || []).find(function (f) { return f.home.id === hId && f.away.id === aId; }) : null;
+    var cres = fxr && fxr.result ? fxr.result : null;
+    // ---- beta (misma forma que /api/beta/match del Mundial) ----
+    var stCode = cres ? (cres.status === 'live' ? 'LIVE' : 'FINISHED') : 'SCHEDULED';
+    var vRows = ((S.clubsValue && S.clubsValue.rows) || []).filter(function (v) { return v.home === m.home.name && v.away === m.away.name; });
+    var mkOf = function (side) { var v = vRows.filter(function (x) { return x.outcome === side; })[0]; if (!v) return null; if (v.market != null) return v.market; if (v.edge_pp != null) return round4(m.probs[side] - v.edge_pp / 100); return null; };
+    var fin = { HOME: m.probs.home, DRAW: m.probs.draw, AWAY: m.probs.away };
+    var ca = m.context_adjust;
+    var analysis = (ca && ca.active && ca.base_probs)
+      ? (function () { var base = { HOME: ca.base_probs.home, DRAW: ca.base_probs.draw, AWAY: ca.base_probs.away }; return { context_state_code: 'FULL_CONTEXT', base_vector: base, final_vector: fin, context_adjustments: { HOME: round4(fin.HOME - base.HOME), DRAW: round4(fin.DRAW - base.DRAW), AWAY: round4(fin.AWAY - base.AWAY) }, context_moved_line: true, applied_factors: [], evaluated_factors: [], data_freshness_code: 'FRESH' }; })()
+      : { context_state_code: 'BASE_ONLY', base_vector: fin, final_vector: fin, context_adjustments: { HOME: 0, DRAW: 0, AWAY: 0 }, context_moved_line: false, applied_factors: [], evaluated_factors: [], data_freshness_code: 'FRESH' };
+    var beta = {
+      header: { event_id: eid, competition_name: m.home.league_name, competition_code: 'CLUB', stage_code: null, kickoff_at: (fxr && fxr.utc) || (cres ? new Date().toISOString() : null), venue: null, status_code: stCode, home: { team_id: hId, name_fallback: m.home.name }, away: { team_id: aId, name_fallback: m.away.name } },
+      probability: { market_code: '1X2', period_code: 'REGULATION', period_note_code: 'REGULATION_90', sums_to_one: true, outcomes: [
+        { outcome_code: 'HOME', team_ref: 'home', gp_probability: m.probs.home, market_probability: mkOf('home') },
+        { outcome_code: 'DRAW', team_ref: null, gp_probability: m.probs.draw, market_probability: mkOf('draw') },
+        { outcome_code: 'AWAY', team_ref: 'away', gp_probability: m.probs.away, market_probability: mkOf('away') }] },
+      analysis: analysis, confidence_code: null, risks: [], has_official_v2: false,
+      goal_insights: m.goal_insights || null,
     };
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('layout-board') + esc(t('nav_lineups') || 'Alineaciones') + '</span></div><div class="gx-lu-grid" style="padding:8px 14px 14px">' +
-      side(lu.home, hId, (m.home && m.home.name) || '') + side(lu.away, aId, (m.away && m.away.name) || '') + '</div></div>';
-  }
-  // FORMA + H2H del cruce (Recent form del Mundial): chips W/D/L de ambos equipos + últimos enfrentamientos directos.
-  function clubFormHtml(m) {
-    var f = m.form;
-    if (!f || (!(f.home || []).length && !(f.away || []).length && !(f.h2h || []).length)) return '<div class="gx-panel"><div class="gx-empty">' + ic('activity') + esc(t('cl_no_results')) + '</div></div>';
-    var chips = function (arr) { return (arr || []).map(function (r) { var c = r === 'W' ? 'var(--gx-pos)' : r === 'L' ? '#F09595' : 'var(--gx-text3)'; return '<span style="display:inline-flex;width:20px;height:20px;border-radius:5px;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#06231A;background:' + c + ';margin-left:3px">' + esc(r) + '</span>'; }).join(''); };
-    var teamForm = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('activity') + esc(t('cl_tab_form')) + '</span></div><div style="padding:8px 16px 12px">' +
-      '<div class="gx-clrow"><span>' + clubBadge(m.home.id) + ' ' + esc(m.home.name) + '</span><span>' + chips(f.home) + '</span></div>' +
-      '<div class="gx-clrow"><span>' + clubBadge(m.away.id) + ' ' + esc(m.away.name) + '</span><span>' + chips(f.away) + '</span></div></div></div>';
-    var h2h = (f.h2h || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('swords') + esc(t('cl_h2h')) + '</span></div><div style="padding:6px 16px 12px">' +
-      f.h2h.map(function (r) {
-        var hName = r.home_id === m.home.id ? m.home.name : m.away.name, aName = r.home_id === m.home.id ? m.away.name : m.home.name;
-        return '<div class="gx-clrow"><span class="gx-dim" style="font-size:10.5px">' + esc(fmtDate(r.date)) + '</span><span class="gx-mono" style="font-weight:700">' + esc(hName.split(' · ')[0]) + ' ' + r.hg + '-' + r.ag + ' ' + esc(aName.split(' · ')[0]) + '</span></div>';
-      }).join('') + '</div></div>' : '';
-    return teamForm + h2h;
+    // ---- fx (misma forma que /api/match/:id del Mundial) ----
+    var lu = (S.clu[eid] && S.clu[eid].available) ? S.clu[eid] : null;
+    var mapSide = function (s, teamId) {
+      if (!s) return null;
+      // índice nombre→pid del server (XI clickeable al perfil vía playerLink, mismo camino del Mundial)
+      S.clubPidx = S.clubPidx || {};
+      var cx = S.clubPidx[teamId] = S.clubPidx[teamId] || { league: lgk, byName: {} };
+      (s.xi || []).concat(s.bench || []).forEach(function (p) { if (p.pid && p.name) cx.byName[pnorm(p.name)] = p.pid; });
+      return { formation: s.formation || null, coach: s.coach || null, confirmed: true,
+        startXI: (s.xi || []).map(function (p) { return { name: p.name, number: p.num != null ? p.num : null, position: p.pos || null }; }),
+        substitutes: (s.bench || []).map(function (p) { return { name: p.name, number: null, position: null }; }) };
+    };
+    var cctx = (S.cctx[eid] && !S.cctx[eid]._empty) ? S.cctx[eid] : null;
+    var injuries = [];
+    if (cctx) ['home', 'away'].forEach(function (sd) { ((cctx[sd] && cctx[sd].injuries) || []).forEach(function (i) { injuries.push({ side: sd, player: i.name }); }); ((cctx[sd] && cctx[sd].avail) || []).forEach(function (f) { if (f.player) injuries.push({ side: sd, player: f.player }); }); });
+    var mapForm = function (arr) { return (arr && arr.length) ? { played: arr.length, results: arr } : null; };
+    var fx = {
+      status: cres ? (cres.status === 'live' ? 'live' : 'final') : 'scheduled',
+      score: cres ? { home: cres.hg, away: cres.ag } : null,
+      minute: cres ? cres.minute : null,
+      date: (fxr && fxr.utc) || null,
+      events: m.events || [],
+      statistics: null,
+      lineups: lu ? { home: mapSide(lu.home, hId), away: mapSide(lu.away, aId) } : {},
+      recentForm: m.form ? { home: mapForm(m.form.home), away: mapForm(m.form.away) } : null,
+      injuries: injuries,
+      momentum: m.momentum || null,
+      gpLive: m.gp_live ? { homeWin: m.gp_live.home, draw: m.gp_live.draw, awayWin: m.gp_live.away } : null,
+      modelProbabilities: m.gp_live ? { homeWin: m.gp_live.home, draw: m.gp_live.draw, awayWin: m.gp_live.away, live: true, xgHome: m.xg.home, xgAway: m.xg.away, likelyScore: m.gp_live.likely_score } : { xgHome: m.xg.home, xgAway: m.xg.away },
+      odds: (m.markets && m.markets.h2h && m.markets.h2h.home) ? [{ book: prettyBook(m.markets.h2h.home.book) || m.markets.h2h.home.book, home: m.markets.h2h.home.odds, draw: m.markets.h2h.draw && m.markets.h2h.draw.odds, away: m.markets.h2h.away && m.markets.h2h.away.odds }] : [],
+      updatedAt: new Date().toISOString(),
+    };
+    // GP en vivo: mismo override del Mundial (la prob del hero se mueve con el marcador, la descomposición queda pre-partido)
+    if (fx.status === 'live' && fx.gpLive) {
+      var mk0 = {}; beta.probability.outcomes.forEach(function (o) { mk0[o.outcome_code] = o.market_probability; });
+      beta.probability = { market_code: '1X2', period_code: 'REGULATION', period_note_code: 'REGULATION_90', sums_to_one: true, live: true, outcomes: [
+        { outcome_code: 'HOME', team_ref: 'home', gp_probability: round4(fx.gpLive.homeWin), market_probability: mk0.HOME },
+        { outcome_code: 'DRAW', team_ref: null, gp_probability: round4(fx.gpLive.draw), market_probability: mk0.DRAW },
+        { outcome_code: 'AWAY', team_ref: 'away', gp_probability: round4(fx.gpLive.awayWin), market_probability: mk0.AWAY }] };
+      if (beta.analysis) { beta.analysis.final_vector = { HOME: round4(fx.gpLive.homeWin), DRAW: round4(fx.gpLive.draw), AWAY: round4(fx.gpLive.awayWin) }; beta.analysis.live_adjusted = true; }
+      beta._gpLive = fx.gpLive;
+    }
+    // ---- MISMO layout del Mundial: hero + nav de anclas + grid de 2 columnas con las mismas secciones ----
+    var r = rowFromBeta(beta);
+    var live = fx.status === 'live';
+    var hasForm = fx.recentForm && (fx.recentForm.home || fx.recentForm.away);
+    var hasLineups = !!(fx.lineups && (fx.lineups.home || fx.lineups.away));
+    var hasEvents = fx.events && fx.events.length;
+    var hasMom = fx.momentum && fx.momentum.length > 2;
+    var sections = [{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }];
+    if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
+    if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
+    if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
+    if (m.match_intel) sections.push({ id: 'intel', key: 'mod_intel' });
+    if (hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
+    sections.push({ id: 'goles', key: 'mod_goals' });
+    if (live) sections.push({ id: 'live', key: 'mod_live' });
+    var sec = function (id, html) { return html ? '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>' : ''; };
+    mv.innerHTML = mvShell(
+      mvHero(beta, fx, r, live) +
+      mvNav(sections) +
+      '<div class="gx-mv-grid">' +
+      '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + (hasEvents ? sec('stats', mvStats(beta, fx)) : '') + (m.match_intel ? sec('intel', clubIntelHtml(m, lgk)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
+      '</div>' +
+      (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '')
+    );
+    bindBack(); bindMvNav();
+    [].forEach.call(mv.querySelectorAll('[data-cplayer]'), function (el) {
+      el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
+    });
   }
   // MATCH INTEL de club: anotadores probables por equipo (P(gol) del modelo), clickeables al perfil del jugador.
   // Paridad con el "Match intel" del cockpit del Mundial; reusa el mismo engine (projectTeam) sobre datos de liga.
@@ -2655,28 +2611,6 @@
     };
     return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('target-arrow') + esc(t('cl_intel')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(t('cl_anytime')) + '</span></div><div style="padding:8px 16px 12px">' +
       side(m.home.id, m.home.name, mi.home) + side(m.away.id, m.away.name, mi.away) + '</div></div>';
-  }
-  // F1.5: matriz de mercados del cruce (mejor cuota por resultado + O/U por línea). SIN calculadora (paridad con
-  // el tab Markets del Mundial; la calc vive en Value/Picks/Arb).
-  function clubMarketsHtml(m) {
-    var mk = m.markets; if (!mk || (!mk.h2h && !(mk.totals || []).length)) return '';
-    // matriz de mercados = paridad con el tab "Markets" del cockpit del Mundial: cuota + casa por resultado.
-    // SIN calculadora (la calc del Mundial vive en Value/Picks/Arbitraje, NO en el cockpit del partido).
-    var rowMk = function (label, prob, q) {
-      if (!q) return '';
-      return '<div class="gx-clrow" style="align-items:center;gap:8px"><span>' + esc(label) + (prob != null ? ' <span class="gx-dim gx-mono" style="font-size:10.5px">GP ' + pct0(prob) + '</span>' : '') + '</span>' +
-        '<span style="display:inline-flex;align-items:center;gap:8px"><span class="gx-mono gx-best" style="font-weight:700"><span class="hi">' + Number(q.odds).toFixed(2) + '</span></span>' +
-        '<span class="gx-dim" style="font-size:10.5px;display:inline-flex;align-items:center">' + bookLogo(q.book) + esc(prettyBook(q.book) || q.book) + '</span></span></div>';
-    };
-    var body = '';
-    if (mk.h2h) body += rowMk(esc(m.home.name), m.probs.home, mk.h2h.home) + rowMk(t('arb_draw'), m.probs.draw, mk.h2h.draw) + rowMk(esc(m.away.name), m.probs.away, mk.h2h.away);
-    var ouProb = {}; (m.ou_lines || []).forEach(function (x) { ouProb[x.line] = x.over; });
-    (mk.totals || []).slice(0, 4).forEach(function (tt) {
-      body += rowMk((LANG === 'en' ? 'Over ' : 'Más de ') + tt.line, ouProb[tt.line] != null ? ouProb[tt.line] : null, tt.over);
-      body += rowMk((LANG === 'en' ? 'Under ' : 'Menos de ') + tt.line, ouProb[tt.line] != null ? 1 - ouProb[tt.line] : null, tt.under);
-    });
-    if (!body) return '';
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('table') + esc(t('cl_markets')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(t('cl_best_odds')) + '</span></div><div style="padding:6px 16px 12px">' + body + '</div></div>';
   }
   function mvShell(body) {
     return '<div class="gx-mv">' +
@@ -2938,7 +2872,7 @@
   function mvLineups(beta, fx) {
     var h = beta.header, lu = fx.lineups || {}, eid = beta.header.event_id;
     // lazy-fetch teamdetail para lados sin alineación (próximos partidos sin XI confirmado/proyectado en /api/match)
-    ['home', 'away'].forEach(function (sk) { var id = sk === 'home' ? h.home.team_id : h.away.team_id; if (!lu[sk] && id && S.tcache[id] === undefined) { S.tcache[id] = null; fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (td) { S.tcache[id] = td || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); }); } });
+    ['home', 'away'].forEach(function (sk) { var id = sk === 'home' ? h.home.team_id : h.away.team_id; if (!lu[sk] && id && !/^tm_/.test(id) && S.tcache[id] === undefined) { S.tcache[id] = null; fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (td) { S.tcache[id] = td || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); }); } });
     var side = function (sideKey, id, name) {
       var l = lu[sideKey], fromTeam = false;
       if (!l) { var td = S.tcache[id]; if (td && !td._empty && td.projectedLineup && (td.projectedLineup.startXI || []).length) { l = td.projectedLineup; fromTeam = true; } }
@@ -3128,7 +3062,7 @@
       else if (live && (fx.minute || 0) > 90) kp.push(esc(t('in_et')));
       if (kp.length) koLine = '<div class="gx-hero-ko">' + kp.join(' · ') + '</div>';
     }
-    var meta = [esc(t('comp')), stageLabel(h.stage_code) ? esc(stageLabel(h.stage_code)) : '', h.venue ? esc(h.venue) : '', esc(fmtDate(h.kickoff_at))].filter(Boolean).join(' · ');
+    var meta = [h.competition_name ? esc(h.competition_name) : esc(t('comp')), stageLabel(h.stage_code) ? esc(stageLabel(h.stage_code)) : '', h.venue ? esc(h.venue) : '', esc(fmtDate(h.kickoff_at))].filter(Boolean).join(' · ');
     var tri = function (fn, cls, hi) { return '<span class="gx-tri ' + cls + '">' + ['HOME', 'DRAW', 'AWAY'].map(function (c) { return '<span' + (hi === c ? ' class="hi"' : '') + '>' + fn(c) + '</span>'; }).join('') + '</span>'; };
     var miniStat = function (label, v, extra) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b>' + (extra || '') + '</div>'; };
     return '<div class="gx-panel gx-hero">' +
@@ -3500,7 +3434,13 @@
     if (!clubsOn() || S.clubs !== undefined) return;
     S.clubs = null;
     fetch('/api/clubs/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-      .then(function (j) { S.clubs = j || { leagues: [] }; if (S.view === 'matches') renderMatches(); });
+      .then(function (j) {
+        S.clubs = j || { leagues: [] };
+        // índice tm_id → nombre (alimenta teamName() para que TODOS los componentes del Mundial sirvan clubes)
+        S.clubNames = {};
+        (S.clubs.leagues || []).forEach(function (L) { (L.table || []).forEach(function (tm) { S.clubNames[tm.id] = tm.name; }); });
+        if (S.view === 'matches') renderMatches();
+      });
     fetch('/api/clubs/value', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) { S.clubsValue = j || null; if (S.view === 'match' && /^cl-/.test(S.matchId || '')) renderMatch(); });
   }
@@ -4758,7 +4698,12 @@
     fetch('/api/clubs/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
       if (!j) return;
       var js = null; try { js = JSON.stringify(j.leagues || []); } catch (e) { js = null; }
-      if (!(js && js === S._clubsJson)) { if (js) S._clubsJson = js; S.clubs = j; if (S.view === 'matches') { noAnimWindow(); renderMatches(); } }
+      if (!(js && js === S._clubsJson)) {
+        if (js) S._clubsJson = js; S.clubs = j;
+        S.clubNames = {};
+        (j.leagues || []).forEach(function (L) { (L.table || []).forEach(function (tm) { S.clubNames[tm.id] = tm.name; }); });
+        if (S.view === 'matches') { noAnimWindow(); renderMatches(); }
+      }
       if (S.view === 'match' && /^cl-/.test(S.matchId || '')) refreshClubMatchLive(S.matchId);
     });
   }

@@ -72,9 +72,9 @@ La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board t
 |---|---|
 | Lista con ranking/Elo/prob | ✔ (standings+Elo por liga) |
 | Hero de equipo (probs campeón/avance) | ½ (posición/pts/récord; prob de campeón de liga ✘ F4.1 simulador de temporada) |
-| Tab Plantilla con FOTOS clickeables | ½ plantilla ✔ (F2-fase1), fotos ✘ F0.2 |
-| Tab Forma (últimos 5) | ✘ F2.1 (finished de TSA) |
-| Tab Resultados | ✘ F2.1 |
+| Tab Plantilla con FOTOS clickeables | ✔ (tabs + fotos) |
+| Tab Forma (últimos 5) | ✔ (6bc4169) |
+| Tab Resultados | ✔ (6bc4169) |
 | Tab Mercados (Poly/Kalshi campeón) | ✘ F4.1 (mercados de campeón de liga si existen en Poly) |
 | Tab Noticias | ✘ F2.3 (observer) |
 | Seguir equipo (follow + alertas email inicio/gol) | ✘ F2.5 |

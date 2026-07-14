@@ -45,4 +45,12 @@ function teamQueries(teamEn, teamEs) {
   ];
 }
 
-module.exports = { googleNewsRss, teamQueries, parseItems };
+// Queries por CLUB (F2.3): nombre universal, EN + ES, sin el sufijo "world cup"/"mundial" (es liga de clubes).
+function clubQueries(name) {
+  return [
+    { lang: 'en', q: `"${name}" (injury OR doubt OR ruled out OR suspended OR illness OR lineup OR training)` },
+    { lang: 'es', q: `"${name}" (lesion OR duda OR baja OR sancionado OR enfermo OR alineacion OR entrenamiento)` },
+  ];
+}
+
+module.exports = { googleNewsRss, teamQueries, clubQueries, parseItems };

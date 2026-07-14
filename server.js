@@ -587,6 +587,7 @@ db.tsaPlayers = db.tsaPlayers || {};              // stats por jugador de partid
 db.observations = db.observations || {};       // CAPA DE OBSERVACIÓN (shadow): señales de disponibilidad por equipo desde noticias publicadas. Solo admin.
 db.momentum = db.momentum || {};               // MOMENTUM GP en vivo: serie de prob GP muestreada cada ~30s por partido (persiste post-partido para el gráfico y contenido).
 db.clubMomentum = db.clubMomentum || {};       // MOMENTUM GP en vivo de CLUBES (F1.2): misma serie que db.momentum pero por cruce de liga (clubScoreKey). Muestreada por clubScoresSync (30s), cero llamadas externas.
+db.clubObservations = db.clubObservations || {}; // OBSERVER de CLUBES (F2.3, shadow): señales de disponibilidad por tm_id desde Google News. Mismo pipeline que db.observations del Mundial (extract/verify/assess/narrate).
 db.fotmob = db.fotmob || { matches: [] };      // EVENT DATA incremental (FotMob): partidos terminados post-deploy (el histórico vive en data/fotmob-events.json del repo). Cache permanente por matchId.
 db.premiumGrants = db.premiumGrants || {};     // PLANES (Whop): email → {plan:'pro'|'sharp', status:'active'|'cancelled'|'past_due', founder, source, whop_membership_id, since, updatedAt}
 db.whopEvents = db.whopEvents || [];           // últimos eventos del webhook de Whop (debug admin; ring 100)
@@ -3486,6 +3487,11 @@ if (observerOn()) {
   setTimeout(() => { sanitizeObservations(); runObserver().catch(() => { }); }, 90 * 1000);
   setInterval(() => runObserver().catch(() => { }), 3 * 3600 * 1000);
 }
+// F2.3: observer de clubes (mismo pipeline, gated GP_CLUBS_SHADOW_ENABLED + GP_OBSERVER_ENABLED). Cadencia 3h.
+if (observerOn() && clubsShadowOn()) {
+  setTimeout(() => { runClubObserver().catch(() => { }); }, 150 * 1000);
+  setInterval(() => runClubObserver().catch(() => { }), 3 * 3600 * 1000);
+}
 
 // ===== MOMENTUM GP en vivo (7-jul) ==========================================================================
 // Muestrea la probabilidad GP en vivo de cada partido EN JUEGO cada ~30s y la persiste (db.momentum) para el
@@ -3661,6 +3667,134 @@ function propRoster() {
     }
   } catch { /* sin dataset */ }
   return _propRoster;
+}
+// ===== FASE CLUBES F2.3: OBSERVER MULTI-LIGA =====
+// Mismo pipeline que el observer del Mundial (sources/extract/verify/assess/narrate) parametrizado por club:
+// Google News por nombre de club (solo clubes con partido en <72h → requests acotados), roster de TSA para
+// matchear jugadores, señales en db.clubObservations[tm_id]. SHADOW: el ajuste al λ va tras el MISMO flag
+// GP_OBSERVER_LAMBDA_ENABLED del Mundial; la narrativa/hallazgos se muestran en el Context/perfil (admin).
+function clubsShadowOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim()); }
+let _clubObsRunning = false, _clubObsLast = null;
+async function clubObsRoster(tmId) {
+  const rows = await clubRosterRows(tmId);
+  return rows.map(p => ({ pid: p.id, name: p.name || p.short_name })).filter(x => x.pid && x.name);
+}
+// clubes con partido en las próximas 72h (upcoming memoizado por /api/clubs/state + live en curso) → [{league,tmId,name}]
+function clubObsTeams() {
+  const RT = global._clubsRatings || { leagues: {} }; const out = {}; const now = Date.now();
+  const nameOf = (league, tmId) => { const L = RT.leagues[league]; return (L && L.ratings && L.ratings[tmId] && L.ratings[tmId].name) || tmId; };
+  const add = (league, tmId, name) => { if (tmId && !out[tmId]) out[tmId] = { league, tmId, name: name || nameOf(league, tmId) }; };
+  for (const [league, up] of Object.entries(global._clubsUpcoming || {})) {
+    for (const m of (up.rows || [])) {
+      const t = m.utc_date ? +new Date(m.utc_date) : 0;
+      if (t && t - now < 72 * 3600e3 && t - now > -6 * 3600e3) {
+        add(league, String(m.home_team && m.home_team.id), m.home_team && m.home_team.name);
+        add(league, String(m.away_team && m.away_team.id), m.away_team && m.away_team.name);
+      }
+    }
+  }
+  for (const r of Object.values(db.clubResults || {})) { if (r.status === 'live') { add(r.league, r.home_id); add(r.league, r.away_id); } }
+  return Object.values(out);
+}
+async function runClubObserver() {
+  if (!observerOn() || !clubsShadowOn()) return { skipped: 'disabled' };
+  if (_clubObsRunning) return { skipped: 'running' };
+  _clubObsRunning = true;
+  const out = { teams: 0, items: 0, signals: 0, errors: 0, started: new Date().toISOString() };
+  try {
+    const sources = require('./observer/sources');
+    const { extract } = require('./observer/extract');
+    const { verifyArticle } = require('./observer/verify');
+    for (const { league, tmId, name } of clubObsTeams()) {
+      out.teams++;
+      const roster = await clubObsRoster(tmId);
+      const slot = db.clubObservations[tmId] || (db.clubObservations[tmId] = { league, name, signals: [] });
+      slot.league = league; slot.name = name;
+      const seen = new Set(slot.signals.map(s => s.title));
+      for (const q of sources.clubQueries(name)) {
+        let items = [];
+        try { items = await sources.googleNewsRss(q.q, q.lang); } catch { out.errors++; continue; }
+        out.items += items.length;
+        for (const it of items) {
+          if (!it.title || seen.has(it.title)) continue;
+          const sigs = extract(it, { team: tmId, roster });
+          if (!sigs.length) continue;
+          const kept = [];
+          for (const s of sigs) {
+            const negative = s.category === 'OUT' || s.category === 'SUSPENDED' || s.category === 'DOUBT';
+            if (negative && s.pid && (out.verified_fetches || 0) < 8) {
+              out.verified_fetches = (out.verified_fetches || 0) + 1;
+              const v = await verifyArticle(s, { extract, roster, team: tmId }).catch(() => ({ status: 'unavailable' }));
+              if (v.status === 'contradicted') { out.contradicted = (out.contradicted || 0) + 1; continue; }
+              if (v.status === 'confirmed') s.body_check = 'confirmed';
+            }
+            kept.push(s);
+          }
+          if (kept.length) { slot.signals.push(...kept); kept.forEach(s => seen.add(s.title)); out.signals += kept.length; }
+        }
+        await new Promise(r => setTimeout(r, 1200)); // educado con la fuente
+      }
+      if (slot.signals.length > 120) slot.signals = slot.signals.slice(-120);
+      slot.fetched_at = new Date().toISOString();
+    }
+    if (out.signals) save();
+  } catch (e) { out.error = e.message; }
+  finally { _clubObsRunning = false; out.finished = new Date().toISOString(); _clubObsLast = out; if (out.signals || out.error) console.log('[clubs-observer]', JSON.stringify(out)); }
+  return out;
+}
+// factor λ del observer para un club (bajas del XI habitual): mismo assessPlayers+suggestTeamFactor del Mundial
+// con el fitres de la liga (clubsFit.leagueFit). Clamp [0.75,1.10] y memo 5min iguales. Gated GP_OBSERVER_LAMBDA.
+let _clubObsLambdaMemo = {};
+function clubObserverLambdaFactor(league, tmId) {
+  if (!observerLambdaOn()) return 1;
+  const key = league + '|' + tmId;
+  const hit = _clubObsLambdaMemo[key];
+  if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.f;
+  let f = 1;
+  try {
+    const { assessPlayers, suggestTeamFactor } = require('./observer/assess');
+    const fit = require('./player-intel/clubsFit').leagueFit(league);
+    const slot = db.clubObservations[tmId];
+    if (fit && slot && slot.signals) {
+      const asmts = assessPlayers(slot.signals);
+      // clamp [0.75, 1.0]: una baja SOLO baja o queda neutral. (El fit de clubes es ruidoso y suele proyectar
+      // que sacar a un titular flojo "mejora" la generación — eso NO se muestra como boost, sería engañoso.)
+      f = Math.max(0.75, Math.min(1.0, suggestTeamFactor(fit, tmId, asmts).factor));
+    }
+  } catch { f = 1; }
+  _clubObsLambdaMemo[key] = { f, at: Date.now() };
+  return f;
+}
+// hallazgos narrados de disponibilidad de un club (caja negra, sin fuente) para el Context/perfil. Ordenados por riesgo.
+function clubObserverFindings(tmId) {
+  const slot = db.clubObservations[tmId];
+  if (!slot || !slot.signals || !slot.signals.length) return [];
+  try {
+    const { assessPlayers } = require('./observer/assess');
+    const { narratePlayer } = require('./observer/narrate');
+    const asmts = assessPlayers(slot.signals);
+    const out = [];
+    for (const pid in asmts) {
+      const a = asmts[pid];
+      if (!a.prob_miss) continue;
+      const nar = narratePlayer(a);
+      out.push({ pid, player: a.player, status: a.status, prob_miss: a.prob_miss, es: nar && nar.es, en: nar && nar.en });
+    }
+    return out.sort((x, y) => y.prob_miss - x.prob_miss);
+  } catch { return []; }
+}
+// perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
+function clubPlayerAvail(tmId, pid) {
+  const slot = db.clubObservations[tmId];
+  if (!slot || !slot.signals) return null;
+  try {
+    const { assessPlayers } = require('./observer/assess');
+    const { narratePlayer } = require('./observer/narrate');
+    const a = assessPlayers(slot.signals)[pid];
+    if (!a || !a.prob_miss) return null;
+    const nar = narratePlayer(a);
+    return { status: a.status, prob_miss: a.prob_miss, es: nar && nar.es, en: nar && nar.en };
+  } catch { return null; }
 }
 function propPlayerPid(teamCode, rawName) {
   const t = propRoster().byTeam[teamCode]; if (!t) return null;
@@ -5977,6 +6111,17 @@ const server = http.createServer(async (req, res) => {
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
     }
+    // OBSERVER DE CLUBES (F2.3): verificación read-only + disparo manual (misma key). GET expone assessments+λ.
+    if (p === '/api/internal/clubs-observer') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await runClubObserver().catch(e => ({ error: e.message })); return json(res, 200, r); }
+      const teams = Object.entries(db.clubObservations || {}).map(([tmId, slot]) => ({
+        tmId, league: slot.league, name: slot.name, signals: (slot.signals || []).length, fetched_at: slot.fetched_at,
+        findings: clubObserverFindings(tmId), lambda: clubObserverLambdaFactor(slot.league, tmId),
+      }));
+      return json(res, 200, { last: _clubObsLast, observer_on: observerOn(), lambda_on: observerLambdaOn(), teams });
+    }
     // ALINEACIONES de un cruce de club (F1.1): XI + formación + DT de cada equipo, desde API-Football. Busca el
     // fixture AF del cruce (próximo o reciente) por los af team ids del mapa. Memo por cruce 30 min.
     if (p === '/api/clubs/lineups') {
@@ -6055,7 +6200,12 @@ const server = http.createServer(async (req, res) => {
         try { const f = clubMatchForm(league, hId, aId); if (f) { c.home.form = f.home; c.away.form = f.away; } } catch { /* sin forma */ }
         global._clubCtx[ck] = c;
       }
-      return json(res, 200, { home: c.home, away: c.away });
+      // F2.3: hallazgos del OBSERVER (disponibilidad narrada, caja negra) + factor λ — frescos, fuera del memo 60min.
+      return json(res, 200, {
+        home: { ...c.home, avail: clubObserverFindings(hId) },
+        away: { ...c.away, avail: clubObserverFindings(aId) },
+        observer_factor: { home: clubObserverLambdaFactor(league, hId), away: clubObserverLambdaFactor(league, aId) },
+      });
     }
     // FORMA + RESULTADOS de un equipo de club (F2.1): últimos partidos con marcador (results-<liga>.json).
     if (p === '/api/clubs/team-form') {
@@ -7090,8 +7240,14 @@ const server = http.createServer(async (req, res) => {
         const rh = TH ? clubElo(hl, hId) : 1500, ra = TA ? clubElo(al, aId) : 1500; // F0.4: Elo dinámico
         const pr = matchProbs(rh + hfa, ra);
         const l = lambdas(rh + hfa, ra);
+        // F2.3: OBSERVER — factor λ por bajas del XI (base→contexto→GP). Off (factor=1) = byte-idéntico a hoy.
+        // Con el flag GP_OBSERVER_LAMBDA_ENABLED y señales, lU/prU reflejan la disponibilidad; l/pr son la base.
+        const fH = !cross ? clubObserverLambdaFactor(hl, hId) : 1, fA = !cross ? clubObserverLambdaFactor(al, aId) : 1;
+        const ctxActive = (fH !== 1 || fA !== 1);
+        const lU = ctxActive ? [l[0] * fH, l[1] * fA] : l; // lambdas USADOS aguas abajo (goles/probs/intel/vivo)
+        const prU = ctxActive ? probsFromLambdas(lU[0], lU[1]) : pr;
         const dist = require('./goal-engine/distribution');
-        const g = dist.goalModelOutput(l[0], l[1]);
+        const g = dist.goalModelOutput(lU[0], lU[1]);
         const ou25 = (g.over_under || []).find(x => Math.abs((x.line != null ? x.line : x.l) - 2.5) < 0.01) || null;
         // F1.5: MATRIZ DE MERCADOS del cruce (cuotas del sweep en la DB). Solo intra-liga (el ceid sintético es
         // por liga+par). Mejor cuota por resultado + O/U por línea, con la casa que la paga.
@@ -7100,7 +7256,7 @@ const server = http.createServer(async (req, res) => {
         // MATCH INTEL: anotadores probables de cada equipo (P(gol) con el λ del cruce) — mismo projectTeam del
         // Mundial sobre el player-history de la liga. Solo intra-liga (el fit es por liga).
         let matchIntel = null;
-        if (!cross) { try { matchIntel = require('./player-intel/clubsFit').clubMatchIntel(hl, hId, aId, l[0], l[1]); } catch { matchIntel = null; } }
+        if (!cross) { try { matchIntel = require('./player-intel/clubsFit').clubMatchIntel(hl, hId, aId, lU[0], lU[1]); } catch { matchIntel = null; } }
         // FORMA reciente de ambos equipos + H2H (enfrentamientos directos) — desde results-<liga>.json.
         let form = null;
         if (!cross) { try { form = clubMatchForm(hl, hId, aId); } catch { form = null; } }
@@ -7114,7 +7270,7 @@ const server = http.createServer(async (req, res) => {
             const homeIsH = sr.home_id === hId;
             const shg = homeIsH ? sr.hg : sr.ag, sag = homeIsH ? sr.ag : sr.hg;
             if (sr.status === 'live') {
-              try { const gp = liveProbsFromLambdas(l[0], l[1], shg, sag, sr.minute); gpLive = { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), likely_score: gp.likelyScore, minute: sr.minute, live: true }; } catch { gpLive = null; }
+              try { const gp = liveProbsFromLambdas(lU[0], lU[1], shg, sag, sr.minute); gpLive = { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), likely_score: gp.likelyScore, minute: sr.minute, live: true }; } catch { gpLive = null; }
             }
             const mom = (db.clubMomentum || {})[clubScoreKey(hl, hId, aId)];
             if (mom && mom.points && mom.points.length > 2) {
@@ -7129,8 +7285,8 @@ const server = http.createServer(async (req, res) => {
           away: { id: aId, name: (TA && TA.name) || String(url.searchParams.get('an') || '—'), elo: ra, known: !!TA, league: al, league_name: LA.name },
           cross_league: cross, neutral,
           gate: LH.backtest ? LH.backtest.status : null,
-          probs: { home: +pr.home.toFixed(3), draw: +pr.draw.toFixed(3), away: +pr.away.toFixed(3) },
-          xg: { home: +l[0].toFixed(2), away: +l[1].toFixed(2), total: +(l[0] + l[1]).toFixed(2) },
+          probs: { home: +prU.home.toFixed(3), draw: +prU.draw.toFixed(3), away: +prU.away.toFixed(3) },
+          xg: { home: +lU[0].toFixed(2), away: +lU[1].toFixed(2), total: +(lU[0] + lU[1]).toFixed(2) },
           over25: ou25 ? +((ou25.over != null ? ou25.over : ou25.o)).toFixed(3) : null,
           btts: g.btts ? +g.btts.yes.toFixed(3) : null,
           top_scores: (g.top_scorelines || []).slice(0, 3).map(s => ({ score: s.score, p: +s.probability.toFixed(3) })),
@@ -7142,6 +7298,14 @@ const server = http.createServer(async (req, res) => {
           gp_live: gpLive, // F1.2: prob GP condicionada al marcador+minuto (solo en vivo)
           momentum, // F1.2: serie {t,h,d,a,hg,ag} para el gráfico de evolución
           events, // F1.1b: [{minute,type,player,assist,teamName,side}] goles/tarjetas/subs en vivo
+          // F2.3: OBSERVER — base→contexto→GP. active=el observer ajustó el λ (flag+señales); base_xg = sin contexto.
+          context_adjust: ctxActive ? {
+            active: true,
+            factor: { home: fH, away: fA },
+            base_xg: { home: +l[0].toFixed(2), away: +l[1].toFixed(2) },
+            base_probs: { home: +pr.home.toFixed(3), draw: +pr.draw.toFixed(3), away: +pr.away.toFixed(3) },
+            findings: { home: clubObserverFindings(hId), away: clubObserverFindings(aId) },
+          } : { active: false, findings: { home: clubObserverFindings(hId), away: clubObserverFindings(aId) } },
         });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
@@ -7293,6 +7457,7 @@ const server = http.createServer(async (req, res) => {
         market_value: p0.market_value != null ? p0.market_value : null, contract_until: p0.contract_until || null,
         national_team: p0.national_team || null, first_name: p0.first_name || null, last_name: p0.last_name || null,
         stats_available: !!(intel && intel.stats_available),
+        avail: clubPlayerAvail(teamId, pid), // F2.3: disponibilidad narrada del observer (o null)
       });
     }
     // PANEL DE CALIDAD MEDIDA (marketing) — superficie curada de prueba social: track record + "le ganamos al

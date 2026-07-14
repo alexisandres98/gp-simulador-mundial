@@ -164,7 +164,7 @@
       cl_mbm: 'Partido a partido', cl_date: 'Fecha', cl_opp: 'Rival', cl_sh: 'REM', cl_g: 'G',
       cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
       cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos', cl_no_lineups: 'Alineación no publicada aún (llega cerca del partido).', nav_lineups: 'Alineaciones',
-      nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas de API-Football, descanso y forma. El ajuste al modelo llega con la capa de observación.',
+      nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas de API-Football, descanso, forma y hallazgos de disponibilidad de la capa de observación.', cl_ctx_applied: 'Contexto aplicado (disponibilidad)', cl_ctx_base: 'base',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -422,7 +422,7 @@
       cl_mbm: 'Match by match', cl_date: 'Date', cl_opp: 'Opponent', cl_sh: 'SH', cl_g: 'G',
       cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
       cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head', cl_no_lineups: 'Lineup not published yet (arrives near kickoff).', nav_lineups: 'Lineups',
-      nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Absences from API-Football, rest and form. The model adjustment arrives with the observation layer.',
+      nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Absences from API-Football, rest, form and availability findings from the observation layer.', cl_ctx_applied: 'Context applied (availability)', cl_ctx_base: 'base',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -2499,7 +2499,18 @@
       '</div>';
     // TABS (paridad con el cockpit del Mundial: Resumen/Goles/Inteligencia/Forma/Mercados/Value)
     var tab = S.clmTab || 'resumen';
-    var probPanel = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('percentage') + esc(t('mod_prob')) + ' · 90 min' + (m.neutral ? ' · ' + esc(t('cl_neutral')) : '') + '</span></div><div style="padding:14px 16px">' + bar + '</div></div>';
+    // F2.3: nota base→contexto→GP cuando el observer ajustó el λ por bajas (flag GP_OBSERVER_LAMBDA activo).
+    var ca = m.context_adjust;
+    var ctxNote = (ca && ca.active && ca.base_probs) ? (function () {
+      var dH = Math.round((1 - ca.factor.home) * 100), dA = Math.round((1 - ca.factor.away) * 100);
+      var parts = [];
+      if (dH) parts.push(esc(m.home.name) + ' ' + (dH >= 0 ? '−' : '+') + Math.abs(dH) + '%');
+      if (dA) parts.push(esc(m.away.name) + ' ' + (dA >= 0 ? '−' : '+') + Math.abs(dA) + '%');
+      return '<div class="gx-pick-disc" style="margin-top:8px">' + esc(t('cl_ctx_applied')) + (parts.length ? ': ' + parts.join(' · ') : '') +
+        ' · ' + esc(t('cl_ctx_base')) + ' ' + pct0(ca.base_probs.home) + '/' + pct0(ca.base_probs.draw) + '/' + pct0(ca.base_probs.away) +
+        ' → GP ' + pct0(m.probs.home) + '/' + pct0(m.probs.draw) + '/' + pct0(m.probs.away) + '</div>';
+    })() : '';
+    var probPanel = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('percentage') + esc(t('mod_prob')) + ' · 90 min' + (m.neutral ? ' · ' + esc(t('cl_neutral')) : '') + (ca && ca.active ? ' · ' + esc(t('cl_ctx_applied')) : '') + '</span></div><div style="padding:14px 16px">' + bar + ctxNote + '</div></div>';
     var goalsPanel = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span></div><div style="padding:6px 16px 12px">' +
       rowsHtml([[t('cl_xg'), m.xg.home + ' – ' + m.xg.away], [t('cl_o25'), m.over25 != null ? pct0(m.over25) : null], [t('cl_btts'), m.btts != null ? pct0(m.btts) : null]]) + '</div></div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('list-numbers') + esc(t('cl_scores')) + '</span></div><div style="padding:6px 16px 12px">' +
@@ -2561,9 +2572,16 @@
       var meta = [];
       if (s.rest != null) meta.push(esc(t('cl_rest')) + ': <b>' + s.rest + ' ' + esc(t('cl_days')) + '</b>');
       if (s.form && s.form.length) meta.push(esc(t('cl_tab_form')) + ': ' + chips(s.form));
+      // F2.3: hallazgos narrados del OBSERVER (disponibilidad, caja negra). Color por severidad.
+      var avail = (s.avail || []).map(function (f) {
+        var txt = LANG === 'en' ? f.en : f.es;
+        var col = (f.status === 'OUT' || f.status === 'SUSPENDED') ? '#F09595' : f.status === 'DOUBT' ? 'var(--gx-warn)' : 'var(--gx-text3)';
+        return '<div class="gx-finding"><span class="gx-finding-dot" style="background:' + col + '"></span><span>' + esc(txt || f.player) + '</span></div>';
+      }).join('');
       return '<div class="gx-lu-side"><div class="gx-lu-h">' + clubBadge(id) + '<b>' + esc(name) + '</b></div>' +
         (meta.length ? '<div class="gx-lu-meta gx-dim" style="margin-bottom:6px">' + meta.join(' · ') + '</div>' : '') +
-        '<div class="gx-label" style="margin:4px 0">' + esc(t('cl_injuries')) + '</div><div class="gx-findings">' + inj + '</div></div>';
+        '<div class="gx-label" style="margin:4px 0">' + esc(t('cl_injuries')) + '</div><div class="gx-findings">' + inj + '</div>' +
+        (avail ? '<div class="gx-label" style="margin:8px 0 4px">' + esc(t('intel_findings')) + '</div><div class="gx-findings">' + avail + '</div>' : '') + '</div>';
     };
     return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('activity') + esc(t('nav_context') || 'Contexto') + '</span></div><div class="gx-lu-grid" style="padding:8px 14px 14px">' +
       side(cx.home, hId, (m.home && m.home.name) || '') + side(cx.away, aId, (m.away && m.away.name) || '') + '</div>' +
@@ -4090,7 +4108,13 @@
     } else {
       intelHtml = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
     }
-    mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero + intelHtml + '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
+    // F2.3: disponibilidad narrada del OBSERVER (caja negra, sin fuente) — como el "Hallazgo" del perfil del Mundial.
+    var availHtml = '';
+    if (p.avail && (p.avail.es || p.avail.en)) {
+      var acol = (p.avail.status === 'OUT' || p.avail.status === 'SUSPENDED') ? '#F09595' : p.avail.status === 'DOUBT' ? 'var(--gx-warn)' : 'var(--gx-text3)';
+      availHtml = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('search') + esc(t('pp_finding')) + '</span></div><div class="gx-findings" style="padding:10px 16px 12px"><div class="gx-finding"><span class="gx-finding-dot" style="background:' + acol + '"></span><span>' + esc(LANG === 'en' ? p.avail.en : p.avail.es) + '</span></div></div></div>';
+    }
+    mv.innerHTML = mvShell('<div class="gx-content" style="gap:14px">' + hero + availHtml + intelHtml + '<div class="gx-pick-disc">' + esc(t('tm_sim_note')) + '</div></div>');
     bindBack();
     [].forEach.call(mv.querySelectorAll('[data-cteam]'), function (el) {
       el.addEventListener('click', function () { var pp = el.getAttribute('data-cteam').split('|'); openClubTeam(pp[0], pp[1]); });

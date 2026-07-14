@@ -55,6 +55,13 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Panel Oportunidad (viniendo de arb/lag) | ✔ |
 | SEO /pronostico/<slug> | ✘ F4.3 |
 
+### 2c. COCKPIT UNIFICADO (14-jul tarde, prod `170669d`) — corrección de Alexis aplicada
+**El cockpit de club ES el cockpit del Mundial**: renderClubMatch es un ADAPTADOR que construye beta+fx con la
+misma forma que consume renderMatch y llama las MISMAS funciones (mvHero/mvNav/mvMemo/mvProb/mvContext/mvForm/
+mvLineups con cancha/mvMarkets/mvStats/mvLive/mvMomentum/mvGoals). flag()/teamName()/playerLink() resuelven ids
+tm_ (escudo/nombre/cplayer) → cero componentes paralelos. goal_insights del club sale del MISMO builder
+(gp-product/dto.goalInsights) con los λ del cruce. El mapa 2b de abajo queda histórico.
+
 ### 2b. COCKPIT — MAPA REAL (auditoría navegando el Mundial, 14-jul)
 **Estructura**: HECHO (2d4dabe) el cockpit de club ahora usa TABS (Resumen/Goles/Inteligencia/Forma/Mercados/Value). El del Mundial usa TABS (`gx-mv-nav`): **Summary · GP probability · Markets · Context · Recent form · Lineups · Match intel · Goal projection**. El de club son paneles en scroll (GP probability · Goal projection · Markets · Value). Para PARIDAD el cockpit de club debe reestructurarse a esos 8 tabs.
 - Summary → ✔ (2d4dabe, tab Resumen)

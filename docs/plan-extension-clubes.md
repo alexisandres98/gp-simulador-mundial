@@ -31,7 +31,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Tabs Todos/Vivo/Próximos/Finalizados | ✔ |
 | Marcador en vivo + minuto + FT (30s) | ✔ (ESPN por liga) |
 | GP% tri-cell por partido | ✔ (card IDÉNTICA al Mundial: GP PROBABILITY + %, Analyze match; c6e639b) |
-| GP% EN VIVO que se mueve con el marcador (gpProbs) | ✘ F1.2 |
+| GP% EN VIVO que se mueve con el marcador (gpProbs) | ✔ (F1.2, 363bf59) |
 | Señal Value en la fila (WATCH) | ✘ F3.2 (única diferencia con la card del Mundial) |
 | Escudos/banderas | ✔ |
 | Buscador, selector, intercalado por fecha | ✔ |
@@ -42,7 +42,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Hero marcador vivo/final | ✔ |
 | Prob 1X2 + Contexto | ✔ tab Context (bajas AF+descanso+forma, 3ae57c5); ajuste al modelo ✘ F2.3 |
 | Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa) |
-| Momentum GP en vivo (SVG, dots de gol) | ✘ F1.2 |
+| Momentum GP en vivo (SVG, dots de gol) | ✔ (F1.2, 363bf59) |
 | Alineaciones (XI + formación + DT) | ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87)**; en-cancha/eventos vivos ✘ |
 | Panel xG del partido (post-partido, 1T/2T, ocasiones) | ✘ F1.3 (TSA lo da, mismo patrón xg-report) |
 | Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✘ F2.2+F2.3 |
@@ -146,7 +146,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 
 ### F1 — PARTIDO DE CLUB = PARTIDO DEL MUNDIAL (cockpit)
 - [½] **F1.1 Alineaciones/eventos/stats en vivo**: alineaciones AF por fixture ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87** — resolver nombre AF→pl_ id del roster TSA, clubRosterResolver/clubRosterRows en server, clubPlayerLink en cliente, calco de pidxResolve/playerLink del Mundial). FALTA: eventos en vivo (goles/cards/subs) + XI en-cancha (pitch) + stats del partido cuando juegan. Mismo normalizador del Mundial.
-- [ ] **F1.2 GP% en vivo + Momentum**: prob del modelo condicionada al marcador/minuto (mismo mecanismo del Mundial) + sampler momentum (db.clubMomentum) + SVG del cockpit.
+- [x] **F1.2 GP% en vivo + Momentum** ✔ prod `363bf59`: prob condicionada al marcador/minuto (liveProbsFromLambdas con los λ del cruce = mismo engine) + sampler momentum (db.clubMomentum, sampleClubMomentum en clubScoresSync 30s, cero llamadas externas) + SVG del cockpit (reusa mvMomentum parametrizado con escudos/nombres de club; default byte-idéntico para el Mundial). gp_live+momentum en /api/clubs/match, gpProbs vivo en /api/clubs/state, clubTriCell usa gpProbs, refreshClubsLive/refreshClubMatchLive (loadClubs era one-shot). QA CDP: Palmeiras 1-0 min60 → GP live 81% (pre 68%), momentum SVG, 0 errores.
 - [ ] **F1.3 xG post-partido**: TSA player-stats agregadas → panel "xG del partido" (total/por equipo/remates/ocasiones) — mismo layout del Mundial.
 - [ ] **F1.4 Motor de contexto de clubes**: lesiones AF por liga + descanso (días desde último partido, congestión) + forma (últimos 5) → ajuste base→contexto→GP con desglose visible (mismo UI del Mundial).
 - [x] **F1.5 Matriz de mercados** ✔ prod (tab "Markets" del cockpit: cuota+casa por resultado, SIN calc). CORRECCIÓN 14-jul: la calc NO va en el cockpit — vive en Value/Picks/Arb (verificado navegando el Mundial: cockpit calc:0, Value calc:4): cuotas del partido por casa (ya en sportsbook_goal_quote_current) → tabla mercados del cockpit + botón calculadora (prob GP prellenada).

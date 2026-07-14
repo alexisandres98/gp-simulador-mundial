@@ -416,5 +416,147 @@
    "af_id": 10487,
    "af_name": "Sportivo Ameliano"
   }
+ },
+ "csl": {
+  "tm_63951": {
+   "af_id": 830,
+   "af_name": "Beijing Guoan"
+  },
+  "tm_52449": {
+   "af_id": 833,
+   "af_name": "Shanghai Shenhua"
+  },
+  "tm_9199334": {
+   "af_id": 5695,
+   "af_name": "Wuhan Three Towns"
+  },
+  "tm_2230731": {
+   "af_id": 21265,
+   "af_name": "Yunnan Yukun"
+  }
+ },
+ "kleague": {
+  "tm_7251792": {
+   "af_id": 2745,
+   "af_name": "Bucheon FC 1995"
+  },
+  "tm_163109": {
+   "af_id": 2746,
+   "af_name": "Gangwon FC"
+  },
+  "tm_474268": {
+   "af_id": 2748,
+   "af_name": "FC Anyang"
+  },
+  "tm_455767": {
+   "af_id": 2750,
+   "af_name": "Daejeon Citizen"
+  },
+  "tm_931034": {
+   "af_id": 2759,
+   "af_name": "Gwangju FC"
+  },
+  "tm_842530": {
+   "af_id": 2762,
+   "af_name": "Jeonbuk Motors"
+  },
+  "tm_844597": {
+   "af_id": 2763,
+   "af_name": "Incheon United"
+  },
+  "tm_133004": {
+   "af_id": 2764,
+   "af_name": "Pohang Steelers"
+  },
+  "tm_611349": {
+   "af_id": 2766,
+   "af_name": "FC Seoul"
+  },
+  "tm_300872": {
+   "af_id": 2768,
+   "af_name": "Gimcheon Sangmu FC"
+  }
+ },
+ "j1": {
+  "tm_10971": {
+   "af_id": 281,
+   "af_name": "Kashiwa Reysol"
+  },
+  "tm_47016": {
+   "af_id": 282,
+   "af_name": "Sanfrecce Hiroshima"
+  },
+  "tm_52837": {
+   "af_id": 283,
+   "af_name": "Shimizu S-pulse"
+  },
+  "tm_035272": {
+   "af_id": 285,
+   "af_name": "V-varen Nagasaki"
+  },
+  "tm_47027": {
+   "af_id": 287,
+   "af_name": "Urawa"
+  },
+  "tm_63253": {
+   "af_id": 288,
+   "af_name": "Nagoya Grampus"
+  },
+  "tm_63209": {
+   "af_id": 289,
+   "af_name": "Vissel Kobe"
+  },
+  "tm_04191": {
+   "af_id": 290,
+   "af_name": "Kashima"
+  },
+  "tm_26513": {
+   "af_id": 291,
+   "af_name": "Cerezo Osaka"
+  },
+  "tm_38642": {
+   "af_id": 292,
+   "af_name": "FC Tokyo"
+  },
+  "tm_85366": {
+   "af_id": 293,
+   "af_name": "Gamba Osaka"
+  },
+  "tm_34562": {
+   "af_id": 294,
+   "af_name": "Kawasaki Frontale"
+  },
+  "tm_38621": {
+   "af_id": 296,
+   "af_name": "Yokohama F. Marinos"
+  },
+  "tm_04152": {
+   "af_id": 301,
+   "af_name": "JEF United Chiba"
+  },
+  "tm_79467": {
+   "af_id": 302,
+   "af_name": "Kyoto Sanga"
+  },
+  "tm_700743": {
+   "af_id": 303,
+   "af_name": "Machida Zelvia"
+  },
+  "tm_200306": {
+   "af_id": 305,
+   "af_name": "Mito Hollyhock"
+  },
+  "tm_79406": {
+   "af_id": 306,
+   "af_name": "Tokyo Verdy"
+  },
+  "tm_038983": {
+   "af_id": 310,
+   "af_name": "Fagiano Okayama"
+  },
+  "tm_52898": {
+   "af_id": 316,
+   "af_name": "Avispa Fukuoka"
+  }
  }
 }

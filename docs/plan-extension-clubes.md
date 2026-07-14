@@ -40,13 +40,13 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Pieza (Mundial) | Clubes |
 |---|---|
 | Hero marcador vivo/final | ✔ |
-| Prob 1X2 + Contexto | ✔ tab Context (bajas AF+descanso+forma, 3ae57c5); ajuste al modelo ✘ F2.3 |
+| Prob 1X2 + Contexto | ✔ tab Context (bajas AF+descanso+forma, 3ae57c5); **ajuste al modelo ✔ (F2.3, a21ee8c — base→contexto→GP tras flag)** |
 | Proyección de goles (λ xG, O/U, BTTS, marcadores) | ✔ (engines de la casa) |
 | Momentum GP en vivo (SVG, dots de gol) | ✔ (F1.2, 363bf59) |
 | Alineaciones (XI + formación + DT) | ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87)**; **eventos en vivo ✔ (2195df8)**; XI en-cancha (pitch) ✘ |
 | Panel xG del partido (post-partido, 1T/2T, ocasiones) | ✘ F1.3 (TSA lo da, mismo patrón xg-report) |
 | Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✘ F2.2+F2.3 |
-| Hallazgos de inteligencia (observer narrado) | ✘ F2.3 |
+| Hallazgos de inteligencia (observer narrado) | ✔ (F2.3, a21ee8c — tab Context) |
 | Perfil táctico (style-engine: vías de peligro, aéreo, hallazgos) | ✘ F2.4 (necesita event data F1.3) |
 | Lecturas del sistema (picks del cruce con narrativa) | ✘ F3 |
 | Matriz de mercados por casa (cuotas del partido) | ✘ F1.5 (cuotas YA en DB por el sweep) |
@@ -89,7 +89,7 @@ La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board t
 | Arquetipo ganado + scout read ES/EN | ✔ |
 | % del ataque del equipo, forma | ✔ % ataque; match-by-match ✔ |
 | Mercados del jugador (cuotas vs GP) | ✘ F3.4 (props ligas top) |
-| Disponibilidad narrada (observer) | ✘ F2.3 |
+| Disponibilidad narrada (observer) | ✔ (F2.3, a21ee8c — perfil de jugador) |
 | H2H vs próximo rival | ✘ F2.2 |
 | Buscador de jugadores | ½ (clubes por equipo; índice global ✘ F2.2) |
 | SEO /jugador/<slug> | ✘ F4.3 |
@@ -129,7 +129,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 | Pieza (Mundial) | Clubes |
 |---|---|
 | Contexto (lesiones/descanso/forma) | ½ mostrado (3ae57c5); ajuste de prob ✘ F2.3 |
-| Observer (noticias → disponibilidad → λ) | ✘ F2.3 |
+| Observer (noticias → disponibilidad → λ) | ✔ (F2.3, a21ee8c) |
 | Event data (FotMob shotmaps, situaciones) | ✘ F2.4 |
 | Momentum sampler | ✘ F1.2 |
 | SSE broadcast en cambios | ✔ (clubScoresSync emite update) |
@@ -154,7 +154,7 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 ### F2 — EQUIPOS Y JUGADORES NIVEL MUNDIAL
 - [ ] **F2.1 Vista de equipo completa**: tabs Resumen/Plantilla(fotos)/Forma/Resultados/Noticias; forma y resultados desde finished de TSA + clubResults.
 - [x] **F2.2 Jugador nivel Yamal** ✔ prod 33f4d24 (radar+arquetipo+scout+stats/90, Brasileirão; resto con backfill): stats/90 + percentiles vs posición DE LA LIGA (player-history F0.1) + radar SVG + arquetipo + scout read + % del ataque + forma + índice global de jugadores de clubes en el buscador.
-- [ ] **F2.3 Observer multi-liga**: sources por club (Google News RSS; presupuesto: solo equipos con partido en <72h para no explotar requests), señales → disponibilidad → narrativa en cockpit + perfil.
+- [x] **F2.3 Observer multi-liga** ✔ prod `a21ee8c`: mismo pipeline del Mundial (sources/extract/verify/assess/narrate) por club — Google News por nombre (solo clubes con partido <72h), roster TSA para matchear, señales en db.clubObservations. `clubObserverLambdaFactor` (assessPlayers+suggestTeamFactor con clubsFit.leagueFit, clamp [0.75,1.0]) → **base→contexto→GP** en /api/clubs/match tras el flag GP_OBSERVER_LAMBDA_ENABLED (=Mundial). Narrativa (caja negra) en tab Context + nota base→GP en Resumen + 'Intelligence finding' en el perfil. Endpoint /api/internal/clubs-observer. QA: Mauricio OUT → 0.926 → GP 68%→65%; sweep real trae noticias+señal. FALTA: tab News dedicado (hoy los hallazgos viven en Context/perfil).
 - [ ] **F2.4 Style engine / event data**: FotMob por liga (verificar primaryIds) → shotmaps + perfil táctico del cruce.
 - [ ] **F2.5 Follow + alertas** de clubes (inicio/gol email — la infra del Mundial es genérica).
 

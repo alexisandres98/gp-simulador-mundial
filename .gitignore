@@ -12,3 +12,9 @@ backtest.js
 backups/
 data/history/
 data/sofascore/
+
+# Datos grandes de clubes: viven en el disco persistente de Render (/data/clubs/), NO en git (deploy rápido)
+data/clubs/player-history-*.json
+data/clubs/results-*.json
+data/clubs/player-photos.json
+data/clubs/af-team-map.json

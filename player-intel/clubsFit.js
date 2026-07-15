@@ -51,7 +51,9 @@ function clubPlayerMatches(league, pid, ratings) {
 function leagueFit(league) {
   const c = _cache[league];
   if (c && Date.now() - c.at < TTL) return c.fit;
-  const file = path.join(__dirname, '..', 'data', 'clubs', `player-history-${league}.json`);
+  // clubDataFile: disco persistente de Render primero (los player-history NO viven en git desde el 14-jul) —
+  // leer el path del repo directo dejaba fit=null EN PROD (radar/scout/intel/props muertos silenciosamente).
+  const file = clubDataFile(`player-history-${league}.json`);
   let rows = [];
   try { rows = (JSON.parse(fs.readFileSync(file, 'utf8')).rows) || []; } catch { rows = []; }
   if (!rows.length) { _cache[league] = { at: Date.now(), fit: null }; return null; }

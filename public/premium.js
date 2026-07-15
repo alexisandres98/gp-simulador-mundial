@@ -119,7 +119,7 @@
       g_today: 'Hoy', g_tomorrow: 'Mañana', m_stage_all: 'Todas las fases', m_search: 'Buscar equipo…', m_empty: 'No hay partidos para este filtro.',
       gp_absent: 'Sin evaluación GP prepartido', gp_absent_sub: 'No se registró una evaluación GP prepartido para este encuentro.',
       gp_absent_final: 'Sin evaluación GP prepartido', gp_absent_final_sub: 'No se registró una evaluación GP prepartido para este encuentro. Se muestran el resultado y los datos del partido.',
-      sim_pick: 'Elegí un equipo', sim_swap: 'Intercambiar', sim_go: 'Simular cruce', sim_running: 'Simulando…', sim_hypo: 'Simulación hipotética con el contexto disponible actualmente.',
+      sim_pick: 'Elegí un equipo', sim_swap: 'Intercambiar', sim_go: 'Simular cruce', sim_running: 'Simulando…', sim_hypo: 'Simulación hipotética con el contexto disponible actualmente.', sim_pick_team: 'Elegí un equipo…', sim_no_mix: 'Selecciones y clubes no son comparables entre sí — elegí dos selecciones o dos clubes.',
       sim_empty: 'Elegí dos equipos para simular un cruce.', sim_empty_sub: 'GP cruza ambos con su contexto actual.', sim_err: 'No se pudo simular el cruce.',
       sim_thesis_na: 'Sin lectura disponible para este cruce.', sim_risk_na: 'Sin factores de cambio destacados.', sim_verdict_na: 'Cruce sin favorito neto claro.',
       sim_factors: 'Factores GP', sim_f_applied: 'Pesa', sim_f_neutral: 'Neutral',
@@ -378,7 +378,7 @@
       g_today: 'Today', g_tomorrow: 'Tomorrow', m_stage_all: 'All stages', m_search: 'Search team…', m_empty: 'No matches for this filter.',
       gp_absent: 'No pre-match GP evaluation', gp_absent_sub: 'No pre-match GP evaluation was recorded for this match.',
       gp_absent_final: 'No pre-match GP evaluation', gp_absent_final_sub: 'No pre-match GP evaluation was recorded for this match. Result and match data are shown.',
-      sim_pick: 'Pick a team', sim_swap: 'Swap', sim_go: 'Simulate matchup', sim_running: 'Simulating…', sim_hypo: 'Hypothetical simulation using the context currently available.',
+      sim_pick: 'Pick a team', sim_swap: 'Swap', sim_go: 'Simulate matchup', sim_running: 'Simulating…', sim_hypo: 'Hypothetical simulation using the context currently available.', sim_pick_team: 'Pick a team…', sim_no_mix: 'National teams and clubs are not comparable — pick two national teams or two clubs.',
       sim_empty: 'Pick two teams to simulate a matchup.', sim_empty_sub: 'GP crosses both with their current context.', sim_err: 'Couldn’t simulate the matchup.',
       sim_thesis_na: 'No read available for this matchup.', sim_risk_na: 'No notable change factors.', sim_verdict_na: 'Matchup with no clear favorite.',
       sim_factors: 'GP factors', sim_f_applied: 'Weighs', sim_f_neutral: 'Neutral',
@@ -3722,35 +3722,101 @@
   function teamOptions(sel) { return '<option value="">' + esc(t('sim_pick')) + '</option>' + S.stTeams.slice().sort(function (a, b) { return teamName(a.id).localeCompare(teamName(b.id)); }).map(function (tm) { return '<option value="' + esc(tm.id) + '"' + (sel === tm.id ? ' selected' : '') + '>' + esc(teamName(tm.id, tm.name)) + '</option>'; }).join(''); }
   function renderSim() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // esperar a /api/me en la carga directa a #sim (sin esto el selector de competición no aparecía para admin)
+    if (S.me == null) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + mvLoading() + '</div></div>'; setTimeout(function () { if (S.view === 'sim') renderSim(); }, 500); return; }
+    if (clubsOn()) loadClubs();
     var s = S.sim;
+    // SELECTOR DE COMPETICIÓN por lado (clubes shadow): Mundial + ligas — cualquier club de cualquier liga vs
+    // cualquier otro (cross-liga = cancha neutral, endpoint /api/clubs/match). Mundial-vs-club NO es comparable
+    // (fits independientes) → Run deshabilitado con nota. Sin clubs_shadow todo queda byte-idéntico.
+    s.aComp = s.aComp || 'wc'; s.bComp = s.bComp || 'wc';
+    var compOptions = function (sel2) {
+      var Ls = ((S.clubs || {}).leagues) || [];
+      return '<option value="wc"' + (sel2 === 'wc' ? ' selected' : '') + '>' + esc(t('cl_wc')) + '</option>' +
+        Ls.map(function (L) { return '<option value="' + esc(L.key) + '"' + (sel2 === L.key ? ' selected' : '') + '>' + esc(L.name.split(' · ')[0]) + '</option>'; }).join('');
+    };
+    var sideTeamOptions = function (comp, sel2) {
+      if (comp === 'wc') return teamOptions(sel2);
+      var L = clubLeague(comp); if (!L) return '<option value="">…</option>';
+      return '<option value="">' + esc(t('sim_pick_team')) + '</option>' + (L.table || []).map(function (tm) { return '<option value="' + esc(tm.id) + '"' + (tm.id === sel2 ? ' selected' : '') + '>' + esc(tm.name) + '</option>'; }).join('');
+    };
+    var mixed = clubsOn() && ((s.aComp === 'wc') !== (s.bComp === 'wc'));
+    var ready = s.a && s.b && s.a !== s.b && !mixed;
+    var sideHtml = function (key, comp, id) {
+      return '<div class="gx-sim-team"><span class="fl big">' + (id ? flag(id) : '🏳️') + '</span>' +
+        (clubsOn() ? '<select class="gx-select" id="gx-sim-' + key + 'c" style="margin-bottom:6px">' + compOptions(comp) + '</select>' : '') +
+        '<select class="gx-select" id="gx-sim-' + key + '">' + sideTeamOptions(comp, id) + '</select>' + simElo(id, comp) + '</div>';
+    };
     var picker =
       '<div class="gx-panel gx-sim-picker"><div class="gx-ph"><span class="gx-label">' + ic('arrows-shuffle') + esc(t('nav_sim')) + '</span></div>' +
       '<div class="gx-sim-row">' +
-      '<div class="gx-sim-team"><span class="fl big">' + (s.a ? flag(s.a) : '🏳️') + '</span><select class="gx-select" id="gx-sim-a">' + teamOptions(s.a) + '</select>' + simElo(s.a) + '</div>' +
+      sideHtml('a', s.aComp, s.a) +
       '<button class="gx-sim-swap" id="gx-sim-swap" title="' + esc(t('sim_swap')) + '">' + ic('arrows-left-right') + '</button>' +
-      '<div class="gx-sim-team"><span class="fl big">' + (s.b ? flag(s.b) : '🏳️') + '</span><select class="gx-select" id="gx-sim-b">' + teamOptions(s.b) + '</select>' + simElo(s.b) + '</div>' +
+      sideHtml('b', s.bComp, s.b) +
       '</div>' +
-      '<button class="gx-btn gx-sim-go" id="gx-sim-go"' + (s.a && s.b && s.a !== s.b ? '' : ' disabled') + '>' + (s.loading ? ic('loader-2') + esc(t('sim_running')) : ic('player-play') + ' ' + esc(t('sim_go'))) + '</button>' +
-      '<div class="gx-sim-hypo">' + ic('flask') + esc(t('sim_hypo')) + '</div>' +
+      '<button class="gx-btn gx-sim-go" id="gx-sim-go"' + (ready ? '' : ' disabled') + '>' + (s.loading ? ic('loader-2') + esc(t('sim_running')) : ic('player-play') + ' ' + esc(t('sim_go'))) + '</button>' +
+      (mixed ? '<div class="gx-sim-hypo" style="color:var(--gx-warn)">' + ic('alert-triangle') + esc(t('sim_no_mix')) + '</div>' : '<div class="gx-sim-hypo">' + ic('flask') + esc(t('sim_hypo')) + '</div>') +
       '</div>';
-    var result = s.data ? simResult(s.data) : (s.loading ? '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('sim_running')) + '</div></div>' : '<div class="gx-panel"><div class="gx-empty">' + ic('arrows-shuffle') + '<b>' + esc(t('sim_empty')) + '</b>' + esc(t('sim_empty_sub')) + '</div></div>');
+    var result = s.data ? (s.data._club ? simResultClub(s.data) : simResult(s.data)) : (s.loading ? '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('sim_running')) + '</div></div>' : '<div class="gx-panel"><div class="gx-empty">' + ic('arrows-shuffle') + '<b>' + esc(t('sim_empty')) + '</b>' + esc(t('sim_empty_sub')) + '</div></div>');
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:16px;max-width:1080px;margin:0 auto">' + picker + result + '</div></div>';
     bindSim();
   }
-  function simElo(id) { if (!id) return ''; var tm = (S.stTeams || []).filter(function (x) { return x.id === id; })[0]; if (!tm) return ''; return '<span class="gx-sim-elo gx-mono">Elo ' + Math.round(tm.currentElo || tm.elo || 0) + '</span>'; }
+  function simElo(id, comp) {
+    if (!id) return '';
+    if (comp && comp !== 'wc') { var L = clubLeague(comp); var tm2 = L ? (L.table || []).filter(function (x) { return x.id === id; })[0] : null; return tm2 ? '<span class="gx-sim-elo gx-mono">Elo ' + Math.round(tm2.elo) + '</span>' : ''; }
+    var tm = (S.stTeams || []).filter(function (x) { return x.id === id; })[0]; if (!tm) return '';
+    return '<span class="gx-sim-elo gx-mono">Elo ' + Math.round(tm.currentElo || tm.elo || 0) + '</span>';
+  }
   function bindSim() {
     var a = $('#gx-sim-a'), b = $('#gx-sim-b'), sw = $('#gx-sim-swap'), go = $('#gx-sim-go');
+    var ac = $('#gx-sim-ac'), bc = $('#gx-sim-bc');
+    if (ac) ac.addEventListener('change', function () { S.sim.aComp = ac.value; S.sim.a = null; S.sim.data = null; renderSim(); });
+    if (bc) bc.addEventListener('change', function () { S.sim.bComp = bc.value; S.sim.b = null; S.sim.data = null; renderSim(); });
     if (a) a.addEventListener('change', function () { S.sim.a = a.value || null; renderSim(); });
     if (b) b.addEventListener('change', function () { S.sim.b = b.value || null; renderSim(); });
-    if (sw) sw.addEventListener('click', function () { var t0 = S.sim.a; S.sim.a = S.sim.b; S.sim.b = t0; renderSim(); });
+    if (sw) sw.addEventListener('click', function () { var t0 = S.sim.a, c0 = S.sim.aComp; S.sim.a = S.sim.b; S.sim.aComp = S.sim.bComp; S.sim.b = t0; S.sim.bComp = c0; renderSim(); });
     if (go) go.addEventListener('click', runSim);
   }
   function runSim() {
     var s = S.sim; if (!s.a || !s.b || s.a === s.b || s.loading) return;
+    var isClub = clubsOn() && (s.aComp !== 'wc' || s.bComp !== 'wc');
+    if (isClub && ((s.aComp === 'wc') !== (s.bComp === 'wc'))) return; // Mundial vs club: no comparable
     s.loading = true; s.data = null; renderSim();
+    if (isClub) {
+      // cross-liga entre CLUBES: mismo endpoint del cockpit (cancha neutral si las ligas difieren)
+      fetch('/api/clubs/match?hl=' + encodeURIComponent(s.aComp) + '&h=' + encodeURIComponent(s.a) + '&al=' + encodeURIComponent(s.bComp) + '&a=' + encodeURIComponent(s.b) + '&neutral=1', { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (d) { s.loading = false; s.data = d ? Object.assign({ _club: true }, d) : { _err: true, _club: true }; renderSim(); });
+      return;
+    }
     fetch('/api/h2h/deep?a=' + encodeURIComponent(s.a) + '&b=' + encodeURIComponent(s.b), { headers: hdrs() })
       .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (d) { s.loading = false; s.data = d || { _err: true }; renderSim(); });
+  }
+  // RESULTADO del cruce hipotético entre CLUBES (cross-liga): panel de inteligencia con el shape de /api/clubs/match.
+  function simResultClub(d) {
+    if (!d || d._err || !d.probs) return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('sim_err')) + '</b></div></div>';
+    var pH = d.probs.home || 0, pD = d.probs.draw || 0, pA = d.probs.away || 0;
+    var mini = function (label, v) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b></div>'; };
+    var gi = d.goal_insights || {};
+    var scores = (gi.top_scores || d.top_scores || []).slice(0, 3).map(function (x) { return '<span class="gx-badge" style="font-size:11px">' + esc(x.score) + ' · ' + pct0(x.probability != null ? x.probability : x.p) + '</span>'; }).join(' ');
+    return '<div class="gx-panel gx-hero">' +
+      '<div class="gx-hero-meta">' + ic('flask') + esc(t('sim_hypo')) + '<span class="gx-spacer"></span>' + (d.cross_league ? '<span class="gx-clgate sh">' + esc(t('cl_neutral')).toUpperCase() + '</span>' : '') + '</div>' +
+      '<div class="gx-hero-teams">' +
+      '<div class="gx-hero-side"><span class="fl">' + flag(d.home.id) + '</span><b>' + esc(d.home.name) + '</b><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(d.home.league_name || '') + ' · Elo ' + d.home.elo + '</span></div>' +
+      '<div class="gx-hero-mid"><div class="gx-hero-vs">' + esc(t('vs')) + '</div></div>' +
+      '<div class="gx-hero-side"><span class="fl">' + flag(d.away.id) + '</span><b>' + esc(d.away.name) + '</b><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(d.away.league_name || '') + ' · Elo ' + d.away.elo + '</span></div>' +
+      '</div>' +
+      '<div class="gx-pbar"><i class="h" style="width:' + (pH * 100) + '%"></i><i class="d" style="width:' + (pD * 100) + '%"></i><i class="a" style="width:' + (pA * 100) + '%"></i></div>' +
+      '<div class="gx-plabels"><span>' + esc(d.home.name) + ' <b>' + pct0(pH) + '</b></span><span>X <b>' + pct0(pD) + '</b></span><span>' + esc(d.away.name) + ' <b>' + pct0(pA) + '</b></span></div>' +
+      '<div class="gx-hero-grid">' +
+      mini(t('hero_xg'), d.xg ? (Number(d.xg.home).toFixed(2) + ' – ' + Number(d.xg.away).toFixed(2)) : '—') +
+      mini(t('cl_o25'), d.over25 != null ? pct0(d.over25) : '—') +
+      mini(t('cl_btts'), d.btts != null ? pct0(d.btts) : '—') +
+      (scores ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_scores')) + '</span><span style="display:flex;gap:5px;flex-wrap:wrap">' + scores + '</span></div>' : '') +
+      '</div>' +
+      (d.cross_league ? '<div class="gx-hero-note gx-dim">' + esc(t('cl_cross')) + '</div>' : '<div class="gx-hero-note gx-dim">' + esc(t('period_90')) + '</div>') +
+      '</div>';
   }
   // confianza del cruce hipotético: mapea el nivel ES del backend → enum canónico (NUNCA expone V1/V2/delta)
   function simConf(d) { var lv = d && d.analysis && d.analysis.headline && d.analysis.headline.modelConfidence && d.analysis.headline.modelConfidence.level; var code = lv === 'Alta' ? 'HIGH' : lv === 'Baja' ? 'LOW' : lv === 'Media' ? 'MEDIUM' : null; return confInfo(code); }

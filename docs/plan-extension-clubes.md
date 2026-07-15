@@ -126,8 +126,8 @@ FALTA vs Mundial (depende de otras fases): GP reading narrada (F2.3 observer/nar
 ### 7. TORNEO / LIGA
 | Pieza (Mundial) | Clubes |
 |---|---|
-| Grupos → Tabla de posiciones por liga | ✔ (en Equipos) |
-| Bracket → Liguilla/playoffs (MX, MLS) | ✘ F4.2 |
+| Grupos → Tabla de posiciones por liga | ✔ (en Equipos + **en Grupos con selector de competición `#gx-gcomp`, prod `51888cd`**: tabla `gx-board` idéntica al Mundial, columna avance = TOP-4 del season sim vía /api/clubs/season, favorito al título, carga progresiva) |
+| Bracket → Liguilla/playoffs (MX, MLS) | ✘ F4.2 (SIGUIENTE — reusar renderBracket del Mundial) |
 | Evolución (curva de prob/Elo) | ✘ F0.3 (groundwork snapshots) → F4.2 |
 | Simulador de temporada (Monte Carlo: campeón/descenso/playoffs) | ✔ (F4.1, 8a1a65f — calendario restante reconstruido de resultados round-robin) |
 | Elo DINÁMICO (se actualiza con cada resultado) | ✘✘ **F0.4 — CRÍTICO** (hoy el Elo es el del fit offline; sin update por resultado, las probs derivan → exactamente lo que Alexis señaló) |

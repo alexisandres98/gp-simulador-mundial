@@ -149,6 +149,7 @@
       cl_value: 'Value vs mercado', cl_neutral: 'cancha neutral',
       cl_value_board: 'Value de clubes por liga', cl_value_board_sub: 'Modelo GP vs consenso del mercado en las ligas en temporada. Informativo: las picks de clubes nacen cuando la liga tiene gate aprobado y el precio confirma.',
       cl_pj: 'PJ', cl_pts: 'Pts', cl_dif: 'DIF', cl_pos: 'Posición', cl_record: 'G-E-P', cl_goals: 'Goles', cl_of: 'de', cl_new: 'NUEVO',
+      cl_standings: 'Tabla de posiciones', cl_grp_note: 'Avance = prob. de terminar en zona alta (Top 4) del season sim. Se actualiza cada jornada.', cl_grp_fav: 'Favorito al título:',
       cl_upcoming: 'Próximos partidos', cl_no_upcoming: 'Sin partidos programados en la ventana del calendario.',
       cl_live_recent: 'En juego y recientes', cl_no_live: 'Ningún partido de clubes en juego ahora.', cl_no_final: 'Sin partidos finalizados recientes.',
       cl_clubs: 'Clubes',
@@ -408,6 +409,7 @@
       cl_value: 'Value vs market', cl_neutral: 'neutral venue',
       cl_value_board: 'Club value by league', cl_value_board_sub: 'GP model vs market consensus across in-season leagues. Informational: club picks are born once a league has an approved gate and the price confirms.',
       cl_pj: 'GP', cl_pts: 'Pts', cl_dif: 'GD', cl_pos: 'Position', cl_record: 'W-D-L', cl_goals: 'Goals', cl_of: 'of', cl_new: 'NEW',
+      cl_standings: 'Standings', cl_grp_note: 'Advance = prob. of finishing in the top zone (Top 4) per the season sim. Updates each matchday.', cl_grp_fav: 'Title favorite:',
       cl_upcoming: 'Upcoming matches', cl_no_upcoming: 'No matches scheduled in the calendar window.',
       cl_live_recent: 'Live and recent', cl_no_live: 'No club matches in play right now.', cl_no_final: 'No recently finished matches.',
       cl_clubs: 'Clubs',
@@ -4308,6 +4310,13 @@
   // ---- Grupos ----
   function renderGroups() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    if (clubsOn()) loadClubs();
+    if (clubsOn() && S.gComp == null) S.gComp = 'wc';
+    // FASE CLUBES: selector de competición en Grupos ("Mundial o liga") — mismo patrón que Partidos/Equipos.
+    var gsel = clubsOn()
+      ? '<select class="gx-select" id="gx-gcomp"><option value="wc"' + (!S.gComp || S.gComp === 'wc' ? ' selected' : '') + '>' + esc(t('cl_wc')) + '</option>' + ((S.clubs && S.clubs.leagues) || []).map(function (L) { return '<option value="' + esc(L.key) + '"' + (S.gComp === L.key ? ' selected' : '') + '>' + esc(L.name.split(' · ')[0]) + (L.starts ? ' · ' + esc(L.starts) : '') + '</option>'; }).join('') + '</select>'
+      : '';
+    if (clubsOn() && S.gComp && S.gComp !== 'wc') { renderClubLeagueTable(mv, gsel); return; }
     var simById = {}; S.stTeams.forEach(function (t) { simById[t.id] = t.sim; });
     var blocks = (S.groups || []).map(function (g) {
       var st = (S.standings && S.standings[g]) || [];
@@ -4327,7 +4336,62 @@
       return '<div class="gx-grp"><div class="gx-grp-h"><span>' + esc(t('group')) + ' ' + esc(g) + '</span></div>' +
         '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th><th>PJ</th><th>Pts</th><th>' + esc(t('grp_goals')) + '</th><th class="l">' + esc(t('grp_advance')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }).join('');
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_groups'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('grp_advance_note')) + '</span>') + '<div class="gx-grp-grid">' + blocks + '</div></div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_groups'), gsel + '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('grp_advance_note')) + '</span>') + '<div class="gx-grp-grid">' + blocks + '</div></div></div>';
+    wireGroupComp();
+  }
+  function wireGroupComp() {
+    var sel = $('#gx-gcomp'); if (sel) sel.addEventListener('change', function () { S.gComp = sel.value; renderGroups(); });
+  }
+  // FASE CLUBES: TABLA DE POSICIONES de una liga (= "Grupos" del Mundial para una competición de liga corrida).
+  // Reusa el markup gx-board/gx-champbar del Mundial. Columna "avance" = prob de TOP-N del season sim (mismo
+  // espíritu que groupWin+groupSecond). Carga progresiva (regla data-parcial): la tabla se pinta con L.standings
+  // ya disponible en /api/clubs/state; la columna avance se enriquece al llegar /api/clubs/season. Click → cteam/.
+  function renderClubLeagueTable(mv, gsel) {
+    var L = clubLeague(S.gComp);
+    if (!S.clubs) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + mvLoading() + '</div></div>'; return; }
+    if (!L) { S.gComp = 'wc'; renderGroups(); return; }
+    var key = L.key, hasSt = (L.standings || []).length > 0;
+    // season sim (avance %) — se dispara una vez por liga, la tabla no espera a que llegue.
+    S.clubSeason = S.clubSeason || {};
+    if (S.clubSeason[key] === undefined && hasSt && !L.starts) {
+      S.clubSeason[key] = null;
+      fetch('/api/clubs/season?league=' + encodeURIComponent(key), { headers: hdrs() })
+        .then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.clubSeason[key] = (j && j.sim) || { _empty: true }; if (S.view === 'groups' && S.gComp === key) renderGroups(); });
+    }
+    var sim = S.clubSeason[key];
+    var teamsSim = (sim && sim.teams) ? sim.teams : null;
+    var loadingSim = hasSt && !L.starts && sim === null; // pedido en vuelo
+    var nm = {}; (L.standings || []).concat(L.table || []).forEach(function (x) { if (x && x.id && x.name) nm[x.id] = x.name; });
+    // favorito al título por prob de campeón del season sim
+    var fav = null;
+    if (teamsSim) { Object.keys(teamsSim).forEach(function (id) { var c = teamsSim[id].champion || 0; if (!fav || c > fav.c) fav = { id: id, c: c }; }); }
+    var rows = hasSt
+      ? L.standings.map(function (s, i) { return { id: s.id, name: s.name, pos: i + 1, pts: s.pts, pj: s.pj, gf: s.gf, ga: s.ga }; })
+      : (L.table || []).map(function (x, i) { return { id: x.id, name: x.name, pos: i + 1, pts: null, pj: null, gf: null, ga: null }; });
+    var trs = rows.map(function (r) {
+      var sm = teamsSim ? teamsSim[r.id] : null;
+      var adv = sm ? (sm.top || 0) : null;
+      var advCell = sm != null
+        ? '<div class="gx-champbar sm"><i style="width:' + Math.max(2, adv * 100) + '%"></i><span class="gx-mono">' + pct0(adv) + '</span></div>'
+        : '<span class="gx-dim gx-mono">' + (loadingSim ? '…' : '·') + '</span>';
+      return '<tr class="gx-row" data-nav-cteam="' + esc(key + '|' + r.id) + '">' +
+        '<td class="gx-dim gx-mono l" style="width:24px">' + r.pos + '</td>' +
+        '<td class="l"><div class="gx-cell-team">' + clubBadge(r.id) + '<b>' + esc(r.name) + '</b></div></td>' +
+        '<td class="gx-mono">' + (r.pj != null ? r.pj : '·') + '</td>' +
+        '<td class="gx-mono" style="color:var(--gx-text)">' + (r.pts != null ? r.pts : '·') + '</td>' +
+        '<td class="gx-mono gx-dim">' + (r.gf != null ? r.gf + ':' + r.ga : '·') + '</td>' +
+        '<td class="l" style="width:120px">' + advCell + '</td></tr>';
+    }).join('');
+    var head = viewHead(t('cl_standings'), gsel + '<span class="gx-spacer"></span>' + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11px">' + esc(t('cl_grp_note')) + '</span>');
+    var pre = L.starts ? '<div class="gx-arb-warn" style="margin-bottom:10px">' + ic('info-circle') + esc(t('cl_preseason')) + '</div>' : '';
+    var favHtml = (fav && fav.c > 0) ? '<div class="gx-dim" style="font-size:11.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px">' + esc(t('cl_grp_fav')) + ' ' + clubBadge(fav.id) + ' <b style="color:var(--gx-text)">' + esc(nm[fav.id] || fav.id) + '</b> · <span class="gx-mono">' + pct0(fav.c) + '</span></div>' : '';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + pre + favHtml +
+      '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th><th>' + esc(t('cl_pj')) + '</th><th>' + esc(t('cl_pts')) + '</th><th>' + esc(t('grp_goals')) + '</th><th class="l">' + esc(t('grp_advance')) + '</th></tr></thead><tbody>' + trs + '</tbody></table></div></div></div>';
+    wireGroupComp();
+    [].forEach.call(mv.querySelectorAll('[data-nav-cteam]'), function (el) {
+      el.addEventListener('click', function () { var pp = el.getAttribute('data-nav-cteam').split('|'); openClubTeam(pp[0], pp[1]); });
+    });
   }
 
   // ---- Bracket ----

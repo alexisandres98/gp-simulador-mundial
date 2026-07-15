@@ -7760,6 +7760,21 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { fitted_at: (RT._meta && RT._meta.fitted_at) || null, engine: (RT._meta && RT._meta.engine) || null, leagues });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
+    // ARQUITECTURA DE COMPETICIÓN — GRUPOS/TABLA por liga: proyección de temporada (campeón/top-N/descenso) de
+    // TODA la liga en una llamada, para la columna "avance" de la tabla de posiciones (mismo espíritu que el
+    // groupWin+groupSecond del Mundial). Memoizado 30min e invalidado por el overlay de Elo dinámico → se
+    // actualiza cada jornada. Carga progresiva en el cliente (regla data-parcial): la tabla se pinta ya, la
+    // columna avance se enriquece cuando llega esto.
+    if (p === '/api/clubs/season') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const league = String(url.searchParams.get('league') || '');
+        if (!league) return json(res, 400, { error: 'liga requerida' });
+        const sim = clubSeasonSim(league);
+        return json(res, 200, { league, sim: sim || null });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     // COCKPIT DE CLUBES: análisis de un cruce (real o hipotético, incluso ENTRE ligas) reusando los engines
     // de la casa: matchProbs (1X2 calibrado) + lambdas (xG) + goal-engine/distribution (O/U, BTTS, marcadores).
     // Cross-liga: cada liga se fitea alrededor de 1500 → comparación aproximada (flag cross_league, la UI avisa).

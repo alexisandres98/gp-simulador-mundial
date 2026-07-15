@@ -47,7 +47,7 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Panel xG del partido (post-partido) | ✔ (F1.3, 3ca43ff — mvXg con player-history de la liga, ±4 días; 1T/2T no disponible en TSA) |
 | Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✔ (f09deed anotadores; disponibilidad narrada en Context a21ee8c) |
 | Hallazgos de inteligencia (observer narrado) | ✔ (F2.3, a21ee8c — tab Context) |
-| Perfil táctico (style-engine: vías de peligro, aéreo, hallazgos) | ✘ F2.4 (necesita event data F1.3) |
+| Perfil táctico (style-engine: vías de peligro, aéreo, hallazgos) | ✔ **prod `c1f65db`**: panel Tactical profile idéntico al Mundial (mvStyle reusado) alimentado por event data FotMob por liga (fitStyles/matchupFindings). Backfill scripts/clubs-fotmob-backfill.js → data/clubs/fotmob-<liga>.json (disco). Corpus K-League en prod; resto al backfillear |
 | Lecturas del sistema (picks del cruce con narrativa) | ✘ F3 |
 | Matriz de mercados por casa (cuotas del partido) | ✔ (mvMarkets del Mundial vía fx.odds del sweep, 170669d) |
 | Calculadora de stake | ✘ F1.5 |

@@ -155,7 +155,9 @@ function propPicks(propMarkets, cfg) {
   for (const g of (propMarkets || [])) {
     const books = Number(g.books || 0), edge = Number(g.edgePp || 0), odds = Number(g.bestOdds || 0);
     const blockers = [];
-    if (!g.familyApproved) blockers.push('FAMILY_NOT_APPROVED');
+    // propsRequireApprovedFamily (default true = Mundial intacto): clubes lo apagan para MONITOREO —
+    // el gate viaja en la pick (gate_status), mismo mecanismo que goalsRequireApprovedFamily.
+    if (cfg.propsRequireApprovedFamily !== false && !g.familyApproved) blockers.push('FAMILY_NOT_APPROVED');
     if (edge < cfg.propsMinEdgePp) blockers.push('LOW_EDGE');
     if (books < cfg.propsMinBooks) blockers.push('FEW_BOOKS');
     if (!(odds > 1)) blockers.push('NO_ODDS');

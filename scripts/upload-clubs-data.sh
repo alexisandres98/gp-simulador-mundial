@@ -9,7 +9,7 @@ BASE="${GP_BASE:-https://gpsimulador.com}"
 DIR="$(cd "$(dirname "$0")/.." && pwd)/data/clubs"
 if [ -z "$KEY" ]; then echo "falta GP_EXPORT_KEY"; exit 1; fi
 n=0
-for f in "$DIR"/player-history-*.json "$DIR"/results-*.json "$DIR"/fotmob-*.json "$DIR"/player-photos.json "$DIR"/af-team-map.json; do
+for f in "$DIR"/player-history-*.json "$DIR"/results-*.json "$DIR"/fotmob-*.json "$DIR"/props-history-*.json "$DIR"/player-photos.json "$DIR"/af-team-map.json; do
   [ -f "$f" ] || continue
   name=$(basename "$f")
   code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/internal/clubs-data?key=$KEY&name=$name" --data-binary "@$f" -H "Content-Type: application/json")

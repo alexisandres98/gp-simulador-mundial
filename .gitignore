@@ -17,5 +17,6 @@ data/sofascore/
 data/clubs/player-history-*.json
 data/clubs/results-*.json
 data/clubs/fotmob-*.json
+data/clubs/props-history-*.json
 data/clubs/player-photos.json
 data/clubs/af-team-map.json

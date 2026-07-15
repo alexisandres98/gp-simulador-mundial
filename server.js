@@ -2654,12 +2654,27 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
       const L = RT.leagues[meta.league]; if (!L || !L.odds_key) continue;
       let o = null;
       try {
-        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/events/${meta.oa_id}/odds?apiKey=${key}&regions=eu,us&markets=player_assists,player_goal_scorer_anytime&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+        // F3.4: córners/tarjetas en la MISMA llamada por evento (mismos markets del Mundial: alternate_totals_*)
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/events/${meta.oa_id}/odds?apiKey=${key}&regions=eu,us&markets=player_assists,player_goal_scorer_anytime,alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
         o = r.ok ? await r.json().catch(() => null) : null;
       } catch { o = null; }
       if (!o || !Array.isArray(o.bookmakers)) continue;
       out.events++;
       for (const bk of o.bookmakers) for (const m of (bk.markets || [])) {
+        // ---- CÓRNERS/TARJETAS de equipo (mismo parseo del Mundial: solo líneas .0/.5, mid CORNERS_/CARDS_) ----
+        const tfam = m.key === 'alternate_totals_corners' ? 'corners_total' : m.key === 'alternate_totals_cards' ? 'cards_total' : null;
+        if (tfam) {
+          for (const oc of (m.outcomes || [])) {
+            const side = /under/i.test(oc.name) ? 'under' : 'over';
+            const line = Number(oc.point), odds = Number(oc.price);
+            if (!Number.isFinite(line) || !(odds >= 1.05 && odds <= 51)) continue;
+            if (Math.abs(line * 10 % 5) > 0.001) continue; // solo .0/.5 (el settle usa .5, sin push)
+            const mid = (tfam === 'corners_total' ? 'CORNERS_' : 'CARDS_') + side.toUpperCase() + '_' + String(line).replace('.', '_');
+            await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: meta.oa_id, canonical_event_id: ceid, market_family: tfam, line, side, team_scope: 'total', market_id: mid, odds_decimal: odds, implied_probability: 1 / odds, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+            out.team_quotes = (out.team_quotes || 0) + 1;
+          }
+          continue;
+        }
         const fam = m.key === 'player_assists' ? 'player_assist' : m.key === 'player_goal_scorer_anytime' ? 'player_goal' : null;
         if (!fam) continue;
         for (const oc of (m.outcomes || [])) {
@@ -2680,7 +2695,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
     _clubsPropsLast = Date.now();
   } catch (e) { out.error = e.message; }
   finally { _clubsPropsRunning = false; out.finished = new Date().toISOString(); _clubsPropsOut = out; }
-  if (out.quotes || out.error) console.log('[clubs] player-props sweep:', JSON.stringify({ events: out.events, quotes: out.quotes, unmatched: out.unmatched, error: out.error || null }));
+  if (out.quotes || out.team_quotes || out.error) console.log('[clubs] props sweep:', JSON.stringify({ events: out.events, player_quotes: out.quotes, team_quotes: out.team_quotes || 0, unmatched: out.unmatched, error: out.error || null }));
   return out;
 }
 
@@ -2802,10 +2817,18 @@ function clubStyleFit(league) {
   global._clubStyle = global._clubStyle || {};
   let fp = null, stamp = '0';
   try { fp = clubDataFile(`fotmob-${league}.json`); stamp = String(fs.statSync(fp).mtimeMs); } catch { fp = null; }
+  try { stamp += '|' + fs.statSync(clubDataFile(`props-history-${league}.json`)).mtimeMs; } catch { /* sin props aún */ }
   const c = global._clubStyle[league];
   if (c && c.stamp === stamp) return c.fit; // sin cambios en el archivo → memo (no re-parsea ni re-fitea)
   let fit = null;
-  try { const rows = JSON.parse(fs.readFileSync(fp, 'utf8')).matches || []; fit = require('./style-engine/profile').fitStyles(rows, null); } catch { fit = null; }
+  try {
+    const rows = JSON.parse(fs.readFileSync(fp, 'utf8')).matches || [];
+    // props-history de la liga (si el backfill corrió): completa las filas "córners/tarjetas por partido"
+    // del Tactical profile (mismo 2º parámetro que styleFit del Mundial). Opcional: sin archivo → null.
+    let props = null;
+    try { props = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${league}.json`), 'utf8')).matches || null; } catch { props = null; }
+    fit = require('./style-engine/profile').fitStyles(rows, props);
+  } catch { fit = null; }
   global._clubStyle[league] = { stamp, fit };
   return fit;
 }
@@ -2817,6 +2840,36 @@ function clubMatchStyle(league, hId, aId) {
   let findings = [];
   try { findings = require('./style-engine/profile').matchupFindings(home, away); } catch { findings = []; }
   return { available: true, home: { team_id: hId, ...home }, away: { team_id: aId, ...away }, findings, generated_at: new Date().toISOString() };
+}
+// F3.4 PROPS DE EQUIPO por liga — córners/tarjetas con el MISMO prop-engine del Mundial (fit/project/backtest
+// LOO son puros y keyean por code=tm_). Dataset: data/clubs/props-history-<liga>.json (disco, backfill
+// scripts/clubs-props-backfill.js = mismo shape del props-history.json del Mundial). El BACKTEST LOO corre en
+// el mismo memo → gate por familia (corners_total/cards_total: n≥40, brier≤0.25, calErr≤0.06 = los umbrales
+// del Mundial) SIN proceso nuevo. Memo por mtime (recarga cuando el backfill actualiza el archivo).
+function clubPropsFit(league) {
+  global._clubProps = global._clubProps || {};
+  let fp = null, stamp = '0';
+  try { fp = clubDataFile(`props-history-${league}.json`); stamp = String(fs.statSync(fp).mtimeMs); } catch { fp = null; }
+  const c = global._clubProps[league];
+  if (c && c.stamp === stamp) return c.out;
+  let out = null;
+  try {
+    const matches = JSON.parse(fs.readFileSync(fp, 'utf8')).matches || [];
+    if (matches.length >= 20) {
+      const pe = require('./prop-engine');
+      const fit = pe.fit(matches);
+      let backtest = null;
+      try { backtest = pe.backtest(matches); } catch { backtest = null; }
+      out = { fit, backtest, matches: matches.length };
+    }
+  } catch { out = null; }
+  global._clubProps[league] = { stamp, out };
+  return out;
+}
+function clubPropsGate(league, family) {
+  const pf = clubPropsFit(league);
+  const f = pf && pf.backtest && pf.backtest.families && pf.backtest.families[family];
+  return (f && f.status) || 'shadow';
 }
 // ===== FASE CLUBES F1.1: XI clickeable al perfil =====
 // El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
@@ -2935,7 +2988,7 @@ async function clubMatchStats(league, hId, aId) {
       const r = await fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${fx.id}`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
       const j = r.ok ? await r.json() : null; const resp = (j && j.response) || [];
       if (resp.length >= 2) {
-        const MAP = { 'Ball Possession': 'possession', 'Total Shots': 'shots', 'Shots on Goal': 'shotsOnTarget', 'Corner Kicks': 'corners', 'Fouls': 'fouls', 'Offsides': 'offsides', 'Yellow Cards': 'yellowCards', 'expected_goals': 'xg' };
+        const MAP = { 'Ball Possession': 'possession', 'Total Shots': 'shots', 'Shots on Goal': 'shotsOnTarget', 'Corner Kicks': 'corners', 'Fouls': 'fouls', 'Offsides': 'offsides', 'Yellow Cards': 'yellowCards', 'Red Cards': 'redCards', 'expected_goals': 'xg' };
         const side = (afTeamId) => {
           const s = resp.find(x => x.team && x.team.id === afTeamId); if (!s) return null;
           const out = {};
@@ -4150,19 +4203,84 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       }
     }
   } catch { /* sin props este ciclo */ }
+  // PROPS DE EQUIPO (córners/tarjetas, F3.4): cuotas del sweep (alternate_totals_*) + proyección NB del
+  // prop-engine del Mundial con el props-history de la liga. familyApproved = gate LOO por liga (clubPropsGate);
+  // curate las bloquea con FAMILY_NOT_APPROVED igual que las GOALS — pero viajan al monitoreo (gate_status).
+  const propMarkets = [];
+  try {
+    const { nbPmf } = require('./goal-engine/negativeBinomial');
+    const nbOver = (mu, r, line) => { if (!(mu > 0)) return 0; let u = 0; for (let k = 0; k <= Math.floor(line); k++) u += nbPmf(mu, r, k); return Math.max(0, Math.min(1, 1 - u)); };
+    const noVig = require('./goal-engine/noVig');
+    const evIds2 = [...new Set(events.map(e => e.eventId).concat(goalMarkets.map(g => g.eventId)))];
+    if (evIds2.length) {
+      const tq = await dbc.query(
+        `SELECT canonical_event_id, market_family, line::float, side, sportsbook_code, odds_decimal::float o
+           FROM sportsbook_goal_quote_current
+          WHERE canonical_event_id = ANY($1) AND market_family IN ('corners_total','cards_total')
+            AND observed_at > now() - interval '12 hours'`, [evIds2]).catch(() => ({ rows: [] }));
+      const byGrp = {};
+      for (const r of tq.rows) { (byGrp[r.canonical_event_id + '|' + r.market_family + '|' + r.line] = byGrp[r.canonical_event_id + '|' + r.market_family + '|' + r.line] || []).push(r); }
+      const projCache2 = {};
+      for (const [k, rows] of Object.entries(byGrp)) {
+        const [ceid, fam, lineStr] = k.split('|'); const line = Number(lineStr);
+        if (Math.abs(line % 1 - 0.5) > 0.01) continue; // picks SOLO líneas .5 (sin push, mismo criterio del Mundial)
+        const meta = qevents[ceid]; if (!meta) continue;
+        const lg = meta.league, L = RT.leagues[lg]; if (!L) continue;
+        const hId = resolveClubId(lg, meta.home), aId = resolveClubId(lg, meta.away); if (!hId || !aId) continue;
+        // proyección del cruce (una vez por evento): prop-engine.project con fit de la liga + λ + paridad 1X2
+        if (projCache2[ceid] === undefined) {
+          projCache2[ceid] = null;
+          try {
+            const pf = clubPropsFit(lg);
+            if (pf && pf.fit) {
+              let l3 = null; const gf = clubGoalsFit(lg); if (gf) l3 = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId);
+              if (!l3) { const rh = clubElo(lg, hId), ra = clubElo(lg, aId); l3 = lambdas(rh + (L.hfa || 60), ra); }
+              const pr3 = matchProbs(clubElo(lg, hId) + (L.hfa || 60), clubElo(lg, aId));
+              projCache2[ceid] = require('./prop-engine').project(pf.fit, { home: hId, away: aId, lambdas: { home: l3[0], away: l3[1] }, closeness1x2: pr3 });
+            }
+          } catch { projCache2[ceid] = null; }
+        }
+        const proj = projCache2[ceid]; if (!proj) continue;
+        const quotes = rows.map(r => ({ sportsbook_code: r.sportsbook_code, independence_group: r.sportsbook_code, side: r.side, odds_decimal: r.o, quote_status: 'open', is_live: false }));
+        const cons = noVig.consensus(quotes, 'over', 'under', { minGroups: 2 }); // cobertura de clubes más fina que el Mundial
+        if (!cons.ok) continue;
+        const mu = fam === 'corners_total' ? proj.corners.total : proj.cards.total;
+        const rDisp = fam === 'corners_total' ? proj.corners.r_total : proj.cards.r_total;
+        const fairOver = nbOver(mu, rDisp, line);
+        const famApproved = clubPropsGate(lg, fam) === 'approved';
+        const tag = String(line).replace('.', '_'); const P = fam === 'corners_total' ? 'CORNERS_' : 'CARDS_';
+        for (const side of ['over', 'under']) {
+          const model = side === 'over' ? fairOver : 1 - fairOver;
+          const market = side === 'over' ? cons.probability : 1 - cons.probability;
+          const sq = quotes.filter(q => q.side === side);
+          if (!sq.length) continue;
+          const best = sq.slice().sort((a, b) => b.odds_decimal - a.odds_decimal)[0];
+          propMarkets.push({
+            eventId: ceid, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff: meta.kickoff,
+            family: fam, marketId: P + side.toUpperCase() + '_' + tag, side, line,
+            modelProb: model, marketProb: market, edgePp: model - market,
+            bestOdds: best.odds_decimal, bestBook: best.sportsbook_code, books: new Set(sq.map(q => q.sportsbook_code)).size,
+            familyApproved: famApproved, mu: +mu.toFixed(2),
+          });
+        }
+      }
+    }
+  } catch { /* sin cuotas de córners/tarjetas este ciclo */ }
   // MISMO curate del Mundial (todas sus reglas: anclaje, coherencia de dirección, edge mínimo, casas mínimas).
   // goalsRequireApprovedFamily:false = las GOALS nacen para el MONITOREO aunque el gate de goles de la liga
   // esté shadow (el estado del gate viaja en la pick; el público no ve nada de esto). playerMinBooks:1 = los
   // props de estas ligas cotizan en 1-6 casas hoy (EU llega en agosto); el conteo de casas viaja en la pick.
   const { curate } = require('./pick-engine/curate');
-  const res = curate({ events, goalMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, playerMinBooks: 1 } });
+  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 2 } });
   out.player_markets = playerMarkets.length;
+  out.prop_markets = propMarkets.length;
   out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };
   // dry-run: devolver candidatos + bloqueos sin persistir (verificación del mecanismo con cuotas reales)
   if (dryRun) {
     out.candidates = {
       solid: res.all.solid.map(s => ({ league: (events.find(e => e.eventId === s.eventId) || {}).league, home: s.home, away: s.away, selection: s.selection, odds: s.bestOdds, conf: s.confidence != null ? +s.confidence.toFixed(3) : null, eligible: s.eligible, blockers: s.blockers })),
       goals: res.all.goals.map(g => ({ league: (goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, eligible: g.eligible, blockers: g.blockers })),
+      props: res.all.props.map(g => ({ league: (propMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, books: g.books, eligible: g.eligible, blockers: g.blockers })),
     };
     return out;
   }
@@ -4170,7 +4288,13 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // (evento, familia) conservando la más reciente (misma regla anti-contradicción del Mundial).
   const { compose } = require('./pick-engine/narrative');
   const stable = (key) => 'cdp_' + require('crypto').createHash('sha256').update(key).digest('hex').slice(0, 16);
-  const gateOf = (lg2, fam) => { const L2 = RT.leagues[lg2] || {}; return fam === 'GOALS' ? ((L2.goals_backtest && L2.goals_backtest.status) || 'shadow') : ((L2.backtest && L2.backtest.status) || 'shadow'); };
+  const gateOf = (lg2, fam) => {
+    const L2 = RT.leagues[lg2] || {};
+    if (fam === 'GOALS') return (L2.goals_backtest && L2.goals_backtest.status) || 'shadow';
+    if (fam === 'CORNERS') return clubPropsGate(lg2, 'corners_total');
+    if (fam === 'CARDS') return clubPropsGate(lg2, 'cards_total');
+    return (L2.backtest && L2.backtest.status) || 'shadow';
+  };
   const mkRecord = (family, ev, fields, key) => ({
     pick_id: stable(key), family, is_club: true, league: fields.league,
     gate_status: gateOf(fields.league, family), // approved|shadow — el track privado separa por esto
@@ -4203,6 +4327,17 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
     ]);
     fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why }, g.eventId + '|GOALS|' + g.marketId));
+  }
+  // CORNERS/CARDS (F3.4): 1 pick por (evento, familia), la de mayor edge — mismo criterio que GOALS.
+  const bestProp = {};
+  for (const g of res.eligible.props) { const k = g.eventId + '|' + g.family; const cur = bestProp[k]; if (!cur || g.edgePp > cur.edgePp) bestProp[k] = g; }
+  for (const g of Object.values(bestProp)) {
+    const pm2 = propMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
+    const why = compose([
+      ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
+      { code: 'MARKET_ANCHOR', w: 1, books: g.books },
+    ]);
+    fresh.push(mkRecord(g.family, g.eventId, { league: pm2.league, home: g.home, away: g.away, homeId: pm2.homeId, awayId: pm2.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why }, g.eventId + '|' + g.family + '|' + g.marketId));
   }
   // PLAYER (assists + anytime goal): 1 pick por (evento, sub-familia), la de mayor confianza — feed limpio.
   const bestPlayer = {};
@@ -4248,11 +4383,57 @@ function settleClubDailyPicks() {
       } catch { /* sin history → espera o VOID por tiempo */ }
       continue;
     }
+    // CORNERS/CARDS (F3.4): totales reales del props-history de la liga (backfill AF) por par+fecha ±2d.
+    // Sin dato a las 72h → VOID (mismo criterio honesto que PLAYER). El fallback AF en vivo corre aparte
+    // (settleClubPropsViaAf, async) para finales recientes que el backfill aún no trae.
+    if (p.family === 'CORNERS' || p.family === 'CARDS') {
+      try {
+        const ms = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${p.league}.json`), 'utf8')).matches || [];
+        const ko = +new Date(p.event.kickoff_at || 0);
+        const row = ms.find(m2 => ((m2.home.code === p.event.home_team_id && m2.away.code === p.event.away_team_id) || (m2.home.code === p.event.away_team_id && m2.away.code === p.event.home_team_id)) && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
+        if (row) {
+          const tot = p.family === 'CORNERS'
+            ? (Number(row.home.corners) || 0) + (Number(row.away.corners) || 0)
+            : (Number(row.home.yellows) || 0) + (Number(row.home.reds) || 0) + (Number(row.away.yellows) || 0) + (Number(row.away.reds) || 0);
+          const over = tot > Number(p.line);
+          p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
+        } else if (ko && Date.now() - ko > 72 * 3600e3) {
+          p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++;
+        }
+      } catch { /* sin history → espera, AF fallback o VOID por tiempo */ }
+      continue;
+    }
     const r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
     if (!r || r.status !== 'final') continue;
     const homeIsH = r.home_id === p.event.home_team_id;
     const rc = settleOne(p, { homeGoals: homeIsH ? r.hg : r.ag, awayGoals: homeIsH ? r.ag : r.hg });
     if (rc && rc !== 'PENDING') { p.status = 'SETTLED'; p.result_code = rc; p.settled_at = new Date().toISOString(); settled++; }
+  }
+  if (settled) save();
+  return { settled };
+}
+// F3.4: fallback de liquidación de CORNERS/CARDS vía AF statistics (clubMatchStats) para partidos FINALIZADOS
+// que el backfill de props-history aún no trae (el backfill corre por pasadas; esto liquida en horas, no días).
+async function settleClubPropsViaAf() {
+  let settled = 0;
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'ACTIVE' || (p.family !== 'CORNERS' && p.family !== 'CARDS')) continue;
+    const ko = +new Date(p.event.kickoff_at || 0);
+    if (!ko || Date.now() - ko < 2.5 * 3600e3) continue; // el partido debe haber terminado
+    const r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
+    if (!r || r.status !== 'final') continue; // solo con final confirmado (evita liquidar con stats parciales)
+    try {
+      const st = await clubMatchStats(p.league, p.event.home_team_id, p.event.away_team_id);
+      if (!st || !st.home || !st.away) continue;
+      const val = (o, k) => Number(o[k]) || 0;
+      const tot = p.family === 'CORNERS'
+        ? val(st.home, 'corners') + val(st.away, 'corners')
+        : val(st.home, 'yellowCards') + val(st.home, 'redCards') + val(st.away, 'yellowCards') + val(st.away, 'redCards'); // amarillas+rojas = mismo conteo del modelo (fit: yellows+reds)
+      if (p.family === 'CORNERS' && !(st.home.corners != null && st.away.corners != null)) continue;
+      if (p.family === 'CARDS' && !(st.home.yellowCards != null && st.away.yellowCards != null)) continue;
+      const over = tot > Number(p.line);
+      p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
+    } catch { /* siguiente pasada */ }
   }
   if (settled) save();
   return { settled };
@@ -4281,8 +4462,9 @@ async function evaluateClubDailyPicks() {
   try {
     const b = await buildClubDailyPicks();
     const s = settleClubDailyPicks();
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s };
-    if (b.added || s.settled) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, eligible: b.eligible }));
+    const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp };
+    if (b.added || s.settled || sp.settled) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, eligible: b.eligible }));
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }
 }

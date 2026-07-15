@@ -18,6 +18,18 @@ const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colomb
 
 const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|sc|ec|ac|afc|cd|club|de|do|da)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
+// aliases de rename provider-agnósticos (nombre normalizado → nombre-ratings normalizado). FotMob suele usar
+// nombres MÁS actuales que AF (ej. CSL: Chengdu Rongcheng, no "Better City"), pero comparten abreviados.
+const ALIAS = {
+  'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'america mg': 'america mineiro',
+  'red bull bragantino': 'red bull bragantino', 'rb bragantino': 'red bull bragantino', 'vasco': 'vasco da gama',
+  'la galaxy': 'la galaxy', 'lafc': 'los angeles', 'new england revolution': 'new england',
+  'ulsan hyundai': 'ulsan hd', 'jeju united': 'jeju sk',
+  'shanghai sipg': 'shanghai port', 'hangzhou greentown': 'zhejiang', 'shandong luneng': 'shandong taishan',
+  'tianjin teda': 'tianjin jinmen tiger', 'qingdao jonoon': 'qingdao hainiu',
+  'newells old boys': 'newell s old boys', 'estudiantes l p': 'estudiantes la plata', 'gimnasia l p': 'gimnasia y esgrima',
+  'argentinos jrs': 'argentinos juniors',
+};
 function resolverFor(league) {
   const L = RT.leagues[league] || {};
   const full = {}, last = {}, dup = {};
@@ -29,7 +41,8 @@ function resolverFor(league) {
   }
   const names = Object.entries(L.ratings || {}).map(([id, t]) => ({ id, n: normName(t.name) }));
   return function (raw) {
-    const n = normName(raw); if (!n) return null;
+    let n = normName(raw); if (!n) return null;
+    n = ALIAS[n] || n;
     if (full[n]) return full[n];
     // contains en ambos sentidos (nombre de FotMob vs ratings)
     const hit = names.find(x => x.n && (x.n === n || x.n.indexOf(n) >= 0 || n.indexOf(x.n) >= 0));

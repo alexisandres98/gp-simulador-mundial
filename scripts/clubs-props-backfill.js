@@ -54,14 +54,25 @@ const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[�
 // alias nombre-AF(normalizado) → nombre-ratings(normalizado): AF usa sufijos de estado/marca en Brasil y
 // abreviados en otras ligas (mismo problema resuelto con CLUB_ALIAS para ESPN en el server).
 const AF_ALIAS = {
+  // Brasil
   'atletico mg': 'atletico mineiro', 'athletico pr': 'athletico', 'atletico paranaense': 'athletico',
   'rb bragantino': 'red bull bragantino', 'bragantino': 'red bull bragantino', 'atletico go': 'atletico goianiense',
   'vasco': 'vasco da gama', 'america mg': 'america mineiro',
+  // MLS
   'lafc': 'los angeles', 'los angeles galaxy': 'la galaxy', 'dc united': 'd c united', 'st louis city': 'st louis',
   'new england revolution': 'new england', 'ny red bulls': 'new york red bulls',
+  // Colombia
   'atletico junior': 'junior', 'independiente medellin': 'medellin', 'deportivo cali': 'cali',
-  'newells old boys': 'newell s old boys', 'estudiantes l p': 'estudiantes', 'gimnasia l p': 'gimnasia la plata',
+  // Argentina (nombres AF verificados vs ratings)
+  'newells old boys': 'newell s old boys', 'estudiantes l p': 'estudiantes la plata', 'gimnasia l p': 'gimnasia y esgrima',
+  'gimnasia m': 'gimnasia y esgrima mendoza', 'independ rivadavia': 'independiente rivadavia',
   'argentinos jrs': 'argentinos juniors', 'defensa y justicia': 'defensa justicia',
+  // K-League (renames)
+  'ulsan hyundai': 'ulsan hd', 'jeju united': 'jeju sk',
+  // CSL (API-Football usa nombres HISTÓRICOS — renames documentados/conocidos)
+  'hangzhou greentown': 'zhejiang', 'shanghai sipg': 'shanghai port', 'shandong luneng': 'shandong taishan',
+  'tianjin teda': 'tianjin jinmen tiger', 'qingdao jonoon': 'qingdao hainiu', 'qingdao youth island': 'qingdao west coast',
+  'chengdu better city': 'chengdu rongcheng', 'henan jianye': 'henan jiuzu dukang', 'chongqing tongliang long': 'chongqing tonglianglong',
 };
 
 function resolverFor(league) {

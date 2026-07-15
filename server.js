@@ -4242,7 +4242,10 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
         }
         const proj = projCache2[ceid]; if (!proj) continue;
         const quotes = rows.map(r => ({ sportsbook_code: r.sportsbook_code, independence_group: r.sportsbook_code, side: r.side, odds_decimal: r.o, quote_status: 'open', is_live: false }));
-        const cons = noVig.consensus(quotes, 'over', 'under', { minGroups: 2 }); // cobertura de clubes más fina que el Mundial
+        // minGroups:1 — las líneas de córners/tarjetas de clubes hoy cotizan en 1-2 casas (mismo criterio que los
+        // player props, playerMinBooks:1). Es MONITOREO privado (gate viaja, no público) → de-vig de 1 casa sirve
+        // para trackear modelo-vs-mercado. El conteo de casas viaja en la pick para el análisis.
+        const cons = noVig.consensus(quotes, 'over', 'under', { minGroups: 1 });
         if (!cons.ok) continue;
         const mu = fam === 'corners_total' ? proj.corners.total : proj.cards.total;
         const rDisp = fam === 'corners_total' ? proj.corners.r_total : proj.cards.r_total;
@@ -4271,7 +4274,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // esté shadow (el estado del gate viaja en la pick; el público no ve nada de esto). playerMinBooks:1 = los
   // props de estas ligas cotizan en 1-6 casas hoy (EU llega en agosto); el conteo de casas viaja en la pick.
   const { curate } = require('./pick-engine/curate');
-  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 2 } });
+  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 1 } });
   out.player_markets = playerMarkets.length;
   out.prop_markets = propMarkets.length;
   out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };

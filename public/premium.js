@@ -2551,7 +2551,7 @@
       minute: cres ? cres.minute : null,
       date: (fxr && fxr.utc) || null,
       events: m.events || [],
-      statistics: null,
+      statistics: m.statistics || null,
       lineups: lu ? { home: mapSide(lu.home, hId), away: mapSide(lu.away, aId) } : {},
       recentForm: m.form ? { home: mapForm(m.form.home), away: mapForm(m.form.away) } : null,
       injuries: injuries,
@@ -2576,14 +2576,17 @@
     var live = fx.status === 'live';
     var hasForm = fx.recentForm && (fx.recentForm.home || fx.recentForm.away);
     var hasLineups = !!(fx.lineups && (fx.lineups.home || fx.lineups.away));
+    var hasStats = fx.statistics && fx.statistics.home;
     var hasEvents = fx.events && fx.events.length;
     var hasMom = fx.momentum && fx.momentum.length > 2;
+    var xgr = m.xg_report || null; // F1.3: xG observado post-partido (mismo panel mvXg del Mundial)
     var sections = [{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }];
     if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
     if (m.match_intel) sections.push({ id: 'intel', key: 'mod_intel' });
-    if (hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
+    if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
+    if (xgr) sections.push({ id: 'xg', key: 'mod_xg' });
     sections.push({ id: 'goles', key: 'mod_goals' });
     if (live) sections.push({ id: 'live', key: 'mod_live' });
     var sec = function (id, html) { return html ? '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>' : ''; };
@@ -2592,7 +2595,7 @@
       mvNav(sections) +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + (hasEvents ? sec('stats', mvStats(beta, fx)) : '') + (m.match_intel ? sec('intel', clubIntelHtml(m, lgk)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (m.match_intel ? sec('intel', clubIntelHtml(m, lgk)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
       '</div>' +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '')
     );

@@ -2767,6 +2767,52 @@ async function clubMatchEvents(league, hId, aId) {
   }
   return c.events;
 }
+// STATS del partido en vivo (F1.1c): posesión/remates/córners/faltas de API-Football, normalizadas al MISMO
+// shape que consume mvStats del Mundial ({home:{possession,shots,...},away:{...}}). Memo 60s (cambian en vivo).
+async function clubMatchStats(league, hId, aId) {
+  const fx = await clubAfFixture(league, hId, aId);
+  if (!fx || !fx.id) return null;
+  const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+  global._clubStats = global._clubStats || {};
+  const ck = league + '|' + hId + '|' + aId;
+  let c = global._clubStats[ck];
+  if (!c || Date.now() - c.at > 60 * 1000) {
+    c = { at: Date.now(), stats: null };
+    try {
+      const r = await fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${fx.id}`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
+      const j = r.ok ? await r.json() : null; const resp = (j && j.response) || [];
+      if (resp.length >= 2) {
+        const MAP = { 'Ball Possession': 'possession', 'Total Shots': 'shots', 'Shots on Goal': 'shotsOnTarget', 'Corner Kicks': 'corners', 'Fouls': 'fouls', 'Offsides': 'offsides', 'Yellow Cards': 'yellowCards', 'expected_goals': 'xg' };
+        const side = (afTeamId) => {
+          const s = resp.find(x => x.team && x.team.id === afTeamId); if (!s) return null;
+          const out = {};
+          for (const st of (s.statistics || [])) { const k = MAP[st.type]; if (!k || st.value == null) continue; out[k] = typeof st.value === 'string' ? parseFloat(st.value) : st.value; }
+          return Object.keys(out).length ? out : null;
+        };
+        const home = side(fx.afH), away = side(fx.afA);
+        if (home || away) c.stats = { home, away };
+      }
+    } catch { c.stats = null; }
+    global._clubStats[ck] = c;
+  }
+  return c.stats;
+}
+// xG OBSERVADO del partido (F1.3): agrega el player-history de la liga por equipo para el cruce recién jugado
+// (mismo panel mvXg del Mundial). Solo si el match del backfill es de fecha cercana; aparece cuando el backfill
+// de la liga se actualiza (regla: construir con la data disponible, se enriquece al llegar más).
+function clubXgReport(league, hId, aId) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${league}.json`), 'utf8')).rows || [];
+    const byMatch = {};
+    for (const r of raw) { const m = byMatch[r.match] = byMatch[r.match] || { teams: new Set(), date: r.date, rows: [] }; m.teams.add(r.team); m.rows.push(r); }
+    const cands = Object.values(byMatch).filter(m => m.teams.has(hId) && m.teams.has(aId)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const m = cands[0]; if (!m) return null;
+    const agg = (tid) => { let xg = 0, sh = 0, sot = 0; for (const r of m.rows) { if (r.team !== tid) continue; xg += Number(r.xg) || 0; sh += Number(r.shots) || 0; sot += Number(r.sot) || 0; } return { xg: +xg.toFixed(2), shots: sh, sot }; };
+    const H = agg(hId), A = agg(aId);
+    if (!H.shots && !A.shots) return null;
+    return { available: true, date: m.date, xg: { home: H.xg, away: A.xg }, shots: { home: H.shots, away: A.shots }, sot: { home: H.sot, away: A.sot } };
+  } catch { return null; }
+}
 // ===== FASE CLUBES F0.4: ELO DINÁMICO =====
 // El ratings.json se fitea offline (base). Sin actualizar el Elo con cada resultado, la probabilidad DERIVA
 // (exactamente lo que Alexis señaló). db.clubElos es un OVERLAY sobre el base: arranca del fit y se ajusta con
@@ -7532,7 +7578,7 @@ const server = http.createServer(async (req, res) => {
         // F1.2: GP EN VIVO + MOMENTUM. Si el cruce tiene marcador en vivo, prob GP condicionada al marcador+minuto
         // (liveProbsFromLambdas con los λ del cruce = mismo engine del Mundial). Momentum = serie muestreada por
         // clubScoresSync. Se orienta al home solicitado (clubResults/serie guardan orientación del sync ESPN).
-        let gpLive = null, momentum = null, events = null;
+        let gpLive = null, momentum = null, events = null, statistics = null, xgReport = null;
         if (!cross) {
           const sr = (db.clubResults || {})[clubScoreKey(hl, hId, aId)] || null;
           if (sr) {
@@ -7547,6 +7593,15 @@ const server = http.createServer(async (req, res) => {
             }
             // F1.1b: eventos en vivo (goles/tarjetas/subs) desde AF, solo si el partido juega o acaba de terminar.
             if (sr.status === 'live' || sr.status === 'final') { try { events = await clubMatchEvents(hl, hId, aId); } catch { events = null; } }
+            // F1.1c: stats del partido (posesión/remates) en vivo/final — mismo panel mvStats del Mundial.
+            if (sr.status === 'live' || sr.status === 'final') { try { statistics = await clubMatchStats(hl, hId, aId); } catch { statistics = null; } }
+            // F1.3: xG observado del partido (post-partido; requiere backfill fresco de la liga ±4 días).
+            if (sr.status === 'final') {
+              try {
+                const xr = clubXgReport(hl, hId, aId);
+                if (xr && Math.abs(new Date(xr.date) - Date.now()) < 4 * 86400e3) xgReport = xr;
+              } catch { xgReport = null; }
+            }
           }
         }
         return json(res, 200, {
@@ -7567,6 +7622,8 @@ const server = http.createServer(async (req, res) => {
           gp_live: gpLive, // F1.2: prob GP condicionada al marcador+minuto (solo en vivo)
           momentum, // F1.2: serie {t,h,d,a,hg,ag} para el gráfico de evolución
           events, // F1.1b: [{minute,type,player,assist,teamName,side}] goles/tarjetas/subs en vivo
+          statistics, // F1.1c: {home:{possession,shots,...},away:{...}} — mismo shape que mvStats del Mundial
+          xg_report: xgReport, // F1.3: xG observado del partido (post-partido, del player-history de la liga)
           // MISMO builder de goles del Mundial (gp-product/dto.goalInsights) con los λ del cruce → el cockpit de
           // club rinde la MISMA sección Goal projection (distribución, escalera O/U, márgenes, combos, marcadores).
           goal_insights: (() => { try { return require('./gp-product/dto').goalInsights({ lambda_home: lU[0], lambda_away: lU[1], lambda_total: lU[0] + lU[1] }); } catch { return null; } })(),

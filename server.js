@@ -2793,6 +2793,31 @@ function clubPlayoffBracket(league) {
   return { has_playoff: true, available: true, league, format: cfg.name, size: cfg.size,
     seeds, qf, favorite, sims: N, remaining: season.remaining };
 }
+// F2.4 STYLE ENGINE por liga — PERFIL TÁCTICO desde el event data FotMob (data/clubs/fotmob-<liga>.json en DISCO,
+// backfill scripts/clubs-fotmob-backfill.js). MISMO fitStyles/matchupFindings del Mundial (no variante): shotmaps
+// con situación (córner/balón parado/contra/zona/aéreo) → perfil ataque+defensa por equipo, percentiles DENTRO del
+// corpus de la liga. Keyed por tm_ (el backfill guarda homeCode/awayCode=tm_). Memo por conteo de partidos del
+// archivo → se enriquece conforme el backfill/sweep agrega partidos (regla data-parcial). Cross-liga: no aplica.
+function clubStyleFit(league) {
+  global._clubStyle = global._clubStyle || {};
+  let fp = null, stamp = '0';
+  try { fp = clubDataFile(`fotmob-${league}.json`); stamp = String(fs.statSync(fp).mtimeMs); } catch { fp = null; }
+  const c = global._clubStyle[league];
+  if (c && c.stamp === stamp) return c.fit; // sin cambios en el archivo → memo (no re-parsea ni re-fitea)
+  let fit = null;
+  try { const rows = JSON.parse(fs.readFileSync(fp, 'utf8')).matches || []; fit = require('./style-engine/profile').fitStyles(rows, null); } catch { fit = null; }
+  global._clubStyle[league] = { stamp, fit };
+  return fit;
+}
+function clubMatchStyle(league, hId, aId) {
+  const S = clubStyleFit(league);
+  if (!S) return { available: false };
+  const home = S[hId] || null, away = S[aId] || null;
+  if (!home || !away) return { available: false };
+  let findings = [];
+  try { findings = require('./style-engine/profile').matchupFindings(home, away); } catch { findings = []; }
+  return { available: true, home: { team_id: hId, ...home }, away: { team_id: aId, ...away }, findings, generated_at: new Date().toISOString() };
+}
 // ===== FASE CLUBES F1.1: XI clickeable al perfil =====
 // El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
 // AF → pl_ id del roster TSA del equipo (misma lógica que pidxResolve del Mundial: match por nombre completo,
@@ -7941,6 +7966,7 @@ const server = http.createServer(async (req, res) => {
           events, // F1.1b: [{minute,type,player,assist,teamName,side}] goles/tarjetas/subs en vivo
           statistics, // F1.1c: {home:{possession,shots,...},away:{...}} — mismo shape que mvStats del Mundial
           xg_report: xgReport, // F1.3: xG observado del partido (post-partido, del player-history de la liga)
+          style: cross ? { available: false } : clubMatchStyle(hl, hId, aId), // F2.4: perfil táctico (event data FotMob de la liga)
           // MISMO builder de goles del Mundial (gp-product/dto.goalInsights) con los λ del cruce → el cockpit de
           // club rinde la MISMA sección Goal projection (distribución, escalera O/U, márgenes, combos, marcadores).
           goal_insights: (() => { try { return require('./gp-product/dto').goalInsights({ lambda_home: lU[0], lambda_away: lU[1], lambda_total: lU[0] + lU[1] }); } catch { return null; } })(),

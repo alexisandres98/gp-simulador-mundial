@@ -83,4 +83,25 @@ async function matchEvents(matchId) {
   };
 }
 
-module.exports = { matchesByDate, matchEvents, WC_LEAGUE_ID, _aliasToId: ALIAS_TO_ID };
+// FASE CLUBES — fixtures de UNA liga por su primaryId de FotMob (no filtra al Mundial): usa el endpoint de liga
+// (/leagues?id=) que lista toda la temporada sin depender de que jueguen ese día. Devuelve [{matchId, home, away,
+// finished, utc}] con NOMBRES (la resolución nombre→tm_ la hace el server con los ratings de la liga). Reusa el
+// mismo matchEvents (agnóstico de liga) para el shotmap. Uso educado: 1 request de liga + 1 por partido.
+async function leagueFixtures(primaryId) {
+  const j = await politeFetch(`${BASE}/leagues?id=${primaryId}`).catch(() => null);
+  if (!j) return [];
+  const all = (j.fixtures && j.fixtures.allMatches) || (j.overview && j.overview.matches && j.overview.matches.allMatches) || [];
+  const out = [];
+  for (const m of all) {
+    if (!m || !m.id) continue;
+    out.push({
+      matchId: Number(m.id),
+      home: m.home && (m.home.name || m.home.longName), away: m.away && (m.away.name || m.away.longName),
+      finished: !!(m.status && m.status.finished),
+      utc: (m.status && m.status.utcTime) || null,
+    });
+  }
+  return out;
+}
+
+module.exports = { matchesByDate, matchEvents, leagueFixtures, WC_LEAGUE_ID, _aliasToId: ALIAS_TO_ID };

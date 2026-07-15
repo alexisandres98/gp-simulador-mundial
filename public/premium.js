@@ -221,7 +221,7 @@
       pp_title: 'Rendimiento de picks', pp_settled: 'Liquidadas', pp_hit: '% Aciertos', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'Por familia', pp_history: 'Historial de picks', pp_pick: 'Pick', pp_active: 'activas', pp_none: 'Aún no hay picks liquidadas.', pp_model: 'Calibración del modelo (1X2)',
       lm_with: 'El mercado se movió a favor ({pp}pp) desde la publicación', lm_against: 'El mercado se movió en contra ({pp}pp) desde la publicación',
       pf_why_btn: 'Por qué esta pick', reads_title: 'Lecturas del sistema',
-      st_title: 'Perfil táctico', st_sub: 'torneo, remate a remate', st_findings: 'Hallazgos del cruce', st_xg: 'xG por partido', st_xga: 'xG en contra', st_corners_pct: 'Peligro de córners', st_sp_pct: 'Balón parado', st_counter_pct: 'Contragolpe', st_aerial: 'Juego aéreo', st_c90: 'Córners por partido', st_cards: 'Tarjetas por partido', st_note: 'Porcentajes = parte del peligro generado por esa vía. Verde = lidera la comparación.',
+      st_title: 'Perfil táctico', st_sub: 'torneo, remate a remate', st_sub_club: 'temporada, remate a remate', st_findings: 'Hallazgos del cruce', st_xg: 'xG por partido', st_xga: 'xG en contra', st_corners_pct: 'Peligro de córners', st_sp_pct: 'Balón parado', st_counter_pct: 'Contragolpe', st_aerial: 'Juego aéreo', st_c90: 'Córners por partido', st_cards: 'Tarjetas por partido', st_note: 'Porcentajes = parte del peligro generado por esa vía. Verde = lidera la comparación.',
       sf_corner_edge: 'Ventaja de córners para {team}: genera por esa vía justo donde el rival concede', sf_set_piece_edge: 'Ventaja de balón parado para {team}: su peligro nace donde el rival sufre', sf_aerial_edge: 'Ventaja aérea para {team}: amenaza de cabeza contra un rival que concede en ese juego', sf_counter_edge: '{team} lastima a la contra y el rival concede en transiciones', sf_zone_overlap: 'El sector favorito de ataque de {team} coincide con la zona donde el rival más concede', sf_volume_edge: '{team} genera volumen contra una defensa que viene concediendo',
       qm_title: 'Calidad de las picks vs mercado', qm_clv: 'CLV medio', qm_clv_sub: 'valor vs línea de cierre', qm_beat_close: 'Le ganó al cierre', qm_brier_gp: 'Precisión GP', qm_brier_mkt: 'Precisión consenso', qm_brier_sub: 'Brier, más bajo es mejor', qm_skill: 'Ventaja GP', qm_cal_title: 'Calibración por rangos', qm_cal_note: 'Cuando el sistema proyecta un rango de probabilidad, esto es lo que ocurrió en la realidad.', qm_cal_range: 'Proyectado', qm_cal_obs: 'Real', qm_cal_n: 'Picks', qm_clv_note: 'CLV positivo = tomamos mejor precio que el cierre del mercado. Es la medida profesional de calidad de una pick.',
       opp_value_empty: 'Sin Value accionable ahora', opp_value_empty_sub: 'El motor sigue evaluando; aparece cuando GP detecta ventaja sobre el precio.',
@@ -485,7 +485,7 @@
       pp_title: 'Picks performance', pp_settled: 'Settled', pp_hit: 'Win rate', pp_roi: 'ROI', pp_pnl: 'P&L', pp_byfam: 'By family', pp_history: 'Picks history', pp_pick: 'Pick', pp_active: 'active', pp_none: 'No settled picks yet.', pp_model: 'Model calibration (1X2)',
       lm_with: 'Market moved with us ({pp}pp) since publication', lm_against: 'Market moved against us ({pp}pp) since publication',
       pf_why_btn: 'Why this pick', reads_title: 'System reads',
-      st_title: 'Tactical profile', st_sub: 'tournament, shot by shot', st_findings: 'Matchup findings', st_xg: 'xG per match', st_xga: 'xG against', st_corners_pct: 'Corner threat', st_sp_pct: 'Set pieces', st_counter_pct: 'Counter attack', st_aerial: 'Aerial game', st_c90: 'Corners per match', st_cards: 'Cards per match', st_note: 'Percentages = share of threat created through that route. Green = leads the comparison.',
+      st_title: 'Tactical profile', st_sub: 'tournament, shot by shot', st_sub_club: 'season, shot by shot', st_findings: 'Matchup findings', st_xg: 'xG per match', st_xga: 'xG against', st_corners_pct: 'Corner threat', st_sp_pct: 'Set pieces', st_counter_pct: 'Counter attack', st_aerial: 'Aerial game', st_c90: 'Corners per match', st_cards: 'Cards per match', st_note: 'Percentages = share of threat created through that route. Green = leads the comparison.',
       sf_corner_edge: 'Corner edge for {team}: creates from that route right where the rival concedes', sf_set_piece_edge: 'Set piece edge for {team}: their threat comes from where the rival struggles', sf_aerial_edge: 'Aerial edge for {team}: heading threat against a side that concedes in the air', sf_counter_edge: '{team} hurts on the break and the opponent concedes in transitions', sf_zone_overlap: '{team}\'s favorite attacking sector matches the zone where the rival concedes most', sf_volume_edge: '{team} creates volume against a defense that has been conceding',
       qm_title: 'Pick quality vs the market', qm_clv: 'Avg CLV', qm_clv_sub: 'value vs closing line', qm_beat_close: 'Beat the close', qm_brier_gp: 'GP accuracy', qm_brier_mkt: 'Consensus accuracy', qm_brier_sub: 'Brier, lower is better', qm_skill: 'GP edge', qm_cal_title: 'Calibration by range', qm_cal_note: 'When the system projects a probability range, this is what actually happened.', qm_cal_range: 'Projected', qm_cal_obs: 'Actual', qm_cal_n: 'Picks', qm_clv_note: 'Positive CLV = we took a better price than the market close. It is the professional measure of pick quality.',
       opp_value_empty: 'No actionable Value right now', opp_value_empty_sub: 'The engine keeps evaluating; it appears when GP finds an edge over the price.',
@@ -2642,6 +2642,8 @@
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
     if (m.match_intel) sections.push({ id: 'intel', key: 'mod_intel' });
+    var styleD = (m.style && m.style.available) ? m.style : null; // F2.4: perfil táctico (event data FotMob de la liga)
+    if (styleD) sections.push({ id: 'estilo', key: 'st_title' });
     if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
     if (xgr) sections.push({ id: 'xg', key: 'mod_xg' });
     sections.push({ id: 'goles', key: 'mod_goals' });
@@ -2652,7 +2654,7 @@
       mvNav(sections) +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (m.match_intel ? sec('intel', clubIntelHtml(m, lgk)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (m.match_intel ? sec('intel', clubIntelHtml(m, lgk)) : '') + (styleD ? sec('estilo', mvStyle(styleD, beta.header)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
       '</div>' +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '')
     );
@@ -3035,7 +3037,8 @@
       row(t('st_aerial'), H.attack.header_share, A.attack.header_share, pc) +
       (H.props && A.props ? row(t('st_c90'), H.props.corners_for_p90, A.props.corners_for_p90) + row(t('st_cards'), H.props.cards_p90, A.props.cards_p90) : '') +
       '<p class="gx-mod-note gx-dim">' + esc(t('st_note')) + '</p>';
-    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('layout-grid') + esc(t('st_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('st_sub')) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+    var subKey = (header && header.competition_code === 'CLUB') ? 'st_sub_club' : 'st_sub';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('layout-grid') + esc(t('st_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t(subKey)) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
   }
 
   function mvIntel(intel, header) {

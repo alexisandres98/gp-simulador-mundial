@@ -45,11 +45,11 @@ Leyenda: ✔ = paridad · ½ = parcial · ✘ = falta
 | Momentum GP en vivo (SVG, dots de gol) | ✔ (F1.2, 363bf59) |
 | Alineaciones (XI + formación + DT) | ✔ (afc6cff); **XI clickeable al perfil ✔ (dc61d87)**; **eventos en vivo ✔ (2195df8)**; XI en-cancha (pitch) ✘ |
 | Panel xG del partido (post-partido) | ✔ (F1.3, 3ca43ff — mvXg con player-history de la liga, ±4 días; 1T/2T no disponible en TSA) |
-| Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✘ F2.2+F2.3 |
+| Match Intel (anotadores probables P(gol) por jugador + radar disponibilidad) | ✔ (f09deed anotadores; disponibilidad narrada en Context a21ee8c) |
 | Hallazgos de inteligencia (observer narrado) | ✔ (F2.3, a21ee8c — tab Context) |
 | Perfil táctico (style-engine: vías de peligro, aéreo, hallazgos) | ✘ F2.4 (necesita event data F1.3) |
 | Lecturas del sistema (picks del cruce con narrativa) | ✘ F3 |
-| Matriz de mercados por casa (cuotas del partido) | ✘ F1.5 (cuotas YA en DB por el sweep) |
+| Matriz de mercados por casa (cuotas del partido) | ✔ (mvMarkets del Mundial vía fx.odds del sweep, 170669d) |
 | Calculadora de stake | ✘ F1.5 |
 | Value del cruce | ✔ |
 | Panel Oportunidad (viniendo de arb/lag) | ✔ |
@@ -83,7 +83,7 @@ La CALCULADORA de stake va SOLO en las superficies de oportunidad (Value board t
 | Tab Forma (últimos 5) | ✔ (6bc4169) |
 | Tab Resultados | ✔ (6bc4169) |
 | Tab Mercados (Poly/Kalshi campeón) | ✘ F4.1 (mercados de campeón de liga si existen en Poly) |
-| Tab Noticias | ✘ F2.3 (observer) |
+| Tab Noticias | ✔ (85ade15 — hallazgos narrados del observer) |
 | Seguir equipo (follow + alertas email inicio/gol) | ✘ F2.5 |
 
 ### 4. JUGADORES

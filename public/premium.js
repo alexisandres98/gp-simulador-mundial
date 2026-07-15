@@ -2043,6 +2043,19 @@
       seen[c.home + '|' + c.away] = 1;
       list.push({ key: 'cal:' + c.id, id: 'teams-' + c.home + '-' + c.away, hid: c.home, aid: c.away, kickoff: c.datetime, home: teamName(c.home), away: teamName(c.away), canonical: false });
     });
+    // CLUBES (shadow): en vivo + próximos <48h de todas las ligas — mismo selector, cockpit compacto de club
+    if (clubsOn()) {
+      (((S.clubs || {}).leagues) || []).forEach(function (L) {
+        (L.upcoming || []).concat(L.live || []).forEach(function (f) {
+          if (!f.home || !f.away || seen[f.home.id + '|' + f.away.id]) return;
+          var isLive = f.result && f.result.status === 'live';
+          var kt = f.utc ? new Date(f.utc).getTime() : 0;
+          if (!(isLive || (kt > Date.now() && kt < Date.now() + 48 * 3600e3))) return;
+          seen[f.home.id + '|' + f.away.id] = 1;
+          list.push({ key: 'cl:' + L.key + ':' + f.home.id + '-' + f.away.id, id: 'cl-' + L.key + '-' + f.home.id + '-' + f.away.id, hid: f.home.id, aid: f.away.id, kickoff: f.utc, home: f.home.name, away: f.away.name, canonical: false, club: true, league: L.key, leagueName: L.name });
+        });
+      });
+    }
     list.sort(function (a, b) { return new Date(a.kickoff || 0) - new Date(b.kickoff || 0); });
     return list;
   }
@@ -2068,6 +2081,7 @@
       '</select>' + ic('chevron-down') + '</div></div>';
     var body, canonRow = sel.canonical ? rows.filter(function (x) { return x.h.event_id === sel.id; })[0] : null;
     if (canonRow) body = cockpitRich(canonRow);
+    else if (sel.club) body = cockpitCompactClub(sel);
     else body = cockpitCompact(sel);
     el.innerHTML = selectorHtml + body;
     var s = $('#gx-ck-select'); if (s) s.addEventListener('change', function () { S.ckSel = s.value; refreshCockpit(); var ck = $('#gx-cockpit'); if (window.innerWidth <= 1180 && ck) ck.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
@@ -2110,6 +2124,37 @@
       '<div class="gx-ck-mid"><div class="gx-ck-num">' + t('vs') + '</div></div>' +
       '<div class="gx-ck-side"><span class="fl">' + flag(m.aid) + '</span><b>' + esc(m.away) + '</b></div></div>' +
       probBlock + stats + picksHtml +
+      '<button class="gx-btn" style="width:100%;justify-content:center;margin-top:14px" data-openmatch="' + esc(m.id) + '">' + esc(t('open_cockpit')) + ' ' + ic('arrow-right') + '</button>' +
+      '</div>';
+  }
+  // Cockpit COMPACTO para un partido de CLUB (shadow): mismo layout que cockpitCompact, data de /api/clubs/match
+  // (cache S.clm compartido con el cockpit completo). flag() ya resuelve escudos tm_.
+  function cockpitCompactClub(m) {
+    S.clm = S.clm || {};
+    if (S.clm[m.id] === undefined) {
+      S.clm[m.id] = null;
+      fetch('/api/clubs/match?hl=' + encodeURIComponent(m.league) + '&h=' + encodeURIComponent(m.hid) + '&al=' + encodeURIComponent(m.league) + '&a=' + encodeURIComponent(m.aid) + '&hn=' + encodeURIComponent(m.home) + '&an=' + encodeURIComponent(m.away), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.clm[m.id] = j || { _empty: true }; if (S.ckSel === m.key) refreshCockpit(); });
+    }
+    var cm = (S.clm[m.id] && !S.clm[m.id]._empty) ? S.clm[m.id] : null;
+    var probs = cm && cm.probs ? cm.probs : null;
+    var gpH = probs ? probs.home : null, gpD = probs ? probs.draw : null, gpA = probs ? probs.away : null;
+    var probBlock = probs
+      ? '<div class="gx-pbar"><i class="h" style="width:' + (gpH * 100) + '%"></i><i class="d" style="width:' + (gpD * 100) + '%"></i><i class="a" style="width:' + (gpA * 100) + '%"></i></div>' +
+        '<div class="gx-plabels"><span>' + esc(m.home) + ' <b>' + pct0(gpH) + '</b></span><span>X <b>' + pct0(gpD) + '</b></span><span>' + esc(m.away) + ' <b>' + pct0(gpA) + '</b></span></div>'
+      : '<div class="gx-empty" style="padding:14px 0">' + ic('loader-2') + esc(t('loading')) + '</div>';
+    var stats = '<div class="gx-ck-stats">' +
+      ckStat(t('prob_gp'), probs ? pct0(Math.max(gpH, gpA)) : '—') +
+      ckStat('xG', cm && cm.xg && cm.xg.total != null ? Number(cm.xg.total).toFixed(1) : '—') +
+      ckStat(t('ck_over25'), cm && cm.over25 != null ? pct0(cm.over25) : '—') +
+      '</div>';
+    return '<div class="gx-panel gx-ck-score">' +
+      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc((m.leagueName || '').split(' · ')[0]) + (m.kickoff ? ' · ' + esc(fmtDateTime(m.kickoff)) : '') + '</div>' +
+      '<div class="gx-ck-teams"><div class="gx-ck-side"><span class="fl">' + flag(m.hid) + '</span><b>' + esc(m.home) + '</b></div>' +
+      '<div class="gx-ck-mid"><div class="gx-ck-num">' + t('vs') + '</div></div>' +
+      '<div class="gx-ck-side"><span class="fl">' + flag(m.aid) + '</span><b>' + esc(m.away) + '</b></div></div>' +
+      probBlock + stats +
       '<button class="gx-btn" style="width:100%;justify-content:center;margin-top:14px" data-openmatch="' + esc(m.id) + '">' + esc(t('open_cockpit')) + ' ' + ic('arrow-right') + '</button>' +
       '</div>';
   }
@@ -2412,7 +2457,9 @@
     applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {}
     renderMatch();
   }
-  function closeMatch(fromHash) { if (!fromHash) setHash(S.returnTo || ''); else showView('board'); }
+  // Back del cockpit: al returnTo si existe; sin él (recarga/URL directa), un partido de CLUB vuelve a Partidos
+  // (su hogar natural) — antes caía a Oportunidades y desorientaba (bug reportado 15-jul).
+  function closeMatch(fromHash) { var fb = /^cl-/.test(S.matchId || '') ? 'matches' : ''; if (!fromHash) setHash(S.returnTo || fb); else showView('board'); }
   function loadCanon() {
     fetch('/api/beta/matches', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
       S.canon = (j && j.items) || [];
@@ -3513,20 +3560,16 @@
       var it = { dt: c.datetime, kind: 'wc', c: c };
       if (c.status === 'live') live.push(it); else if (c.status === 'final') fin.push(it); else up.push(it);
     });
-    if (S.mFilt === 'all' || S.mFilt === 'up') {
-      Ls.forEach(function (L) {
-        (L.upcoming || []).forEach(function (f) {
-          if (q && (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) < 0) return;
-          up.push({ dt: f.utc, kind: 'cl', L: L, f: f });
-        });
-      });
-    }
-    // partidos de clubes EN VIVO / FINALIZADOS (L.live) intercalados con los del Mundial
+    // partidos de clubes por bucket REAL (upcoming puede traer marcador vivo/final) — GATEADOS por el tab
+    // activo (antes los finales de clubes se colaban en la pestaña "En vivo": el partido "frizado").
     Ls.forEach(function (L) {
-      (L.live || []).forEach(function (f) {
+      (L.upcoming || []).concat(L.live || [], L.finished || []).forEach(function (f) {
         if (q && (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) < 0) return;
+        var st = f.result && f.result.status; // undefined | 'live' | 'final'
+        var bucket = st === 'live' ? 'live' : st === 'final' ? 'fin' : 'up';
+        if (S.mFilt !== 'all' && S.mFilt !== bucket) return;
         var it = { dt: f.utc, kind: 'cl', L: L, f: f };
-        if (f.result && f.result.status === 'live') live.push(it); else fin.push(it);
+        if (bucket === 'live') live.push(it); else if (bucket === 'fin') fin.push(it); else up.push(it);
       });
     });
     up.sort(function (a, b) { return new Date(a.dt || 0) - new Date(b.dt || 0); });
@@ -3558,7 +3601,9 @@
     var mv = $('#gx-matchview'); if (!mv) return;
     if (clubsOn()) loadClubs();
     // COMPETICIÓN seleccionada (shadow clubes): 'wc' = Mundial (comportamiento de siempre); 'todos' =
-    // Mundial + ligas intercalados por fecha; una liga = su cartelera
+    // Mundial + ligas intercalados por fecha; una liga = su cartelera. DEFAULT = 'todos' (pedido de Alexis:
+    // Partidos abre con todas las competiciones, no con el Mundial).
+    if (clubsOn() && S.mComp == null) S.mComp = 'todos';
     if (clubsOn() && S.mComp === 'todos') { renderAllCompMatches(mv); return; }
     if (clubsOn() && S.mComp && S.mComp !== 'wc') { renderClubLeagueMatches(mv); return; }
     var rows = matchRows();
@@ -3594,12 +3639,12 @@
     var Ls = (S.clubs && S.clubs.leagues) || [];
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f'], ['fin', 'st_finished']];
     var q = (S.mQuery || '').toLowerCase();
-    // combinar live/finalizados (L.live) con próximos (L.upcoming); marcador viene en f.result
-    var liveRows = L ? (L.live || []) : [], upRows = L ? (L.upcoming || []) : [];
-    var all = liveRows.concat(upRows);
-    if (S.mFilt === 'live') all = liveRows.filter(function (f) { return f.result && f.result.status === 'live'; });
-    else if (S.mFilt === 'fin') all = liveRows.filter(function (f) { return f.result && f.result.status === 'final'; });
-    else if (S.mFilt === 'up') all = upRows;
+    // combinar live/finalizados (L.live + L.finished persistentes) con próximos (L.upcoming); marcador en f.result
+    var liveRows = L ? (L.live || []) : [], upRows = L ? (L.upcoming || []) : [], finRows = L ? (L.finished || []) : [];
+    var all = liveRows.concat(upRows, finRows);
+    if (S.mFilt === 'live') all = liveRows.concat(upRows).filter(function (f) { return f.result && f.result.status === 'live'; });
+    else if (S.mFilt === 'fin') all = liveRows.concat(upRows).filter(function (f) { return f.result && f.result.status === 'final'; }).concat(finRows);
+    else if (S.mFilt === 'up') all = upRows.filter(function (f) { return !(f.result && f.result.status); });
     var rows = all.filter(function (f) { return !q || (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) >= 0; });
     var head =
       '<div class="gx-ohead"><h1>' + esc(t('nav_matches')) + '</h1>' +

@@ -7513,13 +7513,17 @@ const server = http.createServer(async (req, res) => {
               await new Promise(r2 => setTimeout(r2, 1200)); // gentileza con el rate limit compartido
             } catch { up = up || { at: Date.now(), rows: [] }; }
           }
+          // live STALE → final: si ESPN dejó de refrescar un "live" por >45 min (el minuto avanza cada pasada,
+          // así que `at` se renueva mientras el partido corre), el partido terminó o se cayó el feed — mostrarlo
+          // congelado como LIVE era el bug del partido "frizado" en la pestaña En vivo.
+          const normStatus = (sr) => (sr.status === 'live' && Date.now() - (sr.at || 0) > 45 * 60e3) ? 'final' : sr.status;
           const fixtures = ((up && up.rows) || []).map(m => {
             const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
             const rh = clubElo(key, hId), ra = clubElo(key, aId); // F0.4: Elo dinámico (overlay sobre el fit)
             const pr = matchProbs(rh + (L.hfa || 60), ra);
             // marcador en vivo/finalizado (ESPN por liga, shadow) si existe para este par
             const sr = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
-            const result = sr ? { status: sr.status, hg: sr.home_id === hId ? sr.hg : sr.ag, ag: sr.home_id === hId ? sr.ag : sr.hg, minute: sr.minute, winner: sr.winner || null } : null;
+            const result = sr ? { status: normStatus(sr), hg: sr.home_id === hId ? sr.hg : sr.ag, ag: sr.home_id === hId ? sr.ag : sr.hg, minute: sr.minute, winner: sr.winner || null } : null;
             return {
               id: m.id, utc: m.utc_date,
               home: { id: hId, name: (m.home_team && m.home_team.name) || '?', elo: rh, known: !!L.ratings[hId], prob: +pr.home.toFixed(3) },
@@ -7538,21 +7542,48 @@ const server = http.createServer(async (req, res) => {
             .map(([, r]) => {
               const rh = clubElo(key, r.home_id), ra = clubElo(key, r.away_id);
               const pr = matchProbs(rh + (L.hfa || 60), ra);
+              const st = normStatus(r); // live stale → final (partido "frizado")
               return {
-                id: null, utc: null,
+                id: null, utc: new Date(r.at || Date.now()).toISOString(),
                 home: { id: r.home_id, name: (L.ratings[r.home_id] && L.ratings[r.home_id].name) || r.home_id, elo: rh, known: !!L.ratings[r.home_id], prob: +pr.home.toFixed(3) },
                 draw: +pr.draw.toFixed(3),
                 away: { id: r.away_id, name: (L.ratings[r.away_id] && L.ratings[r.away_id].name) || r.away_id, elo: ra, known: !!L.ratings[r.away_id], prob: +pr.away.toFixed(3) },
-                result: { status: r.status, hg: r.hg, ag: r.ag, minute: r.minute, winner: r.winner || null },
-                gpProbs: r.status === 'live' ? clubGpLive(rh, ra, L.hfa || 60, r.hg, r.ag, r.minute) : null,
+                result: { status: st, hg: r.hg, ag: r.ag, minute: r.minute, winner: r.winner || null },
+                gpProbs: st === 'live' ? clubGpLive(rh, ra, L.hfa || 60, r.hg, r.ag, r.minute) : null,
               };
             })
             .sort((a, b) => (a.result.status === 'live' ? 0 : 1) - (b.result.status === 'live' ? 0 : 1));
+          // FINALIZADOS persistentes de la liga (results-<liga>.json, últimos 7 días) + finales recientes del
+          // sync que el backfill aún no tiene (dedupe por par+día). Antes la pestaña "Finalizados" de clubes
+          // quedaba vacía: los finales del sync se podan a las 3h y no había fuente persistente.
+          let finished = [];
+          try {
+            global._clubsResults = global._clubsResults || {};
+            if (!global._clubsResults[key]) { try { global._clubsResults[key] = JSON.parse(fs.readFileSync(clubDataFile(`results-${key}.json`), 'utf8')).rows || []; } catch { global._clubsResults[key] = []; } }
+            const cutoff = Date.now() - 7 * 86400e3;
+            const seenFin = new Set();
+            const finKey = (h, a, d) => [h, a].sort().join('~') + '|' + String(d).slice(0, 10);
+            for (const l of live) { if (l.result.status === 'final') seenFin.add(finKey(l.home.id, l.away.id, l.utc)); }
+            finished = global._clubsResults[key]
+              .filter(r => r.hg != null && r.date && +new Date(r.date) > cutoff && !seenFin.has(finKey(r.home_id, r.away_id, r.date)))
+              .sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12)
+              .map(r => {
+                const rh = clubElo(key, r.home_id), ra = clubElo(key, r.away_id);
+                const pr = matchProbs(rh + (L.hfa || 60), ra);
+                return {
+                  id: r.id || null, utc: r.date,
+                  home: { id: r.home_id, name: (L.ratings[r.home_id] && L.ratings[r.home_id].name) || r.home_id, elo: rh, known: !!L.ratings[r.home_id], prob: +pr.home.toFixed(3) },
+                  draw: +pr.draw.toFixed(3),
+                  away: { id: r.away_id, name: (L.ratings[r.away_id] && L.ratings[r.away_id].name) || r.away_id, elo: ra, known: !!L.ratings[r.away_id], prob: +pr.away.toFixed(3) },
+                  result: { status: 'final', hg: r.hg, ag: r.ag, minute: null, winner: r.winner || null },
+                };
+              });
+          } catch { finished = []; }
           leagues.push({
             key, name: L.name, country: L.country, n_matches: L.n_matches, hfa: L.hfa,
             starts: L.starts || null, odds_key: L.odds_key || null,
             gate: L.backtest ? { status: L.backtest.status, n: L.backtest.n, brier: L.backtest.brier, cal_err: L.backtest.cal_err } : null,
-            table, standings: L.standings || [], upcoming: fixtures, live,
+            table, standings: L.standings || [], upcoming: fixtures, live, finished,
           });
         }
         return json(res, 200, { fitted_at: (RT._meta && RT._meta.fitted_at) || null, engine: (RT._meta && RT._meta.engine) || null, leagues });

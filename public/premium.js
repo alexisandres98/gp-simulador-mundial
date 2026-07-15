@@ -150,6 +150,10 @@
       cl_value_board: 'Value de clubes por liga', cl_value_board_sub: 'Modelo GP vs consenso del mercado en las ligas en temporada. Informativo: las picks de clubes nacen cuando la liga tiene gate aprobado y el precio confirma.',
       cl_pj: 'PJ', cl_pts: 'Pts', cl_dif: 'DIF', cl_pos: 'Posición', cl_record: 'G-E-P', cl_goals: 'Goles', cl_of: 'de', cl_new: 'NUEVO',
       cl_standings: 'Tabla de posiciones', cl_grp_note: 'Avance = prob. de terminar en zona alta (Top 4) del season sim. Se actualiza cada jornada.', cl_grp_fav: 'Favorito al título:',
+      cl_bk_title: 'Playoffs (proyección)', cl_bk_champ: 'Campeón proyectado', cl_bk_winner: 'Ganador', cl_bk_seed: 'Siembra',
+      cl_bk_note: 'Bracket proyectado · sembrado por la posición proyectada del season sim · modelo de eliminación a partido único · se actualiza cada jornada.',
+      cl_bk_no_playoff: 'Esta competición se define por la tabla de posiciones, sin fase de eliminación.',
+      cl_bk_soon: 'El bracket proyectado aparece cuando la temporada esté en marcha.',
       cl_upcoming: 'Próximos partidos', cl_no_upcoming: 'Sin partidos programados en la ventana del calendario.',
       cl_live_recent: 'En juego y recientes', cl_no_live: 'Ningún partido de clubes en juego ahora.', cl_no_final: 'Sin partidos finalizados recientes.',
       cl_clubs: 'Clubes',
@@ -410,6 +414,10 @@
       cl_value_board: 'Club value by league', cl_value_board_sub: 'GP model vs market consensus across in-season leagues. Informational: club picks are born once a league has an approved gate and the price confirms.',
       cl_pj: 'GP', cl_pts: 'Pts', cl_dif: 'GD', cl_pos: 'Position', cl_record: 'W-D-L', cl_goals: 'Goals', cl_of: 'of', cl_new: 'NEW',
       cl_standings: 'Standings', cl_grp_note: 'Advance = prob. of finishing in the top zone (Top 4) per the season sim. Updates each matchday.', cl_grp_fav: 'Title favorite:',
+      cl_bk_title: 'Playoffs (projected)', cl_bk_champ: 'Projected champion', cl_bk_winner: 'Winner', cl_bk_seed: 'Seed',
+      cl_bk_note: 'Projected bracket · seeded by the season sim projected finish · single-elimination model · updates each matchday.',
+      cl_bk_no_playoff: 'This competition is decided by the league table, with no knockout stage.',
+      cl_bk_soon: 'The projected bracket appears once the season is underway.',
       cl_upcoming: 'Upcoming matches', cl_no_upcoming: 'No matches scheduled in the calendar window.',
       cl_live_recent: 'Live and recent', cl_no_live: 'No club matches in play right now.', cl_no_final: 'No recently finished matches.',
       cl_clubs: 'Clubs',
@@ -3494,7 +3502,11 @@
         // índice tm_id → nombre (alimenta teamName() para que TODOS los componentes del Mundial sirvan clubes)
         S.clubNames = {};
         (S.clubs.leagues || []).forEach(function (L) { (L.table || []).forEach(function (tm) { S.clubNames[tm.id] = tm.name; }); });
+        // re-render de la vista actual si usa el selector de competición y se abrió antes de tener las ligas
+        // (hash directo a #groups/#bracket): sin esto el <select> queda solo con "Mundial".
         if (S.view === 'matches') renderMatches();
+        else if (S.view === 'groups') renderGroups();
+        else if (S.view === 'bracket') renderBracket();
       });
     fetch('/api/clubs/value', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) { S.clubsValue = j || null; if (S.view === 'match' && /^cl-/.test(S.matchId || '')) renderMatch(); });
@@ -4310,6 +4322,8 @@
   // ---- Grupos ----
   function renderGroups() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // carrera: hash directo a #groups puede correr antes de /api/me → clubsOn() falso → sin selector de liga.
+    if (S.me == null) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_groups')) + mvLoading() + '</div></div>'; setTimeout(function () { if (S.view === 'groups') renderGroups(); }, 500); return; }
     if (clubsOn()) loadClubs();
     if (clubsOn() && S.gComp == null) S.gComp = 'wc';
     // FASE CLUBES: selector de competición en Grupos ("Mundial o liga") — mismo patrón que Partidos/Equipos.
@@ -4407,6 +4421,16 @@
   }
   function renderBracket() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // carrera: hash directo a #bracket puede correr antes de /api/me → clubsOn() falso → sin selector de liga.
+    // Esperar a S.me (mismo patrón que #sim/#perf) antes de decidir el branch de clubes.
+    if (S.me == null) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_bracket')) + mvLoading() + '</div></div>'; setTimeout(function () { if (S.view === 'bracket') renderBracket(); }, 500); return; }
+    if (clubsOn()) loadClubs();
+    if (clubsOn() && S.bComp == null) S.bComp = 'wc';
+    // FASE CLUBES: selector de competición en Bracket ("Mundial o liga") — mismo patrón que Grupos/Partidos.
+    var bsel = clubsOn()
+      ? '<select class="gx-select" id="gx-bcomp"><option value="wc"' + (!S.bComp || S.bComp === 'wc' ? ' selected' : '') + '>' + esc(t('cl_wc')) + '</option>' + ((S.clubs && S.clubs.leagues) || []).map(function (L) { return '<option value="' + esc(L.key) + '"' + (S.bComp === L.key ? ' selected' : '') + '>' + esc(L.name.split(' · ')[0]) + (L.starts ? ' · ' + esc(L.starts) : '') + '</option>'; }).join('') + '</select>'
+      : '';
+    if (clubsOn() && S.bComp && S.bComp !== 'wc') { renderClubBracket(mv, bsel); return; }
     var STAGES = ['R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
     var byStage = {}; (S.knockoutRaw || []).forEach(function (k) { (byStage[k.stage] = byStage[k.stage] || []).push(k); });
     var cols = STAGES.filter(function (s) { return byStage[s]; }).map(function (s) {
@@ -4429,7 +4453,61 @@
       }).join('');
       return '<div class="gx-bk-col"><div class="gx-bk-colh">' + esc(stageLabel(s)) + '</div>' + matches + '</div>';
     }).join('');
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_bracket'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('bk_subtitle')) + '</span>') + '<div class="gx-bk-scroll"><div class="gx-bk">' + cols + '</div></div></div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_bracket'), bsel + '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('bk_subtitle')) + '</span>') + '<div class="gx-bk-scroll"><div class="gx-bk">' + cols + '</div></div></div></div>';
+    wireBracketComp();
+  }
+  function wireBracketComp() {
+    var sel = $('#gx-bcomp'); if (sel) sel.addEventListener('change', function () { S.bComp = sel.value; renderBracket(); });
+  }
+  // FASE CLUBES: BRACKET DE PLAYOFFS PROYECTADO (MX/MLS). Reusa el markup gx-bk/gx-bk-col/gx-bk-match/gx-bk-side
+  // del Mundial (mismo enfoque que renderClubLeagueTable con gx-board). QF = clasificados sembrados por la
+  // proyección del season sim + prob de avance (Elo); SF/Final = slots "Ganador QF/SF" (como los slot-desc del
+  // Mundial). Campeón proyectado arriba. Carga progresiva vía /api/clubs/bracket (regla data-parcial). Ligas sin
+  // fase final o sin temporada en marcha → nota honesta.
+  function renderClubBracket(mv, bsel) {
+    var L = clubLeague(S.bComp);
+    if (!S.clubs) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + mvLoading() + '</div></div>'; return; }
+    if (!L) { S.bComp = 'wc'; renderBracket(); return; }
+    var key = L.key;
+    S.clubBracket = S.clubBracket || {};
+    if (S.clubBracket[key] === undefined) {
+      S.clubBracket[key] = null;
+      fetch('/api/clubs/bracket?league=' + encodeURIComponent(key), { headers: hdrs() })
+        .then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.clubBracket[key] = (j && j.bracket) || { _err: true }; if (S.view === 'bracket' && S.bComp === key) renderBracket(); });
+    }
+    var bk = S.clubBracket[key];
+    var head = viewHead(t('cl_bk_title'), bsel + '<span class="gx-spacer"></span>' + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11px">' + esc(t('cl_bk_note')) + '</span>');
+    var body;
+    if (bk === null) { body = mvLoading(); }
+    else if (!bk.has_playoff) { body = '<div class="gx-panel"><div class="gx-empty">' + ic('info-circle') + '<b>' + esc(L.name.split(' · ')[0]) + '</b>' + esc(t('cl_bk_no_playoff')) + '</div></div>'; }
+    else if (!bk.available) { body = '<div class="gx-panel"><div class="gx-empty">' + ic('info-circle') + '<b>' + esc(t('cl_bk_title')) + '</b>' + esc(t('cl_bk_soon')) + '</div></div>'; }
+    else {
+      var champ = bk.favorite ? '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;padding:16px 18px;margin-bottom:12px"><span class="gx-dim" style="font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase">' + esc(t('cl_bk_champ')) + '</span>' + clubBadge(bk.favorite.id) + '<b>' + esc(bk.favorite.name) + '</b><span class="gx-spacer"></span><span class="gx-mono" style="color:var(--gx-acc,#1FE3A4);font-size:18px;font-weight:800">' + pct0(bk.favorite.champion) + '</span></div>' : '';
+      // columna QF: cruces proyectados con prob de avance
+      var qfCol = '<div class="gx-bk-col"><div class="gx-bk-colh">' + esc(stageLabel('QF')) + '</div>' + bk.qf.map(function (m) {
+        var sd = function (t2) { return '<div class="gx-bk-side"><span class="gx-dim gx-mono" style="width:20px;text-align:center">' + t2.seed + '</span>' + clubBadge(t2.id) + '<b>' + esc(t2.name) + '</b><span class="gx-spacer"></span><span class="gx-mono gx-dim">' + pct0(t2.adv) + '</span></div>'; };
+        return '<div class="gx-bk-match" data-nav-cteam="' + esc(key + '|' + m.hi.id) + '"><div class="gx-bk-top"><span class="gx-time">' + esc(stageLabel('QF')) + ' · ' + esc(t('cl_bk_seed')) + ' ' + m.hi.seed + 'v' + m.lo.seed + '</span></div>' + sd(m.hi) + sd(m.lo) + '</div>';
+      }).join('') + '</div>';
+      // columnas SF/Final: slots "Ganador QF/SF" (proyección, sin equipo fijo)
+      var nSF = bk.qf.length / 2;
+      var slotCol = function (stage, n, ofLabel) {
+        var ms = []; for (var i = 0; i < n; i++) {
+          var s1 = ofLabel + (i * 2 + 1), s2 = ofLabel + (i * 2 + 2);
+          ms.push('<div class="gx-bk-match gx-bk-tbd"><div class="gx-bk-top"><span class="gx-time">' + esc(stageLabel(stage)) + '</span></div>' +
+            '<div class="gx-bk-side tbd"><span class="gx-bk-slot">' + esc(t('cl_bk_winner')) + ' · ' + s1 + '</span></div>' +
+            '<div class="gx-bk-side tbd"><span class="gx-bk-slot">' + esc(t('cl_bk_winner')) + ' · ' + s2 + '</span></div></div>');
+        }
+        return '<div class="gx-bk-col"><div class="gx-bk-colh">' + esc(stageLabel(stage)) + '</div>' + ms.join('') + '</div>';
+      };
+      var cols2 = qfCol + slotCol('SF', nSF, 'QF') + slotCol('FINAL', 1, 'SF');
+      body = champ + '<div class="gx-bk-scroll"><div class="gx-bk">' + cols2 + '</div></div>';
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + body + '</div></div>';
+    wireBracketComp();
+    [].forEach.call(mv.querySelectorAll('[data-nav-cteam]'), function (el) {
+      el.addEventListener('click', function () { var pp = el.getAttribute('data-nav-cteam').split('|'); openClubTeam(pp[0], pp[1]); });
+    });
   }
   function canonByKey(h, a, d) { var c = S.canonByKey[canonKey(h, a, d)]; return c ? c.event_id : null; }
 

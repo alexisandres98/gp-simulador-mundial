@@ -2741,6 +2741,58 @@ function clubSeasonSim(league) {
   global._clubSeason[league] = { at: Date.now(), eloVer, sim };
   return sim;
 }
+// ARQUITECTURA DE COMPETICIÓN — BRACKET DE PLAYOFFS PROYECTADO (MX/MLS). Las ligas con fase final no se deciden
+// solo por tabla: al terminar la temporada regular, los mejores clasificados juegan un bracket de eliminación.
+// Hoy la temporada regular está en curso → NO hay bracket real; se PROYECTA (regla data-parcial): sembramos el
+// cuadro con la posición PROYECTADA del season sim (exp_rank) y estimamos el avance por Elo (misma matchProbs del
+// Mundial). Se actualiza cada jornada (invalida con el overlay Elo, como el season sim). Modelo de eliminación a
+// partido único con localía del mejor sembrado — simplificación honesta del formato oficial (ida/vuelta, repechaje,
+// conferencias), etiquetada como PROYECCIÓN en la UI. size = nº de clasificados que arma el cuadro.
+const CLUB_PLAYOFFS = { mls: { size: 8, name: 'MLS Cup Playoffs' }, ligamx: { size: 8, name: 'Liguilla' } };
+function clubPlayoffBracket(league) {
+  const cfg = CLUB_PLAYOFFS[league];
+  if (!cfg) return { has_playoff: false };
+  const season = clubSeasonSim(league);
+  if (!season || !season.teams) return { has_playoff: true, available: false };
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[league];
+  const nameOf = (id) => (L && L.ratings && L.ratings[id] && L.ratings[id].name) || id;
+  const hfa = (L && L.hfa) || 60;
+  // clasificados = mejores `size` por posición PROYECTADA (exp_rank asc); sembrados 1..size
+  const seeded = Object.keys(season.teams)
+    .map(id => ({ id, exp_rank: season.teams[id].exp_rank, elo: clubElo(league, id) }))
+    .sort((a, b) => a.exp_rank - b.exp_rank).slice(0, cfg.size)
+    .map((s, i) => ({ ...s, seedIdx: i, seed: i + 1, name: nameOf(s.id) }));
+  if (seeded.length < cfg.size) return { has_playoff: true, available: false };
+  // prob de que el LOCAL (mejor sembrado) avance en un cruce a partido único (empate se reparte 50/50)
+  const advHome = (home, away) => { const p = matchProbs(home.elo + hfa, away.elo); return p.home + 0.5 * p.draw; };
+  const playMatch = (x, y, rng) => { const home = x.seedIdx < y.seedIdx ? x : y, away = home === x ? y : x; return rng() < advHome(home, away) ? home : away; };
+  // emparejamientos QF por siembra (bracket estándar: 1 y 2 solo se cruzan en la final)
+  const pairIdx = cfg.size === 8 ? [[0, 7], [3, 4], [2, 5], [1, 6]] : [[0, 3], [1, 2]];
+  const qf = pairIdx.map((pr, i) => {
+    const A = seeded[pr[0]], B = seeded[pr[1]]; const aAdv = advHome(A, B);
+    return { i, hi: { id: A.id, name: A.name, seed: A.seed, elo: Math.round(A.elo), adv: +aAdv.toFixed(3) },
+      lo: { id: B.id, name: B.name, seed: B.seed, elo: Math.round(B.elo), adv: +(1 - aAdv).toFixed(3) } };
+  });
+  // Monte Carlo del bracket completo (single-elim) → prob de campeón/llegar a la final por equipo
+  const N = 5000; const champ = {}, reachF = {}; seeded.forEach(s => { champ[s.id] = 0; reachF[s.id] = 0; });
+  const rng = Math.random;
+  for (let s = 0; s < N; s++) {
+    let round = pairIdx.map(pr => [seeded[pr[0]], seeded[pr[1]]]);
+    let winners = round.map(([x, y]) => playMatch(x, y, rng));
+    while (winners.length > 1) {
+      if (winners.length === 2) { reachF[winners[0].id]++; reachF[winners[1].id]++; }
+      const next = []; for (let i = 0; i < winners.length; i += 2) next.push(playMatch(winners[i], winners[i + 1], rng));
+      winners = next;
+    }
+    champ[winners[0].id]++;
+  }
+  const seeds = seeded.map(s => ({ seed: s.seed, id: s.id, name: s.name, elo: Math.round(s.elo),
+    champion: +(champ[s.id] / N).toFixed(3), reach_final: +(reachF[s.id] / N).toFixed(3) }));
+  const favorite = seeds.slice().sort((a, b) => b.champion - a.champion)[0] || null;
+  return { has_playoff: true, available: true, league, format: cfg.name, size: cfg.size,
+    seeds, qf, favorite, sims: N, remaining: season.remaining };
+}
 // ===== FASE CLUBES F1.1: XI clickeable al perfil =====
 // El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
 // AF → pl_ id del roster TSA del equipo (misma lógica que pidxResolve del Mundial: match por nombre completo,
@@ -7773,6 +7825,23 @@ const server = http.createServer(async (req, res) => {
         if (!league) return json(res, 400, { error: 'liga requerida' });
         const sim = clubSeasonSim(league);
         return json(res, 200, { league, sim: sim || null });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    // ARQUITECTURA DE COMPETICIÓN — BRACKET de playoffs PROYECTADO (MX/MLS). Cuadro sembrado por la proyección del
+    // season sim + avance por Elo. Memo 30min invalidado por el overlay de Elo (se actualiza cada jornada).
+    if (p === '/api/clubs/bracket') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const league = String(url.searchParams.get('league') || '');
+        if (!league) return json(res, 400, { error: 'liga requerida' });
+        global._clubBracket = global._clubBracket || {};
+        const eloVer = JSON.stringify(db.clubElos || {}).length;
+        const c = global._clubBracket[league];
+        if (c && Date.now() - c.at < 30 * 60e3 && c.eloVer === eloVer) return json(res, 200, { league, bracket: c.bracket });
+        const bracket = clubPlayoffBracket(league);
+        global._clubBracket[league] = { at: Date.now(), eloVer, bracket };
+        return json(res, 200, { league, bracket });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
     // COCKPIT DE CLUBES: análisis de un cruce (real o hipotético, incluso ENTRE ligas) reusando los engines

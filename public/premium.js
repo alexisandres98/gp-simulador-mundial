@@ -2290,7 +2290,26 @@
 
   // ================= deep match cockpit (Corte 2) =================
   function setHash(h) { try { if ((location.hash || '').replace(/^#/, '') !== h) location.hash = h; } catch (e) {} }
+  // PROFUNDIDAD DE NAVEGACIÓN in-app: se lleva con un serial en history.state (asignado en onHash, que corre en
+  // TODA navegación). Direccional-independiente (no depende de popstate — que en este entorno dispara también al
+  // avanzar). curSerial = posición actual; el primer view in-app = 1. Así el botón "atrás" usa history.back() y
+  // vuelve EXACTAMENTE a donde estabas, con cualquier origen y cualquier cadena detalle→detalle
+  // (cockpit→jugador→atrás→cockpit), en vez del returnTo de un solo slot que saltaba a una pestaña alterna.
+  function trackDepth() {
+    var st = null; try { st = history.state; } catch (e) {}
+    if (st && typeof st.gpS === 'number') { S._curSerial = st.gpS; }
+    else { S._curSerial = (S._maxSerial = (S._maxSerial || 0) + 1); try { history.replaceState({ gpS: S._curSerial }, ''); } catch (e) {} }
+  }
+  // Home de respaldo SOLO cuando no hay historial in-app (entraste por URL directa/recarga a un detalle).
+  function homeFallback() {
+    var v = S.view;
+    if (v === 'match') return /^cl-/.test(S.matchId || '') ? 'matches' : '';
+    if (v === 'cteam' || v === 'team') return 'teams';
+    return '';
+  }
+  function goBack() { if ((S._curSerial || 1) > 1) { try { history.back(); return; } catch (e) {} } setHash(homeFallback()); }
   function onHash() {
+    trackDepth();
     var h = ''; try { h = (location.hash || '').replace(/^#/, ''); } catch (e) {}
     var m = h.match(/^match\/([0-9a-f-]{36}|qa-[a-z0-9-]+|fx-[A-Za-z0-9]+|teams-[A-Za-z0-9]{2,5}-[A-Za-z0-9]{2,5}|cl-[a-z0-9]+-[A-Za-z0-9_]+-[A-Za-z0-9_]+)$/i);
     if (m) { if (!(S.view === 'match' && S.matchId === m[1])) openMatch(m[1], true); return; }
@@ -2692,7 +2711,7 @@
       body + '</div>';
   }
   function mvLoading() { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('match_loading')) + '</div></div>'; }
-  function bindBack() { var b = $('.gx-mv-back'); if (b) b.addEventListener('click', function () { closeMatch(); }); }
+  function bindBack() { var b = $('.gx-mv-back'); if (b) b.addEventListener('click', function () { goBack(); }); }
   // A.7: barra de navegación de secciones (sticky desktop+móvil). Click → scroll con offset; scroll-spy marca activa.
   function mvNav(sections) { return '<nav class="gx-mv-nav" id="gx-mv-nav">' + sections.map(function (s, i) { return '<a data-sec="sec-' + s.id + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(t(s.key)) + '</a>'; }).join('') + '</nav>'; }
   function bindMvNav() {

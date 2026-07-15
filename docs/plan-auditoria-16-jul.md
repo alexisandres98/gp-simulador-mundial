@@ -60,18 +60,23 @@ Hoy: KPIs + desglose liga/familia/gate + historial simple. La tabla oficial tien
   UI privada con el MISMO layout/columnas de la tabla oficial (reusar el componente, no variante).
 - **Export CSV/JSON** del histórico privado para análisis externo.
 
-## P3 — OPERACIÓN / DATA
+## P2.5 — AUTOMATIZAR PASADAS DE DATA ✅ (aprobado por Alexis para este ciclo)
+Los backfills (props-history AF, FotMob, player-history, results) son **manuales** hoy → sin esto el
+settlement de CORNERS/CARDS depende del fallback AF y el tactical/xG/gates envejecen entre jornadas.
+- **Loop del server** (patrón de los sweeps ya existentes, gated por flag): pasada INCREMENTAL diaria
+  por liga activa — solo fixtures nuevos terminados desde la última corrida (resumible por `done[]`),
+  con throttle, y **auto-upload al disco** (mismo endpoint /api/internal/clubs-data que usa el script).
+- Re-fit de props/style/goals al terminar cada pasada (memos ya invalidan por mtime).
+- Incluir ligamx cuando arranque (~17-jul) sin tocar código (el loop itera las ligas con datos).
+- Kill switch por env; respeta el guard de créditos de AF (solo ligas activas).
+
+## P3 — OPERACIÓN / DATA (fuera de este ciclo salvo lo urgente)
 1. **⚠️ Cuota The Odds API agotada (20k/20k)** → sweeps congelados (Mundial + clubes). Decisión de
-   Alexis: upgrade de plan vs esperar reset. Al volver: córners/tarjetas de clubes fluyen (gate ya
-   APPROVED en las 8 ligas en temporada).
-2. **Pasadas automáticas post-jornada** (hoy manuales): props-history (AF), FotMob, player-history,
-   results — un cron diario del server (o script + launchd local) que corre backfills incrementales
-   y sube al disco. Sin esto, settlement de CORNERS/CARDS depende del fallback AF y el tactical/xG
-   envejecen.
-3. **ligamx**: arranca ~17-jul → correr TODOS los backfills (ratings ya está) + af-team-map.
-4. **J1 FotMob primaryId** (8965/944/9081 están mal) + fuente alternativa CSL.
-5. **git housekeeping**: .git local 114MB (git-filter-repo algún día); dev/prod comparten key de
-   The Odds API (separar cuando haya plan pago).
+   Alexis (en memoria): upgrade de plan vs esperar reset. Al volver: córners/tarjetas de clubes fluyen
+   (gate ya APPROVED en las 8 ligas en temporada).
+2. **ligamx**: arranca ~17-jul → los backfills automáticos (P2.5) la toman solos.
+3. **J1 FotMob primaryId** (8965/944/9081 están mal) + fuente alternativa CSL (FotMob sin shotmaps).
+4. **git housekeeping**: .git local 114MB; dev/prod comparten key de The Odds API (ver memoria).
 
 ## QA DE CIERRE (cada P0/P1 antes de deploy)
 Matriz de flujos: board→cockpit(club/mundial)→jugador→atrás×2 · matches(liga)→cockpit→atrás ·

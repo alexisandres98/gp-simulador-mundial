@@ -2042,6 +2042,15 @@
     ((S.dailyPicks) || []).forEach(function (p) {
       var hid = p.home_team_id, aid = p.away_team_id; if (!hid || !aid || seen[hid + '|' + aid]) return;
       seen[hid + '|' + aid] = 1;
+      // Pick de CLUB (club_eid = 'cl-<liga>-<h>-<a>'): entrada de club (cockpitCompactClub + cockpit cl-),
+      // NO la genérica del Mundial — el bug era mandarla por /api/h2h/deep con ids tm_ ("Cargando..." eterno,
+      // header "Copa Mundial", cockpit completo vacío vía teams-tm_...).
+      if (p.club_eid && /^cl-/.test(p.club_eid)) {
+        var lgk = p.club_eid.slice(3).split('-')[0];
+        var Lc = clubLeague(lgk);
+        list.push({ key: 'cl:' + lgk + ':' + hid + '-' + aid, id: p.club_eid, hid: hid, aid: aid, kickoff: p.kickoff, home: teamName(hid, p.home), away: teamName(aid, p.away), canonical: false, club: true, league: lgk, leagueName: (Lc && Lc.name) || (p.competition_name || '') });
+        return;
+      }
       list.push({ key: 'tm:' + hid + '-' + aid, id: 'teams-' + hid + '-' + aid, hid: hid, aid: aid, kickoff: p.kickoff, home: teamName(hid, p.home), away: teamName(aid, p.away), canonical: false });
     });
     // FALLBACK calendario: partidos EN VIVO o de las próximas 48h aunque no haya picks (el cockpit vive siempre —

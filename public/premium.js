@@ -4456,6 +4456,9 @@
   // ---- Rendimiento (métricas verificadas) ----
   function renderPerf() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // esperar a /api/me antes del primer fetch: sin esto, entrar directo a #perf decidía admin=false y cacheaba
+    // el endpoint público (la sección admin de clubes nunca aparecía hasta recargar desde otra vista)
+    if (S.perf === undefined && S.me == null) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>'; setTimeout(function () { if (S.view === 'perf') renderPerf(); }, 500); return; }
     if (S.perf === undefined) {
       S.perf = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>';
       var isAdm = !!(S.me && S.me.isAdmin);
@@ -4482,6 +4485,33 @@
       var fams = tr.by_family || {};
       var famRows = Object.keys(fams).map(function (f) { var v = fams[f]; return '<span>' + esc(f) + ' <b>' + (v.wins || 0) + '/' + (v.n || 0) + '</b> (' + pctc(v.hit_rate) + ' · ROI ' + (v.roi_pct != null ? v.roi_pct + '%' : '—') + ')</span>'; }).join('');
       if (famRows) body += teamPanel('layout-grid', t('pp_byfam'), '<div class="gx-form-stats">' + famRows + '</div>');
+      // ===== PICKS DE CLUBES · MONITOREO PRIVADO (solo admin; jamás en el rendimiento público) =====
+      if (pk.clubs && clubsOn()) {
+        var ctr = pk.clubs.track_record || {}, cov = ctr.overall || {};
+        var active = (pk.clubs.picks || []).filter(function (p) { return p.status === 'ACTIVE'; });
+        body += '<div class="gx-ph" style="margin:18px 0 8px"><span class="gx-label">' + ic('shield-half') + 'Picks de clubes · monitoreo</span><span class="gx-ph-extra"><span class="gx-clgate sh">PRIVADO</span><span class="gx-dim" style="font-size:11px;margin-left:8px">' + (cov.n || 0) + ' liquidadas · ' + active.length + ' activas</span></span></div>';
+        if (cov.n) {
+          body += '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">' +
+            kpi('Liquidadas', cov.n, '') +
+            kpi('Acierto', pctc(cov.hit_rate), 'gx-pos', (cov.wins || 0) + 'W-' + (cov.losses || 0) + 'L' + (cov.pushes ? '-' + cov.pushes + 'P' : '')) +
+            kpi('ROI', cov.roi != null ? (cov.roi > 0 ? '+' : '') + Math.round(cov.roi * 100) + '%' : '—', (cov.roi >= 0 ? 'gx-pos' : 'gx-neg')) +
+            kpi('P&L', cov.pnl != null ? (cov.pnl > 0 ? '+' : '') + cov.pnl + 'u' : '—', (cov.pnl >= 0 ? 'gx-pos' : 'gx-neg')) + '</div>';
+          var segRows = Object.keys(ctr).filter(function (k) { return k !== 'overall'; }).map(function (k) { var v = ctr[k]; return '<span>' + esc(k) + ' <b>' + (v.wins || 0) + '/' + (v.wins + v.losses || 0) + '</b> (ROI ' + (v.roi != null ? Math.round(v.roi * 100) + '%' : '—') + ')</span>'; }).join('');
+          if (segRows) body += teamPanel('layout-grid', 'Por liga · familia · gate', '<div class="gx-form-stats">' + segRows + '</div>');
+        }
+        var chist = (pk.clubs.picks || []).filter(function (p) { return p.status === 'SETTLED' && p.result_code !== 'SUPERSEDED'; }).sort(function (a, b) { return new Date(b.settled_at || 0) - new Date(a.settled_at || 0); }).slice(0, 30);
+        var clist = active.concat(chist);
+        if (clist.length) {
+          var cRows = clist.map(function (p) {
+            var rc = p.result_code === 'WIN' ? 'gx-pos' : p.result_code === 'LOSS' ? 'gx-neg' : 'gx-dim';
+            var lbl = p.market_id || p.selection_code || '';
+            return '<tr class="gx-row"' + (p.event && p.event.club_eid ? ' data-openmatch="' + esc(p.event.club_eid) + '"' : '') + '><td class="l gx-dim" style="font-size:10.5px">' + esc((p.league || '').slice(0, 12)) + '</td><td class="l">' + esc(p.event.home + ' - ' + p.event.away) + '</td><td class="l gx-mono" style="font-size:11px">' + esc(lbl) + '</td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td><span class="gx-clgate ' + (p.gate_status === 'approved' ? 'ok' : 'sh') + '">' + esc(p.gate_status || 'shadow') + '</span></td><td class="gx-mono ' + rc + '" style="font-weight:800">' + esc(p.status === 'ACTIVE' ? 'ACTIVE' : p.result_code) + '</td></tr>';
+          }).join('');
+          body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">Historial de clubes</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">Liga</th><th class="l">Partido</th><th class="l">Mercado</th><th>Cuota</th><th>Gate</th><th>Resultado</th></tr></thead><tbody>' + cRows + '</tbody></table></div></div>';
+        } else if (!cov.n) {
+          body += '<div class="gx-panel"><div style="padding:12px 16px;font-size:11.5px;color:var(--gx-text3)">Sin picks de clubes todavía — el motor corre cada 15 min sobre las ligas con cuotas; nacerán con los próximos partidos.</div></div>';
+        }
+      }
       // ===== Métricas quant de las picks (CLV, precisión vs consenso, calibración). Misma forma admin/público. =====
       var q = pk.quant;
       if (q && ((q.clv && q.clv.n) || (q.model_vs_market && q.model_vs_market.n) || (q.calibration || []).length)) {

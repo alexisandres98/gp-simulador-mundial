@@ -2571,7 +2571,7 @@ async function clubsQuotesSweep({ force = false } = {}) {
         // metadata del evento sintético (liga, equipos, kickoff) para que el market-scanner pueda armar
         // mercados de clubes: la tabla de quotes no guarda nombres y el JOIN de la casa no ve estos ids.
         db.clubsQuoteEvents = db.clubsQuoteEvents || {};
-        db.clubsQuoteEvents[ceid] = { league: L.key, league_name: L.name || L.key, home: ev.home_team, away: ev.away_team, kickoff: ev.commence_time || null, at: Date.now() };
+        db.clubsQuoteEvents[ceid] = { league: L.key, league_name: L.name || L.key, home: ev.home_team, away: ev.away_team, kickoff: ev.commence_time || null, oa_id: ev.id, at: Date.now() };
         for (const bk of ev.bookmakers || []) {
           for (const mk of bk.markets || []) {
             if (mk.key === 'h2h') {
@@ -2606,6 +2606,81 @@ async function clubsQuotesSweep({ force = false } = {}) {
   } catch (e) { out.error = e.message; }
   finally { _clubsQuotesRunning = false; out.finished = new Date().toISOString(); _clubsQuotesOut = out; }
   console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
+  return out;
+}
+// PLAYER PROPS de clubes (F3.4 encendida 15-jul, orden de Alexis: assists activas — estaban en shadow):
+// por evento próximo (<48h) pide player_assists + player_goal_scorer_anytime a The Odds API y las ingesta con
+// el ceid sintético del evento (mismo patrón del sweep). Nombre del jugador → pl_ id vía el fit de la liga
+// (mismo matcher full/apellido). Coste: 1 req por evento, cadencia 6h, solo ligas con odds_key en temporada.
+// HOY cotizan: MLS assists(1 casa)+anytime(6), Liga MX anytime(3); BRA/ARG sin props — las casas EU llegan
+// en agosto y esto queda encendido para entonces.
+let _clubsPropsRunning = false, _clubsPropsLast = 0, _clubsPropsOut = null;
+async function clubsPlayerPropsSweep({ force = false } = {}) {
+  if (!clubsShadowOn()) return { skipped: 'off' };
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
+  if (_clubsPropsRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _clubsPropsLast < 5.5 * 3600e3) return { skipped: 'throttle' };
+  _clubsPropsRunning = true;
+  const out = { events: 0, quotes: 0, unmatched: 0, started: new Date().toISOString() };
+  try {
+    if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+    const RT = global._clubsRatings;
+    const grepo = require('./goal-engine/repository');
+    const now = Date.now();
+    // resolutores de nombre→pid por liga (fit del player-history, ambos equipos del evento)
+    const rsvCache = {};
+    const pidOf = (lg, name) => {
+      if (!rsvCache[lg]) {
+        const idx = { full: {}, last: {}, dup: {} };
+        try {
+          const fit = require('./player-intel/clubsFit').leagueFit(lg);
+          for (const pid in (fit && fit.players) || {}) {
+            const nm = normName(fit.players[pid].name); if (!nm) continue;
+            if (!idx.full[nm]) idx.full[nm] = pid;
+            const ln = nm.split(/\s+/).pop();
+            if (ln && ln.length >= 3) { if (idx.last[ln] && idx.last[ln] !== pid) { idx.dup[ln] = 1; delete idx.last[ln]; } else if (!idx.dup[ln]) idx.last[ln] = pid; }
+          }
+        } catch { /* liga sin fit */ }
+        rsvCache[lg] = idx;
+      }
+      const idx = rsvCache[lg], n = normName(name);
+      return idx.full[n] || idx.last[n.split(/\s+/).pop()] || null;
+    };
+    for (const [ceid, meta] of Object.entries(db.clubsQuoteEvents || {})) {
+      if (!meta.oa_id || !meta.kickoff) continue;
+      const kt = +new Date(meta.kickoff);
+      if (!(kt > now && kt < now + 48 * 3600e3)) continue;
+      const L = RT.leagues[meta.league]; if (!L || !L.odds_key) continue;
+      let o = null;
+      try {
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/events/${meta.oa_id}/odds?apiKey=${key}&regions=eu,us&markets=player_assists,player_goal_scorer_anytime&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+        o = r.ok ? await r.json().catch(() => null) : null;
+      } catch { o = null; }
+      if (!o || !Array.isArray(o.bookmakers)) continue;
+      out.events++;
+      for (const bk of o.bookmakers) for (const m of (bk.markets || [])) {
+        const fam = m.key === 'player_assists' ? 'player_assist' : m.key === 'player_goal_scorer_anytime' ? 'player_goal' : null;
+        if (!fam) continue;
+        for (const oc of (m.outcomes || [])) {
+          // player_assists: name=Over/Under + point + description=jugador; anytime scorer: name=jugador (Yes)
+          const pname = oc.description || oc.name;
+          if (fam === 'player_assist' && String(oc.name).toLowerCase() === 'under') continue; // solo el lado over/anytime
+          if (!(oc.price > 1) || !pname) continue;
+          const pid = pidOf(meta.league, pname);
+          if (!pid) { out.unmatched++; continue; }
+          const line = oc.point != null ? Number(oc.point) : null;
+          const marketId = fam === 'player_assist' ? `PLAYER_ASSIST_${pid}` : `PLAYER_GOAL_${pid}`;
+          await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: meta.oa_id, canonical_event_id: ceid, market_family: fam, line: line != null ? line : 0, side: 'yes', team_scope: pid, market_id: marketId, odds_decimal: oc.price, implied_probability: 1 / oc.price, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+          out.quotes++;
+        }
+      }
+      await new Promise(r => setTimeout(r, 400)); // gentileza con el proveedor
+    }
+    _clubsPropsLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _clubsPropsRunning = false; out.finished = new Date().toISOString(); _clubsPropsOut = out; }
+  if (out.quotes || out.error) console.log('[clubs] player-props sweep:', JSON.stringify({ events: out.events, quotes: out.quotes, unmatched: out.unmatched, error: out.error || null }));
   return out;
 }
 
@@ -3909,8 +3984,9 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const booksOf = (o) => new Set(fresh.filter(q => q.outcome === o).map(q => q.venue)).size;
     const st = out.by_league[lg] = out.by_league[lg] || { solid_gate: (L.backtest && L.backtest.status) || null, goals_gate: (L.goals_backtest && L.goals_backtest.status) || null, events: 0, totals: 0 };
     if (mk.market_family === '1x2') {
-      // gate duro por liga: SOLID (1X2 anclado al mercado) solo en ligas clubs-gate-1 approved
-      if (!(L.backtest && L.backtest.status === 'approved')) continue;
+      // MONITOREO (Alexis 15-jul): se generan picks para TODAS las ligas con cuotas — el gate de liga viaja en
+      // la pick (gate_status) y el track record privado del admin separa approved vs shadow. NADA de esto toca
+      // el rendimiento público (db.clubDailyPicks vive aparte y picks-record no lo incluye).
       const rh = clubElo(lg, hId), ra = clubElo(lg, aId);
       const pr = matchProbs(rh + (L.hfa || 60), ra); // MISMO modelo 1X2 del cockpit (Elo dinámico + hfa de liga)
       const sel = {};
@@ -3943,9 +4019,67 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       }
     }
   }
-  // MISMO curate del Mundial (todas sus reglas: anclaje, coherencia de dirección, edge mínimo, casas mínimas)
+  // PLAYER PROPS (assists + anytime goal, F3.4 encendida): cuotas del props-sweep + modelo projectTeam de la
+  // liga (anytime_goal/anytime_assist con el λ del cruce) + disponibilidad del observer. impliedMedian =
+  // mediana de 1/odds entre casas (sin de-vig fino: 1 lado cotizado).
+  const playerMarkets = [];
+  try {
+    const evIds = [...new Set(events.map(e => e.eventId).concat(goalMarkets.map(g => g.eventId)))];
+    if (evIds.length) {
+      const pq = await dbc.query(
+        `SELECT canonical_event_id, market_family, market_id, team_scope pid, sportsbook_code, odds_decimal::float o
+           FROM sportsbook_goal_quote_current
+          WHERE canonical_event_id = ANY($1) AND market_family IN ('player_assist','player_goal')
+            AND observed_at > now() - interval '12 hours'`, [evIds]).catch(() => ({ rows: [] }));
+      const byKey = {};
+      for (const r of pq.rows) { (byKey[r.canonical_event_id + '|' + r.market_family + '|' + r.pid] = byKey[r.canonical_event_id + '|' + r.market_family + '|' + r.pid] || []).push(r); }
+      const projCache = {};
+      for (const [k, rows] of Object.entries(byKey)) {
+        const [ceid, fam, pid] = k.split('|');
+        const meta = qevents[ceid]; if (!meta) continue;
+        const lg = meta.league, L = RT.leagues[lg]; if (!L) continue;
+        const hId = resolveClubId(lg, meta.home), aId = resolveClubId(lg, meta.away); if (!hId || !aId) continue;
+        // proyección del cruce (una vez por evento): projectTeam de ambos lados con el λ del goal model de liga
+        if (!projCache[ceid]) {
+          try {
+            let l2 = null; const gf = clubGoalsFit(lg); if (gf) l2 = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId);
+            if (!l2) { const rh = clubElo(lg, hId), ra = clubElo(lg, aId); l2 = lambdas(rh + (L.hfa || 60), ra); }
+            const fit = require('./player-intel/clubsFit').leagueFit(lg);
+            const proj = {};
+            if (fit) {
+              require('./prop-engine/players').projectTeam(fit, hId, { teamLambda: l2[0], top: 40 }).forEach(p => proj[p.pid] = { ...p, starter: true });
+              require('./prop-engine/players').projectTeam(fit, aId, { teamLambda: l2[1], top: 40 }).forEach(p => proj[p.pid] = { ...p, starter: true });
+            }
+            projCache[ceid] = proj;
+          } catch { projCache[ceid] = {}; }
+        }
+        const pr = projCache[ceid][pid];
+        if (!pr) continue; // sin proyección del jugador (no está en el XI proyectado) → no hay pick
+        const model = fam === 'player_assist' ? pr.anytime_assist : pr.anytime_goal;
+        if (!(model > 0)) continue;
+        const implied = rows.map(r => 1 / r.o).sort((a, b) => a - b);
+        const med = implied[Math.floor(implied.length / 2)];
+        const best = rows.slice().sort((a, b) => b.o - a.o)[0];
+        const av = clubPlayerAvail(pr.team, pid);
+        playerMarkets.push({
+          eventId: ceid, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff: meta.kickoff,
+          family: fam, marketId: fam === 'player_assist' ? `PLAYER_ASSIST_${pid}` : `PLAYER_GOAL_${pid}`,
+          player: pr.name, pid, side: 'yes', line: null,
+          modelProb: model, impliedMedian: med, bestOdds: best.o, bestBook: best.sportsbook_code,
+          books: new Set(rows.map(r => r.sportsbook_code)).size,
+          availabilityRisk: av ? av.status : null, availabilityMiss: av ? Number(av.prob_miss) || 0 : 0,
+          isStarter: true,
+        });
+      }
+    }
+  } catch { /* sin props este ciclo */ }
+  // MISMO curate del Mundial (todas sus reglas: anclaje, coherencia de dirección, edge mínimo, casas mínimas).
+  // goalsRequireApprovedFamily:false = las GOALS nacen para el MONITOREO aunque el gate de goles de la liga
+  // esté shadow (el estado del gate viaja en la pick; el público no ve nada de esto). playerMinBooks:1 = los
+  // props de estas ligas cotizan en 1-6 casas hoy (EU llega en agosto); el conteo de casas viaja en la pick.
   const { curate } = require('./pick-engine/curate');
-  const res = curate({ events, goalMarkets });
+  const res = curate({ events, goalMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, playerMinBooks: 1 } });
+  out.player_markets = playerMarkets.length;
   out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };
   // dry-run: devolver candidatos + bloqueos sin persistir (verificación del mecanismo con cuotas reales)
   if (dryRun) {
@@ -3959,11 +4093,14 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // (evento, familia) conservando la más reciente (misma regla anti-contradicción del Mundial).
   const { compose } = require('./pick-engine/narrative');
   const stable = (key) => 'cdp_' + require('crypto').createHash('sha256').update(key).digest('hex').slice(0, 16);
+  const gateOf = (lg2, fam) => { const L2 = RT.leagues[lg2] || {}; return fam === 'GOALS' ? ((L2.goals_backtest && L2.goals_backtest.status) || 'shadow') : ((L2.backtest && L2.backtest.status) || 'shadow'); };
   const mkRecord = (family, ev, fields, key) => ({
     pick_id: stable(key), family, is_club: true, league: fields.league,
+    gate_status: gateOf(fields.league, family), // approved|shadow — el track privado separa por esto
     competition_name: (RT.leagues[fields.league] && RT.leagues[fields.league].name) || fields.league,
     event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
     selection_code: fields.selection_code || null, market_id: fields.market_id || null, side: fields.side || null, line: fields.line != null ? fields.line : null,
+    player_name: fields.player_name || null, pid: fields.pid || null, player_family: fields.player_family || null,
     best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
     model_prob: fields.model_prob != null ? fields.model_prob : null, market_prob: fields.market_prob != null ? fields.market_prob : null,
     confidence: fields.confidence != null ? fields.confidence : null, edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
@@ -3990,6 +4127,13 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     ]);
     fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why }, g.eventId + '|GOALS|' + g.marketId));
   }
+  // PLAYER (assists + anytime goal): 1 pick por (evento, sub-familia), la de mayor confianza — feed limpio.
+  const bestPlayer = {};
+  for (const g of res.eligible.player) { const k = g.eventId + '|' + g.playerFamily; const cur = bestPlayer[k]; if (!cur || g.confidence > cur.confidence) bestPlayer[k] = g; }
+  for (const g of Object.values(bestPlayer)) {
+    const pm = playerMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
+    fresh.push(mkRecord('PLAYER', g.eventId, { league: pm.league, home: g.home, away: g.away, homeId: pm.homeId, awayId: pm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: 'yes', player_name: g.player, pid: g.pid, player_family: g.playerFamily, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp }, g.eventId + '|PLAYER|' + g.marketId));
+  }
   db.clubDailyPicks = db.clubDailyPicks || [];
   const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
   let added = 0;
@@ -4006,11 +4150,27 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   return out;
 }
 // Liquidación: MISMO settleOne del Mundial con el marcador final de clubResults (ligas domésticas = 90').
+// PLAYER (goles/assists del jugador): con el player-history de la liga si el backfill trae el match (±4 días);
+// sin dato a las 72h del kickoff → VOID (honesto: sin fuente no se inventa el resultado).
 function settleClubDailyPicks() {
   const { settleOne } = require('./pick-engine/dailyPicks');
   let settled = 0;
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'ACTIVE') continue;
+    if (p.family === 'PLAYER') {
+      try {
+        const raw = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${p.league}.json`), 'utf8')).rows || [];
+        const ko = +new Date(p.event.kickoff_at || 0);
+        const row = raw.find(r => r.pid === p.pid && Math.abs(+new Date(r.date) - ko) < 4 * 86400e3);
+        if (row) {
+          const val = p.player_family === 'player_assist' ? (Number(row.assists) || 0) : (Number(row.goals) || 0);
+          p.status = 'SETTLED'; p.result_code = val > 0 ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
+        } else if (ko && Date.now() - ko > 72 * 3600e3) {
+          p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++;
+        }
+      } catch { /* sin history → espera o VOID por tiempo */ }
+      continue;
+    }
     const r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
     if (!r || r.status !== 'final') continue;
     const homeIsH = r.home_id === p.event.home_team_id;
@@ -4020,12 +4180,13 @@ function settleClubDailyPicks() {
   if (settled) save();
   return { settled };
 }
-// track record de clubes por liga/familia (misma matemática de unidades del Mundial: 1u por pick)
+// track record de clubes por liga/familia/gate (misma matemática de unidades del Mundial: 1u por pick).
+// PRIVADO: solo admin (monitoreo de la semana); jamás entra al rendimiento público.
 function clubDailyPicksTrackRecord() {
   const agg = {};
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'SETTLED' || !['WIN', 'LOSS', 'PUSH'].includes(p.result_code)) continue;
-    for (const key of ['overall', p.league, p.family]) {
+    for (const key of ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow')]) {
       const a = agg[key] = agg[key] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl: 0 };
       a.n++;
       if (p.result_code === 'WIN') { a.wins++; a.pnl += (Number(p.best_odds) || 1) - 1; }
@@ -6426,6 +6587,13 @@ const server = http.createServer(async (req, res) => {
       const rows = Object.entries(db.clubResults || {}).map(([k, r]) => ({ key: k, ...r }));
       return json(res, 200, { last: _clubScoresOut, count: rows.length, results: rows });
     }
+    // PLAYER PROPS de clubes: disparo manual + estado del sweep (misma key).
+    if (p === '/api/internal/clubs-props') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await clubsPlayerPropsSweep({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { last: _clubsPropsOut });
+    }
     // PICKS DE CLUBES (F3.3): verificación + dry-run + disparo manual (misma key). GET ?dry=1 muestra qué
     // produciría curate (candidatos + blockers) SIN persistir; GET normal = estado + track record; POST = evaluar.
     if (p === '/api/internal/clubs-picks') {
@@ -6654,7 +6822,10 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/daily-picks') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }
-      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200) });
+      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200),
+        // CLUBES (monitoreo privado, 15-jul): track record + picks de clubes SOLO en esta vista admin —
+        // jamás en el rendimiento público.
+        clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), picks: (db.clubDailyPicks || []).slice(-100) } });
     }
     // SERIE de línea de un mercado (observatorio admin): goal_value_shadow leída como serie temporal + resumen
     // line-intel (apertura/cierre/dirección/steam). Read-only.
@@ -8044,6 +8215,9 @@ server.listen(PORT, () => {
   // (GP_CLUBS_SHADOW_ENABLED); throttle interno 55 min — el intervalo solo "pregunta".
   setTimeout(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 90 * 1000);
   setInterval(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 10 * 60 * 1000);
+  // player props de clubes (assists + anytime): cadencia 6h (throttle interno), eventos <48h
+  setTimeout(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 150 * 1000);
+  setInterval(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 60 * 60 * 1000);
   // FASE CLUBES (shadow): marcadores en vivo/finalizados desde ESPN por liga, cada 30 s (como el Mundial).
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);

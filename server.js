@@ -2497,7 +2497,8 @@ async function evaluateDailyPicks() {
     }
     for (const key in byEF) {
       const arr = byEF[key]; if (arr.length <= 1) continue;
-      arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // más reciente primero
+      // editorial (reemplazo manual vía picks-replace) GANA sobre lo que emita el motor; entre iguales, la más reciente
+      arr.sort((a, b) => ((b.editorial ? 1 : 0) - (a.editorial ? 1 : 0)) || (new Date(b.created_at) - new Date(a.created_at)));
       for (let i = 1; i < arr.length; i++) { arr[i].status = 'SETTLED'; arr[i].result_code = 'SUPERSEDED'; arr[i].settled_at = new Date().toISOString(); out.superseded = (out.superseded || 0) + 1; }
     }
     if (out.new || out.superseded) save();
@@ -6262,6 +6263,36 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), exported_at: new Date().toISOString() });
+    }
+    // REEMPLAZO EDITORIAL de una pick ACTIVE (one-off, misma key): la vieja queda SUPERSEDED (fuera del feed y
+    // del track record, mecanismo existente) y nace una nueva con la línea/cuota indicadas, misma familia/evento.
+    // Uso 15-jul (orden de Alexis): mover líneas a versiones más conservadoras en la misma dirección.
+    if (p === '/api/internal/picks-replace' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      let body = ''; req.on('data', c => body += c);
+      await new Promise(r => req.on('end', r));
+      let b; try { b = JSON.parse(body); } catch { return json(res, 400, { error: 'JSON inválido' }); }
+      const old = (db.dailyPicks || []).find(x => x.pick_id === b.pick_id && x.status === 'ACTIVE');
+      if (!old) return json(res, 404, { error: 'pick ACTIVE no encontrada' });
+      old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString();
+      const crypto = require('crypto');
+      const nu = {
+        ...old,
+        pick_id: 'dp_' + crypto.createHash('sha256').update(old.event.canonical_event_id + '|' + old.family + '|' + b.market_id).digest('hex').slice(0, 16),
+        market_id: b.market_id, side: b.side, line: b.line,
+        best_odds: b.best_odds, best_book: b.best_book || null, books: b.books != null ? b.books : old.books,
+        model_prob: b.model_prob != null ? b.model_prob : null,
+        market_prob: b.market_prob != null ? b.market_prob : null,
+        confidence: b.confidence != null ? b.confidence : null,
+        edge_pp: b.edge_pp != null ? b.edge_pp : null,
+        line_move: null, clv: null, editorial: true, // gana la pasada de coherencia (el motor no la pisa)
+        status: 'ACTIVE', result_code: 'PENDING', settlement_code: null,
+        created_at: new Date().toISOString(), settled_at: null,
+      };
+      db.dailyPicks.push(nu); save();
+      console.log('[picks-replace]', old.pick_id, old.market_id, '→', nu.pick_id, nu.market_id, '@' + nu.best_odds);
+      return json(res, 200, { superseded: old.pick_id, new_pick: { pick_id: nu.pick_id, market_id: nu.market_id, side: nu.side, line: nu.line, best_odds: nu.best_odds, model_prob: nu.model_prob, confidence: nu.confidence } });
     }
     // MANTENIMIENTO (one-off, misma key que el export): borra picks de una familia creadas ANTES de un corte.
     // Uso 8-jul: eliminar las picks PLAYER del diseño viejo (edge-first) para que el admin vea solo las del

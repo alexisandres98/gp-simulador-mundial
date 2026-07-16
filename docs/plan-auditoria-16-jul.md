@@ -49,7 +49,7 @@
    arb/lag, calculadora de stake en cards de picks de clubes, SEO /pronostico para clubes (F4.3),
    chips de señal en fila de Partidos (F3.2).
 
-## P2 — TRACK RECORD PRIVADO DE CLUBES = TABLA OFICIAL (para el análisis de la semana)
+## P2 — TRACK RECORD PRIVADO DE CLUBES = TABLA OFICIAL ✔ COMPLETO (captureClubPicksClosing CLV/cierre por familia desde sportsbook_goal_quote_current · clubDailyPicksQuant=quantMetrics · UI con KPIs qm_* + columnas oficiales + Exportar CSV 27 columnas)
 Hoy: KPIs + desglose liga/familia/gate + historial simple. La tabla oficial tiene además:
 - **CLV + línea de cierre** por pick (captureDailyPicksClosing + goal_value_shadow) → extender la
   captura a eventos de clubes (las quotes ya van a las mismas tablas) y calcular CLV de cada pick.

@@ -4406,7 +4406,20 @@ function settleClubDailyPicks() {
       } catch { /* sin history → espera, AF fallback o VOID por tiempo */ }
       continue;
     }
-    const r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
+    let r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
+    if (r && r.status !== 'final') continue; // en juego → esperar
+    // FALLBACK (P2 fix): los finales del sync se PODAN a las 3h — si el settle no corrió en esa ventana
+    // (redeploy, partido de madrugada), la pick quedaba ACTIVE para siempre. Los resultados PERSISTENTES
+    // viven en results-<liga>.json (el pase diario P2.5 los refresca) → liquidar desde ahí por par+fecha ±2d.
+    if (!r) {
+      try {
+        global._clubsResults = global._clubsResults || {};
+        if (!global._clubsResults[p.league]) { try { global._clubsResults[p.league] = JSON.parse(fs.readFileSync(clubDataFile(`results-${p.league}.json`), 'utf8')).rows || []; } catch { global._clubsResults[p.league] = []; } }
+        const ko = +new Date(p.event.kickoff_at || 0);
+        const row = global._clubsResults[p.league].find(m2 => m2.hg != null && ((m2.home_id === p.event.home_team_id && m2.away_id === p.event.away_team_id) || (m2.home_id === p.event.away_team_id && m2.away_id === p.event.home_team_id)) && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
+        if (row) r = { status: 'final', home_id: row.home_id, hg: row.hg, ag: row.ag };
+      } catch { /* sin archivo → espera */ }
+    }
     if (!r || r.status !== 'final') continue;
     const homeIsH = r.home_id === p.event.home_team_id;
     const rc = settleOne(p, { homeGoals: homeIsH ? r.hg : r.ag, awayGoals: homeIsH ? r.ag : r.hg });

@@ -60,7 +60,7 @@ Hoy: KPIs + desglose liga/familia/gate + historial simple. La tabla oficial tien
   UI privada con el MISMO layout/columnas de la tabla oficial (reusar el componente, no variante).
 - **Export CSV/JSON** del histórico privado para análisis externo.
 
-## P2.5 — AUTOMATIZAR PASADAS DE DATA ✅ (aprobado por Alexis para este ciclo)
+## P2.5 — AUTOMATIZAR PASADAS DE DATA ✔ COMPLETO (clubsDataPass: scheduler diario 07:00Z, 4 backfills ligas activas como child-process con timeout 25min, hidrata disco→repo antes y publica repo→disco después, kill switch GP_CLUBS_DATA_PASS_ENABLED, endpoint /api/internal/clubs-data-pass)
 Los backfills (props-history AF, FotMob, player-history, results) son **manuales** hoy → sin esto el
 settlement de CORNERS/CARDS depende del fallback AF y el tactical/xG/gates envejecen entre jornadas.
 - **Loop del server** (patrón de los sweeps ya existentes, gated por flag): pasada INCREMENTAL diaria

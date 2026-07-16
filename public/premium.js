@@ -2323,12 +2323,32 @@
     if (cpl) { if (!(S.view === 'cplayer' && S.cplPid === cpl[3])) openClubPlayer(cpl[1], cpl[2], cpl[3], true); return; }
     var pm = h.match(/^player\/(pl_[A-Za-z0-9]+)$/i);
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }
-    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub)/);
-    if (v) { showView(v[1]); return; }
+    // sub-estado del selector de competición en el hash (#groups/mls, #bracket/mls, #matches/mls, #teams/mls) →
+    // la selección SOBREVIVE a la recarga y al enlace directo (P0.4). Sin sufijo = default de la vista.
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub)(?:\/([a-z0-9_]+))?/);
+    if (v) {
+      var sub = v[2] || null;
+      if (v[1] === 'groups') S.gComp = sub || 'wc';
+      else if (v[1] === 'bracket') S.bComp = sub || 'wc';
+      else if (v[1] === 'teams') S.tComp = sub || 'wc';
+      else if (v[1] === 'matches') S.mComp = sub || (clubsOn() ? 'todos' : null);
+      showView(v[1]); return;
+    }
     showView('board');
   }
   var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support' };
-  function navTo(nav) { setHash(NAV_HASH[nav] != null ? NAV_HASH[nav] : ''); }
+  // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
+  function compHash(nav) {
+    if (!clubsOn()) return NAV_HASH[nav];
+    if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
+    if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
+    if (nav === 'teams' && S.tComp && S.tComp !== 'wc') return 'teams/' + S.tComp;
+    if (nav === 'matches' && S.mComp && S.mComp !== 'todos') return 'matches/' + S.mComp;
+    return NAV_HASH[nav];
+  }
+  function navTo(nav) { var hh = compHash(nav); setHash(hh != null ? hh : ''); }
+  // helper para los selectores: cambiar la competición actualiza el hash (setHash → onHash re-renderiza).
+  function setCompHash(view, val, def) { setHash((!val || val === def) ? view : view + '/' + val); }
   function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; S.teamTab = 'resumen'; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }
   // ── PERFIL DE JUGADOR (capa de inteligencia por jugador, admin-first) ─────────────────────────────────
   function openPlayer(pid, fromHash) { if (!pid) return; if (!fromHash) setHash('player/' + pid); S.view = 'player'; S.playerId = pid; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderPlayer(); }
@@ -3759,7 +3779,7 @@
   function bindMatches() {
     var tb = $('#gx-mtabs'); if (tb) tb.addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (b) { S.mFilt = b.dataset.f; renderMatches(); } });
     var st = $('#gx-mstage'); if (st) st.addEventListener('change', function () { S.mStage = st.value; renderMatches(); });
-    var mc = $('#gx-mcomp'); if (mc) mc.addEventListener('change', function () { S.mComp = mc.value; renderMatches(); });
+    var mc = $('#gx-mcomp'); if (mc) mc.addEventListener('change', function () { setCompHash('matches', mc.value, 'todos'); });
     var si = $('#gx-msearch-i'); if (si) si.addEventListener('input', function () { S.mQuery = si.value; clearTimeout(S._mq); S._mq = setTimeout(function () { var pos = si.selectionStart; renderMatches(); var n = $('#gx-msearch-i'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }, 220); });
   }
 
@@ -3995,7 +4015,7 @@
     wireTeamComp();
   }
   function wireTeamComp() {
-    var sel = $('#gx-tcomp'); if (sel) sel.addEventListener('change', function () { S.tComp = sel.value; S.tQuery = ''; renderTeams(); });
+    var sel = $('#gx-tcomp'); if (sel) sel.addEventListener('change', function () { S.tQuery = ''; setCompHash('teams', sel.value, 'wc'); });
   }
   // FASE CLUBES: tabla de equipos de una liga (standings + Elo del modelo). Click → perfil de club (cteam/).
   function renderClubTeamsList(mv, tsel) {
@@ -4385,7 +4405,7 @@
     wireGroupComp();
   }
   function wireGroupComp() {
-    var sel = $('#gx-gcomp'); if (sel) sel.addEventListener('change', function () { S.gComp = sel.value; renderGroups(); });
+    var sel = $('#gx-gcomp'); if (sel) sel.addEventListener('change', function () { setCompHash('groups', sel.value, 'wc'); });
   }
   // FASE CLUBES: TABLA DE POSICIONES de una liga (= "Grupos" del Mundial para una competición de liga corrida).
   // Reusa el markup gx-board/gx-champbar del Mundial. Columna "avance" = prob de TOP-N del season sim (mismo
@@ -4488,7 +4508,7 @@
     wireBracketComp();
   }
   function wireBracketComp() {
-    var sel = $('#gx-bcomp'); if (sel) sel.addEventListener('change', function () { S.bComp = sel.value; renderBracket(); });
+    var sel = $('#gx-bcomp'); if (sel) sel.addEventListener('change', function () { setCompHash('bracket', sel.value, 'wc'); });
   }
   // FASE CLUBES: BRACKET DE PLAYOFFS PROYECTADO (MX/MLS). Reusa el markup gx-bk/gx-bk-col/gx-bk-match/gx-bk-side
   // del Mundial (mismo enfoque que renderClubLeagueTable con gx-board). QF = clasificados sembrados por la

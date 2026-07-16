@@ -4529,6 +4529,75 @@ function clubDailyPicksTrackRecord() {
   for (const k in agg) { const a = agg[k]; const dec = a.wins + a.losses; a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi = a.n ? +(a.pnl / a.n).toFixed(3) : null; a.pnl = +a.pnl.toFixed(2); }
   return agg;
 }
+// ===== P2.5 — PASADAS AUTOMÁTICAS DE DATA (post-jornada) =====================================================
+// Corre los backfills de clubes (props-history AF, results TSA, player-history TSA, FotMob) UNA vez al día
+// como procesos hijos (los scripts son incrementales/resumibles por done[]). En prod los archivos autoritativos
+// viven en el DISCO (/data/clubs) y el repo-dir está vacío post-deploy → HIDRATAR disco→repo antes de correr
+// (sin esto cada pase re-descargaría todo) y PUBLICAR repo→disco después (los memos del server invalidan por
+// mtime → gates/tactical/xG/settlement se refrescan solos). Kill switch: GP_CLUBS_DATA_PASS_ENABLED=false.
+function clubsDataPassOn() { return !/^(0|false|no|off)$/i.test(String(process.env.GP_CLUBS_DATA_PASS_ENABLED || 'true').trim()); }
+const CLUB_DATA_FILE_RE = /^(player-history-|results-|props-history-|fotmob-)[a-z0-9]+\.json$|^(player-photos|af-team-map)\.json$/;
+let _dataPassRunning = false;
+async function clubsDataPass({ force = false } = {}) {
+  if (!clubsShadowOn() || !clubsDataPassOn()) return { skipped: 'off' };
+  if (_dataPassRunning) return { skipped: 'running' };
+  const today = new Date().toISOString().slice(0, 10);
+  if (!force && db.clubsDataPassDay === today) return { skipped: 'done_today' };
+  _dataPassRunning = true;
+  const out = { day: today, scripts: {}, hydrated: 0, published: [] };
+  const repoDir = path.join(__dirname, 'data', 'clubs');
+  const onDisk = (() => { try { return fs.existsSync(CLUB_DATA_DISK) && path.resolve(CLUB_DATA_DISK) !== path.resolve(repoDir); } catch { return false; } })();
+  try {
+    // 1) hidratar repo←disco (los scripts leen/escriben el repo-dir; el done[] vive en los archivos)
+    if (onDisk) {
+      for (const f of fs.readdirSync(CLUB_DATA_DISK)) {
+        if (!CLUB_DATA_FILE_RE.test(f)) continue;
+        const src = path.join(CLUB_DATA_DISK, f), dst = path.join(repoDir, f);
+        try { const s = fs.statSync(src); const d = fs.existsSync(dst) ? fs.statSync(dst) : null; if (!d || s.size !== d.size) { fs.copyFileSync(src, dst); out.hydrated++; } } catch { /* siguiente */ }
+      }
+    }
+    // 2) backfills secuenciales (timeout 25min c/u; scripts incrementales → jornada nueva = pocos requests).
+    // Solo ligas ACTIVAS (sin starts): el pase diario alimenta settlement/gates/tactical de la semana; las
+    // ligas de pretemporada (EU) se backfillean aparte al arrancar (bajar su season completa acá agotaba el
+    // timeout — visto con premier en el QA del pase).
+    let actives = [];
+    try {
+      if (!global._clubsRatings) global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8'));
+      actives = Object.keys(global._clubsRatings.leagues || {}).filter(k => !global._clubsRatings.leagues[k].starts);
+    } catch { actives = []; }
+    const { spawn } = require('child_process');
+    const runScript = (file, args = []) => new Promise((resolve) => {
+      const ps = spawn(process.execPath, [path.join(__dirname, 'scripts', file), ...args], { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+      let tail = ''; const cap = (d) => { tail = (tail + d.toString()).slice(-600); };
+      const to = setTimeout(() => { try { ps.kill('SIGKILL'); } catch { } }, 25 * 60e3);
+      ps.stdout.on('data', cap); ps.stderr.on('data', cap);
+      ps.on('close', (code) => { clearTimeout(to); resolve({ code, tail: tail.trim().split('\n').slice(-2).join(' | ').slice(-240) }); });
+      ps.on('error', (e) => { clearTimeout(to); resolve({ code: -1, tail: e.message }); });
+    });
+    out.leagues = actives;
+    out.scripts.props = await runScript('clubs-props-backfill.js', actives);
+    out.scripts.results = await runScript('clubs-results-backfill.js', actives);
+    out.scripts.players = await runScript('clubs-player-backfill.js', actives);
+    out.scripts.fotmob = await runScript('clubs-fotmob-backfill.js', actives);
+    // 3) publicar repo→disco (equivalente in-server de upload-clubs-data.sh) + invalidar memos en memoria
+    if (onDisk) {
+      for (const f of fs.readdirSync(repoDir)) {
+        if (!CLUB_DATA_FILE_RE.test(f)) continue;
+        const src = path.join(repoDir, f), dst = path.join(CLUB_DATA_DISK, f);
+        try { const s = fs.statSync(src); const d = fs.existsSync(dst) ? fs.statSync(dst) : null; if (!d || s.mtimeMs > d.mtimeMs) { fs.copyFileSync(src, dst); out.published.push(f); } } catch { /* siguiente */ }
+      }
+    }
+    global._clubsResults = {}; // memos por mtime (props/style/goals) se invalidan solos; results usa cache simple
+    db.clubsDataPassDay = today; save();
+  } catch (e) { out.error = e.message; }
+  finally { _dataPassRunning = false; }
+  console.log('[clubs-data-pass]', JSON.stringify(out).slice(0, 900));
+  return out;
+}
+// scheduler: chequeo cada 30 min; corre a partir de las 07:00Z (post-jornada americana) si hoy no corrió.
+if (clubsShadowOn() && clubsDataPassOn()) {
+  setInterval(() => { try { if (new Date().getUTCHours() >= 7) clubsDataPass().catch(() => { }); } catch { } }, 30 * 60e3);
+}
 async function evaluateClubDailyPicks() {
   if (!dailyPicksOn() || !clubsShadowOn()) return { skipped: 'off' };
   if (_clubPicksRunning) return { skipped: 'running' };
@@ -6936,6 +7005,13 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await evaluateClubDailyPicks().catch(e => ({ error: e.message })); return json(res, 200, r); }
       if (url.searchParams.get('dry')) { const r = await buildClubDailyPicks({ dryRun: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) });
+    }
+    // P2.5: pase de data manual (POST ?force=1 re-corre aunque hoy ya haya corrido) + estado (GET).
+    if (p === '/api/internal/clubs-data-pass') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await clubsDataPass({ force: url.searchParams.get('force') === '1' }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { enabled: clubsShadowOn() && clubsDataPassOn(), running: _dataPassRunning, last_day: db.clubsDataPassDay || null });
     }
     // OBSERVER DE CLUBES (F2.3): verificación read-only + disparo manual (misma key). GET expone assessments+λ.
     if (p === '/api/internal/clubs-observer') {

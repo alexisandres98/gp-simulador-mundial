@@ -8689,11 +8689,15 @@ const server = http.createServer(async (req, res) => {
         : ['.html', '.js', '.css'].includes(ext)
           ? 'no-cache, must-revalidate'
           : 'public, max-age=86400';
-      res.writeHead(200, {
+      const hdrsOut = {
         'Content-Type': MIME[ext] || 'application/octet-stream',
         'Cache-Control': cache,
         'Last-Modified': fs.statSync(full).mtime.toUTCString(),
-      });
+      };
+      // /ig/* con CORS: assets de contenido (PNG/JPG de redes) consumibles por herramientas creativas externas
+      // (p.ej. fetch desde el editor de un generador de video). Solo lectura de imágenes públicas.
+      if (/^\/ig\//.test(p)) hdrsOut['Access-Control-Allow-Origin'] = '*';
+      res.writeHead(200, hdrsOut);
       return fs.createReadStream(full).pipe(res);
     }
     json(res, 404, { error: 'No encontrado' });

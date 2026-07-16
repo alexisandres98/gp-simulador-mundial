@@ -6904,8 +6904,23 @@ const server = http.createServer(async (req, res) => {
         } catch { /* AF sin datos este ciclo */ }
         global._clubLineups[ck] = c;
       }
-      if (!c.data || (!c.data.home && !c.data.away)) return json(res, 200, { available: false, reason: 'sin alineación publicada' });
-      return json(res, 200, { available: true, ...c.data });
+      // P1.3 XI PROYECTADO: si AF aún no publica el once oficial (sale ~40-60 min antes), proyectarlo del fit de
+      // la liga — MISMO criterio del Mundial (projectTeam: los 11 con más titularidades). El cliente muestra la
+      // MISMA cancha con badge "proyectado" (projected:true → confirmed:false) y hace swap al oficial al llegar.
+      const projSide = (tmId) => {
+        try {
+          const fitL = require('./player-intel/clubsFit').leagueFit(league);
+          if (!fitL) return null;
+          const rows = require('./prop-engine/players').projectTeam(fitL, tmId, { top: 11 });
+          if (!rows || rows.length < 7) return null;
+          return { formation: null, coach: null, projected: true, xi: rows.map(r => ({ name: r.name, pos: r.pos || null, num: null, pid: r.pid })), bench: [] };
+        } catch { return null; }
+      };
+      const withProj = (sideData, tmId) => sideData || projSide(tmId);
+      const dataOut = c.data || {};
+      const homeOut = withProj(dataOut.home, hId), awayOut = withProj(dataOut.away, aId);
+      if (!homeOut && !awayOut) return json(res, 200, { available: false, reason: 'sin alineación publicada' });
+      return json(res, 200, { available: true, fixture_date: dataOut.fixture_date || null, status: dataOut.status || null, home: homeOut, away: awayOut });
     }
     // CONTEXTO del cruce (F1.4): bajas/lesiones (API-Football) + descanso (días desde el último partido) +
     // forma reciente. Informativo (paridad con el tab Context del Mundial); el ajuste al modelo llega con el

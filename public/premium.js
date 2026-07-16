@@ -2642,7 +2642,7 @@
       S.clubPidx = S.clubPidx || {};
       var cx = S.clubPidx[teamId] = S.clubPidx[teamId] || { league: lgk, byName: {} };
       (s.xi || []).concat(s.bench || []).forEach(function (p) { if (p.pid && p.name) cx.byName[pnorm(p.name)] = p.pid; });
-      return { formation: s.formation || null, coach: s.coach || null, confirmed: true,
+      return { formation: s.formation || null, coach: s.coach || null, confirmed: !s.projected, // P1.3: XI proyectado → badge "proyectado" (mvLineups)
         startXI: (s.xi || []).map(function (p) { return { name: p.name, number: p.num != null ? p.num : null, position: p.pos || null }; }),
         substitutes: (s.bench || []).map(function (p) { return { name: p.name, number: null, position: null }; }) };
     };

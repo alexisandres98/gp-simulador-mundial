@@ -8095,10 +8095,40 @@ const server = http.createServer(async (req, res) => {
         // por liga+par). Mejor cuota por resultado + O/U por línea, con la casa que la paga.
         let markets = null;
         if (!cross) { try { markets = await clubMatchMarkets(hl, hId, aId); } catch { markets = null; } }
-        // MATCH INTEL: anotadores probables de cada equipo (P(gol) con el λ del cruce) — mismo projectTeam del
-        // Mundial sobre el player-history de la liga. Solo intra-liga (el fit es por liga).
+        // MATCH INTEL COMPLETO (P1.2): MISMO shape que /api/beta/match-intel del Mundial → el cliente lo rinde
+        // con mvIntel (capa por jugador: rol/confianza/razones del player-intel + radar de disponibilidad narrado
+        // por el observer + factor λ). Antes era solo "anotadores probables" (clubIntelHtml, variante eliminada).
         let matchIntel = null;
-        if (!cross) { try { matchIntel = require('./player-intel/clubsFit').clubMatchIntel(hl, hId, aId, lU[0], lU[1]); } catch { matchIntel = null; } }
+        if (!cross) {
+          try {
+            const fitL = require('./player-intel/clubsFit').leagueFit(hl);
+            if (fitL) {
+              const players = require('./prop-engine/players');
+              const { assessPlayers } = require('./observer/assess');
+              const { playerIntel } = require('./player-intel/engine');
+              const { narratePlayer } = require('./observer/narrate');
+              const sideIntel = (tmId, lambda) => {
+                const asmts = assessPlayers(((db.clubObservations || {})[tmId] || {}).signals || []);
+                const rows = players.projectTeam(fitL, tmId, { teamLambda: lambda || null, top: 5 }).map(r => {
+                  let pi = null; try { pi = playerIntel(fitL, r.pid, { teamLambda: lambda || null, projectedStarter: true, confirmedStarter: null, availability: asmts[r.pid] || null, setPieceReasons: [] }); } catch { pi = null; }
+                  return {
+                    pid: r.pid, name: r.name, pos: r.pos, anytime: +Number(r.anytime_goal || 0).toFixed(3),
+                    shots: +Number(r.shots_match || 0).toFixed(1), sot_o05: r.sot_over_0_5 != null ? +Number(r.sot_over_0_5).toFixed(3) : null,
+                    risk: (asmts[r.pid] && asmts[r.pid].status) || null,
+                    role: pi ? pi.role : null, confidence: pi ? pi.confidence : null, reasons: pi ? pi.reasons : [],
+                  };
+                });
+                const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => {
+                  const nar = narratePlayer(x) || {};
+                  return { player: x.player, status: x.status, prob_miss: x.prob_miss, corroborated: x.corroborated !== false, why_es: nar.es || null, why_en: nar.en || null };
+                });
+                return { scorers: rows, radar: { players: flagged.slice(0, 6), lambda_factor: clubObserverLambdaFactor(hl, tmId) } };
+              };
+              matchIntel = { available: true, home: sideIntel(hId, lU[0]), away: sideIntel(aId, lU[1]) };
+              if (!(matchIntel.home.scorers || []).length && !(matchIntel.away.scorers || []).length) matchIntel = null;
+            }
+          } catch { matchIntel = null; }
+        }
         // FORMA reciente de ambos equipos + H2H (enfrentamientos directos) — desde results-<liga>.json.
         let form = null;
         if (!cross) { try { form = clubMatchForm(hl, hId, aId); } catch { form = null; } }

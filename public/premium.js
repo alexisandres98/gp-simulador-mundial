@@ -2677,6 +2677,16 @@
       beta._gpLive = fx.gpLive;
     }
     // ---- MISMO layout del Mundial: hero + nav de anclas + grid de 2 columnas con las mismas secciones ----
+    // P1.1 LECTURAS DEL SISTEMA: las picks del cruce con su narrativa — MISMO mvPickReads del Mundial (las
+    // picks de clubes del feed traen home/away_team_id tm_ y why de compose()). Lazy-load del feed si se entró
+    // directo por URL (el Mundial lo carga en el board; acá lo disparamos para paridad sin depender del board).
+    if (S.dailyPicks === undefined && S.me) {
+      S.dailyPicks = null;
+      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; })
+        .then(function (j) { S.dailyPicks = (j && j.picks) || []; if (S.view === 'match' && S.matchId === eid) { noAnimWindow(); renderMatch(); } });
+    }
+    var matchPicks = (S.dailyPicks || []).filter(function (p) { return (p.home_team_id === hId && p.away_team_id === aId) || (p.home_team_id === aId && p.away_team_id === hId); });
+    var pickReads = mvPickReads(matchPicks);
     var r = rowFromBeta(beta);
     var live = fx.status === 'live';
     var hasForm = fx.recentForm && (fx.recentForm.home || fx.recentForm.away);
@@ -2686,10 +2696,17 @@
     var hasMom = fx.momentum && fx.momentum.length > 2;
     var xgr = m.xg_report || null; // F1.3: xG observado post-partido (mismo panel mvXg del Mundial)
     var sections = [{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }];
+    if (pickReads) sections.push({ id: 'lecturas', key: 'reads_title' });
     if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
     if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
-    if (m.match_intel) sections.push({ id: 'intel', key: 'mod_intel' });
+    // P1.2 MATCH INTEL COMPLETO: mismo mvIntel del Mundial; los links de jugador van al perfil de club (href).
+    var intelD = (m.match_intel && m.match_intel.available) ? m.match_intel : null;
+    if (intelD) {
+      (intelD.home && intelD.home.scorers || []).forEach(function (p2) { if (p2.pid && !p2.href) p2.href = '#cplayer/' + lgk + '-' + hId + '-' + p2.pid; });
+      (intelD.away && intelD.away.scorers || []).forEach(function (p2) { if (p2.pid && !p2.href) p2.href = '#cplayer/' + lgk + '-' + aId + '-' + p2.pid; });
+    }
+    if (intelD) sections.push({ id: 'intel', key: 'mod_intel' });
     var styleD = (m.style && m.style.available) ? m.style : null; // F2.4: perfil táctico (event data FotMob de la liga)
     if (styleD) sections.push({ id: 'estilo', key: 'st_title' });
     if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
@@ -2702,7 +2719,7 @@
       mvNav(sections) +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (m.match_intel ? sec('intel', clubIntelHtml(m, lgk)) : '') + (styleD ? sec('estilo', mvStyle(styleD, beta.header)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (intelD ? sec('intel', mvIntel(intelD, beta.header)) : '') + (styleD ? sec('estilo', mvStyle(styleD, beta.header)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
       '</div>' +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '')
     );
@@ -2711,20 +2728,8 @@
       el.addEventListener('click', function () { var pp = el.getAttribute('data-cplayer').split('|'); openClubPlayer(pp[0], pp[1], pp[2]); });
     });
   }
-  // MATCH INTEL de club: anotadores probables por equipo (P(gol) del modelo), clickeables al perfil del jugador.
-  // Paridad con el "Match intel" del cockpit del Mundial; reusa el mismo engine (projectTeam) sobre datos de liga.
-  function clubIntelHtml(m, lgk) {
-    var mi = m.match_intel; if (!mi || (!(mi.home || []).length && !(mi.away || []).length)) return '';
-    var side = function (teamId, teamName, list) {
-      if (!list || !list.length) return '';
-      return '<div style="margin-bottom:8px"><div class="gx-sqgrp-h">' + clubBadge(teamId) + ' ' + esc(teamName) + '</div>' +
-        list.map(function (p) {
-          return '<div class="gx-clrow gx-pick-clickable" data-cplayer="' + esc(lgk + '|' + teamId + '|' + p.pid) + '" style="cursor:pointer"><span>' + esc(p.name) + ' <span class="gx-dim" style="font-size:10.5px">· ' + esc(p.pos || '') + '</span></span><span class="gx-mono" style="font-weight:700">' + pct0(p.anytime) + '</span></div>';
-        }).join('') + '</div>';
-    };
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + ic('target-arrow') + esc(t('cl_intel')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(t('cl_anytime')) + '</span></div><div style="padding:8px 16px 12px">' +
-      side(m.home.id, m.home.name, mi.home) + side(m.away.id, m.away.name, mi.away) + '</div></div>';
-  }
+  // (P1.2) clubIntelHtml ELIMINADA: el Match intel de club rinde con el MISMO mvIntel del Mundial
+  // (regla extensión-no-reconstrucción) — el server ya entrega el shape completo en /api/clubs/match.
   function mvShell(body) {
     return '<div class="gx-mv">' +
       '<div class="gx-mv-bar"><button class="gx-mv-back">' + ic('arrow-left') + '<span>' + esc(t('back')) + '</span></button></div>' +
@@ -3102,7 +3107,8 @@
         // "Por qué": códigos de razón del player-intel engine, localizados. Nunca fuentes ni métodos.
         var why = (p.reasons || []).slice(0, 4).map(function (c) { var k = 'pi_' + String(c).toLowerCase(); var s = t(k); return s === k ? null : s; }).filter(Boolean).join(' · ');
         var whyHtml = why ? '<div class="gx-dim" style="font-size:10px;grid-column:1/-1;padding:1px 0 3px">' + esc(why) + '</div>' : '';
-        var nameHtml = p.pid ? '<a href="#player/' + esc(p.pid) + '" style="color:inherit;text-decoration:none"><b>' + esc(p.name) + '</b></a>' : '<b>' + esc(p.name) + '</b>';
+        // p.href (clubes) pisa la ruta del perfil (#cplayer/liga-equipo-pid); default = ruta del Mundial, byte-idéntico.
+        var nameHtml = p.href ? '<a href="' + esc(p.href) + '" style="color:inherit;text-decoration:none"><b>' + esc(p.name) + '</b></a>' : (p.pid ? '<a href="#player/' + esc(p.pid) + '" style="color:inherit;text-decoration:none"><b>' + esc(p.name) + '</b></a>' : '<b>' + esc(p.name) + '</b>');
         return '<div class="gx-intel-row"><span class="n">' + nameHtml + '<i class="gx-dim">' + esc(p.pos || '') + '</i>' + riskChip(p.risk) + '</span><span class="v gx-mono gx-pos">' + pct0(p.anytime) + '</span><span class="v gx-mono">' + p.shots + '</span>' + whyHtml + '</div>';
       }).join('');
       var radar = (d.radar && d.radar.players || []).map(function (x) {

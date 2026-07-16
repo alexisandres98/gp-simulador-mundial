@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-07-06T11:01:36.478Z",
+ "generated_at": "2026-07-15T21:22:34.817Z",
  "league": 1,
  "season": 2026,
  "matches": [
@@ -2761,7 +2761,7 @@
    "fixture_id": 1562586,
    "date": "2026-07-02T00:00:00+00:00",
    "round": "Round of 32",
-   "referee": "Raphael Claus, Brazil",
+   "referee": "R. Claus",
    "status": "FT",
    "et": false,
    "home": {
@@ -2863,7 +2863,7 @@
    "fixture_id": 1567312,
    "date": "2026-07-03T03:00:00+00:00",
    "round": "Round of 32",
-   "referee": "Yael Falcon Perez, Argentina",
+   "referee": "Y. Perez",
    "status": "FT",
    "et": false,
    "home": {
@@ -2965,7 +2965,7 @@
    "fixture_id": 1567310,
    "date": "2026-07-04T01:30:00+00:00",
    "round": "Round of 32",
-   "referee": "Clement Turpin, France",
+   "referee": "C. Turpin",
    "status": "FT",
    "et": false,
    "home": {
@@ -3081,7 +3081,7 @@
     "shots": 14,
     "shots_on": 4,
     "possession": 34,
-    "xg": 2.73
+    "xg": 2.61
    },
    "away": {
     "code": "NOR",
@@ -3094,14 +3094,14 @@
     "shots": 9,
     "shots_on": 5,
     "possession": 66,
-    "xg": 0.84
+    "xg": 1.05
    }
   },
   {
    "fixture_id": 1570714,
    "date": "2026-07-06T01:00:00+00:00",
    "round": "Round of 16",
-   "referee": "Alireza Faghani, Australia",
+   "referee": "A. Faghani",
    "status": "FT",
    "et": false,
    "home": {
@@ -3129,6 +3129,346 @@
     "shots_on": 5,
     "possession": 33,
     "xg": 1.55
+   }
+  },
+  {
+   "fixture_id": 1576756,
+   "date": "2026-07-06T19:00:00+00:00",
+   "round": "Round of 16",
+   "referee": "Anthony Taylor, England",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "POR",
+    "name": "Portugal",
+    "goals": 0,
+    "corners": 3,
+    "yellows": 2,
+    "reds": null,
+    "fouls": 9,
+    "shots": 10,
+    "shots_on": 2,
+    "possession": 45,
+    "xg": 0.63
+   },
+   "away": {
+    "code": "ESP",
+    "name": "Spain",
+    "goals": 1,
+    "corners": 7,
+    "yellows": 1,
+    "reds": null,
+    "fouls": 13,
+    "shots": 15,
+    "shots_on": 6,
+    "possession": 55,
+    "xg": 1.69
+   }
+  },
+  {
+   "fixture_id": 1570715,
+   "date": "2026-07-07T00:00:00+00:00",
+   "round": "Round of 16",
+   "referee": "Adham Mohammad, Jordan",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "USA",
+    "name": "USA",
+    "goals": 1,
+    "corners": 3,
+    "yellows": 2,
+    "reds": null,
+    "fouls": 11,
+    "shots": 7,
+    "shots_on": 2,
+    "possession": 56,
+    "xg": 0.63
+   },
+   "away": {
+    "code": "BEL",
+    "name": "Belgium",
+    "goals": 4,
+    "corners": 5,
+    "yellows": 0,
+    "reds": null,
+    "fouls": 9,
+    "shots": 15,
+    "shots_on": 7,
+    "possession": 44,
+    "xg": 2.01
+   }
+  },
+  {
+   "fixture_id": 1576804,
+   "date": "2026-07-07T16:00:00+00:00",
+   "round": "Round of 16",
+   "referee": "François Letexier, France",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "ARG",
+    "name": "Argentina",
+    "goals": 3,
+    "corners": 6,
+    "yellows": 0,
+    "reds": null,
+    "fouls": 13,
+    "shots": 19,
+    "shots_on": 7,
+    "possession": 64,
+    "xg": 2.84
+   },
+   "away": {
+    "code": "EGY",
+    "name": "Egypt",
+    "goals": 2,
+    "corners": 1,
+    "yellows": 4,
+    "reds": null,
+    "fouls": 11,
+    "shots": 5,
+    "shots_on": 2,
+    "possession": 36,
+    "xg": 0.89
+   }
+  },
+  {
+   "fixture_id": 1576805,
+   "date": "2026-07-07T20:00:00+00:00",
+   "round": "Round of 16",
+   "referee": "Iván Barton, El Salvador",
+   "status": "PEN",
+   "et": true,
+   "home": {
+    "code": "SUI",
+    "name": "Switzerland",
+    "goals": 0,
+    "corners": 3,
+    "yellows": 3,
+    "reds": null,
+    "fouls": 22,
+    "shots": 7,
+    "shots_on": 2,
+    "possession": 53,
+    "xg": 0.39
+   },
+   "away": {
+    "code": "COL",
+    "name": "Colombia",
+    "goals": 0,
+    "corners": 7,
+    "yellows": 2,
+    "reds": null,
+    "fouls": 21,
+    "shots": 15,
+    "shots_on": 3,
+    "possession": 47,
+    "xg": 1.09
+   }
+  },
+  {
+   "fixture_id": 1578539,
+   "date": "2026-07-09T20:00:00+00:00",
+   "round": "Quarter-finals",
+   "referee": "Facundo Raul Tello Figueroa, Argentina",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "FRA",
+    "name": "France",
+    "goals": 2,
+    "corners": 5,
+    "yellows": 0,
+    "reds": null,
+    "fouls": 10,
+    "shots": 22,
+    "shots_on": 8,
+    "possession": 48,
+    "xg": 3.69
+   },
+   "away": {
+    "code": "MAR",
+    "name": "Morocco",
+    "goals": 0,
+    "corners": 5,
+    "yellows": 1,
+    "reds": null,
+    "fouls": 13,
+    "shots": 5,
+    "shots_on": 1,
+    "possession": 52,
+    "xg": 0.14
+   }
+  },
+  {
+   "fixture_id": 1581821,
+   "date": "2026-07-10T19:00:00+00:00",
+   "round": "Quarter-finals",
+   "referee": "Michael Oliver, England",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "ESP",
+    "name": "Spain",
+    "goals": 2,
+    "corners": 5,
+    "yellows": 2,
+    "reds": null,
+    "fouls": 13,
+    "shots": 17,
+    "shots_on": 8,
+    "possession": 68,
+    "xg": 2.08
+   },
+   "away": {
+    "code": "BEL",
+    "name": "Belgium",
+    "goals": 1,
+    "corners": 1,
+    "yellows": 2,
+    "reds": null,
+    "fouls": 18,
+    "shots": 5,
+    "shots_on": 2,
+    "possession": 32,
+    "xg": 0.37
+   }
+  },
+  {
+   "fixture_id": 1581037,
+   "date": "2026-07-11T21:00:00+00:00",
+   "round": "Quarter-finals",
+   "referee": "Clement Turpin, France",
+   "status": "AET",
+   "et": true,
+   "home": {
+    "code": "NOR",
+    "name": "Norway",
+    "goals": 1,
+    "corners": 7,
+    "yellows": 1,
+    "reds": null,
+    "fouls": 10,
+    "shots": 13,
+    "shots_on": 4,
+    "possession": 48,
+    "xg": 0.68
+   },
+   "away": {
+    "code": "ENG",
+    "name": "England",
+    "goals": 2,
+    "corners": 4,
+    "yellows": 0,
+    "reds": null,
+    "fouls": 8,
+    "shots": 14,
+    "shots_on": 8,
+    "possession": 52,
+    "xg": 1.04
+   }
+  },
+  {
+   "fixture_id": 1582681,
+   "date": "2026-07-12T01:00:00+00:00",
+   "round": "Quarter-finals",
+   "referee": "Joao Pedro Pinheiro, Portugal",
+   "status": "AET",
+   "et": true,
+   "home": {
+    "code": "ARG",
+    "name": "Argentina",
+    "goals": 3,
+    "corners": 8,
+    "yellows": 3,
+    "reds": 0,
+    "fouls": 14,
+    "shots": 22,
+    "shots_on": 7,
+    "possession": 59,
+    "xg": 1.94
+   },
+   "away": {
+    "code": "SUI",
+    "name": "Switzerland",
+    "goals": 1,
+    "corners": 2,
+    "yellows": 2,
+    "reds": 1,
+    "fouls": 18,
+    "shots": 11,
+    "shots_on": 5,
+    "possession": 41,
+    "xg": 0.47
+   }
+  },
+  {
+   "fixture_id": 1585131,
+   "date": "2026-07-14T19:00:00+00:00",
+   "round": "Semi-finals",
+   "referee": "Iván Barton, El Salvador",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "FRA",
+    "name": "France",
+    "goals": 0,
+    "corners": 7,
+    "yellows": 2,
+    "reds": null,
+    "fouls": 11,
+    "shots": 10,
+    "shots_on": 3,
+    "possession": 49,
+    "xg": 0.3
+   },
+   "away": {
+    "code": "ESP",
+    "name": "Spain",
+    "goals": 2,
+    "corners": 1,
+    "yellows": 1,
+    "reds": null,
+    "fouls": 12,
+    "shots": 10,
+    "shots_on": 2,
+    "possession": 51,
+    "xg": 1.63
+   }
+  },
+  {
+   "fixture_id": 1586077,
+   "date": "2026-07-15T19:00:00+00:00",
+   "round": "Semi-finals",
+   "referee": "Ismail Elfath, USA",
+   "status": "FT",
+   "et": false,
+   "home": {
+    "code": "ENG",
+    "name": "England",
+    "goals": 1,
+    "corners": 1,
+    "yellows": 1,
+    "reds": null,
+    "fouls": 11,
+    "shots": 5,
+    "shots_on": 2,
+    "possession": 36,
+    "xg": 0.53
+   },
+   "away": {
+    "code": "ARG",
+    "name": "Argentina",
+    "goals": 2,
+    "corners": 6,
+    "yellows": 3,
+    "reds": null,
+    "fouls": 15,
+    "shots": 15,
+    "shots_on": 5,
+    "possession": 64,
+    "xg": 1.84
    }
   }
  ]

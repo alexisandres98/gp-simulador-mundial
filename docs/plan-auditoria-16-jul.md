@@ -11,7 +11,7 @@
   (navegaba a `teams-tm_...`). Fix: picks con `club_eid` construyen la entrada de CLUB en
   `cockpitMatches` → `cockpitCompactClub` + cockpit `cl-` completo.
 
-## P0 — NAVEGACIÓN NATURAL (la queja central; 1 pasada, ~1 sesión)
+## P0 — NAVEGACIÓN NATURAL ✔ COMPLETO (prod ff8158c: goBack history.back + serial en history.state; sub-estado de competición en el hash #groups/mls etc.; anti-parpadeo auditado — guards ya existían)
 1. **`S.returnTo` universal.** Hoy `closeMatch()` solo recuerda matches/sim; abrir un partido desde
    Oportunidades/Value/Picks y dar atrás te manda a Partidos (clubes, por el fallback `cl-`→matches)
    o al board. Fix: al abrir CUALQUIER detalle (match, cteam, cplayer, team, player) guardar la vista
@@ -29,7 +29,7 @@
    comparar JSON antes de repintar (patrón refreshClubsLive) — auditar renderGroups/renderBracket/
    renderPerf/cockpit (hoy repintan aunque nada cambió).
 
-## P1 — PARIDAD COCKPIT CLUB = MUNDIAL (los 4 gaps de Alexis)
+## P1 — PARIDAD COCKPIT CLUB = MUNDIAL ✔ COMPLETO (1: Lecturas del sistema ✔ mvPickReads · 2: Match intel completo ✔ mvIntel + clubIntelHtml eliminada · 3: XI proyectado ✔ badge Proyectada + swap al oficial · 4: táctico ya estaba)
 1. **Lecturas del sistema** (pickReads): el cockpit del Mundial muestra las picks activas del cruce
    con su narrativa; el de club no. Ya hay picks de clubes con why → filtrar `S.dailyPicks` por
    `club_eid` del cruce y reusar el MISMO panel (sec 'lecturas').

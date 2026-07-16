@@ -4719,6 +4719,16 @@
     var cp = $('#gx-ref-copy'); if (cp) cp.addEventListener('click', function () { var inp = $('#gx-ref-input'); if (inp) { inp.select(); try { document.execCommand('copy'); } catch (e) {} try { navigator.clipboard.writeText(inp.value); } catch (e) {} cp.innerHTML = ic('check') + ' ' + esc(t('ref_copied')); } });
   }
   // ---- Rendimiento (métricas verificadas) ----
+  // Texto legible de una pick por familia (COMPARTIDO entre la tabla oficial y el monitoreo privado de clubes —
+  // mismas columnas, mismo componente; regla extensión-no-reconstrucción).
+  function pickBetText(p, hh, aa) {
+    return p.family === 'SOLID' ? t('pf_wins', { team: p.selection_code === 'home' ? hh : aa })
+      : p.family === 'GOALS' ? (p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line }))
+      : p.family === 'CORNERS' ? t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line })
+      : p.family === 'CARDS' ? t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line })
+      : p.family === 'PLAYER' ? (p.player_family === 'player_goal' ? t('pf_player_goal', { player: p.player_name || '' }) : p.player_family === 'player_assist' ? t('pf_player_assist', { player: p.player_name || '' }) : t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line }))
+      : (p.legs || []).map(function (l) { return l.type === '1X2' ? t('pf_wins', { team: l.selection === 'home' ? hh : aa }) : (l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line })); }).join(' + ');
+  }
   function renderPerf() {
     var mv = $('#gx-matchview'); if (!mv) return;
     // esperar a /api/me antes del primer fetch: sin esto, entrar directo a #perf decidía admin=false y cacheaba
@@ -4764,15 +4774,34 @@
           var segRows = Object.keys(ctr).filter(function (k) { return k !== 'overall'; }).map(function (k) { var v = ctr[k]; return '<span>' + esc(k) + ' <b>' + (v.wins || 0) + '/' + (v.wins + v.losses || 0) + '</b> (ROI ' + (v.roi != null ? Math.round(v.roi * 100) + '%' : '—') + ')</span>'; }).join('');
           if (segRows) body += teamPanel('layout-grid', 'Por liga · familia · gate', '<div class="gx-form-stats">' + segRows + '</div>');
         }
-        var chist = (pk.clubs.picks || []).filter(function (p) { return p.status === 'SETTLED' && p.result_code !== 'SUPERSEDED'; }).sort(function (a, b) { return new Date(b.settled_at || 0) - new Date(a.settled_at || 0); }).slice(0, 30);
+        // P2: quant de clubes (CLV, brier modelo-vs-mercado) — MISMOS KPIs de la tabla oficial (qm_*).
+        var cq = pk.clubs.quant;
+        if (cq && ((cq.clv && cq.clv.n) || (cq.model_vs_market && cq.model_vs_market.n))) {
+          var cqk = '';
+          if (cq.clv && cq.clv.n) {
+            cqk += kpi(t('qm_clv'), sgn(cq.clv.avg_pct, '%'), (cq.clv.avg_pct >= 0 ? 'gx-pos' : 'gx-neg'), t('qm_clv_sub') + ' · n=' + cq.clv.n);
+            if (cq.clv.positive_rate != null) cqk += kpi(t('qm_beat_close'), pctc(cq.clv.positive_rate), (cq.clv.positive_rate >= 0.5 ? 'gx-pos' : ''), '');
+          }
+          if (cq.model_vs_market && cq.model_vs_market.n && cq.model_vs_market.brier_model != null) {
+            cqk += kpi(t('qm_brier_gp'), Number(cq.model_vs_market.brier_model).toFixed(3), (cq.model_vs_market.skill > 0 ? 'gx-pos' : ''), t('qm_brier_sub')) +
+              kpi(t('qm_brier_mkt'), Number(cq.model_vs_market.brier_market).toFixed(3), '', 'n=' + cq.model_vs_market.n);
+          }
+          if (cqk) body += '<div class="gx-kpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:10px">' + cqk + '</div>';
+        }
+        var chist = (pk.clubs.picks || []).filter(function (p) { return p.status === 'SETTLED' && p.result_code !== 'SUPERSEDED'; }).sort(function (a, b) { return new Date(b.settled_at || 0) - new Date(a.settled_at || 0); }).slice(0, 60);
         var clist = active.concat(chist);
         if (clist.length) {
+          // P2: MISMAS columnas de la tabla oficial (Pick legible/Cuota/CLV/Resultado) + Liga/Model·Mkt/Gate del monitoreo.
           var cRows = clist.map(function (p) {
             var rc = p.result_code === 'WIN' ? 'gx-pos' : p.result_code === 'LOSS' ? 'gx-neg' : 'gx-dim';
-            var lbl = p.market_id || p.selection_code || '';
-            return '<tr class="gx-row"' + (p.event && p.event.club_eid ? ' data-openmatch="' + esc(p.event.club_eid) + '"' : '') + '><td class="l gx-dim" style="font-size:10.5px">' + esc((p.league || '').slice(0, 12)) + '</td><td class="l">' + esc(p.event.home + ' - ' + p.event.away) + '</td><td class="l gx-mono" style="font-size:11px">' + esc(lbl) + '</td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td><span class="gx-clgate ' + (p.gate_status === 'approved' ? 'ok' : 'sh') + '">' + esc(p.gate_status || 'shadow') + '</span></td><td class="gx-mono ' + rc + '" style="font-weight:800">' + esc(p.status === 'ACTIVE' ? 'ACTIVE' : p.result_code) + '</td></tr>';
+            var hh2 = p.event.home, aa2 = p.event.away;
+            var bet = pickBetText(p, hh2, aa2);
+            var famChip2 = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo')) + '</span>';
+            var mm = (p.model_prob != null ? pct0(p.model_prob) : '—') + '/' + (p.market_prob != null ? pct0(p.market_prob) : '—');
+            var clvCell2 = p.clv != null ? '<span class="gx-mono ' + (p.clv >= 0 ? 'gx-pos' : 'gx-dim') + '" style="font-size:11px">' + (p.clv > 0 ? '+' : '') + Number(p.clv).toFixed(1) + '%</span>' : '<span class="gx-dim">—</span>';
+            return '<tr class="gx-row"' + (p.event && p.event.club_eid ? ' data-openmatch="' + esc(p.event.club_eid) + '"' : '') + '><td class="l gx-dim" style="font-size:10.5px">' + esc((p.league || '').slice(0, 12)) + '</td><td class="l">' + esc(hh2 + ' - ' + aa2) + '</td><td class="l">' + famChip2 + ' <span style="font-size:12px">' + esc(bet) + '</span></td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + (p.best_book ? '<div class="gx-dim" style="font-size:9.5px">' + esc(p.best_book) + '</div>' : '') + '</td><td class="gx-mono gx-dim" style="font-size:10.5px">' + mm + '</td><td>' + clvCell2 + '</td><td><span class="gx-clgate ' + (p.gate_status === 'approved' ? 'ok' : 'sh') + '">' + esc(p.gate_status || 'shadow') + '</span></td><td class="gx-mono ' + rc + '" style="font-weight:800">' + esc(p.status === 'ACTIVE' ? 'ACTIVE' : p.result_code) + '</td></tr>';
           }).join('');
-          body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">Historial de clubes</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">Liga</th><th class="l">Partido</th><th class="l">Mercado</th><th>Cuota</th><th>Gate</th><th>Resultado</th></tr></thead><tbody>' + cRows + '</tbody></table></div></div>';
+          body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">Historial de clubes</span><span class="gx-spacer"></span><button class="gx-btn" id="gx-clexp" style="font-size:11px;padding:5px 12px">Exportar CSV</button></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">Liga</th><th class="l">Partido</th><th class="l">Pick</th><th>Cuota</th><th>GP/Mkt</th><th>CLV</th><th>Gate</th><th>Resultado</th></tr></thead><tbody>' + cRows + '</tbody></table></div></div>';
         } else if (!cov.n) {
           body += '<div class="gx-panel"><div style="padding:12px 16px;font-size:11.5px;color:var(--gx-text3)">Sin picks de clubes todavía — el motor corre cada 15 min sobre las ligas con cuotas; nacerán con los próximos partidos.</div></div>';
         }
@@ -4806,12 +4835,7 @@
       if (settled.length) {
         var prows = settled.map(function (p) {
           var hh = teamName(p.event.home_team_id, p.event.home), aa = teamName(p.event.away_team_id, p.event.away);
-          var betTxt = p.family === 'SOLID' ? t('pf_wins', { team: p.selection_code === 'home' ? hh : aa })
-            : p.family === 'GOALS' ? (p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line }))
-            : p.family === 'CORNERS' ? t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line })
-            : p.family === 'CARDS' ? t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line })
-            : p.family === 'PLAYER' ? (p.player_family === 'player_goal' ? t('pf_player_goal', { player: p.player_name || '' }) : p.player_family === 'player_assist' ? t('pf_player_assist', { player: p.player_name || '' }) : t(p.player_family === 'player_sot' ? 'pf_player_sot' : 'pf_player_shots', { player: p.player_name || '', line: p.line }))
-            : (p.legs || []).map(function (l) { return l.type === '1X2' ? t('pf_wins', { team: l.selection === 'home' ? hh : aa }) : (l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line })); }).join(' + ');
+          var betTxt = pickBetText(p, hh, aa);
           var res = p.result_code === 'WIN' ? '<span class="gx-pos" style="font-weight:700">✓ WIN</span>' : p.result_code === 'LOSS' ? '<span class="gx-neg" style="font-weight:700">✗ LOSS</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(p.result_code || '—') + '</span>';
           var famChip = '<span class="gx-badge" style="font-size:9.5px">' + esc(t(p.family === 'SOLID' ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo')) + '</span>';
           var clvCell = p.clv != null ? '<span class="gx-mono ' + (p.clv >= 0 ? 'gx-pos' : 'gx-dim') + '" style="font-size:11px">' + (p.clv > 0 ? '+' : '') + Number(p.clv).toFixed(1) + '%</span>' : '<span class="gx-dim">—</span>';
@@ -4860,6 +4884,20 @@
       body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('perf_matches')) + '</span><span class="gx-ph-extra">' + matches.length + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th>' + esc(t('perf_result')) + '</th><th class="l">' + esc(t('perf_predicted')) + '</th><th class="l">' + esc(t('perf_hit')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_perf')) + body + '</div></div>';
+    // P2: export CSV del monitoreo privado de clubes (todas las columnas del registro, para análisis externo)
+    var exBtn = $('#gx-clexp');
+    if (exBtn) exBtn.addEventListener('click', function () {
+      var rows = ((S.perf && S.perf.picks && S.perf.picks.clubs && S.perf.picks.clubs.picks) || []);
+      var cols = ['pick_id', 'created_at', 'league', 'competition_name', 'family', 'gate_status', 'home', 'away', 'kickoff_at', 'selection_code', 'market_id', 'side', 'line', 'player_name', 'best_odds', 'best_book', 'books', 'model_prob', 'market_prob', 'edge_pp', 'confidence', 'closing_fair', 'closing_odds', 'clv_pct', 'status', 'result_code', 'settled_at'];
+      var csv = cols.join(',') + '\n' + rows.map(function (p) {
+        var v = { pick_id: p.pick_id, created_at: p.created_at, league: p.league, competition_name: p.competition_name, family: p.family, gate_status: p.gate_status, home: p.event && p.event.home, away: p.event && p.event.away, kickoff_at: p.event && p.event.kickoff_at, selection_code: p.selection_code, market_id: p.market_id, side: p.side, line: p.line, player_name: p.player_name, best_odds: p.best_odds, best_book: p.best_book, books: p.books, model_prob: p.model_prob, market_prob: p.market_prob, edge_pp: p.edge_pp, confidence: p.confidence, closing_fair: p.closing && p.closing.fair_prob, closing_odds: p.closing && p.closing.odds, clv_pct: p.clv, status: p.status, result_code: p.result_code, settled_at: p.settled_at };
+        return cols.map(function (c) { var x = v[c]; if (x == null) return ''; x = String(x); return /[",\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; }).join(',');
+      }).join('\n');
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      a.download = 'gp-clubs-picks-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    });
   }
 
   // ---- Admin: Observatory de cobertura (§29, solo admin) ----

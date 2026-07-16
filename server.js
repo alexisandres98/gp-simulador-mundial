@@ -4441,6 +4441,77 @@ async function settleClubPropsViaAf() {
   if (settled) save();
   return { settled };
 }
+// P2: QUANT de clubes = la MISMA quantMetrics del Mundial (CLV, brier modelo-vs-mercado, calibración)
+// sobre db.clubDailyPicks. PRIVADO admin (monitoreo pre-lanzamiento).
+function clubDailyPicksQuant() {
+  try { return require('./pick-engine/metrics').quantMetrics(db.clubDailyPicks || [], {}); } catch { return null; }
+}
+// P2: LÍNEA DE CIERRE + CLV para picks de clubes — misma matemática del Mundial (computeClv), fuente =
+// sportsbook_goal_quote_current (TODAS las cuotas de clubes viven ahí keyed por el ceid del sweep; el evento
+// sale de la ventana al arrancar → las filas quedan CONGELADAS en la última observación pre-KO = cierre).
+// fair del cierre: no-vig por casa (mediana entre casas) — 1X2 con los 3 lados, totales con el par over/under;
+// PLAYER (one-sided) usa la mediana implícita con vig (mismo caveat que en la creación, consistente para CLV).
+async function captureClubPicksClosing({ force = false } = {}) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  const metrics = require('./pick-engine/metrics');
+  const now = Date.now();
+  let captured = 0, clvSet = 0, misses = 0;
+  const med = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? (s[Math.floor((s.length - 1) / 2)] + s[Math.ceil((s.length - 1) / 2)]) / 2 : null; };
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.result_code === 'SUPERSEDED') continue;
+    const ko = Date.parse((p.event && p.event.kickoff_at) || '');
+    if (!isFinite(ko) || ko > now) continue;
+    if (p.closing && !force) { /* ya capturada */ }
+    else {
+      try {
+        const ceid = p.event.canonical_event_id;
+        const cutoff = new Date(ko + 30 * 60e3).toISOString(); // tolerancia: última observación hasta KO+30min
+        let fair = null, odds = null, at = null;
+        if (p.family === 'SOLID') {
+          const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND observed_at <= $2`, [ceid, cutoff]).catch(() => ({ rows: [] }));
+          const byBook = {};
+          for (const q of r.rows) { (byBook[q.sportsbook_code] = byBook[q.sportsbook_code] || {})[String(q.side).toLowerCase()] = q; }
+          const sel = String(p.selection_code || '').toLowerCase();
+          const fairs = [], oddsArr = [];
+          for (const b of Object.values(byBook)) {
+            if (!b.home || !b.draw || !b.away || !b[sel]) continue;
+            const inv = 1 / b.home.o + 1 / b.draw.o + 1 / b.away.o;
+            fairs.push((1 / b[sel].o) / inv); oddsArr.push(b[sel].o); at = b[sel].observed_at;
+          }
+          fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null;
+        } else if (['GOALS', 'CORNERS', 'CARDS'].includes(p.family)) {
+          const fam = p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
+          const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND observed_at <= $4`, [ceid, fam, p.line, cutoff]).catch(() => ({ rows: [] }));
+          const byBook = {};
+          for (const q of r.rows) { (byBook[q.sportsbook_code] = byBook[q.sportsbook_code] || {})[String(q.side).toLowerCase()] = q; }
+          const side = String(p.side || '').toLowerCase();
+          const fairs = [], oddsArr = [];
+          for (const b of Object.values(byBook)) {
+            if (!b.over || !b.under || !b[side]) continue;
+            const pOver = (1 / b.over.o) / (1 / b.over.o + 1 / b.under.o);
+            fairs.push(side === 'over' ? pOver : 1 - pOver); oddsArr.push(b[side].o); at = b[side].observed_at;
+          }
+          fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null;
+        } else if (p.family === 'PLAYER') {
+          const r = await dbc.query(`SELECT odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3 AND observed_at <= $4`, [ceid, p.player_family, p.pid, cutoff]).catch(() => ({ rows: [] }));
+          const implied = r.rows.map(q => 1 / q.o);
+          fair = med(implied); odds = r.rows.length ? Math.max(...r.rows.map(q => q.o)) : null;
+          at = r.rows.length ? r.rows[0].observed_at : null;
+        }
+        if (fair == null) { misses++; continue; }
+        p.closing = { fair_prob: +fair.toFixed(6), odds: odds != null ? +odds.toFixed(4) : null, at: at || new Date(ko).toISOString() };
+        captured++;
+      } catch { misses++; continue; }
+    }
+    if (p.closing && (p.clv == null || force) && p.best_odds) {
+      const c = metrics.computeClv(Number(p.best_odds), p.closing);
+      if (c) { p.clv = c.clv_pct; p.clv_ev_pp = c.ev_close_pp; clvSet++; }
+    }
+  }
+  if (captured || clvSet) save();
+  return { captured, clv_set: clvSet, misses };
+}
 // track record de clubes por liga/familia/gate (misma matemática de unidades del Mundial: 1u por pick).
 // PRIVADO: solo admin (monitoreo de la semana); jamás entra al rendimiento público.
 function clubDailyPicksTrackRecord() {
@@ -4466,8 +4537,9 @@ async function evaluateClubDailyPicks() {
     const b = await buildClubDailyPicks();
     const s = settleClubDailyPicks();
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp };
-    if (b.added || s.settled || sp.settled) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, eligible: b.eligible }));
+    const cl = await captureClubPicksClosing().catch(() => ({ captured: 0 })); // P2: cierre + CLV (misma matemática del Mundial)
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, closing: cl };
+    if (b.added || s.settled || sp.settled || cl.captured) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, closing: cl.captured, eligible: b.eligible }));
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }
 }
@@ -6863,7 +6935,7 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       if (req.method === 'POST') { const r = await evaluateClubDailyPicks().catch(e => ({ error: e.message })); return json(res, 200, r); }
       if (url.searchParams.get('dry')) { const r = await buildClubDailyPicks({ dryRun: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
-      return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), picks: (db.clubDailyPicks || []).slice(-100) });
+      return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) });
     }
     // OBSERVER DE CLUBES (F2.3): verificación read-only + disparo manual (misma key). GET expone assessments+λ.
     if (p === '/api/internal/clubs-observer') {
@@ -7102,7 +7174,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200),
         // CLUBES (monitoreo privado, 15-jul): track record + picks de clubes SOLO en esta vista admin —
         // jamás en el rendimiento público.
-        clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), picks: (db.clubDailyPicks || []).slice(-100) } });
+        clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) } });
     }
     // SERIE de línea de un mercado (observatorio admin): goal_value_shadow leída como serie temporal + resumen
     // line-intel (apertura/cierre/dirección/steam). Read-only.

@@ -5690,6 +5690,45 @@ const server = http.createServer(async (req, res) => {
               signals: pickSignals(x, { isClub: true }),
             }));
           items = items.concat(clubActive);
+          // P5.1 (spec Alexis): CORRELACIÓN AUTOMÁTICA de picks del mismo evento (ML + Goles) — ρ real desde
+          // la matriz de marcadores con las λ del cruce (mismo goal engine del pipeline). El cliente convierte
+          // ρ en guía de stake combinado. Memo 10min por evento; solo clubes (los pares vivos hoy).
+          try {
+            global._pickCorr = global._pickCorr || {};
+            const fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
+            const pois = (l) => { const a = []; for (let k = 0; k <= 10; k++) a.push(Math.exp(-l) * Math.pow(l, k) / fact[k]); return a; };
+            const byEid = {};
+            for (const it of items) if (it.club_eid) (byEid[it.club_eid] = byEid[it.club_eid] || []).push(it);
+            for (const [eid, grp] of Object.entries(byEid)) {
+              const ml = grp.find(x => x.family === 'SOLID' && (x.selection_code === 'home' || x.selection_code === 'away'));
+              const ou = grp.find(x => x.family === 'GOALS' && x.side && x.line != null);
+              if (!ml || !ou) continue;
+              let c = global._pickCorr[eid];
+              if (!c || Date.now() - c.at > 10 * 60e3) {
+                const parts = eid.split('-'); // cl-<liga>-<home>-<away>
+                const lg = parts[1], hId = parts.slice(2, parts.length - 1).join('-') || parts[2], aId = parts[parts.length - 1];
+                if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+                const L = (global._clubsRatings.leagues || {})[lg];
+                if (!L) continue;
+                let l = null; try { const gf = clubGoalsFit(lg); if (gf) l = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId); } catch { l = null; }
+                if (!l) { l = lambdas(clubElo(lg, hId) + (L.hfa || 60), clubElo(lg, aId)); }
+                const Ph = pois(l[0]), Pa = pois(l[1]);
+                let pA = 0, pB = 0, pAB = 0;
+                for (let h = 0; h <= 10; h++) for (let a2 = 0; a2 <= 10; a2++) {
+                  const pr = Ph[h] * Pa[a2];
+                  const mlHit = ml.selection_code === 'home' ? h > a2 : a2 > h;
+                  const ouHit = ou.side === 'over' ? (h + a2) > ou.line : (h + a2) < ou.line;
+                  if (mlHit) pA += pr; if (ouHit) pB += pr; if (mlHit && ouHit) pAB += pr;
+                }
+                const rho = pA > 0 && pB > 0 ? pAB / (pA * pB) : 1;
+                // guía de stake: correlación positiva reduce el total combinado (clamp honesto 60-100%)
+                const stakeFactor = Math.max(0.6, Math.min(1, 1 / rho));
+                c = { at: Date.now(), rho: +rho.toFixed(2), stake_factor: +stakeFactor.toFixed(2), joint: +pAB.toFixed(3) };
+                global._pickCorr[eid] = c;
+              }
+              for (const it of grp) it.corr = { rho: c.rho, stake_factor: c.stake_factor, joint_prob: c.joint };
+            }
+          } catch { /* correlación best-effort: jamás rompe el feed */ }
         }
         // ===== GATING POR PLAN (inerte con GP_PLANS_ENFORCED=off → todos ven todo) =====
         // FREE: 1 pick del día (la SOLID/ganador de mayor confianza), visible recién 60 min antes del kickoff

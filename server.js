@@ -4740,8 +4740,11 @@ async function picksBooksIndex() {
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return {};
   if (_booksIdx.map && Date.now() - _booksIdx.at < 5 * 60e3) return _booksIdx.map;
+  // SOLO ceids con forma de UUID: la columna es uuid — un solo id sintético no-UUID (p.ej. seeds de QA) haría
+  // fallar la query ENTERA y dejaría a todas las picks sin books_list.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const ceids = [...new Set([...(db.dailyPicks || []), ...(db.clubDailyPicks || [])]
-    .filter(x => x.status === 'ACTIVE' && x.event && x.event.canonical_event_id)
+    .filter(x => x.status === 'ACTIVE' && x.event && UUID_RE.test(String(x.event.canonical_event_id || '')))
     .map(x => x.event.canonical_event_id))];
   const map = {};
   if (ceids.length) {
@@ -6514,12 +6517,20 @@ const server = http.createServer(async (req, res) => {
         // preview ?asplan= (la vista "como plan X" debe ser la del usuario normal). Scan separado → el payload
         // de no-admins es byte-idéntico. Los items de clubes viajan con competition/competition_name (liga) y
         // team_ids null (el cliente cae a nombres crudos; la card no navega, informativa como los sintéticos).
-        if (dto.available && (betaUser.isAdmin || clubsPublicOn()) && clubsShadowFlagOn() && !url.searchParams.get('asplan')) {
+        if ((betaUser.isAdmin || clubsPublicOn()) && clubsShadowFlagOn() && !url.searchParams.get('asplan')) {
           try {
             const cs = await getClubsScan();
             if (cs) {
               const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: marketScanner.params.maxOpportunities });
               if (cdto.available && ((cdto.arbitrage || []).length || (cdto.price_lag || []).length || cdto.counts.markets_scanned)) {
+                // POST-MUNDIAL: si el scan de la casa (Mundial) no está disponible, el de clubes SE VUELVE el
+                // board (antes el merge vivía dentro de dto.available → al morir el Mundial moría el arb de
+                // clubes con él). Base vacía + el merge de abajo puebla todo.
+                if (!dto.available) {
+                  dto.available = true; dto.arbitrage = []; dto.price_lag = []; dto.counts = {};
+                  dto.generated_at = cdto.generated_at || new Date().toISOString();
+                  dto.scanner_version = cdto.scanner_version || null;
+                }
                 // resolver los tm_ ids del cruce (por nombre) para que la card navegue al cockpit cl-<liga>-<h>-<a>
                 const tag = (it) => { const m = (db.clubsQuoteEvents || {})[it.event_id] || {}; return { ...it, competition: m.league || null, competition_name: m.league_name || null, home_team_id: m.league ? resolveClubId(m.league, it.home) : null, away_team_id: m.league ? resolveClubId(m.league, it.away) : null }; };
                 dto.arbitrage = (dto.arbitrage || []).concat((cdto.arbitrage || []).map(tag));

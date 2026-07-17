@@ -182,7 +182,7 @@
       pf_over_cards: 'Más de {line} tarjetas', pf_under_cards: 'Menos de {line} tarjetas',
       pf_player_goal: '{player} anota', pf_player_shots: '{player}: más de {line} remates', pf_player_sot: '{player}: más de {line} al arco', pf_player_assist: '{player}: da una asistencia',
       pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
-      pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada',
+      pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada', ps_win: 'Prob. de acierto', ps_edge: 'Edge', ps_data: 'Datos', ps_quality: 'Calidad', ps_dc_low: 'Baja', ps_q_strong: 'Fuerte', ps_q_moderate: 'Moderada', ps_q_marginal: 'Marginal',
       pf_best_odds: 'Mejor cuota', pf_at: 'en', pf_combo_and: 'y', pf_pick_label: 'Nuestra pick',
       pf_disclaimer: 'Estimaciones de inteligencia deportiva. No es consejo financiero. Apuesta con responsabilidad.',
       reg_odds: 'Cuota', reg_result: 'Resultado', reg_era: 'Modelo', reg_era_current: 'GP Intelligence', reg_era_previous: 'Etapa anterior', reg_empty: 'Aún no hay Picks registradas.',
@@ -446,7 +446,7 @@
       pf_over_cards: 'Over {line} cards', pf_under_cards: 'Under {line} cards',
       pf_player_goal: '{player} to score', pf_player_shots: '{player}: over {line} shots', pf_player_sot: '{player}: over {line} shots on target', pf_player_assist: '{player}: to provide an assist',
       pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
-      pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate',
+      pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate', ps_win: 'Win probability', ps_edge: 'Edge', ps_data: 'Data', ps_quality: 'Quality', ps_dc_low: 'Low', ps_q_strong: 'Strong', ps_q_moderate: 'Moderate', ps_q_marginal: 'Marginal',
       pf_best_odds: 'Best odds', pf_at: 'at', pf_combo_and: 'and', pf_pick_label: 'Our pick',
       pf_disclaimer: 'Sports-intelligence estimates. Not financial advice. Bet responsibly.',
       reg_odds: 'Odds', reg_result: 'Result', reg_era: 'Model', reg_era_current: 'GP Intelligence', reg_era_previous: 'Previous stage', reg_empty: 'No Picks recorded yet.',
@@ -1297,12 +1297,28 @@
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
-      '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>' +
+      (p.signals && p.signals.win_prob != null
+        ? '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('ps_win')) + ': <b>' + Math.round(p.signals.win_prob * 100) + '%</b></div>'
+        : '<div class="gx-pick-conf gx-conf-' + bucket + '"><span class="gx-pick-conf-dot"></span>' + esc(t('pf_conf')) + ': <b>' + esc(confLabel) + '</b></div>') +
       '<div class="gx-pick-odds"><span class="gx-pick-odds-label">' + esc(t('pf_best_odds')) + '</span><span class="gx-pick-odds-val">' + esc(odds) + '</span>' +
       (p.book ? '<span class="gx-pick-book">' + esc(t('pf_at')) + ' ' + bookLogo(p.book) + esc(prettyBook(p.book)) + '</span>' : '') + '</div>' +
       '</div>' +
+      pickSignalsRow(p) +
       (p.odds != null && p.confidence != null ? '<div class="gx-calc-row">' + stakeCalcBtn(p.confidence, Number(p.odds), pickRecText(p), 'gp') + '</div>' : '') +
       '</div>';
+  }
+  // P3 (spec Alexis 17-jul): la confianza habla de la CERTEZA del input/modelo, no sustituye la probabilidad.
+  // Señales: edge estimado (pp vs consenso) · Datos (profundidad/frescura del input) · Calidad (composite).
+  function pickSignalsRow(p) {
+    var sg = p.signals;
+    if (!sg) return '';
+    var dcK = sg.data_confidence === 'high' ? 'pf_conf_high' : sg.data_confidence === 'med' ? 'pf_conf_med' : 'ps_dc_low';
+    var qK = sg.pick_quality === 'strong' ? 'ps_q_strong' : sg.pick_quality === 'marginal' ? 'ps_q_marginal' : 'ps_q_moderate';
+    var parts = [];
+    if (sg.edge_pp != null) parts.push(esc(t('ps_edge')) + ' <b>' + (sg.edge_pp >= 0 ? '+' : '') + Number(sg.edge_pp).toFixed(1) + 'pp</b>');
+    parts.push(esc(t('ps_data')) + ' <b>' + esc(t(dcK)) + '</b>');
+    parts.push(esc(t('ps_quality')) + ' <b class="gx-q-' + esc(sg.pick_quality || 'moderate') + '">' + esc(t(qK)) + '</b>');
+    return '<div class="gx-pick-signals">' + parts.join('<span class="gx-sig-dot">·</span>') + '</div>';
   }
 
   // ---- Oportunidades · Value: OUTRIGHT (campeón del Mundial) — GP% (torneo) vs mercado ----

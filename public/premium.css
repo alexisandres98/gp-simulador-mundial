@@ -1264,3 +1264,10 @@ td .gx-calc-btn span { display: none; }
 .gx-clpct b { color: var(--gx-text); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gx-clrow { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 0; font-size: 12.5px; border-bottom: 1px solid var(--gx-line); }
 .gx-clrow:last-child { border-bottom: 0; }
+
+/* P3: señales de pick (prob/edge/datos/calidad) — la confianza no sustituye la probabilidad */
+.gx-pick-signals{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--tx3,#647a80)}
+.gx-pick-signals b{color:var(--tx,#eaf2f3);font-weight:650}
+.gx-pick-signals .gx-sig-dot{color:var(--tx4,#42555a)}
+.gx-pick-signals .gx-q-strong{color:#1fe3a4}
+.gx-pick-signals .gx-q-marginal{color:#f2c14e}

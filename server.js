@@ -5640,9 +5640,22 @@ const server = http.createServer(async (req, res) => {
       const betaUser = betaGuard(req, res);
       if (!betaUser) return; // ya respondió
       // PICKS DIARIAS (producto): feed EFÍMERO. Solo picks ACTIVE (prepartido/del día); las liquidadas desaparecen
-      // del feed del usuario (el track record queda solo para admin). Forma limpia: un solo "GP" (confianza), sin
-      // exponer model%/mercado%/deltas. Las picks pasadas y el rendimiento NO se sirven aquí por diseño.
+      // del feed del usuario (el track record queda solo para admin).
+      // P3 (17-jul, spec de Alexis): "Confidence" se separa en 4 señales — win_prob (la probabilidad del blend),
+      // edge_pp (estimado vs consenso), data_confidence (certeza del INPUT: profundidad de casas/cuota) y
+      // pick_quality (composite de régimen+edge+profundidad). La confianza habla del input, no sustituye la prob.
       if (p === '/api/beta/picks' && req.method === 'GET') {
+        const pickSignals = (x, { isClub = false } = {}) => {
+          const books = Number(x.books || 0), odds = Number(x.best_odds || 0);
+          const regime = x.regime || (x.family === 'SOLID' || x.family === 'PLAYER' ? 'anchor' : 'edge');
+          let edge = x.edge_pp != null ? Number(x.edge_pp) : null;
+          if (edge == null && x.model_prob != null && x.market_prob != null) edge = +((x.model_prob - x.market_prob) * 100).toFixed(1);
+          const dataConf = !(odds > 1) ? 'low' : books >= 5 ? 'high' : books >= 3 ? 'med' : 'low';
+          const quality = (books < 3 || !(odds > 1) || (regime === 'edge' && edge != null && edge < 3)) ? 'marginal'
+            : ((regime === 'edge' && edge != null && edge >= 4 && books >= 4) || (regime === 'anchor' && books >= 6)) ? 'strong'
+            : 'moderate';
+          return { win_prob: x.confidence != null ? +Number(x.confidence).toFixed(3) : null, edge_pp: edge, regime, data_confidence: dataConf, pick_quality: quality, books };
+        };
         const active = db.dailyPicks.filter(x => x.status === 'ACTIVE')
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
         let items = active.map(x => ({
@@ -5654,6 +5667,7 @@ const server = http.createServer(async (req, res) => {
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
           line_move: x.line_move ? { pp: x.line_move.pp, direction: x.line_move.direction } : null,
           why_es: x.why_es || null, why_en: x.why_en || null,
+          signals: pickSignals(x),
         }));
         // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
         if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);
@@ -5673,6 +5687,7 @@ const server = http.createServer(async (req, res) => {
               player_name: x.player_name || null, player_family: x.player_family || null,
               odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
               why_es: x.why_es || null, why_en: x.why_en || null,
+              signals: pickSignals(x, { isClub: true }),
             }));
           items = items.concat(clubActive);
         }

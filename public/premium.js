@@ -111,7 +111,7 @@
       arch_star: 'Estrella', arch_clinical: 'Finalizador', arch_creator: 'Creador', arch_aerial: 'Amenaza aérea', arch_super_sub: 'Revulsivo', arch_engine: 'Motor', arch_set_piece: 'Balón parado',
       ax_production: 'Peligro', ax_volume: 'Remates', ax_accuracy: 'Puntería', ax_creation: 'Creación', ax_finishing: 'Definición', ax_presence: 'Presencia', ax_aerial: 'Aéreo', ax_attack_share: 'Peso ofensivo',
       pp_radar: 'Radar de scouting', pp_radar_sub: 'vs jugadores de su posición', ft_title: 'Destacados de hoy', ft_goal: 'P(gol)',
-      pp_empty: 'Perfil no disponible', pp_reading: 'Lectura GP', pp_sample: 'Muestra del torneo', pp_min: 'Minutos', pp_apps: 'Titular/PJ', pp_goals: 'Goles', pp_expmin: 'Min. típicos', pp_per90: 'Producción por 90 minutos', pp_shots: 'Remates', pp_sot: 'Al arco', pp_next: 'Próximo partido · proyección', pp_pgoal: 'P(gol)', pp_proj_shots: 'Remates proy.', pp_proj_min: 'Minutos proy.', pp_form: 'Partido a partido', pp_rival: 'Rival', pp_shots_h: 'REM', pp_sot_h: 'ARCO', pp_goals_h: 'GOL', pp_conf_high: 'Confianza alta', pp_conf_med: 'Confianza media', pp_conf_low: 'Confianza baja', pp_finding: 'Hallazgo de inteligencia', sr_players: 'Jugadores', pp_markets: 'Mercados del jugador', pp_market: 'Mercado', pp_best: 'Mejor', pp_implied: 'Implícita', pp_books: 'casas', pp_mk_goal: 'Anota (anytime)', pp_h2h: 'Ante este rival', pp_share: '{pct}% del ataque de su equipo', pp_pctl: 'Top {p}% de su posición',
+      pp_empty: 'Perfil no disponible', pp_reading: 'Lectura GP', pp_sample: 'Muestra del torneo', pp_min: 'Minutos', pp_apps: 'Titular/PJ', pp_goals: 'Goles', pp_expmin: 'Min. típicos', pp_per90: 'Producción por 90 minutos', pp_shots: 'Remates', pp_sot: 'Al arco', pp_next: 'Próximo partido · proyección', pp_pgoal: 'P(gol)', pp_proj_shots: 'Remates proy.', pp_proj_min: 'Minutos proy.', pp_form: 'Partido a partido', pp_rival: 'Rival', pp_shots_h: 'REM', pp_sot_h: 'ARCO', pp_goals_h: 'GOL', pp_conf_high: 'Confianza alta', pp_conf_med: 'Confianza media', pp_conf_low: 'Confianza baja', pp_finding: 'Hallazgo de inteligencia', pp_mindist: 'Minutos · distribución', pp_pstart: 'P(titular)', pp_if_start: 'Si titular', pp_if_bench: 'Si banco', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'tit', sr_players: 'Jugadores', pp_markets: 'Mercados del jugador', pp_market: 'Mercado', pp_best: 'Mejor', pp_implied: 'Implícita', pp_books: 'casas', pp_mk_goal: 'Anota (anytime)', pp_h2h: 'Ante este rival', pp_share: '{pct}% del ataque de su equipo', pp_pctl: 'Top {p}% de su posición',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
@@ -384,7 +384,7 @@
       arch_star: 'Star', arch_clinical: 'Clinical finisher', arch_creator: 'Creator', arch_aerial: 'Aerial threat', arch_super_sub: 'Super sub', arch_engine: 'Engine', arch_set_piece: 'Set piece specialist',
       ax_production: 'Threat', ax_volume: 'Shots', ax_accuracy: 'Accuracy', ax_creation: 'Creation', ax_finishing: 'Finishing', ax_presence: 'Presence', ax_aerial: 'Aerial', ax_attack_share: 'Attack share',
       pp_radar: 'Scouting radar', pp_radar_sub: 'vs players in his position', ft_title: "Today's featured players", ft_goal: 'P(goal)',
-      pp_empty: 'Profile not available', pp_reading: 'GP reading', pp_sample: 'Tournament sample', pp_min: 'Minutes', pp_apps: 'Starts/Apps', pp_goals: 'Goals', pp_expmin: 'Typical min.', pp_per90: 'Output per 90 minutes', pp_shots: 'Shots', pp_sot: 'On target', pp_next: 'Next match · projection', pp_pgoal: 'P(goal)', pp_proj_shots: 'Proj. shots', pp_proj_min: 'Proj. minutes', pp_form: 'Match by match', pp_rival: 'Opponent', pp_shots_h: 'SH', pp_sot_h: 'SOT', pp_goals_h: 'G', pp_conf_high: 'High confidence', pp_conf_med: 'Medium confidence', pp_conf_low: 'Low confidence', pp_finding: 'Intelligence finding', sr_players: 'Players', pp_markets: 'Player markets', pp_market: 'Market', pp_best: 'Best', pp_implied: 'Implied', pp_books: 'books', pp_mk_goal: 'To score (anytime)', pp_h2h: 'Vs this opponent', pp_share: '{pct}% of team attack', pp_pctl: 'Top {p}% of position',
+      pp_empty: 'Profile not available', pp_reading: 'GP reading', pp_sample: 'Tournament sample', pp_min: 'Minutes', pp_apps: 'Starts/Apps', pp_goals: 'Goals', pp_expmin: 'Typical min.', pp_per90: 'Output per 90 minutes', pp_shots: 'Shots', pp_sot: 'On target', pp_next: 'Next match · projection', pp_pgoal: 'P(goal)', pp_proj_shots: 'Proj. shots', pp_proj_min: 'Proj. minutes', pp_form: 'Match by match', pp_rival: 'Opponent', pp_shots_h: 'SH', pp_sot_h: 'SOT', pp_goals_h: 'G', pp_conf_high: 'High confidence', pp_conf_med: 'Medium confidence', pp_conf_low: 'Low confidence', pp_finding: 'Intelligence finding', pp_mindist: 'Minutes · distribution', pp_pstart: 'P(starter)', pp_if_start: 'If starter', pp_if_bench: 'From bench', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'st', sr_players: 'Players', pp_markets: 'Player markets', pp_market: 'Market', pp_best: 'Best', pp_implied: 'Implied', pp_books: 'books', pp_mk_goal: 'To score (anytime)', pp_h2h: 'Vs this opponent', pp_share: '{pct}% of team attack', pp_pctl: 'Top {p}% of position',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
@@ -2645,7 +2645,7 @@
           '<div class="gx-mod-body"><div class="gx-radar-wrap">' + gxRadar(d.scout.axes) + '</div>' +
           (sLis || lLi ? '<ul class="gx-scout-read">' + sLis + lLi + '</ul>' : '') + '</div></div>';
       }
-      mv.innerHTML = mvShell(head + finding + scoutBlock + reasons + proj + mkts + h2h + nums + form);
+      mv.innerHTML = mvShell(head + finding + scoutBlock + reasons + proj + minutesDistPanel(d.minutes_dist) + mkts + h2h + nums + form);
       bindBack();
     });
   }
@@ -3282,6 +3282,17 @@
     return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('layout-grid') + esc(t('st_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t(subKey)) + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
   }
 
+  // P2: distribución de minutos — panel COMPARTIDO (perfil del Mundial + perfil de club, mismo componente)
+  function minutesDistPanel(md) {
+    if (!md) return '';
+    var s = function (label, val) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + val + '</b></div>'; };
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('clock') + esc(t('pp_mindist')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + md.starts + '/' + md.apps + ' ' + esc(t('pp_apps').toLowerCase()) + '</span></div><div class="gx-mod-body"><div class="gx-hero-grid" style="margin:0">' +
+      s(t('pp_pstart'), pct0(md.p_start)) +
+      s(t('pp_if_start'), md.exp_min_start + "'") +
+      s(t('pp_if_bench'), md.exp_min_sub != null ? md.exp_min_sub + "'" : '—') +
+      s(t('pp_p60'), pct0(md.p60)) + s(t('pp_p75'), pct0(md.p75)) + s(t('pp_p90'), pct0(md.p90)) +
+      '</div></div></div>';
+  }
   function mvIntel(intel, header) {
     var riskChip = function (r) {
       if (!r) return '';
@@ -3297,7 +3308,10 @@
         var whyHtml = why ? '<div class="gx-dim" style="font-size:10px;grid-column:1/-1;padding:1px 0 3px">' + esc(why) + '</div>' : '';
         // p.href (clubes) pisa la ruta del perfil (#cplayer/liga-equipo-pid); default = ruta del Mundial, byte-idéntico.
         var nameHtml = p.href ? '<a href="' + esc(p.href) + '" style="color:inherit;text-decoration:none"><b>' + esc(p.name) + '</b></a>' : (p.pid ? '<a href="#player/' + esc(p.pid) + '" style="color:inherit;text-decoration:none"><b>' + esc(p.name) + '</b></a>' : '<b>' + esc(p.name) + '</b>');
-        return '<div class="gx-intel-row"><span class="n">' + nameHtml + '<i class="gx-dim">' + esc(p.pos || '') + '</i>' + riskChip(p.risk) + '</span><span class="v gx-mono gx-pos">' + pct0(p.anytime) + '</span><span class="v gx-mono">' + p.shots + '</span>' + whyHtml + '</div>';
+        // P2: mini-chip de minutos (P titular · min esperados) cuando la distribución viaja en la fila
+        var md = p.minutes_dist;
+        var mdChip = md ? '<i class="gx-dim" style="font-size:10px">' + Math.round(md.p_start * 100) + '% ' + esc(t('mi_start_chip')) + ' · ' + md.exp_min + '\'</i>' : '';
+        return '<div class="gx-intel-row"><span class="n">' + nameHtml + '<i class="gx-dim">' + esc(p.pos || '') + '</i>' + mdChip + riskChip(p.risk) + '</span><span class="v gx-mono gx-pos">' + pct0(p.anytime) + '</span><span class="v gx-mono">' + p.shots + '</span>' + whyHtml + '</div>';
       }).join('');
       var radar = (d.radar && d.radar.players || []).map(function (x) {
         var why = LANG === 'en' ? x.why_en : x.why_es;
@@ -4461,7 +4475,7 @@
           npStat(t('pp_proj_min'), np.minutes != null ? np.minutes + "'" : '—') +
           '</div></div></div>';
       }
-      intelHtml = radar + nextHtml + stats + read + mbm;
+      intelHtml = radar + nextHtml + minutesDistPanel(p.minutes_dist) + stats + read + mbm;
     } else {
       intelHtml = '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-text3);line-height:1.5">' + esc(t('cl_player_soon')) + '</div></div>';
     }

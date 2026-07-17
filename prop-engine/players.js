@@ -36,10 +36,11 @@ function fitPlayers(matches, opts = {}) {
       const a = acc[p.pid] || (acc[p.pid] = {
         pid: p.pid, name: p.name, team: p.team, pos: p.pos || 'M',
         min: 0, xg: 0, npxg: 0, shots: 0, sot: 0, goals: 0, starts: 0, apps: 0, minAsStarter: 0, starterApps: 0,
-        xa: 0, assists: 0, fouls: 0, yc: 0, rc: 0,
+        xa: 0, assists: 0, fouls: 0, yc: 0, rc: 0, minsStarter: [], minsSub: [],
       });
       a.min += p.min; a.apps++;
-      if (p.started) { a.starts++; a.starterApps++; a.minAsStarter += p.min; }
+      if (p.started) { a.starts++; a.starterApps++; a.minAsStarter += p.min; a.minsStarter.push(p.min || 0); }
+      else a.minsSub.push(p.min || 0);
       a.xg += p.xg || 0; a.npxg += p.npxg || 0; a.shots += p.shots || 0; a.sot += p.sot || 0; a.goals += p.goals || 0;
       a.xa += p.xa || 0; a.assists += p.assists || 0; a.fouls += p.fouls || 0; a.yc += p.yc || 0; a.rc += p.rc || 0;
       a.pos = p.pos || a.pos; a.team = p.team;
@@ -61,6 +62,7 @@ function fitPlayers(matches, opts = {}) {
       sot90: rate(a.sot, prior.sot90),
       xa90: rate(a.xa, prior.xa90), // creación: mismo shrinkage por posición que xg90 (mercado de assists)
       exp_minutes_start: a.starterApps ? clamp(a.minAsStarter / a.starterApps, 45, 90) : 78,
+      mins_starter: a.minsStarter, mins_sub: a.minsSub,
       reliable: a.min >= cfg.MIN_MINUTES_SAMPLE,
     };
   }
@@ -97,6 +99,32 @@ function projectPlayer(fitres, pid, { teamLambda = null, willStart = true, minut
   };
 }
 
+// ── P2: MINUTOS COMO DISTRIBUCIÓN (empírica por aparición) ─────────────────────────────────────────────────
+// P(titular) + minutos esperados si titular / si banco + P(juega 60+/75+/90). Capa DESCRIPTIVA aditiva:
+// projectPlayer sigue usando exp_minutes_start para las picks (no se toca el modelo sin backtest).
+// Con muestra parcial se computa con lo que haya (los null marcan lo que aún no se observó).
+function minutesDist(pl) {
+  if (!pl || !pl.apps) return null;
+  const st = pl.mins_starter || [], sb = pl.mins_sub || [];
+  const pStart = pl.starts / pl.apps;
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const expStart = st.length ? mean(st) : (pl.exp_minutes_start || 78);
+  const expSub = sb.length ? mean(sb) : null;
+  const pOver = th => {
+    const frS = st.length ? st.filter(m => m >= th).length / st.length : (expStart >= th ? 1 : 0);
+    const frB = sb.length ? sb.filter(m => m >= th).length / sb.length : 0;
+    return clamp(pStart * frS + (1 - pStart) * frB, 0, 1);
+  };
+  return {
+    apps: pl.apps, starts: pl.starts,
+    p_start: +pStart.toFixed(3),
+    exp_min_start: Math.round(expStart),
+    exp_min_sub: expSub != null ? Math.round(expSub) : null,
+    exp_min: Math.round(pStart * expStart + (1 - pStart) * (expSub || 0)),
+    p60: +pOver(60).toFixed(3), p75: +pOver(75).toFixed(3), p90: +pOver(90).toFixed(3),
+  };
+}
+
 // Proyección de un EQUIPO: los N jugadores con mayor P(gol) dado el once probable.
 // starters: array de pids (once confirmado/probable) o null → usa los que más arrancan.
 function projectTeam(fitres, teamCode, { teamLambda = null, starters = null, top = 8 } = {}) {
@@ -111,4 +139,4 @@ function projectTeam(fitres, teamCode, { teamLambda = null, starters = null, top
   return rows.slice(0, top);
 }
 
-module.exports = { fitPlayers, projectPlayer, projectTeam, POS_PRIOR, DEFAULTS };
+module.exports = { fitPlayers, projectPlayer, projectTeam, minutesDist, POS_PRIOR, DEFAULTS };

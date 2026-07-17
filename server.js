@@ -5952,6 +5952,7 @@ const server = http.createServer(async (req, res) => {
             available: true,
             profile: { pid, name: pl.name, team: pl.team, pos: pl.pos, photo: (ph && ph.photo) || null },
             sample: { minutes: pl.minutes, apps: pl.apps, starts: pl.starts, goals: pl.goals, assists: pl.assists || 0, yc: pl.yc || 0, rc: pl.rc || 0, exp_minutes_start: Math.round(pl.exp_minutes_start) },
+            minutes_dist: require('./prop-engine/players').minutesDist(pl), // P2: P(titular) + min si titular/banco + P(60+/75+/90)
             rates90: { xg: +pl.xg90.toFixed(3), shots: +pl.shots90.toFixed(2), sot: +pl.sot90.toFixed(2), xa: +(pl.xa90 || 0).toFixed(3) },
             percentiles, attack_share_pct: share, scout,
             form: form.slice(0, 6),
@@ -6054,6 +6055,7 @@ const server = http.createServer(async (req, res) => {
                 pid: r.pid, name: r.name, pos: r.pos, anytime: +r.anytime_goal.toFixed(3), shots: +r.shots_match.toFixed(1),
                 sot_o05: +r.sot_over_0_5.toFixed(3), risk: (avail[r.pid] && avail[r.pid].status) || null,
                 role: pi ? pi.role : null, confidence: pi ? pi.confidence : null, reasons: pi ? pi.reasons : [],
+                minutes_dist: players.minutesDist(PF.players[r.pid]), // P2
               };
             });
             const asmts = assessPlayers(((db.observations[code] || {}).signals) || []);
@@ -8474,6 +8476,7 @@ const server = http.createServer(async (req, res) => {
                     shots: +Number(r.shots_match || 0).toFixed(1), sot_o05: r.sot_over_0_5 != null ? +Number(r.sot_over_0_5).toFixed(3) : null,
                     risk: (asmts[r.pid] && asmts[r.pid].status) || null,
                     role: pi ? pi.role : null, confidence: pi ? pi.confidence : null, reasons: pi ? pi.reasons : [],
+                    minutes_dist: players.minutesDist(fitL.players[r.pid]), // P2
                   };
                 });
                 const flagged = Object.values(asmts).filter(x => x.prob_miss > 0).map(x => {
@@ -8703,6 +8706,9 @@ const server = http.createServer(async (req, res) => {
         national_team: p0.national_team || null, first_name: p0.first_name || null, last_name: p0.last_name || null,
         stats_available: !!(intel && intel.stats_available),
         avail: clubPlayerAvail(teamId, pid), // F2.3: disponibilidad narrada del observer (o null)
+        minutes_dist: (() => { // P2: P(titular) + min si titular/banco + P(60+/75+/90) — mismo minutesDist del Mundial
+          try { const fit = require('./player-intel/clubsFit').leagueFit(league); return fit ? require('./prop-engine/players').minutesDist(fit.players[pid]) : null; } catch { return null; }
+        })(),
         next_projection: (() => { // paridad Mundial "Next match · projection": P(gol)/remates/xG/min del PRÓXIMO partido
           try {
             if (!(intel && intel.stats_available)) return null;

@@ -6551,8 +6551,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/me/bets' && (req.method === 'GET' || req.method === 'POST')) {
       if (!myBetsOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
+      if (!featFor('GP_MY_BETS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin: invisible (incluso anónimo)
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
-      if (!featFor('GP_MY_BETS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       db.userBets = db.userBets || {};
       const list = db.userBets[u.email] = db.userBets[u.email] || [];
       if (req.method === 'POST') {
@@ -6590,8 +6590,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/me/books' && req.method === 'POST') {
       if (!myBooksOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
+      if (!featFor('GP_MY_BOOKS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin: invisible (incluso anónimo)
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
-      if (!featFor('GP_MY_BOOKS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       const b = await readBody(req).catch(() => ({}));
       const books = Array.isArray(b.books) ? b.books.map(x => String(x).toLowerCase().slice(0, 40)).filter(x => /^[a-z0-9_ .-]+$/.test(x)).slice(0, 30) : [];
       db.users[u.email].my_books = books;
@@ -6602,8 +6602,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/me/watches' && (req.method === 'GET' || req.method === 'POST')) {
       if (!watchPriceOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
+      if (!featFor('GP_WATCH_PRICE_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin: invisible (incluso anónimo)
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
-      if (!featFor('GP_WATCH_PRICE_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       db.priceWatches = db.priceWatches || [];
       if (req.method === 'POST') {
         const b = await readBody(req).catch(() => ({}));
@@ -6634,8 +6634,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/me/brief' && (req.method === 'GET' || req.method === 'POST')) {
       if (!dailyBriefOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
+      if (!featFor('GP_DAILY_BRIEF_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin: invisible (incluso anónimo)
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
-      if (!featFor('GP_DAILY_BRIEF_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       if (req.method === 'POST') {
         const b = await readBody(req).catch(() => ({}));
         db.users[u.email].brief_email = !!b.email_opt_in;

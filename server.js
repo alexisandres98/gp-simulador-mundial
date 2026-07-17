@@ -5648,6 +5648,8 @@ const server = http.createServer(async (req, res) => {
               home: x.event.home, away: x.event.away,
               home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
               selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: null,
+              // PLAYER: sin estos campos la card caía al template de "shots" con {player}/{line} vacíos
+              player_name: x.player_name || null, player_family: x.player_family || null,
               odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
               why_es: x.why_es || null, why_en: x.why_en || null,
             }));

@@ -199,7 +199,11 @@ function propPicks(propMarkets, cfg) {
     if (edge < cfg.propsMinEdgePp) blockers.push('LOW_EDGE');
     if (books < cfg.propsMinBooks) blockers.push('FEW_BOOKS');
     if (!(odds > 1)) blockers.push('NO_ODDS');
-    if (odds > 1 && (odds < cfg.propsOddsMin || odds > cfg.propsOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
+    // rango de cuota: en MONITOREO se amplía el piso (1.25 vs 1.35) — el track existe para capturar las
+    // convicciones fuertes del modelo (córners under en líneas altas = favoritos legítimos) y validarlas, no
+    // para publicar valor; el tope se mantiene (colas largas siguen siendo ruido).
+    const oddsMin = cfg.propsMonitoringMode ? (cfg.propsOddsMinMonitor || 1.25) : cfg.propsOddsMin;
+    if (odds > 1 && (odds < oddsMin || odds > cfg.propsOddsMax)) blockers.push('ODDS_OUT_OF_RANGE');
     // REC 2: gate precio-vs-consenso. La cuota justa del lado = 1/marketProb (consenso no-vig). Si la mejor
     // cuota disponible es peor que la justa, estás pagando de más → no publicar (aunque el modelo vea edge).
     const mkt = Number(g.marketProb || 0);

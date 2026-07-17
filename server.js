@@ -4140,12 +4140,15 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
         const model = side === 'over' ? (ou.over != null ? ou.over : ou.o) : (ou.under != null ? ou.under : ou.u);
         const market = cons.fair[side]; if (market == null) continue;
         const b = bestOf(side);
+        // régimen dual: eficiencia del mercado del lado (profundidad + dispersión de precios entre casas)
+        const sidePrices = fresh.filter(q => q.outcome === side).map(q => q.odds_decimal);
         goalMarkets.push({
           eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff,
           marketId: `TOTAL_GOALS_${side.toUpperCase()}_${String(mk.line).replace('.', '_')}`,
           family: 'match_total', side, line: mk.line,
           modelProb: model, marketProb: market, edgePp: model - market,
           bestOdds: b.odds, bestBook: b.book, books: booksOf(side), familyApproved: famApproved,
+          efficiency: require('./pick-engine/efficiency').marketEfficiency({ books: booksOf(side), prices: sidePrices }),
           lh: +(l[0] * fH).toFixed(2), la: +(l[1] * fA).toFixed(2), // λ del modelo (para la narrativa)
         });
         out.goal_markets++; st.totals++;
@@ -4277,7 +4280,10 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // esté shadow (el estado del gate viaja en la pick; el público no ve nada de esto). playerMinBooks:1 = los
   // props de estas ligas cotizan en 1-6 casas hoy (EU llega en agosto); el conteo de casas viaja en la pick.
   const { curate } = require('./pick-engine/curate');
-  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 1 } });
+  // goalsAnchorEnabled:true (17-jul, régimen dual de Alexis): en mercados de goles EFICIENTES el camino
+  // ANCLA sigue el lean del consenso cuando el modelo confirma — picks "ganadoras con poco edge" en vez
+  // de perseguir edge de modelo en mercados afilados. El Mundial no toca este flag (default false).
+  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 1, goalsAnchorEnabled: true } });
   out.player_markets = playerMarkets.length;
   out.prop_markets = propMarkets.length;
   out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };
@@ -4285,7 +4291,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   if (dryRun) {
     out.candidates = {
       solid: res.all.solid.map(s => ({ league: (events.find(e => e.eventId === s.eventId) || {}).league, home: s.home, away: s.away, selection: s.selection, odds: s.bestOdds, conf: s.confidence != null ? +s.confidence.toFixed(3) : null, eligible: s.eligible, blockers: s.blockers })),
-      goals: res.all.goals.map(g => ({ league: (goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, eligible: g.eligible, blockers: g.blockers })),
+      goals: res.all.goals.map(g => ({ league: (goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, regime: g.regime, efficiency: g.efficiency, eligible: g.eligible, blockers: g.blockers })),
       props: res.all.props.map(g => ({ league: (propMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, books: g.books, eligible: g.eligible, blockers: g.blockers })),
     };
     return out;
@@ -4312,6 +4318,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     model_prob: fields.model_prob != null ? fields.model_prob : null, market_prob: fields.market_prob != null ? fields.market_prob : null,
     confidence: fields.confidence != null ? fields.confidence : null, edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
     why_es: fields.why && fields.why.es, why_en: fields.why && fields.why.en,
+    regime: fields.regime || null, // 'anchor' | 'edge' — régimen dual (análisis del track privado)
     status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
   });
   const fresh = [];
@@ -4321,18 +4328,32 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       { code: 'MARKET_ANCHOR', w: 3, books: s.books },
       ...(s.modelProb > s.marketProb ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : []),
     ]);
-    fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why }, s.eventId + '|SOLID|' + s.selection));
+    fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why, regime: 'anchor' }, s.eventId + '|SOLID|' + s.selection));
   }
+  // 1 GOALS por evento: gana la de mayor edge; entre anclas (edge chico) gana la de mayor confianza.
   const bestGoalByEvent = {};
-  for (const g of res.eligible.goals) { const cur = bestGoalByEvent[g.eventId]; if (!cur || g.edgePp > cur.edgePp) bestGoalByEvent[g.eventId] = g; }
+  for (const g of res.eligible.goals) {
+    const cur = bestGoalByEvent[g.eventId];
+    if (!cur) { bestGoalByEvent[g.eventId] = g; continue; }
+    const better = (g.regime === 'edge' && cur.regime !== 'edge') ? true
+      : (g.regime === cur.regime ? (g.regime === 'edge' ? g.edgePp > cur.edgePp : g.confidence > cur.confidence) : false);
+    if (better) bestGoalByEvent[g.eventId] = g;
+  }
   for (const g of Object.values(bestGoalByEvent)) {
     const gm = goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
-    const why = compose([
-      ...(g.side === 'over' && gm.lh != null ? [{ code: 'GOALS_VOLUME_BOTH', w: 3, h: gm.lh, a: gm.la }] : []),
-      ...(g.side === 'under' ? [{ code: 'GOALS_DEFENSES_TIGHT', w: 3 }] : []),
-      ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
-    ]);
-    fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why }, g.eventId + '|GOALS|' + g.marketId));
+    // narrativa por régimen: la ANCLA se explica como ancla (consenso + modelo confirma), no como edge
+    const why = g.regime === 'anchor'
+      ? compose([
+          { code: 'MARKET_ANCHOR', w: 3, books: g.books },
+          ...(Math.abs(g.modelProb - g.marketProb) <= 0.05 ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : []),
+          ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 1 }] : []),
+        ])
+      : compose([
+          ...(g.side === 'over' && gm.lh != null ? [{ code: 'GOALS_VOLUME_BOTH', w: 3, h: gm.lh, a: gm.la }] : []),
+          ...(g.side === 'under' ? [{ code: 'GOALS_DEFENSES_TIGHT', w: 3 }] : []),
+          ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
+        ]);
+    fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why, regime: g.regime }, g.eventId + '|GOALS|' + g.marketId));
   }
   // CORNERS/CARDS (F3.4): 1 pick por (evento, familia), la de mayor edge — mismo criterio que GOALS.
   const bestProp = {};

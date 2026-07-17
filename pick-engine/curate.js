@@ -26,6 +26,19 @@ const CONFIG = {
   goalsMinBooks: 3,
   goalsRequireApprovedFamily: true, // solo familias aprobadas en calibración (TOTALS/TEAM_TOTALS/WINNING_MARGIN).
 
+  // RÉGIMEN DUAL en GOLES (17-jul, regla de Alexis validada con el backtest del historial del Mundial:
+  // ancla 67%/+19% ROI, acuerdo moderado 73%/+37%, "edge fuerte" >7pp 59%/+11%; Brier mercado 0.220 <
+  // modelo 0.222 → en mercados eficientes el mercado es el mejor estimador). Camino ANCLA: en mercados
+  // de goles PROFUNDOS/eficientes, la pick sigue el lean claro del consenso cuando el modelo CONFIRMA
+  // (coherencia, no liderazgo) y la mejor cuota no está por debajo de la justa (line shopping honesto).
+  // No depende del skill del modelo de goles → no exige familyApproved (el gate viaja igual en la pick
+  // para el monitoreo). OFF por default = Mundial byte-idéntico.
+  goalsAnchorEnabled: false,
+  goalsAnchorMinBooks: 4,           // ancla solo con mercado profundo (la eficiencia es el requisito)
+  goalsAnchorMinMarketProb: 0.55,   // solo lados con lean CLARO del consenso (no volados 50/50)
+  goalsAnchorMaxDivergencePp: 0.05, // el modelo debe CONFIRMAR dentro de ±5pp (si discute fuerte, fuera)
+  alphaGoalsAnchor: 0.25,           // confianza de la ancla: el mercado domina (mismo espíritu que alpha1x2)
+
   // Familia COMBO (pata 1X2 sólida + pata goles).
   combosEnabled: true,
   comboMinConfidence: 0.28,    // confianza combinada mínima (dos patas → más baja por naturaleza).
@@ -101,19 +114,40 @@ function goalPicks(goalMarkets, cfg) {
     const books = Number(g.books || 0);
     const edge = Number(g.edgePp || 0);     // edge en fracción (0.03 = 3pp)
     const odds = Number(g.bestOdds || 0);
-    const blockers = [];
-    if (cfg.goalsRequireApprovedFamily && !g.familyApproved) blockers.push('FAMILY_NOT_APPROVED');
-    if (edge < cfg.goalsMinEdgePp) blockers.push('LOW_EDGE');
-    if (books < cfg.goalsMinBooks) blockers.push('FEW_BOOKS');
-    if (!(odds > 1)) blockers.push('NO_ODDS');
-    const confidence = blend(Number(g.modelProb), Number(g.marketProb), cfg.alphaGoals);
+    const model = Number(g.modelProb), market = Number(g.marketProb);
+    // ── camino EDGE (el del Mundial): el modelo lidera con divergencia mínima ──
+    const edgeBlockers = [];
+    if (cfg.goalsRequireApprovedFamily && !g.familyApproved) edgeBlockers.push('FAMILY_NOT_APPROVED');
+    if (edge < cfg.goalsMinEdgePp) edgeBlockers.push('LOW_EDGE');
+    if (books < cfg.goalsMinBooks) edgeBlockers.push('FEW_BOOKS');
+    if (!(odds > 1)) edgeBlockers.push('NO_ODDS');
+    // ── camino ANCLA (régimen dual): en mercados EFICIENTES el consenso manda; el modelo confirma ──
+    let anchorBlockers = null;
+    if (cfg.goalsAnchorEnabled) {
+      anchorBlockers = [];
+      const effRegime = g.efficiency && g.efficiency.regime;
+      const deep = effRegime === 'efficient' || (effRegime == null && books >= cfg.goalsAnchorMinBooks);
+      if (!deep) anchorBlockers.push('MARKET_NOT_EFFICIENT');
+      if (!(market >= cfg.goalsAnchorMinMarketProb)) anchorBlockers.push('NO_CLEAR_LEAN');
+      if (Math.abs(model - market) > cfg.goalsAnchorMaxDivergencePp) anchorBlockers.push('MODEL_DISAGREES');
+      if (!(odds > 1)) anchorBlockers.push('NO_ODDS');
+      // line shopping honesto: la mejor cuota no puede estar por debajo de la justa del consenso
+      if (odds > 1 && market > 0 && market < 1 && odds < 1 / market) anchorBlockers.push('BELOW_CONSENSUS_PRICE');
+    }
+    const edgeOk = edgeBlockers.length === 0;
+    const anchorOk = anchorBlockers != null && anchorBlockers.length === 0;
+    // regime: 'edge' si el modelo lidera con las reglas del Mundial; 'anchor' si entra por el consenso.
+    const regime = edgeOk ? 'edge' : anchorOk ? 'anchor' : null;
+    const confidence = blend(model, market, regime === 'anchor' ? cfg.alphaGoalsAnchor : cfg.alphaGoals);
     out.push({
       family: 'GOALS', eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,
       marketId: g.marketId, goalFamily: g.family, side: g.side, line: g.line,
-      modelProb: Number(g.modelProb), marketProb: Number(g.marketProb), confidence,
+      modelProb: model, marketProb: market, confidence,
       edgePp: pp(edge), bestOdds: odds, bestBook: g.bestBook || null, books,
-      divergencePp: pp(Math.abs(Number(g.modelProb) - Number(g.marketProb))),
-      eligible: blockers.length === 0, blockers,
+      divergencePp: pp(Math.abs(model - market)),
+      regime, efficiency: g.efficiency || null,
+      eligible: regime != null,
+      blockers: regime != null ? [] : (anchorBlockers != null ? [...new Set(edgeBlockers.concat(anchorBlockers))] : edgeBlockers),
     });
   }
   return out;

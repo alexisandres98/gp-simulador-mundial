@@ -4731,6 +4731,44 @@ function myBetsStats(list) {
 }
 // ===== F2 — MIS CASAS (flag GP_MY_BOOKS_ENABLED): las casas del usuario filtran feed/value/arb en el cliente =
 function myBooksOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_MY_BOOKS_ENABLED || '').trim()); }
+// Índice "qué casas cotizan cada pick": UNA query sobre sportsbook_goal_quote_current para los eventos de las
+// picks activas (frescura 48h), agrupada por (familia, línea, lado, scope) → books_list por pick en el feed.
+// El cliente filtra "solo mis casas" con esto. Memo 5 min. Pick sin filas (p.ej. SOLID del Mundial, cuya serie
+// vive en goal_value_shadow) → books_list null = el filtro NO la oculta (desconocido ≠ no disponible).
+let _booksIdx = { at: 0, map: null };
+async function picksBooksIndex() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return {};
+  if (_booksIdx.map && Date.now() - _booksIdx.at < 5 * 60e3) return _booksIdx.map;
+  const ceids = [...new Set([...(db.dailyPicks || []), ...(db.clubDailyPicks || [])]
+    .filter(x => x.status === 'ACTIVE' && x.event && x.event.canonical_event_id)
+    .map(x => x.event.canonical_event_id))];
+  const map = {};
+  if (ceids.length) {
+    const r = await dbc.query(
+      `SELECT canonical_event_id ceid, market_family fam, line::float line, lower(side) side, team_scope scope,
+              array_agg(DISTINCT sportsbook_code) books
+         FROM sportsbook_goal_quote_current
+        WHERE canonical_event_id = ANY($1) AND observed_at > now() - interval '48 hours'
+        GROUP BY 1,2,3,4,5`, [ceids]).catch(() => ({ rows: [] }));
+    for (const row of r.rows) (map[row.ceid] = map[row.ceid] || []).push({ fam: row.fam, line: row.line, side: row.side, scope: row.scope, books: row.books });
+  }
+  _booksIdx = { at: Date.now(), map };
+  return map;
+}
+function booksListFor(map, x) {
+  const ceid = x.event && x.event.canonical_event_id;
+  const rows = ceid && map[ceid];
+  if (!rows || !rows.length) return null;
+  const eq = (a, b) => a != null && b != null && Math.abs(Number(a) - Number(b)) < 0.01;
+  let hit = null;
+  if (x.family === 'SOLID') hit = rows.find(r => r.fam === 'match_winner' && r.side === String(x.selection_code || '').toLowerCase());
+  else if (x.family === 'GOALS') hit = rows.find(r => r.fam === 'match_total' && r.side === String(x.side || '').toLowerCase() && eq(r.line, x.line));
+  else if (x.family === 'CORNERS') hit = rows.find(r => r.fam === 'corners_total' && r.side === String(x.side || '').toLowerCase() && eq(r.line, x.line));
+  else if (x.family === 'CARDS') hit = rows.find(r => r.fam === 'cards_total' && r.side === String(x.side || '').toLowerCase() && eq(r.line, x.line));
+  else if (x.family === 'PLAYER') hit = rows.find(r => r.fam === x.player_family && r.scope === x.pid);
+  return hit ? hit.books : null;
+}
 // ===== F3 — WATCH PRICE (flag GP_WATCH_PRICE_ENABLED): alerta cuando la mejor cuota alcanza el objetivo ======
 // El watch se ancla a una PICK activa (su mercado ya lo observa el sweep → cuotas frescas en Postgres). El
 // chequeo corre en el ciclo de 15min con la MISMA fuente del cierre oficial (sportsbook_goal_quote_current);
@@ -5906,6 +5944,12 @@ function buildChampionMarkets(mc) {
 // Frescura propia (75 min): el sweep de clubes corre ~60 min (presupuesto de créditos), no cada 20 como la casa.
 let _clubsScanCache = { at: 0, data: null, running: null };
 function clubsShadowFlagOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim()); }
+// FUSIÓN (lanzamiento post-Mundial): GP_CLUBS_PUBLIC_ENABLED=true abre TODAS las superficies de clubes a
+// cualquier usuario con sesión (partidos/equipos/jugadores/cockpit/picks/value/arb/evolución/brackets).
+// Off (default) = comportamiento shadow admin-only intacto. Un solo flag enciende la fusión mañana.
+function clubsPublicOn() { return clubsShadowFlagOn() && /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_PUBLIC_ENABLED || '').trim()); }
+// Gate de sesión para /api/clubs/*: admin siempre; usuario logueado cuando la fusión está abierta.
+function clubsAccessOk(sessEmail) { return !!sessEmail && (isAdmin(sessEmail) || clubsPublicOn()); }
 async function getClubsScan() {
   if (!clubsShadowFlagOn()) return null;
   const events = db.clubsQuoteEvents || {};
@@ -6011,6 +6055,8 @@ const server = http.createServer(async (req, res) => {
         };
         const active = db.dailyPicks.filter(x => x.status === 'ACTIVE')
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
+        // F2 Mis casas: qué casas cotizan cada pick (una query memoizada) → el cliente filtra "solo mis casas"
+        const bmap = await picksBooksIndex().catch(() => ({}));
         let items = active.map(x => ({
           pick_id: x.pick_id, family: x.family, event_id: x.event.is_canonical ? x.event.canonical_event_id : null,
           home: x.event.home, away: x.event.away,
@@ -6021,16 +6067,23 @@ const server = http.createServer(async (req, res) => {
           line_move: x.line_move ? { pp: x.line_move.pp, direction: x.line_move.direction } : null,
           why_es: x.why_es || null, why_en: x.why_en || null,
           signals: pickSignals(x),
+          books_list: booksListFor(bmap, x),
         }));
         // PROPS admin-first: CORNERS/CARDS/PLAYER solo visibles para admin hasta GP_PROPS_PICKS_PUBLIC=true.
         if (!propsPicksPublic() && !(betaUser && betaUser.isAdmin)) items = items.filter(f => PROP_FAMS.indexOf(f.family) < 0);
         if (!(betaUser && betaUser.isAdmin)) items = items.filter(f => EXPERIMENT_FAMS.indexOf(f.family) < 0); // experimento: solo admin, siempre
-        // F3.3: PICKS DE CLUBES (shadow) — SOLO admin real, sin ?asplan= (no-admins byte-idénticos). Mismo shape
-        // + competition_name (chip de liga) + club_eid (el click abre el cockpit de club).
-        if (betaUser && betaUser.isAdmin && !url.searchParams.get('asplan') && clubsShadowFlagOn()) {
-          const clubActive = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE')
-            .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
-            .map(x => ({
+        // F3.3: PICKS DE CLUBES — admin siempre; público cuando GP_CLUBS_PUBLIC_ENABLED=true (FUSIÓN post-Mundial).
+        // Para NO-admins se aplican los MISMOS filtros de arriba (props/experimentos fuera salvo flag público) y
+        // además fuera las picks regime:'monitor' (existen para el track privado, jamás para el feed público).
+        if (betaUser && (betaUser.isAdmin || clubsPublicOn()) && !url.searchParams.get('asplan') && clubsShadowFlagOn()) {
+          let clubActive = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE')
+            .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
+          if (!betaUser.isAdmin) {
+            clubActive = clubActive.filter(x => x.regime !== 'monitor');
+            if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
+            clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
+          }
+          const clubItems = clubActive.map(x => ({
               pick_id: x.pick_id, family: x.family, event_id: null, club_eid: x.event.club_eid || null,
               competition_name: x.competition_name || null,
               home: x.event.home, away: x.event.away,
@@ -6041,8 +6094,9 @@ const server = http.createServer(async (req, res) => {
               odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
               why_es: x.why_es || null, why_en: x.why_en || null,
               signals: pickSignals(x, { isClub: true }),
+              books_list: booksListFor(bmap, x),
             }));
-          items = items.concat(clubActive);
+          items = items.concat(clubItems);
           // P5.1 (spec Alexis): CORRELACIÓN AUTOMÁTICA de picks del mismo evento (ML + Goles) — ρ real desde
           // la matriz de marcadores con las λ del cruce (mismo goal engine del pipeline). El cliente convierte
           // ρ en guía de stake combinado. Memo 10min por evento; solo clubes (los pares vivos hoy).
@@ -6460,7 +6514,7 @@ const server = http.createServer(async (req, res) => {
         // preview ?asplan= (la vista "como plan X" debe ser la del usuario normal). Scan separado → el payload
         // de no-admins es byte-idéntico. Los items de clubes viajan con competition/competition_name (liga) y
         // team_ids null (el cliente cae a nombres crudos; la card no navega, informativa como los sintéticos).
-        if (dto.available && betaUser.isAdmin && clubsShadowFlagOn() && !url.searchParams.get('asplan')) {
+        if (dto.available && (betaUser.isAdmin || clubsPublicOn()) && clubsShadowFlagOn() && !url.searchParams.get('asplan')) {
           try {
             const cs = await getClubsScan();
             if (cs) {
@@ -6654,7 +6708,7 @@ const server = http.createServer(async (req, res) => {
         // FASE CLUBES en SHADOW dentro de la plataforma principal (decisión 13-jul: extensión, no página
         // aparte): solo ADMIN + flag ven las superficies de clubes; para todos los demás la plataforma es
         // byte-idéntica hasta la fusión post-Mundial.
-        clubs_shadow: !!(u.isAdmin && /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())),
+        clubs_shadow: !!(clubsShadowFlagOn() && (u.isAdmin || clubsPublicOn())), // FUSIÓN: público con GP_CLUBS_PUBLIC_ENABLED
         my_bets: featFor('GP_MY_BETS_ENABLED', u),     // F1 Mi cartera ("admin" = solo admins; "true" = todos)
         my_books: featFor('GP_MY_BOOKS_ENABLED', u),   // F2 Mis casas
         my_books_list: featFor('GP_MY_BOOKS_ENABLED', u) ? ((db.users[u.email] || {}).my_books || []) : undefined,
@@ -7715,7 +7769,7 @@ const server = http.createServer(async (req, res) => {
     // fixture AF del cruce (próximo o reciente) por los af team ids del mapa. Memo por cruce 30 min.
     if (p === '/api/clubs/lineups') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const league = String(url.searchParams.get('league') || ''), hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
       const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
       const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
@@ -7762,7 +7816,7 @@ const server = http.createServer(async (req, res) => {
     // observer (F2.3). Memo por cruce 60 min.
     if (p === '/api/clubs/context') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const league = String(url.searchParams.get('league') || ''), hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
       if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
       const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
@@ -7814,7 +7868,7 @@ const server = http.createServer(async (req, res) => {
     // FORMA + RESULTADOS de un equipo de club (F2.1): últimos partidos con marcador (results-<liga>.json).
     if (p === '/api/clubs/team-form') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const league = String(url.searchParams.get('league') || ''), teamId = String(url.searchParams.get('team') || '');
       if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
       const L = (global._clubsRatings.leagues || {})[league];
@@ -7862,7 +7916,7 @@ const server = http.createServer(async (req, res) => {
     // EVOLUCIÓN por liga (F0.3+F4.2): serie temporal de Elo/posición. GET admin.
     if (p === '/api/clubs/evolution') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const lg = String(url.searchParams.get('league') || '');
       const RT = global._clubsRatings || {};
       const L = RT.leagues && RT.leagues[lg];
@@ -8768,7 +8822,7 @@ const server = http.createServer(async (req, res) => {
     // (data/clubs/ratings.json, fit offline), cockpit de cruce (engines de la casa) y value multi-liga.
     if (p === '/api/clubs/state') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         if (!global._clubsRatings) {
           try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); }
@@ -8881,7 +8935,7 @@ const server = http.createServer(async (req, res) => {
     // EVOLUCIÓN por liga: historia retrospectiva de prob de campeón (mismo shape que st.history del Mundial)
     if (p === '/api/clubs/evo') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         const league = String(url.searchParams.get('league') || '');
         if (!/^[a-z0-9]+$/.test(league)) return json(res, 400, { error: 'liga requerida' });
@@ -8890,7 +8944,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/clubs/season') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         const league = String(url.searchParams.get('league') || '');
         if (!league) return json(res, 400, { error: 'liga requerida' });
@@ -8902,7 +8956,7 @@ const server = http.createServer(async (req, res) => {
     // season sim + avance por Elo. Memo 30min invalidado por el overlay de Elo (se actualiza cada jornada).
     if (p === '/api/clubs/bracket') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         const league = String(url.searchParams.get('league') || '');
         if (!league) return json(res, 400, { error: 'liga requerida' });
@@ -8920,7 +8974,7 @@ const server = http.createServer(async (req, res) => {
     // Cross-liga: cada liga se fitea alrededor de 1500 → comparación aproximada (flag cross_league, la UI avisa).
     if (p === '/api/clubs/match') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { _meta: {}, leagues: {} }; } }
         const RT = global._clubsRatings || {};
@@ -9063,7 +9117,7 @@ const server = http.createServer(async (req, res) => {
     // (clubs-gate-1) Y el pipeline editorial (curate) se cablee. Memo 10 min (~8 créditos por refresco).
     if (p === '/api/clubs/value') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         // auto-carga de ratings (mismo patrón que el sweep): sin esto, si value corre antes que /api/clubs/state
         // (loadClubs dispara ambos en paralelo) veía leagues vacías y memoizaba 0 filas por 10 minutos.
@@ -9130,7 +9184,7 @@ const server = http.createServer(async (req, res) => {
     // inteligencia del Mundial a clubes).
     if (p === '/api/clubs/squad') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const teamId = String(url.searchParams.get('team') || '');
       if (!/^tm_[a-z0-9]+$/i.test(teamId)) return json(res, 400, { error: 'team inválido' });
       const tsaKey = process.env.THESTATSAPI_KEY || '';
@@ -9164,7 +9218,7 @@ const server = http.createServer(async (req, res) => {
     // backfill de player-stats por liga. Hoy: datos biográficos ricos del roster de TSA.
     if (p === '/api/clubs/player') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const teamId = String(url.searchParams.get('team') || ''), pid = String(url.searchParams.get('pid') || '');
       const league = String(url.searchParams.get('league') || '');
       if (!/^tm_[a-z0-9]+$/i.test(teamId) || !/^pl_[a-z0-9]+$/i.test(pid)) return json(res, 400, { error: 'params inválidos' });

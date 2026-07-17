@@ -1109,6 +1109,9 @@ td .gx-calc-btn span { display: none; }
 .gx-calc-stat b { font-size: 15px; font-weight: 700; }
 .gx-calc-cap { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--gx-warn); font-weight: 600; }
 .gx-calc-cap i { font-size: 15px; }
+/* F2 — barra "solo mis casas" (Picks / Value / Arbitraje) */
+.gx-bkonly { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.gx-bkonly .gx-calc-frac { font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; }
 /* P5 — portfolio del día (modo de la calculadora) */
 .gx-cpf-count { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
 .gx-cpf-sec { font-size: 10.5px; color: var(--gx-text3); font-weight: 700; text-transform: uppercase; letter-spacing: .05em;

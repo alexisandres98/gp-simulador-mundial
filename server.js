@@ -2541,20 +2541,36 @@ function reg90For(homeId, awayId) {
 // de más en el barrido horario). Ajustar aquí un solo lugar cambia todos los sweeps.
 const ODDS_REGIONS_PROPS = 'us,us2,uk,eu,au';
 const ODDS_REGIONS_SCAN = 'us,uk,eu';
+// ===== PRESUPUESTO DE THE ODDS API (plan 100k, 17-jul) — tracker + guard compartido ==========================
+// Cada respuesta de The Odds API trae `x-requests-remaining` (créditos del ciclo, resetea el 24). Lo capturamos
+// en global._oddsCredits y los sweeps consultan `oddsBudgetOk(reserve)` ANTES de gastar: por debajo de la
+// reserva se saltan (el intervalo reintenta más tarde) → los 100k NUNCA se agotan (nos frenamos con colchón).
+// Reservas: props (caro, 20 créd/evento) frena antes; scan (barato) puede seguir con menos. El plan grande deja
+// correr cadencias frescas casi todo el mes; la reserva solo muerde a fin de ciclo.
+global._oddsCredits = global._oddsCredits || { remaining: null, at: 0 };
+function noteOddsCredits(r) {
+  try { const v = Number(r && r.headers && r.headers.get('x-requests-remaining')); if (Number.isFinite(v)) { global._oddsCredits.remaining = v; global._oddsCredits.at = Date.now(); } } catch { /* header ausente */ }
+}
+function oddsBudgetOk(reserve) {
+  const c = global._oddsCredits.remaining;
+  return c == null || c >= reserve; // desconocido (aún sin llamadas) → permitir; el header lo corrige tras la 1ª
+}
 // ===== FASE CLUBES: INGESTA DE CUOTAS a las tablas de la casa (shadow, cadencia ~60 min) =====
 // Punto 1 del spec de adaptación (13-jul): las cuotas de clubes viven en sportsbook_goal_quote_current
 // (match_winner + match_total, ids SINTÉTICOS por liga+par — MISMO patrón que el Mundial vía
 // stableGoalEventId, sin FK ni tocar el grafo canónico). Con eso el market-scanner (precio atrasado /
 // arbitraje, venue-agnóstico) y el futuro value multi-liga leen clubes SIN UI nueva. Inerte para el
 // pipeline del Mundial: solo se escriben QUOTES (ninguna evaluación/valor/pick).
-// Costo: h2h,totals × ODDS_REGIONS_SCAN (3) = 6 créditos × ligas en temporada con cuotas (~6) ≈ 36/hora (plan 100k).
+// Costo: h2h,totals × ODDS_REGIONS_SCAN (3) = 6 créditos × ligas en temporada con cuotas (~6) ≈ 12/hora al ritmo
+// de 30 min (plan 100k). Cadencia 30 min (era 55) para líneas 1X2/totales más frescas; reserva de créditos 2000.
 let _clubsQuotesLast = 0, _clubsQuotesRunning = false, _clubsQuotesOut = null;
 async function clubsQuotesSweep({ force = false } = {}) {
   if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
   if (_clubsQuotesRunning) return { skipped: 'running' };
-  if (!force && Date.now() - _clubsQuotesLast < 55 * 60e3) return { skipped: 'throttle' };
+  if (!force && Date.now() - _clubsQuotesLast < 30 * 60e3) return { skipped: 'throttle' };
+  if (!force && !oddsBudgetOk(2000)) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining };
   _clubsQuotesRunning = true;
   const out = { leagues: 0, events: 0, quotes: 0, started: new Date().toISOString() };
   try {
@@ -2569,6 +2585,7 @@ async function clubsQuotesSweep({ force = false } = {}) {
       let events = null;
       try {
         const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${key}&regions=${ODDS_REGIONS_SCAN}&markets=h2h,totals&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        noteOddsCredits(r);
         events = r.ok ? await r.json().catch(() => null) : null;
       } catch { /* liga sin datos este ciclo */ }
       if (!Array.isArray(events)) continue;
@@ -2628,7 +2645,8 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
   if (_clubsPropsRunning) return { skipped: 'running' };
-  if (!force && Date.now() - _clubsPropsLast < 5.5 * 3600e3) return { skipped: 'throttle' };
+  if (!force && Date.now() - _clubsPropsLast < 3 * 3600e3) return { skipped: 'throttle' }; // cadencia 3h (era 5.5) con plan 100k
+  if (!force && !oddsBudgetOk(6000)) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining }; // props caro → reserva mayor
   _clubsPropsRunning = true;
   const out = { events: 0, quotes: 0, unmatched: 0, started: new Date().toISOString() };
   try {
@@ -2664,6 +2682,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
       try {
         // F3.4: córners/tarjetas en la MISMA llamada por evento (mismos markets del Mundial: alternate_totals_*)
         const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/events/${meta.oa_id}/odds?apiKey=${key}&regions=${ODDS_REGIONS_PROPS}&markets=player_assists,player_goal_scorer_anytime,alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+        noteOddsCredits(r);
         o = r.ok ? await r.json().catch(() => null) : null;
       } catch { o = null; }
       if (!o || !Array.isArray(o.bookmakers)) continue;
@@ -2948,10 +2967,22 @@ function clubPropsFit(league) {
     const matches = JSON.parse(fs.readFileSync(fp, 'utf8')).matches || [];
     if (matches.length >= 20) {
       const pe = require('./prop-engine');
-      const fit = pe.fit(matches);
-      let backtest = null;
-      try { backtest = pe.backtest(matches); } catch { backtest = null; }
-      out = { fit, backtest, matches: matches.length };
+      // AUTO-TUNE de TOTALS_DAMP por liga (17-jul, lo que el comentario del modelo invitó: "re-tunear con
+      // clubes, 30+ partidos/equipo → DAMP>0 probablemente gane"). Con el Mundial (4-6 partidos) el óptimo era
+      // 0 (media de liga); con clubes las TARJETAS ganan señal de equipo/árbitro (verificado: J1 +0.010,
+      // Brasileirão +0.003 con DAMP~0.5). Grid-search: elige el DAMP con mejor skill COMBINADO (córners+cards)
+      // vs baseline de liga, SOLO si no empeora la calibración (calErr≤0.06). Default 0 si nada mejora (=
+      // comportamiento anterior byte-idéntico). Memo por mtime → corre solo cuando el backfill actualiza data.
+      let bestDamp = 0, bestScore = -Infinity, bestBt = null;
+      for (const damp of [0, 0.25, 0.5]) {
+        let bt = null; try { bt = pe.backtest(matches, { TOTALS_DAMP: damp }); } catch { continue; }
+        const c = (bt.families && bt.families.corners_total) || {}, k = (bt.families && bt.families.cards_total) || {};
+        if ((c.cal_err != null && c.cal_err > 0.06) || (k.cal_err != null && k.cal_err > 0.06)) { if (damp === 0 && !bestBt) { bestBt = bt; } continue; }
+        const score = (c.skill_vs_baseline || 0) + (k.skill_vs_baseline || 0);
+        if (score > bestScore) { bestScore = score; bestDamp = damp; bestBt = bt; }
+      }
+      const fit = pe.fit(matches, { TOTALS_DAMP: bestDamp });
+      out = { fit, backtest: bestBt, matches: matches.length, totals_damp: bestDamp };
     }
   } catch { out = null; }
   global._clubProps[league] = { stamp, out };
@@ -4374,7 +4405,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // goalsAnchorEnabled:true (17-jul, régimen dual de Alexis): en mercados de goles EFICIENTES el camino
   // ANCLA sigue el lean del consenso cuando el modelo confirma — picks "ganadoras con poco edge" en vez
   // de perseguir edge de modelo en mercados afilados. El Mundial no toca este flag (default false).
-  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 1, goalsAnchorEnabled: true } });
+  const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 1, goalsAnchorEnabled: true, propsMonitoringMode: true } });
   out.player_markets = playerMarkets.length;
   out.prop_markets = propMarkets.length;
   out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };
@@ -4451,11 +4482,15 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   for (const g of res.eligible.props) { const k = g.eventId + '|' + g.family; const cur = bestProp[k]; if (!cur || g.edgePp > cur.edgePp) bestProp[k] = g; }
   for (const g of Object.values(bestProp)) {
     const pm2 = propMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
+    const priceAboveFair = g.bestOdds > 1 / Math.max(1e-6, g.marketProb);
     const why = compose([
-      ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
+      ...(priceAboveFair ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
       { code: 'MARKET_ANCHOR', w: 1, books: g.books },
     ]);
-    fresh.push(mkRecord(g.family, g.eventId, { league: pm2.league, home: g.home, away: g.away, homeId: pm2.homeId, awayId: pm2.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why }, g.eventId + '|' + g.family + '|' + g.marketId));
+    // régimen: 'edge' si el precio le gana al consenso (valor real, promocionable a público); 'monitor' si nació
+    // en modo monitoreo (modelo convencido pero mercado eficiente → validamos over-bias con el track privado).
+    const regime = priceAboveFair ? 'edge' : (g.monitoring ? 'monitor' : 'edge');
+    fresh.push(mkRecord(g.family, g.eventId, { league: pm2.league, home: g.home, away: g.away, homeId: pm2.homeId, awayId: pm2.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why, regime }, g.eventId + '|' + g.family + '|' + g.marketId));
   }
   // PLAYER (assists + anytime goal): 1 pick por (evento, sub-familia), la de mayor confianza — feed limpio.
   const bestPlayer = {};
@@ -9371,12 +9406,12 @@ server.listen(PORT, () => {
   syncFromESPN();
   setInterval(syncFromESPN, 30 * 1000);
   // FASE CLUBES (shadow): cuotas de clubes a las tablas de la casa. Gate por env dentro del sweep
-  // (GP_CLUBS_SHADOW_ENABLED); throttle interno 55 min — el intervalo solo "pregunta".
+  // (GP_CLUBS_SHADOW_ENABLED); throttle interno 30 min — el intervalo solo "pregunta" (cada 10 min).
   setTimeout(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 90 * 1000);
   setInterval(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 10 * 60 * 1000);
-  // player props de clubes (assists + anytime): cadencia 6h (throttle interno), eventos <48h
+  // props de clubes (córners/tarjetas/assists/anytime): throttle interno 3h, eventos <48h; el intervalo pregunta c/30min
   setTimeout(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 150 * 1000);
-  setInterval(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 60 * 60 * 1000);
+  setInterval(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 30 * 60 * 1000);
   // FASE CLUBES (shadow): marcadores en vivo/finalizados desde ESPN por liga, cada 30 s (como el Mundial).
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);

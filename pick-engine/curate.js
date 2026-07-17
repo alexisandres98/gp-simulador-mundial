@@ -203,7 +203,13 @@ function propPicks(propMarkets, cfg) {
     // REC 2: gate precio-vs-consenso. La cuota justa del lado = 1/marketProb (consenso no-vig). Si la mejor
     // cuota disponible es peor que la justa, estás pagando de más → no publicar (aunque el modelo vea edge).
     const mkt = Number(g.marketProb || 0);
-    if (cfg.propsRequireFairPrice && odds > 1 && mkt > 0 && mkt < 1 && odds < 1 / mkt) blockers.push('BELOW_CONSENSUS_PRICE');
+    const belowConsensus = odds > 1 && mkt > 0 && mkt < 1 && odds < 1 / mkt;
+    // propsMonitoringMode (clubes): el precio-vs-consenso viaja como METADATO, no bloquea. Con córners/tarjetas
+    // hiper-eficientes casi nunca hay precio que le gane al consenso → con el gate estricto NACEN 0 picks en 30+
+    // partidos. En modo monitoreo generamos la mejor lectura del modelo por partido (shadow, admin only) para
+    // CONSTRUIR el track record que valida si el modelo tiene skill real / si el mercado tiene over-bias. El
+    // edge del modelo (LOW_EDGE) y el rango de cuota SIGUEN filtrando: solo monitoreamos convicción real.
+    if (cfg.propsRequireFairPrice && belowConsensus && !cfg.propsMonitoringMode) blockers.push('BELOW_CONSENSUS_PRICE');
     out.push({
       family: g.family === 'cards_total' ? 'CARDS' : 'CORNERS',
       eventId: g.eventId, home: g.home, away: g.away, kickoff: g.kickoff,
@@ -211,6 +217,7 @@ function propPicks(propMarkets, cfg) {
       modelProb: Number(g.modelProb), marketProb: Number(g.marketProb),
       confidence: blend(Number(g.modelProb), Number(g.marketProb), cfg.alphaProps),
       edgePp: pp(edge), bestOdds: odds, bestBook: g.bestBook || null, books,
+      belowConsensus, monitoring: !!(cfg.propsMonitoringMode && belowConsensus),
       eligible: blockers.length === 0, blockers,
     });
   }

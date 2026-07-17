@@ -273,6 +273,15 @@
       calc_add_leg: 'Agregar pata', calc_remove: 'Quitar', calc_saved: 'Guardado en este dispositivo', calc_edge: 'Ventaja',
       calc_level: 'Nivel de stake', calc_value_tag: 'VALOR', calc_flat_tag: 'PLANO', calc_return_win: 'Retorno si acierta',
       calc_flat_warn: 'Sin ventaja de valor a esta cuota (mercado eficiente). Te sugerimos un stake plano para gestión de bankroll — apostá con disciplina.',
+      calc_mode_pf: 'Portfolio del día',
+      cpf_intro: 'Tu cartera del día: stake sugerido por pick (Kelly fraccionado), correlación intra-partido aplicada y límite de riesgo diario.',
+      cpf_empty: 'Sin picks con inicio en las próximas 24 horas.', cpf_empty_sub: 'El portfolio se arma solo cuando hay picks activas del día.',
+      cpf_n_picks: '{n} picks · próximas 24 h', cpf_day_limit: 'Límite diario', cpf_of_day: 'del bankroll',
+      cpf_total_stake: 'Stake total recomendado', cpf_total_risk: 'Riesgo total del día', cpf_max_loss: 'Pérdida máx. estimada (95%)', cpf_exp_pnl: 'Resultado esperado',
+      cpf_by_match: 'Exposición por partido', cpf_by_league: 'Exposición por liga', cpf_picks: 'Stake por pick',
+      cpf_corr_note: 'Picks del mismo partido con stake ajustado por correlación (ρ medida en la matriz de marcadores).',
+      cpf_scaled: 'La suma sugerida ({sum}) superaba tu límite diario — todos los stakes se escalaron a {pct}% para respetarlo.',
+      cpf_maxloss_note: 'En el 95% de los días no perderías más que esto (simulación con las probabilidades y correlaciones de hoy). Peor caso absoluto = el riesgo total.',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -537,6 +546,15 @@
       calc_add_leg: 'Add leg', calc_remove: 'Remove', calc_saved: 'Saved on this device', calc_edge: 'Edge',
       calc_level: 'Stake level', calc_value_tag: 'VALUE', calc_flat_tag: 'FLAT', calc_return_win: 'Return if it wins',
       calc_flat_warn: 'No value edge at these odds (efficient market). We suggest a flat stake for bankroll management — bet with discipline.',
+      calc_mode_pf: 'Daily portfolio',
+      cpf_intro: 'Your portfolio for the day: suggested stake per pick (fractional Kelly), intra-match correlation applied and a daily risk limit.',
+      cpf_empty: 'No picks kicking off in the next 24 hours.', cpf_empty_sub: 'The portfolio builds itself when there are active picks for the day.',
+      cpf_n_picks: '{n} picks · next 24 h', cpf_day_limit: 'Daily limit', cpf_of_day: 'of bankroll',
+      cpf_total_stake: 'Recommended total stake', cpf_total_risk: 'Total risk for the day', cpf_max_loss: 'Est. max loss (95%)', cpf_exp_pnl: 'Expected result',
+      cpf_by_match: 'Exposure by match', cpf_by_league: 'Exposure by league', cpf_picks: 'Stake per pick',
+      cpf_corr_note: 'Same-match picks have their stake adjusted for correlation (ρ measured on the score matrix).',
+      cpf_scaled: 'The suggested sum ({sum}) exceeded your daily limit — all stakes were scaled to {pct}% to respect it.',
+      cpf_maxloss_note: 'On 95% of days you would not lose more than this (simulated with today’s probabilities and correlations). Absolute worst case = the total risk.',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -1819,16 +1837,165 @@
     bind(); recomputeArb(root);
   }
 
+  // ---- P5: PORTFOLIO DEL DÍA — cartera agregada de las picks activas de las próximas 24 h ----
+  // Reusa la misma matemática del panel simple (calcKelly) y la correlación intra-partido del feed (p.corr,
+  // ρ real de la matriz de marcadores): 2+ picks del mismo evento reducen su stake por stake_factor en vez de
+  // sumarse como independientes. Un límite diario (% del bankroll) escala todo proporcionalmente si se excede.
+  function pfDayLimit() { var v = parseFloat(lsGet('gp_calc_daylimit')); return (isFinite(v) && v > 0 && v <= 100) ? v / 100 : 0.10; }
+  function pfPicksOfDay() {
+    var now = Date.now();
+    return (S.dailyPicks || []).filter(function (p) {
+      if (!(Number(p.odds) > 1 && p.confidence > 0)) return false;
+      var ko = Date.parse(p.kickoff || 0);
+      return isFinite(ko) && ko > now - 3 * 3600e3 && ko < now + 24 * 3600e3;
+    });
+  }
+  function pfEventKey(p) { return p.club_eid || p.event_id || (p.home_team_id + '~' + p.away_team_id); }
+  function pfBuild() {
+    var br = calcBankroll(), fr = calcFraction(), lim = pfDayLimit();
+    var rows = pfPicksOfDay().map(function (p) {
+      var prob = (p.signals && p.signals.win_prob) || p.confidence;
+      var res = calcKelly(prob, Number(p.odds), 1, fr); // bankroll 1 → el pct sale directo
+      return { p: p, prob: prob, odds: Number(p.odds), pct: res.hasEdge ? res.pct : res.flatPct, corrF: 1 };
+    });
+    var byEvent = {}, order = [];
+    rows.forEach(function (r) { var k = pfEventKey(r.p); if (!byEvent[k]) { byEvent[k] = []; order.push(k); } byEvent[k].push(r); });
+    order.forEach(function (k) {
+      var g = byEvent[k]; if (g.length < 2) return;
+      var corr = g.map(function (r) { return r.p.corr; }).filter(Boolean)[0];
+      if (corr && corr.stake_factor > 0) g.forEach(function (r) { r.corrF = corr.stake_factor; });
+    });
+    var sumPct = rows.reduce(function (a, r) { return a + r.pct * r.corrF; }, 0);
+    var scale = (sumPct > lim && sumPct > 0) ? lim / sumPct : 1;
+    rows.forEach(function (r) { r.finalPct = r.pct * r.corrF * scale; r.stake = br > 0 ? br * r.finalPct : 0; });
+    var totalPct = sumPct * scale;
+    // pérdida máx. estimada (p95) + resultado esperado: Monte Carlo sobre las probs del día; pares correlacionados
+    // muestrean su conjunta 2x2 (joint_prob del feed); grupos sin conjunta comparten el uniforme (conservador).
+    var expPnl = 0, p95Loss = 0;
+    if (rows.length) {
+      var N = 2000, pnls = new Array(N);
+      for (var it = 0; it < N; it++) {
+        var pnl = 0;
+        order.forEach(function (k) {
+          var g = byEvent[k];
+          if (g.length === 2 && g[0].p.corr && g[0].p.corr.joint_prob > 0) {
+            var pA = g[0].prob, pB = g[1].prob, pAB = Math.min(g[0].p.corr.joint_prob, pA, pB);
+            var p10 = Math.max(pA - pAB, 0), p01 = Math.max(pB - pAB, 0);
+            var u = Math.random(), wA, wB;
+            if (u < pAB) { wA = 1; wB = 1; } else if (u < pAB + p10) { wA = 1; wB = 0; } else if (u < pAB + p10 + p01) { wA = 0; wB = 1; } else { wA = 0; wB = 0; }
+            pnl += (wA ? g[0].stake * (g[0].odds - 1) : -g[0].stake) + (wB ? g[1].stake * (g[1].odds - 1) : -g[1].stake);
+          } else {
+            var us = g.length > 1 ? Math.random() : null;
+            g.forEach(function (r) { var win = (us == null ? Math.random() : us) < r.prob; pnl += win ? r.stake * (r.odds - 1) : -r.stake; });
+          }
+        });
+        pnls[it] = pnl;
+        expPnl += pnl / N;
+      }
+      pnls.sort(function (a, b) { return a - b; });
+      p95Loss = Math.max(0, -pnls[Math.floor(N * 0.05)]);
+    }
+    return { rows: rows, byEvent: byEvent, order: order, sumPct: sumPct, scale: scale, totalPct: totalPct, totalStake: br > 0 ? br * totalPct : 0, expPnl: expPnl, p95Loss: p95Loss, bankroll: br, limit: lim };
+  }
+  function pfExpoBars(items, ccy, br) {
+    var max = items.reduce(function (a, x) { return Math.max(a, x.pct); }, 0) || 1;
+    return items.map(function (x) {
+      return '<div class="gx-cpf-row"><div class="gx-cpf-row-h"><span class="gx-cpf-lbl">' + x.label + '</span>' +
+        '<span class="gx-mono">' + (br > 0 ? fmtMoney(x.stake, ccy) : (x.pct * 100).toFixed(1) + '%') + (x.n > 1 ? ' <span class="gx-dim">· ' + x.n + ' ' + esc(t('pf_count')) + '</span>' : '') + '</span></div>' +
+        '<div class="gx-cpf-track"><div class="gx-cpf-bar" style="width:' + Math.max(3, Math.round(x.pct / max * 100)) + '%"></div></div></div>';
+    }).join('');
+  }
+  function pfPanelHtml() {
+    var ccy = calcCcy(), br = calcBankroll(), fr = calcFraction();
+    if (S.dailyPicks === undefined) {
+      S.dailyPicks = null;
+      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+        S.dailyPicks = (j && j.picks) || [];
+        if (S.view === 'calc' && S.calcMode === 'pf') renderCalc();
+      });
+    }
+    if (S.dailyPicks === null) return '<div class="gx-calc gx-calc-standalone" data-cmode="pf"><div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div></div>';
+    var pf = pfBuild();
+    var head = '<div class="gx-calc-grid">' +
+      '<label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('calc_bankroll')) + '</span><div class="gx-calc-money"><span class="gx-calc-cur">' + esc(calcSym(ccy)) + '</span><input class="gx-calc-in" data-k="bankroll" type="number" inputmode="decimal" min="0" step="any" placeholder="0" value="' + (br > 0 ? br : '') + '"><select class="gx-calc-ccy" data-k="ccy">' + ccyOptions(ccy) + '</select></div></label>' +
+      '<label class="gx-calc-f"><span>' + esc(t('cpf_day_limit')) + '</span><div class="gx-calc-unit"><input class="gx-calc-in" data-k="daylimit" type="number" inputmode="decimal" min="1" max="100" step="1" value="' + (pf.limit * 100).toFixed(0) + '"><i>%</i></div></label>' +
+      '</div>' +
+      '<div class="gx-calc-fracrow"><span class="gx-calc-lbl">' + esc(t('calc_fraction')) + '</span><div class="gx-calc-fracs">' + fracChips(fr) + '</div></div>';
+    if (!pf.rows.length) {
+      return '<div class="gx-calc gx-calc-standalone" data-cmode="pf">' + head +
+        '<div class="gx-empty gx-pick-empty" style="margin-top:10px"><b>' + esc(t('cpf_empty')) + '</b><span class="gx-dim">' + esc(t('cpf_empty_sub')) + '</span></div></div>';
+    }
+    // agregados por partido y por liga
+    var byMatch = pf.order.map(function (k) {
+      var g = pf.byEvent[k], f = g[0].p;
+      var label = '<span class="fl">' + flag(f.home_team_id) + '</span> <b>' + esc(teamName(f.home_team_id, f.home)) + '</b> <span class="gx-dim">' + esc(t('vs')) + '</span> <b>' + esc(teamName(f.away_team_id, f.away)) + '</b>' + (g[0].corrF < 1 ? ' <span class="gx-cpf-corr">ρ</span>' : '');
+      return { label: label, stake: g.reduce(function (a, r) { return a + r.stake; }, 0), pct: g.reduce(function (a, r) { return a + r.finalPct; }, 0), n: g.length };
+    }).sort(function (a, b) { return b.pct - a.pct; });
+    var byLeague = {};
+    pf.rows.forEach(function (r) {
+      var k = r.p.competition_name || t('comp');
+      var o = byLeague[k] = byLeague[k] || { label: esc(k), stake: 0, pct: 0, n: 0 };
+      o.stake += r.stake; o.pct += r.finalPct; o.n++;
+    });
+    var leagues = Object.keys(byLeague).map(function (k) { return byLeague[k]; }).sort(function (a, b) { return b.pct - a.pct; });
+    var anyCorr = pf.rows.some(function (r) { return r.corrF < 1; });
+    var money = function (v) { return pf.bankroll > 0 ? fmtMoney(v, ccy) : '—'; };
+    var pickRows = pf.rows.slice().sort(function (a, b) { return b.finalPct - a.finalPct; }).map(function (r) {
+      var f = r.p;
+      return '<div class="gx-cpf-row"><div class="gx-cpf-row-h"><span class="gx-cpf-lbl"><b>' + esc(pickRecText(f)) + '</b> <span class="gx-dim">· ' + esc(teamName(f.home_team_id, f.home)) + ' ' + esc(t('vs')) + ' ' + esc(teamName(f.away_team_id, f.away)) + ' · @' + r.odds.toFixed(2) + '</span>' + (r.corrF < 1 ? ' <span class="gx-cpf-corr">ρ ×' + r.corrF.toFixed(2) + '</span>' : '') + '</span>' +
+        '<span class="gx-mono">' + (pf.bankroll > 0 ? fmtMoney(r.stake, ccy) : (r.finalPct * 100).toFixed(1) + '%') + '</span></div></div>';
+    }).join('');
+    return '<div class="gx-calc gx-calc-standalone" data-cmode="pf">' + head +
+      '<div class="gx-cpf-count gx-dim">' + ic('ticket') + esc(t('cpf_n_picks', { n: pf.rows.length })) + '</div>' +
+      '<div class="gx-calc-result">' +
+        '<div class="gx-calc-big"><div class="gx-calc-biglbl">' + esc(t('cpf_total_stake')) + '</div><div class="gx-calc-bigval gx-mono">' + (pf.bankroll > 0 ? money(pf.totalStake) : '—') + '</div>' +
+          '<div class="gx-calc-bigsub">' + (pf.bankroll > 0 ? (pf.totalPct * 100).toFixed(1) + '% ' + esc(t('calc_of_bankroll')) : esc(t('calc_set_bankroll'))) + '</div></div>' +
+        '<div class="gx-calc-stats">' +
+          stakeStat(t('cpf_total_risk'), pf.bankroll > 0 ? '−' + fmtMoney(pf.totalStake, ccy).replace('−', '') : (pf.totalPct * 100).toFixed(1) + '%', 'gx-neg') +
+          (pf.bankroll > 0 ? stakeStat(t('cpf_max_loss'), '−' + fmtMoney(pf.p95Loss, ccy).replace('−', ''), 'gx-neg') : '') +
+          (pf.bankroll > 0 ? stakeStat(t('cpf_exp_pnl'), (pf.expPnl >= 0 ? '+' : '') + fmtMoney(pf.expPnl, ccy), pf.expPnl >= 0 ? 'gx-pos' : 'gx-neg') : '') +
+        '</div>' +
+      '</div>' +
+      (pf.scale < 1 ? '<div class="gx-calc-cap">' + ic('shield-check') + esc(t('cpf_scaled', { sum: pf.bankroll > 0 ? fmtMoney(pf.bankroll * pf.sumPct, ccy) : (pf.sumPct * 100).toFixed(1) + '%', pct: Math.round(pf.scale * 100) })) + '</div>' : '') +
+      '<div class="gx-cpf-sec">' + esc(t('cpf_by_match')) + '</div>' + pfExpoBars(byMatch, ccy, pf.bankroll) +
+      (leagues.length > 1 ? '<div class="gx-cpf-sec">' + esc(t('cpf_by_league')) + '</div>' + pfExpoBars(leagues, ccy, pf.bankroll) : '') +
+      '<div class="gx-cpf-sec">' + esc(t('cpf_picks')) + '</div>' + pickRows +
+      (anyCorr ? '<div class="gx-calc-prefill">' + ic('sparkles') + esc(t('cpf_corr_note')) + '</div>' : '') +
+      (pf.bankroll > 0 ? '<div class="gx-calc-prefill">' + ic('info-circle') + esc(t('cpf_maxloss_note')) + '</div>' : '') +
+      '<div class="gx-calc-disc">' + esc(t('calc_disc')) + '</div>' +
+    '</div>';
+  }
+  function wirePfPanel(root) {
+    root.addEventListener('click', function (e) { e.stopPropagation(); });
+    [].forEach.call(root.querySelectorAll('.gx-calc-in, .gx-calc-ccy'), function (el) {
+      var apply = function () {
+        var k = el.getAttribute('data-k');
+        if (k === 'bankroll') { var v = parseFloat(el.value); lsSet('gp_calc_bankroll', isFinite(v) && v > 0 ? v : null); }
+        else if (k === 'daylimit') { var d = parseFloat(el.value); lsSet('gp_calc_daylimit', isFinite(d) && d > 0 && d <= 100 ? d : null); }
+        else if (k === 'ccy') lsSet('gp_calc_ccy', el.value);
+        renderCalc();
+      };
+      el.addEventListener('change', apply);
+      if (el.tagName !== 'SELECT') el.addEventListener('keydown', function (e) { if (e.key === 'Enter') apply(); });
+    });
+    [].forEach.call(root.querySelectorAll('.gx-calc-frac'), function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); lsSet('gp_calc_fraction', b.getAttribute('data-frac')); renderCalc(); });
+    });
+  }
+
   // ---- vista STANDALONE (desde "Más") ----
   function renderCalc() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    var mode = S.calcMode === 'arb' ? 'arb' : 'simple';
+    var mode = S.calcMode === 'arb' ? 'arb' : S.calcMode === 'pf' ? 'pf' : 'simple';
     var tabs = '<div class="gx-calc-modes">' +
       '<button class="gx-calc-mode' + (mode === 'simple' ? ' on' : '') + '" data-cmode-sw="simple">' + ic('target-arrow') + esc(t('calc_mode_simple')) + '</button>' +
+      '<button class="gx-calc-mode' + (mode === 'pf' ? ' on' : '') + '" data-cmode-sw="pf">' + ic('briefcase') + esc(t('calc_mode_pf')) + '</button>' +
       '<button class="gx-calc-mode' + (mode === 'arb' ? ' on' : '') + '" data-cmode-sw="arb">' + ic('arrows-left-right') + esc(t('calc_mode_arb')) + '</button></div>';
     var body;
     if (mode === 'arb') {
       body = '<p class="gx-calc-intro gx-dim">' + esc(t('calc_intro_arb')) + '</p>' + arbPanelHtml([1.90, 2.10], [t('calc_leg') + ' 1', t('calc_leg') + ' 2'], ['', ''], 'gx-calc-standalone', true);
+    } else if (mode === 'pf') {
+      body = '<p class="gx-calc-intro gx-dim">' + esc(t('cpf_intro')) + '</p>' + pfPanelHtml();
     } else {
       body = '<p class="gx-calc-intro gx-dim">' + esc(t('calc_intro_simple')) + '</p>' + stakePanelHtml(0.55, 2.00, '', 'gp', 'gx-calc-standalone');
     }
@@ -1837,7 +2004,7 @@
       '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('calc_kelly_note')) + '</p></div></div></div></div>';
     [].forEach.call(mv.querySelectorAll('[data-cmode-sw]'), function (b) { b.addEventListener('click', function () { S.calcMode = b.getAttribute('data-cmode-sw'); renderCalc(); }); });
     var holder = mv.querySelector('.gx-calc');
-    if (holder) { if (mode === 'arb') wireArbPanel(holder); else wireStakePanel(holder); }
+    if (holder) { if (mode === 'arb') wireArbPanel(holder); else if (mode === 'pf') wirePfPanel(holder); else wireStakePanel(holder); }
   }
 
   // ============================ ONBOARDING (primer ingreso) ============================

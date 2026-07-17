@@ -4555,7 +4555,7 @@ function clubDailyPicksTrackRecord() {
   const agg = {};
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'SETTLED' || !['WIN', 'LOSS', 'PUSH'].includes(p.result_code)) continue;
-    for (const key of ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow')]) {
+    for (const key of ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow'), 'regime:' + (p.regime || 'pre')]) {
       const a = agg[key] = agg[key] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl: 0 };
       a.n++;
       if (p.result_code === 'WIN') { a.wins++; a.pnl += (Number(p.best_odds) || 1) - 1; }

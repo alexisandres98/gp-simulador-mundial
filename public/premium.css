@@ -1121,6 +1121,9 @@ td .gx-calc-btn span { display: none; }
 .gx-cpf-bar { height: 100%; border-radius: 3px; background: var(--gx-accent); opacity: .75; }
 .gx-cpf-corr { font-size: 9.5px; font-weight: 800; color: var(--gx-cyan); background: rgba(52,214,200,.10);
   border: 1px solid rgba(52,214,200,.30); border-radius: 5px; padding: 1px 5px; vertical-align: middle; }
+/* F3 — fila inline "vigilar precio" en la card de pick */
+.gx-wp-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--gx-line); flex-wrap: wrap; }
+.gx-wp-row .gx-calc-in { padding: 6px 9px; font-size: 12.5px; }
 .gx-calc-noedge { display: flex; align-items: flex-start; gap: 10px; background: rgba(255,107,107,.06); border: 1px solid rgba(255,107,107,.25);
   border-radius: 10px; padding: 12px 14px; }
 .gx-calc-noedge i { color: var(--gx-neg); font-size: 18px; flex-shrink: 0; margin-top: 1px; }

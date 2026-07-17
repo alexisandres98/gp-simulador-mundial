@@ -4566,6 +4566,219 @@ function clubDailyPicksTrackRecord() {
   for (const k in agg) { const a = agg[k]; const dec = a.wins + a.losses; a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi = a.n ? +(a.pnl / a.n).toFixed(3) : null; a.pnl = +a.pnl.toFixed(2); }
   return agg;
 }
+// ===== F1 — MI CARTERA: helpers ==============================================================================
+function myBetsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_MY_BETS_ENABLED || '').trim()); }
+function myBetsFindPick(pickId) {
+  return (db.dailyPicks || []).find(x => x.pick_id === pickId) || (db.clubDailyPicks || []).find(x => x.pick_id === pickId) || null;
+}
+function myBetsStats(list) {
+  const settled = list.filter(b => b.result === 'won' || b.result === 'lost');
+  const agg = rows => {
+    let pnl = 0, staked = 0, wins = 0;
+    for (const b of rows) { staked += b.stake; if (b.result === 'won') { pnl += b.stake * (b.odds - 1); wins++; } else pnl -= b.stake; }
+    return { n: rows.length, wins, losses: rows.length - wins, pnl: +pnl.toFixed(2), staked: +staked.toFixed(2), roi: staked > 0 ? +(pnl / staked).toFixed(3) : null };
+  };
+  // CLV personal: la cuota que TOMÓ el usuario vs el cierre capturado de la pick (misma matemática oficial).
+  const { computeClv } = require('./pick-engine/metrics');
+  const clvs = [];
+  for (const b of list) {
+    if (!b.pick_id) continue;
+    const pk = myBetsFindPick(b.pick_id);
+    if (pk && pk.closing) { const c = computeClv(b.odds, pk.closing); if (c && c.clv_pct != null) clvs.push(c.clv_pct); }
+  }
+  const open = list.filter(b => b.result === 'open');
+  return {
+    overall: agg(settled),
+    gp: agg(settled.filter(b => b.pick_id)),        // siguiendo picks GP
+    manual: agg(settled.filter(b => !b.pick_id)),   // apuestas propias (override)
+    open_count: open.length, open_stake: +open.reduce((a, b) => a + b.stake, 0).toFixed(2),
+    clv: clvs.length ? { n: clvs.length, avg_pct: +(clvs.reduce((a, x) => a + x, 0) / clvs.length).toFixed(2), positive_rate: +(clvs.filter(x => x > 0).length / clvs.length).toFixed(3) } : null,
+  };
+}
+// ===== F2 — MIS CASAS (flag GP_MY_BOOKS_ENABLED): las casas del usuario filtran feed/value/arb en el cliente =
+function myBooksOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_MY_BOOKS_ENABLED || '').trim()); }
+// ===== F3 — WATCH PRICE (flag GP_WATCH_PRICE_ENABLED): alerta cuando la mejor cuota alcanza el objetivo ======
+// El watch se ancla a una PICK activa (su mercado ya lo observa el sweep → cuotas frescas en Postgres). El
+// chequeo corre en el ciclo de 15min con la MISMA fuente del cierre oficial (sportsbook_goal_quote_current);
+// al disparar: email al usuario (mailer) + estado "alcanzado" en la lista in-app. KO pasado → watch vencido.
+function watchPriceOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_WATCH_PRICE_ENABLED || '').trim()); }
+async function currentBestOddsForPick(pk) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured() || !pk || !pk.event || !pk.event.canonical_event_id) return null;
+  const ceid = pk.event.canonical_event_id;
+  try {
+    if (pk.family === 'SOLID') {
+      const r = await dbc.query(`SELECT max(odds_decimal)::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND lower(side)=$2`, [ceid, String(pk.selection_code || '').toLowerCase()]);
+      return (r.rows[0] && r.rows[0].o) || null;
+    }
+    if (['GOALS', 'CORNERS', 'CARDS'].includes(pk.family)) {
+      const fam = pk.family === 'GOALS' ? 'match_total' : pk.family === 'CORNERS' ? 'corners_total' : 'cards_total';
+      const r = await dbc.query(`SELECT max(odds_decimal)::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND lower(side)=$4`, [ceid, fam, pk.line, String(pk.side || '').toLowerCase()]);
+      return (r.rows[0] && r.rows[0].o) || null;
+    }
+    if (pk.family === 'PLAYER') {
+      const r = await dbc.query(`SELECT max(odds_decimal)::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3`, [ceid, pk.player_family, pk.pid]);
+      return (r.rows[0] && r.rows[0].o) || null;
+    }
+  } catch { return null; }
+  return null;
+}
+async function checkPriceWatches() {
+  if (!watchPriceOn()) return { skipped: 'off' };
+  const ws = db.priceWatches = db.priceWatches || [];
+  let checked = 0, fired = 0;
+  const now = Date.now();
+  for (const w of ws) {
+    if (w.triggered_at || w.dead) continue;
+    const pk = myBetsFindPick(w.pick_id);
+    if (!pk) { w.dead = true; continue; }
+    const ko = Date.parse((pk.event && pk.event.kickoff_at) || '');
+    if (isFinite(ko) && ko < now) { w.dead = true; continue; }
+    const o = await currentBestOddsForPick(pk);
+    checked++;
+    if (o != null) { w.last_odds = +o.toFixed(3); w.last_check = new Date().toISOString(); }
+    if (o != null && o >= w.target_odds) {
+      w.triggered_at = new Date().toISOString(); fired++;
+      try {
+        if (mailer.isConfigured()) {
+          const en = userLang(w.email) === 'en';
+          await mailer.sendMail({
+            to: w.email, prefer: 'relay',
+            subject: en ? `Price alert: ${w.label} hit ${o.toFixed(2)}` : `Alerta de precio: ${w.label} llegó a ${o.toFixed(2)}`,
+            text: en
+              ? `Your watched price triggered: ${w.label} is now at ${o.toFixed(2)} (your target: ${w.target_odds.toFixed(2)}). Prices move — check the platform before betting. https://gpsimulador.com`
+              : `Tu precio vigilado se disparó: ${w.label} está ahora en ${o.toFixed(2)} (tu objetivo: ${w.target_odds.toFixed(2)}). Los precios se mueven — revisá la plataforma antes de apostar. https://gpsimulador.com`,
+          });
+        }
+      } catch { /* la alerta in-app queda igual */ }
+    }
+  }
+  if (checked) save();
+  return { checked, fired };
+}
+// ===== F4 — GP DAILY BRIEF (flag GP_DAILY_BRIEF_ENABLED) =====================================================
+// Un solo builder (memo 10min) alimenta los 3 canales: in-app (/api/me/brief), email diario (SOLO opt-in del
+// usuario: users[email].brief_email) y Telegram del canal (flag aparte GP_DAILY_BRIEF_TELEGRAM_ENABLED, off).
+// Contenido 100% derivado de lo que ya existe: picks activas 24h (top 3 por edge), partidos del día (eventos de
+// esas picks), movimientos de línea (line_move), hallazgos del observer y liquidadas de ayer.
+function dailyBriefOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_DAILY_BRIEF_ENABLED || '').trim()); }
+function buildDailyBrief() {
+  const now = Date.now();
+  if (global._dailyBrief && now - global._dailyBrief.at < 10 * 60e3) return global._dailyBrief.data;
+  const all = [...(db.dailyPicks || []), ...(db.clubDailyPicks || [])];
+  const in24 = p => { const ko = Date.parse((p.event && p.event.kickoff_at) || ''); return isFinite(ko) && ko > now && ko < now + 24 * 3600e3; };
+  const active = all.filter(x => x.status === 'ACTIVE' && in24(x));
+  const top = active.slice().sort((a, b) => (b.edge_pp || 0) - (a.edge_pp || 0)).slice(0, 3).map(p => ({
+    pick_id: p.pick_id, family: p.family, league: p.competition_name || null,
+    home: p.event.home, away: p.event.away, kickoff: p.event.kickoff_at,
+    side: p.side, line: p.line, selection_code: p.selection_code, player_name: p.player_name || null, player_family: p.player_family || null,
+    odds: p.best_odds, book: p.best_book, edge_pp: p.edge_pp != null ? +Number(p.edge_pp).toFixed(1) : null,
+    confidence: p.confidence, regime: p.regime || null,
+    club_eid: p.event.club_eid || null, event_id: p.event.is_canonical ? p.event.canonical_event_id : null,
+    home_team_id: p.event.home_team_id, away_team_id: p.event.away_team_id,
+  }));
+  const evs = {};
+  active.forEach(p => {
+    const k = p.event.club_eid || p.event.canonical_event_id;
+    const e = evs[k] = evs[k] || { home: p.event.home, away: p.event.away, home_team_id: p.event.home_team_id, away_team_id: p.event.away_team_id, kickoff: p.event.kickoff_at, league: p.competition_name || null, picks: 0, club_eid: p.event.club_eid || null };
+    e.picks++;
+  });
+  const matches = Object.values(evs).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).slice(0, 8);
+  const moves = active.filter(p => p.line_move && p.line_move.direction && p.line_move.direction !== 'flat' && p.line_move.pp != null)
+    .sort((a, b) => Math.abs(b.line_move.pp) - Math.abs(a.line_move.pp)).slice(0, 3)
+    .map(p => ({ home: p.event.home, away: p.event.away, family: p.family, pp: p.line_move.pp, direction: p.line_move.direction }));
+  const findings = [];
+  try {
+    const { assessPlayers } = require('./observer/assess');
+    const { narratePlayer } = require('./observer/narrate');
+    const teams = new Set();
+    active.forEach(p => { if (p.event.home_team_id) teams.add(p.event.home_team_id); if (p.event.away_team_id) teams.add(p.event.away_team_id); });
+    for (const tm of teams) {
+      const sig = (((db.clubObservations || {})[tm] || {}).signals) || (((db.observations || {})[tm] || {}).signals) || [];
+      if (!sig.length) continue;
+      const asmts = assessPlayers(sig);
+      for (const x of Object.values(asmts)) {
+        if (!(x.prob_miss > 0)) continue;
+        const nar = narratePlayer(x) || {};
+        if (nar.es || nar.en) findings.push({ team_id: tm, player: x.player, status: x.status, why_es: nar.es || null, why_en: nar.en || null });
+        if (findings.length >= 5) break;
+      }
+      if (findings.length >= 5) break;
+    }
+  } catch { /* sin observer → sección vacía */ }
+  const settled = all.filter(x => x.status === 'SETTLED' && x.settled_at && (now - Date.parse(x.settled_at)) < 24 * 3600e3 && ['WIN', 'LOSS', 'PUSH'].includes(x.result_code));
+  const yesterday = {
+    n: settled.length, wins: settled.filter(x => x.result_code === 'WIN').length, losses: settled.filter(x => x.result_code === 'LOSS').length,
+    rows: settled.slice(0, 8).map(p => ({ home: p.event.home, away: p.event.away, family: p.family, result: p.result_code, odds: p.best_odds, league: p.competition_name || null })),
+  };
+  const data = { generated_at: new Date().toISOString(), top_picks: top, matches, line_moves: moves, findings, yesterday };
+  global._dailyBrief = { at: now, data };
+  return data;
+}
+function briefPickText(p, en) {
+  const sel = p.family === 'SOLID' ? (p.selection_code === 'home' ? p.home : p.selection_code === 'away' ? p.away : (en ? 'Draw' : 'Empate'))
+    : p.family === 'PLAYER' ? `${p.player_name || ''} ${p.player_family === 'player_goal' ? (en ? 'scores' : 'anota') : p.player_family === 'player_assist' ? (en ? 'assists' : 'asiste') : ''}`.trim()
+    : `${p.side === 'over' ? 'Over' : 'Under'} ${p.line}${p.family === 'CORNERS' ? (en ? ' corners' : ' córners') : p.family === 'CARDS' ? (en ? ' cards' : ' tarjetas') : ''}`;
+  return `${p.home} v ${p.away}: ${sel}${p.odds ? ' @' + Number(p.odds).toFixed(2) : ''}${p.edge_pp != null ? ' (+' + p.edge_pp + 'pp)' : ''}`;
+}
+function dailyBriefEmailText(b, en) {
+  const L = [];
+  L.push(en ? 'GP DAILY BRIEF' : 'GP DAILY BRIEF');
+  if (b.top_picks.length) {
+    L.push('');
+    L.push(en ? 'Top opportunities today:' : 'Top oportunidades de hoy:');
+    b.top_picks.forEach((p, i) => L.push(`${i + 1}. ${briefPickText(p, en)}${p.league ? ' · ' + p.league : ''}`));
+  }
+  if (b.yesterday.n) { L.push(''); L.push(en ? `Yesterday: ${b.yesterday.wins}W-${b.yesterday.losses}L of ${b.yesterday.n} settled` : `Ayer: ${b.yesterday.wins}G-${b.yesterday.losses}P de ${b.yesterday.n} liquidadas`); }
+  if (b.line_moves.length) {
+    L.push(''); L.push(en ? 'Line moves:' : 'Movimientos de línea:');
+    b.line_moves.forEach(m => L.push(`· ${m.home} v ${m.away} (${m.family}): ${m.pp > 0 ? '+' : ''}${m.pp}pp ${m.direction === 'with' ? (en ? 'toward our side' : 'a favor') : (en ? 'against' : 'en contra')}`));
+  }
+  if (b.findings.length) {
+    L.push(''); L.push(en ? 'Availability watch:' : 'Radar de bajas:');
+    b.findings.forEach(f => L.push('· ' + ((en ? f.why_en : f.why_es) || f.player)));
+  }
+  L.push('');
+  L.push(en ? 'Full analysis: https://gpsimulador.com' : 'Análisis completo: https://gpsimulador.com');
+  L.push(en ? 'Model estimates, not financial advice.' : 'Estimaciones de un modelo estadístico, no consejo financiero.');
+  return L.join('\n');
+}
+async function sendDailyBriefEmails() {
+  if (!dailyBriefOn() || !mailer.isConfigured()) return { skipped: 'off' };
+  const b = buildDailyBrief();
+  if (!b.top_picks.length && !b.yesterday.n) return { skipped: 'empty' };
+  let sent = 0;
+  for (const [email, u] of Object.entries(db.users || {})) {
+    if (!u || !u.brief_email) continue;
+    const en = userLang(email) === 'en';
+    try {
+      await mailer.sendMail({
+        to: email, prefer: 'relay',
+        subject: en ? 'GP Daily Brief — today\'s opportunities' : 'GP Daily Brief — las oportunidades de hoy',
+        text: dailyBriefEmailText(b, en),
+      });
+      sent++;
+    } catch { /* siguiente */ }
+  }
+  return { sent };
+}
+async function dailyBriefTick() {
+  if (!dailyBriefOn()) return;
+  const now = new Date(), day = now.toISOString().slice(0, 10), h = now.getUTCHours();
+  if (h < 13 || h >= 16 || db.sentBriefDay === day) return;
+  db.sentBriefDay = day; save(); // marcar ANTES de enviar: jamás doble envío masivo
+  try { await sendDailyBriefEmails(); } catch { }
+  try {
+    if (/^(1|true|yes|on)$/i.test(String(process.env.GP_DAILY_BRIEF_TELEGRAM_ENABLED || '').trim()) && telegram.configured()) {
+      const b = buildDailyBrief();
+      if (b.top_picks.length) {
+        const lines = b.top_picks.map((p, i) => `${i + 1}. ${briefPickText(p, false)}${p.league ? ' · ' + p.league : ''}`);
+        await telegram.post(`🗞 <b>GP Daily Brief</b>\n\n${lines.join('\n')}\n\n👉 <a href="https://gpsimulador.com/?ref=tg">Análisis completo</a>`);
+      }
+    }
+  } catch { }
+}
+if (dailyBriefOn()) setInterval(() => dailyBriefTick().catch(() => { }), 30 * 60 * 1000);
 // ===== P2.5 — PASADAS AUTOMÁTICAS DE DATA (post-jornada) =====================================================
 // Corre los backfills de clubes (props-history AF, results TSA, player-history TSA, FotMob) UNA vez al día
 // como procesos hijos (los scripts son incrementales/resumibles por done[]). En prod los archivos autoritativos
@@ -4652,6 +4865,12 @@ async function evaluateClubDailyPicks() {
 if (dailyPicksOn() && clubsShadowOn()) {
   setTimeout(() => evaluateClubDailyPicks().catch(() => { }), 180 * 1000);
   setInterval(() => evaluateClubDailyPicks().catch(() => { }), 15 * 60 * 1000);
+}
+// F3 Watch price: chequeo en el MISMO ritmo de 15min (las cuotas frescas llegan con los sweeps; el chequeo
+// lee sportsbook_goal_quote_current — la fuente del cierre oficial). Flag off → no-op.
+if (watchPriceOn()) {
+  setTimeout(() => checkPriceWatches().catch(() => { }), 240 * 1000);
+  setInterval(() => checkPriceWatches().catch(() => { }), 15 * 60 * 1000);
 }
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
@@ -6302,6 +6521,11 @@ const server = http.createServer(async (req, res) => {
         // aparte): solo ADMIN + flag ven las superficies de clubes; para todos los demás la plataforma es
         // byte-idéntica hasta la fusión post-Mundial.
         clubs_shadow: !!(u.isAdmin && /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())),
+        my_bets: myBetsOn(),   // F1 Mi cartera (flag global; off → sin nav ni endpoint)
+        my_books: myBooksOn(), // F2 Mis casas
+        my_books_list: myBooksOn() ? ((db.users[u.email] || {}).my_books || []) : undefined,
+        watch_price: watchPriceOn(), // F3 Watch price
+        daily_brief: dailyBriefOn(), // F4 GP Daily Brief
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -6311,6 +6535,106 @@ const server = http.createServer(async (req, res) => {
       db.users[u.email].onboarded = Date.now();
       save();
       return json(res, 200, { ok: true });
+    }
+    // ===== F1 — MI CARTERA (flag GP_MY_BETS_ENABLED; off → 404 = plataforma byte-idéntica) ===================
+    // El usuario registra lo que APOSTÓ (ligado a una pick GP o manual) y marca el resultado. Métricas:
+    // P&L/ROI/récord, CLV PERSONAL (apuestas ligadas a picks con cierre capturado → computeClv con SU cuota),
+    // adherencia al stake y GP-vs-manual (rendimiento siguiendo picks vs apuestas propias).
+    if (p === '/api/me/bets' && (req.method === 'GET' || req.method === 'POST')) {
+      if (!myBetsOn()) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      db.userBets = db.userBets || {};
+      const list = db.userBets[u.email] = db.userBets[u.email] || [];
+      if (req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        if (b.delete && b.id) {
+          const i = list.findIndex(x => x.id === String(b.id));
+          if (i >= 0) list.splice(i, 1);
+          save();
+        } else if (b.id && b.result !== undefined) {
+          const bet = list.find(x => x.id === String(b.id));
+          if (!bet) return json(res, 404, { error: 'No existe' });
+          if (!['open', 'won', 'lost', 'void'].includes(b.result)) return json(res, 400, { error: 'Resultado inválido' });
+          bet.result = b.result; bet.settled_at = b.result === 'open' ? null : new Date().toISOString();
+          save();
+        } else {
+          const odds = Number(b.odds), stake = Number(b.stake);
+          if (!(odds > 1 && odds < 1000) || !(stake > 0 && stake < 1e9)) return json(res, 400, { error: 'Cuota o stake inválido' });
+          if (list.length >= 500) return json(res, 400, { error: 'Límite de apuestas' });
+          const pick = b.pick_id ? myBetsFindPick(String(b.pick_id)) : null;
+          list.push({
+            id: 'ub_' + crypto.randomBytes(6).toString('hex'), at: new Date().toISOString(),
+            pick_id: pick ? pick.pick_id : null, family: pick ? pick.family : null,
+            label: String(b.label || '').slice(0, 140) || (pick ? [pick.event && pick.event.home, 'v', pick.event && pick.event.away].join(' ') : '—'),
+            kickoff: pick ? (pick.event && pick.event.kickoff_at) : null,
+            odds: +odds.toFixed(3), stake: +stake.toFixed(2), book: String(b.book || '').slice(0, 40) || null,
+            suggested_conf: pick && pick.confidence != null ? +Number(pick.confidence).toFixed(3) : null,
+            result: 'open', settled_at: null,
+          });
+          save();
+        }
+      }
+      return json(res, 200, { enabled: true, bets: list.slice().reverse().slice(0, 200), stats: myBetsStats(list) });
+    }
+    // ===== F2 — MIS CASAS: guarda las casas del usuario (el cliente filtra feed/value/arb con ellas) =========
+    if (p === '/api/me/books' && req.method === 'POST') {
+      if (!myBooksOn()) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const b = await readBody(req).catch(() => ({}));
+      const books = Array.isArray(b.books) ? b.books.map(x => String(x).toLowerCase().slice(0, 40)).filter(x => /^[a-z0-9_ .-]+$/.test(x)).slice(0, 30) : [];
+      db.users[u.email].my_books = books;
+      save();
+      return json(res, 200, { ok: true, books });
+    }
+    // ===== F3 — WATCH PRICE: registro de vigilancias de precio ancladas a una pick activa ====================
+    if (p === '/api/me/watches' && (req.method === 'GET' || req.method === 'POST')) {
+      if (!watchPriceOn()) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      db.priceWatches = db.priceWatches || [];
+      if (req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        if (b.delete && b.id) {
+          const i = db.priceWatches.findIndex(x => x.id === String(b.id) && x.email === u.email);
+          if (i >= 0) db.priceWatches.splice(i, 1);
+          save();
+        } else {
+          const target = Number(b.target_odds);
+          const pk = myBetsFindPick(String(b.pick_id || ''));
+          if (!pk) return json(res, 404, { error: 'Pick no encontrada' });
+          if (!(target > 1 && target < 1000)) return json(res, 400, { error: 'Cuota objetivo inválida' });
+          const mine = db.priceWatches.filter(x => x.email === u.email && !x.dead);
+          if (mine.length >= 30) return json(res, 400, { error: 'Límite de watches' });
+          db.priceWatches.push({
+            id: 'pw_' + crypto.randomBytes(6).toString('hex'), email: u.email, pick_id: pk.pick_id,
+            label: [(pk.event && pk.event.home) || '', 'v', (pk.event && pk.event.away) || ''].join(' ').trim(),
+            target_odds: +target.toFixed(3), created_at: new Date().toISOString(),
+            last_odds: pk.best_odds != null ? +Number(pk.best_odds).toFixed(3) : null, last_check: null, triggered_at: null, dead: false,
+          });
+          save();
+        }
+      }
+      const mine = db.priceWatches.filter(x => x.email === u.email).slice(-60).reverse();
+      return json(res, 200, { enabled: true, watches: mine });
+    }
+    // ===== F4 — GP DAILY BRIEF in-app + opt-in del email diario ==============================================
+    if (p === '/api/me/brief' && (req.method === 'GET' || req.method === 'POST')) {
+      if (!dailyBriefOn()) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        db.users[u.email].brief_email = !!b.email_opt_in;
+        save();
+      }
+      const bets = myBetsOn() ? (db.userBets && db.userBets[u.email]) || [] : null;
+      return json(res, 200, {
+        enabled: true, brief: buildDailyBrief(),
+        email_opt_in: !!db.users[u.email].brief_email,
+        bankroll: bets ? myBetsStats(bets) : null, // estado del bankroll (F1) si Mi cartera está activa
+      });
     }
     // CANCELACIÓN de suscripción con verificación por código al email (fricción intencional + seguridad).
     // Paso 1: POST /api/me/cancel/request → envía código. Paso 2: POST /api/me/cancel {code} → cancela el grant.

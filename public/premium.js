@@ -282,6 +282,22 @@
       cpf_corr_note: 'Picks del mismo partido con stake ajustado por correlación (ρ medida en la matriz de marcadores).',
       cpf_scaled: 'La suma sugerida ({sum}) superaba tu límite diario — todos los stakes se escalaron a {pct}% para respetarlo.',
       cpf_maxloss_note: 'En el 95% de los días no perderías más que esto (simulación con las probabilidades y correlaciones de hoy). Peor caso absoluto = el riesgo total.',
+      nav_bets: 'Mi cartera', nav_books: 'Mis casas', nav_brief: 'Daily Brief',
+      mb_title: 'Mi cartera', mb_intro: 'Registrá lo que apostás (con o sin pick GP) y marcá el resultado — P&L, ROI y CLV personal, y tu rendimiento siguiendo GP vs apuestas propias.',
+      mb_add: 'Registrar apuesta', mb_pick: 'Pick GP (opcional)', mb_manual_opt: 'Apuesta manual (sin pick)', mb_label: 'Descripción', mb_odds: 'Cuota', mb_stake: 'Stake', mb_book: 'Casa (opcional)', mb_save: 'Guardar',
+      mb_pnl: 'P&L', mb_roi: 'ROI', mb_record: 'Récord', mb_clv: 'CLV personal', mb_open: 'Abiertas', mb_gp: 'Siguiendo GP', mb_manual: 'Manuales',
+      mb_result: 'Resultado', mb_won: 'Ganada', mb_lost: 'Perdida', mb_void: 'Nula', mb_reopen: 'Reabrir', mb_del: 'Borrar', mb_del_confirm: '¿Borrar esta apuesta del registro?',
+      mb_empty: 'Aún sin apuestas registradas', mb_empty_sub: 'Registrá tu primera apuesta y tu P&L personal arranca solo.',
+      mb_note: 'Registro personal y privado. El CLV usa el cierre oficial de la pick cuando existe.',
+      bk_title: 'Mis casas', bk_intro: 'Marcá las casas donde tenés cuenta: el feed te muestra qué picks son ejecutables para vos y cuáles cotizan mejor en una casa que no tenés.',
+      bk_save: 'Guardar', bk_saved: 'Guardado', bk_custom: 'Otra casa…', bk_add: 'Agregar', bk_only_mine: 'Solo mis casas', bk_not_mine: 'mejor cuota en casa que no tenés',
+      wp_watch: 'Vigilar precio', wp_target: 'Avisame si la mejor cuota llega a', wp_set: 'Crear alerta', wp_created: 'Alerta creada',
+      wp_list: 'Precios vigilados', wp_hit: 'Alcanzado', wp_expired: 'Vencido', wp_active: 'Vigilando', wp_last: 'última', wp_target_s: 'objetivo', wp_none: 'Sin precios vigilados. Creá uno desde cualquier pick con "Vigilar precio".',
+      bf_title: 'GP Daily Brief', bf_sub: 'Tu resumen diario: oportunidades, partidos, movimientos y resultados.',
+      bf_top: 'Top oportunidades de hoy', bf_matches: 'Partidos del día', bf_moves: 'Movimientos de línea', bf_findings: 'Radar de bajas', bf_yesterday: 'Resultados de ayer', bf_bankroll: 'Tu cartera',
+      bf_email: 'Recibir el brief por email cada día', bf_email_saved: 'Preferencia guardada',
+      bf_empty: 'El brief se arma solo cuando hay picks activas del día.', bf_yn: '{wins}G-{losses}P de {n} liquidadas',
+      bf_move_with: 'a favor', bf_move_against: 'en contra',
     },
     en: {
       nav_opps: 'Opportunities', nav_matches: 'Matches', nav_teams: 'Teams', nav_sim: 'Simulator', nav_follow: 'Following',
@@ -555,6 +571,22 @@
       cpf_corr_note: 'Same-match picks have their stake adjusted for correlation (ρ measured on the score matrix).',
       cpf_scaled: 'The suggested sum ({sum}) exceeded your daily limit — all stakes were scaled to {pct}% to respect it.',
       cpf_maxloss_note: 'On 95% of days you would not lose more than this (simulated with today’s probabilities and correlations). Absolute worst case = the total risk.',
+      nav_bets: 'My bets', nav_books: 'My books', nav_brief: 'Daily Brief',
+      mb_title: 'My bets', mb_intro: 'Log what you bet (with or without a GP pick) and mark the result — personal P&L, ROI and CLV, plus your performance following GP vs your own bets.',
+      mb_add: 'Log a bet', mb_pick: 'GP pick (optional)', mb_manual_opt: 'Manual bet (no pick)', mb_label: 'Description', mb_odds: 'Odds', mb_stake: 'Stake', mb_book: 'Book (optional)', mb_save: 'Save',
+      mb_pnl: 'P&L', mb_roi: 'ROI', mb_record: 'Record', mb_clv: 'Personal CLV', mb_open: 'Open', mb_gp: 'Following GP', mb_manual: 'Manual',
+      mb_result: 'Result', mb_won: 'Won', mb_lost: 'Lost', mb_void: 'Void', mb_reopen: 'Reopen', mb_del: 'Delete', mb_del_confirm: 'Delete this bet from the log?',
+      mb_empty: 'No bets logged yet', mb_empty_sub: 'Log your first bet and your personal P&L starts building itself.',
+      mb_note: 'Personal, private log. CLV uses the pick’s official closing price when available.',
+      bk_title: 'My books', bk_intro: 'Mark the sportsbooks where you have an account: the feed shows which picks are executable for you and which are priced best at a book you don’t have.',
+      bk_save: 'Save', bk_saved: 'Saved', bk_custom: 'Another book…', bk_add: 'Add', bk_only_mine: 'My books only', bk_not_mine: 'best odds at a book you don’t have',
+      wp_watch: 'Watch price', wp_target: 'Alert me if the best odds reach', wp_set: 'Create alert', wp_created: 'Alert created',
+      wp_list: 'Watched prices', wp_hit: 'Hit', wp_expired: 'Expired', wp_active: 'Watching', wp_last: 'last', wp_target_s: 'target', wp_none: 'No watched prices. Create one from any pick with "Watch price".',
+      bf_title: 'GP Daily Brief', bf_sub: 'Your daily summary: opportunities, matches, line moves and results.',
+      bf_top: 'Top opportunities today', bf_matches: 'Today’s matches', bf_moves: 'Line moves', bf_findings: 'Availability watch', bf_yesterday: 'Yesterday’s results', bf_bankroll: 'Your bets',
+      bf_email: 'Get the brief by email every day', bf_email_saved: 'Preference saved',
+      bf_empty: 'The brief builds itself when there are active picks for the day.', bf_yn: '{wins}W-{losses}L of {n} settled',
+      bf_move_with: 'toward our side', bf_move_against: 'against',
     }
   };
   var LANG = 'es', TEAMS = {};
@@ -730,9 +762,9 @@
     ['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['teams', 'shield', 'nav_teams'],
     ['sim', 'arrows-shuffle', 'nav_sim'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']
   ];
-  var NAV2 = [['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
+  var NAV2 = [['brief', 'news', 'nav_brief'], ['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
-  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support'].indexOf(v) >= 0 ? v : 'opps'); }
+  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(v) >= 0 ? v : 'opps'); }
   // BANNER FOUNDER (growth): barra superior a todo ancho anunciando el programa. Solo cuando el server
   // enciende founder_public (lanzamiento). Cierra por sesión, pero la env manda. Click → /founder.
   function founderBanner() {
@@ -758,11 +790,13 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin']; // vistas implementadas (clickeables)
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief']; // vistas implementadas (clickeables)
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
     var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + (adminOnly ? ' style="display:none"' : '') + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin'];
+    // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
+    var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
+    var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
       .map(function (n) { if (n[0] === '__more') { var act = moreViews.indexOf(cur) >= 0 ? ' on' : ''; return '<a class="' + act.trim() + '" data-more="1">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; } var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
@@ -934,6 +968,11 @@
   function syncAdminUI() {
     var on = !!(S.me && S.me.isAdmin);
     [].forEach.call(document.querySelectorAll('.gx-admin-only'), function (el) { el.style.display = on ? '' : 'none'; });
+    // F1/F2/F4: superficies gateadas por flag del server (off → invisibles, plataforma idéntica)
+    [['gx-feat-bets', 'my_bets'], ['gx-feat-books', 'my_books'], ['gx-feat-brief', 'daily_brief']].forEach(function (fc) {
+      var vis = !!(S.me && S.me[fc[1]]);
+      [].forEach.call(document.querySelectorAll('.' + fc[0]), function (el) { el.style.display = vis ? '' : 'none'; });
+    });
     // Identidad real en el pie del sidebar (el shell puede pintarse antes de /api/me).
     var foot = document.querySelector('.gx-side-foot');
     if (foot && S.me && S.me.email) {
@@ -943,7 +982,12 @@
   }
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
-    var items = [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']].concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
+    var items = [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']]
+      .concat(S.me && S.me.daily_brief ? [['brief', 'news', 'nav_brief']] : [])
+      .concat(S.me && S.me.my_bets ? [['bets', 'wallet', 'nav_bets']] : [])
+      .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+      .concat([['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
+      .concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
     var existing = document.getElementById('gx-more-sheet'); if (existing) existing.remove();
     var sheet = document.createElement('div'); sheet.id = 'gx-more-sheet'; sheet.className = 'gx-sheet-wrap';
     sheet.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('more')) + '</b><button class="gx-sheet-x" aria-label="close">' + ic('x') + '</button></div><div class="gx-sheet-grid">' +
@@ -1327,8 +1371,16 @@
       (p.book ? '<span class="gx-pick-book">' + esc(t('pf_at')) + ' ' + bookLogo(p.book) + esc(prettyBook(p.book)) + '</span>' : '') + '</div>' +
       '</div>' +
       pickSignalsRow(p) +
-      (p.odds != null && p.confidence != null ? '<div class="gx-calc-row">' + stakeCalcBtn(p.confidence, Number(p.odds), pickRecText(p), 'gp') + '</div>' : '') +
+      myBooksHint(p.book) + // F2: la mejor cuota está en una casa que el usuario no marcó
+      (p.odds != null && p.confidence != null ? '<div class="gx-calc-row">' + stakeCalcBtn(p.confidence, Number(p.odds), pickRecText(p), 'gp') + ' ' + watchBtn(p) + '</div>' : '') +
       '</div>';
+  }
+  // F2: hint discreto cuando la mejor cuota vive en una casa fuera de las del usuario (solo con casas guardadas)
+  function myBooksHint(book) {
+    var mine = (S.me && S.me.my_books) && (S.me.my_books_list || []);
+    if (!mine || !mine.length || !book) return '';
+    if (mine.indexOf(String(book).toLowerCase()) >= 0) return '';
+    return '<div class="gx-dim" style="font-size:10.5px;margin-top:4px">' + ic('info-circle') + ' ' + esc(t('bk_not_mine')) + ' (' + esc(prettyBook(book)) + ')</div>';
   }
   // P3 (spec Alexis 17-jul): la confianza habla de la CERTEZA del input/modelo, no sustituye la probabilidad.
   // Señales: edge estimado (pp vs consenso) · Datos (profundidad/frescura del input) · Calidad (composite).
@@ -2007,6 +2059,256 @@
     if (holder) { if (mode === 'arb') wireArbPanel(holder); else if (mode === 'pf') wirePfPanel(holder); else wireStakePanel(holder); }
   }
 
+  // ============================ F1 — MI CARTERA ============================
+  // Registro personal de apuestas: P&L/ROI/CLV del usuario + GP-vs-manual. Flag S.me.my_bets (server).
+  function mbPost(body, cb) {
+    fetch('/api/me/bets', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify(body) })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) { if (j) S.myBets = j; if (cb) cb(j); if (S.view === 'bets') renderBets(); });
+  }
+  function mbStatTile(label, val, cls) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono ' + (cls || '') + '">' + val + '</b></div>'; }
+  function renderBets() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.me && !S.me.my_bets) { showView('board'); return; }
+    if (S.myBets === undefined) {
+      S.myBets = null;
+      fetch('/api/me/bets', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.myBets = j || { bets: [], stats: null }; if (S.view === 'bets') renderBets(); });
+    }
+    if (S.dailyPicks === undefined) {
+      S.dailyPicks = null;
+      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; if (S.view === 'bets') renderBets(); });
+    }
+    var d = S.myBets;
+    if (!d) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('mb_title')) + mvLoading() + '</div></div>'; return; }
+    var st = d.stats || {};
+    var ccy = calcCcy();
+    var money = function (v) { return fmtMoney(v || 0, ccy); };
+    var ov = st.overall || { n: 0 };
+    var kpis = '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body"><div class="gx-hero-grid" style="margin:0">' +
+      mbStatTile(t('mb_pnl'), (ov.pnl >= 0 ? '+' : '') + money(ov.pnl), ov.pnl >= 0 ? 'gx-pos' : 'gx-neg') +
+      mbStatTile(t('mb_roi'), ov.roi != null ? (ov.roi >= 0 ? '+' : '') + (ov.roi * 100).toFixed(1) + '%' : '—', ov.roi > 0 ? 'gx-pos' : ov.roi < 0 ? 'gx-neg' : '') +
+      mbStatTile(t('mb_record'), (ov.wins || 0) + 'W-' + (ov.losses || 0) + 'L') +
+      mbStatTile(t('mb_clv'), st.clv ? (st.clv.avg_pct >= 0 ? '+' : '') + st.clv.avg_pct + '%' : '—', st.clv && st.clv.avg_pct > 0 ? 'gx-pos' : '') +
+      mbStatTile(t('mb_open'), (st.open_count || 0) + (st.open_stake ? ' · ' + money(st.open_stake) : '')) +
+      '</div>' +
+      ((st.gp && st.gp.n) || (st.manual && st.manual.n) ? '<div class="gx-pick-signals" style="margin-top:10px">' +
+        esc(t('mb_gp')) + ' <b>' + (st.gp.wins || 0) + 'W-' + (st.gp.losses || 0) + 'L · ' + (st.gp.pnl >= 0 ? '+' : '') + money(st.gp.pnl) + '</b>' +
+        '<span class="gx-sig-dot">·</span>' + esc(t('mb_manual')) + ' <b>' + (st.manual.wins || 0) + 'W-' + (st.manual.losses || 0) + 'L · ' + (st.manual.pnl >= 0 ? '+' : '') + money(st.manual.pnl) + '</b></div>' : '') +
+      '</div></div>';
+    // form de registro: pick del feed (autollenar cuota) o manual
+    var pickOpts = '<option value="">' + esc(t('mb_manual_opt')) + '</option>' + (S.dailyPicks || []).map(function (p2) {
+      return '<option value="' + esc(p2.pick_id) + '" data-odds="' + (p2.odds != null ? Number(p2.odds).toFixed(2) : '') + '">' + esc(pickRecText(p2) + ' · ' + teamName(p2.home_team_id, p2.home) + ' v ' + teamName(p2.away_team_id, p2.away) + (p2.odds ? ' @' + Number(p2.odds).toFixed(2) : '')) + '</option>';
+    }).join('');
+    var form = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('plus') + esc(t('mb_add')) + '</span></div><div class="gx-mod-body">' +
+      '<div class="gx-calc" style="padding:0;border:0;background:none">' +
+      '<label class="gx-calc-f"><span>' + esc(t('mb_pick')) + '</span><select class="gx-calc-in" id="mb-pick" style="width:100%">' + pickOpts + '</select></label>' +
+      '<div class="gx-calc-grid" style="margin-top:8px">' +
+      '<label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('mb_label')) + '</span><input class="gx-calc-in" id="mb-label" maxlength="140" placeholder="Bahia v Chapecoense · Over 2.5"></label>' +
+      '<label class="gx-calc-f"><span>' + esc(t('mb_odds')) + '</span><input class="gx-calc-in" id="mb-odds" type="number" inputmode="decimal" min="1.01" step="0.01"></label>' +
+      '<label class="gx-calc-f"><span>' + esc(t('mb_stake')) + '</span><input class="gx-calc-in" id="mb-stake" type="number" inputmode="decimal" min="0" step="any"></label>' +
+      '</div>' +
+      '<div class="gx-calc-grid" style="margin-top:8px">' +
+      '<label class="gx-calc-f"><span>' + esc(t('mb_book')) + '</span><input class="gx-calc-in" id="mb-book" maxlength="40" placeholder="bet365"></label>' +
+      '<div class="gx-calc-f" style="justify-content:flex-end"><button class="gx-btn" id="mb-save">' + esc(t('mb_save')) + '</button></div>' +
+      '</div></div></div></div>';
+    // historial
+    var rows = (d.bets || []).map(function (b) {
+      var res = b.result === 'won' ? '<span class="gx-badge" style="background:rgba(31,227,164,.12);color:var(--gx-accent)">' + esc(t('mb_won')) + '</span>'
+        : b.result === 'lost' ? '<span class="gx-badge" style="background:rgba(255,107,107,.12);color:var(--gx-neg)">' + esc(t('mb_lost')) + '</span>'
+        : b.result === 'void' ? '<span class="gx-badge gx-dim">' + esc(t('mb_void')) + '</span>' : '';
+      var actions = b.result === 'open'
+        ? '<button class="gx-why-btn" data-mbres="won|' + esc(b.id) + '">W</button> <button class="gx-why-btn" data-mbres="lost|' + esc(b.id) + '">L</button> <button class="gx-why-btn" data-mbres="void|' + esc(b.id) + '">∅</button>'
+        : res + ' <button class="gx-why-btn" data-mbres="open|' + esc(b.id) + '">' + esc(t('mb_reopen')) + '</button>';
+      return '<tr><td class="l gx-dim" style="font-size:10.5px;white-space:nowrap">' + esc(fmtDate(b.at)) + '</td>' +
+        '<td class="l"><b style="font-size:12px">' + esc(b.label) + '</b>' + (b.pick_id ? ' <span class="gx-badge" style="font-size:9px">GP</span>' : '') + (b.book ? '<div class="gx-dim" style="font-size:10px">' + esc(prettyBook(b.book)) + '</div>' : '') + '</td>' +
+        '<td class="gx-mono">' + Number(b.odds).toFixed(2) + '</td><td class="gx-mono">' + money(b.stake) + '</td>' +
+        '<td class="l" style="white-space:nowrap">' + actions + ' <button class="gx-why-btn" data-mbdel="' + esc(b.id) + '" title="' + esc(t('mb_del')) + '">' + ic('x') + '</button></td></tr>';
+    }).join('');
+    var table = (d.bets || []).length
+      ? '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">·</th><th class="l">' + esc(t('mb_label')) + '</th><th>' + esc(t('mb_odds')) + '</th><th>' + esc(t('mb_stake')) + '</th><th class="l">' + esc(t('mb_result')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="gx-empty gx-pick-empty">' + illo('tickets') + '<b>' + esc(t('mb_empty')) + '</b><span class="gx-dim">' + esc(t('mb_empty_sub')) + '</span></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:860px">' + viewHead(t('mb_title')) +
+      '<p class="gx-calc-intro gx-dim">' + esc(t('mb_intro')) + '</p>' + kpis + form + table +
+      '<p class="gx-mod-note gx-dim">' + ic('lock') + ' ' + esc(t('mb_note')) + '</p></div></div>';
+    var sel = mv.querySelector('#mb-pick');
+    if (sel) sel.addEventListener('change', function () {
+      var op = sel.options[sel.selectedIndex];
+      var od = op && op.getAttribute('data-odds');
+      if (od) mv.querySelector('#mb-odds').value = od;
+      if (sel.value) mv.querySelector('#mb-label').value = (op.textContent || '').split(' @')[0];
+    });
+    var sv = mv.querySelector('#mb-save');
+    if (sv) sv.addEventListener('click', function () {
+      var body = {
+        pick_id: (mv.querySelector('#mb-pick') || {}).value || null,
+        label: (mv.querySelector('#mb-label') || {}).value || '',
+        odds: parseFloat((mv.querySelector('#mb-odds') || {}).value),
+        stake: parseFloat((mv.querySelector('#mb-stake') || {}).value),
+        book: (mv.querySelector('#mb-book') || {}).value || null,
+      };
+      if (!(body.odds > 1) || !(body.stake > 0)) return;
+      mbPost(body);
+    });
+    [].forEach.call(mv.querySelectorAll('[data-mbres]'), function (b) {
+      b.addEventListener('click', function () { var pp2 = b.getAttribute('data-mbres').split('|'); mbPost({ id: pp2[1], result: pp2[0] }); });
+    });
+    [].forEach.call(mv.querySelectorAll('[data-mbdel]'), function (b) {
+      b.addEventListener('click', function () { if (confirm(t('mb_del_confirm'))) mbPost({ id: b.getAttribute('data-mbdel'), delete: true }); });
+    });
+  }
+
+  // ============================ F2 — MIS CASAS ============================
+  var BK_COMMON = ['bet365', 'betano', 'draftkings', 'fanduel', 'betmgm', 'caesars', 'betrivers', 'espnbet', 'pinnacle', 'williamhill', 'unibet', 'betsson', 'bwin', 'betonlineag', 'bovada', 'codere', 'bplay', 'betway'];
+  function renderBooks() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.me && !S.me.my_books) { showView('board'); return; }
+    var mine = (S.me && S.me.my_books_list) || [];
+    var all = BK_COMMON.slice();
+    mine.forEach(function (b) { if (all.indexOf(b) < 0) all.push(b); });
+    var chips = all.map(function (b) {
+      var on = mine.indexOf(b) >= 0;
+      return '<button class="gx-calc-frac' + (on ? ' on' : '') + '" data-bk="' + esc(b) + '" style="font-size:12px;padding:7px 12px">' + bookLogo(b) + esc(prettyBook(b)) + '</button>';
+    }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('bk_title')) +
+      '<p class="gx-calc-intro gx-dim">' + esc(t('bk_intro')) + '</p>' +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
+      '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px">' + chips + '</div>' +
+      '<div class="gx-calc-grid" style="margin-top:12px"><label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('bk_custom')) + '</span><input class="gx-calc-in" id="bk-custom" maxlength="40" placeholder="pinnacle"></label>' +
+      '<div class="gx-calc-f" style="justify-content:flex-end"><button class="gx-btn" id="bk-add">' + esc(t('bk_add')) + '</button></div></div>' +
+      '<div style="margin-top:12px;display:flex;align-items:center;gap:10px"><button class="gx-btn" id="bk-save">' + esc(t('bk_save')) + '</button><span class="gx-dim" id="bk-msg" style="font-size:12px"></span></div>' +
+      '</div></div></div></div>';
+    var sel = {};
+    mine.forEach(function (b) { sel[b] = true; });
+    [].forEach.call(mv.querySelectorAll('[data-bk]'), function (b) {
+      b.addEventListener('click', function () { var k = b.getAttribute('data-bk'); sel[k] = !sel[k]; b.classList.toggle('on', !!sel[k]); });
+    });
+    var add = mv.querySelector('#bk-add');
+    if (add) add.addEventListener('click', function () {
+      var v = String((mv.querySelector('#bk-custom') || {}).value || '').toLowerCase().trim();
+      if (!v) return;
+      sel[v] = true;
+      S.me.my_books_list = Object.keys(sel).filter(function (k) { return sel[k]; });
+      renderBooks();
+    });
+    var sv = mv.querySelector('#bk-save');
+    if (sv) sv.addEventListener('click', function () {
+      var books = Object.keys(sel).filter(function (k) { return sel[k]; });
+      fetch('/api/me/books', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ books: books }) })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { if (j) { S.me.my_books_list = j.books; var m = mv.querySelector('#bk-msg'); if (m) m.textContent = '✓ ' + t('bk_saved'); } });
+    });
+  }
+
+  // ============================ F3 — WATCH PRICE (UI) ============================
+  function wpPost(body, cb) {
+    fetch('/api/me/watches', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify(body) })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) { if (j) S.watches = j.watches || []; if (cb) cb(j); if (S.view === 'alerts') renderAlerts(); });
+  }
+  function watchBtn(p) {
+    if (!(S.me && S.me.watch_price) || !p.pick_id || p.odds == null) return '';
+    return '<button class="gx-why-btn" data-watchbtn="' + esc(p.pick_id) + '" data-odds="' + Number(p.odds).toFixed(2) + '">' + ic('eye') + esc(t('wp_watch')) + '</button>';
+  }
+  function toggleWatchRow(btn) {
+    var card = btn.closest('.gx-pick-card'); if (!card) return;
+    var ex = card.querySelector(':scope > .gx-wp-row');
+    if (ex) { ex.remove(); return; }
+    var row = document.createElement('div');
+    row.className = 'gx-wp-row';
+    var cur = parseFloat(btn.getAttribute('data-odds')) || 2;
+    row.innerHTML = '<span class="gx-dim" style="font-size:11.5px">' + esc(t('wp_target')) + '</span>' +
+      '<input class="gx-calc-in" type="number" inputmode="decimal" min="1.01" step="0.01" value="' + (cur + 0.1).toFixed(2) + '" style="width:84px">' +
+      '<button class="gx-btn" style="padding:6px 12px;font-size:12px">' + esc(t('wp_set')) + '</button><span class="gx-dim" style="font-size:11px"></span>';
+    row.addEventListener('click', function (e) { e.stopPropagation(); });
+    row.querySelector('.gx-btn').addEventListener('click', function () {
+      var tv = parseFloat(row.querySelector('input').value);
+      if (!(tv > 1)) return;
+      wpPost({ pick_id: btn.getAttribute('data-watchbtn'), target_odds: tv }, function (j) {
+        row.querySelector('span:last-child').textContent = j ? '✓ ' + t('wp_created') : '✗';
+        setTimeout(function () { row.remove(); }, 1200);
+      });
+    });
+    card.appendChild(row);
+  }
+  function watchesPanel() {
+    if (!(S.me && S.me.watch_price)) return '';
+    if (S.watches === undefined) {
+      S.watches = null;
+      fetch('/api/me/watches', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.watches = (j && j.watches) || []; if (S.view === 'alerts') renderAlerts(); });
+    }
+    var ws = S.watches || [];
+    var rows = ws.map(function (w) {
+      var stt = w.triggered_at ? '<span class="gx-badge" style="background:rgba(31,227,164,.12);color:var(--gx-accent)">' + esc(t('wp_hit')) + '</span>'
+        : w.dead ? '<span class="gx-badge gx-dim">' + esc(t('wp_expired')) + '</span>'
+        : '<span class="gx-badge" style="background:rgba(91,168,255,.12);color:var(--gx-blue)">' + esc(t('wp_active')) + '</span>';
+      return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto auto auto"><span class="n"><b style="font-size:12px">' + esc(w.label) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(t('wp_target_s')) + ' ' + Number(w.target_odds).toFixed(2) + (w.last_odds != null ? ' · ' + esc(t('wp_last')) + ' ' + Number(w.last_odds).toFixed(2) : '') + '</div></span>' +
+        '<span class="v">' + stt + '</span><span class="v"><button class="gx-why-btn" data-wpdel="' + esc(w.id) + '">' + ic('x') + '</button></span></div>';
+    }).join('');
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('eye') + esc(t('wp_list')) + '</span></div><div class="gx-mod-body">' +
+      (rows || '<p class="gx-dim" style="font-size:12px;margin:0">' + esc(t('wp_none')) + '</p>') + '</div></div>';
+  }
+
+  // ============================ F4 — GP DAILY BRIEF (in-app) ============================
+  function renderBrief() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.me && !S.me.daily_brief) { showView('board'); return; }
+    if (S.brief === undefined) {
+      S.brief = null;
+      fetch('/api/me/brief', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.brief = j; if (S.view === 'brief') renderBrief(); });
+    }
+    var d = S.brief;
+    if (!d) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('bf_title')) + mvLoading() + '</div></div>'; return; }
+    var b = d.brief || {};
+    var secPanel = function (icn, key, inner) { return inner ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic(icn) + esc(t(key)) + '</span></div><div class="gx-mod-body">' + inner + '</div></div>' : ''; };
+    var topHtml = (b.top_picks || []).map(function (p2) {
+      var openId = p2.club_eid || p2.event_id || ((p2.home_team_id && p2.away_team_id) ? 'teams-' + p2.home_team_id + '-' + p2.away_team_id : null);
+      return '<div class="gx-intel-row' + (openId ? ' gx-pick-clickable' : '') + '"' + (openId ? ' data-openmatch="' + esc(openId) + '"' : '') + ' style="grid-template-columns:minmax(0,1fr) auto auto"><span class="n"><b style="font-size:12.5px">' + esc(pickRecText(p2)) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(teamName(p2.home_team_id, p2.home) + ' v ' + teamName(p2.away_team_id, p2.away)) + (p2.league ? ' · ' + esc(p2.league) : '') + ' · ' + esc(fmtDateTime(p2.kickoff)) + '</div></span>' +
+        '<span class="v gx-mono">' + (p2.odds ? '@' + Number(p2.odds).toFixed(2) : '') + '</span>' +
+        '<span class="v gx-mono gx-pos">' + (p2.edge_pp != null ? '+' + p2.edge_pp + 'pp' : '') + '</span></div>';
+    }).join('');
+    var matchesHtml = (b.matches || []).map(function (m) {
+      var openId = m.club_eid || ((m.home_team_id && m.away_team_id) ? 'teams-' + m.home_team_id + '-' + m.away_team_id : null);
+      return '<div class="gx-intel-row' + (openId ? ' gx-pick-clickable' : '') + '"' + (openId ? ' data-openmatch="' + esc(openId) + '"' : '') + ' style="grid-template-columns:minmax(0,1fr) auto"><span class="n"><span class="fl">' + flag(m.home_team_id) + '</span> <b>' + esc(teamName(m.home_team_id, m.home)) + '</b> <span class="gx-dim">' + esc(t('vs')) + '</span> <b>' + esc(teamName(m.away_team_id, m.away)) + '</b><div class="gx-dim" style="font-size:10.5px">' + (m.league ? esc(m.league) + ' · ' : '') + esc(fmtDateTime(m.kickoff)) + '</div></span>' +
+        '<span class="v gx-dim" style="font-size:11px">' + m.picks + ' ' + esc(m.picks === 1 ? t('pf_count1') : t('pf_count')) + '</span></div>';
+    }).join('');
+    var movesHtml = (b.line_moves || []).map(function (m) {
+      return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">' + esc(m.home + ' v ' + m.away) + ' <i class="gx-dim">' + esc(m.family) + '</i></span><span class="v gx-mono ' + (m.direction === 'with' ? 'gx-pos' : '') + '">' + (m.pp > 0 ? '+' : '') + m.pp + 'pp ' + esc(m.direction === 'with' ? t('bf_move_with') : t('bf_move_against')) + '</span></div>';
+    }).join('');
+    var findingsHtml = (b.findings || []).map(function (f) {
+      return '<div class="gx-finding"><span class="gx-finding-dot gx-fd-' + (f.status === 'OUT' || f.status === 'SUSPENDED' ? 'out' : 'doubt') + '"></span><span class="fl">' + flag(f.team_id) + '</span><span class="gx-finding-tx">' + esc((LANG === 'en' ? f.why_en : f.why_es) || f.player) + '</span></div>';
+    }).join('');
+    var y = b.yesterday || { n: 0 };
+    var yHtml = y.n ? '<div class="gx-pick-recap' + (y.wins / Math.max(1, y.wins + y.losses) >= 0.5 ? ' gx-recap-pos' : '') + '" style="margin-bottom:8px">' + ic('circle-check') + esc(t('bf_yn', { wins: y.wins, losses: y.losses, n: y.n })) + '</div>' +
+      (y.rows || []).map(function (r) {
+        return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">' + esc(r.home + ' v ' + r.away) + ' <i class="gx-dim">' + esc(r.family) + (r.league ? ' · ' + esc(r.league) : '') + '</i></span><span class="v gx-mono ' + (r.result === 'WIN' ? 'gx-pos' : r.result === 'LOSS' ? 'gx-neg' : 'gx-dim') + '">' + esc(r.result) + '</span></div>';
+      }).join('') : '';
+    var bk = d.bankroll && d.bankroll.overall && d.bankroll.overall.n ? (function (st) {
+      var ccy = calcCcy();
+      return '<div class="gx-hero-grid" style="margin:0">' +
+        mbStatTile(t('mb_pnl'), (st.overall.pnl >= 0 ? '+' : '') + fmtMoney(st.overall.pnl, ccy), st.overall.pnl >= 0 ? 'gx-pos' : 'gx-neg') +
+        mbStatTile(t('mb_record'), st.overall.wins + 'W-' + st.overall.losses + 'L') +
+        mbStatTile(t('mb_open'), String(st.open_count || 0)) + '</div>';
+    })(d.bankroll) : '';
+    var emailTgl = '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="checkbox" id="bf-email"' + (d.email_opt_in ? ' checked' : '') + '> ' + esc(t('bf_email')) + ' <span class="gx-dim" id="bf-email-msg" style="font-size:11px"></span></label>';
+    var empty = !(b.top_picks || []).length && !y.n ? '<div class="gx-empty gx-pick-empty">' + illo('tickets') + '<b>' + esc(t('bf_empty')) + '</b></div>' : '';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:760px">' + viewHead(t('bf_title')) +
+      '<p class="gx-calc-intro gx-dim">' + esc(t('bf_sub')) + '</p>' + empty +
+      secPanel('star', 'bf_top', topHtml) +
+      secPanel('ball-football', 'bf_matches', matchesHtml) +
+      secPanel('trending-up', 'bf_moves', movesHtml) +
+      (findingsHtml ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('bulb') + esc(t('bf_findings')) + '</span></div><div class="gx-findings" style="padding:10px 16px 12px">' + findingsHtml + '</div></div>' : '') +
+      secPanel('circle-check', 'bf_yesterday', yHtml) +
+      secPanel('wallet', 'bf_bankroll', bk) +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' + emailTgl + '</div></div>' +
+      '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div></div></div>';
+    var tgl = mv.querySelector('#bf-email');
+    if (tgl) tgl.addEventListener('change', function () {
+      fetch('/api/me/brief', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ email_opt_in: tgl.checked }) })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { var m = mv.querySelector('#bf-email-msg'); if (m) m.textContent = j ? '✓ ' + t('bf_email_saved') : '✗'; });
+    });
+  }
+
   // ============================ ONBOARDING (primer ingreso) ============================
   // Solo cuentas creadas DESPUÉS del feature (los ~600 usuarios existentes nunca lo ven) y solo la primera vez:
   // el "visto" se persiste por cuenta en el server (db.users.onboarded) + localStorage como respaldo.
@@ -2513,7 +2815,7 @@
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }
     // sub-estado del selector de competición en el hash (#groups/mls, #bracket/mls, #matches/mls, #teams/mls) →
     // la selección SOBREVIVE a la recarga y al enlace directo (P0.4). Sin sufijo = default de la vista.
-    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub)(?:\/([a-z0-9_]+))?/);
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub|bets|books|brief)(?:\/([a-z0-9_]+))?/);
     if (v) {
       var sub = v[2] || null;
       if (v[1] === 'groups') S.gComp = sub || 'wc';
@@ -2694,6 +2996,9 @@
     else if (v === 'calc') renderCalc();
     else if (v === 'sub') renderSub();
     else if (v === 'support') renderSupport();
+    else if (v === 'bets') renderBets();
+    else if (v === 'books') renderBooks();
+    else if (v === 'brief') renderBrief();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
@@ -4887,9 +5192,11 @@
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('nav_alerts')) +
       '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_events')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + evRows + '</div></div>' +
       '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_channels')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + chRows + '</div></div>' +
+      watchesPanel() + // F3: precios vigilados (flag watch_price; sin flag = '')
       '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('al_note')) + '</p></div></div>';
     [].forEach.call(mv.querySelectorAll('[data-alert-ev]'), function (b) { b.addEventListener('click', function () { toggleAlert('events', b.getAttribute('data-alert-ev'), b); }); });
     [].forEach.call(mv.querySelectorAll('[data-alert-ch]'), function (b) { b.addEventListener('click', function () { toggleAlert('channels', b.getAttribute('data-alert-ch'), b); }); });
+    [].forEach.call(mv.querySelectorAll('[data-wpdel]'), function (b) { b.addEventListener('click', function () { wpPost({ id: b.getAttribute('data-wpdel'), delete: true }); }); });
   }
   function toggleAlert(kind, key, btn) {
     if (!S.me) return; var p = S.me.alertPrefs || (S.me.alertPrefs = { events: {}, channels: {} }); var bag = p[kind] || (p[kind] = {});
@@ -5272,7 +5579,7 @@
   function setLang(l) {
     if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l;
     shell(); render();
-    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport };
+    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief };
     if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
@@ -5426,11 +5733,12 @@
           if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); loadPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport }[S.view] || function () {})(); } }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }
           var cb = e.target.closest('[data-calc]'); if (cb) { e.preventDefault(); e.stopPropagation(); toggleCalc(cb); return; }
+          var wpb = e.target.closest('[data-watchbtn]'); if (wpb) { e.preventDefault(); e.stopPropagation(); toggleWatchRow(wpb); return; }
           var wt = e.target.closest('[data-whytoggle]'); if (wt) { e.preventDefault(); e.stopPropagation(); var wb = wt.parentNode.querySelector('.gx-pick-why'); if (wb) { wb.hidden = !wb.hidden; wt.classList.toggle('open', !wb.hidden); } return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }

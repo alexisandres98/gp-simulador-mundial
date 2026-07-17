@@ -74,3 +74,13 @@ computable con las lambdas del cruce).
 4. **P5 (portfolio diario)** — la calculadora ya existe; extensión natural.
 5. **P2 (minutos como distribución)** — modelado, alimenta props.
 6. **F1→F4** — Mi cartera primero (retención), luego Mis casas, Watch price, Daily Brief.
+
+## ESTADO (17-jul tarde, prod `7fd9d3c`) — PLAN COMPLETO ✔
+- P4 ✔ (degradación + red t() + auditor) y **P4-resto ✔** (barrido CDP ES/EN 0 fugas; proyectadas con nota).
+- P1 ✔ · P3 ✔ · P5 ✔ (correlación auto + **Portfolio del día** en la calculadora) · P2 ✔ (minutesDist en
+  prop-engine, expuesto en player/intel Mundial+clubes, panel compartido en perfiles).
+- **F1 Mi cartera / F2 Mis casas / F3 Watch price / F4 Daily Brief ✔ construidas y QA-verificadas — detrás
+  de flags OFF en prod**: `GP_MY_BETS_ENABLED`, `GP_MY_BOOKS_ENABLED`, `GP_WATCH_PRICE_ENABLED`,
+  `GP_DAILY_BRIEF_ENABLED` (+`GP_DAILY_BRIEF_TELEGRAM_ENABLED`). Encenderlas = decisión de Alexis.
+- Track ancla-vs-edge: bucket `regime:` en el track record de clubes — se separa solo al liquidar
+  (anclas juegan 17-25 jul; nada liquidado aún al cierre de esta pasada).

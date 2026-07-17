@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "worldcup",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "GP_PREMIUM_UI_ENABLED=true GP_GOAL_INSIGHTS_UI_ENABLED=true GP_BETA_UI_ENABLED=true GP_BETA_FUSION_ENABLED=true GP_CLUBS_SHADOW_ENABLED=true ADMIN_EMAILS=qacalc@local.test GP_EXPORT_KEY=testkey PORT=3000 exec node server.js"],
       "port": 3000
     },
     {
@@ -17,7 +17,14 @@
       "name": "worldcup-premium",
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
-      "port": 3011
+      "port": 3011,
+      "env": { "GP_PREMIUM_UI_ENABLED": "true", "GP_BETA_UI_ENABLED": "true", "ADMIN_EMAILS": "qacalc@local.test" }
+    },
+    {
+      "name": "worldcup-goals",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 3017
     }
   ]
 }

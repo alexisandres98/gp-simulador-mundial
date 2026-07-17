@@ -37,6 +37,10 @@ const CONFIG = {
   goalsAnchorMinBooks: 4,           // ancla solo con mercado profundo (la eficiencia es el requisito)
   goalsAnchorMinMarketProb: 0.55,   // solo lados con lean CLARO del consenso (no volados 50/50)
   goalsAnchorMaxDivergencePp: 0.05, // el modelo debe CONFIRMAR dentro de ±5pp (si discute fuerte, fuera)
+  goalsAnchorMaxVigPp: 0.02,        // tolerancia de vig: la mejor cuota puede estar hasta 2pp bajo la justa.
+  // (En mercados apretados la mejor cuota SIEMPRE queda un pelo bajo la justa — eso ES la eficiencia; el
+  // SOLID del Mundial nunca exigió precio≥justa. La ancla compra hit-rate, no edge teórico; el line
+  // shopping acota el vig pagado a ≤2pp. Verificado 17-jul: con exigencia estricta nacían 0 anclas.)
   alphaGoalsAnchor: 0.25,           // confianza de la ancla: el mercado domina (mismo espíritu que alpha1x2)
 
   // Familia COMBO (pata 1X2 sólida + pata goles).
@@ -131,8 +135,8 @@ function goalPicks(goalMarkets, cfg) {
       if (!(market >= cfg.goalsAnchorMinMarketProb)) anchorBlockers.push('NO_CLEAR_LEAN');
       if (Math.abs(model - market) > cfg.goalsAnchorMaxDivergencePp) anchorBlockers.push('MODEL_DISAGREES');
       if (!(odds > 1)) anchorBlockers.push('NO_ODDS');
-      // line shopping honesto: la mejor cuota no puede estar por debajo de la justa del consenso
-      if (odds > 1 && market > 0 && market < 1 && odds < 1 / market) anchorBlockers.push('BELOW_CONSENSUS_PRICE');
+      // line shopping con tolerancia: pagar más de `goalsAnchorMaxVigPp` sobre la justa mata la ancla
+      if (odds > 1 && market > 0 && market < 1 && (1 / odds) > market + cfg.goalsAnchorMaxVigPp) anchorBlockers.push('BELOW_CONSENSUS_PRICE');
     }
     const edgeOk = edgeBlockers.length === 0;
     const anchorOk = anchorBlockers != null && anchorBlockers.length === 0;

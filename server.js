@@ -2739,7 +2739,9 @@ const CLUB_MEETINGS = { /* overrides si alguna liga no es doble round-robin */ }
 function clubSeasonSim(league) {
   if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
   const L = (global._clubsRatings.leagues || {})[league];
-  if (!L || !(L.standings || []).length) return null;
+  // standings vacías NO cortan: el fallback abajo reconstruye la tabla desde los results (fix ligamx 17-jul —
+  // ratings.json quedó sin tabla al cambiar de torneo, pero los results del Apertura ya existen)
+  if (!L) return null;
   global._clubSeason = global._clubSeason || {};
   const eloVer = JSON.stringify(db.clubElos || {}).length; // cambia al aplicar Elo dinámico por un resultado nuevo
   const c = global._clubSeason[league];
@@ -2748,13 +2750,76 @@ function clubSeasonSim(league) {
   try {
     global._clubsResults = global._clubsResults || {};
     if (!global._clubsResults[league]) { try { global._clubsResults[league] = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || []; } catch { global._clubsResults[league] = []; } }
+    const rows = global._clubsResults[league];
     sim = require('./clubs-engine/seasonSim').projectSeason({
       standings: L.standings, eloOf: (id) => clubElo(league, id), hfa: L.hfa || 60,
-      results: global._clubsResults[league], meetings: CLUB_MEETINGS[league] || 2, sims: 5000,
+      results: rows, meetings: CLUB_MEETINGS[league] || 2, sims: 5000,
     });
+    // FALLBACK (fix ligamx 17-jul): cuando la tabla de ratings.json es de la TEMPORADA ANTERIOR terminada
+    // (Clausura completo → remaining=0 → sim null) pero los results ya traen el torneo NUEVO, la tabla se
+    // reconstruye DESDE los resultados (universo = equipos del fit) y se proyecta con eso. Torneos cortos
+    // (Apertura/Clausura) reviven solos al llegar la primera jornada — regla data-parcial.
+    if (!sim && rows.length) {
+      sim = require('./clubs-engine/seasonSim').projectSeason({
+        standings: clubStandingsFromResults(league, rows), eloOf: (id) => clubElo(league, id), hfa: L.hfa || 60,
+        results: rows, meetings: CLUB_MEETINGS[league] || 2, sims: 5000,
+      });
+    }
   } catch { sim = null; }
   global._clubSeason[league] = { at: Date.now(), eloVer, sim };
   return sim;
+}
+// Tabla reconstruida desde los RESULTADOS (universo = equipos del fit de la liga): puntos/GF/GA por equipo.
+// Usada como fallback cuando la tabla de ratings.json quedó de una temporada terminada (torneos cortos).
+function clubStandingsFromResults(league, rows) {
+  const L = ((global._clubsRatings || {}).leagues || {})[league] || {};
+  const st = {};
+  Object.keys(L.ratings || {}).forEach(id => { st[id] = { id, pts: 0, gf: 0, ga: 0 }; });
+  for (const r of rows) {
+    if (r.hg == null || !st[r.home_id] || !st[r.away_id]) continue;
+    st[r.home_id].gf += r.hg; st[r.home_id].ga += r.ag; st[r.away_id].gf += r.ag; st[r.away_id].ga += r.hg;
+    if (r.hg > r.ag) st[r.home_id].pts += 3; else if (r.hg < r.ag) st[r.away_id].pts += 3; else { st[r.home_id].pts++; st[r.away_id].pts++; }
+  }
+  return Object.values(st);
+}
+// ===== EVOLUCIÓN POR LIGA (paridad con la Evolución del Mundial) =============================================
+// Historia de prob de CAMPEÓN por jornada, reconstruida retrospectivamente: para cada fecha con partidos,
+// tabla del prefijo de resultados + season sim del calendario restante (MISMO projectSeason). Elo actual
+// (estático a lo largo de la serie) — proyección retrospectiva honesta. Mismo shape que st.history del
+// Mundial ({date, probs{id:champ%}}) → renderEvo del cliente lo grafica sin variantes. Memo por mtime.
+function clubEvoHistory(league) {
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
+  const L = (global._clubsRatings.leagues || {})[league];
+  if (!L) return null;
+  let fp = null, stamp = '0';
+  try { fp = clubDataFile(`results-${league}.json`); stamp = String(fs.statSync(fp).mtimeMs); } catch { return { available: false }; }
+  global._clubEvo = global._clubEvo || {};
+  const c = global._clubEvo[league];
+  if (c && c.stamp === stamp) return c.data;
+  let data = { available: false };
+  try {
+    const all = (JSON.parse(fs.readFileSync(fp, 'utf8')).rows || [])
+      .filter(r => r.hg != null && L.ratings[r.home_id] && L.ratings[r.away_id])
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const dates = [...new Set(all.map(r => String(r.date).slice(0, 10)))].slice(-40); // cap: últimas 40 jornadas-fecha
+    const eloOf = (id) => clubElo(league, id);
+    const { projectSeason } = require('./clubs-engine/seasonSim');
+    const history = [];
+    for (const d of dates) {
+      const prefix = all.filter(r => String(r.date).slice(0, 10) <= d);
+      const sim = projectSeason({
+        standings: clubStandingsFromResults(league, prefix), eloOf, hfa: L.hfa || 60,
+        results: prefix, meetings: CLUB_MEETINGS[league] || 2, sims: 1500,
+      });
+      if (!sim) continue;
+      const probs = {};
+      for (const [id, v] of Object.entries(sim.teams)) probs[id] = v.champion;
+      history.push({ date: d, probs });
+    }
+    data = history.length ? { available: true, history } : { available: false };
+  } catch { data = { available: false }; }
+  global._clubEvo[league] = { stamp, data };
+  return data;
 }
 // ARQUITECTURA DE COMPETICIÓN — BRACKET DE PLAYOFFS PROYECTADO (MX/MLS). Las ligas con fase final no se deciden
 // solo por tabla: al terminar la temporada regular, los mejores clasificados juegan un bracket de eliminación.
@@ -2763,10 +2828,28 @@ function clubSeasonSim(league) {
 // Mundial). Se actualiza cada jornada (invalida con el overlay Elo, como el season sim). Modelo de eliminación a
 // partido único con localía del mejor sembrado — simplificación honesta del formato oficial (ida/vuelta, repechaje,
 // conferencias), etiquetada como PROYECCIÓN en la UI. size = nº de clasificados que arma el cuadro.
-const CLUB_PLAYOFFS = { mls: { size: 8, name: 'MLS Cup Playoffs' }, ligamx: { size: 8, name: 'Liguilla' } };
+// argentina/colombia (fix 17-jul): SÍ tienen fase final (playoffs del Clausura / cuadrangulares) → bracket
+// proyectado single-elim con los mejores 8 proyectados — simplificación honesta del formato real, etiquetada
+// PROYECCIÓN en la UI (igual que MLS/MX simplifican conferencias/ida-vuelta).
+const CLUB_PLAYOFFS = {
+  mls: { size: 8, name: 'MLS Cup Playoffs' }, ligamx: { size: 8, name: 'Liguilla' },
+  argentina: { size: 8, name: 'Playoffs del Clausura' }, colombia: { size: 8, name: 'Cuadrangulares' },
+};
 function clubPlayoffBracket(league) {
   const cfg = CLUB_PLAYOFFS[league];
-  if (!cfg) return { has_playoff: false };
+  if (!cfg) {
+    // Liga SIN fase final: no un panel vacío — devolvemos la CARRERA POR EL TÍTULO del season sim (top 6 por
+    // prob de campeón) para que la vista siempre muestre la data que sí tenemos (pedido Alexis 17-jul).
+    const season = clubSeasonSim(league);
+    if (!season || !season.teams) return { has_playoff: false };
+    const RT0 = global._clubsRatings || {};
+    const L0 = RT0.leagues && RT0.leagues[league];
+    const nm = (id) => (L0 && L0.ratings && L0.ratings[id] && L0.ratings[id].name) || id;
+    const race = Object.keys(season.teams)
+      .map(id => ({ id, name: nm(id), champion: season.teams[id].champion, exp_rank: season.teams[id].exp_rank }))
+      .sort((a, b) => b.champion - a.champion).slice(0, 6);
+    return { has_playoff: false, title_race: race, remaining: season.remaining };
+  }
   const season = clubSeasonSim(league);
   if (!season || !season.teams) return { has_playoff: true, available: false };
   const RT = global._clubsRatings || {};
@@ -4651,7 +4734,7 @@ async function checkPriceWatches() {
         if (mailer.isConfigured()) {
           const en = userLang(w.email) === 'en';
           await mailer.sendMail({
-            to: w.email, prefer: 'relay',
+            to: w.email, // Resend (dominio propio): el relay GAS es SOLO para OTP (cuota Gmail, jamás notificaciones)
             subject: en ? `Price alert: ${w.label} hit ${o.toFixed(2)}` : `Alerta de precio: ${w.label} llegó a ${o.toFixed(2)}`,
             text: en
               ? `Your watched price triggered: ${w.label} is now at ${o.toFixed(2)} (your target: ${w.target_odds.toFixed(2)}). Prices move — check the platform before betting. https://gpsimulador.com`
@@ -4761,7 +4844,7 @@ async function sendDailyBriefEmails() {
     const en = userLang(email) === 'en';
     try {
       await mailer.sendMail({
-        to: email, prefer: 'relay',
+        to: email, // Resend (dominio propio): el relay GAS es SOLO para OTP (cuota Gmail, jamás masivos)
         subject: en ? 'GP Daily Brief — today\'s opportunities' : 'GP Daily Brief — las oportunidades de hoy',
         text: dailyBriefEmailText(b, en),
       });
@@ -7531,6 +7614,35 @@ const server = http.createServer(async (req, res) => {
     }
     // PICKS DE CLUBES (F3.3): verificación + dry-run + disparo manual (misma key). GET ?dry=1 muestra qué
     // produciría curate (candidatos + blockers) SIN persistir; GET normal = estado + track record; POST = evaluar.
+    // Prueba REAL de los emails de F3/F4 (verificación end-to-end pedida por Alexis): envía el brief del día
+    // o una alerta de precio de muestra a la dirección dada, por el MISMO camino (mailer → Resend) que usan
+    // los flujos automáticos. Diag only (key interna), no toca estado.
+    if (p === '/api/internal/feat-mail-test') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const to = String(url.searchParams.get('to') || '').trim();
+      const kind = String(url.searchParams.get('kind') || 'brief');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return json(res, 400, { error: 'to inválido' });
+      if (!mailer.isConfigured()) return json(res, 200, { ok: false, error: 'mailer no configurado' });
+      try {
+        if (kind === 'watch') {
+          await mailer.sendMail({
+            to,
+            subject: 'Alerta de precio: PRUEBA — Palmeiras v Fluminense: Más de 2.5 goles llegó a 1.95',
+            text: 'Tu precio vigilado se disparó: [PRUEBA del sistema] Palmeiras v Fluminense: Más de 2.5 goles está ahora en 1.95 (tu objetivo: 1.90). Los precios se mueven — revisá la plataforma antes de apostar. https://gpsimulador.com',
+          });
+        } else {
+          const b = buildDailyBrief();
+          const en = url.searchParams.get('lang') === 'en';
+          await mailer.sendMail({
+            to,
+            subject: (en ? 'GP Daily Brief — today\'s opportunities' : 'GP Daily Brief — las oportunidades de hoy') + ' [PRUEBA]',
+            text: dailyBriefEmailText(b, en),
+          });
+        }
+        return json(res, 200, { ok: true, kind, to });
+      } catch (e) { return json(res, 200, { ok: false, error: String(e.message || e).slice(0, 200) }); }
+    }
     if (p === '/api/internal/clubs-picks') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -8723,6 +8835,16 @@ const server = http.createServer(async (req, res) => {
     // groupWin+groupSecond del Mundial). Memoizado 30min e invalidado por el overlay de Elo dinámico → se
     // actualiza cada jornada. Carga progresiva en el cliente (regla data-parcial): la tabla se pinta ya, la
     // columna avance se enriquece cuando llega esto.
+    // EVOLUCIÓN por liga: historia retrospectiva de prob de campeón (mismo shape que st.history del Mundial)
+    if (p === '/api/clubs/evo') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      try {
+        const league = String(url.searchParams.get('league') || '');
+        if (!/^[a-z0-9]+$/.test(league)) return json(res, 400, { error: 'liga requerida' });
+        return json(res, 200, { league, ...(clubEvoHistory(league) || { available: false }) });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p === '/api/clubs/season') {
       const sessEmail = sessionEmailFromReq(req);
       if (!sessEmail || !isAdmin(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }

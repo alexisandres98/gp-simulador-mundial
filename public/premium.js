@@ -139,6 +139,7 @@
       slot_gw: '1º Grupo {g}', slot_gr: '2º Grupo {g}', slot_t3: '3º ({groups})', slot_win: 'Ganador P{m}', slot_los: 'Perdedor P{m}',
       evo_insufficient: 'Evolución no disponible todavía', evo_insufficient_sub: 'Aún no hay suficientes snapshots reales ({n}). La evolución se registra a medida que el torneo avanza.',
       evo_champion: 'Probabilidad de campeón', evo_snapshots: 'snapshots', evo_trend: 'Tendencia', evo_now: 'Ahora', evo_top: 'Top 10', evo_note: 'Solo snapshots reales registrados; sin histórico fabricado.',
+      evo_club_note: 'Proyección por jornada: prob. de campeón del modelo con la tabla y el calendario restante de cada fecha.',
       reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
       // ---- Feed de picks diarias (producto) ----
       pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa', pf_pick_of_day: 'Pick del día', pf_all_by_match: 'Todas las picks por partido',
@@ -152,7 +153,7 @@
       cl_standings: 'Tabla de posiciones', cl_grp_note: 'Avance = prob. de terminar en zona alta (Top 4) del season sim. Se actualiza cada jornada.', cl_grp_fav: 'Favorito al título:',
       cl_bk_title: 'Playoffs (proyección)', cl_bk_champ: 'Campeón proyectado', cl_bk_winner: 'Ganador', cl_bk_seed: 'Siembra',
       cl_bk_note: 'Bracket proyectado · sembrado por la posición proyectada del season sim · modelo de eliminación a partido único · se actualiza cada jornada.',
-      cl_bk_no_playoff: 'Esta competición se define por la tabla de posiciones, sin fase de eliminación.',
+      cl_bk_no_playoff: 'Esta competición se define por la tabla de posiciones, sin fase de eliminación.', cl_bk_race: 'Carrera por el título (proyección)',
       cl_bk_soon: 'El bracket proyectado aparece cuando la temporada esté en marcha.',
       cl_upcoming: 'Próximos partidos', cl_no_upcoming: 'Sin partidos programados en la ventana del calendario.',
       cl_live_recent: 'En juego y recientes', cl_no_live: 'Ningún partido de clubes en juego ahora.', cl_no_final: 'Sin partidos finalizados recientes.',
@@ -292,6 +293,7 @@
       mb_note: 'Registro personal y privado. El CLV usa el cierre oficial de la pick cuando existe.',
       bk_title: 'Mis casas', bk_intro: 'Marcá las casas donde tenés cuenta: el feed te muestra qué picks son ejecutables para vos y cuáles cotizan mejor en una casa que no tenés.',
       bk_save: 'Guardar', bk_saved: 'Guardado', bk_custom: 'Otra casa…', bk_add: 'Agregar', bk_only_mine: 'Solo mis casas', bk_not_mine: 'mejor cuota en casa que no tenés',
+      bk_sportsbooks: 'Casas de apuestas que cubrimos', bk_prediction: 'Mercados de predicción',
       wp_watch: 'Vigilar precio', wp_target: 'Avisame si la mejor cuota llega a', wp_set: 'Crear alerta', wp_created: 'Alerta creada',
       wp_list: 'Precios vigilados', wp_hit: 'Alcanzado', wp_expired: 'Vencido', wp_active: 'Vigilando', wp_last: 'última', wp_target_s: 'objetivo', wp_none: 'Sin precios vigilados. Creá uno desde cualquier pick con "Vigilar precio".',
       bf_title: 'GP Daily Brief', bf_sub: 'Tu resumen diario: oportunidades, partidos, movimientos y resultados.',
@@ -429,6 +431,7 @@
       slot_gw: '1st Group {g}', slot_gr: '2nd Group {g}', slot_t3: '3rd ({groups})', slot_win: 'Winner M{m}', slot_los: 'Loser M{m}',
       evo_insufficient: 'Evolution not available yet', evo_insufficient_sub: 'Not enough real snapshots yet ({n}). Evolution is recorded as the tournament progresses.',
       evo_champion: 'Champion probability', evo_snapshots: 'snapshots', evo_trend: 'Trend', evo_now: 'Now', evo_top: 'Top 10', evo_note: 'Only real recorded snapshots; no fabricated history.',
+      evo_club_note: 'Per-matchday projection: model champion probability with each date’s table and remaining schedule.',
       reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
       // ---- Daily picks feed (product) ----
       pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick', pf_pick_of_day: 'Pick of the day', pf_all_by_match: 'All picks by match',
@@ -442,7 +445,7 @@
       cl_standings: 'Standings', cl_grp_note: 'Advance = prob. of finishing in the top zone (Top 4) per the season sim. Updates each matchday.', cl_grp_fav: 'Title favorite:',
       cl_bk_title: 'Playoffs (projected)', cl_bk_champ: 'Projected champion', cl_bk_winner: 'Winner', cl_bk_seed: 'Seed',
       cl_bk_note: 'Projected bracket · seeded by the season sim projected finish · single-elimination model · updates each matchday.',
-      cl_bk_no_playoff: 'This competition is decided by the league table, with no knockout stage.',
+      cl_bk_no_playoff: 'This competition is decided by the league table, with no knockout stage.', cl_bk_race: 'Title race (projection)',
       cl_bk_soon: 'The projected bracket appears once the season is underway.',
       cl_upcoming: 'Upcoming matches', cl_no_upcoming: 'No matches scheduled in the calendar window.',
       cl_live_recent: 'Live and recent', cl_no_live: 'No club matches in play right now.', cl_no_final: 'No recently finished matches.',
@@ -582,6 +585,7 @@
       mb_note: 'Personal, private log. CLV uses the pick’s official closing price when available.',
       bk_title: 'My books', bk_intro: 'Mark the sportsbooks where you have an account: the feed shows which picks are executable for you and which are priced best at a book you don’t have.',
       bk_save: 'Save', bk_saved: 'Saved', bk_custom: 'Another book…', bk_add: 'Add', bk_only_mine: 'My books only', bk_not_mine: 'best odds at a book you don’t have',
+      bk_sportsbooks: 'Sportsbooks we cover', bk_prediction: 'Prediction markets',
       wp_watch: 'Watch price', wp_target: 'Alert me if the best odds reach', wp_set: 'Create alert', wp_created: 'Alert created',
       wp_list: 'Watched prices', wp_hit: 'Hit', wp_expired: 'Expired', wp_active: 'Watching', wp_last: 'last', wp_target_s: 'target', wp_none: 'No watched prices. Create one from any pick with "Watch price".',
       bf_title: 'GP Daily Brief', bf_sub: 'Your daily summary: opportunities, matches, line moves and results.',
@@ -2145,7 +2149,8 @@
       '<label class="gx-calc-f"><span>' + esc(t('mb_stake')) + '</span><input class="gx-calc-in" id="mb-stake" type="number" inputmode="decimal" min="0" step="any"></label>' +
       '</div>' +
       '<div class="gx-calc-grid" style="margin-top:8px">' +
-      '<label class="gx-calc-f"><span>' + esc(t('mb_book')) + '</span><input class="gx-calc-in" id="mb-book" maxlength="40" placeholder="bet365"></label>' +
+      '<label class="gx-calc-f"><span>' + esc(t('mb_book')) + '</span><input class="gx-calc-in" id="mb-book" maxlength="40" placeholder="bet365" list="mb-book-list"><datalist id="mb-book-list">' +
+        (function () { var mine = (S.me && S.me.my_books_list) || []; var rest = BK_COMMON.concat(BK_PREDICTION).filter(function (b) { return mine.indexOf(b) < 0; }); return mine.concat(rest).map(function (b) { return '<option value="' + esc(b) + '">' + esc(prettyBook(b)) + '</option>'; }).join(''); })() + '</datalist></label>' +
       '<div class="gx-calc-f" style="justify-content:flex-end"><button class="gx-btn" id="mb-save">' + esc(t('mb_save')) + '</button></div>' +
       '</div></div></div></div>';
     // historial
@@ -2195,21 +2200,34 @@
   }
 
   // ============================ F2 — MIS CASAS ============================
-  var BK_COMMON = ['bet365', 'betano', 'draftkings', 'fanduel', 'betmgm', 'caesars', 'betrivers', 'espnbet', 'pinnacle', 'williamhill', 'unibet', 'betsson', 'bwin', 'betonlineag', 'bovada', 'codere', 'bplay', 'betway'];
+  // Universo REAL de casas con cuotas en nuestro scanner (códigos de The Odds API presentes en la DB de
+  // cuotas), ordenado: primero las marcas grandes/LATAM, luego el resto alfabético. + mercados de predicción.
+  var BK_COMMON = [
+    'bet365', 'betano', 'betano_uk', 'draftkings', 'fanduel', 'betmgm', 'caesars', 'betrivers', 'espnbet', 'pinnacle', 'williamhill', 'williamhill_us', 'codere', 'codere_it', 'bplay', 'betway', 'bwin', 'unibet',
+    'onexbet', 'betanysports', 'betclic_fr', 'betfair_ex_eu', 'betfair_ex_uk', 'betfair_sb_uk', 'betfred_uk', 'betonlineag', 'betsson', 'betus', 'betvictor', 'bovada', 'boylesports', 'casumo', 'coolbet', 'coral',
+    'everygame', 'fanatics', 'grosvenor', 'gtbets', 'ladbrokes_uk', 'leovegas', 'leovegas_se', 'livescorebet', 'lowvig', 'marathonbet', 'matchbook', 'mybookieag', 'nordicbet', 'paddypower', 'pmu_fr', 'skybet',
+    'smarkets', 'sport888', 'tipico_de', 'unibet_fr', 'unibet_nl', 'unibet_se', 'unibet_uk', 'virginbet', 'winamax_de', 'winamax_fr'
+  ];
+  var BK_PREDICTION = ['polymarket', 'kalshi']; // mercados de predicción que el scanner compara (Mundial)
   function renderBooks() {
     var mv = $('#gx-matchview'); if (!mv) return;
     if (S.me && !S.me.my_books) { showView('board'); return; }
     var mine = (S.me && S.me.my_books_list) || [];
     var all = BK_COMMON.slice();
-    mine.forEach(function (b) { if (all.indexOf(b) < 0) all.push(b); });
-    var chips = all.map(function (b) {
+    mine.forEach(function (b) { if (all.indexOf(b) < 0 && BK_PREDICTION.indexOf(b) < 0) all.push(b); });
+    var chip = function (b) {
       var on = mine.indexOf(b) >= 0;
       return '<button class="gx-calc-frac' + (on ? ' on' : '') + '" data-bk="' + esc(b) + '" style="font-size:12px;padding:7px 12px">' + bookLogo(b) + esc(prettyBook(b)) + '</button>';
-    }).join('');
+    };
+    var chips = all.map(chip).join('');
+    var predChips = BK_PREDICTION.map(chip).join('');
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('bk_title')) +
       '<p class="gx-calc-intro gx-dim">' + esc(t('bk_intro')) + '</p>' +
       '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
-      '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px">' + chips + '</div>' +
+      '<div class="gx-cpf-sec" style="border-top:0;padding-top:0;margin-top:0">' + esc(t('bk_sportsbooks')) + '</div>' +
+      '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + chips + '</div>' +
+      '<div class="gx-cpf-sec" style="margin-top:14px">' + esc(t('bk_prediction')) + '</div>' +
+      '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + predChips + '</div>' +
       '<div class="gx-calc-grid" style="margin-top:12px"><label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('bk_custom')) + '</span><input class="gx-calc-in" id="bk-custom" maxlength="40" placeholder="pinnacle"></label>' +
       '<div class="gx-calc-f" style="justify-content:flex-end"><button class="gx-btn" id="bk-add">' + esc(t('bk_add')) + '</button></div></div>' +
       '<div style="margin-top:12px;display:flex;align-items:center;gap:10px"><button class="gx-btn" id="bk-save">' + esc(t('bk_save')) + '</button><span class="gx-dim" id="bk-msg" style="font-size:12px"></span></div>' +
@@ -2858,6 +2876,7 @@
       if (v[1] === 'groups') S.gComp = sub || 'wc';
       else if (v[1] === 'bracket') S.bComp = sub || 'wc';
       else if (v[1] === 'teams') S.tComp = sub || 'wc';
+      else if (v[1] === 'evo') S.eComp = sub || 'wc';
       else if (v[1] === 'matches') S.mComp = sub || (clubsOn() ? 'todos' : null);
       showView(v[1]); return;
     }
@@ -2870,6 +2889,7 @@
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
     if (nav === 'teams' && S.tComp && S.tComp !== 'wc') return 'teams/' + S.tComp;
+    if (nav === 'evo' && S.eComp && S.eComp !== 'wc') return 'evo/' + S.eComp;
     if (nav === 'matches' && S.mComp && S.mComp !== 'todos') return 'matches/' + S.mComp;
     return NAV_HASH[nav];
   }
@@ -5081,7 +5101,14 @@
     var head = viewHead(t('cl_bk_title'), bsel + '<span class="gx-spacer"></span>' + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11px">' + esc(t('cl_bk_note')) + '</span>');
     var body;
     if (bk === null) { body = mvLoading(); }
-    else if (!bk.has_playoff) { body = '<div class="gx-panel"><div class="gx-empty">' + ic('info-circle') + '<b>' + esc(L.name.split(' · ')[0]) + '</b>' + esc(t('cl_bk_no_playoff')) + '</div></div>'; }
+    else if (!bk.has_playoff) {
+      // Liga sin fase final: nota + CARRERA POR EL TÍTULO (top 6 del season sim) — nunca un panel vacío
+      var race = (bk.title_race || []).map(function (r, i) {
+        return '<div class="gx-bk-side" data-nav-cteam="' + esc(key + '|' + r.id) + '" style="cursor:pointer"><span class="gx-dim gx-mono" style="width:20px;text-align:center">' + (i + 1) + '</span>' + clubBadge(r.id) + '<b>' + esc(r.name) + '</b><span class="gx-spacer"></span><div class="gx-champbar sm" style="width:110px"><i style="width:' + Math.max(2, r.champion * 100) + '%"></i><span class="gx-mono">' + pct0(r.champion) + '</span></div></div>';
+      }).join('');
+      body = '<div class="gx-panel"><div class="gx-empty" style="padding-bottom:8px">' + ic('info-circle') + '<b>' + esc(L.name.split(' · ')[0]) + '</b>' + esc(t('cl_bk_no_playoff')) + '</div>' +
+        (race ? '<div class="gx-mod-body"><div class="gx-mod-sub gx-label">' + esc(t('cl_bk_race')) + '</div>' + race + '</div>' : '') + '</div>';
+    }
     else if (!bk.available) { body = '<div class="gx-panel"><div class="gx-empty">' + ic('info-circle') + '<b>' + esc(t('cl_bk_title')) + '</b>' + esc(t('cl_bk_soon')) + '</div></div>'; }
     else {
       var champ = bk.favorite ? '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;padding:16px 18px;margin-bottom:12px"><span class="gx-dim" style="font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase">' + esc(t('cl_bk_champ')) + '</span>' + clubBadge(bk.favorite.id) + '<b>' + esc(bk.favorite.name) + '</b><span class="gx-spacer"></span><span class="gx-mono" style="color:var(--gx-acc,#1FE3A4);font-size:18px;font-weight:800">' + pct0(bk.favorite.champion) + '</span></div>' : '';
@@ -5115,13 +5142,36 @@
   // ---- Evolución (solo snapshots reales) ----
   function renderEvo() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    var hist = S.history || [];
+    // carrera: hash directo a #evo/<liga> puede correr antes de /api/me (patrón groups/bracket)
+    if (S.me == null) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_evo')) + mvLoading() + '</div></div>'; setTimeout(function () { if (S.view === 'evo') renderEvo(); }, 500); return; }
+    if (clubsOn()) loadClubs();
+    if (clubsOn() && S.eComp == null) S.eComp = 'wc';
+    // FASE CLUBES: selector de competición (mismo patrón que Grupos/Bracket) — la evolución de cada club
+    // DENTRO de su liga (historia retrospectiva de prob de campeón por jornada del season sim).
+    var esel = clubsOn()
+      ? '<select class="gx-select" id="gx-ecomp"><option value="wc"' + (!S.eComp || S.eComp === 'wc' ? ' selected' : '') + '>' + esc(t('cl_wc')) + '</option>' + ((S.clubs && S.clubs.leagues) || []).map(function (L) { return '<option value="' + esc(L.key) + '"' + (S.eComp === L.key ? ' selected' : '') + '>' + esc(L.name.split(' · ')[0]) + (L.starts ? ' · ' + esc(L.starts) : '') + '</option>'; }).join('') + '</select>'
+      : '';
+    var isClub = clubsOn() && S.eComp && S.eComp !== 'wc';
+    var hist;
+    if (isClub) {
+      S.clubEvo = S.clubEvo || {};
+      var lg = S.eComp, ce = S.clubEvo[lg];
+      if (ce === undefined) {
+        S.clubEvo[lg] = null;
+        fetch('/api/clubs/evo?league=' + encodeURIComponent(lg), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+          .then(function (j) { S.clubEvo[lg] = j || { available: false }; if (S.view === 'evo') renderEvo(); });
+        hist = null;
+      } else if (ce === null) hist = null; // cargando
+      else hist = (ce.available && ce.history) || [];
+    } else hist = S.history || [];
     var body;
-    if (hist.length < 2) {
+    if (hist === null) {
+      body = '<div class="gx-panel"><div class="gx-mod-body">' + mvLoading() + '</div></div>';
+    } else if (hist.length < 2) {
       body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('evo_insufficient')) + '</b>' + esc(t('evo_insufficient_sub', { n: hist.length })) + '</div></div>';
     } else {
       var last = hist[hist.length - 1].probs || {}, first = hist[0].probs || {};
-      var followed = (S.me && S.me.favorites) || [];
+      var followed = isClub ? [] : ((S.me && S.me.favorites) || []);
       var filt = S.evoFilt === 'mine' && followed.length ? 'mine' : 'top';
       var sel = filt === 'mine' ? followed.slice(0, 10) : Object.keys(last).sort(function (a, b) { return (last[b] || 0) - (last[a] || 0); }).slice(0, 10);
       // gráfico SVG multi-línea sobre snapshots REALES
@@ -5137,18 +5187,23 @@
           '<circle cx="' + x(hist.length - 1) + '" cy="' + y(lv) + '" r="3" fill="' + COLORS[k % COLORS.length] + '"/>';
       }).join('');
       var grid = [0.25, 0.5, 0.75].map(function (f) { var yy = padT + ih - f * ih; return '<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="rgba(255,255,255,.05)"/>'; }).join('');
-      var legend = sel.map(function (id, k) { return '<div class="gx-evo-leg" data-nav-team="' + esc(id) + '"><span class="gx-evo-dot" style="background:' + COLORS[k % COLORS.length] + '"></span><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b><span class="gx-mono gx-dim">' + pct1(last[id] || 0) + '</span></div>'; }).join('');
+      var navAttr = function (id) { return isClub ? ' data-evoct="' + esc(id) + '"' : ' data-nav-team="' + esc(id) + '"'; };
+      var legend = sel.map(function (id, k) { return '<div class="gx-evo-leg"' + navAttr(id) + '><span class="gx-evo-dot" style="background:' + COLORS[k % COLORS.length] + '"></span><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b><span class="gx-mono gx-dim">' + pct1(last[id] || 0) + '</span></div>'; }).join('');
       var chart = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('evo_champion')) + '</span><span class="gx-spacer"></span>' +
         '<div class="gx-seg" id="gx-evo-seg"><button data-evo="top"' + (filt === 'top' ? ' class="on"' : '') + '>' + esc(t('evo_top')) + '</button>' + (followed.length ? '<button data-evo="mine"' + (filt === 'mine' ? ' class="on"' : '') + '>' + esc(t('nav_follow')) + '</button>' : '') + '</div>' +
         '<span class="gx-ph-extra" style="margin-left:10px">' + hist.length + ' ' + esc(t('evo_snapshots')) + '</span></div>' +
         '<div class="gx-mod-body"><svg class="gx-evo-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + grid + lines + '</svg><div class="gx-evo-legend">' + legend + '</div></div></div>';
       // tabla con Δ
-      var rows = sel.map(function (id) { var cur = last[id] || 0, prev = first[id] || 0, dd = cur - prev; return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td><td class="gx-mono" style="color:var(--gx-text)">' + pct1(cur) + '</td><td class="gx-mono ' + (dd > 0 ? 'gx-pos' : dd < 0 ? 'gx-neg' : 'gx-dim') + '">' + (dd === 0 ? '—' : (dd > 0 ? '+' : '') + (dd * 100).toFixed(1) + ' pp') + '</td></tr>'; }).join('');
+      var rows = sel.map(function (id) { var cur = last[id] || 0, prev = first[id] || 0, dd = cur - prev; return '<tr class="gx-row"' + navAttr(id) + '><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td><td class="gx-mono" style="color:var(--gx-text)">' + pct1(cur) + '</td><td class="gx-mono ' + (dd > 0 ? 'gx-pos' : dd < 0 ? 'gx-neg' : 'gx-dim') + '">' + (dd === 0 ? '—' : (dd > 0 ? '+' : '') + (dd * 100).toFixed(1) + ' pp') + '</td></tr>'; }).join('');
       var table = '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">' + esc(t('nav_teams')) + '</th><th>' + esc(t('evo_now')) + '</th><th>Δ</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       body = chart + table;
     }
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_evo'), '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t('evo_note')) + '</span>') + body + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_evo'), esel + '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11px">' + esc(t(isClub ? 'evo_club_note' : 'evo_note')) + '</span>') + body + '</div></div>';
     [].forEach.call(mv.querySelectorAll('[data-evo]'), function (b) { b.addEventListener('click', function () { S.evoFilt = b.getAttribute('data-evo'); renderEvo(); }); });
+    var ecs = $('#gx-ecomp'); if (ecs) ecs.addEventListener('change', function () { setCompHash('evo', ecs.value, 'wc'); });
+    [].forEach.call(mv.querySelectorAll('[data-evoct]'), function (el) {
+      el.addEventListener('click', function () { openClubTeam(S.eComp, el.getAttribute('data-evoct')); });
+    });
   }
 
   // ---- Registro ----

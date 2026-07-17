@@ -283,6 +283,7 @@
       cpf_scaled: 'La suma sugerida ({sum}) superaba tu límite diario — todos los stakes se escalaron a {pct}% para respetarlo.',
       cpf_maxloss_note: 'En el 95% de los días no perderías más que esto (simulación con las probabilidades y correlaciones de hoy). Peor caso absoluto = el riesgo total.',
       nav_bets: 'Mi cartera', nav_books: 'Mis casas', nav_brief: 'Daily Brief',
+      pf_empty_live: 'Sin picks de partidos en vivo ahora', pf_empty_up: 'Sin picks de partidos próximos', pf_empty_filt_sub: 'Mirá "Todos" para ver todas las picks activas.',
       mb_title: 'Mi cartera', mb_intro: 'Registrá lo que apostás (con o sin pick GP) y marcá el resultado — P&L, ROI y CLV personal, y tu rendimiento siguiendo GP vs apuestas propias.',
       mb_add: 'Registrar apuesta', mb_pick: 'Pick GP (opcional)', mb_manual_opt: 'Apuesta manual (sin pick)', mb_label: 'Descripción', mb_odds: 'Cuota', mb_stake: 'Stake', mb_book: 'Casa (opcional)', mb_save: 'Guardar',
       mb_pnl: 'P&L', mb_roi: 'ROI', mb_record: 'Récord', mb_clv: 'CLV personal', mb_open: 'Abiertas', mb_gp: 'Siguiendo GP', mb_manual: 'Manuales',
@@ -572,6 +573,7 @@
       cpf_scaled: 'The suggested sum ({sum}) exceeded your daily limit — all stakes were scaled to {pct}% to respect it.',
       cpf_maxloss_note: 'On 95% of days you would not lose more than this (simulated with today’s probabilities and correlations). Absolute worst case = the total risk.',
       nav_bets: 'My bets', nav_books: 'My books', nav_brief: 'Daily Brief',
+      pf_empty_live: 'No picks from live matches right now', pf_empty_up: 'No picks from upcoming matches', pf_empty_filt_sub: 'Check "All" to see every active pick.',
       mb_title: 'My bets', mb_intro: 'Log what you bet (with or without a GP pick) and mark the result — personal P&L, ROI and CLV, plus your performance following GP vs your own bets.',
       mb_add: 'Log a bet', mb_pick: 'GP pick (optional)', mb_manual_opt: 'Manual bet (no pick)', mb_label: 'Description', mb_odds: 'Odds', mb_stake: 'Stake', mb_book: 'Book (optional)', mb_save: 'Save',
       mb_pnl: 'P&L', mb_roi: 'ROI', mb_record: 'Record', mb_clv: 'Personal CLV', mb_open: 'Open', mb_gp: 'Following GP', mb_manual: 'Manual',
@@ -1199,6 +1201,36 @@
   // ---- Oportunidades · Picks: FEED de picks diarias (producto principal). EFÍMERO: solo ACTIVE (las liquidadas
   // desaparecen). Lenguaje simple, sin tecnicismos: la pick + confianza + mejor cuota. Un solo "GP" (sin model%/mercado%).
   function confBucket(c) { return c >= 0.6 ? 'high' : c >= 0.45 ? 'med' : 'low'; }
+  // Estado EN VIVO del partido de una pick (filtro Todos/En vivo/Próximos): datos reales primero —
+  // Mundial por status_code del dash, clubes por la lista live de su liga — y fallback por ventana de
+  // juego (kickoff pasado < 2h45) cuando el estado real no está cargado.
+  function pickIsLive(p) {
+    if (p.event_id && S.dash && (S.dash.upcoming || []).length) {
+      for (var i = 0; i < S.dash.upcoming.length; i++) {
+        var h = (S.dash.upcoming[i] || {}).header || {};
+        if (h.event_id === p.event_id) return h.status_code === 'LIVE';
+      }
+    }
+    if (p.club_eid && S.clubs && (S.clubs.leagues || []).length) {
+      var mm = p.club_eid.match(/^cl-([a-z0-9]+)-(tm_[a-z0-9]+)-(tm_[a-z0-9]+)$/i);
+      var L = mm && clubLeague(mm[1]);
+      if (L) {
+        var lv = L.live || [];
+        for (var k = 0; k < lv.length; k++) if (lv[k].home && lv[k].away && String(lv[k].home.id) === mm[2] && String(lv[k].away.id) === mm[3]) return true;
+        return false;
+      }
+    }
+    var ko = Date.parse(p.kickoff || 0);
+    return isFinite(ko) && Date.now() >= ko && Date.now() - ko < 165 * 60e3;
+  }
+  // Filtro del board aplicado al FEED de picks: live = partido en vivo ahora; up = próximos (kickoff
+  // futuro, sin contar los live); all = todas. Una pick de partido terminado pendiente de liquidar no
+  // entra en live ni en up (solo en Todos).
+  function picksFiltered(picks) {
+    if (S.filt === 'live') return picks.filter(pickIsLive);
+    if (S.filt === 'up') return picks.filter(function (p) { if (pickIsLive(p)) return false; var ko = Date.parse(p.kickoff || 0); return isFinite(ko) && ko > Date.now(); });
+    return picks;
+  }
   function picksFeed(bd) {
     if (S.dailyPicks === undefined) {
       S.dailyPicks = null;
@@ -1210,7 +1242,7 @@
       bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
       return;
     }
-    var picks = S.dailyPicks || [];
+    var picks = picksFiltered(S.dailyPicks || []);
     var cc = $('#gx-board-count'); if (cc) cc.textContent = picks.length + ' ' + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
     var meta = S.dailyPicksMeta || {};
     // recap de AYER (prueba social agregada — el historial detallado sigue admin): "Ayer: 2 de 3 ✓"
@@ -1223,6 +1255,11 @@
     }
     if (meta.plan_delayed) lockTeaser += '<div class="gx-pick-recap">' + ic('clock') + esc(t('lock_delay')) + '</div>';
     if (!picks.length) {
+      // vacío POR FILTRO (hay picks pero no en esta pestaña) ≠ vacío real (sin picks activas)
+      if ((S.dailyPicks || []).length && (S.filt === 'live' || S.filt === 'up')) {
+        bd.innerHTML = recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t(S.filt === 'live' ? 'pf_empty_live' : 'pf_empty_up')) + '</b><span class="gx-dim">' + esc(t('pf_empty_filt_sub')) + '</span></div>';
+        return;
+      }
       // countdown (reversible por env GP_PICKS_COUNTDOWN_ENABLED): el vacío da una CITA, no un "vuelve pronto"
       var ko = '';
       if (meta.next_kickoff) { try { var hh = new Date(meta.next_kickoff).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); ko = '<span class="gx-pick-nextko">' + ic('clock') + esc(t('pf_next_ko', { time: hh })) + '</span>'; } catch (e) {} }

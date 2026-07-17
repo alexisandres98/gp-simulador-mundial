@@ -4567,7 +4567,15 @@ function clubDailyPicksTrackRecord() {
   return agg;
 }
 // ===== F1 — MI CARTERA: helpers ==============================================================================
-function myBetsOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_MY_BETS_ENABLED || '').trim()); }
+// Flags F1-F4 con TRES estados: off (default) / "admin" (solo admins la ven; el resto 404 = byte-idéntico) /
+// "true" (abierta a todos). *On() = el feature corre en el proceso (loops/schedulers); featFor(u) = este
+// usuario lo ve (gating de /api/me y endpoints).
+function featFor(envName, u) {
+  const v = String(process.env[envName] || '').trim();
+  if (/^admin$/i.test(v)) return !!(u && u.isAdmin);
+  return /^(1|true|yes|on)$/i.test(v);
+}
+function myBetsOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_MY_BETS_ENABLED || '').trim()); }
 function myBetsFindPick(pickId) {
   return (db.dailyPicks || []).find(x => x.pick_id === pickId) || (db.clubDailyPicks || []).find(x => x.pick_id === pickId) || null;
 }
@@ -4596,12 +4604,12 @@ function myBetsStats(list) {
   };
 }
 // ===== F2 — MIS CASAS (flag GP_MY_BOOKS_ENABLED): las casas del usuario filtran feed/value/arb en el cliente =
-function myBooksOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_MY_BOOKS_ENABLED || '').trim()); }
+function myBooksOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_MY_BOOKS_ENABLED || '').trim()); }
 // ===== F3 — WATCH PRICE (flag GP_WATCH_PRICE_ENABLED): alerta cuando la mejor cuota alcanza el objetivo ======
 // El watch se ancla a una PICK activa (su mercado ya lo observa el sweep → cuotas frescas en Postgres). El
 // chequeo corre en el ciclo de 15min con la MISMA fuente del cierre oficial (sportsbook_goal_quote_current);
 // al disparar: email al usuario (mailer) + estado "alcanzado" en la lista in-app. KO pasado → watch vencido.
-function watchPriceOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_WATCH_PRICE_ENABLED || '').trim()); }
+function watchPriceOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_WATCH_PRICE_ENABLED || '').trim()); }
 async function currentBestOddsForPick(pk) {
   const dbc = require('./database/client');
   if (!dbc.isConfigured() || !pk || !pk.event || !pk.event.canonical_event_id) return null;
@@ -4661,7 +4669,7 @@ async function checkPriceWatches() {
 // usuario: users[email].brief_email) y Telegram del canal (flag aparte GP_DAILY_BRIEF_TELEGRAM_ENABLED, off).
 // Contenido 100% derivado de lo que ya existe: picks activas 24h (top 3 por edge), partidos del día (eventos de
 // esas picks), movimientos de línea (line_move), hallazgos del observer y liquidadas de ayer.
-function dailyBriefOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_DAILY_BRIEF_ENABLED || '').trim()); }
+function dailyBriefOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_DAILY_BRIEF_ENABLED || '').trim()); }
 function buildDailyBrief() {
   const now = Date.now();
   if (global._dailyBrief && now - global._dailyBrief.at < 10 * 60e3) return global._dailyBrief.data;
@@ -6521,11 +6529,11 @@ const server = http.createServer(async (req, res) => {
         // aparte): solo ADMIN + flag ven las superficies de clubes; para todos los demás la plataforma es
         // byte-idéntica hasta la fusión post-Mundial.
         clubs_shadow: !!(u.isAdmin && /^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())),
-        my_bets: myBetsOn(),   // F1 Mi cartera (flag global; off → sin nav ni endpoint)
-        my_books: myBooksOn(), // F2 Mis casas
-        my_books_list: myBooksOn() ? ((db.users[u.email] || {}).my_books || []) : undefined,
-        watch_price: watchPriceOn(), // F3 Watch price
-        daily_brief: dailyBriefOn(), // F4 GP Daily Brief
+        my_bets: featFor('GP_MY_BETS_ENABLED', u),     // F1 Mi cartera ("admin" = solo admins; "true" = todos)
+        my_books: featFor('GP_MY_BOOKS_ENABLED', u),   // F2 Mis casas
+        my_books_list: featFor('GP_MY_BOOKS_ENABLED', u) ? ((db.users[u.email] || {}).my_books || []) : undefined,
+        watch_price: featFor('GP_WATCH_PRICE_ENABLED', u), // F3 Watch price
+        daily_brief: featFor('GP_DAILY_BRIEF_ENABLED', u), // F4 GP Daily Brief
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -6544,6 +6552,7 @@ const server = http.createServer(async (req, res) => {
       if (!myBetsOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (!featFor('GP_MY_BETS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       db.userBets = db.userBets || {};
       const list = db.userBets[u.email] = db.userBets[u.email] || [];
       if (req.method === 'POST') {
@@ -6582,6 +6591,7 @@ const server = http.createServer(async (req, res) => {
       if (!myBooksOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (!featFor('GP_MY_BOOKS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       const b = await readBody(req).catch(() => ({}));
       const books = Array.isArray(b.books) ? b.books.map(x => String(x).toLowerCase().slice(0, 40)).filter(x => /^[a-z0-9_ .-]+$/.test(x)).slice(0, 30) : [];
       db.users[u.email].my_books = books;
@@ -6593,6 +6603,7 @@ const server = http.createServer(async (req, res) => {
       if (!watchPriceOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (!featFor('GP_WATCH_PRICE_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       db.priceWatches = db.priceWatches || [];
       if (req.method === 'POST') {
         const b = await readBody(req).catch(() => ({}));
@@ -6624,6 +6635,7 @@ const server = http.createServer(async (req, res) => {
       if (!dailyBriefOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      if (!featFor('GP_DAILY_BRIEF_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin
       if (req.method === 'POST') {
         const b = await readBody(req).catch(() => ({}));
         db.users[u.email].brief_email = !!b.email_opt_in;

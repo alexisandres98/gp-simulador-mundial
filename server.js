@@ -6770,6 +6770,21 @@ const server = http.createServer(async (req, res) => {
                   xg: [+lmb[0].toFixed(2), +lmb[1].toFixed(2)] };
               }
             }
+            // Fallback estructural: sin live y con el memo de próximos frío (arranque), el hero sale del
+            // EVENTO DE LA PICK más próxima (siempre hay mientras el pipeline de picks esté vivo).
+            if (!hero) {
+              const pk = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE' && x.event && x.league && RT.leagues[x.league] && +new Date(x.event.kickoff_at || 0) > Date.now() - 2 * 3600e3)
+                .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))[0];
+              if (pk) {
+                const L = RT.leagues[pk.league], hfa = L.hfa || 60, ev = pk.event;
+                const rh = clubElo(pk.league, ev.home_team_id), ra = clubElo(pk.league, ev.away_team_id);
+                const pr = matchProbs(rh + hfa, ra), lmb = lambdas(rh + hfa, ra);
+                hero = { league: pk.league, league_name: L.name, status: 'upcoming', minute: null, hg: null, ag: null, utc: ev.kickoff_at,
+                  home: { id: ev.home_team_id, name: cNameOf(pk.league, ev.home_team_id) || ev.home, prob: +pr.home.toFixed(3) }, draw: +pr.draw.toFixed(3),
+                  away: { id: ev.away_team_id, name: cNameOf(pk.league, ev.away_team_id) || ev.away, prob: +pr.away.toFixed(3) },
+                  xg: [+lmb[0].toFixed(2), +lmb[1].toFixed(2)] };
+              }
+            }
             // 2) PICKS de clubes con la selección OCULTA — 1 por evento (mayor confianza), SOLID/GOALS.
             const seenEv = new Set();
             const cpicks = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE' && (x.family === 'SOLID' || x.family === 'GOALS'))

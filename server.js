@@ -2533,13 +2533,21 @@ function reg90For(homeId, awayId) {
   }
   return null;
 }
+// ===== REGIONES DE THE ODDS API (plan 100k, 17-jul) — el costo es mercados×regiones por request. ============
+// Con el plan grande abrimos el abanico de casas: multi-casa REAL es lo que habilita el modo EDGE de
+// córners/tarjetas (con 1 sola casa el de-vig ≈ el precio de esa casa → nunca hay precio que batir).
+// PROPS = las 5 regiones (córners/cards/player viven repartidos entre libros UK/EU/US/AU → máxima cobertura).
+// SCAN 1X2/totales = 3 regiones (profundidad de casas suficiente para el consenso de SOLID/GOALS sin gastar
+// de más en el barrido horario). Ajustar aquí un solo lugar cambia todos los sweeps.
+const ODDS_REGIONS_PROPS = 'us,us2,uk,eu,au';
+const ODDS_REGIONS_SCAN = 'us,uk,eu';
 // ===== FASE CLUBES: INGESTA DE CUOTAS a las tablas de la casa (shadow, cadencia ~60 min) =====
 // Punto 1 del spec de adaptación (13-jul): las cuotas de clubes viven en sportsbook_goal_quote_current
 // (match_winner + match_total, ids SINTÉTICOS por liga+par — MISMO patrón que el Mundial vía
 // stableGoalEventId, sin FK ni tocar el grafo canónico). Con eso el market-scanner (precio atrasado /
 // arbitraje, venue-agnóstico) y el futuro value multi-liga leen clubes SIN UI nueva. Inerte para el
 // pipeline del Mundial: solo se escriben QUOTES (ninguna evaluación/valor/pick).
-// Costo: h2h,totals × eu,us = 4 créditos × ligas en temporada con cuotas (~4) ≈ 16/hora.
+// Costo: h2h,totals × ODDS_REGIONS_SCAN (3) = 6 créditos × ligas en temporada con cuotas (~6) ≈ 36/hora (plan 100k).
 let _clubsQuotesLast = 0, _clubsQuotesRunning = false, _clubsQuotesOut = null;
 async function clubsQuotesSweep({ force = false } = {}) {
   if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
@@ -2560,7 +2568,7 @@ async function clubsQuotesSweep({ force = false } = {}) {
     for (const L of inSeason) {
       let events = null;
       try {
-        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${key}&regions=eu,us&markets=h2h,totals&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${key}&regions=${ODDS_REGIONS_SCAN}&markets=h2h,totals&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
         events = r.ok ? await r.json().catch(() => null) : null;
       } catch { /* liga sin datos este ciclo */ }
       if (!Array.isArray(events)) continue;
@@ -2655,7 +2663,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
       let o = null;
       try {
         // F3.4: córners/tarjetas en la MISMA llamada por evento (mismos markets del Mundial: alternate_totals_*)
-        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/events/${meta.oa_id}/odds?apiKey=${key}&regions=eu,us&markets=player_assists,player_goal_scorer_anytime,alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/events/${meta.oa_id}/odds?apiKey=${key}&regions=${ODDS_REGIONS_PROPS}&markets=player_assists,player_goal_scorer_anytime,alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
         o = r.ok ? await r.json().catch(() => null) : null;
       } catch { o = null; }
       if (!o || !Array.isArray(o.bookmakers)) continue;
@@ -5032,7 +5040,7 @@ async function evaluateUpcomingProps() {
       const proj = F ? propModel.project(F, { home: hCode, away: aCode, lambdas, phase: pairPhase(hCode, aCode), closeness1x2: closeness }) : null;
       // ---- CÓRNERS / TARJETAS ----
       try {
-        const r1 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk&markets=alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        const r1 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=${ODDS_REGIONS_PROPS}&markets=alternate_totals_corners,alternate_totals_cards&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
         const rem1 = Number(r1.headers.get('x-requests-remaining')); if (Number.isFinite(rem1)) _propsCredits = rem1;
         const d1 = r1.ok ? await r1.json() : null;
         const groups = {}; // fam|line → [{book, side, odds}]
@@ -5080,7 +5088,7 @@ async function evaluateUpcomingProps() {
       } catch (e) { out.errors++; }
       // ---- PROPS DE JUGADOR ----
       try {
-        const r2 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=eu,uk,us&markets=player_goal_scorer_anytime,player_shots,player_shots_on_target,player_assists&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        const r2 = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events/${ev.id}/odds?apiKey=${KEY}&regions=${ODDS_REGIONS_PROPS}&markets=player_goal_scorer_anytime,player_shots,player_shots_on_target,player_assists&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
         const rem2 = Number(r2.headers.get('x-requests-remaining')); if (Number.isFinite(rem2)) _propsCredits = rem2;
         const d2 = r2.ok ? await r2.json() : null;
         const pgroups = {}; // fam|pid|line → { odds:[], side }
@@ -5600,7 +5608,7 @@ async function evaluateUpcomingGoals({ limit = 60, throttleMs = 150 } = {}) {
     if (KEY) {
       try {
         const reserve = Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
-        const r = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?regions=eu,uk&markets=h2h,totals&oddsFormat=decimal&dateFormat=iso&apiKey=${KEY}`, { signal: AbortSignal.timeout(15000) });
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?regions=${ODDS_REGIONS_SCAN}&markets=h2h,totals&oddsFormat=decimal&dateFormat=iso&apiKey=${KEY}`, { signal: AbortSignal.timeout(15000) });
         const remaining = Number(r.headers.get('x-requests-remaining'));
         if (r.ok && (!Number.isFinite(remaining) || remaining >= reserve)) {
           const body = await r.json(); const now = Date.now();

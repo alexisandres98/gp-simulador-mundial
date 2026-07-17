@@ -45,7 +45,7 @@
       decided_pens: 'Penales', decided_et: 'Tras prórroga', in_et: 'Prórroga', won_by: 'Ganó {team}', pens_short: 'pen',
       cockpit: 'Cockpit del partido', prob_gp: 'Probabilidad GP', score_prob: 'Marcador prob.',
       tab_summary: 'Resumen', tab_markets: 'Mercados', tab_context: 'Contexto', tab_stats: 'Estadísticas', tab_events: 'Eventos',
-      memo: 'Decision memo', conf: 'Confianza', conf_hi: 'Alta', conf_mid: 'Media', conf_lo: 'Baja',
+      memo: 'Decision memo', conf: 'Confianza', conf_hi: 'Alta', conf_mid: 'Media', conf_lo: 'Baja', conf_na: 'Sin evaluar',
       verdict: 'Veredicto', thesis: 'Tesis', price: 'Precio', risk: 'Riesgo', invalidation: 'Invalidación',
       best_avail: 'Mejor precio disponible', view_pick: 'Ver pick GP', open_analysis: 'Análisis completo',
       vp1_t: 'Picks diarias', vp1_s: 'A quién apostarle y cuántos goles, claro y directo — sin tecnicismos.',
@@ -70,7 +70,7 @@
       unc_copy: 'Las estimaciones internas no convergen del todo en este partido.',
       thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para sostener una lectura más fuerte.',
       thesis_ctx2: 'GP apoya su lectura en {factors}.',
-      e_na: 'Datos no disponibles', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Precio no verificable', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
+      e_na: 'Datos no disponibles', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Cuota no disponible ahora', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
       trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'No disponible', lus_stale: 'Desactualizada',
       // ---- Corte 2: Match Cockpit profundo ----
       back: 'Oportunidades', open_cockpit: 'Abrir cockpit completo', refresh: 'Actualizar',
@@ -92,10 +92,10 @@
       tl_title: 'Línea de tiempo', tl_now: 'Estado actual', tl_base_gp: 'Base → Probabilidad GP',
       tl_empty: 'Aún no hay snapshots previos registrados para este partido. Los cambios de probabilidad, precio, noticias y alineaciones se registrarán a partir de ahora.',
       mkt_sb: 'Casas de apuestas', mkt_sb_best: 'Mejor precio por casa', mkt_ex: 'Exchange', mkt_pm: 'Prediction markets',
-      col_provider: 'Fuente', col_outcome: 'Resultado', col_odds: 'Cuota', col_implied: 'Implícita', col_novig: 'Sin margen', col_move: 'Movimiento', col_liq: 'Liquidez', col_fresh: 'Frescura', na_short: 'No disponible', move_na: 'No registrado',
+      col_provider: 'Fuente', col_outcome: 'Resultado', col_odds: 'Cuota', col_implied: 'Implícita', col_novig: 'Sin margen', col_move: 'Movimiento', col_liq: 'Liquidez', col_fresh: 'Frescura', na_short: 'No disponible', move_na: 'Aún sin registro',
       mkt_none: 'Sin mercados cargados para este partido todavía.', move_untracked: 'El movimiento de precio aún no se registra para estas fuentes.', novig_na: 'Requiere el set completo de resultados.',
       ctx_none: 'Sin contexto verificado disponible para este partido todavía.', ctx_form: 'Forma reciente', ctx_inj: 'Bajas y disponibilidad', ctx_lineups: 'Alineaciones',
-      ctx_form_line: '{team} llega con {rec} en sus últimos {n} ({gf} a favor, {ga} en contra).', ctx_inj_line: '{team}: {players}.', no_inj: 'sin bajas reportadas',
+      ctx_form_line: '{team} llega con {rec} en sus últimos {n} ({gf} a favor, {ga} en contra).', ctx_form_line_short: '{team} llega con {rec} en sus últimos {n}.', ctx_inj_line: '{team}: {players}.', no_inj: 'sin bajas reportadas',
       goals_tag: 'En validación', goals_disc: 'Proyección estadística del modelo, en validación. No es una Pick ni un Value; sin recomendación de apuesta.',
       g_xg: 'xG esperado', g_total: 'Total esperado', g_ou: 'Más / Menos', g_btts: 'Ambos anotan', g_scores: 'Marcadores más probables', g_over: 'Más', g_under: 'Menos', g_yes: 'Sí', g_no: 'No', goals_none: 'Sin proyección de goles disponible.',
       g_dist: 'Distribución de goles', g_margin: 'Margen de victoria', g_combos: 'Combinaciones', g_either2: 'Cualquiera gana por 2+', g_team_by2: '{team} por 2+', g_draw: 'Empate', g_team_wino25: '{team} gana y +2.5', g_wintonil: 'Cualquiera gana a cero', g_team_cs: '{team} valla invicta', g_push: 'empuje', g_home: 'Local', g_away: 'Visitante',
@@ -309,7 +309,7 @@
       decided_pens: 'Penalties', decided_et: 'After extra time', in_et: 'Extra time', won_by: '{team} won', pens_short: 'pen',
       cockpit: 'Match cockpit', prob_gp: 'GP probability', score_prob: 'Likely score',
       tab_summary: 'Summary', tab_markets: 'Markets', tab_context: 'Context', tab_stats: 'Stats', tab_events: 'Events',
-      memo: 'Decision memo', conf: 'Confidence', conf_hi: 'High', conf_mid: 'Medium', conf_lo: 'Low',
+      memo: 'Decision memo', conf: 'Confidence', conf_hi: 'High', conf_mid: 'Medium', conf_lo: 'Low', conf_na: 'Not assessed',
       verdict: 'Verdict', thesis: 'Thesis', price: 'Price', risk: 'Risk', invalidation: 'Invalidation',
       best_avail: 'Best available price', view_pick: 'View GP pick', open_analysis: 'Full analysis',
       vp1_t: 'Daily picks', vp1_s: 'Who to bet and how many goals — clear and simple, no jargon.',
@@ -334,7 +334,7 @@
       unc_copy: 'Internal estimates don’t fully converge for this match.',
       thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to support a stronger read.',
       thesis_ctx2: 'GP backs its read on {factors}.',
-      e_na: 'Data unavailable', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Price not verifiable', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
+      e_na: 'Data unavailable', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Odds not currently available', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
       trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'Unavailable', lus_stale: 'Stale',
       // ---- Corte 2: Deep Match Cockpit ----
       back: 'Opportunities', open_cockpit: 'Open full cockpit', refresh: 'Refresh',
@@ -356,10 +356,10 @@
       tl_title: 'Timeline', tl_now: 'Current state', tl_base_gp: 'Base → GP probability',
       tl_empty: 'No prior snapshots recorded for this match yet. Probability, price, news and lineup changes will be tracked from now on.',
       mkt_sb: 'Sportsbooks', mkt_sb_best: 'Best price per book', mkt_ex: 'Exchange', mkt_pm: 'Prediction markets',
-      col_provider: 'Source', col_outcome: 'Outcome', col_odds: 'Odds', col_implied: 'Implied', col_novig: 'No-vig', col_move: 'Movement', col_liq: 'Liquidity', col_fresh: 'Freshness', na_short: 'Unavailable', move_na: 'Not tracked',
+      col_provider: 'Source', col_outcome: 'Outcome', col_odds: 'Odds', col_implied: 'Implied', col_novig: 'No-vig', col_move: 'Movement', col_liq: 'Liquidity', col_fresh: 'Freshness', na_short: 'Unavailable', move_na: 'Not recorded yet',
       mkt_none: 'No markets loaded for this match yet.', move_untracked: 'Price movement isn’t tracked for these sources yet.', novig_na: 'Requires the full outcome set.',
       ctx_none: 'No verified context available for this match yet.', ctx_form: 'Recent form', ctx_inj: 'Absences & availability', ctx_lineups: 'Lineups',
-      ctx_form_line: '{team} arrives with {rec} in its last {n} ({gf} for, {ga} against).', ctx_inj_line: '{team}: {players}.', no_inj: 'no reported absences',
+      ctx_form_line: '{team} arrives with {rec} in its last {n} ({gf} for, {ga} against).', ctx_form_line_short: '{team} arrives with {rec} in its last {n}.', ctx_inj_line: '{team}: {players}.', no_inj: 'no reported absences',
       goals_tag: 'In validation', goals_disc: 'Statistical model projection, in validation. Not a Pick or Value; no betting recommendation.',
       g_xg: 'Expected xG', g_total: 'Expected total', g_ou: 'Over / Under', g_btts: 'Both teams score', g_scores: 'Most likely scores', g_over: 'Over', g_under: 'Under', g_yes: 'Yes', g_no: 'No', goals_none: 'No goal projection available.',
       g_dist: 'Goal distribution', g_margin: 'Winning margin', g_combos: 'Combinations', g_either2: 'Either team by 2+', g_team_by2: '{team} by 2+', g_draw: 'Draw', g_team_wino25: '{team} wins & over 2.5', g_wintonil: 'Either wins to nil', g_team_cs: '{team} clean sheet', g_push: 'push', g_home: 'Home', g_away: 'Away',
@@ -2252,7 +2252,7 @@
     if (code === 'HIGH') return { code: 'HIGH', cls: 'hi', label: t('conf_hi') };
     if (code === 'LOW') return { code: 'LOW', cls: 'lo', label: t('conf_lo') };
     if (code === 'MEDIUM') return { code: 'MEDIUM', cls: 'mid', label: t('conf_mid') };
-    return { code: null, cls: 'mid', label: '—' };
+    return { code: null, cls: 'mid', label: t('conf_na') };
   }
   // editorialización: sintetiza el memo desde el DTO + análisis del partido (sin inventar; honesto si falta evidencia)
   function buildMemo(r) {
@@ -3378,7 +3378,7 @@
       var formSent = function (side, teamId, name) {
         var f = rf[side]; if (!f || !f.played) return '';
         var rec = formStr(f.results);
-        return t('ctx_form_line', { team: '<b>' + esc(name) + '</b>', rec: esc(rec), n: f.played, gf: f.goalsFor, ga: f.goalsAgainst });
+        return t(f.goalsFor != null && f.goalsAgainst != null ? 'ctx_form_line' : 'ctx_form_line_short', { team: '<b>' + esc(name) + '</b>', rec: esc(rec), n: f.played, gf: f.goalsFor, ga: f.goalsAgainst });
       };
       var hs = formSent('home', h.home.team_id, teamName(h.home.team_id, h.home.name_fallback)), as = formSent('away', h.away.team_id, teamName(h.away.team_id, h.away.name_fallback));
       if (hs || as) blocks.push(ctxBlock(t('ctx_form'), 'history', [hs, as].filter(Boolean).join(' ')));
@@ -3948,7 +3948,7 @@
     var blocks = [];
     var fa = d.form && d.form.a, fb = d.form && d.form.b;
     if (fa || fb) {
-      var line = function (f, id) { if (!f || !f.played) return ''; return t('ctx_form_line', { team: '<b>' + esc(teamName(id)) + '</b>', rec: esc(formStr(f.results)), n: f.played, gf: f.goalsFor, ga: f.goalsAgainst }); };
+      var line = function (f, id) { if (!f || !f.played) return ''; return t(f.goalsFor != null && f.goalsAgainst != null ? 'ctx_form_line' : 'ctx_form_line_short', { team: '<b>' + esc(teamName(id)) + '</b>', rec: esc(formStr(f.results)), n: f.played, gf: f.goalsFor, ga: f.goalsAgainst }); };
       var s = [line(fa, d.a.id), line(fb, d.b.id)].filter(Boolean).join(' ');
       if (s) blocks.push(ctxBlock(t('ctx_form'), 'history', s));
     }

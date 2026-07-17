@@ -540,7 +540,10 @@
     }
   };
   var LANG = 'es', TEAMS = {};
-  var t = function (k, a) { var s = (DICT[LANG] && DICT[LANG][k]) || (DICT.es[k] != null ? DICT.es[k] : k); return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; }); };
+  // P4 (red sistémica): un arg null/undefined jamás filtra el placeholder interno ({gf}, {ga}, …) al usuario —
+  // si se PASÓ el arg pero vino null → "—"; si la llamada no pasa args para ese placeholder, se conserva el
+  // literal (señal de bug para el auditor estático, no alcanzable en producción con los call sites actuales).
+  var t = function (k, a) { var s = (DICT[LANG] && DICT[LANG][k]) || (DICT.es[k] != null ? DICT.es[k] : k); return String(s).replace(/\{(\w+)\}/g, function (m, x) { if (!a) return m; return a[x] != null ? a[x] : (x in a ? '—' : m); }); };
   // FASE CLUBES: ids tm_ (clubes) resuelven por el índice de clubes (S.clubNames, poblado por loadClubs) → las
   // MISMAS funciones/render del Mundial sirven partidos de club sin bifurcar (regla: extensión, no variantes).
   var teamName = function (id, fb) { if (id && /^tm_/.test(id)) { return (S.clubNames && S.clubNames[id]) || fb || id; } var e = TEAMS[id]; return (e && e[LANG]) || (e && e.es) || fb || id || ''; };

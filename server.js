@@ -3878,6 +3878,9 @@ async function whopFounderSpotsLeft() {
 // viejo). Revertir el test = GP_DEFAULT_LANG=auto (o 'es') en Render + Manual Deploy. NO afecta a quien ya
 // eligió idioma (preferencia guardada gana) ni al toggle ES/EN.
 function defaultLang() { const v = String(process.env.GP_DEFAULT_LANG || 'en').toLowerCase(); return (v === 'es' || v === 'auto') ? v : 'en'; }
+// LANDING v3 (post-Mundial, clubes): OFF por default → landing byte-idéntica. ?landing3=1 la
+// previsualiza sin flag (preview de Alexis); GP_LANDING_V3_ENABLED=true la enciende para todos.
+function landingV3On() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_LANDING_V3_ENABLED || '').trim()); }
 const PROP_FAMS = ['CORNERS', 'CARDS', 'PLAYER'];
 // Familias en modo EXPERIMENTO: solo admin SIEMPRE (aunque GP_PROPS_PICKS_PUBLIC esté on) y fuera del
 // track record. 8-jul: Alexis aprobó el rediseño de PLAYER (anclada al mercado + once proyectado + gates
@@ -6714,7 +6717,93 @@ const server = http.createServer(async (req, res) => {
           const scan = await getMarketScan();
           if (scan && !scan.disabled && !scan.unavailable) scanner = { markets: scan.markets_scanned || 0, lag: (scan.counts && scan.counts.lag_soft) || 0, arb: (scan.counts && scan.counts.arb_executable) || 0 };
         } catch { /* scanner apagado → sección omitida */ }
-        global._teaserCache = { at: Date.now(), data: { picks: active, picks_enabled: dailyPicksOn(), record: { total: tr.total || 0, winners: tr.winners || 0 }, scanner, users: Object.keys(db.users || {}).length } };
+        // LANDING v3 (post-Mundial): datos de CLUBES públicos-seguros — hero con partido real (GP prob),
+        // picks con selección OCULTA (mismo gancho del Mundial + chip de liga), carreras por el título
+        // (season sim memoizado) y contadores del sweep. Solo nombres/probabilidades/ligas: jamás
+        // selecciones, cuotas ni casas. Payload ADITIVO: el cliente lo usa solo con GP_LANDING_V3_ENABLED
+        // o ?landing3=1 (preview). Reusa memos existentes (ratings/_clubsUpcoming/seasonSim/clubs scan);
+        // cero fetches externos nuevos en un endpoint público sin auth.
+        let clubs = null;
+        try {
+          if (clubsShadowOn()) {
+            if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+            const RT = global._clubsRatings, LKS = Object.keys(RT.leagues || {});
+            const cNameOf = (lg, id) => { const L = RT.leagues[lg]; return (L && L.ratings && L.ratings[id] && L.ratings[id].name) || null; };
+            // 1) HERO — partido real para la card del hero: EN VIVO primero (GP condicionada al marcador,
+            //    mismo motor del cockpit), si no el próximo <48h con ambos equipos conocidos.
+            let hero = null;
+            for (const r of Object.values(db.clubResults || {})) {
+              if (!r || r.status !== 'live' || !r.league || !RT.leagues[r.league]) continue;
+              if (Date.now() - (r.at || 0) > 45 * 60e3) continue; // live "frizado" = final (regla del state)
+              if (!cNameOf(r.league, r.home_id) || !cNameOf(r.league, r.away_id)) continue;
+              const L = RT.leagues[r.league], hfa = L.hfa || 60;
+              const rh = clubElo(r.league, r.home_id), ra = clubElo(r.league, r.away_id);
+              const lmb = lambdas(rh + hfa, ra);
+              let pr = null; try { pr = liveProbsFromLambdas(lmb[0], lmb[1], r.hg, r.ag, r.minute); } catch { pr = matchProbs(rh + hfa, ra); }
+              hero = { league: r.league, league_name: L.name, status: 'live', minute: r.minute || null, hg: r.hg, ag: r.ag, utc: null,
+                home: { id: r.home_id, name: cNameOf(r.league, r.home_id), prob: +pr.home.toFixed(3) }, draw: +pr.draw.toFixed(3),
+                away: { id: r.away_id, name: cNameOf(r.league, r.away_id), prob: +pr.away.toFixed(3) },
+                xg: [+lmb[0].toFixed(2), +lmb[1].toFixed(2)] };
+              break;
+            }
+            if (!hero) {
+              const cands = [];
+              for (const [k, up] of Object.entries(global._clubsUpcoming || {})) {
+                const L = RT.leagues[k]; if (!L) continue;
+                for (const m of ((up && up.rows) || [])) {
+                  const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+                  if (!m.utc_date || !cNameOf(k, hId) || !cNameOf(k, aId)) continue;
+                  const dt = +new Date(m.utc_date) - Date.now();
+                  if (dt < -2 * 3600e3 || dt > 48 * 3600e3) continue;
+                  cands.push({ k, hId, aId, utc: m.utc_date, dt: Math.abs(dt) });
+                }
+              }
+              cands.sort((a, b) => a.dt - b.dt);
+              const c = cands[0];
+              if (c) {
+                const L = RT.leagues[c.k], hfa = L.hfa || 60;
+                const rh = clubElo(c.k, c.hId), ra = clubElo(c.k, c.aId);
+                const pr = matchProbs(rh + hfa, ra), lmb = lambdas(rh + hfa, ra);
+                hero = { league: c.k, league_name: L.name, status: 'upcoming', minute: null, hg: null, ag: null, utc: c.utc,
+                  home: { id: c.hId, name: cNameOf(c.k, c.hId), prob: +pr.home.toFixed(3) }, draw: +pr.draw.toFixed(3),
+                  away: { id: c.aId, name: cNameOf(c.k, c.aId), prob: +pr.away.toFixed(3) },
+                  xg: [+lmb[0].toFixed(2), +lmb[1].toFixed(2)] };
+              }
+            }
+            // 2) PICKS de clubes con la selección OCULTA — 1 por evento (mayor confianza), SOLID/GOALS.
+            const seenEv = new Set();
+            const cpicks = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE' && (x.family === 'SOLID' || x.family === 'GOALS'))
+              .filter(x => x.event && +new Date(x.event.kickoff_at || 0) > Date.now() - 2 * 3600e3)
+              .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+              .filter(x => { const k = x.event.canonical_event_id || (x.event.home + x.event.away); if (seenEv.has(k)) return false; seenEv.add(k); return true; })
+              .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
+              .slice(0, 6)
+              .map(x => ({ family: x.family, home: x.event.home, away: x.event.away,
+                home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id,
+                kickoff: x.event.kickoff_at, competition_name: x.competition_name || null, league: x.league || null,
+                confidence_bucket: x.confidence >= 0.6 ? 'high' : x.confidence >= 0.45 ? 'med' : 'low' }));
+            // 3) CARRERAS POR EL TÍTULO — prob de campeón por liga (clubSeasonSim, memo 30min)
+            const races = [];
+            for (const k of ['brasileirao', 'ligamx', 'mls', 'argentina', 'colombia', 'kleague', 'j1', 'csl']) {
+              if (races.length >= 4) break;
+              const L = RT.leagues[k]; if (!L || !(L.standings || []).length) continue;
+              let sim = null; try { sim = clubSeasonSim(k); } catch { sim = null; }
+              if (!sim || !sim.teams) continue;
+              const top = Object.entries(sim.teams).map(([id, t]) => ({ id, name: cNameOf(k, id), prob: +(t.champion || 0).toFixed(3) }))
+                .filter(t => t.name && t.prob > 0).sort((a, b) => b.prob - a.prob).slice(0, 3);
+              if (!top.length) continue;
+              races.push({ league: k, name: L.name, top });
+            }
+            // 4) contadores del sweep de clubes (memo; best-effort)
+            let cscan = null;
+            try {
+              const cs = await getClubsScan();
+              if (cs) { const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: 1 }); if (cdto.available) cscan = { markets: cdto.counts.markets_scanned || 0, lag: cdto.counts.lag_soft || 0, arb: cdto.counts.arb_executable || 0 }; }
+            } catch { cscan = null; }
+            clubs = { leagues_count: LKS.length, hero, picks: cpicks, races, scanner: cscan };
+          }
+        } catch { clubs = null; }
+        global._teaserCache = { at: Date.now(), data: { picks: active, picks_enabled: dailyPicksOn(), record: { total: tr.total || 0, winners: tr.winners || 0 }, scanner, users: Object.keys(db.users || {}).length, landing_v3: landingV3On(), clubs } };
       }
       return json(res, 200, global._teaserCache.data);
     }
@@ -8010,7 +8099,8 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script></head>`);
+        // __GPL3: landing v3 (clubes) conocida ANTES del primer paint — sin swap visible de copy/hero.
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
@@ -8638,7 +8728,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }

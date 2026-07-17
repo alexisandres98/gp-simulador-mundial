@@ -50,6 +50,20 @@
       /* demo */
       d_eye: 'Demo en vivo', d_h: 'Así se ve el escáner por dentro', d_sub: 'Compara decenas de casas en tiempo real y marca el precio que quedó atrás — antes de que lo corrijan.',
       d_lag: 'Precio atrasado', d_arb: 'Surebet', d_note: 'Datos ilustrativos del escáner. Las oportunidades reales, en vivo, dentro de tu cuenta.', d_cta: 'Crear cuenta y ver el real',
+      /* v3 (clubes) */
+      h1_v3: 'El modelo que leyó el Mundial ahora lee <span class="g">el fútbol entero</span>.',
+      sub_v3: 'El mismo motor que leyó el Mundial en público ahora cubre 14 ligas en vivo: picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
+      sc3_live: 'en vivo', sc3_xg: 'xG esperado', sc3_foot: 'Elo dinámico + Poisson · se recalcula con cada gol',
+      scf_markets: 'mercados vigilados ahora', scf_leagues: 'ligas monitoreadas 24/7',
+      tr_rec_v3: 'aciertos verificados · Mundial 2026', tr_leagues_v3: 'ligas en vivo',
+      plays_sub_v3: 'Publicadas antes del partido con su precio congelado, liquidadas en público después. La selección se desbloquea con tu cuenta gratis.',
+      chip_wc: 'Mundial',
+      scan_sub_v3: 'Vigilamos 14 ligas y el mercado global 24/7 y detectamos el precio que quedó atrás — antes de que lo corrijan.',
+      scan_leagues_v3: 'ligas en vivo', scan_books_v3: 'casas comparadas',
+      champ_eye_v3: 'La lectura de la temporada', champ_title_v3: 'Las carreras por el título.',
+      champ_sub_v3: 'Probabilidad de campeón por liga, recalculada con cada jornada. Solo la punta — el análisis completo está dentro.',
+      race_cap: 'prob. de campeón',
+      a_micro_v3: 'Gratis · sin tarjeta · sin spam',
     },
     en: {
       nav_login: 'Log in', nav_cta: 'Sign up',
@@ -89,10 +103,31 @@
       e_email: 'Enter a valid email.', e_code: 'Wrong or expired code.', e_net: 'Connection error, try again.',
       d_eye: 'Live demo', d_h: 'Inside the scanner', d_sub: 'It compares dozens of books in real time and flags the price that fell behind — before it gets corrected.',
       d_lag: 'Stale price', d_arb: 'Surebet', d_note: 'Illustrative scanner data. The real, live opportunities are inside your account.', d_cta: 'Sign up to see the real one',
+      /* v3 (clubs) */
+      h1_v3: 'The model that read the World Cup now reads <span class="g">all of football</span>.',
+      sub_v3: 'The same engine that read the World Cup in public now covers 14 live leagues: picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
+      sc3_live: 'live', sc3_xg: 'expected xG', sc3_foot: 'Dynamic Elo + Poisson · recalculated with every goal',
+      scf_markets: 'markets watched right now', scf_leagues: 'leagues monitored 24/7',
+      tr_rec_v3: 'verified hits · 2026 World Cup', tr_leagues_v3: 'live leagues',
+      plays_sub_v3: 'Published before kickoff with the price frozen, settled in public after. The selection unlocks with your free account.',
+      chip_wc: 'World Cup',
+      scan_sub_v3: 'We watch 14 leagues and the global market 24/7 and catch the price that fell behind — before it gets corrected.',
+      scan_leagues_v3: 'live leagues', scan_books_v3: 'books compared',
+      champ_eye_v3: 'The season read', champ_title_v3: 'The title races.',
+      champ_sub_v3: 'Champion probability per league, recalculated after every matchday. Just the top — the full analysis is inside.',
+      race_cap: 'champion prob.',
+      a_micro_v3: 'Free · no card · no spam',
     }
   };
   var lang = (function () { try { var p = localStorage.getItem('gp_lang'); if (p === 'es' || p === 'en') return p; } catch (e) {} return (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})(); })();
-  var T = function (k, a) { var s = (DICT[lang] || DICT.es)[k]; if (s == null) s = DICT.es[k] || k; return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; }); };
+  // LANDING v3 (clubes): el server inyecta __GPL3 (flag) y ?landing3=1 la fuerza (preview). Con v3, T()
+  // prefiere la variante `<k>_v3` del copy → un solo diccionario, cero bifurcación de markup estático.
+  var V3 = /[?&]landing3=1/.test(location.search) || !!window.__GPL3;
+  if (V3) { try { document.body.classList.add('v3'); } catch (e) {} }
+  var T = function (k, a) { var d0 = DICT[lang] || DICT.es; var s = V3 && d0[k + '_v3'] != null ? d0[k + '_v3'] : d0[k]; if (s == null) s = (V3 && DICT.es[k + '_v3'] != null ? DICT.es[k + '_v3'] : DICT.es[k]) || k; return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; }); };
+  var clubLogo = function (id, cls) { return id && /^tm_[a-z0-9]+$/i.test(String(id)) ? '<img class="' + (cls || 'sc-fl') + '" src="/logos/' + esc(id) + '.png" alt="" onerror="this.remove()">' : ''; };
+  var leagueLogo = function (key, cls) { return key && /^[a-z0-9]+$/.test(String(key)) ? '<img class="' + (cls || '') + '" src="/logos/league-' + esc(key) + '.png" alt="" onerror="this.remove()">' : ''; };
+  var badge = function (id, cls) { return /^tm_/i.test(String(id || '')) ? clubLogo(id, (cls || 'play-fl') + ' clx') : flag(id, cls); };
 
   // capturar referido de la URL (?ref=CODE) para no perderlo en el registro desde la landing
   try { var rf = new URLSearchParams(location.search).get('ref'); if (rf) localStorage.setItem('wc_ref', rf); } catch (e) {}
@@ -129,7 +164,42 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModals(); });
   }
 
-  function renderShowcase(scan) {
+  function renderShowcase(d) {
+    var scan = d && d.scanner;
+    var clubs = d && d.clubs, hero = clubs && clubs.hero;
+    var nL = (clubs && clubs.leagues_count) || 14;
+    // v3 cargando: shell silencioso (nunca un ejemplo muerto que después se reemplaza)
+    if (V3 && !d) { $('#showcase').innerHTML = '<div class="sc-card" style="min-height:250px"></div>'; return; }
+    if (V3 && hero) {
+      // chip flotante: mercados vigilados AHORA (Mundial+clubes); sin dato → ligas 24/7. Jamás un 0.
+      var mk = ((scan && scan.markets) || 0) + ((clubs.scanner && clubs.scanner.markets) || 0);
+      var floatHtml = mk > 0
+        ? '<div class="sc-float"><span class="n" id="scfloat">' + mk + '</span><span class="l">' + esc(T('scf_markets')) + '</span></div>'
+        : '<div class="sc-float"><span class="n">' + nL + '</span><span class="l">' + esc(T('scf_leagues')) + '</span></div>';
+      var live = hero.status === 'live';
+      var hhmm = '', day = '';
+      try { var kd = new Date(hero.utc); hhmm = kd.toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); day = kd.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { weekday: 'long' }); } catch (e) {}
+      var mid = live
+        ? '<div class="score">' + esc(hero.hg) + ' – ' + esc(hero.ag) + '</div><div class="min"><i></i>' + esc(T('sc3_live')) + (hero.minute ? ' · ' + esc(hero.minute) + '\'' : '') + '</div>'
+        : '<div class="ko">' + esc(hhmm) + '</div><div class="day">' + esc(day) + '</div>';
+      var ph = Math.round(hero.home.prob * 100), pa = Math.round(hero.away.prob * 100);
+      var pd = Math.max(0, 100 - ph - pa);
+      $('#showcase').innerHTML =
+        '<div class="sc-card">' +
+        '<div class="sc-head"><span class="scv3-league">' + leagueLogo(hero.league) + esc(hero.league_name || '') + '</span><span class="sc-live"><i></i>' + esc(T('sc_live')) + '</span></div>' +
+        '<div class="scv3-teams">' +
+          '<div class="scv3-side">' + clubLogo(hero.home.id, '') + '<b>' + esc(hero.home.name) + '</b></div>' +
+          '<div class="scv3-mid">' + mid + '</div>' +
+          '<div class="scv3-side">' + clubLogo(hero.away.id, '') + '<b>' + esc(hero.away.name) + '</b></div>' +
+        '</div>' +
+        '<div class="scv3-bar"><i class="bh" style="width:' + ph + '%"></i><i class="bd" style="width:' + pd + '%"></i><i class="ba" style="width:' + pa + '%"></i></div>' +
+        '<div class="scv3-pcts"><span><b>' + ph + '%</b></span><span class="mid">X ' + pd + '%</span><span><b>' + pa + '%</b></span></div>' +
+        (hero.xg ? '<div class="scv3-xg"><span>' + esc(T('sc3_xg')) + '</span><b>' + Number(hero.xg[0]).toFixed(2) + ' – ' + Number(hero.xg[1]).toFixed(2) + '</b></div>' : '') +
+        '<div class="sc-foot"><span>' + esc(T('sc3_foot')) + '</span></div>' +
+        '</div>' + floatHtml;
+      return;
+    }
+    // legado (Mundial): card estática del escáner
     var lag = (scan && scan.lag != null) ? scan.lag : 14;
     $('#showcase').innerHTML =
       '<div class="sc-card">' +
@@ -159,25 +229,41 @@
     if (users) ht += '<span><b>' + users + '</b> ' + esc(T('ht_users')) + '</span>';
     ht += '<span class="dot"></span><span>' + esc(T('ht_verified')) + '</span>';
     $('#herotrust').innerHTML = ht;
-    // trust strip
+    // trust strip — v3: el 67% verificado del Mundial MANDA (historia de origen), luego amplitud real
     var rec = (d && d.record && d.record.total >= 20) ? Math.round(d.record.winners / d.record.total * 100) + '%' : null;
+    var nL = (d && d.clubs && d.clubs.leagues_count) || 14;
     var trust = '';
-    if (rec) trust += '<div class="tr"><b class="g">' + rec + '</b><span>' + esc(T('tr_record')) + ' (' + d.record.winners + '/' + d.record.total + ')</span></div>';
-    trust += '<div class="tr"><b>40+</b><span>' + esc(T('tr_books')) + '</span></div>' +
-      '<div class="tr"><b class="g">' + esc(T('tr_live')) + '</b><span>' + esc(T('tr_live_s')) + '</span></div>' +
-      '<div class="tr"><b>ES·EN</b><span>' + esc(T('tr_lang')) + '</span></div>';
+    if (V3 && d && d.clubs) {
+      if (rec) trust += '<div class="tr big"><b>' + rec + '</b><span>' + esc(T('tr_rec_v3')) + ' (' + d.record.winners + '/' + d.record.total + ')</span></div>';
+      trust += '<div class="tr"><b class="g">' + nL + '</b><span>' + esc(T('tr_leagues_v3')) + '</span></div>' +
+        '<div class="tr"><b>40+</b><span>' + esc(T('tr_books')) + '</span></div>' +
+        '<div class="tr"><b class="g">' + esc(T('tr_live')) + '</b><span>' + esc(T('tr_live_s')) + '</span></div>';
+    } else {
+      if (rec) trust += '<div class="tr"><b class="g">' + rec + '</b><span>' + esc(T('tr_record')) + ' (' + d.record.winners + '/' + d.record.total + ')</span></div>';
+      trust += '<div class="tr"><b>40+</b><span>' + esc(T('tr_books')) + '</span></div>' +
+        '<div class="tr"><b class="g">' + esc(T('tr_live')) + '</b><span>' + esc(T('tr_live_s')) + '</span></div>' +
+        '<div class="tr"><b>ES·EN</b><span>' + esc(T('tr_lang')) + '</span></div>';
+    }
     $('#trust').innerHTML = trust;
-    // jugadas de hoy
+    // jugadas de hoy — v3: Mundial (mientras viva) + clubes intercalados por hora, chip de competición
     var famC = function (f) { return f === 'GOALS' ? 'goals' : f === 'COMBO' ? 'combo' : ''; };
     var famK = function (f) { return f === 'GOALS' ? 'fam_goals' : f === 'COMBO' ? 'fam_combo' : 'fam_solid'; };
     var confK = function (c) { return c === 'high' ? 'c_high' : c === 'med' ? 'c_med' : 'c_low'; };
     var hh = function (iso) { try { return new Date(iso).toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
-    var picks = (d && d.picks) || [];
+    var picks = ((d && d.picks) || []).slice();
+    if (V3 && d && d.clubs && (d.clubs.picks || []).length) {
+      picks.forEach(function (p) { p.chip = T('chip_wc'); });
+      d.clubs.picks.forEach(function (p) { p.chip = p.competition_name || ''; });
+      picks = picks.concat(d.clubs.picks)
+        .sort(function (a, b) { return new Date(a.kickoff || 0) - new Date(b.kickoff || 0); })
+        .slice(0, 6);
+    }
     if (picks.length) {
       $('#plays').innerHTML = '<div class="plays">' + picks.map(function (p) {
+        var chip = (V3 && p.chip) ? '<span class="play-lg">' + (p.league ? leagueLogo(p.league, '') : '') + esc(p.chip) + '</span>' : '';
         return '<div class="play ' + famC(p.family) + '" data-signup>' +
-          '<div class="play-top"><span class="play-fam">' + esc(T(famK(p.family))) + '</span><span class="play-ko">' + esc(hh(p.kickoff)) + '</span></div>' +
-          '<div class="play-m">' + flag(p.home_team_id, 'play-fl') + '<b>' + esc((lang === 'en' && p.home_en) ? p.home_en : (p.home || '')) + '</b><span class="vs">vs</span><b>' + esc((lang === 'en' && p.away_en) ? p.away_en : (p.away || '')) + '</b>' + flag(p.away_team_id, 'play-fl') + '</div>' +
+          '<div class="play-top"><span style="display:inline-flex;align-items:center;gap:8px;min-width:0">' + '<span class="play-fam">' + esc(T(famK(p.family))) + '</span>' + chip + '</span><span class="play-ko">' + esc(hh(p.kickoff)) + '</span></div>' +
+          '<div class="play-m">' + badge(p.home_team_id, 'play-fl') + '<b>' + esc((lang === 'en' && p.home_en) ? p.home_en : (p.home || '')) + '</b><span class="vs">vs</span><b>' + esc((lang === 'en' && p.away_en) ? p.away_en : (p.away || '')) + '</b>' + badge(p.away_team_id, 'play-fl') + '</div>' +
           '<div class="play-lock"><span class="lk">🔒</span><span class="lt">' + esc(T('play_lock')) + '</span></div>' +
           '<div class="play-foot"><span class="play-conf ' + esc(p.confidence_bucket) + '"><i></i>' + esc(T('conf')) + ': <b>' + esc(T(confK(p.confidence_bucket))) + '</b></span></div>' +
           '</div>';
@@ -185,16 +271,27 @@
     } else {
       $('#plays').innerHTML = '<div class="empty"><b>' + esc(T('empty')) + '</b><span>' + esc(T('empty_s')) + '</span></div>';
     }
-    // escáner (con gauge)
+    // escáner (con gauge) — v3: números ESTRUCTURALES que nunca son 0 (mercados/ligas/casas);
+    // el drama de "cuotas mal pagadas" vive en el chip del hero y en la demo, no en un contador en 0.
     var s = (d && d.scanner) || { markets: 0, lag: 0, arb: 0 };
     var gw = function (v, max) { return Math.max(4, Math.min(100, Math.round((v / max) * 100))); };
     var scanEl = $('#scan');
-    scanEl.innerHTML =
-      '<div class="scan-stat"><span class="liveflag"><i></i>live</span><b data-n="' + s.markets + '">0</b><span>' + esc(T('scan_markets')) + '</span><div class="gauge"><i data-w="' + gw(s.markets, Math.max(s.markets, 60)) + '"></i></div></div>' +
-      '<div class="scan-stat hl"><span class="liveflag"><i></i>live</span><b data-n="' + s.lag + '">0</b><span>' + esc(T('scan_lag')) + '</span><div class="gauge"><i data-w="' + gw(s.lag, Math.max(s.lag, 20)) + '"></i></div></div>' +
-      '<div class="scan-stat"><span class="liveflag"><i></i>live</span><b data-n="' + s.arb + '">0</b><span>' + esc(T('scan_arb')) + '</span><div class="gauge"><i data-w="' + gw(s.arb, Math.max(s.arb, 8)) + '"></i></div></div>';
+    if (V3 && d && d.clubs) {
+      var mkT = (s.markets || 0) + ((d.clubs.scanner && d.clubs.scanner.markets) || 0);
+      var st1 = mkT > 0
+        ? '<div class="scan-stat hl"><span class="liveflag"><i></i>live</span><b data-n="' + mkT + '">0</b><span>' + esc(T('scan_markets')) + '</span><div class="gauge"><i data-w="100"></i></div></div>'
+        : '<div class="scan-stat hl"><span class="liveflag"><i></i>live</span><b>24/7</b><span>' + esc(T('tr_live_s')) + '</span><div class="gauge"><i data-w="100"></i></div></div>';
+      scanEl.innerHTML = st1 +
+        '<div class="scan-stat"><span class="liveflag"><i></i>live</span><b data-n="' + nL + '">0</b><span>' + esc(T('scan_leagues_v3')) + '</span><div class="gauge"><i data-w="' + gw(nL, 16) + '"></i></div></div>' +
+        '<div class="scan-stat"><b>40+</b><span>' + esc(T('scan_books_v3')) + '</span><div class="gauge"><i data-w="80"></i></div></div>';
+    } else {
+      scanEl.innerHTML =
+        '<div class="scan-stat"><span class="liveflag"><i></i>live</span><b data-n="' + s.markets + '">0</b><span>' + esc(T('scan_markets')) + '</span><div class="gauge"><i data-w="' + gw(s.markets, Math.max(s.markets, 60)) + '"></i></div></div>' +
+        '<div class="scan-stat hl"><span class="liveflag"><i></i>live</span><b data-n="' + s.lag + '">0</b><span>' + esc(T('scan_lag')) + '</span><div class="gauge"><i data-w="' + gw(s.lag, Math.max(s.lag, 20)) + '"></i></div></div>' +
+        '<div class="scan-stat"><span class="liveflag"><i></i>live</span><b data-n="' + s.arb + '">0</b><span>' + esc(T('scan_arb')) + '</span><div class="gauge"><i data-w="' + gw(s.arb, Math.max(s.arb, 8)) + '"></i></div></div>';
+    }
     if (scanEl.classList.contains('in')) animateScan(scanEl);
-    renderShowcase(s);
+    renderShowcase(d);
     // re-vincular data-signup (las play cards nuevas)
     $$('[data-signup]').forEach(function (b) { if (b.closest('.play')) b.onclick = function () { openAuth(); }; });
   }
@@ -215,7 +312,24 @@
       rows;
     if ($('#s-champ').querySelector('.rv.in')) animateChamp();
   }
-  function animateChamp() { $$('#champ .champ-row .tk i').forEach(function (i) { requestAnimationFrame(function () { i.style.width = i.getAttribute('data-w') + '%'; }); }); }
+  // v3: LAS CARRERAS POR EL TÍTULO — una card por liga (prob de campeón del season sim, top 3).
+  // Reemplaza a "Quién levanta la copa" (el Mundial termina; las ligas siguen todo el año).
+  function renderRaces(clubs) {
+    var sec = $('#s-champ'), box = $('#champ');
+    var rs = (clubs && clubs.races) || [];
+    if (!rs.length) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    box.className = 'races rv' + (box.classList.contains('in') ? ' in' : '');
+    box.innerHTML = rs.map(function (r) {
+      var maxP = (r.top[0] && r.top[0].prob) || 1;
+      var rows = r.top.filter(function (t) { return Math.round(t.prob * 100) >= 1; }).map(function (t) {
+        return '<div class="race-row">' + clubLogo(t.id, '') + '<span class="nm">' + esc(t.name) + '</span><span class="tk"><i data-w="' + Math.max(4, Math.round(t.prob / maxP * 100)) + '"></i></span><span class="pc">' + Math.round(t.prob * 100) + '%</span></div>';
+      }).join('');
+      return '<div class="race"><div class="race-h">' + leagueLogo(r.league) + esc(r.name) + '</div>' + rows + '<div class="race-cap">' + esc(T('race_cap')) + '</div></div>';
+    }).join('');
+    if (sec.querySelector('.rv.in')) animateChamp();
+  }
+  function animateChamp() { $$('#champ .tk i').forEach(function (i) { requestAnimationFrame(function () { i.style.width = i.getAttribute('data-w') + '%'; }); }); }
 
   /* ===== modales ===== */
   function openModal(id) { var m = $('#' + id); if (!m) return; m.classList.add('open'); document.body.classList.add('lock'); }
@@ -334,8 +448,13 @@
       '<h3>' + esc(T('a_ok_h')) + '</h3><p class="m-sub">' + esc(T('a_ok_sub')) + '</p></div>';
   }
 
-  /* demo interactiva del escáner */
-  var demoRows = [
+  /* demo interactiva del escáner — v3: ejemplos de CLUBES (el producto post-Mundial) */
+  var demoRows = V3 ? [
+    { lg: 'brasileirao', team: 'Palmeiras', tag: 'lag', tagK: 'd_lag', val: '+11%' },
+    { lg: 'ligamx', team: 'América', tag: 'lag', tagK: 'd_lag', val: '+8%' },
+    { lg: 'mls', team: 'Inter Miami', tag: 'arb', tagK: 'd_arb', val: '+3.2%' },
+    { lg: 'argentina', team: 'River Plate', tag: 'lag', tagK: 'd_lag', val: '+6%' }
+  ] : [
     { fl: 'AUT', team: 'Austria', tag: 'lag', tagK: 'd_lag', val: '+15%' },
     { fl: 'ALG', team: 'Argelia', tag: 'lag', tagK: 'd_lag', val: '+9%' },
     { fl: 'CRO', team: 'Croacia', tag: 'arb', tagK: 'd_arb', val: '+3.7%' },
@@ -343,7 +462,7 @@
   ];
   function openDemo() {
     var rows = demoRows.map(function (r, i) {
-      return '<div class="dr" style="animation-delay:' + (i * 90 + 60) + 'ms">' + flag(r.fl, 'dfl') +
+      return '<div class="dr" style="animation-delay:' + (i * 90 + 60) + 'ms">' + (r.lg ? leagueLogo(r.lg, 'dfl') : flag(r.fl, 'dfl')) +
         '<span class="dteam">' + esc(r.team) + '<span class="dtag ' + r.tag + '">' + esc(T(r.tagK)) + '</span></span>' +
         '<span class="dval">' + esc(r.val) + '</span></div>';
     }).join('');
@@ -382,9 +501,11 @@
   reveal();
   fetch('/api/public/teaser').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (d) {
     renderData(d || {});
+    // v3: la sección del torneo pasa a ser LAS CARRERAS POR EL TÍTULO (data del propio teaser)
+    if (V3) renderRaces((d || {}).clubs);
     requestAnimationFrame(reveal);
   });
-  fetch('/api/state').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (s) { if (s && s.top) { renderChamp(s.top); requestAnimationFrame(reveal); } });
+  if (!V3) fetch('/api/state').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (s) { if (s && s.top) { renderChamp(s.top); requestAnimationFrame(reveal); } });
   // red de seguridad
   setTimeout(function () { $$('.rv:not(.in)').forEach(revealOne); }, 2200);
 })();

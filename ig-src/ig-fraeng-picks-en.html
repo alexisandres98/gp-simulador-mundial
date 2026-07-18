@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1350px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #06090B 0%, #0B1714 50%, #0A5C3C 140%); color: #EAF1F2;
+  padding: 64px 64px; position: relative; }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.badge { width: 48px; height: 48px; border-radius: 14px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 27px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 26px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4; font-weight: 800; font-size: 18px; padding: 10px 20px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 47px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 8px; color:#fff; }
+.sub { font-size: 22px; color:#9DB0B5; font-weight:600; margin-bottom: 30px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 18px; padding: 22px 28px; position: relative; overflow:hidden; display:grid; grid-template-columns: 1fr auto; align-items:center; column-gap:22px; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.pick.cards::before { background:#F2C14E; }
+.pick.player::before { background:#B08CFF; }
+.pick.combo::before { background:#5BA8FF; }
+.fam { font-size: 15px; font-weight: 800; letter-spacing: 1.4px; color:#1FE3A4; text-transform:uppercase; }
+.pick.goals .fam { color:#34D6C8; }
+.pick.cards .fam { color:#F2C14E; }
+.pick.player .fam { color:#B08CFF; }
+.pick.combo .fam { color:#5BA8FF; }
+.note { font-size: 16.5px; font-weight: 600; color:#9DB0B5; margin: 4px 0 10px; line-height:1.3; }
+.bet { font-size: 32px; font-weight: 800; letter-spacing:-.5px; color:#fff; margin-bottom: 8px; }
+.conf { font-size: 16px; color:#9DB0B5; font-weight:600; display:flex; align-items:center; gap:8px; }
+.conf b { color:#fff; }
+.dot { width:12px; height:12px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.dot.shot { background:#5BA8FF; }
+.odds { text-align:right; }
+.odds .ol { display:block; font-size: 13px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; margin-bottom:2px; }
+.odds .ov { font-size: 52px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; }
+.pick.goals .odds .ov { color:#34D6C8; }
+.pick.cards .odds .ov { color:#F2C14E; }
+.pick.player .odds .ov { color:#B08CFF; }
+.pick.combo .odds .ov { color:#5BA8FF; }
+.foot { position:absolute; bottom: 46px; left: 64px; right: 64px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:22px; font-weight:800; padding:15px 32px; border-radius:99px; }
+.foot .small { font-size:16px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP World Cup Simulator</div><div class="tag">● BRONZE FINAL</div></div>
+  <h1>Every pick on the board 🎯</h1>
+  <div class="sub">Jul 18 · 🇫🇷 France vs England 🏴󠁧󠁢󠁥󠁮󠁧󠁿 · 9 PM UTC · always the best odds</div>
+  <div class="stack">
+    <div class="pick goals">
+      <div>
+        <div class="fam">Goals</div>
+        <div class="note">Both defenses arrive solid — the script points to few goals</div>
+        <div class="bet">Under 3.5 goals</div>
+        <div class="conf"><span class="dot high"></span>Confidence: <b>High</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.80</span></div>
+    </div>
+    <div class="pick player">
+      <div>
+        <div class="fam">Scorer</div>
+        <div class="note">88 minutes projected, takes the penalties — the obvious danger</div>
+        <div class="bet">Mbappé to score</div>
+        <div class="conf"><span class="dot"></span>Confidence: <b>Medium</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.98</span></div>
+    </div>
+    <div class="pick">
+      <div>
+        <div class="fam">Winner</div>
+        <div class="note">Favorite across 59 books and the model backs the direction</div>
+        <div class="bet">France to win</div>
+        <div class="conf"><span class="dot"></span>Confidence: <b>Medium</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.99</span></div>
+    </div>
+    <div class="pick cards">
+      <div>
+        <div class="fam">Cards</div>
+        <div class="note">Two disciplined sides — the bronze final stays clean</div>
+        <div class="bet">Under 4.5 cards</div>
+        <div class="conf"><span class="dot high"></span>Confidence: <b>High</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.12</span></div>
+    </div>
+    <div class="pick combo">
+      <div>
+        <div class="fam">Combo</div>
+        <div class="note">The two strongest reads on one ticket</div>
+        <div class="bet">France + Under 3.5</div>
+        <div class="conf"><span class="dot shot"></span>Confidence: <b>Value shot</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">3.58</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Daily picks · clear analysis · not financial advice</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

@@ -8069,7 +8069,10 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { enabled: observerOn(), running: _obsRunning, last: _obsLast, alive_teams: obsAliveTeams(), teams });
     }
     if (p === '/api/internal/daily-picks') {
-      const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
+      // admin por sesión, o GP_EXPORT_KEY (ops/diagnóstico — mismo criterio que clubs-picks)
+      const xk0 = process.env.GP_EXPORT_KEY || '';
+      const keyOk = xk0 && url.searchParams.get('key') === xk0;
+      const u = getUser(req); if (!keyOk && (!u || !u.isAdmin)) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }
       return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200),
         // CLUBES (monitoreo privado, 15-jul): track record + picks de clubes SOLO en esta vista admin —

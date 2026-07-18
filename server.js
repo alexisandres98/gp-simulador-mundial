@@ -1121,6 +1121,51 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   return { subject, text, html };
 }
 
+// LANZAMIENTO POST-MUNDIAL (18-jul): la fusión. La plataforma deja de ser "del Mundial" y se abre completa —
+// 15 ligas, picks multi-liga, value/arbitraje, cartera, casas, watch price, brief. Fin de semana abierto para
+// todos; la fase founder cierra con el Mundial. Un correo por usuario en SU idioma (userLang).
+function launchEmail(lang) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com';
+  const subject = en
+    ? 'The full platform is open: 15 leagues, daily picks and the new GP Simulador'
+    : 'Abrimos la plataforma completa: 15 ligas, picks diarias y el nuevo GP Simulador';
+  const preheader = en
+    ? 'The model that read the World Cup now reads all of football. Everything is open for you this weekend.'
+    : 'El modelo que leyó el Mundial ahora lee el fútbol entero. Todo abierto para vos este fin de semana.';
+  const F = [
+    en ? ['15 live leagues', 'Brasileirão, MLS, Liga MX, Argentina, Colombia and more — every match with the same deep analysis you saw in the World Cup: probabilities, context, lineups, projected goals.'] : ['15 ligas en vivo', 'Brasileirão, MLS, Liga MX, Argentina, Colombia y más — cada partido con el mismo análisis profundo que viste en el Mundial: probabilidades, contexto, alineaciones, goles proyectados.'],
+    en ? ['Daily multi-league picks', 'The same engine that published its World Cup picks in public, now across club football. With the why, the price and the record.'] : ['Picks diarias multi-liga', 'El mismo motor que publicó sus picks del Mundial en público, ahora sobre el fútbol de clubes. Con su porqué, su cuota y su registro.'],
+    en ? ['Unified value & arbitrage', 'One single list of opportunities: model vs market and cross-book contradictions, across every competition.'] : ['Value y arbitraje unificados', 'Una sola lista de oportunidades: modelo vs mercado y contradicciones entre casas, en todas las competiciones.'],
+    en ? ['My bets & my books', 'Log what you bet and track your P&L, record and personal CLV. Mark the books where you have an account and see only what is executable for you.'] : ['Mi cartera y mis casas', 'Registrá lo que apostás y seguí tu P&L, récord y CLV personal. Marcá las casas donde tenés cuenta y mirá solo lo ejecutable para vos.'],
+    en ? ['Price watch & Daily Brief', "Set a target price and we email you when the market reaches it. The day's opportunities, line moves and availability radar in one place."] : ['Vigilar precio y Daily Brief', 'Elegí una cuota objetivo y te avisamos cuando el mercado la alcanza. Las oportunidades del día, movimientos de línea y radar de bajas en un solo lugar.'],
+  ];
+  const text = (en
+    ? `The World Cup ends this Sunday. What we built in public during the tournament — the model, the verified picks, the analysis cockpit — is no longer just about the World Cup: starting today it is a complete football intelligence platform, on your same account.\n\n`
+    : `El Mundial termina este domingo. Lo que construimos en público durante el torneo — el modelo, las picks verificadas, el cockpit de análisis — ya no es solo del Mundial: desde hoy es una plataforma completa de inteligencia de fútbol, con tu misma cuenta.\n\n`)
+    + F.map(f => `· ${f[0]}: ${f[1]}`).join('\n')
+    + (en
+      ? `\n\nEverything is open to every user until the World Cup ends. Come in, explore, try it all — no limits this weekend.\n\nOne more thing: the founder phase ends with the World Cup. Until Sunday the founder price is locked for life for whoever takes it; after that, plans return to their normal price.\n\n${url}\n\nEstimates from a statistical model, not financial advice. 18+. Reply "unsubscribe" to stop receiving these.`
+      : `\n\nTodo está abierto para todos los usuarios hasta que termine el Mundial. Entrá, recorré, probá — sin límites este fin de semana.\n\nY una cosa más: la fase founder termina con el Mundial. Hasta el domingo el precio founder queda congelado de por vida para quien lo tome; después, los planes vuelven a su precio normal.\n\n${url}\n\nEstimaciones de un modelo estadístico, no consejo financiero. 18+. Respondé "baja" para no recibir estos correos.`);
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'The platform is now one' : 'La plataforma ya es una sola'}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${en ? 'The model that read the World Cup <span style="color:#18E6A3">now reads all of football</span>' : 'El modelo que leyó el Mundial <span style="color:#18E6A3">ahora lee el fútbol entero</span>'}</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'Everything you saw during the World Cup — plus 15 live leagues — is open on your same account. Free for everyone this weekend.' : 'Todo lo que viste en el Mundial — más 15 ligas en vivo — está abierto en tu misma cuenta. Gratis para todos este fin de semana.'}</p>
+    </div>
+    <div style="padding:24px 26px">
+      ${F.map(f => `<div style="margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid #eef2f0"><p style="margin:0 0 4px;font-size:14.5px;color:#14201A;font-weight:800">${f[0]}</p><p style="margin:0;font-size:13.5px;color:#2b3a33;line-height:1.55">${f[1]}</p></div>`).join('')}
+      <p style="margin:2px 0 18px;font-size:14px;color:#2b3a33;line-height:1.6"><b>${en ? 'Open for everyone this weekend.' : 'Abierto para todos este fin de semana.'}</b> ${en ? 'And the founder phase ends with the World Cup — until Sunday the founder price is locked for life; after that, plans return to their normal price.' : 'Y la fase founder termina con el Mundial — hasta el domingo el precio founder queda congelado de por vida; después, los planes vuelven a su precio normal.'}</p>
+      <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${en ? 'Open the platform' : 'Entrar a la plataforma'}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Estimates from a statistical model, not financial advice. 18+.' : 'Estimaciones de un modelo estadístico, no consejo financiero. 18+.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador. Reply "unsubscribe" to opt out.' : 'Recibes este correo porque tienes una cuenta en GP Simulador. Responde "baja" para no recibirlos.'}</div>
+  </div></div>`;
+  return { subject, text, html };
+}
+
 // SECUENCIA FOUNDER (lanzamiento 12-jul): 3 correos, ES/EN, caja negra, sin rayitas. Los números
 // (track record, cupos) se resuelven AL MOMENTO DEL ENVÍO — nunca quedan viejos en el copy.
 // seq: 1 = apertura · 2 = los números (prueba) · 3 = última llamada. ctx.spotsLeft viene del contador Whop.
@@ -8846,7 +8891,10 @@ const server = http.createServer(async (req, res) => {
               : (variant === 'bankroll_en') ? () => bankrollEmail('en')
                 : (variant === 'features_es') ? () => featuresEmail('es')
                   : (variant === 'features_en') ? () => featuresEmail('en')
-                    : (em) => broadcastEmail(link, userLang(em));
+                    : (variant === 'launch') ? (em) => launchEmail(userLang(em)) // fusión: cada usuario en SU idioma
+                      : (variant === 'launch_es') ? () => launchEmail('es')
+                        : (variant === 'launch_en') ? () => launchEmail('en')
+                          : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la

@@ -5274,6 +5274,21 @@ async function evaluateClubDailyPicks() {
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }
 }
+// Timer del ENVÍO PROGRAMADO (broadcast one-shot): chequea cada 5 min; al vencer, marca done ANTES de disparar
+// (jamás doble masivo) y re-entra por el propio endpoint con la GP_EXPORT_KEY → reusa toda la lógica de envío.
+setInterval(() => {
+  try {
+    const sb = db.scheduledBroadcast;
+    if (!sb || sb.done || !sb.at || Date.now() < Date.parse(sb.at)) return;
+    if (typeof bcastState === 'object' && bcastState.running) return; // hay un envío en curso → próximo tick
+    sb.done = true; sb.fired_at = new Date().toISOString(); save();
+    const xk = process.env.GP_EXPORT_KEY || '';
+    if (!xk) { console.error('[broadcast-sched] sin GP_EXPORT_KEY, no puedo disparar'); return; }
+    fetch(`http://127.0.0.1:${PORT}/api/admin/broadcast?key=${xk}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variant: sb.variant }) })
+      .then(r => r.json()).then(j => console.log('[broadcast-sched] disparado', sb.variant, JSON.stringify(j).slice(0, 120)))
+      .catch(e => console.error('[broadcast-sched]', e.message));
+  } catch (e) { console.error('[broadcast-sched]', e.message); }
+}, 5 * 60e3);
 if (dailyPicksOn() && clubsShadowOn()) {
   setTimeout(() => evaluateClubDailyPicks().catch(() => { }), 180 * 1000);
   setInterval(() => evaluateClubDailyPicks().catch(() => { }), 15 * 60 * 1000);
@@ -8912,9 +8927,20 @@ const server = http.createServer(async (req, res) => {
       // de la UI (mismo patrón key-gated del webhook Whop; sin la env, solo admin).
       const keyOk = !!process.env.GP_EXPORT_KEY && url.searchParams.get('key') === process.env.GP_EXPORT_KEY;
       if ((!u || !u.isAdmin) && !keyOk) return json(res, 403, { error: 'Solo el administrador' });
-      if (req.method === 'GET') return json(res, 200, bcastState);
+      if (req.method === 'GET') return json(res, 200, { ...bcastState, scheduled: db.scheduledBroadcast || null });
       if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
-      const { test, variant, count } = await readBody(req);
+      const { test, variant, count, schedule_at, cancel_schedule } = await readBody(req);
+      // ENVÍO PROGRAMADO one-shot (18-jul, envío dividido ES→EN): {schedule_at:"ISO", variant} lo agenda;
+      // un timer de 5min lo dispara re-entrando por este mismo endpoint (reusa TODA la lógica). Persistido
+      // en db → sobrevive reinicios. {cancel_schedule:true} lo borra.
+      if (cancel_schedule) { db.scheduledBroadcast = null; save(); return json(res, 200, { ok: true, scheduled: null }); }
+      if (schedule_at) {
+        const at = Date.parse(schedule_at);
+        if (!isFinite(at) || at < Date.now()) return json(res, 400, { error: 'schedule_at inválido o en el pasado' });
+        db.scheduledBroadcast = { variant: variant || 'beta', at: new Date(at).toISOString(), done: false, created_at: new Date().toISOString() };
+        save();
+        return json(res, 200, { ok: true, scheduled: db.scheduledBroadcast });
+      }
       const link = 'https://gpsimulador.com/?goto=referidos';
       // SEGURIDAD: {count:true} devuelve a cuántos LLEGARÍA el envío SIN mandar nada (verificar el número
       // antes de disparar un masivo, para no equivocar el target).
@@ -8950,9 +8976,12 @@ const server = http.createServer(async (req, res) => {
                           // launch_flip: el idioma OPUESTO al de cada usuario → tras 'launch', todos quedan con ES+EN
                           : (variant === 'launch_flip') ? (em) => launchEmail(userLang(em) === 'en' ? 'es' : 'en')
                             // launch_personal: anti-Promociones (estilo reengage → Principal): 1:1 de Alexis,
-                            // sin <a>, sin List-Unsubscribe, cada usuario en SU idioma (dos idénticos rompería el 1:1)
+                            // sin <a>, sin List-Unsubscribe. _es/_en = idioma FIJO (envío dividido 18-jul:
+                            // ES ahora a todos, EN 6-7h después vía schedule_at)
                             : (variant === 'launch_personal') ? (em) => ({ ...launchPersonalEmail(userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
-                              : (em) => broadcastEmail(link, userLang(em));
+                              : (variant === 'launch_personal_es') ? () => ({ ...launchPersonalEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                : (variant === 'launch_personal_en') ? () => ({ ...launchPersonalEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                  : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la

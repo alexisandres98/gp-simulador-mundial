@@ -294,7 +294,7 @@
       bk_title: 'Mis casas', bk_intro: 'Marcá las casas donde tenés cuenta: el feed te muestra qué picks son ejecutables para vos y cuáles cotizan mejor en una casa que no tenés.',
       bk_save: 'Guardar', bk_saved: 'Guardado', bk_custom: 'Otra casa…', bk_add: 'Agregar', bk_only_mine: 'Solo mis casas', bk_not_mine: 'mejor cuota en casa que no tenés',
       bk_sportsbooks: 'Casas de apuestas que cubrimos', bk_prediction: 'Mercados de predicción',
-      bk_empty: 'Ninguna pick activa cotiza en tus casas', bk_empty_sub: 'Desactivá "Solo mis casas" para ver todas, o agregá más casas en Mis casas.',
+      bk_empty: 'Ninguna pick activa cotiza en tus casas', bk_hidden: '{n} oportunidades ocultas por "Solo mis casas" — tocá el filtro para verlas todas.', bk_empty_sub: 'Desactivá "Solo mis casas" para ver todas, o agregá más casas en Mis casas.',
       wp_watch: 'Vigilar precio', wp_target: 'Avisame si la mejor cuota llega a', wp_set: 'Crear alerta', wp_created: 'Alerta creada',
       wp_list: 'Precios vigilados', wp_hit: 'Alcanzado', wp_expired: 'Vencido', wp_active: 'Vigilando', wp_last: 'última', wp_target_s: 'objetivo', wp_none: 'Sin precios vigilados. Creá uno desde cualquier pick con "Vigilar precio".',
       bf_title: 'GP Daily Brief', bf_sub: 'Tu resumen diario: oportunidades, partidos, movimientos y resultados.',
@@ -587,7 +587,7 @@
       bk_title: 'My books', bk_intro: 'Mark the sportsbooks where you have an account: the feed shows which picks are executable for you and which are priced best at a book you don’t have.',
       bk_save: 'Save', bk_saved: 'Saved', bk_custom: 'Another book…', bk_add: 'Add', bk_only_mine: 'My books only', bk_not_mine: 'best odds at a book you don’t have',
       bk_sportsbooks: 'Sportsbooks we cover', bk_prediction: 'Prediction markets',
-      bk_empty: 'No active pick is quoted at your books', bk_empty_sub: 'Turn off "My books only" to see all picks, or add more books in My books.',
+      bk_empty: 'No active pick is quoted at your books', bk_hidden: '{n} opportunities hidden by "My books only" — tap the filter to see them all.', bk_empty_sub: 'Turn off "My books only" to see all picks, or add more books in My books.',
       wp_watch: 'Watch price', wp_target: 'Alert me if the best odds reach', wp_set: 'Create alert', wp_created: 'Alert created',
       wp_list: 'Watched prices', wp_hit: 'Hit', wp_expired: 'Expired', wp_active: 'Watching', wp_last: 'last', wp_target_s: 'target', wp_none: 'No watched prices. Create one from any pick with "Watch price".',
       bf_title: 'GP Daily Brief', bf_sub: 'Your daily summary: opportunities, matches, line moves and results.',
@@ -1482,45 +1482,41 @@
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct1(x.model_pct) + ' · ' + esc(t('hero_mkt')) + ' ' + pct1(x.market_pct) + '</span><span class="gx-dim" style="font-size:11px;display:inline-flex;align-items:center">' + bookLogo(x.best_book) + esc(x.best_book || '') + '</span></div></div>'; }).join('');
     return '<div class="gx-panel gx-board" style="margin-bottom:14px"><div class="gx-ph"><span class="gx-label">' + ic('trophy') + esc(t('outright_title')) + '</span><span class="gx-ph-extra gx-dim" style="font-size:11px">' + esc(t('outright_sub')) + '</span></div><div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div></div>';
   }
-  // ---- Oportunidades · Value: CLUBES multi-liga (FASE CLUBES, shadow solo admin) ----
-  // Reusa S.clubsValue (cargado en boot por loadClubs). Solo edges POSITIVOS con cuota real; el chip de gate
-  // por liga recuerda dónde ya hay modelo aprobado. Informativo: sin picks hasta gate + curate (regla dura).
-  function clubsValueHtml() {
-    if (!clubsOn()) return '';
-    var rows = ((S.clubsValue && S.clubsValue.rows) || []).filter(function (v) { return v.edge_pp > 0 && v.best_odds > 1; }).slice(0, 10);
-    if (!rows.length) return '';
-    var selN = function (v) { return v.outcome === 'home' ? v.home : v.outcome === 'away' ? v.away : t('arb_draw'); };
-    var selId = function (v) { return v.outcome === 'home' ? v.home_id : v.outcome === 'away' ? v.away_id : null; };
-    // table-layout fixed + ellipsis: los nombres de clubes son largos (sin ids ni banderas) y en auto la tabla
-    // desborda el panel sin scroll. El título completo queda en el atributo title.
-    var desk = '<table class="gx-table gx-cltable" style="table-layout:fixed"><colgroup><col style="width:40%"><col style="width:36%"><col style="width:11%"><col style="width:13%"></colgroup><thead><tr><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th>' + esc(t('th_price')) + '</th><th>' + esc(t('th_edge')) + '</th></tr></thead><tbody>' +
-      rows.map(function (v) {
-        var ell = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-        return '<tr class="gx-row"><td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '">' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</b><span style="' + ell + '">' + esc(String(v.league_name || v.league).split(' · ')[0]) + ' · ' + esc(v.best_book || '—') + ' · ' + v.books + ' ' + esc(t('books')) + '</span></div></td>' +
-          '<td class="l" style="overflow:hidden"><div class="gx-teamnames"><b style="' + ell + '" title="' + esc(selN(v)) + '">' + clubBadge(selId(v)) + ' ' + esc(selN(v)) + ' ' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</b><span class="gx-mono" style="' + ell + '">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + '</span></div></td>' +
-          '<td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span>' + (v.our > 0 && v.best_odds > 1 ? ' ' + stakeCalcBtn(v.our, Number(v.best_odds), selN(v), 'gp') : '') + '</td>' +
-          '<td class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</td></tr>';
-      }).join('') + '</tbody></table>';
-    var mob = rows.map(function (v) {
-      return '<div class="gx-mcard"><div class="gx-mcard-top"><span class="gx-dim" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">' + leagueLogo(v.league) + esc(String(v.league_name || v.league).split(' · ')[0]) + '</span><span class="gx-spacer"></span>' + (v.gate === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>') + '</div>' +
-        '<div class="gx-cell-team" style="margin:6px 0">' + clubBadge(selId(v)) + '<div class="gx-teamnames"><b>' + esc(selN(v)) + '</b><span>' + esc(v.home + ' ' + t('vs') + ' ' + v.away) + '</span></div></div>' +
-        '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.our) + ' · ' + esc(t('hero_mkt')) + ' ' + pct0(v.consensus) + ' · ' + odd(v.best_odds) + '</span><span class="gx-edge gx-pos">+' + Number(v.edge_pp).toFixed(1) + 'pp</span></div>' +
-        (v.our > 0 && v.best_odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v.our, Number(v.best_odds), selN(v), 'gp') + '</div>' : '') + '</div>';
-    }).join('');
-    return '<div class="gx-panel gx-board" style="margin-top:14px"><div class="gx-ph"><span class="gx-label">' + ic('shield-half') + esc(t('cl_value_board')) + '</span><span class="gx-ph-extra"><span class="gx-clgate sh">SHADOW</span></span></div>' +
-      '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>' +
-      '<div class="gx-pick-disc">' + esc(t('cl_value_board_sub')) + '</div></div>';
-  }
+  // (18-jul) clubsValueHtml ELIMINADA: el value de clubes vive en la MISMA lista de oppValueBoard (fusión).
   // ---- Oportunidades · Value ----
   function oppValueBoard(bd) {
     if (S.valueLocked) { bd.innerHTML = lockPanel(); return; } // plan Sharp (candado con CTA)
     var outright = outrightValueHtml();
-    var vals = (S.value || []).slice().sort(function (a, b) { return (b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0); });
+    var vals = (S.value || []).slice();
+    // FUSIÓN (pedido 18-jul): el value de clubes entra a la MISMA lista que el del Mundial (antes vivía en un
+    // panel aparte "Value de clubes por liga"). Normalización: edge de clubes viene en PP (÷100 → fracción,
+    // la unidad del Mundial); señal por los mismos umbrales de clubSignal (8/5/2.5 pp).
+    if (clubsOn()) {
+      (((S.clubsValue || {}).rows) || []).forEach(function (v) {
+        if (!(v.edge_pp > 0 && v.best_odds > 1)) return;
+        vals.push({
+          _club: true, event_id: 'cl-' + v.league + '-' + v.home_id + '-' + v.away_id,
+          outcome_code: String(v.outcome || '').toUpperCase(),
+          gp_probability: v.our, market_probability: v.consensus, best_odds: v.best_odds,
+          adjusted_edge_pp: v.edge_pp / 100, actionable: v.edge_pp >= 5,
+          classification_code: v.edge_pp >= 8 ? 'STRONG' : v.edge_pp >= 5 ? 'LEAN' : v.edge_pp >= 2.5 ? 'WATCH' : 'PASS',
+          best_sportsbook: v.best_book, _home: v.home, _away: v.away, _homeId: v.home_id, _awayId: v.away_id,
+          _league: String(v.league_name || v.league).split(' · ')[0], _gate: v.gate || null,
+        });
+      });
+    }
+    vals.sort(function (a, b) { return (b.adjusted_edge_pp || 0) - (a.adjusted_edge_pp || 0); });
     // F2: "solo mis casas" — el value se filtra por la casa del MEJOR precio (esa es la cuota ejecutable)
     if (booksOnlyOn()) vals = vals.filter(function (v) { return inMyBooks(v.best_sportsbook); });
     var hdr = {}; ((S.dash && S.dash.upcoming) || []).forEach(function (u) { hdr[u.header.event_id] = u.header; });
-    if (!vals.length) { bd.innerHTML = myBooksBar() + outright + '<div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div>' + clubsValueHtml(); wireBooksBar(bd, function () { oppValueBoard(bd); }); return; }
+    if (!vals.length) { bd.innerHTML = myBooksBar() + outright + '<div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div>'; wireBooksBar(bd, function () { oppValueBoard(bd); }); return; }
     var row = function (v) {
+      // fila de CLUB (fusión): nombres directos del payload + escudo tm_ (flag() ya resuelve) + liga en el sub
+      if (v._club) {
+        var oc2 = v.outcome_code;
+        var nm2 = oc2 === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : (oc2 === 'AWAY' ? teamName(v._awayId, v._away) : teamName(v._homeId, v._home));
+        return { v: v, h: null, fid: oc2 === 'DRAW' ? null : (oc2 === 'AWAY' ? v._awayId : v._homeId), name: nm2, matchN: v._home + ' ' + t('vs') + ' ' + v._away + ' · ' + v._league, bm: false };
+      }
       var h = hdr[v.event_id], oc = v.outcome_code, fid = h ? (oc === 'AWAY' ? h.away.team_id : h.home.team_id) : null;
       var name = oc === 'DRAW' ? (LANG === 'en' ? 'Draw' : 'Empate') : (h ? teamName(fid) : oc);
       var matchN = h ? (teamName(h.home.team_id) + ' ' + t('vs') + ' ' + teamName(h.away.team_id)) : '';
@@ -1539,7 +1535,7 @@
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div>' +
       (v.gp_probability > 0 && v.best_odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v.gp_probability, Number(v.best_odds), x.name + (x.matchN ? ' · ' + x.matchN : ''), 'gp') + '</div>' : '') +
       '</div>'; }).join('');
-    bd.innerHTML = myBooksBar() + outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>' + clubsValueHtml();
+    bd.innerHTML = myBooksBar() + outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
     wireBooksBar(bd, function () { oppValueBoard(bd); });
   }
   // ---- Oportunidades · Arbitraje ----
@@ -1655,10 +1651,13 @@
     var C = d.counts || {}, arbs = d.arbitrage || [], lags = d.price_lag || [];
     // F2: "solo mis casas" — un arbitraje solo es ejecutable PARA VOS si TODAS las patas están en tus casas;
     // un precio atrasado, si la casa rezagada es tuya.
+    var bkHidden = 0;
     if (booksOnlyOn()) {
       var vOk = function (l) { return inMyBooks(l.venue) || inMyBooks(l.venue_label); };
+      var a0 = arbs.length, l0 = lags.length;
       arbs = arbs.filter(function (a) { return (a.legs || []).every(vOk); });
       lags = lags.filter(vOk);
+      bkHidden = (a0 - arbs.length) + (l0 - lags.length);
     }
     // default INTELIGENTE del sub-tab (si el usuario no eligió manualmente): las surebets son raras por naturaleza
     // → aterrizar en "Arbitraje puro" vacío es mala primera impresión. Con 0 surebets ejecutables y precios
@@ -1686,7 +1685,9 @@
       if (theo.length) body += '<div class="gx-arb-theo-h">' + ic('info-circle') + esc(t('arb_theo_group', { n: theo.length })) + '</div><div class="gx-picks-feed">' + theo.map(function (x) { return arbCard(x.a, x.i); }).join('') + '</div>';
       body += '</div>';
     }
-    bd.innerHTML = myBooksBar() + head + arbSubTabs(C) + body + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
+    // aviso EXPLÍCITO cuando el filtro "solo mis casas" oculta oportunidades (jamás un vacío silencioso)
+    var bkNote = bkHidden > 0 ? '<div class="gx-pick-recap">' + ic('eye-off') + esc(t('bk_hidden', { n: bkHidden })) + '</div>' : '';
+    bd.innerHTML = myBooksBar() + bkNote + head + arbSubTabs(C) + body + '<div class="gx-pick-disc">' + esc(t('arb_disclaimer')) + '</div>';
     wireBooksBar(bd, function () { oppArbBoard(bd); });
     // wiring: sub-tabs + apertura de la card de detalle
     [].forEach.call(bd.querySelectorAll('[data-arbsub]'), function (el) {

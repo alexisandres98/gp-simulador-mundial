@@ -4586,8 +4586,12 @@ async function settleClubPropsViaAf() {
     if (p.status !== 'ACTIVE' || (p.family !== 'CORNERS' && p.family !== 'CARDS')) continue;
     const ko = +new Date(p.event.kickoff_at || 0);
     if (!ko || Date.now() - ko < 2.5 * 3600e3) continue; // el partido debe haber terminado
+    // Final confirmado por el sync… O partido con KO hace >3h (el sync PODA los finales a las 3h — gotcha
+    // 16-jul; sin este fallback las props de anoche quedaban ACTIVE para siempre). Las stats de AF solo
+    // existen para partidos jugados → stats completas + 3h transcurridas = confirmación suficiente.
     const r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
-    if (!r || r.status !== 'final') continue; // solo con final confirmado (evita liquidar con stats parciales)
+    const syncFinal = !!(r && r.status === 'final');
+    if (!syncFinal && Date.now() - ko < 3 * 3600e3) continue;
     try {
       const st = await clubMatchStats(p.league, p.event.home_team_id, p.event.away_team_id);
       if (!st || !st.home || !st.away) continue;
@@ -6056,7 +6060,11 @@ const server = http.createServer(async (req, res) => {
             : 'moderate';
           return { win_prob: x.confidence != null ? +Number(x.confidence).toFixed(3) : null, edge_pp: edge, regime, data_confidence: dataConf, pick_quality: quality, books };
         };
-        const active = db.dailyPicks.filter(x => x.status === 'ACTIVE')
+        // El feed muestra solo picks APOSTABLES o EN JUEGO: un partido con KO hace >2h45 ya terminó (90'+
+        // descuento) — su pick sale del feed AUNQUE la liquidación siga pendiente (props liquidan con stats/
+        // data-pass más tarde; el usuario no debe ver "activa" una pick de un partido terminado).
+        const feedShowable = (x) => { const ko = Date.parse((x.event && x.event.kickoff_at) || ''); return !isFinite(ko) || ko > Date.now() - 165 * 60e3; };
+        const active = db.dailyPicks.filter(x => x.status === 'ACTIVE').filter(feedShowable)
           .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
         // F2 Mis casas: qué casas cotizan cada pick (una query memoizada) → el cliente filtra "solo mis casas"
         const bmap = await picksBooksIndex().catch(() => ({}));
@@ -6079,7 +6087,7 @@ const server = http.createServer(async (req, res) => {
         // Para NO-admins se aplican los MISMOS filtros de arriba (props/experimentos fuera salvo flag público) y
         // además fuera las picks regime:'monitor' (existen para el track privado, jamás para el feed público).
         if (betaUser && (betaUser.isAdmin || clubsPublicOn()) && !url.searchParams.get('asplan') && clubsShadowFlagOn()) {
-          let clubActive = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE')
+          let clubActive = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE').filter(feedShowable)
             .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
           if (!betaUser.isAdmin) {
             clubActive = clubActive.filter(x => x.regime !== 'monitor');
@@ -9148,7 +9156,8 @@ const server = http.createServer(async (req, res) => {
           for (const L of inSeason) {
             let events = null;
             try {
-              const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${oddsKeyEnv}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+              const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${oddsKeyEnv}&regions=${ODDS_REGIONS_SCAN}&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(12000) });
+              noteOddsCredits(r);
               events = r.ok ? await r.json().catch(() => null) : null;
             } catch { /* liga sin datos este ciclo */ }
             if (!Array.isArray(events)) continue;

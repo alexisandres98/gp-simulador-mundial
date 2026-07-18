@@ -8894,7 +8894,9 @@ const server = http.createServer(async (req, res) => {
                     : (variant === 'launch') ? (em) => launchEmail(userLang(em)) // fusión: cada usuario en SU idioma
                       : (variant === 'launch_es') ? () => launchEmail('es')
                         : (variant === 'launch_en') ? () => launchEmail('en')
-                          : (em) => broadcastEmail(link, userLang(em));
+                          // launch_flip: el idioma OPUESTO al de cada usuario → tras 'launch', todos quedan con ES+EN
+                          : (variant === 'launch_flip') ? (em) => launchEmail(userLang(em) === 'en' ? 'es' : 'en')
+                            : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la

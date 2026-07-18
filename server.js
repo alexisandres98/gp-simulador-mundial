@@ -4590,7 +4590,13 @@ function settleClubDailyPicks() {
         if (row) r = { status: 'final', home_id: row.home_id, hg: row.hg, ag: row.ag };
       } catch { /* sin archivo → espera */ }
     }
-    if (!r || r.status !== 'final') continue;
+    if (!r || r.status !== 'final') {
+      // backstop 72h (18-jul): sin resultado ni del sync ni del archivo (gap del backfill TSA — caso Chicago
+      // 17-jul) la pick quedaba ACTIVE para siempre → VOID honesto, mismo criterio que PLAYER/props.
+      const ko2 = +new Date(p.event.kickoff_at || 0);
+      if (ko2 && Date.now() - ko2 > 72 * 3600e3) { p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++; }
+      continue;
+    }
     const homeIsH = r.home_id === p.event.home_team_id;
     const rc = settleOne(p, { homeGoals: homeIsH ? r.hg : r.ag, awayGoals: homeIsH ? r.ag : r.hg });
     if (rc && rc !== 'PENDING') { p.status = 'SETTLED'; p.result_code = rc; p.settled_at = new Date().toISOString(); settled++; }

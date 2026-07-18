@@ -4172,7 +4172,9 @@
       .then(function (j) { S.clubsValue = j || null; if (S.view === 'match' && /^cl-/.test(S.matchId || '')) renderMatch(); });
   }
   function clubLeague(k) { var Ls = (S.clubs && S.clubs.leagues) || []; for (var i = 0; i < Ls.length; i++) if (Ls[i].key === k) return Ls[i]; return null; }
-  function clubGateChip(g) { if (!g) return ''; return g.status === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>'; }
+  // Lanzamiento 18-jul: el chip de gate (Aprobado / En calibración) es una señal INTERNA de modelo — solo
+  // admin la ve; el público recibe la superficie limpia, sin marcas de estado.
+  function clubGateChip(g) { if (!g || !(S.me && S.me.isAdmin)) return ''; return g.status === 'approved' ? '<span class="gx-clgate ok">' + esc(t('cl_gate_ok')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('cl_gate_sh')) + '</span>'; }
   // tri-cell de la card: en vivo usa la prob GP condicionada al marcador (f.gpProbs, se mueve con el partido),
   // igual que el Mundial; si no, la prob pre-partido a 90 min.
   function clubTriCell(f) { var m = (f.gpProbs && f.gpProbs.home != null) ? { HOME: f.gpProbs.home, DRAW: f.gpProbs.draw, AWAY: f.gpProbs.away } : { HOME: f.home.prob, DRAW: f.draw, AWAY: f.away.prob }; return triCell(function (c) { return pct0(m[c]); }, 'gx-gp', maxCode(function (c) { return m[c]; })); }

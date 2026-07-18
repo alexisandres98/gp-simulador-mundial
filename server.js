@@ -4634,6 +4634,43 @@ async function settleClubPropsViaAf() {
   if (settled) save();
   return { settled };
 }
+// CLV fix (18-jul): las picks nacen horas antes del KO y el cierre las bate (CLV medio -4.7%, solo 21% positivo).
+// En la VENTANA FINAL (KO ≤ 2h) refrescamos la mejor cuota ejecutable al precio ACTUAL del mercado (misma fuente
+// del cierre, sportsbook_goal_quote_current): el usuario ve un precio que de verdad puede tomar y el CLV se mide
+// desde ese precio. El precio de CREACIÓN queda preservado en odds_at_create (análisis de deriva). Cada ~20 min.
+async function refreshClubPickPrices() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  const now = Date.now();
+  let refreshed = 0;
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'ACTIVE') continue;
+    const ko = Date.parse((p.event && p.event.kickoff_at) || '');
+    if (!isFinite(ko) || ko <= now || ko - now > 2 * 3600e3) continue;
+    if (p.odds_refreshed_at && now - Date.parse(p.odds_refreshed_at) < 20 * 60e3) continue;
+    const ceid = p.event && p.event.canonical_event_id;
+    if (!ceid) continue;
+    try {
+      let rows = [];
+      if (p.family === 'SOLID') {
+        rows = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND lower(side)=$2 AND observed_at > now() - interval '3 hours'`, [ceid, String(p.selection_code || '').toLowerCase()])).rows;
+      } else if (['GOALS', 'CORNERS', 'CARDS'].includes(p.family)) {
+        const fam = p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
+        rows = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND lower(side)=$4 AND observed_at > now() - interval '3 hours'`, [ceid, fam, p.line, String(p.side || '').toLowerCase()])).rows;
+      } else if (p.family === 'PLAYER') {
+        rows = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3 AND observed_at > now() - interval '3 hours'`, [ceid, p.player_family, p.pid])).rows;
+      }
+      if (!rows.length) continue;
+      const best = rows.slice().sort((a, b) => b.o - a.o)[0];
+      if (p.odds_at_create == null) p.odds_at_create = p.best_odds;
+      p.best_odds = +Number(best.o).toFixed(3); p.best_book = best.b; p.books = new Set(rows.map(r => r.b)).size;
+      p.odds_refreshed_at = new Date().toISOString();
+      refreshed++;
+    } catch { /* siguiente ciclo */ }
+  }
+  if (refreshed) save();
+  return { refreshed };
+}
 // P2: QUANT de clubes = la MISMA quantMetrics del Mundial (CLV, brier modelo-vs-mercado, calibración)
 // sobre db.clubDailyPicks. PRIVADO admin (monitoreo pre-lanzamiento).
 function clubDailyPicksQuant() {
@@ -5061,8 +5098,9 @@ async function evaluateClubDailyPicks() {
     const b = await buildClubDailyPicks();
     const s = settleClubDailyPicks();
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
+    const rf = await refreshClubPickPrices().catch(() => ({ refreshed: 0 })); // CLV fix: precio ejecutable en la ventana final
     const cl = await captureClubPicksClosing().catch(() => ({ captured: 0 })); // P2: cierre + CLV (misma matemática del Mundial)
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, closing: cl };
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, refresh: rf, closing: cl };
     if (b.added || s.settled || sp.settled || cl.captured) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, closing: cl.captured, eligible: b.eligible }));
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }

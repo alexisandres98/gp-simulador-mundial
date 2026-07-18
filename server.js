@@ -2843,7 +2843,7 @@ function clubEvoHistory(league) {
       const prefix = all.filter(r => String(r.date).slice(0, 10) <= d);
       const sim = projectSeason({
         standings: clubStandingsFromResults(league, prefix), eloOf, hfa: L.hfa || 60,
-        results: prefix, meetings: CLUB_MEETINGS[league] || 2, sims: 800, // 1500→800 (OOM guard; ruido visual ~igual)
+        results: prefix, meetings: CLUB_MEETINGS[league] || 2, sims: 2000, // plan Standard (2GB): MÁS precisión que el original (1500); el lock anti-concurrencia se queda (higiene)
       });
       if (!sim) continue;
       const probs = {};

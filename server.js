@@ -1166,6 +1166,59 @@ function launchEmail(lang) {
   return { subject, text, html };
 }
 
+// LANZAMIENTO — VERSIÓN PERSONAL ANTI-PROMOCIONES (18-jul). El launchEmail de plantilla cayó en Promociones
+// (HTML pesado + botones + List-Unsubscribe = señales de bulk). Este aplica el playbook PROBADO del reengage
+// (que llega a Principal): texto plano 1:1 firmado por Alexis, CERO etiquetas <a> (la URL va como texto),
+// sin imágenes ni botones, termina con una PREGUNTA (invita respuesta = señal fuerte de Principal), y se
+// envía con from: REENGAGE_FROM + noListUnsub (la baja vive en el cuerpo).
+function launchPersonalEmail(lang) {
+  const en = lang === 'en';
+  const tr = dailyPicksTrackRecord().overall || {};
+  const hit = tr.hit_rate != null ? Math.round(tr.hit_rate * 100) : 63;
+  if (en) {
+    const subject = 'I left everything open for you until Sunday';
+    const text = `Hi,
+
+I'm Alexis, the person behind GP Simulador. I'm writing to you directly because there are two things I want you to know before the final.
+
+First: this weekend I left the full platform open for everyone with an account. The model that followed the World Cup now reads 15 leagues — Brasileirão, MLS, Liga MX, Argentina and more — with daily picks, the complete analysis of every match, market comparison, and new tools like your personal bet tracker and price alerts. Log in with your usual account at gpsimulador.com and look around; nothing is locked until Sunday.
+
+Second: during the World Cup the model published every one of its picks in public and hit ${hit}%, with a +27% return for anyone who followed them. All verifiable inside, pick by pick. That record is the reason behind the founder plan: a price frozen for life for the first people in. It closes on Sunday with the final — on Monday the platform becomes paid and plans return to their normal price.
+
+If the World Cup was useful to you, this is the same thing, every day of the year.
+
+Which league would you like the model to follow first? Reply and tell me — I read every answer.
+
+Alexis
+GP Simulador
+
+(If you'd rather not get my emails, reply "unsubscribe" and I'll take you off the list.)`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'te dejé todo abierto hasta el domingo';
+  const text = `Hola,
+
+Soy Alexis, el que está detrás de GP Simulador. Te escribo directo porque hay dos cosas que quiero que sepas antes de la final.
+
+La primera: este fin de semana dejé la plataforma completa abierta para todos los que tienen cuenta. El modelo que siguió el Mundial ahora lee 15 ligas — Brasileirão, MLS, Liga MX, Argentina y más — con picks diarias, el análisis completo de cada partido, comparación contra el mercado y herramientas nuevas como tu cartera de apuestas y alertas de precio. Entrá con tu cuenta de siempre en gpsimulador.com y recorrelo; no hay nada bloqueado hasta el domingo.
+
+La segunda: durante el Mundial el modelo publicó todas sus picks en público y acertó el ${hit}%, con un retorno del +27% para quien las siguió. Todo verificable adentro, pick por pick. Ese registro es la razón del plan founder: un precio congelado de por vida para los primeros que se suban. Se cierra el domingo con la final — el lunes la plataforma pasa a ser de pago y los planes vuelven a su precio normal.
+
+Si el Mundial te sirvió, esto es lo mismo todos los días del año.
+
+¿Qué liga te gustaría que el modelo siga primero? Respondeme y contame — leo todas las respuestas.
+
+Alexis
+GP Simulador
+
+(Si preferís no recibir mis correos, respondé "baja" y te saco de la lista.)`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 // SECUENCIA FOUNDER (lanzamiento 12-jul): 3 correos, ES/EN, caja negra, sin rayitas. Los números
 // (track record, cupos) se resuelven AL MOMENTO DEL ENVÍO — nunca quedan viejos en el copy.
 // seq: 1 = apertura · 2 = los números (prueba) · 3 = última llamada. ctx.spotsLeft viene del contador Whop.
@@ -8896,7 +8949,10 @@ const server = http.createServer(async (req, res) => {
                         : (variant === 'launch_en') ? () => launchEmail('en')
                           // launch_flip: el idioma OPUESTO al de cada usuario → tras 'launch', todos quedan con ES+EN
                           : (variant === 'launch_flip') ? (em) => launchEmail(userLang(em) === 'en' ? 'es' : 'en')
-                            : (em) => broadcastEmail(link, userLang(em));
+                            // launch_personal: anti-Promociones (estilo reengage → Principal): 1:1 de Alexis,
+                            // sin <a>, sin List-Unsubscribe, cada usuario en SU idioma (dos idénticos rompería el 1:1)
+                            : (variant === 'launch_personal') ? (em) => ({ ...launchPersonalEmail(userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
+                              : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la

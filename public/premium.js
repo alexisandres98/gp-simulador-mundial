@@ -293,7 +293,7 @@
       mb_note: 'Registro personal y privado. El CLV usa el cierre oficial de la pick cuando existe.',
       bk_title: 'Mis casas', bk_intro: 'Marcá las casas donde tenés cuenta: el feed te muestra qué picks son ejecutables para vos y cuáles cotizan mejor en una casa que no tenés.',
       bk_save: 'Guardar', bk_saved: 'Guardado', bk_custom: 'Otra casa…', bk_add: 'Agregar', bk_only_mine: 'Solo mis casas', bk_not_mine: 'mejor cuota en casa que no tenés',
-      bk_sportsbooks: 'Casas de apuestas que cubrimos', bk_prediction: 'Mercados de predicción',
+      bk_sportsbooks: 'Casas de apuestas que cubrimos', bk_crypto: 'Casas cripto', bk_prediction: 'Mercados de predicción',
       bk_empty: 'Ninguna pick activa cotiza en tus casas', bk_hidden: '{n} oportunidades ocultas por "Solo mis casas" — tocá el filtro para verlas todas.', bk_empty_sub: 'Desactivá "Solo mis casas" para ver todas, o agregá más casas en Mis casas.',
       wp_watch: 'Vigilar precio', wp_target: 'Avisame si la mejor cuota llega a', wp_set: 'Crear alerta', wp_created: 'Alerta creada',
       wp_list: 'Precios vigilados', wp_hit: 'Alcanzado', wp_expired: 'Vencido', wp_active: 'Vigilando', wp_last: 'última', wp_target_s: 'objetivo', wp_none: 'Sin precios vigilados. Creá uno desde cualquier pick con "Vigilar precio".',
@@ -586,7 +586,7 @@
       mb_note: 'Personal, private log. CLV uses the pick’s official closing price when available.',
       bk_title: 'My books', bk_intro: 'Mark the sportsbooks where you have an account: the feed shows which picks are executable for you and which are priced best at a book you don’t have.',
       bk_save: 'Save', bk_saved: 'Saved', bk_custom: 'Another book…', bk_add: 'Add', bk_only_mine: 'My books only', bk_not_mine: 'best odds at a book you don’t have',
-      bk_sportsbooks: 'Sportsbooks we cover', bk_prediction: 'Prediction markets',
+      bk_sportsbooks: 'Sportsbooks we cover', bk_crypto: 'Crypto sportsbooks', bk_prediction: 'Prediction markets',
       bk_empty: 'No active pick is quoted at your books', bk_hidden: '{n} opportunities hidden by "My books only" — tap the filter to see them all.', bk_empty_sub: 'Turn off "My books only" to see all picks, or add more books in My books.',
       wp_watch: 'Watch price', wp_target: 'Alert me if the best odds reach', wp_set: 'Create alert', wp_created: 'Alert created',
       wp_list: 'Watched prices', wp_hit: 'Hit', wp_expired: 'Expired', wp_active: 'Watching', wp_last: 'last', wp_target_s: 'target', wp_none: 'No watched prices. Create one from any pick with "Watch price".',
@@ -632,6 +632,7 @@
     mybookieag: 'MyBookie', lowvig: 'LowVig', bovada: 'Bovada', betus: 'BetUS', gtbets: 'GTbets', everygame: 'Everygame',
     suprabets: 'Suprabets', ballybet: 'Bally Bet', betparx: 'betPARX', hardrockbet: 'Hard Rock Bet', playup: 'PlayUp',
     polymarket: 'Polymarket', kalshi: 'Kalshi', myriad: 'Myriad', novig: 'Novig', prophetx: 'ProphetX',
+    cloudbet: 'Cloudbet', stake: 'Stake', rollbit: 'Rollbit', bcgame: 'BC.Game', sportsbetio: 'Sportsbet.io',
     tabtouch: 'TABtouch', betright: 'Bet Right', topsport: 'TopSport', boombet: 'BoomBet', betr_au: 'betr', dabble_au: 'Dabble'
   };
   function prettyBook(code) {
@@ -2247,24 +2248,29 @@
     'everygame', 'fanatics', 'grosvenor', 'gtbets', 'ladbrokes_uk', 'leovegas', 'leovegas_se', 'livescorebet', 'lowvig', 'marathonbet', 'matchbook', 'mybookieag', 'nordicbet', 'paddypower', 'pmu_fr', 'skybet',
     'smarkets', 'sport888', 'tipico_de', 'unibet_fr', 'unibet_nl', 'unibet_se', 'unibet_uk', 'virginbet', 'winamax_de', 'winamax_fr'
   ];
-  var BK_PREDICTION = ['polymarket', 'kalshi']; // mercados de predicción que el scanner compara (Mundial)
+  var BK_PREDICTION = ['polymarket', 'kalshi', 'myriad']; // mercados de predicción que el scanner compara
+  var BK_CRYPTO = ['cloudbet', 'stake', 'rollbit', 'bcgame', 'sportsbetio']; // casas cripto (cloudbet LIVE; resto para marcar preferencia)
   function renderBooks() {
     var mv = $('#gx-matchview'); if (!mv) return;
     if (S.me && !S.me.my_books) { showView('board'); return; }
     var mine = (S.me && S.me.my_books_list) || [];
+    var known = BK_PREDICTION.concat(BK_CRYPTO);
     var all = BK_COMMON.slice();
-    mine.forEach(function (b) { if (all.indexOf(b) < 0 && BK_PREDICTION.indexOf(b) < 0) all.push(b); });
+    mine.forEach(function (b) { if (all.indexOf(b) < 0 && known.indexOf(b) < 0) all.push(b); });
     var chip = function (b) {
       var on = mine.indexOf(b) >= 0;
       return '<button class="gx-calc-frac' + (on ? ' on' : '') + '" data-bk="' + esc(b) + '" style="font-size:12px;padding:7px 12px">' + bookLogo(b) + esc(prettyBook(b)) + '</button>';
     };
     var chips = all.map(chip).join('');
     var predChips = BK_PREDICTION.map(chip).join('');
+    var cryptoChips = BK_CRYPTO.map(chip).join('');
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('bk_title')) +
       '<p class="gx-calc-intro gx-dim">' + esc(t('bk_intro')) + '</p>' +
       '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
       '<div class="gx-cpf-sec" style="border-top:0;padding-top:0;margin-top:0">' + esc(t('bk_sportsbooks')) + '</div>' +
       '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + chips + '</div>' +
+      '<div class="gx-cpf-sec" style="margin-top:14px">' + esc(t('bk_crypto')) + '</div>' +
+      '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + cryptoChips + '</div>' +
       '<div class="gx-cpf-sec" style="margin-top:14px">' + esc(t('bk_prediction')) + '</div>' +
       '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + predChips + '</div>' +
       '<div class="gx-calc-grid" style="margin-top:12px"><label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('bk_custom')) + '</span><input class="gx-calc-in" id="bk-custom" maxlength="40" placeholder="pinnacle"></label>' +

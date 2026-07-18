@@ -67,6 +67,12 @@ const BRANDS = {
   myriad: { bg: '#241a3d', fg: '#9a7bff', mark: 'MY' },
   novig: { bg: '#101820', fg: '#7ef0c1', mark: 'NV' },
   prophetx: { bg: '#131313', fg: '#b18cff', mark: 'PX' },
+  // casas cripto
+  cloudbet: { bg: '#0a1420', fg: '#f7c948', mark: 'CB' },
+  stake: { bg: '#1a2c38', fg: '#00e701', mark: 'STK' },
+  rollbit: { bg: '#12101c', fg: '#ff5c00', mark: 'RB' },
+  bcgame: { bg: '#14161c', fg: '#ffd400', mark: 'BC' },
+  sportsbetio: { bg: '#0e1a2b', fg: '#39a1ff', mark: 'SB' },
 };
 
 const FS = { 1: 19, 2: 15.5, 3: 12.5, 4: 10.5 };

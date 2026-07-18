@@ -2633,6 +2633,69 @@ async function clubsQuotesSweep({ force = false } = {}) {
   console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
   return out;
 }
+// ===== CLOUDBET (crypto sportsbook) — UNA CASA MÁS ==========================================================
+// Cloudbet tiene API pública (key gratis). Su fútbol se FUSIONA sobre los eventos que el scanner ya rastrea
+// (db.clubsQuoteEvents): match por nombres normalizados → escribimos sus cuotas 1X2/totals con
+// sportsbook_code='cloudbet' y el MISMO canonical_event_id → value/arbitraje/best-odds/picks la ven sin tocar
+// nada. GATED tras CLOUDBET_API_KEY: sin key = no-op absoluto (jamás toca la DB). Fallback graceful total.
+let _cloudbetRunning = false, _cloudbetLast = 0, _cloudbetOut = null;
+function cloudbetKeyName(s) { // normalización tolerante para matchear nombres de equipo entre proveedores
+  return normName(s).replace(/\b(fc|cf|cd|sc|ac|afc|club|deportivo|atletico|athletic|the|de|do|da)\b/g, '').replace(/[^a-z0-9]/g, '');
+}
+function cloudbetNameMatch(a, b) { // contains bidireccional sobre la forma reducida (tolera "Man Utd" vs "Manchester United")
+  const x = cloudbetKeyName(a), y = cloudbetKeyName(b);
+  if (!x || !y) return false;
+  return x === y || (x.length >= 4 && y.length >= 4 && (x.includes(y) || y.includes(x)));
+}
+async function cloudbetSweep({ force = false, dryRun = false } = {}) {
+  const apiKey = process.env.CLOUDBET_API_KEY || '';
+  if (!apiKey) return { skipped: 'no_key' };
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  if (_cloudbetRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _cloudbetLast < 20 * 60e3) return { skipped: 'throttle' };
+  _cloudbetRunning = true;
+  const out = { events_cloudbet: 0, matched: 0, quotes: 0, samples: [], started: new Date().toISOString(), dry_run: !!dryRun };
+  try {
+    const cbEvents = await require('./market-scanner/venues/cloudbet').fetchCloudbetSoccer({ apiKey });
+    out.events_cloudbet = cbEvents.length;
+    const grepo = require('./goal-engine/repository');
+    const known = Object.entries(db.clubsQuoteEvents || {}); // [ceid, {home,away,league,...}]
+    for (const cb of cbEvents) {
+      // buscar el evento conocido de este partido (directo o cruzado home/away)
+      const hit = known.find(([, m]) =>
+        (cloudbetNameMatch(cb.home, m.home) && cloudbetNameMatch(cb.away, m.away)) ||
+        (cloudbetNameMatch(cb.home, m.away) && cloudbetNameMatch(cb.away, m.home)));
+      if (!hit) continue;
+      const [ceid, meta] = hit;
+      const swapped = !(cloudbetNameMatch(cb.home, meta.home) && cloudbetNameMatch(cb.away, meta.away)); // Cloudbet home = nuestro away?
+      out.matched++;
+      if (out.samples.length < 8) out.samples.push({ cloudbet: cb.home + ' v ' + cb.away, matched: meta.home + ' v ' + meta.away, league: meta.league, h2h: cb.markets.h2h, totals: cb.markets.totals.length });
+      if (dryRun) continue;
+      const eid = 'cloudbet-' + ceid;
+      // 1X2 (orientado a NUESTRO home): si swapped, home↔away de Cloudbet se intercambian
+      if (cb.markets.h2h) {
+        const h = cb.markets.h2h, sides = swapped ? { home: h.away, draw: h.draw, away: h.home } : h;
+        for (const side of ['home', 'draw', 'away']) {
+          if (!(sides[side] > 1)) continue;
+          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: sides[side], implied_probability: 1 / sides[side], quote_status: 'open', is_live: false }).catch(() => {});
+          out.quotes++;
+        }
+      }
+      // totales (over/under; simétricos, el swap no afecta)
+      for (const t of cb.markets.totals) {
+        if (!(t.line > 0)) continue;
+        for (const side of ['over', 'under']) {
+          const o = t[side]; if (!(o > 1)) continue;
+          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: 'match_total', line: t.line, side, market_id: 'TOTAL_GOALS_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), odds_decimal: o, implied_probability: 1 / o, quote_status: 'open', is_live: false }).catch(() => {});
+          out.quotes++;
+        }
+      }
+    }
+    if (!dryRun) _cloudbetLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _cloudbetRunning = false; out.finished = new Date().toISOString(); _cloudbetOut = out; }
+  return out;
+}
 // PLAYER PROPS de clubes (F3.4 encendida 15-jul, orden de Alexis: assists activas — estaban en shadow):
 // por evento próximo (<48h) pide player_assists + player_goal_scorer_anytime a The Odds API y las ingesta con
 // el ceid sintético del evento (mismo patrón del sweep). Nombre del jugador → pl_ id vía el fit de la liga
@@ -8049,6 +8112,14 @@ const server = http.createServer(async (req, res) => {
     }
     // SCAN DE CLUBES (verificación read-only, misma key): el DTO que el admin ve mergeado en /api/beta/arbitrage,
     // sin necesitar sesión. Diagnóstico del pipeline sweep → loader → scanner.
+    // Cloudbet (crypto): dry-run (GET, muestra qué matchearía SIN escribir) + sweep real (POST). GATED tras key.
+    if (p === '/api/internal/cloudbet') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (!process.env.CLOUDBET_API_KEY) return json(res, 200, { enabled: false, note: 'Falta CLOUDBET_API_KEY (registrarse en cloudbet.com → API key gratis)' });
+      const r = await cloudbetSweep({ force: true, dryRun: req.method !== 'POST' }).catch(e => ({ error: e.message }));
+      return json(res, 200, { enabled: true, ...r });
+    }
     if (p === '/api/internal/clubs-scan' && req.method === 'GET') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -9578,6 +9649,13 @@ server.listen(PORT, () => {
   // props de clubes (córners/tarjetas/assists/anytime): throttle interno 3h, eventos <48h; el intervalo pregunta c/30min
   setTimeout(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 150 * 1000);
   setInterval(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 30 * 60 * 1000);
+  // Cloudbet (crypto sportsbook): fusión de cuotas como una casa más. Gated tras CLOUDBET_API_KEY (sin key =
+  // no-op). Throttle interno 20min; el intervalo pregunta cada 10min. Corre tras el sweep de cuotas (necesita
+  // db.clubsQuoteEvents ya poblado para matchear).
+  if (process.env.CLOUDBET_API_KEY) {
+    setTimeout(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 210 * 1000);
+    setInterval(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 10 * 60 * 1000);
+  }
   // FASE CLUBES (shadow): marcadores en vivo/finalizados desde ESPN por liga, cada 30 s (como el Mundial).
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);

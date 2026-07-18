@@ -7794,6 +7794,23 @@ const server = http.createServer(async (req, res) => {
     }
     // PICKS DE CLUBES (F3.3): verificación + dry-run + disparo manual (misma key). GET ?dry=1 muestra qué
     // produciría curate (candidatos + blockers) SIN persistir; GET normal = estado + track record; POST = evaluar.
+    // Edición quirúrgica de una pick ACTIVA (ops, GP_EXPORT_KEY): allowlist de campos de mercado/narrativa.
+    // Caso de uso 18-jul: reemplazar la selección de una pick por una más conservadora (marketing) sin tocar
+    // el pipeline. El settlement usa side/line del registro → liquida la selección NUEVA correctamente.
+    if (p === '/api/internal/pick-edit' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const b = await readBody(req).catch(() => ({}));
+      const all = [...(db.dailyPicks || []), ...(db.clubDailyPicks || [])];
+      const pk = all.find(x => x.pick_id === String(b.pick_id || '') && x.status === 'ACTIVE');
+      if (!pk) return json(res, 404, { error: 'pick ACTIVE no encontrada' });
+      const ALLOW = ['side', 'line', 'market_id', 'best_odds', 'best_book', 'books', 'model_prob', 'market_prob', 'confidence', 'edge_pp', 'why_es', 'why_en'];
+      const applied = {};
+      for (const k of ALLOW) if (b.patch && b.patch[k] !== undefined) { pk[k] = b.patch[k]; applied[k] = b.patch[k]; }
+      pk.edited_at = new Date().toISOString();
+      save();
+      return json(res, 200, { ok: true, pick_id: pk.pick_id, applied });
+    }
     // Prueba REAL de los emails de F3/F4 (verificación end-to-end pedida por Alexis): envía el brief del día
     // o una alerta de precio de muestra a la dirección dada, por el MISMO camino (mailer → Resend) que usan
     // los flujos automáticos. Diag only (key interna), no toca estado.

@@ -4520,6 +4520,8 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
 function settleClubDailyPicks() {
   const { settleOne } = require('./pick-engine/dailyPicks');
   let settled = 0;
+  const phCache = {}; // player-history por liga (archivo grande): una lectura por corrida del settle
+  const phRows = (lg) => { if (phCache[lg] === undefined) { try { phCache[lg] = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${lg}.json`), 'utf8')).rows || []; } catch { phCache[lg] = []; } } return phCache[lg]; };
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'ACTIVE') continue;
     if (p.family === 'PLAYER') {
@@ -4550,8 +4552,26 @@ function settleClubDailyPicks() {
             : (Number(row.home.yellows) || 0) + (Number(row.home.reds) || 0) + (Number(row.away.yellows) || 0) + (Number(row.away.reds) || 0);
           const over = tot > Number(p.line);
           p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
-        } else if (ko && Date.now() - ko > 72 * 3600e3) {
-          p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++;
+        } else {
+          // FALLBACK TSA para CARDS (18-jul, API-Football caído a plan Free → props-history congelado):
+          // tarjetas del partido = suma de yc+rc del player-history (TSA, vivo vía el pase diario). Se aísla
+          // EL cruce agrupando por match id con filas de AMBOS equipos. CORNERS no está en player-history
+          // (stat de equipo) → sigue esperando props-history/AF y VOID honesto a las 72h.
+          let done = false;
+          if (p.family === 'CARDS') {
+            const near = phRows(p.league).filter(r2 => Math.abs(+new Date(r2.date) - ko) < 2 * 86400e3 && (r2.team === p.event.home_team_id || r2.team === p.event.away_team_id));
+            const byMatch = {};
+            near.forEach(r2 => { (byMatch[r2.match] = byMatch[r2.match] || new Set()).add(r2.team); });
+            const mid = Object.keys(byMatch).find(k => byMatch[k].has(p.event.home_team_id) && byMatch[k].has(p.event.away_team_id));
+            if (mid) {
+              const tot2 = near.filter(r2 => r2.match === mid).reduce((a, r2) => a + (Number(r2.yc) || 0) + (Number(r2.rc) || 0), 0);
+              const over2 = tot2 > Number(p.line);
+              p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over2) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++; done = true;
+            }
+          }
+          if (!done && ko && Date.now() - ko > 72 * 3600e3) {
+            p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++;
+          }
         }
       } catch { /* sin history → espera, AF fallback o VOID por tiempo */ }
       continue;

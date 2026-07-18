@@ -2823,6 +2823,13 @@ function clubEvoHistory(league) {
   global._clubEvo = global._clubEvo || {};
   const c = global._clubEvo[league];
   if (c && c.stamp === stamp) return c.data;
+  // OOM guard (18-jul, fusión pública): computar UNA evo a la vez en todo el proceso — N usuarios × ligas
+  // concurrentes apilaban Monte Carlos simultáneos en un contenedor de 512MB (exit 134). El que llega durante
+  // un cómputo recibe "cargando" y el cliente reintenta al re-render.
+  global._clubEvoBusy = global._clubEvoBusy || false;
+  if (global._clubEvoBusy) return (c && c.data) || { available: false, computing: true };
+  global._clubEvoBusy = true;
+  try {
   let data = { available: false };
   try {
     const all = (JSON.parse(fs.readFileSync(fp, 'utf8')).rows || [])
@@ -2836,7 +2843,7 @@ function clubEvoHistory(league) {
       const prefix = all.filter(r => String(r.date).slice(0, 10) <= d);
       const sim = projectSeason({
         standings: clubStandingsFromResults(league, prefix), eloOf, hfa: L.hfa || 60,
-        results: prefix, meetings: CLUB_MEETINGS[league] || 2, sims: 1500,
+        results: prefix, meetings: CLUB_MEETINGS[league] || 2, sims: 800, // 1500→800 (OOM guard; ruido visual ~igual)
       });
       if (!sim) continue;
       const probs = {};
@@ -2847,6 +2854,7 @@ function clubEvoHistory(league) {
   } catch { data = { available: false }; }
   global._clubEvo[league] = { stamp, data };
   return data;
+  } finally { global._clubEvoBusy = false; }
 }
 // ARQUITECTURA DE COMPETICIÓN — BRACKET DE PLAYOFFS PROYECTADO (MX/MLS). Las ligas con fase final no se deciden
 // solo por tabla: al terminar la temporada regular, los mejores clasificados juegan un bracket de eliminación.

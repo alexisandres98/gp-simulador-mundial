@@ -4621,13 +4621,18 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     ]);
     fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why, regime: 'anchor' }, s.eventId + '|SOLID|' + s.selection));
   }
-  // 1 GOALS por evento: gana la de mayor edge; entre anclas (edge chico) gana la de mayor confianza.
+  // 1 GOALS por evento. POST-MUNDIAL (19-jul, decisión de Alexis): goles al PÚBLICO = solo ANCLA. El mercado de
+  // goles es eficiente → el "edge" del modelo EMPATA al consenso (combinado Mundial+clubes: 53%/+1.5u; clubes
+  // solos 31%/−5.1u). Se PREFIERE la ancla para el pick público; el edge de goles NO se descarta: se conserva en
+  // el track PRIVADO (regime:'monitor', admin only) para seguir validando si algún día desarrolla skill real.
   const bestGoalByEvent = {};
+  const goalRank = x => (x.regime === 'anchor' ? 1 : 0); // la ancla gana al edge para el pick público
   for (const g of res.eligible.goals) {
     const cur = bestGoalByEvent[g.eventId];
     if (!cur) { bestGoalByEvent[g.eventId] = g; continue; }
-    const better = (g.regime === 'edge' && cur.regime !== 'edge') ? true
-      : (g.regime === cur.regime ? (g.regime === 'edge' ? g.edgePp > cur.edgePp : g.confidence > cur.confidence) : false);
+    const better = goalRank(g) !== goalRank(cur)
+      ? goalRank(g) > goalRank(cur)
+      : (g.regime === 'anchor' ? g.confidence > cur.confidence : g.edgePp > cur.edgePp);
     if (better) bestGoalByEvent[g.eventId] = g;
   }
   for (const g of Object.values(bestGoalByEvent)) {
@@ -4644,7 +4649,9 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
           ...(g.side === 'under' ? [{ code: 'GOALS_DEFENSES_TIGHT', w: 3 }] : []),
           ...(g.bestOdds > 1 / Math.max(1e-6, g.marketProb) ? [{ code: 'PRICE_ABOVE_FAIR', w: 2 }] : []),
         ]);
-    fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why, regime: g.regime }, g.eventId + '|GOALS|' + g.marketId));
+    // regime público: 'anchor' → feed; cualquier otra cosa (edge/legacy) → 'monitor' (track privado, jamás al feed).
+    const goalRegime = g.regime === 'anchor' ? 'anchor' : 'monitor';
+    fresh.push(mkRecord('GOALS', g.eventId, { league: gm.league, home: g.home, away: g.away, homeId: gm.homeId, awayId: gm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why, regime: goalRegime }, g.eventId + '|GOALS|' + g.marketId));
   }
   // CORNERS/CARDS (F3.4): 1 pick por (evento, familia), la de mayor edge — mismo criterio que GOALS.
   const bestProp = {};
@@ -6349,6 +6356,9 @@ const server = http.createServer(async (req, res) => {
             .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
           if (!betaUser.isAdmin) {
             clubActive = clubActive.filter(x => x.regime !== 'monitor');
+            // GOLES público = solo ANCLA (19-jul, Alexis): el edge de goles empata al mercado eficiente → al track
+            // privado. Autoritativo: excluye también las legacy activas (regime 'edge'/indefinido) sin mutar el track.
+            clubActive = clubActive.filter(x => !(x.family === 'GOALS' && x.regime !== 'anchor'));
             if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
           }

@@ -1289,7 +1289,9 @@
   // encabezado clickeable que abre el cockpit del partido. El hero se excluye de su sección para no duplicar.
   function picksSectioned(picks) {
     var sorted = picks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); });
-    var hero = sorted[0];
+    // SOLID (ganador) es el producto estrella: es la familia que LE GANA AL MERCADO en el track (65% combinado)
+    // → lidera como "Pick del día". Sin SOLID en el feed, cae al de mayor confianza (comportamiento previo).
+    var hero = sorted.filter(function (p) { return p.family === 'SOLID'; })[0] || sorted[0];
     var rest = picks.filter(function (p) { return p !== hero; });
     var groups = {}, order = [];
     rest.forEach(function (p) {

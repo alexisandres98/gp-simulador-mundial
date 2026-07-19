@@ -4612,7 +4612,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     regime: fields.regime || null, // 'anchor' | 'edge' — régimen dual (análisis del track privado)
     status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
   });
-  const fresh = [];
+  let fresh = []; // (let: las reglas de publicación lo re-filtran antes de persistir)
   for (const s of res.eligible.solid) {
     const ev = events.find(e => e.eventId === s.eventId) || {};
     const why = compose([
@@ -4669,6 +4669,16 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     fresh.push(mkRecord('PLAYER', g.eventId, { league: pm.league, home: g.home, away: g.away, homeId: pm.homeId, awayId: pm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: 'yes', player_name: g.player, pid: g.pid, player_family: g.playerFamily, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp }, g.eventId + '|PLAYER|' + g.marketId));
   }
   db.clubDailyPicks = db.clubDailyPicks || [];
+  // REGLA DE PUBLICACIÓN (autopsia 18-jul): máximo 3 picks PÚBLICAS por evento — SOLID > GOALS > la mejor
+  // por confianza. Las regime:'monitor' (track privado, no salen al feed) NO cuentan ni se recortan.
+  const pubPrio = { SOLID: 0, GOALS: 1 };
+  const freshByEv = {};
+  fresh.forEach(p => { if (p.regime !== 'monitor') (freshByEv[p.event.canonical_event_id] = freshByEv[p.event.canonical_event_id] || []).push(p); });
+  const keepIds = new Set(fresh.filter(p => p.regime === 'monitor').map(p => p.pick_id));
+  Object.values(freshByEv).forEach(evPicks => {
+    evPicks.slice().sort((a, b) => ((pubPrio[a.family] ?? 2) - (pubPrio[b.family] ?? 2)) || ((b.confidence || 0) - (a.confidence || 0))).slice(0, 3).forEach(p => keepIds.add(p.pick_id));
+  });
+  fresh = fresh.filter(p => keepIds.has(p.pick_id));
   const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
   let added = 0;
   for (const p of fresh) {

@@ -282,7 +282,19 @@ async function buildDailyPicks(deps) {
     }, g.eventId + '|' + g.marketId));
   }
 
-  return { picks, counts: res.counts, considered: { events: events.length, goalMarkets: goalMarkets.length, propMarkets: propMarkets.length, playerMarkets: playerMarkets.length } };
+  // ── REGLAS DE PUBLICACIÓN (autopsia 18-jul France-England: ML+U3.5+combo cayeron JUNTAS — una sorpresa
+  // contó como 3 derrotas). El registro guarda lo publicado → menos exposición correlacionada por partido:
+  // (1) el COMBO no sale si sus DOS patas ya salen sueltas del mismo evento (triple exposición de UNA tesis);
+  // (2) máximo 3 picks por evento — SOLID > GOALS > la mejor prop/player por confianza.
+  const famsByEvent = {};
+  picks.forEach(p => { (famsByEvent[p.event.canonical_event_id] = famsByEvent[p.event.canonical_event_id] || new Set()).add(p.family); });
+  let out = picks.filter(p => !(p.family === 'COMBO' && famsByEvent[p.event.canonical_event_id].has('SOLID') && famsByEvent[p.event.canonical_event_id].has('GOALS')));
+  const PRIO = { SOLID: 0, GOALS: 1, COMBO: 2 }; // props/player compiten por confianza detrás
+  const byEvent = {};
+  out.forEach(p => { (byEvent[p.event.canonical_event_id] = byEvent[p.event.canonical_event_id] || []).push(p); });
+  out = Object.values(byEvent).flatMap(evPicks =>
+    evPicks.slice().sort((a, b) => ((PRIO[a.family] ?? 3) - (PRIO[b.family] ?? 3)) || ((b.confidence || 0) - (a.confidence || 0))).slice(0, 3));
+  return { picks: out, counts: res.counts, considered: { events: events.length, goalMarkets: goalMarkets.length, propMarkets: propMarkets.length, playerMarkets: playerMarkets.length } };
 }
 
 function record(family, eventId, fields, key) {

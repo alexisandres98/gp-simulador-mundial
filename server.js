@@ -1219,6 +1219,57 @@ GP Simulador
   return { subject, text, html };
 }
 
+// LAST CALL (19-jul, cierre de la fase founder): correo CORTO estilo personal → bandeja Principal (mismo playbook
+// anti-Promociones que launchPersonalEmail: from REENGAGE_FROM + noListUnsub, sin <a>/imágenes, baja en el cuerpo,
+// cierra con invitación a responder). Gancho de urgencia "última oportunidad". Cobertura encuadrada como TODO EL
+// AÑO (cualquier liga/club que las casas coticen en cualquier temporada), NO solo las 14 activas hoy. Track record
+// en vivo. Se envía a TODOS en inglés (variant lastcall_en).
+function lastCallEmail(lang) {
+  const en = lang !== 'es';
+  const tr = dailyPicksTrackRecord().overall || {};
+  const hit = tr.hit_rate != null ? Math.round(tr.hit_rate * 100) : 63;
+  const roi = tr.roi_pct != null ? Math.round(tr.roi_pct) : 27;
+  const mk = (subject, text) => ({
+    subject, text,
+    html: `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`,
+  });
+  if (en) {
+    return mk('the founder price closes tonight', `Hi,
+
+Alexis here — fast, because the clock is real.
+
+The World Cup ends tonight, and the founder price ends with it. From tomorrow it's the regular price. This is the last email before that door shuts.
+
+What you lock in tonight, frozen for life: the same model that called the World Cup in public — ${hit}% hit, +${roi}% return, every pick verifiable — now on club football all year round. Whatever league the sportsbooks are pricing — this month, next season, anywhere in the world — the model follows it as it comes into season. Daily picks, the full read on every match, your own bet tracker and price alerts.
+
+You already have the account. It's open right now at gpsimulador.com — locking the founder price takes a minute. After the final, it's gone.
+
+If the World Cup was useful to you, don't let this one slip by. Want in? Just reply "yes" and I'll make sure you're set.
+
+Alexis
+GP Simulador
+
+(Not for you? Reply "unsubscribe" and I'll take you off the list.)`);
+  }
+  return mk('el precio founder se cierra esta noche', `Hola,
+
+Soy Alexis, rápido porque el reloj es real.
+
+El Mundial termina esta noche, y el precio founder termina con él. Desde mañana es el precio normal. Este es el último correo antes de que esa puerta se cierre.
+
+Lo que congelás esta noche, de por vida: el mismo modelo que siguió el Mundial en público — ${hit}% de acierto, +${roi}% de retorno, todo verificable — ahora sobre fútbol de clubes todo el año. Cualquier liga que las casas coticen — este mes, la próxima temporada, en cualquier parte del mundo — el modelo la sigue en cuanto entra en temporada. Picks diarias, el análisis completo de cada partido, tu cartera de apuestas y alertas de precio.
+
+Ya tenés la cuenta. Está abierta ahora en gpsimulador.com — congelar el precio founder te toma un minuto. Después de la final, se va.
+
+Si el Mundial te sirvió, no dejes pasar esta. ¿Te sumás? Respondé "sí" y me aseguro de que quedes adentro.
+
+Alexis
+GP Simulador
+
+(¿No es para vos? Respondé "baja" y te saco de la lista.)`);
+}
+
 // SECUENCIA FOUNDER (lanzamiento 12-jul): 3 correos, ES/EN, caja negra, sin rayitas. Los números
 // (track record, cupos) se resuelven AL MOMENTO DEL ENVÍO — nunca quedan viejos en el copy.
 // seq: 1 = apertura · 2 = los números (prueba) · 3 = última llamada. ctx.spotsLeft viene del contador Whop.
@@ -9001,7 +9052,10 @@ const server = http.createServer(async (req, res) => {
                             : (variant === 'launch_personal') ? (em) => ({ ...launchPersonalEmail(userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
                               : (variant === 'launch_personal_es') ? () => ({ ...launchPersonalEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                                 : (variant === 'launch_personal_en') ? () => ({ ...launchPersonalEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
-                                  : (em) => broadcastEmail(link, userLang(em));
+                                  // last call (cierre founder 19-jul): idioma FIJO, estilo personal anti-Promociones.
+                                  : (variant === 'lastcall_en') ? () => ({ ...lastCallEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                    : (variant === 'lastcall_es') ? () => ({ ...lastCallEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                      : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la

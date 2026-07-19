@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1350px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(160deg, #06090B 0%, #0B1714 50%, #0A5C3C 140%); color: #EAF1F2;
+  padding: 72px 64px; position: relative; }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.badge { width: 48px; height: 48px; border-radius: 14px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 27px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 26px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(242,193,78,.16); border:1px solid rgba(242,193,78,.55); color:#F2C14E; font-weight: 800; font-size: 18px; padding: 10px 20px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 50px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 8px; color:#fff; }
+.sub { font-size: 23px; color:#9DB0B5; font-weight:600; margin-bottom: 40px; }
+.stack { display: flex; flex-direction: column; gap: 22px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 20px; padding: 30px 34px; position: relative; overflow:hidden; display:grid; grid-template-columns: 1fr auto; align-items:center; column-gap:24px; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.pick.cards::before { background:#F2C14E; }
+.fam { font-size: 16px; font-weight: 800; letter-spacing: 1.4px; color:#1FE3A4; text-transform:uppercase; }
+.pick.goals .fam { color:#34D6C8; }
+.pick.cards .fam { color:#F2C14E; }
+.note { font-size: 19px; font-weight: 600; color:#9DB0B5; margin: 6px 0 14px; line-height:1.35; }
+.bet { font-size: 40px; font-weight: 800; letter-spacing:-.5px; color:#fff; margin-bottom: 10px; }
+.conf { font-size: 19px; color:#9DB0B5; font-weight:600; display:flex; align-items:center; gap:9px; }
+.conf b { color:#fff; }
+.dot { width:14px; height:14px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.dot.shot { background:#5BA8FF; }
+.odds { text-align:right; }
+.odds .ol { display:block; font-size: 14px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; margin-bottom:2px; }
+.odds .ov { font-size: 62px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; }
+.pick.goals .odds .ov { color:#34D6C8; }
+.pick.cards .odds .ov { color:#F2C14E; }
+.foot { position:absolute; bottom: 56px; left: 64px; right: 64px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:24px; font-weight:800; padding:17px 36px; border-radius:99px; }
+.foot .small { font-size:18px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP World Cup Simulator</div><div class="tag">★ THE FINAL</div></div>
+  <h1>Every pick on the board 🏆</h1>
+  <div class="sub">Jul 19 · 🇪🇸 Spain vs Argentina 🇦🇷 · 7 PM UTC · always the best odds</div>
+  <div class="stack">
+    <div class="pick">
+      <div>
+        <div class="fam">Corners</div>
+        <div class="note">11.7 combined corners a match this tournament — both attack wide, the count piles up</div>
+        <div class="bet">Over 7.5 corners</div>
+        <div class="conf"><span class="dot high"></span>Confidence: <b>High</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">1.83</span></div>
+    </div>
+    <div class="pick goals">
+      <div>
+        <div class="fam">Goals</div>
+        <div class="note">Both create volume (1.8 xG per match each) — the value sits above the fair line</div>
+        <div class="bet">Over 2.5 goals</div>
+        <div class="conf"><span class="dot"></span>Confidence: <b>Medium</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">2.38</span></div>
+    </div>
+    <div class="pick cards">
+      <div>
+        <div class="fam">Cards</div>
+        <div class="note">Two disciplined sides (2.1 combined cards a match) — a clean final at a big price</div>
+        <div class="bet">Under 2.5 cards</div>
+        <div class="conf"><span class="dot shot"></span>Confidence: <b>Value shot</b></div>
+      </div>
+      <div class="odds"><span class="ol">Best odds</span><span class="ov">3.95</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="small">Daily picks · clear analysis · not financial advice</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

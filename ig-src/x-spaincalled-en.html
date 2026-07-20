@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 675px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(150deg, #06090B 0%, #0B1714 52%, #0A5C3C 150%); color: #EAF1F2;
+  padding: 56px 64px; position: relative; overflow: hidden; }
+.glow { position:absolute; width:640px; height:640px; border-radius:50%; top:-220px; right:-220px;
+  background: radial-gradient(circle, rgba(31,227,164,.20), transparent 62%); }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; position:relative; }
+.badge { width: 42px; height: 42px; border-radius: 12px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 23px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.55); color:#1FE3A4; font-weight: 800; font-size: 16px; padding: 9px 18px; border-radius: 99px; letter-spacing: 2px; }
+.grid { display:grid; grid-template-columns: 1fr 470px; gap: 44px; align-items:center; position:relative; }
+.kicker { font-size: 18px; font-weight: 800; letter-spacing: 2.4px; color:#1FE3A4; text-transform:uppercase; margin-bottom: 14px; }
+h1 { font-size: 66px; font-weight: 800; letter-spacing: -2px; line-height: 1.0; margin-bottom: 18px; color:#fff; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size: 22px; color:#C7D4D8; font-weight: 600; line-height: 1.4; }
+.receipt { background: linear-gradient(160deg, #111A1E, #0C1316); border: 1px solid rgba(31,227,164,.22); border-radius: 22px; padding: 8px 30px; box-shadow: 0 26px 70px -44px rgba(31,227,164,.35); }
+.row { display:flex; align-items:center; gap: 16px; padding: 24px 0; }
+.row + .row { border-top: 1px dashed rgba(255,255,255,.12); }
+.rlab { width: 128px; font-size: 15px; font-weight: 800; letter-spacing: 1px; color:#5F747B; text-transform:uppercase; line-height:1.25; }
+.rmain { flex:1; font-size: 27px; font-weight: 800; color:#fff; letter-spacing:-.3px; }
+.rmain .flag { font-size: 28px; margin-right: 6px; }
+.rmain .win { color:#1FE3A4; }
+.check { width:44px; height:44px; border-radius:50%; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); display:flex; align-items:center; justify-content:center; font-size:24px; color:#1FE3A4; }
+.foot { position:absolute; bottom: 46px; left: 64px; right: 64px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:22px; font-weight:800; padding:15px 32px; border-radius:99px; }
+.foot .small { font-size:17px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP World Cup Simulator</div><div class="tag">CALLED IT</div></div>
+  <div class="grid">
+    <div>
+      <div class="kicker">We said it before a ball was kicked</div>
+      <h1>Spain would <span class="g">win it all.</span></h1>
+      <div class="sub">And they did. Before the World Cup started, our model's #1 pick to lift the trophy was Spain — the whole way through.</div>
+    </div>
+    <div class="receipt">
+      <div class="row">
+        <div class="rlab">Before kickoff</div>
+        <div class="rmain"><span class="flag">🇪🇸</span>#1 to win</div>
+        <div class="check">✓</div>
+      </div>
+      <div class="row">
+        <div class="rlab">Jul 19 Final</div>
+        <div class="rmain"><span class="flag">🇪🇸</span><span class="win">Champions</span> 🏆</div>
+        <div class="check">✓</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="cta">gpsimulador.com</div>
+    <div class="small">The same model now reads club football, every day.</div>
+  </div>
+</body>
+</html>

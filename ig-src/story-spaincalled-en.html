@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(158deg, #06090B 0%, #0B1714 46%, #0A5C3C 138%); color: #EAF1F2;
+  padding: 150px 74px; position: relative; overflow: hidden; }
+.glow { position:absolute; width:900px; height:900px; border-radius:50%; top:-260px; right:-320px;
+  background: radial-gradient(circle, rgba(31,227,164,.20), transparent 62%); }
+.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 60px; position:relative; }
+.badge { width: 50px; height: 50px; border-radius: 14px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 28px; border: 1px solid rgba(31,227,164,.4); }
+.bname { font-size: 27px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.55); color:#1FE3A4; font-weight: 800; font-size: 19px; padding: 11px 22px; border-radius: 99px; letter-spacing: 2px; }
+.kicker { font-size: 24px; font-weight: 800; letter-spacing: 3px; color:#1FE3A4; text-transform:uppercase; margin-bottom: 22px; position:relative; }
+h1 { font-size: 112px; font-weight: 800; letter-spacing: -3.5px; line-height: .96; margin-bottom: 30px; color:#fff; position:relative; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size: 33px; color:#C7D4D8; font-weight: 600; line-height: 1.4; margin-bottom: 66px; max-width: 900px; position:relative; }
+.receipt { background: linear-gradient(160deg, #111A1E, #0C1316); border: 1px solid rgba(31,227,164,.22); border-radius: 30px; padding: 20px 46px; position:relative; box-shadow: 0 30px 80px -40px rgba(31,227,164,.35); }
+.row { display:flex; align-items:center; gap: 26px; padding: 40px 0; }
+.row + .row { border-top: 1px dashed rgba(255,255,255,.12); }
+.rlab { width: 240px; font-size: 21px; font-weight: 800; letter-spacing: 1.6px; color:#5F747B; text-transform:uppercase; }
+.rmain { flex:1; font-size: 44px; font-weight: 800; color:#fff; letter-spacing:-.5px; }
+.rmain .flag { font-size: 46px; margin-right: 8px; }
+.rmain .win { color:#1FE3A4; }
+.check { width:64px; height:64px; border-radius:50%; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); display:flex; align-items:center; justify-content:center; font-size:36px; color:#1FE3A4; }
+.punch { font-size: 37px; font-weight: 700; color:#EAF1F2; line-height: 1.4; margin: 66px 0 0; position:relative; }
+.punch b { color:#1FE3A4; }
+.foot { position:absolute; bottom: 120px; left: 74px; right: 74px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:30px; font-weight:800; padding:22px 44px; border-radius:99px; }
+.foot .small { font-size:22px; color:#9DB0B5; font-weight:600; text-align:right; line-height:1.4; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP World Cup Simulator</div><div class="tag">CALLED IT</div></div>
+  <div class="kicker">We said it before a ball was kicked</div>
+  <h1>Spain would <span class="g">win it all.</span></h1>
+  <div class="sub">And they did. Before the World Cup started, our model's #1 pick to lift the trophy was Spain — the whole way through.</div>
+  <div class="receipt">
+    <div class="row">
+      <div class="rlab">Before kickoff</div>
+      <div class="rmain"><span class="flag">🇪🇸</span>Spain — our #1 to win</div>
+      <div class="check">✓</div>
+    </div>
+    <div class="row">
+      <div class="rlab">July 19 · Final</div>
+      <div class="rmain"><span class="flag">🇪🇸</span><span class="win">Spain — Champions</span> 🏆</div>
+      <div class="check">✓</div>
+    </div>
+  </div>
+  <div class="punch">The model saw the champion coming.<br><b>Imagine what it sees in your league.</b></div>
+  <div class="foot">
+    <div class="cta">gpsimulador.com</div>
+    <div class="small">Now live:<br>club football, every day</div>
+  </div>
+</body>
+</html>

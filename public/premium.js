@@ -25,6 +25,7 @@
       sup_sent: 'Mensaje enviado — te respondemos a tu email. También podés escribirnos a soporte@gpsimulador.com.',
       sup_err: 'No se pudo enviar, probá de nuevo.', sup_short: 'Contanos un poco más para poder ayudarte.', sup_rate: 'Demasiados mensajes seguidos; probá en un rato.',
       lock_sharp_t: 'Disponible en el plan Sharp', lock_sharp_s: 'Value y arbitraje en tiempo real son parte del plan Sharp.',
+      lock_bets_s: 'Mi cartera —tu P&L, ROI y CLV personal— es parte del plan Sharp.',
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
       onb_1t: 'Tu pick del día', onb_1s: 'Cada día publicamos las jugadas del modelo — gratis durante el Mundial. La de hoy ya te espera en el board.',
       onb_2t: 'Seguí a tu selección', onb_2s: 'Marcá tus equipos con la estrella para verlos primero y no perderte sus partidos.',
@@ -33,6 +34,7 @@
       adm_ana: 'ACTIVIDAD · RETENCIÓN', adm_ana_today: 'Activos hoy', adm_ana_d1: 'Retención D1', adm_ana_d7: 'Retención D7', adm_ana_hab: 'Vuelven a diario (4+ de 7 días)', adm_ana_since: 'Midiendo desde', adm_ana_nodata: 'Acumulando datos — las métricas maduran con los días.',
       lock_more_picks: '{n} picks más hoy', lock_more_picks_s: 'Disponibles en los planes Pro y Sharp.',
       lock_delay: 'La pick gratis del día se desbloquea 60 minutos antes del partido.',
+      lock_picks_t: 'Las picks de hoy son para suscriptores', lock_picks_s: 'Suscribite para ver las picks del día del modelo. No es que no haya picks — están en Pro y Sharp.',
       lock_cta: 'Ver planes',
       pf_title: 'Mi perfil', pf_intro: 'Completá tu perfil para recibir novedades en tu idioma y contenido de tu país.', pf_name: 'Nombre', pf_country: 'País', pf_country_ph: 'Seleccioná tu país', pf_lang: 'Idioma', pf_other: 'Otro', pf_save: 'Guardar', pf_saving: 'Guardando…', pf_saved: 'Perfil guardado', pf_neterr: 'Error de red',
       search: 'Buscar equipos, partidos, mercados…', matches: 'partidos', live: 'en vivo', signals: 'señales hoy',
@@ -318,6 +320,7 @@
       sup_sent: 'Message sent — we’ll reply to your email. You can also write to soporte@gpsimulador.com.',
       sup_err: 'Couldn’t send, try again.', sup_short: 'Tell us a bit more so we can help.', sup_rate: 'Too many messages; try again later.',
       lock_sharp_t: 'Available on the Sharp plan', lock_sharp_s: 'Real-time value and arbitrage are part of the Sharp plan.',
+      lock_bets_s: 'My bets —your personal P&L, ROI and CLV— is part of the Sharp plan.',
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
       onb_1t: 'Your pick of the day', onb_1s: "Every day we publish the model's plays — free during the World Cup. Today's is already waiting on the board.",
       onb_2t: 'Follow your team', onb_2s: 'Star your teams to see them first and never miss their matches.',
@@ -326,6 +329,7 @@
       adm_ana: 'ACTIVITY · RETENTION', adm_ana_today: 'Active today', adm_ana_d1: 'D1 retention', adm_ana_d7: 'D7 retention', adm_ana_hab: 'Daily returners (4+ of 7 days)', adm_ana_since: 'Tracking since', adm_ana_nodata: 'Accumulating data — metrics mature over the days.',
       lock_more_picks: '{n} more picks today', lock_more_picks_s: 'Available on the Pro and Sharp plans.',
       lock_delay: 'The free daily pick unlocks 60 minutes before kickoff.',
+      lock_picks_t: "Today's picks are for subscribers", lock_picks_s: "Subscribe to see the model's daily picks. It's not that there are none — they're on Pro and Sharp.",
       lock_cta: 'See plans',
       pf_title: 'My profile', pf_intro: 'Complete your profile to get updates in your language and content for your country.', pf_name: 'Name', pf_country: 'Country', pf_country_ph: 'Select your country', pf_lang: 'Language', pf_other: 'Other', pf_save: 'Save', pf_saving: 'Saving…', pf_saved: 'Profile saved', pf_neterr: 'Network error',
       search: 'Search teams, matches, markets…', matches: 'matches', live: 'live', signals: 'signals today',
@@ -789,7 +793,7 @@
     var cdTxt = ms > 0
       ? t('fb_close', { t: Math.floor(ms / 86400000) + 'd ' + Math.floor(ms % 86400000 / 3600000) + 'h' })
       : t('fb_sub');
-    return '<a class="gx-fbanner" href="/founder">' +
+    return '<a class="gx-fbanner" href="/plans">' +
       '<span class="gx-fbanner-pulse"></span>' +
       '<b>' + esc(t('fb_lead')) + '</b>' +
       '<span class="gx-fbanner-sub">' + esc(t('fb_sub')) + '</span>' +
@@ -1262,7 +1266,7 @@
     // teaser de upgrade (gating por plan): "N picks más hoy — en Pro/Sharp" + nota de delay del plan Free
     var lockTeaser = '';
     if (meta.locked_count > 0) {
-      lockTeaser = '<div class="gx-pick-lock">' + ic('lock') + '<div><b>' + esc(t('lock_more_picks', { n: meta.locked_count })) + '</b><span class="gx-dim">' + esc(t('lock_more_picks_s')) + '</span></div><a class="gx-btn gx-lock-cta" href="/founder">' + esc(t('lock_cta')) + '</a></div>';
+      lockTeaser = '<div class="gx-pick-lock">' + ic('lock') + '<div><b>' + esc(t('lock_more_picks', { n: meta.locked_count })) + '</b><span class="gx-dim">' + esc(t('lock_more_picks_s')) + '</span></div><a class="gx-btn gx-lock-cta" href="/plans">' + esc(t('lock_cta')) + '</a></div>';
     }
     if (meta.plan_delayed) lockTeaser += '<div class="gx-pick-recap">' + ic('clock') + esc(t('lock_delay')) + '</div>';
     if (!picks.length) {
@@ -1276,6 +1280,13 @@
       // countdown (reversible por env GP_PICKS_COUNTDOWN_ENABLED): el vacío da una CITA, no un "vuelve pronto"
       var ko = '';
       if (meta.next_kickoff) { try { var hh = new Date(meta.next_kickoff).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); ko = '<span class="gx-pick-nextko">' + ic('clock') + esc(t('pf_next_ko', { time: hh })) + '</span>'; } catch (e) {} }
+      // CANDADO, no "sin picks": si HAY picks hoy pero el plan no las ve (locked_count>0, p.ej. Free sin su pick
+      // liberada aún) → panel de upgrade CLARO ("no es que no haya picks, es que hay que suscribirse"), jamás un
+      // vacío que parezca "no hay señal / error".
+      if (meta.locked_count > 0) {
+        bd.innerHTML = recap + '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_picks_t')) + '</b><span class="gx-dim">' + esc(meta.plan_delayed ? t('lock_delay') : t('lock_picks_s')) + '</span><a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a>' + ko + '</div>';
+        return;
+      }
       bd.innerHTML = recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
       return;
     }
@@ -2155,7 +2166,8 @@
   function mbStatTile(label, val, cls) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono ' + (cls || '') + '">' + val + '</b></div>'; }
   function renderBets() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    if (S.me && !S.me.my_bets) { showView('board'); return; }
+    // Mi cartera = plan Sharp. Si el plan no la tiene → CANDADO con "Ver planes" (no redirigir en silencio).
+    if (S.me && !S.me.my_bets) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_bets')) + lockPanel('lock_sharp_t', 'lock_bets_s') + '</div></div>'; return; }
     if (S.myBets === undefined) {
       S.myBets = null;
       fetch('/api/me/bets', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.myBets = j || { bets: [], stats: null }; if (S.view === 'bets') renderBets(); });
@@ -2468,16 +2480,16 @@
     return (as === 'free' || as === 'pro' || as === 'sharp') ? ((sep || '?') + 'asplan=' + as) : '';
   }
   // panel candado (Value/Arbitraje para no-Sharp) — mismo lenguaje del lock de la landing
-  function lockPanel() {
-    return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_sharp_t')) + '</b>' +
-      '<span class="gx-dim">' + esc(t('lock_sharp_s')) + '</span>' +
-      '<a class="gx-btn gx-lock-cta" href="/founder">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
+  function lockPanel(titleK, subK) {
+    return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t(titleK || 'lock_sharp_t')) + '</b>' +
+      '<span class="gx-dim">' + esc(t(subK || 'lock_sharp_s')) + '</span>' +
+      '<a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
   }
   // candado Pro (proyección de goles para el plan Free)
   function lockPanelPro() {
     return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_pro_t')) + '</b>' +
       '<span class="gx-dim">' + esc(t('lock_pro_s')) + '</span>' +
-      '<a class="gx-btn gx-lock-cta" href="/founder">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
+      '<a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
   }
   function renderSub() {
     var mv = $('#gx-matchview'); if (!mv) return;
@@ -2492,7 +2504,7 @@
       (S.me && S.me.plan_since ? '<div class="gx-sub-row"><span class="gx-label">' + esc(t('sub_since')) + '</span><b>' + esc(fmtDate(S.me.plan_since)) + '</b></div>' : '') +
       (!enforced ? '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('sub_free_note')) + '</p>' : '') +
       '<div class="gx-sub-actions">' +
-        (plan !== 'sharp' ? '<a class="gx-btn gx-btn-ac" href="/founder">' + ic('crown') + '<span>' + esc(plan === 'pro' ? t('sub_up_sharp') : t('sub_upgrade')) + '</span></a>' : '') +
+        (plan !== 'sharp' ? '<a class="gx-btn gx-btn-ac" href="/plans">' + ic('crown') + '<span>' + esc(plan === 'pro' ? t('sub_up_sharp') : t('sub_upgrade')) + '</span></a>' : '') +
         (plan !== 'free' && status !== 'cancelled' ? '<button class="gx-btn" id="gx-sub-cancel">' + ic('x') + '<span>' + esc(t('sub_cancel')) + '</span></button>' : '') +
       '</div>' +
       (status === 'cancelled' ? '<p class="gx-mod-note gx-dim" style="margin-top:10px">' + ic('info-circle') + ' ' + esc(t('sub_cancelled_note')) + '</p>' : '');

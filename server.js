@@ -1275,7 +1275,7 @@ GP Simulador
 // seq: 1 = apertura · 2 = los números (prueba) · 3 = última llamada. ctx.spotsLeft viene del contador Whop.
 function founderEmail(seq, lang, ctx = {}) {
   const en = lang === 'en';
-  const url = 'https://gpsimulador.com/founder';
+  const url = 'https://gpsimulador.com/plans';
   const tr = dailyPicksTrackRecord().overall || {};
   const hit = tr.hit_rate != null ? Math.round(tr.hit_rate * 100) : null;
   const roi = tr.roi_pct != null ? tr.roi_pct : null;
@@ -9166,7 +9166,9 @@ const server = http.createServer(async (req, res) => {
     // FOUNDER PASS (whitelist/planes) — superficie de trabajo PRE-lanzamiento, patrón /x pre-fusión:
     // solo la ve el ADMIN con sesión (cookie); para todo el resto es 404 (ni existe). Al lanzar:
     // GP_FOUNDER_PUBLIC_ENABLED=true la abre al público (+ checkout Whop cuando se cablee).
-    if (p === '/founder' || p === '/founder/') {
+    // Fase founder CERRADA (20-jul): la página de precios vive en /plans. /founder redirige (back-compat).
+    if (p === '/founder' || p === '/founder/') { res.writeHead(302, { Location: '/plans' + (url.search || ''), 'Cache-Control': 'no-store' }); return res.end(); }
+    if (p === '/plans' || p === '/plans/') {
       const founderPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim());
       const sessEmail = sessionEmailFromReq(req);
       if (!founderPublic && (!sessEmail || !isAdmin(sessEmail))) { json(res, 404, { error: 'No encontrado' }); return; }
@@ -9203,7 +9205,7 @@ const server = http.createServer(async (req, res) => {
           const r = await fetch('https://api.whop.com/api/v2/checkout_sessions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${process.env.WHOP_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan_id: planId, redirect_url: 'https://gpsimulador.com/founder/activo' }),
+            body: JSON.stringify({ plan_id: planId, redirect_url: 'https://gpsimulador.com/plans/activo' }),
             signal: AbortSignal.timeout(6000),
           });
           if (r.ok) { const j = await r.json(); if (j && j.purchase_url) dest = j.purchase_url; }
@@ -9215,10 +9217,11 @@ const server = http.createServer(async (req, res) => {
     // RETORNO POST-COMPRA: Whop redirige acá al completar el pago. Con sesión → "Mi suscripción" (el plan
     // Founder ya está activo por webhook); sin sesión (compró anónimo o en otro navegador) → mensaje claro
     // de entrar con el email de la compra. Pausa breve "activando" absorbe la latencia del webhook.
-    if (p === '/founder/activo' || p === '/founder/activo/') {
+    if (p === '/founder/activo' || p === '/founder/activo/') { res.writeHead(302, { Location: '/plans/activo', 'Cache-Control': 'no-store' }); return res.end(); }
+    if (p === '/plans/activo' || p === '/plans/activo/') {
       const en = /^en/i.test(String(req.headers['accept-language'] || ''));
       const sessEmail = sessionEmailFromReq(req);
-      const base = `<!DOCTYPE html><html lang="${en ? 'en' : 'es'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>Founder Pass · GP Simulador</title><style>
+      const base = `<!DOCTYPE html><html lang="${en ? 'en' : 'es'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>GP Simulador</title><style>
         html,body{margin:0;background:#06090B;color:#EAF1F2;font-family:-apple-system,'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
         .w{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
         .c{max-width:420px}.ok{width:64px;height:64px;border-radius:50%;background:rgba(31,227,164,.12);border:1px solid rgba(31,227,164,.45);display:grid;place-items:center;margin:0 auto 20px;font-size:28px;color:#1FE3A4}

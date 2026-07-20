@@ -3870,12 +3870,15 @@ async function updateDailyPicksLineIntel() {
 }
 
 // Track record (solo admin): acierto y rendimiento por familia sobre picks liquidadas. NO se expone al usuario.
-function dailyPicksTrackRecord() {
+function dailyPicksTrackRecord(list) {
   // Las familias EXPERIMENTO (decisión Alexis 8-jul) se liquidan y se observan, pero NO cuentan en el
   // track record oficial: el modelo de jugador asume titularidad para todos → edges inflados, en revisión.
+  // `list` (opcional): permite computar el record sobre un set combinado (Mundial + clubes públicas =
+  // CONTINUACIÓN post-Mundial 20-jul). Sin arg → db.dailyPicks (comportamiento original intacto).
+  const picks = list || db.dailyPicks;
   const fam = {}, exp = {};
   let n = 0, wins = 0, stake = 0, ret = 0;
-  for (const p of db.dailyPicks) {
+  for (const p of picks) {
     if (p.status !== 'SETTLED' || p.result_code === 'PUSH' || p.result_code === 'VOID' || p.result_code === 'SUPERSEDED') continue;
     const isExp = EXPERIMENT_FAMS.includes(p.family);
     const f = (isExp ? exp : fam)[p.family] || ((isExp ? exp : fam)[p.family] = { n: 0, w: 0, stake: 0, ret: 0 });
@@ -3889,8 +3892,17 @@ function dailyPicksTrackRecord() {
     overall: { settled: n, wins, hit_rate: n ? +(wins / n).toFixed(4) : null, roi_pct: stake ? +(((ret - stake) / stake) * 100).toFixed(1) : null, pnl_u: +(ret - stake).toFixed(2) },
     by_family: Object.fromEntries(Object.entries(fam).map(([k, v]) => [k, fmt(v)])),
     experiment: Object.fromEntries(Object.entries(exp).map(([k, v]) => [k, fmt(v)])),
-    active: db.dailyPicks.filter(p => p.status === 'ACTIVE').length,
+    active: picks.filter(p => p.status === 'ACTIVE').length,
   };
+}
+// Picks de clubes PÚBLICAS (post-Mundial 20-jul): las que se vieron en el feed = CONTINUACIÓN del Mundial.
+// regime !== 'monitor' = excluye el edge de goles y los props privados (esos viven solo en el monitoreo admin).
+// Mismo shape que db.dailyPicks (event.home_team_id = tm_ → flag() resuelve el escudo en el mismo cuadro).
+function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
+  return (db.clubDailyPicks || [])
+    .filter(x => x.regime !== 'monitor')
+    .filter(x => !hideProps || PROP_FAMS.indexOf(x.family) < 0)
+    .filter(x => isAdmin || EXPERIMENT_FAMS.indexOf(x.family) < 0);
 }
 
 // ===== CAPA DE OBSERVACIÓN de jugadores (6-jul, SHADOW) ======================================================
@@ -5006,6 +5018,9 @@ function featFor(envName, u) {
   return /^(1|true|yes|on)$/i.test(v);
 }
 function myBetsOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_MY_BETS_ENABLED || '').trim()); }
+// Mi cartera (F1) = EXCLUSIVA del plan Sharp (post-Mundial 20-jul): flag encendido + plan efectivo 'sharp'.
+// Admin y fase pre-enforcement resuelven a 'sharp' (effectivePlan) → sin cambios hasta aplicar el gating.
+function myBetsSharp(u) { return myBetsOn() && featFor('GP_MY_BETS_ENABLED', u) && effectivePlan(u && u.email) === 'sharp'; }
 function myBetsFindPick(pickId) {
   return (db.dailyPicks || []).find(x => x.pick_id === pickId) || (db.clubDailyPicks || []).find(x => x.pick_id === pickId) || null;
 }
@@ -6511,7 +6526,12 @@ const server = http.createServer(async (req, res) => {
       // SUPERSEDED no viaja (reemplazos internos por coherencia, no picks del usuario).
       if (p === '/api/beta/picks-record' && req.method === 'GET') {
         const hideProps = !propsPicksPublic() && !(betaUser && betaUser.isAdmin);
-        const settled = (db.dailyPicks || [])
+        // CONTINUACIÓN post-Mundial (20-jul): las picks de clubes PÚBLICAS se suman a las del Mundial como UN
+        // solo track record / historial (mismo cuadro, escudos vía tm_). El monitoreo privado (regime:monitor)
+        // no entra — vive solo en la sección admin de clubes.
+        const clubPub = clubPublicPicks({ isAdmin: !!(betaUser && betaUser.isAdmin), hideProps });
+        const merged = (db.dailyPicks || []).concat(clubPub);
+        const settled = merged
           .filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
           .filter(x => !hideProps || PROP_FAMS.indexOf(x.family) < 0)
           .filter(x => (betaUser && betaUser.isAdmin) || EXPERIMENT_FAMS.indexOf(x.family) < 0)
@@ -6537,7 +6557,7 @@ const server = http.createServer(async (req, res) => {
           } : null,
           calibration: (q.calibration || []).filter(b => b.n >= 5),
         };
-        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(), quant: quantPublic, picks: settled, generated_at: new Date().toISOString() });
+        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(merged), quant: quantPublic, picks: settled, generated_at: new Date().toISOString() });
       }
       // xG OBSERVADO del partido (TheStatsAPI) — SOLO partidos TERMINADOS, cache permanente en db.json
       // (1 fetch por partido; el plan es 12 req/min → jamás en vivo ni pre-partido). Kill switch: GP_XG_PANEL_ENABLED=false.
@@ -7047,7 +7067,7 @@ const server = http.createServer(async (req, res) => {
         // aparte): solo ADMIN + flag ven las superficies de clubes; para todos los demás la plataforma es
         // byte-idéntica hasta la fusión post-Mundial.
         clubs_shadow: !!(clubsShadowFlagOn() && (u.isAdmin || clubsPublicOn())), // FUSIÓN: público con GP_CLUBS_PUBLIC_ENABLED
-        my_bets: featFor('GP_MY_BETS_ENABLED', u),     // F1 Mi cartera ("admin" = solo admins; "true" = todos)
+        my_bets: myBetsSharp(u),                       // F1 Mi cartera — EXCLUSIVA Sharp (post-Mundial)
         my_books: featFor('GP_MY_BOOKS_ENABLED', u),   // F2 Mis casas
         my_books_list: featFor('GP_MY_BOOKS_ENABLED', u) ? ((db.users[u.email] || {}).my_books || []) : undefined,
         watch_price: featFor('GP_WATCH_PRICE_ENABLED', u), // F3 Watch price
@@ -7069,7 +7089,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/me/bets' && (req.method === 'GET' || req.method === 'POST')) {
       if (!myBetsOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
-      if (!featFor('GP_MY_BETS_ENABLED', u)) return json(res, 404, { error: 'No encontrado' }); // modo admin: invisible (incluso anónimo)
+      if (!myBetsSharp(u)) return json(res, 404, { error: 'No encontrado' }); // EXCLUSIVA Sharp (post-Mundial); admin-mode invisible
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
       db.userBets = db.userBets || {};
       const list = db.userBets[u.email] = db.userBets[u.email] || [];
@@ -7159,7 +7179,7 @@ const server = http.createServer(async (req, res) => {
         db.users[u.email].brief_email = !!b.email_opt_in;
         save();
       }
-      const bets = myBetsOn() ? (db.userBets && db.userBets[u.email]) || [] : null;
+      const bets = myBetsSharp(u) ? (db.userBets && db.userBets[u.email]) || [] : null;
       return json(res, 200, {
         enabled: true, brief: buildDailyBrief(),
         email_opt_in: !!db.users[u.email].brief_email,
@@ -8354,7 +8374,11 @@ const server = http.createServer(async (req, res) => {
       const keyOk = xk0 && url.searchParams.get('key') === xk0;
       const u = getUser(req); if (!keyOk && (!u || !u.isAdmin)) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await evaluateDailyPicks().catch(e => ({ error: e.message })); const s = settleDailyPicks(); return json(res, 200, { evaluate: r, settled: s }); }
-      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), picks: db.dailyPicks.slice(-200),
+      // CONTINUACIÓN post-Mundial: el admin ve la MISMA tabla unificada que el público (Mundial + clubes
+      // públicas, con escudos). El bloque `clubs` de abajo sigue siendo el monitoreo privado congelado (todas
+      // las de clubes, incl. regime:monitor) como referencia admin-only.
+      const adminMerged = (db.dailyPicks || []).concat(clubPublicPicks({ isAdmin: true }));
+      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(adminMerged), quant: dailyPicksQuant(), picks: adminMerged.slice(-400),
         // CLUBES (monitoreo privado, 15-jul): track record + picks de clubes SOLO en esta vista admin —
         // jamás en el rendimiento público.
         clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) } });

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Founder Pass · GP Simulador</title>
+<title>Planes · GP Simulador</title>
 <link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -22,8 +22,7 @@ body { background:
 .nav { display:flex; align-items:center; gap:12px; padding:22px 0; }
 .logo { display:flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:700; font-size:17px; }
 .logo i { width:34px; height:34px; border-radius:10px; background:var(--acs); border:1px solid var(--acl); display:grid; place-items:center; font-style:normal; color:var(--ac); font-size:16px; }
-.preview-chip { margin-left:auto; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); border:1px solid rgba(255,193,94,.3); background:rgba(255,193,94,.07); padding:6px 12px; border-radius:99px; white-space:nowrap; }
-.lang { display:flex; border:1px solid var(--line2); border-radius:99px; overflow:hidden; }
+.lang { margin-left:auto; display:flex; border:1px solid var(--line2); border-radius:99px; overflow:hidden; }
 .lang button { background:none; border:0; color:var(--tx3); font-family:inherit; font-weight:700; font-size:12px; padding:7px 13px; cursor:pointer; }
 .lang button.on { background:var(--acs); color:var(--ac); }
 .hero { text-align:center; padding:44px 0 14px; }
@@ -32,9 +31,6 @@ body { background:
 h1 { font-family:var(--disp); font-size:clamp(34px,5.4vw,54px); font-weight:700; letter-spacing:-.03em; line-height:1.06; text-wrap:balance; }
 h1 b { color:var(--ac); }
 .sub { color:var(--tx2); font-size:16.5px; max-width:560px; margin:16px auto 0; line-height:1.55; }
-.counter { display:inline-flex; align-items:center; gap:10px; margin-top:22px; border:1px solid rgba(255,193,94,.28); background:rgba(255,193,94,.06); padding:10px 18px; border-radius:99px; font-size:13.5px; font-weight:600; color:var(--tx2); }
-.counter b { font-family:var(--disp); color:var(--amber); font-size:16px; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.spots-note { margin-top:10px; font-size:12px; color:var(--tx3); }
 .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:44px; align-items:stretch; }
 @media (max-width:860px){ .plans { grid-template-columns:1fr; max-width:430px; margin-left:auto; margin-right:auto; } }
 .plan { display:flex; flex-direction:column; background:linear-gradient(165deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:18px; padding:26px 24px; position:relative; }
@@ -45,8 +41,6 @@ h1 b { color:var(--ac); }
 .price { display:flex; align-items:baseline; gap:8px; margin-top:14px; }
 .price .n { font-family:var(--disp); font-weight:700; font-size:40px; letter-spacing:-.02em; }
 .price .per { color:var(--tx3); font-size:13px; }
-.price .was { color:var(--tx3); font-size:16px; text-decoration:line-through; font-weight:600; }
-.founder-note { margin-top:6px; font-size:12px; font-weight:700; color:var(--amber); }
 .annual { margin-top:10px; }
 .annual a, .annual span.na { display:flex; align-items:center; justify-content:center; gap:8px; border:1px dashed rgba(255,193,94,.45); background:rgba(255,193,94,.07); border-radius:10px; padding:9px 12px; font-size:12.5px; font-weight:700; color:var(--amber) !important; text-decoration:none; transition:background .15s; }
 .annual a:hover { background:rgba(255,193,94,.14); }
@@ -54,11 +48,9 @@ h1 b { color:var(--ac); }
 .feats { list-style:none; margin-top:20px; display:flex; flex-direction:column; gap:11px; flex:1; }
 .feats li { display:flex; gap:10px; font-size:13.5px; color:var(--tx2); line-height:1.45; }
 .feats li.on { color:var(--tx); }
-.feats li.soon b::after { content:''; }
 .feats i { flex:none; width:17px; height:17px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-size:10px; margin-top:1px; }
 .feats li.on i { background:var(--acs); color:var(--ac); border:1px solid var(--acl); }
 .feats li.off i { background:rgba(255,255,255,.05); color:var(--tx3); border:1px solid var(--line); }
-.soon-tag { display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--amber); border:1px solid rgba(255,193,94,.3); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:1px; }
 .pcta { margin-top:22px; width:100%; border:0; border-radius:12px; font-family:inherit; font-weight:800; font-size:14.5px; padding:14px; cursor:not-allowed; display:block; text-align:center; text-decoration:none; box-sizing:border-box; }
 .plan .pcta { background:rgba(255,255,255,.06); color:var(--tx3); border:1px solid var(--line2); }
 .plan.hl .pcta { background:var(--ac); color:#06231A; opacity:.55; }
@@ -83,7 +75,6 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
 <div class="wrap">
   <nav class="nav">
     <div class="logo"><i><svg viewBox="0 0 34 34" width="26" height="26" aria-hidden="true"><defs><linearGradient id="gxgf" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxgf)"/></svg></i> GP Simulador</div>
-    <span class="preview-chip" data-k="chip"></span>
     <div class="lang" id="lang"><button data-l="es">ES</button><button data-l="en">EN</button></div>
   </nav>
 
@@ -91,8 +82,6 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     <div class="eyebrow"><i></i><span data-k="eye"></span></div>
     <h1 data-k="h1"></h1>
     <p class="sub" data-k="sub"></p>
-    <div class="counter">⏳ <span data-k="cd_pre"></span> <b id="cd">…</b></div>
-    <div class="spots-note"><span data-k="counter_pre"></span> <span id="spots-left">100 / 100</span> <span data-k="counter_post"></span></div>
     <p style="margin:16px 0 0"><a href="/calidad" data-k="quality_link" style="color:var(--ac);font-weight:700;font-size:14px;text-decoration:none"></a></p>
   </header>
 
@@ -113,19 +102,17 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
 (function () {
   var D = {
     es: {
-      chip: 'Founder Pass abierto',
-      eye: 'Founder Pass · solo los primeros 100',
-      h1: 'La ventaja completa, a <b>precio de fundador</b> para siempre.',
-      sub: 'Los primeros 100 miembros aseguran su precio de por vida antes de la apertura pública. Después, se acabó.',
-      cd_pre: 'El Founder Pass cierra con la final:', counter_pre: 'Quedan', counter_post: 'cupos founder', quality_link: 'Mirá la calidad del sistema, medida como un fondo →',
+      eye: 'Planes · el sistema, todo el año',
+      h1: 'La ventaja completa del modelo, <b>todo el año</b>.',
+      sub: 'El mismo sistema que siguió el Mundial en público, ahora sobre fútbol de clubes todos los días. Elegí tu plan y cancelá cuando quieras.',
+      quality_link: 'Mirá la calidad del sistema, medida como un fondo →',
       faq_t: 'Preguntas frecuentes',
       foot_disc: 'Sugerencias educativas basadas en análisis estadístico. No es consejo financiero. Apostá con responsabilidad. 18+.',
       foot_legal: '<a href="/terms" style="color:inherit">Términos y condiciones</a> · <a href="/refunds" style="color:inherit">Política de reembolso</a> · <a href="/privacy" style="color:inherit">Privacidad</a>',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Más popular',
-      mo: '/mes', forever: 'de por vida, primeros 100', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
-      cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_buy: 'Asegurar mi Founder Pass', cta_note: 'El checkout se habilita en el lanzamiento', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras', annual_link: 'anual',
-      soon: 'Próximamente',
+      mo: '/mes', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
+      cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_buy: 'Suscribirme', cta_note: 'Disponible muy pronto', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras',
       f_free: [
         ['on', '1 pick del día (con delay), solo ganador'],
         ['on', 'Probabilidades de cada partido'],
@@ -144,10 +131,11 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['on', 'Alertas por email'],
         ['on', 'Todo lo del plan Free'],
         ['off', 'Picks de córners, tarjetas, goleadores y asistencias'],
-        ['off', 'Value y arbitraje en tiempo real']
+        ['off', 'Mi cartera, value y arbitraje en tiempo real']
       ],
       f_sharp: [
         ['on', '<b>Picks de córners, tarjetas, goleadores y asistencias</b>'],
+        ['on', '<b>Mi cartera</b>: registrá tus apuestas y seguí tu P&L, ROI y CLV personal'],
         ['on', '<b>Value</b>: cuotas mal pagadas detectadas por el modelo'],
         ['on', '<b>Arbitraje y precio atrasado</b>: scanner en tiempo real'],
         ['on', '<b>Perfil táctico de cada cruce</b>: event data remate a remate'],
@@ -157,28 +145,25 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['on', 'Todo lo del plan Pro']
       ],
       faqs: [
-        ['¿Qué es el precio founder?', 'Es un precio especial de lanzamiento que SOLO existe mientras dure el Mundial. Cuando termine el torneo (19 de julio) o se llenen los 100 cupos, lo que pase primero, el Founder Pass se cierra para siempre y los precios pasan a los definitivos: $20 (Pro) y $59 (Sharp). Los primeros 100 pagan $12 y $39 de por vida: mientras tu suscripción siga activa, ese precio no sube nunca, aunque todo lo demás suba.'],
+        ['¿Qué incluye cada plan?', 'Free: 1 pick del día (con delay) más probabilidades, marcadores en vivo y simulador. Pro: todas las picks del día sin delay (ganador y goles), el análisis completo de cada partido, perfiles de jugador, proyección de goles y calculadora de stake. Sharp: todo lo de Pro más córners, tarjetas, goleadores y asistencias, tu cartera personal, value, arbitraje, perfil táctico y acceso anticipado a nuevos mercados y deportes.'],
         ['¿Puedo cancelar cuando quiera?', 'Sí. Cancelás en un clic desde tu perfil y no se te cobra el mes siguiente. Sin permanencia ni letra chica.'],
-        ['Si durante el Mundial todo es gratis, ¿qué compro hoy?', 'Dos cosas. Primero: tu PRECIO congelado de por vida: cuando el Mundial termine y los planes se activen, vos ya pagás $12 o $39 mientras el resto paga $20 o $59. Segundo: tu CUPO: solo hay 100 y no vuelven. Comprás hoy el acceso barato a todo lo que viene, no el acceso de esta semana.'],
+        ['¿Qué cubre la plataforma?', 'El mismo sistema del Mundial, ahora sobre fútbol de clubes todo el año. A medida que cada liga entra en temporada, el modelo la sigue: cualquier liga que las casas coticen, en cualquier parte del mundo, con picks diarias verificadas y el análisis completo de cada partido.'],
         ['¿Hay reembolso?', 'Sí: si no te convence, tenés 24 horas desde el primer pago para pedir el reembolso completo, sin preguntas.'],
-        ['¿Qué pasa después del Mundial?', 'El Mundial fue la prueba pública del sistema, con el historial verificado a la vista. Lo que viene después es el producto completo: fútbol de clubes TODO el año (Champions, Premier, LaLiga, Serie A, Bundesliga y más), los mismos motores alimentados con muchas más ligas, picks diarias verificadas, córners, tarjetas, goleadores y asistencias, y nuevos deportes muy pronto. Tu Founder Pass cubre todo eso al precio congelado: pagás $12 o $39 para siempre por lo que los que lleguen tarde pagarán $20 o $59, o más.'],
         ['¿Esto garantiza ganancias?', 'No. Publicamos análisis y jugadas verificadas con transparencia total: el historial es público, con aciertos y errores. No es consejo financiero.']
       ]
     },
     en: {
-      chip: 'Founder Pass open',
-      eye: 'Founder Pass · first 100 only',
-      h1: 'The full edge, at a <b>founder price</b> forever.',
-      sub: 'The first 100 members lock their lifetime price before the public launch. Then it’s gone.',
-      cd_pre: 'The Founder Pass closes with the final:', counter_pre: '', counter_post: 'founder spots left', quality_link: 'See the system quality, measured like a fund →',
+      eye: 'Plans · the system, all year',
+      h1: 'The full model edge, <b>all year</b>.',
+      sub: 'The same system that followed the World Cup in public, now on club football every day. Choose your plan and cancel anytime.',
+      quality_link: 'See the system quality, measured like a fund →',
       faq_t: 'Frequently asked questions',
       foot_disc: 'Educational suggestions based on statistical analysis. Not financial advice. Bet responsibly. 18+.',
       foot_legal: '<a href="/terms" style="color:inherit">Terms & conditions</a> · <a href="/refunds" style="color:inherit">Refund policy</a> · <a href="/privacy" style="color:inherit">Privacy</a>',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Most popular',
-      mo: '/mo', forever: 'for life, first 100', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
-      cta_free: 'Your current plan', cta: 'Coming soon', cta_buy: 'Lock my Founder Pass', cta_note: 'Checkout opens at launch', cta_note_live: 'Secure payment via Whop · cancel anytime', annual_link: 'annual',
-      soon: 'Coming soon',
+      mo: '/mo', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
+      cta_free: 'Your current plan', cta: 'Coming soon', cta_buy: 'Subscribe', cta_note: 'Available soon', cta_note_live: 'Secure payment via Whop · cancel anytime',
       f_free: [
         ['on', '1 pick a day (delayed), winner only'],
         ['on', 'Probabilities for every match'],
@@ -197,10 +182,11 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['on', 'Email alerts'],
         ['on', 'Everything in Free'],
         ['off', 'Corners, cards, goalscorers & assists picks'],
-        ['off', 'Real-time value & arbitrage']
+        ['off', 'My bets, value & arbitrage in real time']
       ],
       f_sharp: [
         ['on', '<b>Corners, cards, goalscorers & assists picks</b>'],
+        ['on', '<b>My bets</b>: log your wagers and track your P&L, ROI and personal CLV'],
         ['on', '<b>Value</b>: mispriced odds caught by the model'],
         ['on', '<b>Arbitrage & stale prices</b>: real-time scanner'],
         ['on', '<b>Tactical profile of every matchup</b>: shot-by-shot event data'],
@@ -210,11 +196,10 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['on', 'Everything in Pro']
       ],
       faqs: [
-        ['What is the founder price?', 'A special launch price that ONLY exists while the World Cup lasts. When the tournament ends (July 19) or the 100 spots fill, whichever comes first, the Founder Pass closes forever and prices move to the permanent ones: $20 (Pro) and $59 (Sharp). The first 100 pay $12 and $39 for life: as long as your subscription stays active, that price never goes up, even when everything else does.'],
+        ['What does each plan include?', 'Free: 1 pick a day (delayed) plus probabilities, live scores and the simulator. Pro: all daily picks with no delay (winner & goals), full match analysis, player profiles, goal projection and the stake calculator. Sharp: everything in Pro plus corners, cards, goalscorers & assists, your personal bet tracker, value, arbitrage, tactical profiles and early access to new markets and sports.'],
         ['Can I cancel anytime?', 'Yes. One click from your profile and you won’t be charged the next month. No lock-in, no fine print.'],
-        ['If everything is free during the World Cup, what am I buying today?', 'Two things. First: your PRICE, frozen for life: when the World Cup ends and plans activate, you pay $12 or $39 while everyone else pays $20 or $59. Second: your SPOT: there are only 100 and they do not come back. You are buying cheap access to everything that comes next, not access to this week.'],
+        ['What does the platform cover?', 'The same World Cup system, now on club football all year. As each league comes into season the model follows it: whatever league the sportsbooks price, anywhere in the world, with daily verified picks and full analysis of every match.'],
         ['Is there a refund?', 'Yes: if it’s not for you, you have 24 hours from your first payment for a full refund, no questions asked.'],
-        ['What happens after the World Cup?', 'The World Cup was the public proof of the system, with the verified record in plain sight. What comes next is the full product: club football ALL year (Champions League, Premier League, LaLiga, Serie A, Bundesliga and more), the same engines fed with far more leagues, daily verified picks, corners, cards, goalscorers and assists, and new sports coming soon. Your Founder Pass covers all of it at the frozen price: you pay $12 or $39 forever for what latecomers will pay $20 or $59, or more.'],
         ['Does this guarantee profits?', 'No. We publish verified analysis and plays with full transparency: the track record is public, hits and misses. Not financial advice.']
       ]
     }
@@ -228,25 +213,6 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     document.querySelectorAll('[data-k]').forEach(function (el) { var v = T(el.getAttribute('data-k')); if (v != null) el.innerHTML = v; });
     // checkout REAL de Whop (los plan IDs los inyecta el server desde env; sin IDs → botón "Muy pronto")
     var W = window.__WHOP || {};
-    // contador REAL de cupos (server lo inyecta desde las membresías de Whop; null → se queda el 100/100)
-    if (W.left != null) { var se = document.getElementById('spots-left'); if (se) se.textContent = W.left + ' / 100'; }
-    // COUNTDOWN al cierre real del Founder Pass (la final, 19-jul 19:00Z): reloj vivo, urgencia honesta.
-    if (!window.__cdT) {
-      var DEADLINE = Date.UTC(2026, 6, 19, 19, 0, 0);
-      var tick = function () {
-        var el = document.getElementById('cd'); if (!el) return;
-        var ms = DEADLINE - Date.now();
-        if (ms <= 0) { el.textContent = lang === 'en' ? 'closed' : 'cerrado'; clearInterval(window.__cdT); return; }
-        var d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000),
-            m = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000);
-        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-        el.textContent = d + 'd ' + pad(h) + ':' + pad(m) + ':' + pad(s);
-      };
-      tick(); window.__cdT = setInterval(tick, 1000);
-    }
-    // checkout vía nuestro endpoint (crea una checkout session de Whop con redirect_url → al pagar,
-    // Whop devuelve al usuario a /founder/activo → su cuenta con el plan activo, sin fricción).
-    // MISMA pestaña a propósito: el flujo compra→retorno debe sentirse un solo viaje.
     var co = function (key) { return '/api/founder/checkout?plan=' + key; };
     var cta = function (mId, key) { return mId ? '<a class="pcta live" href="' + co(key) + '">' + T('cta_buy') + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>'; };
     var note = function (mId) { return '<div class="pcta-note">' + (mId ? T('cta_note_live') : T('cta_note')) + '</div>'; };
@@ -257,13 +223,13 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         feats(T('f_free')) +
         '<button class="pcta" disabled>' + T('cta_free') + '</button><div class="pcta-note">&nbsp;</div></div>' +
       '<div class="plan hl" data-badge="' + T('badge') + '"><div class="pname">' + T('pro_name') + '</div>' +
-        '<div class="price"><span class="n">$12</span><span class="per">' + T('mo') + '</span><span class="was">$19</span></div>' +
-        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.pro_y, 'pro_y', T('annual_pro')) +
+        '<div class="price"><span class="n">$19</span><span class="per">' + T('mo') + '</span></div>' +
+        annual(W.pro_y, 'pro_y', T('annual_pro')) +
         feats(T('f_pro')) +
         cta(W.pro_m, 'pro_m') + note(W.pro_m) + '</div>' +
       '<div class="plan"><div class="pname">' + T('sharp_name') + '</div>' +
-        '<div class="price"><span class="n">$39</span><span class="per">' + T('mo') + '</span><span class="was">$59</span></div>' +
-        '<div class="founder-note">★ ' + T('forever') + '</div>' + annual(W.sharp_y, 'sharp_y', T('annual_sharp')) +
+        '<div class="price"><span class="n">$59</span><span class="per">' + T('mo') + '</span></div>' +
+        annual(W.sharp_y, 'sharp_y', T('annual_sharp')) +
         feats(T('f_sharp')) +
         cta(W.sharp_m, 'sharp_m') + note(W.sharp_m) + '</div>';
     document.getElementById('faqs').innerHTML = T('faqs').map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('');

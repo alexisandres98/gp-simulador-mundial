@@ -777,6 +777,9 @@
   // BANNER FOUNDER (growth): barra superior a todo ancho anunciando el programa. Solo cuando el server
   // enciende founder_public (lanzamiento). Cierra por sesión, pero la env manda. Click → /founder.
   function founderBanner() {
+    return ''; // FASE POST-MUNDIAL (20-jul): programa founder CERRADO → banner retirado. La página de planes
+    // y "Mi suscripción" siguen accesibles (founder_public sigue true = superficie de precios pública).
+    // eslint-disable-next-line no-unreachable
     if (!(S.me && S.me.founder_public)) return '';
     if (S.me.plan === 'sharp' && S.me.plan_founder) return ''; // ya es founder Sharp: no le vendemos
     // Urgencia por DEADLINE real (cierra con la final 19-jul 19:00Z), no por cupos: el contador de cupos

@@ -3895,14 +3895,18 @@ function dailyPicksTrackRecord(list) {
     active: picks.filter(p => p.status === 'ACTIVE').length,
   };
 }
-// Picks de clubes PÚBLICAS (post-Mundial 20-jul): las que se vieron en el feed = CONTINUACIÓN del Mundial.
-// regime !== 'monitor' = excluye el edge de goles y los props privados (esos viven solo en el monitoreo admin).
-// Mismo shape que db.dailyPicks (event.home_team_id = tm_ → flag() resuelve el escudo en el mismo cuadro).
+// Picks de clubes PÚBLICAS (post-Mundial 20-jul): CONTINUACIÓN del Mundial. Reglas (corrección Alexis 20-jul):
+//  (1) regime !== 'monitor' = excluye el edge de goles y los props privados (viven solo en el monitoreo admin).
+//  (2) CUTOFF DE LIQUIDACIÓN: las de clubes VIEJAS ya monitoreadas se QUEDAN en el shadow; solo las que se
+//      LIQUIDEN desde el lanzamiento (settled_at >= CLUBS_CONTINUATION_START) suben al historial público. Las
+//      ACTIVE siguen (cerrarán de este lado). Mismo shape que db.dailyPicks (event.home_team_id = tm_ → escudo).
+const CLUBS_CONTINUATION_START = Date.parse('2026-07-20T00:00:00Z');
 function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
   return (db.clubDailyPicks || [])
     .filter(x => x.regime !== 'monitor')
     .filter(x => !hideProps || PROP_FAMS.indexOf(x.family) < 0)
-    .filter(x => isAdmin || EXPERIMENT_FAMS.indexOf(x.family) < 0);
+    .filter(x => isAdmin || EXPERIMENT_FAMS.indexOf(x.family) < 0)
+    .filter(x => x.status !== 'SETTLED' || Date.parse(x.settled_at || 0) >= CLUBS_CONTINUATION_START);
 }
 
 // ===== CAPA DE OBSERVACIÓN de jugadores (6-jul, SHADOW) ======================================================

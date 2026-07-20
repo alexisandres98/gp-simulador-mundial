@@ -27,6 +27,8 @@
       lock_sharp_t: 'Disponible en el plan Sharp', lock_sharp_s: 'Value y arbitraje en tiempo real son parte del plan Sharp.',
       lock_bets_s: 'Mi cartera —tu P&L, ROI y CLV personal— es parte del plan Sharp.',
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
+      lock_player_s: 'Los perfiles de jugador con radar de scouting y proyecciones son parte de los planes Pro y Sharp.',
+      lock_calc_s: 'La calculadora de stake con gestión de bankroll es parte de los planes Pro y Sharp.',
       onb_1t: 'Tu pick del día', onb_1s: 'Cada día publicamos las jugadas del modelo — gratis durante el Mundial. La de hoy ya te espera en el board.',
       onb_2t: 'Seguí a tu selección', onb_2s: 'Marcá tus equipos con la estrella para verlos primero y no perderte sus partidos.',
       onb_3t: 'Activá las alertas', onb_3s: 'Goles, inicio de partido y novedades directo a tu email.',
@@ -322,6 +324,8 @@
       lock_sharp_t: 'Available on the Sharp plan', lock_sharp_s: 'Real-time value and arbitrage are part of the Sharp plan.',
       lock_bets_s: 'My bets —your personal P&L, ROI and CLV— is part of the Sharp plan.',
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
+      lock_player_s: 'Player profiles with scouting radar and projections are part of the Pro and Sharp plans.',
+      lock_calc_s: 'The stake calculator with bankroll management is part of the Pro and Sharp plans.',
       onb_1t: 'Your pick of the day', onb_1s: "Every day we publish the model's plays — free during the World Cup. Today's is already waiting on the board.",
       onb_2t: 'Follow your team', onb_2s: 'Star your teams to see them first and never miss their matches.',
       onb_3t: 'Turn on alerts', onb_3s: 'Goals, kickoffs and updates straight to your email.',
@@ -985,7 +989,7 @@
     var on = !!(S.me && S.me.isAdmin);
     [].forEach.call(document.querySelectorAll('.gx-admin-only'), function (el) { el.style.display = on ? '' : 'none'; });
     // F1/F2/F4: superficies gateadas por flag del server (off → invisibles, plataforma idéntica)
-    [['gx-feat-bets', 'my_bets'], ['gx-feat-books', 'my_books'], ['gx-feat-brief', 'daily_brief']].forEach(function (fc) {
+    [['gx-feat-bets', 'my_bets_feature'], ['gx-feat-books', 'my_books'], ['gx-feat-brief', 'daily_brief']].forEach(function (fc) {
       var vis = !!(S.me && S.me[fc[1]]);
       [].forEach.call(document.querySelectorAll('.' + fc[0]), function (el) { el.style.display = vis ? '' : 'none'; });
     });
@@ -1000,7 +1004,7 @@
     var isAdmin = !!(S.me && S.me.isAdmin);
     var items = [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']]
       .concat(S.me && S.me.daily_brief ? [['brief', 'news', 'nav_brief']] : [])
-      .concat(S.me && S.me.my_bets ? [['bets', 'wallet', 'nav_bets']] : [])
+      .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
       .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
       .concat([['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
       .concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
@@ -2135,6 +2139,8 @@
   // ---- vista STANDALONE (desde "Más") ----
   function renderCalc() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // Calculadora de stake = plan Pro+. Free → candado con "Ver planes".
+    if (uiPlan() === 'free') { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('calc_title')) + lockPanelPro('lock_calc_s') + '</div></div>'; return; }
     var mode = S.calcMode === 'arb' ? 'arb' : S.calcMode === 'pf' ? 'pf' : 'simple';
     var tabs = '<div class="gx-calc-modes">' +
       '<button class="gx-calc-mode' + (mode === 'simple' ? ' on' : '') + '" data-cmode-sw="simple">' + ic('target-arrow') + esc(t('calc_mode_simple')) + '</button>' +
@@ -2486,9 +2492,9 @@
       '<a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
   }
   // candado Pro (proyección de goles para el plan Free)
-  function lockPanelPro() {
+  function lockPanelPro(subK) {
     return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_pro_t')) + '</b>' +
-      '<span class="gx-dim">' + esc(t('lock_pro_s')) + '</span>' +
+      '<span class="gx-dim">' + esc(t(subK || 'lock_pro_s')) + '</span>' +
       '<a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
   }
   function renderSub() {
@@ -2994,6 +3000,8 @@
   function renderPlayer() {
     var mv = $('#gx-matchview'); if (!mv) return;
     var pid = S.playerId;
+    // Perfil de jugador (radar de scouting + proyecciones) = plan Pro+. Free → candado con "Ver planes".
+    if (uiPlan() === 'free') { mv.innerHTML = mvShell(lockPanelPro('lock_player_s')); bindBack(); return; }
     mv.innerHTML = mvShell(mvLoading()); bindBack();
     fetch('/api/beta/player?pid=' + encodeURIComponent(pid), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (d) {
       if (S.view !== 'player' || S.playerId !== pid) return;

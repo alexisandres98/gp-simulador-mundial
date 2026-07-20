@@ -7071,7 +7071,8 @@ const server = http.createServer(async (req, res) => {
         // aparte): solo ADMIN + flag ven las superficies de clubes; para todos los demás la plataforma es
         // byte-idéntica hasta la fusión post-Mundial.
         clubs_shadow: !!(clubsShadowFlagOn() && (u.isAdmin || clubsPublicOn())), // FUSIÓN: público con GP_CLUBS_PUBLIC_ENABLED
-        my_bets: myBetsSharp(u),                       // F1 Mi cartera — EXCLUSIVA Sharp (post-Mundial)
+        my_bets: myBetsSharp(u),                       // F1 Mi cartera — ACCESO (EXCLUSIVA Sharp)
+        my_bets_feature: featFor('GP_MY_BETS_ENABLED', u), // VISIBILIDAD del nav (feature on) → planes menores la VEN pero al entrar reciben el candado "Ver planes"
         my_books: featFor('GP_MY_BOOKS_ENABLED', u),   // F2 Mis casas
         my_books_list: featFor('GP_MY_BOOKS_ENABLED', u) ? ((db.users[u.email] || {}).my_books || []) : undefined,
         watch_price: featFor('GP_WATCH_PRICE_ENABLED', u), // F3 Watch price

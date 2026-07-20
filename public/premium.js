@@ -4836,6 +4836,9 @@
   }
   function renderClubPlayer() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // Perfil de jugador (radar/scouting/proyecciones) = plan Pro+. Free → candado con "Ver planes" (mismo
+    // gate que el perfil del Mundial; los links de jugador de club van por #cplayer).
+    if (uiPlan() === 'free') { mv.innerHTML = mvShell(lockPanelPro('lock_player_s')); bindBack(); return; }
     var lg = S.cplLg, tid = S.cplTeam, pid = S.cplPid, key = lg + '|' + tid + '|' + pid;
     S.cpl = S.cpl || {};
     if (S.cpl[key] === undefined) {

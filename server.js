@@ -1270,6 +1270,61 @@ GP Simulador
 (¿No es para vos? Respondé "baja" y te saco de la lista.)`);
 }
 
+// REACTIVACIÓN post-Mundial (20-jul): a los que NO activaron suscripción (free + leads). Estilo PERSONAL
+// anti-Promociones (from REENGAGE_FROM + noListUnsub, sin <a>, baja en el cuerpo, cierra con pregunta →
+// Principal). CAJA NEGRA: la predicción de España NO revela cómo funciona el modelo. Teaser UFC/boxeo
+// como 2º deporte incluido en Sharp. Idioma FIJO (reactivate_es ahora / reactivate_en +6h).
+function reactivateEmail(lang) {
+  const en = lang !== 'es';
+  const mk = (subject, text) => ({
+    subject, text,
+    html: `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`,
+  });
+  if (en) {
+    return mk('we called Spain — from day one', `Hi,
+
+Alexis here, from GP Simulador — writing to you directly.
+
+I noticed you never activated your subscription during the founder phase. No worries at all — but I want to show you what's coming, because I think you'll want in.
+
+Remember we said Spain would win the World Cup? We called it before the first match was played, when nobody had them that clear. And Spain lifted the trophy. Yesterday we closed our World Cup run with that call proven, in plain sight.
+
+But the World Cup was just the proof. From here on, the same model — sharper than ever — covers every league and every club, every single day: daily picks, the full read on each match, value, and a stack of new tools. Football all year, not once every four.
+
+And something I'm genuinely excited about: soon we add UFC and boxing as a second sport, with the same intelligence layer and picks — at no extra cost, included in the Sharp plan.
+
+If the World Cup was useful to you, this is the same thing, every day. Log in with your usual account at gpsimulador.com and take a look at the plans.
+
+Which league would you like the model to follow first? Reply and I'll tell you exactly what it sees for that weekend.
+
+Alexis
+GP Simulador
+
+(If you'd rather not hear from me, reply "unsubscribe" and I'll take you off the list.)`);
+  }
+  return mk('lo de España lo dijimos desde el día uno', `Hola,
+
+Soy Alexis, de GP Simulador. Te escribo yo, directo.
+
+Me di cuenta de que no llegaste a activar tu suscripción durante la fase founder. Sin drama — pero quiero mostrarte lo que viene, porque creo que te va a interesar.
+
+¿Te acordás de que dijimos que España ganaba el Mundial? Lo dijimos desde antes del primer partido, cuando nadie la daba tan clara. Y España levantó la copa. Ayer cerramos nuestra etapa del Mundial con esa predicción cumplida, a la vista de todos.
+
+Pero el Mundial era solo la prueba. Desde ahora, el mismo modelo — más afilado que nunca — cubre cada liga y cada club, todos los días: picks diarias, el análisis completo de cada partido, value, y un montón de herramientas nuevas. Fútbol todo el año, no una vez cada cuatro.
+
+Y algo que se viene y me tiene entusiasmado: pronto sumamos UFC y boxeo como segundo deporte, con la misma capa de inteligencia y picks — sin costo extra, incluido en el plan Sharp.
+
+Si el Mundial te sirvió, esto es lo mismo, todos los días. Entrá con tu cuenta de siempre en gpsimulador.com y mirá los planes.
+
+¿Qué liga querés que el modelo siga primero? Respondeme y te cuento qué ve para ese fin de semana.
+
+Alexis
+GP Simulador
+
+(¿No querés saber más de mí? Respondé "baja" y te saco de la lista.)`);
+}
+
 // SECUENCIA FOUNDER (lanzamiento 12-jul): 3 correos, ES/EN, caja negra, sin rayitas. Los números
 // (track record, cupos) se resuelven AL MOMENTO DEL ENVÍO — nunca quedan viejos en el copy.
 // seq: 1 = apertura · 2 = los números (prueba) · 3 = última llamada. ctx.spotsLeft viene del contador Whop.
@@ -9049,8 +9104,10 @@ const server = http.createServer(async (req, res) => {
         const leads = uk.filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true).length;
         const unverified = uk.filter(e => db.users[e] && db.users[e].verified !== true).length;
         const verified = uk.filter(e => db.users[e] && db.users[e].verified === true).length;
-        const wouldSend = variant === 'leads_magic' ? leads : uk.length;
-        return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, verified, unverified, leads });
+        const isReactivate = /^reactivate_(es|en)$/.test(variant || '');
+        const freeNoSub = uk.filter(e => planFor(e) === 'free').length; // sin Pro/Sharp (incluye leads); admin=sharp queda fuera
+        const wouldSend = variant === 'leads_magic' ? leads : isReactivate ? freeNoSub : uk.length;
+        return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, verified, unverified, leads, free_no_sub: freeNoSub });
       }
       // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
       // variants 'bankroll_es' / 'bankroll_en' = idioma FIJO (todos reciben ambos, decisión 7-jul).
@@ -9084,7 +9141,10 @@ const server = http.createServer(async (req, res) => {
                                   // last call (cierre founder 19-jul): idioma FIJO, estilo personal anti-Promociones.
                                   : (variant === 'lastcall_en') ? () => ({ ...lastCallEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                     : (variant === 'lastcall_es') ? () => ({ ...lastCallEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
-                                      : (em) => broadcastEmail(link, userLang(em));
+                                      // reactivación post-Mundial (idioma FIJO, estilo personal anti-Promociones)
+                                      : (variant === 'reactivate_en') ? () => ({ ...reactivateEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                        : (variant === 'reactivate_es') ? () => ({ ...reactivateEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                          : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la
@@ -9105,7 +9165,9 @@ const server = http.createServer(async (req, res) => {
       // nunca a un verificado.
       const targets = variant === 'leads_magic'
         ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true)
-        : Object.keys(db.users);
+        : /^reactivate_(es|en)$/.test(variant || '')
+          ? Object.keys(db.users).filter(e => planFor(e) === 'free') // SIN Pro/Sharp (free + leads); admin=sharp fuera
+          : Object.keys(db.users);
       bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false, variant: variant || 'beta' };
       // responder YA; enviar en segundo plano (no se await)
       json(res, 200, { ok: true, started: true, total: targets.length });

@@ -53,7 +53,7 @@
       /* v3 (clubes) */
       h1_v3: 'El modelo que leyó el Mundial ahora lee <span class="g">el fútbol entero</span>.',
       sub_v3: 'El mismo motor que leyó el Mundial en público ahora cubre 14 ligas en vivo: picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
-      sc3_live: 'en vivo', sc3_xg: 'xG esperado', sc3_foot: 'Elo dinámico + Poisson · se recalcula con cada gol',
+      sc3_live: 'en vivo', sc3_xg: 'xG esperado', sc3_foot: 'Lectura del modelo en vivo · se recalcula con cada gol',
       scf_markets: 'mercados vigilados ahora', scf_leagues: 'ligas monitoreadas 24/7',
       tr_rec_v3: 'aciertos verificados · Mundial 2026', tr_leagues_v3: 'ligas en vivo',
       plays_sub_v3: 'Publicadas antes del partido con su precio congelado, liquidadas en público después. La selección se desbloquea con tu cuenta gratis.',
@@ -106,7 +106,7 @@
       /* v3 (clubs) */
       h1_v3: 'The model that read the World Cup now reads <span class="g">all of football</span>.',
       sub_v3: 'The same engine that read the World Cup in public now covers 14 live leagues: picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
-      sc3_live: 'live', sc3_xg: 'expected xG', sc3_foot: 'Dynamic Elo + Poisson · recalculated with every goal',
+      sc3_live: 'live', sc3_xg: 'expected xG', sc3_foot: 'Live model read · recalculated with every goal',
       scf_markets: 'markets watched right now', scf_leagues: 'leagues monitored 24/7',
       tr_rec_v3: 'verified hits · 2026 World Cup', tr_leagues_v3: 'live leagues',
       plays_sub_v3: 'Published before kickoff with the price frozen, settled in public after. The selection unlocks with your free account.',

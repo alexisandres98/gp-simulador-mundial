@@ -35,6 +35,8 @@ h1 b { color:var(--ac); }
 @media (max-width:860px){ .plans { grid-template-columns:1fr; max-width:430px; margin-left:auto; margin-right:auto; } }
 .plan { display:flex; flex-direction:column; background:linear-gradient(165deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:18px; padding:26px 24px; position:relative; }
 .plan.hl { border-color:var(--acl); box-shadow:0 0 0 1px var(--acl), 0 24px 60px -30px rgba(31,227,164,.25); }
+.plan.cur { border-color:var(--acl); box-shadow:0 0 0 1px var(--acl); }
+.plan.cur .pcta { background:rgba(31,227,164,.10); color:var(--ac); border:1px solid var(--acl); opacity:1; }
 .plan.hl::before { content:attr(data-badge); position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--ac); color:#06231A; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:5px 14px; border-radius:99px; white-space:nowrap; }
 .pname { font-family:var(--disp); font-weight:700; font-size:15px; letter-spacing:.06em; text-transform:uppercase; color:var(--tx2); }
 .plan.hl .pname { color:var(--ac); }
@@ -112,7 +114,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Más popular',
       mo: '/mes', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
-      cta_free: 'Tu plan actual', cta: 'Muy pronto', cta_buy: 'Suscribirme', cta_note: 'Disponible muy pronto', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras',
+      cta_free: 'Tu plan actual', cta_current: 'Tu plan actual', cta_included: 'Incluido en tu plan', cta_upgrade: 'Mejorar a Sharp', cta: 'Muy pronto', cta_buy: 'Suscribirme', cta_note: 'Disponible muy pronto', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras',
       f_free: [
         ['on', '1 pick del día (con delay), solo ganador'],
         ['on', 'Probabilidades de cada partido'],
@@ -163,7 +165,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Most popular',
       mo: '/mo', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
-      cta_free: 'Your current plan', cta: 'Coming soon', cta_buy: 'Subscribe', cta_note: 'Available soon', cta_note_live: 'Secure payment via Whop · cancel anytime',
+      cta_free: 'Your current plan', cta_current: 'Your current plan', cta_included: 'Included in your plan', cta_upgrade: 'Upgrade to Sharp', cta: 'Coming soon', cta_buy: 'Subscribe', cta_note: 'Available soon', cta_note_live: 'Secure payment via Whop · cancel anytime',
       f_free: [
         ['on', '1 pick a day (delayed), winner only'],
         ['on', 'Probabilities for every match'],
@@ -214,24 +216,34 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     // checkout REAL de Whop (los plan IDs los inyecta el server desde env; sin IDs → botón "Muy pronto")
     var W = window.__WHOP || {};
     var co = function (key) { return '/api/founder/checkout?plan=' + key; };
-    var cta = function (mId, key) { return mId ? '<a class="pcta live" href="' + co(key) + '">' + T('cta_buy') + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>'; };
     var note = function (mId) { return '<div class="pcta-note">' + (mId ? T('cta_note_live') : T('cta_note')) + '</div>'; };
     var annual = function (yId, key, txt) { var inner = '<span class="save">' + T('annual_save') + '</span> ' + txt; return '<div class="annual">' + (yId ? '<a href="' + co(key) + '">' + inner + '</a>' : '<span class="na">' + inner + '</span>') + '</div>'; };
+    // Botón por plan según el plan ACTUAL del usuario (W.plan, inyectado por el server): "Tu plan actual" en el
+    // que tiene, "Incluido" en los inferiores, checkout/upgrade en los superiores. Sin sesión → checkout normal.
+    var RANK = { free: 0, pro: 1, sharp: 2 };
+    var cur = W.plan;
+    var planBtn = function (planKey, mId, coKey) {
+      if (planKey === 'free') return '<button class="pcta" disabled>' + T((cur === 'pro' || cur === 'sharp') ? 'cta_included' : 'cta_current') + '</button><div class="pcta-note">&nbsp;</div>';
+      if (cur === planKey) return '<button class="pcta" disabled>' + T('cta_current') + '</button><div class="pcta-note">&nbsp;</div>';
+      if (cur && RANK[planKey] < RANK[cur]) return '<button class="pcta" disabled>' + T('cta_included') + '</button><div class="pcta-note">&nbsp;</div>';
+      var label = (cur === 'pro' && planKey === 'sharp') ? T('cta_upgrade') : T('cta_buy');
+      return (mId ? '<a class="pcta live" href="' + co(coKey) + '">' + label + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>') + note(mId);
+    };
     document.getElementById('plans').innerHTML =
-      '<div class="plan"><div class="pname">' + T('free_name') + '</div>' +
+      '<div class="plan' + (cur === 'free' ? ' cur' : '') + '"><div class="pname">' + T('free_name') + '</div>' +
         '<div class="price"><span class="n">$0</span></div><div class="annual">&nbsp;</div>' +
         feats(T('f_free')) +
-        '<button class="pcta" disabled>' + T('cta_free') + '</button><div class="pcta-note">&nbsp;</div></div>' +
-      '<div class="plan hl" data-badge="' + T('badge') + '"><div class="pname">' + T('pro_name') + '</div>' +
+        planBtn('free') + '</div>' +
+      '<div class="plan hl' + (cur === 'pro' ? ' cur' : '') + '" data-badge="' + T('badge') + '"><div class="pname">' + T('pro_name') + '</div>' +
         '<div class="price"><span class="n">$19</span><span class="per">' + T('mo') + '</span></div>' +
         annual(W.pro_y, 'pro_y', T('annual_pro')) +
         feats(T('f_pro')) +
-        cta(W.pro_m, 'pro_m') + note(W.pro_m) + '</div>' +
-      '<div class="plan"><div class="pname">' + T('sharp_name') + '</div>' +
+        planBtn('pro', W.pro_m, 'pro_m') + '</div>' +
+      '<div class="plan' + (cur === 'sharp' ? ' cur' : '') + '"><div class="pname">' + T('sharp_name') + '</div>' +
         '<div class="price"><span class="n">$59</span><span class="per">' + T('mo') + '</span></div>' +
         annual(W.sharp_y, 'sharp_y', T('annual_sharp')) +
         feats(T('f_sharp')) +
-        cta(W.sharp_m, 'sharp_m') + note(W.sharp_m) + '</div>';
+        planBtn('sharp', W.sharp_m, 'sharp_m') + '</div>';
     document.getElementById('faqs').innerHTML = T('faqs').map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('');
     document.querySelectorAll('#lang button').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-l') === lang);

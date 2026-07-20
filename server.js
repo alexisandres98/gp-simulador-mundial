@@ -9181,6 +9181,7 @@ const server = http.createServer(async (req, res) => {
           pro_m: process.env.WHOP_PLAN_PRO_M || '', pro_y: process.env.WHOP_PLAN_PRO_Y || '',
           sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '',
           left: await whopFounderSpotsLeft().catch(() => null),
+          plan: sessEmail ? planFor(sessEmail) : null, // plan ACTUAL del usuario → la página marca "Tu plan actual" en el correcto
         };
         const html = fs.readFileSync(ff, 'utf8').replace('</head>', `<script>window.__WHOP=${JSON.stringify(W)}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });

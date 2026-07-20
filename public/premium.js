@@ -26,6 +26,7 @@
       sup_err: 'No se pudo enviar, probá de nuevo.', sup_short: 'Contanos un poco más para poder ayudarte.', sup_rate: 'Demasiados mensajes seguidos; probá en un rato.',
       lock_sharp_t: 'Disponible en el plan Sharp', lock_sharp_s: 'Value y arbitraje en tiempo real son parte del plan Sharp.',
       lock_bets_s: 'Mi cartera —tu P&L, ROI y CLV personal— es parte del plan Sharp.',
+      lock_style_s: 'El perfil táctico (event data remate a remate) es parte del plan Sharp.',
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
       lock_player_s: 'Los perfiles de jugador con radar de scouting y proyecciones son parte de los planes Pro y Sharp.',
       lock_calc_s: 'La calculadora de stake con gestión de bankroll es parte de los planes Pro y Sharp.',
@@ -323,6 +324,7 @@
       sup_err: 'Couldn’t send, try again.', sup_short: 'Tell us a bit more so we can help.', sup_rate: 'Too many messages; try again later.',
       lock_sharp_t: 'Available on the Sharp plan', lock_sharp_s: 'Real-time value and arbitrage are part of the Sharp plan.',
       lock_bets_s: 'My bets —your personal P&L, ROI and CLV— is part of the Sharp plan.',
+      lock_style_s: 'The tactical profile (shot-by-shot event data) is part of the Sharp plan.',
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
       lock_player_s: 'Player profiles with scouting radar and projections are part of the Pro and Sharp plans.',
       lock_calc_s: 'The stake calculator with bankroll management is part of the Pro and Sharp plans.',
@@ -3339,7 +3341,7 @@
       mvNav(sections) +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (intelD ? sec('intel', mvIntel(intelD, beta.header)) : '') + (styleD ? sec('estilo', mvStyle(styleD, beta.header)) : '') + sec('goles', mvGoals(beta)) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (intelD ? sec('intel', mvIntel(intelD, beta.header)) : '') + (styleD ? sec('estilo', uiPlan() === 'sharp' ? mvStyle(styleD, beta.header) : lockPanel('lock_sharp_t', 'lock_style_s')) : '') + sec('goles', mvGoals(beta)) + '</div>' +
       '</div>' +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '')
     );
@@ -3574,7 +3576,7 @@
       (arbCtx ? mvOpportunity(arbCtx, header) : '') +
       '<div class="gx-mv-grid">' +
       '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (intel ? sec('intel', mvIntel(intel, header)) : '') + (styleD ? sec('estilo', mvStyle(styleD, header)) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
+      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (intel ? sec('intel', mvIntel(intel, header)) : '') + (styleD ? sec('estilo', uiPlan() === 'sharp' ? mvStyle(styleD, header) : lockPanel('lock_sharp_t', 'lock_style_s')) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
       '</div>'
     );
     bindBack(); bindMvNav();

@@ -5102,7 +5102,7 @@ async function reconcileWhopGrants() {
       const valid = m.valid === true || m.status === 'active' || m.status === 'trialing' || m.status === 'completed';
       if (!valid) continue;
       const email = String(m.email || '').toLowerCase();
-      const planId = String(m.plan_id || (m.plan && m.plan.id) || '');
+      const planId = String(m.plan_id || (typeof m.plan === 'string' ? m.plan : (m.plan && m.plan.id)) || '');
       const plan = sharpIds.includes(planId) ? 'sharp' : proIds.includes(planId) ? 'pro' : null;
       if (!email) { out.no_email++; continue; }
       if (!plan) { out.unmatched_plan++; continue; }

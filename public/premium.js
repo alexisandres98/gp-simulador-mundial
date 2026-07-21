@@ -1255,7 +1255,13 @@
   function picksFeed(bd) {
     if (S.dailyPicks === undefined) {
       S.dailyPicks = null;
-      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+      fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs(), signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+        if (!j) { // fetch falló (timeout/red): NO cachear "sin picks" → reintento con backoff (auto-recupera sin reload)
+          S.dailyPicks = undefined;
+          if (S._picksRetry) clearTimeout(S._picksRetry);
+          S._picksRetry = setTimeout(function () { S._picksRetry = null; if (S.dailyPicks === undefined && S.view === 'board' && S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); } }, 4000);
+          return;
+        }
         S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, layout: j.picks_layout || 'flat' } : null;
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
         refreshCockpit();
@@ -1627,7 +1633,16 @@
     if (S._arbLoading) return false;
     S._arbLoading = true; S.arb = null;
     // Arbitraje es plan Sharp: 403 {upgrade} → candado (no error). asplanQS = preview admin.
-    fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs() }).then(function (r) { if (r.status === 403) { S.arbLocked = true; return null; } S.arbLocked = false; return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) { S.arb = m || { available: false, reason: S.arbLocked ? 'locked' : 'error' }; S._arbLoading = false; arbRefresh(); });
+    fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs(), signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined }).then(function (r) { if (r.status === 403) { S.arbLocked = true; return null; } S.arbLocked = false; return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
+      S._arbLoading = false;
+      if (m) { S.arb = m; arbRefresh(); return; }
+      if (S.arbLocked) { S.arb = { available: false, reason: 'locked' }; arbRefresh(); return; }
+      // fetch falló (timeout/red/no-ok): NO cachear un "vacío" pegajoso → AUTO-REINTENTO (sin reload manual).
+      // Deja S.arb=null → el board muestra "cargando", no "sin oportunidades", y reintenta en 4s.
+      S.arb = null;
+      if (S._arbRetry) clearTimeout(S._arbRetry);
+      S._arbRetry = setTimeout(function () { S._arbRetry = null; if (S.view === 'board' && S.oppSub === 'arb' && !S.arb) loadArb(); }, 4000);
+    });
     return false;
   }
   function arbRefresh() {
@@ -1642,7 +1657,7 @@
   function refreshArbSilent() {
     if (S._arbLoading || S.arbLocked) return;
     S._arbLoading = true;
-    fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
+    fetch('/api/beta/arbitrage' + asplanQS('?'), { headers: hdrs(), signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (m) {
       S._arbLoading = false;
       if (!m) return;
       // anti-pestañeo: si solo cambiaron timestamps/frescura, no redibujar (los precios/patas mandan).

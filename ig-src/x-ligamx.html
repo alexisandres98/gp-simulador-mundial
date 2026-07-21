@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1200px; height:675px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:linear-gradient(150deg,#06090B 0%,#0B1714 52%,#0A5C3C 150%); color:#EAF1F2;
+  padding:40px 48px; position:relative; overflow:hidden; }
+.glow { position:absolute; width:620px; height:620px; border-radius:50%; top:-220px; right:-200px;
+  background:radial-gradient(circle,rgba(31,227,164,.18),transparent 62%); }
+.top { display:flex; align-items:center; gap:12px; margin-bottom:20px; position:relative; }
+.badge { width:44px; height:44px; border-radius:12px; background:rgba(31,227,164,.16); display:flex; align-items:center; justify-content:center; font-size:24px; border:1px solid rgba(31,227,164,.4); }
+.bname { font-size:24px; font-weight:800; color:#fff; }
+.tag { margin-left:auto; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.55); color:#1FE3A4; font-weight:800; font-size:16px; padding:9px 18px; border-radius:99px; letter-spacing:2px; }
+h1 { font-size:44px; font-weight:800; letter-spacing:-1.5px; margin-bottom:4px; position:relative; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size:18px; color:#9DB0B5; font-weight:700; margin-bottom:22px; position:relative; }
+.row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; position:relative; }
+.pick { background:linear-gradient(160deg,#111A1E,#0D1417); border:1px solid rgba(255,255,255,.10); border-radius:20px; padding:22px 22px 20px; position:relative; overflow:hidden; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.fam { font-size:14px; font-weight:800; letter-spacing:1.2px; color:#1FE3A4; text-transform:uppercase; margin-bottom:8px; }
+.pick.goals .fam { color:#34D6C8; }
+.bet { font-size:31px; font-weight:800; letter-spacing:-.5px; color:#fff; line-height:1.04; margin-bottom:8px; }
+.match { font-size:16px; font-weight:600; color:#9DB0B5; margin-bottom:16px; }
+.brow { display:flex; align-items:flex-end; justify-content:space-between; }
+.conf { font-size:15px; color:#9DB0B5; font-weight:700; display:flex; align-items:center; gap:7px; }
+.conf b { color:#fff; }
+.dot { width:12px; height:12px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.odds { text-align:right; }
+.odds .ol { display:block; font-size:12px; font-weight:800; letter-spacing:1px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size:44px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; line-height:1; }
+.pick.goals .odds .ov { color:#34D6C8; }
+.foot { position:absolute; bottom:34px; left:48px; right:48px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:21px; font-weight:800; padding:14px 30px; border-radius:99px; }
+.foot .small { font-size:16px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="top"><div class="badge">⚽</div><div class="bname">GP Simulador</div><div class="tag" data-k="tag"></div></div>
+  <h1><span data-k="h1"></span> <span class="g">🇲🇽</span></h1>
+  <div class="sub" data-k="sub"></div>
+  <div class="row">
+    <div class="pick">
+      <div class="fam" data-k="f_win"></div>
+      <div class="bet" data-k="p1_bet"></div>
+      <div class="match">Cruz Azul vs Puebla</div>
+      <div class="brow"><div class="conf"><span class="dot high"></span><span data-k="conf"></span> <b data-k="high"></b></div><div class="odds"><span class="ol" data-k="best"></span><span class="ov">1.38</span></div></div>
+    </div>
+    <div class="pick">
+      <div class="fam" data-k="f_win"></div>
+      <div class="bet" data-k="p2_bet"></div>
+      <div class="match">Toluca vs Pumas</div>
+      <div class="brow"><div class="conf"><span class="dot"></span><span data-k="conf"></span> <b data-k="med"></b></div><div class="odds"><span class="ol" data-k="best"></span><span class="ov">1.72</span></div></div>
+    </div>
+    <div class="pick goals">
+      <div class="fam" data-k="f_goals"></div>
+      <div class="bet" data-k="p3_bet"></div>
+      <div class="match">Toluca vs Pumas</div>
+      <div class="brow"><div class="conf"><span class="dot"></span><span data-k="conf"></span> <b data-k="med"></b></div><div class="odds"><span class="ol" data-k="best"></span><span class="ov">1.64</span></div></div>
+    </div>
+  </div>
+  <div class="foot"><div class="cta">gpsimulador.com</div><div class="small" data-k="foot"></div></div>
+<script>
+  var D = {
+    es: { tag:'PICKS DE HOY', h1:'Liga MX', sub:'Las jugadas del modelo para esta madrugada · 2 partidos · 3 picks',
+      f_win:'Ganador', f_goals:'Goles', p1_bet:'Gana Cruz Azul', p2_bet:'Gana Toluca', p3_bet:'Más de 2.5 goles',
+      conf:'Confianza:', high:'Alta', med:'Media', best:'Mejor cuota', foot:'El mismo modelo que dio a España campeona del Mundial' },
+    en: { tag:"TODAY'S PICKS", h1:'Liga MX', sub:"The model's plays for tonight · 2 matches · 3 picks",
+      f_win:'Winner', f_goals:'Goals', p1_bet:'Cruz Azul to win', p2_bet:'Toluca to win', p3_bet:'Over 2.5 goals',
+      conf:'Confidence:', high:'High', med:'Medium', best:'Best odds', foot:'The same model that called Spain to win the World Cup' }
+  };
+  var lang = (new URLSearchParams(location.search).get('lang') === 'en') ? 'en' : 'es';
+  document.querySelectorAll('[data-k]').forEach(function(el){ var v = D[lang][el.getAttribute('data-k')]; if (v!=null) el.textContent = v; });
+</script>
+</body>
+</html>

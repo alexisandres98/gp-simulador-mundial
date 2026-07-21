@@ -5080,6 +5080,47 @@ function myBetsOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.
 // Mi cartera (F1) = EXCLUSIVA del plan Sharp (post-Mundial 20-jul): flag encendido + plan efectivo 'sharp'.
 // Admin y fase pre-enforcement resuelven a 'sharp' (effectivePlan) → sin cambios hasta aplicar el gating.
 function myBetsSharp(u) { return myBetsOn() && featFor('GP_MY_BETS_ENABLED', u) && effectivePlan(u && u.email) === 'sharp'; }
+// RECONCILIACIÓN DE PAGOS (20-jul): red de seguridad contra webhooks de Whop perdidos. Compara las membresías
+// ACTIVAS de Whop (fuente de verdad de quién pagó) contra db.premiumGrants y linkea/corrige las que falten.
+// Idempotente y SILENCIOSA (no manda emails; el webhook es la vía de bienvenida). Corre en schedule + endpoint.
+async function reconcileWhopGrants() {
+  const key = process.env.WHOP_API_KEY; if (!key) return { skipped: 'no_key' };
+  const csv = (k) => (process.env[k] || '').split(',').map(s => s.trim()).filter(Boolean);
+  const sharpIds = csv('WHOP_PLAN_SHARP_IDS'), proIds = csv('WHOP_PLAN_PRO_IDS'), founderIds = csv('WHOP_FOUNDER_PLAN_IDS');
+  const out = { checked: 0, ok: 0, fixed: 0, unmatched_plan: 0, no_email: 0, fixes: [], at: new Date().toISOString() };
+  try {
+    const mems = [];
+    for (let page = 1; page <= 6; page++) {
+      const r = await fetch(`https://api.whop.com/api/v2/memberships?per=50&page=${page}`, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) break;
+      const j = await r.json().catch(() => ({}));
+      const data = j.data || [];
+      mems.push(...data);
+      if (data.length < 50) break;
+    }
+    for (const m of mems) {
+      const valid = m.valid === true || m.status === 'active' || m.status === 'trialing' || m.status === 'completed';
+      if (!valid) continue;
+      const email = String(m.email || '').toLowerCase();
+      const planId = String(m.plan_id || (m.plan && m.plan.id) || '');
+      const plan = sharpIds.includes(planId) ? 'sharp' : proIds.includes(planId) ? 'pro' : null;
+      if (!email) { out.no_email++; continue; }
+      if (!plan) { out.unmatched_plan++; continue; }
+      out.checked++;
+      const g = db.premiumGrants[email];
+      const good = g && g.status === 'active' && (g.plan === plan || (plan === 'pro' && g.plan === 'sharp')); // sharp cubre pro
+      if (good) { out.ok++; continue; }
+      db.premiumGrants[email] = {
+        plan, status: 'active', founder: founderIds.includes(planId) || undefined,
+        source: 'whop_reconcile', whop_membership_id: m.id || null, whop_plan_id: planId,
+        since: (g && g.since) || new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+      out.fixed++; out.fixes.push({ email, plan, was: g ? g.status : 'missing' });
+    }
+    if (out.fixed) save();
+  } catch (e) { out.error = e.message; }
+  return out;
+}
 function myBetsFindPick(pickId) {
   return (db.dailyPicks || []).find(x => x.pick_id === pickId) || (db.clubDailyPicks || []).find(x => x.pick_id === pickId) || null;
 }
@@ -5400,6 +5441,9 @@ async function clubsDataPass({ force = false } = {}) {
 // scheduler: chequeo cada 30 min; corre a partir de las 07:00Z (post-jornada americana) si hoy no corrió.
 if (clubsShadowOn() && clubsDataPassOn()) {
   setInterval(() => { try { if (new Date().getUTCHours() >= 7) clubsDataPass().catch(() => { }); } catch { } }, 30 * 60e3);
+  // RECONCILIACIÓN DE PAGOS (red de seguridad anti-webhook-perdido): al boot + cada 6h linkea grants faltantes.
+  setTimeout(() => { reconcileWhopGrants().then(r => { if (r && r.fixed) console.log('[reconcile-grants]', JSON.stringify(r)); }).catch(() => { }); }, 90 * 1000);
+  setInterval(() => { reconcileWhopGrants().then(r => { if (r && r.fixed) console.log('[reconcile-grants]', JSON.stringify(r)); }).catch(() => { }); }, 6 * 3600 * 1000);
 }
 async function evaluateClubDailyPicks() {
   if (!dailyPicksOn() || !clubsShadowOn()) return { skipped: 'off' };
@@ -7361,6 +7405,13 @@ const server = http.createServer(async (req, res) => {
         } catch (e) { console.error('[support] mail error:', e.message); }
       }
       return json(res, 200, { ok: true });
+    }
+    // RECONCILIACIÓN DE PAGOS: dispara + reporta (key-gated). GET = corre reconcileWhopGrants y devuelve
+    // {checked, ok, fixed, fixes[...]} → permite verificar que cada membresía de Whop tenga su grant sin sesión admin.
+    if (p === '/api/internal/reconcile-grants') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      return json(res, 200, await reconcileWhopGrants().catch(e => ({ error: e.message })));
     }
     // ===== WEBHOOK DE WHOP: da/quita planes según pagos. INERTE hasta setear WHOP_WEBHOOK_KEY en Render.
     // URL a configurar en Whop: https://gpsimulador.com/api/whop/webhook?key=<WHOP_WEBHOOK_KEY>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1080px; height:1920px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:linear-gradient(160deg,#06090B 0%,#0B1714 48%,#0A5C3C 145%); color:#EAF1F2;
+  padding:120px 66px; position:relative; overflow:hidden; }
+.glow { position:absolute; width:900px; height:900px; border-radius:50%; top:-280px; right:-320px;
+  background:radial-gradient(circle,rgba(31,227,164,.18),transparent 62%); }
+.brand { display:flex; align-items:center; gap:14px; margin-bottom:30px; position:relative; }
+.badge { width:52px; height:52px; border-radius:15px; background:rgba(31,227,164,.16);
+  display:flex; align-items:center; justify-content:center; font-size:29px; border:1px solid rgba(31,227,164,.4); }
+.bname { font-size:29px; font-weight:800; color:#fff; }
+.tag { margin-left:auto; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.55); color:#1FE3A4; font-weight:800; font-size:19px; padding:11px 22px; border-radius:99px; letter-spacing:2px; }
+h1 { font-size:82px; font-weight:800; letter-spacing:-2.5px; line-height:1; margin-bottom:14px; color:#fff; position:relative; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size:30px; color:#C7D4D8; font-weight:700; margin-bottom:14px; position:relative; }
+.meta { display:inline-flex; gap:10px; align-items:center; font-size:22px; font-weight:700; color:#9DB0B5; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); padding:10px 20px; border-radius:99px; margin-bottom:48px; position:relative; }
+.meta b { color:#1FE3A4; }
+.stack { display:flex; flex-direction:column; gap:30px; position:relative; }
+.pick { background:linear-gradient(160deg,#111A1E,#0D1417); border:1px solid rgba(255,255,255,.10); border-radius:26px; padding:38px 40px; position:relative; overflow:hidden; display:grid; grid-template-columns:1fr auto; align-items:center; column-gap:24px;
+  opacity:0; transform:translateY(26px); transition:opacity .01s, transform .01s; }
+.pick.show { opacity:1; transform:none; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#1FE3A4; }
+.pick.goals::before { background:#34D6C8; }
+.fam { font-size:19px; font-weight:800; letter-spacing:1.6px; color:#1FE3A4; text-transform:uppercase; margin-bottom:8px; }
+.pick.goals .fam { color:#34D6C8; }
+.bet { font-size:50px; font-weight:800; letter-spacing:-.8px; color:#fff; line-height:1.02; margin-bottom:10px; }
+.match { font-size:25px; font-weight:600; color:#9DB0B5; margin-bottom:16px; }
+.conf { font-size:22px; color:#9DB0B5; font-weight:700; display:flex; align-items:center; gap:10px; }
+.conf b { color:#fff; }
+.dot { width:16px; height:16px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.odds { text-align:right; }
+.odds .ol { display:block; font-size:16px; font-weight:800; letter-spacing:1.4px; color:#5F747B; text-transform:uppercase; margin-bottom:4px; }
+.odds .ov { font-size:80px; font-weight:800; color:#1FE3A4; letter-spacing:-1.5px; line-height:1; }
+.pick.goals .odds .ov { color:#34D6C8; }
+.odds .ob { display:block; font-size:16px; font-weight:700; color:#5F747B; margin-top:4px; }
+.foot { position:absolute; bottom:110px; left:66px; right:66px; text-align:center; opacity:0; transition:opacity .01s; }
+.foot.show { opacity:1; }
+.cta { display:inline-block; background:#1FE3A4; color:#06231A; font-size:34px; font-weight:800; padding:24px 52px; border-radius:99px; box-shadow:0 0 60px -10px rgba(31,227,164,.6); }
+.foot .small { display:block; margin-top:18px; font-size:22px; color:#9DB0B5; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador</div><div class="tag">PICKS DE HOY</div></div>
+  <h1>Liga MX <span class="g">🇲🇽</span></h1>
+  <div class="sub">Las jugadas del modelo para esta madrugada</div>
+  <div class="meta">📅 2 partidos · <b>3 picks</b> · siempre la mejor cuota</div>
+  <div class="stack">
+    <div class="pick" data-i="0">
+      <div>
+        <div class="fam">Ganador</div>
+        <div class="bet">Gana Cruz Azul</div>
+        <div class="match">Cruz Azul vs Puebla</div>
+        <div class="conf"><span class="dot high"></span>Confianza: <b>Alta</b></div>
+      </div>
+      <div class="odds"><span class="ol">Mejor cuota</span><span class="ov">1.38</span><span class="ob">Coolbet</span></div>
+    </div>
+    <div class="pick" data-i="1">
+      <div>
+        <div class="fam">Ganador</div>
+        <div class="bet">Gana Toluca</div>
+        <div class="match">Toluca vs Pumas</div>
+        <div class="conf"><span class="dot"></span>Confianza: <b>Media</b></div>
+      </div>
+      <div class="odds"><span class="ol">Mejor cuota</span><span class="ov">1.72</span><span class="ob">Coolbet</span></div>
+    </div>
+    <div class="pick goals" data-i="2">
+      <div>
+        <div class="fam">Goles</div>
+        <div class="bet">Más de 2.5 goles</div>
+        <div class="match">Toluca vs Pumas</div>
+        <div class="conf"><span class="dot"></span>Confianza: <b>Media</b></div>
+      </div>
+      <div class="odds"><span class="ol">Mejor cuota</span><span class="ov">1.64</span><span class="ob">Matchbook</span></div>
+    </div>
+  </div>
+  <div class="foot"><span class="cta">Todas en gpsimulador.com</span><span class="small">Análisis completo de cada partido · pick por pick</span></div>
+<script>
+  (function(){
+    var q = new URLSearchParams(location.search);
+    var stage = parseInt(q.get('stage')||'4',10);
+    var picks = document.querySelectorAll('.pick');
+    for (var i=0;i<picks.length;i++){ if (i < stage) picks[i].classList.add('show'); }
+    if (stage >= 4) document.querySelector('.foot').classList.add('show');
+  })();
+</script>
+</body>
+</html>

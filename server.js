@@ -6528,6 +6528,10 @@ const server = http.createServer(async (req, res) => {
             // GOLES público = solo ANCLA (19-jul, Alexis): el edge de goles empata al mercado eficiente → al track
             // privado. Autoritativo: excluye también las legacy activas (regime 'edge'/indefinido) sin mutar el track.
             clubActive = clubActive.filter(x => !(x.family === 'GOALS' && x.regime !== 'anchor'));
+            // PLAYER de clubes fuera del feed público: la disponibilidad (roster TSA + observer) no es confiable →
+            // publicar "X anota" con el jugador OUT es un error de credibilidad (caso Messi). Quedan en monitoreo
+            // admin hasta que la capa de disponibilidad sea sólida. Corners/cards siguen su gate normal.
+            clubActive = clubActive.filter(x => x.family !== 'PLAYER');
             if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
           }

@@ -39,6 +39,8 @@
       lock_delay: 'La pick gratis del día se desbloquea 60 minutos antes del partido.',
       lock_picks_t: 'Las picks de hoy son para suscriptores', lock_picks_s: 'Suscribite para ver las picks del día del modelo. No es que no haya picks — están en Pro y Sharp.',
       lock_cta: 'Ver planes',
+      wp_title: 'Tu primera pick gratis', wp_sub: 'Nuestra selección más segura de hoy — bienvenido a GP Simulador.', wp_dismiss: 'Descartar',
+      frb_lead: 'Estás en el plan Free', frb_sub: 'Desbloqueá todas las picks del día, el cockpit en vivo y las herramientas.', frb_cta: 'Ver planes',
       pf_title: 'Mi perfil', pf_intro: 'Completá tu perfil para recibir novedades en tu idioma y contenido de tu país.', pf_name: 'Nombre', pf_country: 'País', pf_country_ph: 'Seleccioná tu país', pf_lang: 'Idioma', pf_other: 'Otro', pf_save: 'Guardar', pf_saving: 'Guardando…', pf_saved: 'Perfil guardado', pf_neterr: 'Error de red',
       search: 'Buscar equipos, partidos, mercados…', matches: 'partidos', live: 'en vivo', signals: 'señales hoy',
       title: 'Oportunidades', all: 'Todos', live_f: 'En vivo', upcoming_f: 'Próximos', picks: 'Picks del día', value: 'Value', arb: 'Arbitraje',
@@ -337,6 +339,8 @@
       lock_delay: 'The free daily pick unlocks 60 minutes before kickoff.',
       lock_picks_t: "Today's picks are for subscribers", lock_picks_s: "Subscribe to see the model's daily picks. It's not that there are none — they're on Pro and Sharp.",
       lock_cta: 'See plans',
+      wp_title: 'Your first pick, free', wp_sub: 'Our safest call of the day — welcome to GP Simulador.', wp_dismiss: 'Dismiss',
+      frb_lead: "You're on the Free plan", frb_sub: 'Unlock every daily pick, the live cockpit and the tools.', frb_cta: 'See plans',
       pf_title: 'My profile', pf_intro: 'Complete your profile to get updates in your language and content for your country.', pf_name: 'Name', pf_country: 'Country', pf_country_ph: 'Select your country', pf_lang: 'Language', pf_other: 'Other', pf_save: 'Save', pf_saving: 'Saving…', pf_saved: 'Profile saved', pf_neterr: 'Network error',
       search: 'Search teams, matches, markets…', matches: 'matches', live: 'live', signals: 'signals today',
       title: 'Opportunities', all: 'All', live_f: 'Live', upcoming_f: 'Upcoming', picks: "Today's picks", value: 'Value', arb: 'Arbitrage',
@@ -808,8 +812,20 @@
       '</a>';
   }
 
-  // Rellena el slot del banner cuando llega S.me (shell se dibuja antes de /api/me).
-  function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner(); }
+  // Banner IN-APP para usuarios FREE (post-Mundial): CTA de upgrade a /plans. Reusa el markup del founder
+  // banner (retirado). Solo plan free; paid/admin → vacío. Se pinta en el mismo slot cuando llega S.me.
+  function freeBanner() {
+    if (!S.me || uiPlan() !== 'free') return '';
+    return '<a class="gx-fbanner gx-freebanner" href="/plans">' +
+      '<span class="gx-fbanner-pulse"></span>' +
+      '<b>' + esc(t('frb_lead')) + '</b>' +
+      '<span class="gx-fbanner-sub">' + esc(t('frb_sub')) + '</span>' +
+      '<span class="gx-fbanner-cta">' + esc(t('frb_cta')) + ' ' + ic('arrow-right') + '</span>' +
+      '</a>';
+  }
+  // Rellena el slot del banner cuando llega S.me (shell se dibuja antes de /api/me). Founder cerrado → si no
+  // hay founder banner, muestra el banner de upgrade para free.
+  function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief']; // vistas implementadas (clickeables)
@@ -830,7 +846,7 @@
       '<div class="gx-side-foot"><div class="gx-avatar">' + esc(((S.me && S.me.email) || 'G').charAt(0).toUpperCase()) + '</div><div style="font-size:12px"><b style="font-weight:600">' + esc((S.me && S.me.email) ? S.me.email.split('@')[0] : 'GP') + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(S.me && S.me.isAdmin ? 'Admin' : 'GP Intelligence') + '</div></div></div>' +
       '</aside>' +
       '<div class="gx-body">' +
-      '<div id="gx-fbanner-slot">' + founderBanner() + '</div>' +
+      '<div id="gx-fbanner-slot">' + (founderBanner() || freeBanner()) + '</div>' +
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
       '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
@@ -1092,7 +1108,7 @@
     // En el tab de Picks (producto) la tira de KPIs quant (top gap, etc.) no aplica: el feed es autónomo. Se oculta.
     var strip = $('#gx-kpis'); if (strip) { if (S.oppSub === 'picks') { strip.style.display = 'none'; strip.innerHTML = ''; return; } strip.style.display = ''; }
     // Mejor pick: la pick diaria de mayor confianza (feed del producto). Lazy-load si aún no está.
-    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, layout: j.picks_layout || 'flat' } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
+    if (S.dailyPicks === undefined) { S.dailyPicks = null; fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, welcome_pick: j.welcome_pick || null, layout: j.picks_layout || 'flat' } : null; if (S.view === 'board') { kpis(S.dash || {}, rows); refreshCockpit(); } }); }
     var pick = (S.dailyPicks && S.dailyPicks.length) ? S.dailyPicks.slice().sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); })[0] : null;
     var val = (d.value || [])[0];
     // OUTRIGHT (campeón GP vs mercado): fuente de los fallbacks de "Mejor value" y "Mayor desacuerdo" cuando no hay
@@ -1252,6 +1268,26 @@
     if (S.filt === 'up') return picks.filter(function (p) { if (pickIsLive(p)) return false; var ko = Date.parse(p.kickoff || 0); return isFinite(ko) && ko > Date.now(); });
     return picks;
   }
+  // ONBOARDING — PRIMERA PICK GRATIS: la selección más segura del día para el usuario recién registrado.
+  // Se muestra arriba del board (incluso si el resto está bloqueado por plan free) hasta que la descarta.
+  function welcomeCard(meta) {
+    var wp = meta && meta.welcome_pick;
+    if (!wp) return '';
+    return '<div class="gx-welcome-pick">' +
+      '<div class="gx-welcome-hd">' + ic('gift') + '<div class="gx-welcome-tx"><b>' + esc(t('wp_title')) + '</b><span class="gx-dim">' + esc(t('wp_sub')) + '</span></div>' +
+      '<button type="button" class="gx-welcome-x" data-welcome-dismiss aria-label="' + esc(t('wp_dismiss')) + '">' + ic('x') + '</button></div>' +
+      pickCard(wp, { welcome: true }) + '</div>';
+  }
+  function wireWelcome(bd) {
+    var x = bd && bd.querySelector('[data-welcome-dismiss]');
+    if (!x) return;
+    x.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (S.dailyPicksMeta) S.dailyPicksMeta.welcome_pick = null;
+      fetch('/api/me/welcome-pick-seen', { method: 'POST', headers: hdrs() }).catch(function () {});
+      var b = $('#gx-board'); if (b && S.oppSub === 'picks') picksFeed(b);
+    });
+  }
   function picksFeed(bd) {
     if (S.dailyPicks === undefined) {
       S.dailyPicks = null;
@@ -1262,7 +1298,7 @@
           S._picksRetry = setTimeout(function () { S._picksRetry = null; if (S.dailyPicks === undefined && S.view === 'board' && S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); } }, 4000);
           return;
         }
-        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, layout: j.picks_layout || 'flat' } : null;
+        S.dailyPicks = (j && j.picks) || []; S.dailyPicksMeta = j ? { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, welcome_pick: j.welcome_pick || null, layout: j.picks_layout || 'flat' } : null;
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
         refreshCockpit();
       });
@@ -1272,6 +1308,7 @@
     var picks = picksFiltered(S.dailyPicks || []);
     var cc = $('#gx-board-count'); if (cc) cc.textContent = picks.length + ' ' + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
     var meta = S.dailyPicksMeta || {};
+    var welcome = welcomeCard(meta); // primera pick gratis (onboarding) — arriba de todo, hasta descartarla
     // recap de AYER (prueba social agregada — el historial detallado sigue admin): "Ayer: 2 de 3 ✓"
     var recap = (meta.yesterday && meta.yesterday.total > 0)
       ? '<div class="gx-pick-recap' + (meta.yesterday.won / meta.yesterday.total >= 0.5 ? ' gx-recap-pos' : '') + '">' + ic('circle-check') + esc(t('pf_yesterday', { won: meta.yesterday.won, total: meta.yesterday.total })) + '</div>' : '';
@@ -1285,8 +1322,9 @@
       // vacío POR FILTRO (hay picks pero no en esta pestaña/casas) ≠ vacío real (sin picks activas)
       if ((S.dailyPicks || []).length && (S.filt === 'live' || S.filt === 'up' || booksOnlyOn())) {
         var emptyKey = (S.filt === 'live') ? 'pf_empty_live' : (S.filt === 'up') ? 'pf_empty_up' : 'bk_empty';
-        bd.innerHTML = myBooksBar() + recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t(emptyKey)) + '</b><span class="gx-dim">' + esc(t(emptyKey === 'bk_empty' ? 'bk_empty_sub' : 'pf_empty_filt_sub')) + '</span></div>';
+        bd.innerHTML = welcome + myBooksBar() + recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t(emptyKey)) + '</b><span class="gx-dim">' + esc(t(emptyKey === 'bk_empty' ? 'bk_empty_sub' : 'pf_empty_filt_sub')) + '</span></div>';
         wireBooksBar(bd, function () { picksFeed(bd); });
+        wireWelcome(bd);
         return;
       }
       // countdown (reversible por env GP_PICKS_COUNTDOWN_ENABLED): el vacío da una CITA, no un "vuelve pronto"
@@ -1296,10 +1334,12 @@
       // liberada aún) → panel de upgrade CLARO ("no es que no haya picks, es que hay que suscribirse"), jamás un
       // vacío que parezca "no hay señal / error".
       if (meta.locked_count > 0) {
-        bd.innerHTML = recap + '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_picks_t')) + '</b><span class="gx-dim">' + esc(meta.plan_delayed ? t('lock_delay') : t('lock_picks_s')) + '</span><a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a>' + ko + '</div>';
+        bd.innerHTML = welcome + recap + '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_picks_t')) + '</b><span class="gx-dim">' + esc(meta.plan_delayed ? t('lock_delay') : t('lock_picks_s')) + '</span><a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a>' + ko + '</div>';
+        wireWelcome(bd);
         return;
       }
-      bd.innerHTML = recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
+      bd.innerHTML = welcome + recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t('pf_empty')) + '</b><span class="gx-dim">' + esc(t('pf_empty_sub')) + '</span>' + ko + '</div>';
+      wireWelcome(bd);
       return;
     }
     // LAYOUT (admin-first): 'sections' agrupa las picks por partido con el PICK DEL DÍA como hero arriba;
@@ -1307,9 +1347,10 @@
     var picksHtml = (meta.layout === 'sections' && picks.length > 1)
       ? picksSectioned(picks)
       : '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>';
-    bd.innerHTML = myBooksBar() + recap + featuredStrip() + picksHtml + lockTeaser +
+    bd.innerHTML = welcome + myBooksBar() + recap + featuredStrip() + picksHtml + lockTeaser +
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
     wireBooksBar(bd, function () { picksFeed(bd); });
+    wireWelcome(bd);
   }
   // Board en SECCIONES: hero "Pick del día" (mayor confianza) arriba + el resto agrupado por partido, con
   // encabezado clickeable que abre el cockpit del partido. El hero se excluye de su sección para no duplicar.

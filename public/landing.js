@@ -12,6 +12,7 @@
   var DICT = {
     es: {
       nav_login: 'Entrar', nav_cta: 'Crear cuenta',
+      lb_txt: 'Terminó el Mundial: ahora cubrimos el fútbol de clubes todos los días.', lb_cta: 'Crear cuenta gratis',
       eyebrow: 'GP INTELLIGENCE · EN VIVO',
       h1: 'La ventaja que el mercado <span class="g">no ve</span>.',
       sub: 'Jugadas verificadas cada día, cuotas mal pagadas detectadas al instante y arbitraje entre más de 40 casas. Inteligencia de nivel institucional, lista para ejecutar.',
@@ -67,6 +68,7 @@
     },
     en: {
       nav_login: 'Log in', nav_cta: 'Sign up',
+      lb_txt: 'The World Cup is over: we now cover club football every day.', lb_cta: 'Create free account',
       eyebrow: 'GP INTELLIGENCE · LIVE',
       h1: "The edge the market <span class=\"g\">doesn't see</span>.",
       sub: 'Verified plays every day, mispriced odds caught the moment they appear, and arbitrage across 40+ books. Institutional-grade intelligence, ready to execute.',
@@ -149,6 +151,8 @@
       b.onclick = function () { openAuth(); };
     });
     $$('[data-demo]').forEach(function (b) { b.onclick = openDemo; });
+    // banner de anuncio (post-Mundial → clubes): click = crear cuenta (openAuth); data-k pinta el texto ES/EN
+    var _lb = $('#lbanner'); if (_lb) { _lb.onclick = function () { openAuth(); }; _lb.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAuth(); } }; }
     // pilares
     $('#pillars').innerHTML = ['1', '2', '3'].map(function (n) {
       var ik = n === '1' ? 'verify' : n === '2' ? 'odds' : 'bolt';

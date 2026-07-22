@@ -66,6 +66,13 @@ img{display:block}
 .btn.gh{background:var(--panel2);color:var(--tx);box-shadow:none;border:1px solid var(--line2)}
 .btn.gh:hover{border-color:var(--acl);box-shadow:none}
 .btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* banner de anuncio (post-Mundial → clubes; click = crear cuenta) */
+.lbanner{display:flex;align-items:center;gap:10px;margin:18px 0 0;padding:11px 16px;border:1px solid rgba(31,227,164,.28);background:linear-gradient(90deg,rgba(31,227,164,.10),rgba(31,227,164,.03));border-radius:12px;cursor:pointer;transition:border-color .15s,background .15s;flex-wrap:wrap}
+.lbanner:hover{border-color:rgba(31,227,164,.5);background:linear-gradient(90deg,rgba(31,227,164,.16),rgba(31,227,164,.05))}
+.lbanner-dot{width:7px;height:7px;border-radius:50%;background:var(--ac,#1FE3A4);flex:none;box-shadow:0 0 0 4px rgba(31,227,164,.15)}
+.lbanner-tx{color:var(--tx,#eaf1f0);font-size:14px;font-weight:600;flex:1;min-width:180px}
+.lbanner-cta{color:var(--ac,#1FE3A4);font-size:13.5px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.lbanner-cta::after{content:'→'}
 /* hero */
 .hero{padding:76px 0 40px;position:relative}
 .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
@@ -352,6 +359,7 @@ body.v3 .tr.big span{color:var(--tx2)}
 </div></nav>
 
 <main class="wrap">
+  <div class="lbanner" id="lbanner" role="button" tabindex="0"><span class="lbanner-dot"></span><span class="lbanner-tx" data-k="lb_txt">·</span><span class="lbanner-cta" data-k="lb_cta">·</span></div>
   <section class="hero">
     <div class="hero-grid">
       <div class="rv st in">

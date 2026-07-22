@@ -673,6 +673,7 @@ body { background:
   background: linear-gradient(90deg, #0b7a52 0%, #12b98a 45%, #0e9e73 100%); color: #eafff7;
   font-size: 13.5px; position: relative; overflow: hidden; border-bottom: 1px solid rgba(0,0,0,.2); }
 .gx-fbanner:hover .gx-fbanner-cta { transform: translateX(2px); }
+.gx-freebanner .gx-fbanner-cta { margin-left: auto; } /* sin countdown → el CTA va a la derecha */
 .gx-fbanner-pulse { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,.6); animation: fbpulse 1.8s infinite; flex: none; }
 @keyframes fbpulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.5); } 70% { box-shadow: 0 0 0 8px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
 .gx-fbanner b { font-weight: 800; letter-spacing: -.01em; }
@@ -1213,6 +1214,15 @@ td .gx-calc-btn span { display: none; }
 .gx-pick-lock b { font-size: 13.5px; }
 .gx-pick-lock span { font-size: 12px; }
 .gx-pick-lock .gx-lock-cta { margin-top: 0; padding: 9px 16px; font-size: 12.5px; white-space: nowrap; }
+/* ONBOARDING — primera pick gratis (welcome) */
+.gx-welcome-pick { margin-bottom: 14px; padding: 12px; border: 1px solid rgba(31,227,164,.30); background: linear-gradient(180deg, rgba(31,227,164,.07), rgba(31,227,164,.02)); border-radius: 15px; }
+.gx-welcome-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.gx-welcome-hd > svg, .gx-welcome-hd > i { color: var(--gx-acc, #1FE3A4); flex: none; }
+.gx-welcome-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.gx-welcome-tx b { font-size: 13.5px; }
+.gx-welcome-tx span { font-size: 12px; }
+.gx-welcome-x { flex: none; background: none; border: none; color: var(--gx-dim, #8a94a6); cursor: pointer; padding: 4px; border-radius: 8px; line-height: 0; }
+.gx-welcome-x:hover { color: var(--gx-txt, #fff); background: rgba(255,255,255,.06); }
 .gx-sub-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gx-line); }
 .gx-sub-row:first-child { padding-top: 0; }
 .gx-sub-plan { font-family: var(--gx-display, inherit); font-size: 18px; font-weight: 700; }

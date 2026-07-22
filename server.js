@@ -6589,6 +6589,21 @@ const server = http.createServer(async (req, res) => {
             }
           } catch { /* correlación best-effort: jamás rompe el feed */ }
         }
+        // ===== ONBOARDING: PRIMERA PICK GRATIS (conservadora) =====
+        // Al registrarse por primera vez, el usuario recibe UNA pick gratis: la MÁS SEGURA del día (mayor
+        // win_prob entre las SOLID = favorito claro). ROI/edge no importa — es "mirá cómo ganamos". Se muestra
+        // SIEMPRE (bypassa el delay de 60min del plan free) hasta que la descarta (welcomePickSeen). Solo a
+        // registros recientes (<30d) que no la vieron → los 900 usuarios viejos no la reciben retroactivamente.
+        let welcomePick = null;
+        try {
+          const wu = db.users[betaUser.email];
+          const eligible = wu && !wu.welcomePickSeen && (Date.now() - (wu.createdAt || 0) < 30 * 24 * 3600e3);
+          if (eligible && dailyPicksOn()) {
+            const cand = items.filter(f => f.family === 'SOLID' && f.confidence != null && Number(f.odds) > 1)
+              .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+            if (cand[0]) welcomePick = { ...cand[0], welcome: true };
+          }
+        } catch { welcomePick = null; }
         // ===== GATING POR PLAN (inerte con GP_PLANS_ENFORCED=off → todos ven todo) =====
         // FREE: 1 pick del día (la SOLID/ganador de mayor confianza), visible recién 60 min antes del kickoff
         // ("con delay"). PRO: todas las familias actuales (ganador+goles+combo). SHARP: además las familias
@@ -6626,7 +6641,7 @@ const server = http.createServer(async (req, res) => {
           if (fut.length) nextKo = new Date(Math.min.apply(null, fut)).toISOString();
         }
         const picksLayout = (betaUser && betaUser.isAdmin) || picksSectionsPublic() ? 'sections' : 'flat';
-        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, plan, locked_count: lockedCount, plan_delayed: planDelayed, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, picks_layout: picksLayout, generated_at: new Date().toISOString() });
+        return json(res, 200, { enabled: dailyPicksOn(), count: items.length, picks: items, plan, locked_count: lockedCount, plan_delayed: planDelayed, welcome_pick: welcomePick, yesterday: yTot > 0 ? { won: yWon, total: yTot } : null, next_kickoff: nextKo, picks_layout: picksLayout, generated_at: new Date().toISOString() });
       }
       // TRACK RECORD de picks (usuarios, todos los planes): prueba social del producto. Agregados + historial de
       // liquidadas SANEADO (sin model%/mercado%/confianza internos; solo qué se publicó, cuota y resultado).
@@ -7246,6 +7261,14 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
       db.users[u.email].onboarded = Date.now();
+      save();
+      return json(res, 200, { ok: true });
+    }
+    // ONBOARDING — la PRIMERA PICK GRATIS ya se mostró/descartó: se persiste por cuenta (no vuelve a aparecer).
+    if (p === '/api/me/welcome-pick-seen' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      db.users[u.email].welcomePickSeen = Date.now();
       save();
       return json(res, 200, { ok: true });
     }

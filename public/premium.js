@@ -1360,8 +1360,16 @@
   function featuredStrip() {
     if (S.featured === undefined) {
       S.featured = null;
-      fetch('/api/beta/featured-today', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
-        S.featured = (j && j.available && j.players) || [];
+      // Featured del Mundial + de CLUBES (mismo shape, cada jugador lleva su href: #player o #cplayer). Post-Mundial
+      // el del Mundial devuelve vacío y quedan los de clubes; se mergean y ordenan por P(gol).
+      var gj = fetch('/api/beta/featured-today', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+      var cj = fetch('/api/beta/clubs-featured-today', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+      Promise.all([gj, cj]).then(function (rr) {
+        var wc = (rr[0] && rr[0].available && rr[0].players) || [];
+        var cl = (rr[1] && rr[1].available && rr[1].players) || [];
+        wc.forEach(function (p) { p.href = '#player/' + p.pid; });
+        cl.forEach(function (p) { p.href = '#cplayer/' + p.league + '-' + p.team_id + '-' + p.pid; });
+        S.featured = wc.concat(cl).sort(function (a, b) { return (b.anytime || 0) - (a.anytime || 0); }).slice(0, 8);
         if (S.oppSub === 'picks') { var b = $('#gx-board'); if (b) { noAnimWindow(); picksFeed(b); } }
       });
       return '';
@@ -1372,7 +1380,7 @@
       var photo = p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '';
       var hook = LANG === 'en' ? (p.hook_en || p.hook_es) : (p.hook_es || p.hook_en);
       var risk = p.risk ? '<span class="gx-badge gx-intel-risk">' + esc(p.risk === 'DOUBT' ? t('intel_doubt') : p.risk === 'OUT' ? t('intel_out') : t('intel_susp')) + '</span>' : '';
-      return '<a class="gx-feat-card" href="#player/' + esc(p.pid) + '">' + photo +
+      return '<a class="gx-feat-card" href="' + esc(p.href || ('#player/' + p.pid)) + '">' + photo +
         '<div class="gx-feat-b"><div class="gx-feat-n"><span class="fl">' + flag(p.team_id) + '</span><b>' + esc(p.name) + '</b></div>' +
         '<div class="gx-feat-meta">' + archBadge(p.archetype) + risk + '<span class="gx-mono gx-pos">' + pct0(p.anytime) + '</span><span class="gx-dim" style="font-size:10px">' + esc(t('ft_goal')) + '</span></div>' +
         (hook ? '<div class="gx-feat-hook">' + esc(hook) + '</div>' : '') + '</div></a>';

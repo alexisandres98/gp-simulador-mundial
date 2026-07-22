@@ -6875,6 +6875,65 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, { available: out.length > 0, players: out.slice(0, 8), generated_at: new Date().toISOString() });
         } catch (e) { return json(res, 200, { available: false, players: [] }); }
       }
+      // FEATURED PLAYERS DE CLUBES (paridad con /api/beta/featured-today del Mundial): jugadores clave
+      // proyectados de los partidos de HOY, multi-liga. MISMO projectTeam + scout + observer del Mundial,
+      // parametrizado por club (clubsFit.leagueFit / clubGoalsFit / clubPlayerAvail). Cero llamadas externas:
+      // usa global._clubsUpcoming (ya en memoria por /api/clubs/state y el observer). Feature de planes con
+      // jugadores (Pro+): free → available:false. Las cards enlazan a #cplayer (perfil de club).
+      if (p === '/api/beta/clubs-featured-today' && req.method === 'GET') {
+        try {
+          if (!clubsShadowOn()) return json(res, 200, { available: false, players: [] });
+          const plan = effectivePlan(betaUser.email, url.searchParams.get('asplan'));
+          if (plan === 'free') return json(res, 200, { available: false, players: [], locked: true });
+          const players = require('./prop-engine/players');
+          const cf = require('./player-intel/clubsFit');
+          const goalsModel = require('./clubs-engine/goalsModel');
+          const today = new Date().toISOString().slice(0, 10);
+          const out = [];
+          const seenTeam = new Set();
+          for (const [league, up] of Object.entries(global._clubsUpcoming || {})) {
+            const rows = (up && up.rows) || [];
+            let fit = null; try { fit = cf.leagueFit(league); } catch { fit = null; }
+            if (!fit) continue;
+            const L = (global._clubsRatings && global._clubsRatings.leagues && global._clubsRatings.leagues[league]) || {};
+            for (const m of rows) {
+              if (!m || !m.utc_date) continue;
+              if (String(m.utc_date).slice(0, 10) !== today) continue;
+              const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+              const hName = (m.home_team && m.home_team.name) || null, aName = (m.away_team && m.away_team.name) || null;
+              // λ ataque/defensa del goal model (fallback Elo), MISMO que el cockpit de club
+              let l = null;
+              try { const gf = clubGoalsFit(league); if (gf) l = goalsModel.goalLambdas(gf, hId, aId); } catch { l = null; }
+              if (!l) { const rh = clubElo(league, hId), ra = clubElo(league, aId); l = lambdas(rh + (L.hfa || 60), ra); }
+              for (const [code, lambda] of [[hId, l && l[0]], [aId, l && l[1]]]) {
+                const tk = league + ':' + code;
+                if (seenTeam.has(tk)) continue;
+                seenTeam.add(tk);
+                let prj = [];
+                try { prj = players.projectTeam(fit, code, { teamLambda: lambda || null, top: 3 }); } catch { prj = []; }
+                for (const r of prj.slice(0, 3)) {
+                  const pl = fit.players[r.pid];
+                  if (!pl || !r.reliable) continue;
+                  let sc = null; try { const cs = cf.clubPlayerScout(league, r.pid); sc = cs && cs.scout; } catch { sc = null; }
+                  const av = clubPlayerAvail(code, r.pid);
+                  out.push({
+                    pid: r.pid, name: r.name, team_id: code, league, pos: r.pos,
+                    photo: (global._clubPlayerPhotos && global._clubPlayerPhotos[r.pid] && global._clubPlayerPhotos[r.pid].photo) || null,
+                    anytime: +Number(r.anytime_goal || 0).toFixed(3),
+                    archetype: (sc && sc.archetype) || null,
+                    hook_es: sc && sc.read && sc.read.strengths[0] ? sc.read.strengths[0].es : null,
+                    hook_en: sc && sc.read && sc.read.strengths[0] ? sc.read.strengths[0].en : null,
+                    risk: av && av.prob_miss >= 0.3 ? av.status : null,
+                    match: { home: hId, away: aId, home_name: hName, away_name: aName, kickoff: m.utc_date, league },
+                  });
+                }
+              }
+            }
+          }
+          out.sort((a, b) => b.anytime - a.anytime);
+          return json(res, 200, { available: out.length > 0, players: out.slice(0, 8), generated_at: new Date().toISOString() });
+        } catch (e) { return json(res, 200, { available: false, players: [] }); }
+      }
       // PERFIL TÁCTICO + MATCHUP (style engine, event data): ataque/defensa por situación y zona de los dos
       // equipos + hallazgos cruzados (córners/balón parado/aéreo/contra/zona/volumen). Mismo gate que Match Intel.
       if (p === '/api/beta/style' && req.method === 'GET') {

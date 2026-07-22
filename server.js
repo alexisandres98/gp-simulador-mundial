@@ -6626,11 +6626,20 @@ const server = http.createServer(async (req, res) => {
             // GOLES público = solo ANCLA (19-jul, Alexis): el edge de goles empata al mercado eficiente → al track
             // privado. Autoritativo: excluye también las legacy activas (regime 'edge'/indefinido) sin mutar el track.
             clubActive = clubActive.filter(x => !(x.family === 'GOALS' && x.regime !== 'anchor'));
-            // PLAYER de clubes fuera del feed público: la disponibilidad (roster TSA + observer) no es confiable →
-            // publicar "X anota" con el jugador OUT es un error de credibilidad (caso Messi). Quedan en monitoreo
-            // admin hasta que la capa de disponibilidad sea sólida. Corners/cards siguen su gate normal.
-            clubActive = clubActive.filter(x => x.family !== 'PLAYER');
-            if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
+            // PLAYER de clubes AL feed público (TSA pago 22-jul → roster + observer confiables): se PUBLICAN,
+            // salvo que la capa de disponibilidad marque al jugador OUT/DUDA (clubPlayerAvail sobre cualquiera de
+            // los 2 equipos; el pid solo matchea el roster de su equipo) → nunca "X anota" con X afuera (caso
+            // Messi). Sin pid no se puede validar → fuera. La visibilidad final es Sharp (gating por plan abajo).
+            clubActive = clubActive.filter(x => {
+              if (x.family !== 'PLAYER') return true;
+              if (!x.pid) return false;
+              const av = clubPlayerAvail(x.event.home_team_id, x.pid) || clubPlayerAvail(x.event.away_team_id, x.pid);
+              return !(av && av.prob_miss >= 0.3);
+            });
+            // CORNERS/CARDS siguen gateados por props-public (data fina, en acumulación — decisión de Alexis);
+            // PLAYER (goalscorers/assists) YA NO: se valida por disponibilidad arriba (TSA pago) y es feature
+            // Sharp (gating por plan abajo). Así los goleadores salen sin sacar córners/tarjetas.
+            if (!propsPicksPublic()) clubActive = clubActive.filter(x => x.family === 'PLAYER' || PROP_FAMS.indexOf(x.family) < 0);
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
           }
           const clubItems = clubActive.map(x => ({

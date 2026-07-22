@@ -2125,6 +2125,104 @@ ${reads.strengths.length ? `<div class="card"><div class="plabel">${lang === 'es
 </div></body></html>`;
 }
 
+// ===== GAP-AUDIT 2: SEO por JUGADOR de CLUB (/jugador/<slug> ES · /player/<slug> EN) ==========================
+// Paridad con seoPlayers/seoPlayerHtml del Mundial, pero multi-liga (clubsFit) y con el framing de la liga.
+// El route resuelve primero el Mundial y cae a clubes; el sitemap suma ambos. Caja negra igual (solo lecturas).
+let _seoClubPlayersCache = { ts: 0, bySlug: null };
+function seoClubPlayers() {
+  if (_seoClubPlayersCache.bySlug && Date.now() - _seoClubPlayersCache.ts < 10 * 60e3) return _seoClubPlayersCache.bySlug;
+  const cf = require('./player-intel/clubsFit');
+  let RT = global._clubsRatings;
+  if (!RT || !RT.leagues) { try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); global._clubsRatings = RT; } catch { RT = { leagues: {} }; } }
+  const bySlug = {};
+  for (const league of Object.keys(RT.leagues || {})) {
+    let fit = null; try { fit = cf.leagueFit(league); } catch { fit = null; }
+    if (!fit) continue;
+    const L = RT.leagues[league] || {};
+    const leagueName = (L.name || league).split(' · ')[0];
+    for (const pl of Object.values(fit.players)) {
+      if (!pl.reliable || pl.minutes < 180) continue;
+      const slug = seoSlug(pl.name); if (!slug) continue;
+      const cur = bySlug[slug];
+      if (!cur || cur.minutes < pl.minutes) {
+        const teamName = (L.ratings && L.ratings[pl.team] && L.ratings[pl.team].name) || pl.team;
+        bySlug[slug] = { pid: pl.pid, name: pl.name, team: pl.team, league, leagueName, teamName, minutes: pl.minutes, pos: pl.pos };
+      }
+    }
+  }
+  _seoClubPlayersCache = { ts: Date.now(), bySlug };
+  return bySlug;
+}
+function seoClubPlayerHtml(e, lang) {
+  const cf = require('./player-intel/clubsFit');
+  const { radarSvg } = require('./player-intel/radar');
+  const intel = cf.clubPlayerScout(e.league, e.pid);
+  if (!intel) return null;
+  const scout = intel.scout;
+  const base = 'https://gpsimulador.com';
+  const slug = seoSlug(e.name);
+  const urlEs = base + '/jugador/' + slug, urlEn = base + '/player/' + slug;
+  const url = lang === 'es' ? urlEs : urlEn;
+  const POS = { F: { es: 'Delantero', en: 'Forward' }, M: { es: 'Mediocampista', en: 'Midfielder' }, D: { es: 'Defensor', en: 'Defender' }, G: { es: 'Arquero', en: 'Goalkeeper' } };
+  const posN = (POS[e.pos] || POS.M)[lang];
+  const title = lang === 'es'
+    ? `${e.name} — Estadísticas y proyección (${e.teamName}, ${e.leagueName})`
+    : `${e.name} — Stats and projection (${e.teamName}, ${e.leagueName})`;
+  const arch = scout && scout.archetype ? SEO_ARCH[scout.archetype] : null;
+  const labels = Object.fromEntries(Object.entries(SEO_AXIS).map(([k, v]) => [k, v[lang]]));
+  const radar = scout ? radarSvg(scout.axes, labels, { stroke: '#2be3a6', fill: 'rgba(43,227,166,.2)', grid: 'rgba(255,255,255,.13)', label: '#9fbcae', size: 320 }) : '';
+  const reads = scout && scout.read ? scout.read : { strengths: [], limit: null };
+  const li = s => `<li>${s[lang]}</li>`;
+  const ph = global._clubPlayerPhotos && global._clubPlayerPhotos[e.pid] && global._clubPlayerPhotos[e.pid].photo;
+  const goals = intel.goals || 0, assists = intel.assists || 0, apps = intel.apps || 0, minutes = intel.minutes || 0;
+  const g90 = minutes > 0 ? ((goals / minutes) * 90).toFixed(2) : '0.00';
+  const desc = lang === 'es'
+    ? `${e.name} (${e.teamName}, ${posN}) en ${e.leagueName}: ${goals} goles y ${assists} asistencias en ${apps} partidos. Radar vs su posición, lectura de scouting y proyección del sistema.`
+    : `${e.name} (${e.teamName}, ${posN}) in ${e.leagueName}: ${goals} goals and ${assists} assists in ${apps} matches. Radar vs his position, scouting read and system projection.`;
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'Person', name: e.name,
+    jobTitle: lang === 'es' ? 'Futbolista' : 'Football player',
+    memberOf: { '@type': 'SportsTeam', name: e.teamName }, url,
+  });
+  const statCell = (n, k) => `<div class="st"><div class="n">${n}</div><div class="k">${k}</div></div>`;
+  const stats = lang === 'es'
+    ? statCell(goals, 'goles') + statCell(assists, 'asistencias') + statCell(apps, 'partidos') + statCell(minutes, 'minutos') + statCell(g90, 'goles por 90')
+    : statCell(goals, 'goals') + statCell(assists, 'assists') + statCell(apps, 'matches') + statCell(minutes, 'minutes') + statCell(g90, 'goals per 90');
+  return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title><meta name="description" content="${desc}">
+<link rel="canonical" href="${url}"><link rel="alternate" hreflang="es" href="${urlEs}"><link rel="alternate" hreflang="en" href="${urlEn}"><link rel="alternate" hreflang="x-default" href="${urlEn}">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${ph || base + '/og.png'}">
+<script type="application/ld+json">${jsonld}</script><style>${seoShellCss()}
+.php{display:flex;align-items:center;gap:18px;margin:6px 0 4px}
+.php img{width:84px;height:84px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,.14);background:#0a140f}
+.badge{display:inline-block;background:rgba(43,227,166,.14);border:1px solid rgba(43,227,166,.4);color:#2be3a6;font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:99px;margin-top:8px}
+.radarw{display:flex;justify-content:center;padding:8px 0 2px}
+.radarw svg{width:min(340px,88vw);height:auto}
+.sr{margin:10px 0 0;padding-left:20px}
+.sr li{margin:7px 0;color:#cfe6da;font-size:14.5px}
+.sr.lim li{color:#c9b27f}
+.sth{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.st{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 8px;text-align:center}
+.st .n{font-size:22px;font-weight:800}.st .k{font-size:11px;color:#9fbcae;margin-top:2px}
+@media(max-width:520px){.sth{grid-template-columns:repeat(3,1fr)}}
+</style></head>
+<body><div class="wrap"><nav class="nav"><a class="logo" href="/"><i>▟</i> GP Simulador</a></nav>
+<div class="crumb">${e.leagueName} · ${e.teamName}</div>
+<div class="php">${ph ? `<img src="${ph}" alt="${e.name}" loading="lazy">` : ''}<div><h1 style="margin:0">${e.name}</h1>
+<div class="meta">${posN} · ${e.teamName}</div>${arch ? `<span class="badge">★ ${arch[lang]}</span>` : ''}</div></div>
+<div class="card"><div class="plabel">${lang === 'es' ? 'Radar vs jugadores de su posición · ' + e.leagueName : 'Radar vs players in his position · ' + e.leagueName}</div>
+<div class="radarw">${radar}</div></div>
+${reads.strengths.length ? `<div class="card"><div class="plabel">${lang === 'es' ? 'Lectura de scouting' : 'Scouting read'}</div><ul class="sr">${reads.strengths.map(li).join('')}</ul>${reads.limit ? `<ul class="sr lim">${li(reads.limit)}</ul>` : ''}</div>` : ''}
+<div class="card"><div class="plabel">${lang === 'es' ? 'Números de la temporada' : 'Season numbers'}</div><div class="sth">${stats}</div></div>
+<p class="read">${lang === 'es'
+    ? `La proyección de gol de ${e.name} para el próximo partido, sus mercados con la mejor cuota entre más de 40 casas y la lectura del sistema están dentro de la plataforma.`
+    : `${e.name}'s goal projection for the next match, his markets with the best odds across 40+ books and the system read live inside the platform.`}</p>
+<a class="cta" href="/">${lang === 'es' ? 'Ver su proyección y mercados → cuenta gratis' : 'See his projection and markets → free account'}</a>
+<div class="ctasub">${lang === 'es' ? 'Sin tarjeta · solo tu email · historial público y verificado' : 'No card · just your email · public, verified record'}</div>
+<div class="foot">${lang === 'es' ? 'Estimaciones estadísticas con fines informativos. No es consejo financiero. 18+.' : 'Statistical estimates for informational purposes. Not financial advice. 18+.'}<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="${lang === 'es' ? urlEn : urlEs}">${lang === 'es' ? 'English version' : 'Versión en español'}</a></div>
+</div></body></html>`;
+}
+
 function modelProbsFor(home, away, result) {
   if (!home || !away) return null;
   if (result && result.status === 'live') {
@@ -6720,6 +6818,31 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, global._playerIdxCache.body);
         } catch (e) { return json(res, 200, { players: [], count: 0 }); }
       }
+      // GAP-AUDIT 1: player-index de CLUBES (paridad con /api/beta/player-index del Mundial) → jugadores de club
+      // buscables en el buscador global. Multi-liga: itera clubsFit.leagueFit de cada liga con data. Mismo gate.
+      if (p === '/api/beta/clubs-player-index' && req.method === 'GET') {
+        if (!propsPicksPublic() && !betaUser.isAdmin) return json(res, 403, { error: 'admin' });
+        try {
+          if (!global._clubsPidxCache || Date.now() - global._clubsPidxCache.at > 10 * 60 * 1000) {
+            const cf = require('./player-intel/clubsFit');
+            let RT = global._clubsRatings;
+            if (!RT || !RT.leagues) { try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); global._clubsRatings = RT; } catch { RT = { leagues: {} }; } }
+            const ph = global._clubPlayerPhotos || {};
+            const players = [];
+            for (const league of Object.keys(RT.leagues || {})) {
+              let fit = null; try { fit = cf.leagueFit(league); } catch { fit = null; }
+              if (!fit) continue;
+              const lname = (RT.leagues[league] && RT.leagues[league].name) || league;
+              for (const pl of Object.values(fit.players)) {
+                if (!pl.reliable) continue; // solo jugadores con muestra (evita ruido en la búsqueda)
+                players.push({ pid: pl.pid, name: pl.name, team: pl.team, league, league_name: lname, pos: pl.pos, min: pl.minutes, photo: ph[pl.pid] ? 1 : 0 });
+              }
+            }
+            global._clubsPidxCache = { at: Date.now(), body: { players, count: players.length } };
+          }
+          return json(res, 200, global._clubsPidxCache.body);
+        } catch (e) { return json(res, 200, { players: [], count: 0 }); }
+      }
       // INTELIGENCIA POR JUGADOR (punto 1 roadmap 8-jul): perfil completo — foto, muestra, tasas por 90',
       // forma partido a partido, disponibilidad del observer y la lectura del player-intel engine con los
       // códigos de razón ("por qué el sistema concluye X"). Caja negra: sin fuentes ni métodos. Admin-first.
@@ -7034,6 +7157,36 @@ const server = http.createServer(async (req, res) => {
           };
         }).filter(Boolean).sort((a, b) => b.edge_pp - a.edge_pp);
         return json(res, 200, { items, count: items.length, market_code: 'WC_WINNER', generated_at: new Date().toISOString() });
+      }
+      // GAP-AUDIT 3: value OUTRIGHT de CLUBES (campeón de liga). Paridad con value-outright del Mundial pero
+      // multi-liga: prob de campeón del season sim (clubSeasonSim) por equipo, RANKED. El lado MERCADO (edge vs
+      // Polymarket/Kalshi de "campeón de liga") queda listo pero market_available:false hasta cablear un feed de
+      // mercados de campeón por liga (no existe hoy: el Polymarket del Mundial es un mercado único WC_WINNER).
+      // Sharp-gated como el resto de Value/Arbitraje.
+      if (p === '/api/beta/clubs-value-outright' && req.method === 'GET') {
+        const planV = effectivePlan(betaUser.email, url.searchParams.get('asplan'));
+        if (planV !== 'sharp') return json(res, 403, { error: 'upgrade', need: 'sharp', plan: planV });
+        try {
+          let RT = global._clubsRatings;
+          if (!RT || !RT.leagues) { try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); global._clubsRatings = RT; } catch { RT = { leagues: {} }; } }
+          const only = String(url.searchParams.get('league') || '').trim();
+          const leagues = [];
+          for (const league of Object.keys(RT.leagues || {})) {
+            if (only && league !== only) continue;
+            let sim = null; try { sim = clubSeasonSim(league); } catch { sim = null; }
+            if (!sim || !sim.teams) continue;
+            const L = RT.leagues[league] || {};
+            const nameOf = (id) => (L.ratings && L.ratings[id] && L.ratings[id].name) || id;
+            const items = Object.entries(sim.teams)
+              .map(([id, s]) => ({ team_id: id, team_name: nameOf(id), model_pct: s.champion, market_pct: null, edge_pp: null, exp_rank: s.exp_rank, exp_points: s.exp_points }))
+              .filter(x => x.model_pct > 0)
+              .sort((a, b) => b.model_pct - a.model_pct)
+              .slice(0, 12);
+            if (items.length) leagues.push({ league, league_name: (L.name || league).split(' · ')[0], market_available: false, remaining: sim.remaining, items });
+          }
+          leagues.sort((a, b) => (b.items[0] ? b.items[0].model_pct : 0) - (a.items[0] ? a.items[0].model_pct : 0));
+          return json(res, 200, { leagues, count: leagues.length, market_code: 'CLUB_LEAGUE_WINNER', market_available: false, generated_at: new Date().toISOString() });
+        } catch (e) { return json(res, 200, { leagues: [], count: 0 }); }
       }
       // ARBITRAJE (scanner multi-venue): DOS familias — "Arbitraje puro" (surebet 2/N patas, cross-venue) y
       // "Precio atrasado" (value 1-pata: casa cuya cuota rezaga el consenso no-vig del resto). Es el MERCADO
@@ -9959,12 +10112,22 @@ const server = http.createServer(async (req, res) => {
         urls.push(`<url><loc>${base}/prediction/${m.slug.en}</loc><changefreq>${cf}</changefreq><priority>${pr}</priority></url>`);
       }
       // Cards públicas de jugador (muestra confiable del torneo): ES + EN.
+      const seenPlayerSlug = new Set();
       try {
         for (const slug of Object.keys(seoPlayers())) {
+          seenPlayerSlug.add(slug);
           urls.push(`<url><loc>${base}/jugador/${slug}</loc><changefreq>daily</changefreq><priority>0.6</priority></url>`);
           urls.push(`<url><loc>${base}/player/${slug}</loc><changefreq>daily</changefreq><priority>0.6</priority></url>`);
         }
       } catch { /* sitemap sin jugadores si el fit no está */ }
+      // GAP-AUDIT 2: cards de jugador de CLUB (sin duplicar slugs que ya sirve el Mundial).
+      try {
+        for (const slug of Object.keys(seoClubPlayers())) {
+          if (seenPlayerSlug.has(slug)) continue;
+          urls.push(`<url><loc>${base}/jugador/${slug}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`);
+          urls.push(`<url><loc>${base}/player/${slug}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`);
+        }
+      } catch { /* sitemap sin jugadores de club si el fit no está */ }
       res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=300' });
       return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`);
     }
@@ -9986,10 +10149,19 @@ const server = http.createServer(async (req, res) => {
       const lang = p.startsWith('/jugador/') ? 'es' : 'en';
       const slug = decodeURIComponent(p.split('/')[2] || '').toLowerCase();
       const pl = seoPlayers()[slug];
-      if (!pl) { res.writeHead(302, { Location: lang === 'es' ? '/pronosticos' : '/predictions' }); return res.end(); }
       try {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
-        return res.end(seoPlayerHtml(pl, lang));
+        if (pl) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
+          return res.end(seoPlayerHtml(pl, lang));
+        }
+        // GAP-AUDIT 2: fallback a jugador de CLUB (mismo slug), si no era del Mundial
+        const ce = seoClubPlayers()[slug];
+        const chtml = ce ? seoClubPlayerHtml(ce, lang) : null;
+        if (chtml) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
+          return res.end(chtml);
+        }
+        res.writeHead(302, { Location: lang === 'es' ? '/pronosticos' : '/predictions' }); return res.end();
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
     // LEGALES (públicas, sin gating — deben ser accesibles antes de pagar): una sola página con secciones.

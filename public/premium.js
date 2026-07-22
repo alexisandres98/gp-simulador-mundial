@@ -702,6 +702,15 @@
       S.pidx = { list: d.players, byTeam: byTeam };
     });
   }
+  // GAP-AUDIT 1: índice de jugadores de CLUB para el buscador global (paridad con loadPlayerIndex del Mundial).
+  function loadClubsPlayerIndex() {
+    if (S.cpidx !== undefined || !clubsOn()) return;
+    S.cpidx = null;
+    fetch('/api/beta/clubs-player-index', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (d) {
+      if (!d || !d.players || !d.players.length) return;
+      S.cpidx = { list: d.players };
+    });
+  }
   function pidxResolve(teamId, rawName) {
     if (!S.pidx || !teamId || !rawName) return null;
     var tm = S.pidx.byTeam[teamId]; if (!tm) return null;
@@ -915,8 +924,16 @@
         players.sort(function (a, b) { return (b.min || 0) - (a.min || 0); });
         players = players.slice(0, 6);
       }
+      // jugadores de CLUB (GAP-AUDIT 1: mismo índice pero multi-liga; link a #cplayer)
+      var cplayers = [];
+      if (S.cpidx && S.cpidx.list) {
+        cplayers = S.cpidx.list.filter(function (pp) { return pnorm(pp.name).indexOf(nq.replace(/[^a-z0-9]/g, '')) >= 0; });
+        cplayers.sort(function (a, b) { return (b.min || 0) - (a.min || 0); });
+        cplayers = cplayers.slice(0, 6);
+      }
       var html = '';
       if (players.length) html += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + players.map(function (pp) { return '<div class="gx-sr-i" data-sr-player="' + esc(pp.pid) + '"><span class="fl">' + flag(pp.team) + '</span><b>' + esc(pp.name) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(pp.pos || '') + '</span></div>'; }).join('');
+      if (cplayers.length) html += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + cplayers.map(function (pp) { return '<div class="gx-sr-i" data-sr-cplayer="' + esc(pp.league + '|' + pp.team + '|' + pp.pid) + '">' + clubBadge(pp.team) + '<b style="margin-left:6px">' + esc(pp.name) + '</b><span class="gx-spacer"></span><span class="gx-dim" style="font-size:10.5px">' + leagueLogo(pp.league) + esc((pp.league_name || '').split(' · ')[0]) + '</span></div>'; }).join('');
       if (teams.length) html += '<div class="gx-sr-h">' + esc(t('nav_teams')) + '</div>' + teams.map(function (tm) { return '<div class="gx-sr-i" data-sr-team="' + esc(tm.id) + '"><span class="fl">' + flag(tm.id) + '</span><b>' + esc(teamName(tm.id, tm.name)) + '</b></div>'; }).join('');
       // FASE CLUBES: equipos de clubes (con escudo) → perfil de club. Solo si clubsOn() y ya cargó S.clubs.
       if (clubsOn() && S.clubs && S.clubs.leagues) {
@@ -933,6 +950,7 @@
     inp.addEventListener('focus', function () { if ((inp.value || '').trim().length >= 2) run(); });
     res.addEventListener('click', function (e) {
       var pp = e.target.closest('[data-sr-player]'); if (pp) { inp.value = ''; hide(); openPlayer(pp.getAttribute('data-sr-player')); return; }
+      var cp = e.target.closest('[data-sr-cplayer]'); if (cp) { inp.value = ''; hide(); var cpp = cp.getAttribute('data-sr-cplayer').split('|'); openClubPlayer(cpp[0], cpp[1], cpp[2]); return; }
       var tm = e.target.closest('[data-sr-team]'); if (tm) { inp.value = ''; hide(); openTeam(tm.getAttribute('data-sr-team')); return; }
       var ct = e.target.closest('[data-sr-cteam]'); if (ct) { inp.value = ''; hide(); var pp2 = ct.getAttribute('data-sr-cteam').split('|'); openClubTeam(pp2[0], pp2[1]); return; }
       var mm = e.target.closest('[data-sr-match]'); if (mm) { inp.value = ''; hide(); openMatch(mm.getAttribute('data-sr-match')); return; }
@@ -5963,7 +5981,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); loadPlayerIndex();
+          if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); loadPlayerIndex(); loadClubsPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
             if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }

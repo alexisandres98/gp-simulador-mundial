@@ -4959,21 +4959,25 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       || (old.family === 'GOALS' && scannedGoals.has(ev) && !keptGoals.has(ev));
     if (drop) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; }
   }
-  const existingById = new Map(db.clubDailyPicks.map(p => [p.pick_id, p]));
-  let added = 0, updated = 0;
+  const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
+  let added = 0;
   for (const p of fresh) {
-    const ex = existingById.get(p.pick_id);
-    if (ex) {
-      // pick idempotente ya existente: refrescar el flag de palanca en la ACTIVA (los registros previos al
-      // 23-jul no lo tenían) para que el bucket solid_lever del lunes las clasifique bien.
-      if (ex.status === 'ACTIVE' && p.family === 'SOLID' && ex.solid_lever !== p.solid_lever) { ex.solid_lever = p.solid_lever; updated++; }
-      continue;
-    }
+    if (byId.has(p.pick_id)) continue;
     // anti-contradicción del Mundial: 1 ACTIVE por (evento, familia) — la nueva SUPERSEDE a la anterior
     for (const old of db.clubDailyPicks) {
       if (old.status === 'ACTIVE' && old.family === p.family && old.event.canonical_event_id === p.event.canonical_event_id) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); }
     }
     db.clubDailyPicks.push(p); added++;
+  }
+  // FLAG DE PALANCA (23-jul): se computa desde las PROBS CONGELADAS de cada SOLID activa (no las frescas del
+  // build) → coherente con lo publicado, estable cerca del kickoff, y backfillea/corrige registros previos.
+  // lever = favorito claro del consenso (mkt≥55%) donde el modelo es MÁS conservador (mdl < mkt−5pp).
+  let updated = 0;
+  for (const q of db.clubDailyPicks) {
+    if (q.status !== 'ACTIVE' || q.family !== 'SOLID') continue;
+    const mk = Number(q.market_prob || 0), md = Number(q.model_prob || 0);
+    const lev = mk >= 0.55 && md < mk - 0.05;
+    if (q.solid_lever !== lev) { q.solid_lever = lev; updated++; }
   }
   if (added || updated || out.pruned) save();
   out.added = added; out.updated = updated; out.total = db.clubDailyPicks.length;

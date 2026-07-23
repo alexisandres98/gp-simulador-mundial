@@ -4062,6 +4062,30 @@ function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
     .filter(x => x.status !== 'SETTLED' || Date.parse(x.settled_at || 0) >= CLUBS_CONTINUATION_START);
 }
 
+// STOP-LOSS ROLLING (23-jul, gobernanza automática): si una familia cae por debajo de su break-even en sus
+// últimas 30 liquidadas PÚBLICAS, sale sola del FEED (las activas dejan de mostrarse) hasta que la ventana se
+// recupere. El historial del cuadro NO se toca (es inmutable). Solo cuenta lo que HOY sería público: SOLID/GOALS
+// ancla, córners/tarjetas todas. Requiere ventana llena (≥30) → dormant hasta acumular muestra bajo las reglas
+// nuevas. Break-even = 1/cuota media (a la cuota típica de la familia, el hit mínimo para no perder).
+function clubFamilyStopped() {
+  const inPublic = (p) => (p.family === 'SOLID' || p.family === 'GOALS') ? p.regime === 'anchor' : (p.family === 'CORNERS' || p.family === 'CARDS');
+  const byFam = {};
+  const settled = (db.clubDailyPicks || [])
+    .filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && inPublic(p))
+    .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0));
+  for (const p of settled) (byFam[p.family] = byFam[p.family] || []).push(p);
+  const stopped = new Set();
+  for (const [fam, list] of Object.entries(byFam)) {
+    const w = list.slice(0, 30);
+    if (w.length < 30) continue; // sin muestra suficiente → no se frena
+    let wins = 0, oddsSum = 0;
+    w.forEach(p => { if (p.result_code === 'WIN') wins++; oddsSum += Number(p.best_odds) || 0; });
+    const hit = wins / w.length, avgOdds = oddsSum / w.length, breakEven = avgOdds > 1 ? 1 / avgOdds : 1;
+    if (hit < breakEven) stopped.add(fam);
+  }
+  return stopped;
+}
+
 // ===== CAPA DE OBSERVACIÓN de jugadores (6-jul, SHADOW) ======================================================
 // Captura lo PUBLICADO (Google News RSS por equipo VIVO, EN+ES) → señales de disponibilidad por jugador
 // (lesión/enfermedad/duda/sanción/descanso/vuelta) → evaluación con prob de ausencia + factor λ sugerido
@@ -4830,16 +4854,27 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     confidence: fields.confidence != null ? fields.confidence : null, edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
     why_es: fields.why && fields.why.es, why_en: fields.why && fields.why.en,
     regime: fields.regime || null, // 'anchor' | 'edge' — régimen dual (análisis del track privado)
+    solid_lever: fields.solid_lever || false, // SOLID que pasa SOLO por la palanca ajustada (modelo<mercado) — monitoreo
     status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
   });
   let fresh = []; // (let: las reglas de publicación lo re-filtran antes de persistir)
+  // FILTRO ANCLA-SOLID (23-jul, autopsia: el 1X2 no le gana al mercado — CLV −4.5%, bucket conf 60-70 roto
+  // −27pp). Una SOLID solo se CREA si es favorito CLARO del consenso (mercado ≥55%), con mercado profundo
+  // (≥5 casas) y SIN sobreconfianza del modelo (modelo ≤ mercado+5pp — se corta justo la dirección del bucket
+  // roto). PALANCA AJUSTADA (a monitorear hasta el lunes): se admite el caso modelo<mercado−5pp (favorito real
+  // donde nuestro modelo es MÁS conservador que el mercado) y se marca solid_lever para evaluarlo aparte.
+  const SOLID_MIN_MKT = 0.55, SOLID_MIN_BOOKS = 5, SOLID_MAX_OVERCONF = 0.05, SOLID_LEVER_MARGIN = 0.05;
   for (const s of res.eligible.solid) {
+    const mkt = Number(s.marketProb || 0), mdl = Number(s.modelProb || 0), bk = Number(s.books || 0);
+    if (mkt < SOLID_MIN_MKT || bk < SOLID_MIN_BOOKS) continue;   // no favorito claro / mercado fino → NO se crea
+    if (mdl > mkt + SOLID_MAX_OVERCONF) continue;                // modelo sobreconfiado (bucket roto) → NO se crea
+    const lever = mdl < mkt - SOLID_LEVER_MARGIN;                // palanca: modelo menos confiado que el mercado
     const ev = events.find(e => e.eventId === s.eventId) || {};
     const why = compose([
       { code: 'MARKET_ANCHOR', w: 3, books: s.books },
       ...(s.modelProb > s.marketProb ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : []),
     ]);
-    fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why, regime: 'anchor' }, s.eventId + '|SOLID|' + s.selection));
+    fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why, regime: 'anchor', solid_lever: lever }, s.eventId + '|SOLID|' + s.selection));
   }
   // 1 GOALS por evento. POST-MUNDIAL (19-jul, decisión de Alexis): goles al PÚBLICO = solo ANCLA. El mercado de
   // goles es eficiente → el "edge" del modelo EMPATA al consenso (combinado Mundial+clubes: 53%/+1.5u; clubes
@@ -4856,6 +4891,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     if (better) bestGoalByEvent[g.eventId] = g;
   }
   for (const g of Object.values(bestGoalByEvent)) {
+    if (g.regime !== 'anchor') continue; // GOALS no-ancla de clubes NO se crean (23-jul): 7-14 histórico, sin edge; ensuciaban el cuadro
     const gm = goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
     // narrativa por régimen: la ANCLA se explica como ancla (consenso + modelo confirma), no como edge
     const why = g.regime === 'anchor'
@@ -4899,13 +4935,30 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // REGLA DE PUBLICACIÓN (autopsia 18-jul): máximo 3 picks PÚBLICAS por evento — SOLID > GOALS > la mejor
   // por confianza. Las regime:'monitor' (track privado, no salen al feed) NO cuentan ni se recortan.
   const pubPrio = { SOLID: 0, GOALS: 1 };
+  // el cap de 3 es para el FEED (SOLID/GOALS/COMBO). Props (córners/tarjetas/player) y monitor NO entran al cap:
+  // no van al feed y deben liquidar TODAS para contar en el cuadro (decisión Alexis 23-jul).
+  const capExempt = (p) => p.regime === 'monitor' || PROP_FAMS.indexOf(p.family) >= 0;
   const freshByEv = {};
-  fresh.forEach(p => { if (p.regime !== 'monitor') (freshByEv[p.event.canonical_event_id] = freshByEv[p.event.canonical_event_id] || []).push(p); });
-  const keepIds = new Set(fresh.filter(p => p.regime === 'monitor').map(p => p.pick_id));
+  fresh.forEach(p => { if (!capExempt(p)) (freshByEv[p.event.canonical_event_id] = freshByEv[p.event.canonical_event_id] || []).push(p); });
+  const keepIds = new Set(fresh.filter(capExempt).map(p => p.pick_id));
   Object.values(freshByEv).forEach(evPicks => {
     evPicks.slice().sort((a, b) => ((pubPrio[a.family] ?? 2) - (pubPrio[b.family] ?? 2)) || ((b.confidence || 0) - (a.confidence || 0))).slice(0, 3).forEach(p => keepIds.add(p.pick_id));
   });
   fresh = fresh.filter(p => keepIds.has(p.pick_id));
+  // PRUNE (23-jul): las SOLID/GOALS activas creadas bajo reglas viejas que ya NO pasan el filtro nuevo se
+  // superseden (salen del feed Y del cuadro — SUPERSEDED no cuenta). SOLO eventos re-escaneados este ciclo
+  // (con data fresca en events/goalMarkets); si el evento no se escaneó, no se toca. Props/COMBO no se prunean.
+  const scannedSolid = new Set(events.map(e => e.eventId));
+  const scannedGoals = new Set(goalMarkets.map(g => g.eventId));
+  const keptSolid = new Set(fresh.filter(p => p.family === 'SOLID').map(p => p.event.canonical_event_id));
+  const keptGoals = new Set(fresh.filter(p => p.family === 'GOALS').map(p => p.event.canonical_event_id));
+  for (const old of db.clubDailyPicks) {
+    if (old.status !== 'ACTIVE') continue;
+    const ev = old.event.canonical_event_id;
+    const drop = (old.family === 'SOLID' && scannedSolid.has(ev) && !keptSolid.has(ev))
+      || (old.family === 'GOALS' && scannedGoals.has(ev) && !keptGoals.has(ev));
+    if (drop) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; }
+  }
   const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
   let added = 0;
   for (const p of fresh) {
@@ -5154,7 +5207,9 @@ function clubDailyPicksTrackRecord() {
   const agg = {};
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'SETTLED' || !['WIN', 'LOSS', 'PUSH'].includes(p.result_code)) continue;
-    for (const key of ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow'), 'regime:' + (p.regime || 'pre')]) {
+    const keys = ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow'), 'regime:' + (p.regime || 'pre')];
+    if (p.family === 'SOLID') keys.push('solid_lever:' + (p.solid_lever ? 'on' : 'off')); // evaluación de la palanca (lunes)
+    for (const key of keys) {
       const a = agg[key] = agg[key] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl: 0 };
       a.n++;
       if (p.result_code === 'WIN') { a.wins++; a.pnl += (Number(p.best_odds) || 1) - 1; }
@@ -6634,6 +6689,9 @@ const server = http.createServer(async (req, res) => {
             // acumulación); sus LIQUIDADAS sí cuentan en el cuadro público (picks-record, decisión 23-jul).
             if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
+            // STOP-LOSS ROLLING: familias bajo break-even en sus últimas 30 públicas salen del feed (dormant hasta ≥30).
+            const _stopped = clubFamilyStopped();
+            if (_stopped.size) clubActive = clubActive.filter(x => !_stopped.has(x.family));
           }
           const clubItems = clubActive.map(x => ({
               pick_id: x.pick_id, family: x.family, event_id: null, club_eid: x.event.club_eid || null,

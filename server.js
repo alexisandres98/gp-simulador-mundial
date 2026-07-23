@@ -6626,20 +6626,13 @@ const server = http.createServer(async (req, res) => {
             // GOLES público = solo ANCLA (19-jul, Alexis): el edge de goles empata al mercado eficiente → al track
             // privado. Autoritativo: excluye también las legacy activas (regime 'edge'/indefinido) sin mutar el track.
             clubActive = clubActive.filter(x => !(x.family === 'GOALS' && x.regime !== 'anchor'));
-            // PLAYER de clubes AL feed público (TSA pago 22-jul → roster + observer confiables): se PUBLICAN,
-            // salvo que la capa de disponibilidad marque al jugador OUT/DUDA (clubPlayerAvail sobre cualquiera de
-            // los 2 equipos; el pid solo matchea el roster de su equipo) → nunca "X anota" con X afuera (caso
-            // Messi). Sin pid no se puede validar → fuera. La visibilidad final es Sharp (gating por plan abajo).
-            clubActive = clubActive.filter(x => {
-              if (x.family !== 'PLAYER') return true;
-              if (!x.pid) return false;
-              const av = clubPlayerAvail(x.event.home_team_id, x.pid) || clubPlayerAvail(x.event.away_team_id, x.pid);
-              return !(av && av.prob_miss >= 0.3);
-            });
-            // CORNERS/CARDS siguen gateados por props-public (data fina, en acumulación — decisión de Alexis);
-            // PLAYER (goalscorers/assists) YA NO: se valida por disponibilidad arriba (TSA pago) y es feature
-            // Sharp (gating por plan abajo). Así los goleadores salen sin sacar córners/tarjetas.
-            if (!propsPicksPublic()) clubActive = clubActive.filter(x => x.family === 'PLAYER' || PROP_FAMS.indexOf(x.family) < 0);
+            // PLAYER de clubes FUERA del feed público (23-jul, decisión Alexis tras autopsia: 2-5, −3.07u,
+            // CLV −0.95% — la familia acumula muestra ADMIN-ONLY y se publica cuando demuestre). El guard de
+            // disponibilidad (clubPlayerAvail, TSA pago) queda listo en el historial de git para la reapertura.
+            clubActive = clubActive.filter(x => x.family !== 'PLAYER');
+            // CORNERS/CARDS: el FEED sigue gateado por props-public (activas no se muestran — data fina en
+            // acumulación); sus LIQUIDADAS sí cuentan en el cuadro público (picks-record, decisión 23-jul).
+            if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
           }
           const clubItems = clubActive.map(x => ({
@@ -6754,16 +6747,18 @@ const server = http.createServer(async (req, res) => {
       // liquidadas SANEADO (sin model%/mercado%/confianza internos; solo qué se publicó, cuota y resultado).
       // SUPERSEDED no viaja (reemplazos internos por coherencia, no picks del usuario).
       if (p === '/api/beta/picks-record' && req.method === 'GET') {
-        const hideProps = !propsPicksPublic() && !(betaUser && betaUser.isAdmin);
-        // CONTINUACIÓN post-Mundial (20-jul): las picks de clubes PÚBLICAS se suman a las del Mundial como UN
-        // solo track record / historial (mismo cuadro, escudos vía tm_). El monitoreo privado (regime:monitor)
-        // no entra — vive solo en la sección admin de clubes.
-        const clubPub = clubPublicPicks({ isAdmin: !!(betaUser && betaUser.isAdmin), hideProps });
-        const merged = (db.dailyPicks || []).concat(clubPub);
+        const isAdm = !!(betaUser && betaUser.isAdmin);
+        // CUADRO COMBINADO CON TODO (23-jul, decisión Alexis): el rendimiento público = Mundial + TODAS las
+        // familias de clubes que liquidan (SOLID/GOALS/CORNERS/CARDS, incluidas las de monitoreo y las previas
+        // al 20-jul — supersede el cutoff CLUBS_CONTINUATION_START y el gate props-public PARA EL RECORD).
+        // EXCEPCIÓN: PLAYER (goleador/asistencia, 2-5 y −3u) queda ADMIN-ONLY acumulando muestra — Alexis la
+        // publica cuando la familia demuestre. El admin ve el mismo cuadro CON player (su monitoreo).
+        const clubRecord = (db.clubDailyPicks || []).filter(x => isAdm || x.family !== 'PLAYER');
+        const mundialRecord = (db.dailyPicks || []).filter(x => isAdm || x.family !== 'PLAYER');
+        const merged = mundialRecord.concat(clubRecord);
         const settled = merged
           .filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
-          .filter(x => !hideProps || PROP_FAMS.indexOf(x.family) < 0)
-          .filter(x => (betaUser && betaUser.isAdmin) || EXPERIMENT_FAMS.indexOf(x.family) < 0)
+          .filter(x => isAdm || EXPERIMENT_FAMS.indexOf(x.family) < 0)
           .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0))
           .slice(0, 120)
           .map(x => ({

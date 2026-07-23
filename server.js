@@ -4959,18 +4959,24 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       || (old.family === 'GOALS' && scannedGoals.has(ev) && !keptGoals.has(ev));
     if (drop) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; }
   }
-  const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
-  let added = 0;
+  const existingById = new Map(db.clubDailyPicks.map(p => [p.pick_id, p]));
+  let added = 0, updated = 0;
   for (const p of fresh) {
-    if (byId.has(p.pick_id)) continue;
+    const ex = existingById.get(p.pick_id);
+    if (ex) {
+      // pick idempotente ya existente: refrescar el flag de palanca en la ACTIVA (los registros previos al
+      // 23-jul no lo tenían) para que el bucket solid_lever del lunes las clasifique bien.
+      if (ex.status === 'ACTIVE' && p.family === 'SOLID' && ex.solid_lever !== p.solid_lever) { ex.solid_lever = p.solid_lever; updated++; }
+      continue;
+    }
     // anti-contradicción del Mundial: 1 ACTIVE por (evento, familia) — la nueva SUPERSEDE a la anterior
     for (const old of db.clubDailyPicks) {
       if (old.status === 'ACTIVE' && old.family === p.family && old.event.canonical_event_id === p.event.canonical_event_id) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); }
     }
     db.clubDailyPicks.push(p); added++;
   }
-  if (added) save();
-  out.added = added; out.total = db.clubDailyPicks.length;
+  if (added || updated || out.pruned) save();
+  out.added = added; out.updated = updated; out.total = db.clubDailyPicks.length;
   return out;
 }
 // Liquidación: MISMO settleOne del Mundial con el marcador final de clubResults (ligas domésticas = 90').

@@ -4976,7 +4976,11 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   for (const q of db.clubDailyPicks) {
     if (q.status !== 'ACTIVE' || q.family !== 'SOLID') continue;
     const mk = Number(q.market_prob || 0), md = Number(q.model_prob || 0);
-    const lev = mk >= 0.55 && md < mk - 0.05;
+    // por sus PROPIAS probs congeladas: si ya no es favorito claro (mkt<55%) o el modelo está sobreconfiado
+    // (mdl>mkt+5pp, la dirección del bucket roto) → supersede (sale de feed Y cuadro). Limpia las viejas
+    // grandfathered sin esperar el re-escaneo de su evento.
+    if (mk < 0.55 || md > mk + 0.05) { q.status = 'SETTLED'; q.result_code = 'SUPERSEDED'; q.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; continue; }
+    const lev = md < mk - 0.05;
     if (q.solid_lever !== lev) { q.solid_lever = lev; updated++; }
   }
   if (added || updated || out.pruned) save();

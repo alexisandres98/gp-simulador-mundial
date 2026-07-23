@@ -12,11 +12,11 @@ h1 { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 16px 0 4px
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .card { position: relative; background: #101915; border: 1px solid #1c2a24; border-radius: 16px; padding: 20px 18px 18px; overflow: hidden; }
 .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #2de6a3; }
-.card.goals::before { background: #34D6C8; }
-.card.cards::before { background: #F2C14E; }
+.card.corners::before { background: #34D6C8; }
+.card.goals::before { background: #8FD14F; }
 .fam { color: #2de6a3; font-size: 12px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 9px; }
-.card.goals .fam { color: #34D6C8; }
-.card.cards .fam { color: #F2C14E; }
+.card.corners .fam { color: #34D6C8; }
+.card.goals .fam { color: #8FD14F; }
 .match { font-size: 13px; color: #9db0a8; font-weight: 600; line-height: 1.35; margin-bottom: 3px; min-height: 34px; }
 .tesis { font-size: 12px; color: #6f817a; margin-bottom: 14px; min-height: 30px; }
 .sel { font-size: 23px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 16px; line-height: 1.1; min-height: 54px; }
@@ -26,8 +26,8 @@ h1 { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 16px 0 4px
 .dot.h { background: #2de6a3; } .dot.m { background: #f0b429; }
 .odds-l { font-size: 11px; color: #6f817a; font-weight: 700; letter-spacing: 1px; }
 .odds { font-size: 32px; font-weight: 800; color: #2de6a3; }
-.card.goals .odds { color: #34D6C8; }
-.card.cards .odds { color: #F2C14E; }
+.card.corners .odds { color: #34D6C8; }
+.card.goals .odds { color: #8FD14F; }
 .foot { position: absolute; bottom: 34px; left: 44px; right: 44px; display: flex; align-items: center; justify-content: space-between; }
 .foot .n { font-size: 14px; color: #6f817a; font-weight: 600; }
 .pill { background: #2de6a3; color: #05231a; font-size: 17px; font-weight: 800; padding: 11px 22px; border-radius: 99px; }
@@ -40,7 +40,15 @@ h1 { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 16px 0 4px
   <h1>Las 4 picks de hoy 🎯</h1>
   <div class="sub">23 jul · Brasileirão + Argentina · siempre la mejor cuota</div>
   <div class="grid">
-    <div class="card goals">
+    <div class="card">
+      <div class="fam">Ganador · Brasileirão</div>
+      <div class="match">Corinthians vs Remo</div>
+      <div class="tesis">El local, favorito claro</div>
+      <div class="sel">Gana Corinthians</div>
+      <div class="conf"><span class="dot h"></span>Confianza: <b>Alta</b></div>
+      <div class="odds-l">MEJOR CUOTA</div><div class="odds">1.57</div>
+    </div>
+    <div class="card corners">
       <div class="fam">Córners · Brasileirão</div>
       <div class="match">Corinthians vs Remo</div>
       <div class="tesis">Pocos córners proyectados</div>
@@ -48,7 +56,7 @@ h1 { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 16px 0 4px
       <div class="conf"><span class="dot h"></span>Confianza: <b>Alta</b></div>
       <div class="odds-l">MEJOR CUOTA</div><div class="odds">1.40</div>
     </div>
-    <div class="card goals">
+    <div class="card corners">
       <div class="fam">Córners · Brasileirão</div>
       <div class="match">Botafogo vs Vitória</div>
       <div class="tesis">Córners bajo la media</div>
@@ -56,21 +64,13 @@ h1 { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 16px 0 4px
       <div class="conf"><span class="dot m"></span>Confianza: <b>Media</b></div>
       <div class="odds-l">MEJOR CUOTA</div><div class="odds">1.52</div>
     </div>
-    <div class="card">
+    <div class="card goals">
       <div class="fam">Goles · Liga Argentina</div>
       <div class="match">Sarmiento vs Argentinos</div>
       <div class="tesis">Al menos 2 goles esperados</div>
       <div class="sel">Más de 1.5 goles</div>
       <div class="conf"><span class="dot m"></span>Confianza: <b>Media</b></div>
       <div class="odds-l">MEJOR CUOTA</div><div class="odds">1.68</div>
-    </div>
-    <div class="card cards">
-      <div class="fam">Tarjetas · Brasileirão</div>
-      <div class="match">Botafogo vs Vitória</div>
-      <div class="tesis">Cruce de roce, tarjetas al alza</div>
-      <div class="sel">Más de 4.5 tarjetas</div>
-      <div class="conf"><span class="dot m"></span>Confianza: <b>Media</b></div>
-      <div class="odds-l">MEJOR CUOTA</div><div class="odds">1.80</div>
     </div>
   </div>
   <div class="foot"><div class="n">Picks diarias · análisis claro · no es consejo financiero</div><div class="pill">gpsimulador.com</div></div>

@@ -4652,6 +4652,36 @@ function clubObserverFindings(tmId) {
 // GOAL_FAMILY_APPROVED del Mundial). Shadow: db.clubDailyPicks separado (el settlement del Mundial itera
 // fixtures del Mundial), mismo shape de registro; el feed las fusiona para admin.
 let _clubPicksRunning = false, _clubPicksLast = null;
+// KICKOFF AUTORITATIVO (24-jul): el kickoff de una pick venía del scan de cuotas, que a veces difiere del
+// calendario TSA que usan Partidos/cockpit (caso Tigres-San Luis: scan 25-jul 01:00Z vs TSA 26-jul 03:00Z →
+// "la pick dice sábado 1am y el partido no está en próximos"). TSA validado con resultados reales
+// (Corinthians 23-jul 22:30Z). Busca el fixture del par en el memo de upcoming con guard ±3d (ida/vuelta).
+function clubTsaKickoff(league, hId, aId, aroundMs) {
+  const rows = ((global._clubsUpcoming || {})[league] || {}).rows || [];
+  const pk = [String(hId), String(aId)].sort().join('|');
+  let best = null, bd = 3 * 86400e3 + 1;
+  for (const m of rows) {
+    const mh = String(m.home_team && m.home_team.id), ma = String(m.away_team && m.away_team.id);
+    if ([mh, ma].sort().join('|') !== pk || !m.utc_date) continue;
+    const d = Math.abs(+new Date(m.utc_date) - (aroundMs || Date.now()));
+    if (d < bd) { bd = d; best = m.utc_date; }
+  }
+  return best;
+}
+// Re-alinea el kickoff de las picks ACTIVAS al calendario TSA (idempotente, corre en el ciclo de 15min).
+function refreshClubPickKickoffs() {
+  let fixed = 0;
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'ACTIVE' || !p.event || !p.event.kickoff_at) continue;
+    const ko = clubTsaKickoff(p.league, p.event.home_team_id, p.event.away_team_id, Date.parse(p.event.kickoff_at));
+    if (ko && Math.abs(+new Date(ko) - +new Date(p.event.kickoff_at)) > 30 * 60e3) {
+      p.event.kickoff_at = new Date(ko).toISOString().replace('.000Z', 'Z');
+      fixed++;
+    }
+  }
+  if (fixed) { save(); console.log(`[clubs-picks] kickoffs re-alineados a TSA: ${fixed}`); }
+  return { fixed };
+}
 async function buildClubDailyPicks({ dryRun = false } = {}) {
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return { skipped: 'sin DB' };
@@ -4874,7 +4904,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     pick_id: stable(key), family, is_club: true, league: fields.league,
     gate_status: gateOf(fields.league, family), // approved|shadow — el track privado separa por esto
     competition_name: (RT.leagues[fields.league] && RT.leagues[fields.league].name) || fields.league,
-    event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: fields.kickoff },
+    event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: clubTsaKickoff(fields.league, fields.homeId, fields.awayId, Date.parse(fields.kickoff)) || fields.kickoff },
     selection_code: fields.selection_code || null, market_id: fields.market_id || null, side: fields.side || null, line: fields.line != null ? fields.line : null,
     player_name: fields.player_name || null, pid: fields.pid || null, player_family: fields.player_family || null,
     best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
@@ -5697,9 +5727,10 @@ async function evaluateClubDailyPicks() {
     const b = await buildClubDailyPicks();
     const s = settleClubDailyPicks();
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
+    const kf = refreshClubPickKickoffs(); // kickoff autoritativo TSA (picks vs calendario, caso Tigres 24-jul)
     const rf = await refreshClubPickPrices().catch(() => ({ refreshed: 0 })); // CLV fix: precio ejecutable en la ventana final
     const cl = await captureClubPicksClosing().catch(() => ({ captured: 0 })); // P2: cierre + CLV (misma matemática del Mundial)
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, refresh: rf, closing: cl };
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, kickoffs: kf, refresh: rf, closing: cl };
     if (b.added || s.settled || sp.settled || cl.captured) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, closing: cl.captured, eligible: b.eligible }));
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }

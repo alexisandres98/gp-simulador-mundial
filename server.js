@@ -3420,14 +3420,20 @@ async function clubAfFixture(league, hId, aId) {
   const ck = league + '|' + hId + '|' + aId;
   let c = global._clubAfFx[ck];
   if (!c || Date.now() - c.at > 30 * 60e3) {
+    const prev = c;
     c = { at: Date.now(), fx: null };
     try {
       const af = async (q) => { const r = await fetch('https://v3.football.api-sports.io' + q, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) }); const j = r.ok ? await r.json() : null; return (j && j.response) || []; };
-      let fxs = await af(`/fixtures?team=${afH}&next=10`);
-      let fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
-      if (!fx) { fxs = await af(`/fixtures?team=${afH}&last=10`); fx = fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA)); }
+      const findPair = (fxs) => fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
+      // ORDEN (24-jul fix eventos en vivo): live=all PRIMERO — un partido EN CURSO no aparece ni en next=10
+      // ni en last=10, así que si el memo expiraba durante el partido la resolución fallaba y los eventos
+      // desaparecían del cockpit justo cuando más importan (bug Botafogo-Vitória 23-jul).
+      let fx = findPair(await af(`/fixtures?team=${afH}&live=all`).catch(() => []));
+      if (!fx) fx = findPair(await af(`/fixtures?team=${afH}&next=10`));
+      if (!fx) fx = findPair(await af(`/fixtures?team=${afH}&last=10`));
       if (fx) c.fx = { id: fx.fixture.id, date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, afH, afA, home_af: fx.teams.home.id };
-    } catch { /* AF sin datos este ciclo */ }
+      else if (prev && prev.fx) c.fx = prev.fx; // no pisar una resolución buena con un null transitorio
+    } catch { if (prev && prev.fx) c.fx = prev.fx; }
     global._clubAfFx[ck] = c;
   }
   return c.fx;

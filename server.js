@@ -4996,7 +4996,9 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   for (const q of db.clubDailyPicks) {
     if (q.status !== 'ACTIVE' || q.published) continue;
     const ko = Date.parse(q.event.kickoff_at || 0);
-    if (ko && ko <= Date.now() + 15 * 60e3) { q.published = true; publishedN++; }
+    // ventana de freeze [−3h, +15min]: se marca al CRUZAR el freeze, no a picks viejas re-activadas de
+    // partidos ya jugados (esas son monitoreo, no publicadas — el intruso Atl-MG del 24-jul).
+    if (ko && ko <= Date.now() + 15 * 60e3 && ko > Date.now() - 3 * 3600e3) { q.published = true; publishedN++; }
   }
   if (added || updated || out.pruned || publishedN) save();
   out.added = added; out.updated = updated; out.total = db.clubDailyPicks.length;
@@ -8661,6 +8663,13 @@ const server = http.createServer(async (req, res) => {
         // (c) published=true en las 5 reales (cualquier estado no-superseded)
         for (const x of (db.clubDailyPicks || [])) {
           if (isPub(x) && x.result_code !== 'SUPERSEDED' && !x.published) { x.published = true; out.published++; }
+        }
+        // (d) desmarcar published de picks VIEJAS que el pase de freeze marcó por error (re-activadas de
+        // partidos jugados hace >3h que no son de la lista real)
+        out.unpublished = 0;
+        for (const x of (db.clubDailyPicks || [])) {
+          const ko3 = Date.parse(x.event.kickoff_at || 0);
+          if (x.published && !isPub(x) && ko3 && ko3 < now2 - 3 * 3600e3 && !(x.status === 'SETTLED' && ['WIN', 'LOSS'].includes(x.result_code))) { x.published = false; out.unpublished++; }
         }
         save();
         return json(res, 200, out);

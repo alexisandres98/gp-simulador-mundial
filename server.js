@@ -3100,7 +3100,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
 // GP_CLUBS_SHADOW_ENABLED; ESPN es gratis (0 créditos). Nada de esto toca el Mundial ni el pipeline de picks.
 const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1' };
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
-const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior' };
+const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys' };
 function clubNorm(s) {
   let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   n = n.replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|cd|sc|ac|afc|ec|sad)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -3375,14 +3375,19 @@ async function clubRosterRows(teamId) {
   if (!tsaKey || !/^tm_[a-z0-9]+$/i.test(teamId)) return [];
   global._clubsSquad = global._clubsSquad || {};
   let sq = global._clubsSquad[teamId];
-  if (!sq || Date.now() - sq.at > 24 * 3600e3) {
+  // Mismo candado anti-envenenamiento que el memo de upcoming: un 500 de TSA no cachea roster vacío 24h
+  // (reintento 30min) ni pisa un roster bueno ya cargado.
+  if (!sq || Date.now() - sq.at > ((sq.failed && !(sq.rows || []).length) ? 30 * 60e3 : 24 * 3600e3)) {
     try {
       const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
       const j = r.ok ? await r.json().catch(() => null) : null;
       const rows = (j && j.data) || j || [];
-      sq = { at: Date.now(), rows: Array.isArray(rows) ? rows : [] };
-      global._clubsSquad[teamId] = sq;
-    } catch { sq = sq || { at: Date.now(), rows: [] }; }
+      if (!r.ok && sq && (sq.rows || []).length) { sq.at = Date.now(); sq.failed = true; }
+      else { sq = { at: Date.now(), rows: Array.isArray(rows) ? rows : [], failed: !r.ok }; global._clubsSquad[teamId] = sq; }
+    } catch {
+      if (sq && (sq.rows || []).length) { sq.at = Date.now(); sq.failed = true; }
+      else { sq = { at: Date.now(), rows: [], failed: true }; global._clubsSquad[teamId] = sq; }
+    }
   }
   return (sq && sq.rows) || [];
 }
@@ -9883,15 +9888,22 @@ const server = http.createServer(async (req, res) => {
           // no se consultan: su season backfilleada ya terminó y la nueva aún no existe en el proveedor.
           let up = global._clubsUpcoming[key];
           if (L.starts) up = up || { at: Date.now(), rows: [] };
-          if ((!up || Date.now() - up.at > 6 * 3600e3) && tsaKey) {
+          // `failed:true` = el último intento no trajo data (TSA caído/500): reintento a los 10min en vez de
+          // congelar 6h, y JAMÁS pisar un memo con filas buenas por una respuesta mala (la caída de TSA del
+          // 23-jul dejó carteleras vacías cacheadas — este es el candado).
+          if ((!up || Date.now() - up.at > ((up.failed && !(up.rows || []).length) ? 10 * 60e3 : 6 * 3600e3)) && tsaKey) {
             try {
               const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&status=scheduled&per_page=50`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
               const j = r.ok ? await r.json().catch(() => null) : null;
-              const rows = ((j && j.data) || j || []).filter(m => m && m.utc_date).sort((a, b) => new Date(a.utc_date) - new Date(b.utc_date)).slice(0, 12);
-              up = { at: Date.now(), rows };
-              global._clubsUpcoming[key] = up;
+              const rows = ((j && j.data) || j || []).filter(m => m && m.utc_date).sort((a, b) => new Date(a.utc_date) - new Date(b.utc_date)).slice(0, 30);
+              if (!r.ok && up && (up.rows || []).length) { up.at = Date.now(); up.failed = true; console.log(`[clubs] upcoming ${key}: TSA ${r.status}, conservo memo previo`); }
+              else { up = { at: Date.now(), rows, failed: !r.ok }; global._clubsUpcoming[key] = up; if (!r.ok) console.log(`[clubs] upcoming ${key}: TSA ${r.status}, sin filas (retry 10min)`); }
               await new Promise(r2 => setTimeout(r2, 1200)); // gentileza con el rate limit compartido
-            } catch { up = up || { at: Date.now(), rows: [] }; }
+            } catch (e) {
+              if (up && (up.rows || []).length) { up.at = Date.now(); up.failed = true; }
+              else { up = { at: Date.now(), rows: [], failed: true }; global._clubsUpcoming[key] = up; }
+              console.log(`[clubs] upcoming ${key}: fetch TSA falló (${e.message})`);
+            }
           }
           // live STALE → final: si ESPN dejó de refrescar un "live" por >45 min (el minuto avanza cada pasada,
           // así que `at` se renueva mientras el partido corre), el partido terminó o se cayó el feed — mostrarlo
@@ -9925,10 +9937,23 @@ const server = http.createServer(async (req, res) => {
             const nowT = Date.now();
             const pairKey = (a, b) => [String(a), String(b)].sort().join('|');
             const have = new Set(fixtures.map(f => pairKey(f.home.id, f.away.id)));
+            // Resolución nombre→tm_ del scan: ratings/alias PRIMERO, y si no, contra los nombres del propio
+            // calendario TSA ya listado (cubre ascendidos que el fit no conoce, ej. Atlante/Unión Santa Fe).
+            // Un lado SIN tm_ real se omite: la fila con id-nombre duplicaba el partido y su hash (con
+            // espacios) no rutea → cockpit "no carga nada" (bug reportado 24-jul).
+            const tsaIdx = {};
+            for (const f of fixtures) { tsaIdx[clubNorm(f.home.name)] = f.home.id; tsaIdx[clubNorm(f.away.name)] = f.away.id; }
+            const rsv = (nm) => {
+              const r0 = resolveClubId(key, nm); if (r0) return r0;
+              const n = clubNorm(nm); if (tsaIdx[n]) return tsaIdx[n];
+              for (const k2 in tsaIdx) { if (k2 && (k2 === n || k2.includes(n) || n.includes(k2))) return tsaIdx[k2]; }
+              return null;
+            };
             for (const m of Object.values(db.clubsQuoteEvents || {})) {
               if (m.league !== key || !m.kickoff) continue;
               const kt = Date.parse(m.kickoff); if (!(kt > nowT - 3 * 3600e3)) continue; // solo próximos / recién arrancados
-              const hId = resolveClubId(key, m.home) || String(m.home), aId = resolveClubId(key, m.away) || String(m.away);
+              const hId = rsv(m.home), aId = rsv(m.away);
+              if (!hId || !aId || hId === aId) continue; // sin resolución limpia no hay fila navegable
               if (have.has(pairKey(hId, aId))) continue; // ya lo trajo TSA
               // clubResults se keyea SOLO por par de equipos (sin fecha) → un resultado viejo de un cruce previo
               // NO debe pegarse a un partido FUTURO. Solo adjuntamos el marcador si el partido ya arrancó
@@ -9952,7 +9977,7 @@ const server = http.createServer(async (req, res) => {
               });
             }
             fixtures.sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
-            fixtures = fixtures.slice(0, 20);
+            fixtures = fixtures.slice(0, 40); // 20 cortaba partidos CON pick a >2 días (ej. Liga MX 2-ago)
           } catch { /* el merge del scan jamás rompe el state */ }
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t, elo: clubElo(key, id), elo_base: t.elo })).sort((a, b) => b.elo - a.elo);
           // partidos EN VIVO / FINALIZADOS de la liga que ya NO están en upcoming (TSA los saca de scheduled al
@@ -10283,20 +10308,11 @@ const server = http.createServer(async (req, res) => {
       if (!/^tm_[a-z0-9]+$/i.test(teamId)) return json(res, 400, { error: 'team inválido' });
       const tsaKey = process.env.THESTATSAPI_KEY || '';
       if (!tsaKey) return json(res, 200, { players: [], note: 'sin key' });
-      global._clubsSquad = global._clubsSquad || {};
-      let sq = global._clubsSquad[teamId];
-      if (!sq || Date.now() - sq.at > 24 * 3600e3) {
-        try {
-          const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
-          const j = r.ok ? await r.json().catch(() => null) : null;
-          const rows = (j && j.data) || j || [];
-          sq = { at: Date.now(), rows: Array.isArray(rows) ? rows : [] };
-          global._clubsSquad[teamId] = sq;
-        } catch { sq = sq || { at: Date.now(), rows: [] }; }
-      }
+      const sqRows = await clubRosterRows(teamId); // cache 24h compartido, con candado anti-envenenamiento
+      const sq = (global._clubsSquad || {})[teamId] || { at: Date.now(), rows: sqRows };
       // normalizar a la forma que consume la UI; agrupar por línea (POR/DEF/MED/DEL)
       const POSGROUP = { G: 'GK', D: 'DEF', M: 'MID', F: 'FWD', A: 'FWD' };
-      const players = (sq.rows || []).map(p => ({
+      const players = sqRows.map(p => ({
         pid: p.id, name: p.short_name || p.name, full: p.name, pos: p.position || null,
         group: POSGROUP[p.position] || 'OTH',
         age: p.age != null ? p.age : null, height: p.height_cm || null, foot: p.preferred_foot || null,
@@ -10317,18 +10333,22 @@ const server = http.createServer(async (req, res) => {
       const league = String(url.searchParams.get('league') || '');
       if (!/^tm_[a-z0-9]+$/i.test(teamId) || !/^pl_[a-z0-9]+$/i.test(pid)) return json(res, 400, { error: 'params inválidos' });
       if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
-      const tsaKey = process.env.THESTATSAPI_KEY || '';
-      global._clubsSquad = global._clubsSquad || {};
-      let sq = global._clubsSquad[teamId];
-      if ((!sq || Date.now() - sq.at > 24 * 3600e3) && tsaKey) {
+      const rosterRows = await clubRosterRows(teamId); // cache 24h compartido, con candado anti-envenenamiento
+      let p0 = rosterRows.find(x => x.id === pid);
+      if (!p0) {
+        // Jugador con historial en la liga pero FUERA del roster TSA actual (transferido/roster incompleto):
+        // los featured/buscador salen del fit → antes esto era 404 "jugador no encontrado" con la ficha entera
+        // disponible (bug 24-jul). Ficha degradada desde el fit: bio en null, radar/stats/partidos completos.
         try {
-          const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
-          const j = r.ok ? await r.json().catch(() => null) : null;
-          sq = { at: Date.now(), rows: (j && j.data) || j || [] };
-          global._clubsSquad[teamId] = sq;
-        } catch { sq = sq || { at: Date.now(), rows: [] }; }
+          const cf0 = require('./player-intel/clubsFit');
+          const fit0 = cf0.leagueFit(league);
+          const fp = fit0 && fit0.players && fit0.players[pid];
+          if (fp && fp.name) {
+            const POSN = { G: 'Goalkeeper', D: 'Defender', M: 'Midfielder', F: 'Forward' };
+            p0 = { id: pid, name: fp.name, short_name: fp.name, position: POSN[fp.pos] || fp.pos || null };
+          }
+        } catch { /* sin fit → 404 abajo */ }
       }
-      const p0 = ((sq && sq.rows) || []).find(x => x.id === pid);
       if (!p0) return json(res, 404, { error: 'jugador no encontrado' });
       const RT = global._clubsRatings || {};
       const L = RT.leagues && RT.leagues[league];

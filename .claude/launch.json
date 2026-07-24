@@ -4,7 +4,7 @@
     {
       "name": "worldcup",
       "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["-c", "GP_PREMIUM_UI_ENABLED=true GP_GOAL_INSIGHTS_UI_ENABLED=true GP_BETA_UI_ENABLED=true GP_BETA_FUSION_ENABLED=true GP_CLUBS_SHADOW_ENABLED=true ADMIN_EMAILS=qacalc@local.test GP_EXPORT_KEY=testkey PORT=3000 exec node server.js"],
+      "runtimeArgs": ["-c", ". ./.env.local 2>/dev/null; GP_PREMIUM_UI_ENABLED=true GP_GOAL_INSIGHTS_UI_ENABLED=true GP_BETA_UI_ENABLED=true GP_BETA_FUSION_ENABLED=true GP_CLUBS_SHADOW_ENABLED=true ADMIN_EMAILS=qacalc@local.test GP_EXPORT_KEY=testkey PORT=3000 exec node server.js"],
       "port": 3000
     },
     {

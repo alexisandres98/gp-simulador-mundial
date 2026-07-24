@@ -22,9 +22,22 @@ const LEAGUES = [
   { key: 'colombia', name: 'Primera A · Apertura', country: 'Colombia', comp: 'comp_720692', season: 'sn_5722143', ratings_from: ['comp_720692-sn_5722143'] },
   { key: 'paraguay', name: 'Primera División · Apertura', country: 'Paraguay', comp: 'comp_137809', season: 'sn_8453624', ratings_from: ['comp_137809-sn_8453624'] },
   { key: 'argentina', name: 'Liga Profesional', country: 'Argentina', comp: 'comp_4540', season: 'sn_5721417', ratings_from: ['comp_4540-sn_5721417'], odds_key: 'soccer_argentina_primera_division' },
-  { key: 'csl', name: 'CFA Super League', country: 'China', comp: 'comp_7712', season: 'sn_7290909', ratings_from: ['comp_7712-sn_7290909'] },
-  { key: 'kleague', name: 'K League 1', country: 'Corea del Sur', comp: 'comp_1646', season: 'sn_6133361', ratings_from: ['comp_1646-sn_6133361'] },
+  { key: 'csl', name: 'CFA Super League', country: 'China', comp: 'comp_7712', season: 'sn_7290909', ratings_from: ['comp_7712-sn_7290909'], odds_key: 'soccer_china_superleague' },
+  { key: 'kleague', name: 'K League 1', country: 'Corea del Sur', comp: 'comp_1646', season: 'sn_6133361', ratings_from: ['comp_1646-sn_6133361'], odds_key: 'soccer_korea_kleague1' },
   { key: 'j1', name: 'J1 League', country: 'Japón', comp: 'comp_6240', season: 'sn_2960779', ratings_from: ['comp_6240-sn_2960779'] },
+  // EXPANSIÓN 24-jul (decisión Alexis): ligas activas con cuotas en el proveedor + data TSA. Mitad de
+  // temporada → fit de la temporada en curso; recién arrancadas (26/27) → fit temporada previa + actual, y
+  // players_season = temporada previa (percentiles/scout con data real mientras la nueva acumula partidos).
+  { key: 'brasilb', name: 'Brasileirão Série B', country: 'Brasil', comp: 'comp_1085', season: 'sn_1307939', ratings_from: ['comp_1085-sn_1307939'], odds_key: 'soccer_brazil_serie_b' },
+  { key: 'chile', name: 'Primera División', country: 'Chile', comp: 'comp_573599', season: 'sn_5722124', ratings_from: ['comp_573599-sn_5722124'], odds_key: 'soccer_chile_campeonato' },
+  { key: 'noruega', name: 'Eliteserien', country: 'Noruega', comp: 'comp_1992', season: 'sn_7293915', ratings_from: ['comp_1992-sn_7293915'], odds_key: 'soccer_norway_eliteserien' },
+  { key: 'suecia', name: 'Allsvenskan', country: 'Suecia', comp: 'comp_1002', season: 'sn_4576877', ratings_from: ['comp_1002-sn_4576877'], odds_key: 'soccer_sweden_allsvenskan' },
+  { key: 'finlandia', name: 'Veikkausliiga', country: 'Finlandia', comp: 'comp_2674', season: 'sn_1305664', ratings_from: ['comp_2674-sn_1305664'], odds_key: 'soccer_finland_veikkausliiga' },
+  { key: 'irlanda', name: 'Premier Division', country: 'Irlanda', comp: 'comp_9788', season: 'sn_9618711', ratings_from: ['comp_9788-sn_9618711'], odds_key: 'soccer_league_of_ireland' },
+  { key: 'dinamarca', name: 'Superliga', country: 'Dinamarca', comp: 'comp_7938', season: 'sn_4588672', players_season: 'sn_2957203', ratings_from: ['comp_7938-sn_2957203', 'comp_7938-sn_4588672'], odds_key: 'soccer_denmark_superliga' },
+  { key: 'polonia', name: 'Ekstraklasa', country: 'Polonia', comp: 'comp_9711', season: 'sn_0833509', players_season: 'sn_3061308', ratings_from: ['comp_9711-sn_3061308', 'comp_9711-sn_0833509'], odds_key: 'soccer_poland_ekstraklasa' },
+  { key: 'rusia', name: 'Premier League', country: 'Rusia', comp: 'comp_5824', season: 'sn_5749691', players_season: 'sn_9674388', ratings_from: ['comp_5824-sn_9674388', 'comp_5824-sn_5749691'], odds_key: 'soccer_russia_premier_league' },
+  { key: 'suiza', name: 'Super League', country: 'Suiza', comp: 'comp_4084', season: 'sn_7250992', players_season: 'sn_9674311', ratings_from: ['comp_4084-sn_9674311', 'comp_4084-sn_7250992'], odds_key: 'soccer_switzerland_superleague' },
   // Las 5 grandes: temporada 2025-26 COMPLETA para ratings + backtest; arrancan la 26-27 a mediados de
   // agosto (starts la agrupa en la UI como pretemporada, sin próximos hasta que el proveedor los liste).
   { key: 'premier', name: 'Premier League', country: 'Inglaterra', comp: 'comp_3039', season: 'sn_6125938', ratings_from: ['comp_3039-sn_6125938'], starts: 'agosto', odds_key: 'soccer_epl' },

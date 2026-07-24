@@ -20,6 +20,10 @@ const AF_LEAGUE = {
   csl: { af: 169, season: 2026 }, kleague: { af: 292, season: 2026 }, j1: { af: 98, season: 2026 },
   premier: { af: 39, season: 2026 }, laliga: { af: 140, season: 2026 }, bundesliga: { af: 78, season: 2026 },
   seriea: { af: 135, season: 2026 }, ligue1: { af: 61, season: 2026 },
+  brasilb: { af: 72, season: 2026 }, chile: { af: 265, season: 2026 }, noruega: { af: 103, season: 2026 },
+  suecia: { af: 113, season: 2026 }, finlandia: { af: 244, season: 2026 }, irlanda: { af: 357, season: 2026 },
+  dinamarca: { af: 119, season: 2026 }, polonia: { af: 106, season: 2026 }, rusia: { af: 235, season: 2026 },
+  suiza: { af: 207, season: 2026 },
 };
 function norm(s) {
   let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');

@@ -38,17 +38,22 @@ const num = (v) => (v == null || !isFinite(Number(v))) ? null : Number(v);
   for (const lg of leagues) {
     const L = RT.leagues[lg];
     if (!L.comp || !L.season) continue;
+    // players_season (ligas 26/27 recién arrancadas): la temporada PREVIA da percentiles/scout con data real
+    // YA, y la actual se va sumando sola conforme juega — se listan ambas (dedupe por match id en done[]).
+    const SEASONS = [...new Set([L.players_season, L.season].filter(Boolean))];
     const outFile = path.join(OUTDIR, `player-history-${lg}.json`);
-    const H = fs.existsSync(outFile) ? JSON.parse(fs.readFileSync(outFile, 'utf8')) : { league: lg, comp: L.comp, season: L.season, done: {}, rows: [] };
-    // 1) listar TODOS los finished de la season (paginado)
+    const H = fs.existsSync(outFile) ? JSON.parse(fs.readFileSync(outFile, 'utf8')) : { league: lg, comp: L.comp, season: SEASONS[0], done: {}, rows: [] };
+    // 1) listar TODOS los finished de la(s) season(s) (paginado)
     const matches = [];
-    for (let page = 1; page <= 20; page++) {
-      const j = await tsa(`/matches?competition_id=${L.comp}&season_id=${L.season}&status=finished&per_page=50&page=${page}`);
-      const rows = (j && j.data) || [];
-      matches.push(...rows);
-      const meta = (j && j.meta) || {};
-      await sleep(5200);
-      if (!rows.length || page >= (meta.total_pages || 1)) break;
+    for (const snId of SEASONS) {
+      for (let page = 1; page <= 20; page++) {
+        const j = await tsa(`/matches?competition_id=${L.comp}&season_id=${snId}&status=finished&per_page=50&page=${page}`);
+        const rows = (j && j.data) || [];
+        matches.push(...rows);
+        const meta = (j && j.meta) || {};
+        await sleep(5200);
+        if (!rows.length || page >= (meta.total_pages || 1)) break;
+      }
     }
     const pending = matches.filter(m => !H.done[m.id]);
     console.log(`[${lg}] finished: ${matches.length} · ya bajados: ${matches.length - pending.length} · pendientes: ${pending.length}`);

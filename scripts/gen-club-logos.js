@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1' };
+const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1' }; // polonia sin ESPN → pases 2/3 (search + FotMob)
 // logo de LIGA por código ESPN (leaguelogos id) — del scoreboard; fijos para no depender de una ventana con partidos
 const LEAGUE_LOGO_ID = { 'bra.1': 85, 'mex.1': 22, 'usa.1': 19, 'arg.1': 1, 'col.1': 1543, 'par.1': 1892, 'chn.1': 2350, 'jpn.1': 2199, 'eng.1': 23, 'esp.1': 15, 'ger.1': 10, 'ita.1': 12, 'fra.1': 9 };
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'bayern munich': 'bayern munchen', 'cologne': 'koln', 'hamburg sv': 'hamburger sv', 'monchengladbach': 'borussia monchengladbach' };
@@ -34,11 +34,12 @@ async function dl(url, dest) {
 
 (async () => {
   const only = process.argv.slice(2);
-  const leagues = Object.keys(CLUB_ESPN).filter(k => (!only.length || only.includes(k)) && RT.leagues[k]);
+  const leagues = Object.keys(RT.leagues).filter(k => (!only.length || only.includes(k))); // TODAS las ligas del fit (con o sin ESPN)
   let clubsOk = 0, clubsMiss = 0, lgsOk = 0;
   const missNames = [];
   for (const lgKey of leagues) {
     const code = CLUB_ESPN[lgKey], L = RT.leagues[lgKey];
+    if (!code) { console.log(`  ${lgKey}: sin ESPN (pases 2/3)`); continue; }
     // logo de liga
     const lid = LEAGUE_LOGO_ID[code];
     if (lid && await dl(`https://a.espncdn.com/i/leaguelogos/soccer/500/${lid}.png`, path.join(OUT, 'league-' + lgKey + '.png'))) lgsOk++;
@@ -85,6 +86,11 @@ async function dl(url, dest) {
     'Liaoning Tieren FC': 'Liaoning Tieren', "Borussia M'gladbach": 'Borussia Monchengladbach',
     '1. FC Heidenheim': 'Heidenheim', 'Red Star FC': 'Red Star Paris', 'Rodez AF': 'Rodez',
     'Wolverhampton': 'Wolverhampton Wanderers', 'Saint-Étienne': 'Saint-Etienne', 'Málaga': 'Malaga',
+    'Lillestrøm SK': 'Lillestrom', 'Tromsø IL': 'Tromso', 'FC Fredericia': 'Fredericia',
+    'Bruk-Bet Termalica Nieciecza': 'Termalica Nieciecza', 'MKS Korona Kielce': 'Korona Kielce',
+    'KS Lechia Gdańsk': 'Lechia Gdansk', 'MZKS Arka Gdynia': 'Arka Gdynia',
+    'Pari Nizhny Novgorod': 'Nizhny Novgorod', 'Ural Yekaterinburg': 'Ural',
+    'Grasshopper Club Zürich': 'Grasshopper', 'FC Aarau': 'Aarau',
   };
   const searchLogo = async (name) => {
     const q = encodeURIComponent(SEARCH_ALIAS[name] || name);
@@ -106,14 +112,24 @@ async function dl(url, dest) {
       await new Promise(r => setTimeout(r, 250));
     }
   }
-  // logo de liga kleague vía scoreboard (leagues[0].logos)
-  if (!fs.existsSync(path.join(OUT, 'league-kleague.png'))) {
+  // logo de liga vía scoreboard (leagues[0].logos) para las que falten; sin ESPN → leaguelogo de FotMob
+  const FM_LEAGUE_LOGO = { polonia: 196, finlandia: 51 };
+  for (const lgKey of leagues) {
+    const dest = path.join(OUT, 'league-' + lgKey + '.png');
+    if (fs.existsSync(dest)) continue;
     try {
-      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/kor.1/scoreboard', { signal: AbortSignal.timeout(15000) });
-      const j = r.ok ? await r.json() : null;
-      const href = j && j.leagues && j.leagues[0] && (j.leagues[0].logos || [])[0] && j.leagues[0].logos[0].href;
-      if (href && await dl(href, path.join(OUT, 'league-kleague.png'))) console.log('  fill: league-kleague ✓');
+      const code = CLUB_ESPN[lgKey];
+      let href = null;
+      if (code) {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard`, { signal: AbortSignal.timeout(15000) });
+        const j = r.ok ? await r.json() : null;
+        href = j && j.leagues && j.leagues[0] && (j.leagues[0].logos || [])[0] && j.leagues[0].logos[0].href;
+      } else if (FM_LEAGUE_LOGO[lgKey]) {
+        href = `https://images.fotmob.com/image_resources/logo/leaguelogo/${FM_LEAGUE_LOGO[lgKey]}.png`;
+      }
+      if (href && await dl(href, dest)) console.log(`  fill: league-${lgKey} ✓`);
     } catch { /* sin logo de liga */ }
+    await new Promise(r => setTimeout(r, 250));
   }
   console.log(`\nFALLBACK: ${fillOk} rellenados · aún sin logo: ${fillMiss.length}${fillMiss.length ? ' → ' + fillMiss.join(', ') : ''}`);
 

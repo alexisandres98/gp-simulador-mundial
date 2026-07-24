@@ -14,7 +14,7 @@ const RT = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'clubs', 'ratings.
 const OUTDIR = path.join(ROOT, 'data', 'clubs');
 
 // primaryIds de FotMob por liga (verificados vía /leagues?id=; j1/paraguay pendientes de verificar)
-const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colombia: 274, csl: 120, kleague: 9080 };
+const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colombia: 274, csl: 120, kleague: 9080, brasilb: 8814, chile: 273, noruega: 59, suecia: 67, finlandia: 51, irlanda: 126, dinamarca: 46, polonia: 196, rusia: 63, suiza: 69 };
 
 const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|sc|ec|ac|afc|cd|club|de|do|da)\b/g, ' ').replace(/\s+/g, ' ').trim();
 

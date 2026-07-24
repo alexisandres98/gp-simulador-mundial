@@ -20,7 +20,7 @@ let AFMAP = {};
 try { AFMAP = JSON.parse(fs.readFileSync(path.join(OUTDIR, 'af-team-map.json'), 'utf8')); } catch { console.error('sin af-team-map.json'); process.exit(1); }
 
 // ids de liga de API-Football (docs/plan-extension-clubes.md, verificados en el build de alineaciones)
-const AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61 };
+const AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207 };
 const SEASON = Number(process.env.AF_SEASON || 2026);
 
 const HOST = 'v3.football.api-sports.io';

@@ -3098,7 +3098,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
 // se registra si AMBOS lados matchean a ids distintos (evita marcadores cruzados). Se guarda en
 // db.clubResults[<liga>|<idA-idB ordenados>] → lo consumen /api/clubs/state y la vista cl-. Gate por
 // GP_CLUBS_SHADOW_ENABLED; ESPN es gratis (0 créditos). Nada de esto toca el Mundial ni el pipeline de picks.
-const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1' };
+const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1' }; // polonia sin ESPN (sin vivo; resultados por TSA)
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys' };
 function clubNorm(s) {
@@ -3127,7 +3127,7 @@ function clubGoalsFit(league) {
 // calendario restante de los resultados (round-robin) + Elo dinámico → prob campeón/top-N/descenso por equipo.
 // Se construye con la data disponible y se recomputa cuando cambian el Elo/resultados. Memo por liga (invalida
 // con la versión del overlay Elo). meetings=2 (doble round-robin, el default de casi todas; override por liga).
-const CLUB_MEETINGS = { /* overrides si alguna liga no es doble round-robin */ };
+const CLUB_MEETINGS = { irlanda: 4, finlandia: 3, dinamarca: 3, suiza: 3 }; // formatos no doble-RR (fase regular aprox; el split no se modela, igual que la liguilla MX)
 function clubSeasonSim(league) {
   if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
   const L = (global._clubsRatings.leagues || {})[league];
@@ -5735,10 +5735,70 @@ async function clubsDataPass({ force = false } = {}) {
     }
     global._clubsResults = {}; // memos por mtime (props/style/goals) se invalidan solos; results usa cache simple
     db.clubsDataPassDay = today; save();
+    // 4) DESCUBRIMIENTO DE LIGAS (24-jul, pedido Alexis): detectar ligas nuevas cubribles sin intervención manual
+    try { out.discovery = await clubsLeagueDiscovery(); } catch (e) { out.discovery = { error: e.message }; }
   } catch (e) { out.error = e.message; }
   finally { _dataPassRunning = false; }
   console.log('[clubs-data-pass]', JSON.stringify(out).slice(0, 900));
   return out;
+}
+// ===== DESCUBRIMIENTO AUTOMÁTICO DE LIGAS (24-jul, pedido de Alexis: "que las vayamos introduciendo sin
+// que te las tenga que enviar manualmente"). Corre en el pase diario: compara las ligas de FÚTBOL activas del
+// proveedor de cuotas contra las cubiertas (odds_key en ratings), filtra copas/eliminatorias (formato no-liga,
+// requieren su propio build), verifica eventos próximos (endpoint gratuito) y resuelve el comp de TSA por
+// nombre. Candidato NUEVO → email al admin con todo lo necesario para onboardearla (odds_key + comp TSA +
+// temporadas + volumen) + queda en db.leagueDiscovery para el endpoint interno. Dedupe por odds_key visto. =====
+const LEAGUE_DISCOVERY_SKIP = /cup|copa|pokal|qualification|qualifier|friendl|uefa|conmebol|concacaf|fifa|olympics|nations/i;
+async function clubsLeagueDiscovery() {
+  const pk = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+  if (!pk) return { skipped: 'sin key' };
+  const RT = global._clubsRatings || {};
+  const covered = new Set(Object.values(RT.leagues || {}).map(L => L.odds_key).filter(Boolean));
+  const rs = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${pk}`, { signal: AbortSignal.timeout(15000) });
+  const sports = rs.ok ? await rs.json().catch(() => []) : [];
+  const cands = (sports || []).filter(x => x.group === 'Soccer' && x.active && !covered.has(x.key) && !LEAGUE_DISCOVERY_SKIP.test(x.key + ' ' + x.title));
+  const tsaKey = process.env.THESTATSAPI_KEY || '';
+  const out = [];
+  for (const s of cands.slice(0, 25)) {
+    try {
+      // eventos próximos (endpoint /events: gratuito, no gasta cuota)
+      const re = await fetch(`https://api.the-odds-api.com/v4/sports/${s.key}/events?apiKey=${pk}`, { signal: AbortSignal.timeout(15000) });
+      const evs = re.ok ? await re.json().catch(() => []) : [];
+      const wk = (evs || []).filter(e => { const t = +new Date(e.commence_time); return t > Date.now() - 3600e3 && t < Date.now() + 7 * 86400e3; });
+      if (!wk.length) continue; // sin partidos con cuotas esta semana → todavía no
+      // comp de TSA por nombre (best-effort: título completo, luego última palabra distintiva)
+      let tsa = null;
+      if (tsaKey) {
+        const terms = [s.title, s.title.split(' - ')[0], s.title.split(' ').slice(-1)[0]].filter((v, i, a) => v && a.indexOf(v) === i);
+        for (const q of terms) {
+          const rt = await fetch(`https://api.thestatsapi.com/api/football/competitions?search=${encodeURIComponent(q)}&per_page=3`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+          const jt = rt.ok ? await rt.json().catch(() => null) : null;
+          const hit = ((jt && jt.data) || [])[0];
+          if (hit) { tsa = { comp: hit.id, name: hit.name, country: hit.country || null }; break; }
+          await new Promise(r2 => setTimeout(r2, 400));
+        }
+      }
+      out.push({ odds_key: s.key, title: s.title, events_7d: wk.length, first_kickoff: wk[0] ? wk[0].commence_time : null, tsa });
+    } catch { /* siguiente candidato */ }
+    await new Promise(r2 => setTimeout(r2, 300));
+  }
+  db.leagueDiscovery = { at: new Date().toISOString(), candidates: out };
+  db.leagueDiscoverySeen = db.leagueDiscoverySeen || {};
+  const fresh = out.filter(x => !db.leagueDiscoverySeen[x.odds_key]);
+  for (const f of fresh) db.leagueDiscoverySeen[f.odds_key] = new Date().toISOString();
+  save();
+  if (fresh.length) {
+    console.log('[league-discovery] NUEVAS cubribles:', fresh.map(f => f.odds_key).join(', '));
+    try {
+      const adminTo = (process.env.ADMIN_EMAILS || '').split(',')[0].trim() || Object.keys(db.users).sort((a, b) => db.users[a].createdAt - db.users[b].createdAt)[0];
+      const lines = fresh.map(f => `• ${f.title} (${f.odds_key}) — ${f.events_7d} partidos con cuotas en 7 días${f.tsa ? ` · TSA: ${f.tsa.name} (${f.tsa.comp})` : ' · TSA: buscar a mano'}`).join('\n');
+      await mailer.sendMail({
+        to: adminTo, subject: `GP · ${fresh.length} liga(s) nueva(s) detectada(s) para cubrir`,
+        text: `El descubrimiento automático encontró ligas activas con cuotas que aún no cubrimos:\n\n${lines}\n\nPara onboardearlas: pedile a Claude "agrega las ligas detectadas por el discovery" (los ids ya quedaron en /api/internal/league-discovery).`,
+      });
+    } catch (e) { console.log('[league-discovery] email falló:', e.message); }
+  }
+  return { candidates: out.length, new: fresh.length };
 }
 // scheduler: chequeo cada 30 min; corre a partir de las 07:00Z (post-jornada americana) si hoy no corrió.
 if (clubsShadowOn() && clubsDataPassOn()) {
@@ -6264,7 +6324,7 @@ function loadClubAfMap() {
 loadClubAfMap();
 setInterval(loadClubAfMap, 12 * 3600 * 1000);
 // liga nuestra → league id de API-Football (mismos ids del generador de fotos)
-const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61 };
+const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207 };
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
@@ -8328,7 +8388,7 @@ const server = http.createServer(async (req, res) => {
                 confidence_bucket: x.confidence >= 0.6 ? 'high' : x.confidence >= 0.45 ? 'med' : 'low' }));
             // 3) CARRERAS POR EL TÍTULO — prob de campeón por liga (clubSeasonSim, memo 30min)
             const races = [];
-            for (const k of ['brasileirao', 'ligamx', 'mls', 'argentina', 'colombia', 'kleague', 'j1', 'csl']) {
+            for (const k of Object.keys(RT.leagues || {}).filter(x => !RT.leagues[x].starts)) { // todas las activas (24-jul: dinámico, antes lista fija)
               if (races.length >= 4) break;
               const L = RT.leagues[k]; if (!L || !(L.standings || []).length) continue;
               let sim = null; try { sim = clubSeasonSim(k); } catch { sim = null; }
@@ -8798,6 +8858,13 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { enabled: clubsShadowOn() && clubsDataPassOn(), running: _dataPassRunning, last_day: db.clubsDataPassDay || null });
     }
     // OBSERVER DE CLUBES (F2.3): verificación read-only + disparo manual (misma key). GET expone assessments+λ.
+    // DESCUBRIMIENTO DE LIGAS (24-jul): GET = último resultado; POST = correr ahora. Misma key de ops.
+    if (p === '/api/internal/league-discovery') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await clubsLeagueDiscovery().catch(e => ({ error: e.message })); return json(res, 200, { ...r, state: db.leagueDiscovery || null }); }
+      return json(res, 200, db.leagueDiscovery || { candidates: [] });
+    }
     // DIAG cartelera (24-jul): estado del memo de upcoming por liga (edad/failed/filas/pares) — para verificar
     // en PROD qué sirve /api/clubs/state sin necesitar sesión (misma familia que clubs-af-diag).
     if (p === '/api/internal/clubs-upcoming') {

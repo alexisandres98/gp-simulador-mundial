@@ -1393,7 +1393,9 @@
       html += '<div class="gx-secdiv">' + esc(t('pf_all_by_match')) + '</div>';
       order.forEach(function (k) {
         var gp = groups[k], f = gp[0];
-        var openId = f.event_id || ((f.home_team_id && f.away_team_id) ? 'teams-' + f.home_team_id + '-' + f.away_team_id : null);
+        // club_eid PRIMERO (mismo orden que pickCard): un pick de club con event_id canónico abría el cockpit
+        // del Mundial vacío ("Copa Mundial de la FIFA 2026" + sin evaluación) — bug reportado 24-jul.
+        var openId = f.club_eid || f.event_id || ((f.home_team_id && f.away_team_id) ? 'teams-' + f.home_team_id + '-' + f.away_team_id : null);
         var when = '';
         try { when = new Date(f.kickoff).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
         var hh = teamName(f.home_team_id, f.home), aa = teamName(f.away_team_id, f.away);

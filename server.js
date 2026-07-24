@@ -8741,6 +8741,20 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { enabled: clubsShadowOn() && clubsDataPassOn(), running: _dataPassRunning, last_day: db.clubsDataPassDay || null });
     }
     // OBSERVER DE CLUBES (F2.3): verificación read-only + disparo manual (misma key). GET expone assessments+λ.
+    // DIAG cartelera (24-jul): estado del memo de upcoming por liga (edad/failed/filas/pares) — para verificar
+    // en PROD qué sirve /api/clubs/state sin necesitar sesión (misma familia que clubs-af-diag).
+    if (p === '/api/internal/clubs-upcoming') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const out = {};
+      for (const [lg, up] of Object.entries(global._clubsUpcoming || {})) {
+        out[lg] = {
+          at: up.at ? new Date(up.at).toISOString() : null, failed: !!up.failed, rows: (up.rows || []).length,
+          pairs: (up.rows || []).map(m => `${(m.home_team || {}).id}|${(m.away_team || {}).id}|${m.utc_date}`),
+        };
+      }
+      return json(res, 200, { leagues: out });
+    }
     if (p === '/api/internal/clubs-observer') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -9987,11 +10001,23 @@ const server = http.createServer(async (req, res) => {
           // recientes del sync muestran la HORA del partido y se ordenan bien (antes usaban r.at = hora de
           // registro, que descolocaba orden y horas en la pestaña Finalizados).
           const koByPair = {};
+          // Base: eventos del scan (datetime completo, cubre lo que el backfill aún no trae)
           for (const m of Object.values(db.clubsQuoteEvents || {})) {
             if (m.league !== key || !m.kickoff) continue;
             const mh = resolveClubId(key, m.home), ma = resolveClubId(key, m.away);
             if (mh && ma) koByPair[[mh, ma].sort().join('|')] = m.kickoff;
           }
+          // AUTORITATIVO (24-jul): results-<liga>.json del backfill — date = utc_date REAL de TSA, PISA al scan
+          // (los kickoffs del scan a veces difieren). El scan borra el evento tras el KO → los finales del sync
+          // quedaban con r.at (hora de registro) y salían "finalizados hoy 09:39" para partidos de anoche (bug
+          // reportado); además el día equivocado rompía el dedupe con el backfill y el partido salía DOBLE.
+          // El memo _clubsResults se reusa abajo en la sección de finalizados.
+          try {
+            global._clubsResults = global._clubsResults || {};
+            if (!global._clubsResults[key]) { try { global._clubsResults[key] = JSON.parse(fs.readFileSync(clubDataFile(`results-${key}.json`), 'utf8')).rows || []; } catch { global._clubsResults[key] = []; } }
+            const cut7 = Date.now() - 7 * 86400e3;
+            for (const r of global._clubsResults[key]) { if (r.date && +new Date(r.date) > cut7) koByPair[[String(r.home_id), String(r.away_id)].sort().join('|')] = r.date; }
+          } catch { /* sin backfill, queda el scan */ }
           const live = Object.entries(db.clubResults || {})
             .filter(([k, r]) => r.league === key && !upPairs.has(k))
             .map(([, r]) => {

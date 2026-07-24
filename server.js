@@ -3411,26 +3411,43 @@ function clubRosterResolver(rows) {
 // Resuelve (y cachea 30 min) el fixture de API-Football del cruce de club por los af team ids del mapa: próximo
 // entre ambos, o el más reciente. Compartido por /api/clubs/lineups y /api/clubs/match (eventos en vivo) → una
 // sola resolución + cache para ambos. Devuelve { id, date, status, afH, afA, home_af } o null.
-async function clubAfFixture(league, hId, aId) {
+async function clubAfFixture(league, hId, aId, kickoffMs) {
   const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
   const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
   const afH = afMap[hId] && afMap[hId].af_id, afA = afMap[aId] && afMap[aId].af_id;
   if (!afk || !afLg || !afH || !afA) return null;
   global._clubAfFx = global._clubAfFx || {};
-  const ck = league + '|' + hId + '|' + aId;
+  // memo por cruce + DÍA objetivo: ida y vuelta (mismos 2 equipos, fechas distintas) cachean por separado.
+  const dayTag = kickoffMs ? new Date(kickoffMs).toISOString().slice(0, 10) : 'any';
+  const ck = league + '|' + hId + '|' + aId + '|' + dayTag;
   let c = global._clubAfFx[ck];
   if (!c || Date.now() - c.at > 30 * 60e3) {
     const prev = c;
     c = { at: Date.now(), fx: null };
     try {
       const af = async (q) => { const r = await fetch('https://v3.football.api-sports.io' + q, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) }); const j = r.ok ? await r.json() : null; return (j && j.response) || []; };
-      const findPair = (fxs) => fxs.find(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
-      // ORDEN (24-jul fix eventos en vivo): live=all PRIMERO — un partido EN CURSO no aparece ni en next=10
-      // ni en last=10, así que si el memo expiraba durante el partido la resolución fallaba y los eventos
-      // desaparecían del cockpit justo cuando más importan (bug Botafogo-Vitória 23-jul).
-      let fx = findPair(await af(`/fixtures?team=${afH}&live=all`).catch(() => []));
-      if (!fx) fx = findPair(await af(`/fixtures?team=${afH}&next=10`));
-      if (!fx) fx = findPair(await af(`/fixtures?team=${afH}&last=10`));
+      const findAll = (fxs) => (fxs || []).filter(x => x.teams && (x.teams.home.id === afA || x.teams.away.id === afA));
+      // JUNTA candidatos de live + next + last (los 2 equipos juegan ida Y vuelta → varios cruces posibles).
+      const seen = {};
+      for (const q of [`/fixtures?team=${afH}&live=all`, `/fixtures?team=${afH}&next=10`, `/fixtures?team=${afH}&last=10`]) {
+        for (const x of findAll(await af(q).catch(() => []))) { if (!seen[x.fixture.id]) seen[x.fixture.id] = x; }
+      }
+      const cands = Object.values(seen);
+      let fx = null;
+      if (cands.length) {
+        if (kickoffMs) {
+          // el cruce con FECHA MÁS CERCANA al kickoff de la pick (desambigua ida/vuelta). Guard ±4d: si ninguno
+          // está cerca, NO liquidar con una revancha futura (bug 23-jul: agarraba el Botafogo-Vitória de agosto).
+          fx = cands.sort((a, b) => Math.abs(+new Date(a.fixture.date) - kickoffMs) - Math.abs(+new Date(b.fixture.date) - kickoffMs))[0];
+          if (fx && Math.abs(+new Date(fx.fixture.date) - kickoffMs) > 4 * 86400e3) fx = null;
+        } else {
+          // sin fecha: preferir el que está EN JUEGO; si no, el cruce MÁS CERCANO a ahora (el próximo/actual,
+          // no un cruce viejo) — sirve para alineaciones del partido que se está viendo.
+          const now = Date.now();
+          fx = cands.find(x => ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(x.fixture.status && x.fixture.status.short))
+            || cands.sort((a, b) => Math.abs(+new Date(a.fixture.date) - now) - Math.abs(+new Date(b.fixture.date) - now))[0];
+        }
+      }
       if (fx) c.fx = { id: fx.fixture.id, date: fx.fixture.date, status: fx.fixture.status && fx.fixture.status.short, afH, afA, home_af: fx.teams.home.id };
       else if (prev && prev.fx) c.fx = prev.fx; // no pisar una resolución buena con un null transitorio
     } catch { if (prev && prev.fx) c.fx = prev.fx; }
@@ -3441,8 +3458,8 @@ async function clubAfFixture(league, hId, aId) {
 // EVENTOS en vivo del cruce (F1.1b): goles/tarjetas/subs/VAR desde API-Football, normalizados al MISMO shape que
 // el Mundial ({minute,type,player,assist,teamName,side}) para reusar el componente gx-event-i del cockpit. Memo
 // ~30s por cruce (los eventos cambian en vivo). side por el home_af del fixture.
-async function clubMatchEvents(league, hId, aId) {
-  const fx = await clubAfFixture(league, hId, aId);
+async function clubMatchEvents(league, hId, aId, kickoffMs) {
+  const fx = await clubAfFixture(league, hId, aId, kickoffMs);
   if (!fx || !fx.id) return null;
   const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
   global._clubEvents = global._clubEvents || {};
@@ -3476,8 +3493,8 @@ async function clubMatchEvents(league, hId, aId) {
 }
 // STATS del partido en vivo (F1.1c): posesión/remates/córners/faltas de API-Football, normalizadas al MISMO
 // shape que consume mvStats del Mundial ({home:{possession,shots,...},away:{...}}). Memo 60s (cambian en vivo).
-async function clubMatchStats(league, hId, aId) {
-  const fx = await clubAfFixture(league, hId, aId);
+async function clubMatchStats(league, hId, aId, kickoffMs) {
+  const fx = await clubAfFixture(league, hId, aId, kickoffMs);
   if (!fx || !fx.id) return null;
   const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
   global._clubStats = global._clubStats || {};
@@ -5147,7 +5164,7 @@ async function settleClubPropsViaAf() {
     const syncFinal = !!(r && r.status === 'final');
     if (!syncFinal && Date.now() - ko < 3 * 3600e3) continue;
     try {
-      const st = await clubMatchStats(p.league, p.event.home_team_id, p.event.away_team_id);
+      const st = await clubMatchStats(p.league, p.event.home_team_id, p.event.away_team_id, +new Date(p.event.kickoff_at || 0));
       if (!st || !st.home || !st.away) continue;
       const val = (o, k) => Number(o[k]) || 0;
       const tot = p.family === 'CORNERS'
@@ -10114,9 +10131,9 @@ const server = http.createServer(async (req, res) => {
               momentum = homeIsH ? mom.points : mom.points.map(pt => ({ t: pt.t, h: pt.a, d: pt.d, a: pt.h, hg: pt.ag, ag: pt.hg, at: pt.at }));
             }
             // F1.1b: eventos en vivo (goles/tarjetas/subs) desde AF, solo si el partido juega o acaba de terminar.
-            if (sr.status === 'live' || sr.status === 'final') { try { events = await clubMatchEvents(hl, hId, aId); } catch { events = null; } }
+            if (sr.status === 'live' || sr.status === 'final') { try { events = await clubMatchEvents(hl, hId, aId, sr.at || Date.now()); } catch { events = null; } }
             // F1.1c: stats del partido (posesión/remates) en vivo/final — mismo panel mvStats del Mundial.
-            if (sr.status === 'live' || sr.status === 'final') { try { statistics = await clubMatchStats(hl, hId, aId); } catch { statistics = null; } }
+            if (sr.status === 'live' || sr.status === 'final') { try { statistics = await clubMatchStats(hl, hId, aId, sr.at || Date.now()); } catch { statistics = null; } }
             // F1.3: xG observado del partido (post-partido; requiere backfill fresco de la liga ±4 días).
             if (sr.status === 'final') {
               try {

@@ -9941,14 +9941,24 @@ const server = http.createServer(async (req, res) => {
           // partidos EN VIVO / FINALIZADOS de la liga que ya NO están en upcoming (TSA los saca de scheduled al
           // empezar). Resueltos a nombres+probs desde ratings, ordenados live primero.
           const upPairs = new Set(fixtures.map(f => clubScoreKey(key, f.home.id, f.away.id)));
+          // KICKOFF REAL por par de equipos (de los eventos del scan, con datetime completo) → los finalizados
+          // recientes del sync muestran la HORA del partido y se ordenan bien (antes usaban r.at = hora de
+          // registro, que descolocaba orden y horas en la pestaña Finalizados).
+          const koByPair = {};
+          for (const m of Object.values(db.clubsQuoteEvents || {})) {
+            if (m.league !== key || !m.kickoff) continue;
+            const mh = resolveClubId(key, m.home), ma = resolveClubId(key, m.away);
+            if (mh && ma) koByPair[[mh, ma].sort().join('|')] = m.kickoff;
+          }
           const live = Object.entries(db.clubResults || {})
             .filter(([k, r]) => r.league === key && !upPairs.has(k))
             .map(([, r]) => {
               const rh = clubElo(key, r.home_id), ra = clubElo(key, r.away_id);
               const pr = matchProbs(rh + (L.hfa || 60), ra);
               const st = normStatus(r); // live stale → final (partido "frizado")
+              const koReal = koByPair[[r.home_id, r.away_id].sort().join('|')];
               return {
-                id: null, utc: new Date(r.at || Date.now()).toISOString(),
+                id: null, utc: koReal || new Date(r.at || Date.now()).toISOString(),
                 home: { id: r.home_id, name: (L.ratings[r.home_id] && L.ratings[r.home_id].name) || r.home_id, elo: rh, known: !!L.ratings[r.home_id], prob: +pr.home.toFixed(3) },
                 draw: +pr.draw.toFixed(3),
                 away: { id: r.away_id, name: (L.ratings[r.away_id] && L.ratings[r.away_id].name) || r.away_id, elo: ra, known: !!L.ratings[r.away_id], prob: +pr.away.toFixed(3) },

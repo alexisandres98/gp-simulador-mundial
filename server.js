@@ -8620,6 +8620,19 @@ const server = http.createServer(async (req, res) => {
       if (url.searchParams.get('dry')) { const r = await buildClubDailyPicks({ dryRun: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) });
     }
+    // DIAGNÓSTICO cadena AF (24-jul): reporta dónde se rompe la resolución de fixture/stats de un cruce.
+    if (p === '/api/internal/clubs-af-diag' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const lg = url.searchParams.get('league') || 'brasileirao';
+      const hId = url.searchParams.get('home') || '', aId = url.searchParams.get('away') || '';
+      const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+      const afMap = (global._clubAfMap || {})[lg] || {};
+      const diag = { afk_len: afk.length, af_league: CLUB_AF_LEAGUE[lg] || null, map_leagues: Object.keys(global._clubAfMap || {}).length, map_league_count: Object.keys(afMap).length, home_af: (afMap[hId] || {}).af_id || null, away_af: (afMap[aId] || {}).af_id || null };
+      try { diag.fixture = await clubAfFixture(lg, hId, aId); } catch (e) { diag.fixture_err = String(e.message); }
+      try { const st = await clubMatchStats(lg, hId, aId); diag.stats = st ? { home: st.home, away: st.away } : null; } catch (e) { diag.stats_err = String(e.message); }
+      return json(res, 200, diag);
+    }
     // RECUPERACIÓN de resultados de picks supersedidas por el prune (23-jul): reactiva las de partidos ya
     // jugados sin hermano liquidado y las liquida. Idempotente (POST). Sin sesión, key-gated.
     if (p === '/api/internal/clubs-picks-recover' && req.method === 'POST') {

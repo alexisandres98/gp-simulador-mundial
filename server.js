@@ -8696,9 +8696,22 @@ const server = http.createServer(async (req, res) => {
             x.status = 'SETTLED'; x.result_code = 'SUPERSEDED'; x.settled_at = new Date().toISOString(); out.deduped++;
           }
         }
-        // (c) published=true en las 5 reales (cualquier estado no-superseded)
-        for (const x of (db.clubDailyPicks || [])) {
-          if (isPub(x) && x.result_code !== 'SUPERSEDED' && !x.published) { x.published = true; out.published++; }
+        // (c) GARANTIZAR que cada una de las 5 reales tenga UNA versión publicada y liquidada. Si no hay ninguna
+        // published no-superseded, se elige la mejor candidata (prefiere una ya WIN/LOSS; si todas están
+        // superseded, se REACTIVA la más reciente por created_at) y se publica → para que "Gana Corinthians"
+        // (que quedó superseded fuera de ventana) vuelva al cuadro y liquide con el 3-0 real.
+        out.reactivated = 0;
+        for (const def of PUB) {
+          const matches = (db.clubDailyPicks || []).filter(x => def.family === x.family && def.home.test(x.event.home || '') && def.away.test(x.event.away || '') && (def.line == null || Number(x.line) === def.line));
+          if (!matches.length) continue;
+          if (matches.some(x => x.published && x.result_code !== 'SUPERSEDED')) continue; // ya cubierta
+          let best = matches.filter(x => x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code)).sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0))[0]
+            || matches.filter(x => x.status === 'ACTIVE').sort((a, b) => Date.parse(b.created_at || 0) - Date.parse(a.created_at || 0))[0];
+          if (!best) { // todas superseded → reactivar la más reciente
+            best = matches.slice().sort((a, b) => Date.parse(b.created_at || 0) - Date.parse(a.created_at || 0))[0];
+            if (best) { best.status = 'ACTIVE'; best.result_code = 'PENDING'; best.settled_at = null; out.reactivated++; }
+          }
+          if (best && !best.published) { best.published = true; out.published++; }
         }
         // (d) desmarcar published de picks VIEJAS que el pase de freeze marcó por error (re-activadas de
         // partidos jugados hace >3h que no son de la lista real)
@@ -8708,6 +8721,10 @@ const server = http.createServer(async (req, res) => {
           if (x.published && !isPub(x) && ko3 && ko3 < now2 - 3 * 3600e3 && !(x.status === 'SETTLED' && ['WIN', 'LOSS'].includes(x.result_code))) { x.published = false; out.unpublished++; }
         }
         save();
+        // liquidar lo reactivado (SOLID/GOALS con clubResults; props via AF con desambiguación por fecha)
+        const cs = settleClubDailyPicks();
+        const csp = await settleClubPropsViaAf().catch(() => ({ settled: 0 }));
+        out.settled = cs.settled; out.props_settled = csp.settled;
         return json(res, 200, out);
       } catch (e) { return json(res, 200, { error: e.message }); }
     }

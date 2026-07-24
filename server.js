@@ -9707,7 +9707,7 @@ const server = http.createServer(async (req, res) => {
           // así que `at` se renueva mientras el partido corre), el partido terminó o se cayó el feed — mostrarlo
           // congelado como LIVE era el bug del partido "frizado" en la pestaña En vivo.
           const normStatus = (sr) => (sr.status === 'live' && Date.now() - (sr.at || 0) > 45 * 60e3) ? 'final' : sr.status;
-          const fixtures = ((up && up.rows) || []).map(m => {
+          let fixtures = ((up && up.rows) || []).map(m => {
             const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
             const rh = clubElo(key, hId), ra = clubElo(key, aId); // F0.4: Elo dinámico (overlay sobre el fit)
             const pr = matchProbs(rh + (L.hfa || 60), ra);
@@ -9723,6 +9723,36 @@ const server = http.createServer(async (req, res) => {
               gpProbs: (result && result.status === 'live') ? clubGpLive(rh, ra, L.hfa || 60, result.hg, result.ag, result.minute) : null,
             };
           });
+          // FALLBACK/MERGE anti-caída del calendario (23-jul): TSA scheduled es la fuente de PRÓXIMOS, pero si el
+          // proveedor cae (500) o no lista un partido (p.ej. copa bajo otra competición), la cartelera quedaba
+          // vacía. Mergeamos los eventos del SCAN de cuotas (db.clubsQuoteEvents = los mismos partidos que tienen
+          // odds/picks) que no estén ya presentes → Partidos nunca queda en blanco mientras haya mercados.
+          try {
+            const nowT = Date.now();
+            const pairKey = (a, b) => [String(a), String(b)].sort().join('|');
+            const have = new Set(fixtures.map(f => pairKey(f.home.id, f.away.id)));
+            for (const m of Object.values(db.clubsQuoteEvents || {})) {
+              if (m.league !== key || !m.kickoff) continue;
+              const kt = Date.parse(m.kickoff); if (!(kt > nowT - 3 * 3600e3)) continue; // solo próximos / recién arrancados
+              const hId = resolveClubId(key, m.home) || String(m.home), aId = resolveClubId(key, m.away) || String(m.away);
+              if (have.has(pairKey(hId, aId))) continue; // ya lo trajo TSA
+              have.add(pairKey(hId, aId));
+              const rh = clubElo(key, hId), ra = clubElo(key, aId);
+              const pr = matchProbs(rh + (L.hfa || 60), ra);
+              const sr = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
+              const result = sr ? { status: normStatus(sr), hg: sr.home_id === hId ? sr.hg : sr.ag, ag: sr.home_id === hId ? sr.ag : sr.hg, minute: sr.minute, winner: sr.winner || null } : null;
+              fixtures.push({
+                id: m.oa_id || null, utc: m.kickoff,
+                home: { id: hId, name: m.home || '?', elo: rh, known: !!L.ratings[hId], prob: +pr.home.toFixed(3) },
+                draw: +pr.draw.toFixed(3),
+                away: { id: aId, name: m.away || '?', elo: ra, known: !!L.ratings[aId], prob: +pr.away.toFixed(3) },
+                result,
+                gpProbs: (result && result.status === 'live') ? clubGpLive(rh, ra, L.hfa || 60, result.hg, result.ag, result.minute) : null,
+              });
+            }
+            fixtures.sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
+            fixtures = fixtures.slice(0, 20);
+          } catch { /* el merge del scan jamás rompe el state */ }
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t, elo: clubElo(key, id), elo_base: t.elo })).sort((a, b) => b.elo - a.elo);
           // partidos EN VIVO / FINALIZADOS de la liga que ya NO están en upcoming (TSA los saca de scheduled al
           // empezar). Resueltos a nombres+probs desde ratings, ordenados live primero.

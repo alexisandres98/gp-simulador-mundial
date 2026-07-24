@@ -58,10 +58,39 @@ function loadMatches(files) {
 }
 
 fs.mkdirSync(OUT, { recursive: true });
+// SEMILLA DE ASCENDIDOS (24-jul, bug Atlante): un equipo que entra a la liga esta temporada no está en los
+// history files (no jugó) → quedaba FUERA de ratings (sin página, sin plantilla, known:false). Con la key de
+// TSA se listan los equipos del calendario de la temporada ACTUAL (cualquier status) y los que falten se
+// siembran con prior 1500/games 0 — su Elo real lo construye el overlay dinámico partido a partido.
+const TSA_KEY = process.env.THESTATSAPI_KEY || '';
+async function seasonTeams(comp, season) {
+  if (!TSA_KEY) return {};
+  const teams = {};
+  for (let page = 1; page <= 4; page++) {
+    try {
+      const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${comp}&season_id=${season}&per_page=100&page=${page}`, { headers: { Authorization: `Bearer ${TSA_KEY}` }, signal: AbortSignal.timeout(20000) });
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      const rows = (j && j.data) || [];
+      for (const m of rows) for (const t of [m.home_team, m.away_team]) if (t && t.id) teams[t.id] = t.name;
+      const meta = (j && j.meta) || {};
+      if (!rows.length || page >= (meta.total_pages || 1)) break;
+      await new Promise(x => setTimeout(x, 1300));
+    } catch { break; }
+  }
+  return teams;
+}
+(async () => {
 const out = { _meta: { fitted_at: new Date().toISOString(), engine: 'clubs-elo-1.0.0' }, leagues: {} };
 for (const L of LEAGUES) {
   const matches = loadMatches(L.ratings_from);
   const r = fit(matches);
+  // siembra: equipos del calendario actual que el fit no vio (ascendidos/nuevos)
+  try {
+    const st = await seasonTeams(L.comp, L.season);
+    const seeded = [];
+    for (const [id, name] of Object.entries(st)) { if (!r.ratings[id]) { r.ratings[id] = { elo: 1500, name, games: 0 }; seeded.push(name); } }
+    if (seeded.length) console.log(`  (${L.key}: sembrados ${seeded.length} ascendidos → ${seeded.join(', ')})`);
+  } catch { /* sin key/red: fit puro */ }
   // GATE por liga (clubs-gate-1): backtest walk-forward del 1X2 con el modelo COMPLETO (Elo→matchProbs).
   // approved → la liga puede alimentar picks/value; shadow → cartelera con "en calibración".
   let bt = null;
@@ -89,3 +118,4 @@ for (const L of LEAGUES) {
 }
 fs.writeFileSync(path.join(OUT, 'ratings.json'), JSON.stringify(out));
 console.log(`\n→ data/clubs/ratings.json (${Object.keys(out.leagues).length} ligas)`);
+})();

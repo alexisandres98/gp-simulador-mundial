@@ -62,7 +62,9 @@ async function tsa(pathq) {
     const L = RT.leagues[lg];
     // 1) equipos AF de la liga → match a tm_
     teamMap[lg] = teamMap[lg] || {};
-    if (!Object.keys(teamMap[lg]).length) {
+    // MERGE incremental (24-jul, bug Atlante): antes solo mapeaba si la liga no tenía mapa → los ASCENDIDOS
+    // sembrados después del primer run quedaban sin AF ni fotos. Ahora refresca siempre (1 call por liga).
+    {
       let afTeams = await af(`/teams?league=${afLeague}&season=${season}`);
       if (!afTeams.length) afTeams = await af(`/teams?league=${afLeague}&season=${season - 1}`); // MX/torneos partidos
       const idx = {}; for (const [tid, t] of Object.entries(L.ratings || {})) idx[norm(t.name)] = tid;

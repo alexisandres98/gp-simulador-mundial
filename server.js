@@ -4989,7 +4989,16 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const lev = md < mk - 0.05;
     if (q.solid_lever !== lev) { q.solid_lever = lev; updated++; }
   }
-  if (added || updated || out.pruned) save();
+  // MARCA "PUBLICADA" (24-jul, decisión Alexis): una pick ACTIVA que llega al freeze (≤15min del KO) es LA pick
+  // que el usuario vio → published=true. El CUADRO público post-corte solo cuenta published (el monitoreo
+  // interno — variantes de línea, edge en shadow, etc. — jamás vuelve a inflar el rendimiento).
+  let publishedN = 0;
+  for (const q of db.clubDailyPicks) {
+    if (q.status !== 'ACTIVE' || q.published) continue;
+    const ko = Date.parse(q.event.kickoff_at || 0);
+    if (ko && ko <= Date.now() + 15 * 60e3) { q.published = true; publishedN++; }
+  }
+  if (added || updated || out.pruned || publishedN) save();
   out.added = added; out.updated = updated; out.total = db.clubDailyPicks.length;
   return out;
 }
@@ -5089,23 +5098,30 @@ function settleClubDailyPicks() {
 // doble conteo: si ya existe una WIN/LOSS/PUSH/VOID para ese mercado, no toca nada. Solo partidos ya iniciados.
 function recoverClubSupersededResults() {
   const now = Date.now();
-  const mKey = (p) => (p.event.canonical_event_id || p.event.club_eid || '') + '|' + p.family + '|' + (p.market_id || p.selection_code || ((p.side || '') + (p.line != null ? p.line : '')));
+  // DEDUP POR (evento, familia) — NO por línea/mercado (24-jul fix): la cadena de supersedes por familia
+  // reemplaza líneas (u10.5→u11.5→…); solo la ÚLTIMA publicada cuenta. Con la key por mercado la 1ª corrida
+  // resucitó cada variante de línea histórica (30 picks fantasma). Además, solo son víctimas reales las
+  // supersedidas DENTRO de la ventana de freeze (settled_at ≥ KO−15min): antes de eso el prune era legítimo.
+  const fKey = (p) => (p.event.canonical_event_id || p.event.club_eid || '') + '|' + p.family;
   const covered = new Set();
   for (const p of (db.clubDailyPicks || [])) {
-    if (p.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(p.result_code)) covered.add(mKey(p));
+    if (p.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(p.result_code)) covered.add(fKey(p));
+    if (p.status === 'ACTIVE') covered.add(fKey(p)); // ya hay una activa de esa familia → nada que rescatar
   }
-  const best = {}; // mKey -> superseded más reciente de un partido ya jugado
+  const best = {}; // fKey -> superseded en ventana de freeze, la de created_at más reciente
   for (const p of (db.clubDailyPicks || [])) {
-    if (p.status === 'SETTLED' && p.result_code === 'SUPERSEDED' && Date.parse(p.event.kickoff_at || 0) < now) {
-      const k = mKey(p);
-      if (covered.has(k)) continue;
-      if (!best[k] || Date.parse(p.settled_at || 0) > Date.parse(best[k].settled_at || 0)) best[k] = p;
-    }
+    if (p.status !== 'SETTLED' || p.result_code !== 'SUPERSEDED') continue;
+    const ko = Date.parse(p.event.kickoff_at || 0);
+    if (!(ko && ko < now)) continue;
+    if (Date.parse(p.settled_at || 0) < ko - 15 * 60e3) continue; // prune legítimo pre-KO → no es víctima
+    const k = fKey(p);
+    if (covered.has(k)) continue;
+    if (!best[k] || Date.parse(p.created_at || 0) > Date.parse(best[k].created_at || 0)) best[k] = p;
   }
   let reactivated = 0;
   for (const p of Object.values(best)) { p.status = 'ACTIVE'; p.result_code = 'PENDING'; p.settled_at = null; reactivated++; }
   if (reactivated) save();
-  const s = settleClubDailyPicks();       // liquida SOLID/GOALS con clubResults (finales de anoche disponibles)
+  const s = settleClubDailyPicks();
   return { reactivated, settled: s.settled, still_active: (db.clubDailyPicks || []).filter(p => p.status === 'ACTIVE' && Date.parse(p.event.kickoff_at || 0) < now).length };
 }
 // F3.4: fallback de liquidación de CORNERS/CARDS vía AF statistics (clubMatchStats) para partidos FINALIZADOS
@@ -6851,13 +6867,18 @@ const server = http.createServer(async (req, res) => {
       // SUPERSEDED no viaja (reemplazos internos por coherencia, no picks del usuario).
       if (p === '/api/beta/picks-record' && req.method === 'GET') {
         const isAdm = !!(betaUser && betaUser.isAdmin);
-        // CUADRO COMBINADO CON TODO (23-jul, decisión Alexis): el rendimiento público = Mundial + TODAS las
-        // familias de clubes que liquidan (SOLID/GOALS/CORNERS/CARDS, incluidas las de monitoreo y las previas
-        // al 20-jul — supersede el cutoff CLUBS_CONTINUATION_START y el gate props-public PARA EL RECORD).
-        // EXCEPCIÓN: PLAYER (goleador/asistencia, 2-5 y −3u) queda ADMIN-ONLY acumulando muestra — Alexis la
-        // publica cuando la familia demuestre. El admin ve el mismo cuadro CON player (su monitoreo).
-        const clubRecord = (db.clubDailyPicks || []).filter(x => isAdm || x.family !== 'PLAYER');
-        const mundialRecord = (db.dailyPicks || []).filter(x => isAdm || x.family !== 'PLAYER');
+        // CUADRO OFICIAL (24-jul, corrección Alexis): Mundial + clubes SIN PLAYER, y de clubes SOLO lo que se
+        // PUBLICÓ de verdad: la base aprobada (liquidado antes del corte 23-jul 12:00Z = el cuadro que Alexis
+        // validó) + toda pick con published=true (llegó al freeze ≤15min del KO = la vio el usuario). El
+        // monitoreo interno (variantes de línea, edge en shadow) NUNCA entra — fue el error del 23-jul que
+        // infló el cuadro con picks jamás publicadas. PLAYER va en cuadro APARTE solo-admin (player_track).
+        const CLUBS_TRACK_BASELINE = Date.parse('2026-07-23T12:00:00Z');
+        const clubTrackable = (x) => x.family !== 'PLAYER' && (
+          x.published === true ||
+          (x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code) && Date.parse(x.settled_at || 0) < CLUBS_TRACK_BASELINE)
+        );
+        const clubRecord = (db.clubDailyPicks || []).filter(clubTrackable);
+        const mundialRecord = (db.dailyPicks || []).filter(x => x.family !== 'PLAYER');
         const merged = mundialRecord.concat(clubRecord);
         const settled = merged
           .filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
@@ -6884,7 +6905,19 @@ const server = http.createServer(async (req, res) => {
           } : null,
           calibration: (q.calibration || []).filter(b => b.n >= 5),
         };
-        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(merged), quant: quantPublic, picks: settled, generated_at: new Date().toISOString() });
+        // CUADRO APARTE de PLAYER (solo-admin, 24-jul): goleadores/asistencias acumulan su track SEPARADO —
+        // ni en el cuadro oficial ni mezclado; Alexis lo analiza y decide cuándo la familia se publica.
+        let playerTrack = null;
+        if (isAdm) {
+          const pl = (db.dailyPicks || []).concat(db.clubDailyPicks || []).filter(x => x.family === 'PLAYER');
+          playerTrack = {
+            track_record: dailyPicksTrackRecord(pl),
+            picks: pl.filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
+              .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0)).slice(0, 60)
+              .map(x => ({ pick_id: x.pick_id, player_name: x.player_name || null, player_family: x.player_family || null, result_code: x.result_code, settled_at: x.settled_at, best_odds: x.best_odds, event: { home: x.event.home, away: x.event.away, home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff_at: x.event.kickoff_at } })),
+          };
+        }
+        return json(res, 200, { enabled: dailyPicksOn(), track_record: dailyPicksTrackRecord(merged), quant: quantPublic, picks: settled, player_track: playerTrack, generated_at: new Date().toISOString() });
       }
       // xG OBSERVADO del partido (TheStatsAPI) — SOLO partidos TERMINADOS, cache permanente en db.json
       // (1 fetch por partido; el plan es 12 req/min → jamás en vivo ni pre-partido). Kill switch: GP_XG_PANEL_ENABLED=false.
@@ -8586,6 +8619,53 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       try { return json(res, 200, recoverClubSupersededResults()); } catch (e) { return json(res, 200, { error: e.message }); }
     }
+    // LIMPIEZA one-off (24-jul): deshace la resurrección errónea del recover v1 (batch 06:29 = variantes de
+    // línea jamás publicadas) y marca published=true en las 5 picks REALES de la noche del 23-jul. Idempotente.
+    if (p === '/api/internal/clubs-picks-cleanup' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        const out = { resuperseded: 0, deduped: 0, published: 0 };
+        const fKey = (x) => (x.event.canonical_event_id || x.event.club_eid || '') + '|' + x.family;
+        // Las 5 publicadas de la noche del 23-jul (confirmadas por Alexis: 4 del contenido + tarjetas Botafogo)
+        const PUB = [
+          { family: 'SOLID', home: /Corinthians/i, away: /Remo/i },
+          { family: 'CORNERS', home: /Corinthians/i, away: /Remo/i, line: 12.5 },
+          { family: 'CORNERS', home: /Botafogo/i, away: /Vit/i, line: 10.5 },
+          { family: 'CARDS', home: /Botafogo/i, away: /Vit/i, line: 4.5 },
+          { family: 'GOALS', home: /Sarmiento/i, away: /Argentinos/i, line: 1.5 },
+        ];
+        const isPub = (x) => PUB.some(r => r.family === x.family && r.home.test(x.event.home || '') && r.away.test(x.event.away || '') && (r.line == null || Number(x.line) === r.line));
+        // (a) batch resucitado 06:29 → SUPERSEDED, salvo las publicadas reales
+        for (const x of (db.clubDailyPicks || [])) {
+          if (x.status === 'SETTLED' && (x.result_code === 'WIN' || x.result_code === 'LOSS') && String(x.settled_at || '').startsWith('2026-07-24T06:2') && !isPub(x)) {
+            x.result_code = 'SUPERSEDED'; out.resuperseded++;
+          }
+        }
+        // (b) ACTIVE de partidos ya jugados: si su (evento,familia) ya tiene WIN/LOSS, o hay una variante más
+        // nueva, se supersede (mata las variantes de línea resucitadas; conserva 1 por familia, la publicada).
+        const now2 = Date.now();
+        const doneKeys = new Set((db.clubDailyPicks || []).filter(x => x.status === 'SETTLED' && (x.result_code === 'WIN' || x.result_code === 'LOSS')).map(fKey));
+        const actPast = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE' && Date.parse(x.event.kickoff_at || 0) < now2);
+        const bestAct = {};
+        for (const x of actPast) {
+          const k = fKey(x);
+          const pref = (a, b) => (isPub(a) !== isPub(b)) ? (isPub(a) ? a : b) : (Date.parse(a.created_at || 0) >= Date.parse(b.created_at || 0) ? a : b);
+          bestAct[k] = bestAct[k] ? pref(bestAct[k], x) : x;
+        }
+        for (const x of actPast) {
+          if (doneKeys.has(fKey(x)) || bestAct[fKey(x)] !== x) {
+            x.status = 'SETTLED'; x.result_code = 'SUPERSEDED'; x.settled_at = new Date().toISOString(); out.deduped++;
+          }
+        }
+        // (c) published=true en las 5 reales (cualquier estado no-superseded)
+        for (const x of (db.clubDailyPicks || [])) {
+          if (isPub(x) && x.result_code !== 'SUPERSEDED' && !x.published) { x.published = true; out.published++; }
+        }
+        save();
+        return json(res, 200, out);
+      } catch (e) { return json(res, 200, { error: e.message }); }
+    }
     // P2.5: pase de data manual (POST ?force=1 re-corre aunque hoy ya haya corrido) + estado (GET).
     if (p === '/api/internal/clubs-data-pass') {
       const xk = process.env.GP_EXPORT_KEY || '';
@@ -8841,8 +8921,18 @@ const server = http.createServer(async (req, res) => {
       // CONTINUACIÓN post-Mundial: el admin ve la MISMA tabla unificada que el público (Mundial + clubes
       // públicas, con escudos). El bloque `clubs` de abajo sigue siendo el monitoreo privado congelado (todas
       // las de clubes, incl. regime:monitor) como referencia admin-only.
-      const adminMerged = (db.dailyPicks || []).concat(clubPublicPicks({ isAdmin: true }));
+      // CUADRO PRINCIPAL del admin = EL MISMO oficial (24-jul, corrección Alexis): Mundial sin PLAYER + clubes
+      // publicadas/base — idéntico a lo que ve la gente. PLAYER va aparte en player_track; el monitoreo completo
+      // sigue en .clubs (tabla privada).
+      const ADMIN_TRACK_BASELINE = Date.parse('2026-07-23T12:00:00Z');
+      const admClubTrackable = (x) => x.family !== 'PLAYER' && (
+        x.published === true ||
+        (x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code) && Date.parse(x.settled_at || 0) < ADMIN_TRACK_BASELINE)
+      );
+      const adminMerged = (db.dailyPicks || []).filter(x => x.family !== 'PLAYER').concat((db.clubDailyPicks || []).filter(admClubTrackable));
+      const admPlayer = (db.dailyPicks || []).concat(db.clubDailyPicks || []).filter(x => x.family === 'PLAYER');
       return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(adminMerged), quant: dailyPicksQuant(), picks: adminMerged.slice(-400),
+        player_track: { track_record: dailyPicksTrackRecord(admPlayer), picks: admPlayer.filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED').sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0)).slice(0, 60) },
         // CLUBES (monitoreo privado, 15-jul): track record + picks de clubes SOLO en esta vista admin —
         // jamás en el rendimiento público.
         clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) } });
@@ -9749,8 +9839,12 @@ const server = http.createServer(async (req, res) => {
             const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
             const rh = clubElo(key, hId), ra = clubElo(key, aId); // F0.4: Elo dinámico (overlay sobre el fit)
             const pr = matchProbs(rh + (L.hfa || 60), ra);
-            // marcador en vivo/finalizado (ESPN por liga, shadow) si existe para este par
-            const sr = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
+            // marcador en vivo/finalizado (ESPN por liga, shadow) si existe para este par. GUARD (24-jul):
+            // clubResults se keyea SOLO por par (sin fecha) → a un fixture FUTURO (revancha/copa ida-vuelta) se
+            // le pegaba el resultado del cruce anterior y aparecía "finalizado hoy/mañana" en Finalizados.
+            // Solo se adjunta marcador si este fixture ya arrancó.
+            const startedTsa = Date.parse(m.utc_date || 0) <= Date.now() + 15 * 60e3;
+            const sr = startedTsa ? ((db.clubResults || {})[clubScoreKey(key, hId, aId)] || null) : null;
             const result = sr ? { status: normStatus(sr), hg: sr.home_id === hId ? sr.hg : sr.ag, ag: sr.home_id === hId ? sr.ag : sr.hg, minute: sr.minute, winner: sr.winner || null } : null;
             return {
               id: m.id, utc: m.utc_date,

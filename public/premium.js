@@ -5605,6 +5605,19 @@
       } else {
         body += '<div class="gx-panel"><div class="gx-empty">' + ic('target-arrow') + '<b>' + esc(t('pp_none')) + '</b></div></div>';
       }
+      // CUADRO APARTE de PLAYER (solo llega para admin, decisión 24-jul): goleadores/asistencias acumulan su
+      // track SEPARADO del oficial — para analizar la familia y decidir su futuro sin ensuciar el cuadro.
+      if (pk.player_track && pk.player_track.picks && pk.player_track.picks.length) {
+        var ptr = (pk.player_track.track_record && pk.player_track.track_record.overall) || {};
+        var prows2 = pk.player_track.picks.map(function (p) {
+          var hh2 = teamName(p.event.home_team_id, p.event.home), aa2 = teamName(p.event.away_team_id, p.event.away);
+          var res2 = p.result_code === 'WIN' ? '<span class="gx-pos" style="font-weight:700">✓ WIN</span>' : p.result_code === 'LOSS' ? '<span class="gx-neg" style="font-weight:700">✗ LOSS</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(p.result_code || '—') + '</span>';
+          var what = (p.player_name || '—') + ' · ' + (p.player_family === 'player_assist' ? (LANG === 'en' ? 'assist' : 'asistencia') : (LANG === 'en' ? 'scores' : 'anota'));
+          return '<tr class="gx-row"><td class="gx-time l">' + esc(fmtDate(p.settled_at)) + '</td><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(p.event.home_team_id) + '</span><b>' + esc(hh2) + '</b><span class="gx-dim" style="margin:0 3px">' + esc(t('vs')) + '</span><span class="fl">' + flag(p.event.away_team_id) + '</span><b>' + esc(aa2) + '</b></div></td><td class="l" style="font-size:12px">' + esc(what) + '</td><td class="gx-mono">' + (p.best_odds != null ? Number(p.best_odds).toFixed(2) : '—') + '</td><td>' + res2 + '</td></tr>';
+        }).join('');
+        var ptHead = ptr.settled != null ? ((ptr.wins || 0) + '/' + ptr.settled + (ptr.roi_pct != null ? ' · ROI ' + ptr.roi_pct + '%' : '')) : '';
+        body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + ic('user') + esc(LANG === 'en' ? 'Player picks track (admin)' : 'Track de picks de jugador (admin)') + '</span><span class="gx-ph-extra gx-dim">' + esc(ptHead) + '</span></div><div class="gx-perf-scroll"><table class="gx-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">Pick</th><th>' + esc(t('reg_odds')) + '</th><th>' + esc(t('perf_result')) + '</th></tr></thead><tbody>' + prows2 + '</tbody></table></div><p class="gx-mod-note gx-dim" style="margin:8px 10px">' + esc(LANG === 'en' ? 'Family under separate evaluation — not part of the official record.' : 'Familia en evaluación aparte — no cuenta en el cuadro oficial.') + '</p></div>';
+      }
       body += '<div class="gx-ph" style="margin:20px 0 8px"><span class="gx-label">' + ic('chart-line') + esc(t('pp_model')) + '</span></div>';
     }
     // % de aciertos (como la plataforma principal): predicción 1X2 acertada / total evaluado

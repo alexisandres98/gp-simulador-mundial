@@ -8671,7 +8671,8 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       if (req.method === 'POST') { const r = await evaluateClubDailyPicks().catch(e => ({ error: e.message })); return json(res, 200, r); }
       if (url.searchParams.get('dry')) { const r = await buildClubDailyPicks({ dryRun: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
-      return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) });
+      const winN = Math.max(1, Math.min(10000, Number(url.searchParams.get('limit')) || 200)); // ?limit= para auditorías completas (default 200)
+      return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-winN) });
     }
     // DIAGNÓSTICO cadena AF (24-jul): reporta dónde se rompe la resolución de fixture/stats de un cruce.
     if (p === '/api/internal/clubs-af-diag' && req.method === 'GET') {

@@ -5324,6 +5324,34 @@ async function captureClubPicksClosing({ force = false } = {}) {
 }
 // track record de clubes por liga/familia/gate (misma matemática de unidades del Mundial: 1u por pick).
 // PRIVADO: solo admin (monitoreo de la semana); jamás entra al rendimiento público.
+// CUADRO OFICIAL DE CLUBES (24-jul, decisión Alexis "solo las 125 del esquema"): la parte de clubes del
+// rendimiento público/admin = base publicada/aprobada (regla del 24-jul) ∧ ESQUEMA ACTUAL aplicado RETRO:
+// SOLID solo ancla (mercado≥55%, ≥5 casas, modelo≤mercado+5pp — la palanca solid_lever entra, se evalúa el
+// lunes), GOALS solo regime 'anchor', CORNERS/CARDS deduplicadas a 1 por (evento,familia) (published > mayor
+// edge; las variantes de línea del recover no cuentan doble). Backtest 24-jul: clubes 102→66 picks
+// (−6.43u→+2.36u), total con Mundial 160→125 (+5.39u→+14.80u). Fuente ÚNICA para ambos endpoints del cuadro.
+function officialClubRecord() {
+  const BASELINE = Date.parse('2026-07-23T12:00:00Z');
+  const basic = (x) => x.family !== 'PLAYER' && (
+    x.published === true ||
+    (x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code) && Date.parse(x.settled_at || 0) < BASELINE)
+  );
+  const scheme = (x) => {
+    if (x.family === 'SOLID') { const mk = +x.market_prob || 0, md = +x.model_prob || 0, bk = +x.books || 0; return mk >= 0.55 && bk >= 5 && md <= mk + 0.05; }
+    if (x.family === 'GOALS') return x.regime === 'anchor';
+    return true; // CORNERS/CARDS/COMBO: cuentan todas las que liquidan (decisión 23-jul), deduplicadas abajo
+  };
+  const pre = (db.clubDailyPicks || []).filter(x => basic(x) && scheme(x));
+  const bestProp = {}; const out = [];
+  for (const x of pre) {
+    if (['CORNERS', 'CARDS'].includes(x.family) && x.status === 'SETTLED') {
+      const k = (x.event && x.event.canonical_event_id) + '|' + x.family;
+      const cur = bestProp[k];
+      if (!cur || (x.published ? 1 : 0) > (cur.published ? 1 : 0) || ((x.published ? 1 : 0) === (cur.published ? 1 : 0) && (+x.edge_pp || 0) > (+cur.edge_pp || 0))) bestProp[k] = x;
+    } else out.push(x);
+  }
+  return out.concat(Object.values(bestProp));
+}
 function clubDailyPicksTrackRecord() {
   const agg = {};
   for (const p of (db.clubDailyPicks || [])) {
@@ -6933,12 +6961,9 @@ const server = http.createServer(async (req, res) => {
         // validó) + toda pick con published=true (llegó al freeze ≤15min del KO = la vio el usuario). El
         // monitoreo interno (variantes de línea, edge en shadow) NUNCA entra — fue el error del 23-jul que
         // infló el cuadro con picks jamás publicadas. PLAYER va en cuadro APARTE solo-admin (player_track).
-        const CLUBS_TRACK_BASELINE = Date.parse('2026-07-23T12:00:00Z');
-        const clubTrackable = (x) => x.family !== 'PLAYER' && (
-          x.published === true ||
-          (x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code) && Date.parse(x.settled_at || 0) < CLUBS_TRACK_BASELINE)
-        );
-        const clubRecord = (db.clubDailyPicks || []).filter(clubTrackable);
+        // (24-jul, decisión Alexis) la parte de clubes sale de officialClubRecord(): base publicada/aprobada
+        // ∧ esquema actual retro (SOLID ancla, GOALS ancla, props deduplicadas) — cuadro de 125.
+        const clubRecord = officialClubRecord();
         const mundialRecord = (db.dailyPicks || []).filter(x => x.family !== 'PLAYER');
         const merged = mundialRecord.concat(clubRecord);
         const settled = merged
@@ -9037,12 +9062,8 @@ const server = http.createServer(async (req, res) => {
       // CUADRO PRINCIPAL del admin = EL MISMO oficial (24-jul, corrección Alexis): Mundial sin PLAYER + clubes
       // publicadas/base — idéntico a lo que ve la gente. PLAYER va aparte en player_track; el monitoreo completo
       // sigue en .clubs (tabla privada).
-      const ADMIN_TRACK_BASELINE = Date.parse('2026-07-23T12:00:00Z');
-      const admClubTrackable = (x) => x.family !== 'PLAYER' && (
-        x.published === true ||
-        (x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code) && Date.parse(x.settled_at || 0) < ADMIN_TRACK_BASELINE)
-      );
-      const adminMerged = (db.dailyPicks || []).filter(x => x.family !== 'PLAYER').concat((db.clubDailyPicks || []).filter(admClubTrackable));
+      // (24-jul) misma fuente que el público: officialClubRecord() — cuadro idéntico admin/público (regla dura)
+      const adminMerged = (db.dailyPicks || []).filter(x => x.family !== 'PLAYER').concat(officialClubRecord());
       const admPlayer = (db.dailyPicks || []).concat(db.clubDailyPicks || []).filter(x => x.family === 'PLAYER');
       return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(adminMerged), quant: dailyPicksQuant(), picks: adminMerged.slice(-400),
         player_track: { track_record: dailyPicksTrackRecord(admPlayer), picks: admPlayer.filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED').sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0)).slice(0, 60) },

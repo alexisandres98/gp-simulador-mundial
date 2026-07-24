@@ -4955,8 +4955,12 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   for (const old of db.clubDailyPicks) {
     if (old.status !== 'ACTIVE') continue;
     const ev = old.event.canonical_event_id;
-    const drop = (old.family === 'SOLID' && scannedSolid.has(ev) && !keptSolid.has(ev))
-      || (old.family === 'GOALS' && scannedGoals.has(ev) && !keptGoals.has(ev));
+    // CONGELAR cerca del kickoff (23-jul fix): a ≤15min del inicio (o ya arrancado) la pick está fija y DEBE
+    // liquidarse — nunca prunearse. Antes se supersedían picks ya publicadas justo antes del partido y su
+    // resultado se perdía del cuadro (bug: picks de anoche que acertaron no aparecían).
+    const future = Date.parse(old.event.kickoff_at || 0) > Date.now() + 15 * 60e3;
+    const drop = future && ((old.family === 'SOLID' && scannedSolid.has(ev) && !keptSolid.has(ev))
+      || (old.family === 'GOALS' && scannedGoals.has(ev) && !keptGoals.has(ev)));
     if (drop) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; }
   }
   const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
@@ -4978,8 +4982,10 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const mk = Number(q.market_prob || 0), md = Number(q.model_prob || 0);
     // por sus PROPIAS probs congeladas: si ya no es favorito claro (mkt<55%) o el modelo está sobreconfiado
     // (mdl>mkt+5pp, la dirección del bucket roto) → supersede (sale de feed Y cuadro). Limpia las viejas
-    // grandfathered sin esperar el re-escaneo de su evento.
-    if (mk < 0.55 || md > mk + 0.05) { q.status = 'SETTLED'; q.result_code = 'SUPERSEDED'; q.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; continue; }
+    // grandfathered sin esperar el re-escaneo de su evento. CONGELADO cerca del kickoff (23-jul fix): a ≤15min
+    // del inicio la pick ya está publicada y fija → debe LIQUIDARSE, no prunearse (si no, se pierde su resultado).
+    const qFuture = Date.parse(q.event.kickoff_at || 0) > Date.now() + 15 * 60e3;
+    if (qFuture && (mk < 0.55 || md > mk + 0.05)) { q.status = 'SETTLED'; q.result_code = 'SUPERSEDED'; q.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; continue; }
     const lev = md < mk - 0.05;
     if (q.solid_lever !== lev) { q.solid_lever = lev; updated++; }
   }
@@ -5076,6 +5082,31 @@ function settleClubDailyPicks() {
   }
   if (settled) save();
   return { settled };
+}
+// RECUPERACIÓN (23-jul): rescata resultados de picks que quedaron SUPERSEDED por el prune agresivo pero cuyo
+// partido YA se jugó y no dejó ningún hermano liquidado para ese mercado. Reactiva la superseded más reciente por
+// (evento, familia, mercado) y deja que settleClubDailyPicks la liquide con el marcador real. Idempotente y sin
+// doble conteo: si ya existe una WIN/LOSS/PUSH/VOID para ese mercado, no toca nada. Solo partidos ya iniciados.
+function recoverClubSupersededResults() {
+  const now = Date.now();
+  const mKey = (p) => (p.event.canonical_event_id || p.event.club_eid || '') + '|' + p.family + '|' + (p.market_id || p.selection_code || ((p.side || '') + (p.line != null ? p.line : '')));
+  const covered = new Set();
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(p.result_code)) covered.add(mKey(p));
+  }
+  const best = {}; // mKey -> superseded más reciente de un partido ya jugado
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status === 'SETTLED' && p.result_code === 'SUPERSEDED' && Date.parse(p.event.kickoff_at || 0) < now) {
+      const k = mKey(p);
+      if (covered.has(k)) continue;
+      if (!best[k] || Date.parse(p.settled_at || 0) > Date.parse(best[k].settled_at || 0)) best[k] = p;
+    }
+  }
+  let reactivated = 0;
+  for (const p of Object.values(best)) { p.status = 'ACTIVE'; p.result_code = 'PENDING'; p.settled_at = null; reactivated++; }
+  if (reactivated) save();
+  const s = settleClubDailyPicks();       // liquida SOLID/GOALS con clubResults (finales de anoche disponibles)
+  return { reactivated, settled: s.settled, still_active: (db.clubDailyPicks || []).filter(p => p.status === 'ACTIVE' && Date.parse(p.event.kickoff_at || 0) < now).length };
 }
 // F3.4: fallback de liquidación de CORNERS/CARDS vía AF statistics (clubMatchStats) para partidos FINALIZADOS
 // que el backfill de props-history aún no trae (el backfill corre por pasadas; esto liquida en horas, no días).
@@ -8548,6 +8579,13 @@ const server = http.createServer(async (req, res) => {
       if (url.searchParams.get('dry')) { const r = await buildClubDailyPicks({ dryRun: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
       return json(res, 200, { enabled: dailyPicksOn() && clubsShadowOn(), last: _clubPicksLast, count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) });
     }
+    // RECUPERACIÓN de resultados de picks supersedidas por el prune (23-jul): reactiva las de partidos ya
+    // jugados sin hermano liquidado y las liquida. Idempotente (POST). Sin sesión, key-gated.
+    if (p === '/api/internal/clubs-picks-recover' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try { return json(res, 200, recoverClubSupersededResults()); } catch (e) { return json(res, 200, { error: e.message }); }
+    }
     // P2.5: pase de data manual (POST ?force=1 re-corre aunque hoy ya haya corrido) + estado (GET).
     if (p === '/api/internal/clubs-data-pass') {
       const xk = process.env.GP_EXPORT_KEY || '';
@@ -9736,10 +9774,17 @@ const server = http.createServer(async (req, res) => {
               const kt = Date.parse(m.kickoff); if (!(kt > nowT - 3 * 3600e3)) continue; // solo próximos / recién arrancados
               const hId = resolveClubId(key, m.home) || String(m.home), aId = resolveClubId(key, m.away) || String(m.away);
               if (have.has(pairKey(hId, aId))) continue; // ya lo trajo TSA
+              // clubResults se keyea SOLO por par de equipos (sin fecha) → un resultado viejo de un cruce previo
+              // NO debe pegarse a un partido FUTURO. Solo adjuntamos el marcador si el partido ya arrancó
+              // (kickoff en el pasado); y si YA finalizó, lo omitimos: lo muestra el path de Finalizados con su
+              // fecha real (antes aparecía como "próximo/mañana" con marcador de final — el bug reportado).
+              const sr0 = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
+              const started = kt <= nowT + 15 * 60e3; // ya arrancó (con 15min de gracia)
+              const sr = (sr0 && started) ? sr0 : null;
+              if (sr && normStatus(sr) === 'final') continue; // finalizado → lo trae la pestaña Finalizados, no upcoming
               have.add(pairKey(hId, aId));
               const rh = clubElo(key, hId), ra = clubElo(key, aId);
               const pr = matchProbs(rh + (L.hfa || 60), ra);
-              const sr = (db.clubResults || {})[clubScoreKey(key, hId, aId)] || null;
               const result = sr ? { status: normStatus(sr), hg: sr.home_id === hId ? sr.hg : sr.ag, ag: sr.home_id === hId ? sr.ag : sr.hg, minute: sr.minute, winner: sr.winner || null } : null;
               fixtures.push({
                 id: m.oa_id || null, utc: m.kickoff,

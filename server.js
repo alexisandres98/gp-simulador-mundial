@@ -6941,6 +6941,40 @@ function getUser(req) {
   beta.entitled = ent.access;
   return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
 }
+// ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
+// Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
+// Cachea las claves 1h. Valida firma, emisor, audiencia (nuestro client_id) y expiración — en ese orden y
+// TODAS obligatorias: saltarse aud permitiría entrar con un token emitido para OTRA app.
+let _gJwks = { at: 0, keys: [] };
+async function googleJwks() {
+  if (Date.now() - _gJwks.at < 3600e3 && _gJwks.keys.length) return _gJwks.keys;
+  const r = await fetch('https://www.googleapis.com/oauth2/v3/certs', { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error('JWKS no disponible');
+  const j = await r.json();
+  _gJwks = { at: Date.now(), keys: (j && j.keys) || [] };
+  return _gJwks.keys;
+}
+const b64uJson = (s) => JSON.parse(Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+async function verifyGoogleIdToken(jwt, clientId) {
+  const parts = String(jwt).split('.');
+  if (parts.length !== 3) throw new Error('token mal formado');
+  const header = b64uJson(parts[0]);
+  if (header.alg !== 'RS256') throw new Error('alg no soportado');
+  const keys = await googleJwks();
+  const jwk = keys.find(k => k.kid === header.kid);
+  if (!jwk) throw new Error('kid desconocido');
+  const pub = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+  const ok = crypto.verify('RSA-SHA256', Buffer.from(parts[0] + '.' + parts[1]),
+    pub, Buffer.from(parts[2].replace(/-/g, '+').replace(/_/g, '/'), 'base64'));
+  if (!ok) throw new Error('firma inválida');
+  const c = b64uJson(parts[1]);
+  const iss = String(c.iss || '');
+  if (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') throw new Error('emisor inválido');
+  if (String(c.aud || '') !== clientId) throw new Error('audiencia inválida');
+  const now = Math.floor(Date.now() / 1000);
+  if (!(Number(c.exp) > now - 60)) throw new Error('token expirado');
+  return c;
+}
 function isAdmin(email) {
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
   if (envAdmins.includes(email)) return true;
@@ -7873,6 +7907,43 @@ const server = http.createServer(async (req, res) => {
       db.sessions[token] = e;
       save();
       return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false });
+    }
+    // ===== LOGIN CON GOOGLE (25-jul) — sin código por email ==================================================
+    // El cliente manda el ID token (JWT) de Google Identity Services. Lo verificamos NOSOTROS contra las claves
+    // públicas de Google (JWKS, RS256) con crypto nativo — cero dependencias npm, misma línea que el resto del
+    // repo. La cuenta se identifica por el EMAIL VERIFICADO del token, así que un usuario que ya existía por
+    // código entra a LA MISMA cuenta (conserva plan, grants de Whop, favoritos e historial): el email es la
+    // llave primaria del sistema. Exigimos email_verified para que nadie pueda reclamar un email ajeno.
+    if (p === '/api/auth/google' && req.method === 'POST') {
+      const CID = (process.env.GOOGLE_CLIENT_ID || '').trim();
+      if (!CID) return json(res, 404, { error: 'No encontrado' }); // sin configurar → la ruta ni existe
+      const { credential, ref } = await readBody(req);
+      const claims = await verifyGoogleIdToken(String(credential || ''), CID).catch(e => ({ _err: e.message }));
+      if (!claims || claims._err || !claims.email) return json(res, 401, { error: 'No se pudo validar la sesión de Google' });
+      if (claims.email_verified !== true && String(claims.email_verified) !== 'true') return json(res, 401, { error: 'Tu email de Google no está verificado' });
+      const e = String(claims.email).toLowerCase();
+      const isNewOrLead = !db.users[e] || db.users[e].lead;
+      if (!db.users[e]) db.users[e] = { createdAt: Date.now(), favorites: [] };
+      if (isNewOrLead && ref) {
+        const r = String(ref).slice(0, 24).replace(/[^\w-]/g, '');
+        db.users[e].ref = r;
+        const referrer = db.refCodes[r];
+        if (referrer && referrer !== e && db.users[referrer]) {
+          const ru = db.users[referrer];
+          ru.referrals = ru.referrals || [];
+          if (!ru.referrals.includes(e)) ru.referrals.push(e);
+        }
+      }
+      db.users[e].verified = true;
+      db.users[e].lead = false;
+      if (!db.users[e].verifiedAt) db.users[e].verifiedAt = Date.now();
+      if (db.users[e].ref === 'lead') db.users[e].ref = 'directo';
+      db.users[e].authProvider = 'google';
+      if (claims.name && !db.users[e].name) db.users[e].name = String(claims.name).slice(0, 60);
+      const token = crypto.randomBytes(24).toString('hex');
+      db.sessions[token] = e;
+      save();
+      return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false, provider: 'google' });
     }
     // MAGIC LINK: click desde el correo → verifica sin código, setea cookie de sesión y redirige a la
     // plataforma (premium.js sincroniza cookie→localStorage en el boot). Mínima fricción: un toque y entra.
@@ -10169,7 +10240,7 @@ const server = http.createServer(async (req, res) => {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
         // __GPL3: landing v3 (clubes) conocida ANTES del primer paint — sin swap visible de copy/hero.
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
@@ -10935,7 +11006,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }

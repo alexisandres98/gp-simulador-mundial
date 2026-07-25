@@ -37,6 +37,7 @@
       final_h: 'La ventaja no espera. Empieza gratis.',
       disc: 'Estimaciones estadísticas · no es consejo financiero · apuesta con responsabilidad',
       foot_tag: 'Inteligencia deportiva en tiempo real', foot_legal: '© 2026 · No es consejo financiero',
+      a_or: 'o', a_g_wait: 'Entrando…', a_sub_g: 'Sin contraseña. Entra con Google en un toque, o te enviamos un código a tu email.',
       tg_lead: 'Pick gratis todos los días en Telegram', tg_sub: 'Y los resultados de cada pick, ganadas y perdidas. Sin registro.', tg_cta: 'Unirme al canal',
       /* modal registro */
       a_eye: 'Acceso gratis', a_h: 'Crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
@@ -94,6 +95,7 @@
       final_h: "The edge won't wait. Start free.",
       disc: 'Statistical estimates · not financial advice · bet responsibly',
       foot_tag: 'Real-time sports intelligence', foot_legal: '© 2026 · Not financial advice',
+      a_or: 'or', a_g_wait: 'Signing you in…', a_sub_g: 'No password. Continue with Google in one tap, or we send a code to your email.',
       tg_lead: 'A free pick every day on Telegram', tg_sub: 'Plus every result, wins and losses. No signup needed.', tg_cta: 'Join the channel',
       a_eye: 'Free access', a_h: 'Create your account', a_sub: 'No password. We email you a code and you’re in instantly.',
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
@@ -343,10 +345,51 @@
 
   var authEmail = '', sending = false;
   function openAuth() { renderAuthEmail(); openModal('auth'); setTimeout(function () { var e = $('#aEmail'); if (e) e.focus(); }, 320); }
+  // ===== GOOGLE SIGN-IN (25-jul) — entrar sin código por email ==============================================
+  // Gateado por window.__GCID (lo inyecta el server desde GOOGLE_CLIENT_ID). Sin client id NO se carga el
+  // script de Google ni se dibuja nada: la landing queda byte-idéntica a hoy. Usamos el botón oficial de
+  // Google (política de marca) en variante filled_black + pill, que es la que encaja con el tema oscuro.
+  var GCID = (typeof window !== 'undefined' && window.__GCID) || '';
+  var gsiLoading = false;
+  function loadGsi(cb) {
+    if (!GCID) return;
+    if (window.google && window.google.accounts && window.google.accounts.id) return cb();
+    if (gsiLoading) return; gsiLoading = true;
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.defer = true;
+    s.onload = function () { gsiLoading = false; cb(); };
+    s.onerror = function () { gsiLoading = false; }; // si Google no carga, el email sigue funcionando
+    document.head.appendChild(s);
+  }
+  function onGoogleCredential(resp) {
+    var msg = $('#aMsg');
+    if (!resp || !resp.credential) return;
+    if (msg) { msg.className = 'm-msg'; msg.textContent = T('a_g_wait'); }
+    var ref; try { ref = localStorage.getItem('wc_ref') || undefined; } catch (e) {}
+    fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential, ref: ref }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j.token) { if (msg) { msg.className = 'm-msg err'; msg.textContent = res.j.error || T('e_net'); } return; }
+        try { localStorage.setItem('wc_token', res.j.token); document.cookie = 'wc_token=' + res.j.token + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
+        renderAuthSuccess();
+        setTimeout(function () { location.href = '/'; }, 1100);
+      })
+      .catch(function () { if (msg) { msg.className = 'm-msg err'; msg.textContent = T('e_net'); } });
+  }
+  function mountGoogleBtn() {
+    var host = $('#aGoogle'); if (!host || !GCID) return;
+    loadGsi(function () {
+      try {
+        window.google.accounts.id.initialize({ client_id: GCID, callback: onGoogleCredential, ux_mode: 'popup' });
+        window.google.accounts.id.renderButton(host, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: 360, locale: lang === 'en' ? 'en' : 'es' });
+      } catch (e) { /* el email sigue siendo el camino principal */ }
+    });
+  }
   function renderAuthEmail() {
     $('#authStep').innerHTML =
       '<div class="modal-eye"><i></i>' + esc(T('a_eye')) + '</div>' +
-      '<h3>' + esc(T('a_h')) + '</h3><p class="m-sub">' + esc(T('a_sub')) + '</p>' +
+      '<h3>' + esc(T('a_h')) + '</h3><p class="m-sub">' + esc(GCID ? T('a_sub_g') : T('a_sub')) + '</p>' +
+      (GCID ? '<div class="m-gbox"><div id="aGoogle"></div></div><div class="m-or"><span>' + esc(T('a_or')) + '</span></div>' : '') +
       '<div class="m-field"><label>' + esc(T('a_email_l')) + '</label>' +
       '<input class="m-input" id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="' + esc(T('a_email_ph')) + '" value="' + esc(authEmail) + '"></div>' +
       '<button class="btn m-btn" id="aSend">' + esc(T('a_send')) + '</button>' +
@@ -355,6 +398,7 @@
     var inp = $('#aEmail');
     $('#aSend').onclick = sendCode;
     inp.onkeydown = function (e) { if (e.key === 'Enter') sendCode(); };
+    mountGoogleBtn();
   }
   function validEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
   function sendCode() {

@@ -3760,58 +3760,109 @@ async function clubScoresSync({ force = false } = {}) {
 // liquidaban y el Elo dinámico no se actualizaba. TSA tiene TODAS las ligas y es la fuente del calendario, así
 // que sirve de fallback autoritativo: 1 request por liga (filtro date_from/date_to) cada 12 min.
 // Idempotente por match id (db.clubTsaSeen, ventana 7d) → jamás re-aplica Elo ni resucita un resultado podado.
-let _clubTsaResLast = 0, _clubTsaResRunning = false, _clubTsaResOut = null;
-async function clubResultsTsaSync({ force = false } = {}) {
+let _clubTsaLiveLast = 0, _clubTsaFullLast = 0, _clubTsaResRunning = false, _clubTsaResOut = null;
+// Minuto ESTIMADO del reloj (TSA da estado y marcador en vivo pero NO el minuto). Modelo honesto con
+// entretiempo: ≤45 = elapsed; 45-60 = descanso; después elapsed−15, tope 90.
+function clubClockMinute(kickoffMs) {
+  const el = Math.floor((Date.now() - kickoffMs) / 60000);
+  if (!isFinite(el) || el < 0) return null;
+  if (el <= 45) return el;
+  if (el <= 60) return 45;
+  return Math.min(90, el - 15);
+}
+// Ligas con partido EN CURSO (kickoff en las últimas 3.5h) según el calendario que ya tenemos en memoria →
+// el modo 'live' consulta SOLO esas (barato: normalmente 2-6 ligas) en vez de barrer las 24.
+function clubLeaguesInPlay() {
+  const now = Date.now(), out = new Set();
+  const inWin = (t) => t && t <= now + 5 * 60e3 && t > now - 3.5 * 3600e3;
+  // 1) calendario TSA en memoria (OJO: TSA saca el partido de 'scheduled' al arrancar, así que esta fuente
+  //    sola NO basta — de ahí las otras tres)
+  for (const [lg, up] of Object.entries(global._clubsUpcoming || {})) {
+    for (const m of ((up && up.rows) || [])) if (inWin(Date.parse(m.utc_date || 0))) { out.add(lg); break; }
+  }
+  // 2) eventos del scan de cuotas (tienen kickoff completo y sobreviven al arranque del partido)
+  for (const m of Object.values(db.clubsQuoteEvents || {})) {
+    if (m && m.league && inWin(Date.parse(m.kickoff || 0))) out.add(m.league);
+  }
+  // 3) partidos que YA marcamos en vivo: hay que seguir puleándolos hasta que cierren
+  for (const r of Object.values(db.clubResults || {})) { if (r && r.status === 'live' && r.league) out.add(r.league); }
+  // 4) picks ACTIVAS con kickoff en ventana — los partidos que MÁS importan (si algo falla, que no falle acá)
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p && p.status === 'ACTIVE' && p.league && inWin(Date.parse((p.event && p.event.kickoff_at) || 0))) out.add(p.league);
+  }
+  return [...out];
+}
+async function clubResultsTsaSync({ force = false, mode = 'full' } = {}) {
   if (!clubsShadowOn()) return { skipped: 'off' };
   const tsaKey = process.env.THESTATSAPI_KEY || '';
   if (!tsaKey) return { skipped: 'sin key' };
   if (_clubTsaResRunning) return { skipped: 'running' };
-  if (!force && Date.now() - _clubTsaResLast < 12 * 60e3) return { skipped: 'throttle' };
+  const isLive = mode === 'live';
+  const lastAt = isLive ? _clubTsaLiveLast : _clubTsaFullLast;
+  if (!force && Date.now() - lastAt < (isLive ? 80e3 : 12 * 60e3)) return { skipped: 'throttle' };
   _clubTsaResRunning = true;
-  const out = { leagues: 0, added: 0, skipped_seen: 0, started: new Date().toISOString() };
+  const out = { mode, leagues: 0, live: 0, added: 0, skipped_seen: 0, started: new Date().toISOString() };
   try {
     if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
     const RT = global._clubsRatings;
     db.clubResults = db.clubResults || {};
     db.clubTsaSeen = db.clubTsaSeen || {};
     const day = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10);
-    let anyChange = false;
+    const inPlay = isLive ? new Set(clubLeaguesInPlay()) : null;
+    let anyChange = false, anyFinal = false;
     for (const [lgKey, L] of Object.entries(RT.leagues || {})) {
       if (L.starts || !L.comp || !L.season) continue; // pretemporada
+      if (inPlay && !inPlay.has(lgKey)) continue;     // modo live: solo ligas con partido en curso
       let rows = [];
       try {
-        const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&status=finished&date_from=${day(-1)}&date_to=${day(1)}&per_page=30`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+        // SIN filtro de status: trae live Y finished del día (TSA reporta ambos con marcador real)
+        const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&date_from=${day(-1)}&date_to=${day(1)}&per_page=40`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
         const j = r.ok ? await r.json().catch(() => null) : null;
         rows = (j && j.data) || [];
       } catch { rows = []; }
       out.leagues++;
       for (const m of rows) {
         if (!m || !m.id || !m.home_team || !m.away_team) continue;
-        if (db.clubTsaSeen[m.id]) { out.skipped_seen++; continue; }
+        const st = String(m.status || '').toLowerCase();
+        const live = st === 'live' || st === 'inplay' || st === 'in_play' || st === 'playing';
+        const fin = st === 'finished' || st === 'final' || st === 'ft' || st === 'complete';
+        if (!live && !fin) continue;                              // scheduled/postponed → no toca nada
+        if (fin && db.clubTsaSeen[m.id]) { out.skipped_seen++; continue; } // final ya procesado (idempotencia)
         const s = m.score || {};
         const hg = Number(s.home), ag = Number(s.away);
         if (!Number.isFinite(hg) || !Number.isFinite(ag)) continue;
         const hId = String(m.home_team.id), aId = String(m.away_team.id);
         const key = clubScoreKey(lgKey, hId, aId);
         const prev = db.clubResults[key];
-        db.clubTsaSeen[m.id] = Date.now();
-        // si ESPN ya lo dejó final, solo marcamos visto (no duplicamos ni re-aplicamos Elo)
-        if (prev && prev.status === 'final') continue;
-        const payload = { league: lgKey, home_id: hId, away_id: aId, hg, ag, status: 'final', minute: 90, at: Date.now(), winner: hg > ag ? hId : ag > hg ? aId : null, detail: 'FT', src: 'tsa' };
-        if (!(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
-        else payload.elo_applied = true;
-        db.clubResults[key] = payload; out.added++; anyChange = true;
-        console.log(`[clubs-score:tsa] ${lgKey} ${m.home_team.name} ${hg}-${ag} ${m.away_team.name} final`);
+        if (fin && prev && prev.status === 'final') { db.clubTsaSeen[m.id] = Date.now(); continue; } // ESPN ya lo cerró
+        const payload = {
+          league: lgKey, home_id: hId, away_id: aId, hg, ag,
+          status: fin ? 'final' : 'live',
+          minute: fin ? 90 : clubClockMinute(Date.parse(m.utc_date || 0)),
+          at: Date.now(), src: 'tsa',
+        };
+        if (fin) { payload.winner = hg > ag ? hId : ag > hg ? aId : null; payload.detail = 'FT'; db.clubTsaSeen[m.id] = Date.now(); }
+        // Elo dinámico SOLO al cerrar y una única vez (mismo criterio que la rama ESPN)
+        if (fin && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
+        else if (prev && prev.elo_applied) payload.elo_applied = true;
+        const same = prev && prev.status === payload.status && prev.hg === hg && prev.ag === ag && prev.minute === payload.minute;
+        if (same) continue;
+        db.clubResults[key] = payload; anyChange = true;
+        if (fin) { out.added++; anyFinal = true; } else out.live++;
+        console.log(`[clubs-score:tsa] ${lgKey} ${m.home_team.name} ${hg}-${ag} ${m.away_team.name} ${payload.status}${payload.status === 'live' ? ` ~${payload.minute}'` : ''}`);
       }
       await new Promise(r2 => setTimeout(r2, 1200)); // rate limit compartido de TSA
     }
-    // poda del registro de vistos (7 días)
     for (const [id, ts] of Object.entries(db.clubTsaSeen)) { if (Date.now() - ts > 7 * 86400e3) delete db.clubTsaSeen[id]; }
-    if (anyChange) { try { settleClubDailyPicks(); } catch { /* settle no crítico */ } save(); broadcast('update', { reason: 'marcadores de clubes (TSA)', ts: Date.now() }); }
-    _clubTsaResLast = Date.now();
+    if (anyChange) {
+      try { sampleClubMomentum(RT); } catch { /* momentum no crítico */ }
+      if (anyFinal) { try { settleClubDailyPicks(); } catch { /* settle no crítico */ } }
+      save(); broadcast('update', { reason: 'marcadores de clubes (TSA)', ts: Date.now() });
+    }
+    if (isLive) _clubTsaLiveLast = Date.now(); else _clubTsaFullLast = Date.now();
   } catch (e) { out.error = e.message; }
   finally { _clubTsaResRunning = false; out.finished = new Date().toISOString(); _clubTsaResOut = out; }
-  if (out.added || out.error) console.log('[clubs] TSA results sync:', JSON.stringify({ leagues: out.leagues, added: out.added, error: out.error || null }));
+  if (out.added || out.live || out.error) console.log('[clubs] TSA sync:', JSON.stringify({ mode, leagues: out.leagues, live: out.live, final: out.added, error: out.error || null }));
   return out;
 }
 // FASE CLUBES F0.3: SNAPSHOT DIARIO de posición+Elo+pts por liga → serie temporal para la Evolución por liga
@@ -8934,8 +8985,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/clubs-tsa-results') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      if (req.method === 'POST') { const r = await clubResultsTsaSync({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
-      return json(res, 200, { last: _clubTsaResOut, seen: Object.keys(db.clubTsaSeen || {}).length });
+      if (req.method === 'POST') { const r = await clubResultsTsaSync({ force: true, mode: url.searchParams.get('mode') === 'live' ? 'live' : 'full' }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { last: _clubTsaResOut, seen: Object.keys(db.clubTsaSeen || {}).length, in_play: clubLeaguesInPlay() });
     }
     // DIAG cartelera (24-jul): estado del memo de upcoming por liga (edad/failed/filas/pares) — para verificar
     // en PROD qué sirve /api/clubs/state sin necesitar sesión (misma familia que clubs-af-diag).
@@ -10185,16 +10236,26 @@ const server = http.createServer(async (req, res) => {
             fixtures.sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
             fixtures = fixtures.slice(0, 40); // 20 cortaba partidos CON pick a >2 días (ej. Liga MX 2-ago)
           } catch { /* el merge del scan jamás rompe el state */ }
-          // GUARD DURO ANTI-"PRÓXIMO" FANTASMA (25-jul, bug reportado por Alexis): un partido cuyo kickoff pasó
-          // hace >3.5h TERMINÓ, tengamos o no su marcador. Dos caminos lo colaban en Próximos: (a) el memo TSA
-          // de 6h sigue listándolo como 'scheduled' hasta que refresca, (b) el merge del scan lo admite con 3h
-          // de gracia. Sin `result` el cliente lo bucketea a 'up' → partidos de la mañana visibles a las 16h.
-          // Se excluye SIEMPRE que no esté en vivo; cuando el backfill traiga el marcador aparece en Finalizados.
-          const FINISHED_AFTER = 3.5 * 3600e3;
+          // ===== ESTADO POR RELOJ (25-jul, 2ª pasada): REGLA INVIOLABLE — el estado de un partido es función
+          // del KICKOFF, no de si tenemos datos. Si el kickoff ya pasó, el partido NUNCA puede mostrarse como
+          // "próximo": está en juego o terminó. Antes el estado dependía solo de `result` (ESPN/TSA), así que
+          // en las ligas sin feed (Irlanda/Suiza/Polonia) un partido en curso salía como próximo — el bug que
+          // Alexis reportó dos veces. Ahora el marcador REAL manda cuando existe, y cuando no existe el reloj
+          // define el estado (sin inventar marcador: hg/ag quedan null y la UI ya lo tolera).
+          const LIVE_WINDOW = 2.5 * 3600e3, FINISHED_AFTER = 3.5 * 3600e3;
+          fixtures = fixtures.map(f => {
+            if (f.result && f.result.status) return f; // marcador real (ESPN/TSA) → manda
+            const kt = Date.parse(f.utc || 0);
+            if (!isFinite(kt) || kt > Date.now()) return f; // aún no empieza → próximo de verdad
+            const st = (Date.now() - kt < LIVE_WINDOW) ? 'live' : 'final';
+            return { ...f, result: { status: st, hg: null, ag: null, minute: st === 'live' ? clubClockMinute(kt) : null, winner: null, no_feed: true } };
+          });
+          // los ya terminados hace rato salen de la cartelera de próximos (vuelven con marcador en Finalizados
+          // cuando el backfill los traiga); los que están en juego se quedan y se muestran EN VIVO.
           fixtures = fixtures.filter(f => {
             const kt = Date.parse(f.utc || 0);
             if (!isFinite(kt)) return true;
-            if (f.result && f.result.status === 'live') return true; // en juego (prórroga/parón) → se queda
+            if (f.result && f.result.status === 'live') return true;
             return kt > Date.now() - FINISHED_AFTER;
           });
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t, elo: clubElo(key, id), elo_base: t.elo })).sort((a, b) => b.elo - a.elo);
@@ -10840,9 +10901,13 @@ server.listen(PORT, () => {
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);
   setInterval(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 30 * 1000);
-  // red de seguridad TSA (25-jul): cubre las ligas que ESPN no sirve o transcribe distinto. Throttle propio 12min.
-  setTimeout(() => { clubResultsTsaSync().catch(e => console.error('[clubs] tsa results:', e.message)); }, 70 * 1000);
-  setInterval(() => { clubResultsTsaSync().catch(e => console.error('[clubs] tsa results:', e.message)); }, 6 * 60e3);
+  // red de seguridad TSA (25-jul): cubre las ligas que ESPN no sirve o transcribe distinto. DOS cadencias:
+  // 'live' cada 90s pero SOLO ligas con partido en curso (2-6 requests) → marcador en vivo real en las 24
+  // ligas; 'full' cada 12min barre todas para recoger finales que se hayan escapado. Throttles propios.
+  setTimeout(() => { clubResultsTsaSync({ mode: 'live' }).catch(e => console.error('[clubs] tsa live:', e.message)); }, 45 * 1000);
+  setInterval(() => { clubResultsTsaSync({ mode: 'live' }).catch(e => console.error('[clubs] tsa live:', e.message)); }, 90 * 1000);
+  setTimeout(() => { clubResultsTsaSync({ mode: 'full' }).catch(e => console.error('[clubs] tsa full:', e.message)); }, 110 * 1000);
+  setInterval(() => { clubResultsTsaSync({ mode: 'full' }).catch(e => console.error('[clubs] tsa full:', e.message)); }, 6 * 60e3);
   // F0.3: snapshot de la liga (posición/Elo) para la Evolución — al boot y cada 6h (dedupe por día).
   setTimeout(() => { try { clubHistorySnapshot(); } catch (e) { console.error('[clubs] history:', e.message); } }, 120 * 1000);
   setInterval(() => { try { clubHistorySnapshot(); } catch (e) { console.error('[clubs] history:', e.message); } }, 6 * 3600 * 1000);

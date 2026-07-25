@@ -3638,14 +3638,37 @@ async function clubMatchMarkets(league, homeId, awayId) {
 }
 // resuelve un nombre de club a nuestro tm_ id dentro de una liga (índice normalizado cacheado por liga).
 const _clubIdIdx = {};
+// MATCHER DE NOMBRES DE CLUB — con DESAMBIGUACIÓN (25-jul, bug grave encontrado por Alexis).
+// El matcher viejo devolvía el PRIMER candidato que se "contuviera": clubNorm("FC Zürich")="zurich" está
+// contenido en "grasshopper zurich" y FC Zürich venía antes en el índice → una pick de la Superliga suiza
+// nació contra el RIVAL EQUIVOCADO (Lausanne vs FC Zürich cuando el partido era vs Grasshopper), y por eso
+// nunca pudo liquidar. Ahora se puntúan TODOS los candidatos (solape de tokens + Jaccard + contención) y gana
+// el mejor; si hay EMPATE entre equipos distintos devuelve null — mejor sin id que con el id de otro equipo.
+function clubBestNameMatch(idx, rawName) {
+  const n = clubNorm(rawName);
+  if (!n) return null;
+  if (idx[n]) return idx[n];
+  const nt = new Set(n.split(' ').filter(Boolean));
+  let best = null, bestScore = -1, tie = false;
+  for (const k in idx) {
+    if (!k) continue;
+    const kt = new Set(k.split(' ').filter(Boolean));
+    let ov = 0; nt.forEach(x => { if (kt.has(x)) ov++; });
+    if (!ov) continue;
+    const contains = k.includes(n) || n.includes(k);
+    const jac = ov / new Set([...nt, ...kt]).size;
+    if (!contains && jac < 0.5) continue;           // parecido pobre y sin contención → no es
+    const score = ov * 10 + jac * 5 + (contains ? 1 : 0);
+    if (score > bestScore) { bestScore = score; best = idx[k]; tie = false; }
+    else if (score === bestScore && idx[k] !== best) tie = true;
+  }
+  return tie ? null : best;
+}
 function resolveClubId(league, name) {
   const RT = global._clubsRatings || {};
   const L = RT.leagues && RT.leagues[league]; if (!L) return null;
   if (!_clubIdIdx[league]) { _clubIdIdx[league] = {}; for (const [tid, tt] of Object.entries(L.ratings || {})) _clubIdIdx[league][clubNorm(tt.name)] = tid; }
-  const idx = _clubIdIdx[league], n = clubNorm(name);
-  if (idx[n]) return idx[n];
-  for (const k in idx) { if (k && (k === n || k.includes(n) || n.includes(k))) return idx[k]; }
-  return null;
+  return clubBestNameMatch(_clubIdIdx[league], name);
 }
 let _clubScoresLast = 0, _clubScoresRunning = false, _clubScoresOut = null;
 // FASE CLUBES F1.2: MOMENTUM GP en vivo. Misma mecánica que sampleMomentum del Mundial pero por cruce de liga:
@@ -3696,14 +3719,7 @@ async function clubScoresSync({ force = false } = {}) {
       // índice nombre-normalizado → tm_id de la liga
       const idx = {};
       for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
-      const matchId = (name) => {
-        const n = clubNorm(name);
-        if (idx[n]) return idx[n];
-        for (const k in idx) { if (k && (k === n || k.includes(n) || n.includes(k))) return idx[k]; }
-        const ke = new Set(n.split(' ').filter(Boolean)); let best = null, bs = 0;
-        for (const k in idx) { const kk = new Set(k.split(' ').filter(Boolean)); let ov = 0; ke.forEach(x => { if (kk.has(x)) ov++; }); const sc = ov / Math.max(1, new Set([...ke, ...kk]).size); if (ov >= 1 && sc >= 0.5 && ov > bs) { bs = ov; best = idx[k]; } }
-        return best;
-      };
+      const matchId = (name) => clubBestNameMatch(idx, name); // mismo matcher desambiguado que resolveClubId
       let events = null;
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${fromD}-${toD}&limit=80`, { signal: AbortSignal.timeout(12000) });
@@ -4783,6 +4799,26 @@ function clubTsaKickoff(league, hId, aId, aroundMs) {
     if (d < bd) { bd = d; best = m.utc_date; }
   }
   return best;
+}
+// REPARACIÓN DE IDS DE EQUIPO (25-jul): una pick guarda los NOMBRES del scan (fuente de verdad) y los ids
+// resueltos. Con el matcher viejo un nombre podía resolver al equipo EQUIVOCADO (Grasshopper Zürich → FC
+// Zürich) → la pick quedaba etiquetada con un rival que no jugaba y NUNCA liquidaba. Re-resolvemos los ids
+// desde los nombres con el matcher desambiguado; si cambian, se corrigen (y con ellos el club_eid) para que
+// la pick liquide con el resultado REAL. Idempotente; jamás borra una pick (una derrota debe contarse).
+function repairClubPickTeamIds() {
+  const fixes = [];
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'ACTIVE' || !p.event || !p.league) continue;
+    const h = resolveClubId(p.league, p.event.home), a = resolveClubId(p.league, p.event.away);
+    if (!h || !a || h === a) continue;                                   // sin resolución limpia → no se toca
+    if (h === p.event.home_team_id && a === p.event.away_team_id) continue;
+    fixes.push(`${p.pick_id} ${p.league} ${p.event.home}/${p.event.away}: ${p.event.home_team_id}-${p.event.away_team_id} → ${h}-${a}`);
+    p.event.home_team_id = h; p.event.away_team_id = a;
+    p.event.club_eid = 'cl-' + p.league + '-' + h + '-' + a;
+    p.ids_repaired_at = new Date().toISOString();
+  }
+  if (fixes.length) { save(); console.log('[clubs-picks] ids de equipo reparados:', fixes.join(' | ')); }
+  return { fixed: fixes.length };
 }
 // Re-alinea el kickoff de las picks ACTIVAS al calendario TSA (idempotente, corre en el ciclo de 15min).
 function refreshClubPickKickoffs() {
@@ -5931,10 +5967,11 @@ async function evaluateClubDailyPicks() {
     const b = await buildClubDailyPicks();
     const s = settleClubDailyPicks();
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
+    const ri = repairClubPickTeamIds();   // ids de equipo mal resueltos por el matcher viejo (caso Grasshopper 25-jul)
     const kf = refreshClubPickKickoffs(); // kickoff autoritativo TSA (picks vs calendario, caso Tigres 24-jul)
     const rf = await refreshClubPickPrices().catch(() => ({ refreshed: 0 })); // CLV fix: precio ejecutable en la ventana final
     const cl = await captureClubPicksClosing().catch(() => ({ captured: 0 })); // P2: cierre + CLV (misma matemática del Mundial)
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, kickoffs: kf, refresh: rf, closing: cl };
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, ids: ri, kickoffs: kf, refresh: rf, closing: cl };
     if (b.added || s.settled || sp.settled || cl.captured) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, closing: cl.captured, eligible: b.eligible }));
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }

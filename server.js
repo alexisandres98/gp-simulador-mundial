@@ -3100,7 +3100,11 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
 // GP_CLUBS_SHADOW_ENABLED; ESPN es gratis (0 créditos). Nada de esto toca el Mundial ni el pipeline de picks.
 const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1' }; // polonia sin ESPN (sin vivo; resultados por TSA)
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
-const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys', 'xolos': 'club tijuana', 'xolos de tijuana': 'club tijuana', 'tijuana': 'club tijuana' };
+const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys', 'xolos': 'club tijuana', 'xolos de tijuana': 'club tijuana', 'tijuana': 'club tijuana',
+  // Rusia: ESPN transcribe distinto que TSA (Dinamo/Dynamo, Tolyatti/Togliatti, Krylia/Krylya) → sin alias el
+  // marcador en vivo no matcheaba y el partido se quedaba sin resultado (bug 25-jul).
+  'dinamo moscow': 'dynamo moscow', 'krylia sovetov': 'krylya sovetov samara', 'akron tolyatti': 'akron togliatti',
+  'dynamo makhachkala': 'dinamo makhachkala', 'zenit st petersburg': 'zenit st petersburg' };
 function clubNorm(s) {
   let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   n = n.replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|cd|sc|ac|afc|ec|sad)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -3747,6 +3751,67 @@ async function clubScoresSync({ force = false } = {}) {
   } catch (e) { out.error = e.message; }
   finally { _clubScoresRunning = false; out.finished = new Date().toISOString(); _clubScoresOut = out; }
   if (out.changed || out.error) console.log('[clubs] scores sync:', JSON.stringify({ leagues: out.leagues, live: out.live, final: out.final, changed: out.changed, error: out.error || null }));
+  return out;
+}
+// ===== RESULTADOS VÍA TSA (25-jul, fix del "próximo fantasma") — RED DE SEGURIDAD del marcador =====
+// clubScoresSync depende de ESPN, que NO cubre varias ligas (Finlandia/Irlanda/Suiza devuelven 0 eventos;
+// Polonia no tiene slug) y transcribe nombres distinto en otras (Rusia: "Dinamo Moscow" vs "Dynamo Moscow",
+// "Akron Tolyatti" vs "Togliatti") → partidos jugados sin marcador: se quedaban en Próximos, sus picks no
+// liquidaban y el Elo dinámico no se actualizaba. TSA tiene TODAS las ligas y es la fuente del calendario, así
+// que sirve de fallback autoritativo: 1 request por liga (filtro date_from/date_to) cada 12 min.
+// Idempotente por match id (db.clubTsaSeen, ventana 7d) → jamás re-aplica Elo ni resucita un resultado podado.
+let _clubTsaResLast = 0, _clubTsaResRunning = false, _clubTsaResOut = null;
+async function clubResultsTsaSync({ force = false } = {}) {
+  if (!clubsShadowOn()) return { skipped: 'off' };
+  const tsaKey = process.env.THESTATSAPI_KEY || '';
+  if (!tsaKey) return { skipped: 'sin key' };
+  if (_clubTsaResRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _clubTsaResLast < 12 * 60e3) return { skipped: 'throttle' };
+  _clubTsaResRunning = true;
+  const out = { leagues: 0, added: 0, skipped_seen: 0, started: new Date().toISOString() };
+  try {
+    if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+    const RT = global._clubsRatings;
+    db.clubResults = db.clubResults || {};
+    db.clubTsaSeen = db.clubTsaSeen || {};
+    const day = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10);
+    let anyChange = false;
+    for (const [lgKey, L] of Object.entries(RT.leagues || {})) {
+      if (L.starts || !L.comp || !L.season) continue; // pretemporada
+      let rows = [];
+      try {
+        const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&status=finished&date_from=${day(-1)}&date_to=${day(1)}&per_page=30`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+        const j = r.ok ? await r.json().catch(() => null) : null;
+        rows = (j && j.data) || [];
+      } catch { rows = []; }
+      out.leagues++;
+      for (const m of rows) {
+        if (!m || !m.id || !m.home_team || !m.away_team) continue;
+        if (db.clubTsaSeen[m.id]) { out.skipped_seen++; continue; }
+        const s = m.score || {};
+        const hg = Number(s.home), ag = Number(s.away);
+        if (!Number.isFinite(hg) || !Number.isFinite(ag)) continue;
+        const hId = String(m.home_team.id), aId = String(m.away_team.id);
+        const key = clubScoreKey(lgKey, hId, aId);
+        const prev = db.clubResults[key];
+        db.clubTsaSeen[m.id] = Date.now();
+        // si ESPN ya lo dejó final, solo marcamos visto (no duplicamos ni re-aplicamos Elo)
+        if (prev && prev.status === 'final') continue;
+        const payload = { league: lgKey, home_id: hId, away_id: aId, hg, ag, status: 'final', minute: 90, at: Date.now(), winner: hg > ag ? hId : ag > hg ? aId : null, detail: 'FT', src: 'tsa' };
+        if (!(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
+        else payload.elo_applied = true;
+        db.clubResults[key] = payload; out.added++; anyChange = true;
+        console.log(`[clubs-score:tsa] ${lgKey} ${m.home_team.name} ${hg}-${ag} ${m.away_team.name} final`);
+      }
+      await new Promise(r2 => setTimeout(r2, 1200)); // rate limit compartido de TSA
+    }
+    // poda del registro de vistos (7 días)
+    for (const [id, ts] of Object.entries(db.clubTsaSeen)) { if (Date.now() - ts > 7 * 86400e3) delete db.clubTsaSeen[id]; }
+    if (anyChange) { try { settleClubDailyPicks(); } catch { /* settle no crítico */ } save(); broadcast('update', { reason: 'marcadores de clubes (TSA)', ts: Date.now() }); }
+    _clubTsaResLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _clubTsaResRunning = false; out.finished = new Date().toISOString(); _clubTsaResOut = out; }
+  if (out.added || out.error) console.log('[clubs] TSA results sync:', JSON.stringify({ leagues: out.leagues, added: out.added, error: out.error || null }));
   return out;
 }
 // FASE CLUBES F0.3: SNAPSHOT DIARIO de posición+Elo+pts por liga → serie temporal para la Evolución por liga
@@ -8865,6 +8930,13 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') { const r = await clubsLeagueDiscovery().catch(e => ({ error: e.message })); return json(res, 200, { ...r, state: db.leagueDiscovery || null }); }
       return json(res, 200, db.leagueDiscovery || { candidates: [] });
     }
+    // RESULTADOS TSA (25-jul): GET estado / POST corre ahora (red de seguridad del marcador).
+    if (p === '/api/internal/clubs-tsa-results') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { const r = await clubResultsTsaSync({ force: true }).catch(e => ({ error: e.message })); return json(res, 200, r); }
+      return json(res, 200, { last: _clubTsaResOut, seen: Object.keys(db.clubTsaSeen || {}).length });
+    }
     // DIAG cartelera (24-jul): estado del memo de upcoming por liga (edad/failed/filas/pares) — para verificar
     // en PROD qué sirve /api/clubs/state sin necesitar sesión (misma familia que clubs-af-diag).
     if (p === '/api/internal/clubs-upcoming') {
@@ -10113,6 +10185,18 @@ const server = http.createServer(async (req, res) => {
             fixtures.sort((a, b) => new Date(a.utc || 0) - new Date(b.utc || 0));
             fixtures = fixtures.slice(0, 40); // 20 cortaba partidos CON pick a >2 días (ej. Liga MX 2-ago)
           } catch { /* el merge del scan jamás rompe el state */ }
+          // GUARD DURO ANTI-"PRÓXIMO" FANTASMA (25-jul, bug reportado por Alexis): un partido cuyo kickoff pasó
+          // hace >3.5h TERMINÓ, tengamos o no su marcador. Dos caminos lo colaban en Próximos: (a) el memo TSA
+          // de 6h sigue listándolo como 'scheduled' hasta que refresca, (b) el merge del scan lo admite con 3h
+          // de gracia. Sin `result` el cliente lo bucketea a 'up' → partidos de la mañana visibles a las 16h.
+          // Se excluye SIEMPRE que no esté en vivo; cuando el backfill traiga el marcador aparece en Finalizados.
+          const FINISHED_AFTER = 3.5 * 3600e3;
+          fixtures = fixtures.filter(f => {
+            const kt = Date.parse(f.utc || 0);
+            if (!isFinite(kt)) return true;
+            if (f.result && f.result.status === 'live') return true; // en juego (prórroga/parón) → se queda
+            return kt > Date.now() - FINISHED_AFTER;
+          });
           const table = Object.entries(L.ratings).map(([id, t]) => ({ id, ...t, elo: clubElo(key, id), elo_base: t.elo })).sort((a, b) => b.elo - a.elo);
           // partidos EN VIVO / FINALIZADOS de la liga que ya NO están en upcoming (TSA los saca de scheduled al
           // empezar). Resueltos a nombres+probs desde ratings, ordenados live primero.
@@ -10756,6 +10840,9 @@ server.listen(PORT, () => {
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);
   setInterval(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 30 * 1000);
+  // red de seguridad TSA (25-jul): cubre las ligas que ESPN no sirve o transcribe distinto. Throttle propio 12min.
+  setTimeout(() => { clubResultsTsaSync().catch(e => console.error('[clubs] tsa results:', e.message)); }, 70 * 1000);
+  setInterval(() => { clubResultsTsaSync().catch(e => console.error('[clubs] tsa results:', e.message)); }, 6 * 60e3);
   // F0.3: snapshot de la liga (posición/Elo) para la Evolución — al boot y cada 6h (dedupe por día).
   setTimeout(() => { try { clubHistorySnapshot(); } catch (e) { console.error('[clubs] history:', e.message); } }, 120 * 1000);
   setInterval(() => { try { clubHistorySnapshot(); } catch (e) { console.error('[clubs] history:', e.message); } }, 6 * 3600 * 1000);

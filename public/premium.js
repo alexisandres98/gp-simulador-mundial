@@ -4359,6 +4359,9 @@
       (L.upcoming || []).concat(L.live || [], L.finished || []).forEach(function (f) {
         if (q && (f.home.name + ' ' + f.away.name).toLowerCase().indexOf(q) < 0) return;
         var st = f.result && f.result.status; // undefined | 'live' | 'final'
+        // RED DE SEGURIDAD (25-jul): sin marcador y con kickoff hace >3.5h el partido YA terminó — nunca
+        // puede seguir en "Próximos" (el server ya lo filtra; esto cubre estado viejo cacheado en el cliente).
+        if (!st && f.utc && new Date(f.utc).getTime() < Date.now() - 3.5 * 3600e3) return;
         var bucket = st === 'live' ? 'live' : st === 'final' ? 'fin' : 'up';
         if (S.mFilt !== 'all' && S.mFilt !== bucket) return;
         var it = { dt: f.utc, kind: 'cl', L: L, f: f };
@@ -4434,6 +4437,8 @@
     var q = (S.mQuery || '').toLowerCase();
     // combinar live/finalizados (L.live + L.finished persistentes) con próximos (L.upcoming); marcador en f.result
     var liveRows = L ? (L.live || []) : [], upRows = L ? (L.upcoming || []) : [], finRows = L ? (L.finished || []) : [];
+    // misma red de seguridad que la vista "todas": sin marcador y kickoff hace >3.5h ⇒ ya se jugó, fuera de Próximos
+    upRows = upRows.filter(function (f) { return !(!(f.result && f.result.status) && f.utc && new Date(f.utc).getTime() < Date.now() - 3.5 * 3600e3); });
     var all = liveRows.concat(upRows, finRows);
     if (S.mFilt === 'live') all = liveRows.concat(upRows).filter(function (f) { return f.result && f.result.status === 'live'; });
     else if (S.mFilt === 'fin') all = liveRows.concat(upRows).filter(function (f) { return f.result && f.result.status === 'final'; }).concat(finRows);

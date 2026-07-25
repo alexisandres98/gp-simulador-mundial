@@ -197,6 +197,16 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(40px,6.4vw,74px);line
 .final h2{position:relative;max-width:18ch;margin:0 auto}
 .final .btn{margin-top:26px}
 .disc{color:var(--tx4);font-size:12px;margin-top:22px}
+/* CTA Telegram (25-jul): canal gratuito = prueba pública diaria. Top del embudo para quien aún no se registra. */
+.tgcta-wrap{margin:10px 0 0}
+.tgcta{display:flex;align-items:center;gap:15px;padding:18px 22px;border:1px solid rgba(42,171,238,.3);background:linear-gradient(90deg,rgba(42,171,238,.10),rgba(42,171,238,.02));border-radius:16px;text-decoration:none;transition:border-color .15s,background .15s;flex-wrap:wrap}
+.tgcta:hover{border-color:rgba(42,171,238,.55);background:linear-gradient(90deg,rgba(42,171,238,.17),rgba(42,171,238,.04))}
+.tgcta-ic{width:44px;height:44px;border-radius:12px;background:#2AABEE;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.tgcta-tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tgcta-tx b{font-size:16px;color:var(--tx1,#fff);font-weight:700}
+.tgcta-tx span{font-size:13.5px;color:var(--tx3)}
+.tgcta-cta{margin-left:auto;background:#2AABEE;color:#fff;font-size:14px;font-weight:700;padding:11px 20px;border-radius:99px;white-space:nowrap}
+@media(max-width:600px){.tgcta-cta{margin-left:0;width:100%;text-align:center}}
 /* footer */
 .foot{border-top:1px solid var(--line);padding:30px 0;margin-top:20px;color:var(--tx3);font-size:13px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .foot .brand{font-size:14px;color:var(--tx2)}
@@ -403,6 +413,16 @@ body.v3 .tr.big span{color:var(--tx2)}
     </div>
   </section>
 </main>
+
+<section class="wrap tgcta-wrap">
+  <a class="tgcta" href="https://t.me/gpsimulador" target="_blank" rel="noopener">
+    <span class="tgcta-ic" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+    </span>
+    <span class="tgcta-tx"><b data-k="tg_lead">·</b><span data-k="tg_sub">·</span></span>
+    <span class="tgcta-cta" data-k="tg_cta">·</span>
+  </a>
+</section>
 
 <footer class="wrap"><div class="foot">
   <span class="brand">GP · <span data-k="foot_tag">·</span></span>

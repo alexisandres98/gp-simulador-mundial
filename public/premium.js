@@ -2380,6 +2380,14 @@
       '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + chips + '</div>' +
       '<div class="gx-cpf-sec" style="margin-top:14px">' + esc(t('bk_crypto')) + '</div>' +
       '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + cryptoChips + '</div>' +
+      // ABRIR CASA (25-jul): los chips de arriba son toggles de preferencia; estos son enlaces salientes reales.
+      // Stake lleva el código de afiliado de GP. Cripto no cotiza en nuestro feed de cuotas, así que esta es la
+      // única superficie donde el enlace puede existir.
+      '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' +
+        BK_CRYPTO.filter(function (b) { return !!bookUrl(b); }).map(function (b) {
+          return '<a class="gx-ov-venue" href="' + esc(bookUrl(b)) + '" target="_blank" rel="noopener noreferrer" style="font-size:12px;padding:7px 12px">' + bookLogo(b) + ic('external-link') + esc(prettyBook(b)) + '</a>';
+        }).join('') +
+      '</div>' +
       '<div class="gx-cpf-sec" style="margin-top:14px">' + esc(t('bk_prediction')) + '</div>' +
       '<div class="gx-calc-fracs" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + predChips + '</div>' +
       '<div class="gx-calc-grid" style="margin-top:12px"><label class="gx-calc-f gx-calc-f-br"><span>' + esc(t('bk_custom')) + '</span><input class="gx-calc-in" id="bk-custom" maxlength="40" placeholder="pinnacle"></label>' +
@@ -3472,7 +3480,12 @@
     betfair_ex_eu: 'https://www.betfair.com/exchange', betfair_ex_uk: 'https://www.betfair.com/exchange', smarkets: 'https://smarkets.com', matchbook: 'https://www.matchbook.com',
     winamax_de: 'https://www.winamax.de', winamax_fr: 'https://www.winamax.fr', tipico_de: 'https://www.tipico.de', leovegas_se: 'https://www.leovegas.com', casumo: 'https://www.casumo.com',
     onexbet: 'https://1xbet.com', coolbet: 'https://www.coolbet.com', grosvenor: 'https://www.grosvenorcasinos.com', pmu_fr: 'https://www.pmu.fr', unibet_se2: 'https://www.unibet.se',
-    polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com', myriad: 'https://myriad.markets'
+    polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com', myriad: 'https://myriad.markets',
+    // CASAS CRIPTO. `stake` lleva el código de afiliado de GP (25-jul): todo enlace saliente a Stake desde el
+    // escáner/oportunidades/casas acredita la referencia. Cloudbet queda con URL limpia hasta cerrar el acuerdo
+    // (ahí se le agrega su código igual que acá).
+    stake: 'https://stake.com/?c=qLKRRqOf', cloudbet: 'https://www.cloudbet.com',
+    rollbit: 'https://rollbit.com', bcgame: 'https://bc.game', sportsbetio: 'https://sportsbet.io'
   };
   function bookUrl(code) { return BOOK_URLS[code] || BOOK_URLS[String(code || '').replace(/_(se|nl|fr|de|uk|us|eu|au|at|es|it)$/i, '')] || null; }
   function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + bookLogo(code) + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + bookLogo(code) + ic('external-link') + esc(label || code) + '</a>'; }

@@ -1706,6 +1706,82 @@ function tgOppText(row, e) {
   if (e.type === 'arbitraje') return `💸 <b>Arbitraje entre plataformas</b>\n${t.flag} <b>${t.name}</b> · campeón del Mundial\n\n${e.note}\n\n⚠️ Estimación entre Polymarket y Kalshi. El margen real depende de la ejecución, las comisiones y la liquidación de cada plataforma. No es consejo financiero.\n\n👉 <a href="https://gpsimulador.com/?ref=tg">Ver en gpsimulador.com</a>`;
   return `🟢 <b>Oportunidad de valor</b>\n${t.flag} <b>${t.name}</b> · campeón · ${e.venue}\nPrecio ${pc(e.price)}¢ · Modelo ${pc(row.model)}% · Edge +${pc(e.edge)}%\n\n👉 <a href="https://gpsimulador.com/?ref=tg">gpsimulador.com</a>`;
 }
+// ===== CANAL DE TELEGRAM: LOOP DE PRUEBA PÚBLICA (25-jul) ==================================================
+// Diseño del reparto gratis/pago (decisión de producto, la pregunta que hizo Alexis: "nadie paga por picks que
+// regalo"): al canal va (a) UNA sola pick por día y SIEMPRE de la familia SOLID —el favorito claro, lo MENOS
+// diferenciado que producimos y lo más fácil de replicar—, y (b) los RESULTADOS COMPLETOS del día anterior,
+// incluidas las derrotas. Lo propietario (goles ancla, córners, tarjetas, jugador, escáner, value/arbitraje,
+// calculadora de stake, cartera) NO se publica nunca. Una pick ya liquidada no tiene valor comercial pero es
+// LA prueba que vende: el post de resultados dice "hubo N picks, viste 1". FOMO honesto, sin canibalizar.
+function tgClubPickText() {
+  const now = Date.now();
+  const cands = (db.clubDailyPicks || []).filter(p =>
+    p.status === 'ACTIVE' && p.family === 'SOLID' && p.regime !== 'monitor' &&
+    p.event && Date.parse(p.event.kickoff_at || 0) > now + 45 * 60e3); // margen para que alcancen a apostarla
+  if (!cands.length) return null;
+  // la de mayor confianza entre las SOLID (es la que mejor prueba el sistema y la menos propietaria)
+  cands.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+  const p = cands[0];
+  const total = (db.clubDailyPicks || []).filter(x =>
+    x.status === 'ACTIVE' && x.regime !== 'monitor' && x.event &&
+    Date.parse(x.event.kickoff_at || 0) > now).length;
+  const e = p.event;
+  const sel = p.selection_code === 'home' ? e.home : p.selection_code === 'away' ? e.away : 'Empate';
+  const ko = new Date(e.kickoff_at);
+  const hora = `${String(ko.getUTCHours()).padStart(2, '0')}:${String(ko.getUTCMinutes()).padStart(2, '0')} UTC`;
+  const resto = Math.max(0, total - 1);
+  return `🎯 <b>Pick gratis de hoy</b>\n\n${e.home} vs ${e.away}\n<b>Gana ${sel}</b> · cuota ${Number(p.best_odds).toFixed(2)}\n🕐 ${hora}\n\n` +
+    (resto ? `El sistema publicó <b>${total} picks</b> hoy para suscriptores (goles, córners, tarjetas, jugador). Esta es una.\n\n` : '') +
+    `👉 <a href="https://gpsimulador.com/?ref=tg">Ver el resto en gpsimulador.com</a>\n\n<i>Estimaciones de un modelo estadístico. No es consejo financiero.</i>`;
+}
+// RESULTADOS del día anterior: todas las publicadas que liquidaron (ganadas Y perdidas) + récord acumulado.
+function tgClubResultsText(dayISO) {
+  const rec = officialClubRecord().filter(p =>
+    p.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH'].includes(p.result_code) &&
+    (p.settled_at || '').slice(0, 10) === dayISO);
+  if (rec.length < 2) return null; // con 1 sola no vale la pena el post
+  let w = 0, l = 0, u = 0;
+  const lines = rec.slice(0, 12).map(p => {
+    const e = p.event, ico = p.result_code === 'WIN' ? '✅' : p.result_code === 'LOSS' ? '❌' : '➖';
+    if (p.result_code === 'WIN') { w++; u += (Number(p.best_odds) || 1) - 1; }
+    else if (p.result_code === 'LOSS') { l++; u -= 1; }
+    const fam = p.family === 'SOLID' ? 'Ganador' : p.family === 'GOALS' ? 'Goles' : p.family === 'CORNERS' ? 'Córners' : p.family === 'CARDS' ? 'Tarjetas' : p.family;
+    const sel = p.family === 'SOLID'
+      ? `Gana ${p.selection_code === 'home' ? e.home : p.selection_code === 'away' ? e.away : 'Empate'}`
+      : `${fam} ${p.side === 'over' ? '+' : '-'}${p.line}`;
+    return `${ico} ${sel} @${Number(p.best_odds).toFixed(2)}`;
+  });
+  for (const p of rec.slice(12)) { if (p.result_code === 'WIN') { w++; u += (Number(p.best_odds) || 1) - 1; } else if (p.result_code === 'LOSS') l++, u -= 1; }
+  const all = officialClubRecord().concat((db.dailyPicks || []).filter(x => x.family !== 'PLAYER'))
+    .filter(p => p.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH'].includes(p.result_code));
+  let tw = 0, tl = 0, tu = 0;
+  for (const p of all) { if (p.result_code === 'WIN') { tw++; tu += (Number(p.best_odds) || 1) - 1; } else if (p.result_code === 'LOSS') { tl++; tu -= 1; } }
+  const hit = tw + tl ? (100 * tw / (tw + tl)).toFixed(1) : '—';
+  const sign = (n) => (n >= 0 ? '+' : '') + n.toFixed(2);
+  return `📊 <b>Resultados de ayer</b>\n\n${lines.join('\n')}\n\n<b>${w}-${l}</b> · ${sign(u)} unidades\n\n` +
+    `📈 Histórico verificado: <b>${tw + tl} picks · ${hit}% · ${sign(tu)}u</b>\n` +
+    `Publicamos TODO, ganadas y perdidas.\n\n👉 <a href="https://gpsimulador.com/?ref=tg">gpsimulador.com</a>`;
+}
+async function tgClubDispatch() {
+  if (!telegram.configured()) return;
+  if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_TG_PICKS_ENABLED || '').trim())) return;
+  db.sentTg = db.sentTg || {};
+  const day = new Date().toISOString().slice(0, 10);
+  const h = new Date().getUTCHours();
+  // 1) RESULTADOS de ayer — a partir de las 11:00Z (ya liquidó la jornada americana de la noche)
+  const yday = new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
+  const kRes = 'tg:res:' + yday;
+  if (h >= 11 && !db.sentTg[kRes]) {
+    const t = tgClubResultsText(yday);
+    if (t && await telegram.post(t)) { db.sentTg[kRes] = Date.now(); save(); console.log('[tg] resultados', yday); }
+  }
+  // 2) PICK GRATIS del día — a partir de las 13:00Z, una sola vez
+  const kPick = 'tg:pick:' + day;
+  if (h >= 13 && !db.sentTg[kPick]) {
+    const t = tgClubPickText();
+    if (t && await telegram.post(t)) { db.sentTg[kPick] = Date.now(); save(); console.log('[tg] pick gratis', day); }
+  }
+}
 // Publica finales nuevos al canal (no reenvía)
 async function tgDispatchFinals() {
   if (!telegram.configured()) return;
@@ -1726,6 +1802,8 @@ async function tgTick() {
     // ALERTAS EN TIEMPO REAL del scanner multi-venue (Fase F): surebets ejecutables + precios atrasados fuertes,
     // ya con fees/gates (a diferencia del legacy). Dedup por oportunidad+día. Gateado por MARKET_SCANNER_ALERTS_ENABLED.
     await tgScannerAlerts(day).catch(e => console.error('[telegram] scanner alerts:', e.message));
+    // LOOP DE PRUEBA PÚBLICA (25-jul): resultados de ayer + 1 pick gratis. Gateado por GP_TG_PICKS_ENABLED.
+    await tgClubDispatch().catch(e => console.error('[telegram] club dispatch:', e.message));
     // Publicación de "oportunidades" del Sistema A legacy (arbitrage(), solo campeón Poly↔Kalshi, SIN descontar
     // fees → falsos positivos). APAGADA por defecto: el research confirmó que anuncia arbitrajes que pierden tras
     // la fee de Kalshi/gas. El scanner multi-venue (market-scanner, con fees/gates) lo reemplaza. Reactivar solo
@@ -9017,6 +9095,21 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       if (req.method === 'POST') { const r = await clubsLeagueDiscovery().catch(e => ({ error: e.message })); return json(res, 200, { ...r, state: db.leagueDiscovery || null }); }
       return json(res, 200, db.leagueDiscovery || { candidates: [] });
+    }
+    // CANAL TELEGRAM (25-jul): GET ?dry=1 devuelve los textos SIN publicar (revisión antes de encender);
+    // POST publica ya (respeta el dedup del día). Gate real = GP_TG_PICKS_ENABLED.
+    if (p === '/api/internal/tg-picks') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const yday = new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
+      if (req.method === 'POST') { await tgClubDispatch().catch(e => ({ error: e.message })); return json(res, 200, { ok: true, sent: Object.keys(db.sentTg || {}).filter(k => k.startsWith('tg:')).slice(-6) }); }
+      return json(res, 200, {
+        enabled: /^(1|true|yes|on)$/i.test(String(process.env.GP_TG_PICKS_ENABLED || '').trim()),
+        configured: telegram.configured(),
+        pick_preview: tgClubPickText(),
+        results_preview: tgClubResultsText(yday),
+        results_day: yday,
+      });
     }
     // RESULTADOS TSA (25-jul): GET estado / POST corre ahora (red de seguridad del marcador).
     if (p === '/api/internal/clubs-tsa-results') {

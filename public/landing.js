@@ -37,6 +37,7 @@
       final_h: 'La ventaja no espera. Empieza gratis.',
       disc: 'Estimaciones estadísticas · no es consejo financiero · apuesta con responsabilidad',
       foot_tag: 'Inteligencia deportiva en tiempo real', foot_legal: '© 2026 · No es consejo financiero',
+      tg_lead: 'Pick gratis todos los días en Telegram', tg_sub: 'Y los resultados de cada pick, ganadas y perdidas. Sin registro.', tg_cta: 'Unirme al canal',
       /* modal registro */
       a_eye: 'Acceso gratis', a_h: 'Crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
       a_email_l: 'Tu email', a_email_ph: 'tucorreo@email.com', a_send: 'Enviar código',
@@ -93,6 +94,7 @@
       final_h: "The edge won't wait. Start free.",
       disc: 'Statistical estimates · not financial advice · bet responsibly',
       foot_tag: 'Real-time sports intelligence', foot_legal: '© 2026 · Not financial advice',
+      tg_lead: 'A free pick every day on Telegram', tg_sub: 'Plus every result, wins and losses. No signup needed.', tg_cta: 'Join the channel',
       a_eye: 'Free access', a_h: 'Create your account', a_sub: 'No password. We email you a code and you’re in instantly.',
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
       a_micro: 'Free during the World Cup · no card · no spam',

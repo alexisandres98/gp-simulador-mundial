@@ -2542,15 +2542,20 @@
   // Solo cuentas creadas DESPUÉS del feature (los ~600 usuarios existentes nunca lo ven) y solo la primera vez:
   // el "visto" se persiste por cuenta en el server (db.users.onboarded) + localStorage como respaldo.
   var ONB_CUTOFF = Date.parse('2026-07-04T18:00:00Z');
+  // BUG 26-jul (reporte Alexis): la marca "ya vio el tour" era una key GLOBAL de localStorage → si en ese
+  // navegador cualquier cuenta cerró el tour alguna vez, una cuenta NUEVA no lo veía jamás (típico en el
+  // móvil del propio Alexis). La marca ahora es POR CUENTA; la fuente principal sigue siendo el flag del
+  // server (db.users.onboarded) y el localStorage es solo respaldo por si el POST no llegó.
+  function onbKey() { return 'gp_onboarded:' + ((S.me && S.me.email) || ''); }
   function maybeOnboard() {
     try {
-      if (!S.me || S.me.onboarded || lsGet('gp_onboarded')) return;
+      if (!S.me || S.me.onboarded || lsGet(onbKey())) return;
       if (!(S.me.createdAt && S.me.createdAt >= ONB_CUTOFF)) return;
       showOnboard();
     } catch (e) {}
   }
   function onbFinish() {
-    lsSet('gp_onboarded', '1');
+    lsSet(onbKey(), '1');
     fetch('/api/me/onboarded', { method: 'POST', headers: hdrs() }).catch(function () {});
     if (S.me) S.me.onboarded = Date.now();
     var o = document.getElementById('gx-onb'); if (o) o.remove();

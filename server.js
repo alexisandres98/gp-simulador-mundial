@@ -1334,6 +1334,51 @@ GP Simulador
 // cierra con invitación a responder). Gancho de urgencia "última oportunidad". Cobertura encuadrada como TODO EL
 // AÑO (cualquier liga/club que las casas coticen en cualquier temporada), NO solo las 14 activas hoy. Track record
 // en vivo. Se envía a TODOS en inglés (variant lastcall_en).
+// CRIPTO (26-jul): anuncio de pago con cripto — pago único 30 días, sin tarjeta. Mismo playbook personal
+// anti-Promociones (texto 1:1, URL como texto plano, cierra con pregunta). Por pedido de Alexis este correo
+// NO incluye la línea de baja en el cuerpo. NO menciona el sistema de referidos (se anuncia aparte).
+function cryptoEmail(lang) {
+  const en = lang === 'en';
+  if (en) {
+    const subject = 'you can now pay with crypto';
+    const text = `Hi,
+
+Alexis here, from GP Simulador. Quick one, because we just opened something a lot of you asked me for: you can now pay for your subscription with crypto.
+
+Here's how it works: a one-time 30-day payment with BTC, USDC, USDT and more — no card, no auto-renewal, no bank details. When the month ends your account simply goes back to the free plan, and you buy another month only if you want to. You stay in control.
+
+The plans are the same: Pro at $19 (every daily pick from the model with its full analysis) and Sharp at $59 (everything in Pro plus corners, cards, goalscorers, your personal bet tracker and the value & arbitrage scanner across 40+ sportsbooks). Go to gpsimulador.com/plans and you'll see the crypto button under each plan.
+
+The model keeps publishing its picks every day, with the full track record public — hits and misses.
+
+Which crypto would you like to pay with? Reply and I'll tell you if it's supported — I read every answer.
+
+Alexis
+GP Simulador`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'ya podés pagar con cripto';
+  const text = `Hola,
+
+Soy Alexis, de GP Simulador. Te escribo corto porque acabamos de abrir algo que muchos me pidieron: ahora podés pagar tu suscripción con cripto.
+
+Funciona así: un pago único de 30 días con BTC, USDC, USDT y más — sin tarjeta, sin renovación automática y sin datos bancarios. Cuando el mes termina, tu cuenta vuelve sola al plan gratis, y comprás otro mes solo si querés. El control lo tenés vos.
+
+Los planes son los mismos: Pro a $19 (todas las picks diarias del modelo con su análisis completo) y Sharp a $59 (todo lo de Pro más córners, tarjetas, goleadores, tu cartera de apuestas y el escáner de value y arbitraje sobre 40+ casas). Entrá a gpsimulador.com/plans y vas a ver el botón de cripto debajo de cada plan.
+
+El modelo sigue publicando sus picks todos los días, con el historial completo público — aciertos y errores.
+
+¿Con qué cripto te gustaría pagar? Respondeme y te digo si está soportada — leo todas las respuestas.
+
+Alexis
+GP Simulador`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 function lastCallEmail(lang) {
   const en = lang !== 'es';
   const tr = dailyPicksTrackRecord().overall || {};
@@ -9203,6 +9248,49 @@ const server = http.createServer(async (req, res) => {
       try { const st = await clubMatchStats(lg, hId, aId); diag.stats = st ? { home: st.home, away: st.away } : null; } catch (e) { diag.stats_err = String(e.message); }
       return json(res, 200, diag);
     }
+    // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,
+    // su plan y sus datos quedan INTACTOS; solo dejan de recibir broadcasts. GET lista los suprimidos.
+    if (p === '/api/internal/suppress') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'GET') {
+        const list = Object.entries(db.users).filter(([, u2]) => u2 && u2.no_bulk).map(([e, u2]) => ({ email: e, since: u2.no_bulk_at || null }));
+        return json(res, 200, { suppressed: list.length, list });
+      }
+      if (req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        const emails = Array.isArray(b.emails) ? b.emails : [b.email].filter(Boolean);
+        const on = b.on !== false;
+        const out = { updated: [], not_found: [] };
+        for (const raw of emails) {
+          const e = String(raw || '').trim().toLowerCase();
+          if (!db.users[e]) { out.not_found.push(e); continue; }
+          if (on) { db.users[e].no_bulk = true; db.users[e].no_bulk_at = db.users[e].no_bulk_at || new Date().toISOString(); }
+          else { delete db.users[e].no_bulk; delete db.users[e].no_bulk_at; }
+          out.updated.push(e);
+        }
+        save();
+        return json(res, 200, { ok: true, on, ...out });
+      }
+      return json(res, 404, { error: 'No encontrado' });
+    }
+    // BORRADO DE CUENTA (26-jul, petición del usuario vía soporte): elimina usuario + sesiones + grant +
+    // código de referido + registro de afiliado. Devuelve lo borrado. POST {email}, key-gated.
+    if (p === '/api/internal/delete-user' && req.method === 'POST') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const b = await readBody(req).catch(() => ({}));
+      const e = String(b.email || '').trim().toLowerCase();
+      if (!db.users[e]) return json(res, 404, { error: 'Usuario no existe' });
+      const removed = { email: e, refCode: db.users[e].refCode || null, had_grant: !!db.premiumGrants[e], sessions: 0 };
+      for (const [tok, em] of Object.entries(db.sessions)) if (em === e) { delete db.sessions[tok]; removed.sessions++; }
+      if (removed.refCode && db.refCodes[removed.refCode] === e) delete db.refCodes[removed.refCode];
+      delete db.premiumGrants[e];
+      delete db.affiliates[e];
+      delete db.users[e];
+      save();
+      return json(res, 200, { ok: true, removed });
+    }
     // RECUPERACIÓN de resultados de picks supersedidas por el prune (23-jul): reactiva las de partidos ya
     // jugados sin hermano liquidado y las liquida. Idempotente (POST). Sin sesión, key-gated.
     if (p === '/api/internal/clubs-picks-recover' && req.method === 'POST') {
@@ -10346,15 +10434,19 @@ const server = http.createServer(async (req, res) => {
       const link = 'https://gpsimulador.com/?goto=referidos';
       // SEGURIDAD: {count:true} devuelve a cuántos LLEGARÍA el envío SIN mandar nada (verificar el número
       // antes de disparar un masivo, para no equivocar el target).
+      // SUPRESIÓN (26-jul): db.users[email].no_bulk=true → NUNCA recibe masivos (pidió baja). La cuenta y sus
+      // datos se conservan; solo queda fuera de todo broadcast. Se marca vía /api/internal/suppress.
+      const notSuppressed = (e) => !(db.users[e] && db.users[e].no_bulk);
       if (count) {
-        const uk = Object.keys(db.users);
+        const uk = Object.keys(db.users).filter(notSuppressed);
+        const suppressed = Object.keys(db.users).length - uk.length;
         const leads = uk.filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true).length;
         const unverified = uk.filter(e => db.users[e] && db.users[e].verified !== true).length;
         const verified = uk.filter(e => db.users[e] && db.users[e].verified === true).length;
         const isReactivate = /^reactivate_(es|en)$/.test(variant || '');
         const freeNoSub = uk.filter(e => planFor(e) === 'free').length; // sin Pro/Sharp (incluye leads); admin=sharp queda fuera
         const wouldSend = variant === 'leads_magic' ? leads : isReactivate ? freeNoSub : uk.length;
-        return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, verified, unverified, leads, free_no_sub: freeNoSub });
+        return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, suppressed, verified, unverified, leads, free_no_sub: freeNoSub });
       }
       // variant 'reengage' = correo de estilo PERSONAL (bandeja Principal): from con nombre + sin List-Unsubscribe.
       // variants 'bankroll_es' / 'bankroll_en' = idioma FIJO (todos reciben ambos, decisión 7-jul).
@@ -10391,7 +10483,10 @@ const server = http.createServer(async (req, res) => {
                                       // reactivación post-Mundial (idioma FIJO, estilo personal anti-Promociones)
                                       : (variant === 'reactivate_en') ? () => ({ ...reactivateEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                         : (variant === 'reactivate_es') ? () => ({ ...reactivateEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
-                                          : (em) => broadcastEmail(link, userLang(em));
+                                          // anuncio pago con cripto (26-jul): idioma FIJO, estilo personal
+                                          : (variant === 'crypto_es') ? () => ({ ...cryptoEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                            : (variant === 'crypto_en') ? () => ({ ...cryptoEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                              : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la
@@ -10410,17 +10505,21 @@ const server = http.createServer(async (req, res) => {
       // 'leads_magic' apunta SOLO a los LEADS reales (marcados lead:true por el flujo de captura), NO a todo
       // no-verificado (eso incluía cuentas viejas sin el campo verified → falso "nunca entraste"). Guard extra:
       // nunca a un verificado.
-      const targets = variant === 'leads_magic'
+      const targets = (variant === 'leads_magic'
         ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true)
         : /^reactivate_(es|en)$/.test(variant || '')
           ? Object.keys(db.users).filter(e => planFor(e) === 'free') // SIN Pro/Sharp (free + leads); admin=sharp fuera
-          : Object.keys(db.users);
+          : Object.keys(db.users)
+      ).filter(notSuppressed); // la lista de supresión gana SIEMPRE, en todos los variants
       bcastState = { running: true, sent: 0, failed: 0, total: targets.length, startedAt: new Date().toISOString(), finishedAt: null, test: false, variant: variant || 'beta' };
       // responder YA; enviar en segundo plano (no se await)
       json(res, 200, { ok: true, started: true, total: targets.length });
       (async () => {
         for (const email of targets) {
-          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...buildMail(userLang(email)) }); bcastState.sent++; }
+          // FIX 26-jul: se pasaba userLang(email) (el IDIOMA) donde buildMail espera el EMAIL → los variants
+          // por-usuario (launch/reengage/launch_personal sin sufijo) derivaban el idioma de 'es'/'en' como si
+          // fuera un email inexistente y caían siempre al default. Los variants _es/_en fijos no lo notaban.
+          try { ensureRefCode(email); await mailer.sendMail({ to: email, ...buildMail(email) }); bcastState.sent++; }
           catch (e) { bcastState.failed++; console.error('[broadcast]', email, e.message); }
           await new Promise(r => setTimeout(r, 120)); // throttle suave para no quemar cuota
         }

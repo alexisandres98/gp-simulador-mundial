@@ -144,6 +144,7 @@ function backupDbDaily() {
 }
 setTimeout(backupDbDaily, 90 * 1000);            // al boot (90s después, sin competir con el arranque)
 setInterval(backupDbDaily, 6 * 3600 * 1000);     // chequeo cada 6h (escribe solo si falta el del día)
+setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
 
 // Recalcula los Elo desde la base replicando todos los resultados finales (permite editar/borrar sin corromper ratings)
 function recomputeElos() {
@@ -579,6 +580,10 @@ db.matchSlugs = db.matchSlugs || {};
 db.marketSnapshots = db.marketSnapshots || {}; // probs implícitas del mercado capturadas antes del partido (closing line)
 db.sentAlerts = db.sentAlerts || {};           // alertas ya enviadas por partido (evita reenvíos/spam)
 db.refCodes = db.refCodes || {};               // referidos: code → email (lookup de quién refirió)
+// ===== AFILIADOS (25-jul): comisión recurrente de por vida por referido pagado, retiros en cripto =====
+db.affiliates = db.affiliates || {};           // email → { rate, wallet:{chain,asset,address}, createdAt } (rate custom hasta 0.20; default 0.10)
+db.affCommissions = db.affCommissions || [];   // [{ id, affiliate, referred, plan, amount, rate, commission, status:'pending'|'available'|'paid', period, created_at, mature_at, paid_at, withdrawal_id }]
+db.affWithdrawals = db.affWithdrawals || [];    // [{ id, affiliate, amount, chain, asset, address, status:'requested'|'paid'|'rejected', requested_at, decided_at, tx_hash, note }]
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
@@ -654,6 +659,95 @@ function ensureRefCode(email) {
     u.refCode = code; db.refCodes[code] = email; save();
   }
   return u.refCode;
+}
+
+// ===== AFILIADOS — helpers (25-jul) =====================================================================
+// Modelo: quien entra con ?ref=<code> y PAGA una suscripción genera una comisión recurrente para el referidor,
+// de por vida mientras la suscripción siga activa. Rate por afiliado (default 10%; el admin puede subir hasta
+// 20% para influencers, sin exponerlo públicamente). Cada pago (webhook Whop `valid`) crea una comisión que
+// MADURA a los 7 días (colchón anti-refund) y recién ahí es retirable. Retiros: mínimo $50, 1 por semana, en
+// stablecoins. Los pagos los hace Alexis a mano; el sistema lleva el ledger y avisa por email.
+function affiliatesOn() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_AFFILIATES_ENABLED || '').trim()); }
+const AFF_MATURE_MS = 7 * 86400e3;
+const AFF_MIN_WITHDRAW = 50;
+const AFF_WITHDRAW_COOLDOWN_MS = 7 * 86400e3;
+const AFF_DEFAULT_RATE = 0.10, AFF_MAX_RATE = 0.20;
+// redes soportadas para el retiro (stablecoin → cadenas). El admin ejecuta el envío manual en la red que el afiliado eligió.
+const AFF_CHAINS = { solana: 'Solana', tron: 'Tron (TRC-20)', arbitrum: 'Arbitrum', base: 'Base', ethereum: 'Ethereum (ERC-20)' };
+const AFF_ASSETS = ['USDC', 'USDT'];
+// monto USD por plan (para calcular la comisión): usa el importe real del webhook si viene, si no este mapa.
+function affPlanUsd(plan) {
+  const pro = Number(process.env.AFF_PLAN_USD_PRO || 12), sharp = Number(process.env.AFF_PLAN_USD_SHARP || 39);
+  return plan === 'sharp' ? sharp : plan === 'pro' ? pro : 0;
+}
+function affRate(email) {
+  const a = db.affiliates[String(email || '').toLowerCase()];
+  const r = a && Number(a.rate);
+  return (r && r > 0 && r <= AFF_MAX_RATE) ? r : AFF_DEFAULT_RATE;
+}
+// Registra la comisión de un pago de un referido. Idempotente por (referido, período): un mismo ciclo de
+// facturación no paga doble aunque Whop reintente el webhook. amountUsd = importe real del pago si se conoce.
+function affRecordCommission({ referredEmail, plan, amountUsd, period }) {
+  if (!affiliatesOn()) return null;
+  referredEmail = String(referredEmail || '').toLowerCase();
+  const u = db.users[referredEmail];
+  const refCode = u && u.ref;                                  // el código con que se registró el referido
+  const affiliate = refCode && db.refCodes[refCode];           // email del referidor
+  if (!affiliate || affiliate === referredEmail) return null;  // sin referidor válido / no self
+  const per = period || new Date().toISOString().slice(0, 7);  // período mensual YYYY-MM (idempotencia por ciclo)
+  const dup = db.affCommissions.find(c => c.referred === referredEmail && c.period === per);
+  if (dup) return dup;
+  const base = amountUsd && amountUsd > 0 ? amountUsd : affPlanUsd(plan);
+  if (!base) return null;
+  const rate = affRate(affiliate);
+  const now = Date.now();
+  const rec = {
+    id: 'com_' + crypto.randomBytes(8).toString('hex'), affiliate, referred: referredEmail,
+    plan: plan || null, amount: +base.toFixed(2), rate, commission: +(base * rate).toFixed(2),
+    status: 'pending', period: per, created_at: new Date(now).toISOString(), mature_at: new Date(now + AFF_MATURE_MS).toISOString(),
+    paid_at: null, withdrawal_id: null,
+  };
+  db.affCommissions.push(rec);
+  save();
+  return rec;
+}
+// Madura las comisiones pendientes cuyo colchón de 7 días ya pasó (pending → available). Idempotente.
+function affMatureCommissions() {
+  const now = Date.now(); let n = 0;
+  for (const c of db.affCommissions) {
+    if (c.status === 'pending' && Date.parse(c.mature_at || 0) <= now) { c.status = 'available'; n++; }
+  }
+  if (n) save();
+  return n;
+}
+// Resumen para un afiliado: código/link, referidos que pagan, balances por estado, wallet, cooldown de retiro.
+function affSummary(email) {
+  email = String(email || '').toLowerCase();
+  affMatureCommissions();
+  const mine = db.affCommissions.filter(c => c.affiliate === email);
+  const sum = (arr) => +arr.reduce((s, c) => s + (c.commission || 0), 0).toFixed(2);
+  const available = sum(mine.filter(c => c.status === 'available'));
+  const pending = sum(mine.filter(c => c.status === 'pending'));
+  const paid = sum(mine.filter(c => c.status === 'paid'));
+  const activeRefs = new Set(mine.filter(c => c.status !== 'paid' || true).map(c => c.referred));
+  const a = db.affiliates[email] || {};
+  const withdrawals = db.affWithdrawals.filter(w => w.affiliate === email).sort((x, y) => (y.requested_at || '').localeCompare(x.requested_at || ''));
+  const lastReq = withdrawals[0] && Date.parse(withdrawals[0].requested_at || 0);
+  const cooldownUntil = (lastReq && ['requested'].includes(withdrawals[0].status)) ? null // hay una pendiente
+    : (lastReq ? new Date(lastReq + AFF_WITHDRAW_COOLDOWN_MS).toISOString() : null);
+  const openReq = withdrawals.find(w => w.status === 'requested') || null;
+  return {
+    code: ensureRefCode(email), rate: affRate(email),
+    referrals: activeRefs.size, paying_referrals: new Set(mine.map(c => c.referred)).size,
+    available, pending, paid,
+    wallet: a.wallet || null,
+    can_withdraw: available >= AFF_MIN_WITHDRAW && !openReq && (!cooldownUntil || Date.parse(cooldownUntil) <= Date.now()),
+    min_withdraw: AFF_MIN_WITHDRAW, cooldown_until: openReq ? null : cooldownUntil, open_request: openReq,
+    withdrawals: withdrawals.slice(0, 20),
+    commissions: mine.sort((x, y) => (y.created_at || '').localeCompare(x.created_at || '')).slice(0, 30)
+      .map(c => ({ referred: c.referred.replace(/(.).+(@.+)/, '$1***$2'), plan: c.plan, commission: c.commission, status: c.status, period: c.period, mature_at: c.mature_at })),
+    chains: AFF_CHAINS, assets: AFF_ASSETS,
+  };
 }
 
 function teamTokens(id) {
@@ -6939,7 +7033,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn() };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -8267,6 +8361,13 @@ const server = http.createServer(async (req, res) => {
             since: (db.premiumGrants[email] && db.premiumGrants[email].since) || new Date().toISOString(), updatedAt: new Date().toISOString(),
           };
           ev.applied = { email, plan, status: 'active' };
+          // COMISIÓN DE AFILIADO (25-jul): cada pago válido de un referido genera comisión recurrente para el
+          // referidor (idempotente por período mensual → renovaciones pagan un ciclo, reintentos del webhook no).
+          try {
+            const amt = Number(d.final_amount || d.amount || (d.plan && d.plan.price) || 0) || 0;
+            const com = affRecordCommission({ referredEmail: email, plan, amountUsd: amt });
+            if (com) ev.affiliate_commission = { to: com.affiliate, commission: com.commission };
+          } catch (e) { /* la comisión nunca rompe el webhook */ }
           // BIENVENIDA FOUNDER (primera activación): refuerza la compra al instante — status founder, qué
           // tiene, y el precio congelado. Reduce el arrepentimiento post-compra. No bloquea el webhook.
           if (isNewGrant && mailer.isConfigured()) {
@@ -9509,6 +9610,98 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/referrals/me' && req.method === 'GET') return json(res, 200, await referrals.status(u.email));
       if (p === '/api/referrals/code' && req.method === 'POST') return json(res, 200, await referrals.ensureCode(u.email));
       if (p === '/api/referrals/status' && req.method === 'GET') return json(res, 200, await referrals.status(u.email));
+    }
+    // ===== AFILIADOS (25-jul): panel del usuario + solicitud de retiro. Gate GP_AFFILIATES_ENABLED. =====
+    if (p.startsWith('/api/affiliate/')) {
+      if (!affiliatesOn()) return json(res, 404, { error: 'No encontrado' });
+      const u = getUser(req); if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const em = u.email;
+      if (p === '/api/affiliate/me' && req.method === 'GET') return json(res, 200, affSummary(em));
+      // guardar/actualizar la billetera (cadena + stablecoin + address). Validación básica de formato por red.
+      if (p === '/api/affiliate/wallet' && req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        const chain = String(b.chain || '').toLowerCase(), asset = String(b.asset || '').toUpperCase(), address = String(b.address || '').trim();
+        if (!AFF_CHAINS[chain]) return json(res, 400, { error: 'Red no soportada' });
+        if (!AFF_ASSETS.includes(asset)) return json(res, 400, { error: 'Moneda no soportada (USDC/USDT)' });
+        const okAddr = (chain === 'solana') ? /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)
+          : (chain === 'tron') ? /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)
+            : /^0x[a-fA-F0-9]{40}$/.test(address); // arbitrum/base/ethereum = EVM
+        if (!okAddr) return json(res, 400, { error: 'Dirección inválida para la red elegida' });
+        db.affiliates[em] = { ...(db.affiliates[em] || {}), wallet: { chain, asset, address }, createdAt: (db.affiliates[em] && db.affiliates[em].createdAt) || new Date().toISOString() };
+        save();
+        return json(res, 200, { ok: true, wallet: db.affiliates[em].wallet });
+      }
+      // solicitar retiro: exige balance disponible ≥ mínimo, billetera cargada, sin otra pendiente y fuera del cooldown.
+      if (p === '/api/affiliate/withdraw' && req.method === 'POST') {
+        const s = affSummary(em);
+        if (!s.wallet) return json(res, 400, { error: 'Configurá tu billetera primero' });
+        if (s.open_request) return json(res, 400, { error: 'Ya tenés una solicitud pendiente' });
+        if (s.cooldown_until && Date.parse(s.cooldown_until) > Date.now()) return json(res, 400, { error: 'Solo un retiro por semana' });
+        if (s.available < AFF_MIN_WITHDRAW) return json(res, 400, { error: `Mínimo ${AFF_MIN_WITHDRAW} USD para retirar` });
+        // congela las comisiones 'available' en esta solicitud (se marcan 'paid' cuando el admin confirma el envío)
+        const toPay = db.affCommissions.filter(c => c.affiliate === em && c.status === 'available');
+        const amount = +toPay.reduce((a, c) => a + c.commission, 0).toFixed(2);
+        const w = { id: 'wd_' + crypto.randomBytes(8).toString('hex'), affiliate: em, amount, chain: s.wallet.chain, asset: s.wallet.asset, address: s.wallet.address, status: 'requested', requested_at: new Date().toISOString(), decided_at: null, tx_hash: null, note: null, commission_ids: toPay.map(c => c.id) };
+        db.affWithdrawals.push(w);
+        for (const c of toPay) c.withdrawal_id = w.id; // quedan enganchadas; siguen 'available' hasta el pago
+        save();
+        // aviso al admin (Alexis hace el envío a mano)
+        try {
+          const admin = (process.env.ADMIN_EMAILS || '').split(',')[0].trim() || Object.keys(db.users).sort((a, b) => db.users[a].createdAt - db.users[b].createdAt)[0];
+          if (mailer.isConfigured() && admin) mailer.sendMail({ to: admin, noListUnsub: true, subject: `💸 Solicitud de retiro afiliado: ${amount} USD`, text: `${em} solicitó un retiro.\n\nMonto: ${amount} USD (${s.wallet.asset})\nRed: ${AFF_CHAINS[s.wallet.chain]}\nDirección: ${s.wallet.address}\n\nRevisá y marcá pagado en el panel admin de afiliados cuando envíes.` }).catch(() => {});
+        } catch { /* aviso best-effort */ }
+        return json(res, 200, { ok: true, withdrawal: w });
+      }
+      return json(res, 404, { error: 'No encontrado' });
+    }
+    // ADMIN afiliados: lista completa + setear rate custom + marcar retiro pagado/rechazado. GP_EXPORT_KEY o sesión admin.
+    if (p === '/api/internal/affiliates') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const keyOk = xk && url.searchParams.get('key') === xk;
+      const u = getUser(req); if (!keyOk && (!u || !u.isAdmin)) return json(res, 403, { error: 'Solo el administrador' });
+      affMatureCommissions();
+      if (req.method === 'GET') {
+        const byAff = {};
+        for (const c of db.affCommissions) {
+          const a = byAff[c.affiliate] = byAff[c.affiliate] || { affiliate: c.affiliate, rate: affRate(c.affiliate), referrals: new Set(), available: 0, pending: 0, paid: 0, wallet: (db.affiliates[c.affiliate] || {}).wallet || null };
+          a.referrals.add(c.referred);
+          a[c.status] = +(a[c.status] + c.commission).toFixed(2);
+        }
+        const affiliates = Object.values(byAff).map(a => ({ ...a, referrals: a.referrals.size }));
+        const pendingWithdrawals = db.affWithdrawals.filter(w => w.status === 'requested');
+        return json(res, 200, { enabled: affiliatesOn(), affiliates, pending_withdrawals: pendingWithdrawals, all_withdrawals: db.affWithdrawals.slice(-40), totals: { available: affiliates.reduce((s, a) => s + a.available, 0), pending: affiliates.reduce((s, a) => s + a.pending, 0) } });
+      }
+      if (req.method === 'POST') {
+        const b = await readBody(req).catch(() => ({}));
+        // setear rate custom (influencers, hasta 20% — no expuesto al público)
+        if (b.action === 'set_rate') {
+          const em = String(b.email || '').toLowerCase(); const rate = Math.max(0, Math.min(AFF_MAX_RATE, Number(b.rate) || 0));
+          if (!db.users[em]) return json(res, 400, { error: 'Usuario no existe' });
+          db.affiliates[em] = { ...(db.affiliates[em] || {}), rate, createdAt: (db.affiliates[em] && db.affiliates[em].createdAt) || new Date().toISOString() };
+          save(); return json(res, 200, { ok: true, email: em, rate });
+        }
+        // marcar un retiro pagado (o rechazado). Al pagar, las comisiones enganchadas pasan a 'paid'.
+        if (b.action === 'payout' || b.action === 'reject') {
+          const w = db.affWithdrawals.find(x => x.id === String(b.withdrawal_id || ''));
+          if (!w || w.status !== 'requested') return json(res, 404, { error: 'Retiro no encontrado o ya resuelto' });
+          w.status = b.action === 'payout' ? 'paid' : 'rejected';
+          w.decided_at = new Date().toISOString(); w.tx_hash = b.tx_hash || null; w.note = b.note || null;
+          if (b.action === 'payout') { for (const c of db.affCommissions) if (c.withdrawal_id === w.id) { c.status = 'paid'; c.paid_at = w.decided_at; } }
+          else { for (const c of db.affCommissions) if (c.withdrawal_id === w.id) c.withdrawal_id = null; } // rechazado → vuelven a disponibles
+          save();
+          // email al afiliado
+          try {
+            if (mailer.isConfigured()) {
+              const en = userLang(w.affiliate) === 'en';
+              if (b.action === 'payout') mailer.sendMail({ to: w.affiliate, noListUnsub: true, subject: en ? `Your ${w.amount} USD payout is on the way` : `Tu retiro de ${w.amount} USD está en camino`, text: en ? `We just sent ${w.amount} ${w.asset} on ${AFF_CHAINS[w.chain]} to your wallet.\n${w.tx_hash ? 'Tx: ' + w.tx_hash + '\n' : ''}\nThanks for growing GP with us.\n\nAlexis · GP Simulador` : `Acabamos de enviar ${w.amount} ${w.asset} por ${AFF_CHAINS[w.chain]} a tu billetera.\n${w.tx_hash ? 'Tx: ' + w.tx_hash + '\n' : ''}\nGracias por hacer crecer GP con nosotros.\n\nAlexis · GP Simulador` }).catch(() => {});
+              else mailer.sendMail({ to: w.affiliate, noListUnsub: true, subject: en ? 'About your withdrawal request' : 'Sobre tu solicitud de retiro', text: en ? `Your withdrawal request could not be processed this time${w.note ? ': ' + w.note : ''}. Your balance stays available.\n\nAlexis · GP Simulador` : `Tu solicitud de retiro no pudo procesarse esta vez${w.note ? ': ' + w.note : ''}. Tu balance sigue disponible.\n\nAlexis · GP Simulador` }).catch(() => {});
+            }
+          } catch { /* email best-effort */ }
+          return json(res, 200, { ok: true, withdrawal: w });
+        }
+        return json(res, 400, { error: 'action inválida' });
+      }
+      return json(res, 404, { error: 'No encontrado' });
     }
     // --- Sprint 8B: waitlist GP Pro (§83). Sin pago, sin tarjeta. ---
     if (p === '/api/pro-waitlist' && req.method === 'POST') {

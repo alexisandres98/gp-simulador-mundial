@@ -223,6 +223,7 @@
       fol_empty: 'Aún no sigues equipos', fol_empty_sub: 'Marca la estrella en un equipo para seguirlo.',
       al_events: 'Eventos', al_channels: 'Canales', al_next: 'Próximo partido', al_start: 'Inicio del partido', al_goal: 'Gol', al_result: 'Resultado final', al_qualify: 'Clasificación', al_swing: 'Cambio de probabilidad', al_value: 'Oportunidad de valor', al_arb: 'Arbitraje', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Notificaciones push', al_soon: 'pronto', al_note: 'Las alertas por email están activas; Telegram y push llegan pronto.',
       ref_verified: 'referidos verificados', ref_copy: 'Copiar enlace', ref_copied: '¡Copiado!', ref_tiers: 'Niveles', ref_rule: 'Un referido se verifica cuando tu invitado confirma su correo. Umbral de acceso: 5 referidos verificados.',
+      aff_available: 'Disponible', aff_pending: 'En espera', aff_pending_sub: 'madura a los 7 días', aff_paid: 'Pagado', aff_paying: 'referidos con suscripción activa', aff_forlife: 'de por vida', aff_lead: 'Ganás una comisión recurrente por cada persona que entre con tu enlace y pague una suscripción, mientras siga activa.', aff_wallet: 'Tu billetera', aff_wallet_sub: 'Cobrás en stablecoins (USDC/USDT). Elegí la red que uses.', aff_network: 'Red', aff_asset: 'Moneda', aff_address: 'Dirección', aff_address_ph: 'pegá tu dirección', aff_save_wallet: 'Guardar billetera', aff_wallet_saved: '✓ Billetera guardada', aff_withdraw: 'Retirar', aff_request: 'Solicitar retiro', aff_wd_open: 'Tenés una solicitud de {amt} en proceso.', aff_wd_min: 'Necesitás {min} disponibles para retirar.', aff_wd_cooldown: 'Ya solicitaste un retiro esta semana. Podés pedir el próximo en 7 días.', aff_wd_ready: 'Podés retirar {amt} ahora.', aff_wd_done: '✓ Retiro solicitado. Te avisamos por email cuando salga.', aff_rules: 'Mínimo $50 · un retiro por semana · el saldo queda disponible 7 días después de cada pago.', aff_period: 'Período', aff_referral: 'Referido', aff_plan: 'Plan', aff_commission: 'Comisión', aff_status: 'Estado', aff_st_available: 'disponible', aff_st_paid: 'pagado', aff_st_pending: 'en espera',
       ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
@@ -523,6 +524,7 @@
       fol_empty: 'You don’t follow any teams yet', fol_empty_sub: 'Tap the star on a team to follow it.',
       al_events: 'Events', al_channels: 'Channels', al_next: 'Next match', al_start: 'Match start', al_goal: 'Goal', al_result: 'Final result', al_qualify: 'Qualification', al_swing: 'Probability swing', al_value: 'Value opportunity', al_arb: 'Arbitrage', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Push notifications', al_soon: 'soon', al_note: 'Email alerts are active; Telegram and push are coming soon.',
       ref_verified: 'verified referrals', ref_copy: 'Copy link', ref_copied: 'Copied!', ref_tiers: 'Tiers', ref_rule: 'A referral is verified when your invitee confirms their email. Access threshold: 5 verified referrals.',
+      aff_available: 'Available', aff_pending: 'Maturing', aff_pending_sub: 'clears after 7 days', aff_paid: 'Paid out', aff_paying: 'referrals with an active subscription', aff_forlife: 'for life', aff_lead: 'You earn a recurring commission for every person who joins with your link and pays for a subscription, as long as it stays active.', aff_wallet: 'Your wallet', aff_wallet_sub: 'You get paid in stablecoins (USDC/USDT). Pick the network you use.', aff_network: 'Network', aff_asset: 'Asset', aff_address: 'Address', aff_address_ph: 'paste your address', aff_save_wallet: 'Save wallet', aff_wallet_saved: '✓ Wallet saved', aff_withdraw: 'Withdraw', aff_request: 'Request withdrawal', aff_wd_open: 'You have a {amt} request in progress.', aff_wd_min: 'You need {min} available to withdraw.', aff_wd_cooldown: 'You already requested a withdrawal this week. Next one in 7 days.', aff_wd_ready: 'You can withdraw {amt} now.', aff_wd_done: '✓ Withdrawal requested. We\'ll email you when it goes out.', aff_rules: 'Min $50 · one withdrawal per week · balance clears 7 days after each payment.', aff_period: 'Period', aff_referral: 'Referral', aff_plan: 'Plan', aff_commission: 'Commission', aff_status: 'Status', aff_st_available: 'available', aff_st_paid: 'paid', aff_st_pending: 'maturing',
       ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
@@ -5480,6 +5482,10 @@
   var REF_TIERS = [[1, 'ref_t1'], [3, 'ref_t3'], [5, 'ref_t5'], [10, 'ref_t10']];
   function renderRefer() {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // PROGRAMA DE AFILIADOS (25-jul): con GP_AFFILIATES_ENABLED muestra el panel de comisiones + retiro; sin el
+    // flag degrada al panel de tiers de siempre (byte-idéntico). El rate público es 10% (el 20% de influencers
+    // se setea por admin y solo lo ve el propio afiliado en su balance, nunca se anuncia).
+    if (S.me && S.me.affiliatesOn) return renderAffiliate();
     if (S.refer === undefined) S.refer = null;
     var code = (S.me && S.me.refCode) || null, count = (S.me && (S.me.referrals != null ? (typeof S.me.referrals === 'number' ? S.me.referrals : (S.me.referrals.length || 0)) : 0)) || 0;
     if (!code) {
@@ -5497,6 +5503,81 @@
       '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('ref_tiers')) + '</span></div><div class="gx-mod-body gx-tiers">' + tiers + '</div></div>' +
       '</div></div>';
     var cp = $('#gx-ref-copy'); if (cp) cp.addEventListener('click', function () { var inp = $('#gx-ref-input'); if (inp) { inp.select(); try { document.execCommand('copy'); } catch (e) {} try { navigator.clipboard.writeText(inp.value); } catch (e) {} cp.innerHTML = ic('check') + ' ' + esc(t('ref_copied')); } });
+  }
+  // ---- PANEL DE AFILIADO (25-jul) ----
+  function renderAffiliate() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    if (S.aff === undefined) {
+      S.aff = null;
+      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_refer')) + mvLoading() + '</div></div>';
+      fetch('/api/affiliate/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (a) { S.aff = a || { _err: true }; if (S.view === 'refer') renderAffiliate(); });
+      return;
+    }
+    var a = S.aff || {};
+    if (a._err) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_refer')) + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; return; }
+    var money = function (v) { return '$' + Number(v || 0).toFixed(2); };
+    var link = a.code ? 'https://gpsimulador.com/?ref=' + a.code : '';
+    var pct = Math.round((a.rate || 0.10) * 100);
+    // KPIs: disponible / pendiente (madurando) / pagado
+    var kpis = '<div class="gx-kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">' +
+      '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(t('aff_available')) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono gx-pos">' + money(a.available) + '</div></div></div>' +
+      '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(t('aff_pending')) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono">' + money(a.pending) + '</div></div><div class="gx-kpi-sub gx-dim">' + esc(t('aff_pending_sub')) + '</div></div>' +
+      '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(t('aff_paid')) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono">' + money(a.paid) + '</div></div></div>' +
+      '</div>';
+    // link + referidos
+    var head = '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
+      '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px"><b class="gx-mono" style="font-size:22px">' + a.paying_referrals + '</b><span class="gx-dim">' + esc(t('aff_paying')) + '</span><span class="gx-spacer"></span><span class="gx-clgate ok">' + pct + '% ' + esc(t('aff_forlife')) + '</span></div>' +
+      '<p class="gx-dim" style="font-size:12.5px;margin:2px 0 14px">' + esc(t('aff_lead')) + '</p>' +
+      (link ? '<div class="gx-ref-link"><input id="gx-aff-input" readonly value="' + esc(link) + '"><button class="gx-btn" id="gx-aff-copy">' + ic('copy') + ' ' + esc(t('ref_copy')) + '</button></div>' : '') +
+      '</div></div>';
+    // billetera
+    var w = a.wallet;
+    var chainOpts = Object.keys(a.chains || {}).map(function (k) { return '<option value="' + k + '"' + (w && w.chain === k ? ' selected' : '') + '>' + esc(a.chains[k]) + '</option>'; }).join('');
+    var assetOpts = (a.assets || []).map(function (x) { return '<option value="' + x + '"' + (w && w.asset === x ? ' selected' : '') + '>' + x + '</option>'; }).join('');
+    var wallet = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('wallet') + ' ' + esc(t('aff_wallet')) + '</span></div><div class="gx-mod-body">' +
+      '<p class="gx-dim" style="font-size:12.5px;margin-bottom:12px">' + esc(t('aff_wallet_sub')) + '</p>' +
+      '<div class="gx-calc-grid" style="grid-template-columns:1fr 1fr;gap:10px">' +
+      '<label class="gx-calc-f"><span>' + esc(t('aff_network')) + '</span><select class="gx-select" id="gx-aff-chain">' + chainOpts + '</select></label>' +
+      '<label class="gx-calc-f"><span>' + esc(t('aff_asset')) + '</span><select class="gx-select" id="gx-aff-asset">' + assetOpts + '</select></label>' +
+      '</div>' +
+      '<label class="gx-calc-f gx-calc-f-br" style="margin-top:10px"><span>' + esc(t('aff_address')) + '</span><input class="gx-calc-in" id="gx-aff-addr" maxlength="64" placeholder="' + esc(t('aff_address_ph')) + '" value="' + esc(w ? w.address : '') + '"></label>' +
+      '<button class="gx-btn" id="gx-aff-savew" style="margin-top:12px">' + esc(t('aff_save_wallet')) + '</button>' +
+      '<div class="m-msg" id="gx-aff-wmsg" style="margin-top:8px"></div>' +
+      '</div></div>';
+    // retiro
+    var canW = a.can_withdraw, openReq = a.open_request;
+    var wdState = openReq ? '<div class="gx-corr">' + ic('clock') + '<span>' + t('aff_wd_open', { amt: money(openReq.amount) }) + '</span></div>'
+      : (a.available < a.min_withdraw) ? '<p class="gx-dim" style="font-size:12.5px">' + t('aff_wd_min', { min: '$' + a.min_withdraw }) + '</p>'
+        : (a.cooldown_until && new Date(a.cooldown_until) > new Date()) ? '<p class="gx-dim" style="font-size:12.5px">' + esc(t('aff_wd_cooldown')) + '</p>'
+          : '<p class="gx-dim" style="font-size:12.5px">' + t('aff_wd_ready', { amt: money(a.available) }) + '</p>';
+    var withdraw = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('bank') + ' ' + esc(t('aff_withdraw')) + '</span></div><div class="gx-mod-body">' +
+      wdState +
+      '<button class="gx-btn' + (canW ? '' : ' gx-btn-dim') + '" id="gx-aff-wd" style="margin-top:12px"' + (canW ? '' : ' disabled') + '>' + esc(t('aff_request')) + '</button>' +
+      '<div class="m-msg" id="gx-aff-wdmsg" style="margin-top:8px"></div>' +
+      '<p class="gx-mod-note gx-dim" style="margin-top:10px">' + ic('info-circle') + ' ' + esc(t('aff_rules')) + '</p>' +
+      '</div></div>';
+    // historial de comisiones
+    var rows = (a.commissions || []).map(function (c) {
+      var st = c.status === 'available' ? '<span class="gx-clgate ok">' + esc(t('aff_st_available')) + '</span>' : c.status === 'paid' ? '<span class="gx-clgate">' + esc(t('aff_st_paid')) + '</span>' : '<span class="gx-clgate sh">' + esc(t('aff_st_pending')) + '</span>';
+      return '<tr><td class="l gx-dim" style="font-size:11px">' + esc(c.period) + '</td><td class="l">' + esc(c.referred) + '</td><td class="l gx-dim" style="font-size:11px">' + esc((c.plan || '').toUpperCase()) + '</td><td class="gx-mono gx-pos">' + money(c.commission) + '</td><td>' + st + '</td></tr>';
+    }).join('');
+    var hist = rows ? '<div class="gx-panel gx-board"><table class="gx-tbl"><thead><tr><th class="l">' + esc(t('aff_period')) + '</th><th class="l">' + esc(t('aff_referral')) + '</th><th class="l">' + esc(t('aff_plan')) + '</th><th>' + esc(t('aff_commission')) + '</th><th>' + esc(t('aff_status')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:720px">' + viewHead(t('nav_refer')) + kpis + head + wallet + withdraw + hist + '</div></div>';
+    var cp = $('#gx-aff-copy'); if (cp) cp.addEventListener('click', function () { var inp = $('#gx-aff-input'); if (inp) { inp.select(); try { document.execCommand('copy'); } catch (e) {} try { navigator.clipboard.writeText(inp.value); } catch (e) {} cp.innerHTML = ic('check') + ' ' + esc(t('ref_copied')); } });
+    var sw = $('#gx-aff-savew'); if (sw) sw.addEventListener('click', function () {
+      var msg = $('#gx-aff-wmsg'); sw.disabled = true;
+      fetch('/api/affiliate/wallet', { method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }), body: JSON.stringify({ chain: $('#gx-aff-chain').value, asset: $('#gx-aff-asset').value, address: ($('#gx-aff-addr').value || '').trim() }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { sw.disabled = false; msg.className = 'm-msg ' + (res.ok ? 'ok' : 'err'); msg.textContent = res.ok ? t('aff_wallet_saved') : (res.j.error || t('e_net')); if (res.ok) { S.aff = undefined; } })
+        .catch(function () { sw.disabled = false; msg.className = 'm-msg err'; msg.textContent = t('e_net'); });
+    });
+    var wd = $('#gx-aff-wd'); if (wd && canW) wd.addEventListener('click', function () {
+      var msg = $('#gx-aff-wdmsg'); wd.disabled = true;
+      fetch('/api/affiliate/withdraw', { method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }), body: JSON.stringify({}) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { msg.className = 'm-msg ' + (res.ok ? 'ok' : 'err'); msg.textContent = res.ok ? t('aff_wd_done') : (res.j.error || t('e_net')); if (res.ok) { S.aff = undefined; setTimeout(function () { if (S.view === 'refer') renderAffiliate(); }, 900); } else wd.disabled = false; })
+        .catch(function () { wd.disabled = false; msg.className = 'm-msg err'; msg.textContent = t('e_net'); });
+    });
   }
   // ---- Rendimiento (métricas verificadas) ----
   // Texto legible de una pick por familia (COMPARTIDO entre la tabla oficial y el monitoreo privado de clubes —

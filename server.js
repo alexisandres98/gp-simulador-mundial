@@ -676,8 +676,11 @@ const AFF_DEFAULT_RATE = 0.10, AFF_MAX_RATE = 0.20;
 const AFF_CHAINS = { solana: 'Solana', tron: 'Tron (TRC-20)', arbitrum: 'Arbitrum', base: 'Base', ethereum: 'Ethereum (ERC-20)' };
 const AFF_ASSETS = ['USDC', 'USDT'];
 // monto USD por plan (para calcular la comisión): usa el importe real del webhook si viene, si no este mapa.
+// Precios PÚBLICOS vigentes (Pro $19 / Sharp $59). Solo se usan como fallback: si el webhook trae el importe
+// real (`final_amount`), ese manda — importante porque los founder siguen pagando su precio congelado ($12/$39)
+// y su comisión debe calcularse sobre lo que REALMENTE pagan, no sobre la lista actual.
 function affPlanUsd(plan) {
-  const pro = Number(process.env.AFF_PLAN_USD_PRO || 12), sharp = Number(process.env.AFF_PLAN_USD_SHARP || 39);
+  const pro = Number(process.env.AFF_PLAN_USD_PRO || 19), sharp = Number(process.env.AFF_PLAN_USD_SHARP || 59);
   return plan === 'sharp' ? sharp : plan === 'pro' ? pro : 0;
 }
 function affRate(email) {

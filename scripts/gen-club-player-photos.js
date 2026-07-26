@@ -78,7 +78,9 @@ async function tsa(pathq) {
           for (const k in idx) { const kk = new Set(k.split(' ').filter(Boolean)); let ov = 0; ke.forEach(x => { if (kk.has(x)) ov++; }); const sc = ov / Math.max(1, new Set([...ke, ...kk]).size); if (ov >= 1 && sc >= 0.5 && ov > bs) { bs = ov; best = idx[k]; } }
           tid = best;
         }
-        if (tid) teamMap[lg][tid] = { af_id: row.team.id, af_name: nm };
+        // NO sobrescribir mapeos existentes (26-jul): los manuales (TPS→Turku PS, Rennes, Atletico-MG…) son
+        // fuente de verdad; este matcher aproximado solo LLENA huecos (regla matcher-desambiguar).
+        if (tid && !teamMap[lg][tid]) teamMap[lg][tid] = { af_id: row.team.id, af_name: nm };
       }
       fs.writeFileSync(OUT_MAP, JSON.stringify(teamMap, null, 1));
       console.log(`[${lg}] equipos AF↔TSA: ${Object.keys(teamMap[lg]).length}/${Object.keys(L.ratings || {}).length}`);

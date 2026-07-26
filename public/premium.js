@@ -224,6 +224,8 @@
       al_events: 'Eventos', al_channels: 'Canales', al_next: 'Próximo partido', al_start: 'Inicio del partido', al_goal: 'Gol', al_result: 'Resultado final', al_qualify: 'Clasificación', al_swing: 'Cambio de probabilidad', al_value: 'Oportunidad de valor', al_arb: 'Arbitraje', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Notificaciones push', al_soon: 'pronto', al_note: 'Las alertas por email están activas; Telegram y push llegan pronto.',
       ref_verified: 'referidos verificados', ref_copy: 'Copiar enlace', ref_copied: '¡Copiado!', ref_tiers: 'Niveles', ref_rule: 'Un referido se verifica cuando tu invitado confirma su correo. Umbral de acceso: 5 referidos verificados.',
       aff_available: 'Disponible', aff_pending: 'En espera', aff_pending_sub: 'madura a los 7 días', aff_paid: 'Pagado', aff_paying: 'referidos con suscripción activa', aff_forlife: 'de por vida', aff_lead: 'Ganás una comisión recurrente por cada persona que entre con tu enlace y pague una suscripción, mientras siga activa.', aff_wallet: 'Tu billetera', aff_wallet_sub: 'Cobrás en stablecoins (USDC/USDT). Elegí la red que uses.', aff_network: 'Red', aff_asset: 'Moneda', aff_address: 'Dirección', aff_address_ph: 'pegá tu dirección', aff_save_wallet: 'Guardar billetera', aff_wallet_saved: '✓ Billetera guardada', aff_withdraw: 'Retirar', aff_request: 'Solicitar retiro', aff_wd_open: 'Tenés una solicitud de {amt} en proceso.', aff_wd_min: 'Necesitás {min} disponibles para retirar.', aff_wd_cooldown: 'Ya solicitaste un retiro esta semana. Podés pedir el próximo en 7 días.', aff_wd_ready: 'Podés retirar {amt} ahora.', aff_wd_done: '✓ Retiro solicitado. Te avisamos por email cuando salga.', aff_rules: 'Mínimo $50 · un retiro por semana · el saldo queda disponible 7 días después de cada pago.', aff_period: 'Período', aff_referral: 'Referido', aff_plan: 'Plan', aff_commission: 'Comisión', aff_status: 'Estado', aff_st_available: 'disponible', aff_st_paid: 'pagado', aff_st_pending: 'en espera',
+      aff_signups: 'registrados con tu enlace', aff_signups_note: 'Todos los que entraron con tu link, paguen o no. Solo los que pagan una suscripción generan comisión.', aff_signups_h: 'Tus registros', aff_su_date: 'Fecha', aff_su_status: 'Estado', aff_su_sub: 'suscrito', aff_su_verified: 'verificado', aff_su_reg: 'registrado',
+      adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
@@ -525,6 +527,8 @@
       al_events: 'Events', al_channels: 'Channels', al_next: 'Next match', al_start: 'Match start', al_goal: 'Goal', al_result: 'Final result', al_qualify: 'Qualification', al_swing: 'Probability swing', al_value: 'Value opportunity', al_arb: 'Arbitrage', al_email: 'Email', al_telegram: 'Telegram', al_push: 'Push notifications', al_soon: 'soon', al_note: 'Email alerts are active; Telegram and push are coming soon.',
       ref_verified: 'verified referrals', ref_copy: 'Copy link', ref_copied: 'Copied!', ref_tiers: 'Tiers', ref_rule: 'A referral is verified when your invitee confirms their email. Access threshold: 5 verified referrals.',
       aff_available: 'Available', aff_pending: 'Maturing', aff_pending_sub: 'clears after 7 days', aff_paid: 'Paid out', aff_paying: 'referrals with an active subscription', aff_forlife: 'for life', aff_lead: 'You earn a recurring commission for every person who joins with your link and pays for a subscription, as long as it stays active.', aff_wallet: 'Your wallet', aff_wallet_sub: 'You get paid in stablecoins (USDC/USDT). Pick the network you use.', aff_network: 'Network', aff_asset: 'Asset', aff_address: 'Address', aff_address_ph: 'paste your address', aff_save_wallet: 'Save wallet', aff_wallet_saved: '✓ Wallet saved', aff_withdraw: 'Withdraw', aff_request: 'Request withdrawal', aff_wd_open: 'You have a {amt} request in progress.', aff_wd_min: 'You need {min} available to withdraw.', aff_wd_cooldown: 'You already requested a withdrawal this week. Next one in 7 days.', aff_wd_ready: 'You can withdraw {amt} now.', aff_wd_done: '✓ Withdrawal requested. We\'ll email you when it goes out.', aff_rules: 'Min $50 · one withdrawal per week · balance clears 7 days after each payment.', aff_period: 'Period', aff_referral: 'Referral', aff_plan: 'Plan', aff_commission: 'Commission', aff_status: 'Status', aff_st_available: 'available', aff_st_paid: 'paid', aff_st_pending: 'maturing',
+      aff_signups: 'signed up with your link', aff_signups_note: 'Everyone who joined through your link, paying or not. Only paid subscriptions earn commission.', aff_signups_h: 'Your sign-ups', aff_su_date: 'Date', aff_su_status: 'Status', aff_su_sub: 'subscribed', aff_su_verified: 'verified', aff_su_reg: 'signed up',
+      adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
@@ -5527,9 +5531,21 @@
     // link + referidos
     var head = '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
       '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px"><b class="gx-mono" style="font-size:22px">' + a.paying_referrals + '</b><span class="gx-dim">' + esc(t('aff_paying')) + '</span><span class="gx-spacer"></span><span class="gx-clgate ok">' + pct + '% ' + esc(t('aff_forlife')) + '</span></div>' +
+      '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px"><b class="gx-mono" style="font-size:22px">' + (a.signups || 0) + '</b><span class="gx-dim">' + esc(t('aff_signups')) + '</span></div>' +
       '<p class="gx-dim" style="font-size:12.5px;margin:2px 0 14px">' + esc(t('aff_lead')) + '</p>' +
       (link ? '<div class="gx-ref-link"><input id="gx-aff-input" readonly value="' + esc(link) + '"><button class="gx-btn" id="gx-aff-copy">' + ic('copy') + ' ' + esc(t('ref_copy')) + '</button></div>' : '') +
       '</div></div>';
+    // Registros con el link (26-jul): pague o no — el afiliado monitorea su embudo registro→verificado→suscrito
+    var suRows = (a.recent_signups || []).map(function (s) {
+      var st = (s.plan === 'pro' || s.plan === 'sharp') ? '<span class="gx-clgate ok">' + esc(t('aff_su_sub')) + ' · ' + esc(s.plan.toUpperCase()) + '</span>'
+        : s.verified ? '<span class="gx-clgate">' + esc(t('aff_su_verified')) + '</span>'
+          : '<span class="gx-clgate sh">' + esc(t('aff_su_reg')) + '</span>';
+      return '<tr><td class="l gx-dim" style="font-size:11px">' + esc((s.created_at || '').slice(0, 10)) + '</td><td class="l">' + esc(s.email) + '</td><td>' + st + '</td></tr>';
+    }).join('');
+    var suPanel = suRows
+      ? '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('aff_signups_h')) + '</span></div><table class="gx-tbl"><thead><tr><th class="l">' + esc(t('aff_su_date')) + '</th><th class="l">' + esc(t('aff_referral')) + '</th><th>' + esc(t('aff_su_status')) + '</th></tr></thead><tbody>' + suRows + '</tbody></table>' +
+        '<p class="gx-mod-note gx-dim" style="padding:0 14px 12px">' + ic('info-circle') + ' ' + esc(t('aff_signups_note')) + '</p></div>'
+      : '';
     // billetera
     var w = a.wallet;
     var chainOpts = Object.keys(a.chains || {}).map(function (k) { return '<option value="' + k + '"' + (w && w.chain === k ? ' selected' : '') + '>' + esc(a.chains[k]) + '</option>'; }).join('');
@@ -5562,7 +5578,7 @@
       return '<tr><td class="l gx-dim" style="font-size:11px">' + esc(c.period) + '</td><td class="l">' + esc(c.referred) + '</td><td class="l gx-dim" style="font-size:11px">' + esc((c.plan || '').toUpperCase()) + '</td><td class="gx-mono gx-pos">' + money(c.commission) + '</td><td>' + st + '</td></tr>';
     }).join('');
     var hist = rows ? '<div class="gx-panel gx-board"><table class="gx-tbl"><thead><tr><th class="l">' + esc(t('aff_period')) + '</th><th class="l">' + esc(t('aff_referral')) + '</th><th class="l">' + esc(t('aff_plan')) + '</th><th>' + esc(t('aff_commission')) + '</th><th>' + esc(t('aff_status')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '';
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:720px">' + viewHead(t('nav_refer')) + kpis + head + wallet + withdraw + hist + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:720px">' + viewHead(t('nav_refer')) + kpis + head + suPanel + wallet + withdraw + hist + '</div></div>';
     var cp = $('#gx-aff-copy'); if (cp) cp.addEventListener('click', function () { var inp = $('#gx-aff-input'); if (inp) { inp.select(); try { document.execCommand('copy'); } catch (e) {} try { navigator.clipboard.writeText(inp.value); } catch (e) {} cp.innerHTML = ic('check') + ' ' + esc(t('ref_copied')); } });
     var sw = $('#gx-aff-savew'); if (sw) sw.addEventListener('click', function () {
       var msg = $('#gx-aff-wmsg'); sw.disabled = true;
@@ -5786,8 +5802,9 @@
       mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_admin')) + mvLoading() + '</div></div>';
       Promise.all([
         fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-        fetch('/api/admin/users', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-      ]).then(function (res) { S.adminData = { state: res[0] || {}, users: res[1] }; if (S.view === 'admin') renderAdmin(); });
+        fetch('/api/admin/users', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/api/internal/affiliates', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      ]).then(function (res) { S.adminData = { state: res[0] || {}, users: res[1], aff: res[2] }; if (S.view === 'admin') renderAdmin(); });
       return;
     }
     var st = S.adminData.state || {}, uj = S.adminData.users;
@@ -5838,11 +5855,13 @@
         '<div class="gx-adm-actions"><button class="gx-btn ghost" data-adm="tg-test">' + esc(t('adm_tg_test')) + '</button><button class="gx-btn ghost" data-adm="tg-daily">' + esc(t('adm_tg_daily')) + '</button></div>' +
         '<div class="gx-adm-msg" id="gxa-tgmsg"></div>' +
       '</div></div>';
+    // ---- Afiliados (26-jul): subir rate 10→20% a cuentas elegidas + lista + retiros pendientes ----
+    var affAdm = admAffiliatesHtml(S.adminData.aff);
     // ---- Base de usuarios ----
     var users = admUsersHtml(uj);
     // ---- Actividad/retención (lazy: carga al montar) ----
     var analytics = '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_ana')) + '</span></div><div class="gx-mod-body gx-adm-body" id="gxa-ana">' + mvLoading() + '</div></div>';
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + analytics + matchCorrect + users + broadcast + telegram + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + analytics + matchCorrect + affAdm + users + broadcast + telegram + '</div></div>';
     wireAdmin();
     fetch('/api/admin/analytics', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (a) {
       var el = $('#gxa-ana'); if (!el) return;
@@ -5860,6 +5879,52 @@
         '<p class="gx-dim" style="font-size:11.5px;margin-top:8px">' + esc(t('adm_ana_since')) + ': ' + esc(a.tracking_since || '—') + ' · ' + esc(t('adm_ana_nodata')) + '</p>' +
         ((a.habituales || []).length ? '<div class="gx-chips" style="margin-top:8px">' + a.habituales.slice(0, 15).map(function (h) { return '<span class="gx-chip">' + esc(h.email) + ' · ' + h.days + 'd</span>'; }).join('') + '</div>' : '');
     });
+  }
+  // Panel admin de afiliados (26-jul): setear rate custom (hasta 20%), ver lista con embudo y resolver retiros.
+  function admAffiliatesHtml(aj) {
+    var head = '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_aff')) + '</span></div><div class="gx-mod-body gx-adm-body">';
+    if (!aj) return head + '<span class="gx-dim">—</span></div></div>';
+    var money = function (v) { return '$' + Number(v || 0).toFixed(2); };
+    var setter =
+      '<div class="gx-adm-row"><label class="gx-adm-f" style="flex:2"><span>' + esc(t('adm_aff_email')) + '</span><input class="gx-pf-in" id="gxa-affemail" type="email" placeholder="email@..."></label>' +
+      '<label class="gx-adm-f"><span>' + esc(t('adm_aff_rate')) + '</span><input class="gx-pf-in" id="gxa-affrate" type="number" min="1" max="20" step="1" value="20"></label></div>' +
+      '<div class="gx-adm-actions"><button class="gx-btn" data-adm="aff-rate">' + esc(t('adm_aff_apply')) + '</button></div>' +
+      '<p class="gx-dim" style="font-size:11.5px;margin-top:4px">' + esc(t('adm_aff_note')) + '</p>' +
+      '<div class="gx-adm-msg" id="gxa-affmsg"></div>';
+    var rows = (aj.affiliates || []).map(function (a) {
+      return '<tr><td>' + esc(a.affiliate) + '</td><td><b>' + Math.round((a.rate || 0.1) * 100) + '%</b></td><td>' + (a.signups || 0) + '</td><td>' + (a.referrals || 0) + '</td><td class="gx-mono gx-pos">' + money(a.available) + '</td><td class="gx-mono">' + money(a.pending) + '</td><td class="gx-mono">' + money(a.paid) + '</td><td class="gx-dim" style="font-size:11px">' + esc(a.wallet ? (a.wallet.asset + ' · ' + a.wallet.chain) : '—') + '</td></tr>';
+    }).join('');
+    var list = rows
+      ? '<div class="gx-adm-table-wrap" style="margin-top:12px"><table class="gx-adm-table"><thead><tr><th>Email</th><th>%</th><th>' + esc(t('adm_aff_signups')) + '</th><th>' + esc(t('adm_aff_refs')) + '</th><th>' + esc(t('aff_st_available')) + '</th><th>' + esc(t('aff_st_pending')) + '</th><th>' + esc(t('aff_st_paid')) + '</th><th>Wallet</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<p class="gx-dim" style="font-size:12px;margin-top:10px">' + esc(t('adm_aff_empty')) + '</p>';
+    var wds = (aj.pending_withdrawals || []).map(function (w) {
+      return '<div class="gx-adm-row" style="align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px">' +
+        '<span style="font-size:12.5px">' + esc(w.affiliate) + ' · <b class="gx-mono">' + money(w.amount) + '</b> ' + esc(w.asset || '') + ' · ' + esc((w.chain || '') + ' ') + '<span class="gx-mono gx-dim" style="font-size:10.5px">' + esc(w.address || '') + '</span></span>' +
+        '<input class="gx-pf-in" style="flex:1;min-width:120px" id="gxa-tx-' + esc(w.id) + '" placeholder="' + esc(t('adm_aff_tx_ph')) + '">' +
+        '<button class="gx-btn" data-adm="aff-pay" data-wid="' + esc(w.id) + '">' + esc(t('adm_aff_pay')) + '</button>' +
+        '<button class="gx-btn ghost" data-adm="aff-reject" data-wid="' + esc(w.id) + '">' + esc(t('adm_aff_reject')) + '</button></div>';
+    }).join('');
+    var wdBlock = wds ? '<div style="margin-top:14px"><span class="gx-label">' + esc(t('adm_aff_wd')) + '</span>' + wds + '</div>' : '';
+    return head + setter + list + wdBlock + '</div></div>';
+  }
+  function admAffRate() {
+    var em = (($('#gxa-affemail') || {}).value || '').trim().toLowerCase();
+    var pct = Number(($('#gxa-affrate') || {}).value || 0);
+    if (!em || !pct) return admMsg('gxa-affmsg', '✗');
+    admMsg('gxa-affmsg', t('adm_saving'));
+    fetch('/api/internal/affiliates', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ action: 'set_rate', email: em, rate: pct / 100 }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) { admMsg('gxa-affmsg', res.ok ? t('adm_aff_ok') + ' · ' + em + ' → ' + Math.round(res.j.rate * 100) + '%' : '✗ ' + (res.j.error || 'error')); if (res.ok) S.adminData = undefined; })
+      .catch(function () { admMsg('gxa-affmsg', '✗ ' + t('adm_neterr')); });
+  }
+  function admAffWd(action, wid) {
+    var tx = (($('#gxa-tx-' + wid) || {}).value || '').trim();
+    if (!window.confirm(action === 'payout' ? t('adm_aff_pay') + '?' : t('adm_aff_reject') + '?')) return;
+    admMsg('gxa-affmsg', t('adm_saving'));
+    fetch('/api/internal/affiliates', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ action: action, withdrawal_id: wid, tx_hash: tx || undefined }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) { admMsg('gxa-affmsg', res.ok ? '✓' : '✗ ' + (res.j.error || 'error')); if (res.ok) { S.adminData = undefined; if (S.view === 'admin') renderAdmin(); } })
+      .catch(function () { admMsg('gxa-affmsg', '✗ ' + t('adm_neterr')); });
   }
   function admUsersHtml(uj) {
     if (!uj) return '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_users')) + '</span></div><div class="gx-mod-body gx-adm-body"><span class="gx-dim">' + esc(t('adm_users_err')) + '</span></div></div>';
@@ -5891,6 +5956,9 @@
         if (a.indexOf('bc-') === 0) { var parts = a.split('-'); return admBroadcast(parts[1] === 'test', parts[2]); }
         if (a === 'tg-test') return admTelegram('/api/admin/telegram-test');
         if (a === 'tg-daily') return admTelegram('/api/admin/telegram-daily');
+        if (a === 'aff-rate') return admAffRate();
+        if (a === 'aff-pay') return admAffWd('payout', b.getAttribute('data-wid'));
+        if (a === 'aff-reject') return admAffWd('reject', b.getAttribute('data-wid'));
       });
     });
   }

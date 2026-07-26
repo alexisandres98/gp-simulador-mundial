@@ -40,7 +40,7 @@
       a_or: 'o', a_g_wait: 'Entrando…', a_sub_g: 'Sin contraseña. Entra con Google en un toque, o te enviamos un código a tu email.',
       tg_lead: 'Pick gratis todos los días en Telegram', tg_sub: 'Y los resultados de cada pick, ganadas y perdidas. Sin registro.', tg_cta: 'Unirme al canal',
       /* modal registro */
-      a_eye: 'Acceso gratis', a_h: 'Crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
+      a_eye: 'Acceso gratis', a_h: 'Entra o crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
       a_email_l: 'Tu email', a_email_ph: 'tucorreo@email.com', a_send: 'Enviar código',
       a_micro: 'Gratis durante el Mundial · sin tarjeta · sin spam',
       a_sent_h: 'Revisa tu email', a_sent_sub: 'Te enviamos un enlace y un código a <b>{email}</b>. Toca el enlace del correo y entras al instante.',
@@ -97,7 +97,7 @@
       foot_tag: 'Real-time sports intelligence', foot_legal: '© 2026 · Not financial advice',
       a_or: 'or', a_g_wait: 'Signing you in…', a_sub_g: 'No password. Continue with Google in one tap, or we send a code to your email.',
       tg_lead: 'A free pick every day on Telegram', tg_sub: 'Plus every result, wins and losses. No signup needed.', tg_cta: 'Join the channel',
-      a_eye: 'Free access', a_h: 'Create your account', a_sub: 'No password. We email you a code and you’re in instantly.',
+      a_eye: 'Free access', a_h: 'Log in or sign up', a_sub: 'No password. We email you a code and you’re in instantly.',
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
       a_micro: 'Free during the World Cup · no card · no spam',
       a_sent_h: 'Check your email', a_sent_sub: 'We sent a link and a code to <b>{email}</b>. Tap the link in the email to log in instantly.',
@@ -381,7 +381,10 @@
     loadGsi(function () {
       try {
         window.google.accounts.id.initialize({ client_id: GCID, callback: onGoogleCredential, ux_mode: 'popup' });
-        window.google.accounts.id.renderButton(host, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: 360, locale: lang === 'en' ? 'en' : 'es' });
+        // Ancho RESPONSIVE: el iframe de Google no respeta max-width del contenedor — un width fijo de 360
+        // desbordaba la card en móviles chicos y corría el campo de email fuera de pantalla.
+        var gw = Math.max(200, Math.min(360, (host.parentElement && host.parentElement.clientWidth) || 360));
+        window.google.accounts.id.renderButton(host, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: gw, locale: lang === 'en' ? 'en' : 'es' });
       } catch (e) { /* el email sigue siendo el camino principal */ }
     });
   }

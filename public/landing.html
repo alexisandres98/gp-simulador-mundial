@@ -228,7 +228,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(40px,6.4vw,74px);line
 .modal.open{opacity:1;pointer-events:auto}
 .modal-bg{position:absolute;inset:0;background:rgba(3,6,8,.72);backdrop-filter:blur(8px)}
 .modal-card{position:relative;width:100%;max-width:428px;background:linear-gradient(165deg,#0F181D,#0A1114);border:1px solid var(--line2);border-radius:22px;
-  padding:34px 30px 28px;box-shadow:0 50px 100px -40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.06);transform:translateY(18px) scale(.98);opacity:0;transition:transform .32s var(--ease),opacity .32s var(--ease)}
+  overflow:hidden;padding:34px 30px 28px;box-shadow:0 50px 100px -40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.06);transform:translateY(18px) scale(.98);opacity:0;transition:transform .32s var(--ease),opacity .32s var(--ease)}
 .modal.open .modal-card{transform:none;opacity:1}
 .modal-x{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--tx3);cursor:pointer;display:grid;place-items:center;font-size:15px;transition:color .16s,border-color .16s}
 .modal-x:hover{color:var(--tx);border-color:var(--line2)}

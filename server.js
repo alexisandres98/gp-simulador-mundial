@@ -739,9 +739,22 @@ function affSummary(email) {
   const cooldownUntil = (lastReq && ['requested'].includes(withdrawals[0].status)) ? null // hay una pendiente
     : (lastReq ? new Date(lastReq + AFF_WITHDRAW_COOLDOWN_MS).toISOString() : null);
   const openReq = withdrawals.find(w => w.status === 'requested') || null;
+  const code = ensureRefCode(email);
+  // Referidos GRATIS (26-jul, pedido de Alexis): TODO el que se registró con el link del afiliado, pague o no.
+  // No generan comisión ni cuentan como suscriptores — son visibilidad pura para que el afiliado monitoree su
+  // embudo (registros → verificados → suscritos) y trabaje su estrategia.
+  const signups = code ? Object.entries(db.users)
+    .filter(([e, uu]) => uu && uu.ref === code && e !== email)
+    .sort((x, y) => (new Date(y[1].createdAt || 0)) - (new Date(x[1].createdAt || 0))) : []; // createdAt es timestamp numérico
   return {
-    code: ensureRefCode(email), rate: affRate(email),
+    code, rate: affRate(email),
     referrals: activeRefs.size, paying_referrals: new Set(mine.map(c => c.referred)).size,
+    signups: signups.length,
+    recent_signups: signups.slice(0, 30).map(([e, uu]) => ({
+      email: e.replace(/(.).+(@.+)/, '$1***$2'),
+      created_at: uu.createdAt ? new Date(uu.createdAt).toISOString() : null, verified: !!uu.verified,
+      plan: planFor(e), // 'free' hasta que pague; el estado "suscrito" sale de aquí
+    })),
     available, pending, paid,
     wallet: a.wallet || null,
     can_withdraw: available >= AFF_MIN_WITHDRAW && !openReq && (!cooldownUntil || Date.parse(cooldownUntil) <= Date.now()),
@@ -9665,12 +9678,19 @@ const server = http.createServer(async (req, res) => {
       affMatureCommissions();
       if (req.method === 'GET') {
         const byAff = {};
+        const mkAff = (em) => (byAff[em] = byAff[em] || { affiliate: em, rate: affRate(em), referrals: new Set(), available: 0, pending: 0, paid: 0, wallet: (db.affiliates[em] || {}).wallet || null });
         for (const c of db.affCommissions) {
-          const a = byAff[c.affiliate] = byAff[c.affiliate] || { affiliate: c.affiliate, rate: affRate(c.affiliate), referrals: new Set(), available: 0, pending: 0, paid: 0, wallet: (db.affiliates[c.affiliate] || {}).wallet || null };
+          const a = mkAff(c.affiliate);
           a.referrals.add(c.referred);
           a[c.status] = +(a[c.status] + c.commission).toFixed(2);
         }
-        const affiliates = Object.values(byAff).map(a => ({ ...a, referrals: a.referrals.size }));
+        // También los afiliados con rate custom/billetera SIN comisiones todavía (si no, un influencer recién
+        // configurado no aparece en la lista y el admin no puede verificar su rate).
+        for (const em of Object.keys(db.affiliates)) mkAff(em);
+        // Registros gratis por código (visibilidad del embudo, mismo dato que ve el afiliado en su panel)
+        const byCode = {};
+        for (const uu of Object.values(db.users)) if (uu && uu.ref) byCode[uu.ref] = (byCode[uu.ref] || 0) + 1;
+        const affiliates = Object.values(byAff).map(a => ({ ...a, referrals: a.referrals.size, signups: byCode[(db.users[a.affiliate] || {}).refCode] || 0 }));
         const pendingWithdrawals = db.affWithdrawals.filter(w => w.status === 'requested');
         return json(res, 200, { enabled: affiliatesOn(), affiliates, pending_withdrawals: pendingWithdrawals, all_withdrawals: db.affWithdrawals.slice(-40), totals: { available: affiliates.reduce((s, a) => s + a.available, 0), pending: affiliates.reduce((s, a) => s + a.pending, 0) } });
       }

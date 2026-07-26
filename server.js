@@ -8384,18 +8384,30 @@ const server = http.createServer(async (req, res) => {
             const com = affRecordCommission({ referredEmail: email, plan, amountUsd: amt });
             if (com) ev.affiliate_commission = { to: com.affiliate, commission: com.commission };
           } catch (e) { /* la comisión nunca rompe el webhook */ }
-          // BIENVENIDA FOUNDER (primera activación): refuerza la compra al instante — status founder, qué
-          // tiene, y el precio congelado. Reduce el arrepentimiento post-compra. No bloquea el webhook.
+          // BIENVENIDA (primera activación). El copy depende del plan comprado: founder (precio congelado),
+          // cripto (pago único de 30 días, sin renovación) o público normal. No bloquea el webhook.
           if (isNewGrant && mailer.isConfigured()) {
             const en = userLang(email) === 'en';
             const planN = plan === 'sharp' ? 'Sharp' : 'Pro';
+            const isFounderPlan = csv('WHOP_FOUNDER_PLAN_IDS').includes(planId);
+            const isCryptoPlan = [process.env.WHOP_PLAN_PRO_CRYPTO, process.env.WHOP_PLAN_SHARP_CRYPTO].filter(Boolean).includes(planId);
+            const subject = isFounderPlan
+              ? (en ? `You're in: Founder ${planN} activated ★` : `Ya estás dentro: Founder ${planN} activado ★`)
+              : (en ? `You're in: ${planN} activated` : `Ya estás dentro: ${planN} activado`);
+            const lead = isFounderPlan
+              ? (en ? `Welcome to the first 100.\n\nYour Founder ${planN} is active and your price is locked for life: it will never go up while your subscription stays active, even when public prices rise after the World Cup.` : `Bienvenido a los primeros 100.\n\nTu Founder ${planN} está activo y tu precio quedó congelado de por vida: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.`)
+              : isCryptoPlan
+                ? (en ? `Your ${planN} is active for the next 30 days.\n\nYou paid with crypto, so there is no auto-renewal and no card on file: when the 30 days end, your account simply goes back to Free and you can buy another month whenever you want.` : `Tu ${planN} quedó activo por los próximos 30 días.\n\nPagaste con cripto, así que no hay renovación automática ni tarjeta guardada: cuando terminen los 30 días tu cuenta vuelve sola a Free y podés comprar otro mes cuando quieras.`)
+                : (en ? `Your ${planN} is active.\n\nEverything in your plan is unlocked right now, and you can cancel anytime from My subscription.` : `Tu ${planN} está activo.\n\nTodo lo de tu plan quedó desbloqueado ya mismo, y podés cancelar cuando quieras desde Mi suscripción.`);
+            const whopNote = en
+              ? `One detail: the payment is processed by Whop, so their receipt arrives in a separate email. You do not need their app or their site for anything: your subscription is fully managed inside gpsimulador.com, under My subscription.`
+              : `Un detalle: el pago lo procesa Whop, así que su recibo te llega en un correo aparte. No necesitás su app ni su web para nada: tu suscripción se gestiona completa dentro de gpsimulador.com, en Mi suscripción.`;
+            const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             mailer.sendMail({
               to: email, noListUnsub: true,
-              subject: en ? `You're in: Founder ${planN} activated ★` : `Ya estás dentro: Founder ${planN} activado ★`,
-              text: en
-                ? `Welcome to the first 100.\n\nYour Founder ${planN} is active and your price is locked for life: it will never go up while your subscription stays active, even when public prices rise after the World Cup.\n\nWhat you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.\n\nOne detail: the payment is processed by Whop, so their receipt arrives in a separate email. You do not need their app or their site for anything: your subscription is fully managed inside gpsimulador.com, under My subscription.\n\nYour board: https://gpsimulador.com\nYour subscription: https://gpsimulador.com/#sub\n\nAny questions, just reply to this email.\n\nAlexis · GP Simulador`
-                : `Bienvenido a los primeros 100.\n\nTu Founder ${planN} está activo y tu precio quedó congelado de por vida: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.\n\nLo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.\n\nUn detalle: el pago lo procesa Whop, así que su recibo te llega en un correo aparte. No necesitás su app ni su web para nada: tu suscripción se gestiona completa dentro de gpsimulador.com, en Mi suscripción.\n\nTu tablero: https://gpsimulador.com\nTu suscripción: https://gpsimulador.com/#sub\n\nCualquier duda, respondé este correo.\n\nAlexis · GP Simulador`,
-              html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a"><h2 style="color:#0BA661">${en ? `You're in: Founder ${planN} ★` : `Ya estás dentro: Founder ${planN} ★`}</h2><p>${en ? 'Welcome to the first 100. Your price is <b>locked for life</b>: it never goes up while your subscription stays active, even when public prices rise after the World Cup.' : 'Bienvenido a los primeros 100. Tu precio quedó <b>congelado de por vida</b>: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.'}</p><p>${en ? 'What you have now: the full platform during the World Cup, and when the club calendar starts, everything in your plan at your frozen price.' : 'Lo que tenés ahora: la plataforma completa durante el Mundial, y cuando arranque el calendario de clubes, todo lo de tu plan a tu precio congelado.'}</p><p style="font-size:13px;color:#666;background:#f6f8f7;border-radius:10px;padding:10px 14px">${en ? 'One detail: the payment is processed by Whop, so their receipt arrives in a separate email. You do not need their app or their site for anything: your subscription is fully managed inside gpsimulador.com, under <b>My subscription</b>.' : 'Un detalle: el pago lo procesa Whop, así que su recibo te llega en un correo aparte. No necesitás su app ni su web para nada: tu suscripción se gestiona completa dentro de gpsimulador.com, en <b>Mi suscripción</b>.'}</p><p style="text-align:center;margin:22px 0"><a href="https://gpsimulador.com" style="display:inline-block;background:#0BA661;color:#fff;font-weight:bold;padding:13px 30px;border-radius:99px;text-decoration:none">${en ? 'Open my board →' : 'Abrir mi tablero →'}</a></p><p style="font-size:12.5px;color:#888">${en ? 'Any questions, just reply to this email.' : 'Cualquier duda, respondé este correo.'}</p></div>`,
+              subject,
+              text: `${lead}\n\n${whopNote}\n\n${en ? 'Your board: https://gpsimulador.com\nYour subscription: https://gpsimulador.com/#sub\n\nAny questions, just reply to this email.' : 'Tu tablero: https://gpsimulador.com\nTu suscripción: https://gpsimulador.com/#sub\n\nCualquier duda, respondé este correo.'}\n\nAlexis · GP Simulador`,
+              html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a"><h2 style="color:#0BA661">${esc(subject)}</h2><p>${esc(lead).replace(/\n\n/g, '</p><p>')}</p><p style="font-size:13px;color:#666;background:#f6f8f7;border-radius:10px;padding:10px 14px">${esc(whopNote)}</p><p style="text-align:center;margin:22px 0"><a href="https://gpsimulador.com" style="display:inline-block;background:#0BA661;color:#fff;font-weight:bold;padding:13px 30px;border-radius:99px;text-decoration:none">${en ? 'Open my board →' : 'Abrir mi tablero →'}</a></p><p style="font-size:12.5px;color:#888">${en ? 'Any questions, just reply to this email.' : 'Cualquier duda, respondé este correo.'}</p></div>`,
             }).catch(e => console.error('[whop] welcome email falló:', e.message));
           }
         } else if (email && invalid && db.premiumGrants[email]) {
@@ -10477,6 +10489,7 @@ const server = http.createServer(async (req, res) => {
         const W = {
           pro_m: process.env.WHOP_PLAN_PRO_M || '', pro_y: process.env.WHOP_PLAN_PRO_Y || '',
           sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '',
+          pro_c: process.env.WHOP_PLAN_PRO_CRYPTO || '', sharp_c: process.env.WHOP_PLAN_SHARP_CRYPTO || '',
           left: await whopFounderSpotsLeft().catch(() => null),
           plan: sessEmail ? planFor(sessEmail) : null, // plan ACTUAL del usuario → la página marca "Tu plan actual" en el correcto
         };
@@ -10495,6 +10508,9 @@ const server = http.createServer(async (req, res) => {
       const PLANS = {
         pro_m: process.env.WHOP_PLAN_PRO_M, pro_y: process.env.WHOP_PLAN_PRO_Y,
         sharp_m: process.env.WHOP_PLAN_SHARP_M, sharp_y: process.env.WHOP_PLAN_SHARP_Y,
+        // Cripto (26-jul): planes ONE-TIME de 30 días (Whop solo soporta cripto en pagos únicos vía Coinbase
+        // Commerce). Al expirar, Whop manda el webhook de expiración → el grant cae solo → el usuario re-compra.
+        pro_c: process.env.WHOP_PLAN_PRO_CRYPTO, sharp_c: process.env.WHOP_PLAN_SHARP_CRYPTO,
       };
       const planId = PLANS[String(url.searchParams.get('plan') || '')];
       if (!planId) { json(res, 400, { error: 'plan inválido' }); return; }

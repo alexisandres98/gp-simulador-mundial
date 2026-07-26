@@ -30,9 +30,11 @@
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
       lock_player_s: 'Los perfiles de jugador con radar de scouting y proyecciones son parte de los planes Pro y Sharp.',
       lock_calc_s: 'La calculadora de stake con gestión de bankroll es parte de los planes Pro y Sharp.',
-      onb_1t: 'Tu pick del día', onb_1s: 'Cada día publicamos las jugadas del modelo — gratis durante el Mundial. La de hoy ya te espera en el board.',
-      onb_2t: 'Seguí a tu selección', onb_2s: 'Marcá tus equipos con la estrella para verlos primero y no perderte sus partidos.',
-      onb_3t: 'Activá las alertas', onb_3s: 'Goles, inicio de partido y novedades directo a tu email.',
+      onb_1t: 'Las picks del día', onb_1s: 'El modelo publica jugadas verificadas cada día en 24 ligas, con historial público de aciertos y errores. Tu pick gratis diaria te espera en el board.',
+      onb_2t: 'Cada partido, a fondo', onb_2s: 'Entrá a cualquier partido: probabilidades en vivo, goles esperados, alineaciones, bajas y contexto. Un cockpit de análisis completo.',
+      onb_3t: 'Value y Arbitraje', onb_3s: 'El escáner compara 40+ casas en tiempo real y encuentra cuotas que pagan de más y jugadas cubiertas entre casas.',
+      onb_4t: 'Mi cartera', onb_4s: 'Registrá tus apuestas y mirá tu rendimiento real: ganancia, ROI y racha, todo en un solo lugar.',
+      onb_sharp: 'Disponible en Sharp',
       onb_next: 'Siguiente', onb_done: '¡Listo, empezar!', onb_skip: 'Saltar',
       adm_ana: 'ACTIVIDAD · RETENCIÓN', adm_ana_today: 'Activos hoy', adm_ana_d1: 'Retención D1', adm_ana_d7: 'Retención D7', adm_ana_hab: 'Vuelven a diario (4+ de 7 días)', adm_ana_since: 'Midiendo desde', adm_ana_nodata: 'Acumulando datos — las métricas maduran con los días.',
       lock_more_picks: '{n} picks más hoy', lock_more_picks_s: 'Disponibles en los planes Pro y Sharp.',
@@ -226,6 +228,7 @@
       aff_available: 'Disponible', aff_pending: 'En espera', aff_pending_sub: 'madura a los 7 días', aff_paid: 'Pagado', aff_paying: 'referidos con suscripción activa', aff_forlife: 'de por vida', aff_lead: 'Ganás una comisión recurrente por cada persona que entre con tu enlace y pague una suscripción, mientras siga activa.', aff_wallet: 'Tu billetera', aff_wallet_sub: 'Cobrás en stablecoins (USDC/USDT). Elegí la red que uses.', aff_network: 'Red', aff_asset: 'Moneda', aff_address: 'Dirección', aff_address_ph: 'pegá tu dirección', aff_save_wallet: 'Guardar billetera', aff_wallet_saved: '✓ Billetera guardada', aff_withdraw: 'Retirar', aff_request: 'Solicitar retiro', aff_wd_open: 'Tenés una solicitud de {amt} en proceso.', aff_wd_min: 'Necesitás {min} disponibles para retirar.', aff_wd_cooldown: 'Ya solicitaste un retiro esta semana. Podés pedir el próximo en 7 días.', aff_wd_ready: 'Podés retirar {amt} ahora.', aff_wd_done: '✓ Retiro solicitado. Te avisamos por email cuando salga.', aff_rules: 'Mínimo $50 · un retiro por semana · el saldo queda disponible 7 días después de cada pago.', aff_period: 'Período', aff_referral: 'Referido', aff_plan: 'Plan', aff_commission: 'Comisión', aff_status: 'Estado', aff_st_available: 'disponible', aff_st_paid: 'pagado', aff_st_pending: 'en espera',
       aff_signups: 'registrados con tu enlace', aff_signups_note: 'Todos los que entraron con tu link, paguen o no. Solo los que pagan una suscripción generan comisión.', aff_signups_h: 'Tus registros', aff_su_date: 'Fecha', aff_su_status: 'Estado', aff_su_sub: 'suscrito', aff_su_verified: 'verificado', aff_su_reg: 'registrado',
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
+      adm_grant_plan: 'Suscripción manual', adm_grant_give: 'Dar plan', adm_grant_revoke: 'Quitar plan', adm_grant_ok: '✓ Aplicado', adm_grant_note: 'Da acceso Pro/Sharp sin pago (usa el email de arriba). Para influencers o cortesías. "Quitar plan" lo regresa a Free.',
       ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
       perf_total: 'Evaluados', perf_hits: 'Aciertos', perf_exact: 'Marcador exacto', perf_vs_market: 'GP vs mercado', perf_hitrate: '% de aciertos (1X2)',
@@ -333,9 +336,11 @@
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
       lock_player_s: 'Player profiles with scouting radar and projections are part of the Pro and Sharp plans.',
       lock_calc_s: 'The stake calculator with bankroll management is part of the Pro and Sharp plans.',
-      onb_1t: 'Your pick of the day', onb_1s: "Every day we publish the model's plays — free during the World Cup. Today's is already waiting on the board.",
-      onb_2t: 'Follow your team', onb_2s: 'Star your teams to see them first and never miss their matches.',
-      onb_3t: 'Turn on alerts', onb_3s: 'Goals, kickoffs and updates straight to your email.',
+      onb_1t: "Today's picks", onb_1s: 'The model publishes verified plays every day across 24 leagues, with a public track record of hits and misses. Your free daily pick is waiting on the board.',
+      onb_2t: 'Every match, in depth', onb_2s: 'Open any match: live probabilities, expected goals, lineups, injuries and context. A full analysis cockpit.',
+      onb_3t: 'Value & Arbitrage', onb_3s: 'The scanner compares 40+ sportsbooks in real time to find overpaying odds and covered plays across books.',
+      onb_4t: 'My bets', onb_4s: 'Log your bets and see your real performance: profit, ROI and streak, all in one place.',
+      onb_sharp: 'Available on Sharp',
       onb_next: 'Next', onb_done: "Let's go!", onb_skip: 'Skip',
       adm_ana: 'ACTIVITY · RETENTION', adm_ana_today: 'Active today', adm_ana_d1: 'D1 retention', adm_ana_d7: 'D7 retention', adm_ana_hab: 'Daily returners (4+ of 7 days)', adm_ana_since: 'Tracking since', adm_ana_nodata: 'Accumulating data — metrics mature over the days.',
       lock_more_picks: '{n} more picks today', lock_more_picks_s: 'Available on the Pro and Sharp plans.',
@@ -529,6 +534,7 @@
       aff_available: 'Available', aff_pending: 'Maturing', aff_pending_sub: 'clears after 7 days', aff_paid: 'Paid out', aff_paying: 'referrals with an active subscription', aff_forlife: 'for life', aff_lead: 'You earn a recurring commission for every person who joins with your link and pays for a subscription, as long as it stays active.', aff_wallet: 'Your wallet', aff_wallet_sub: 'You get paid in stablecoins (USDC/USDT). Pick the network you use.', aff_network: 'Network', aff_asset: 'Asset', aff_address: 'Address', aff_address_ph: 'paste your address', aff_save_wallet: 'Save wallet', aff_wallet_saved: '✓ Wallet saved', aff_withdraw: 'Withdraw', aff_request: 'Request withdrawal', aff_wd_open: 'You have a {amt} request in progress.', aff_wd_min: 'You need {min} available to withdraw.', aff_wd_cooldown: 'You already requested a withdrawal this week. Next one in 7 days.', aff_wd_ready: 'You can withdraw {amt} now.', aff_wd_done: '✓ Withdrawal requested. We\'ll email you when it goes out.', aff_rules: 'Min $50 · one withdrawal per week · balance clears 7 days after each payment.', aff_period: 'Period', aff_referral: 'Referral', aff_plan: 'Plan', aff_commission: 'Commission', aff_status: 'Status', aff_st_available: 'available', aff_st_paid: 'paid', aff_st_pending: 'maturing',
       aff_signups: 'signed up with your link', aff_signups_note: 'Everyone who joined through your link, paying or not. Only paid subscriptions earn commission.', aff_signups_h: 'Your sign-ups', aff_su_date: 'Date', aff_su_status: 'Status', aff_su_sub: 'subscribed', aff_su_verified: 'verified', aff_su_reg: 'signed up',
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
+      adm_grant_plan: 'Manual subscription', adm_grant_give: 'Grant plan', adm_grant_revoke: 'Remove plan', adm_grant_ok: '✓ Applied', adm_grant_note: 'Grants Pro/Sharp access without payment (uses the email above). For influencers or comps. "Remove plan" sets them back to Free.',
       ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
       perf_total: 'Evaluated', perf_hits: 'Hits', perf_exact: 'Exact score', perf_vs_market: 'GP vs market', perf_hitrate: 'Hit rate (1X2)',
@@ -2551,10 +2557,14 @@
   }
   function showOnboard() {
     if (document.getElementById('gx-onb')) return;
+    // 26-jul (pedido de Alexis): el tour muestra los MEJORES features — picks, cockpit de partidos, Value/Arb
+    // y Mi cartera (los Sharp llevan chip "Disponible en Sharp") — en vez de seguidos/alertas: mucha gente
+    // entraba sin enterarse de todo lo que ofrece la plataforma.
     var steps = [
-      { ic: 'target-arrow', t: 'onb_1t', s: 'onb_1s' },
-      { ic: 'star', t: 'onb_2t', s: 'onb_2s' },
-      { ic: 'bell', t: 'onb_3t', s: 'onb_3s' },
+      { ic: 'ticket', t: 'onb_1t', s: 'onb_1s' },
+      { ic: 'ball-football', t: 'onb_2t', s: 'onb_2s' },
+      { ic: 'trending-up', t: 'onb_3t', s: 'onb_3s', sharp: true },
+      { ic: 'wallet', t: 'onb_4t', s: 'onb_4s', sharp: true },
     ];
     var i = 0;
     var wrap = document.createElement('div'); wrap.id = 'gx-onb'; wrap.className = 'gx-onb';
@@ -2562,7 +2572,7 @@
       var st = steps[i];
       wrap.innerHTML = '<div class="gx-onb-bg"></div><div class="gx-onb-card">' +
         '<div class="gx-onb-ic">' + ic(st.ic) + '</div>' +
-        '<h3>' + esc(t(st.t)) + '</h3><p>' + esc(t(st.s)) + '</p>' +
+        '<h3>' + esc(t(st.t)) + '</h3>' + (st.sharp ? '<span class="gx-onb-chip">' + ic('crown') + ' ' + esc(t('onb_sharp')) + '</span>' : '') + '<p>' + esc(t(st.s)) + '</p>' +
         '<div class="gx-onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
         '<button class="gx-btn gx-onb-cta" id="gx-onb-next">' + esc(t(i === steps.length - 1 ? 'onb_done' : 'onb_next')) + '</button>' +
         '<button class="gx-onb-skip" id="gx-onb-skip">' + esc(t('onb_skip')) + '</button></div>';
@@ -5803,8 +5813,9 @@
       Promise.all([
         fetch('/api/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
         fetch('/api/admin/users', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-        fetch('/api/internal/affiliates', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-      ]).then(function (res) { S.adminData = { state: res[0] || {}, users: res[1], aff: res[2] }; if (S.view === 'admin') renderAdmin(); });
+        fetch('/api/internal/affiliates', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/api/admin/grants', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      ]).then(function (res) { S.adminData = { state: res[0] || {}, users: res[1], aff: res[2], grants: res[3] }; if (S.view === 'admin') renderAdmin(); });
       return;
     }
     var st = S.adminData.state || {}, uj = S.adminData.users;
@@ -5856,7 +5867,7 @@
         '<div class="gx-adm-msg" id="gxa-tgmsg"></div>' +
       '</div></div>';
     // ---- Afiliados (26-jul): subir rate 10→20% a cuentas elegidas + lista + retiros pendientes ----
-    var affAdm = admAffiliatesHtml(S.adminData.aff);
+    var affAdm = admAffiliatesHtml(S.adminData.aff, S.adminData.grants);
     // ---- Base de usuarios ----
     var users = admUsersHtml(uj);
     // ---- Actividad/retención (lazy: carga al montar) ----
@@ -5880,8 +5891,9 @@
         ((a.habituales || []).length ? '<div class="gx-chips" style="margin-top:8px">' + a.habituales.slice(0, 15).map(function (h) { return '<span class="gx-chip">' + esc(h.email) + ' · ' + h.days + 'd</span>'; }).join('') + '</div>' : '');
     });
   }
-  // Panel admin de afiliados (26-jul): setear rate custom (hasta 20%), ver lista con embudo y resolver retiros.
-  function admAffiliatesHtml(aj) {
+  // Panel admin de afiliados (26-jul): setear rate custom (hasta 20%), dar/quitar plan manual (paquete
+  // influencer: comisión + suscripción gratis), ver lista con embudo y resolver retiros.
+  function admAffiliatesHtml(aj, gj) {
     var head = '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_aff')) + '</span></div><div class="gx-mod-body gx-adm-body">';
     if (!aj) return head + '<span class="gx-dim">—</span></div></div>';
     var money = function (v) { return '$' + Number(v || 0).toFixed(2); };
@@ -5890,6 +5902,14 @@
       '<label class="gx-adm-f"><span>' + esc(t('adm_aff_rate')) + '</span><input class="gx-pf-in" id="gxa-affrate" type="number" min="1" max="20" step="1" value="20"></label></div>' +
       '<div class="gx-adm-actions"><button class="gx-btn" data-adm="aff-rate">' + esc(t('adm_aff_apply')) + '</button></div>' +
       '<p class="gx-dim" style="font-size:11.5px;margin-top:4px">' + esc(t('adm_aff_note')) + '</p>' +
+      // Suscripción manual (mismo email de arriba): dar Pro/Sharp gratis o quitarla
+      '<div class="gx-adm-row" style="margin-top:10px;align-items:flex-end"><label class="gx-adm-f"><span>' + esc(t('adm_grant_plan')) + '</span><select class="gx-select" id="gxa-grplan"><option value="pro">Pro</option><option value="sharp" selected>Sharp</option></select></label>' +
+      '<button class="gx-btn" data-adm="grant-give">' + esc(t('adm_grant_give')) + '</button>' +
+      '<button class="gx-btn ghost" data-adm="grant-revoke">' + esc(t('adm_grant_revoke')) + '</button></div>' +
+      '<p class="gx-dim" style="font-size:11.5px;margin-top:4px">' + esc(t('adm_grant_note')) + '</p>' +
+      ((gj && gj.grants || []).filter(function (g) { return g.status === 'active'; }).length
+        ? '<div class="gx-chips" style="margin-top:6px">' + gj.grants.filter(function (g) { return g.status === 'active'; }).map(function (g) { return '<span class="gx-chip">' + esc(g.email) + ' · <b>' + esc((g.plan || '').toUpperCase()) + '</b>' + (g.source === 'admin' ? ' · admin' : '') + '</span>'; }).join('') + '</div>'
+        : '') +
       '<div class="gx-adm-msg" id="gxa-affmsg"></div>';
     var rows = (aj.affiliates || []).map(function (a) {
       return '<tr><td>' + esc(a.affiliate) + '</td><td><b>' + Math.round((a.rate || 0.1) * 100) + '%</b></td><td>' + (a.signups || 0) + '</td><td>' + (a.referrals || 0) + '</td><td class="gx-mono gx-pos">' + money(a.available) + '</td><td class="gx-mono">' + money(a.pending) + '</td><td class="gx-mono">' + money(a.paid) + '</td><td class="gx-dim" style="font-size:11px">' + esc(a.wallet ? (a.wallet.asset + ' · ' + a.wallet.chain) : '—') + '</td></tr>';
@@ -5915,6 +5935,18 @@
     fetch('/api/internal/affiliates', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ action: 'set_rate', email: em, rate: pct / 100 }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) { admMsg('gxa-affmsg', res.ok ? t('adm_aff_ok') + ' · ' + em + ' → ' + Math.round(res.j.rate * 100) + '%' : '✗ ' + (res.j.error || 'error')); if (res.ok) S.adminData = undefined; })
+      .catch(function () { admMsg('gxa-affmsg', '✗ ' + t('adm_neterr')); });
+  }
+  // Dar/quitar suscripción manual (usa /api/admin/grants, que ya existía desde el 4-jul; solo faltaba la UI)
+  function admGrant(revoke) {
+    var em = (($('#gxa-affemail') || {}).value || '').trim().toLowerCase();
+    if (!em) return admMsg('gxa-affmsg', '✗ email');
+    var plan = ($('#gxa-grplan') || {}).value || 'sharp';
+    if (!window.confirm((revoke ? t('adm_grant_revoke') : t('adm_grant_give') + ' ' + plan.toUpperCase()) + ' → ' + em + '?')) return;
+    admMsg('gxa-affmsg', t('adm_saving'));
+    fetch('/api/admin/grants', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify(revoke ? { action: 'revoke', email: em } : { email: em, plan: plan }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) { admMsg('gxa-affmsg', res.ok ? t('adm_grant_ok') + ' · ' + em + ' → ' + (res.j.plan || 'free').toUpperCase() : '✗ ' + (res.j.error || 'error')); if (res.ok) S.adminData = undefined; })
       .catch(function () { admMsg('gxa-affmsg', '✗ ' + t('adm_neterr')); });
   }
   function admAffWd(action, wid) {
@@ -5959,6 +5991,7 @@
         if (a === 'aff-rate') return admAffRate();
         if (a === 'aff-pay') return admAffWd('payout', b.getAttribute('data-wid'));
         if (a === 'aff-reject') return admAffWd('reject', b.getAttribute('data-wid'));
+        if (a === 'grant-give' || a === 'grant-revoke') return admGrant(a === 'grant-revoke');
       });
     });
   }

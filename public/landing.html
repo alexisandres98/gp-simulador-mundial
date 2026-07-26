@@ -359,7 +359,9 @@ body.v3 .tr.big span{color:var(--tx2)}
 }
 @media(max-width:560px){
   .hero{padding:48px 0 24px}.scan{grid-template-columns:1fr}.scan-stat b{font-size:34px}
-  .nav .blink{display:none}.final-card{padding:44px 22px}.demo-foot .dl{max-width:100%}
+  /* El botón Entrar SÍ se muestra en móvil (antes display:none → quien venía a hacer login solo veía "Crear cuenta") */
+  .nav .blink{font-size:13px;padding:8px 2px}.nav .btn{padding:9px 12px;font-size:13px}
+  .final-card{padding:44px 22px}.demo-foot .dl{max-width:100%}
 }
 </style>
 </head>

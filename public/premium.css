@@ -1240,6 +1240,7 @@ td .gx-calc-btn span { display: none; }
 .gx-onb-ic { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 16px; background: rgba(31,227,164,.12); border: 1px solid rgba(31,227,164,.45); display: grid; place-items: center; color: var(--gx-accent); font-size: 24px; }
 .gx-onb-card h3 { font-family: var(--gx-display, inherit); font-size: 19px; font-weight: 700; }
 .gx-onb-card p { color: var(--gx-text2); font-size: 13.5px; line-height: 1.55; margin-top: 8px; min-height: 42px; }
+.gx-onb-chip { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 4px 11px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--gx-accent); background: rgba(31,227,164,.10); border: 1px solid rgba(31,227,164,.4); }
 .gx-onb-dots { display: flex; justify-content: center; gap: 7px; margin: 16px 0; }
 .gx-onb-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--gx-line2); }
 .gx-onb-dots i.on { background: var(--gx-accent); }

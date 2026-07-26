@@ -61,6 +61,8 @@ h1 b { color:var(--ac); }
 .plan:not(.hl) .pcta.live { background:rgba(31,227,164,.14); color:var(--ac); border:1px solid var(--acl); }
 .annual a { color:var(--tx2); }
 .pcta-note { text-align:center; margin-top:9px; font-size:11px; color:var(--tx3); }
+.pcta-crypto { display:block; margin-top:10px; text-align:center; text-decoration:none; font-weight:700; font-size:13px; padding:11px; border-radius:12px; color:var(--tx2); background:rgba(255,255,255,.04); border:1px dashed var(--line2); transition:color .14s, border-color .14s; }
+.pcta-crypto:hover { color:var(--ac); border-color:var(--acl); }
 .faq { margin-top:70px; }
 .faq h2 { font-family:var(--disp); font-size:24px; font-weight:700; letter-spacing:-.02em; text-align:center; }
 .qs { max-width:640px; margin:26px auto 0; display:flex; flex-direction:column; gap:10px; }
@@ -115,6 +117,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       badge: 'Más popular',
       mo: '/mes', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
       cta_free: 'Tu plan actual', cta_current: 'Tu plan actual', cta_included: 'Incluido en tu plan', cta_upgrade: 'Mejorar a Sharp', cta: 'Muy pronto', cta_buy: 'Suscribirme', cta_note: 'Disponible muy pronto', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras',
+      cta_crypto: '₿ Pagar con cripto · 1 mes', cta_crypto_note: 'BTC, USDC, USDT y más · pago único de 30 días, sin tarjeta ni renovación automática',
       f_free: [
         ['on', '1 pick del día (con delay), solo ganador'],
         ['on', 'Probabilidades de cada partido'],
@@ -166,6 +169,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       badge: 'Most popular',
       mo: '/mo', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
       cta_free: 'Your current plan', cta_current: 'Your current plan', cta_included: 'Included in your plan', cta_upgrade: 'Upgrade to Sharp', cta: 'Coming soon', cta_buy: 'Subscribe', cta_note: 'Available soon', cta_note_live: 'Secure payment via Whop · cancel anytime',
+      cta_crypto: '₿ Pay with crypto · 1 month', cta_crypto_note: 'BTC, USDC, USDT & more · one-time 30-day payment, no card, no auto-renewal',
       f_free: [
         ['on', '1 pick a day (delayed), winner only'],
         ['on', 'Probabilities for every match'],
@@ -222,12 +226,15 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     // que tiene, "Incluido" en los inferiores, checkout/upgrade en los superiores. Sin sesión → checkout normal.
     var RANK = { free: 0, pro: 1, sharp: 2 };
     var cur = W.plan;
-    var planBtn = function (planKey, mId, coKey) {
+    // Cripto (26-jul): pago ÚNICO de 30 días vía Coinbase Commerce en Whop (cripto no soporta renovación
+    // automática) — para el público sin tarjeta. Al vencer, el plan cae solo a Free y la persona re-compra.
+    var cryptoLink = function (cId, cKey) { return cId ? '<a class="pcta-crypto" href="' + co(cKey) + '">' + T('cta_crypto') + '</a><div class="pcta-note">' + T('cta_crypto_note') + '</div>' : ''; };
+    var planBtn = function (planKey, mId, coKey, cId, cKey) {
       if (planKey === 'free') return '<button class="pcta" disabled>' + T((cur === 'pro' || cur === 'sharp') ? 'cta_included' : 'cta_current') + '</button><div class="pcta-note">&nbsp;</div>';
       if (cur === planKey) return '<button class="pcta" disabled>' + T('cta_current') + '</button><div class="pcta-note">&nbsp;</div>';
       if (cur && RANK[planKey] < RANK[cur]) return '<button class="pcta" disabled>' + T('cta_included') + '</button><div class="pcta-note">&nbsp;</div>';
       var label = (cur === 'pro' && planKey === 'sharp') ? T('cta_upgrade') : T('cta_buy');
-      return (mId ? '<a class="pcta live" href="' + co(coKey) + '">' + label + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>') + note(mId);
+      return (mId ? '<a class="pcta live" href="' + co(coKey) + '">' + label + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>') + note(mId) + cryptoLink(cId, cKey);
     };
     document.getElementById('plans').innerHTML =
       '<div class="plan' + (cur === 'free' ? ' cur' : '') + '"><div class="pname">' + T('free_name') + '</div>' +
@@ -238,12 +245,12 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         '<div class="price"><span class="n">$19</span><span class="per">' + T('mo') + '</span></div>' +
         annual(W.pro_y, 'pro_y', T('annual_pro')) +
         feats(T('f_pro')) +
-        planBtn('pro', W.pro_m, 'pro_m') + '</div>' +
+        planBtn('pro', W.pro_m, 'pro_m', W.pro_c, 'pro_c') + '</div>' +
       '<div class="plan' + (cur === 'sharp' ? ' cur' : '') + '"><div class="pname">' + T('sharp_name') + '</div>' +
         '<div class="price"><span class="n">$59</span><span class="per">' + T('mo') + '</span></div>' +
         annual(W.sharp_y, 'sharp_y', T('annual_sharp')) +
         feats(T('f_sharp')) +
-        planBtn('sharp', W.sharp_m, 'sharp_m') + '</div>';
+        planBtn('sharp', W.sharp_m, 'sharp_m', W.sharp_c, 'sharp_c') + '</div>';
     document.getElementById('faqs').innerHTML = T('faqs').map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('');
     document.querySelectorAll('#lang button').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-l') === lang);

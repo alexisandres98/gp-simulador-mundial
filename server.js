@@ -9905,17 +9905,25 @@ const server = http.createServer(async (req, res) => {
       const C = combatLoad();
       if (p === '/api/combat/state' && req.method === 'GET') {
         await combatRefreshUpcoming(C); // carteleras ESPN + cuotas mma (memo 10min compartido con el loop)
-        // enriquecer cada pelea: Elo prob + perfil + cuotas de consenso
+        // F3: forma reciente (últimas 5, más reciente primero) — dots del mockup
+        const formOf = (id) => (C.fights.fights || [])
+          .filter(f => f.completed && (f.f1.winner || f.f2.winner) && (f.f1.id === id || f.f2.id === id))
+          .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
+          .map(f => ((f.f1.id === id ? f.f1 : f.f2).winner ? 'W' : 'L'));
+        // enriquecer cada pelea: Elo prob + perfil + cuotas de consenso + pick del monitor si existe
         const cards = (C.upcoming || []).map(ev => ({
           ...ev,
           fights: ev.fights.map(ft => {
             const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
-            const pf = (id) => ({ ...(C.fighters[id] || {}), record: combatRecordOf(C, id) });
+            const pf = (id) => ({ ...(C.fighters[id] || {}), record: combatRecordOf(C, id), form: formOf(id) });
             const mo = combatFightOdds(C, ft);
             const odds = mo ? { f1: mo.best.f1, f2: mo.best.f2, books: mo.books } : null;
+            const market = mo ? { f1: +mo.fair_f1.toFixed(3), f2: +(1 - mo.fair_f1).toFixed(3), books: mo.books } : null; // consenso no-vig (mockup: "mercado: X% · Y%")
             // F1b: probs de método (KO/Sub/Dec) + rounds para la pelea (validado walk-forward antes de exponer)
             const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
-            return { ...ft, prob: pr, method, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
+            const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id) || null;
+            const pick = pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct } : null;
+            return { ...ft, prob: pr, method, market, pick, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
           }),
         }));
         // ranking Elo top (≥8 peleas, activos últimos 2 años)
@@ -9934,6 +9942,29 @@ const server = http.createServer(async (req, res) => {
           picks_enabled: combatPicksOn(),
           picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
           picks_track: combatPicksTrack(),
+        });
+      }
+      // F3: perfil de peleador (bio + Elo + récord + split de métodos + historial pelea a pelea)
+      if (p === '/api/combat/fighter' && req.method === 'GET') {
+        const id = String(url.searchParams.get('id') || '');
+        if (!id || !C.names[id]) return json(res, 404, { error: 'No encontrado' });
+        const hist = (C.fights.fights || [])
+          .filter(f => f.completed && (f.f1.id === id || f.f2.id === id))
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .map(f => {
+            const me = f.f1.id === id ? f.f1 : f.f2, ri = f.f1.id === id ? f.f2 : f.f1;
+            return { date: f.date, event: f.event, weight: f.weight, win: !!me.winner, nc: !(f.f1.winner || f.f2.winner),
+              opponent: { id: ri.id, name: ri.name, headshot: (C.fighters[ri.id] || {}).headshot || null },
+              method: (f.method || {}).display || (f.method || {}).name || null, round: f.end_round || null, clock: f.end_clock || null };
+          });
+        const rec = combatRecordOf(C, id);
+        const mm = CE.methodProfile(C.fights.fights || [], id);
+        return json(res, 200, {
+          fighter: { id, name: C.names[id], ...(C.fighters[id] || {}) },
+          record: rec,
+          elo: { r: Math.round(C.elo.R[id] || 1500), n: C.elo.N[id] || 0, last: C.elo.LAST[id] || null, first: (C.elo.FIRST || {})[id] || null },
+          method_split: mm, // {wins,losses,winKo,winSub,lostKo,lostSub}
+          history: hist.slice(0, 30),
         });
       }
       return json(res, 404, { error: 'No encontrado' });

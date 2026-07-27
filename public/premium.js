@@ -5567,6 +5567,13 @@
     var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" onerror="this.remove()">' : '';
     return '<div class="gx-cb-ava ' + (side === 1 ? 'gr' : 'rd') + '">' + img + '<span>' + esc(ini) + '</span></div>';
   }
+  // F3: dots de forma reciente (mockup "Forma reciente" — verde W, rojo L; más reciente primero)
+  function cbForm(form) {
+    if (!form || !form.length) return '';
+    return '<div style="display:flex;gap:3px;justify-content:center;margin-top:4px">' + form.map(function (r) {
+      return '<i style="width:7px;height:7px;border-radius:50%;background:' + (r === 'W' ? 'var(--gx-ac,#1FE3A4)' : '#e5484d') + '"></i>';
+    }).join('') + '</div>';
+  }
   // F1b: método de victoria (KO/Sub/Dec) + rounds proyectados — modelo validado walk-forward (skill +0.020 vs división)
   function cbMethod(m) {
     if (!m) return '';
@@ -5594,6 +5601,8 @@
     }
     var d = S.combat || {};
     if (d._err) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate') + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; return; }
+    // F3: perfil de peleador (S.combatF = id seleccionado; S.combatFD = data del endpoint)
+    if (S.combatF) { renderCombatFighter(mv); return; }
     var tabs = '<div class="gx-cb-tabs"><span class="gx-cb-tab on">UFC</span><span class="gx-cb-tab dim">MMA · pronto</span><span class="gx-cb-tab dim">BOXEO · pronto</span>' +
       '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + (d.data ? d.data.fights + ' peleas históricas · ' + d.data.fighters + ' perfiles · backtest acc ' + Math.round((((d.backtest || {}).features || {}).accuracy || (d.backtest || {}).accuracy || 0) * 100) + '%' : '') + '</span></div>';
     var cards = (d.cards || []);
@@ -5604,31 +5613,45 @@
       var when = new Date(ev.date);
       var whenTxt = when.toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       var pr = (main && main.prob) || {}; var p1 = Math.round((pr.p1 || 0.5) * 100);
+      var mkFighter = function (f, side) { // columna del peleador (clickeable → perfil F3)
+        return '<div class="gx-cb-f" data-cbf="' + esc(String(f.id || '')) + '" style="cursor:pointer">' + cbAva(f, side) +
+          '<div class="gx-cb-nm">' + esc(f.name || '') + '</div>' +
+          '<div class="gx-cb-rec">' + f.record.w + '-' + f.record.l + ' UFC · ' + f.record.ko + ' KO · ' + f.record.sub + ' SUB</div>' +
+          (f.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(f.reach_in)) + ' alcance</div>' : '') +
+          cbForm(f.form) + '</div>';
+      };
+      // consenso del mercado (mockup: "mercado: 58% · 42% (consenso 28 casas)") + chip de pick del monitor
+      var mktLine = main && main.market ? '<div class="gx-dim" style="font-size:11px;margin-top:2px">mercado: ' + Math.round(main.market.f1 * 100) + '% · ' + Math.round(main.market.f2 * 100) + '% (consenso ' + main.market.books + ' casas)</div>' : '';
+      var pickChip = main && main.pick ? '<div style="margin-top:6px"><span class="gx-clgate ok" style="font-size:11px;padding:4px 10px">▲ PICK · ' + esc(main.pick.name) + ' @' + main.pick.odds + ' · +' + main.pick.edge_blend_pp + 'pp · monitor</span></div>' : '';
       var heroHtml = main ? '<div class="gx-cb-hero gx-panel">' +
         '<div class="gx-cb-evrow"><span class="gx-cb-tag">★ MAIN EVENT</span><b>' + esc(ev.name) + '</b><span class="gx-spacer"></span><span class="gx-dim" style="font-size:12px">' + esc(whenTxt) + ' · ' + esc(main.weight || '') + ' · ' + (main.rounds || 3) + ' rounds</span></div>' +
         '<div class="gx-cb-face">' +
-          '<div class="gx-cb-f">' + cbAva(main.f1, 1) + '<div class="gx-cb-nm">' + esc(main.f1.name || '') + '</div><div class="gx-cb-rec">' + main.f1.record.w + '-' + main.f1.record.l + ' UFC · ' + main.f1.record.ko + ' KO · ' + main.f1.record.sub + ' SUB</div>' + (main.f1.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(main.f1.reach_in)) + ' alcance</div>' : '') + '</div>' +
+          mkFighter(main.f1, 1) +
           '<div class="gx-cb-mid"><div class="gx-cb-vs">VS</div><div class="gx-label" style="color:var(--gx-ac,#1FE3A4)">GP PROBABILITY</div>' +
             '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
             '<div class="gx-cb-pcts"><span>' + p1 + '%</span><span class="p2">' + (100 - p1) + '%</span></div>' +
+            mktLine +
             '<div class="gx-dim" style="font-size:11px;margin-top:4px">Elo ' + (pr.r1 || '—') + ' vs ' + (pr.r2 || '—') + (main.odds ? ' · mejor cuota ' + main.odds.f1 + ' / ' + main.odds.f2 + ' (' + main.odds.books + ' casas)' : ' · sin cuotas aún') + '</div>' +
-            cbMethod(main.method) +
+            cbMethod(main.method) + pickChip +
           '</div>' +
-          '<div class="gx-cb-f">' + cbAva(main.f2, 2) + '<div class="gx-cb-nm">' + esc(main.f2.name || '') + '</div><div class="gx-cb-rec">' + main.f2.record.w + '-' + main.f2.record.l + ' UFC · ' + main.f2.record.ko + ' KO · ' + main.f2.record.sub + ' SUB</div>' + (main.f2.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(main.f2.reach_in)) + ' alcance</div>' : '') + '</div>' +
+          mkFighter(main.f2, 2) +
         '</div></div>' : '';
       var rows = rest.map(function (f) {
         var pp2 = Math.round(((f.prob || {}).p1 || 0.5) * 100);
+        // chip de la cartelera (mockup): PICK @cuota si el monitor tiene una activa; si no, mejor cuota
+        var chip = f.pick ? '<span class="gx-clgate ok" style="white-space:nowrap">PICK ' + esc((f.pick.name || '').split(' ').pop()) + ' @' + f.pick.odds + '</span>'
+          : (f.odds ? '<span class="gx-clgate sh" style="white-space:nowrap">' + f.odds.f1 + ' / ' + f.odds.f2 + '</span>' : '<span class="gx-clgate sh">sin cuotas</span>');
         return '<div class="gx-cb-bout">' +
           cbAva(f.f1, 1) +
           '<div class="gx-cb-bnames"><b>' + esc(f.f1.name || '') + ' vs ' + esc(f.f2.name || '') + '</b><span class="gx-dim">' + esc(f.weight || '') + ' · ' + f.f1.record.w + '-' + f.f1.record.l + ' / ' + f.f2.record.w + '-' + f.f2.record.l + ' UFC</span></div>' +
           '<div class="gx-cb-mini"><div class="gx-cb-minibar"><i style="width:' + pp2 + '%"></i></div><span class="gx-mono gx-dim" style="font-size:10.5px">' + pp2 + '% · ' + (100 - pp2) + '%</span></div>' +
-          (f.odds ? '<span class="gx-clgate ok" style="white-space:nowrap">' + f.odds.f1 + ' / ' + f.odds.f2 + '</span>' : '<span class="gx-clgate sh">sin cuotas</span>') +
+          chip +
           '</div>';
       }).join('');
       html += heroHtml + (rows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Cartelera completa · ' + rest.length + ' peleas</span></div><div class="gx-mod-body">' + rows + '</div></div>' : '');
     });
     var rk = (d.ranking || []).map(function (r, i) {
-      return '<div class="gx-cb-bout">' +
+      return '<div class="gx-cb-bout" data-cbf="' + esc(String(r.id)) + '" style="cursor:pointer">' +
         '<span class="gx-mono gx-dim" style="width:22px;text-align:right">' + (i + 1) + '</span>' +
         cbAva(r, 1) +
         '<div class="gx-cb-bnames"><b>' + esc(r.name || '') + '</b><span class="gx-dim">' + r.record.w + '-' + r.record.l + ' UFC · ' + r.fights + ' peleas</span></div>' +
@@ -5654,6 +5677,70 @@
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + tabs + pk + html +
       '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Ranking Elo · activos</span><span class="gx-ph-extra gx-dim" style="font-size:11px">modelo validado: skill +' + (((d.backtest || {}).features || {}).skill_vs_coin || (d.backtest || {}).skill_vs_coin || 0) + ' (Elo+features) · método +' + ((d.backtest_method || {}).skill_vs_division || 0) + ' · ' + ((d.backtest || {}).n || 0) + ' peleas out-of-sample</span></div><div class="gx-mod-body">' + rk + '</div></div>' +
       '</div></div>';
+    cbWireClicks(mv);
+  }
+  // F3: delegación de clicks de la vista Combate (peleador → perfil; back → cartelera)
+  function cbWireClicks(mv) {
+    var c = mv.querySelector('.gx-content'); if (!c) return;
+    c.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-cbf]');
+      if (b && b.dataset.cbf) { S.combatF = b.dataset.cbf; S.combatFD = undefined; renderCombat(); return; }
+      if (e.target.closest('[data-cbback]')) { S.combatF = null; S.combatFD = undefined; renderCombat(); }
+    });
+  }
+  // F3: perfil de peleador — bio física + Elo + récord + split de métodos + historial pelea a pelea.
+  // (Tale of the tape con stats finas de striking queda pendiente de data: ufcstats anti-bot / MMA API.)
+  function renderCombatFighter(mv) {
+    if (S.combatFD === undefined) {
+      S.combatFD = null;
+      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate 🥊') + mvLoading() + '</div></div>';
+      fetch('/api/combat/fighter?id=' + encodeURIComponent(S.combatF), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.combatFD = j || { _err: true }; if (S.view === 'combat' && S.combatF) renderCombat(); });
+      return;
+    }
+    var d = S.combatFD || {};
+    var back = '<div style="margin-bottom:4px"><span class="gx-clgate sh" data-cbback="1" style="cursor:pointer;padding:5px 12px">← ' + (LANG === 'en' ? 'Back to cards' : 'Volver a carteleras') + '</span></div>';
+    if (d._err || !d.fighter) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate 🥊') + back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; cbWireClicks(mv); return; }
+    var f = d.fighter, rec = d.record || {}, elo = d.elo || {}, ms = d.method_split || {};
+    var bioBits = [];
+    if (f.nick) bioBits.push('"' + f.nick + '"');
+    if (f.height_in) bioBits.push(String(f.height_in));
+    if (f.reach_in) bioBits.push(String(f.reach_in) + ' ' + (LANG === 'en' ? 'reach' : 'alcance'));
+    if (f.stance && f.stance !== '--') bioBits.push(f.stance);
+    if (f.country) bioBits.push(f.country);
+    var finish = rec.w ? Math.round((rec.ko + rec.sub) / rec.w * 100) : null;
+    var tile = function (lab, val) { return '<div style="flex:1;min-width:90px;text-align:center;padding:10px 6px;border:1px solid var(--gx-line,rgba(255,255,255,.08));border-radius:10px"><div class="gx-mono" style="font-size:18px;font-weight:800;color:var(--gx-ac,#1FE3A4)">' + val + '</div><div class="gx-label" style="font-size:9.5px;margin-top:2px">' + lab + '</div></div>'; };
+    var tiles = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
+      tile('ELO', elo.r || '—') + tile(LANG === 'en' ? 'RECORD' : 'RÉCORD', rec.w + '-' + rec.l) +
+      tile('KO/TKO', rec.ko) + tile('SUB', rec.sub) + (finish != null ? tile('FINISH %', finish + '%') : '') + '</div>';
+    // split de métodos (victorias): mini-barras KO/SUB/DEC — mismo lenguaje visual del hero
+    var wDec = Math.max(0, (ms.wins || 0) - (ms.winKo || 0) - (ms.winSub || 0));
+    var mBar = function (lab, v, tot, col) {
+      var pct = tot ? Math.round(v / tot * 100) : 0;
+      return '<div style="display:flex;align-items:center;gap:6px"><span class="gx-mono gx-dim" style="width:30px;font-size:10px;text-align:right">' + lab + '</span>' +
+        '<div style="flex:1;height:5px;border-radius:3px;background:var(--gx-line,rgba(255,255,255,.08));overflow:hidden"><i style="display:block;height:100%;width:' + pct + '%;background:' + col + '"></i></div>' +
+        '<span class="gx-mono" style="width:56px;font-size:10.5px">' + v + ' · ' + pct + '%</span></div>';
+    };
+    var methPanel = ms.wins ? '<div style="margin-top:12px;max-width:420px;display:flex;flex-direction:column;gap:3px">' +
+      '<div class="gx-label" style="font-size:9.5px">' + (LANG === 'en' ? 'WINS BY METHOD' : 'VICTORIAS POR MÉTODO') + '</div>' +
+      mBar('KO', ms.winKo || 0, ms.wins, 'var(--gx-ac,#1FE3A4)') + mBar('SUB', ms.winSub || 0, ms.wins, '#5aa7ff') + mBar('DEC', wDec, ms.wins, '#b98cff') + '</div>' : '';
+    var hero = '<div class="gx-cb-hero gx-panel"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">' +
+      cbAva(f, 1) +
+      '<div style="flex:1;min-width:220px"><div class="gx-cb-nm" style="font-size:22px">' + esc(f.name || '') + '</div>' +
+      '<div class="gx-dim" style="font-size:12px;margin-top:2px">' + esc(bioBits.join(' · ')) + '</div>' +
+      '<div class="gx-dim" style="font-size:11px;margin-top:2px">' + (elo.n || 0) + ' ' + (LANG === 'en' ? 'UFC fights' : 'peleas UFC') + (elo.last ? ' · ' + (LANG === 'en' ? 'last' : 'última') + ' ' + new Date(elo.last).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { month: 'short', year: 'numeric' }) : '') + '</div>' +
+      tiles + methPanel + '</div></div></div>';
+    var hist = (d.history || []).map(function (h) {
+      var chip = h.nc ? '<span class="gx-clgate sh">NC</span>' : (h.win ? '<span class="gx-clgate ok">W</span>' : '<span class="gx-clgate" style="color:#e5484d;border-color:#e5484d55">L</span>');
+      var when = new Date(h.date).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      return '<div class="gx-cb-bout" data-cbf="' + esc(String(h.opponent.id || '')) + '" style="cursor:pointer">' + chip +
+        cbAva(h.opponent, h.win ? 2 : 1) +
+        '<div class="gx-cb-bnames"><b>vs ' + esc(h.opponent.name || '') + '</b><span class="gx-dim">' + esc(h.event || '') + ' · ' + esc(h.weight || '') + '</span></div>' +
+        '<span class="gx-mono gx-dim" style="font-size:10.5px;white-space:nowrap">' + esc(h.method || '') + (h.round ? ' · R' + h.round : '') + ' · ' + esc(when) + '</span></div>';
+    }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + back + hero +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + (LANG === 'en' ? 'Fight history' : 'Historial de peleas') + ' · ' + (d.history || []).length + '</span></div><div class="gx-mod-body">' + hist + '</div></div>' +
+      '</div></div>';
+    cbWireClicks(mv);
   }
 
   function renderRefer() {

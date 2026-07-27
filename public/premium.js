@@ -228,6 +228,10 @@
       aff_available: 'Disponible', aff_pending: 'En espera', aff_pending_sub: 'madura a los 7 días', aff_paid: 'Pagado', aff_paying: 'referidos con suscripción activa', aff_forlife: 'de por vida', aff_lead: 'Ganás una comisión recurrente por cada persona que entre con tu enlace y pague una suscripción, mientras siga activa.', aff_wallet: 'Tu billetera', aff_wallet_sub: 'Cobrás en stablecoins (USDC/USDT). Elegí la red que uses.', aff_network: 'Red', aff_asset: 'Moneda', aff_address: 'Dirección', aff_address_ph: 'pegá tu dirección', aff_save_wallet: 'Guardar billetera', aff_wallet_saved: '✓ Billetera guardada', aff_withdraw: 'Retirar', aff_request: 'Solicitar retiro', aff_wd_open: 'Tenés una solicitud de {amt} en proceso.', aff_wd_min: 'Necesitás {min} disponibles para retirar.', aff_wd_cooldown: 'Ya solicitaste un retiro esta semana. Podés pedir el próximo en 7 días.', aff_wd_ready: 'Podés retirar {amt} ahora.', aff_wd_done: '✓ Retiro solicitado. Te avisamos por email cuando salga.', aff_rules: 'Mínimo $50 · un retiro por semana · el saldo queda disponible 7 días después de cada pago.', aff_period: 'Período', aff_referral: 'Referido', aff_plan: 'Plan', aff_commission: 'Comisión', aff_status: 'Estado', aff_st_available: 'disponible', aff_st_paid: 'pagado', aff_st_pending: 'en espera',
       aff_signups: 'registrados con tu enlace', aff_signups_note: 'Todos los que entraron con tu link, paguen o no. Solo los que pagan una suscripción generan comisión.', aff_signups_h: 'Tus registros', aff_su_date: 'Fecha', aff_su_status: 'Estado', aff_su_sub: 'suscrito', aff_su_verified: 'verificado', aff_su_reg: 'registrado',
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
+      tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
+      tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
+      tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
+      tm_cta: 'Empezar mis 3 días gratis', tm_micro: 'US$0 hoy · $59/mes solo si te quedás · cancelás cuando quieras', tm_no: 'Ahora no',
       adm_grant_plan: 'Suscripción manual', adm_grant_give: 'Dar plan', adm_grant_revoke: 'Quitar plan', adm_grant_ok: '✓ Aplicado', adm_grant_note: 'Da acceso Pro/Sharp sin pago (usa el email de arriba). Para influencers o cortesías. "Quitar plan" lo regresa a Free.',
       ref_t1: 'Embajador', ref_t3: 'Plata', ref_t5: 'Oro · acceso', ref_t10: 'Leyenda',
       perf_sample: 'Muestra', perf_method: 'Metodología', perf_method_b: 'Métricas verificables sobre señales liquidadas desde el Verified Epoch: Brier (calibración), Log loss (penaliza errores extremos) y ECE (error de calibración). No afirmamos rentabilidad con muestra chica.',
@@ -534,6 +538,10 @@
       aff_available: 'Available', aff_pending: 'Maturing', aff_pending_sub: 'clears after 7 days', aff_paid: 'Paid out', aff_paying: 'referrals with an active subscription', aff_forlife: 'for life', aff_lead: 'You earn a recurring commission for every person who joins with your link and pays for a subscription, as long as it stays active.', aff_wallet: 'Your wallet', aff_wallet_sub: 'You get paid in stablecoins (USDC/USDT). Pick the network you use.', aff_network: 'Network', aff_asset: 'Asset', aff_address: 'Address', aff_address_ph: 'paste your address', aff_save_wallet: 'Save wallet', aff_wallet_saved: '✓ Wallet saved', aff_withdraw: 'Withdraw', aff_request: 'Request withdrawal', aff_wd_open: 'You have a {amt} request in progress.', aff_wd_min: 'You need {min} available to withdraw.', aff_wd_cooldown: 'You already requested a withdrawal this week. Next one in 7 days.', aff_wd_ready: 'You can withdraw {amt} now.', aff_wd_done: '✓ Withdrawal requested. We\'ll email you when it goes out.', aff_rules: 'Min $50 · one withdrawal per week · balance clears 7 days after each payment.', aff_period: 'Period', aff_referral: 'Referral', aff_plan: 'Plan', aff_commission: 'Commission', aff_status: 'Status', aff_st_available: 'available', aff_st_paid: 'paid', aff_st_pending: 'maturing',
       aff_signups: 'signed up with your link', aff_signups_note: 'Everyone who joined through your link, paying or not. Only paid subscriptions earn commission.', aff_signups_h: 'Your sign-ups', aff_su_date: 'Date', aff_su_status: 'Status', aff_su_sub: 'subscribed', aff_su_verified: 'verified', aff_su_reg: 'signed up',
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
+      tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
+      tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
+      tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
+      tm_cta: 'Start my 3 free days', tm_micro: '$0 today · $59/mo only if you stay · cancel anytime', tm_no: 'Not now',
       adm_grant_plan: 'Manual subscription', adm_grant_give: 'Grant plan', adm_grant_revoke: 'Remove plan', adm_grant_ok: '✓ Applied', adm_grant_note: 'Grants Pro/Sharp access without payment (uses the email above). For influencers or comps. "Remove plan" sets them back to Free.',
       ref_t1: 'Ambassador', ref_t3: 'Silver', ref_t5: 'Gold · access', ref_t10: 'Legend',
       perf_sample: 'Sample', perf_method: 'Methodology', perf_method_b: 'Verifiable metrics over settled signals since the Verified Epoch: Brier (calibration), Log loss (penalizes extreme errors) and ECE (calibration error). We don’t claim profitability with a small sample.',
@@ -837,6 +845,16 @@
   // banner (retirado). Solo plan free; paid/admin → vacío. Se pinta en el mismo slot cuando llega S.me.
   function freeBanner() {
     if (!S.me || uiPlan() !== 'free') return '';
+    // FREE TRIAL (27-jul): si es elegible, el banner in-app VENDE la prueba gratis (clickeable directo al
+    // checkout del trial); si ya la usó, cae al banner de upgrade de siempre.
+    if (S.me.trial_eligible) {
+      return '<a class="gx-fbanner gx-freebanner gx-trialbanner" href="/api/founder/checkout?plan=sharp_t">' +
+        '<span class="gx-fbanner-pulse"></span>' +
+        '<b>' + esc(t('tb_lead')) + '</b>' +
+        '<span class="gx-fbanner-sub">' + esc(t('tb_sub')) + '</span>' +
+        '<span class="gx-fbanner-cta">' + esc(t('tb_cta')) + ' ' + ic('arrow-right') + '</span>' +
+        '</a>';
+    }
     return '<a class="gx-fbanner gx-freebanner" href="/plans">' +
       '<span class="gx-fbanner-pulse"></span>' +
       '<b>' + esc(t('frb_lead')) + '</b>' +
@@ -2550,6 +2568,34 @@
   // ============================ ONBOARDING (primer ingreso) ============================
   // Solo cuentas creadas DESPUÉS del feature (los ~600 usuarios existentes nunca lo ven) y solo la primera vez:
   // el "visto" se persiste por cuenta en el server (db.users.onboarded) + localStorage como respaldo.
+  // ============================ FREE TRIAL: modal de entrada (27-jul) ============================
+  // A TODO usuario FREE elegible (nunca usó el trial), en CADA sesión (sessionStorage, no localStorage:
+  // la orden de Alexis es que reaparezca en cada entrada pero se cierre fácil con la X).
+  function maybeTrialModal() {
+    try {
+      if (!S.me || !S.me.trial_eligible || uiPlan() !== 'free') return;
+      if (sessionStorage.getItem('gp_trial_seen')) return;
+      if (document.getElementById('gx-trialm')) return;
+      var benefits = ['tm_b1', 'tm_b2', 'tm_b3', 'tm_b4'].map(function (k) {
+        return '<li>' + ic('circle-check') + '<span>' + esc(t(k)) + '</span></li>';
+      }).join('');
+      var wrap = document.createElement('div'); wrap.id = 'gx-trialm'; wrap.className = 'gx-onb';
+      wrap.innerHTML = '<div class="gx-onb-bg"></div><div class="gx-onb-card gx-trial-card">' +
+        '<button class="gx-trial-x" id="gx-trialm-x" aria-label="✕">✕</button>' +
+        '<div class="gx-trial-eyebrow">' + esc(t('tm_eyebrow')) + '</div>' +
+        '<h3>' + esc(t('tm_title')) + '</h3>' +
+        '<p class="gx-trial-sub">' + esc(t('tm_sub')) + '</p>' +
+        '<ul class="gx-trial-list">' + benefits + '</ul>' +
+        '<a class="gx-btn gx-onb-cta gx-trial-cta" href="/api/founder/checkout?plan=sharp_t">' + esc(t('tm_cta')) + '</a>' +
+        '<div class="gx-trial-micro">' + esc(t('tm_micro')) + '</div>' +
+        '<button class="gx-onb-skip" id="gx-trialm-no">' + esc(t('tm_no')) + '</button></div>';
+      var close = function () { try { sessionStorage.setItem('gp_trial_seen', '1'); } catch (e) {} wrap.remove(); };
+      wrap.querySelector('#gx-trialm-x').addEventListener('click', close);
+      wrap.querySelector('#gx-trialm-no').addEventListener('click', close);
+      document.body.appendChild(wrap);
+    } catch (e) {}
+  }
+
   var ONB_CUTOFF = Date.parse('2026-07-04T18:00:00Z');
   // BUG 26-jul (reporte Alexis): la marca "ya vio el tour" era una key GLOBAL de localStorage → si en ese
   // navegador cualquier cuenta cerró el tour alguna vez, una cuenta NUEVA no lo veía jamás (típico en el
@@ -6216,7 +6262,7 @@
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
           // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
           if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
-          if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); loadPlayerIndex(); loadClubsPlayerIndex();
+          if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); if (!document.getElementById('gx-onb')) maybeTrialModal(); loadPlayerIndex(); loadClubsPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
             if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }

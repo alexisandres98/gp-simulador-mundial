@@ -40,6 +40,7 @@
       a_or: 'o', a_g_wait: 'Entrando…', a_sub_g: 'Sin contraseña. Entra con Google en un toque, o te enviamos un código a tu email.',
       tg_lead: 'Pick gratis todos los días en Telegram', tg_sub: 'Y los resultados de cada pick, ganadas y perdidas. Sin registro.', tg_cta: 'Unirme al canal',
       /* modal registro */
+      trb_b: 'Prueba Sharp GRATIS 3 días', trb_s: 'Hoy pagas $0 · cancelas en 1 clic', trb_go: 'Empezar →',
       a_eye: 'Acceso gratis', a_h: 'Entra o crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
       a_email_l: 'Tu email', a_email_ph: 'tucorreo@email.com', a_send: 'Enviar código',
       a_micro: 'Gratis durante el Mundial · sin tarjeta · sin spam',
@@ -97,6 +98,7 @@
       foot_tag: 'Real-time sports intelligence', foot_legal: '© 2026 · Not financial advice',
       a_or: 'or', a_g_wait: 'Signing you in…', a_sub_g: 'No password. Continue with Google in one tap, or we send a code to your email.',
       tg_lead: 'A free pick every day on Telegram', tg_sub: 'Plus every result, wins and losses. No signup needed.', tg_cta: 'Join the channel',
+      trb_b: 'Try Sharp FREE for 3 days', trb_s: '$0 today · cancel in one click', trb_go: 'Start →',
       a_eye: 'Free access', a_h: 'Log in or sign up', a_sub: 'No password. We email you a code and you’re in instantly.',
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
       a_micro: 'Free during the World Cup · no card · no spam',

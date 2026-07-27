@@ -1379,6 +1379,54 @@ GP Simulador`;
   return { subject, text, html };
 }
 
+// FREE TRIAL Sharp 3 días (27-jul): anuncio masivo — playbook personal anti-Promociones, SIN línea de baja
+// (decisión Alexis 26-jul). El gancho: probar TODO lo mejor sin pagar hoy, cancelación 1-clic.
+function trialEmail(lang) {
+  const en = lang === 'en';
+  if (en) {
+    const subject = '3 days of Sharp, free — $0 today';
+    const text = `Hi,
+
+Alexis here, from GP Simulador. We just turned on something I've wanted for a while: a real free trial of Sharp, our full plan.
+
+Here's the deal, straight: you start today, you pay $0 today. For 3 days you get everything — every daily pick from the model with its suggested stake, the value & arbitrage scanner across 40+ sportsbooks, and your personal bet tracker with ROI. The same tools I use every day.
+
+If it's not for you, cancel in one click before day 3 and nothing gets charged — no questions, no emails to write. If you stay, it's $59/month, and you can cancel any month.
+
+Every pick we publish goes into a public track record — wins AND losses. That's the whole point: you don't have to believe me, you can check.
+
+Start here: gpsimulador.com/plans
+
+What market would you test first with Sharp? Reply and tell me — I read every answer.
+
+Alexis
+GP Simulador`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = '3 días de Sharp gratis — hoy pagás $0';
+  const text = `Hola,
+
+Soy Alexis, de GP Simulador. Acabamos de encender algo que quería hace tiempo: una prueba gratis DE VERDAD de Sharp, nuestro plan completo.
+
+El trato, sin letra chica: empezás hoy y hoy pagás $0. Durante 3 días tenés todo — todas las picks diarias del modelo con su stake sugerido, el escáner de value y arbitraje sobre 40+ casas, y tu cartera personal de apuestas con ROI. Las mismas herramientas que uso yo todos los días.
+
+Si no es para vos, cancelás en un clic antes del día 3 y no se te cobra nada — sin preguntas, sin escribirle a nadie. Si te quedás, son $59/mes, y podés cancelar cualquier mes.
+
+Cada pick que publicamos va a un historial público — ganadas Y perdidas. Ese es el punto: no tenés que creerme, podés verificarlo.
+
+Empezá acá: gpsimulador.com/plans
+
+¿Qué mercado probarías primero con Sharp? Respondeme y contame — leo todas las respuestas.
+
+Alexis
+GP Simulador`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 function lastCallEmail(lang) {
   const en = lang !== 'es';
   const tr = dailyPicksTrackRecord().overall || {};
@@ -8462,6 +8510,9 @@ const server = http.createServer(async (req, res) => {
         my_books_list: featFor('GP_MY_BOOKS_ENABLED', u) ? ((db.users[u.email] || {}).my_books || []) : undefined,
         watch_price: featFor('GP_WATCH_PRICE_ENABLED', u), // F3 Watch price
         daily_brief: featFor('GP_DAILY_BRIEF_ENABLED', u), // F4 GP Daily Brief
+        // FREE TRIAL Sharp (27-jul): elegible = plan free + nunca lo usó + plan configurado. Gobierna el
+        // modal de entrada, el banner in-app y el CTA de /plans (una sola prueba por cuenta, de por vida).
+        trial_eligible: !!(plansEnforced() && planFor(u.email) === 'free' && !(db.users[u.email] || {}).trial_used && process.env.WHOP_PLAN_SHARP_TRIAL),
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -8728,6 +8779,10 @@ const server = http.createServer(async (req, res) => {
         ev.parsed = { email: email || null, plan_id: planId || null, plan };
         if (email && plan && valid) {
           const isNewGrant = !db.premiumGrants[email] || db.premiumGrants[email].status !== 'active';
+          // FREE TRIAL (27-jul): el arranque del trial llega como went_valid con amount 0 → se marca
+          // trial_used (una sola prueba por cuenta; los banners/modal dejan de ofrecérsela para siempre).
+          const isTrialPlan = planId && planId === process.env.WHOP_PLAN_SHARP_TRIAL;
+          if (isTrialPlan && db.users[email]) { db.users[email].trial_used = true; }
           db.premiumGrants[email] = {
             plan, status: 'active', founder: csv('WHOP_FOUNDER_PLAN_IDS').includes(planId) || undefined,
             source: 'whop', whop_membership_id: d.id || null, whop_plan_id: planId,
@@ -8738,7 +8793,9 @@ const server = http.createServer(async (req, res) => {
           // referidor (idempotente por período mensual → renovaciones pagan un ciclo, reintentos del webhook no).
           try {
             const amt = Number(d.final_amount || d.amount || (d.plan && d.plan.price) || 0) || 0;
-            const com = affRecordCommission({ referredEmail: email, plan, amountUsd: amt });
+            // trial con amount 0 → SIN comisión (el fallback de precio la inventaría); la comisión real
+            // nace con el cobro del día 3 (payment con importe > 0).
+            const com = (isTrialPlan && amt <= 0) ? null : affRecordCommission({ referredEmail: email, plan, amountUsd: amt });
             if (com) ev.affiliate_commission = { to: com.affiliate, commission: com.commission };
           } catch (e) { /* la comisión nunca rompe el webhook */ }
           // BIENVENIDA (primera activación). El copy depende del plan comprado: founder (precio congelado),
@@ -8748,10 +8805,15 @@ const server = http.createServer(async (req, res) => {
             const planN = plan === 'sharp' ? 'Sharp' : 'Pro';
             const isFounderPlan = csv('WHOP_FOUNDER_PLAN_IDS').includes(planId);
             const isCryptoPlan = [process.env.WHOP_PLAN_PRO_CRYPTO, process.env.WHOP_PLAN_SHARP_CRYPTO].filter(Boolean).includes(planId);
-            const subject = isFounderPlan
+            const isTrialWelcome = planId && planId === process.env.WHOP_PLAN_SHARP_TRIAL;
+            const subject = isTrialWelcome
+              ? (en ? 'Your Sharp free trial is on — $0 today' : 'Tu prueba gratis de Sharp está activa — $0 hoy')
+              : isFounderPlan
               ? (en ? `You're in: Founder ${planN} activated ★` : `Ya estás dentro: Founder ${planN} activado ★`)
               : (en ? `You're in: ${planN} activated` : `Ya estás dentro: ${planN} activado`);
-            const lead = isFounderPlan
+            const lead = isTrialWelcome
+              ? (en ? `Your 3-day free trial of Sharp is ON.\n\nEverything is unlocked right now: every daily pick with its suggested stake, value & arbitrage across 40+ sportsbooks, and your personal bet tracker.\n\nYou pay $0 today. If Sharp isn't for you, cancel in one click from My subscription before day 3 and nothing gets charged. If you stay, it's $59/month from day 3.` : `Tu prueba GRATIS de 3 días de Sharp está ACTIVA.\n\nTodo quedó desbloqueado ya mismo: todas las picks del día con su stake sugerido, value y arbitraje sobre 40+ casas, y tu cartera personal de apuestas.\n\nHoy pagás $0. Si Sharp no es para vos, cancelá en un clic desde Mi suscripción antes del día 3 y no se te cobra nada. Si te quedás, son $59/mes desde el día 3.`)
+              : isFounderPlan
               ? (en ? `Welcome to the first 100.\n\nYour Founder ${planN} is active and your price is locked for life: it will never go up while your subscription stays active, even when public prices rise after the World Cup.` : `Bienvenido a los primeros 100.\n\nTu Founder ${planN} está activo y tu precio quedó congelado de por vida: no sube nunca mientras tu suscripción siga activa, aunque los precios públicos suban después del Mundial.`)
               : isCryptoPlan
                 ? (en ? `Your ${planN} is active for the next 30 days.\n\nYou paid with crypto, so there is no auto-renewal and no card on file: when the 30 days end, your account simply goes back to Free and you can buy another month whenever you want.` : `Tu ${planN} quedó activo por los próximos 30 días.\n\nPagaste con cripto, así que no hay renovación automática ni tarjeta guardada: cuando terminen los 30 días tu cuenta vuelve sola a Free y podés comprar otro mes cuando quieras.`)
@@ -10817,7 +10879,10 @@ const server = http.createServer(async (req, res) => {
                                           // anuncio pago con cripto (26-jul): idioma FIJO, estilo personal
                                           : (variant === 'crypto_es') ? () => ({ ...cryptoEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                                             : (variant === 'crypto_en') ? () => ({ ...cryptoEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
-                                              : (em) => broadcastEmail(link, userLang(em));
+                                              // free trial Sharp (27-jul): idioma FIJO, estilo personal
+                                              : (variant === 'trial_es') ? () => ({ ...trialEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                                : (variant === 'trial_en') ? () => ({ ...trialEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                                  : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
       // mail.gpsimulador.com, ya creado en Resend, pendiente DNS), TODO masivo sale por el subdominio y la
@@ -10920,6 +10985,8 @@ const server = http.createServer(async (req, res) => {
           pro_m: process.env.WHOP_PLAN_PRO_M || '', pro_y: process.env.WHOP_PLAN_PRO_Y || '',
           sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '',
           pro_c: process.env.WHOP_PLAN_PRO_CRYPTO || '', sharp_c: process.env.WHOP_PLAN_SHARP_CRYPTO || '',
+          sharp_t: process.env.WHOP_PLAN_SHARP_TRIAL || '',
+          trial_eligible: sessEmail ? !!(planFor(sessEmail) === 'free' && !(db.users[sessEmail] || {}).trial_used) : true,
           left: await whopFounderSpotsLeft().catch(() => null),
           plan: sessEmail ? planFor(sessEmail) : null, // plan ACTUAL del usuario → la página marca "Tu plan actual" en el correcto
         };
@@ -10941,6 +11008,8 @@ const server = http.createServer(async (req, res) => {
         // Cripto (26-jul): planes ONE-TIME de 30 días (Whop solo soporta cripto en pagos únicos vía Coinbase
         // Commerce). Al expirar, Whop manda el webhook de expiración → el grant cae solo → el usuario re-compra.
         pro_c: process.env.WHOP_PLAN_PRO_CRYPTO, sharp_c: process.env.WHOP_PLAN_SHARP_CRYPTO,
+        // FREE TRIAL Sharp 3 días (27-jul): tarjeta requerida, $0 hoy, cobra $59 el día 3, cancelable 1-clic.
+        sharp_t: process.env.WHOP_PLAN_SHARP_TRIAL,
       };
       const planId = PLANS[String(url.searchParams.get('plan') || '')];
       if (!planId) { json(res, 400, { error: 'plan inválido' }); return; }

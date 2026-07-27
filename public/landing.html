@@ -357,6 +357,13 @@ body.v3 .tr.big span{color:var(--tx2)}
   .scan{grid-template-columns:1fr 1fr 1fr}.pillars{grid-template-columns:1fr}
   .trust{gap:28px}.tr b{font-size:24px}
 }
+.trialbar{position:sticky;top:0;z-index:55;display:flex;align-items:center;gap:12px;justify-content:center;padding:11px 18px;background:linear-gradient(90deg,#0BA661,#1FE3A4);color:#06231A;text-decoration:none;font-size:14.5px}
+.trialbar b{font-weight:800}
+.trialbar .tb-sub{font-weight:600;opacity:.85}
+.trialbar .tb-go{font-weight:800;background:rgba(6,35,26,.14);border-radius:99px;padding:6px 14px}
+.tb-dot{width:8px;height:8px;border-radius:50%;background:#06231A;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(max-width:560px){.trialbar{flex-wrap:wrap;gap:6px;font-size:13px;padding:9px 12px}.trialbar .tb-sub{display:none}}
 @media(max-width:560px){
   .hero{padding:48px 0 24px}.scan{grid-template-columns:1fr}.scan-stat b{font-size:34px}
   /* El botón Entrar SÍ se muestra en móvil (antes display:none → quien venía a hacer login solo veía "Crear cuenta") */
@@ -375,6 +382,7 @@ body.v3 .tr.big span{color:var(--tx2)}
   <button class="blink" data-login>·</button>
   <button class="btn" data-signup>·</button>
 </div></nav>
+<a class="trialbar" href="/plans"><span class="tb-dot"></span><b data-k="trb_b">Prueba Sharp GRATIS 3 días</b><span class="tb-sub" data-k="trb_s">Hoy pagas $0 · cancelas en 1 clic</span><span class="tb-go" data-k="trb_go">Empezar →</span></a>
 
 <main class="wrap">
   <div class="lbanner" id="lbanner" role="button" tabindex="0"><span class="lbanner-dot"></span><span class="lbanner-tx" data-k="lb_txt">·</span><span class="lbanner-cta" data-k="lb_cta">·</span></div>

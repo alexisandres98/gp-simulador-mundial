@@ -118,6 +118,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       mo: '/mes', annual_pro: 'Anual: $190/año → pagás 10 meses, usás 12', annual_sharp: 'Anual: $590/año → pagás 10 meses, usás 12', annual_save: 'Ahorra 2 meses',
       cta_free: 'Tu plan actual', cta_current: 'Tu plan actual', cta_included: 'Incluido en tu plan', cta_upgrade: 'Mejorar a Sharp', cta: 'Muy pronto', cta_buy: 'Suscribirme', cta_note: 'Disponible muy pronto', cta_note_live: 'Pago seguro vía Whop · cancelás cuando quieras',
       cta_crypto: '₿ Pagar con cripto · 1 mes', cta_crypto_note: 'BTC, USDC, USDT y más · pago único de 30 días, sin tarjeta ni renovación automática',
+      trial_cta: '🎁 Probar GRATIS 3 días', trial_note: 'Hoy pagas $0 · $59/mes solo si te quedas · cancelas en 1 clic', trial_or: 'o suscribirme directo', trial_bar: 'Prueba Sharp GRATIS por 3 días — sin cargo hoy',
       f_free: [
         ['on', '1 pick del día (con delay), solo ganador'],
         ['on', 'Probabilidades de cada partido'],
@@ -170,6 +171,7 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       mo: '/mo', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
       cta_free: 'Your current plan', cta_current: 'Your current plan', cta_included: 'Included in your plan', cta_upgrade: 'Upgrade to Sharp', cta: 'Coming soon', cta_buy: 'Subscribe', cta_note: 'Available soon', cta_note_live: 'Secure payment via Whop · cancel anytime',
       cta_crypto: '₿ Pay with crypto · 1 month', cta_crypto_note: 'BTC, USDC, USDT & more · one-time 30-day payment, no card, no auto-renewal',
+      trial_cta: '🎁 Start your FREE 3-day trial', trial_note: '$0 today · $59/mo only if you stay · cancel in one click', trial_or: 'or subscribe directly', trial_bar: 'Try Sharp FREE for 3 days — no charge today',
       f_free: [
         ['on', '1 pick a day (delayed), winner only'],
         ['on', 'Probabilities for every match'],
@@ -234,6 +236,14 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       if (cur === planKey) return '<button class="pcta" disabled>' + T('cta_current') + '</button><div class="pcta-note">&nbsp;</div>';
       if (cur && RANK[planKey] < RANK[cur]) return '<button class="pcta" disabled>' + T('cta_included') + '</button><div class="pcta-note">&nbsp;</div>';
       var label = (cur === 'pro' && planKey === 'sharp') ? T('cta_upgrade') : T('cta_buy');
+      // FREE TRIAL (27-jul): en la card Sharp, si hay plan de trial y el usuario es elegible, el CTA
+      // PRIMARIO es la prueba gratis; la suscripción directa queda como enlace secundario.
+      if (planKey === 'sharp' && W.sharp_t && W.trial_eligible !== false) {
+        return '<a class="pcta live" href="' + co('sharp_t') + '">' + T('trial_cta') + '</a>' +
+          '<div class="pcta-note">' + T('trial_note') + '</div>' +
+          (mId ? '<a class="pcta-crypto" href="' + co(coKey) + '">' + label + ' · ' + T('trial_or') + '</a>' : '') +
+          cryptoLink(cId, cKey);
+      }
       return (mId ? '<a class="pcta live" href="' + co(coKey) + '">' + label + '</a>' : '<button class="pcta" disabled>' + T('cta') + '</button>') + note(mId) + cryptoLink(cId, cKey);
     };
     document.getElementById('plans').innerHTML =

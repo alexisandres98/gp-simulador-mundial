@@ -5512,9 +5512,10 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       p.stake_pct = kel > 0 ? +Math.min(3, Math.max(0.25, kel * 100)).toFixed(1) : null;
     } else p.stake_pct = null;
     if (!isPublicSegment(p.family, p.side)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
-    // segmento público: el edge debe SOBREVIVIR al encogimiento (blend−mercado ≥ 2pp ⇔ edge crudo ≥ 4pp;
-    // 81/82 cards-under históricas lo cumplían → no estrangula el volumen, solo corta espejismos finos)
-    if (blend == null || (blend - k) * 100 < 2) p.regime = 'monitor';
+    // segmento público: el criterio de publicación ES el edge post-blend ≥ 2pp (⇔ crudo ≥ 4pp; 81/82
+    // cards-under históricas lo cumplían). SIMÉTRICO: también promueve lo que nació 'monitor' por la regla
+    // vieja de priceAboveFair — la calidad de compra la vigila el gate de CLV rolling, no un filtro estático.
+    p.regime = (blend != null && (blend - k) * 100 >= 2) ? 'edge' : 'monitor';
   }
   const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
   let added = 0;
@@ -6325,7 +6326,12 @@ function reclassifyClubSegments() {
       }
       backfilled++;
     }
-    if (old.blend_prob != null && isFinite(k) && (old.blend_prob - k) * 100 < 2 && old.regime !== 'monitor') { old.regime = 'monitor'; n++; }
+    // SIMÉTRICO (fix mismo día): promueve las de segmento público con edge suficiente aunque hayan nacido
+    // 'monitor' por la regla vieja de priceAboveFair; degrada las de edge fino. El gate CLV vigila la compra.
+    if (old.blend_prob != null && isFinite(k)) {
+      const want = (old.blend_prob - k) * 100 >= 2 ? 'edge' : 'monitor';
+      if (old.regime !== want) { old.regime = want; n++; }
+    }
   }
   if (n || backfilled) save();
   return { reclassified: n, backfilled };

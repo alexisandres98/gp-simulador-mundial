@@ -1514,7 +1514,10 @@
     var clickable = !!openId;
     var openAttr = clickable ? ' data-openmatch="' + esc(openId) + '"' : '';
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
-      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') + '</span>' +
+      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') +
+      // Chip MONITOR (26-jul): solo lo ve el admin (los no-admin nunca reciben picks monitor). Distingue de
+      // un vistazo el track privado del feed público real — evita confundir "el feed sigue lleno".
+      (p.signals && p.signals.regime === 'monitor' ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle">MONITOR</span>' : '') + '</span>' +
       (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') + '</div>' +
       (opts.hideMatch ? '' : '<div class="gx-pick-match"><span class="fl">' + flag(p.home_team_id) + '</span><b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b><span class="fl">' + flag(p.away_team_id) + '</span></div>') +

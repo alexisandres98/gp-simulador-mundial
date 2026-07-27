@@ -228,6 +228,7 @@
       aff_available: 'Disponible', aff_pending: 'En espera', aff_pending_sub: 'madura a los 7 días', aff_paid: 'Pagado', aff_paying: 'referidos con suscripción activa', aff_forlife: 'de por vida', aff_lead: 'Ganás una comisión recurrente por cada persona que entre con tu enlace y pague una suscripción, mientras siga activa.', aff_wallet: 'Tu billetera', aff_wallet_sub: 'Cobrás en stablecoins (USDC/USDT). Elegí la red que uses.', aff_network: 'Red', aff_asset: 'Moneda', aff_address: 'Dirección', aff_address_ph: 'pegá tu dirección', aff_save_wallet: 'Guardar billetera', aff_wallet_saved: '✓ Billetera guardada', aff_withdraw: 'Retirar', aff_request: 'Solicitar retiro', aff_wd_open: 'Tenés una solicitud de {amt} en proceso.', aff_wd_min: 'Necesitás {min} disponibles para retirar.', aff_wd_cooldown: 'Ya solicitaste un retiro esta semana. Podés pedir el próximo en 7 días.', aff_wd_ready: 'Podés retirar {amt} ahora.', aff_wd_done: '✓ Retiro solicitado. Te avisamos por email cuando salga.', aff_rules: 'Mínimo $50 · un retiro por semana · el saldo queda disponible 7 días después de cada pago.', aff_period: 'Período', aff_referral: 'Referido', aff_plan: 'Plan', aff_commission: 'Comisión', aff_status: 'Estado', aff_st_available: 'disponible', aff_st_paid: 'pagado', aff_st_pending: 'en espera',
       aff_signups: 'registrados con tu enlace', aff_signups_note: 'Todos los que entraron con tu link, paguen o no. Solo los que pagan una suscripción generan comisión.', aff_signups_h: 'Tus registros', aff_su_date: 'Fecha', aff_su_status: 'Estado', aff_su_sub: 'suscrito', aff_su_verified: 'verificado', aff_su_reg: 'registrado',
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
+      nav_combat: 'Combate',
       tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
       tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
       tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
@@ -538,6 +539,7 @@
       aff_available: 'Available', aff_pending: 'Maturing', aff_pending_sub: 'clears after 7 days', aff_paid: 'Paid out', aff_paying: 'referrals with an active subscription', aff_forlife: 'for life', aff_lead: 'You earn a recurring commission for every person who joins with your link and pays for a subscription, as long as it stays active.', aff_wallet: 'Your wallet', aff_wallet_sub: 'You get paid in stablecoins (USDC/USDT). Pick the network you use.', aff_network: 'Network', aff_asset: 'Asset', aff_address: 'Address', aff_address_ph: 'paste your address', aff_save_wallet: 'Save wallet', aff_wallet_saved: '✓ Wallet saved', aff_withdraw: 'Withdraw', aff_request: 'Request withdrawal', aff_wd_open: 'You have a {amt} request in progress.', aff_wd_min: 'You need {min} available to withdraw.', aff_wd_cooldown: 'You already requested a withdrawal this week. Next one in 7 days.', aff_wd_ready: 'You can withdraw {amt} now.', aff_wd_done: '✓ Withdrawal requested. We\'ll email you when it goes out.', aff_rules: 'Min $50 · one withdrawal per week · balance clears 7 days after each payment.', aff_period: 'Period', aff_referral: 'Referral', aff_plan: 'Plan', aff_commission: 'Commission', aff_status: 'Status', aff_st_available: 'available', aff_st_paid: 'paid', aff_st_pending: 'maturing',
       aff_signups: 'signed up with your link', aff_signups_note: 'Everyone who joined through your link, paying or not. Only paid subscriptions earn commission.', aff_signups_h: 'Your sign-ups', aff_su_date: 'Date', aff_su_status: 'Status', aff_su_sub: 'subscribed', aff_su_verified: 'verified', aff_su_reg: 'signed up',
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
+      nav_combat: 'Combat',
       tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
       tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
       tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
@@ -814,9 +816,9 @@
     ['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['teams', 'shield', 'nav_teams'],
     ['sim', 'arrows-shuffle', 'nav_sim'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']
   ];
-  var NAV2 = [['brief', 'news', 'nav_brief'], ['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
+  var NAV2 = [['combat', 'karate', 'nav_combat'], ['brief', 'news', 'nav_brief'], ['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
 
-  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(v) >= 0 ? v : 'opps'); }
+  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support', 'bets', 'books', 'brief', 'combat'].indexOf(v) >= 0 ? v : 'opps'); }
   // BANNER FOUNDER (growth): barra superior a todo ancho anunciando el programa. Solo cuando el server
   // enciende founder_public (lanzamiento). Cierra por sesión, pero la env manda. Click → /founder.
   function founderBanner() {
@@ -867,13 +869,13 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief']; // vistas implementadas (clickeables)
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief', 'combat']; // vistas implementadas (clickeables)
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
     var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
     var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief', 'combat'];
     var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
       .map(function (n) { if (n[0] === '__more') { var act = moreViews.indexOf(cur) >= 0 ? ' on' : ''; return '<a class="' + act.trim() + '" data-more="1">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; } var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
@@ -3108,7 +3110,7 @@
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }
     // sub-estado del selector de competición en el hash (#groups/mls, #bracket/mls, #matches/mls, #teams/mls) →
     // la selección SOBREVIVE a la recarga y al enlace directo (P0.4). Sin sufijo = default de la vista.
-    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub|bets|books|brief)(?:\/([a-z0-9_]+))?/);
+    var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub|bets|books|brief|combat)(?:\/([a-z0-9_]+))?/);
     if (v) {
       var sub = v[2] || null;
       if (v[1] === 'groups') S.gComp = sub || 'wc';
@@ -3120,7 +3122,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'combat' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     if (!clubsOn()) return NAV_HASH[nav];
@@ -5557,6 +5559,71 @@
   }
   // ---- Invitar / Referidos ----
   var REF_TIERS = [[1, 'ref_t1'], [3, 'ref_t3'], [5, 'ref_t5'], [10, 'ref_t10']];
+  // ============================ COMBAT SPORTS (27-jul, ADMIN-ONLY) ============================
+  // UFC primero. Hero del main event (fotos ESPN reales con glow verde/rojo), cartelera con barras Elo,
+  // ranking con fotos. MMA/Boxeo = próximamente. Nada de esto existe para no-admins (endpoint 404).
+  function cbAva(f, side) {
+    var ini = (f.name || '?').split(' ').map(function (x) { return x[0] || ''; }).join('').slice(0, 2).toUpperCase();
+    var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" onerror="this.remove()">' : '';
+    return '<div class="gx-cb-ava ' + (side === 1 ? 'gr' : 'rd') + '">' + img + '<span>' + esc(ini) + '</span></div>';
+  }
+  function renderCombat() {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    // CARRERA con hash directo (patrón #perf/#sim documentado): S.me aún no llegó → esperar, no redirigir
+    if (S.me === undefined) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + mvLoading() + '</div></div>'; return; }
+    if (!(S.me && S.me.isAdmin)) { showView('board'); return; }
+    if (S.combat === undefined) {
+      S.combat = null;
+      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate 🥊') + mvLoading() + '</div></div>';
+      fetch('/api/combat/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.combat = j || { _err: true }; if (S.view === 'combat') renderCombat(); });
+      return;
+    }
+    var d = S.combat || {};
+    if (d._err) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate') + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; return; }
+    var tabs = '<div class="gx-cb-tabs"><span class="gx-cb-tab on">UFC</span><span class="gx-cb-tab dim">MMA · pronto</span><span class="gx-cb-tab dim">BOXEO · pronto</span>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + (d.data ? d.data.fights + ' peleas históricas · ' + d.data.fighters + ' perfiles · backtest acc ' + Math.round((d.backtest || {}).accuracy * 100) + '%' : '') + '</span></div>';
+    var cards = (d.cards || []);
+    var html = '';
+    cards.slice(0, 3).forEach(function (ev, ci) {
+      var main = ev.fights.find(function (f) { return f.main; }) || ev.fights[0];
+      var rest = ev.fights.filter(function (f) { return f !== main; });
+      var when = new Date(ev.date);
+      var whenTxt = when.toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      var pr = (main && main.prob) || {}; var p1 = Math.round((pr.p1 || 0.5) * 100);
+      var heroHtml = main ? '<div class="gx-cb-hero gx-panel">' +
+        '<div class="gx-cb-evrow"><span class="gx-cb-tag">★ MAIN EVENT</span><b>' + esc(ev.name) + '</b><span class="gx-spacer"></span><span class="gx-dim" style="font-size:12px">' + esc(whenTxt) + ' · ' + esc(main.weight || '') + ' · ' + (main.rounds || 3) + ' rounds</span></div>' +
+        '<div class="gx-cb-face">' +
+          '<div class="gx-cb-f">' + cbAva(main.f1, 1) + '<div class="gx-cb-nm">' + esc(main.f1.name || '') + '</div><div class="gx-cb-rec">' + main.f1.record.w + '-' + main.f1.record.l + ' UFC · ' + main.f1.record.ko + ' KO · ' + main.f1.record.sub + ' SUB</div>' + (main.f1.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(main.f1.reach_in)) + ' alcance</div>' : '') + '</div>' +
+          '<div class="gx-cb-mid"><div class="gx-cb-vs">VS</div><div class="gx-label" style="color:var(--gx-ac,#1FE3A4)">GP PROBABILITY</div>' +
+            '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
+            '<div class="gx-cb-pcts"><span>' + p1 + '%</span><span class="p2">' + (100 - p1) + '%</span></div>' +
+            '<div class="gx-dim" style="font-size:11px;margin-top:4px">Elo ' + (pr.r1 || '—') + ' vs ' + (pr.r2 || '—') + (main.odds ? ' · mejor cuota ' + main.odds.f1 + ' / ' + main.odds.f2 + ' (' + main.odds.books + ' casas)' : ' · sin cuotas aún') + '</div>' +
+          '</div>' +
+          '<div class="gx-cb-f">' + cbAva(main.f2, 2) + '<div class="gx-cb-nm">' + esc(main.f2.name || '') + '</div><div class="gx-cb-rec">' + main.f2.record.w + '-' + main.f2.record.l + ' UFC · ' + main.f2.record.ko + ' KO · ' + main.f2.record.sub + ' SUB</div>' + (main.f2.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(main.f2.reach_in)) + ' alcance</div>' : '') + '</div>' +
+        '</div></div>' : '';
+      var rows = rest.map(function (f) {
+        var pp2 = Math.round(((f.prob || {}).p1 || 0.5) * 100);
+        return '<div class="gx-cb-bout">' +
+          cbAva(f.f1, 1) +
+          '<div class="gx-cb-bnames"><b>' + esc(f.f1.name || '') + ' vs ' + esc(f.f2.name || '') + '</b><span class="gx-dim">' + esc(f.weight || '') + ' · ' + f.f1.record.w + '-' + f.f1.record.l + ' / ' + f.f2.record.w + '-' + f.f2.record.l + ' UFC</span></div>' +
+          '<div class="gx-cb-mini"><div class="gx-cb-minibar"><i style="width:' + pp2 + '%"></i></div><span class="gx-mono gx-dim" style="font-size:10.5px">' + pp2 + '% · ' + (100 - pp2) + '%</span></div>' +
+          (f.odds ? '<span class="gx-clgate ok" style="white-space:nowrap">' + f.odds.f1 + ' / ' + f.odds.f2 + '</span>' : '<span class="gx-clgate sh">sin cuotas</span>') +
+          '</div>';
+      }).join('');
+      html += heroHtml + (rows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Cartelera completa · ' + rest.length + ' peleas</span></div><div class="gx-mod-body">' + rows + '</div></div>' : '');
+    });
+    var rk = (d.ranking || []).map(function (r, i) {
+      return '<div class="gx-cb-bout">' +
+        '<span class="gx-mono gx-dim" style="width:22px;text-align:right">' + (i + 1) + '</span>' +
+        cbAva(r, 1) +
+        '<div class="gx-cb-bnames"><b>' + esc(r.name || '') + '</b><span class="gx-dim">' + r.record.w + '-' + r.record.l + ' UFC · ' + r.fights + ' peleas</span></div>' +
+        '<span class="gx-mono" style="color:var(--gx-ac,#1FE3A4);font-weight:800">' + r.elo + '</span></div>';
+    }).join('');
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + tabs + html +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Ranking Elo · activos</span><span class="gx-ph-extra gx-dim" style="font-size:11px">modelo validado: skill +' + ((d.backtest || {}).skill_vs_coin || 0) + ' en ' + ((d.backtest || {}).n || 0) + ' peleas out-of-sample</span></div><div class="gx-mod-body">' + rk + '</div></div>' +
+      '</div></div>';
+  }
+
   function renderRefer() {
     var mv = $('#gx-matchview'); if (!mv) return;
     // PROGRAMA DE AFILIADOS (25-jul): con GP_AFFILIATES_ENABLED muestra el panel de comisiones + retiro; sin el
@@ -6111,7 +6178,7 @@
   function setLang(l) {
     if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l;
     shell(); render();
-    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief };
+    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, combat: renderCombat };
     if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
@@ -6265,7 +6332,7 @@
           if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); if (!document.getElementById('gx-onb')) maybeTrialModal(); loadPlayerIndex(); loadClubsPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin', 'combat'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief', 'combat'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, combat: renderCombat }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

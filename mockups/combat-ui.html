@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1600px; height:1000px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif; color:#EAF1F2; overflow:hidden;
+  background:#06090B; position:relative; }
+body::before { content:''; position:absolute; inset:0; background:
+  radial-gradient(900px 500px at 18% -5%, rgba(31,227,164,.09), transparent 55%),
+  radial-gradient(800px 480px at 85% -5%, rgba(255,84,84,.07), transparent 55%),
+  radial-gradient(700px 700px at 50% 115%, rgba(31,227,164,.05), transparent 60%); }
+.nav { position:relative; display:flex; align-items:center; gap:22px; padding:16px 34px; border-bottom:1px solid rgba(255,255,255,.07); }
+.logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; }
+.logo i { width:34px; height:34px; border-radius:10px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.45); display:grid; place-items:center; font-style:normal; font-size:16px; }
+.search { flex:0 0 330px; background:#0C1317; border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:10px 16px; color:#5F747B; font-size:13.5px; }
+.sports { display:flex; gap:8px; margin-left:8px; }
+.sp { display:flex; align-items:center; gap:8px; padding:9px 16px; border-radius:99px; font-size:13.5px; font-weight:700; color:#9DB0B5; border:1px solid transparent; }
+.sp b { color:#5F747B; font-weight:700; font-size:12px; }
+.sp.on { background:rgba(31,227,164,.10); border-color:rgba(31,227,164,.45); color:#fff; }
+.sp.on b { color:#1FE3A4; }
+.nav .live { margin-left:auto; display:flex; gap:16px; font-size:12.5px; color:#9DB0B5; font-weight:600; }
+.live i { font-style:normal; color:#1FE3A4; }
+.subnav { position:relative; display:flex; align-items:center; gap:10px; padding:14px 34px 0; }
+.tab { padding:9px 20px; border-radius:99px; font-size:13px; font-weight:800; letter-spacing:.4px; color:#9DB0B5; background:#0C1317; border:1px solid rgba(255,255,255,.08); }
+.tab.on { background:#1FE3A4; color:#052018; border-color:#1FE3A4; }
+.next { margin-left:auto; font-size:12.5px; color:#9DB0B5; font-weight:600; }
+.next b { color:#F2C14E; }
+.main { position:relative; display:grid; grid-template-columns: 1fr 420px; gap:22px; padding:20px 34px; }
+.hero { background:linear-gradient(165deg,#0D1519,#0A1013); border:1px solid rgba(255,255,255,.09); border-radius:22px; padding:26px 30px 22px; position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0; background:
+  radial-gradient(400px 240px at 12% 30%, rgba(31,227,164,.10), transparent 60%),
+  radial-gradient(400px 240px at 88% 30%, rgba(255,84,84,.10), transparent 60%); }
+.ev { position:relative; display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.ev .tag { background:rgba(242,193,78,.14); border:1px solid rgba(242,193,78,.45); color:#F2C14E; font-weight:800; font-size:11.5px; letter-spacing:1.2px; padding:6px 14px; border-radius:99px; }
+.ev .ttl { font-weight:800; font-size:15px; letter-spacing:.3px; }
+.ev .when { margin-left:auto; font-size:12.5px; color:#9DB0B5; font-weight:600; }
+.face { position:relative; display:grid; grid-template-columns: 1fr 210px 1fr; align-items:center; gap:10px; }
+.fx { text-align:center; }
+.ava { width:150px; height:150px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:44px; font-weight:800; position:relative; }
+.ava.gr { background:linear-gradient(160deg,#123B2E,#0A1F18); border:2px solid rgba(31,227,164,.55); box-shadow:0 0 44px -8px rgba(31,227,164,.5); color:#1FE3A4; }
+.ava.rd { background:linear-gradient(160deg,#3B1414,#1F0A0A); border:2px solid rgba(255,94,94,.5); box-shadow:0 0 44px -8px rgba(255,94,94,.42); color:#FF7A7A; }
+.ava::after { content:attr(data-flag); position:absolute; bottom:-2px; right:2px; font-size:26px; }
+.fx .nm { font-weight:800; font-size:22px; letter-spacing:-.4px; }
+.fx .rec { color:#9DB0B5; font-size:13.5px; font-weight:600; margin-top:3px; }
+.fx .chip { display:inline-block; margin-top:9px; font-size:11px; font-weight:800; letter-spacing:1px; padding:5px 12px; border-radius:99px; }
+.fx .chip.c { background:rgba(242,193,78,.13); border:1px solid rgba(242,193,78,.4); color:#F2C14E; }
+.fx .chip.r { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.14); color:#9DB0B5; }
+.mid { text-align:center; }
+.mid .vs { font-weight:800; font-size:15px; color:#5F747B; letter-spacing:3px; margin-bottom:12px; }
+.gpp { font-size:11px; font-weight:800; letter-spacing:1.4px; color:#1FE3A4; margin-bottom:8px; }
+.bar { height:14px; border-radius:99px; overflow:hidden; display:flex; border:1px solid rgba(255,255,255,.12); }
+.bar i { display:block; height:100%; }
+.b1 { background:linear-gradient(90deg,#12B98A,#1FE3A4); width:64%; }
+.b2 { background:linear-gradient(90deg,#7A2E2E,#FF5E5E); width:36%; }
+.pcts { display:flex; justify-content:space-between; font-weight:800; font-size:17px; margin-top:7px; }
+.pcts .p2 { color:#FF7A7A; }
+.mkt { font-size:11.5px; color:#5F747B; font-weight:600; margin-top:5px; }
+.edge { display:inline-block; margin-top:10px; background:rgba(31,227,164,.13); border:1px solid rgba(31,227,164,.45); color:#1FE3A4; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:99px; }
+.tape { position:relative; margin-top:24px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px 26px; }
+.tp { display:grid; grid-template-columns: 44px 1fr 44px; align-items:center; gap:10px; font-size:12px; }
+.tp .v { font-weight:800; font-size:13px; text-align:center; }
+.tp .v.w { color:#1FE3A4; }
+.tp .lbl { text-align:center; color:#5F747B; font-weight:700; font-size:10.5px; letter-spacing:.6px; text-transform:uppercase; margin-bottom:3px; }
+.tp .tr { height:6px; border-radius:99px; background:rgba(255,255,255,.07); position:relative; overflow:hidden; }
+.tp .tr i { position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:linear-gradient(90deg,#12B98A,#1FE3A4); }
+.tp .tr.rv i { left:auto; right:0; background:linear-gradient(90deg,#FF5E5E,#7A2E2E); }
+.method { position:relative; margin-top:22px; display:flex; gap:12px; align-items:center; }
+.method .ml { font-size:10.5px; font-weight:800; letter-spacing:1.2px; color:#5F747B; text-transform:uppercase; }
+.mm { flex:1; display:flex; gap:10px; }
+.mc { flex:1; background:#0C1317; border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:12px 14px; text-align:center; }
+.mc b { display:block; font-size:20px; font-weight:800; }
+.mc span { font-size:11px; color:#9DB0B5; font-weight:700; letter-spacing:.5px; }
+.mc.hi { border-color:rgba(31,227,164,.45); background:rgba(31,227,164,.07); }
+.mc.hi b { color:#1FE3A4; }
+.side { display:flex; flex-direction:column; gap:14px; }
+.panel { background:linear-gradient(165deg,#0D1519,#0A1013); border:1px solid rgba(255,255,255,.09); border-radius:18px; padding:18px 20px; }
+.ph { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.ph b { font-size:12px; font-weight:800; letter-spacing:1.4px; color:#9DB0B5; text-transform:uppercase; }
+.ph span { font-size:11px; color:#1FE3A4; font-weight:800; }
+.bout { display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid rgba(255,255,255,.05); }
+.bout:first-of-type { border-top:0; }
+.bout .names { flex:1; }
+.bout .names b { display:block; font-size:13.5px; font-weight:700; }
+.bout .names span { font-size:11px; color:#5F747B; font-weight:600; }
+.mini { width:86px; }
+.mini .mb { height:7px; border-radius:99px; overflow:hidden; display:flex; background:#3B1414; }
+.mini .mb i { background:linear-gradient(90deg,#12B98A,#1FE3A4); height:100%; }
+.mini .mp { font-size:10.5px; color:#9DB0B5; font-weight:700; text-align:right; margin-top:3px; }
+.pick { font-size:10px; font-weight:800; padding:4px 10px; border-radius:99px; background:rgba(31,227,164,.13); border:1px solid rgba(31,227,164,.45); color:#1FE3A4; white-space:nowrap; }
+.pick.dim { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12); color:#5F747B; }
+.frow { display:flex; gap:12px; }
+.fcard { flex:1; background:#0C1317; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; text-align:center; }
+.fava { width:54px; height:54px; margin:0 auto 8px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:18px; background:linear-gradient(160deg,#152A23,#0C1712); border:1.5px solid rgba(31,227,164,.4); color:#1FE3A4; }
+.fcard b { display:block; font-size:12px; }
+.fcard span { font-size:10px; color:#5F747B; font-weight:700; }
+.spark { margin-top:8px; display:flex; gap:3px; justify-content:center; }
+.spark i { width:9px; height:9px; border-radius:3px; }
+.spark .w { background:#1FE3A4; } .spark .l { background:#FF5E5E; }
+.foot { position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:14px 34px; border-top:1px solid rgba(255,255,255,.06); font-size:11.5px; color:#5F747B; font-weight:600; background:rgba(6,9,11,.8); }
+.foot .cta { background:#1FE3A4; color:#052018; font-weight:800; font-size:13px; padding:10px 24px; border-radius:99px; }
+</style></head>
+<body>
+  <div class="nav">
+    <div class="logo"><i>📊</i>GP Intelligence</div>
+    <div class="search">🔍 Buscar peleadores, carteleras, mercados…</div>
+    <div class="sports">
+      <div class="sp">⚽ Fútbol <b>62</b></div>
+      <div class="sp on">🥊 Combate <b>14</b></div>
+      <div class="sp">🎾 Próximamente</div>
+    </div>
+    <div class="live"><span><i>●</i> 93 mercados</span><span style="color:#FF7A7A">● 2 en vivo</span><span>✦ 14 señales hoy</span></div>
+  </div>
+  <div class="subnav">
+    <div class="tab on">UFC</div><div class="tab">MMA</div><div class="tab">BOXEO</div>
+    <div class="next">Próxima cartelera: <b>UFC 322 · Sábado 22:00 ET</b> · 12 peleas analizadas</div>
+  </div>
+  <div class="main">
+    <div>
+      <div class="hero">
+        <div class="ev"><span class="tag">★ MAIN EVENT</span><span class="ttl">UFC 322 · T-Mobile Arena, Las Vegas</span><span class="when">Sáb · Peso pesado · 5 rounds</span></div>
+        <div class="face">
+          <div class="fx">
+            <div class="ava gr" data-flag="🇬🇧">TA</div>
+            <div class="nm">Tom Aspinall</div>
+            <div class="rec">15-3 · 12 KO · 78" alcance</div>
+            <span class="chip c">CAMPEÓN</span>
+          </div>
+          <div class="mid">
+            <div class="vs">VS</div>
+            <div class="gpp">GP PROBABILITY</div>
+            <div class="bar"><i class="b1"></i><i class="b2"></i></div>
+            <div class="pcts"><span>64%</span><span class="p2">36%</span></div>
+            <div class="mkt">mercado: 58% · 42% (consenso 28 casas)</div>
+            <span class="edge">▲ EDGE +6.0pp · PICK ACTIVA @1.72</span>
+          </div>
+          <div class="fx">
+            <div class="ava rd" data-flag="🇫🇷">CG</div>
+            <div class="nm">Ciryl Gane</div>
+            <div class="rec">13-2 · 5 KO · 81" alcance</div>
+            <span class="chip r">RETADOR #1</span>
+          </div>
+        </div>
+        <div class="tape">
+          <div>
+            <div class="tp"><span class="v w">6.1</span><div><div class="lbl">Golpes sig./min</div><div class="tr"><i style="width:76%"></i></div></div><span class="v">4.4</span></div>
+            <div class="tp"><span class="v w">58%</span><div><div class="lbl">Precisión striking</div><div class="tr"><i style="width:63%"></i></div></div><span class="v">52%</span></div>
+          </div>
+          <div>
+            <div class="tp"><span class="v w">3.2</span><div><div class="lbl">Derribos /15min</div><div class="tr"><i style="width:80%"></i></div></div><span class="v">0.8</span></div>
+            <div class="tp"><span class="v">74%</span><div><div class="lbl">Defensa de derribo</div><div class="tr rv"><i style="width:55%"></i></div></div><span class="v w">81%</span></div>
+          </div>
+          <div>
+            <div class="tp"><span class="v w">2:59</span><div><div class="lbl">Tiempo prom. victoria</div><div class="tr"><i style="width:85%"></i></div></div><span class="v">11:22</span></div>
+            <div class="tp"><span class="v w">31</span><div><div class="lbl">Edad</div><div class="tr"><i style="width:58%"></i></div></div><span class="v">35</span></div>
+          </div>
+        </div>
+        <div class="method">
+          <span class="ml">Método de victoria (GP)</span>
+          <div class="mm">
+            <div class="mc hi"><b>47%</b><span>KO / TKO</span></div>
+            <div class="mc"><b>14%</b><span>SUMISIÓN</span></div>
+            <div class="mc"><b>39%</b><span>DECISIÓN</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="ph"><b>Inteligencia del peleador</b><span>Ver perfiles completos →</span></div>
+        <div class="frow">
+          <div class="fcard"><div class="fava">TA</div><b>Aspinall</b><span>Forma reciente</span><div class="spark"><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i></div></div>
+          <div class="fcard"><div class="fava" style="border-color:rgba(255,94,94,.4);color:#FF7A7A;background:linear-gradient(160deg,#2A1515,#170C0C)">CG</div><b>Gane</b><span>Forma reciente</span><div class="spark"><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="w"></i></div></div>
+          <div class="fcard"><div class="fava">🥇</div><b>Camp. futuro</b><span>Prob. retención título</span><div style="font-weight:800;color:#1FE3A4;font-size:16px;margin-top:6px">71%</div></div>
+          <div class="fcard"><div class="fava">📡</div><b>Observer</b><span>Señal detectada</span><div style="font-size:10.5px;color:#F2C14E;margin-top:6px;font-weight:700">⚠ Gane: campamento corto</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="panel">
+        <div class="ph"><b>Cartelera completa</b><span>3 picks activas</span></div>
+        <div class="bout"><div class="names"><b>Aspinall vs Gane</b><span>Peso pesado · título</span></div><div class="mini"><div class="mb"><i style="width:64%"></i></div><div class="mp">64% · 36%</div></div><span class="pick">PICK @1.72</span></div>
+        <div class="bout"><div class="names"><b>Shevchenko vs Grasso</b><span>Peso mosca (F) · título</span></div><div class="mini"><div class="mb"><i style="width:57%"></i></div><div class="mp">57% · 43%</div></div><span class="pick dim">Sin edge</span></div>
+        <div class="bout"><div class="names"><b>Pantoja vs Kara-France</b><span>Peso mosca</span></div><div class="mini"><div class="mb"><i style="width:68%"></i></div><div class="mp">68% · 32%</div></div><span class="pick">PICK @1.58</span></div>
+        <div class="bout"><div class="names"><b>Gamrot vs Hooker</b><span>Peso ligero</span></div><div class="mini"><div class="mb"><i style="width:61%"></i></div><div class="mp">61% · 39%</div></div><span class="pick dim">Sin edge</span></div>
+        <div class="bout"><div class="names"><b>Borralho vs Allen</b><span>Peso medio</span></div><div class="mini"><div class="mb"><i style="width:55%"></i></div><div class="mp">55% · 45%</div></div><span class="pick">O2.5 rounds @1.80</span></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><b>Mercados de la pelea</b><span>28 casas</span></div>
+        <div class="bout"><div class="names"><b>Ganador</b><span>Aspinall ML</span></div><span class="pick">1.72 mejor</span></div>
+        <div class="bout"><div class="names"><b>Método</b><span>Aspinall por KO/TKO</span></div><span class="pick dim">3.10</span></div>
+        <div class="bout"><div class="names"><b>Rounds</b><span>Under 1.5</span></div><span class="pick dim">2.35</span></div>
+        <div class="bout"><div class="names"><b>Value detectado</b><span>ML en 3 casas rezagadas</span></div><span class="pick">▲ +6pp</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <span>Modelo validado por backtest histórico · historial público de picks · no es consejo financiero</span>
+    <span class="cta">Analizar pelea completa →</span>
+  </div>
+</body></html>

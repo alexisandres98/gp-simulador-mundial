@@ -9641,6 +9641,119 @@ const server = http.createServer(async (req, res) => {
       try { return json(res, 200, cardsValidationRun(req.method === 'POST')); }
       catch (e) { return json(res, 200, { error: e.message }); }
     }
+    // ===== COMBAT SPORTS (27-jul, F0-F1 — ADMIN ONLY hasta validar) ==========================================
+    // 2º deporte: UFC primero (MMA/Boxeo después). Data: ESPN (9,204 peleas 1997-2026 + perfiles/fotos) en
+    // data/combat/. Modelo: combat-engine/ratings (Elo por peleador, backtest walk-forward skill +0.0062 ✔
+    // gate pasado ANTES de construir la UI — el estándar de la casa). Cuotas: The Odds API mma (ya en el plan).
+    if (p.startsWith('/api/combat/')) {
+      const u = getUser(req);
+      if (!u || !u.isAdmin) return json(res, 404, { error: 'No encontrado' }); // admin-only estricto (404, ni señal)
+      const CE = require('./combat-engine/ratings');
+      global._combat = global._combat || {};
+      const C = global._combat;
+      const loadCombat = () => {
+        if (C.at && Date.now() - C.at < 10 * 60e3) return;
+        try { C.fights = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fights-ufc.json'), 'utf8')); } catch { C.fights = { fights: [], events: {} }; }
+        try { C.fighters = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fighters-ufc.json'), 'utf8')); } catch { C.fighters = {}; }
+        C.elo = CE.fitElo((C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date)));
+        C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
+        C.at = Date.now();
+      };
+      const record = (id) => { // récord W-L derivado del histórico (UFC-only)
+        let w = 0, l = 0, ko = 0, sub = 0;
+        for (const f of (C.fights.fights || [])) {
+          const me = f.f1.id === id ? f.f1 : f.f2.id === id ? f.f2 : null;
+          if (!me || !f.completed || !(f.f1.winner || f.f2.winner)) continue;
+          if (me.winner) { w++; const n = ((f.method || {}).name || '').toLowerCase(); if (/ko|tko/.test(n) && !/decision/.test(n)) ko++; if (/submission/.test(n)) sub++; }
+          else l++;
+        }
+        return { w, l, ko, sub };
+      };
+      // matcher nombre-Odds→id-ESPN: PUNTAJE y null ante empate (regla gp-regla-matcher-desambiguar)
+      const fighterByName = (name) => {
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+        const q = new Set(norm(name).split(' '));
+        let best = null, bestScore = 0, tie = false;
+        for (const [id, nm] of Object.entries(C.names)) {
+          if (!nm) continue;
+          const t = new Set(norm(nm).split(' '));
+          let ov = 0; for (const x of q) if (t.has(x)) ov++;
+          const sc = ov * 10 + ov / Math.max(1, t.size + q.size - ov);
+          if (sc > bestScore) { best = id; bestScore = sc; tie = false; }
+          else if (sc === bestScore && best !== id && sc > 0) tie = true;
+        }
+        return bestScore >= 20 && !tie ? best : null; // exige ≥2 tokens y sin empate
+      };
+      if (p === '/api/combat/state' && req.method === 'GET') {
+        loadCombat();
+        // próximas carteleras (ESPN, memo 10min) + cuotas mma (The Odds API, memo 10min)
+        if (!C.upAt || Date.now() - C.upAt > 10 * 60e3) {
+          try {
+            const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
+            const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+            const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${fmt(now)}-${fmt(to)}&limit=50`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+            C.upcoming = (sb.events || []).map(e => ({
+              id: e.id, name: e.name, date: e.date,
+              // main event: la pelea cuyos apellidos aparecen en el nombre del evento ("X vs. Y")
+              fights: (e.competitions || []).map(c => {
+                const a = (c.competitors || [])[0] || {}, b = (c.competitors || [])[1] || {};
+                const n1 = ((a.athlete || {}).displayName || '').split(' ').pop(), n2 = ((b.athlete || {}).displayName || '').split(' ').pop();
+                const main = !!(n1 && n2 && e.name && e.name.includes(n1) && e.name.includes(n2));
+                return { comp_id: c.id, main, weight: (c.type || {}).abbreviation || null, rounds: ((c.format || {}).regulation || {}).periods || null,
+                  f1: { id: a.id, name: (a.athlete || {}).displayName }, f2: { id: b.id, name: (b.athlete || {}).displayName } };
+              }),
+            }));
+          } catch { C.upcoming = C.upcoming || []; }
+          try {
+            const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+            const od = await fetch(`https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+            C.odds = Array.isArray(od) ? od : [];
+          } catch { C.odds = C.odds || []; }
+          C.upAt = Date.now();
+        }
+        // enriquecer cada pelea: Elo prob + perfil + cuotas de consenso
+        const cards = (C.upcoming || []).map(ev => ({
+          ...ev,
+          fights: ev.fights.map(ft => {
+            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+            const pf = (id) => ({ ...(C.fighters[id] || {}), record: record(id) });
+            // cuotas: buscar el evento de odds cuyos nombres matcheen AMBOS peleadores
+            let odds = null;
+            for (const o of (C.odds || [])) {
+              const h = fighterByName(o.home_team), a = fighterByName(o.away_team);
+              if (!h || !a) continue;
+              if ((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id)) {
+                const best = { home: 0, away: 0, books: 0 };
+                for (const bk of (o.bookmakers || [])) {
+                  const m = (bk.markets || []).find(x => x.key === 'h2h'); if (!m) continue;
+                  best.books++;
+                  for (const oc of (m.outcomes || [])) {
+                    if (oc.name === o.home_team && oc.price > best.home) best.home = oc.price;
+                    if (oc.name === o.away_team && oc.price > best.away) best.away = oc.price;
+                  }
+                }
+                odds = { f1: h === ft.f1.id ? best.home : best.away, f2: h === ft.f1.id ? best.away : best.home, books: best.books };
+                break;
+              }
+            }
+            return { ...ft, prob: pr, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
+          }),
+        }));
+        // ranking Elo top (≥8 peleas, activos últimos 2 años)
+        const cutoff = Date.now() - 2 * 365 * 24 * 3600e3;
+        const top = Object.entries(C.elo.R)
+          .filter(([id]) => (C.elo.N[id] || 0) >= 8 && new Date(C.elo.LAST[id] || 0) > cutoff)
+          .sort((a, b) => b[1] - a[1]).slice(0, 15)
+          .map(([id, r]) => ({ id, name: C.names[id], elo: Math.round(r), fights: C.elo.N[id], last: C.elo.LAST[id], headshot: (C.fighters[id] || {}).headshot || null, record: record(id) }));
+        const withMethod = (C.fights.fights || []).filter(f => f.method).length;
+        return json(res, 200, {
+          sport: 'ufc', cards, ranking: top,
+          data: { fights: (C.fights.fights || []).length, with_method: withMethod, fighters: Object.keys(C.fighters).length },
+          backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [])),
+        });
+      }
+      return json(res, 404, { error: 'No encontrado' });
+    }
     // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,
     // su plan y sus datos quedan INTACTOS; solo dejan de recibir broadcasts. GET lista los suprimidos.
     if (p === '/api/internal/suppress') {

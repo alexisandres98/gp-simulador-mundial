@@ -1870,23 +1870,28 @@ function tgOppText(row, e) {
 // LA prueba que vende: el post de resultados dice "hubo N picks, viste 1". FOMO honesto, sin canibalizar.
 function tgClubPickText() {
   const now = Date.now();
+  // EL SISTEMA (26-jul): el canal publica la MEJOR pick del feed VALIDADO del día (hoy cards-under; antes
+  // era "siempre SOLID" — familia retirada del feed por la autopsia). Misma pick que ve el plan free.
   const cands = (db.clubDailyPicks || []).filter(p =>
-    p.status === 'ACTIVE' && p.family === 'SOLID' && p.regime !== 'monitor' &&
+    p.status === 'ACTIVE' && isPublicSegment(p.family, p.side) && p.regime !== 'monitor' &&
     p.event && Date.parse(p.event.kickoff_at || 0) > now + 45 * 60e3); // margen para que alcancen a apostarla
   if (!cands.length) return null;
-  // la de mayor confianza entre las SOLID (es la que mejor prueba el sistema y la menos propietaria)
   cands.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
   const p = cands[0];
   const total = (db.clubDailyPicks || []).filter(x =>
-    x.status === 'ACTIVE' && x.regime !== 'monitor' && x.event &&
+    x.status === 'ACTIVE' && isPublicSegment(x.family, x.side) && x.regime !== 'monitor' && x.event &&
     Date.parse(x.event.kickoff_at || 0) > now).length;
   const e = p.event;
-  const sel = p.selection_code === 'home' ? e.home : p.selection_code === 'away' ? e.away : 'Empate';
+  const famTxt = p.family === 'SOLID'
+    ? `Gana ${p.selection_code === 'home' ? e.home : p.selection_code === 'away' ? e.away : 'Empate'}`
+    : p.family === 'CARDS' ? `Tarjetas ${p.side === 'under' ? 'menos' : 'más'} de ${p.line}`
+      : p.family === 'CORNERS' ? `Córners ${p.side === 'under' ? 'menos' : 'más'} de ${p.line}`
+        : `${p.side === 'under' ? 'Menos' : 'Más'} de ${p.line} goles`;
   const ko = new Date(e.kickoff_at);
   const hora = `${String(ko.getUTCHours()).padStart(2, '0')}:${String(ko.getUTCMinutes()).padStart(2, '0')} UTC`;
   const resto = Math.max(0, total - 1);
-  return `🎯 <b>Pick gratis de hoy</b>\n\n${e.home} vs ${e.away}\n<b>Gana ${sel}</b> · cuota ${Number(p.best_odds).toFixed(2)}\n🕐 ${hora}\n\n` +
-    (resto ? `El sistema publicó <b>${total} picks</b> hoy para suscriptores (goles, córners, tarjetas, jugador). Esta es una.\n\n` : '') +
+  return `🎯 <b>Pick gratis de hoy</b>\n\n${e.home} vs ${e.away}\n<b>${famTxt}</b> · cuota ${Number(p.best_odds).toFixed(2)}\n🕐 ${hora}\n\n` +
+    (resto ? `El sistema publicó <b>${total} picks</b> hoy para suscriptores. Esta es una.\n\n` : '') +
     `👉 <a href="https://gpsimulador.com/?ref=tg">Ver el resto en gpsimulador.com</a>\n\n<i>Estimaciones de un modelo estadístico. No es consejo financiero.</i>`;
 }
 // RESULTADOS del día anterior: todas las publicadas que liquidaron (ganadas Y perdidas) + récord acumulado.
@@ -4455,28 +4460,114 @@ function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
     .filter(x => x.status !== 'SETTLED' || Date.parse(x.settled_at || 0) >= CLUBS_CONTINUATION_START);
 }
 
-// STOP-LOSS ROLLING (23-jul, gobernanza automática): si una familia cae por debajo de su break-even en sus
-// últimas 30 liquidadas PÚBLICAS, sale sola del FEED (las activas dejan de mostrarse) hasta que la ventana se
-// recupere. El historial del cuadro NO se toca (es inmutable). Solo cuenta lo que HOY sería público: SOLID/GOALS
-// ancla, córners/tarjetas todas. Requiere ventana llena (≥30) → dormant hasta acumular muestra bajo las reglas
-// nuevas. Break-even = 1/cuota media (a la cuota típica de la familia, el hit mínimo para no perder).
+// ===== EL SISTEMA (26-jul, autopsia cuantitativa aprobada por Alexis) =========================================
+// El feed público publica SOLO segmentos (familia+lado) con edge VALIDADO: backtest offline contra el histórico
+// + replicación en dos universos + walk-forward temporal. Hoy: CARDS under (p=0.005, +10.4pp de selección sobre
+// el base-rate de liga/línea). Todo lo demás vive como regime 'monitor' (track privado) y puede GANARSE la
+// entrada con la misma evidencia — nunca por antigüedad. Override por env sin deploy: GP_PUBLIC_SEGMENTS
+// ej. "CARDS:under,CORNERS:under".
+const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under').split(',')
+  .map(s => s.trim()).filter(Boolean).map(s => s.split(':'));
+const isPublicSegment = (family, side) => PUBLIC_SEGMENTS.some(([f, s]) => f === family && (!s || s === (side || '')));
+const clubSegKey = (p) => PROP_FAMS.indexOf(p.family) >= 0 ? p.family + '|' + (p.side || '') : p.family;
+const pickClvNum = (p) => typeof p.clv === 'number' ? p.clv : (p.clv && typeof p.clv.clv_pct === 'number' ? p.clv.clv_pct : null);
+
+// STOP-LOSS + GATE DE CLV ROLLING (23-jul, ampliado 26-jul): por SEGMENTO (familia|lado en props). En la
+// ventana de las últimas 30 liquidadas públicas, el segmento sale solo del FEED si (a) hit < break-even
+// (stop-loss) o (b) CLV medio < 0 (no le bate al cierre = el "edge" es ilusión aunque venga acertando).
+// El historial del cuadro NO se toca (inmutable). Ventana llena (≥30) requerida. También respeta el corte
+// de la VALIDACIÓN CONTINUA (cardsValidationRun): selección que deja de ganarle al base-rate → fuera.
 function clubFamilyStopped() {
   const inPublic = (p) => (p.family === 'SOLID' || p.family === 'GOALS') ? p.regime === 'anchor' : (p.family === 'CORNERS' || p.family === 'CARDS');
-  const byFam = {};
+  const bySeg = {};
   const settled = (db.clubDailyPicks || [])
     .filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && inPublic(p))
     .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0));
-  for (const p of settled) (byFam[p.family] = byFam[p.family] || []).push(p);
+  for (const p of settled) (bySeg[clubSegKey(p)] = bySeg[clubSegKey(p)] || []).push(p);
   const stopped = new Set();
-  for (const [fam, list] of Object.entries(byFam)) {
+  for (const [seg, list] of Object.entries(bySeg)) {
     const w = list.slice(0, 30);
     if (w.length < 30) continue; // sin muestra suficiente → no se frena
-    let wins = 0, oddsSum = 0;
-    w.forEach(p => { if (p.result_code === 'WIN') wins++; oddsSum += Number(p.best_odds) || 0; });
+    let wins = 0, oddsSum = 0; const clvs = [];
+    w.forEach(p => {
+      if (p.result_code === 'WIN') wins++;
+      oddsSum += Number(p.best_odds) || 0;
+      const cv = pickClvNum(p); if (cv != null) clvs.push(cv);
+    });
     const hit = wins / w.length, avgOdds = oddsSum / w.length, breakEven = avgOdds > 1 ? 1 / avgOdds : 1;
-    if (hit < breakEven) stopped.add(fam);
+    const clvAvg = clvs.length >= 15 ? clvs.reduce((a, b) => a + b, 0) / clvs.length : null; // CLV con media ventana mínima
+    if (hit < breakEven || (clvAvg != null && clvAvg < 0)) stopped.add(seg);
   }
+  if (db.cardsValidation && db.cardsValidation.failed) stopped.add('CARDS|under');
   return stopped;
+}
+
+// ===== VALIDACIÓN CONTINUA de cards-under (26-jul) ===========================================================
+// Re-corre periódicamente el MISMO test que validó el segmento: ¿las últimas 50 liquidadas siguen acertando
+// más que el base-rate histórico de su liga/línea (props-history)? Éxito esperado por pick = base-rate →
+// z-test. Si las DOS últimas evaluaciones diarias (n≥30) dan p>0.5 (la selección ya no agrega nada), el
+// segmento se corta solo del feed (clubFamilyStopped respeta db.cardsValidation.failed) y avisa al admin.
+function erfc(x) { // Abramowitz-Stegun 7.1.26 (Node no trae erfc); error < 1.5e-7
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429)))) * Math.exp(-x * x);
+  return x >= 0 ? y : 2 - y;
+}
+let _cardsBaseRates = { at: 0, by: {} };
+function cardsBaseRates() {
+  if (Date.now() - _cardsBaseRates.at < 24 * 3600e3 && Object.keys(_cardsBaseRates.by).length) return _cardsBaseRates.by;
+  const by = {};
+  for (const lg of Object.keys(CLUB_AF_LEAGUE)) {
+    try {
+      const d = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${lg}.json`), 'utf8'));
+      const cs = [];
+      for (const m of d.matches || []) {
+        if (m.status !== 'FT') continue;
+        const h = m.home || {}, a = m.away || {};
+        if (h.yellows == null && a.yellows == null) continue;
+        cs.push((h.yellows || 0) + (a.yellows || 0) + (h.reds || 0) + (a.reds || 0));
+      }
+      if (cs.length >= 30) by[lg] = cs;
+    } catch { /* liga sin histórico aún — se omite del test */ }
+  }
+  _cardsBaseRates = { at: Date.now(), by };
+  return by;
+}
+function cardsValidationRun(persist) {
+  const by = cardsBaseRates();
+  const picks = (db.clubDailyPicks || [])
+    .filter(p => p.family === 'CARDS' && p.side === 'under' && p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'))
+    .sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0)).slice(0, 50);
+  let mu = 0, va = 0, obs = 0, n = 0;
+  for (const p of picks) {
+    const cs = by[p.league]; const line = Number(p.line);
+    if (!cs || !isFinite(line)) continue;
+    const br = cs.filter(x => x < line).length / cs.length;
+    mu += br; va += br * (1 - br); n++;
+    if (p.result_code === 'WIN') obs++;
+  }
+  const res = { at: new Date().toISOString(), n, expected: +mu.toFixed(1), observed: obs, z: null, p: null };
+  if (n >= 30 && va > 0) {
+    const z = (obs - mu - 0.5) / Math.sqrt(va);
+    res.z = +z.toFixed(2);
+    res.p = +(0.5 * erfc(z / Math.SQRT2)).toFixed(3); // one-sided: prob de este hit si la selección NO agregara nada
+  }
+  if (persist) {
+    db.cardsValidation = db.cardsValidation || { history: [], failed: false };
+    const h = db.cardsValidation.history;
+    if (!h.length || res.at.slice(0, 10) !== String(h[h.length - 1].at || '').slice(0, 10)) h.push(res); // 1/día
+    if (h.length > 12) db.cardsValidation.history = h.slice(-12);
+    const last2 = db.cardsValidation.history.slice(-2).filter(x => x.p != null);
+    const failedNow = last2.length === 2 && last2.every(x => x.p > 0.5);
+    if (failedNow && !db.cardsValidation.failed) {
+      try {
+        const adm = String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
+        if (adm && mailer.isConfigured()) mailer.sendMail({ to: adm, noListUnsub: true, subject: '⚠️ GP: cards-under cortado por validación continua', text: `El test de selección vs base-rate falló 2 evaluaciones seguidas (p>${0.5}).\nÚltima: n=${res.n}, esperado=${res.expected}, observado=${res.observed}, p=${res.p}.\nEl segmento salió del feed automáticamente. Revisar /api/internal/cards-validation.` }).catch(() => {});
+      } catch { /* aviso best-effort */ }
+    }
+    db.cardsValidation.failed = failedNow;
+    save();
+  }
+  return { ...res, failed: !!(db.cardsValidation && db.cardsValidation.failed), history_len: (db.cardsValidation && db.cardsValidation.history.length) || 0 };
 }
 
 // ===== CAPA DE OBSERVACIÓN de jugadores (6-jul, SHADOW) ======================================================
@@ -5406,6 +5497,25 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       || (old.family === 'GOALS' && scannedGoals.has(ev) && !keptGoals.has(ev)));
     if (drop) { old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.pruned = (out.pruned || 0) + 1; }
   }
+  // ===== EL SISTEMA (26-jul): blend + stake + segmentos públicos sobre las frescas =====
+  // (1) blend_prob = 0.5·modelo + 0.5·mercado — el modelo crudo sobreconfía ~5pp (calibración medida sobre
+  //     393 picks); el CV 5-fold dio óptimo λ 0.5-0.7. El edge de PUBLICACIÓN se evalúa con la prob encogida.
+  // (2) stake_pct = Kelly/4 sobre la prob encogida (clamp 0.25-3% del bankroll) — sizing honesto por pick.
+  // (3) todo lo que no sea segmento público validado nace regime 'monitor' (track privado; sigue liquidando).
+  for (const p of fresh) {
+    const m = Number(p.model_prob), k = Number(p.market_prob);
+    const blend = (isFinite(m) && m > 0 && isFinite(k) && k > 0) ? 0.5 * m + 0.5 * k : null;
+    p.blend_prob = blend != null ? +blend.toFixed(4) : null;
+    const o = Number(p.best_odds) || 0;
+    if (blend != null && o > 1) {
+      const kel = Math.max(0, (blend * (o - 1) - (1 - blend)) / (o - 1)) / 4;
+      p.stake_pct = kel > 0 ? +Math.min(3, Math.max(0.25, kel * 100)).toFixed(1) : null;
+    } else p.stake_pct = null;
+    if (!isPublicSegment(p.family, p.side)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
+    // segmento público: el edge debe SOBREVIVIR al encogimiento (blend−mercado ≥ 2pp ⇔ edge crudo ≥ 4pp;
+    // 81/82 cards-under históricas lo cumplían → no estrangula el volumen, solo corta espejismos finos)
+    if (blend == null || (blend - k) * 100 < 2) p.regime = 'monitor';
+  }
   const byId = new Set(db.clubDailyPicks.map(p => p.pick_id));
   let added = 0;
   for (const p of fresh) {
@@ -6124,6 +6234,8 @@ async function clubsDataPass({ force = false } = {}) {
     try { out.discovery = await clubsLeagueDiscovery(); } catch (e) { out.discovery = { error: e.message }; }
   } catch (e) { out.error = e.message; }
   finally { _dataPassRunning = false; }
+  // VALIDACIÓN CONTINUA (26-jul): 1×/día tras refrescar los históricos — re-testea la selección de cards-under
+  try { out.cards_validation = cardsValidationRun(true); } catch (e) { out.cards_validation = { error: e.message }; }
   console.log('[clubs-data-pass]', JSON.stringify(out).slice(0, 900));
   return out;
 }
@@ -6192,12 +6304,39 @@ if (clubsShadowOn() && clubsDataPassOn()) {
   setTimeout(() => { reconcileWhopGrants().then(r => { if (r && r.fixed) console.log('[reconcile-grants]', JSON.stringify(r)); }).catch(() => { }); }, 90 * 1000);
   setInterval(() => { reconcileWhopGrants().then(r => { if (r && r.fixed) console.log('[reconcile-grants]', JSON.stringify(r)); }).catch(() => { }); }, 6 * 3600 * 1000);
 }
+// RECLASIFICACIÓN 26-jul (idempotente, cada ciclo — NO vive dentro del build porque este puede salir
+// temprano sin Postgres): activas de segmentos no públicos → 'monitor'. No se borra ni supersede nada:
+// siguen liquidando al track privado; solo dejan de ser candidatas al feed (aprobado por Alexis, autopsia).
+function reclassifyClubSegments() {
+  let n = 0, backfilled = 0;
+  for (const old of (db.clubDailyPicks || [])) {
+    if (old.status !== 'ACTIVE') continue;
+    if (!isPublicSegment(old.family, old.side)) {
+      if (old.regime !== 'monitor') { old.regime = 'monitor'; n++; }
+      continue;
+    }
+    // segmento público: backfill de blend/stake para activas nacidas antes del sistema + mismo umbral de edge
+    const m = Number(old.model_prob), k = Number(old.market_prob), o = Number(old.best_odds) || 0;
+    if (old.blend_prob == null && isFinite(m) && m > 0 && isFinite(k) && k > 0) {
+      old.blend_prob = +(0.5 * m + 0.5 * k).toFixed(4);
+      if (o > 1) {
+        const kel = Math.max(0, (old.blend_prob * (o - 1) - (1 - old.blend_prob)) / (o - 1)) / 4;
+        old.stake_pct = kel > 0 ? +Math.min(3, Math.max(0.25, kel * 100)).toFixed(1) : null;
+      }
+      backfilled++;
+    }
+    if (old.blend_prob != null && isFinite(k) && (old.blend_prob - k) * 100 < 2 && old.regime !== 'monitor') { old.regime = 'monitor'; n++; }
+  }
+  if (n || backfilled) save();
+  return { reclassified: n, backfilled };
+}
 async function evaluateClubDailyPicks() {
   if (!dailyPicksOn() || !clubsShadowOn()) return { skipped: 'off' };
   if (_clubPicksRunning) return { skipped: 'running' };
   _clubPicksRunning = true;
   try {
     const b = await buildClubDailyPicks();
+    const rc = reclassifyClubSegments(); b.reclassified = rc.reclassified;
     const s = settleClubDailyPicks();
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
     const ri = repairClubPickTeamIds();   // ids de equipo mal resueltos por el matcher viejo (caso Grasshopper 25-jul)
@@ -7307,21 +7446,14 @@ const server = http.createServer(async (req, res) => {
           let clubActive = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE').filter(feedShowable)
             .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0));
           if (!betaUser.isAdmin) {
+            // EL SISTEMA (26-jul, reemplaza la cascada de filtros del 19/23-jul): el feed público es
+            // exactamente PUBLIC_SEGMENTS (hoy CARDS under — único segmento con edge validado por backtest)
+            // − regime monitor − segmentos frenados por el gate CLV/stop-loss/validación continua.
             clubActive = clubActive.filter(x => x.regime !== 'monitor');
-            // GOLES público = solo ANCLA (19-jul, Alexis): el edge de goles empata al mercado eficiente → al track
-            // privado. Autoritativo: excluye también las legacy activas (regime 'edge'/indefinido) sin mutar el track.
-            clubActive = clubActive.filter(x => !(x.family === 'GOALS' && x.regime !== 'anchor'));
-            // PLAYER de clubes FUERA del feed público (23-jul, decisión Alexis tras autopsia: 2-5, −3.07u,
-            // CLV −0.95% — la familia acumula muestra ADMIN-ONLY y se publica cuando demuestre). El guard de
-            // disponibilidad (clubPlayerAvail, TSA pago) queda listo en el historial de git para la reapertura.
-            clubActive = clubActive.filter(x => x.family !== 'PLAYER');
-            // CORNERS/CARDS: el FEED sigue gateado por props-public (activas no se muestran — data fina en
-            // acumulación); sus LIQUIDADAS sí cuentan en el cuadro público (picks-record, decisión 23-jul).
-            if (!propsPicksPublic()) clubActive = clubActive.filter(x => PROP_FAMS.indexOf(x.family) < 0);
+            clubActive = clubActive.filter(x => isPublicSegment(x.family, x.side));
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
-            // STOP-LOSS ROLLING: familias bajo break-even en sus últimas 30 públicas salen del feed (dormant hasta ≥30).
             const _stopped = clubFamilyStopped();
-            if (_stopped.size) clubActive = clubActive.filter(x => !_stopped.has(x.family));
+            if (_stopped.size) clubActive = clubActive.filter(x => !_stopped.has(clubSegKey(x)));
           }
           const clubItems = clubActive.map(x => ({
               pick_id: x.pick_id, family: x.family, event_id: null, club_eid: x.event.club_eid || null,
@@ -7333,6 +7465,7 @@ const server = http.createServer(async (req, res) => {
               player_name: x.player_name || null, player_family: x.player_family || null,
               odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
               why_es: x.why_es || null, why_en: x.why_en || null,
+              stake_pct: x.stake_pct != null ? x.stake_pct : null, // Kelly/4 sobre la prob encogida (26-jul)
               signals: pickSignals(x, { isClub: true }),
               books_list: booksListFor(bmap, x),
             }));
@@ -7387,7 +7520,9 @@ const server = http.createServer(async (req, res) => {
           const wu = db.users[betaUser.email];
           const eligible = wu && !wu.welcomePickSeen && (Date.now() - (wu.createdAt || 0) < 30 * 24 * 3600e3);
           if (eligible && dailyPicksOn()) {
-            const cand = items.filter(f => f.family === 'SOLID' && f.confidence != null && Number(f.odds) > 1)
+            // EL SISTEMA (26-jul): el feed ya no publica SOLID — la pick de bienvenida es la MÁS confiable
+            // del feed validado del día, sea cual sea su familia (hoy cards-under).
+            const cand = items.filter(f => f.confidence != null && Number(f.odds) > 1)
               .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
             if (cand[0]) welcomePick = { ...cand[0], welcome: true };
           }
@@ -7400,16 +7535,19 @@ const server = http.createServer(async (req, res) => {
         let lockedCount = 0, planDelayed = false;
         if (plan === 'free') {
           const total = items.length;
-          const solid = items.filter(f => f.family === 'SOLID').sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
-          const top = solid[0] || null;
+          // EL SISTEMA (26-jul): el feed ya no tiene SOLID — la pick gratis del día es la MEJOR por
+          // confianza del feed validado (hoy cards-under), visible recién 60 min antes del kickoff.
+          const sorted = items.slice().sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+          const top = sorted[0] || null;
           const visible = top && (new Date(top.kickoff).getTime() - Date.now()) <= 60 * 60 * 1000;
           planDelayed = !!(top && !visible);
           items = visible ? [top] : [];
           lockedCount = total - items.length;
         } else if (plan === 'pro') {
-          const before = items.length;
-          items = items.filter(f => f.family === 'SOLID' || f.family === 'GOALS' || f.family === 'COMBO');
-          lockedCount = before - items.length; // familias Sharp futuras (córners/tarjetas/props)
+          // 26-jul: PRO ve el feed validado COMPLETO (antes filtraba SOLID/GOALS/COMBO → con el feed nuevo
+          // quedaba en CERO picks pagando $19). La diferenciación de Sharp vive en value/arb/cartera/props
+          // del cockpit, no en retener picks del feed. — ajustable si Alexis quiere otro reparto.
+          lockedCount = 0;
         }
         // RECAP DE AYER (prueba social agregada): solo el marcador W/T del día anterior (UTC). El historial
         // detallado de picks sigue siendo SOLO admin — aquí no viaja ninguna pick vieja, solo el conteo.
@@ -9247,6 +9385,13 @@ const server = http.createServer(async (req, res) => {
       try { diag.fixture = await clubAfFixture(lg, hId, aId); } catch (e) { diag.fixture_err = String(e.message); }
       try { const st = await clubMatchStats(lg, hId, aId); diag.stats = st ? { home: st.home, away: st.away } : null; } catch (e) { diag.stats_err = String(e.message); }
       return json(res, 200, diag);
+    }
+    // VALIDACIÓN CONTINUA cards-under (26-jul): GET = computa sin persistir; POST = evalúa y persiste (1/día).
+    if (p === '/api/internal/cards-validation') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try { return json(res, 200, cardsValidationRun(req.method === 'POST')); }
+      catch (e) { return json(res, 200, { error: e.message }); }
     }
     // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,
     // su plan y sus datos quedan INTACTOS; solo dejan de recibir broadcasts. GET lista los suprimidos.

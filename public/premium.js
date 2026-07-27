@@ -192,7 +192,7 @@
       pf_over_cards: 'Más de {line} tarjetas', pf_under_cards: 'Menos de {line} tarjetas',
       pf_player_goal: '{player} anota', pf_player_shots: '{player}: más de {line} remates', pf_player_sot: '{player}: más de {line} al arco', pf_player_assist: '{player}: da una asistencia',
       pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
-      pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada', ps_win: 'Prob. de acierto', pf_corr_calc: 'Correlación {rho}× medida en la matriz de marcadores → si tomás ambas, stake total sugerido ≈ {pct}% de la suma individual.', ps_edge: 'Edge', ps_data: 'Datos', ps_quality: 'Calidad', ps_dc_low: 'Baja', ps_q_strong: 'Fuerte', ps_q_moderate: 'Moderada', ps_q_marginal: 'Marginal',
+      pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada', ps_win: 'Prob. de acierto', pf_corr_calc: 'Correlación {rho}× medida en la matriz de marcadores → si tomás ambas, stake total sugerido ≈ {pct}% de la suma individual.', ps_edge: 'Edge', ps_data: 'Datos', ps_quality: 'Calidad', ps_dc_low: 'Baja', ps_q_strong: 'Fuerte', ps_q_moderate: 'Moderada', ps_q_marginal: 'Marginal', ps_stake: 'Stake sug.',
       pf_best_odds: 'Mejor cuota', pf_at: 'en', pf_combo_and: 'y', pf_pick_label: 'Nuestra pick',
       pf_disclaimer: 'Estimaciones de inteligencia deportiva. No es consejo financiero. Apuesta con responsabilidad.',
       reg_odds: 'Cuota', reg_result: 'Resultado', reg_era: 'Modelo', reg_era_current: 'GP Intelligence', reg_era_previous: 'Etapa anterior', reg_empty: 'Aún no hay Picks registradas.',
@@ -498,7 +498,7 @@
       pf_over_cards: 'Over {line} cards', pf_under_cards: 'Under {line} cards',
       pf_player_goal: '{player} to score', pf_player_shots: '{player}: over {line} shots', pf_player_sot: '{player}: over {line} shots on target', pf_player_assist: '{player}: to provide an assist',
       pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
-      pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate', ps_win: 'Win probability', pf_corr_calc: 'Correlation {rho}× measured on the score matrix → if you take both, suggested total stake ≈ {pct}% of the individual sum.', ps_edge: 'Edge', ps_data: 'Data', ps_quality: 'Quality', ps_dc_low: 'Low', ps_q_strong: 'Strong', ps_q_moderate: 'Moderate', ps_q_marginal: 'Marginal',
+      pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate', ps_win: 'Win probability', pf_corr_calc: 'Correlation {rho}× measured on the score matrix → if you take both, suggested total stake ≈ {pct}% of the individual sum.', ps_edge: 'Edge', ps_data: 'Data', ps_quality: 'Quality', ps_dc_low: 'Low', ps_q_strong: 'Strong', ps_q_moderate: 'Moderate', ps_q_marginal: 'Marginal', ps_stake: 'Sugg. stake',
       pf_best_odds: 'Best odds', pf_at: 'at', pf_combo_and: 'and', pf_pick_label: 'Our pick',
       pf_disclaimer: 'Sports-intelligence estimates. Not financial advice. Bet responsibly.',
       reg_odds: 'Odds', reg_result: 'Result', reg_era: 'Model', reg_era_current: 'GP Intelligence', reg_era_previous: 'Previous stage', reg_empty: 'No Picks recorded yet.',
@@ -1571,6 +1571,8 @@
     if (sg.edge_pp != null) parts.push(esc(t('ps_edge')) + ' <b>' + (sg.edge_pp >= 0 ? '+' : '') + Number(sg.edge_pp).toFixed(1) + 'pp</b>');
     parts.push(esc(t('ps_data')) + ' <b>' + esc(t(dcK)) + '</b>');
     parts.push(esc(t('ps_quality')) + ' <b class="gx-q-' + esc(sg.pick_quality || 'moderate') + '">' + esc(t(qK)) + '</b>');
+    // Stake sugerido Kelly/4 (26-jul, el sistema): viene del server sobre la prob encogida al mercado
+    if (p.stake_pct != null) parts.push(esc(t('ps_stake')) + ' <b>' + Number(p.stake_pct).toFixed(1) + '%</b>');
     return '<div class="gx-pick-signals">' + parts.join('<span class="gx-sig-dot">·</span>') + '</div>';
   }
 

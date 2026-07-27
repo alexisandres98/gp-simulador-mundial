@@ -4567,7 +4567,11 @@ function clubFamilyStopped() {
     // + la validación continua contra resultados (bug 27-jul: el CLV −0.34% frenaba cards-under con hit 76.7%
     // y validación p=0.026 aprobando; los usuarios no-admin no veían la familia estrella).
     const isProp = PROP_FAMS.indexOf(seg.split('|')[0]) >= 0;
-    if (hit < breakEven || (!isProp && clvAvg != null && clvAvg < 0)) stopped.add(seg);
+    // CLV como juez SOLO donde el cierre es autoridad: segmentos ANCHOR de mercados líquidos. En props el
+    // cierre es perezoso, y en 'lead' el juez sería el MISMO mercado blando que la tesis dice que se equivoca
+    // — en ambos gobiernan stop-loss por resultados (+ validación continua en cards).
+    const clvApplies = !isProp && !/\|lead$/.test(seg);
+    if (hit < breakEven || (clvApplies && clvAvg != null && clvAvg < 0)) stopped.add(seg);
   }
   if (db.cardsValidation && db.cardsValidation.failed) stopped.add('CARDS|under');
   return stopped;
@@ -5688,6 +5692,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const ko = Date.parse(q.event.kickoff_at || 0);
     // ventana de freeze [−3h, +15min]: se marca al CRUZAR el freeze, no a picks viejas re-activadas de
     // partidos ya jugados (esas son monitoreo, no publicadas — el intruso Atl-MG del 24-jul).
+    if (q.regime === 'monitor') continue; // el monitoreo privado JAMÁS se marca publicado (fix 27-jul)
     if (ko && ko <= Date.now() + 15 * 60e3 && ko > Date.now() - 3 * 3600e3) { q.published = true; publishedN++; }
   }
   if (added || updated || out.pruned || publishedN) save();
@@ -5965,11 +5970,20 @@ async function captureClubPicksClosing({ force = false } = {}) {
 function officialClubRecord() {
   const BASELINE = Date.parse('2026-07-23T12:00:00Z');
   const basic = (x) => x.family !== 'PLAYER' && (
-    x.published === true ||
+    // POST-corte: solo lo que el usuario VIO — published Y no-monitor (fix 27-jul: el freeze marcaba published
+    // también a las monitor → 55 picks jamás vistas [35W/20L] inflaban el cuadro público con ganancia fantasma).
+    // PRE-baseline: la base histórica que Alexis validó el 23-jul queda INTACTA.
+    (x.published === true && x.regime !== 'monitor') ||
     (x.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH', 'VOID'].includes(x.result_code) && Date.parse(x.settled_at || 0) < BASELINE)
   );
   const scheme = (x) => {
-    if (x.family === 'SOLID') { const mk = +x.market_prob || 0, md = +x.model_prob || 0, bk = +x.books || 0; return mk >= 0.55 && bk >= 5 && md <= mk + 0.05; }
+    if (x.family === 'SOLID') {
+      // 27-jul: las 'lead' (modelo-líder en blandas) SE PUBLICAN → sus liquidadas DEBEN contar en el cuadro
+      // (si el usuario ve la pick, su resultado aparece — sin excepciones). Las anchor/legacy conservan las
+      // reglas del 23-jul para NO reescribir el cuadro histórico.
+      if (x.regime === 'lead') return true;
+      const mk = +x.market_prob || 0, md = +x.model_prob || 0, bk = +x.books || 0; return mk >= 0.55 && bk >= 5 && md <= mk + 0.05;
+    }
     if (x.family === 'GOALS') return x.regime === 'anchor';
     return true; // CORNERS/CARDS/COMBO: cuentan todas las que liquidan (decisión 23-jul), deduplicadas abajo
   };
@@ -7564,7 +7578,7 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/beta/picks' && req.method === 'GET') {
         const pickSignals = (x, { isClub = false } = {}) => {
           const books = Number(x.books || 0), odds = Number(x.best_odds || 0);
-          const regime = x.regime || (x.family === 'SOLID' || x.family === 'PLAYER' ? 'anchor' : 'edge');
+          const regime = (x.regime === 'lead' ? 'edge' : x.regime) || (x.family === 'SOLID' || x.family === 'PLAYER' ? 'anchor' : 'edge'); // 'lead' se evalúa como edge-style (tiene edge real del blend)
           let edge = x.edge_pp != null ? Number(x.edge_pp) : null;
           if (edge == null && x.model_prob != null && x.market_prob != null) edge = +((x.model_prob - x.market_prob) * 100).toFixed(1);
           const dataConf = !(odds > 1) ? 'low' : books >= 5 ? 'high' : books >= 3 ? 'med' : 'low';
@@ -9549,7 +9563,11 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const rt = global._clubsRatings || { leagues: {} };
       const leagues = Object.keys(rt.leagues || {}).concat(Object.keys(LEAGUE_EFF_PRIOR)).filter((v, i, a) => a.indexOf(v) === i);
-      return json(res, 200, Object.fromEntries(leagues.map(l => [l, leagueEfficiency(l)])));
+      return json(res, 200, Object.fromEntries(leagues.map(l => {
+        const e = leagueEfficiency(l);
+        try { const gf = l !== 'mundial' ? clubGoalsFit(l) : null; e.goals_fit = gf ? gf.source || 'goals' : null; } catch { e.goals_fit = null; }
+        return [l, e];
+      })));
     }
     // VALIDACIÓN CONTINUA cards-under (26-jul): GET = computa sin persistir; POST = evalúa y persiste (1/día).
     if (p === '/api/internal/cards-validation') {

@@ -1873,13 +1873,13 @@ function tgClubPickText() {
   // EL SISTEMA (26-jul): el canal publica la MEJOR pick del feed VALIDADO del día (hoy cards-under; antes
   // era "siempre SOLID" — familia retirada del feed por la autopsia). Misma pick que ve el plan free.
   const cands = (db.clubDailyPicks || []).filter(p =>
-    p.status === 'ACTIVE' && isPublicSegment(p.family, p.side) && p.regime !== 'monitor' &&
+    p.status === 'ACTIVE' && isPublicSegment(p.family, p.side, p.league) && p.regime !== 'monitor' &&
     p.event && Date.parse(p.event.kickoff_at || 0) > now + 45 * 60e3); // margen para que alcancen a apostarla
   if (!cands.length) return null;
   cands.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
   const p = cands[0];
   const total = (db.clubDailyPicks || []).filter(x =>
-    x.status === 'ACTIVE' && isPublicSegment(x.family, x.side) && x.regime !== 'monitor' && x.event &&
+    x.status === 'ACTIVE' && isPublicSegment(x.family, x.side, x.league) && x.regime !== 'monitor' && x.event &&
     Date.parse(x.event.kickoff_at || 0) > now).length;
   const e = p.event;
   const famTxt = p.family === 'SOLID'
@@ -3279,7 +3279,9 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
     for (const [ceid, meta] of Object.entries(db.clubsQuoteEvents || {})) {
       if (!meta.oa_id || !meta.kickoff) continue;
       const kt = +new Date(meta.kickoff);
-      if (!(kt > now && kt < now + 48 * 3600e3)) continue;
+      // ATAQUE A LA APERTURA (26-jul): ventana ampliada 48h→144h — las casas cuelgan props 2-5 días antes;
+      // ver el mercado desde que ABRE = comprar en su momento más ignorante (el opening queda en db.marketOpenings).
+      if (!(kt > now && kt < now + 144 * 3600e3)) continue;
       const L = RT.leagues[meta.league]; if (!L || !L.odds_key) continue;
       let o = null;
       try {
@@ -4468,7 +4470,49 @@ function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
 // ej. "CARDS:under,CORNERS:under".
 const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under').split(',')
   .map(s => s.trim()).filter(Boolean).map(s => s.split(':'));
-const isPublicSegment = (family, side) => PUBLIC_SEGMENTS.some(([f, s]) => f === family && (!s || s === (side || '')));
+
+// ===== EFICIENCIA POR LIGA (26-jul, propuesta de Alexis validada con el test 2×2) ============================
+// La MISMA estrategia rinde según la eficiencia del mercado: anclar dio +15% en ligas eficientes y −46% en
+// blandas (gradiente monótono, n=128). El sistema clasifica cada liga en una BANDA y la estrategia depende de
+// ella. La banda nace de un PRIOR estructural (clasificable ANTES de que la liga arranque: país/división/
+// cobertura de casas) y se AUTO-CORRIGE cuando hay medición suficiente: Brier del consenso de mercado sobre
+// los eventos liquidados de la liga (n≥40; con histéresis de 0.005 para no oscilar). Bandas: 'eficiente'
+// (el precio sabe → jamás "edge" propio; anchor=solo producto), 'intermedia', 'blanda' (el precio NO sabe →
+// PROHIBIDO anclar; solo modelo propio validado).
+// Idiomas LOCALES del observer por liga (26-jul): la prensa local publica bajas horas antes que la global.
+const LEAGUE_OBS_LANGS = {
+  brasileirao: ['pt'], brasilb: ['pt'], finlandia: ['fi'], noruega: ['no'], suecia: ['sv'], dinamarca: ['da'],
+  polonia: ['pl'], rusia: ['ru'], suiza: ['de', 'fr'], bundesliga: ['de'], ligue1: ['fr'], seriea: ['it'], premier: [],
+};
+const LEAGUE_EFF_PRIOR = {
+  mundial: 'eficiente', premier: 'eficiente', laliga: 'eficiente', bundesliga: 'eficiente', seriea: 'eficiente', ligue1: 'eficiente',
+  suecia: 'eficiente', // medida 26-jul: brier .217 con 20 casas
+  mls: 'intermedia', brasileirao: 'intermedia', argentina: 'intermedia', colombia: 'intermedia', brasilb: 'intermedia', ligamx: 'intermedia',
+  // ligamx midió BLANDA (brier .253 pese a 27 casas) pero con n=23 → prior intermedia hasta que la medición confirme
+};
+function leagueEfficiency(league) {
+  const lg = league || 'mundial';
+  const prior = LEAGUE_EFF_PRIOR[lg] || 'blanda';
+  const rows = (db.clubDailyPicks || []).filter(p => p.league === lg && p.status === 'SETTLED'
+    && (p.result_code === 'WIN' || p.result_code === 'LOSS') && p.market_prob > 0 && p.market_prob < 1);
+  if (rows.length < 40) return { band: prior, source: 'prior', n: rows.length };
+  const brier = rows.reduce((s, p) => s + Math.pow(p.market_prob - (p.result_code === 'WIN' ? 1 : 0), 2), 0) / rows.length;
+  // histéresis: la medición solo mueve la banda si cruza el umbral con margen
+  const band = brier < 0.230 ? 'eficiente' : brier > 0.260 ? 'blanda' : brier < 0.235 && prior === 'eficiente' ? 'eficiente' : brier > 0.255 && prior === 'blanda' ? 'blanda' : 'intermedia';
+  return { band, source: 'measured', brier: +brier.toFixed(4), n: rows.length };
+}
+// Bandas donde cada segmento público está VALIDADO para publicar. Cards-under se validó en intermedias
+// (n=76, +21.6%) y su racional (público over + líneas perezosas) aplica AÚN MÁS en blandas; en ligas
+// eficientes el mercado de cards también está bien puesto → queda en monitor ahí.
+const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'] };
+const isPublicSegment = (family, side, league) => {
+  const seg = PUBLIC_SEGMENTS.some(([f, s]) => f === family && (!s || s === (side || '')));
+  if (!seg) return false;
+  if (league === undefined) return true; // sin liga = chequeo de segmento puro (compat)
+  const allowed = SEGMENT_BANDS[family + '|' + (side || '')];
+  if (!allowed) return true;
+  return allowed.indexOf(leagueEfficiency(league).band) >= 0;
+};
 const clubSegKey = (p) => PROP_FAMS.indexOf(p.family) >= 0 ? p.family + '|' + (p.side || '') : p.family;
 const pickClvNum = (p) => typeof p.clv === 'number' ? p.clv : (p.clv && typeof p.clv.clv_pct === 'number' ? p.clv.clv_pct : null);
 
@@ -5027,7 +5071,7 @@ async function runClubObserver() {
       const slot = db.clubObservations[tmId] || (db.clubObservations[tmId] = { league, name, signals: [] });
       slot.league = league; slot.name = name;
       const seen = new Set(slot.signals.map(s => s.title));
-      for (const q of sources.clubQueries(name)) {
+      for (const q of sources.clubQueries(name, LEAGUE_OBS_LANGS[league])) {
         let items = [];
         try { items = await sources.googleNewsRss(q.q, q.lang); } catch { out.errors++; continue; }
         out.items += items.length;
@@ -5352,6 +5396,31 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // goalsAnchorEnabled:true (17-jul, régimen dual de Alexis): en mercados de goles EFICIENTES el camino
   // ANCLA sigue el lean del consenso cuando el modelo confirma — picks "ganadoras con poco edge" en vez
   // de perseguir edge de modelo en mercados afilados. El Mundial no toca este flag (default false).
+  // ===== OPENING ODDS + ARCHIVO HISTÓRICO (26-jul, construcción aprobada por Alexis) =====================
+  // (a) db.marketOpenings: la PRIMERA cuota vista de cada mercado (clave evento|mercado) — el precio "más
+  //     ignorante"; las picks lo llevan (opening) → métrica CLV-desde-apertura. Se poda al pasar el evento.
+  // (b) Archivo diario: snapshot completo del sweep (events/goal/prop/player markets) comprimido al disco
+  //     persistente — el activo que hoy NO tenemos: cuotas históricas del mercado ENTERO para backtests
+  //     futuros (hasta ahora solo guardábamos las cuotas de nuestras picks).
+  try {
+    db.marketOpenings = db.marketOpenings || {};
+    const seen = (key, odds, kickoff) => {
+      if (odds > 1 && !db.marketOpenings[key]) db.marketOpenings[key] = { odds, at: new Date().toISOString(), ko: kickoff || null };
+    };
+    for (const e of events) seen(e.eventId + '|h2h', (e.bestOdds || {}).home || 0, e.kickoff);
+    for (const g of goalMarkets) seen(g.eventId + '|' + g.marketId, g.bestOdds || 0, g.kickoff);
+    for (const g of propMarkets) seen(g.eventId + '|' + g.marketId, g.bestOdds || 0, g.kickoff);
+    const cutoff = Date.now() - 7 * 24 * 3600e3;
+    for (const [k, v] of Object.entries(db.marketOpenings)) { const ko = Date.parse(v.ko || 0); if (isFinite(ko) && ko < cutoff) delete db.marketOpenings[k]; }
+    const today = new Date().toISOString().slice(0, 10);
+    if (db.oddsArchiveDay !== today && (events.length || goalMarkets.length)) {
+      const zlib = require('zlib');
+      const dir = path.join(CLUB_DATA_DISK && fs.existsSync(CLUB_DATA_DISK) ? CLUB_DATA_DISK : path.join(__dirname, 'data', 'clubs'), 'odds-archive');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, today + '.json.gz'), zlib.gzipSync(JSON.stringify({ at: new Date().toISOString(), events, goalMarkets, propMarkets, playerMarkets })));
+      db.oddsArchiveDay = today;
+    }
+  } catch (e) { console.error('[odds-archive]', e.message); }
   const res = curate({ events, goalMarkets, propMarkets, playerMarkets, config: { goalsRequireApprovedFamily: false, propsRequireApprovedFamily: false, playerMinBooks: 1, propsMinBooks: 1, goalsAnchorEnabled: true, propsMonitoringMode: true } });
   out.player_markets = playerMarkets.length;
   out.prop_markets = propMarkets.length;
@@ -5511,7 +5580,10 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       const kel = Math.max(0, (blend * (o - 1) - (1 - blend)) / (o - 1)) / 4;
       p.stake_pct = kel > 0 ? +Math.min(3, Math.max(0.25, kel * 100)).toFixed(1) : null;
     } else p.stake_pct = null;
-    if (!isPublicSegment(p.family, p.side)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
+    p.league_band = leagueEfficiency(p.league).band; // banda al nacer (análisis por régimen a futuro)
+    const okey = p.event.canonical_event_id + '|' + (p.market_id || 'h2h');
+    if (db.marketOpenings && db.marketOpenings[okey] && p.opening == null) p.opening = db.marketOpenings[okey]; // CLV-desde-apertura
+    if (!isPublicSegment(p.family, p.side, p.league)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
     // segmento público: el criterio de publicación ES el edge post-blend ≥ 2pp (⇔ crudo ≥ 4pp; 81/82
     // cards-under históricas lo cumplían). SIMÉTRICO: también promueve lo que nació 'monitor' por la regla
     // vieja de priceAboveFair — la calidad de compra la vigila el gate de CLV rolling, no un filtro estático.
@@ -6312,7 +6384,7 @@ function reclassifyClubSegments() {
   let n = 0, backfilled = 0;
   for (const old of (db.clubDailyPicks || [])) {
     if (old.status !== 'ACTIVE') continue;
-    if (!isPublicSegment(old.family, old.side)) {
+    if (!isPublicSegment(old.family, old.side, old.league)) {
       if (old.regime !== 'monitor') { old.regime = 'monitor'; n++; }
       continue;
     }
@@ -7456,7 +7528,7 @@ const server = http.createServer(async (req, res) => {
             // exactamente PUBLIC_SEGMENTS (hoy CARDS under — único segmento con edge validado por backtest)
             // − regime monitor − segmentos frenados por el gate CLV/stop-loss/validación continua.
             clubActive = clubActive.filter(x => x.regime !== 'monitor');
-            clubActive = clubActive.filter(x => isPublicSegment(x.family, x.side));
+            clubActive = clubActive.filter(x => isPublicSegment(x.family, x.side, x.league));
             clubActive = clubActive.filter(x => EXPERIMENT_FAMS.indexOf(x.family) < 0);
             const _stopped = clubFamilyStopped();
             if (_stopped.size) clubActive = clubActive.filter(x => !_stopped.has(clubSegKey(x)));
@@ -9391,6 +9463,14 @@ const server = http.createServer(async (req, res) => {
       try { diag.fixture = await clubAfFixture(lg, hId, aId); } catch (e) { diag.fixture_err = String(e.message); }
       try { const st = await clubMatchStats(lg, hId, aId); diag.stats = st ? { home: st.home, away: st.away } : null; } catch (e) { diag.stats_err = String(e.message); }
       return json(res, 200, diag);
+    }
+    // EFICIENCIA POR LIGA (26-jul): banda + fuente + brier de cada liga (diagnóstico del régimen).
+    if (p === '/api/internal/league-efficiency' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const rt = global._clubsRatings || { leagues: {} };
+      const leagues = Object.keys(rt.leagues || {}).concat(Object.keys(LEAGUE_EFF_PRIOR)).filter((v, i, a) => a.indexOf(v) === i);
+      return json(res, 200, Object.fromEntries(leagues.map(l => [l, leagueEfficiency(l)])));
     }
     // VALIDACIÓN CONTINUA cards-under (26-jul): GET = computa sin persistir; POST = evalúa y persiste (1/día).
     if (p === '/api/internal/cards-validation') {

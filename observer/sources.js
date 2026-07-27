@@ -27,15 +27,40 @@ function parseItems(xml) {
   return items.filter(i => i.title);
 }
 
-// query ej: '"Spain national team" OR "seleccion espanola"' — lang 'en' | 'es'
+// IDIOMAS (26-jul): en ligas blandas la ventaja ES la información local — la prensa de Turku publica la
+// lesión horas antes de que el mercado global la digiera, y casi nadie del mercado lee finés al minuto.
+// Cada locale mapea a los parámetros hl/gl/ceid de Google News.
+const LOCALES = {
+  en: { hl: 'en-US', gl: 'US' }, es: { hl: 'es-419', gl: 'CO' },
+  pt: { hl: 'pt-BR', gl: 'BR' }, fi: { hl: 'fi-FI', gl: 'FI' }, no: { hl: 'no-NO', gl: 'NO' },
+  sv: { hl: 'sv-SE', gl: 'SE' }, da: { hl: 'da-DK', gl: 'DK' }, pl: { hl: 'pl-PL', gl: 'PL' },
+  ru: { hl: 'ru-RU', gl: 'RU' }, de: { hl: 'de-DE', gl: 'DE' }, fr: { hl: 'fr-FR', gl: 'FR' },
+  it: { hl: 'it-IT', gl: 'IT' },
+};
+// query ej: '"Spain national team" OR "seleccion espanola"' — lang: clave de LOCALES
 async function googleNewsRss(query, lang) {
-  const hl = lang === 'es' ? 'es-419' : 'en-US';
-  const gl = lang === 'es' ? 'CO' : 'US';
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query + ' when:2d')}&hl=${hl}&gl=${gl}&ceid=${gl}:${lang}`;
+  const loc = LOCALES[lang] || LOCALES.en;
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query + ' when:2d')}&hl=${loc.hl}&gl=${loc.gl}&ceid=${loc.gl}:${lang}`;
   const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`gnews rss HTTP ${r.status}`);
   return parseItems(await r.text());
 }
+// términos de búsqueda de bajas/lesiones por idioma (van en la QUERY; la extracción de señales tiene su
+// propio vocabulario en extract.js)
+const QUERY_TERMS = {
+  en: '(injury OR doubt OR ruled out OR suspended OR illness OR lineup OR training)',
+  es: '(lesion OR duda OR baja OR sancionado OR enfermo OR alineacion OR entrenamiento)',
+  pt: '(lesao OR desfalque OR duvida OR suspenso OR machucado OR escalacao)',
+  fi: '(loukkaantuminen OR sivussa OR kokoonpano OR sairastui)',
+  no: '(skade OR skadet OR mister OR utestengt OR lagoppstilling)',
+  sv: '(skada OR skadad OR missar OR avstangd OR startelva)',
+  da: '(skade OR skadet OR misser OR karantaene OR startopstilling)',
+  pl: '(kontuzja OR uraz OR nie zagra OR zawieszony OR sklad)',
+  ru: '(травма OR не сыграет OR пропустит OR дисквалификация OR состав)',
+  de: '(verletzt OR verletzung OR faellt aus OR gesperrt OR aufstellung)',
+  fr: '(blesse OR blessure OR forfait OR suspendu OR compo)',
+  it: '(infortunio OR squalificato OR in dubbio OR formazione OR indisponibile)',
+};
 
 // Queries por equipo: nombre EN para el feed EN y nombre ES para el feed ES, acotadas a selección.
 function teamQueries(teamEn, teamEs) {
@@ -45,12 +70,10 @@ function teamQueries(teamEn, teamEs) {
   ];
 }
 
-// Queries por CLUB (F2.3): nombre universal, EN + ES, sin el sufijo "world cup"/"mundial" (es liga de clubes).
-function clubQueries(name) {
-  return [
-    { lang: 'en', q: `"${name}" (injury OR doubt OR ruled out OR suspended OR illness OR lineup OR training)` },
-    { lang: 'es', q: `"${name}" (lesion OR duda OR baja OR sancionado OR enfermo OR alineacion OR entrenamiento)` },
-  ];
+// Queries por CLUB (F2.3, multiidioma 26-jul): EN + ES siempre + los idiomas LOCALES de la liga del club.
+function clubQueries(name, extraLangs) {
+  const langs = ['en', 'es'].concat((extraLangs || []).filter(l => QUERY_TERMS[l] && l !== 'en' && l !== 'es'));
+  return langs.map(lang => ({ lang, q: `"${name}" ${QUERY_TERMS[lang]}` }));
 }
 
-module.exports = { googleNewsRss, teamQueries, clubQueries, parseItems };
+module.exports = { googleNewsRss, teamQueries, clubQueries, parseItems, QUERY_TERMS, LOCALES };

@@ -323,6 +323,11 @@ function settleOne(pick, score) {
   const hg = score.homeGoals, ag = score.awayGoals, total = hg + ag;
   if (pick.family === 'SOLID') {
     const actual = hg > ag ? 'home' : hg === ag ? 'draw' : 'away';
+    // DOBLE CHANCE (27-jul, 1X2 de régimen en ligas blandas): selection 'not_home'/'not_away' = gana si el
+    // favorito NO gana (empate o rival). Aditivo: el Mundial jamás generó selections not_*.
+    if (typeof pick.selection_code === 'string' && pick.selection_code.startsWith('not_')) {
+      return pick.selection_code.slice(4) !== actual ? 'WIN' : 'LOSS';
+    }
     return pick.selection_code === actual ? 'WIN' : 'LOSS';
   }
   if (pick.family === 'GOALS') {

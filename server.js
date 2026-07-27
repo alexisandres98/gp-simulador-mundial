@@ -1883,7 +1883,9 @@ function tgClubPickText() {
     Date.parse(x.event.kickoff_at || 0) > now).length;
   const e = p.event;
   const famTxt = p.family === 'SOLID'
-    ? `Gana ${p.selection_code === 'home' ? e.home : p.selection_code === 'away' ? e.away : 'Empate'}`
+    ? (String(p.selection_code || '').startsWith('not_')
+      ? `Doble oportunidad: ${p.selection_code === 'not_home' ? e.away : e.home} o empate`
+      : `Gana ${p.selection_code === 'home' ? e.home : p.selection_code === 'away' ? e.away : 'Empate'}`)
     : p.family === 'CARDS' ? `Tarjetas ${p.side === 'under' ? 'menos' : 'más'} de ${p.line}`
       : p.family === 'CORNERS' ? `Córners ${p.side === 'under' ? 'menos' : 'más'} de ${p.line}`
         : `${p.side === 'under' ? 'Menos' : 'Más'} de ${p.line} goles`;
@@ -4468,7 +4470,7 @@ function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
 // el base-rate de liga/línea). Todo lo demás vive como regime 'monitor' (track privado) y puede GANARSE la
 // entrada con la misma evidencia — nunca por antigüedad. Override por env sin deploy: GP_PUBLIC_SEGMENTS
 // ej. "CARDS:under,CORNERS:under".
-const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under').split(',')
+const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SOLID').split(',')
   .map(s => s.trim()).filter(Boolean).map(s => s.split(':'));
 
 // ===== EFICIENCIA POR LIGA (26-jul, propuesta de Alexis validada con el test 2×2) ============================
@@ -4504,16 +4506,16 @@ function leagueEfficiency(league) {
 // Bandas donde cada segmento público está VALIDADO para publicar. Cards-under se validó en intermedias
 // (n=76, +21.6%) y su racional (público over + líneas perezosas) aplica AÚN MÁS en blandas; en ligas
 // eficientes el mercado de cards también está bien puesto → queda en monitor ahí.
-const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'] };
+const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'], 'SOLID': ['eficiente', 'blanda'] }; // SOLID: ancla en eficientes, modelo-líder en blandas (la generación garantiza el subtipo por banda)
 const isPublicSegment = (family, side, league) => {
   const seg = PUBLIC_SEGMENTS.some(([f, s]) => f === family && (!s || s === (side || '')));
   if (!seg) return false;
   if (league === undefined) return true; // sin liga = chequeo de segmento puro (compat)
-  const allowed = SEGMENT_BANDS[family + '|' + (side || '')];
+  const allowed = SEGMENT_BANDS[family + '|' + (side || '')] || SEGMENT_BANDS[family];
   if (!allowed) return true;
   return allowed.indexOf(leagueEfficiency(league).band) >= 0;
 };
-const clubSegKey = (p) => PROP_FAMS.indexOf(p.family) >= 0 ? p.family + '|' + (p.side || '') : p.family;
+const clubSegKey = (p) => PROP_FAMS.indexOf(p.family) >= 0 ? p.family + '|' + (p.side || '') : p.family === 'SOLID' ? 'SOLID|' + (p.regime || '') : p.family;
 const pickClvNum = (p) => typeof p.clv === 'number' ? p.clv : (p.clv && typeof p.clv.clv_pct === 'number' ? p.clv.clv_pct : null);
 
 // STOP-LOSS + GATE DE CLV ROLLING (23-jul, ampliado 26-jul): por SEGMENTO (familia|lado en props). En la
@@ -4522,7 +4524,7 @@ const pickClvNum = (p) => typeof p.clv === 'number' ? p.clv : (p.clv && typeof p
 // El historial del cuadro NO se toca (inmutable). Ventana llena (≥30) requerida. También respeta el corte
 // de la VALIDACIÓN CONTINUA (cardsValidationRun): selección que deja de ganarle al base-rate → fuera.
 function clubFamilyStopped() {
-  const inPublic = (p) => (p.family === 'SOLID' || p.family === 'GOALS') ? p.regime === 'anchor' : (p.family === 'CORNERS' || p.family === 'CARDS');
+  const inPublic = (p) => p.family === 'SOLID' ? (p.regime === 'anchor' || p.regime === 'lead') : p.family === 'GOALS' ? p.regime === 'anchor' : (p.family === 'CORNERS' || p.family === 'CARDS');
   const bySeg = {};
   const settled = (db.clubDailyPicks || [])
     .filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && inPublic(p))
@@ -5466,18 +5468,49 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // (≥5 casas) y SIN sobreconfianza del modelo (modelo ≤ mercado+5pp — se corta justo la dirección del bucket
   // roto). PALANCA AJUSTADA (a monitorear hasta el lunes): se admite el caso modelo<mercado−5pp (favorito real
   // donde nuestro modelo es MÁS conservador que el mercado) y se marca solid_lever para evaluarlo aparte.
-  const SOLID_MIN_MKT = 0.55, SOLID_MIN_BOOKS = 5, SOLID_MAX_OVERCONF = 0.05, SOLID_LEVER_MARGIN = 0.05;
-  for (const s of res.eligible.solid) {
-    const mkt = Number(s.marketProb || 0), mdl = Number(s.modelProb || 0), bk = Number(s.books || 0);
-    if (mkt < SOLID_MIN_MKT || bk < SOLID_MIN_BOOKS) continue;   // no favorito claro / mercado fino → NO se crea
-    if (mdl > mkt + SOLID_MAX_OVERCONF) continue;                // modelo sobreconfiado (bucket roto) → NO se crea
-    const lever = mdl < mkt - SOLID_LEVER_MARGIN;                // palanca: modelo menos confiado que el mercado
-    const ev = events.find(e => e.eventId === s.eventId) || {};
-    const why = compose([
-      { code: 'MARKET_ANCHOR', w: 3, books: s.books },
-      ...(s.modelProb > s.marketProb ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : []),
-    ]);
-    fresh.push(mkRecord('SOLID', s.eventId, { league: ev.league, home: s.home, away: s.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: s.kickoff, selection_code: s.selection, best_odds: s.bestOdds, best_book: s.bestBook, books: s.books, model_prob: s.modelProb, market_prob: s.marketProb, confidence: s.confidence, why, regime: 'anchor', solid_lever: lever }, s.eventId + '|SOLID|' + s.selection));
+  // ===== 1X2 DE RÉGIMEN (27-jul, GO de Alexis tras el backtest de la estrategia completa) ==================
+  // EFICIENTES → ANCLA (+15% backtest): favorito claro del consenso (mkt≥55%, ≥5 casas) cuando el blend NO lo
+  //   contradice (blend ≥ mkt−2pp). regime 'anchor'.
+  // BLANDAS → MODELO LÍDER (+61% backtest): el lado que el blend prefiere con ≥2pp — pro-favorito a cuota
+  //   real, o contra-favorito como DOBLE CHANCE (empate+underdog) con cuota sintética EJECUTABLE
+  //   1/(1/oEmpate+1/oRival) de las mejores patas del sweep (el usuario reparte el stake). regime 'lead'.
+  //   NOTA: el modelo-líder degeneró 34/36 veces en contra — pero el parámetro es el MODELO, no "contrarian":
+  //   si el sesgo del mercado blando cambia, el lado elegido cambia solo (decisión de diseño de Alexis).
+  // INTERMEDIAS → ninguna variante 1X2 validada → no se genera (el resto de familias no cambia).
+  // Reemplaza el filtro ancla-global del 23-jul (que ignoraba el régimen: −46% en blandas).
+  for (const ev of events) {
+    const bandE = leagueEfficiency(ev.league).band;
+    if (bandE === 'intermedia') continue;
+    const S = ev.selections || {};
+    let fav = null; for (const o of ['home', 'away']) if (S[o] && S[o].market && (!fav || S[o].market > S[fav].market)) fav = o;
+    if (!fav) continue;
+    const f = S[fav]; const m = Number(f.model || 0), k = Number(f.market || 0);
+    if (!(m > 0 && k > 0 && k < 1)) continue;
+    const blendEdge = ((0.5 * m + 0.5 * k) - k) * 100; // = (modelo−mercado)/2 en pp
+    const base = { league: ev.league, home: ev.home, away: ev.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: ev.kickoff };
+    if (bandE === 'eficiente') {
+      if (k < 0.55 || (f.books || 0) < 5 || !(f.bestOdds > 1)) continue;
+      if (blendEdge < -2) continue; // el modelo contradice al ancla → no se ancla
+      const why = compose([{ code: 'MARKET_ANCHOR', w: 3, books: f.books }, ...(m > k ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : [])]);
+      fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: fav, best_odds: f.bestOdds, best_book: f.bestBook, books: f.books, model_prob: m, market_prob: k, confidence: 0.5 * m + 0.5 * k, why, regime: 'anchor' }, ev.eventId + '|SOLID|' + fav));
+    } else { // blanda → modelo líder
+      if ((f.books || 0) < 3) continue;
+      if (blendEdge >= 2 && f.bestOdds > 1) {
+        const why = compose([{ code: 'MODEL_AGREES_UP', w: 3 }, { code: 'MARKET_ANCHOR', w: 1, books: f.books }]);
+        fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: fav, best_odds: f.bestOdds, best_book: f.bestBook, books: f.books, model_prob: m, market_prob: k, confidence: 0.5 * m + 0.5 * k, why, regime: 'lead' }, ev.eventId + '|SOLID|' + fav));
+      } else if (blendEdge <= -2) {
+        const dog = fav === 'home' ? 'away' : 'home';
+        const oD = (S.draw || {}).bestOdds, oU = (S[dog] || {}).bestOdds;
+        if (!(oD > 1 && oU > 1)) continue;
+        const dcOdds = +(1 / (1 / oD + 1 / oU)).toFixed(3);
+        if (!(dcOdds > 1.05)) continue;
+        const mDC = 1 - m, kDC = 1 - k; // prob de que el favorito NO gane (empate o rival)
+        const books = Math.min((S.draw || {}).books || 0, (S[dog] || {}).books || 0);
+        if (books < 3) continue;
+        const why = compose([{ code: 'PRICE_ABOVE_FAIR', w: 2 }, { code: 'MARKET_ANCHOR', w: 1, books }]);
+        fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: 'not_' + fav, market_id: 'DOUBLE_CHANCE', best_odds: dcOdds, best_book: ((S[dog] || {}).bestBook || '') + ' + ' + ((S.draw || {}).bestBook || ''), books, model_prob: mDC, market_prob: kDC, confidence: 0.5 * mDC + 0.5 * kDC, why, regime: 'lead' }, ev.eventId + '|SOLID|not_' + fav));
+      }
+    }
   }
   // 1 GOALS por evento. POST-MUNDIAL (19-jul, decisión de Alexis): goles al PÚBLICO = solo ANCLA. El mercado de
   // goles es eficiente → el "edge" del modelo EMPATA al consenso (combinado Mundial+clubes: 53%/+1.5u; clubes
@@ -5584,6 +5617,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const okey = p.event.canonical_event_id + '|' + (p.market_id || 'h2h');
     if (db.marketOpenings && db.marketOpenings[okey] && p.opening == null) p.opening = db.marketOpenings[okey]; // CLV-desde-apertura
     if (!isPublicSegment(p.family, p.side, p.league)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
+    if (p.family === 'SOLID') continue; // el 1X2 de régimen trae su gate desde la GENERACIÓN (anchor/lead por banda)
     // segmento público: el criterio de publicación ES el edge post-blend ≥ 2pp (⇔ crudo ≥ 4pp; 81/82
     // cards-under históricas lo cumplían). SIMÉTRICO: también promueve lo que nació 'monitor' por la regla
     // vieja de priceAboveFair — la calidad de compra la vigila el gate de CLV rolling, no un filtro estático.
@@ -5604,7 +5638,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // lever = favorito claro del consenso (mkt≥55%) donde el modelo es MÁS conservador (mdl < mkt−5pp).
   let updated = 0;
   for (const q of db.clubDailyPicks) {
-    if (q.status !== 'ACTIVE' || q.family !== 'SOLID') continue;
+    if (q.status !== 'ACTIVE' || q.family !== 'SOLID' || q.regime !== 'anchor') continue; // las 'lead' (modelo-líder) no se prunean por reglas de ancla
     const mk = Number(q.market_prob || 0), md = Number(q.model_prob || 0);
     // por sus PROPIAS probs congeladas: si ya no es favorito claro (mkt<55%) o el modelo está sobreconfiado
     // (mdl>mkt+5pp, la dirección del bucket roto) → supersede (sale de feed Y cuadro). Limpia las viejas
@@ -6400,7 +6434,8 @@ function reclassifyClubSegments() {
     }
     // SIMÉTRICO (fix mismo día): promueve las de segmento público con edge suficiente aunque hayan nacido
     // 'monitor' por la regla vieja de priceAboveFair; degrada las de edge fino. El gate CLV vigila la compra.
-    if (old.blend_prob != null && isFinite(k)) {
+    // SOLID de régimen (27-jul) queda fuera: su gate vive en la generación (anchor/lead por banda).
+    if (old.family !== 'SOLID' && old.blend_prob != null && isFinite(k)) {
       const want = (old.blend_prob - k) * 100 >= 2 ? 'edge' : 'monitor';
       if (old.regime !== want) { old.regime = want; n++; }
     }

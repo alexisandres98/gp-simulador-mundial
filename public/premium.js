@@ -191,7 +191,7 @@
       pf_over_corners: 'Más de {line} córners', pf_under_corners: 'Menos de {line} córners',
       pf_over_cards: 'Más de {line} tarjetas', pf_under_cards: 'Menos de {line} tarjetas',
       pf_player_goal: '{player} anota', pf_player_shots: '{player}: más de {line} remates', pf_player_sot: '{player}: más de {line} al arco', pf_player_assist: '{player}: da una asistencia',
-      pf_wins: 'Gana {team}', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
+      pf_wins: 'Gana {team}', pf_dc: '{team} o empate (doble oportunidad)', pf_over: 'Más de {line} goles', pf_under: 'Menos de {line} goles',
       pf_conf: 'Confianza', pf_conf_high: 'Alta', pf_conf_med: 'Media', pf_conf_low: 'Moderada', ps_win: 'Prob. de acierto', pf_corr_calc: 'Correlación {rho}× medida en la matriz de marcadores → si tomás ambas, stake total sugerido ≈ {pct}% de la suma individual.', ps_edge: 'Edge', ps_data: 'Datos', ps_quality: 'Calidad', ps_dc_low: 'Baja', ps_q_strong: 'Fuerte', ps_q_moderate: 'Moderada', ps_q_marginal: 'Marginal', ps_stake: 'Stake sug.',
       pf_best_odds: 'Mejor cuota', pf_at: 'en', pf_combo_and: 'y', pf_pick_label: 'Nuestra pick',
       pf_disclaimer: 'Estimaciones de inteligencia deportiva. No es consejo financiero. Apuesta con responsabilidad.',
@@ -497,7 +497,7 @@
       pf_over_corners: 'Over {line} corners', pf_under_corners: 'Under {line} corners',
       pf_over_cards: 'Over {line} cards', pf_under_cards: 'Under {line} cards',
       pf_player_goal: '{player} to score', pf_player_shots: '{player}: over {line} shots', pf_player_sot: '{player}: over {line} shots on target', pf_player_assist: '{player}: to provide an assist',
-      pf_wins: '{team} to win', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
+      pf_wins: '{team} to win', pf_dc: '{team} or draw (double chance)', pf_over: 'Over {line} goals', pf_under: 'Under {line} goals',
       pf_conf: 'Confidence', pf_conf_high: 'High', pf_conf_med: 'Medium', pf_conf_low: 'Moderate', ps_win: 'Win probability', pf_corr_calc: 'Correlation {rho}× measured on the score matrix → if you take both, suggested total stake ≈ {pct}% of the individual sum.', ps_edge: 'Edge', ps_data: 'Data', ps_quality: 'Quality', ps_dc_low: 'Low', ps_q_strong: 'Strong', ps_q_moderate: 'Moderate', ps_q_marginal: 'Marginal', ps_stake: 'Sugg. stake',
       pf_best_odds: 'Best odds', pf_at: 'at', pf_combo_and: 'and', pf_pick_label: 'Our pick',
       pf_disclaimer: 'Sports-intelligence estimates. Not financial advice. Bet responsibly.',
@@ -1462,7 +1462,11 @@
   }
   function pickTeam(p, code) { return code === 'home' ? teamName(p.home_team_id, p.home) : teamName(p.away_team_id, p.away); }
   function pickRecText(p) {
-    if (p.family === 'SOLID') return t('pf_wins', { team: pickTeam(p, p.selection_code) });
+    if (p.family === 'SOLID') {
+      // DOBLE CHANCE (27-jul, modelo-líder en blandas): selection not_home/not_away = "el rival o empate"
+      if (String(p.selection_code || '').indexOf('not_') === 0) return t('pf_dc', { team: pickTeam(p, p.selection_code === 'not_home' ? 'away' : 'home') });
+      return t('pf_wins', { team: pickTeam(p, p.selection_code) });
+    }
     if (p.family === 'GOALS') return p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line });
     if (p.family === 'COMBO') return (p.legs || []).map(function (l) {
       if (l.type === '1X2') return t('pf_wins', { team: pickTeam(p, l.selection) });
@@ -5619,7 +5623,7 @@
   // Texto legible de una pick por familia (COMPARTIDO entre la tabla oficial y el monitoreo privado de clubes —
   // mismas columnas, mismo componente; regla extensión-no-reconstrucción).
   function pickBetText(p, hh, aa) {
-    return p.family === 'SOLID' ? t('pf_wins', { team: p.selection_code === 'home' ? hh : aa })
+    return p.family === 'SOLID' ? (String(p.selection_code || '').indexOf('not_') === 0 ? t('pf_dc', { team: p.selection_code === 'not_home' ? aa : hh }) : t('pf_wins', { team: p.selection_code === 'home' ? hh : aa }))
       : p.family === 'GOALS' ? (p.side === 'over' ? t('pf_over', { line: p.line }) : t('pf_under', { line: p.line }))
       : p.family === 'CORNERS' ? t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line })
       : p.family === 'CARDS' ? t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line })

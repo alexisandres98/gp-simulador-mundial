@@ -3361,11 +3361,31 @@ function clubGoalsFit(league) {
   const c = global._clubGoalsFit[league];
   if (c && Date.now() - c.at < 30 * 60e3) return c.fit;
   let fit = null;
+  // MODELO xG (27-jul, torneo de modelos aprobado por Alexis): el fit ataque/defensa se hace sobre el xG por
+  // partido (escalado a goles de la liga) cuando la cobertura alcanza — ÚNICO modelo de goles con skill
+  // positivo medido (+0.0020 walk-forward vs −0.0007 del fit sobre goles; mejor en 5/7 ligas). Un 2-0 con
+  // suerte ya no infla al equipo: cuenta lo que GENERÓ, no lo que rebotó. Fallback: fit sobre goles (results).
   try {
-    const rows = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || [];
-    const matches = rows.filter(r => r.hg != null && r.ag != null).map(r => ({ home: { id: r.home_id, goals: r.hg }, away: { id: r.away_id, goals: r.ag } }));
-    fit = require('./clubs-engine/goalsModel').fitLeagueGoals(matches);
-  } catch { fit = null; }
+    const ph = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${league}.json`), 'utf8')).matches || [];
+    const withXg = ph.filter(m => m.status === 'FT' && m.home && m.away && m.home.xg != null && m.away.xg != null);
+    const ft = ph.filter(m => m.status === 'FT').length;
+    if (ft >= 40 && withXg.length / ft >= 0.6 && withXg.length >= 40) {
+      const sumX = withXg.reduce((s, m) => s + m.home.xg + m.away.xg, 0);
+      const sumG = withXg.reduce((s, m) => s + (m.home.goals || 0) + (m.away.goals || 0), 0);
+      const scale = sumX > 1 ? sumG / sumX : 1; // xG→goles de la liga (nivel intacto, señal más limpia)
+      const matches = withXg.map(m => ({ home: { id: m.home.code, goals: m.home.xg * scale }, away: { id: m.away.code, goals: m.away.xg * scale } }));
+      fit = require('./clubs-engine/goalsModel').fitLeagueGoals(matches);
+      if (fit) fit.source = 'xg';
+    }
+  } catch { /* sin props-history → fallback */ }
+  if (!fit) {
+    try {
+      const rows = JSON.parse(fs.readFileSync(clubDataFile(`results-${league}.json`), 'utf8')).rows || [];
+      const matches = rows.filter(r => r.hg != null && r.ag != null).map(r => ({ home: { id: r.home_id, goals: r.hg }, away: { id: r.away_id, goals: r.ag } }));
+      fit = require('./clubs-engine/goalsModel').fitLeagueGoals(matches);
+      if (fit) fit.source = 'goals';
+    } catch { fit = null; }
+  }
   global._clubGoalsFit[league] = { at: Date.now(), fit };
   return fit;
 }
@@ -5494,22 +5514,20 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       const why = compose([{ code: 'MARKET_ANCHOR', w: 3, books: f.books }, ...(m > k ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : [])]);
       fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: fav, best_odds: f.bestOdds, best_book: f.bestBook, books: f.books, model_prob: m, market_prob: k, confidence: 0.5 * m + 0.5 * k, why, regime: 'anchor' }, ev.eventId + '|SOLID|' + fav));
     } else { // blanda → modelo líder
-      if ((f.books || 0) < 3) continue;
-      if (blendEdge >= 2 && f.bestOdds > 1) {
-        const why = compose([{ code: 'MODEL_AGREES_UP', w: 3 }, { code: 'MARKET_ANCHOR', w: 1, books: f.books }]);
-        fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: fav, best_odds: f.bestOdds, best_book: f.bestBook, books: f.books, model_prob: m, market_prob: k, confidence: 0.5 * m + 0.5 * k, why, regime: 'lead' }, ev.eventId + '|SOLID|' + fav));
-      } else if (blendEdge <= -2) {
-        const dog = fav === 'home' ? 'away' : 'home';
-        const oD = (S.draw || {}).bestOdds, oU = (S[dog] || {}).bestOdds;
-        if (!(oD > 1 && oU > 1)) continue;
-        const dcOdds = +(1 / (1 / oD + 1 / oU)).toFixed(3);
-        if (!(dcOdds > 1.05)) continue;
-        const mDC = 1 - m, kDC = 1 - k; // prob de que el favorito NO gane (empate o rival)
-        const books = Math.min((S.draw || {}).books || 0, (S[dog] || {}).books || 0);
-        if (books < 3) continue;
-        const why = compose([{ code: 'PRICE_ABOVE_FAIR', w: 2 }, { code: 'MARKET_ANCHOR', w: 1, books }]);
-        fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: 'not_' + fav, market_id: 'DOUBLE_CHANCE', best_odds: dcOdds, best_book: ((S[dog] || {}).bestBook || '') + ' + ' + ((S.draw || {}).bestBook || ''), books, model_prob: mDC, market_prob: kDC, confidence: 0.5 * mDC + 0.5 * kDC, why, regime: 'lead' }, ev.eventId + '|SOLID|not_' + fav));
+      // CORRECCIÓN DE PRODUCTO (27-jul, Alexis): las picks 1X2 son "QUIÉN GANA" — jamás doble chance ni
+      // empate. El modelo evalúa AMBOS lados ganadores (home/away) con su blend y publica el de mayor edge
+      // post-blend ≥2pp A SU CUOTA REAL. Si el lado del modelo fuera el empate, simplemente no se publica.
+      let best = null;
+      for (const side of ['home', 'away']) {
+        const s2 = S[side]; if (!s2 || !(s2.bestOdds > 1) || (s2.books || 0) < 3) continue;
+        const m2 = Number(s2.model || 0), k2 = Number(s2.market || 0);
+        if (!(m2 > 0 && k2 > 0 && k2 < 1)) continue;
+        const eg2 = ((0.5 * m2 + 0.5 * k2) - k2) * 100;
+        if (eg2 >= 2 && (!best || eg2 > best.eg)) best = { side, s: s2, m: m2, k: k2, eg: eg2 };
       }
+      if (!best) continue;
+      const why = compose([{ code: 'MODEL_AGREES_UP', w: 3 }, { code: 'MARKET_ANCHOR', w: 1, books: best.s.books }]);
+      fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: best.side, best_odds: best.s.bestOdds, best_book: best.s.bestBook, books: best.s.books, model_prob: best.m, market_prob: best.k, confidence: 0.5 * best.m + 0.5 * best.k, why, regime: 'lead' }, ev.eventId + '|SOLID|' + best.side));
     }
   }
   // 1 GOALS por evento. POST-MUNDIAL (19-jul, decisión de Alexis): goles al PÚBLICO = solo ANCLA. El mercado de
@@ -6425,6 +6443,13 @@ function reclassifyClubSegments() {
   let n = 0, backfilled = 0;
   for (const old of (db.clubDailyPicks || [])) {
     if (old.status !== 'ACTIVE') continue;
+    // MIGRACIÓN 27-jul (corrección de producto de Alexis): las doble chance (not_*) ACTIVAS se retiran —
+    // las picks 1X2 son "quién gana", nunca dos resultados. Las ya liquidadas se quedan (jamás borrar
+    // resultados). El ciclo regenera el evento bajo la lógica nueva si el lado seco pasa el umbral.
+    if (old.family === 'SOLID' && String(old.selection_code || '').startsWith('not_')) {
+      old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); n++;
+      continue;
+    }
     if (!isPublicSegment(old.family, old.side, old.league)) {
       if (old.regime !== 'monitor') { old.regime = 'monitor'; n++; }
       continue;

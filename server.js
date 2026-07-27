@@ -8156,6 +8156,9 @@ const server = http.createServer(async (req, res) => {
         if (planV !== 'sharp') return json(res, 403, { error: 'upgrade', need: 'sharp', plan: planV });
       }
       if (p === '/api/beta/value-outright' && req.method === 'GET') {
+        // MUNDIAL TERMINADO (final 19-jul-2026, España campeón): el mercado de "campeón del Mundial" ya no
+        // existe como oportunidad → panel fuera del board (el cliente no lo renderiza con lista vacía).
+        if (Date.now() > Date.parse('2026-07-20T00:00:00Z')) return json(res, 200, { items: [] });
         await fetchMarkets(false).catch(() => {});
         const items = TEAMS.map(tm => {
           const sim = simCache[tm.id]; if (!sim || sim.champion == null) return null;

@@ -5634,7 +5634,24 @@
         '<div class="gx-cb-bnames"><b>' + esc(r.name || '') + '</b><span class="gx-dim">' + r.record.w + '-' + r.record.l + ' UFC · ' + r.fights + ' peleas</span></div>' +
         '<span class="gx-mono" style="color:var(--gx-ac,#1FE3A4);font-weight:800">' + r.elo + '</span></div>';
     }).join('');
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + tabs + html +
+    // F2: monitor PRIVADO de picks de combate (regime monitor siempre — jamás feed público; vista admin-only)
+    var pk = '';
+    if (d.picks_enabled || (d.picks || []).length || ((d.picks_track || {}).total || {}).n) {
+      var tr = (d.picks_track || {}).total || {};
+      var rows2 = (d.picks || []).map(function (p2) {
+        var when2 = new Date(p2.event.kickoff_at).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return '<div class="gx-cb-bout">' +
+          '<span class="gx-clgate ' + (p2.card_slot === 'main' ? 'ok' : 'sh') + '" style="white-space:nowrap">' + (p2.card_slot === 'main' ? 'MAIN' : 'PRELIM') + '</span>' +
+          '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">' + esc(p2.event.home + ' vs ' + p2.event.away) + ' · ' + esc(when2) + '</span></div>' +
+          '<span class="gx-mono gx-dim" style="font-size:10.5px;white-space:nowrap">mdl ' + Math.round(p2.model_prob * 100) + '% · mkt ' + Math.round(p2.market_prob * 100) + '% · +' + p2.edge_blend_pp + 'pp</span>' +
+          '<span class="gx-clgate ok" style="white-space:nowrap">@' + p2.best_odds + (p2.stake_pct ? ' · ' + p2.stake_pct + '%' : '') + '</span>' +
+          '</div>';
+      }).join('');
+      pk = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Picks · monitor privado</span>' +
+        '<span class="gx-ph-extra gx-dim" style="font-size:11px">' + (tr.n ? tr.w + 'W-' + tr.l + 'L · ' + tr.hit + '% · ' + (tr.units >= 0 ? '+' : '') + tr.units + 'u' + (tr.clv_avg != null ? ' · CLV ' + tr.clv_avg + '%' : '') : 'sin liquidadas aún') + (d.picks_enabled ? '' : ' · loop OFF') + '</span></div>' +
+        '<div class="gx-mod-body">' + (rows2 || '<div class="gx-dim" style="padding:10px;font-size:12px">Sin picks activas — el loop genera cuando hay edge post-blend ≥2pp.</div>') + '</div></div>';
+    }
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + tabs + pk + html +
       '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Ranking Elo · activos</span><span class="gx-ph-extra gx-dim" style="font-size:11px">modelo validado: skill +' + (((d.backtest || {}).features || {}).skill_vs_coin || (d.backtest || {}).skill_vs_coin || 0) + ' (Elo+features) · método +' + ((d.backtest_method || {}).skill_vs_division || 0) + ' · ' + ((d.backtest || {}).n || 0) + ' peleas out-of-sample</span></div><div class="gx-mod-body">' + rk + '</div></div>' +
       '</div></div>';
   }

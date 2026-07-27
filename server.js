@@ -6592,6 +6592,257 @@ if (watchPriceOn()) {
   setTimeout(() => checkPriceWatches().catch(() => { }), 240 * 1000);
   setInterval(() => checkPriceWatches().catch(() => { }), 15 * 60 * 1000);
 }
+// ===== COMBAT F2 (27-jul): PICKS DE COMBATE EN MONITOR — misma doctrina, sport como dimensión ============
+// TODO regime:'monitor' SIEMPRE (jamás feed público; db.combatPicks separado, el cuadro público no lo ve).
+// Generación: h2h (único mercado de combate con cuotas hoy) — modelo Elo+features (skill 0.0108 validado) vs
+// consenso no-vig de The Odds API; blend λ=0.5 (doctrina); pick del lado con edge post-blend ≥2pp; 1 por pelea.
+// F2b desde el nacimiento: card_slot main|prelim → league_band eficiente|blanda (la banda del análisis futuro).
+// CLV: opening (primera cuota vista) + closing (última pre-pelea). Settle por ESPN scoreboard (NC/draw→VOID;
+// pelea desaparecida a las 72h→VOID). Loop 30min gated GP_COMBAT_PICKS_ENABLED.
+const combatPicksOn = () => String(process.env.GP_COMBAT_PICKS_ENABLED || '') === 'true';
+function combatLoad() {
+  const CE = require('./combat-engine/ratings');
+  global._combat = global._combat || {};
+  const C = global._combat;
+  if (C.at && Date.now() - C.at < 10 * 60e3) return C;
+  try { C.fights = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fights-ufc.json'), 'utf8')); } catch { C.fights = { fights: [], events: {} }; }
+  try { C.fighters = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fighters-ufc.json'), 'utf8')); } catch { C.fighters = {}; }
+  const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
+  // F1b: fitElo con fighters = Elo + features físicas (reach/exp/años-carrera, pesos online validados
+  // skill 0.0108 vs 0.0068 del Elo puro); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
+  C.elo = CE.fitElo(sorted, C.fighters);
+  C.mm = CE.methodModel(sorted);
+  C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
+  C.at = Date.now();
+  return C;
+}
+function combatRecordOf(C, id) { // récord W-L derivado del histórico (UFC-only)
+  let w = 0, l = 0, ko = 0, sub = 0;
+  for (const f of (C.fights.fights || [])) {
+    const me = f.f1.id === id ? f.f1 : f.f2.id === id ? f.f2 : null;
+    if (!me || !f.completed || !(f.f1.winner || f.f2.winner)) continue;
+    if (me.winner) { w++; const n = ((f.method || {}).name || '').toLowerCase(); if (/ko|tko/.test(n) && !/decision/.test(n)) ko++; if (/submission/.test(n)) sub++; }
+    else l++;
+  }
+  return { w, l, ko, sub };
+}
+// matcher nombre-Odds→id-ESPN: PUNTAJE y null ante empate (regla gp-regla-matcher-desambiguar)
+function combatFighterByName(C, name) {
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const q = new Set(norm(name).split(' '));
+  let best = null, bestScore = 0, tie = false;
+  for (const [id, nm] of Object.entries(C.names)) {
+    if (!nm) continue;
+    const t = new Set(norm(nm).split(' '));
+    let ov = 0; for (const x of q) if (t.has(x)) ov++;
+    const sc = ov * 10 + ov / Math.max(1, t.size + q.size - ov);
+    if (sc > bestScore) { best = id; bestScore = sc; tie = false; }
+    else if (sc === bestScore && best !== id && sc > 0) tie = true;
+  }
+  return bestScore >= 20 && !tie ? best : null; // exige ≥2 tokens y sin empate
+}
+// carteleras próximas (ESPN) + cuotas h2h (The Odds API) — memo 10min COMPARTIDO entre route y loop
+async function combatRefreshUpcoming(C) {
+  if (C.upAt && Date.now() - C.upAt < 10 * 60e3) return;
+  try {
+    const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
+    const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${fmt(now)}-${fmt(to)}&limit=50`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+    C.upcoming = (sb.events || []).map(e => ({
+      id: e.id, name: e.name, date: e.date,
+      // main event: la pelea cuyos apellidos aparecen en el nombre del evento ("X vs. Y")
+      fights: (e.competitions || []).map(c => {
+        const a = (c.competitors || [])[0] || {}, b = (c.competitors || [])[1] || {};
+        const n1 = ((a.athlete || {}).displayName || '').split(' ').pop(), n2 = ((b.athlete || {}).displayName || '').split(' ').pop();
+        const main = !!(n1 && n2 && e.name && e.name.includes(n1) && e.name.includes(n2));
+        return { comp_id: c.id, main, weight: (c.type || {}).abbreviation || null, rounds: ((c.format || {}).regulation || {}).periods || null,
+          f1: { id: a.id, name: (a.athlete || {}).displayName }, f2: { id: b.id, name: (b.athlete || {}).displayName } };
+      }),
+    }));
+  } catch { C.upcoming = C.upcoming || []; }
+  try {
+    const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+    const od = await fetch(`https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+    C.odds = Array.isArray(od) ? od : [];
+  } catch { C.odds = C.odds || []; }
+  C.upAt = Date.now();
+}
+// cuotas de UNA pelea: matchea el evento de Odds por AMBOS nombres; consenso no-vig = mediana del de-vig
+// 2-way por casa; mejor cuota por lado. Devuelve null si no matchea (o matchea con empate — regla matcher).
+function combatFightOdds(C, ft) {
+  for (const o of (C.odds || [])) {
+    const h = combatFighterByName(C, o.home_team), a = combatFighterByName(C, o.away_team);
+    if (!h || !a) continue;
+    if (!((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id))) continue;
+    const fairs = []; const best = { f1: 0, f2: 0, f1Book: null, f2Book: null };
+    for (const bk of (o.bookmakers || [])) {
+      const m = (bk.markets || []).find(x => x.key === 'h2h'); if (!m) continue;
+      let oH = 0, oA = 0;
+      for (const oc of (m.outcomes || [])) {
+        if (oc.name === o.home_team) oH = oc.price;
+        if (oc.name === o.away_team) oA = oc.price;
+      }
+      if (!(oH > 1 && oA > 1)) continue;
+      const iH = 1 / oH, iA = 1 / oA;
+      const fairH = iH / (iH + iA); // de-vig 2-way de la casa
+      fairs.push(h === ft.f1.id ? fairH : 1 - fairH);
+      const o1 = h === ft.f1.id ? oH : oA, o2 = h === ft.f1.id ? oA : oH;
+      if (o1 > best.f1) { best.f1 = o1; best.f1Book = bk.key; }
+      if (o2 > best.f2) { best.f2 = o2; best.f2Book = bk.key; }
+    }
+    if (!fairs.length) return null;
+    fairs.sort((x, y) => x - y);
+    const med = fairs.length % 2 ? fairs[(fairs.length - 1) / 2] : (fairs[fairs.length / 2 - 1] + fairs[fairs.length / 2]) / 2;
+    return { fair_f1: med, books: fairs.length, best };
+  }
+  return null;
+}
+async function buildCombatPicks({ dryRun = false } = {}) {
+  const CE = require('./combat-engine/ratings');
+  const C = combatLoad();
+  await combatRefreshUpcoming(C);
+  const now = Date.now();
+  const out = { fights: 0, with_odds: 0, candidates: [], added: 0, superseded: 0, closing_updated: 0 };
+  db.combatPicks = db.combatPicks || [];
+  db.marketOpenings = db.marketOpenings || {};
+  const stable = (key) => 'cbp_' + require('crypto').createHash('sha256').update(key).digest('hex').slice(0, 16);
+  const fresh = [];
+  for (const ev of (C.upcoming || [])) {
+    if (!ev.date || Date.parse(ev.date) <= now) continue; // solo prepartido (estado por reloj)
+    for (const ft of ev.fights) {
+      if (!ft.f1.id || !ft.f2.id) continue;
+      out.fights++;
+      const mo = combatFightOdds(C, ft);
+      if (!mo || mo.books < 3) continue; // consenso mínimo 3 casas
+      out.with_odds++;
+      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+      // opening: primera cuota vista de cada lado (CLV-desde-apertura, mismo mecanismo de clubes)
+      for (const [side, odds] of [['f1', mo.best.f1], ['f2', mo.best.f2]]) {
+        const okey = 'cb-' + ft.comp_id + '|h2h_' + side;
+        if (odds > 1 && !db.marketOpenings[okey]) db.marketOpenings[okey] = { odds, at: new Date().toISOString(), ko: ev.date };
+      }
+      // lado del modelo: mayor edge post-blend; se exige ≥2pp (el criterio de publicación de la casa,
+      // aplicado aquí como criterio de SEGUIMIENTO — todo nace monitor)
+      let bestSide = null;
+      for (const side of ['f1', 'f2']) {
+        const m = side === 'f1' ? pr.p1 : 1 - pr.p1;
+        const k = side === 'f1' ? mo.fair_f1 : 1 - mo.fair_f1;
+        const odds = mo.best[side]; if (!(odds > 1)) continue;
+        const blend = 0.5 * m + 0.5 * k;
+        const eg = (blend - k) * 100;
+        if (eg >= 2 && (!bestSide || eg > bestSide.eg)) bestSide = { side, m, k, blend, eg, odds, book: mo.best[side + 'Book'] };
+      }
+      if (!bestSide) continue;
+      const kel = Math.max(0, (bestSide.blend * (bestSide.odds - 1) - (1 - bestSide.blend)) / (bestSide.odds - 1)) / 4;
+      const pickName = bestSide.side === 'f1' ? ft.f1.name : ft.f2.name;
+      fresh.push({
+        pick_id: stable('cb-' + ft.comp_id + '|FIGHT|' + bestSide.side),
+        sport: 'combat', family: 'FIGHT', league: 'ufc',
+        gate_status: 'shadow', regime: 'monitor', // JAMÁS feed: Combat es admin-only hasta validar
+        card_slot: ft.main ? 'main' : 'prelim',
+        league_band: ft.main ? 'eficiente' : 'blanda', // F2b: main cards líquidas, prelims perezosas
+        competition_name: ev.name,
+        event: { canonical_event_id: 'cb-' + ft.comp_id, home: ft.f1.name, away: ft.f2.name, home_id: ft.f1.id, away_id: ft.f2.id, kickoff_at: ev.date, weight: ft.weight, rounds: ft.rounds || 3 },
+        selection_code: bestSide.side, selection_name: pickName,
+        best_odds: bestSide.odds, best_book: bestSide.book, books: mo.books,
+        model_prob: +bestSide.m.toFixed(4), market_prob: +bestSide.k.toFixed(4), blend_prob: +bestSide.blend.toFixed(4),
+        edge_pp: +((bestSide.m - bestSide.k) * 100).toFixed(2), edge_blend_pp: +bestSide.eg.toFixed(2),
+        stake_pct: kel > 0 ? +Math.min(3, Math.max(0.25, kel * 100)).toFixed(1) : null,
+        method: { ko: method.ko, sub: method.sub, dec: method.dec }, // snapshot del modelo de método (análisis)
+        opening: db.marketOpenings['cb-' + ft.comp_id + '|h2h_' + bestSide.side] || null,
+        closing: null,
+        status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
+      });
+      out.candidates.push({ fight: ft.f1.name + ' vs ' + ft.f2.name, slot: ft.main ? 'main' : 'prelim', pick: pickName, model: +bestSide.m.toFixed(3), market: +bestSide.k.toFixed(3), edge_blend_pp: +bestSide.eg.toFixed(2), odds: bestSide.odds, books: mo.books });
+    }
+  }
+  // closing: última cuota/fair pre-pelea de cada pick ACTIVA (se congela sola al pasar el KO — estado por reloj)
+  for (const p of db.combatPicks) {
+    if (p.status !== 'ACTIVE' || Date.parse(p.event.kickoff_at || 0) <= now) continue;
+    const ev = (C.upcoming || []).find(e => e.fights.some(f => 'cb-' + f.comp_id === p.event.canonical_event_id));
+    const ft = ev && ev.fights.find(f => 'cb-' + f.comp_id === p.event.canonical_event_id);
+    if (!ft) continue;
+    const mo = combatFightOdds(C, ft);
+    if (!mo) continue;
+    const k = p.selection_code === 'f1' ? mo.fair_f1 : 1 - mo.fair_f1;
+    const odds = mo.best[p.selection_code];
+    if (odds > 1) { p.closing = { odds, fair: +k.toFixed(4), books: mo.books, at: new Date().toISOString() }; out.closing_updated++; }
+  }
+  if (dryRun) return out;
+  const byId = new Set(db.combatPicks.map(p => p.pick_id));
+  for (const p of fresh) {
+    if (byId.has(p.pick_id)) continue;
+    // anti-contradicción: 1 ACTIVE por pelea — CONGELADA a ≤15min del KO (regla del freeze de clubes)
+    for (const old of db.combatPicks) {
+      if (old.status === 'ACTIVE' && old.event.canonical_event_id === p.event.canonical_event_id
+        && Date.parse(old.event.kickoff_at || 0) > now + 15 * 60e3) {
+        old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.superseded++;
+      }
+    }
+    const frozen = db.combatPicks.some(o => o.status === 'ACTIVE' && o.event.canonical_event_id === p.event.canonical_event_id);
+    if (frozen) continue; // la vieja quedó congelada cerca del KO → no se contradice
+    db.combatPicks.push(p); out.added++;
+  }
+  if (out.added || out.superseded || out.closing_updated) save();
+  out.active = db.combatPicks.filter(p => p.status === 'ACTIVE').length;
+  delete out.candidates; // (solo dry-run las muestra)
+  return out;
+}
+// Liquidación por ESPN scoreboard (pasado 10 días): ganador → WIN/LOSS; completada sin ganador (NC/draw)
+// → VOID; pelea que no aparece 72h después del evento → VOID (cancelada/reprogramada — sin fuente no se inventa).
+async function settleCombatPicks() {
+  const pend = (db.combatPicks || []).filter(p => p.status === 'ACTIVE' && Date.parse(p.event.kickoff_at || 0) < Date.now());
+  if (!pend.length) return { settled: 0 };
+  const out = { settled: 0, won: 0, lost: 0, void: 0 };
+  let results = {};
+  try {
+    const from = new Date(Date.now() - 10 * 24 * 3600e3), to = new Date();
+    const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${fmt(from)}-${fmt(to)}&limit=50`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+    for (const e of (sb.events || [])) for (const c of (e.competitions || [])) {
+      const done = ((c.status || {}).type || {}).completed;
+      if (!done) continue;
+      const win = (c.competitors || []).find(x => x.winner);
+      results[c.id] = { winner_id: win ? win.id : null }; // completed sin winner = NC/draw
+    }
+  } catch { return { settled: 0, error: 'scoreboard' }; }
+  for (const p of pend) {
+    const compId = p.event.canonical_event_id.replace(/^cb-/, '');
+    const r = results[compId];
+    const finish = (code, units) => {
+      p.status = 'SETTLED'; p.result_code = code; p.units = +units.toFixed(2); p.settled_at = new Date().toISOString();
+      // CLV al cierre: cuota de entrada vs última pre-pelea (el juez del monitor; en props/blandas la doctrina
+      // manda stop-loss, pero el dato se guarda SIEMPRE para el análisis)
+      if (p.closing && p.closing.odds > 1 && p.best_odds > 1) p.clv_pct = +((p.best_odds / p.closing.odds - 1) * 100).toFixed(2);
+      out.settled++;
+    };
+    if (r) {
+      if (!r.winner_id) { finish('VOID', 0); out.void++; }
+      else {
+        const pickedId = p.selection_code === 'f1' ? p.event.home_id : p.event.away_id;
+        if (String(r.winner_id) === String(pickedId)) { finish('WIN', p.best_odds - 1); out.won++; }
+        else { finish('LOSS', -1); out.lost++; }
+      }
+    } else if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; }
+  }
+  if (out.settled) save();
+  return out;
+}
+function combatPicksTrack() {
+  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+  const agg = (list) => {
+    const w = list.filter(p => p.result_code === 'WIN').length;
+    const u = list.reduce((s, p) => s + (p.units || 0), 0);
+    const clv = list.filter(p => p.clv_pct != null);
+    return { n: list.length, w, l: list.length - w, hit: list.length ? +(w / list.length * 100).toFixed(1) : null, units: +u.toFixed(2), clv_avg: clv.length ? +(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length).toFixed(2) : null };
+  };
+  return { total: agg(rows), main: agg(rows.filter(p => p.card_slot === 'main')), prelim: agg(rows.filter(p => p.card_slot !== 'main')), active: (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length };
+}
+if (combatPicksOn()) {
+  setTimeout(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 150 * 1000);
+  setInterval(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 30 * 60 * 1000);
+}
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
   const slot = db.clubObservations[tmId];
@@ -9649,97 +9900,19 @@ const server = http.createServer(async (req, res) => {
       const u = getUser(req);
       if (!u || !u.isAdmin) return json(res, 404, { error: 'No encontrado' }); // admin-only estricto (404, ni señal)
       const CE = require('./combat-engine/ratings');
-      global._combat = global._combat || {};
-      const C = global._combat;
-      const loadCombat = () => {
-        if (C.at && Date.now() - C.at < 10 * 60e3) return;
-        try { C.fights = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fights-ufc.json'), 'utf8')); } catch { C.fights = { fights: [], events: {} }; }
-        try { C.fighters = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fighters-ufc.json'), 'utf8')); } catch { C.fighters = {}; }
-        const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
-        // F1b: fitElo con fighters = Elo + features físicas (reach/exp/años-carrera, pesos online validados
-        // skill 0.0108 vs 0.0068 del Elo puro); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
-        C.elo = CE.fitElo(sorted, C.fighters);
-        C.mm = CE.methodModel(sorted);
-        C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
-        C.at = Date.now();
-      };
-      const record = (id) => { // récord W-L derivado del histórico (UFC-only)
-        let w = 0, l = 0, ko = 0, sub = 0;
-        for (const f of (C.fights.fights || [])) {
-          const me = f.f1.id === id ? f.f1 : f.f2.id === id ? f.f2 : null;
-          if (!me || !f.completed || !(f.f1.winner || f.f2.winner)) continue;
-          if (me.winner) { w++; const n = ((f.method || {}).name || '').toLowerCase(); if (/ko|tko/.test(n) && !/decision/.test(n)) ko++; if (/submission/.test(n)) sub++; }
-          else l++;
-        }
-        return { w, l, ko, sub };
-      };
-      // matcher nombre-Odds→id-ESPN: PUNTAJE y null ante empate (regla gp-regla-matcher-desambiguar)
-      const fighterByName = (name) => {
-        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
-        const q = new Set(norm(name).split(' '));
-        let best = null, bestScore = 0, tie = false;
-        for (const [id, nm] of Object.entries(C.names)) {
-          if (!nm) continue;
-          const t = new Set(norm(nm).split(' '));
-          let ov = 0; for (const x of q) if (t.has(x)) ov++;
-          const sc = ov * 10 + ov / Math.max(1, t.size + q.size - ov);
-          if (sc > bestScore) { best = id; bestScore = sc; tie = false; }
-          else if (sc === bestScore && best !== id && sc > 0) tie = true;
-        }
-        return bestScore >= 20 && !tie ? best : null; // exige ≥2 tokens y sin empate
-      };
+      // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
+      // fuente compartida con el loop de picks. El route quedó como consumidor puro.
+      const C = combatLoad();
       if (p === '/api/combat/state' && req.method === 'GET') {
-        loadCombat();
-        // próximas carteleras (ESPN, memo 10min) + cuotas mma (The Odds API, memo 10min)
-        if (!C.upAt || Date.now() - C.upAt > 10 * 60e3) {
-          try {
-            const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
-            const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
-            const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${fmt(now)}-${fmt(to)}&limit=50`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
-            C.upcoming = (sb.events || []).map(e => ({
-              id: e.id, name: e.name, date: e.date,
-              // main event: la pelea cuyos apellidos aparecen en el nombre del evento ("X vs. Y")
-              fights: (e.competitions || []).map(c => {
-                const a = (c.competitors || [])[0] || {}, b = (c.competitors || [])[1] || {};
-                const n1 = ((a.athlete || {}).displayName || '').split(' ').pop(), n2 = ((b.athlete || {}).displayName || '').split(' ').pop();
-                const main = !!(n1 && n2 && e.name && e.name.includes(n1) && e.name.includes(n2));
-                return { comp_id: c.id, main, weight: (c.type || {}).abbreviation || null, rounds: ((c.format || {}).regulation || {}).periods || null,
-                  f1: { id: a.id, name: (a.athlete || {}).displayName }, f2: { id: b.id, name: (b.athlete || {}).displayName } };
-              }),
-            }));
-          } catch { C.upcoming = C.upcoming || []; }
-          try {
-            const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
-            const od = await fetch(`https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
-            C.odds = Array.isArray(od) ? od : [];
-          } catch { C.odds = C.odds || []; }
-          C.upAt = Date.now();
-        }
+        await combatRefreshUpcoming(C); // carteleras ESPN + cuotas mma (memo 10min compartido con el loop)
         // enriquecer cada pelea: Elo prob + perfil + cuotas de consenso
         const cards = (C.upcoming || []).map(ev => ({
           ...ev,
           fights: ev.fights.map(ft => {
             const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
-            const pf = (id) => ({ ...(C.fighters[id] || {}), record: record(id) });
-            // cuotas: buscar el evento de odds cuyos nombres matcheen AMBOS peleadores
-            let odds = null;
-            for (const o of (C.odds || [])) {
-              const h = fighterByName(o.home_team), a = fighterByName(o.away_team);
-              if (!h || !a) continue;
-              if ((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id)) {
-                const best = { home: 0, away: 0, books: 0 };
-                for (const bk of (o.bookmakers || [])) {
-                  const m = (bk.markets || []).find(x => x.key === 'h2h'); if (!m) continue;
-                  best.books++;
-                  for (const oc of (m.outcomes || [])) {
-                    if (oc.name === o.home_team && oc.price > best.home) best.home = oc.price;
-                    if (oc.name === o.away_team && oc.price > best.away) best.away = oc.price;
-                  }
-                }
-                odds = { f1: h === ft.f1.id ? best.home : best.away, f2: h === ft.f1.id ? best.away : best.home, books: best.books };
-                break;
-              }
-            }
+            const pf = (id) => ({ ...(C.fighters[id] || {}), record: combatRecordOf(C, id) });
+            const mo = combatFightOdds(C, ft);
+            const odds = mo ? { f1: mo.best.f1, f2: mo.best.f2, books: mo.books } : null;
             // F1b: probs de método (KO/Sub/Dec) + rounds para la pelea (validado walk-forward antes de exponer)
             const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
             return { ...ft, prob: pr, method, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
@@ -9750,16 +9923,34 @@ const server = http.createServer(async (req, res) => {
         const top = Object.entries(C.elo.R)
           .filter(([id]) => (C.elo.N[id] || 0) >= 8 && new Date(C.elo.LAST[id] || 0) > cutoff)
           .sort((a, b) => b[1] - a[1]).slice(0, 15)
-          .map(([id, r]) => ({ id, name: C.names[id], elo: Math.round(r), fights: C.elo.N[id], last: C.elo.LAST[id], headshot: (C.fighters[id] || {}).headshot || null, record: record(id) }));
+          .map(([id, r]) => ({ id, name: C.names[id], elo: Math.round(r), fights: C.elo.N[id], last: C.elo.LAST[id], headshot: (C.fighters[id] || {}).headshot || null, record: combatRecordOf(C, id) }));
         const withMethod = (C.fights.fights || []).filter(f => f.method).length;
         return json(res, 200, {
           sport: 'ufc', cards, ranking: top,
           data: { fights: (C.fights.fights || []).length, with_method: withMethod, fighters: Object.keys(C.fighters).length },
           backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [], { fighters: C.fighters })),
           backtest_method: C.btm || (C.btm = CE.backtestMethod(C.fights.fights || [])),
+          // F2: monitor privado de picks (admin-only por el gate del route; jamás feed público)
+          picks_enabled: combatPicksOn(),
+          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
+          picks_track: combatPicksTrack(),
         });
       }
       return json(res, 404, { error: 'No encontrado' });
+    }
+    // COMBAT PICKS internos (F2): GET = estado/track; POST = ciclo build+settle ya (?dry=1 = candidatos sin persistir)
+    if (p === '/api/internal/combat-picks') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        if (req.method === 'POST' || url.searchParams.get('dry')) {
+          const dry = !!url.searchParams.get('dry');
+          const b = await buildCombatPicks({ dryRun: dry });
+          const s = dry ? null : await settleCombatPicks();
+          return json(res, 200, { enabled: combatPicksOn(), build: b, settle: s, track: combatPicksTrack() });
+        }
+        return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length });
+      } catch (e) { return json(res, 200, { error: e.message }); }
     }
     // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,
     // su plan y sus datos quedan INTACTOS; solo dejan de recibir broadcasts. GET lista los suprimidos.

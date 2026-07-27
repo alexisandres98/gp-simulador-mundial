@@ -4470,7 +4470,7 @@ function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
 // el base-rate de liga/línea). Todo lo demás vive como regime 'monitor' (track privado) y puede GANARSE la
 // entrada con la misma evidencia — nunca por antigüedad. Override por env sin deploy: GP_PUBLIC_SEGMENTS
 // ej. "CARDS:under,CORNERS:under".
-const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SOLID').split(',')
+const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SOLID,GOALS,CORNERS').split(',')
   .map(s => s.trim()).filter(Boolean).map(s => s.split(':'));
 
 // ===== EFICIENCIA POR LIGA (26-jul, propuesta de Alexis validada con el test 2×2) ============================
@@ -4506,7 +4506,7 @@ function leagueEfficiency(league) {
 // Bandas donde cada segmento público está VALIDADO para publicar. Cards-under se validó en intermedias
 // (n=76, +21.6%) y su racional (público over + líneas perezosas) aplica AÚN MÁS en blandas; en ligas
 // eficientes el mercado de cards también está bien puesto → queda en monitor ahí.
-const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'], 'SOLID': ['eficiente', 'blanda'] }; // SOLID: ancla en eficientes, modelo-líder en blandas (la generación garantiza el subtipo por banda)
+const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'], 'SOLID': ['eficiente', 'blanda'], 'GOALS': ['eficiente'], 'CORNERS': ['eficiente'] }; // SOLID: ancla en eficientes + líder en blandas; GOALS/CORNERS: SOLO anclas en eficientes (decisión Alexis 27-jul — nada en blandas hasta tener modelo que lidere)
 const isPublicSegment = (family, side, league) => {
   const seg = PUBLIC_SEGMENTS.some(([f, s]) => f === family && (!s || s === (side || '')));
   if (!seg) return false;
@@ -5618,6 +5618,13 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     if (db.marketOpenings && db.marketOpenings[okey] && p.opening == null) p.opening = db.marketOpenings[okey]; // CLV-desde-apertura
     if (!isPublicSegment(p.family, p.side, p.league)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
     if (p.family === 'SOLID') continue; // el 1X2 de régimen trae su gate desde la GENERACIÓN (anchor/lead por banda)
+    // GOALS/CORNERS (27-jul, decisión Alexis): SOLO anclas en ligas EFICIENTES (la banda ya filtró arriba).
+    // Ancla = lean claro del consenso (≥55%, ≥5 casas) que el blend NO contradice. El resto → monitor.
+    if (p.family === 'GOALS' || p.family === 'CORNERS') {
+      const kk = Number(p.market_prob) || 0;
+      p.regime = (kk >= 0.55 && (p.books || 0) >= 5 && blend != null && (blend - kk) * 100 >= -2) ? 'anchor' : 'monitor';
+      continue;
+    }
     // segmento público: el criterio de publicación ES el edge post-blend ≥ 2pp (⇔ crudo ≥ 4pp; 81/82
     // cards-under históricas lo cumplían). SIMÉTRICO: también promueve lo que nació 'monitor' por la regla
     // vieja de priceAboveFair — la calidad de compra la vigila el gate de CLV rolling, no un filtro estático.
@@ -6435,7 +6442,14 @@ function reclassifyClubSegments() {
     // SIMÉTRICO (fix mismo día): promueve las de segmento público con edge suficiente aunque hayan nacido
     // 'monitor' por la regla vieja de priceAboveFair; degrada las de edge fino. El gate CLV vigila la compra.
     // SOLID de régimen (27-jul) queda fuera: su gate vive en la generación (anchor/lead por banda).
-    if (old.family !== 'SOLID' && old.blend_prob != null && isFinite(k)) {
+    if (old.family === 'SOLID') { /* gate propio en la generación */ }
+    else if (old.family === 'GOALS' || old.family === 'CORNERS') {
+      // anclas en eficientes (la banda ya filtró): lean claro sin contradicción del blend
+      const kk = Number(old.market_prob) || 0;
+      const want = (kk >= 0.55 && (old.books || 0) >= 5 && old.blend_prob != null && (old.blend_prob - kk) * 100 >= -2) ? 'anchor' : 'monitor';
+      if (old.regime !== want) { old.regime = want; n++; }
+    }
+    else if (old.blend_prob != null && isFinite(k)) {
       const want = (old.blend_prob - k) * 100 >= 2 ? 'edge' : 'monitor';
       if (old.regime !== want) { old.regime = want; n++; }
     }

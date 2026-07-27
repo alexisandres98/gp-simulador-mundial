@@ -658,7 +658,7 @@
     mybookieag: 'MyBookie', lowvig: 'LowVig', bovada: 'Bovada', betus: 'BetUS', gtbets: 'GTbets', everygame: 'Everygame',
     suprabets: 'Suprabets', ballybet: 'Bally Bet', betparx: 'betPARX', hardrockbet: 'Hard Rock Bet', playup: 'PlayUp',
     polymarket: 'Polymarket', kalshi: 'Kalshi', myriad: 'Myriad', novig: 'Novig', prophetx: 'ProphetX',
-    cloudbet: 'Cloudbet', stake: 'Stake', rollbit: 'Rollbit', bcgame: 'BC.Game', sportsbetio: 'Sportsbet.io',
+    cloudbet: 'Cloudbet', stake: 'Stake', rollbit: 'Rollbit', bcgame: 'BC.Game', sportsbetio: 'Sportsbet.io', bitcasino: 'Bitcasino', livecasino: 'Livecasino',
     tabtouch: 'TABtouch', betright: 'Bet Right', topsport: 'TopSport', boombet: 'BoomBet', betr_au: 'betr', dabble_au: 'Dabble'
   };
   function prettyBook(code) {
@@ -2379,7 +2379,7 @@
     'smarkets', 'sport888', 'tipico_de', 'unibet_fr', 'unibet_nl', 'unibet_se', 'unibet_uk', 'virginbet', 'winamax_de', 'winamax_fr'
   ];
   var BK_PREDICTION = ['polymarket', 'kalshi', 'myriad']; // mercados de predicción que el scanner compara
-  var BK_CRYPTO = ['cloudbet', 'stake', 'rollbit', 'bcgame', 'sportsbetio']; // casas cripto (cloudbet LIVE; resto para marcar preferencia)
+  var BK_CRYPTO = ['cloudbet', 'stake', 'rollbit', 'bcgame', 'sportsbetio', 'bitcasino', 'livecasino']; // casas cripto (cloudbet LIVE; sportsbet.io/bitcasino/livecasino con afiliado partners.io 27-jul)
   function renderBooks() {
     var mv = $('#gx-matchview'); if (!mv) return;
     if (S.me && !S.me.my_books) { showView('board'); return; }
@@ -3515,7 +3515,10 @@
     // escáner/oportunidades/casas acredita la referencia. Cloudbet queda con URL limpia hasta cerrar el acuerdo
     // (ahí se le agrega su código igual que acá).
     stake: 'https://stake.com/?c=qLKRRqOf', cloudbet: 'https://www.cloudbet.com',
-    rollbit: 'https://rollbit.com', bcgame: 'https://bc.game', sportsbetio: 'https://sportsbet.io'
+    rollbit: 'https://rollbit.com', bcgame: 'https://bc.game',
+    // PARTNERS.IO (27-jul): links de afiliado del grupo Coingaming — Sportsbet.io + casinos hermanos
+    sportsbetio: 'https://go.sportsbet.io?asset_id=37501966',
+    bitcasino: 'https://go.bitcasino.io?asset_id=37501965', livecasino: 'https://go.livecasino.io?asset_id=37501967'
   };
   function bookUrl(code) { return BOOK_URLS[code] || BOOK_URLS[String(code || '').replace(/_(se|nl|fr|de|uk|us|eu|au|at|es|it)$/i, '')] || null; }
   function venueBtn(code, label) { var u = bookUrl(code); if (!u) return '<span class="gx-ov-venuex">' + bookLogo(code) + esc(label || code) + '</span>'; return '<a class="gx-ov-venue" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + bookLogo(code) + ic('external-link') + esc(label || code) + '</a>'; }

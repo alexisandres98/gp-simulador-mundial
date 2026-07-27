@@ -4562,7 +4562,12 @@ function clubFamilyStopped() {
     });
     const hit = wins / w.length, avgOdds = oddsSum / w.length, breakEven = avgOdds > 1 ? 1 / avgOdds : 1;
     const clvAvg = clvs.length >= 15 ? clvs.reduce((a, b) => a + b, 0) / clvs.length : null; // CLV con media ventana mínima
-    if (hit < breakEven || (clvAvg != null && clvAvg < 0)) stopped.add(seg);
+    // El corte por CLV SOLO aplica a mercados LÍQUIDOS (1X2/goles): ahí el cierre es sabio y no batirlo = sin
+    // edge. En props de mercados PEREZOSOS (cards/córners) el cierre no es autoridad — su vara es el stop-loss
+    // + la validación continua contra resultados (bug 27-jul: el CLV −0.34% frenaba cards-under con hit 76.7%
+    // y validación p=0.026 aprobando; los usuarios no-admin no veían la familia estrella).
+    const isProp = PROP_FAMS.indexOf(seg.split('|')[0]) >= 0;
+    if (hit < breakEven || (!isProp && clvAvg != null && clvAvg < 0)) stopped.add(seg);
   }
   if (db.cardsValidation && db.cardsValidation.failed) stopped.add('CARDS|under');
   return stopped;

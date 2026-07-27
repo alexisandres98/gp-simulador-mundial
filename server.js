@@ -9655,7 +9655,11 @@ const server = http.createServer(async (req, res) => {
         if (C.at && Date.now() - C.at < 10 * 60e3) return;
         try { C.fights = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fights-ufc.json'), 'utf8')); } catch { C.fights = { fights: [], events: {} }; }
         try { C.fighters = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', 'fighters-ufc.json'), 'utf8')); } catch { C.fighters = {}; }
-        C.elo = CE.fitElo((C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date)));
+        const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
+        // F1b: fitElo con fighters = Elo + features físicas (reach/exp/años-carrera, pesos online validados
+        // skill 0.0108 vs 0.0068 del Elo puro); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
+        C.elo = CE.fitElo(sorted, C.fighters);
+        C.mm = CE.methodModel(sorted);
         C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
         C.at = Date.now();
       };
@@ -9736,7 +9740,9 @@ const server = http.createServer(async (req, res) => {
                 break;
               }
             }
-            return { ...ft, prob: pr, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
+            // F1b: probs de método (KO/Sub/Dec) + rounds para la pelea (validado walk-forward antes de exponer)
+            const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+            return { ...ft, prob: pr, method, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
           }),
         }));
         // ranking Elo top (≥8 peleas, activos últimos 2 años)
@@ -9749,7 +9755,8 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, {
           sport: 'ufc', cards, ranking: top,
           data: { fights: (C.fights.fights || []).length, with_method: withMethod, fighters: Object.keys(C.fighters).length },
-          backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [])),
+          backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [], { fighters: C.fighters })),
+          backtest_method: C.btm || (C.btm = CE.backtestMethod(C.fights.fights || [])),
         });
       }
       return json(res, 404, { error: 'No encontrado' });

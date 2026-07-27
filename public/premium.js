@@ -5567,6 +5567,20 @@
     var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" onerror="this.remove()">' : '';
     return '<div class="gx-cb-ava ' + (side === 1 ? 'gr' : 'rd') + '">' + img + '<span>' + esc(ini) + '</span></div>';
   }
+  // F1b: método de victoria (KO/Sub/Dec) + rounds proyectados — modelo validado walk-forward (skill +0.020 vs división)
+  function cbMethod(m) {
+    if (!m) return '';
+    var bar = function (lab, v, col) {
+      return '<div style="display:flex;align-items:center;gap:6px"><span class="gx-mono gx-dim" style="width:30px;font-size:10px;text-align:right">' + lab + '</span>' +
+        '<div style="flex:1;height:5px;border-radius:3px;background:var(--gx-line,rgba(255,255,255,.08));overflow:hidden"><i style="display:block;height:100%;width:' + Math.round(v * 100) + '%;background:' + col + '"></i></div>' +
+        '<span class="gx-mono" style="width:32px;font-size:10.5px">' + Math.round(v * 100) + '%</span></div>';
+    };
+    return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">' +
+      '<div class="gx-label" style="font-size:9.5px">' + (LANG === 'en' ? 'METHOD OF VICTORY' : 'MÉTODO DE VICTORIA') + '</div>' +
+      bar('KO', m.ko, 'var(--gx-ac,#1FE3A4)') + bar('SUB', m.sub, '#5aa7ff') + bar('DEC', m.dec, '#b98cff') +
+      '<div class="gx-dim" style="font-size:10.5px;margin-top:2px">' + (LANG === 'en' ? 'finish ' : 'termina ') + Math.round(m.finish * 100) + '% · ' +
+      (LANG === 'en' ? 'inside 2 rounds ' : 'antes del 3º ') + Math.round((m.r_le && m.r_le[2] || 0) * 100) + '% · ~' + m.exp_rounds + ' rounds</div></div>';
+  }
   function renderCombat() {
     var mv = $('#gx-matchview'); if (!mv) return;
     // CARRERA con hash directo (patrón #perf/#sim documentado): S.me aún no llegó → esperar, no redirigir
@@ -5581,7 +5595,7 @@
     var d = S.combat || {};
     if (d._err) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate') + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; return; }
     var tabs = '<div class="gx-cb-tabs"><span class="gx-cb-tab on">UFC</span><span class="gx-cb-tab dim">MMA · pronto</span><span class="gx-cb-tab dim">BOXEO · pronto</span>' +
-      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + (d.data ? d.data.fights + ' peleas históricas · ' + d.data.fighters + ' perfiles · backtest acc ' + Math.round((d.backtest || {}).accuracy * 100) + '%' : '') + '</span></div>';
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + (d.data ? d.data.fights + ' peleas históricas · ' + d.data.fighters + ' perfiles · backtest acc ' + Math.round((((d.backtest || {}).features || {}).accuracy || (d.backtest || {}).accuracy || 0) * 100) + '%' : '') + '</span></div>';
     var cards = (d.cards || []);
     var html = '';
     cards.slice(0, 3).forEach(function (ev, ci) {
@@ -5598,6 +5612,7 @@
             '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
             '<div class="gx-cb-pcts"><span>' + p1 + '%</span><span class="p2">' + (100 - p1) + '%</span></div>' +
             '<div class="gx-dim" style="font-size:11px;margin-top:4px">Elo ' + (pr.r1 || '—') + ' vs ' + (pr.r2 || '—') + (main.odds ? ' · mejor cuota ' + main.odds.f1 + ' / ' + main.odds.f2 + ' (' + main.odds.books + ' casas)' : ' · sin cuotas aún') + '</div>' +
+            cbMethod(main.method) +
           '</div>' +
           '<div class="gx-cb-f">' + cbAva(main.f2, 2) + '<div class="gx-cb-nm">' + esc(main.f2.name || '') + '</div><div class="gx-cb-rec">' + main.f2.record.w + '-' + main.f2.record.l + ' UFC · ' + main.f2.record.ko + ' KO · ' + main.f2.record.sub + ' SUB</div>' + (main.f2.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(main.f2.reach_in)) + ' alcance</div>' : '') + '</div>' +
         '</div></div>' : '';
@@ -5620,7 +5635,7 @@
         '<span class="gx-mono" style="color:var(--gx-ac,#1FE3A4);font-weight:800">' + r.elo + '</span></div>';
     }).join('');
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + tabs + html +
-      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Ranking Elo · activos</span><span class="gx-ph-extra gx-dim" style="font-size:11px">modelo validado: skill +' + ((d.backtest || {}).skill_vs_coin || 0) + ' en ' + ((d.backtest || {}).n || 0) + ' peleas out-of-sample</span></div><div class="gx-mod-body">' + rk + '</div></div>' +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Ranking Elo · activos</span><span class="gx-ph-extra gx-dim" style="font-size:11px">modelo validado: skill +' + (((d.backtest || {}).features || {}).skill_vs_coin || (d.backtest || {}).skill_vs_coin || 0) + ' (Elo+features) · método +' + ((d.backtest_method || {}).skill_vs_division || 0) + ' · ' + ((d.backtest || {}).n || 0) + ' peleas out-of-sample</span></div><div class="gx-mod-body">' + rk + '</div></div>' +
       '</div></div>';
   }
 

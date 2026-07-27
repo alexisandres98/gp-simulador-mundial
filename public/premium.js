@@ -892,6 +892,9 @@
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
       '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
       '<div class="gx-pulse" id="gx-pulse"></div>' +
+      // F4 Combat (27-jul, mockup aprobado): tabs por DEPORTE en el topbar — admin-only hasta validar Combat
+      // (gx-admin-only: display none por default, syncAdminUI lo revela; no-admins byte-idénticos).
+      '<div class="gx-langs gx-admin-only" id="gx-sporttabs" style="display:none"><button data-sport="futbol">⚽ Fútbol</button><button data-sport="combat">🥊 Combate</button></div>' +
       '<div class="gx-spacer"></div>' +
       '<div class="gx-langs" id="gx-langs"><button data-l="es" class="' + (LANG === 'es' ? 'on' : '') + '">ES</button><button data-l="en" class="' + (LANG === 'en' ? 'on' : '') + '">EN</button></div>' +
       '<div class="gx-iconbtn" data-nav="alerts" title="' + esc(t('nav_alerts')) + '">' + ic('bell') + '<span class="gx-dot"></span></div>' +
@@ -917,6 +920,7 @@
     valueProps();
     syncAdminUI();
     $('#gx-langs').addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
+    var st = $('#gx-sporttabs'); if (st) st.addEventListener('click', function (e) { var b = e.target.closest('[data-sport]'); if (b) navTo(b.dataset.sport === 'combat' ? 'combat' : 'opps'); });
     var avb = $('#gx-avatar-btn'); if (avb) avb.addEventListener('click', toggleAcctMenu);
     // subtabs de Oportunidades: Picks / Value / Arbitraje
     var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); if (sub !== 'picks') kpis(S.dash || {}, rs); board(rs); };
@@ -3263,6 +3267,10 @@
   function syncNavActive() {
     var cur = viewNav(S.view);
     [].forEach.call(document.querySelectorAll('.gx-nav[data-nav], .gx-bnav a[data-nav]'), function (el) { el.classList.toggle('on', el.getAttribute('data-nav') === cur); });
+    // F4: tabs de deporte del topbar (⚽ = toda la plataforma de fútbol; 🥊 = vista combat)
+    [].forEach.call(document.querySelectorAll('#gx-sporttabs [data-sport]'), function (el) {
+      el.classList.toggle('on', (el.getAttribute('data-sport') === 'combat') === (cur === 'combat'));
+    });
   }
   function applyView() {
     var mv = $('#gx-matchview'), main = $('.gx-main'), vp = $('#gx-vp');

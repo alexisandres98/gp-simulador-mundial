@@ -1521,3 +1521,8 @@ td .gx-calc-btn span { display: none; }
 .gx-cb-orgtop b { color:var(--gx-ac,#1FE3A4); }
 /* tiles del perf */
 .gx-cb-tiles.perf .gx-cb-tile { min-width:104px; }
+/* R2b: pick cards de combate — avatares mini en la fila del cruce + label de sección */
+.gx-pick-cbava { width:26px; height:26px; border-radius:50%; overflow:hidden; flex:none; display:inline-block; background:#123B2E; border:1.5px solid rgba(31,227,164,.5); }
+.gx-pick-cbava.rd { background:#3B1414; border-color:rgba(255,94,94,.45); }
+.gx-pick-cbava img { width:100%; height:100%; object-fit:cover; object-position:top; }
+.gx-pod-label { margin-bottom:6px; color:var(--gx-ac,#1FE3A4); }

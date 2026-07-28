@@ -6829,7 +6829,10 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       if (!bestSide) continue;
       const kel = Math.max(0, (bestSide.blend * (bestSide.odds - 1) - (1 - bestSide.blend)) / (bestSide.odds - 1)) / 4;
       const pickName = bestSide.side === 'f1' ? ft.f1.name : ft.f2.name;
+      const rivalName = bestSide.side === 'f1' ? ft.f2.name : ft.f1.name;
+      const whyPair = combatPickWhy({ name: pickName, rival: rivalName, m: bestSide.m, k: bestSide.k, eg: bestSide.eg, books: mo.books, slot: ft.main ? 'main' : 'prelim' });
       fresh.push({
+        why_es: whyPair.es, why_en: whyPair.en,
         pick_id: stable('cb-' + ft.comp_id + '|FIGHT|' + bestSide.side),
         sport: 'combat', family: 'FIGHT', league: org, // 'ufc' | 'mma' (Bellator/PFL)
         gate_status: 'shadow', regime: 'monitor', // JAMÁS feed: Combat es admin-only hasta validar
@@ -6923,6 +6926,14 @@ async function settleCombatPicks() {
   if (out.settled) save();
   return out;
 }
+// narrativa de la pick de combate (mismo espíritu del compose del fútbol: el "por qué" al nivel de analista)
+function combatPickWhy({ name, rival, m, k, eg, books, slot }) {
+  const mp = Math.round(m * 100), kp = Math.round(k * 100);
+  return {
+    es: `El modelo (Elo + edad + físico + forma) da ${mp}% a ${name} contra ${kp}% del consenso de ${books} casas — ${eg.toFixed(1)}pp de ventaja tras el ajuste al mercado. ${slot === 'main' ? 'Pelea estelar: mercado líquido, el precio pesa.' : 'Preliminar: mercado menos denso, donde el modelo históricamente ve más.'} Pick del monitor privado (validación del modelo).`,
+    en: `The model (Elo + age + physical + form) makes ${name} ${mp}% vs the ${kp}% consensus across ${books} books — ${eg.toFixed(1)}pp of edge after blending to market. ${slot === 'main' ? 'Main event: liquid market, the price carries weight.' : 'Prelim: thinner market, where the model historically sees more.'} Private monitor pick (model validation).`,
+  };
+}
 function combatPicksTrack() {
   const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
   const agg = (list) => {
@@ -6936,6 +6947,80 @@ function combatPicksTrack() {
 if (combatPicksOn()) {
   setTimeout(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 150 * 1000);
   setInterval(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 30 * 60 * 1000);
+}
+// ===== OBSERVER DE COMBATE (R2b, 28-jul): la capa de noticias que mueve las líneas =========================
+// La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es CAMP/LESIÓN/PESAJE/REEMPLAZO.
+// Sweep de Google News (RSS gratis, mismo pipeline del observer de fútbol) por peleador con pelea <10 días;
+// señales extraídas por vocabulario de combate y guardadas en db.combatObservations. SOLO DISPLAY (cockpit,
+// panel Inteligencia) — jamás al λ: no hay histórico de noticias para backtestear un ajuste honesto.
+const combatObserverOn = () => String(process.env.GP_COMBAT_OBSERVER_ENABLED || '') === 'true';
+const CB_NEWS_PATTERNS = [
+  { type: 'out', re: /pull(s|ed)? out|withdraw|out of (ufc|pfl|the fight|the card)|off the card|se baja/i, sev: 'high', es: 'se BAJA de la pelea', en: 'is OUT of the fight' },
+  { type: 'injury', re: /injur(y|ed|es)|lesion/i, sev: 'high', es: 'lesión reportada', en: 'injury reported' },
+  { type: 'weight', re: /miss(es|ed)? weight|weight miss|overweight|fail(s|ed)? to make weight|no dio el peso/i, sev: 'high', es: 'FALLÓ EL PESO', en: 'MISSED WEIGHT' },
+  { type: 'replacement', re: /replac(es|ed|ement)|steps? in|short.?notice|late notice/i, sev: 'warn', es: 'cambio de rival / short notice', en: 'opponent change / short notice' },
+  { type: 'canceled', re: /cancell?ed|scrapped|called off/i, sev: 'high', es: 'pelea en duda / cancelada', en: 'fight in doubt / canceled' },
+];
+async function runCombatObserver() {
+  if (!combatObserverOn()) return { skipped: 'disabled' };
+  const { googleNewsRss } = require('./observer/sources');
+  db.combatObservations = db.combatObservations || {};
+  const out = { fighters: 0, requests: 0, signals: 0 };
+  for (const org of Object.keys(COMBAT_ORGS)) {
+    const C = combatLoad(org);
+    await combatRefreshUpcoming(C);
+    const soon = (C.upcoming || []).filter(e => { const d = Date.parse(e.date) - Date.now(); return d > -6 * 3600e3 && d < 10 * 24 * 3600e3; });
+    for (const ev of soon) for (const ft of ev.fights) for (const side of ['f1', 'f2']) {
+      const id = ft[side].id, name = ft[side].name;
+      if (!id || !name) continue;
+      const slot = db.combatObservations[id];
+      if (slot && Date.now() - Date.parse(slot.at || 0) < 3 * 3600e3) continue; // educado: 1 sweep/3h por peleador
+      out.fighters++;
+      let items = [];
+      try { items = await googleNewsRss(`"${name}" ${org === 'ufc' ? 'UFC' : 'PFL MMA'}`, 'en'); out.requests++; } catch { continue; }
+      const last = name.split(' ').pop().toLowerCase();
+      const signals = [];
+      for (const it of (items || []).slice(0, 12)) {
+        const txt = (it.title + ' ' + (it.description || ''));
+        if (!txt.toLowerCase().includes(last)) continue; // anti-clickbait: el titular debe nombrarlo
+        const age = it.published_at ? Date.now() - Date.parse(it.published_at) : null;
+        if (age != null && age > 12 * 24 * 3600e3) continue; // solo noticia del ciclo de esta pelea
+        for (const p of CB_NEWS_PATTERNS) {
+          if (!p.re.test(txt)) continue;
+          if (signals.some(s => s.type === p.type)) continue; // 1 señal por tipo
+          signals.push({ type: p.type, severity: p.sev, title: it.title, source: it.source || null, published_at: it.published_at || null });
+        }
+      }
+      db.combatObservations[id] = { name, at: new Date().toISOString(), signals };
+      out.signals += signals.length;
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+  // poda: observaciones de hace >20 días (peleadores ya sin pelea próxima)
+  for (const [id, o] of Object.entries(db.combatObservations)) {
+    if (Date.now() - Date.parse(o.at || 0) > 20 * 24 * 3600e3) delete db.combatObservations[id];
+  }
+  save();
+  return out;
+}
+// señales de noticias de UNA pelea (para el panel Inteligencia del cockpit) — se mergean con las flags computadas
+function combatNewsFlags(ft) {
+  const flags = [];
+  for (const side of ['f1', 'f2']) {
+    const o = (db.combatObservations || {})[ft[side].id];
+    if (!o || !o.signals) continue;
+    for (const s of o.signals) {
+      const p = CB_NEWS_PATTERNS.find(x => x.type === s.type);
+      flags.push({ side, code: 'news_' + s.type, severity: s.severity, news: true, source: s.source, published_at: s.published_at,
+        es: `📰 ${ft[side].name}: ${p ? p.es : s.type} — "${s.title}"`,
+        en: `📰 ${ft[side].name}: ${p ? p.en : s.type} — "${s.title}"` });
+    }
+  }
+  return flags;
+}
+if (combatObserverOn()) {
+  setTimeout(() => runCombatObserver().catch(() => { }), 200 * 1000);
+  setInterval(() => runCombatObserver().catch(() => { }), 3 * 3600 * 1000);
 }
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
@@ -10103,7 +10188,7 @@ const server = http.createServer(async (req, res) => {
           market: mo ? { f1: +mo.fair_f1.toFixed(3), f2: +(1 - mo.fair_f1).toFixed(3), books: mo.books, best: mo.best } : null,
           books: books.slice(0, 20),
           tale: { f1: combatFighterSummary(C, ft.f1.id), f2: combatFighterSummary(C, ft.f2.id) },
-          intel: combatIntelFlags(C, ft, ev.date),
+          intel: combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft)), // computadas + noticias del observer
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
           pick: pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
         });
@@ -10130,7 +10215,8 @@ const server = http.createServer(async (req, res) => {
         const pr = CE.fightProb(C.elo, f1, f2, new Date().toISOString());
         const weight = s1.division || s2.division || null;
         const method = CE.methodProbs(C.mm, pr.p1, f1, f2, weight, rounds);
-        const intel = combatIntelFlags(C, { f1: { id: f1, name: s1.name }, f2: { id: f2, name: s2.name }, weight }, new Date().toISOString());
+        const ftSim = { f1: { id: f1, name: s1.name }, f2: { id: f2, name: s2.name }, weight };
+        const intel = combatIntelFlags(C, ftSim, new Date().toISOString()).concat(combatNewsFlags(ftSim));
         return json(res, 200, { prob: pr, method, tale: { f1: s1, f2: s2 }, intel, weight, rounds });
       }
       // R2: OPORTUNIDADES de combate — picks activas + value (line shopping vs consenso) + arbitraje 2-way
@@ -10153,8 +10239,14 @@ const server = http.createServer(async (req, res) => {
           }
         }
         value.sort((a, b) => b.ev_pct - a.ev_pct);
+        const myPicks = (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at));
+        for (const p2 of myPicks) { // backfill de narrativa en picks creadas antes de R2b
+          if (p2.why_es) continue;
+          const w2 = combatPickWhy({ name: p2.selection_name, rival: p2.selection_code === 'f1' ? p2.event.away : p2.event.home, m: p2.model_prob, k: p2.market_prob, eg: p2.edge_blend_pp || 0, books: p2.books || 0, slot: p2.card_slot });
+          p2.why_es = w2.es; p2.why_en = w2.en;
+        }
         return json(res, 200, {
-          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
+          picks: myPicks,
           picks_enabled: combatPicksOn(), value: value.slice(0, 20), arbs, track: combatPicksTrack(),
         });
       }
@@ -10200,6 +10292,17 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { top, up: movers.slice(0, 8), down: movers.slice(-8).reverse() });
       }
       return json(res, 404, { error: 'No encontrado' });
+    }
+    // OBSERVER DE COMBATE interno (R2b): GET = estado; POST = sweep ya
+    if (p === '/api/internal/combat-observer') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        if (req.method === 'POST') return json(res, 200, { enabled: combatObserverOn(), sweep: await runCombatObserver() });
+        const obs = db.combatObservations || {};
+        const withSig = Object.entries(obs).filter(([, o]) => (o.signals || []).length);
+        return json(res, 200, { enabled: combatObserverOn(), fighters_watched: Object.keys(obs).length, with_signals: withSig.length, signals: withSig.map(([id, o]) => ({ id, name: o.name, at: o.at, signals: o.signals })) });
+      } catch (e) { return json(res, 200, { error: e.message }); }
     }
     // COMBAT PICKS internos (F2): GET = estado/track; POST = ciclo build+settle ya (?dry=1 = candidatos sin persistir)
     if (p === '/api/internal/combat-picks') {

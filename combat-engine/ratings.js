@@ -21,15 +21,18 @@ function isFinish(method) {
   return /ko|tko|submission|sub/.test(n) && !/decision/.test(n);
 }
 
-// ---------- F1b (27-jul): features físicas sobre el Elo ----------
-// z = w.elo·logit(pElo) + w.reach·Δreach + w.exp·Δlog-peleas + w.years·Δaños-de-carrera  (antisimétrico,
-// SIN intercepto — inmune al sesgo de orden f1/f2 de ESPN, que lista primero al favorito 57% de las veces).
-// Pesos fiteados ONLINE durante fitElo (se predice antes de actualizar = walk-forward nativo, cero leakage).
-// Backtest 27-jul (n=5,833): skill 0.0068→0.0108, acc 56.8%→58.7%, estable por era, bootstrap P(mejora)=1.000.
-// Hallazgo: con años-de-carrera en el modelo, experiencia da POSITIVO (+0.14) y años NEGATIVO (−0.59):
-// la experiencia suma, el desgaste de carrera resta — el Elo va rezagado al declive del veterano.
-// (dob vino null en los 3,036 perfiles ESPN → años-desde-debut es EL proxy de edad disponible.)
+// ---------- F1b→R2 (27/28-jul): features sobre el Elo ----------
+// z = w.elo·logit(pElo) + Σ w_i·Δfeat_i  (antisimétrico, SIN intercepto — inmune al sesgo de orden f1/f2
+// de ESPN, que lista primero al favorito 57% de las veces). Pesos fiteados ONLINE durante fitElo (se
+// predice antes de actualizar = walk-forward nativo, cero leakage).
+// R2 28-jul, set completo backtesteado (bootstrap P=1.000, estable por era, mejora MAYOR en era moderna):
+//   UFC: skill 0.0109→0.0166, acc 58.5%→61.0% (2020-26: 61.9%) · MMA: 0.0226→0.0289, acc 64.8%.
+//   Pesos típicos: age −0.62 (LA feature — coincide con toda la literatura de modelos MMA), years −0.30
+//   (desgaste de carrera), chin −0.17 (KOs recibidos), streak +0.15, mileage +0.37 (minutos de jaula:
+//   condicional a edad/años = calidad superviviente), reach +0.22.
+//   divmove (cambio de división) NO es señal sistemática agregada → vive en la capa de INTEL, no en el λ.
 const FEAT_LR = 0.01;
+const FEATS = ['reach', 'exp', 'years', 'age', 'chin', 'streak', 'mileage'];
 const inches = (s) => { // "75\"" → 75 ; "5' 11\"" → 71
   if (!s) return null;
   const m = String(s).match(/(\d+)'\s*(\d+)?/);
@@ -39,6 +42,8 @@ const inches = (s) => { // "75\"" → 75 ; "5' 11\"" → 71
 };
 const sigm = (z) => 1 / (1 + Math.exp(-z));
 const logit = (p) => Math.log(Math.min(0.999, Math.max(0.001, p)) / (1 - Math.min(0.999, Math.max(0.001, p))));
+const clockMin = (c) => { const m = String(c || '').match(/(\d+):(\d+)/); return m ? (+m[1] + +m[2] / 60) : 0; };
+const newW = () => { const w = { elo: 1 }; for (const k of FEATS) w[k] = 0; return w; };
 
 function featDiff(model, fighters, id1, id2, atDate) {
   const a = (fighters && fighters[id1]) || {}, b = (fighters && fighters[id2]) || {};
@@ -47,19 +52,27 @@ function featDiff(model, fighters, id1, id2, atDate) {
     const first = model.FIRST && model.FIRST[id];
     return first ? Math.min(20, (new Date(atDate) - new Date(first)) / (365.25 * 24 * 3600e3)) : 0;
   };
+  const ageOf = (p) => p.dob ? (new Date(atDate) - new Date(p.dob)) / (365.25 * 24 * 3600e3) : null;
+  const a1 = ageOf(a), a2 = ageOf(b);
+  const s3 = (id) => { const r = (model.R3 || {})[id] || []; return r.length ? r.reduce((s, x) => s + x, 0) / r.length - 0.5 : 0; };
   return {
     reach: (r1 != null && r2 != null) ? (r1 - r2) / 10 : 0,
     exp: Math.log(1 + (model.N[id1] || 0)) - Math.log(1 + (model.N[id2] || 0)),
     years: (yrs(id1) - yrs(id2)) / 5,
+    age: (a1 != null && a2 != null) ? (a1 - a2) / 8 : 0,
+    chin: Math.log(1 + ((model.KOL || {})[id1] || 0)) - Math.log(1 + ((model.KOL || {})[id2] || 0)),
+    streak: s3(id1) - s3(id2),
+    mileage: (Math.log(1 + ((model.MIN || {})[id1] || 0)) - Math.log(1 + ((model.MIN || {})[id2] || 0))) / 3,
   };
 }
 
 // fights: [{date, f1:{id,winner}, f2:{id,winner}, method, completed}] ORDENADAS por fecha ascendente.
 // fighters (opcional, dict por id): activa la capa de features físicas — el modelo aprende los pesos
 // online en la misma pasada y fightProb los aplica. Sin fighters → Elo puro byte-idéntico al de antes.
-function fitElo(fights, fighters) {
-  const R = {}, N = {}, LAST = {}, FIRST = {};
-  const model = { R, N, LAST, FIRST, PF: fighters || null, w: fighters ? { elo: 1, reach: 0, exp: 0, years: 0 } : null };
+function fitElo(fights, fighters, { history = false } = {}) {
+  const R = {}, N = {}, LAST = {}, FIRST = {}, KOL = {}, MIN = {}, R3 = {};
+  const HIST = history ? {} : null; // serie de Elo por peleador (perfil/evolución): [{d,r}] tras cada pelea
+  const model = { R, N, LAST, FIRST, KOL, MIN, R3, HIST, PF: fighters || null, w: fighters ? newW() : null };
   const get = (id) => (R[id] == null ? BASE : R[id]);
   for (const f of fights) {
     if (!f.completed || !f.f1.id || !f.f2.id) continue;
@@ -73,12 +86,11 @@ function fitElo(fights, fighters) {
       };
       const pElo = expected(get(f.f1.id) - rust(f.f1.id), get(f.f2.id) - rust(f.f2.id));
       const fd = featDiff(model, fighters, f.f1.id, f.f2.id, f.date);
-      const p1 = sigm(model.w.elo * logit(pElo) + model.w.reach * fd.reach + model.w.exp * fd.exp + model.w.years * fd.years);
-      const g = p1 - (f.f1.winner ? 1 : 0);
+      let z = model.w.elo * logit(pElo);
+      for (const k of FEATS) z += model.w[k] * fd[k];
+      const g = sigm(z) - (f.f1.winner ? 1 : 0);
       model.w.elo -= FEAT_LR * g * logit(pElo);
-      model.w.reach -= FEAT_LR * g * fd.reach;
-      model.w.exp -= FEAT_LR * g * fd.exp;
-      model.w.years -= FEAT_LR * g * fd.years;
+      for (const k of FEATS) model.w[k] -= FEAT_LR * g * fd[k];
     }
     const eW = expected(get(w), get(l));
     const kW = Math.max(K_MIN, K0 / Math.sqrt(1 + (N[w] || 0)));
@@ -90,6 +102,16 @@ function fitElo(fights, fighters) {
     LAST[w] = f.date; LAST[l] = f.date;
     if (!FIRST[w]) FIRST[w] = f.date;
     if (!FIRST[l]) FIRST[l] = f.date;
+    // auxiliares de features: KOs recibidos (chin), minutos de jaula (mileage), últimos 3 (streak)
+    const mn = ((f.end_round || 3) - 1) * 5 + clockMin(f.end_clock);
+    MIN[w] = (MIN[w] || 0) + mn; MIN[l] = (MIN[l] || 0) + mn;
+    if (isFinish(f.method) && /ko|tko/.test(((f.method || {}).name || '').toLowerCase())) KOL[l] = (KOL[l] || 0) + 1;
+    (R3[w] = R3[w] || []).push(1); if (R3[w].length > 3) R3[w].shift();
+    (R3[l] = R3[l] || []).push(0); if (R3[l].length > 3) R3[l].shift();
+    if (HIST) {
+      (HIST[w] = HIST[w] || []).push({ d: f.date, r: Math.round(R[w]) });
+      (HIST[l] = HIST[l] || []).push({ d: f.date, r: Math.round(R[l]) });
+    }
   }
   return model;
 }
@@ -108,7 +130,9 @@ function fightProb(model, id1, id2, atDate) {
   let p1 = expected(r1, r2);
   if (model.w && model.PF) {
     const fd = featDiff(model, model.PF, id1, id2, atDate || new Date().toISOString());
-    p1 = sigm(model.w.elo * logit(p1) + model.w.reach * fd.reach + model.w.exp * fd.exp + model.w.years * fd.years);
+    let z = model.w.elo * logit(p1);
+    for (const k of FEATS) z += model.w[k] * fd[k];
+    p1 = sigm(z);
   }
   return { p1, r1: Math.round(r1), r2: Math.round(r2), n1: model.N[id1] || 0, n2: model.N[id2] || 0 };
 }
@@ -229,8 +253,8 @@ function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
   let hitsX = 0, brierX = 0;
   const cal = Array.from({ length: 10 }, () => [0, 0]);
   // fit incremental (mismo update que fitElo, en línea — O(n))
-  const model = { R: {}, N: {}, LAST: {}, FIRST: {} };
-  const w = { elo: 1, reach: 0, exp: 0, years: 0 };
+  const model = { R: {}, N: {}, LAST: {}, FIRST: {}, KOL: {}, MIN: {}, R3: {} };
+  const w = newW();
   const get = (id) => (model.R[id] == null ? BASE : model.R[id]);
   done.forEach((f, i) => {
     const rust = (id) => {
@@ -239,7 +263,8 @@ function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
     };
     const pElo = expected(get(f.f1.id) - rust(f.f1.id), get(f.f2.id) - rust(f.f2.id));
     const fd = fighters ? featDiff(model, fighters, f.f1.id, f.f2.id, f.date) : null;
-    const p1x = fighters ? sigm(w.elo * logit(pElo) + w.reach * fd.reach + w.exp * fd.exp + w.years * fd.years) : pElo;
+    let p1x = pElo;
+    if (fighters) { let z = w.elo * logit(pElo); for (const k of FEATS) z += w[k] * fd[k]; p1x = sigm(z); }
     const y = f.f1.winner ? 1 : 0;
     if (i >= warm) {
       if ((pElo >= 0.5 ? 1 : 0) === y) hits++;
@@ -253,11 +278,9 @@ function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
     if (fighters) { // SGD de features (tras evaluar)
       const g = p1x - y;
       w.elo -= FEAT_LR * g * logit(pElo);
-      w.reach -= FEAT_LR * g * fd.reach;
-      w.exp -= FEAT_LR * g * fd.exp;
-      w.years -= FEAT_LR * g * fd.years;
+      for (const k of FEATS) w[k] -= FEAT_LR * g * fd[k];
     }
-    // update Elo
+    // update Elo + auxiliares (mismos que fitElo)
     const win = f.f1.winner ? f.f1.id : f.f2.id, l = f.f1.winner ? f.f2.id : f.f1.id;
     const eW = expected(get(win), get(l));
     const kW = Math.max(K_MIN, K0 / Math.sqrt(1 + (model.N[win] || 0)));
@@ -269,6 +292,11 @@ function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
     model.LAST[win] = f.date; model.LAST[l] = f.date;
     if (!model.FIRST[win]) model.FIRST[win] = f.date;
     if (!model.FIRST[l]) model.FIRST[l] = f.date;
+    const mn = ((f.end_round || 3) - 1) * 5 + clockMin(f.end_clock);
+    model.MIN[win] = (model.MIN[win] || 0) + mn; model.MIN[l] = (model.MIN[l] || 0) + mn;
+    if (isFinish(f.method) && /ko|tko/.test(((f.method || {}).name || '').toLowerCase())) model.KOL[l] = (model.KOL[l] || 0) + 1;
+    (model.R3[win] = model.R3[win] || []).push(1); if (model.R3[win].length > 3) model.R3[win].shift();
+    (model.R3[l] = model.R3[l] || []).push(0); if (model.R3[l].length > 3) model.R3[l].shift();
   });
   const out = {
     n, accuracy: +(hits / n).toFixed(4), brier: +(brier / n).toFixed(4), brier_base: +(base / n).toFixed(4),

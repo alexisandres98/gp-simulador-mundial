@@ -229,6 +229,22 @@
       aff_signups: 'registrados con tu enlace', aff_signups_note: 'Todos los que entraron con tu link, paguen o no. Solo los que pagan una suscripción generan comisión.', aff_signups_h: 'Tus registros', aff_su_date: 'Fecha', aff_su_status: 'Estado', aff_su_sub: 'suscrito', aff_su_verified: 'verificado', aff_su_reg: 'registrado',
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
+      // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
+      sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'NBA', sport_soon: 'Próximamente',
+      nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
+      cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
+      cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
+      cb_gpprob: 'PROBABILIDAD GP', cb_market: 'mercado', cb_books_n: 'casas', cb_no_odds: 'sin cuotas aún', cb_best_odds: 'mejor cuota',
+      cb_method: 'MÉTODO DE VICTORIA', cb_finish: 'termina', cb_inside2: 'antes del 3º', cb_tale: 'Tale of the tape', cb_age: 'Edad', cb_height: 'Altura', cb_exp: 'Peleas', cb_kow: 'KO', cb_subw: 'SUB', cb_streak: 'Racha', cb_intel: 'Inteligencia', cb_intel_none: 'Sin señales — pelea limpia de banderas.',
+      cb_recent: 'Últimas 5', cb_h2h: 'Historial entre ellos', cb_odds_by_book: 'Cuotas por casa', cb_form: 'Forma',
+      cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
+      cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
+      cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado',
+      cb_track: 'Track record', cb_settled: 'Liquidadas', cb_no_settled: 'Todavía no liquida ninguna pick.', cb_units: 'unidades', cb_hit: 'acierto', cb_clv: 'CLV medio',
+      cb_org_since: 'desde', cb_org_active: 'activos', cb_org_next: 'Próximo evento', cb_org_top: 'Élite por Elo', cb_org_hist: 'histórico',
+      cb_evo_top: 'La élite en el tiempo', cb_evo_up: 'En ascenso', cb_evo_down: 'En caída', cb_evo_12m: 'últimos 12 meses',
+      cb_follow_none: 'Todavía no seguís a ningún peleador. Entrá a un perfil y tocá ★ Seguir.', cb_follow_btn: 'Seguir', cb_following: '★ Siguiendo', cb_next_fight: 'Próxima pelea',
+      cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
       tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
       tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
@@ -540,6 +556,22 @@
       aff_signups: 'signed up with your link', aff_signups_note: 'Everyone who joined through your link, paying or not. Only paid subscriptions earn commission.', aff_signups_h: 'Your sign-ups', aff_su_date: 'Date', aff_su_status: 'Status', aff_su_sub: 'subscribed', aff_su_verified: 'verified', aff_su_reg: 'signed up',
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
+      // ── COMBAT (R2 28-jul) ──
+      sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'NBA', sport_soon: 'Coming soon',
+      nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
+      cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
+      cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
+      cb_gpprob: 'GP PROBABILITY', cb_market: 'market', cb_books_n: 'books', cb_no_odds: 'no odds yet', cb_best_odds: 'best odds',
+      cb_method: 'METHOD OF VICTORY', cb_finish: 'finish', cb_inside2: 'inside 2 rounds', cb_tale: 'Tale of the tape', cb_age: 'Age', cb_height: 'Height', cb_exp: 'Fights', cb_kow: 'KO', cb_subw: 'SUB', cb_streak: 'Streak', cb_intel: 'Intelligence', cb_intel_none: 'No signals — a clean fight, no red flags.',
+      cb_recent: 'Last 5', cb_h2h: 'Head to head', cb_odds_by_book: 'Odds by book', cb_form: 'Form',
+      cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
+      cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
+      cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor',
+      cb_track: 'Track record', cb_settled: 'Settled', cb_no_settled: 'No settled picks yet.', cb_units: 'units', cb_hit: 'hit rate', cb_clv: 'avg CLV',
+      cb_org_since: 'since', cb_org_active: 'active', cb_org_next: 'Next event', cb_org_top: 'Elo elite', cb_org_hist: 'historical',
+      cb_evo_top: 'The elite over time', cb_evo_up: 'Rising', cb_evo_down: 'Falling', cb_evo_12m: 'last 12 months',
+      cb_follow_none: 'You are not following any fighter yet. Open a profile and tap ★ Follow.', cb_follow_btn: 'Follow', cb_following: '★ Following', cb_next_fight: 'Next fight',
+      cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
       tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
       tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
@@ -756,7 +788,7 @@
   }
 
   // ---------- state ----------
-  var S = { dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', cb: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -783,6 +815,9 @@
     'arrow-right': '<path d="M4.6 12H19"/><path class="a" d="M19 12l-4-4M19 12l-4 4"/>',
     'refresh': '<path d="M18.8 8.8A7.5 7.5 0 1 0 19.5 12"/><path class="a" d="M19.5 5v3.8h-3.8"/>',
     'ticket': '<path d="M4 8.5a2 2 0 0 0 0 7V19h16v-3.5a2 2 0 0 1 0-7V5H4Z" transform="translate(0 0)"/><path class="a" d="M12 6.5v2M12 11v2M12 15.5v2"/>',
+    // COMBATE (R2): guante y cinturón — mismos trazos del set
+    'glove': '<path d="M7.5 11V7.8A3.3 3.3 0 0 1 10.8 4.5h3.4a3.3 3.3 0 0 1 3.3 3.3V12a5 5 0 0 1-5 5h-.6"/><path d="M7.5 11a2.2 2.2 0 0 0 0 4.4h2"/><path class="a" d="M11 8.2h3.6"/><path d="M9.5 17v2.5h5.8"/>',
+    'belt': '<ellipse cx="12" cy="12" rx="5" ry="4.2"/><path d="M7 9.6 3.5 8.4v7.2L7 14.4M17 9.6l3.5-1.2v7.2L17 14.4"/><path class="a" d="M12 9.9l.9 1.5 1.7.2-1.2 1.2.3 1.7-1.7-.8-1.7.8.3-1.7-1.2-1.2 1.7-.2Z"/>',
   };
   var ic = function (n) {
     var c = IC_SVG[n];
@@ -816,9 +851,23 @@
     ['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['teams', 'shield', 'nav_teams'],
     ['sim', 'arrows-shuffle', 'nav_sim'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']
   ];
-  var NAV2 = [['combat', 'karate', 'nav_combat'], ['brief', 'news', 'nav_brief'], ['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
+  var NAV2 = [['brief', 'news', 'nav_brief'], ['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['registry', 'file-check', 'nav_registry'], ['refer', 'user-plus', 'nav_refer'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']];
+  // ── COMBATE (R2): navegación PROPIA del deporte — la sidebar entera cambia con el deporte activo.
+  // Espejo conceptual del fútbol: Oportunidades/Peleas/Peleadores/Simulador/Seguidos/Alertas/Rendimiento.
+  var NAV_CB = [
+    ['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbfighters', 'user', 'nav_cb_fighters'],
+    ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['cbperf', 'chart-line', 'nav_perf']
+  ];
+  var NAV2_CB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  var CB_VIEWS = ['cbopps', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
+  function sportOf(v) { return CB_VIEWS.indexOf(v) >= 0 ? 'combat' : 'futbol'; }
 
-  function viewNav(v) { return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support', 'bets', 'books', 'brief', 'combat'].indexOf(v) >= 0 ? v : 'opps'); }
+  function viewNav(v) {
+    if (v === 'cbfight') return 'cbfights';
+    if (v === 'cbfighter') return 'cbfighters';
+    if (CB_VIEWS.indexOf(v) >= 0) return v;
+    return v === 'team' ? 'teams' : (['matches', 'teams', 'sim', 'groups', 'bracket', 'evo', 'registry', 'method', 'admin', 'follow', 'alerts', 'refer', 'perf', 'calc', 'sub', 'support', 'bets', 'books', 'brief', 'combat'].indexOf(v) >= 0 ? v : 'opps');
+  }
   // BANNER FOUNDER (growth): barra superior a todo ancho anunciando el programa. Solo cuando el server
   // enciende founder_public (lanzamiento). Cierra por sesión, pero la env manda. Click → /founder.
   function founderBanner() {
@@ -869,14 +918,19 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief', 'combat']; // vistas implementadas (clickeables)
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS); // vistas implementadas (clickeables)
+    var isCombat = S.sport === 'combat';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var navHtml = NAV.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var NAV_A = isCombat ? NAV_CB : NAV, NAV_B = isCombat ? NAV2_CB : NAV2;
+    var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
-    var nav2 = NAV2.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief', 'combat'];
-    var bnav = [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
+    var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method' || n[0] === 'cbperf') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var moreViews = isCombat ? ['cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var bnavItems = isCombat
+      ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
+      : [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']];
+    var bnav = bnavItems
       .map(function (n) { if (n[0] === '__more') { var act = moreViews.indexOf(cur) >= 0 ? ' on' : ''; return '<a class="' + act.trim() + '" data-more="1">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; } var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
       '<div class="gx">' +
@@ -891,15 +945,20 @@
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
       '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
-      '<div class="gx-pulse" id="gx-pulse"></div>' +
-      // F4 Combat (27-jul, mockup aprobado): tabs por DEPORTE en el topbar — admin-only hasta validar Combat
-      // (gx-admin-only: display none por default, syncAdminUI lo revela; no-admins byte-idénticos).
-      '<div class="gx-langs gx-admin-only" id="gx-sporttabs" style="display:none"><button data-sport="futbol">⚽ Fútbol</button><button data-sport="combat">🥊 Combate</button></div>' +
+      // R2 (28-jul, orden de Alexis): fuera el contador 0-0-0 (gx-pulse) → la búsqueda respira; el
+      // selector de deporte vive en su PROPIA barra bajo el header (sportbar) — ahí caben más deportes.
       '<div class="gx-spacer"></div>' +
       '<div class="gx-langs" id="gx-langs"><button data-l="es" class="' + (LANG === 'es' ? 'on' : '') + '">ES</button><button data-l="en" class="' + (LANG === 'en' ? 'on' : '') + '">EN</button></div>' +
       '<div class="gx-iconbtn" data-nav="alerts" title="' + esc(t('nav_alerts')) + '">' + ic('bell') + '<span class="gx-dot"></span></div>' +
       '<div class="gx-acct"><button class="gx-avatar-btn" id="gx-avatar-btn" aria-label="' + esc(t('account')) + '">' + ic('user') + '</button><div class="gx-acct-menu" id="gx-acct-menu" hidden></div></div>' +
       '</header>' +
+      // ── SPORTBAR (R2): el conmutador de deporte — cambia TODA la plataforma (sidebar+vistas). Combate es
+      // admin-only hasta validar (no-admins lo ven "Próximamente" = teaser del roadmap, cero fuga de producto).
+      '<div class="gx-sportbar" id="gx-sportbar">' +
+        '<button class="gx-sport' + (S.sport !== 'combat' ? ' on' : '') + '" data-sportgo="futbol"><span class="gx-sport-ico">⚽</span>' + esc(t('sport_futbol')) + '</button>' +
+        '<button class="gx-sport' + (S.sport === 'combat' ? ' on' : '') + ' gx-sport-cb" data-sportgo="combat"><span class="gx-sport-ico">🥊</span>' + esc(t('sport_combat')) + '<span class="gx-sport-soon gx-cbsoon">' + esc(t('sport_soon')) + '</span></button>' +
+        '<button class="gx-sport dim" disabled><span class="gx-sport-ico">🏀</span>' + esc(t('sport_nba')) + '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span></button>' +
+      '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
       '<div class="gx-ohead">' +
@@ -920,7 +979,7 @@
     valueProps();
     syncAdminUI();
     $('#gx-langs').addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
-    var st = $('#gx-sporttabs'); if (st) st.addEventListener('click', function (e) { var b = e.target.closest('[data-sport]'); if (b) navTo(b.dataset.sport === 'combat' ? 'combat' : 'opps'); });
+    var sb2 = $('#gx-sportbar'); if (sb2) sb2.addEventListener('click', function (e) { var b = e.target.closest('[data-sportgo]'); if (b) setSport(b.dataset.sportgo); });
     var avb = $('#gx-avatar-btn'); if (avb) avb.addEventListener('click', toggleAcctMenu);
     // subtabs de Oportunidades: Picks / Value / Arbitraje
     var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); if (sub !== 'picks') kpis(S.dash || {}, rs); board(rs); };
@@ -1060,6 +1119,9 @@
   function syncAdminUI() {
     var on = !!(S.me && S.me.isAdmin);
     [].forEach.call(document.querySelectorAll('.gx-admin-only'), function (el) { el.style.display = on ? '' : 'none'; });
+    // R2: Combate en la sportbar — para admin es un deporte ACTIVO (sin "Próximamente"); para el resto, teaser
+    [].forEach.call(document.querySelectorAll('.gx-cbsoon'), function (el) { el.style.display = on ? 'none' : ''; });
+    [].forEach.call(document.querySelectorAll('.gx-sport-cb'), function (el) { el.classList.toggle('dim', !on); });
     // F1/F2/F4: superficies gateadas por flag del server (off → invisibles, plataforma idéntica)
     [['gx-feat-bets', 'my_bets_feature'], ['gx-feat-books', 'my_books'], ['gx-feat-brief', 'daily_brief']].forEach(function (fc) {
       var vis = !!(S.me && S.me[fc[1]]);
@@ -1074,12 +1136,19 @@
   }
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
-    var items = [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']]
-      .concat(S.me && S.me.daily_brief ? [['brief', 'news', 'nav_brief']] : [])
-      .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
-      .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
-      .concat([['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
-      .concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
+    var items = S.sport === 'combat'
+      ? [['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts']]
+        .concat(isAdmin ? [['cbperf', 'chart-line', 'nav_perf']] : [])
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
+      : [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.daily_brief ? [['brief', 'news', 'nav_brief']] : [])
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
     var existing = document.getElementById('gx-more-sheet'); if (existing) existing.remove();
     var sheet = document.createElement('div'); sheet.id = 'gx-more-sheet'; sheet.className = 'gx-sheet-wrap';
     sheet.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('more')) + '</b><button class="gx-sheet-x" aria-label="close">' + ic('x') + '</button></div><div class="gx-sheet-grid">' +
@@ -1146,11 +1215,8 @@
   function render() {
     var d = S.dash || {}, up = d.upcoming || [], valBy = gExpandValue(S.value);
     var rows = up.map(function (u) { return eventRow(u, valBy); });
-    // pulse + updated
-    var liveN = rows.filter(function (r) { return r.live; }).length;
-    var sigN = (S.value || []).filter(function (v) { return ['STRONG', 'LEAN', 'WATCH'].indexOf(v.classification_code) >= 0; }).length;
-    $('#gx-pulse').innerHTML = pulseItem(rows.length, t('matches')) + pulseItem(liveN, t('live'), liveN > 0) + pulseItem(sigN, t('signals'));
-    $('#gx-upd').textContent = t('updated_short') + ' · ' + (d.generated_at ? fmtTime(d.generated_at) : '—');
+    // updated (R2: el contador gx-pulse se retiró del topbar — orden de Alexis, la búsqueda respira)
+    var upd = $('#gx-upd'); if (upd) upd.textContent = t('updated_short') + ' · ' + (d.generated_at ? fmtTime(d.generated_at) : '—');
     kpis(d, rows);
     board(rows);
     if (!S.sel && rows.length) S.sel = rows[0].h.event_id;
@@ -3094,6 +3160,8 @@
     var v = S.view;
     if (v === 'match') return /^cl-/.test(S.matchId || '') ? 'matches' : '';
     if (v === 'cteam' || v === 'team') return 'teams';
+    if (v === 'cbfight') return 'cbfights';
+    if (v === 'cbfighter') return 'cbfighters';
     return '';
   }
   function goBack() { if ((S._curSerial || 1) > 1) { try { history.back(); return; } catch (e) {} } setHash(homeFallback()); }
@@ -3112,6 +3180,17 @@
     if (cpl) { if (!(S.view === 'cplayer' && S.cplPid === cpl[3])) openClubPlayer(cpl[1], cpl[2], cpl[3], true); return; }
     var pm = h.match(/^player\/(pl_[A-Za-z0-9]+)$/i);
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }
+    // ── COMBATE (R2): rutas del deporte — detalle de pelea y de peleador + vistas de sección
+    if (h === 'combat') { setHash('cbfights'); return; } // compat con el hash viejo de la vista única
+    var cbf = h.match(/^cbfight\/([a-z]+)-(\d+)$/i);
+    if (cbf) { S.cb.org = cbf[1]; if (!(S.view === 'cbfight' && S.cb.fightId === cbf[2])) { S.cb.fightId = cbf[2]; S.cb.fight = undefined; showView('cbfight'); } return; }
+    var cbp = h.match(/^cbfighter\/([a-z]+)-(\d+)$/i);
+    if (cbp) { S.cb.org = cbp[1]; if (!(S.view === 'cbfighter' && S.cb.fighterId === cbp[2])) { S.cb.fighterId = cbp[2]; S.cb.fighter = undefined; showView('cbfighter'); } return; }
+    var cbv = h.match(/^(cb|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo)(?:\/([a-z0-9_]+))?$/);
+    if (cbv) {
+      if (cbv[1] === 'cbfights' && cbv[2]) S.cb.org = cbv[2];
+      showView(cbv[1] === 'cb' ? 'cbopps' : cbv[1]); return;
+    }
     // sub-estado del selector de competición en el hash (#groups/mls, #bracket/mls, #matches/mls, #teams/mls) →
     // la selección SOBREVIVE a la recarga y al enlace directo (P0.4). Sin sufijo = default de la vista.
     var v = h.match(/^(matches|teams|sim|groups|bracket|evo|registry|method|admin|follow|alerts|refer|perf|calc|support|sub|bets|books|brief|combat)(?:\/([a-z0-9_]+))?/);
@@ -3126,7 +3205,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'combat' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     if (!clubsOn()) return NAV_HASH[nav];
@@ -3267,10 +3346,25 @@
   function syncNavActive() {
     var cur = viewNav(S.view);
     [].forEach.call(document.querySelectorAll('.gx-nav[data-nav], .gx-bnav a[data-nav]'), function (el) { el.classList.toggle('on', el.getAttribute('data-nav') === cur); });
-    // F4: tabs de deporte del topbar (⚽ = toda la plataforma de fútbol; 🥊 = vista combat)
-    [].forEach.call(document.querySelectorAll('#gx-sporttabs [data-sport]'), function (el) {
-      el.classList.toggle('on', (el.getAttribute('data-sport') === 'combat') === (cur === 'combat'));
+    // R2: sportbar — el deporte activo sigue a la vista
+    [].forEach.call(document.querySelectorAll('#gx-sportbar [data-sportgo]'), function (el) {
+      el.classList.toggle('on', el.getAttribute('data-sportgo') === S.sport);
     });
+  }
+  // ── R2: cambio de DEPORTE — reconstruye el shell entero (sidebar+bnav) y navega al home del deporte.
+  // Combate es admin-only hasta validar: para no-admins el botón es un teaser ("Próximamente"), no navega.
+  function setSport(sport) {
+    if (sport === 'combat' && !(S.me && S.me.isAdmin)) return;
+    if (sport === S.sport) return;
+    S.sport = sport;
+    try { localStorage.setItem('gp_sport', sport); } catch (e) {}
+    shell();
+    navTo(sport === 'combat' ? 'cbopps' : 'opps');
+  }
+  // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
+  function ensureSport(v) {
+    var sp = sportOf(v);
+    if (sp !== S.sport) { S.sport = sp; try { localStorage.setItem('gp_sport', sp); } catch (e) {} shell(); }
   }
   function applyView() {
     var mv = $('#gx-matchview'), main = $('.gx-main'), vp = $('#gx-vp');
@@ -3282,12 +3376,15 @@
   function showView(v) {
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || CB_VIEWS.indexOf(v) >= 0 || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
-    if (v === 'matches') renderMatches();
+    if (CB_VIEWS.indexOf(v) >= 0) renderCb(v);
+    else if (v === 'matches') renderMatches();
     else if (v === 'sim') renderSim();
     else if (v === 'teams') renderTeams();
     else if (v === 'groups') renderGroups();
@@ -5567,198 +5664,461 @@
   }
   // ---- Invitar / Referidos ----
   var REF_TIERS = [[1, 'ref_t1'], [3, 'ref_t3'], [5, 'ref_t5'], [10, 'ref_t10']];
-  // ============================ COMBAT SPORTS (27-jul, ADMIN-ONLY) ============================
-  // UFC primero. Hero del main event (fotos ESPN reales con glow verde/rojo), cartelera con barras Elo,
-  // ranking con fotos. MMA/Boxeo = próximamente. Nada de esto existe para no-admins (endpoint 404).
-  function cbAva(f, side) {
+  // ============================ COMBATE (R2 28-jul — producto paralelo completo, ADMIN-ONLY) ============================
+  // Deporte espejo del fútbol con su propia navegación: Oportunidades / Peleas / Peleadores / Simulador /
+  // Seguidos / Rendimiento / Organizaciones / Evolución. Firma visual: el EJE DEL ENFRENTAMIENTO — esquina
+  // verde vs esquina roja en todo (heroes cara a cara, tale-of-the-tape espejado, barra GP tira-y-afloja).
+  // Server: /api/combat/* (404 no-admin). Estado: S.cb.* con cache por clave; org activa S.cb.org (ufc|mma).
+  function cbOrg() { return S.cb.org === 'mma' ? 'mma' : 'ufc'; }
+  function cbOrgLab() { return cbOrg() === 'mma' ? 'MMA' : 'UFC'; }
+  function cbAva(f, side, cls) {
     var ini = (f.name || '?').split(' ').map(function (x) { return x[0] || ''; }).join('').slice(0, 2).toUpperCase();
-    var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" onerror="this.remove()">' : '';
-    return '<div class="gx-cb-ava ' + (side === 1 ? 'gr' : 'rd') + '">' + img + '<span>' + esc(ini) + '</span></div>';
+    var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" loading="lazy" onerror="this.remove()">' : '';
+    return '<div class="gx-cb-ava ' + (side === 1 ? 'gr' : 'rd') + (cls ? ' ' + cls : '') + '">' + img + '<span>' + esc(ini) + '</span></div>';
   }
-  function cbOrgLab() { return S.combatOrg === 'mma' ? 'MMA' : 'UFC'; } // F5: etiqueta del org en récords
-  // F3: dots de forma reciente (mockup "Forma reciente" — verde W, rojo L; más reciente primero)
   function cbForm(form) {
     if (!form || !form.length) return '';
-    return '<div style="display:flex;gap:3px;justify-content:center;margin-top:4px">' + form.map(function (r) {
-      return '<i style="width:7px;height:7px;border-radius:50%;background:' + (r === 'W' ? 'var(--gx-ac,#1FE3A4)' : '#e5484d') + '"></i>';
-    }).join('') + '</div>';
+    return '<div class="gx-cb-formdots">' + form.map(function (r) { return '<i class="' + (r === 'W' ? 'w' : 'l') + '"></i>'; }).join('') + '</div>';
   }
-  // F1b: método de victoria (KO/Sub/Dec) + rounds proyectados — modelo validado walk-forward (skill +0.020 vs división)
   function cbMethod(m) {
     if (!m) return '';
-    var bar = function (lab, v, col) {
-      return '<div style="display:flex;align-items:center;gap:6px"><span class="gx-mono gx-dim" style="width:30px;font-size:10px;text-align:right">' + lab + '</span>' +
-        '<div style="flex:1;height:5px;border-radius:3px;background:var(--gx-line,rgba(255,255,255,.08));overflow:hidden"><i style="display:block;height:100%;width:' + Math.round(v * 100) + '%;background:' + col + '"></i></div>' +
-        '<span class="gx-mono" style="width:32px;font-size:10.5px">' + Math.round(v * 100) + '%</span></div>';
+    var bar = function (lab, v, cls) {
+      return '<div class="gx-cb-mrow"><span>' + lab + '</span><div class="gx-cb-mbar"><i class="' + cls + '" style="width:' + Math.round(v * 100) + '%"></i></div><b>' + Math.round(v * 100) + '%</b></div>';
     };
-    return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">' +
-      '<div class="gx-label" style="font-size:9.5px">' + (LANG === 'en' ? 'METHOD OF VICTORY' : 'MÉTODO DE VICTORIA') + '</div>' +
-      bar('KO', m.ko, 'var(--gx-ac,#1FE3A4)') + bar('SUB', m.sub, '#5aa7ff') + bar('DEC', m.dec, '#b98cff') +
-      '<div class="gx-dim" style="font-size:10.5px;margin-top:2px">' + (LANG === 'en' ? 'finish ' : 'termina ') + Math.round(m.finish * 100) + '% · ' +
-      (LANG === 'en' ? 'inside 2 rounds ' : 'antes del 3º ') + Math.round((m.r_le && m.r_le[2] || 0) * 100) + '% · ~' + m.exp_rounds + ' rounds</div></div>';
+    return '<div class="gx-cb-meth"><div class="gx-label">' + esc(t('cb_method')) + '</div>' +
+      bar('KO', m.ko, 'ko') + bar('SUB', m.sub, 'sub') + bar('DEC', m.dec, 'dec') +
+      '<div class="gx-dim gx-cb-methnote">' + esc(t('cb_finish')) + ' ' + Math.round(m.finish * 100) + '% · ' + esc(t('cb_inside2')) + ' ' + Math.round(((m.r_le || {})[2] || 0) * 100) + '% · ~' + m.exp_rounds + ' ' + esc(t('cb_rounds')) + '</div></div>';
   }
-  function renderCombat() {
+  // fetch con cache en S.cb[key] — re-renderiza la vista activa de combate al llegar
+  function cbGet(key, url) {
+    if (S.cb[key] !== undefined) return S.cb[key];
+    S.cb[key] = null;
+    fetch(url, { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) { S.cb[key] = j || { _err: true }; if (CB_VIEWS.indexOf(S.view) >= 0) renderCb(S.view); });
+    return null;
+  }
+  function cbWhen(d, withTime) {
+    try { return new Date(d).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', withTime === false ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
+  }
+  function cbShell(title, inner, opts) {
     var mv = $('#gx-matchview'); if (!mv) return;
-    // CARRERA con hash directo (patrón #perf/#sim documentado): S.me aún no llegó → esperar, no redirigir
-    if (S.me === undefined) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + mvLoading() + '</div></div>'; return; }
+    var back = (opts && opts.back) ? '<div class="gx-cb-backrow"><span class="gx-clgate sh gx-cb-back" data-cbgoback="' + esc(opts.back) + '">← ' + esc(t(opts.backLabel || 'cb_fights_title')) + '</span></div>' : '';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title, opts && opts.extra) + back + inner + '</div></div>';
+    mv.onclick = cbClicks; // delegación única de la sección (se reasigna en cada render — sin listeners duplicados)
+  }
+  function cbClicks(e) {
+    var bk = e.target.closest('[data-cbgoback]'); if (bk) { goBack(); return; }
+    var og = e.target.closest('[data-cborgtab]'); if (og) { var o = og.getAttribute('data-cborgtab'); if (o !== cbOrg()) { S.cb.org = o; setHash(o === 'ufc' ? 'cbfights' : 'cbfights/' + o); renderCb(S.view); } return; }
+    var fl = e.target.closest('[data-cbfollow]'); if (fl) { cbToggleFollow(JSON.parse(fl.getAttribute('data-cbfollow'))); renderCb(S.view); return; }
+    var sa = e.target.closest('[data-cbsimpick]'); if (sa) { cbSimPick(sa.getAttribute('data-cbsimpick'), JSON.parse(sa.getAttribute('data-cbsimf'))); return; }
+    var sw = e.target.closest('[data-cbsimswap]'); if (sw) { var tmp = S.cb.simA; S.cb.simA = S.cb.simB; S.cb.simB = tmp; S.cb.simRes = undefined; renderCb('cbsim'); return; }
+    var sx = e.target.closest('[data-cbsimclear]'); if (sx) { S.cb[sx.getAttribute('data-cbsimclear')] = null; S.cb.simRes = undefined; renderCb('cbsim'); return; }
+  }
+  function renderCb(v) {
+    if (S.me === undefined) { cbShell(t('cb_title'), mvLoading()); return; } // carrera S.me con hash directo (patrón #perf)
     if (!(S.me && S.me.isAdmin)) { showView('board'); return; }
-    if (!S.combatOrg) S.combatOrg = 'ufc'; // F5: 'ufc' | 'mma' (Bellator+PFL); boxeo sin fuente de data aún
-    if (S.combat === undefined) {
-      S.combat = null;
-      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate 🥊') + mvLoading() + '</div></div>';
-      var org = S.combatOrg;
-      fetch('/api/combat/state?org=' + org, { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.combat = j || { _err: true }; if (S.view === 'combat' && S.combatOrg === org) renderCombat(); });
-      return;
-    }
-    var d = S.combat || {};
-    if (d._err) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate') + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; return; }
-    // F3: perfil de peleador (S.combatF = id seleccionado; S.combatFD = data del endpoint)
-    if (S.combatF) { renderCombatFighter(mv); return; }
-    // F5: UFC y MMA (Bellator+PFL) activos; BOXEO sigue 'pronto' (ESPN no tiene API de boxeo — sin fuente de data)
-    var tabs = '<div class="gx-cb-tabs">' +
-      '<span class="gx-cb-tab' + (S.combatOrg === 'ufc' ? ' on' : '') + '" data-cborg="ufc" style="cursor:pointer">UFC</span>' +
-      '<span class="gx-cb-tab' + (S.combatOrg === 'mma' ? ' on' : '') + '" data-cborg="mma" style="cursor:pointer">MMA · PFL</span>' +
-      '<span class="gx-cb-tab dim">BOXEO · pronto</span>' +
-      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + (d.data ? d.data.fights + ' peleas históricas · ' + d.data.fighters + ' perfiles · backtest acc ' + Math.round((((d.backtest || {}).features || {}).accuracy || (d.backtest || {}).accuracy || 0) * 100) + '%' : '') + '</span></div>';
-    var cards = (d.cards || []);
-    var html = '';
-    cards.slice(0, 3).forEach(function (ev, ci) {
+    if (v === 'cbopps') renderCbOpps();
+    else if (v === 'cbfights') renderCbFights();
+    else if (v === 'cbfight') renderCbFight();
+    else if (v === 'cbfighters') renderCbFighters();
+    else if (v === 'cbfighter') renderCbFighter();
+    else if (v === 'cbsim') renderCbSim();
+    else if (v === 'cbfollow') renderCbFollow();
+    else if (v === 'cbperf') renderCbPerf();
+    else if (v === 'cborgs') renderCbOrgs();
+    else if (v === 'cbevo') renderCbEvo();
+  }
+  // tabs de organización (compartidos por Peleas/Peleadores/…)
+  function cbOrgTabs() {
+    return '<div class="gx-cb-tabs">' +
+      '<span class="gx-cb-tab' + (cbOrg() === 'ufc' ? ' on' : '') + '" data-cborgtab="ufc">UFC</span>' +
+      '<span class="gx-cb-tab' + (cbOrg() === 'mma' ? ' on' : '') + '" data-cborgtab="mma">MMA · PFL</span>' +
+      '<span class="gx-cb-tab dim">BOXEO · ' + esc(t('sport_soon')) + '</span>' +
+      '<span class="gx-spacer"></span></div>';
+  }
+  // ── PELEAS: calendario por cartelera (evento → main event destacado + resto de la cartelera) ──
+  function renderCbFights() {
+    var d = cbGet('state_' + cbOrg(), '/api/combat/state?org=' + cbOrg());
+    if (!d) { cbShell(t('cb_fights_title'), cbOrgTabs() + mvLoading()); return; }
+    if (d._err) { cbShell(t('cb_fights_title'), cbOrgTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var html = (d.cards || []).map(function (ev) {
       var main = ev.fights.find(function (f) { return f.main; }) || ev.fights[0];
       var rest = ev.fights.filter(function (f) { return f !== main; });
-      var when = new Date(ev.date);
-      var whenTxt = when.toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      var pr = (main && main.prob) || {}; var p1 = Math.round((pr.p1 || 0.5) * 100);
-      var mkFighter = function (f, side) { // columna del peleador (clickeable → perfil F3)
-        return '<div class="gx-cb-f" data-cbf="' + esc(String(f.id || '')) + '" style="cursor:pointer">' + cbAva(f, side) +
-          '<div class="gx-cb-nm">' + esc(f.name || '') + '</div>' +
-          '<div class="gx-cb-rec">' + f.record.w + '-' + f.record.l + ' ' + cbOrgLab() + ' · ' + f.record.ko + ' KO · ' + f.record.sub + ' SUB</div>' +
-          (f.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(f.reach_in)) + ' alcance</div>' : '') +
-          cbForm(f.form) + '</div>';
-      };
-      // consenso del mercado (mockup: "mercado: 58% · 42% (consenso 28 casas)") + chip de pick del monitor
-      var mktLine = main && main.market ? '<div class="gx-dim" style="font-size:11px;margin-top:2px">mercado: ' + Math.round(main.market.f1 * 100) + '% · ' + Math.round(main.market.f2 * 100) + '% (consenso ' + main.market.books + ' casas)</div>' : '';
-      var pickChip = main && main.pick ? '<div style="margin-top:6px"><span class="gx-clgate ok" style="font-size:11px;padding:4px 10px">▲ PICK · ' + esc(main.pick.name) + ' @' + main.pick.odds + ' · +' + main.pick.edge_blend_pp + 'pp · monitor</span></div>' : '';
-      var heroHtml = main ? '<div class="gx-cb-hero gx-panel">' +
-        '<div class="gx-cb-evrow"><span class="gx-cb-tag">★ MAIN EVENT</span><b>' + esc(ev.name) + '</b><span class="gx-spacer"></span><span class="gx-dim" style="font-size:12px">' + esc(whenTxt) + ' · ' + esc(main.weight || '') + ' · ' + (main.rounds || 3) + ' rounds</span></div>' +
-        '<div class="gx-cb-face">' +
-          mkFighter(main.f1, 1) +
-          '<div class="gx-cb-mid"><div class="gx-cb-vs">VS</div><div class="gx-label" style="color:var(--gx-ac,#1FE3A4)">GP PROBABILITY</div>' +
-            '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
-            '<div class="gx-cb-pcts"><span>' + p1 + '%</span><span class="p2">' + (100 - p1) + '%</span></div>' +
-            mktLine +
-            '<div class="gx-dim" style="font-size:11px;margin-top:4px">Elo ' + (pr.r1 || '—') + ' vs ' + (pr.r2 || '—') + (main.odds ? ' · mejor cuota ' + main.odds.f1 + ' / ' + main.odds.f2 + ' (' + main.odds.books + ' casas)' : ' · sin cuotas aún') + '</div>' +
-            cbMethod(main.method) + pickChip +
-          '</div>' +
-          mkFighter(main.f2, 2) +
-        '</div></div>' : '';
-      var rows = rest.map(function (f) {
-        var pp2 = Math.round(((f.prob || {}).p1 || 0.5) * 100);
-        // chip de la cartelera (mockup): PICK @cuota si el monitor tiene una activa; si no, mejor cuota
-        var chip = f.pick ? '<span class="gx-clgate ok" style="white-space:nowrap">PICK ' + esc((f.pick.name || '').split(' ').pop()) + ' @' + f.pick.odds + '</span>'
-          : (f.odds ? '<span class="gx-clgate sh" style="white-space:nowrap">' + f.odds.f1 + ' / ' + f.odds.f2 + '</span>' : '<span class="gx-clgate sh">sin cuotas</span>');
-        return '<div class="gx-cb-bout">' +
-          cbAva(f.f1, 1) +
-          '<div class="gx-cb-bnames"><b>' + esc(f.f1.name || '') + ' vs ' + esc(f.f2.name || '') + '</b><span class="gx-dim">' + esc(f.weight || '') + ' · ' + f.f1.record.w + '-' + f.f1.record.l + ' / ' + f.f2.record.w + '-' + f.f2.record.l + ' ' + cbOrgLab() + '</span></div>' +
-          '<div class="gx-cb-mini"><div class="gx-cb-minibar"><i style="width:' + pp2 + '%"></i></div><span class="gx-mono gx-dim" style="font-size:10.5px">' + pp2 + '% · ' + (100 - pp2) + '%</span></div>' +
-          chip +
-          '</div>';
-      }).join('');
-      html += heroHtml + (rows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Cartelera completa · ' + rest.length + ' peleas</span></div><div class="gx-mod-body">' + rows + '</div></div>' : '');
-    });
-    var rk = (d.ranking || []).map(function (r, i) {
-      return '<div class="gx-cb-bout" data-cbf="' + esc(String(r.id)) + '" style="cursor:pointer">' +
-        '<span class="gx-mono gx-dim" style="width:22px;text-align:right">' + (i + 1) + '</span>' +
-        cbAva(r, 1) +
-        '<div class="gx-cb-bnames"><b>' + esc(r.name || '') + '</b><span class="gx-dim">' + r.record.w + '-' + r.record.l + ' ' + cbOrgLab() + ' · ' + r.fights + ' peleas</span></div>' +
-        '<span class="gx-mono" style="color:var(--gx-ac,#1FE3A4);font-weight:800">' + r.elo + '</span></div>';
+      var hero = main ? cbFightHero(ev, main, { compact: true }) : '';
+      var rows = rest.map(function (f) { return cbFightRow(ev, f); }).join('');
+      return '<div class="gx-panel gx-cb-event"><div class="gx-cb-evhead"><b>' + esc(ev.name) + '</b><span class="gx-dim">' + esc(cbWhen(ev.date)) + ' · ' + ev.fights.length + ' ' + esc(t('cb_fights_n')) + '</span></div>' +
+        hero + (rows ? '<div class="gx-cb-card"><div class="gx-label gx-cb-cardlab">' + esc(t('cb_card')) + '</div>' + rows + '</div>' : '') + '</div>';
     }).join('');
-    // F2: monitor PRIVADO de picks de combate (regime monitor siempre — jamás feed público; vista admin-only)
-    var pk = '';
-    if (d.picks_enabled || (d.picks || []).length || ((d.picks_track || {}).total || {}).n) {
-      var tr = (d.picks_track || {}).total || {};
-      var rows2 = (d.picks || []).map(function (p2) {
-        var when2 = new Date(p2.event.kickoff_at).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        return '<div class="gx-cb-bout">' +
-          '<span class="gx-clgate ' + (p2.card_slot === 'main' ? 'ok' : 'sh') + '" style="white-space:nowrap">' + (p2.card_slot === 'main' ? 'MAIN' : 'PRELIM') + '</span>' +
-          '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">' + esc(p2.event.home + ' vs ' + p2.event.away) + ' · ' + esc(when2) + '</span></div>' +
-          '<span class="gx-mono gx-dim" style="font-size:10.5px;white-space:nowrap">mdl ' + Math.round(p2.model_prob * 100) + '% · mkt ' + Math.round(p2.market_prob * 100) + '% · +' + p2.edge_blend_pp + 'pp</span>' +
-          '<span class="gx-clgate ok" style="white-space:nowrap">@' + p2.best_odds + (p2.stake_pct ? ' · ' + p2.stake_pct + '%' : '') + '</span>' +
-          '</div>';
-      }).join('');
-      pk = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Picks · monitor privado</span>' +
-        '<span class="gx-ph-extra gx-dim" style="font-size:11px">' + (tr.n ? tr.w + 'W-' + tr.l + 'L · ' + tr.hit + '% · ' + (tr.units >= 0 ? '+' : '') + tr.units + 'u' + (tr.clv_avg != null ? ' · CLV ' + tr.clv_avg + '%' : '') : 'sin liquidadas aún') + (d.picks_enabled ? '' : ' · loop OFF') + '</span></div>' +
-        '<div class="gx-mod-body">' + (rows2 || '<div class="gx-dim" style="padding:10px;font-size:12px">Sin picks activas — el loop genera cuando hay edge post-blend ≥2pp.</div>') + '</div></div>';
-    }
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + tabs + pk + html +
-      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">Ranking Elo · activos</span><span class="gx-ph-extra gx-dim" style="font-size:11px">modelo validado: skill +' + (((d.backtest || {}).features || {}).skill_vs_coin || (d.backtest || {}).skill_vs_coin || 0) + ' (Elo+features) · método +' + ((d.backtest_method || {}).skill_vs_division || 0) + ' · ' + ((d.backtest || {}).n || 0) + ' peleas out-of-sample</span></div><div class="gx-mod-body">' + rk + '</div></div>' +
-      '</div></div>';
-    cbWireClicks(mv);
+    if (!(d.cards || []).length) html = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_results')) + '</b></div></div>';
+    cbShell(t('cb_fights_title'), cbOrgTabs() + html);
   }
-  // F3: delegación de clicks de la vista Combate (peleador → perfil; back → cartelera; F5: tab de org)
-  function cbWireClicks(mv) {
-    var c = mv.querySelector('.gx-content'); if (!c) return;
-    c.addEventListener('click', function (e) {
-      var o = e.target.closest('[data-cborg]');
-      if (o && o.dataset.cborg !== S.combatOrg) { S.combatOrg = o.dataset.cborg; S.combat = undefined; S.combatF = null; S.combatFD = undefined; renderCombat(); return; }
-      var b = e.target.closest('[data-cbf]');
-      if (b && b.dataset.cbf) { S.combatF = b.dataset.cbf; S.combatFD = undefined; renderCombat(); return; }
-      if (e.target.closest('[data-cbback]')) { S.combatF = null; S.combatFD = undefined; renderCombat(); }
-    });
-  }
-  // F3: perfil de peleador — bio física + Elo + récord + split de métodos + historial pelea a pelea.
-  // (Tale of the tape con stats finas de striking queda pendiente de data: ufcstats anti-bot / MMA API.)
-  function renderCombatFighter(mv) {
-    if (S.combatFD === undefined) {
-      S.combatFD = null;
-      mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate 🥊') + mvLoading() + '</div></div>';
-      fetch('/api/combat/fighter?id=' + encodeURIComponent(S.combatF) + '&org=' + (S.combatOrg || 'ufc'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { S.combatFD = j || { _err: true }; if (S.view === 'combat' && S.combatF) renderCombat(); });
-      return;
-    }
-    var d = S.combatFD || {};
-    var back = '<div style="margin-bottom:4px"><span class="gx-clgate sh" data-cbback="1" style="cursor:pointer;padding:5px 12px">← ' + (LANG === 'en' ? 'Back to cards' : 'Volver a carteleras') + '</span></div>';
-    if (d._err || !d.fighter) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead('Combate 🥊') + back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div></div></div>'; cbWireClicks(mv); return; }
-    var f = d.fighter, rec = d.record || {}, elo = d.elo || {}, ms = d.method_split || {};
-    var bioBits = [];
-    if (f.nick) bioBits.push('"' + f.nick + '"');
-    if (f.height_in) bioBits.push(String(f.height_in));
-    if (f.reach_in) bioBits.push(String(f.reach_in) + ' ' + (LANG === 'en' ? 'reach' : 'alcance'));
-    if (f.stance && f.stance !== '--') bioBits.push(f.stance);
-    if (f.country) bioBits.push(f.country);
-    var finish = rec.w ? Math.round((rec.ko + rec.sub) / rec.w * 100) : null;
-    var tile = function (lab, val) { return '<div style="flex:1;min-width:90px;text-align:center;padding:10px 6px;border:1px solid var(--gx-line,rgba(255,255,255,.08));border-radius:10px"><div class="gx-mono" style="font-size:18px;font-weight:800;color:var(--gx-ac,#1FE3A4)">' + val + '</div><div class="gx-label" style="font-size:9.5px;margin-top:2px">' + lab + '</div></div>'; };
-    var tiles = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
-      tile('ELO', elo.r || '—') + tile(LANG === 'en' ? 'RECORD' : 'RÉCORD', rec.w + '-' + rec.l) +
-      tile('KO/TKO', rec.ko) + tile('SUB', rec.sub) + (finish != null ? tile('FINISH %', finish + '%') : '') + '</div>';
-    // split de métodos (victorias): mini-barras KO/SUB/DEC — mismo lenguaje visual del hero
-    var wDec = Math.max(0, (ms.wins || 0) - (ms.winKo || 0) - (ms.winSub || 0));
-    var mBar = function (lab, v, tot, col) {
-      var pct = tot ? Math.round(v / tot * 100) : 0;
-      return '<div style="display:flex;align-items:center;gap:6px"><span class="gx-mono gx-dim" style="width:30px;font-size:10px;text-align:right">' + lab + '</span>' +
-        '<div style="flex:1;height:5px;border-radius:3px;background:var(--gx-line,rgba(255,255,255,.08));overflow:hidden"><i style="display:block;height:100%;width:' + pct + '%;background:' + col + '"></i></div>' +
-        '<span class="gx-mono" style="width:56px;font-size:10.5px">' + v + ' · ' + pct + '%</span></div>';
+  // hero de UNA pelea (usado en calendario compacto y arriba del cockpit completo)
+  function cbFightHero(ev, ft, opts) {
+    var pr = ft.prob || {}; var p1 = Math.round((pr.p1 || 0.5) * 100);
+    var link = 'cbfight/' + cbOrg() + '-' + ft.comp_id;
+    var compact = opts && opts.compact;
+    var mkt = ft.market ? '<div class="gx-dim gx-cb-subline">' + esc(t('cb_market')) + ': ' + Math.round(ft.market.f1 * 100) + '% · ' + Math.round(ft.market.f2 * 100) + '% (' + ft.market.books + ' ' + esc(t('cb_books_n')) + ')</div>' : '';
+    var pick = ft.pick ? '<div class="gx-cb-pickchip"><span class="gx-clgate ok">▲ PICK · ' + esc(ft.pick.name) + ' @' + ft.pick.odds + ' · +' + ft.pick.edge_blend_pp + 'pp</span></div>' : '';
+    var side = function (f, s) {
+      return '<a class="gx-cb-f" href="#cbfighter/' + cbOrg() + '-' + esc(String(f.id || '')) + '">' + cbAva(f, s, compact ? '' : 'xl') +
+        '<div class="gx-cb-nm">' + esc(f.name || '') + '</div>' +
+        '<div class="gx-cb-rec">' + f.record.w + '-' + f.record.l + ' ' + cbOrgLab() + ' · ' + f.record.ko + ' KO · ' + f.record.sub + ' SUB</div>' +
+        (f.reach_in ? '<div class="gx-cb-rec gx-dim">' + esc(String(f.reach_in)) + ' ' + esc(t('cb_reach')) + '</div>' : '') + cbForm(f.form) + '</a>';
     };
-    var methPanel = ms.wins ? '<div style="margin-top:12px;max-width:420px;display:flex;flex-direction:column;gap:3px">' +
-      '<div class="gx-label" style="font-size:9.5px">' + (LANG === 'en' ? 'WINS BY METHOD' : 'VICTORIAS POR MÉTODO') + '</div>' +
-      mBar('KO', ms.winKo || 0, ms.wins, 'var(--gx-ac,#1FE3A4)') + mBar('SUB', ms.winSub || 0, ms.wins, '#5aa7ff') + mBar('DEC', wDec, ms.wins, '#b98cff') + '</div>' : '';
-    var hero = '<div class="gx-cb-hero gx-panel"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">' +
-      cbAva(f, 1) +
-      '<div style="flex:1;min-width:220px"><div class="gx-cb-nm" style="font-size:22px">' + esc(f.name || '') + '</div>' +
-      '<div class="gx-dim" style="font-size:12px;margin-top:2px">' + esc(bioBits.join(' · ')) + '</div>' +
-      '<div class="gx-dim" style="font-size:11px;margin-top:2px">' + (elo.n || 0) + ' ' + (LANG === 'en' ? cbOrgLab() + ' fights' : 'peleas ' + cbOrgLab()) + (elo.last ? ' · ' + (LANG === 'en' ? 'last' : 'última') + ' ' + new Date(elo.last).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { month: 'short', year: 'numeric' }) : '') + '</div>' +
-      tiles + methPanel + '</div></div></div>';
-    var hist = (d.history || []).map(function (h) {
-      var chip = h.nc ? '<span class="gx-clgate sh">NC</span>' : (h.win ? '<span class="gx-clgate ok">W</span>' : '<span class="gx-clgate" style="color:#e5484d;border-color:#e5484d55">L</span>');
-      var when = new Date(h.date).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-      return '<div class="gx-cb-bout" data-cbf="' + esc(String(h.opponent.id || '')) + '" style="cursor:pointer">' + chip +
-        cbAva(h.opponent, h.win ? 2 : 1) +
-        '<div class="gx-cb-bnames"><b>vs ' + esc(h.opponent.name || '') + '</b><span class="gx-dim">' + esc(h.event || '') + ' · ' + esc(h.weight || '') + '</span></div>' +
-        '<span class="gx-mono gx-dim" style="font-size:10.5px;white-space:nowrap">' + esc(h.method || '') + (h.round ? ' · R' + h.round : '') + ' · ' + esc(when) + '</span></div>';
-    }).join('');
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead('Combate 🥊') + back + hero +
-      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + (LANG === 'en' ? 'Fight history' : 'Historial de peleas') + ' · ' + (d.history || []).length + '</span></div><div class="gx-mod-body">' + hist + '</div></div>' +
-      '</div></div>';
-    cbWireClicks(mv);
+    return '<div class="gx-cb-hero' + (compact ? ' cp' : '') + '">' +
+      '<div class="gx-cb-evrow">' + (ft.main ? '<span class="gx-cb-tag">★ ' + esc(t('cb_main_event')).toUpperCase() + '</span>' : '') +
+        '<span class="gx-dim" style="font-size:12px">' + esc(ft.weight || '') + ' · ' + (ft.rounds || 3) + ' ' + esc(t('cb_rounds')) + '</span><span class="gx-spacer"></span>' +
+        (compact ? '<a class="gx-clgate ok gx-cb-analyze" href="#' + link + '">' + esc(t('cb_analyze')) + ' →</a>' : '') + '</div>' +
+      '<div class="gx-cb-face">' + side(ft.f1, 1) +
+        '<div class="gx-cb-mid"><div class="gx-cb-vs">VS</div><div class="gx-label gx-cb-problab">' + esc(t('cb_gpprob')) + '</div>' +
+          '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
+          '<div class="gx-cb-pcts"><span>' + p1 + '%</span><span class="p2">' + (100 - p1) + '%</span></div>' + mkt +
+          '<div class="gx-dim gx-cb-subline">Elo ' + (pr.r1 || '—') + ' · ' + (pr.r2 || '—') + (ft.odds ? ' · ' + esc(t('cb_best_odds')) + ' ' + ft.odds.f1 + ' / ' + ft.odds.f2 : ' · ' + esc(t('cb_no_odds'))) + '</div>' +
+          (compact ? '' : cbMethod(ft.method)) + pick + '</div>' +
+        side(ft.f2, 2) + '</div></div>';
   }
+  function cbFightRow(ev, f) {
+    var pp = Math.round(((f.prob || {}).p1 || 0.5) * 100);
+    var chip = f.pick ? '<span class="gx-clgate ok">PICK ' + esc((f.pick.name || '').split(' ').pop()) + ' @' + f.pick.odds + '</span>'
+      : (f.odds ? '<span class="gx-clgate sh">' + f.odds.f1 + ' / ' + f.odds.f2 + '</span>' : '<span class="gx-clgate sh">' + esc(t('cb_no_odds')) + '</span>');
+    return '<a class="gx-cb-bout lnk" href="#cbfight/' + cbOrg() + '-' + esc(f.comp_id) + '">' +
+      '<span class="gx-cb-avapair">' + cbAva(f.f1, 1) + cbAva(f.f2, 2) + '</span>' +
+      '<div class="gx-cb-bnames"><b>' + esc(f.f1.name || '') + ' <i class="gx-cb-vsi">vs</i> ' + esc(f.f2.name || '') + '</b><span class="gx-dim">' + esc(f.weight || '') + ' · ' + f.f1.record.w + '-' + f.f1.record.l + ' / ' + f.f2.record.w + '-' + f.f2.record.l + '</span></div>' +
+      '<div class="gx-cb-mini"><div class="gx-cb-minibar"><i style="width:' + pp + '%"></i></div><span class="gx-mono gx-dim">' + pp + '% · ' + (100 - pp) + '%</span></div>' + chip + '</a>';
+  }
+  // ── COCKPIT DE PELEA: el panel de inteligencia completo ──
+  function renderCbFight() {
+    var key = 'fight_' + cbOrg() + '_' + S.cb.fightId;
+    var d = cbGet(key, '/api/combat/fight?id=' + encodeURIComponent(S.cb.fightId) + '&org=' + cbOrg());
+    if (!d) { cbShell(t('cb_fights_title'), mvLoading(), { back: 'cbfights' }); return; }
+    if (d._err || !d.fight) { cbShell(t('cb_fights_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>', { back: 'cbfights' }); return; }
+    var ft = d.fight, ta = d.tale || {};
+    var evline = '<div class="gx-cb-evhead"><b>' + esc(d.event.name) + '</b><span class="gx-dim">' + esc(cbWhen(d.event.date)) + '</span></div>';
+    var hero = cbFightHero(d.event, Object.assign({}, ft, { prob: d.prob, method: d.method, market: d.market, pick: d.pick, odds: d.market && d.market.best ? { f1: d.market.best.f1, f2: d.market.best.f2 } : null, f1: Object.assign({}, ft.f1, ta.f1), f2: Object.assign({}, ft.f2, ta.f2) }), {});
+    // TALE OF THE TAPE — el eje del enfrentamiento (barras espejadas desde el centro)
+    var rows = [
+      [t('cb_age'), ta.f1.age, ta.f2.age, function (x) { return x != null ? x : '—'; }],
+      [t('cb_reach'), inchesNum(ta.f1.reach_in), inchesNum(ta.f2.reach_in), function (x) { return x != null ? x + '"' : '—'; }],
+      [t('cb_height'), inchesNum(ta.f1.height_in), inchesNum(ta.f2.height_in), function (x) { return x != null ? Math.floor(x / 12) + "'" + (x % 12) : '—'; }],
+      [t('cb_exp'), ta.f1.n_fights, ta.f2.n_fights, null],
+      ['KO', ta.f1.record.ko, ta.f2.record.ko, null],
+      ['SUB', ta.f1.record.sub, ta.f2.record.sub, null],
+      [t('cb_streak'), ta.f1.streak, ta.f2.streak, function (x) { return (x > 0 ? 'W' : x < 0 ? 'L' : '—') + Math.abs(x || 0); }],
+      ['ELO', ta.f1.elo, ta.f2.elo, null],
+    ].map(function (r) { return cbTapeRow(r[0], r[1], r[2], r[3]); }).join('');
+    var tape = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + '</div></div>';
+    // INTELIGENCIA — red flags (capa de observación: layoff, cambio de división, viene de KO, chin, brecha de edad)
+    var intel = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_intel')) + '</span></div><div class="gx-mod-body">' +
+      ((d.intel || []).length ? d.intel.map(function (x) {
+        return '<div class="gx-cb-flag ' + (x.severity === 'high' ? 'hi' : '') + '"><span class="gx-cb-flagdot"></span><span>' + esc(LANG === 'en' ? x.en : x.es) + '</span></div>';
+      }).join('') : '<div class="gx-dim gx-cb-clean">' + esc(t('cb_intel_none')) + '</div>') + '</div></div>';
+    // ÚLTIMAS 5 de cada esquina
+    var rec5 = function (list, side) {
+      return '<div class="gx-cb-rec5col"><div class="gx-cb-rec5head ' + (side === 1 ? 'gr' : 'rd') + '">' + esc(side === 1 ? ft.f1.name : ft.f2.name) + '</div>' +
+        (list || []).map(function (h) {
+          return '<div class="gx-cb-rec5row"><span class="gx-clgate ' + (h.win ? 'ok' : 'no') + '">' + (h.win ? 'W' : 'L') + '</span><span class="gx-cb-rec5opp">' + esc(h.opponent) + '</span><span class="gx-mono gx-dim">' + esc(h.method || '') + (h.round ? ' R' + h.round : '') + '</span></div>';
+        }).join('') + '</div>';
+    };
+    var recent = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_recent')) + '</span></div><div class="gx-mod-body gx-cb-rec5">' + rec5((d.recent || {}).f1, 1) + rec5((d.recent || {}).f2, 2) + '</div></div>';
+    // H2H
+    var h2h = (d.h2h || []).length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_h2h')) + '</span></div><div class="gx-mod-body">' +
+      d.h2h.map(function (x) { var wn = String(x.winner_id) === String(ft.f1.id) ? ft.f1.name : ft.f2.name; return '<div class="gx-cb-rec5row"><span class="gx-mono gx-dim">' + esc(cbWhen(x.date, false)) + '</span><b>' + esc(wn) + '</b><span class="gx-mono gx-dim">' + esc(x.method || '') + (x.round ? ' R' + x.round : '') + '</span></div>'; }).join('') + '</div></div>' : '';
+    // CUOTAS POR CASA (line shopping)
+    var last1 = (ft.f1.name || '').split(' ').pop(), last2 = (ft.f2.name || '').split(' ').pop();
+    var bestF1 = Math.max.apply(null, (d.books || []).map(function (b) { return b.f1; }).concat(0));
+    var bestF2 = Math.max.apply(null, (d.books || []).map(function (b) { return b.f2; }).concat(0));
+    var books = (d.books || []).length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_odds_by_book')) + '</span><span class="gx-ph-extra gx-dim">' + d.books.length + ' ' + esc(t('cb_books_n')) + '</span></div><div class="gx-mod-body gx-cb-books">' +
+      '<div class="gx-cb-bookrow gx-cb-bookhead"><span></span><b>' + esc(last1) + '</b><b>' + esc(last2) + '</b></div>' +
+      d.books.map(function (b) {
+        return '<div class="gx-cb-bookrow"><span>' + esc(b.book) + '</span><b class="' + (b.f1 === bestF1 ? 'best' : '') + '">' + b.f1.toFixed(2) + '</b><b class="' + (b.f2 === bestF2 ? 'best' : '') + '">' + b.f2.toFixed(2) + '</b></div>';
+      }).join('') + '</div></div>' : '';
+    cbShell(t('cb_fights_title'), evline + hero + '<div class="gx-cb-grid">' + tape + intel + recent + h2h + books + '</div>', { back: 'cbfights' });
+  }
+  function inchesNum(s) { if (!s) return null; var m = String(s).match(/(\d+)'\s*(\d+)?/); if (m) return (+m[1]) * 12 + (+(m[2] || 0)); var n = String(s).match(/([\d.]+)/); return n ? +n[1] : null; }
+  function cbTapeRow(label, v1, v2, fmt) {
+    var f = fmt || function (x) { return x != null ? x : '—'; };
+    var a = Number(v1), b = Number(v2);
+    var ok = isFinite(a) && isFinite(b) && (Math.abs(a) + Math.abs(b)) > 0;
+    var s1 = ok ? Math.max(0.06, Math.abs(a) / (Math.abs(a) + Math.abs(b))) : 0.5;
+    return '<div class="gx-cb-taperow"><b class="v1' + (ok && a > b ? ' lead' : '') + '">' + esc(String(f(v1))) + '</b>' +
+      '<div class="gx-cb-tapebar"><div class="l"><i style="width:' + Math.round(s1 * 100) + '%"></i></div><span>' + esc(label) + '</span><div class="r"><i style="width:' + Math.round((1 - s1) * 100) + '%"></i></div></div>' +
+      '<b class="v2' + (ok && b > a ? ' lead' : '') + '">' + esc(String(f(v2))) + '</b></div>';
+  }
+  // ── PELEADORES: directorio con búsqueda y filtro por división ──
+  function renderCbFighters() {
+    var q = S.cb.fq || '', div = S.cb.fdiv || '';
+    var key = 'dir_' + cbOrg() + '_' + q + '_' + div;
+    var d = cbGet(key, '/api/combat/fighters?org=' + cbOrg() + '&q=' + encodeURIComponent(q) + '&div=' + encodeURIComponent(div));
+    var divs = (d && d.divisions) || S.cb.lastDivs || {};
+    if (d && d.divisions) S.cb.lastDivs = d.divisions;
+    var controls = '<div class="gx-cb-dirctl">' +
+      '<div class="gx-cb-search">' + ic('search') + '<input id="gx-cbf-q" placeholder="' + esc(t('cb_search_ph')) + '" value="' + esc(q) + '" autocomplete="off"></div>' +
+      '<select id="gx-cbf-div" class="gx-cb-select"><option value="">' + esc(t('cb_all_divs')) + '</option>' +
+        Object.keys(divs).sort().map(function (dv) { return '<option value="' + esc(dv) + '"' + (dv === div ? ' selected' : '') + '>' + esc(dv) + ' (' + divs[dv] + ')</option>'; }).join('') + '</select></div>';
+    var grid;
+    if (!d) grid = mvLoading();
+    else if (d._err) grid = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';
+    else if (!(d.fighters || []).length) grid = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_results')) + '</b></div></div>';
+    else grid = '<div class="gx-cb-dirgrid">' + d.fighters.map(cbFighterCard).join('') + '</div>';
+    cbShell(t('cb_fighters_title'), cbOrgTabs() + controls + grid);
+    var qi = document.getElementById('gx-cbf-q');
+    if (qi) { qi.addEventListener('input', function () { clearTimeout(S.cb._qt); var val = qi.value; S.cb._qt = setTimeout(function () { S.cb.fq = val.trim(); renderCb('cbfighters'); }, 320); });
+      if (S.cb._focusQ) { qi.focus(); try { qi.setSelectionRange(qi.value.length, qi.value.length); } catch (e) {} } S.cb._focusQ = true; }
+    var ds = document.getElementById('gx-cbf-div');
+    if (ds) ds.addEventListener('change', function () { S.cb.fdiv = ds.value; S.cb._focusQ = false; renderCb('cbfighters'); });
+  }
+  function cbFighterCard(f) {
+    var stk = f.streak > 1 ? '<span class="gx-cb-stk w">W' + f.streak + '</span>' : (f.streak < -1 ? '<span class="gx-cb-stk l">L' + (-f.streak) + '</span>' : '');
+    return '<a class="gx-cb-fcard" href="#cbfighter/' + cbOrg() + '-' + esc(String(f.id)) + '">' +
+      cbAva(f, 1, 'dir') +
+      '<div class="gx-cb-fcard-nm">' + esc(f.name || '') + stk + '</div>' +
+      (f.nick ? '<div class="gx-cb-fcard-nick">"' + esc(f.nick) + '"</div>' : '') +
+      '<div class="gx-cb-fcard-meta">' + esc(f.division || '—') + '</div>' +
+      '<div class="gx-cb-fcard-stats"><span>' + f.record.w + '-' + f.record.l + '</span><span class="elo">' + f.elo + '</span></div>' +
+      cbForm(f.form) + '</a>';
+  }
+  // ── PERFIL DE PELEADOR (ampliado: edad real, curva de Elo, divisiones, oposición) ──
+  function renderCbFighter() {
+    var key = 'fp_' + cbOrg() + '_' + S.cb.fighterId;
+    var d = cbGet(key, '/api/combat/fighter?id=' + encodeURIComponent(S.cb.fighterId) + '&org=' + cbOrg());
+    if (!d) { cbShell(t('cb_fighters_title'), mvLoading(), { back: 'cbfighters', backLabel: 'cb_fighters_title' }); return; }
+    if (d._err || !d.fighter) { cbShell(t('cb_fighters_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>', { back: 'cbfighters', backLabel: 'cb_fighters_title' }); return; }
+    var f = d.fighter, s = d.summary || {}, ms = d.method_split || {};
+    var bio = [];
+    if (f.nick) bio.push('"' + f.nick + '"');
+    if (s.age != null) bio.push(s.age + ' ' + (LANG === 'en' ? 'yrs' : 'años'));
+    if (f.height_in) bio.push(String(f.height_in));
+    if (f.reach_in) bio.push(String(f.reach_in) + ' ' + t('cb_reach'));
+    if (s.stance) bio.push(s.stance);
+    if (f.country) bio.push(f.country);
+    var isFl = cbIsFollowed(S.cb.fighterId);
+    var followBtn = '<button class="gx-cb-followbtn' + (isFl ? ' on' : '') + '" data-cbfollow=\'' + esc(JSON.stringify({ id: String(s.id || S.cb.fighterId), org: cbOrg(), name: s.name || '', headshot: s.headshot || '', record: s.record || null, division: s.division || null })) + '\'>' + (isFl ? esc(t('cb_following')) : '★ ' + esc(t('cb_follow_btn'))) + '</button>';
+    var finish = s.record && s.record.w ? Math.round((s.record.ko + s.record.sub) / s.record.w * 100) : null;
+    var tile = function (lab, val) { return '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + val + '</div><div class="gx-label">' + lab + '</div></div>'; };
+    var tiles = '<div class="gx-cb-tiles">' + tile('ELO', s.elo || '—') + tile(esc(t('cb_exp')).toUpperCase(), (s.record || {}).w + '-' + (s.record || {}).l) + tile('KO', (s.record || {}).ko) + tile('SUB', (s.record || {}).sub) +
+      (finish != null ? tile('FINISH', finish + '%') : '') + (s.age != null ? tile(esc(t('cb_age')).toUpperCase(), s.age) : '') +
+      tile(esc(t('cb_cage_min')).toUpperCase(), s.cage_min || 0) + (d.opposition_elo ? tile(esc(t('cb_opp_quality')).toUpperCase(), d.opposition_elo) : '') + '</div>';
+    var wDec = Math.max(0, (ms.wins || 0) - (ms.winKo || 0) - (ms.winSub || 0));
+    var mBar = function (lab, v, tot, cls) { var pct = tot ? Math.round(v / tot * 100) : 0; return '<div class="gx-cb-mrow"><span>' + lab + '</span><div class="gx-cb-mbar"><i class="' + cls + '" style="width:' + pct + '%"></i></div><b>' + v + ' · ' + pct + '%</b></div>'; };
+    var meth = ms.wins ? '<div class="gx-cb-meth wide"><div class="gx-label">' + esc(t('cb_method')) + '</div>' + mBar('KO', ms.winKo || 0, ms.wins, 'ko') + mBar('SUB', ms.winSub || 0, ms.wins, 'sub') + mBar('DEC', wDec, ms.wins, 'dec') + '</div>' : '';
+    var divs = Object.keys(d.divisions || {}).length ? '<div class="gx-cb-divchips">' + Object.entries(d.divisions).sort(function (a, b) { return b[1] - a[1]; }).map(function (x) { return '<span class="gx-clgate sh">' + esc(x[0]) + ' · ' + x[1] + '</span>'; }).join('') + '</div>' : '';
+    var hero = '<div class="gx-cb-hero"><div class="gx-cb-fphero">' + cbAva({ name: s.name, headshot: s.headshot }, 1, 'xl') +
+      '<div class="gx-cb-fpmain"><div class="gx-cb-fpname">' + esc(s.name || '') + followBtn + '</div>' +
+      '<div class="gx-dim gx-cb-subline">' + esc(bio.join(' · ')) + '</div>' +
+      '<div class="gx-dim gx-cb-subline">' + esc(s.division || '') + ' · ' + (s.n_fights || 0) + ' ' + esc(t('cb_fights_n')) + (s.last_fight ? ' · ' + esc(t('cb_last')) + ' ' + esc(cbWhen(s.last_fight, false)) : '') + '</div>' +
+      tiles + meth + divs + '</div></div></div>';
+    var chart = (d.elo_series || []).length > 2 ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">ELO</span><span class="gx-ph-extra gx-dim">' + d.elo_series.length + ' ' + esc(t('cb_fights_n')) + '</span></div><div class="gx-mod-body">' + cbEloChart([{ series: d.elo_series, name: s.name }], 640, 180) + '</div></div>' : '';
+    var hist = (d.history || []).map(function (h) {
+      var chip = h.nc ? '<span class="gx-clgate sh">NC</span>' : (h.win ? '<span class="gx-clgate ok">W</span>' : '<span class="gx-clgate no">L</span>');
+      return '<a class="gx-cb-bout lnk" href="#cbfighter/' + cbOrg() + '-' + esc(String(h.opponent.id || '')) + '">' + chip + cbAva(h.opponent, h.win ? 2 : 1) +
+        '<div class="gx-cb-bnames"><b>vs ' + esc(h.opponent.name || '') + '</b><span class="gx-dim">' + esc(h.event || '') + ' · ' + esc(h.weight || '') + '</span></div>' +
+        '<span class="gx-mono gx-dim gx-cb-histmeta">' + esc(h.method || '') + (h.round ? ' · R' + h.round : '') + ' · ' + esc(cbWhen(h.date, false)) + '</span></a>';
+    }).join('');
+    var histP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_recent')) + ' · ' + (d.history || []).length + '</span></div><div class="gx-mod-body">' + hist + '</div></div>';
+    cbShell(t('cb_fighters_title'), hero + chart + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
+  }
+  // línea de Elo (SVG propio, sin librerías): eje temporal real, área bajo la curva, punto final
+  function cbEloChart(items, w, h) {
+    var all = []; items.forEach(function (it) { (it.series || []).forEach(function (p) { all.push(p); }); });
+    if (all.length < 2) return '';
+    var t0 = Math.min.apply(null, all.map(function (p) { return Date.parse(p.d); }));
+    var t1 = Math.max.apply(null, all.map(function (p) { return Date.parse(p.d); }));
+    var r0 = Math.min.apply(null, all.map(function (p) { return p.r; })) - 20;
+    var r1 = Math.max.apply(null, all.map(function (p) { return p.r; })) + 20;
+    var X = function (d) { return 34 + (Date.parse(d) - t0) / Math.max(1, t1 - t0) * (w - 44); };
+    var Y = function (r) { return 8 + (1 - (r - r0) / Math.max(1, r1 - r0)) * (h - 30); };
+    var cols = ['#1FE3A4', '#5aa7ff', '#b98cff', '#E8C468', '#FF7A7A', '#4be0d8', '#f19ad2', '#9be25f', '#ff9d5c', '#8fa8ff'];
+    var lines = items.map(function (it, i) {
+      var pts = (it.series || []).map(function (p) { return X(p.d).toFixed(1) + ',' + Y(p.r).toFixed(1); }).join(' ');
+      var lastP = it.series[it.series.length - 1];
+      var area = items.length === 1 ? '<polygon points="' + X(it.series[0].d).toFixed(1) + ',' + (h - 22) + ' ' + pts + ' ' + X(lastP.d).toFixed(1) + ',' + (h - 22) + '" fill="rgba(31,227,164,.08)"/>' : '';
+      return area + '<polyline points="' + pts + '" fill="none" stroke="' + cols[i % cols.length] + '" stroke-width="2" stroke-linejoin="round"/>' +
+        '<circle cx="' + X(lastP.d).toFixed(1) + '" cy="' + Y(lastP.r).toFixed(1) + '" r="3.4" fill="' + cols[i % cols.length] + '"/>';
+    }).join('');
+    var y0 = new Date(t0).getFullYear(), y1 = new Date(t1).getFullYear();
+    return '<svg class="gx-cb-elochart" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<line x1="34" y1="' + (h - 22) + '" x2="' + (w - 8) + '" y2="' + (h - 22) + '" stroke="rgba(255,255,255,.12)"/>' +
+      '<text x="4" y="14" fill="#5F747B" font-size="10">' + Math.round(r1 - 20) + '</text><text x="4" y="' + (h - 26) + '" fill="#5F747B" font-size="10">' + Math.round(r0 + 20) + '</text>' +
+      '<text x="34" y="' + (h - 8) + '" fill="#5F747B" font-size="10">' + y0 + '</text><text x="' + (w - 40) + '" y="' + (h - 8) + '" fill="#5F747B" font-size="10">' + y1 + '</text>' +
+      lines + '</svg>';
+  }
+  // ── SIMULADOR: dos esquinas, cualquier par de la base ──
+  function cbSimCorner(slot, fighter, side) {
+    var lab = side === 1 ? t('cb_sim_a') : t('cb_sim_b');
+    if (fighter) {
+      return '<div class="gx-cb-simcorner ' + (side === 1 ? 'gr' : 'rd') + '"><div class="gx-label">' + esc(lab) + '</div>' +
+        cbAva(fighter, side) + '<div class="gx-cb-nm">' + esc(fighter.name) + '</div>' +
+        '<div class="gx-cb-rec">' + (fighter.record ? fighter.record.w + '-' + fighter.record.l : '') + ' · ' + esc(fighter.division || '') + '</div>' +
+        '<button class="gx-clgate sh" data-cbsimclear="' + (side === 1 ? 'simA' : 'simB') + '">✕</button></div>';
+    }
+    return '<div class="gx-cb-simcorner ' + (side === 1 ? 'gr' : 'rd') + ' empty"><div class="gx-label">' + esc(lab) + '</div>' +
+      '<div class="gx-cb-simsearch">' + ic('search') + '<input data-cbsimq="' + slot + '" placeholder="' + esc(t('cb_search_ph')) + '" autocomplete="off"><div class="gx-cb-simres" id="gx-simres-' + slot + '" hidden></div></div></div>';
+  }
+  function cbSimPick(slot, f) { S.cb[slot === 'a' ? 'simA' : 'simB'] = f; S.cb.simRes = undefined; renderCb('cbsim'); }
+  function renderCbSim() {
+    var a = S.cb.simA, b = S.cb.simB;
+    var corners = '<div class="gx-cb-simgrid">' + cbSimCorner('a', a, 1) +
+      '<div class="gx-cb-simmid"><div class="gx-cb-vs">VS</div>' + (a && b ? '<button class="gx-clgate sh" data-cbsimswap="1">⇄ ' + esc(t('cb_sim_swap')) + '</button>' : '') + '</div>' +
+      cbSimCorner('b', b, 2) + '</div>';
+    var result = '';
+    if (a && b) {
+      var key = 'sim_' + cbOrg() + '_' + a.id + '_' + b.id;
+      if (S.cb.simRes === undefined) { S.cb.simRes = null; delete S.cb[key]; }
+      var d = cbGet(key, '/api/combat/sim?org=' + cbOrg() + '&f1=' + encodeURIComponent(a.id) + '&f2=' + encodeURIComponent(b.id));
+      if (d && !d._err) {
+        S.cb.simRes = d;
+        var p1 = Math.round((d.prob.p1 || 0.5) * 100);
+        var rows = [
+          [t('cb_age'), (d.tale.f1 || {}).age, (d.tale.f2 || {}).age, null],
+          [t('cb_reach'), inchesNum((d.tale.f1 || {}).reach_in), inchesNum((d.tale.f2 || {}).reach_in), function (x) { return x != null ? x + '"' : '—'; }],
+          [t('cb_exp'), (d.tale.f1 || {}).n_fights, (d.tale.f2 || {}).n_fights, null],
+          ['ELO', (d.tale.f1 || {}).elo, (d.tale.f2 || {}).elo, null],
+        ].map(function (r) { return cbTapeRow(r[0], r[1], r[2], r[3]); }).join('');
+        result = '<div class="gx-cb-hero"><div class="gx-cb-mid" style="max-width:460px;margin:0 auto"><div class="gx-label gx-cb-problab">' + esc(t('cb_gpprob')) + '</div>' +
+          '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
+          '<div class="gx-cb-pcts"><span>' + esc((a.name || '').split(' ').pop()) + ' ' + p1 + '%</span><span class="p2">' + (100 - p1) + '% ' + esc((b.name || '').split(' ').pop()) + '</span></div>' +
+          '<div class="gx-dim gx-cb-subline">Elo ' + d.prob.r1 + ' · ' + d.prob.r2 + ' · ' + esc(d.weight || '') + '</div>' + cbMethod(d.method) + '</div></div>' +
+          '<div class="gx-cb-grid"><div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + '</div></div>' +
+          '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_intel')) + '</span></div><div class="gx-mod-body">' +
+          ((d.intel || []).length ? d.intel.map(function (x) { return '<div class="gx-cb-flag ' + (x.severity === 'high' ? 'hi' : '') + '"><span class="gx-cb-flagdot"></span><span>' + esc(LANG === 'en' ? x.en : x.es) + '</span></div>'; }).join('') : '<div class="gx-dim gx-cb-clean">' + esc(t('cb_intel_none')) + '</div>') + '</div></div></div>';
+      } else if (d && d._err) result = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';
+      else result = mvLoading();
+    } else {
+      result = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_sim_pick')) + '</b></div></div>';
+    }
+    cbShell(t('cb_sim_title'), cbOrgTabs() + corners + result);
+    // wiring de los buscadores de esquina
+    [].forEach.call(document.querySelectorAll('[data-cbsimq]'), function (inp) {
+      var slot = inp.getAttribute('data-cbsimq');
+      inp.addEventListener('input', function () {
+        clearTimeout(S.cb._st); var val = inp.value.trim();
+        S.cb._st = setTimeout(function () {
+          if (val.length < 2) return;
+          fetch('/api/combat/fighters?org=' + cbOrg() + '&q=' + encodeURIComponent(val), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+            var box = document.getElementById('gx-simres-' + slot); if (!box) return;
+            var list = (j && j.fighters || []).slice(0, 8);
+            box.hidden = !list.length;
+            box.innerHTML = list.map(function (f) {
+              return '<div class="gx-cb-simhit" data-cbsimpick="' + slot + '" data-cbsimf=\'' + esc(JSON.stringify({ id: String(f.id), name: f.name, headshot: f.headshot, record: f.record, division: f.division, elo: f.elo })) + '\'>' + cbAva(f, 1) + '<span>' + esc(f.name) + '</span><span class="gx-mono gx-dim">' + f.elo + '</span></div>';
+            }).join('');
+          });
+        }, 280);
+      });
+    });
+  }
+  // ── OPORTUNIDADES: picks + value de compra + arbitraje (formato de la casa) ──
+  function renderCbOpps() {
+    var d = cbGet('opps_' + cbOrg(), '/api/combat/opps?org=' + cbOrg());
+    if (!d) { cbShell(t('cb_opps_title'), cbOrgTabs() + mvLoading()); return; }
+    if (d._err) { cbShell(t('cb_opps_title'), cbOrgTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var tr = (d.track || {}).total || {};
+    var trline = tr.n ? '<span class="gx-ph-extra gx-dim">' + tr.w + 'W-' + tr.l + 'L · ' + tr.hit + '% · ' + (tr.units >= 0 ? '+' : '') + tr.units + 'u' + (tr.clv_avg != null ? ' · CLV ' + tr.clv_avg + '%' : '') + '</span>' : '<span class="gx-ph-extra gx-dim">' + esc(t('cb_monitor')) + (d.picks_enabled ? '' : ' · loop OFF') + '</span>';
+    var picks = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_picks')) + '</span>' + trline + '</div><div class="gx-mod-body">' +
+      ((d.picks || []).length ? d.picks.map(function (p2) {
+        return '<a class="gx-cb-pick lnk" href="#cbfight/' + (p2.league === 'mma' ? 'mma' : 'ufc') + '-' + esc(p2.event.canonical_event_id.replace(/^cb-/, '')) + '">' +
+          '<div class="gx-cb-pickhead"><span class="gx-clgate ' + (p2.card_slot === 'main' ? 'ok' : 'sh') + '">' + (p2.card_slot === 'main' ? 'MAIN' : 'PRELIM') + '</span>' +
+          '<b>' + esc(p2.selection_name) + '</b><span class="gx-dim">' + esc(p2.event.home + ' vs ' + p2.event.away) + '</span><span class="gx-spacer"></span><span class="gx-mono gx-dim">' + esc(cbWhen(p2.event.kickoff_at)) + '</span></div>' +
+          '<div class="gx-cb-pickmeta"><span class="gx-mono">mdl ' + Math.round(p2.model_prob * 100) + '% · mkt ' + Math.round(p2.market_prob * 100) + '% · <b class="edge">+' + p2.edge_blend_pp + 'pp</b></span>' +
+          '<span class="gx-clgate ok">@' + p2.best_odds + (p2.stake_pct ? ' · stake ' + p2.stake_pct + '%' : '') + '</span></div></a>';
+      }).join('') : '<div class="gx-empty">' + illo('tickets') + '<b>' + esc(t('cb_no_picks')) + '</b></div>') + '</div></div>';
+    var value = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_value')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_value_sub')) + '</span></div><div class="gx-mod-body">' +
+      ((d.value || []).length ? d.value.map(function (v2) {
+        return '<a class="gx-cb-bout lnk" href="#cbfight/' + cbOrg() + '-' + esc(v2.comp_id) + '"><span class="gx-clgate ok">+' + v2.ev_pct + '%</span>' +
+          '<div class="gx-cb-bnames"><b>' + esc(v2.name) + '</b><span class="gx-dim">' + esc(v2.fight) + ' · ' + esc(cbWhen(v2.date, false)) + '</span></div>' +
+          '<span class="gx-mono gx-dim">fair ' + Math.round(v2.fair * 100) + '% · @' + v2.odds + ' ' + esc(v2.book) + '</span></a>';
+      }).join('') : '<div class="gx-dim gx-cb-clean">' + esc(t('opp_value_empty')) + '</div>') + '</div></div>';
+    var arbs = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_arb')) + '</span></div><div class="gx-mod-body">' +
+      ((d.arbs || []).length ? d.arbs.map(function (a2) {
+        return '<div class="gx-cb-bout"><span class="gx-clgate ok">+' + a2.profit_pct + '%</span><div class="gx-cb-bnames"><b>' + esc(a2.fight) + '</b><span class="gx-dim">' + esc(a2.f1.book) + ' @' + a2.f1.odds + ' / ' + esc(a2.f2.book) + ' @' + a2.f2.odds + '</span></div></div>';
+      }).join('') : '<div class="gx-dim gx-cb-clean">' + esc(t('cb_arb_none')) + '</div>') + '</div></div>';
+    cbShell(t('cb_opps_title'), cbOrgTabs() + picks + value + arbs);
+  }
+  // ── RENDIMIENTO: track del monitor + liquidadas (espejo del perf de fútbol; todo privado) ──
+  function renderCbPerf() {
+    var d = cbGet('perf', '/api/combat/perf');
+    if (!d) { cbShell(t('cb_perf_title'), mvLoading()); return; }
+    if (d._err) { cbShell(t('cb_perf_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var tr = d.track || {}; var tt = tr.total || {};
+    var kpi = function (lab, val, cls) { return '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval' + (cls ? ' ' + cls : '') + '">' + val + '</div><div class="gx-label">' + lab + '</div></div>'; };
+    var kpis2 = '<div class="gx-cb-tiles perf">' +
+      kpi('PICKS', tt.n || 0) + kpi('W-L', (tt.w || 0) + '-' + (tt.l || 0)) +
+      kpi(esc(t('cb_hit')).toUpperCase(), tt.hit != null ? tt.hit + '%' : '—') +
+      kpi(esc(t('cb_units')).toUpperCase(), (tt.units >= 0 ? '+' : '') + (tt.units || 0), tt.units > 0 ? 'up' : tt.units < 0 ? 'down' : '') +
+      kpi(esc(t('cb_clv')).toUpperCase(), tt.clv_avg != null ? tt.clv_avg + '%' : '—', tt.clv_avg > 0 ? 'up' : tt.clv_avg < 0 ? 'down' : '') +
+      kpi('MAIN', ((tr.main || {}).w || 0) + '-' + ((tr.main || {}).l || 0)) + kpi('PRELIM', ((tr.prelim || {}).w || 0) + '-' + ((tr.prelim || {}).l || 0)) + '</div>';
+    var rows = (d.settled || []).map(function (p2) {
+      var rc = p2.result_code;
+      var chip = rc === 'WIN' ? '<span class="gx-clgate ok">W</span>' : rc === 'LOSS' ? '<span class="gx-clgate no">L</span>' : '<span class="gx-clgate sh">' + esc(rc) + '</span>';
+      return '<div class="gx-cb-bout">' + chip +
+        '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">' + esc(p2.event.home + ' vs ' + p2.event.away) + ' · ' + esc(p2.card_slot || '') + ' · ' + esc(cbWhen(p2.event.kickoff_at, false)) + '</span></div>' +
+        '<span class="gx-mono gx-dim">@' + p2.best_odds + (p2.clv_pct != null ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span>' +
+        '<b class="gx-mono ' + ((p2.units || 0) > 0 ? 'gx-cb-up' : (p2.units || 0) < 0 ? 'gx-cb-down' : 'gx-dim') + '">' + ((p2.units || 0) > 0 ? '+' : '') + (p2.units || 0) + 'u</b></div>';
+    }).join('');
+    var list = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_settled')) + ' · ' + (d.settled || []).length + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_monitor')) + '</span></div><div class="gx-mod-body">' +
+      (rows || '<div class="gx-empty">' + illo('chart') + '<b>' + esc(t('cb_no_settled')) + '</b></div>') + '</div></div>';
+    cbShell(t('cb_perf_title'), kpis2 + list);
+  }
+  // ── ORGANIZACIONES: UFC / PFL / Bellator ──
+  function renderCbOrgs() {
+    var d = cbGet('orgs', '/api/combat/orgs');
+    if (!d) { cbShell(t('cb_orgs_title'), mvLoading()); return; }
+    if (d._err) { cbShell(t('cb_orgs_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var cards = (d.orgs || []).map(function (o) {
+      var orgKey = o.tag === 'ufc' ? 'ufc' : 'mma';
+      var top = (o.top || []).map(function (f) {
+        return '<a class="gx-cb-orgtop" href="#cbfighter/' + orgKey + '-' + esc(String(f.id)) + '">' + cbAva(f, 1) + '<span>' + esc((f.name || '').split(' ').pop()) + '</span><b class="gx-mono">' + f.elo + '</b></a>';
+      }).join('');
+      return '<div class="gx-panel gx-cb-orgcard' + (o.live ? '' : ' hist') + '"><div class="gx-cb-orghead"><b>' + esc(o.label) + '</b>' + (o.live ? '' : '<span class="gx-clgate sh">' + esc(t('cb_org_hist')) + '</span>') + '</div>' +
+        '<div class="gx-cb-orgstats"><span><b class="gx-mono">' + o.fights + '</b> ' + esc(t('cb_fights_n')) + '</span><span><b class="gx-mono">' + o.active + '</b> ' + esc(t('cb_org_active')) + '</span><span>' + esc(t('cb_org_since')) + ' <b class="gx-mono">' + (o.since ? new Date(o.since).getFullYear() : '—') + '</b></span></div>' +
+        (o.next ? '<div class="gx-cb-orgnext"><span class="gx-label">' + esc(t('cb_org_next')) + '</span><b>' + esc(o.next.name) + '</b><span class="gx-dim">' + esc(cbWhen(o.next.date)) + ' · ' + o.next.fights + ' ' + esc(t('cb_fights_n')) + '</span></div>' : '') +
+        (top ? '<div class="gx-label gx-cb-cardlab">' + esc(t('cb_org_top')) + '</div>' + top : '') + '</div>';
+    }).join('');
+    cbShell(t('cb_orgs_title'), '<div class="gx-cb-orgsgrid">' + cards + '</div>');
+  }
+  // ── EVOLUCIÓN: la élite en el tiempo (curvas de Elo) + movers 12 meses ──
+  function renderCbEvo() {
+    var d = cbGet('evo_' + cbOrg(), '/api/combat/evo?org=' + cbOrg());
+    if (!d) { cbShell(t('cb_evo_title'), cbOrgTabs() + mvLoading()); return; }
+    if (d._err) { cbShell(t('cb_evo_title'), cbOrgTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var cols = ['#1FE3A4', '#5aa7ff', '#b98cff', '#E8C468', '#FF7A7A', '#4be0d8', '#f19ad2', '#9be25f', '#ff9d5c', '#8fa8ff'];
+    var legend = (d.top || []).map(function (f, i) {
+      return '<a class="gx-cb-legitem" href="#cbfighter/' + cbOrg() + '-' + esc(String(f.id)) + '"><i style="background:' + cols[i % cols.length] + '"></i>' + cbAva(f, 1) + '<span>' + esc(f.name) + '</span><b class="gx-mono">' + f.elo + '</b></a>';
+    }).join('');
+    var chart = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_evo_top')) + '</span></div><div class="gx-mod-body">' +
+      cbEloChart(d.top || [], 720, 260) + '<div class="gx-cb-legend">' + legend + '</div></div></div>';
+    var mover = function (f, up) {
+      return '<a class="gx-cb-bout lnk" href="#cbfighter/' + cbOrg() + '-' + esc(String(f.id)) + '">' + cbAva(f, up ? 1 : 2) +
+        '<div class="gx-cb-bnames"><b>' + esc(f.name) + '</b><span class="gx-dim">' + f.fights_12m + ' ' + esc(t('cb_fights_n')) + ' · ' + esc(t('cb_evo_12m')) + '</span></div>' +
+        '<b class="gx-mono ' + (up ? 'gx-cb-up' : 'gx-cb-down') + '">' + (f.delta >= 0 ? '+' : '') + f.delta + '</b><span class="gx-mono gx-dim">' + f.elo + '</span></a>';
+    };
+    var movers = '<div class="gx-cb-grid"><div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">▲ ' + esc(t('cb_evo_up')) + '</span></div><div class="gx-mod-body">' +
+      (d.up || []).map(function (f) { return mover(f, true); }).join('') + '</div></div>' +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">▼ ' + esc(t('cb_evo_down')) + '</span></div><div class="gx-mod-body">' +
+      (d.down || []).map(function (f) { return mover(f, false); }).join('') + '</div></div></div>';
+    cbShell(t('cb_evo_title'), cbOrgTabs() + chart + movers);
+  }
+  // ── SEGUIDOS: peleadores seguidos (localStorage v1 — vista admin-only, un solo usuario) ──
+  function cbFollows() { try { return JSON.parse(localStorage.getItem('gp_cb_follows') || '[]'); } catch (e) { return []; } }
+  function cbIsFollowed(id) { return cbFollows().some(function (f) { return String(f.id) === String(id); }); }
+  function cbToggleFollow(f) {
+    var list = cbFollows();
+    var i = list.findIndex(function (x) { return String(x.id) === String(f.id); });
+    if (i >= 0) list.splice(i, 1); else list.push(f);
+    try { localStorage.setItem('gp_cb_follows', JSON.stringify(list)); } catch (e) {}
+    delete S.cb['fp_' + (f.org || 'ufc') + '_' + f.id + '_render']; // nada que invalidar del server; solo repintar
+  }
+  function renderCbFollow() {
+    var list = cbFollows();
+    var inner;
+    if (!list.length) inner = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_follow_none')) + '</b></div></div>';
+    else inner = '<div class="gx-cb-dirgrid">' + list.map(function (f) {
+      return '<a class="gx-cb-fcard" href="#cbfighter/' + esc(f.org || 'ufc') + '-' + esc(String(f.id)) + '">' + cbAva(f, 1, 'dir') +
+        '<div class="gx-cb-fcard-nm">' + esc(f.name || '') + '</div>' +
+        '<div class="gx-cb-fcard-meta">' + esc(f.division || '') + (f.record ? ' · ' + f.record.w + '-' + f.record.l : '') + '</div></a>';
+    }).join('') + '</div>';
+    cbShell(t('cb_follow_title'), inner);
+  }
+
 
   function renderRefer() {
     var mv = $('#gx-matchview'); if (!mv) return;
@@ -6314,8 +6674,9 @@
   function setLang(l) {
     if (l !== 'es' && l !== 'en') return; LANG = l; try { localStorage.setItem('gp_lang', l); } catch (e) {} document.documentElement.lang = l;
     shell(); render();
-    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, combat: renderCombat };
-    if (rr[S.view]) { applyView(); rr[S.view](); }
+    var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief };
+    if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); }
+    else if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
   // Construye S.cal/S.fixtures desde /api/state (boot Y refresco en vivo). gpProbs = prob GP en vivo del server.
@@ -6460,6 +6821,10 @@
         var pref; try { pref = localStorage.getItem('gp_lang'); } catch (e) {}
         LANG = (pref === 'en' || pref === 'es') ? pref : (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})();
         document.documentElement.lang = LANG;
+        // R2: deporte inicial — el hash manda (link directo a #cb*); si no, el último usado
+        var h0 = ''; try { h0 = (location.hash || '').replace(/^#/, ''); } catch (e) {}
+        if (/^cb/.test(h0)) S.sport = 'combat';
+        else { var sp0; try { sp0 = localStorage.getItem('gp_sport'); } catch (e) {} if (sp0 === 'combat' && !h0) S.sport = 'combat'; }
         shell(); load(); loadCanon(); startLiveLoop();
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
@@ -6468,7 +6833,7 @@
           if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); if (!document.getElementById('gx-onb')) maybeTrialModal(); loadPlayerIndex(); loadClubsPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin', 'combat'].indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { showView('board'); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief', 'combat'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, combat: renderCombat }[S.view] || function () {})(); } }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || CB_VIEWS.indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat') { S.sport = 'futbol'; shell(); } showView('board'); } else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

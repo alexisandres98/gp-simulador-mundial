@@ -6615,11 +6615,84 @@ function combatLoad(org) {
   const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
   // F1b: fitElo con fighters = Elo + features físicas (reach/exp/años-carrera, pesos online validados
   // skill 0.0108 vs 0.0068 del Elo puro); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
-  C.elo = CE.fitElo(sorted, C.fighters);
+  C.elo = CE.fitElo(sorted, C.fighters, { history: true });
   C.mm = CE.methodModel(sorted);
   C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
+  // índice por peleador (una pasada): historial, división actual, racha, KO losses, minutos de jaula
+  C.idx = {};
+  const clockMin = (c) => { const m = String(c || '').match(/(\d+):(\d+)/); return m ? (+m[1] + +m[2] / 60) : 0; };
+  for (const f of sorted) {
+    if (!(f.f1.winner || f.f2.winner)) continue;
+    const mn = ((f.end_round || 3) - 1) * 5 + clockMin(f.end_clock);
+    const ko = /ko|tko/.test(((f.method || {}).name || '').toLowerCase()) && !/decision/.test(((f.method || {}).name || '').toLowerCase());
+    for (const side of ['f1', 'f2']) {
+      const me = f[side]; if (!me.id) continue;
+      const x = C.idx[me.id] = C.idx[me.id] || { res: [], div: null, koL: 0, min: 0, last: null, lg: null };
+      x.res.push(me.winner ? 'W' : 'L');
+      x.div = f.weight || x.div; x.min += mn; x.last = f.date; x.lg = f.lg || x.lg;
+      if (!me.winner && ko) x.koL++;
+    }
+  }
   C.at = Date.now();
   return C;
+}
+// resumen de UN peleador para directorio/tale-of-the-tape (edad real si dob llegó del paso 4)
+function combatFighterSummary(C, id) {
+  const p = C.fighters[id] || {}, x = C.idx[id] || { res: [], koL: 0, min: 0 };
+  const age = p.dob ? Math.floor((Date.now() - Date.parse(p.dob)) / (365.25 * 24 * 3600e3)) : null;
+  const rec = combatRecordOf(C, id);
+  return {
+    id, name: C.names[id] || p.name, nick: p.nick || null, headshot: p.headshot || null,
+    country: p.country || null, stance: p.stance && p.stance !== '--' ? p.stance : null,
+    reach_in: p.reach_in || null, height_in: p.height_in || null, dob: p.dob || null, age,
+    record: rec, division: x.div || null, form: x.res.slice(-5).reverse(),
+    ko_losses: x.koL, cage_min: Math.round(x.min), last_fight: x.last || null,
+    elo: Math.round(C.elo.R[id] || 1500), n_fights: C.elo.N[id] || 0,
+    streak: (() => { let s = 0; const r = x.res; for (let i = r.length - 1; i >= 0; i--) { if (r[i] === r[r.length - 1]) s++; else break; } return r.length ? (r[r.length - 1] === 'W' ? s : -s) : 0; })(),
+  };
+}
+// RED FLAGS de inteligencia por pelea (capa de observación v1 — computable desde la data; casos
+// Topuria/Chimaev: cambio de división + layoff largo. Señales de CASO para el analista, NO van al λ:
+// el backtest 28-jul mostró que divmove NO es señal sistemática agregada — es contexto, no ajuste).
+function combatIntelFlags(C, ft, evDate) {
+  const flags = [];
+  const add = (side, code, es, en, sev) => flags.push({ side, code, es, en, severity: sev || 'warn' });
+  for (const side of ['f1', 'f2']) {
+    const id = ft[side].id, nm = ft[side].name;
+    const x = C.idx[id]; if (!x) continue;
+    const days = x.last ? Math.round((Date.parse(evDate) - Date.parse(x.last)) / 86400e3) : null;
+    if (days != null && days >= 365) add(side, 'layoff', `${nm}: ${Math.round(days / 30)} meses sin pelear (ring rust)`, `${nm}: ${Math.round(days / 30)} months out (ring rust)`, 'high');
+    else if (days != null && days >= 240) add(side, 'layoff', `${nm}: ${Math.round(days / 30)} meses inactivo`, `${nm}: ${Math.round(days / 30)} months inactive`);
+    if (x.div && ft.weight && x.div !== ft.weight) {
+      const W = ['W Strawweight', 'W Flyweight', 'W Bantamweight', 'W Featherweight', 'Flyweight', 'Bantamweight', 'Featherweight', 'Lightweight', 'Welterweight', 'Middleweight', 'Light Heavyweight', 'Heavyweight'];
+      const d = W.indexOf(ft.weight) - W.indexOf(x.div);
+      if (d > 0) add(side, 'div_up', `${nm} SUBE de división (${x.div} → ${ft.weight}) — será el hombre pequeño`, `${nm} moves UP a division (${x.div} → ${ft.weight}) — the smaller man`, 'high');
+      else if (d < 0) add(side, 'div_down', `${nm} BAJA de división (${x.div} → ${ft.weight}) — ojo con el corte de peso`, `${nm} moves DOWN (${x.div} → ${ft.weight}) — watch the weight cut`, 'high');
+    }
+    const r = x.res || [];
+    if (r.length && r[r.length - 1] === 'L') {
+      const lastKo = (() => { // ¿la última derrota fue por KO hace <18 meses?
+        const hist = (C.fights.fights || []).filter(f => f.completed && (f.f1.id === id || f.f2.id === id) && (f.f1.winner || f.f2.winner)).sort((a, b) => new Date(b.date) - new Date(a.date));
+        const lf = hist[0]; if (!lf) return false;
+        const me = lf.f1.id === id ? lf.f1 : lf.f2;
+        const koM = /ko|tko/.test(((lf.method || {}).name || '').toLowerCase()) && !/decision/.test(((lf.method || {}).name || '').toLowerCase());
+        return !me.winner && koM && (Date.parse(evDate) - Date.parse(lf.date)) < 18 * 30 * 86400e3;
+      })();
+      if (lastKo) add(side, 'off_ko', `${nm} viene de perder por KO — durabilidad en duda`, `${nm} is coming off a KO loss — durability question`, 'high');
+    }
+    if ((x.koL || 0) >= 4) add(side, 'chin', `${nm}: ${x.koL} derrotas por KO en su carrera (chin mileage)`, `${nm}: ${x.koL} career KO losses (chin mileage)`);
+  }
+  // brecha de edad (si hay dob de ambos)
+  const a1 = (C.fighters[ft.f1.id] || {}).dob, a2 = (C.fighters[ft.f2.id] || {}).dob;
+  if (a1 && a2) {
+    const y1 = (Date.parse(evDate) - Date.parse(a1)) / (365.25 * 864e5), y2 = (Date.parse(evDate) - Date.parse(a2)) / (365.25 * 864e5);
+    const gap = y1 - y2;
+    if (Math.abs(gap) >= 7) {
+      const old = gap > 0 ? ft.f1.name : ft.f2.name, yng = gap > 0 ? ft.f2.name : ft.f1.name;
+      add(gap > 0 ? 'f1' : 'f2', 'age_gap', `${old} le lleva ${Math.abs(gap).toFixed(0)} años a ${yng} — la edad pesa en MMA`, `${old} is ${Math.abs(gap).toFixed(0)} years older than ${yng} — age matters in MMA`, 'warn');
+    }
+  }
+  return flags;
 }
 function combatRecordOf(C, id) { // récord W-L derivado del histórico (UFC-only)
   let w = 0, l = 0, ko = 0, sub = 0;
@@ -9966,7 +10039,8 @@ const server = http.createServer(async (req, res) => {
           picks_track: combatPicksTrack(),
         });
       }
-      // F3: perfil de peleador (bio + Elo + récord + split de métodos + historial pelea a pelea)
+      // F3/R2: perfil de peleador COMPLETO (bio + edad + Elo con serie + récord + métodos + divisiones +
+      // calidad de oposición + historial pelea a pelea)
       if (p === '/api/combat/fighter' && req.method === 'GET') {
         const id = String(url.searchParams.get('id') || '');
         if (!id || !C.names[id]) return json(res, 404, { error: 'No encontrado' });
@@ -9976,18 +10050,154 @@ const server = http.createServer(async (req, res) => {
           .map(f => {
             const me = f.f1.id === id ? f.f1 : f.f2, ri = f.f1.id === id ? f.f2 : f.f1;
             return { date: f.date, event: f.event, weight: f.weight, win: !!me.winner, nc: !(f.f1.winner || f.f2.winner),
-              opponent: { id: ri.id, name: ri.name, headshot: (C.fighters[ri.id] || {}).headshot || null },
+              opponent: { id: ri.id, name: ri.name, headshot: (C.fighters[ri.id] || {}).headshot || null, elo: Math.round(C.elo.R[ri.id] || 1500) },
               method: (f.method || {}).display || (f.method || {}).name || null, round: f.end_round || null, clock: f.end_clock || null };
           });
-        const rec = combatRecordOf(C, id);
         const mm = CE.methodProfile(C.fights.fights || [], id);
+        const divs = {}; for (const h of hist) if (h.weight) divs[h.weight] = (divs[h.weight] || 0) + 1;
+        const oppElo = hist.length ? Math.round(hist.reduce((s, h) => s + h.opponent.elo, 0) / hist.length) : null;
         return json(res, 200, {
           fighter: { id, name: C.names[id], ...(C.fighters[id] || {}) },
-          record: rec,
-          elo: { r: Math.round(C.elo.R[id] || 1500), n: C.elo.N[id] || 0, last: C.elo.LAST[id] || null, first: (C.elo.FIRST || {})[id] || null },
+          summary: combatFighterSummary(C, id),
           method_split: mm, // {wins,losses,winKo,winSub,lostKo,lostSub}
-          history: hist.slice(0, 30),
+          divisions: divs, opposition_elo: oppElo,
+          elo_series: ((C.elo.HIST || {})[id] || []).map(h => ({ d: h.d, r: h.r })),
+          history: hist.slice(0, 40),
         });
+      }
+      // R2: COCKPIT de pelea — todo lo que el analista necesita de UNA pelea
+      if (p === '/api/combat/fight' && req.method === 'GET') {
+        const cid = String(url.searchParams.get('id') || '');
+        await combatRefreshUpcoming(C);
+        let ev = null, ft = null;
+        for (const e of (C.upcoming || [])) { const x = e.fights.find(f => f.comp_id === cid); if (x) { ev = e; ft = x; break; } }
+        if (!ft) return json(res, 404, { error: 'No encontrado' });
+        const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+        const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+        const mo = combatFightOdds(C, ft);
+        // tabla de cuotas por casa (para el panel de mercados / line shopping)
+        let books = [];
+        for (const o of (C.odds || [])) {
+          const h = combatFighterByName(C, o.home_team), a = combatFighterByName(C, o.away_team);
+          if (!h || !a) continue;
+          if (!((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id))) continue;
+          for (const bk of (o.bookmakers || [])) {
+            const m = (bk.markets || []).find(x => x.key === 'h2h'); if (!m) continue;
+            let o1 = 0, o2 = 0;
+            for (const oc of (m.outcomes || [])) { if (oc.name === o.home_team) o1 = oc.price; if (oc.name === o.away_team) o2 = oc.price; }
+            if (o1 > 1 && o2 > 1) books.push({ book: bk.key, f1: h === ft.f1.id ? o1 : o2, f2: h === ft.f1.id ? o2 : o1 });
+          }
+          break;
+        }
+        books.sort((x, y) => y.f1 - x.f1);
+        // historial entre ellos (h2h) + forma reciente de cada uno
+        const h2h = (C.fights.fights || []).filter(f => f.completed && ((f.f1.id === ft.f1.id && f.f2.id === ft.f2.id) || (f.f1.id === ft.f2.id && f.f2.id === ft.f1.id)) && (f.f1.winner || f.f2.winner))
+          .map(f => ({ date: f.date, event: f.event, winner_id: f.f1.winner ? f.f1.id : f.f2.id, method: (f.method || {}).display || null, round: f.end_round || null }));
+        const recent = (id) => (C.fights.fights || []).filter(f => f.completed && (f.f1.id === id || f.f2.id === id) && (f.f1.winner || f.f2.winner))
+          .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
+          .map(f => { const me = f.f1.id === id ? f.f1 : f.f2, ri = f.f1.id === id ? f.f2 : f.f1; return { date: f.date, win: !!me.winner, opponent: ri.name, method: (f.method || {}).display || null, round: f.end_round || null }; });
+        const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + cid) || null;
+        return json(res, 200, {
+          event: { id: ev.id, name: ev.name, date: ev.date }, fight: { ...ft, main: ft.main },
+          prob: pr, method,
+          market: mo ? { f1: +mo.fair_f1.toFixed(3), f2: +(1 - mo.fair_f1).toFixed(3), books: mo.books, best: mo.best } : null,
+          books: books.slice(0, 20),
+          tale: { f1: combatFighterSummary(C, ft.f1.id), f2: combatFighterSummary(C, ft.f2.id) },
+          intel: combatIntelFlags(C, ft, ev.date),
+          h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
+          pick: pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
+        });
+      }
+      // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)
+      if (p === '/api/combat/fighters' && req.method === 'GET') {
+        const q = String(url.searchParams.get('q') || '').toLowerCase().trim();
+        const div = String(url.searchParams.get('div') || '');
+        const cutoff = Date.now() - 3 * 365 * 24 * 3600e3;
+        let ids = Object.keys(C.names).filter(id => C.idx[id]);
+        if (q) ids = ids.filter(id => String(C.names[id] || '').toLowerCase().includes(q));
+        else ids = ids.filter(id => new Date((C.idx[id] || {}).last || 0) > cutoff); // sin búsqueda: solo activos 3 años
+        if (div) ids = ids.filter(id => (C.idx[id] || {}).div === div);
+        ids.sort((a, b) => (C.elo.R[b] || 1500) - (C.elo.R[a] || 1500));
+        const divisions = {}; for (const id of Object.keys(C.idx)) { const d = C.idx[id].div; if (d && new Date(C.idx[id].last || 0) > cutoff) divisions[d] = (divisions[d] || 0) + 1; }
+        return json(res, 200, { fighters: ids.slice(0, 120).map(id => combatFighterSummary(C, id)), divisions, total: ids.length });
+      }
+      // R2: SIMULADOR — cualquier par de peleadores por id
+      if (p === '/api/combat/sim' && req.method === 'GET') {
+        const f1 = String(url.searchParams.get('f1') || ''), f2 = String(url.searchParams.get('f2') || '');
+        if (!f1 || !f2 || !C.names[f1] || !C.names[f2] || f1 === f2) return json(res, 404, { error: 'No encontrado' });
+        const rounds = Math.max(3, Math.min(5, parseInt(url.searchParams.get('rounds') || '3', 10) || 3));
+        const s1 = combatFighterSummary(C, f1), s2 = combatFighterSummary(C, f2);
+        const pr = CE.fightProb(C.elo, f1, f2, new Date().toISOString());
+        const weight = s1.division || s2.division || null;
+        const method = CE.methodProbs(C.mm, pr.p1, f1, f2, weight, rounds);
+        const intel = combatIntelFlags(C, { f1: { id: f1, name: s1.name }, f2: { id: f2, name: s2.name }, weight }, new Date().toISOString());
+        return json(res, 200, { prob: pr, method, tale: { f1: s1, f2: s2 }, intel, weight, rounds });
+      }
+      // R2: OPORTUNIDADES de combate — picks activas + value (line shopping vs consenso) + arbitraje 2-way
+      if (p === '/api/combat/opps' && req.method === 'GET') {
+        await combatRefreshUpcoming(C);
+        const value = [], arbs = [];
+        for (const ev of (C.upcoming || [])) {
+          if (Date.parse(ev.date) <= Date.now()) continue;
+          for (const ft of ev.fights) {
+            const mo = combatFightOdds(C, ft);
+            if (!mo || mo.books < 3) continue;
+            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+            for (const [side, fair, model, odds] of [['f1', mo.fair_f1, pr.p1, mo.best.f1], ['f2', 1 - mo.fair_f1, 1 - pr.p1, mo.best.f2]]) {
+              if (!(odds > 1)) continue;
+              const evPct = (odds * fair - 1) * 100; // valor de COMPRA vs consenso no-vig (line shopping)
+              if (evPct >= 2) value.push({ comp_id: ft.comp_id, event: ev.name, date: ev.date, fight: ft.f1.name + ' vs ' + ft.f2.name, side, name: side === 'f1' ? ft.f1.name : ft.f2.name, odds, book: mo.best[side + 'Book'], fair: +fair.toFixed(3), model: +model.toFixed(3), ev_pct: +evPct.toFixed(2), books: mo.books });
+            }
+            const inv = 1 / mo.best.f1 + 1 / mo.best.f2;
+            if (mo.best.f1 > 1 && mo.best.f2 > 1 && inv < 1) arbs.push({ comp_id: ft.comp_id, event: ev.name, date: ev.date, fight: ft.f1.name + ' vs ' + ft.f2.name, f1: { odds: mo.best.f1, book: mo.best.f1Book }, f2: { odds: mo.best.f2, book: mo.best.f2Book }, profit_pct: +((1 / inv - 1) * 100).toFixed(2) });
+          }
+        }
+        value.sort((a, b) => b.ev_pct - a.ev_pct);
+        return json(res, 200, {
+          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
+          picks_enabled: combatPicksOn(), value: value.slice(0, 20), arbs, track: combatPicksTrack(),
+        });
+      }
+      // R2: RENDIMIENTO combat — track + liquidadas (formato del perf de fútbol; admin-only por el gate)
+      if (p === '/api/combat/perf' && req.method === 'GET') {
+        const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
+          .sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
+        return json(res, 200, { track: combatPicksTrack(), settled: settled.slice(0, 100), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length });
+      }
+      // R2: ORGANIZACIONES — resumen por promoción (UFC del dataset ufc; Bellator/PFL del dataset mma)
+      if (p === '/api/combat/orgs' && req.method === 'GET') {
+        const orgs = [];
+        const summarize = (Cx, tag, label, filter) => {
+          const fs2 = (Cx.fights.fights || []).filter(f => !filter || f.lg === filter);
+          const done2 = fs2.filter(f => f.completed);
+          const cutoff = Date.now() - 2 * 365 * 24 * 3600e3;
+          const ids = new Set(); for (const f of fs2) { ids.add(f.f1.id); ids.add(f.f2.id); }
+          const active = [...ids].filter(id => new Date(((Cx.idx || {})[id] || {}).last || 0) > cutoff);
+          const top = active.filter(id => (Cx.elo.N[id] || 0) >= 6).sort((a, b) => (Cx.elo.R[b] || 0) - (Cx.elo.R[a] || 0)).slice(0, 5)
+            .map(id => ({ id, name: Cx.names[id], elo: Math.round(Cx.elo.R[id] || 1500), headshot: (Cx.fighters[id] || {}).headshot || null, org: Cx.org }));
+          const next = (Cx.upcoming || []).filter(e => Date.parse(e.date) > Date.now())[0] || null;
+          orgs.push({ tag, label, fights: done2.length, active: active.length, since: done2.length ? done2[0].date : null, top, next: next ? { name: next.name, date: next.date, fights: next.fights.length } : null, live: tag !== 'bellator' });
+        };
+        const CU = combatLoad('ufc'); await combatRefreshUpcoming(CU); summarize(CU, 'ufc', 'UFC', null);
+        const CM = combatLoad('mma'); await combatRefreshUpcoming(CM); summarize(CM, 'pfl', 'PFL', 'pfl'); summarize(CM, 'bellator', 'Bellator', 'bellator');
+        return json(res, 200, { orgs });
+      }
+      // R2: EVOLUCIÓN — series de Elo de la élite activa + movers 12 meses
+      if (p === '/api/combat/evo' && req.method === 'GET') {
+        const cutoff = Date.now() - 2 * 365 * 24 * 3600e3;
+        const yearAgo = Date.now() - 365 * 24 * 3600e3;
+        const active = Object.keys(C.elo.R).filter(id => (C.elo.N[id] || 0) >= 8 && new Date(C.elo.LAST[id] || 0) > cutoff);
+        const top = active.sort((a, b) => (C.elo.R[b] || 0) - (C.elo.R[a] || 0)).slice(0, 10)
+          .map(id => ({ id, name: C.names[id], elo: Math.round(C.elo.R[id]), headshot: (C.fighters[id] || {}).headshot || null,
+            series: ((C.elo.HIST || {})[id] || []).slice(-25) }));
+        const movers = active.map(id => {
+          const h = (C.elo.HIST || {})[id] || [];
+          const base = h.filter(x => Date.parse(x.d) <= yearAgo).slice(-1)[0];
+          if (!base) return null;
+          return { id, name: C.names[id], headshot: (C.fighters[id] || {}).headshot || null, elo: Math.round(C.elo.R[id]), delta: Math.round(C.elo.R[id] - base.r), fights_12m: h.filter(x => Date.parse(x.d) > yearAgo).length };
+        }).filter(x => x && x.fights_12m >= 2);
+        movers.sort((a, b) => b.delta - a.delta);
+        return json(res, 200, { top, up: movers.slice(0, 8), down: movers.slice(-8).reverse() });
       }
       return json(res, 404, { error: 'No encontrado' });
     }

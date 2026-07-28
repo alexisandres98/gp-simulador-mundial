@@ -130,11 +130,34 @@ async function step3() {
   console.log(`[step3] listo: ${n} perfiles`);
 }
 
+// ---------- Paso 4: dob (28-jul) — el paso 3 leía a.dateOfBirth del endpoint web (undefined; ahí es
+// displayDOB) → todos los dob quedaron null. El CORE API sí da dateOfBirth ISO. La EDAD es la feature #1
+// de todos los modelos de MMA — este paso la rescata para perfiles ya bajados.
+async function step4() {
+  const fighters = load(FIGHTERS_F, {});
+  const todo = Object.keys(fighters).filter(id => fighters[id] && !fighters[id].dob);
+  console.log(`[step4] dob pendientes: ${todo.length}`);
+  let n = 0, got = 0;
+  for (const id of todo) {
+    try {
+      const a = await j(`https://sports.core.api.espn.com/v2/sports/mma/athletes/${id}?lang=en`);
+      if (a && a.dateOfBirth) { fighters[id].dob = a.dateOfBirth; got++; }
+      if (a && a.reach && !fighters[id].reach_in) fighters[id].reach_in = a.displayReach || String(a.reach) + '"';
+    } catch { /* próxima corrida */ }
+    n++;
+    if (n % 200 === 0) { save(FIGHTERS_F, fighters); console.log(`[step4] ${n}/${todo.length} (dob ${got})`); }
+    await sleep(180);
+  }
+  save(FIGHTERS_F, fighters);
+  console.log(`[step4] listo: ${got}/${n} con dob`);
+}
+
 (async () => {
   const step = arg('step', 'all');
   const from = parseInt(arg('from', '1997'), 10);
   if (step === '1' || step === 'all') for (const lg of LEAGUES) await step1(from, lg);
   if (step === '2' || step === 'all') await step2();
   if (step === '3' || step === 'all') await step3();
+  if (step === '4' || step === 'all') await step4();
   console.log('[combat-backfill] FIN');
 })().catch(e => { console.error('FATAL', e.message); process.exit(1); });

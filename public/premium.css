@@ -1350,3 +1350,174 @@ td .gx-calc-btn span { display: none; }
 .gx-cb-mini { width:110px; flex:none; }
 .gx-cb-minibar { height:6px; border-radius:99px; overflow:hidden; background:#3B1414; }
 .gx-cb-minibar i { display:block; height:100%; background:linear-gradient(90deg,#12B98A,#1FE3A4); }
+
+/* ===== COMBATE R2 (28-jul): producto paralelo — el eje del enfrentamiento ===== */
+/* sportbar: el conmutador de deporte bajo el header — cambia toda la plataforma */
+.gx-sportbar { display:flex; align-items:center; gap:8px; padding:8px 22px; border-bottom:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.014); }
+.gx-sport { display:inline-flex; align-items:center; gap:7px; padding:7px 16px; border-radius:99px; font-size:12.5px; font-weight:800; letter-spacing:.3px; background:transparent; border:1px solid transparent; color:#8EA1A7; cursor:pointer; transition:all .15s; }
+.gx-sport:hover:not(:disabled):not(.dim) { color:#E7F2EF; background:rgba(255,255,255,.05); }
+.gx-sport.on { color:#052018; background:#1FE3A4; border-color:#1FE3A4; box-shadow:0 0 22px -6px rgba(31,227,164,.55); }
+.gx-sport.dim, .gx-sport:disabled { opacity:.5; cursor:default; }
+.gx-sport-ico { font-size:14px; }
+.gx-sport-soon { font-size:9px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:2px 7px; border-radius:99px; background:rgba(255,255,255,.08); color:#8EA1A7; }
+@media (max-width:700px){ .gx-sportbar { padding:7px 12px; overflow-x:auto; scrollbar-width:none; } .gx-sport { white-space:nowrap; } }
+.gx-clgate.no { color:#FF7A7A; border:1px solid rgba(255,94,94,.4); background:rgba(255,94,94,.08); }
+/* contenido y grid del cockpit */
+.gx-cb-content { gap:14px; }
+.gx-cb-backrow { margin:-2px 0 2px; }
+.gx-cb-back { cursor:pointer; padding:5px 12px; }
+.gx-cb-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+@media (max-width:900px){ .gx-cb-grid { grid-template-columns:1fr; } }
+/* evento / cartelera */
+.gx-cb-event { padding:16px 18px; }
+.gx-cb-evhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.gx-cb-evhead b { font-size:15px; letter-spacing:-.2px; }
+.gx-cb-evhead .gx-dim { font-size:12px; }
+.gx-cb-cardlab { margin:14px 0 4px; }
+.gx-cb-hero.cp { padding:14px 16px; border:1px solid rgba(255,255,255,.06); border-radius:14px; }
+.gx-cb-analyze { padding:6px 14px; text-decoration:none; }
+.gx-cb-problab { color:var(--gx-ac,#1FE3A4); }
+.gx-cb-subline { font-size:11px; margin-top:4px; }
+.gx-cb-pickchip { margin-top:8px; }
+.gx-cb-f { text-decoration:none; color:inherit; display:block; border-radius:12px; padding:6px; transition:background .15s; }
+.gx-cb-f:hover { background:rgba(255,255,255,.03); }
+.gx-cb-ava.xl { width:128px; height:128px; font-size:34px; }
+.gx-cb-avapair { display:flex; flex:none; }
+.gx-cb-avapair .gx-cb-ava { width:34px; height:34px; font-size:12px; margin:0; }
+.gx-cb-avapair .gx-cb-ava + .gx-cb-ava { margin-left:-10px; }
+.gx-cb-vsi { font-style:normal; color:#5F747B; font-weight:600; font-size:11px; }
+.gx-cb-bout.lnk { text-decoration:none; color:inherit; cursor:pointer; border-radius:10px; padding-left:6px; padding-right:6px; margin:0 -6px; transition:background .15s; }
+.gx-cb-bout.lnk:hover { background:rgba(255,255,255,.035); }
+.gx-cb-mini .gx-mono { font-size:10.5px; }
+/* forma (dots) */
+.gx-cb-formdots { display:flex; gap:3px; justify-content:center; margin-top:5px; }
+.gx-cb-formdots i { width:7px; height:7px; border-radius:50%; }
+.gx-cb-formdots i.w { background:var(--gx-ac,#1FE3A4); }
+.gx-cb-formdots i.l { background:#FF5E5E; }
+/* método */
+.gx-cb-meth { margin-top:10px; display:flex; flex-direction:column; gap:4px; text-align:left; }
+.gx-cb-meth .gx-label { font-size:9.5px; text-align:center; }
+.gx-cb-meth.wide { max-width:430px; margin-top:12px; }
+.gx-cb-mrow { display:flex; align-items:center; gap:7px; }
+.gx-cb-mrow > span { width:30px; font-size:10px; text-align:right; color:#8EA1A7; font-weight:700; }
+.gx-cb-mrow > b { width:56px; font-size:10.5px; font-weight:700; }
+.gx-cb-mbar { flex:1; height:5px; border-radius:3px; background:rgba(255,255,255,.07); overflow:hidden; }
+.gx-cb-mbar i { display:block; height:100%; border-radius:3px; }
+.gx-cb-mbar i.ko { background:var(--gx-ac,#1FE3A4); }
+.gx-cb-mbar i.sub { background:#5aa7ff; }
+.gx-cb-mbar i.dec { background:#b98cff; }
+.gx-cb-methnote { font-size:10.5px; margin-top:2px; text-align:center; }
+/* tale of the tape — barras espejadas desde el centro (la firma) */
+.gx-cb-tape { display:flex; flex-direction:column; gap:2px; }
+.gx-cb-taperow { display:grid; grid-template-columns:52px 1fr 52px; align-items:center; gap:8px; padding:5px 0; }
+.gx-cb-taperow b { font-size:13px; font-weight:700; text-align:center; color:#B9C7CB; font-variant-numeric:tabular-nums; }
+.gx-cb-taperow b.lead { color:#E7F2EF; font-weight:800; }
+.gx-cb-tapebar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
+.gx-cb-tapebar span { font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:#5F747B; font-weight:800; white-space:nowrap; }
+.gx-cb-tapebar .l, .gx-cb-tapebar .r { height:5px; border-radius:3px; background:rgba(255,255,255,.05); overflow:hidden; display:flex; }
+.gx-cb-tapebar .l { justify-content:flex-end; }
+.gx-cb-tapebar .l i { display:block; height:100%; background:linear-gradient(270deg,#1FE3A4,#12B98A); border-radius:3px; }
+.gx-cb-tapebar .r i { display:block; height:100%; background:linear-gradient(90deg,#FF5E5E,#C23A3A); border-radius:3px; }
+/* inteligencia (red flags) */
+.gx-cb-flag { display:flex; gap:9px; align-items:flex-start; padding:8px 0; border-top:1px solid rgba(255,255,255,.05); font-size:12.5px; line-height:1.45; }
+.gx-cb-flag:first-child { border-top:0; }
+.gx-cb-flagdot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none; background:#F2C14E; box-shadow:0 0 10px rgba(242,193,78,.5); }
+.gx-cb-flag.hi .gx-cb-flagdot { background:#FF5E5E; box-shadow:0 0 10px rgba(255,94,94,.55); }
+.gx-cb-clean { padding:10px 0; font-size:12.5px; }
+/* últimas 5 */
+.gx-cb-rec5 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media (max-width:700px){ .gx-cb-rec5 { grid-template-columns:1fr; } }
+.gx-cb-rec5head { font-weight:800; font-size:12px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,.07); margin-bottom:4px; }
+.gx-cb-rec5head.gr { color:var(--gx-ac,#1FE3A4); }
+.gx-cb-rec5head.rd { color:#FF7A7A; }
+.gx-cb-rec5row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12px; }
+.gx-cb-rec5opp { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.gx-cb-rec5row .gx-mono { font-size:10.5px; }
+/* cuotas por casa */
+.gx-cb-bookrow { display:grid; grid-template-columns:1fr 74px 74px; gap:8px; padding:5px 0; font-size:12px; border-top:1px solid rgba(255,255,255,.04); align-items:center; }
+.gx-cb-bookrow:first-child { border-top:0; }
+.gx-cb-bookrow span { color:#8EA1A7; }
+.gx-cb-bookrow b { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; color:#B9C7CB; }
+.gx-cb-bookrow b.best { color:var(--gx-ac,#1FE3A4); font-weight:800; }
+.gx-cb-bookhead b { color:#5F747B; font-size:10px; letter-spacing:.6px; text-transform:uppercase; }
+/* directorio de peleadores */
+.gx-cb-dirctl { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.gx-cb-search { flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:9px 14px; }
+.gx-cb-search input { flex:1; background:none; border:0; outline:0; color:#E7F2EF; font-size:13.5px; }
+.gx-cb-select { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); border-radius:12px; color:#B9C7CB; font-size:12.5px; padding:9px 12px; outline:0; }
+.gx-cb-dirgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:12px; }
+.gx-cb-fcard { text-decoration:none; color:inherit; text-align:center; padding:16px 10px 14px; border:1px solid rgba(255,255,255,.07); border-radius:14px; background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,.008)); transition:all .16s; position:relative; overflow:hidden; }
+.gx-cb-fcard:hover { border-color:rgba(31,227,164,.4); transform:translateY(-2px); box-shadow:0 10px 26px -14px rgba(0,0,0,.7); }
+.gx-cb-ava.dir { width:74px; height:74px; font-size:20px; }
+.gx-cb-fcard-nm { font-weight:800; font-size:13px; margin-top:8px; letter-spacing:-.1px; display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; }
+.gx-cb-fcard-nick { font-size:10.5px; color:#8EA1A7; font-style:italic; }
+.gx-cb-fcard-meta { font-size:10.5px; color:#5F747B; margin-top:3px; }
+.gx-cb-fcard-stats { display:flex; justify-content:center; gap:12px; margin-top:6px; font-size:12px; font-weight:700; }
+.gx-cb-fcard-stats .elo { color:var(--gx-ac,#1FE3A4); font-weight:800; }
+.gx-cb-stk { font-size:9px; font-weight:800; padding:2px 6px; border-radius:99px; }
+.gx-cb-stk.w { background:rgba(31,227,164,.14); color:#1FE3A4; }
+.gx-cb-stk.l { background:rgba(255,94,94,.14); color:#FF7A7A; }
+/* perfil de peleador */
+.gx-cb-fphero { position:relative; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+.gx-cb-fpmain { flex:1; min-width:240px; }
+.gx-cb-fpname { font-size:24px; font-weight:800; letter-spacing:-.4px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.gx-cb-followbtn { font-size:11px; font-weight:800; padding:6px 14px; border-radius:99px; border:1px solid rgba(255,255,255,.16); background:transparent; color:#B9C7CB; cursor:pointer; transition:all .15s; }
+.gx-cb-followbtn:hover { border-color:rgba(31,227,164,.5); color:#1FE3A4; }
+.gx-cb-followbtn.on { background:rgba(31,227,164,.12); border-color:rgba(31,227,164,.5); color:#1FE3A4; }
+.gx-cb-tiles { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.gx-cb-tile { flex:1; min-width:86px; text-align:center; padding:10px 6px; border:1px solid rgba(255,255,255,.07); border-radius:10px; background:rgba(255,255,255,.015); }
+.gx-cb-tileval { font-size:18px; font-weight:800; color:var(--gx-ac,#1FE3A4); font-variant-numeric:tabular-nums; }
+.gx-cb-tileval.up { color:var(--gx-ac,#1FE3A4); }
+.gx-cb-tileval.down { color:#FF7A7A; }
+.gx-cb-tile .gx-label { font-size:9px; margin-top:3px; }
+.gx-cb-divchips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.gx-cb-histmeta { white-space:nowrap; font-size:10.5px; }
+.gx-cb-elochart { width:100%; height:auto; display:block; }
+.gx-cb-legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; }
+.gx-cb-legitem { display:flex; align-items:center; gap:6px; font-size:11.5px; text-decoration:none; color:#B9C7CB; }
+.gx-cb-legitem i { width:10px; height:3px; border-radius:2px; }
+.gx-cb-legitem .gx-cb-ava { width:22px; height:22px; font-size:9px; margin:0; }
+.gx-cb-legitem:hover { color:#E7F2EF; }
+/* simulador */
+.gx-cb-simgrid { display:grid; grid-template-columns:1fr 120px 1fr; gap:12px; align-items:stretch; }
+@media (max-width:700px){ .gx-cb-simgrid { grid-template-columns:1fr; } .gx-cb-simmid { order:-1; } }
+.gx-cb-simcorner { text-align:center; padding:18px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.07); position:relative; }
+.gx-cb-simcorner.gr { background:radial-gradient(220px 130px at 50% 0%, rgba(31,227,164,.08), transparent 70%); }
+.gx-cb-simcorner.rd { background:radial-gradient(220px 130px at 50% 0%, rgba(255,94,94,.08), transparent 70%); }
+.gx-cb-simcorner .gx-label { margin-bottom:10px; }
+.gx-cb-simcorner > button { position:absolute; top:10px; right:10px; cursor:pointer; }
+.gx-cb-simmid { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+.gx-cb-simmid button { cursor:pointer; }
+.gx-cb-simsearch { position:relative; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:9px 12px; }
+.gx-cb-simsearch input { flex:1; min-width:0; background:none; border:0; outline:0; color:#E7F2EF; font-size:13px; }
+.gx-cb-simres { position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:30; background:#0D1B17; border:1px solid rgba(255,255,255,.12); border-radius:12px; overflow:hidden; box-shadow:0 18px 44px -12px rgba(0,0,0,.8); }
+.gx-cb-simhit { display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; font-size:12.5px; text-align:left; }
+.gx-cb-simhit:hover { background:rgba(31,227,164,.08); }
+.gx-cb-simhit .gx-cb-ava { width:28px; height:28px; font-size:10px; margin:0; }
+.gx-cb-simhit span:nth-child(2) { flex:1; font-weight:600; }
+/* picks / oportunidades */
+.gx-cb-pick { display:block; text-decoration:none; color:inherit; padding:10px 6px; margin:0 -6px; border-top:1px solid rgba(255,255,255,.05); border-radius:10px; transition:background .15s; }
+.gx-cb-pick:first-child { border-top:0; }
+.gx-cb-pick:hover { background:rgba(255,255,255,.035); }
+.gx-cb-pickhead { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:13px; }
+.gx-cb-pickhead .gx-dim { font-size:11.5px; }
+.gx-cb-pickmeta { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; font-size:11.5px; flex-wrap:wrap; }
+.gx-cb-pickmeta .edge { color:var(--gx-ac,#1FE3A4); }
+.gx-cb-up { color:var(--gx-ac,#1FE3A4); }
+.gx-cb-down { color:#FF7A7A; }
+/* organizaciones */
+.gx-cb-orgsgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:14px; }
+.gx-cb-orgcard { padding:18px; }
+.gx-cb-orgcard.hist { opacity:.75; }
+.gx-cb-orghead { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.gx-cb-orghead b { font-size:18px; letter-spacing:-.3px; }
+.gx-cb-orgstats { display:flex; gap:16px; flex-wrap:wrap; font-size:11.5px; color:#8EA1A7; margin-bottom:10px; }
+.gx-cb-orgstats b { color:#E7F2EF; font-size:13px; }
+.gx-cb-orgnext { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid rgba(255,255,255,.07); border-radius:10px; background:rgba(31,227,164,.04); font-size:12.5px; margin-bottom:8px; }
+.gx-cb-orgnext .gx-dim { font-size:11px; }
+.gx-cb-orgtop { display:flex; align-items:center; gap:9px; padding:5px 0; text-decoration:none; color:inherit; font-size:12.5px; }
+.gx-cb-orgtop .gx-cb-ava { width:30px; height:30px; font-size:11px; margin:0; }
+.gx-cb-orgtop span { flex:1; font-weight:600; }
+.gx-cb-orgtop b { color:var(--gx-ac,#1FE3A4); }
+/* tiles del perf */
+.gx-cb-tiles.perf .gx-cb-tile { min-width:104px; }

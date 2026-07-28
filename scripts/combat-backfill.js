@@ -3,16 +3,20 @@
 //   Paso 1 (rápido):  scoreboard por año 1997→hoy → eventos + peleas (winners, rounds, weight class)
 //   Paso 2 (lento):   método de victoria por pelea (core status, 1 req/pelea, throttle educado)
 //   Paso 3 (lento):   perfiles de peleadores (bio: alcance/altura/stance/dob + headshot + récord)
-// Salida: data/combat/fights-ufc.json + fighters-ufc.json. Idempotente (done-sets); re-ejecutable.
-// Uso: node scripts/combat-backfill.js [--step=1|2|3|all] [--from=1997]
+// Salida: data/combat/fights-<suffix>.json + fighters-<suffix>.json. Idempotente (done-sets); re-ejecutable.
+// Uso: node scripts/combat-backfill.js [--step=1|2|3|all] [--from=1997] [--league=ufc] [--suffix=<league>]
+// F5 MMA (27-jul): --league acepta lista (bellator,pfl) y --suffix=mma mergea promociones en un dataset
+// (comp_ids únicos, athlete ids COMPARTIDOS entre ligas ESPN → Elo cross-promotion). Default = UFC idéntico.
 'use strict';
 const fs = require('fs');
 const path = require('path');
 
 const OUT = path.join(__dirname, '..', 'data', 'combat');
 fs.mkdirSync(OUT, { recursive: true });
-const FIGHTS_F = path.join(OUT, 'fights-ufc.json');
-const FIGHTERS_F = path.join(OUT, 'fighters-ufc.json');
+const LEAGUES = (process.argv.find(a => a.startsWith('--league=')) || '--league=ufc').split('=')[1].split(',');
+const SUFFIX = (process.argv.find(a => a.startsWith('--suffix=')) || ('--suffix=' + LEAGUES[0])).split('=')[1];
+const FIGHTS_F = path.join(OUT, `fights-${SUFFIX}.json`);
+const FIGHTERS_F = path.join(OUT, `fighters-${SUFFIX}.json`);
 const UA = 'Mozilla/5.0 (compatible; GPSimulador/1.0)';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const arg = (k, d) => { const m = process.argv.find(a => a.startsWith('--' + k + '=')); return m ? m.split('=')[1] : d; };
@@ -32,12 +36,12 @@ async function j(url, tries = 3) {
 }
 
 // ---------- Paso 1: eventos + peleas por año ----------
-async function step1(fromYear) {
+async function step1(fromYear, league) {
   const db = load(FIGHTS_F, { fights: [], events: {}, method_done: [] });
   const byId = new Set(db.fights.map(f => f.comp_id));
   const thisYear = new Date().getUTCFullYear();
   for (let y = fromYear; y <= thisYear; y++) {
-    const d = await j(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${y}0101-${y}1231&limit=200`);
+    const d = await j(`https://site.api.espn.com/apis/site/v2/sports/mma/${league}/scoreboard?dates=${y}0101-${y}1231&limit=200`);
     const evs = (d && d.events) || [];
     let added = 0;
     for (const e of evs) {
@@ -50,7 +54,7 @@ async function step1(fromYear) {
         const f2 = comp.find(x => x.order === 2) || comp[1];
         const st = c.status || {};
         db.fights.push({
-          comp_id: c.id, event_id: e.id, event: e.name, date: c.date || e.date,
+          comp_id: c.id, event_id: e.id, event: e.name, date: c.date || e.date, lg: league !== 'ufc' ? league : undefined,
           weight: (c.type || {}).abbreviation || null,
           rounds_sched: ((c.format || {}).regulation || {}).periods || null,
           f1: { id: f1.id, name: (f1.athlete || {}).displayName || null, winner: !!f1.winner },
@@ -77,7 +81,7 @@ async function step2() {
   let n = 0;
   for (const f of todo) {
     try {
-      const st = await j(`https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc/events/${f.event_id}/competitions/${f.comp_id}/status?lang=en`);
+      const st = await j(`https://sports.core.api.espn.com/v2/sports/mma/leagues/${f.lg || 'ufc'}/events/${f.event_id}/competitions/${f.comp_id}/status?lang=en`);
       const r = st && st.result;
       if (r) f.method = { id: r.id, name: r.name || null, display: r.displayName || null };
       done.add(f.comp_id);
@@ -129,7 +133,7 @@ async function step3() {
 (async () => {
   const step = arg('step', 'all');
   const from = parseInt(arg('from', '1997'), 10);
-  if (step === '1' || step === 'all') await step1(from);
+  if (step === '1' || step === 'all') for (const lg of LEAGUES) await step1(from, lg);
   if (step === '2' || step === 'all') await step2();
   if (step === '3' || step === 'all') await step3();
   console.log('[combat-backfill] FIN');

@@ -240,6 +240,11 @@ function methodProbs(mm, p1, id1, id2, weight, sched) {
     finish: +finish.toFixed(3),
     r_le: Object.fromEntries(Object.entries(rle).map(([r, v]) => [r, +v.toFixed(3)])), // P(termina en round ≤ r)
     exp_rounds: +expR.toFixed(2),
+    // R2c: probs ABSOLUTAS por ganador+método — el shape del mercado mma.winning_method de Cloudbet
+    by_winner: {
+      f1: { ko: +(p1 * m1.ko).toFixed(4), sub: +(p1 * m1.sub).toFixed(4), dec: +(p1 * m1.dec).toFixed(4) },
+      f2: { ko: +((1 - p1) * m2.ko).toFixed(4), sub: +((1 - p1) * m2.sub).toFixed(4), dec: +((1 - p1) * m2.dec).toFixed(4) },
+    },
   };
 }
 

@@ -6750,15 +6750,105 @@ async function combatRefreshUpcoming(C) {
     C.odds = (global._combatOdds || {}).list || C.odds || [];
   } catch { C.odds = C.odds || []; }
   C.upAt = Date.now();
+  try { await combatCloudbetRefresh(C); } catch { /* siguiente ciclo */ }
+}
+// ===== CLOUDBET COMO 2ª FUENTE (R2c, 28-jul): el Trading API cotiza mma (UFC+PFL+Oktagon) y boxing =====
+// con mma.winner + mma.totals(rounds) + mma.winning_method + winner_exact_rounds — TODO habilitado (verificado
+// 28-jul). Aporta: (a) una casa más al consenso h2h, (b) cuotas de PFL (Odds API no las tiene), (c) POR FIN un
+// mercado cotizado para los modelos de método/rounds ya validados. Memo 15min; educado (≤30 detalles/ciclo).
+async function combatCloudbetRefresh(C) {
+  const key = process.env.CLOUDBET_API_KEY || '';
+  if (!key) return;
+  const G = C.cbb = C.cbb || {};
+  if (G.at && Date.now() - G.at < 15 * 60e3) return;
+  G.at = Date.now(); // marca al inicio (si falla, reintenta al próximo ciclo de 15min, sin martillar)
+  const cbFetch = async (url) => { // Cloudbet rate-limita ráfagas → backoff y reintento (el 429 silencioso vació el cache de PFL)
+    for (let i = 0; i < 3; i++) {
+      try {
+        const r = await fetch(url, { headers: { 'X-API-Key': key }, signal: AbortSignal.timeout(15000) });
+        if (r.status === 429) { await new Promise(r2 => setTimeout(r2, 1600 * (i + 1))); continue; }
+        if (!r.ok) return null;
+        return await r.json();
+      } catch { await new Promise(r2 => setTimeout(r2, 900)); }
+    }
+    return null;
+  };
+  try {
+    const win = (C.upcoming || []).filter(e => { const d = Date.parse(e.date) - Date.now(); return d > -6 * 3600e3 && d < 14 * 24 * 3600e3; });
+    // ±1 día alrededor de cada cartelera: Cloudbet cataloga por SU día (UTC) y puede diferir del de ESPN
+    const days = [...new Set(win.flatMap(e => {
+      const t0 = Date.parse(e.date);
+      return [-1, 0, 1].map(k => new Date(t0 + k * 864e5).toISOString().slice(0, 10));
+    }))];
+    const cbEvents = [];
+    for (const d of days) {
+      const j = await cbFetch(`https://sports-api.cloudbet.com/pub/v2/odds/fixtures?sport=mma&date=${d}`);
+      for (const comp of (j && j.competitions) || []) for (const e of (comp.events || [])) {
+        if (e.home && e.away) cbEvents.push({ id: e.id, home: e.home.name, away: e.away.name });
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+    const byComp = {};
+    let fetched = 0;
+    for (const ev of win) for (const ft of ev.fights) {
+      if (fetched >= 30) break;
+      if (!ft.f1.id || !ft.f2.id) continue;
+      // match por nombres (regla matcher: puntaje sobre NUESTROS nombres, ambos lados o nada)
+      const cbe = cbEvents.find(x => {
+        const h = combatFighterByName(C, x.home), a = combatFighterByName(C, x.away);
+        return h && a && ((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id));
+      });
+      if (!cbe) continue;
+      const det = await cbFetch(`https://sports-api.cloudbet.com/pub/v2/odds/events/${cbe.id}`);
+      fetched++;
+      await new Promise(r => setTimeout(r, 400));
+      if (!det || !det.markets) continue;
+      const flip = combatFighterByName(C, cbe.home) === ft.f2.id; // cloudbet home = nuestro f2 → espejar
+      const sideKey = (s) => (s === 'home') === !flip ? 'f1' : 'f2';
+      const out = { event_id: cbe.id, f1: 0, f2: 0, method: {}, totals: [] };
+      const mw = det.markets['mma.winner'];
+      if (mw) for (const sm of Object.values(mw.submarkets || {})) for (const sel of (sm.selections || [])) {
+        if (sel.status !== 'SELECTION_ENABLED' || !(sel.price > 1)) continue;
+        out[sideKey(sel.outcome)] = sel.price;
+      }
+      const mm2 = det.markets['mma.winning_method'];
+      if (mm2) for (const sm of Object.values(mm2.submarkets || {})) for (const sel of (sm.selections || [])) {
+        if (sel.status !== 'SELECTION_ENABLED' || !(sel.price > 1)) continue;
+        const oc = decodeURIComponent(String(sel.outcome || '')).toLowerCase();
+        if (/draw/.test(oc)) { out.method.draw = sel.price; continue; }
+        const side = /\{\{home\}\}/.test(oc) ? sideKey('home') : /\{\{away\}\}/.test(oc) ? sideKey('away') : null;
+        const meth = /ko/.test(oc) ? 'ko' : /sub/.test(oc) ? 'sub' : /decision/.test(oc) ? 'dec' : null;
+        if (side && meth) out.method[side + '_' + meth] = sel.price;
+      }
+      const mt = det.markets['mma.totals'];
+      if (mt) for (const [smk, sm] of Object.entries(mt.submarkets || {})) {
+        const row = { line: null, over: 0, under: 0 };
+        const lm = String(smk).match(/total=([\d.]+)/);
+        if (lm) row.line = +lm[1];
+        for (const sel of (sm.selections || [])) {
+          if (sel.status !== 'SELECTION_ENABLED' || !(sel.price > 1)) continue;
+          if (row.line == null) { const pm2 = String(sel.params || '').match(/total=([\d.]+)/); if (pm2) row.line = +pm2[1]; }
+          if (/over/i.test(sel.outcome)) row.over = sel.price;
+          if (/under/i.test(sel.outcome)) row.under = sel.price;
+        }
+        if (row.line != null && row.over > 1 && row.under > 1) out.totals.push(row);
+      }
+      if (out.f1 > 1 || out.f2 > 1 || Object.keys(out.method).length || out.totals.length) byComp[ft.comp_id] = out;
+    }
+    G.byComp = byComp;
+    // NOTA operativa: eventos en PRE_TRADING vienen con 0 mercados (PFL abre trading cerca de la pelea) —
+    // no es un fallo; el ciclo de 15min los toma solos cuando coticen.
+    console.log('[combat-cloudbet]', C.org, 'days=' + days.length, 'events=' + cbEvents.length, 'matched=' + Object.keys(byComp).length);
+  } catch (e) { console.error('[combat-cloudbet]', e.message); }
 }
 // cuotas de UNA pelea: matchea el evento de Odds por AMBOS nombres; consenso no-vig = mediana del de-vig
-// 2-way por casa; mejor cuota por lado. Devuelve null si no matchea (o matchea con empate — regla matcher).
+// 2-way por casa; mejor cuota por lado; MERGEA Cloudbet como una casa más (R2c). Devuelve null si nada cotiza.
 function combatFightOdds(C, ft) {
+  const fairs = []; const best = { f1: 0, f2: 0, f1Book: null, f2Book: null };
   for (const o of (C.odds || [])) {
     const h = combatFighterByName(C, o.home_team), a = combatFighterByName(C, o.away_team);
     if (!h || !a) continue;
     if (!((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id))) continue;
-    const fairs = []; const best = { f1: 0, f2: 0, f1Book: null, f2Book: null };
     for (const bk of (o.bookmakers || [])) {
       const m = (bk.markets || []).find(x => x.key === 'h2h'); if (!m) continue;
       let oH = 0, oA = 0;
@@ -6774,12 +6864,20 @@ function combatFightOdds(C, ft) {
       if (o1 > best.f1) { best.f1 = o1; best.f1Book = bk.key; }
       if (o2 > best.f2) { best.f2 = o2; best.f2Book = bk.key; }
     }
-    if (!fairs.length) return null;
-    fairs.sort((x, y) => x - y);
-    const med = fairs.length % 2 ? fairs[(fairs.length - 1) / 2] : (fairs[fairs.length / 2 - 1] + fairs[fairs.length / 2]) / 2;
-    return { fair_f1: med, books: fairs.length, best };
+    break; // evento de Odds API encontrado
   }
-  return null;
+  // R2c: Cloudbet como una casa más (h2h) — clave para PFL, donde es LA única fuente
+  const cb = ((C.cbb || {}).byComp || {})[ft.comp_id];
+  if (cb && cb.f1 > 1 && cb.f2 > 1) {
+    const i1 = 1 / cb.f1, i2 = 1 / cb.f2;
+    fairs.push(i1 / (i1 + i2));
+    if (cb.f1 > best.f1) { best.f1 = cb.f1; best.f1Book = 'cloudbet'; }
+    if (cb.f2 > best.f2) { best.f2 = cb.f2; best.f2Book = 'cloudbet'; }
+  }
+  if (!fairs.length) return null;
+  fairs.sort((x, y) => x - y);
+  const med = fairs.length % 2 ? fairs[(fairs.length - 1) / 2] : (fairs[fairs.length / 2 - 1] + fairs[fairs.length / 2]) / 2;
+  return { fair_f1: med, books: fairs.length, best, cb: cb || null };
 }
 async function buildCombatPicks({ dryRun = false } = {}) {
   const out = { fights: 0, with_odds: 0, candidates: [], added: 0, superseded: 0, closing_updated: 0 };
@@ -6852,6 +6950,54 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       });
       out.candidates.push({ fight: ft.f1.name + ' vs ' + ft.f2.name, slot: ft.main ? 'main' : 'prelim', pick: pickName, model: +bestSide.m.toFixed(3), market: +bestSide.k.toFixed(3), edge_blend_pp: +bestSide.eg.toFixed(2), odds: bestSide.odds, books: mo.books });
     }
+    // ── R2c: METHOD y ROUNDS contra Cloudbet (los modelos validados por fin tienen mercado) — monitor puro,
+    // 1 fuente (de-vig del mercado completo), edge post-blend ≥2.5pp, cap 1 pick por familia por pelea.
+    for (const ft of ev.fights) {
+      const cb = ((C.cbb || {}).byComp || {})[ft.comp_id];
+      if (!cb || !ft.f1.id || !ft.f2.id) continue;
+      const pr2 = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const meth2 = CE.methodProbs(C.mm, pr2.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+      const mkBase = { slot: ft.main ? 'main' : 'prelim', ev, ft };
+      // METHOD
+      const me2 = cb.method || {};
+      const invM = Object.values(me2).reduce((a2, p3) => a2 + 1 / p3, 0);
+      if (invM > 0 && Object.keys(me2).length >= 4) {
+        let bestM = null;
+        for (const [k2, price] of Object.entries(me2)) {
+          if (k2 === 'draw') continue;
+          const [side2, mm3] = k2.split('_');
+          const model = ((meth2.by_winner || {})[side2] || {})[mm3];
+          if (model == null || !(price > 1)) continue;
+          const mkt = (1 / price) / invM;
+          const blend = 0.5 * model + 0.5 * mkt;
+          const eg2 = (blend - mkt) * 100;
+          if (eg2 >= 2.5 && (!bestM || eg2 > bestM.eg)) bestM = { k: k2, side: side2, meth: mm3, model, mkt, blend, eg: eg2, price };
+        }
+        if (bestM) cbPushDerivPick(fresh, out, org, mkBase, {
+          family: 'METHOD', selection_code: bestM.k,
+          selection_name: (bestM.side === 'f1' ? ft.f1.name : ft.f2.name) + ' · ' + (bestM.meth === 'ko' ? 'KO/TKO' : bestM.meth === 'sub' ? 'SUB' : 'DEC'),
+          model: bestM.model, mkt: bestM.mkt, blend: bestM.blend, eg: bestM.eg, odds: bestM.price, stable,
+        });
+      }
+      // ROUNDS
+      let bestR = null;
+      for (const t2 of (cb.totals || [])) {
+        const pOver = combatModelOverRounds(meth2, t2.line, ft.rounds || 3);
+        if (pOver == null) continue;
+        const iO = 1 / t2.over, iU = 1 / t2.under;
+        const mktO = iO / (iO + iU);
+        for (const [side3, model3, mkt3, price3] of [['over', pOver, mktO, t2.over], ['under', 1 - pOver, 1 - mktO, t2.under]]) {
+          const blend3 = 0.5 * model3 + 0.5 * mkt3;
+          const eg3 = (blend3 - mkt3) * 100;
+          if (eg3 >= 2.5 && (!bestR || eg3 > bestR.eg)) bestR = { side: side3, line: t2.line, model: model3, mkt: mkt3, blend: blend3, eg: eg3, price: price3 };
+        }
+      }
+      if (bestR) cbPushDerivPick(fresh, out, org, mkBase, {
+        family: 'ROUNDS', selection_code: bestR.side + '_' + bestR.line, side: bestR.side, line: bestR.line,
+        selection_name: (bestR.side === 'over' ? 'Over' : 'Under') + ' ' + bestR.line + ' rounds',
+        model: bestR.model, mkt: bestR.mkt, blend: bestR.blend, eg: bestR.eg, odds: bestR.price, stable,
+      });
+    }
   }
   // closing: última cuota/fair pre-pelea de cada pick ACTIVA del org (se congela sola al pasar el KO)
   for (const p of db.combatPicks) {
@@ -6861,6 +7007,24 @@ async function buildCombatPicksOrg(org, out, dryRun) {
     if (!ft) continue;
     const mo = combatFightOdds(C, ft);
     if (!mo) continue;
+    if (p.family === 'METHOD' || p.family === 'ROUNDS') {
+      const cbNow = ((C.cbb || {}).byComp || {})[p.event.canonical_event_id.replace(/^cb-/, '')];
+      if (!cbNow) continue;
+      if (p.family === 'METHOD') {
+        const price = (cbNow.method || {})[p.selection_code];
+        const invN = Object.values(cbNow.method || {}).reduce((a2, x2) => a2 + 1 / x2, 0);
+        if (price > 1 && invN > 0) { p.closing = { odds: price, fair: +((1 / price) / invN).toFixed(4), books: 1, at: new Date().toISOString() }; out.closing_updated++; }
+      } else {
+        const t3 = (cbNow.totals || []).find(x2 => x2.line === p.line);
+        if (t3) {
+          const price = p.side === 'over' ? t3.over : t3.under;
+          const iO = 1 / t3.over, iU = 1 / t3.under;
+          const fairS = p.side === 'over' ? iO / (iO + iU) : iU / (iO + iU);
+          if (price > 1) { p.closing = { odds: price, fair: +fairS.toFixed(4), books: 1, at: new Date().toISOString() }; out.closing_updated++; }
+        }
+      }
+      continue;
+    }
     const k = p.selection_code === 'f1' ? mo.fair_f1 : 1 - mo.fair_f1;
     const odds = mo.best[p.selection_code];
     if (odds > 1) { p.closing = { odds, fair: +k.toFixed(4), books: mo.books, at: new Date().toISOString() }; out.closing_updated++; }
@@ -6869,14 +7033,14 @@ async function buildCombatPicksOrg(org, out, dryRun) {
   const byId = new Set(db.combatPicks.map(p => p.pick_id));
   for (const p of fresh) {
     if (byId.has(p.pick_id)) continue;
-    // anti-contradicción: 1 ACTIVE por pelea — CONGELADA a ≤15min del KO (regla del freeze de clubes)
+    // anti-contradicción: 1 ACTIVE por (pelea, FAMILIA) — CONGELADA a ≤15min del KO (regla del freeze)
     for (const old of db.combatPicks) {
-      if (old.status === 'ACTIVE' && old.event.canonical_event_id === p.event.canonical_event_id
+      if (old.status === 'ACTIVE' && (old.family || 'FIGHT') === (p.family || 'FIGHT') && old.event.canonical_event_id === p.event.canonical_event_id
         && Date.parse(old.event.kickoff_at || 0) > now + 15 * 60e3) {
         old.status = 'SETTLED'; old.result_code = 'SUPERSEDED'; old.settled_at = new Date().toISOString(); out.superseded++;
       }
     }
-    const frozen = db.combatPicks.some(o => o.status === 'ACTIVE' && o.event.canonical_event_id === p.event.canonical_event_id);
+    const frozen = db.combatPicks.some(o => o.status === 'ACTIVE' && (o.family || 'FIGHT') === (p.family || 'FIGHT') && o.event.canonical_event_id === p.event.canonical_event_id);
     if (frozen) continue; // la vieja quedó congelada cerca del KO → no se contradice
     db.combatPicks.push(p); out.added++;
   }
@@ -6900,10 +7064,23 @@ async function settleCombatPicks() {
         const done = ((c.status || {}).type || {}).completed;
         if (!done) continue;
         const win = (c.competitors || []).find(x => x.winner);
-        results[c.id] = { winner_id: win ? win.id : null }; // completed sin winner = NC/draw
+        results[c.id] = { winner_id: win ? win.id : null, event_id: e.id, period: (c.status || {}).period || null, clock: (c.status || {}).displayClock || null };
       }
     }
   } catch { return { settled: 0, error: 'scoreboard' }; }
+  const clockMin2 = (c2) => { const m2 = String(c2 || '').match(/(\d+):(\d+)/); return m2 ? (+m2[1] + +m2[2] / 60) : 0; };
+  const methodCache = {};
+  const fetchMethod = async (p2, r2) => { // resultado fino (KO/Sub/Dec) del core API — pocas llamadas, solo pendientes
+    const compId2 = p2.event.canonical_event_id.replace(/^cb-/, '');
+    if (methodCache[compId2] !== undefined) return methodCache[compId2];
+    const lg2 = COMBAT_ORGS[p2.league || 'ufc'] ? COMBAT_ORGS[p2.league || 'ufc'].upcoming : 'ufc';
+    const evId = p2.event.espn_event_id || (r2 && r2.event_id);
+    if (!evId) return (methodCache[compId2] = null);
+    try {
+      const st2 = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/leagues/${lg2}/events/${evId}/competitions/${compId2}/status?lang=en`, { signal: AbortSignal.timeout(12000) }).then(x => x.json());
+      return (methodCache[compId2] = (st2 && st2.result) || null);
+    } catch { return (methodCache[compId2] = null); }
+  };
   for (const p of pend) {
     const compId = p.event.canonical_event_id.replace(/^cb-/, '');
     const r = results[compId];
@@ -6916,7 +7093,28 @@ async function settleCombatPicks() {
     };
     if (r) {
       if (!r.winner_id) { finish('VOID', 0); out.void++; }
-      else {
+      else if (p.family === 'METHOD') {
+        const res2 = await fetchMethod(p, r);
+        const mc = require('./combat-engine/ratings').methodClass(res2 || {});
+        if (!mc) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; } }
+        else {
+          const [side4, meth4] = p.selection_code.split('_');
+          const pickedId = side4 === 'f1' ? p.event.home_id : p.event.away_id;
+          const winOk = String(r.winner_id) === String(pickedId) && mc === meth4;
+          if (winOk) { finish('WIN', p.best_odds - 1); out.won++; } else { finish('LOSS', -1); out.lost++; }
+        }
+      } else if (p.family === 'ROUNDS') {
+        const res2 = await fetchMethod(p, r);
+        const mc = require('./combat-engine/ratings').methodClass(res2 || {});
+        if (!mc && !r.period) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; } }
+        else {
+          const sched2 = (p.event.rounds || 3) * 5;
+          const elapsed = mc === 'dec' ? sched2 : ((r.period || 1) - 1) * 5 + clockMin2(r.clock);
+          const overWon = elapsed > p.line * 5;
+          const winOk = (p.side === 'over') === overWon;
+          if (winOk) { finish('WIN', p.best_odds - 1); out.won++; } else { finish('LOSS', -1); out.lost++; }
+        }
+      } else {
         const pickedId = p.selection_code === 'f1' ? p.event.home_id : p.event.away_id;
         if (String(r.winner_id) === String(pickedId)) { finish('WIN', p.best_odds - 1); out.won++; }
         else { finish('LOSS', -1); out.lost++; }
@@ -6925,6 +7123,42 @@ async function settleCombatPicks() {
   }
   if (out.settled) save();
   return out;
+}
+// pick derivada de combate (METHOD/ROUNDS): mismo registro del monitor, cuota única de Cloudbet
+function cbPushDerivPick(fresh, out, org, { slot, ev, ft }, d) {
+  const kel = Math.max(0, (d.blend * (d.odds - 1) - (1 - d.blend)) / (d.odds - 1)) / 4;
+  const whyPair = {
+    es: `Modelo de ${d.family === 'METHOD' ? 'método' : 'rounds'} (validado walk-forward) da ${Math.round(d.model * 100)}% contra ${Math.round(d.mkt * 100)}% del mercado de Cloudbet — +${d.eg.toFixed(1)}pp post-blend. Mercado de 1 casa (de-vig del mercado completo): pick de MONITOR para validar la familia.`,
+    en: `${d.family === 'METHOD' ? 'Method' : 'Rounds'} model (walk-forward validated) makes it ${Math.round(d.model * 100)}% vs ${Math.round(d.mkt * 100)}% on Cloudbet's market — +${d.eg.toFixed(1)}pp post-blend. Single-book market (full-market de-vig): MONITOR pick to validate the family.`,
+  };
+  fresh.push({
+    pick_id: d.stable('cb-' + ft.comp_id + '|' + d.family + '|' + d.selection_code),
+    sport: 'combat', family: d.family, league: org,
+    gate_status: 'shadow', regime: 'monitor',
+    card_slot: slot, league_band: slot === 'main' ? 'eficiente' : 'blanda',
+    competition_name: ev.name,
+    event: { canonical_event_id: 'cb-' + ft.comp_id, espn_event_id: ev.id, home: ft.f1.name, away: ft.f2.name, home_id: ft.f1.id, away_id: ft.f2.id, kickoff_at: ev.date, weight: ft.weight, rounds: ft.rounds || 3 },
+    selection_code: d.selection_code, selection_name: d.selection_name, side: d.side || null, line: d.line != null ? d.line : null,
+    best_odds: d.odds, best_book: 'cloudbet', books: 1,
+    model_prob: +d.model.toFixed(4), market_prob: +d.mkt.toFixed(4), blend_prob: +d.blend.toFixed(4),
+    edge_pp: +((d.model - d.mkt) * 100).toFixed(2), edge_blend_pp: +d.eg.toFixed(2),
+    stake_pct: kel > 0 ? +Math.min(3, Math.max(0.25, kel * 100)).toFixed(1) : null,
+    why_es: whyPair.es, why_en: whyPair.en,
+    opening: null, closing: null,
+    status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
+  });
+  out.candidates.push({ fight: ft.f1.name + ' vs ' + ft.f2.name, slot, family: d.family, pick: d.selection_name, model: +d.model.toFixed(3), market: +d.mkt.toFixed(3), edge_blend_pp: +d.eg.toFixed(2), odds: d.odds, books: 1 });
+}
+// P(over LINE rounds) del modelo: r_le[r]=P(termina en round<=r); línea X.5 = mitad del round X+1 →
+// interpolación uniforme dentro del round (aproximación documentada; suficiente para monitor).
+function combatModelOverRounds(method, line, sched) {
+  const rle = (method || {}).r_le; if (!rle || line == null) return null;
+  const x = Math.floor(line);
+  const cumX = x <= 0 ? 0 : (rle[Math.min(x, sched)] || 0);
+  const cumX1 = rle[Math.min(x + 1, sched)] != null ? rle[Math.min(x + 1, sched)] : (method.finish || 0);
+  const frac = line - x; // .5 típico
+  const pEndBefore = cumX + (cumX1 - cumX) * frac;
+  return Math.max(0, Math.min(1, 1 - pEndBefore));
 }
 // narrativa de la pick de combate (mismo espíritu del compose del fútbol: el "por qué" al nivel de analista)
 function combatPickWhy({ name, rival, m, k, eg, books, slot }) {
@@ -10174,7 +10408,27 @@ const server = http.createServer(async (req, res) => {
           }
           break;
         }
+        if (mo && mo.cb && mo.cb.f1 > 1 && mo.cb.f2 > 1) books.push({ book: 'cloudbet', f1: mo.cb.f1, f2: mo.cb.f2 });
         books.sort((x, y) => y.f1 - x.f1);
+        // R2c: mercados de MÉTODO y ROUNDS de Cloudbet, comparados contra el modelo (de-vig del mercado completo)
+        let cbMarkets = null;
+        if (mo && mo.cb && (Object.keys(mo.cb.method || {}).length || (mo.cb.totals || []).length)) {
+          cbMarkets = { method: null, totals: [] };
+          const me = mo.cb.method || {};
+          const inv = Object.values(me).reduce((a, p2) => a + 1 / p2, 0);
+          if (inv > 0 && Object.keys(me).length >= 4) {
+            cbMarkets.method = Object.entries(me).map(([k, price]) => {
+              const [side2, meth] = k === 'draw' ? ['draw', null] : k.split('_');
+              const model = k === 'draw' ? 0 : ((method.by_winner || {})[side2] || {})[meth];
+              return { key: k, name: k === 'draw' ? 'Draw' : (side2 === 'f1' ? ft.f1.name : ft.f2.name) + ' · ' + meth.toUpperCase(), price, market: +((1 / price) / inv).toFixed(4), model: model != null ? +model : null };
+            }).sort((a2, b2) => (b2.model || 0) - (a2.model || 0));
+          }
+          for (const t2 of (mo.cb.totals || [])) {
+            const pOver = combatModelOverRounds(method, t2.line, ft.rounds || 3);
+            const iO = 1 / t2.over, iU = 1 / t2.under;
+            cbMarkets.totals.push({ line: t2.line, over: t2.over, under: t2.under, market_over: +(iO / (iO + iU)).toFixed(4), model_over: pOver != null ? +pOver.toFixed(4) : null });
+          }
+        }
         // historial entre ellos (h2h) + forma reciente de cada uno
         const h2h = (C.fights.fights || []).filter(f => f.completed && ((f.f1.id === ft.f1.id && f.f2.id === ft.f2.id) || (f.f1.id === ft.f2.id && f.f2.id === ft.f1.id)) && (f.f1.winner || f.f2.winner))
           .map(f => ({ date: f.date, event: f.event, winner_id: f.f1.winner ? f.f1.id : f.f2.id, method: (f.method || {}).display || null, round: f.end_round || null }));
@@ -10186,7 +10440,7 @@ const server = http.createServer(async (req, res) => {
           event: { id: ev.id, name: ev.name, date: ev.date }, fight: { ...ft, main: ft.main },
           prob: pr, method,
           market: mo ? { f1: +mo.fair_f1.toFixed(3), f2: +(1 - mo.fair_f1).toFixed(3), books: mo.books, best: mo.best } : null,
-          books: books.slice(0, 20),
+          books: books.slice(0, 22), cb_markets: cbMarkets,
           tale: { f1: combatFighterSummary(C, ft.f1.id), f2: combatFighterSummary(C, ft.f2.id) },
           intel: combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft)), // computadas + noticias del observer
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
@@ -10232,10 +10486,10 @@ const server = http.createServer(async (req, res) => {
             for (const [side, fair, model, odds] of [['f1', mo.fair_f1, pr.p1, mo.best.f1], ['f2', 1 - mo.fair_f1, 1 - pr.p1, mo.best.f2]]) {
               if (!(odds > 1)) continue;
               const evPct = (odds * fair - 1) * 100; // valor de COMPRA vs consenso no-vig (line shopping)
-              if (evPct >= 2) value.push({ comp_id: ft.comp_id, event: ev.name, date: ev.date, fight: ft.f1.name + ' vs ' + ft.f2.name, side, name: side === 'f1' ? ft.f1.name : ft.f2.name, odds, book: mo.best[side + 'Book'], fair: +fair.toFixed(3), model: +model.toFixed(3), ev_pct: +evPct.toFixed(2), books: mo.books });
+              if (evPct >= 2) value.push({ comp_id: ft.comp_id, event: ev.name, date: ev.date, fight: ft.f1.name + ' vs ' + ft.f2.name, side, name: side === 'f1' ? ft.f1.name : ft.f2.name, head: (C.fighters[side === 'f1' ? ft.f1.id : ft.f2.id] || {}).headshot || null, odds, book: mo.best[side + 'Book'], fair: +fair.toFixed(3), model: +model.toFixed(3), ev_pct: +evPct.toFixed(2), books: mo.books });
             }
             const inv = 1 / mo.best.f1 + 1 / mo.best.f2;
-            if (mo.best.f1 > 1 && mo.best.f2 > 1 && inv < 1) arbs.push({ comp_id: ft.comp_id, event: ev.name, date: ev.date, fight: ft.f1.name + ' vs ' + ft.f2.name, f1: { odds: mo.best.f1, book: mo.best.f1Book }, f2: { odds: mo.best.f2, book: mo.best.f2Book }, profit_pct: +((1 / inv - 1) * 100).toFixed(2) });
+            if (mo.best.f1 > 1 && mo.best.f2 > 1 && inv < 1) arbs.push({ comp_id: ft.comp_id, event: ev.name, date: ev.date, fight: ft.f1.name + ' vs ' + ft.f2.name, f1: { name: ft.f1.name, head: (C.fighters[ft.f1.id] || {}).headshot || null, odds: mo.best.f1, book: mo.best.f1Book }, f2: { name: ft.f2.name, head: (C.fighters[ft.f2.id] || {}).headshot || null, odds: mo.best.f2, book: mo.best.f2Book }, profit_pct: +((1 / inv - 1) * 100).toFixed(2) });
           }
         }
         value.sort((a, b) => b.ev_pct - a.ev_pct);
@@ -10315,7 +10569,8 @@ const server = http.createServer(async (req, res) => {
           const s = dry ? null : await settleCombatPicks();
           return json(res, 200, { enabled: combatPicksOn(), build: b, settle: s, track: combatPicksTrack() });
         }
-        return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length });
+        const cbDbg = {}; for (const o2 of Object.keys(COMBAT_ORGS)) { const Cx = (global._combat || {})[COMBAT_ORGS[o2].file]; cbDbg[o2] = Cx && Cx.cbb ? { at: Cx.cbb.at ? new Date(Cx.cbb.at).toISOString() : null, fights: Object.keys(Cx.cbb.byComp || {}).length } : null; }
+        return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length, cloudbet: cbDbg });
       } catch (e) { return json(res, 200, { error: e.message }); }
     }
     // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,

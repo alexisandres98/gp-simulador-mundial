@@ -1526,3 +1526,5 @@ td .gx-calc-btn span { display: none; }
 .gx-pick-cbava.rd { background:#3B1414; border-color:rgba(255,94,94,.45); }
 .gx-pick-cbava img { width:100%; height:100%; object-fit:cover; object-position:top; }
 .gx-pod-label { margin-bottom:6px; color:var(--gx-ac,#1FE3A4); }
+/* R2c: panel modelo-vs-mercado — columna de mercado más ancha */
+.gx-cb-books.mkt .gx-cb-bookrow { grid-template-columns:1fr 64px minmax(150px,auto); }

@@ -245,6 +245,7 @@
       cb_evo_top: 'La élite en el tiempo', cb_evo_up: 'En ascenso', cb_evo_down: 'En caída', cb_evo_12m: 'últimos 12 meses',
       cb_follow_none: 'Todavía no seguís a ningún peleador. Entrá a un perfil y tocá ★ Seguir.', cb_follow_btn: 'Seguir', cb_following: '★ Siguiendo', cb_next_fight: 'Próxima pelea',
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
+      pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · modelo vs mercado', cb_mkt_model: 'Modelo', cb_mkt_market: 'Mercado', cb_mkt_src: 'precios Cloudbet (de-vig del mercado completo)',
       tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
       tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
       tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
@@ -572,6 +573,7 @@
       cb_evo_top: 'The elite over time', cb_evo_up: 'Rising', cb_evo_down: 'Falling', cb_evo_12m: 'last 12 months',
       cb_follow_none: 'You are not following any fighter yet. Open a profile and tap ★ Follow.', cb_follow_btn: 'Follow', cb_following: '★ Following', cb_next_fight: 'Next fight',
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
+      pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · model vs market', cb_mkt_model: 'Model', cb_mkt_market: 'Market', cb_mkt_src: 'Cloudbet prices (full-market de-vig)',
       tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
       tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
       tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
@@ -1563,6 +1565,7 @@
       return l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line });
     }).join(' ' + t('pf_combo_and') + ' ');
     if (p.family === 'FIGHT') return t('pf_wins', { team: p.selection_name || '' });
+    if (p.family === 'METHOD' || p.family === 'ROUNDS') return p.selection_name || '';
     if (p.family === 'CORNERS') return t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line });
     if (p.family === 'CARDS') return t(p.side === 'over' ? 'pf_over_cards' : 'pf_under_cards', { line: p.line });
     if (p.family === 'PLAYER') {
@@ -1596,7 +1599,7 @@
 
   function pickCard(p, opts) {
     opts = opts || {};
-    var famKey = (p.family === 'SOLID' || p.family === 'FIGHT') ? 'pf_fam_solid' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
+    var famKey = (p.family === 'SOLID' || p.family === 'FIGHT') ? 'pf_fam_solid' : p.family === 'METHOD' ? 'pf_fam_method' : p.family === 'ROUNDS' ? 'pf_fam_rounds' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
     var bucket = confBucket(p.confidence || 0);
     var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
     var hh = teamName(p.home_team_id, p.home), aa = teamName(p.away_team_id, p.away);
@@ -5720,8 +5723,10 @@
     var sb3 = e.target.closest('[data-cbsub]'); if (sb3) { S.cb.oppSub = sb3.getAttribute('data-cbsub'); renderCb('cbopps'); return; }
   }
   function renderCb(v) {
-    if (S.me === undefined) { cbShell(t('cb_title'), mvLoading()); return; } // carrera S.me con hash directo (patrón #perf)
-    if (!(S.me && S.me.isAdmin)) { showView('board'); return; }
+    // carrera S.me con hash directo (patrón #perf): S.me arranca NULL (no undefined) hasta que /api/me llega —
+    // esperar, no redirigir (el handler de llegada de me re-renderiza las vistas CB)
+    if (!S.me) { cbShell(t('cb_title'), mvLoading()); return; }
+    if (!S.me.isAdmin) { showView('board'); return; }
     if (v === 'cbopps') renderCbOpps();
     else if (v === 'cbfights') renderCbFights();
     else if (v === 'cbfight') renderCbFight();
@@ -5837,7 +5842,21 @@
       d.books.map(function (b) {
         return '<div class="gx-cb-bookrow"><span>' + esc(b.book) + '</span><b class="' + (b.f1 === bestF1 ? 'best' : '') + '">' + b.f1.toFixed(2) + '</b><b class="' + (b.f2 === bestF2 ? 'best' : '') + '">' + b.f2.toFixed(2) + '</b></div>';
       }).join('') + '</div></div>' : '';
-    cbShell(t('cb_fights_title'), evline + hero + '<div class="gx-cb-grid">' + tape + intel + recent + h2h + books + '</div>', { back: 'cbfights' });
+    // R2c: método y rounds — modelo vs mercado (cuando Cloudbet cotiza la pelea)
+    var cbm = '';
+    if (d.cb_markets && (d.cb_markets.method || (d.cb_markets.totals || []).length)) {
+      var mrows = (d.cb_markets.method || []).filter(function (m2) { return m2.key !== 'draw'; }).map(function (m2) {
+        var eg2 = m2.model != null ? (m2.model - m2.market) * 100 : null;
+        return '<div class="gx-cb-bookrow"><span>' + esc(m2.name) + '</span><b>' + (m2.model != null ? Math.round(m2.model * 100) + '%' : '—') + '</b><b>' + Math.round(m2.market * 100) + '% · @' + Number(m2.price).toFixed(2) + (eg2 != null && eg2 >= 2 ? ' <i class="gx-pos" style="font-style:normal">+' + eg2.toFixed(1) + 'pp</i>' : '') + '</b></div>';
+      }).join('');
+      var trows = (d.cb_markets.totals || []).map(function (t2) {
+        var egO = t2.model_over != null ? (t2.model_over - t2.market_over) * 100 : null;
+        return '<div class="gx-cb-bookrow"><span>O/U ' + t2.line + ' rounds</span><b>' + (t2.model_over != null ? Math.round(t2.model_over * 100) + '%' : '—') + '</b><b>' + Math.round(t2.market_over * 100) + '% · @' + Number(t2.over).toFixed(2) + '/' + Number(t2.under).toFixed(2) + (egO != null && Math.abs(egO) >= 2 ? ' <i class="' + (egO > 0 ? 'gx-pos' : 'gx-dim') + '" style="font-style:normal">' + (egO > 0 ? '+' : '') + egO.toFixed(1) + 'pp</i>' : '') + '</b></div>';
+      }).join('');
+      cbm = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_mkt_panel')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_mkt_src')) + '</span></div><div class="gx-mod-body gx-cb-books mkt">' +
+        '<div class="gx-cb-bookrow gx-cb-bookhead"><span></span><b>' + esc(t('cb_mkt_model')) + '</b><b>' + esc(t('cb_mkt_market')) + '</b></div>' + mrows + trows + '</div></div>';
+    }
+    cbShell(t('cb_fights_title'), evline + hero + '<div class="gx-cb-grid">' + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
   }
   function inchesNum(s) { if (!s) return null; var m = String(s).match(/(\d+)'\s*(\d+)?/); if (m) return (+m[1]) * 12 + (+(m[2] || 0)); var n = String(s).match(/([\d.]+)/); return n ? +n[1] : null; }
   function cbTapeRow(label, v1, v2, fmt) {
@@ -6024,7 +6043,7 @@
     }
     var eg = p2.edge_blend_pp != null ? Number(p2.edge_blend_pp) : null;
     return {
-      family: 'FIGHT', selection_name: p2.selection_name,
+      family: p2.family || 'FIGHT', selection_name: p2.selection_name,
       competition_name: (org2 === 'mma' ? 'PFL / MMA' : 'UFC') + (p2.card_slot === 'main' ? ' · Main event' : ''),
       kickoff: p2.event.kickoff_at, home: p2.event.home, away: p2.event.away,
       home_team_id: null, away_team_id: null, cb_avas: avas,
@@ -6084,18 +6103,19 @@
       vals.sort(function (a, b) { return b.edgePp - a.edgePp; });
       if (!vals.length) inner = '<div class="gx-panel gx-board"><div class="gx-mod-body"><div class="gx-empty">' + ic('trending-up') + '<b>' + esc(t('opp_value_empty')) + '</b>' + esc(t('opp_value_empty_sub')) + '</div></div></div>';
       else {
+        var cbFl = function (head) { return '<span class="fl">' + (head ? '<img class="clx" src="' + esc(head) + '" alt="" style="border-radius:50%;object-position:top" onerror="this.remove()">' : '') + '</span>'; };
         var desk = '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th>GP</th><th>' + esc(t('hero_mkt')) + '</th><th>' + esc(t('th_price')) + '</th><th>' + esc(t('th_edge')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="l">' + esc(t('col_provider')) + '</th></tr></thead><tbody>' +
-          vals.map(function (x) { var v2 = x.v; return '<tr class="gx-pick-clickable" data-openhash="cbfight/' + esc(cbOrg()) + '-' + esc(v2.comp_id) + '">' +
-            '<td class="l"><b>' + esc(v2.name) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(v2.fight) + '</div></td>' +
-            '<td class="l">' + (sigBadge(x.cls) || '') + '</td>' +
-            '<td class="gx-mono">' + Math.round(v2.model * 100) + '%</td><td class="gx-mono">' + Math.round(v2.fair * 100) + '%</td>' +
-            '<td class="gx-mono">' + Number(v2.odds).toFixed(2) + '</td>' +
-            '<td class="gx-mono ' + (x.edgePp > 0 ? 'gx-pos' : 'gx-dim') + '">' + (x.edgePp >= 0 ? '+' : '') + x.edgePp.toFixed(1) + 'pp</td>' +
+          vals.map(function (x) { var v2 = x.v; return '<tr class="gx-row gx-pick-clickable" data-openhash="cbfight/' + esc(cbOrg()) + '-' + esc(v2.comp_id) + '">' +
+            '<td class="l"><div class="gx-cell-team">' + cbFl(v2.head) + '<div class="gx-teamnames"><b>' + esc(v2.name) + '</b><span>' + esc(v2.fight) + ' · ' + esc(cbOrgLab()) + '</span></div></div></td>' +
+            '<td class="l">' + (sigBadge(x.cls) || '—') + '</td>' +
+            '<td class="gx-mono gx-gp"><span class="hi">' + pct0(v2.model) + '</span></td><td class="gx-mono gx-dim">' + pct0(v2.fair) + '</td>' +
+            '<td class="gx-mono gx-best"><span class="hi">' + odd(v2.odds) + '</span></td>' +
+            '<td class="gx-edge ' + (x.edgePp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(x.edgePp / 100) + '</td>' +
             '<td class="l">' + (v2.ev_pct >= 2 ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(t('opp_watch_only')) + '</span>') + '</td>' +
             '<td class="l gx-dim" style="font-size:11px">' + bookLogo(v2.book) + esc(prettyBook(v2.book) || '—') + (v2.model > 0 && v2.odds > 1 ? ' ' + stakeCalcBtn(v2.model, Number(v2.odds), v2.name + ' · ' + v2.fight, 'gp') : '') + '</td></tr>'; }).join('') + '</tbody></table>';
         var mob = vals.map(function (x) { var v2 = x.v; return '<div class="gx-mcard" data-openhash="cbfight/' + esc(cbOrg()) + '-' + esc(v2.comp_id) + '"><div class="gx-mcard-top">' + (sigBadge(x.cls) || '') + '<span class="gx-spacer"></span>' + (v2.ev_pct >= 2 ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '') + '</div>' +
-          '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames"><b>' + esc(v2.name) + '</b><span>' + esc(v2.fight) + '</span></div></div>' +
-          '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + Math.round(v2.model * 100) + '% · ' + esc(t('th_price')) + ' ' + Number(v2.odds).toFixed(2) + '</span><span class="gx-edge ' + (x.edgePp > 0 ? 'gx-pos' : 'gx-dim') + '">' + (x.edgePp >= 0 ? '+' : '') + x.edgePp.toFixed(1) + 'pp</span></div>' +
+          '<div class="gx-cell-team" style="margin:6px 0">' + cbFl(v2.head) + '<div class="gx-teamnames"><b>' + esc(v2.name) + '</b><span>' + esc(v2.fight) + ' · ' + esc(cbOrgLab()) + '</span></div></div>' +
+          '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v2.model) + ' · ' + esc(t('th_price')) + ' ' + odd(v2.odds) + '</span><span class="gx-edge ' + (x.edgePp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(x.edgePp / 100) + '</span></div>' +
           (v2.model > 0 && v2.odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v2.model, Number(v2.odds), v2.name + ' · ' + v2.fight, 'gp') + '</div>' : '') + '</div>'; }).join('');
         inner = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('board')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_value_sub')) + '</span></div><div class="gx-mod-body"><div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div></div></div>';
       }
@@ -6109,10 +6129,10 @@
         var stake1 = Math.round(100 / a2.f1.odds / (1 / a2.f1.odds + 1 / a2.f2.odds));
         return '<div class="gx-arb-card gx-arb-exe gx-pick-clickable" data-openhash="cbfight/' + esc(cbOrg()) + '-' + esc(a2.comp_id) + '">' +
           '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span><span class="gx-pick-time">' + esc(cbOrgLab()) + ' · ' + esc(cbWhen(a2.date)) + '</span></div>' +
-          '<div class="gx-arb-match"><b>' + esc(a2.fight) + '</b></div>' +
+          '<div class="gx-arb-match"><span class="fl">' + (a2.f1.head ? '<img class="clx" src="' + esc(a2.f1.head) + '" alt="" style="border-radius:50%;object-position:top" onerror="this.remove()">' : '') + '</span><b>' + esc(a2.fight) + '</b><span class="fl">' + (a2.f2.head ? '<img class="clx" src="' + esc(a2.f2.head) + '" alt="" style="border-radius:50%;object-position:top" onerror="this.remove()">' : '') + '</span></div>' +
           '<div class="gx-arb-legs">' +
-            '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(a2.fight.split(' vs ')[0]) + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(a2.f1.odds).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(a2.f1.book) + esc(prettyBook(a2.f1.book)) + '</span><span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + stake1 + '%</span></div>' +
-            '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(a2.fight.split(' vs ')[1] || '') + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(a2.f2.odds).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(a2.f2.book) + esc(prettyBook(a2.f2.book)) + '</span><span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + (100 - stake1) + '%</span></div>' +
+            '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(a2.f1.name || a2.fight.split(' vs ')[0]) + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(a2.f1.odds).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(a2.f1.book) + esc(prettyBook(a2.f1.book)) + '</span><span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + stake1 + '%</span></div>' +
+            '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(a2.f2.name || a2.fight.split(' vs ')[1] || '') + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(a2.f2.odds).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(a2.f2.book) + esc(prettyBook(a2.f2.book)) + '</span><span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + (100 - stake1) + '%</span></div>' +
           '</div>' +
           '<div class="gx-pick-foot"><div class="gx-arb-roi gx-pos">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + a2.profit_pct + '%</b></div></div></div>';
       }).join('') + '</div></div>';

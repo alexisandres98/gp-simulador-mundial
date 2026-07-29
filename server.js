@@ -6884,6 +6884,11 @@ function combatFighterSummary(C, id) {
     id, name: C.names[id] || p.name, nick: p.nick || null, headshot: p.headshot || null,
     country: p.country || null, stance: p.stance && p.stance !== '--' ? p.stance : null,
     reach_in: p.reach_in || null, height_in: p.height_in || null, dob: p.dob || null, age,
+    // #3 (29-jul): campamento. Como PREDICTOR quedó descartado — el efecto aparente (+3.1pp, p=0.046) se cae
+    // a +2.2pp y p=0.54 al restringir a peleadores ya establecidos, o sea que era en buena parte el sesgo de
+    // que `assoc` es el campamento ACTUAL y los buenos migran a los gimnasios de élite. Pero como CONTEXTO
+    // es información real que ya recogemos (78% de cobertura) y que el usuario espera ver.
+    camp: p.assoc && String(p.assoc).trim() ? String(p.assoc).trim() : null,
     record: rec, division: x.div || null, form: x.res.slice(-5).reverse(),
     ko_losses: x.koL, cage_min: Math.round(x.min), last_fight: x.last || null,
     elo: Math.round(C.elo.R[id] || 1500), n_fights: C.elo.N[id] || 0,

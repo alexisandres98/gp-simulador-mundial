@@ -1622,3 +1622,5 @@ td .gx-calc-btn span { display: none; }
 .gx-cb-briefhero { display:flex; flex-direction:column; gap:3px; padding:2px 0 10px; }
 .gx-cb-briefhero b { font-size:15px; color:#E6EEF0; }
 .gx-cb-briefhero span { font-size:11.5px; }
+.gx-cb-camprow b { font-size:11.5px !important; font-weight:700; color:#9DB0B5; }
+.gx-cb-camprow .gx-cb-tapebar { justify-content:center; }

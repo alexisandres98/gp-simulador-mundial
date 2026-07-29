@@ -1337,6 +1337,57 @@ GP Simulador
 // CRIPTO (26-jul): anuncio de pago con cripto — pago único 30 días, sin tarjeta. Mismo playbook personal
 // anti-Promociones (texto 1:1, URL como texto plano, cierra con pregunta). Por pedido de Alexis este correo
 // NO incluye la línea de baja en el cuerpo. NO menciona el sistema de referidos (se anuncia aparte).
+// PROGRAMA DE REFERIDOS + INFLUENCERS (29-jul). Mismo estilo personal anti-Promociones de los masivos que
+// funcionaron (sin <a>, sin línea de baja — decisión de Alexis): entra a Principal, no a Promociones.
+function referralsEmail(lang) {
+  const en = lang === 'en';
+  if (en) {
+    const subject = 'get paid every month for people you invite';
+    const text = `Hi,
+
+Alexis here, from GP Simulador. We opened something I think you'll want to hear about: our referral program is live, and it pays you every single month.
+
+It works like this: you share your personal link, and whoever signs up through it and subscribes earns you 10% of what they pay — every month, for as long as they stay. Not once. Not for 30 days. For life.
+
+Do the maths with real numbers: a Sharp subscriber pays $59 a month, so that's $11.80 landing in your account every month from one person. Ten of them is $118 a month, recurring, without you doing anything else.
+
+You get paid in crypto — USDC or USDT on Solana, Tron, Arbitrum, Base or Ethereum — with a $50 minimum. Your panel shows everything in real time: who signed up, who is paying, what you've earned and what's ready to withdraw. It's inside the platform, under "Invite".
+
+And if you have an audience — a channel, a community, a following — we have something better. We run a separate program for creators and influencers with custom affiliate packages: higher commission rates than the standard 10%, a free subscription for you, and materials to work with. That one is by conversation, not self-serve. Write to soporte@gpsimulador.com and tell me about your audience.
+
+The model keeps publishing its picks every day with the full track record public, hits and misses. Nothing to sell that we don't show.
+
+Grab your link at gpsimulador.com and start sharing it.
+
+Alexis
+GP Simulador`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'cobrá todos los meses por la gente que invitás';
+  const text = `Hola,
+
+Soy Alexis, de GP Simulador. Abrimos algo que te va a interesar: el programa de referidos ya está activo, y te paga todos los meses.
+
+Funciona así: compartís tu link personal, y todo el que se registre con él y se suscriba te deja el 10% de lo que paga — cada mes, mientras siga suscripto. No una vez. No por 30 días. De por vida.
+
+Hacé la cuenta con números reales: un suscriptor Sharp paga $59 al mes, o sea $11.80 que te entran cada mes por una sola persona. Diez personas son $118 al mes, recurrentes, sin que vos hagas nada más.
+
+El pago es en cripto — USDC o USDT en Solana, Tron, Arbitrum, Base o Ethereum — con un mínimo de $50. Tu panel te muestra todo en tiempo real: quién se registró, quién está pagando, cuánto llevás ganado y cuánto podés retirar. Está dentro de la plataforma, en "Invitar".
+
+Y si tenés audiencia — un canal, una comunidad, seguidores — tenemos algo mejor. Manejamos un programa aparte para creadores de contenido e influencers con paquetes de afiliado personalizados: comisiones más altas que el 10% estándar, suscripción gratis para vos y material para trabajar. Ese va por conversación, no es automático. Escribime a soporte@gpsimulador.com y contame de tu audiencia.
+
+El modelo sigue publicando sus picks todos los días con el historial completo público, aciertos y fallos. No vendemos nada que no mostremos.
+
+Agarrá tu link en gpsimulador.com y empezá a compartirlo.
+
+Alexis
+GP Simulador`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(p => '<p style="margin:0 0 14px">' + p.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
 function cryptoEmail(lang) {
   const en = lang === 'en';
   if (en) {
@@ -12282,6 +12333,9 @@ const server = http.createServer(async (req, res) => {
                                       : (variant === 'reactivate_en') ? () => ({ ...reactivateEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                         : (variant === 'reactivate_es') ? () => ({ ...reactivateEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                                           // anuncio pago con cripto (26-jul): idioma FIJO, estilo personal
+                                          // referidos + influencers (29-jul): idioma FIJO, estilo personal
+                                          : (variant === 'referrals_es') ? () => ({ ...referralsEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                            : (variant === 'referrals_en') ? () => ({ ...referralsEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                           : (variant === 'crypto_es') ? () => ({ ...cryptoEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                                             : (variant === 'crypto_en') ? () => ({ ...cryptoEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                               // free trial Sharp (27-jul): idioma FIJO, estilo personal

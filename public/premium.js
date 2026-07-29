@@ -245,7 +245,13 @@
       cb_evo_top: 'La élite en el tiempo', cb_evo_up: 'En ascenso', cb_evo_down: 'En caída', cb_evo_12m: 'últimos 12 meses',
       cb_follow_none: 'Todavía no seguís a ningún peleador. Entrá a un perfil y tocá ★ Seguir.', cb_follow_btn: 'Seguir', cb_following: '★ Siguiendo', cb_next_fight: 'Próxima pelea',
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
-      pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · modelo vs mercado', cb_mkt_model: 'Modelo', cb_mkt_market: 'Mercado', cb_mkt_src: 'precios Cloudbet (de-vig del mercado completo)',
+      pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
+      cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
+      cb_conf_high: 'Confianza alta', cb_conf_med: 'Confianza media', cb_conf_low: 'Confianza baja', cb_conf_sub_low: 'muestra corta o mercado fino — el sistema lo sabe',
+      cb_fx_elo: 'Nivel demostrado', cb_fx_reach: 'Alcance', cb_fx_exp: 'Experiencia', cb_fx_years: 'Desgaste de carrera', cb_fx_age: 'Edad', cb_fx_chin: 'Durabilidad', cb_fx_streak: 'Momento', cb_fx_mileage: 'Oficio en jaula',
+      cb_momentum: 'Momentum', cb_mom_delta: 'últimos 12 meses', cb_quality: 'Calidad de victorias', cb_q_elite: 'élite vencida', cb_q_strong: 'rivales duros', cb_q_top: 'Mejores victorias',
+      cb_pace: 'Ritmo y fondo', cb_pace_r1: 'cierra en el R1', cb_pace_deep: 'en aguas profundas (R3+)', cb_pace_dist: 'va a decisión', cb_similar: 'Perfiles similares', cb_sim_pct: 'parecido',
+      cb_wins_by: 'Gana', cb_loses_by: 'Pierde', cb_upd: 'actualizado',
       tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
       tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
       tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
@@ -573,7 +579,13 @@
       cb_evo_top: 'The elite over time', cb_evo_up: 'Rising', cb_evo_down: 'Falling', cb_evo_12m: 'last 12 months',
       cb_follow_none: 'You are not following any fighter yet. Open a profile and tap ★ Follow.', cb_follow_btn: 'Follow', cb_following: '★ Following', cb_next_fight: 'Next fight',
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
-      pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · model vs market', cb_mkt_model: 'Model', cb_mkt_market: 'Market', cb_mkt_src: 'Cloudbet prices (full-market de-vig)',
+      pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
+      cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
+      cb_conf_high: 'High confidence', cb_conf_med: 'Medium confidence', cb_conf_low: 'Low confidence', cb_conf_sub_low: 'small sample or thin market — the system knows it',
+      cb_fx_elo: 'Proven level', cb_fx_reach: 'Reach', cb_fx_exp: 'Experience', cb_fx_years: 'Career wear', cb_fx_age: 'Age', cb_fx_chin: 'Durability', cb_fx_streak: 'Momentum', cb_fx_mileage: 'Cage craft',
+      cb_momentum: 'Momentum', cb_mom_delta: 'last 12 months', cb_quality: 'Quality of wins', cb_q_elite: 'elite beaten', cb_q_strong: 'tough opponents', cb_q_top: 'Best wins',
+      cb_pace: 'Pace & gas tank', cb_pace_r1: 'finishes in R1', cb_pace_deep: 'in deep water (R3+)', cb_pace_dist: 'goes to decision', cb_similar: 'Similar profiles', cb_sim_pct: 'match',
+      cb_wins_by: 'Wins by', cb_loses_by: 'Loses by', cb_upd: 'updated',
       tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
       tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
       tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
@@ -5679,7 +5691,7 @@
   function cbOrgLab() { return cbOrg() === 'mma' ? 'MMA' : 'UFC'; }
   function cbAva(f, side, cls) {
     var ini = (f.name || '?').split(' ').map(function (x) { return x[0] || ''; }).join('').slice(0, 2).toUpperCase();
-    var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" loading="lazy" onerror="this.remove()">' : '';
+    var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" decoding="async" onerror="this.remove()">' : '';
     return '<div class="gx-cb-ava ' + (side === 1 ? 'gr' : 'rd') + (cls ? ' ' + cls : '') + '">' + img + '<span>' + esc(ini) + '</span></div>';
   }
   function cbForm(form) {
@@ -5708,9 +5720,15 @@
   }
   function cbShell(title, inner, opts) {
     var mv = $('#gx-matchview'); if (!mv) return;
+    // scroll memory: al volver a una vista ya visitada, restaurar la posición (naturalidad de navegación)
+    var hk = ''; try { hk = location.hash; } catch (e) {}
     var back = (opts && opts.back) ? '<div class="gx-cb-backrow"><span class="gx-clgate sh gx-cb-back" data-cbgoback="' + esc(opts.back) + '">← ' + esc(t(opts.backLabel || 'cb_fights_title')) + '</span></div>' : '';
+    if (S.cb._lastHash && S.cb._lastHash !== hk) (S.cb._scroll = S.cb._scroll || {})[S.cb._lastHash] = window.scrollY || 0;
+    S.cb._lastHash = hk;
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title, opts && opts.extra) + back + inner + '</div></div>';
     mv.onclick = cbClicks; // delegación única de la sección (se reasigna en cada render — sin listeners duplicados)
+    var sy = (S.cb._scroll || {})[hk];
+    if (sy) requestAnimationFrame(function () { try { window.scrollTo(0, sy); } catch (e) {} });
   }
   function cbClicks(e) {
     var bk = e.target.closest('[data-cbgoback]'); if (bk) { goBack(); return; }
@@ -5796,6 +5814,60 @@
       '<div class="gx-cb-bnames"><b>' + esc(f.f1.name || '') + ' <i class="gx-cb-vsi">vs</i> ' + esc(f.f2.name || '') + '</b><span class="gx-dim">' + esc(f.weight || '') + ' · ' + f.f1.record.w + '-' + f.f1.record.l + ' / ' + f.f2.record.w + '-' + f.f2.record.l + '</span></div>' +
       '<div class="gx-cb-mini"><div class="gx-cb-minibar"><i style="width:' + pp + '%"></i></div><span class="gx-mono gx-dim">' + pp + '% · ' + (100 - pp) + '%</span></div>' + chip + '</a>';
   }
+  // ── R3: builders compartidos de los engines nuevos (cockpit + simulador) ──
+  var CB_FX = { elo: 'cb_fx_elo', reach: 'cb_fx_reach', exp: 'cb_fx_exp', years: 'cb_fx_years', age: 'cb_fx_age', chin: 'cb_fx_chin', streak: 'cb_fx_streak', mileage: 'cb_fx_mileage' };
+  function cbConfBadge(c) {
+    if (!c) return '';
+    var k = c.level === 'high' ? 'cb_conf_high' : c.level === 'med' ? 'cb_conf_med' : 'cb_conf_low';
+    return '<span class="gx-cb-confbadge ' + c.level + '"><i></i>' + esc(t(k)) + '</span>';
+  }
+  function cbContextChips(ctx) {
+    if (!ctx || !ctx.length) return '';
+    return '<div class="gx-cb-ctxchips">' + ctx.map(function (c) { return '<span class="gx-clgate sh' + (c.code === 'title' ? ' gold' : '') + '">' + esc(LANG === 'en' ? c.en : c.es) + '</span>'; }).join('') + '</div>';
+  }
+  // LECTURA GP: la explicación del sistema, arriba de todo (caja negra: factores, no mecánica)
+  function cbReadPanel(read, conf) {
+    if (!read) return '';
+    return '<div class="gx-panel gx-cb-readpanel"><div class="gx-cb-readtop"><span class="gx-label">' + esc(t('cb_read')) + '</span>' + cbConfBadge(conf) + '</div>' +
+      '<div class="gx-cb-readtxt">' + esc(LANG === 'en' ? read.en : read.es) + '</div>' +
+      (conf && conf.level === 'low' ? '<div class="gx-dim gx-cb-readsub">' + esc(t('cb_conf_sub_low')) + '</div>' : '') + '</div>';
+  }
+  // MATCHUP: barras de contribución desde el centro (verde → esquina verde, rojo → esquina roja)
+  function cbMatchupPanel(parts, f1n, f2n) {
+    if (!parts || !parts.length) return '';
+    var mx = Math.max.apply(null, parts.map(function (p2) { return Math.abs(p2.pp); }));
+    var rows = parts.map(function (p2) {
+      var w = Math.max(4, Math.abs(p2.pp) / mx * 100);
+      var pos = p2.pp > 0;
+      return '<div class="gx-cb-mxrow"><span class="gx-cb-mxlab">' + esc(t(CB_FX[p2.key] || p2.key)) + '</span>' +
+        '<div class="gx-cb-mxbar"><div class="l">' + (pos ? '<i style="width:' + w + '%"></i>' : '') + '</div><div class="r">' + (!pos ? '<i style="width:' + w + '%"></i>' : '') + '</div></div>' +
+        '<b class="gx-mono ' + (pos ? 'gr' : 'rd') + '">' + (pos ? '+' : '') + p2.pp + 'pp</b></div>';
+    }).join('');
+    var net = parts.reduce(function (a2, p2) { return a2 + p2.pp; }, 0);
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_matchup')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_matchup_sub')) + '</span></div>' +
+      '<div class="gx-mod-body"><div class="gx-cb-mxhead"><span class="gr">' + esc((f1n || '').split(' ').pop()) + '</span><span class="rd">' + esc((f2n || '').split(' ').pop()) + '</span></div>' + rows +
+      '<div class="gx-cb-mxnet">MATCHUP: <b class="' + (net >= 0 ? 'gr' : 'rd') + '">' + (net >= 0 ? '+' : '') + net.toFixed(1) + 'pp → ' + esc(((net >= 0 ? f1n : f2n) || '').split(' ').pop()) + '</b></div></div></div>';
+  }
+  // PREDICCIÓN COMPLETA: todos los desenlaces + distribución por round (capa 10)
+  function cbPredictionPanel(pred, f1n, f2n) {
+    if (!pred) return '';
+    var l1 = (f1n || '').split(' ').pop(), l2 = (f2n || '').split(' ').pop();
+    var by = pred.by || {};
+    var outRow = function (lab, v, cls) {
+      return '<div class="gx-cb-predrow"><span>' + lab + '</span><div class="gx-cb-predbar"><i class="' + (cls || '') + '" style="width:' + Math.round((v || 0) * 100) + '%"></i></div><b class="gx-mono">' + Math.round((v || 0) * 100) + '%</b></div>';
+    };
+    var side = function (nm, w, byS, cls) {
+      return '<div class="gx-cb-predside"><div class="gx-cb-predname ' + cls + '">' + esc(nm) + ' · ' + Math.round(w * 100) + '%</div>' +
+        outRow('KO/TKO', (byS || {}).ko, cls) + outRow('SUB', (byS || {}).sub, cls) + outRow('DEC', (byS || {}).dec, cls) + '</div>';
+    };
+    var dist = (pred.round_dist || []).map(function (rd) {
+      return '<div class="gx-cb-rdcol"><div class="gx-cb-rdbar"><i style="height:' + Math.max(3, Math.round(rd.p * 240)) + 'px"></i></div><span>R' + rd.r + '</span><b class="gx-mono">' + Math.round(rd.p * 100) + '%</b></div>';
+    }).join('') + '<div class="gx-cb-rdcol"><div class="gx-cb-rdbar"><i class="dec" style="height:' + Math.max(3, Math.round((pred.distance || 0) * 240)) + 'px"></i></div><span>' + esc(t('cb_dist_lab')) + '</span><b class="gx-mono">' + Math.round((pred.distance || 0) * 100) + '%</b></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_pred')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_pred_sub')) + '</span></div><div class="gx-mod-body">' +
+      '<div class="gx-cb-predgrid">' + side(l1, pred.win.f1, by.f1, 'gr') + side(l2, pred.win.f2, by.f2, 'rd') + '</div>' +
+      '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_rdist')) + '</div><div class="gx-cb-rdist">' + dist + '</div>' +
+      '<div class="gx-dim gx-cb-subline" style="text-align:center">~' + pred.exp_rounds + ' ' + esc(t('cb_rounds')) + ' · ' + esc(t('cb_finish')) + ' ' + Math.round((pred.finish || 0) * 100) + '%</div></div></div>';
+  }
   // ── COCKPIT DE PELEA: el panel de inteligencia completo ──
   function renderCbFight() {
     var key = 'fight_' + cbOrg() + '_' + S.cb.fightId;
@@ -5803,7 +5875,7 @@
     if (!d) { cbShell(t('cb_fights_title'), mvLoading(), { back: 'cbfights' }); return; }
     if (d._err || !d.fight) { cbShell(t('cb_fights_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>', { back: 'cbfights' }); return; }
     var ft = d.fight, ta = d.tale || {};
-    var evline = '<div class="gx-cb-evhead"><b>' + esc(d.event.name) + '</b><span class="gx-dim">' + esc(cbWhen(d.event.date)) + '</span></div>';
+    var evline = '<div class="gx-cb-evhead"><b>' + esc(d.event.name) + '</b><span class="gx-dim">' + esc(cbWhen(d.event.date)) + '</span></div>' + cbContextChips(d.context);
     var hero = cbFightHero(d.event, Object.assign({}, ft, { prob: d.prob, method: d.method, market: d.market, pick: d.pick, odds: d.market && d.market.best ? { f1: d.market.best.f1, f2: d.market.best.f2 } : null, f1: Object.assign({}, ft.f1, ta.f1), f2: Object.assign({}, ft.f2, ta.f2) }), {});
     // TALE OF THE TAPE — el eje del enfrentamiento (barras espejadas desde el centro)
     var rows = [
@@ -5856,7 +5928,10 @@
       cbm = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_mkt_panel')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_mkt_src')) + '</span></div><div class="gx-mod-body gx-cb-books mkt">' +
         '<div class="gx-cb-bookrow gx-cb-bookhead"><span></span><b>' + esc(t('cb_mkt_model')) + '</b><b>' + esc(t('cb_mkt_market')) + '</b></div>' + mrows + trows + '</div></div>';
     }
-    cbShell(t('cb_fights_title'), evline + hero + '<div class="gx-cb-grid">' + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
+    var readP = cbReadPanel(d.gp_read, d.confidence);
+    var mxP = cbMatchupPanel(d.breakdown, ft.f1.name, ft.f2.name);
+    var predP = cbPredictionPanel(d.prediction, ft.f1.name, ft.f2.name);
+    cbShell(t('cb_fights_title'), evline + hero + readP + '<div class="gx-cb-grid">' + predP + mxP + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
   }
   function inchesNum(s) { if (!s) return null; var m = String(s).match(/(\d+)'\s*(\d+)?/); if (m) return (+m[1]) * 12 + (+(m[2] || 0)); var n = String(s).match(/([\d.]+)/); return n ? +n[1] : null; }
   function cbTapeRow(label, v1, v2, fmt) {
@@ -5938,8 +6013,36 @@
         '<div class="gx-cb-bnames"><b>vs ' + esc(h.opponent.name || '') + '</b><span class="gx-dim">' + esc(h.event || '') + ' · ' + esc(h.weight || '') + '</span></div>' +
         '<span class="gx-mono gx-dim gx-cb-histmeta">' + esc(h.method || '') + (h.round ? ' · R' + h.round : '') + ' · ' + esc(cbWhen(h.date, false)) + '</span></a>';
     }).join('');
+    // R3 — Momentum / Calidad de victorias / Ritmo y fondo / Similares
+    var mom = d.momentum || {};
+    var recTxt = function (r) { return r ? r.w + '-' + r.l : '—'; };
+    var momP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_momentum')) + '</span>' +
+      (mom.delta_12m != null ? '<span class="gx-ph-extra gx-mono ' + (mom.delta_12m >= 0 ? 'gx-cb-up' : 'gx-cb-down') + '">' + (mom.delta_12m >= 0 ? '▲ +' : '▼ ') + mom.delta_12m + ' Elo · ' + esc(t('cb_mom_delta')) + '</span>' : '') + '</div>' +
+      '<div class="gx-mod-body gx-cb-tiles">' +
+      '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + recTxt(mom.l3) + '</div><div class="gx-label">L3</div></div>' +
+      '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + recTxt(mom.l5) + '</div><div class="gx-label">L5</div></div>' +
+      '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + recTxt(mom.l10) + '</div><div class="gx-label">L10</div></div>' + '</div></div>';
+    var q = d.quality || {};
+    var qTop = (q.top_wins || []).map(function (w2) {
+      return '<a class="gx-cb-bout lnk" href="#cbfighter/' + cbOrg() + '-' + esc(String(w2.id)) + '"><span class="gx-clgate ok">W</span>' +
+        '<div class="gx-cb-bnames"><b>' + esc(w2.name) + '</b><span class="gx-dim">' + esc(w2.method || '') + ' · ' + esc(cbWhen(w2.date, false)) + '</span></div><span class="gx-mono" style="color:var(--gx-ac)">' + w2.elo + '</span></a>';
+    }).join('');
+    var qP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_quality')) + '</span>' +
+      '<span class="gx-ph-extra gx-dim">' + (q.elite_wins || 0) + ' ' + esc(t('cb_q_elite')) + ' · ' + (q.strong_wins || 0) + ' ' + esc(t('cb_q_strong')) + '</span></div>' +
+      '<div class="gx-mod-body">' + (qTop || '<div class="gx-dim gx-cb-clean">—</div>') + '</div></div>';
+    var pc = d.pace || {};
+    var pcP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_pace')) + '</span></div><div class="gx-mod-body gx-cb-tiles">' +
+      (pc.r1_finish_rate != null ? '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + Math.round(pc.r1_finish_rate * 100) + '%</div><div class="gx-label">' + esc(t('cb_pace_r1')) + '</div></div>' : '') +
+      (pc.deep_water ? '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + pc.deep_water.w + '-' + pc.deep_water.l + '</div><div class="gx-label">' + esc(t('cb_pace_deep')) + '</div></div>' : '') +
+      (pc.distance_rate != null ? '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + Math.round(pc.distance_rate * 100) + '%</div><div class="gx-label">' + esc(t('cb_pace_dist')) + '</div></div>' : '') + '</div></div>';
+    var simP = (d.similar || []).length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_similar')) + '</span></div><div class="gx-mod-body gx-cb-dirgrid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">' +
+      d.similar.map(function (sf) {
+        return '<a class="gx-cb-fcard" href="#cbfighter/' + cbOrg() + '-' + esc(String(sf.id)) + '">' + cbAva(sf, 1, 'dir') +
+          '<div class="gx-cb-fcard-nm">' + esc(sf.name) + '</div><div class="gx-cb-fcard-meta">' + esc(sf.division || '') + ' · ' + (sf.record ? sf.record.w + '-' + sf.record.l : '') + '</div>' +
+          '<div class="gx-cb-fcard-stats"><span class="elo">' + Math.round(sf.sim * 100) + '% ' + esc(t('cb_sim_pct')) + '</span></div></a>';
+      }).join('') + '</div></div>' : '';
     var histP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_recent')) + ' · ' + (d.history || []).length + '</span></div><div class="gx-mod-body">' + hist + '</div></div>';
-    cbShell(t('cb_fighters_title'), hero + chart + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
+    cbShell(t('cb_fighters_title'), hero + chart + '<div class="gx-cb-grid">' + momP + pcP + qP + simP + '</div>' + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
   }
   // línea de Elo (SVG propio, sin librerías): eje temporal real, área bajo la curva, punto final
   function cbEloChart(items, w, h) {
@@ -6002,7 +6105,8 @@
           '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
           '<div class="gx-cb-pcts"><span>' + esc((a.name || '').split(' ').pop()) + ' ' + p1 + '%</span><span class="p2">' + (100 - p1) + '% ' + esc((b.name || '').split(' ').pop()) + '</span></div>' +
           '<div class="gx-dim gx-cb-subline">Elo ' + d.prob.r1 + ' · ' + d.prob.r2 + ' · ' + esc(d.weight || '') + '</div>' + cbMethod(d.method) + '</div></div>' +
-          '<div class="gx-cb-grid"><div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + '</div></div>' +
+          cbReadPanel(d.gp_read, d.confidence) +
+          '<div class="gx-cb-grid">' + cbPredictionPanel(d.prediction, a.name, b.name) + cbMatchupPanel(d.breakdown, a.name, b.name) + '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + '</div></div>' +
           '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_intel')) + '</span></div><div class="gx-mod-body">' +
           ((d.intel || []).length ? d.intel.map(function (x) { return '<div class="gx-cb-flag ' + (x.severity === 'high' ? 'hi' : '') + '"><span class="gx-cb-flagdot"></span><span>' + esc(LANG === 'en' ? x.en : x.es) + '</span></div>'; }).join('') : '<div class="gx-dim gx-cb-clean">' + esc(t('cb_intel_none')) + '</div>') + '</div></div></div>';
       } else if (d && d._err) result = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';

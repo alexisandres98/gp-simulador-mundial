@@ -137,6 +137,27 @@ function fightProb(model, id1, id2, atDate) {
   return { p1, r1: Math.round(r1), r2: Math.round(r2), n1: model.N[id1] || 0, n2: model.N[id2] || 0 };
 }
 
+// R3 (29-jul): DESGLOSE del matchup — contribución EXACTA de cada factor a la probabilidad (leave-one-out
+// sobre la logística real: quitar el factor i y medir cuántos pp de probabilidad se mueve). Es el Matchup
+// Engine y la explicabilidad en un solo lugar, derivado del MISMO modelo que predice (no una historia aparte).
+function fightBreakdown(model, id1, id2, atDate) {
+  if (!model.w || !model.PF) return null;
+  const rust = (id) => {
+    const last = model.LAST[id]; if (!last || !atDate) return 0;
+    return Math.min(2, Math.max(0, (new Date(atDate) - new Date(last)) / (365.25 * 24 * 3600e3))) * RUST_PER_YEAR;
+  };
+  const r1 = (model.R[id1] == null ? BASE : model.R[id1]) - rust(id1);
+  const r2 = (model.R[id2] == null ? BASE : model.R[id2]) - rust(id2);
+  const pElo = expected(r1, r2);
+  const fd = featDiff(model, model.PF, id1, id2, atDate || new Date().toISOString());
+  let z = model.w.elo * logit(pElo);
+  for (const k of FEATS) z += model.w[k] * fd[k];
+  const pFull = sigm(z);
+  const parts = [{ key: 'elo', pp: +((pFull - sigm(z - model.w.elo * logit(pElo))) * 100).toFixed(1) }];
+  for (const k of FEATS) parts.push({ key: k, pp: +((pFull - sigm(z - model.w[k] * fd[k])) * 100).toFixed(1) });
+  return { p1: pFull, parts: parts.filter(x => Math.abs(x.pp) >= 0.05).sort((a, b) => Math.abs(b.pp) - Math.abs(a.pp)) };
+}
+
 // MÉTODO de victoria: tasas por peleador (finish rate propio + durabilidad del rival), shrink al promedio.
 function methodProfile(fights, id) {
   let wins = 0, winKo = 0, winSub = 0, losses = 0, lostKo = 0, lostSub = 0;
@@ -374,4 +395,4 @@ function backtestMethod(fights, { warmFrac = 0.35 } = {}) {
   };
 }
 
-module.exports = { fitElo, fightProb, methodProfile, methodModel, methodProbs, methodClass, backtest, backtestMethod, expected, isFinish };
+module.exports = { fitElo, fightProb, fightBreakdown, methodProfile, methodModel, methodProbs, methodClass, backtest, backtestMethod, expected, isFinish };

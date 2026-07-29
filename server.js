@@ -6651,6 +6651,40 @@ function combatFighterSummary(C, id) {
     streak: (() => { let s = 0; const r = x.res; for (let i = r.length - 1; i >= 0; i--) { if (r[i] === r[r.length - 1]) s++; else break; } return r.length ? (r[r.length - 1] === 'W' ? s : -s) : 0; })(),
   };
 }
+// R3: CONFIANZA del modelo en una pelea (metro honesto: profundidad de datos + liquidez + convicción).
+// Baja = el propio sistema sabe que hay demasiada incertidumbre (peleadores nuevos, mercado fino).
+function combatConfidence(C, ft, p1, books) {
+  const n1 = C.elo.N[ft.f1.id] || 0, n2 = C.elo.N[ft.f2.id] || 0;
+  const depth = Math.min(n1, n2);
+  const conviction = Math.abs((p1 || 0.5) - 0.5);
+  let level = 'high';
+  if (depth < 4 || (books || 0) < 1) level = 'low';
+  else if (depth < 8 || (books || 0) < 4 || conviction < 0.06) level = 'med';
+  return { level, depth, books: books || 0 };
+}
+// R3: CONTEXTO estructural de la pelea (chips: estelar, 5 rounds, título)
+function combatContext(ev, ft) {
+  const chips = [];
+  if (ft.main) chips.push({ code: 'main', es: 'Pelea estelar', en: 'Main event' });
+  chips.push({ code: 'rounds', es: (ft.rounds || 3) + ' rounds', en: (ft.rounds || 3) + ' rounds' });
+  if (/title|championship|belt/i.test(ev.name + ' ' + (ft.weight || ''))) chips.push({ code: 'title', es: 'Pelea de título', en: 'Title fight' });
+  if (ft.weight) chips.push({ code: 'weight', es: ft.weight, en: ft.weight });
+  return chips;
+}
+// R3: LECTURA GP narrada (explicabilidad caja-negra: factores del enfrentamiento, no mecánica)
+function combatGpRead(ft, p1, parts, intel) {
+  const favName = p1 >= 0.5 ? ft.f1.name : ft.f2.name;
+  const sgn = p1 >= 0.5 ? 1 : -1;
+  const pro = (parts || []).filter(x => x.pp * sgn > 0.4).slice(0, 3).map(x => (CB_FACTOR_ES[x.key] || x.key));
+  const proEn = (parts || []).filter(x => x.pp * sgn > 0.4).slice(0, 3).map(x => (CB_FACTOR_EN[x.key] || x.key));
+  const con = (parts || []).filter(x => x.pp * sgn < -0.4).slice(0, 2).map(x => (CB_FACTOR_ES[x.key] || x.key));
+  const conEn = (parts || []).filter(x => x.pp * sgn < -0.4).slice(0, 2).map(x => (CB_FACTOR_EN[x.key] || x.key));
+  const flags = (intel || []).filter(x => x.severity === 'high').length;
+  return {
+    es: `GP favorece a ${favName} (${Math.round((p1 >= 0.5 ? p1 : 1 - p1) * 100)}%)${pro.length ? ', principalmente por ' + pro.join(', ') : ''}.${con.length ? ' En contra pesan ' + con.join(' y ') + '.' : ''}${flags ? ' Hay ' + flags + ' señal' + (flags > 1 ? 'es' : '') + ' de contexto que puede' + (flags > 1 ? 'n' : '') + ' mover esta lectura — revisá Inteligencia.' : ''}`,
+    en: `GP favors ${favName} (${Math.round((p1 >= 0.5 ? p1 : 1 - p1) * 100)}%)${proEn.length ? ', mainly on ' + proEn.join(', ') : ''}.${conEn.length ? ' Working against: ' + conEn.join(' and ') + '.' : ''}${flags ? ' ' + flags + ' context signal' + (flags > 1 ? 's' : '') + ' could move this read — check Intelligence.' : ''}`,
+  };
+}
 // RED FLAGS de inteligencia por pelea (capa de observación v1 — computable desde la data; casos
 // Topuria/Chimaev: cambio de división + layoff largo. Señales de CASO para el analista, NO van al λ:
 // el backtest 28-jul mostró que divmove NO es señal sistemática agregada — es contexto, no ajuste).
@@ -6904,7 +6938,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       if (!ft.f1.id || !ft.f2.id) continue;
       out.fights++;
       const mo = combatFightOdds(C, ft);
-      if (!mo || mo.books < 3) continue; // consenso mínimo 3 casas
+      if (!mo || mo.books < 1) continue; // monitor: 1 casa basta (PFL solo cotiza en Cloudbet); books viaja en la pick
       out.with_odds++;
       const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
       const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
@@ -6928,7 +6962,8 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       const kel = Math.max(0, (bestSide.blend * (bestSide.odds - 1) - (1 - bestSide.blend)) / (bestSide.odds - 1)) / 4;
       const pickName = bestSide.side === 'f1' ? ft.f1.name : ft.f2.name;
       const rivalName = bestSide.side === 'f1' ? ft.f2.name : ft.f1.name;
-      const whyPair = combatPickWhy({ name: pickName, rival: rivalName, m: bestSide.m, k: bestSide.k, eg: bestSide.eg, books: mo.books, slot: ft.main ? 'main' : 'prelim' });
+      const bdW = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const whyPair = combatPickWhy({ name: pickName, rival: rivalName, m: bestSide.m, k: bestSide.k, eg: bestSide.eg, books: mo.books, slot: ft.main ? 'main' : 'prelim', parts: bdW && bdW.parts, side: bestSide.side });
       fresh.push({
         why_es: whyPair.es, why_en: whyPair.en,
         pick_id: stable('cb-' + ft.comp_id + '|FIGHT|' + bestSide.side),
@@ -7128,8 +7163,8 @@ async function settleCombatPicks() {
 function cbPushDerivPick(fresh, out, org, { slot, ev, ft }, d) {
   const kel = Math.max(0, (d.blend * (d.odds - 1) - (1 - d.blend)) / (d.odds - 1)) / 4;
   const whyPair = {
-    es: `Modelo de ${d.family === 'METHOD' ? 'método' : 'rounds'} (validado walk-forward) da ${Math.round(d.model * 100)}% contra ${Math.round(d.mkt * 100)}% del mercado de Cloudbet — +${d.eg.toFixed(1)}pp post-blend. Mercado de 1 casa (de-vig del mercado completo): pick de MONITOR para validar la familia.`,
-    en: `${d.family === 'METHOD' ? 'Method' : 'Rounds'} model (walk-forward validated) makes it ${Math.round(d.model * 100)}% vs ${Math.round(d.mkt * 100)}% on Cloudbet's market — +${d.eg.toFixed(1)}pp post-blend. Single-book market (full-market de-vig): MONITOR pick to validate the family.`,
+    es: `GP proyecta este desenlace ${Math.round(d.model * 100)}% frente al ${Math.round(d.mkt * 100)}% que paga el mercado. ${d.family === 'METHOD' ? 'La lectura combina cómo termina sus peleas cada esquina y cuánto absorbe la contraria.' : 'La lectura combina el ritmo de cierre de ambos y la distancia esperada de la pelea.'}`,
+    en: `GP projects this outcome at ${Math.round(d.model * 100)}% against the ${Math.round(d.mkt * 100)}% the market pays. ${d.family === 'METHOD' ? 'The read blends how each corner ends fights and how much the other absorbs.' : 'The read blends both finishing rates and the expected length of the fight.'}`,
   };
   fresh.push({
     pick_id: d.stable('cb-' + ft.comp_id + '|' + d.family + '|' + d.selection_code),
@@ -7161,11 +7196,19 @@ function combatModelOverRounds(method, line, sched) {
   return Math.max(0, Math.min(1, 1 - pEndBefore));
 }
 // narrativa de la pick de combate (mismo espíritu del compose del fútbol: el "por qué" al nivel de analista)
-function combatPickWhy({ name, rival, m, k, eg, books, slot }) {
+// narrativa caja-negra de la pick (regla de la casa: factores del enfrentamiento, JAMÁS mecánica del modelo)
+const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula' };
+const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft' };
+function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
   const mp = Math.round(m * 100), kp = Math.round(k * 100);
+  // factores a favor del lado elegido (parts vienen orientados a f1; espejar si la pick es f2)
+  const sgn = side === 'f2' ? -1 : 1;
+  const fav = (parts || []).filter(x => x.pp * sgn > 0.4).slice(0, 3);
+  const fES = fav.map(x => CB_FACTOR_ES[x.key] || x.key).join(', ');
+  const fEN = fav.map(x => CB_FACTOR_EN[x.key] || x.key).join(', ');
   return {
-    es: `El modelo (Elo + edad + físico + forma) da ${mp}% a ${name} contra ${kp}% del consenso de ${books} casas — ${eg.toFixed(1)}pp de ventaja tras el ajuste al mercado. ${slot === 'main' ? 'Pelea estelar: mercado líquido, el precio pesa.' : 'Preliminar: mercado menos denso, donde el modelo históricamente ve más.'} Pick del monitor privado (validación del modelo).`,
-    en: `The model (Elo + age + physical + form) makes ${name} ${mp}% vs the ${kp}% consensus across ${books} books — ${eg.toFixed(1)}pp of edge after blending to market. ${slot === 'main' ? 'Main event: liquid market, the price carries weight.' : 'Prelim: thinner market, where the model historically sees more.'} Private monitor pick (model validation).`,
+    es: `GP lee esta pelea ${mp}% para ${name}, frente al ${kp}% que descuenta el mercado (${books} casa${books === 1 ? '' : 's'}).${fES ? ' La ventaja nace de: ' + fES + '.' : ''} ${slot === 'main' ? 'Pelea estelar: mercado líquido, el precio pesa.' : 'Preliminar: mercado menos vigilado, ahí suele estar el valor.'}`,
+    en: `GP reads this fight ${mp}% for ${name}, against the ${kp}% the market prices in (${books} book${books === 1 ? '' : 's'}).${fEN ? ' The edge comes from: ' + fEN + '.' : ''} ${slot === 'main' ? 'Main event: liquid market, the price carries weight.' : 'Prelim: less-watched market, where value tends to live.'}`,
   };
 }
 function combatPicksTrack() {
@@ -10375,11 +10418,51 @@ const server = http.createServer(async (req, res) => {
         const mm = CE.methodProfile(C.fights.fights || [], id);
         const divs = {}; for (const h of hist) if (h.weight) divs[h.weight] = (divs[h.weight] || 0) + 1;
         const oppElo = hist.length ? Math.round(hist.reduce((s, h) => s + h.opponent.elo, 0) / hist.length) : null;
+        // R3 — MOMENTUM: récord en ventanas + ΔElo 12 meses (curva de mejora/declive)
+        const winRec = (n2) => { const w2 = hist.slice(0, n2).filter(h => h.win).length; return { w: w2, l: Math.min(n2, hist.length) - w2 }; };
+        const serie = ((C.elo.HIST || {})[id] || []);
+        const yearAgo = Date.now() - 365 * 24 * 3600e3;
+        const base12 = serie.filter(x => Date.parse(x.d) <= yearAgo).slice(-1)[0];
+        const momentum = { l3: winRec(3), l5: winRec(5), l10: winRec(10), delta_12m: base12 ? Math.round((C.elo.R[id] || 1500) - base12.r) : null };
+        // R3 — CALIDAD DE VICTORIAS: élite vencida (rival con Elo actual ≥1620) + top-3 mejores victorias
+        const wins2 = hist.filter(h => h.win);
+        const quality = {
+          elite_wins: wins2.filter(h => h.opponent.elo >= 1620).length,
+          strong_wins: wins2.filter(h => h.opponent.elo >= 1560).length,
+          top_wins: wins2.slice().sort((a2, b2) => b2.opponent.elo - a2.opponent.elo).slice(0, 3)
+            .map(h => ({ name: h.opponent.name, id: h.opponent.id, elo: h.opponent.elo, method: h.method, date: h.date })),
+        };
+        // R3 — RITMO Y AGUAS PROFUNDAS (proxies honestos de IQ/cardio con la data disponible):
+        // arranque = % de victorias en R1; aguas profundas = récord cuando la pelea llegó al R3+.
+        const finR1 = wins2.filter(h => h.round === 1).length;
+        const deep = hist.filter(h => (h.round || 3) >= 3 || /decision/i.test(h.method || ''));
+        const pace = {
+          r1_finish_rate: wins2.length ? +(finR1 / wins2.length).toFixed(2) : null,
+          deep_water: { w: deep.filter(h => h.win).length, l: deep.filter(h => !h.win).length },
+          distance_rate: hist.length ? +(hist.filter(h => /decision/i.test(h.method || '')).length / hist.length).toFixed(2) : null,
+        };
+        // R3 — PELEADORES SIMILARES: vecinos por perfil (edad, físico, mix de métodos, nivel) en la misma división
+        const meSum = combatFighterSummary(C, id);
+        const vec = (sm) => {
+          const inch = (x) => { const m2 = String(x || '').match(/([\d.]+)/); return m2 ? +m2[1] : null; };
+          const r = sm.record || { w: 0, l: 0, ko: 0, sub: 0 };
+          const tot = Math.max(1, r.w);
+          return [ (sm.age != null ? sm.age : 30) / 40, (inch(sm.reach_in) || 72) / 84, r.ko / tot, r.sub / tot, Math.max(0, r.w - r.ko - r.sub) / tot, (sm.elo || 1500) / 1800, sm.stance === 'Southpaw' ? 1 : 0 ];
+        };
+        const v0 = vec(meSum);
+        const cutoff3 = Date.now() - 3 * 365 * 24 * 3600e3;
+        const sims = Object.keys(C.idx)
+          .filter(x => x !== id && new Date((C.idx[x] || {}).last || 0) > cutoff3 && (C.elo.N[x] || 0) >= 6 && (!meSum.division || C.idx[x].div === meSum.division))
+          .map(x => { const sm = combatFighterSummary(C, x); const v1 = vec(sm);
+            const dist = Math.sqrt(v0.reduce((acc, a2, i2) => acc + (a2 - v1[i2]) ** 2, 0));
+            return { id: x, name: sm.name, headshot: sm.headshot, record: sm.record, elo: sm.elo, division: sm.division, sim: +Math.max(0, 1 - dist / 0.9).toFixed(2) }; })
+          .sort((a2, b2) => b2.sim - a2.sim).slice(0, 3);
         return json(res, 200, {
           fighter: { id, name: C.names[id], ...(C.fighters[id] || {}) },
           summary: combatFighterSummary(C, id),
           method_split: mm, // {wins,losses,winKo,winSub,lostKo,lostSub}
           divisions: divs, opposition_elo: oppElo,
+          momentum, quality, pace, similar: sims,
           elo_series: ((C.elo.HIST || {})[id] || []).map(h => ({ d: h.d, r: h.r })),
           history: hist.slice(0, 40),
         });
@@ -10435,6 +10518,21 @@ const server = http.createServer(async (req, res) => {
         const recent = (id) => (C.fights.fights || []).filter(f => f.completed && (f.f1.id === id || f.f2.id === id) && (f.f1.winner || f.f2.winner))
           .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
           .map(f => { const me = f.f1.id === id ? f.f1 : f.f2, ri = f.f1.id === id ? f.f2 : f.f1; return { date: f.date, win: !!me.winner, opponent: ri.name, method: (f.method || {}).display || null, round: f.end_round || null }; });
+        const breakdown = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+        const intelAll = combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft));
+        // PREDICCIÓN COMPLETA (capa 10): todos los desenlaces + distribución por round
+        const rle = method.r_le || {};
+        const rounds = ft.rounds || 3;
+        const roundDist = []; let prev = 0;
+        for (let r2 = 1; r2 <= rounds; r2++) { const v = (rle[r2] || 0) - prev; prev = rle[r2] || prev; roundDist.push({ r: r2, p: +Math.max(0, v).toFixed(3) }); }
+        const prediction = {
+          win: { f1: +pr.p1.toFixed(3), f2: +(1 - pr.p1).toFixed(3) },
+          by: method.by_winner || null,
+          distance: +(method.dec || 0).toFixed(3),
+          finish: method.finish,
+          round_dist: roundDist,
+          exp_rounds: method.exp_rounds,
+        };
         const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + cid) || null;
         return json(res, 200, {
           event: { id: ev.id, name: ev.name, date: ev.date }, fight: { ...ft, main: ft.main },
@@ -10442,7 +10540,12 @@ const server = http.createServer(async (req, res) => {
           market: mo ? { f1: +mo.fair_f1.toFixed(3), f2: +(1 - mo.fair_f1).toFixed(3), books: mo.books, best: mo.best } : null,
           books: books.slice(0, 22), cb_markets: cbMarkets,
           tale: { f1: combatFighterSummary(C, ft.f1.id), f2: combatFighterSummary(C, ft.f2.id) },
-          intel: combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft)), // computadas + noticias del observer
+          intel: intelAll,
+          breakdown: breakdown && breakdown.parts, // matchup: contribución por factor (pp, orientado a f1)
+          confidence: combatConfidence(C, ft, pr.p1, mo ? mo.books : 0),
+          context: combatContext(ev, ft),
+          prediction,
+          gp_read: combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
           pick: pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
         });
@@ -10469,9 +10572,15 @@ const server = http.createServer(async (req, res) => {
         const pr = CE.fightProb(C.elo, f1, f2, new Date().toISOString());
         const weight = s1.division || s2.division || null;
         const method = CE.methodProbs(C.mm, pr.p1, f1, f2, weight, rounds);
-        const ftSim = { f1: { id: f1, name: s1.name }, f2: { id: f2, name: s2.name }, weight };
+        const ftSim = { f1: { id: f1, name: s1.name }, f2: { id: f2, name: s2.name }, weight, rounds, main: false };
         const intel = combatIntelFlags(C, ftSim, new Date().toISOString()).concat(combatNewsFlags(ftSim));
-        return json(res, 200, { prob: pr, method, tale: { f1: s1, f2: s2 }, intel, weight, rounds });
+        const bdS = CE.fightBreakdown(C.elo, f1, f2, new Date().toISOString());
+        const rleS = method.r_le || {}; const rdS = []; let pv = 0;
+        for (let r2 = 1; r2 <= rounds; r2++) { const v = (rleS[r2] || 0) - pv; pv = rleS[r2] || pv; rdS.push({ r: r2, p: +Math.max(0, v).toFixed(3) }); }
+        return json(res, 200, { prob: pr, method, tale: { f1: s1, f2: s2 }, intel, weight, rounds,
+          breakdown: bdS && bdS.parts, confidence: combatConfidence(C, ftSim, pr.p1, 0),
+          prediction: { win: { f1: +pr.p1.toFixed(3), f2: +(1 - pr.p1).toFixed(3) }, by: method.by_winner || null, distance: +(method.dec || 0).toFixed(3), finish: method.finish, round_dist: rdS, exp_rounds: method.exp_rounds },
+          gp_read: combatGpRead(ftSim, pr.p1, bdS && bdS.parts, intel) });
       }
       // R2: OPORTUNIDADES de combate — picks activas + value (line shopping vs consenso) + arbitraje 2-way
       if (p === '/api/combat/opps' && req.method === 'GET') {

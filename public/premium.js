@@ -252,6 +252,8 @@
       cb_momentum: 'Momentum', cb_mom_delta: 'últimos 12 meses', cb_quality: 'Calidad de victorias', cb_q_elite: 'élite vencida', cb_q_strong: 'rivales duros', cb_q_top: 'Mejores victorias',
       cb_pace: 'Ritmo y fondo', cb_pace_r1: 'cierra en el R1', cb_pace_deep: 'en aguas profundas (R3+)', cb_pace_dist: 'va a decisión', cb_similar: 'Perfiles similares', cb_sim_pct: 'parecido',
       cb_wins_by: 'Gana', cb_loses_by: 'Pierde', cb_upd: 'actualizado',
+      cb_sims: '10,000 simulaciones', cb_style_hist: 'Historial de estilos', cb_style_line: 'Históricamente, {a} gana {pct}% contra {b} ({n} peleas)', cb_style_of: 'Perfil',
+      cb_striking: 'Striking engine', cb_grappling: 'Grappling engine', cb_slpm: 'Golpes/min', cb_head: 'Cabeza', cb_body: 'Cuerpo', cb_legs: 'Piernas', cb_power: 'De poder', cb_kd15: 'KD por 15min', cb_td15: 'Derribos/15min', cb_tdacc: 'Precisión derribo', cb_tddef: 'Defensa derribo', cb_sub15: 'Sumisiones int./15', cb_ctrl: 'Control del cage', cb_fine_n: 'peleas con métrica fina (2022+)', cb_fine_src: 'era moderna',
       tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
       tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
       tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
@@ -586,6 +588,8 @@
       cb_momentum: 'Momentum', cb_mom_delta: 'last 12 months', cb_quality: 'Quality of wins', cb_q_elite: 'elite beaten', cb_q_strong: 'tough opponents', cb_q_top: 'Best wins',
       cb_pace: 'Pace & gas tank', cb_pace_r1: 'finishes in R1', cb_pace_deep: 'in deep water (R3+)', cb_pace_dist: 'goes to decision', cb_similar: 'Similar profiles', cb_sim_pct: 'match',
       cb_wins_by: 'Wins by', cb_loses_by: 'Loses by', cb_upd: 'updated',
+      cb_sims: '10,000 simulations', cb_style_hist: 'Style history', cb_style_line: 'Historically, {a} beats {b} {pct}% of the time ({n} fights)', cb_style_of: 'Profile',
+      cb_striking: 'Striking engine', cb_grappling: 'Grappling engine', cb_slpm: 'Strikes/min', cb_head: 'Head', cb_body: 'Body', cb_legs: 'Legs', cb_power: 'Power', cb_kd15: 'KD per 15min', cb_td15: 'Takedowns/15min', cb_tdacc: 'TD accuracy', cb_tddef: 'TD defense', cb_sub15: 'Sub attempts/15', cb_ctrl: 'Cage control', cb_fine_n: 'fights with fine metrics (2022+)', cb_fine_src: 'modern era',
       tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
       tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
       tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
@@ -5815,7 +5819,7 @@
       '<div class="gx-cb-mini"><div class="gx-cb-minibar"><i style="width:' + pp + '%"></i></div><span class="gx-mono gx-dim">' + pp + '% · ' + (100 - pp) + '%</span></div>' + chip + '</a>';
   }
   // ── R3: builders compartidos de los engines nuevos (cockpit + simulador) ──
-  var CB_FX = { elo: 'cb_fx_elo', reach: 'cb_fx_reach', exp: 'cb_fx_exp', years: 'cb_fx_years', age: 'cb_fx_age', chin: 'cb_fx_chin', streak: 'cb_fx_streak', mileage: 'cb_fx_mileage' };
+  var CB_FX = { elo: 'cb_fx_elo', reach: 'cb_fx_reach', exp: 'cb_fx_exp', years: 'cb_fx_years', age: 'cb_fx_age', chin: 'cb_fx_chin', streak: 'cb_fx_streak', mileage: 'cb_fx_mileage', slpm: 'cb_slpm', td15: 'cb_td15', tddef: 'cb_tddef', ctrl: 'cb_ctrl', kdr: 'cb_kd15' };
   function cbConfBadge(c) {
     if (!c) return '';
     var k = c.level === 'high' ? 'cb_conf_high' : c.level === 'med' ? 'cb_conf_med' : 'cb_conf_low';
@@ -5854,7 +5858,8 @@
     var l1 = (f1n || '').split(' ').pop(), l2 = (f2n || '').split(' ').pop();
     var by = pred.by || {};
     var outRow = function (lab, v, cls) {
-      return '<div class="gx-cb-predrow"><span>' + lab + '</span><div class="gx-cb-predbar"><i class="' + (cls || '') + '" style="width:' + Math.round((v || 0) * 100) + '%"></i></div><b class="gx-mono">' + Math.round((v || 0) * 100) + '%</b></div>';
+      var sims = Math.round((v || 0) * 10000).toLocaleString();
+      return '<div class="gx-cb-predrow"><span>' + lab + '</span><div class="gx-cb-predbar"><i class="' + (cls || '') + '" style="width:' + Math.round((v || 0) * 100) + '%"></i></div><b class="gx-mono" title="' + sims + '">' + Math.round((v || 0) * 100) + '% <span class="gx-dim" style="font-weight:600">· ' + sims + '</span></b></div>';
     };
     var side = function (nm, w, byS, cls) {
       return '<div class="gx-cb-predside"><div class="gx-cb-predname ' + cls + '">' + esc(nm) + ' · ' + Math.round(w * 100) + '%</div>' +
@@ -5863,7 +5868,7 @@
     var dist = (pred.round_dist || []).map(function (rd) {
       return '<div class="gx-cb-rdcol"><div class="gx-cb-rdbar"><i style="height:' + Math.max(3, Math.round(rd.p * 240)) + 'px"></i></div><span>R' + rd.r + '</span><b class="gx-mono">' + Math.round(rd.p * 100) + '%</b></div>';
     }).join('') + '<div class="gx-cb-rdcol"><div class="gx-cb-rdbar"><i class="dec" style="height:' + Math.max(3, Math.round((pred.distance || 0) * 240)) + 'px"></i></div><span>' + esc(t('cb_dist_lab')) + '</span><b class="gx-mono">' + Math.round((pred.distance || 0) * 100) + '%</b></div>';
-    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_pred')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_pred_sub')) + '</span></div><div class="gx-mod-body">' +
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_pred')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_sims')) + ' · ' + esc(t('cb_pred_sub')) + '</span></div><div class="gx-mod-body">' +
       '<div class="gx-cb-predgrid">' + side(l1, pred.win.f1, by.f1, 'gr') + side(l2, pred.win.f2, by.f2, 'rd') + '</div>' +
       '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_rdist')) + '</div><div class="gx-cb-rdist">' + dist + '</div>' +
       '<div class="gx-dim gx-cb-subline" style="text-align:center">~' + pred.exp_rounds + ' ' + esc(t('cb_rounds')) + ' · ' + esc(t('cb_finish')) + ' ' + Math.round((pred.finish || 0) * 100) + '%</div></div></div>';
@@ -5888,6 +5893,12 @@
       [t('cb_streak'), ta.f1.streak, ta.f2.streak, function (x) { return (x > 0 ? 'W' : x < 0 ? 'L' : '—') + Math.abs(x || 0); }],
       ['ELO', ta.f1.elo, ta.f2.elo, null],
     ].map(function (r) { return cbTapeRow(r[0], r[1], r[2], r[3]); }).join('');
+    if (d.fine && d.fine.f1 && d.fine.f2) {
+      rows += cbTapeRow(t('cb_slpm'), d.fine.f1.slpm, d.fine.f2.slpm, null) +
+        cbTapeRow('TD/15', d.fine.f1.td_per15, d.fine.f2.td_per15, null) +
+        cbTapeRow(t('cb_ctrl'), Math.round((d.fine.f1.control_pct || 0) * 100), Math.round((d.fine.f2.control_pct || 0) * 100), function (x) { return x + '%'; }) +
+        (d.fine.f1.td_def != null && d.fine.f2.td_def != null ? cbTapeRow(t('cb_tddef'), Math.round(d.fine.f1.td_def * 100), Math.round(d.fine.f2.td_def * 100), function (x) { return x + '%'; }) : '');
+    }
     var tape = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + '</div></div>';
     // INTELIGENCIA — red flags (capa de observación: layoff, cambio de división, viene de KO, chin, brecha de edad)
     var intel = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_intel')) + '</span></div><div class="gx-mod-body">' +
@@ -5929,6 +5940,18 @@
         '<div class="gx-cb-bookrow gx-cb-bookhead"><span></span><b>' + esc(t('cb_mkt_model')) + '</b><b>' + esc(t('cb_mkt_market')) + '</b></div>' + mrows + trows + '</div></div>';
     }
     var readP = cbReadPanel(d.gp_read, d.confidence);
+    // R4: historial de estilos (Historical Match Engine)
+    if (d.style_match && (d.style_match.f1 || d.style_match.f2)) {
+      var sm2 = d.style_match;
+      var chip2 = function (st, cls) { return st ? '<span class="gx-clgate ' + cls + '">' + esc(t('cb_style_of')) + ': ' + esc(LANG === 'en' ? st.en : st.es) + '</span>' : ''; };
+      var histLine = '';
+      if (sm2.hist && sm2.f1 && sm2.f2) {
+        var wr = sm2.hist.f1_style_winrate;
+        var aSt = wr >= 0.5 ? sm2.f1 : sm2.f2, bSt = wr >= 0.5 ? sm2.f2 : sm2.f1;
+        histLine = '<div class="gx-dim gx-cb-stylehist">' + esc(t('cb_style_line', { a: (LANG === 'en' ? aSt.en : aSt.es), b: (LANG === 'en' ? bSt.en : bSt.es), pct: Math.round(Math.max(wr, 1 - wr) * 100), n: sm2.hist.n.toLocaleString() })) + '</div>';
+      }
+      readP += '<div class="gx-cb-stylerow">' + chip2(sm2.f1, 'ok') + chip2(sm2.f2, 'no') + histLine + '</div>';
+    }
     var mxP = cbMatchupPanel(d.breakdown, ft.f1.name, ft.f2.name);
     var predP = cbPredictionPanel(d.prediction, ft.f1.name, ft.f2.name);
     cbShell(t('cb_fights_title'), evline + hero + readP + '<div class="gx-cb-grid">' + predP + mxP + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
@@ -6042,7 +6065,23 @@
           '<div class="gx-cb-fcard-stats"><span class="elo">' + Math.round(sf.sim * 100) + '% ' + esc(t('cb_sim_pct')) + '</span></div></a>';
       }).join('') + '</div></div>' : '';
     var histP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_recent')) + ' · ' + (d.history || []).length + '</span></div><div class="gx-mod-body">' + hist + '</div></div>';
-    cbShell(t('cb_fighters_title'), hero + chart + '<div class="gx-cb-grid">' + momP + pcP + qP + simP + '</div>' + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
+    // R4b: STRIKING + GRAPPLING engines (stats finas api-sports, era moderna)
+    var fineP = '';
+    if (d.fine) {
+      var fn = d.fine;
+      var fbar = function (lab, v, col) { return '<div class="gx-cb-mrow"><span style="width:74px">' + lab + '</span><div class="gx-cb-mbar"><i style="width:' + Math.round((v || 0) * 100) + '%;background:' + col + '"></i></div><b>' + Math.round((v || 0) * 100) + '%</b></div>'; };
+      var stTile = function (lab, val) { return '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + val + '</div><div class="gx-label">' + lab + '</div></div>'; };
+      fineP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_striking')) + '</span><span class="gx-ph-extra gx-dim">' + fn.n + ' ' + esc(t('cb_fine_n')) + '</span></div>' +
+        '<div class="gx-mod-body"><div class="gx-cb-tiles">' + stTile(esc(t('cb_slpm')).toUpperCase(), fn.slpm) + stTile(esc(t('cb_kd15')).toUpperCase(), fn.kd_per15) + stTile(esc(t('cb_power')).toUpperCase(), Math.round((fn.power_pct || 0) * 100) + '%') + '</div>' +
+        '<div style="max-width:430px;margin-top:10px;display:flex;flex-direction:column;gap:3px">' +
+        fbar(esc(t('cb_head')), fn.head_pct, 'var(--gx-ac,#1FE3A4)') + fbar(esc(t('cb_body')), fn.body_pct, '#5aa7ff') + fbar(esc(t('cb_legs')), fn.legs_pct, '#E8C468') + '</div></div></div>' +
+        '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_grappling')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_fine_src')) + '</span></div>' +
+        '<div class="gx-mod-body gx-cb-tiles">' + stTile(esc(t('cb_td15')).toUpperCase(), fn.td_per15) +
+        (fn.td_acc != null ? stTile(esc(t('cb_tdacc')).toUpperCase(), Math.round(fn.td_acc * 100) + '%') : '') +
+        (fn.td_def != null ? stTile(esc(t('cb_tddef')).toUpperCase(), Math.round(fn.td_def * 100) + '%') : '') +
+        stTile(esc(t('cb_sub15')).toUpperCase(), fn.sub_per15) + stTile(esc(t('cb_ctrl')).toUpperCase(), Math.round((fn.control_pct || 0) * 100) + '%') + '</div></div>';
+    }
+    cbShell(t('cb_fighters_title'), hero + chart + '<div class="gx-cb-grid">' + fineP + momP + pcP + qP + simP + '</div>' + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
   }
   // línea de Elo (SVG propio, sin librerías): eje temporal real, área bajo la curva, punto final
   function cbEloChart(items, w, h) {

@@ -1586,3 +1586,6 @@ td .gx-calc-btn span { display: none; }
 .gx-cb-rdbar i.dec { background:linear-gradient(180deg,#b98cff,#8f5fe0); }
 .gx-cb-rdcol span { font-size:9.5px; font-weight:800; letter-spacing:.6px; color:#5F747B; }
 .gx-cb-rdcol b { font-size:10.5px; color:#B9C7CB; }
+/* R4: estilos + monte carlo */
+.gx-cb-stylerow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0 4px; }
+.gx-cb-stylehist { font-size:12px; font-style:italic; }

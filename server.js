@@ -6613,11 +6613,14 @@ function combatLoad(org) {
   try { C.fighters = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `fighters-${O.file}.json`), 'utf8')); } catch { C.fighters = {}; }
   C.org = O.file; C.upLeague = O.upcoming;
   const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
-  // F1b: fitElo con fighters = Elo + features físicas (reach/exp/años-carrera, pesos online validados
-  // skill 0.0108 vs 0.0068 del Elo puro); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
-  C.elo = CE.fitElo(sorted, C.fighters, { history: true });
-  C.mm = CE.methodModel(sorted);
   C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
+  // R4: stats finas (api-sports) — el matcher necesita C.names, por eso van ANTES del fit
+  let finePF = null;
+  try { const fx = combatFineStats(C); finePF = fx && fx.perFight; } catch { finePF = null; }
+  // F1b→R4: fitElo con fighters (físico/edad/chin/racha/oficio) + finas (striking/grappling 2022+,
+  // backtest subset P=0.983); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
+  C.elo = CE.fitElo(sorted, C.fighters, { history: true, fine: finePF });
+  C.mm = CE.methodModel(sorted);
   // índice por peleador (una pasada): historial, división actual, racha, KO losses, minutos de jaula
   C.idx = {};
   const clockMin = (c) => { const m = String(c || '').match(/(\d+):(\d+)/); return m ? (+m[1] + +m[2] / 60) : 0; };
@@ -6633,8 +6636,142 @@ function combatLoad(org) {
       if (!me.winner && ko) x.koL++;
     }
   }
+  // R4 — ESTILO de pelea por peleador (mix de métodos de victoria; mín 5 victorias) + matriz histórica
+  // estilo-vs-estilo sobre TODO el histórico (display honesto: "cómo le fue a este estilo contra este otro").
+  C.style = {};
+  const recAll = {};
+  for (const f of sorted) {
+    if (!(f.f1.winner || f.f2.winner)) continue;
+    const win = f.f1.winner ? f.f1.id : f.f2.id;
+    const mn = ((f.method || {}).name || '').toLowerCase();
+    const x = recAll[win] = recAll[win] || { w: 0, ko: 0, sub: 0 };
+    x.w++;
+    if (/ko|tko/.test(mn) && !/decision/.test(mn)) x.ko++;
+    else if (/sub/.test(mn)) x.sub++;
+  }
+  for (const [id, x] of Object.entries(recAll)) {
+    if (x.w < 5) continue;
+    const koR = x.ko / x.w, subR = x.sub / x.w, decR = 1 - koR - subR;
+    C.style[id] = koR >= 0.5 ? 'striker' : subR >= 0.4 ? 'grappler' : decR >= 0.55 ? 'grinder' : 'balanced';
+  }
+  C.styleMatrix = {};
+  for (const f of sorted) {
+    if (!(f.f1.winner || f.f2.winner)) continue;
+    const s1 = C.style[f.f1.id], s2 = C.style[f.f2.id];
+    if (!s1 || !s2 || s1 === s2) continue;
+    const key = [s1, s2].sort().join('|');
+    const m2 = C.styleMatrix[key] = C.styleMatrix[key] || { n: 0, first_wins: 0 };
+    m2.n++;
+    const winStyle = f.f1.winner ? s1 : s2;
+    if (winStyle === key.split('|')[0]) m2.first_wins++;
+  }
   C.at = Date.now();
   return C;
+}
+// R4: lectura histórica del cruce de estilos para UNA pelea
+function combatStyleMatch(C, ft) {
+  const s1 = C.style[ft.f1.id] || null, s2 = C.style[ft.f2.id] || null;
+  const LBL = { striker: { es: 'noqueador', en: 'knockout artist' }, grappler: { es: 'grappler', en: 'grappler' }, grinder: { es: 'decisionador', en: 'decision grinder' }, balanced: { es: 'completo', en: 'well-rounded' } };
+  const out = { f1: s1 ? { code: s1, es: LBL[s1].es, en: LBL[s1].en } : null, f2: s2 ? { code: s2, es: LBL[s2].es, en: LBL[s2].en } : null, hist: null };
+  if (s1 && s2 && s1 !== s2) {
+    const key = [s1, s2].sort().join('|');
+    const m2 = C.styleMatrix[key];
+    if (m2 && m2.n >= 60) {
+      const firstStyle = key.split('|')[0];
+      const wr1 = s1 === firstStyle ? m2.first_wins / m2.n : 1 - m2.first_wins / m2.n;
+      out.hist = { n: m2.n, f1_style_winrate: +wr1.toFixed(3) };
+    }
+  }
+  return out;
+}
+// ===== R4b: STATS FINAS de api-sports (striking/grappling por pelea) ====================================
+// afstats-mma.json (backfill PRO): catálogo 2022→hoy + stats por peleador por pelea (head/body/legs,
+// power, TD att/landed, subs, control_time, KD). JOIN con NUESTRAS peleas por (fecha ±1, ambos nombres,
+// regla desambiguación) → minutos reales del cage de ESPN → tasas por 15 min honestas.
+function combatFineStats(C) {
+  global._combatFine = global._combatFine || {};
+  const G = global._combatFine;
+  const file = path.join(__dirname, 'data', 'combat', 'afstats-mma.json');
+  let mt = 0; try { mt = fs.statSync(file).mtimeMs; } catch { return null; }
+  if (G.at === mt && G.byOrg && G.byOrg[C.org]) return G.byOrg[C.org];
+  let raw; try { raw = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+  G.at = mt; G.byOrg = G.byOrg || {};
+  const cm = (c2) => { const m2 = String(c2 || '').match(/(\d+):(\d+)/); return m2 ? (+m2[1] + +m2[2] / 60) : 0; };
+  // índice de NUESTRAS peleas por fecha (día) para el join
+  const byDay = {};
+  for (const f of (C.fights.fights || [])) {
+    if (!f.completed) continue;
+    const d0 = String(f.date).slice(0, 10);
+    for (const dd of [-1, 0, 1]) {
+      const k = new Date(Date.parse(d0) + dd * 864e5).toISOString().slice(0, 10);
+      (byDay[k] = byDay[k] || []).push(f);
+    }
+  }
+  const perFight = {};   // our comp_id → { <ourFighterId>: statRow }
+  const agg = {};        // our fighter id → acumulados
+  let joined = 0;
+  for (const af of (raw.fights || [])) {
+    const rows = raw.stats[af.id];
+    if (!rows || !rows.length) continue;
+    const cands = byDay[af.date] || [];
+    // match: ambos nombres del af-fight resuelven a los dos lados de una pelea nuestra del mismo día (±1)
+    const h = combatFighterByName(C, (af.f1 || {}).name), a = combatFighterByName(C, (af.f2 || {}).name);
+    if (!h || !a) continue;
+    const ours = cands.find(f => (f.f1.id === h && f.f2.id === a) || (f.f1.id === a && f.f2.id === h));
+    if (!ours) continue;
+    joined++;
+    const minutes = ((ours.end_round || 3) - 1) * 5 + cm(ours.end_clock);
+    const afToOur = {}; afToOur[(af.f1 || {}).id] = h; afToOur[(af.f2 || {}).id] = a;
+    const pf = perFight[ours.comp_id] = {};
+    for (const row of rows) {
+      const ourId = afToOur[(row.fighter || {}).id];
+      if (!ourId) continue;
+      // OJO estructura del API: takedowns/submissions/control_time/knockdowns viven DENTRO de strikes
+      const st = row.strikes || {}; const tot = st.total || {}; const pow = st.power || {};
+      const rec = {
+        head: tot.head || 0, body: tot.body || 0, legs: tot.legs || 0,
+        p_head: pow.head || 0, p_body: pow.body || 0, p_legs: pow.legs || 0,
+        td_att: (st.takedowns || {}).attempt || 0, td_land: (st.takedowns || {}).landed || 0,
+        subs: st.submissions || 0, control: cm(st.control_time), kd: st.knockdowns || 0, minutes,
+      };
+      pf[ourId] = rec;
+      const ag = agg[ourId] = agg[ourId] || { n: 0, min: 0, head: 0, body: 0, legs: 0, pow: 0, td_att: 0, td_land: 0, subs: 0, control: 0, kd: 0, td_faced: 0, td_stuffed: 0 };
+      ag.n++; ag.min += minutes;
+      ag.head += rec.head; ag.body += rec.body; ag.legs += rec.legs;
+      ag.pow += rec.p_head + rec.p_body + rec.p_legs;
+      ag.td_att += rec.td_att; ag.td_land += rec.td_land; ag.subs += rec.subs; ag.control += rec.control; ag.kd += rec.kd;
+    }
+    // defensa de derribo: lo que INTENTÓ el rival vs lo que logró
+    const ids = Object.values(afToOur);
+    if (ids.length === 2 && pf[ids[0]] && pf[ids[1]]) {
+      for (const [me2, riv] of [[ids[0], ids[1]], [ids[1], ids[0]]]) {
+        const ag2 = agg[me2];
+        ag2.td_faced += pf[riv].td_att; ag2.td_stuffed += pf[riv].td_att - pf[riv].td_land;
+      }
+    }
+  }
+  const out = { perFight, career: {}, joined, total: (raw.fights || []).length };
+  for (const [id, a2] of Object.entries(agg)) {
+    if (!a2.n || a2.min < 10) continue;
+    const strikes = a2.head + a2.body + a2.legs;
+    out.career[id] = {
+      n: a2.n, minutes: +a2.min.toFixed(0),
+      slpm: +(strikes / a2.min).toFixed(2),
+      head_pct: strikes ? +(a2.head / strikes).toFixed(2) : null,
+      body_pct: strikes ? +(a2.body / strikes).toFixed(2) : null,
+      legs_pct: strikes ? +(a2.legs / strikes).toFixed(2) : null,
+      power_pct: strikes ? +(a2.pow / strikes).toFixed(2) : null,
+      kd_per15: +(a2.kd / a2.min * 15).toFixed(2),
+      td_per15: +(a2.td_land / a2.min * 15).toFixed(2),
+      td_acc: a2.td_att ? +(a2.td_land / a2.td_att).toFixed(2) : null,
+      td_def: a2.td_faced >= 3 ? +(a2.td_stuffed / a2.td_faced).toFixed(2) : null,
+      sub_per15: +(a2.subs / a2.min * 15).toFixed(2),
+      control_pct: +(a2.control / a2.min).toFixed(2),
+    };
+  }
+  G.byOrg[C.org] = out;
+  console.log('[combat-fine]', C.org, 'joined', joined, 'de', out.total, '| peleadores con stats:', Object.keys(out.career).length);
+  return out;
 }
 // resumen de UN peleador para directorio/tale-of-the-tape (edad real si dob llegó del paso 4)
 function combatFighterSummary(C, id) {
@@ -7197,8 +7334,8 @@ function combatModelOverRounds(method, line, sched) {
 }
 // narrativa de la pick de combate (mismo espíritu del compose del fútbol: el "por qué" al nivel de analista)
 // narrativa caja-negra de la pick (regla de la casa: factores del enfrentamiento, JAMÁS mecánica del modelo)
-const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula' };
-const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft' };
+const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula', slpm: 'ritmo de golpeo', td15: 'juego de derribos', tddef: 'defensa de derribo', ctrl: 'control del cage', kdr: 'poder de nocaut' };
+const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft', slpm: 'striking output', td15: 'takedown game', tddef: 'takedown defense', ctrl: 'cage control', kdr: 'one-punch power' };
 function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
   const mp = Math.round(m * 100), kp = Math.round(k * 100);
   // factores a favor del lado elegido (parts vienen orientados a f1; espejar si la pick es f2)
@@ -10463,6 +10600,7 @@ const server = http.createServer(async (req, res) => {
           method_split: mm, // {wins,losses,winKo,winSub,lostKo,lostSub}
           divisions: divs, opposition_elo: oppElo,
           momentum, quality, pace, similar: sims,
+          fine: ((combatFineStats(C) || {}).career || {})[id] || null,
           elo_series: ((C.elo.HIST || {})[id] || []).map(h => ({ d: h.d, r: h.r })),
           history: hist.slice(0, 40),
         });
@@ -10546,6 +10684,8 @@ const server = http.createServer(async (req, res) => {
           context: combatContext(ev, ft),
           prediction,
           gp_read: combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll),
+          style_match: combatStyleMatch(C, ft),
+          fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
           pick: pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
         });
@@ -10580,7 +10720,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { prob: pr, method, tale: { f1: s1, f2: s2 }, intel, weight, rounds,
           breakdown: bdS && bdS.parts, confidence: combatConfidence(C, ftSim, pr.p1, 0),
           prediction: { win: { f1: +pr.p1.toFixed(3), f2: +(1 - pr.p1).toFixed(3) }, by: method.by_winner || null, distance: +(method.dec || 0).toFixed(3), finish: method.finish, round_dist: rdS, exp_rounds: method.exp_rounds },
-          gp_read: combatGpRead(ftSim, pr.p1, bdS && bdS.parts, intel) });
+          gp_read: combatGpRead(ftSim, pr.p1, bdS && bdS.parts, intel), style_match: combatStyleMatch(C, ftSim) });
       }
       // R2: OPORTUNIDADES de combate — picks activas + value (line shopping vs consenso) + arbitraje 2-way
       if (p === '/api/combat/opps' && req.method === 'GET') {

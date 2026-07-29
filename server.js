@@ -6954,6 +6954,13 @@ function combatIntelFlags(C, ft, evDate) {
       if (lastKo) add(side, 'off_ko', `${nm} viene de perder por KO — durabilidad en duda`, `${nm} is coming off a KO loss — durability question`, 'high');
     }
     if ((x.koL || 0) >= 4) add(side, 'chin', `${nm}: ${x.koL} derrotas por KO en su carrera (chin mileage)`, `${nm}: ${x.koL} career KO losses (chin mileage)`);
+    // #2 (29-jul): descanso corto. Los días de aviso NO existen como dato (Wikipedia no los registra), pero
+    // el mecanismo — pelear sin campamento completo — se aproxima con los días desde su última pelea.
+    // MEDIDO (pool UFC+MMA, walk-forward): <28d el peleador gana 16.1pp MENOS de lo previsto (n=54,
+    // p=0.014) con dosis-respuesta limpia (<35d −11.2pp, <45d −6.7pp) y réplica en ambos universos…
+    // PERO la 2ª mitad temporal casi lo borra (−24.8pp vs −7.5pp) → NO pasa el gate, NO entra al modelo.
+    // Vive como bandera de contexto, que es lo honesto: el usuario merece saberlo, el λ no se toca.
+    if (days != null && days <= 35) add(side, 'short_rest', `${nm} pelea con solo ${days} días desde su última pelea — campamento corto`, `${nm} fights on just ${days} days since his last bout — short camp`, days <= 28 ? 'high' : 'warn');
   }
   // brecha de edad (si hay dob de ambos)
   const a1 = (C.fighters[ft.f1.id] || {}).dob, a2 = (C.fighters[ft.f2.id] || {}).dob;

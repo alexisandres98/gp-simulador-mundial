@@ -6865,6 +6865,123 @@ function combatIntelFlags(C, ft, evDate) {
   }
   return flags;
 }
+// ===== R5 (29-jul): FILM STUDY — lectura automática del "tape" ==========================================
+// Qué ES: el análisis del REGISTRO DE ACCIÓN de cada pelea — a dónde dirige sus golpes y con cuánto poder,
+// cómo entra a los derribos y cuánto controla, en qué round cierra sus victorias y en cuál lo cierran a él.
+// Qué NO es: visión por computadora sobre video (nadie nos licencia el video de UFC; decirlo claro).
+// Fuentes: stats finas por pelea (api-sports 2022+) + el histórico completo de métodos/rounds (1997+).
+// El CRUCE (lo que un analista busca en la cinta) sale de enfrentar el ataque de uno con la vulnerabilidad
+// del otro. Caja negra: se narra el FACTOR, jamás el peso ni la mecánica.
+function combatFilmProfile(C, id, fine) {
+  const hist = (C.fights.fights || []).filter(f => f.completed && (f.f1.id === id || f.f2.id === id) && (f.f1.winner || f.f2.winner));
+  const P = { win_r1: 0, win_late: 0, wins: 0, lost_ko: 0, lost_sub: 0, lost_late: 0, losses: 0, deep: 0, deep_w: 0 };
+  for (const f of hist) {
+    const me = f.f1.id === id ? f.f1 : f.f2;
+    const n = ((f.method || {}).name || '').toLowerCase();
+    const ko = /ko|tko/.test(n) && !/decision/.test(n), sub = /sub/.test(n), dec = /decision/.test(n);
+    const er = f.end_round || (f.rounds_sched || 3);
+    if (!dec && er >= 3 || dec) { P.deep++; if (me.winner) P.deep_w++; }
+    if (me.winner) { P.wins++; if (!dec && er <= 1) P.win_r1++; if (!dec && er >= 3) P.win_late++; }
+    else { P.losses++; if (ko) P.lost_ko++; if (sub) P.lost_sub++; if (!dec && er >= 3) P.lost_late++; }
+  }
+  const fx = fine || null;
+  return {
+    n_fights: hist.length,
+    // dónde y cómo golpea (solo si hay stats finas del peleador)
+    strike: fx ? { pace: fx.slpm, head: fx.head_pct, body: fx.body_pct, legs: fx.legs_pct, power: fx.power_pct, kd15: fx.kd_per15, n: fx.n } : null,
+    grapple: fx ? { td15: fx.td_per15, td_acc: fx.td_acc, td_def: fx.td_def, ctrl: fx.control_pct, sub15: fx.sub_per15 } : null,
+    // ritmo de cierre: cuándo gana y cuándo lo ganan
+    timing: {
+      early_win: P.wins ? +(P.win_r1 / P.wins).toFixed(2) : null,
+      late_win: P.wins ? +(P.win_late / P.wins).toFixed(2) : null,
+      deep_rate: P.deep ? +(P.deep_w / P.deep).toFixed(2) : null, deep_n: P.deep,
+      ko_losses: P.lost_ko, sub_losses: P.lost_sub, late_losses: P.lost_late, losses: P.losses,
+    },
+  };
+}
+// hallazgos del cruce: ataque de A contra vulnerabilidad de B (y viceversa). severidad = qué tan marcado.
+function combatFilmStudy(C, ft) {
+  const fx = combatFineStats(C);
+  const car = (fx && fx.career) || {};
+  const prof = { f1: combatFilmProfile(C, ft.f1.id, car[ft.f1.id]), f2: combatFilmProfile(C, ft.f2.id, car[ft.f2.id]) };
+  const out = [];
+  const add = (side, code, es, en, sev) => out.push({ side, code, es, en, severity: sev || 'warn' });
+  const N = { f1: ft.f1.name, f2: ft.f2.name };
+  for (const [me, ri] of [['f1', 'f2'], ['f2', 'f1']]) {
+    const A = prof[me], B = prof[ri], nA = N[me], nB = N[ri];
+    // 1. poder temprano contra un mentón ya castigado (o con una tasa de caídas provocadas muy alta)
+    const heavy = A.strike && (A.strike.kd15 || 0) >= 1.5;
+    if (A.timing.early_win != null && A.timing.early_win >= 0.4 && (B.timing.ko_losses >= 2 || (heavy && B.timing.ko_losses >= 1)))
+      add(me, 'early_power', `${nA} cierra temprano cuando cierra, y ${nB} ya ha sido detenido por golpes antes — los primeros minutos son el momento de peligro`,
+        `${nA} closes early when he closes, and ${nB} has been stopped by strikes before — the opening minutes are the danger window`, 'high');
+    // 2. volumen arriba y con intención — solo si lo DIFERENCIA del rival (si ambos pegan igual, no dice nada)
+    if (A.strike && B.strike && A.strike.head >= 0.6 && (A.strike.power || 0) >= 0.35 && B.timing.ko_losses >= 1
+      && ((A.strike.power || 0) - (B.strike.power || 0) >= 0.08 || (A.strike.kd15 || 0) - (B.strike.kd15 || 0) >= 1))
+      add(me, 'head_hunter', `${nA} manda su volumen a la cabeza y con más intención que el rival — no golpea de tanteo`,
+        `${nA} sends his volume upstairs with more intent than his opponent — he is not measuring`, 'warn');
+    // 2b. ritmo: quien impone volumen sostenido
+    if (A.strike && B.strike && (A.strike.pace || 0) - (B.strike.pace || 0) >= 3)
+      add(me, 'pace', `${nA} sostiene bastante más volumen por minuto que ${nB} — el ritmo lo pone él`,
+        `${nA} sustains far more volume per minute than ${nB} — he sets the pace`, 'warn');
+    // 3. juego de derribos contra defensa floja
+    if (A.grapple && B.grapple && (A.grapple.td15 || 0) >= 2 && B.grapple.td_def != null && B.grapple.td_def <= 0.65)
+      add(me, 'takedown_edge', `${nA} vive de llevar la pelea al suelo y ${nB} no ha sabido sostenerse de pie contra ese juego`,
+        `${nA} lives off taking the fight down, and ${nB} has struggled to stay upright against that`, 'high');
+    // 4. control: quien administra el tiempo arriba
+    if (A.grapple && B.grapple && (A.grapple.ctrl || 0) >= 0.25 && (A.grapple.ctrl || 0) - (B.grapple.ctrl || 0) >= 0.15)
+      add(me, 'control', `${nA} administra tramos largos de control que a ${nB} le cuesta revertir`,
+        `${nA} banks long stretches of control that ${nB} struggles to reverse`, 'warn');
+    // 5. fondo: aguas profundas
+    if (A.timing.deep_n >= 5 && B.timing.deep_n >= 5 && A.timing.deep_rate != null && B.timing.deep_rate != null
+      && A.timing.deep_rate - B.timing.deep_rate >= 0.25)
+      add(me, 'deep_water', `Si la pelea llega a aguas profundas, el historial favorece a ${nA}`,
+        `If this reaches deep water, the history favours ${nA}`, 'warn');
+    // 6. peligro tardío del rival: A tiene que cuidarse al final
+    if (B.timing.late_win != null && B.timing.late_win >= 0.35 && A.timing.late_losses >= 1)
+      add(ri, 'late_danger', `${nB} hace su daño tarde y ${nA} ya se ha caído en rounds finales`,
+        `${nB} does his damage late and ${nA} has folded in championship rounds before`, 'warn');
+  }
+  return { profile: prof, findings: out };
+}
+
+// ===== R5: ESTADO EN VIVO de una pelea (ESPN core API) ==================================================
+// status → round y reloj (el reloj de ESPN es lo que RESTA del round); plays → cronología del combate.
+// OJO (regla de honestidad): ESPN publica los eventos SIN atribuir — un derribo no dice de quién es. Por eso
+// la cronología es CONTEXTO y jamás entra a la probabilidad; la dirección la ponen el modelo y el reloj.
+async function combatLiveFight(C, ev, ft) {
+  const G = global._combatLive = global._combatLive || {};
+  const k = ft.comp_id;
+  if (G[k] && Date.now() - G[k].at < 20e3) return G[k].v;
+  const lg = C.upLeague || 'ufc';
+  const base = `https://sports.core.api.espn.com/v2/sports/mma/leagues/${lg}/events/${ev.id}/competitions/${ft.comp_id}`;
+  let v = null;
+  try {
+    const st = await fetch(`${base}/status`, { signal: AbortSignal.timeout(8000) }).then(r => r.json());
+    const state = ((st.type || {}).state) || 'pre';
+    const round = st.period || 0;
+    // OJO (verificado 29-jul contra 8 peleas reales): el status.clock de ESPN en MMA es el tiempo
+    // TRANSCURRIDO del round — coincide exacto con nuestro end_clock (una decisión cierra en 300).
+    // Los plays, en cambio, cuentan hacia atrás. No confundirlos.
+    const el = typeof st.clock === 'number' ? st.clock : null;
+    v = {
+      state, round, clock: st.displayClock || null,
+      elapsed: el != null ? Math.min(300, Math.max(0, el)) : 0,
+      completed: !!(st.type || {}).completed,
+      detail: (st.type || {}).shortDetail || null,
+      plays: [],
+    };
+    if (state !== 'pre') {
+      const pl = await fetch(`${base}/plays?limit=300`, { signal: AbortSignal.timeout(8000) }).then(r => r.json());
+      const SKIP = /walkout|tale of the tape|staredown|fight open|results|unofficial/i;
+      v.plays = (pl.items || [])
+        .filter(x => !SKIP.test(((x.type || {}).text) || ''))
+        .map(x => ({ round: (x.period || {}).number || 0, clock: (x.clock || {}).displayValue || null, type: ((x.type || {}).text) || '' }))
+        .filter(x => x.round >= 1);
+    }
+  } catch { v = null; }
+  G[k] = { at: Date.now(), v };
+  return v;
+}
 function combatRecordOf(C, id) { // récord W-L derivado del histórico (UFC-only)
   let w = 0, l = 0, ko = 0, sub = 0;
   for (const f of (C.fights.fights || [])) {
@@ -10672,6 +10789,17 @@ const server = http.createServer(async (req, res) => {
           exp_rounds: method.exp_rounds,
         };
         const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + cid) || null;
+        // R5 — EN VIVO: el estado lo define el RELOJ (regla de la casa), no si tenemos datos. Una cartelera
+        // corre ~8h desde su hora de inicio → dentro de esa ventana se consulta ESPN; fuera, ni se intenta.
+        const tEv = Date.parse(ev.date);
+        const inWindow = Date.now() > tEv - 30 * 60e3 && Date.now() < tEv + 8 * 3600e3;
+        let live = null, liveProbs = null;
+        if (inWindow) {
+          live = await combatLiveFight(C, ev, ft);
+          if (live && live.state === 'in' && live.round >= 1) {
+            liveProbs = CE.liveFightProbs(method, ft.rounds || 3, { round: live.round, elapsed: live.elapsed });
+          }
+        }
         return json(res, 200, {
           event: { id: ev.id, name: ev.name, date: ev.date }, fight: { ...ft, main: ft.main },
           prob: pr, method,
@@ -10685,6 +10813,8 @@ const server = http.createServer(async (req, res) => {
           prediction,
           gp_read: combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll),
           style_match: combatStyleMatch(C, ft),
+          film: combatFilmStudy(C, ft),
+          live, live_probs: liveProbs,
           fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
           pick: pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,

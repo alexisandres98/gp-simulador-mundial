@@ -247,6 +247,8 @@
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
       cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
+      cb_live: 'EN VIVO', cb_live_sub: 'la probabilidad se mueve con el reloj', cb_live_pre: 'antes de empezar', cb_live_now: 'ahora', cb_live_fin: 'termina antes del límite', cb_live_dec: 'llega a decisión', cb_live_left: 'rounds por delante', cb_live_tl: 'Cronología del combate', cb_live_note: 'La cronología viene sin atribuir desde la fuente oficial: son hechos del combate, no de un peleador. La probabilidad la mueven el modelo y el reloj.',
+      cb_film: 'Film study', cb_film_sub: 'lo que dice la cinta', cb_film_none: 'Sin suficiente registro de acción para leer la cinta de este cruce.', cb_film_what: 'Lectura automática del registro de acción de cada pelea (a dónde van los golpes y con cuánta intención, cómo entra el juego de suelo, en qué round se cierran sus peleas). No es análisis de video.', cb_film_pace: 'Ritmo', cb_film_target: 'Reparto de golpes', cb_film_power: 'Intención', cb_film_gr: 'Suelo', cb_film_ctrl: 'Control', cb_film_early: 'Cierra temprano', cb_film_deep: 'Aguas profundas',
       cb_conf_high: 'Confianza alta', cb_conf_med: 'Confianza media', cb_conf_low: 'Confianza baja', cb_conf_sub_low: 'muestra corta o mercado fino — el sistema lo sabe',
       cb_fx_elo: 'Nivel demostrado', cb_fx_reach: 'Alcance', cb_fx_exp: 'Experiencia', cb_fx_years: 'Desgaste de carrera', cb_fx_age: 'Edad', cb_fx_chin: 'Durabilidad', cb_fx_streak: 'Momento', cb_fx_mileage: 'Oficio en jaula',
       cb_momentum: 'Momentum', cb_mom_delta: 'últimos 12 meses', cb_quality: 'Calidad de victorias', cb_q_elite: 'élite vencida', cb_q_strong: 'rivales duros', cb_q_top: 'Mejores victorias',
@@ -583,6 +585,8 @@
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
       cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
+      cb_live: 'LIVE', cb_live_sub: 'the probability moves with the clock', cb_live_pre: 'before the opening bell', cb_live_now: 'now', cb_live_fin: 'ends inside the limit', cb_live_dec: 'goes to decision', cb_live_left: 'rounds ahead', cb_live_tl: 'Fight timeline', cb_live_note: 'The timeline arrives unattributed from the official feed: these are facts of the fight, not of a fighter. The probability is moved by the model and the clock.',
+      cb_film: 'Film study', cb_film_sub: 'what the tape says', cb_film_none: 'Not enough recorded action to read the tape on this matchup.', cb_film_what: 'Automated reading of the recorded action of every fight (where the strikes go and with how much intent, how the ground game enters, which round their fights close in). This is not video analysis.', cb_film_pace: 'Pace', cb_film_target: 'Strike split', cb_film_power: 'Intent', cb_film_gr: 'Ground', cb_film_ctrl: 'Control', cb_film_early: 'Closes early', cb_film_deep: 'Deep water',
       cb_conf_high: 'High confidence', cb_conf_med: 'Medium confidence', cb_conf_low: 'Low confidence', cb_conf_sub_low: 'small sample or thin market — the system knows it',
       cb_fx_elo: 'Proven level', cb_fx_reach: 'Reach', cb_fx_exp: 'Experience', cb_fx_years: 'Career wear', cb_fx_age: 'Age', cb_fx_chin: 'Durability', cb_fx_streak: 'Momentum', cb_fx_mileage: 'Cage craft',
       cb_momentum: 'Momentum', cb_mom_delta: 'last 12 months', cb_quality: 'Quality of wins', cb_q_elite: 'elite beaten', cb_q_strong: 'tough opponents', cb_q_top: 'Best wins',
@@ -5873,6 +5877,59 @@
       '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_rdist')) + '</div><div class="gx-cb-rdist">' + dist + '</div>' +
       '<div class="gx-dim gx-cb-subline" style="text-align:center">~' + pred.exp_rounds + ' ' + esc(t('cb_rounds')) + ' · ' + esc(t('cb_finish')) + ' ' + Math.round((pred.finish || 0) * 100) + '%</div></div></div>';
   }
+  // EN VIVO (R5): la misma probabilidad del modelo, condicionada al round y al reloj. Arriba de todo,
+  // porque mientras la pelea corre es LO que el usuario mira.
+  function cbLivePanel(live, lp, pre, f1n, f2n) {
+    if (!live || live.state !== 'in' || !lp) return '';
+    var l1 = (f1n || '').split(' ').pop(), l2 = (f2n || '').split(' ').pop();
+    var p1 = lp.p1, d1 = (p1 - (pre || p1)) * 100;
+    var delta = function (d) { return Math.abs(d) < 0.5 ? '' : '<i class="' + (d > 0 ? 'gr' : 'rd') + '" style="font-style:normal">' + (d > 0 ? '▲' : '▼') + Math.abs(d).toFixed(1) + 'pp</i>'; };
+    var tl = (live.plays || []).slice().reverse().slice(0, 14).map(function (p2) {
+      return '<div class="gx-cb-tlrow"><span class="gx-mono gx-dim">R' + p2.round + (p2.clock ? ' ' + p2.clock : '') + '</span><span>' + esc(cbPlayLabel(p2.type)) + '</span></div>';
+    }).join('');
+    return '<div class="gx-panel gx-cb-livepanel"><div class="gx-ph"><span class="gx-label"><span class="gx-cb-livedot"></span>' + esc(t('cb_live')) + ' · R' + live.round + (live.clock ? ' ' + esc(live.clock) : '') + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_live_sub')) + '</span></div>' +
+      '<div class="gx-mod-body">' +
+      '<div class="gx-cb-livebar"><i class="gr" style="width:' + Math.round(p1 * 100) + '%"></i><i class="rd" style="width:' + Math.round((1 - p1) * 100) + '%"></i></div>' +
+      '<div class="gx-cb-liverow"><b class="gr">' + esc(l1) + ' ' + Math.round(p1 * 100) + '% ' + delta(d1) + '</b><b class="rd">' + delta(-d1) + ' ' + Math.round((1 - p1) * 100) + '% ' + esc(l2) + '</b></div>' +
+      '<div class="gx-cb-livetiles">' +
+      '<div><span class="gx-dim">' + esc(t('cb_live_fin')) + '</span><b class="gx-mono">' + Math.round(lp.finish_left * 100) + '%</b></div>' +
+      '<div><span class="gx-dim">' + esc(t('cb_live_dec')) + '</span><b class="gx-mono">' + Math.round(lp.decision * 100) + '%</b></div>' +
+      '<div><span class="gx-dim">' + esc(t('cb_live_left')) + '</span><b class="gx-mono">~' + lp.rounds_left + '</b></div>' +
+      '<div><span class="gx-dim">' + esc(t('cb_live_pre')) + '</span><b class="gx-mono">' + Math.round((pre || 0) * 100) + '%</b></div>' +
+      '</div>' +
+      (tl ? '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_live_tl')) + '</div><div class="gx-cb-tl">' + tl + '</div>' : '') +
+      '<div class="gx-dim gx-cb-subline">' + esc(t('cb_live_note')) + '</div>' +
+      '</div></div>';
+  }
+  // los eventos llegan en inglés y SIN dueño → se narran como hechos del combate
+  var CB_PLAY_ES = { 'Round Start': 'Arranca el round', 'Round End': 'Fin del round', 'Takedown': 'Derribo', 'Takedown Attempt': 'Intento de derribo', 'Submission Attempt': 'Intento de sumisión', 'Knockdown': 'Caída', 'Reversal': 'Reversión', 'Round Pause': 'Pelea detenida', 'Round Unpause': 'Se reanuda', 'Fight Over': 'Fin del combate' };
+  function cbPlayLabel(tx) { return LANG === 'en' ? tx : (CB_PLAY_ES[tx] || tx); }
+  // FILM STUDY (R5): la lectura de la cinta — perfiles + el cruce ataque/vulnerabilidad
+  function cbFilmPanel(film, f1n, f2n) {
+    if (!film) return '';
+    var pr = film.profile || {}, fi = film.findings || [];
+    var l1 = (f1n || '').split(' ').pop(), l2 = (f2n || '').split(' ').pop();
+    var pct = function (x) { return x == null ? '—' : Math.round(x * 100) + '%'; };
+    var col = function (P, nm, cls) {
+      if (!P) return '';
+      var s = P.strike, g = P.grapple, tm = P.timing || {};
+      var row = function (lab, val) { return '<div class="gx-cb-filmrow"><span class="gx-dim">' + esc(lab) + '</span><b class="gx-mono">' + val + '</b></div>'; };
+      return '<div class="gx-cb-filmcol"><div class="gx-cb-rec5head ' + cls + '">' + esc(nm) + '</div>' +
+        (s ? row(t('cb_film_pace'), s.pace != null ? s.pace.toFixed(1) + '/min' : '—') +
+          row(t('cb_film_target'), s.head != null ? Math.round(s.head * 100) + '/' + Math.round((s.body || 0) * 100) + '/' + Math.round((s.legs || 0) * 100) : '—') +
+          row(t('cb_film_power'), pct(s.power)) : '') +
+        (g ? row(t('cb_film_gr'), (g.td15 != null ? g.td15.toFixed(1) : '—') + ' · ' + pct(g.td_def)) + row(t('cb_film_ctrl'), pct(g.ctrl)) : '') +
+        row(t('cb_film_early'), pct(tm.early_win)) +
+        row(t('cb_film_deep'), tm.deep_n >= 3 ? pct(tm.deep_rate) + ' <span class="gx-dim">(' + tm.deep_n + ')</span>' : '—') +
+        '</div>';
+    };
+    var body = '<div class="gx-cb-filmgrid">' + col(pr.f1, l1, 'gr') + col(pr.f2, l2, 'rd') + '</div>' +
+      (fi.length ? '<div class="gx-cb-filmfind">' + fi.map(function (x) {
+        return '<div class="gx-cb-flag ' + (x.severity === 'high' ? 'hi' : '') + '"><span class="gx-cb-flagdot"></span><span>' + esc(LANG === 'en' ? x.en : x.es) + '</span></div>';
+      }).join('') + '</div>' : '<div class="gx-dim gx-cb-clean">' + esc(t('cb_film_none')) + '</div>');
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_film')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_film_sub')) + '</span></div>' +
+      '<div class="gx-mod-body">' + body + '<div class="gx-dim gx-cb-subline">' + esc(t('cb_film_what')) + '</div></div></div>';
+  }
   // ── COCKPIT DE PELEA: el panel de inteligencia completo ──
   function renderCbFight() {
     var key = 'fight_' + cbOrg() + '_' + S.cb.fightId;
@@ -5954,7 +6011,18 @@
     }
     var mxP = cbMatchupPanel(d.breakdown, ft.f1.name, ft.f2.name);
     var predP = cbPredictionPanel(d.prediction, ft.f1.name, ft.f2.name);
-    cbShell(t('cb_fights_title'), evline + hero + readP + '<div class="gx-cb-grid">' + predP + mxP + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
+    var liveP = cbLivePanel(d.live, d.live_probs, d.prob && d.prob.p1, ft.f1.name, ft.f2.name);
+    var filmP = cbFilmPanel(d.film, ft.f1.name, ft.f2.name);
+    cbShell(t('cb_fights_title'), evline + hero + liveP + readP + '<div class="gx-cb-grid">' + predP + mxP + filmP + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
+    // mientras la pelea corre, el cockpit se refresca solo (un único temporizador; muere al salir de la vista)
+    if (d.live && d.live.state === 'in') {
+      clearTimeout(S.cb._liveT);
+      S.cb._liveT = setTimeout(function () {
+        if (S.view !== 'cbfight') return;
+        delete S.cb[key];
+        renderCb('cbfight');
+      }, 25000);
+    }
   }
   function inchesNum(s) { if (!s) return null; var m = String(s).match(/(\d+)'\s*(\d+)?/); if (m) return (+m[1]) * 12 + (+(m[2] || 0)); var n = String(s).match(/([\d.]+)/); return n ? +n[1] : null; }
   function cbTapeRow(label, v1, v2, fmt) {

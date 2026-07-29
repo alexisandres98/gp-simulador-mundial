@@ -11,6 +11,7 @@
 const BASE = 1500;
 const SPREAD = 280;            // recalibrado 27-jul: barrido 230-400 → óptimo ~260-300 (skill +0.0062 vs +0.0058 del estándar 400); el Elo de peleas discrimina más de lo que la escala 400 expresa
 const K0 = 64, K_MIN = 24;     // K inicial alto (pocas peleas/carrera), piso veterano
+const ROUND_SEC = 300;         // un round = 5 minutos (todas las promociones que cubrimos)
 const FINISH_BONUS = 1.25;     // KO/Sub pesan 25% más que decisión
 const RUST_PER_YEAR = 28;      // puntos de castigo por año inactivo (aplicado al computar prob, cap 2 años)
 
@@ -83,15 +84,22 @@ function featDiff(model, fighters, id1, id2, atDate) {
 // fights: [{date, f1:{id,winner}, f2:{id,winner}, method, completed}] ORDENADAS por fecha ascendente.
 // fighters (opcional, dict por id): activa la capa de features físicas — el modelo aprende los pesos
 // online en la misma pasada y fightProb los aplica. Sin fighters → Elo puro byte-idéntico al de antes.
-function fitElo(fights, fighters, { history = false, fine = null } = {}) {
+function newModel(fighters, { history = false } = {}) {
   const R = {}, N = {}, LAST = {}, FIRST = {}, KOL = {}, MIN = {}, R3 = {}, AG = {};
   const HIST = history ? {} : null; // serie de Elo por peleador (perfil/evolución): [{d,r}] tras cada pelea
-  const model = { R, N, LAST, FIRST, KOL, MIN, R3, AG, HIST, PF: fighters || null, w: fighters ? newW() : null };
+  return { R, N, LAST, FIRST, KOL, MIN, R3, AG, HIST, PF: fighters || null, w: fighters ? newW() : null };
+}
+
+// UN paso del ajuste (una pelea). Extraído de fitElo para que el walk-forward pueda evaluar y aprender
+// pelea por pelea con EXACTAMENTE el mismo update, sin refitear el histórico entero en cada iteración.
+function eloStep(model, f, finePF) {
+  const { R, N, LAST, FIRST, KOL, MIN, R3, AG, HIST } = model;
+  const fighters = model.PF;
   const get = (id) => (R[id] == null ? BASE : R[id]);
-  for (const f of fights) {
-    if (!f.completed || !f.f1.id || !f.f2.id) continue;
+  {
+    if (!f.completed || !f.f1.id || !f.f2.id) return;
     const w = f.f1.winner ? f.f1.id : f.f2.winner ? f.f2.id : null;
-    if (!w) continue; // NC/draw no mueve
+    if (!w) return; // NC/draw no mueve
     const l = w === f.f1.id ? f.f2.id : f.f1.id;
     if (fighters) { // SGD online de los pesos de features (predicción ANTES del update — sin leakage)
       const rust = (id) => {
@@ -127,7 +135,7 @@ function fitElo(fights, fighters, { history = false, fine = null } = {}) {
       (HIST[l] = HIST[l] || []).push({ d: f.date, r: Math.round(R[l]) });
     }
     // aggregados FINOS incrementales (tras evaluar — walk-forward): perFight de api-sports por comp_id
-    const pf2 = fine && fine[f.comp_id];
+    const pf2 = finePF || null;
     if (pf2) {
       // normalización defensiva: acepta el shape del server (minutes/td_land/control/head+body+legs)
       const nz = (r2) => ({
@@ -150,6 +158,11 @@ function fitElo(fights, fighters, { history = false, fine = null } = {}) {
       }
     }
   }
+}
+
+function fitElo(fights, fighters, { history = false, fine = null } = {}) {
+  const model = newModel(fighters, { history });
+  for (const f of fights) eloStep(model, f, fine && fine[f.comp_id]);
   return model;
 }
 
@@ -306,6 +319,46 @@ function methodProbs(mm, p1, id1, id2, weight, sched) {
   };
 }
 
+// ---------- R5 (29-jul): PROBABILIDAD EN VIVO ----------
+// NO es un modelo nuevo: es el MISMO reparto de methodProbs condicionado al reloj. Una pelea que llega al
+// round 3 ya gastó los caminos de finish tempranos; lo que queda se renormaliza. Por eso el favorito que gana
+// por KO temprano se desinfla al avanzar la pelea y el que gana por decisión sube — sin tocar un solo peso.
+// state = { round (1..sched), elapsed (segundos dentro del round, 0 = arranque) }.
+// Nota honesta: ESPN publica los eventos del combate SIN atribuir (un derribo no dice de quién), así que la
+// dirección la pone el modelo y el reloj; los eventos son contexto, jamás entran acá.
+function liveFightProbs(method, sched, state) {
+  const sc = sched >= 3 ? sched : 3;
+  const R = Math.min(sc, Math.max(1, Math.round((state && state.round) || 1)));
+  const u = Math.min(1, Math.max(0, ((state && state.elapsed) || 0) / (ROUND_SEC)));
+  const bw = method.by_winner;
+  const F1 = bw.f1.ko + bw.f1.sub, F2 = bw.f2.ko + bw.f2.sub;
+  const D1 = bw.f1.dec, D2 = bw.f2.dec;
+  // g(r) = share de los finishes que cierran en el round r (del r_le acumulado del propio modelo)
+  const fin = method.finish || (F1 + F2) || 1e-9;
+  const g = []; let prev = 0;
+  for (let r = 1; r <= sc; r++) { const cum = method.r_le[r] != null ? method.r_le[r] : fin; g[r] = Math.max(0, (cum - prev) / fin); prev = cum; }
+  let rem = g[R] * (1 - u);
+  for (let r = R + 1; r <= sc; r++) rem += g[r];
+  rem = Math.min(1, Math.max(0, rem));
+  const s1 = F1 * rem + D1, s2 = F2 * rem + D2, S = s1 + s2;
+  if (!(S > 0)) return { p1: 0.5, finish_left: 0, decision: 1, rounds_left: sc - R + 1 - u, round: R };
+  let expLeft = 0; // rounds que faltan en expectativa
+  const remIn = (r) => (r === R ? g[R] * (1 - u) : g[r]);
+  for (let r = R; r <= sc; r++) expLeft += (F1 + F2) * remIn(r) / S * (r - R + (r === R ? (1 - u) / 2 : 0.5));
+  expLeft += (D1 + D2) / S * (sc - R + 1 - u);
+  return {
+    p1: +(s1 / S).toFixed(4),
+    finish_left: +((F1 + F2) * rem / S).toFixed(4),
+    decision: +((D1 + D2) / S).toFixed(4),
+    by_winner: {
+      f1: { finish: +(F1 * rem / S).toFixed(4), dec: +(D1 / S).toFixed(4) },
+      f2: { finish: +(F2 * rem / S).toFixed(4), dec: +(D2 / S).toFixed(4) },
+    },
+    rounds_left: +expLeft.toFixed(2),
+    round: R,
+  };
+}
+
 // ---------- BACKTEST walk-forward (el gate de la casa) ----------
 // Con fighters: corre Elo puro y Elo+features EN LA MISMA pasada (mismas peleas out-of-sample) y reporta ambos.
 function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
@@ -432,4 +485,4 @@ function backtestMethod(fights, { warmFrac = 0.35 } = {}) {
   };
 }
 
-module.exports = { fitElo, fightProb, fightBreakdown, methodProfile, methodModel, methodProbs, methodClass, backtest, backtestMethod, expected, isFinish };
+module.exports = { fitElo, newModel, eloStep, fightProb, fightBreakdown, methodProfile, methodModel, methodProbs, methodClass, liveFightProbs, backtest, backtestMethod, expected, isFinish };

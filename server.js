@@ -6995,6 +6995,50 @@ function combatFilmStudy(C, ft) {
   return { profile: prof, findings: out };
 }
 
+// ===== #9 ARCHIVO DE CUOTAS DE COMBATE (29-jul) =========================================================
+// EL FOSO. No existe histórico comprable de líneas de MMA: todo backtest de picks va hoy contra un proxy
+// ingenuo (ver scripts/combat-backtest.js). Cada día sin archivar es data perdida PARA SIEMPRE. Esto guarda
+// la CURVA completa (apertura→cierre), no una foto: un snapshot por ciclo, pero solo cuando algún precio se
+// movió (dedupe por firma) → en 6 meses tenemos lo que nadie vende y el backtest pasa a ser contra mercado
+// REAL. Extiende el patrón del archivo de fútbol (gz diario al disco persistente), no lo reconstruye.
+function combatOddsArchive(C) {
+  const rows = [];
+  for (const ev of (C.upcoming || [])) {
+    const t = Date.parse(ev.date);
+    if (!(t > Date.now() - 12 * 3600e3 && t < Date.now() + 21 * 24 * 3600e3)) continue;
+    for (const ft of ev.fights) {
+      const mo = combatFightOdds(C, ft);
+      if (!mo || !mo.books) continue;
+      const cb = ((C.cbb || {}).byComp || {})[ft.comp_id] || null;
+      rows.push({
+        comp_id: ft.comp_id, event_id: ev.id, ko: ev.date, main: !!ft.main, weight: ft.weight, rounds: ft.rounds || 3,
+        f1: ft.f1.name, f2: ft.f2.name, f1_id: ft.f1.id, f2_id: ft.f2.id,
+        books: mo.books, fair_f1: +mo.fair_f1.toFixed(4),
+        best: { f1: mo.best.f1, f1_book: mo.best.f1Book, f2: mo.best.f2, f2_book: mo.best.f2Book },
+        // Cloudbet aporta lo que ninguna otra fuente nos da: método y rounds cotizados
+        cb: cb ? { f1: cb.f1 || null, f2: cb.f2 || null, method: cb.method || null, totals: cb.totals || null } : null,
+      });
+    }
+  }
+  if (!rows.length) return;
+  const sig = JSON.stringify(rows.map(r => [r.comp_id, r.fair_f1, r.best.f1, r.best.f2, r.books]));
+  C._arcSig = C._arcSig || null;
+  if (C._arcSig === sig) return;         // nada se movió → no ensuciamos el archivo
+  C._arcSig = sig;
+  const zlib = require('zlib');
+  const base = CLUB_DATA_DISK && fs.existsSync(CLUB_DATA_DISK) ? CLUB_DATA_DISK : path.join(__dirname, 'data', 'clubs');
+  const dir = path.join(base, 'odds-archive');
+  fs.mkdirSync(dir, { recursive: true });
+  const day = new Date().toISOString().slice(0, 10);
+  const file = path.join(dir, `combat-${C.org}-${day}.json.gz`);
+  let doc = { org: C.org, day, snapshots: [] };
+  try { if (fs.existsSync(file)) doc = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString()); } catch { /* corrupto → se reescribe */ }
+  doc.snapshots.push({ at: new Date().toISOString(), fights: rows });
+  if (doc.snapshots.length > 240) doc.snapshots = doc.snapshots.slice(-240); // techo sano (~1 cada 6 min)
+  fs.writeFileSync(file, zlib.gzipSync(JSON.stringify(doc)));
+  console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas');
+}
+
 // ===== R5: ESTADO EN VIVO de una pelea (ESPN core API) ==================================================
 // status → round y reloj (el reloj de ESPN es lo que RESTA del round); plays → cronología del combate.
 // OJO (regla de honestidad): ESPN publica los eventos SIN atribuir — un derribo no dice de quién es. Por eso
@@ -7133,6 +7177,7 @@ function combatRefreshOdds(C) {
       C._nameMemo = new Map(); // nombres nuevos del feed → que se resuelvan de nuevo
     } catch { C.odds = C.odds || []; }
     try { await combatCloudbetRefresh(C); } catch { /* siguiente ciclo */ }
+    try { combatOddsArchive(C); } catch (e) { console.error('[combat-archive]', e.message); }
   })().finally(() => { C._oddsRefreshing = null; });
 }
 // ===== CLOUDBET COMO 2ª FUENTE (R2c, 28-jul): el Trading API cotiza mma (UFC+PFL+Oktagon) y boxing =====
@@ -7589,6 +7634,12 @@ const CB_NEWS_PATTERNS = [
   { type: 'weight', re: /miss(es|ed)? weight|weight miss|overweight|fail(s|ed)? to make weight|no dio el peso/i, sev: 'high', es: 'FALLÓ EL PESO', en: 'MISSED WEIGHT' },
   { type: 'replacement', re: /replac(es|ed|ement)|steps? in|short.?notice|late notice/i, sev: 'warn', es: 'cambio de rival / short notice', en: 'opponent change / short notice' },
   { type: 'canceled', re: /cancell?ed|scrapped|called off/i, sev: 'high', es: 'pelea en duda / cancelada', en: 'fight in doubt / canceled' },
+  // #1 (29-jul): el corte de peso es EL factor que la literatura señala y que ninguna fuente nos da como
+  // dato estructurado (ni ESPN ni api-sports publican el pesaje oficial). Sin histórico no hay backtest →
+  // jamás entra al modelo; se captura por noticias como bandera de display, que es lo honesto.
+  { type: 'weight_cut', re: /weight cut|brutal cut|hospitali[sz]ed|drained|rehydrat|corte de peso/i, sev: 'high', es: 'corte de peso complicado', en: 'rough weight cut' },
+  // #3: campamento y esquina — cambiar de gimnasio es señal real de contexto (display, no modelo)
+  { type: 'camp', re: /new (camp|gym|team)|switch(es|ed)? (camps?|gyms?|teams?)|leaves? (his |her )?(gym|camp|team)|joins? (a )?new|cambio de (gimnasio|equipo)/i, sev: 'warn', es: 'cambio de campamento', en: 'camp change' },
 ];
 async function runCombatObserver() {
   if (!combatObserverOn()) return { skipped: 'disabled' };

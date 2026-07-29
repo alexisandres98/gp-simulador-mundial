@@ -7461,8 +7461,9 @@ async function settleCombatPicks() {
 function cbPushDerivPick(fresh, out, org, { slot, ev, ft }, d) {
   const kel = Math.max(0, (d.blend * (d.odds - 1) - (1 - d.blend)) / (d.odds - 1)) / 4;
   const whyPair = {
-    es: `GP proyecta este desenlace ${Math.round(d.model * 100)}% frente al ${Math.round(d.mkt * 100)}% que paga el mercado. ${d.family === 'METHOD' ? 'La lectura combina cómo termina sus peleas cada esquina y cuánto absorbe la contraria.' : 'La lectura combina el ritmo de cierre de ambos y la distancia esperada de la pelea.'}`,
-    en: `GP projects this outcome at ${Math.round(d.model * 100)}% against the ${Math.round(d.mkt * 100)}% the market pays. ${d.family === 'METHOD' ? 'The read blends how each corner ends fights and how much the other absorbs.' : 'The read blends both finishing rates and the expected length of the fight.'}`,
+    // CAJA NEGRA: factores del cruce (poder, durabilidad, oficio, fondo), no la mecánica del modelo.
+    es: `GP proyecta este desenlace ${Math.round(d.model * 100)}% frente al ${Math.round(d.mkt * 100)}% que paga el mercado. ${d.family === 'METHOD' ? 'Pesan el poder de nocaut y la durabilidad de cada esquina, y el oficio de cada uno para llevar la pelea a su terreno.' : 'Pesan el ritmo de cierre de cada esquina y el fondo que han mostrado en peleas largas.'}`,
+    en: `GP projects this outcome at ${Math.round(d.model * 100)}% against the ${Math.round(d.mkt * 100)}% the market pays. ${d.family === 'METHOD' ? 'Knockout power and durability weigh on each corner, as does the craft to drag the fight onto their own ground.' : 'What weighs: how quickly each corner closes, and the tank they have shown in long fights.'}`,
   };
   fresh.push({
     pick_id: d.stable('cb-' + ft.comp_id + '|' + d.family + '|' + d.selection_code),
@@ -7505,8 +7506,10 @@ function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
   const fES = fav.map(x => CB_FACTOR_ES[x.key] || x.key).join(', ');
   const fEN = fav.map(x => CB_FACTOR_EN[x.key] || x.key).join(', ');
   return {
-    es: `GP lee esta pelea ${mp}% para ${name}, frente al ${kp}% que descuenta el mercado (${books} casa${books === 1 ? '' : 's'}).${fES ? ' La ventaja nace de: ' + fES + '.' : ''} ${slot === 'main' ? 'Pelea estelar: mercado líquido, el precio pesa.' : 'Preliminar: mercado menos vigilado, ahí suele estar el valor.'}`,
-    en: `GP reads this fight ${mp}% for ${name}, against the ${kp}% the market prices in (${books} book${books === 1 ? '' : 's'}).${fEN ? ' The edge comes from: ' + fEN + '.' : ''} ${slot === 'main' ? 'Main event: liquid market, the price carries weight.' : 'Prelim: less-watched market, where value tends to live.'}`,
+    // CAJA NEGRA: se narra QUÉ inclina la pelea (factores del enfrentamiento), nunca CÓMO opera el sistema.
+    // La línea de card_slot se retiró: decía dónde cazamos valor = mecánica de la estrategia.
+    es: `GP lee esta pelea ${mp}% para ${name}, frente al ${kp}% que descuenta el mercado (${books} casa${books === 1 ? '' : 's'}).${fES ? ' Lo que la inclina: ' + fES + '.' : ''} ${slot === 'main' ? 'Combate estelar.' : ''}`.trim(),
+    en: `GP reads this fight ${mp}% for ${name}, against the ${kp}% the market prices in (${books} book${books === 1 ? '' : 's'}).${fEN ? ' What tilts it: ' + fEN + '.' : ''} ${slot === 'main' ? 'Main-event bout.' : ''}`.trim(),
   };
 }
 function combatPicksTrack() {
@@ -10932,6 +10935,53 @@ const server = http.createServer(async (req, res) => {
         const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
           .sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
         return json(res, 200, { track: combatPicksTrack(), settled: settled.slice(0, 100), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length });
+      }
+      // R5c: DAILY BRIEF DE COMBATE — el equivalente del brief de fútbol, con la cartelera por delante.
+      // Mismo espíritu: qué pasa hoy, qué mira el sistema, qué señales hay y cómo venimos. Reusa los
+      // helpers ya probados (odds, intel, observer, track) — nada de motores nuevos.
+      if (p === '/api/combat/brief' && req.method === 'GET') {
+        await combatRefreshUpcoming(C);
+        const now = Date.now();
+        const cards = (C.upcoming || []).filter(e => Date.parse(e.date) > now - 8 * 3600e3)
+          .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+        const next = cards[0] || null;
+        const divs = [], intel = [];
+        for (const ev of cards.slice(0, 2)) {
+          for (const ft of ev.fights) {
+            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+            const mo = combatFightOdds(C, ft);
+            if (mo && mo.books >= 1) {
+              const gap = (pr.p1 - mo.fair_f1) * 100;
+              divs.push({
+                comp_id: ft.comp_id, event: ev.name, date: ev.date, main: !!ft.main,
+                f1: ft.f1.name, f2: ft.f2.name,
+                model_f1: +pr.p1.toFixed(3), market_f1: +mo.fair_f1.toFixed(3),
+                gap_pp: +gap.toFixed(1), side: gap >= 0 ? 'f1' : 'f2',
+                name: gap >= 0 ? ft.f1.name : ft.f2.name,
+                odds: gap >= 0 ? mo.best.f1 : mo.best.f2, books: mo.books,
+              });
+            }
+            for (const f of combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft))) {
+              intel.push({ ...f, comp_id: ft.comp_id, fight: ft.f1.name + ' vs ' + ft.f2.name });
+            }
+          }
+        }
+        divs.sort((a, b) => Math.abs(b.gap_pp) - Math.abs(a.gap_pp));
+        const sev = { high: 0, warn: 1, info: 2 };
+        intel.sort((a, b) => (sev[a.severity] || 3) - (sev[b.severity] || 3));
+        const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && ['WIN', 'LOSS'].indexOf(x.result_code) >= 0)
+          .sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0)).slice(0, 6);
+        return json(res, 200, {
+          org, generated_at: new Date().toISOString(),
+          next_card: next ? { id: next.id, name: next.name, date: next.date, fights: next.fights.length } : null,
+          cards: cards.slice(0, 3).map(e => ({ id: e.id, name: e.name, date: e.date, fights: e.fights.length })),
+          divergences: divs.slice(0, 8),
+          intel: intel.slice(0, 10),
+          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
+            .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10),
+          recent: settled.map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })),
+          track: combatPicksTrack(),
+        });
       }
       // R2: ORGANIZACIONES — resumen por promoción (UFC del dataset ufc; Bellator/PFL del dataset mma)
       if (p === '/api/combat/orgs' && req.method === 'GET') {

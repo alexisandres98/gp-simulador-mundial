@@ -247,6 +247,7 @@
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
       cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
+      cbb_next: 'La próxima cartelera', cbb_div: 'Donde GP y el mercado no coinciden', cbb_div_sub: 'las mayores distancias de la cartelera', cbb_intel: 'Señales del vestuario', cbb_picks: 'En el monitor', cbb_recent: 'Cómo venimos', cbb_none: 'Nada que reportar por ahora.', cbb_cards: 'Carteleras por delante', cbb_model: 'GP', cbb_market: 'mercado', cbb_fights_n: 'peleas',
       cb_live: 'EN VIVO', cb_live_sub: 'la probabilidad se mueve con el reloj', cb_live_pre: 'antes de empezar', cb_live_now: 'ahora', cb_live_fin: 'termina antes del límite', cb_live_dec: 'llega a decisión', cb_live_left: 'rounds por delante', cb_live_tl: 'Cronología del combate', cb_live_note: 'La cronología viene sin atribuir desde la fuente oficial: son hechos del combate, no de un peleador. La probabilidad la mueven el modelo y el reloj.',
       cb_film: 'Film study', cb_film_sub: 'lo que dice la cinta', cb_film_none: 'Sin suficiente registro de acción para leer la cinta de este cruce.', cb_film_what: 'Lectura automática del registro de acción de cada pelea (a dónde van los golpes y con cuánta intención, cómo entra el juego de suelo, en qué round se cierran sus peleas). No es análisis de video.', cb_film_pace: 'Ritmo', cb_film_target: 'Reparto de golpes', cb_film_power: 'Intención', cb_film_gr: 'Suelo', cb_film_ctrl: 'Control', cb_film_early: 'Cierra temprano', cb_film_deep: 'Aguas profundas',
       cb_conf_high: 'Confianza alta', cb_conf_med: 'Confianza media', cb_conf_low: 'Confianza baja', cb_conf_sub_low: 'muestra corta o mercado fino — el sistema lo sabe',
@@ -585,6 +586,7 @@
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
       cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
+      cbb_next: 'The next card', cbb_div: 'Where GP and the market disagree', cbb_div_sub: 'the widest gaps on the card', cbb_intel: 'Signals from the camp', cbb_picks: 'On the monitor', cbb_recent: 'How we are doing', cbb_none: 'Nothing to report right now.', cbb_cards: 'Cards ahead', cbb_model: 'GP', cbb_market: 'market', cbb_fights_n: 'fights',
       cb_live: 'LIVE', cb_live_sub: 'the probability moves with the clock', cb_live_pre: 'before the opening bell', cb_live_now: 'now', cb_live_fin: 'ends inside the limit', cb_live_dec: 'goes to decision', cb_live_left: 'rounds ahead', cb_live_tl: 'Fight timeline', cb_live_note: 'The timeline arrives unattributed from the official feed: these are facts of the fight, not of a fighter. The probability is moved by the model and the clock.',
       cb_film: 'Film study', cb_film_sub: 'what the tape says', cb_film_none: 'Not enough recorded action to read the tape on this matchup.', cb_film_what: 'Automated reading of the recorded action of every fight (where the strikes go and with how much intent, how the ground game enters, which round their fights close in). This is not video analysis.', cb_film_pace: 'Pace', cb_film_target: 'Strike split', cb_film_power: 'Intent', cb_film_gr: 'Ground', cb_film_ctrl: 'Control', cb_film_early: 'Closes early', cb_film_deep: 'Deep water',
       cb_conf_high: 'High confidence', cb_conf_med: 'Medium confidence', cb_conf_low: 'Low confidence', cb_conf_sub_low: 'small sample or thin market — the system knows it',
@@ -877,12 +879,19 @@
   // ── COMBATE (R2): navegación PROPIA del deporte — la sidebar entera cambia con el deporte activo.
   // Espejo conceptual del fútbol: Oportunidades/Peleas/Peleadores/Simulador/Seguidos/Alertas/Rendimiento.
   var NAV_CB = [
-    ['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbfighters', 'user', 'nav_cb_fighters'],
+    ['cbopps', 'target-arrow', 'nav_opps'], ['cbbrief', 'news', 'nav_brief'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbfighters', 'user', 'nav_cb_fighters'],
     ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['cbperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_CB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
-  var CB_VIEWS = ['cbopps', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
-  function sportOf(v) { return CB_VIEWS.indexOf(v) >= 0 ? 'combat' : 'futbol'; }
+  var CB_VIEWS = ['cbopps', 'cbbrief', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
+  // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
+  // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
+  var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
+  function sportOf(v) {
+    if (CB_VIEWS.indexOf(v) >= 0) return 'combat';
+    if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
+    return 'futbol';
+  }
 
   function viewNav(v) {
     if (v === 'cbfight') return 'cbfights';
@@ -3212,9 +3221,9 @@
     if (cbf) { S.cb.org = cbf[1]; if (!(S.view === 'cbfight' && S.cb.fightId === cbf[2])) { S.cb.fightId = cbf[2]; S.cb.fight = undefined; showView('cbfight'); } return; }
     var cbp = h.match(/^cbfighter\/([a-z]+)-(\d+)$/i);
     if (cbp) { S.cb.org = cbp[1]; if (!(S.view === 'cbfighter' && S.cb.fighterId === cbp[2])) { S.cb.fighterId = cbp[2]; S.cb.fighter = undefined; showView('cbfighter'); } return; }
-    var cbv = h.match(/^(cb|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo)(?:\/([a-z0-9_]+))?$/);
+    var cbv = h.match(/^(cbbrief|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
-      if (cbv[1] === 'cbfights' && cbv[2]) S.cb.org = cbv[2];
+      if (cbv[2] === 'ufc' || cbv[2] === 'mma') S.cb.org = cbv[2]; // el sufijo de org vale en TODAS las vistas
       showView(cbv[1] === 'cb' ? 'cbopps' : cbv[1]); return;
     }
     // sub-estado del selector de competición en el hash (#groups/mls, #bracket/mls, #matches/mls, #teams/mls) →
@@ -3231,7 +3240,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     if (!clubsOn()) return NAV_HASH[nav];
@@ -3429,6 +3438,9 @@
     else if (v === 'bets') renderBets();
     else if (v === 'books') renderBooks();
     else if (v === 'brief') renderBrief();
+    // El board NO tenía rama: al volver de Combate el shell() se reconstruye vacío y nadie repoblaba las
+    // picks ni el cockpit lateral (había que entrar a otra pestaña o refrescar). render() los repinta.
+    else if (v === 'board' && S.dash) render();
   }
   function openMatch(eventId, fromHash) {
     if (!eventId) return;
@@ -5774,7 +5786,18 @@
   }
   function cbClicks(e) {
     var bk = e.target.closest('[data-cbgoback]'); if (bk) { goBack(); return; }
-    var og = e.target.closest('[data-cborgtab]'); if (og) { var o = og.getAttribute('data-cborgtab'); if (o !== cbOrg()) { S.cb.org = o; setHash(o === 'ufc' ? 'cbfights' : 'cbfights/' + o); renderCb(S.view); } return; }
+    // Cambio de organización: se QUEDA en la pestaña donde estás (antes te empujaba siempre a Peleas —
+    // desde Oportunidades o Peleadores acababas en otra vista sin haberlo pedido).
+    var og = e.target.closest('[data-cborgtab]'); if (og) {
+      var o = og.getAttribute('data-cborgtab');
+      if (o !== cbOrg()) {
+        S.cb.org = o;
+        var base = NAV_HASH[viewNav(S.view)] || 'cbfights';
+        setHash(o === 'ufc' ? base : base + '/' + o);
+        renderCb(S.view);
+      }
+      return;
+    }
     var fl = e.target.closest('[data-cbfollow]'); if (fl) { cbToggleFollow(JSON.parse(fl.getAttribute('data-cbfollow'))); renderCb(S.view); return; }
     var sa = e.target.closest('[data-cbsimpick]'); if (sa) { cbSimPick(sa.getAttribute('data-cbsimpick'), JSON.parse(sa.getAttribute('data-cbsimf'))); return; }
     var sw = e.target.closest('[data-cbsimswap]'); if (sw) { var tmp = S.cb.simA; S.cb.simA = S.cb.simB; S.cb.simB = tmp; S.cb.simRes = undefined; renderCb('cbsim'); return; }
@@ -5788,6 +5811,7 @@
     if (!S.me) { cbShell(t('cb_title'), mvLoading()); return; }
     if (!S.me.isAdmin) { showView('board'); return; }
     if (v === 'cbopps') renderCbOpps();
+    else if (v === 'cbbrief') renderCbBrief();
     else if (v === 'cbfights') renderCbFights();
     else if (v === 'cbfight') renderCbFight();
     else if (v === 'cbfighters') renderCbFighters();
@@ -5910,6 +5934,58 @@
       '<div class="gx-cb-predgrid">' + side(l1, pred.win.f1, by.f1, 'gr') + side(l2, pred.win.f2, by.f2, 'rd') + '</div>' +
       '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_rdist')) + '</div><div class="gx-cb-rdist">' + dist + '</div>' +
       '<div class="gx-dim gx-cb-subline" style="text-align:center">~' + pred.exp_rounds + ' ' + esc(t('cb_rounds')) + ' · ' + esc(t('cb_finish')) + ' ' + Math.round((pred.finish || 0) * 100) + '%</div></div></div>';
+  }
+  // ── DAILY BRIEF DE COMBATE (R5c): el equivalente del brief de fútbol para la cartelera.
+  // Qué viene, dónde discrepamos del mercado, qué señales hay y cómo venimos. Caja negra: factores.
+  function renderCbBrief() {
+    var d = cbGet('brief_' + cbOrg(), '/api/combat/brief?org=' + cbOrg());
+    if (!d) { cbShell(t('nav_brief'), cbOrgTabs() + mvLoading()); return; }
+    if (d._err) { cbShell(t('nav_brief'), cbOrgTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var panel = function (icn, key, inner, sub) {
+      return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic(icn) + esc(t(key)) + '</span>' +
+        (sub ? '<span class="gx-ph-extra gx-dim">' + esc(sub) + '</span>' : '') + '</div><div class="gx-mod-body">' + inner + '</div></div>';
+    };
+    var none = '<div class="gx-dim gx-cb-clean">' + esc(t('cbb_none')) + '</div>';
+    // próxima cartelera + las siguientes
+    var nc = d.next_card;
+    var head = nc ? '<div class="gx-cb-briefhero"><b>' + esc(nc.name) + '</b><span class="gx-dim">' + esc(cbWhen(nc.date)) + ' · ' + nc.fights + ' ' + esc(t('cbb_fights_n')) + '</span></div>' : none;
+    var rest = (d.cards || []).slice(1).map(function (c) {
+      return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">' + esc(c.name) + '</span><span class="v gx-dim" style="font-size:11px">' + esc(cbWhen(c.date, false)) + ' · ' + c.fights + '</span></div>';
+    }).join('');
+    // divergencias: lo que el sistema mira de esta cartelera
+    var divs = (d.divergences || []).map(function (x) {
+      var pos = x.gap_pp >= 0;
+      return '<div class="gx-intel-row gx-pick-clickable" data-openhash="cbfight/' + esc(d.org) + '-' + esc(x.comp_id) + '" style="grid-template-columns:minmax(0,1fr) auto auto">' +
+        '<span class="n"><b style="font-size:12.5px">' + esc(x.name) + '</b>' + (x.main ? ' <i class="gx-clgate ok" style="font-style:normal;font-size:9px">★</i>' : '') +
+        '<div class="gx-dim" style="font-size:10.5px">' + esc(x.f1 + ' vs ' + x.f2) + ' · ' + x.books + ' ' + esc(t('cb_books_n')) + '</div></span>' +
+        '<span class="v gx-mono">' + (x.odds ? '@' + Number(x.odds).toFixed(2) : '') + '</span>' +
+        '<span class="v gx-mono ' + (pos ? 'gx-pos' : 'gx-dim') + '">' + (pos ? '+' : '') + x.gap_pp + 'pp</span></div>';
+    }).join('');
+    // señales (intel + observer), ya narradas en caja negra por el server
+    var intel = (d.intel || []).map(function (f) {
+      return '<div class="gx-cb-flag ' + (f.severity === 'high' ? 'hi' : '') + '"><span class="gx-cb-flagdot"></span><span>' + esc(LANG === 'en' ? f.en : f.es) + '</span></div>';
+    }).join('');
+    // picks del monitor + cómo venimos
+    var picks = (d.picks || []).map(function (p2) {
+      return '<div class="gx-intel-row gx-pick-clickable" data-openhash="cbfight/' + esc(d.org) + '-' + esc(String(p2.event.canonical_event_id).replace('cb-', '')) + '" style="grid-template-columns:minmax(0,1fr) auto auto">' +
+        '<span class="n"><b style="font-size:12.5px">' + esc(p2.selection_name) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc(p2.family) + ' · ' + esc(p2.event.home + ' vs ' + p2.event.away) + '</div></span>' +
+        '<span class="v gx-mono">' + (p2.best_odds ? '@' + Number(p2.best_odds).toFixed(2) : '') + '</span>' +
+        '<span class="v gx-mono gx-pos">' + (p2.edge_blend_pp != null ? '+' + p2.edge_blend_pp + 'pp' : '') + '</span></div>';
+    }).join('');
+    var rec = (d.recent || []).map(function (r) {
+      return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n"><span class="gx-clgate ' + (r.result === 'WIN' ? 'ok' : 'no') + '">' + (r.result === 'WIN' ? 'W' : 'L') + '</span> ' + esc(r.name) + ' <i class="gx-dim">' + esc(r.family) + '</i></span>' +
+        '<span class="v gx-mono ' + (r.units > 0 ? 'gx-pos' : 'gx-dim') + '">' + (r.units > 0 ? '+' : '') + Number(r.units || 0).toFixed(2) + 'u</span></div>';
+    }).join('');
+    var tr = d.track && d.track.total;
+    var trLine = tr && tr.n ? '<div class="gx-pick-recap" style="margin-bottom:8px">' + ic('circle-check') + tr.w + '-' + tr.l + ' · ' + (tr.units >= 0 ? '+' : '') + Number(tr.units).toFixed(2) + 'u</div>' : '';
+    cbShell(t('nav_brief'), cbOrgTabs() +
+      panel('calendar', 'cbb_next', head + rest) +
+      '<div class="gx-cb-grid">' +
+      panel('target-arrow', 'cbb_div', divs || none, t('cbb_div_sub')) +
+      panel('alert-triangle', 'cbb_intel', intel || none) +
+      panel('bolt', 'cbb_picks', picks || none) +
+      panel('chart-line', 'cbb_recent', trLine + (rec || none)) +
+      '</div>');
   }
   // EN VIVO (R5): la misma probabilidad del modelo, condicionada al round y al reloj. Arriba de todo,
   // porque mientras la pelea corre es LO que el usuario mira.

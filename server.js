@@ -6993,23 +6993,59 @@ function combatRecordOf(C, id) { // récord W-L derivado del histórico (UFC-onl
   return { w, l, ko, sub };
 }
 // matcher nombre-Odds→id-ESPN: PUNTAJE y null ante empate (regla gp-regla-matcher-desambiguar)
-function combatFighterByName(C, name) {
+// Resolución nombre→id con puntaje (regla de la casa: empate → null, nunca "el primero").
+// PERF (29-jul): antes normalizaba los ~3.000 nombres del org EN CADA LLAMADA, y se la llama 2 veces por
+// evento de cuotas por CADA pelea de la cartelera → ~15M normalizaciones por request = 10s de bloqueo.
+// Ahora el índice de tokens se construye UNA vez por carga y el resultado por nombre se memoiza.
+// La lógica de puntaje/desempate es idéntica: mismos scores, mismo umbral, mismo null ante empate.
+function combatNameIndex(C) {
+  if (C._nameIdx && C._nameIdxFor === C.names) return C._nameIdx;
   const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const q = new Set(norm(name).split(' '));
-  let best = null, bestScore = 0, tie = false;
-  for (const [id, nm] of Object.entries(C.names)) {
+  const idx = [];
+  for (const [id, nm] of Object.entries(C.names || {})) {
     if (!nm) continue;
-    const t = new Set(norm(nm).split(' '));
+    idx.push({ id, t: new Set(norm(nm).split(' ')) });
+  }
+  C._nameIdx = idx; C._nameIdxFor = C.names; C._nameMemo = new Map();
+  return idx;
+}
+function combatFighterByName(C, name) {
+  const idx = combatNameIndex(C);
+  const key = String(name || '');
+  if (C._nameMemo.has(key)) return C._nameMemo.get(key);
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const q = new Set(norm(key).split(' '));
+  let best = null, bestScore = 0, tie = false;
+  for (const e of idx) {
+    const t = e.t;
     let ov = 0; for (const x of q) if (t.has(x)) ov++;
     const sc = ov * 10 + ov / Math.max(1, t.size + q.size - ov);
-    if (sc > bestScore) { best = id; bestScore = sc; tie = false; }
-    else if (sc === bestScore && best !== id && sc > 0) tie = true;
+    if (sc > bestScore) { best = e.id; bestScore = sc; tie = false; }
+    else if (sc === bestScore && best !== e.id && sc > 0) tie = true;
   }
-  return bestScore >= 20 && !tie ? best : null; // exige ≥2 tokens y sin empate
+  const out = bestScore >= 20 && !tie ? best : null; // exige ≥2 tokens y sin empate
+  C._nameMemo.set(key, out);
+  return out;
 }
 // carteleras próximas (ESPN) + cuotas h2h (The Odds API) — memo 10min COMPARTIDO entre route y loop
+// PERF/UX (29-jul): antes TODA la request esperaba ESPN + Odds API + Cloudbet (65s en frío, y el usuario
+// veía "cargando" hasta refrescar). Ahora es stale-while-revalidate en dos velocidades:
+//   · carteleras (ESPN, ~1s) = lo único que la vista necesita para pintar → se espera SOLO si no hay nada.
+//   · cuotas (Odds API) y Cloudbet = lentas → SIEMPRE en segundo plano; entran en el siguiente ciclo.
+// Con datos en memoria (aunque estén vencidos) la request responde al instante y el refresco va detrás.
 async function combatRefreshUpcoming(C) {
-  if (C.upAt && Date.now() - C.upAt < 10 * 60e3) return;
+  const fresh = C.upAt && Date.now() - C.upAt < 10 * 60e3;
+  if (fresh) return;
+  if (C._refreshing) { // ya hay un refresco en vuelo: no dispares otro ni esperes si ya tenemos qué mostrar
+    if ((C.upcoming || []).length) return;
+    return C._refreshing;
+  }
+  const p = combatDoRefresh(C).finally(() => { C._refreshing = null; });
+  C._refreshing = p;
+  if ((C.upcoming || []).length) return; // hay data (vencida): responder ya, refrescar detrás
+  return p;                              // primer arranque: no hay nada que mostrar, hay que esperar
+}
+async function combatDoRefresh(C) {
   try {
     const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
     const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -7026,19 +7062,27 @@ async function combatRefreshUpcoming(C) {
       }),
     }));
   } catch { C.upcoming = C.upcoming || []; }
-  // cuotas mma: The Odds API cubre TODAS las promociones (UFC+PFL+…) en un solo feed → memo GLOBAL
-  // compartido entre orgs (una sola llamada, cero créditos duplicados)
-  try {
-    const G = global._combatOdds = global._combatOdds || {};
-    if (!G.at || Date.now() - G.at > 10 * 60e3) {
-      const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
-      const od = await fetch(`https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
-      if (Array.isArray(od)) { G.list = od; G.at = Date.now(); }
-    }
-    C.odds = (global._combatOdds || {}).list || C.odds || [];
-  } catch { C.odds = C.odds || []; }
-  C.upAt = Date.now();
-  try { await combatCloudbetRefresh(C); } catch { /* siguiente ciclo */ }
+  C.upAt = Date.now();          // las carteleras ya están: la vista puede pintar
+  C.odds = C.odds || [];
+  combatRefreshOdds(C);         // cuotas + Cloudbet: en segundo plano, sin bloquear la respuesta
+}
+// cuotas mma: The Odds API cubre TODAS las promociones (UFC+PFL+…) en un solo feed → memo GLOBAL
+// compartido entre orgs (una sola llamada, cero créditos duplicados). Nunca se espera desde una request.
+function combatRefreshOdds(C) {
+  if (C._oddsRefreshing) return;
+  C._oddsRefreshing = (async () => {
+    try {
+      const G = global._combatOdds = global._combatOdds || {};
+      if (!G.at || Date.now() - G.at > 10 * 60e3) {
+        const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+        const od = await fetch(`https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+        if (Array.isArray(od)) { G.list = od; G.at = Date.now(); }
+      }
+      C.odds = (global._combatOdds || {}).list || C.odds || [];
+      C._nameMemo = new Map(); // nombres nuevos del feed → que se resuelvan de nuevo
+    } catch { C.odds = C.odds || []; }
+    try { await combatCloudbetRefresh(C); } catch { /* siguiente ciclo */ }
+  })().finally(() => { C._oddsRefreshing = null; });
 }
 // ===== CLOUDBET COMO 2ª FUENTE (R2c, 28-jul): el Trading API cotiza mma (UFC+PFL+Oktagon) y boxing =====
 // con mma.winner + mma.totals(rounds) + mma.winning_method + winner_exact_rounds — TODO habilitado (verificado

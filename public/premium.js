@@ -5715,13 +5715,47 @@
       bar('KO', m.ko, 'ko') + bar('SUB', m.sub, 'sub') + bar('DEC', m.dec, 'dec') +
       '<div class="gx-dim gx-cb-methnote">' + esc(t('cb_finish')) + ' ' + Math.round(m.finish * 100) + '% · ' + esc(t('cb_inside2')) + ' ' + Math.round(((m.r_le || {})[2] || 0) * 100) + '% · ~' + m.exp_rounds + ' ' + esc(t('cb_rounds')) + '</div></div>';
   }
-  // fetch con cache en S.cb[key] — re-renderiza la vista activa de combate al llegar
-  function cbGet(key, url) {
-    if (S.cb[key] !== undefined) return S.cb[key];
-    S.cb[key] = null;
+  // fetch con cache en S.cb[key] — STALE-WHILE-REVALIDATE (29-jul, reporte de Alexis "se queda cargando y hay
+  // que refrescar"). Tres reglas para que cambiar de pestaña/org fluya como en fútbol:
+  //   1. si ya hay data (aunque esté vencida) se DEVUELVE YA y se refresca por detrás → cero spinner al volver.
+  //   2. la cache CADUCA (antes era para siempre: una primera carga fallida te dejaba pegado hasta refrescar F5).
+  //   3. un error NO se cachea como resultado final: se reintenta en el siguiente render.
+  var CB_TTL = 60e3;
+  function cbGet(key, url, ttl) {
+    var e = S.cb[key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    var stale = age > (ttl || CB_TTL);
+    if (e && e.v !== undefined && !stale) return e.v;          // fresco
+    if (!e || !e._inflight) cbFetch(key, url, !!(e && e.v !== undefined));
+    return e && e.v !== undefined ? e.v : null;                // stale: pinta lo viejo mientras llega lo nuevo
+  }
+  function cbFetch(key, url, silent) {
+    var e = S.cb[key] = S.cb[key] || {};
+    e._inflight = true;
+    var done = false;
+    // red colgada: nunca dejar la vista en "cargando" para siempre
+    var to = setTimeout(function () {
+      if (done) return;
+      done = true; e._inflight = false;
+      if (e.v === undefined) { e.v = { _err: true }; e._at = Date.now() - CB_TTL + 5e3; } // reintenta en 5s
+      if (CB_VIEWS.indexOf(S.view) >= 0) renderCb(S.view);
+    }, 20000);
     fetch(url, { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-      .then(function (j) { S.cb[key] = j || { _err: true }; if (CB_VIEWS.indexOf(S.view) >= 0) renderCb(S.view); });
-    return null;
+      .then(function (j) {
+        if (done) return;
+        done = true; clearTimeout(to); e._inflight = false;
+        if (j) { e.v = j; e._at = Date.now(); }
+        else if (e.v === undefined) { e.v = { _err: true }; e._at = Date.now() - CB_TTL + 5e3; }
+        else { e._at = Date.now() - CB_TTL + 5e3; } // falló el refresco: conserva lo bueno, reintenta pronto
+        if (CB_VIEWS.indexOf(S.view) >= 0) renderCb(S.view);
+      });
+  }
+  // invalida la cache de combate (cambio de org/deporte) sin borrar lo ya pintado
+  function cbExpire(pred) {
+    for (var k in S.cb) {
+      if (!S.cb[k] || S.cb[k].v === undefined) continue;
+      if (!pred || pred(k)) S.cb[k]._at = 0;
+    }
   }
   function cbWhen(d, withTime) {
     try { return new Date(d).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', withTime === false ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
@@ -6246,7 +6280,7 @@
   // REUSADOS tal cual vía adaptador, el precedente de clubes). Todo monitor privado (admin).
   function cbShapePick(p2) { // adaptador: pick de combate → shape que consume el pickCard del fútbol
     var org2 = p2.league === 'mma' ? 'mma' : 'ufc';
-    var st = S.cb['state_' + org2]; // avatares desde el estado de peleas si está cargado (barato, opcional)
+    var stE = S.cb['state_' + org2]; var st = stE && stE.v; // avatares desde el estado de peleas si está cargado (barato, opcional)
     var avas = null;
     if (st && st.cards) for (var i = 0; i < st.cards.length; i++) {
       var ftx = st.cards[i].fights.find(function (f) { return 'cb-' + f.comp_id === p2.event.canonical_event_id; });

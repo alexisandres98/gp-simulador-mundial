@@ -6668,9 +6668,13 @@ function combatLoad(org) {
   // R4: stats finas (api-sports) — el matcher necesita C.names, por eso van ANTES del fit
   let finePF = null;
   try { const fx = combatFineStats(C); finePF = fx && fx.perFight; } catch { finePF = null; }
+  // #1 (29-jul): índice de PESAJES (Wikipedia, scripts/combat-weighins-backfill.js). Feature validada:
+  // el que falla el peso gana 9pp MENOS de lo que el modelo esperaba (p=0.015, con dosis-respuesta:
+  // ≥2 lbs penaliza, <2 lbs no hace nada). El peso lo APRENDE el modelo (−0.14), no se fija a mano.
+  C.wi = combatWeighIndex(C);
   // F1b→R4: fitElo con fighters (físico/edad/chin/racha/oficio) + finas (striking/grappling 2022+,
   // backtest subset P=0.983); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
-  C.elo = CE.fitElo(sorted, C.fighters, { history: true, fine: finePF });
+  C.elo = CE.fitElo(sorted, C.fighters, { history: true, fine: finePF, weighins: C.wi });
   C.mm = CE.methodModel(sorted);
   // índice por peleador (una pasada): historial, división actual, racha, KO losses, minutos de jaula
   C.idx = {};
@@ -6823,6 +6827,53 @@ function combatFineStats(C) {
   G.byOrg[C.org] = out;
   console.log('[combat-fine]', C.org, 'joined', joined, 'de', out.total, '| peleadores con stats:', Object.keys(out.career).length);
   return out;
+}
+// Une los pesajes de Wikipedia con NUESTRAS peleas: por nombre DENTRO de la cartelera (una cartelera tiene
+// ~12 peleas → el apellido basta), puntuando y devolviendo null ante empate (regla de la casa).
+function combatWeighIndex(C) {
+  const file = path.join(__dirname, 'data', 'combat', `weighins-${C.org}.json`);
+  let W; try { W = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+  const nm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const byEvent = {};
+  for (const f of (C.fights.fights || [])) if (f.completed && f.event) (byEvent[f.event] = byEvent[f.event] || []).push(f);
+  const out = {};
+  let ok = 0;
+  for (const [ev, rec] of Object.entries(W.events || {})) {
+    if (rec.status !== 'miss' || !rec.rows) continue;
+    const cands = [];
+    for (const f of (byEvent[ev] || [])) for (const side of ['f1', 'f2']) cands.push({ c: f.comp_id, s: side, n: f[side].name });
+    for (const row of rec.rows) {
+      const q = new Set(nm(row.name).split(' ').filter(Boolean));
+      if (!q.size) continue;
+      let best = null, bs = 0, tie = false;
+      for (const c of cands) {
+        const t = new Set(nm(c.n).split(' '));
+        let ov = 0; for (const x of q) if (t.has(x)) ov++;
+        if (!ov) continue;
+        const sc = ov * 10 + ov / Math.max(1, t.size + q.size - ov);
+        if (sc > bs) { best = c; bs = sc; tie = false; }
+        else if (sc === bs && best && best.c + best.s !== c.c + c.s) tie = true;
+      }
+      if (!best || tie) continue;
+      const sl = out[best.c] = out[best.c] || {};
+      const pv = sl[best.s];
+      sl[best.s] = { over: row.over != null ? row.over : (pv ? pv.over : null) };
+      ok++;
+    }
+  }
+  console.log('[combat-weighins]', C.org, ok, 'pesajes casados en', Object.keys(out).length, 'peleas');
+  return out;
+}
+// Para una pelea PRÓXIMA el pesaje no está en Wikipedia (se publica después): la fuente en vivo es el
+// observer, que ya detecta 'weight'. La noticia no suele decir cuántas libras → 2 lbs (el umbral donde el
+// backtest muestra penalización real). Sin señal → null y el modelo queda byte-idéntico al de siempre.
+function combatWeighCtx(C, ft) {
+  const obs = db.combatObservations || {};
+  const hit = (id) => ((obs[id] || {}).signals || obs[id] || []).some
+    ? (((obs[id] || {}).signals) || obs[id] || []).some(x => x && (x.type === 'weight' || x.type === 'weight_cut')) : false;
+  const o1 = hit(ft.f1.id) ? 2 : 0, o2 = hit(ft.f2.id) ? 2 : 0;
+  if (!o1 && !o2) return null;
+  return { over1: o1, over2: o2 };
 }
 // resumen de UN peleador para directorio/tale-of-the-tape (edad real si dob llegó del paso 4)
 function combatFighterSummary(C, id) {
@@ -7592,8 +7643,8 @@ function combatModelOverRounds(method, line, sched) {
 }
 // narrativa de la pick de combate (mismo espíritu del compose del fútbol: el "por qué" al nivel de analista)
 // narrativa caja-negra de la pick (regla de la casa: factores del enfrentamiento, JAMÁS mecánica del modelo)
-const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula', slpm: 'ritmo de golpeo', td15: 'juego de derribos', tddef: 'defensa de derribo', ctrl: 'control del cage', kdr: 'poder de nocaut' };
-const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft', slpm: 'striking output', td15: 'takedown game', tddef: 'takedown defense', ctrl: 'cage control', kdr: 'one-punch power' };
+const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula', slpm: 'ritmo de golpeo', td15: 'juego de derribos', tddef: 'defensa de derribo', ctrl: 'control del cage', kdr: 'poder de nocaut', misswt: 'condición en el pesaje' };
+const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft', slpm: 'striking output', td15: 'takedown game', tddef: 'takedown defense', ctrl: 'cage control', kdr: 'one-punch power', misswt: 'condition at the weigh-in' };
 function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
   const mp = Math.round(m * 100), kp = Math.round(k * 100);
   // factores a favor del lado elegido (parts vienen orientados a f1; espejar si la pick es f2)
@@ -10774,7 +10825,7 @@ const server = http.createServer(async (req, res) => {
         const cards = (C.upcoming || []).map(ev => ({
           ...ev,
           fights: ev.fights.map(ft => {
-            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
             const pf = (id) => ({ ...(C.fighters[id] || {}), record: combatRecordOf(C, id), form: formOf(id) });
             const mo = combatFightOdds(C, ft);
             const odds = mo ? { f1: mo.best.f1, f2: mo.best.f2, books: mo.books } : null;
@@ -10878,7 +10929,8 @@ const server = http.createServer(async (req, res) => {
         let ev = null, ft = null;
         for (const e of (C.upcoming || [])) { const x = e.fights.find(f => f.comp_id === cid); if (x) { ev = e; ft = x; break; } }
         if (!ft) return json(res, 404, { error: 'No encontrado' });
-        const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+        const wctx = combatWeighCtx(C, ft);
+        const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, wctx);
         const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
         const mo = combatFightOdds(C, ft);
         // tabla de cuotas por casa (para el panel de mercados / line shopping)
@@ -10922,7 +10974,7 @@ const server = http.createServer(async (req, res) => {
         const recent = (id) => (C.fights.fights || []).filter(f => f.completed && (f.f1.id === id || f.f2.id === id) && (f.f1.winner || f.f2.winner))
           .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
           .map(f => { const me = f.f1.id === id ? f.f1 : f.f2, ri = f.f1.id === id ? f.f2 : f.f1; return { date: f.date, win: !!me.winner, opponent: ri.name, method: (f.method || {}).display || null, round: f.end_round || null }; });
-        const breakdown = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+        const breakdown = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, wctx);
         const intelAll = combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft));
         // PREDICCIÓN COMPLETA (capa 10): todos los desenlaces + distribución por round
         const rle = method.r_le || {};

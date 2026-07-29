@@ -33,7 +33,7 @@ function isFinish(method) {
 //   condicional a edad/años = calidad superviviente), reach +0.22.
 //   divmove (cambio de división) NO es señal sistemática agregada → vive en la capa de INTEL, no en el λ.
 const FEAT_LR = 0.01;
-const FEATS = ['reach', 'exp', 'years', 'age', 'chin', 'streak', 'mileage'];
+const FEATS = ['reach', 'exp', 'years', 'age', 'chin', 'streak', 'mileage', 'misswt'];
 // R4 (29-jul): features FINAS de striking/grappling (api-sports, era 2022+). Solo actúan cuando AMBOS
 // tienen ≥2 peleas con métrica (si no, 0 — inocuas). Backtest subset n=805: skill 0.0220→0.0230,
 // acc 62.4%→62.9%, bootstrap P=0.983; pesos: td15 +0.13, tddef/ctrl/kdr +0.04, slpm −0.14 (volumen
@@ -51,7 +51,11 @@ const logit = (p) => Math.log(Math.min(0.999, Math.max(0.001, p)) / (1 - Math.mi
 const clockMin = (c) => { const m = String(c || '').match(/(\d+):(\d+)/); return m ? (+m[1] + +m[2] / 60) : 0; };
 const newW = () => { const w = { elo: 1 }; for (const k of FEATS) w[k] = 0; for (const k of FEATS_FINE) w[k] = 0; return w; };
 
-function featDiff(model, fighters, id1, id2, atDate) {
+// ctx = contexto de LA PELEA (no del peleador): hoy solo el pesaje. { over1, over2 } en libras por encima
+// del límite (0/null = dio el peso). Codificación LINEAL en la magnitud y capada; el PESO lo aprende el
+// modelo — no se fija a mano el −9pp que midió el backtest (scripts/combat-weighin-test.js).
+const missW = (over) => Math.min(+over || 0, 5) / 2;
+function featDiff(model, fighters, id1, id2, atDate, ctx) {
   const a = (fighters && fighters[id1]) || {}, b = (fighters && fighters[id2]) || {};
   const r1 = inches(a.reach_in), r2 = inches(b.reach_in);
   const yrs = (id) => {
@@ -71,6 +75,7 @@ function featDiff(model, fighters, id1, id2, atDate) {
     tddef: both && g1.tddef != null && g2.tddef != null ? (g1.tddef - g2.tddef) : 0,
     ctrl: both ? (g1.ctrl - g2.ctrl) : 0,
     kdr: both ? (g1.kdr - g2.kdr) / 0.5 : 0,
+    misswt: ctx ? (missW(ctx.over1) - missW(ctx.over2)) : 0,
     reach: (r1 != null && r2 != null) ? (r1 - r2) / 10 : 0,
     exp: Math.log(1 + (model.N[id1] || 0)) - Math.log(1 + (model.N[id2] || 0)),
     years: (yrs(id1) - yrs(id2)) / 5,
@@ -84,10 +89,10 @@ function featDiff(model, fighters, id1, id2, atDate) {
 // fights: [{date, f1:{id,winner}, f2:{id,winner}, method, completed}] ORDENADAS por fecha ascendente.
 // fighters (opcional, dict por id): activa la capa de features físicas — el modelo aprende los pesos
 // online en la misma pasada y fightProb los aplica. Sin fighters → Elo puro byte-idéntico al de antes.
-function newModel(fighters, { history = false } = {}) {
+function newModel(fighters, { history = false, weighins = null } = {}) {
   const R = {}, N = {}, LAST = {}, FIRST = {}, KOL = {}, MIN = {}, R3 = {}, AG = {};
   const HIST = history ? {} : null; // serie de Elo por peleador (perfil/evolución): [{d,r}] tras cada pelea
-  return { R, N, LAST, FIRST, KOL, MIN, R3, AG, HIST, PF: fighters || null, w: fighters ? newW() : null };
+  return { R, N, LAST, FIRST, KOL, MIN, R3, AG, HIST, WI: weighins || null, PF: fighters || null, w: fighters ? newW() : null };
 }
 
 // UN paso del ajuste (una pelea). Extraído de fitElo para que el walk-forward pueda evaluar y aprender
@@ -107,7 +112,8 @@ function eloStep(model, f, finePF) {
         return Math.min(2, Math.max(0, (new Date(f.date) - new Date(last)) / (365.25 * 24 * 3600e3))) * RUST_PER_YEAR;
       };
       const pElo = expected(get(f.f1.id) - rust(f.f1.id), get(f.f2.id) - rust(f.f2.id));
-      const fd = featDiff(model, fighters, f.f1.id, f.f2.id, f.date);
+      const wi = model.WI && model.WI[f.comp_id];
+      const fd = featDiff(model, fighters, f.f1.id, f.f2.id, f.date, wi ? { over1: (wi.f1 || {}).over, over2: (wi.f2 || {}).over } : null);
       let z = model.w.elo * logit(pElo);
       for (const k of FEATS.concat(FEATS_FINE)) z += model.w[k] * fd[k];
       const g = sigm(z) - (f.f1.winner ? 1 : 0);
@@ -160,15 +166,15 @@ function eloStep(model, f, finePF) {
   }
 }
 
-function fitElo(fights, fighters, { history = false, fine = null } = {}) {
-  const model = newModel(fighters, { history });
+function fitElo(fights, fighters, { history = false, fine = null, weighins = null } = {}) {
+  const model = newModel(fighters, { history, weighins });
   for (const f of fights) eloStep(model, f, fine && fine[f.comp_id]);
   return model;
 }
 
 // prob de f1 sobre f2 a la fecha dada (aplica ring rust por inactividad; si el modelo tiene
 // features fiteadas — fitElo con fighters — las aplica encima del Elo)
-function fightProb(model, id1, id2, atDate) {
+function fightProb(model, id1, id2, atDate, ctx) {
   const rust = (id) => {
     const last = model.LAST[id];
     if (!last || !atDate) return 0;
@@ -179,7 +185,7 @@ function fightProb(model, id1, id2, atDate) {
   const r2 = (model.R[id2] == null ? BASE : model.R[id2]) - rust(id2);
   let p1 = expected(r1, r2);
   if (model.w && model.PF) {
-    const fd = featDiff(model, model.PF, id1, id2, atDate || new Date().toISOString());
+    const fd = featDiff(model, model.PF, id1, id2, atDate || new Date().toISOString(), ctx);
     let z = model.w.elo * logit(p1);
     for (const k of FEATS.concat(FEATS_FINE)) z += model.w[k] * fd[k];
     p1 = sigm(z);
@@ -190,7 +196,7 @@ function fightProb(model, id1, id2, atDate) {
 // R3 (29-jul): DESGLOSE del matchup — contribución EXACTA de cada factor a la probabilidad (leave-one-out
 // sobre la logística real: quitar el factor i y medir cuántos pp de probabilidad se mueve). Es el Matchup
 // Engine y la explicabilidad en un solo lugar, derivado del MISMO modelo que predice (no una historia aparte).
-function fightBreakdown(model, id1, id2, atDate) {
+function fightBreakdown(model, id1, id2, atDate, ctx) {
   if (!model.w || !model.PF) return null;
   const rust = (id) => {
     const last = model.LAST[id]; if (!last || !atDate) return 0;
@@ -199,7 +205,7 @@ function fightBreakdown(model, id1, id2, atDate) {
   const r1 = (model.R[id1] == null ? BASE : model.R[id1]) - rust(id1);
   const r2 = (model.R[id2] == null ? BASE : model.R[id2]) - rust(id2);
   const pElo = expected(r1, r2);
-  const fd = featDiff(model, model.PF, id1, id2, atDate || new Date().toISOString());
+  const fd = featDiff(model, model.PF, id1, id2, atDate || new Date().toISOString(), ctx);
   let z = model.w.elo * logit(pElo);
   for (const k of FEATS.concat(FEATS_FINE)) z += model.w[k] * fd[k];
   const pFull = sigm(z);
@@ -361,7 +367,7 @@ function liveFightProbs(method, sched, state) {
 
 // ---------- BACKTEST walk-forward (el gate de la casa) ----------
 // Con fighters: corre Elo puro y Elo+features EN LA MISMA pasada (mismas peleas out-of-sample) y reporta ambos.
-function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
+function backtest(fights, { warmFrac = 0.35, fighters = null, weighins = null } = {}) {
   const done = fights.filter(f => f.completed && f.f1.id && f.f2.id && (f.f1.winner || f.f2.winner))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
   const warm = Math.floor(done.length * warmFrac);
@@ -369,7 +375,7 @@ function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
   let hitsX = 0, brierX = 0;
   const cal = Array.from({ length: 10 }, () => [0, 0]);
   // fit incremental (mismo update que fitElo, en línea — O(n))
-  const model = { R: {}, N: {}, LAST: {}, FIRST: {}, KOL: {}, MIN: {}, R3: {} };
+  const model = { R: {}, N: {}, LAST: {}, FIRST: {}, KOL: {}, MIN: {}, R3: {}, WI: weighins || null };
   const w = newW();
   const get = (id) => (model.R[id] == null ? BASE : model.R[id]);
   done.forEach((f, i) => {
@@ -378,7 +384,8 @@ function backtest(fights, { warmFrac = 0.35, fighters = null } = {}) {
       return Math.min(2, Math.max(0, (new Date(f.date) - new Date(last)) / (365.25 * 24 * 3600e3))) * RUST_PER_YEAR;
     };
     const pElo = expected(get(f.f1.id) - rust(f.f1.id), get(f.f2.id) - rust(f.f2.id));
-    const fd = fighters ? featDiff(model, fighters, f.f1.id, f.f2.id, f.date) : null;
+    const wiB = model.WI && model.WI[f.comp_id];
+    const fd = fighters ? featDiff(model, fighters, f.f1.id, f.f2.id, f.date, wiB ? { over1: (wiB.f1 || {}).over, over2: (wiB.f2 || {}).over } : null) : null;
     let p1x = pElo;
     if (fighters) { let z = w.elo * logit(pElo); for (const k of FEATS.concat(FEATS_FINE)) z += w[k] * fd[k]; p1x = sigm(z); }
     const y = f.f1.winner ? 1 : 0;

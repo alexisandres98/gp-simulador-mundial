@@ -7102,6 +7102,25 @@ function combatOddsArchive(C) {
   console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas');
 }
 
+// ===== #4 OFICIALES (29-jul): árbitro y jueces por pelea (core API de ESPN, 9,112 peleas / 240 árbitros).
+// Como PREDICTOR quedó RECHAZADO: la tendencia medida de cada árbitro NO predice out-of-sample — el tercio
+// de "gatillo rápido" produce MENOS finishes de lo esperado (−2.1pp) que el de "deja seguir" (−0.7pp), o sea
+// la dirección se INVIERTE, que es la firma de la reversión a la media (ruido ajustado, no señal). Tampoco
+// hay estabilidad temporal (el orden se da vuelta entre mitades). Se muestra como CONTEXTO, sin pretender
+// poder predictivo: el aficionado quiere saber quién arbitra, y eso es producto legítimo.
+function combatOfficials(org) {
+  global._combatOff = global._combatOff || {};
+  const G = global._combatOff;
+  const file = path.join(__dirname, 'data', 'combat', `officials-${org}.json`);
+  let mt = 0; try { mt = fs.statSync(file).mtimeMs; } catch { return {}; }
+  if (G[org] && G[org].mt === mt) return G[org].map;
+  try {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    G[org] = { mt, map: j.officials || {} };
+    return G[org].map;
+  } catch { return {}; }
+}
+
 // ===== R5: ESTADO EN VIVO de una pelea (ESPN core API) ==================================================
 // status → round y reloj (el reloj de ESPN es lo que RESTA del round); plays → cronología del combate.
 // OJO (regla de honestidad): ESPN publica los eventos SIN atribuir — un derribo no dice de quién es. Por eso
@@ -11027,6 +11046,10 @@ const server = http.createServer(async (req, res) => {
           gp_read: combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll),
           style_match: combatStyleMatch(C, ft),
           film: combatFilmStudy(C, ft),
+          // ESPN a veces devuelve jueces de relleno ("Judge 1"): fuera, no mostramos basura al usuario
+          officials: (function () { const o = combatOfficials(C.org)[ft.comp_id]; if (!o) return null;
+            const j = (o.judges || []).filter(x => !/^judge\s*\d*$/i.test(String(x).trim()));
+            return (o.ref || j.length) ? { ref: o.ref || null, judges: j } : null; })(),
           live, live_probs: liveProbs,
           fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },

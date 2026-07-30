@@ -247,7 +247,7 @@
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
       cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
-      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento',
+      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
       cbb_next: 'La próxima cartelera', cbb_div: 'Donde GP y el mercado no coinciden', cbb_div_sub: 'las mayores distancias de la cartelera', cbb_intel: 'Señales del vestuario', cbb_picks: 'En el monitor', cbb_recent: 'Cómo venimos', cbb_none: 'Nada que reportar por ahora.', cbb_cards: 'Carteleras por delante', cbb_model: 'GP', cbb_market: 'mercado', cbb_fights_n: 'peleas',
       cb_live: 'EN VIVO', cb_live_sub: 'la probabilidad se mueve con el reloj', cb_live_pre: 'antes de empezar', cb_live_now: 'ahora', cb_live_fin: 'termina antes del límite', cb_live_dec: 'llega a decisión', cb_live_left: 'rounds por delante', cb_live_tl: 'Cronología del combate', cb_live_note: 'La cronología viene sin atribuir desde la fuente oficial: son hechos del combate, no de un peleador. La probabilidad la mueven el modelo y el reloj.',
       cb_film: 'Film study', cb_film_sub: 'lo que dice la cinta', cb_film_none: 'Sin suficiente registro de acción para leer la cinta de este cruce.', cb_film_what: 'Lectura automática del registro de acción de cada pelea (a dónde van los golpes y con cuánta intención, cómo entra el juego de suelo, en qué round se cierran sus peleas). No es análisis de video.', cb_film_pace: 'Ritmo', cb_film_target: 'Reparto de golpes', cb_film_power: 'Intención', cb_film_gr: 'Suelo', cb_film_ctrl: 'Control', cb_film_early: 'Cierra temprano', cb_film_deep: 'Aguas profundas',
@@ -587,7 +587,7 @@
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
       cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
-      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp',
+      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', cb_ref: 'Referee:', cb_judges: 'Judges:',
       cbb_next: 'The next card', cbb_div: 'Where GP and the market disagree', cbb_div_sub: 'the widest gaps on the card', cbb_intel: 'Signals from the camp', cbb_picks: 'On the monitor', cbb_recent: 'How we are doing', cbb_none: 'Nothing to report right now.', cbb_cards: 'Cards ahead', cbb_model: 'GP', cbb_market: 'market', cbb_fights_n: 'fights',
       cb_live: 'LIVE', cb_live_sub: 'the probability moves with the clock', cb_live_pre: 'before the opening bell', cb_live_now: 'now', cb_live_fin: 'ends inside the limit', cb_live_dec: 'goes to decision', cb_live_left: 'rounds ahead', cb_live_tl: 'Fight timeline', cb_live_note: 'The timeline arrives unattributed from the official feed: these are facts of the fight, not of a fighter. The probability is moved by the model and the clock.',
       cb_film: 'Film study', cb_film_sub: 'what the tape says', cb_film_none: 'Not enough recorded action to read the tape on this matchup.', cb_film_what: 'Automated reading of the recorded action of every fight (where the strikes go and with how much intent, how the ground game enters, which round their fights close in). This is not video analysis.', cb_film_pace: 'Pace', cb_film_target: 'Strike split', cb_film_power: 'Intent', cb_film_gr: 'Ground', cb_film_ctrl: 'Control', cb_film_early: 'Closes early', cb_film_deep: 'Deep water',
@@ -6068,11 +6068,18 @@
         cbTapeRow(t('cb_ctrl'), Math.round((d.fine.f1.control_pct || 0) * 100), Math.round((d.fine.f2.control_pct || 0) * 100), function (x) { return x + '%'; }) +
         (d.fine.f1.td_def != null && d.fine.f2.td_def != null ? cbTapeRow(t('cb_tddef'), Math.round(d.fine.f1.td_def * 100), Math.round(d.fine.f2.td_def * 100), function (x) { return x + '%'; }) : '');
     }
+    // #4: oficiales como CONTEXTO (rechazado como predictor, ver server). Fila propia bajo el tape.
+    var off = d.officials;
+    var offRow = off && (off.ref || (off.judges || []).length)
+      ? '<div class="gx-cb-offrow">' +
+        (off.ref ? '<span><i class="gx-dim">' + esc(t('cb_ref')) + '</i> <b>' + esc(off.ref) + '</b></span>' : '') +
+        ((off.judges || []).length ? '<span><i class="gx-dim">' + esc(t('cb_judges')) + '</i> <b>' + esc(off.judges.join(' · ')) + '</b></span>' : '') +
+        '</div>' : '';
     var campRow = (ta.f1.camp || ta.f2.camp)
       ? '<div class="gx-cb-taperow gx-cb-camprow"><b class="v1">' + esc(ta.f1.camp || '—') + '</b>' +
         '<div class="gx-cb-tapebar"><span>' + esc(t('cb_camp')) + '</span></div>' +
         '<b class="v2">' + esc(ta.f2.camp || '—') + '</b></div>' : '';
-    var tape = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + campRow + '</div></div>';
+    var tape = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + campRow + offRow + '</div></div>';
     // INTELIGENCIA — red flags (capa de observación: layoff, cambio de división, viene de KO, chin, brecha de edad)
     var intel = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_intel')) + '</span></div><div class="gx-mod-body">' +
       ((d.intel || []).length ? d.intel.map(function (x) {

@@ -889,6 +889,17 @@
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
+  // LANZAMIENTO PÚBLICO DE COMBATE: con el flag ON, cualquier usuario con sesión entra a las superficies de
+  // INTELIGENCIA; las de PICKS (Oportunidades y Rendimiento) siguen siendo admin. Con el flag OFF, todo
+  // combate es admin-only igual que hoy.
+  var CB_PICK_VIEWS = ['cbopps', 'cbperf'];
+  function cbCanSee(v) {
+    if (!S.me) return false;
+    if (S.me.isAdmin) return true;
+    if (!S.me.combatPublic) return false;
+    return CB_PICK_VIEWS.indexOf(v) < 0;
+  }
+  function cbSportAllowed() { return !!(S.me && (S.me.isAdmin || S.me.combatPublic)); }
   function sportOf(v) {
     if (CB_VIEWS.indexOf(v) >= 0) return 'combat';
     if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
@@ -958,7 +969,7 @@
     var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
-    var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method' || n[0] === 'cbperf') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method' || n[0] === 'cbperf' || n[0] === 'cbopps') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var moreViews = isCombat ? ['cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
@@ -989,7 +1000,7 @@
       // admin-only hasta validar (no-admins lo ven "Próximamente" = teaser del roadmap, cero fuga de producto).
       '<div class="gx-sportbar" id="gx-sportbar">' +
         '<button class="gx-sport' + (S.sport !== 'combat' ? ' on' : '') + '" data-sportgo="futbol"><span class="gx-sport-ico">⚽</span>' + esc(t('sport_futbol')) + '</button>' +
-        '<button class="gx-sport' + (S.sport === 'combat' ? ' on' : '') + ' gx-sport-cb" data-sportgo="combat"><span class="gx-sport-ico">🥊</span>' + esc(t('sport_combat')) + '<span class="gx-sport-soon gx-cbsoon">' + esc(t('sport_soon')) + '</span></button>' +
+        '<button class="gx-sport' + (S.sport === 'combat' ? ' on' : '') + ' gx-sport-cb" data-sportgo="combat"><span class="gx-sport-ico">🥊</span>' + esc(t('sport_combat')) + (cbSportAllowed() ? '' : '<span class="gx-sport-soon gx-cbsoon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
         '<button class="gx-sport dim" disabled><span class="gx-sport-ico">🏀</span>' + esc(t('sport_nba')) + '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span></button>' +
       '</div>' +
       '<div class="gx-main">' +
@@ -3391,12 +3402,12 @@
   // ── R2: cambio de DEPORTE — reconstruye el shell entero (sidebar+bnav) y navega al home del deporte.
   // Combate es admin-only hasta validar: para no-admins el botón es un teaser ("Próximamente"), no navega.
   function setSport(sport) {
-    if (sport === 'combat' && !(S.me && S.me.isAdmin)) return;
+    if (sport === 'combat' && !cbSportAllowed()) return;
     if (sport === S.sport) return;
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'combat' ? 'cbopps' : 'opps');
+    navTo(sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -3414,7 +3425,7 @@
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
     // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || CB_VIEWS.indexOf(v) >= 0 || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
@@ -5815,7 +5826,7 @@
     // carrera S.me con hash directo (patrón #perf): S.me arranca NULL (no undefined) hasta que /api/me llega —
     // esperar, no redirigir (el handler de llegada de me re-renderiza las vistas CB)
     if (!S.me) { cbShell(t('cb_title'), mvLoading()); return; }
-    if (!S.me.isAdmin) { showView('board'); return; }
+    if (!cbCanSee(v)) { showView('board'); return; }
     if (v === 'cbopps') renderCbOpps();
     else if (v === 'cbbrief') renderCbBrief();
     else if (v === 'cbcard') renderCbCard();
@@ -7379,7 +7390,10 @@
           if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); if (!document.getElementById('gx-onb')) maybeTrialModal(); loadPlayerIndex(); loadClubsPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || CB_VIEWS.indexOf(S.view) >= 0 || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat') { S.sport = 'futbol'; shell(); } showView('board'); } else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }
+            // el shell se pinta ANTES de que llegue /api/me → el sportbar se construyó sin saber si combate
+            // está permitido. Si al llegar la sesión cambia el veredicto, se reconstruye (badge "Próximamente").
+            if (cbSportAllowed() && $('.gx-cbsoon')) shell();
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat') { S.sport = 'futbol'; shell(); } showView('board'); } else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

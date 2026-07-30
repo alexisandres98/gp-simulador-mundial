@@ -7234,7 +7234,7 @@ function cbResolveEntity(C, q) {
   }
   return { kind: 'none' };
 }
-async function combatAsk(C, q, org) {
+async function combatAsk(C, q, org, isAdmin = true) {
   const CE = require('./combat-engine/ratings');   // por scope: en server.js no hay CE global
   const intent = cbIntent(q);
   const ent = cbResolveEntity(C, q);
@@ -7343,7 +7343,7 @@ async function combatAsk(C, q, org) {
     out.answer_es = h.length ? `Ya se vieron ${h.length} vez${h.length === 1 ? '' : 'es'}: ` + h.map(f => `${(f.f1.winner ? f.f1.name : f.f2.name)} ganó en ${f.event} por ${(f.method || {}).display || 'resultado'}`).join('; ') + '.' : 'No se han enfrentado antes en el histórico que tengo.';
     out.answer_en = h.length ? `They have met ${h.length} time${h.length === 1 ? '' : 's'}: ` + h.map(f => `${(f.f1.winner ? f.f1.name : f.f2.name)} won at ${f.event} by ${(f.method || {}).display || 'result'}`).join('; ') + '.' : 'They have not met before in the history I hold.';
   } else if (intent === 'pick') {
-    const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
+    const pk = isAdmin ? (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id) : null;
     out.answer_es = pk ? `Sí: el monitor tiene ${pk.selection_name} (${pk.family}) a cuota ${pk.best_odds}, con ${pk.edge_blend_pp}pp de ventaja sobre el mercado. ${pk.why_es || ''}`.trim()
       : 'No tengo ninguna jugada abierta en esta pelea. Cuando el modelo y el mercado no se separan lo suficiente, lo correcto es no jugar.';
     out.answer_en = pk ? `Yes: the monitor holds ${pk.selection_name} (${pk.family}) at ${pk.best_odds}, with ${pk.edge_blend_pp}pp of edge over the market. ${pk.why_en || ''}`.trim()
@@ -8970,7 +8970,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn() };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true' };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -11165,7 +11165,17 @@ const server = http.createServer(async (req, res) => {
     // gate pasado ANTES de construir la UI — el estándar de la casa). Cuotas: The Odds API mma (ya en el plan).
     if (p.startsWith('/api/combat/')) {
       const u = getUser(req);
-      if (!u || !u.isAdmin) return json(res, 404, { error: 'No encontrado' }); // admin-only estricto (404, ni señal)
+      // LANZAMIENTO PÚBLICO (flag GP_COMBAT_PUBLIC_ENABLED, HOY OFF): abre las superficies de INTELIGENCIA
+      // (cockpit, peleadores, film study, mapa de la noche, en vivo, preguntale a GP, rankings) a cualquier
+      // usuario con sesión, y deja las PICKS y el board de oportunidades en admin. Es la separación que
+      // corresponde: el análisis no necesita muestra para ser cierto, una pick sí — y el monitor tiene 0
+      // liquidadas. Con el flag OFF, todo sigue admin-only y byte-idéntico a hoy.
+      const CB_PICK_ROUTES = ['/api/combat/opps', '/api/combat/perf'];
+      const cbPublic = String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true';
+      const isPickRoute = CB_PICK_ROUTES.some(r => p === r);
+      const allowed = (u && u.isAdmin) || (cbPublic && u && !isPickRoute);
+      if (!allowed) return json(res, 404, { error: 'No encontrado' }); // 404, ni señal
+      const cbAdmin = !!(u && u.isAdmin);   // los campos de PICKS solo se sirven a admin
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
       // fuente compartida con el loop de picks. F5: ?org=ufc|mma (mma = Bellator histórico + PFL activa).
@@ -11207,9 +11217,9 @@ const server = http.createServer(async (req, res) => {
           backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [], { fighters: C.fighters })),
           backtest_method: C.btm || (C.btm = CE.backtestMethod(C.fights.fights || [])),
           // F2: monitor privado de picks (admin-only por el gate del route; jamás feed público)
-          picks_enabled: combatPicksOn(),
-          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
-          picks_track: combatPicksTrack(),
+          picks_enabled: cbAdmin && combatPicksOn(),
+          picks: cbAdmin ? (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)) : [],
+          picks_track: cbAdmin ? combatPicksTrack() : null,
         });
       }
       // F3/R2: perfil de peleador COMPLETO (bio + edad + Elo con serie + récord + métodos + divisiones +
@@ -11383,7 +11393,7 @@ const server = http.createServer(async (req, res) => {
           live, live_probs: liveProbs,
           fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
-          pick: pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
+          pick: (cbAdmin && pk) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
         });
       }
       // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)
@@ -11472,7 +11482,7 @@ const server = http.createServer(async (req, res) => {
         await combatRefreshUpcoming(C);
         const q = String(url.searchParams.get('q') || '').trim();
         if (!q) return json(res, 400, { error: 'falta la pregunta' });
-        const r = await combatAsk(C, q, org);
+        const r = await combatAsk(C, q, org, cbAdmin);
         return json(res, 200, r);
       }
       if (p === '/api/combat/card' && req.method === 'GET') {
@@ -11498,7 +11508,7 @@ const server = http.createServer(async (req, res) => {
             market: mo ? { f1: +mo.fair_f1.toFixed(3), books: mo.books, best_f1: mo.best.f1, best_f2: mo.best.f2 } : null,
             gap_pp: mo ? +((pr.p1 - mo.fair_f1) * 100).toFixed(1) : null,
             confidence: conf ? conf.level : null,
-            pick: pk ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
+            pick: (cbAdmin && pk) ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
             ref: (officials[ft.comp_id] || {}).ref || null,
           });
         }
@@ -11585,11 +11595,11 @@ const server = http.createServer(async (req, res) => {
           cards: cards.slice(0, 3).map(e => ({ id: e.id, name: e.name, date: e.date, fights: e.fights.length })),
           divergences: divs.slice(0, 8),
           intel: intel.slice(0, 10),
-          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
-            .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10),
-          recent: settled.map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })),
+          picks: cbAdmin ? (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
+            .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10) : [],
+          recent: cbAdmin ? settled.map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })) : [],
           moves: combatLineMoves(C, { hours: 96 }).slice(0, 6),
-          track: combatPicksTrack(),
+          track: cbAdmin ? combatPicksTrack() : null,
         });
       }
       // R2: ORGANIZACIONES — resumen por promoción (UFC del dataset ufc; Bellator/PFL del dataset mma)

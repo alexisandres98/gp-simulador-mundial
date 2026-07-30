@@ -11128,6 +11128,76 @@ const server = http.createServer(async (req, res) => {
       // R5c: DAILY BRIEF DE COMBATE — el equivalente del brief de fútbol, con la cartelera por delante.
       // Mismo espíritu: qué pasa hoy, qué mira el sistema, qué señales hay y cómo venimos. Reusa los
       // helpers ya probados (odds, intel, observer, track) — nada de motores nuevos.
+      // #6 (30-jul): MAPA DE LA NOCHE — la cartelera COMPLETA leída de una sola vez, con la forma de la
+      // velada entera y no pelea por pelea. Reusa los engines ya validados (fightProb + methodProbs por
+      // pelea) y encima corre un Monte Carlo de la cartelera: cuántas peleas terminan antes del límite,
+      // cuántas van a decisión, cuántos rounds se ven en total. Eso es lo que ningún sitio gratis da: el
+      // aficionado sabe quién gana cada pelea, no cómo se va a comportar LA NOCHE.
+      if (p === '/api/combat/card' && req.method === 'GET') {
+        await combatRefreshUpcoming(C);
+        const evId = String(url.searchParams.get('id') || '');
+        const ev = (C.upcoming || []).find(e => String(e.id) === evId) || (C.upcoming || [])[0];
+        if (!ev) return json(res, 404, { error: 'No encontrado' });
+        const officials = combatOfficials(C.org);
+        const fights = [];
+        for (const ft of ev.fights) {
+          const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+          const sched = ft.rounds || 3;
+          const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, sched);
+          const mo = combatFightOdds(C, ft);
+          const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id) || null;
+          const conf = combatConfidence(C, ft, pr.p1, mo ? mo.books : 0);
+          fights.push({
+            comp_id: ft.comp_id, main: !!ft.main, weight: ft.weight, rounds: sched,
+            f1: { id: ft.f1.id, name: ft.f1.name, headshot: (C.fighters[ft.f1.id] || {}).headshot || null, record: combatRecordOf(C, ft.f1.id) },
+            f2: { id: ft.f2.id, name: ft.f2.name, headshot: (C.fighters[ft.f2.id] || {}).headshot || null, record: combatRecordOf(C, ft.f2.id) },
+            prob: { f1: +pr.p1.toFixed(3), f2: +(1 - pr.p1).toFixed(3) },
+            method: { ko: method.ko, sub: method.sub, dec: method.dec, finish: method.finish, exp_rounds: method.exp_rounds },
+            market: mo ? { f1: +mo.fair_f1.toFixed(3), books: mo.books, best_f1: mo.best.f1, best_f2: mo.best.f2 } : null,
+            gap_pp: mo ? +((pr.p1 - mo.fair_f1) * 100).toFixed(1) : null,
+            confidence: conf ? conf.level : null,
+            pick: pk ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
+            ref: (officials[ft.comp_id] || {}).ref || null,
+          });
+        }
+        // MONTE CARLO DE LA NOCHE: 10,000 veladas simuladas. Cada pelea es independiente (no hay evidencia
+        // de correlación entre peleas de una misma cartelera — y no se inventa una).
+        const SIMS = 10000;
+        const nF = fights.length;
+        let sumFin = 0, sumRounds = 0;
+        const finDist = new Array(nF + 1).fill(0);
+        let allDec = 0, allFin = 0;
+        for (let s = 0; s < SIMS; s++) {
+          let fin = 0, rounds = 0;
+          for (const ft of fights) {
+            const isFin = Math.random() < ft.method.finish;
+            if (isFin) { fin++; rounds += Math.max(1, Math.min(ft.rounds, Math.ceil(Math.random() * ft.rounds * 0.7))); }
+            else rounds += ft.rounds;
+          }
+          finDist[fin]++; sumFin += fin; sumRounds += rounds;
+          if (fin === 0) allDec++;
+          if (fin === nF) allFin++;
+        }
+        const mode = finDist.indexOf(Math.max(...finDist));
+        return json(res, 200, {
+          org, event: { id: ev.id, name: ev.name, date: ev.date, fights: nF },
+          cards: (C.upcoming || []).map(e => ({ id: e.id, name: e.name, date: e.date, fights: e.fights.length })),
+          fights: fights.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0)),
+          night: {
+            sims: SIMS,
+            exp_finishes: +(sumFin / SIMS).toFixed(1),
+            exp_rounds: +(sumRounds / SIMS).toFixed(1),
+            most_likely_finishes: mode,
+            finish_dist: finDist.map((c, i) => ({ n: i, p: +(c / SIMS).toFixed(3) })).filter(x => x.p >= 0.01),
+            p_all_decisions: +(allDec / SIMS).toFixed(4),
+            p_all_finishes: +(allFin / SIMS).toFixed(4),
+            // la pelea con más probabilidad de acabar antes del límite y la que más lejos llega
+            most_likely_finish: fights.slice().sort((a, b) => b.method.finish - a.method.finish)[0] || null,
+            most_likely_distance: fights.slice().sort((a, b) => a.method.finish - b.method.finish)[0] || null,
+            biggest_gap: fights.filter(f => f.gap_pp != null).sort((a, b) => Math.abs(b.gap_pp) - Math.abs(a.gap_pp))[0] || null,
+          },
+        });
+      }
       if (p === '/api/combat/brief' && req.method === 'GET') {
         await combatRefreshUpcoming(C);
         const now = Date.now();

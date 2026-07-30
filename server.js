@@ -7102,6 +7102,194 @@ function combatOddsArchive(C) {
   console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas');
 }
 
+// ===== #8 PREGUNTALE A GP (30-jul) — capa conversacional acotada a nuestros datos ========================
+// Vocabulario de intención ES+EN. Cada intención se responde SOLO con outputs de engines ya validados.
+const CB_INTENTS = [
+  { k: 'method', re: /(c[oó]mo|de qu[eé] forma|manera).*(termin|acab|gan)|ko|tko|nocau|sumisi|submission|finish|method|decisi[oó]n|decision/i },
+  { k: 'rounds', re: /round|asalto|cu[aá]nto dura|distancia|distance|va la distancia|larga|corta/i },
+  { k: 'market', re: /mercado|market|cuota|odds|precio|price|valor|value|paga|casas|book/i },
+  { k: 'flags', re: /riesgo|risk|se[ñn]al|flag|lesi|injur|peso|weight|alerta|ojo|cuidado|duda|layoff|inactiv/i },
+  { k: 'film', re: /estilo|style|cinta|tape|film|c[oó]mo pelea|fights? like|golpe|strike|suelo|ground|derrib|takedown|grappl|ritmo|pace/i },
+  { k: 'card', re: /cartelera|card|la noche|the night|velada|evento|event|cu[aá]ntas peleas/i },
+  { k: 'h2h', re: /se enfrentaron|ya pelearon|h2h|head to head|antes|before|hist[oó]rico entre/i },
+  { k: 'pick', re: /pick|apuesta|bet|recomend|jugada|qu[eé] juego/i },
+  { k: 'winner', re: /qui[eé]n gana|who wins|probabilidad|probability|favorito|favourite|favorite|chance|gana/i },
+];
+function cbIntent(q) {
+  for (const it of CB_INTENTS) if (it.re.test(q)) return it.k;
+  return 'winner';   // por defecto, la pregunta más común
+}
+// resuelve la pelea o el peleador que menciona la pregunta, contra las carteleras próximas
+function cbResolveEntity(C, q) {
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const qn = ' ' + norm(q) + ' ';
+  const upcoming = (C.upcoming || []).flatMap(e => e.fights.map(ft => ({ ev: e, ft })));
+  // 1) ¿menciona a los DOS de una pelea próxima?
+  const hit = (nm) => { const toks = norm(nm).split(' ').filter(x => x.length >= 4); return toks.length && toks.some(t => qn.includes(' ' + t + ' ')); };
+  for (const { ev, ft } of upcoming) if (hit(ft.f1.name) && hit(ft.f2.name)) return { kind: 'fight', ev, ft };
+  // 2) ¿menciona a UNO de una pelea próxima? (lo más útil: te devuelve su próxima pelea)
+  for (const { ev, ft } of upcoming) if (hit(ft.f1.name) || hit(ft.f2.name)) return { kind: 'fight', ev, ft };
+  // 3) ¿un peleador del histórico? puntuando y con empate → null (regla de la casa)
+  let best = null, bestSc = 0, tie = false;
+  for (const [id, nm] of Object.entries(C.names || {})) {
+    if (!nm) continue;
+    const toks = norm(nm).split(' ').filter(x => x.length >= 4);
+    let ov = 0; for (const t of toks) if (qn.includes(' ' + t + ' ')) ov++;
+    if (!ov) continue;
+    const sc = ov * 10 + ov / Math.max(1, toks.length);
+    if (sc > bestSc) { best = id; bestSc = sc; tie = false; }
+    else if (sc === bestSc && best !== id) tie = true;
+  }
+  if (best && !tie && bestSc >= 10) return { kind: 'fighter', id: best };
+  // 4) SUJETO POR DEFECTO: si la pregunta no nombra a nadie pero habla del estelar (o no nombra nada y es
+  // una pregunta sobre "la pelea"), se responde por el ESTELAR de la próxima cartelera. Es lo que un humano
+  // asume, y hace que las preguntas sugeridas funcionen al primer intento.
+  // Estamos en la sección de COMBATE: si la pregunta no nombra a nadie, el sujeto asumido es el estelar de
+  // la próxima cartelera. Es lo que asume cualquier humano, y la respuesta SIEMPRE declara de qué pelea
+  // habla ("Te respondo por X vs Y") → se asume, pero no se disimula.
+  // ANTES de asumir: si la pregunta es claramente de OTRO deporte, no se asume nada. Contestar una pregunta
+  // de fútbol con una pelea de UFC es exactamente el "inventar" que esta capa existe para no hacer.
+  if (/partido|f[uú]tbol|football|soccer|liga|equipo|gol(es)?\b|match\b|nba|b[aá]squet|basketball|tenis|tennis/i.test(q)) {
+    return { kind: 'other_sport' };
+  }
+  // Solo se asume el estelar si la pregunta NO trae nombres propios que no pudimos resolver. Si el usuario
+  // nombró algo ("Real Madrid Barcelona") y no lo reconocimos, lo correcto es decir que no lo identificamos,
+  // NO contestarle con otra pelea. Palabras de pregunta y vocabulario de intención no cuentan como nombres.
+  const STOP = new Set(('que quien quienes como cuando cuanto cuantos cuanta cuantas donde por para del las los una unas unos con sin sobre este esta esto ese esa aquel ahora hoy manana ayer noche dia dias pelea peleas combate combates estelar principal cartelera cartel evento eventos gana ganar gane termina terminar acaba acabar dura durar round rounds asalto asaltos mercado cuota cuotas precio precios valor riesgo riesgos senal senales cinta estilo estilos jugada jugadas pick picks apuesta apuestas antes despues favorito probabilidad chance dice dicen decir sabe sabes saber piensa opina crees creo hay tiene tienen tenemos vamos puede podria seria fuerte mejor peor mucho poco the what who how many which does will fight fights bout card event night main round rounds market odds price value risk flag flags tape style play bet does have any there is are and for from with about next this that').split(' '));
+  const nameLike = qn.split(' ').filter(w => w.length >= 4 && !STOP.has(w) && !/^\d+$/.test(w));
+  if (!nameLike.length) {
+    for (const e of (C.upcoming || [])) {
+      const mf = e.fights.find(x => x.main) || e.fights[0];
+      if (mf) return { kind: 'fight', ev: e, ft: mf, assumed: true };
+    }
+  }
+  return { kind: 'none' };
+}
+async function combatAsk(C, q, org) {
+  const CE = require('./combat-engine/ratings');   // por scope: en server.js no hay CE global
+  const intent = cbIntent(q);
+  const ent = cbResolveEntity(C, q);
+  const out = { q, intent, org, entity: ent.kind, answer_es: null, answer_en: null, link: null, data: null };
+  const pct = (x) => Math.round((x || 0) * 100) + '%';
+  const last = (n) => String(n || '').trim().split(/\s+/).pop();
+
+  // ── pregunta sobre la CARTELERA (no necesita entidad) ──
+  if (intent === 'card' && ent.kind !== 'fighter') {
+    const ev = ent.kind === 'fight' ? ent.ev : (C.upcoming || [])[0];
+    if (!ev) { out.answer_es = 'No tengo ninguna cartelera próxima cargada ahora mismo.'; out.answer_en = 'I have no upcoming card loaded right now.'; return out; }
+    let fin = 0, rounds = 0;
+    for (const ft of ev.fights) {
+      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const m = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+      fin += m.finish; rounds += m.finish * (ft.rounds || 3) * 0.55 + (1 - m.finish) * (ft.rounds || 3);
+    }
+    out.link = 'cbcard';
+    out.answer_es = `${ev.name} tiene ${ev.fights.length} peleas. Mi lectura de la noche: unas ${fin.toFixed(1)} terminan antes del límite y se ven ~${rounds.toFixed(0)} rounds en total. Tenés el desglose completo en el Mapa de la noche.`;
+    out.answer_en = `${ev.name} has ${ev.fights.length} fights. My read of the night: about ${fin.toFixed(1)} end inside the limit and you'll see ~${rounds.toFixed(0)} total rounds. Full breakdown in the Map of the night.`;
+    out.data = { event: ev.name, fights: ev.fights.length, exp_finishes: +fin.toFixed(1) };
+    return out;
+  }
+
+  // ── pregunta sobre un PELEADOR sin pelea próxima ──
+  if (ent.kind === 'fighter') {
+    const s = combatFighterSummary(C, ent.id);
+    const fx = combatFineStats(C); const fine = fx && (fx.career || {})[ent.id];
+    out.link = 'cbfighter/' + org + '-' + ent.id;
+    const rec = s.record ? `${s.record.w}-${s.record.l}` : '—';
+    out.answer_es = `${s.name}: récord ${rec}${s.division ? ' en ' + s.division : ''}, Elo ${s.elo}${s.age ? `, ${s.age} años` : ''}${s.camp ? `, campamento ${s.camp}` : ''}. Forma reciente: ${(s.form || []).join('-') || '—'}.` +
+      (fine ? ` En la cinta: ${fine.slpm} golpes por minuto, ${pct(fine.head_pct)} dirigidos a la cabeza, ${fine.td_per15} derribos cada 15 minutos.` : '') +
+      ` No tiene pelea anunciada en las carteleras que tengo cargadas.`;
+    out.answer_en = `${s.name}: record ${rec}${s.division ? ' at ' + s.division : ''}, Elo ${s.elo}${s.age ? `, age ${s.age}` : ''}${s.camp ? `, camp ${s.camp}` : ''}. Recent form: ${(s.form || []).join('-') || '—'}.` +
+      (fine ? ` On tape: ${fine.slpm} strikes per minute, ${pct(fine.head_pct)} aimed upstairs, ${fine.td_per15} takedowns per 15 minutes.` : '') +
+      ` No announced fight on the cards I currently have.`;
+    out.data = s;
+    return out;
+  }
+
+  // ── pregunta de otro deporte: se redirige, no se contesta con una pelea ──
+  if (ent.kind === 'other_sport') {
+    out.answer_es = 'Esa pregunta es de otro deporte. Acá solo respondo de combate (UFC y PFL); para fútbol usá el conmutador de deporte de arriba.';
+    out.answer_en = 'That question is about another sport. Here I only answer about combat (UFC and PFL); for football use the sport switcher at the top.';
+    return out;
+  }
+  // ── sin entidad: se dice, no se adivina ──
+  if (ent.kind !== 'fight') {
+    out.answer_es = 'No pude identificar de qué pelea o peleador me hablás. Probá con los dos apellidos ("Medić Rodriguez") o el nombre completo de uno.';
+    out.answer_en = "I couldn't tell which fight or fighter you mean. Try both surnames (\"Medić Rodriguez\") or one full name.";
+    return out;
+  }
+
+  // ── pregunta sobre una PELEA concreta: todo sale de los engines ──
+  const { ev, ft } = ent;
+  const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+  const m = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+  const mo = combatFightOdds(C, ft);
+  const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+  const fav = pr.p1 >= 0.5 ? ft.f1 : ft.f2, dog = pr.p1 >= 0.5 ? ft.f2 : ft.f1;
+  const favP = Math.max(pr.p1, 1 - pr.p1);
+  out.link = 'cbfight/' + org + '-' + ft.comp_id;
+  out.assumed = !!ent.assumed;
+  out.subject = ft.f1.name + ' vs ' + ft.f2.name;
+  out.data = { fight: ft.f1.name + ' vs ' + ft.f2.name, p1: +pr.p1.toFixed(3), method: m, market: mo ? +mo.fair_f1.toFixed(3) : null };
+
+  if (intent === 'winner') {
+    const parts = (bd && bd.parts || []).filter(x => (pr.p1 >= 0.5 ? x.pp > 0 : x.pp < 0)).slice(0, 3);
+    const fES = parts.map(x => CB_FACTOR_ES[x.key] || x.key).join(', ');
+    const fEN = parts.map(x => CB_FACTOR_EN[x.key] || x.key).join(', ');
+    out.answer_es = `Mi lectura da ${last(fav.name)} ${pct(favP)} sobre ${last(dog.name)}.` + (fES ? ` Lo que la inclina: ${fES}.` : '') +
+      (mo ? ` El mercado lo paga ${pct(pr.p1 >= 0.5 ? mo.fair_f1 : 1 - mo.fair_f1)} con ${mo.books} casas.` : ' Todavía no tengo cuotas de esta pelea.');
+    out.answer_en = `My read has ${last(fav.name)} at ${pct(favP)} over ${last(dog.name)}.` + (fEN ? ` What tilts it: ${fEN}.` : '') +
+      (mo ? ` The market prices it at ${pct(pr.p1 >= 0.5 ? mo.fair_f1 : 1 - mo.fair_f1)} across ${mo.books} books.` : ' I have no odds for this fight yet.');
+  } else if (intent === 'method') {
+    const bw = m.by_winner || {};
+    const top = [['ko', m.ko], ['sub', m.sub], ['dec', m.dec]].sort((a, b) => b[1] - a[1])[0];
+    const LBL = { ko: ['KO/TKO', 'KO/TKO'], sub: ['sumisión', 'submission'], dec: ['decisión', 'decision'] };
+    out.answer_es = `Lo más probable es que acabe por ${LBL[top[0]][0]} (${pct(top[1])}). El reparto: KO ${pct(m.ko)}, sumisión ${pct(m.sub)}, decisión ${pct(m.dec)}. Termina antes del límite el ${pct(m.finish)} de las veces.` +
+      (bw.f1 ? ` Por esquina: ${last(ft.f1.name)} ${pct(bw.f1.ko + bw.f1.sub)} por finish, ${last(ft.f2.name)} ${pct(bw.f2.ko + bw.f2.sub)}.` : '');
+    out.answer_en = `Most likely it ends by ${LBL[top[0]][1]} (${pct(top[1])}). The split: KO ${pct(m.ko)}, submission ${pct(m.sub)}, decision ${pct(m.dec)}. It ends inside the limit ${pct(m.finish)} of the time.` +
+      (bw.f1 ? ` By corner: ${last(ft.f1.name)} ${pct(bw.f1.ko + bw.f1.sub)} by finish, ${last(ft.f2.name)} ${pct(bw.f2.ko + bw.f2.sub)}.` : '');
+  } else if (intent === 'rounds') {
+    const sc = ft.rounds || 3;
+    out.answer_es = `Espero ~${m.exp_rounds} rounds de ${sc}. La probabilidad de que acabe en el primero es ${pct((m.r_le || {})[1])}, y antes del tercero ${pct((m.r_le || {})[2])}. Llega a decisión el ${pct(m.dec)}.`;
+    out.answer_en = `I expect ~${m.exp_rounds} rounds out of ${sc}. Chance it ends in the first is ${pct((m.r_le || {})[1])}, and inside two ${pct((m.r_le || {})[2])}. It reaches a decision ${pct(m.dec)} of the time.`;
+  } else if (intent === 'market') {
+    if (!mo) { out.answer_es = 'Todavía no tengo cuotas cargadas de esta pelea.'; out.answer_en = 'I have no odds loaded for this fight yet.'; }
+    else {
+      const gap = (pr.p1 - mo.fair_f1) * 100;
+      const side = gap >= 0 ? ft.f1 : ft.f2;
+      out.answer_es = `El consenso de ${mo.books} casas paga ${last(ft.f1.name)} a ${pct(mo.fair_f1)} y ${last(ft.f2.name)} a ${pct(1 - mo.fair_f1)}. Mi lectura se separa ${Math.abs(gap).toFixed(1)}pp hacia ${last(side.name)}. Mejor precio disponible: ${last(ft.f1.name)} @${(mo.best.f1 || 0).toFixed(2)}, ${last(ft.f2.name)} @${(mo.best.f2 || 0).toFixed(2)}.`;
+      out.answer_en = `The consensus across ${mo.books} books prices ${last(ft.f1.name)} at ${pct(mo.fair_f1)} and ${last(ft.f2.name)} at ${pct(1 - mo.fair_f1)}. My read diverges ${Math.abs(gap).toFixed(1)}pp toward ${last(side.name)}. Best available: ${last(ft.f1.name)} @${(mo.best.f1 || 0).toFixed(2)}, ${last(ft.f2.name)} @${(mo.best.f2 || 0).toFixed(2)}.`;
+    }
+  } else if (intent === 'flags') {
+    const fl = combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft));
+    out.answer_es = fl.length ? `Tengo ${fl.length} señal${fl.length === 1 ? '' : 'es'} en esta pelea: ` + fl.slice(0, 4).map(x => x.es).join('; ') + '.' : 'No tengo señales de riesgo en esta pelea: viene limpia de banderas.';
+    out.answer_en = fl.length ? `I have ${fl.length} signal${fl.length === 1 ? '' : 's'} on this fight: ` + fl.slice(0, 4).map(x => x.en).join('; ') + '.' : 'No risk signals on this fight: it comes in clean.';
+  } else if (intent === 'film') {
+    const fs2 = combatFilmStudy(C, ft);
+    const fi = (fs2.findings || []).slice(0, 3);
+    out.answer_es = fi.length ? 'Lo que dice la cinta: ' + fi.map(x => x.es).join('; ') + '.' : 'No tengo suficiente registro de acción para leer la cinta de este cruce.';
+    out.answer_en = fi.length ? 'What the tape says: ' + fi.map(x => x.en).join('; ') + '.' : 'Not enough recorded action to read the tape on this matchup.';
+  } else if (intent === 'h2h') {
+    const h = (C.fights.fights || []).filter(f => f.completed && ((f.f1.id === ft.f1.id && f.f2.id === ft.f2.id) || (f.f1.id === ft.f2.id && f.f2.id === ft.f1.id)) && (f.f1.winner || f.f2.winner));
+    out.answer_es = h.length ? `Ya se vieron ${h.length} vez${h.length === 1 ? '' : 'es'}: ` + h.map(f => `${(f.f1.winner ? f.f1.name : f.f2.name)} ganó en ${f.event} por ${(f.method || {}).display || 'resultado'}`).join('; ') + '.' : 'No se han enfrentado antes en el histórico que tengo.';
+    out.answer_en = h.length ? `They have met ${h.length} time${h.length === 1 ? '' : 's'}: ` + h.map(f => `${(f.f1.winner ? f.f1.name : f.f2.name)} won at ${f.event} by ${(f.method || {}).display || 'result'}`).join('; ') + '.' : 'They have not met before in the history I hold.';
+  } else if (intent === 'pick') {
+    const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
+    out.answer_es = pk ? `Sí: el monitor tiene ${pk.selection_name} (${pk.family}) a cuota ${pk.best_odds}, con ${pk.edge_blend_pp}pp de ventaja sobre el mercado. ${pk.why_es || ''}`.trim()
+      : 'No tengo ninguna jugada abierta en esta pelea. Cuando el modelo y el mercado no se separan lo suficiente, lo correcto es no jugar.';
+    out.answer_en = pk ? `Yes: the monitor holds ${pk.selection_name} (${pk.family}) at ${pk.best_odds}, with ${pk.edge_blend_pp}pp of edge over the market. ${pk.why_en || ''}`.trim()
+      : 'No open play on this fight. When the model and the market are not far enough apart, the right move is not to bet.';
+  }
+  // si se asumió el sujeto, se dice explícitamente de qué pelea se está hablando (no se finge adivinar)
+  if (ent.assumed) {
+    const pre_es = `Te respondo por ${ft.f1.name} vs ${ft.f2.name}${ft.main ? ' (el estelar)' : ''}. `;
+    const pre_en = `Answering for ${ft.f1.name} vs ${ft.f2.name}${ft.main ? ' (the main event)' : ''}. `;
+    if (out.answer_es) out.answer_es = pre_es + out.answer_es;
+    if (out.answer_en) out.answer_en = pre_en + out.answer_en;
+  }
+  return out;
+}
+
 // ===== #7 MOVIMIENTO DE LÍNEA (30-jul) — lo que el archivo de #9 hace posible ============================
 // La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es camp/lesión/pesaje, y los
 // sharps entran temprano. Un movimiento fuerte SIN noticia pública es dinero informado.
@@ -11202,6 +11390,18 @@ const server = http.createServer(async (req, res) => {
       // pelea) y encima corre un Monte Carlo de la cartelera: cuántas peleas terminan antes del límite,
       // cuántas van a decisión, cuántos rounds se ven en total. Eso es lo que ningún sitio gratis da: el
       // aficionado sabe quién gana cada pelea, no cómo se va a comportar LA NOCHE.
+      // #8 (30-jul): PREGUNTALE A GP — capa conversacional ACOTADA a lo que el modelo realmente sabe.
+      // Decisión de diseño deliberada: NO es un LLM genérico enchufado. Un chat permisivo inventaría, y una
+      // plataforma de pago que inventa sobre una pelea vale menos que Google. Esto resuelve la ENTIDAD (pelea
+      // o peleador, con la regla de desambiguación) + la INTENCIÓN (qué te están preguntando) y responde con
+      // los outputs REALES de los engines ya validados. Si no sabe, lo dice. Caja negra: factores, no mecánica.
+      if (p === '/api/combat/ask' && req.method === 'GET') {
+        await combatRefreshUpcoming(C);
+        const q = String(url.searchParams.get('q') || '').trim();
+        if (!q) return json(res, 400, { error: 'falta la pregunta' });
+        const r = await combatAsk(C, q, org);
+        return json(res, 200, r);
+      }
       if (p === '/api/combat/card' && req.method === 'GET') {
         await combatRefreshUpcoming(C);
         const evId = String(url.searchParams.get('id') || '');

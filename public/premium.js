@@ -247,7 +247,7 @@
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
       cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
-      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', cbm_title: 'El mercado se movió', cbm_sub: 'apertura → ahora, y hacia dónde', cbm_with: 'A FAVOR', cbm_against: 'EN CONTRA', cbm_snaps: 'lecturas', cbm_none: 'Sin movimientos relevantes todavía. El archivo de precios lleva pocas horas: esto se llena solo.', nav_cb_card: 'Mapa de la noche', cbc_night: 'La forma de la velada', cbc_fin_exp: 'peleas terminan antes del límite', cbc_rounds_exp: 'rounds en total', cbc_dist: 'Cuántas acaban antes del límite', cbc_early: 'La que más chance tiene de acabar temprano', cbc_far: 'La que más lejos llega', cbc_gap: 'Mayor discrepancia con el mercado', cbc_card_sel: 'Cartelera', cbc_sims: 'sobre 10.000 veladas simuladas', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
+      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', nav_cb_ask: 'Preguntale a GP', cba_ph: 'Preguntá por una pelea o un peleador…', cba_send: 'Preguntar', cba_intro: 'Respondo con lo que el modelo realmente sabe de las carteleras cargadas. Si no lo sé, te lo digo.', cba_try: 'Probá con:', cba_open: 'Ver la ficha completa →', cba_thinking: 'Buscando…', cbm_title: 'El mercado se movió', cbm_sub: 'apertura → ahora, y hacia dónde', cbm_with: 'A FAVOR', cbm_against: 'EN CONTRA', cbm_snaps: 'lecturas', cbm_none: 'Sin movimientos relevantes todavía. El archivo de precios lleva pocas horas: esto se llena solo.', nav_cb_card: 'Mapa de la noche', cbc_night: 'La forma de la velada', cbc_fin_exp: 'peleas terminan antes del límite', cbc_rounds_exp: 'rounds en total', cbc_dist: 'Cuántas acaban antes del límite', cbc_early: 'La que más chance tiene de acabar temprano', cbc_far: 'La que más lejos llega', cbc_gap: 'Mayor discrepancia con el mercado', cbc_card_sel: 'Cartelera', cbc_sims: 'sobre 10.000 veladas simuladas', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
       cbb_next: 'La próxima cartelera', cbb_div: 'Donde GP y el mercado no coinciden', cbb_div_sub: 'las mayores distancias de la cartelera', cbb_intel: 'Señales del vestuario', cbb_picks: 'En el monitor', cbb_recent: 'Cómo venimos', cbb_none: 'Nada que reportar por ahora.', cbb_cards: 'Carteleras por delante', cbb_model: 'GP', cbb_market: 'mercado', cbb_fights_n: 'peleas',
       cb_live: 'EN VIVO', cb_live_sub: 'la probabilidad se mueve con el reloj', cb_live_pre: 'antes de empezar', cb_live_now: 'ahora', cb_live_fin: 'termina antes del límite', cb_live_dec: 'llega a decisión', cb_live_left: 'rounds por delante', cb_live_tl: 'Cronología del combate', cb_live_note: 'La cronología viene sin atribuir desde la fuente oficial: son hechos del combate, no de un peleador. La probabilidad la mueven el modelo y el reloj.',
       cb_film: 'Film study', cb_film_sub: 'lo que dice la cinta', cb_film_none: 'Sin suficiente registro de acción para leer la cinta de este cruce.', cb_film_what: 'Lectura automática del registro de acción de cada pelea (a dónde van los golpes y con cuánta intención, cómo entra el juego de suelo, en qué round se cierran sus peleas). No es análisis de video.', cb_film_pace: 'Ritmo', cb_film_target: 'Reparto de golpes', cb_film_power: 'Intención', cb_film_gr: 'Suelo', cb_film_ctrl: 'Control', cb_film_early: 'Cierra temprano', cb_film_deep: 'Aguas profundas',
@@ -587,7 +587,7 @@
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
       cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
-      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', cbm_title: 'The market moved', cbm_sub: 'open → now, and which way', cbm_with: 'WITH US', cbm_against: 'AGAINST', cbm_snaps: 'reads', cbm_none: 'No relevant moves yet. The price archive is only hours old: this fills itself in.', nav_cb_card: 'Map of the night', cbc_night: 'The shape of the night', cbc_fin_exp: 'fights end inside the limit', cbc_rounds_exp: 'total rounds', cbc_dist: 'How many end inside the limit', cbc_early: 'Most likely to end early', cbc_far: 'Most likely to go the distance', cbc_gap: 'Widest gap vs the market', cbc_card_sel: 'Card', cbc_sims: 'across 10,000 simulated nights', cb_ref: 'Referee:', cb_judges: 'Judges:',
+      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', nav_cb_ask: 'Ask GP', cba_ph: 'Ask about a fight or a fighter…', cba_send: 'Ask', cba_intro: 'I answer with what the model actually knows about the loaded cards. If I do not know, I say so.', cba_try: 'Try:', cba_open: 'Open the full breakdown →', cba_thinking: 'Looking…', cbm_title: 'The market moved', cbm_sub: 'open → now, and which way', cbm_with: 'WITH US', cbm_against: 'AGAINST', cbm_snaps: 'reads', cbm_none: 'No relevant moves yet. The price archive is only hours old: this fills itself in.', nav_cb_card: 'Map of the night', cbc_night: 'The shape of the night', cbc_fin_exp: 'fights end inside the limit', cbc_rounds_exp: 'total rounds', cbc_dist: 'How many end inside the limit', cbc_early: 'Most likely to end early', cbc_far: 'Most likely to go the distance', cbc_gap: 'Widest gap vs the market', cbc_card_sel: 'Card', cbc_sims: 'across 10,000 simulated nights', cb_ref: 'Referee:', cb_judges: 'Judges:',
       cbb_next: 'The next card', cbb_div: 'Where GP and the market disagree', cbb_div_sub: 'the widest gaps on the card', cbb_intel: 'Signals from the camp', cbb_picks: 'On the monitor', cbb_recent: 'How we are doing', cbb_none: 'Nothing to report right now.', cbb_cards: 'Cards ahead', cbb_model: 'GP', cbb_market: 'market', cbb_fights_n: 'fights',
       cb_live: 'LIVE', cb_live_sub: 'the probability moves with the clock', cb_live_pre: 'before the opening bell', cb_live_now: 'now', cb_live_fin: 'ends inside the limit', cb_live_dec: 'goes to decision', cb_live_left: 'rounds ahead', cb_live_tl: 'Fight timeline', cb_live_note: 'The timeline arrives unattributed from the official feed: these are facts of the fight, not of a fighter. The probability is moved by the model and the clock.',
       cb_film: 'Film study', cb_film_sub: 'what the tape says', cb_film_none: 'Not enough recorded action to read the tape on this matchup.', cb_film_what: 'Automated reading of the recorded action of every fight (where the strikes go and with how much intent, how the ground game enters, which round their fights close in). This is not video analysis.', cb_film_pace: 'Pace', cb_film_target: 'Strike split', cb_film_power: 'Intent', cb_film_gr: 'Ground', cb_film_ctrl: 'Control', cb_film_early: 'Closes early', cb_film_deep: 'Deep water',
@@ -881,11 +881,11 @@
   // ── COMBATE (R2): navegación PROPIA del deporte — la sidebar entera cambia con el deporte activo.
   // Espejo conceptual del fútbol: Oportunidades/Peleas/Peleadores/Simulador/Seguidos/Alertas/Rendimiento.
   var NAV_CB = [
-    ['cbopps', 'target-arrow', 'nav_opps'], ['cbbrief', 'news', 'nav_brief'], ['cbcard', 'layout-grid', 'nav_cb_card'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbfighters', 'user', 'nav_cb_fighters'],
+    ['cbopps', 'target-arrow', 'nav_opps'], ['cbbrief', 'news', 'nav_brief'], ['cbcard', 'layout-grid', 'nav_cb_card'], ['cbask', 'message-circle', 'nav_cb_ask'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbfighters', 'user', 'nav_cb_fighters'],
     ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['cbperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_CB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
-  var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
+  var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbask', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
@@ -3223,7 +3223,7 @@
     if (cbf) { S.cb.org = cbf[1]; if (!(S.view === 'cbfight' && S.cb.fightId === cbf[2])) { S.cb.fightId = cbf[2]; S.cb.fight = undefined; showView('cbfight'); } return; }
     var cbp = h.match(/^cbfighter\/([a-z]+)-(\d+)$/i);
     if (cbp) { S.cb.org = cbp[1]; if (!(S.view === 'cbfighter' && S.cb.fighterId === cbp[2])) { S.cb.fighterId = cbp[2]; S.cb.fighter = undefined; showView('cbfighter'); } return; }
-    var cbv = h.match(/^(cbbrief|cbcard|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
+    var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
       if (cbv[2] === 'ufc' || cbv[2] === 'mma') S.cb.org = cbv[2]; // el sufijo de org vale en TODAS las vistas
       showView(cbv[1] === 'cb' ? 'cbopps' : cbv[1]); return;
@@ -3242,7 +3242,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     if (!clubsOn()) return NAV_HASH[nav];
@@ -5790,6 +5790,9 @@
     var bk = e.target.closest('[data-cbgoback]'); if (bk) { goBack(); return; }
     // Cambio de organización: se QUEDA en la pestaña donde estás (antes te empujaba siempre a Peleas —
     // desde Oportunidades o Peleadores acababas en otra vista sin haberlo pedido).
+    var ac = e.target.closest('[data-cbask]'); if (ac) { cbAskSend(ac.getAttribute('data-cbask')); return; }
+    var as = e.target.closest('[data-cbasksend]'); if (as) { var i2 = $('#gx-cb-askin'); if (i2) cbAskSend(i2.value); return; }
+    var ag = e.target.closest('[data-cbgo]'); if (ag) { setHash(ag.getAttribute('data-cbgo')); return; }
     var cc = e.target.closest('[data-cbcard]'); if (cc) { S.cb.cardId = cc.getAttribute('data-cbcard'); renderCb('cbcard'); return; }
     var og = e.target.closest('[data-cborgtab]'); if (og) {
       var o = og.getAttribute('data-cborgtab');
@@ -5816,6 +5819,7 @@
     if (v === 'cbopps') renderCbOpps();
     else if (v === 'cbbrief') renderCbBrief();
     else if (v === 'cbcard') renderCbCard();
+    else if (v === 'cbask') renderCbAsk();
     else if (v === 'cbfights') renderCbFights();
     else if (v === 'cbfight') renderCbFight();
     else if (v === 'cbfighters') renderCbFighters();
@@ -5938,6 +5942,47 @@
       '<div class="gx-cb-predgrid">' + side(l1, pred.win.f1, by.f1, 'gr') + side(l2, pred.win.f2, by.f2, 'rd') + '</div>' +
       '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_rdist')) + '</div><div class="gx-cb-rdist">' + dist + '</div>' +
       '<div class="gx-dim gx-cb-subline" style="text-align:center">~' + pred.exp_rounds + ' ' + esc(t('cb_rounds')) + ' · ' + esc(t('cb_finish')) + ' ' + Math.round((pred.finish || 0) * 100) + '%</div></div></div>';
+  }
+  // ── #8 PREGUNTALE A GP: capa conversacional acotada a lo que el modelo sabe ──
+  function renderCbAsk() {
+    var st = S.cb.ask || (S.cb.ask = { q: '', a: null, loading: false, hist: [] });
+    var sugg = LANG === 'en'
+      ? ['Who wins the main event?', 'How does it end?', 'How many rounds?', 'What does the market say?', 'Any red flags?', 'What does the tape say?', 'Do we have a play?', 'How many fights on the card?']
+      : ['¿Quién gana el estelar?', '¿Cómo termina?', '¿Cuántos rounds dura?', '¿Qué dice el mercado?', '¿Hay señales de riesgo?', '¿Qué dice la cinta?', '¿Tenemos jugada?', '¿Cuántas peleas tiene la cartelera?'];
+    var chips = sugg.map(function (x) { return '<span class="gx-cb-askchip" data-cbask="' + esc(x) + '">' + esc(x) + '</span>'; }).join('');
+    var hist = (st.hist || []).slice().reverse().map(function (h) {
+      return '<div class="gx-cb-qa">' +
+        '<div class="gx-cb-q">' + ic('message-circle') + '<span>' + esc(h.q) + '</span></div>' +
+        '<div class="gx-cb-a">' + esc(LANG === 'en' ? h.answer_en : h.answer_es) +
+        (h.link ? ' <a class="gx-cb-alink" data-cbgo="' + esc(h.link) + '">' + esc(t('cba_open')) + '</a>' : '') + '</div></div>';
+    }).join('');
+    cbShell(t('nav_cb_ask'), cbOrgTabs() +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' +
+      '<div class="gx-dim gx-cb-askintro">' + esc(t('cba_intro')) + '</div>' +
+      '<div class="gx-cb-askbar"><input id="gx-cb-askin" type="text" placeholder="' + esc(t('cba_ph')) + '" value="' + esc(st.q || '') + '" autocomplete="off">' +
+      '<button class="gx-btn" data-cbasksend="1">' + esc(t('cba_send')) + '</button></div>' +
+      '<div class="gx-cb-askchips"><span class="gx-dim">' + esc(t('cba_try')) + '</span>' + chips + '</div>' +
+      (st.loading ? '<div class="gx-dim gx-cb-askload">' + esc(t('cba_thinking')) + '</div>' : '') +
+      hist + '</div></div>');
+    var inp = $('#gx-cb-askin');
+    if (inp) {
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { cbAskSend(inp.value); } });
+      if (st.focus) { try { inp.focus(); } catch (e) {} st.focus = false; }
+    }
+  }
+  function cbAskSend(q) {
+    q = String(q || '').trim(); if (!q) return;
+    var st = S.cb.ask || (S.cb.ask = { hist: [] });
+    st.q = ''; st.loading = true; st.focus = true;
+    renderCb('cbask');
+    fetch('/api/combat/ask?org=' + cbOrg() + '&q=' + encodeURIComponent(q), { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) {
+        st.loading = false;
+        if (j && (j.answer_es || j.answer_en)) { st.hist = (st.hist || []).concat([{ q: q, answer_es: j.answer_es, answer_en: j.answer_en, link: j.link }]); }
+        else { st.hist = (st.hist || []).concat([{ q: q, answer_es: t('e_net'), answer_en: t('e_net'), link: null }]); }
+        if (S.view === 'cbask') renderCb('cbask');
+      });
   }
   // ── #6 MAPA DE LA NOCHE: la cartelera entera de una sola lectura + la forma de la velada ──
   function renderCbCard() {

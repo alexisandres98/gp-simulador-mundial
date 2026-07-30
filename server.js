@@ -7102,6 +7102,75 @@ function combatOddsArchive(C) {
   console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas');
 }
 
+// ===== #5 STATS DETALLADAS DE ESPN (30-jul) — PRECISIÓN, POSICIÓN Y GRAPPLING =========================
+// 7,970 peleas desde 2010 con 34 métricas por peleador (3x lo que cubre el api-sports PRO, que arranca 2022).
+// VEREDICTO DEL PEAJE: como features del MODELO quedaron MARGINALES y NO se cablearon al λ — skill
+// incremental +0.0017 con bootstrap P=0.947 (bajo la vara de 0.95) y la 2ª mitad temporal cae a +0.0006.
+// La dosis-respuesta SÍ es limpia (+0.0012 → +0.0015 → +0.0044 según data disponible), o sea que la señal
+// existe pero el dataset todavía no madura; se re-mide cuando más peleadores acumulen 12+ peleas con stats.
+// PERO como PRODUCTO son oro y no necesitan validación estadística para ser ciertas: la precisión de golpeo,
+// la defensa (cuánto NO le conectan), dónde hace el daño y el dominio de posición son exactamente lo que un
+// producto de inteligencia de combate debe mostrar. Van a display.
+function combatEspnStats(org) {
+  global._combatEspn = global._combatEspn || {};
+  const G = global._combatEspn;
+  const file = path.join(__dirname, 'data', 'combat', `espnstats-${org}.json`);
+  let mt = 0; try { mt = fs.statSync(file).mtimeMs; } catch { return null; }
+  if (G[org] && G[org].mt === mt) return G[org].out;
+  let raw; try { raw = JSON.parse(fs.readFileSync(file, 'utf8')).stats || {}; } catch { return null; }
+  const C = combatLoad(org);
+  const cm = (c) => { const m = String(c || '').match(/(\d+):(\d+)/); return m ? (+m[1] + +m[2] / 60) : 0; };
+  const minsOf = (f) => ((f.end_round || 3) - 1) * 5 + cm(f.end_clock);
+  const byComp = {}; for (const f of (C.fights.fights || [])) byComp[f.comp_id] = f;
+  const ag = {};
+  const add = (id, s, mins, opp) => {
+    const g = ag[id] = ag[id] || { n: 0, min: 0, att: 0, land: 0, grd: 0, cln: 0, dst: 0, adv: 0, mnt: 0, bck: 0, rev: 0, kd: 0, tdA: 0, tdL: 0, ctrl: 0, oAtt: 0, oLand: 0, oTdA: 0, oTdL: 0 };
+    g.n++; g.min += mins;
+    g.att += s.sigStrikesAttempted || 0; g.land += s.sigStrikesLanded || 0;
+    g.grd += (s.sigGroundHeadStrikesLanded || 0) + (s.sigGroundBodyStrikesLanded || 0) + (s.sigGroundLegStrikesLanded || 0);
+    g.cln += (s.sigClinchHeadStrikesLanded || 0) + (s.sigClinchBodyStrikesLanded || 0) + (s.sigClinchLegStrikesLanded || 0);
+    g.dst += (s.sigDistanceHeadStrikesLanded || 0) + (s.sigDistanceBodyStrikesLanded || 0) + (s.sigDistanceLegStrikesLanded || 0);
+    g.adv += s.advances || 0; g.mnt += s.advanceToMount || 0; g.bck += s.advanceToBack || 0;
+    g.rev += s.reversals || 0; g.kd += s.knockDowns || 0;
+    g.tdA += s.takedownsAttempted || 0; g.tdL += s.takedownsLanded || 0; g.ctrl += s.timeInControl || 0;
+    if (opp) { g.oAtt += opp.sigStrikesAttempted || 0; g.oLand += opp.sigStrikesLanded || 0; g.oTdA += opp.takedownsAttempted || 0; g.oTdL += opp.takedownsLanded || 0; }
+  };
+  for (const [comp, row] of Object.entries(raw)) {
+    if (!row) continue;
+    const f = byComp[comp]; if (!f) continue;
+    const mins = minsOf(f);
+    const ids = Object.keys(row);
+    for (const id of ids) add(id, row[id], mins, ids.length === 2 ? row[ids.find(x => x !== id)] : null);
+  }
+  const out = { career: {}, fights: Object.keys(raw).length };
+  for (const [id, g] of Object.entries(ag)) {
+    if (g.n < 2 || g.min < 10) continue;
+    const land = g.land || 1;
+    out.career[id] = {
+      n: g.n, minutes: Math.round(g.min),
+      // lo NUEVO que no teníamos: precisión propia y precisión que le permite al rival (defensa)
+      accuracy: g.att ? +(g.land / g.att).toFixed(3) : null,
+      absorbed_acc: g.oAtt ? +(g.oLand / g.oAtt).toFixed(3) : null,
+      slpm: +(g.land / g.min).toFixed(2),
+      absorbed_pm: +(g.oLand / g.min).toFixed(2),
+      // dónde hace el daño
+      pos_distance: +(g.dst / land).toFixed(2), pos_clinch: +(g.cln / land).toFixed(2), pos_ground: +(g.grd / land).toFixed(2),
+      // grappling de verdad
+      td_acc: g.tdA ? +(g.tdL / g.tdA).toFixed(2) : null,
+      td_def: g.oTdA ? +(1 - g.oTdL / g.oTdA).toFixed(2) : null,
+      adv_per15: +(g.adv / g.min * 15).toFixed(2),
+      mount_per15: +(g.mnt / g.min * 15).toFixed(2),
+      back_per15: +(g.bck / g.min * 15).toFixed(2),
+      rev_per15: +(g.rev / g.min * 15).toFixed(2),
+      kd_per15: +(g.kd / g.min * 15).toFixed(2),
+      control_pct: +((g.ctrl / 60) / g.min).toFixed(2),
+    };
+  }
+  G[org] = { mt, out };
+  console.log('[combat-espnstats]', org, 'peleadores con perfil:', Object.keys(out.career).length, 'de', out.fights, 'peleas');
+  return out;
+}
+
 // ===== #8 PREGUNTALE A GP (30-jul) — capa conversacional acotada a nuestros datos ========================
 // Vocabulario de intención ES+EN. Cada intención se responde SOLO con outputs de engines ya validados.
 const CB_INTENTS = [
@@ -11206,6 +11275,7 @@ const server = http.createServer(async (req, res) => {
           divisions: divs, opposition_elo: oppElo,
           momentum, quality, pace, similar: sims,
           fine: ((combatFineStats(C) || {}).career || {})[id] || null,
+          espn: ((combatEspnStats(C.org) || {}).career || {})[id] || null,   // #5: precisión/posición/grappling
           elo_series: ((C.elo.HIST || {})[id] || []).map(h => ({ d: h.d, r: h.r })),
           history: hist.slice(0, 40),
         });
@@ -11303,6 +11373,9 @@ const server = http.createServer(async (req, res) => {
           gp_read: combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll),
           style_match: combatStyleMatch(C, ft),
           film: combatFilmStudy(C, ft),
+          // #5: precisión / posición / grappling (display; no entró al modelo, ver combatEspnStats)
+          espn: (function () { const e = combatEspnStats(C.org); if (!e) return null;
+            return { f1: e.career[ft.f1.id] || null, f2: e.career[ft.f2.id] || null }; })(),
           // ESPN a veces devuelve jueces de relleno ("Judge 1"): fuera, no mostramos basura al usuario
           officials: (function () { const o = combatOfficials(C.org)[ft.comp_id]; if (!o) return null;
             const j = (o.judges || []).filter(x => !/^judge\s*\d*$/i.test(String(x).trim()));

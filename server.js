@@ -7102,6 +7102,75 @@ function combatOddsArchive(C) {
   console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas');
 }
 
+// ===== #7 MOVIMIENTO DE LÍNEA (30-jul) — lo que el archivo de #9 hace posible ============================
+// La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es camp/lesión/pesaje, y los
+// sharps entran temprano. Un movimiento fuerte SIN noticia pública es dinero informado.
+// Lo que de verdad importa no es "la línea se movió" sino EN QUÉ DIRECCIÓN respecto a nuestra lectura:
+//   · a favor  → el mercado nos está dando la razón (CLV positivo en camino)
+//   · en contra → aviso: alguien sabe algo que el modelo no
+// Regla de data parcial: funciona desde el primer día con los snapshots que haya y mejora conforme el
+// archivo engorda. Sin histórico suficiente devuelve vacío en silencio, no adivina.
+function combatLineMoves(C, { hours = 96 } = {}) {
+  const CE = require('./combat-engine/ratings');   // el engine se requiere por scope: no hay global
+  const base = CLUB_DATA_DISK && fs.existsSync(CLUB_DATA_DISK) ? CLUB_DATA_DISK : path.join(__dirname, 'data', 'clubs');
+  const dir = path.join(base, 'odds-archive');
+  let files = [];
+  try {
+    files = fs.readdirSync(dir).filter(f => f.startsWith(`combat-${C.org}-`) && f.endsWith('.json.gz')).sort();
+  } catch { return []; }
+  if (!files.length) return [];
+  const zlib = require('zlib');
+  const cutoff = Date.now() - hours * 3600e3;
+  const series = {};   // comp_id → [{at, fair, b1, b2, books, f1, f2, ko}]
+  for (const f of files.slice(-6)) {
+    let doc; try { doc = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString()); } catch { continue; }
+    for (const snap of (doc.snapshots || [])) {
+      const at = Date.parse(snap.at);
+      if (!(at > cutoff)) continue;
+      for (const r of (snap.fights || [])) {
+        if (Date.parse(r.ko) < Date.now()) continue;      // la pelea ya pasó
+        (series[r.comp_id] = series[r.comp_id] || []).push({
+          at, fair: r.fair_f1, b1: (r.best || {}).f1 || null, b2: (r.best || {}).f2 || null,
+          books: r.books, f1: r.f1, f2: r.f2, ko: r.ko,
+        });
+      }
+    }
+  }
+  const out = [];
+  for (const [comp, arr] of Object.entries(series)) {
+    if (arr.length < 2) continue;                          // sin dos puntos no hay movimiento
+    arr.sort((a, b) => a.at - b.at);
+    const open = arr[0], now = arr[arr.length - 1];
+    const movePp = (now.fair - open.fair) * 100;            // + = el mercado se va hacia f1
+    if (!isFinite(movePp) || Math.abs(movePp) < 1.5) continue;
+    // nuestra lectura de esa pelea AHORA
+    const ft = (C.upcoming || []).flatMap(e => e.fights).find(x => x.comp_id === comp);
+    let modelPp = null, side = null, withUs = null;
+    if (ft) {
+      const ev = (C.upcoming || []).find(e => e.fights.some(x => x.comp_id === comp));
+      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      modelPp = +((pr.p1 - now.fair) * 100).toFixed(1);     // cuánto nos separamos del mercado hoy
+      side = pr.p1 >= now.fair ? 'f1' : 'f2';              // el lado que preferimos
+      // ¿el mercado se mueve hacia el lado que preferimos?
+      withUs = side === 'f1' ? movePp > 0 : movePp < 0;
+    }
+    const hrs = (now.at - open.at) / 3600e3;
+    out.push({
+      comp_id: comp, f1: now.f1, f2: now.f2, ko: now.ko, books: now.books,
+      open_f1: +open.fair.toFixed(3), now_f1: +now.fair.toFixed(3),
+      move_pp: +movePp.toFixed(1),
+      toward: movePp > 0 ? 'f1' : 'f2',
+      toward_name: movePp > 0 ? now.f1 : now.f2,
+      hours: +hrs.toFixed(1),
+      snapshots: arr.length,
+      velocity_pp_h: hrs > 0.5 ? +(movePp / hrs).toFixed(2) : null,
+      model_gap_pp: modelPp, our_side: side, with_us: withUs,
+      best: { f1: now.b1, f2: now.b2 },
+    });
+  }
+  return out.sort((a, b) => Math.abs(b.move_pp) - Math.abs(a.move_pp));
+}
+
 // ===== #4 OFICIALES (29-jul): árbitro y jueces por pelea (core API de ESPN, 9,112 peleas / 240 árbitros).
 // Como PREDICTOR quedó RECHAZADO: la tendencia medida de cada árbitro NO predice out-of-sample — el tercio
 // de "gatillo rápido" produce MENOS finishes de lo esperado (−2.1pp) que el de "deja seguir" (−0.7pp), o sea
@@ -11198,6 +11267,13 @@ const server = http.createServer(async (req, res) => {
           },
         });
       }
+      // #7: movimiento de línea — endpoint propio (para alertas/ops) además del merge en el brief
+      if (p === '/api/combat/moves' && req.method === 'GET') {
+        await combatRefreshUpcoming(C);
+        const hours = Math.min(240, Math.max(6, +(url.searchParams.get('hours') || 96)));
+        const moves = combatLineMoves(C, { hours });
+        return json(res, 200, { org, hours, count: moves.length, moves });
+      }
       if (p === '/api/combat/brief' && req.method === 'GET') {
         await combatRefreshUpcoming(C);
         const now = Date.now();
@@ -11239,6 +11315,7 @@ const server = http.createServer(async (req, res) => {
           picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
             .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10),
           recent: settled.map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })),
+          moves: combatLineMoves(C, { hours: 96 }).slice(0, 6),
           track: combatPicksTrack(),
         });
       }

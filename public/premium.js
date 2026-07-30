@@ -247,7 +247,7 @@
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
       cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
-      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', nav_cb_card: 'Mapa de la noche', cbc_night: 'La forma de la velada', cbc_fin_exp: 'peleas terminan antes del límite', cbc_rounds_exp: 'rounds en total', cbc_dist: 'Cuántas acaban antes del límite', cbc_early: 'La que más chance tiene de acabar temprano', cbc_far: 'La que más lejos llega', cbc_gap: 'Mayor discrepancia con el mercado', cbc_card_sel: 'Cartelera', cbc_sims: 'sobre 10.000 veladas simuladas', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
+      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', cbm_title: 'El mercado se movió', cbm_sub: 'apertura → ahora, y hacia dónde', cbm_with: 'A FAVOR', cbm_against: 'EN CONTRA', cbm_snaps: 'lecturas', cbm_none: 'Sin movimientos relevantes todavía. El archivo de precios lleva pocas horas: esto se llena solo.', nav_cb_card: 'Mapa de la noche', cbc_night: 'La forma de la velada', cbc_fin_exp: 'peleas terminan antes del límite', cbc_rounds_exp: 'rounds en total', cbc_dist: 'Cuántas acaban antes del límite', cbc_early: 'La que más chance tiene de acabar temprano', cbc_far: 'La que más lejos llega', cbc_gap: 'Mayor discrepancia con el mercado', cbc_card_sel: 'Cartelera', cbc_sims: 'sobre 10.000 veladas simuladas', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
       cbb_next: 'La próxima cartelera', cbb_div: 'Donde GP y el mercado no coinciden', cbb_div_sub: 'las mayores distancias de la cartelera', cbb_intel: 'Señales del vestuario', cbb_picks: 'En el monitor', cbb_recent: 'Cómo venimos', cbb_none: 'Nada que reportar por ahora.', cbb_cards: 'Carteleras por delante', cbb_model: 'GP', cbb_market: 'mercado', cbb_fights_n: 'peleas',
       cb_live: 'EN VIVO', cb_live_sub: 'la probabilidad se mueve con el reloj', cb_live_pre: 'antes de empezar', cb_live_now: 'ahora', cb_live_fin: 'termina antes del límite', cb_live_dec: 'llega a decisión', cb_live_left: 'rounds por delante', cb_live_tl: 'Cronología del combate', cb_live_note: 'La cronología viene sin atribuir desde la fuente oficial: son hechos del combate, no de un peleador. La probabilidad la mueven el modelo y el reloj.',
       cb_film: 'Film study', cb_film_sub: 'lo que dice la cinta', cb_film_none: 'Sin suficiente registro de acción para leer la cinta de este cruce.', cb_film_what: 'Lectura automática del registro de acción de cada pelea (a dónde van los golpes y con cuánta intención, cómo entra el juego de suelo, en qué round se cierran sus peleas). No es análisis de video.', cb_film_pace: 'Ritmo', cb_film_target: 'Reparto de golpes', cb_film_power: 'Intención', cb_film_gr: 'Suelo', cb_film_ctrl: 'Control', cb_film_early: 'Cierra temprano', cb_film_deep: 'Aguas profundas',
@@ -587,7 +587,7 @@
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
       cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
-      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', nav_cb_card: 'Map of the night', cbc_night: 'The shape of the night', cbc_fin_exp: 'fights end inside the limit', cbc_rounds_exp: 'total rounds', cbc_dist: 'How many end inside the limit', cbc_early: 'Most likely to end early', cbc_far: 'Most likely to go the distance', cbc_gap: 'Widest gap vs the market', cbc_card_sel: 'Card', cbc_sims: 'across 10,000 simulated nights', cb_ref: 'Referee:', cb_judges: 'Judges:',
+      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', cbm_title: 'The market moved', cbm_sub: 'open → now, and which way', cbm_with: 'WITH US', cbm_against: 'AGAINST', cbm_snaps: 'reads', cbm_none: 'No relevant moves yet. The price archive is only hours old: this fills itself in.', nav_cb_card: 'Map of the night', cbc_night: 'The shape of the night', cbc_fin_exp: 'fights end inside the limit', cbc_rounds_exp: 'total rounds', cbc_dist: 'How many end inside the limit', cbc_early: 'Most likely to end early', cbc_far: 'Most likely to go the distance', cbc_gap: 'Widest gap vs the market', cbc_card_sel: 'Card', cbc_sims: 'across 10,000 simulated nights', cb_ref: 'Referee:', cb_judges: 'Judges:',
       cbb_next: 'The next card', cbb_div: 'Where GP and the market disagree', cbb_div_sub: 'the widest gaps on the card', cbb_intel: 'Signals from the camp', cbb_picks: 'On the monitor', cbb_recent: 'How we are doing', cbb_none: 'Nothing to report right now.', cbb_cards: 'Cards ahead', cbb_model: 'GP', cbb_market: 'market', cbb_fights_n: 'fights',
       cb_live: 'LIVE', cb_live_sub: 'the probability moves with the clock', cb_live_pre: 'before the opening bell', cb_live_now: 'now', cb_live_fin: 'ends inside the limit', cb_live_dec: 'goes to decision', cb_live_left: 'rounds ahead', cb_live_tl: 'Fight timeline', cb_live_note: 'The timeline arrives unattributed from the official feed: these are facts of the fight, not of a fighter. The probability is moved by the model and the clock.',
       cb_film: 'Film study', cb_film_sub: 'what the tape says', cb_film_none: 'Not enough recorded action to read the tape on this matchup.', cb_film_what: 'Automated reading of the recorded action of every fight (where the strikes go and with how much intent, how the ground game enters, which round their fights close in). This is not video analysis.', cb_film_pace: 'Pace', cb_film_target: 'Strike split', cb_film_power: 'Intent', cb_film_gr: 'Ground', cb_film_ctrl: 'Control', cb_film_early: 'Closes early', cb_film_deep: 'Deep water',
@@ -6027,6 +6027,16 @@
       return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n"><span class="gx-clgate ' + (r.result === 'WIN' ? 'ok' : 'no') + '">' + (r.result === 'WIN' ? 'W' : 'L') + '</span> ' + esc(r.name) + ' <i class="gx-dim">' + esc(r.family) + '</i></span>' +
         '<span class="v gx-mono ' + (r.units > 0 ? 'gx-pos' : 'gx-dim') + '">' + (r.units > 0 ? '+' : '') + Number(r.units || 0).toFixed(2) + 'u</span></div>';
     }).join('');
+    // #7: movimiento de línea — lo que importa es la DIRECCIÓN respecto a nuestra lectura
+    var moves = (d.moves || []).map(function (m) {
+      var cls = m.with_us === true ? 'gx-pos' : m.with_us === false ? 'rd' : 'gx-dim';
+      var lab = m.with_us === true ? t('cbm_with') : m.with_us === false ? t('cbm_against') : '';
+      return '<div class="gx-intel-row gx-pick-clickable" data-openhash="cbfight/' + esc(d.org) + '-' + esc(m.comp_id) + '" style="grid-template-columns:minmax(0,1fr) auto auto">' +
+        '<span class="n"><b style="font-size:12.5px">' + esc(m.toward_name) + '</b>' +
+        '<div class="gx-dim" style="font-size:10.5px">' + esc(m.f1 + ' vs ' + m.f2) + ' · ' + m.hours + 'h · ' + m.snapshots + ' ' + esc(t('cbm_snaps')) + '</div></span>' +
+        '<span class="v gx-mono">' + (m.move_pp >= 0 ? '+' : '') + m.move_pp + 'pp</span>' +
+        '<span class="v gx-mono ' + cls + '" style="font-size:10px">' + esc(lab) + '</span></div>';
+    }).join('');
     var tr = d.track && d.track.total;
     var trLine = tr && tr.n ? '<div class="gx-pick-recap" style="margin-bottom:8px">' + ic('circle-check') + tr.w + '-' + tr.l + ' · ' + (tr.units >= 0 ? '+' : '') + Number(tr.units).toFixed(2) + 'u</div>' : '';
     cbShell(t('nav_brief'), cbOrgTabs() +
@@ -6035,6 +6045,7 @@
       panel('target-arrow', 'cbb_div', divs || none, t('cbb_div_sub')) +
       panel('alert-triangle', 'cbb_intel', intel || none) +
       panel('bolt', 'cbb_picks', picks || none) +
+      panel('trending-up', 'cbm_title', moves || '<div class="gx-dim gx-cb-clean">' + esc(t('cbm_none')) + '</div>', t('cbm_sub')) +
       panel('chart-line', 'cbb_recent', trLine + (rec || none)) +
       '</div>');
   }

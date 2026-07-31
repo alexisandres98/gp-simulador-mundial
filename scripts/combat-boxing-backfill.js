@@ -73,14 +73,17 @@ const strip = (s) => delink(String(s || ''))
   .replace(/'''?/g, '').replace(/\|/g, ' ').replace(/\s+/g, ' ').trim();
 
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+// UNA SOLA SALIDA, y validada. La versión anterior validaba solo la 3ª rama y "36 April 2009" se coló por la
+// 1ª → 30,413 de 38,066 probs en NaN. Con tres returns sueltos era cuestión de tiempo; ahora es imposible
+// devolver una fecha sin pasar por realDate.
 function parseDate(s) {
   const t = strip(s);
-  let m = t.match(/(\d{1,2})\s+([A-Za-z]{3,9}),?\s+(\d{4})/);
-  if (m) { const mo = MONTHS[m[2].slice(0, 3).toLowerCase()]; if (mo) return `${m[3]}-${String(mo).padStart(2, '0')}-${String(+m[1]).padStart(2, '0')}`; }
-  m = t.match(/([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})/);
-  if (m) { const mo = MONTHS[m[1].slice(0, 3).toLowerCase()]; if (mo) return `${m[3]}-${String(mo).padStart(2, '0')}-${String(+m[2]).padStart(2, '0')}`; }
-  m = t.match(/(\d{4})-(\d{2})-(\d{2})/);
-  return realDate(m ? m[0] : null);
+  const ymd = (y, mo, d) => (mo ? `${y}-${String(mo).padStart(2, '0')}-${String(+d).padStart(2, '0')}` : null);
+  let m, iso = null;
+  if ((m = t.match(/(\d{1,2})\s+([A-Za-z]{3,9}),?\s+(\d{4})/))) iso = ymd(m[3], MONTHS[m[2].slice(0, 3).toLowerCase()], m[1]);
+  else if ((m = t.match(/([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})/))) iso = ymd(m[3], MONTHS[m[1].slice(0, 3).toLowerCase()], m[2]);
+  else if ((m = t.match(/(\d{4})-(\d{2})-(\d{2})/))) iso = m[0];
+  return realDate(iso);
 }
 // Una fecha que no ROUND-TRIPEA no es fecha. Wikipedia trae días imposibles ("32 January 2024") además de
 // los años typo (2914/2924) que ya filtrábamos. UNA sola envenena el Elo entero: la fecha inválida entra a
@@ -254,11 +257,20 @@ async function photo(title) {
       if (fightMap[fid]) continue;
       const meWon = r.result === 'win', oppWon = r.result === 'loss';
       const completed = ['win', 'loss', 'draw'].includes(r.result);
+      // ORDEN CANÓNICO f1/f2 (31-jul, BUG SERIO): antes f1 era SIEMPRE el dueño de la página que estábamos
+      // crawleando, y como solo tienen página los boxeadores relevantes, f1 ganaba el 88.8% de las peleas.
+      // El modelo es antisimétrico SIN intercepto a propósito (para ser inmune al orden), así que no puede
+      // expresar ese 88.8% — y toda la miscalibración salía de ahí: predecía 25% donde pasaba 42%, 35% donde
+      // pasaba 52%, con el sesgo en la MISMA dirección en los 10 buckets. Ordenando por slug, el lado f1 deja
+      // de llevar información sobre a quién crawleamos (UFC/MMA están en 57-59% por el orden de ESPN).
+      const me = { id, name: fighters[id].name, winner: meWon };
+      const opp = { id: oppId, name: r.oppName.replace(/\s*\(.*?\)\s*$/, ''), winner: oppWon };
+      const meFirst = id === pair[0];
       fightMap[fid] = {
         comp_id: fid, event_id: null, event: r.location || 'Boxing', date: r.date + 'T00:00Z',
         weight: null, rounds_sched: r.rd.sched || 12,
-        f1: { id, name: fighters[id].name, winner: meWon },
-        f2: { id: oppId, name: r.oppName.replace(/\s*\(.*?\)\s*$/, ''), winner: oppWon },
+        f1: meFirst ? me : opp,
+        f2: meFirst ? opp : me,
         end_round: r.rd.end, end_clock: r.rd.clock || (r.method && r.method.name === 'decision' ? '3:00' : null),
         completed, method: r.method, lg: 'boxing',
       };

@@ -68,6 +68,8 @@ const firstLink = (s) => { const m = String(s || '').match(/\[\[([^\]|#]+)(?:\|[
 const strip = (s) => delink(String(s || ''))
   .replace(/\{\{small\|([^}]*)\}\}/gi, '$1').replace(/\{\{[^{}]*\}\}/g, ' ')
   .replace(/style\s*=\s*"[^"]*"/gi, ' ').replace(/align\s*=\s*"[^"]*"/gi, ' ')
+  // algunas filas traen los atributos SIN comillas ("align=left") y se colaban al nombre del rival
+  .replace(/\b(?:align|style|colspan|rowspan|width|bgcolor)\s*=\s*[^\s|]+/gi, ' ')
   .replace(/'''?/g, '').replace(/\|/g, ' ').replace(/\s+/g, ' ').trim();
 
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -120,6 +122,8 @@ function parseRecord(w) {
     const rd = parseRound(cells[5]);
     const date = parseDate(cells[6] || '') || parseDate(cells[7] || '');
     if (!date) continue;
+    const yr = +date.slice(0, 4);
+    if (yr < 1900 || yr > new Date().getFullYear() + 2) continue;   // typos de Wikipedia (vistos: 2914, 2924)
     out.push({ result, oppTitle, oppName, method, rd, date, location: strip(cells[7] || '').slice(0, 90) });
   }
   return out;

@@ -5804,8 +5804,26 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
 function settleClubDailyPicks() {
   const { settleOne } = require('./pick-engine/dailyPicks');
   let settled = 0;
+  // BUG (31-jul): la liquidación de clubes fijaba status/result_code pero NUNCA units → las 43 picks ya
+  // liquidadas quedaron con units=null y el recap del board no tenía qué pintar. El P&L agregado se
+  // calculaba aparte, así que el track record estaba bien y el bug pasaba desapercibido.
+  // A cuota decimal: ganar paga (cuota − 1) por unidad arriesgada; perder cuesta 1; VOID/PUSH no mueve.
+  const setUnits = (p) => {
+    const o = Number(p.best_odds) || 0;
+    p.units = p.result_code === 'WIN' ? +(o - 1).toFixed(2)
+      : p.result_code === 'LOSS' ? -1
+        : 0;
+  };
   const phCache = {}; // player-history por liga (archivo grande): una lectura por corrida del settle
   const phRows = (lg) => { if (phCache[lg] === undefined) { try { phCache[lg] = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${lg}.json`), 'utf8')).rows || []; } catch { phCache[lg] = []; } } return phCache[lg]; };
+  // REPARACIÓN idempotente: las liquidadas ANTES del fix quedaron sin units. Se recalculan desde el
+  // resultado y la cuota guardados (no se re-liquida nada: el resultado ya estaba bien).
+  let repaired = 0;
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status === 'SETTLED' && p.units == null && p.result_code) { setUnits(p); repaired++; }
+  }
+  if (repaired) console.log('[clubs-picks] units reparadas en', repaired, 'picks ya liquidadas');
+
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'ACTIVE') continue;
     if (p.family === 'PLAYER') {
@@ -5815,9 +5833,9 @@ function settleClubDailyPicks() {
         const row = raw.find(r => r.pid === p.pid && Math.abs(+new Date(r.date) - ko) < 4 * 86400e3);
         if (row) {
           const val = p.player_family === 'player_assist' ? (Number(row.assists) || 0) : (Number(row.goals) || 0);
-          p.status = 'SETTLED'; p.result_code = val > 0 ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
+          p.status = 'SETTLED'; p.result_code = val > 0 ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); setUnits(p); settled++;
         } else if (ko && Date.now() - ko > 72 * 3600e3) {
-          p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++;
+          p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); setUnits(p); settled++;
         }
       } catch { /* sin history → espera o VOID por tiempo */ }
       continue;
@@ -5835,7 +5853,7 @@ function settleClubDailyPicks() {
             ? (Number(row.home.corners) || 0) + (Number(row.away.corners) || 0)
             : (Number(row.home.yellows) || 0) + (Number(row.home.reds) || 0) + (Number(row.away.yellows) || 0) + (Number(row.away.reds) || 0);
           const over = tot > Number(p.line);
-          p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
+          p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); setUnits(p); settled++;
         } else {
           // FALLBACK TSA para CARDS (18-jul, API-Football caído a plan Free → props-history congelado):
           // tarjetas del partido = suma de yc+rc del player-history (TSA, vivo vía el pase diario). Se aísla
@@ -5850,11 +5868,11 @@ function settleClubDailyPicks() {
             if (mid) {
               const tot2 = near.filter(r2 => r2.match === mid).reduce((a, r2) => a + (Number(r2.yc) || 0) + (Number(r2.rc) || 0), 0);
               const over2 = tot2 > Number(p.line);
-              p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over2) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++; done = true;
+              p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over2) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); setUnits(p); settled++; done = true;
             }
           }
           if (!done && ko && Date.now() - ko > 72 * 3600e3) {
-            p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++;
+            p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); setUnits(p); settled++;
           }
         }
       } catch { /* sin history → espera, AF fallback o VOID por tiempo */ }
@@ -5878,12 +5896,12 @@ function settleClubDailyPicks() {
       // backstop 72h (18-jul): sin resultado ni del sync ni del archivo (gap del backfill TSA — caso Chicago
       // 17-jul) la pick quedaba ACTIVE para siempre → VOID honesto, mismo criterio que PLAYER/props.
       const ko2 = +new Date(p.event.kickoff_at || 0);
-      if (ko2 && Date.now() - ko2 > 72 * 3600e3) { p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); settled++; }
+      if (ko2 && Date.now() - ko2 > 72 * 3600e3) { p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString(); setUnits(p); settled++; }
       continue;
     }
     const homeIsH = r.home_id === p.event.home_team_id;
     const rc = settleOne(p, { homeGoals: homeIsH ? r.hg : r.ag, awayGoals: homeIsH ? r.ag : r.hg });
-    if (rc && rc !== 'PENDING') { p.status = 'SETTLED'; p.result_code = rc; p.settled_at = new Date().toISOString(); settled++; }
+    if (rc && rc !== 'PENDING') { p.status = 'SETTLED'; p.result_code = rc; p.settled_at = new Date().toISOString(); setUnits(p); settled++; }
   }
   if (settled) save();
   return { settled };

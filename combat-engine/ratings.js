@@ -42,7 +42,7 @@ const FEATS_FINE = ['slpm', 'td15', 'tddef', 'ctrl', 'kdr'];
 const inches = (s) => { // "75\"" → 75 ; "5' 11\"" → 71 ; "193 cm" → 76 ; "74+1/2 in" → 74.5
   if (!s) return null;
   const t = String(s);
-  const m = t.match(/(\d+)'\s*(\d+)?/);
+  const m = t.match(/(\d+)\s*(?:'|ft\b|feet\b)\s*(\d+)?/i);   // 5' 11"  ·  6 ft 3 in (formato de Wikipedia)
   if (m) return (+m[1]) * 12 + (+(m[2] || 0));
   const n = t.match(/([\d.]+)/);
   if (!n) return null;

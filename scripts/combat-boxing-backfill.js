@@ -141,7 +141,54 @@ function parseRecord(w) {
 }
 
 // ---- ficha del boxeador (infobox + foto) ----
-const inbox = (w, k) => { const m = clean(w).match(new RegExp('\\|\\s*' + k + '\\s*=\\s*([^\\n|]{0,90})', 'i')); return m ? strip(m[1]) : null; };
+// OJO (31-jul): el valor de un campo del infobox puede contener '|' (wikilinks y plantillas), así que
+// cortar en el primer pipe devuelve basura — así salía stance="[[Southpaw stance". Se lee hasta el
+// siguiente "\n|" de PRIMER nivel, contando llaves/corchetes.
+const inboxRaw = (w, k) => {
+  const t = clean(w);
+  const re = new RegExp('\\n\\s*\\|\\s*' + k + '\\s*=\\s*', 'i');
+  const m = t.match(re); if (!m) return null;
+  let i = m.index + m[0].length, depth = 0, out = '';
+  while (i < t.length && out.length < 400) {
+    const c = t[i], c2 = t.slice(i, i + 2);
+    if (c2 === '{{' || c2 === '[[') { depth++; out += c2; i += 2; continue; }
+    if (c2 === '}}' || c2 === ']]') { depth--; out += c2; i += 2; continue; }
+    if (depth <= 0 && (c === '|' || (c === '\n' && /^\s*[|}]/.test(t.slice(i + 1, i + 4))))) break;
+    out += c; i++;
+  }
+  return out.trim() || null;
+};
+// Texto legible de un valor de infobox: resuelve [[destino|etiqueta]] → etiqueta y limpia plantillas.
+const inbox = (w, k) => {
+  const raw = inboxRaw(w, k); if (raw == null) return null;
+  const s = raw.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2').replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .replace(/\{\{[^{}]*\}\}/g, ' ').replace(/<ref[^>]*\/>/g, ' ').replace(/<ref[\s\S]*?<\/ref>/g, ' ');
+  return strip(s).replace(/\s+/g, ' ').slice(0, 90) || null;
+};
+// FECHA DE NACIMIENTO — antes estaba HARDCODEADA a null y nunca se intentó. Es la feature más valiosa que
+// existe (en UFC la edad subió el skill 0.0109→0.0166, +52%). Wikipedia la da como plantilla:
+// {{birth date and age|df=y|1987|1|17}} — hay que saltarse los parámetros con nombre (df=y, mf=y).
+const dobOf = (w) => {
+  const raw = inboxRaw(w, 'birth_date') || inboxRaw(w, 'birth date') || '';
+  const tpl = String(raw).match(/\{\{\s*birth[ _]date[^}]*\}\}/i);
+  const src = tpl ? tpl[0] : String(raw);
+  const nums = (src.match(/\|\s*(\d{1,4})\s*(?=[|}])/g) || []).map(x => +x.replace(/[|\s]/g, ''));
+  const y = nums.find(n => n >= 1900 && n <= 2015);
+  if (y == null) { const iso = String(raw).match(/(\d{4})-(\d{2})-(\d{2})/); return iso ? realDate(iso[0]) : null; }
+  const rest = nums.slice(nums.indexOf(y) + 1);
+  const mo = rest[0], da = rest[1];
+  if (!(mo >= 1 && mo <= 12 && da >= 1 && da <= 31)) return null;
+  return realDate(`${y}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}`);
+};
+// DIVISIONES del boxeador (el infobox las lista con plantilla plainlist). Sirven para dar `weight` a la
+// pelea: sin división, methodModel mete TODO en un solo cubo '?' y su base pierde poder.
+const divsOf = (w) => {
+  const raw = inboxRaw(w, 'weight') || '';
+  const out = [...new Set((raw.match(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g) || [])
+    .map(x => x.replace(/\[\[|\]\]/g, '').split('|').pop().trim())
+    .concat(String(raw).replace(/\[\[[^\]]*\]\]/g, ' ').match(/[A-Z][a-z]+weight/g) || []))];
+  return out.filter(d => /weight/i.test(d)).slice(0, 4);
+};
 async function photo(title) {
   const j = await wiki('action=query&titles=' + encodeURIComponent(title) + '&prop=pageimages&piprop=thumbnail&pithumbsize=400&redirects=1');
   const p = j && j.query && (j.query.pages || [])[0];
@@ -194,7 +241,7 @@ async function photo(title) {
       fighters[id] = {
         id, name: title.replace(/\s*\(.*?\)\s*$/, ''), wiki: title,
         reach_in: inbox(w, 'reach'), height_in: inbox(w, 'height'), stance: inbox(w, 'stance'),
-        country: inbox(w, 'nationality') || inbox(w, 'birth_place'), dob: null,
+        country: inbox(w, 'nationality') || inbox(w, 'birth_place'), dob: dobOf(w), divisions: divsOf(w),
         headshot: await photo(title), record_txt: { total: inbox(w, 'total'), wins: inbox(w, 'wins'), losses: inbox(w, 'losses'), ko: inbox(w, 'ko') },
       };
       await sleep(SLEEP);
@@ -224,6 +271,19 @@ async function photo(title) {
       console.log(`  ${pages} páginas · ${boxers} relevantes · ${skipped} descartados por antigüedad · ${Object.keys(fightMap).length} peleas · cola ${queue.length}`);
     }
   }
+
+  // DIVISIÓN DE LA PELEA (31-jul): el récord de Wikipedia no la trae por fila, pero el infobox sí lista las
+  // divisiones de cada boxeador. Si los dos comparten exactamente UNA, esa es la pelea; si no, se deja null
+  // (mejor un '?' honesto que inventar la categoría). Sin esto methodModel mete las 19k peleas en un solo
+  // cubo y su base pierde todo el poder de estratificación.
+  let withDiv = 0;
+  for (const f of Object.values(fightMap)) {
+    const d1 = (fighters[f.f1.id] || {}).divisions || [], d2 = (fighters[f.f2.id] || {}).divisions || [];
+    const shared = d1.filter(x => d2.includes(x));
+    const pick = shared.length === 1 ? shared[0] : (d1.length === 1 && !d2.length ? d1[0] : (d2.length === 1 && !d1.length ? d2[0] : null));
+    if (pick) { f.weight = pick; withDiv++; }
+  }
+  console.log(`  división asignada a ${withDiv}/${Object.keys(fightMap).length} peleas`);
 
   const fights = Object.values(fightMap).sort((a, b) => new Date(a.date) - new Date(b.date));
   fs.writeFileSync(CACHE, JSON.stringify(cache));

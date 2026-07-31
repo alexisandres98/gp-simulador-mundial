@@ -7595,6 +7595,7 @@ async function combatRefreshUpcoming(C) {
   return p;                              // primer arranque: no hay nada que mostrar, hay que esperar
 }
 async function combatDoRefresh(C) {
+  let ok = false;               // el diff de cartelera solo se corre si el feed VINO (ver combatCardWatch)
   try {
     const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
     const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -7610,10 +7611,76 @@ async function combatDoRefresh(C) {
           f1: { id: a.id, name: (a.athlete || {}).displayName }, f2: { id: b.id, name: (b.athlete || {}).displayName } };
       }),
     }));
+    ok = true;
   } catch { C.upcoming = C.upcoming || []; }
+  if (ok) { try { combatCardWatch(C); } catch (e) { console.error('[combat-cardwatch]', e.message); } }
   C.upAt = Date.now();          // las carteleras ya están: la vista puede pintar
   C.odds = C.odds || [];
   combatRefreshOdds(C);         // cuotas + Cloudbet: en segundo plano, sin bloquear la respuesta
+}
+// ===== VIGILANTE DE CARTELERA (31-jul) — PELEAS QUE SE CAEN ==================================================
+// NACIÓ DE UN CASO REAL: Powell vs Yagshimuradov (PFL New York, 31-jul) se canceló y nos enteramos porque
+// Alexis no encontró la pelea en Cloudbet. Nuestro único mecanismo era el VOID pasivo a las 72h del kickoff:
+// la pick se quedaba viva y VISIBLE tres días después de que la pelea dejara de existir. Cuando ESPN borra la
+// pelea, además, el peleador sale de la lista del observer EN SILENCIO — no hay a quién preguntarle.
+//
+// QUÉ HACE: diffea la cartelera contra el snapshot del ciclo anterior. Una pelea que estaba y ya no está,
+// con su cartelera TODAVÍA presente en el feed y su kickoff aún en el futuro, es una pelea RETIRADA.
+// DOS GUARDAS contra el falso positivo, que aquí es caro (VOIDear una pick viva):
+//   1. La CARTELERA madre tiene que seguir en el feed. Así distinguimos "quitaron esta pelea" de "el feed vino
+//      corto/vacío", que es el modo de fallo típico de ESPN.
+//   2. Hacen falta DOS ciclos consecutivos sin verla. Un solo hueco no basta (el scoreboard parpadea).
+// Al confirmar: VOID inmediato de las picks ACTIVAS de esa pelea (sin esperar 72h) + alerta persistida para el
+// brief. Es la misma doctrina de "estado por reloj": el estado lo define la realidad observada, no la espera.
+function combatCardWatch(C) {
+  db.combatCards = db.combatCards || {};
+  const org = C.org || 'ufc';
+  const prev = db.combatCards[org] || { events: {} };
+  const now = Date.now();
+  const cur = { at: new Date().toISOString(), events: {} };
+  for (const ev of (C.upcoming || [])) {
+    const e = cur.events[ev.id] = { name: ev.name, date: ev.date, comps: {} };
+    for (const ft of (ev.fights || [])) if (ft.comp_id) e.comps[ft.comp_id] = `${ft.f1.name} vs ${ft.f2.name}`;
+  }
+  const alerts = [];
+  const misses = {};
+  // Las candidatas son las peleas que vimos el ciclo pasado MÁS las que ya venían faltando: una pelea que
+  // desaparece no vuelve a aparecer en el snapshot, así que si solo mirásemos el snapshot anterior el
+  // contador subiría a 1 y la pelea se olvidaría para siempre (lo cazó la QA).
+  for (const [evId, ce] of Object.entries(cur.events)) {
+    if (!Object.keys(ce.comps).length) continue;         // cartelera vacía = feed corto, no cancelación
+    const ko = Date.parse(ce.date || 0);
+    if (!(ko && ko > now)) continue;                     // ya empezó: lo resuelve la liquidación normal
+    const pe = (prev.events || {})[evId] || { comps: {} };
+    const cands = {};
+    for (const [c, l] of Object.entries(pe.comps || {})) cands[c] = l;
+    for (const [c, m] of Object.entries(prev.missing || {})) if (m.event_id === evId) cands[c] = m.fight;
+    for (const [compId, label] of Object.entries(cands)) {
+      if (ce.comps[compId]) continue;                    // volvió a la cartelera → se olvida el conteo
+      const was = (prev.missing || {})[compId] || { n: 0 };
+      const rec = { n: was.n + 1, event_id: evId, event: ce.name, fight: label, kickoff_at: ce.date, alerted: !!was.alerted };
+      misses[compId] = rec;
+      if (rec.n < 2 || rec.alerted) continue;            // guarda 2: confirmación en 2 ciclos; y se avisa UNA vez
+      rec.alerted = true;
+      alerts.push({ org, event_id: evId, event: ce.name, comp_id: compId, fight: label, kickoff_at: ce.date, at: new Date().toISOString() });
+    }
+  }
+  cur.missing = misses;
+  db.combatCards[org] = cur;
+  if (!alerts.length) { save(); return { alerts: 0 }; }
+  db.combatCardAlerts = (db.combatCardAlerts || []).concat(alerts).slice(-200);
+  // VOID inmediato de lo que colgaba de esa pelea (todas las familias: FIGHT, METHOD, ROUNDS)
+  let voided = 0;
+  const off = new Set(alerts.map(a => 'cb-' + a.comp_id));
+  for (const p of (db.combatPicks || [])) {
+    if (p.status !== 'ACTIVE' || !off.has(p.event.canonical_event_id)) continue;
+    p.status = 'SETTLED'; p.result_code = 'VOID'; p.units = 0; p.settled_at = new Date().toISOString();
+    p.void_reason = 'fight_off_card'; voided++;
+  }
+  save();
+  for (const a of alerts) console.log('[combat-cardwatch] PELEA RETIRADA:', a.org, a.fight, '·', a.event, '·', a.kickoff_at);
+  if (voided) console.log('[combat-cardwatch] picks VOID por retirada:', voided);
+  return { alerts: alerts.length, voided };
 }
 // cuotas mma: The Odds API cubre TODAS las promociones (UFC+PFL+…) en un solo feed → memo GLOBAL
 // compartido entre orgs (una sola llamada, cero créditos duplicados). Nunca se espera desde una request.
@@ -11641,6 +11708,9 @@ const server = http.createServer(async (req, res) => {
           cards: cards.slice(0, 3).map(e => ({ id: e.id, name: e.name, date: e.date, fights: e.fights.length })),
           divergences: divs.slice(0, 8),
           intel: intel.slice(0, 10),
+          // PELEAS RETIRADAS de la cartelera (combatCardWatch): lo que nos faltó el 31-jul con Powell.
+          off_card: (db.combatCardAlerts || []).filter(a => a.org === org && Date.parse(a.kickoff_at || 0) > Date.now() - 48 * 3600e3)
+            .sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 6),
           picks: cbAdmin ? (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
             .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10) : [],
           recent: cbAdmin ? settled.map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })) : [],
@@ -11708,7 +11778,8 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, { enabled: combatPicksOn(), build: b, settle: s, track: combatPicksTrack() });
         }
         const cbDbg = {}; for (const o2 of Object.keys(COMBAT_ORGS)) { const Cx = (global._combat || {})[COMBAT_ORGS[o2].file]; cbDbg[o2] = Cx && Cx.cbb ? { at: Cx.cbb.at ? new Date(Cx.cbb.at).toISOString() : null, fights: Object.keys(Cx.cbb.byComp || {}).length } : null; }
-        return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length, cloudbet: cbDbg });
+        return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length, cloudbet: cbDbg,
+          card_watch: { alerts: (db.combatCardAlerts || []).slice(-10), pending: Object.fromEntries(Object.entries(db.combatCards || {}).map(([o3, s3]) => [o3, Object.keys(s3.missing || {}).length])) } });
       } catch (e) { return json(res, 200, { error: e.message }); }
     }
     // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,

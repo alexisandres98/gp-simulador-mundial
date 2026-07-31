@@ -5332,16 +5332,53 @@ function refreshClubPickKickoffs() {
   if (fixed) { save(); console.log(`[clubs-picks] kickoffs re-alineados a TSA: ${fixed}`); }
   return { fixed };
 }
+// FREEZE DE PUBLICACIÓN — ESTADO POR RELOJ (24-jul; SACADO del early-return el 31-jul).
+// Una pick que llega al freeze (≤15min del KO) es LA pick que el usuario vio → published=true, y el CUADRO
+// público post-corte solo cuenta published (el monitoreo interno jamás vuelve a inflar el rendimiento).
+// EL BUG QUE ESTO ARREGLA: el bucle vivía DENTRO de buildClubDailyPicks, DESPUÉS del early-return "sin
+// mercados frescos" → cuando el sweep de cuotas no traía mercados la función se salía y el freeze NO corría;
+// las picks liquidaban antes de que ninguna pasada las marcara y el cuadro público quedó congelado del
+// 29-jul al 31-jul. Marcar publicada NO depende de que haya mercados nuevos: solo del RELOJ y de las picks
+// que ya existen [[gp-regla-estado-por-reloj]]. Por eso vive aparte y corre SIEMPRE.
+// Idempotente: la misma regla resuelve el caso vivo y la reparación retroactiva (no hace falta un one-off).
+function clubFreezePublished() {
+  const REAL = ['WIN', 'LOSS', 'PUSH', 'VOID'];
+  const BASELINE = Date.parse('2026-07-23T12:00:00Z');     // el mismo corte que usa officialClubRecord
+  const now = Date.now();
+  let n = 0;
+  for (const q of (db.clubDailyPicks || [])) {
+    if (q.published === true || !q.event) continue;
+    if (q.regime === 'monitor') continue;                 // el monitoreo privado JAMÁS se publica (fix 27-jul)
+    const ko = Date.parse(q.event.kickoff_at || 0);
+    if (!ko || ko > now + 15 * 60e3) continue;             // todavía no cruzó el freeze
+    // La base histórica que Alexis validó el 23-jul es INTOCABLE: esas picks ya entran al cuadro por la
+    // cláusula de baseline, y marcarlas aquí solo podría mover la deduplicación de CORNERS/CARDS.
+    if (ko <= BASELINE) continue;
+    // Nacida ANTES del kickoff = estuvo en el feed. Sustituye al viejo piso de −3h, que solo funcionaba
+    // mientras el bucle corriera puntual: una re-activada de un partido ya jugado (el intruso Atl-MG del
+    // 24-jul) tiene created_at posterior al KO y sigue quedando fuera.
+    const cr = Date.parse(q.created_at || 0);
+    if (!(cr && cr < ko)) continue;
+    if (q.status === 'ACTIVE') { q.published = true; n++; continue; }
+    // Ya liquidada con resultado REAL después del kickoff → estuvo viva hasta el final, el usuario la vio.
+    // SUPERSEDED queda fuera a propósito: salió del feed antes del freeze (el prune solo toca futuras).
+    if (q.status === 'SETTLED' && REAL.includes(q.result_code) && Date.parse(q.settled_at || 0) > ko) { q.published = true; n++; }
+  }
+  if (n) { save(); console.log('[clubs-picks] freeze → published:', n); }
+  return n;
+}
 async function buildClubDailyPicks({ dryRun = false } = {}) {
+  // ANTES de cualquier early-return: el freeze depende del reloj, no de que el sweep traiga mercados.
+  const published = clubFreezePublished();
   const dbc = require('./database/client');
-  if (!dbc.isConfigured()) return { skipped: 'sin DB' };
-  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return { skipped: 'sin ratings' }; } }
+  if (!dbc.isConfigured()) return { skipped: 'sin DB', published };
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return { skipped: 'sin ratings', published }; } }
   const RT = global._clubsRatings;
   const qevents = db.clubsQuoteEvents || {};
-  if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep' };
+  if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep', published };
   const { consensus, freshQuotes } = require('./market-scanner/scanner');
   const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events: qevents, now: Date.now() }).catch(() => []);
-  if (!markets.length) return { skipped: 'sin mercados frescos' };
+  if (!markets.length) return { skipped: 'sin mercados frescos', published };
   const now = Date.now();
   const minGroups = marketScanner.params.minIndependentGroups || 2;
   const events = [], goalMarkets = [];
@@ -5782,20 +5819,11 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const lev = md < mk - 0.05;
     if (q.solid_lever !== lev) { q.solid_lever = lev; updated++; }
   }
-  // MARCA "PUBLICADA" (24-jul, decisión Alexis): una pick ACTIVA que llega al freeze (≤15min del KO) es LA pick
-  // que el usuario vio → published=true. El CUADRO público post-corte solo cuenta published (el monitoreo
-  // interno — variantes de línea, edge en shadow, etc. — jamás vuelve a inflar el rendimiento).
-  let publishedN = 0;
-  for (const q of db.clubDailyPicks) {
-    if (q.status !== 'ACTIVE' || q.published) continue;
-    const ko = Date.parse(q.event.kickoff_at || 0);
-    // ventana de freeze [−3h, +15min]: se marca al CRUZAR el freeze, no a picks viejas re-activadas de
-    // partidos ya jugados (esas son monitoreo, no publicadas — el intruso Atl-MG del 24-jul).
-    if (q.regime === 'monitor') continue; // el monitoreo privado JAMÁS se marca publicado (fix 27-jul)
-    if (ko && ko <= Date.now() + 15 * 60e3 && ko > Date.now() - 3 * 3600e3) { q.published = true; publishedN++; }
-  }
-  if (added || updated || out.pruned || publishedN) save();
-  out.added = added; out.updated = updated; out.total = db.clubDailyPicks.length;
+  // 2ª pasada del freeze: las picks NACIDAS en este ciclo para un partido a <15min ya deben quedar marcadas
+  // sin esperar al ciclo siguiente (la 1ª pasada corrió antes de generarlas). Idempotente.
+  const publishedN = published + clubFreezePublished();
+  if (added || updated || out.pruned) save();
+  out.added = added; out.updated = updated; out.total = db.clubDailyPicks.length; out.published = publishedN;
   return out;
 }
 // Liquidación: MISMO settleOne del Mundial con el marcador final de clubResults (ligas domésticas = 90').

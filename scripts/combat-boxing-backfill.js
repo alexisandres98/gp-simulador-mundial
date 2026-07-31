@@ -80,7 +80,15 @@ function parseDate(s) {
   m = t.match(/([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})/);
   if (m) { const mo = MONTHS[m[1].slice(0, 3).toLowerCase()]; if (mo) return `${m[3]}-${String(mo).padStart(2, '0')}-${String(+m[2]).padStart(2, '0')}`; }
   m = t.match(/(\d{4})-(\d{2})-(\d{2})/);
-  return m ? m[0] : null;
+  return realDate(m ? m[0] : null);
+}
+// Una fecha que no ROUND-TRIPEA no es fecha. Wikipedia trae días imposibles ("32 January 2024") además de
+// los años typo (2914/2924) que ya filtrábamos. UNA sola envenena el Elo entero: la fecha inválida entra a
+// LAST/FIRST del boxeador y desde ahí TODAS sus probs salen NaN — en la 1ª corrida fueron 9,652 de 18,981.
+function realDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00Z');
+  return isFinite(d.getTime()) && d.toISOString().slice(0, 10) === iso ? iso : null;
 }
 // "8 (12), 0:45" → {end:8, sched:12, clock:'0:45'} ; "12" → fue a las tarjetas
 function parseRound(s) {
@@ -124,6 +132,9 @@ function parseRecord(w) {
     if (!date) continue;
     const yr = +date.slice(0, 4);
     if (yr < 1900 || yr > new Date().getFullYear() + 2) continue;   // typos de Wikipedia (vistos: 2914, 2924)
+    // Una fila del récord es una pelea YA DISPUTADA: si la fecha cae en el futuro es un typo (visto:
+    // Vayson-Paradero "2027-05-16" con resultado). Se descarta en vez de entrar como completed.
+    if (Date.parse(date + 'T00:00:00Z') > Date.now() + 2 * 864e5) continue;
     out.push({ result, oppTitle, oppName, method, rd, date, location: strip(cells[7] || '').slice(0, 90) });
   }
   return out;

@@ -39,12 +39,20 @@ const FEATS = ['reach', 'exp', 'years', 'age', 'chin', 'streak', 'mileage', 'mis
 // acc 62.4%→62.9%, bootstrap P=0.983; pesos: td15 +0.13, tddef/ctrl/kdr +0.04, slpm −0.14 (volumen
 // sin poder sobrevalorado). El subset crece con cada cartelera nueva.
 const FEATS_FINE = ['slpm', 'td15', 'tddef', 'ctrl', 'kdr'];
-const inches = (s) => { // "75\"" → 75 ; "5' 11\"" → 71
+const inches = (s) => { // "75\"" → 75 ; "5' 11\"" → 71 ; "193 cm" → 76 ; "74+1/2 in" → 74.5
   if (!s) return null;
-  const m = String(s).match(/(\d+)'\s*(\d+)?/);
+  const t = String(s);
+  const m = t.match(/(\d+)'\s*(\d+)?/);
   if (m) return (+m[1]) * 12 + (+(m[2] || 0));
-  const n = String(s).match(/([\d.]+)/);
-  return n ? +n[1] : null;
+  const n = t.match(/([\d.]+)/);
+  if (!n) return null;
+  // BOXEO (31-jul): Wikipedia mezcla unidades en el MISMO campo ("193 cm" junto a "80 in") y usa fracciones
+  // ("74+1/2 in"). Sin esto, 193 entraba como PULGADAS y la feature de alcance quedaba basura.
+  // ESPN (UFC/MMA) siempre da NN" → estas dos ramas no se activan ahí: byte-idéntico para ellos.
+  if (/cm/i.test(t)) return +n[1] / 2.54;
+  const fr = t.match(/(\d+)\s*\+\s*(\d+)\s*\/\s*(\d+)/);
+  if (fr) return +fr[1] + (+fr[2]) / (+fr[3]);
+  return +n[1];
 };
 const sigm = (z) => 1 / (1 + Math.exp(-z));
 const logit = (p) => Math.log(Math.min(0.999, Math.max(0.001, p)) / (1 - Math.min(0.999, Math.max(0.001, p))));

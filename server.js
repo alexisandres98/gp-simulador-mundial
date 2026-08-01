@@ -6701,10 +6701,16 @@ const combatPicksOn = () => String(process.env.GP_COMBAT_PICKS_ENABLED || '') ==
 // fights-mma.json; ESPN NO tiene API de boxeo → BOXEO sigue 'pronto' hasta resolver fuente de data).
 // `upcoming` = liga de ESPN para las carteleras. BOXEO va en null a propósito: ESPN no tiene boxeo y su
 // agenda sale de The Odds API (ver combatBoxingUpcoming). `sport` es el deporte en los feeds de cuotas.
+// `pool` = archivos que alimentan el RATING. F5 (1-ago): los athlete ids de ESPN son COMPARTIDOS entre
+// promociones, y fitear cada org por separado tiraba a la basura la carrera previa del peleador — Montana
+// De La Rosa llegaba a la cartelera del PFL con 12 peleas en UFC y el modelo la veía en Elo 1500 porque
+// estaba en el otro archivo. El pool de MMA une UFC + Bellator/PFL + regionales; boxeo va aparte (otro
+// deporte, ids de otro esquema). La VISTA de cada org sigue siendo la suya: `C.own` manda en ranking y
+// conteos, `C.fights` pasa a ser el histórico completo del peleador.
 const COMBAT_ORGS = {
-  ufc: { file: 'ufc', upcoming: 'ufc', sport: 'mma_mixed_martial_arts', cbSport: 'mma' },
-  mma: { file: 'mma', upcoming: 'pfl', sport: 'mma_mixed_martial_arts', cbSport: 'mma' },
-  boxing: { file: 'boxing', upcoming: null, sport: 'boxing_boxing', cbSport: 'boxing' },
+  ufc: { file: 'ufc', upcoming: 'ufc', sport: 'mma_mixed_martial_arts', cbSport: 'mma', pool: ['ufc', 'mma', 'regional'] },
+  mma: { file: 'mma', upcoming: 'pfl', sport: 'mma_mixed_martial_arts', cbSport: 'mma', pool: ['ufc', 'mma', 'regional'] },
+  boxing: { file: 'boxing', upcoming: null, sport: 'boxing_boxing', cbSport: 'boxing', pool: ['boxing'] },
 };
 function combatLoad(org) {
   const O = COMBAT_ORGS[org] || COMBAT_ORGS.ufc;
@@ -6712,8 +6718,18 @@ function combatLoad(org) {
   global._combat = global._combat || {};
   const C = global._combat[O.file] = global._combat[O.file] || {};
   if (C.at && Date.now() - C.at < 10 * 60e3) return C;
-  try { C.fights = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `fights-${O.file}.json`), 'utf8')); } catch { C.fights = { fights: [], events: {} }; }
-  try { C.fighters = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `fighters-${O.file}.json`), 'utf8')); } catch { C.fighters = {}; }
+  const rd = (kind, name) => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `${kind}-${name}.json`), 'utf8')); } catch { return null; } };
+  const own = rd('fights', O.file) || { fights: [], events: {} };
+  C.own = own.fights || [];                      // el archivo PROPIO de la org: manda en ranking y conteos
+  // POOL de rating: unión deduplicada por comp_id de los archivos de su deporte (ver COMBAT_ORGS.pool)
+  const seenC = new Set(), pooled = [];
+  C.fighters = {};
+  for (const nm of (O.pool || [O.file])) {
+    const fg = rd('fights', nm); if (fg) for (const f of (fg.fights || [])) { if (seenC.has(f.comp_id)) continue; seenC.add(f.comp_id); pooled.push(f); }
+    const pf = rd('fighters', nm); if (pf) for (const [k, v] of Object.entries(pf)) if (!C.fighters[k]) C.fighters[k] = v;
+  }
+  C.fights = { fights: pooled, events: own.events || {} };
+  C.pool = (O.pool || [O.file]).join('+');
   C.org = O.file; C.upLeague = O.upcoming;
   const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
   C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
@@ -11389,15 +11405,20 @@ const server = http.createServer(async (req, res) => {
         }));
         // ranking Elo top (≥8 peleas, activos últimos 2 años)
         const cutoff = Date.now() - 2 * 365 * 24 * 3600e3;
+        // el rating es global (pool), pero el RANKING sigue siendo el de esta org: solo peleadores que
+        // aparecen en su propio archivo (si no, el top de UFC se llenaría de gente del PFL y al revés)
+        const ownIds = new Set(); for (const f2 of (C.own || [])) { ownIds.add(f2.f1.id); ownIds.add(f2.f2.id); }
         const top = Object.entries(C.elo.R)
-          .filter(([id]) => (C.elo.N[id] || 0) >= 8 && new Date(C.elo.LAST[id] || 0) > cutoff)
+          .filter(([id]) => ownIds.has(id) && (C.elo.N[id] || 0) >= 8 && new Date(C.elo.LAST[id] || 0) > cutoff)
           .sort((a, b) => b[1] - a[1]).slice(0, 15)
           .map(([id, r]) => ({ id, name: C.names[id], elo: Math.round(r), fights: C.elo.N[id], last: C.elo.LAST[id], headshot: (C.fighters[id] || {}).headshot || null, record: combatRecordOf(C, id) }));
         const withMethod = (C.fights.fights || []).filter(f => f.method).length;
         return json(res, 200, {
           sport: org, cards, ranking: top,
-          data: { fights: (C.fights.fights || []).length, with_method: withMethod, fighters: Object.keys(C.fighters).length },
-          backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [], { fighters: C.fighters })),
+          data: { fights: (C.own || []).length, pool_fights: (C.fights.fights || []).length, pool: C.pool, with_method: withMethod, fighters: Object.keys(C.fighters).length },
+          // se FITEA con el pool (que es lo que sirve las predicciones) y se MIDE sobre las peleas de ESTA
+          // org — si no, el número publicado describiría el pool entero, incluidas las regionales ruidosas
+          backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [], { fighters: C.fighters, evalIds: new Set((C.own || []).map(f2 => f2.comp_id)) })),
           backtest_method: C.btm || (C.btm = CE.backtestMethod(C.fights.fights || [])),
           // F2: monitor privado de picks (admin-only por el gate del route; jamás feed público)
           picks_enabled: cbAdmin && combatPicksOn(),

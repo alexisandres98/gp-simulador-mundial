@@ -375,7 +375,10 @@ function liveFightProbs(method, sched, state) {
 
 // ---------- BACKTEST walk-forward (el gate de la casa) ----------
 // Con fighters: corre Elo puro y Elo+features EN LA MISMA pasada (mismas peleas out-of-sample) y reporta ambos.
-function backtest(fights, { warmFrac = 0.35, fighters = null, weighins = null } = {}) {
+// `evalIds` (F5, 1-ago): se FITEA con todo lo que se le pase y se MIDE solo sobre esos comp_id. Nació de
+// unir el pool de rating (UFC+Bellator/PFL+regionales): sin esto el backtest publicado de la org describía
+// el pool entero — mezclando regionales ruidosas — y no lo que el usuario ve en esa vista.
+function backtest(fights, { warmFrac = 0.35, fighters = null, weighins = null, evalIds = null } = {}) {
   const done = fights.filter(f => f.completed && f.f1.id && f.f2.id && (f.f1.winner || f.f2.winner))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
   const warm = Math.floor(done.length * warmFrac);
@@ -397,7 +400,7 @@ function backtest(fights, { warmFrac = 0.35, fighters = null, weighins = null } 
     let p1x = pElo;
     if (fighters) { let z = w.elo * logit(pElo); for (const k of FEATS.concat(FEATS_FINE)) z += w[k] * fd[k]; p1x = sigm(z); }
     const y = f.f1.winner ? 1 : 0;
-    if (i >= warm) {
+    if (i >= warm && (!evalIds || evalIds.has(f.comp_id))) {
       if ((pElo >= 0.5 ? 1 : 0) === y) hits++;
       brier += (pElo - y) ** 2; base += 0.25; // baseline 50/50
       logl += -(y * Math.log(Math.max(1e-9, pElo)) + (1 - y) * Math.log(Math.max(1e-9, 1 - pElo)));

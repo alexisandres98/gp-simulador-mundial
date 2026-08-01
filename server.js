@@ -6699,7 +6699,13 @@ if (watchPriceOn()) {
 const combatPicksOn = () => String(process.env.GP_COMBAT_PICKS_ENABLED || '') === 'true';
 // F5 (27-jul): multi-org — 'ufc' y 'mma' (= Bellator histórico + PFL activa, dataset cross-promotion
 // fights-mma.json; ESPN NO tiene API de boxeo → BOXEO sigue 'pronto' hasta resolver fuente de data).
-const COMBAT_ORGS = { ufc: { file: 'ufc', upcoming: 'ufc' }, mma: { file: 'mma', upcoming: 'pfl' } };
+// `upcoming` = liga de ESPN para las carteleras. BOXEO va en null a propósito: ESPN no tiene boxeo y su
+// agenda sale de The Odds API (ver combatBoxingUpcoming). `sport` es el deporte en los feeds de cuotas.
+const COMBAT_ORGS = {
+  ufc: { file: 'ufc', upcoming: 'ufc', sport: 'mma_mixed_martial_arts', cbSport: 'mma' },
+  mma: { file: 'mma', upcoming: 'pfl', sport: 'mma_mixed_martial_arts', cbSport: 'mma' },
+  boxing: { file: 'boxing', upcoming: null, sport: 'boxing_boxing', cbSport: 'boxing' },
+};
 function combatLoad(org) {
   const O = COMBAT_ORGS[org] || COMBAT_ORGS.ufc;
   const CE = require('./combat-engine/ratings');
@@ -7594,8 +7600,56 @@ async function combatRefreshUpcoming(C) {
   if ((C.upcoming || []).length) return; // hay data (vencida): responder ya, refrescar detrás
   return p;                              // primer arranque: no hay nada que mostrar, hay que esperar
 }
+// ===== BOXEO: LAS CARTELERAS NO VIENEN DE ESPN (31-jul) ======================================================
+// ESPN no tiene boxeo (catálogo core verificado: solo 'mma' con 48 ligas). La agenda sale de The Odds API
+// (`boxing_boxing`, 62 peleas con 5-10 casas — ya la pagamos) y los peleadores se resuelven contra NUESTRO
+// índice de boxeo por nombre puntuado con empate→null, la regla de la casa. Las peleas del mismo día se
+// agrupan como una velada, que es como el boxeo se organiza de verdad.
+async function combatBoxingUpcoming(C) {
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+  if (!key) { C.upcoming = C.upcoming || []; return false; }
+  const list = await fetch(`https://api.the-odds-api.com/v4/sports/boxing_boxing/odds?apiKey=${key}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json()).catch(() => null);
+  if (!Array.isArray(list)) return false;
+  const byDay = {};
+  for (const e of list) {
+    if (!e.commence_time || !e.home_team || !e.away_team) continue;
+    const day = e.commence_time.slice(0, 10);
+    const i1 = combatFighterByName(C, e.home_team), i2 = combatFighterByName(C, e.away_team);
+    const sl = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    // comp_id estable y simétrico (mismo criterio que el cosechador): slugs ordenados + día
+    const pair = [i1 || sl(e.home_team), i2 || sl(e.away_team)].sort();
+    const comp_id = `bx-${pair[0]}__${pair[1]}__${day}`;
+    (byDay[day] = byDay[day] || []).push({
+      comp_id, main: false, weight: null, rounds: null, books: (e.bookmakers || []).length,
+      f1: { id: i1 || sl(e.home_team), name: e.home_team, resolved: !!i1 },
+      f2: { id: i2 || sl(e.away_team), name: e.away_team, resolved: !!i2 },
+      _at: e.commence_time,
+    });
+  }
+  C.upcoming = Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).map(([day, fights]) => {
+    // el estelar es el de mercado más profundo (proxy honesto: el boxeo no publica un orden de cartelera aquí)
+    fights.sort((a, b) => (b.books - a.books) || String(a._at).localeCompare(String(b._at)));
+    if (fights.length) fights[0].main = true;
+    const head = fights[0];
+    return {
+      id: 'bx-' + day, date: (head && head._at) || (day + 'T00:00Z'),
+      name: head ? `${head.f1.name} vs ${head.f2.name}` : 'Boxeo ' + day,
+      fights,
+    };
+  });
+  return true;
+}
 async function combatDoRefresh(C) {
   let ok = false;               // el diff de cartelera solo se corre si el feed VINO (ver combatCardWatch)
+  // BOXEO: agenda propia (sin ESPN). OJO: sin esta rama, `C.upLeague || 'ufc'` haría que la vista de boxeo
+  // mostrara las carteleras de UFC — un fallo silencioso y muy feo.
+  if (C.org === 'boxing') {
+    try { ok = await combatBoxingUpcoming(C); } catch (e) { console.error('[combat-boxing]', e.message); C.upcoming = C.upcoming || []; }
+    if (ok) { try { combatCardWatch(C); } catch (e) { console.error('[combat-cardwatch]', e.message); } }
+    C.upAt = Date.now(); C.odds = C.odds || [];
+    combatRefreshOdds(C);
+    return;
+  }
   try {
     const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
     const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -7688,13 +7742,18 @@ function combatRefreshOdds(C) {
   if (C._oddsRefreshing) return;
   C._oddsRefreshing = (async () => {
     try {
-      const G = global._combatOdds = global._combatOdds || {};
+      // Memo POR DEPORTE: mma_mixed_martial_arts cubre UFC+PFL+Oktagon en un solo feed (cero créditos
+      // duplicados entre orgs de MMA), y boxing_boxing es un feed aparte. Antes era un memo global único,
+      // que con boxeo habría servido cuotas de MMA a las peleas de boxeo.
+      const sport = (COMBAT_ORGS[C.org] || COMBAT_ORGS.ufc).sport;
+      const GG = global._combatOdds = global._combatOdds || {};
+      const G = GG[sport] = GG[sport] || {};
       if (!G.at || Date.now() - G.at > 10 * 60e3) {
         const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
-        const od = await fetch(`https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+        const od = await fetch(`https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
         if (Array.isArray(od)) { G.list = od; G.at = Date.now(); }
       }
-      C.odds = (global._combatOdds || {}).list || C.odds || [];
+      C.odds = G.list || C.odds || [];
       C._nameMemo = new Map(); // nombres nuevos del feed → que se resuelvan de nuevo
     } catch { C.odds = C.odds || []; }
     try { await combatCloudbetRefresh(C); } catch { /* siguiente ciclo */ }
@@ -7731,7 +7790,7 @@ async function combatCloudbetRefresh(C) {
     }))];
     const cbEvents = [];
     for (const d of days) {
-      const j = await cbFetch(`https://sports-api.cloudbet.com/pub/v2/odds/fixtures?sport=mma&date=${d}`);
+      const j = await cbFetch(`https://sports-api.cloudbet.com/pub/v2/odds/fixtures?sport=${(COMBAT_ORGS[C.org] || COMBAT_ORGS.ufc).cbSport}&date=${d}`);
       for (const comp of (j && j.competitions) || []) for (const e of (comp.events || [])) {
         if (e.home && e.away) cbEvents.push({ id: e.id, home: e.home.name, away: e.away.name });
       }
@@ -7830,7 +7889,9 @@ function combatFightOdds(C, ft) {
 }
 async function buildCombatPicks({ dryRun = false } = {}) {
   const out = { fights: 0, with_odds: 0, candidates: [], added: 0, superseded: 0, closing_updated: 0 };
-  for (const org of Object.keys(COMBAT_ORGS)) await buildCombatPicksOrg(org, out, dryRun);
+  // BOXEO NO genera picks todavía: el modelo pasó el gate de calibración (0.0310, mejor que UFC) pero el
+  // único juez que la casa acepta es el CLV contra mercado real, y su archivo de cuotas nace hoy.
+  for (const org of Object.keys(COMBAT_ORGS)) { if (org === 'boxing') continue; await buildCombatPicksOrg(org, out, dryRun); }
   if (!dryRun) {
     if (out.added || out.superseded || out.closing_updated) save();
     out.active = (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length;
@@ -11292,7 +11353,10 @@ const server = http.createServer(async (req, res) => {
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
       // fuente compartida con el loop de picks. F5: ?org=ufc|mma (mma = Bellator histórico + PFL activa).
-      const org = url.searchParams.get('org') === 'mma' ? 'mma' : 'ufc';
+      // el org sale de COMBAT_ORGS, no de una lista a mano (así una org nueva no queda fuera en silencio —
+      // boxeo daba 404 con el ternario viejo)
+      const qOrg = String(url.searchParams.get('org') || '');
+      const org = COMBAT_ORGS[qOrg] ? qOrg : 'ufc';
       const C = combatLoad(org);
       if (p === '/api/combat/state' && req.method === 'GET') {
         await combatRefreshUpcoming(C); // carteleras ESPN + cuotas mma (memo 10min compartido con el loop)
@@ -11305,6 +11369,12 @@ const server = http.createServer(async (req, res) => {
         const cards = (C.upcoming || []).map(ev => ({
           ...ev,
           fights: ev.fights.map(ft => {
+            // MUESTRA (31-jul, lección de la cartelera PFL del 31-jul): con <3 peleas en la muestra el Elo
+            // es el prior 1500 disfrazado, y publicar "GP 50%" sobre dos desconocidos es peor que no publicar
+            // nada — invita a apostar contra un mercado que sí los conoce. Se expone el conteo SIEMPRE y se
+            // suprime la probabilidad cuando no hay con qué sostenerla.
+            const nA = C.elo.N[ft.f1.id] || 0, nB = C.elo.N[ft.f2.id] || 0;
+            const rated = { f1: nA, f2: nB, ok: nA >= 3 && nB >= 3 };
             const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
             const pf = (id) => ({ ...(C.fighters[id] || {}), record: combatRecordOf(C, id), form: formOf(id) });
             const mo = combatFightOdds(C, ft);
@@ -11314,7 +11384,7 @@ const server = http.createServer(async (req, res) => {
             const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
             const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id) || null;
             const pick = pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct } : null;
-            return { ...ft, prob: pr, method, market, pick, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
+            return { ...ft, rated, prob: rated.ok ? pr : null, method: rated.ok ? method : null, market, pick, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
           }),
         }));
         // ranking Elo top (≥8 peleas, activos últimos 2 años)

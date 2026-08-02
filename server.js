@@ -11908,6 +11908,7 @@ const server = http.createServer(async (req, res) => {
         };
         const CU = combatLoad('ufc'); await combatRefreshUpcoming(CU); summarize(CU, 'ufc', 'UFC', null);
         const CM = combatLoad('mma'); await combatRefreshUpcoming(CM); summarize(CM, 'pfl', 'PFL', 'pfl'); summarize(CM, 'bellator', 'Bellator', 'bellator');
+        const CB2 = combatLoad('boxing'); await combatRefreshUpcoming(CB2); summarize(CB2, 'boxing', 'Boxeo', null);
         return json(res, 200, { orgs });
       }
       // R2: EVOLUCIÓN — series de Elo de la élite activa + movers 12 meses

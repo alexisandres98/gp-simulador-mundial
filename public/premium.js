@@ -3233,13 +3233,15 @@
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }
     // ── COMBATE (R2): rutas del deporte — detalle de pelea y de peleador + vistas de sección
     if (h === 'combat') { setHash('cbfights'); return; } // compat con el hash viejo de la vista única
-    var cbf = h.match(/^cbfight\/([a-z]+)-(\d+)$/i);
+    // F4 boxeo: los ids ya no son solo numéricos (ESPN) — boxeo usa comp_id de slugs (bx-a__b__día) y
+    // fighter ids slug (canelo-alvarez). La org va por alternancia explícita para partir bien el hash.
+    var cbf = h.match(/^cbfight\/(ufc|mma|boxing)-(.+)$/i);
     if (cbf) { S.cb.org = cbf[1]; if (!(S.view === 'cbfight' && S.cb.fightId === cbf[2])) { S.cb.fightId = cbf[2]; S.cb.fight = undefined; showView('cbfight'); } return; }
-    var cbp = h.match(/^cbfighter\/([a-z]+)-(\d+)$/i);
+    var cbp = h.match(/^cbfighter\/(ufc|mma|boxing)-(.+)$/i);
     if (cbp) { S.cb.org = cbp[1]; if (!(S.view === 'cbfighter' && S.cb.fighterId === cbp[2])) { S.cb.fighterId = cbp[2]; S.cb.fighter = undefined; showView('cbfighter'); } return; }
     var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
-      if (cbv[2] === 'ufc' || cbv[2] === 'mma') S.cb.org = cbv[2]; // el sufijo de org vale en TODAS las vistas
+      if (cbv[2] === 'ufc' || cbv[2] === 'mma' || cbv[2] === 'boxing') S.cb.org = cbv[2]; // el sufijo de org vale en TODAS las vistas
       showView(cbv[1] === 'cb' ? 'cbopps' : cbv[1]); return;
     }
     // sub-estado del selector de competición en el hash (#groups/mls, #bracket/mls, #matches/mls, #teams/mls) →
@@ -5723,8 +5725,8 @@
   // Seguidos / Rendimiento / Organizaciones / Evolución. Firma visual: el EJE DEL ENFRENTAMIENTO — esquina
   // verde vs esquina roja en todo (heroes cara a cara, tale-of-the-tape espejado, barra GP tira-y-afloja).
   // Server: /api/combat/* (404 no-admin). Estado: S.cb.* con cache por clave; org activa S.cb.org (ufc|mma).
-  function cbOrg() { return S.cb.org === 'mma' ? 'mma' : 'ufc'; }
-  function cbOrgLab() { return cbOrg() === 'mma' ? 'MMA' : 'UFC'; }
+  function cbOrg() { return S.cb.org === 'mma' || S.cb.org === 'boxing' ? S.cb.org : 'ufc'; }
+  function cbOrgLab() { return cbOrg() === 'mma' ? 'MMA' : cbOrg() === 'boxing' ? 'BOXEO' : 'UFC'; }
   function cbAva(f, side, cls) {
     var ini = (f.name || '?').split(' ').map(function (x) { return x[0] || ''; }).join('').slice(0, 2).toUpperCase();
     var img = f.headshot ? '<img src="' + esc(f.headshot) + '" alt="" decoding="async" onerror="this.remove()">' : '';
@@ -5849,7 +5851,7 @@
     return '<div class="gx-cb-tabs">' +
       '<span class="gx-cb-tab' + (cbOrg() === 'ufc' ? ' on' : '') + '" data-cborgtab="ufc">UFC</span>' +
       '<span class="gx-cb-tab' + (cbOrg() === 'mma' ? ' on' : '') + '" data-cborgtab="mma">MMA · PFL</span>' +
-      '<span class="gx-cb-tab dim">BOXEO · ' + esc(t('sport_soon')) + '</span>' +
+      '<span class="gx-cb-tab' + (cbOrg() === 'boxing' ? ' on' : '') + '" data-cborgtab="boxing">BOXEO</span>' +
       '<span class="gx-spacer"></span></div>';
   }
   // ── PELEAS: calendario por cartelera (evento → main event destacado + resto de la cartelera) ──
@@ -6624,7 +6626,7 @@
     if (!d) { cbShell(t('cb_orgs_title'), mvLoading()); return; }
     if (d._err) { cbShell(t('cb_orgs_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var cards = (d.orgs || []).map(function (o) {
-      var orgKey = o.tag === 'ufc' ? 'ufc' : 'mma';
+      var orgKey = o.tag === 'ufc' ? 'ufc' : o.tag === 'boxing' ? 'boxing' : 'mma';
       var top = (o.top || []).map(function (f) {
         return '<a class="gx-cb-orgtop" href="#cbfighter/' + orgKey + '-' + esc(String(f.id)) + '">' + cbAva(f, 1) + '<span>' + esc((f.name || '').split(' ').pop()) + '</span><b class="gx-mono">' + f.elo + '</b></a>';
       }).join('');

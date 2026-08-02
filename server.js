@@ -11919,6 +11919,8 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, { enabled: combatPicksOn(), build: b, settle: s, track: combatPicksTrack() });
         }
         const cbDbg = {}; for (const o2 of Object.keys(COMBAT_ORGS)) { const Cx = (global._combat || {})[COMBAT_ORGS[o2].file]; cbDbg[o2] = Cx && Cx.cbb ? { at: Cx.cbb.at ? new Date(Cx.cbb.at).toISOString() : null, fights: Object.keys(Cx.cbb.byComp || {}).length } : null; }
+        // ?picks=1 → el detalle pick a pick (auditoría: sin esto no se puede hacer la autopsia del track)
+        if (url.searchParams.get('picks')) return json(res, 200, { picks: db.combatPicks || [] });
         return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length, cloudbet: cbDbg,
           card_watch: { alerts: (db.combatCardAlerts || []).slice(-10), pending: Object.fromEntries(Object.entries(db.combatCards || {}).map(([o3, s3]) => [o3, Object.keys(s3.missing || {}).length])) } });
       } catch (e) { return json(res, 200, { error: e.message }); }

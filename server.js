@@ -6564,7 +6564,13 @@ async function tsaCompMatch(tsaKey, oddsKey, title) {
   const country = oddsCountryHint(oddsKey, title);
   const wantTier = compTier(title);
   const clean = String(title).split(' - ')[0];
-  const terms = [title, clean].filter((v, i, a) => v && a.indexOf(v) === i);
+  // Términos de BÚSQUEDA amplios a propósito: la última palabra distintiva encuentra "Eredivisie" dentro de
+  // "Dutch Eredivisie", que con solo el título completo TSA no devuelve. Antes esto era veneno porque no
+  // había validación; ahora el país, el nivel, el umbral y la guarda de empate filtran la basura, así que
+  // buscar de más solo puede AÑADIR candidatas correctas.
+  const words = clean.split(/\s+/).filter(Boolean);
+  const terms = [title, clean, words[words.length - 1], words[0]]
+    .filter(v => v && v.length >= 4).filter((v, i, a) => a.indexOf(v) === i).slice(0, 4);
   const seen = {};
   for (const q of terms) {
     const rt = await fetch(`https://api.thestatsapi.com/api/football/competitions?search=${encodeURIComponent(q)}&per_page=8`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) }).catch(() => null);

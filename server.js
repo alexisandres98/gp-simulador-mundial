@@ -6753,8 +6753,16 @@ const combatPicksOn = () => String(process.env.GP_COMBAT_PICKS_ENABLED || '') ==
 // estaba en el otro archivo. El pool de MMA une UFC + Bellator/PFL + regionales; boxeo va aparte (otro
 // deporte, ids de otro esquema). La VISTA de cada org sigue siendo la suya: `C.own` manda en ranking y
 // conteos, `C.fights` pasa a ser el histórico completo del peleador.
+// POOL POR ORG, elegido por MEDICIÓN, no por simetría (2-ago). Las 6,795 peleas regionales (LFA,
+// Cage Warriors, KSW, RIZIN, M-1, Pancrase, Shooto, Strikeforce, WEC, DREAM…) mueven el skill en
+// direcciones OPUESTAS según la org:
+//   MMA (Bellator+PFL): skill 0.0318 → 0.0328 · acc 63.7% → 64.1%   ← ayuda
+//   UFC:                skill 0.0161 → 0.0134 · acc 60.9% → 60.1%   ← ESTORBA
+// Tiene sentido: los peleadores del PFL vienen de esos circuitos, los de UFC casi no. Cada org usa el
+// pool que su propio backtest respalda. La cobertura sube igual donde importa (PFL 7→9 de 22 peleas
+// próximas con muestra suficiente; UFC ya tenía 28/48 sin regionales).
 const COMBAT_ORGS = {
-  ufc: { file: 'ufc', upcoming: 'ufc', sport: 'mma_mixed_martial_arts', cbSport: 'mma', pool: ['ufc', 'mma', 'regional'] },
+  ufc: { file: 'ufc', upcoming: 'ufc', sport: 'mma_mixed_martial_arts', cbSport: 'mma', pool: ['ufc', 'mma'] },
   mma: { file: 'mma', upcoming: 'pfl', sport: 'mma_mixed_martial_arts', cbSport: 'mma', pool: ['ufc', 'mma', 'regional'] },
   boxing: { file: 'boxing', upcoming: null, sport: 'boxing_boxing', cbSport: 'boxing', pool: ['boxing'] },
 };

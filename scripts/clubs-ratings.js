@@ -45,6 +45,17 @@ const LEAGUES = [
   { key: 'bundesliga', name: 'Bundesliga', country: 'Alemania', comp: 'comp_4643', season: 'sn_5789634', ratings_from: ['comp_4643-sn_5789634'], starts: 'agosto', odds_key: 'soccer_germany_bundesliga' },
   { key: 'seriea', name: 'Serie A', country: 'Italia', comp: 'comp_5840', season: 'sn_3061436', ratings_from: ['comp_5840-sn_3061436'], starts: 'agosto', odds_key: 'soccer_italy_serie_a' },
   { key: 'ligue1', name: 'Ligue 1', country: 'Francia', comp: 'comp_0256', season: 'sn_6120181', ratings_from: ['comp_0256-sn_6120181'], starts: 'agosto', odds_key: 'soccer_france_ligue_one' },
+  // EXPANSIÓN 2-ago (descubiertas por el discovery, con el matcher ya arreglado: país + nivel + empate→null).
+  // Todas con cuotas en el proveedor y stats de equipo en TSA. Las 26/27 arrancan ahora, así que el Elo nace
+  // de la temporada previa y se actualiza con los partidos nuevos conforme liquiden; players_season apunta a
+  // la previa para que percentiles y scout tengan data real mientras la nueva acumula.
+  { key: 'liga3', name: '3. Liga', country: 'Alemania', comp: 'comp_2837', season: 'sn_9629107', players_season: 'sn_0815351', ratings_from: ['comp_2837-sn_0815351', 'comp_2837-sn_9629107'], starts: 'agosto', odds_key: 'soccer_germany_liga3' },
+  { key: 'ligue2', name: 'Ligue 2', country: 'Francia', comp: 'comp_9777', season: 'sn_7255696', players_season: 'sn_3064056', ratings_from: ['comp_9777-sn_3064056', 'comp_9777-sn_7255696'], starts: 'agosto', odds_key: 'soccer_france_ligue_two' },
+  { key: 'bundesliga2', name: '2. Bundesliga', country: 'Alemania', comp: 'comp_0406', season: 'sn_6190936', players_season: 'sn_0815700', ratings_from: ['comp_0406-sn_0815700', 'comp_0406-sn_6190936'], starts: 'agosto', odds_key: 'soccer_germany_bundesliga2' },
+  { key: 'eredivisie', name: 'Eredivisie', country: 'Países Bajos', comp: 'comp_3809', season: 'sn_5744954', players_season: 'sn_9674249', ratings_from: ['comp_3809-sn_9674249', 'comp_3809-sn_5744954'], starts: 'agosto', odds_key: 'soccer_netherlands_eredivisie' },
+  { key: 'superettan', name: 'Superettan', country: 'Suecia', comp: 'comp_6917', season: 'sn_0842342', ratings_from: ['comp_6917-sn_2998551', 'comp_6917-sn_0842342'], odds_key: 'soccer_sweden_superettan' },
+  { key: 'austria', name: 'Bundesliga', country: 'Austria', comp: 'comp_4893', season: 'sn_5749764', players_season: 'sn_9673680', ratings_from: ['comp_4893-sn_9673680', 'comp_4893-sn_5749764'], starts: 'agosto', odds_key: 'soccer_austria_bundesliga' },
+  { key: 'escocia', name: 'Premiership', country: 'Escocia', comp: 'comp_6387', season: 'sn_8406037', players_season: 'sn_8436747', ratings_from: ['comp_6387-sn_8436747', 'comp_6387-sn_8406037'], starts: 'agosto', odds_key: 'soccer_spl' },
 ];
 
 function loadMatches(files) {

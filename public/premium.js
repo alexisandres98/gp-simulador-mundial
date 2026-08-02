@@ -970,7 +970,7 @@
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method' || n[0] === 'cbperf' || n[0] === 'cbopps') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isCombat ? ['cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
       : [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']];
@@ -1181,7 +1181,10 @@
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
     var items = S.sport === 'combat'
-      ? [['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts']]
+      // BUG MÓVIL (2-ago, reporte de Alexis): el brief de combate, el mapa de la noche y "Preguntale a GP"
+      // no estaban NI en la barra inferior NI aquí → en el celular eran inalcanzables. Van primeras porque
+      // son las superficies de INTELIGENCIA, que es justo lo que ve el usuario no-admin con el flag público.
+      ? [['cbbrief', 'news', 'nav_brief'], ['cbcard', 'layout-grid', 'nav_cb_card'], ['cbask', 'message-circle', 'nav_cb_ask'], ['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts']]
         .concat(isAdmin ? [['cbperf', 'chart-line', 'nav_perf']] : [])
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])

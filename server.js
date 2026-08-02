@@ -6542,6 +6542,52 @@ async function clubsDataPass({ force = false } = {}) {
 // nombre. Candidato NUEVO → email al admin con todo lo necesario para onboardearla (odds_key + comp TSA +
 // temporadas + volumen) + queda en db.leagueDiscovery para el endpoint interno. Dedupe por odds_key visto. =====
 const LEAGUE_DISCOVERY_SKIP = /cup|copa|pokal|qualification|qualifier|friendl|uefa|conmebol|concacaf|fifa|olympics|nations/i;
+// País a partir de la clave de The Odds API (soccer_<pais>_<liga>) o del título ("- France", "Dutch …").
+const ODDS_COUNTRY = { netherlands: 'Netherlands', spl: 'Scotland', epl: 'England', usa: 'USA', uefa: null, conmebol: null };
+const COUNTRY_ADJ = { dutch: 'Netherlands', austrian: 'Austria', scottish: 'Scotland', belgian: 'Belgium', portuguese: 'Portugal', spanish: 'Spain', italian: 'Italy', german: 'Germany', french: 'France', swedish: 'Sweden', danish: 'Denmark', norwegian: 'Norway', japanese: 'Japan', swiss: 'Switzerland', polish: 'Poland', turkish: 'Turkey', greek: 'Greece', mexican: 'Mexico', argentine: 'Argentina', brazilian: 'Brazil', chilean: 'Chile', finnish: 'Finland', irish: 'Ireland', russian: 'Russia', australian: 'Australia', korean: 'South Korea', chinese: 'China' };
+function oddsCountryHint(key, title) {
+  const k = String(key || '').toLowerCase().replace(/^soccer_/, '');
+  const t0 = k.split('_')[0];
+  if (ODDS_COUNTRY[t0] !== undefined) { if (ODDS_COUNTRY[t0]) return ODDS_COUNTRY[t0]; }
+  else if (t0 && t0.length > 3) return t0[0].toUpperCase() + t0.slice(1);
+  const dash = String(title || '').split(' - ')[1];
+  if (dash) return dash.trim();
+  for (const w of String(title || '').toLowerCase().split(/\s+/)) if (COUNTRY_ADJ[w]) return COUNTRY_ADJ[w];
+  return null;
+}
+// Nivel de la competición: "2. Bundesliga"/"Ligue 2"/"Liga Portugal 2" = 2ª; sin dígito = 1ª. Una liga de
+// 1ª NUNCA casa con una de 2ª aunque el país y las palabras coincidan (era el caso Primeira Liga → Liga Portugal 2).
+const compTier = (name) => { const m = String(name || '').match(/(?:^|\s)([2-4])(?:\.|\s|$)|\b(ii|b)\b/i); return m ? (m[1] ? +m[1] : 2) : 1; };
+async function tsaCompMatch(tsaKey, oddsKey, title) {
+  const nz = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const STOP = new Set(['league', 'liga', 'division', 'div', 'football', 'primera', 'first', 'premier', 'championship', 'cup', 'de', 'the']);
+  const country = oddsCountryHint(oddsKey, title);
+  const wantTier = compTier(title);
+  const clean = String(title).split(' - ')[0];
+  const terms = [title, clean].filter((v, i, a) => v && a.indexOf(v) === i);
+  const seen = {};
+  for (const q of terms) {
+    const rt = await fetch(`https://api.thestatsapi.com/api/football/competitions?search=${encodeURIComponent(q)}&per_page=8`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) }).catch(() => null);
+    const jt = rt && rt.ok ? await rt.json().catch(() => null) : null;
+    for (const h of ((jt && jt.data) || [])) seen[h.id] = h;
+    await new Promise(r2 => setTimeout(r2, 400));
+  }
+  const toks = nz(clean).split(' ').filter(w => w && !STOP.has(w));
+  let best = null, bestS = 0, tie = false;
+  for (const h of Object.values(seen)) {
+    if (country && h.country && nz(h.country) !== nz(country)) continue;   // país manda: sin él no hay match
+    if (compTier(h.name) !== wantTier) continue;                            // 1ª nunca casa con 2ª
+    const hn = nz(h.name);
+    let sc = 0;
+    for (const w of toks) if (hn.split(' ').includes(w)) sc += w.length >= 4 ? 3 : 1;
+    if (hn === nz(clean)) sc += 10;
+    if (country && h.country && nz(h.country) === nz(country)) sc += 4;
+    if (sc > bestS) { bestS = sc; best = h; tie = false; }
+    else if (sc === bestS && sc > 0 && best && best.id !== h.id) tie = true;
+  }
+  if (!best || bestS < 4 || tie) return null;                               // empate o señal débil → null
+  return { comp: best.id, name: best.name, country: best.country || null, score: bestS };
+}
 async function clubsLeagueDiscovery() {
   const pk = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
   if (!pk) return { skipped: 'sin key' };
@@ -6559,18 +6605,12 @@ async function clubsLeagueDiscovery() {
       const evs = re.ok ? await re.json().catch(() => []) : [];
       const wk = (evs || []).filter(e => { const t = +new Date(e.commence_time); return t > Date.now() - 3600e3 && t < Date.now() + 7 * 86400e3; });
       if (!wk.length) continue; // sin partidos con cuotas esta semana → todavía no
-      // comp de TSA por nombre (best-effort: título completo, luego última palabra distintiva)
+      // comp de TSA — PUNTUADO, con país y nivel, y null ante empate [[gp-regla-matcher-desambiguar]].
+      // La versión anterior cogía `data[0]` a pelo y buscaba por la ÚLTIMA PALABRA del título: "J League"
+      // buscaba "League" y casaba la A-League australiana; "Austrian Bundesliga" casaba la 2. Bundesliga
+      // alemana; "Belgium First Div" casaba la Primera de Chile. 4 de 10 candidatas salían mal.
       let tsa = null;
-      if (tsaKey) {
-        const terms = [s.title, s.title.split(' - ')[0], s.title.split(' ').slice(-1)[0]].filter((v, i, a) => v && a.indexOf(v) === i);
-        for (const q of terms) {
-          const rt = await fetch(`https://api.thestatsapi.com/api/football/competitions?search=${encodeURIComponent(q)}&per_page=3`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
-          const jt = rt.ok ? await rt.json().catch(() => null) : null;
-          const hit = ((jt && jt.data) || [])[0];
-          if (hit) { tsa = { comp: hit.id, name: hit.name, country: hit.country || null }; break; }
-          await new Promise(r2 => setTimeout(r2, 400));
-        }
-      }
+      if (tsaKey) tsa = await tsaCompMatch(tsaKey, s.key, s.title);
       out.push({ odds_key: s.key, title: s.title, events_7d: wk.length, first_kickoff: wk[0] ? wk[0].commence_time : null, tsa });
     } catch { /* siguiente candidato */ }
     await new Promise(r2 => setTimeout(r2, 300));

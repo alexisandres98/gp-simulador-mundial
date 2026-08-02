@@ -24,15 +24,24 @@ const arg = (k, d) => { const m = process.argv.find(a => a.startsWith('--' + k +
 function load(f, empty) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return empty; } }
 function save(f, obj) { fs.writeFileSync(f, JSON.stringify(obj)); }
 
-async function j(url, tries = 3) {
+// BACKOFF DE VERDAD (1-ago): con 14 ligas x 17 años ESPN empieza a devolver 504 y el harvest MORÍA en el
+// primer fallo, tirando la corrida entera (dos veces). Un 504/429 es "más despacio", no "no existe" — el
+// único veredicto de inexistencia es el 404. Misma lección que el 429 de Wikipedia del 29-jul.
+async function j(url, tries = 6) {
   for (let i = 0; i < tries; i++) {
     try {
-      const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) });
-      if (r.status === 404) return null;
+      const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(25000) });
+      if (r.status === 404) return null;                      // el ÚNICO "no existe"
+      if (r.status === 504 || r.status === 503 || r.status === 429) throw new Error('THROTTLE ' + r.status);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return await r.json();
-    } catch (e) { if (i === tries - 1) throw e; await sleep(1200 * (i + 1)); }
+    } catch (e) {
+      if (i === tries - 1) { console.error('  [skip tras ' + tries + ' intentos] ' + e.message + ' · ' + url.slice(0, 110)); return null; }
+      const wait = /THROTTLE/.test(e.message) ? 5000 * Math.pow(2, i) : 1500 * (i + 1);   // exponencial si nos frenan
+      await sleep(Math.min(60000, wait));
+    }
   }
+  return null;
 }
 
 // ---------- Paso 1: eventos + peleas por año ----------

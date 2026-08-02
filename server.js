@@ -7750,7 +7750,12 @@ function combatCardWatch(C) {
   const cur = { at: new Date().toISOString(), events: {} };
   for (const ev of (C.upcoming || [])) {
     const e = cur.events[ev.id] = { name: ev.name, date: ev.date, comps: {} };
-    for (const ft of (ev.fights || [])) if (ft.comp_id) e.comps[ft.comp_id] = `${ft.f1.name} vs ${ft.f2.name}`;
+    for (const ft of (ev.fights || [])) if (ft.comp_id) {
+      // se guarda la hora PROPIA de la pelea: en boxeo la "cartelera" es un grupo por día y cada pelea tiene
+      // su hora, así que usar la del evento marcaba como retiradas las que simplemente ya habían empezado.
+      if (/\bTBA\b/i.test(`${ft.f1.name} ${ft.f2.name}`)) continue;   // placeholders: aparecen y desaparecen por diseño
+      e.comps[ft.comp_id] = { label: `${ft.f1.name} vs ${ft.f2.name}`, at: ft._at || ev.date };
+    }
   }
   const alerts = [];
   const misses = {};
@@ -7763,16 +7768,21 @@ function combatCardWatch(C) {
     if (!(ko && ko > now)) continue;                     // ya empezó: lo resuelve la liquidación normal
     const pe = (prev.events || {})[evId] || { comps: {} };
     const cands = {};
-    for (const [c, l] of Object.entries(pe.comps || {})) cands[c] = l;
-    for (const [c, m] of Object.entries(prev.missing || {})) if (m.event_id === evId) cands[c] = m.fight;
-    for (const [compId, label] of Object.entries(cands)) {
+    const norm = (v) => (v && typeof v === 'object') ? v : { label: String(v || ''), at: null };
+    for (const [c, l] of Object.entries(pe.comps || {})) cands[c] = norm(l);
+    for (const [c, m] of Object.entries(prev.missing || {})) if (m.event_id === evId) cands[c] = { label: m.fight, at: m.kickoff_at };
+    for (const [compId, info] of Object.entries(cands)) {
       if (ce.comps[compId]) continue;                    // volvió a la cartelera → se olvida el conteo
+      // Su PROPIA hora, no la de la velada: una pelea que ya empezó sale del feed sola y eso no es cancelarla.
+      const fko = Date.parse(info.at || ce.date || 0);
+      if (fko && fko <= now) continue;
+      const label = info.label;
       const was = (prev.missing || {})[compId] || { n: 0 };
-      const rec = { n: was.n + 1, event_id: evId, event: ce.name, fight: label, kickoff_at: ce.date, alerted: !!was.alerted };
+      const rec = { n: was.n + 1, event_id: evId, event: ce.name, fight: label, kickoff_at: info.at || ce.date, alerted: !!was.alerted };
       misses[compId] = rec;
       if (rec.n < 2 || rec.alerted) continue;            // guarda 2: confirmación en 2 ciclos; y se avisa UNA vez
       rec.alerted = true;
-      alerts.push({ org, event_id: evId, event: ce.name, comp_id: compId, fight: label, kickoff_at: ce.date, at: new Date().toISOString() });
+      alerts.push({ org, event_id: evId, event: ce.name, comp_id: compId, fight: label, kickoff_at: info.at || ce.date, at: new Date().toISOString() });
     }
   }
   cur.missing = misses;

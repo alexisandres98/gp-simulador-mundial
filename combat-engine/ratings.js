@@ -256,7 +256,15 @@ const methodClass = (m) => {
 };
 
 function methodModel(fights) {
-  const W = {};            // base por división {ko,sub,dec} (prior 1)
+  // CLASES PRESENTES (2-ago): en BOXEO la sumisión no existe. Con el prior fijo de 1 el modelo repartía
+  // probabilidad a un desenlace imposible y el logloss multiclase lo castigaba fuerte (skill −0.0546 en
+  // boxeo) pese a que la pregunta que importa —KO vs decisión, el mercado "will the fight go the
+  // distance"— daba skill +0.0258. Una clase que NUNCA ocurre en el dataset entra con prior 0 y sale del
+  // reparto. En UFC/MMA las tres ocurren, así que ahí no cambia nada.
+  const PRESENT = { ko: 0, sub: 0, dec: 0 };
+  for (const f of fights) { const c0 = methodClass(f.method); if (c0) PRESENT[c0]++; }
+  const CLASSES = M_CLASSES.filter(c => PRESENT[c] > 0);
+  const W = {};            // base por división (prior 1 en las clases presentes)
   const OFF = {}, DEF = {}; // por peleador: victorias/derrotas por método
   const FIN = {};          // F(r|finish, rounds_sched): conteo del round de cierre (prior 1/round)
   const FT = {};           // timing por peleador: finishes en round 1 / finishes totales (como ganador)
@@ -265,7 +273,7 @@ function methodModel(fights) {
     const c = methodClass(f.method);
     if (!c) continue;
     const wk = f.weight || '?';
-    W[wk] = W[wk] || { ko: 1, sub: 1, dec: 1 };
+    W[wk] = W[wk] || Object.fromEntries(M_CLASSES.map(x => [x, CLASSES.includes(x) ? 1 : 0]));
     W[wk][c]++;
     const win = f.f1.winner ? f.f1.id : f.f2.id, los = f.f1.winner ? f.f2.id : f.f1.id;
     OFF[win] = OFF[win] || {}; OFF[win][c] = (OFF[win][c] || 0) + 1;
@@ -278,29 +286,32 @@ function methodModel(fights) {
       FT[win].n++; if (f.end_round <= 1) FT[win].e++;
     }
   }
-  return { W, OFF, DEF, FIN, FT };
+  return { W, OFF, DEF, FIN, FT, CLASSES };
 }
 
 // probs de método + rounds para una pelea próxima. p1 = prob de f1 (del Elo+features).
 function methodProbs(mm, p1, id1, id2, weight, sched) {
   const base0 = mm.W[weight || '?'];
   // división sin historia → base global (suma de todas)
+  const CL = mm.CLASSES && mm.CLASSES.length ? mm.CLASSES : M_CLASSES;
   let base = base0;
   if (!base) {
-    base = { ko: 1, sub: 1, dec: 1 };
+    base = Object.fromEntries(M_CLASSES.map(x => [x, CL.includes(x) ? 1 : 0]));
     for (const w of Object.values(mm.W)) for (const c of M_CLASSES) base[c] += w[c];
   }
-  const tot = M_CLASSES.reduce((s, c) => s + base[c], 0);
-  const b = {}; for (const c of M_CLASSES) b[c] = base[c] / tot;
+  // Todo el reparto corre SOLO sobre las clases presentes (CL). Las ausentes quedan en 0 y no participan:
+  // con base 0, el ajuste de susceptibilidad `de[c]/b[c]` dividía por cero y salía NaN.
+  const tot = CL.reduce((s, c) => s + base[c], 0);
+  const b = {}; for (const c of M_CLASSES) b[c] = CL.includes(c) ? base[c] / tot : 0;
   const dist = (counts) => {
-    const t = M_CLASSES.reduce((s, c) => s + ((counts || {})[c] || 0), 0);
-    const out = {}; for (const c of M_CLASSES) out[c] = (((counts || {})[c] || 0) + METHOD_TAU * b[c]) / (t + METHOD_TAU);
+    const t = CL.reduce((s, c) => s + ((counts || {})[c] || 0), 0);
+    const out = {}; for (const c of M_CLASSES) out[c] = CL.includes(c) ? (((counts || {})[c] || 0) + METHOD_TAU * b[c]) / (t + METHOD_TAU) : 0;
     return out;
   };
-  const norm = (o) => { const s = M_CLASSES.reduce((a, c) => a + o[c], 0); for (const c of M_CLASSES) o[c] /= s; return o; };
+  const norm = (o) => { const s = CL.reduce((a, c) => a + o[c], 0); for (const c of M_CLASSES) o[c] = s > 0 ? o[c] / s : 0; return o; };
   const mWin = (x, y) => {
     const off = dist(mm.OFF[x]), de = dist(mm.DEF[y]);
-    const o = {}; for (const c of M_CLASSES) o[c] = off[c] * Math.pow(de[c] / b[c], METHOD_GAMMA);
+    const o = {}; for (const c of M_CLASSES) o[c] = CL.includes(c) ? off[c] * Math.pow(de[c] / b[c], METHOD_GAMMA) : 0;
     return norm(o);
   };
   const m1 = mWin(id1, id2), m2 = mWin(id2, id1);

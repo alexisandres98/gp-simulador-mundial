@@ -6768,6 +6768,15 @@ function combatLoad(org) {
     const fg = rd('fights', nm); if (fg) for (const f of (fg.fights || [])) { if (seenC.has(f.comp_id)) continue; seenC.add(f.comp_id); pooled.push(f); }
     const pf = rd('fighters', nm); if (pf) for (const [k, v] of Object.entries(pf)) if (!C.fighters[k]) C.fighters[k] = v;
   }
+  // ORDEN CANÓNICO DEL POOL DE ENTRENAMIENTO (2-ago). ESPN lista PRIMERO al favorito y f1 gana el 59.8%
+  // de las peleas. El engine es antisimétrico SIN intercepto A PROPÓSITO (para ser inmune al orden), así que
+  // no puede expresar ese 59.8%: el SGD compensa deformando los pesos y el resultado es una probabilidad
+  // inflada ~7-10pp hacia el peleador listado SEGUNDO — el underdog. Y ahí es justo donde apostábamos.
+  // Ordenando por id antes de fitear, el lado deja de llevar información y la calibración pasa de 0.0730 a
+  // 0.0182 con el MISMO skill (0.0282) — el modelo discrimina igual, pero sus probabilidades son honestas.
+  // La PREDICCIÓN no se toca: al ser antisimétrico, p(A,B) = 1 − p(B,A) exacto, así que el orden al predecir
+  // da igual. El sesgo vivía solo en el entrenamiento. Mismo bug que ya se arregló en boxeo el 31-jul.
+  for (let i = 0; i < pooled.length; i++) { const f = pooled[i]; if (String(f.f1.id) > String(f.f2.id)) pooled[i] = { ...f, f1: f.f2, f2: f.f1 }; }
   C.fights = { fights: pooled, events: own.events || {} };
   C.pool = (O.pool || [O.file]).join('+');
   C.org = O.file; C.upLeague = O.upcoming;
@@ -7965,6 +7974,15 @@ async function buildCombatPicks({ dryRun = false } = {}) {
   }
   return out;
 }
+// TECHO DE CUOTA (2-ago). Autopsia de las 40 primeras liquidadas: por cuota, el track se parte en dos —
+//   @1-3   n=15  9-6   ROI +30.7%  CLV +2.6%  (ambas mitades temporales positivas)
+//   @3-5   n=12  2-10  ROI −31.4%  CLV −5.4%
+//   @5+    n=13  1-12  ROI −37.5%  CLV −7.0%
+// Y el control lo confirma: apostar el lado CONTRARIO en cuota≥3 habría ido 22-3. No es varianza, es el
+// sesgo de orden f1/f2 que inflaba ~7-10pp al underdog (arreglado en combatLoad canonizando el pool). El
+// techo es el cinturón mientras se acumula evidencia nueva con el modelo ya calibrado. Los estelares NO se
+// excluyen: su desastre (1-5) era el mismo problema — 4 de sus 6 picks eran underdogs a cuota ≥4.
+const COMBAT_MAX_ODDS = Number(process.env.GP_COMBAT_MAX_ODDS || 3);
 async function buildCombatPicksOrg(org, out, dryRun) {
   const CE = require('./combat-engine/ratings');
   const C = combatLoad(org);
@@ -7996,6 +8014,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
         const m = side === 'f1' ? pr.p1 : 1 - pr.p1;
         const k = side === 'f1' ? mo.fair_f1 : 1 - mo.fair_f1;
         const odds = mo.best[side]; if (!(odds > 1)) continue;
+        if (odds >= COMBAT_MAX_ODDS) continue;      // ver COMBAT_MAX_ODDS
         const blend = 0.5 * m + 0.5 * k;
         const eg = (blend - k) * 100;
         if (eg >= 2 && (!bestSide || eg > bestSide.eg)) bestSide = { side, m, k, blend, eg, odds, book: mo.best[side + 'Book'] };
@@ -8048,7 +8067,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
           const mkt = (1 / price) / invM;
           const blend = 0.5 * model + 0.5 * mkt;
           const eg2 = (blend - mkt) * 100;
-          if (eg2 >= 2.5 && (!bestM || eg2 > bestM.eg)) bestM = { k: k2, side: side2, meth: mm3, model, mkt, blend, eg: eg2, price };
+          if (eg2 >= 2.5 && price < COMBAT_MAX_ODDS && (!bestM || eg2 > bestM.eg)) bestM = { k: k2, side: side2, meth: mm3, model, mkt, blend, eg: eg2, price };
         }
         if (bestM) cbPushDerivPick(fresh, out, org, mkBase, {
           family: 'METHOD', selection_code: bestM.k,
@@ -8066,7 +8085,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
         for (const [side3, model3, mkt3, price3] of [['over', pOver, mktO, t2.over], ['under', 1 - pOver, 1 - mktO, t2.under]]) {
           const blend3 = 0.5 * model3 + 0.5 * mkt3;
           const eg3 = (blend3 - mkt3) * 100;
-          if (eg3 >= 2.5 && (!bestR || eg3 > bestR.eg)) bestR = { side: side3, line: t2.line, model: model3, mkt: mkt3, blend: blend3, eg: eg3, price: price3 };
+          if (eg3 >= 2.5 && price3 < COMBAT_MAX_ODDS && (!bestR || eg3 > bestR.eg)) bestR = { side: side3, line: t2.line, model: model3, mkt: mkt3, blend: blend3, eg: eg3, price: price3 };
         }
       }
       if (bestR) cbPushDerivPick(fresh, out, org, mkBase, {

@@ -8,7 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1' }; // polonia sin ESPN → pases 2/3 (search + FotMob)
+const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1',
+  // EXPANSIÓN 2-ago: las 7 ligas nuevas del discovery
+  liga3: 'ger.3', ligue2: 'fra.2', bundesliga2: 'ger.2', eredivisie: 'ned.1', superettan: 'swe.2', austria: 'aut.1', escocia: 'sco.1' }; // polonia sin ESPN → pases 2/3 (search + FotMob)
 // logo de LIGA por código ESPN (leaguelogos id) — del scoreboard; fijos para no depender de una ventana con partidos
 const LEAGUE_LOGO_ID = { 'bra.1': 85, 'mex.1': 22, 'usa.1': 19, 'arg.1': 1, 'col.1': 1543, 'par.1': 1892, 'chn.1': 2350, 'jpn.1': 2199, 'eng.1': 23, 'esp.1': 15, 'ger.1': 10, 'ita.1': 12, 'fra.1': 9 };
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'bayern munich': 'bayern munchen', 'cologne': 'koln', 'hamburg sv': 'hamburger sv', 'monchengladbach': 'borussia monchengladbach' };
@@ -91,6 +93,15 @@ async function dl(url, dest) {
     'KS Lechia Gdańsk': 'Lechia Gdansk', 'MZKS Arka Gdynia': 'Arka Gdynia',
     'Pari Nizhny Novgorod': 'Nizhny Novgorod', 'Ural Yekaterinburg': 'Ural',
     'Grasshopper Club Zürich': 'Grasshopper', 'FC Aarau': 'Aarau',
+    // EXPANSIÓN 2-ago: alemanas/suecas/austriacas que el buscador no encuentra con el nombre completo.
+    // Los filiales (II/U21/U23/Talang) usan el escudo del club madre — es el escudo real que portan.
+    'Rot-Weiss Essen': 'Rot Weiss Essen', 'TSV 1860 München': '1860 Munich', 'TSG Hoffenheim II U23': 'Hoffenheim',
+    'SV Waldhof Mannheim': 'Waldhof Mannheim', '1. FC Saarbrücken': 'Saarbrucken', 'VfB Stuttgart II U21': 'VfB Stuttgart',
+    'F.C. Hansa Rostock': 'Hansa Rostock', 'FC Viktoria Köln': 'Viktoria Koln', '1. FC Schweinfurt 05': 'Schweinfurt',
+    'SC Fortuna Köln': 'Fortuna Koln', 'SV Meppen': 'Meppen', 'SG Sonnenhof Großaspach': 'Sonnenhof Grossaspach',
+    'FC Würzburger Kickers': 'Wurzburger Kickers', 'FC Schalke 04': 'Schalke 04', 'SV 07 Elversberg': 'Elversberg',
+    'Örebro SK': 'Orebro', 'Hammarby Talang FF': 'Hammarby', 'Norrby IF': 'Norrby', 'Ljungskile SK': 'Ljungskile',
+    'SK Rapid Wien': 'Rapid Vienna',
   };
   const searchLogo = async (name) => {
     const q = encodeURIComponent(SEARCH_ALIAS[name] || name);
@@ -113,7 +124,7 @@ async function dl(url, dest) {
     }
   }
   // logo de liga vía scoreboard (leagues[0].logos) para las que falten; sin ESPN → leaguelogo de FotMob
-  const FM_LEAGUE_LOGO = { polonia: 196, finlandia: 51 };
+  const FM_LEAGUE_LOGO = { polonia: 196, finlandia: 51, liga3: 208, superettan: 168 };
   for (const lgKey of leagues) {
     const dest = path.join(OUT, 'league-' + lgKey + '.png');
     if (fs.existsSync(dest)) continue;

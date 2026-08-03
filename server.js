@@ -7586,13 +7586,11 @@ function askQuotaSpend(u) { if (!u.isAdmin) { db.askQuota.by[u.email] = (db.askQ
 // Resolver de FÚTBOL: equipos contra los ratings de TODAS las ligas (puntuado, empate→null — regla del
 // matcher), partido contra upcoming/live. Devuelve el bundle de datos para el LLM y una respuesta de
 // plantilla como respaldo. Solo regímenes PÚBLICOS de picks salen hacia usuarios.
-function footballAskBundle(q, u, lang) {
+// matcher de equipos compartido (chat + herramientas del agente): puntuado, empate implícito por score
+function footballResolveTeams(q) {
   const RT = global._clubsRatings || { leagues: {} };
-  const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const qn = ' ' + nrm(q) + ' ';
-  // ¿es de combate? → redirigir, no adivinar
-  if (/ufc|mma|pelea|boxe|fight|knockout|pfl|bellator/i.test(q)) return { kind: 'other_sport' };
-  // buscar equipos mencionados (todas las ligas), puntuando por tokens del nombre
   const hits = [];
   for (const [lg, L] of Object.entries(RT.leagues || {})) {
     for (const [tid, t] of Object.entries(L.ratings || {})) {
@@ -7604,73 +7602,92 @@ function footballAskBundle(q, u, lang) {
   hits.sort((a, b) => b.sc - a.sc);
   const seen = new Set(); const top = [];
   for (const h of hits) { const k = h.lg + '|' + h.tid; if (!seen.has(k)) { seen.add(k); top.push(h); } if (top.length >= 4) break; }
-  // pareja de la MISMA liga → partido concreto
   let pair = null;
   for (let i = 0; i < top.length && !pair; i++) for (let j = i + 1; j < top.length; j++) {
     if (top[i].lg === top[j].lg && top[i].tid !== top[j].tid) { pair = [top[i], top[j]]; break; }
   }
+  return { top, pair };
+}
+// núcleo del bundle de UN cruce (top-level: lo usan el chat, el respaldo y las herramientas del agente)
+function footballMatchData(lg, h, a, lang) {
+  const RT = global._clubsRatings || { leagues: {} };
   const isPublicPick = (p) => p.status === 'ACTIVE' && p.regime && p.regime !== 'monitor';
-  const matchData = (lg, h, a) => {
-    const L = RT.leagues[lg];
-    const rh = clubElo(lg, h.tid), ra = clubElo(lg, a.tid);
-    const pr = matchProbs(rh + (L.hfa || 60), ra);
-    let goals = null;
-    try {
-      const gf = clubGoalsFit(lg);
-      const [lh, la] = gf ? goalLambdas(gf, h.tid, a.tid) : lambdas(rh + (L.hfa || 60), ra);
-      let over25 = 0; // doble Poisson rápido sobre los λ del cruce (mismos λ del cockpit)
-      const pois = (l, k) => Math.exp(-l) * Math.pow(l, k) / [1, 1, 2, 6, 24, 120, 720, 5040][k];
-      for (let gh = 0; gh <= 7; gh++) for (let ga = 0; ga <= 7; ga++) if (gh + ga > 2.5) over25 += pois(lh, gh) * pois(la, ga);
-      goals = { xg_home: +lh.toFixed(2), xg_away: +la.toFixed(2), over_2_5_pct: Math.round(over25 * 100) };
-    } catch { /* liga sin fit de goles */ }
-    // partido en upcoming/live + mercado del value board
-    let fixture = null;
-    const up = (global._clubsUpcoming || {})[lg];
-    for (const m of (up && up.rows) || []) {
-      const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
-      if ((hId === h.tid && aId === a.tid) || (hId === a.tid && aId === h.tid)) { fixture = { utc: m.utc_date, home_is: hId === h.tid ? 'first' : 'second' }; break; }
+  const L = RT.leagues[lg];
+  const rh = clubElo(lg, h.tid), ra = clubElo(lg, a.tid);
+  const pr = matchProbs(rh + (L.hfa || 60), ra);
+  let goals = null;
+  try {
+    // GOTCHA repetido (mismo caso que el CE de combate): goalLambdas NO es global en server.js — se
+    // requiere del engine en cada función. La llamada a pelo lanzaba ReferenceError → goles siempre null.
+    const gf = clubGoalsFit(lg);
+    const gl = gf ? require('./clubs-engine/goalsModel').goalLambdas(gf, h.tid, a.tid) : null;
+    const [lh, la] = gl || lambdas(rh + (L.hfa || 60), ra);
+    let over25 = 0; // doble Poisson rápido sobre los λ del cruce (mismos λ del cockpit)
+    const pois = (l, k) => Math.exp(-l) * Math.pow(l, k) / [1, 1, 2, 6, 24, 120, 720, 5040][k];
+    for (let gh = 0; gh <= 7; gh++) for (let ga = 0; ga <= 7; ga++) if (gh + ga > 2.5) over25 += pois(lh, gh) * pois(la, ga);
+    goals = { xg_home: +lh.toFixed(2), xg_away: +la.toFixed(2), over_2_5_pct: Math.round(over25 * 100) };
+  } catch { /* liga sin fit de goles */ }
+  let fixture = null;
+  const up = (global._clubsUpcoming || {})[lg];
+  for (const m of (up && up.rows) || []) {
+    const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+    if ((hId === h.tid && aId === a.tid) || (hId === a.tid && aId === h.tid)) { fixture = { utc: m.utc_date }; break; }
+  }
+  const val = ((global._clubsValue || {}).rows || []).filter((r) => (r.home_id === h.tid && r.away_id === a.tid) || (r.home_id === a.tid && r.away_id === h.tid));
+  const market = val.length ? val.map((r) => ({ outcome: r.outcome, consensus_pct: Math.round(r.consensus * 100), our_pct: Math.round(r.our * 100), edge_pp: r.edge_pp, best_odds: r.best_odds, best_book: r.best_book, books: r.books })) : null;
+  const signals = [];
+  try { for (const tid of [h.tid, a.tid]) for (const f of clubObserverFindings(tid).slice(0, 3)) signals.push({ team: tid === h.tid ? h.name : a.name, note: lang === 'en' ? (f.why_en || f.why_es) : (f.why_es || f.why_en) }); } catch { /* sin observer */ }
+  // forma reciente (últimos 5 por equipo) — del archivo de results de la liga (temporada completa;
+  // db.clubResults se poda a días y dejaba la forma vacía casi siempre). Memo por mtime.
+  const form = {};
+  try {
+    global._askFormMemo = global._askFormMemo || {};
+    const fpath = clubDataFile(`results-${lg}.json`);
+    const mt = fs.statSync(fpath).mtimeMs;
+    let rows = (global._askFormMemo[lg] && global._askFormMemo[lg].mt === mt) ? global._askFormMemo[lg].rows : null;
+    if (!rows) { rows = (JSON.parse(fs.readFileSync(fpath, 'utf8')).rows || []).filter((r) => r.hg != null && r.ag != null); global._askFormMemo[lg] = { mt, rows }; }
+    for (const [tid, nm] of [[h.tid, h.name], [a.tid, a.name]]) {
+      const res = rows.filter((r) => String(r.home_id) === tid || String(r.away_id) === tid)
+        .sort((x, y) => String(y.date || '').localeCompare(String(x.date || ''))).slice(0, 5)
+        .map((r) => { const home = String(r.home_id) === tid; const gf = home ? r.hg : r.ag, ga = home ? r.ag : r.hg; return gf > ga ? 'W' : gf < ga ? 'L' : 'D'; });
+      if (res.length) form[nm] = res.join('-');
     }
-    const val = ((global._clubsValue || {}).rows || []).filter((r) => (r.home_id === h.tid && r.away_id === a.tid) || (r.home_id === a.tid && r.away_id === h.tid));
-    const market = val.length ? val.map((r) => ({ outcome: r.outcome, consensus_pct: Math.round(r.consensus * 100), our_pct: Math.round(r.our * 100), edge_pp: r.edge_pp, best_odds: r.best_odds, best_book: r.best_book, books: r.books })) : null;
-    // señales del observer (narradas, caja negra)
-    const signals = [];
-    try { for (const tid of [h.tid, a.tid]) for (const f of clubObserverFindings(tid).slice(0, 3)) signals.push({ team: tid === h.tid ? h.name : a.name, note: lang === 'en' ? (f.why_en || f.why_es) : (f.why_es || f.why_en) }); } catch { /* sin observer */ }
-    // pick pública activa de este cruce
-    const pk = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])].find((p) => isPublicPick(p) && p.event &&
-      ((p.event.home_team_id === h.tid && p.event.away_team_id === a.tid) || (p.event.home_team_id === a.tid && p.event.away_team_id === h.tid)));
-    return {
-      league: L.name, country: L.country, kickoff_utc: fixture && fixture.utc,
-      home: h.name, away: a.name,
-      gp_probs_pct: { home: Math.round(pr.home * 100), draw: Math.round(pr.draw * 100), away: Math.round(pr.away * 100) },
-      goals, market, signals: signals.length ? signals : null,
-      active_pick: pk ? { family: pk.family, selection: pk.side || pk.selection_code, odds: pk.best_odds, book: pk.best_book, edge_pp: pk.edge_pp, why: lang === 'en' ? (pk.why_en || '') : (pk.why_es || '') } : null,
-    };
+  } catch { /* liga sin results en disco */ }
+  const pk = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])].find((p) => isPublicPick(p) && p.event &&
+    ((p.event.home_team_id === h.tid && p.event.away_team_id === a.tid) || (p.event.home_team_id === a.tid && p.event.away_team_id === h.tid)));
+  return {
+    league: L.name, country: L.country, kickoff_utc: fixture && fixture.utc,
+    home: h.name, away: a.name,
+    gp_probs_pct: { home: Math.round(pr.home * 100), draw: Math.round(pr.draw * 100), away: Math.round(pr.away * 100) },
+    goals, market, recent_form: Object.keys(form).length ? form : null, signals: signals.length ? signals : null,
+    active_pick: pk ? { family: pk.family, selection: pk.side || pk.selection_code, odds: pk.best_odds, book: pk.best_book, edge_pp: pk.edge_pp, why: lang === 'en' ? (pk.why_ai_en || pk.why_en || '') : (pk.why_ai_es || pk.why_es || '') } : null,
   };
+}
+function footballAskBundle(q, u, lang) {
+  const RT = global._clubsRatings || { leagues: {} };
+  if (/ufc|mma|pelea|boxe|fight|knockout|pfl|bellator/i.test(q)) return { kind: 'other_sport' };
+  const { top, pair } = footballResolveTeams(q);
   if (pair) {
-    // orientar home/away según el fixture real si existe
     let [h, a] = pair;
     const up = (global._clubsUpcoming || {})[h.lg];
     for (const m of (up && up.rows) || []) {
       const hId = String(m.home_team && m.home_team.id);
       if (hId === a.tid && String(m.away_team && m.away_team.id) === h.tid) { [h, a] = [a, h]; break; }
     }
-    return { kind: 'match', data: matchData(h.lg, h, a), link: null };
+    return { kind: 'match', data: footballMatchData(h.lg, h, a, lang), link: null };
   }
   if (top.length === 1 || (top.length && top[0].sc > (top[1] ? top[1].sc : 0))) {
-    // UN equipo → su próximo partido
     const h = top[0]; const up = (global._clubsUpcoming || {})[h.lg];
     for (const m of (up && up.rows) || []) {
       const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
       if (hId === h.tid || aId === h.tid) {
-        const L = RT.leagues[h.lg];
         const rival = hId === h.tid ? { lg: h.lg, tid: aId, name: (m.away_team || {}).name || '?' } : { lg: h.lg, tid: hId, name: (m.home_team || {}).name || '?' };
         const home = hId === h.tid ? h : rival, away = hId === h.tid ? rival : h;
-        return { kind: 'match', assumed: true, data: matchData(h.lg, home, away), link: null };
+        return { kind: 'match', assumed: true, data: footballMatchData(h.lg, home, away, lang), link: null };
       }
     }
     return { kind: 'team_no_fixture', data: { team: h.name, league: (RT.leagues[h.lg] || {}).name } };
   }
-  // sin entidad: ¿pregunta por las picks / el valor / el día? → brief
   if (/pick|apuesta|jugada|bet|valor|value|oportunidad|opportunit|hoy|today|brief/i.test(q)) {
     const b = buildDailyBrief();
     const pub = (b.top || []).filter((p) => p.regime && p.regime !== 'monitor');
@@ -7694,6 +7711,138 @@ function footballAskTemplate(bundle, lang) {
   return en
     ? `${d.home} vs ${d.away} (${d.league}): GP has it ${gp.home}% / ${gp.draw}% / ${gp.away}%.` + (d.goals ? ` Projected goals ${d.goals.xg_home}-${d.goals.xg_away}.` : '')
     : `${d.home} vs ${d.away} (${d.league}): GP lo da ${gp.home}% / ${gp.draw}% / ${gp.away}%.` + (d.goals ? ` Goles proyectados ${d.goals.xg_home}-${d.goals.xg_away}.` : '');
+}
+
+// ═ AGENTE (V2, 3-ago): herramientas con las que el chat BUSCA en la plataforma. La caja negra vive acá:
+// las herramientas devuelven factores TRADUCIDOS y números de los engines; el modelo solo redacta. ═
+const ASK_DOW = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const askDow = (iso) => { const d = new Date(iso); return isFinite(d) ? ASK_DOW[d.getUTCDay()] : null; };
+
+// bundle COMPLETO de una pelea próxima (paridad con el cockpit; respeta la regla sin-muestra)
+async function combatFightAskBundle(C, ev, ft, org, lang, isAdmin) {
+  const CE = require('./combat-engine/ratings');
+  const en = lang === 'en';
+  const nA = C.elo.N[ft.f1.id] || 0, nB = C.elo.N[ft.f2.id] || 0;
+  const rated = nA >= 3 && nB >= 3;
+  const out = {
+    org, cartelera: ev.name, dia: askDow(ev.date), utc: String(ev.date).slice(0, 16) + 'Z',
+    pelea: `${ft.f1.name} vs ${ft.f2.name}`, estelar: !!ft.main, rounds_programados: ft.rounds || 3, division: ft.weight || null,
+  };
+  if (!rated) {
+    out.nota = en ? 'insufficient sample on at least one fighter — GP does not publish a probability here (the market knows them better than our data does)' : 'muestra insuficiente en al menos un peleador — GP no publica probabilidad aquí (el mercado los conoce mejor que nuestra data)';
+  } else {
+    const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
+    const m = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+    const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+    out.gp_prob_pct = { [ft.f1.name]: Math.round(pr.p1 * 100), [ft.f2.name]: Math.round((1 - pr.p1) * 100) };
+    out.metodo = { ko_pct: Math.round(m.ko * 100), sub_pct: Math.round(m.sub * 100), dec_pct: Math.round(m.dec * 100), termina_antes_del_limite_pct: Math.round(m.finish * 100), rounds_esperados: m.exp_rounds };
+    out.factores = (bd && bd.parts || []).slice(0, 6).map((x) => ({ factor: (en ? CB_FACTOR_EN : CB_FACTOR_ES)[x.key] || x.key, pp: +(x.pp || 0).toFixed(1) }));
+  }
+  const mo = combatFightOdds(C, ft);
+  if (mo) out.mercado = { consenso_pct: { [ft.f1.name]: Math.round(mo.fair_f1 * 100), [ft.f2.name]: Math.round((1 - mo.fair_f1) * 100) }, mejor_cuota: { [ft.f1.name]: mo.best.f1 || null, [ft.f2.name]: mo.best.f2 || null }, casas: mo.books };
+  const fl = combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft));
+  if (fl.length) out.senales = fl.slice(0, 5).map((x) => en ? x.en : x.es);
+  try { const fs2 = combatFilmStudy(C, ft); const fi = (fs2.findings || []).slice(0, 3); if (fi.length) out.cinta = fi.map((x) => en ? x.en : x.es); } catch { /* sin cinta */ }
+  const h2h = (C.fights.fights || []).filter((f) => f.completed && ((f.f1.id === ft.f1.id && f.f2.id === ft.f2.id) || (f.f1.id === ft.f2.id && f.f2.id === ft.f1.id)) && (f.f1.winner || f.f2.winner));
+  if (h2h.length) out.historial_entre_ambos = h2h.map((f) => `${f.f1.winner ? f.f1.name : f.f2.name} ${en ? 'won' : 'ganó'} (${(f.method || {}).display || 'res.'})`);
+  if (isAdmin) {
+    const pk = (db.combatPicks || []).find((x) => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
+    if (pk) out.pick_monitor = { familia: pk.family, seleccion: pk.selection_name, cuota: pk.best_odds, edge_pp: pk.edge_blend_pp, lectura: en ? (pk.why_ai_en || pk.why_en) : (pk.why_ai_es || pk.why_es) };
+  }
+  return out;
+}
+
+// herramientas por deporte para el agente del chat
+function askToolsFor(sport, { u, lang, org }) {
+  if (sport !== 'combat') {
+    const tools = [
+      { name: 'agenda_futbol', description: 'Próximos partidos cargados en la plataforma (todas las ligas), con fecha UTC y día de la semana. Úsala para preguntas de "hoy", "mañana", "el sábado" o la jornada.', input_schema: { type: 'object', properties: { dias: { type: 'number', description: 'ventana en días (default 7, máx 14)' }, liga: { type: 'string', description: 'filtrar por nombre de liga o país (opcional)' } } } },
+      { name: 'detalle_partido', description: 'Detalle completo de UN cruce: probabilidades GP, goles proyectados, mercado vs modelo, forma reciente, señales de contexto y pick activa si existe. Pasa uno o los dos nombres de equipo.', input_schema: { type: 'object', properties: { equipo1: { type: 'string' }, equipo2: { type: 'string' } }, required: ['equipo1'] } },
+      { name: 'picks_publicas', description: 'Las picks públicas activas del feed, con su explicación y cuota.', input_schema: { type: 'object', properties: {} } },
+      { name: 'tablero_valor', description: 'Las mayores separaciones modelo-vs-mercado del momento (value board).', input_schema: { type: 'object', properties: {} } },
+    ];
+    const runTool = async (name, input) => {
+      if (name === 'agenda_futbol') {
+        const dias = Math.min(14, +input.dias || 7);
+        const RT = global._clubsRatings || { leagues: {} };
+        const out = [];
+        for (const [lg, up] of Object.entries(global._clubsUpcoming || {})) {
+          const L = RT.leagues[lg]; if (!L) continue;
+          if (input.liga && !((L.name || '') + ' ' + lg + ' ' + (L.country || '')).toLowerCase().includes(String(input.liga).toLowerCase())) continue;
+          for (const m of (up.rows || [])) {
+            const t = Date.parse(m.utc_date || ''); if (!isFinite(t) || t < Date.now() - 3 * 3600e3 || t > Date.now() + dias * 24 * 3600e3) continue;
+            out.push({ liga: L.name, pais: L.country, dia: askDow(m.utc_date), utc: String(m.utc_date).slice(0, 16) + 'Z', partido: `${(m.home_team || {}).name} vs ${(m.away_team || {}).name}` });
+          }
+        }
+        out.sort((a, b) => a.utc.localeCompare(b.utc));
+        return { n: out.length, partidos: out.slice(0, 45) };
+      }
+      if (name === 'detalle_partido') {
+        const b = footballAskBundle([input.equipo1, input.equipo2].filter(Boolean).join(' '), u, lang);
+        if (b.kind === 'match') return { ...b.data, dia: b.data.kickoff_utc ? askDow(b.data.kickoff_utc) : null, sujeto_asumido: !!b.assumed };
+        if (b.kind === 'team_no_fixture') return { equipo: b.data.team, liga: b.data.league, nota: 'sin próximo partido cargado' };
+        return { error: 'no identifiqué ese cruce con esos nombres' };
+      }
+      if (name === 'picks_publicas') {
+        const isPub = (p) => p.status === 'ACTIVE' && p.regime && p.regime !== 'monitor';
+        const rows = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])].filter(isPub)
+          .filter((p) => u.isAdmin || isPublicSegment(p.family, p.side, p.league))
+          .sort((a, b) => new Date(a.event.kickoff_at || 0) - new Date(b.event.kickoff_at || 0))
+          .slice(0, 12).map((p) => ({ liga: p.competition_name || p.league, partido: `${p.event.home} vs ${p.event.away}`, dia: p.event.kickoff_at ? askDow(p.event.kickoff_at) : null, utc: p.event.kickoff_at, familia: p.family, seleccion: p.selection_name || p.side || p.selection_code, linea: p.line || null, cuota: p.best_odds, casa: p.best_book, lectura: lang === 'en' ? (p.why_ai_en || p.why_en || null) : (p.why_ai_es || p.why_es || null) }));
+        return { n: rows.length, picks: rows };
+      }
+      if (name === 'tablero_valor') {
+        const rows = ((global._clubsValue || {}).rows || []).slice(0, 8).map((r) => ({ liga: r.league_name, partido: `${r.home} vs ${r.away}`, lado: r.outcome, gp_pct: Math.round(r.our * 100), mercado_pct: Math.round(r.consensus * 100), edge_pp: r.edge_pp, mejor_cuota: r.best_odds, casa: r.best_book, casas: r.books }));
+        return { n: rows.length, valor: rows };
+      }
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'FÚTBOL (32 ligas de clubes). Si preguntan por UFC/MMA/boxeo, indica el conmutador de deporte de arriba.' };
+  }
+  const tools = [
+    { name: 'agenda_combate', description: 'Carteleras próximas de UFC, MMA (PFL/Bellator) y boxeo, con fecha, día de la semana y las peleas de cada una. Úsala para "el sábado", "la próxima cartelera", etc.', input_schema: { type: 'object', properties: { org: { type: 'string', enum: ['ufc', 'mma', 'boxing'] } } } },
+    { name: 'detalle_pelea', description: 'Detalle completo de UNA pelea próxima: probabilidad GP, método, rounds, mercado, factores del enfrentamiento, señales, la cinta y el historial entre ambos. Pasa uno o los dos nombres.', input_schema: { type: 'object', properties: { nombre1: { type: 'string' }, nombre2: { type: 'string' }, org: { type: 'string', enum: ['ufc', 'mma', 'boxing'] } }, required: ['nombre1'] } },
+    { name: 'perfil_peleador', description: 'Perfil de un peleador del histórico: récord, Elo, forma reciente, métodos de victoria, edad, alcance, campamento.', input_schema: { type: 'object', properties: { nombre: { type: 'string' } }, required: ['nombre'] } },
+  ].concat(u.isAdmin ? [{ name: 'picks_combate', description: 'Picks activas del monitor de combate (privado del admin).', input_schema: { type: 'object', properties: {} } }] : []);
+  const runTool = async (name, input) => {
+    const orgOf = (o) => COMBAT_ORGS[o] ? o : (COMBAT_ORGS[org] ? org : 'ufc');
+    if (name === 'agenda_combate') {
+      const orgs = input.org ? [orgOf(input.org)] : Object.keys(COMBAT_ORGS);
+      const out = [];
+      for (const o of orgs) {
+        const C = combatLoad(o); await combatRefreshUpcoming(C);
+        for (const ev of (C.upcoming || []).slice(0, 4)) {
+          out.push({ org: o, cartelera: ev.name, dia: askDow(ev.date), utc: String(ev.date).slice(0, 16) + 'Z', n_peleas: ev.fights.length, peleas: ev.fights.slice(0, 14).map((f) => ({ pelea: `${f.f1.name} vs ${f.f2.name}`, estelar: !!f.main })) });
+        }
+      }
+      return { carteleras: out };
+    }
+    if (name === 'detalle_pelea') {
+      const o = orgOf(input.org);
+      for (const oo of [o, ...Object.keys(COMBAT_ORGS).filter((x) => x !== o)]) {
+        const C = combatLoad(oo); await combatRefreshUpcoming(C);
+        const ent = cbResolveEntity(C, [input.nombre1, input.nombre2].filter(Boolean).join(' '));
+        if (ent.kind === 'fight') return combatFightAskBundle(C, ent.ev, ent.ft, oo, lang, !!u.isAdmin);
+      }
+      return { error: 'no encontré esa pelea en las carteleras cargadas' };
+    }
+    if (name === 'perfil_peleador') {
+      const o = orgOf(input.org);
+      for (const oo of [o, ...Object.keys(COMBAT_ORGS).filter((x) => x !== o)]) {
+        const C = combatLoad(oo);
+        const ent = cbResolveEntity(C, String(input.nombre || ''));
+        const id = ent.kind === 'fighter' ? ent.id : ent.kind === 'fight' ? ent.ft.f1.id : null;
+        if (id) return { org: oo, ...combatFighterSummary(C, id) };
+      }
+      return { error: 'no identifiqué a ese peleador' };
+    }
+    if (name === 'picks_combate' && u.isAdmin) {
+      const rows = (db.combatPicks || []).filter((p) => p.status === 'ACTIVE').slice(0, 12).map((p) => ({ org: p.league, pelea: `${p.event.home} vs ${p.event.away}`, familia: p.family, seleccion: p.selection_name, cuota: p.best_odds, edge_pp: p.edge_blend_pp, lectura: lang === 'en' ? (p.why_ai_en || p.why_en || null) : (p.why_ai_es || p.why_es || null) }));
+      return { n: rows.length, picks: rows };
+    }
+    return { error: 'herramienta desconocida' };
+  };
+  return { tools, runTool, sportLabel: 'COMBATE (UFC · MMA/PFL · Boxeo). Si preguntan por fútbol, indica el conmutador de deporte de arriba.' };
 }
 
 // ── Redactor: why de picks en prosa (una vez por pick, persistido → costo fijo) ──
@@ -9728,6 +9877,8 @@ const server = http.createServer(async (req, res) => {
           odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
           line_move: x.line_move ? { pp: x.line_move.pp, direction: x.line_move.direction } : null,
           why_es: x.why_es || null, why_en: x.why_en || null,
+          // GP INTELLIGENCE: la prosa del redactor viaja al feed (el cliente la prefiere; sin ella cae a la plantilla)
+          why_ai_es: x.why_ai_es || null, why_ai_en: x.why_ai_en || null,
           signals: pickSignals(x),
           books_list: booksListFor(bmap, x),
         }));
@@ -9760,6 +9911,7 @@ const server = http.createServer(async (req, res) => {
               player_name: x.player_name || null, player_family: x.player_family || null,
               odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
               why_es: x.why_es || null, why_en: x.why_en || null,
+              why_ai_es: x.why_ai_es || null, why_ai_en: x.why_ai_en || null,
               stake_pct: x.stake_pct != null ? x.stake_pct : null, // Kelly/4 sobre la prob encogida (26-jul)
               signals: pickSignals(x, { isClub: true }),
               books_list: booksListFor(bmap, x),
@@ -10711,29 +10863,31 @@ const server = http.createServer(async (req, res) => {
       }
       const quo = askQuotaOk(u);
       if (!quo.ok) return json(res, 429, { error: 'limit', left: 0 });
+      const org2 = COMBAT_ORGS[String(b.org || '')] ? String(b.org) : 'ufc';
+      // V2 (3-ago): AGENTE con herramientas + hilo de conversación (el cliente manda los últimos turnos).
+      // El modelo consulta agenda/detalle/picks/valor él mismo — "la pelea del sábado" se resuelve mirando
+      // la agenda con la fecha de hoy. Si el LLM está apagado/sin presupuesto/falla → camino viejo.
+      const hist = Array.isArray(b.hist) ? b.hist.slice(-6) : [];
       let answer = null, link = null, usedLlm = false, subject = null;
-      if (sport === 'combat') {
-        const org2 = COMBAT_ORGS[String(b.org || '')] ? String(b.org) : 'ufc';
-        const C2 = combatLoad(org2);
-        await combatRefreshUpcoming(C2);
-        const ca = await combatAsk(C2, q, org2, !!u.isAdmin);
-        answer = (lang === 'en' ? ca.answer_en : ca.answer_es) || ca.answer_es; link = ca.link; subject = ca.subject || null;
-        if (llm.enabled() && llm.budgetOk()) {
-          try {
-            const w = await llm.askWrite({ q, lang, bundle: { sport: 'combat', intent: ca.intent, subject: ca.subject || null, assumed: !!ca.assumed, datos: ca.data, lectura_base: answer } });
-            if (w) { answer = w; usedLlm = true; }
-          } catch { /* respaldo: plantilla */ }
+      if (llm.enabled() && llm.budgetOk()) {
+        try {
+          const kit = askToolsFor(sport, { u, lang, org: org2 });
+          const r = await llm.askAgent({ q, lang, hist, tools: kit.tools, runTool: kit.runTool, sportLabel: kit.sportLabel });
+          if (r && r.answer) { answer = r.answer; usedLlm = true; }
+        } catch (e) { console.error('[ask-agent]', e.message); }
+      }
+      if (!answer) {
+        // respaldo determinista (el de siempre): reglas por intención, sin LLM
+        if (sport === 'combat') {
+          const C2 = combatLoad(org2);
+          await combatRefreshUpcoming(C2);
+          const ca = await combatAsk(C2, q, org2, !!u.isAdmin);
+          answer = (lang === 'en' ? ca.answer_en : ca.answer_es) || ca.answer_es; link = ca.link; subject = ca.subject || null;
+        } else {
+          const bundle = footballAskBundle(q, u, lang);
+          answer = footballAskTemplate(bundle, lang);
+          if (bundle.kind === 'match' && bundle.data) subject = bundle.data.home + ' vs ' + bundle.data.away;
         }
-      } else {
-        const bundle = footballAskBundle(q, u, lang);
-        answer = footballAskTemplate(bundle, lang);
-        if (bundle.kind !== 'other_sport' && bundle.kind !== 'none' && llm.enabled() && llm.budgetOk()) {
-          try {
-            const w = await llm.askWrite({ q, lang, bundle: { sport: 'futbol', kind: bundle.kind, assumed: !!bundle.assumed, datos: bundle.data, lectura_base: answer } });
-            if (w) { answer = w; usedLlm = true; }
-          } catch { /* respaldo: plantilla */ }
-        }
-        if (bundle.kind === 'match' && bundle.data) subject = bundle.data.home + ' vs ' + bundle.data.away;
       }
       askQuotaSpend(u);
       return json(res, 200, { answer, link, llm: usedLlm, subject, left: askQuotaOk(u).left });

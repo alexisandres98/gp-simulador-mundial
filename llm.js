@@ -44,12 +44,13 @@ function budgetOk() { return usage().usd < dailyBudget(); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Llamada base. kind decide el modelo; el medidor carga el costo al uso que la originó.
-async function call({ kind = 'chat', system, messages, max_tokens = 512, cacheSystem = false }) {
+async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, cacheSystem = false }) {
   if (!enabled()) throw new Error('llm_disabled');
   const u = usage();
   if (u.usd >= dailyBudget()) throw new Error('llm_budget');
   const model = MODELS[kind] ? MODELS[kind]() : MODELS.chat();
   const body = { model, max_tokens, messages };
+  if (tools) body.tools = tools;
   if (system) body.system = cacheSystem ? [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] : system;
   let lastErr = null;
   for (let att = 0; att < 3; att++) {
@@ -96,6 +97,57 @@ function jsonOf(resp) {
 // El server resuelve la entidad con los resolvers deterministas de siempre y arma un BUNDLE de
 // datos de los engines. El LLM SOLO redacta desde ese bundle, en el idioma del usuario. Regla
 // dura en el prompt: ningún número que no esté en el bundle; si el dato no está, se dice.
+// V2 (3-ago, corrección de Alexis): el chat es un AGENTE con herramientas — el modelo BUSCA en la
+// plataforma (agenda, detalle, picks, valor) en vez de recibir un bundle pre-armado. Eso le da: resolver
+// "la pelea del sábado" (mira la agenda con la fecha de hoy), hilos multi-turno (la conversación entera
+// viaja en messages) y paridad fútbol/combate. La doctrina no cambia: las herramientas devuelven SOLO
+// factores traducidos y números de los engines; el modelo redacta, jamás calcula.
+const ASK_AGENT_SYSTEM = `Eres GP, el analista asistente de GP Simulador (plataforma de inteligencia deportiva). Respondes preguntas de usuarios sobre la plataforma usando las HERRAMIENTAS disponibles, que consultan los datos reales del modelo.
+
+REGLAS ABSOLUTAS:
+1. Cada número que menciones (probabilidades, cuotas, récords, estadísticas, fechas) debe salir de un resultado de herramienta de ESTA conversación. Jamás inventes, estimes ni respondas de memoria — ni siquiera cosas que "sabes" del deporte.
+2. Usa las herramientas con iniciativa: si preguntan por "el sábado", "mañana" o "la próxima jornada", consulta la agenda con la FECHA ACTUAL que tienes abajo y deduce el día. Si preguntan por un cruce concreto, pide el detalle. Encadena hasta 3 consultas si hace falta.
+3. Si tras consultar no hay dato, dilo con naturalidad ("no tengo ese dato cargado") y ofrece lo que sí encontraste.
+4. Nunca expliques la mecánica interna del modelo (features, pesos, fórmulas, calibración). Los factores que las herramientas devuelven ya vienen con nombre de producto — usa esos nombres y nada más.
+5. No des consejo financiero. Si hablas de una jugada, cierra recordando que son estimaciones de un modelo estadístico, no consejo financiero.
+6. Responde en el idioma indicado en IDIOMA. Tono: analista cercano, directo, 2-5 frases (más si piden un desglose). TEXTO PLANO: nada de markdown, asteriscos, encabezados ni viñetas.
+7. Mantén el hilo: si la conversación venía hablando de una pelea o un partido y la nueva pregunta no nombra otro, sigue con ese sujeto.
+8. Si asumes el sujeto (p. ej. el estelar de la próxima cartelera), decláralo al empezar.`;
+
+async function askAgent({ q, lang, hist, tools, runTool, sportLabel, extraCtx }) {
+  const now = new Date();
+  const DOW_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const sys = ASK_AGENT_SYSTEM
+    + `\n\nFECHA ACTUAL: ${now.toISOString().slice(0, 16)}Z (${DOW_ES[now.getUTCDay()]})`
+    + `\nSECCIÓN ACTIVA: ${sportLabel}`
+    + (extraCtx ? `\n${extraCtx}` : '');
+  const messages = [];
+  for (const h of (hist || []).slice(-6)) {
+    if (h.q) messages.push({ role: 'user', content: String(h.q).slice(0, 400) });
+    if (h.answer) messages.push({ role: 'assistant', content: String(h.answer).slice(0, 900) });
+  }
+  messages.push({ role: 'user', content: `IDIOMA: ${lang === 'en' ? 'inglés' : 'español'}\n${q}` });
+  let toolCalls = 0;
+  for (let iter = 0; iter < 5; iter++) {
+    const resp = await call({ kind: 'chat', system: sys, cacheSystem: true, tools, max_tokens: 600, messages });
+    const tus = (resp.content || []).filter((b) => b.type === 'tool_use');
+    if (resp.stop_reason !== 'tool_use' || !tus.length || toolCalls >= 4) {
+      return { answer: textOf(resp) || null, tool_calls: toolCalls };
+    }
+    messages.push({ role: 'assistant', content: resp.content });
+    const results = [];
+    for (const tu of tus) {
+      toolCalls++;
+      let out;
+      try { out = await runTool(tu.name, tu.input || {}); }
+      catch (e) { out = { error: String(e.message || e).slice(0, 120) }; }
+      results.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out).slice(0, 6000) });
+    }
+    messages.push({ role: 'user', content: results });
+  }
+  return { answer: null, tool_calls: toolCalls };
+}
+
 const ASK_SYSTEM = `Eres GP, el asistente de GP Simulador (plataforma de inteligencia deportiva). Respondes preguntas de usuarios sobre partidos, equipos, peleas y peleadores usando EXCLUSIVAMENTE los datos del bloque DATOS que acompaña cada pregunta.
 
 REGLAS ABSOLUTAS:
@@ -161,4 +213,4 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
-module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, writePickWhy, writeBrief, extractSignals };
+module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeBrief, extractSignals };

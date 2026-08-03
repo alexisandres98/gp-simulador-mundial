@@ -247,7 +247,7 @@
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
       pf_fam_method: 'Método', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Método y rounds · GP vs mercado', cb_mkt_model: 'GP', cb_mkt_market: 'Mercado', cb_mkt_src: 'vs consenso del mercado',
       cb_read: 'Lectura GP', cb_matchup: 'Matchup', cb_matchup_sub: 'qué inclina la pelea y cuánto', cb_pred: 'Predicción completa', cb_pred_sub: 'todos los desenlaces', cb_rdist: 'La pelea termina en…', cb_dist_lab: 'Decisión',
-      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', nav_cb_ask: 'Preguntale a GP', ask_intro_f: 'Preguntame por cualquier partido, equipo o las picks del día. Respondo con lo que el modelo realmente sabe; si no lo sé, te lo digo.', ask_ph_f: 'Preguntá por un partido, un equipo o las picks de hoy…', ask_limit: 'Llegaste al límite de preguntas de hoy. Mañana se renueva.', ask_upgrade: 'Preguntale a GP es parte de los planes Pro y Sharp. Podés activarlo desde Mi plan.', bf_ai_read: 'Lectura GP del día', cba_ph: 'Preguntá por una pelea o un peleador…', cba_send: 'Preguntar', cba_intro: 'Respondo con lo que el modelo realmente sabe de las carteleras cargadas. Si no lo sé, te lo digo.', cba_try: 'Probá con:', cba_open: 'Ver la ficha completa →', cba_thinking: 'Buscando…', cbm_title: 'El mercado se movió', cbm_sub: 'apertura → ahora, y hacia dónde', cbm_with: 'A FAVOR', cbm_against: 'EN CONTRA', cbm_snaps: 'lecturas', cbm_none: 'Sin movimientos relevantes todavía. El archivo de precios lleva pocas horas: esto se llena solo.', nav_cb_card: 'Mapa de la noche', cbc_night: 'La forma de la velada', cbc_fin_exp: 'peleas terminan antes del límite', cbc_rounds_exp: 'rounds en total', cbc_dist: 'Cuántas acaban antes del límite', cbc_early: 'La que más chance tiene de acabar temprano', cbc_far: 'La que más lejos llega', cbc_gap: 'Mayor discrepancia con el mercado', cbc_card_sel: 'Cartelera', cbc_sims: 'sobre 10.000 veladas simuladas', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
+      cb_fx_misswt: 'condición en el pesaje', cb_camp: 'Campamento', nav_cb_ask: 'Preguntale a GP', ask_intro_f: 'Preguntame por cualquier partido, equipo o las picks del día. Respondo con lo que el modelo realmente sabe; si no lo sé, te lo digo.', ask_ph_f: 'Preguntá por un partido, un equipo o las picks de hoy…', ask_limit: 'Llegaste al límite de preguntas de hoy. Mañana se renueva.', ask_new: '↺ Nueva conversación', ask_upgrade: 'Preguntale a GP es parte de los planes Pro y Sharp. Podés activarlo desde Mi plan.', bf_ai_read: 'Lectura GP del día', cba_ph: 'Preguntá por una pelea o un peleador…', cba_send: 'Preguntar', cba_intro: 'Respondo con lo que el modelo realmente sabe de las carteleras cargadas. Si no lo sé, te lo digo.', cba_try: 'Probá con:', cba_open: 'Ver la ficha completa →', cba_thinking: 'Buscando…', cbm_title: 'El mercado se movió', cbm_sub: 'apertura → ahora, y hacia dónde', cbm_with: 'A FAVOR', cbm_against: 'EN CONTRA', cbm_snaps: 'lecturas', cbm_none: 'Sin movimientos relevantes todavía. El archivo de precios lleva pocas horas: esto se llena solo.', nav_cb_card: 'Mapa de la noche', cbc_night: 'La forma de la velada', cbc_fin_exp: 'peleas terminan antes del límite', cbc_rounds_exp: 'rounds en total', cbc_dist: 'Cuántas acaban antes del límite', cbc_early: 'La que más chance tiene de acabar temprano', cbc_far: 'La que más lejos llega', cbc_gap: 'Mayor discrepancia con el mercado', cbc_card_sel: 'Cartelera', cbc_sims: 'sobre 10.000 veladas simuladas', cb_ref: 'Árbitro:', cb_judges: 'Jueces:',
       cbb_next: 'La próxima cartelera', cbb_div: 'Donde GP y el mercado no coinciden', cbb_div_sub: 'las mayores distancias de la cartelera', cbb_intel: 'Señales del vestuario', cbb_picks: 'En el monitor', cbb_recent: 'Cómo venimos', cbb_none: 'Nada que reportar por ahora.', cbb_cards: 'Carteleras por delante', cbb_model: 'GP', cbb_market: 'mercado', cbb_fights_n: 'peleas',
       cb_live: 'EN VIVO', cb_live_sub: 'la probabilidad se mueve con el reloj', cb_live_pre: 'antes de empezar', cb_live_now: 'ahora', cb_live_fin: 'termina antes del límite', cb_live_dec: 'llega a decisión', cb_live_left: 'rounds por delante', cb_live_tl: 'Cronología del combate', cb_live_note: 'La cronología viene sin atribuir desde la fuente oficial: son hechos del combate, no de un peleador. La probabilidad la mueven el modelo y el reloj.',
       cb_film: 'Film study', cb_film_sub: 'lo que dice la cinta', cb_film_none: 'Sin suficiente registro de acción para leer la cinta de este cruce.', cb_film_what: 'Lectura automática del registro de acción de cada pelea (a dónde van los golpes y con cuánta intención, cómo entra el juego de suelo, en qué round se cierran sus peleas). No es análisis de video.', cb_film_pace: 'Ritmo', cb_film_target: 'Reparto de golpes', cb_film_power: 'Intención', cb_film_gr: 'Suelo', cb_film_ctrl: 'Control', cb_film_early: 'Cierra temprano', cb_film_deep: 'Aguas profundas',
@@ -587,7 +587,7 @@
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
       pf_fam_method: 'Method', pf_fam_rounds: 'Rounds', cb_mkt_panel: 'Method & rounds · GP vs market', cb_mkt_model: 'GP', cb_mkt_market: 'Market', cb_mkt_src: 'vs market consensus',
       cb_read: 'GP read', cb_matchup: 'Matchup', cb_matchup_sub: 'what tilts the fight and by how much', cb_pred: 'Full prediction', cb_pred_sub: 'every outcome', cb_rdist: 'The fight ends in…', cb_dist_lab: 'Decision',
-      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', nav_cb_ask: 'Ask GP', ask_intro_f: 'Ask me about any match, team, or today\'s picks. I answer with what the model actually knows; if I don\'t know, I say so.', ask_ph_f: 'Ask about a match, a team, or today\'s picks…', ask_limit: 'You hit today\'s question limit. It resets tomorrow.', ask_upgrade: 'Ask GP is part of the Pro and Sharp plans. You can activate it from My plan.', bf_ai_read: 'GP read of the day', cba_ph: 'Ask about a fight or a fighter…', cba_send: 'Ask', cba_intro: 'I answer with what the model actually knows about the loaded cards. If I do not know, I say so.', cba_try: 'Try:', cba_open: 'Open the full breakdown →', cba_thinking: 'Looking…', cbm_title: 'The market moved', cbm_sub: 'open → now, and which way', cbm_with: 'WITH US', cbm_against: 'AGAINST', cbm_snaps: 'reads', cbm_none: 'No relevant moves yet. The price archive is only hours old: this fills itself in.', nav_cb_card: 'Map of the night', cbc_night: 'The shape of the night', cbc_fin_exp: 'fights end inside the limit', cbc_rounds_exp: 'total rounds', cbc_dist: 'How many end inside the limit', cbc_early: 'Most likely to end early', cbc_far: 'Most likely to go the distance', cbc_gap: 'Widest gap vs the market', cbc_card_sel: 'Card', cbc_sims: 'across 10,000 simulated nights', cb_ref: 'Referee:', cb_judges: 'Judges:',
+      cb_fx_misswt: 'condition at the weigh-in', cb_camp: 'Camp', nav_cb_ask: 'Ask GP', ask_intro_f: 'Ask me about any match, team, or today\'s picks. I answer with what the model actually knows; if I don\'t know, I say so.', ask_ph_f: 'Ask about a match, a team, or today\'s picks…', ask_limit: 'You hit today\'s question limit. It resets tomorrow.', ask_new: '↺ New conversation', ask_upgrade: 'Ask GP is part of the Pro and Sharp plans. You can activate it from My plan.', bf_ai_read: 'GP read of the day', cba_ph: 'Ask about a fight or a fighter…', cba_send: 'Ask', cba_intro: 'I answer with what the model actually knows about the loaded cards. If I do not know, I say so.', cba_try: 'Try:', cba_open: 'Open the full breakdown →', cba_thinking: 'Looking…', cbm_title: 'The market moved', cbm_sub: 'open → now, and which way', cbm_with: 'WITH US', cbm_against: 'AGAINST', cbm_snaps: 'reads', cbm_none: 'No relevant moves yet. The price archive is only hours old: this fills itself in.', nav_cb_card: 'Map of the night', cbc_night: 'The shape of the night', cbc_fin_exp: 'fights end inside the limit', cbc_rounds_exp: 'total rounds', cbc_dist: 'How many end inside the limit', cbc_early: 'Most likely to end early', cbc_far: 'Most likely to go the distance', cbc_gap: 'Widest gap vs the market', cbc_card_sel: 'Card', cbc_sims: 'across 10,000 simulated nights', cb_ref: 'Referee:', cb_judges: 'Judges:',
       cbb_next: 'The next card', cbb_div: 'Where GP and the market disagree', cbb_div_sub: 'the widest gaps on the card', cbb_intel: 'Signals from the camp', cbb_picks: 'On the monitor', cbb_recent: 'How we are doing', cbb_none: 'Nothing to report right now.', cbb_cards: 'Cards ahead', cbb_model: 'GP', cbb_market: 'market', cbb_fights_n: 'fights',
       cb_live: 'LIVE', cb_live_sub: 'the probability moves with the clock', cb_live_pre: 'before the opening bell', cb_live_now: 'now', cb_live_fin: 'ends inside the limit', cb_live_dec: 'goes to decision', cb_live_left: 'rounds ahead', cb_live_tl: 'Fight timeline', cb_live_note: 'The timeline arrives unattributed from the official feed: these are facts of the fight, not of a fighter. The probability is moved by the model and the clock.',
       cb_film: 'Film study', cb_film_sub: 'what the tape says', cb_film_none: 'Not enough recorded action to read the tape on this matchup.', cb_film_what: 'Automated reading of the recorded action of every fight (where the strikes go and with how much intent, how the ground game enters, which round their fights close in). This is not video analysis.', cb_film_pace: 'Pace', cb_film_target: 'Strike split', cb_film_power: 'Intent', cb_film_gr: 'Ground', cb_film_ctrl: 'Control', cb_film_early: 'Closes early', cb_film_deep: 'Deep water',
@@ -1190,7 +1190,8 @@
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
         .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
-      : [['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']]
+      // Preguntale a GP va PRIMERO (mismo fix que combate 2-ago: sin esto es inalcanzable en el celular)
+      : [['ask', 'message-circle', 'nav_cb_ask'], ['calc', 'calculator', 'calc_nav'], ['follow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['perf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.daily_brief ? [['brief', 'news', 'nav_brief']] : [])
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
@@ -2715,6 +2716,7 @@
       '<div class="gx-dim gx-cb-askintro">' + esc(t('ask_intro_f')) + '</div>' +
       '<div class="gx-cb-askbar"><input id="gx-askin" type="text" placeholder="' + esc(t('ask_ph_f')) + '" value="' + esc(st.q || '') + '" autocomplete="off">' +
       '<button class="gx-btn" id="gx-asksend">' + esc(t('cba_send')) + '</button></div>' +
+      ((st.hist || []).length ? '<div style="margin-top:8px"><button type="button" class="gx-why-btn" id="gx-asknew">' + esc(t('ask_new')) + '</button></div>' : '') +
       '<div class="gx-cb-askchips"><span class="gx-dim">' + esc(t('cba_try')) + '</span>' + chips + '</div>' +
       (st.loading ? '<div class="gx-dim gx-cb-askload">' + esc(t('cba_thinking')) + '</div>' : '') +
       hist + '</div></div>' +
@@ -2725,6 +2727,7 @@
       if (st.focus) { try { inp.focus(); } catch (e) {} st.focus = false; }
     }
     var btn = $('#gx-asksend'); if (btn) btn.addEventListener('click', function () { var i2 = $('#gx-askin'); if (i2) askSend(i2.value); });
+    var nw = $('#gx-asknew'); if (nw) nw.addEventListener('click', function () { S.ask = { q: '', loading: false, hist: [] }; renderAsk(); });
     mv.querySelectorAll('[data-fask]').forEach(function (ch) { ch.addEventListener('click', function () { askSend(ch.getAttribute('data-fask')); }); });
   }
   function askSend(q) {
@@ -2732,7 +2735,7 @@
     var st = S.ask || (S.ask = { hist: [] });
     st.q = ''; st.loading = true; st.focus = true;
     renderAsk();
-    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ q: q, sport: 'futbol', lang: LANG }) })
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ q: q, sport: 'futbol', lang: LANG, hist: (st.hist || []).slice(-6) }) })
       .then(function (r) { return r.json().catch(function () { return null; }); }).catch(function () { return null; })
       .then(function (j) {
         st.loading = false;
@@ -5863,6 +5866,7 @@
     var bk = e.target.closest('[data-cbgoback]'); if (bk) { goBack(); return; }
     // Cambio de organización: se QUEDA en la pestaña donde estás (antes te empujaba siempre a Peleas —
     // desde Oportunidades o Peleadores acababas en otra vista sin haberlo pedido).
+    var an = e.target.closest('[data-cbasknew]'); if (an) { S.cb.ask = { q: '', loading: false, hist: [] }; renderCb('cbask'); return; }
     var ac = e.target.closest('[data-cbask]'); if (ac) { cbAskSend(ac.getAttribute('data-cbask')); return; }
     var as = e.target.closest('[data-cbasksend]'); if (as) { var i2 = $('#gx-cb-askin'); if (i2) cbAskSend(i2.value); return; }
     var ag = e.target.closest('[data-cbgo]'); if (ag) { setHash(ag.getAttribute('data-cbgo')); return; }
@@ -6034,6 +6038,7 @@
       '<div class="gx-dim gx-cb-askintro">' + esc(t('cba_intro')) + '</div>' +
       '<div class="gx-cb-askbar"><input id="gx-cb-askin" type="text" placeholder="' + esc(t('cba_ph')) + '" value="' + esc(st.q || '') + '" autocomplete="off">' +
       '<button class="gx-btn" data-cbasksend="1">' + esc(t('cba_send')) + '</button></div>' +
+      ((st.hist || []).length ? '<div style="margin-top:8px"><button type="button" class="gx-why-btn" data-cbasknew="1">' + esc(t('ask_new')) + '</button></div>' : '') +
       '<div class="gx-cb-askchips"><span class="gx-dim">' + esc(t('cba_try')) + '</span>' + chips + '</div>' +
       (st.loading ? '<div class="gx-dim gx-cb-askload">' + esc(t('cba_thinking')) + '</div>' : '') +
       hist + '</div></div>');
@@ -6050,7 +6055,7 @@
     renderCb('cbask');
     // GP INTELLIGENCE (3-ago): POST /api/ask con LLM server-side; el server degrada solo a la capa de
     // reglas de siempre si el LLM no está — el cliente no distingue, solo pinta `answer`.
-    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ q: q, sport: 'combat', org: cbOrg(), lang: LANG }) })
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ q: q, sport: 'combat', org: cbOrg(), lang: LANG, hist: (st.hist || []).slice(-6) }) })
       .then(function (r) { return r.json().catch(function () { return null; }); }).catch(function () { return null; })
       .then(function (j) {
         st.loading = false;

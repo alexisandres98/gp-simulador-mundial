@@ -12690,11 +12690,13 @@ const server = http.createServer(async (req, res) => {
       // (24-jul) misma fuente que el público: officialClubRecord() — cuadro idéntico admin/público (regla dura)
       const adminMerged = (db.dailyPicks || []).filter(x => x.family !== 'PLAYER').concat(officialClubRecord());
       const admPlayer = (db.dailyPicks || []).concat(db.clubDailyPicks || []).filter(x => x.family === 'PLAYER');
-      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(adminMerged), quant: dailyPicksQuant(), picks: adminMerged.slice(-400),
+      // ?all=1 (análisis quant): SIN cap — el registro completo con clv/closing/regime/league_band tal cual db
+      const allQ = url.searchParams.get('all') === '1';
+      return json(res, 200, { enabled: dailyPicksOn(), running: _dailyPicksRunning, last: _dailyPicksLast, count: db.dailyPicks.length, track_record: dailyPicksTrackRecord(adminMerged), quant: dailyPicksQuant(), picks: allQ ? adminMerged : adminMerged.slice(-400),
         player_track: { track_record: dailyPicksTrackRecord(admPlayer), picks: admPlayer.filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED').sort((a, b) => new Date(b.settled_at || 0) - new Date(a.settled_at || 0)).slice(0, 60) },
         // CLUBES (monitoreo privado, 15-jul): track record + picks de clubes SOLO en esta vista admin —
         // jamás en el rendimiento público.
-        clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: (db.clubDailyPicks || []).slice(-200) } });
+        clubs: { count: (db.clubDailyPicks || []).length, track_record: clubDailyPicksTrackRecord(), quant: clubDailyPicksQuant(), picks: allQ ? (db.clubDailyPicks || []) : (db.clubDailyPicks || []).slice(-200) } });
     }
     // SERIE de línea de un mercado (observatorio admin): goal_value_shadow leída como serie temporal + resumen
     // line-intel (apertura/cierre/dirección/steam). Read-only.

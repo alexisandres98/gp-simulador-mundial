@@ -1231,6 +1231,50 @@ Recibes este correo porque tienes una cuenta en GP Simulador. Para no recibir no
   return { subject, text, html };
 }
 
+// GP INTELLIGENCE (3-ago): anuncio de la capa conversacional + lecturas narradas. Libre para TODOS los
+// planes por 7 días (GP_ASK_FREE_UNTIL), después pasa a Pro/Sharp. SIN mención de MMA/boxeo (orden 3-ago).
+function gpIntelEmail(lang) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com/x#ask';
+  const subject = en
+    ? 'New: ask GP anything about any match — free for 7 days'
+    : 'Nuevo: preguntale a GP lo que quieras de cualquier partido — gratis por 7 días';
+  const preheader = en
+    ? 'GP now talks. Ask about any match, team or pick in plain language and it answers with the model\'s real numbers. Free on every plan for 7 days.'
+    : 'GP ahora conversa. Preguntá por cualquier partido, equipo o pick en lenguaje natural y responde con los números reales del modelo. Gratis en todos los planes por 7 días.';
+  const F = [
+    en ? ['Ask GP', 'Type a question the way you would ask a friend — "who wins Palmeiras vs Flamengo?", "is there value today?", "any injury news on River?" — and GP answers in plain language, with the model\'s real probabilities, the market\'s prices and the context signals it tracks across 32 leagues. If it doesn\'t know, it says so. No hallucinated numbers: every figure comes straight from the engine.']
+       : ['Preguntale a GP', 'Escribí la pregunta como se la harías a un amigo — "¿quién gana Palmeiras vs Flamengo?", "¿hay valor hoy?", "¿hay bajas en River?" — y GP te contesta en tu idioma, con las probabilidades reales del modelo, los precios del mercado y las señales de contexto que rastrea en 32 ligas. Si no lo sabe, te lo dice. Cero números inventados: cada cifra sale directo del motor.'],
+    en ? ['Every pick, explained like an analyst would', 'Public picks now arrive with a written read: why this side, what the market is paying and where the edge is — in prose, not codes.']
+       : ['Cada pick, explicada como por un analista', 'Las picks públicas ahora llegan con su lectura escrita: por qué ese lado, qué está pagando el mercado y dónde está la ventaja — en prosa, no en códigos.'],
+    en ? ['The GP read of the day', 'Your daily brief now opens with the analyst\'s summary of the day: what to watch, where model and market disagree, and what the context signals say.']
+       : ['La lectura GP del día', 'Tu brief diario ahora abre con el resumen del analista: qué mirar hoy, dónde se separan modelo y mercado, y qué dicen las señales de contexto.'],
+  ];
+  const text = (en
+    ? `GP now talks.\n\n` : `GP ahora conversa.\n\n`)
+    + F.map(f => f[0].toUpperCase() + '\n' + f[1]).join('\n\n')
+    + (en
+      ? `\n\nFREE FOR EVERYONE FOR 7 DAYS\nAsk GP is open on every plan until August 10. After that it becomes part of the Pro and Sharp plans.\n\n${url}\n\nPast performance does not guarantee future results. Not financial advice. 18+.\n\nAlexis · GP Simulador\n\nYou are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".`
+      : `\n\nGRATIS PARA TODOS POR 7 DÍAS\nPreguntale a GP está abierto en todos los planes hasta el 10 de agosto. Después pasa a ser parte de los planes Pro y Sharp.\n\n${url}\n\nRendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.\n\nAlexis · GP Simulador\n\nRecibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".`);
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'New · free on every plan for 7 days' : 'Nuevo · gratis en todos los planes por 7 días'}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${en ? 'GP now <span style="color:#18E6A3">talks</span>. Ask it anything about any match.' : 'GP ahora <span style="color:#18E6A3">conversa</span>. Preguntale lo que quieras de cualquier partido.'}</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'Plain-language questions, real model numbers. The same engine behind the picks, now answering you directly across 32 leagues.' : 'Preguntas en lenguaje natural, números reales del modelo. El mismo motor detrás de las picks, ahora respondiéndote directo en 32 ligas.'}</p>
+    </div>
+    <div style="padding:24px 26px">
+      ${F.map(f => `<div style="margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid #eef2f0"><p style="margin:0 0 4px;font-size:14.5px;color:#14201A;font-weight:800">${f[0]}</p><p style="margin:0;font-size:13.5px;color:#2b3a33;line-height:1.55">${f[1]}</p></div>`).join('')}
+      <p style="margin:2px 0 18px;font-size:14px;color:#2b3a33;line-height:1.6"><b>${en ? 'Free for everyone until August 10.' : 'Gratis para todos hasta el 10 de agosto.'}</b> ${en ? 'After that, Ask GP becomes part of the Pro and Sharp plans. Try it now:' : 'Después, Preguntale a GP pasa a ser parte de los planes Pro y Sharp. Probalo ahora:'}</p>
+      <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${en ? 'Ask GP now' : 'Preguntale a GP ahora'}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</div>
+  </div></div>`;
+  return { subject, text, html };
+}
+
 // LANZAMIENTO POST-MUNDIAL (18-jul): la fusión. La plataforma deja de ser "del Mundial" y se abre completa —
 // 15 ligas, picks multi-liga, value/arbitraje, cartera, casas, watch price, brief. Fin de semana abierto para
 // todos; la fase founder cierra con el Mundial. Un correo por usuario en SU idioma (userLang).
@@ -13485,6 +13529,8 @@ const server = http.createServer(async (req, res) => {
               : (variant === 'bankroll_en') ? () => bankrollEmail('en')
                 : (variant === 'features_es') ? () => featuresEmail('es')
                   : (variant === 'features_en') ? () => featuresEmail('en')
+                    : (variant === 'gpintel_es') ? () => gpIntelEmail('es')
+                      : (variant === 'gpintel_en') ? () => gpIntelEmail('en')
                     : (variant === 'launch') ? (em) => launchEmail(userLang(em)) // fusión: cada usuario en SU idioma
                       : (variant === 'launch_es') ? () => launchEmail('es')
                         : (variant === 'launch_en') ? () => launchEmail('en')

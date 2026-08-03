@@ -5191,6 +5191,10 @@ async function runClubObserver() {
   if (_clubObsRunning) return { skipped: 'running' };
   _clubObsRunning = true;
   const out = { teams: 0, items: 0, signals: 0, errors: 0, started: new Date().toISOString() };
+  // EXTRACTOR LLM EN PARALELO (mismo diseño que el de combate): los items con señal del regex —más una
+  // muestra de los que NO la tuvieron— van a un batch de Haiku. db.clubObsLLM separado, display nunca,
+  // solo A/B contra el regex. Cap 60 items/sweep.
+  const llmBatch = [];
   try {
     const sources = require('./observer/sources');
     const { extract } = require('./observer/extract');
@@ -5208,6 +5212,8 @@ async function runClubObserver() {
         for (const it of items) {
           if (!it.title || seen.has(it.title)) continue;
           const sigs = extract(it, { team: tmId, roster });
+          // al batch LLM: todo lo que el regex marcó + 1 de cada 4 sin señal (para medir lo que se nos escapa)
+          if (llmBatch.length < 60 && (sigs.length || (out.items % 4 === 0))) llmBatch.push({ tid: tmId, subject: name, title: it.title, snippet: it.description || '', source: it.source || null, published_at: it.published_at || null, regex_hit: sigs.length > 0 });
           if (!sigs.length) continue;
           const kept = [];
           for (const s of sigs) {
@@ -5226,6 +5232,21 @@ async function runClubObserver() {
       }
       if (slot.signals.length > 120) slot.signals = slot.signals.slice(-120);
       slot.fetched_at = new Date().toISOString();
+    }
+    // extracción LLM del batch del sweep (A/B silencioso)
+    if (llmBatch.length && llm.enabled() && llm.budgetOk()) {
+      try {
+        const sigs2 = await llm.extractSignals(llmBatch, 'futbol');
+        db.clubObsLLM = db.clubObsLLM || {};
+        for (const s of sigs2) {
+          const it = llmBatch[s.i];
+          const slot2 = db.clubObsLLM[it.tid] = db.clubObsLLM[it.tid] || { name: it.subject, signals: [] };
+          slot2.at = new Date().toISOString();
+          slot2.signals.push({ type: s.type, severity: s.severity, quote: s.quote, title: it.title, source: it.source, published_at: it.published_at, regex_hit: it.regex_hit });
+          if (slot2.signals.length > 60) slot2.signals = slot2.signals.slice(-60);
+        }
+        out.llm_items = llmBatch.length; out.llm_signals = sigs2.length;
+      } catch (e) { out.llm_error = e.message; }
     }
     if (out.signals) save();
   } catch (e) { out.error = e.message; }
@@ -7490,6 +7511,197 @@ async function combatAsk(C, q, org, isAdmin = true) {
   return out;
 }
 
+// ═════ GP INTELLIGENCE LLM (3-ago) — chat conversacional + redactor + extractor ═══════════════════════════
+// DOCTRINA (memoria gp-llm-doctrina): el LLM redacta y extrae; los NÚMEROS salen siempre de los engines.
+// El server resuelve la entidad con los resolvers deterministas de siempre, arma un BUNDLE de datos ya
+// computados, y el LLM solo lo pone en prosa. Si el LLM está apagado/sin presupuesto/falla → TODAS las
+// rutas degradan a las plantillas de siempre (cero regresión). Presupuesto y medidor viven en llm.js.
+const llm = require('./llm');
+llm.init(db, save);
+
+// Ventana de lanzamiento: Pregúntale a GP libre para TODOS los planes hasta GP_ASK_FREE_UNTIL; después
+// pro/sharp (decisión de producto 3-ago). El admin nunca gastea cuota.
+function askAccessOk(u) {
+  if (!u) return false;
+  if (u.isAdmin) return true;
+  const until = Date.parse(process.env.GP_ASK_FREE_UNTIL || '2026-08-11T00:00:00Z');
+  if (isFinite(until) && Date.now() < until) return true;
+  const plan = effectivePlan(u.email);
+  return plan === 'pro' || plan === 'sharp';
+}
+function askQuotaOk(u) {
+  if (u.isAdmin) return { ok: true, left: 999 };
+  const day = new Date().toISOString().slice(0, 10);
+  if (!db.askQuota || db.askQuota.day !== day) db.askQuota = { day, by: {} };
+  const cap = +(process.env.GP_ASK_DAILY_MSGS || 20);
+  const used = db.askQuota.by[u.email] || 0;
+  return { ok: used < cap, left: Math.max(0, cap - used) };
+}
+function askQuotaSpend(u) { if (!u.isAdmin) { db.askQuota.by[u.email] = (db.askQuota.by[u.email] || 0) + 1; save(); } }
+
+// Resolver de FÚTBOL: equipos contra los ratings de TODAS las ligas (puntuado, empate→null — regla del
+// matcher), partido contra upcoming/live. Devuelve el bundle de datos para el LLM y una respuesta de
+// plantilla como respaldo. Solo regímenes PÚBLICOS de picks salen hacia usuarios.
+function footballAskBundle(q, u, lang) {
+  const RT = global._clubsRatings || { leagues: {} };
+  const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const qn = ' ' + nrm(q) + ' ';
+  // ¿es de combate? → redirigir, no adivinar
+  if (/ufc|mma|pelea|boxe|fight|knockout|pfl|bellator/i.test(q)) return { kind: 'other_sport' };
+  // buscar equipos mencionados (todas las ligas), puntuando por tokens del nombre
+  const hits = [];
+  for (const [lg, L] of Object.entries(RT.leagues || {})) {
+    for (const [tid, t] of Object.entries(L.ratings || {})) {
+      const toks = nrm(t.name).split(' ').filter((x) => x.length >= 4);
+      let ov = 0; for (const tk of toks) if (qn.includes(' ' + tk + ' ')) ov++;
+      if (ov) hits.push({ lg, tid, name: t.name, sc: ov * 10 + ov / Math.max(1, toks.length) });
+    }
+  }
+  hits.sort((a, b) => b.sc - a.sc);
+  const seen = new Set(); const top = [];
+  for (const h of hits) { const k = h.lg + '|' + h.tid; if (!seen.has(k)) { seen.add(k); top.push(h); } if (top.length >= 4) break; }
+  // pareja de la MISMA liga → partido concreto
+  let pair = null;
+  for (let i = 0; i < top.length && !pair; i++) for (let j = i + 1; j < top.length; j++) {
+    if (top[i].lg === top[j].lg && top[i].tid !== top[j].tid) { pair = [top[i], top[j]]; break; }
+  }
+  const isPublicPick = (p) => p.status === 'ACTIVE' && p.regime && p.regime !== 'monitor';
+  const matchData = (lg, h, a) => {
+    const L = RT.leagues[lg];
+    const rh = clubElo(lg, h.tid), ra = clubElo(lg, a.tid);
+    const pr = matchProbs(rh + (L.hfa || 60), ra);
+    let goals = null;
+    try {
+      const gf = clubGoalsFit(lg);
+      const [lh, la] = gf ? goalLambdas(gf, h.tid, a.tid) : lambdas(rh + (L.hfa || 60), ra);
+      let over25 = 0; // doble Poisson rápido sobre los λ del cruce (mismos λ del cockpit)
+      const pois = (l, k) => Math.exp(-l) * Math.pow(l, k) / [1, 1, 2, 6, 24, 120, 720, 5040][k];
+      for (let gh = 0; gh <= 7; gh++) for (let ga = 0; ga <= 7; ga++) if (gh + ga > 2.5) over25 += pois(lh, gh) * pois(la, ga);
+      goals = { xg_home: +lh.toFixed(2), xg_away: +la.toFixed(2), over_2_5_pct: Math.round(over25 * 100) };
+    } catch { /* liga sin fit de goles */ }
+    // partido en upcoming/live + mercado del value board
+    let fixture = null;
+    const up = (global._clubsUpcoming || {})[lg];
+    for (const m of (up && up.rows) || []) {
+      const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+      if ((hId === h.tid && aId === a.tid) || (hId === a.tid && aId === h.tid)) { fixture = { utc: m.utc_date, home_is: hId === h.tid ? 'first' : 'second' }; break; }
+    }
+    const val = ((global._clubsValue || {}).rows || []).filter((r) => (r.home_id === h.tid && r.away_id === a.tid) || (r.home_id === a.tid && r.away_id === h.tid));
+    const market = val.length ? val.map((r) => ({ outcome: r.outcome, consensus_pct: Math.round(r.consensus * 100), our_pct: Math.round(r.our * 100), edge_pp: r.edge_pp, best_odds: r.best_odds, best_book: r.best_book, books: r.books })) : null;
+    // señales del observer (narradas, caja negra)
+    const signals = [];
+    try { for (const tid of [h.tid, a.tid]) for (const f of clubObserverFindings(tid).slice(0, 3)) signals.push({ team: tid === h.tid ? h.name : a.name, note: lang === 'en' ? (f.why_en || f.why_es) : (f.why_es || f.why_en) }); } catch { /* sin observer */ }
+    // pick pública activa de este cruce
+    const pk = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])].find((p) => isPublicPick(p) && p.event &&
+      ((p.event.home_team_id === h.tid && p.event.away_team_id === a.tid) || (p.event.home_team_id === a.tid && p.event.away_team_id === h.tid)));
+    return {
+      league: L.name, country: L.country, kickoff_utc: fixture && fixture.utc,
+      home: h.name, away: a.name,
+      gp_probs_pct: { home: Math.round(pr.home * 100), draw: Math.round(pr.draw * 100), away: Math.round(pr.away * 100) },
+      goals, market, signals: signals.length ? signals : null,
+      active_pick: pk ? { family: pk.family, selection: pk.side || pk.selection_code, odds: pk.best_odds, book: pk.best_book, edge_pp: pk.edge_pp, why: lang === 'en' ? (pk.why_en || '') : (pk.why_es || '') } : null,
+    };
+  };
+  if (pair) {
+    // orientar home/away según el fixture real si existe
+    let [h, a] = pair;
+    const up = (global._clubsUpcoming || {})[h.lg];
+    for (const m of (up && up.rows) || []) {
+      const hId = String(m.home_team && m.home_team.id);
+      if (hId === a.tid && String(m.away_team && m.away_team.id) === h.tid) { [h, a] = [a, h]; break; }
+    }
+    return { kind: 'match', data: matchData(h.lg, h, a), link: null };
+  }
+  if (top.length === 1 || (top.length && top[0].sc > (top[1] ? top[1].sc : 0))) {
+    // UN equipo → su próximo partido
+    const h = top[0]; const up = (global._clubsUpcoming || {})[h.lg];
+    for (const m of (up && up.rows) || []) {
+      const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+      if (hId === h.tid || aId === h.tid) {
+        const L = RT.leagues[h.lg];
+        const rival = hId === h.tid ? { lg: h.lg, tid: aId, name: (m.away_team || {}).name || '?' } : { lg: h.lg, tid: hId, name: (m.home_team || {}).name || '?' };
+        const home = hId === h.tid ? h : rival, away = hId === h.tid ? rival : h;
+        return { kind: 'match', assumed: true, data: matchData(h.lg, home, away), link: null };
+      }
+    }
+    return { kind: 'team_no_fixture', data: { team: h.name, league: (RT.leagues[h.lg] || {}).name } };
+  }
+  // sin entidad: ¿pregunta por las picks / el valor / el día? → brief
+  if (/pick|apuesta|jugada|bet|valor|value|oportunidad|opportunit|hoy|today|brief/i.test(q)) {
+    const b = buildDailyBrief();
+    const pub = (b.top || []).filter((p) => p.regime && p.regime !== 'monitor');
+    return { kind: 'brief', data: { today_picks: pub.slice(0, 3), matches_with_picks: (b.matches || []).slice(0, 5), line_moves: b.moves || [] } };
+  }
+  return { kind: 'none' };
+}
+
+// Respuesta de plantilla (respaldo sin LLM) para fútbol — corta y honesta.
+function footballAskTemplate(bundle, lang) {
+  const en = lang === 'en';
+  if (bundle.kind === 'other_sport') return en ? 'That question is about combat. Use the sport switcher at the top for UFC/MMA.' : 'Esa pregunta es de combate. Usá el conmutador de deporte de arriba para UFC/MMA.';
+  if (bundle.kind === 'none') return en ? "I couldn't tell which match or team you mean. Try both team names, e.g. \"Palmeiras Flamengo\"." : 'No pude identificar de qué partido o equipo me hablás. Probá con los dos nombres, p. ej. "Palmeiras Flamengo".';
+  if (bundle.kind === 'team_no_fixture') return en ? `${bundle.data.team} has no upcoming fixture loaded in ${bundle.data.league || 'its league'}.` : `${bundle.data.team} no tiene próximo partido cargado en ${bundle.data.league || 'su liga'}.`;
+  if (bundle.kind === 'brief') {
+    const n = (bundle.data.today_picks || []).length;
+    return en ? `There are ${n} public picks in today's feed. Open the Opportunities board for the full detail.` : `Hay ${n} picks públicas en el feed de hoy. Abrí el board de Oportunidades para el detalle completo.`;
+  }
+  const d = bundle.data;
+  const gp = d.gp_probs_pct || {};
+  return en
+    ? `${d.home} vs ${d.away} (${d.league}): GP has it ${gp.home}% / ${gp.draw}% / ${gp.away}%.` + (d.goals ? ` Projected goals ${d.goals.xg_home}-${d.goals.xg_away}.` : '')
+    : `${d.home} vs ${d.away} (${d.league}): GP lo da ${gp.home}% / ${gp.draw}% / ${gp.away}%.` + (d.goals ? ` Goles proyectados ${d.goals.xg_home}-${d.goals.xg_away}.` : '');
+}
+
+// ── Redactor: why de picks en prosa (una vez por pick, persistido → costo fijo) ──
+async function llmAnnotatePickWhys({ cap = 8 } = {}) {
+  if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
+  let done = 0;
+  const pools = [['futbol', db.dailyPicks || []], ['futbol', db.clubDailyPicks || []], ['combat', db.combatPicks || []]];
+  for (const [sport, pool] of pools) {
+    for (const p of pool) {
+      if (done >= cap) break;
+      if (p.status !== 'ACTIVE' || p.result_code === 'SUPERSEDED' || p.why_ai_es || !p.why_es) continue;
+      try {
+        const w = await llm.writePickWhy({
+          sport, family: p.family, league: p.competition_name || p.league || null,
+          match: p.event ? `${p.event.home} vs ${p.event.away}` : null,
+          selection: p.selection_name || p.side || p.selection_code, line: p.line || null,
+          odds: p.best_odds, book: p.best_book, edge_pp: p.edge_pp != null ? +p.edge_pp : (p.edge_blend_pp != null ? +p.edge_blend_pp : null),
+          books: p.books || null, confidence: p.confidence || null,
+          factores_actuales: { es: p.why_es, en: p.why_en },
+        });
+        if (w) { p.why_ai_es = w.es; p.why_ai_en = w.en; done++; save(); }
+      } catch (e) { if (/llm_budget|llm_disabled/.test(e.message)) return { done, stopped: e.message }; }
+    }
+  }
+  return { done };
+}
+
+// ── Redactor: lectura GP del brief diario de fútbol (1 llamada/día, persistida) ──
+async function llmBriefPass() {
+  if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
+  const day = new Date().toISOString().slice(0, 10);
+  db.llmBrief = db.llmBrief || {};
+  if (db.llmBrief.day === day && db.llmBrief.futbol) return { cached: true };
+  const b = buildDailyBrief();
+  const pub = (b.top || []).filter((p) => p.regime && p.regime !== 'monitor');
+  try {
+    const w = await llm.writeBrief({
+      today_picks: pub.map((p) => ({ match: `${p.home} vs ${p.away}`, league: p.league, family: p.family, odds: p.odds, edge_pp: p.edge_pp })),
+      matches_with_picks: (b.matches || []).slice(0, 6).map((m) => ({ match: `${m.home} vs ${m.away}`, league: m.league, picks: m.picks })),
+      line_moves: (b.moves || []).map((m) => ({ match: `${m.home} vs ${m.away}`, family: m.family, pp: m.pp, direction: m.direction })),
+      context_signals: (b.findings || []).slice(0, 5).map((f) => f.why_es || f.player),
+    }, 'futbol');
+    if (w) { db.llmBrief = { day, futbol: w }; save(); return { written: true }; }
+  } catch (e) { return { error: e.message }; }
+  return { empty: true };
+}
+// pasada del redactor cada 30 min (why nuevos + brief 1×/día); arranque suave a los 3 min
+if (llm.enabled()) {
+  setTimeout(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); }, 3 * 60e3);
+  setInterval(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); }, 30 * 60e3);
+}
+
 // ===== #7 MOVIMIENTO DE LÍNEA (30-jul) — lo que el archivo de #9 hace posible ============================
 // La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es camp/lesión/pesaje, y los
 // sharps entran temprano. Un movimiento fuerte SIN noticia pública es dinero informado.
@@ -8327,6 +8539,10 @@ async function runCombatObserver() {
   const { googleNewsRss } = require('./observer/sources');
   db.combatObservations = db.combatObservations || {};
   const out = { fighters: 0, requests: 0, signals: 0 };
+  // EXTRACTOR LLM EN PARALELO (doctrina gp-llm-doctrina, primer caso acordado): los MISMOS items que ve el
+  // regex van también a un batch de extracción estructurada (Haiku). Se guarda SEPARADO (db.combatObsLLM)
+  // para poder comparar regex-vs-LLM con datos, y solo llega a DISPLAY — jamás al λ. Cap 40 items/sweep.
+  const llmBatch = [];
   for (const org of Object.keys(COMBAT_ORGS)) {
     const C = combatLoad(org);
     await combatRefreshUpcoming(C);
@@ -8346,6 +8562,7 @@ async function runCombatObserver() {
         if (!txt.toLowerCase().includes(last)) continue; // anti-clickbait: el titular debe nombrarlo
         const age = it.published_at ? Date.now() - Date.parse(it.published_at) : null;
         if (age != null && age > 12 * 24 * 3600e3) continue; // solo noticia del ciclo de esta pelea
+        if (llmBatch.length < 40) llmBatch.push({ fid: id, subject: name, title: it.title, snippet: it.description || '', source: it.source || null, published_at: it.published_at || null });
         for (const p of CB_NEWS_PATTERNS) {
           if (!p.re.test(txt)) continue;
           if (signals.some(s => s.type === p.type)) continue; // 1 señal por tipo
@@ -8357,9 +8574,23 @@ async function runCombatObserver() {
       await new Promise(r => setTimeout(r, 400));
     }
   }
+  // extracción LLM del batch del sweep (silenciosa: sin LLM/presupuesto → no pasa nada)
+  if (llmBatch.length && llm.enabled() && llm.budgetOk()) {
+    try {
+      const sigs = await llm.extractSignals(llmBatch, 'combat');
+      db.combatObsLLM = db.combatObsLLM || {};
+      const byF = {};
+      for (const s of sigs) { const it = llmBatch[s.i]; (byF[it.fid] = byF[it.fid] || { name: it.subject, at: new Date().toISOString(), signals: [] }).signals.push({ type: s.type, severity: s.severity, quote: s.quote, title: it.title, source: it.source, published_at: it.published_at }); }
+      for (const [fid, slot] of Object.entries(byF)) db.combatObsLLM[fid] = slot;
+      out.llm_items = llmBatch.length; out.llm_signals = sigs.length;
+    } catch (e) { out.llm_error = e.message; }
+  }
   // poda: observaciones de hace >20 días (peleadores ya sin pelea próxima)
   for (const [id, o] of Object.entries(db.combatObservations)) {
     if (Date.now() - Date.parse(o.at || 0) > 20 * 24 * 3600e3) delete db.combatObservations[id];
+  }
+  for (const [id, o] of Object.entries(db.combatObsLLM || {})) {
+    if (Date.now() - Date.parse(o.at || 0) > 20 * 24 * 3600e3) delete db.combatObsLLM[id];
   }
   save();
   return out;
@@ -8375,6 +8606,16 @@ function combatNewsFlags(ft) {
       flags.push({ side, code: 'news_' + s.type, severity: s.severity, news: true, source: s.source, published_at: s.published_at,
         es: `📰 ${ft[side].name}: ${p ? p.es : s.type} — "${s.title}"`,
         en: `📰 ${ft[side].name}: ${p ? p.en : s.type} — "${s.title}"` });
+    }
+    // señales del EXTRACTOR LLM que el regex NO cazó (A/B en producción; display-only, jamás al λ).
+    // Se muestran con la cita textual que las sustenta — más honestas que un match de palabra clave.
+    const ol = (db.combatObsLLM || {})[ft[side].id];
+    if (ol && ol.signals) for (const s of ol.signals) {
+      if (flags.some(f => f.side === side && f.code === 'news_' + s.type)) continue; // el regex ya la tiene
+      const LBL = { OUT: ['fuera de la pelea', 'out of the fight'], INJURY: ['lesión reportada', 'reported injury'], WEIGHT: ['problema con el peso', 'weight issue'], REPLACEMENT: ['entra como reemplazo', 'stepping in as replacement'], CAMP: ['cambio de campamento', 'camp change'], SUSPENDED: ['suspendido', 'suspended'], DOUBT: ['en duda', 'in doubt'] };
+      flags.push({ side, code: 'news_' + s.type, severity: s.severity, news: true, llm: true, source: s.source, published_at: s.published_at,
+        es: `📰 ${ft[side].name}: ${(LBL[s.type] || [s.type])[0]} — "${s.quote || s.title}"`,
+        en: `📰 ${ft[side].name}: ${(LBL[s.type] || [s.type, s.type])[1]} — "${s.quote || s.title}"` });
     }
   }
   return flags;
@@ -10409,6 +10650,50 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { enabled: true, watches: mine });
     }
     // ===== F4 — GP DAILY BRIEF in-app + opt-in del email diario ==============================================
+    // ═ GP INTELLIGENCE — Pregúntale a GP (chat LLM; fútbol libre en ventana de lanzamiento, luego pro/sharp) ═
+    if (p === '/api/ask' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const b = await readBody(req).catch(() => ({}));
+      const q = String(b.q || '').slice(0, 400).trim();
+      const lang = b.lang === 'en' ? 'en' : 'es';
+      const sport = b.sport === 'combat' ? 'combat' : 'futbol';
+      if (!q) return json(res, 400, { error: 'q requerida' });
+      if (sport === 'combat') {
+        // combate hereda su gate (admin-only hasta GP_COMBAT_PUBLIC_ENABLED)
+        if (!(u.isAdmin || String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true')) return json(res, 404, { error: 'No encontrado' });
+      } else if (!askAccessOk(u)) {
+        return json(res, 403, { error: 'upgrade', need: 'pro' });
+      }
+      const quo = askQuotaOk(u);
+      if (!quo.ok) return json(res, 429, { error: 'limit', left: 0 });
+      let answer = null, link = null, usedLlm = false, subject = null;
+      if (sport === 'combat') {
+        const org2 = COMBAT_ORGS[String(b.org || '')] ? String(b.org) : 'ufc';
+        const C2 = combatLoad(org2);
+        await combatRefreshUpcoming(C2);
+        const ca = await combatAsk(C2, q, org2, !!u.isAdmin);
+        answer = (lang === 'en' ? ca.answer_en : ca.answer_es) || ca.answer_es; link = ca.link; subject = ca.subject || null;
+        if (llm.enabled() && llm.budgetOk()) {
+          try {
+            const w = await llm.askWrite({ q, lang, bundle: { sport: 'combat', intent: ca.intent, subject: ca.subject || null, assumed: !!ca.assumed, datos: ca.data, lectura_base: answer } });
+            if (w) { answer = w; usedLlm = true; }
+          } catch { /* respaldo: plantilla */ }
+        }
+      } else {
+        const bundle = footballAskBundle(q, u, lang);
+        answer = footballAskTemplate(bundle, lang);
+        if (bundle.kind !== 'other_sport' && bundle.kind !== 'none' && llm.enabled() && llm.budgetOk()) {
+          try {
+            const w = await llm.askWrite({ q, lang, bundle: { sport: 'futbol', kind: bundle.kind, assumed: !!bundle.assumed, datos: bundle.data, lectura_base: answer } });
+            if (w) { answer = w; usedLlm = true; }
+          } catch { /* respaldo: plantilla */ }
+        }
+        if (bundle.kind === 'match' && bundle.data) subject = bundle.data.home + ' vs ' + bundle.data.away;
+      }
+      askQuotaSpend(u);
+      return json(res, 200, { answer, link, llm: usedLlm, subject, left: askQuotaOk(u).left });
+    }
     if (p === '/api/me/brief' && (req.method === 'GET' || req.method === 'POST')) {
       if (!dailyBriefOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
@@ -10422,6 +10707,8 @@ const server = http.createServer(async (req, res) => {
       const bets = myBetsSharp(u) ? (db.userBets && db.userBets[u.email]) || [] : null;
       return json(res, 200, {
         enabled: true, brief: buildDailyBrief(),
+        // Lectura GP del día (redactada por el LLM desde los datos del brief; 1×/día, persistida)
+        ai_read: (db.llmBrief && db.llmBrief.day === new Date().toISOString().slice(0, 10) && db.llmBrief.futbol) || null,
         email_opt_in: !!db.users[u.email].brief_email,
         bankroll: bets ? myBetsStats(bets) : null, // estado del bankroll (F1) si Mi cartera está activa
       });
@@ -11391,6 +11678,25 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { ok: true, kind, to });
       } catch (e) { return json(res, 200, { ok: false, error: String(e.message || e).slice(0, 200) }); }
+    }
+    // ═ GP INTELLIGENCE LLM — diagnóstico y forzado (key interna) ═
+    if (p === '/api/internal/llm') {
+      if (url.searchParams.get('key') !== process.env.GP_EXPORT_KEY) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        const run = url.searchParams.get('run') || '';
+        if (run === 'whys') return json(res, 200, await llmAnnotatePickWhys({ cap: +(url.searchParams.get('cap') || 8) }));
+        if (run === 'brief') return json(res, 200, await llmBriefPass());
+        return json(res, 400, { error: 'run=whys|brief' });
+      }
+      return json(res, 200, {
+        enabled: llm.enabled(), budget_ok: llm.budgetOk(), usage: llm.usage(),
+        daily_budget_usd: +(process.env.GP_LLM_DAILY_USD || 1.5),
+        ask_free_until: process.env.GP_ASK_FREE_UNTIL || '2026-08-11T00:00:00Z',
+        models: { chat: process.env.GP_LLM_CHAT_MODEL || 'claude-sonnet-5', writer: process.env.GP_LLM_WRITER_MODEL || 'claude-sonnet-5', extract: process.env.GP_LLM_EXTRACT_MODEL || 'claude-haiku-4-5' },
+        brief_day: (db.llmBrief || {}).day || null,
+        obs_llm: { combat_fighters: Object.keys(db.combatObsLLM || {}).length, club_teams: Object.keys(db.clubObsLLM || {}).length },
+        whys_annotated: [...(db.dailyPicks || []), ...(db.clubDailyPicks || []), ...(db.combatPicks || [])].filter(x => x.why_ai_es).length,
+      });
     }
     if (p === '/api/internal/clubs-picks') {
       const xk = process.env.GP_EXPORT_KEY || '';

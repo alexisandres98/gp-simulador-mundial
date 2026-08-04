@@ -8386,6 +8386,10 @@ async function buildCombatPicks({ dryRun = false } = {}) {
   // BOXEO NO genera picks todavía: el modelo pasó el gate de calibración (0.0310, mejor que UFC) pero el
   // único juez que la casa acepta es el CLV contra mercado real, y su archivo de cuotas nace hoy.
   for (const org of Object.keys(COMBAT_ORGS)) { if (org === 'boxing') continue; await buildCombatPicksOrg(org, out, dryRun); }
+  // BOXEO: sin picks todavía (sin CLV real no hay juez) PERO su agenda+cuotas SÍ se refrescan en cada ciclo
+  // para que combatOddsArchive acumule la curva desde el día 1 — antes solo archivaba si un admin visitaba
+  // la vista, y el foso del CLV no puede depender de eso.
+  try { const CB = combatLoad('boxing'); await combatRefreshUpcoming(CB); } catch (e) { console.error('[combat-boxing-warm]', e.message); }
   if (!dryRun) {
     if (out.added || out.superseded || out.closing_updated) save();
     out.active = (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length;

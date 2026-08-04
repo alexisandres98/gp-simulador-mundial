@@ -257,7 +257,7 @@
       cb_pace: 'Ritmo y fondo', cb_pace_r1: 'cierra en el R1', cb_pace_deep: 'en aguas profundas (R3+)', cb_pace_dist: 'va a decisión', cb_similar: 'Perfiles similares', cb_sim_pct: 'parecido',
       cb_wins_by: 'Gana', cb_loses_by: 'Pierde', cb_upd: 'actualizado',
       cb_sims: '10,000 simulaciones', cb_style_hist: 'Historial de estilos', cb_style_line: 'Históricamente, {a} gana {pct}% contra {b} ({n} peleas)', cb_style_of: 'Perfil',
-      cb_striking: 'Striking engine', cb_grappling: 'Grappling engine', cb_slpm: 'Golpes/min', cb_head: 'Cabeza', cb_body: 'Cuerpo', cb_legs: 'Piernas', cb_power: 'De poder', cb_kd15: 'KD por 15min', cb_td15: 'Derribos/15min', cb_tdacc: 'Precisión derribo', cb_tddef: 'Defensa derribo', cb_sub15: 'Sumisiones int./15', cb_ctrl: 'Control del cage', cb_fine_n: 'peleas con métrica fina (2022+)', cb_fine_src: 'era moderna',
+      cb_striking: 'Striking engine', cb_grappling: 'Grappling engine', cb_slpm: 'Golpes/min', cb_head: 'Cabeza', cb_body: 'Cuerpo', cb_legs: 'Piernas', cb_power: 'De poder', cb_kd15: 'KD por 15min', cb_td15: 'Derribos/15min', cb_tdacc: 'Precisión derribo', cb_tddef: 'Defensa derribo', cb_sub15: 'Sumisiones int./15', cb_ctrl: 'Control del cage', cb_fine_n: 'peleas con métrica fina (2022+)', cb_fine_src: 'era moderna', cb_esp_title: 'Precisión y posición', cb_esp_grap: 'Avances y control', cb_esp_acc: 'Precisión de golpeo', cb_esp_absorbed: 'Precisión que permite', cb_esp_dist: 'A distancia', cb_esp_clinch: 'En el clinch', cb_esp_ground: 'En el suelo', cb_esp_adv: 'Avances/15', cb_esp_back: 'Espaldas/15', cb_esp_rev: 'Reversiones/15', cb_esp_n: 'peleas con registro',
       tb_lead: 'Probá Sharp GRATIS 3 días', tb_sub: 'Hoy pagás $0 · cancelás en 1 clic', tb_cta: 'Empezar mi prueba',
       tm_eyebrow: 'Prueba gratis · 3 días', tm_title: 'Probá Sharp sin pagar hoy', tm_sub: 'El plan completo, desbloqueado 3 días. Si no es para vos, cancelás en un clic y no se te cobra nada.',
       tm_b1: 'Todas las picks del día con stake sugerido', tm_b2: 'Value y arbitraje en 40+ casas', tm_b3: 'Tu cartera de apuestas con ROI real', tm_b4: 'Historial público verificado — ganadas y perdidas',
@@ -597,7 +597,7 @@
       cb_pace: 'Pace & gas tank', cb_pace_r1: 'finishes in R1', cb_pace_deep: 'in deep water (R3+)', cb_pace_dist: 'goes to decision', cb_similar: 'Similar profiles', cb_sim_pct: 'match',
       cb_wins_by: 'Wins by', cb_loses_by: 'Loses by', cb_upd: 'updated',
       cb_sims: '10,000 simulations', cb_style_hist: 'Style history', cb_style_line: 'Historically, {a} beats {b} {pct}% of the time ({n} fights)', cb_style_of: 'Profile',
-      cb_striking: 'Striking engine', cb_grappling: 'Grappling engine', cb_slpm: 'Strikes/min', cb_head: 'Head', cb_body: 'Body', cb_legs: 'Legs', cb_power: 'Power', cb_kd15: 'KD per 15min', cb_td15: 'Takedowns/15min', cb_tdacc: 'TD accuracy', cb_tddef: 'TD defense', cb_sub15: 'Sub attempts/15', cb_ctrl: 'Cage control', cb_fine_n: 'fights with fine metrics (2022+)', cb_fine_src: 'modern era',
+      cb_striking: 'Striking engine', cb_grappling: 'Grappling engine', cb_slpm: 'Strikes/min', cb_head: 'Head', cb_body: 'Body', cb_legs: 'Legs', cb_power: 'Power', cb_kd15: 'KD per 15min', cb_td15: 'Takedowns/15min', cb_tdacc: 'TD accuracy', cb_tddef: 'TD defense', cb_sub15: 'Sub attempts/15', cb_ctrl: 'Cage control', cb_fine_n: 'fights with fine metrics (2022+)', cb_fine_src: 'modern era', cb_esp_title: 'Accuracy & position', cb_esp_grap: 'Advances & control', cb_esp_acc: 'Striking accuracy', cb_esp_absorbed: 'Accuracy allowed', cb_esp_dist: 'At distance', cb_esp_clinch: 'In the clinch', cb_esp_ground: 'On the ground', cb_esp_adv: 'Advances/15', cb_esp_back: 'Back takes/15', cb_esp_rev: 'Reversals/15', cb_esp_n: 'fights on record',
       tb_lead: 'Try Sharp FREE for 3 days', tb_sub: '$0 today · cancel in one click', tb_cta: 'Start my trial',
       tm_eyebrow: 'Free trial · 3 days', tm_title: 'Try Sharp without paying today', tm_sub: 'The full plan, unlocked for 3 days. Not for you? Cancel in one click and nothing gets charged.',
       tm_b1: 'Every daily pick with suggested stake', tm_b2: 'Value & arbitrage across 40+ sportsbooks', tm_b3: 'Your personal bet tracker with real ROI', tm_b4: 'Public verified track record — wins and losses',
@@ -6458,7 +6458,29 @@
         (fn.td_def != null ? stTile(esc(t('cb_tddef')).toUpperCase(), Math.round(fn.td_def * 100) + '%') : '') +
         stTile(esc(t('cb_sub15')).toUpperCase(), fn.sub_per15) + stTile(esc(t('cb_ctrl')).toUpperCase(), Math.round((fn.control_pct || 0) * 100) + '%') + '</div></div>';
     }
-    cbShell(t('cb_fighters_title'), hero + chart + '<div class="gx-cb-grid">' + fineP + momP + pcP + qP + simP + '</div>' + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
+    // #5 (pendiente del veredicto 30-jul): PRECISIÓN Y POSICIÓN — el registro de acción de ESPN (2010+,
+    // ~3x la cobertura de api-sports). Display-only: no entró al modelo (bootstrap P=0.947), pero al
+    // usuario le dice DÓNDE conecta y qué permite. Mismos tiles/barras del Striking engine, no variante.
+    var espP = '';
+    if (d.espn && d.espn.n >= 3) {
+      var ep = d.espn;
+      var efbar = function (lab, v, col) { return '<div class="gx-cb-mrow"><span style="width:74px">' + lab + '</span><div class="gx-cb-mbar"><i style="width:' + Math.round((v || 0) * 100) + '%;background:' + col + '"></i></div><b>' + Math.round((v || 0) * 100) + '%</b></div>'; };
+      var eTile = function (lab, val) { return '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + val + '</div><div class="gx-label">' + lab + '</div></div>'; };
+      espP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_esp_title')) + '</span><span class="gx-ph-extra gx-dim">' + ep.n + ' ' + esc(t('cb_esp_n')) + '</span></div>' +
+        '<div class="gx-mod-body"><div class="gx-cb-tiles">' +
+        (ep.accuracy != null ? eTile(esc(t('cb_esp_acc')).toUpperCase(), Math.round(ep.accuracy * 100) + '%') : '') +
+        (ep.absorbed_acc != null ? eTile(esc(t('cb_esp_absorbed')).toUpperCase(), Math.round(ep.absorbed_acc * 100) + '%') : '') +
+        eTile(esc(t('cb_kd15')).toUpperCase(), ep.kd_per15) + '</div>' +
+        '<div style="max-width:430px;margin-top:10px;display:flex;flex-direction:column;gap:3px">' +
+        efbar(esc(t('cb_esp_dist')), ep.pos_distance, 'var(--gx-ac,#1FE3A4)') + efbar(esc(t('cb_esp_clinch')), ep.pos_clinch, '#5aa7ff') + efbar(esc(t('cb_esp_ground')), ep.pos_ground, '#E8C468') + '</div></div></div>' +
+        '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_esp_grap')) + '</span><span class="gx-ph-extra gx-dim">2010+</span></div>' +
+        '<div class="gx-mod-body gx-cb-tiles">' +
+        (ep.td_acc != null ? eTile(esc(t('cb_tdacc')).toUpperCase(), Math.round(ep.td_acc * 100) + '%') : '') +
+        (ep.td_def != null ? eTile(esc(t('cb_tddef')).toUpperCase(), Math.round(ep.td_def * 100) + '%') : '') +
+        eTile(esc(t('cb_esp_adv')).toUpperCase(), ep.adv_per15) + eTile(esc(t('cb_esp_back')).toUpperCase(), ep.back_per15) +
+        eTile(esc(t('cb_esp_rev')).toUpperCase(), ep.rev_per15) + eTile(esc(t('cb_ctrl')).toUpperCase(), Math.round((ep.control_pct || 0) * 100) + '%') + '</div></div>';
+    }
+    cbShell(t('cb_fighters_title'), hero + chart + '<div class="gx-cb-grid">' + fineP + espP + momP + pcP + qP + simP + '</div>' + histP, { back: 'cbfighters', backLabel: 'cb_fighters_title' });
   }
   // línea de Elo (SVG propio, sin librerías): eje temporal real, área bajo la curva, punto final
   function cbEloChart(items, w, h) {

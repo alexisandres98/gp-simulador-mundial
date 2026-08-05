@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1200px; height:675px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:#07090c; color:#EDF2F4; position:relative; overflow:hidden; }
+/* eje del enfrentamiento: esquina verde vs esquina roja — la firma visual del producto */
+.glow-g { position:absolute; top:-260px; left:-260px; width:820px; height:820px; border-radius:50%;
+  background:radial-gradient(circle,rgba(31,227,164,.20),transparent 62%); }
+.glow-r { position:absolute; bottom:-300px; right:-260px; width:900px; height:900px; border-radius:50%;
+  background:radial-gradient(circle,rgba(224,82,82,.16),transparent 62%); }
+.grain { position:absolute; inset:0; opacity:.05; background-image:repeating-conic-gradient(#fff 0 .0001%, transparent 0 .0002%); }
+.wrap { position:relative; padding:56px 64px 52px; height:100%; display:flex; flex-direction:column; }
+.brand { display:flex; align-items:center; gap:16px; margin-bottom:30px; }
+.badge { width:44px; height:44px; border-radius:12px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.4);
+  display:flex; align-items:center; justify-content:center; font-size:30px; }
+.bname { font-size:24px; font-weight:800; letter-spacing:-.5px; }
+.new { margin-left:auto; font-size:14px; font-weight:800; letter-spacing:.14em; color:#1FE3A4;
+  border:1px solid rgba(31,227,164,.5); padding:8px 16px; border-radius:99px; background:rgba(31,227,164,.1); }
+h1 { font-size:56px; line-height:.98; font-weight:800; letter-spacing:-2px; margin-bottom:18px; }
+h1 .g { color:#1FE3A4; } h1 .r { color:#E05252; }
+.sub { font-size:19px; line-height:1.45; color:#9DB0B5; font-weight:600; max-width:820px; margin-bottom:26px; }
+.sub b { color:#fff; }
+.card { background:linear-gradient(165deg,#10171c,#0b1013); border:1px solid rgba(255,255,255,.09);
+  border-radius:28px; padding:26px 34px; margin-bottom:20px; position:relative; overflow:hidden; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:9px;
+  background:linear-gradient(180deg,#1FE3A4 50%,#E05252 50%); }
+.vs { display:flex; align-items:center; justify-content:space-between; margin-bottom:26px; }
+.fighter { display:flex; align-items:center; gap:20px; font-size:24px; font-weight:800; }
+.ava { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:30px; font-weight:800; }
+.ava.g { background:rgba(31,227,164,.13); border:2px solid #1FE3A4; color:#1FE3A4; }
+.ava.r { background:rgba(224,82,82,.13); border:2px solid #E05252; color:#E05252; }
+.midv { font-size:22px; color:#5F747B; font-weight:800; letter-spacing:.2em; }
+.bar { height:11px; border-radius:99px; overflow:hidden; display:flex; margin-bottom:16px; }
+.bar .l { background:#1FE3A4; width:23%; } .bar .rr { background:#E05252; width:77%; }
+.pcts { display:flex; justify-content:space-between; font-size:21px; font-weight:800; margin-bottom:24px; }
+.pcts .rP { color:#E05252; } .pcts .lP { color:#1FE3A4; }
+.meta { display:flex; gap:14px; flex-wrap:wrap; }
+.chip { font-size:15px; font-weight:700; color:#B9C6CA; background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1); padding:8px 14px; border-radius:99px; }
+.feats { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px; }
+.feat { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:26px 28px; }
+.feat b { display:block; font-size:24px; margin-bottom:8px; }
+.feat span { font-size:19.5px; color:#9DB0B5; line-height:1.4; font-weight:600; }
+.foot { margin-top:auto; display:flex; align-items:center; justify-content:space-between; }
+.free { font-size:19px; font-weight:800; color:#1FE3A4; }
+.free span { display:block; font-size:14px; color:#9DB0B5; font-weight:600; margin-top:4px; }
+.cta { background:#1FE3A4; color:#06231A; font-size:20px; font-weight:800; padding:16px 32px; border-radius:99px; }
+</style></head>
+<body>
+  <div class="glow-g"></div><div class="glow-r"></div><div class="grain"></div>
+  <div class="wrap">
+    <div class="brand"><div class="badge">🥊</div><div class="bname">GP Simulador</div><div class="new">NUEVO</div></div>
+    <h1>El modelo ahora lee <span class="g">UFC</span>, <span class="r">MMA</span> y boxeo.</h1>
+    <div class="sub">Probabilidades por pelea, <b>método de victoria</b>, el mapa de la noche completo y perfiles de <b>16,000+ peleadores</b> — el mismo motor cuantitativo, ahora en la jaula y el ring.</div>
+    <div class="card">
+      <div class="vs">
+        <div class="fighter"><div class="ava g">G</div>Gamrot</div>
+        <div class="midv">VS</div>
+        <div class="fighter">Salkilld<div class="ava r">S</div></div>
+      </div>
+      <div class="bar"><div class="l"></div><div class="rr"></div></div>
+      <div class="pcts"><span class="lP">23%</span><span class="rP">77%</span></div>
+      <div class="meta"><span class="chip">KO 28% · SUB 22% · DEC 50%</span><span class="chip">~3.4 rounds</span><span class="chip">mercado: 20 casas</span></div>
+    </div>
+    <div class="foot">
+      <div class="free">GRATIS 7 DÍAS<span>en todos los planes</span></div>
+      <div class="cta">gpsimulador.com</div>
+    </div>
+  </div>
+</body></html>

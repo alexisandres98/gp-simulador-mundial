@@ -66,6 +66,22 @@ async function wikidataSearchImage(name) {
   return e && e.entities ? p18Url(e.entities[cand[0].id]) : null;
 }
 
+// pase 5 (5-ago): búsqueda DIRECTA de archivos en Commons (namespace 6) — encuentra fotos que pageimages
+// no referencia (cazó a Kabayel que los pases 1-4 perdían). Solo se acepta si el archivo NOMBRA al
+// peleador (apellido en el título) — sin eso, una búsqueda libre trae fotos de otra gente.
+async function commonsSearchImage(name) {
+  const j = await getJson(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent('"' + name + '"')}&srnamespace=6&srlimit=5&format=json`);
+  const hits = (j && j.query && j.query.search) || [];
+  const last = String(name).trim().split(/\s+/).pop().toLowerCase();
+  for (const h of hits) {
+    const t = String(h.title || '');
+    if (!/\.(jpe?g|png)$/i.test(t)) continue;
+    if (!t.toLowerCase().includes(last)) continue;
+    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(t.replace(/^File:/, '').replace(/ /g, '_'))}?width=500`;
+  }
+  return null;
+}
+
 (async () => {
   const limitArg = process.argv.find((a) => a.startsWith('--limit='));
   const limit = limitArg ? +limitArg.split('=')[1] : Infinity;
@@ -83,6 +99,7 @@ async function wikidataSearchImage(name) {
     if (!img) { await sleep(300); img = await wikidataImage(title); }
     if (!img) { img = await wikiImageAnyLang(title); }
     if (!img) { await sleep(300); img = await wikidataSearchImage(f.name || title); }
+    if (!img) { await sleep(300); img = await commonsSearchImage(f.name || title); }
     if (img) { f.headshot = img; delete f.photo_miss; ok++; }
     else { f.photo_miss = true; miss++; } // marca negativa: no re-buscar cada corrida (borrarla para reintentar)
     if (done % 25 === 0) { save(); console.log(`  ${done}/${Math.min(missing.length, limit)} · encontradas ${ok} · sin foto ${miss}`); }

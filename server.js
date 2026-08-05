@@ -6834,15 +6834,29 @@ async function evaluateClubDailyPicks() {
 // (jamás doble masivo) y re-entra por el propio endpoint con la GP_EXPORT_KEY → reusa toda la lógica de envío.
 setInterval(() => {
   try {
-    const sb = db.scheduledBroadcast;
-    if (!sb || sb.done || !sb.at || Date.now() < Date.parse(sb.at)) return;
-    if (typeof bcastState === 'object' && bcastState.running) return; // hay un envío en curso → próximo tick
-    sb.done = true; sb.fired_at = new Date().toISOString(); save();
     const xk = process.env.GP_EXPORT_KEY || '';
-    if (!xk) { console.error('[broadcast-sched] sin GP_EXPORT_KEY, no puedo disparar'); return; }
-    fetch(`http://127.0.0.1:${PORT}/api/admin/broadcast?key=${xk}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variant: sb.variant }) })
-      .then(r => r.json()).then(j => console.log('[broadcast-sched] disparado', sb.variant, JSON.stringify(j).slice(0, 120)))
-      .catch(e => console.error('[broadcast-sched]', e.message));
+    // COLA (5-ago): db.scheduledBroadcasts (array) — permite ES y EN agendados a la vez sin pisarse.
+    // El slot legacy db.scheduledBroadcast sigue funcionando (compat). 1 disparo por tick (educado con Resend).
+    const pend = [db.scheduledBroadcast, ...(db.scheduledBroadcasts || [])]
+      .filter(sb => sb && !sb.done && sb.at && Date.now() >= Date.parse(sb.at));
+    if (pend.length && !(typeof bcastState === 'object' && bcastState.running)) {
+      const sb = pend[0];
+      sb.done = true; sb.fired_at = new Date().toISOString(); save();
+      if (!xk) console.error('[broadcast-sched] sin GP_EXPORT_KEY, no puedo disparar');
+      else fetch(`http://127.0.0.1:${PORT}/api/admin/broadcast?key=${xk}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variant: sb.variant }) })
+        .then(r => r.json()).then(j => console.log('[broadcast-sched] disparado', sb.variant, JSON.stringify(j).slice(0, 120)))
+        .catch(e => console.error('[broadcast-sched]', e.message));
+    }
+    // TG programado (5-ago): db.scheduledTg = [{kind:'combat', at, done}] — mismo patrón persistido.
+    for (const st of (db.scheduledTg || [])) {
+      if (st.done || !st.at || Date.now() < Date.parse(st.at)) continue;
+      st.done = true; st.fired_at = new Date().toISOString(); save();
+      if (st.kind === 'combat' && xk) {
+        fetch(`http://127.0.0.1:${PORT}/api/internal/tg-combat?key=${xk}`, { method: 'POST' })
+          .then(r => r.json()).then(j => console.log('[tg-sched] combate publicado', JSON.stringify(j)))
+          .catch(e => console.error('[tg-sched]', e.message));
+      }
+    }
   } catch (e) { console.error('[broadcast-sched]', e.message); }
 }, 5 * 60e3);
 if (dailyPicksOn() && clubsShadowOn()) {
@@ -11943,6 +11957,16 @@ const server = http.createServer(async (req, res) => {
     // ═ ANUNCIO COMBATE por Telegram (5-ago) — se dispara MANUALMENTE el día del encendido, key-gated ═
     if (p === '/api/internal/tg-combat' && req.method === 'POST') {
       if (url.searchParams.get('key') !== process.env.GP_EXPORT_KEY) return json(res, 404, { error: 'No encontrado' });
+      // ?schedule_at=ISO → se agenda persistido (lo dispara el timer de 5 min); sin él, publica YA
+      const schedAt = url.searchParams.get('schedule_at');
+      if (schedAt) {
+        const at2 = Date.parse(schedAt);
+        if (!isFinite(at2) || at2 < Date.now()) return json(res, 400, { error: 'schedule_at inválido o en el pasado' });
+        db.scheduledTg = (db.scheduledTg || []).filter(x => !x.done);
+        db.scheduledTg.push({ kind: 'combat', at: new Date(at2).toISOString(), done: false, created_at: new Date().toISOString() });
+        save();
+        return json(res, 200, { ok: true, scheduled: db.scheduledTg });
+      }
       const tg = require('./telegram');
       const msg = '🥊 <b>GP ya no es solo fútbol: UFC, MMA y BOXEO ya están adentro</b>\n\n' +
         'La misma inteligencia que usás para los partidos, ahora en deportes de combate:\n' +
@@ -13721,7 +13745,7 @@ const server = http.createServer(async (req, res) => {
       // de la UI (mismo patrón key-gated del webhook Whop; sin la env, solo admin).
       const keyOk = !!process.env.GP_EXPORT_KEY && url.searchParams.get('key') === process.env.GP_EXPORT_KEY;
       if ((!u || !u.isAdmin) && !keyOk) return json(res, 403, { error: 'Solo el administrador' });
-      if (req.method === 'GET') return json(res, 200, { ...bcastState, scheduled: db.scheduledBroadcast || null });
+      if (req.method === 'GET') return json(res, 200, { ...bcastState, scheduled: db.scheduledBroadcast || null, queue: db.scheduledBroadcasts || [], tg: db.scheduledTg || [] });
       if (!mailer.isConfigured()) return json(res, 400, { error: 'Email no configurado (modo demo)' });
       const { test, variant, count, schedule_at, cancel_schedule } = await readBody(req);
       // ENVÍO PROGRAMADO one-shot (18-jul, envío dividido ES→EN): {schedule_at:"ISO", variant} lo agenda;
@@ -13731,9 +13755,11 @@ const server = http.createServer(async (req, res) => {
       if (schedule_at) {
         const at = Date.parse(schedule_at);
         if (!isFinite(at) || at < Date.now()) return json(res, 400, { error: 'schedule_at inválido o en el pasado' });
-        db.scheduledBroadcast = { variant: variant || 'beta', at: new Date(at).toISOString(), done: false, created_at: new Date().toISOString() };
+        // COLA (5-ago): se APILA — varios envíos agendados conviven (ES +4h y EN +10h del lanzamiento combate)
+        db.scheduledBroadcasts = (db.scheduledBroadcasts || []).filter(x => !x.done);
+        db.scheduledBroadcasts.push({ variant: variant || 'beta', at: new Date(at).toISOString(), done: false, created_at: new Date().toISOString() });
         save();
-        return json(res, 200, { ok: true, scheduled: db.scheduledBroadcast });
+        return json(res, 200, { ok: true, scheduled: db.scheduledBroadcasts });
       }
       const link = 'https://gpsimulador.com/?goto=referidos';
       // SEGURIDAD: {count:true} devuelve a cuántos LLEGARÍA el envío SIN mandar nada (verificar el número

@@ -8768,9 +8768,11 @@ function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
   };
 }
 function combatPicksTrack({ since = 0 } = {}) {
-  // since (5-ago, lanzamiento público): el rendimiento del PÚBLICO arranca desde cero — solo picks creadas
-  // desde el corte (las del finde pre-lanzamiento son historia interna del monitor, jamás del usuario).
-  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && (!since || Date.parse(p.created_at || 0) >= since));
+  // since (5-ago, lanzamiento público): el rendimiento del PÚBLICO arranca desde cero — solo picks de peleas
+  // con KICKOFF desde el corte (las del finde pre-lanzamiento son historia interna del monitor). Por kickoff
+  // y no por created_at: una pick nacida antes del corte para una pelea posterior SÍ es del track público
+  // (el usuario la vio viva antes de que liquidara).
+  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && (!since || Date.parse((p.event && p.event.kickoff_at) || p.created_at || 0) >= since));
   const agg = (list) => {
     const w = list.filter(p => p.result_code === 'WIN').length;
     const u = list.reduce((s, p) => s + (p.units || 0), 0);
@@ -12062,7 +12064,11 @@ const server = http.createServer(async (req, res) => {
       const allowed = (u && u.isAdmin) || (cbPublic && u && cbPlanOk);
       if (!allowed) return json(res, 404, { error: 'No encontrado' }); // 404, ni señal
       const cbAdmin = !!(u && u.isAdmin);
-      const cbPickVisible = (x) => cbAdmin || Date.parse(x.created_at || 0) >= CB_PUBLIC_SINCE();
+      // FIX 5-ago (reporte Alexis: un pro no veía las picks de UFC): el corte va por KICKOFF de la pelea,
+      // no por created_at — las activas de la cartelera del sábado nacieron el 2-4 y el filtro viejo se las
+      // comía. Regla de la casa (estado por reloj): pelea POSTERIOR al lanzamiento → visible aunque la pick
+      // haya nacido antes; pelea pre-lanzamiento → invisible, y su liquidación jamás entra al track público.
+      const cbPickVisible = (x) => cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE();
       const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE() };
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola

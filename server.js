@@ -5495,7 +5495,13 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep', published };
   const { consensus, freshQuotes } = require('./market-scanner/scanner');
   const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events: qevents, now: Date.now() }).catch(() => []);
-  if (!markets.length) return { skipped: 'sin mercados frescos', published };
+  // 5-ago (reporte Alexis: córners/cards no generaban): NO se puede cortar acá. `markets` son SOLO los
+  // mercados 1X2/goles; CORNERS y CARDS se construyen más abajo desde su PROPIA query (corners_total/
+  // cards_total del sweep de props, que sí venía trayendo cientos de cuotas). Con un timeout del Postgres
+  // en la query de 1X2 —lo que pasó hoy— este return mataba también las familias de props, que no
+  // dependen de ella. Es EL MISMO bug de arquitectura del 26-jul (el bucle de props vivía después de un
+  // early-return). Ahora seguimos con markets vacío: 1X2/goles simplemente no producen este ciclo.
+  if (!markets.length) console.log('[clubs-picks] sin mercados 1X2/goles frescos — sigo con props (corners/cards)');
   const now = Date.now();
   const minGroups = marketScanner.params.minIndependentGroups || 2;
   const events = [], goalMarkets = [];
@@ -5614,7 +5620,13 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const { nbPmf } = require('./goal-engine/negativeBinomial');
     const nbOver = (mu, r, line) => { if (!(mu > 0)) return 0; let u = 0; for (let k = 0; k <= Math.floor(line); k++) u += nbPmf(mu, r, k); return Math.max(0, Math.min(1, 1 - u)); };
     const noVig = require('./goal-engine/noVig');
-    const evIds2 = [...new Set(events.map(e => e.eventId).concat(goalMarkets.map(g => g.eventId)))];
+    // Los ids salían SOLO de los mercados 1X2/goles → si esa query falla o viene vacía, córners y cards
+    // se quedaban sin universo aunque su propio sweep tuviera cuotas. Fallback: los eventos del sweep
+    // (db.clubsQuoteEvents) con kickoff futuro — la misma ventana que usa loadClubsMarkets.
+    let evIds2 = [...new Set(events.map(e => e.eventId).concat(goalMarkets.map(g => g.eventId)))];
+    if (!evIds2.length) {
+      evIds2 = Object.keys(qevents).filter(id => { const k = Date.parse((qevents[id] || {}).kickoff || 0); return isFinite(k) && k > now - 3 * 3600e3; });
+    }
     if (evIds2.length) {
       const tq = await dbc.query(
         `SELECT canonical_event_id, market_family, line::float, side, sportsbook_code, odds_decimal::float o

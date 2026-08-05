@@ -4774,6 +4774,13 @@ function clubFamilyStopped() {
     if (hit < breakEven || (clvApplies && clvAvg != null && clvAvg < 0)) stopped.add(seg);
   }
   if (db.cardsValidation && db.cardsValidation.failed) stopped.add('CARDS|under');
+  // OVERRIDE MANUAL del stop-loss (5-ago, decisión EXPLÍCITA de Alexis: "córners under corre esta semana,
+  // el lunes decido si lo quito"). Formato: GP_GATE_OVERRIDE_SEGMENTS="CORNERS:under,..." — cada entrada
+  // se salta el freno automático. Es una decisión de producto con dueño y fecha de revisión (lunes 10-ago),
+  // no un cambio del gate: quitar la env lo devuelve a la normalidad.
+  for (const ov of String(process.env.GP_GATE_OVERRIDE_SEGMENTS || '').split(',').map(s => s.trim()).filter(Boolean)) {
+    stopped.delete(ov.replace(':', '|'));
+  }
   return stopped;
 }
 

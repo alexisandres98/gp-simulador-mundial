@@ -75,7 +75,7 @@
       sub_v4: 'El mismo motor, ahora multideporte: 31 ligas de fútbol en vivo y las carteleras de UFC, MMA y boxeo. Picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
       scan_sub_v4: 'Vigilamos 31 ligas, cada cartelera de combate y el mercado global 24/7 — y detectamos el precio que quedó atrás antes de que lo corrijan.',
       tr_sports_v4: 'fútbol · UFC · MMA · boxeo',
-      scf_leagues_v4: 'ligas y carteleras 24/7',
+      scf_leagues_v4: 'ligas y carteleras 24/7', st4_read: 'Lectura del modelo', st4_sat: 'sábado', st4_combat: 'COMBATE · UFC', st4_ko: 'KO 65% · DEC 35%', st4_feed: 'Así llegan las picks al feed', st4_pick1: 'Gana Young Boys', st4_pick1m: 'Lausanne vs Young Boys · Super League (SUI)', st4_pick2: 'Salkilld · Ganador', st4_pick2m: 'Gamrot vs Salkilld · UFC · estelar', st4_pick3: 'Menos de 11.5 córners', st4_pick3m: 'Ilves vs Mariehamn · Veikkausliiga (FIN)', st4_best: 'MEJOR CUOTA', st4_users: 'usuarios reales', st4_verified: 'track verificado, pick por pick',
       plays_sub_v4: 'Fútbol y combate, publicadas antes con su precio congelado, liquidadas en público después. La selección se desbloquea con tu cuenta gratis.',
       d_sub_v4: 'Compara decenas de casas en tiempo real — en partidos y en peleas — y marca el precio que quedó atrás antes de que lo corrijan.',
     },
@@ -141,7 +141,7 @@
       sub_v4: 'The same engine, now multi-sport: 31 live football leagues plus every UFC, MMA and boxing card. Picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
       scan_sub_v4: 'We watch 31 leagues, every combat card and the global market 24/7 — and catch the price that fell behind before it gets corrected.',
       tr_sports_v4: 'football · UFC · MMA · boxing',
-      scf_leagues_v4: 'leagues & cards 24/7',
+      scf_leagues_v4: 'leagues & cards 24/7', st4_read: 'Model read', st4_sat: 'Saturday', st4_combat: 'COMBAT · UFC', st4_ko: 'KO 65% · DEC 35%', st4_feed: 'How picks land on the feed', st4_pick1: 'Young Boys to win', st4_pick1m: 'Lausanne vs Young Boys · Super League (SUI)', st4_pick2: 'Salkilld · Winner', st4_pick2m: 'Gamrot vs Salkilld · UFC · main event', st4_pick3: 'Under 11.5 corners', st4_pick3m: 'Ilves vs Mariehamn · Veikkausliiga (FIN)', st4_best: 'BEST ODDS', st4_users: 'real users', st4_verified: 'verified track, pick by pick',
       plays_sub_v4: 'Football and combat, published before with the price frozen, settled in public after. The selection unlocks with your free account.',
       d_sub_v4: 'It compares dozens of books in real time — on matches and on fights — and flags the price that fell behind before it gets corrected.',
     }
@@ -206,6 +206,30 @@
     var scan = d && d.scanner;
     var clubs = d && d.clubs, hero = clubs && clubs.hero;
     var nL = (clubs && clubs.leagues_count) || 14;
+    // v4 (5-ago, orden de Alexis): el showcase es ESTÁTICO y carga a la primera — jamás un cuadro vacío
+    // esperando al fetch. Data real congelada (lectura del modelo de esta semana), no placeholder inventado.
+    // ?live=1 restaura el comportamiento dinámico para inspección.
+    var wantLive = /[?&]live=1/.test(location.search);
+    if (V4 && !wantLive) {
+      if (window.__sc4) return; // ya pintado: la llegada del teaser NO lo pisa
+      window.__sc4 = true;
+      $('#showcase').innerHTML =
+        '<div class="sc-card">' +
+        '<div class="sc-head"><span class="scv3-league">' + leagueLogo('brasileirao') + 'Brasileir\u00e3o S\u00e9rie A</span><span class="sc-live"><i></i>' + esc(T('st4_read')) + '</span></div>' +
+        '<div class="scv3-teams">' +
+          '<div class="scv3-side">' + clubLogo('tm_58387', '') + '<b>Palmeiras</b></div>' +
+          '<div class="scv3-mid"><div class="ko">21:00</div><div class="day">' + esc(T('st4_sat')) + '</div></div>' +
+          '<div class="scv3-side">' + clubLogo('tm_62523', '') + '<b>Internacional</b></div>' +
+        '</div>' +
+        '<div class="scv3-bar"><i class="bh" style="width:66%"></i><i class="bd" style="width:22%"></i><i class="ba" style="width:12%"></i></div>' +
+        '<div class="scv3-pcts"><span><b>66%</b></span><span class="mid">X 22%</span><span><b>12%</b></span></div>' +
+        '<div class="scv3-xg"><span>' + esc(T('sc3_xg')) + '</span><b>1.33 \u2013 1.06</b></div>' +
+        '<div class="scv3-xg" style="border-top:1px solid rgba(255,255,255,.06);margin-top:8px;padding-top:10px"><span style="letter-spacing:.08em;font-weight:800;color:#e05252">\ud83e\udd4a ' + esc(T('st4_combat')) + '</span><b style="font-weight:700">Gamrot 23% \u00b7 Salkilld 77% \u00b7 ' + esc(T('st4_ko')) + '</b></div>' +
+        '<div class="sc-foot"><span>' + esc(T('sc3_foot')) + '</span></div>' +
+        '</div>' +
+        '<div class="sc-float"><span class="n">31</span><span class="l">' + esc(T('scf_leagues_v4')) + '</span></div>';
+      return;
+    }
     // v3 cargando: shell silencioso (nunca un ejemplo muerto que después se reemplaza)
     if (V3 && !d) { $('#showcase').innerHTML = '<div class="sc-card" style="min-height:250px"></div>'; return; }
     if (V3 && hero) {
@@ -259,6 +283,18 @@
   // número "premium": redondea hacia abajo a 50 más cercano y agrega "+"
   function roundUsers(n) { if (!n || n < 50) return n || 0; return (Math.floor(n / 50) * 50) + '+'; }
 
+  function renderTrust4(d) {
+    var rec = (d && d.record && d.record.total >= 20) ? d.record : { total: 104, winners: 69 };
+    var users = roundUsers((d && d.users) || 942);
+    var nL = (d && d.clubs && d.clubs.leagues_count) || 31;
+    $('#herotrust').innerHTML = '<div class="av"><i></i><i></i><i></i></div><span><b>' + users + '</b> ' + esc(T('ht_users')) + '</span><span class="dot"></span><span>' + esc(T('ht_verified')) + '</span>';
+    $('#trust').innerHTML =
+      '<div class="tr big"><b>' + Math.round(rec.winners / rec.total * 100) + '%</b><span>' + esc(T('tr_rec_v3')) + ' (' + rec.winners + '/' + rec.total + ')</span></div>' +
+      '<div class="tr"><b class="g">' + nL + '</b><span>' + esc(T('tr_leagues_v3')) + '</span></div>' +
+      '<div class="tr"><b>\u26bd\u00b7\ud83e\udd4a</b><span>' + esc(T('tr_sports_v4')) + '</span></div>' +
+      '<div class="tr"><b>40+</b><span>' + esc(T('tr_books')) + '</span></div>' +
+      '<div class="tr"><b class="g">' + esc(T('tr_live')) + '</b><span>' + esc(T('tr_live_s')) + '</span></div>';
+  }
   function renderData(d) {
     // trust inline del hero: usuarios reales + verificado
     var users = d && d.users ? roundUsers(d.users) : null;
@@ -290,6 +326,28 @@
     var famK = function (f) { return f === 'GOALS' ? 'fam_goals' : f === 'COMBO' ? 'fam_combo' : 'fam_solid'; };
     var confK = function (c) { return c === 'high' ? 'c_high' : c === 'med' ? 'c_med' : 'c_low'; };
     var hh = function (iso) { try { return new Date(iso).toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+    // v4: el cuadro de picks es ESTÁTICO (carga a la primera, no depende del teaser). Tres jugadas REALES
+    // del feed de esta semana como escaparate del formato — con candado de registro, sin resultados inventados.
+    if (V4 && !/[?&]live=1/.test(location.search)) {
+      if (!window.__pl4) {
+        window.__pl4 = true;
+        var ST4 = [
+          { fam: 'SOLID', famK: 'fam_solid', lg: 'suiza', chip: 'Super League \u00b7 SUI', sel: T('st4_pick1'), m: T('st4_pick1m'), odds: '2.36' },
+          { fam: 'COMBAT', famK: null, lg: null, chip: 'UFC', sel: T('st4_pick2'), m: T('st4_pick2m'), odds: '1.75' },
+          { fam: 'CORNERS', famK: 'fam_corners', lg: 'finlandia', chip: 'Veikkausliiga \u00b7 FIN', sel: T('st4_pick3'), m: T('st4_pick3m'), odds: '1.83' },
+        ];
+        $('#plays').innerHTML = '<div class="plays">' + ST4.map(function (p) {
+          var famLbl = p.famK ? T(p.famK) : '\ud83e\udd4a UFC';
+          return '<div class="play ' + (p.fam === 'COMBAT' ? 'f-solid' : famC(p.fam)) + '" data-signup>' +
+            '<div class="play-top"><span style="display:inline-flex;align-items:center;gap:8px;min-width:0"><span class="play-fam">' + esc(famLbl) + '</span><span class="play-lg">' + (p.lg ? leagueLogo(p.lg, '') : '') + esc(p.chip) + '</span></span><span class="play-ko">' + esc(T('st4_best')) + ' ' + p.odds + '</span></div>' +
+            '<div class="play-m"><b style="font-size:15px">' + esc(p.sel) + '</b></div>' +
+            '<div class="play-m" style="opacity:.6;font-size:12px">' + esc(p.m) + '</div>' +
+            '<div class="play-lock"><span class="lk">\ud83d\udd12</span><span class="lt">' + esc(T('play_lock')) + '</span></div>' +
+            '</div>';
+        }).join('') + '</div>';
+      }
+      return renderTrust4(d);
+    }
     var picks = ((d && d.picks) || []).slice();
     if (V3 && d && d.clubs && (d.clubs.picks || []).length) {
       picks.forEach(function (p) { p.chip = T('chip_wc'); });
@@ -588,6 +646,7 @@
 
   fillStatic();
   renderShowcase(null);
+  if (V4 && !/[?&]live=1/.test(location.search)) renderData(null); // v4: TODO estático pintado antes del fetch
   reveal();
   fetch('/api/public/teaser').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (d) {
     renderData(d || {});

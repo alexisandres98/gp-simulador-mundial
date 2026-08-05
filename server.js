@@ -1275,6 +1275,54 @@ function gpIntelEmail(lang) {
   return { subject, text, html };
 }
 
+// LANZAMIENTO COMBATE (5-ago): anuncio de los deportes de combate — UFC, MMA (PFL/Bellator) y boxeo.
+// Gratis 7 días en todos los planes (GP_COMBAT_FREE_UNTIL), después Pro/Sharp. El rendimiento público
+// de combate arranca DESDE CERO (corte GP_COMBAT_PUBLIC_SINCE). NO se envía hasta la autorización.
+function gpCombatEmail(lang) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com/x';
+  const subject = en
+    ? 'New sport on GP: UFC, MMA and boxing — free for 7 days'
+    : 'Nuevo deporte en GP: UFC, MMA y boxeo — gratis por 7 días';
+  const preheader = en
+    ? 'The same intelligence you use for football, now for combat sports: fight probabilities, method of victory, the map of the night and full fighter profiles.'
+    : 'La misma inteligencia que usás para fútbol, ahora en deportes de combate: probabilidades por pelea, método de victoria, el mapa de la noche y perfiles completos de peleadores.';
+  const F = [
+    en ? ['Every fight, read like a match', 'GP probability for each fight, the method of victory (KO, submission or decision), expected rounds and how the market prices it across 20+ books — with the same discipline as football: if the data is not enough, GP says so instead of guessing.']
+       : ['Cada pelea, leída como un partido', 'Probabilidad GP de cada pelea, el método de victoria (KO, sumisión o decisión), los rounds esperados y cómo la paga el mercado en 20+ casas — con la misma disciplina del fútbol: si la muestra no alcanza, GP lo dice en vez de adivinar.'],
+    en ? ['The map of the night', 'The whole card in one read: how many fights should end inside the limit, which one ends earliest, which one goes the distance, and where the model and the market disagree the most — over 10,000 simulated nights.']
+       : ['El mapa de la noche', 'La cartelera entera de una sola lectura: cuántas peleas deberían acabar antes del límite, cuál termina más temprano, cuál llega a las tarjetas, y dónde más se separan modelo y mercado — sobre 10,000 veladas simuladas.'],
+    en ? ['Fighter profiles with real depth', 'Record, rating evolution, quality of wins, pace and depth, style read from the recorded action, risk signals (weight cuts, layoffs, camp changes) — for UFC, PFL, Bellator and boxing.']
+       : ['Perfiles de peleador con profundidad real', 'Récord, evolución del rating, calidad de victorias, ritmo y fondo, lectura de estilo desde el registro de acción, señales de riesgo (cortes de peso, inactividad, cambios de campamento) — para UFC, PFL, Bellator y boxeo.'],
+    en ? ['Ask GP knows combat too', 'The same assistant you use for matches now answers about fights: "who wins the main event on Saturday?", "how does it end?", "any red flags?" — always with the model\'s real numbers.']
+       : ['Preguntale a GP también sabe de combate', 'El mismo asistente que usás para partidos ahora responde de peleas: "¿quién gana el estelar del sábado?", "¿cómo termina?", "¿hay señales de riesgo?" — siempre con los números reales del modelo.'],
+    en ? ['Picks and performance, from zero and in the open', 'Combat picks launch with a clean public track record that starts today — every pick settles in public, wins and losses alike, exactly like football.']
+       : ['Picks y rendimiento, desde cero y a la vista', 'Las picks de combate arrancan con un track público limpio que empieza hoy — cada pick liquida en público, ganadas y perdidas por igual, exactamente como en fútbol.'],
+  ];
+  const text = (en ? 'GP is no longer just football.\n\n' : 'GP ya no es solo fútbol.\n\n')
+    + F.map((f) => f[0].toUpperCase() + '\n' + f[1]).join('\n\n')
+    + (en
+      ? `\n\nFREE FOR EVERYONE FOR 7 DAYS\nCombat is open on every plan until August 12. After that it becomes part of the Pro and Sharp plans.\n\n${url}\n\nPast performance does not guarantee future results. Not financial advice. 18+.\n\nAlexis · GP Simulador\n\nYou are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".`
+      : `\n\nGRATIS PARA TODOS POR 7 DÍAS\nCombate está abierto en todos los planes hasta el 12 de agosto. Después pasa a ser parte de los planes Pro y Sharp.\n\n${url}\n\nRendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.\n\nAlexis · GP Simulador\n\nRecibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".`);
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'New sport · free on every plan for 7 days' : 'Nuevo deporte · gratis en todos los planes por 7 días'}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${en ? 'GP is no longer just football: <span style="color:#18E6A3">UFC, MMA and boxing</span> are live.' : 'GP ya no es solo fútbol: <span style="color:#18E6A3">UFC, MMA y boxeo</span> ya están adentro.'}</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'The same model discipline you know from football — probabilities, market reads and full transparency — applied to combat sports. Flip the sport switcher at the top of your board.' : 'La misma disciplina de modelo que conocés del fútbol — probabilidades, lectura de mercado y transparencia total — aplicada a los deportes de combate. Cambiá de deporte con el conmutador de arriba de tu tablero.'}</p>
+    </div>
+    <div style="padding:24px 26px">
+      ${F.map((f) => `<div style="margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid #eef2f0"><p style="margin:0 0 4px;font-size:14.5px;color:#14201A;font-weight:800">${f[0]}</p><p style="margin:0;font-size:13.5px;color:#2b3a33;line-height:1.55">${f[1]}</p></div>`).join('')}
+      <p style="margin:2px 0 18px;font-size:14px;color:#2b3a33;line-height:1.6"><b>${en ? 'Free for everyone until August 12.' : 'Gratis para todos hasta el 12 de agosto.'}</b> ${en ? 'After that, combat becomes part of the Pro and Sharp plans. Step into the corner:' : 'Después, combate pasa a ser parte de los planes Pro y Sharp. Entrá a la esquina:'}</p>
+      <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${en ? 'Open combat' : 'Abrir combate'}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Past performance does not guarantee future results. Not financial advice. 18+.' : 'Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</div>
+  </div></div>`;
+  return { subject, text, html };
+}
+
 // LANZAMIENTO POST-MUNDIAL (18-jul): la fusión. La plataforma deja de ser "del Mundial" y se abre completa —
 // 15 ligas, picks multi-liga, value/arbitraje, cartera, casas, watch price, brief. Fin de semana abierto para
 // todos; la fase founder cierra con el Mundial. Un correo por usuario en SU idioma (userLang).
@@ -4669,7 +4717,11 @@ function leagueEfficiency(league) {
 // Bandas donde cada segmento público está VALIDADO para publicar. Cards-under se validó en intermedias
 // (n=76, +21.6%) y su racional (público over + líneas perezosas) aplica AÚN MÁS en blandas; en ligas
 // eficientes el mercado de cards también está bien puesto → queda en monitor ahí.
-const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'], 'SOLID': ['eficiente', 'blanda'], 'GOALS': ['eficiente'], 'CORNERS': ['eficiente'] }; // SOLID: ancla en eficientes + líder en blandas; GOALS/CORNERS: SOLO anclas en eficientes (decisión Alexis 27-jul — nada en blandas hasta tener modelo que lidere)
+// CORNERS ENCENDIDO EN TODAS LAS BANDAS (4-ago, decisión de Alexis tras la revisión semanal: 19-9 en el
+// monitor y quiere el producto vivo — se le explicó el CLV 0 y los 3 backtests muertos; el gate de CLV
+// rolling y el stop-loss lo vigilan como a cualquier segmento). En eficientes sigue siendo ANCLA; en
+// intermedias/blandas publica por edge post-blend con gate LOO aprobado (misma vara que cards).
+const SEGMENT_BANDS = { 'CARDS|under': ['intermedia', 'blanda'], 'SOLID': ['eficiente', 'blanda'], 'GOALS': ['eficiente'], 'CORNERS': ['eficiente', 'intermedia', 'blanda'] }; // SOLID: ancla en eficientes + líder en blandas; GOALS: SOLO anclas en eficientes
 const isPublicSegment = (family, side, league) => {
   const seg = PUBLIC_SEGMENTS.some(([f, s]) => f === family && (!s || s === (side || '')));
   if (!seg) return false;
@@ -5846,13 +5898,16 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     if (db.marketOpenings && db.marketOpenings[okey] && p.opening == null) p.opening = db.marketOpenings[okey]; // CLV-desde-apertura
     if (!isPublicSegment(p.family, p.side, p.league)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
     if (p.family === 'SOLID') continue; // el 1X2 de régimen trae su gate desde la GENERACIÓN (anchor/lead por banda)
-    // GOALS/CORNERS (27-jul, decisión Alexis): SOLO anclas en ligas EFICIENTES (la banda ya filtró arriba).
-    // Ancla = lean claro del consenso (≥55%, ≥5 casas) que el blend NO contradice. El resto → monitor.
-    if (p.family === 'GOALS' || p.family === 'CORNERS') {
+    // GOALS (27-jul) y CORNERS-en-eficientes: SOLO anclas (lean claro del consenso ≥55%, ≥5 casas, que el
+    // blend NO contradice). El resto → monitor.
+    if (p.family === 'GOALS' || (p.family === 'CORNERS' && p.league_band === 'eficiente')) {
       const kk = Number(p.market_prob) || 0;
       p.regime = (kk >= 0.55 && (p.books || 0) >= 5 && blend != null && (blend - kk) * 100 >= -2) ? 'anchor' : 'monitor';
       continue;
     }
+    // CORNERS en intermedias/blandas (ENCENDIDO 4-ago): mismo criterio de cards (edge post-blend ≥2pp, línea
+    // genérica de abajo) pero SOLO con el gate LOO de la liga aprobado — sin backtest aprobado no se publica.
+    if (p.family === 'CORNERS' && p.gate_status !== 'approved') { p.regime = 'monitor'; continue; }
     // segmento público: el criterio de publicación ES el edge post-blend ≥ 2pp (⇔ crudo ≥ 4pp; 81/82
     // cards-under históricas lo cumplían). SIMÉTRICO: también promueve lo que nació 'monitor' por la regla
     // vieja de priceAboveFair — la calidad de compra la vigila el gate de CLV rolling, no un filtro estático.
@@ -8698,8 +8753,10 @@ function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
     en: `GP reads this fight ${mp}% for ${name}, against the ${kp}% the market prices in (${books} book${books === 1 ? '' : 's'}).${fEN ? ' What tilts it: ' + fEN + '.' : ''} ${slot === 'main' ? 'Main-event bout.' : ''}`.trim(),
   };
 }
-function combatPicksTrack() {
-  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+function combatPicksTrack({ since = 0 } = {}) {
+  // since (5-ago, lanzamiento público): el rendimiento del PÚBLICO arranca desde cero — solo picks creadas
+  // desde el corte (las del finde pre-lanzamiento son historia interna del monitor, jamás del usuario).
+  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && (!since || Date.parse(p.created_at || 0) >= since));
   const agg = (list) => {
     const w = list.filter(p => p.result_code === 'WIN').length;
     const u = list.reduce((s, p) => s + (p.units || 0), 0);
@@ -8708,6 +8765,8 @@ function combatPicksTrack() {
   };
   return { total: agg(rows), main: agg(rows.filter(p => p.card_slot === 'main')), prelim: agg(rows.filter(p => p.card_slot !== 'main')), active: (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length };
 }
+// corte del lanzamiento público de combate (5-ago): lo que el NO-admin puede ver de picks/rendimiento
+const CB_PUBLIC_SINCE = () => Date.parse(process.env.GP_COMBAT_PUBLIC_SINCE || '2026-08-05T00:00:00Z');
 if (combatPicksOn()) {
   setTimeout(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 150 * 1000);
   setInterval(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 30 * 60 * 1000);
@@ -11881,6 +11940,23 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { ok: true, kind, to });
       } catch (e) { return json(res, 200, { ok: false, error: String(e.message || e).slice(0, 200) }); }
     }
+    // ═ ANUNCIO COMBATE por Telegram (5-ago) — se dispara MANUALMENTE el día del encendido, key-gated ═
+    if (p === '/api/internal/tg-combat' && req.method === 'POST') {
+      if (url.searchParams.get('key') !== process.env.GP_EXPORT_KEY) return json(res, 404, { error: 'No encontrado' });
+      const tg = require('./telegram');
+      const msg = '🥊 <b>GP ya no es solo fútbol: UFC, MMA y BOXEO ya están adentro</b>\n\n' +
+        'La misma inteligencia que usás para los partidos, ahora en deportes de combate:\n' +
+        '· Probabilidad GP de cada pelea, método de victoria y rounds esperados\n' +
+        '· El Mapa de la Noche: la cartelera entera sobre 10,000 veladas simuladas\n' +
+        '· Perfiles de peleador con rating, calidad de victorias y señales de riesgo\n' +
+        '· Preguntale a GP también sabe de peleas\n' +
+        '· Picks de combate con track público desde CERO, todo a la vista\n\n' +
+        '🎁 <b>Gratis para TODOS los planes por 7 días</b> (hasta el 12 de agosto). Después pasa a Pro y Sharp.\n\n' +
+        '👉 <a href="https://gpsimulador.com/x">Abrir combate</a>\n\n' +
+        '<i>Estimaciones de un modelo estadístico, no consejo financiero. 18+</i>';
+      const ok = await tg.post(msg);
+      return json(res, 200, { ok, configured: tg.configured() });
+    }
     // ═ GP INTELLIGENCE LLM — diagnóstico y forzado (key interna) ═
     if (p === '/api/internal/llm') {
       if (url.searchParams.get('key') !== process.env.GP_EXPORT_KEY) return json(res, 404, { error: 'No encontrado' });
@@ -11951,12 +12027,19 @@ const server = http.createServer(async (req, res) => {
       // usuario con sesión, y deja las PICKS y el board de oportunidades en admin. Es la separación que
       // corresponde: el análisis no necesita muestra para ser cierto, una pick sí — y el monitor tiene 0
       // liquidadas. Con el flag OFF, todo sigue admin-only y byte-idéntico a hoy.
-      const CB_PICK_ROUTES = ['/api/combat/opps', '/api/combat/perf'];
+      // LANZAMIENTO PÚBLICO v2 (5-ago, orden de Alexis): con el flag ON, TODO combate — incluidas
+      // Oportunidades y Rendimiento — se abre a cualquier usuario con sesión. Gratis hasta
+      // GP_COMBAT_FREE_UNTIL (7 días), después pro/sharp. El público ARRANCA DESDE CERO: solo ve
+      // picks/rendimiento creados desde GP_COMBAT_PUBLIC_SINCE (cbPickVisible) — el finde pre-lanzamiento
+      // es historia interna del monitor. Con el flag OFF, todo sigue admin-only byte-idéntico.
       const cbPublic = String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true';
-      const isPickRoute = CB_PICK_ROUTES.some(r => p === r);
-      const allowed = (u && u.isAdmin) || (cbPublic && u && !isPickRoute);
+      const cbFreeUntil = Date.parse(process.env.GP_COMBAT_FREE_UNTIL || '2026-08-12T00:00:00Z');
+      const cbPlanOk = !!u && (u.isAdmin || !plansEnforced() || Date.now() < cbFreeUntil || ['pro', 'sharp'].indexOf(effectivePlan(u.email)) >= 0);
+      const allowed = (u && u.isAdmin) || (cbPublic && u && cbPlanOk);
       if (!allowed) return json(res, 404, { error: 'No encontrado' }); // 404, ni señal
-      const cbAdmin = !!(u && u.isAdmin);   // los campos de PICKS solo se sirven a admin
+      const cbAdmin = !!(u && u.isAdmin);
+      const cbPickVisible = (x) => cbAdmin || Date.parse(x.created_at || 0) >= CB_PUBLIC_SINCE();
+      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE() };
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
       // fuente compartida con el loop de picks. F5: ?org=ufc|mma (mma = Bellator histórico + PFL activa).
@@ -12012,9 +12095,9 @@ const server = http.createServer(async (req, res) => {
           backtest: C.bt || (C.bt = CE.backtest(C.fights.fights || [], { fighters: C.fighters, evalIds: new Set((C.own || []).map(f2 => f2.comp_id)) })),
           backtest_method: C.btm || (C.btm = CE.backtestMethod(C.fights.fights || [])),
           // F2: monitor privado de picks (admin-only por el gate del route; jamás feed público)
-          picks_enabled: cbAdmin && combatPicksOn(),
-          picks: cbAdmin ? (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)) : [],
-          picks_track: cbAdmin ? combatPicksTrack() : null,
+          picks_enabled: (cbAdmin || cbPublic) && combatPicksOn(),
+          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).filter(cbPickVisible).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
+          picks_track: combatPicksTrack(cbTrackOpts),
         });
       }
       // F3/R2: perfil de peleador COMPLETO (bio + edad + Elo con serie + récord + métodos + divisiones +
@@ -12188,7 +12271,7 @@ const server = http.createServer(async (req, res) => {
           live, live_probs: liveProbs,
           fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
-          pick: (cbAdmin && pk) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
+          pick: (pk && cbPickVisible(pk)) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
         });
       }
       // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)
@@ -12243,7 +12326,7 @@ const server = http.createServer(async (req, res) => {
           }
         }
         value.sort((a, b) => b.ev_pct - a.ev_pct);
-        const myPicks = (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at));
+        const myPicks = (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).filter(cbPickVisible).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at));
         for (const p2 of myPicks) { // backfill de narrativa en picks creadas antes de R2b
           if (p2.why_es) continue;
           const w2 = combatPickWhy({ name: p2.selection_name, rival: p2.selection_code === 'f1' ? p2.event.away : p2.event.home, m: p2.model_prob, k: p2.market_prob, eg: p2.edge_blend_pp || 0, books: p2.books || 0, slot: p2.card_slot });
@@ -12251,14 +12334,14 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, {
           picks: myPicks,
-          picks_enabled: combatPicksOn(), value: value.slice(0, 20), arbs, track: combatPicksTrack(),
+          picks_enabled: combatPicksOn(), value: value.slice(0, 20), arbs, track: combatPicksTrack(cbTrackOpts),
         });
       }
       // R2: RENDIMIENTO combat — track + liquidadas (formato del perf de fútbol; admin-only por el gate)
       if (p === '/api/combat/perf' && req.method === 'GET') {
-        const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED')
+        const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED').filter(cbPickVisible)
           .sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
-        return json(res, 200, { track: combatPicksTrack(), settled: settled.slice(0, 100), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length });
+        return json(res, 200, { track: combatPicksTrack(cbTrackOpts), settled: settled.slice(0, 100), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').filter(cbPickVisible).length });
       }
       // R5c: DAILY BRIEF DE COMBATE — el equivalente del brief de fútbol, con la cartelera por delante.
       // Mismo espíritu: qué pasa hoy, qué mira el sistema, qué señales hay y cómo venimos. Reusa los
@@ -12303,7 +12386,7 @@ const server = http.createServer(async (req, res) => {
             market: mo ? { f1: +mo.fair_f1.toFixed(3), books: mo.books, best_f1: mo.best.f1, best_f2: mo.best.f2 } : null,
             gap_pp: mo ? +((pr.p1 - mo.fair_f1) * 100).toFixed(1) : null,
             confidence: conf ? conf.level : null,
-            pick: (cbAdmin && pk) ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
+            pick: (pk && cbPickVisible(pk)) ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
             ref: (officials[ft.comp_id] || {}).ref || null,
           });
         }
@@ -12393,11 +12476,11 @@ const server = http.createServer(async (req, res) => {
           // PELEAS RETIRADAS de la cartelera (combatCardWatch): lo que nos faltó el 31-jul con Powell.
           off_card: (db.combatCardAlerts || []).filter(a => a.org === org && Date.parse(a.kickoff_at || 0) > Date.now() - 48 * 3600e3)
             .sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 6),
-          picks: cbAdmin ? (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
-            .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10) : [],
-          recent: cbAdmin ? settled.map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })) : [],
+          picks: (db.combatPicks || []).filter(cbPickVisible).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
+            .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10),
+          recent: settled.filter(cbPickVisible).map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })),
           moves: combatLineMoves(C, { hours: 96 }).slice(0, 6),
-          track: cbAdmin ? combatPicksTrack() : null,
+          track: combatPicksTrack(cbTrackOpts),
         });
       }
       // R2: ORGANIZACIONES — resumen por promoción (UFC del dataset ufc; Bellator/PFL del dataset mma)
@@ -13689,6 +13772,8 @@ const server = http.createServer(async (req, res) => {
                   : (variant === 'features_en') ? () => featuresEmail('en')
                     : (variant === 'gpintel_es') ? () => gpIntelEmail('es')
                       : (variant === 'gpintel_en') ? () => gpIntelEmail('en')
+                        : (variant === 'gpcombat_es') ? () => gpCombatEmail('es')
+                          : (variant === 'gpcombat_en') ? () => gpCombatEmail('en')
                     : (variant === 'launch') ? (em) => launchEmail(userLang(em)) // fusión: cada usuario en SU idioma
                       : (variant === 'launch_es') ? () => launchEmail('es')
                         : (variant === 'launch_en') ? () => launchEmail('en')
@@ -13796,7 +13881,7 @@ const server = http.createServer(async (req, res) => {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
         // __GPL3: landing v3 (clubes) conocida ANTES del primer paint — sin swap visible de copy/hero.
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
@@ -14570,7 +14655,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }

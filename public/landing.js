@@ -68,6 +68,16 @@
       champ_sub_v3: 'Probabilidad de campeón por liga, recalculada con cada jornada. Solo la punta — el análisis completo está dentro.',
       race_cap: 'prob. de campeón',
       a_micro_v3: 'Gratis · sin tarjeta · sin spam',
+      /* v4 (multideporte, 5-ago): la plataforma deja de ser solo fútbol — combate entra al hero.
+         Solo se tocan las llaves que cambian; todo lo demás hereda de v3/base. */
+      lb_txt_v4: 'Nuevo: UFC, MMA y boxeo ya están adentro — gratis en todos los planes por 7 días.',
+      h1_v4: 'El modelo que leyó el Mundial ahora lee <span class="g">fútbol y combate</span>.',
+      sub_v4: 'El mismo motor, ahora multideporte: 32 ligas de fútbol en vivo y las carteleras de UFC, MMA y boxeo. Picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
+      scan_sub_v4: 'Vigilamos 32 ligas, cada cartelera de combate y el mercado global 24/7 — y detectamos el precio que quedó atrás antes de que lo corrijan.',
+      tr_sports_v4: 'fútbol · UFC · MMA · boxeo',
+      scf_leagues_v4: 'ligas y carteleras 24/7',
+      plays_sub_v4: 'Fútbol y combate, publicadas antes con su precio congelado, liquidadas en público después. La selección se desbloquea con tu cuenta gratis.',
+      d_sub_v4: 'Compara decenas de casas en tiempo real — en partidos y en peleas — y marca el precio que quedó atrás antes de que lo corrijan.',
     },
     en: {
       nav_login: 'Log in', nav_cta: 'Sign up',
@@ -125,6 +135,15 @@
       champ_sub_v3: 'Champion probability per league, recalculated after every matchday. Just the top — the full analysis is inside.',
       race_cap: 'champion prob.',
       a_micro_v3: 'Free · no card · no spam',
+      /* v4 (multi-sport) */
+      lb_txt_v4: 'New: UFC, MMA and boxing are in — free on every plan for 7 days.',
+      h1_v4: 'The model that read the World Cup now reads <span class="g">football and combat</span>.',
+      sub_v4: 'The same engine, now multi-sport: 32 live football leagues plus every UFC, MMA and boxing card. Picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
+      scan_sub_v4: 'We watch 32 leagues, every combat card and the global market 24/7 — and catch the price that fell behind before it gets corrected.',
+      tr_sports_v4: 'football · UFC · MMA · boxing',
+      scf_leagues_v4: 'leagues & cards 24/7',
+      plays_sub_v4: 'Football and combat, published before with the price frozen, settled in public after. The selection unlocks with your free account.',
+      d_sub_v4: 'It compares dozens of books in real time — on matches and on fights — and flags the price that fell behind before it gets corrected.',
     }
   };
   var lang = (function () { try { var p = localStorage.getItem('gp_lang'); if (p === 'es' || p === 'en') return p; } catch (e) {} return (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})(); })();
@@ -132,7 +151,16 @@
   // prefiere la variante `<k>_v3` del copy → un solo diccionario, cero bifurcación de markup estático.
   var V3 = /[?&]landing3=1/.test(location.search) || !!window.__GPL3;
   if (V3) { try { document.body.classList.add('v3'); } catch (e) {} }
-  var T = function (k, a) { var d0 = DICT[lang] || DICT.es; var s = V3 && d0[k + '_v3'] != null ? d0[k + '_v3'] : d0[k]; if (s == null) s = (V3 && DICT.es[k + '_v3'] != null ? DICT.es[k + '_v3'] : DICT.es[k]) || k; return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; }); };
+  // V4 (multideporte, 5-ago): atada al flag del lanzamiento de combate (__GPM) — o ?landing4=1 para preview.
+  // Hereda TODO de v3 y solo pisa las llaves _v4 que existen: cero bifurcación de markup, mismo esqueleto.
+  var V4 = /[?&]landing4=1/.test(location.search) || !!window.__GPM;
+  if (V4) { V3 = true; try { document.body.classList.add('v3'); } catch (e) {} }
+  var T = function (k, a) {
+    var d0 = DICT[lang] || DICT.es;
+    var s = V4 && d0[k + '_v4'] != null ? d0[k + '_v4'] : V3 && d0[k + '_v3'] != null ? d0[k + '_v3'] : d0[k];
+    if (s == null) s = (V4 && DICT.es[k + '_v4'] != null ? DICT.es[k + '_v4'] : V3 && DICT.es[k + '_v3'] != null ? DICT.es[k + '_v3'] : DICT.es[k]) || k;
+    return String(s).replace(/\{(\w+)\}/g, function (m, x) { return a && a[x] != null ? a[x] : m; });
+  };
   var clubLogo = function (id, cls) { return id && /^tm_[a-z0-9]+$/i.test(String(id)) ? '<img class="' + (cls || 'sc-fl') + '" src="/logos/' + esc(id) + '.png" alt="" onerror="this.remove()">' : ''; };
   var leagueLogo = function (key, cls) { return key && /^[a-z0-9]+$/.test(String(key)) ? '<img class="' + (cls || '') + '" src="/logos/league-' + esc(key) + '.png" alt="" onerror="this.remove()">' : ''; };
   var badge = function (id, cls) { return /^tm_/i.test(String(id || '')) ? clubLogo(id, (cls || 'play-fl') + ' clx') : flag(id, cls); };
@@ -246,6 +274,8 @@
     if (V3 && d && d.clubs) {
       if (rec) trust += '<div class="tr big"><b>' + rec + '</b><span>' + esc(T('tr_rec_v3')) + ' (' + d.record.winners + '/' + d.record.total + ')</span></div>';
       trust += '<div class="tr"><b class="g">' + nL + '</b><span>' + esc(T('tr_leagues_v3')) + '</span></div>' +
+        // v4: el chip de idiomas cede su lugar al de DEPORTES (la noticia es el multideporte)
+        (V4 ? '<div class="tr"><b>⚽·🥊</b><span>' + esc(T('tr_sports_v4')) + '</span></div>' : '') +
         '<div class="tr"><b>40+</b><span>' + esc(T('tr_books')) + '</span></div>' +
         '<div class="tr"><b class="g">' + esc(T('tr_live')) + '</b><span>' + esc(T('tr_live_s')) + '</span></div>';
     } else {
@@ -504,7 +534,12 @@
   }
 
   /* demo interactiva del escáner — v3: ejemplos de CLUBES (el producto post-Mundial) */
-  var demoRows = V3 ? [
+  var demoRows = V4 ? [
+    { lg: 'brasileirao', team: 'Palmeiras', tag: 'lag', tagK: 'd_lag', val: '+11%' },
+    { emoji: '🥊', team: 'UFC · main event', tag: 'lag', tagK: 'd_lag', val: '+9%' },
+    { lg: 'ligamx', team: 'América', tag: 'arb', tagK: 'd_arb', val: '+3.2%' },
+    { emoji: '🥊', team: 'Boxeo · título mundial', tag: 'lag', tagK: 'd_lag', val: '+7%' }
+  ] : V3 ? [
     { lg: 'brasileirao', team: 'Palmeiras', tag: 'lag', tagK: 'd_lag', val: '+11%' },
     { lg: 'ligamx', team: 'América', tag: 'lag', tagK: 'd_lag', val: '+8%' },
     { lg: 'mls', team: 'Inter Miami', tag: 'arb', tagK: 'd_arb', val: '+3.2%' },
@@ -517,7 +552,7 @@
   ];
   function openDemo() {
     var rows = demoRows.map(function (r, i) {
-      return '<div class="dr" style="animation-delay:' + (i * 90 + 60) + 'ms">' + (r.lg ? leagueLogo(r.lg, 'dfl') : flag(r.fl, 'dfl')) +
+      return '<div class="dr" style="animation-delay:' + (i * 90 + 60) + 'ms">' + (r.emoji ? '<span class="dfl" style="display:inline-flex;align-items:center;justify-content:center;font-size:15px">' + r.emoji + '</span>' : r.lg ? leagueLogo(r.lg, 'dfl') : flag(r.fl, 'dfl')) +
         '<span class="dteam">' + esc(r.team) + '<span class="dtag ' + r.tag + '">' + esc(T(r.tagK)) + '</span></span>' +
         '<span class="dval">' + esc(r.val) + '</span></div>';
     }).join('');

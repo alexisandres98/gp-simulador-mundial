@@ -892,7 +892,10 @@
   // LANZAMIENTO PÚBLICO DE COMBATE: con el flag ON, cualquier usuario con sesión entra a las superficies de
   // INTELIGENCIA; las de PICKS (Oportunidades y Rendimiento) siguen siendo admin. Con el flag OFF, todo
   // combate es admin-only igual que hoy.
-  var CB_PICK_VIEWS = ['cbopps', 'cbperf'];
+  // v2 lanzamiento (5-ago): con combatPublic el público también entra a Oportunidades y Rendimiento —
+  // el server ya filtra lo que ve (picks desde el corte, track desde 0). La lista queda por si algún
+  // día se quiere re-separar, pero hoy no bloquea nada con el flag ON.
+  var CB_PICK_VIEWS = [];
   function cbCanSee(v) {
     if (!S.me) return false;
     if (S.me.isAdmin) return true;

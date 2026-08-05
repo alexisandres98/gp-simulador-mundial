@@ -6810,10 +6810,17 @@ function reclassifyClubSegments() {
     // 'monitor' por la regla vieja de priceAboveFair; degrada las de edge fino. El gate CLV vigila la compra.
     // SOLID de régimen (27-jul) queda fuera: su gate vive en la generación (anchor/lead por banda).
     if (old.family === 'SOLID') { /* gate propio en la generación */ }
-    else if (old.family === 'GOALS' || old.family === 'CORNERS') {
-      // anclas en eficientes (la banda ya filtró): lean claro sin contradicción del blend
+    else if (old.family === 'GOALS' || (old.family === 'CORNERS' && (old.league_band || leagueEfficiency(old.league).band) === 'eficiente')) {
+      // anclas en eficientes: lean claro sin contradicción del blend
       const kk = Number(old.market_prob) || 0;
       const want = (kk >= 0.55 && (old.books || 0) >= 5 && old.blend_prob != null && (old.blend_prob - kk) * 100 >= -2) ? 'anchor' : 'monitor';
+      if (old.regime !== want) { old.regime = want; n++; }
+    }
+    // CORNERS en intermedias/blandas (encendido 4-ago): edge post-blend ≥2pp con gate LOO aprobado.
+    // ESTE reclasificador corre DESPUÉS del de la generación y antes no conocía la regla nueva → devolvía
+    // a monitor todo lo que aquél acababa de promover (por eso no salía ninguna córner pública).
+    else if (old.family === 'CORNERS') {
+      const want = (old.gate_status === 'approved' && old.blend_prob != null && isFinite(k) && (old.blend_prob - k) * 100 >= 2) ? 'edge' : 'monitor';
       if (old.regime !== want) { old.regime = want; n++; }
     }
     else if (old.blend_prob != null && isFinite(k)) {

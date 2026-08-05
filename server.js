@@ -4739,6 +4739,11 @@ const pickClvNum = (p) => typeof p.clv === 'number' ? p.clv : (p.clv && typeof p
 // El historial del cuadro NO se toca (inmutable). Ventana llena (≥30) requerida. También respeta el corte
 // de la VALIDACIÓN CONTINUA (cardsValidationRun): selección que deja de ganarle al base-rate → fuera.
 function clubFamilyStopped() {
+  // NOTA 5-ago (evaluado y DESCARTADO a propósito): al encender córners se vio que el stop-loss juzga el
+  // segmento con TODAS las liquidadas, incluidas monitor. Se consideró exigir published/regime!=monitor,
+  // pero eso deja a CARDS|under (la familia estrella) con n=28 < 30 → SIN stop-loss. Cambiar la población
+  // para que un segmento pase el gate es escoger el resultado. Se queda la ventana amplia (más conservadora)
+  // y la decisión de publicar córners-under queda en manos de Alexis, no en un filtro a medida.
   const inPublic = (p) => p.family === 'SOLID' ? (p.regime === 'anchor' || p.regime === 'lead') : p.family === 'GOALS' ? p.regime === 'anchor' : (p.family === 'CORNERS' || p.family === 'CARDS');
   const bySeg = {};
   const settled = (db.clubDailyPicks || [])

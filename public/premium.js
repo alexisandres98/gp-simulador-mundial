@@ -239,7 +239,7 @@
       cb_recent: 'Últimas 5', cb_h2h: 'Historial entre ellos', cb_odds_by_book: 'Cuotas por casa', cb_form: 'Forma',
       cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
       cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
-      cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado',
+      cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado', cb_public_track: 'todo a la vista · ganadas y perdidas',
       cb_track: 'Track record', cb_settled: 'Liquidadas', cb_no_settled: 'Todavía no liquida ninguna pick.', cb_units: 'unidades', cb_hit: 'acierto', cb_clv: 'CLV medio',
       cb_org_since: 'desde', cb_org_active: 'activos', cb_org_next: 'Próximo evento', cb_org_top: 'Élite por Elo', cb_org_hist: 'histórico',
       cb_evo_top: 'La élite en el tiempo', cb_evo_up: 'En ascenso', cb_evo_down: 'En caída', cb_evo_12m: 'últimos 12 meses',
@@ -579,7 +579,7 @@
       cb_recent: 'Last 5', cb_h2h: 'Head to head', cb_odds_by_book: 'Odds by book', cb_form: 'Form',
       cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
       cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
-      cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor',
+      cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor', cb_public_track: 'everything in the open · wins and losses',
       cb_track: 'Track record', cb_settled: 'Settled', cb_no_settled: 'No settled picks yet.', cb_units: 'units', cb_hit: 'hit rate', cb_clv: 'avg CLV',
       cb_org_since: 'since', cb_org_active: 'active', cb_org_next: 'Next event', cb_org_top: 'Elo elite', cb_org_hist: 'historical',
       cb_evo_top: 'The elite over time', cb_evo_up: 'Rising', cb_evo_down: 'Falling', cb_evo_12m: 'last 12 months',
@@ -6594,8 +6594,9 @@
       home_team_id: null, away_team_id: null, cb_avas: avas,
       cb_hash: 'cbfight/' + org2 + '-' + String(p2.event.canonical_event_id).replace(/^cb-/, ''),
       odds: p2.best_odds, book: p2.best_book, confidence: p2.blend_prob,
-      why_es: p2.why_es, why_en: p2.why_en,
-      signals: { regime: 'monitor', win_prob: p2.blend_prob, edge_pp: eg,
+      why_es: p2.why_ai_es || p2.why_es, why_en: p2.why_ai_en || p2.why_en,
+      // el chip MONITOR es vocabulario interno del admin — el público ve la pick sin esa etiqueta (5-ago)
+      signals: { regime: (S.me && S.me.isAdmin) ? 'monitor' : null, win_prob: p2.blend_prob, edge_pp: eg,
         data_confidence: (p2.books || 0) >= 12 ? 'high' : 'med',
         pick_quality: eg >= 5 ? 'strong' : eg >= 3 ? 'moderate' : 'marginal' },
     };
@@ -6706,7 +6707,9 @@
         '<span class="gx-mono gx-dim">@' + p2.best_odds + (p2.clv_pct != null ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span>' +
         '<b class="gx-mono ' + ((p2.units || 0) > 0 ? 'gx-cb-up' : (p2.units || 0) < 0 ? 'gx-cb-down' : 'gx-dim') + '">' + ((p2.units || 0) > 0 ? '+' : '') + (p2.units || 0) + 'u</b></div>';
     }).join('');
-    var list = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_settled')) + ' · ' + (d.settled || []).length + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_monitor')) + '</span></div><div class="gx-mod-body">' +
+    // "monitor privado" es vocabulario de ADMIN; el público ve su track transparente (lanzamiento 5-ago)
+    var perfTag = (S.me && S.me.isAdmin) ? t('cb_monitor') : t('cb_public_track');
+    var list = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_settled')) + ' · ' + (d.settled || []).length + '</span><span class="gx-ph-extra gx-dim">' + esc(perfTag) + '</span></div><div class="gx-mod-body">' +
       (rows || '<div class="gx-empty">' + illo('chart') + '<b>' + esc(t('cb_no_settled')) + '</b></div>') + '</div></div>';
     cbShell(t('cb_perf_title'), kpis2 + list);
   }

@@ -3531,7 +3531,9 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
 // se registra si AMBOS lados matchean a ids distintos (evita marcadores cruzados). Se guarda en
 // db.clubResults[<liga>|<idA-idB ordenados>] → lo consumen /api/clubs/state y la vista cl-. Gate por
 // GP_CLUBS_SHADOW_ENABLED; ESPN es gratis (0 créditos). Nada de esto toca el Mundial ni el pipeline de picks.
-const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1' }; // polonia sin ESPN (sin vivo; resultados por TSA)
+const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1',
+  // 5-ago: las 9 nuevas (ESPN cubre las 9 con slug propio; el fallback TSA sigue de red de seguridad)
+  championship: 'eng.2', league1: 'eng.3', league2: 'eng.4', serieb: 'ita.2', laliga2: 'esp.2', portugal: 'por.1', belgica: 'bel.1', turquia: 'tur.1', grecia: 'gre.1' }; // polonia sin ESPN (sin vivo; resultados por TSA)
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys', 'xolos': 'club tijuana', 'xolos de tijuana': 'club tijuana', 'tijuana': 'club tijuana',
   // Rusia: ESPN transcribe distinto que TSA (Dinamo/Dynamo, Tolyatti/Togliatti, Krylia/Krylya) → sin alias el
@@ -4702,6 +4704,12 @@ const LEAGUE_EFF_PRIOR = {
   suecia: 'eficiente', // medida 26-jul: brier .217 con 20 casas
   mls: 'intermedia', brasileirao: 'intermedia', argentina: 'intermedia', colombia: 'intermedia', brasilb: 'intermedia', ligamx: 'intermedia',
   // ligamx midió BLANDA (brier .253 pese a 27 casas) pero con n=23 → prior intermedia hasta que la medición confirme
+  // 5-ago (alta de las 9): Championship = mercado hiper-líquido (comparable a big-5) → eficiente; el resto son
+  // mercados europeos establecidos, no blandos tipo LATAM → intermedia. El default 'blanda' dejaría disparar
+  // picks de edge contra mercados bien puestos. La medición (n≥40) mueve la banda sola con histéresis.
+  championship: 'eficiente',
+  league1: 'intermedia', league2: 'intermedia', serieb: 'intermedia', laliga2: 'intermedia',
+  portugal: 'intermedia', belgica: 'intermedia', turquia: 'intermedia', grecia: 'intermedia',
 };
 function leagueEfficiency(league) {
   const lg = league || 'mundial';

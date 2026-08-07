@@ -56,6 +56,20 @@ const LEAGUES = [
   { key: 'superettan', name: 'Superettan', country: 'Suecia', comp: 'comp_6917', season: 'sn_0842342', ratings_from: ['comp_6917-sn_2998551', 'comp_6917-sn_0842342'], odds_key: 'soccer_sweden_superettan' },
   { key: 'austria', name: 'Bundesliga', country: 'Austria', comp: 'comp_4893', season: 'sn_5749764', players_season: 'sn_9673680', ratings_from: ['comp_4893-sn_9673680', 'comp_4893-sn_5749764'], starts: 'agosto', odds_key: 'soccer_austria_bundesliga' },
   { key: 'escocia', name: 'Premiership', country: 'Escocia', comp: 'comp_6387', season: 'sn_8406037', players_season: 'sn_8436747', ratings_from: ['comp_6387-sn_8436747', 'comp_6387-sn_8406037'], starts: 'agosto', odds_key: 'soccer_spl' },
+  // EXPANSIÓN 5-ago (discovery del 5-ago: 9 ligas domésticas con cuotas activas en Odds API que no teníamos).
+  // Bélgica/Portugal/Grecia venían RECHAZADAS por el matcher automático (nombres comerciales: "Pro League",
+  // "Liga Portugal Betclic", "Stoiximan Super League") → comp verificado a MANO contra el catálogo TSA
+  // (--info: país correcto en las 9). Mismo patrón del 2-ago: Elo nace de la 25/26 completa, players_season
+  // apunta a la previa; las 9 con 0 finalizados en la 26/27 al alta (5-ago) → pretemporada 'agosto'.
+  { key: 'championship', name: 'Championship', country: 'Inglaterra', comp: 'comp_8321', season: 'sn_3014533', players_season: 'sn_3064530', ratings_from: ['comp_8321-sn_3064530', 'comp_8321-sn_3014533'], starts: 'agosto', odds_key: 'soccer_efl_champ' },
+  { key: 'league1', name: 'League One', country: 'Inglaterra', comp: 'comp_0196', season: 'sn_3014087', players_season: 'sn_9673094', ratings_from: ['comp_0196-sn_9673094', 'comp_0196-sn_3014087'], starts: 'agosto', odds_key: 'soccer_england_league1' },
+  { key: 'league2', name: 'League Two', country: 'Inglaterra', comp: 'comp_4023', season: 'sn_8407455', players_season: 'sn_2951327', ratings_from: ['comp_4023-sn_2951327', 'comp_4023-sn_8407455'], starts: 'agosto', odds_key: 'soccer_england_league2' },
+  { key: 'serieb', name: 'Serie B', country: 'Italia', comp: 'comp_5450', season: 'sn_3025358', players_season: 'sn_9686012', ratings_from: ['comp_5450-sn_9686012', 'comp_5450-sn_3025358'], starts: 'agosto', odds_key: 'soccer_italy_serie_b' },
+  { key: 'laliga2', name: 'LaLiga 2', country: 'España', comp: 'comp_0976', season: 'sn_1368511', players_season: 'sn_8437950', ratings_from: ['comp_0976-sn_8437950', 'comp_0976-sn_1368511'], starts: 'agosto', odds_key: 'soccer_spain_segunda_division' },
+  { key: 'portugal', name: 'Liga Portugal', country: 'Portugal', comp: 'comp_8385', season: 'sn_6190962', players_season: 'sn_6120591', ratings_from: ['comp_8385-sn_6120591', 'comp_8385-sn_6190962'], starts: 'agosto', odds_key: 'soccer_portugal_primeira_liga' },
+  { key: 'belgica', name: 'Pro League', country: 'Bélgica', comp: 'comp_8531', season: 'sn_6195301', players_season: 'sn_1397734', ratings_from: ['comp_8531-sn_1397734', 'comp_8531-sn_6195301'], starts: 'agosto', odds_key: 'soccer_belgium_first_div' },
+  { key: 'turquia', name: 'Süper Lig', country: 'Turquía', comp: 'comp_9235', season: 'sn_1361088', players_season: 'sn_4502189', ratings_from: ['comp_9235-sn_4502189', 'comp_9235-sn_1361088'], starts: 'agosto', odds_key: 'soccer_turkey_super_league' },
+  { key: 'grecia', name: 'Super League', country: 'Grecia', comp: 'comp_4008', season: 'sn_7201312', players_season: 'sn_4504055', ratings_from: ['comp_4008-sn_4504055', 'comp_4008-sn_7201312'], starts: 'agosto', odds_key: 'soccer_greece_super_league' },
 ];
 
 function loadMatches(files) {

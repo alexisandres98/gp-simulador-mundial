@@ -10,7 +10,9 @@ const path = require('path');
 
 const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1',
   // EXPANSIÓN 2-ago: las 7 ligas nuevas del discovery
-  liga3: 'ger.3', ligue2: 'fra.2', bundesliga2: 'ger.2', eredivisie: 'ned.1', superettan: 'swe.2', austria: 'aut.1', escocia: 'sco.1' }; // polonia sin ESPN → pases 2/3 (search + FotMob)
+  liga3: 'ger.3', ligue2: 'fra.2', bundesliga2: 'ger.2', eredivisie: 'ned.1', superettan: 'swe.2', austria: 'aut.1', escocia: 'sco.1',
+  // EXPANSIÓN 5-ago: las 9 ligas nuevas del discovery
+  championship: 'eng.2', league1: 'eng.3', league2: 'eng.4', serieb: 'ita.2', laliga2: 'esp.2', portugal: 'por.1', belgica: 'bel.1', turquia: 'tur.1', grecia: 'gre.1' }; // polonia sin ESPN → pases 2/3 (search + FotMob)
 // logo de LIGA por código ESPN (leaguelogos id) — del scoreboard; fijos para no depender de una ventana con partidos
 const LEAGUE_LOGO_ID = { 'bra.1': 85, 'mex.1': 22, 'usa.1': 19, 'arg.1': 1, 'col.1': 1543, 'par.1': 1892, 'chn.1': 2350, 'jpn.1': 2199, 'eng.1': 23, 'esp.1': 15, 'ger.1': 10, 'ita.1': 12, 'fra.1': 9 };
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'bayern munich': 'bayern munchen', 'cologne': 'koln', 'hamburg sv': 'hamburger sv', 'monchengladbach': 'borussia monchengladbach' };
@@ -102,6 +104,14 @@ async function dl(url, dest) {
     'FC Würzburger Kickers': 'Wurzburger Kickers', 'FC Schalke 04': 'Schalke 04', 'SV 07 Elversberg': 'Elversberg',
     'Örebro SK': 'Orebro', 'Hammarby Talang FF': 'Hammarby', 'Norrby IF': 'Norrby', 'Ljungskile SK': 'Ljungskile',
     'SK Rapid Wien': 'Rapid Vienna',
+    // EXPANSIÓN 5-ago: belgas/turcas/griegas con nombre comercial o prefijo societario en TSA.
+    'Barrow AFC': 'Barrow', 'Racing de Santander': 'Racing Santander', 'Celta Vigo B': 'Celta Vigo',
+    'Académico Viseu FC': 'Academico Viseu', 'Royale Union Saint-Gilloise': 'Union Saint-Gilloise',
+    'RC Sporting Charleroi': 'Charleroi', 'KRC Genk': 'Genk', 'Lommel SK': 'Lommel',
+    'RFC Liège': 'Liege', 'Patro Eisden Maasmechelen': 'Patro Eisden', 'K. Beerschot V.A.': 'Beerschot',
+    'Başakşehir FK': 'Istanbul Basaksehir', 'Amed Sportif Faaliyetler': 'Amedspor',
+    'Asteras Aktor': 'Asteras Tripolis', 'NPS Volos': 'Volos', 'MGS Panserraikos': 'Panserraikos',
+    'PS Kalamata': 'Kalamata',
   };
   const searchLogo = async (name) => {
     const q = encodeURIComponent(SEARCH_ALIAS[name] || name);

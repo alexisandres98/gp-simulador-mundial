@@ -56,13 +56,13 @@
       d_lag: 'Precio atrasado', d_arb: 'Surebet', d_note: 'Datos ilustrativos del escáner. Las oportunidades reales, en vivo, dentro de tu cuenta.', d_cta: 'Crear cuenta y ver el real',
       /* v3 (clubes) */
       h1_v3: 'El modelo que leyó el Mundial ahora lee <span class="g">el fútbol entero</span>.',
-      sub_v3: 'El mismo motor que leyó el Mundial en público ahora cubre 31 ligas en vivo: picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
+      sub_v3: 'El mismo motor que leyó el Mundial en público ahora cubre 40 ligas en vivo: picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
       sc3_live: 'en vivo', sc3_xg: 'xG esperado', sc3_foot: 'Lectura del modelo en vivo · se recalcula con cada gol',
       scf_markets: 'mercados vigilados ahora', scf_leagues: 'ligas monitoreadas 24/7',
       tr_rec_v3: 'aciertos verificados · Mundial 2026', tr_leagues_v3: 'ligas en vivo',
       plays_sub_v3: 'Publicadas antes del partido con su precio congelado, liquidadas en público después. La selección se desbloquea con tu cuenta gratis.',
       chip_wc: 'Mundial',
-      scan_sub_v3: 'Vigilamos 31 ligas y el mercado global 24/7 y detectamos el precio que quedó atrás — antes de que lo corrijan.',
+      scan_sub_v3: 'Vigilamos 40 ligas y el mercado global 24/7 y detectamos el precio que quedó atrás — antes de que lo corrijan.',
       scan_leagues_v3: 'ligas en vivo', scan_books_v3: 'casas comparadas',
       champ_eye_v3: 'La lectura de la temporada', champ_title_v3: 'Las carreras por el título.',
       champ_sub_v3: 'Probabilidad de campeón por liga, recalculada con cada jornada. Solo la punta — el análisis completo está dentro.',
@@ -72,8 +72,8 @@
          Solo se tocan las llaves que cambian; todo lo demás hereda de v3/base. */
       lb_txt_v4: 'Nuevo: UFC, MMA y boxeo ya están adentro — gratis en todos los planes por 7 días.',
       h1_v4: 'El modelo que leyó el Mundial ahora lee <span class="g">fútbol y combate</span>.',
-      sub_v4: 'El mismo motor, ahora multideporte: 31 ligas de fútbol en vivo y las carteleras de UFC, MMA y boxeo. Picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
-      scan_sub_v4: 'Vigilamos 31 ligas, cada cartelera de combate y el mercado global 24/7 — y detectamos el precio que quedó atrás antes de que lo corrijan.',
+      sub_v4: 'El mismo motor, ahora multideporte: 40 ligas de fútbol en vivo y las carteleras de UFC, MMA y boxeo. Picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
+      scan_sub_v4: 'Vigilamos 40 ligas, cada cartelera de combate y el mercado global 24/7 — y detectamos el precio que quedó atrás antes de que lo corrijan.',
       tr_sports_v4: 'fútbol · UFC · MMA · boxeo',
       scf_leagues_v4: 'ligas y carteleras 24/7', st4_read: 'Lectura del modelo', st4_sat: 'sábado', st4_combat: 'COMBATE · UFC', st4_ko: 'KO 65% · DEC 35%', st4_feed: 'Así llegan las picks al feed', st4_pick1: 'Gana Young Boys', st4_pick1m: 'Lausanne vs Young Boys · Super League (SUI)', st4_pick2: 'Salkilld · Ganador', st4_pick2m: 'Gamrot vs Salkilld · UFC · estelar', st4_pick3: 'Menos de 11.5 córners', st4_pick3m: 'Ilves vs Mariehamn · Veikkausliiga (FIN)', st4_best: 'MEJOR CUOTA', st4_users: 'usuarios reales', st4_verified: 'track verificado, pick por pick',
       plays_sub_v4: 'Fútbol y combate, publicadas antes con su precio congelado, liquidadas en público después. La selección se desbloquea con tu cuenta gratis.',
@@ -123,13 +123,13 @@
       d_lag: 'Stale price', d_arb: 'Surebet', d_note: 'Illustrative scanner data. The real, live opportunities are inside your account.', d_cta: 'Sign up to see the real one',
       /* v3 (clubs) */
       h1_v3: 'The model that read the World Cup now reads <span class="g">all of football</span>.',
-      sub_v3: 'The same engine that read the World Cup in public now covers 31 live leagues: picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
+      sub_v3: 'The same engine that read the World Cup in public now covers 40 live leagues: picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
       sc3_live: 'live', sc3_xg: 'expected xG', sc3_foot: 'Live model read · recalculated with every goal',
       scf_markets: 'markets watched right now', scf_leagues: 'leagues monitored 24/7',
       tr_rec_v3: 'verified hits · 2026 World Cup', tr_leagues_v3: 'live leagues',
       plays_sub_v3: 'Published before kickoff with the price frozen, settled in public after. The selection unlocks with your free account.',
       chip_wc: 'World Cup',
-      scan_sub_v3: 'We watch 31 leagues and the global market 24/7 and catch the price that fell behind — before it gets corrected.',
+      scan_sub_v3: 'We watch 40 leagues and the global market 24/7 and catch the price that fell behind — before it gets corrected.',
       scan_leagues_v3: 'live leagues', scan_books_v3: 'books compared',
       champ_eye_v3: 'The season read', champ_title_v3: 'The title races.',
       champ_sub_v3: 'Champion probability per league, recalculated after every matchday. Just the top — the full analysis is inside.',
@@ -138,8 +138,8 @@
       /* v4 (multi-sport) */
       lb_txt_v4: 'New: UFC, MMA and boxing are in — free on every plan for 7 days.',
       h1_v4: 'The model that read the World Cup now reads <span class="g">football and combat</span>.',
-      sub_v4: 'The same engine, now multi-sport: 31 live football leagues plus every UFC, MMA and boxing card. Picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
-      scan_sub_v4: 'We watch 31 leagues, every combat card and the global market 24/7 — and catch the price that fell behind before it gets corrected.',
+      sub_v4: 'The same engine, now multi-sport: 40 live football leagues plus every UFC, MMA and boxing card. Picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
+      scan_sub_v4: 'We watch 40 leagues, every combat card and the global market 24/7 — and catch the price that fell behind before it gets corrected.',
       tr_sports_v4: 'football · UFC · MMA · boxing',
       scf_leagues_v4: 'leagues & cards 24/7', st4_read: 'Model read', st4_sat: 'Saturday', st4_combat: 'COMBAT · UFC', st4_ko: 'KO 65% · DEC 35%', st4_feed: 'How picks land on the feed', st4_pick1: 'Young Boys to win', st4_pick1m: 'Lausanne vs Young Boys · Super League (SUI)', st4_pick2: 'Salkilld · Winner', st4_pick2m: 'Gamrot vs Salkilld · UFC · main event', st4_pick3: 'Under 11.5 corners', st4_pick3m: 'Ilves vs Mariehamn · Veikkausliiga (FIN)', st4_best: 'BEST ODDS', st4_users: 'real users', st4_verified: 'verified track, pick by pick',
       plays_sub_v4: 'Football and combat, published before with the price frozen, settled in public after. The selection unlocks with your free account.',
@@ -227,7 +227,7 @@
         '<div class="scv3-xg" style="border-top:1px solid rgba(255,255,255,.06);margin-top:8px;padding-top:10px"><span style="letter-spacing:.08em;font-weight:800;color:#e05252">\ud83e\udd4a ' + esc(T('st4_combat')) + '</span><b style="font-weight:700">Gamrot 23% \u00b7 Salkilld 77% \u00b7 ' + esc(T('st4_ko')) + '</b></div>' +
         '<div class="sc-foot"><span>' + esc(T('sc3_foot')) + '</span></div>' +
         '</div>' +
-        '<div class="sc-float"><span class="n">31</span><span class="l">' + esc(T('scf_leagues_v4')) + '</span></div>';
+        '<div class="sc-float"><span class="n">40</span><span class="l">' + esc(T('scf_leagues_v4')) + '</span></div>';
       return;
     }
     // v3 cargando: shell silencioso (nunca un ejemplo muerto que después se reemplaza)
@@ -286,7 +286,7 @@
   function renderTrust4(d) {
     var rec = (d && d.record && d.record.total >= 20) ? d.record : { total: 104, winners: 69 };
     var users = roundUsers((d && d.users) || 942);
-    var nL = (d && d.clubs && d.clubs.leagues_count) || 31;
+    var nL = (d && d.clubs && d.clubs.leagues_count) || 40;
     $('#herotrust').innerHTML = '<div class="av"><i></i><i></i><i></i></div><span><b>' + users + '</b> ' + esc(T('ht_users')) + '</span><span class="dot"></span><span>' + esc(T('ht_verified')) + '</span>';
     $('#trust').innerHTML =
       '<div class="tr big"><b>' + Math.round(rec.winners / rec.total * 100) + '%</b><span>' + esc(T('tr_rec_v3')) + ' (' + rec.winners + '/' + rec.total + ')</span></div>' +

@@ -8404,16 +8404,25 @@ async function combatCloudbetRefresh(C) {
       if (fetched >= 30) break;
       if (!ft.f1.id || !ft.f2.id) continue;
       // match por nombres (regla matcher: puntaje sobre NUESTROS nombres, ambos lados o nada)
-      const cbe = cbEvents.find(x => {
+      let cbe = cbEvents.find(x => {
         const h = combatFighterByName(C, x.home), a = combatFighterByName(C, x.away);
         return h && a && ((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id));
       });
+      let cbeOri = null; // orientación cuando el match viene del 2º paso (por par)
+      if (!cbe) { // 2º paso (7-ago): mismo fallback por PAR que combatFightOdds — candidato único o nada
+        const cands = [];
+        for (const x of cbEvents) {
+          const ori = combatPairMatch(ft, x.home, x.away);
+          if (ori) { cands.push({ x, ori }); if (cands.length > 1) break; }
+        }
+        if (cands.length === 1) { cbe = cands[0].x; cbeOri = cands[0].ori; }
+      }
       if (!cbe) continue;
       const det = await cbFetch(`https://sports-api.cloudbet.com/pub/v2/odds/events/${cbe.id}`);
       fetched++;
       await new Promise(r => setTimeout(r, 400));
       if (!det || !det.markets) continue;
-      const flip = combatFighterByName(C, cbe.home) === ft.f2.id; // cloudbet home = nuestro f2 → espejar
+      const flip = cbeOri ? cbeOri === 'flipped' : combatFighterByName(C, cbe.home) === ft.f2.id; // cloudbet home = nuestro f2 → espejar
       const sideKey = (s) => (s === 'home') === !flip ? 'f1' : 'f2';
       const out = { event_id: cbe.id, f1: 0, f2: 0, method: {}, totals: [] };
       const mw = det.markets['mma.winner'];
@@ -8451,14 +8460,32 @@ async function combatCloudbetRefresh(C) {
     console.log('[combat-cloudbet]', C.org, 'days=' + days.length, 'events=' + cbEvents.length, 'matched=' + Object.keys(byComp).length);
   } catch (e) { console.error('[combat-cloudbet]', e.message); }
 }
+// MATCH POR PAR (7-ago, fix "sin cuotas" en cartelera con cuotas reales): el índice global falla cuando
+// (a) el peleador es DEBUTANTE y no está en el histórico (Boylan/Martin, 0 peleas → null aunque el nombre
+// del feed sea EXACTO al de la cartelera), o (b) la casa escribe el nombre de pila distinto (Odds API
+// "Dovletdzhan"/"Joshua" vs ESPN "Dovlet"/"Josh" → 1 token < mínimo de 2). La pelea ya conoce sus DOS
+// nombres por ESPN → segundo paso: matchear el evento de cuotas contra el PAR de la propia pelea.
+// Regla del matcher intacta: apellido exacto o ≥2 tokens por lado, ambos lados a lados DISTINTOS,
+// orientación ambigua (straight y flipped a la vez) → null.
+function combatPairMatch(ft, homeName, awayName) {
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const toks = (s) => norm(s).split(' ').filter(Boolean);
+  const hits = (a, b) => { const B = new Set(b); let n = 0; for (const x of new Set(a)) if (B.has(x)) n++; return n; };
+  const side = (name, fname) => {
+    const q = toks(name), t = toks(fname);
+    if (!q.length || !t.length) return false;
+    return hits(q, t) >= 2 || q[q.length - 1] === t[t.length - 1]; // ≥2 tokens o apellido exacto
+  };
+  const straight = side(homeName, ft.f1.name) && side(awayName, ft.f2.name);
+  const flipped = side(homeName, ft.f2.name) && side(awayName, ft.f1.name);
+  if (straight === flipped) return null; // ni uno o ambos → ambiguo → null (regla matcher)
+  return straight ? 'straight' : 'flipped';
+}
 // cuotas de UNA pelea: matchea el evento de Odds por AMBOS nombres; consenso no-vig = mediana del de-vig
 // 2-way por casa; mejor cuota por lado; MERGEA Cloudbet como una casa más (R2c). Devuelve null si nada cotiza.
 function combatFightOdds(C, ft) {
   const fairs = []; const best = { f1: 0, f2: 0, f1Book: null, f2Book: null };
-  for (const o of (C.odds || [])) {
-    const h = combatFighterByName(C, o.home_team), a = combatFighterByName(C, o.away_team);
-    if (!h || !a) continue;
-    if (!((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id))) continue;
+  const harvest = (o, f1IsHome) => {
     for (const bk of (o.bookmakers || [])) {
       const m = (bk.markets || []).find(x => x.key === 'h2h'); if (!m) continue;
       let oH = 0, oA = 0;
@@ -8469,12 +8496,28 @@ function combatFightOdds(C, ft) {
       if (!(oH > 1 && oA > 1)) continue;
       const iH = 1 / oH, iA = 1 / oA;
       const fairH = iH / (iH + iA); // de-vig 2-way de la casa
-      fairs.push(h === ft.f1.id ? fairH : 1 - fairH);
-      const o1 = h === ft.f1.id ? oH : oA, o2 = h === ft.f1.id ? oA : oH;
+      fairs.push(f1IsHome ? fairH : 1 - fairH);
+      const o1 = f1IsHome ? oH : oA, o2 = f1IsHome ? oA : oH;
       if (o1 > best.f1) { best.f1 = o1; best.f1Book = bk.key; }
       if (o2 > best.f2) { best.f2 = o2; best.f2Book = bk.key; }
     }
+  };
+  for (const o of (C.odds || [])) {
+    const h = combatFighterByName(C, o.home_team), a = combatFighterByName(C, o.away_team);
+    if (!h || !a) continue;
+    if (!((h === ft.f1.id && a === ft.f2.id) || (h === ft.f2.id && a === ft.f1.id))) continue;
+    harvest(o, h === ft.f1.id);
     break; // evento de Odds API encontrado
+  }
+  // 2º paso (7-ago): sin match por índice (debutante fuera del histórico / nombre de pila distinto) →
+  // match por PAR contra los nombres de ESTA pelea; se exige candidato ÚNICO (dos eventos → ambiguo → nada).
+  if (!fairs.length) {
+    const cands = [];
+    for (const o of (C.odds || [])) {
+      const ori = combatPairMatch(ft, o.home_team, o.away_team);
+      if (ori) { cands.push({ o, ori }); if (cands.length > 1) break; }
+    }
+    if (cands.length === 1) harvest(cands[0].o, cands[0].ori === 'straight');
   }
   // R2c: Cloudbet como una casa más (h2h) — clave para PFL, donde es LA única fuente
   const cb = ((C.cbb || {}).byComp || {})[ft.comp_id];
@@ -8528,6 +8571,11 @@ async function buildCombatPicksOrg(org, out, dryRun) {
     for (const ft of ev.fights) {
       if (!ft.f1.id || !ft.f2.id) continue;
       out.fights++;
+      // MUESTRA (7-ago): la regla del 31-jul ("con <3 peleas el Elo es el prior 1500 disfrazado; sin
+      // muestra no se publica probabilidad") estaba en el display y en Ask pero NO acá — el pipeline
+      // seguía generando picks sobre debutantes, el modo exacto de fallo de la cartelera del 31-jul
+      // (Alvarez/Kielholtz/Colgan: muestra 0-1, las tres perdidas). Mismo umbral que rated.ok.
+      if ((C.elo.N[ft.f1.id] || 0) < 3 || (C.elo.N[ft.f2.id] || 0) < 3) continue;
       const mo = combatFightOdds(C, ft);
       if (!mo || mo.books < 1) continue; // monitor: 1 casa basta (PFL solo cotiza en Cloudbet); books viaja en la pick
       out.with_odds++;
@@ -8582,6 +8630,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
     for (const ft of ev.fights) {
       const cb = ((C.cbb || {}).byComp || {})[ft.comp_id];
       if (!cb || !ft.f1.id || !ft.f2.id) continue;
+      if ((C.elo.N[ft.f1.id] || 0) < 3 || (C.elo.N[ft.f2.id] || 0) < 3) continue; // regla de muestra (7-ago)
       const pr2 = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
       const meth2 = CE.methodProbs(C.mm, pr2.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
       const mkBase = { slot: ft.main ? 'main' : 'prelim', ev, ft };

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1080px; height:1920px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:#07090c; color:#EDF2F4; position:relative; overflow:hidden; }
+.glow-g { position:absolute; top:-260px; left:-260px; width:820px; height:820px; border-radius:50%;
+  background:radial-gradient(circle,rgba(31,227,164,.20),transparent 62%); }
+.glow-r { position:absolute; bottom:-300px; right:-260px; width:900px; height:900px; border-radius:50%;
+  background:radial-gradient(circle,rgba(224,82,82,.16),transparent 62%); }
+.grain { position:absolute; inset:0; opacity:.05; background-image:repeating-conic-gradient(#fff 0 .0001%, transparent 0 .0002%); }
+.wrap { position:relative; padding:130px 84px 120px; height:100%; display:flex; flex-direction:column; }
+.brand { display:flex; align-items:center; gap:16px; margin-bottom:56px; }
+.badge { width:56px; height:56px; border-radius:16px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.4);
+  display:flex; align-items:center; justify-content:center; font-size:30px; }
+.bname { font-size:31px; font-weight:800; letter-spacing:-.5px; }
+.new { margin-left:auto; font-size:19px; font-weight:800; letter-spacing:.14em; color:#1FE3A4;
+  border:1px solid rgba(31,227,164,.5); padding:12px 22px; border-radius:99px; background:rgba(31,227,164,.1); }
+h1 { font-size:92px; line-height:.98; font-weight:800; letter-spacing:-3.5px; margin-bottom:26px; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size:28px; line-height:1.45; color:#9DB0B5; font-weight:600; max-width:860px; margin-bottom:52px; }
+.sub b { color:#fff; }
+.card { background:linear-gradient(165deg,#10171c,#0b1013); border:1px solid rgba(255,255,255,.09);
+  border-radius:28px; padding:38px 44px; margin-bottom:26px; position:relative; overflow:hidden; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:9px;
+  background:linear-gradient(180deg,#1FE3A4 50%,#E05252 50%); }
+.tag { font-size:19px; font-weight:800; letter-spacing:.12em; color:#5F747B; margin-bottom:22px; display:flex; justify-content:space-between; }
+.tag .hoy { color:#1FE3A4; }
+.vs { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+.fighter { display:flex; align-items:center; gap:20px; font-size:33px; font-weight:800; }
+.fighter .sm { display:block; font-size:19px; color:#9DB0B5; font-weight:700; margin-top:4px; }
+.ava { width:104px; height:104px; border-radius:50%; overflow:hidden; flex:none;
+  display:flex; align-items:flex-start; justify-content:center; }
+.ava img { width:130%; margin-top:6px; }
+.ava.g { background:radial-gradient(circle at 50% 30%,rgba(31,227,164,.22),rgba(31,227,164,.06)); border:3px solid #1FE3A4; }
+.ava.r { background:radial-gradient(circle at 50% 30%,rgba(224,82,82,.2),rgba(224,82,82,.05)); border:3px solid #E05252; }
+.midv { font-size:22px; color:#5F747B; font-weight:800; letter-spacing:.2em; }
+.bar { height:16px; border-radius:99px; overflow:hidden; display:flex; margin-bottom:14px; }
+.bar .l { background:#1FE3A4; } .bar .rr { background:#E05252; }
+.pcts { display:flex; justify-content:space-between; font-size:29px; font-weight:800; margin-bottom:20px; }
+.pcts .lP { color:#1FE3A4; } .pcts .rP { color:#E05252; }
+.pcts small { font-size:19px; color:#5F747B; font-weight:700; margin-left:10px; }
+.meta { display:flex; gap:14px; flex-wrap:wrap; }
+.chip { font-size:20px; font-weight:700; color:#B9C6CA; background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1); padding:11px 20px; border-radius:99px; }
+.chip.hot { color:#06231A; background:#1FE3A4; border-color:#1FE3A4; font-weight:800; }
+.foot { margin-top:auto; display:flex; align-items:center; justify-content:space-between; }
+.free { font-size:24px; font-weight:800; color:#1FE3A4; }
+.free span { display:block; font-size:18px; color:#9DB0B5; font-weight:600; margin-top:6px; }
+.cta { background:#1FE3A4; color:#06231A; font-size:30px; font-weight:800; padding:24px 46px; border-radius:99px; }
+.disc { position:absolute; bottom:44px; left:84px; right:84px; font-size:15px; color:#4A5B61; font-weight:600; text-align:center; }
+</style></head>
+<body>
+  <div class="glow-g"></div><div class="glow-r"></div><div class="grain"></div>
+  <div class="wrap">
+    <div class="brand"><div class="badge">🥊</div><div class="bname">GP Simulador</div><div class="new">FIN DE SEMANA</div></div>
+    <h1>3 picks para<br>las peleas <span class="g">del finde</span></h1>
+    <div class="sub">El modelo leyó <b>PFL Charlotte (hoy)</b> y la <b>UFC Fight Night del sábado</b>. Estas son sus tres lecturas más fuertes — con la probabilidad y el precio a la vista.</div>
+
+    <div class="card">
+      <div class="tag"><span>PFL CHARLOTTE · SEMIFINAL LHW</span><span class="hoy">HOY · VIERNES</span></div>
+      <div class="vs">
+        <div class="fighter"><div class="ava g"><img src="https://a.espncdn.com/i/headshots/mma/players/full/4915658.png"></div><div>Powell<span class="sm">5-1 · 4 KO</span></div></div>
+        <div class="midv">VS</div>
+        <div class="fighter"><div>Yagshimuradov<span class="sm">11-4</span></div><div class="ava r"><img src="https://a.espncdn.com/i/headshots/mma/players/full/4018603.png"></div></div>
+      </div>
+      <div class="bar"><div class="l" style="width:81%"></div><div class="rr" style="width:19%"></div></div>
+      <div class="pcts"><span class="lP">GP 81%<small>mercado 40%</small></span><span class="rP">19%</span></div>
+      <div class="meta"><span class="chip hot">PICK · POWELL @2.54</span><span class="chip">KO 55%</span><span class="chip">~2.3 rounds</span></div>
+    </div>
+
+    <div class="card">
+      <div class="tag"><span>UFC FIGHT NIGHT · STRAWWEIGHT</span><span>SÁBADO</span></div>
+      <div class="vs">
+        <div class="fighter"><div class="ava g"><img src="https://a.espncdn.com/i/headshots/mma/players/full/5075992.png"></div><div>Thainara<span class="sm">4-0 · invicta</span></div></div>
+        <div class="midv">VS</div>
+        <div class="fighter"><div>Lemos<span class="sm">9-6</span></div><div class="ava r"><img src="https://a.espncdn.com/i/headshots/mma/players/full/4233196.png"></div></div>
+      </div>
+      <div class="bar"><div class="l" style="width:82%"></div><div class="rr" style="width:18%"></div></div>
+      <div class="pcts"><span class="lP">GP 82%<small>mercado 69%</small></span><span class="rP">18%</span></div>
+      <div class="meta"><span class="chip hot">PICK · THAINARA @1.41</span><span class="chip">DEC 60%</span></div>
+    </div>
+
+    <div class="card">
+      <div class="tag"><span>UFC FIGHT NIGHT · ESTELAR</span><span>SÁBADO</span></div>
+      <div class="vs">
+        <div class="fighter"><div class="ava g"><img src="https://a.espncdn.com/i/headshots/mma/players/full/5157667.png"></div><div>Salkilld<span class="sm">6-0 · invicto</span></div></div>
+        <div class="midv">VS</div>
+        <div class="fighter"><div>Gamrot<span class="sm">9-4</span></div><div class="ava r"><img src="https://a.espncdn.com/i/headshots/mma/players/full/3068125.png"></div></div>
+      </div>
+      <div class="bar"><div class="l" style="width:77%"></div><div class="rr" style="width:23%"></div></div>
+      <div class="pcts"><span class="lP">GP 77%<small>mercado 57%</small></span><span class="rP">23%</span></div>
+      <div class="meta"><span class="chip hot">PICK · SALKILLD @1.75</span><span class="chip">5 rounds</span></div>
+    </div>
+
+    <div class="foot">
+      <div class="free">GRATIS 7 DÍAS<span>picks liquidadas en público</span></div>
+      <div class="cta">gpsimulador.com</div>
+    </div>
+    <div class="disc">Estimaciones de un modelo estadístico — no consejo financiero. Apuesta responsable, 18+.</div>
+  </div>
+</body></html>

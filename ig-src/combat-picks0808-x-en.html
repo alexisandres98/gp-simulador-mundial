@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1200px; height:675px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:#07090c; color:#EDF2F4; position:relative; overflow:hidden; }
+.glow-g { position:absolute; top:-200px; left:-200px; width:640px; height:640px; border-radius:50%;
+  background:radial-gradient(circle,rgba(31,227,164,.18),transparent 62%); }
+.glow-r { position:absolute; bottom:-240px; right:-200px; width:700px; height:700px; border-radius:50%;
+  background:radial-gradient(circle,rgba(224,82,82,.14),transparent 62%); }
+.grain { position:absolute; inset:0; opacity:.05; background-image:repeating-conic-gradient(#fff 0 .0001%, transparent 0 .0002%); }
+.wrap { position:relative; padding:44px 56px 40px; height:100%; display:flex; flex-direction:column; }
+.top { display:flex; align-items:center; gap:13px; margin-bottom:22px; }
+.badge { width:40px; height:40px; border-radius:12px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.4);
+  display:flex; align-items:center; justify-content:center; font-size:21px; }
+.bname { font-size:23px; font-weight:800; letter-spacing:-.4px; }
+.new { margin-left:auto; font-size:14px; font-weight:800; letter-spacing:.13em; color:#1FE3A4;
+  border:1px solid rgba(31,227,164,.5); padding:8px 16px; border-radius:99px; background:rgba(31,227,164,.1); }
+h1 { font-size:44px; line-height:1; font-weight:800; letter-spacing:-1.6px; margin-bottom:24px; }
+h1 .g { color:#1FE3A4; }
+.card { background:linear-gradient(165deg,#10171c,#0b1013); border:1px solid rgba(255,255,255,.09);
+  border-radius:18px; padding:16px 24px; margin-bottom:12px; position:relative; overflow:hidden;
+  display:flex; align-items:center; gap:20px; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px;
+  background:linear-gradient(180deg,#1FE3A4 50%,#E05252 50%); }
+.ava { width:64px; height:64px; border-radius:50%; overflow:hidden; flex:none;
+  display:flex; align-items:flex-start; justify-content:center; }
+.ava img { width:130%; margin-top:3px; }
+.ava.g { background:radial-gradient(circle at 50% 30%,rgba(31,227,164,.22),rgba(31,227,164,.06)); border:2.5px solid #1FE3A4; }
+.who { width:315px; }
+.who b { font-size:24px; display:block; letter-spacing:-.4px; }
+.who span { font-size:15px; color:#9DB0B5; font-weight:700; }
+.mid { flex:1; }
+.bar { height:10px; border-radius:99px; overflow:hidden; display:flex; margin-bottom:8px; }
+.bar .l { background:#1FE3A4; } .bar .rr { background:#E05252; }
+.nums { display:flex; justify-content:space-between; font-size:17px; font-weight:800; }
+.nums .lP { color:#1FE3A4; } .nums small { color:#5F747B; font-weight:700; margin-left:7px; font-size:14px; }
+.nums .ev { color:#5F747B; font-weight:700; font-size:14px; letter-spacing:.06em; }
+.odds { flex:none; background:#1FE3A4; color:#06231A; font-size:19px; font-weight:800; padding:12px 20px; border-radius:99px; }
+.foot { margin-top:auto; display:flex; align-items:center; justify-content:space-between; }
+.free { font-size:17px; font-weight:800; color:#1FE3A4; }
+.free span { color:#9DB0B5; font-weight:600; margin-left:10px; font-size:14.5px; }
+.cta { font-size:19px; font-weight:800; color:#06231A; background:#1FE3A4; padding:13px 26px; border-radius:99px; }
+.disc { position:absolute; bottom:12px; left:56px; font-size:11.5px; color:#4A5B61; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow-g"></div><div class="glow-r"></div><div class="grain"></div>
+  <div class="wrap">
+    <div class="top"><div class="badge">🥊</div><div class="bname">GP Simulador</div><div class="new">UFC FIGHT NIGHT · TONIGHT</div></div>
+    <h1>3 picks for tonight<span class="g">’s fights</span></h1>
+
+    <div class="card">
+      <div class="ava g"><img src="https://a.espncdn.com/i/headshots/mma/players/full/5157667.png"></div>
+      <div class="who"><b>Quillan Salkilld</b><span>vs Gamrot · MAIN EVENT · undefeated 6-0</span></div>
+      <div class="mid">
+        <div class="bar"><div class="l" style="width:77%"></div><div class="rr" style="width:23%"></div></div>
+        <div class="nums"><span class="lP">GP 77%<small>market 57%</small></span><span class="ev">5 ROUNDS</span></div>
+      </div>
+      <div class="odds">@1.75</div>
+    </div>
+
+    <div class="card">
+      <div class="ava g"><img src="https://a.espncdn.com/i/headshots/mma/players/full/5075992.png"></div>
+      <div class="who"><b>Alexia Thainara</b><span>vs Lemos · undefeated 4-0 · DEC 60%</span></div>
+      <div class="mid">
+        <div class="bar"><div class="l" style="width:82%"></div><div class="rr" style="width:18%"></div></div>
+        <div class="nums"><span class="lP">GP 82%<small>market 69%</small></span><span class="ev">W STRAWWEIGHT</span></div>
+      </div>
+      <div class="odds">@1.41</div>
+    </div>
+
+    <div class="card">
+      <div class="ava g"><img src="https://a.espncdn.com/i/headshots/mma/players/full/5213352.png"></div>
+      <div class="who"><b>Diyar Nurgozhay</b><span>vs Lopes · Light Heavyweight</span></div>
+      <div class="mid">
+        <div class="bar"><div class="l" style="width:64%"></div><div class="rr" style="width:36%"></div></div>
+        <div class="nums"><span class="lP">GP 64%<small>market 57%</small></span><span class="ev">KO 53% · ~2.1 R</span></div>
+      </div>
+      <div class="odds">@1.73</div>
+    </div>
+
+    <div class="foot">
+      <div class="free">FREE FOR 7 DAYS<span>picks settled in public · gpsimulador.com</span></div>
+      <div class="cta">See the analysis →</div>
+    </div>
+    <div class="disc">Estimates from a statistical model — not financial advice. 18+.</div>
+  </div>
+</body></html>

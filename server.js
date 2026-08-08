@@ -8546,13 +8546,11 @@ function combatFightOdds(C, ft) {
 }
 async function buildCombatPicks({ dryRun = false } = {}) {
   const out = { fights: 0, with_odds: 0, candidates: [], added: 0, superseded: 0, closing_updated: 0 };
-  // BOXEO NO genera picks todavía: el modelo pasó el gate de calibración (0.0310, mejor que UFC) pero el
-  // único juez que la casa acepta es el CLV contra mercado real, y su archivo de cuotas nace hoy.
-  for (const org of Object.keys(COMBAT_ORGS)) { if (org === 'boxing') continue; await buildCombatPicksOrg(org, out, dryRun); }
-  // BOXEO: sin picks todavía (sin CLV real no hay juez) PERO su agenda+cuotas SÍ se refrescan en cada ciclo
-  // para que combatOddsArchive acumule la curva desde el día 1 — antes solo archivaba si un admin visitaba
-  // la vista, y el foso del CLV no puede depender de eso.
-  try { const CB = combatLoad('boxing'); await combatRefreshUpcoming(CB); } catch (e) { console.error('[combat-boxing-warm]', e.message); }
+  // BOXEO GENERA desde el 8-ago (pregunta de Alexis "¿por qué no hay picks de boxeo?"): el modelo pasó el
+  // gate de calibración (0.0310, mejor que UFC) y el archivo de cuotas acumula desde el 31-jul → el monitor
+  // ya puede medir CLV real. PERO admin-only: cbPickVisible/track excluyen 'boxing' del público hasta que
+  // el CLV valide (la misma vara que pasó MMA antes de abrirse).
+  for (const org of Object.keys(COMBAT_ORGS)) await buildCombatPicksOrg(org, out, dryRun);
   if (!dryRun) {
     if (out.added || out.superseded || out.closing_updated) save();
     out.active = (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length;
@@ -8745,7 +8743,7 @@ async function settleCombatPicks() {
     const from = new Date(Date.now() - 10 * 24 * 3600e3), to = new Date();
     const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
     // ambas ligas con picks pendientes (ufc + pfl del org mma)
-    const leagues = [...new Set(pend.map(p => COMBAT_ORGS[p.league || 'ufc'] ? COMBAT_ORGS[p.league || 'ufc'].upcoming : 'ufc'))];
+    const leagues = [...new Set(pend.map(p => COMBAT_ORGS[p.league || 'ufc'] ? COMBAT_ORGS[p.league || 'ufc'].upcoming : 'ufc'))].filter(Boolean); // boxing: upcoming=null (liquida por Odds API abajo)
     for (const lg of leagues) {
       const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/${lg}/scoreboard?dates=${fmt(from)}-${fmt(to)}&limit=50`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
       for (const e of (sb.events || [])) for (const c of (e.competitions || [])) {
@@ -8756,6 +8754,33 @@ async function settleCombatPicks() {
       }
     }
   } catch { return { settled: 0, error: 'scoreboard' }; }
+  // BOXEO (8-ago): ESPN no cubre boxeo → resultados del scores endpoint de la Odds API, matcheados por PAR
+  // (combatPairMatch, candidato único o nada — regla matcher). Solo liquida con marcador numérico desigual;
+  // todo lo raro (empate, NC, feed sin completar) lo resuelve el VOID de 72h que ya existe.
+  const boxPend = pend.filter(p2 => p2.league === 'boxing');
+  if (boxPend.length) {
+    try {
+      const okey = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+      const sc = okey ? await fetch(`https://api.the-odds-api.com/v4/sports/boxing_boxing/scores?apiKey=${okey}&daysFrom=3`, { signal: AbortSignal.timeout(15000) }).then(r => r.json()) : null;
+      if (Array.isArray(sc)) {
+        const done = sc.filter(e => e.completed && Array.isArray(e.scores));
+        for (const p2 of boxPend) {
+          const compId2 = p2.event.canonical_event_id.replace(/^cb-/, '');
+          if (results[compId2]) continue;
+          const ftx = { f1: { name: p2.event.home }, f2: { name: p2.event.away } };
+          const cands = done.filter(e => combatPairMatch(ftx, e.home_team, e.away_team));
+          if (cands.length !== 1) continue;
+          const ev2 = cands[0], ori = combatPairMatch(ftx, ev2.home_team, ev2.away_team);
+          const sH = Number((ev2.scores.find(s => s.name === ev2.home_team) || {}).score);
+          const sA = Number((ev2.scores.find(s => s.name === ev2.away_team) || {}).score);
+          if (!isFinite(sH) || !isFinite(sA) || sH === sA) continue;
+          const winSide = (ori === 'straight') === (sH > sA) ? 'f1' : 'f2';
+          results[compId2] = { winner_id: winSide === 'f1' ? p2.event.home_id : p2.event.away_id, event_id: null, period: null, clock: null };
+        }
+        console.log('[combat-settle] boxing: scores completados', done.length, '· pendientes', boxPend.length);
+      }
+    } catch { /* sin scores este ciclo: el VOID de 72h protege */ }
+  }
   const clockMin2 = (c2) => { const m2 = String(c2 || '').match(/(\d+):(\d+)/); return m2 ? (+m2[1] + +m2[2] / 60) : 0; };
   const methodCache = {};
   const fetchMethod = async (p2, r2) => { // resultado fino (KO/Sub/Dec) del core API — pocas llamadas, solo pendientes
@@ -8867,12 +8892,15 @@ function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
     en: `GP reads this fight ${mp}% for ${name}, against the ${kp}% the market prices in (${books} book${books === 1 ? '' : 's'}).${fEN ? ' What tilts it: ' + fEN + '.' : ''} ${slot === 'main' ? 'Main-event bout.' : ''}`.trim(),
   };
 }
-function combatPicksTrack({ since = 0 } = {}) {
+function combatPicksTrack({ since = 0, excludeLeagues = null } = {}) {
   // since (5-ago, lanzamiento público): el rendimiento del PÚBLICO arranca desde cero — solo picks de peleas
   // con KICKOFF desde el corte (las del finde pre-lanzamiento son historia interna del monitor). Por kickoff
   // y no por created_at: una pick nacida antes del corte para una pelea posterior SÍ es del track público
   // (el usuario la vio viva antes de que liquidara).
-  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS') && (!since || Date.parse((p.event && p.event.kickoff_at) || p.created_at || 0) >= since));
+  // excludeLeagues (8-ago): boxeo genera en MONITOR admin-only — jamás entra al track del público hasta validar.
+  const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS')
+    && (!since || Date.parse((p.event && p.event.kickoff_at) || p.created_at || 0) >= since)
+    && (!excludeLeagues || excludeLeagues.indexOf(p.league) < 0));
   const agg = (list) => {
     const w = list.filter(p => p.result_code === 'WIN').length;
     const u = list.reduce((s, p) => s + (p.units || 0), 0);
@@ -12168,8 +12196,10 @@ const server = http.createServer(async (req, res) => {
       // no por created_at — las activas de la cartelera del sábado nacieron el 2-4 y el filtro viejo se las
       // comía. Regla de la casa (estado por reloj): pelea POSTERIOR al lanzamiento → visible aunque la pick
       // haya nacido antes; pelea pre-lanzamiento → invisible, y su liquidación jamás entra al track público.
-      const cbPickVisible = (x) => cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE();
-      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE() };
+      // Boxeo (8-ago): sus picks nacen en MONITOR admin-only — el público no las ve ni entran a su track
+      // hasta que el CLV contra mercado real las valide (misma vara que pasó MMA).
+      const cbPickVisible = (x) => cbAdmin || (x.league !== 'boxing' && Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE());
+      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE(), excludeLeagues: ['boxing'] };
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
       // fuente compartida con el loop de picks. F5: ?org=ufc|mma (mma = Bellator histórico + PFL activa).
@@ -12317,7 +12347,19 @@ const server = http.createServer(async (req, res) => {
           const pastPicks = (db.combatPicks || []).filter(p2 => p2.status === 'SETTLED' && p2.result_code !== 'SUPERSEDED' && p2.event
             && ((p2.event.home_id === past.f1.id && p2.event.away_id === past.f2.id) || (p2.event.home_id === past.f2.id && p2.event.away_id === past.f1.id)))
             .filter(cbPickVisible)
-            .map(p2 => ({ family: p2.family, selection_name: p2.selection_name, best_odds: p2.best_odds, result_code: p2.result_code, units: p2.units, clv_pct: p2.clv_pct }));
+            .map(p2 => ({ family: p2.family, selection_name: p2.selection_name, selection_code: p2.selection_code, best_odds: p2.best_odds,
+              result_code: p2.result_code, units: p2.units, clv_pct: p2.clv_pct,
+              model_prob: p2.model_prob, market_prob: p2.market_prob, method: p2.method || null,
+              opening: p2.opening && p2.opening.odds || null, closing: p2.closing && p2.closing.odds || null }));
+          // INTELIGENCIA de la pelea (feedback Alexis 8-ago: el MISMO panel del cockpit prepartido, adaptado):
+          // últimas 5 y h2h calculadas SOLO con peleas ANTERIORES a esta (lo que se sabía al entrar a la jaula).
+          const before = (C.fights.fights || []).filter(f => f.completed && (f.f1.winner || f.f2.winner) && Date.parse(f.date || 0) < Date.parse(past.date || 0));
+          const recOf = (id) => before.filter(f => f.f1.id === id || f.f2.id === id)
+            .sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0)).slice(0, 5)
+            .map(f => { const me = f.f1.id === id ? f.f1 : f.f2, opp = f.f1.id === id ? f.f2 : f.f1;
+              return { win: !!me.winner, opponent: opp.name, method: (f.method && f.method.display) || null, round: f.end_round || null }; });
+          const h2hPast = before.filter(f => (f.f1.id === past.f1.id && f.f2.id === past.f2.id) || (f.f1.id === past.f2.id && f.f2.id === past.f1.id))
+            .map(f => ({ date: f.date, winner_id: f.f1.winner ? f.f1.id : f.f2.winner ? f.f2.id : null, method: (f.method && f.method.display) || null, round: f.end_round || null }));
           return json(res, 200, {
             past: true, org: C.org,
             event: { name: past.event || '', date: past.date },
@@ -12327,6 +12369,8 @@ const server = http.createServer(async (req, res) => {
             result: { winner: past.f1.winner ? 'f1' : past.f2.winner ? 'f2' : null,
               method: (past.method && past.method.display) || null, end_round: past.end_round || null, end_clock: past.end_clock || null },
             tale: { f1: sum1, f2: sum2 },
+            recent: { f1: recOf(past.f1.id), f2: recOf(past.f2.id) },
+            h2h: h2hPast,
             stats: fstats ? { f1: fstats[past.f1.id] || null, f2: fstats[past.f2.id] || null } : null,
             officials: off && off.ref ? { ref: off.ref, judges: (off.judges || []).filter(j => j && !/^judge \d/i.test(j)) } : null,
             picks: pastPicks,
@@ -12432,10 +12476,11 @@ const server = http.createServer(async (req, res) => {
         });
       }
       // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)
-      // PELEAS PASADAS (8-ago): veladas COMPLETADAS recientes de la org (60 días), agrupadas por cartelera —
-      // el "Finalizados" de combate, espejo del segmento de fútbol. Cada pelea clickeable al cockpit post-pelea.
+      // PELEAS PASADAS (8-ago): veladas COMPLETADAS desde que GP genera inteligencia de combate —
+      // corte FIJO 31-jul (feedback Alexis: antes de esa fecha no monitoreábamos, no hay nada que mostrar).
+      // Agrupadas por cartelera; cada pelea clickeable al cockpit post-pelea.
       if (p === '/api/combat/results' && req.method === 'GET') {
-        const cutoff = Date.now() - 60 * 86400e3;
+        const cutoff = Date.parse('2026-07-31T00:00:00Z');
         const evs = {};
         for (const f of (C.own || [])) {
           if (!f.completed || !f.f1 || !f.f2 || !(Date.parse(f.date || 0) > cutoff)) continue;

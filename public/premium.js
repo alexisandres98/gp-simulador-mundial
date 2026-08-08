@@ -240,7 +240,7 @@
       cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
       cb_search_top: 'Buscar peleadores, peleas…', cb_sr_fighters: 'Peleadores', cb_sr_fights: 'Peleas',
       cb_by_family: 'Por tipo de pick', cb_fam_fight: 'Ganador', cb_fam_method: 'Método', cb_fam_rounds: 'Rounds',
-      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea',
+      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea', cb_gp_prefight: 'Lo que decía GP antes de la pelea',
       cb_st_sig: 'Golpes significativos', cb_st_acc: 'Precisión', cb_st_td: 'Derribos', cb_st_head: 'A la cabeza', cb_st_body: 'Al cuerpo', cb_st_leg: 'A la pierna', cb_st_sub: 'Intentos de sumisión', cb_picks_here: 'Picks de GP en esta pelea',
       cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
       cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado', cb_public_track: 'todo a la vista · ganadas y perdidas',
@@ -584,7 +584,7 @@
       cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
       cb_search_top: 'Search fighters, fights…', cb_sr_fighters: 'Fighters', cb_sr_fights: 'Fights',
       cb_by_family: 'By pick type', cb_fam_fight: 'Winner', cb_fam_method: 'Method', cb_fam_rounds: 'Rounds',
-      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers',
+      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers', cb_gp_prefight: 'What GP said before the fight',
       cb_st_sig: 'Significant strikes', cb_st_acc: 'Accuracy', cb_st_td: 'Takedowns', cb_st_head: 'To the head', cb_st_body: 'To the body', cb_st_leg: 'To the legs', cb_st_sub: 'Submission attempts', cb_picks_here: 'GP picks on this fight',
       cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
       cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor', cb_public_track: 'everything in the open · wins and losses',
@@ -6342,13 +6342,40 @@
     }
     var off = d.officials;
     var offPanel = off && off.ref ? '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body"><div class="gx-cb-offrow"><span><i class="gx-dim">' + esc(t('cb_ref')) + '</i> <b>' + esc(off.ref) + '</b></span>' + ((off.judges || []).length ? '<span><i class="gx-dim">' + esc(t('cb_judges')) + '</i> <b>' + esc(off.judges.join(' · ')) + '</b></span>' : '') + '</div></div></div>' : '';
+    // LO QUE DECÍA GP (feedback Alexis): la lectura prepartido GUARDADA en cada pick (modelo vs mercado,
+    // apertura→cierre) junto a cómo terminó — la inteligencia no desaparece cuando la pelea acaba.
+    var famLab2 = { FIGHT: t('cb_fam_fight'), METHOD: t('cb_fam_method'), ROUNDS: t('cb_fam_rounds') };
     var pickRows = (d.picks || []).map(function (p2) {
       var chip = p2.result_code === 'WIN' ? '<span class="gx-clgate ok">W</span>' : p2.result_code === 'LOSS' ? '<span class="gx-clgate no">L</span>' : '<span class="gx-clgate sh">' + esc(p2.result_code) + '</span>';
-      return '<div class="gx-cb-bout">' + chip + '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">@' + p2.best_odds + (p2.clv_pct != null && p2.clv_pct !== 0 ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span></div>' +
+      var gpLine = p2.model_prob != null ? '<span class="gx-dim">GP ' + Math.round(p2.model_prob * 100) + '% · ' + esc(t('cb_market')) + ' ' + Math.round((p2.market_prob || 0) * 100) + '%</span>' : '';
+      var oddsLine = '@' + p2.best_odds + (p2.closing ? ' → @' + p2.closing : '') + (p2.clv_pct != null && p2.clv_pct !== 0 ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '');
+      return '<div class="gx-cb-bout">' + chip + '<div class="gx-cb-bnames"><b>' + esc(famLab2[p2.family] || p2.family || '') + ' · ' + esc(p2.selection_name || '') + '</b>' + gpLine + '</div>' +
+        '<span class="gx-mono gx-dim">' + oddsLine + '</span>' +
         '<b class="gx-mono ' + ((p2.units || 0) > 0 ? 'gx-cb-up' : (p2.units || 0) < 0 ? 'gx-cb-down' : 'gx-dim') + '">' + ((p2.units || 0) > 0 ? '+' : '') + (p2.units || 0) + 'u</b></div>';
     }).join('');
-    var picksPanel = pickRows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_picks_here')) + '</span></div><div class="gx-mod-body">' + pickRows + '</div></div>' : '';
-    cbShell(t('cb_fights_title'), evline + hero + statsPanel + picksPanel + offPanel, { back: 'cbfights' });
+    var picksPanel = pickRows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_gp_prefight')) + '</span></div><div class="gx-mod-body">' + pickRows + '</div></div>' : '';
+    // TALE OF THE TAPE — misma gramática del cockpit prepartido (los atributos no cambian con el resultado)
+    var tapeRows = '';
+    if (ta.f1 && ta.f2) {
+      tapeRows = cbTapeRow(t('cb_age'), ta.f1.age, ta.f2.age, function (x) { return x != null ? x : '—'; }) +
+        cbTapeRow(t('cb_reach'), inchesNum(ta.f1.reach_in), inchesNum(ta.f2.reach_in), function (x) { return x != null ? x + '"' : '—'; }) +
+        cbTapeRow(t('cb_exp'), ta.f1.n_fights, ta.f2.n_fights, null) +
+        cbTapeRow('KO', (ta.f1.record || {}).ko, (ta.f2.record || {}).ko, null) +
+        cbTapeRow('ELO', ta.f1.elo, ta.f2.elo, null);
+    }
+    var tapePanel = tapeRows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + tapeRows + '</div></div>' : '';
+    // ÚLTIMAS 5 al momento de la pelea + H2H (solo con peleas ANTERIORES — lo que se sabía al entrar)
+    var rec5p = function (list, sideN) {
+      return '<div class="gx-cb-rec5col"><div class="gx-cb-rec5head ' + (sideN === 1 ? 'gr' : 'rd') + '">' + esc(sideN === 1 ? ft.f1.name : ft.f2.name) + '</div>' +
+        (list || []).map(function (h) {
+          return '<div class="gx-cb-rec5row"><span class="gx-clgate ' + (h.win ? 'ok' : 'no') + '">' + (h.win ? 'W' : 'L') + '</span><span class="gx-cb-rec5opp">' + esc(h.opponent) + '</span><span class="gx-mono gx-dim">' + esc(h.method || '') + (h.round ? ' R' + h.round : '') + '</span></div>';
+        }).join('') + '</div>';
+    };
+    var recentPanel = (d.recent && ((d.recent.f1 || []).length || (d.recent.f2 || []).length))
+      ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_recent')) + '</span></div><div class="gx-mod-body gx-cb-rec5">' + rec5p(d.recent.f1, 1) + rec5p(d.recent.f2, 2) + '</div></div>' : '';
+    var h2hPanel = (d.h2h || []).length ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_h2h')) + '</span></div><div class="gx-mod-body">' +
+      d.h2h.map(function (x) { var wn = String(x.winner_id) === String(ft.f1.id) ? ft.f1.name : ft.f2.name; return '<div class="gx-cb-rec5row"><span class="gx-mono gx-dim">' + esc(cbWhen(x.date, false)) + '</span><b>' + esc(wn) + '</b><span class="gx-mono gx-dim">' + esc(x.method || '') + (x.round ? ' R' + x.round : '') + '</span></div>'; }).join('') + '</div></div>' : '';
+    cbShell(t('cb_fights_title'), evline + hero + picksPanel + statsPanel + tapePanel + recentPanel + h2hPanel + offPanel, { back: 'cbfights' });
   }
   function renderCbFight() {
     var key = 'fight_' + cbOrg() + '_' + S.cb.fightId;

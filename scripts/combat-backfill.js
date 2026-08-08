@@ -48,14 +48,30 @@ async function j(url, tries = 6) {
 async function step1(fromYear, league) {
   const db = load(FIGHTS_F, { fights: [], events: {}, method_done: [] });
   const byId = new Set(db.fights.map(f => f.comp_id));
+  // FIX 8-ago: una pelea guardada como PRÓXIMA (completed:false, de un run previo a la velada) quedaba
+  // congelada para siempre — el skip por id impedía marcarla completada. Ahora las no-completadas se
+  // ACTUALIZAN con el scoreboard fresco (ganador/round/reloj); el skip solo aplica a las ya cerradas.
+  const openById = new Map(db.fights.filter(f => !f.completed).map(f => [f.comp_id, f]));
   const thisYear = new Date().getUTCFullYear();
   for (let y = fromYear; y <= thisYear; y++) {
     const d = await j(`https://site.api.espn.com/apis/site/v2/sports/mma/${league}/scoreboard?dates=${y}0101-${y}1231&limit=200`);
     const evs = (d && d.events) || [];
-    let added = 0;
+    let added = 0, updated = 0;
     for (const e of evs) {
       db.events[e.id] = { id: e.id, name: e.name, date: e.date, venue: ((e.competitions || [])[0] || {}).venue ? undefined : undefined };
       for (const c of (e.competitions || [])) {
+        if (openById.has(c.id)) {
+          const st0 = c.status || {};
+          if ((st0.type || {}).completed) {
+            const row = openById.get(c.id);
+            const comp0 = (c.competitors || []);
+            const g1 = comp0.find(x => x.order === 1) || comp0[0], g2 = comp0.find(x => x.order === 2) || comp0[1];
+            if (g1 && g2) { row.f1.winner = !!g1.winner; row.f2.winner = !!g2.winner; }
+            row.end_round = st0.period || null; row.end_clock = st0.displayClock || null; row.completed = true;
+            openById.delete(c.id); updated++;
+          }
+          continue;
+        }
         if (byId.has(c.id)) continue;
         const comp = (c.competitors || []);
         if (comp.length !== 2) continue;
@@ -74,7 +90,7 @@ async function step1(fromYear, league) {
         byId.add(c.id); added++;
       }
     }
-    console.log(`[step1] ${y}: eventos=${evs.length} peleas_nuevas=${added} total=${db.fights.length}`);
+    console.log(`[step1] ${y}: eventos=${evs.length} peleas_nuevas=${added} actualizadas=${updated} total=${db.fights.length}`);
     save(FIGHTS_F, db);
     await sleep(400);
   }

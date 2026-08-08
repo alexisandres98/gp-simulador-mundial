@@ -4698,6 +4698,9 @@ const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SO
 const LEAGUE_OBS_LANGS = {
   brasileirao: ['pt'], brasilb: ['pt'], finlandia: ['fi'], noruega: ['no'], suecia: ['sv'], dinamarca: ['da'],
   polonia: ['pl'], rusia: ['ru'], suiza: ['de', 'fr'], bundesliga: ['de'], ligue1: ['fr'], seriea: ['it'], premier: [],
+  // 8-ago (Europa despierta): la prensa LOCAL publica las bajas horas antes que la global
+  portugal: ['pt'], belgica: ['nl', 'fr'], turquia: ['tr'], grecia: ['el'], serieb: ['it'], eredivisie: ['nl'],
+  austria: ['de'], liga3: ['de'], bundesliga2: ['de'], ligue2: ['fr'], superettan: ['sv'],
 };
 const LEAGUE_EFF_PRIOR = {
   mundial: 'eficiente', premier: 'eficiente', laliga: 'eficiente', bundesliga: 'eficiente', seriea: 'eficiente', ligue1: 'eficiente',

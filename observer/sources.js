@@ -36,6 +36,8 @@ const LOCALES = {
   sv: { hl: 'sv-SE', gl: 'SE' }, da: { hl: 'da-DK', gl: 'DK' }, pl: { hl: 'pl-PL', gl: 'PL' },
   ru: { hl: 'ru-RU', gl: 'RU' }, de: { hl: 'de-DE', gl: 'DE' }, fr: { hl: 'fr-FR', gl: 'FR' },
   it: { hl: 'it-IT', gl: 'IT' },
+  // 8-ago: idiomas de las ligas europeas despertadas (Eredivisie/Bélgica, Süper Lig, Grecia)
+  nl: { hl: 'nl-NL', gl: 'NL' }, tr: { hl: 'tr-TR', gl: 'TR' }, el: { hl: 'el-GR', gl: 'GR' },
 };
 // query ej: '"Spain national team" OR "seleccion espanola"' — lang: clave de LOCALES
 async function googleNewsRss(query, lang) {
@@ -60,6 +62,9 @@ const QUERY_TERMS = {
   de: '(verletzt OR verletzung OR faellt aus OR gesperrt OR aufstellung)',
   fr: '(blesse OR blessure OR forfait OR suspendu OR compo)',
   it: '(infortunio OR squalificato OR in dubbio OR formazione OR indisponibile)',
+  nl: '(blessure OR geblesseerd OR geschorst OR twijfelgeval OR opstelling OR mist)',
+  tr: '(sakatlik OR sakat OR cezali OR kadro OR forma giyemeyecek OR ilk 11)',
+  el: '(τραυματισμος OR τραυματιας OR τιμωρημενος OR αμφιβολος OR ενδεκαδα)',
 };
 
 // Queries por equipo: nombre EN para el feed EN y nombre ES para el feed ES, acotadas a selección.

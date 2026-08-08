@@ -24,6 +24,13 @@ const AF_LEAGUE = {
   suecia: { af: 113, season: 2026 }, finlandia: { af: 244, season: 2026 }, irlanda: { af: 357, season: 2026 },
   dinamarca: { af: 119, season: 2026 }, polonia: { af: 106, season: 2026 }, rusia: { af: 235, season: 2026 },
   suiza: { af: 207, season: 2026 },
+  // 8-ago (Europa despierta): season AF 2026 = la 26/27 en las ligas europeas
+  liga3: { af: 80, season: 2026 }, ligue2: { af: 62, season: 2026 }, bundesliga2: { af: 79, season: 2026 },
+  eredivisie: { af: 88, season: 2026 }, superettan: { af: 114, season: 2026 }, austria: { af: 218, season: 2026 },
+  escocia: { af: 179, season: 2026 }, championship: { af: 40, season: 2026 }, league1: { af: 41, season: 2026 },
+  league2: { af: 42, season: 2026 }, serieb: { af: 136, season: 2026 }, laliga2: { af: 141, season: 2026 },
+  portugal: { af: 94, season: 2026 }, belgica: { af: 144, season: 2026 }, turquia: { af: 203, season: 2026 },
+  grecia: { af: 197, season: 2026 },
 };
 function norm(s) {
   let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');

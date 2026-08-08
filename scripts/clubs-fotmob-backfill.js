@@ -14,7 +14,12 @@ const RT = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'clubs', 'ratings.
 const OUTDIR = path.join(ROOT, 'data', 'clubs');
 
 // primaryIds de FotMob por liga (verificados vía /leagues?id=; j1/paraguay pendientes de verificar)
-const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colombia: 274, csl: 120, kleague: 9080, brasilb: 8814, chile: 273, noruega: 59, suecia: 67, finlandia: 51, irlanda: 126, dinamarca: 46, polonia: 196, rusia: 63, suiza: 69 };
+const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colombia: 274, csl: 120, kleague: 9080, brasilb: 8814, chile: 273, noruega: 59, suecia: 67, finlandia: 51, irlanda: 126, dinamarca: 46, polonia: 196, rusia: 63, suiza: 69,
+  // 8-ago (Europa despierta): ids VERIFICADOS contra /leagues?id= (nombre+país correctos los 23).
+  // GOTCHA: superettan NO es 8815 (esa es la Super League 2 GRIEGA) — es 168.
+  paraguay: 199, j1: 223, premier: 47, laliga: 87, bundesliga: 54, seriea: 55, ligue1: 53,
+  liga3: 208, ligue2: 110, bundesliga2: 146, eredivisie: 57, superettan: 168, austria: 38, escocia: 64,
+  championship: 48, league1: 108, league2: 109, serieb: 86, laliga2: 140, portugal: 61, belgica: 40, turquia: 71, grecia: 135 };
 
 const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|sc|ec|ac|afc|cd|club|de|do|da)\b/g, ' ').replace(/\s+/g, ' ').trim();
 

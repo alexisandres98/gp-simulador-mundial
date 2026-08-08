@@ -7439,14 +7439,26 @@ function combatEspnStats(org) {
     g.tdA += s.takedownsAttempted || 0; g.tdL += s.takedownsLanded || 0; g.ctrl += s.timeInControl || 0;
     if (opp) { g.oAtt += opp.sigStrikesAttempted || 0; g.oLand += opp.sigStrikesLanded || 0; g.oTdA += opp.takedownsAttempted || 0; g.oTdL += opp.takedownsLanded || 0; }
   };
+  // PELEAS PASADAS (8-ago): mapa compacto POR PELEA para el cockpit post-pelea (lo que pasó, no la carrera).
+  // Compacto a propósito: ~10 números por peleador por pelea — el raw completo (14MB) no vive en memoria.
+  const byFight = {};
+  const compact = (s) => ({
+    kd: s.knockDowns || 0, sigA: s.sigStrikesAttempted || 0, sigL: s.sigStrikesLanded || 0,
+    tdA: s.takedownsAttempted || 0, tdL: s.takedownsLanded || 0, ctrl: s.timeInControl || 0,
+    head: (s.sigDistanceHeadStrikesLanded || 0) + (s.sigClinchHeadStrikesLanded || 0) + (s.sigGroundHeadStrikesLanded || 0),
+    body: (s.sigDistanceBodyStrikesLanded || 0) + (s.sigClinchBodyStrikesLanded || 0) + (s.sigGroundBodyStrikesLanded || 0),
+    leg: (s.sigDistanceLegStrikesLanded || 0) + (s.sigClinchLegStrikesLanded || 0) + (s.sigGroundLegStrikesLanded || 0),
+    sub: s.submissionAttempts || s.submissions || 0, rev: s.reversals || 0,
+  });
   for (const [comp, row] of Object.entries(raw)) {
     if (!row) continue;
     const f = byComp[comp]; if (!f) continue;
     const mins = minsOf(f);
     const ids = Object.keys(row);
     for (const id of ids) add(id, row[id], mins, ids.length === 2 ? row[ids.find(x => x !== id)] : null);
+    byFight[comp] = {}; for (const id of ids) byFight[comp][id] = compact(row[id]);
   }
-  const out = { career: {}, fights: Object.keys(raw).length };
+  const out = { career: {}, fights: Object.keys(raw).length, byFight };
   for (const [id, g] of Object.entries(ag)) {
     if (g.n < 2 || g.min < 10) continue;
     const land = g.land || 1;
@@ -12292,7 +12304,34 @@ const server = http.createServer(async (req, res) => {
         await combatRefreshUpcoming(C);
         let ev = null, ft = null;
         for (const e of (C.upcoming || [])) { const x = e.fights.find(f => f.comp_id === cid); if (x) { ev = e; ft = x; break; } }
-        if (!ft) return json(res, 404, { error: 'No encontrado' });
+        // PELEA PASADA (8-ago, pedido de Alexis): cockpit post-pelea desde el histórico — resultado, método,
+        // stats reales por peleador (ESPN, UFC 2010+), oficiales y las picks del monitor si las hubo.
+        // SIN prob del modelo: el Elo actual YA incluye esta pelea (sería "predecir" mirando el resultado).
+        if (!ft) {
+          const past = (C.fights.fights || []).find(f => String(f.comp_id) === cid && f.completed);
+          if (!past) return json(res, 404, { error: 'No encontrado' });
+          const sum1 = combatFighterSummary(C, past.f1.id), sum2 = combatFighterSummary(C, past.f2.id);
+          const es = combatEspnStats(C.org);
+          const fstats = es && es.byFight ? es.byFight[cid] || null : null;
+          const off = (combatOfficials(C.org) || {})[cid] || null;
+          const pastPicks = (db.combatPicks || []).filter(p2 => p2.status === 'SETTLED' && p2.result_code !== 'SUPERSEDED' && p2.event
+            && ((p2.event.home_id === past.f1.id && p2.event.away_id === past.f2.id) || (p2.event.home_id === past.f2.id && p2.event.away_id === past.f1.id)))
+            .filter(cbPickVisible)
+            .map(p2 => ({ family: p2.family, selection_name: p2.selection_name, best_odds: p2.best_odds, result_code: p2.result_code, units: p2.units, clv_pct: p2.clv_pct }));
+          return json(res, 200, {
+            past: true, org: C.org,
+            event: { name: past.event || '', date: past.date },
+            fight: { comp_id: cid, weight: past.weight || null, rounds: past.rounds_sched || 3, main: false,
+              f1: { id: past.f1.id, name: past.f1.name, winner: !!past.f1.winner },
+              f2: { id: past.f2.id, name: past.f2.name, winner: !!past.f2.winner } },
+            result: { winner: past.f1.winner ? 'f1' : past.f2.winner ? 'f2' : null,
+              method: (past.method && past.method.display) || null, end_round: past.end_round || null, end_clock: past.end_clock || null },
+            tale: { f1: sum1, f2: sum2 },
+            stats: fstats ? { f1: fstats[past.f1.id] || null, f2: fstats[past.f2.id] || null } : null,
+            officials: off && off.ref ? { ref: off.ref, judges: (off.judges || []).filter(j => j && !/^judge \d/i.test(j)) } : null,
+            picks: pastPicks,
+          });
+        }
         const wctx = combatWeighCtx(C, ft);
         const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, wctx);
         const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
@@ -12393,6 +12432,26 @@ const server = http.createServer(async (req, res) => {
         });
       }
       // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)
+      // PELEAS PASADAS (8-ago): veladas COMPLETADAS recientes de la org (60 días), agrupadas por cartelera —
+      // el "Finalizados" de combate, espejo del segmento de fútbol. Cada pelea clickeable al cockpit post-pelea.
+      if (p === '/api/combat/results' && req.method === 'GET') {
+        const cutoff = Date.now() - 60 * 86400e3;
+        const evs = {};
+        for (const f of (C.own || [])) {
+          if (!f.completed || !f.f1 || !f.f2 || !(Date.parse(f.date || 0) > cutoff)) continue;
+          // clave por NOMBRE de evento (una cartelera cruza la medianoche UTC → mismo evento, dos fechas)
+          const k = f.event || 'Evento';
+          if (evs[k] && Date.parse(f.date || 0) > Date.parse(evs[k].date || 0)) evs[k].date = f.date;
+          (evs[k] = evs[k] || { name: f.event || '', date: f.date, fights: [] }).fights.push({
+            comp_id: f.comp_id, weight: f.weight || null,
+            f1: { id: f.f1.id, name: f.f1.name, winner: !!f.f1.winner },
+            f2: { id: f.f2.id, name: f.f2.name, winner: !!f.f2.winner },
+            method: (f.method && f.method.display) || null, end_round: f.end_round || null,
+          });
+        }
+        const events = Object.values(evs).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0)).slice(0, 8);
+        return json(res, 200, { events });
+      }
       if (p === '/api/combat/fighters' && req.method === 'GET') {
         const q = String(url.searchParams.get('q') || '').toLowerCase().trim();
         const div = String(url.searchParams.get('div') || '');
@@ -12459,7 +12518,26 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/combat/perf' && req.method === 'GET') {
         const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && x.result_code !== 'SUPERSEDED').filter(cbPickVisible)
           .sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
-        return json(res, 200, { track: combatPicksTrack(cbTrackOpts), settled: settled.slice(0, 100), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').filter(cbPickVisible).length });
+        // CLARIDAD (8-ago, pedido de Alexis: "no entiendo cómo nos fue ayer"): el agregado global no responde
+        // la pregunta del día. Desglose POR FAMILIA (GANADOR/MÉTODO/ROUNDS) y POR CARTELERA (cada velada con
+        // su W-L y unidades netas, la más reciente primero) — mismo espíritu que los segmentos de fútbol.
+        const mkAgg = () => ({ n: 0, w: 0, l: 0, units: 0, clv: [] });
+        const famAgg = {}, evAgg = {}, evOrder = [];
+        for (const x of settled) {
+          if (x.result_code !== 'WIN' && x.result_code !== 'LOSS') continue; // VOID no cuenta al W-L
+          const evKey = x.competition_name || 'Otras';
+          if (!evAgg[evKey]) { evAgg[evKey] = { ...mkAgg(), name: evKey, last: x.settled_at || null }; evOrder.push(evKey); }
+          for (const g of [famAgg[x.family || 'FIGHT'] = famAgg[x.family || 'FIGHT'] || mkAgg(), evAgg[evKey]]) {
+            g.n++; if (x.result_code === 'WIN') g.w++; else g.l++;
+            // MISMAS units que el track (las guardadas al liquidar) — no re-derivar de best_odds
+            g.units += x.units != null ? x.units : (x.result_code === 'WIN' ? (x.best_odds || 1) - 1 : -1);
+            if (x.clv_pct != null && x.clv_pct !== 0) g.clv.push(x.clv_pct);
+          }
+        }
+        const closeAgg = (g) => ({ ...g, units: +g.units.toFixed(2), hit: g.n ? +(100 * g.w / g.n).toFixed(1) : null, clv_avg: g.clv.length ? +(g.clv.reduce((s, v) => s + v, 0) / g.clv.length).toFixed(2) : null, clv: undefined });
+        const by_family = {}; for (const [k, g] of Object.entries(famAgg)) by_family[k] = closeAgg(g);
+        const by_event = evOrder.slice(0, 10).map(k => closeAgg(evAgg[k]));
+        return json(res, 200, { track: combatPicksTrack(cbTrackOpts), by_family, by_event, settled: settled.slice(0, 100), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').filter(cbPickVisible).length });
       }
       // R5c: DAILY BRIEF DE COMBATE — el equivalente del brief de fútbol, con la cartelera por delante.
       // Mismo espíritu: qué pasa hoy, qué mira el sistema, qué señales hay y cómo venimos. Reusa los

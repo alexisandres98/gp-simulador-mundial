@@ -238,6 +238,10 @@
       cb_method: 'MÉTODO DE VICTORIA', cb_finish: 'termina', cb_inside2: 'antes del 3º', cb_tale: 'Tale of the tape', cb_age: 'Edad', cb_height: 'Altura', cb_exp: 'Peleas', cb_kow: 'KO', cb_subw: 'SUB', cb_streak: 'Racha', cb_intel: 'Inteligencia', cb_intel_none: 'Sin señales — pelea limpia de banderas.',
       cb_recent: 'Últimas 5', cb_h2h: 'Historial entre ellos', cb_odds_by_book: 'Cuotas por casa', cb_form: 'Forma',
       cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
+      cb_search_top: 'Buscar peleadores, peleas…', cb_sr_fighters: 'Peleadores', cb_sr_fights: 'Peleas',
+      cb_by_family: 'Por tipo de pick', cb_fam_fight: 'Ganador', cb_fam_method: 'Método', cb_fam_rounds: 'Rounds',
+      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea',
+      cb_st_sig: 'Golpes significativos', cb_st_acc: 'Precisión', cb_st_td: 'Derribos', cb_st_head: 'A la cabeza', cb_st_body: 'Al cuerpo', cb_st_leg: 'A la pierna', cb_st_sub: 'Intentos de sumisión', cb_picks_here: 'Picks de GP en esta pelea',
       cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
       cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado', cb_public_track: 'todo a la vista · ganadas y perdidas',
       cb_track: 'Track record', cb_settled: 'Liquidadas', cb_no_settled: 'Todavía no liquida ninguna pick.', cb_units: 'unidades', cb_hit: 'acierto', cb_clv: 'CLV medio',
@@ -578,6 +582,10 @@
       cb_method: 'METHOD OF VICTORY', cb_finish: 'finish', cb_inside2: 'inside 2 rounds', cb_tale: 'Tale of the tape', cb_age: 'Age', cb_height: 'Height', cb_exp: 'Fights', cb_kow: 'KO', cb_subw: 'SUB', cb_streak: 'Streak', cb_intel: 'Intelligence', cb_intel_none: 'No signals — a clean fight, no red flags.',
       cb_recent: 'Last 5', cb_h2h: 'Head to head', cb_odds_by_book: 'Odds by book', cb_form: 'Form',
       cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
+      cb_search_top: 'Search fighters, fights…', cb_sr_fighters: 'Fighters', cb_sr_fights: 'Fights',
+      cb_by_family: 'By pick type', cb_fam_fight: 'Winner', cb_fam_method: 'Method', cb_fam_rounds: 'Rounds',
+      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers',
+      cb_st_sig: 'Significant strikes', cb_st_acc: 'Accuracy', cb_st_td: 'Takedowns', cb_st_head: 'To the head', cb_st_body: 'To the body', cb_st_leg: 'To the legs', cb_st_sub: 'Submission attempts', cb_picks_here: 'GP picks on this fight',
       cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
       cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor', cb_public_track: 'everything in the open · wins and losses',
       cb_track: 'Track record', cb_settled: 'Settled', cb_no_settled: 'No settled picks yet.', cb_units: 'units', cb_hit: 'hit rate', cb_clv: 'avg CLV',
@@ -991,7 +999,7 @@
       '<div id="gx-fbanner-slot">' + (founderBanner() || freeBanner()) + '</div>' +
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
-      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t('search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
+      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t(S.sport === 'combat' ? 'cb_search_top' : 'search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
       // R2 (28-jul, orden de Alexis): fuera el contador 0-0-0 (gx-pulse) → la búsqueda respira; el
       // selector de deporte vive en su PROPIA barra bajo el header (sportbar) — ahí caben más deportes.
       '<div class="gx-spacer"></div>' +
@@ -1053,6 +1061,44 @@
       var q = (inp.value || '').trim().toLowerCase(); if (q.length < 2) { hide(); return; }
       var norm = function (s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); };
       var nq = norm(q);
+      // POR DEPORTE (8-ago, pedido de Alexis): en Combate el buscador busca COMBATE (peleas de las carteleras
+      // en cache + peleadores server-side en las 3 orgs) y en Fútbol solo fútbol — cero cruces entre deportes.
+      if (S.sport === 'combat') {
+        var orgLab = { ufc: 'UFC', mma: 'MMA', boxing: 'BOX' };
+        var frows = [];
+        ['ufc', 'mma', 'boxing'].forEach(function (org) {
+          var st = S.cb['state_' + org]; st = st && st.v;
+          ((st && st.cards) || []).forEach(function (ev) {
+            (ev.fights || []).forEach(function (f) {
+              var n1 = (f.f1 && f.f1.name) || '', n2 = (f.f2 && f.f2.name) || '';
+              if (norm(n1).indexOf(nq) >= 0 || norm(n2).indexOf(nq) >= 0) frows.push({ org: org, id: f.comp_id, n1: n1, n2: n2, ev: ev.name || '' });
+            });
+          });
+        });
+        frows = frows.slice(0, 6);
+        var paint = function (fighters) {
+          var h = '';
+          if (fighters.length) h += '<div class="gx-sr-h">' + esc(t('cb_sr_fighters')) + '</div>' + fighters.map(function (ff) {
+            return '<div class="gx-sr-i" data-sr-cbfighter="' + esc(ff.org + '|' + ff.id) + '"><span class="fl">🥊</span><b>' + esc(ff.name) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(ff.division || '') + '</span><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(orgLab[ff.org] || '') + '</span></div>';
+          }).join('');
+          if (frows.length) h += '<div class="gx-sr-h">' + esc(t('cb_sr_fights')) + '</div>' + frows.map(function (fr) {
+            return '<div class="gx-sr-i" data-sr-cbfight="' + esc(fr.org + '|' + fr.id) + '"><b>' + esc(fr.n1) + '</b><span class="gx-dim" style="margin:0 4px">' + esc(t('vs')) + '</span><b>' + esc(fr.n2) + '</b><span class="gx-spacer"></span><span class="gx-dim" style="font-size:10.5px">' + esc(fr.ev) + '</span></div>';
+          }).join('');
+          if (!h) h = '<div class="gx-sr-empty gx-dim">' + esc(t('e_na')) + '</div>';
+          res.innerHTML = h; res.hidden = false;
+        };
+        paint([]); // peleas al instante; peleadores llegan del server y repintan si la consulta sigue viva
+        S._cbq = q;
+        Promise.all(['ufc', 'mma', 'boxing'].map(function (org) {
+          return fetch('/api/combat/fighters?org=' + org + '&q=' + encodeURIComponent(q), { headers: hdrs() })
+            .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+            .then(function (j) { return ((j && j.fighters) || []).slice(0, 4).map(function (ff) { ff.org = org; return ff; }); });
+        })).then(function (parts) {
+          if (S._cbq !== q || (inp.value || '').trim().toLowerCase() !== q) return; // la consulta cambió
+          paint(parts[0].concat(parts[1], parts[2]).slice(0, 8));
+        });
+        return;
+      }
       // equipos
       var teams = (S.stTeams || []).filter(function (tm) { return norm(teamName(tm.id, tm.name)).indexOf(nq) >= 0; }).slice(0, 6);
       // partidos (no jugados primero)
@@ -1096,6 +1142,8 @@
       var tm = e.target.closest('[data-sr-team]'); if (tm) { inp.value = ''; hide(); openTeam(tm.getAttribute('data-sr-team')); return; }
       var ct = e.target.closest('[data-sr-cteam]'); if (ct) { inp.value = ''; hide(); var pp2 = ct.getAttribute('data-sr-cteam').split('|'); openClubTeam(pp2[0], pp2[1]); return; }
       var mm = e.target.closest('[data-sr-match]'); if (mm) { inp.value = ''; hide(); openMatch(mm.getAttribute('data-sr-match')); return; }
+      var cbf = e.target.closest('[data-sr-cbfighter]'); if (cbf) { inp.value = ''; hide(); var a1 = cbf.getAttribute('data-sr-cbfighter').split('|'); location.hash = '#cbfighter/' + a1[0] + '-' + a1[1]; return; }
+      var cbm = e.target.closest('[data-sr-cbfight]'); if (cbm) { inp.value = ''; hide(); var a2 = cbm.getAttribute('data-sr-cbfight').split('|'); location.hash = '#cbfight/' + a2[0] + '-' + a2[1]; return; }
     });
     document.addEventListener('click', function (e) { if (!e.target.closest('.gx-search')) hide(); });
   }
@@ -5920,9 +5968,32 @@
   }
   // ── PELEAS: calendario por cartelera (evento → main event destacado + resto de la cartelera) ──
   function renderCbFights() {
+    // Segmento Próximos | Finalizados (8-ago, pedido de Alexis: "ver las peleas pasadas como los partidos")
+    var seg = S.cb.fseg === 'past' ? 'past' : 'up';
+    var segHtml = '<div class="gx-seg" id="gx-cbfseg"><button data-f="up"' + (seg === 'up' ? ' class="on"' : '') + '>' + esc(t('upcoming_f')) + '</button><button data-f="past"' + (seg === 'past' ? ' class="on"' : '') + '>' + esc(t('cb_seg_past')) + '</button></div>';
+    var wireSeg = function () { var el = $('#gx-cbfseg'); if (el) el.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; S.cb.fseg = b.getAttribute('data-f'); renderCbFights(); }); };
+    if (seg === 'past') {
+      var dr = cbGet('results_' + cbOrg(), '/api/combat/results?org=' + cbOrg());
+      if (!dr) { cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + mvLoading()); wireSeg(); return; }
+      if (dr._err) { cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); wireSeg(); return; }
+      var ph = (dr.events || []).map(function (ev) {
+        var rows2 = (ev.fights || []).map(function (f) {
+          var w1 = f.f1.winner, w2 = f.f2.winner;
+          var res = (f.method ? esc(f.method) : '—') + (f.end_round ? ' · R' + f.end_round : '');
+          return '<a class="gx-cb-bout lnk" href="#cbfight/' + cbOrg() + '-' + esc(f.comp_id) + '">' +
+            '<span class="gx-cb-avapair">' + cbAva(f.f1, 1) + cbAva(f.f2, 2) + '</span>' +
+            '<div class="gx-cb-bnames"><b>' + (w1 ? '<span class="gx-cb-up">' + esc(f.f1.name) + '</span>' : esc(f.f1.name)) + ' <i class="gx-cb-vsi">vs</i> ' + (w2 ? '<span class="gx-cb-up">' + esc(f.f2.name) + '</span>' : esc(f.f2.name)) + '</b><span class="gx-dim">' + esc(f.weight || '') + '</span></div>' +
+            '<span class="gx-clgate ' + (w1 || w2 ? 'ok' : 'sh') + '">' + (w1 ? 'W ' + esc((f.f1.name || '').split(' ').pop()) : w2 ? 'W ' + esc((f.f2.name || '').split(' ').pop()) : 'NC') + '</span>' +
+            '<span class="gx-mono gx-dim">' + res + '</span></a>';
+        }).join('');
+        return '<div class="gx-panel gx-cb-event"><div class="gx-cb-evhead"><b>' + esc(ev.name) + '</b><span class="gx-dim">' + esc(cbWhen(ev.date, false)) + ' · ' + (ev.fights || []).length + ' ' + esc(t('cb_fights_n')) + '</span></div><div class="gx-cb-card">' + rows2 + '</div></div>';
+      }).join('');
+      if (!(dr.events || []).length) ph = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_results')) + '</b></div></div>';
+      cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + ph); wireSeg(); return;
+    }
     var d = cbGet('state_' + cbOrg(), '/api/combat/state?org=' + cbOrg());
-    if (!d) { cbShell(t('cb_fights_title'), cbOrgTabs() + mvLoading()); return; }
-    if (d._err) { cbShell(t('cb_fights_title'), cbOrgTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (!d) { cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + mvLoading()); wireSeg(); return; }
+    if (d._err) { cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); wireSeg(); return; }
     var html = (d.cards || []).map(function (ev) {
       var main = ev.fights.find(function (f) { return f.main; }) || ev.fights[0];
       var rest = ev.fights.filter(function (f) { return f !== main; });
@@ -5932,7 +6003,7 @@
         hero + (rows ? '<div class="gx-cb-card"><div class="gx-label gx-cb-cardlab">' + esc(t('cb_card')) + '</div>' + rows + '</div>' : '') + '</div>';
     }).join('');
     if (!(d.cards || []).length) html = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_results')) + '</b></div></div>';
-    cbShell(t('cb_fights_title'), cbOrgTabs() + html);
+    cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + html); wireSeg();
   }
   // hero de UNA pelea (usado en calendario compacto y arriba del cockpit completo)
   function cbFightHero(ev, ft, opts) {
@@ -6232,10 +6303,58 @@
       '<div class="gx-mod-body">' + body + '<div class="gx-dim gx-cb-subline">' + esc(t('cb_film_what')) + '</div></div></div>';
   }
   // ── COCKPIT DE PELEA: el panel de inteligencia completo ──
+  // COCKPIT POST-PELEA (8-ago): lo que PASÓ, con la misma gramática visual del cockpit prepartido —
+  // hero con el resultado en el eje, números reales de la pelea (ESPN) en barras espejadas, tale,
+  // oficiales y las picks de GP que se jugaron aquí. Sin prob del modelo (el Elo ya absorbió la pelea).
+  function renderCbFightPast(d) {
+    var ft = d.fight, ta = d.tale || {}, rs = d.result || {};
+    var evline = '<div class="gx-cb-evhead"><b>' + esc(d.event.name || '') + '</b><span class="gx-dim">' + esc(cbWhen(d.event.date, false)) + '</span></div>';
+    var side = function (f, s) {
+      var sm = ta['f' + s] || {};
+      return '<a class="gx-cb-f" href="#cbfighter/' + cbOrg() + '-' + esc(String(f.id || '')) + '" style="' + (f.winner ? '' : 'opacity:.55') + '">' + cbAva(Object.assign({}, sm, f), s, 'xl') +
+        '<div class="gx-cb-nm">' + esc(f.name || '') + (f.winner ? ' <span class="gx-clgate ok">W</span>' : '') + '</div>' +
+        (sm.record ? '<div class="gx-cb-rec">' + sm.record.w + '-' + sm.record.l + ' · ' + (sm.record.ko || 0) + ' KO · ' + (sm.record.sub || 0) + ' SUB</div>' : '') + '</a>';
+    };
+    var wname = rs.winner === 'f1' ? ft.f1.name : rs.winner === 'f2' ? ft.f2.name : null;
+    var resLine = (rs.method ? esc(rs.method) : '—') + (rs.end_round ? ' · R' + rs.end_round : '') + (rs.end_clock ? ' ' + esc(rs.end_clock) : '');
+    var hero = '<div class="gx-cb-hero">' +
+      '<div class="gx-cb-evrow"><span class="gx-dim" style="font-size:12px">' + esc(ft.weight || '') + '</span><span class="gx-spacer"></span><span class="gx-clgate sh">' + esc(t('cb_final')) + '</span></div>' +
+      '<div class="gx-cb-face">' + side(ft.f1, 1) +
+        '<div class="gx-cb-mid"><div class="gx-cb-vs">' + esc(t('cb_final')).toUpperCase() + '</div>' +
+          (wname ? '<div class="gx-label gx-cb-problab">' + esc(t('cb_winner')) + '</div><div style="font-size:20px;font-weight:800">' + esc(wname) + '</div>' : '') +
+          '<div class="gx-dim gx-cb-subline">' + resLine + '</div></div>' +
+        side(ft.f2, 2) + '</div></div>';
+    // NÚMEROS DE LA PELEA (ESPN, UFC 2010+) en el eje espejado
+    var st = d.stats || {};
+    var statsPanel = '';
+    if (st.f1 && st.f2) {
+      var mmss = function (sec) { sec = Math.round(sec || 0); return Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2); };
+      var srows = cbTapeRow(t('cb_st_sig'), st.f1.sigL, st.f2.sigL, null) +
+        cbTapeRow(t('cb_st_acc'), st.f1.sigA ? Math.round(100 * st.f1.sigL / st.f1.sigA) : null, st.f2.sigA ? Math.round(100 * st.f2.sigL / st.f2.sigA) : null, function (x) { return x != null ? x + '%' : '—'; }) +
+        cbTapeRow('KD', st.f1.kd, st.f2.kd, null) +
+        cbTapeRow(t('cb_st_td'), st.f1.tdL, st.f2.tdL, function (x) { return x != null ? x : '—'; }) +
+        cbTapeRow(t('cb_ctrl'), st.f1.ctrl, st.f2.ctrl, mmss) +
+        cbTapeRow(t('cb_st_head'), st.f1.head, st.f2.head, null) +
+        cbTapeRow(t('cb_st_body'), st.f1.body, st.f2.body, null) +
+        cbTapeRow(t('cb_st_leg'), st.f1.leg, st.f2.leg, null) +
+        (st.f1.sub || st.f2.sub ? cbTapeRow(t('cb_st_sub'), st.f1.sub, st.f2.sub, null) : '');
+      statsPanel = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_st_title')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + srows + '</div></div>';
+    }
+    var off = d.officials;
+    var offPanel = off && off.ref ? '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body"><div class="gx-cb-offrow"><span><i class="gx-dim">' + esc(t('cb_ref')) + '</i> <b>' + esc(off.ref) + '</b></span>' + ((off.judges || []).length ? '<span><i class="gx-dim">' + esc(t('cb_judges')) + '</i> <b>' + esc(off.judges.join(' · ')) + '</b></span>' : '') + '</div></div></div>' : '';
+    var pickRows = (d.picks || []).map(function (p2) {
+      var chip = p2.result_code === 'WIN' ? '<span class="gx-clgate ok">W</span>' : p2.result_code === 'LOSS' ? '<span class="gx-clgate no">L</span>' : '<span class="gx-clgate sh">' + esc(p2.result_code) + '</span>';
+      return '<div class="gx-cb-bout">' + chip + '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">@' + p2.best_odds + (p2.clv_pct != null && p2.clv_pct !== 0 ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span></div>' +
+        '<b class="gx-mono ' + ((p2.units || 0) > 0 ? 'gx-cb-up' : (p2.units || 0) < 0 ? 'gx-cb-down' : 'gx-dim') + '">' + ((p2.units || 0) > 0 ? '+' : '') + (p2.units || 0) + 'u</b></div>';
+    }).join('');
+    var picksPanel = pickRows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_picks_here')) + '</span></div><div class="gx-mod-body">' + pickRows + '</div></div>' : '';
+    cbShell(t('cb_fights_title'), evline + hero + statsPanel + picksPanel + offPanel, { back: 'cbfights' });
+  }
   function renderCbFight() {
     var key = 'fight_' + cbOrg() + '_' + S.cb.fightId;
     var d = cbGet(key, '/api/combat/fight?id=' + encodeURIComponent(S.cb.fightId) + '&org=' + cbOrg());
     if (!d) { cbShell(t('cb_fights_title'), mvLoading(), { back: 'cbfights' }); return; }
+    if (d.past) { renderCbFightPast(d); return; }
     if (d._err || !d.fight) { cbShell(t('cb_fights_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>', { back: 'cbfights' }); return; }
     var ft = d.fight, ta = d.tale || {};
     var evline = '<div class="gx-cb-evhead"><b>' + esc(d.event.name) + '</b><span class="gx-dim">' + esc(cbWhen(d.event.date)) + '</span></div>' + cbContextChips(d.context);
@@ -6699,19 +6818,40 @@
       kpi(esc(t('cb_units')).toUpperCase(), (tt.units >= 0 ? '+' : '') + (tt.units || 0), tt.units > 0 ? 'up' : tt.units < 0 ? 'down' : '') +
       kpi(esc(t('cb_clv')).toUpperCase(), tt.clv_avg != null ? tt.clv_avg + '%' : '—', tt.clv_avg > 0 ? 'up' : tt.clv_avg < 0 ? 'down' : '') +
       kpi('MAIN', ((tr.main || {}).w || 0) + '-' + ((tr.main || {}).l || 0)) + kpi('PRELIM', ((tr.prelim || {}).w || 0) + '-' + ((tr.prelim || {}).l || 0)) + '</div>';
-    var rows = (d.settled || []).map(function (p2) {
-      var rc = p2.result_code;
-      var chip = rc === 'WIN' ? '<span class="gx-clgate ok">W</span>' : rc === 'LOSS' ? '<span class="gx-clgate no">L</span>' : '<span class="gx-clgate sh">' + esc(rc) + '</span>';
-      return '<div class="gx-cb-bout">' + chip +
-        '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">' + esc(p2.event.home + ' vs ' + p2.event.away) + ' · ' + esc(p2.card_slot || '') + ' · ' + esc(cbWhen(p2.event.kickoff_at, false)) + '</span></div>' +
-        '<span class="gx-mono gx-dim">@' + p2.best_odds + (p2.clv_pct != null ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span>' +
-        '<b class="gx-mono ' + ((p2.units || 0) > 0 ? 'gx-cb-up' : (p2.units || 0) < 0 ? 'gx-cb-down' : 'gx-dim') + '">' + ((p2.units || 0) > 0 ? '+' : '') + (p2.units || 0) + 'u</b></div>';
+    // CLARIDAD (8-ago): responder "¿cómo nos fue anoche?" de un vistazo — por familia, por cartelera,
+    // y la lista agrupada por velada (la más reciente arriba con su balance). Mismo espíritu que fútbol.
+    var famLab = { FIGHT: t('cb_fam_fight'), METHOD: t('cb_fam_method'), ROUNDS: t('cb_fam_rounds') };
+    var uCls = function (u) { return u > 0 ? 'gx-cb-up' : u < 0 ? 'gx-cb-down' : 'gx-dim'; };
+    var uFmt = function (u) { return (u > 0 ? '+' : '') + (u || 0) + 'u'; };
+    var famRows = Object.keys(d.by_family || {}).map(function (k) {
+      var g = d.by_family[k];
+      return '<div class="gx-cb-bout"><b style="min-width:90px">' + esc(famLab[k] || k) + '</b>' +
+        '<span class="gx-mono gx-dim">' + g.w + '-' + g.l + ' · ' + (g.hit != null ? g.hit + '%' : '—') + '</span>' +
+        '<span class="gx-mono gx-dim">' + (g.clv_avg != null ? 'CLV ' + (g.clv_avg >= 0 ? '+' : '') + g.clv_avg + '%' : '') + '</span>' +
+        '<span class="gx-spacer"></span><b class="gx-mono ' + uCls(g.units) + '">' + uFmt(g.units) + '</b></div>';
+    }).join('');
+    var famPanel = famRows ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_by_family')) + '</span></div><div class="gx-mod-body">' + famRows + '</div></div>' : '';
+    // lista agrupada por cartelera: subheader con el balance de la velada + sus picks debajo
+    var byEv = {};
+    (d.settled || []).forEach(function (p2) { var k = p2.competition_name || 'Otras'; (byEv[k] = byEv[k] || []).push(p2); });
+    var evGroups = (d.by_event || []).map(function (g) {
+      var picks = (byEv[g.name] || []).map(function (p2) {
+        var rc = p2.result_code;
+        var chip = rc === 'WIN' ? '<span class="gx-clgate ok">W</span>' : rc === 'LOSS' ? '<span class="gx-clgate no">L</span>' : '<span class="gx-clgate sh">' + esc(rc) + '</span>';
+        return '<div class="gx-cb-bout">' + chip +
+          '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name || '') + '</b><span class="gx-dim">' + esc(famLab[p2.family] || p2.family || '') + ' · ' + esc(p2.event.home + ' vs ' + p2.event.away) + '</span></div>' +
+          '<span class="gx-mono gx-dim">@' + p2.best_odds + (p2.clv_pct != null && p2.clv_pct !== 0 ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span>' +
+          '<b class="gx-mono ' + uCls(p2.units || 0) + '">' + uFmt(p2.units || 0) + '</b></div>';
+      }).join('');
+      return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(g.name) + '</span>' +
+        '<span class="gx-ph-extra gx-mono"><span class="gx-dim">' + g.w + '-' + g.l + '</span> · <b class="' + uCls(g.units) + '">' + uFmt(g.units) + '</b></span></div>' +
+        '<div class="gx-mod-body">' + picks + '</div></div>';
     }).join('');
     // "monitor privado" es vocabulario de ADMIN; el público ve su track transparente (lanzamiento 5-ago)
     var perfTag = (S.me && S.me.isAdmin) ? t('cb_monitor') : t('cb_public_track');
-    var list = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_settled')) + ' · ' + (d.settled || []).length + '</span><span class="gx-ph-extra gx-dim">' + esc(perfTag) + '</span></div><div class="gx-mod-body">' +
-      (rows || '<div class="gx-empty">' + illo('chart') + '<b>' + esc(t('cb_no_settled')) + '</b></div>') + '</div></div>';
-    cbShell(t('cb_perf_title'), kpis2 + list);
+    if (!evGroups) evGroups = '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body"><div class="gx-empty">' + illo('chart') + '<b>' + esc(t('cb_no_settled')) + '</b></div></div></div>';
+    var tagLine = '<div class="gx-label" style="margin:4px 2px 10px">' + esc(t('cb_settled')) + ' · ' + (d.settled || []).length + ' · ' + esc(perfTag) + '</div>';
+    cbShell(t('cb_perf_title'), kpis2 + famPanel + tagLine + evGroups);
   }
   // ── ORGANIZACIONES: UFC / PFL / Bellator ──
   function renderCbOrgs() {

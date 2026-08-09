@@ -240,7 +240,7 @@
       cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
       cb_search_top: 'Buscar peleadores, peleas…', cb_sr_fighters: 'Peleadores', cb_sr_fights: 'Peleas',
       cb_by_family: 'Por tipo de pick', cb_fam_fight: 'Ganador', cb_fam_method: 'Método', cb_fam_rounds: 'Rounds',
-      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea', cb_gp_prefight: 'Lo que decía GP antes de la pelea',
+      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea', cb_active: 'Activas', cb_gp_prefight: 'Lo que decía GP antes de la pelea',
       cb_st_sig: 'Golpes significativos', cb_st_acc: 'Precisión', cb_st_td: 'Derribos', cb_st_head: 'A la cabeza', cb_st_body: 'Al cuerpo', cb_st_leg: 'A la pierna', cb_st_sub: 'Intentos de sumisión', cb_picks_here: 'Picks de GP en esta pelea',
       cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
       cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado', cb_public_track: 'todo a la vista · ganadas y perdidas',
@@ -584,7 +584,7 @@
       cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
       cb_search_top: 'Search fighters, fights…', cb_sr_fighters: 'Fighters', cb_sr_fights: 'Fights',
       cb_by_family: 'By pick type', cb_fam_fight: 'Winner', cb_fam_method: 'Method', cb_fam_rounds: 'Rounds',
-      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers', cb_gp_prefight: 'What GP said before the fight',
+      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers', cb_active: 'Active', cb_gp_prefight: 'What GP said before the fight',
       cb_st_sig: 'Significant strikes', cb_st_acc: 'Accuracy', cb_st_td: 'Takedowns', cb_st_head: 'To the head', cb_st_body: 'To the body', cb_st_leg: 'To the legs', cb_st_sub: 'Submission attempts', cb_picks_here: 'GP picks on this fight',
       cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
       cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor', cb_public_track: 'everything in the open · wins and losses',
@@ -980,7 +980,10 @@
     var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
-    var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method' || n[0] === 'cbperf' || n[0] === 'cbopps') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    // 9-ago (pedido Alexis): Rendimiento y Oportunidades de combate SALEN del gate de admin — el track
+    // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
+    // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
+    var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     var moreViews = isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
@@ -1236,7 +1239,7 @@
       // no estaban NI en la barra inferior NI aquí → en el celular eran inalcanzables. Van primeras porque
       // son las superficies de INTELIGENCIA, que es justo lo que ve el usuario no-admin con el flag público.
       ? [['cbbrief', 'news', 'nav_brief'], ['cbcard', 'layout-grid', 'nav_cb_card'], ['cbask', 'message-circle', 'nav_cb_ask'], ['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts']]
-        .concat(isAdmin ? [['cbperf', 'chart-line', 'nav_perf']] : [])
+        .concat([['cbperf', 'chart-line', 'nav_perf']]) // 9-ago: rendimiento público (track desde el corte)
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
@@ -6838,13 +6841,18 @@
     if (!d) { cbShell(t('cb_perf_title'), mvLoading()); return; }
     if (d._err) { cbShell(t('cb_perf_title'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var tr = d.track || {}; var tt = tr.total || {};
+    // ESTÉTICA (9-ago, pedido Alexis): hero con el resultado neto al frente + tiles secundarias.
+    var uNet = tt.units || 0;
+    var heroCls = uNet > 0 ? 'up' : uNet < 0 ? 'down' : '';
     var kpi = function (lab, val, cls) { return '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval' + (cls ? ' ' + cls : '') + '">' + val + '</div><div class="gx-label">' + lab + '</div></div>'; };
-    var kpis2 = '<div class="gx-cb-tiles perf">' +
+    var kpis2 = '<div class="gx-panel gx-cbp-hero ' + heroCls + '"><div class="gx-cbp-heroL">' +
+      '<div class="gx-cbp-units gx-mono ' + heroCls + '">' + (uNet > 0 ? '+' : '') + uNet + '<span>u</span></div>' +
+      '<div class="gx-label">' + esc(t('cb_units')) + ' · ' + esc(t('cb_public_track')) + '</div></div>' +
+      '<div class="gx-cb-tiles perf" style="margin:0;flex:1">' +
       kpi('PICKS', tt.n || 0) + kpi('W-L', (tt.w || 0) + '-' + (tt.l || 0)) +
       kpi(esc(t('cb_hit')).toUpperCase(), tt.hit != null ? tt.hit + '%' : '—') +
-      kpi(esc(t('cb_units')).toUpperCase(), (tt.units >= 0 ? '+' : '') + (tt.units || 0), tt.units > 0 ? 'up' : tt.units < 0 ? 'down' : '') +
-      kpi(esc(t('cb_clv')).toUpperCase(), tt.clv_avg != null ? tt.clv_avg + '%' : '—', tt.clv_avg > 0 ? 'up' : tt.clv_avg < 0 ? 'down' : '') +
-      kpi('MAIN', ((tr.main || {}).w || 0) + '-' + ((tr.main || {}).l || 0)) + kpi('PRELIM', ((tr.prelim || {}).w || 0) + '-' + ((tr.prelim || {}).l || 0)) + '</div>';
+      kpi(esc(t('cb_clv')).toUpperCase(), tt.clv_avg != null ? (tt.clv_avg > 0 ? '+' : '') + tt.clv_avg + '%' : '—', tt.clv_avg > 0 ? 'up' : tt.clv_avg < 0 ? 'down' : '') +
+      kpi(esc(t('cb_active')).toUpperCase(), tr.active || 0) + '</div></div>';
     // CLARIDAD (8-ago): responder "¿cómo nos fue anoche?" de un vistazo — por familia, por cartelera,
     // y la lista agrupada por velada (la más reciente arriba con su balance). Mismo espíritu que fútbol.
     var famLab = { FIGHT: t('cb_fam_fight'), METHOD: t('cb_fam_method'), ROUNDS: t('cb_fam_rounds') };
@@ -6852,8 +6860,10 @@
     var uFmt = function (u) { return (u > 0 ? '+' : '') + (u || 0) + 'u'; };
     var famRows = Object.keys(d.by_family || {}).map(function (k) {
       var g = d.by_family[k];
+      var hitW = g.n ? Math.round(100 * g.w / g.n) : 0;
       return '<div class="gx-cb-bout"><b style="min-width:90px">' + esc(famLab[k] || k) + '</b>' +
-        '<span class="gx-mono gx-dim">' + g.w + '-' + g.l + ' · ' + (g.hit != null ? g.hit + '%' : '—') + '</span>' +
+        '<span class="gx-mono gx-dim" style="min-width:86px">' + g.w + '-' + g.l + ' · ' + (g.hit != null ? g.hit + '%' : '—') + '</span>' +
+        '<div class="gx-cbp-fambar"><i style="width:' + hitW + '%"></i></div>' +
         '<span class="gx-mono gx-dim">' + (g.clv_avg != null ? 'CLV ' + (g.clv_avg >= 0 ? '+' : '') + g.clv_avg + '%' : '') + '</span>' +
         '<span class="gx-spacer"></span><b class="gx-mono ' + uCls(g.units) + '">' + uFmt(g.units) + '</b></div>';
     }).join('');
@@ -6870,8 +6880,8 @@
           '<span class="gx-mono gx-dim">@' + p2.best_odds + (p2.clv_pct != null && p2.clv_pct !== 0 ? ' · CLV ' + (p2.clv_pct >= 0 ? '+' : '') + p2.clv_pct + '%' : '') + '</span>' +
           '<b class="gx-mono ' + uCls(p2.units || 0) + '">' + uFmt(p2.units || 0) + '</b></div>';
       }).join('');
-      return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(g.name) + '</span>' +
-        '<span class="gx-ph-extra gx-mono"><span class="gx-dim">' + g.w + '-' + g.l + '</span> · <b class="' + uCls(g.units) + '">' + uFmt(g.units) + '</b></span></div>' +
+      return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(g.name) + (g.last ? ' <span class="gx-dim" style="font-weight:600">· ' + esc(cbWhen(g.last, false)) + '</span>' : '') + '</span>' +
+        '<span class="gx-ph-extra gx-mono"><span class="gx-clgate ' + (g.units > 0 ? 'ok' : g.units < 0 ? 'no' : 'sh') + '">' + g.w + '-' + g.l + '</span> <b class="' + uCls(g.units) + '">' + uFmt(g.units) + '</b></span></div>' +
         '<div class="gx-mod-body">' + picks + '</div></div>';
     }).join('');
     // "monitor privado" es vocabulario de ADMIN; el público ve su track transparente (lanzamiento 5-ago)

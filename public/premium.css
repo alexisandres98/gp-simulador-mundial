@@ -1663,3 +1663,16 @@ td .gx-calc-btn span { display: none; }
 .gx-cb-q svg { width:14px; height:14px; flex:0 0 14px; opacity:.6; }
 .gx-cb-a { font-size:13.5px; line-height:1.65; color:#E6EEF0; }
 .gx-cb-alink { color:#2DD478; cursor:pointer; font-weight:700; white-space:nowrap; }
+/* ── Rendimiento de combate: hero de resultado (9-ago) ── */
+.gx-cbp-hero { display:flex; align-items:center; gap:22px; padding:18px 22px; margin-bottom:12px;
+  background:linear-gradient(150deg, rgba(31,227,164,.06), rgba(255,255,255,.015) 55%); }
+.gx-cbp-hero.down { background:linear-gradient(150deg, rgba(224,82,82,.07), rgba(255,255,255,.015) 55%); }
+.gx-cbp-heroL { min-width:150px; }
+.gx-cbp-units { font-size:38px; font-weight:800; letter-spacing:-1.5px; line-height:1; font-variant-numeric:tabular-nums; color:#E7F2EF; }
+.gx-cbp-units span { font-size:20px; margin-left:2px; color:#5F747B; }
+.gx-cbp-units.up { color:var(--gx-ac,#1FE3A4); }
+.gx-cbp-units.down { color:#FF7A7A; }
+.gx-cbp-heroL .gx-label { margin-top:6px; }
+.gx-cbp-fambar { flex:1; max-width:180px; height:7px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; }
+.gx-cbp-fambar i { display:block; height:100%; background:var(--gx-ac,#1FE3A4); border-radius:99px; }
+@media (max-width:700px){ .gx-cbp-hero { flex-direction:column; align-items:flex-start; gap:12px; } .gx-cbp-fambar { display:none; } }

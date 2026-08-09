@@ -105,7 +105,7 @@
       mkt_none: 'Sin mercados cargados para este partido todavía.', move_untracked: 'El movimiento de precio aún no se registra para estas fuentes.', novig_na: 'Requiere el set completo de resultados.',
       ctx_none: 'Sin contexto verificado disponible para este partido todavía.', ctx_form: 'Forma reciente', ctx_inj: 'Bajas y disponibilidad', ctx_lineups: 'Alineaciones',
       ctx_form_line: '{team} llega con {rec} en sus últimos {n} ({gf} a favor, {ga} en contra).', ctx_form_line_short: '{team} llega con {rec} en sus últimos {n}.', ctx_inj_line: '{team}: {players}.', no_inj: 'sin bajas reportadas',
-      goals_tag: 'En validación', goals_disc: 'Proyección estadística del modelo, en validación. No es una Pick ni un Value; sin recomendación de apuesta.',
+      goals_tag: '', goals_disc: 'Proyección estadística del modelo. No es una Pick ni un Value; sin recomendación de apuesta.',
       g_xg: 'xG esperado', g_total: 'Total esperado', g_ou: 'Más / Menos', g_btts: 'Ambos anotan', g_scores: 'Marcadores más probables', g_over: 'Más', g_under: 'Menos', g_yes: 'Sí', g_no: 'No', goals_none: 'Sin proyección de goles disponible.',
       g_dist: 'Distribución de goles', g_margin: 'Margen de victoria', g_combos: 'Combinaciones', g_either2: 'Cualquiera gana por 2+', g_team_by2: '{team} por 2+', g_draw: 'Empate', g_team_wino25: '{team} gana y +2.5', g_wintonil: 'Cualquiera gana a cero', g_team_cs: '{team} valla invicta', g_push: 'empuje', g_home: 'Local', g_away: 'Visitante',
       live_min: 'Minuto', live_events: 'Eventos', live_stats: 'Estadísticas', live_prob: 'Probabilidad en vivo (modelo)', live_none: 'No hay datos en vivo verificados para este partido.',
@@ -136,7 +136,7 @@
       sim_thesis: 'GP da {fav} {favp}, {dog} {dogp} y empate {drawp}.', sim_thesis_factor: 'Pesan {factors}.', sim_risk: 'Una baja de última hora o un cambio de alineación pueden estrechar el margen.',
       sim_price_na: 'No se evalúa precio porque este cruce no corresponde a un mercado programado.', sim_hypo_tag: 'Hipotético', sim_runs: 'escenarios',
       sim_montecarlo: 'Proyección de escenarios GP', sim_avg_goals: 'Goles promedio', sim_totals: 'Distribución de goles',
-      sim_goals_disc: 'Proyección de goles en validación. Disponible para análisis; no genera Picks GP ni Value.',
+      sim_goals_disc: 'Proyección de goles del modelo. Disponible para análisis; no genera Picks GP ni Value.',
       // ---- Corte 4H: superficies de torneo ----
       group: 'Grupo',
       tm_champion: 'Campeón', tm_final: 'Final', tm_semi: 'Semis', tm_qf: 'Cuartos', tm_advance: 'Avanza',
@@ -205,7 +205,7 @@
       me_market_t: 'Mercado', me_market_b: 'Comparamos la Probabilidad GP contra casas, exchanges y prediction markets, mostrando precio implícito, sin margen y mejor precio cuando es posible.',
       me_unc_t: 'Incertidumbre', me_unc_b: 'Cada lectura incluye su nivel de confianza y los riesgos relevantes. La confianza es un único valor; nunca afirmamos un nivel y lo contradecimos en el texto.',
       me_picks_t: 'Picks y Value', me_picks_b: 'Las Picks se publican manualmente; el Value surge de las evaluaciones cuando hay ventaja sobre el precio. Nada se auto-publica.',
-      me_goals_t: 'Proyección de goles', me_goals_b: 'La proyección de goles está en validación: es informativa y no genera Picks ni Value.',
+      me_goals_t: 'Proyección de goles', me_goals_b: 'La proyección de goles es informativa y no genera Picks ni Value.',
       me_limits_t: 'Limitaciones', me_limits_b: 'No es consejo financiero, sino estimaciones de un modelo estadístico. La cobertura de contexto y mercado depende de la disponibilidad de datos por partido.',
       adm_observatory: 'Observatory de cobertura', adm_canonical: 'Eventos canónicos', adm_with_eval: 'Con evaluación GP', adm_upcoming_eval: 'Próximos evaluados', adm_pending: 'Próximos pendientes',
       adm_ctx_dist: 'Distribución de contexto', adm_snap_fresh: 'Frescura de snapshots', adm_forbidden: 'Solo administradores.',
@@ -449,7 +449,7 @@
       mkt_none: 'No markets loaded for this match yet.', move_untracked: 'Price movement isn’t tracked for these sources yet.', novig_na: 'Requires the full outcome set.',
       ctx_none: 'No verified context available for this match yet.', ctx_form: 'Recent form', ctx_inj: 'Absences & availability', ctx_lineups: 'Lineups',
       ctx_form_line: '{team} arrives with {rec} in its last {n} ({gf} for, {ga} against).', ctx_form_line_short: '{team} arrives with {rec} in its last {n}.', ctx_inj_line: '{team}: {players}.', no_inj: 'no reported absences',
-      goals_tag: 'In validation', goals_disc: 'Statistical model projection, in validation. Not a Pick or Value; no betting recommendation.',
+      goals_tag: '', goals_disc: 'Statistical model projection. Not a Pick or Value; no betting recommendation.',
       g_xg: 'Expected xG', g_total: 'Expected total', g_ou: 'Over / Under', g_btts: 'Both teams score', g_scores: 'Most likely scores', g_over: 'Over', g_under: 'Under', g_yes: 'Yes', g_no: 'No', goals_none: 'No goal projection available.',
       g_dist: 'Goal distribution', g_margin: 'Winning margin', g_combos: 'Combinations', g_either2: 'Either team by 2+', g_team_by2: '{team} by 2+', g_draw: 'Draw', g_team_wino25: '{team} wins & over 2.5', g_wintonil: 'Either wins to nil', g_team_cs: '{team} clean sheet', g_push: 'push', g_home: 'Home', g_away: 'Away',
       live_min: 'Minute', live_events: 'Events', live_stats: 'Stats', live_prob: 'Live probability (model)', live_none: 'No verified live data for this match.',
@@ -480,7 +480,7 @@
       sim_thesis: 'GP gives {fav} {favp}, {dog} {dogp} and a draw {drawp}.', sim_thesis_factor: 'Key factors: {factors}.', sim_risk: 'A last-minute absence or lineup change could narrow the margin.',
       sim_price_na: 'Price is not evaluated because this hypothetical matchup does not correspond to a scheduled market.', sim_hypo_tag: 'Hypothetical', sim_runs: 'scenarios',
       sim_montecarlo: 'GP scenario projection', sim_avg_goals: 'Avg goals', sim_totals: 'Goal distribution',
-      sim_goals_disc: 'Goal projection in validation. Available for analysis; does not generate GP Picks or Value.',
+      sim_goals_disc: 'Model goal projection. Available for analysis; does not generate GP Picks or Value.',
       // ---- Corte 4H: tournament surfaces ----
       group: 'Group',
       tm_champion: 'Champion', tm_final: 'Final', tm_semi: 'Semis', tm_qf: 'Quarters', tm_advance: 'Advance',
@@ -549,7 +549,7 @@
       me_market_t: 'Market', me_market_b: 'We compare the GP probability against books, exchanges and prediction markets, showing implied price, no-vig and best price when possible.',
       me_unc_t: 'Uncertainty', me_unc_b: 'Every read includes its confidence level and the relevant risks. Confidence is a single value; we never claim a level and contradict it in the text.',
       me_picks_t: 'Picks and Value', me_picks_b: 'Picks are published manually; Value arises from evaluations when there’s an edge over the price. Nothing is auto-published.',
-      me_goals_t: 'Goal projection', me_goals_b: 'The goal projection is in validation: informational only and does not generate Picks or Value.',
+      me_goals_t: 'Goal projection', me_goals_b: 'The goal projection is informational and does not generate Picks or Value.',
       me_limits_t: 'Limitations', me_limits_b: 'Not financial advice, but statistical model estimates. Context and market coverage depend on per-match data availability.',
       adm_observatory: 'Coverage observatory', adm_canonical: 'Canonical events', adm_with_eval: 'With GP evaluation', adm_upcoming_eval: 'Upcoming evaluated', adm_pending: 'Upcoming pending',
       adm_ctx_dist: 'Context distribution', adm_snap_fresh: 'Snapshot freshness', adm_forbidden: 'Admins only.',
@@ -4496,7 +4496,7 @@
   //      xG, distribución total, escalera O/U (con push en líneas enteras), margen de victoria y combinaciones. ----
   function mvGoals(beta) {
     var gi = beta.goal_insights;
-    var head = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div>';
+    var head = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span></div>';
     // GATING: la proyección de goles es Pro+ — el plan Free ve el candado con CTA (decisión Alexis 4-jul).
     if (uiPlan() === 'free') return head + '<div class="gx-mod-body">' + lockPanelPro() + '</div></div>';
     if (!gi) return head + '<div class="gx-mod-body"><div class="gx-empty">' + ic('ball-football') + '<b>' + esc(t('goals_none')) + '</b></div></div></div>';
@@ -5072,7 +5072,7 @@
   function simGoals(d) {
     var g = d.goals || {};
     var ouRow = function (line, over) { if (over == null) return ''; return '<div class="gx-ou-row"><span class="gx-mono">' + line + '</span><div class="gx-ou-bars"><span class="gx-ou-over" style="width:' + (over * 100) + '%"></span></div><span class="gx-mono gx-dim">' + esc(t('g_over')) + ' ' + pct0(over) + ' · ' + esc(t('g_under')) + ' ' + pct0(1 - over) + '</span></div>'; };
-    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span><span class="gx-badge gx-b-watch">' + esc(t('goals_tag')) + '</span></div><div class="gx-mod-body">' +
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('ball-football') + esc(t('mod_goals')) + '</span></div><div class="gx-mod-body">' +
       '<div class="gx-mod-sub gx-label">' + esc(t('g_ou')) + '</div>' + ouRow('1.5', g.over15) + ouRow('2.5', g.over25) + ouRow('3.5', g.over35) +
       '<p class="gx-mod-note gx-dim">' + ic('alert-triangle') + ' ' + esc(t('sim_goals_disc')) + '</p>' +
       '</div></div>';

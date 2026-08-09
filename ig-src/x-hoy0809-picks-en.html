@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 608px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: #0a0f0d; color: #fff; padding: 40px 44px; position: relative; }
+.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.brand { display: flex; align-items: center; gap: 11px; font-size: 21px; font-weight: 800; }
+.logo { width: 34px; height: 34px; border-radius: 9px; background: #12241c; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: inset 0 0 0 1px rgba(45,230,163,.35); }
+.round { color: #2de6a3; font-size: 15px; font-weight: 700; letter-spacing: 1.5px; border: 1px solid rgba(45,230,163,.4); border-radius: 99px; padding: 7px 16px; }
+h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin: 14px 0 4px; }
+.sub { font-size: 16px; color: #7d8f88; font-weight: 600; margin-bottom: 26px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.card { position: relative; background: #101915; border: 1px solid #1c2a24; border-radius: 16px; padding: 22px 20px 20px; overflow: hidden; }
+.card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #2de6a3; }
+.fam { color: #2de6a3; font-size: 13px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px; }
+.match { font-size: 13.5px; color: #9db0a8; font-weight: 600; line-height: 1.35; margin-bottom: 4px; min-height: 36px; }
+.tesis { font-size: 12.5px; color: #6f817a; margin-bottom: 15px; min-height: 17px; }
+.sel { font-size: 25px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 17px; line-height: 1.12; min-height: 56px; }
+.conf { font-size: 13px; color: #9db0a8; margin-bottom: 17px; }
+.conf b { color: #fff; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.dot.h { background: #2de6a3; } .dot.m { background: #f0b429; }
+.odds-l { font-size: 11px; color: #6f817a; font-weight: 700; letter-spacing: 1px; }
+.odds { font-size: 33px; font-weight: 800; color: #2de6a3; }
+.foot { position: absolute; bottom: 34px; left: 44px; right: 44px; display: flex; align-items: center; justify-content: space-between; }
+.foot .n { font-size: 14px; color: #6f817a; font-weight: 600; }
+.pill { background: #2de6a3; color: #05231a; font-size: 17px; font-weight: 800; padding: 11px 22px; border-radius: 99px; }
+</style></head>
+<body>
+  <div class="top">
+    <div class="brand"><div class="logo">⚽</div>GP Simulador</div>
+    <div class="round">● SUNDAY CARD</div>
+  </div>
+  <h1>Today’s 3 best picks 🎯</h1>
+  <div class="sub">Aug 9 · mixed picks · always the best odds</div>
+  <div class="grid">
+    <div class="card">
+      <div class="fam">Cards</div>
+      <div class="match">🇧🇷 Palmeiras vs Internacional · today 3 PM ET</div>
+      <div class="tesis">The model reads a clean game</div>
+      <div class="sel">Under 6.5 cards</div>
+      <div class="conf"><span class="dot h"></span>Confidence: <b>High</b></div>
+      <div class="odds-l">BEST ODDS</div><div class="odds">1.44</div>
+    </div>
+    <div class="card">
+      <div class="fam">Corners</div>
+      <div class="match">🏴󠁧󠁢󠁳󠁣󠁴󠁿 Rangers vs Hibernian · today 11 AM ET</div>
+      <div class="tesis">Ibrox pressure: volume guaranteed</div>
+      <div class="sel">Over 8.5 corners</div>
+      <div class="conf"><span class="dot h"></span>Confidence: <b>High</b></div>
+      <div class="odds-l">BEST ODDS</div><div class="odds">1.30</div>
+    </div>
+    <div class="card">
+      <div class="fam">Winner</div>
+      <div class="match">🇵🇱 Jagiellonia vs Widzew Łódź · today 2 PM ET</div>
+      <div class="tesis">Model has it 60/40 — priced as a dog</div>
+      <div class="sel">Jagiellonia to win</div>
+      <div class="conf"><span class="dot m"></span>Confidence: <b>Medium</b></div>
+      <div class="odds-l">BEST ODDS</div><div class="odds">2.38</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="n">Daily picks · clear analysis · not financial advice</div>
+    <div class="pill">gpsimulador.com</div>
+  </div>
+</body></html>

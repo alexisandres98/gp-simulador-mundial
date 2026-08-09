@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(165deg, #06090B 0%, #0B1714 48%, #0A5C3C 130%); color: #EAF1F2;
+  padding: 150px 70px 150px; position: relative; }
+.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 40px; }
+.badge { width: 52px; height: 52px; border-radius: 15px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 30px; border: 1px solid rgba(31,227,164,.42); }
+.bname { font-size: 30px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4; font-weight: 800; font-size: 22px; padding: 11px 22px; border-radius: 99px; letter-spacing: 1.5px; }
+h1 { font-size: 74px; font-weight: 800; letter-spacing: -2px; margin-bottom: 10px; color:#fff; line-height:1.05; }
+.sub { font-size: 30px; color:#9DB0B5; font-weight:600; margin-bottom: 54px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 26px; padding: 40px 44px; position: relative; overflow:hidden; margin-bottom: 30px; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#1FE3A4; }
+.pick.alt::before { background:#34D6C8; }
+.fam { font-size: 24px; font-weight: 800; letter-spacing: 1.5px; color:#1FE3A4; text-transform:uppercase; }
+.pick.alt .fam { color:#34D6C8; }
+.note { font-size: 27px; font-weight: 600; color:#9DB0B5; margin: 8px 0 20px; }
+.bet { font-size: 56px; font-weight: 800; letter-spacing:-1px; color:#fff; margin-bottom: 26px; }
+.row { display:flex; align-items:flex-end; justify-content:space-between; }
+.conf { font-size: 26px; color:#9DB0B5; font-weight:600; display:flex; align-items:center; gap:10px; }
+.conf b { color:#fff; }
+.dot { width:16px; height:16px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.odds { text-align:right; }
+.odds .ol { font-size: 20px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size: 68px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; line-height:1; }
+.pick.alt .odds .ov { color:#34D6C8; }
+.foot { position:absolute; bottom: 90px; left: 70px; right: 70px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:30px; font-weight:800; padding:22px 44px; border-radius:99px; }
+.foot .small { font-size:22px; color:#9DB0B5; font-weight:600; max-width: 520px; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador</div><div class="tag">● DOMINGO</div></div>
+  <h1>Las 3 mejores picks de hoy 🎯</h1>
+  <div class="sub">9 ago · picks mixtas · siempre la mejor cuota</div>
+  <div class="pick">
+    <div class="fam">Tarjetas · 🇧🇷 Palmeiras vs Internacional · hoy 2 PM COL</div>
+    <div class="note">El modelo ve un partido limpio · GP 81%</div>
+    <div class="bet">Menos de 6.5 tarjetas</div>
+    <div class="row"><div class="conf"><span class="dot high"></span>Confianza: <b>Alta</b></div><div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.44</div></div></div>
+  </div>
+  <div class="pick alt">
+    <div class="fam">Córners · 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Rangers vs Hibernian · hoy 10 AM COL</div>
+    <div class="note">Ibrox empuja: volumen asegurado · GP 76%</div>
+    <div class="bet">Más de 8.5 córners</div>
+    <div class="row"><div class="conf"><span class="dot high"></span>Confianza: <b>Alta</b></div><div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.30</div></div></div>
+  </div>
+  <div class="pick">
+    <div class="fam">Ganador · 🇵🇱 Jagiellonia vs Widzew · hoy 1 PM COL</div>
+    <div class="note">El modelo lo tiene 60/40 y paga doble</div>
+    <div class="bet">Gana Jagiellonia</div>
+    <div class="row"><div class="conf"><span class="dot"></span>Confianza: <b>Media</b></div><div class="odds"><div class="ol">Mejor cuota</div><div class="ov">2.38</div></div></div>
+  </div>
+  <div class="foot">
+    <div class="small">Picks diarias · análisis claro · no es consejo financiero</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

@@ -5190,6 +5190,17 @@ async function whopFounderSpotsLeft() {
 // viejo). Revertir el test = GP_DEFAULT_LANG=auto (o 'es') en Render + Manual Deploy. NO afecta a quien ya
 // eligió idioma (preferencia guardada gana) ni al toggle ES/EN.
 function defaultLang() { const v = String(process.env.GP_DEFAULT_LANG || 'en').toLowerCase(); return (v === 'es' || v === 'auto') ? v : 'en'; }
+// GOOGLE ANALYTICS 4 (9-ago, pedido de Alexis: monitorear clics/visitas). Gateado por env GP_GA_ID
+// (G-XXXXXXX): sin la variable, cero bytes inyectados — la plataforma queda byte-idéntica. El snippet
+// registra page_view inicial + cada cambio de hash (la plataforma /x es SPA por hash) con hash incluido.
+function gaSnippet() {
+  const id = (process.env.GP_GA_ID || '').trim();
+  if (!/^G-[A-Z0-9]{4,16}$/.test(id)) return '';
+  return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script>` +
+    `<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}` +
+    `gtag('js',new Date());gtag('config','${id}');` +
+    `addEventListener('hashchange',function(){gtag('event','page_view',{page_location:location.href,page_title:document.title})});</script>`;
+}
 // LANDING v3 (post-Mundial, clubes): OFF por default → landing byte-idéntica. ?landing3=1 la
 // previsualiza sin flag (preview de Alexis); GP_LANDING_V3_ENABLED=true la enciende para todos.
 function landingV3On() { return /^(1|true|yes|on)$/i.test(String(process.env.GP_LANDING_V3_ENABLED || '').trim()); }
@@ -14109,7 +14120,7 @@ const server = http.createServer(async (req, res) => {
         let html = fs.readFileSync(pf, 'utf8')
           .replace('src="premium.js"', `src="premium.js?v=${vjs}"`)
           .replace('href="premium.css"', `href="premium.css?v=${vcss}"`)
-          .replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script></head>`);
+          .replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())}</script>${gaSnippet()}</head>`);
         // A.8: fixtures QA del cockpit — se inyectan SOLO con el flag GP_PREMIUM_QA_ENABLED (preview interno).
         if (gpProduct.flags().premiumQa) {
           try {
@@ -14127,7 +14138,7 @@ const server = http.createServer(async (req, res) => {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
         // __GPL3: landing v3 (clubes) conocida ANTES del primer paint — sin swap visible de copy/hero.
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script>${gaSnippet()}</head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
@@ -14901,7 +14912,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
-        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script></head>`);
+        let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script>${gaSnippet()}</head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
@@ -14936,7 +14947,8 @@ const server = http.createServer(async (req, res) => {
         const vcss = Math.floor(fs.statSync(path.join(__dirname, 'public', 'style.css')).mtimeMs);
         let html = fs.readFileSync(full, 'utf8')
           .replace('src="app.js"', `src="app.js?v=${vjs}"`)
-          .replace('href="style.css"', `href="style.css?v=${vcss}"`);
+          .replace('href="style.css"', `href="style.css?v=${vcss}"`)
+          .replace('</head>', `${gaSnippet()}</head>`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { /* si falla, cae al servido normal */ }

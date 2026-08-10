@@ -14616,7 +14616,10 @@ const server = http.createServer(async (req, res) => {
         // F1.5: MATRIZ DE MERCADOS del cruce (cuotas del sweep en la DB). Solo intra-liga (el ceid sintético es
         // por liga+par). Mejor cuota por resultado + O/U por línea, con la casa que la paga.
         let markets = null;
-        if (!cross) { try { markets = await clubMatchMarkets(hl, hId, aId); } catch { markets = null; } }
+        // GUARD (10-ago, reporte Alexis "el partido no carga"): con el pool de Postgres ahogado, la query de
+        // mercados podía tardar 10s+ (connect timeout 5s × retry) y el cockpit entero esperaba. El partido
+        // SIEMPRE carga: los mercados tienen 2.5s — si la DB no llega, van null y el resto pinta igual.
+        if (!cross) { try { markets = await Promise.race([clubMatchMarkets(hl, hId, aId), new Promise(r2 => setTimeout(() => r2(null), 2500))]); } catch { markets = null; } }
         // MATCH INTEL COMPLETO (P1.2): MISMO shape que /api/beta/match-intel del Mundial → el cliente lo rinde
         // con mvIntel (capa por jugador: rol/confianza/razones del player-intel + radar de disponibilidad narrado
         // por el observer + factor λ). Antes era solo "anotadores probables" (clubIntelHtml, variante eliminada).

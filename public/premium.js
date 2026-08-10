@@ -240,7 +240,13 @@
       cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
       cb_search_top: 'Buscar peleadores, peleas…', cb_sr_fighters: 'Peleadores', cb_sr_fights: 'Peleas',
       cb_by_family: 'Por tipo de pick', cb_fam_fight: 'Ganador', cb_fam_method: 'Método', cb_fam_rounds: 'Rounds',
-      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea', cb_active: 'Activas', cb_gp_prefight: 'Lo que decía GP antes de la pelea',
+      cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea', cb_active: 'Activas',
+      cbb_slate: 'Slate de la cartelera', cbb_exposure: 'Exposición total', cbb_left: 'Las que dejamos pasar', cbb_left_sub: 'disciplina de precio',
+      cbb_left_sample: 'muestra insuficiente — regla de la casa: sin data no se publica', cbb_left_cap: 'nos gusta {n} pero {o} está sobre el techo de la casa', cbb_left_edge: '{n} — la lectura no paga ({e}, corto del mínimo)',
+      cbb_parlay: 'Parlay de la cartelera', cbb_fun: 'entretenimiento', cbb_parlay_total: 'Combinada', cbb_parlay_disc: 'Pieza de entretenimiento con stake mínimo: una pata falla y muere entera. No entra al track.',
+      cbb_bell: 'La campana final', cbb_bell_best: 'La de la noche', cbb_bell_worst: 'La que dolió',
+      bf_combo: 'Combo del día', bf_fam_cards: 'Tarjetas', bf_fam_corners: 'Córners', bf_fam_winner: 'Ganador', bf_fam_goals: 'Goles',
+      bf_wins: 'Gana {t}', bf_under: 'Menos de {n}', bf_over: 'Más de {n}', cb_gp_prefight: 'Lo que decía GP antes de la pelea',
       cb_st_sig: 'Golpes significativos', cb_st_acc: 'Precisión', cb_st_td: 'Derribos', cb_st_head: 'A la cabeza', cb_st_body: 'Al cuerpo', cb_st_leg: 'A la pierna', cb_st_sub: 'Intentos de sumisión', cb_picks_here: 'Picks de GP en esta pelea',
       cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
       cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado', cb_public_track: 'todo a la vista · ganadas y perdidas',
@@ -584,7 +590,13 @@
       cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
       cb_search_top: 'Search fighters, fights…', cb_sr_fighters: 'Fighters', cb_sr_fights: 'Fights',
       cb_by_family: 'By pick type', cb_fam_fight: 'Winner', cb_fam_method: 'Method', cb_fam_rounds: 'Rounds',
-      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers', cb_active: 'Active', cb_gp_prefight: 'What GP said before the fight',
+      cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers', cb_active: 'Active',
+      cbb_slate: 'Card slate', cbb_exposure: 'Total exposure', cbb_left: 'The ones we left alone', cbb_left_sub: 'price discipline',
+      cbb_left_sample: 'insufficient sample — house rule: no data, no call', cbb_left_cap: 'we like {n} but {o} is above the house cap', cbb_left_edge: '{n} — the read doesn’t pay ({e}, short of the minimum)',
+      cbb_parlay: 'Card parlay', cbb_fun: 'entertainment', cbb_parlay_total: 'Combined', cbb_parlay_disc: 'Entertainment piece at minimum stake: one leg fails and the whole thing dies. Never enters the track.',
+      cbb_bell: 'After the bell', cbb_bell_best: 'Call of the night', cbb_bell_worst: 'The one that hurt',
+      bf_combo: 'Combo of the day', bf_fam_cards: 'Cards', bf_fam_corners: 'Corners', bf_fam_winner: 'Winner', bf_fam_goals: 'Goals',
+      bf_wins: '{t} to win', bf_under: 'Under {n}', bf_over: 'Over {n}', cb_gp_prefight: 'What GP said before the fight',
       cb_st_sig: 'Significant strikes', cb_st_acc: 'Accuracy', cb_st_td: 'Takedowns', cb_st_head: 'To the head', cb_st_body: 'To the body', cb_st_leg: 'To the legs', cb_st_sub: 'Submission attempts', cb_picks_here: 'GP picks on this fight',
       cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
       cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor', cb_public_track: 'everything in the open · wins and losses',
@@ -2730,10 +2742,27 @@
     // Lectura GP del día (redactada por GP Intelligence desde los datos del brief; aparece cuando existe)
     var aiRead = d.ai_read && (LANG === 'en' ? d.ai_read.en : d.ai_read.es);
     var aiHtml = aiRead ? '<div class="gx-panel gx-mv-panel gx-ai-read"><div class="gx-ph"><span class="gx-label">' + ic('sparkles') + esc(t('bf_ai_read')) + '</span></div><div class="gx-mod-body" style="font-size:13px;line-height:1.55">' + esc(aiRead) + '</div></div>' : '';
+    // COMBO DEL DÍA (10-ago): pieza de ENTRETENIMIENTO etiquetada — patas del feed público, jamás al track
+    var cb2 = d.combo, comboHtml = '';
+    if (cb2 && (cb2.legs || []).length >= 2) {
+      var famL = { CARDS: t('bf_fam_cards'), CORNERS: t('bf_fam_corners'), SOLID: t('bf_fam_winner'), GOALS: t('bf_fam_goals') };
+      comboHtml = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('sparkles') + esc(t('bf_combo')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cbb_fun')) + '</span></div><div class="gx-mod-body">' +
+        cb2.legs.map(function (l2) {
+          var sel = l2.family === 'SOLID'
+            ? t('bf_wins').replace('{t}', l2.side === 'home' ? teamName(l2.home_id, l2.home) : teamName(l2.away_id, l2.away))
+            : (l2.side === 'under' ? t('bf_under') : t('bf_over')).replace('{n}', l2.line != null ? l2.line : '');
+          return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n"><b style="font-size:12.5px">' + esc(famL[l2.family] || l2.family) + ' · ' + esc(sel) + '</b>' +
+            '<div class="gx-dim" style="font-size:10.5px">' + esc(teamName(l2.home_id, l2.home) + ' v ' + teamName(l2.away_id, l2.away)) + (l2.league ? ' · ' + esc(l2.league) : '') + '</div></span>' +
+            '<span class="v gx-mono">@' + Number(l2.odds).toFixed(2) + '</span></div>';
+        }).join('') +
+        '<div class="gx-pick-recap" style="margin-top:8px">' + ic('sparkles') + esc(t('cbb_parlay_total')) + ' <b class="gx-mono">@' + cb2.combined + '</b> · ' + cb2.stake_u + 'u</div>' +
+        '<div class="gx-dim" style="font-size:10.5px;margin-top:6px">' + esc(t('cbb_parlay_disc')) + '</div></div></div>';
+    }
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:760px">' + viewHead(t('bf_title')) +
       '<p class="gx-calc-intro gx-dim">' + esc(t('bf_sub')) + '</p>' + empty +
       aiHtml +
       secPanel('star', 'bf_top', topHtml) +
+      comboHtml +
       secPanel('ball-football', 'bf_matches', matchesHtml) +
       secPanel('trending-up', 'bf_moves', movesHtml) +
       (findingsHtml ? '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('bulb') + esc(t('bf_findings')) + '</span></div><div class="gx-findings" style="padding:10px 16px 12px">' + findingsHtml + '</div></div>' : '') +
@@ -6242,16 +6271,52 @@
     }).join('');
     var tr = d.track && d.track.total;
     var trLine = tr && tr.n ? '<div class="gx-pick-recap" style="margin-bottom:8px">' + ic('circle-check') + tr.w + '-' + tr.l + ' · ' + (tr.units >= 0 ? '+' : '') + Number(tr.units).toFixed(2) + 'u</div>' : '';
+    // ── SLATE de la cartelera (10-ago): stake sugerido + exposición · dejamos pasar · parlay entretenimiento ──
+    var sl = d.slate || {};
+    var slateRows = (sl.picks || []).map(function (p2) {
+      return '<div class="gx-cb-bout"><span class="gx-clgate ok gx-mono">' + p2.stake_u + 'u</span>' +
+        '<div class="gx-cb-bnames"><b>' + esc(p2.selection_name) + '</b><span class="gx-dim">' + esc(famLabCb(p2.family)) + ' · ' + esc(p2.fight) + '</span></div>' +
+        '<span class="gx-mono gx-dim">@' + p2.odds + (p2.book ? ' · ' + esc(p2.book) : '') + '</span></div>';
+    }).join('');
+    var slatePanel = slateRows ? panel('list-check', 'cbb_slate', slateRows +
+      '<div class="gx-label" style="margin-top:10px">' + esc(t('cbb_exposure')) + ' · <b class="gx-mono">' + (sl.exposure_u || 0) + 'u</b></div>') : '';
+    var leftReason = function (x) {
+      if (x.reason === 'sample') return t('cbb_left_sample');
+      if (x.reason === 'no_odds') return t('cb_no_odds');
+      if (x.reason === 'odds_cap') return t('cbb_left_cap').replace('{n}', x.name || '').replace('{o}', '@' + x.odds);
+      return t('cbb_left_edge').replace('{n}', x.name || '').replace('{e}', (x.eg >= 0 ? '+' : '') + x.eg + 'pp');
+    };
+    var leftRows = (sl.left || []).map(function (x) {
+      return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr)"><span class="n"><b style="font-size:12px">' + esc(x.fight) + '</b>' +
+        '<div class="gx-dim" style="font-size:10.5px">' + esc(leftReason(x)) + '</div></span></div>';
+    }).join('');
+    var leftPanel = leftRows ? panel('hand-stop', 'cbb_left', leftRows, t('cbb_left_sub')) : '';
+    var pl = sl.parlay;
+    var parlayPanel = pl ? panel('sparkles', 'cbb_parlay',
+      pl.legs.map(function (l2) { return '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">' + esc(l2.name) + ' <span class="gx-dim" style="font-size:10.5px">' + esc(l2.fight) + '</span></span><span class="v gx-mono">@' + l2.odds + '</span></div>'; }).join('') +
+      '<div class="gx-pick-recap" style="margin-top:8px">' + ic('sparkles') + esc(t('cbb_parlay_total')) + ' <b class="gx-mono">@' + pl.combined + '</b> · ' + pl.stake_u + 'u</div>' +
+      '<div class="gx-dim" style="font-size:10.5px;margin-top:6px">' + esc(t('cbb_parlay_disc')) + '</div>', t('cbb_fun')) : '';
+    // ── AFTER THE BELL: autopsia de la última velada ──
+    var bl = d.bell;
+    var bellPanel = bl ? panel('bell', 'cbb_bell',
+      '<div class="gx-pick-recap" style="margin-bottom:8px">' + ic('circle-check') + esc(bl.card) + ' — ' + bl.w + '-' + bl.l + ' · <b class="' + (bl.units > 0 ? 'gx-pos' : bl.units < 0 ? 'rd' : '') + '">' + (bl.units >= 0 ? '+' : '') + bl.units + 'u</b></div>' +
+      (bl.best ? '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">🏆 ' + esc(t('cbb_bell_best')) + ': <b>' + esc(bl.best.name) + '</b> <span class="gx-dim">' + esc(famLabCb(bl.best.family)) + '</span></span><span class="v gx-mono gx-pos">@' + bl.best.odds + ' · +' + bl.best.units + 'u</span></div>' : '') +
+      (bl.worst ? '<div class="gx-intel-row" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">💢 ' + esc(t('cbb_bell_worst')) + ': <b>' + esc(bl.worst.name) + '</b> <span class="gx-dim">' + esc(famLabCb(bl.worst.family)) + ' · GP ' + Math.round((bl.worst.model || 0) * 100) + '%</span></span><span class="v gx-mono gx-dim">@' + bl.worst.odds + '</span></div>' : '')) : '';
     cbShell(t('nav_brief'), cbOrgTabs() +
       panel('calendar', 'cbb_next', head + rest) +
       '<div class="gx-cb-grid">' +
+      slatePanel + leftPanel +
       panel('target-arrow', 'cbb_div', divs || none, t('cbb_div_sub')) +
       panel('alert-triangle', 'cbb_intel', intel || none) +
       panel('bolt', 'cbb_picks', picks || none) +
+      parlayPanel +
       panel('trending-up', 'cbm_title', moves || '<div class="gx-dim gx-cb-clean">' + esc(t('cbm_none')) + '</div>', t('cbm_sub')) +
+      bellPanel +
       panel('chart-line', 'cbb_recent', trLine + (rec || none)) +
       '</div>');
   }
+  // etiqueta de familia de pick de combate (compartida brief/perf)
+  function famLabCb(f) { return f === 'FIGHT' ? t('cb_fam_fight') : f === 'METHOD' ? t('cb_fam_method') : f === 'ROUNDS' ? t('cb_fam_rounds') : (f || ''); }
   // EN VIVO (R5): la misma probabilidad del modelo, condicionada al round y al reloj. Arriba de todo,
   // porque mientras la pelea corre es LO que el usuario mira.
   function cbLivePanel(live, lp, pre, f1n, f2n) {

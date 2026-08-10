@@ -11113,6 +11113,28 @@ const server = http.createServer(async (req, res) => {
       askQuotaSpend(u);
       return json(res, 200, { answer, link, llm: usedLlm, subject, left: askQuotaOk(u).left });
     }
+    // COMBO DEL DÍA (10-ago, decisión de Alexis: combos SOLO como pieza de entretenimiento etiquetada —
+    // goles sigue SIN habilitarse como familia del track). Junta las 2-3 patas más confiables del feed
+    // público de hoy (blend más alto, partidos distintos, cuota corta ≤2.2) y multiplica. Display-only,
+    // stake fijo 0.25u, jamás se registra ni liquida como pick.
+    function buildDailyCombo() {
+      const now2 = Date.now();
+      const pool = (db.clubDailyPicks || []).filter(p2 => p2.status === 'ACTIVE'
+        && ['edge', 'anchor'].indexOf(p2.regime) >= 0
+        && p2.best_odds > 1 && p2.best_odds <= 2.2
+        && Date.parse((p2.event && p2.event.kickoff_at) || 0) > now2
+        && Date.parse((p2.event && p2.event.kickoff_at) || 0) < now2 + 26 * 3600e3);
+      pool.sort((a, b) => (0.5 * (b.model_prob || 0) + 0.5 * (b.market_prob || 0)) - (0.5 * (a.model_prob || 0) + 0.5 * (a.market_prob || 0)));
+      const seen2 = new Set(); const legs = [];
+      for (const p2 of pool) {
+        const eid = (p2.event && (p2.event.canonical_event_id || String(p2.event.home) + String(p2.event.away))) || '';
+        if (seen2.has(eid)) continue; seen2.add(eid);
+        legs.push({ family: p2.family, side: p2.side || p2.selection_code || null, line: p2.line != null ? p2.line : null, home: p2.event.home, away: p2.event.away, home_id: p2.event.home_id || null, away_id: p2.event.away_id || null, league: p2.league, odds: p2.best_odds, kickoff: p2.event.kickoff_at });
+        if (legs.length >= 3) break;
+      }
+      if (legs.length < 2) return null;
+      return { legs, combined: +legs.reduce((s2, l2) => s2 * l2.odds, 1).toFixed(2), stake_u: 0.25 };
+    }
     if (p === '/api/me/brief' && (req.method === 'GET' || req.method === 'POST')) {
       if (!dailyBriefOn()) return json(res, 404, { error: 'No encontrado' });
       const u = getUser(req);
@@ -11126,6 +11148,7 @@ const server = http.createServer(async (req, res) => {
       const bets = myBetsSharp(u) ? (db.userBets && db.userBets[u.email]) || [] : null;
       return json(res, 200, {
         enabled: true, brief: buildDailyBrief(),
+        combo: buildDailyCombo(), // entretenimiento etiquetado (10-ago) — jamás entra al track
         // Lectura GP del día (redactada por el LLM desde los datos del brief; 1×/día, persistida)
         ai_read: (db.llmBrief && db.llmBrief.day === new Date().toISOString().slice(0, 10) && db.llmBrief.futbol) || null,
         email_opt_in: !!db.users[u.email].brief_email,
@@ -12722,7 +12745,75 @@ const server = http.createServer(async (req, res) => {
         intel.sort((a, b) => (sev[a.severity] || 3) - (sev[b.severity] || 3));
         const settled = (db.combatPicks || []).filter(x => x.status === 'SETTLED' && ['WIN', 'LOSS'].indexOf(x.result_code) >= 0)
           .sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0)).slice(0, 6);
+        // ══ SLATE DE LA CARTELERA (10-ago, formato editorial adaptado a la casa): las picks de la PRÓXIMA
+        // velada con stake sugerido (del kelly/4 YA calculado — nada nuevo), exposición total, LAS QUE
+        // DEJAMOS PASAR (evaluadas y descartadas CON LA RAZÓN — disciplina de precio como producto) y el
+        // PARLAY DE LA CARTELERA (entretenimiento puro, 0.25u, etiquetado — JAMÁS entra al track).
+        let slate = null;
+        if (next) {
+          const cardIds = new Set(next.fights.map(f => String(f.comp_id)));
+          const inCard = (x) => cardIds.has(String(x.event.canonical_event_id || '').replace('cb-', ''));
+          const cardPicks = (db.combatPicks || []).filter(cbPickVisible).filter(x => x.status === 'ACTIVE' && inCard(x));
+          const stakeU = (p2) => Math.min(2, Math.max(0.25, Math.round((p2.stake_pct || 0.5) * 4) / 4));
+          const sPicks = cardPicks.map(p2 => ({ family: p2.family, selection_name: p2.selection_name, odds: p2.best_odds, book: p2.best_book, stake_u: stakeU(p2), model: p2.model_prob, market: p2.market_prob, fight: p2.event.home + ' vs ' + p2.event.away, comp_id: String(p2.event.canonical_event_id || '').replace('cb-', '') }));
+          const left = [];
+          for (const ft of next.fights) {
+            if (!ft.f1.id || !ft.f2.id) continue;
+            const fightName = ft.f1.name + ' vs ' + ft.f2.name;
+            if (cardPicks.some(x => String(x.event.canonical_event_id || '').replace('cb-', '') === String(ft.comp_id))) continue;
+            if ((C.elo.N[ft.f1.id] || 0) < 3 || (C.elo.N[ft.f2.id] || 0) < 3) { left.push({ fight: fightName, reason: 'sample' }); continue; }
+            const mo2 = combatFightOdds(C, ft);
+            if (!mo2 || mo2.books < 1) { left.push({ fight: fightName, reason: 'no_odds' }); continue; }
+            const pr2 = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, next.date, combatWeighCtx(C, ft));
+            let bestSide = null, capped = null;
+            for (const side of ['f1', 'f2']) {
+              const m = side === 'f1' ? pr2.p1 : 1 - pr2.p1;
+              const k = side === 'f1' ? mo2.fair_f1 : 1 - mo2.fair_f1;
+              const odds = mo2.best[side]; if (!(odds > 1)) continue;
+              const eg = ((0.5 * m + 0.5 * k) - k) * 100;
+              const nm = side === 'f1' ? ft.f1.name : ft.f2.name;
+              if (odds >= COMBAT_MAX_ODDS) { if (eg >= 2) capped = { name: nm, odds, eg }; continue; }
+              if (!bestSide || eg > bestSide.eg) bestSide = { eg, name: nm, odds };
+            }
+            if (capped) left.push({ fight: fightName, reason: 'odds_cap', name: capped.name, odds: capped.odds, eg: +capped.eg.toFixed(1) });
+            else if (bestSide) left.push({ fight: fightName, reason: 'edge_short', name: bestSide.name, odds: bestSide.odds, eg: +bestSide.eg.toFixed(1) });
+          }
+          const legsPool = cardPicks.filter(p2 => p2.family === 'FIGHT' && p2.best_odds > 1)
+            .sort((a2, b2) => (b2.blend_prob || 0) - (a2.blend_prob || 0));
+          const seenF = new Set(); const legs = [];
+          for (const p2 of legsPool) {
+            const cid2 = String(p2.event.canonical_event_id);
+            if (seenF.has(cid2)) continue; seenF.add(cid2);
+            legs.push({ name: p2.selection_name, odds: p2.best_odds, fight: p2.event.home + ' vs ' + p2.event.away });
+            if (legs.length >= 4) break;
+          }
+          slate = {
+            picks: sPicks, exposure_u: +sPicks.reduce((s2, x2) => s2 + x2.stake_u, 0).toFixed(2),
+            left: left.slice(0, 6),
+            parlay: legs.length >= 2 ? { legs, combined: +legs.reduce((s2, l2) => s2 * l2.odds, 1).toFixed(2), stake_u: 0.25 } : null,
+          };
+        }
+        // ══ AFTER THE BELL: autopsia de la última velada liquidada — números + la de la noche + la que dolió
+        let bell = null;
+        {
+          const sv = (db.combatPicks || []).filter(cbPickVisible).filter(x => x.status === 'SETTLED' && ['WIN', 'LOSS'].indexOf(x.result_code) >= 0 && (x.league || 'ufc') === org);
+          if (sv.length) {
+            sv.sort((a2, b2) => Date.parse(b2.settled_at || 0) - Date.parse(a2.settled_at || 0));
+            const lastEv = sv[0].competition_name || '';
+            const rows = sv.filter(x => (x.competition_name || '') === lastEv);
+            const wr = rows.filter(x => x.result_code === 'WIN');
+            const best = wr.slice().sort((a2, b2) => (b2.units || 0) - (a2.units || 0))[0] || null;
+            const worst = rows.filter(x => x.result_code === 'LOSS').sort((a2, b2) => (b2.model_prob || 0) - (a2.model_prob || 0))[0] || null;
+            bell = {
+              card: lastEv, n: rows.length, w: wr.length, l: rows.length - wr.length,
+              units: +rows.reduce((s2, x2) => s2 + (x2.units || 0), 0).toFixed(2),
+              best: best ? { name: best.selection_name, family: best.family, odds: best.best_odds, units: best.units } : null,
+              worst: worst ? { name: worst.selection_name, family: worst.family, odds: worst.best_odds, model: worst.model_prob } : null,
+            };
+          }
+        }
         return json(res, 200, {
+          slate, bell,
           org, generated_at: new Date().toISOString(),
           next_card: next ? { id: next.id, name: next.name, date: next.date, fights: next.fights.length } : null,
           cards: cards.slice(0, 3).map(e => ({ id: e.id, name: e.name, date: e.date, fights: e.fights.length })),

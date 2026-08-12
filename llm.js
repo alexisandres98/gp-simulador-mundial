@@ -219,6 +219,26 @@ async function writeFightRead(payload) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
+// ── Redactor PROFUNDO de la PELEA (12-ago, Punto 1 de Alexis: "esa narrativa e inteligencia también
+// en la pelea, no solo en el porqué de la pick"). Mismo estándar que writeFightRead pero orientado al
+// CRUCE completo: la lectura vive en el cockpit de la pelea y la ve cualquier plan, así que JAMÁS debe
+// nombrar la pick ni hablar de apuestas — analiza; si el dossier trae la lectura de la casa, la tesis
+// debe ser COHERENTE con ella (jamás contradecirla), pero sin mencionarla.
+async function writeFightPreview(payload) {
+  const resp = await call({
+    kind: 'writer',
+    max_tokens: 3000,
+    system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura profunda de la PELEA, en DOS párrafos por idioma (máximo 110 palabras por párrafo — la brevedad es parte del oficio): (1) LA FORMA DE LA PELEA — cómo se pelea este cruce y por qué el favorito del dossier lo es: su camino concreto (distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL CAMINO DEL OTRO — el mejor argumento del rival, la señal temprana que indicaría que la pelea se torció y qué factor la haría cerrada. Si "lectura_de_la_casa" viene en el dossier, tu tesis debe ser coherente con ella SIN nombrarla. PROHIBIDO: mencionar picks, apuestas, cuotas, edge o valor; inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  if (!j || !j.es || !j.en) {
+    console.error('[llm] writeFightPreview sin JSON usable · stop:', (resp && resp.stop_reason) || '?', '· texto:', textOf(resp).slice(0, 220).replace(/\n/g, ' '));
+    return null;
+  }
+  return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
+}
+
 async function writeBrief(payload, sport) {
   const resp = await call({
     kind: 'writer',
@@ -249,4 +269,4 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
-module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeBrief, extractSignals };
+module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeBrief, extractSignals };

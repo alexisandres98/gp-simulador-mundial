@@ -8139,6 +8139,80 @@ async function llmAnnotatePickWhys({ cap = 8 } = {}) {
   return { done };
 }
 
+// ── Redactor PROFUNDO de la PELEA (12-ago, Punto 1 de Alexis: la misma inteligencia del why, pero en
+// el cockpit de la pelea). db.combatFightReads[org:comp_id] = {es,en,at,kickoff} — se escribe UNA vez
+// por pelea (costo fijo, doctrina del why), se sirve como gp_read en /api/combat/fight (la UI no cambia)
+// y se poda sola cuando la velada quedó 7 días atrás. La ve cualquier plan: es análisis, no pick — el
+// redactor tiene PROHIBIDO nombrar picks/cuotas, y si hay pick activa la tesis debe ser coherente con ella.
+function combatFightDossier(C, ev, ft) {
+  const base = { pelea: `${ft.f1.name} vs ${ft.f2.name}`, org: C.org, evento: ev.name || null, kickoff: ev.date, division: ft.weight || null, rounds_pactados: ft.rounds || 3, estelar: !!ft.main };
+  try {
+    const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
+    const favSide = pr.p1 >= 0.5 ? 'f1' : 'f2';
+    base.favorito_gp = { nombre: ft[favSide].name, prob_pct: Math.round((favSide === 'f1' ? pr.p1 : 1 - pr.p1) * 100) };
+    const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
+    if (method) base.desenlace = { ko_pct: Math.round((method.ko || 0) * 100), sub_pct: Math.round((method.sub || 0) * 100), dec_pct: Math.round((method.dec || 0) * 100), rounds_esperados: method.exp_rounds };
+    const mo = combatFightOdds(C, ft);
+    if (mo) base.mercado = { prob_pct: { [ft.f1.name]: Math.round(mo.fair_f1 * 100), [ft.f2.name]: Math.round((1 - mo.fair_f1) * 100) }, casas: mo.books };
+    const sgn = favSide === 'f2' ? -1 : 1; // factores orientados al favorito del modelo
+    const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
+    base.factores_del_cruce = ((bd && bd.parts) || []).slice(0, 8)
+      .map(x => ({ factor: CB_FACTOR_ES[x.key] || x.key, pp_hacia_el_favorito: +(x.pp * sgn).toFixed(1) }));
+    const film = combatFilmStudy(C, ft) || {};
+    base.lectura_de_cinta = ((film.findings) || []).map(f => f.es);
+    if (film.profile) base.perfil_de_accion = { [ft.f1.name]: film.profile.f1, [ft.f2.name]: film.profile.f2 };
+    base.estilos = combatStyleMatch(C, ft) || null;
+    const tale = (id) => { const s = combatFighterSummary(C, id) || {}; return { edad: s.age, alcance: s.reach_in, guardia: s.stance, record: s.record, forma_reciente: s.form, campamento: s.camp, ko_recibidos: s.ko_losses, minutos_de_jaula: s.cage_min, ultima_pelea: s.last_fight }; };
+    base.peleadores = { [ft.f1.name]: tale(ft.f1.id), [ft.f2.name]: tale(ft.f2.id) };
+    base.senales = (combatIntelFlags(C, ft, ev.date) || []).map(x => x.es);
+    const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
+    if (pk && (pk.family || 'FIGHT') === 'FIGHT') base.lectura_de_la_casa = { lado: pk.selection_name }; // coherencia, jamás mención
+  } catch { /* dossier parcial: mejor esencial que nada */ }
+  return base;
+}
+async function llmFightReadsPass({ cap = 5 } = {}) {
+  if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
+  db.combatFightReads = db.combatFightReads || {};
+  let pruned = 0;
+  for (const k of Object.keys(db.combatFightReads)) {
+    const r = db.combatFightReads[k];
+    if (r && r.kickoff && Date.parse(r.kickoff) < Date.now() - 7 * 86400e3) { delete db.combatFightReads[k]; pruned++; }
+  }
+  let done = 0;
+  const horizon = Date.now() + 9 * 86400e3; // la semana que viene: lo que el usuario abre HOY
+  for (const org of Object.keys(COMBAT_ORGS)) {
+    if (done >= cap) break;
+    let C;
+    try { C = combatLoad(org); await combatRefreshUpcoming(C); } catch { continue; }
+    const cands = [];
+    for (const ev of (C.upcoming || [])) {
+      const tEv = Date.parse(ev.date);
+      if (ev.date_tbd || !(tEv > Date.now() - 8 * 3600e3) || tEv > horizon) continue;
+      for (const ft of (ev.fights || [])) {
+        if (!ft.f1.id || !ft.f2.id) continue;
+        if ((C.elo.N[ft.f1.id] || 0) < 3 || (C.elo.N[ft.f2.id] || 0) < 3) continue; // sin muestra no hay lectura seria
+        const key = org + ':' + ft.comp_id;
+        if (db.combatFightReads[key]) continue;
+        const hasPick = (db.combatPicks || []).some(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
+        cands.push({ ev, ft, key, score: (ft.main ? 2 : 0) + (hasPick ? 1 : 0), t: tEv });
+      }
+    }
+    cands.sort((a, b) => b.score - a.score || a.t - b.t); // estelares y peleas con pick primero, luego la más próxima
+    for (const c of cands) {
+      if (done >= cap) break;
+      try {
+        const w = await llm.writeFightPreview(combatFightDossier(C, c.ev, c.ft));
+        if (w) { db.combatFightReads[c.key] = { es: w.es, en: w.en, at: new Date().toISOString(), kickoff: c.ev.date }; done++; save(); }
+        else console.error('[llm] fight-preview devolvió null para', c.ft.f1.name, 'vs', c.ft.f2.name, '— reintento en el próximo pase');
+      } catch (e) {
+        if (/llm_budget|llm_disabled/.test(e.message)) return { done, pruned, stopped: e.message };
+        console.error('[llm] fight-preview error:', e.message);
+      }
+    }
+  }
+  return { done, pruned };
+}
+
 // ── Redactor: lectura GP del brief diario de fútbol (1 llamada/día, persistida) ──
 async function llmBriefPass() {
   if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
@@ -8160,8 +8234,8 @@ async function llmBriefPass() {
 }
 // pasada del redactor cada 30 min (why nuevos + brief 1×/día); arranque suave a los 3 min
 if (llm.enabled()) {
-  setTimeout(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); }, 3 * 60e3);
-  setInterval(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); }, 30 * 60e3);
+  setTimeout(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); llmFightReadsPass().catch(() => { }); }, 3 * 60e3);
+  setInterval(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); llmFightReadsPass().catch(() => { }); }, 30 * 60e3);
 }
 
 // ===== #7 MOVIMIENTO DE LÍNEA (30-jul) — lo que el archivo de #9 hace posible ============================
@@ -12389,7 +12463,8 @@ const server = http.createServer(async (req, res) => {
         const run = url.searchParams.get('run') || '';
         if (run === 'whys') return json(res, 200, await llmAnnotatePickWhys({ cap: +(url.searchParams.get('cap') || 8) }));
         if (run === 'brief') return json(res, 200, await llmBriefPass());
-        return json(res, 400, { error: 'run=whys|brief' });
+        if (run === 'fightreads') return json(res, 200, await llmFightReadsPass({ cap: +(url.searchParams.get('cap') || 5) }));
+        return json(res, 400, { error: 'run=whys|brief|fightreads' });
       }
       return json(res, 200, {
         enabled: llm.enabled(), budget_ok: llm.budgetOk(), usage: llm.usage(),
@@ -12761,7 +12836,9 @@ const server = http.createServer(async (req, res) => {
           confidence: combatConfidence(C, ft, pr.p1, mo ? mo.books : 0),
           context: combatContext(ev, ft),
           prediction,
-          gp_read: combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll),
+          // Punto 1 (12-ago): si el redactor profundo ya escribió la lectura de ESTA pelea, esa manda;
+          // la plantilla queda de respaldo hasta que el pase de 30 min la alcance. deep marca la fuente.
+          gp_read: (function () { const dr = (db.combatFightReads || {})[C.org + ':' + cid]; return dr ? { es: dr.es, en: dr.en, deep: true } : combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll); })(),
           style_match: combatStyleMatch(C, ft),
           film: combatFilmStudy(C, ft),
           // #5: precisión / posición / grappling (display; no entró al modelo, ver combatEspnStats)

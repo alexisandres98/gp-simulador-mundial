@@ -8362,15 +8362,19 @@ async function combatBoxingUpcoming(C) {
     return false; // el feed NO vino: el diff de cartelera (cardWatch) no debe correr sobre la agenda restaurada
   }
   const sl = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  // PELEAS FANTASMA (12-ago, reporte Alexis: la agenda mezclaba agosto con "peleas" de diciembre): el feed
-  // de boxeo trae mercados ESPECULATIVOS de las casas — cruces hipotéticos (Itauma contra 8 rivales
-  // distintos, Joshua vs Fury) fechados con el placeholder de fin de año (31-dic ~22-23h). Reglas:
-  // (a) fuera todo cruce con el placeholder de fin de año; (b) un boxeador tiene UNA pelea próxima — si
-  // aparece en varios cruces, el más cercano (con más casas en el empate) es el real; el resto son rumores
-  // de mercado y no entran ni a la agenda ni al monitor de picks.
+  // PELEAS FANTASMA vs FECHA POR CONFIRMAR (12-ago, 2ª iteración tras el reporte "la pelea de Ryan García
+  // ya no aparece"): el placeholder de fin de año (31-dic ~22-23h) mezcla RUMORES de mercado (Itauma contra
+  // 8 rivales distintos) con peleas REALES anunciadas sin fecha/sede confirmada (García vs Benn). La regla
+  // anterior (borrar todo placeholder) tiraba también las reales. Regla nueva:
+  //   (a) dedup por peleador con las fechas REALES ganando el empate — el rumor de Itauma muere solo porque
+  //       Itauma tiene una pelea real más cercana; García-Benn sobrevive porque es su único cruce listado;
+  //   (b) lo que sobrevive con placeholder entra a la agenda como "fecha por confirmar" (date_tbd), visible
+  //       para el usuario PERO sin picks ni value (sus cuotas son especulativas hasta que la fecha confirme).
   const isPlaceholderDate = (t) => /-12-31T2[23]:/.test(String(t || ''));
-  const ordered = list.filter(e => e.commence_time && e.home_team && e.away_team && !isPlaceholderDate(e.commence_time))
-    .sort((a, b) => String(a.commence_time).localeCompare(String(b.commence_time)) || (((b.bookmakers || []).length) - ((a.bookmakers || []).length)));
+  const ordered = list.filter(e => e.commence_time && e.home_team && e.away_team)
+    .sort((a, b) => ((isPlaceholderDate(a.commence_time) ? 1 : 0) - (isPlaceholderDate(b.commence_time) ? 1 : 0))
+      || String(a.commence_time).localeCompare(String(b.commence_time))
+      || (((b.bookmakers || []).length) - ((a.bookmakers || []).length)));
   const takenFighters = new Set(); const realBouts = [];
   for (const e of ordered) {
     const k1 = sl(e.home_team), k2 = sl(e.away_team);
@@ -8396,9 +8400,10 @@ async function combatBoxingUpcoming(C) {
     fights.sort((a, b) => (b.books - a.books) || String(a._at).localeCompare(String(b._at)));
     if (fights.length) fights[0].main = true;
     const head = fights[0];
+    const tbd = !!(head && isPlaceholderDate(head._at)); // el grupo del placeholder queda al final (31-dic)
     return {
-      id: 'bx-' + day, date: (head && head._at) || (day + 'T00:00Z'),
-      name: head ? `${head.f1.name} vs ${head.f2.name}` : 'Boxeo ' + day,
+      id: 'bx-' + day, date: (head && head._at) || (day + 'T00:00Z'), date_tbd: tbd,
+      name: (head ? `${head.f1.name} vs ${head.f2.name}` : 'Boxeo ' + day) + (tbd ? ' · fecha por confirmar' : ''),
       fights,
     };
   });
@@ -8784,6 +8789,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
   const fresh = [];
   for (const ev of (C.upcoming || [])) {
     if (!ev.date || Date.parse(ev.date) <= now) continue; // solo prepartido (estado por reloj)
+    if (ev.date_tbd) continue; // fecha por confirmar (boxeo): cuotas especulativas — sin picks hasta que confirme
     for (const ft of ev.fights) {
       if (!ft.f1.id || !ft.f2.id) continue;
       out.fights++;
@@ -12780,6 +12786,7 @@ const server = http.createServer(async (req, res) => {
         const value = [], arbs = [];
         for (const ev of (C.upcoming || [])) {
           if (Date.parse(ev.date) <= Date.now()) continue;
+          if (ev.date_tbd) continue; // fecha por confirmar: sin value/arb sobre cuotas especulativas
           for (const ft of ev.fights) {
             const mo = combatFightOdds(C, ft);
             if (!mo || mo.books < 3) continue;

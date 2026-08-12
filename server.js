@@ -6425,6 +6425,21 @@ async function picksBooksIndex() {
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return {};
   if (_booksIdx.map && Date.now() - _booksIdx.at < 5 * 60e3) return _booksIdx.map;
+  // STALE-WHILE-REVALIDATE (12-ago, flujo): con Postgres cargado esta query llegó a 29s — el PRIMER hit
+  // tras vencer el memo pagaba la espera completa y la UI (timeout 12s) veía el feed de picks vacío cada
+  // 5 minutos. Ahora: si hay índice viejo se sirve YA y el refresco corre detrás (un solo vuelo a la vez);
+  // solo el arranque en frío espera la query.
+  if (_booksIdx.map) {
+    if (!_booksIdx.refreshing) {
+      _booksIdx.refreshing = true;
+      picksBooksIndexRebuild().catch(() => {}).finally(() => { _booksIdx.refreshing = false; });
+    }
+    return _booksIdx.map;
+  }
+  return await picksBooksIndexRebuild().catch(() => ({}));
+}
+async function picksBooksIndexRebuild() {
+  const dbc = require('./database/client');
   // SOLO ceids con forma de UUID: la columna es uuid — un solo id sintético no-UUID (p.ej. seeds de QA) haría
   // fallar la query ENTERA y dejaría a todas las picks sin books_list.
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -6441,7 +6456,7 @@ async function picksBooksIndex() {
         GROUP BY 1,2,3,4,5`, [ceids]).catch(() => ({ rows: [] }));
     for (const row of r.rows) (map[row.ceid] = map[row.ceid] || []).push({ fam: row.fam, line: row.line, side: row.side, scope: row.scope, books: row.books });
   }
-  _booksIdx = { at: Date.now(), map };
+  _booksIdx = { ..._booksIdx, at: Date.now(), map };
   return map;
 }
 function booksListFor(map, x) {
@@ -8235,12 +8250,26 @@ async function combatBoxingUpcoming(C) {
   if (!key) { C.upcoming = C.upcoming || []; return false; }
   const list = await fetch(`https://api.the-odds-api.com/v4/sports/boxing_boxing/odds?apiKey=${key}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json()).catch(() => null);
   if (!Array.isArray(list)) return false;
+  const sl = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  // PELEAS FANTASMA (12-ago, reporte Alexis: la agenda mezclaba agosto con "peleas" de diciembre): el feed
+  // de boxeo trae mercados ESPECULATIVOS de las casas — cruces hipotéticos (Itauma contra 8 rivales
+  // distintos, Joshua vs Fury) fechados con el placeholder de fin de año (31-dic ~22-23h). Reglas:
+  // (a) fuera todo cruce con el placeholder de fin de año; (b) un boxeador tiene UNA pelea próxima — si
+  // aparece en varios cruces, el más cercano (con más casas en el empate) es el real; el resto son rumores
+  // de mercado y no entran ni a la agenda ni al monitor de picks.
+  const isPlaceholderDate = (t) => /-12-31T2[23]:/.test(String(t || ''));
+  const ordered = list.filter(e => e.commence_time && e.home_team && e.away_team && !isPlaceholderDate(e.commence_time))
+    .sort((a, b) => String(a.commence_time).localeCompare(String(b.commence_time)) || (((b.bookmakers || []).length) - ((a.bookmakers || []).length)));
+  const takenFighters = new Set(); const realBouts = [];
+  for (const e of ordered) {
+    const k1 = sl(e.home_team), k2 = sl(e.away_team);
+    if (takenFighters.has(k1) || takenFighters.has(k2)) continue;
+    takenFighters.add(k1); takenFighters.add(k2); realBouts.push(e);
+  }
   const byDay = {};
-  for (const e of list) {
-    if (!e.commence_time || !e.home_team || !e.away_team) continue;
+  for (const e of realBouts) {
     const day = e.commence_time.slice(0, 10);
     const i1 = combatFighterByName(C, e.home_team), i2 = combatFighterByName(C, e.away_team);
-    const sl = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     // comp_id estable y simétrico (mismo criterio que el cosechador): slugs ordenados + día
     const pair = [i1 || sl(e.home_team), i2 || sl(e.away_team)].sort();
     const comp_id = `bx-${pair[0]}__${pair[1]}__${day}`;
@@ -8574,8 +8603,39 @@ async function buildCombatPicks({ dryRun = false } = {}) {
   // ya puede medir CLV real. PERO admin-only: cbPickVisible/track excluyen 'boxing' del público hasta que
   // el CLV valide (la misma vara que pasó MMA antes de abrirse).
   for (const org of Object.keys(COMBAT_ORGS)) await buildCombatPicksOrg(org, out, dryRun);
+  // SANEO DE NARRATIVAS (12-ago, reporte Alexis: la pick de Machado Garry mostraba "Pick del monitor privado
+  // (validación del modelo)" — vocabulario INTERNO de un generador viejo que quedó persistido; el merge por
+  // pick_id nunca refresca el texto). Se limpian las frases retiradas de TODAS las picks guardadas: la regla
+  // de caja negra (se narra la pelea, no cómo opera el sistema) aplica también al texto ya persistido.
+  // Los números congelados de cada pick no se tocan.
   if (!dryRun) {
-    if (out.added || out.superseded || out.closing_updated) save();
+    const CB_WHY_RETIRED = [
+      /\s*Pick del monitor privado(?:\s*\([^)]*\))?\.?/g, /\s*Private monitor pick(?:\s*\([^)]*\))?\.?/g,
+      /\s*Preliminar: mercado menos denso, donde el modelo históricamente ve más\.?/g,
+      /\s*Prelim: thinner market, where the model historically sees more\.?/g,
+      /\s*Pelea estelar: mercado líquido, el precio pesa\.?/g,
+      /\s*Main event: liquid market, the price carries weight\.?/g,
+    ];
+    for (const p of (db.combatPicks || [])) {
+      for (const k of ['why_es', 'why_en']) {
+        if (!p[k]) continue;
+        let t2 = p[k];
+        for (const rx of CB_WHY_RETIRED) t2 = t2.replace(rx, '');
+        if (t2 !== p[k]) { p[k] = t2.trim(); out.why_sanitized = (out.why_sanitized || 0) + 1; }
+      }
+    }
+    // Picks nacidas sobre cruces FANTASMA de boxeo (placeholder 31-dic, ver combatBoxingUpcoming) → VOID:
+    // esa pelea no existe con esa fecha — era un mercado especulativo de las casas, no una cartelera.
+    for (const p of (db.combatPicks || [])) {
+      if (p.status === 'ACTIVE' && p.league === 'boxing' && /-12-31T2[23]:/.test(String((p.event || {}).kickoff_at || ''))) {
+        p.status = 'SETTLED'; p.result_code = 'VOID'; p.settled_at = new Date().toISOString();
+        p.void_reason = 'cruce especulativo del feed (placeholder 31-dic), retirado de la agenda 12-ago';
+        out.phantom_voided = (out.phantom_voided || 0) + 1;
+      }
+    }
+  }
+  if (!dryRun) {
+    if (out.added || out.superseded || out.closing_updated || out.why_sanitized || out.phantom_voided) save();
     out.active = (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length;
     delete out.candidates;
   }

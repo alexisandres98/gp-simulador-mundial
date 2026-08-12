@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1200px; height:810px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:#07090c; color:#EDF2F4; position:relative; overflow:hidden; }
+.glow-g { position:absolute; top:-200px; left:-200px; width:640px; height:640px; border-radius:50%;
+  background:radial-gradient(circle,rgba(31,227,164,.18),transparent 62%); }
+.glow-r { position:absolute; bottom:-240px; right:-200px; width:700px; height:700px; border-radius:50%;
+  background:radial-gradient(circle,rgba(224,82,82,.14),transparent 62%); }
+.grain { position:absolute; inset:0; opacity:.05; background-image:repeating-conic-gradient(#fff 0 .0001%, transparent 0 .0002%); }
+.wrap { position:relative; padding:44px 58px 30px; height:100%; display:flex; flex-direction:column; }
+.top { display:flex; align-items:center; gap:13px; margin-bottom:24px; }
+.badge { width:42px; height:42px; border-radius:12px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.4);
+  display:flex; align-items:center; justify-content:center; font-size:22px; }
+.bname { font-size:24px; font-weight:800; letter-spacing:-.4px; }
+.new { margin-left:auto; font-size:14px; font-weight:800; letter-spacing:.13em; color:#1FE3A4;
+  border:1px solid rgba(31,227,164,.5); padding:8px 16px; border-radius:99px; background:rgba(31,227,164,.1); }
+h1 { font-size:40px; line-height:1.05; font-weight:800; letter-spacing:-1.5px; margin-bottom:22px; }
+h1 .g { color:#1FE3A4; }
+.card { background:linear-gradient(165deg,#10171c,#0b1013); border:1px solid rgba(255,255,255,.09);
+  border-radius:20px; padding:22px 28px; margin-bottom:18px; position:relative; overflow:hidden; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px;
+  background:linear-gradient(180deg,#1FE3A4 50%,#E05252 50%); }
+.crow { display:flex; align-items:center; gap:22px; }
+.ava { width:86px; height:86px; border-radius:50%; overflow:hidden; flex:none;
+  display:flex; align-items:flex-start; justify-content:center; }
+.ava img { width:130%; margin-top:4px; }
+.ava.g { background:radial-gradient(circle at 50% 30%,rgba(31,227,164,.22),rgba(31,227,164,.06)); border:3px solid #1FE3A4; }
+.who { width:360px; }
+.who b { font-size:29px; display:block; letter-spacing:-.5px; }
+.who span { font-size:16px; color:#9DB0B5; font-weight:700; }
+.mid { flex:1; }
+.bar { height:12px; border-radius:99px; overflow:hidden; display:flex; margin-bottom:9px; }
+.bar .l { background:#1FE3A4; } .bar .rr { background:#E05252; }
+.nums { display:flex; justify-content:space-between; font-size:18px; font-weight:800; }
+.nums .lP { color:#1FE3A4; } .nums small { color:#5F747B; font-weight:700; margin-left:8px; font-size:15px; }
+.odds { flex:none; background:#1FE3A4; color:#06231A; font-size:22px; font-weight:800; padding:14px 24px; border-radius:99px; }
+.chips { display:flex; gap:10px; margin-top:16px; }
+.chip { font-size:14.5px; font-weight:800; color:#9DB0B5; border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:99px; }
+.chip.g { color:#1FE3A4; border-color:rgba(31,227,164,.45); background:rgba(31,227,164,.08); }
+.read { background:linear-gradient(165deg,#0e1a15,#0a1210); border:1px solid rgba(31,227,164,.22);
+  border-radius:20px; padding:24px 30px; }
+.rlab { font-size:13.5px; font-weight:800; letter-spacing:.14em; color:#1FE3A4; margin-bottom:12px; display:flex; align-items:center; gap:9px; }
+.rlab::before { content:''; width:8px; height:8px; border-radius:50%; background:#1FE3A4; box-shadow:0 0 12px #1FE3A4; }
+.read p { font-size:18.5px; line-height:1.5; color:#D7E3DE; margin-bottom:13px; }
+.read p b { color:#fff; }
+.foot { margin-top:22px; display:flex; align-items:center; justify-content:space-between; }
+.free { font-size:18px; font-weight:800; color:#1FE3A4; }
+.free span { color:#9DB0B5; font-weight:600; margin-left:10px; font-size:15px; }
+.cta { font-size:19px; font-weight:800; color:#06231A; background:#1FE3A4; padding:13px 26px; border-radius:99px; }
+.disc { margin-top:16px; font-size:11.5px; color:#4A5B61; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow-g"></div><div class="glow-r"></div><div class="grain"></div>
+  <div class="wrap">
+    <div class="top"><div class="badge">🥊</div><div class="bname">GP Simulador</div><div class="new">INTELIGENCIA DE COMBATE</div></div>
+    <h1>El sistema no solo elige.<br><span class="g">Te explica la pelea como un analista de élite.</span></h1>
+
+    <div class="card">
+      <div class="crow">
+        <div class="ava g"><img src="assets/garry.png"></div>
+        <div class="who"><b>Ian Machado Garry</b><span>vs Makhachev · UFC 330 · ESTELAR · 5R</span></div>
+        <div class="mid">
+          <div class="bar"><div class="l" style="width:55%"></div><div class="rr" style="width:45%"></div></div>
+          <div class="nums"><span class="lP">GP 55%<small>mercado 26%</small></span><span class="lP">+14pp</span></div>
+        </div>
+        <div class="odds">@3.91</div>
+      </div>
+      <div class="chips"><span class="chip g">EL SISTEMA CONTRA EL CONSENSO</span><span class="chip">13 casas cotizando</span><span class="chip">Welterweight</span></div>
+    </div>
+
+    <div class="read">
+      <div class="rlab">LA LECTURA DEL SISTEMA</div>
+      <p>El modelo asigna a Garry un <b>55%</b> frente a un mercado que solo le reconoce <b>26%</b>: las casas sobrevaloran el favoritismo de Makhachev en un pleito a 5 rounds en welterweight, terreno menos natural para el campeón. El camino de Garry pasa por <b>manejar la distancia, evitar el clinch</b> y capitalizar el desgaste tardío con volumen y movimiento lateral.</p>
+      <p>El argumento de Makhachev es su control posicional: si cierra distancia y lleva el pleito al suelo temprano, el plan de Garry se derrumba. <b>La señal de alarma: un derribo limpio con control prolongado en los primeros dos rounds.</b></p>
+    </div>
+
+    <div class="foot">
+      <div class="free">CADA PELEA, ASÍ DE PROFUNDA<span>UFC · MMA · Boxeo · gpsimulador.com</span></div>
+      <div class="cta">Ver el análisis →</div>
+    </div>
+    <div class="disc">Estimaciones de un modelo estadístico — no consejo financiero. 18+.</div>
+  </div>
+</body></html>

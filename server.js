@@ -1323,6 +1323,57 @@ function gpCombatEmail(lang) {
   return { subject, text, html };
 }
 
+// COMBATE PERMANENTE (12-ago, campaña 2): fin de la ventana gratis → combate queda como parte de los
+// planes SIN aumento de precio, con la inteligencia profunda nueva (lecturas de élite por pelea) como
+// gancho y la pelea Makhachev-Garry como demostración en vivo del sistema contra el consenso.
+// HONESTIDAD (regla de la casa): NADA de "acertamos la mayoría" — el track público dice lo que dice y
+// cualquiera puede abrirlo; el argumento de venta es la profundidad + la transparencia, no un récord.
+function gpCombat2Email(lang) {
+  const en = lang === 'en';
+  const url = 'https://gpsimulador.com/x';
+  const img = 'https://gpsimulador.com/ig/combat-intel-email' + (en ? '-en' : '') + '.png';
+  const subject = en
+    ? 'Combat is now part of your plan — with elite-level fight intelligence (no price increase)'
+    : 'Combate ya es parte de tu plan — con inteligencia de élite por pelea (sin aumento de precio)';
+  const preheader = en
+    ? 'Every headline fight now comes with a deep read: the thesis, the path to victory and the alarm signal. Same membership, more platform.'
+    : 'Cada pelea grande ahora trae su lectura profunda: la tesis, el camino de victoria y la señal de alarma. La misma membresía, más plataforma.';
+  const F = [
+    en ? ['Deep reads on every big fight — new', 'The system no longer just publishes a probability: it explains the fight like an elite analyst. The shape of the fight, the favorite\'s concrete path (distance, pressure, takedowns, late-round fatigue) and the early signal that the fight turned. Anchored to the model\'s real numbers, never to hype.']
+       : ['Lecturas profundas en cada pelea grande — nuevo', 'El sistema ya no publica solo una probabilidad: te explica la pelea como un analista de élite. La forma del combate, el camino concreto del favorito (distancia, presión, derribos, desgaste tardío) y la señal temprana de que la pelea se torció. Anclado a los números reales del modelo, jamás al hype.'],
+    en ? ['Saturday: the system against the consensus', 'UFC 330, Makhachev vs Machado Garry. The market pays Garry as a 26% underdog; the model reads the fight at 55% for him — a 5-round welterweight bout on less natural ground for the champion. That is the kind of independent read only a model dares to publish. Right or wrong, it settles in public.']
+       : ['El sábado: el sistema contra el consenso', 'UFC 330, Makhachev vs Machado Garry. El mercado paga a Garry como un underdog del 26%; el modelo lee la pelea 55% para él — un pleito a 5 rounds en welterweight, terreno menos natural para el campeón. Ese es el tipo de lectura independiente que solo un modelo se atreve a publicar. Salga bien o mal, liquida en público.'],
+    en ? ['A track record you can audit, not a promise', 'Every combat pick settles in the open: wins and losses, units and CLV, by family and by fight card. We do not market results — you open Performance and read the numbers yourself. That is the deal.']
+       : ['Un track que se audita, no una promesa', 'Cada pick de combate liquida a la vista: ganadas y perdidas, unidades y CLV, por familia y por cartelera. No hacemos marketing con los resultados — abrís Rendimiento y leés los números vos mismo. Ese es el trato.'],
+    en ? ['What your plan includes from today', 'Free: all the intelligence (agenda, fighter profiles, a prediction and deep analysis for every fight, live, public track) plus one winner pick a day, unlocked 60 minutes before the bell. Pro: every winner pick with no delay, the fight-card brief and Ask GP. Sharp: method & rounds picks, value, arbitrage and line movement.']
+       : ['Qué incluye tu plan desde hoy', 'Free: toda la inteligencia (agenda, perfiles de peleador, predicción y análisis profundo de cada pelea, en vivo, track público) más una pick de ganador al día, liberada 60 minutos antes del campanazo. Pro: todas las picks de ganador sin delay, el brief de cartelera y Pregúntale a GP. Sharp: picks de método y rounds, value, arbitraje y movimiento de línea.'],
+    en ? ['Same price, more platform', 'Combat becomes a permanent part of GP Simulador at no extra cost: your membership is simply worth more starting today. Football keeps working exactly as always.']
+       : ['El mismo precio, más plataforma', 'Combate queda como parte permanente de GP Simulador sin costo extra: tu membresía simplemente vale más desde hoy. Fútbol sigue funcionando exactamente igual que siempre.'],
+  ];
+  const text = (en ? 'Combat is now a permanent part of GP — and it got much deeper.\n\n' : 'Combate ya es parte permanente de GP — y se volvió mucho más profundo.\n\n')
+    + F.map((f) => f[0].toUpperCase() + '\n' + f[1]).join('\n\n')
+    + (en
+      ? `\n\n${url}\n\nEstimates from a statistical model. Past performance does not guarantee future results. Not financial advice. 18+.\n\nAlexis · GP Simulador\n\nYou are receiving this email because you have an account at GP Simulador. To stop receiving updates, reply with "unsubscribe".`
+      : `\n\n${url}\n\nEstimaciones de un modelo estadístico. Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.\n\nAlexis · GP Simulador\n\nRecibes este correo porque tienes una cuenta en GP Simulador. Para no recibir novedades, responde con "baja".`);
+  const html = `<div style="background:#f4f6f5;padding:24px 12px;margin:0">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f6f5">${preheader}</span>
+  <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6ebe9">
+    <div style="background:linear-gradient(135deg,#0E2A1E,#0a1f16);padding:28px 26px 24px;color:#fff">
+      <div style="font-size:13px;letter-spacing:.08em;color:#18E6A3;font-weight:700;text-transform:uppercase">${en ? 'Combat · now part of every plan' : 'Combate · ya es parte de todos los planes'}</div>
+      <h1 style="margin:8px 0 0;font-size:24px;line-height:1.22">${en ? 'The system no longer just picks: it <span style="color:#18E6A3">reads the fight like an elite analyst</span>.' : 'El sistema ya no solo elige: <span style="color:#18E6A3">te explica la pelea como un analista de élite</span>.'}</h1>
+      <p style="margin:11px 0 0;font-size:14px;color:#c7d3ce;line-height:1.5">${en ? 'Combat stays on GP Simulador for good — same membership price, and every plan now includes its level of it.' : 'Combate se queda en GP Simulador — el precio de tu membresía no cambia, y cada plan incluye ahora su nivel.'}</p>
+    </div>
+    <a href="${url}" style="display:block"><img src="${img}" alt="${en ? 'GP combat intelligence — example fight read' : 'Inteligencia de combate GP — ejemplo de lectura de pelea'}" style="display:block;width:100%;height:auto;border:0"></a>
+    <div style="padding:24px 26px">
+      ${F.map((f) => `<div style="margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid #eef2f0"><p style="margin:0 0 4px;font-size:14.5px;color:#14201A;font-weight:800">${f[0]}</p><p style="margin:0;font-size:13.5px;color:#2b3a33;line-height:1.55">${f[1]}</p></div>`).join('')}
+      <div style="text-align:center;margin-bottom:22px"><a href="${url}" style="display:inline-block;background:#18E6A3;color:#06231A;font-weight:800;font-size:15px;padding:13px 28px;border-radius:99px;text-decoration:none">${en ? 'Open combat' : 'Abrir combate'}</a></div>
+      <p style="margin:0;font-size:11px;color:#9aa8a1;line-height:1.5">${en ? 'Estimates from a statistical model. Past performance does not guarantee future results. Not financial advice. 18+.' : 'Estimaciones de un modelo estadístico. Rendimientos pasados no garantizan resultados futuros. No es consejo financiero. 18+.'}</p>
+    </div>
+    <div style="padding:14px 26px;background:#fafbfa;border-top:1px solid #eef2f0;font-size:11px;color:#9aa8a1">${en ? 'You are receiving this email because you have an account at GP Simulador.' : 'Recibes este correo porque tienes una cuenta en GP Simulador.'}</div>
+  </div></div>`;
+  return { subject, text, html };
+}
+
 // LANZAMIENTO POST-MUNDIAL (18-jul): la fusión. La plataforma deja de ser "del Mundial" y se abre completa —
 // 15 ligas, picks multi-liga, value/arbitraje, cartera, casas, watch price, brief. Fin de semana abierto para
 // todos; la fase founder cierra con el Mundial. Un correo por usuario en SU idioma (userLang).
@@ -14521,6 +14572,8 @@ const server = http.createServer(async (req, res) => {
                       : (variant === 'gpintel_en') ? () => gpIntelEmail('en')
                         : (variant === 'gpcombat_es') ? () => gpCombatEmail('es')
                           : (variant === 'gpcombat_en') ? () => gpCombatEmail('en')
+                        : (variant === 'gpcombat2_es') ? () => gpCombat2Email('es')
+                          : (variant === 'gpcombat2_en') ? () => gpCombat2Email('en')
                     : (variant === 'launch') ? (em) => launchEmail(userLang(em)) // fusión: cada usuario en SU idioma
                       : (variant === 'launch_es') ? () => launchEmail('es')
                         : (variant === 'launch_en') ? () => launchEmail('en')

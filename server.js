@@ -12560,7 +12560,21 @@ const server = http.createServer(async (req, res) => {
         if (run === 'whys') return json(res, 200, await llmAnnotatePickWhys({ cap: +(url.searchParams.get('cap') || 8) }));
         if (run === 'brief') return json(res, 200, await llmBriefPass());
         if (run === 'fightreads') return json(res, 200, await llmFightReadsPass({ cap: +(url.searchParams.get('cap') || 5) }));
-        return json(res, 400, { error: 'run=whys|brief|fightreads' });
+        // diagnóstico Punto 1: ver el dossier EXACTO que recibe el redactor / re-escribir UNA lectura
+        if (run === 'dossier' || run === 'fightread1') {
+          const org2 = COMBAT_ORGS[String(url.searchParams.get('org') || '')] ? String(url.searchParams.get('org')) : 'ufc';
+          const cid2 = String(url.searchParams.get('id') || '');
+          const C2 = combatLoad(org2); await combatRefreshUpcoming(C2);
+          let ev2 = null, ft2 = null;
+          for (const e of (C2.upcoming || [])) { const x = (e.fights || []).find(f => f.comp_id === cid2); if (x) { ev2 = e; ft2 = x; break; } }
+          if (!ft2) return json(res, 404, { error: 'pelea no está en la agenda' });
+          const dos = combatFightDossier(C2, ev2, ft2);
+          if (run === 'dossier') return json(res, 200, dos);
+          const w3 = await llm.writeFightPreview(dos).catch(e => ({ _err: e.message }));
+          if (w3 && w3.es) { db.combatFightReads = db.combatFightReads || {}; db.combatFightReads[org2 + ':' + cid2] = { es: w3.es, en: w3.en, at: new Date().toISOString(), kickoff: ev2.date }; save(); }
+          return json(res, 200, { dossier_favorito: dos.favorito_gp || null, read: w3 });
+        }
+        return json(res, 400, { error: 'run=whys|brief|fightreads|dossier|fightread1' });
       }
       return json(res, 200, {
         enabled: llm.enabled(), budget_ok: llm.budgetOk(), usage: llm.usage(),

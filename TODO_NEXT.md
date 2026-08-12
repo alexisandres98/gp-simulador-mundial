@@ -8,12 +8,17 @@ Reporte de Alexis: "sacaste la familia de 1x2 y la de cards under". NO fue un ca
    sobrevivían por su query propia — fix del 5-ago). Fix en código: query por lotes + filtro 24h + error visible
    (`market-scanner/quotes.js`) y retención `goal_current` (7 días) cableada con flags + endpoint
    `/api/internal/goal-retention?key=<GP_EXPORT_KEY>`.
-   **Pendiente para ejecutar la purga**: poner en Render `SPORTSBOOK_RETENTION_ENABLED=true` +
-   `SPORTSBOOK_RETENTION_DRY_RUN=false` (primero GET al endpoint para ver la proyección; dry-run audita sin borrar).
-2. **The Odds API sin créditos**: de 11.410 (10-ago) a <600 (12-ago); con reserva 2000/6000 los sweeps de clubes
-   y props están PAUSADOS → sin cuotas frescas no nace ninguna familia (cards se quedó sin materia prima; solo
-   cotizaba en brasileirao/brasilb/mls/argentina). **Decisión de Alexis**: subir plan / esperar reset mensual +
-   bajar el costo (ventana de props 144h→48h y/o menos regiones) para que no vuelva a pasar.
+   **Purga ACTIVADA 12-ago** (`SPORTSBOOK_RETENTION_ENABLED=true`, `DRY_RUN=false` en Render). Medido:
+   la tabla tenía **14.67M filas / 6.6GB**. El primer intento murió por el mismo timeout global (seq scan
+   sin índice) → fix: índice por `observed_at` (IF NOT EXISTS) + cada lote en SU transacción con
+   `SET LOCAL statement_timeout` amplio (el global de 15s sigue protegiendo al resto de la app).
+2. **The Odds API sin créditos**: de 11.410 (10-ago) a ~575 (12-ago 09:36); con reserva 2000/6000 los sweeps
+   estaban PAUSADOS → sin cuotas frescas no nace ninguna familia. **Decisión Alexis 12-ago: upgrade del plan
+   mañana; mientras, correr con el remanente.** Aplicado en Render: `SPORTSBOOK_QUOTA_RESERVE=50` (props frena
+   a 3×=150), `GP_CLUBS_PROPS_WINDOW_H=48`, `GP_CLUBS_SWEEP_MIN=120`. ⚠️ TRAS EL UPGRADE: borrar
+   `SPORTSBOOK_QUOTA_RESERVE`, `GP_CLUBS_PROPS_WINDOW_H` y `GP_CLUBS_SWEEP_MIN` para volver a los defaults
+   (reserva 2000/6000, ventana 144h, cadencia 30min). Nuevo WATCHDOG horario: si los créditos caen bajo la
+   reserva o hay partidos en <24h con cero mercados 1X2 en el build → email al admin (dedup 1/día).
    Nota: `cardsValidation` está SANA (p=0.121, no failed). El stop-loss del feed público SÍ tiene frenadas
    `SOLID|anchor` (hit 37% vs BE 56%), `SOLID|lead` (20% vs 23%) y `CORNERS|under` — eso es por diseño (autopsias).
 

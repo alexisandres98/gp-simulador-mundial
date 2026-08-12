@@ -53,10 +53,12 @@ async function audit({ mode, table, scope, cutoff, considered, deleted, executed
 }
 
 // run(scope, { days, now, executedBy }) — planifica y, si está habilitado, ejecuta la purga incremental.
+let _running = null; // guarda anti-solape: el scheduler de 6h y el endpoint manual no deben correr a la vez
 async function run(scope, { days = null, now = null, executedBy = null } = {}) {
   const table = ALLOWED_TABLES[scope];
   if (!table) { const e = new Error('invalid_retention_scope'); e.code = 'invalid_retention_scope'; throw e; }
   if (!db.isConfigured()) return { scope, status: 'skipped', reason: 'no_db' };
+  if (_running) return { scope, status: 'skipped', reason: 'already_running', running_scope: _running };
 
   const f = flags();
   const d = days != null ? days : DEFAULT_DAYS[scope];
@@ -70,15 +72,29 @@ async function run(scope, { days = null, now = null, executedBy = null } = {}) {
   }
 
   // EXECUTE: incremental, en lotes, auditado. Nunca toca otras tablas (table viene del allowlist).
-  let deleted = 0;
-  for (;;) {
-    const r = await db.query(
-      `DELETE FROM ${table} WHERE ctid IN (SELECT ctid FROM ${table} WHERE ${timeCol(table)} < $1 LIMIT ${DELETE_BATCH})`, [cutoff]);
-    deleted += r.rowCount;
-    if (r.rowCount < DELETE_BATCH) break;
-  }
-  await audit({ mode: 'execute', table, scope, cutoff, considered, deleted, executedBy, note: 'incremental_batch' });
-  return { scope, table, status: 'executed', cutoff, rows_considered: considered, rows_deleted: deleted };
+  // 12-ago: la tabla goal llegó a 14.6M filas / 6.6GB y el lote moría por el statement timeout GLOBAL (15s):
+  // el sub-select por ctid hacía seq scan sin índice por la columna de tiempo. Ahora (a) antes del primer
+  // lote se asegura el índice por esa columna (IF NOT EXISTS, idempotente — con los sweeps pausados por
+  // créditos es el momento barato de crearlo), y (b) cada lote corre en SU transacción con SET LOCAL
+  // statement_timeout amplio: el timeout global corto sigue protegiendo al resto de la app.
+  _running = scope;
+  try {
+    let deleted = 0;
+    await db.withTransaction(async (c) => {
+      await c.query(`SET LOCAL statement_timeout = '600s'`);
+      await c.query(`CREATE INDEX IF NOT EXISTS idx_retention_${table}_time ON ${table} (${timeCol(table)})`);
+    }).catch(() => { /* índice best-effort: sin él los lotes igual corren (más lentos) */ });
+    for (;;) {
+      const r = await db.withTransaction(async (c) => {
+        await c.query(`SET LOCAL statement_timeout = '300s'`);
+        return c.query(`DELETE FROM ${table} WHERE ctid IN (SELECT ctid FROM ${table} WHERE ${timeCol(table)} < $1 LIMIT ${DELETE_BATCH})`, [cutoff]);
+      });
+      deleted += r.rowCount;
+      if (r.rowCount < DELETE_BATCH) break;
+    }
+    await audit({ mode: 'execute', table, scope, cutoff, considered, deleted, executedBy, note: 'incremental_batch' });
+    return { scope, table, status: 'executed', cutoff, rows_considered: considered, rows_deleted: deleted };
+  } finally { _running = null; }
 }
 
 // projection(now) — proyección de storage para el reporte (sin borrar nada).

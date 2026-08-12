@@ -12200,6 +12200,21 @@ const server = http.createServer(async (req, res) => {
         return [l, e];
       })));
     }
+    // RETENCIÓN de cuotas goal (12-ago): GET = proyección de storage + pasada (dry-run salvo flags);
+    // POST = pasada explícita (ejecuta SOLO si SPORTSBOOK_RETENTION_ENABLED=true y DRY_RUN=false —
+    // misma vara de la retención de la casa: encender la purga es decisión con dueño, no un default).
+    if (p === '/api/internal/goal-retention') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        const sbRetention = require('./sportsbook-providers/retention');
+        const projection = await sbRetention.projection().catch(e => ({ status: 'error', error: e.message }));
+        if (req.method !== 'POST') return json(res, 200, { projection, flags: sbRetention.flags() });
+        const days = Number(url.searchParams.get('days')) || null;
+        const result = await sbRetention.run('goal_current', { days, executedBy: 'internal_endpoint' });
+        return json(res, 200, { projection, result });
+      } catch (e) { return json(res, 200, { error: e.message }); }
+    }
     // VALIDACIÓN CONTINUA cards-under (26-jul): GET = computa sin persistir; POST = evalúa y persiste (1/día).
     if (p === '/api/internal/cards-validation') {
       const xk = process.env.GP_EXPORT_KEY || '';
@@ -15139,6 +15154,20 @@ server.listen(PORT, () => {
       const runRetention = () => retention.pruneTelemetry(dbc).then(r => console.log('[retention]', JSON.stringify(r))).catch(() => { });
       setTimeout(runRetention, 60 * 1000);
       setInterval(runRetention, 30 * 60 * 1000);
+    }
+  } catch { /* aislado */ }
+  // Retención de cuotas goal (12-ago): sportsbook_goal_quote_current crecía sin poda (sweep de 38 ligas,
+  // ~46k upserts/40min tras el alta del 5-ago) y el bloat ahogó Postgres — statement timeout en la query
+  // 1X2/goles del build de picks → SOLID y GOALS de clubes sin nacer desde el 5-ago. Purga incremental con
+  // la retención de la casa (flags SPORTSBOOK_RETENTION_ENABLED / SPORTSBOOK_RETENTION_DRY_RUN; pausada y
+  // en dry-run por defecto — encenderla es decisión explícita). Best-effort, aislada, cada 6h.
+  try {
+    const sbRetention = require('./sportsbook-providers/retention');
+    if (sbRetention.flags().enabled) {
+      const runGoalRetention = () => sbRetention.run('goal_current', { executedBy: 'scheduler' })
+        .then(r => console.log('[goal-retention]', JSON.stringify(r))).catch(e => console.error('[goal-retention]', e.message));
+      setTimeout(runGoalRetention, 2 * 60 * 1000);
+      setInterval(runGoalRetention, 6 * 60 * 60 * 1000);
     }
   } catch { /* aislado */ }
   // Motores de contexto y goles con CADENCIA ADAPTATIVA (2-jul): los loops pre-computan snapshots — la navegación

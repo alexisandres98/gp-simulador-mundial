@@ -1,5 +1,22 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🚨 INCIDENTE 12-ago — SOLID (1X2) y CARDS sin nacer (diagnóstico completo, fix en código)
+Reporte de Alexis: "sacaste la familia de 1x2 y la de cards under". NO fue un cambio de código — dos fallas operativas:
+1. **Postgres ahogado** → la query 1X2/goles del build de picks de clubes moría por statement timeout (15s) en
+   silencio (`catch → []`) desde el ~5-ago (alta de las 9 ligas): `sportsbook_goal_quote_current` sin poda con
+   ~46k upserts/40min. Resultado: **ninguna SOLID ni GOALS de clubes creada desde el 3-ago** (córners/cards
+   sobrevivían por su query propia — fix del 5-ago). Fix en código: query por lotes + filtro 24h + error visible
+   (`market-scanner/quotes.js`) y retención `goal_current` (7 días) cableada con flags + endpoint
+   `/api/internal/goal-retention?key=<GP_EXPORT_KEY>`.
+   **Pendiente para ejecutar la purga**: poner en Render `SPORTSBOOK_RETENTION_ENABLED=true` +
+   `SPORTSBOOK_RETENTION_DRY_RUN=false` (primero GET al endpoint para ver la proyección; dry-run audita sin borrar).
+2. **The Odds API sin créditos**: de 11.410 (10-ago) a <600 (12-ago); con reserva 2000/6000 los sweeps de clubes
+   y props están PAUSADOS → sin cuotas frescas no nace ninguna familia (cards se quedó sin materia prima; solo
+   cotizaba en brasileirao/brasilb/mls/argentina). **Decisión de Alexis**: subir plan / esperar reset mensual +
+   bajar el costo (ventana de props 144h→48h y/o menos regiones) para que no vuelva a pasar.
+   Nota: `cardsValidation` está SANA (p=0.121, no failed). El stop-loss del feed público SÍ tiene frenadas
+   `SOLID|anchor` (hit 37% vs BE 56%), `SOLID|lead` (20% vs 23%) y `CORNERS|under` — eso es por diseño (autopsias).
+
 ## ✅ CHECKPOINT jun-20-2026 — TODO desplegado en prod (main, ~389 usuarios)
 Hecho esta sesión (ver memoria `gp-simulador-mundial.md` para detalle):
 - Fase 4 completa + **GLOBAL TERMINAL POLISH** (dark terminal premium).

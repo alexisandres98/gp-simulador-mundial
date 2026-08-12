@@ -131,17 +131,30 @@ async function loadClubsMarkets(db, { provider = 'the_odds_api', events = {}, no
     return Number.isFinite(k) && k > now - 3 * 3600e3; // próximos o en juego, misma ventana que la casa
   });
   if (!ids.length) return [];
-  const r = await db.query(
-    `SELECT g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side,
-            g.odds_decimal, g.is_live, g.observed_at,
-            m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
-       FROM sportsbook_goal_quote_current g
-       LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
-      WHERE g.data_provider = $1 AND g.canonical_event_id = ANY($2)
-        AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'`,
-    [provider, ids]).catch(() => ({ rows: [] }));
+  // 12-ago: la query única con ANY(300+ ids) moría por statement timeout (Postgres ahogado por el bloat de
+  // sportsbook_goal_quote_current tras el alta de las 9 ligas) y el catch silencioso devolvía [] → SOLID y
+  // GOALS de clubes llevaban una semana sin nacer y nadie lo veía. Ahora: (a) lotes de 80 ids — cada
+  // statement corto cabe en el timeout y un lote caído no mata a los demás; (b) filtro de frescura 24h —
+  // el consenso igual descarta cuotas >75min, no hay razón para arrastrar filas de eventos muertos;
+  // (c) el error se LOGUEA (la falla de datos tiene que ser visible, no un feed vacío mudo).
+  const rows = [];
+  let qErr = null;
+  for (let i = 0; i < ids.length; i += 80) {
+    const r = await db.query(
+      `SELECT g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side,
+              g.odds_decimal, g.is_live, g.observed_at,
+              m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
+         FROM sportsbook_goal_quote_current g
+         LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
+        WHERE g.data_provider = $1 AND g.canonical_event_id = ANY($2)
+          AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'
+          AND g.observed_at > now() - interval '24 hours'`,
+      [provider, ids.slice(i, i + 80)]).catch((e) => { qErr = e; return { rows: [] }; });
+    rows.push(...r.rows);
+  }
+  if (qErr) console.error('[clubs-markets] query 1X2/goles falló (parcial=' + rows.length + ' filas):', qErr.message);
   const byKey = new Map();
-  for (const row of r.rows) {
+  for (const row of rows) {
     const meta = events[row.canonical_event_id]; if (!meta) continue;
     const is1x2 = row.market_family === 'match_winner';
     const side = String(row.side || '').toLowerCase();

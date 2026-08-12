@@ -10,8 +10,13 @@ const cfg = require('./config');
 const ALLOWED_TABLES = {
   redundant_raw:    'sportsbook_quotes',          // snapshots completos legacy (la causa del bloat)
   material_history: 'sportsbook_quote_history',   // historia material (retención larga)
+  // 12-ago: las cuotas de clubes (sweep de 38 ligas, ~46k upserts/40min) viven en la tabla goal y NADA la
+  // podaba — el bloat ahogó Postgres (statement timeout en la query 1X2/goles → SOLID/GOALS sin nacer).
+  // Las filas viejas son cuotas de eventos ya jugados: el consenso solo usa frescura <75min y el settle no
+  // lee esta tabla. 7 días de margen conserva de sobra el CLV/closing (que se captura aparte en las picks).
+  goal_current:     'sportsbook_goal_quote_current',
 };
-const DEFAULT_DAYS = { redundant_raw: 14, material_history: 180 };
+const DEFAULT_DAYS = { redundant_raw: 14, material_history: 180, goal_current: 7 };
 const DELETE_BATCH = 5000;
 
 function flags() {
@@ -26,12 +31,16 @@ function cutoffISO(days, now) {
   return new Date(t).toISOString();
 }
 
-// columna de tiempo por tabla (received_at para raw legacy, observed_at para history)
-function timeCol(table) { return table === 'sportsbook_quote_history' ? 'observed_at' : 'received_at'; }
+// columna de tiempo por tabla (received_at para raw legacy, observed_at para history y goal)
+function timeCol(table) { return table === 'sportsbook_quotes' ? 'received_at' : 'observed_at'; }
 
+// best-effort: en una tabla ya ahogada el count(*) puede comerse el statement timeout — un conteo
+// desconocido (null) no debe frenar la purga, que borra en lotes cortos que sí caben en el timeout.
 async function countOlderThan(table, cutoff) {
-  const r = await db.query(`SELECT count(*)::bigint n FROM ${table} WHERE ${timeCol(table)} < $1`, [cutoff]);
-  return Number(r.rows[0].n);
+  try {
+    const r = await db.query(`SELECT count(*)::bigint n FROM ${table} WHERE ${timeCol(table)} < $1`, [cutoff]);
+    return Number(r.rows[0].n);
+  } catch { return null; }
 }
 
 async function audit({ mode, table, scope, cutoff, considered, deleted, executedBy, note }) {
@@ -75,11 +84,18 @@ async function run(scope, { days = null, now = null, executedBy = null } = {}) {
 // projection(now) — proyección de storage para el reporte (sin borrar nada).
 async function projection({ now = null } = {}) {
   if (!db.isConfigured()) return { status: 'no_db' };
+  // reltuples (estimación del planner) en vez de count(*): en tablas con bloat el count exacto puede
+  // exceder el statement timeout — para una proyección de storage la estimación sirve igual.
   const sizes = await db.query(`
-    SELECT 'sportsbook_quotes' t, count(*)::bigint n FROM sportsbook_quotes
-    UNION ALL SELECT 'sportsbook_quote_current', count(*)::bigint FROM sportsbook_quote_current
-    UNION ALL SELECT 'sportsbook_quote_history', count(*)::bigint FROM sportsbook_quote_history`);
-  return { status: 'ok', counts: sizes.rows.reduce((a, x) => (a[x.t] = Number(x.n), a), {}), flags: flags() };
+    SELECT relname t, reltuples::bigint n, pg_total_relation_size(oid) bytes
+      FROM pg_class
+     WHERE relname IN ('sportsbook_quotes','sportsbook_quote_current','sportsbook_quote_history','sportsbook_goal_quote_current')`);
+  return {
+    status: 'ok',
+    counts: sizes.rows.reduce((a, x) => (a[x.t] = Number(x.n), a), {}),
+    bytes: sizes.rows.reduce((a, x) => (a[x.t] = Number(x.bytes), a), {}),
+    flags: flags(),
+  };
 }
 
 module.exports = { run, projection, flags, ALLOWED_TABLES, DEFAULT_DAYS };

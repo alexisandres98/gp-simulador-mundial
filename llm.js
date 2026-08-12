@@ -211,7 +211,12 @@ async function writeFightRead(payload) {
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
   });
   const j = jsonOf(resp);
-  return j && j.es && j.en ? { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) } : null;
+  if (!j || !j.es || !j.en) {
+    // diagnóstico visible (12-ago: la lectura de Garry caía en silencio): qué devolvió el modelo
+    console.error('[llm] writeFightRead sin JSON usable · stop:', (resp && resp.stop_reason) || '?', '· texto:', textOf(resp).slice(0, 220).replace(/\n/g, ' '));
+    return null;
+  }
+  return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
 async function writeBrief(payload, sport) {

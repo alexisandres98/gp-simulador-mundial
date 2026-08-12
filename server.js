@@ -8110,12 +8110,18 @@ async function llmAnnotatePickWhys({ cap = 8 } = {}) {
       if (done >= cap) break;
       if (p.status !== 'ACTIVE' || p.result_code === 'SUPERSEDED' || p.why_ai_es || !p.why_es) continue;
       // COMBATE FIGHT (12-ago): redactor PROFUNDO con el dossier completo del cruce — la lectura al nivel
-      // de pronosticador de élite que pidió Alexis. Si falla o el dossier queda mínimo, cae a la ruta clásica.
+      // de pronosticador de élite que pidió Alexis. SIN fallback al redactor corto (v4: el fallback tapaba
+      // los fallos — la card usa la plantilla why_es mientras tanto y el pase siguiente reintenta).
       if (sport === 'combat' && (p.family || 'FIGHT') === 'FIGHT') {
         try {
           const w2 = await llm.writeFightRead(combatPickDossier(p));
-          if (w2) { p.why_ai_es = w2.es; p.why_ai_en = w2.en; done++; save(); continue; }
-        } catch (e) { if (/llm_budget|llm_disabled/.test(e.message)) return { done, stopped: e.message }; }
+          if (w2) { p.why_ai_es = w2.es; p.why_ai_en = w2.en; done++; save(); }
+          else console.error('[llm] fight-read devolvió null para', p.selection_name, '— reintento en el próximo pase');
+        } catch (e) {
+          if (/llm_budget|llm_disabled/.test(e.message)) return { done, stopped: e.message };
+          console.error('[llm] fight-read error para', p.selection_name, ':', e.message);
+        }
+        continue; // FIGHT jamás cae al redactor corto
       }
       try {
         const w = await llm.writePickWhy({
@@ -8771,12 +8777,12 @@ async function buildCombatPicks({ dryRun = false } = {}) {
     }
     // MIGRACIÓN one-shot (12-ago): las picks FIGHT activas regeneran su lectura con el redactor PROFUNDO
     // (writeFightRead con dossier completo) — se limpia why_ai y el anotador periódico las re-escribe.
-    if (!db.cbDeepReadV3) { // v3: la v2 corrió con max_tokens corto (respuesta truncada → JSON inválido → redactor corto); se regeneran las lecturas cortas
+    if (!db.cbDeepReadV4) { // v4: sin fallback corto + diagnóstico; se limpian las lecturas cortas otra vez
       let cleared = 0;
       for (const p of (db.combatPicks || [])) {
         if (p.status === 'ACTIVE' && (p.family || 'FIGHT') === 'FIGHT' && p.why_ai_es && String(p.why_ai_es).length < 500) { delete p.why_ai_es; delete p.why_ai_en; cleared++; }
       }
-      db.cbDeepReadV3 = true; out.deep_read_reset = cleared;
+      db.cbDeepReadV4 = true; out.deep_read_reset = cleared;
     }
     // Picks nacidas sobre cruces FANTASMA de boxeo (placeholder 31-dic, ver combatBoxingUpcoming) → VOID:
     // esa pelea no existe con esa fecha — era un mercado especulativo de las casas, no una cartelera.

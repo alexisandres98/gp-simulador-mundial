@@ -4690,7 +4690,8 @@ function clubPublicPicks({ isAdmin = false, hideProps = false } = {}) {
 // el base-rate de liga/línea). Todo lo demás vive como regime 'monitor' (track privado) y puede GANARSE la
 // entrada con la misma evidencia — nunca por antigüedad. Override por env sin deploy: GP_PUBLIC_SEGMENTS
 // ej. "CARDS:under,CORNERS:under".
-const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SOLID,GOALS,CORNERS').split(',')
+// COMBO al público (12-ago, GO de Alexis): combos goles-eficientes + 1X2, generados en buildClubDailyPicks.
+const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SOLID,GOALS,CORNERS,COMBO').split(',')
   .map(s => s.trim()).filter(Boolean).map(s => s.split(':'));
 
 // ===== EFICIENCIA POR LIGA (26-jul, propuesta de Alexis validada con el test 2×2) ============================
@@ -5604,7 +5605,14 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // mediana de 1/odds entre casas (sin de-vig fino: 1 lado cotizado).
   const playerMarkets = [];
   try {
-    const evIds = [...new Set(events.map(e => e.eventId).concat(goalMarkets.map(g => g.eventId)))];
+    // MISMO bug de arquitectura que córners/cards (fix 5-ago) pero NUNCA corregido aquí: el universo de
+    // eventos salía SOLO de los mercados 1X2/goles — con esa query muerta (timeouts desde el 5-ago), PLAYER
+    // se quedaba sin universo aunque su sweep tuviera cuotas. Fallback (12-ago): los eventos del sweep con
+    // kickoff futuro, la misma ventana que usa loadClubsMarkets.
+    let evIds = [...new Set(events.map(e => e.eventId).concat(goalMarkets.map(g => g.eventId)))];
+    if (!evIds.length) {
+      evIds = Object.keys(qevents).filter(id => { const k = Date.parse((qevents[id] || {}).kickoff || 0); return isFinite(k) && k > now - 3 * 3600e3; });
+    }
     if (evIds.length) {
       const pq = await dbc.query(
         `SELECT canonical_event_id, market_family, market_id, team_scope pid, sportsbook_code, odds_decimal::float o
@@ -5788,6 +5796,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     competition_name: (RT.leagues[fields.league] && RT.leagues[fields.league].name) || fields.league,
     event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: clubTsaKickoff(fields.league, fields.homeId, fields.awayId, Date.parse(fields.kickoff)) || fields.kickoff },
     selection_code: fields.selection_code || null, market_id: fields.market_id || null, side: fields.side || null, line: fields.line != null ? fields.line : null,
+    legs: fields.legs || null, // COMBO (12-ago): las patas viajan al feed (la card del cliente las pinta)
     player_name: fields.player_name || null, pid: fields.pid || null, player_family: fields.player_family || null,
     best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
     model_prob: fields.model_prob != null ? fields.model_prob : null, market_prob: fields.market_prob != null ? fields.market_prob : null,
@@ -5900,6 +5909,25 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const pm = playerMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {};
     fresh.push(mkRecord('PLAYER', g.eventId, { league: pm.league, home: g.home, away: g.away, homeId: pm.homeId, awayId: pm.awayId, kickoff: g.kickoff, market_id: g.marketId, side: 'yes', player_name: g.player, pid: g.pid, player_family: g.playerFamily, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp }, g.eventId + '|PLAYER|' + g.marketId));
   }
+  // COMBO DE CLUBES (12-ago, GO de Alexis: "que se empiecen a generar los combos"): pata 1X2 sólida elegible
+  // + mejor pata de GOLES elegible del MISMO evento (curate, comboMinConfidence 0.28), SOLO en ligas de banda
+  // EFICIENTE — ahí la pata de goles es ancla por diseño, que es la combinación pedida (goles eficientes +
+  // 1X2). La regla del Mundial "no publicar el combo si sus dos patas salen sueltas" NO aplica acá por
+  // decisión explícita (los combos deben nacer aunque SOLID/GOALS publiquen); la exposición la limita el cap
+  // de 3 por evento (SOLID > GOALS > COMBO) y el resultado se revisa tras el finde.
+  for (const c of res.eligible.combo) {
+    const evc = events.find(e => e.eventId === c.eventId) || {};
+    if (leagueEfficiency(evc.league).band !== 'eficiente') continue;
+    const legSolid = (c.legs || []).find(l => l.type === '1X2');
+    const legGoals = (c.legs || []).find(l => l.type === 'GOALS');
+    if (!legSolid || !legGoals) continue;
+    const why = compose([{ code: 'MARKET_ANCHOR', w: 2, books: (evc.selections && evc.selections[legSolid.selection] && evc.selections[legSolid.selection].books) || 0 }]);
+    fresh.push(mkRecord('COMBO', c.eventId, {
+      league: evc.league, home: c.home, away: c.away, homeId: evc.homeId, awayId: evc.awayId, kickoff: c.kickoff,
+      selection_code: legSolid.selection, market_id: legGoals.marketId, side: legGoals.side, line: legGoals.line,
+      legs: c.legs, best_odds: c.comboOdds, confidence: c.confidence, why, regime: 'edge',
+    }, c.eventId + '|COMBO'));
+  }
   db.clubDailyPicks = db.clubDailyPicks || [];
   // REGLA DE PUBLICACIÓN (autopsia 18-jul): máximo 3 picks PÚBLICAS por evento — SOLID > GOALS > la mejor
   // por confianza. Las regime:'monitor' (track privado, no salen al feed) NO cuentan ni se recortan.
@@ -5951,11 +5979,15 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     if (db.marketOpenings && db.marketOpenings[okey] && p.opening == null) p.opening = db.marketOpenings[okey]; // CLV-desde-apertura
     if (!isPublicSegment(p.family, p.side, p.league)) { if (p.regime !== 'monitor') p.regime = 'monitor'; continue; }
     if (p.family === 'SOLID') continue; // el 1X2 de régimen trae su gate desde la GENERACIÓN (anchor/lead por banda)
-    // GOALS (27-jul) y CORNERS-en-eficientes: SOLO anclas (lean claro del consenso ≥55%, ≥5 casas, que el
-    // blend NO contradice). El resto → monitor.
+    if (p.family === 'COMBO') continue; // COMBO (12-ago): nace 'edge' en la generación (solo eficientes); sin probs propias no pasa por el gate genérico
+    // GOALS (27-jul): SOLO anclas al público (lean claro del consenso ≥55%, ≥5 casas, blend no contradice);
+    // el resto → monitor. CÓRNERS-EN-EFICIENTES (12-ago, decisión Alexis "quiero ver cómo se desenvuelve",
+    // revisión post-finde): lo que no alcanza el ancla ya NO baja a monitor — sale 'edge' al feed; lo
+    // vigilan el stop-loss y la revisión del lunes.
     if (p.family === 'GOALS' || (p.family === 'CORNERS' && p.league_band === 'eficiente')) {
       const kk = Number(p.market_prob) || 0;
-      p.regime = (kk >= 0.55 && (p.books || 0) >= 5 && blend != null && (blend - kk) * 100 >= -2) ? 'anchor' : 'monitor';
+      const anchorOk = kk >= 0.55 && (p.books || 0) >= 5 && blend != null && (blend - kk) * 100 >= -2;
+      p.regime = anchorOk ? 'anchor' : (p.family === 'CORNERS' ? 'edge' : 'monitor');
       continue;
     }
     // CORNERS en intermedias/blandas (ENCENDIDO 4-ago): mismo criterio de cards (edge post-blend ≥2pp, línea
@@ -6867,11 +6899,15 @@ function reclassifyClubSegments() {
     // SOLID de régimen (27-jul) queda fuera: su gate vive en la generación (anchor/lead por banda).
     if (old.family === 'SOLID') { /* gate propio en la generación */ }
     else if (old.family === 'GOALS' || (old.family === 'CORNERS' && (old.league_band || leagueEfficiency(old.league).band) === 'eficiente')) {
-      // anclas en eficientes: lean claro sin contradicción del blend
+      // anclas en eficientes: lean claro sin contradicción del blend. CÓRNERS-EN-EFICIENTES (12-ago,
+      // decisión Alexis): lo no-ancla sale 'edge' al feed en vez de monitor — misma regla que la generación,
+      // y este reclasificador PROMUEVE las activas viejas que estaban en monitor.
       const kk = Number(old.market_prob) || 0;
-      const want = (kk >= 0.55 && (old.books || 0) >= 5 && old.blend_prob != null && (old.blend_prob - kk) * 100 >= -2) ? 'anchor' : 'monitor';
+      const anchorOk = kk >= 0.55 && (old.books || 0) >= 5 && old.blend_prob != null && (old.blend_prob - kk) * 100 >= -2;
+      const want = anchorOk ? 'anchor' : (old.family === 'CORNERS' ? 'edge' : 'monitor');
       if (old.regime !== want) { old.regime = want; n++; }
     }
+    else if (old.family === 'COMBO') { /* COMBO (12-ago): régimen fijo de la generación, sin probs propias */ }
     // CORNERS en intermedias/blandas (encendido 4-ago): edge post-blend ≥2pp con gate LOO aprobado.
     // ESTE reclasificador corre DESPUÉS del de la generación y antes no conocía la regla nueva → devolvía
     // a monitor todo lo que aquél acababa de promover (por eso no salía ninguna córner pública).
@@ -8600,8 +8636,8 @@ async function buildCombatPicks({ dryRun = false } = {}) {
   const out = { fights: 0, with_odds: 0, candidates: [], added: 0, superseded: 0, closing_updated: 0 };
   // BOXEO GENERA desde el 8-ago (pregunta de Alexis "¿por qué no hay picks de boxeo?"): el modelo pasó el
   // gate de calibración (0.0310, mejor que UFC) y el archivo de cuotas acumula desde el 31-jul → el monitor
-  // ya puede medir CLV real. PERO admin-only: cbPickVisible/track excluyen 'boxing' del público hasta que
-  // el CLV valide (la misma vara que pasó MMA antes de abrirse).
+  // ya puede medir CLV real. PÚBLICO desde el 12-ago (GO de Alexis, revisión post-finde): cbPickVisible y
+  // el track visible ya lo incluyen.
   for (const org of Object.keys(COMBAT_ORGS)) await buildCombatPicksOrg(org, out, dryRun);
   // SANEO DE NARRATIVAS (12-ago, reporte Alexis: la pick de Machado Garry mostraba "Pick del monitor privado
   // (validación del modelo)" — vocabulario INTERNO de un generador viejo que quedó persistido; el merge por
@@ -10196,7 +10232,7 @@ const server = http.createServer(async (req, res) => {
               competition_name: x.competition_name || null,
               home: x.event.home, away: x.event.away,
               home_team_id: x.event.home_team_id, away_team_id: x.event.away_team_id, kickoff: x.event.kickoff_at,
-              selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: null,
+              selection_code: x.selection_code, market_id: x.market_id, side: x.side, line: x.line, legs: x.legs || null,
               // PLAYER: sin estos campos la card caía al template de "shots" con {player}/{line} vacíos
               player_name: x.player_name || null, player_family: x.player_family || null,
               odds: x.best_odds, book: x.best_book, confidence: x.confidence != null ? +Number(x.confidence).toFixed(3) : null,
@@ -12319,8 +12355,10 @@ const server = http.createServer(async (req, res) => {
       // haya nacido antes; pelea pre-lanzamiento → invisible, y su liquidación jamás entra al track público.
       // Boxeo (8-ago): sus picks nacen en MONITOR admin-only — el público no las ve ni entran a su track
       // hasta que el CLV contra mercado real las valide (misma vara que pasó MMA).
-      const cbPickVisible = (x) => cbAdmin || (x.league !== 'boxing' && Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE());
-      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE(), excludeLeagues: ['boxing'] };
+      // BOXEO PÚBLICO (12-ago, GO de Alexis; revisión post-finde): las picks de boxeo salen del admin-only
+      // y su resultado entra al track visible. Mismo corte temporal del lanzamiento (CB_PUBLIC_SINCE).
+      const cbPickVisible = (x) => cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE();
+      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE() };
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
       // fuente compartida con el loop de picks. F5: ?org=ufc|mma (mma = Bellator histórico + PFL activa).

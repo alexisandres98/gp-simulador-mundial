@@ -3288,6 +3288,10 @@ function oddsBudgetOk(reserve) {
   const c = global._oddsCredits.remaining;
   return c == null || c >= reserve; // desconocido (aún sin llamadas) → permitir; el header lo corrige tras la 1ª
 }
+// 12-ago (créditos casi agotados; Alexis hace upgrade del plan): la reserva es CONFIGURABLE por env para
+// poder correr con el remanente sin deploy. SPORTSBOOK_QUOTA_RESERVE = reserva base (scan barato, default
+// 2000); props (caro, ~20 créd/evento) frena a 3× la base — misma proporción del default histórico 2000/6000.
+const oddsReserve = () => Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
 // ===== FASE CLUBES: INGESTA DE CUOTAS a las tablas de la casa (shadow, cadencia ~60 min) =====
 // Punto 1 del spec de adaptación (13-jul): las cuotas de clubes viven en sportsbook_goal_quote_current
 // (match_winner + match_total, ids SINTÉTICOS por liga+par — MISMO patrón que el Mundial vía
@@ -3302,8 +3306,9 @@ async function clubsQuotesSweep({ force = false } = {}) {
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
   if (_clubsQuotesRunning) return { skipped: 'running' };
-  if (!force && Date.now() - _clubsQuotesLast < 30 * 60e3) return { skipped: 'throttle' };
-  if (!force && !oddsBudgetOk(2000)) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining };
+  // 12-ago: cadencia configurable (GP_CLUBS_SWEEP_MIN, default 30) — con créditos contados se espacia sin deploy
+  if (!force && Date.now() - _clubsQuotesLast < Number(process.env.GP_CLUBS_SWEEP_MIN || 30) * 60e3) return { skipped: 'throttle' };
+  if (!force && !oddsBudgetOk(oddsReserve())) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining };
   _clubsQuotesRunning = true;
   const out = { leagues: 0, events: 0, quotes: 0, started: new Date().toISOString() };
   try {
@@ -3442,7 +3447,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
   if (_clubsPropsRunning) return { skipped: 'running' };
   if (!force && Date.now() - _clubsPropsLast < 3 * 3600e3) return { skipped: 'throttle' }; // cadencia 3h (era 5.5) con plan 100k
-  if (!force && !oddsBudgetOk(6000)) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining }; // props caro → reserva mayor
+  if (!force && !oddsBudgetOk(3 * oddsReserve())) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining }; // props caro → reserva mayor (3× la base)
   _clubsPropsRunning = true;
   const out = { events: 0, quotes: 0, unmatched: 0, started: new Date().toISOString() };
   try {
@@ -3474,7 +3479,9 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
       const kt = +new Date(meta.kickoff);
       // ATAQUE A LA APERTURA (26-jul): ventana ampliada 48h→144h — las casas cuelgan props 2-5 días antes;
       // ver el mercado desde que ABRE = comprar en su momento más ignorante (el opening queda en db.marketOpenings).
-      if (!(kt > now && kt < now + 144 * 3600e3)) continue;
+      // 12-ago: ventana CONFIGURABLE por env (GP_CLUBS_PROPS_WINDOW_H, default 144) — con créditos contados se
+      // achica a 48h sin deploy (menos eventos por sweep = el remanente alcanza hasta el upgrade del plan).
+      if (!(kt > now && kt < now + Number(process.env.GP_CLUBS_PROPS_WINDOW_H || 144) * 3600e3)) continue;
       const L = RT.leagues[meta.league]; if (!L || !L.odds_key) continue;
       let o = null;
       try {
@@ -8378,7 +8385,9 @@ function combatRefreshOdds(C) {
       const G = GG[sport] = GG[sport] || {};
       if (!G.at || Date.now() - G.at > 10 * 60e3) {
         const ok = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
-        const od = await fetch(`https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+        // 12-ago: contabiliza créditos también acá (era el único fetch de The Odds API sin noteOddsCredits —
+        // el tracker global quedaba ciego al gasto de combate y el watchdog no podía avisar a tiempo).
+        const od = await fetch(`https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ok}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => { noteOddsCredits(r); return r.json(); });
         if (Array.isArray(od)) { G.list = od; G.at = Date.now(); }
       }
       C.odds = G.list || C.odds || [];
@@ -9069,7 +9078,7 @@ async function evaluateUpcomingProps() {
   if (!KEY) return { skipped: 'no_key' };
   const dbcfg = require('./database/config');
   if (!dbcfg.db || !dbcfg.db.configured) return { skipped: 'no_db' };
-  if (_propsCredits != null && _propsCredits < 2000) return { skipped: 'quota_reserve', credits_remaining: _propsCredits };
+  if (_propsCredits != null && _propsCredits < oddsReserve()) return { skipped: 'quota_reserve', credits_remaining: _propsCredits };
   _propsRunning = true; _propsLastRunMs = Date.now();
   const out = { events: 0, team_quotes: 0, team_value: 0, player_quotes: 0, player_value: 0, errors: 0, started: new Date().toISOString() };
   try {
@@ -15155,6 +15164,50 @@ server.listen(PORT, () => {
       setTimeout(runRetention, 60 * 1000);
       setInterval(runRetention, 30 * 60 * 1000);
     }
+  } catch { /* aislado */ }
+  // ===== WATCHDOG DE PRODUCCIÓN (12-ago, pedido de Alexis tras 6 días de SOLID muda) ======================
+  // El incidente: la query 1X2 moría por timeout, el catch devolvía [] y NADIE se enteró en 6 días. Regla
+  // nueva: una familia que deja de PRODUCIR es una ALERTA OPERATIVA, no un feed vacío. Cada hora se chequea:
+  // (a) créditos de The Odds API bajo la reserva → sweeps pausados (sin cuotas frescas no nace NINGUNA pick);
+  // (b) partidos de clubes en <24h pero el último build sin UN SOLO mercado 1X2 — el incidente exacto de esta
+  //     semana (cuotas escritas pero query muerta, o sweep parado).
+  // Email al admin + error en logs, dedup 1 aviso/día por tipo (db.opsAlerts). Best-effort, jamás rompe nada.
+  try {
+    const opsWatchdogCheck = async () => {
+      const alerts = [];
+      const cr = global._oddsCredits.remaining;
+      if (cr != null && !oddsBudgetOk(oddsReserve())) {
+        alerts.push({ type: 'odds_credits', msg: `The Odds API con ${cr} créditos (< reserva ${oddsReserve()}): los sweeps de cuotas están PAUSADOS y no nacen picks nuevas. Subir el plan o bajar SPORTSBOOK_QUOTA_RESERVE en Render.` });
+      }
+      try {
+        const now = Date.now();
+        const upcoming = Object.values(db.clubsQuoteEvents || {}).filter(m => { const k = Date.parse(m.kickoff || 0); return isFinite(k) && k > now && k < now + 24 * 3600e3; }).length;
+        const b = _clubPicksLast && _clubPicksLast.build;
+        // ≥3 partidos en 24h con CERO mercados 1X2 en el build = falla de sistema, no un día flojo de cuotas
+        if (upcoming >= 3 && b && !b.skipped && (b.markets === 0 || b.events_1x2 === 0)) {
+          alerts.push({ type: 'clubs_1x2_dead', msg: `Build de picks de clubes SIN mercados 1X2 (markets=${b.markets || 0}, events_1x2=${b.events_1x2 || 0}) con ${upcoming} partidos en <24h. SOLID/GOALS sin producir: revisar Postgres (statement timeout — logs [clubs-markets]) y el sweep de cuotas.` });
+        }
+      } catch { /* datos incompletos → no alertar en falso */ }
+      if (!alerts.length) return;
+      for (const a of alerts) console.error('[watchdog]', a.type, '—', a.msg);
+      db.opsAlerts = db.opsAlerts || {};
+      const today = new Date().toISOString().slice(0, 10);
+      const fresh = alerts.filter(a => db.opsAlerts[a.type] !== today);
+      if (!fresh.length) return; // ya avisado hoy (el log de arriba sí sale cada pasada)
+      fresh.forEach(a => { db.opsAlerts[a.type] = today; });
+      save();
+      if (mailer.isConfigured()) {
+        const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+        const body = fresh.map(a => `• [${a.type}] ${a.msg}`).join('\n\n');
+        await mailer.sendMail({
+          to: adminTo,
+          subject: '⚠️ GP Simulador — watchdog: producción de picks detenida',
+          text: `${body}\n\nEste aviso sale máximo 1 vez al día por tipo.\n\nGP Simulador · watchdog operativo`,
+        }).catch(e => console.error('[watchdog] mail:', e.message));
+      }
+    };
+    setTimeout(() => { opsWatchdogCheck().catch(() => {}); }, 10 * 60 * 1000);
+    setInterval(() => { opsWatchdogCheck().catch(() => {}); }, 60 * 60 * 1000);
   } catch { /* aislado */ }
   // Retención de cuotas goal (12-ago): sportsbook_goal_quote_current crecía sin poda (sweep de 38 ligas,
   // ~46k upserts/40min tras el alta del 5-ago) y el bloat ahogó Postgres — statement timeout en la query

@@ -3596,7 +3596,10 @@ const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argenti
   // ESPECIALES — competiciones fuera de las 38 domésticas (Supercopa UEFA, amistosos de clubes con equipos
   // nuestros). Cobertura de PARTIDO (marcador vivo + cockpit + resultado vía ESPN); sin cuotas del proveedor
   // (The Odds API no lista estos torneos) → jamás picks. Los clubes viven en ratings.json con su Elo doméstico.
-  uefa: 'uefa.super_cup', amistosos: 'club.friendly' }; // polonia sin ESPN (sin vivo; resultados por TSA)
+  uefa: 'uefa.super_cup', amistosos: 'club.friendly',
+  // 12-ago (Punto 4, GO de Alexis): Champions/Europa — slugs listos para cuando arranque la temporada
+  // (sept). El roster con Elo anclado cross-liga se construye ANTES del primer partido (ver TODO_NEXT).
+  champions: 'uefa.champions', europa: 'uefa.europa' }; // polonia sin ESPN (sin vivo; resultados por TSA)
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys', 'xolos': 'club tijuana', 'xolos de tijuana': 'club tijuana', 'tijuana': 'club tijuana',
   // Rusia: ESPN transcribe distinto que TSA (Dinamo/Dynamo, Tolyatti/Togliatti, Krylia/Krylya) → sin alias el
@@ -9884,7 +9887,13 @@ setInterval(loadClubAfMap, 12 * 3600 * 1000);
 // liga nuestra → league id de API-Football (mismos ids del generador de fotos)
 // uefa (Supercopa) y amistosos (12-ago, Bonus de Alexis): la resolución de fixture va POR EQUIPO (next/last),
 // así que el league id solo abre la puerta del gate — 531 = UEFA Super Cup, 667 = Club Friendlies.
-const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207, uefa: 531, amistosos: 667 };
+// AUDITORÍA 12-ago (Bonus de Alexis: "que no haya ningún partido sin capa de contexto"): TODAS las ligas
+// del producto con mapeo AF entran al gate — faltaban las 16 de la expansión (championship, serieb, etc.)
+// y por eso sus partidos salían sin alineación/eventos aunque el mapa ya las cubría.
+const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207,
+  championship: 40, league1: 41, league2: 42, serieb: 136, laliga2: 141, portugal: 94, belgica: 144, turquia: 203, grecia: 197,
+  liga3: 80, ligue2: 62, bundesliga2: 79, eredivisie: 88, superettan: 114, austria: 218, escocia: 179,
+  uefa: 531, amistosos: 667 };
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como

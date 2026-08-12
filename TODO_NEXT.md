@@ -1,5 +1,20 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🥊 R6 COMBATE 12-ago — profundidad (orden Alexis) · VEREDICTO DEL BACKTEST
+- **Interacciones de matchup** (grap/power/absorb/age5/subth) construidas en `combat-engine/ratings.js` y
+  backtesteadas PAREADAS (`scripts/combat-backtest-v2.js`, único harness que alimenta las stats finas):
+  UFC n=5,842 OOS + MMA n=2,752 → **Brier idéntico (0.2332)**, bootstrap P mejor caso 0.773 (+absorb) vs
+  gate de la casa 0.983. El modelo lineal ya extrae esa señal por los marginales; la muestra fina (2022+,
+  2.199 peleas) es chica para cruces. **NO se shippean** → quedan tras `COMBAT_X_FEATURES=true` (default
+  OFF, byte-idéntico). RE-TESTEAR en ~2 meses cuando la muestra fina crezca (crece ~50 peleas/mes).
+- **Profundidad que SÍ shippeó**: redactor PROFUNDO de combate (`llm.writeFightRead` + `combatPickDossier`)
+  — cada pick FIGHT recibe lectura de élite (tesis + camino de victoria + riesgo + invalidación + valor)
+  anclada al dossier completo (breakdown, film study, estilos, tale, señales, método, mercado). Las activas
+  se regeneran una vez (migración `cbDeepReadV1`). La probabilidad NO la toca (doctrina LLM intacta).
+- Bonus del análisis Makhachev-Garry: el patrón "campeón que subió gana la subida y pierde la 1ª defensa"
+  (Ilia/Khamzat 2026) medido en nuestra base: subir de división NO penaliza en agregado (racheados subiendo
+  60.5% vs 58.1% sin subir, n=81/3,256) — sigue siendo INTEL/narrativa, no feature (confirma decisión 28-jul).
+
 ## 🚨 INCIDENTE 12-ago — SOLID (1X2) y CARDS sin nacer (diagnóstico completo, fix en código)
 Reporte de Alexis: "sacaste la familia de 1x2 y la de cards under". NO fue un cambio de código — dos fallas operativas:
 1. **Postgres ahogado** → la query 1X2/goles del build de picks de clubes moría por statement timeout (15s) en

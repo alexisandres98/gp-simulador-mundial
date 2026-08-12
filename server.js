@@ -7248,8 +7248,9 @@ function combatWeighCtx(C, ft) {
   const hit = (id) => ((obs[id] || {}).signals || obs[id] || []).some
     ? (((obs[id] || {}).signals) || obs[id] || []).some(x => x && (x.type === 'weight' || x.type === 'weight_cut')) : false;
   const o1 = hit(ft.f1.id) ? 2 : 0, o2 = hit(ft.f2.id) ? 2 : 0;
-  if (!o1 && !o2) return null;
-  return { over1: o1, over2: o2 };
+  // R6 (12-ago): el ctx SIEMPRE viaja con sched — la feature age5 (edad × 5 rounds) se entrena con los
+  // rounds pactados y debe verlos también al predecir (sin esto habría skew entrenar/servir).
+  return { over1: o1, over2: o2, sched: ft.rounds || 3 };
 }
 // resumen de UN peleador para directorio/tale-of-the-tape (edad real si dob llegó del paso 4)
 function combatFighterSummary(C, id) {
@@ -7636,7 +7637,7 @@ async function combatAsk(C, q, org, isAdmin = true) {
     if (!ev) { out.answer_es = 'No tengo ninguna cartelera próxima cargada ahora mismo.'; out.answer_en = 'I have no upcoming card loaded right now.'; return out; }
     let fin = 0, rounds = 0;
     for (const ft of ev.fights) {
-      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
       const m = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
       fin += m.finish; rounds += m.finish * (ft.rounds || 3) * 0.55 + (1 - m.finish) * (ft.rounds || 3);
     }
@@ -7678,10 +7679,10 @@ async function combatAsk(C, q, org, isAdmin = true) {
 
   // ── pregunta sobre una PELEA concreta: todo sale de los engines ──
   const { ev, ft } = ent;
-  const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+  const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
   const m = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
   const mo = combatFightOdds(C, ft);
-  const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+  const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
   const fav = pr.p1 >= 0.5 ? ft.f1 : ft.f2, dog = pr.p1 >= 0.5 ? ft.f2 : ft.f1;
   const favP = Math.max(pr.p1, 1 - pr.p1);
   out.link = 'cbfight/' + org + '-' + ft.comp_id;
@@ -7925,7 +7926,7 @@ async function combatFightAskBundle(C, ev, ft, org, lang, isAdmin) {
   } else {
     const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
     const m = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
-    const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+    const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
     out.gp_prob_pct = { [ft.f1.name]: Math.round(pr.p1 * 100), [ft.f2.name]: Math.round((1 - pr.p1) * 100) };
     out.metodo = { ko_pct: Math.round(m.ko * 100), sub_pct: Math.round(m.sub * 100), dec_pct: Math.round(m.dec * 100), termina_antes_del_limite_pct: Math.round(m.finish * 100), rounds_esperados: m.exp_rounds };
     out.factores = (bd && bd.parts || []).slice(0, 6).map((x) => ({ factor: (en ? CB_FACTOR_EN : CB_FACTOR_ES)[x.key] || x.key, pp: +(x.pp || 0).toFixed(1) }));
@@ -8037,6 +8038,42 @@ function askToolsFor(sport, { u, lang, org }) {
   return { tools, runTool, sportLabel: 'COMBATE (UFC · MMA/PFL · Boxeo). Si preguntan por fútbol, indica el conmutador de deporte de arriba.' };
 }
 
+// ── Dossier PROFUNDO de una pick de pelea para el redactor (12-ago, "análisis de élite" de Alexis) ──
+// Todo sale de los engines existentes (breakdown con etiquetas de producto, film study, estilos, tale of
+// the tape, señales, método, mercado). El redactor NUNCA ve pesos ni features: solo números con nombre.
+function combatPickDossier(p) {
+  const org = p.league || 'ufc';
+  const base = {
+    pelea: `${p.event.home} vs ${p.event.away}`, org, kickoff: p.event.kickoff_at,
+    division: p.event.weight || null, rounds_pactados: p.event.rounds || 3, cartel: p.card_slot || null,
+    pick: {
+      seleccion: p.selection_name, cuota: p.best_odds, casa: p.best_book, casas_cotizando: p.books || null,
+      prob_gp_pct: p.model_prob != null ? Math.round(p.model_prob * 100) : null,
+      prob_mercado_pct: p.market_prob != null ? Math.round(p.market_prob * 100) : null,
+      edge_pp: p.edge_blend_pp != null ? p.edge_blend_pp : null,
+    },
+  };
+  try {
+    const C = combatLoad(org);
+    const cid = String(p.event.canonical_event_id || '').replace(/^cb-/, '');
+    let ev = null, ft = null;
+    for (const e of (C.upcoming || [])) { const x = (e.fights || []).find(f => f.comp_id === cid); if (x) { ev = e; ft = x; break; } }
+    if (!ft) return base; // sin ficha en la agenda (feed caído): el redactor trabaja con lo esencial
+    const sgn = p.selection_code === 'f2' ? -1 : 1;
+    const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
+    base.factores_del_cruce = ((bd && bd.parts) || []).slice(0, 8)
+      .map(x => ({ factor: CB_FACTOR_ES[x.key] || x.key, pp_hacia_la_pick: +(x.pp * sgn).toFixed(1) }));
+    const film = combatFilmStudy(C, ft) || {};
+    base.lectura_de_cinta = ((film.findings) || []).map(f => f.es);
+    if (film.profile) base.perfil_de_accion = { [ft.f1.name]: film.profile.f1, [ft.f2.name]: film.profile.f2 };
+    base.estilos = combatStyleMatch(C, ft) || null;
+    const tale = (id) => { const s = combatFighterSummary(C, id) || {}; return { edad: s.age, alcance: s.reach_in, guardia: s.stance, record: s.record, forma_reciente: s.form, campamento: s.camp, ko_recibidos: s.ko_losses, minutos_de_jaula: s.cage_min, ultima_pelea: s.last_fight }; };
+    base.peleadores = { [ft.f1.name]: tale(ft.f1.id), [ft.f2.name]: tale(ft.f2.id) };
+    base.senales = (combatIntelFlags(C, ft, ev.date) || []).map(x => x.es);
+    if (p.method) base.metodo_estimado = p.method; // {ko, sub, dec} del modelo al crear la pick
+  } catch { /* dossier parcial: mejor esencial que nada */ }
+  return base;
+}
 // ── Redactor: why de picks en prosa (una vez por pick, persistido → costo fijo) ──
 async function llmAnnotatePickWhys({ cap = 8 } = {}) {
   if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
@@ -8046,6 +8083,14 @@ async function llmAnnotatePickWhys({ cap = 8 } = {}) {
     for (const p of pool) {
       if (done >= cap) break;
       if (p.status !== 'ACTIVE' || p.result_code === 'SUPERSEDED' || p.why_ai_es || !p.why_es) continue;
+      // COMBATE FIGHT (12-ago): redactor PROFUNDO con el dossier completo del cruce — la lectura al nivel
+      // de pronosticador de élite que pidió Alexis. Si falla o el dossier queda mínimo, cae a la ruta clásica.
+      if (sport === 'combat' && (p.family || 'FIGHT') === 'FIGHT') {
+        try {
+          const w2 = await llm.writeFightRead(combatPickDossier(p));
+          if (w2) { p.why_ai_es = w2.es; p.why_ai_en = w2.en; done++; save(); continue; }
+        } catch (e) { if (/llm_budget|llm_disabled/.test(e.message)) return { done, stopped: e.message }; }
+      }
       try {
         const w = await llm.writePickWhy({
           sport, family: p.family, league: p.competition_name || p.league || null,
@@ -8133,7 +8178,7 @@ function combatLineMoves(C, { hours = 96 } = {}) {
     let modelPp = null, side = null, withUs = null;
     if (ft) {
       const ev = (C.upcoming || []).find(e => e.fights.some(x => x.comp_id === comp));
-      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
       modelPp = +((pr.p1 - now.fair) * 100).toFixed(1);     // cuánto nos separamos del mercado hoy
       side = pr.p1 >= now.fair ? 'f1' : 'f2';              // el lado que preferimos
       // ¿el mercado se mueve hacia el lado que preferimos?
@@ -8693,6 +8738,15 @@ async function buildCombatPicks({ dryRun = false } = {}) {
         if (t2 !== p[k]) { p[k] = t2.trim(); out.why_sanitized = (out.why_sanitized || 0) + 1; }
       }
     }
+    // MIGRACIÓN one-shot (12-ago): las picks FIGHT activas regeneran su lectura con el redactor PROFUNDO
+    // (writeFightRead con dossier completo) — se limpia why_ai y el anotador periódico las re-escribe.
+    if (!db.cbDeepReadV1) {
+      let cleared = 0;
+      for (const p of (db.combatPicks || [])) {
+        if (p.status === 'ACTIVE' && (p.family || 'FIGHT') === 'FIGHT' && p.why_ai_es) { delete p.why_ai_es; delete p.why_ai_en; cleared++; }
+      }
+      db.cbDeepReadV1 = true; out.deep_read_reset = cleared;
+    }
     // Picks nacidas sobre cruces FANTASMA de boxeo (placeholder 31-dic, ver combatBoxingUpcoming) → VOID:
     // esa pelea no existe con esa fecha — era un mercado especulativo de las casas, no una cartelera.
     for (const p of (db.combatPicks || [])) {
@@ -8704,7 +8758,7 @@ async function buildCombatPicks({ dryRun = false } = {}) {
     }
   }
   if (!dryRun) {
-    if (out.added || out.superseded || out.closing_updated || out.why_sanitized || out.phantom_voided) save();
+    if (out.added || out.superseded || out.closing_updated || out.why_sanitized || out.phantom_voided || out.deep_read_reset) save();
     out.active = (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length;
     delete out.candidates;
   }
@@ -8741,7 +8795,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       const mo = combatFightOdds(C, ft);
       if (!mo || mo.books < 1) continue; // monitor: 1 casa basta (PFL solo cotiza en Cloudbet); books viaja en la pick
       out.with_odds++;
-      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
       const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
       // opening: primera cuota vista de cada lado (CLV-desde-apertura, mismo mecanismo de clubes)
       for (const [side, odds] of [['f1', mo.best.f1], ['f2', mo.best.f2]]) {
@@ -8764,7 +8818,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       const kel = Math.max(0, (bestSide.blend * (bestSide.odds - 1) - (1 - bestSide.blend)) / (bestSide.odds - 1)) / 4;
       const pickName = bestSide.side === 'f1' ? ft.f1.name : ft.f2.name;
       const rivalName = bestSide.side === 'f1' ? ft.f2.name : ft.f1.name;
-      const bdW = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const bdW = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
       const whyPair = combatPickWhy({ name: pickName, rival: rivalName, m: bestSide.m, k: bestSide.k, eg: bestSide.eg, books: mo.books, slot: ft.main ? 'main' : 'prelim', parts: bdW && bdW.parts, side: bestSide.side });
       fresh.push({
         why_es: whyPair.es, why_en: whyPair.en,
@@ -8793,7 +8847,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       const cb = ((C.cbb || {}).byComp || {})[ft.comp_id];
       if (!cb || !ft.f1.id || !ft.f2.id) continue;
       if ((C.elo.N[ft.f1.id] || 0) < 3 || (C.elo.N[ft.f2.id] || 0) < 3) continue; // regla de muestra (7-ago)
-      const pr2 = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+      const pr2 = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
       const meth2 = CE.methodProbs(C.mm, pr2.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
       const mkBase = { slot: ft.main ? 'main' : 'prelim', ev, ft };
       // METHOD
@@ -9028,8 +9082,8 @@ function combatModelOverRounds(method, line, sched) {
 }
 // narrativa de la pick de combate (mismo espíritu del compose del fútbol: el "por qué" al nivel de analista)
 // narrativa caja-negra de la pick (regla de la casa: factores del enfrentamiento, JAMÁS mecánica del modelo)
-const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula', slpm: 'ritmo de golpeo', td15: 'juego de derribos', tddef: 'defensa de derribo', ctrl: 'control del cage', kdr: 'poder de nocaut', misswt: 'condición en el pesaje' };
-const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft', slpm: 'striking output', td15: 'takedown game', tddef: 'takedown defense', ctrl: 'cage control', kdr: 'one-punch power', misswt: 'condition at the weigh-in' };
+const CB_FACTOR_ES = { elo: 'nivel demostrado', reach: 'ventaja de alcance', exp: 'experiencia', years: 'desgaste de carrera del rival', age: 'ventaja de edad', chin: 'durabilidad', streak: 'momento actual', mileage: 'oficio en la jaula', slpm: 'ritmo de golpeo', td15: 'juego de derribos', tddef: 'defensa de derribo', ctrl: 'control del cage', kdr: 'poder de nocaut', misswt: 'condición en el pesaje', grap: 'amenaza de derribo sobre la defensa rival', power: 'poder contra el mentón rival', absorb: 'defensa de golpeo', age5: 'edad a cinco rounds', subth: 'amenaza de sumisión' };
+const CB_FACTOR_EN = { elo: 'proven level', reach: 'reach advantage', exp: 'experience', years: "the rival's career wear", age: 'age advantage', chin: 'durability', streak: 'current momentum', mileage: 'cage craft', slpm: 'striking output', td15: 'takedown game', tddef: 'takedown defense', ctrl: 'cage control', kdr: 'one-punch power', misswt: 'condition at the weigh-in', grap: 'takedown threat vs rival defense', power: 'power vs the rival chin', absorb: 'striking defense', age5: 'age over five rounds', subth: 'submission threat' };
 function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
   const mp = Math.round(m * 100), kp = Math.round(k * 100);
   // factores a favor del lado elegido (parts vienen orientados a f1; espejar si la pick es f2)
@@ -12729,7 +12783,7 @@ const server = http.createServer(async (req, res) => {
           for (const ft of ev.fights) {
             const mo = combatFightOdds(C, ft);
             if (!mo || mo.books < 3) continue;
-            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
             for (const [side, fair, model, odds] of [['f1', mo.fair_f1, pr.p1, mo.best.f1], ['f2', 1 - mo.fair_f1, 1 - pr.p1, mo.best.f2]]) {
               if (!(odds > 1)) continue;
               const evPct = (odds * fair - 1) * 100; // valor de COMPRA vs consenso no-vig (line shopping)
@@ -12804,7 +12858,7 @@ const server = http.createServer(async (req, res) => {
         const officials = combatOfficials(C.org);
         const fights = [];
         for (const ft of ev.fights) {
-          const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+          const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
           const sched = ft.rounds || 3;
           const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, sched);
           const mo = combatFightOdds(C, ft);
@@ -12877,7 +12931,7 @@ const server = http.createServer(async (req, res) => {
         const divs = [], intel = [];
         for (const ev of cards.slice(0, 2)) {
           for (const ft of ev.fights) {
-            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date);
+            const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
             const mo = combatFightOdds(C, ft);
             if (mo && mo.books >= 1) {
               const gap = (pr.p1 - mo.fair_f1) * 100;

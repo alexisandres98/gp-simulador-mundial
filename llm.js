@@ -183,6 +183,21 @@ async function writePickWhy(payload) {
   return j && j.es && j.en ? { es: String(j.es).slice(0, 600), en: String(j.en).slice(0, 600) } : null;
 }
 
+// ── Redactor PROFUNDO de combate (12-ago, orden de Alexis: análisis "de pronosticador de élite") ──
+// La PROBABILIDAD la pone el modelo estadístico (calibrado, backtesteado); la PROFUNDIDAD la pone este
+// redactor, anclado SOLO al dossier (breakdown + film + estilos + intel + método + historial + mercado).
+// Doctrina de caja negra intacta: narra la pelea y sus números, jamás el mecanismo del sistema.
+async function writeFightRead(payload) {
+  const resp = await call({
+    kind: 'writer',
+    max_tokens: 900,
+    system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura de la pelea para la pick indicada, en DOS párrafos por idioma: (1) LA TESIS — qué inclina la pelea a favor de la pick y su CAMINO de victoria concreto (dónde y cómo gana: distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL RIESGO — el mejor argumento del rival y la señal concreta que invalidaría la tesis (qué habría que ver en la jaula para saber que salió mal). Si el dossier trae edge vs mercado, cierra con UNA frase sobre el valor del precio. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."}.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) } : null;
+}
+
 async function writeBrief(payload, sport) {
   const resp = await call({
     kind: 'writer',
@@ -213,4 +228,4 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
-module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeBrief, extractSignals };
+module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeBrief, extractSignals };

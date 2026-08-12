@@ -14585,6 +14585,27 @@ const server = http.createServer(async (req, res) => {
           // no se consultan: su season backfilleada ya terminó y la nueva aún no existe en el proveedor.
           let up = global._clubsUpcoming[key];
           if (L.starts || !L.comp) up = up || { at: Date.now(), rows: [] }; // pretemporada o liga ESPECIAL sin TSA
+          // LIGAS ESPECIALES (12-ago, Supercopa UEFA / amistosos): sin TSA, los PRÓXIMOS salen del scoreboard
+          // de ESPN (memo 10 min) — el usuario ve el partido ANTES del kickoff, no solo cuando entre en vivo.
+          if (!L.comp && !L.starts && CLUB_ESPN[key] && !(up.rows || []).length && Date.now() - (up.espnAt || 0) > 10 * 60e3) {
+            try {
+              const f0 = new Date(Date.now() - 864e5).toISOString().slice(0, 10).replace(/-/g, '');
+              const t0 = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10).replace(/-/g, '');
+              const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${CLUB_ESPN[key]}/scoreboard?dates=${f0}-${t0}`, { signal: AbortSignal.timeout(12000) }).then(r => r.json());
+              const idx2 = {}; for (const [tid2, t2] of Object.entries(L.ratings || {})) idx2[clubNorm(t2.name)] = tid2;
+              const rows = [];
+              for (const e of (sb.events || [])) for (const c of (e.competitions || [])) {
+                const hm = (c.competitors || []).find(x => x.homeAway === 'home'), aw = (c.competitors || []).find(x => x.homeAway === 'away');
+                const hId2 = hm && clubBestNameMatch(idx2, (hm.team || {}).displayName), aId2 = aw && clubBestNameMatch(idx2, (aw.team || {}).displayName);
+                if (!hId2 || !aId2) continue; // partido ajeno a nuestros clubes (p.ej. amistoso de terceros) → fuera
+                const ko = Date.parse(e.date || 0);
+                if (!isFinite(ko) || ko < Date.now() - 6 * 3600e3) continue;
+                rows.push({ id: 'espn-' + c.id, utc_date: e.date, home_team: { id: hId2, name: L.ratings[hId2].name }, away_team: { id: aId2, name: L.ratings[aId2].name } });
+              }
+              up = { at: Date.now(), espnAt: Date.now(), rows };
+              global._clubsUpcoming[key] = up;
+            } catch { /* scoreboard caído: la liga especial queda sin próximos este ciclo */ }
+          }
           // `failed:true` = el último intento no trajo data (TSA caído/500): reintento a los 10min en vez de
           // congelar 6h, y JAMÁS pisar un memo con filas buenas por una respuesta mala (la caída de TSA del
           // 23-jul dejó carteleras vacías cacheadas — este es el candado).

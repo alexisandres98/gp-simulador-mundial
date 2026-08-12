@@ -6351,6 +6351,8 @@
   // FILM STUDY (R5): la lectura de la cinta — perfiles + el cruce ataque/vulnerabilidad
   function cbFilmPanel(film, f1n, f2n) {
     if (!film) return '';
+    // FILM STUDY Pro+ (Punto 3b): el panel se muestra con candado — el free VE que existe y qué se pierde
+    if (film.locked) return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_film')) + '</span><span class="gx-ph-extra gx-dim">' + esc(t('cb_film_sub')) + '</span></div><div class="gx-mod-body">' + lockPanelPro() + '</div></div>';
     var pr = film.profile || {}, fi = film.findings || [];
     var l1 = (f1n || '').split(' ').pop(), l2 = (f2n || '').split(' ').pop();
     var pct = function (x) { return x == null ? '—' : Math.round(x * 100) + '%'; };

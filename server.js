@@ -12965,7 +12965,9 @@ const server = http.createServer(async (req, res) => {
           // la plantilla queda de respaldo hasta que el pase de 30 min la alcance. deep marca la fuente.
           gp_read: (function () { const dr = (db.combatFightReads || {})[C.org + ':' + cid]; return dr ? { es: dr.es, en: dr.en, deep: true } : combatGpRead(ft, pr.p1, breakdown && breakdown.parts, intelAll); })(),
           style_match: combatStyleMatch(C, ft),
-          film: combatFilmStudy(C, ft),
+          // FILM STUDY = Pro+ (12-ago, decisión de Alexis): es el panel más "analista premium" del cockpit
+          // y autocontenido — la probabilidad/predicción quedan free como gancho, la cinta se gana suscribiendo.
+          film: cbProUp ? combatFilmStudy(C, ft) : { locked: 'pro' },
           // #5: precisión / posición / grappling (display; no entró al modelo, ver combatEspnStats)
           espn: (function () { const e = combatEspnStats(C.org); if (!e) return null;
             return { f1: e.career[ft.f1.id] || null, f2: e.career[ft.f2.id] || null }; })(),

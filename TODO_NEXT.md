@@ -118,3 +118,57 @@ La Fase 4 depende de construir primero la **feature de datos de equipo** (no exi
 - No recomendar longshots (<30% prob) ni apostar contra el favorito del modelo.
 - Login obligatorio salvo teaser top-6.
 - Español, mobile-first, sin consejo financiero.
+
+## ═══ SESIÓN 12-AGO (noche) — estado guardado para la próxima sesión ═══
+
+### HECHO Y DESPLEGADO HOY (commits 5fb7f8c → 5bb4ef2+)
+- **Punto 3 EJECUTADO — combate por planes** (efectivo desde las 20:00 UTC, cuando venció la ventana gratis):
+  free = toda la inteligencia (agenda/fichas/cockpit/vivo/mapa/rendimiento) + 1 pick GANADOR liberada 60min
+  antes + candado con conteo; pro = feed completo GANADOR + brief/slate/parlay + Ask; sharp = value/arb/
+  movimiento de línea + MÉTODO/ROUNDS. Server: cbPlan en /api/combat/* (admin previsualiza ?asplan=free|pro|sharp,
+  también vía chips de Mi suscripción). UI: teasers/lockpanels reutilizando la gramática de fútbol. /plans
+  (founder.html) actualizado ES+EN con features de combate + FAQs. VERIFICADO en vivo con asplan.
+- **Punto 1 — lectura profunda en el cockpit de la PELEA**: llm.writeFightPreview + combatFightDossier +
+  llmFightReadsPass (cada 30min, 1 vez por pelea, poda 7d) + gp_read servido desde db.combatFightReads.
+  Forzar pase: POST /api/internal/llm?key=<GP_EXPORT_KEY>&run=fightreads&cap=6
+  ⚠️ PENDIENTE DE CIERRE: el redactor "corrigió" al sistema con su prior en Makhachev-Garry (la lectura
+  coronaba a Makhachev cuando el modelo y la pick van con Garry 55%). Prompt v2 + discrepancia_vs_mercado
+  en el dossier + migración cbFightReadV2 NO bastaron — el segundo intento repitió el sesgo. Diagnóstico
+  desplegado: run=dossier&org=ufc&id=401869336 (ver el dossier exacto) y run=fightread1 (re-escribir una).
+  Próximo paso: confirmar qué dice favorito_gp en el dossier; si es Garry, endurecer más (poner el favorito
+  como línea explícita del mensaje de usuario, p.ej. "FAVORITO DEL SISTEMA: Ian Machado Garry 55% — el
+  análisis lo defiende") y re-escribir las 6 lecturas.
+- **Bonus — capa de contexto**: CLUB_AF_LEAGUE cubría 24 de 40 ligas; se agregaron las 16 de la expansión
+  + uefa (531) + amistosos (667). af-team-map.json en disco (+PSG 85, Villa 66, Madrid 541, Depor 544) —
+  VERIFICADO: PSG-Villa fixture 1583664 con stats en vivo; Madrid-Depor 1591931. Herramientas nuevas:
+  /api/internal/af-team-search?key=&q= y /api/internal/clubs-data?key=&name= (descarga).
+- **Punto 4 (foundation)**: CLUB_ESPN += champions/europa + stubs en ratings.json. Lo pesado (roster con
+  Elo anclado CROSS-LIGA + backtest 1X2 antes de publicar prob/picks) es proyecto de fin de agosto: las
+  keys de The Odds API se activan en septiembre y la fase liga arranca a mediados de sept.
+- **Fix lectura-vs-pick**: prompt writeFightPreview PROHÍBE contradecir favorito_gp (pendiente de validar, ver arriba).
+
+### EMAIL MASIVO COMBATE — PREPARADO, NO ENVIADO (Alexis da el GO)
+- Variants: gpcombat2_es / gpcombat2_en (server.js gpCombat2Email). Imagen: gpsimulador.com/ig/combat-intel-email.png (+-en).
+- ⚠️ DECISIÓN EDITORIAL: el pedido original era "acertamos la mayoría de las picks" pero el track público
+  dice 26W-40L (-3.03u, 39.4%) y cualquier usuario puede abrir Rendimiento. El email preparado vende
+  PROFUNDIDAD + TRANSPARENCIA (track auditable) + Makhachev-Garry como demo del sistema contra el consenso
+  + features por plan + sin aumento de precio. NO afirma récord ganador. Si Alexis insiste en el claim del
+  récord, mostrarle los números primero.
+- ENVIAR (cuando dé el go): verificar conteo → POST /api/admin/broadcast?key=<GP_EXPORT_KEY> body {"variant":"gpcombat2_es","count":true}
+  → disparar ES: body {"variant":"gpcombat2_es"} → agendar EN +6h: body {"variant":"gpcombat2_en","schedule_at":"<ISO +6h>"}
+- Probar antes con {"variant":"gpcombat2_es","test":true} (va solo al admin) si se quiere ver en bandeja.
+
+### PENDIENTES QUE SIGUEN
+- Cerrar el sesgo del redactor de peleas (arriba) y re-escribir las lecturas.
+- Punto 4 completo: anclaje cross-liga + backtest (antes de sept).
+- Auditoría de identidad de fotos wiki (más homónimos tipo Ernesto Mercado).
+- Post-upgrade Odds API: borrar envs temporales (SPORTSBOOK_QUOTA_RESERVE, GP_CLUBS_PROPS_WINDOW_H,
+  GP_CLUBS_SWEEP_MIN, GP_GATE_OVERRIDE_SEGMENTS) y rotar API_FOOTBALL_KEY.
+- Alexis revisará todos los números de picks después del fin de semana.
+
+### PROMPT PARA ABRIR SESIÓN NUEVA (móvil)
+> Continúa GP Simulador. Lee CLAUDE.md y la sección "SESIÓN 12-AGO (noche)" de TODO_NEXT.md.
+> Pendiente inmediato: (1) cerrar el sesgo del redactor de lecturas de pelea (run=dossier / run=fightread1,
+> caso Makhachev-Garry debe defender a Garry); (2) el email gpcombat2 está listo — yo doy el go para ES y
+> la versión EN se agenda 6h después; (3) seguir con el anclaje cross-liga de Champions/Europa.
+> Token admin: pedírmelo si no está en scratchpad. RENDER_API_KEY: pedírmela.

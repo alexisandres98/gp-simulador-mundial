@@ -11307,8 +11307,12 @@ const server = http.createServer(async (req, res) => {
       const sport = b.sport === 'combat' ? 'combat' : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
       if (sport === 'combat') {
-        // combate hereda su gate (admin-only hasta GP_COMBAT_PUBLIC_ENABLED)
+        // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
+        // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
         if (!(u.isAdmin || String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true')) return json(res, 404, { error: 'No encontrado' });
+        const cbFree = Date.parse(process.env.GP_COMBAT_FREE_UNTIL || '2026-08-12T00:00:00Z');
+        const okCb = u.isAdmin || !plansEnforced() || Date.now() < cbFree || ['pro', 'sharp'].indexOf(effectivePlan(u.email)) >= 0;
+        if (!okCb) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (!askAccessOk(u)) {
         return json(res, 403, { error: 'upgrade', need: 'pro' });
       }
@@ -12470,10 +12474,20 @@ const server = http.createServer(async (req, res) => {
       // es historia interna del monitor. Con el flag OFF, todo sigue admin-only byte-idéntico.
       const cbPublic = String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true';
       const cbFreeUntil = Date.parse(process.env.GP_COMBAT_FREE_UNTIL || '2026-08-12T00:00:00Z');
-      const cbPlanOk = !!u && (u.isAdmin || !plansEnforced() || Date.now() < cbFreeUntil || ['pro', 'sharp'].indexOf(effectivePlan(u.email)) >= 0);
-      const allowed = (u && u.isAdmin) || (cbPublic && u && cbPlanOk);
-      if (!allowed) return json(res, 404, { error: 'No encontrado' }); // 404, ni señal
+      // PLAN GATING v3 (12-ago, Punto 3 — mapa aprobado por Alexis): combate deja de ser todo-o-nada.
+      // free  = toda la INTELIGENCIA (agenda, fichas, cockpit, en vivo, mapa de la noche, rendimiento)
+      //         + 1 pick GANADOR liberada 60 min antes del campanazo (mismo trato que fútbol Free);
+      // pro   = feed completo de picks GANADOR + brief/slate/parlay + Pregúntale a GP;
+      // sharp = value, arbitraje, movimiento de línea y las familias MÉTODO/ROUNDS.
+      // Durante la ventana de lanzamiento (GP_COMBAT_FREE_UNTIL) todos son sharp. Admin previsualiza ?asplan=.
       const cbAdmin = !!(u && u.isAdmin);
+      const cbAs = String(url.searchParams.get('asplan') || '');
+      const cbPlan = cbAdmin ? (['free', 'pro', 'sharp'].indexOf(cbAs) >= 0 ? cbAs : 'sharp')
+        : (!plansEnforced() || Date.now() < cbFreeUntil) ? 'sharp'
+          : (u ? effectivePlan(u.email) : 'free');
+      const cbSharp = cbPlan === 'sharp', cbProUp = cbSharp || cbPlan === 'pro';
+      const allowed = cbAdmin || (cbPublic && u);
+      if (!allowed) return json(res, 404, { error: 'No encontrado' }); // 404, ni señal
       // FIX 5-ago (reporte Alexis: un pro no veía las picks de UFC): el corte va por KICKOFF de la pelea,
       // no por created_at — las activas de la cartelera del sábado nacieron el 2-4 y el filtro viejo se las
       // comía. Regla de la casa (estado por reloj): pelea POSTERIOR al lanzamiento → visible aunque la pick
@@ -12484,6 +12498,10 @@ const server = http.createServer(async (req, res) => {
       // y su resultado entra al track visible. Mismo corte temporal del lanzamiento (CB_PUBLIC_SINCE).
       const cbPickVisible = (x) => cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE();
       const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE() };
+      // Punto 3: visibilidad de PICK por plan — sharp ve todo; pro solo GANADOR (MÉTODO/ROUNDS son sharp);
+      // free no ve chips de pick en cockpit/estado/mapa: su única pick vive en Oportunidades (tardía, 60min).
+      const cbPickPlanOk = (x) => cbSharp || (cbProUp && (x.family || 'FIGHT') === 'FIGHT');
+      const cbPickListOk = (x) => cbProUp && cbPickPlanOk(x);
       const CE = require('./combat-engine/ratings');
       // F2 refactor: loader/matcher/récord/upcoming+odds viven top-level (combatLoad y compañía) — una sola
       // fuente compartida con el loop de picks. F5: ?org=ufc|mma (mma = Bellator histórico + PFL activa).
@@ -12517,7 +12535,7 @@ const server = http.createServer(async (req, res) => {
             // F1b: probs de método (KO/Sub/Dec) + rounds para la pelea (validado walk-forward antes de exponer)
             const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
             const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id) || null;
-            const pick = pk ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct } : null;
+            const pick = (pk && cbPickVisible(pk) && cbPickPlanOk(pk)) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct } : null;
             return { ...ft, rated, prob: rated.ok ? pr : null, method: rated.ok ? method : null, market, pick, f1: { ...ft.f1, ...pf(ft.f1.id) }, f2: { ...ft.f2, ...pf(ft.f2.id) }, odds };
           }),
         }));
@@ -12540,7 +12558,7 @@ const server = http.createServer(async (req, res) => {
           backtest_method: C.btm || (C.btm = CE.backtestMethod(C.fights.fights || [])),
           // F2: monitor privado de picks (admin-only por el gate del route; jamás feed público)
           picks_enabled: (cbAdmin || cbPublic) && combatPicksOn(),
-          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).filter(cbPickVisible).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
+          picks: (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).filter(cbPickVisible).filter(cbPickListOk).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)),
           picks_track: combatPicksTrack(cbTrackOpts),
         });
       }
@@ -12756,7 +12774,7 @@ const server = http.createServer(async (req, res) => {
           live, live_probs: liveProbs,
           fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
-          pick: (pk && cbPickVisible(pk)) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
+          pick: (pk && cbPickVisible(pk) && cbPickPlanOk(pk)) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
         });
       }
       // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)
@@ -12833,15 +12851,31 @@ const server = http.createServer(async (req, res) => {
           }
         }
         value.sort((a, b) => b.ev_pct - a.ev_pct);
-        const myPicks = (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).filter(cbPickVisible).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at));
-        for (const p2 of myPicks) { // backfill de narrativa en picks creadas antes de R2b
+        const myPicksAll = (db.combatPicks || []).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org).filter(cbPickVisible).sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at));
+        for (const p2 of myPicksAll) { // backfill de narrativa en picks creadas antes de R2b
           if (p2.why_es) continue;
           const w2 = combatPickWhy({ name: p2.selection_name, rival: p2.selection_code === 'f1' ? p2.event.away : p2.event.home, m: p2.model_prob, k: p2.market_prob, eg: p2.edge_blend_pp || 0, books: p2.books || 0, slot: p2.card_slot });
           p2.why_es = w2.es; p2.why_en = w2.en;
         }
+        // ── GATING POR PLAN (Punto 3): free = 1 pick GANADOR tardía + candado; pro sin MÉTODO/ROUNDS;
+        // value/arb solo sharp (mismo mapa que fútbol). locked alimenta el teaser "N picks más — en Pro".
+        let myPicks = myPicksAll.filter(cbPickPlanOk);
+        let locked = null;
+        if (!cbProUp) {
+          const cand = myPicksAll.filter(x => (x.family || 'FIGHT') === 'FIGHT')
+            .slice().sort((a, b) => (b.edge_blend_pp || 0) - (a.edge_blend_pp || 0))[0] || null;
+          const soon = cand && Date.parse(cand.event.kickoff_at) - Date.now() <= 60 * 60e3;
+          myPicks = (cand && soon) ? [cand] : [];
+          if (myPicksAll.length > myPicks.length) locked = { need: 'pro', count: myPicksAll.length - myPicks.length, delayed: !!(cand && !soon) };
+        } else if (!cbSharp && myPicksAll.length > myPicks.length) {
+          locked = { need: 'sharp', count: myPicksAll.length - myPicks.length };
+        }
         return json(res, 200, {
-          picks: myPicks,
-          picks_enabled: combatPicksOn(), value: value.slice(0, 20), arbs, track: combatPicksTrack(cbTrackOpts),
+          picks: myPicks, picks_locked: locked,
+          picks_enabled: combatPicksOn(),
+          value: cbSharp ? value.slice(0, 20) : [], arbs: cbSharp ? arbs : [],
+          locks: cbSharp ? null : { value: 'sharp', arbs: 'sharp' },
+          track: combatPicksTrack(cbTrackOpts),
         });
       }
       // R2: RENDIMIENTO combat — track + liquidadas (formato del perf de fútbol; admin-only por el gate)
@@ -12883,6 +12917,7 @@ const server = http.createServer(async (req, res) => {
       // o peleador, con la regla de desambiguación) + la INTENCIÓN (qué te están preguntando) y responde con
       // los outputs REALES de los engines ya validados. Si no sabe, lo dice. Caja negra: factores, no mecánica.
       if (p === '/api/combat/ask' && req.method === 'GET') {
+        if (!cbProUp) return json(res, 403, { error: 'upgrade', need: 'pro' }); // Ask es Pro (Punto 3)
         await combatRefreshUpcoming(C);
         const q = String(url.searchParams.get('q') || '').trim();
         if (!q) return json(res, 400, { error: 'falta la pregunta' });
@@ -12912,7 +12947,7 @@ const server = http.createServer(async (req, res) => {
             market: mo ? { f1: +mo.fair_f1.toFixed(3), books: mo.books, best_f1: mo.best.f1, best_f2: mo.best.f2 } : null,
             gap_pp: mo ? +((pr.p1 - mo.fair_f1) * 100).toFixed(1) : null,
             confidence: conf ? conf.level : null,
-            pick: (pk && cbPickVisible(pk)) ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
+            pick: (pk && cbPickVisible(pk) && cbPickPlanOk(pk)) ? { name: pk.selection_name, family: pk.family, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp } : null,
             ref: (officials[ft.comp_id] || {}).ref || null,
           });
         }
@@ -12956,12 +12991,14 @@ const server = http.createServer(async (req, res) => {
       }
       // #7: movimiento de línea — endpoint propio (para alertas/ops) además del merge en el brief
       if (p === '/api/combat/moves' && req.method === 'GET') {
+        if (!cbSharp) return json(res, 200, { org, hours: 0, count: 0, moves: [], locked: 'sharp' }); // línea = Sharp (Punto 3)
         await combatRefreshUpcoming(C);
         const hours = Math.min(240, Math.max(6, +(url.searchParams.get('hours') || 96)));
         const moves = combatLineMoves(C, { hours });
         return json(res, 200, { org, hours, count: moves.length, moves });
       }
       if (p === '/api/combat/brief' && req.method === 'GET') {
+        if (!cbProUp) return json(res, 200, { locked: 'pro', org }); // brief/slate/parlay = Pro (Punto 3)
         await combatRefreshUpcoming(C);
         const now = Date.now();
         const cards = (C.upcoming || []).filter(e => Date.parse(e.date) > now - 8 * 3600e3)
@@ -13001,7 +13038,7 @@ const server = http.createServer(async (req, res) => {
         if (next) {
           const cardIds = new Set(next.fights.map(f => String(f.comp_id)));
           const inCard = (x) => cardIds.has(String(x.event.canonical_event_id || '').replace('cb-', ''));
-          const cardPicks = (db.combatPicks || []).filter(cbPickVisible).filter(x => x.status === 'ACTIVE' && inCard(x));
+          const cardPicks = (db.combatPicks || []).filter(cbPickVisible).filter(cbPickPlanOk).filter(x => x.status === 'ACTIVE' && inCard(x));
           const stakeU = (p2) => Math.min(2, Math.max(0.25, Math.round((p2.stake_pct || 0.5) * 4) / 4));
           const sPicks = cardPicks.map(p2 => ({ family: p2.family, selection_name: p2.selection_name, odds: p2.best_odds, book: p2.best_book, stake_u: stakeU(p2), model: p2.model_prob, market: p2.market_prob, fight: p2.event.home + ' vs ' + p2.event.away, comp_id: String(p2.event.canonical_event_id || '').replace('cb-', '') }));
           const left = [];
@@ -13070,10 +13107,11 @@ const server = http.createServer(async (req, res) => {
           // PELEAS RETIRADAS de la cartelera (combatCardWatch): lo que nos faltó el 31-jul con Powell.
           off_card: (db.combatCardAlerts || []).filter(a => a.org === org && Date.parse(a.kickoff_at || 0) > Date.now() - 48 * 3600e3)
             .sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 6),
-          picks: (db.combatPicks || []).filter(cbPickVisible).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
+          picks: (db.combatPicks || []).filter(cbPickVisible).filter(cbPickPlanOk).filter(x => x.status === 'ACTIVE' && (x.league || 'ufc') === org)
             .sort((a, b) => Date.parse(a.event.kickoff_at) - Date.parse(b.event.kickoff_at)).slice(0, 10),
           recent: settled.filter(cbPickVisible).map(x => ({ name: x.selection_name, family: x.family, result: x.result_code, units: x.units || 0, odds: x.best_odds, event: x.competition_name || null })),
-          moves: combatLineMoves(C, { hours: 96 }).slice(0, 6),
+          moves: cbSharp ? combatLineMoves(C, { hours: 96 }).slice(0, 6) : [],
+          moves_locked: cbSharp ? null : 'sharp',
           track: combatPicksTrack(cbTrackOpts),
         });
       }

@@ -5913,7 +5913,8 @@
       if (e.v === undefined) { e.v = { _err: true }; e._at = Date.now() - CB_TTL + 5e3; } // reintenta en 5s
       if (CB_VIEWS.indexOf(S.view) >= 0) renderCb(S.view);
     }, 20000);
-    fetch(url, { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    // preview de plan del admin (gp_asplan): el server honra ?asplan= también en combate (Punto 3)
+    fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) {
         if (done) return;
         done = true; clearTimeout(to); e._inflight = false;
@@ -6167,6 +6168,7 @@
         st.loading = false;
         if (j && j.answer) { st.hist = (st.hist || []).concat([{ q: q, answer: j.answer, link: j.link }]); }
         else if (j && j.error === 'limit') { st.hist = (st.hist || []).concat([{ q: q, answer: t('ask_limit'), link: null }]); }
+        else if (j && j.error === 'upgrade') { st.hist = (st.hist || []).concat([{ q: q, answer: t('ask_upgrade'), link: null }]); } // Ask combate = Pro (Punto 3)
         else { st.hist = (st.hist || []).concat([{ q: q, answer: t('e_net'), link: null }]); }
         if (S.view === 'cbask') renderCb('cbask');
       });
@@ -6224,6 +6226,8 @@
     var d = cbGet('brief_' + cbOrg(), '/api/combat/brief?org=' + cbOrg());
     if (!d) { cbShell(t('nav_brief'), cbOrgTabs() + mvLoading()); return; }
     if (d._err) { cbShell(t('nav_brief'), cbOrgTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    // Punto 3: el brief de combate es Pro — candado con CTA a /plans (mismo lenguaje que fútbol)
+    if (d.locked === 'pro') { cbShell(t('nav_brief'), cbOrgTabs() + '<div class="gx-panel gx-mv-panel"><div class="gx-mod-body">' + lockPanelPro() + '</div></div>'); return; }
     var panel = function (icn, key, inner, sub) {
       return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic(icn) + esc(t(key)) + '</span>' +
         (sub ? '<span class="gx-ph-extra gx-dim">' + esc(sub) + '</span>' : '') + '</div><div class="gx-mod-body">' + inner + '</div></div>';
@@ -6310,7 +6314,7 @@
       panel('alert-triangle', 'cbb_intel', intel || none) +
       panel('bolt', 'cbb_picks', picks || none) +
       parlayPanel +
-      panel('trending-up', 'cbm_title', moves || '<div class="gx-dim gx-cb-clean">' + esc(t('cbm_none')) + '</div>', t('cbm_sub')) +
+      panel('trending-up', 'cbm_title', d.moves_locked ? lockPanel() : (moves || '<div class="gx-dim gx-cb-clean">' + esc(t('cbm_none')) + '</div>'), t('cbm_sub')) +
       bellPanel +
       panel('chart-line', 'cbb_recent', trLine + (rec || none)) +
       '</div>');
@@ -6845,15 +6849,31 @@
       var picks = cbOppFilter(d.picks || [], function (p2) { return p2.event.kickoff_at; })
         .slice().sort(function (a, b) { return (b.blend_prob || 0) - (a.blend_prob || 0); });
       var countTxt = picks.length + ' ' + t(picks.length === 1 ? 'pf_count1' : 'pf_count');
+      // teaser de upgrade (Punto 3, misma gramática del board de fútbol): "N picks más — en Pro/Sharp"
+      var lk = d.picks_locked || null;
+      var lockTeaser = '';
+      if (lk && lk.count > 0) {
+        lockTeaser = '<div class="gx-pick-lock">' + ic('lock') + '<div><b>' + esc(t('lock_more_picks', { n: lk.count })) + '</b><span class="gx-dim">' + esc(lk.need === 'sharp' ? t('lock_sharp_s') : t('lock_more_picks_s')) + '</span></div><a class="gx-btn gx-lock-cta" href="/plans">' + esc(t('lock_cta')) + '</a></div>';
+        if (lk.delayed) lockTeaser += '<div class="gx-pick-recap">' + ic('clock') + esc(t('lock_delay')) + '</div>';
+      }
       var body;
-      if (!picks.length) body = '<div class="gx-empty">' + illo('tickets') + '<b>' + esc(t('cb_no_picks')) + '</b></div>';
-      else {
+      if (!picks.length) {
+        // CANDADO, no "sin picks": si hay picks hoy pero el plan no las ve, el vacío jamás parece "sin señal"
+        if (lk && lk.count > 0) body = '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_picks_t')) + '</b><span class="gx-dim">' + esc(lk.delayed ? t('lock_delay') : t('lock_picks_s')) + '</span><a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
+        else body = '<div class="gx-empty">' + illo('tickets') + '<b>' + esc(t('cb_no_picks')) + '</b></div>';
+      } else {
         var shaped = picks.map(cbShapePick);
         body = '<div class="gx-pick-ofday"><div class="gx-label gx-pod-label">★ ' + esc(t('pf_pick_of_day')) + '</div>' + pickCard(shaped[0], {}) + '</div>' +
-          (shaped.length > 1 ? '<div class="gx-label gx-pod-label" style="margin-top:14px">' + esc(t('pf_today')) + ' · ' + (shaped.length - 1) + '</div>' + shaped.slice(1).map(function (p3) { return pickCard(p3, {}); }).join('') : '');
+          (shaped.length > 1 ? '<div class="gx-label gx-pod-label" style="margin-top:14px">' + esc(t('pf_today')) + ' · ' + (shaped.length - 1) + '</div>' + shaped.slice(1).map(function (p3) { return pickCard(p3, {}); }).join('') : '') +
+          lockTeaser;
       }
       inner = '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">' + esc(t('board')) + '</span><span class="gx-ph-extra">' + esc(countTxt) +
         (tr.n ? ' · ' + tr.w + 'W-' + tr.l + 'L · ' + (tr.units >= 0 ? '+' : '') + tr.units + 'u' : '') + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+    } else if (sub === 'value' && d.locks && d.locks.value) {
+      // Value/Arb de combate = Sharp (Punto 3): mismo candado del Value de fútbol
+      inner = '<div class="gx-panel gx-board"><div class="gx-mod-body">' + lockPanel() + '</div></div>';
+    } else if (sub === 'arb' && d.locks && d.locks.arbs) {
+      inner = '<div class="gx-panel gx-board"><div class="gx-mod-body">' + lockPanel() + '</div></div>';
     } else if (sub === 'value') {
       // MISMO formato del Value de fútbol: tabla desktop + gx-mcard móvil, señal por umbrales de la casa (8/5/2.5)
       var vals = cbOppFilter(d.value || [], function (v2) { return v2.date; }).map(function (v2) {

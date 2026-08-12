@@ -206,7 +206,7 @@ async function writePickWhy(payload) {
 async function writeFightRead(payload) {
   const resp = await call({
     kind: 'writer',
-    max_tokens: 900,
+    max_tokens: 1800, // 12-ago: a 900 la respuesta bilingüe de dos párrafos se TRUNCABA → JSON inválido → caía al redactor corto
     system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura de la pelea para la pick indicada, en DOS párrafos por idioma: (1) LA TESIS — qué inclina la pelea a favor de la pick y su CAMINO de victoria concreto (dónde y cómo gana: distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL RIESGO — el mejor argumento del rival y la señal concreta que invalidaría la tesis (qué habría que ver en la jaula para saber que salió mal). Si el dossier trae edge vs mercado, cierra con UNA frase sobre el valor del precio. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
   });

@@ -8771,12 +8771,12 @@ async function buildCombatPicks({ dryRun = false } = {}) {
     }
     // MIGRACIÓN one-shot (12-ago): las picks FIGHT activas regeneran su lectura con el redactor PROFUNDO
     // (writeFightRead con dossier completo) — se limpia why_ai y el anotador periódico las re-escribe.
-    if (!db.cbDeepReadV2) { // v2: la v1 corrió con el bug de JSON del redactor (newlines literales) y las FIGHT cayeron al redactor corto
+    if (!db.cbDeepReadV3) { // v3: la v2 corrió con max_tokens corto (respuesta truncada → JSON inválido → redactor corto); se regeneran las lecturas cortas
       let cleared = 0;
       for (const p of (db.combatPicks || [])) {
-        if (p.status === 'ACTIVE' && (p.family || 'FIGHT') === 'FIGHT' && p.why_ai_es) { delete p.why_ai_es; delete p.why_ai_en; cleared++; }
+        if (p.status === 'ACTIVE' && (p.family || 'FIGHT') === 'FIGHT' && p.why_ai_es && String(p.why_ai_es).length < 500) { delete p.why_ai_es; delete p.why_ai_en; cleared++; }
       }
-      db.cbDeepReadV2 = true; out.deep_read_reset = cleared;
+      db.cbDeepReadV3 = true; out.deep_read_reset = cleared;
     }
     // Picks nacidas sobre cruces FANTASMA de boxeo (placeholder 31-dic, ver combatBoxingUpcoming) → VOID:
     // esa pelea no existe con esa fecha — era un mercado especulativo de las casas, no una cartelera.

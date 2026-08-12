@@ -8153,7 +8153,13 @@ function combatFightDossier(C, ev, ft) {
     const method = CE.methodProbs(C.mm, pr.p1, ft.f1.id, ft.f2.id, ft.weight, ft.rounds || 3);
     if (method) base.desenlace = { ko_pct: Math.round((method.ko || 0) * 100), sub_pct: Math.round((method.sub || 0) * 100), dec_pct: Math.round((method.dec || 0) * 100), rounds_esperados: method.exp_rounds };
     const mo = combatFightOdds(C, ft);
-    if (mo) base.mercado = { prob_pct: { [ft.f1.name]: Math.round(mo.fair_f1 * 100), [ft.f2.name]: Math.round((1 - mo.fair_f1) * 100) }, casas: mo.books };
+    if (mo) {
+      base.mercado = { prob_pct: { [ft.f1.name]: Math.round(mo.fair_f1 * 100), [ft.f2.name]: Math.round((1 - mo.fair_f1) * 100) }, casas: mo.books };
+      // la discrepancia sistema-vs-consenso EXPLÍCITA (la lección Makhachev-Garry: sin esto el redactor
+      // "corrige" al sistema con su prior y la lectura contradice a la pick — inaceptable)
+      const favP = favSide === 'f1' ? pr.p1 : 1 - pr.p1, mktP = favSide === 'f1' ? mo.fair_f1 : 1 - mo.fair_f1;
+      if (Math.abs(favP - mktP) >= 0.05) base.discrepancia_vs_mercado = { sobre: ft[favSide].name, sistema_pct: Math.round(favP * 100), mercado_pct: Math.round(mktP * 100), nota: 'el análisis defiende la lectura del sistema y explica qué puede estar viendo que el consenso no pondera' };
+    }
     const sgn = favSide === 'f2' ? -1 : 1; // factores orientados al favorito del modelo
     const bd = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
     base.factores_del_cruce = ((bd && bd.parts) || []).slice(0, 8)
@@ -8857,6 +8863,13 @@ async function buildCombatPicks({ dryRun = false } = {}) {
         if (p.status === 'ACTIVE' && (p.family || 'FIGHT') === 'FIGHT' && p.why_ai_es && String(p.why_ai_es).length < 500) { delete p.why_ai_es; delete p.why_ai_en; cleared++; }
       }
       db.cbDeepReadV4 = true; out.deep_read_reset = cleared;
+    }
+    // MIGRACIÓN (12-ago): las lecturas de PELEA v1 podían contradecir al favorito del sistema (el redactor
+    // "corregía" con su prior — caso Makhachev-Garry). Se limpian y el pase las re-escribe con el prompt v2.
+    if (!db.cbFightReadV2) {
+      const n2 = Object.keys(db.combatFightReads || {}).length;
+      db.combatFightReads = {};
+      db.cbFightReadV2 = true; out.fight_reads_reset = n2;
     }
     // Picks nacidas sobre cruces FANTASMA de boxeo (placeholder 31-dic, ver combatBoxingUpcoming) → VOID:
     // esa pelea no existe con esa fecha — era un mercado especulativo de las casas, no una cartelera.

@@ -3546,9 +3546,30 @@ const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atl
   // Rusia: ESPN transcribe distinto que TSA (Dinamo/Dynamo, Tolyatti/Togliatti, Krylia/Krylya) → sin alias el
   // marcador en vivo no matcheaba y el partido se quedaba sin resultado (bug 25-jul).
   'dinamo moscow': 'dynamo moscow', 'krylia sovetov': 'krylya sovetov samara', 'akron tolyatti': 'akron togliatti',
-  'dynamo makhachkala': 'dinamo makhachkala', 'zenit st petersburg': 'zenit st petersburg' };
+  'dynamo makhachkala': 'dinamo makhachkala', 'zenit st petersburg': 'zenit st petersburg',
+  // 12-ago — AUDITORÍA COMPLETA de resolución (reporte Alexis: "hay un partido del PSG y del Madrid y el
+  // sistema no lo sabe"): 34 nombres del feed de cuotas NO resolvían contra ratings en 17 ligas → esos
+  // partidos (PSG-Rennes, Toulouse-Lyon, Espanyol-Madrid vía Athletic, Bayern, Inter…) se caían MUDOS del
+  // sweep. Cada alias va del nombre normalizado del FEED al nombre normalizado de NUESTROS ratings,
+  // verificado uno a uno contra data/clubs/ratings.json (empate ambiguo jamás se aliasa a ciegas).
+  'rennes': 'stade rennais', 'lyon': 'olympique lyonnais', 'brest': 'stade brestois',
+  'bayern munich': 'bayern munchen', 'borussia monchengladbach': 'borussia m gladbach',
+  'inter milan': 'inter', 'athletic bilbao': 'athletic club', 'hertha berlin': 'hertha bsc',
+  'rb salzburg': 'red bull salzburg', 'hearts': 'heart of midlothian',
+  'copenhagen': 'kobenhavn', 'ob odense bk': 'odense boldklub',
+  'aalesund': 'aalesunds fk', 'sarpsborg fk': 'sarpsborg 08',
+  'kryliya sovetov': 'krylya sovetov samara',
+  'olympiakos piraeus': 'olympiacos', 'asteras tripolis': 'asteras aktor',
+  'gazisehir gaziantep': 'gaziantep fk', 'amed sk': 'amed sportif faaliyetler', 'erzurum bb': 'erzurumspor fk',
+  'shanghai sipg': 'shanghai port', 'jeju united': 'jeju sk', 'ulsan hyundai': 'ulsan hd', 'sangju sangmu': 'gimcheon sangmu',
+  'bragantino sp': 'red bull bragantino', 'atletico paranaense': 'athletico',
+  'estudiantes': 'estudiantes de la plata', 'independiente': 'ca independiente',
+  'clube de regatas brasil': 'crb' };
 function clubNorm(s) {
   let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // 12-ago (auditoría de resolución: Brøndby/Tromsø/Kasımpaşa se caían MUDOS del sweep): ø/æ/ı/ß/ð/þ/ł NO
+  // se descomponen con NFD — el strip de no-ascii los borraba y mutilaba el nombre ('brøndby'→'br ndby').
+  n = n.replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/ı/g, 'i').replace(/ß/g, 'ss').replace(/ð/g, 'd').replace(/þ/g, 'th').replace(/ł/g, 'l').replace(/đ/g, 'd');
   n = n.replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|cd|sc|ac|afc|ec|sad)\b/g, ' ').replace(/\s+/g, ' ').trim();
   return CLUB_ALIAS[n] || n;
 }

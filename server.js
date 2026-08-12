@@ -9831,7 +9831,9 @@ function loadClubAfMap() {
 loadClubAfMap();
 setInterval(loadClubAfMap, 12 * 3600 * 1000);
 // liga nuestra → league id de API-Football (mismos ids del generador de fotos)
-const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207 };
+// uefa (Supercopa) y amistosos (12-ago, Bonus de Alexis): la resolución de fixture va POR EQUIPO (next/last),
+// así que el league id solo abre la puerta del gate — 531 = UEFA Super Cup, 667 = Club Friendlies.
+const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207, uefa: 531, amistosos: 667 };
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
@@ -12371,13 +12373,34 @@ const server = http.createServer(async (req, res) => {
       if (name === 'af-team-map.json') loadClubAfMap();
       return json(res, 200, { ok: true, name, bytes: buf.length, dir: CLUB_DATA_DISK });
     }
-    // LISTAR los datos de clubes en el disco (verificación).
+    // LISTAR los datos de clubes en el disco (verificación). ?name= descarga el archivo (para merges remotos).
     if (p === '/api/internal/clubs-data' && req.method === 'GET') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const dl = String(url.searchParams.get('name') || '');
+      if (dl) {
+        if (!/^[a-z0-9_-]+\.json$/i.test(dl)) return json(res, 400, { error: 'name inválido' });
+        try { const body = fs.readFileSync(path.join(CLUB_DATA_DISK, dl)); res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(body); }
+        catch { return json(res, 404, { error: 'no existe en disco' }); }
+      }
       let files = [];
       try { files = fs.readdirSync(CLUB_DATA_DISK).map(f => ({ name: f, bytes: fs.statSync(path.join(CLUB_DATA_DISK, f)).size })); } catch { /* dir vacío */ }
       return json(res, 200, { dir: CLUB_DATA_DISK, files });
+    }
+    // BUSCADOR de equipos en API-Football (12-ago, onboarding de ligas especiales): resuelve af_id por nombre
+    // con la key del server — la key jamás sale del backend, esto devuelve solo id/nombre/país.
+    if (p === '/api/internal/af-team-search' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+      const q = String(url.searchParams.get('q') || '').trim();
+      if (!afk) return json(res, 200, { error: 'sin API_FOOTBALL_KEY' });
+      if (q.length < 3) return json(res, 400, { error: 'q >= 3 chars' });
+      try {
+        const r = await fetch('https://v3.football.api-sports.io/teams?search=' + encodeURIComponent(q), { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
+        const j = r.ok ? await r.json() : null;
+        return json(res, 200, { teams: ((j && j.response) || []).slice(0, 10).map(x => ({ af_id: x.team && x.team.id, name: x.team && x.team.name, country: x.team && x.team.country })) });
+      } catch (e) { return json(res, 200, { error: e.message }); }
     }
     // MARCADORES DE CLUBES (verificación read-only + disparo manual, misma key).
     if (p === '/api/internal/clubs-scores') {

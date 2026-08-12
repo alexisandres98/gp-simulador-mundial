@@ -8285,7 +8285,37 @@ async function combatBoxingUpcoming(C) {
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
   if (!key) { C.upcoming = C.upcoming || []; return false; }
   const list = await fetch(`https://api.the-odds-api.com/v4/sports/boxing_boxing/odds?apiKey=${key}&regions=eu,us&markets=h2h&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) }).then(r => r.json()).catch(() => null);
-  if (!Array.isArray(list)) return false;
+  if (!Array.isArray(list)) {
+    // AGENDA PERSISTIDA (12-ago, reporte Alexis: "no aparece ningún evento de boxeo y la pelea de la pick
+    // da error"): la agenda de boxeo vivía SOLO en memoria y nace de este feed — con los créditos agotados
+    // (401) y un deploy de por medio quedaba VACÍA hasta el próximo ciclo con créditos. Ahora: (a) cada
+    // agenda buena se persiste en db.boxingAgenda y una falla del feed cae a la última buena (sin eventos
+    // pasados); (b) sin agenda guardada, se reconstruye la MÍNIMA desde las picks activas — la pelea de
+    // una pick publicada debe poder abrirse siempre, con feed o sin él.
+    let restored = ((db.boxingAgenda && db.boxingAgenda.upcoming) || []).filter(ev => Date.parse(ev.date || 0) > Date.now() - 24 * 3600e3);
+    if (!restored.length) {
+      const byDay2 = {};
+      for (const p2 of (db.combatPicks || [])) {
+        if (p2.status !== 'ACTIVE' || p2.league !== 'boxing' || !p2.event) continue;
+        const ko = p2.event.kickoff_at; if (!ko || Date.parse(ko) <= Date.now()) continue;
+        const day2 = String(ko).slice(0, 10);
+        (byDay2[day2] = byDay2[day2] || []).push({
+          comp_id: String(p2.event.canonical_event_id || '').replace(/^cb-/, ''), main: false,
+          weight: p2.event.weight || null, rounds: p2.event.rounds || null, books: p2.books || 0,
+          f1: { id: p2.event.home_id, name: p2.event.home, resolved: true },
+          f2: { id: p2.event.away_id, name: p2.event.away, resolved: true },
+          _at: ko,
+        });
+      }
+      restored = Object.entries(byDay2).sort((a, b) => a[0].localeCompare(b[0])).map(([day2, fights]) => {
+        fights.sort((a, b) => (b.books - a.books) || String(a._at).localeCompare(String(b._at)));
+        if (fights.length) fights[0].main = true;
+        return { id: 'bx-' + day2, date: (fights[0] && fights[0]._at) || (day2 + 'T00:00Z'), name: fights[0] ? `${fights[0].f1.name} vs ${fights[0].f2.name}` : 'Boxeo ' + day2, fights };
+      });
+    }
+    C.upcoming = restored;
+    return false; // el feed NO vino: el diff de cartelera (cardWatch) no debe correr sobre la agenda restaurada
+  }
   const sl = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   // PELEAS FANTASMA (12-ago, reporte Alexis: la agenda mezclaba agosto con "peleas" de diciembre): el feed
   // de boxeo trae mercados ESPECULATIVOS de las casas — cruces hipotéticos (Itauma contra 8 rivales
@@ -8327,6 +8357,9 @@ async function combatBoxingUpcoming(C) {
       fights,
     };
   });
+  // agenda buena → persistir (el fallback de arriba la restaura tras deploys o cortes del feed)
+  db.boxingAgenda = { at: new Date().toISOString(), upcoming: C.upcoming };
+  save();
   return true;
 }
 async function combatDoRefresh(C) {

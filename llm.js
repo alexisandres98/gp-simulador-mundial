@@ -90,7 +90,23 @@ function jsonOf(resp) {
   let t = textOf(resp).replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   const i = t.indexOf('{') >= 0 ? Math.min(...['{', '['].map((c) => (t.indexOf(c) + 1 || 1e9)) ) - 1 : -1;
   if (i > 0) t = t.slice(i);
-  try { return JSON.parse(t); } catch { return null; }
+  try { return JSON.parse(t); } catch { /* segundo intento abajo */ }
+  // 12-ago: respuestas largas (redactor profundo, dos párrafos) traen saltos de línea LITERALES dentro de
+  // los strings → JSON inválido → null → el caller degradaba en silencio al redactor corto. Se escapan los
+  // caracteres de control SOLO dentro de strings (los de fuera son whitespace válido y no se tocan).
+  let out = '', ins = false, esc = false;
+  for (const ch of t) {
+    if (ins) {
+      if (esc) { out += ch; esc = false; continue; }
+      if (ch === '\\') { out += ch; esc = true; continue; }
+      if (ch === '"') { ins = false; out += ch; continue; }
+      if (ch === '\n') { out += '\\n'; continue; }
+      if (ch === '\r') continue;
+      if (ch === '\t') { out += '\\t'; continue; }
+      out += ch;
+    } else { if (ch === '"') ins = true; out += ch; }
+  }
+  try { return JSON.parse(out); } catch { return null; }
 }
 
 // ══ CHAT — Pregúntale a GP ══════════════════════════════════════════════════════════════════
@@ -191,7 +207,7 @@ async function writeFightRead(payload) {
   const resp = await call({
     kind: 'writer',
     max_tokens: 900,
-    system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura de la pelea para la pick indicada, en DOS párrafos por idioma: (1) LA TESIS — qué inclina la pelea a favor de la pick y su CAMINO de victoria concreto (dónde y cómo gana: distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL RIESGO — el mejor argumento del rival y la señal concreta que invalidaría la tesis (qué habría que ver en la jaula para saber que salió mal). Si el dossier trae edge vs mercado, cierra con UNA frase sobre el valor del precio. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."}.',
+    system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura de la pelea para la pick indicada, en DOS párrafos por idioma: (1) LA TESIS — qué inclina la pelea a favor de la pick y su CAMINO de victoria concreto (dónde y cómo gana: distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL RIESGO — el mejor argumento del rival y la señal concreta que invalidaría la tesis (qué habría que ver en la jaula para saber que salió mal). Si el dossier trae edge vs mercado, cierra con UNA frase sobre el valor del precio. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
   });
   const j = jsonOf(resp);

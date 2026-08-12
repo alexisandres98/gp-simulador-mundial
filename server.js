@@ -8122,6 +8122,7 @@ function askToolsFor(sport, { u, lang, org }) {
 // Todo sale de los engines existentes (breakdown con etiquetas de producto, film study, estilos, tale of
 // the tape, señales, método, mercado). El redactor NUNCA ve pesos ni features: solo números con nombre.
 function combatPickDossier(p) {
+  const CE = require('./combat-engine/ratings'); // por scope (12-ago: SIN esto el try moría en silencio y el dossier quedaba en lo esencial)
   const org = p.league || 'ufc';
   const base = {
     pelea: `${p.event.home} vs ${p.event.away}`, org, kickoff: p.event.kickoff_at,
@@ -8151,7 +8152,7 @@ function combatPickDossier(p) {
     base.peleadores = { [ft.f1.name]: tale(ft.f1.id), [ft.f2.name]: tale(ft.f2.id) };
     base.senales = (combatIntelFlags(C, ft, ev.date) || []).map(x => x.es);
     if (p.method) base.metodo_estimado = p.method; // {ko, sub, dec} del modelo al crear la pick
-  } catch { /* dossier parcial: mejor esencial que nada */ }
+  } catch (e) { console.error('[dossier-pick] parcial:', e.message); } // parcial: mejor esencial que nada, pero VISIBLE
   return base;
 }
 // ── Redactor: why de picks en prosa (una vez por pick, persistido → costo fijo) ──
@@ -8199,6 +8200,7 @@ async function llmAnnotatePickWhys({ cap = 8 } = {}) {
 // y se poda sola cuando la velada quedó 7 días atrás. La ve cualquier plan: es análisis, no pick — el
 // redactor tiene PROHIBIDO nombrar picks/cuotas, y si hay pick activa la tesis debe ser coherente con ella.
 function combatFightDossier(C, ev, ft) {
+  const CE = require('./combat-engine/ratings'); // por scope: no hay CE global (la lección del 12-ago)
   const base = { pelea: `${ft.f1.name} vs ${ft.f2.name}`, org: C.org, evento: ev.name || null, kickoff: ev.date, division: ft.weight || null, rounds_pactados: ft.rounds || 3, estelar: !!ft.main };
   try {
     const pr = CE.fightProb(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
@@ -8227,7 +8229,7 @@ function combatFightDossier(C, ev, ft) {
     base.senales = (combatIntelFlags(C, ft, ev.date) || []).map(x => x.es);
     const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
     if (pk && (pk.family || 'FIGHT') === 'FIGHT') base.lectura_de_la_casa = { lado: pk.selection_name }; // coherencia, jamás mención
-  } catch { /* dossier parcial: mejor esencial que nada */ }
+  } catch (e) { console.error('[dossier-fight] parcial:', e.message); } // parcial: mejor esencial que nada, pero VISIBLE
   return base;
 }
 async function llmFightReadsPass({ cap = 5 } = {}) {
@@ -8924,6 +8926,19 @@ async function buildCombatPicks({ dryRun = false } = {}) {
       const n2 = Object.keys(db.combatFightReads || {}).length;
       db.combatFightReads = {};
       db.cbFightReadV2 = true; out.fight_reads_reset = n2;
+    }
+    // v3 (12-ago, noche): el dossier moría en silencio por CE sin require (ReferenceError tragado por el
+    // catch) → TODAS las lecturas (de pelea Y los why profundos de picks FIGHT activas) se escribieron con
+    // el dossier casi vacío y el redactor rellenó con su prior (caso Makhachev-Garry coronando al rival de
+    // la pick). Con el require arreglado: limpiar y regenerar todo con el dossier COMPLETO.
+    if (!db.cbFightReadV3) {
+      const n3 = Object.keys(db.combatFightReads || {}).length;
+      db.combatFightReads = {};
+      let cleared3 = 0;
+      for (const p of (db.combatPicks || [])) {
+        if (p.status === 'ACTIVE' && (p.family || 'FIGHT') === 'FIGHT' && p.why_ai_es) { delete p.why_ai_es; delete p.why_ai_en; cleared3++; }
+      }
+      db.cbFightReadV3 = true; out.fight_reads_reset_v3 = n3; out.deep_read_reset_v3 = cleared3;
     }
     // Picks nacidas sobre cruces FANTASMA de boxeo (placeholder 31-dic, ver combatBoxingUpcoming) → VOID:
     // esa pelea no existe con esa fecha — era un mercado especulativo de las casas, no una cartelera.

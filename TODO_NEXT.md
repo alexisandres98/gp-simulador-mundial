@@ -131,13 +131,14 @@ La Fase 4 depende de construir primero la **feature de datos de equipo** (no exi
 - **Punto 1 — lectura profunda en el cockpit de la PELEA**: llm.writeFightPreview + combatFightDossier +
   llmFightReadsPass (cada 30min, 1 vez por pelea, poda 7d) + gp_read servido desde db.combatFightReads.
   Forzar pase: POST /api/internal/llm?key=<GP_EXPORT_KEY>&run=fightreads&cap=6
-  ⚠️ PENDIENTE DE CIERRE: el redactor "corrigió" al sistema con su prior en Makhachev-Garry (la lectura
-  coronaba a Makhachev cuando el modelo y la pick van con Garry 55%). Prompt v2 + discrepancia_vs_mercado
-  en el dossier + migración cbFightReadV2 NO bastaron — el segundo intento repitió el sesgo. Diagnóstico
-  desplegado: run=dossier&org=ufc&id=401869336 (ver el dossier exacto) y run=fightread1 (re-escribir una).
-  Próximo paso: confirmar qué dice favorito_gp en el dossier; si es Garry, endurecer más (poner el favorito
-  como línea explícita del mensaje de usuario, p.ej. "FAVORITO DEL SISTEMA: Ian Machado Garry 55% — el
-  análisis lo defiende") y re-escribir las 6 lecturas.
+  ✅ CERRADO (misma noche): la causa NO era el prompt — combatFightDossier y combatPickDossier usaban CE
+  sin require (no hay CE global en server.js), el ReferenceError moría en el catch mudo y el redactor
+  recibía un dossier casi vacío → rellenaba con su prior. Fix (commit 15de5fc): require en ambos + catch
+  con console.error + migración cbFightReadV3 (limpió lecturas de pelea y why profundos de picks FIGHT).
+  Regenerado y VERIFICADO: la lectura de Makhachev-Garry defiende a Garry con los números reales del
+  dossier (8.93 vs 4.5 golpes/min, alcance 74.5" vs 70.5", derribo temprano como señal de alarma), y 7/8
+  why de picks regenerados (el 8º, Wes Schultz, sale solo con el pase de 30 min cuando el presupuesto LLM
+  diario resetee a medianoche UTC — hoy se gastaron los $10).
 - **Bonus — capa de contexto**: CLUB_AF_LEAGUE cubría 24 de 40 ligas; se agregaron las 16 de la expansión
   + uefa (531) + amistosos (667). af-team-map.json en disco (+PSG 85, Villa 66, Madrid 541, Depor 544) —
   VERIFICADO: PSG-Villa fixture 1583664 con stats en vivo; Madrid-Depor 1591931. Herramientas nuevas:
@@ -159,7 +160,6 @@ La Fase 4 depende de construir primero la **feature de datos de equipo** (no exi
 - Probar antes con {"variant":"gpcombat2_es","test":true} (va solo al admin) si se quiere ver en bandeja.
 
 ### PENDIENTES QUE SIGUEN
-- Cerrar el sesgo del redactor de peleas (arriba) y re-escribir las lecturas.
 - Punto 4 completo: anclaje cross-liga + backtest (antes de sept).
 - Auditoría de identidad de fotos wiki (más homónimos tipo Ernesto Mercado).
 - Post-upgrade Odds API: borrar envs temporales (SPORTSBOOK_QUOTA_RESERVE, GP_CLUBS_PROPS_WINDOW_H,

@@ -57,6 +57,11 @@ curl -s "https://api.render.com/v1/services/srv-d8krl8flk1mc73c9hbi0/deploys?lim
 ## Co-autoría de commits
 Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` (convención usada en la sesión).
 
+## Ejecutor en la sombra (paper-trading del edge)
+Corriendo desde el 12-ago: bankroll simulado $2,000, segmento `cards_under_v1` (regla congelada), sweep 10min,
+**reporte email al admin cada lunes** + revisión semanal con Alexis. Estado: `/api/internal/shadow?key=<GP_EXPORT_KEY>`.
+Plan completo y reglas (cómo agregar segmentos, go-live): sección "PLAN EDGE + EJECUTOR EN LA SOMBRA" en TODO_NEXT.md.
+
 ## Documentos hermanos
 - `PROJECT_STATE.md` — arquitectura, pantallas, archivos, endpoints, modelo, negocio.
 - `DESIGN_SYSTEM.md` — tokens, tipografía, componentes, layout, responsive.

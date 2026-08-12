@@ -8300,6 +8300,122 @@ if (llm.enabled()) {
   setInterval(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); llmFightReadsPass().catch(() => { }); }, 30 * 60e3);
 }
 
+// ===== EJECUTOR EN LA SOMBRA (12-ago, orden de Alexis) ======================================================
+// Paper-trading del edge candidato: simula, con el precio real de publicación de cada pick, lo que un
+// apostador habría hecho con un bankroll inicial de $2,000 siguiendo SOLO los segmentos en verificación
+// (v1: cards-under, regla congelada en db.shadow.cfg — agregar un segmento = entrada NUEVA anotada, jamás
+// edición silenciosa ni retroactiva). NO coloca nada en ninguna casa: registra, liquida con el resultado
+// real de la pick (la misma fuente del track público) y compone el bankroll. Reporte al admin cada LUNES
+// (UTC) por email: cuánto se apostó, W-L, P&L sobre los $2,000, ROI y CLV. Revisión semanal con Alexis.
+const SHADOW_STAKE_CAP = 0.015;  // techo del Kelly/4: 1.5% del bankroll vivo por apuesta
+const SHADOW_STAKE_MIN = 5;      // piso $5
+function shadowInit() {
+  if (db.shadow) return db.shadow;
+  db.shadow = {
+    created_at: new Date().toISOString(),
+    start_bankroll: 2000, bankroll: 2000, currency: 'USD',
+    cfg: [{ key: 'cards_under_v1', sport: 'futbol', family: 'CARDS', side: 'under', frozen_at: new Date().toISOString(),
+      note: 'REGLA CONGELADA: toda CARDS under que publique el motor (mismos gates internos) · stake kelly/4 cap 1.5% · entrada al precio de publicación' }],
+    bets: [], reports: [], last_report_week: null,
+  };
+  save();
+  return db.shadow;
+}
+function shadowStake(S, p, odds) {
+  const f = (p > 0 && odds > 1) ? Math.max(0, (p * odds - 1) / (odds - 1)) / 4 : 0; // Kelly/4
+  const st = Math.min(SHADOW_STAKE_CAP, f || SHADOW_STAKE_CAP) * S.bankroll;
+  return Math.max(SHADOW_STAKE_MIN, Math.round(st * 100) / 100);
+}
+function shadowSweep() {
+  const S = shadowInit();
+  let placed = 0, settled = 0;
+  const seen = new Set(S.bets.map(b => b.pick_id));
+  const now = Date.now();
+  for (const seg of S.cfg) {
+    if (seg.sport !== 'futbol') continue; // v1: clubes; combate entra cuando su segmento pase el gate
+    for (const p of (db.clubDailyPicks || [])) {
+      if (p.status !== 'ACTIVE' || p.family !== seg.family || (seg.side && p.side !== seg.side)) continue;
+      if (seen.has(p.pick_id)) continue;
+      const ko = Date.parse((p.event && p.event.kickoff_at) || 0);
+      if (!(ko > now)) continue;      // jamás "apostar" un partido ya arrancado
+      if (!(p.best_odds > 1)) continue;
+      const stake = shadowStake(S, p.model_prob || 0, p.best_odds);
+      S.bets.push({
+        id: 'sh_' + Math.random().toString(36).slice(2, 10), pick_id: p.pick_id, segment: seg.key,
+        family: p.family, side: p.side || null, line: p.line != null ? p.line : null,
+        league: p.league || null, match: p.event ? `${p.event.home} vs ${p.event.away}` : null,
+        odds: p.best_odds, book: p.best_book || null, model_prob: p.model_prob || null,
+        stake, placed_at: new Date().toISOString(), kickoff_at: (p.event && p.event.kickoff_at) || null,
+        status: 'OPEN', result: null, pnl: 0,
+      });
+      seen.add(p.pick_id); placed++;
+    }
+  }
+  // liquidación: espejo del resultado real de la pick (VOID/PUSH devuelve el stake → pnl 0)
+  const byPick = {}; for (const p of (db.clubDailyPicks || [])) byPick[p.pick_id] = p;
+  for (const b of S.bets) {
+    if (b.status !== 'OPEN') continue;
+    const p = byPick[b.pick_id];
+    if (!p || p.status !== 'SETTLED') continue;
+    b.status = 'SETTLED'; b.result = p.result_code; b.settled_at = p.settled_at || new Date().toISOString();
+    b.pnl = p.result_code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : p.result_code === 'LOSS' ? -b.stake : 0;
+    b.closing = (p.closing && p.closing.odds) || null; b.clv = (typeof p.clv === 'number') ? p.clv : null;
+    S.bankroll = +(S.bankroll + b.pnl).toFixed(2);
+    settled++;
+  }
+  if (placed || settled) save();
+  return { placed, settled, bankroll: S.bankroll, open: S.bets.filter(b => b.status === 'OPEN').length, total_bets: S.bets.length };
+}
+function shadowSummary(sinceMs) {
+  const S = shadowInit();
+  const rows = S.bets.filter(b => !sinceMs || Date.parse(b.placed_at) >= sinceMs);
+  const st = rows.filter(b => b.status === 'SETTLED');
+  const w = st.filter(b => b.result === 'WIN').length, l = st.filter(b => b.result === 'LOSS').length;
+  const staked = +rows.reduce((s, b) => s + b.stake, 0).toFixed(2);
+  const stakedSet = +st.reduce((s, b) => s + b.stake, 0).toFixed(2);
+  const pnl = +st.reduce((s, b) => s + b.pnl, 0).toFixed(2);
+  const clvs = st.map(b => b.clv).filter(c => typeof c === 'number');
+  return {
+    bets: rows.length, open: rows.length - st.length, settled: st.length, w, l, voids: st.length - w - l,
+    staked, pnl, roi_pct: stakedSet ? +(100 * pnl / stakedSet).toFixed(1) : null,
+    avg_odds: rows.length ? +(rows.reduce((s, b) => s + b.odds, 0) / rows.length).toFixed(2) : null,
+    avg_stake: rows.length ? +(staked / rows.length).toFixed(2) : null,
+    clv_avg: clvs.length ? +(clvs.reduce((s, c) => s + c, 0) / clvs.length).toFixed(2) : null,
+  };
+}
+async function shadowWeeklyReport({ force = false } = {}) {
+  const S = shadowInit();
+  const nowD = new Date();
+  const isoWeek = (d) => { const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day); const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return t.getUTCFullYear() + '-W' + String(Math.ceil((((t - y0) / 864e5) + 1) / 7)).padStart(2, '0'); };
+  const wk = isoWeek(nowD);
+  if (!force) {
+    if (nowD.getUTCDay() !== 1) return { skipped: 'not_monday' };
+    if (S.last_report_week === wk) return { skipped: 'done' };
+  }
+  const week = shadowSummary(Date.now() - 7 * 864e5);
+  const all = shadowSummary(0);
+  const report = { week: wk, at: new Date().toISOString(), bankroll: S.bankroll, start: S.start_bankroll,
+    pnl_total: +(S.bankroll - S.start_bankroll).toFixed(2), last7d: week, since_start: all };
+  S.reports.push(report); if (S.reports.length > 60) S.reports = S.reports.slice(-60);
+  S.last_report_week = wk; save();
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  const fmt = (x) => (x >= 0 ? '+' : '') + x;
+  const line = (t2, s2) => `${t2}: ${s2.bets} apuestas (${s2.settled} liquidadas: ${s2.w}W-${s2.l}L${s2.voids ? '-' + s2.voids + 'V' : ''}) · apostado $${s2.staked} · P&L $${fmt(s2.pnl)}${s2.roi_pct != null ? ' · ROI ' + fmt(s2.roi_pct) + '%' : ''}${s2.clv_avg != null ? ' · CLV ' + fmt(s2.clv_avg) + '%' : ''}`;
+  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
+  if (mailer.isConfigured()) {
+    try { await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: `[GP Sombra] ${wk}: $${S.bankroll} (${fmt(report.pnl_total)}) · 7d ${week.w}W-${week.l}L $${fmt(week.pnl)}`, text, html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${text.replace(/</g, '&lt;')}</pre>` }); }
+    catch (e) { console.error('[shadow] mail:', e.message); }
+  }
+  return report;
+}
+if (clubsShadowOn()) {
+  setTimeout(() => { try { shadowSweep(); } catch (e) { console.error('[shadow]', e.message); } }, 150 * 1000);
+  setInterval(() => {
+    try { shadowSweep(); } catch (e) { console.error('[shadow]', e.message); }
+    shadowWeeklyReport().catch((e) => console.error('[shadow-report]', e.message));
+  }, 10 * 60e3);
+}
+
 // ===== #7 MOVIMIENTO DE LÍNEA (30-jul) — lo que el archivo de #9 hace posible ============================
 // La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es camp/lesión/pesaje, y los
 // sharps entran temprano. Un movimiento fuerte SIN noticia pública es dinero informado.
@@ -12655,6 +12771,23 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       try { return json(res, 200, cardsValidationRun(req.method === 'POST')); }
       catch (e) { return json(res, 200, { error: e.message }); }
+    }
+    // EJECUTOR EN LA SOMBRA: GET = estado + resúmenes; POST ?run=sweep|report (report con force).
+    if (p === '/api/internal/shadow') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        const run = url.searchParams.get('run') || 'sweep';
+        if (run === 'sweep') return json(res, 200, shadowSweep());
+        if (run === 'report') return json(res, 200, await shadowWeeklyReport({ force: true }));
+        return json(res, 400, { error: 'run=sweep|report' });
+      }
+      const S = shadowInit();
+      return json(res, 200, {
+        bankroll: S.bankroll, start: S.start_bankroll, created_at: S.created_at, cfg: S.cfg,
+        last7d: shadowSummary(Date.now() - 7 * 864e5), since_start: shadowSummary(0),
+        last_reports: S.reports.slice(-4), bets: S.bets.slice(-40),
+      });
     }
     // ===== COMBAT SPORTS (27-jul, F0-F1 — ADMIN ONLY hasta validar) ==========================================
     // 2º deporte: UFC primero (MMA/Boxeo después). Data: ESPN (9,204 peleas 1997-2026 + perfiles/fotos) en

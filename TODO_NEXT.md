@@ -172,3 +172,37 @@ La Fase 4 depende de construir primero la **feature de datos de equipo** (no exi
 > caso Makhachev-Garry debe defender a Garry); (2) el email gpcombat2 está listo — yo doy el go para ES y
 > la versión EN se agenda 6h después; (3) seguir con el anclaje cross-liga de Champions/Europa.
 > Token admin: pedírmelo si no está en scratchpad. RENDER_API_KEY: pedírmela.
+
+## ═══ PLAN EDGE + EJECUTOR EN LA SOMBRA (12-ago, decisión de Alexis — MEMORIA PERMANENTE) ═══
+
+### La tesis (guardada a pedido de Alexis)
+1. **Hoy NO hay edge global** (376 picks clubes: ROI -10%; combate 66: -3u). Dos vetas candidatas con datos:
+   **cards-under** (n=56, ROI +15% AL CIERRE, positiva en ambas mitades temporales, pasó el z-test vs base-rate)
+   y **combate ROUNDS** (n=23, +2.4u, única familia con CLV+ +4.9%). Ninguna "verificada" aún: el estándar es
+   **300+ picks con regla congelada ex-ante, positivas al precio de cierre**.
+2. **Explotación (como apostador, no plataforma)**: venues que no limitan ganadores — exchanges (Betfair),
+   mercados de predicción (Polymarket/Kalshi: solo mercados tipo GANADOR de eventos grandes; NO listan props),
+   y cripto books (Cloudbet: props de fútbol + método/rounds MMA; ya integrado como fuente de cuotas, partner
+   comercial). Regla dura: NADA de multicuentas/evasión de cierres — el stack funciona porque no lo necesita.
+3. **Números objetivo** ($5k/mes): con solo cards ≈ stake $830/apuesta (choca con límites de mercado) →
+   escenario sano = PORTAFOLIO de 3-4 familias verificadas, ~200 apuestas/mes, stake ~$420, bankroll $35-42k
+   (1-1.25%/apuesta, 100 unidades). Se llega COMPONIENDO desde chico, no depositando $40k el día 1.
+4. **Multi-deporte** (plan Alexis): NBA → béisbol → tenis → esports. Cada deporte paga su ciclo completo
+   (data → backtest gate → monitor → 300 congeladas). Expectativa honesta: de 6 deportes sobreviven 3-4 familias.
+
+### EJECUTOR EN LA SOMBRA (corriendo desde 12-ago)
+- **Qué es**: paper-trading en server.js (shadowSweep/shadowSummary/shadowWeeklyReport, db.shadow en el disco
+  persistente). Bankroll simulado **$2,000**. Segmento v1: `cards_under_v1` (toda CARDS under publicada, entrada
+  al precio de publicación, stake Kelly/4 con techo 1.5% del bankroll vivo, piso $5). Liquida espejo del track
+  real (VOID=push), compone el bankroll, captura closing/CLV por apuesta. NO coloca nada en ninguna casa.
+- **Ritmo**: sweep cada 10 min · **reporte por email al admin cada LUNES (UTC)** con: apuestas de la semana,
+  W-L, $ apostado, P&L sobre los $2,000, ROI, CLV, y acumulado desde el inicio. **Revisión semanal con Alexis
+  todos los lunes.**
+- **Ops**: GET/POST `/api/internal/shadow?key=<GP_EXPORT_KEY>` (`run=sweep|report`).
+- **Agregar un segmento** (cuando se declare probado): push a `db.shadow.cfg` con key versionada
+  (`rounds_v1`, etc.) + `frozen_at` — JAMÁS editar un segmento existente ni aplicar retroactivo. Candidato
+  siguiente: combate ROUNDS (necesita que shadowSweep aprenda a leer db.combatPicks — hoy solo clubes).
+- **Go-live futuro** (cuando un segmento pase las 300): ejecutores reales vía API oficial — Cloudbet Trading
+  API (la key actual es de FEED; para colocar hará falta key con scope de trading), Polymarket CLOB
+  (wallet), Betfair. Arquitectura: selector (solo segmentos congelados) → motor de riesgo (mismo Kelly/4 +
+  kill-switch) → adaptadores por venue → reconciliación vs cierre. Alexis provee las keys de trading entonces.

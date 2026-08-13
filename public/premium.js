@@ -152,6 +152,9 @@
       reg_picks: 'Picks', reg_settled: 'Liquidadas', reg_winrate: 'Aciertos', reg_sample: 'Muestra', reg_insufficient: 'Insuficiente', reg_history: 'Historial de Picks',
       // ---- Feed de picks diarias (producto) ----
       pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa', pf_pick_of_day: 'Pick del día', pf_all_by_match: 'Todas las picks por partido',
+      fb_refresh: 'Buscar picks nuevas', fb_auto_on: 'Refresco automático activo — pausar', fb_auto_off: 'Refresco pausado — reanudar', fb_seeing: 'viendo {n} de {total}', fb_updated: 'act.',
+      hp_hide: 'Ocultar esta pick', hp_unhide: 'Mostrar esta pick', hp_hidden_n: 'ocultas ({n})', hp_showing: 'mostrando ocultas',
+      val_fair: 'justa', val_vig: 'vig',
       pf_corr: 'Son del mismo partido: se resuelven juntas. Para tu stake trátalas como <b>una sola apuesta</b>, no como {n} independientes.',
       cl_wc: 'Mundial 2026', cl_all_comps: 'Todas las competiciones', cl_gate_ok: 'Gate aprobado', cl_gate_sh: 'En calibración', cl_hfa: 'localía',
       cl_states_soon: 'En vivo y finalizados de clubes llegan con la integración de marcadores.',
@@ -502,6 +505,9 @@
       reg_picks: 'Picks', reg_settled: 'Settled', reg_winrate: 'Win rate', reg_sample: 'Sample', reg_insufficient: 'Insufficient', reg_history: 'Picks history',
       // ---- Daily picks feed (product) ----
       pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick', pf_pick_of_day: 'Pick of the day', pf_all_by_match: 'All picks by match',
+      fb_refresh: 'Check for new picks', fb_auto_on: 'Auto-refresh on — pause', fb_auto_off: 'Refresh paused — resume', fb_seeing: 'viewing {n} of {total}', fb_updated: 'upd.',
+      hp_hide: 'Hide this pick', hp_unhide: 'Unhide this pick', hp_hidden_n: 'hidden ({n})', hp_showing: 'showing hidden',
+      val_fair: 'fair', val_vig: 'vig',
       pf_corr: 'Same match: they settle together. For your stake, treat them as <b>one single bet</b>, not {n} independent ones.',
       cl_wc: 'World Cup 2026', cl_all_comps: 'All competitions', cl_gate_ok: 'Gate approved', cl_gate_sh: 'Calibrating', cl_hfa: 'home edge',
       cl_states_soon: 'Live and finished club states arrive with the scores integration.',
@@ -1496,11 +1502,54 @@
   // Filtro del board aplicado al FEED de picks: live = partido en vivo ahora; up = próximos (kickoff
   // futuro, sin contar los live); all = todas. Una pick de partido terminado pendiente de liquidar no
   // entra en live ni en up (solo en Todos).
+  // ── P11 (13-ago, lote BetHero): OCULTAR/DESCARTAR picks — curación del usuario, por dispositivo ──
+  function hiddenIds() { try { return JSON.parse(lsGet('gp_hidden_picks') || '[]'); } catch (e) { return []; } }
+  function pickKeyOf(p) { return String(p.pick_id || p.id || ((p.event_id || p.club_eid || '') + '|' + (p.family || '') + '|' + (p.line != null ? p.line : '') + '|' + (p.side || p.selection_code || ''))); }
+  function pickHidden(p) { return hiddenIds().indexOf(pickKeyOf(p)) >= 0; }
+  function toggleHidePick(k) {
+    var h = hiddenIds(); var i = h.indexOf(k);
+    if (i >= 0) h.splice(i, 1); else h.push(k);
+    lsSet('gp_hidden_picks', JSON.stringify(h.slice(-200)));
+  }
+  function hiddenCount(picks) { var ids = hiddenIds(); if (!ids.length) return 0; return (picks || []).filter(function (p) { return ids.indexOf(pickKeyOf(p)) >= 0; }).length; }
   function picksFiltered(picks) {
     if (booksOnlyOn()) picks = picks.filter(pickInMyBooks); // F2: solo picks cotizadas en MIS casas
+    if (!S.showHidden) picks = picks.filter(function (p) { return !pickHidden(p); }); // P11: ocultas fuera salvo modo "mostrar"
     if (S.filt === 'live') return picks.filter(pickIsLive);
     if (S.filt === 'up') return picks.filter(function (p) { if (pickIsLive(p)) return false; var ko = Date.parse(p.kickoff || 0); return isFinite(ko) && ko > Date.now(); });
     return picks;
+  }
+  // ── P9 (13-ago, lote BetHero): el board se siente VIVO — refresco auto pausable + "nuevas desde que miras" ──
+  function feedAutoOn() { return lsGet('gp_feed_auto') !== '0'; }
+  function feedRefreshNow() {
+    fetch('/api/beta/picks' + asplanQS('?'), { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) {
+      if (!j || !j.picks) return;
+      var prev = (S.dailyPicks || []).map(pickKeyOf);
+      var fresh = j.picks.filter(function (p) { return prev.indexOf(pickKeyOf(p)) < 0; }).length;
+      S.feedNew = (S.feedNew || 0) + fresh;
+      S.dailyPicks = j.picks;
+      S.dailyPicksMeta = { yesterday: j.yesterday || null, next_kickoff: j.next_kickoff || null, plan: j.plan || null, locked_count: j.locked_count || 0, plan_delayed: !!j.plan_delayed, welcome_pick: j.welcome_pick || null, layout: j.picks_layout || 'flat' };
+      S.feedAt = Date.now();
+      if (S.view === 'board' && S.oppSub === 'picks') { var b = $('#gx-board'); if (b) picksFeed(b); }
+    });
+  }
+  function feedTickStart() {
+    if (S._feedTimer) return;
+    S._feedTimer = setInterval(function () {
+      if (!feedAutoOn() || S.view !== 'board' || S.oppSub !== 'picks' || document.hidden) return;
+      feedRefreshNow();
+    }, 90 * 1000);
+  }
+  function feedBar(total, shown) {
+    feedTickStart();
+    var hid = hiddenCount(S.dailyPicks || []);
+    var auto = feedAutoOn();
+    return '<div class="gx-feedbar">' +
+      '<button type="button" class="gx-calc-frac" data-feedrefresh title="' + esc(t('fb_refresh')) + '">' + ic('refresh') + (S.feedNew ? '<span class="gx-feednew">' + S.feedNew + '</span>' : '') + '</button>' +
+      '<button type="button" class="gx-calc-frac' + (auto ? ' on' : '') + '" data-feedauto title="' + esc(t(auto ? 'fb_auto_on' : 'fb_auto_off')) + '">' + ic(auto ? 'player-pause' : 'player-play') + '</button>' +
+      '<span class="gx-dim" style="font-size:10.5px">' + esc(t('fb_seeing', { n: shown, total: total })) + (S.feedAt ? ' · ' + esc(t('fb_updated')) + ' ' + new Date(S.feedAt).toLocaleTimeString(LANG === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' }) : '') + '</span>' +
+      (hid > 0 ? '<button type="button" class="gx-calc-frac' + (S.showHidden ? ' on' : '') + '" data-showhidden>' + ic('eye-off') + ' ' + esc(t(S.showHidden ? 'hp_showing' : 'hp_hidden_n', { n: hid })) + '</button>' : '') +
+      '</div>';
   }
   // ONBOARDING — PRIMERA PICK GRATIS: la selección más segura del día para el usuario recién registrado.
   // Se muestra arriba del board (incluso si el resto está bloqueado por plan free) hasta que la descarta.
@@ -1540,7 +1589,9 @@
       return;
     }
     var picks = picksFiltered(S.dailyPicks || []);
-    var cc = $('#gx-board-count'); if (cc) cc.textContent = picks.length + ' ' + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
+    var totalN = (S.dailyPicks || []).length;
+    var cc = $('#gx-board-count'); if (cc) cc.textContent = (picks.length < totalN ? picks.length + '/' + totalN + ' ' : picks.length + ' ') + (picks.length === 1 ? t('pf_count1') : t('pf_count'));
+    var fbar = feedBar(totalN, picks.length); // P9: controles vivos del board
     var meta = S.dailyPicksMeta || {};
     var welcome = welcomeCard(meta); // primera pick gratis (onboarding) — arriba de todo, hasta descartarla
     // recap de AYER (prueba social agregada — el historial detallado sigue admin): "Ayer: 2 de 3 ✓"
@@ -1556,7 +1607,7 @@
       // vacío POR FILTRO (hay picks pero no en esta pestaña/casas) ≠ vacío real (sin picks activas)
       if ((S.dailyPicks || []).length && (S.filt === 'live' || S.filt === 'up' || booksOnlyOn())) {
         var emptyKey = (S.filt === 'live') ? 'pf_empty_live' : (S.filt === 'up') ? 'pf_empty_up' : 'bk_empty';
-        bd.innerHTML = welcome + myBooksBar() + recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t(emptyKey)) + '</b><span class="gx-dim">' + esc(t(emptyKey === 'bk_empty' ? 'bk_empty_sub' : 'pf_empty_filt_sub')) + '</span></div>';
+        bd.innerHTML = welcome + myBooksBar() + fbar + recap + lockTeaser + '<div class="gx-empty gx-pick-empty">' + illo("tickets") + '<b>' + esc(t(emptyKey)) + '</b><span class="gx-dim">' + esc(t(emptyKey === 'bk_empty' ? 'bk_empty_sub' : 'pf_empty_filt_sub')) + '</span></div>';
         wireBooksBar(bd, function () { picksFeed(bd); });
         wireWelcome(bd);
         return;
@@ -1581,7 +1632,7 @@
     var picksHtml = (meta.layout === 'sections' && picks.length > 1)
       ? picksSectioned(picks)
       : '<div class="gx-picks-feed">' + picks.map(pickCard).join('') + '</div>';
-    bd.innerHTML = welcome + myBooksBar() + recap + featuredStrip() + picksHtml + lockTeaser +
+    bd.innerHTML = welcome + myBooksBar() + fbar + recap + featuredStrip() + picksHtml + lockTeaser +
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
     wireBooksBar(bd, function () { picksFeed(bd); });
     wireWelcome(bd);
@@ -1730,7 +1781,8 @@
       // Chip MONITOR (26-jul): solo lo ve el admin (los no-admin nunca reciben picks monitor). Distingue de
       // un vistazo el track privado del feed público real — evita confundir "el feed sigue lleno".
       (p.signals && p.signals.regime === 'monitor' ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle">MONITOR</span>' : '') + '</span>' +
-      (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') + '</div>' +
+      (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') +
+      (opts.welcome ? '' : '<button type="button" class="gx-pick-hide" data-hidepick="' + esc(pickKeyOf(p)) + '" title="' + esc(t(pickHidden(p) ? 'hp_unhide' : 'hp_hide')) + '">' + ic(pickHidden(p) ? 'eye' : 'eye-off') + '</button>') + '</div>' +
       (opts.hideMatch ? '' : '<div class="gx-pick-match">' +
         (p.cb_avas ? '<span class="gx-pick-cbava gr">' + (p.cb_avas.h ? '<img src="' + esc(p.cb_avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b>' +
@@ -1831,6 +1883,7 @@
           classification_code: v.edge_pp >= 8 ? 'STRONG' : v.edge_pp >= 5 ? 'LEAN' : v.edge_pp >= 2.5 ? 'WATCH' : 'PASS',
           best_sportsbook: v.best_book, _home: v.home, _away: v.away, _homeId: v.home_id, _awayId: v.away_id,
           _league: String(v.league_name || v.league).split(' · ')[0], _gate: v.gate || null,
+          _fair: v.fair_odds || null, _vig: v.vig_pct != null ? v.vig_pct : null, _bd: v.books_detail || null,
         });
       });
     }
@@ -1853,8 +1906,17 @@
       return { v: v, h: h, fid: fid, name: name, matchN: matchN, bm: bm };
     };
     var rows = vals.map(row);
+    // P3/P10 (13-ago): línea de cuotas justas — justa + vig + top casas (sharps destacadas). Solo filas con detalle.
+    var SHARPS = ['pinnacle', 'cloudbet', 'betfair', 'matchbook', 'polymarket', 'kalshi'];
+    var isSharp = function (b) { var n = String(b || '').toLowerCase(); return SHARPS.some(function (s) { return n.indexOf(s) >= 0; }); };
+    var fairLine = function (v) {
+      if (!v._bd || !v._bd.length) return '';
+      var chips = v._bd.map(function (d) { return '<span class="gx-val-bk' + (isSharp(d.b) ? ' sharp' : '') + '">' + (isSharp(d.b) ? '◆ ' : '') + esc(prettyBook(d.b) || d.b) + ' <b>' + Number(d.o).toFixed(2) + '</b></span>'; }).join('');
+      return '<div class="gx-val-line">' + (v._fair ? '<span class="gx-val-bk fair">' + esc(t('val_fair')) + ' <b>' + Number(v._fair).toFixed(2) + '</b></span>' : '') +
+        (v._vig != null ? '<span class="gx-val-bk">' + esc(t('val_vig')) + ' <b>' + v._vig + '%</b></span>' : '') + chips + '</div>';
+    };
     var desk = '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th>GP</th><th>' + esc(t('hero_mkt')) + '</th><th>' + esc(t('th_price')) + '</th><th>' + esc(t('th_edge')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="l">' + esc(t('col_provider')) + '</th></tr></thead><tbody>' +
-      rows.map(function (x) { var v = x.v; return '<tr class="gx-row" data-openmatch="' + esc(v.event_id) + '"><td class="l"><div class="gx-cell-team">' + (x.fid ? '<span class="fl">' + flag(x.fid) + '</span>' : '') + '<div class="gx-teamnames"><b>' + esc(x.name) + '</b><span>' + esc(x.matchN) + '</span></div></div></td>' +
+      rows.map(function (x) { var v = x.v; return '<tr class="gx-row" data-openmatch="' + esc(v.event_id) + '"><td class="l"><div class="gx-cell-team">' + (x.fid ? '<span class="fl">' + flag(x.fid) + '</span>' : '') + '<div class="gx-teamnames"><b>' + esc(x.name) + '</b><span>' + esc(x.matchN) + '</span>' + fairLine(v) + '</div></div></td>' +
         '<td class="l">' + (sigBadge(v.classification_code) || '—') + '</td><td class="gx-mono gx-gp"><span class="hi">' + pct0(v.gp_probability) + '</span></td><td class="gx-mono gx-dim">' + pct0(v.market_probability) + '</td><td class="gx-mono gx-best"><span class="hi">' + odd(v.best_odds) + '</span></td>' +
         '<td class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</td>' +
         '<td class="l">' + (x.bm ? '<span class="gx-belowmin">' + ic('arrow-down') + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(t('opp_watch_only')) + '</span>')) + '</td>' +
@@ -1862,6 +1924,7 @@
     var mob = rows.map(function (x) { var v = x.v; return '<div class="gx-mcard" data-openmatch="' + esc(v.event_id) + '"><div class="gx-mcard-top">' + (sigBadge(v.classification_code) || '') + '<span class="gx-spacer"></span>' + (x.bm ? '<span class="gx-belowmin">' + esc(t('below_min_short')) + '</span>' : (v.actionable ? '<span class="gx-badge gx-b-strong">' + esc(t('opp_actionable')) + '</span>' : '')) + '</div>' +
       '<div class="gx-cell-team" style="margin:6px 0">' + (x.fid ? '<span class="fl">' + flag(x.fid) + '</span>' : '') + '<div class="gx-teamnames"><b>' + esc(x.name) + '</b><span>' + esc(x.matchN) + '</span></div></div>' +
       '<div class="gx-mcard-foot"><span class="gx-mono">GP ' + pct0(v.gp_probability) + ' · ' + esc(t('th_price')) + ' ' + odd(v.best_odds) + '</span><span class="gx-edge ' + (v.adjusted_edge_pp > 0 ? 'gx-pos' : 'gx-dim') + '">' + pp(v.adjusted_edge_pp) + '</span></div>' +
+      fairLine(v) +
       (v.gp_probability > 0 && v.best_odds > 1 ? '<div class="gx-calc-row">' + stakeCalcBtn(v.gp_probability, Number(v.best_odds), x.name + (x.matchN ? ' · ' + x.matchN : ''), 'gp') + '</div>' : '') +
       '</div>'; }).join('');
     bd.innerHTML = myBooksBar() + outright + '<div class="gx-bd-desk">' + desk + '</div><div class="gx-bd-mob">' + mob + '</div>';
@@ -7762,6 +7825,11 @@
           var cb = e.target.closest('[data-calc]'); if (cb) { e.preventDefault(); e.stopPropagation(); toggleCalc(cb); return; }
           var wpb = e.target.closest('[data-watchbtn]'); if (wpb) { e.preventDefault(); e.stopPropagation(); toggleWatchRow(wpb); return; }
           var wt = e.target.closest('[data-whytoggle]'); if (wt) { e.preventDefault(); e.stopPropagation(); var wb = wt.parentNode.querySelector('.gx-pick-why'); if (wb) { wb.hidden = !wb.hidden; wt.classList.toggle('open', !wb.hidden); } return; }
+          // P9/P11 (13-ago): controles del board — ocultar pick, refrescar, auto on/off, ver ocultas
+          var hp = e.target.closest('[data-hidepick]'); if (hp) { e.preventDefault(); e.stopPropagation(); toggleHidePick(hp.getAttribute('data-hidepick')); var b9 = $('#gx-board'); if (b9 && S.oppSub === 'picks') picksFeed(b9); return; }
+          var fr = e.target.closest('[data-feedrefresh]'); if (fr) { e.preventDefault(); e.stopPropagation(); S.feedNew = 0; feedRefreshNow(); return; }
+          var fa = e.target.closest('[data-feedauto]'); if (fa) { e.preventDefault(); e.stopPropagation(); lsSet('gp_feed_auto', feedAutoOn() ? '0' : null); var b10 = $('#gx-board'); if (b10 && S.oppSub === 'picks') picksFeed(b10); return; }
+          var sh = e.target.closest('[data-showhidden]'); if (sh) { e.preventDefault(); e.stopPropagation(); S.showHidden = !S.showHidden; var b11 = $('#gx-board'); if (b11 && S.oppSub === 'picks') picksFeed(b11); return; }
           var oh = e.target.closest('[data-openhash]'); if (oh) { e.preventDefault(); setHash(oh.getAttribute('data-openhash')); return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }

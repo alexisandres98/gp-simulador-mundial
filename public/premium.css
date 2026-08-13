@@ -1676,3 +1676,16 @@ td .gx-calc-btn span { display: none; }
 .gx-cbp-fambar { flex:1; max-width:180px; height:7px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; }
 .gx-cbp-fambar i { display:block; height:100%; background:var(--gx-ac,#1FE3A4); border-radius:99px; }
 @media (max-width:700px){ .gx-cbp-hero { flex-direction:column; align-items:flex-start; gap:12px; } .gx-cbp-fambar { display:none; } }
+
+/* ── Lote BetHero 13-ago: P9 feedbar · P11 ocultar picks · P3/P10 línea de cuotas justas ── */
+.gx-feedbar { display:flex; align-items:center; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
+.gx-feedbar .gx-calc-frac { position:relative; }
+.gx-feednew { position:absolute; top:-6px; right:-6px; background:#E05252; color:#fff; font-size:9px; font-weight:800; min-width:15px; height:15px; line-height:15px; text-align:center; border-radius:99px; padding:0 3px; }
+.gx-pick-hide { background:none; border:none; color:var(--gx-text3,#5F747B); cursor:pointer; padding:2px 4px; margin-left:6px; opacity:.55; }
+.gx-pick-hide:hover { opacity:1; color:var(--gx-text2,#9DB0B5); }
+.gx-val-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+.gx-val-bk { font-size:10px; font-weight:600; color:var(--gx-text2,#9DB0B5); border:1px solid var(--gx-line,rgba(255,255,255,.1)); border-radius:99px; padding:1.5px 7px; white-space:nowrap; }
+.gx-val-bk b { font-weight:800; color:var(--gx-text,#EDF2F4); }
+.gx-val-bk.sharp { color:#1FE3A4; border-color:rgba(31,227,164,.4); }
+.gx-val-bk.sharp b { color:#1FE3A4; }
+.gx-val-bk.fair { border-color:rgba(31,227,164,.55); background:rgba(31,227,164,.07); }

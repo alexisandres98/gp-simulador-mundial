@@ -15406,12 +15406,17 @@ const server = http.createServer(async (req, res) => {
               if (!th || !ta) { skipped++; continue; }
               // consenso no-vig: por casa, prob implícita desproporcionada; mediana entre casas por outcome
               const acc = { home: [], draw: [], away: [] }; const best = { home: [0, ''], draw: [0, ''], away: [0, ''] };
+              // P3/P10 (13-ago, lote BetHero): desglose por casa + vig del mercado — la "línea de cuotas
+              // justas" que sube la credibilidad de la señal (el usuario VE de dónde sale el consenso).
+              const det = { home: [], draw: [], away: [] }; let vigSum = 0, vigN = 0;
               for (const bk of ev.bookmakers || []) {
                 const mk = (bk.markets || []).find(m => m.key === 'h2h'); if (!mk) continue;
                 const o = {}; for (const oc of mk.outcomes || []) { if (oc.name === ev.home_team) o.home = oc.price; else if (oc.name === ev.away_team) o.away = oc.price; else o.draw = oc.price; }
                 if (!(o.home > 1 && o.draw > 1 && o.away > 1)) continue;
                 const s = 1 / o.home + 1 / o.draw + 1 / o.away;
+                vigSum += (s - 1); vigN++;
                 acc.home.push(1 / o.home / s); acc.draw.push(1 / o.draw / s); acc.away.push(1 / o.away / s);
+                det.home.push([o.home, bk.title]); det.draw.push([o.draw, bk.title]); det.away.push([o.away, bk.title]);
                 if (o.home > best.home[0]) best.home = [o.home, bk.title]; if (o.draw > best.draw[0]) best.draw = [o.draw, bk.title]; if (o.away > best.away[0]) best.away = [o.away, bk.title];
               }
               if (acc.home.length < 3) { skipped++; continue; }
@@ -15425,6 +15430,10 @@ const server = http.createServer(async (req, res) => {
                   utc: ev.commence_time, home: th.name, away: ta.name, home_id: th.id, away_id: ta.id, outcome: oc,
                   our: +pr[oc].toFixed(3), consensus: +cons[oc].toFixed(3), edge_pp: +(edge * 100).toFixed(1),
                   best_odds: best[oc][0] || null, best_book: best[oc][1] || null, books: acc.home.length,
+                  // P3/P10: cuota justa (1/consenso), vig medio del mercado y top casas de este outcome
+                  fair_odds: cons[oc] > 0 ? +(1 / cons[oc]).toFixed(2) : null,
+                  vig_pct: vigN ? +((vigSum / vigN) * 100).toFixed(1) : null,
+                  books_detail: det[oc].sort((x, y) => y[0] - x[0]).slice(0, 6).map(x => ({ o: x[0], b: x[1] })),
                 });
               }
             }

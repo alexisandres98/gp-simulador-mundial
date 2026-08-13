@@ -69,6 +69,32 @@
       memo_price_none: 'Sin un precio que supere el umbral de value ahora mismo.',
       memo_risk_default: 'Hay dudas de disponibilidad y un desacuerdo apreciable con el mercado.',
       memo_inval: 'Revisar si cambian las alineaciones o la cuota cae por debajo del mínimo.',
+      /* Decisión Memo v2 (13-ago): compuesto SOLO desde datos reales del partido — nunca texto genérico */
+      m2_sig_pick: 'Pick GP activa en este partido: {sel}', m2_sig_pick_odds: 'tomada a {odds}',
+      m2_sig_value: 'Valor detectado en {sel}: el mercado paga {best} y GP la tasa en {fair}.',
+      m2_sig_edge: 'GP ve a {sel} {gap} pp por encima del precio del mercado — vigilando si aparece cuota que lo pague.',
+      m2_sig_aligned: 'Modelo y mercado alineados en este cruce: sin ventaja explotable ahora mismo.',
+      m2_sig_nomkt: 'GP hace favorito a {team} ({pct}). Sin cuotas frescas del cruce para comparar contra el mercado.',
+      m2_sig_even_nomkt: 'Cruce parejo para GP ({pct} máximo). Sin cuotas frescas del cruce para buscar valor.',
+      m2_sig_live: 'En vivo {score} ({min}\'): GP da {pct} a {sel} ahora mismo.',
+      m2_sig_final: 'Final {score}. {sel} cerró como la lectura de GP con {pct}.',
+      m2_sel_home: 'el local', m2_sel_away: 'la visita', m2_sel_draw: 'el empate',
+      m2_n_gp: 'GP', m2_n_mk: 'Mercado', m2_n_fair: 'Justa', m2_n_best: 'Mejor', m2_n_edge: 'Edge', m2_n_books: 'Casas',
+      m2_why: 'Por qué', m2_risk: 'Riesgo real', m2_inval: 'Qué lo invalida',
+      m2_w_xg: 'La proyección de goles va {xh}–{xa} a favor de {team}.',
+      m2_w_xg_even: 'La proyección de goles está pareja: {xh}–{xa}.',
+      m2_w_form: '{team} llega {f1} en sus últimos {n}; {team2}, {f2}.',
+      m2_w_ctx: 'El contexto del partido movió la línea {pp} pp sobre la base del modelo.',
+      m2_w_elo: 'La diferencia de rating sostiene el favoritismo de {team}.',
+      m2_r_lineup: 'Alineaciones aún sin confirmar.',
+      m2_r_inj: 'Bajas o dudas en {team}: {names}.',
+      m2_r_books: 'Solo {n} casa(s) cotizando el cruce — consenso débil.',
+      m2_r_gap: 'Discrepancia grande con el mercado ({gap} pp): más potencial y más riesgo.',
+      m2_r_belowmin: 'La mejor cuota disponible quedó por debajo del mínimo de la jugada.',
+      m2_r_none: 'Sin señales de riesgo específicas en los datos del cruce.',
+      m2_i_odds: 'Si la cuota cae por debajo de {min}, la jugada deja de tener valor.',
+      m2_i_lineup: 'Confirmar el XI: una baja clave obliga a re-evaluar la lectura.',
+      m2_i_edge: 'Si el mercado corrige y el edge baja de {min} pp, se retira la señal.',
       loading: 'Cargando…', no_match: 'Elegí un partido del board para ver su cockpit.',
       ck_choose: 'Elegí un partido', ck_over25: 'Over 2.5', ck_todaypick: 'Pick del día',
       reg90: '90 min · sin prórroga ni penales', updated_short: 'Actualizado',
@@ -444,6 +470,32 @@
       memo_price_none: 'No price clears the value threshold right now.',
       memo_risk_default: 'There are availability doubts and a notable disagreement with the market.',
       memo_inval: 'Watch for lineup changes or the price dropping below the minimum.',
+      /* Decision Memo v2 */
+      m2_sig_pick: 'GP pick live on this match: {sel}', m2_sig_pick_odds: 'taken at {odds}',
+      m2_sig_value: 'Value detected on {sel}: the market pays {best} while GP prices it at {fair}.',
+      m2_sig_edge: 'GP rates {sel} {gap} pp above the market price — watching for a payable quote.',
+      m2_sig_aligned: 'Model and market aligned on this matchup: no exploitable edge right now.',
+      m2_sig_nomkt: 'GP makes {team} the favorite ({pct}). No fresh odds on this matchup to compare against.',
+      m2_sig_even_nomkt: 'Even matchup per GP ({pct} top). No fresh odds on this matchup to hunt value.',
+      m2_sig_live: 'Live {score} ({min}\'): GP gives {sel} {pct} right now.',
+      m2_sig_final: 'Full time {score}. {sel} closed as the GP read at {pct}.',
+      m2_sel_home: 'the home side', m2_sel_away: 'the away side', m2_sel_draw: 'the draw',
+      m2_n_gp: 'GP', m2_n_mk: 'Market', m2_n_fair: 'Fair', m2_n_best: 'Best', m2_n_edge: 'Edge', m2_n_books: 'Books',
+      m2_why: 'Why', m2_risk: 'Real risk', m2_inval: 'What kills it',
+      m2_w_xg: 'The goal projection runs {xh}–{xa} in favor of {team}.',
+      m2_w_xg_even: 'The goal projection is even: {xh}–{xa}.',
+      m2_w_form: '{team} arrives {f1} over the last {n}; {team2}, {f2}.',
+      m2_w_ctx: 'Match context moved the line {pp} pp over the model base.',
+      m2_w_elo: 'The rating gap sustains {team} as the favorite.',
+      m2_r_lineup: 'Lineups not yet confirmed.',
+      m2_r_inj: 'Outs or doubts for {team}: {names}.',
+      m2_r_books: 'Only {n} book(s) quoting this matchup — weak consensus.',
+      m2_r_gap: 'Large disagreement with the market ({gap} pp): more upside, more risk.',
+      m2_r_belowmin: 'The best available price fell below the play’s minimum.',
+      m2_r_none: 'No specific risk signals in this matchup’s data.',
+      m2_i_odds: 'If the price drops below {min}, the play loses its value.',
+      m2_i_lineup: 'Confirm the XI: a key absence forces a re-read.',
+      m2_i_edge: 'If the market corrects and the edge falls under {min} pp, the signal is withdrawn.',
       loading: 'Loading…', no_match: 'Pick a match from the board to see its cockpit.',
       ck_choose: 'Pick a match', ck_over25: 'Over 2.5', ck_todaypick: 'Today’s pick',
       reg90: '90 min · no extra time or penalties', updated_short: 'Updated',
@@ -4202,7 +4254,7 @@
       mvHero(beta, fx, r, live) +
       mvNav(sections) +
       '<div class="gx-mv-grid">' +
-      '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx)) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
+      '<div class="gx-mv-col">' + sec('resumen', mvMemo(beta, r, fx, { vRows: vRows, picks: matchPicks, m: m, lu: lu, cctx: cctx })) + sec('prob', mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
       '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, beta.header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, beta.header)) : '') + (intelD ? sec('intel', mvIntel(intelD, beta.header)) : '') + (styleD ? sec('estilo', uiPlan() === 'sharp' ? mvStyle(styleD, beta.header) : lockPanel('lock_sharp_t', 'lock_style_s')) : '') + sec('goles', mvGoals(beta)) + '</div>' +
       '</div>' +
       (m.cross_league ? '<div class="gx-panel"><div style="padding:12px 16px;font-size:11px;color:var(--gx-warn);line-height:1.5">' + esc(t('cl_cross')) + '</div></div>' : '')
@@ -4730,16 +4782,126 @@
     if (vals.length) return { code: 'ev_price_only', cls: 'dim', ic: 'currency-dollar' };
     return { code: 'ev_none', cls: 'dim', ic: 'help' };
   }
-  function mvMemo(beta, r, fx) {
-    var memo = buildMemo(r), conf = memo.conf, ev = evidenceBasis(beta);
+  // ═ DECISIÓN MEMO v2 (13-ago, orden de Alexis: "que se vea que es inteligencia real") ═
+  // Compuesto SOLO desde los datos del partido: pick GP con su porqué > value con cuota justa > lectura del
+  // modelo. Cada frase lleva números del cruce; lo que no existe NO se muestra (cero relleno genérico).
+  // X = fuentes extra del cockpit de clubes {vRows, picks, m, lu, cctx}; sin X usa las fuentes del Mundial.
+  function buildMemo2(beta, r, fx, X) {
+    X = X || {};
+    var eid = beta.header.event_id;
+    var hN = teamName(beta.header.home.team_id, beta.header.home.name_fallback);
+    var aN = teamName(beta.header.away.team_id, beta.header.away.name_fallback);
+    var selName = function (c) { return c === 'HOME' ? hN : c === 'AWAY' ? aN : t('m2_sel_draw'); };
+    var gp = { HOME: r.gp('HOME'), DRAW: r.gp('DRAW'), AWAY: r.gp('AWAY') };
+    var topC = maxCode(function (c) { return gp[c]; }) || 'HOME';
+    // fila de mercado por outcome, normalizada de ambos mundos (clubes: vRows del scan; Mundial: S.value)
+    var rows = {};
+    if (X.vRows) X.vRows.forEach(function (v) { var c = String(v.outcome || '').toUpperCase(); if (c) rows[c] = { edge: v.edge_pp, best: v.best_odds, book: v.best_book, fair: v.fair_odds, books: v.books, mk: v.consensus != null ? v.consensus : v.market }; });
+    else (S.value || []).filter(function (v) { return v.event_id === eid; }).forEach(function (v) { rows[v.outcome_code] = { edge: v.adjusted_edge_pp, best: v.best_odds, book: v.best_sportsbook, fair: v.fair_odds || (v.market_probability ? 1 / v.market_probability : null), books: v.books, mk: v.market_probability, min: v.minimum_odds, actionable: v.actionable }; });
+    var mkTop = rows[topC] && rows[topC].mk != null ? rows[topC].mk : r.mk(topC);
+    var gapPp = (gp[topC] != null && mkTop != null) ? (gp[topC] - mkTop) * 100 : null;
+    // pick del partido (clubes: matchPicks del feed con pickRecText; Mundial: pick publicada del dash)
+    var pick = (X.picks || []).filter(function (p) { return p.status !== 'SUPERSEDED'; })[0] ||
+      ((S.dash && S.dash.recent_picks) || []).filter(function (p) { return p.event_id === eid && p.lifecycle_code === 'PUBLISHED'; })[0] || null;
+    // el edge más aprovechable entre outcomes con cuota
+    var bestC = null; Object.keys(rows).forEach(function (c) { if (rows[c].edge != null && rows[c].best != null && (bestC == null || rows[c].edge > rows[bestC].edge)) bestC = c; });
+    var live = fx && fx.status === 'live', fin = fx && fx.status === 'final';
+    // ---- SEÑAL (la línea que manda) ----
+    var sig, sigCls = 'dim', sigIc = 'help';
+    if (pick) {
+      var sel = pick.label || (typeof pickRecText === 'function' ? pickRecText(pick) : (pick.selection || ''));
+      sig = t('m2_sig_pick', { sel: '<b>' + esc(sel) + '</b>' }) + (pick.odds ? ' <span class="gx-m2-sub">· ' + esc(t('m2_sig_pick_odds', { odds: odd(pick.odds) })) + '</span>' : '');
+      sigCls = 'pos'; sigIc = 'circle-check';
+    } else if (live && fx.score) {
+      sig = t('m2_sig_live', { score: esc(fx.score.home + '–' + fx.score.away), min: esc(String(fx.minute || '')), sel: '<b>' + esc(selName(topC)) + '</b>', pct: '<b>' + pct0(gp[topC]) + '</b>' });
+      sigCls = 'blue'; sigIc = 'broadcast';
+    } else if (fin && fx.score) {
+      sig = t('m2_sig_final', { score: esc(fx.score.home + '–' + fx.score.away), sel: '<b>' + esc(selName(topC)) + '</b>', pct: '<b>' + pct0(gp[topC]) + '</b>' });
+      sigCls = 'dim'; sigIc = 'flag';
+    } else if (bestC && rows[bestC].edge >= 4 && rows[bestC].fair) {
+      sig = t('m2_sig_value', { sel: '<b>' + esc(selName(bestC)) + '</b>', best: '<b>' + odd(rows[bestC].best) + '</b>', fair: '<b>' + odd(rows[bestC].fair) + '</b>' });
+      sigCls = 'pos'; sigIc = 'trending-up';
+    } else if (gapPp != null && Math.abs(gapPp) >= 4) {
+      sig = t('m2_sig_edge', { sel: '<b>' + esc(selName(topC)) + '</b>', gap: '<b>' + (gapPp > 0 ? '+' : '') + gapPp.toFixed(1) + '</b>' });
+      sigCls = 'blue'; sigIc = 'eye';
+    } else if (gapPp != null) {
+      sig = t('m2_sig_aligned'); sigCls = 'dim'; sigIc = 'scale';
+    } else {
+      var evenM = gp[topC] != null && gp[topC] < 0.45;
+      sig = t(evenM ? 'm2_sig_even_nomkt' : 'm2_sig_nomkt', { team: '<b>' + esc(selName(topC)) + '</b>', pct: '<b>' + pct0(gp[topC]) + '</b>' });
+      sigCls = 'dim'; sigIc = 'chart-dots';
+    }
+    // ---- LOS NÚMEROS (chips; solo los que existen) ----
+    var R = rows[bestC || topC] || {};
+    var nums = [];
+    if (gp[topC] != null) nums.push([t('m2_n_gp'), pct0(gp[topC]) + ' ' + esc(selName(topC) === t('m2_sel_draw') ? 'X' : selName(topC).slice(0, 12))]);
+    if (mkTop != null) nums.push([t('m2_n_mk'), pct0(mkTop)]);
+    if (R.fair != null) nums.push([t('m2_n_fair'), odd(R.fair)]);
+    if (R.best != null) nums.push([t('m2_n_best'), odd(R.best) + (R.book ? ' · ' + esc(prettyBook(R.book)) : ''), 'hl']);
+    if (R.edge != null) nums.push([t('m2_n_edge'), (R.edge > 0 ? '+' : '') + Number(R.edge).toFixed(1) + ' pp', R.edge >= 4 ? 'pos' : '']);
+    if (R.books != null && R.books > 0) nums.push([t('m2_n_books'), String(R.books)]);
+    // ---- POR QUÉ (máx 2 frases, todas con datos del cruce) ----
+    var why = [];
+    var xh = fx && fx.modelProbabilities ? fx.modelProbabilities.xgHome : null;
+    var xa = fx && fx.modelProbabilities ? fx.modelProbabilities.xgAway : null;
+    if (pick && (pick.why_ai || pick.why)) {
+      var w = String(pick.why_ai || pick.why); why.push(esc(w.length > 220 ? w.slice(0, 217) + '…' : w));
+    }
+    if (why.length < 2 && xh != null && xa != null) {
+      var xd = Math.abs(xh - xa);
+      why.push(esc(xd < 0.2 ? t('m2_w_xg_even', { xh: Number(xh).toFixed(2), xa: Number(xa).toFixed(2) })
+        : t('m2_w_xg', { xh: Number(xh).toFixed(2), xa: Number(xa).toFixed(2), team: xh > xa ? hN : aN })));
+    }
+    if (why.length < 2 && fx && fx.recentForm && fx.recentForm.home && fx.recentForm.away) {
+      var fh = fx.recentForm.home.results || [], fa = fx.recentForm.away.results || [];
+      if (fh.length >= 3 && fa.length >= 3) why.push(esc(t('m2_w_form', { team: hN, f1: formStr(fh.slice(0, 5)), n: Math.min(5, fh.length), team2: aN, f2: formStr(fa.slice(0, 5)) })));
+    }
+    if (why.length < 2 && beta.analysis && beta.analysis.context_moved_line && beta.analysis.context_adjustments) {
+      var adj = beta.analysis.context_adjustments[topC];
+      if (adj != null && Math.abs(adj) >= 0.005) why.push(esc(t('m2_w_ctx', { pp: (adj > 0 ? '+' : '') + (adj * 100).toFixed(1) })));
+    }
+    if (!why.length && topC !== 'DRAW' && gp[topC] >= 0.48) why.push(esc(t('m2_w_elo', { team: selName(topC) })));
+    // ---- RIESGO REAL (solo lo verificable) ----
+    var risk = [];
+    var injBy = { home: [], away: [] };
+    ((fx && fx.injuries) || []).forEach(function (i) { if (i.player && injBy[i.side]) injBy[i.side].push(i.player); });
+    ['home', 'away'].forEach(function (sd) {
+      if (injBy[sd].length) risk.push(esc(t('m2_r_inj', { team: sd === 'home' ? hN : aN, names: injBy[sd].slice(0, 3).join(', ') + (injBy[sd].length > 3 ? ' +' + (injBy[sd].length - 3) : '') })));
+    });
+    var luConf = fx && fx.lineups && ((fx.lineups.home && fx.lineups.home.confirmed) || (fx.lineups.away && fx.lineups.away.confirmed));
+    if (!live && !fin && !luConf && risk.length < 2) risk.push(esc(t('m2_r_lineup')));
+    if (R.books != null && R.books > 0 && R.books < 3) risk.push(esc(t('m2_r_books', { n: R.books })));
+    if (gapPp != null && Math.abs(gapPp) >= 12) risk.push(esc(t('m2_r_gap', { gap: gapPp.toFixed(1) })));
+    if (R.min != null && R.best != null && R.best < R.min) risk.push(esc(t('m2_r_belowmin')));
+    risk = risk.slice(0, 2);
+    // ---- INVALIDACIÓN (solo si es específica) ----
+    var inval = [];
+    if (pick && (pick.min_odds || R.min)) inval.push(esc(t('m2_i_odds', { min: odd(pick.min_odds || R.min) })));
+    else if (pick && injBy.home.concat(injBy.away).length) inval.push(esc(t('m2_i_lineup')));
+    else if (!pick && bestC && rows[bestC].edge >= 4) inval.push(esc(t('m2_i_edge', { min: '4' })));
+    // ---- confianza honesta ----
+    var ma = S.mc[eid] || r._beta;
+    var conf = confInfo(ma && ma.confidence_code);
+    if (!conf.code) {
+      if (pick && pick.confidence != null) conf = pick.confidence >= 0.62 ? { cls: 'hi', label: t('conf_hi') } : pick.confidence >= 0.5 ? { cls: 'mid', label: t('conf_mid') } : { cls: 'lo', label: t('conf_lo') };
+      else if (bestC && rows[bestC].edge >= 8 && (rows[bestC].books || 0) >= 4) conf = { cls: 'mid', label: t('conf_mid') };
+    }
+    return { sig: sig, sigCls: sigCls, sigIc: sigIc, nums: nums, why: why, risk: risk, inval: inval, conf: conf, ma: ma,
+      bestOdds: R.best != null ? R.best : null, book: R.book ? prettyBook(R.book) : '', bookCode: R.book || null };
+  }
+  function mvMemo(beta, r, fx, X) {
+    var m2 = buildMemo2(beta, r, fx, X), ev = evidenceBasis(beta);
+    var rowsHtml = '';
+    if (m2.why.length) rowsHtml += '<div class="gx-m2-row"><span class="gx-m2-lab">' + esc(t('m2_why')) + '</span><div class="gx-m2-tx">' + m2.why.map(function (s) { return '<p>' + s + '</p>'; }).join('') + '</div></div>';
+    if (m2.risk.length) rowsHtml += '<div class="gx-m2-row risk"><span class="gx-m2-lab">' + esc(t('m2_risk')) + '</span><div class="gx-m2-tx">' + m2.risk.map(function (s) { return '<p>' + s + '</p>'; }).join('') + '</div></div>';
+    if (m2.inval.length) rowsHtml += '<div class="gx-m2-row warn"><span class="gx-m2-lab">' + esc(t('m2_inval')) + '</span><div class="gx-m2-tx">' + m2.inval.map(function (s) { return '<p>' + s + '</p>'; }).join('') + '</div></div>';
     return '<div class="gx-panel gx-memo gx-mv-panel">' +
-      '<div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('mod_memo')) + '</span><span class="gx-conf ' + conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + conf.label) + '</span></div>' +
-      '<div class="gx-ev-basis gx-ev-' + ev.cls + '">' + ic(ev.ic) + '<div><span class="gx-label">' + esc(t('ev_basis')) + '</span><b>' + esc(t(ev.code)) + '</b></div></div>' +
-      '<div class="gx-memo-grid">' +
-      memoItem('verdict', memo.verdict) + memoItem('price', memo.price) + memoItem('thesis', memo.thesis) + memoItem('risk', memo.risk, 'risk') + memoItem('invalidation', memo.inval, 'warn') +
-      '</div>' + dataTrust(r, memo.ma, fx) +
-      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (memo.bestOdds != null ? odd(memo.bestOdds) : esc(t('e_noprice'))) + '</b>' + (memo.book ? ' · ' + bookLogo(memo.bookCode) + esc(memo.book) : '') + '</span>' +
-      (ev.code === 'ev_pick' || ev.code === 'ev_value' ? '<span class="gx-cta-tag gx-ev-' + ev.cls + '">' + esc(memo.cta) + '</span>' : '') + '</div>' +
+      '<div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('mod_memo')) + '</span><span class="gx-conf ' + m2.conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + m2.conf.label) + '</span></div>' +
+      '<div class="gx-m2-sig gx-m2-' + m2.sigCls + '">' + ic(m2.sigIc) + '<div>' + m2.sig + '</div></div>' +
+      (m2.nums.length ? '<div class="gx-m2-nums">' + m2.nums.map(function (n) { return '<span class="gx-m2-chip ' + (n[2] || '') + '"><span class="gx-m2-k">' + esc(n[0]) + '</span><b>' + n[1] + '</b></span>'; }).join('') + '</div>' : '') +
+      rowsHtml + dataTrust(r, m2.ma, fx) +
+      '<div class="gx-memo-cta"><span class="gx-bestprice">' + esc(t('best_avail')) + ' <b>' + (m2.bestOdds != null ? odd(m2.bestOdds) : esc(t('e_noprice'))) + '</b>' + (m2.book ? ' · ' + bookLogo(m2.bookCode) + esc(m2.book) : '') + '</span>' +
+      (ev.code === 'ev_pick' ? '<span class="gx-cta-tag gx-ev-pos">' + esc(t('cta_pick')) + '</span>' : ev.code === 'ev_value' ? '<span class="gx-cta-tag gx-ev-pos">' + esc(t('cta_value')) + '</span>' : '') + '</div>' +
       '</div>';
   }
 

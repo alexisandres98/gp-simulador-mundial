@@ -1708,3 +1708,26 @@ td .gx-calc-btn span { display: none; }
 .gx-tour-card { position:fixed; left:50%; transform:translateX(-50%); width:min(92vw,360px); background:var(--gx-panel,#10171c); border:1px solid rgba(31,227,164,.35); border-radius:16px; padding:16px 18px; z-index:2; }
 .gx-tour-card b { font-size:15px; } .gx-tour-card p { font-size:12.5px; color:var(--gx-text2,#9DB0B5); margin:6px 0 12px; line-height:1.45; }
 .gx-tour-foot { display:flex; align-items:center; gap:10px; } .gx-tour-foot .gx-btn { margin-left:auto; }
+
+/* ═ DECISIÓN MEMO v2 (13-ago) — la señal manda, los números respaldan, cero relleno ═ */
+.gx-m2-sig { display:flex; align-items:flex-start; gap:10px; margin:4px 0 12px; padding:13px 15px; border-radius:13px; font-size:14.5px; line-height:1.5; font-weight:550; border:1px solid var(--gx-line,rgba(255,255,255,.08)); background:rgba(255,255,255,.02); }
+.gx-m2-sig .ti, .gx-m2-sig .gxi { font-size:17px; margin-top:1px; flex:none; }
+.gx-m2-sig b { font-weight:750; }
+.gx-m2-pos { border-color:rgba(31,227,164,.35); background:linear-gradient(120deg,rgba(31,227,164,.10),rgba(31,227,164,.02)); }
+.gx-m2-pos .ti, .gx-m2-pos .gxi { color:var(--gx-accent,#1FE3A4); }
+.gx-m2-blue { border-color:rgba(91,168,255,.32); background:linear-gradient(120deg,rgba(91,168,255,.09),rgba(91,168,255,.02)); }
+.gx-m2-blue .ti, .gx-m2-blue .gxi { color:#5BA8FF; }
+.gx-m2-dim { color:var(--gx-text2,#9DB0B5); }
+.gx-m2-sub { font-weight:500; color:var(--gx-text2,#9DB0B5); font-size:12.5px; }
+.gx-m2-nums { display:flex; gap:7px; flex-wrap:wrap; margin:0 0 12px; }
+.gx-m2-chip { display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:99px; border:1px solid var(--gx-line,rgba(255,255,255,.08)); background:var(--gx-panel2,#131c22); font-size:12px; }
+.gx-m2-chip .gx-m2-k { font-size:9.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--gx-text3,#64757a); }
+.gx-m2-chip b { font-variant-numeric:tabular-nums; font-weight:700; }
+.gx-m2-chip.hl { border-color:rgba(31,227,164,.4); } .gx-m2-chip.hl b { color:var(--gx-accent,#1FE3A4); }
+.gx-m2-chip.pos b { color:var(--gx-accent,#1FE3A4); }
+.gx-m2-row { display:grid; grid-template-columns:86px 1fr; gap:10px; padding:10px 2px; border-top:1px solid var(--gx-line,rgba(255,255,255,.06)); }
+.gx-m2-lab { font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--gx-text3,#64757a); padding-top:2px; }
+.gx-m2-row.risk .gx-m2-lab { color:#FF9B7A; } .gx-m2-row.warn .gx-m2-lab { color:var(--gx-warn,#F2C14E); }
+.gx-m2-tx { font-size:13px; line-height:1.55; color:var(--gx-text2,#B9C6C9); }
+.gx-m2-tx p { margin:0 0 6px; } .gx-m2-tx p:last-child { margin-bottom:0; }
+@media (max-width:560px){ .gx-m2-row { grid-template-columns:1fr; gap:3px; } }

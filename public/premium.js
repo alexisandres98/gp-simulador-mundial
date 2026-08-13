@@ -168,6 +168,13 @@
       bc_v_good: 'Tu cuota paga por encima de la justa: tiene valor.', bc_v_fair: 'Tu cuota está en línea con el mercado.', bc_v_bad: 'Tu cuota paga por debajo de la justa: precio malo.',
       lock_bc_s: 'El Verificador de apuestas es parte de los planes Pro y Sharp.',
       mb_cal: 'Calendario de resultados', mb_today: 'Hoy', mb_break: 'Desglose', mb_by_book: 'Por casa', mb_by_fam: 'Por familia',
+      onb_bk_t: 'Configura tu bankroll', onb_bk_s: 'Es el dinero que reservaste para apostar. Lo usamos para sugerirte el stake de cada pick (Kelly fraccionado). Podés saltarlo.',
+      onb_lv_t: 'Tu experiencia', onb_lv_s: 'Adaptamos cuánta explicación mostrarte.',
+      onb_lv1: '🌱 Principiante — soy nuevo en apuestas deportivas', onb_lv2: '⚽ Intermedio — entiendo cuotas y value, quiero mejorar', onb_lv3: '👑 Avanzado — busco mejores herramientas',
+      tour_1t: 'Esta es una pick del modelo', tour_1s: 'La selección concreta, su cuota y en qué casa está el mejor precio.',
+      tour_2t: 'Cada pick trae su porqué', tour_2s: 'Tocá "¿Por qué esta pick?" y el modelo te explica la lectura — nada de filas verdes sin contexto.',
+      tour_3t: 'Todo liquida en público', tour_3s: 'Cada pick queda en el track público con su resultado, ganadas y perdidas. Auditalo cuando quieras en Rendimiento.',
+      al_value_min: 'Avisarme con edge de al menos',
       hp_hide: 'Ocultar esta pick', hp_unhide: 'Mostrar esta pick', hp_hidden_n: 'ocultas ({n})', hp_showing: 'mostrando ocultas',
       val_fair: 'justa', val_vig: 'vig',
       pf_corr: 'Son del mismo partido: se resuelven juntas. Para tu stake trátalas como <b>una sola apuesta</b>, no como {n} independientes.',
@@ -536,6 +543,13 @@
       bc_v_good: 'Your odds pay above fair: there is value.', bc_v_fair: 'Your odds are in line with the market.', bc_v_bad: 'Your odds pay below fair: bad price.',
       lock_bc_s: 'The Bet Checker is part of the Pro and Sharp plans.',
       mb_cal: 'Results calendar', mb_today: 'Today', mb_break: 'Breakdown', mb_by_book: 'By book', mb_by_fam: 'By family',
+      onb_bk_t: 'Set up your bankroll', onb_bk_s: 'The money you set aside for betting. We use it to suggest a stake for every pick (fractional Kelly). You can skip this.',
+      onb_lv_t: 'Your experience', onb_lv_s: 'We adapt how much explanation to show you.',
+      onb_lv1: '🌱 Beginner — new to sports betting', onb_lv2: '⚽ Intermediate — I get odds and value, want to improve', onb_lv3: '👑 Advanced — looking for better tools',
+      tour_1t: 'This is a model pick', tour_1s: 'The exact selection, its odds and which book has the best price.',
+      tour_2t: 'Every pick comes with its why', tour_2s: 'Tap "Why this pick?" and the model explains the read — no context-free green rows here.',
+      tour_3t: 'Everything settles in public', tour_3s: 'Every pick lands on the public track record with its result, wins and losses alike. Audit it anytime in Performance.',
+      al_value_min: 'Alert me with edge of at least',
       hp_hide: 'Hide this pick', hp_unhide: 'Unhide this pick', hp_hidden_n: 'hidden ({n})', hp_showing: 'showing hidden',
       val_fair: 'fair', val_vig: 'vig',
       pf_corr: 'Same match: they settle together. For your stake, treat them as <b>one single bet</b>, not {n} independent ones.',
@@ -1668,6 +1682,7 @@
       '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
     wireBooksBar(bd, function () { picksFeed(bd); });
     wireWelcome(bd);
+    maybePickTour(); // P8: primera visita con picks → tour de 3 pasos sobre la card real
   }
   // Board en SECCIONES: hero "Pick del día" (mayor confianza) arriba + el resto agrupado por partido, con
   // encabezado clickeable que abre el cockpit del partido. El hero se excluye de su sección para no duplicar.
@@ -3189,27 +3204,87 @@
     // 26-jul (pedido de Alexis): el tour muestra los MEJORES features — picks, cockpit de partidos, Value/Arb
     // y Mi cartera (los Sharp llevan chip "Disponible en Sharp") — en vez de seguidos/alertas: mucha gente
     // entraba sin enterarse de todo lo que ofrece la plataforma.
+    // P7 (13-ago, lote BetHero): dos pasos de DATOS al frente — bankroll (alimenta el Kelly de la
+    // calculadora desde el minuto uno) y nivel de experiencia. Ambos opcionales (Siguiente sin llenar).
     var steps = [
+      { custom: 'bankroll', ic: 'wallet', t: 'onb_bk_t', s: 'onb_bk_s' },
+      { custom: 'level', ic: 'school', t: 'onb_lv_t', s: 'onb_lv_s' },
       { ic: 'ticket', t: 'onb_1t', s: 'onb_1s' },
       { ic: 'ball-football', t: 'onb_2t', s: 'onb_2s' },
       { ic: 'trending-up', t: 'onb_3t', s: 'onb_3s', sharp: true },
       { ic: 'wallet', t: 'onb_4t', s: 'onb_4s', sharp: true },
     ];
     var i = 0;
+    var setup = { bankroll: null, ccy: calcCcy(), level: null };
     var wrap = document.createElement('div'); wrap.id = 'gx-onb'; wrap.className = 'gx-onb';
+    function saveSetup() {
+      if (setup.bankroll) { lsSet('gp_calc_bankroll', String(setup.bankroll)); lsSet('gp_calc_ccy', setup.ccy); }
+      if (setup.level) lsSet('gp_level', setup.level);
+      if (setup.bankroll || setup.level) fetch('/api/me/setup', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify(setup) }).catch(function () {});
+    }
     function paint() {
       var st = steps[i];
+      var body = '';
+      if (st.custom === 'bankroll') {
+        var ccyOpts = CALC_CCYS.map(function (c) { return '<option value="' + c[0] + '"' + (setup.ccy === c[0] ? ' selected' : '') + '>' + c[0] + '</option>'; }).join('');
+        body = '<div class="gx-calc-grid" style="margin:10px 0 4px;text-align:left">' +
+          '<label class="gx-calc-f"><span>' + esc(t('calc_currency')) + '</span><select class="gx-calc-in" id="gx-onb-ccy">' + ccyOpts + '</select></label>' +
+          '<label class="gx-calc-f"><span>' + esc(t('calc_bankroll')) + '</span><input class="gx-calc-in" id="gx-onb-bk" type="number" inputmode="decimal" min="1" step="any" placeholder="1000"' + (setup.bankroll ? ' value="' + setup.bankroll + '"' : '') + '></label></div>';
+      } else if (st.custom === 'level') {
+        body = '<div style="display:flex;flex-direction:column;gap:8px;margin:10px 0 4px">' + [['beginner', 'onb_lv1'], ['intermediate', 'onb_lv2'], ['advanced', 'onb_lv3']].map(function (l2) {
+          return '<button type="button" class="gx-calc-frac' + (setup.level === l2[0] ? ' on' : '') + '" data-onblevel="' + l2[0] + '" style="width:100%;text-align:left;padding:10px 14px">' + esc(t(l2[1])) + '</button>';
+        }).join('') + '</div>';
+      }
       wrap.innerHTML = '<div class="gx-onb-bg"></div><div class="gx-onb-card">' +
         '<div class="gx-onb-ic">' + ic(st.ic) + '</div>' +
         '<h3>' + esc(t(st.t)) + '</h3>' + (st.sharp ? '<span class="gx-onb-chip">' + ic('crown') + ' ' + esc(t('onb_sharp')) + '</span>' : '') + '<p>' + esc(t(st.s)) + '</p>' +
+        body +
         '<div class="gx-onb-dots">' + steps.map(function (_, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
         '<button class="gx-btn gx-onb-cta" id="gx-onb-next">' + esc(t(i === steps.length - 1 ? 'onb_done' : 'onb_next')) + '</button>' +
         '<button class="gx-onb-skip" id="gx-onb-skip">' + esc(t('onb_skip')) + '</button></div>';
-      wrap.querySelector('#gx-onb-next').addEventListener('click', function () { if (i < steps.length - 1) { i++; paint(); } else onbFinish(); });
-      wrap.querySelector('#gx-onb-skip').addEventListener('click', onbFinish);
+      var grab = function () {
+        var bkIn = wrap.querySelector('#gx-onb-bk');
+        if (bkIn) { var v2 = parseFloat(bkIn.value); if (isFinite(v2) && v2 > 0) setup.bankroll = v2; var cy = wrap.querySelector('#gx-onb-ccy'); if (cy) setup.ccy = cy.value; }
+      };
+      wrap.querySelector('#gx-onb-next').addEventListener('click', function () { grab(); if (i < steps.length - 1) { i++; paint(); } else { saveSetup(); onbFinish(); } });
+      wrap.querySelector('#gx-onb-skip').addEventListener('click', function () { grab(); saveSetup(); onbFinish(); });
+      [].forEach.call(wrap.querySelectorAll('[data-onblevel]'), function (b2) {
+        b2.addEventListener('click', function () { setup.level = b2.getAttribute('data-onblevel'); i++; paint(); });
+      });
     }
     paint();
     document.body.appendChild(wrap);
+  }
+  // ── P8 (13-ago, lote BetHero): TOUR de la primera pick — 3 coach-marks sobre la card real ──
+  function maybePickTour() {
+    if (lsGet('gp_tour_done') === '1') return;
+    if (document.getElementById('gx-onb') || document.getElementById('gx-tour')) return;
+    var card = document.querySelector('.gx-pick-card'); if (!card) return;
+    var stepsT = [
+      { sel: '.gx-pick-card .gx-pick-rec', t: 'tour_1t', s: 'tour_1s' },
+      { sel: '.gx-pick-card .gx-why-btn', t: 'tour_2t', s: 'tour_2s' },
+      { sel: '.gx-pick-card .gx-pick-odds', t: 'tour_3t', s: 'tour_3s' },
+    ];
+    var iT = 0;
+    var wrapT = document.createElement('div'); wrapT.id = 'gx-tour'; wrapT.className = 'gx-tour';
+    function done() { lsSet('gp_tour_done', '1'); wrapT.remove(); }
+    function paintT() {
+      var st2 = stepsT[iT];
+      var el = document.querySelector(st2.sel) || card;
+      var r2 = el.getBoundingClientRect();
+      var top = Math.min(window.innerHeight - 190, Math.max(10, r2.bottom + 8));
+      wrapT.innerHTML = '<div class="gx-tour-bg"></div>' +
+        '<div class="gx-tour-hl" style="top:' + (r2.top - 4) + 'px;left:' + (r2.left - 4) + 'px;width:' + (r2.width + 8) + 'px;height:' + (r2.height + 8) + 'px"></div>' +
+        '<div class="gx-tour-card" style="top:' + top + 'px">' +
+        '<b>' + esc(t(st2.t)) + '</b><p>' + esc(t(st2.s)) + '</p>' +
+        '<div class="gx-tour-foot"><span class="gx-dim">' + (iT + 1) + '/' + stepsT.length + '</span>' +
+        '<button class="gx-onb-skip" data-tourskip>' + esc(t('onb_skip')) + '</button>' +
+        '<button class="gx-btn" data-tournext>' + esc(t(iT === stepsT.length - 1 ? 'onb_done' : 'onb_next')) + '</button></div></div>';
+      wrapT.querySelector('[data-tournext]').addEventListener('click', function () { if (iT < stepsT.length - 1) { iT++; paintT(); } else done(); });
+      wrapT.querySelector('[data-tourskip]').addEventListener('click', done);
+    }
+    try { card.scrollIntoView({ block: 'center' }); } catch (e) {}
+    setTimeout(function () { paintT(); document.body.appendChild(wrapT); }, 250);
   }
 
   // ============================ PLANES: helpers + Mi suscripción + Soporte ============================
@@ -6150,12 +6225,23 @@
     var prefs = (S.me && S.me.alertPrefs) || {}, ev = prefs.events || {}, ch = prefs.channels || {};
     var evRows = ALERT_EVENTS.map(function (a) { var on = ev[a[0]] !== false && (a[0] === 'result' ? ev[a[0]] !== false : ev[a[0]] === true || (a[0] === 'result')); on = a[0] === 'result' ? (ev[a[0]] !== false) : (ev[a[0]] === true); return '<div class="gx-altrow"><span class="gx-altl">' + ic(a[1]) + esc(t(a[2])) + '</span><button class="gx-toggle' + (on ? ' on' : '') + '" data-alert-ev="' + a[0] + '"><i></i></button></div>'; }).join('');
     var chRows = ALERT_CHANNELS.map(function (a) { var soon = a[3]; var on = a[0] === 'email' ? (ch.email !== false) : ch[a[0]] === true; return '<div class="gx-altrow"><span class="gx-altl">' + ic(a[1]) + esc(t(a[2])) + (soon ? ' <span class="gx-dim" style="font-size:10px">' + esc(t('al_soon')) + '</span>' : '') + '</span><button class="gx-toggle' + (on ? ' on' : '') + (soon ? ' off' : '') + '"' + (soon ? ' disabled' : ' data-alert-ch="' + a[0] + '"') + '><i></i></button></div>'; }).join('');
+    // P16: umbral del edge para la alerta de valor (solo visible con valueOpp activo)
+    var minPp = Number(prefs.valueMinPp) || 8;
+    var thRow = ev.valueOpp === true
+      ? '<div class="gx-altrow" style="padding-left:26px"><span class="gx-altl gx-dim" style="font-size:11.5px">' + esc(t('al_value_min')) + '</span><span style="display:flex;gap:6px">' + [5, 8, 12].map(function (v2) { return '<button class="gx-calc-frac' + (minPp === v2 ? ' on' : '') + '" data-valmin="' + v2 + '">+' + v2 + 'pp</button>'; }).join('') + '</span></div>'
+      : '';
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px;max-width:680px">' + viewHead(t('nav_alerts')) +
-      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_events')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + evRows + '</div></div>' +
+      '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_events')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + evRows + thRow + '</div></div>' +
       '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('al_channels')) + '</span></div><div class="gx-mod-body" style="gap:2px">' + chRows + '</div></div>' +
       watchesPanel() + // F3: precios vigilados (flag watch_price; sin flag = '')
       '<p class="gx-mod-note gx-dim">' + ic('info-circle') + ' ' + esc(t('al_note')) + '</p></div></div>';
-    [].forEach.call(mv.querySelectorAll('[data-alert-ev]'), function (b) { b.addEventListener('click', function () { toggleAlert('events', b.getAttribute('data-alert-ev'), b); }); });
+    [].forEach.call(mv.querySelectorAll('[data-alert-ev]'), function (b) { b.addEventListener('click', function () { toggleAlert('events', b.getAttribute('data-alert-ev'), b); if (b.getAttribute('data-alert-ev') === 'valueOpp') setTimeout(renderAlerts, 150); }); });
+    [].forEach.call(mv.querySelectorAll('[data-valmin]'), function (b) { b.addEventListener('click', function () {
+      var v2 = Number(b.getAttribute('data-valmin'));
+      if (S.me && S.me.alertPrefs) S.me.alertPrefs.valueMinPp = v2;
+      fetch('/api/alertprefs', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ value_min_pp: v2 }) }).catch(function () {});
+      renderAlerts();
+    }); });
     [].forEach.call(mv.querySelectorAll('[data-alert-ch]'), function (b) { b.addEventListener('click', function () { toggleAlert('channels', b.getAttribute('data-alert-ch'), b); }); });
     [].forEach.call(mv.querySelectorAll('[data-wpdel]'), function (b) { b.addEventListener('click', function () { wpPost({ id: b.getAttribute('data-wpdel'), delete: true }); }); });
   }

@@ -7053,6 +7053,53 @@ setInterval(() => {
 if (dailyPicksOn() && clubsShadowOn()) {
   setTimeout(() => evaluateClubDailyPicks().catch(() => { }), 180 * 1000);
   setInterval(() => evaluateClubDailyPicks().catch(() => { }), 15 * 60 * 1000);
+  // P16 (13-ago, lote BetHero): alerta "edge fuerte" POR USUARIO — mismo ritmo de 15 min
+  setTimeout(() => userValueAlertsSweep().catch(() => { }), 300 * 1000);
+  setInterval(() => userValueAlertsSweep().catch(() => { }), 15 * 60 * 1000);
+}
+// ═ P16 — ALERTA DE EDGE FUERTE POR USUARIO (13-ago, lote BetHero) ═══════════════════════════════════════
+// Opt-in explícito (alertPrefs.events.valueOpp) + canal email activo + plan Pro/Sharp (la alerta REVELA
+// una pick — free no la recibe, coherente con el gating del feed). Umbral por usuario (valueMinPp,
+// default 8pp), tope 3/día, dedup por pick de por vida. La pick alertada es del feed PÚBLICO (regime
+// edge/anchor/lead, jamás monitor) con kickoff por delante.
+async function userValueAlertsSweep() {
+  if (!mailer.isConfigured() || !plansEnforced()) return { skipped: 'off' };
+  const cand = (db.clubDailyPicks || []).filter(x => x.status === 'ACTIVE'
+    && ['edge', 'anchor', 'lead'].includes(x.regime)
+    && (x.edge_pp || 0) >= 5
+    && x.event && Date.parse(x.event.kickoff_at) > Date.now() + 10 * 60e3);
+  if (!cand.length) return { sent: 0 };
+  let sent = 0;
+  db.sentValueAlerts = db.sentValueAlerts || {};
+  const day = new Date().toISOString().slice(0, 10);
+  for (const [email, usr] of Object.entries(db.users || {})) {
+    if (!usr || typeof usr !== 'object') continue;
+    const prefs = usr.alertPrefs || {};
+    if (!(prefs.events && prefs.events.valueOpp === true)) continue;
+    if (prefs.channels && prefs.channels.email === false) continue;
+    const plan = effectivePlan(email);
+    if (plan !== 'pro' && plan !== 'sharp') continue;
+    const minPp = Number(prefs.valueMinPp) || 8;
+    const st = db.sentValueAlerts[email] = db.sentValueAlerts[email] || { day, n: 0, ids: [] };
+    if (st.day !== day) { st.day = day; st.n = 0; st.ids = st.ids.slice(-150); }
+    for (const p2 of cand) {
+      if (st.n >= 3) break;
+      if ((p2.edge_pp || 0) < minPp) continue;
+      if (st.ids.includes(p2.pick_id)) continue;
+      const ev = p2.event, match = `${ev.home} vs ${ev.away}`;
+      const sel = p2.selection_name || p2.side || p2.selection_code;
+      const line = p2.line != null ? ` ${p2.line}` : '';
+      const subject = `⚡ Edge fuerte: ${sel}${line} · ${match} (+${Number(p2.edge_pp).toFixed(1)}pp)`;
+      const koTxt = new Date(ev.kickoff_at).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+      const text = `El modelo encontró un edge fuerte en una pick del feed:\n\n${match} · ${p2.competition_name || p2.league || ''}\nPick: ${sel}${line} (${p2.family})\nCuota: ${p2.best_odds}${p2.best_book ? ' en ' + p2.best_book : ''}\nEdge del modelo: +${Number(p2.edge_pp).toFixed(1)}pp\nKickoff: ${koTxt}\n\nVer el análisis completo: https://gpsimulador.com/x\n\nEstimaciones de un modelo estadístico, no consejo financiero. 18+.\nAjustá o apagá estas alertas en Alertas → Oportunidad de valor.`;
+      try {
+        await mailer.sendMail({ to: email, subject, text, html: `<div style="font-family:Arial,sans-serif;max-width:520px"><p><b>${match}</b> · ${p2.competition_name || p2.league || ''}</p><p style="font-size:17px"><b>${sel}${line}</b> <span style="color:#888">(${p2.family})</span><br>Cuota <b>${p2.best_odds}</b>${p2.best_book ? ' en ' + p2.best_book : ''} · edge <b style="color:#0a9e6e">+${Number(p2.edge_pp).toFixed(1)}pp</b></p><p style="color:#555">Kickoff: ${koTxt}</p><p><a href="https://gpsimulador.com/x" style="background:#18E6A3;color:#06231A;padding:10px 20px;border-radius:99px;text-decoration:none;font-weight:700">Ver el análisis</a></p><p style="color:#999;font-size:11px">Estimaciones de un modelo estadístico, no consejo financiero. 18+. Ajustá estas alertas en Alertas → Oportunidad de valor.</p></div>` });
+        st.ids.push(p2.pick_id); st.n++; sent++;
+      } catch (e) { console.error('[value-alert]', email, e.message); }
+    }
+  }
+  if (sent) save();
+  return { sent };
 }
 // F3 Watch price: chequeo en el MISMO ritmo de 15min (las cuotas frescas llegan con los sweeps; el chequeo
 // lee sportsbook_goal_quote_current — la fuente del cierre oficial). Flag off → no-op.
@@ -11914,17 +11961,34 @@ const server = http.createServer(async (req, res) => {
       save();
       return json(res, 200, { alerts: db.users[u.email].alerts });
     }
-    // preferencias de alertas (eventos + canales)
+    // preferencias de alertas (eventos + canales + umbral de edge para valueOpp — P16 13-ago)
     if (p === '/api/alertprefs' && req.method === 'POST') {
       const u = getUser(req);
       if (!u) return json(res, 401, { error: 'Inicia sesión' });
-      const { events, channels } = await readBody(req);
+      const { events, channels, value_min_pp } = await readBody(req);
       const usr = db.users[u.email];
       usr.alertPrefs = usr.alertPrefs || {};
       if (events && typeof events === 'object') usr.alertPrefs.events = { ...(usr.alertPrefs.events || {}), ...events };
       if (channels && typeof channels === 'object') usr.alertPrefs.channels = { ...(usr.alertPrefs.channels || {}), ...channels };
+      if (value_min_pp != null && [5, 8, 12].includes(Number(value_min_pp))) usr.alertPrefs.valueMinPp = Number(value_min_pp);
       save();
       return json(res, 200, { alertPrefs: usr.alertPrefs });
+    }
+    // ═ P7 (13-ago, lote BetHero): setup del onboarding — bankroll (alimenta el Kelly server-side algún
+    // día; hoy persiste la elección) + nivel de experiencia (adapta cuánta explicación mostrar).
+    if (p === '/api/me/setup' && req.method === 'POST') {
+      const u = getUser(req);
+      if (!u) return json(res, 401, { error: 'Inicia sesión' });
+      const b = await readBody(req).catch(() => ({}));
+      const usr = db.users[u.email];
+      usr.setup = usr.setup || {};
+      const bk = Number(b.bankroll);
+      if (isFinite(bk) && bk > 0 && bk < 1e9) usr.setup.bankroll = +bk.toFixed(2);
+      if (typeof b.ccy === 'string' && /^[A-Z]{3}$/.test(b.ccy)) usr.setup.ccy = b.ccy;
+      if (['beginner', 'intermediate', 'advanced'].includes(b.level)) usr.setup.level = b.level;
+      usr.setup.at = new Date().toISOString();
+      save();
+      return json(res, 200, { ok: true, setup: usr.setup });
     }
     // silenciar / reactivar alertas de un equipo (campana por equipo)
     if (p === '/api/mute' && req.method === 'POST') {

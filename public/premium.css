@@ -1701,3 +1701,10 @@ td .gx-calc-btn span { display: none; }
 .gx-mbcal-d.up { background:rgba(31,227,164,.12); } .gx-mbcal-d.up b { color:#1FE3A4; }
 .gx-mbcal-d.down { background:rgba(224,82,82,.12); } .gx-mbcal-d.down b { color:#ff8f8f; }
 .gx-bc-verdict { font-size:11px; font-weight:800; }
+/* P8 tour de la primera pick */
+.gx-tour { position:fixed; inset:0; z-index:9500; }
+.gx-tour-bg { position:absolute; inset:0; background:rgba(4,8,10,.6); }
+.gx-tour-hl { position:fixed; border:2px solid #1FE3A4; border-radius:14px; box-shadow:0 0 0 4000px rgba(4,8,10,.55); pointer-events:none; transition:all .25s; }
+.gx-tour-card { position:fixed; left:50%; transform:translateX(-50%); width:min(92vw,360px); background:var(--gx-panel,#10171c); border:1px solid rgba(31,227,164,.35); border-radius:16px; padding:16px 18px; z-index:2; }
+.gx-tour-card b { font-size:15px; } .gx-tour-card p { font-size:12.5px; color:var(--gx-text2,#9DB0B5); margin:6px 0 12px; line-height:1.45; }
+.gx-tour-foot { display:flex; align-items:center; gap:10px; } .gx-tour-foot .gx-btn { margin-left:auto; }

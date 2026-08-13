@@ -277,3 +277,74 @@ enlace de referido sin parecer spam. Tenemos cimientos de referidos. Máquina de
 Lo que NO cambia: no perseguir su amplitud de deportes ni su promesa de "ganancia garantizada". Nuestro
 centro es el modelo, la inteligencia y el track público. Todo lo de arriba es empaquetado y monetización
 alrededor de ese centro — que es exactamente lo que ellos hacen bien y nosotros aún no.
+
+---
+
+# PARTE 3 — Anatomía de su landing vs la nuestra (13-ago, pedido de Alexis)
+
+## Por qué la suya "invita a entrar y pagar"
+No es la estética (la nuestra compite bien). Es que su landing es una **secuencia de objeciones
+respondidas en orden psicológico de compra**, y la nuestra es una declaración + un botón. Su scroll:
+¿qué gano? → ¿por qué funciona? → ¿cómo se ve por dentro? → ¿sirve donde vivo? → ¿qué tengo que hacer?
+→ ¿quién lo avala? → ¿cuánto cuesta? → ¿y si no me sirve? → compra. Cuando llegas al pricing ya no te
+queda ninguna duda viva. Nuestra landing responde solo la primera pregunta, y en abstracto.
+
+## Su estructura, sección por sección (y qué copiamos de cada una)
+1. **Hero de RESULTADO**: social proof arriba ("Trusted by 5,000+"), titular con el beneficio concreto
+   ("Make $50-100+ daily. Copy our bets."), mecánica en 8 palabras ("We do the math. You collect the
+   profits."), garantía, CTA con fricción explícita ("$1 · 7 días · cancela cuando quieras") y un
+   **mockup de teléfono con el producto vivo**. → COPIAR estructura; adaptar promesa honesta.
+2. **"Why It Works"** — 6 tarjetas que desactivan objeciones (cero conocimiento, simple, sin riesgo,
+   matemática, <1h/día, mundial). → COPIAR el formato; nuestras objeciones son otras.
+3. **Features con MINI-DEMOS VIVAS** — cada feature ilustrada con una tarjeta REAL del producto con
+   números (el arb Lakers/Celtics con stakes y profit por escenario, la pick +EV con EV%, la curva de
+   ROI, el chat de Discord). Componentes HTML, no screenshots. → COPIAR la técnica: es lo que hace que
+   el producto se "pruebe" antes de pagar.
+4. **Cobertura geolocalizada** ("60 books available from United States · 400+ worldwide"). → adaptar.
+5. **"4 Simple Steps" con TIEMPOS** (30 seconds / Instant / <1 minute / Automatic). → COPIAR: el tiempo
+   explícito mata la objeción "esto será complicado".
+6. **12 reseñas de expertos** con links. → NO copiable hoy (no las tenemos); sustituto honesto abajo.
+7. **Pricing EN la landing**: toggle anual −40%, 15 métodos de pago con logos, garantía de reembolso.
+8. **FAQ de 9 preguntas** que son objeciones de compra (¿es legal? ¿me limitarán? ¿cuánto gano?).
+9. CTA final + **footer masivo SEO** (30+ calculadoras, cuotas por deporte, blog).
+
+## Los 5 defectos de la nuestra (los que más venta cuestan)
+1. **Titular abstracto**: "La ventaja que el mercado no ve" no dice qué haces ni qué obtienes. Bonito,
+   no vende. El subhead es una lista de features sin jerarquía.
+2. **No se VE el producto**: cero demo/mockup. El visitante compra a ciegas.
+3. **No hay precios en la landing** (y /plans está gated) — la fuga más grave: nadie paga sin ver precio.
+4. **No responde objeciones**: sin "por qué funciona", sin pasos, sin FAQ, sin garantía visible.
+5. **No usa nuestra mejor arma**: el track público verificable ni aparece.
+
+## El blueprint de NUESTRA landing (estructura suya, alma nuestra, estética intacta)
+1. **Hero**: eyebrow con número real y verificable de la DB ("+N picks liquidadas en público" — nuestro
+   equivalente honesto de su "5.000 miembros") → titular de resultado: la dirección es
+   **"El modelo que le discute el precio al mercado"** / sub: "Cada pick con su porqué, su cuota y su
+   resultado liquidado en público. Fútbol y combate, en tu idioma." → CTA "Probar Sharp gratis 3 días ·
+   hoy pagas $0 · cancelas en 1 clic" (o el trial $1 si se ejecuta FASE 2) → **mockup de teléfono con
+   una pick card REAL** (ya tenemos ese componente clavado — la card del email de Garry es exactamente
+   esto) → franja de confianza: "track público · sin ganancias prometidas · 18+".
+2. **"Por qué GP funciona distinto"** — 6 tarjetas nuestras: (1) Un modelo, no un tipster — simula cada
+   partido 10,000 veces; (2) El porqué de cada pick — lectura de analista, no una fila verde; (3) Track
+   público con las perdidas incluidas — audítalo tú; (4) Tus ligas y tus casas — LATAM nativo; (5)
+   Combate modelado (UFC/MMA/boxeo) — nadie más lo tiene; (6) 10 minutos al día.
+3. **Features con mini-demos vivas** (componentes reales): pick card con edge y porqué → cockpit del
+   partido → lectura profunda de una pelea → value/arb multi-casa → en vivo. Reusar los componentes de
+   premium.js/ig-src, no screenshots.
+4. **"Empieza en 3 pasos" con tiempos**: Entra (30 seg, solo email) → Mira la pick del día y su lectura
+   (2 min) → Sigue el resultado en público (automático).
+5. **Cobertura**: mapa/chips "38 ligas · UFC · MMA · boxeo · 40+ casas · [tu país]" (geolocalizar IP
+   para resaltar casas del país como hacen ellos).
+6. **Prueba social honesta** (sustituto de sus 12 reseñas): el módulo del track en vivo (W-L, unidades,
+   por familia, link a Rendimiento) + contador real de usuarios + testimonios reales cuando existan +
+   Trustpilot cuando haya volumen. JAMÁS reseñas infladas.
+7. **Pricing completo EN la landing**: los 3 planes con toggle anual, métodos de pago con logos (Whop:
+   tarjetas + cripto), garantía de 24h visible, y "cancelas en 1 clic" en cada card.
+8. **FAQ de objeciones** (7): ¿Esto es un tipster? · ¿Me garantizan ganancias? (NO — y por qué esa
+   honestidad es la señal de calidad) · ¿Qué es el track público? · ¿Qué ligas/deportes? · ¿Necesito
+   saber de apuestas? · ¿Puedo cancelar/reembolso? · ¿Funciona en mi país?
+9. **CTA final** + footer con calculadoras/cuotas/blog cuando existan (FASE 3) + legal.
+
+Reglas: estética actual intacta (ya es la correcta para la categoría); toda cifra debe salir de la DB
+(picks liquidadas, usuarios, ligas, casas) — nada inventado; y las promesas de ganancia siguen
+prohibidas — nuestra versión de su "Profit Guaranteed" es "Track público — audítalo tú mismo".

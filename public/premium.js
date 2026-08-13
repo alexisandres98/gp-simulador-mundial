@@ -95,6 +95,10 @@
       m2_i_odds: 'Si la cuota cae por debajo de {min}, la jugada deja de tener valor.',
       m2_i_lineup: 'Confirmar el XI: una baja clave obliga a re-evaluar la lectura.',
       m2_i_edge: 'Si el mercado corrige y el edge baja de {min} pp, se retira la señal.',
+      /* el memo NUNCA revela la selección de la pick (producto de pago) — solo que existe */
+      m2_pick_band: 'Pick GP activa en este partido', m2_pick_view: 'Verla en el feed →',
+      m2_sig_locked: 'Modelo y mercado no están de acuerdo en este cruce — la lectura de valor completa vive en Sharp.',
+      m2_sig_watch: 'GP no está de acuerdo con el precio del mercado en este cruce y lo tiene bajo vigilancia.',
       loading: 'Cargando…', no_match: 'Elegí un partido del board para ver su cockpit.',
       ck_choose: 'Elegí un partido', ck_over25: 'Over 2.5', ck_todaypick: 'Pick del día',
       reg90: '90 min · sin prórroga ni penales', updated_short: 'Actualizado',
@@ -496,6 +500,9 @@
       m2_i_odds: 'If the price drops below {min}, the play loses its value.',
       m2_i_lineup: 'Confirm the XI: a key absence forces a re-read.',
       m2_i_edge: 'If the market corrects and the edge falls under {min} pp, the signal is withdrawn.',
+      m2_pick_band: 'GP pick live on this match', m2_pick_view: 'See it on the feed →',
+      m2_sig_locked: 'Model and market disagree on this matchup — the full value read lives in Sharp.',
+      m2_sig_watch: 'GP disagrees with the market price on this matchup and is watching it.',
       loading: 'Loading…', no_match: 'Pick a match from the board to see its cockpit.',
       ck_choose: 'Pick a match', ck_over25: 'Over 2.5', ck_todaypick: 'Today’s pick',
       reg90: '90 min · no extra time or penalties', updated_short: 'Updated',
@@ -4806,23 +4813,27 @@
     // el edge más aprovechable entre outcomes con cuota
     var bestC = null; Object.keys(rows).forEach(function (c) { if (rows[c].edge != null && rows[c].best != null && (bestC == null || rows[c].edge > rows[bestC].edge)) bestC = c; });
     var live = fx && fx.status === 'live', fin = fx && fx.status === 'final';
-    // ---- SEÑAL (la línea que manda) ----
+    // REGLA DE PRODUCTO (13-ago, Alexis): el memo lo ve todo el mundo → JAMÁS revela la selección de la
+    // pick ni su porqué (eso es lo que se paga). Solo señala QUE existe, con CTA al feed. Y el desglose de
+    // valor (justa/mejor/edge) es producto Sharp: para el resto la señal es neutral, sin números accionables.
+    var sharpU = uiPlan() === 'sharp';
+    // ---- SEÑAL (la línea que manda — inteligencia, nunca la pick) ----
     var sig, sigCls = 'dim', sigIc = 'help';
-    if (pick) {
-      var sel = pick.label || (typeof pickRecText === 'function' ? pickRecText(pick) : (pick.selection || ''));
-      sig = t('m2_sig_pick', { sel: '<b>' + esc(sel) + '</b>' }) + (pick.odds ? ' <span class="gx-m2-sub">· ' + esc(t('m2_sig_pick_odds', { odds: odd(pick.odds) })) + '</span>' : '');
-      sigCls = 'pos'; sigIc = 'circle-check';
-    } else if (live && fx.score) {
+    if (live && fx.score) {
       sig = t('m2_sig_live', { score: esc(fx.score.home + '–' + fx.score.away), min: esc(String(fx.minute || '')), sel: '<b>' + esc(selName(topC)) + '</b>', pct: '<b>' + pct0(gp[topC]) + '</b>' });
       sigCls = 'blue'; sigIc = 'broadcast';
     } else if (fin && fx.score) {
       sig = t('m2_sig_final', { score: esc(fx.score.home + '–' + fx.score.away), sel: '<b>' + esc(selName(topC)) + '</b>', pct: '<b>' + pct0(gp[topC]) + '</b>' });
       sigCls = 'dim'; sigIc = 'flag';
-    } else if (bestC && rows[bestC].edge >= 4 && rows[bestC].fair) {
+    } else if (bestC && rows[bestC].edge >= 4 && rows[bestC].fair && sharpU) {
       sig = t('m2_sig_value', { sel: '<b>' + esc(selName(bestC)) + '</b>', best: '<b>' + odd(rows[bestC].best) + '</b>', fair: '<b>' + odd(rows[bestC].fair) + '</b>' });
       sigCls = 'pos'; sigIc = 'trending-up';
-    } else if (gapPp != null && Math.abs(gapPp) >= 4) {
+    } else if (gapPp != null && Math.abs(gapPp) >= 4 && sharpU) {
       sig = t('m2_sig_edge', { sel: '<b>' + esc(selName(topC)) + '</b>', gap: '<b>' + (gapPp > 0 ? '+' : '') + gapPp.toFixed(1) + '</b>' });
+      sigCls = 'blue'; sigIc = 'eye';
+    } else if (gapPp != null && Math.abs(gapPp) >= 4) {
+      // no-Sharp: se señala la discrepancia SIN los números accionables (la lectura de valor es Sharp)
+      sig = t((S.me && S.me.plans_enforced) ? 'm2_sig_locked' : 'm2_sig_watch');
       sigCls = 'blue'; sigIc = 'eye';
     } else if (gapPp != null) {
       sig = t('m2_sig_aligned'); sigCls = 'dim'; sigIc = 'scale';
@@ -4836,18 +4847,17 @@
     var nums = [];
     if (gp[topC] != null) nums.push([t('m2_n_gp'), pct0(gp[topC]) + ' ' + esc(selName(topC) === t('m2_sel_draw') ? 'X' : selName(topC).slice(0, 12))]);
     if (mkTop != null) nums.push([t('m2_n_mk'), pct0(mkTop)]);
-    if (R.fair != null) nums.push([t('m2_n_fair'), odd(R.fair)]);
-    if (R.best != null) nums.push([t('m2_n_best'), odd(R.best) + (R.book ? ' · ' + esc(prettyBook(R.book)) : ''), 'hl']);
-    if (R.edge != null) nums.push([t('m2_n_edge'), (R.edge > 0 ? '+' : '') + Number(R.edge).toFixed(1) + ' pp', R.edge >= 4 ? 'pos' : '']);
+    // justa/mejor/edge = producto Sharp (mismo gate del value board); GP/mercado/casas son inteligencia abierta
+    if (sharpU && R.fair != null) nums.push([t('m2_n_fair'), odd(R.fair)]);
+    if (sharpU && R.best != null) nums.push([t('m2_n_best'), odd(R.best) + (R.book ? ' · ' + esc(prettyBook(R.book)) : ''), 'hl']);
+    if (sharpU && R.edge != null) nums.push([t('m2_n_edge'), (R.edge > 0 ? '+' : '') + Number(R.edge).toFixed(1) + ' pp', R.edge >= 4 ? 'pos' : '']);
     if (R.books != null && R.books > 0) nums.push([t('m2_n_books'), String(R.books)]);
     // ---- POR QUÉ (máx 2 frases, todas con datos del cruce) ----
     var why = [];
     var xh = fx && fx.modelProbabilities ? fx.modelProbabilities.xgHome : null;
     var xa = fx && fx.modelProbabilities ? fx.modelProbabilities.xgAway : null;
-    if (pick && (pick.why_ai || pick.why)) {
-      var w = String(pick.why_ai || pick.why); why.push(esc(w.length > 220 ? w.slice(0, 217) + '…' : w));
-    }
-    if (why.length < 2 && xh != null && xa != null) {
+    // el porqué de la pick NO entra al memo (revela la selección) — vive en el panel de Lecturas, plan-gated
+    if (xh != null && xa != null) {
       var xd = Math.abs(xh - xa);
       why.push(esc(xd < 0.2 ? t('m2_w_xg_even', { xh: Number(xh).toFixed(2), xa: Number(xa).toFixed(2) })
         : t('m2_w_xg', { xh: Number(xh).toFixed(2), xa: Number(xa).toFixed(2), team: xh > xa ? hN : aN })));
@@ -4886,8 +4896,8 @@
       if (pick && pick.confidence != null) conf = pick.confidence >= 0.62 ? { cls: 'hi', label: t('conf_hi') } : pick.confidence >= 0.5 ? { cls: 'mid', label: t('conf_mid') } : { cls: 'lo', label: t('conf_lo') };
       else if (bestC && rows[bestC].edge >= 8 && (rows[bestC].books || 0) >= 4) conf = { cls: 'mid', label: t('conf_mid') };
     }
-    return { sig: sig, sigCls: sigCls, sigIc: sigIc, nums: nums, why: why, risk: risk, inval: inval, conf: conf, ma: ma,
-      bestOdds: R.best != null ? R.best : null, book: R.book ? prettyBook(R.book) : '', bookCode: R.book || null };
+    return { sig: sig, sigCls: sigCls, sigIc: sigIc, nums: nums, why: why, risk: risk, inval: inval, conf: conf, ma: ma, hasPick: !!pick,
+      bestOdds: sharpU && R.best != null ? R.best : null, book: sharpU && R.book ? prettyBook(R.book) : '', bookCode: sharpU ? (R.book || null) : null };
   }
   function mvMemo(beta, r, fx, X) {
     var m2 = buildMemo2(beta, r, fx, X), ev = evidenceBasis(beta);
@@ -4897,6 +4907,7 @@
     if (m2.inval.length) rowsHtml += '<div class="gx-m2-row warn"><span class="gx-m2-lab">' + esc(t('m2_inval')) + '</span><div class="gx-m2-tx">' + m2.inval.map(function (s) { return '<p>' + s + '</p>'; }).join('') + '</div></div>';
     return '<div class="gx-panel gx-memo gx-mv-panel">' +
       '<div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('mod_memo')) + '</span><span class="gx-conf ' + m2.conf.cls + '">' + ic('point') + esc(t('conf') + ': ' + m2.conf.label) + '</span></div>' +
+      (m2.hasPick ? '<a class="gx-m2-pickband" href="#"><span>' + ic('circle-check') + esc(t('m2_pick_band')) + '</span><b>' + esc(t('m2_pick_view')) + '</b></a>' : '') +
       '<div class="gx-m2-sig gx-m2-' + m2.sigCls + '">' + ic(m2.sigIc) + '<div>' + m2.sig + '</div></div>' +
       (m2.nums.length ? '<div class="gx-m2-nums">' + m2.nums.map(function (n) { return '<span class="gx-m2-chip ' + (n[2] || '') + '"><span class="gx-m2-k">' + esc(n[0]) + '</span><b>' + n[1] + '</b></span>'; }).join('') + '</div>' : '') +
       rowsHtml + dataTrust(r, m2.ma, fx) +

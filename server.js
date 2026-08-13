@@ -15254,6 +15254,30 @@ const server = http.createServer(async (req, res) => {
               console.log(`[clubs] upcoming ${key}: fetch TSA falló (${e.message})`);
             }
           }
+          // FALLBACK API-FOOTBALL (13-ago, TSA en límite mensual): si TSA no trajo próximos y la liga tiene id
+          // AF (CLUB_AF_LEAGUE — incluye las copas y las ligas fiteadas de AF), el calendario sale de AF.
+          // Ids: ligas AF-fit mapean directo af<id>→tm_af<id>; ligas TSA resuelven por nombre (misma disciplina
+          // del merge del scan: un lado sin tm_ real se omite). Cache en el mismo memo (6h; 1 req/liga).
+          const afkUp = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+          // máx 6 ligas AF por request de state (el resto en el próximo poll) — un frío de 56 ligas no puede
+          // colgar el render con 56 fetches secuenciales; el memo de 6h hace que en ~10 polls esté todo tibio.
+          global._afUpBudget = (global._afUpBudget && Date.now() - global._afUpBudget.at < 60e3) ? global._afUpBudget : { at: Date.now(), n: 0 };
+          if ((!up || !(up.rows || []).length || (up.afOnly && Date.now() - up.at > 6 * 3600e3)) && afkUp && CLUB_AF_LEAGUE[key] && global._afUpBudget.n < 6 && ++global._afUpBudget.n) {
+            try {
+              const rAf = await fetch(`https://${process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io'}/fixtures?league=${CLUB_AF_LEAGUE[key]}&next=15`, { headers: { 'x-apisports-key': afkUp }, signal: AbortSignal.timeout(15000) });
+              const jAf = rAf.ok ? await rAf.json().catch(() => null) : null;
+              const rowsAf = [];
+              for (const fxa of (jAf && jAf.response) || []) {
+                const th = fxa.teams && fxa.teams.home, ta = fxa.teams && fxa.teams.away;
+                if (!th || !ta || !fxa.fixture) continue;
+                const hAf = L.ratings[`tm_af${th.id}`] ? `tm_af${th.id}` : resolveClubId(key, th.name);
+                const aAf = L.ratings[`tm_af${ta.id}`] ? `tm_af${ta.id}` : resolveClubId(key, ta.name);
+                if (!hAf || !aAf || hAf === aAf) continue;
+                rowsAf.push({ id: 'af-' + fxa.fixture.id, utc_date: fxa.fixture.date, home_team: { id: hAf, name: L.ratings[hAf].name }, away_team: { id: aAf, name: L.ratings[aAf].name } });
+              }
+              if (rowsAf.length) { up = { at: Date.now(), rows: rowsAf, afOnly: true }; global._clubsUpcoming[key] = up; }
+            } catch (e) { console.log(`[clubs] upcoming ${key}: AF fallback falló (${e.message})`); }
+          }
           // live STALE → final: si ESPN dejó de refrescar un "live" por >45 min (el minuto avanza cada pasada,
           // así que `at` se renueva mientras el partido corre), el partido terminó o se cayó el feed — mostrarlo
           // congelado como LIVE era el bug del partido "frizado" en la pestaña En vivo.
@@ -15905,6 +15929,33 @@ const server = http.createServer(async (req, res) => {
       if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const teamId = String(url.searchParams.get('team') || '');
       if (!/^tm_[a-z0-9]+$/i.test(teamId)) return json(res, 400, { error: 'team inválido' });
+      // 13-ago: equipos de ligas AF-fit (tm_af<id>) → plantilla desde API-Football (TSA no los conoce).
+      const mAfSq = teamId.match(/^tm_af(\d+)$/i);
+      if (mAfSq) {
+        const afk2 = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+        if (!afk2) return json(res, 200, { players: [], note: 'sin key AF' });
+        global._afSquad = global._afSquad || {};
+        let sqA = global._afSquad[teamId];
+        if (!sqA || Date.now() - sqA.at > 24 * 3600e3) {
+          try {
+            const rA = await fetch(`https://${process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io'}/players/squads?team=${mAfSq[1]}`, { headers: { 'x-apisports-key': afk2 }, signal: AbortSignal.timeout(15000) });
+            const jA = rA.ok ? await rA.json().catch(() => null) : null;
+            const list = ((jA && jA.response && jA.response[0]) || {}).players || [];
+            if (list.length || !sqA) sqA = { at: Date.now(), rows: list }; // candado: un 500 no pisa un roster bueno
+            global._afSquad[teamId] = sqA;
+          } catch { sqA = sqA || { at: Date.now(), rows: [] }; global._afSquad[teamId] = sqA; }
+        }
+        const AFPOS = { Goalkeeper: 'GK', Defender: 'DEF', Midfielder: 'MID', Attacker: 'FWD' };
+        const playersA = (sqA.rows || []).map(pl => ({
+          pid: 'afp' + pl.id, name: pl.name, full: pl.name, pos: (pl.position || '').slice(0, 1) || null,
+          group: AFPOS[pl.position] || 'OTH', age: pl.age != null ? pl.age : null,
+          height: null, foot: null, nat: null, nat_slug: null, value: null, contract: null, national: null,
+          num: pl.number != null ? pl.number : null, photo: pl.photo || null,
+        }));
+        const orderA = { GK: 0, DEF: 1, MID: 2, FWD: 3, OTH: 4 };
+        playersA.sort((a, b) => (orderA[a.group] - orderA[b.group]) || String(a.name).localeCompare(String(b.name)));
+        return json(res, 200, { team: teamId, count: playersA.length, players: playersA, cached_at: new Date(sqA.at).toISOString(), src: 'api-football' });
+      }
       const tsaKey = process.env.THESTATSAPI_KEY || '';
       if (!tsaKey) return json(res, 200, { players: [], note: 'sin key' });
       const sqRows = await clubRosterRows(teamId); // cache 24h compartido, con candado anti-envenenamiento

@@ -26,11 +26,13 @@
 - **⚠️ TSA EN LÍMITE MENSUAL (13-ago)**: `USAGE_LIMIT_EXCEEDED` → este mes NO corren: próximos por liga del
   Partidos (TSA fixtures), data pass de player-history (percentiles/scout), plantillas TSA. Decisión de
   Alexis: subir plan TSA **o** (mejor, ya tenemos AF Ultra 75k/día) migrar esas capas a API-Football.
-- **PRÓXIMA OBRA — paridad de jugadores vía AF (pendiente de construir)**: adaptador AF→player-history
-  (fixtures/players de AF por liga → mismo formato rows que consume player-intel/clubsFit) + squads de
-  /api/clubs/squad con fallback AF (players?team=) + fotos de jugador AF (media.api-sports.io/football/
-  players/<id>.png). Con eso saudi/aleague/copas y CUALQUIER liga AF tienen perfiles, radar, scout y props
-  igual que Liga MX. Los ids AF de copas ya están en CLUB_AF_LEAGUE (verificar leaguescup=772).
+- **HECHO 13-ago noche (paridad AF, parte 1)**: fallback AF de PRÓXIMOS en /api/clubs/state (todas las
+  ligas con id en CLUB_AF_LEAGUE, copas incluidas; máx 6 fetches AF por poll, memo 6h) + plantillas AF en
+  /api/clubs/squad para equipos tm_af* (con foto y dorsal, cache 24h). Memo v2 ya NO revela pick ni valor
+  a quien su plan no los incluye (regla Alexis: el memo es inteligencia, la pick se paga).
+- **PENDIENTE (paridad AF, parte 2)**: adaptador AF→player-history (rows por jugador-partido → percentiles,
+  radar, scout, props via player-intel/clubsFit) para saudi/aleague/copas y cualquier liga AF; y perfiles
+  /api/clubs/player para pids afp*. Obra grande — hacerla con sesión fresca.
 
 ## 🥊 R6 COMBATE 12-ago — profundidad (orden Alexis) · VEREDICTO DEL BACKTEST
 - **Interacciones de matchup** (grap/power/absorb/age5/subth) construidas en `combat-engine/ratings.js` y

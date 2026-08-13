@@ -13,9 +13,9 @@
     es: {
       nav_login: 'Entrar', nav_cta: 'Crear cuenta',
       lb_txt: 'Terminó el Mundial: ahora cubrimos el fútbol de clubes todos los días.', lb_cta: 'Crear cuenta gratis',
-      eyebrow: 'GP INTELLIGENCE · EN VIVO',
-      h1: 'La ventaja que el mercado <span class="g">no ve</span>.',
-      sub: 'Jugadas verificadas cada día, cuotas mal pagadas detectadas al instante y arbitraje entre más de 40 casas. Inteligencia de nivel institucional, lista para ejecutar.',
+      eyebrow: '+500 picks liquidadas en público',
+      h1: 'El modelo que <span class="g">le discute el precio</span> al mercado.',
+      sub: 'Simulamos cada partido 10,000 veces, comparamos contra 40+ casas y publicamos cada pick con su porqué, su cuota congelada y su resultado liquidado en público. Fútbol y combate, en tu idioma.',
       cta: 'Crear mi cuenta gratis', micro: 'Sin contraseña · solo tu email · 30 segundos',
       ht_users: 'usuarios activos', ht_verified: 'resultados verificados públicamente',
       sc_tag: 'Precio atrasado', sc_live: 'en vivo', sc_edge: 'value', sc_fair: 'consenso · justa 10.4', sc_foot: 'Consenso de {n} casas · vendes cuando el precio se corrige',
@@ -28,10 +28,73 @@
       empty: 'Las jugadas de hoy aún no salen', empty_s: 'Se publican unas horas antes de cada partido. Crea tu cuenta y recíbelas apenas caigan.',
       scan_eye: 'El escáner', scan_title: 'No duerme.', scan_sub: 'Vigilamos el mercado global y detectamos el precio que quedó atrás — antes de que lo corrijan.',
       scan_markets: 'mercados monitoreados', scan_lag: 'cuotas mal pagadas', scan_arb: 'surebets activas',
-      why_eye: 'Por qué GP', why_title: 'La diferencia está en el detalle.',
-      why_1t: 'Verificado, no prometido', why_1s: 'Cada jugada queda registrada antes del partido. El récord es público: aciertos y fallos, sin editar.',
-      why_2t: 'Siempre la mejor cuota', why_2s: 'Comparamos más de 40 casas por ti y te señalamos exactamente dónde pagan más.',
-      why_3t: 'Señales ejecutables', why_3s: 'Cuando el mercado se atrasa, lo ves con tiempo para actuar — no cuando ya se corrigió.',
+      why_eye: 'Por qué GP', why_title: 'Funciona distinto. A propósito.',
+      why_1t: 'Un modelo, no un tipster', why_1s: 'Simulamos cada partido 10,000 veces (Elo → Poisson → Monte Carlo). La pick sale del modelo, no de una corazonada.',
+      why_2t: 'El porqué de cada pick', why_2s: 'Cada pick llega con su lectura de analista: qué ve el modelo, qué paga el mercado y dónde está la diferencia.',
+      why_3t: 'Track público, con las perdidas', why_3s: 'Cada pick queda registrada antes del partido y liquidada en público después. Audítalo tú mismo antes de pagar.',
+      why_4t: 'Tus ligas y tus casas', why_4s: 'Brasileirão, Liga MX, Argentina, MLS y 40 ligas más, con las casas que se usan en LATAM. En tu idioma.',
+      why_5t: 'Combate modelado', why_5s: 'UFC, MMA y boxeo con lectura profunda de cada pelea: ritmo, alcance, presión y camino al triunfo.',
+      why_6t: '10 minutos al día', why_6s: 'Entras, ves las picks del día con su porqué y su mejor cuota, y sigues tu cartera. Sin pantallas infinitas.',
+      /* P18: mini-demos (datos congelados de picks REALES liquidadas) */
+      fe_eye: 'El producto, por dentro', fe_title: 'Pruébalo antes de pagar.',
+      fe_sub: 'Componentes reales de la plataforma con picks reales, ya liquidadas. Así se ve por dentro.',
+      fe_1t: 'La pick, con su porqué', fe_1s: 'No es una fila verde: cada pick llega con la lectura del modelo.',
+      fe_1fam: 'Tarjetas', fe_1win: '✓ Ganada · liquidada 9-ago', fe_1sel: 'Menos de 6.5 tarjetas · cuota 1.44',
+      fe_1q: '«La cuota luce generosa frente a lo que suele dejar este tipo de cruces en el Brasileirão. El modelo encuentra un desajuste claro entre el precio y el partido que espera.»',
+      fe_cap: 'Componente real · pick real del feed',
+      fe_2t: 'La cuota justa, a la vista', fe_2s: 'Quitamos el margen de la casa y te mostramos cuánto debería pagar.',
+      fe_2sel: 'Under 5.5 tarjetas · Cuiabá vs Fortaleza',
+      fe_2c1: 'justa <b>1.68</b>', fe_2c2: 'mejor <b>1.83</b> · LeoVegas', fe_2c3: 'edge <b>+9.0 pp</b>',
+      fe_2q: '«El mercado paga 1.83 al under 5.5 y el modelo detecta 9 puntos porcentuales a favor de esa línea.»',
+      fe_cap2: 'Componente real · liquidada como ganada el 9-ago',
+      fe_3t: 'Lectura profunda de pelea', fe_3s: 'Combate modelado de verdad: ritmo, alcance y camino al triunfo.',
+      fe_3fam: '🥊 UFC · Film study', fe_3s1: 'Golpes significativos / min', fe_3s2: 'Alcance', fe_3s3: 'Lectura del modelo', fe_3s3v: 'ritmo + presión',
+      fe_cap3: 'Análisis real de la plataforma · plan Pro+',
+      fe_4t: 'El mercado, vigilado 24/7', fe_4s: 'Value, arbitraje, caídas de cuota y middles entre 40+ casas.',
+      fe_4s1: 'Cuotas mal pagadas (value)', fe_4v1: 'edge del modelo', fe_4s2: 'Arbitraje puro', fe_4v2: '2 casas, 0 riesgo de dirección',
+      fe_4s3: 'Caídas de cuota', fe_4v3: 'sharps vs casas lentas', fe_4s4: 'Middles', fe_4v4: 'dos líneas, zona doble',
+      fe_cap4: 'Superficies reales del plan Sharp',
+      /* P18: pasos */
+      st_eye: 'Cómo empezar', st_title: 'Tres pasos. Sin vueltas.',
+      st_1t: '30 segundos', st_1h: 'Entra', st_1p: 'Solo tu email. Sin contraseña, sin tarjeta.',
+      st_2t: '2 minutos', st_2h: 'Mira la pick del día', st_2p: 'Con su porqué, su cuota congelada y la mejor casa para tomarla.',
+      st_3t: 'Automático', st_3h: 'Sigue el resultado en público', st_3p: 'Cada pick se liquida a la vista de todos. Ganadas y perdidas.',
+      /* P18: cobertura + track honesto */
+      cv_eye: 'Cobertura', cv_title: 'Tus ligas, tus casas, tu idioma.',
+      cv_c1: '<b>44</b> ligas de fútbol en vivo', cv_c2: '🥊 UFC · MMA · boxeo', cv_c3: '<b>40+</b> casas comparadas',
+      cv_c4: 'Brasileirão · Liga MX · Argentina · MLS', cv_c5: 'Español · English',
+      tk_eye: 'Track público', tk_h: 'Sin ganancias prometidas. Todo a la vista.',
+      tk_n1: 'picks liquidadas en público', tk_n2: 'ganadas', tk_n3: 'perdidas',
+      tk_p: 'Cada pick queda registrada antes del partido con su cuota congelada, y se liquida en público después — las ganadas y las perdidas, sin editar ni borrar nada. Quien te prometa ganancias garantizadas te está mintiendo; nosotros preferimos que audites el historial completo antes de pagar un centavo.',
+      tk_cta: 'Crear cuenta y auditarlo',
+      /* P18: pricing */
+      pr_eye: 'Planes', pr_title: 'Precios claros, sin sorpresas.',
+      pr_mo: 'Mensual', pr_yr: 'Anual', pr_save: '2 meses gratis',
+      pr1_n: 'Gratis', pr1_per: 'para siempre',
+      pr1_f1: 'La pick del día, con su porqué', pr1_f2: 'Marcadores y lectura del modelo en vivo', pr1_f3: 'Pick diaria gratis en Telegram',
+      pr1_cta: 'Crear cuenta gratis', pr1_m: 'Sin tarjeta',
+      pr2_per: 'para el que sigue el día a día',
+      pr2_f1: 'Todas las picks de fútbol y combate', pr2_f2: 'El porqué completo de cada pick', pr2_f3: 'Cockpit del partido en vivo',
+      pr2_f4: 'Bet checker: tu cuota vs la justa', pr2_f5: 'Alertas de tus equipos y ligas',
+      pr2_cta: 'Elegir Pro', pr2_m: 'Cancelas en 1 clic',
+      pr3_pop: 'Prueba GRATIS 3 días', pr3_per: 'la plataforma completa',
+      pr3_f1: 'Todo lo de Pro', pr3_f2: 'Cuotas mal pagadas (value) entre 40+ casas', pr3_f3: 'Arbitraje puro y middles',
+      pr3_f4: 'Caídas de cuota: sharps vs casas lentas', pr3_f5: 'Film study de cada pelea', pr3_f6: 'Calculadora de stake con tu bankroll',
+      pr3_cta: 'Probar Sharp gratis', pr3_m: 'Hoy pagas $0 · cancelas en 1 clic',
+      pr_note: 'Precios en USD · reembolso dentro de las primeras 24 h · sin permanencia',
+      /* P18: FAQ */
+      fq_eye: 'Preguntas frecuentes', fq_title: 'Lo que preguntarías antes de pagar.',
+      fq1_q: '¿Esto es un tipster?', fq1_a: 'No. Un tipster te pide confianza; un modelo te muestra el cálculo. GP simula cada partido 10,000 veces, compara contra el precio real de 40+ casas y publica cada pick con su porqué — y con su resultado, gane o pierda.',
+      fq2_q: '¿Me garantizan ganancias?', fq2_a: 'No — y desconfía de quien lo haga. Apostar tiene varianza y ningún modelo gana siempre. Lo que sí garantizamos: cada pick registrada antes del partido, liquidada en público después, con el historial completo auditable. Esa honestidad es la señal de calidad, no un eslogan.',
+      fq3_q: '¿Qué es el track público?', fq3_a: 'Cada pick queda publicada antes del partido con su cuota congelada. Cuando termina, se liquida a la vista de todos: ganada o perdida. No se edita ni se borra nada. Ya van más de 500 picks liquidadas así.',
+      fq4_q: '¿Qué deportes y ligas cubren?', fq4_a: '44 ligas de fútbol en vivo (Brasileirão, Liga MX, Argentina, MLS y más) y todas las carteleras de UFC, MMA y boxeo, con lectura profunda de cada pelea. Más deportes en camino.',
+      fq5_q: '¿Necesito saber de apuestas?', fq5_a: 'No. Al entrar eliges tu nivel y la plataforma ajusta la explicación. Cada pick trae su porqué en español claro, y las guías y calculadoras gratuitas te enseñan lo demás.',
+      fq6_q: '¿Puedo cancelar? ¿Hay reembolso?', fq6_a: 'Cancelas en 1 clic desde tu cuenta, sin permanencia. Y si pagas y no era para ti, tienes reembolso dentro de las primeras 24 horas.',
+      fq7_q: '¿Funciona en mi país?', fq7_a: 'La plataforma funciona en cualquier país, en español e inglés. Las cuotas que comparamos incluyen casas disponibles en toda LATAM — tú eliges las tuyas y la plataforma te muestra dónde pagan más.',
+      /* P18: footer SEO */
+      fs_tools: 'Calculadoras gratis', fs_tools_all: 'Todas las calculadoras →',
+      fs_guides: 'Guías', fs_guides_all: 'Todas las guías →',
+      fs_odds: 'Cuotas', fs_odds_next: 'Próximos partidos y cuota justa',
       champ_eye: 'La lectura del torneo', champ_title: 'Quién levanta la copa.', champ_sub: 'Recalculado en vivo con cada gol. Solo la punta — el análisis completo está dentro.',
       champ_cap: 'de levantar la copa',
       final_h: 'La ventaja no espera. Empieza gratis.',
@@ -54,9 +117,7 @@
       /* demo */
       d_eye: 'Demo en vivo', d_h: 'Así se ve el escáner por dentro', d_sub: 'Compara decenas de casas en tiempo real y marca el precio que quedó atrás — antes de que lo corrijan.',
       d_lag: 'Precio atrasado', d_arb: 'Surebet', d_note: 'Datos ilustrativos del escáner. Las oportunidades reales, en vivo, dentro de tu cuenta.', d_cta: 'Crear cuenta y ver el real',
-      /* v3 (clubes) */
-      h1_v3: 'El modelo que leyó el Mundial ahora lee <span class="g">el fútbol entero</span>.',
-      sub_v3: 'El mismo motor que leyó el Mundial en público ahora cubre 40 ligas en vivo: picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
+      /* v3 (clubes) — P18: el hero nuevo (blueprint) manda en todas las versiones; _v3/_v4 ya no pisan h1/sub */
       sc3_live: 'en vivo', sc3_xg: 'xG esperado', sc3_foot: 'Lectura del modelo en vivo · se recalcula con cada gol',
       scf_markets: 'mercados vigilados ahora', scf_leagues: 'ligas monitoreadas 24/7',
       tr_rec_v3: 'aciertos verificados · Mundial 2026', tr_leagues_v3: 'ligas en vivo',
@@ -71,8 +132,6 @@
       /* v4 (multideporte, 5-ago): la plataforma deja de ser solo fútbol — combate entra al hero.
          Solo se tocan las llaves que cambian; todo lo demás hereda de v3/base. */
       lb_txt_v4: 'Nuevo: UFC, MMA y boxeo ya están adentro — gratis en todos los planes por 7 días.',
-      h1_v4: 'El modelo que leyó el Mundial ahora lee <span class="g">fútbol y combate</span>.',
-      sub_v4: 'El mismo motor, ahora multideporte: 40 ligas de fútbol en vivo y las carteleras de UFC, MMA y boxeo. Picks con precio verificado, cuotas mal pagadas al instante y arbitraje entre más de 40 casas.',
       scan_sub_v4: 'Vigilamos 40 ligas, cada cartelera de combate y el mercado global 24/7 — y detectamos el precio que quedó atrás antes de que lo corrijan.',
       tr_sports_v4: 'fútbol · UFC · MMA · boxeo',
       scf_leagues_v4: 'ligas y carteleras 24/7', st4_read: 'Lectura del modelo', st4_sat: 'sábado', st4_combat: 'COMBATE · UFC', st4_ko: 'KO 65% · DEC 35%', st4_feed: 'Así llegan las picks al feed', st4_pick1: 'Gana Young Boys', st4_pick1m: 'Lausanne vs Young Boys · Super League (SUI)', st4_pick2: 'Salkilld · Ganador', st4_pick2m: 'Gamrot vs Salkilld · UFC · estelar', st4_pick3: 'Menos de 11.5 córners', st4_pick3m: 'Ilves vs Mariehamn · Veikkausliiga (FIN)', st4_best: 'MEJOR CUOTA', st4_users: 'usuarios reales', st4_verified: 'track verificado, pick por pick',
@@ -82,9 +141,9 @@
     en: {
       nav_login: 'Log in', nav_cta: 'Sign up',
       lb_txt: 'The World Cup is over: we now cover club football every day.', lb_cta: 'Create free account',
-      eyebrow: 'GP INTELLIGENCE · LIVE',
-      h1: "The edge the market <span class=\"g\">doesn't see</span>.",
-      sub: 'Verified plays every day, mispriced odds caught the moment they appear, and arbitrage across 40+ books. Institutional-grade intelligence, ready to execute.',
+      eyebrow: '500+ picks settled in public',
+      h1: 'The model that <span class="g">argues with the market</span> over price.',
+      sub: 'We simulate every match 10,000 times, compare against 40+ books and publish every pick with its reasoning, its frozen odds and its result settled in public. Football and combat, in your language.',
       cta: 'Create my free account', micro: 'No password · just your email · 30 seconds',
       ht_users: 'active users', ht_verified: 'publicly verified results',
       sc_tag: 'Stale price', sc_live: 'live', sc_edge: 'value', sc_fair: 'consensus · fair 10.4', sc_foot: '{n}-book consensus · sell when the price corrects',
@@ -97,10 +156,73 @@
       empty: "Today's plays aren't out yet", empty_s: 'They drop a few hours before each match. Create your account and get them the moment they land.',
       scan_eye: 'The scanner', scan_title: 'Never sleeps.', scan_sub: 'We watch the global market and catch the price that fell behind — before it gets corrected.',
       scan_markets: 'markets monitored', scan_lag: 'mispriced odds', scan_arb: 'live surebets',
-      why_eye: 'Why GP', why_title: 'The difference is in the detail.',
-      why_1t: 'Verified, not promised', why_1s: 'Every play is logged before the match. The record is public: hits and misses, unedited.',
-      why_2t: 'Always the best odds', why_2s: 'We compare 40+ books for you and point to exactly where they pay more.',
-      why_3t: 'Executable signals', why_3s: 'When the market lags, you see it in time to act — not after it corrected.',
+      why_eye: 'Why GP', why_title: 'It works differently. On purpose.',
+      why_1t: 'A model, not a tipster', why_1s: 'We simulate every match 10,000 times (Elo → Poisson → Monte Carlo). Picks come from the model, not a hunch.',
+      why_2t: 'The why behind every pick', why_2s: "Every pick ships with an analyst's read: what the model sees, what the market pays, and where the gap is.",
+      why_3t: 'Public track, losses included', why_3s: 'Every pick is logged before the match and settled in public after. Audit it yourself before paying.',
+      why_4t: 'Your leagues, your books', why_4s: 'Brasileirão, Liga MX, Argentina, MLS and 40 more leagues, with the books people actually use in LATAM.',
+      why_5t: 'Combat, properly modeled', why_5s: 'UFC, MMA and boxing with a deep read of every fight: pace, reach, pressure and path to victory.',
+      why_6t: '10 minutes a day', why_6s: "Log in, see today's picks with their reasoning and best odds, track your bets. No endless screens.",
+      /* P18: mini-demos */
+      fe_eye: 'The product, inside', fe_title: 'Try it before you pay.',
+      fe_sub: 'Real platform components with real, already-settled picks. This is what it looks like inside.',
+      fe_1t: 'The pick, with its why', fe_1s: "Not a green row: every pick ships with the model's read.",
+      fe_1fam: 'Cards', fe_1win: '✓ Won · settled Aug 9', fe_1sel: 'Under 6.5 cards · odds 1.44',
+      fe_1q: '«The price looks generous versus what this kind of Brasileirão matchup usually produces. The model finds a clear gap between the price and the match it expects.»',
+      fe_cap: 'Real component · real pick from the feed',
+      fe_2t: 'Fair odds, in plain sight', fe_2s: "We strip the book's margin and show you what it should pay.",
+      fe_2sel: 'Under 5.5 cards · Cuiabá vs Fortaleza',
+      fe_2c1: 'fair <b>1.68</b>', fe_2c2: 'best <b>1.83</b> · LeoVegas', fe_2c3: 'edge <b>+9.0 pp</b>',
+      fe_2q: '«The market pays 1.83 on the under 5.5 and the model detects 9 percentage points in favor of that line.»',
+      fe_cap2: 'Real component · settled as a win on Aug 9',
+      fe_3t: 'Deep fight read', fe_3s: 'Combat modeled for real: pace, reach and path to victory.',
+      fe_3fam: '🥊 UFC · Film study', fe_3s1: 'Significant strikes / min', fe_3s2: 'Reach', fe_3s3: 'Model read', fe_3s3v: 'pace + pressure',
+      fe_cap3: 'Real platform analysis · Pro+ plan',
+      fe_4t: 'The market, watched 24/7', fe_4s: 'Value, arbitrage, dropping odds and middles across 40+ books.',
+      fe_4s1: 'Mispriced odds (value)', fe_4v1: 'model edge', fe_4s2: 'Pure arbitrage', fe_4v2: '2 books, 0 directional risk',
+      fe_4s3: 'Dropping odds', fe_4v3: 'sharps vs slow books', fe_4s4: 'Middles', fe_4v4: 'two lines, double-win zone',
+      fe_cap4: 'Real Sharp-plan surfaces',
+      /* P18: steps */
+      st_eye: 'Getting started', st_title: 'Three steps. No friction.',
+      st_1t: '30 seconds', st_1h: 'Sign up', st_1p: 'Just your email. No password, no card.',
+      st_2t: '2 minutes', st_2h: "See today's pick", st_2p: 'With its reasoning, its frozen odds and the best book to take it.',
+      st_3t: 'Automatic', st_3h: 'Follow the result in public', st_3p: 'Every pick settles in front of everyone. Wins and losses.',
+      /* P18: coverage + honest track */
+      cv_eye: 'Coverage', cv_title: 'Your leagues, your books, your language.',
+      cv_c1: '<b>44</b> live football leagues', cv_c2: '🥊 UFC · MMA · boxing', cv_c3: '<b>40+</b> books compared',
+      cv_c4: 'Brasileirão · Liga MX · Argentina · MLS', cv_c5: 'Español · English',
+      tk_eye: 'Public track', tk_h: 'No promised profits. Everything in the open.',
+      tk_n1: 'picks settled in public', tk_n2: 'won', tk_n3: 'lost',
+      tk_p: 'Every pick is logged before the match with its odds frozen, then settled in public — wins and losses, nothing edited or deleted. Anyone promising you guaranteed profits is lying; we would rather you audit the full history before paying a cent.',
+      tk_cta: 'Sign up and audit it',
+      /* P18: pricing */
+      pr_eye: 'Plans', pr_title: 'Clear pricing, no surprises.',
+      pr_mo: 'Monthly', pr_yr: 'Annual', pr_save: '2 months free',
+      pr1_n: 'Free', pr1_per: 'forever',
+      pr1_f1: "Today's pick, with its why", pr1_f2: 'Live scores and model reads', pr1_f3: 'Free daily pick on Telegram',
+      pr1_cta: 'Create free account', pr1_m: 'No card',
+      pr2_per: 'for the day-to-day follower',
+      pr2_f1: 'Every football and combat pick', pr2_f2: 'The full reasoning behind each pick', pr2_f3: 'Live match cockpit',
+      pr2_f4: 'Bet checker: your odds vs fair', pr2_f5: 'Alerts for your teams and leagues',
+      pr2_cta: 'Choose Pro', pr2_m: 'Cancel in one click',
+      pr3_pop: 'FREE 3-day trial', pr3_per: 'the full platform',
+      pr3_f1: 'Everything in Pro', pr3_f2: 'Mispriced odds (value) across 40+ books', pr3_f3: 'Pure arbitrage and middles',
+      pr3_f4: 'Dropping odds: sharps vs slow books', pr3_f5: 'Film study for every fight', pr3_f6: 'Stake calculator with your bankroll',
+      pr3_cta: 'Try Sharp free', pr3_m: '$0 today · cancel in one click',
+      pr_note: 'Prices in USD · refund within the first 24h · no lock-in',
+      /* P18: FAQ */
+      fq_eye: 'FAQ', fq_title: "What you'd ask before paying.",
+      fq1_q: 'Is this a tipster?', fq1_a: 'No. A tipster asks for trust; a model shows you the math. GP simulates every match 10,000 times, compares against real prices from 40+ books and publishes every pick with its reasoning — and its result, win or lose.',
+      fq2_q: 'Do you guarantee profits?', fq2_a: 'No — and distrust anyone who does. Betting has variance and no model always wins. What we do guarantee: every pick logged before the match, settled in public after, with the full history auditable. That honesty is the quality signal, not a slogan.',
+      fq3_q: 'What is the public track?', fq3_a: 'Every pick is published before the match with its odds frozen. When it ends, it settles in front of everyone: won or lost. Nothing is edited or deleted. Over 500 picks have been settled this way.',
+      fq4_q: 'Which sports and leagues?', fq4_a: '44 live football leagues (Brasileirão, Liga MX, Argentina, MLS and more) plus every UFC, MMA and boxing card, with a deep read of each fight. More sports on the way.',
+      fq5_q: 'Do I need betting knowledge?', fq5_a: 'No. You pick your level when you join and the platform adjusts its explanations. Every pick comes with its reasoning in plain language, and the free guides and calculators teach you the rest.',
+      fq6_q: 'Can I cancel? Refunds?', fq6_a: 'Cancel in one click from your account, no lock-in. And if you pay and it was not for you, there is a refund within the first 24 hours.',
+      fq7_q: 'Does it work in my country?', fq7_a: 'The platform works in any country, in Spanish and English. The odds we compare include books available across LATAM — you choose yours and the platform shows you where they pay more.',
+      /* P18: footer SEO */
+      fs_tools: 'Free calculators', fs_tools_all: 'All calculators →',
+      fs_guides: 'Guides', fs_guides_all: 'All guides →',
+      fs_odds: 'Odds', fs_odds_next: 'Upcoming matches & fair odds',
       champ_eye: 'The tournament read', champ_title: 'Who lifts the cup.', champ_sub: 'Recalculated live with every goal. Just the top — the full analysis is inside.',
       champ_cap: 'to lift the cup',
       final_h: "The edge won't wait. Start free.",
@@ -121,9 +243,7 @@
       e_email: 'Enter a valid email.', e_code: 'Wrong or expired code.', e_net: 'Connection error, try again.',
       d_eye: 'Live demo', d_h: 'Inside the scanner', d_sub: 'It compares dozens of books in real time and flags the price that fell behind — before it gets corrected.',
       d_lag: 'Stale price', d_arb: 'Surebet', d_note: 'Illustrative scanner data. The real, live opportunities are inside your account.', d_cta: 'Sign up to see the real one',
-      /* v3 (clubs) */
-      h1_v3: 'The model that read the World Cup now reads <span class="g">all of football</span>.',
-      sub_v3: 'The same engine that read the World Cup in public now covers 40 live leagues: picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
+      /* v3 (clubs) — P18: new hero copy rules every version */
       sc3_live: 'live', sc3_xg: 'expected xG', sc3_foot: 'Live model read · recalculated with every goal',
       scf_markets: 'markets watched right now', scf_leagues: 'leagues monitored 24/7',
       tr_rec_v3: 'verified hits · 2026 World Cup', tr_leagues_v3: 'live leagues',
@@ -137,8 +257,6 @@
       a_micro_v3: 'Free · no card · no spam',
       /* v4 (multi-sport) */
       lb_txt_v4: 'New: UFC, MMA and boxing are in — free on every plan for 7 days.',
-      h1_v4: 'The model that read the World Cup now reads <span class="g">football and combat</span>.',
-      sub_v4: 'The same engine, now multi-sport: 40 live football leagues plus every UFC, MMA and boxing card. Picks with verified pricing, mispriced odds caught instantly, and arbitrage across 40+ books.',
       scan_sub_v4: 'We watch 40 leagues, every combat card and the global market 24/7 — and catch the price that fell behind before it gets corrected.',
       tr_sports_v4: 'football · UFC · MMA · boxing',
       scf_leagues_v4: 'leagues & cards 24/7', st4_read: 'Model read', st4_sat: 'Saturday', st4_combat: 'COMBAT · UFC', st4_ko: 'KO 65% · DEC 35%', st4_feed: 'How picks land on the feed', st4_pick1: 'Young Boys to win', st4_pick1m: 'Lausanne vs Young Boys · Super League (SUI)', st4_pick2: 'Salkilld · Winner', st4_pick2m: 'Gamrot vs Salkilld · UFC · main event', st4_pick3: 'Under 11.5 corners', st4_pick3m: 'Ilves vs Mariehamn · Veikkausliiga (FIN)', st4_best: 'BEST ODDS', st4_users: 'real users', st4_verified: 'verified track, pick by pick',
@@ -171,7 +289,13 @@
   var ICONS = {
     verify: '<path d="M12 3.5 19 6v5.2c0 4.6-2.9 7.6-7 9.3-4.1-1.7-7-4.7-7-9.3V6Z"/><path d="M9.2 11.8l1.9 1.9 3.6-3.9"/>',
     odds: '<path d="M4 17 9.4 11.5 12.9 15 20 7.8"/><path d="M20 7.8h-4M20 7.8v4"/><path d="M4 20h16"/>',
-    bolt: '<path d="M13 3 5 13h5l-1 8 8-10h-5l1-8Z"/>'
+    bolt: '<path d="M13 3 5 13h5l-1 8 8-10h-5l1-8Z"/>',
+    /* P18: iconos para los 6 pilares nuevos */
+    model: '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><circle cx="8.5" cy="8.5" r="1.3"/><circle cx="15.5" cy="8.5" r="1.3"/><circle cx="8.5" cy="15.5" r="1.3"/><circle cx="15.5" cy="15.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/>',
+    why: '<path d="M6 4h9l3 3v13H6z"/><path d="M15 4v3h3"/><path d="M9 11h6M9 14.5h6M9 18h4"/>',
+    globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.9 5.2 3.9 8.5s-1.3 6.1-3.9 8.5c-2.6-2.4-3.9-5.2-3.9-8.5s1.3-6.1 3.9-8.5Z"/>',
+    fist: '<path d="M7 12V8.5A1.5 1.5 0 0 1 8.5 7h0A1.5 1.5 0 0 1 10 8.5V12"/><path d="M10 11V7.5A1.5 1.5 0 0 1 11.5 6h0A1.5 1.5 0 0 1 13 7.5V11"/><path d="M13 11V8a1.5 1.5 0 0 1 1.5-1.5h0A1.5 1.5 0 0 1 16 8v4"/><path d="M16 12v-2a1.5 1.5 0 0 1 3 0v4c0 3.5-2.5 6-6.5 6S7 17.5 7 14v-2"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>'
   };
   var icon = function (k) { return '<svg viewBox="0 0 24 24">' + (ICONS[k] || '') + '</svg>'; };
 
@@ -181,17 +305,32 @@
     // botones nav
     $$('[data-login]').forEach(function (b) { b.className = 'blink'; b.textContent = T('nav_login'); b.onclick = function () { openAuth(); }; });
     $$('[data-signup]').forEach(function (b) {
+      // P18: botones con data-k2 (track/pricing) conservan su clase y su propio label — solo se les cablea el auth
+      if (b.getAttribute('data-k2')) { b.textContent = T(b.getAttribute('data-k2')); b.onclick = function () { openAuth(); }; return; }
       var nav = b.closest('.nav'); b.className = nav ? 'btn' : 'btn lg'; b.textContent = nav ? T('nav_cta') : T('cta');
       b.onclick = function () { openAuth(); };
     });
     $$('[data-demo]').forEach(function (b) { b.onclick = openDemo; });
     // banner de anuncio (post-Mundial → clubes): click = crear cuenta (openAuth); data-k pinta el texto ES/EN
     var _lb = $('#lbanner'); if (_lb) { _lb.onclick = function () { openAuth(); }; _lb.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAuth(); } }; }
-    // pilares
-    $('#pillars').innerHTML = ['1', '2', '3'].map(function (n) {
-      var ik = n === '1' ? 'verify' : n === '2' ? 'odds' : 'bolt';
-      return '<div class="pil"><div class="pil-ic">' + icon(ik) + '</div><h3>' + esc(T('why_' + n + 't')) + '</h3><p>' + esc(T('why_' + n + 's')) + '</p></div>';
+    // pilares — P18: 6 tarjetas (blueprint BetHero Parte 3), cada una desactiva una objeción
+    var PIL_IC = { 1: 'model', 2: 'why', 3: 'verify', 4: 'globe', 5: 'fist', 6: 'clock' };
+    $('#pillars').innerHTML = ['1', '2', '3', '4', '5', '6'].map(function (n) {
+      return '<div class="pil"><div class="pil-ic">' + icon(PIL_IC[n]) + '</div><h3>' + esc(T('why_' + n + 't')) + '</h3><p>' + esc(T('why_' + n + 's')) + '</p></div>';
     }).join('');
+    // P18: toggle mensual/anual del pricing (anual = 2 meses gratis; los montos viven en data-mo/data-yr)
+    var pt = $('#ptoggle');
+    if (pt) $$('button', pt).forEach(function (b) {
+      b.onclick = function () {
+        var per = b.getAttribute('data-per');
+        $$('button', pt).forEach(function (x) { x.classList.toggle('on', x === b); });
+        $$('#pricing .pr-price').forEach(function (pp) {
+          var num = pp.querySelector('.pnum'), sm = pp.querySelector('.pper');
+          if (num && pp.getAttribute('data-' + per)) num.textContent = pp.getAttribute('data-' + per);
+          if (sm && sm.getAttribute('data-' + per)) sm.textContent = sm.getAttribute('data-' + per);
+        });
+      };
+    });
     // lang toggle
     $$('#lang button').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-l') === lang);

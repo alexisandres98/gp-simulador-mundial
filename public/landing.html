@@ -7,10 +7,10 @@
    auto-detiene cuando la cookie coincide (no hay bucle). El anónimo (sin token) no hace nada y ve la landing. */
 try{var _t=localStorage.getItem('wc_token');var _c=(document.cookie.match(/(?:^|;\s*)wc_token=([^;]+)/)||[])[1];if(_t&&decodeURIComponent(_c||'')!==_t){document.cookie='wc_token='+_t+';path=/;max-age=31536000;SameSite=Lax';location.reload();}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>GP · La ventaja que el mercado no ve</title>
-<meta name="description" content="Jugadas verificadas cada día, cuotas mal pagadas detectadas al instante y arbitraje entre más de 40 casas. Inteligencia deportiva de nivel institucional.">
-<meta property="og:title" content="GP · La ventaja que el mercado no ve">
-<meta property="og:description" content="Jugadas verificadas, cuotas mal pagadas al instante y arbitraje entre 40+ casas. Gratis con tu email.">
+<title>GP Simulador · El modelo que le discute el precio al mercado</title>
+<meta name="description" content="Cada pick con su porqué, su cuota congelada y su resultado liquidado en público — más de 500 ya liquidadas. Fútbol (44 ligas) y combate (UFC, MMA, boxeo), en tu idioma.">
+<meta property="og:title" content="GP Simulador · El modelo que le discute el precio al mercado">
+<meta property="og:description" content="Cada pick con su porqué y su resultado liquidado en público. 44 ligas + UFC/MMA/boxeo · 40+ casas comparadas. Gratis con tu email.">
 <meta property="og:image" content="https://gpsimulador.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://gpsimulador.com/">
@@ -357,6 +357,90 @@ body.v3 .tr.big span{color:var(--tx2)}
   .scan{grid-template-columns:1fr 1fr 1fr}.pillars{grid-template-columns:1fr}
   .trust{gap:28px}.tr b{font-size:24px}
 }
+/* ===== P18 (13-ago, blueprint BetHero Parte 3): secciones nuevas — mini-demos, pasos, cobertura,
+   track honesto, pricing y FAQ. Todo ESTÁTICO: copy ES horneado en el HTML, JS solo swap EN + toggles. */
+.pillars.six{grid-template-columns:repeat(3,1fr)}
+.feats{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:34px}
+.feat{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r2);padding:24px;transition:transform .2s var(--ease),border-color .2s}
+.feat:hover{transform:translateY(-3px);border-color:var(--line2)}
+.feat h3{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.02em;margin-bottom:6px}
+.feat>p{color:var(--tx2);font-size:14px;line-height:1.5;margin-bottom:16px}
+.fd{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px}
+.fd-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.fd-fam{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ac);background:var(--acs);border:1px solid var(--acl);padding:3px 8px;border-radius:6px}
+.fd-win{font-size:11px;font-weight:700;color:var(--ac)}
+.fd-sel{font-family:var(--disp);font-weight:700;font-size:16.5px;letter-spacing:-.01em}
+.fd-match{color:var(--tx3);font-size:12.5px;margin-top:3px}
+.fd-quote{margin-top:12px;padding:10px 12px;border-left:3px solid var(--acl);background:rgba(31,227,164,.04);border-radius:0 10px 10px 0;color:var(--tx2);font-size:13px;line-height:1.55;font-style:italic}
+.fd-line{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fd-chip{font-size:11.5px;font-weight:600;color:var(--tx2);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-variant-numeric:tabular-nums}
+.fd-chip b{color:var(--tx);font-family:var(--disp)}
+.fd-chip.hl{color:var(--ac);border-color:var(--acl);background:var(--acs)}
+.fd-chip.hl b{color:var(--ac)}
+.fd-stat{display:flex;align-items:baseline;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);font-size:13px;color:var(--tx2)}
+.fd-stat:first-of-type{border-top:0}
+.fd-stat b{font-family:var(--mono);font-size:14px;color:var(--tx);font-variant-numeric:tabular-nums}
+.fd-cap{margin-top:12px;font-size:10.5px;color:var(--tx4);letter-spacing:.06em;text-transform:uppercase}
+/* pasos */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px;counter-reset:paso}
+.step{position:relative;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:26px 24px}
+.step .n{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ac);width:34px;height:34px;border-radius:10px;background:var(--acs);border:1px solid var(--acl);display:grid;place-items:center;margin-bottom:14px}
+.step h3{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.02em;margin-bottom:7px}
+.step p{color:var(--tx2);font-size:14px;line-height:1.5}
+.step .t{position:absolute;top:24px;right:22px;font-size:11px;font-weight:700;color:var(--am);background:var(--ams);border:1px solid var(--aml);border-radius:99px;padding:4px 10px}
+/* cobertura + track honesto */
+.cover-chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.cchip{font-size:13.5px;font-weight:650;color:var(--tx);background:var(--panel2);border:1px solid var(--line2);border-radius:99px;padding:9px 17px}
+.cchip b{color:var(--ac);font-family:var(--disp)}
+.trackmod{margin-top:34px;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line2);border-radius:var(--r2);padding:30px;display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center}
+.tk-nums{display:flex;gap:34px;flex-wrap:wrap}
+.tk-n b{display:block;font-family:var(--disp);font-weight:800;font-size:40px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.tk-n.win b{color:var(--ac)}.tk-n.loss b{color:#FF8080}
+.tk-n span{font-size:12.5px;color:var(--tx3);margin-top:6px;display:block}
+.tk-txt p{color:var(--tx2);font-size:14.5px;line-height:1.6}
+.tk-txt .btn{margin-top:18px}
+/* pricing */
+.ptoggle{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:99px;overflow:hidden;font-size:13.5px;font-weight:650;margin-top:22px}
+.ptoggle button{background:none;border:0;color:var(--tx3);padding:9px 18px;cursor:pointer;font-family:inherit;font-weight:650;transition:color .16s,background .16s}
+.ptoggle button.on{background:var(--acs);color:var(--ac)}
+.ptoggle .save{font-size:11px;color:var(--am);margin-left:5px}
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:28px;align-items:stretch}
+.pr{position:relative;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r2);padding:28px 26px;display:flex;flex-direction:column}
+.pr.pop{border-color:var(--acl);box-shadow:0 0 0 1px var(--acl),0 30px 60px -30px rgba(31,227,164,.25)}
+.pr-pop{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#052018;background:linear-gradient(145deg,var(--ac),var(--ac2));border-radius:99px;padding:4px 13px;white-space:nowrap}
+.pr h3{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.02em}
+.pr-price{font-family:var(--disp);font-weight:800;font-size:38px;letter-spacing:-.03em;margin:12px 0 2px;font-variant-numeric:tabular-nums}
+.pr-price small{font-size:15px;color:var(--tx3);font-weight:600}
+.pr-per{font-size:12.5px;color:var(--tx3);min-height:18px}
+.pr ul{list-style:none;margin:18px 0 22px;display:grid;gap:9px;flex:1}
+.pr li{font-size:13.5px;color:var(--tx2);padding-left:22px;position:relative;line-height:1.45}
+.pr li::before{content:'✓';position:absolute;left:0;color:var(--ac);font-weight:800}
+.pr .btn{justify-content:center;width:100%}
+.pr-micro{text-align:center;font-size:11.5px;color:var(--tx4);margin-top:10px}
+.pr-note{text-align:center;color:var(--tx3);font-size:12.5px;margin-top:20px}
+/* faq */
+.faq{margin-top:30px;display:grid;gap:10px;max-width:760px}
+.faq details{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:border-color .2s}
+.faq details[open]{border-color:var(--line2)}
+.faq summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;font-weight:650;font-size:15px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'+';font-family:var(--disp);font-weight:700;color:var(--ac);font-size:19px;transition:transform .2s var(--ease)}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq .fa{padding:0 20px 18px;color:var(--tx2);font-size:14px;line-height:1.6}
+/* footer SEO */
+.foot-seo{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;border-top:1px solid var(--line);padding:30px 0 6px;margin-top:20px}
+.fs-col b{display:block;font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:11px}
+.fs-col a{display:block;color:var(--tx2);font-size:13.5px;padding:4px 0;transition:color .15s}
+.fs-col a:hover{color:var(--ac)}
+@media(max-width:900px){
+  .feats{grid-template-columns:1fr}.steps{grid-template-columns:1fr}
+  .pricing{grid-template-columns:1fr}.trackmod{grid-template-columns:1fr;gap:22px}
+  .pillars.six{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .foot-seo{grid-template-columns:1fr 1fr}
+  .tk-nums{gap:22px}.tk-n b{font-size:32px}
+}
 .trialbar{position:sticky;top:0;z-index:55;display:flex;align-items:center;gap:12px;justify-content:center;padding:11px 18px;background:linear-gradient(90deg,#0BA661,#1FE3A4);color:#06231A;text-decoration:none;font-size:14.5px}
 .trialbar b{font-weight:800}
 .trialbar .tb-sub{font-weight:600;opacity:.85}
@@ -389,9 +473,9 @@ body.v3 .tr.big span{color:var(--tx2)}
   <section class="hero">
     <div class="hero-grid">
       <div class="rv st in">
-        <div class="eyebrow"><span class="pulse"></span><span data-k="eyebrow">·</span></div>
-        <h1 data-k="h1">·</h1>
-        <p class="hero-sub" data-k="sub">·</p>
+        <div class="eyebrow"><span class="pulse"></span><span data-k="eyebrow">+500 picks liquidadas en público</span></div>
+        <h1 data-k="h1">El modelo que <span class="g">le discute el precio</span> al mercado.</h1>
+        <p class="hero-sub" data-k="sub">Simulamos cada partido 10,000 veces, comparamos contra 40+ casas y publicamos cada pick con su porqué, su cuota congelada y su resultado liquidado en público. Fútbol y combate, en tu idioma.</p>
         <div class="hero-cta"><button class="btn lg" data-signup>·</button><span class="micro" data-k="micro">·</span></div>
         <div class="hero-trust" id="herotrust"></div>
       </div>
@@ -412,8 +496,158 @@ body.v3 .tr.big span{color:var(--tx2)}
   </section>
 
   <section class="sec" id="s-why">
-    <div class="rv"><div class="sec-eye" data-k="why_eye">·</div><h2 data-k="why_title">·</h2></div>
-    <div class="pillars rv" id="pillars"></div>
+    <div class="rv"><div class="sec-eye" data-k="why_eye">Por qué GP</div><h2 data-k="why_title">Funciona distinto. A propósito.</h2></div>
+    <div class="pillars six rv" id="pillars"></div>
+  </section>
+
+  <!-- P18: mini-demos con componentes REALES (datos congelados de picks liquidadas — nada inventado) -->
+  <section class="sec" id="s-feat">
+    <div class="rv"><div class="sec-eye" data-k="fe_eye">El producto, por dentro</div><h2 data-k="fe_title">Pruébalo antes de pagar.</h2><p class="sec-sub" data-k="fe_sub">Componentes reales de la plataforma con picks reales, ya liquidadas. Así se ve por dentro.</p></div>
+    <div class="feats rv st">
+      <div class="feat"><h3 data-k="fe_1t">La pick, con su porqué</h3><p data-k="fe_1s">No es una fila verde: cada pick llega con la lectura del modelo.</p>
+        <div class="fd">
+          <div class="fd-top"><span class="fd-fam" data-k="fe_1fam">Tarjetas</span><span class="fd-win" data-k="fe_1win">✓ Ganada · liquidada 9-ago</span></div>
+          <div class="fd-sel" data-k="fe_1sel">Menos de 6.5 tarjetas · cuota 1.44</div>
+          <div class="fd-match">Palmeiras vs Internacional · Brasileirão Série A</div>
+          <div class="fd-quote" data-k="fe_1q">«La cuota luce generosa frente a lo que suele dejar este tipo de cruces en el Brasileirão. El modelo encuentra un desajuste claro entre el precio y el partido que espera.»</div>
+          <div class="fd-cap" data-k="fe_cap">Componente real · pick real del feed</div>
+        </div>
+      </div>
+      <div class="feat"><h3 data-k="fe_2t">La cuota justa, a la vista</h3><p data-k="fe_2s">Quitamos el margen de la casa y te mostramos cuánto debería pagar.</p>
+        <div class="fd">
+          <div class="fd-sel" data-k="fe_2sel">Under 5.5 tarjetas · Cuiabá vs Fortaleza</div>
+          <div class="fd-line">
+            <span class="fd-chip" data-k="fe_2c1">justa <b>1.68</b></span>
+            <span class="fd-chip hl" data-k="fe_2c2">mejor <b>1.83</b> · LeoVegas</span>
+            <span class="fd-chip" data-k="fe_2c3">edge <b>+9.0 pp</b></span>
+          </div>
+          <div class="fd-quote" data-k="fe_2q">«El mercado paga 1.83 al under 5.5 y el modelo detecta 9 puntos porcentuales a favor de esa línea.»</div>
+          <div class="fd-cap" data-k="fe_cap2">Componente real · liquidada como ganada el 9-ago</div>
+        </div>
+      </div>
+      <div class="feat"><h3 data-k="fe_3t">Lectura profunda de pelea</h3><p data-k="fe_3s">Combate modelado de verdad: ritmo, alcance y camino al triunfo.</p>
+        <div class="fd">
+          <div class="fd-top"><span class="fd-fam" style="color:var(--am);background:var(--ams);border-color:var(--aml)" data-k="fe_3fam">🥊 UFC · Film study</span></div>
+          <div class="fd-sel">Makhachev vs Garry</div>
+          <div class="fd-stat"><span data-k="fe_3s1">Golpes significativos / min</span><b>8.93 vs 4.50</b></div>
+          <div class="fd-stat"><span data-k="fe_3s2">Alcance</span><b>74.5" vs 70.5"</b></div>
+          <div class="fd-stat"><span data-k="fe_3s3">Lectura del modelo</span><b data-k="fe_3s3v">ritmo + presión</b></div>
+          <div class="fd-cap" data-k="fe_cap3">Análisis real de la plataforma · plan Pro+</div>
+        </div>
+      </div>
+      <div class="feat"><h3 data-k="fe_4t">El mercado, vigilado 24/7</h3><p data-k="fe_4s">Value, arbitraje, caídas de cuota y middles entre 40+ casas.</p>
+        <div class="fd">
+          <div class="fd-stat"><span data-k="fe_4s1">Cuotas mal pagadas (value)</span><b data-k="fe_4v1">edge del modelo</b></div>
+          <div class="fd-stat"><span data-k="fe_4s2">Arbitraje puro</span><b data-k="fe_4v2">2 casas, 0 riesgo de dirección</b></div>
+          <div class="fd-stat"><span data-k="fe_4s3">Caídas de cuota</span><b data-k="fe_4v3">sharps vs casas lentas</b></div>
+          <div class="fd-stat"><span data-k="fe_4s4">Middles</span><b data-k="fe_4v4">dos líneas, zona doble</b></div>
+          <div class="fd-cap" data-k="fe_cap4">Superficies reales del plan Sharp</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P18: empieza en 3 pasos, con tiempos -->
+  <section class="sec" id="s-steps">
+    <div class="rv"><div class="sec-eye" data-k="st_eye">Cómo empezar</div><h2 data-k="st_title">Tres pasos. Sin vueltas.</h2></div>
+    <div class="steps rv st">
+      <div class="step"><span class="t" data-k="st_1t">30 segundos</span><div class="n">1</div><h3 data-k="st_1h">Entra</h3><p data-k="st_1p">Solo tu email. Sin contraseña, sin tarjeta.</p></div>
+      <div class="step"><span class="t" data-k="st_2t">2 minutos</span><div class="n">2</div><h3 data-k="st_2h">Mira la pick del día</h3><p data-k="st_2p">Con su porqué, su cuota congelada y la mejor casa para tomarla.</p></div>
+      <div class="step"><span class="t" data-k="st_3t">Automático</span><div class="n">3</div><h3 data-k="st_3h">Sigue el resultado en público</h3><p data-k="st_3p">Cada pick se liquida a la vista de todos. Ganadas y perdidas.</p></div>
+    </div>
+  </section>
+
+  <!-- P18: cobertura + track público honesto (cifras REALES congeladas al 13-ago) -->
+  <section class="sec" id="s-cover">
+    <div class="rv"><div class="sec-eye" data-k="cv_eye">Cobertura</div><h2 data-k="cv_title">Tus ligas, tus casas, tu idioma.</h2></div>
+    <div class="cover-chips rv st">
+      <span class="cchip" data-k="cv_c1"><b>44</b> ligas de fútbol en vivo</span>
+      <span class="cchip" data-k="cv_c2">🥊 UFC · MMA · boxeo</span>
+      <span class="cchip" data-k="cv_c3"><b>40+</b> casas comparadas</span>
+      <span class="cchip" data-k="cv_c4">Brasileirão · Liga MX · Argentina · MLS</span>
+      <span class="cchip" data-k="cv_c5">Español · English</span>
+    </div>
+    <div class="trackmod rv">
+      <div>
+        <div class="sec-eye" data-k="tk_eye">Track público</div>
+        <h2 style="font-size:clamp(24px,3vw,32px)" data-k="tk_h">Sin ganancias prometidas. Todo a la vista.</h2>
+        <div class="tk-nums" style="margin-top:22px">
+          <div class="tk-n"><b>505</b><span data-k="tk_n1">picks liquidadas en público</span></div>
+          <div class="tk-n win"><b>253</b><span data-k="tk_n2">ganadas</span></div>
+          <div class="tk-n loss"><b>252</b><span data-k="tk_n3">perdidas</span></div>
+        </div>
+      </div>
+      <div class="tk-txt">
+        <p data-k="tk_p">Cada pick queda registrada antes del partido con su cuota congelada, y se liquida en público después — las ganadas y las perdidas, sin editar ni borrar nada. Quien te prometa ganancias garantizadas te está mintiendo; nosotros preferimos que audites el historial completo antes de pagar un centavo.</p>
+        <button class="btn gh" data-signup data-k2="tk_cta">Crear cuenta y auditarlo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- P18: pricing EN la landing (nadie paga sin ver el precio) -->
+  <section class="sec" id="s-pricing">
+    <div class="rv"><div class="sec-eye" data-k="pr_eye">Planes</div><h2 data-k="pr_title">Precios claros, sin sorpresas.</h2>
+      <div class="ptoggle" id="ptoggle"><button class="on" data-per="mo" data-k="pr_mo">Mensual</button><button data-per="yr"><span data-k="pr_yr">Anual</span><span class="save" data-k="pr_save">2 meses gratis</span></button></div>
+    </div>
+    <div class="pricing rv st" id="pricing">
+      <div class="pr">
+        <h3 data-k="pr1_n">Gratis</h3>
+        <div class="pr-price">$0</div>
+        <div class="pr-per" data-k="pr1_per">para siempre</div>
+        <ul>
+          <li data-k="pr1_f1">La pick del día, con su porqué</li>
+          <li data-k="pr1_f2">Marcadores y lectura del modelo en vivo</li>
+          <li data-k="pr1_f3">Pick diaria gratis en Telegram</li>
+        </ul>
+        <button class="btn gh" data-signup data-k2="pr1_cta">Crear cuenta gratis</button>
+        <div class="pr-micro" data-k="pr1_m">Sin tarjeta</div>
+      </div>
+      <div class="pr">
+        <h3>Pro</h3>
+        <div class="pr-price" data-mo="$19" data-yr="$190"><span class="pnum">$19</span><small class="pper" data-mo="/mes" data-yr="/año">/mes</small></div>
+        <div class="pr-per" data-k="pr2_per">para el que sigue el día a día</div>
+        <ul>
+          <li data-k="pr2_f1">Todas las picks de fútbol y combate</li>
+          <li data-k="pr2_f2">El porqué completo de cada pick</li>
+          <li data-k="pr2_f3">Cockpit del partido en vivo</li>
+          <li data-k="pr2_f4">Bet checker: tu cuota vs la justa</li>
+          <li data-k="pr2_f5">Alertas de tus equipos y ligas</li>
+        </ul>
+        <a class="btn gh" href="/plans" style="text-decoration:none" data-k="pr2_cta">Elegir Pro</a>
+        <div class="pr-micro" data-k="pr2_m">Cancelas en 1 clic</div>
+      </div>
+      <div class="pr pop">
+        <span class="pr-pop" data-k="pr3_pop">Prueba GRATIS 3 días</span>
+        <h3>Sharp</h3>
+        <div class="pr-price" data-mo="$59" data-yr="$590"><span class="pnum">$59</span><small class="pper" data-mo="/mes" data-yr="/año">/mes</small></div>
+        <div class="pr-per" data-k="pr3_per">la plataforma completa</div>
+        <ul>
+          <li data-k="pr3_f1">Todo lo de Pro</li>
+          <li data-k="pr3_f2">Cuotas mal pagadas (value) entre 40+ casas</li>
+          <li data-k="pr3_f3">Arbitraje puro y middles</li>
+          <li data-k="pr3_f4">Caídas de cuota: sharps vs casas lentas</li>
+          <li data-k="pr3_f5">Film study de cada pelea</li>
+          <li data-k="pr3_f6">Calculadora de stake con tu bankroll</li>
+        </ul>
+        <a class="btn" href="/plans" style="text-decoration:none" data-k="pr3_cta">Probar Sharp gratis</a>
+        <div class="pr-micro" data-k="pr3_m">Hoy pagas $0 · cancelas en 1 clic</div>
+      </div>
+    </div>
+    <div class="pr-note" data-k="pr_note">Precios en USD · reembolso dentro de las primeras 24 h · sin permanencia</div>
+  </section>
+
+  <!-- P18: FAQ de objeciones -->
+  <section class="sec" id="s-faq">
+    <div class="rv"><div class="sec-eye" data-k="fq_eye">Preguntas frecuentes</div><h2 data-k="fq_title">Lo que preguntarías antes de pagar.</h2></div>
+    <div class="faq rv" id="faq">
+      <details><summary data-k="fq1_q">¿Esto es un tipster?</summary><div class="fa" data-k="fq1_a">No. Un tipster te pide confianza; un modelo te muestra el cálculo. GP simula cada partido 10,000 veces, compara contra el precio real de 40+ casas y publica cada pick con su porqué — y con su resultado, gane o pierda.</div></details>
+      <details><summary data-k="fq2_q">¿Me garantizan ganancias?</summary><div class="fa" data-k="fq2_a">No — y desconfía de quien lo haga. Apostar tiene varianza y ningún modelo gana siempre. Lo que sí garantizamos: cada pick registrada antes del partido, liquidada en público después, con el historial completo auditable. Esa honestidad es la señal de calidad, no un eslogan.</div></details>
+      <details><summary data-k="fq3_q">¿Qué es el track público?</summary><div class="fa" data-k="fq3_a">Cada pick queda publicada antes del partido con su cuota congelada. Cuando termina, se liquida a la vista de todos: ganada o perdida. No se edita ni se borra nada. Ya van más de 500 picks liquidadas así.</div></details>
+      <details><summary data-k="fq4_q">¿Qué deportes y ligas cubren?</summary><div class="fa" data-k="fq4_a">44 ligas de fútbol en vivo (Brasileirão, Liga MX, Argentina, MLS y más) y todas las carteleras de UFC, MMA y boxeo, con lectura profunda de cada pelea. Más deportes en camino.</div></details>
+      <details><summary data-k="fq5_q">¿Necesito saber de apuestas?</summary><div class="fa" data-k="fq5_a">No. Al entrar eliges tu nivel y la plataforma ajusta la explicación. Cada pick trae su porqué en español claro, y las guías y calculadoras gratuitas te enseñan lo demás.</div></details>
+      <details><summary data-k="fq6_q">¿Puedo cancelar? ¿Hay reembolso?</summary><div class="fa" data-k="fq6_a">Cancelas en 1 clic desde tu cuenta, sin permanencia. Y si pagas y no era para ti, tienes reembolso dentro de las primeras 24 horas.</div></details>
+      <details><summary data-k="fq7_q">¿Funciona en mi país?</summary><div class="fa" data-k="fq7_a">La plataforma funciona en cualquier país, en español e inglés. Las cuotas que comparamos incluyen casas disponibles en toda LATAM — tú eliges las tuyas y la plataforma te muestra dónde pagan más.</div></details>
+    </div>
   </section>
 
   <section class="sec" id="s-champ">
@@ -440,7 +674,29 @@ body.v3 .tr.big span{color:var(--tx2)}
   </a>
 </section>
 
-<footer class="wrap"><div class="foot">
+<!-- P18: footer SEO — herramientas y guías públicas (rutas reales del lote 5) -->
+<footer class="wrap">
+<div class="foot-seo">
+  <div class="fs-col"><b data-k="fs_tools">Calculadoras gratis</b>
+    <a href="/calculadoras/kelly">Criterio de Kelly</a>
+    <a href="/calculadoras/valor-esperado">Valor esperado (+EV)</a>
+    <a href="/calculadoras/arbitraje">Arbitraje / surebets</a>
+    <a href="/calculadoras/no-vig">Cuota justa (no-vig)</a>
+    <a href="/calculadoras/clv">CLV</a>
+    <a href="/calculadoras" data-k="fs_tools_all">Todas las calculadoras →</a>
+  </div>
+  <div class="fs-col"><b data-k="fs_guides">Guías</b>
+    <a href="/guias/value-betting">Value betting, explicado</a>
+    <a href="/guias/kelly-bankroll">Kelly y gestión de bankroll</a>
+    <a href="/guias/clv">Qué es el CLV</a>
+    <a href="/guias" data-k="fs_guides_all">Todas las guías →</a>
+  </div>
+  <div class="fs-col"><b data-k="fs_odds">Cuotas</b>
+    <a href="/cuotas" data-k="fs_odds_next">Próximos partidos y cuota justa</a>
+    <a href="https://t.me/gpsimulador" target="_blank" rel="noopener">Telegram: pick gratis diaria</a>
+  </div>
+</div>
+<div class="foot">
   <span class="brand">GP · <span data-k="foot_tag">·</span></span>
   <span data-k="foot_legal">·</span>
 </div></footer>

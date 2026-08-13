@@ -1,5 +1,29 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🌍 COBERTURA TOTAL 13-ago (orden Alexis: "las quiero absolutamente todas") · construido, espera créditos
+- **Estado del proveedor**: The Odds API en **0/500 créditos** (plan gratuito agotado) → plataforma ciega
+  desde el 12-ago. **Alexis sube el plan (dijo: 5M calls)**; al volver créditos TODO lo de abajo arranca solo.
+- **Capa 1 — copas con equipos ya modelados** (`CLUB_CUPS` + `clubsEnsureCups()` en server.js, EN MEMORIA —
+  ratings.json no se toca): libertadores(118 equipos), sudamericana(118), leaguescup(49), eflcup(94),
+  facup, dfbpokal(60), copadelrey, coppaitalia, coupefrance, uclq(351) + saudi/aleague (sin ratings, solo
+  mercado) + odds_key cableada a los placeholders champions/europa/uefa(conference). Ratings COMPARTIDOS POR
+  REFERENCIA (Elo dinámico global por equipo → cero drift). Entran a: sweep de cuotas, props, value board,
+  pipeline de picks (gate 'shadow' — la disciplina decide qué se publica), contexto AF (`CLUB_AF_LEAGUE`) y
+  LIQUIDACIÓN vía ESPN (`CLUB_ESPN`, 12 slugs verificados el 13-ago).
+- **Capa 2 — AUTO, todo lo demás que cotice** (`clubsAutoLeagues()`): catálogo /v4/sports (gratis, cache 12h)
+  → toda clave soccer activa NO configurada entra al sweep sin ratings (Saudi, femenino, Nations League, lo
+  que el proveedor active mañana — p.ej. FA Cup/UCL/UEL/Copa del Rey hoy inactivas, entran solas al activarse).
+  Superficies de mercado completas (cuotas SSR, bet checker, caídas, middles, arb, Cloudbet); value/picks NO
+  (sin modelo). Off: `GP_QUOTES_ALL_SOCCER=false`.
+- **Control de gasto**: pre-check GRATIS de agenda por clave (/events, cache 6h) → sin partidos en 72h no se
+  paga el /odds. Reserva de créditos y cadencias existentes intactas.
+- **Límites honestos del proveedor** (no es infra nuestra): The Odds API NO tiene amistosos (PSG–Madrid del
+  12-ago no existe ahí — cubierto vía ESPN/`amistosos`), ni ligas menores tipo Islandia 4ª/Calcuta (los 167
+  de BetHero salen de un proveedor de otra categoría de precio). 67 claves soccer es el techo actual.
+- **PENDIENTE (fit de modelo para ligas sin ratings)**: saudi, aleague, nations y las AUTO quedan solo-mercado
+  hasta fitear Elo con historial (API-Football que Alexis también va a subir de plan / TSA). El discovery
+  (email diario) sigue avisando candidatas. Verificar id AF de leaguescup cuando la key esté activa.
+
 ## 🥊 R6 COMBATE 12-ago — profundidad (orden Alexis) · VEREDICTO DEL BACKTEST
 - **Interacciones de matchup** (grap/power/absorb/age5/subth) construidas en `combat-engine/ratings.js` y
   backtesteadas PAREADAS (`scripts/combat-backtest-v2.js`, único harness que alimenta las stats finas):

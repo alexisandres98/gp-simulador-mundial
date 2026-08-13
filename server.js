@@ -3343,6 +3343,84 @@ function oddsBudgetOk(reserve) {
 // poder correr con el remanente sin deploy. SPORTSBOOK_QUOTA_RESERVE = reserva base (scan barato, default
 // 2000); props (caro, ~20 créd/evento) frena a 3× la base — misma proporción del default histórico 2000/6000.
 const oddsReserve = () => Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
+// ===== COBERTURA TOTAL (13-ago, orden de Alexis: "las quiero absolutamente todas") ==========================
+// Dos capas para que NADA del proveedor se nos escape:
+//   1) COPAS/TORNEOS con equipos que YA modelamos → liga virtual con ratings COMPARTIDOS POR REFERENCIA
+//      (mismo objeto de rating; el Elo dinámico db.clubElos es global por equipo, así que no hay drift).
+//      Entran al sweep, a Partidos, al value board y al pipeline de picks con gate 'shadow' (la disciplina
+//      de siempre decide qué se publica). Se inyectan EN MEMORIA — ratings.json (artefacto del fit) no se toca.
+//   2) TODO LO DEMÁS que el proveedor cotice (Saudi, A-League, femenino, Nations League, lo que active
+//      mañana…) → capa AUTO: catálogo /v4/sports (gratis, cache 12h) + pre-check /events (gratis, cache 6h)
+//      → entra al sweep de cuotas sin ratings. Con eso hay cuotas SSR, bet checker, caídas, middles, arb y
+//      Cloudbet para CUALQUIER partido cotizado; value/picks requieren modelo y quedan para cuando se fitee.
+//      Se apaga con GP_QUOTES_ALL_SOCCER=false. Nota honesta: amistosos tipo PSG–Madrid NO existen en The
+//      Odds API (no hay clave de friendlies) — esos entran por API-Football (fixtures/contexto), no por aquí.
+const CLUB_CUPS = {
+  libertadores: { name: 'Copa Libertadores', odds_key: 'soccer_conmebol_copa_libertadores', from: ['brasileirao', 'brasilb', 'argentina', 'chile', 'colombia', 'paraguay'], hfa: 50 },
+  sudamericana: { name: 'Copa Sudamericana', odds_key: 'soccer_conmebol_copa_sudamericana', from: ['brasileirao', 'brasilb', 'argentina', 'chile', 'colombia', 'paraguay'], hfa: 50 },
+  leaguescup:   { name: 'Leagues Cup', odds_key: 'soccer_concacaf_leagues_cup', from: ['mls', 'ligamx'], hfa: 45 },
+  eflcup:       { name: 'EFL Cup', odds_key: 'soccer_england_efl_cup', from: ['premier', 'championship', 'league1', 'league2'], hfa: 55 },
+  facup:        { name: 'FA Cup', odds_key: 'soccer_fa_cup', from: ['premier', 'championship', 'league1', 'league2'], hfa: 55 },
+  dfbpokal:     { name: 'DFB-Pokal', odds_key: 'soccer_germany_dfb_pokal', from: ['bundesliga', 'bundesliga2', 'liga3'], hfa: 55 },
+  copadelrey:   { name: 'Copa del Rey', odds_key: 'soccer_spain_copa_del_rey', from: ['laliga', 'laliga2'], hfa: 55 },
+  coppaitalia:  { name: 'Coppa Italia', odds_key: 'soccer_italy_coppa_italia', from: ['seriea', 'serieb'], hfa: 55 },
+  coupefrance:  { name: 'Coupe de France', odds_key: 'soccer_france_coupe_de_france', from: ['ligue1', 'ligue2'], hfa: 55 },
+  uclq:         { name: 'Champions League · clasificación', odds_key: 'soccer_uefa_champs_league_qualification', from: ['premier', 'laliga', 'bundesliga', 'seriea', 'ligue1', 'eredivisie', 'portugal', 'belgica', 'turquia', 'grecia', 'escocia', 'austria', 'suiza', 'dinamarca', 'noruega', 'suecia', 'polonia', 'irlanda', 'finlandia'], hfa: 55 },
+  saudi:        { name: 'Saudi Pro League', odds_key: 'soccer_saudi_arabia_pro_league', from: [], hfa: 60 },
+  aleague:      { name: 'A-League', odds_key: 'soccer_australia_aleague', from: [], hfa: 60 },
+};
+// Placeholders que YA existían en ratings.json sin odds_key → se les cablea la clave del proveedor.
+const CLUB_CUP_KEY_FIX = { champions: 'soccer_uefa_champs_league', europa: 'soccer_uefa_europa_league', uefa: 'soccer_uefa_europa_conference_league' };
+function clubsEnsureCups(RT) {
+  if (!RT || !RT.leagues || RT._cupsDone) return RT;
+  for (const [lg, k] of Object.entries(CLUB_CUP_KEY_FIX)) { if (RT.leagues[lg] && !RT.leagues[lg].odds_key) RT.leagues[lg].odds_key = k; }
+  for (const [key, cfgC] of Object.entries(CLUB_CUPS)) {
+    if (RT.leagues[key]) continue;
+    const merged = {};
+    for (const src of cfgC.from) {
+      const L = RT.leagues[src]; if (!L || !L.ratings) continue;
+      for (const [tid, tr] of Object.entries(L.ratings)) if (!merged[tid]) merged[tid] = tr; // referencia, no copia
+    }
+    RT.leagues[key] = { key, name: cfgC.name, odds_key: cfgC.odds_key, hfa: cfgC.hfa, ratings: merged, cup: true, backtest: { status: 'shadow' } };
+  }
+  RT._cupsDone = true;
+  return RT;
+}
+// Catálogo soccer del proveedor (gratis — /v4/sports no gasta créditos). Cache 12h en memoria.
+async function clubsSoccerCatalog(key) {
+  const G = global._oaSoccerCat = global._oaSoccerCat || { at: 0, list: [] };
+  if (Date.now() - G.at < 12 * 3600e3 && G.list.length) return G.list;
+  try {
+    const r = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${key}`, { signal: AbortSignal.timeout(15000) });
+    const all = r.ok ? await r.json().catch(() => []) : [];
+    const list = (all || []).filter(s => s && s.active && s.group === 'Soccer' && !s.has_outrights);
+    if (list.length) { G.at = Date.now(); G.list = list; }
+    return G.list;
+  } catch { return G.list; }
+}
+// Pre-check de agenda por clave (gratis — /events no gasta créditos). Cache 6h. Evita pagar el /odds de
+// claves sin partidos próximos: con 60+ claves esto es lo que mantiene el gasto proporcional a la agenda real.
+async function clubsKeyHasEvents(key, oddsKey, horizonH) {
+  const G = global._oaEvCheck = global._oaEvCheck || {};
+  const c = G[oddsKey];
+  if (c && Date.now() - c.at < 6 * 3600e3) return c.has;
+  let has = false;
+  try {
+    const r = await fetch(`https://api.the-odds-api.com/v4/sports/${oddsKey}/events?apiKey=${key}`, { signal: AbortSignal.timeout(12000) });
+    const evs = r.ok ? await r.json().catch(() => []) : [];
+    has = (evs || []).some(e => { const t = +new Date(e.commence_time); return t > Date.now() - 3600e3 && t < Date.now() + (horizonH || 72) * 3600e3; });
+  } catch { has = c ? c.has : false; }
+  G[oddsKey] = { at: Date.now(), has };
+  return has;
+}
+// Ligas AUTO: claves soccer activas del proveedor que NINGUNA liga configurada (ni copa) cubre.
+// Sin ratings → solo superficies de mercado; league key sintética 'oa-…' para no chocar con las del modelo.
+async function clubsAutoLeagues(key, covered) {
+  if (/^false$/i.test(String(process.env.GP_QUOTES_ALL_SOCCER || '').trim())) return [];
+  const cat = await clubsSoccerCatalog(key);
+  return cat.filter(s => !covered.has(s.key))
+    .map(s => ({ key: 'oa-' + s.key.replace(/^soccer_/, '').replace(/[^a-z0-9]/g, ''), name: s.title, odds_key: s.key, ratings: {}, auto: true }));
+}
 // ===== FASE CLUBES: INGESTA DE CUOTAS a las tablas de la casa (shadow, cadencia ~60 min) =====
 // Punto 1 del spec de adaptación (13-jul): las cuotas de clubes viven en sportsbook_goal_quote_current
 // (match_winner + match_total, ids SINTÉTICOS por liga+par — MISMO patrón que el Mundial vía
@@ -3369,8 +3447,16 @@ async function clubsQuotesSweep({ force = false } = {}) {
     }
     const { stableGoalEventId } = require('./goal-engine/eventKey');
     const grepo = require('./goal-engine/repository');
-    const inSeason = Object.values(global._clubsRatings.leagues || {}).filter(L => L.odds_key && !L.starts);
-    for (const L of inSeason) {
+    clubsEnsureCups(global._clubsRatings); // copas con ratings compartidos entran al mismo barrido
+    const inSeason = Object.entries(global._clubsRatings.leagues || {}).filter(([, L]) => L.odds_key && !L.starts).map(([k, L]) => ({ key: k, ...L }));
+    // capa AUTO: todo lo que el proveedor cotice y no esté configurado (Saudi, femenino, lo que active mañana)
+    const covered = new Set(inSeason.map(L => L.odds_key));
+    const autoLs = await clubsAutoLeagues(key, covered).catch(() => []);
+    for (const L of inSeason.concat(autoLs)) {
+      // pre-check GRATIS de agenda: sin partidos en 72h no pagamos el /odds de esa clave (con 60+ claves,
+      // esto mantiene el costo proporcional a la agenda real del día)
+      const hasEv = await clubsKeyHasEvents(key, L.odds_key, 72).catch(() => true);
+      if (!hasEv) continue;
       let events = null;
       try {
         const r = await fetch(`https://api.the-odds-api.com/v4/sports/${L.odds_key}/odds?apiKey=${key}&regions=${ODDS_REGIONS_SCAN}&markets=h2h,totals&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
@@ -3504,6 +3590,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
   try {
     if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
     const RT = global._clubsRatings;
+    clubsEnsureCups(RT); // 13-ago: props (córners/tarjetas/players) también para eventos de copas
     const grepo = require('./goal-engine/repository');
     const now = Date.now();
     // resolutores de nombre→pid por liga (fit del player-history, ambos equipos del evento)
@@ -3599,7 +3686,12 @@ const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argenti
   uefa: 'uefa.super_cup', amistosos: 'club.friendly',
   // 12-ago (Punto 4, GO de Alexis): Champions/Europa — slugs listos para cuando arranque la temporada
   // (sept). El roster con Elo anclado cross-liga se construye ANTES del primer partido (ver TODO_NEXT).
-  champions: 'uefa.champions', europa: 'uefa.europa' }; // polonia sin ESPN (sin vivo; resultados por TSA)
+  champions: 'uefa.champions', europa: 'uefa.europa',
+  // 13-ago (cobertura total): copas/torneos nuevos — marcador vivo + liquidación vía ESPN.
+  libertadores: 'conmebol.libertadores', sudamericana: 'conmebol.sudamericana', leaguescup: 'concacaf.leagues.cup',
+  saudi: 'ksa.1', aleague: 'aus.1', uclq: 'uefa.champions_qual', eflcup: 'eng.league_cup', facup: 'eng.fa',
+  dfbpokal: 'ger.dfb_pokal', copadelrey: 'esp.copa_del_rey', coppaitalia: 'ita.coppa_italia',
+  coupefrance: 'fra.coupe_de_france' }; // polonia sin ESPN (sin vivo; resultados por TSA)
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys', 'xolos': 'club tijuana', 'xolos de tijuana': 'club tijuana', 'tijuana': 'club tijuana',
   // Rusia: ESPN transcribe distinto que TSA (Dinamo/Dynamo, Tolyatti/Togliatti, Krylia/Krylya) → sin alias el
@@ -4251,6 +4343,7 @@ async function clubScoresSync({ force = false } = {}) {
       catch { global._clubsRatings = { leagues: {} }; }
     }
     const RT = global._clubsRatings;
+    clubsEnsureCups(RT); // 13-ago: marcadores y LIQUIDACIÓN también para copas (slugs en CLUB_ESPN)
     db.clubResults = db.clubResults || {};
     clubEloReconcileFit(); // F0.4: si el fit base cambió, resetear el overlay dinámico
     const fromD = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
@@ -5613,6 +5706,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   if (!dbc.isConfigured()) return { skipped: 'sin DB', published };
   if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return { skipped: 'sin ratings', published }; } }
   const RT = global._clubsRatings;
+  clubsEnsureCups(RT); // 13-ago: eventos de copas (Libertadores/Leagues Cup/…) resuelven liga y entran al pipeline
   const qevents = db.clubsQuoteEvents || {};
   if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep', published };
   const { consensus, freshQuotes } = require('./market-scanner/scanner');
@@ -10071,7 +10165,13 @@ setInterval(loadClubAfMap, 12 * 3600 * 1000);
 const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128, colombia: 239, paraguay: 250, csl: 169, kleague: 292, j1: 98, premier: 39, laliga: 140, bundesliga: 78, seriea: 135, ligue1: 61, brasilb: 72, chile: 265, noruega: 103, suecia: 113, finlandia: 244, irlanda: 357, dinamarca: 119, polonia: 106, rusia: 235, suiza: 207,
   championship: 40, league1: 41, league2: 42, serieb: 136, laliga2: 141, portugal: 94, belgica: 144, turquia: 203, grecia: 197,
   liga3: 80, ligue2: 62, bundesliga2: 79, eredivisie: 88, superettan: 114, austria: 218, escocia: 179,
-  uefa: 531, amistosos: 667 };
+  uefa: 531, amistosos: 667,
+  // 13-ago (cobertura total): copas/torneos nuevos → ids de API-Football para la capa de contexto.
+  // libertadores=13, sudamericana=11, champions=2 (incluye clasificación), europa=3, saudi=307,
+  // eflcup=48 (League Cup), facup=45, dfbpokal=81, copadelrey=143, coppaitalia=137, coupefrance=66,
+  // aleague=188. leaguescup: verificar id con la key de AF activa (fallback ESPN mientras).
+  libertadores: 13, sudamericana: 11, champions: 2, europa: 3, saudi: 307, uclq: 2,
+  eflcup: 48, facup: 45, dfbpokal: 81, copadelrey: 143, coppaitalia: 137, coupefrance: 66, aleague: 188 };
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
@@ -15530,6 +15630,7 @@ const server = http.createServer(async (req, res) => {
           catch { global._clubsRatings = { _meta: {}, leagues: {} }; }
         }
         const RT = global._clubsRatings || {};
+        clubsEnsureCups(RT); // 13-ago: las copas (ratings compartidos) también compiten en el value board
         const oddsKeyEnv = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
         if (!oddsKeyEnv) return json(res, 200, { shadow: true, rows: [], note: 'sin key de cuotas' });
         global._clubsValue = global._clubsValue || { at: 0, rows: [], skipped: 0 };

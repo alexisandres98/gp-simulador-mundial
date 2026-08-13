@@ -4052,12 +4052,25 @@ function clubRosterResolver(rows) {
   };
 }
 // Resuelve (y cachea 30 min) el fixture de API-Football del cruce de club por los af team ids del mapa: próximo
+// RESOLUCIÓN UNIVERSAL tm_→AF (13-ago, paridad total): 1) ligas AF-fit llevan el id embebido (tm_af<id>);
+// 2) mapa de la propia liga; 3) COPAS: el club vive en su liga doméstica → se busca el tm_ en TODOS los
+// mapas (los tm_ son globales). Con esto lineups/contexto/eventos funcionan para Libertadores, Leagues Cup,
+// Saudi y cualquier liga nueva sin esperar a que el af-team-map tenga entrada propia de la copa.
+function clubAfIdOf(league, tmId) {
+  const mAf = String(tmId || '').match(/^tm_af(\d+)$/i);
+  if (mAf) return Number(mAf[1]);
+  const M = global._clubAfMap || {};
+  const e = (M[league] || {})[tmId];
+  if (e && e.af_id) return e.af_id;
+  for (const lg of Object.keys(M)) { const x = M[lg] && M[lg][tmId]; if (x && x.af_id) return x.af_id; }
+  return null;
+}
 // entre ambos, o el más reciente. Compartido por /api/clubs/lineups y /api/clubs/match (eventos en vivo) → una
 // sola resolución + cache para ambos. Devuelve { id, date, status, afH, afA, home_af } o null.
 async function clubAfFixture(league, hId, aId, kickoffMs) {
   const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
-  const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
-  const afH = afMap[hId] && afMap[hId].af_id, afA = afMap[aId] && afMap[aId].af_id;
+  const afLg = CLUB_AF_LEAGUE[league];
+  const afH = clubAfIdOf(league, hId), afA = clubAfIdOf(league, aId);
   if (!afk || !afLg || !afH || !afA) return null;
   global._clubAfFx = global._clubAfFx || {};
   // memo por cruce + DÍA objetivo: ida y vuelta (mismos 2 equipos, fechas distintas) cachean por separado.
@@ -13872,8 +13885,8 @@ const server = http.createServer(async (req, res) => {
       if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const league = String(url.searchParams.get('league') || ''), hId = String(url.searchParams.get('h') || ''), aId = String(url.searchParams.get('a') || '');
       const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
-      const afLg = CLUB_AF_LEAGUE[league], afMap = (global._clubAfMap || {})[league] || {};
-      const afH = afMap[hId] && afMap[hId].af_id, afA = afMap[aId] && afMap[aId].af_id;
+      const afLg = CLUB_AF_LEAGUE[league];
+      const afH = clubAfIdOf(league, hId), afA = clubAfIdOf(league, aId); // universal: AF-fit/mapa/copas cross-liga
       if (!afk || !afLg || !afH || !afA) return json(res, 200, { available: false, reason: 'sin mapeo' });
       global._clubLineups = global._clubLineups || {};
       const ck = league + '|' + hId + '|' + aId;
@@ -13930,7 +13943,8 @@ const server = http.createServer(async (req, res) => {
         const injOf = async (afId) => {
           if (!afk || !afLg || !afId) return [];
           try {
-            const r = await fetch(`https://v3.football.api-sports.io/injuries?team=${afId}&league=${afLg}&season=2026`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
+            // sin filtro de liga (13-ago): en COPAS las bajas del club están cargadas bajo su liga doméstica
+            const r = await fetch(`https://v3.football.api-sports.io/injuries?team=${afId}&season=2026`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
             const j = r.ok ? await r.json() : null; const resp = (j && j.response) || [];
             const cutoff = Date.now() - 21 * 86400e3, seen = {};
             const out = [];
@@ -13945,8 +13959,8 @@ const server = http.createServer(async (req, res) => {
             return out;
           } catch { return []; }
         };
-        c.home.injuries = await injOf(afMap[hId] && afMap[hId].af_id);
-        c.away.injuries = await injOf(afMap[aId] && afMap[aId].af_id);
+        c.home.injuries = await injOf(clubAfIdOf(league, hId));
+        c.away.injuries = await injOf(clubAfIdOf(league, aId));
         // descanso: días desde el último partido (results-<liga>.json)
         try {
           global._clubsResults = global._clubsResults || {};
@@ -15981,7 +15995,7 @@ const server = http.createServer(async (req, res) => {
       if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       const teamId = String(url.searchParams.get('team') || ''), pid = String(url.searchParams.get('pid') || '');
       const league = String(url.searchParams.get('league') || '');
-      if (!/^tm_[a-z0-9]+$/i.test(teamId) || !/^pl_[a-z0-9]+$/i.test(pid)) return json(res, 400, { error: 'params inválidos' });
+      if (!/^tm_[a-z0-9]+$/i.test(teamId) || !/^(pl_|afp)[a-z0-9]+$/i.test(pid)) return json(res, 400, { error: 'params inválidos' }); // afp* = pids de ligas AF-fit (13-ago)
       if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
       const rosterRows = await clubRosterRows(teamId); // cache 24h compartido, con candado anti-envenenamiento
       let p0 = rosterRows.find(x => x.id === pid);

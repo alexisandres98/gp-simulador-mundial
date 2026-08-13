@@ -3825,8 +3825,9 @@
     // FASE CLUBES: perfil de club (cteam/<liga>-<tm_id>)
     var ctm = h.match(/^cteam\/([a-z0-9]+)-(tm_[A-Za-z0-9]+)$/i);
     if (ctm) { if (!(S.view === 'cteam' && S.cteamId === ctm[2] && S.cteamLg === ctm[1])) openClubTeam(ctm[1], ctm[2], true); return; }
-    // FASE CLUBES: perfil de jugador de club (cplayer/<liga>-<tm_id>-<pl_id>)
-    var cpl = h.match(/^cplayer\/([a-z0-9]+)-(tm_[A-Za-z0-9]+)-(pl_[A-Za-z0-9]+)$/i);
+    // FASE CLUBES: perfil de jugador de club (cplayer/<liga>-<tm_id>-<pid>). 13-ago: pids afp* (ligas
+    // AF-fit) también rutean — antes el hash no matcheaba y el click en la alineación caía al board (bug Alexis).
+    var cpl = h.match(/^cplayer\/([a-z0-9]+)-(tm_[A-Za-z0-9]+)-((?:pl_|afp)[A-Za-z0-9]+)$/i);
     if (cpl) { if (!(S.view === 'cplayer' && S.cplPid === cpl[3])) openClubPlayer(cpl[1], cpl[2], cpl[3], true); return; }
     var pm = h.match(/^player\/(pl_[A-Za-z0-9]+)$/i);
     if (pm) { if (!(S.view === 'player' && S.playerId === pm[1])) openPlayer(pm[1], true); return; }

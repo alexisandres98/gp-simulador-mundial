@@ -20,9 +20,17 @@
 - **Límites honestos del proveedor** (no es infra nuestra): The Odds API NO tiene amistosos (PSG–Madrid del
   12-ago no existe ahí — cubierto vía ESPN/`amistosos`), ni ligas menores tipo Islandia 4ª/Calcuta (los 167
   de BetHero salen de un proveedor de otra categoría de precio). 67 claves soccer es el techo actual.
-- **PENDIENTE (fit de modelo para ligas sin ratings)**: saudi, aleague, nations y las AUTO quedan solo-mercado
-  hasta fitear Elo con historial (API-Football que Alexis también va a subir de plan / TSA). El discovery
-  (email diario) sigue avisando candidatas. Verificar id AF de leaguescup cuando la key esté activa.
+- **HECHO 13-ago tarde**: fit Elo vía API-Football (`scripts/clubs-af-onboard.js`, pipeline reusable) —
+  **saudi APPROVED 1X2** (612 partidos, Brier 0.5615) y **aleague shadow** (339, liga pareja). 37 escudos
+  tm_af* en public/logos. Nations queda solo-mercado (selecciones ≠ engine de clubes).
+- **⚠️ TSA EN LÍMITE MENSUAL (13-ago)**: `USAGE_LIMIT_EXCEEDED` → este mes NO corren: próximos por liga del
+  Partidos (TSA fixtures), data pass de player-history (percentiles/scout), plantillas TSA. Decisión de
+  Alexis: subir plan TSA **o** (mejor, ya tenemos AF Ultra 75k/día) migrar esas capas a API-Football.
+- **PRÓXIMA OBRA — paridad de jugadores vía AF (pendiente de construir)**: adaptador AF→player-history
+  (fixtures/players de AF por liga → mismo formato rows que consume player-intel/clubsFit) + squads de
+  /api/clubs/squad con fallback AF (players?team=) + fotos de jugador AF (media.api-sports.io/football/
+  players/<id>.png). Con eso saudi/aleague/copas y CUALQUIER liga AF tienen perfiles, radar, scout y props
+  igual que Liga MX. Los ids AF de copas ya están en CLUB_AF_LEAGUE (verificar leaguescup=772).
 
 ## 🥊 R6 COMBATE 12-ago — profundidad (orden Alexis) · VEREDICTO DEL BACKTEST
 - **Interacciones de matchup** (grap/power/absorb/age5/subth) construidas en `combat-engine/ratings.js` y

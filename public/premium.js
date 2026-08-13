@@ -5246,6 +5246,12 @@
     S.clubs = null;
     fetch('/api/clubs/state', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (j) {
+        // 13-ago (bug "Partidos a veces no aparece"): si el state falla o llega vacío, S.clubs quedaba
+        // clavado para siempre y la pestaña se veía sin partidos hasta un refresh manual. Fallo → se libera
+        // el guard a los 12s y se reintenta solo; el render se refresca al llegar (línea de abajo).
+        if (!j || !(j.leagues || []).length) {
+          setTimeout(function () { S.clubs = undefined; loadClubs(); }, 12000);
+        }
         S.clubs = j || { leagues: [] };
         // índice tm_id → nombre (alimenta teamName() para que TODOS los componentes del Mundial sirvan clubes)
         S.clubNames = {};
@@ -5314,6 +5320,12 @@
   function clubMatchesCards(L, rows) { return rows.map(function (f) { return clubCardHtml(L, f); }).join(''); }
   // Vista TODOS (shadow): Mundial + todas las ligas en una sola línea de tiempo, intercalados por fecha.
   function renderAllCompMatches(mv) {
+    // 13-ago: mientras el state carga (o reintenta), decirlo — antes la pestaña quedaba VACÍA en silencio
+    // y parecía "no hay partidos" hasta un refresh manual. loadClubs re-renderiza al llegar.
+    if (clubsOn() && (S.clubs === undefined || S.clubs === null)) {
+      mv.innerHTML = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>' + esc(t('loading')) + '</b></div></div>';
+      return;
+    }
     var Ls = (S.clubs && S.clubs.leagues) || [];
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f'], ['fin', 'st_finished']];
     var q = (S.mQuery || '').toLowerCase();

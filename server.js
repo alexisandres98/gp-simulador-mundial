@@ -4011,6 +4011,7 @@ function clubPropsGate(league, family) {
 async function clubRosterRows(teamId) {
   const tsaKey = process.env.THESTATSAPI_KEY || '';
   if (!tsaKey || !/^tm_[a-z0-9]+$/i.test(teamId)) return [];
+  if ((global._tsaDownUntil || 0) > Date.now()) return (global._clubsSquad && global._clubsSquad[teamId] && global._clubsSquad[teamId].rows) || []; // breaker: TSA en límite
   global._clubsSquad = global._clubsSquad || {};
   let sq = global._clubsSquad[teamId];
   // Mismo candado anti-envenenamiento que el memo de upcoming: un 500 de TSA no cachea roster vacío 24h
@@ -4018,6 +4019,7 @@ async function clubRosterRows(teamId) {
   if (!sq || Date.now() - sq.at > ((sq.failed && !(sq.rows || []).length) ? 30 * 60e3 : 24 * 3600e3)) {
     try {
       const r = await fetch(`https://api.thestatsapi.com/api/football/teams/${teamId}/players?per_page=60`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+      if (r.status === 429 || r.status === 402) global._tsaDownUntil = Date.now() + 6 * 3600e3;
       const j = r.ok ? await r.json().catch(() => null) : null;
       const rows = (j && j.data) || j || [];
       if (!r.ok && sq && (sq.rows || []).length) { sq.at = Date.now(); sq.failed = true; }
@@ -15264,14 +15266,19 @@ const server = http.createServer(async (req, res) => {
           // `failed:true` = el último intento no trajo data (TSA caído/500): reintento a los 10min en vez de
           // congelar 6h, y JAMÁS pisar un memo con filas buenas por una respuesta mala (la caída de TSA del
           // 23-jul dejó carteleras vacías cacheadas — este es el candado).
-          if ((!up || Date.now() - up.at > ((up.failed && !(up.rows || []).length) ? 10 * 60e3 : 6 * 3600e3)) && tsaKey) {
+          // CIRCUIT BREAKER TSA (13-ago, bug "Partidos no aparece"): con TSA en límite mensual (429), cada
+          // carga del state reintentaba TSA liga por liga — 56 fetches fallidos + 1.2s de pausa cada uno =
+          // el endpoint bloqueado >1 min y el frontend rendido. Un 429/402 enfría TODAS las llamadas TSA 6h.
+          const tsaCooling = (global._tsaDownUntil || 0) > Date.now();
+          if ((!up || Date.now() - up.at > ((up.failed && !(up.rows || []).length) ? 10 * 60e3 : 6 * 3600e3)) && tsaKey && !tsaCooling) {
             try {
               const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&status=scheduled&per_page=50`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+              if (r.status === 429 || r.status === 402) { global._tsaDownUntil = Date.now() + 6 * 3600e3; console.log(`[clubs] TSA en límite (${r.status}) → circuit breaker 6h`); }
               const j = r.ok ? await r.json().catch(() => null) : null;
               const rows = ((j && j.data) || j || []).filter(m => m && m.utc_date).sort((a, b) => new Date(a.utc_date) - new Date(b.utc_date)).slice(0, 30);
               if (!r.ok && up && (up.rows || []).length) { up.at = Date.now(); up.failed = true; console.log(`[clubs] upcoming ${key}: TSA ${r.status}, conservo memo previo`); }
               else { up = { at: Date.now(), rows, failed: !r.ok }; global._clubsUpcoming[key] = up; if (!r.ok) console.log(`[clubs] upcoming ${key}: TSA ${r.status}, sin filas (retry 10min)`); }
-              await new Promise(r2 => setTimeout(r2, 1200)); // gentileza con el rate limit compartido
+              if (r.ok) await new Promise(r2 => setTimeout(r2, 1200)); // gentileza SOLO tras éxito (fallos no pagan pausa)
             } catch (e) {
               if (up && (up.rows || []).length) { up.at = Date.now(); up.failed = true; }
               else { up = { at: Date.now(), rows: [], failed: true }; global._clubsUpcoming[key] = up; }
@@ -15288,7 +15295,7 @@ const server = http.createServer(async (req, res) => {
           global._afUpBudget = (global._afUpBudget && Date.now() - global._afUpBudget.at < 60e3) ? global._afUpBudget : { at: Date.now(), n: 0 };
           if ((!up || !(up.rows || []).length || (up.afOnly && Date.now() - up.at > 6 * 3600e3)) && afkUp && CLUB_AF_LEAGUE[key] && global._afUpBudget.n < 6 && ++global._afUpBudget.n) {
             try {
-              const rAf = await fetch(`https://${process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io'}/fixtures?league=${CLUB_AF_LEAGUE[key]}&next=15`, { headers: { 'x-apisports-key': afkUp }, signal: AbortSignal.timeout(15000) });
+              const rAf = await fetch(`https://${process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io'}/fixtures?league=${CLUB_AF_LEAGUE[key]}&next=15`, { headers: { 'x-apisports-key': afkUp }, signal: AbortSignal.timeout(8000) });
               const jAf = rAf.ok ? await rAf.json().catch(() => null) : null;
               const rowsAf = [];
               for (const fxa of (jAf && jAf.response) || []) {

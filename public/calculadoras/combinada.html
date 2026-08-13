@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calculadora de Combinadas (parlay) — GP Simulador</title>
+<meta name="description" content="Calculá la cuota total, la probabilidad real y el margen escondido de una apuesta combinada de hasta 6 selecciones. En español.">
+<link rel="canonical" href="https://gpsimulador.com/calculadoras/combinada">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#07090c;color:#EDF2F4;line-height:1.55}a{color:#1FE3A4}
+.wrap{max-width:760px;margin:0 auto;padding:22px 18px 60px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:26px}.top .logo{width:34px;height:34px;border-radius:10px;background:rgba(31,227,164,.14);border:1px solid rgba(31,227,164,.4);display:flex;align-items:center;justify-content:center;font-size:17px}
+.top b{font-size:18px}.top a{margin-left:auto;font-size:13px;font-weight:700;text-decoration:none;background:#1FE3A4;color:#06231A;padding:8px 16px;border-radius:99px}
+h1{font-size:26px;letter-spacing:-.5px;margin-bottom:8px}.sub{color:#9DB0B5;font-size:14px;margin-bottom:22px}
+.calc{background:linear-gradient(165deg,#10171c,#0b1013);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:20px;margin-bottom:22px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:520px){.g{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#9DB0B5;font-weight:700}
+input,select{background:#0b1013;border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#EDF2F4;padding:10px 12px;font-size:15px;font-family:inherit}
+input:focus{outline:none;border-color:#1FE3A4}
+.res{margin-top:16px;padding:14px 16px;border-radius:12px;background:rgba(31,227,164,.07);border:1px solid rgba(31,227,164,.25);font-size:14px}
+.res b{color:#1FE3A4;font-size:17px}.res .neg{color:#ff8f8f}
+.exp{font-size:14px;color:#c7d3ce;margin:18px 0}.exp h2{font-size:17px;margin:18px 0 8px;color:#EDF2F4}
+.others{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0}
+.others a{font-size:12px;font-weight:700;text-decoration:none;color:#9DB0B5;border:1px solid rgba(255,255,255,.14);padding:6px 13px;border-radius:99px}
+.others a:hover{color:#1FE3A4;border-color:rgba(31,227,164,.5)}
+.cta{background:linear-gradient(165deg,#0e1a15,#0a1210);border:1px solid rgba(31,227,164,.3);border-radius:16px;padding:18px 20px;margin-top:26px}
+.cta b{font-size:15px}.cta p{font-size:13px;color:#9DB0B5;margin:6px 0 12px}
+.cta a{display:inline-block;background:#1FE3A4;color:#06231A;font-weight:800;font-size:14px;padding:10px 22px;border-radius:99px;text-decoration:none}
+.disc{font-size:11px;color:#4A5B61;margin-top:26px}</style></head><body><div class="wrap">
+<div class="top"><div class="logo">📊</div><b>GP Simulador</b><a href="/x">Abrir la plataforma</a></div>
+<h1>Calculadora de combinada / parlay</h1><p class="sub">La cuota total de una combinada se multiplica — y el margen de la casa también. Mirá lo que pagás de verdad.</p>
+<div class="calc"><div class="g">
+<label>Cuota 1<input class="lg" id="l1" type="number" min="1.01" step="0.01" placeholder="1.80"></label>
+<label>Cuota 2<input class="lg" id="l2" type="number" min="1.01" step="0.01" placeholder="1.65"></label>
+<label>Cuota 3<input class="lg" id="l3" type="number" min="1.01" step="0.01"></label>
+<label>Cuota 4<input class="lg" id="l4" type="number" min="1.01" step="0.01"></label>
+<label>Cuota 5<input class="lg" id="l5" type="number" min="1.01" step="0.01"></label>
+<label>Cuota 6<input class="lg" id="l6" type="number" min="1.01" step="0.01"></label>
+<label>Stake ($)<input id="st" type="number" min="0" step="any" placeholder="10"></label>
+<label>Vig estimado por pata (%)<input id="vg" type="number" min="0" max="15" step="0.5" value="5"></label>
+</div><div class="res" id="res">Completá los campos para ver el resultado.</div></div>
+<div class="exp"><h2>La matemática en contra</h2><p>Cada pata trae ~5% de margen. En una combinada de 4 patas el margen compuesto ronda el 20%: aunque cada selección sea razonable, el precio total suele ser malo. Si te gustan las combinadas, usalas como entretenimiento con stake chico — y compará siempre contra la probabilidad real.</p></div>
+<div class="others"><b style="width:100%;font-size:12px;color:#5F747B">MÁS CALCULADORAS:</b><a href="/calculadoras/kelly">Kelly</a> <a href="/calculadoras/valor-esperado">Valor esperado</a> <a href="/calculadoras/arbitraje">Arbitraje</a> <a href="/calculadoras/no-vig">No-Vig</a> <a href="/calculadoras/cuota-implicita">Prob. implícita</a> <a href="/calculadoras/clv">CLV</a> <a href="/calculadoras/poisson">Poisson</a></div>
+<div class="cta"><b>El modelo hace esta cuenta por vos, en cada pick.</b><p>GP Simulador simula cada partido 10,000 veces, compara contra el mercado y publica cada pick con su porqué y su resultado en un track público. Fútbol y combate (UFC/MMA/boxeo).</p><a href="/x">Ver las picks de hoy →</a></div>
+<p class="disc">Herramienta educativa. Estimaciones estadísticas, no consejo financiero. Apostá con responsabilidad. 18+. · <a href="/calculadoras" style="color:#4A5B61">Todas las calculadoras</a> · <a href="/" style="color:#4A5B61">gpsimulador.com</a></p>
+</div><script>function calc(){var tot=1,n=0;for(var i=1;i<=6;i++){var v=+document.getElementById('l'+i).value;if(v>1){tot*=v;n++}}var st=+document.getElementById('st').value||0,vg=(+document.getElementById('vg').value||0)/100;var R=document.getElementById('res');if(n<2){R.innerHTML='Cargá al menos 2 cuotas.';return}var pImp=1/tot;var pReal=1;for(var j=1;j<=6;j++){var v2=+document.getElementById('l'+j).value;if(v2>1){pReal*=Math.min(0.99,(1/v2)*(1+vg))}}R.innerHTML='Cuota total: <b>'+tot.toFixed(2)+'</b> ('+n+' patas)'+(st>0?' · pago potencial <b>$'+(st*tot).toFixed(2)+'</b>':'')+'<br>Prob. implícita: <b>'+(pImp*100).toFixed(1)+'%</b> · prob. real estimada (con vig por pata): <b>'+(pReal*100).toFixed(1)+'%</b><br><span style=font-size:12px;color:#9DB0B5>El margen se MULTIPLICA con cada pata: por eso las combinadas son el producto favorito de las casas.</span>'}W(['l1','l2','l3','l4','l5','l6','st','vg'],calc);
+function W(ids,f){ids.forEach(function(i){var e=document.getElementById(i);if(e)e.addEventListener('input',f)});f()}</script></body></html>

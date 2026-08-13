@@ -14927,6 +14927,90 @@ const server = http.createServer(async (req, res) => {
     // solo la ve el ADMIN con sesión (cookie); para todo el resto es 404 (ni existe). Al lanzar:
     // GP_FOUNDER_PUBLIC_ENABLED=true la abre al público (+ checkout Whop cuando se cablee).
     // Fase founder CERRADA (20-jul): la página de precios vive en /plans. /founder redirige (back-compat).
+    // ═ P13/P15 (13-ago, lote BetHero — SEO): calculadoras y guías estáticas en español, URLs limpias ═
+    if (p === '/calculadoras' || p === '/calculadoras/' || /^\/calculadoras\/[a-z-]+$/.test(p)) {
+      const slug = (p.split('/')[2] || 'index').replace(/[^a-z-]/g, '') || 'index';
+      const f = path.join(__dirname, 'public', 'calculadoras', slug + '.html');
+      if (fs.existsSync(f)) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }); return res.end(fs.readFileSync(f)); }
+      return json(res, 404, { error: 'No encontrado' });
+    }
+    if (p === '/guias' || p === '/guias/' || /^\/guias\/[a-z-]+$/.test(p)) {
+      const slug = (p.split('/')[2] || 'index').replace(/[^a-z-]/g, '') || 'index';
+      const f = path.join(__dirname, 'public', 'guias', slug + '.html');
+      if (fs.existsSync(f)) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }); return res.end(fs.readFileSync(f)); }
+      return json(res, 404, { error: 'No encontrado' });
+    }
+    // ═ P14 (13-ago, lote BetHero — SEO): páginas de CUOTAS por evento, server-rendered del feed real ═
+    // /cuotas = índice de próximos partidos con cuotas; /cuotas/e/<ceid> = tabla de mercados con cuota
+    // justa (de-vig, mediana entre casas) + mejor precio por lado. Cache 10 min por página. Indexable.
+    if (p === '/cuotas' || /^\/cuotas\/e\/[0-9a-f-]{36}$/i.test(p)) {
+      const CUOTAS_CSS = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#07090c;color:#EDF2F4;line-height:1.5}a{color:#1FE3A4}.wrap{max-width:820px;margin:0 auto;padding:22px 18px 60px}.top{display:flex;align-items:center;gap:10px;margin-bottom:22px}.top .logo{width:34px;height:34px;border-radius:10px;background:rgba(31,227,164,.14);border:1px solid rgba(31,227,164,.4);display:flex;align-items:center;justify-content:center;font-size:17px}.top b{font-size:18px}.top a{margin-left:auto;font-size:13px;font-weight:700;text-decoration:none;background:#1FE3A4;color:#06231A;padding:8px 16px;border-radius:99px}h1{font-size:23px;letter-spacing:-.5px;margin-bottom:6px}.sub{color:#9DB0B5;font-size:13.5px;margin-bottom:20px}.lg{font-size:13px;font-weight:800;color:#5F747B;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}.ev{display:flex;justify-content:space-between;gap:10px;background:linear-gradient(165deg,#10171c,#0b1013);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:12px 16px;margin-bottom:8px;text-decoration:none;color:#EDF2F4;font-size:14px}.ev:hover{border-color:rgba(31,227,164,.4)}.ev span{color:#9DB0B5;font-size:12px;white-space:nowrap}table{width:100%;border-collapse:collapse;background:linear-gradient(165deg,#10171c,#0b1013);border:1px solid rgba(255,255,255,.09);border-radius:12px;overflow:hidden;margin-bottom:16px}th,td{padding:9px 12px;font-size:13px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06)}th{color:#5F747B;font-size:11px;text-transform:uppercase;letter-spacing:.05em}td b{color:#1FE3A4}.disc{font-size:11px;color:#4A5B61;margin-top:24px}.cta{background:linear-gradient(165deg,#0e1a15,#0a1210);border:1px solid rgba(31,227,164,.3);border-radius:14px;padding:16px 18px;margin-top:20px}.cta b{font-size:14.5px}.cta p{font-size:12.5px;color:#9DB0B5;margin:5px 0 10px}.cta a{display:inline-block;background:#1FE3A4;color:#06231A;font-weight:800;font-size:13px;padding:9px 20px;border-radius:99px;text-decoration:none}`;
+      const pageWrap = (title, desc, canonical, inner) => `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${desc}"><link rel="canonical" href="https://gpsimulador.com${canonical}"><style>${CUOTAS_CSS}</style></head><body><div class="wrap"><div class="top"><div class="logo">⚖️</div><b>GP Simulador</b><a href="/x">Abrir la plataforma</a></div>${inner}<div class="cta"><b>El modelo opina sobre estos precios.</b><p>GP Simulador simula cada partido 10,000 veces y publica picks cuando su lectura se separa del mercado — con el porqué y un track público.</p><a href="/x">Ver las picks de hoy →</a></div><p class="disc">Cuotas de referencia de decenas de casas, con retraso de minutos. Estimaciones estadísticas, no consejo financiero. 18+. · <a href="/cuotas" style="color:#4A5B61">Todas las cuotas</a></p></div></body></html>`;
+      const htmlOut = (body) => { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=600' }); return res.end(body); };
+      const escH = (s2) => String(s2 == null ? '' : s2).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      global._cuotasSsr = global._cuotasSsr || {};
+      if (p === '/cuotas') {
+        const memoC = global._cuotasSsr.index;
+        if (memoC && Date.now() - memoC.at < 10 * 60e3) return htmlOut(memoC.html);
+        const evs = Object.entries(db.clubsQuoteEvents || {})
+          .filter(([, ev]) => ev.kickoff && Date.parse(ev.kickoff) > Date.now() && Date.parse(ev.kickoff) < Date.now() + 60 * 3600e3)
+          .sort((a, b) => Date.parse(a[1].kickoff) - Date.parse(b[1].kickoff));
+        const byLg = {};
+        for (const [ceid, ev] of evs) (byLg[ev.league_name || ev.league] = byLg[ev.league_name || ev.league] || []).push([ceid, ev]);
+        const fmtKo = (k) => new Date(k).toISOString().replace('T', ' ').slice(5, 16) + ' UTC';
+        const inner = `<h1>Cuotas de los próximos partidos</h1><p class="sub">Comparadas entre decenas de casas — tocá un partido para ver cada mercado con su cuota justa (sin el margen de la casa).</p>` +
+          Object.entries(byLg).map(([lg, rows2]) => `<div class="lg">${escH(lg)}</div>` + rows2.slice(0, 14).map(([ceid, ev]) =>
+            `<a class="ev" href="/cuotas/e/${ceid}"><b>${escH(ev.home)} vs ${escH(ev.away)}</b><span>${fmtKo(ev.kickoff)}</span></a>`).join('')).join('');
+        const html2 = pageWrap('Cuotas de fútbol comparadas entre casas | GP Simulador', 'Próximos partidos con cuotas comparadas entre decenas de casas y la cuota justa sin margen. Actualizado cada pocos minutos.', '/cuotas', inner);
+        global._cuotasSsr.index = { at: Date.now(), html: html2 };
+        return htmlOut(html2);
+      }
+      const ceidC = p.split('/')[3];
+      const memoE = global._cuotasSsr[ceidC];
+      if (memoE && Date.now() - memoE.at < 10 * 60e3) return htmlOut(memoE.html);
+      const evC = (db.clubsQuoteEvents || {})[ceidC];
+      if (!evC) return json(res, 404, { error: 'No encontrado' });
+      let mkRows = '';
+      try {
+        const dbc = require('./database/client');
+        if (dbc.isConfigured()) {
+          const q3 = await dbc.query(
+            `SELECT market_family fam, line::float line, lower(side) side, lower(sportsbook_code) book, max(odds_decimal)::float o
+               FROM sportsbook_goal_quote_current
+              WHERE canonical_event_id = $1 AND observed_at > now() - interval '75 minutes' AND is_live = FALSE
+              GROUP BY 1,2,3,4`, [ceidC]).catch(() => ({ rows: [] }));
+          const famLab2 = { match_winner: '1X2', match_total: 'Goles', corners_total: 'Córners', cards_total: 'Tarjetas' };
+          const sideLab2 = (fam, sd, line, ev2) => fam === 'match_winner' ? (sd === 'home' ? ev2.home : sd === 'away' ? ev2.away : 'Empate') : (sd === 'over' ? 'Más de ' : 'Menos de ') + line;
+          const groups = {};
+          for (const r of (q3.rows || [])) {
+            const k2 = r.fam + '|' + (r.line == null ? '' : r.line);
+            (groups[k2] = groups[k2] || { fam: r.fam, line: r.line, byBook: {} });
+            (groups[k2].byBook[r.book] = groups[k2].byBook[r.book] || {})[r.side] = r.o;
+          }
+          for (const g2 of Object.values(groups)) {
+            const sidesK = g2.fam === 'match_winner' ? ['home', 'draw', 'away'] : ['over', 'under'];
+            const fair = {}; const best2 = {}; let nBk = 0;
+            for (const k3 of sidesK) { fair[k3] = []; best2[k3] = [0, null]; }
+            for (const [bk4, ss] of Object.entries(g2.byBook)) {
+              const inv2 = sidesK.reduce((a2, k3) => a2 + (ss[k3] > 1 ? 1 / ss[k3] : NaN), 0);
+              if (isFinite(inv2)) { nBk++; for (const k3 of sidesK) fair[k3].push(1 / ss[k3] / inv2); }
+              for (const k3 of sidesK) if (ss[k3] > best2[k3][0]) best2[k3] = [ss[k3], bk4];
+            }
+            if (nBk < 2) continue;
+            const medC = (a2) => { const s5 = a2.slice().sort((x, y) => x - y); return s5[Math.floor(s5.length / 2)]; };
+            mkRows += `<table><thead><tr><th>${famLab2[g2.fam] || g2.fam}${g2.line != null ? ' ' + g2.line : ''} · ${nBk} casas</th><th>Cuota justa</th><th>Mejor cuota</th><th>Casa</th></tr></thead><tbody>` +
+              sidesK.map(k3 => `<tr><td>${escH(sideLab2(g2.fam, k3, g2.line, evC))}</td><td><b>${(1 / medC(fair[k3])).toFixed(2)}</b> <span style="color:#5F747B;font-size:11px">(${(medC(fair[k3]) * 100).toFixed(0)}%)</span></td><td>${best2[k3][0] ? best2[k3][0].toFixed(2) : '—'}</td><td style="color:#9DB0B5">${escH(best2[k3][1] || '—')}</td></tr>`).join('') + '</tbody></table>';
+          }
+        }
+      } catch (e) { console.error('[cuotas-ssr]', e.message); }
+      const koTxt2 = new Date(evC.kickoff).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+      const innerE = `<h1>${escH(evC.home)} vs ${escH(evC.away)} — cuotas comparadas</h1><p class="sub">${escH(evC.league_name || evC.league)} · ${koTxt2}. Cada mercado con su cuota justa (de-vig, mediana entre casas) y el mejor precio disponible.</p>` +
+        (mkRows || '<p class="sub">Sin cuotas frescas para este partido en este momento — volvé en unos minutos.</p>');
+      const htmlE = pageWrap(`${escH(evC.home)} vs ${escH(evC.away)}: cuotas y cuota justa | GP Simulador`, `Cuotas comparadas de ${escH(evC.home)} vs ${escH(evC.away)} (${escH(evC.league_name || evC.league)}): 1X2, goles, córners y tarjetas con la cuota justa sin margen.`, `/cuotas/e/${ceidC}`, innerE);
+      global._cuotasSsr[ceidC] = { at: Date.now(), html: htmlE };
+      const keysC = Object.keys(global._cuotasSsr); if (keysC.length > 300) for (const k4 of keysC.slice(0, 100)) delete global._cuotasSsr[k4];
+      return htmlOut(htmlE);
+    }
     if (p === '/founder' || p === '/founder/') { res.writeHead(302, { Location: '/plans' + (url.search || ''), 'Cache-Control': 'no-store' }); return res.end(); }
     if (p === '/plans' || p === '/plans/') {
       const founderPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_FOUNDER_PUBLIC_ENABLED || '').trim());

@@ -3259,21 +3259,29 @@
   function maybePickTour() {
     if (lsGet('gp_tour_done') === '1') return;
     if (document.getElementById('gx-onb') || document.getElementById('gx-tour')) return;
-    var card = document.querySelector('.gx-pick-card'); if (!card) return;
+    // Solo VISIBLES (13-ago fix): querySelector global podía matchear una card de otra vista (display:none)
+    // → el tour resaltaba un recuadro vacío sobre una pantalla oscurecida. Y sin la recomendación (paso 1)
+    // a la vista, el tour no cuenta nada: mejor no arrancar y reintentar en el próximo render con picks.
+    var vis = function (el) { if (!el) return null; var r = el.getBoundingClientRect(); return (r.width > 10 && r.height > 10 && el.offsetParent) ? el : null; };
+    var card = [].slice.call(document.querySelectorAll('.gx-pick-card')).map(vis).filter(Boolean)[0];
+    if (!card || !vis(card.querySelector('.gx-pick-rec'))) return;
     var stepsT = [
-      { sel: '.gx-pick-card .gx-pick-rec', t: 'tour_1t', s: 'tour_1s' },
-      { sel: '.gx-pick-card .gx-why-btn', t: 'tour_2t', s: 'tour_2s' },
-      { sel: '.gx-pick-card .gx-pick-odds', t: 'tour_3t', s: 'tour_3s' },
+      { sel: '.gx-pick-rec', t: 'tour_1t', s: 'tour_1s' },
+      { sel: '.gx-why-btn', t: 'tour_2t', s: 'tour_2s' },
+      { sel: '.gx-pick-odds', t: 'tour_3t', s: 'tour_3s' },
     ];
     var iT = 0;
     var wrapT = document.createElement('div'); wrapT.id = 'gx-tour'; wrapT.className = 'gx-tour';
     function done() { lsSet('gp_tour_done', '1'); wrapT.remove(); }
     function paintT() {
       var st2 = stepsT[iT];
-      var el = document.querySelector(st2.sel) || card;
+      // anclas DENTRO de la card visible; si el paso no existe en esta card, salta al siguiente
+      var el = vis(card.querySelector(st2.sel));
+      if (!el) { if (iT < stepsT.length - 1) { iT++; return paintT(); } return done(); }
+      try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
       var r2 = el.getBoundingClientRect();
       var top = Math.min(window.innerHeight - 190, Math.max(10, r2.bottom + 8));
-      wrapT.innerHTML = '<div class="gx-tour-bg"></div>' +
+      wrapT.innerHTML =
         '<div class="gx-tour-hl" style="top:' + (r2.top - 4) + 'px;left:' + (r2.left - 4) + 'px;width:' + (r2.width + 8) + 'px;height:' + (r2.height + 8) + 'px"></div>' +
         '<div class="gx-tour-card" style="top:' + top + 'px">' +
         '<b>' + esc(t(st2.t)) + '</b><p>' + esc(t(st2.s)) + '</p>' +
@@ -3284,7 +3292,7 @@
       wrapT.querySelector('[data-tourskip]').addEventListener('click', done);
     }
     try { card.scrollIntoView({ block: 'center' }); } catch (e) {}
-    setTimeout(function () { paintT(); document.body.appendChild(wrapT); }, 250);
+    setTimeout(function () { paintT(); document.body.appendChild(wrapT); }, 300);
   }
 
   // ============================ PLANES: helpers + Mi suscripción + Soporte ============================

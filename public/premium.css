@@ -1689,3 +1689,15 @@ td .gx-calc-btn span { display: none; }
 .gx-val-bk.sharp { color:#1FE3A4; border-color:rgba(31,227,164,.4); }
 .gx-val-bk.sharp b { color:#1FE3A4; }
 .gx-val-bk.fair { border-color:rgba(31,227,164,.55); background:rgba(31,227,164,.07); }
+/* P4 calendario de cartera + P2 bet checker */
+.gx-mbcal-nav { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.gx-mbcal-head { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:3px; }
+.gx-mbcal-head span { font-size:9.5px; font-weight:700; color:var(--gx-text3,#5F747B); text-align:center; }
+.gx-mbcal { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.gx-mbcal-d { min-height:42px; border-radius:8px; background:rgba(255,255,255,.025); padding:3px 4px; display:flex; flex-direction:column; }
+.gx-mbcal-d.off { background:none; }
+.gx-mbcal-d span { font-size:9.5px; color:var(--gx-text3,#5F747B); font-weight:700; }
+.gx-mbcal-d b { font-size:9.5px; font-weight:800; margin-top:auto; word-break:break-all; }
+.gx-mbcal-d.up { background:rgba(31,227,164,.12); } .gx-mbcal-d.up b { color:#1FE3A4; }
+.gx-mbcal-d.down { background:rgba(224,82,82,.12); } .gx-mbcal-d.down b { color:#ff8f8f; }
+.gx-bc-verdict { font-size:11px; font-weight:800; }

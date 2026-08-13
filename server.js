@@ -15572,6 +15572,81 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { refreshed_at: new Date().toISOString(), rows: outM });
       } catch (e) { console.error('[middles]', e.message); return json(res, 200, { rows: [], error: 'temporal' }); }
     }
+    // ═ P2 BET CHECKER (13-ago, lote BetHero): pegá tu apuesta y el de-vig de la casa te dice si tiene
+    // valor. ?q= busca partidos próximos en los eventos con cuotas; ?ceid= devuelve los mercados del
+    // partido con su CUOTA JUSTA (de-vig por casa, mediana entre casas) + mejor cuota disponible. El
+    // veredicto (tu cuota vs la justa) lo calcula el cliente. Pro+ (403 upgrade).
+    if (p === '/api/clubs/betcheck') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const uB = getUser(req);
+      const asB = (uB && uB.isAdmin) ? String(url.searchParams.get('asplan') || '') : '';
+      const planB = asB || (uB ? effectivePlan(uB.email) : 'free');
+      if (plansEnforced() && !((uB && uB.isAdmin && !asB) || planB === 'pro' || planB === 'sharp')) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      const qB = String(url.searchParams.get('q') || '').trim().toLowerCase();
+      const ceidB = String(url.searchParams.get('ceid') || '');
+      if (qB && !ceidB) {
+        const hits = Object.entries(db.clubsQuoteEvents || {})
+          .filter(([, ev]) => ev.kickoff && Date.parse(ev.kickoff) > Date.now())
+          .filter(([, ev]) => (String(ev.home) + ' ' + String(ev.away) + ' ' + String(ev.league_name || '')).toLowerCase().includes(qB))
+          .sort((a, b) => Date.parse(a[1].kickoff) - Date.parse(b[1].kickoff)).slice(0, 12)
+          .map(([ceid, ev]) => ({ ceid, home: ev.home, away: ev.away, league: ev.league_name || ev.league, kickoff: ev.kickoff }));
+        return json(res, 200, { events: hits });
+      }
+      if (!ceidB) return json(res, 400, { error: 'falta q o ceid' });
+      try {
+        const dbc = require('./database/client');
+        if (!dbc.isConfigured()) return json(res, 200, { markets: [], note: 'sin quotes DB' });
+        const q2 = await dbc.query(
+          `SELECT market_family fam, line::float line, lower(side) side, lower(sportsbook_code) book, max(odds_decimal)::float o
+             FROM sportsbook_goal_quote_current
+            WHERE canonical_event_id = $1 AND observed_at > now() - interval '75 minutes' AND is_live = FALSE
+            GROUP BY 1,2,3,4`, [ceidB]);
+        const evB = (db.clubsQuoteEvents || {})[ceidB] || null;
+        const med = (a) => { if (!a.length) return null; const s2 = a.slice().sort((x, y) => x - y); return s2[Math.floor(s2.length / 2)]; };
+        const markets = [];
+        // totales (goles/córners/tarjetas): de-vig por casa con el par over/under de la MISMA línea
+        for (const fam of ['match_total', 'corners_total', 'cards_total']) {
+          const rows2 = (q2.rows || []).filter(r => r.fam === fam && r.line != null);
+          const byLine = {};
+          for (const r of rows2) ((byLine[r.line] = byLine[r.line] || {})[r.book] = byLine[r.line][r.book] || {})[r.side] = r.o;
+          for (const [line2, books2] of Object.entries(byLine)) {
+            const fo = [], fu = []; const bestB = { over: [0, null], under: [0, null] }; let nB = 0;
+            for (const [bk2, ss] of Object.entries(books2)) {
+              if (ss.over > 1 && ss.under > 1) { const s3 = 1 / ss.over + 1 / ss.under; fo.push(1 / ss.over / s3); fu.push(1 / ss.under / s3); nB++; }
+              if (ss.over > bestB.over[0]) bestB.over = [ss.over, bk2];
+              if (ss.under > bestB.under[0]) bestB.under = [ss.under, bk2];
+            }
+            if (nB < 2) continue;
+            markets.push({ fam, line: +line2, books: nB, sides: {
+              over: { fair_prob: +med(fo).toFixed(4), fair_odds: +(1 / med(fo)).toFixed(2), best_o: bestB.over[0] || null, best_book: bestB.over[1] },
+              under: { fair_prob: +med(fu).toFixed(4), fair_odds: +(1 / med(fu)).toFixed(2), best_o: bestB.under[0] || null, best_book: bestB.under[1] },
+            } });
+          }
+        }
+        // 1X2: de-vig 3-way por casa
+        {
+          const rows3 = (q2.rows || []).filter(r => r.fam === 'match_winner');
+          const byBook = {};
+          for (const r of rows3) (byBook[r.book] = byBook[r.book] || {})[r.side] = r.o;
+          const f3 = { home: [], draw: [], away: [] }; const best3 = { home: [0, null], draw: [0, null], away: [0, null] }; let n3 = 0;
+          for (const [bk3, ss] of Object.entries(byBook)) {
+            if (ss.home > 1 && ss.draw > 1 && ss.away > 1) {
+              const s4 = 1 / ss.home + 1 / ss.draw + 1 / ss.away; n3++;
+              for (const k of ['home', 'draw', 'away']) f3[k].push(1 / ss[k] / s4);
+            }
+            for (const k of ['home', 'draw', 'away']) if (ss[k] > best3[k][0]) best3[k] = [ss[k], bk3];
+          }
+          if (n3 >= 2) {
+            const sides = {};
+            for (const k of ['home', 'draw', 'away']) sides[k] = { fair_prob: +med(f3[k]).toFixed(4), fair_odds: +(1 / med(f3[k])).toFixed(2), best_o: best3[k][0] || null, best_book: best3[k][1] };
+            markets.push({ fam: 'match_winner', line: null, books: n3, sides });
+          }
+        }
+        markets.sort((a, b) => (a.fam > b.fam ? 1 : -1) || ((a.line || 0) - (b.line || 0)));
+        return json(res, 200, { event: evB ? { home: evB.home, away: evB.away, league: evB.league_name || evB.league, kickoff: evB.kickoff } : null, markets });
+      } catch (e) { console.error('[betcheck]', e.message); return json(res, 200, { markets: [], error: 'temporal' }); }
+    }
     // PLANTILLA de un club (shadow): roster desde TheStatsAPI (los ids tm_ de ratings.json comparten proveedor),
     // agrupado por posición. Memo por equipo 24h. Datos ricos por jugador: posición, edad, altura, pie, país,
     // valor de mercado, contrato, selección. Base para el perfil de jugador de club (extensión de la capa de

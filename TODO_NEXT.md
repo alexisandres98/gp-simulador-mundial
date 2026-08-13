@@ -30,9 +30,15 @@
   ligas con id en CLUB_AF_LEAGUE, copas incluidas; máx 6 fetches AF por poll, memo 6h) + plantillas AF en
   /api/clubs/squad para equipos tm_af* (con foto y dorsal, cache 24h). Memo v2 ya NO revela pick ni valor
   a quien su plan no los incluye (regla Alexis: el memo es inteligencia, la pick se paga).
-- **PENDIENTE (paridad AF, parte 2)**: adaptador AF→player-history (rows por jugador-partido → percentiles,
-  radar, scout, props via player-intel/clubsFit) para saudi/aleague/copas y cualquier liga AF; y perfiles
-  /api/clubs/player para pids afp*. Obra grande — hacerla con sesión fresca.
+- **HECHO 13-ago noche (paridad AF, parte 2 COMPLETA)**: `clubAfIdOf()` universal (tm_af embebido → mapa →
+  cross-liga para copas) destapa contexto/alineaciones/eventos de TODA liga nueva; bajas sin filtro de liga
+  (copas). Data pass AF (`scripts/clubs-af-datapass.js` + `clubs-af-photos.js`) subido al disco de prod:
+  saudi 9.185 filas jugador-partido, aleague 5.036, libertadores 1.235, sudamericana 1.485, leaguescup
+  1.499 + 2.603 fotos (player-photos 15.540). Verificado en prod: NEOM–Al-Fayha con XI proyectado del fit
+  AF (pids afp clickeables), forma/H2H/xG/intel de goleadores; Rosario Central–Corinthians (Libertadores)
+  con 8 bajas reales de Corinthians por nombre y XI de 11. Perfiles /api/clubs/player sirven pids afp*.
+  Copas: cobertura parcial de equipos sin mapa AF (ecuatorianos/peruanos etc.) — se completa cuando el
+  data pass diario les cree entradas. Lecturas del sistema (picks) llegan solas con el upgrade de créditos.
 
 ## 🥊 R6 COMBATE 12-ago — profundidad (orden Alexis) · VEREDICTO DEL BACKTEST
 - **Interacciones de matchup** (grap/power/absorb/age5/subth) construidas en `combat-engine/ratings.js` y

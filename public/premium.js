@@ -153,6 +153,15 @@
       // ---- Feed de picks diarias (producto) ----
       pf_today: 'Picks del día', pf_count: 'picks activas', pf_count1: 'pick activa', pf_pick_of_day: 'Pick del día', pf_all_by_match: 'Todas las picks por partido',
       fb_refresh: 'Buscar picks nuevas', fb_auto_on: 'Refresco automático activo — pausar', fb_auto_off: 'Refresco pausado — reanudar', fb_seeing: 'viendo {n} de {total}', fb_updated: 'act.',
+      drop_tab: 'Caídas', mid_tab: 'Middles',
+      drop_intro: 'Cuando una casa sharp recorta una cuota, el resto del mercado tarda en seguirla. Estas son las caídas recientes y las casas que aún pagan la cuota vieja.',
+      drop_sharp: 'consenso sharp', drop_stale: 'aún pagan', drop_no_stale: 'Todas las casas ya siguieron el recorte.',
+      drop_empty: 'Sin caídas fuertes ahora', drop_empty_sub: 'Se listan recortes de las últimas horas en las casas sharp. Volvé más tarde o mirá En vivo.',
+      lock_drop_s: 'Las caídas de línea en tiempo real son parte del plan Sharp.',
+      df_goals: 'Goles', df_corners: 'Córners', df_cards: 'Tarjetas', df_over: 'Más de', df_under: 'Menos de', df_home: 'Local', df_away: 'Visita', df_draw: 'Empate',
+      mid_intro: 'Un middle es Más de en una casa y Menos de en otra con hueco entre líneas: si el resultado cae en el medio, ganan las dos apuestas.',
+      mid_cost: 'costo', mid_zone: 'zona doble', lock_mid_s: 'Los middles entre casas son parte del plan Sharp.',
+      mid_empty: 'Sin middles baratos ahora', mid_empty_sub: 'Se listan cruces con hueco de línea ≥1 y costo ≤6% entre casas distintas.',
       hp_hide: 'Ocultar esta pick', hp_unhide: 'Mostrar esta pick', hp_hidden_n: 'ocultas ({n})', hp_showing: 'mostrando ocultas',
       val_fair: 'justa', val_vig: 'vig',
       pf_corr: 'Son del mismo partido: se resuelven juntas. Para tu stake trátalas como <b>una sola apuesta</b>, no como {n} independientes.',
@@ -506,6 +515,15 @@
       // ---- Daily picks feed (product) ----
       pf_today: "Today's picks", pf_count: 'active picks', pf_count1: 'active pick', pf_pick_of_day: 'Pick of the day', pf_all_by_match: 'All picks by match',
       fb_refresh: 'Check for new picks', fb_auto_on: 'Auto-refresh on — pause', fb_auto_off: 'Refresh paused — resume', fb_seeing: 'viewing {n} of {total}', fb_updated: 'upd.',
+      drop_tab: 'Dropping', mid_tab: 'Middles',
+      drop_intro: 'When a sharp book cuts a price, the rest of the market lags behind. These are recent drops and the books still paying the old price.',
+      drop_sharp: 'sharp consensus', drop_stale: 'still paying', drop_no_stale: 'Every book has already followed the cut.',
+      drop_empty: 'No strong drops right now', drop_empty_sub: 'We list sharp-book cuts from the last hours. Check back later or try Live.',
+      lock_drop_s: 'Real-time dropping odds are part of the Sharp plan.',
+      df_goals: 'Goals', df_corners: 'Corners', df_cards: 'Cards', df_over: 'Over', df_under: 'Under', df_home: 'Home', df_away: 'Away', df_draw: 'Draw',
+      mid_intro: 'A middle is Over at one book and Under at another with a line gap: when the result lands in between, both bets win.',
+      mid_cost: 'cost', mid_zone: 'double zone', lock_mid_s: 'Cross-book middles are part of the Sharp plan.',
+      mid_empty: 'No cheap middles right now', mid_empty_sub: 'We list cross-book pairs with a line gap ≥1 and cost ≤6%.',
       hp_hide: 'Hide this pick', hp_unhide: 'Unhide this pick', hp_hidden_n: 'hidden ({n})', hp_showing: 'showing hidden',
       val_fair: 'fair', val_vig: 'vig',
       pf_corr: 'Same match: they settle together. For your stake, treat them as <b>one single bet</b>, not {n} independent ones.',
@@ -1040,7 +1058,7 @@
       '<div class="gx-ohead">' +
       '<h1>' + esc(t('title')) + '</h1>' +
       '<div class="gx-seg" id="gx-filt"><button data-f="all" class="on">' + esc(t('all')) + '</button><button data-f="live">' + esc(t('live_f')) + '</button><button data-f="up">' + esc(t('upcoming_f')) + '</button></div>' +
-      '<div style="display:flex;gap:8px"><span class="gx-prodchip on" id="gx-pc-picks">' + esc(t('picks')) + '</span><span class="gx-prodchip" id="gx-pc-value">' + esc(t('value')) + '</span><span class="gx-prodchip" id="gx-pc-arb">' + esc(t('arb')) + '</span></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="gx-prodchip on" id="gx-pc-picks">' + esc(t('picks')) + '</span><span class="gx-prodchip" id="gx-pc-value">' + esc(t('value')) + '</span><span class="gx-prodchip" id="gx-pc-arb">' + esc(t('arb')) + '</span><span class="gx-prodchip" id="gx-pc-drop">' + esc(t('drop_tab')) + '</span><span class="gx-prodchip" id="gx-pc-mid">' + esc(t('mid_tab')) + '</span></div>' +
       '<div class="gx-spacer"></div><div class="gx-dim" style="font-size:11.5px;display:flex;align-items:center;gap:6px">' + ic('refresh') + '<span id="gx-upd"></span></div>' +
       '</div>' +
       '<div class="gx-kpis" id="gx-kpis"></div>' +
@@ -1058,9 +1076,9 @@
     var sb2 = $('#gx-sportbar'); if (sb2) sb2.addEventListener('click', function (e) { var b = e.target.closest('[data-sportgo]'); if (b) setSport(b.dataset.sportgo); });
     var avb = $('#gx-avatar-btn'); if (avb) avb.addEventListener('click', toggleAcctMenu);
     // subtabs de Oportunidades: Picks / Value / Arbitraje
-    var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); if (sub !== 'picks') kpis(S.dash || {}, rs); board(rs); };
+    var setSub = function (sub) { S.oppSub = sub; ['picks', 'value', 'arb', 'drop', 'mid'].forEach(function (s) { var el = $('#gx-pc-' + s); if (el) el.classList.toggle('on', s === sub); }); var k = $('#gx-kpis'); if (k) k.style.display = (sub === 'picks') ? 'none' : ''; var rs = (S.dash && S.dash.upcoming || []).map(function (u) { return eventRow(u, gExpandValue(S.value)); }); if (sub !== 'picks') kpis(S.dash || {}, rs); board(rs); };
     var pc = function (id, sub) { var el = $('#gx-pc-' + id); if (el) el.addEventListener('click', function () { setSub(sub); }); };
-    pc('picks', 'picks'); pc('value', 'value'); pc('arb', 'arb');
+    pc('picks', 'picks'); pc('value', 'value'); pc('arb', 'arb'); pc('drop', 'drop'); pc('mid', 'mid');
     // filtro Todos / En vivo / Próximos (estaba decorativo): setea S.filt y re-renderiza el board
     var filt = $('#gx-filt');
     if (filt) filt.addEventListener('click', function (e) {
@@ -1457,6 +1475,8 @@
     // subtabs Picks / Value / Arbitraje (prodchips). Value y Arbitraje muestran su propio contenido.
     if (S.oppSub === 'value') { $('#gx-board-count').textContent = ''; oppValueBoard(bd); return; }
     if (S.oppSub === 'arb') { $('#gx-board-count').textContent = ''; oppArbBoard(bd); return; }
+    if (S.oppSub === 'drop') { $('#gx-board-count').textContent = ''; oppDroppingBoard(bd); return; }
+    if (S.oppSub === 'mid') { $('#gx-board-count').textContent = ''; oppMiddlesBoard(bd); return; }
     // Picks (producto): feed de picks diarias del día (efímero). Reemplaza la tabla quant (GP%/mercado%/edge).
     if (S.oppSub === 'picks') { picksFeed(bd); return; }
     if (S.filt === 'live') rows = rows.filter(function (r) { return r.live; });
@@ -1845,6 +1865,82 @@
     return '<div class="gx-pick-signals">' + parts.join('<span class="gx-sig-dot">·</span>') + '</div>';
   }
 
+  // ── P1 DROPPING ODDS (13-ago, lote BetHero): la casa sharp recortó — cógela vieja donde apuestes ──
+  function famLabF(f) { return f === 'match_total' ? t('df_goals') : f === 'corners_total' ? t('df_corners') : f === 'cards_total' ? t('df_cards') : f === 'match_winner' ? '1X2' : (f || ''); }
+  function dropSideLab(r) {
+    if (r.fam === 'match_winner') return r.side === 'home' ? t('df_home') : r.side === 'away' ? t('df_away') : t('df_draw');
+    return (r.side === 'over' ? t('df_over') : t('df_under')) + ' ' + r.line;
+  }
+  function oppDroppingBoard(bd) {
+    var live = S.dropLive ? '1' : '0';
+    var key = 'drop_' + live;
+    if (S[key] === undefined) {
+      S[key] = null;
+      fetch('/api/clubs/dropping?live=' + live + asplanQS('&'), { headers: hdrs() }).then(function (r) {
+        if (r.status === 403) { S[key] = { locked: true }; return null; }
+        return r.ok ? r.json() : null;
+      }).catch(function () { return null; }).then(function (j) {
+        if (j) S[key] = j; else if (!S[key]) S[key] = { rows: [], _err: true };
+        if (S.view === 'board' && S.oppSub === 'drop') { var b = $('#gx-board'); if (b) oppDroppingBoard(b); }
+      });
+      bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
+      return;
+    }
+    var d = S[key];
+    var tabs = '<div class="gx-seg" style="margin-bottom:10px"><button data-droplive="0" class="' + (!S.dropLive ? 'on' : '') + '">' + esc(t('upcoming_f')) + '</button><button data-droplive="1" class="' + (S.dropLive ? 'on' : '') + '">' + esc(t('live_f')) + ' 🔥</button></div>';
+    if (!d || d.locked) { bd.innerHTML = tabs + lockPanel('lock_sharp_t', 'lock_drop_s'); wireDropTabs(bd); return; }
+    var rows = d.rows || [];
+    if (!rows.length) { bd.innerHTML = tabs + '<div class="gx-empty">' + ic('trending-down') + '<b>' + esc(t('drop_empty')) + '</b><span class="gx-dim">' + esc(t('drop_empty_sub')) + '</span></div>'; wireDropTabs(bd); return; }
+    var cards = rows.map(function (r) {
+      var stale = (r.stale || []).map(function (s) { return '<span class="gx-val-bk">' + bookLogo(s.book) + esc(prettyBook(s.book) || s.book) + ' <b>' + Number(s.o).toFixed(2) + '</b></span>'; }).join('');
+      return '<div class="gx-mcard">' +
+        '<div class="gx-mcard-top"><span class="gx-pick-fam">' + esc(famLabF(r.fam)) + '</span><span class="gx-dim" style="font-size:10.5px">' + esc(r.event.league || '') + (r.event.kickoff ? ' · ' + esc(fmtDateTime(r.event.kickoff)) : '') + '</span><span class="gx-spacer"></span><span class="gx-edge gx-pos">−' + r.drop_pct + '%</span></div>' +
+        '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames"><b>' + esc(r.event.home + ' ' + t('vs') + ' ' + r.event.away) + '</b><span>' + esc(dropSideLab(r)) + '</span></div></div>' +
+        '<div class="gx-mcard-foot"><span class="gx-mono gx-dim"><s>' + Number(r.sharp_before).toFixed(2) + '</s> → <b style="color:var(--gx-text,#EDF2F4)">' + Number(r.sharp_now).toFixed(2) + '</b> · ' + esc(t('drop_sharp')) + '</span><span class="gx-mono gx-pos">+' + r.move_pp + 'pp</span></div>' +
+        (stale ? '<div class="gx-val-line"><span class="gx-val-bk fair">' + esc(t('drop_stale')) + '</span>' + stale + '</div>' : '<div class="gx-dim" style="font-size:10.5px;margin-top:5px">' + esc(t('drop_no_stale')) + '</div>') +
+        '</div>';
+    }).join('');
+    bd.innerHTML = tabs + '<div class="gx-dim" style="font-size:10.5px;margin-bottom:8px">' + ic('info-circle') + ' ' + esc(t('drop_intro')) + '</div>' + cards +
+      '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
+    wireDropTabs(bd);
+  }
+  function wireDropTabs(bd) {
+    [].forEach.call(bd.querySelectorAll('[data-droplive]'), function (b) {
+      b.addEventListener('click', function () { S.dropLive = b.getAttribute('data-droplive') === '1'; var x = $('#gx-board'); if (x) oppDroppingBoard(x); });
+    });
+  }
+  // ── P5 MIDDLES (13-ago, lote BetHero): Over y Under en casas distintas con hueco — el medio paga doble ──
+  function oppMiddlesBoard(bd) {
+    if (S.middles === undefined) {
+      S.middles = null;
+      fetch('/api/clubs/middles' + asplanQS('?'), { headers: hdrs() }).then(function (r) {
+        if (r.status === 403) { S.middles = { locked: true }; return null; }
+        return r.ok ? r.json() : null;
+      }).catch(function () { return null; }).then(function (j) {
+        if (j) S.middles = j; else if (!S.middles) S.middles = { rows: [], _err: true };
+        if (S.view === 'board' && S.oppSub === 'mid') { var b = $('#gx-board'); if (b) oppMiddlesBoard(b); }
+      });
+      bd.innerHTML = '<div class="gx-empty">' + ic('loader-2') + esc(t('loading')) + '</div>';
+      return;
+    }
+    var d = S.middles;
+    if (!d || d.locked) { bd.innerHTML = lockPanel('lock_sharp_t', 'lock_mid_s'); return; }
+    var rows = d.rows || [];
+    if (!rows.length) { bd.innerHTML = '<div class="gx-empty">' + ic('arrows-left-right') + '<b>' + esc(t('mid_empty')) + '</b><span class="gx-dim">' + esc(t('mid_empty_sub')) + '</span></div>'; return; }
+    var cards = rows.map(function (r) {
+      return '<div class="gx-arb-card gx-mcard">' +
+        '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(famLabF(r.fam)) + '</span><span class="gx-pick-time">' + esc(r.event.league || '') + (r.event.kickoff ? ' · ' + esc(fmtDateTime(r.event.kickoff)) : '') + '</span></div>' +
+        '<div class="gx-arb-match"><b>' + esc(r.event.home + ' ' + t('vs') + ' ' + r.event.away) + '</b></div>' +
+        '<div class="gx-arb-legs">' +
+        '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(t('df_over')) + ' ' + r.over.line + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(r.over.o).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(r.over.book) + esc(prettyBook(r.over.book) || r.over.book) + '</span></div>' +
+        '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(t('df_under')) + ' ' + r.under.line + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(r.under.o).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(r.under.book) + esc(prettyBook(r.under.book) || r.under.book) + '</span></div>' +
+        '</div>' +
+        '<div class="gx-pick-foot"><span class="gx-mono ' + (r.cost_pct <= 0 ? 'gx-pos' : 'gx-dim') + '">' + esc(t('mid_cost')) + ' ' + (r.cost_pct >= 0 ? '' : '+') + Math.abs(r.cost_pct) + '%' + (r.cost_pct <= 0 ? ' · surebet' : '') + '</span><span class="gx-mono gx-pos">' + esc(t('mid_zone')) + ' ' + esc(r.zone) + '</span></div>' +
+        '</div>';
+    }).join('');
+    bd.innerHTML = '<div class="gx-dim" style="font-size:10.5px;margin-bottom:8px">' + ic('info-circle') + ' ' + esc(t('mid_intro')) + '</div>' + cards +
+      '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
+  }
   // ---- Oportunidades · Value: OUTRIGHT (campeón del Mundial) — GP% (torneo) vs mercado ----
   function outrightValueHtml() {
     if (S.valueOutright === undefined) {

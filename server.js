@@ -15444,6 +15444,134 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { shadow: true, refreshed_at: new Date(global._clubsValue.at).toISOString(), skipped: global._clubsValue.skipped, rows: global._clubsValue.rows });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
+    // ═ P1 DROPPING ODDS (13-ago, lote BetHero): cuando una casa sharp recorta una línea, el resto del
+    // mercado queda rezagado un rato — detectamos el recorte en el HISTORIAL de cuotas (Postgres, mismo
+    // sportsbook_goal_quote_current del sweep) y listamos las casas que AÚN pagan la cuota vieja.
+    // Sharp-only (403 upgrade → la UI pinta el candado). ?live=1 = ventanas cortas sobre cuotas is_live.
+    if (p === '/api/clubs/dropping') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const uD = getUser(req);
+      const asD = (uD && uD.isAdmin) ? String(url.searchParams.get('asplan') || '') : '';
+      const planD = asD || (uD ? effectivePlan(uD.email) : 'free');
+      if (plansEnforced() && !((uD && uD.isAdmin && !asD) || planD === 'sharp')) return json(res, 403, { error: 'upgrade', need: 'sharp' });
+      const live = url.searchParams.get('live') === '1';
+      try {
+        const dbc = require('./database/client');
+        if (!dbc.isConfigured()) return json(res, 200, { rows: [], note: 'sin quotes DB' });
+        global._dropping = global._dropping || {};
+        const ckD = live ? 'live' : 'pre';
+        const memoD = global._dropping[ckD];
+        if (memoD && Date.now() - memoD.at < 5 * 60e3) return json(res, 200, { refreshed_at: new Date(memoD.at).toISOString(), live, rows: memoD.rows });
+        const SHARP_BOOKS = ['pinnacle', 'cloudbet', 'betfair_ex_eu', 'betfair_ex_uk', 'betfair_ex_au', 'matchbook', 'polymarket', 'kalshi', 'novig', 'prophetx'];
+        const wNow = live ? '12 minutes' : '75 minutes';
+        const wFrom = live ? '90 minutes' : '9 hours';
+        const wTo = live ? '25 minutes' : '3 hours';
+        const flag = await dbc.query(
+          `SELECT canonical_event_id ceid, market_family fam, line::float line, lower(side) side,
+                  avg(odds_decimal) FILTER (WHERE observed_at > now() - interval '${wNow}' AND lower(sportsbook_code) = ANY($1))::float sharp_now,
+                  avg(odds_decimal) FILTER (WHERE observed_at BETWEEN now() - interval '${wFrom}' AND now() - interval '${wTo}' AND lower(sportsbook_code) = ANY($1))::float sharp_before
+             FROM sportsbook_goal_quote_current
+            WHERE observed_at > now() - interval '${wFrom}' AND is_live = ${live ? 'TRUE' : 'FALSE'}
+            GROUP BY 1,2,3,4`, [SHARP_BOOKS]);
+        const flagged = (flag.rows || [])
+          .filter(r => r.sharp_now > 1 && r.sharp_before > 1 && r.sharp_now < r.sharp_before * 0.95)
+          .sort((a, b) => (b.sharp_before / b.sharp_now) - (a.sharp_before / a.sharp_now)).slice(0, 60);
+        const ceidsD = [...new Set(flagged.map(r => r.ceid))];
+        let cur = { rows: [] };
+        if (ceidsD.length) {
+          cur = await dbc.query(
+            `SELECT canonical_event_id ceid, market_family fam, line::float line, lower(side) side,
+                    lower(sportsbook_code) book, max(odds_decimal)::float o
+               FROM sportsbook_goal_quote_current
+              WHERE canonical_event_id = ANY($1) AND observed_at > now() - interval '${wNow}'
+              GROUP BY 1,2,3,4,5`, [ceidsD]).catch(() => ({ rows: [] }));
+        }
+        const isSharpBk = (b) => SHARP_BOOKS.some(s => String(b).indexOf(s) >= 0);
+        const keyOf = (r) => `${r.ceid}|${r.fam}|${r.line}|${r.side}`;
+        const curBy = {};
+        for (const r of (cur.rows || [])) (curBy[keyOf(r)] = curBy[keyOf(r)] || []).push(r);
+        const rowsD = [];
+        for (const r of flagged) {
+          const ev = (db.clubsQuoteEvents || {})[r.ceid];
+          if (!ev) continue;
+          if (!live && ev.kickoff && Date.parse(ev.kickoff) < Date.now()) continue; // prepartido: el partido no arrancó
+          const stale = (curBy[keyOf(r)] || []).filter(x => !isSharpBk(x.book) && x.o >= r.sharp_before * 0.985)
+            .sort((a, b) => b.o - a.o).slice(0, 5).map(x => ({ book: x.book, o: +x.o.toFixed(2) }));
+          rowsD.push({
+            ceid: r.ceid, fam: r.fam, line: r.line, side: r.side,
+            event: { home: ev.home, away: ev.away, league: ev.league_name || ev.league, kickoff: ev.kickoff },
+            sharp_before: +r.sharp_before.toFixed(2), sharp_now: +r.sharp_now.toFixed(2),
+            drop_pct: +((1 - r.sharp_now / r.sharp_before) * 100).toFixed(1),
+            move_pp: +(((1 / r.sharp_now) - (1 / r.sharp_before)) * 100).toFixed(1),
+            stale,
+          });
+        }
+        rowsD.sort((a, b) => (b.stale.length - a.stale.length) || (b.drop_pct - a.drop_pct));
+        const outD = rowsD.slice(0, 30);
+        global._dropping[ckD] = { at: Date.now(), rows: outD };
+        return json(res, 200, { refreshed_at: new Date().toISOString(), live, rows: outD });
+      } catch (e) { console.error('[dropping]', e.message); return json(res, 200, { rows: [], error: 'temporal' }); }
+    }
+    // ═ P5 MIDDLES (13-ago, lote BetHero): Over en una casa + Under en otra con hueco de línea ≥1 —
+    // si el resultado cae en el medio, ganan las dos. Se arma con las cuotas ACTUALES de totales
+    // (goles/córners/tarjetas) cruzando casas. Sharp-only. cost_pct negativo = además es surebet.
+    if (p === '/api/clubs/middles') {
+      const sessEmail = sessionEmailFromReq(req);
+      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; }
+      const uM = getUser(req);
+      const asM = (uM && uM.isAdmin) ? String(url.searchParams.get('asplan') || '') : '';
+      const planM = asM || (uM ? effectivePlan(uM.email) : 'free');
+      if (plansEnforced() && !((uM && uM.isAdmin && !asM) || planM === 'sharp')) return json(res, 403, { error: 'upgrade', need: 'sharp' });
+      try {
+        const dbc = require('./database/client');
+        if (!dbc.isConfigured()) return json(res, 200, { rows: [], note: 'sin quotes DB' });
+        global._middles = global._middles || { at: 0, rows: [] };
+        if (Date.now() - global._middles.at < 5 * 60e3) return json(res, 200, { refreshed_at: new Date(global._middles.at).toISOString(), rows: global._middles.rows });
+        const q = await dbc.query(
+          `SELECT canonical_event_id ceid, market_family fam, line::float line, lower(side) side,
+                  lower(sportsbook_code) book, max(odds_decimal)::float o
+             FROM sportsbook_goal_quote_current
+            WHERE observed_at > now() - interval '75 minutes' AND is_live = FALSE AND line IS NOT NULL
+              AND market_family IN ('match_total','corners_total','cards_total')
+            GROUP BY 1,2,3,4,5`);
+        const byMkt = {};
+        for (const r of (q.rows || [])) {
+          const k = r.ceid + '|' + r.fam;
+          (byMkt[k] = byMkt[k] || { overs: [], unders: [] })[r.side === 'over' ? 'overs' : 'unders'].push(r);
+        }
+        const rowsM = [];
+        for (const [k, m] of Object.entries(byMkt)) {
+          const ceid = k.split('|')[0], fam = k.split('|')[1];
+          const ev = (db.clubsQuoteEvents || {})[ceid];
+          if (!ev || (ev.kickoff && Date.parse(ev.kickoff) < Date.now())) continue;
+          // mejor cuota por línea y lado
+          const bestAt = (arr) => { const by = {}; for (const r of arr) if (!by[r.line] || r.o > by[r.line].o) by[r.line] = r; return by; };
+          const ov = bestAt(m.overs), un = bestAt(m.unders);
+          for (const lo of Object.keys(ov).map(Number)) {
+            for (const lu of Object.keys(un).map(Number)) {
+              const gap = lu - lo;
+              if (!(gap >= 1)) continue;               // hueco real: al menos un entero en el medio
+              const A = ov[lo], B = un[lu];
+              if (A.book === B.book) continue;          // el middle vive ENTRE casas
+              const cost = (1 / A.o + 1 / B.o - 1) * 100; // % del total apostado que cuesta armarlo
+              if (cost > 6) continue;                   // caro = no interesa
+              rowsM.push({
+                ceid, fam, event: { home: ev.home, away: ev.away, league: ev.league_name || ev.league, kickoff: ev.kickoff },
+                over: { line: lo, o: +A.o.toFixed(2), book: A.book },
+                under: { line: lu, o: +B.o.toFixed(2), book: B.book },
+                gap: +gap.toFixed(1), cost_pct: +cost.toFixed(2),
+                zone: `${Math.ceil(lo)}–${Math.floor(lu)}`,
+              });
+            }
+          }
+        }
+        rowsM.sort((a, b) => a.cost_pct - b.cost_pct);
+        const outM = rowsM.slice(0, 40);
+        global._middles = { at: Date.now(), rows: outM };
+        return json(res, 200, { refreshed_at: new Date().toISOString(), rows: outM });
+      } catch (e) { console.error('[middles]', e.message); return json(res, 200, { rows: [], error: 'temporal' }); }
+    }
     // PLANTILLA de un club (shadow): roster desde TheStatsAPI (los ids tm_ de ratings.json comparten proveedor),
     // agrupado por posición. Memo por equipo 24h. Datos ricos por jugador: posición, edad, altura, pie, país,
     // valor de mercado, contrato, selección. Base para el perfil de jugador de club (extensión de la capa de

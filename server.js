@@ -2470,7 +2470,7 @@ function seoMatchHtml(m, lang) {
   return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title><meta name="description" content="${desc}">
 <link rel="canonical" href="${url}"><link rel="alternate" hreflang="es" href="${urlEs}"><link rel="alternate" hreflang="en" href="${urlEn}"><link rel="alternate" hreflang="x-default" href="${urlEn}">
-<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${base}/og.png">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${base}/og-modelo.png">
 <script type="application/ld+json">${jsonld}</script><style>${seoShellCss()}</style></head>
 <body><div class="wrap"><nav class="nav"><a class="logo" href="/"><i>▟</i> GP Simulador</a></nav>
 <div class="crumb"><a href="${lang === 'es' ? '/pronosticos' : '/predictions'}">${lang === 'es' ? 'Pronósticos del Mundial 2026' : '2026 World Cup predictions'}</a> · ${stage}</div>
@@ -2575,7 +2575,7 @@ function seoPlayerHtml(pl, lang) {
   return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title><meta name="description" content="${desc}">
 <link rel="canonical" href="${url}"><link rel="alternate" hreflang="es" href="${urlEs}"><link rel="alternate" hreflang="en" href="${urlEn}"><link rel="alternate" hreflang="x-default" href="${urlEn}">
-<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${ph || base + '/og.png'}">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${ph || base + '/og-modelo.png'}">
 <script type="application/ld+json">${jsonld}</script><style>${seoShellCss()}
 .php{display:flex;align-items:center;gap:18px;margin:6px 0 4px}
 .php img{width:84px;height:84px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,.14);background:#0a140f}
@@ -2673,7 +2673,7 @@ function seoClubPlayerHtml(e, lang) {
   return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title><meta name="description" content="${desc}">
 <link rel="canonical" href="${url}"><link rel="alternate" hreflang="es" href="${urlEs}"><link rel="alternate" hreflang="en" href="${urlEn}"><link rel="alternate" hreflang="x-default" href="${urlEn}">
-<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${ph || base + '/og.png'}">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:image" content="${ph || base + '/og-modelo.png'}">
 <script type="application/ld+json">${jsonld}</script><style>${seoShellCss()}
 .php{display:flex;align-items:center;gap:18px;margin:6px 0 4px}
 .php img{width:84px;height:84px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,.14);background:#0a140f}

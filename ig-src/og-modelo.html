@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: 'Space Grotesk'; src: url('../public/fonts/space-grotesk-var.woff2') format('woff2'); font-weight: 300 700; }
+@font-face { font-family: 'Inter'; src: url('../public/fonts/inter-var.woff2') format('woff2'); font-weight: 100 900; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1200px; height: 630px; background: #05080A; color: #EAF2F3; font-family: 'Inter', sans-serif; overflow: hidden; position: relative; }
+.bg { position: absolute; inset: 0;
+  background:
+    radial-gradient(900px 480px at 14% -10%, rgba(31,227,164,.14), transparent 55%),
+    radial-gradient(760px 420px at 100% 0%, rgba(91,168,255,.08), transparent 52%),
+    radial-gradient(700px 700px at 50% 120%, rgba(31,227,164,.07), transparent 55%); }
+.floor { position: absolute; left: -20%; right: -20%; bottom: -12%; height: 46%;
+  background-image: linear-gradient(rgba(31,227,164,.09) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(31,227,164,.09) 1.5px, transparent 1.5px);
+  background-size: 44px 44px; transform: perspective(620px) rotateX(62deg); transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.85), transparent 80%); }
+.wrap { position: absolute; inset: 0; padding: 52px 76px; }
+.brand { display: flex; align-items: center; gap: 16px; }
+.logo { width: 58px; height: 58px; border-radius: 15px; background: linear-gradient(160deg,#10201D,#0B1412); display: grid; place-items: center;
+  box-shadow: 0 0 0 1.5px rgba(31,227,164,.4), 0 0 30px -4px rgba(31,227,164,.45); }
+.logo svg { width: 36px; height: 36px; }
+.brand b { font-family: 'Space Grotesk'; font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
+.eyebrow { display: inline-flex; align-items: center; gap: 12px; margin-top: 34px; font-size: 21px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+  color: #1FE3A4; }
+.eyebrow i { width: 11px; height: 11px; border-radius: 50%; background: #1FE3A4; box-shadow: 0 0 16px rgba(31,227,164,.8); }
+h1 { font-family: 'Space Grotesk'; font-weight: 700; font-size: 68px; line-height: 1.04; letter-spacing: -.03em; margin-top: 20px; max-width: 20ch; }
+h1 .g { color: #1FE3A4; }
+.chips { display: flex; gap: 14px; margin-top: 30px; }
+.chip { font-size: 22px; font-weight: 650; color: #C9D6D9; background: rgba(255,255,255,.04); border: 1.5px solid rgba(255,255,255,.13); border-radius: 99px; padding: 13px 26px; }
+.chip b { color: #1FE3A4; font-family: 'Space Grotesk'; }
+.foot { position: absolute; left: 76px; right: 76px; bottom: 44px; display: flex; align-items: center; justify-content: space-between; }
+.dom { font-family: 'Space Grotesk'; font-size: 27px; font-weight: 700; color: #1FE3A4; letter-spacing: -.01em; }
+.tag { font-size: 18px; color: #647A80; }
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="floor"></div>
+<div class="wrap">
+  <div class="brand">
+    <span class="logo"><svg viewBox="0 0 34 34"><defs><linearGradient id="lg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#lg)"/></svg></span>
+    <b>GP Simulador</b>
+  </div>
+  <div class="eyebrow"><i></i>+500 picks liquidadas en público</div>
+  <h1>El modelo que <span class="g">le discute el precio</span> al mercado.</h1>
+  <div class="chips">
+    <span class="chip"><b>44</b> ligas en vivo</span>
+    <span class="chip">🥊 UFC · MMA · boxeo</span>
+    <span class="chip"><b>40+</b> casas comparadas</span>
+  </div>
+  <div class="foot">
+    <span class="dom">gpsimulador.com</span>
+    <span class="tag">Inteligencia deportiva · sin ganancias prometidas</span>
+  </div>
+</div>
+</body>
+</html>

@@ -143,3 +143,137 @@ El dashboard interno no se pudo analizar desde este entorno (login con código +
 el navegador headless no cruza el proxy de egress). Para desmenuzar la UX interna: un screen-recording o
 capturas del dashboard de la cuenta ya activa (Bet Hero Plus, prueba de $1) bastan. Recordatorio: la
 prueba se renueva a $59.97 el 19-ago salvo cancelación.
+
+---
+
+# PARTE 2 — Análisis interno (con las 30+ capturas del dashboard) · 13-ago
+
+Alexis entró con la cuenta de prueba y mandó el recorrido completo. Esto cambia y amplía el análisis:
+ahora vi el producto por dentro, y lo más importante que descubrí **no es el producto — son los tres
+motores de ingreso** y la maquinaria de crecimiento. Detalle:
+
+## Lo que se ve dentro
+- **Onboarding de 5 pasos**: (1) país → geolocaliza casas y moneda; (2) bankroll (monto, default $1.000);
+  (3) [pago]; (4) nivel de experiencia (Principiante/Intermedio/Avanzado) → adapta la UX; (5) "¿cómo nos
+  encontraste?" (atribución: amigo, IG, X, FB, TikTok, Discord, Reddit, Google, YouTube). Rápido, con
+  barra de progreso, captura bankroll para el Kelly desde el minuto uno.
+- **Precios GEOLOCALIZADOS**: la misma web muestra $29.98/$59.97/$119.96 para Gambia y $35.98/$71.97/
+  $143.96 global. Ancla cada plan con **"se paga en ~2/~3/~5 apuestas"** (no con "$X de ganancia" —
+  más honesto que su landing). Gating por feature (Plus: prematch value/risk-free, tracking, 22 dep/500
+  ligas, sin límite de EV; ✗ live, ✗ middles, ✗ dropping odds). Anual −40%.
+- **6 superficies** (tabs: Inicio · +EV · Arb · Middles · Caídas · Registro):
+  - **+EV**: "viendo 122 de 9.253", prematch/en vivo, sort (EV, prob, evento, hora), refresh en vivo con
+    play/pausa. Detalle de una pick: **EV%, cuota, cuota justa, probabilidad, comisión de mercado (vig),
+    apuesta Kelly, "casas disponibles (143)", filtro "Solo sharps", y una "línea de cuotas justas" con
+    varios libros sharp** (Polymarket, etc. con su máximo). Es exactamente nuestro de-vig + value, mejor
+    presentado.
+  - **Arb**: **157.616 oportunidades** (número que impresiona), refresh en vivo (contador 99/43), ARB%,
+    beneficio garantizado, dos lados con casas. Ejecuta en **Polymarket y Sportsbet.io** (confirma la
+    tesis de venues que te di: mercados de predicción + cripto books).
+  - **Middles**, **Dropping Odds** (NEW): sharp recorta la línea → cógela vieja en tu casa (es nuestro
+    movimiento de línea, generalizado). Ambas gated a Pro.
+  - **Registro**: tracker personal con ROI, apostado, % ganadas, **calendario mensual de P&L**, desglose
+    por casa y por deporte, añadir apuesta/transacción.
+- **Tour guiado de 12 pasos** ("¡Hagamos tu primer surebet!") la primera vez — activación asistida.
+- **30+ calculadoras**, **blog** (12 artículos + 4 guías), **páginas de cuotas por evento** (SEO: cada
+  pelea/partido con "cuotas comparadas en N casas incluyendo...", Decimal/Americano, breadcrumb indexable).
+
+## 🔑 LO MÁS IMPORTANTE: tienen TRES motores de ingreso, nosotros UNO
+1. **Suscripción** (lo tenemos).
+2. **CPA/afiliación de casas** — la página **Promos**: "regístrate en estas casas para más +EV" con bonos
+   (Marca Apuestas 100€, Versus 200€, geolocalizado por país). Ellos cobran comisión por cada alta. Es un
+   flujo enorme, alineado con el producto (más casas = más value para el usuario) y **no lo tenemos**.
+3. **B2B white-label para Discord** — venden su motor de alertas a comunidades de tipsters con su marca
+   ("tus miembros nunca ven nuestro nombre", gestor de cuenta dedicado). Clientes: Juiced Bets (2.000),
+   Break The Odds (1.500), Lowkey (1.200), YAUPICKS (800); "+20 comunidades". Ingreso recurrente B2B, y
+   **tenemos el motor para hacerlo** (ya publicamos al canal de Telegram).
+4. **Afiliados de usuario** ("Refiere y gana"): código + "contenido que funciona como enlace de referido
+   sin parecerlo" (compartir una apuesta / tus stats ROI-winrate-CLV / un mes), con **pago de saldo** al
+   afiliado y actividad (clics, registros). Máquina de crecimiento viral que casi no tenemos.
+
+## Respuestas a las tres preguntas de Alexis
+
+### ¿Quién copió a quién?
+**Ninguno.** Bet Hero es más viejo y pertenece a una categoría MUY poblada de escáneres de +EV/arb
+(OddsJam, RebelBetting, Outlier, Trademate…). Es un clon pulido de ese patrón, con muy buen funnel +
+Discord B2B + afiliados. GP nació de otra semilla: un **modelo propio** (Elo→Poisson→Monte Carlo +
+combate). Son especies distintas en el mismo hábitat ("ganarle a la casa"). Lo único que se parece es la
+**estética de dashboard de apuestas** (oscuro, verde, tablas densas, filtros, live refresh) porque TODA
+la categoría converge ahí. No es copia en ningún sentido — es evolución convergente. Bet Hero es una
+"versión futura" de nuestra parte de **value/arbitraje/growth**, no de nuestro corazón (el modelo).
+
+### ¿Por qué pagaría alguien a GP y no a ellos, si ellos tienen más deportes y más todo?
+Honestidad brutal primero: **para el trabajo "encuéntrame arbs y +EV en todas las casas del mundo", Bet
+Hero gana HOY.** 400 casas, 22 deportes, arb en vivo, middles, dropping odds, 157k oportunidades. Si
+competimos por ser mejor escáner, perdemos — y su breadth es BARATA para ellos (solo ingieren feeds de
+cuotas; no modelan), mientras que para nosotros cada deporte cuesta un ciclo completo de modelado. Nunca
+igualaremos su amplitud siendo model-first, ni debemos intentarlo.
+
+Nuestra razón de existir es **otro trabajo**, y es defendible justamente donde ellos son estructuralmente
+ciegos:
+- **Ellos no tienen opinión; nosotros sí.** Un escáner DEFINE "el mercado de Pinnacle = la verdad" y busca
+  dónde el retail se desvía. Por construcción **jamás puede decirte "el mercado está equivocado"**. GP
+  tiene un modelo que SÍ discrepa del mercado — la misma pelea Garry vs Makhachev que ELLOS listan: su
+  herramienta solo te dice qué casa paga distinto; la nuestra dice "el mercado da 26% a Garry y creemos
+  que es 55%". Eso es **edge original**, no arbitraje de precio. Producto distinto, apostador distinto.
+- **El porqué.** Ellos te dan un número y un link. Nosotros la lectura — la inteligencia de la pelea/el
+  partido. Para quien quiere entender y aprender (no solo tocar filas verdes), esa es nuestra cancha.
+- **LATAM nativo + combate modelado.** Ligas locales modeladas a fondo y un motor de combate propio que
+  ningún escáner tiene.
+- **Track público verificable del modelo.** Ellos no lo tienen — no modelan, no hay nada que verificar.
+
+**La conclusión estratégica** (importante): no vencerlos escaneando. El escáner de value/arb debe ser
+para nosotros una función "suficientemente buena" de mesa (table stakes), y el **MODELO + inteligencia +
+track público** es la razón premium de quedarse. Y hay una decisión de producto que Alexis debe tomar:
+  - **Opción A — Profundos, no anchos**: pocos deportes, modelados a fondo y explicados. Somos el
+    "analista", no el "escáner".
+  - **Opción B — Híbrido**: agregar un "modo escáner" de muchos deportes como tabla commodity (solo
+    cuotas, sin modelo) para cerrar la brecha de amplitud en el trabajo value/arb, mientras los deportes
+    modelados son el premium. Más caro en datos, pero neutraliza su mayor ventaja.
+  Mi recomendación: **A con un toque de B** — no perseguir 22 deportes, pero sí que el escáner value/arb
+  que ya tenemos cubra las cuotas de más ligas (barato) aunque el modelo solo opine en las nuestras.
+
+## PLAN DE TRABAJO v2 (actualizado con lo interno)
+
+Se mantienen las fases de la Parte 1 (mensaje, onboarding, precios, SEO, prueba social, superficies).
+Lo interno agrega/re-prioriza:
+
+### NUEVO A · Onboarding con captura de bankroll y nivel (Días 1–4)
+Copiar el flujo de 5 pasos: país (para casas/moneda LATAM), **bankroll** (alimenta nuestro Kelly desde el
+inicio — hoy no lo pedimos), nivel de experiencia (adapta el nivel de explicación — encaja perfecto con
+nuestro diferencial "el porqué"), y atribución. Adaptado a nuestra estética. Deliverable: onboarding
+modal de 4–5 pasos + guardar bankroll por usuario.
+
+### NUEVO B · Segundo motor de ingreso: CPA de casas (Días 5–9) — alto ROI
+Página "Casas recomendadas / Promos" con enlaces de alta a casas LATAM con las que cerremos CPA (empezar
+por las que ya integramos: Cloudbet, y las locales). Alineado con el producto (más casas = más value) y
+es dinero nuevo sin construir motor. Deliverable: página Promos + gestión de deals + tracking de clics.
+
+### NUEVO C · Tercer motor de ingreso: B2B alertas white-label (Días 10–18)
+Ofrecer nuestras alertas (con la lectura del modelo, que ellos no tienen) a comunidades de Telegram/
+Discord LATAM, marca blanca. Reusar el motor de publicación que ya existe. Es recurrente y nos apalanca
+en el diferencial. Deliverable: piloto con 1–2 comunidades + panel de configuración de filtros/marca.
+
+### NUEVO D · Afiliados de usuario con "contenido que comparte" (Días 19–23)
+Refiere-y-gana con pago de saldo + tarjetas para "compartir una apuesta / mis stats / mi mes" que llevan
+enlace de referido sin parecer spam. Tenemos cimientos de referidos. Máquina de crecimiento viral.
+
+### NUEVO E · Superficies que nos faltan y ya tenemos medio hechas (Días 24–30)
+- **Dropping Odds** como vista propia (tenemos movimiento de línea en combate → generalizar a fútbol).
+- **Bet Checker** (pega una apuesta → valor sí/no, con nuestro de-vig).
+- **Registro/cartera** con calendario mensual de P&L + desglose por casa y deporte (tenemos CLV; falta
+  la UX de cartera y el calendario).
+- **"Solo sharps" + "línea de cuotas justas"** en nuestro value: mostrar el consenso de libros sharp,
+  no solo el número — sube la credibilidad de la señal.
+- **Páginas de cuotas por evento** (SEO) alimentadas por nuestro feed, en español.
+
+### Prioridad v2 (mi recomendación)
+1. **CPA de casas (B)** + **afiliados de usuario (D)** — dinero e crecimiento nuevos, bajo esfuerzo.
+2. **Onboarding con bankroll (A)** — sube activación y alimenta el Kelly, mismo producto.
+3. **SEO en español (Fase 3 Parte 1)** — moat compuesto.
+4. **B2B white-label (C)** — ingreso recurrente que apalanca el modelo.
+5. **Superficies (E)** — cierran brecha de paridad sin ser el centro.
+
+Lo que NO cambia: no perseguir su amplitud de deportes ni su promesa de "ganancia garantizada". Nuestro
+centro es el modelo, la inteligencia y el track público. Todo lo de arriba es empaquetado y monetización
+alrededor de ese centro — que es exactamente lo que ellos hacen bien y nosotros aún no.

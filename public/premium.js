@@ -150,7 +150,7 @@
       arch_star: 'Estrella', arch_clinical: 'Finalizador', arch_creator: 'Creador', arch_aerial: 'Amenaza aérea', arch_super_sub: 'Revulsivo', arch_engine: 'Motor', arch_set_piece: 'Balón parado',
       ax_production: 'Peligro', ax_volume: 'Remates', ax_accuracy: 'Puntería', ax_creation: 'Creación', ax_finishing: 'Definición', ax_presence: 'Presencia', ax_aerial: 'Aéreo', ax_attack_share: 'Peso ofensivo',
       pp_radar: 'Radar de scouting', pp_radar_sub: 'vs jugadores de su posición', ft_title: 'Destacados de hoy', ft_goal: 'P(gol)',
-      pp_empty: 'Perfil no disponible', pp_reading: 'Lectura GP', pp_sample: 'Muestra del torneo', pp_min: 'Minutos', pp_apps: 'Titular/PJ', pp_goals: 'Goles', pp_expmin: 'Min. típicos', pp_per90: 'Producción por 90 minutos', pp_shots: 'Remates', pp_sot: 'Al arco', pp_next: 'Próximo partido · proyección', pp_pgoal: 'P(gol)', pp_proj_shots: 'Remates proy.', pp_proj_min: 'Minutos proy.', pp_form: 'Partido a partido', pp_rival: 'Rival', pp_shots_h: 'REM', pp_sot_h: 'ARCO', pp_goals_h: 'GOL', pp_conf_high: 'Confianza alta', pp_conf_med: 'Confianza media', pp_conf_low: 'Confianza baja', pp_finding: 'Hallazgo de inteligencia', pp_mindist: 'Minutos · distribución', pp_pstart: 'P(titular)', pp_if_start: 'Si titular', pp_if_bench: 'Si banco', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'tit', sr_players: 'Jugadores', pp_markets: 'Mercados del jugador', pp_market: 'Mercado', pp_best: 'Mejor', pp_implied: 'Implícita', pp_books: 'casas', pp_mk_goal: 'Anota (anytime)', pp_h2h: 'Ante este rival', pp_share: '{pct}% del ataque de su equipo', pp_pctl: 'Top {p}% de su posición',
+      pp_empty: 'Perfil no disponible', pp_reading: 'Lectura GP', pp_sample: 'Muestra del torneo', pp_min: 'Minutos', pp_apps: 'Titular/PJ', pp_goals: 'Goles', pp_expmin: 'Min. típicos', pp_per90: 'Producción por 90 minutos', pp_shots: 'Remates', pp_sot: 'Al arco', pp_next: 'Próximo partido · proyección', pp_pgoal: 'P(gol)', pp_proj_shots: 'Remates proy.', pp_proj_min: 'Minutos proy.', pp_form: 'Partido a partido', pp_rival: 'Rival', pp_shots_h: 'REM', pp_sot_h: 'ARCO', pp_goals_h: 'GOL', pp_conf_high: 'Confianza alta', pp_conf_med: 'Confianza media', pp_conf_low: 'Confianza baja', pp_finding: 'Hallazgo de inteligencia', pp_mindist: 'Minutos · distribución', pp_pstart: 'P(titular)', pp_if_start: 'Si titular', pp_if_bench: 'Si banco', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'tit', sr_players: 'Jugadores', sr_loading_players: 'Cargando jugadores… intenta en unos segundos', pp_markets: 'Mercados del jugador', pp_market: 'Mercado', pp_best: 'Mejor', pp_implied: 'Implícita', pp_books: 'casas', pp_mk_goal: 'Anota (anytime)', pp_h2h: 'Ante este rival', pp_share: '{pct}% del ataque de su equipo', pp_pctl: 'Top {p}% de su posición',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
       lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
@@ -554,7 +554,7 @@
       arch_star: 'Star', arch_clinical: 'Clinical finisher', arch_creator: 'Creator', arch_aerial: 'Aerial threat', arch_super_sub: 'Super sub', arch_engine: 'Engine', arch_set_piece: 'Set piece specialist',
       ax_production: 'Threat', ax_volume: 'Shots', ax_accuracy: 'Accuracy', ax_creation: 'Creation', ax_finishing: 'Finishing', ax_presence: 'Presence', ax_aerial: 'Aerial', ax_attack_share: 'Attack share',
       pp_radar: 'Scouting radar', pp_radar_sub: 'vs players in his position', ft_title: "Today's featured players", ft_goal: 'P(goal)',
-      pp_empty: 'Profile not available', pp_reading: 'GP reading', pp_sample: 'Tournament sample', pp_min: 'Minutes', pp_apps: 'Starts/Apps', pp_goals: 'Goals', pp_expmin: 'Typical min.', pp_per90: 'Output per 90 minutes', pp_shots: 'Shots', pp_sot: 'On target', pp_next: 'Next match · projection', pp_pgoal: 'P(goal)', pp_proj_shots: 'Proj. shots', pp_proj_min: 'Proj. minutes', pp_form: 'Match by match', pp_rival: 'Opponent', pp_shots_h: 'SH', pp_sot_h: 'SOT', pp_goals_h: 'G', pp_conf_high: 'High confidence', pp_conf_med: 'Medium confidence', pp_conf_low: 'Low confidence', pp_finding: 'Intelligence finding', pp_mindist: 'Minutes · distribution', pp_pstart: 'P(starter)', pp_if_start: 'If starter', pp_if_bench: 'From bench', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'st', sr_players: 'Players', pp_markets: 'Player markets', pp_market: 'Market', pp_best: 'Best', pp_implied: 'Implied', pp_books: 'books', pp_mk_goal: 'To score (anytime)', pp_h2h: 'Vs this opponent', pp_share: '{pct}% of team attack', pp_pctl: 'Top {p}% of position',
+      pp_empty: 'Profile not available', pp_reading: 'GP reading', pp_sample: 'Tournament sample', pp_min: 'Minutes', pp_apps: 'Starts/Apps', pp_goals: 'Goals', pp_expmin: 'Typical min.', pp_per90: 'Output per 90 minutes', pp_shots: 'Shots', pp_sot: 'On target', pp_next: 'Next match · projection', pp_pgoal: 'P(goal)', pp_proj_shots: 'Proj. shots', pp_proj_min: 'Proj. minutes', pp_form: 'Match by match', pp_rival: 'Opponent', pp_shots_h: 'SH', pp_sot_h: 'SOT', pp_goals_h: 'G', pp_conf_high: 'High confidence', pp_conf_med: 'Medium confidence', pp_conf_low: 'Low confidence', pp_finding: 'Intelligence finding', pp_mindist: 'Minutes · distribution', pp_pstart: 'P(starter)', pp_if_start: 'If starter', pp_if_bench: 'From bench', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'st', sr_players: 'Players', sr_loading_players: 'Loading players… try again in a few seconds', pp_markets: 'Player markets', pp_market: 'Market', pp_best: 'Best', pp_implied: 'Implied', pp_books: 'books', pp_mk_goal: 'To score (anytime)', pp_h2h: 'Vs this opponent', pp_share: '{pct}% of team attack', pp_pctl: 'Top {p}% of position',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
       lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
@@ -916,7 +916,13 @@
     if (S.cpidx !== undefined || !clubsOn()) return;
     S.cpidx = null;
     fetch('/api/beta/clubs-player-index', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (d) {
-      if (!d || !d.players || !d.players.length) return;
+      if (!d || !d.players || !d.players.length) {
+        // 13-ago (bug "Pedri no carga"): en móvil el fetch del índice podía morir y S.cpidx quedaba null PARA
+        // SIEMPRE (sin jugadores en el buscador). Fallo → se libera el guard y el próximo uso del buscador
+        // reintenta (backoff 15s para no martillar).
+        setTimeout(function () { S.cpidx = undefined; }, 15000);
+        return;
+      }
       S.cpidx = { list: d.players };
     });
   }
@@ -1237,11 +1243,15 @@
         players = players.slice(0, 6);
       }
       // jugadores de CLUB (GAP-AUDIT 1: mismo índice pero multi-liga; link a #cplayer)
-      var cplayers = [];
+      var cplayers = [], cpLoading = false;
+      if (S.cpidx === undefined) loadClubsPlayerIndex(); // reintento si el fetch inicial falló (móvil)
       if (S.cpidx && S.cpidx.list) {
         cplayers = S.cpidx.list.filter(function (pp) { return pnorm(pp.name).indexOf(nq.replace(/[^a-z0-9]/g, '')) >= 0; });
         cplayers.sort(function (a, b) { return (b.min || 0) - (a.min || 0); });
         cplayers = cplayers.slice(0, 6);
+      } else if (clubsOn()) {
+        cpLoading = true; // índice aún cargando/reintentando → decirlo en vez de callar
+        setTimeout(function () { if ((inp.value || '').trim().toLowerCase() === q && S.cpidx && S.cpidx.list) run(); }, 1500);
       }
       var html = '';
       if (players.length) html += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + players.map(function (pp) { return '<div class="gx-sr-i" data-sr-player="' + esc(pp.pid) + '"><span class="fl">' + flag(pp.team) + '</span><b>' + esc(pp.name) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(pp.pos || '') + '</span></div>'; }).join('');
@@ -1255,6 +1265,7 @@
         if (cteams.length) html += '<div class="gx-sr-h">' + esc(t('cl_clubs')) + '</div>' + cteams.map(function (c) { return '<div class="gx-sr-i" data-sr-cteam="' + esc(c.lg + '|' + c.id) + '">' + clubBadge(c.id) + '<b style="margin-left:6px">' + esc(c.name) + '</b><span class="gx-spacer"></span><span class="gx-dim" style="font-size:10.5px">' + leagueLogo(c.lg) + esc(c.lgn) + '</span></div>'; }).join('');
       }
       if (cal.length) html += '<div class="gx-sr-h">' + esc(t('nav_matches')) + '</div>' + cal.map(function (c) { return '<div class="gx-sr-i" data-sr-match="' + esc(oidFor(c)) + '"><span class="fl">' + flag(c.home) + '</span><b>' + esc(teamName(c.home)) + '</b><span class="gx-dim" style="margin:0 4px">' + esc(t('vs')) + '</span><span class="fl">' + flag(c.away) + '</span><b>' + esc(teamName(c.away)) + '</b><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(fmtDate(c.datetime)) + '</span></div>'; }).join('');
+      if (cpLoading && !cplayers.length) html += '<div class="gx-sr-empty gx-dim">' + esc(t('sr_loading_players')) + '</div>';
       if (!html) html = '<div class="gx-sr-empty gx-dim">' + esc(t('e_na')) + '</div>';
       res.innerHTML = html; res.hidden = false;
     };

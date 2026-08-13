@@ -11020,9 +11020,19 @@ const server = http.createServer(async (req, res) => {
                 players.push({ pid: pl.pid, name: pl.name, team: pl.team, league, league_name: lname, pos: pl.pos, min: pl.minutes, photo: ph[pl.pid] ? 1 : 0 });
               }
             }
-            global._clubsPidxCache = { at: Date.now(), body: { players, count: players.length } };
+            // 13-ago (bug Pedri/Yamal "no cargan" en móvil): el índice pesa ~3.2MB sin comprimir — en LTE el
+            // fetch moría o tardaba y el buscador quedaba sin jugadores. Se cachea también GZIPEADO (~700KB).
+            const bodyStr = JSON.stringify({ players, count: players.length });
+            let gz = null; try { gz = require('zlib').gzipSync(bodyStr); } catch { /* sin gzip */ }
+            global._clubsPidxCache = { at: Date.now(), body: { players, count: players.length }, str: bodyStr, gz };
           }
-          return json(res, 200, global._clubsPidxCache.body);
+          const C = global._clubsPidxCache;
+          if (C.gz && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Encoding': 'gzip', 'Cache-Control': 'private, max-age=600' });
+            return res.end(C.gz);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=600' });
+          return res.end(C.str || JSON.stringify(C.body));
         } catch (e) { return json(res, 200, { players: [], count: 0 }); }
       }
       // INTELIGENCIA POR JUGADOR (punto 1 roadmap 8-jul): perfil completo — foto, muestra, tasas por 90',

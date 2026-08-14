@@ -40,6 +40,27 @@
   Copas: cobertura parcial de equipos sin mapa AF (ecuatorianos/peruanos etc.) — se completa cuando el
   data pass diario les cree entradas. Lecturas del sistema (picks) llegan solas con el upgrade de créditos.
 
+## 🥊 BOXEO — RESULTADOS AUTOMÁTICOS 14-ago (el panel "Finalizados" ya se llena solo)
+- **Qué estaba roto**: el panel de Finalizados de boxeo estaba SIEMPRE vacío. UFC/MMA se nutren del
+  scoreboard de ESPN y **ESPN no tiene boxeo** (re-verificado 14-ago: sport `boxing` → 400 "Invalid sport");
+  la única vía automática que quedaba era el `/scores` de The Odds API, que vive de créditos agotados. O sea:
+  una pelea de boxeo nunca pasaba a "disputada".
+- **Cómo se resolvió**: `combat-engine/boxing-results.js` — versión EN VIVO del parser de Wikipedia que ya
+  construyó todo el histórico de boxeo (tabla "Professional record": resultado, rival, método, round, fecha;
+  se actualiza en horas). Tres piezas en server.js: `boxingPendingTrack()` anota cada pelea de la agenda
+  (hace falta porque el feed de cuotas la borra en cuanto ocurre), `boxingResultsSync()` pasa cada 30min por
+  las que ya terminaron (+4h de gracia) y pregunta, y el merge en `combatLoad()` mete lo resuelto en `C.own`
+  **y en el pool** (si no, el panel enlazaría a un 404 al abrir la pelea).
+- **Nunca inventa**: fila única con rival que matchea y fecha ±3 días, o no resuelve. Backoff 40min las
+  primeras 4 tentativas y 3h después; a los 30 días se abandona. Cachea el título de Wikipedia por boxeador
+  (incluido el "no existe") para no pagar la búsqueda cada ciclo.
+- **Bonus**: liquida picks de boxeo **sin gastar un crédito** y con método+round, así que también cierran
+  METHOD y ROUNDS (con `/scores` —marcador pelado— era imposible). Arreglado de paso: ROUNDS usaba rounds de
+  5 minutos (MMA) para liquidar boxeo, que son de 3.
+- **Operación**: `GET/POST /api/internal/boxing-results?key=$GP_EXPORT_KEY` (POST fuerza, `&max=`, `&grace_h=`).
+  Apagable con `GP_BOXING_RESULTS=false`. Corre fuera del gate de picks (es producto, no monitor).
+  Arranca con las carteleras del 15/16-ago en adelante — antes de eso no hay nada anotado.
+
 ## 🥊 R6 COMBATE 12-ago — profundidad (orden Alexis) · VEREDICTO DEL BACKTEST
 - **Interacciones de matchup** (grap/power/absorb/age5/subth) construidas en `combat-engine/ratings.js` y
   backtesteadas PAREADAS (`scripts/combat-backtest-v2.js`, único harness que alimenta las stats finas):

@@ -7470,6 +7470,15 @@ function combatLoad(org) {
   const rd = (kind, name) => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `${kind}-${name}.json`), 'utf8')); } catch { return null; } };
   const own = rd('fights', O.file) || { fights: [], events: {} };
   C.own = own.fights || [];                      // el archivo PROPIO de la org: manda en ranking y conteos
+  // BOXEO: resultados frescos resueltos en caliente (db.boxingResults, ver boxingResultsSync). El archivo
+  // del repo se congela en la fecha del último harvest; esto es la punta viva que hace que el panel de
+  // "Finalizados" muestre las peleas de esta semana. Dedup por comp_id: si el harvest ya la trajo, manda él.
+  let liveBox = [];
+  if (O.file === 'boxing') {
+    const have = new Set(C.own.map(f => f.comp_id));
+    liveBox = Object.values(db.boxingResults || {}).filter(f => f && f.comp_id && !have.has(f.comp_id));
+    if (liveBox.length) C.own = C.own.concat(liveBox);
+  }
   // POOL de rating: unión deduplicada por comp_id de los archivos de su deporte (ver COMBAT_ORGS.pool)
   const seenC = new Set(), pooled = [];
   C.fighters = {};
@@ -7477,6 +7486,10 @@ function combatLoad(org) {
     const fg = rd('fights', nm); if (fg) for (const f of (fg.fights || [])) { if (seenC.has(f.comp_id)) continue; seenC.add(f.comp_id); pooled.push(f); }
     const pf = rd('fighters', nm); if (pf) for (const [k, v] of Object.entries(pf)) if (!C.fighters[k]) C.fighters[k] = v;
   }
+  // los resultados frescos de boxeo también entran al POOL: es de ahí que sale el cockpit de una pelea ya
+  // disputada (/api/combat/fight busca en C.fights), así que sin esto el panel de Finalizados enlazaría a
+  // un 404. De paso el Elo cuenta con la pelea de anteayer en vez de esperar al próximo harvest.
+  for (const f of liveBox) { if (!seenC.has(f.comp_id)) { seenC.add(f.comp_id); pooled.push(f); } }
   // ORDEN CANÓNICO DEL POOL DE ENTRENAMIENTO (2-ago). ESPN lista PRIMERO al favorito y f1 gana el 59.8%
   // de las peleas. El engine es antisimétrico SIN intercepto A PROPÓSITO (para ser inmune al orden), así que
   // no puede expresar ese 59.8%: el SGD compensa deformando los pesos y el resultado es una probabilidad
@@ -9115,6 +9128,7 @@ async function combatBoxingUpcoming(C) {
       });
     }
     C.upcoming = restored;
+    boxingPendingTrack(restored); // aunque el feed falle, lo que sí sabemos que se pelea queda anotado
     return false; // el feed NO vino: el diff de cartelera (cardWatch) no debe correr sobre la agenda restaurada
   }
   const sl = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -9165,8 +9179,109 @@ async function combatBoxingUpcoming(C) {
   });
   // agenda buena → persistir (el fallback de arriba la restaura tras deploys o cortes del feed)
   db.boxingAgenda = { at: new Date().toISOString(), upcoming: C.upcoming };
+  boxingPendingTrack(C.upcoming);
   save();
   return true;
+}
+// ===== BOXEO: RESULTADOS (14-ago) ============================================================================
+// El panel "Finalizados" de boxeo estaba SIEMPRE vacío: UFC/MMA se nutren del scoreboard de ESPN y ESPN no
+// tiene boxeo (re-verificado hoy: sport 'boxing' → 400 "Invalid sport"). La única vía automática que había
+// —el /scores de The Odds API— vive de créditos que hoy están agotados, así que en la práctica una pelea de
+// boxeo NUNCA pasaba a disputada. Se cierra el ciclo con la MISMA fuente que construyó todo el histórico de
+// boxeo: la tabla de "Professional record" de Wikipedia (ver combat-engine/boxing-results.js).
+//
+// CÓMO FUNCIONA, en tres piezas que se pueden leer por separado:
+//   (1) boxingPendingTrack — cada refresco de agenda ANOTA las peleas próximas en db.boxingPending. Hace
+//       falta porque la agenda nace del feed de cuotas, que borra la pelea EN CUANTO ocurre: sin este
+//       registro, a las pocas horas ya no sabríamos que existió.
+//   (2) boxingResultsSync — pasa cada 30min por las anotadas cuyo horario ya pasó (+4h de gracia: una
+//       cartelera dura toda la noche) y les pregunta a Wikipedia. Resuelve o no resuelve; jamás inventa.
+//   (3) el merge en combatLoad — lo resuelto entra a C.own, que es de donde lee /api/combat/results.
+// Además liquida picks de boxeo sin gastar un crédito (ver settleCombatPicks).
+// PERSISTE EN db (disco de Render), no en data/combat/*.json: esos archivos vienen del repo y un deploy los
+// reescribiría. El backfill de Wikipedia sigue siendo el dueño del histórico; esto es solo la punta viva.
+function boxingPendingTrack(upcoming) {
+  const P = db.boxingPending = db.boxingPending || {};
+  let n = 0;
+  for (const ev of (upcoming || [])) {
+    if (ev.date_tbd) continue;                       // placeholder 31-dic: no es una fecha, no se espera resultado
+    for (const ft of (ev.fights || [])) {
+      const cid = String(ft.comp_id || '').replace(/^bx-/, '');
+      if (!cid || !ft.f1 || !ft.f2) continue;
+      const at = ft._at || ev.date;
+      const prev = P[cid];
+      if (prev) { prev.date = at || prev.date; prev.event = ev.name || prev.event; continue; }
+      P[cid] = { cid, date: at || ev.date, event: ev.name || null, card_id: ev.id || null, main: !!ft.main,
+        weight: ft.weight || null, rounds: ft.rounds || null,
+        f1: { id: ft.f1.id, name: ft.f1.name }, f2: { id: ft.f2.id, name: ft.f2.name },
+        tries: 0, last_try: null, added: new Date().toISOString() };
+      n++;
+    }
+  }
+  // poda: lo muy viejo ya no se reintenta ni ocupa espacio (lo resuelto vive en db.boxingResults)
+  const floor = Date.now() - 45 * 864e5;
+  for (const [k, v] of Object.entries(P)) if (Date.parse(v.date || 0) < floor) delete P[k];
+  return n;
+}
+// título de Wikipedia de un boxeador: primero NUESTRO índice (fighters-boxing.json ya trae `wiki`), y si no
+// está —las carteleras traen prospectos y boxeo femenino que el harvest no cubrió— se busca UNA vez y se
+// cachea el resultado (incluido el "no existe", para no volver a pagar la búsqueda cada media hora).
+async function boxingWikiTitle(C, side) {
+  const BR = require('./combat-engine/boxing-results');
+  const fromIdx = side.id && C.fighters && C.fighters[side.id] && C.fighters[side.id].wiki;
+  if (fromIdx) return fromIdx;
+  const W = db.boxingWiki = db.boxingWiki || {};
+  const k = BR.normName(side.name);
+  if (!k) return null;
+  if (Object.prototype.hasOwnProperty.call(W, k)) return W[k] ? W[k].title : null;
+  const title = await BR.searchTitle(side.name).catch(() => null);
+  W[k] = title ? { title, at: new Date().toISOString() } : null;
+  return title;
+}
+async function boxingResultsSync({ max = 8, graceH = 4, force = false } = {}) {
+  const BR = require('./combat-engine/boxing-results');
+  const C = combatLoad('boxing');
+  // refresca la agenda antes de mirar: así las peleas quedan anotadas aunque nadie abra la vista de boxeo
+  // (sin esto, en un día sin tráfico a la pestaña la pelea pasaría sin que nadie la hubiera visto nunca)
+  try { await combatRefreshUpcoming(C); } catch { /* la agenda persistida alcanza */ }
+  const P = db.boxingPending || {}, R = db.boxingResults = db.boxingResults || {};
+  const now = Date.now();
+  const due = Object.values(P).filter(p => {
+    if (R[p.cid]) return false;
+    const t = Date.parse(p.date || 0);
+    if (!isFinite(t) || t > now - graceH * 3600e3) return false;   // aún no terminó (o no hay fecha)
+    if (now - t > 30 * 864e5) return false;                        // 30 días sin aparecer: Wikipedia no la va a traer
+    if (force) return true;
+    // backoff: agresivo las primeras horas (Wikipedia suele publicar el mismo día), luego cada 3h
+    const wait = (p.tries || 0) < 4 ? 40 * 60e3 : 3 * 3600e3;
+    return !p.last_try || (now - Date.parse(p.last_try)) > wait;
+  }).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0)).slice(0, max);
+  const out = { due: due.length, resolved: 0, pending: 0, errors: 0, tracked: Object.keys(P).length };
+  if (!due.length) { save(); return out; }
+  for (const p of due) {
+    p.tries = (p.tries || 0) + 1; p.last_try = new Date().toISOString();
+    let r;
+    try {
+      const [w1, w2] = [await boxingWikiTitle(C, p.f1), await boxingWikiTitle(C, p.f2)];
+      r = await BR.resolveBout({ a: { name: p.f1.name, wiki: w1 }, b: { name: p.f2.name, wiki: w2 }, date: p.date });
+    } catch { r = undefined; }
+    if (r === undefined) { out.errors++; continue; }
+    if (r === null) { out.pending++; continue; }
+    const win1 = r.outcome === 'a', win2 = r.outcome === 'b';
+    R[p.cid] = {
+      comp_id: p.cid, event_id: null, event: p.event || 'Boxeo', date: (r.date || String(p.date).slice(0, 10)) + 'T00:00Z',
+      weight: p.weight || null, rounds_sched: r.sched_rounds || p.rounds || null,
+      f1: { id: p.f1.id, name: p.f1.name, winner: win1 },
+      f2: { id: p.f2.id, name: p.f2.name, winner: win2 },
+      end_round: r.end_round || null, end_clock: r.end_clock || null,
+      completed: true, method: r.method || null, lg: 'boxing', src: r.src, at: new Date().toISOString(),
+    };
+    out.resolved++;
+    console.log('[boxing-results]', p.f1.name, 'vs', p.f2.name, '·', r.outcome, '·', (r.method || {}).display || '?', '·', r.src);
+  }
+  if (out.resolved || out.errors || out.pending) save();
+  if (out.resolved) { const Cb = (global._combat || {}).boxing; if (Cb) Cb.at = 0; } // fuerza recarga → entran a C.own
+  return out;
 }
 async function combatDoRefresh(C) {
   let ok = false;               // el diff de cartelera solo se corre si el feed VINO (ver combatCardWatch)
@@ -9756,6 +9871,19 @@ async function settleCombatPicks() {
   // (combatPairMatch, candidato único o nada — regla matcher). Solo liquida con marcador numérico desigual;
   // todo lo raro (empate, NC, feed sin completar) lo resuelve el VOID de 72h que ya existe.
   const boxPend = pend.filter(p2 => p2.league === 'boxing');
+  // 14-ago: PRIMERO los resultados ya resueltos por Wikipedia (db.boxingResults, ver boxingResultsSync).
+  // Traen ganador, método Y round — o sea que también liquidan METHOD/ROUNDS, que con el /scores de la Odds
+  // API (marcador pelado) era imposible— y no gastan un solo crédito. Lo de abajo queda como 2ª fuente.
+  if (boxPend.length) {
+    const mcOf = (m) => { const n = String((m || {}).name || '').toLowerCase(); return /^(ko|tko)$/.test(n) ? 'ko' : n === 'decision' ? 'dec' : null; };
+    for (const p2 of boxPend) {
+      const compId2 = p2.event.canonical_event_id.replace(/^cb-/, '');
+      const w = (db.boxingResults || {})[compId2];
+      if (!w || results[compId2]) continue;
+      const winner_id = w.f1.winner ? w.f1.id : w.f2.winner ? w.f2.id : null; // empate/NC → sin ganador → VOID
+      results[compId2] = { winner_id, event_id: null, period: w.end_round || null, clock: w.end_clock || null, method_class: mcOf(w.method) };
+    }
+  }
   if (boxPend.length) {
     try {
       const okey = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
@@ -9805,8 +9933,8 @@ async function settleCombatPicks() {
     if (r) {
       if (!r.winner_id) { finish('VOID', 0); out.void++; }
       else if (p.family === 'METHOD') {
-        const res2 = await fetchMethod(p, r);
-        const mc = require('./combat-engine/ratings').methodClass(res2 || {});
+        // boxeo trae el método en el propio resultado (Wikipedia); MMA lo pide al core API de ESPN
+        const mc = r.method_class || require('./combat-engine/ratings').methodClass((await fetchMethod(p, r)) || {});
         if (!mc) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; } }
         else {
           const [side4, meth4] = p.selection_code.split('_');
@@ -9815,13 +9943,15 @@ async function settleCombatPicks() {
           if (winOk) { finish('WIN', p.best_odds - 1); out.won++; } else { finish('LOSS', -1); out.lost++; }
         }
       } else if (p.family === 'ROUNDS') {
-        const res2 = await fetchMethod(p, r);
-        const mc = require('./combat-engine/ratings').methodClass(res2 || {});
+        const mc = r.method_class || require('./combat-engine/ratings').methodClass((await fetchMethod(p, r)) || {});
         if (!mc && !r.period) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; } }
         else {
-          const sched2 = (p.event.rounds || 3) * 5;
-          const elapsed = mc === 'dec' ? sched2 : ((r.period || 1) - 1) * 5 + clockMin2(r.clock);
-          const overWon = elapsed > p.line * 5;
+          // el round dura 5 minutos en MMA y 3 en boxeo: con 5 fijos, un "over 4.5 rounds" de boxeo se
+          // liquidaba contra un reloj que no existe (la línea también está en rounds, no en minutos).
+          const rlen = p.league === 'boxing' ? 3 : 5;
+          const sched2 = (p.event.rounds || (p.league === 'boxing' ? 12 : 3)) * rlen;
+          const elapsed = mc === 'dec' ? sched2 : ((r.period || 1) - 1) * rlen + clockMin2(r.clock);
+          const overWon = elapsed > p.line * rlen;
           const winOk = (p.side === 'over') === overWon;
           if (winOk) { finish('WIN', p.best_odds - 1); out.won++; } else { finish('LOSS', -1); out.lost++; }
         }
@@ -9912,6 +10042,13 @@ const CB_PUBLIC_SINCE = () => Date.parse(process.env.GP_COMBAT_PUBLIC_SINCE || '
 if (combatPicksOn()) {
   setTimeout(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 150 * 1000);
   setInterval(() => buildCombatPicks().then(() => settleCombatPicks()).catch(() => { }), 30 * 60 * 1000);
+}
+// Resultados de boxeo: FUERA del gate de picks a propósito — el panel de "Finalizados" es producto, no
+// monitor de picks, y tiene que llenarse aunque las picks de combate estén apagadas. Una pelea que ya
+// terminó se resuelve en el primer ciclo posterior (Wikipedia suele publicar el mismo día).
+if (String(process.env.GP_BOXING_RESULTS || 'true') !== 'false') {
+  setTimeout(() => boxingResultsSync().then(r => { if (r && (r.resolved || r.due)) console.log('[boxing-results]', JSON.stringify(r)); }).catch(() => { }), 200 * 1000);
+  setInterval(() => boxingResultsSync().then(r => { if (r && r.resolved) console.log('[boxing-results]', JSON.stringify(r)); }).catch(() => { }), 30 * 60 * 1000);
 }
 // ===== OBSERVER DE COMBATE (R2b, 28-jul): la capa de noticias que mueve las líneas =========================
 // La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es CAMP/LESIÓN/PESAJE/REEMPLAZO.
@@ -13064,6 +13201,25 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, await clubsSeedEventsAF({ force: true, hours: hrs }).catch(e => ({ error: e.message })));
       }
       return json(res, 200, { last: _seedOut, events_in_map: Object.keys(db.clubsQuoteEvents || {}).length });
+    }
+    if (p === '/api/internal/boxing-results') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        const mx = Math.max(1, Math.min(40, Number(url.searchParams.get('max')) || 8));
+        const gh = Math.max(0, Math.min(48, Number(url.searchParams.get('grace_h')) || 4));
+        return json(res, 200, await boxingResultsSync({ max: mx, graceH: gh, force: true }).catch(e => ({ error: e.message })));
+      }
+      const P2 = db.boxingPending || {}, R2 = db.boxingResults || {};
+      const nowB = Date.now();
+      return json(res, 200, {
+        tracked: Object.keys(P2).length, resolved: Object.keys(R2).length,
+        waiting: Object.values(P2).filter(x => !R2[x.cid] && Date.parse(x.date || 0) < nowB)
+          .sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0)).slice(0, 20)
+          .map(x => ({ cid: x.cid, date: x.date, bout: `${x.f1.name} vs ${x.f2.name}`, tries: x.tries || 0, last_try: x.last_try || null })),
+        last: Object.values(R2).sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))).slice(0, 20)
+          .map(x => ({ cid: x.comp_id, date: x.date, event: x.event, bout: `${x.f1.name} vs ${x.f2.name}`, winner: x.f1.winner ? x.f1.name : x.f2.winner ? x.f2.name : 'empate/NC', method: (x.method || {}).display || null, round: x.end_round, src: x.src })),
+      });
     }
     if (p === '/api/internal/clubs-quotes') {
       const xk = process.env.GP_EXPORT_KEY || '';

@@ -3522,6 +3522,75 @@ function cloudbetNameMatch(a, b) { // contains bidireccional sobre la forma redu
   if (!x || !y) return false;
   return x === y || (x.length >= 4 && y.length >= 4 && (x.includes(y) || y.includes(x)));
 }
+// ===== SIEMBRA DE EVENTOS DESDE API-FOOTBALL (14-ago) — INDEPENDENCIA DE THE ODDS API ======================
+// PROBLEMA: db.clubsQuoteEvents (el mapa de partidos contra el que matchean TODOS los venues: Cloudbet,
+// Myriad, Polymarket, Kalshi) lo poblaba SOLO el sweep de The Odds API. Sin sus créditos, el mapa se vacía
+// → ningún venue puede escribir cuotas → cero picks, aunque Cloudbet esté cotizando tarjetas y córners.
+// SOLUCIÓN: sembrar el mapa con los fixtures de API-Football (plan Ultra, 75k/día — 1 request por liga).
+// Con esto el pipeline COMPLETO (cuotas → mercados → picks → ejecutor en la sombra) corre sin The Odds API.
+// Los nombres se canonizan a los de NUESTRO roster cuando resuelven (ceid estable); si no, el nombre AF.
+let _seedRunning = false, _seedLast = 0, _seedOut = null;
+async function clubsSeedEventsAF({ force = false, hours = 96 } = {}) {
+  const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+  if (!afk) return { skipped: 'no_af_key' };
+  if (_seedRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _seedLast < 60 * 60e3) return { skipped: 'throttle' };
+  _seedRunning = true;
+  const out = { leagues: 0, fixtures: 0, seeded: 0, dup: 0, started: new Date().toISOString() };
+  try {
+    if (!global._clubsRatings) {
+      try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); }
+      catch { global._clubsRatings = { leagues: {} }; }
+    }
+    const RT = clubsEnsureCups(global._clubsRatings);
+    const { stableGoalEventId } = require('./goal-engine/eventKey');
+    db.clubsQuoteEvents = db.clubsQuoteEvents || {};
+    const host = process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io';
+    const now = Date.now(), until = now + hours * 3600e3;
+    // índice de pares ya presentes (evita duplicar un partido que The Odds API ya sembró con otros nombres)
+    const pairKey = (lg, a, b) => lg + '|' + [clubNorm(a), clubNorm(b)].sort().join('~');
+    const have = new Set(Object.values(db.clubsQuoteEvents).map(m => pairKey(m.league, m.home, m.away)));
+    for (const [key, L] of Object.entries(RT.leagues || {})) {
+      const afLg = CLUB_AF_LEAGUE[key];
+      if (!afLg || L.starts) continue;
+      let resp = [];
+      try {
+        const r = await fetch(`https://${host}/fixtures?league=${afLg}&next=25`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(12000) });
+        const j = r.ok ? await r.json().catch(() => null) : null;
+        resp = (j && j.response) || [];
+      } catch { continue; }
+      out.leagues++;
+      for (const fx of resp) {
+        const th = fx.teams && fx.teams.home, ta = fx.teams && fx.teams.away, fi = fx.fixture;
+        if (!th || !ta || !fi || !fi.date) continue;
+        const kt = Date.parse(fi.date);
+        if (!(kt > now - 3 * 3600e3 && kt < until)) continue;
+        out.fixtures++;
+        // canonizar al nombre de nuestro roster cuando resuelve → ceid estable entre pasadas
+        const hTm = L.ratings[`tm_af${th.id}`] ? `tm_af${th.id}` : resolveClubId(key, th.name);
+        const aTm = L.ratings[`tm_af${ta.id}`] ? `tm_af${ta.id}` : resolveClubId(key, ta.name);
+        const hName = (hTm && L.ratings[hTm] && L.ratings[hTm].name) || th.name;
+        const aName = (aTm && L.ratings[aTm] && L.ratings[aTm].name) || ta.name;
+        const pk = pairKey(key, hName, aName);
+        if (have.has(pk)) { out.dup++; continue; }
+        const ceid = stableGoalEventId('cl:' + key + ':' + hName, 'cl:' + key + ':' + aName);
+        const prev = db.clubsQuoteEvents[ceid];
+        db.clubsQuoteEvents[ceid] = {
+          league: key, league_name: L.name || key, home: hName, away: aName,
+          kickoff: fi.date, oa_id: (prev && prev.oa_id) || null, af_fixture: fi.id, src: 'af', at: Date.now(),
+        };
+        have.add(pk);
+        if (!prev) out.seeded++;
+      }
+      await new Promise(r2 => setTimeout(r2, 150));
+    }
+    if (out.seeded || out.fixtures) save();
+    _seedLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _seedRunning = false; out.finished = new Date().toISOString(); _seedOut = out; }
+  console.log('[clubs-seed-af]', JSON.stringify(out));
+  return out;
+}
 // ===== MYRIAD (prediction market) — VENUE EJECUTABLE (13-ago, pedido de Alexis) ============================
 // Ya lo teníamos como referencia del consenso EN MEMORIA (mergeMyriad); ahora sus precios 1X2 también se
 // PERSISTEN al archivo de cuotas con sportsbook_code='myriad' → el ejecutor en la sombra (y value/arb) lo ven
@@ -12975,6 +13044,17 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { changed: changed.length, detail: changed });
     }
     // CUOTAS DE CLUBES (misma key): GET = estado del sweep; POST = forzarlo ya (salta throttle).
+    // SIEMBRA AF (14-ago): POST fuerza la siembra del mapa de eventos desde API-Football (independiente de
+    // The Odds API). GET devuelve el último resultado. ?hours= amplía la ventana (default 96h).
+    if (p === '/api/internal/clubs-seed') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        const hrs = Math.max(6, Math.min(240, Number(url.searchParams.get('hours')) || 96));
+        return json(res, 200, await clubsSeedEventsAF({ force: true, hours: hrs }).catch(e => ({ error: e.message })));
+      }
+      return json(res, 200, { last: _seedOut, events_in_map: Object.keys(db.clubsQuoteEvents || {}).length });
+    }
     if (p === '/api/internal/clubs-quotes') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -16533,6 +16613,9 @@ server.listen(PORT, () => {
   // no-op). Throttle interno 20min; el intervalo pregunta cada 10min. Corre tras el sweep de cuotas (necesita
   // db.clubsQuoteEvents ya poblado para matchear).
   if (process.env.CLOUDBET_API_KEY) {
+    // siembra AF PRIMERO (120s): sin eventos en el mapa, ningún venue tiene contra qué matchear
+    setTimeout(() => { clubsSeedEventsAF().catch(e => console.error('[clubs-seed-af]', e.message)); }, 120 * 1000);
+    setInterval(() => { clubsSeedEventsAF().catch(e => console.error('[clubs-seed-af]', e.message)); }, 3 * 3600 * 1000);
     setTimeout(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 210 * 1000);
     setInterval(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 10 * 60 * 1000);
     setTimeout(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 240 * 1000);

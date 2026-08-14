@@ -62,19 +62,27 @@ function normalizeEvent(e) {
     const h = bestPrice(sm.selections, s => s.outcome === 'home'), d = bestPrice(sm.selections, s => s.outcome === 'draw'), a = bestPrice(sm.selections, s => s.outcome === 'away');
     if (h > 1 && a > 1) out.markets.h2h = { home: h, draw: d || null, away: a };
   }
-  const tg = M['soccer.total_goals'];
-  if (tg && tg.submarkets) {
-    const sm = tg.submarkets['period=ft'] || Object.values(tg.submarkets)[0] || {};
-    const byLine = {}; // total=X → {over,under}
+  // parser común de mercados over/under por línea (goles, córners, tarjetas — mismo shape de Cloudbet)
+  const parseTotals = (mk) => {
+    if (!mk || !mk.submarkets) return [];
+    const sm = mk.submarkets['period=ft'] || Object.values(mk.submarkets)[0] || {};
+    const byLine = {};
     for (const s of (sm.selections || [])) {
       const line = Number(String(s.params || '').match(/total=([\d.]+)/)?.[1]);
       const p = Number(s.price);
       if (!(line > 0) || !(p > 1)) continue;
       (byLine[line] = byLine[line] || {})[s.outcome] = p;
     }
-    for (const line of Object.keys(byLine)) { const o = byLine[line]; if (o.over > 1 && o.under > 1) out.markets.totals.push({ line: Number(line), over: o.over, under: o.under }); }
-  }
-  return (out.markets.h2h || out.markets.totals.length) ? out : null;
+    const rows = [];
+    for (const line of Object.keys(byLine)) { const o = byLine[line]; if (o.over > 1 && o.under > 1) rows.push({ line: Number(line), over: o.over, under: o.under }); }
+    return rows;
+  };
+  out.markets.totals = parseTotals(M['soccer.total_goals']);
+  // 13-ago (ejecutor en la sombra a precio EJECUTABLE): córners y tarjetas de Cloudbet — son los mercados
+  // donde vive el segmento en verificación (cards-under). Claves ausentes → arrays vacíos, cero ruido.
+  out.markets.corners = parseTotals(M['soccer.total_corners']);
+  out.markets.cards = parseTotals(M['soccer.total_bookings'] || M['soccer.total_cards']);
+  return (out.markets.h2h || out.markets.totals.length || out.markets.corners.length || out.markets.cards.length) ? out : null;
 }
 
 // fetchCloudbetSoccer() → [ eventos normalizados con precios ]. Sin key → []. Cachea 60s. Nunca lanza.

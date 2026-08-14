@@ -3556,12 +3556,18 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
           out.quotes++;
         }
       }
-      // totales (over/under; simétricos, el swap no afecta)
-      for (const t of cb.markets.totals) {
+      // totales (over/under; simétricos, el swap no afecta) — goles + córners + tarjetas (13-ago: los dos
+      // últimos son los mercados EJECUTABLES del ejecutor en la sombra; sin ellos la capacidad real es 0)
+      const totFams = [
+        { rows: cb.markets.totals, fam: 'match_total', idp: 'TOTAL_GOALS' },
+        { rows: cb.markets.corners || [], fam: 'corners_total', idp: 'CORNERS' },
+        { rows: cb.markets.cards || [], fam: 'cards_total', idp: 'CARDS' },
+      ];
+      for (const tf of totFams) for (const t of tf.rows) {
         if (!(t.line > 0)) continue;
         for (const side of ['over', 'under']) {
           const o = t[side]; if (!(o > 1)) continue;
-          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: 'match_total', line: t.line, side, market_id: 'TOTAL_GOALS_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), odds_decimal: o, implied_probability: 1 / o, quote_status: 'open', is_live: false }).catch(() => {});
+          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: tf.fam, line: t.line, side, team_scope: tf.fam === 'match_total' ? undefined : 'total', market_id: tf.idp + '_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), odds_decimal: o, implied_probability: 1 / o, quote_status: 'open', is_live: false }).catch(() => {});
           out.quotes++;
         }
       }
@@ -8482,10 +8488,38 @@ function shadowStake(S, p, odds) {
   const st = Math.min(SHADOW_STAKE_CAP, f || SHADOW_STAKE_CAP) * S.bankroll;
   return Math.max(SHADOW_STAKE_MIN, Math.round(st * 100) / 100);
 }
-function shadowSweep() {
+// PRECIO EJECUTABLE (13-ago, corrección de Alexis: "a la mejor cuota no tiene sentido"): la sombra solo
+// "apuesta" al precio VIVO de las casas que podemos conectar por API (GP_SHADOW_EXEC_BOOKS, default
+// cloudbet+polymarket), leído del archivo de cuotas (frescura ≤60 min). Sin cuota ejecutable → la señal
+// se registra como NO EJECUTABLE — eso ES el dato de capacidad real que queremos medir.
+const SHADOW_EXEC_BOOKS = () => String(process.env.GP_SHADOW_EXEC_BOOKS || 'cloudbet,polymarket').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const SHADOW_FAM_MAP = { CARDS: 'cards_total', CORNERS: 'corners_total', GOALS: 'match_total', SOLID: 'match_winner' };
+async function shadowExecQuote(p) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return null;
+  const ceid = p.event && p.event.canonical_event_id; if (!ceid) return null;
+  const fam = SHADOW_FAM_MAP[p.family]; if (!fam) return null;
+  const books = SHADOW_EXEC_BOOKS(); if (!books.length) return null;
+  try {
+    const side = String(p.side || p.selection_code || '').toLowerCase();
+    const q = fam === 'match_winner'
+      ? await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND lower(side)=$3 AND lower(sportsbook_code)=ANY($4) AND observed_at > now() - interval '60 minutes' ORDER BY odds_decimal DESC LIMIT 1`, [ceid, fam, side, books])
+      : await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND lower(side)=$4 AND lower(sportsbook_code)=ANY($5) AND observed_at > now() - interval '60 minutes' ORDER BY odds_decimal DESC LIMIT 1`, [ceid, fam, p.line, side, books]);
+    const r = (q.rows || [])[0];
+    return (r && r.o > 1) ? { odds: r.o, book: r.b } : null;
+  } catch { return null; }
+}
+async function shadowSweep() {
   const S = shadowInit();
-  let placed = 0, settled = 0;
-  const seen = new Set(S.bets.map(b => b.pick_id));
+  S.unexec = S.unexec || []; S.unexec_count = S.unexec_count || 0;
+  // enmienda TRANSPARENTE de la regla (13-ago, corrección de Alexis, con 0 apuestas colocadas): la entrada
+  // pasa de best_odds a precio EJECUTABLE. Anotada, nunca silenciosa — el mismo estándar del track público.
+  if (S.cfg[0] && !S.cfg[0].amended_exec) {
+    S.cfg[0].amended_exec = { at: new Date().toISOString(), change: 'entrada al precio EJECUTABLE (GP_SHADOW_EXEC_BOOKS: cloudbet/polymarket) en vez de la mejor cuota del mercado; señal sin mercado ejecutable = registrada como no-ejecutable. Cambio hecho con 0 apuestas colocadas.' };
+    save();
+  }
+  let placed = 0, settled = 0, unexec = 0;
+  const seen = new Set(S.bets.map(b => b.pick_id).concat(S.unexec.map(u => u.pick_id)));
   const now = Date.now();
   for (const seg of S.cfg) {
     if (seg.sport !== 'futbol') continue; // v1: clubes; combate entra cuando su segmento pase el gate
@@ -8495,12 +8529,27 @@ function shadowSweep() {
       const ko = Date.parse((p.event && p.event.kickoff_at) || 0);
       if (!(ko > now)) continue;      // jamás "apostar" un partido ya arrancado
       if (!(p.best_odds > 1)) continue;
-      const stake = shadowStake(S, p.model_prob || 0, p.best_odds);
+      // realismo (corrección Alexis): SOLO al precio de las casas conectables por API. Reintenta cada
+      // sweep de 10min hasta el kickoff (Cloudbet puede colgar el mercado tarde); si nadie lo cotizó,
+      // al pasar el kickoff queda sellada como NO EJECUTABLE (el sweep siguiente ya no la ve ACTIVE...
+      // y si sigue ACTIVE con ko vencido cae en el guard de arriba — el sello lo pone el resumen).
+      const ex = await shadowExecQuote(p);
+      if (!ex) {
+        // sin cuota ejecutable AÚN: si queda >30 min al kickoff, reintenta el próximo sweep (el ejecutor
+        // real pollearía igual); con la ventana agotada se sella como NO EJECUTABLE — dato de capacidad.
+        if (ko - now > 30 * 60e3) continue;
+        S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(), match: p.event ? `${p.event.home} vs ${p.event.away}` : null, line: p.line != null ? p.line : null, side: p.side || null, best_odds: p.best_odds, kickoff_at: (p.event && p.event.kickoff_at) || null });
+        if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
+        S.unexec_count++; seen.add(p.pick_id); unexec++;
+        continue;
+      }
+      const stake = shadowStake(S, p.model_prob || 0, ex.odds);
       S.bets.push({
         id: 'sh_' + Math.random().toString(36).slice(2, 10), pick_id: p.pick_id, segment: seg.key,
         family: p.family, side: p.side || null, line: p.line != null ? p.line : null,
         league: p.league || null, match: p.event ? `${p.event.home} vs ${p.event.away}` : null,
-        odds: p.best_odds, book: p.best_book || null, model_prob: p.model_prob || null,
+        odds: ex.odds, book: ex.book, ref_best_odds: p.best_odds, ref_best_book: p.best_book || null,
+        model_prob: p.model_prob || null,
         stake, placed_at: new Date().toISOString(), kickoff_at: (p.event && p.event.kickoff_at) || null,
         status: 'OPEN', result: null, pnl: 0,
       });
@@ -8531,12 +8580,19 @@ function shadowSummary(sinceMs) {
   const stakedSet = +st.reduce((s, b) => s + b.stake, 0).toFixed(2);
   const pnl = +st.reduce((s, b) => s + b.pnl, 0).toFixed(2);
   const clvs = st.map(b => b.clv).filter(c => typeof c === 'number');
+  // capacidad real (13-ago): señales del segmento vs las que Cloudbet/Polymarket cotizaban de verdad,
+  // y el "haircut" de precio (cuota ejecutable vs la mejor del mercado) — el costo real de ejecutar.
+  const un = (S.unexec || []).filter(u => !sinceMs || Date.parse(u.at) >= sinceMs);
+  const hair = rows.filter(b => b.ref_best_odds > 1).map(b => 100 * (b.odds / b.ref_best_odds - 1));
+  const signals = rows.length + un.length;
   return {
     bets: rows.length, open: rows.length - st.length, settled: st.length, w, l, voids: st.length - w - l,
     staked, pnl, roi_pct: stakedSet ? +(100 * pnl / stakedSet).toFixed(1) : null,
     avg_odds: rows.length ? +(rows.reduce((s, b) => s + b.odds, 0) / rows.length).toFixed(2) : null,
     avg_stake: rows.length ? +(staked / rows.length).toFixed(2) : null,
     clv_avg: clvs.length ? +(clvs.reduce((s, c) => s + c, 0) / clvs.length).toFixed(2) : null,
+    signals, unexec: un.length, exec_rate_pct: signals ? +(100 * rows.length / signals).toFixed(1) : null,
+    haircut_avg_pct: hair.length ? +(hair.reduce((s, h) => s + h, 0) / hair.length).toFixed(2) : null,
   };
 }
 async function shadowWeeklyReport({ force = false } = {}) {
@@ -8557,7 +8613,8 @@ async function shadowWeeklyReport({ force = false } = {}) {
   const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
   const fmt = (x) => (x >= 0 ? '+' : '') + x;
   const line = (t2, s2) => `${t2}: ${s2.bets} apuestas (${s2.settled} liquidadas: ${s2.w}W-${s2.l}L${s2.voids ? '-' + s2.voids + 'V' : ''}) · apostado $${s2.staked} · P&L $${fmt(s2.pnl)}${s2.roi_pct != null ? ' · ROI ' + fmt(s2.roi_pct) + '%' : ''}${s2.clv_avg != null ? ' · CLV ' + fmt(s2.clv_avg) + '%' : ''}`;
-  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
+  const cap = (t2, s2) => s2.signals ? `${t2}: ${s2.bets}/${s2.signals} señales ejecutables (${s2.exec_rate_pct}%)${s2.haircut_avg_pct != null ? ' · haircut vs mejor cuota ' + fmt(s2.haircut_avg_pct) + '%' : ''}` : null;
+  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\n${[cap('Capacidad 7d', week), cap('Capacidad total', all)].filter(Boolean).join('\n') || 'Capacidad: sin señales aún.'}\nEntrada SOLO a precio ejecutable (${SHADOW_EXEC_BOOKS().join('/')}); señal sin mercado en esas casas = NO ejecutable (contada arriba).\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
   if (mailer.isConfigured()) {
     try { await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: `[GP Sombra] ${wk}: $${S.bankroll} (${fmt(report.pnl_total)}) · 7d ${week.w}W-${week.l}L $${fmt(week.pnl)}`, text, html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${text.replace(/</g, '&lt;')}</pre>` }); }
     catch (e) { console.error('[shadow] mail:', e.message); }
@@ -8565,9 +8622,9 @@ async function shadowWeeklyReport({ force = false } = {}) {
   return report;
 }
 if (clubsShadowOn()) {
-  setTimeout(() => { try { shadowSweep(); } catch (e) { console.error('[shadow]', e.message); } }, 150 * 1000);
+  setTimeout(() => { shadowSweep().catch((e) => console.error('[shadow]', e.message)); }, 150 * 1000);
   setInterval(() => {
-    try { shadowSweep(); } catch (e) { console.error('[shadow]', e.message); }
+    shadowSweep().catch((e) => console.error('[shadow]', e.message));
     shadowWeeklyReport().catch((e) => console.error('[shadow-report]', e.message));
   }, 10 * 60e3);
 }
@@ -12967,15 +13024,16 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       if (req.method === 'POST') {
         const run = url.searchParams.get('run') || 'sweep';
-        if (run === 'sweep') return json(res, 200, shadowSweep());
+        if (run === 'sweep') return json(res, 200, await shadowSweep());
         if (run === 'report') return json(res, 200, await shadowWeeklyReport({ force: true }));
         return json(res, 400, { error: 'run=sweep|report' });
       }
       const S = shadowInit();
       return json(res, 200, {
         bankroll: S.bankroll, start: S.start_bankroll, created_at: S.created_at, cfg: S.cfg,
+        exec_books: SHADOW_EXEC_BOOKS(),
         last7d: shadowSummary(Date.now() - 7 * 864e5), since_start: shadowSummary(0),
-        last_reports: S.reports.slice(-4), bets: S.bets.slice(-40),
+        last_reports: S.reports.slice(-4), bets: S.bets.slice(-40), unexec: (S.unexec || []).slice(-40),
       });
     }
     // ===== COMBAT SPORTS (27-jul, F0-F1 — ADMIN ONLY hasta validar) ==========================================

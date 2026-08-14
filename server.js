@@ -9364,12 +9364,22 @@ async function combatCloudbetRefresh(C) {
       const flip = cbeOri ? cbeOri === 'flipped' : combatFighterByName(C, cbe.home) === ft.f2.id; // cloudbet home = nuestro f2 → espejar
       const sideKey = (s) => (s === 'home') === !flip ? 'f1' : 'f2';
       const out = { event_id: cbe.id, f1: 0, f2: 0, method: {}, totals: [] };
-      const mw = det.markets['mma.winner'];
-      if (mw) for (const sm of Object.values(mw.submarkets || {})) for (const sel of (sm.selections || [])) {
-        if (sel.status !== 'SELECTION_ENABLED' || !(sel.price > 1)) continue;
-        out[sideKey(sel.outcome)] = sel.price;
+      // 14-ago (bug de Alexis "la pestaña de boxeo no funciona"): Cloudbet nombra sus mercados POR DEPORTE —
+      // en boxeo son 'boxing.*', no 'mma.*'. Pedíamos 'mma.winner' para boxeo → 0 cuotas SIEMPRE → carteleras
+      // sin precios ni picks. Además, en boxeo el mercado vivo suele ser 'boxing.1x2' (3 vías, con empate)
+      // mientras 'boxing.winner' está deshabilitado: se prueban ambos y el empate se ignora (el modelo es a 2).
+      const CBP = (COMBAT_ORGS[C.org] || COMBAT_ORGS.ufc).cbSport === 'boxing' ? 'boxing' : 'mma';
+      const winKeys = CBP === 'boxing' ? ['boxing.winner', 'boxing.1x2'] : ['mma.winner'];
+      for (const wk of winKeys) {
+        const mw = det.markets[wk]; if (!mw) continue;
+        for (const sm of Object.values(mw.submarkets || {})) for (const sel of (sm.selections || [])) {
+          if (sel.status !== 'SELECTION_ENABLED' || !(sel.price > 1)) continue;
+          if (String(sel.outcome) === 'draw') continue; // empate (boxing.1x2): fuera del modelo a 2 vías
+          out[sideKey(sel.outcome)] = sel.price;
+        }
+        if (out.f1 > 1 && out.f2 > 1) break; // ya tenemos ambos lados con precio vivo
       }
-      const mm2 = det.markets['mma.winning_method'];
+      const mm2 = det.markets[CBP + '.winning_method'];
       if (mm2) for (const sm of Object.values(mm2.submarkets || {})) for (const sel of (sm.selections || [])) {
         if (sel.status !== 'SELECTION_ENABLED' || !(sel.price > 1)) continue;
         const oc = decodeURIComponent(String(sel.outcome || '')).toLowerCase();
@@ -9378,7 +9388,7 @@ async function combatCloudbetRefresh(C) {
         const meth = /ko/.test(oc) ? 'ko' : /sub/.test(oc) ? 'sub' : /decision/.test(oc) ? 'dec' : null;
         if (side && meth) out.method[side + '_' + meth] = sel.price;
       }
-      const mt = det.markets['mma.totals'];
+      const mt = det.markets[CBP + '.totals'];
       if (mt) for (const [smk, sm] of Object.entries(mt.submarkets || {})) {
         const row = { line: null, over: 0, under: 0 };
         const lm = String(smk).match(/total=([\d.]+)/);

@@ -3522,6 +3522,47 @@ function cloudbetNameMatch(a, b) { // contains bidireccional sobre la forma redu
   if (!x || !y) return false;
   return x === y || (x.length >= 4 && y.length >= 4 && (x.includes(y) || y.includes(x)));
 }
+// ===== MYRIAD (prediction market) — VENUE EJECUTABLE (13-ago, pedido de Alexis) ============================
+// Ya lo teníamos como referencia del consenso EN MEMORIA (mergeMyriad); ahora sus precios 1X2 también se
+// PERSISTEN al archivo de cuotas con sportsbook_code='myriad' → el ejecutor en la sombra (y value/arb) lo ven
+// como venue ejecutable. Precio peer-to-peer = probabilidad (sin vig) → cuota = 1/precio. On-chain: sin
+// límites de cuenta, el tope real es la LIQUIDEZ del mercado — a escala sombra (stakes ≤$30) no muerde;
+// para escalar dinero real el ejecutor conectado deberá mirar la profundidad antes de colocar.
+let _myriadRunning = false, _myriadLast = 0;
+async function myriadSweep({ force = false } = {}) {
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  if (_myriadRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _myriadLast < 15 * 60e3) return { skipped: 'throttle' };
+  _myriadRunning = true;
+  const out = { matched: 0, quotes: 0 };
+  try {
+    const my = require('./market-scanner/venues/myriad');
+    const rows = await my.fetchMyriadMatches({});
+    if (!rows.length) return out;
+    const grepo = require('./goal-engine/repository');
+    const known = Object.entries(db.clubsQuoteEvents || {});
+    for (const m of rows) {
+      const hit = known.find(([, ev]) =>
+        (cloudbetNameMatch(m.home, ev.home) && cloudbetNameMatch(m.away, ev.away)) ||
+        (cloudbetNameMatch(m.home, ev.away) && cloudbetNameMatch(m.away, ev.home)));
+      if (!hit) continue;
+      const [ceid, meta] = hit;
+      const swapped = !(cloudbetNameMatch(m.home, meta.home) && cloudbetNameMatch(m.away, meta.away));
+      const oc = swapped ? { home: m.outcomes.away, draw: m.outcomes.draw, away: m.outcomes.home } : m.outcomes;
+      out.matched++;
+      for (const side of ['home', 'draw', 'away']) {
+        const p = oc[side]; if (!(p > 0.01 && p < 0.99)) continue;
+        const odds = +(1 / p).toFixed(3);
+        await grepo.upsertGoalQuote({ data_provider: 'myriad', sportsbook_code: 'myriad', external_event_id: 'myriad-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: odds, implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
+        out.quotes++;
+      }
+    }
+    _myriadLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _myriadRunning = false; }
+  if (out.quotes) console.log('[myriad] sweep:', JSON.stringify(out));
+  return out;
+}
 async function cloudbetSweep({ force = false, dryRun = false } = {}) {
   const apiKey = process.env.CLOUDBET_API_KEY || '';
   if (!apiKey) return { skipped: 'no_key' };
@@ -8492,7 +8533,10 @@ function shadowStake(S, p, odds) {
 // "apuesta" al precio VIVO de las casas que podemos conectar por API (GP_SHADOW_EXEC_BOOKS, default
 // cloudbet+polymarket), leído del archivo de cuotas (frescura ≤60 min). Sin cuota ejecutable → la señal
 // se registra como NO EJECUTABLE — eso ES el dato de capacidad real que queremos medir.
-const SHADOW_EXEC_BOOKS = () => String(process.env.GP_SHADOW_EXEC_BOOKS || 'cloudbet,polymarket').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+// exec books (13-ago, Alexis): cloudbet (API key, ya ingerido) + los prediction markets conectables por
+// API/wallet — polymarket, myriad (persistido por myriadSweep) y kalshi. Los que aún no ingieren cuotas
+// POR PARTIDO de clubes (polymarket/kalshi: hoy solo campeón) se activan solos cuando su adaptador exista.
+const SHADOW_EXEC_BOOKS = () => String(process.env.GP_SHADOW_EXEC_BOOKS || 'cloudbet,polymarket,myriad,kalshi').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const SHADOW_FAM_MAP = { CARDS: 'cards_total', CORNERS: 'corners_total', GOALS: 'match_total', SOLID: 'match_winner' };
 async function shadowExecQuote(p) {
   const dbc = require('./database/client');
@@ -16345,6 +16389,8 @@ server.listen(PORT, () => {
   if (process.env.CLOUDBET_API_KEY) {
     setTimeout(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 210 * 1000);
     setInterval(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 10 * 60 * 1000);
+    setTimeout(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 240 * 1000);
+    setInterval(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 15 * 60 * 1000);
   }
   // FASE CLUBES (shadow): marcadores en vivo/finalizados desde ESPN por liga, cada 30 s (como el Mundial).
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).

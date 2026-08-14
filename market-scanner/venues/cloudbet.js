@@ -20,13 +20,20 @@ const KEY_INCLUDE = [
   /^soccer-argentina-(primera-division|liga-profesional)/, /^soccer-colombia-primera-a$/, /^soccer-japan-j1-league$/,
   /^soccer-china-super-league$/,
 ];
-const LEAGUE_EXCLUDE = /u1[6789]|u2[0-3]|women|-srl|simulated|reserve|next-pro|regional|youth|amateur/i;
+const LEAGUE_EXCLUDE = /u1[6789]|u2[0-3]|women|-srl|simulated|reserve|next-pro|regional|youth|amateur|esoccer|cyber/i;
+// 14-ago (cobertura total + independencia de The Odds API): la lista blanca de 15 ligas era el cuello de
+// botella — cubrimos 55 competiciones y Cloudbet es hoy la fuente PRINCIPAL de cuotas (1X2/goles/córners/
+// tarjetas). Ahora entra TODO el fútbol real de su catálogo salvo lo excluido (femenino/juvenil/simulado);
+// KEY_INCLUDE queda como PRIORIDAD (se procesan primero cuando el tope de eventos aprieta).
+// CLOUDBET_STRICT_LEAGUES=true restaura el comportamiento viejo.
 function wantedLeague(key) {
   if (!key || LEAGUE_EXCLUDE.test(key)) return false;
   if (KEY_INCLUDE.some(re => re.test(key))) return true;
   const extra = String(process.env.CLOUDBET_COMPETITIONS || '').trim();
-  return extra ? extra.split(',').some(p => { try { return new RegExp(p.trim()).test(key); } catch { return false; } }) : false;
+  if (extra && extra.split(',').some(p => { try { return new RegExp(p.trim()).test(key); } catch { return false; } })) return true;
+  return !/^(1|true|yes|on)$/i.test(String(process.env.CLOUDBET_STRICT_LEAGUES || '').trim());
 }
+const isPriority = (key) => KEY_INCLUDE.some(re => re.test(key));
 
 let _cache = { at: 0, data: [] };
 
@@ -87,12 +94,14 @@ function normalizeEvent(e) {
 
 // fetchCloudbetSoccer() → [ eventos normalizados con precios ]. Sin key → []. Cachea 60s. Nunca lanza.
 // maxEvents acota el nº de requests por ciclo (1 por partido). Solo partidos dentro de la ventana horas.
-async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, timeoutMs = 9000, ttlMs = 60000, now = Date.now(), windowH = 72, maxEvents = 60 } = {}) {
+async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, timeoutMs = 9000, ttlMs = 60000, now = Date.now(), windowH = 72, maxEvents = Number(process.env.CLOUDBET_MAX_EVENTS) || 200 } = {}) {
   if (!apiKey) return [];
   if (_cache.data.length && (now - _cache.at) < ttlMs) return _cache.data;
   const out = [];
   try {
     const comps = await soccerCompetitions(apiKey, timeoutMs);
+    // las prioritarias primero: si el tope de eventos aprieta, las grandes nunca se quedan fuera
+    comps.sort((a, b) => (isPriority(b.key) ? 1 : 0) - (isPriority(a.key) ? 1 : 0));
     const fromS = Math.floor(now / 1000), toS = fromS + windowH * 3600;
     const ids = [];
     for (const c of comps) {

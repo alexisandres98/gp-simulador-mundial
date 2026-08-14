@@ -3563,6 +3563,104 @@ async function myriadSweep({ force = false } = {}) {
   if (out.quotes) console.log('[myriad] sweep:', JSON.stringify(out));
   return out;
 }
+// ===== POLYMARKET (clubs, por PARTIDO) — venue ejecutable (13-ago) ==========================================
+// Gamma public-search por evento rastreado (<48h): mercados binarios "¿Gana X?" / "¿Empate?" → precio yes
+// (prob 0-1) → cuota 1/p con sportsbook_code='polymarket'. Cache 30min por evento; máx 30 eventos por pasada.
+let _polyRunning = false, _polyLast = 0;
+async function polymarketSweep({ force = false } = {}) {
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  if (_polyRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _polyLast < 15 * 60e3) return { skipped: 'throttle' };
+  _polyRunning = true;
+  const out = { searched: 0, matched: 0, quotes: 0 };
+  try {
+    const grepo = require('./goal-engine/repository');
+    global._polyEvCache = global._polyEvCache || {};
+    const now = Date.now();
+    const targets = Object.entries(db.clubsQuoteEvents || {})
+      .filter(([, m]) => { const kt = Date.parse(m.kickoff || 0); return kt > now && kt < now + 48 * 3600e3; })
+      .slice(0, 60);
+    for (const [ceid, meta] of targets) {
+      if (out.searched >= 30) break;
+      const c = global._polyEvCache[ceid];
+      if (c && now - c.at < 30 * 60e3) continue; // ya buscado hace poco (con o sin match)
+      global._polyEvCache[ceid] = { at: now };
+      out.searched++;
+      let evs = [];
+      try {
+        const r = await fetch(`https://gamma-api.polymarket.com/public-search?q=${encodeURIComponent(meta.home + ' ' + meta.away)}&limit_per_type=5`, { signal: AbortSignal.timeout(10000) });
+        const j = r.ok ? await r.json().catch(() => null) : null;
+        evs = (j && j.events) || [];
+      } catch { /* siguiente evento */ }
+      const ev = evs.find(e => cloudbetNameMatch(e.title || '', meta.home) && cloudbetNameMatch(e.title || '', meta.away));
+      if (!ev) { await new Promise(r2 => setTimeout(r2, 300)); continue; }
+      out.matched++;
+      for (const mk of ev.markets || []) {
+        if (mk.closed) continue;
+        let outs = [], prices = [];
+        try { outs = JSON.parse(mk.outcomes || '[]'); prices = JSON.parse(mk.outcomePrices || '[]'); } catch { continue; }
+        if (outs[0] !== 'Yes' || !(Number(prices[0]) > 0.01 && Number(prices[0]) < 0.99)) continue;
+        const q = String(mk.question || mk.groupItemTitle || '');
+        const side = /draw|empate|tie/i.test(q) ? 'draw' : cloudbetNameMatch(q, meta.home) ? 'home' : cloudbetNameMatch(q, meta.away) ? 'away' : null;
+        if (!side) continue;
+        const p = Number(prices[0]);
+        await grepo.upsertGoalQuote({ data_provider: 'polymarket', sportsbook_code: 'polymarket', external_event_id: 'poly-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(1 / p).toFixed(3), implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
+        out.quotes++;
+      }
+      await new Promise(r2 => setTimeout(r2, 300));
+    }
+    _polyLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _polyRunning = false; }
+  if (out.quotes) console.log('[polymarket] sweep:', JSON.stringify(out));
+  return out;
+}
+// ===== KALSHI (clubs, por PARTIDO) — venue ejecutable (13-ago) =============================================
+// API pública de mercados (la de trading es la misma con auth). Kalshi cataloga por SERIES; las de fútbol
+// de clubes se configuran en GP_KALSHI_SERIES (coma-separadas) cuando existan para nuestras ligas — el
+// adaptador queda listo y se enciende solo al setear la env. Precio ejecutable = yes_ask (comprar YES ya).
+let _kalshiRunning = false, _kalshiLast = 0;
+async function kalshiClubsSweep({ force = false } = {}) {
+  const series = String(process.env.GP_KALSHI_SERIES || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!series.length) return { skipped: 'sin GP_KALSHI_SERIES' };
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  if (_kalshiRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _kalshiLast < 15 * 60e3) return { skipped: 'throttle' };
+  _kalshiRunning = true;
+  const out = { series: series.length, matched: 0, quotes: 0 };
+  try {
+    const grepo = require('./goal-engine/repository');
+    const known = Object.entries(db.clubsQuoteEvents || {});
+    for (const st of series) {
+      let j = null;
+      try {
+        const r = await fetch(`https://api.elections.kalshi.com/trade-api/v2/events?series_ticker=${encodeURIComponent(st)}&status=open&with_nested_markets=true&limit=100`, { signal: AbortSignal.timeout(12000) });
+        j = r.ok ? await r.json().catch(() => null) : null;
+      } catch { /* siguiente serie */ }
+      for (const ev of (j && j.events) || []) {
+        const title = ev.title || '';
+        const hit = known.find(([, m]) => cloudbetNameMatch(title, m.home) && cloudbetNameMatch(title, m.away));
+        if (!hit) continue;
+        const [ceid, meta] = hit;
+        out.matched++;
+        for (const mk of ev.markets || []) {
+          const ask = Number(mk.yes_ask); // centavos: precio de COMPRAR yes ahora (el ejecutable)
+          if (!(ask > 1 && ask < 99)) continue;
+          const sub = String(mk.yes_sub_title || mk.subtitle || mk.title || '');
+          const side = /draw|tie/i.test(sub) ? 'draw' : cloudbetNameMatch(sub, meta.home) ? 'home' : cloudbetNameMatch(sub, meta.away) ? 'away' : null;
+          if (!side) continue;
+          await grepo.upsertGoalQuote({ data_provider: 'kalshi', sportsbook_code: 'kalshi', external_event_id: 'kalshi-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(100 / ask).toFixed(3), implied_probability: ask / 100, quote_status: 'open', is_live: false }).catch(() => {});
+          out.quotes++;
+        }
+      }
+      await new Promise(r2 => setTimeout(r2, 400));
+    }
+    _kalshiLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _kalshiRunning = false; }
+  if (out.quotes) console.log('[kalshi] sweep:', JSON.stringify(out));
+  return out;
+}
 async function cloudbetSweep({ force = false, dryRun = false } = {}) {
   const apiKey = process.env.CLOUDBET_API_KEY || '';
   if (!apiKey) return { skipped: 'no_key' };
@@ -8566,7 +8664,54 @@ async function shadowSweep() {
   const seen = new Set(S.bets.map(b => b.pick_id).concat(S.unexec.map(u => u.pick_id)));
   const now = Date.now();
   for (const seg of S.cfg) {
-    if (seg.sport !== 'futbol') continue; // v1: clubes; combate entra cuando su segmento pase el gate
+    // ═ COMBATE (13-ago): maquinaria LISTA — se enciende agregando un segmento {sport:'combate', family:
+    // 'ROUNDS'|'FIGHT'|'METHOD'} a cfg (entrada nueva anotada, como manda la regla). Precio ejecutable =
+    // Cloudbet combate (C.cbb.byComp: f1/f2, totals de rounds, method) — el único venue conectable que
+    // cotiza peleas hoy; Polymarket UFC entra cuando su adaptador de peleas exista.
+    if (seg.sport === 'combate') {
+      for (const p of (db.combatPicks || [])) {
+        if (p.status !== 'ACTIVE' || (p.family || 'FIGHT') !== seg.family) continue;
+        if (seg.side && p.side !== seg.side) continue;
+        if (seen.has(p.pick_id)) continue;
+        const ko = Date.parse((p.event && p.event.kickoff_at) || 0);
+        if (!(ko > now) || !(p.best_odds > 1)) continue;
+        let ex = null;
+        try {
+          const C = combatLoad(p.league || 'ufc');
+          const cb = ((C.cbb || {}).byComp || {})[p.comp_id] || null;
+          if (cb) {
+            if (p.family === 'FIGHT' && (p.selection_code === 'f1' || p.selection_code === 'f2')) {
+              const o = cb[p.selection_code]; if (o > 1) ex = { odds: o, book: 'cloudbet' };
+            } else if (p.family === 'ROUNDS' && Array.isArray(cb.totals)) {
+              const t = cb.totals.find(x => Number(x.line) === Number(p.line));
+              const o = t && t[p.side]; if (o > 1) ex = { odds: o, book: 'cloudbet' };
+            } else if (p.family === 'METHOD' && cb.method && cb.method[p.selection_code] > 1) {
+              ex = { odds: cb.method[p.selection_code], book: 'cloudbet' };
+            }
+          }
+        } catch { /* org sin estado cargado este ciclo */ }
+        if (!ex) {
+          if (ko - now > 30 * 60e3) continue; // Cloudbet puede colgar la pelea más tarde
+          S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(), match: p.event ? `${p.event.home} vs ${p.event.away}` : null, line: p.line != null ? p.line : null, side: p.side || p.selection_code || null, best_odds: p.best_odds, kickoff_at: (p.event && p.event.kickoff_at) || null });
+          if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
+          S.unexec_count++; seen.add(p.pick_id); unexec++;
+          continue;
+        }
+        const stake = shadowStake(S, p.model_prob || p.blend_prob || 0, ex.odds);
+        S.bets.push({
+          id: 'sh_' + Math.random().toString(36).slice(2, 10), pick_id: p.pick_id, segment: seg.key,
+          family: p.family || 'FIGHT', side: p.side || p.selection_code || null, line: p.line != null ? p.line : null,
+          league: p.league || null, match: p.event ? `${p.event.home} vs ${p.event.away}` : null,
+          odds: ex.odds, book: ex.book, ref_best_odds: p.best_odds, ref_best_book: p.best_book || null,
+          model_prob: p.model_prob || p.blend_prob || null,
+          stake, placed_at: new Date().toISOString(), kickoff_at: (p.event && p.event.kickoff_at) || null,
+          status: 'OPEN', result: null, pnl: 0,
+        });
+        seen.add(p.pick_id); placed++;
+      }
+      continue;
+    }
+    if (seg.sport !== 'futbol') continue;
     for (const p of (db.clubDailyPicks || [])) {
       if (p.status !== 'ACTIVE' || p.family !== seg.family || (seg.side && p.side !== seg.side)) continue;
       if (seen.has(p.pick_id)) continue;
@@ -8600,8 +8745,9 @@ async function shadowSweep() {
       seen.add(p.pick_id); placed++;
     }
   }
-  // liquidación: espejo del resultado real de la pick (VOID/PUSH devuelve el stake → pnl 0)
-  const byPick = {}; for (const p of (db.clubDailyPicks || [])) byPick[p.pick_id] = p;
+  // liquidación: espejo del resultado real de la pick (VOID/PUSH devuelve el stake → pnl 0).
+  // 13-ago: indexa también combate — la misma liquidación sirve a cualquier segmento futuro.
+  const byPick = {}; for (const p of (db.clubDailyPicks || []).concat(db.combatPicks || [])) byPick[p.pick_id] = p;
   for (const b of S.bets) {
     if (b.status !== 'OPEN') continue;
     const p = byPick[b.pick_id];
@@ -16391,6 +16537,10 @@ server.listen(PORT, () => {
     setInterval(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 10 * 60 * 1000);
     setTimeout(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 240 * 1000);
     setInterval(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 15 * 60 * 1000);
+    setTimeout(() => { polymarketSweep().catch(e => console.error('[polymarket]', e.message)); }, 270 * 1000);
+    setInterval(() => { polymarketSweep().catch(e => console.error('[polymarket]', e.message)); }, 15 * 60 * 1000);
+    setTimeout(() => { kalshiClubsSweep().catch(e => console.error('[kalshi]', e.message)); }, 300 * 1000);
+    setInterval(() => { kalshiClubsSweep().catch(e => console.error('[kalshi]', e.message)); }, 15 * 60 * 1000);
   }
   // FASE CLUBES (shadow): marcadores en vivo/finalizados desde ESPN por liga, cada 30 s (como el Mundial).
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).

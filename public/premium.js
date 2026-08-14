@@ -7395,7 +7395,10 @@
   // gramática — seg Todos/En vivo/Próximos + chips Picks del día/Value/Arbitraje + pickCard/gx-table/arbCard
   // REUSADOS tal cual vía adaptador, el precedente de clubes). Todo monitor privado (admin).
   function cbShapePick(p2) { // adaptador: pick de combate → shape que consume el pickCard del fútbol
-    var org2 = p2.league === 'mma' ? 'mma' : 'ufc';
+    // 14-ago (bug de Alexis "las picks de boxeo dan error al abrir la pelea"): BOXEO faltaba en el mapeo y
+    // caía en 'ufc' → el link salía 'cbfight/ufc-bx-…' y la API buscaba una pelea de boxeo en el catálogo
+    // de UFC → 404 → panel de error. Además la card se etiquetaba "UFC" y los avatares nunca resolvían.
+    var org2 = p2.league === 'mma' ? 'mma' : p2.league === 'boxing' ? 'boxing' : 'ufc';
     var stE = S.cb['state_' + org2]; var st = stE && stE.v; // avatares desde el estado de peleas si está cargado (barato, opcional)
     var avas = null;
     if (st && st.cards) for (var i = 0; i < st.cards.length; i++) {
@@ -7405,7 +7408,7 @@
     var eg = p2.edge_blend_pp != null ? Number(p2.edge_blend_pp) : null;
     return {
       family: p2.family || 'FIGHT', selection_name: p2.selection_name,
-      competition_name: (org2 === 'mma' ? 'PFL / MMA' : 'UFC') + (p2.card_slot === 'main' ? ' · Main event' : ''),
+      competition_name: (org2 === 'mma' ? 'PFL / MMA' : org2 === 'boxing' ? 'Boxeo' : 'UFC') + (p2.card_slot === 'main' ? ' · Main event' : ''),
       kickoff: p2.event.kickoff_at, home: p2.event.home, away: p2.event.away,
       home_team_id: null, away_team_id: null, cb_avas: avas,
       cb_hash: 'cbfight/' + org2 + '-' + String(p2.event.canonical_event_id).replace(/^cb-/, ''),

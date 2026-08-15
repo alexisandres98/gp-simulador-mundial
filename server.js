@@ -15442,6 +15442,23 @@ const server = http.createServer(async (req, res) => {
           fine: (function () { const fx = combatFineStats(C); return fx ? { f1: (fx.career || {})[ft.f1.id] || null, f2: (fx.career || {})[ft.f2.id] || null } : null; })(),
           h2h, recent: { f1: recent(ft.f1.id), f2: recent(ft.f2.id) },
           pick: (pk && cbPickVisible(pk) && cbPickPlanOk(pk)) ? { selection: pk.selection_code, name: pk.selection_name, odds: pk.best_odds, edge_blend_pp: pk.edge_blend_pp, stake_pct: pk.stake_pct, regime: pk.regime } : null,
+          // ── LA CAPA PROFUNDA DE COMBATE (16-ago, blueprint) ──────────────────────────────────────
+          // ADN de estilo por percentiles, cruce fase a fase (ataque contra defensa, no ataque contra
+          // ataque), rutas de victoria con la probabilidad de que la pelea llegue a esa fase, fragilidad
+          // del pronóstico, y simulación de rutas con riesgos competitivos: método, asalto, duración y
+          // tarjetas de los tres jueces, todo coherente entre sí porque sale de la MISMA simulación.
+          // Va detrás de un try: que falte un panel es mejor que una pantalla en blanco.
+          deep: (function () {
+            if (url.searchParams.get('deep') === '0') return null;
+            try {
+              const CI = require('./combat-engine/intel');
+              const raw = (function () { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `espnstats-${C.org}.json`), 'utf8')).stats || {}; } catch { return {}; } })();
+              const I = CI.load(C.org, (C.fights && C.fights.fights) || [], raw);
+              const rds = Number(ft.rounds_sched) || (ft.main ? 5 : 3);
+              const di = CI.fightIntel(I, ft.f1.id, ft.f2.id, { rounds: rds, sims: 20000 });
+              return di ? { ...di, engine: { fighters: I.fighters, built_ms: I.ms, org: C.org } } : null;
+            } catch (e) { return { available: false, error: e.message }; }
+          })(),
         });
       }
       // R2: DIRECTORIO de peleadores (búsqueda + top por Elo + filtro por división)

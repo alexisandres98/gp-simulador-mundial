@@ -1,5 +1,97 @@
 # TODO_NEXT.md — GP Simulador
 
+## 📌 REVISIÓN DEL DOMINGO 23 DE AGOSTO — las 4 correcciones acordadas
+> **Decidido el 16-ago con Alexis:** el sistema corre **como está** hasta el domingo 23 acumulando datos de
+> toda la semana. Ese día se aplican las correcciones de abajo con la evidencia ya recogida. No tocar la
+> lógica de decisión antes de esa fecha: cambiarla a mitad de la ventana destruiría la muestra.
+
+### Por qué estas cuatro, y no otras
+El backtest al cierre (`scripts/hoops-strategy-backtest.js`) midió el problema de fondo:
+
+| | NBA (911 partidos) | WNBA (203) |
+|---|---|---|
+| ROI base | **−7,27 %** ± 2,67 · **t = −2,72** | −6,15 % ± 6,12 |
+| Ganador | −11,87 % (t = −2,05) | −20,73 % |
+| Hándicap | −8,80 % (t = −2,39) | −0,34 % |
+| **Total** | **−0,26 %** (t = −0,06) | **+2,15 %** |
+
+Y el diagnóstico: **las picks prometían 56,5 % de acierto y dieron 43,6 %**. En el tramo donde el modelo más
+confía (67-83 %) acertó el 49,3 %. El modelo calibra bien en general — falla justo donde más se separa del
+mercado. **La ventaja que encuentra es su propio error.** Apostar lo contrario tampoco gana (−2,69 % en NBA):
+no hay señal invertida, solo ruido pagando margen.
+
+---
+
+### ✅ 1. Apagar el ganador y poner TECHO a la ventaja
+- **Ganador fuera** en las dos ligas: −11,87 % y −20,73 % con t significativo no es mala racha.
+- **Techo además del suelo.** Hoy más ventaja = mejor pick; los datos dicen lo contrario.
+  ROI por banda en NBA: 2-4 pp −3,6 % · 4-6 pp −2,79 % · **6-8 pp −16,07 %** · 8-12 pp −6,61 % · 12+ −8,31 %.
+  Propuesta: rechazar por encima de ~6 pp contra un cierre maduro con código `ventaja_inverosimil`.
+- Es **higiene, no estrategia**: quita las bandas peores pero ninguna banda gana.
+- Dónde: `basketball-engine/gates.js` (`FAMILY`, `evaluate`), `REASONS`.
+
+### ✅ 2. Invertir el criterio: anclarse al mercado y publicar solo la desviación de UNA casa
+La idea de Alexis, y es la correcta: *market-anchored derivative pricing*. Nuestro error está en el
+**nivel**, no en la **forma**. Entonces:
+- Recalibrar la simulación para que su hándicap y total implícitos **coincidan** con el consenso.
+- Publicar solo cuando **coincidimos con el consenso y una casa se desvía**. El modelo pasa de opinar a
+  validar. Es el inverso exacto de lo que hace hoy.
+- Medición que lo respalda (WNBA, 4 partidos, todas las regiones): **9 % de las líneas del mercado
+  principal ofrecen ≥2 % de EV** solo por tomar el mejor precio, sin modelo.
+- Dónde: `buildHoopsPicks` en `server.js`, `basketball-engine/pricing.js` (`consensus`).
+
+### ✅ 3. Concentrarse en TOTALES, y en el mercado principal de ligas menores
+- Totales es la única familia que no sangra (−0,26 % NBA · **+2,15 % WNBA**), y tiene explicación
+  estructural: el simulador modela el shock de ambiente compartido, que es justo lo que correlaciona los
+  puntos de los dos equipos. Un modelo naíf produce totales demasiado estrechos.
+- Extender con el mismo motor: **totales de equipo y de mitades**.
+- **NCAA desde noviembre**: ~350 partidos al día y muchas más casas → el volumen de desajustes de
+  ejecución es de otro orden. Hoy tiene 0 eventos (fuera de temporada).
+
+### ⚠️ 4. Props: en sombra y con el listón real, NO como plan principal
+Medido el 16-ago en WNBA con las 50 casas disponibles:
+
+| | Casas por línea | Vig | EV mejor precio vs consenso | Líneas con EV ≥ 2 % |
+|---|---|---|---|---|
+| Principal | 8 | **4,71 %** | mediana −3,45 % | **9 %** |
+| Props | 6 | **6,98 %** | mediana −4,07 % | **1 %** |
+
+**Los props son más caros y están más de acuerdo entre sí, no menos.** Solo 10 casas los ofrecen y casi
+todas compran el mismo feed. El listón real para batirlos no es 3,5 pp sino **~4 pp sobre el consenso sin
+margen** — y nuestro modelo fue *peor* que el consenso en el mercado principal.
+- Mantener en sombra: es el sitio donde la maquinaria de minutos (RAPM + rotación + árbol de reemplazo)
+  podría valer, y ahí sí tenemos algo que el mercado principal no premia.
+- Subir el umbral de las familias de jugador en `gates.js` de 3,5-5 pp a ≥4 pp reales sobre consenso.
+- ⚠️ **Aviso**: esa medición es de UNA noche (4 partidos). Ver el punto siguiente.
+
+---
+
+### 🔬 QUÉ SE ESTÁ ACUMULANDO ESTA SEMANA (para que el domingo haya con qué decidir)
+| Dato | Estado | Sirve para |
+|---|---|---|
+| Movimiento de línea (apertura → cierre) | ✅ ya, en `sportsbook_quote_history` | El experimento de "ganarle a la apertura, no al cierre" |
+| Partes de bajas con hora | ✅ desde el 16-ago, en el data-fabric | Que el backtest pueda por fin medir la capa de plantilla |
+| **Props: vig, casas y dispersión** | ✅ **añadido el 16-ago** (`hoopsPropsCapture`, cada 30 min) | Confirmar o tumbar la medición de una noche del punto 4 |
+| Picks del monitor con veredicto de compuertas | ✅ ya | Ver cuáles se habrían publicado de verdad |
+
+**El domingo, antes de tocar nada, correr:**
+```bash
+node scripts/hoops-strategy-backtest.js wnba      # ROI, calibración, bandas, caída máxima
+node scripts/hoops-validate.js                     # veredicto de capas por liga
+curl "$HOST/api/hoops/fabric?mode=health"          # cuántos eventos se acumularon
+curl "$HOST/api/hoops/perf?league=wnba&force=1"    # calibración, CRPS, CLV
+```
+Y comparar la semana de props contra la noche del 16-ago: si el vig sigue en ~7 % y la dispersión sigue por
+debajo del mercado principal, el punto 4 queda cerrado y props baja a prioridad de investigación.
+
+### 🚫 QUÉ NO HACER EL DOMINGO
+- **No** seguir refinando el modelo de fuerza de equipo para el ganador. Está medido que no lleva a nada.
+- **No** buscar un subconjunto rentable en los 5.274 candidatos históricos sin haberlo declarado antes:
+  con esa cantidad SIEMPRE aparece uno por azar. Preregistrar el segmento o no vale.
+- **No** decidir con ROI donde se pueda decidir con CLV: el ROI necesita ~1.000 apuestas para significancia
+  y el CLV ~100.
+
+
 ## 🧠 PRESUPUESTO DEL LLM 15-ago — saldo $20, y no se apaga solo
 El gasto diario dejó de ser una constante: es **el saldo restante dividido por un horizonte**
 (`GP_LLM_HORIZON_DAYS`, 30). Gastar 1/30 de lo que queda cada día es una caída geométrica — el saldo tiende

@@ -3529,6 +3529,94 @@ const HOOPS_SEASON_HINT = {
   ncaaw: 'La temporada va de noviembre a marzo, con el torneo final en marzo y abril.',
 };
 let _hoopsQLast = 0, _hoopsQRunning = false, _hoopsQOut = null;
+// ── CAPTURA DE PROPS PARA MEDIR, NO PARA APOSTAR (16-ago) ──────────────────────────────────────────
+// Este pase NO genera picks ni toca el motor de decisión. Solo guarda, cada media hora, el mercado de
+// props de jugador tal como está, para poder contestar el domingo una pregunta concreta con datos de una
+// semana entera en vez de con una noche: ¿los props de las ligas menores son de verdad más explotables?
+//
+// La medición de una sola noche dijo que NO —vig del 6,98% frente al 4,71% del mercado principal, y solo
+// el 1% de las líneas con valor de ejecución frente al 9%—, pero cuatro partidos no deciden nada. Con
+// siete días habrá muestra para aceptarlo o descartarlo.
+//
+// COSTE: 1 crédito por mercado y evento. Unos 25 créditos por pase, ~1.200 al día. Quedan 4,95 millones.
+// Se guarda en el data-fabric (bronze crudo + silver con las métricas ya calculadas), que es exactamente
+// para lo que se construyó: acumular evidencia con su marca de tiempo.
+const HOOPS_PROP_MARKETS = ['player_points', 'player_rebounds', 'player_assists', 'player_threes'];
+let _hoopsPropsRunning = false, _hoopsPropsLast = 0;
+async function hoopsPropsCapture({ force = false } = {}) {
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
+  if (_hoopsPropsRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _hoopsPropsLast < 30 * 60e3) return { skipped: 'throttle' };
+  _hoopsPropsRunning = true;
+  const out = { keys: 0, events: 0, lines: 0, credits: 0, started: new Date().toISOString() };
+  try {
+    const FAB = require('./data-fabric/store');
+    const PRC = require('./basketball-engine/pricing');
+    for (const k of HOOPS_ODDS_KEYS) {
+      let evs = null;
+      try {
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${k}/events?apiKey=${key}`, { signal: AbortSignal.timeout(15000) });
+        noteOddsCredits(r);
+        evs = r.ok ? await r.json().catch(() => null) : null;
+      } catch { /* liga fuera de temporada */ }
+      if (!Array.isArray(evs) || !evs.length) continue;
+      out.keys++;
+      // solo los que empiezan en las próximas 30 h: el precio de un partido de dentro de una semana no informa
+      const soon = evs.filter((e) => { const t = Date.parse(e.commence_time || 0); return t > Date.now() - 3600e3 && t < Date.now() + 30 * 3600e3; }).slice(0, 12);
+      for (const e of soon) {
+        let j = null;
+        try {
+          const r = await fetch(`https://api.the-odds-api.com/v4/sports/${k}/events/${e.id}/odds?apiKey=${key}`
+            + `&regions=${ODDS_REGIONS_SCAN}&markets=${HOOPS_PROP_MARKETS.join(',')}&oddsFormat=decimal`, { signal: AbortSignal.timeout(20000) });
+          noteOddsCredits(r);
+          out.credits += Number(r.headers.get('x-requests-last')) || 0;
+          j = r.ok ? await r.json().catch(() => null) : null;
+        } catch { /* siguiente evento */ }
+        if (!j || !j.bookmakers) continue;
+        out.events++;
+        FAB.putRaw({ source: 'odds_api', domain: 'props', key: `${k}_${e.id}`, payload: j });
+        // métricas ya calculadas, para que el domingo el análisis sea leer y no recomputar
+        const byLine = new Map();
+        for (const bk of j.bookmakers) for (const mk of (bk.markets || [])) {
+          if (/_lay$/.test(mk.key)) continue;                    // los intercambios se apuestan al revés
+          for (const o of (mk.outcomes || [])) {
+            const lk = `${mk.key}|${o.description || ''}|${o.point != null ? o.point : ''}`;
+            if (!byLine.has(lk)) byLine.set(lk, new Map());
+            if (!byLine.get(lk).has(bk.key)) byLine.get(lk).set(bk.key, {});
+            byLine.get(lk).get(bk.key)[o.name] = o.price;
+          }
+        }
+        for (const [lk, perBook] of byLine) {
+          const pairs = [...perBook.values()].filter((v) => Object.keys(v).length === 2);
+          if (pairs.length < 3) continue;
+          const sides = Object.keys(pairs[0]);
+          const fair = { [sides[0]]: [], [sides[1]]: [] }; const vigs = [];
+          for (const pr of pairs) {
+            const nv = PRC.novig([pr[sides[0]], pr[sides[1]]], { method: 'shin' });
+            if (nv) { fair[sides[0]].push(nv.p[0]); fair[sides[1]].push(nv.p[1]); vigs.push(nv.vig_pct); }
+          }
+          const med = (a) => { const x = a.slice().sort((m, n) => m - n); return x.length ? x[Math.floor(x.length / 2)] : null; };
+          const rec = { market: lk.split('|')[0], player: lk.split('|')[1], line: lk.split('|')[2],
+            books: pairs.length, vig_pct: med(vigs), sides: {} };
+          for (const sd of sides) {
+            const pf = med(fair[sd]); if (!(pf > 0)) continue;
+            const best = Math.max(...pairs.map((pr) => pr[sd]));
+            rec.sides[sd] = { fair: +pf.toFixed(4), best: +best.toFixed(3), ev_pct: +(100 * (pf * best - 1)).toFixed(2) };
+          }
+          FAB.appendIfChanged('props_market', { entity: `${k}:${e.id}:${lk}`, source: 'odds_api',
+            fields: rec, effective_at: e.commence_time || null });
+          out.lines++;
+        }
+      }
+    }
+    _hoopsPropsLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _hoopsPropsRunning = false; }
+  out.finished = new Date().toISOString();
+  console.log('[hoops-props]', JSON.stringify({ keys: out.keys, events: out.events, lines: out.lines, credits: out.credits, error: out.error || null }));
+  return out;
+}
+
 async function hoopsQuotesSweep({ force = false } = {}) {
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
@@ -18412,6 +18500,9 @@ server.listen(PORT, () => {
   setInterval(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 10 * 60 * 1000);
   // baloncesto: mismo ritmo, almacén compartido (las claves fuera de temporada no devuelven nada)
   setTimeout(() => { hoopsQuotesSweep().catch(e => console.error('[hoops] sweep:', e.message)); }, 90 * 1000);
+  // captura de props para la revisión del domingo 23: solo mide, no decide nada
+  setTimeout(() => { hoopsPropsCapture().catch(e => console.error('[hoops-props]', e.message)); }, 150 * 1000);
+  setInterval(() => { hoopsPropsCapture().catch(e => console.error('[hoops-props]', e.message)); }, 30 * 60 * 1000);
   setInterval(() => { hoopsQuotesSweep().catch(e => console.error('[hoops] sweep:', e.message)); }, 12 * 60 * 1000);
   // props de clubes (córners/tarjetas/assists/anytime): throttle interno 3h, eventos <48h; el intervalo pregunta c/30min
   setTimeout(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 150 * 1000);

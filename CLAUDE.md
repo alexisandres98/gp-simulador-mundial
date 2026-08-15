@@ -71,6 +71,15 @@ Corriendo desde el 12-ago: bankroll simulado $2,000, segmento `cards_under_v1` (
 **reporte email al admin cada lunes** + revisión semanal con Alexis. Estado: `/api/internal/shadow?key=<GP_EXPORT_KEY>`.
 Plan completo y reglas (cómo agregar segmentos, go-live): sección "PLAN EDGE + EJECUTOR EN LA SOMBRA" en TODO_NEXT.md.
 
+## 📌 PENDIENTE FIJO: revisión del domingo 23-ago
+El sistema corre **como está** hasta el domingo 23 acumulando datos. Ese día se aplican **cuatro
+correcciones ya acordadas y documentadas** al principio de `TODO_NEXT.md`: (1) apagar el mercado de ganador
+y poner techo a la ventaja, (2) invertir el criterio — anclarse al consenso y publicar solo la desviación
+de una casa, (3) concentrarse en totales y en el mercado principal de ligas menores, (4) props solo en
+sombra con el listón real. **No tocar la lógica de decisión antes de esa fecha**: cambiarla a mitad de la
+ventana destruye la muestra. Motivo de fondo: el backtest al cierre da −7,27% de ROI en NBA con t = −2,72,
+y las picks prometían 56,5% de acierto contra 43,6% real.
+
 ## Documentos hermanos
 - `PROJECT_STATE.md` — arquitectura, pantallas, archivos, endpoints, modelo, negocio.
 - `DESIGN_SYSTEM.md` — tokens, tipografía, componentes, layout, responsive.

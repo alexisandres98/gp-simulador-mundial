@@ -179,6 +179,43 @@ function summarize(bets) {
     const sel = bets.filter((b) => b.edge_pp >= th);
     if (sel.length >= 20) out.by_edge.push({ min_edge_pp: th, ...agg(sel) });
   }
+  // ESTABILIDAD EN EL TIEMPO (módulo 225). Una estrategia que pierde todos los meses es mala; una que gana
+  // ocho y pierde uno enorme es peor, porque parece buena hasta que te arruina. Sin el desglose no se
+  // distinguen.
+  const byMonth = {};
+  for (const b of picks) { const m = String(b.date || '').slice(0, 7); (byMonth[m] = byMonth[m] || []).push(b); }
+  out.by_month = Object.entries(byMonth).sort().map(([m, list]) => ({ month: m, ...agg(list) }));
+
+  // RECORRIDO DEL BANKROLL: la caída máxima y las rachas. Es lo que decide si una estrategia es ejecutable
+  // por una persona real, no solo si su media es positiva.
+  const chrono = picks.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  let bank = 0, peak = 0, maxDD = 0, run = 0, worstRun = 0, bestRun = 0;
+  const curve = [];
+  for (const b of chrono) {
+    const u = settle(b);
+    bank += u; peak = Math.max(peak, bank); maxDD = Math.max(maxDD, peak - bank);
+    if (u > 0) { run = run > 0 ? run + 1 : 1; bestRun = Math.max(bestRun, run); }
+    else if (u < 0) { run = run < 0 ? run - 1 : -1; worstRun = Math.min(worstRun, run); }
+    curve.push(+bank.toFixed(2));
+  }
+  out.risk = { final_units: r2(bank), peak_units: r2(peak), max_drawdown_units: r2(maxDD),
+    max_drawdown_pct_of_turnover: picks.length ? r2(100 * maxDD / picks.length) : null,
+    best_streak: bestRun, worst_streak: worstRun,
+    curve: curve.filter((_, i) => i % Math.max(1, Math.ceil(curve.length / 40)) === 0) };
+
+  // ¿ESTÁN BIEN PUESTAS LAS PROBABILIDADES DE LAS PICKS? Una estrategia puede perder por dos motivos muy
+  // distintos: elegir mal (mala calibración) o elegir bien y pagar demasiado vig. Esto los separa.
+  try {
+    const M = require('../basketball-engine/metrics');
+    const rows = picks.filter((b) => b.won !== null).map((b) => ({ p: b.p, y: b.won }));
+    if (rows.length >= 50) {
+      const cal = M.calibration(rows, { bins: 6, minN: 15 });
+      out.calibration = { n: rows.length, ece_pp: cal.ece_pp, brier: M.brier(rows),
+        miscalibrated_bins: cal.bins.filter((x) => !x.ok).length, bins: cal.bins,
+        avg_p: r2(100 * rows.reduce((s, r) => s + r.p, 0) / rows.length),
+        actual_pct: r2(100 * rows.reduce((s, r) => s + r.y, 0) / rows.length) };
+    }
+  } catch { /* métricas opcionales */ }
   return out;
 }
 

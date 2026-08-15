@@ -3598,15 +3598,16 @@ async function clubsSeedEventsAF({ force = false, hours = 96 } = {}) {
 // límites de cuenta, el tope real es la LIQUIDEZ del mercado — a escala sombra (stakes ≤$30) no muerde;
 // para escalar dinero real el ejecutor conectado deberá mirar la profundidad antes de colocar.
 let _myriadRunning = false, _myriadLast = 0;
-async function myriadSweep({ force = false } = {}) {
+async function myriadSweep({ force = false, dryRun = false } = {}) {
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
   if (_myriadRunning) return { skipped: 'running' };
   if (!force && Date.now() - _myriadLast < 15 * 60e3) return { skipped: 'throttle' };
   _myriadRunning = true;
-  const out = { matched: 0, quotes: 0 };
+  const out = { rows: 0, matched: 0, quotes: 0, samples: [], dry_run: !!dryRun };
   try {
     const my = require('./market-scanner/venues/myriad');
     const rows = await my.fetchMyriadMatches({});
+    out.rows = rows.length;
     if (!rows.length) return out;
     const grepo = require('./goal-engine/repository');
     const known = Object.entries(db.clubsQuoteEvents || {});
@@ -3619,14 +3620,18 @@ async function myriadSweep({ force = false } = {}) {
       const swapped = !(cloudbetNameMatch(m.home, meta.home) && cloudbetNameMatch(m.away, meta.away));
       const oc = swapped ? { home: m.outcomes.away, draw: m.outcomes.draw, away: m.outcomes.home } : m.outcomes;
       out.matched++;
+      const pxm = {};
       for (const side of ['home', 'draw', 'away']) {
         const p = oc[side]; if (!(p > 0.01 && p < 0.99)) continue;
         const odds = +(1 / p).toFixed(3);
+        pxm[side] = odds;
+        if (dryRun) { out.quotes++; continue; }
         await grepo.upsertGoalQuote({ data_provider: 'myriad', sportsbook_code: 'myriad', external_event_id: 'myriad-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: odds, implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
         out.quotes++;
       }
+      if (out.samples.length < 12) out.samples.push({ match: meta.home + ' vs ' + meta.away, league: meta.league, odds: pxm });
     }
-    _myriadLast = Date.now();
+    if (!dryRun) _myriadLast = Date.now();  // el ensayo no consume la ventana del barrido real
   } catch (e) { out.error = e.message; }
   finally { _myriadRunning = false; }
   if (out.quotes) console.log('[myriad] sweep:', JSON.stringify(out));
@@ -3689,45 +3694,93 @@ async function polymarketSweep({ force = false } = {}) {
 // de clubes se configuran en GP_KALSHI_SERIES (coma-separadas) cuando existan para nuestras ligas — el
 // adaptador queda listo y se enciende solo al setear la env. Precio ejecutable = yes_ask (comprar YES ya).
 let _kalshiRunning = false, _kalshiLast = 0;
-async function kalshiClubsSweep({ force = false } = {}) {
-  const series = String(process.env.GP_KALSHI_SERIES || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (!series.length) return { skipped: 'sin GP_KALSHI_SERIES' };
+// SERIES DE FÚTBOL DE KALSHI, DESCUBIERTAS (15-ago). Antes había que enumerarlas a mano en GP_KALSHI_SERIES
+// y, como nunca se configuró, el barrido salía en el primer if y Kalshi aportaba CERO. Kalshi nombra sus
+// mercados de resultado como `KX<LIGA>GAME` ("Alaves vs Getafe" → KXLALIGAGAME): se lee el catálogo de series
+// y se queda con las de fútbol (98 el 15-ago: EPL, LaLiga, Serie A, Bundesliga, Ligue 1, Eredivisie,
+// Brasileirão, Liga MX, MLS, Championship, UCL/UEL, Libertadores, Sudamericana, Leagues Cup, FA Cup…).
+// GP_KALSHI_SERIES sigue funcionando como OVERRIDE manual. Catálogo cacheado 12h (pesa ~5MB).
+const KALSHI_SOCCER_RE = /liga|ligue|serie a|premier|efl|eredivisie|bundesliga|super ?lig|superliga|eliteserien|allsvenskan|brasileiro|\bmls\b|ucl|uefa|europa|conference|conmebol|libertadores|sudamericana|concacaf|copa|cup game|k-?league|j1|hnl|championship game|a league|saudi|primeira|ykkos|veikkaus|club friendlies|championnat|belgian|austrian|swiss|scottish|greek|danish|polish|czech|croatia|serbia|turkish|israel|malaysia|chinese super|taca|knvb|dfb|dimayor|ekstraklasa/i;
+const KALSHI_NOT_SOCCER_RE = /basketball|hockey|baseball|cricket|football game|\bnfl\b|\bnba\b|\bnhl\b|fiba|volley|rugby|esport|counter|dota|overwatch|rocket|call of duty|cs2|tennis|golf|nascar|\blnb\b|\baba\b|\bnbb\b|\bcba\b|\bshl\b|\belh\b|\bvtb\b/i;
+async function kalshiSoccerSeries() {
+  const env = String(process.env.GP_KALSHI_SERIES || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (env.length) return env;
+  const G = global._kalshiSeries = global._kalshiSeries || {};
+  if (G.list && G.list.length && Date.now() - G.at < 12 * 3600e3) return G.list;
+  try {
+    const r = await fetch('https://api.elections.kalshi.com/trade-api/v2/series?category=Sports', { signal: AbortSignal.timeout(30000) });
+    const j = r.ok ? await r.json().catch(() => null) : null;
+    const list = ((j && j.series) || [])
+      .filter(s => /GAME$/.test(s.ticker || '') && KALSHI_SOCCER_RE.test(s.title || '') && !KALSHI_NOT_SOCCER_RE.test(s.title || ''))
+      .map(s => s.ticker);
+    if (list.length) {
+      G.list = list; G.at = Date.now();
+      db.kalshiSeries = { at: new Date().toISOString(), n: list.length, tickers: list }; save();
+    }
+  } catch { /* catálogo caído: cae a lo último bueno */ }
+  return G.list || ((db.kalshiSeries || {}).tickers || []);
+}
+// precio de una pata de Kalshi → probabilidad 0-1. La API migró a strings en DÓLARES (`yes_ask_dollars`:
+// "0.4100") y nosotros seguíamos leyendo el entero en CENTAVOS (`yes_ask`), que hoy llega undefined → el
+// gate `ask > 1 && ask < 99` mataba TODAS las patas. Se leen ambas formas: dólares primero, centavos como
+// respaldo, así el día que vuelvan a cambiar el shape no nos quedamos ciegos otra vez.
+function kalshiProb(mk, key) {
+  const d = mk && mk[key + '_dollars'];
+  if (d != null) { const v = Number(d); if (v > 0 && v < 1) return v; }
+  const c = Number(mk && mk[key]);
+  if (Number.isFinite(c) && c > 0 && c < 100) return c / 100;
+  return null;
+}
+async function kalshiClubsSweep({ force = false, dryRun = false } = {}) {
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
   if (_kalshiRunning) return { skipped: 'running' };
   if (!force && Date.now() - _kalshiLast < 15 * 60e3) return { skipped: 'throttle' };
   _kalshiRunning = true;
-  const out = { series: series.length, matched: 0, quotes: 0 };
+  const series = await kalshiSoccerSeries().catch(() => []);
+  const out = { series: series.length, events: 0, matched: 0, quotes: 0, samples: [], dry_run: !!dryRun };
+  if (!series.length) { _kalshiRunning = false; return { ...out, skipped: 'sin series' }; }
   try {
     const grepo = require('./goal-engine/repository');
     const known = Object.entries(db.clubsQuoteEvents || {});
     for (const st of series) {
       let j = null;
       try {
-        const r = await fetch(`https://api.elections.kalshi.com/trade-api/v2/events?series_ticker=${encodeURIComponent(st)}&status=open&with_nested_markets=true&limit=100`, { signal: AbortSignal.timeout(12000) });
+        const r = await fetch(`https://api.elections.kalshi.com/trade-api/v2/events?series_ticker=${encodeURIComponent(st)}&status=open&with_nested_markets=true&limit=200`, { signal: AbortSignal.timeout(12000) });
         j = r.ok ? await r.json().catch(() => null) : null;
       } catch { /* siguiente serie */ }
       for (const ev of (j && j.events) || []) {
-        const title = ev.title || '';
-        const hit = known.find(([, m]) => cloudbetNameMatch(title, m.home) && cloudbetNameMatch(title, m.away));
+        const mks = ev.markets || [];
+        if (!mks.length) continue;
+        out.events++;
+        // MATCH POR LAS PATAS, no por el título (más estricto): Kalshi nombra cada pata con el equipo
+        // ("Alaves" / "Getafe" / "Tie"), así que los dos nombres del cruce salen limpios y sin el ruido
+        // del título. Con el título concatenado un nombre corto podía colarse como subcadena.
+        const teams = mks.map(m => String(m.yes_sub_title || m.subtitle || m.title || '')).filter(s => s && !/draw|tie/i.test(s));
+        if (teams.length < 2) continue;
+        const hit = known.find(([, m]) =>
+          (teams.some(t => cloudbetNameMatch(t, m.home)) && teams.some(t => cloudbetNameMatch(t, m.away))));
         if (!hit) continue;
         const [ceid, meta] = hit;
-        out.matched++;
-        for (const mk of ev.markets || []) {
-          const ask = Number(mk.yes_ask); // centavos: precio de COMPRAR yes ahora (el ejecutable)
-          if (!(ask > 1 && ask < 99)) continue;
+        let wrote = 0; const px = {};
+        for (const mk of mks) {
+          const p = kalshiProb(mk, 'yes_ask'); // ask = precio de COMPRAR yes ahora (el ejecutable, con su spread)
+          if (p == null) continue;
           const sub = String(mk.yes_sub_title || mk.subtitle || mk.title || '');
           const side = /draw|tie/i.test(sub) ? 'draw' : cloudbetNameMatch(sub, meta.home) ? 'home' : cloudbetNameMatch(sub, meta.away) ? 'away' : null;
           if (!side) continue;
-          await grepo.upsertGoalQuote({ data_provider: 'kalshi', sportsbook_code: 'kalshi', external_event_id: 'kalshi-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(100 / ask).toFixed(3), implied_probability: ask / 100, quote_status: 'open', is_live: false }).catch(() => {});
-          out.quotes++;
+          if (dryRun) { out.quotes++; wrote++; px[side] = +(1 / p).toFixed(2); continue; }
+          px[side] = +(1 / p).toFixed(2);
+          await grepo.upsertGoalQuote({ data_provider: 'kalshi', sportsbook_code: 'kalshi', external_event_id: 'kalshi-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(1 / p).toFixed(3), implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
+          out.quotes++; wrote++;
         }
+        if (wrote) { out.matched++; if (out.samples.length < 12) out.samples.push({ match: meta.home + ' vs ' + meta.away, league: meta.league, odds: px }); }
       }
-      await new Promise(r2 => setTimeout(r2, 400));
+      await new Promise(r2 => setTimeout(r2, 250));
     }
-    _kalshiLast = Date.now();
+    if (!dryRun) _kalshiLast = Date.now();  // el ensayo no consume la ventana del barrido real
   } catch (e) { out.error = e.message; }
   finally { _kalshiRunning = false; }
-  if (out.quotes) console.log('[kalshi] sweep:', JSON.stringify(out));
+  console.log('[kalshi] sweep:', JSON.stringify({ series: out.series, events: out.events, matched: out.matched, quotes: out.quotes, dry: out.dry_run, error: out.error || null }));
   return out;
 }
 async function cloudbetSweep({ force = false, dryRun = false } = {}) {
@@ -13201,6 +13254,31 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, await clubsSeedEventsAF({ force: true, hours: hrs }).catch(e => ({ error: e.message })));
       }
       return json(res, 200, { last: _seedOut, events_in_map: Object.keys(db.clubsQuoteEvents || {}).length });
+    }
+    // VENUES GRATIS (15-ago): estado y disparo manual de los tres que no cuestan créditos — myriad, kalshi y
+    // polymarket. Existe porque los tres fallaban EN SILENCIO (Myriad pedía mercados resueltos, Kalshi leía un
+    // campo de precio que la API renombró) y sin una superficie donde mirarlos nadie se entera.
+    if (p === '/api/internal/venues') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        const only = String(url.searchParams.get('only') || '').toLowerCase();
+        const run = (n) => !only || only === n;
+        const r = {};
+        const dry = url.searchParams.get('dry') === '1';   // ensayo: calcula y muestra, no escribe una sola cuota
+        if (run('myriad')) r.myriad = await myriadSweep({ force: true, dryRun: dry }).catch(e => ({ error: e.message }));
+        if (run('kalshi')) r.kalshi = await kalshiClubsSweep({ force: true, dryRun: dry }).catch(e => ({ error: e.message }));
+        if (run('polymarket') && !dry) r.polymarket = await polymarketSweep({ force: true }).catch(e => ({ error: e.message }));
+        if (run('cloudbet')) r.cloudbet = await cloudbetSweep({ force: true, dryRun: dry }).catch(e => ({ error: e.message }));
+        return json(res, 200, r);
+      }
+      return json(res, 200, {
+        tracked_events: Object.keys(db.clubsQuoteEvents || {}).length,
+        kalshi_series: (db.kalshiSeries || {}).n || 0, kalshi_series_at: (db.kalshiSeries || {}).at || null,
+        kalshi_override: !!String(process.env.GP_KALSHI_SERIES || '').trim(),
+        myriad_enabled: /^(1|true|yes|on)$/i.test(String(process.env.MARKET_SCANNER_INCLUDE_MYRIAD || '')),
+        cloudbet_key: !!process.env.CLOUDBET_API_KEY,
+      });
     }
     if (p === '/api/internal/boxing-results') {
       const xk = process.env.GP_EXPORT_KEY || '';

@@ -20,13 +20,17 @@ const canon = (s) => { const n = norm(s); return NAME_ALIASES[n] || n; };
 let _cache = { at: 0, data: [] };
 
 // fetchMyriadMatches(opts) → [{ home, away, kickoff, outcomes:{home,draw,away}(precio 0-1), liquidity, volume24h, url }]
-async function fetchMyriadMatches({ timeoutMs = 6000, ttlMs = 60000, now = Date.now() } = {}) {
+async function fetchMyriadMatches({ timeoutMs = 6000, ttlMs = 60000, now = Date.now(), limit = 100 } = {}) {
   if (_cache.data.length && (now - _cache.at) < ttlMs) return _cache.data;
   let rows = [];
   try {
     const ctrl = AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
-    // "vs" captura los mercados de partido "X vs. Y: Who wins?"; ordenamos por volumen para traer los relevantes.
-    const r = await fetch(`${HOST}/markets?keyword=vs&page=1&limit=60&sort=volume_24h`, ctrl ? { signal: ctrl } : {});
+    // 15-ago (BUG que tenía a Myriad aportando CERO cuotas desde siempre): pedíamos `sort=volume_24h` SIN
+    // filtrar estado, y el volumen histórico lo dominan los mercados YA RESUELTOS — las 60 filas que volvían
+    // eran todas 'resolved' y el filtro de abajo las tiraba todas. `state=open` devuelve los que se pueden
+    // operar hoy (verificado: 7 partidos con 1X2 completo y 500k de liquidez). Se ordena por vencimiento:
+    // lo que cierra antes es lo que se juega antes, que es justo lo que necesitamos cotizar.
+    const r = await fetch(`${HOST}/markets?state=open&keyword=vs&page=1&limit=${Math.max(60, limit)}&sort=expires_at`, ctrl ? { signal: ctrl } : {});
     if (!r.ok) throw new Error('http_' + r.status);
     const j = await r.json();
     rows = Array.isArray(j) ? j : (j.data || j.markets || []);
@@ -46,6 +50,10 @@ async function fetchMyriadMatches({ timeoutMs = 6000, ttlMs = 60000, now = Date.
     const awayP = priceOf(o => canon(o.title || o.name) === canon(awayName));
     const drawP = priceOf(o => /draw|tie/i.test(o.title || o.name || ''));
     if (!(homeP > 0) || !(awayP > 0)) continue;                     // necesitamos al menos home y away
+    // los mercados "perpetuos" (política, cripto: "Macron vs Owens", vencimiento 2100) también matchean el
+    // patrón "X vs Y: Who wins?" — se descartan por fecha: un partido cierra dentro de los próximos 30 días.
+    const kt = Date.parse(m.expiresAt || m.inPlayStartsAt || 0);
+    if (!isFinite(kt) || kt > now + 30 * 864e5) continue;
     out.push({
       home: homeName, away: awayName, home_key: canon(homeName), away_key: canon(awayName),
       kickoff: m.expiresAt || m.inPlayStartsAt || null,

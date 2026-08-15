@@ -6995,6 +6995,102 @@
         }).join('') + '</div></div>' : '';
     return warn + kpi + clvNote + act + fam + set;
   }
+  // ── LAS CUATRO SUPERFICIES, con el markup de fútbol ──────────────────────────────────────────────────
+  // Misma decisión que con las picks: no se inventa una tabla propia. Value usa gx-table con las columnas
+  // del value de fútbol, arbitraje y middles usan gx-arb-card con sus patas, y caídas usa gx-mcard con la
+  // tira de casas rezagadas. Lo único adaptado es la gramática: dos salidas, hándicap y total de puntos.
+  function bbSigCode(evPct) { return evPct >= 8 ? 'STRONG' : evPct >= 4 ? 'LEAN' : evPct >= 2 ? 'WATCH' : 'PASS'; }
+  function bbMatchLine(ev) { return esc(ev.home) + ' ' + esc(t('vs')) + ' ' + esc(ev.away) + (ev.league_name ? ' · ' + esc(ev.league_name) : ''); }
+  function bbFairLine(v) {
+    var parts = '';
+    if (v.fair_odds) parts += '<span class="gx-val-bk fair">' + esc(t('val_fair')) + ' <b>' + Number(v.fair_odds).toFixed(2) + '</b></span>';
+    if (v.vig_pct != null) parts += '<span class="gx-val-bk">' + esc(t('val_vig')) + ' <b>' + v.vig_pct + '%</b></span>';
+    if (v.books) parts += '<span class="gx-val-bk">' + v.books + ' casas</span>';
+    if (v.max_stake) parts += '<span class="gx-val-bk">hasta $' + v.max_stake + '</span>';
+    if (v.model != null) parts += '<span class="gx-val-bk' + (v.model_ev_pct >= 0 ? ' sharp' : '') + '">GP Take <b>' + Math.round(100 * v.model) + '%</b></span>';
+    return parts ? '<div class="gx-val-line">' + parts + '</div>' : '';
+  }
+  // VALUE — tabla en escritorio, tarjetas en móvil (idéntico al value de fútbol)
+  function bbValueBoard(rows) {
+    if (!rows.length) return '';
+    var desk = '<table class="gx-table"><thead><tr><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th>GP</th><th>' + esc(t('hero_mkt')) + '</th><th>' + esc(t('th_price')) + '</th><th>' + esc(t('th_edge')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="l">' + esc(t('col_provider')) + '</th></tr></thead><tbody>' +
+      rows.map(function (v) {
+        var sig = bbSigCode(v.ev_pct);
+        return '<tr class="gx-row" data-bbceid="' + esc(v.ceid) + '">' +
+          '<td class="l"><div class="gx-cell-team"><div class="gx-teamnames"><b>' + esc(v.label) + '</b><span>' + bbMatchLine(v.event) + ' · ' + esc(v.fam_label) + '</span>' + bbFairLine(v) + '</div></div></td>' +
+          '<td class="l">' + (sigBadge(sig) || '—') + '</td>' +
+          '<td class="gx-mono gx-gp"><span class="hi">' + (v.model != null ? Math.round(100 * v.model) + '%' : '—') + '</span></td>' +
+          '<td class="gx-mono gx-dim">' + Math.round(100 * v.fair) + '%</td>' +
+          '<td class="gx-mono gx-best"><span class="hi">' + odd(v.odds) + '</span></td>' +
+          '<td class="gx-edge gx-pos">+' + v.ev_pct.toFixed(1) + '%</td>' +
+          '<td class="l">' + (v.event.kickoff ? '<span class="gx-dim" style="font-size:11px;font-weight:600">' + esc(bbWhen(v.event.kickoff)) + '</span>' : '—') + '</td>' +
+          '<td class="l gx-dim" style="font-size:11px">' + bookLogo(v.book) + esc(prettyBook(v.book) || v.book) +
+            (v.model > 0 && v.odds > 1 ? ' ' + stakeCalcBtn(v.model, Number(v.odds), v.label, 'gp') : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    var mob = rows.map(function (v) {
+      return '<div class="gx-mcard" data-bbceid="' + esc(v.ceid) + '">' +
+        '<div class="gx-mcard-top">' + (sigBadge(bbSigCode(v.ev_pct)) || '') + '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:10.5px">' + esc(v.fam_label) + (v.event.kickoff ? ' · ' + esc(bbWhen(v.event.kickoff)) : '') + '</span></div>' +
+        '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames"><b>' + esc(v.label) + '</b><span>' + bbMatchLine(v.event) + '</span></div></div>' +
+        '<div class="gx-mcard-foot"><span class="gx-mono">' + (v.model != null ? 'GP ' + Math.round(100 * v.model) + '% · ' : '') + esc(t('th_price')) + ' ' + odd(v.odds) + ' ' + bookLogo(v.book) + esc(prettyBook(v.book) || v.book) + '</span><span class="gx-edge gx-pos">+' + v.ev_pct.toFixed(1) + '%</span></div>' +
+        bbFairLine(v) + '</div>';
+    }).join('');
+    return '<div class="gx-panel gx-board gx-matches-desk">' + desk + '</div><div class="gx-matches-mob">' + mob + '</div>';
+  }
+  // ARBITRAJE — la card de arbitraje de fútbol, con sus patas y su ROI
+  function bbArbBoard(rows) {
+    return rows.map(function (a) {
+      var legs = [a.a, a.b].map(function (l) {
+        return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(l.label) + '</span>' +
+          '<span class="gx-arb-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
+          '<span class="gx-arb-leg-book">' + bookLogo(l.book) + esc(prettyBook(l.book) || l.book) + '</span>' +
+          '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(l.stake_pct) + '%</span></div>';
+      }).join('');
+      var odds = [a.a.odds, a.b.odds].map(function (o) { return Number(o).toFixed(2); }).join(',');
+      var sels = [a.a.label, a.b.label].join('|');
+      var books = [a.a.book, a.b.book].map(function (b) { return prettyBook(b) || b; }).join('|');
+      return '<div class="gx-arb-card' + (a.executable ? ' gx-arb-exe' : '') + '">' +
+        '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) +
+          (a.executable ? '' : ' <span class="gx-arb-theo">' + esc(t('arb_theo_badge')) + '</span>') + '</span>' +
+        '<span class="gx-pick-time">' + esc(a.fam_label) + ' · ' + esc(bbWhen(a.event.kickoff)) + '</span></div>' +
+        '<div class="gx-arb-match"><b>' + bbMatchLine(a.event) + '</b></div>' +
+        '<div class="gx-arb-legs">' + legs + '</div>' +
+        '<div class="gx-pick-foot"><div class="gx-arb-roi ' + (a.executable ? 'gx-pos' : 'gx-dim') + '">' + ic('shield-check') +
+          esc(a.executable ? t('arb_roi') : t('arb_roi_theo')) + ': <b>+' + a.profit_pct.toFixed(2) + '%</b></div>' +
+        '<div class="gx-arb-fresh gx-dim">' + (a.max_payout ? 'hasta $' + a.max_payout : 'profundidad sin verificar') + '</div></div>' +
+        '<div class="gx-calc-row"><button class="gx-calc-btn" data-calc="arb" data-odds="' + esc(odds) + '" data-sels="' + esc(sels) + '" data-books="' + esc(books) + '">' + ic('calculator') + '<span>' + esc(t('calc_open_arb')) + '</span></button></div>' +
+        '</div>';
+    }).join('');
+  }
+  // CAÍDAS — tarjeta con el antes/después de la línea afilada y la tira de casas rezagadas
+  function bbDropBoard(rows) {
+    return rows.map(function (r) {
+      var stale = (r.stale || []).map(function (s2) { return '<span class="gx-val-bk">' + bookLogo(s2.book) + esc(prettyBook(s2.book) || s2.book) + ' <b>' + Number(s2.o).toFixed(2) + '</b></span>'; }).join('');
+      var sideLab = r.fam === 'match_winner' ? (r.side === 'home' ? r.event.home : r.event.away)
+        : r.fam === 'spread' ? ((r.side === 'home' ? r.event.home : r.event.away) + ' ' + (r.line > 0 ? '+' : '') + r.line)
+          : ((r.side === 'over' ? 'Más de ' : 'Menos de ') + r.line + ' puntos');
+      return '<div class="gx-mcard">' +
+        '<div class="gx-mcard-top"><span class="gx-pick-fam">' + esc(r.fam_label) + '</span><span class="gx-dim" style="font-size:10.5px">' + esc(r.event.league_name || '') + (r.event.kickoff ? ' · ' + esc(bbWhen(r.event.kickoff)) : '') + '</span><span class="gx-spacer"></span><span class="gx-edge gx-pos">−' + r.drop_pct + '%</span></div>' +
+        '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames"><b>' + bbMatchLine(r.event) + '</b><span>' + esc(sideLab) + '</span></div></div>' +
+        '<div class="gx-mcard-foot"><span class="gx-mono gx-dim"><s>' + Number(r.sharp_before).toFixed(2) + '</s> → <b style="color:var(--gx-text,#EDF2F4)">' + Number(r.sharp_now).toFixed(2) + '</b> · ' + esc(t('drop_sharp')) + '</span><span class="gx-mono gx-pos">+' + r.move_pp + 'pp</span></div>' +
+        (stale ? '<div class="gx-val-line"><span class="gx-val-bk fair">' + esc(t('drop_stale')) + '</span>' + stale + '</div>'
+          : '<div class="gx-dim" style="font-size:10.5px;margin-top:5px">' + esc(t('drop_no_stale')) + '</div>') + '</div>';
+    }).join('');
+  }
+  // MIDDLES — misma card de dos patas, con la zona que paga doble
+  function bbMidBoard(rows) {
+    return rows.map(function (m) {
+      return '<div class="gx-arb-card gx-mcard">' +
+        '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(m.fam_label) + '</span><span class="gx-pick-time">' + esc(m.event.league_name || '') + (m.event.kickoff ? ' · ' + esc(bbWhen(m.event.kickoff)) : '') + '</span></div>' +
+        '<div class="gx-arb-match"><b>' + bbMatchLine(m.event) + '</b></div>' +
+        '<div class="gx-arb-legs">' +
+          '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(m.low.label) + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(m.low.odds).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(m.low.book) + esc(prettyBook(m.low.book) || m.low.book) + '</span></div>' +
+          '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(m.high.label) + '</span><span class="gx-arb-leg-odds gx-mono">' + Number(m.high.odds).toFixed(2) + '</span><span class="gx-arb-leg-book">' + bookLogo(m.high.book) + esc(prettyBook(m.high.book) || m.high.book) + '</span></div>' +
+        '</div>' +
+        '<div class="gx-pick-foot"><span class="gx-mono ' + (m.cost_pct <= 0 ? 'gx-pos' : 'gx-dim') + '">' + esc(t('mid_cost')) + ' ' + (m.cost_pct >= 0 ? '' : '+') + Math.abs(m.cost_pct) + '%' + (m.cost_pct <= 0 ? ' · surebet' : '') + '</span><span class="gx-mono gx-pos">' + esc(t('mid_zone')) + ' ' + esc(m.zone) + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
   function renderBBOpps() {
     var lgo = bbOppLg();
     var f = S.bb.oppFilt || 'picks';
@@ -7011,46 +7107,16 @@
     if (d._err) { bbShell('Oportunidades · baloncesto', tabs + chips + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
 
     var body = '';
-    if (f === 'value') {
-      body = (d.value || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Mejor precio contra el consenso</span><span class="gx-ph-extra">' + d.value.length + '</span></div><div class="gx-bb-opps">' +
-        d.value.map(function (v) {
-          var gp = v.model != null ? '<span class="gx-bb-ogp' + (v.model_ev_pct >= 0 ? ' up' : ' dn') + '">GP Take ' + Math.round(100 * v.model) + '%' + (v.model_vs_market_pp != null ? ' <i>(' + (v.model_vs_market_pp > 0 ? '+' : '') + v.model_vs_market_pp + 'pp vs mercado)</i>' : '') + '</span>' : '';
-          return '<div class="gx-bb-opp">' + bbEvLine(v.event) +
-            '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(v.fam_label) + '</span><b class="gx-bb-osel">' + esc(v.label) + '</b>' +
-            '<span class="gx-bb-oodds">' + v.odds.toFixed(2) + '<i>' + esc(bbBookLab(v.book)) + '</i></span>' +
-            '<span class="gx-bb-oev up">+' + v.ev_pct.toFixed(1) + '%</span></div>' +
-            '<div class="gx-bb-ometa"><span>justa ' + v.fair_odds.toFixed(2) + '</span><span>' + v.books + ' casas</span><span>margen ' + v.vig_pct + '%</span>' +
-            (v.max_stake ? '<span>hasta $' + v.max_stake + '</span>' : '') + gp + '</div></div>';
-        }).join('') + '</div></div>' : '';
-    } else if (f === 'arbs') {
-      body = (d.arbs || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Las dos patas en casas distintas</span><span class="gx-ph-extra">' + d.arbs.length + '</span></div><div class="gx-bb-opps">' +
-        d.arbs.map(function (a) {
-          return '<div class="gx-bb-opp' + (a.executable ? ' exec' : '') + '">' + bbEvLine(a.event) +
-            '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(a.a.label) + '</b><span>' + a.a.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.a.book)) + '</span><em>' + a.a.stake_pct + '% del capital</em></div>' +
-            '<div class="gx-bb-arbleg"><b>' + esc(a.b.label) + '</b><span>' + a.b.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.b.book)) + '</span><em>' + a.b.stake_pct + '% del capital</em></div>' +
-            '<div class="gx-bb-arbp"><b>+' + a.profit_pct.toFixed(2) + '%</b><span>' + esc(a.fam_label) + '</span>' +
-            (a.max_payout ? '<em>hasta $' + a.max_payout + '</em>' : '<em class="gx-dim">profundidad sin verificar</em>') + '</div></div></div>';
-        }).join('') + '</div></div>' : '';
-    } else if (f === 'dropping') {
-      body = (d.dropping || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La línea afilada se movió</span><span class="gx-ph-extra">' + d.dropping.length + '</span></div><div class="gx-bb-opps">' +
-        d.dropping.map(function (r) {
-          return '<div class="gx-bb-opp">' + bbEvLine(r.event) +
-            '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(r.fam_label) + (r.line != null ? ' ' + r.line : '') + '</span>' +
-            '<b class="gx-bb-osel">' + esc(r.side) + '</b>' +
-            '<span class="gx-bb-odrop">' + r.sharp_before.toFixed(2) + ' → <b>' + r.sharp_now.toFixed(2) + '</b></span>' +
-            '<span class="gx-bb-oev dn">−' + r.drop_pct.toFixed(1) + '%</span></div>' +
-            (r.stale && r.stale.length ? '<div class="gx-bb-ometa"><span class="gx-bb-stale">Rezagadas: ' + r.stale.map(function (x) { return esc(bbBookLab(x.book)) + ' ' + x.o.toFixed(2); }).join(' · ') + '</span></div>'
-              : '<div class="gx-bb-ometa gx-dim"><span>Ninguna casa quedó atrás: el mercado ya absorbió el movimiento</span></div>') + '</div>';
-        }).join('') + '</div></div>' : '';
-    } else {
-      body = (d.middles || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Si cae en el medio, cobran las dos</span><span class="gx-ph-extra">' + d.middles.length + '</span></div><div class="gx-bb-opps">' +
-        d.middles.map(function (m) {
-          return '<div class="gx-bb-opp">' + bbEvLine(m.event) +
-            '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(m.low.label) + '</b><span>' + m.low.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.low.book)) + '</span></div>' +
-            '<div class="gx-bb-arbleg"><b>' + esc(m.high.label) + '</b><span>' + m.high.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.high.book)) + '</span></div>' +
-            '<div class="gx-bb-arbp"><b>' + esc(m.zone) + '</b><span>' + esc(m.fam_label) + '</span><em>' + (m.cost_pct <= 0 ? 'además es surebet' : 'cuesta ' + m.cost_pct.toFixed(2) + '%') + '</em></div></div></div>';
-        }).join('') + '</div></div>' : '';
-    }
+    if (f === 'value') body = bbValueBoard(d.value || []);
+    else if (f === 'arbs') body = bbArbBoard(d.arbs || []);
+    else if (f === 'dropping') body = bbDropBoard(d.dropping || []);
+    else body = bbMidBoard(d.middles || []);
+    var intro = { value: 'El mejor precio disponible contra el consenso sin margen. No depende del modelo: es una discrepancia real entre casas.',
+      arbs: 'Las dos patas de un mercado de dos salidas en casas distintas, con suma menor que 1.',
+      dropping: 'La línea de las casas afiladas se movió; las rezagadas todavía pagan el precio viejo.',
+      middles: 'Dos líneas con hueco: si el resultado cae en el medio, cobran las dos patas.' }[f];
+    if (body) body = '<div class="gx-dim" style="font-size:10.5px;margin-bottom:8px">' + ic('info-circle') + ' ' + esc(intro) + '</div>' + body +
+      '<div class="gx-pick-disc">' + esc(t('pf_disclaimer')) + '</div>';
     if (!body) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin oportunidades en esta vista ahora mismo.</b>' +
         '<span class="gx-dim">' + esc(d.note || (d.events ? d.events + ' partidos con cuotas rastreados · el escáner corre cada 12 minutos' : 'Ninguna liga de baloncesto tiene partidos con cuotas en la ventana.')) + '</span></div></div>';
@@ -7551,6 +7617,25 @@
     var rd = e.target.closest('[data-bbread]'); if (rd) { bbGenRead(rd.getAttribute('data-bbread')); return; }
     var sw = e.target.closest('[data-bbsimwith]');
     if (sw) { S.bb.sim = S.bb.sim || {}; S.bb.sim.home = sw.getAttribute('data-bbsimwith'); S.bb.sim.away = ''; setHash('bbsim/' + bbLg()); return; }
+    var ce = e.target.closest('[data-bbceid]');
+    if (ce) {
+      // de la fila de value al panel del partido: el ceid es del mapa de cuotas, así que se resuelve
+      // contra la agenda ya cargada por nombres. Si no resuelve, no se hace nada (mejor que un 404).
+      var cid = ce.getAttribute('data-bbceid');
+      var sch = (S.bb['sched_' + bbLg()] || {}).v;
+      var row = (S.bb['opps_' + bbOppLg()] || {}).v;
+      var evx = null;
+      ['value', 'arbs', 'middles', 'dropping'].forEach(function (k) {
+        ((row || {})[k] || []).forEach(function (x) { if (x.ceid === cid && !evx) evx = x.event; });
+      });
+      if (evx && sch) {
+        var nq = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+        var all = (sch.live || []).concat(sch.upcoming || [], sch.finished || []);
+        var hit = all.filter(function (g) { return nq(g.home.name) === nq(evx.home) && nq(g.away.name) === nq(evx.away); })[0];
+        if (hit) { setHash('bbgame/' + bbLg() + '-' + hit.id); return; }
+      }
+      return;
+    }
     var op = e.target.closest('[data-bbopen]'); if (op) { setHash('bbgame/' + op.getAttribute('data-bbopen')); return; }
     if (e.target.closest('[data-bbsimswap]')) { var tmp = S.bb.sim.home; S.bb.sim.home = S.bb.sim.away; S.bb.sim.away = tmp; renderBBSim(); return; }
     var a = e.target.closest('a.lnk'); if (a && a.getAttribute('href')) return;   // los enlaces navegan solos

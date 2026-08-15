@@ -3324,7 +3324,10 @@ function reg90For(homeId, awayId) {
 // SCAN 1X2/totales = 3 regiones (profundidad de casas suficiente para el consenso de SOLID/GOALS sin gastar
 // de más en el barrido horario). Ajustar aquí un solo lugar cambia todos los sweeps.
 const ODDS_REGIONS_PROPS = 'us,us2,uk,eu,au';
-const ODDS_REGIONS_SCAN = 'us,uk,eu';
+// 15-ago (plan de 5M): se pasa de 3 a 5 regiones. Cada región extra son más CASAS en el consenso, que es
+// justo lo que da mejor mediana, mejor 'mejor cuota' y más pares para arbitraje/middles. Cuesta 1,67× por
+// barrido — irrelevante contra 5.000.000 de créditos, y era impensable con 500.
+const ODDS_REGIONS_SCAN = 'us,us2,uk,eu,au';
 // ===== PRESUPUESTO DE THE ODDS API (plan 100k, 17-jul) — tracker + guard compartido ==========================
 // Cada respuesta de The Odds API trae `x-requests-remaining` (créditos del ciclo, resetea el 24). Lo capturamos
 // en global._oddsCredits y los sweeps consultan `oddsBudgetOk(reserve)` ANTES de gastar: por debajo de la
@@ -3403,7 +3406,7 @@ async function clubsSoccerCatalog(key) {
 async function clubsKeyHasEvents(key, oddsKey, horizonH) {
   const G = global._oaEvCheck = global._oaEvCheck || {};
   const c = G[oddsKey];
-  if (c && Date.now() - c.at < 6 * 3600e3) return c.has;
+  if (c && Date.now() - c.at < 2 * 3600e3) return c.has;   // 15-ago: 6h → 2h (es gratis, conviene fresco)
   let has = false;
   try {
     const r = await fetch(`https://api.the-odds-api.com/v4/sports/${oddsKey}/events?apiKey=${key}`, { signal: AbortSignal.timeout(12000) });
@@ -3436,7 +3439,9 @@ async function clubsQuotesSweep({ force = false } = {}) {
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
   if (_clubsQuotesRunning) return { skipped: 'running' };
   // 12-ago: cadencia configurable (GP_CLUBS_SWEEP_MIN, default 30) — con créditos contados se espacia sin deploy
-  if (!force && Date.now() - _clubsQuotesLast < Number(process.env.GP_CLUBS_SWEEP_MIN || 30) * 60e3) return { skipped: 'throttle' };
+  // 15-ago: default 30 → 12 min. La frescura de la línea ES el producto (CLV, caídas, middles se miden
+  // contra el cierre); con créditos abundantes no hay razón para mirar el mercado cada media hora.
+  if (!force && Date.now() - _clubsQuotesLast < Number(process.env.GP_CLUBS_SWEEP_MIN || 12) * 60e3) return { skipped: 'throttle' };
   if (!force && !oddsBudgetOk(oddsReserve())) return { skipped: 'budget_reserve', credits_remaining: global._oddsCredits.remaining };
   _clubsQuotesRunning = true;
   const out = { leagues: 0, events: 0, quotes: 0, started: new Date().toISOString() };
@@ -3465,7 +3470,7 @@ async function clubsQuotesSweep({ force = false } = {}) {
       } catch { /* liga sin datos este ciclo */ }
       if (!Array.isArray(events)) continue;
       out.leagues++;
-      for (const ev of events.slice(0, 25)) {
+      for (const ev of events.slice(0, 60)) {   // 15-ago: 25 → 60 por liga (jornadas completas, no las primeras)
         const ceid = stableGoalEventId('cl:' + L.key + ':' + ev.home_team, 'cl:' + L.key + ':' + ev.away_team);
         out.events++;
         // metadata del evento sintético (liga, equipos, kickoff) para que el market-scanner pueda armar
@@ -3666,7 +3671,7 @@ async function polymarketSweep({ force = false } = {}) {
       .filter(([, m]) => { const kt = Date.parse(m.kickoff || 0); return kt > now && kt < now + 48 * 3600e3; })
       .slice(0, 60);
     for (const [ceid, meta] of targets) {
-      if (out.searched >= 30) break;
+      if (out.searched >= 60) break;   // 15-ago: 30 → 60 eventos por pasada
       const c = global._polyEvCache[ceid];
       if (c && now - c.at < 30 * 60e3) continue; // ya buscado hace poco (con o sin match)
       global._polyEvCache[ceid] = { at: now };
@@ -3922,7 +3927,7 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
       // ver el mercado desde que ABRE = comprar en su momento más ignorante (el opening queda en db.marketOpenings).
       // 12-ago: ventana CONFIGURABLE por env (GP_CLUBS_PROPS_WINDOW_H, default 144) — con créditos contados se
       // achica a 48h sin deploy (menos eventos por sweep = el remanente alcanza hasta el upgrade del plan).
-      if (!(kt > now && kt < now + Number(process.env.GP_CLUBS_PROPS_WINDOW_H || 144) * 3600e3)) continue;
+      if (!(kt > now && kt < now + Number(process.env.GP_CLUBS_PROPS_WINDOW_H || 240) * 3600e3)) continue;  // 15-ago: 144 → 240h
       const L = RT.leagues[meta.league]; if (!L || !L.odds_key) continue;
       let o = null;
       try {
@@ -10274,7 +10279,7 @@ const _nbOver = (mu, r, line) => { const { nbPmf } = require('./goal-engine/nega
 async function evaluateUpcomingProps() {
   if (!propsOn()) return { skipped: 'disabled' };
   if (_propsRunning) return { skipped: 'running' };
-  if (Date.now() - _propsLastRunMs < 100 * 60 * 1000) return { skipped: 'not_due' }; // cadencia ~100 min (créditos)
+  if (Date.now() - _propsLastRunMs < 30 * 60 * 1000) return { skipped: 'not_due' }; // 15-ago: 100 → 30 min (plan 5M)
   const KEY = process.env.SPORTSBOOK_PROVIDER_API_KEY;
   if (!KEY) return { skipped: 'no_key' };
   const dbcfg = require('./database/config');
@@ -15932,7 +15937,7 @@ const server = http.createServer(async (req, res) => {
           // máx 6 ligas AF por request de state (el resto en el próximo poll) — un frío de 56 ligas no puede
           // colgar el render con 56 fetches secuenciales; el memo de 6h hace que en ~10 polls esté todo tibio.
           global._afUpBudget = (global._afUpBudget && Date.now() - global._afUpBudget.at < 60e3) ? global._afUpBudget : { at: Date.now(), n: 0 };
-          if ((!up || !(up.rows || []).length || (up.afOnly && Date.now() - up.at > 6 * 3600e3)) && afkUp && CLUB_AF_LEAGUE[key] && global._afUpBudget.n < 6 && ++global._afUpBudget.n) {
+          if ((!up || !(up.rows || []).length || (up.afOnly && Date.now() - up.at > 6 * 3600e3)) && afkUp && CLUB_AF_LEAGUE[key] && global._afUpBudget.n < 20 && ++global._afUpBudget.n) {
             try {
               const rAf = await fetch(`https://${process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io'}/fixtures?league=${CLUB_AF_LEAGUE[key]}&next=15`, { headers: { 'x-apisports-key': afkUp }, signal: AbortSignal.timeout(8000) });
               const jAf = rAf.ok ? await rAf.json().catch(() => null) : null;

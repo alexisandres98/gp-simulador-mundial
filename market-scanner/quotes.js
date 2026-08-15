@@ -125,7 +125,15 @@ async function loadSportsbookTotals(db, { provider = 'the_odds_api', includePast
 // del loader de la casa no ve estos ids). Este loader arma mercados con esa metadata, etiquetados is_club +
 // competition. NO entra a loadMarkets: el server lo corre en un scan SEPARADO (cache propio, solo admin) para
 // que el scan compartido (teaser/telegram/no-admin) quede byte-idéntico.
-async function loadClubsMarkets(db, { provider = 'the_odds_api', events = {}, now = Date.now() } = {}) {
+// 15-ago — EL FILTRO QUE DEJABA EL ARBITRAJE EN CERO: la query pedía `data_provider = $1` (un solo
+// proveedor, the_odds_api). Pero arbitrar es, por definición, comparar VARIOS proveedores: las cuotas de
+// Cloudbet, Kalshi, Myriad y Polymarket —que se escriben con su propio data_provider— eran invisibles para
+// el escáner. Con The Odds API sin créditos eso significaba markets_scanned = 0 y arbitraje vacío aunque la
+// tabla tuviera 800 precios frescos. Ahora entran todos los proveedores; `provider` sigue aceptándose para
+// acotar a uno cuando se quiera (tests, depuración).
+const CLUB_PROVIDERS = ['the_odds_api', 'cloudbet', 'kalshi', 'myriad', 'polymarket'];
+async function loadClubsMarkets(db, { provider = null, events = {}, now = Date.now() } = {}) {
+  const providers = provider ? [provider] : CLUB_PROVIDERS;
   const ids = Object.keys(events).filter(id => {
     const k = events[id] && events[id].kickoff ? +new Date(events[id].kickoff) : NaN;
     return Number.isFinite(k) && k > now - 3 * 3600e3; // próximos o en juego, misma ventana que la casa
@@ -146,10 +154,10 @@ async function loadClubsMarkets(db, { provider = 'the_odds_api', events = {}, no
               m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
          FROM sportsbook_goal_quote_current g
          LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
-        WHERE g.data_provider = $1 AND g.canonical_event_id = ANY($2)
+        WHERE g.data_provider = ANY($1) AND g.canonical_event_id = ANY($2)
           AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'
           AND g.observed_at > now() - interval '24 hours'`,
-      [provider, ids.slice(i, i + 80)]).catch((e) => { qErr = e; return { rows: [] }; });
+      [providers, ids.slice(i, i + 80)]).catch((e) => { qErr = e; return { rows: [] }; });
     rows.push(...r.rows);
   }
   if (qErr) console.error('[clubs-markets] query 1X2/goles falló (parcial=' + rows.length + ' filas):', qErr.message);

@@ -54,6 +54,10 @@ function balance() {
   let b = _db.llmBalance;
   if (!b || b.at !== at || b.loaded_usd !== loaded) {
     b = _db.llmBalance = { at, loaded_usd: loaded, spent_usd: 0, since: new Date().toISOString(), alerted: false };
+    // Una RECARGA reabre el día: el gasto de hoy se hizo con las reglas viejas y contra el saldo viejo.
+    // Sin esto, recargar a media tarde deja el LLM apagado hasta la medianoche — justo lo contrario de lo
+    // que significa recargar. El acumulado histórico (total_usd) se conserva.
+    if (_db.llmUsage) { _db.llmUsage.usd = 0; _db.llmUsage.calls = 0; _db.llmUsage.by = {}; _db.llmUsage.reopened_at = new Date().toISOString(); }
   }
   return b;
 }

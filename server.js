@@ -3513,6 +3513,74 @@ async function clubsQuotesSweep({ force = false } = {}) {
   console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
   return out;
 }
+// ===== BALONCESTO: CUOTAS (15-ago) ==========================================================================
+// Las claves de baloncesto de The Odds API entran al MISMO almacén que el fútbol (sportsbook_goal_quote_current)
+// con canonical ids sintéticos, así que value/arbitraje/caídas/middles y la captura de profundidad las ven sin
+// tocar una línea de esas superficies. Las que están fuera de temporada no devuelven eventos: la lista puede
+// quedarse completa todo el año y se activa sola cuando arranca cada competición.
+const HOOPS_ODDS_KEYS = ['basketball_nba', 'basketball_wnba', 'basketball_ncaab', 'basketball_wncaab',
+  'basketball_euroleague', 'basketball_nbl', 'basketball_nba_preseason', 'basketball_nba_summer_league'];
+let _hoopsQLast = 0, _hoopsQRunning = false, _hoopsQOut = null;
+async function hoopsQuotesSweep({ force = false } = {}) {
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
+  const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
+  if (_hoopsQRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _hoopsQLast < 12 * 60e3) return { skipped: 'throttle' };
+  _hoopsQRunning = true;
+  const out = { keys: 0, events: 0, quotes: 0, started: new Date().toISOString() };
+  try {
+    const { stableGoalEventId } = require('./goal-engine/eventKey');
+    const grepo = require('./goal-engine/repository');
+    for (const k of HOOPS_ODDS_KEYS) {
+      let events = null;
+      try {
+        const r = await fetch(`https://api.the-odds-api.com/v4/sports/${k}/odds?apiKey=${key}&regions=${ODDS_REGIONS_SCAN}&markets=h2h,spreads,totals&oddsFormat=decimal`, { signal: AbortSignal.timeout(15000) });
+        noteOddsCredits(r);
+        events = r.ok ? await r.json().catch(() => null) : null;
+      } catch { /* clave fuera de temporada o caída */ }
+      if (!Array.isArray(events) || !events.length) continue;
+      out.keys++;
+      for (const ev of events.slice(0, 60)) {
+        const ceid = stableGoalEventId('bb:' + k + ':' + ev.home_team, 'bb:' + k + ':' + ev.away_team);
+        out.events++;
+        db.clubsQuoteEvents = db.clubsQuoteEvents || {};
+        db.clubsQuoteEvents[ceid] = { league: k, league_name: k, home: ev.home_team, away: ev.away_team,
+          kickoff: ev.commence_time || null, oa_id: ev.id, sport: 'basketball', at: Date.now() };
+        for (const bk of ev.bookmakers || []) for (const mk of bk.markets || []) {
+          if (mk.key === 'h2h') {
+            for (const oc of (mk.outcomes || [])) {
+              if (!(oc.price > 1)) continue;
+              const side = oc.name === ev.home_team ? 'home' : oc.name === ev.away_team ? 'away' : 'draw';
+              await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: oc.price, implied_probability: 1 / oc.price, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+              out.quotes++;
+            }
+          } else if (mk.key === 'totals') {
+            for (const oc of (mk.outcomes || [])) {
+              const line = Number(oc.point); if (!Number.isFinite(line) || !(oc.price > 1)) continue;
+              const side = /over/i.test(oc.name) ? 'over' : 'under';
+              await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ceid, market_family: 'match_total', line, side, team_scope: 'total', market_id: 'TOTAL_PTS_' + side.toUpperCase() + '_' + String(line).replace('.', '_'), odds_decimal: oc.price, implied_probability: 1 / oc.price, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+              out.quotes++;
+            }
+          } else if (mk.key === 'spreads') {
+            for (const oc of (mk.outcomes || [])) {
+              const line = Number(oc.point); if (!Number.isFinite(line) || !(oc.price > 1)) continue;
+              const side = oc.name === ev.home_team ? 'home' : 'away';
+              await grepo.upsertGoalQuote({ data_provider: 'the_odds_api', sportsbook_code: bk.key, external_event_id: ev.id, canonical_event_id: ceid, market_family: 'spread', line, side, team_scope: side, market_id: 'SPREAD_' + side.toUpperCase() + '_' + String(line).replace('.', '_').replace('-', 'm'), odds_decimal: oc.price, implied_probability: 1 / oc.price, quote_status: 'open', is_live: false, provider_update: bk.last_update }).catch(() => {});
+              out.quotes++;
+            }
+          }
+        }
+      }
+      await new Promise(r2 => setTimeout(r2, 150));
+    }
+    _hoopsQLast = Date.now();
+    save();
+  } catch (e) { out.error = e.message; }
+  finally { _hoopsQRunning = false; out.finished = new Date().toISOString(); _hoopsQOut = out; }
+  console.log('[hoops] quotes sweep:', JSON.stringify({ keys: out.keys, events: out.events, quotes: out.quotes, error: out.error || null }));
+  return out;
+}
+
 // ===== CLOUDBET (crypto sportsbook) — UNA CASA MÁS ==========================================================
 // Cloudbet tiene API pública (key gratis). Su fútbol se FUSIONA sobre los eventos que el scanner ya rastrea
 // (db.clubsQuoteEvents): match por nombres normalizados → escribimos sus cuotas 1X2/totals con
@@ -13375,6 +13443,12 @@ const server = http.createServer(async (req, res) => {
       }
       return json(res, 404, { error: 'No encontrado' });
     }
+    if (p === '/api/internal/hoops-quotes') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') return json(res, 200, await hoopsQuotesSweep({ force: true }).catch(e => ({ error: e.message })));
+      return json(res, 200, { last: _hoopsQOut, keys: HOOPS_ODDS_KEYS });
+    }
     if (p === '/api/internal/migrate') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -17057,6 +17131,9 @@ server.listen(PORT, () => {
   // (GP_CLUBS_SHADOW_ENABLED); throttle interno 30 min — el intervalo solo "pregunta" (cada 10 min).
   setTimeout(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 90 * 1000);
   setInterval(() => { clubsQuotesSweep().catch(e => console.error('[clubs] sweep:', e.message)); }, 10 * 60 * 1000);
+  // baloncesto: mismo ritmo, almacén compartido (las claves fuera de temporada no devuelven nada)
+  setTimeout(() => { hoopsQuotesSweep().catch(e => console.error('[hoops] sweep:', e.message)); }, 90 * 1000);
+  setInterval(() => { hoopsQuotesSweep().catch(e => console.error('[hoops] sweep:', e.message)); }, 12 * 60 * 1000);
   // props de clubes (córners/tarjetas/assists/anytime): throttle interno 3h, eventos <48h; el intervalo pregunta c/30min
   setTimeout(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 150 * 1000);
   setInterval(() => { clubsPlayerPropsSweep().catch(e => console.error('[clubs] props:', e.message)); }, 30 * 60 * 1000);

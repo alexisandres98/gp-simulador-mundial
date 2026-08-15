@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'NBA', sport_soon: 'Próximamente',
+      sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_soon: 'Próximamente',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'NBA', sport_soon: 'Coming soon',
+      sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_soon: 'Coming soon',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -6606,15 +6606,14 @@
     var e = S.bb[key] = S.bb[key] || {};
     e._inflight = true; var done = false;
     var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'hoops') showView(S.view); }, 25000);
-    api(url).then(function (d) {
-      if (done) return; done = true; clearTimeout(to);
-      e.v = d || { _err: 1 }; e._at = Date.now(); e._inflight = false;
-      if (S.sport === 'hoops') showView(S.view);
-    }).catch(function () {
-      if (done) return; done = true; clearTimeout(to);
-      e._inflight = false; e.v = { _err: 1 }; e._at = Date.now();
-      if (S.sport === 'hoops') showView(S.view);
-    });
+    // mismo transporte que combate (hdrs() lleva el token; asplanQS respeta el preview de plan del admin)
+    fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (d) {
+        if (done) return; done = true; clearTimeout(to);
+        e.v = d || { _err: 1 }; e._at = Date.now(); e._inflight = false;
+        if (S.sport === 'hoops') showView(S.view);
+      });
   }
   function bbTabs() {
     return '<div class="gx-cb-tabs">' + BB_LEAGUES.map(function (x) {
@@ -8734,8 +8733,13 @@
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
             // el shell se pinta ANTES de que llegue /api/me → el sportbar se construyó sin saber si combate
             // está permitido. Si al llegar la sesión cambia el veredicto, se reconstruye (badge "Próximamente").
-            if (cbSportAllowed() && $('.gx-cbsoon')) shell();
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat') { S.sport = 'futbol'; shell(); } showView('board'); } else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief', 'ask', 'betcheck'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, ask: renderAsk, betcheck: renderBetcheck }[S.view] || function () {})(); } }
+            if ((cbSportAllowed() && $('.gx-cbsoon')) || (bbAllowed() && $('.gx-sport.dim'))) shell();
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops') { S.sport = 'futbol'; shell(); } showView('board'); }
+            // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
+            // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por
+            // enlace directo (mismo bug que ya tenía combate y por eso existe la rama de al lado).
+            else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }
+            else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief', 'ask', 'betcheck'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, ask: renderAsk, betcheck: renderBetcheck }[S.view] || function () {})(); } }
         });
         document.addEventListener('click', function (e) {
           var mo = e.target.closest('[data-more]'); if (mo) { e.preventDefault(); openMoreSheet(); return; }

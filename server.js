@@ -13908,8 +13908,11 @@ const server = http.createServer(async (req, res) => {
           const liveG = gsUp.find(x => String(x.id) === gid);
           if (!liveG) return json(res, 404, { error: 'No encontrado' });
           if (!C.fit || !C.fit.off[liveG.home.id] || !C.fit.off[liveG.away.id]) return json(res, 200, { league: lg, upcoming: true, no_rating: true, note: 'Alguno de los dos equipos todavía no tiene rating en esta temporada.' });
+          // sin marcador si el partido no arrancó: ESPN devuelve 0-0 y pintar "0" en la cabecera de un
+          // partido de mañana parece un empate a cero, no un partido por jugar.
+          const started = liveG.status === 'in' || liveG.completed;
           g = { id: liveG.id, league: lg, date: liveG.date, neutral: !!liveG.neutral, venue: liveG.venue,
-            home: { id: liveG.home.id, pts: liveG.home.score }, away: { id: liveG.away.id, pts: liveG.away.score },
+            home: { id: liveG.home.id, pts: started ? liveG.home.score : null }, away: { id: liveG.away.id, pts: started ? liveG.away.score : null },
             completed: !!liveG.completed, status: liveG.status };
         }
         const sims = Math.max(2000, Math.min(60000, Number(url.searchParams.get('sims')) || 20000));

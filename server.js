@@ -9269,8 +9269,14 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           model_prob: +c.pModel.toFixed(4), market_prob: +c.pMarket.toFixed(4),
           edge_pp: +c.edgePp.toFixed(2), ev_pct: +c.evPct.toFixed(2),
           best_odds: +c.best.o.toFixed(2), best_book: c.best.book, books: c.books,
+          pick_id: 'bb_' + lg + '_' + g.id + '_' + c.fam + '_' + c.side,   // lo pide el botón de vigilar precio
           fair_odds: +(1 / c.pModel).toFixed(2),
-          confidence: sim.conf,
+          // `confidence` es NUMÉRICA porque así la consumen la card (color del indicador) y la calculadora
+          // de stake, que la usa como probabilidad. Se usa la ENCOGIDA hacia el mercado, no la cruda: es la
+          // misma que dimensiona el stake, y con un modelo que no bate al cierre usar la cruda exageraría.
+          // La confianza de MUESTRA (alta/media/baja) es otra cosa y viaja aparte.
+          confidence: +(0.35 * c.pModel + 0.65 * c.pMarket).toFixed(4),
+          sample_confidence: sim.conf,
           status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
           created_at: new Date().toISOString(),
           monitor_only: true,      // BANDERA DURA: esto no se publica jamás mientras el skill sea negativo

@@ -1,15 +1,19 @@
 # TODO_NEXT.md — GP Simulador
 
-## 🥊 COMBATE 16-ago: capa visual y motor de boxeo — LISTOS, SIN DESPLEGAR
+## 🥊 COMBATE 16-ago: capa visual y motor de boxeo — DESPLEGADOS Y VERIFICADOS (`117ccb7`)
 Detalle completo y todas las mediciones en `HANDOFF.md` §2. Lo que hay que saber aquí:
 - **Boxeo no tenía capa profunda**, no la tenía "adaptada de MMA": `espnstats-boxing.json` no existe, el
   motor de fases producía 0 perfiles y `fightIntel` devolvía `available:false` para toda pelea de boxeo.
   Ahora `combat-engine/boxing.js` produce 2.767 perfiles y está validado sobre 2.768 peleas fuera de
   muestra (finalización AUC 0,694; asalto medio 5,11 contra 5,30 real; método dentro de 1,7 pp).
-- **Pendiente inmediato: desplegar.** Está en `claude/gpsim-combat-visual-boxing-276pin`, no en `main`.
-- **Lo primero que hay que mirar en cuanto esté vivo:** que el bloque `deep` de una pelea de boxeo real de
-  la agenda venga con `available: true` (peleadores con menos de 3 peleas en el histórico caen fuera, y en
-  carteleras chicas eso puede pasar) y cuánto tarda `/api/combat/fight` con el motor de boxeo dentro.
+- **🔴 EL PENDIENTE QUE ESTO DESTAPA: la cobertura de `fights-boxing.json`.** Las tres peleas de la
+  cartelera de boxeo del 15-ago dan `available:false` porque **cinco de los seis boxeadores tienen CERO
+  peleas en el archivo** (el sexto, Angulo, tiene 30 y se perfila bien). El motor está sano; el dataset
+  viene de Wikipedia y no cubre las carteleras de club que trae la agenda de The Odds API. En la propia
+  validación, 8.667 de 12.966 peleas se descartan por falta de perfil de uno de los dos.
+  **Ampliar el histórico de boxeo (BoxRec/prospectos) rinde mucho más que cualquier cambio en el motor.**
+- MMA sin regresión: las cuatro peleas probadas de UFC 330 devuelven `deep.available:true`; el endpoint
+  tarda entre 419 y 1.374 ms.
 - **Hipótesis abierta y preregistrada aquí para no cazarla a posteriori:** el ganador del motor de boxeo
   SIN anclar tiene habilidad real (Brier 0,204 contra 0,250 de la moneda, 67,2 % de acierto), a diferencia
   de MMA. Va anclado igual porque está descalibrado (3/8 tramos, ECE 3,79 pp) y porque el mercado de ganador

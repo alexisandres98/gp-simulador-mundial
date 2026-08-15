@@ -3,16 +3,39 @@
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
 
-## Estado: commiteado y pusheado a la rama de trabajo. **NO DESPLEGADO.**
-- Rama: `claude/gpsim-combat-visual-boxing-276pin`. `main` sigue en `148b504`.
-- **Producción sigue sirviendo `bc5f296`** — la capa visual y el motor de boxeo NO están vivos todavía.
-- Para desplegar hace falta fusionar a `main` y disparar el deploy:
-  `curl -X POST .../services/srv-d8krl8flk1mc73c9hbi0/deploys -d '{"commitId":"<sha>"}'`
-- Lo que SÍ se verificó contra producción: el sitio responde y `/api/combat/*` sigue admin-only (404 sin
-  token). El payload profundo no se pudo pedir a producción: esta sesión no tiene token de admin
-  (`scratchpad/gp_token.txt` se fue con el contenedor anterior). La verificación del render se hizo con
-  Playwright sobre el `premium.css` real y el payload real del motor, a 820 px y 390 px, sin desbordes ni
-  errores de JS.
+## Estado: fusionado a `main`, desplegado y verificado en producción.
+- `origin/main` = **`117ccb7`** · deploy `dep-da0crhtbedkc73ag12t0` en **live** sirviendo ese commit.
+- **Ojo con el `main` LOCAL de una sesión nueva:** el contenedor clona con profundidad 50, así que el `main`
+  local puede ser una ventana vieja del histórico y `git merge` responde *"refusing to merge unrelated
+  histories"*. No es un conflicto real. La verdad está en `origin/main`: comprobar con
+  `git merge-base --is-ancestor origin/main <rama>` y empujar con
+  `git push origin <rama>:main`, que es un avance rápido limpio.
+
+### Verificado EN PRODUCCIÓN (no en local)
+- MMA, cartelera de UFC 330: las cuatro peleas probadas devuelven `deep.available: true` con el contrato
+  nuevo (`sport`, `axes`, `phase_strip`) — **sin regresión**. Endpoint completo entre 419 y 1.374 ms.
+- La app real (el `premium.js` que sirve producción, contra la API de producción) pinta **las cinco piezas**
+  a 1.280 px y a 390 px, sin desbordes y sin un solo error de JS.
+- El caso sin datos también se ve bien: la pelea de boxeo de esta noche muestra el panel de respaldo con su
+  motivo, no un hueco.
+
+### ⚠️ EL LÍMITE REAL DE BOXEO NO ES EL MOTOR, ES LA COBERTURA DEL DATASET
+Las **tres** peleas de la cartelera de boxeo del 15-ago dan `available:false`, y no es un fallo de
+identificadores: de los seis boxeadores, **cinco tienen CERO peleas en `fights-boxing.json`** (Angulo sí:
+30 peleas, perfilado sin problema). El motor carga bien (2.767 perfiles, 144 ms). El dataset viene de
+Wikipedia y cubre a los conocidos, no las carteleras de club que trae la agenda de The Odds API.
+En la propia validación se ve el mismo sesgo: de 12.966 peleas candidatas, 8.667 se descartan porque a uno
+de los dos le falta perfil.
+**Próximo paso natural para que boxeo rinda: ampliar `fights-boxing.json` hacia BoxRec/prospectos**, no
+tocar el motor.
+
+### Observación para la próxima sesión (MMA, preexistente, NO tocado)
+La capa visual saca a la luz una rareza que ya estaba en `style.js`: la ruta de Makhachev sale como "Control
+en el suelo" con ventaja saturada en 1,00 y la nota *"su mejor ventaja vive en una fase a la que la pelea
+probablemente no llegue"* con el suelo al 22 %. El umbral de esa nota (0,4) se pensó para otra escala. En
+`boxing.js` ya está corregido (la nota solo salta en el tramo profundo y por debajo de 0,28). Igualar el
+criterio en MMA es un cambio de una línea, pero mueve texto que hoy ve el usuario: hacerlo a conciencia,
+no de paso.
 
 ---
 

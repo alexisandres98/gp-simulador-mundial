@@ -11608,7 +11608,10 @@ async function getClubsScan() {
   _clubsScanCache.running = (async () => {
     const dbc = require('./database/client');
     if (!dbc.isConfigured()) return null;
-    const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events, now: Date.now() }).catch(() => []);
+    // el catch NO puede ser mudo: así fue como un stack overflow en el loader dejó el arbitraje de fútbol
+    // en cero durante horas sin una sola línea de log (15-ago).
+    const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events, now: Date.now() })
+      .catch((e) => { console.error('[clubs-scan] loadClubsMarkets falló:', e.message); return []; });
     let out = null;
     if (markets.length) {
       const params = { ...marketScanner.params, maxQuoteAgeMs: 75 * 60e3 };

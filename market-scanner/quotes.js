@@ -158,7 +158,11 @@ async function loadClubsMarkets(db, { provider = null, events = {}, now = Date.n
           AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'
           AND g.observed_at > now() - interval '24 hours'`,
       [providers, ids.slice(i, i + 80)]).catch((e) => { qErr = e; return { rows: [] }; });
-    rows.push(...r.rows);
+    // NO `rows.push(...r.rows)`: extender un array de decenas de miles de filas como ARGUMENTOS revienta
+    // el límite de la pila ("Maximum call stack size exceeded"). Con el plan de 5M y 55.000 cuotas por
+    // barrido eso empezó a pasar de verdad, el catch de arriba lo tragaba y el escáner de fútbol devolvía
+    // CERO mercados en silencio — arbitraje, middles y price-lag vacíos sin ninguna señal de error.
+    for (const row of r.rows) rows.push(row);
   }
   if (qErr) console.error('[clubs-markets] query 1X2/goles falló (parcial=' + rows.length + ' filas):', qErr.message);
   const byKey = new Map();

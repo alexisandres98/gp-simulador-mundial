@@ -79,7 +79,7 @@ async function loadQuotes(dbc, ceids, { minutes = 75 } = {}) {
           AND observed_at > now() - interval '${minutes} minutes'
         GROUP BY 1,2,3,4,5`,
       [ceids.slice(i, i + 80), FAMS]).catch((e) => { err = e; return { rows: [] }; });
-    rows.push(...r.rows);
+    for (const row of r.rows) rows.push(row);   // spread = pila reventada con lotes grandes (ver quotes.js)
   }
   if (err) console.error('[hoops-markets] query de cuotas falló (parcial=' + rows.length + '):', err.message);
   return rows;
@@ -229,7 +229,7 @@ async function dropping(dbc, evs, { minutes = 75, fromH = 9, toH = 3 } = {}) {
         WHERE canonical_event_id = ANY($1) AND market_family = ANY($3)
           AND observed_at > now() - interval '${fromH} hours' AND is_live = FALSE
         GROUP BY 1,2,3,4`, [ceids.slice(i, i + 80), SHARP_BOOKS, FAMS]).catch(() => ({ rows: [] }));
-    rows.push(...r.rows);
+    for (const row of r.rows) rows.push(row);   // spread = pila reventada con lotes grandes (ver quotes.js)
   }
   const flagged = rows.filter((r) => r.sharp_now > 1 && r.sharp_before > 1 && r.sharp_now < r.sharp_before * 0.95)
     .sort((a, b) => (b.sharp_before / b.sharp_now) - (a.sharp_before / a.sharp_now)).slice(0, 60);

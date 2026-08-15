@@ -148,6 +148,11 @@ function deriveGame(game, sum, L) {
     poss: +pos.toFixed(2), pace: +(pos * (L.minutes / (L.minutes + (Math.max(0, (game.home.line || []).length - L.periods) * L.otMin))) ).toFixed(2),
     ot: Math.max(0, (game.home.line || []).length - L.periods),
     garbage: gt ? { sec: gt.sec, diff: gt.diff } : null,
+    // CUOTAS DE CIERRE que ESPN ya trae en el propio summary. Se guardan porque son el ÚNICO rival que
+    // importa: batir la tasa base es fácil, batir al mercado es el gate. Sin esto habría que re-descargar
+    // 275 partidos para poder medirlo.
+    odds: (sum.odds || []).filter(o => o.spread != null || o.over_under != null)
+      .map(o => ({ b: o.book, sp: o.spread, ou: o.over_under, hml: o.home_ml, aml: o.away_ml })),
     players, shots,
   };
 }

@@ -9189,6 +9189,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
   const MK = require('./basketball-engine/markets');
   const PRC = require('./basketball-engine/pricing');
   const GATE = require('./basketball-engine/gates');
+  const MD = require('./basketball-engine/model');
   const SC = require('./basketball-engine/scenarios');
   const { simulate, markets } = require('./basketball-engine/simulate');
   const ESPN = require('./data-providers/basketball/espn');
@@ -9220,7 +9221,23 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
       const g = idx[nrm(ev.home) + '|' + nrm(ev.away)]; if (!g || g.completed) continue;
       if (!C.fit.off[g.home.id] || !C.fit.off[g.away.id]) continue;
       const L = ESPN.LEAGUES[lg] || {};
-      const sim = simulate(C.fit, g.home.id, g.away.id, { n: 20000, seed: 13, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
+      // ── LA PILA ALIMENTA LAS PICKS, NO SOLO EL PANEL (16-ago) ────────────────────────────────────
+      // Hasta acá las picks salían del simulador BASE: sin plantilla, sin contexto y sin mezcla con el
+      // mercado. Es decir, el panel publicaba una probabilidad y las picks se construían sobre otra —
+      // toda la inteligencia era decorativa para la decisión, que es el peor sitio donde puede serlo.
+      //
+      // Y no es un detalle de coherencia: el backtest sobre 911 partidos de NBA al cierre da −7,27% de
+      // ROI con t = −2,72 usando el simulador base. Eso no es mala suerte, es una pérdida demostrada.
+      // La única configuración que no sangra es la mezclada, porque encoger hacia el mercado elimina el
+      // 98% de las ventajas aparentes — que era justo lo que había que eliminar.
+      const obsPick = await hoopsInjuries(lg, g.id).catch(() => null);
+      let sim = null;
+      try {
+        sim = MD.simulateGame(C, { id: g.id, league: lg, date: g.date, neutral: !!g.neutral,
+          home: { id: g.home.id }, away: { id: g.away.id } },
+        { injuries: obsPick ? obsPick.teams : null, L, sims: 20000, seed: 13, market: null });
+      } catch { sim = null; }
+      if (!sim) sim = simulate(C.fit, g.home.id, g.away.id, { n: 20000, seed: 13, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
       if (!sim) continue;
       const mk = markets(sim);
       // dossier del cruce: hace falta para narrar el porqué con perfiles y ventajas reales
@@ -9280,6 +9297,13 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           // informado y se porta mejor en mercados de dos salidas con favoritos claros, que es baloncesto.
           const nv = PRC.novig([1 / ia, 1 / ib], { method: 'shin' });
           const pMarket = nv ? (side === m.sides[0] ? nv.p[0] : nv.p[1]) : (side === m.sides[0] ? ia : ib) / (ia + ib);
+          // ENCOGIMIENTO AL MERCADO ANTES DE MEDIR LA VENTAJA. El modelo no bate al cierre —está medido—, así
+          // que su probabilidad cruda no puede ser la que decide. Se mezcla con el consenso usando el peso
+          // validado y la ventaja se mide contra la MEJOR cuota disponible: lo que queda es valor real de
+          // ejecución (una casa que se desvía del consenso) más la fracción de modelo que se ha ganado el
+          // derecho a opinar. En el backtest de NBA esto pasa de −7,27% de ROI a un puñado de selecciones.
+          const pModelRaw = pModel;
+          if (C.blend && C.blend.ok && C.blend.w > 0 && pMarket > 0 && pMarket < 1) pModel = MD.blend(pModel, pMarket, C.blend.w);
           const edgePp = 100 * (pModel - pMarket);
           const evPct = pushProb > 0 ? (1 - pushProb) * (best.o * pModel - 1) * 100 : (best.o * pModel - 1) * 100;
           const books = Math.min(m.q[m.sides[0]].length, m.q[m.sides[1]].length);
@@ -9294,7 +9318,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           gateDecisions.push({ ...decision, game: ev.home + ' – ' + ev.away, league: lg });
           if (edgePp < HOOPS_PICK_MIN_EDGE() || evPct <= 0) continue;
           out.considered++;
-          cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pMarket, edgePp, evPct, best, books, pushProb, price, decision });
+          cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pModelRaw, pMarket, edgePp, evPct, best, books, pushProb, price, decision });
         }
       }
       cands.sort((a, b) => b.edgePp - a.edgePp);
@@ -9322,7 +9346,8 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           family: c.fam === 'match_winner' ? 'MONEYLINE' : c.fam === 'spread' ? 'SPREAD' : 'TOTAL',
           family_label: c.famLab,
           selection_code: c.side, selection_name: c.selName, line: c.line, side: c.side,
-          model_prob: +c.pModel.toFixed(4), market_prob: +c.pMarket.toFixed(4),
+          model_prob: +c.pModel.toFixed(4), model_prob_raw: c.pModelRaw != null ? +c.pModelRaw.toFixed(4) : null,
+          blend_w: (C.blend && C.blend.w) || 0, market_prob: +c.pMarket.toFixed(4),
           edge_pp: +c.edgePp.toFixed(2), ev_pct: +c.evPct.toFixed(2),
           best_odds: +c.best.o.toFixed(2), best_book: c.best.book, books: c.books,
           pick_id: 'bb_' + lg + '_' + g.id + '_' + c.fam + '_' + c.side,   // lo pide el botón de vigilar precio

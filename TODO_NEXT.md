@@ -40,6 +40,36 @@
   Copas: cobertura parcial de equipos sin mapa AF (ecuatorianos/peruanos etc.) — se completa cuando el
   data pass diario les cree entradas. Lecturas del sistema (picks) llegan solas con el upgrade de créditos.
 
+## 🔌 VENUES GRATIS 15-ago — Myriad y Kalshi por fin cotizan (la plataforma deja de depender de un solo proveedor)
+- **Diagnóstico**: The Odds API sigue en **0/500** (el plan NUNCA se subió; el panel
+  `/api/internal/sportsbook/status` reporta 91.242 restantes y MIENTE — números viejos con fecha fresca,
+  **bug de ops pendiente de arreglar**). Con eso, la profundidad real era: de 182 picks activas, **157 con
+  cero casas y 25 con una. Ninguna con dos** → arbitraje y middles imposibles por aritmética, no por código.
+- **MYRIAD** pedía los mercados equivocados: `keyword=vs&sort=volume_24h` sin filtrar estado, y el volumen
+  histórico lo dominan los YA RESUELTOS → las 60 filas volvían todas 'resolved' y el filtro las tiraba.
+  Nunca cotizó una sola vez. Con `state=open`: 7 partidos con 1X2 completo y 500k de liquidez.
+- **KALSHI**, dos fallas encadenadas: (a) la lista de series era manual y `GP_KALSHI_SERIES` nunca se
+  configuró → el barrido salía en la primera línea; ahora se DESCUBREN del catálogo (`KX<LIGA>GAME`,
+  **99 series de fútbol**, cache 12h, env sigue como override); (b) la API migró a precios en dólares
+  string (`yes_ask_dollars`) y leíamos el entero en centavos (`yes_ask`, hoy undefined) → el gate mataba
+  todas las patas. Se leen ambas formas. Match por las PATAS (cada una trae su equipo), no por el título.
+- **TABLERO DE VALOR** pedía cuotas a The Odds API EN VIVO dentro del handler y nunca miraba
+  `sportsbook_goal_quote_current` — por eso caídas y middles sobrevivían y valor no. Añadida 2ª fuente
+  desde el almacén (umbral 2 casas, filas marcadas `src:'venues'`). Con créditos no cambia nada.
+- **ESCÁNER DE ARBITRAJE**: `loadClubsMarkets` filtraba `data_provider = $1` (un solo proveedor) — arbitrar
+  es comparar VARIOS. Ahora entran los cinco. El gate de `≥6 cuotas` por 1X2 (2 casas completas) se respeta.
+- **Resultado medido**: 817 cuotas escritas (kalshi 690 · polymarket 63 · cloudbet 49 · myriad 15) ·
+  **256 mercados escaneados · 7 arbitrajes (3 ejecutables)** · tablero de valor **40 filas** · caídas vivas.
+  Verificado a mano que el cruce no está mal casado (Santander–Villarreal: Kalshi 0.30/0.45/0.27 vs Myriad
+  0.163/0.180/0.657 — divergencia real entre venues, ambos el mismo partido del 16-ago).
+- **Límites honestos**: los arbs son de mercados de predicción → tamaño limitado por liquidez on-chain y
+  profundidad del libro, y **no capturamos `max_stake`** de estos venues (las patas van con depth null).
+  **MIDDLES siguen en 0** y seguirán: necesitan totales over/under de 2+ casas y los mercados de predicción
+  solo cotizan 1X2. Se llenan cuando vuelvan los créditos o entre otra casa con totales.
+- Operación: `GET/POST /api/internal/venues?key=…` (`?dry=1` ensaya sin escribir, `?only=<venue>`).
+- **Frenos de emergencia BORRADOS de Render** (`GP_CLUBS_SWEEP_MIN`, `GP_CLUBS_PROPS_WINDOW_H`,
+  `SPORTSBOOK_QUOTA_RESERVE`): vuelven a sus defaults (30min / 144h / 2000) para cuando entren créditos.
+
 ## 🥊 BOXEO — RESULTADOS AUTOMÁTICOS 14-ago (el panel "Finalizados" ya se llena solo)
 - **Qué estaba roto**: el panel de Finalizados de boxeo estaba SIEMPRE vacío. UFC/MMA se nutren del
   scoreboard de ESPN y **ESPN no tiene boxeo** (re-verificado 14-ago: sport `boxing` → 400 "Invalid sport");

@@ -1,5 +1,18 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🧠 PRESUPUESTO DEL LLM 15-ago — saldo $20, y no se apaga solo
+El gasto diario dejó de ser una constante: es **el saldo restante dividido por un horizonte**
+(`GP_LLM_HORIZON_DAYS`, 30). Gastar 1/30 de lo que queda cada día es una caída geométrica — el saldo tiende
+a cero pero nunca lo toca, así que el LLM no se corta solo. El suelo también es relativo (nunca más de 1/5
+de lo que queda) para que no se vacíe linealmente al final. **Reserva de chat del 35%**: los jobs de fondo
+cortan antes, así que un usuario preguntándole a GP siempre tiene presupuesto. Contabilidad persistente en
+`db.llmBalance`, aviso por email al 15% y foto completa en `/api/internal/llm`.
+Vars: `GP_LLM_BALANCE_USD`, `GP_LLM_BALANCE_AT` (cambiar cualquiera = recarga nueva → reabre el día),
+`GP_LLM_HORIZON_DAYS`, `GP_LLM_CHAT_RESERVE`, `GP_LLM_DAILY_MAX_USD`, `GP_LLM_DAILY_USD` (techo heredado).
+Hoy: $20 → **$0.67/día**, ~29 días de autonomía sin recargar.
+⚠️ **Render**: cambiar una env var por API NO basta — hay que disparar un deploy después o el proceso sigue
+con el valor viejo (pasó justo con `GP_LLM_BALANCE_AT`).
+
 ## 🏀 BALONCESTO 15-ago — 4º deporte, ADMIN-ONLY (pestaña abierta, picks apagadas)
 - **Datos**: colector ESPN (`data-providers/basketball/espn.js`) — NBA, WNBA, NCAA M y F, gratis, con
   play-by-play completo (~450 jugadas/partido: coordenadas de tiro, 63 tipos de jugada y SUSTITUCIONES).
@@ -33,8 +46,25 @@
 - **Cuotas**: `hoopsQuotesSweep` con 8 claves (NBA, WNBA, NCAA M/F, EuroLeague, NBL, pretemporada, summer
   league) × h2h+spreads+totals al MISMO almacén que el fútbol → value/arbitraje/caídas/middles y la captura
   de profundidad las ven sin tocar esas superficies. Las claves fuera de temporada se activan solas.
-- **PENDIENTE**: capa LLM de lectura por partido, capa de observación (noticias/lesiones), Ask GP y el
-  dashboard de jornada. Y el detector de garbage time sigue marcando el 64% — se arregla con quintetos.
+- **B5 HECHO (15-ago)** — la pestaña quedó a paridad con fútbol y combate:
+  - **Oportunidades** (`basketball-engine/markets.js`): value (line shopping contra el consenso sin margen),
+    arbitraje de dos salidas, caídas de la línea afilada y middles. **Ninguna depende del modelo** — por eso
+    se publican con las picks apagadas; el número del modelo va al lado como *GP Take*. Módulo PROPIO: el
+    ganador de baloncesto es de dos salidas y de-vigar a tres (el loader de fútbol) infla la probabilidad
+    justa y rompe el arbitraje. De paso, las superficies de fútbol dejaron de mezclar partidos de NBA.
+  - **Partidos**: agenda real en vivo/próximos/finalizados del scoreboard de ESPN, con proyección por
+    partido y el estado de temporada explicado cuando la liga está fuera de calendario.
+  - **Rendimiento**: validación FUERA DE MUESTRA por ventana expandida (3 bloques, el rating se reajusta
+    con lo anterior a cada bloque). Ojo con esto: la primera versión medía in-sample y daba skill **+0.007**
+    —el modelo ya había visto los resultados—; bien medido da **−0.0079 ± 0.0067 (t = −1.18)** en WNBA,
+    coherente con el backtest. Se publica con error estándar y t para que nadie encienda picks sobre ruido.
+  - **Lectura GP por partido** (LLM, persistida ~$0.04 c/u), **parte de bajas** de ESPN, **brief de la
+    jornada** y **Ask GP** con herramientas propias (agenda, partido, equipo, jugadoras, precios).
+  - **Buscador** de baloncesto server-side (el dataset son 20MB, no viaja al cliente).
+  - **Ficha de equipo** rehecha: colores del club, percentiles contra la liga, ADN de juego, canchas y forma.
+  - Endpoints: `/api/hoops/{state,schedule,opps,game,read,team,player,brief,perf,search}`.
+- **PENDIENTE**: el detector de garbage time sigue marcando el 64% — se arregla con quintetos. NCAA M/F
+  esperan a noviembre. Enriquecimiento api-sports (ligas europeas) cuando suba ese plan.
 
 ## 💳 PLAN 5M 15-ago — la plataforma vuelve a respirar
 - Clave nueva en Render, 5.000.000 de créditos. **Gastados hoy: 4.574 (0,09%).**

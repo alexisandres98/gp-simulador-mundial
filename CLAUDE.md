@@ -23,6 +23,15 @@
 - **Cache-busting:** el server inyecta `?v=<mtime>` a `app.js`/`style.css` en `index.html` → cada deploy fuerza recarga del código en todos los navegadores (no más versiones viejas en desktop).
 - **Contenido redes:** HTML en `ig-src/` → render a PNG con **Chrome headless** (renderizar de a UNO; el 2º en un script se cuelga) → servidos en `gpsimulador.com/ig/*.png`.
 - **🔑 PENDIENTE:** rotar la API key de API-Football (quedó expuesta en chat) y actualizar `API_FOOTBALL_KEY` en Render.
+- **LLM (Anthropic):** `llm.js` es la única puerta. El presupuesto diario se DERIVA del saldo restante
+  (`GP_LLM_BALANCE_USD` / `GP_LLM_BALANCE_AT`) dividido por `GP_LLM_HORIZON_DAYS` → caída geométrica, nunca
+  se apaga solo. `GP_LLM_CHAT_RESERVE` (35%) es intocable para el chat: los jobs de fondo cortan antes.
+  Recargar = actualizar las dos vars de saldo **y disparar un deploy** (cambiar env por API no basta).
+  Estado: `/api/internal/llm?key=$GP_EXPORT_KEY`.
+- **Baloncesto (4º deporte, admin-only):** `basketball-engine/` (possessions, ratings, simulate, store,
+  markets) + `data-providers/basketball/espn.js`. Rutas `/api/hoops/*`. Picks APAGADAS: el modelo no bate
+  al cierre (skill −0.0079 fuera de muestra en WNBA). Value/arbitraje/caídas/middles sí se publican porque
+  salen de precios entre casas, no del modelo.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

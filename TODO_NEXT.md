@@ -59,6 +59,47 @@ Además: una sola temporada de WNBA y dos de NBA (priors pobres), sin efecto de 
 árbitros (faltas → totales), sin modelo en vivo, sin props de jugador (el mercado más blando), y sin
 encogimiento hacia el mercado en lo que el modelo no puede ver.
 
+## ✅ 16-ago — LOS SEIS PUNTOS, CONSTRUIDOS Y MEDIDOS
+La estructura de arriba está cerrada. Lo que sigue NO es construir: es acumular partidos y ajustar.
+
+| Punto | Dónde vive | Estado medido |
+|---|---|---|
+| 1 · Minutos y disponibilidad | `basketball-engine/minutes.js` | rotación EWMA + techo + reparto; bajas de ESPN con probabilidad explícita |
+| 2 · Ratings de jugador | `players.js` + `lineups.js` | RAPM por gradiente conjugado, λ por CV temporal; quintetos reconstruidos con MAE 0,25–0,32 min contra el acta |
+| 3 · Descanso y calendario | `context.js` | B2B, descanso, 3-en-4, viaje, altitud; con error estándar, t, encogimiento y **prior de signo** |
+| 4 · Filtro de basura | `markGarbage` en `lineups.js` | 7–10% de posesiones (antes la bandera marcaba 51–64%) |
+| 5 · Encogimiento al mercado | `fitBlend`/`blend` en `model.js` | w = 0,134 (NBA) · 0,233 (WNBA), con validación anidada |
+| 6 · Props de jugador | `props.js` | binomial negativa por jugador y categoría, con factor de rival |
+
+**Correcciones que cambiaron la historia (y que hay que recordar):**
+- El **1,56 de back-to-back** de la tabla de arriba era una media cruda. Controlando por calidad de equipo
+  queda en **−1,03 ± 1,55 (t = −0,66): no significativo.** La conclusión anterior era un artefacto.
+- La **altitud** salía −10,6 puntos (t = −3,5) diciendo que jugar en altura perjudica al local. Con solo dos
+  sedes en altura ese término no medía altura, medía el residuo de Denver y Utah → prior de signo.
+- El peso de mezcla salía **w = 1** hasta que se estimó con validación anidada. Era el rating prediciendo
+  partidos que ya había visto.
+
+**GATING POR VALIDACIÓN** (`data/basketball/validation-<liga>.json`, escrito por `scripts/hoops-validate.js`):
+el motor lee `layers` y aplica solo lo que se ganó su sitio.
+- NBA (n = 772): base −0,0202 → mezcla **−0,0019**. Plantilla (−0,0020) y contexto (−0,0002) APAGADOS.
+- WNBA (n = 164): base −0,0075 → mezcla **−0,0041**. Plantilla ENCENDIDA (+0,0023), contexto apagado.
+- **Seguimos por detrás del cierre en las dos ligas. Las picks de modelo siguen apagadas.**
+
+**El ajuste salió de la petición** (`scripts/hoops-fit.js` → `data/basketball/fit-<liga>.json`): RAPM (4,5 s)
+y mezcla (1,0 s) se entrenaban dentro de `store.load()`, o sea dentro de la primera petición tras cada
+refresco de caché — 5,7 s de CPU bloqueante cada 30 min, que en Node de un hilo congela el sitio ENTERO.
+Ahora se entrena fuera de línea y el servidor solo lee: carga de NBA 5.761 ms → **464 ms**. El re-ajuste
+está acoplado a `hoops-backfill.js` para que el artefacto no envejezca en silencio.
+
+**LO QUE FALTA AHORA (ya no es estructura):**
+1. Acumular temporadas. Con una WNBA y dos NBA los priors son pobres y la validación no puede encender
+   capas que probablemente sí valen. Cosechar 2022-2025 de las dos ligas es la palanca más grande.
+2. Re-correr `hoops-validate.js` tras cada bloque de datos nuevo y dejar que el gating decida solo.
+3. NCAA (noviembre): el dataset más grande y el mercado más blando.
+4. Árbitros (faltas → totales) y modelo en vivo: los dos huecos de modelado que quedan.
+5. Props contra precios reales: hoy se publica la distribución; falta cruzarla con las líneas de casas
+   para medir si ahí sí hay ventaja, que es donde un modelo fino gana antes que en el ganador.
+
 ## 🏀 BALONCESTO 15-ago — 4º deporte, ADMIN-ONLY (pestaña abierta, picks apagadas)
 - **Datos**: colector ESPN (`data-providers/basketball/espn.js`) — NBA, WNBA, NCAA M y F, gratis, con
   play-by-play completo (~450 jugadas/partido: coordenadas de tiro, 63 tipos de jugada y SUSTITUCIONES).

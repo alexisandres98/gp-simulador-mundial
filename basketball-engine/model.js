@@ -152,6 +152,14 @@ function simulateGame(C, game, { injuries = null, L = null, sims = 20000, seed =
     out.win_model = { ...sim.win };
     const p = blend(sim.win.home, market, C.blend.w);
     out.win = { home: +p.toFixed(4), away: +(1 - p).toFixed(4) };
+    // EL INTERVALO VIAJA CON LA PROBABILIDAD. El intervalo que sale del simulador describe el error de
+    // muestreo de la probabilidad DEL MODELO; si lo que se publica es la mezcla y el intervalo se queda
+    // como estaba, el panel muestra un número fuera de su propio intervalo. Se transforman los extremos con
+    // la misma mezcla, que es exactamente el intervalo que le corresponde a lo publicado.
+    if (sim.win_ci) {
+      out.win_ci_model = { ...sim.win_ci };
+      out.win_ci = { lo: +blend(sim.win_ci.lo, market, C.blend.w).toFixed(4), hi: +blend(sim.win_ci.hi, market, C.blend.w).toFixed(4) };
+    }
     out.blend = { w: C.blend.w, p_model: +sim.win.home.toFixed(4), p_market: +market.toFixed(4) };
   }
   return out;

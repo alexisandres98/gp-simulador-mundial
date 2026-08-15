@@ -293,7 +293,7 @@ function gameIntel(C, game, { sims = 20000, adj = null, injuries = null, marketP
       parts: sim.projection_parts, layers: sim.layers || null,
       adj: sim.adj || null, adj_margin_pts: sim.adj_margin_pts || 0,
       availability: sim.availability || null, context: sim.context || null,
-      blend: sim.blend || null, win_model: sim.win_model || null,
+      blend: sim.blend || null, win_model: sim.win_model || null, win_ci_model: sim.win_ci_model || null,
       validation: C.validation ? { skill: C.validation.skill, layers: C.validation.layers, n: C.validation.n, at: C.validation.at } : null,
       rapm: C.rapm ? { players: C.rapm.n_players, stints: C.rapm.n_stints, lambda: C.rapm.lambda } : null,
     } : null,

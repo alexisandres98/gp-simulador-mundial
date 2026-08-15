@@ -16314,6 +16314,68 @@ const server = http.createServer(async (req, res) => {
               }
             }
           }
+          // ═ 2ª FUENTE: NUESTRO PROPIO ALMACÉN DE CUOTAS (15-ago) ═══════════════════════════════════════
+          // El bucle de arriba le pide las cuotas a The Odds API EN VIVO y no mira la tabla donde el resto
+          // de la plataforma guarda las suyas. Consecuencia: sin créditos el tablero salía vacío aunque
+          // Cloudbet, Kalshi, Myriad y Polymarket tuvieran cientos de precios escritos — las otras
+          // superficies (caídas, middles) sí leen de ahí y por eso ellas sobrevivían. Se completa con los
+          // eventos que el bucle no pudo cubrir: mismo consenso (de-vig por casa + mediana), mismo shape de
+          // fila. Con créditos no cambia nada; sin créditos el tablero sigue vivo con los venues gratis.
+          const covered = new Set(rows.map(r => r.home + '|' + r.away));
+          try {
+            const dbcV = require('./database/client');
+            if (dbcV.isConfigured()) {
+              const q = await dbcV.query(
+                `SELECT canonical_event_id ceid, lower(side) side, lower(sportsbook_code) book, max(odds_decimal)::float o
+                   FROM sportsbook_goal_quote_current
+                  WHERE market_family = 'match_winner' AND is_live = FALSE AND observed_at > now() - interval '6 hours'
+                  GROUP BY 1,2,3`);
+              const byEv = {};   // ceid → casa → { home, draw, away }
+              for (const r2 of (q.rows || [])) {
+                const ev2 = byEv[r2.ceid] = byEv[r2.ceid] || {};
+                const bk2 = ev2[r2.book] = ev2[r2.book] || {};
+                bk2[r2.side] = r2.o;
+              }
+              for (const [ceid, byBook] of Object.entries(byEv)) {
+                const meta = (db.clubsQuoteEvents || {})[ceid]; if (!meta) continue;
+                const kt = Date.parse(meta.kickoff || 0); if (!(kt > Date.now())) continue;
+                const L = (RT.leagues || {})[meta.league]; if (!L || !L.ratings) continue;
+                const byNorm2 = {}; for (const [id, t] of Object.entries(L.ratings)) byNorm2[norm(t.name)] = { id, ...t };
+                const find2 = n => { const k = norm(n); if (byNorm2[k]) return byNorm2[k]; const h = Object.keys(byNorm2).find(x => x && k && (x.includes(k) || k.includes(x))); return h ? byNorm2[h] : null; };
+                const th = find2(meta.home), ta = find2(meta.away);
+                if (!th || !ta || covered.has(th.name + '|' + ta.name)) { if (!th || !ta) skipped++; continue; }
+                const acc2 = { home: [], draw: [], away: [] }, best2 = { home: [0, ''], draw: [0, ''], away: [0, ''] };
+                const det2 = { home: [], draw: [], away: [] }; let vig2 = 0, vigN2 = 0;
+                for (const [book, o] of Object.entries(byBook)) {
+                  if (!(o.home > 1 && o.draw > 1 && o.away > 1)) continue; // 1X2 completo o la casa no entra al consenso
+                  const s2 = 1 / o.home + 1 / o.draw + 1 / o.away;
+                  vig2 += (s2 - 1); vigN2++;
+                  for (const oc of ['home', 'draw', 'away']) {
+                    acc2[oc].push(1 / o[oc] / s2); det2[oc].push([o[oc], book]);
+                    if (o[oc] > best2[oc][0]) best2[oc] = [o[oc], book];
+                  }
+                }
+                // 2 casas (no 3 como arriba): con los venues gratis el universo es más chico y `books` va en
+                // la fila, así que la señal se muestra con su profundidad real en vez de esconderse.
+                if (acc2.home.length < 2) { skipped++; continue; }
+                const med2 = a => { const s3 = a.slice().sort((x, y) => x - y); return s3[Math.floor(s3.length / 2)]; };
+                const cons2 = { home: med2(acc2.home), draw: med2(acc2.draw), away: med2(acc2.away) };
+                const pr2 = matchProbs(clubElo(meta.league, th.id) + (L.hfa || 60), clubElo(meta.league, ta.id));
+                for (const oc of ['home', 'draw', 'away']) {
+                  rows.push({
+                    league: meta.league, league_name: L.name || meta.league_name, gate: L.backtest ? L.backtest.status : null,
+                    utc: meta.kickoff, home: th.name, away: ta.name, home_id: th.id, away_id: ta.id, outcome: oc,
+                    our: +pr2[oc].toFixed(3), consensus: +cons2[oc].toFixed(3), edge_pp: +((pr2[oc] - cons2[oc]) * 100).toFixed(1),
+                    best_odds: best2[oc][0] || null, best_book: best2[oc][1] || null, books: acc2.home.length,
+                    fair_odds: cons2[oc] > 0 ? +(1 / cons2[oc]).toFixed(2) : null,
+                    vig_pct: vigN2 ? +((vig2 / vigN2) * 100).toFixed(1) : null,
+                    books_detail: det2[oc].sort((x, y) => y[0] - x[0]).slice(0, 6).map(x => ({ o: x[0], b: x[1] })),
+                    src: 'venues',
+                  });
+                }
+              }
+            }
+          } catch (e) { console.error('[clubs-value] fallback quotes:', e.message); }
           rows.sort((a, b) => Math.abs(b.edge_pp) - Math.abs(a.edge_pp));
           global._clubsValue = { at: Date.now(), rows: rows.slice(0, 40), skipped };
         }

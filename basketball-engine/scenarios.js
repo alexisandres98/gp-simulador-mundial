@@ -222,12 +222,21 @@ function uncertainty(sim, tree, sens) {
 // El tornado ya ordenó las palancas. Acá se traduce a frases con signo y magnitud, que es lo que un lector
 // puede usar. Se excluyen las palancas de modelo (mezcla) porque no son un riesgo del partido: son una
 // decisión nuestra, y va en su propio sitio.
+// FRASES, NO ETIQUETAS DE PALANCA. "Ventaja de cancha ×1.5" es el nombre interno de un experimento; lo que
+// un lector puede usar es "si la cancha pesa más de lo que estimamos". El tornado enseña las palancas; este
+// panel enseña las consecuencias, que no es lo mismo aunque salgan del mismo cálculo.
+function phrase(r) {
+  if (r.kind === 'roster') return `si ${r.lever.replace(/ fuera$/, '')} no juega`;
+  if (r.kind === 'pace') return `si el partido va ${r.lever.includes('+') ? 'más rápido' : 'más lento'} de lo previsto`;
+  if (r.kind === 'hca') return r.lever.includes('1.5') ? 'si la cancha pesa más de lo que estimamos' : 'si la cancha pesa menos de lo que estimamos';
+  return r.lever;
+}
 function risks(sens, tree, { max = 5 } = {}) {
   const out = [];
   for (const r of ((sens && sens.rows) || [])) {
     if (r.kind === 'blend') continue;
     if (Math.abs(r.delta_pp || 0) < 0.4) continue;
-    out.push({ text: r.lever, delta_pp: r.delta_pp, kind: r.kind, detail: r.detail || null,
+    out.push({ text: phrase(r), lever: r.lever, delta_pp: r.delta_pp, kind: r.kind, detail: r.detail || null,
       direction: r.delta_pp > 0 ? 'a favor del local' : 'a favor del visitante' });
     if (out.length >= max) break;
   }

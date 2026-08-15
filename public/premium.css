@@ -2097,3 +2097,154 @@ td .gx-calc-btn span { display: none; }
 .gx-bb-propline.mid { border-color: #2de6a355; color: #eafff7; }
 .gx-bb-propline i { font-style: normal; display: block; font-size: 9.5px; color: #6f817a; text-align: center; }
 @media (max-width: 720px) { .gx-bb-props { grid-template-columns: 1fr; } }
+
+/* ============================ BALONCESTO · LA CAPA PROFUNDA (16-ago, blueprint) ============================
+   Reglas que gobiernan estas piezas:
+   · UN COLOR = UN SIGNIFICADO. El cian es SIEMPRE el modelo de GP; el ámbar, siempre el mercado o la
+     incertidumbre; verde/rojo solo cuando "mejor/peor" es semánticamente correcto, nunca de adorno.
+   · SIN DEGRADADOS DECORATIVOS. Un degradado solo aparece cuando representa intensidad (la cinta de
+     rotación) o probabilidad. Rellenar una tarjeta con un degradado es lo que hace que un producto
+     parezca generado y no diseñado.
+   · NÚMEROS TABULARES en todo lo que cambia, para que las cifras no salten al repintar.
+   · La cinta de rotación, la cascada de lesión y el tornado tienen ANATOMÍA PROPIA: no son tarjetas con
+     barras, son piezas que solo pueden significar esto.
+   ======================================================================================================== */
+.gx-bb-vsrow{display:grid;grid-template-columns:56px 1fr 56px;grid-template-areas:"a bar h" "lab lab lab";gap:4px 8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line-soft,rgba(255,255,255,.05))}
+.gx-bb-vsrow:last-child{border-bottom:0}
+.gx-bb-vsrow>b{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim,#8a94a6);font-weight:600}
+.gx-bb-vsrow>b:first-child{grid-area:a;text-align:right}
+.gx-bb-vsrow>b:nth-of-type(2){grid-area:h;text-align:left}
+.gx-bb-vsrow>b.w{color:var(--text,#e8edf5)}
+.gx-bb-vsrow>span{grid-area:lab;font-size:11px;color:var(--dim,#8a94a6);letter-spacing:.02em}
+.gx-bb-vsbar{grid-area:bar;display:flex;height:7px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.05)}
+.gx-bb-vsbar i.a{background:rgba(255,255,255,.22)}
+.gx-bb-vsbar i.h{background:var(--accent,#22d3ee)}
+.gx-bb-mbrows{padding:2px 0}
+
+/* --- cinta de rotación: una casilla por minuto, intensidad = probabilidad de estar en cancha --- */
+.gx-bb-rotblock{margin-bottom:18px}
+.gx-bb-rothd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.gx-bb-rotq{display:flex;margin:0 0 4px 132px;padding-right:34px}
+.gx-bb-rotq span{font-size:10px;color:var(--dim,#8a94a6);letter-spacing:.08em;text-transform:uppercase}
+.gx-bb-rotrow{display:grid;grid-template-columns:126px 1fr 28px;gap:6px;align-items:center;margin-bottom:3px}
+.gx-bb-rotn{font-size:12px;color:var(--text,#e8edf5);display:flex;align-items:center;gap:5px;min-width:0}
+.gx-bb-rotn .nm{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gx-bb-rmk{width:6px;height:6px;border-radius:2px;flex:none}
+.gx-bb-rmk.s{background:var(--accent,#22d3ee)}
+.gx-bb-rmk.c{background:transparent;box-shadow:inset 0 0 0 1.5px #fbbf24}
+.gx-bb-rleg{display:flex;align-items:center;gap:5px;margin-left:auto;margin-right:12px;font-size:10px;color:var(--dim,#8a94a6)}
+.gx-bb-rleg i{margin-right:1px}
+.gx-bb-rotcells{display:flex;gap:1px;height:14px}
+.gx-bb-rotcells i{flex:1;border-radius:1px;background:rgba(255,255,255,.04)}
+.gx-bb-rotcells i.l1{background:rgba(34,211,238,.18)}
+.gx-bb-rotcells i.l2{background:rgba(34,211,238,.38)}
+.gx-bb-rotcells i.l3{background:rgba(34,211,238,.62)}
+.gx-bb-rotcells i.l4{background:rgba(34,211,238,.92)}
+.gx-bb-rotm{font-size:12px;font-variant-numeric:tabular-nums;text-align:right;color:var(--dim,#8a94a6)}
+
+/* --- cascada de lesión --- */
+.gx-bb-wfblock{margin-bottom:14px}
+.gx-bb-wf{border-left:2px solid rgba(248,113,113,.45);padding:8px 6px 8px 12px;margin:10px 0}
+.gx-bb-wfh{display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px}
+.gx-bb-wfh svg,.gx-bb-wfh .ti{width:14px;height:14px;color:#f87171;flex:none}
+.gx-bb-wffreed{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--dim,#8a94a6);margin-bottom:8px}
+.gx-bb-wffreed b{color:var(--text,#e8edf5);font-variant-numeric:tabular-nums}
+.gx-bb-wfa{display:grid;grid-template-columns:124px 1fr 66px;gap:8px;align-items:center;margin-bottom:3px;font-size:12px}
+.gx-bb-wfa>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-bb-wfbar{height:6px;border-radius:3px;background:rgba(255,255,255,.05);overflow:hidden}
+.gx-bb-wfbar i{display:block;height:100%;background:var(--accent,#22d3ee);opacity:.75}
+.gx-bb-wfa b{font-size:11px;font-variant-numeric:tabular-nums;text-align:right;color:var(--accent,#22d3ee)}
+.gx-bb-wfsplit{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-top:6px;font-size:11px}
+.gx-bb-wfsplit>span{min-width:74px}
+.gx-bb-wfsplit em{font-style:normal;color:var(--dim,#8a94a6)}
+.gx-bb-wfsplit em b{color:var(--text,#e8edf5);font-variant-numeric:tabular-nums}
+
+/* --- conmutador de escenarios --- */
+.gx-bb-scp{padding:10px 0;border-bottom:1px solid var(--line-soft,rgba(255,255,255,.05))}
+.gx-bb-scph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13px}
+.gx-bb-scbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gx-bb-scb{padding:8px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid var(--line-soft,rgba(255,255,255,.06));text-align:center}
+.gx-bb-scb.lim{border-color:rgba(251,191,36,.25)}
+.gx-bb-scb.out{border-color:rgba(248,113,113,.28)}
+.gx-bb-scbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim,#8a94a6);margin-bottom:4px}
+.gx-bb-scb b{display:block;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1}
+.gx-bb-scb em{display:block;font-style:normal;font-size:11px;font-variant-numeric:tabular-nums;margin:2px 0}
+.gx-bb-scb>span.gx-dim{font-size:10px}
+.gx-bb-scfoot{margin-top:10px;font-size:12px;color:var(--dim,#8a94a6);line-height:1.5}
+.gx-bb-scfoot b{color:var(--text,#e8edf5);font-variant-numeric:tabular-nums}
+
+/* --- tornado + incertidumbre + riesgos --- */
+.gx-bb-tnwrap{padding:2px 0}
+.gx-bb-tnrow{display:grid;grid-template-columns:1fr 150px 46px;gap:10px;align-items:center;padding:5px 0}
+.gx-bb-tnrow>span{font-size:12px;display:flex;flex-direction:column;line-height:1.3}
+.gx-bb-tnrow>span em{font-size:10px}
+.gx-bb-tnbar{position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,.05)}
+.gx-bb-tnbar:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.18)}
+.gx-bb-tnbar i{position:absolute;top:0;bottom:0;border-radius:4px}
+.gx-bb-tnbar i.p{background:var(--accent,#22d3ee)}
+.gx-bb-tnbar i.n{background:#f87171}
+.gx-bb-tnrow>b{font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.gx-bb-unc{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft,rgba(255,255,255,.06))}
+.gx-bb-uncbar{display:flex;height:9px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.05)}
+.gx-bb-uncbar i.ale{background:rgba(255,255,255,.28)}
+.gx-bb-uncbar i.epi{background:#fbbf24}
+.gx-bb-uncleg{display:flex;gap:16px;margin:7px 0 4px;font-size:11px;color:var(--dim,#8a94a6)}
+.gx-bb-uncleg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.gx-bb-uncleg i.ale{background:rgba(255,255,255,.28)}
+.gx-bb-uncleg i.epi{background:#fbbf24}
+.gx-bb-unc>.gx-dim{font-size:11px;line-height:1.5}
+.gx-bb-risks{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft,rgba(255,255,255,.06))}
+.gx-bb-risk{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:baseline;padding:5px 0;font-size:12px}
+.gx-bb-risk b{font-variant-numeric:tabular-nums;text-align:right;font-size:12px}
+.gx-bb-risk em{grid-column:2;font-style:normal;font-size:10px;display:block}
+
+/* --- calidad de tiro --- */
+.gx-bb-sqwrap,.gx-bb-qwrap,.gx-bb-luwrap{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.gx-bb-sqh{display:flex;align-items:center;gap:7px;margin-bottom:10px;font-size:13px}
+.gx-bb-sqh .gx-dim{margin-left:auto;font-size:11px}
+.gx-bb-sqnums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.gx-bb-sqnums div{display:flex;flex-direction:column;gap:2px}
+.gx-bb-sqnums span{font-size:10px;color:var(--dim,#8a94a6)}
+.gx-bb-sqnums b{font-size:15px;font-variant-numeric:tabular-nums}
+.gx-bb-sqz{display:grid;grid-template-columns:88px 1fr 34px;gap:7px;align-items:center;margin-bottom:3px;font-size:11px}
+.gx-bb-sqbar{height:6px;border-radius:3px;background:rgba(255,255,255,.05);overflow:hidden}
+.gx-bb-sqbar i{display:block;height:100%;background:var(--accent,#22d3ee);opacity:.7}
+.gx-bb-sqz b{font-variant-numeric:tabular-nums;text-align:right;color:var(--dim,#8a94a6)}
+.gx-bb-sqnote{margin-top:8px;font-size:11px;line-height:1.5}
+
+/* --- cuartos --- */
+.gx-bb-qcells{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.gx-bb-qcell{display:flex;flex-direction:column;align-items:center;gap:4px}
+.gx-bb-qcell>span{font-size:10px;color:var(--dim,#8a94a6)}
+.gx-bb-qbar{position:relative;width:100%;height:42px;border-radius:4px;background:rgba(255,255,255,.04)}
+.gx-bb-qbar:after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.14)}
+.gx-bb-qbar i{position:absolute;left:18%;right:18%;border-radius:3px}
+.gx-bb-qbar i.p{background:var(--accent,#22d3ee)}
+.gx-bb-qbar i.n{background:#f87171}
+.gx-bb-qcell b{font-size:11px;font-variant-numeric:tabular-nums}
+.gx-bb-qmeta{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--dim,#8a94a6)}
+.gx-bb-qmeta b{color:var(--text,#e8edf5);font-variant-numeric:tabular-nums}
+.gx-bb-qmeta em{font-style:normal}
+
+/* --- quintetos --- */
+.gx-bb-lurow{display:grid;grid-template-columns:1fr 54px 42px 38px;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--line-soft,rgba(255,255,255,.04));font-size:11px}
+.gx-bb-lun{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text,#e8edf5)}
+.gx-bb-lurow>span.gx-dim,.gx-bb-lurow>em{font-variant-numeric:tabular-nums;text-align:right;font-size:10px;font-style:normal}
+.gx-bb-lurow>b{font-variant-numeric:tabular-nums;text-align:right;font-size:12px}
+.gx-bb-lunote{margin-top:10px;font-size:11px;line-height:1.5}
+
+@media (max-width:760px){
+  /* RECOMPOSICIÓN, NO ENCOGIMIENTO: en móvil las comparaciones lado a lado pasan a apilarse y la cinta de
+     rotación reduce la columna de nombre en vez de aplastar las casillas, que son la información. */
+  .gx-bb-sqwrap,.gx-bb-qwrap,.gx-bb-luwrap{grid-template-columns:1fr;gap:22px}
+  .gx-bb-rotrow{grid-template-columns:88px 1fr 24px;gap:4px}
+  .gx-bb-rotq{margin-left:92px;padding-right:28px}
+  .gx-bb-rotn{font-size:11px}
+  .gx-bb-tnrow{grid-template-columns:1fr 88px 40px;gap:6px}
+  .gx-bb-scbs{grid-template-columns:1fr;gap:6px}
+  .gx-bb-scb{display:flex;align-items:baseline;gap:8px;text-align:left}
+  .gx-bb-scb b{font-size:16px}
+  .gx-bb-scbl{margin-bottom:0;flex:1}
+  .gx-bb-wfa{grid-template-columns:92px 1fr 56px}
+  .gx-bb-lurow{grid-template-columns:1fr 46px 38px 34px}
+}

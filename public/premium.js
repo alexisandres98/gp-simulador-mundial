@@ -7320,6 +7320,231 @@
   }
 
   // ── GAME INTELLIGENCE CENTER ─────────────────────────────────────────────────────────────────────────
+  // ============================ LA CAPA PROFUNDA — PIEZAS VISUALES PROPIAS (16-ago, blueprint) ============
+  // Regla que ordena esta sección: cada panel tiene ANATOMÍA PROPIA. La cinta de rotación no es una tabla
+  // con barras; la cascada de lesión no es una lista con flechas. Un producto se reconoce sin logo cuando
+  // sus piezas no se pueden confundir con las de nadie, y eso solo pasa si se diseñan pocas piezas y muy
+  // específicas en vez de treinta tarjetas con el mismo molde.
+  //
+  // La otra regla: NADA DE PRECISIÓN FALSA. Si 63% dice lo mismo que 63,142%, se publica 63%. La precisión
+  // interna se conserva; la que se enseña es la que el lector puede usar.
+
+  // Barra doble: valor local vs visitante sobre el mismo eje, con el que manda destacado.
+  function bbVs(label, hv, av, opts) {
+    opts = opts || {};
+    var fmt = opts.fmt || function (x) { return (x == null ? '—' : (+x).toFixed(opts.dec == null ? 1 : opts.dec)); };
+    var hi = opts.higherIsBetter !== false;
+    if (hv == null && av == null) return '';
+    var tot = Math.abs(hv || 0) + Math.abs(av || 0) || 1;
+    var hw = Math.round(100 * Math.abs(hv || 0) / tot), aw = 100 - hw;
+    var hWin = hv == null ? false : av == null ? true : (hi ? hv > av : hv < av);
+    return '<div class="gx-bb-vsrow">' +
+      '<b class="' + (hWin ? '' : 'w') + '">' + fmt(av) + '</b>' +
+      '<div class="gx-bb-vsbar"><i class="a" style="width:' + aw + '%"></i><i class="h" style="width:' + hw + '%"></i></div>' +
+      '<b class="' + (hWin ? 'w' : '') + '">' + fmt(hv) + '</b>' +
+      '<span>' + esc(label) + '</span></div>';
+  }
+
+  // ---- 1) CINTA DE ROTACIÓN ------------------------------------------------------------------------------
+  // 40 o 48 casillas por jugador, una por minuto, con la intensidad = probabilidad de estar en cancha en ese
+  // minuto según el patrón reciente del entrenador. Es la pieza que contesta de un vistazo la pregunta que
+  // más mueve los props: ¿cuándo juega, con quién y quién cierra?
+  function bbRotationRibbon(rt, roles, title) {
+    if (!rt || !rt.rows || !rt.rows.length) return '';
+    var reg = rt.reg_minutes || rt.bins;
+    var roleOf = {};
+    ((roles && roles.rows) || []).forEach(function (r) { roleOf[r.id] = r; });
+    var qmarks = '<div class="gx-bb-rotq">' + [1, 2, 3, 4].map(function (q) {
+      return '<span style="width:25%">Q' + q + '</span>'; }).join('') + '</div>';
+    var legend = '<span class="gx-bb-rleg"><i class="gx-bb-rmk s"></i>titular <i class="gx-bb-rmk c"></i>cierra</span>';
+    var rows = rt.rows.slice(0, 11).map(function (r) {
+      var role = roleOf[r.id] || {};
+      // MARCAS, NO ETIQUETAS. Dos palabras ("titular", "cierra") en cada fila comen la mitad de la columna
+      // y obligan a truncar el nombre, que es el dato. Dos marcas de 6 px con leyenda en la cabecera dicen
+      // lo mismo sin robar espacio — la regla del blueprint contra la contaminación de badges.
+      var chips = (role.p_start >= 0.6 ? '<i class="gx-bb-rmk s" title="Titular habitual (' + Math.round(100 * role.p_start) + '%)"></i>' : '') +
+        (role.p_close != null && role.p_close >= 0.6 ? '<i class="gx-bb-rmk c" title="Cierra los partidos apretados (' + Math.round(100 * role.p_close) + '%)"></i>' : '');
+      var cells = r.on.map(function (p, i) {
+        var lvl = p >= 0.8 ? 4 : p >= 0.55 ? 3 : p >= 0.3 ? 2 : p >= 0.1 ? 1 : 0;
+        return '<i class="l' + lvl + '" title="min ' + (i + 1) + ': ' + Math.round(100 * p) + '%"></i>';
+      }).join('');
+      return '<div class="gx-bb-rotrow"><span class="gx-bb-rotn"><em class="nm">' + esc(r.name) + '</em>' + chips + '</span>' +
+        '<div class="gx-bb-rotcells">' + cells + '</div>' +
+        '<b class="gx-bb-rotm">' + r.minutes.toFixed(0) + '</b></div>';
+    }).join('');
+    return '<div class="gx-bb-rotblock"><div class="gx-bb-rothd"><span class="gx-label">' + esc(title) + '</span>' +
+      legend + '<span class="gx-dim">' + rt.games + ' partidos · ' + reg + ' min</span></div>' + qmarks + rows + '</div>';
+  }
+
+  // ---- 2) CASCADA DE IMPACTO DE LA BAJA ------------------------------------------------------------------
+  // Ausente → minutos liberados → quién los absorbe → qué se lleva cada uno en tiros, asistencias y rebotes.
+  // La cadena entera en una sola pieza, porque el error clásico es quedarse en el primer eslabón ("falta X")
+  // sin decir lo único que decide un prop: quién ocupa ese hueco.
+  function bbInjuryWaterfall(rep, sideLabel) {
+    if (!rep || !rep.tree || !rep.tree.tree || !rep.tree.tree.length) return '';
+    var usage = {};
+    ((rep.usage && rep.usage.rows) || []).forEach(function (u) { usage[u.id] = u; });
+    // SOLO QUIEN MUEVE LA AGUJA. Un ausente de 0,8 minutos genera una cascada con la misma anatomía visual
+    // que la de un titular de 27, y eso entrena al ojo a ignorar el panel entero. Por debajo de 8 minutos
+    // habituales la baja no cambia el precio y no se dibuja.
+    var blocks = rep.tree.tree.filter(function (t) { return t.absorbers && t.absorbers.length && t.minutes >= 8; }).map(function (t) {
+      var u = usage[t.id] || {};
+      var abs = t.absorbers.slice(0, 5).map(function (a) {
+        return '<div class="gx-bb-wfa"><span>' + esc(a.name) + '</span>' +
+          '<div class="gx-bb-wfbar"><i style="width:' + Math.round(100 * Math.min(1, a.share * 2.2)) + '%"></i></div>' +
+          '<b>+' + a.minutes_gained.toFixed(1) + ' min</b></div>';
+      }).join('');
+      var freed = u.freed ? '<div class="gx-bb-wffreed">' +
+        '<span>libera <b>' + u.freed.fga + '</b> tiros</span><span><b>' + u.freed.ast + '</b> asistencias</span><span><b>' + u.freed.reb + '</b> rebotes</span></div>' : '';
+      var splits = u.split ? ['fga', 'ast', 'reb'].map(function (k) {
+        var lab = k === 'fga' ? 'Tiros' : k === 'ast' ? 'Asistencias' : 'Rebotes';
+        if (!u.split[k] || !u.split[k].length) return '';
+        return '<div class="gx-bb-wfsplit"><span class="gx-dim">' + lab + '</span>' +
+          u.split[k].slice(0, 4).map(function (x) { return '<em>' + esc(x.name.split(' ').pop()) + ' <b>+' + x.gain + '</b></em>'; }).join('') + '</div>';
+      }).join('') : '';
+      return '<div class="gx-bb-wf"><div class="gx-bb-wfh">' + ic('user') + '<b>' + esc(t.name) + '</b>' +
+        '<span class="gx-dim">' + t.minutes.toFixed(1) + ' min habituales</span></div>' + freed +
+        '<div class="gx-bb-wfabs">' + abs + '</div>' + splits + '</div>';
+    }).join('');
+    if (!blocks) return '';
+    return '<div class="gx-bb-wfblock"><span class="gx-label">' + esc(sideLabel) + '</span>' + blocks + '</div>';
+  }
+
+  // ---- 3) CONMUTADOR DE ESCENARIOS -----------------------------------------------------------------------
+  // Las tres ramas de cada duda, cada una con su probabilidad y su efecto. No se elige la más probable y se
+  // publica como certeza: se enseñan las tres y se publica la mezcla.
+  function bbScenarioSwitch(sc, H) {
+    if (!sc || !sc.players || !sc.players.length) return '';
+    var body = sc.players.map(function (pl) {
+      var branches = pl.branches.map(function (b) {
+        var d = b.delta_pp;
+        return '<div class="gx-bb-scb' + (b.key === 'sits' ? ' out' : b.key === 'limited' ? ' lim' : '') + '">' +
+          '<span class="gx-bb-scbl">' + esc(b.label) + '</span>' +
+          '<b>' + Math.round(100 * b.p_home) + '%</b>' +
+          '<em class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d > 0 ? '+' : '') + d + ' pp</em>' +
+          '<span class="gx-dim">peso ' + Math.round(100 * (b.prob || 0)) + '%</span></div>';
+      }).join('');
+      return '<div class="gx-bb-scp"><div class="gx-bb-scph"><b>' + esc(pl.name) + '</b>' +
+        '<span class="gx-dim">' + pl.minutes.toFixed(1) + ' min · ' + Math.round(100 * pl.p_play) + '% de jugar</span></div>' +
+        '<div class="gx-bb-scbs">' + branches + '</div></div>';
+    }).join('');
+    return '<div class="gx-panel gx-bb-scen"><div class="gx-ph"><span class="gx-label">Si juega / si no juega</span>' +
+      '<span class="gx-ph-extra">probabilidad de ' + esc(bbTeamName(H)) + '</span></div>' + body +
+      '<div class="gx-bb-scfoot">Publicado: <b>' + Math.round(100 * sc.weighted.p_home) + '%</b>, que es la mezcla ponderada de las ramas — no la rama más probable.' +
+      (sc.lineup_spread_pp ? ' La duda mueve hasta <b>' + sc.lineup_spread_pp + ' pp</b>.' : '') + '</div></div>';
+  }
+
+  // ---- 4) TORNADO + QUÉ HARÍA QUE GP SE EQUIVOQUE --------------------------------------------------------
+  function bbTornado(sens, risks, unc) {
+    if (!sens || !sens.rows || !sens.rows.length) return '';
+    var mx = sens.rows.reduce(function (m, r) { return Math.max(m, Math.abs(r.delta_pp || 0)); }, 0) || 1;
+    var bars = sens.rows.slice(0, 8).map(function (r) {
+      var w = Math.abs(r.delta_pp) / mx * 48;
+      return '<div class="gx-bb-tnrow"><span>' + esc(r.lever) + (r.detail ? '<em class="gx-dim">' + esc(r.detail) + '</em>' : '') + '</span>' +
+        '<div class="gx-bb-tnbar"><i class="' + (r.delta_pp >= 0 ? 'p' : 'n') + '" style="width:' + w.toFixed(1) + '%;' + (r.delta_pp >= 0 ? 'left:50%' : 'right:50%') + '"></i></div>' +
+        '<b class="' + (r.delta_pp >= 0 ? 'up' : 'dn') + '">' + (r.delta_pp > 0 ? '+' : '') + r.delta_pp + '</b></div>';
+    }).join('');
+    var uncHtml = '';
+    if (unc && unc.total_pp != null) {
+      var a = unc.aleatoric_pp || 0, e = unc.epistemic_pp || 0, t = a + e || 1;
+      uncHtml = '<div class="gx-bb-unc"><div class="gx-bb-uncbar">' +
+        '<i class="ale" style="width:' + Math.round(100 * a / t) + '%"></i><i class="epi" style="width:' + Math.round(100 * e / t) + '%"></i></div>' +
+        '<div class="gx-bb-uncleg"><span><i class="ale"></i>Del juego ' + a + ' pp</span><span><i class="epi"></i>De lo que no sabemos ' + e + ' pp</span></div>' +
+        '<div class="gx-dim">' + esc(unc.note || '') + '</div></div>';
+    }
+    var rk = (risks && risks.length) ? '<div class="gx-bb-risks"><span class="gx-label">Qué haría que GP se equivoque</span>' +
+      risks.slice(0, 5).map(function (r) {
+        return '<div class="gx-bb-risk"><b class="' + (r.delta_pp >= 0 ? 'up' : 'dn') + '">' + (r.delta_pp > 0 ? '+' : '') + r.delta_pp + ' pp</b>' +
+          '<span>' + esc(r.text) + '</span><em class="gx-dim">' + esc(r.direction) + '</em></div>';
+      }).join('') + '</div>' : '';
+    return '<div class="gx-panel gx-bb-tn"><div class="gx-ph"><span class="gx-label">Qué mueve esta probabilidad</span>' +
+      '<span class="gx-ph-extra">cada palanca se mueve una cantidad defendible</span></div>' +
+      '<div class="gx-bb-tnwrap">' + bars + '</div>' + uncHtml + rk + '</div>';
+  }
+
+  // ---- 5) TABLERO DE VENTAJAS DEL CRUCE ------------------------------------------------------------------
+  // Siete ejes donde de verdad chocan dos estilos. Cada fila es el mismo eje visto desde los dos lados, y la
+  // conclusión se lee sin tener que comparar dos tablas separadas.
+  function bbMatchupBoard(adv, H, A) {
+    if (!adv || !adv.home || !adv.away) return '';
+    var h = adv.home, a = adv.away;
+    var rows = [
+      bbVs('Presión al aro (% de tiros)', h.rim_pressure.rim_rate, a.rim_pressure.rim_rate, { fmt: function (x) { return x == null ? '—' : Math.round(100 * x) + '%'; } }),
+      bbVs('Triples (% de tiros)', h.three_point.rate, a.three_point.rate, { fmt: function (x) { return x == null ? '—' : Math.round(100 * x) + '%'; } }),
+      bbVs('Transición (pts/100)', h.transition.fastbreak_per100, a.transition.fastbreak_per100),
+      bbVs('Rebote ofensivo', h.rebounding.orb_pct, a.rebounding.orb_pct, { fmt: function (x) { return x == null ? '—' : Math.round(100 * x) + '%'; } }),
+      bbVs('Pérdidas (menos es mejor)', h.turnovers.tov_pct, a.turnovers.tov_pct, { higherIsBetter: false, fmt: function (x) { return x == null ? '—' : Math.round(1000 * x) / 10 + '%'; } }),
+      bbVs('Faltas recibidas (tiros libres)', h.fouls.ftr, a.fouls.ftr, { fmt: function (x) { return x == null ? '—' : Math.round(100 * x) + '%'; } }),
+      bbVs('eFG', h.shooting.efg, a.shooting.efg, { fmt: function (x) { return x == null ? '—' : Math.round(1000 * x) / 10 + '%'; } }),
+    ].join('');
+    return '<div class="gx-panel gx-bb-mb"><div class="gx-ph"><span class="gx-label">Dónde chocan estos dos</span>' +
+      '<span class="gx-ph-extra">' + esc(bbTeamName(A)) + ' · ' + esc(bbTeamName(H)) + '</span></div>' +
+      '<div class="gx-bb-mbrows">' + rows + '</div></div>';
+  }
+
+  // ---- 6) CALIDAD DE TIRO: REAL CONTRA ESPERADO ----------------------------------------------------------
+  // La pieza que separa habilidad de suerte. La mezcla de tiros dice qué eFG le corresponde a ese equipo; la
+  // diferencia contra el real es lo que no debería sostenerse.
+  function bbShotQuality(adv, H, A) {
+    if (!adv || !adv.home) return '';
+    var ZL = { rim: 'Aro', short_mid: 'Media corta', long_mid: 'Media larga', corner3: 'Triple esquina', atb3: 'Triple frontal' };
+    function side(p, t) {
+      if (!p || p.shooting.xefg == null) return '';
+      var mix = p.shooting.mix || {};
+      var bars = Object.keys(ZL).filter(function (k) { return mix[k]; }).map(function (k) {
+        return '<div class="gx-bb-sqz"><span>' + ZL[k] + '</span><div class="gx-bb-sqbar"><i style="width:' + Math.round(100 * mix[k] * 2.4) + '%"></i></div>' +
+          '<b>' + Math.round(100 * mix[k]) + '%</b></div>';
+      }).join('');
+      var luck = p.shooting.luck;
+      return '<div class="gx-bb-sqside"><div class="gx-bb-sqh">' + bbLogo(t, 'sm') + '<b>' + esc(bbTeamName(t)) + '</b></div>' +
+        '<div class="gx-bb-sqnums"><div><span>eFG real</span><b>' + (100 * p.shooting.efg).toFixed(1) + '%</b></div>' +
+        '<div><span>eFG que merece</span><b>' + (100 * p.shooting.xefg).toFixed(1) + '%</b></div>' +
+        '<div><span>Diferencia</span><b class="' + (luck >= 0 ? 'up' : 'dn') + '">' + (luck > 0 ? '+' : '') + (100 * luck).toFixed(1) + '</b></div></div>' +
+        bars + '<div class="gx-dim gx-bb-sqnote">' + esc(p.shooting.note || '') + '</div></div>';
+    }
+    var body = side(adv.away, A) + side(adv.home, H);
+    if (!body) return '';
+    return '<div class="gx-panel gx-bb-sq"><div class="gx-ph"><span class="gx-label">Calidad de tiro: lo que meten contra lo que merecen</span>' +
+      '<span class="gx-ph-extra">valor por zona sacado de la liga</span></div><div class="gx-bb-sqwrap">' + body + '</div></div>';
+  }
+
+  // ---- 7) IDENTIDAD POR CUARTOS + CLUTCH + SOSTENIBLE ----------------------------------------------------
+  function bbQuarters(adv, H, A) {
+    if (!adv || !adv.home || !adv.home.quarters || !adv.home.quarters.length) return '';
+    function strip(p, t, sus) {
+      var mx = 4;
+      var cells = p.quarters.map(function (q) {
+        var w = Math.max(6, Math.min(1, Math.abs(q.diff) / mx) * 50);
+        return '<div class="gx-bb-qcell"><span>Q' + q.q + '</span>' +
+          '<div class="gx-bb-qbar"><i class="' + (q.diff >= 0 ? 'p' : 'n') + '" style="height:' + w.toFixed(0) + '%;' + (q.diff >= 0 ? 'bottom:50%' : 'top:50%') + '"></i></div>' +
+          '<b class="' + (q.diff >= 0 ? 'up' : 'dn') + '">' + (q.diff > 0 ? '+' : '') + q.diff + '</b></div>';
+      }).join('');
+      var cl = p.clutch && p.clutch.enough
+        ? '<span>Clutch <b class="' + (p.clutch.net >= 0 ? 'up' : 'dn') + '">' + (p.clutch.net > 0 ? '+' : '') + p.clutch.net + '</b> por 100 <em class="gx-dim">(' + p.clutch.poss.toFixed(0) + ' posesiones · sin encoger ' + (p.clutch.net_raw > 0 ? '+' : '') + p.clutch.net_raw + ')</em></span>'
+        : '<span class="gx-dim">Clutch: muestra insuficiente</span>';
+      var fm = p.form ? '<span>Forma <b class="' + (p.form.residual >= 0 ? 'up' : 'dn') + '">' + (p.form.residual > 0 ? '+' : '') + p.form.residual + '</b> vs su nivel <em class="gx-dim">(' + esc(p.form.note) + ')</em></span>' : '';
+      var ss = sus ? '<span>Récord <b>' + sus.wins + '-' + (sus.games - sus.wins) + '</b>, esperado <b>' + sus.expected_wins.toFixed(1) + '</b> <em class="gx-dim">(' + esc(sus.note) + ')</em></span>' : '';
+      return '<div class="gx-bb-qside"><div class="gx-bb-sqh">' + bbLogo(t, 'sm') + '<b>' + esc(bbTeamName(t)) + '</b></div>' +
+        '<div class="gx-bb-qcells">' + cells + '</div><div class="gx-bb-qmeta">' + cl + fm + ss + '</div></div>';
+    }
+    return '<div class="gx-panel gx-bb-q"><div class="gx-ph"><span class="gx-label">Identidad por cuartos</span>' +
+      '<span class="gx-ph-extra">diferencia media por periodo</span></div><div class="gx-bb-qwrap">' +
+      strip(adv.away, A, adv.away_sustainable) + strip(adv.home, H, adv.home_sustainable) + '</div></div>';
+  }
+
+  // ---- 8) QUINTETOS --------------------------------------------------------------------------------------
+  function bbLineupTable(lu, t) {
+    if (!lu || !lu.lineups || !lu.lineups.length) return '';
+    var rows = lu.lineups.slice(0, 6).map(function (l) {
+      return '<div class="gx-bb-lurow"><span class="gx-bb-lun">' + l.players.map(function (p) { return esc(p.split(' ').pop()); }).join(' · ') + '</span>' +
+        '<span class="gx-dim">' + l.poss.toFixed(0) + ' pos</span>' +
+        '<b class="' + (l.net >= 0 ? 'up' : 'dn') + '">' + (l.net > 0 ? '+' : '') + l.net + '</b>' +
+        '<em class="gx-dim" title="sin encoger">' + (l.net_raw > 0 ? '+' : '') + l.net_raw + '</em></div>';
+    }).join('');
+    return '<div class="gx-bb-luside"><div class="gx-bb-sqh">' + bbLogo(t, 'sm') + '<b>' + esc(bbTeamName(t)) + '</b>' +
+      '<span class="gx-dim">' + lu.n_lineups + ' quintetos</span></div>' + rows + '</div>';
+  }
+
   function renderBBGame() {
     var lg = bbLg(), id = S.bb.gameId;
     var d = bbGet('game_' + lg + '_' + id, '/api/hoops/game?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
@@ -7515,7 +7740,32 @@
             }).join('') + '</div>';
         }).join('') + '</div></div>';
     }
-    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + stackHtml + readHtml + injHtml + mkt + dist + why + propsHtml + exploit + fair + courts + ff + pls);
+    // ── LA CAPA PROFUNDA ────────────────────────────────────────────────────────────────────────────
+    // ORDEN DELIBERADO: conclusión → qué la mueve → qué puede romperla → cómo se llega hasta el detalle.
+    // Los escenarios y el tornado van ARRIBA, pegados al hero, porque son lo que convierte una probabilidad
+    // en una decisión. El detalle de rotación, quintetos y estilo va después, para quien quiera bajar.
+    var DP = d.deep || null;
+    var deepTop = '', deepMid = '', deepLow = '';
+    if (DP) {
+      deepTop = bbScenarioSwitch(DP.scenarios, H) + bbTornado(DP.sensitivity, DP.risks, DP.uncertainty);
+      var wf = '';
+      if (DP.replacement) {
+        wf = bbInjuryWaterfall(DP.replacement.away, bbTeamName(A)) + bbInjuryWaterfall(DP.replacement.home, bbTeamName(H));
+        if (wf) wf = '<div class="gx-panel gx-bb-wfpanel"><div class="gx-ph"><span class="gx-label">Quién ocupa el hueco</span>' +
+          '<span class="gx-ph-extra">minutos, tiros, asistencias y rebotes que se reparten</span></div>' + wf + '</div>';
+      }
+      deepMid = wf + bbMatchupBoard(DP.advanced, H, A) + bbShotQuality(DP.advanced, H, A) + bbQuarters(DP.advanced, H, A);
+      var rot = DP.rotation ? (bbRotationRibbon(DP.rotation.away, DP.rotation.away_roles, bbTeamName(A)) +
+        bbRotationRibbon(DP.rotation.home, DP.rotation.home_roles, bbTeamName(H))) : '';
+      if (rot) rot = '<div class="gx-panel gx-bb-rot"><div class="gx-ph"><span class="gx-label">Cinta de rotación</span>' +
+        '<span class="gx-ph-extra">probabilidad de estar en cancha, minuto a minuto</span></div>' + rot + '</div>';
+      var lus = DP.lineups ? (bbLineupTable(DP.lineups.away, A) + bbLineupTable(DP.lineups.home, H)) : '';
+      if (lus) lus = '<div class="gx-panel gx-bb-lu"><div class="gx-ph"><span class="gx-label">Quintetos</span>' +
+        '<span class="gx-ph-extra">neto por 100, encogido hacia la media del equipo</span></div><div class="gx-bb-luwrap">' + lus + '</div>' +
+        '<div class="gx-dim gx-bb-lunote">El número grande está encogido por posesiones jugadas; el pequeño es el bruto. Veinte posesiones y +12 no son un quinteto de +12.</div></div>';
+      deepLow = rot + lus;
+    }
+    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + deepTop + stackHtml + readHtml + injHtml + mkt + dist + why + propsHtml + deepMid + exploit + fair + courts + ff + deepLow + pls);
   }
   // Genera la lectura bajo demanda (POST) y repinta. Cuesta una llamada al LLM, por eso es un botón.
   function bbGenRead(id) {

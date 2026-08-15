@@ -210,9 +210,13 @@ function teamAdvanced(games, teamId, { lastN = null, adj = null, base = null, fi
 // ---- 4) CLUTCH DESDE LOS TRAMOS --------------------------------------------------------------------------
 // Un tramo trae inicio, fin y los puntos de cada lado DENTRO del tramo. Acumulando se reconstruye el
 // marcador en cada frontera, y con eso se puede aislar lo que pasó con el partido apretado y poco tiempo.
-// SE ENCOGE FUERTE: 60 posesiones de clutch en una temporada no distinguen ejecución de suerte, y publicar
-// un "net rating en clutch" sin encogerlo es exactamente cómo nacen las narrativas falsas.
-function clutchFromStints(games, teamId, { lastSecs = 300, maxMargin = 5, prior = 80 } = {}) {
+// SE ENCOGE MUY FUERTE. Una temporada entera deja 120-150 posesiones de clutch por equipo, y el net rating
+// sobre esa muestra tiene una desviación enorme: sin encoger salen +39 y −31 por 100, que es exactamente
+// como nacen las narrativas de "equipo clutch". El prior son 300 posesiones —el orden de magnitud en que
+// esta métrica empieza a estabilizarse—, así que una temporada entra con un peso de ~0,3 y el número que
+// se publica es deliberadamente tímido. Aun así se publica el bruto al lado: esconderlo sería lo contrario
+// de lo que este archivo intenta hacer.
+function clutchFromStints(games, teamId, { lastSecs = 300, maxMargin = 5, prior = 300 } = {}) {
   let pf = 0, pa = 0, poss = 0, secs = 0, n = 0;
   for (const g of games) {
     const st = g.stints; if (!st || !st.length) continue;

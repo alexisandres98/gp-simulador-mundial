@@ -81,6 +81,8 @@ ventana destruye la muestra. Motivo de fondo: el backtest al cierre da −7,27% 
 y las picks prometían 56,5% de acierto contra 43,6% real.
 
 ## Documentos hermanos
+- `HANDOFF.md` — **punto de retoma**: estado exacto, qué está cerrado, qué está pendiente y por qué.
+
 - `PROJECT_STATE.md` — arquitectura, pantallas, archivos, endpoints, modelo, negocio.
 - `DESIGN_SYSTEM.md` — tokens, tipografía, componentes, layout, responsive.
 - `TODO_NEXT.md` — pendientes, bugs/riesgos, próximos pasos.

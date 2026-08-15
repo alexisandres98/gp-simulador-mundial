@@ -94,7 +94,11 @@ function run({ block = 300, minPrior = 12000, sims = 3000, since = '2005', testF
       const endR = Math.min(Number(f.end_round) || rounds, rounds);
 
       // 1) ¿se rompe la pelea?
-      stop.push({ p: S.method.stoppage, y: isStop ? 1 : 0, rounds });
+      // `complete` marca si los DOS tienen ficha propia — es decir, récord completo. La mitad del catálogo
+      // se construye con récords TRUNCADOS (solo las peleas contra el núcleo notable) y hay que poder ver
+      // si esa mitad predice peor. Medido el 16-ago: predice MEJOR (AUC 0,744 contra 0,685), así que no se
+      // corrige nada; esta partición queda para que si algún día deja de ser cierto, se vea.
+      stop.push({ p: S.method.stoppage, y: isStop ? 1 : 0, rounds, complete: !!(index[a] && index[b]) });
       // 2) ¿cuándo? — solo en las que efectivamente se rompieron
       if (isStop) {
         const cum = [];
@@ -136,6 +140,25 @@ function run({ block = 300, minPrior = 12000, sims = 3000, since = '2005', testF
   };
   stopBlock.gap_pp = r3(stopBlock.predicho_pct - stopBlock.real_pct);
   stopBlock.skill_vs_base = r3(stopBlock.brier_baseline - stopBlock.brier);
+  // PARTICIÓN POR COMPLETITUD DEL RÉCORD. La mitad de los perfiles se construyen sobre récords truncados
+  // (solo las peleas contra el núcleo notable de Wikipedia). Si esa mitad predijera peor, habría que dejar
+  // de servirla; medido el 16-ago predice MEJOR, y por eso no se toca. Se recalcula en cada corrida.
+  const bySide = (rows) => {
+    if (rows.length < 60) return { n: rows.length, nota: 'muestra corta' };
+    const real = rows.filter((r) => r.y).length / rows.length;
+    return { n: rows.length, auc: auc(rows), brier: M.brier(rows),
+      brier_baseline: r3(real * (1 - real) * 1000) / 1000,
+      predicho_pct: r3(100 * rows.reduce((s, r) => s + r.p, 0) / rows.length),
+      real_pct: r3(100 * real) };
+  };
+  const comp = bySide(stop.filter((r) => r.complete));
+  const trunc = bySide(stop.filter((r) => !r.complete));
+  if (comp.auc != null) comp.gap_pp = r3(comp.predicho_pct - comp.real_pct);
+  if (trunc.auc != null) trunc.gap_pp = r3(trunc.predicho_pct - trunc.real_pct);
+  stopBlock.por_completitud_del_record = {
+    los_dos_completos: comp, alguno_truncado: trunc,
+    nota: 'si "alguno_truncado" empieza a predecir claramente PEOR que "los_dos_completos", esa mitad del catálogo deja de ser publicable y hay que revisarlo. Hoy predice mejor.',
+  };
 
   // ---- 2) ¿CUÁNDO? ---------------------------------------------------------------------------------------
   const whenBlock = when.length ? (function () {

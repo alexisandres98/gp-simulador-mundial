@@ -29,13 +29,27 @@ de los dos le falta perfil.
 **Próximo paso natural para que boxeo rinda: ampliar `fights-boxing.json` hacia BoxRec/prospectos**, no
 tocar el motor.
 
-### Observación para la próxima sesión (MMA, preexistente, NO tocado)
-La capa visual saca a la luz una rareza que ya estaba en `style.js`: la ruta de Makhachev sale como "Control
-en el suelo" con ventaja saturada en 1,00 y la nota *"su mejor ventaja vive en una fase a la que la pelea
-probablemente no llegue"* con el suelo al 22 %. El umbral de esa nota (0,4) se pensó para otra escala. En
-`boxing.js` ya está corregido (la nota solo salta en el tramo profundo y por debajo de 0,28). Igualar el
-criterio en MMA es un cambio de una línea, pero mueve texto que hoy ve el usuario: hacerlo a conciencia,
-no de paso.
+### ✅ Corregido: el aviso de ruta en MMA usaba un umbral único para cuatro escalas distintas
+`style.js` marcaba una ruta con *"la pelea probablemente no llegue ahí"* cuando la masa de su fase bajaba de
+0,40 — el mismo corte para las cuatro fases. Medido sobre 1.199 cruces reales de la UFC, las fases no viven
+en la misma escala ni de lejos (mediana: pie 0,414 · clinch 0,103 · lucha 0,386 · suelo 0,469), así que
+**cualquier ruta que fuera por el clinch llevaba el aviso el 100 % de las veces** y a Makhachev le salía con
+el suelo al 22 %. Un aviso que no puede no salir no informa. Ahora cada fase se compara contra su propio
+percentil 25 y el texto dice lo que el número dice ("pesa poco en esta pelea", no "no llega ahí"). El aviso
+pasa de estructural a dispararse en el 10,8 % de las rutas.
+
+### 🔬 El récord truncado de boxeo: investigado, medido y NO corregido a propósito
+La mitad de los perfiles de boxeo (1.391 de 2.767) se construyen sobre récords truncados y sus tasas están
+sesgadas de forma brutal (−62,9 % de rotura, +145,7 % de fragilidad). **Pero predicen mejor que los
+completos** (AUC 0,744 contra 0,685): que solo los conozcamos por sus derrotas contra buenos dice que son el
+lado B, y eso acierta. Se probaron dos correcciones y las dos empeoran — el ajuste por calidad del rival
+además rompe el nivel (predice 28,8 % donde ocurre 50,3 %). Todo escrito con sus cifras en el encabezado de
+`combat-engine/boxing.js`, y la partición por completitud queda vigilada en cada corrida de
+`scripts/boxing-validate.js`.
+
+**Lo que sí falta es dato**, y no se puede bajar desde aquí: Wikipedia devuelve 429 a la IP del sandbox con
+cualquier ritmo. Comando para correr desde fuera:
+`node scripts/combat-boxing-backfill.js --depth=3 --max=4000 --sleep=200` (idempotente, cachea).
 
 ---
 

@@ -162,7 +162,9 @@ function matchup(pa, pb, sa, sb, { league = null } = {}) {
     const top = mine[0];
     return { via: top.label, phase: top.phase, edge: r3(top.mag), phase_prob: r3(top.reach),
       expected_value: r3(top.mag * top.reach),
-      note: top.reach < 0.4 ? 'su mejor ventaja vive en una fase a la que la pelea probablemente no llegue' : null };
+      note: rareForPhase(top.phase, top.reach)
+        ? 'su mejor ventaja vive en una fase que en esta pelea pesa poco'
+        : null };
   };
 
   // ---- 122 · FRAGILIDAD DEL PRONÓSTICO ------------------------------------------------------------------
@@ -186,6 +188,32 @@ function matchup(pa, pb, sa, sb, { league = null } = {}) {
     // el resumen en una línea, que es lo que lee el 90% de la gente
     summary: summarize(dims, phaseProb, sa, sb),
   };
+}
+
+// ---- ¿ES RARA ESTA FASE EN ESTA PELEA? (corregido 16-ago) -----------------------------------------------
+// EL FALLO QUE ESTO ARREGLA. La nota de la ruta usaba un umbral ÚNICO de 0,40 para las cuatro fases, y las
+// cuatro viven en escalas completamente distintas. Medido sobre 1.199 cruces reales de la UFC:
+//
+//   fase     p25     mediana        con el umbral viejo, la nota saltaba en…
+//   pie     0,164     0,414         48,9 % de los cruces
+//   clinch  0,075     0,103         **100 %** — SIEMPRE
+//   lucha   0,237     0,386         —
+//   suelo   0,276     0,469         41,1 %
+//
+// O sea: cualquier ruta que fuera por el clinch se publicaba SIEMPRE con el aviso "la pelea probablemente
+// no llegue ahí", que sobre una fase cuya mediana es el 10 % de la pelea no es un aviso, es una constante.
+// Y con el suelo al 22 % le salía a Makhachev, que es quien lleva las peleas al suelo. Un aviso que no
+// puede no salir no informa: entrena al ojo a ignorar el panel entero.
+//
+// La corrección es comparar cada fase CONTRA SU PROPIA distribución. El corte es el percentil 25 medido
+// arriba: la nota salta cuando esta pelea está en el cuarto más bajo de esa fase, que es lo que "pesa poco"
+// significa de verdad. El texto también cambia: "pesa poco en esta pelea" es lo que el número dice; "la
+// pelea no llega ahí" era falso para el clinch y para el suelo, por los que toda pelea de MMA pasa.
+const PHASE_P25 = { pie: 0.164, clinch: 0.075, lucha: 0.237, suelo: 0.276 };
+function rareForPhase(phase, reach) {
+  const ref = PHASE_P25[phase];
+  if (!Number.isFinite(ref) || !Number.isFinite(reach)) return false;
+  return reach < ref;
 }
 
 // Dónde va a vivir la pelea. Sale del apetito de lucha de uno contra la defensa del otro, y del reparto de
@@ -232,4 +260,4 @@ function summarize(dims, phase, sa, sb) {
 const norm = (a, b) => { const s = Math.abs(a) + Math.abs(b); return s > 0 ? (a - b) / s : 0; };
 const pctTxt = (x) => (Number.isFinite(x) ? Math.round(100 * x) + '%' : '—');
 
-module.exports = { AXES, styleVectors, archetypeOf, matchup, phaseMass, distribution, pct };
+module.exports = { AXES, PHASE_P25, styleVectors, archetypeOf, matchup, phaseMass, rareForPhase, distribution, pct };

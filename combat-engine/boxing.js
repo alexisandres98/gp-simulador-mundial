@@ -60,6 +60,40 @@
 //       están lo bastante bien puestos para poner precio.
 // Si algún día hay histórico de cuotas de boxeo, esta es la primera hipótesis que merece una prueba real.
 //
+// ── EL RÉCORD TRUNCADO: LA CORRECCIÓN QUE SE PROBÓ, SE MIDIÓ Y SE TIRÓ (16-ago) ──────────────────────────
+// EL HECHO. El histórico se construye recorriendo Wikipedia desde los campeones, así que hay dos clases de
+// boxeador: 1.376 con página propia, cuyo récord está COMPLETO (mediana del 100 % de las peleas que declara
+// su ficha), y 1.391 que solo aparecen como RIVALES de los anteriores, de los que únicamente tenemos sus
+// peleas contra gente notable — o sea, sus peleas más duras. Es la MITAD EXACTA de los perfiles servidos.
+//
+// EL SESGO ES ENORME Y ESTÁ MEDIDO. Ensayo pareado sobre 740 boxeadores de récord completo a los que se les
+// simuló la truncación (quedarse solo con sus peleas contra otros de ficha):
+//     rotura propia por asalto      0,0945 → 0,0351   (−62,9 %, t = −37,0)
+//     fragilidad propia por asalto  0,0158 → 0,0389   (+145,7 %, t = +17,6)
+// Al journeyman lo veíamos solo perdiendo contra campeones y salía como un saco.
+//
+// Y AQUÍ ESTÁ EL GIRO, QUE ES POR LO QUE NO SE CORRIGE. Partiendo la validación fuera de muestra en dos:
+//     los DOS con récord completo   n = 2.354 · AUC 0,685 · Brier 0,224 · desvío  0,0 pp
+//     al menos uno TRUNCADO         n =   414 · AUC 0,744 · Brier 0,205 · desvío −4,6 pp
+// **Los perfiles truncados predicen MEJOR, no peor.** Tiene sentido: que solo lo conozcamos por sus derrotas
+// contra buenos es en sí mismo información — dice que es el lado B, y esas peleas se rompen antes (55,8 %
+// contra 50,3 %). El sesgo de la tasa apunta en la dirección que acierta. El desvío de −4,6 pp con n = 414
+// es 1,9 errores estándar: no se corrige un subconjunto de 414 peleas a 1,9 sigmas, que es justo la caza de
+// subconjuntos que TODO_NEXT prohíbe.
+//
+// LO QUE SE INTENTÓ Y FALLÓ, escrito para que nadie lo vuelva a intentar sin medirlo:
+//   1. AJUSTE POR CALIDAD DEL RIVAL (la descomposición ataque × defensa que sí funciona en baloncesto y en
+//      MMA, iterada a punto fijo). Redujo el sesgo de rotura de −62,9 % a −11,4 %, pero **empeoró** el de
+//      fragilidad (de −14,4 % que ya conseguía el encogimiento, a +66,5 %) y sobre todo **rompió el nivel**:
+//      la simulación pasó a predecir 28,8 % de finalización donde ocurre el 50,3 %. Revertido.
+//      Motivo de fondo: el problema no es la calidad del rival, es la SELECCIÓN de qué peleas vemos, y
+//      ninguna reponderación por rival arregla una selección.
+//   2. SUBIR EL ENCOGIMIENTO (`PRIOR_ROUNDS` de 34 a 60/90/130/190). Empeora en todos los escalones:
+//      el sesgo medio absoluto sube de 29,5 % a 32,1 / 33,3 / 34,1 / 34,7 %. El 34 ya estaba cerca del óptimo.
+//
+// CONCLUSIÓN: no se toca nada. El único hueco real es el de los boxeadores con CERO peleas en el histórico
+// (5 de los 6 de la cartelera del 15-ago), y eso no lo arregla ningún modelo: lo arregla más dato.
+//
 // ── LA ARQUITECTURA, EN UNA FRASE ────────────────────────────────────────────────────────────────────────
 // El GANADOR lo ancla el modelo de habilidad (Elo), igual que en MMA. Este motor manda en lo que sabe:
 // cuándo se rompe la pelea, por qué vía, y cómo quedan las tarjetas.

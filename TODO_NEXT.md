@@ -6,12 +6,28 @@ Detalle completo y todas las mediciones en `HANDOFF.md` §2. Lo que hay que sabe
   motor de fases producía 0 perfiles y `fightIntel` devolvía `available:false` para toda pelea de boxeo.
   Ahora `combat-engine/boxing.js` produce 2.767 perfiles y está validado sobre 2.768 peleas fuera de
   muestra (finalización AUC 0,694; asalto medio 5,11 contra 5,30 real; método dentro de 1,7 pp).
-- **🔴 EL PENDIENTE QUE ESTO DESTAPA: la cobertura de `fights-boxing.json`.** Las tres peleas de la
-  cartelera de boxeo del 15-ago dan `available:false` porque **cinco de los seis boxeadores tienen CERO
-  peleas en el archivo** (el sexto, Angulo, tiene 30 y se perfila bien). El motor está sano; el dataset
-  viene de Wikipedia y no cubre las carteleras de club que trae la agenda de The Odds API. En la propia
-  validación, 8.667 de 12.966 peleas se descartan por falta de perfil de uno de los dos.
-  **Ampliar el histórico de boxeo (BoxRec/prospectos) rinde mucho más que cualquier cambio en el motor.**
+- **La cobertura de `fights-boxing.json` sigue siendo el pendiente, pero por una razón MÁS ESTRECHA de lo
+  que parecía.** Investigado a fondo el 16-ago (detalle y todas las cifras en el encabezado de
+  `combat-engine/boxing.js`):
+  - Los 1.376 boxeadores con ficha propia tienen el récord **completo** (mediana del 100 %). El crawler
+    funciona bien; el problema no es que baje mal lo que baja.
+  - Los otros 1.391 perfiles (la mitad exacta) se construyen con récords **truncados**, y el sesgo de sus
+    tasas es enorme (−62,9 % de rotura, +145,7 % de fragilidad, t de dos dígitos)…
+  - …**pero predicen MEJOR que los completos** (AUC 0,744 contra 0,685). Que solo los conozcamos por sus
+    derrotas contra buenos es información: dice que son el lado B. **Por eso NO se corrigió nada.**
+  - Se probaron dos correcciones y las dos empeoran, con su medición escrita en el código para que nadie
+    las repita: el ajuste por calidad del rival (rompe el nivel: predice 28,8 % donde ocurre 50,3 %) y
+    subir el encogimiento (empeora en los cinco escalones probados).
+  - **El hueco real que queda son los boxeadores con CERO peleas** — 5 de los 6 de la cartelera del 15-ago.
+    Eso no lo arregla ningún modelo, solo más dato.
+- **🔴 PARA AMPLIAR EL HISTÓRICO HAY QUE CORRERLO FUERA DEL SANDBOX.** Wikipedia devuelve 429 a la IP de
+  salida del sandbox con cualquier ritmo (probado con 3 s entre peticiones; `retry-after: 40`). El comando,
+  para correr desde una máquina con IP limpia o desde el servidor de Render:
+  ```bash
+  node scripts/combat-boxing-backfill.js --depth=3 --max=4000 --sleep=200
+  ```
+  Es idempotente y cachea, así que se puede parar y reanudar. Sube `fights-boxing.json` (hoy 16 MB / 39.158
+  peleas) — vigilar el tamaño y el tiempo de carga de `combatLoad` después.
 - MMA sin regresión: las cuatro peleas probadas de UFC 330 devuelven `deep.available:true`; el endpoint
   tarda entre 419 y 1.374 ms.
 - **Hipótesis abierta y preregistrada aquí para no cazarla a posteriori:** el ganador del motor de boxeo

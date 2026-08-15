@@ -30,6 +30,35 @@ dentro de ventana, mercados cargados, error del loader) en vez de un `available:
 de baloncesto (el sweep de hoops escribe `match_total` en el mismo almacén). Ahora esos viven en
 `/api/hoops/opps` y el de fútbol muestra los suyos, que hoy son 0.
 
+## 🎯 EVALUACIÓN DEL MODELO DE BALONCESTO 15-ago — dónde estamos y qué falta
+**Medido fuera de muestra (ventana expandida, ningún partido evaluado entró en su propio ajuste):**
+
+| | NBA | WNBA |
+|---|---|---|
+| Partidos evaluados | 772 | 164 |
+| Brier del mercado (cierre) | 0.1878 | 0.1953 |
+| Brier de GP | 0.2083 | 0.2032 |
+| **Skill vs cierre** | **−0.0205 ± 0.0040 · t = −5.16** | **−0.0079 ± 0.0067 · t = −1.18** |
+| Acierto | 67.0% | 67.7% |
+| MAE de margen | 12.11 | 9.80 |
+
+**Veredicto honesto:** en NBA el modelo está DECISIVAMENTE por detrás del cierre (t = −5.16 no es ruido,
+es un hecho). En WNBA está por detrás pero dentro del ruido. Ningún caso justifica publicar picks.
+
+**LO QUE NOS FALTA, y no es datos — es modelado.** Ya cosechamos por partido: play-by-play completo,
+box de CADA jugador (min, pts, reb, ast, tov, +/-, titular) y coordenadas de tiro. El motor solo consume
+AGREGADOS DE EQUIPO. Los tres huecos medidos en nuestros propios datos:
+1. **Disponibilidad y minutos de jugadores** — 546 jugadores cosechados en NBA, cero usados. El jugador
+   más usado juega 37.2 min de media: que falte mueve la línea entre 2 y 6 puntos y el modelo no lo ve.
+2. **Descanso** — el 15,3% de los partidos NBA son back-to-back. Medido acá: el equipo en B2B rinde
+   **1,56 puntos peor** (n=261). Es casi el DOBLE de la ventaja de cancha que sí modelamos (1,68).
+3. **Garbage time** — el detector marca el 64% de los partidos, o sea que no discrimina. Los ratings
+   incluyen minutos de basura que no describen la fuerza del equipo.
+
+Además: una sola temporada de WNBA y dos de NBA (priors pobres), sin efecto de viaje/altitud, sin
+árbitros (faltas → totales), sin modelo en vivo, sin props de jugador (el mercado más blando), y sin
+encogimiento hacia el mercado en lo que el modelo no puede ver.
+
 ## 🏀 BALONCESTO 15-ago — 4º deporte, ADMIN-ONLY (pestaña abierta, picks apagadas)
 - **Datos**: colector ESPN (`data-providers/basketball/espn.js`) — NBA, WNBA, NCAA M y F, gratis, con
   play-by-play completo (~450 jugadas/partido: coordenadas de tiro, 63 tipos de jugada y SUSTITUCIONES).

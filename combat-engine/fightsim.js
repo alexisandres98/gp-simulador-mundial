@@ -86,6 +86,33 @@ function roundEdge(mu, fatigueA, fatigueB) {
 }
 
 // ---- 3) SIMULACIÓN COMPLETA -----------------------------------------------------------------------------
+// ---- ANCLAJE AL MODELO DE HABILIDAD (la corrección del 16-ago) ------------------------------------------
+// LO QUE LA VALIDACIÓN DEMOSTRÓ, sobre 3.140 peleas con ventana móvil:
+//   · QUIÉN GANA: Brier 0,276 contra 0,250 de decir siempre 50%. PEOR QUE UNA MONEDA. Y descalibrado de
+//     forma brutal: cuando decía 93% ganaba el 67%; cuando decía 8% ganaba el 46%. 7 de 8 tramos fuera de
+//     intervalo, y una resolución de 0,004 — o sea, prácticamente no distingue.
+//   · CÓMO TERMINA: KO 29,4% predicho contra 32,3% real · sumisión 19,4 contra 17,6 · decisión 51,2 contra
+//     50,1 · llega al límite 51,3 contra 50,1. Las cuatro dentro de 3 puntos. EXCELENTE.
+//
+// La lectura es clara y la corrección se sigue sola: el motor de fases sabe CÓMO se resuelve una pelea y no
+// sabe QUIÉN es mejor. Dos peleadores con perfiles estadísticos parecidos salen 50/50 aunque uno esté dos
+// niveles por encima, porque este motor no tiene un término de habilidad latente — y el Elo que ya teníamos
+// sí lo tiene.
+//
+// Entonces: el GANADOR lo fija el modelo de habilidad; el MÉTODO, el ASALTO y la DURACIÓN los fija el motor
+// de fases. Se busca el desplazamiento `k` que hace que la simulación reproduzca la probabilidad del prior,
+// y con ese desplazamiento puesto se lee todo lo demás. Es el mismo principio que en baloncesto: anclarse a
+// lo que funciona y dejar que el modelo mande solo donde ha demostrado que sabe.
+function solveTilt(pa, pb, M, H, target, opts) {
+  let lo = -3, hi = 3;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    const p = core(pa, pb, M, H, { ...opts, n: 1200, seed: 991, tilt: mid }).win.a;
+    if (p < target) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 function simulate(pa, pb, {
   rounds = 3, roundMin = 5, n = 20000, seed = 17, mu = null, sa = null, sb = null,
   cardioA = 0.5, cardioB = 0.5, priorA = null,
@@ -94,6 +121,21 @@ function simulate(pa, pb, {
   if (!M) return null;
   const H = hazards(pa, pb, M);
   if (!H) return null;
+  const base = { rounds, roundMin, cardioA, cardioB };
+  // si llega una probabilidad de habilidad (Elo), se ancla a ella; si no, se corre sin anclar y se avisa
+  const tilt = (priorA != null && priorA > 0.02 && priorA < 0.98) ? solveTilt(pa, pb, M, H, priorA, base) : 0;
+  const out = core(pa, pb, M, H, { ...base, n, seed, tilt });
+  out.anchor = priorA != null
+    ? { prior_a: r4(priorA), tilt: r2(tilt), source: 'modelo de habilidad (Elo)',
+      note: 'el ganador viene del modelo de habilidad; el método, el asalto y la duración salen del motor de fases' }
+    : { prior_a: null, tilt: 0, source: null,
+      note: 'SIN anclar: la validación mostró que este motor por sí solo predice al ganador peor que una moneda (Brier 0,276 vs 0,250)' };
+  out.matchup = M;
+  out.uncertainty = uncertainty(out, pa, pb, M);
+  return out;
+}
+
+function core(pa, pb, M, H, { rounds = 3, roundMin = 5, n = 20000, seed = 17, cardioA = 0.5, cardioB = 0.5, tilt = 0 } = {}) {
   const rnd = rng(seed);
 
   const res = {
@@ -116,10 +158,14 @@ function simulate(pa, pb, {
       fatB += (0.16 + 0.22 * (1 - cardioB)) * (1 + dmgB * 0.5);
 
       // PELIGROS DEL ASALTO: la fatiga del rival abre la puerta al KO; la propia la cierra.
-      const kA = H.ko_a * roundMin * (1 + fatB * 0.9 + dmgB * 1.4) * (1 - Math.min(0.5, fatA * 0.25)) * Math.exp(nightA);
-      const kB = H.ko_b * roundMin * (1 + fatA * 0.9 + dmgA * 1.4) * (1 - Math.min(0.5, fatB * 0.25)) * Math.exp(nightB);
-      const sA = H.sub_a * roundMin * (1 + fatB * 0.7);
-      const sB = H.sub_b * roundMin * (1 + fatA * 0.7);
+      // EL DESPLAZAMIENTO DE HABILIDAD entra en los dos sitios donde se decide una pelea: en los peligros
+      // (el mejor termina más y le terminan menos) y en la puntuación del asalto. Repartirlo así conserva
+      // el reparto de método del motor de fases mientras mueve el ganador hacia donde dice la habilidad.
+      const tA = Math.exp(tilt * 0.55), tB = Math.exp(-tilt * 0.55);
+      const kA = H.ko_a * tA * roundMin * (1 + fatB * 0.9 + dmgB * 1.4) * (1 - Math.min(0.5, fatA * 0.25)) * Math.exp(nightA);
+      const kB = H.ko_b * tB * roundMin * (1 + fatA * 0.9 + dmgA * 1.4) * (1 - Math.min(0.5, fatB * 0.25)) * Math.exp(nightB);
+      const sA = H.sub_a * tA * roundMin * (1 + fatB * 0.7);
+      const sB = H.sub_b * tB * roundMin * (1 + fatA * 0.7);
 
       // RIESGOS COMPETITIVOS: se sortea si ocurre ALGO y, si ocurre, cuál de los cuatro. Es la forma
       // correcta: los cuatro peligros compiten por el mismo minuto de pelea.
@@ -138,7 +184,7 @@ function simulate(pa, pb, {
       }
 
       // NADIE TERMINA: se puntúa el asalto. Cada juez ve lo mismo con ruido propio (129).
-      const edge = roundEdge(M, fatA, fatB) + (nightA - nightB);
+      const edge = roundEdge(M, fatA, fatB) + (nightA - nightB) + tilt;
       const shared = gauss(rnd) * 0.55;                 // lo que pasó de verdad en el asalto
       let winsA = 0;
       for (let j = 0; j < 3; j++) {
@@ -203,11 +249,8 @@ function simulate(pa, pb, {
     rounds: res.roundWinsA.map((w, i) => ({ round: i + 1, p_a: p(w),
       close: Math.abs(w / n - 0.5) < 0.08 ? true : false })),
     sims: n, rounds_sched: rounds,
-    matchup: M,
     hazards: { ko_a_per_min: r4(H.ko_a), ko_b_per_min: r4(H.ko_b), sub_a_per_min: r4(H.sub_a), sub_b_per_min: r4(H.sub_b), stand_share: H.stand_share },
   };
-  // 146 · descomposición de la incertidumbre
-  out.uncertainty = uncertainty(out, pa, pb, M);
   return out;
 }
 
@@ -235,4 +278,4 @@ function uncertainty(out, pa, pb, M) {
   };
 }
 
-module.exports = { simulate, hazards, roundEdge, uncertainty, rng, gauss };
+module.exports = { simulate, core, solveTilt, hazards, roundEdge, uncertainty, rng, gauss };

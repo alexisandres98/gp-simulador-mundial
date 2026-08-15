@@ -34,7 +34,7 @@ function load(org, fights, stats, { force = false, ttl = 30 * 60e3 } = {}) {
 // NO DEVUELVE UNA PICK. Igual que en baloncesto: esta probabilidad NO está anclada al mercado y el modelo
 // de combate no ha demostrado batir al cierre. Quien quiera convertir esto en una selección tiene que
 // pasarlo por el encogimiento al consenso y por las compuertas, como el resto del sistema.
-function fightIntel(I, id1, id2, { rounds = 3, sims = 20000, seed = 17 } = {}) {
+function fightIntel(I, id1, id2, { rounds = 3, sims = 20000, seed = 17, priorA = null } = {}) {
   if (!I) return null;
   const a = String(id1), b = String(id2);
   const pa = I.profiles.get(a), pb = I.profiles.get(b);
@@ -50,14 +50,24 @@ function fightIntel(I, id1, id2, { rounds = 3, sims = 20000, seed = 17 } = {}) {
     const f = (p.striking && p.striking.sample.fights) || 1;
     return Math.max(0.2, Math.min(0.9, (m / Math.max(1, f)) / 12));
   };
-  const sim = FS.simulate(pa, pb, { rounds, n: sims, seed, mu, sa, sb, cardioA: cardio(pa), cardioB: cardio(pb) });
+  // EL ANCLA. `priorA` es la probabilidad del modelo de habilidad (el Elo que ya corría). Sin ella, la
+  // validación sobre 3.140 peleas dice que este motor predice al ganador PEOR que una moneda; con ella, el
+  // ganador lo fija quien sabe de habilidad y el método lo fija quien sabe de fases.
+  const sim = FS.simulate(pa, pb, { rounds, n: sims, seed, mu, sa, sb, cardioA: cardio(pa), cardioB: cardio(pb), priorA });
   return {
     available: true,
     dna: { a: sa, b: sb },
     profiles: { a: pa, b: pb },
     matchup: mu,
     projection: sim,
-    disclaimer: 'probabilidad del modelo SIN anclar al mercado: no es una recomendación y no ha demostrado batir al cierre',
+    disclaimer: priorA != null
+      ? 'ganador anclado al modelo de habilidad; método, asalto y duración del motor de fases. NO anclado al mercado: no es una recomendación.'
+      : 'SIN ancla de habilidad: el ganador de este motor está medido PEOR que una moneda (Brier 0,276 vs 0,250). Léase solo el método y la duración.',
+    validated: {
+      winner: 'brier 0,276 vs 0,250 de la moneda · 7 de 8 tramos descalibrados · por eso se ancla',
+      method: 'KO 29,4% predicho vs 32,3% real · sumisión 19,4 vs 17,6 · decisión 51,2 vs 50,1 · límite 51,3 vs 50,1',
+      n: 3140, method_note: 'ventana móvil por bloques sobre peleas anteriores',
+    },
   };
 }
 

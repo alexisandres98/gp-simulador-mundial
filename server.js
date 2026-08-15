@@ -15455,7 +15455,9 @@ const server = http.createServer(async (req, res) => {
               const raw = (function () { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `espnstats-${C.org}.json`), 'utf8')).stats || {}; } catch { return {}; } })();
               const I = CI.load(C.org, (C.fights && C.fights.fights) || [], raw);
               const rds = Number(ft.rounds_sched) || (ft.main ? 5 : 3);
-              const di = CI.fightIntel(I, ft.f1.id, ft.f2.id, { rounds: rds, sims: 20000 });
+              // el ancla es la probabilidad del modelo de habilidad que ya calcula este endpoint
+              const di = CI.fightIntel(I, ft.f1.id, ft.f2.id, { rounds: rds, sims: 20000,
+                priorA: (pr && Number.isFinite(pr.p1)) ? pr.p1 : null });
               return di ? { ...di, engine: { fighters: I.fighters, built_ms: I.ms, org: C.org } } : null;
             } catch (e) { return { available: false, error: e.message }; }
           })(),

@@ -91,6 +91,41 @@ refresco de caché — 5,7 s de CPU bloqueante cada 30 min, que en Node de un hi
 Ahora se entrena fuera de línea y el servidor solo lee: carga de NBA 5.761 ms → **464 ms**. El re-ajuste
 está acoplado a `hoops-backfill.js` para que el artefacto no envejezca en silencio.
 
+## 🧭 16-ago — EL BLUEPRINT DE INTELIGENCIA, APLICADO COMO ADITIVO
+Documento de referencia: `GPsimulador_Basketball_Intelligence_Master_Blueprint` (349 módulos). No se
+reconstruyó nada: se auditó lo existente contra el documento y se construyó SOLO lo que faltaba.
+
+| Módulo nuevo | Cubre | Lo que aporta que no teníamos |
+|---|---|---|
+| `advanced.js` | 24-45 | Four factors ajustados por rival · **eFG esperado** por mezcla de tiros → descomposición de suerte · cuartos · clutch desde tramos · forma ajustada por calendario · récord sostenible |
+| `rotations.js` | 66-80 | Quintetos con encogimiento por posesiones · cinta de rotación minuto a minuto · P(titular) y P(cerrar) · árbol de reemplazo por afinidad real · redistribución de uso por categoría |
+| `pricing.js` | 166-182 | Sin vig por Shin/potencia/proporcional **con el método registrado** · consenso ponderado por casa y frescura · **lógica de empuje** en líneas enteras · cuota mínima jugable · sensibilidad del EV · Kelly con límite inferior |
+| `scenarios.js` | 84-92, 149, 271-272 | Ramas juega/limitado/no juega simuladas · tornado de sensibilidad · **incertidumbre aleatoria vs epistémica** · panel de riesgos |
+| `gates.js` | 183-200 | Umbral por familia · compuerta de incertidumbre (ventaja > 1,3× epistémica) · **NO PICK con código de razón y contrafactual** · expiración · ciclo de vida por familia |
+| `metrics.js` | 215-227 | Log loss · nitidez · Murphy · calibración con Wilson · **CRPS** de margen y total · distribución de CLV con bootstrap · estabilidad por segmento |
+
+**Piezas visuales propias** (243-285, y las reglas anti-IA 286-310): cinta de rotación, cascada de "quién
+ocupa el hueco", conmutador si-juega/si-no-juega, tornado con barra de incertidumbre, tablero de cruce,
+calidad de tiro real vs merecida, identidad por cuartos y quintetos. Un color = un significado, sin
+degradados decorativos, números tabulares, y en móvil recomposición en vez de encogimiento.
+
+**Decisiones que conviene recordar:**
+- El **monitor privado es MODO SOMBRA** (módulo 229 del blueprint), no una lista de picks. Cada registro
+  lleva ahora el veredicto de compuertas, así que se podrá responder "¿de estas cuáles habríamos
+  publicado?" sin volver a correr nada.
+- El **prior del clutch subió de 80 a 300 posesiones**. Con 80, una temporada de WNBA devolvía +23,7 por
+  100; el bruto era +39,2. Así nacen las narrativas de "equipo clutch".
+- ESPN **no publica points-off-turnovers** en NBA ni WNBA: se devuelve como no observado, nunca como 0.
+
+**Lo que el blueprint pide y NO se construyó (y por qué):**
+- **Live** (233-242): el propio documento dice que no debe distraer del motor pre-partido hasta que la
+  latencia lo permita. No hay SLA de feed en vivo todavía.
+- **Play-type taxonomy** (18) y **tracking** (55, 58): ESPN no publica ni tipos de jugada ni datos de
+  seguimiento. Requeriría una fuente de pago.
+- **Árbitros** (121-125): el dato existe en el sumario pero sin muestra suficiente para regularizarlo.
+- **Bronze/Silver/Gold y point-in-time completo** (1-12): tenemos artefactos versionados y validación con
+  ventana móvil, pero no un almacén con tiempo efectivo por evento. Es la deuda estructural más grande.
+
 **LO QUE FALTA AHORA (ya no es estructura):**
 1. Acumular temporadas. Con una WNBA y dos NBA los priors son pobres y la validación no puede encender
    capas que probablemente sí valen. Cosechar 2022-2025 de las dos ligas es la palanca más grande.

@@ -9197,9 +9197,14 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
         }
       }
       cands.sort((a, b) => b.edgePp - a.edgePp);
+      // UNA POR FAMILIA. Sin esto salían "Under 171" y "Under 171.5" del mismo partido: la misma apuesta
+      // con otro decimal. Ganan y pierden juntas, así que duplicarlas no aporta información y sí infla la
+      // muestra del monitor — el track parecería tener el doble de evidencia de la que tiene.
+      const famUsed = new Set();
       let perGame = 0;
       for (const c of cands) {
         if (perGame >= HOOPS_PICK_MAX_PER_GAME() || out.created >= cap) break;
+        if (famUsed.has(c.fam)) continue;
         const pick = {
           id: 'bb_' + lg + '_' + g.id + '_' + c.fam + '_' + c.side + '_' + (c.line == null ? 'ml' : String(c.line).replace('.', '_').replace('-', 'm')),
           sport: 'hoops', league: lg, league_label: ST.LEAGUES[lg].label,
@@ -9220,6 +9225,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
         if (have.has(hoopsPickKey(pick))) continue;
         have.add(hoopsPickKey(pick));
         db.hoopsPicks.push(pick);
+        famUsed.add(c.fam);
         perGame++; out.created++;
       }
     }
@@ -14001,7 +14007,18 @@ const server = http.createServer(async (req, res) => {
           if (run === 'build') return json(res, 200, await buildHoopsPicks({ cap: +(url.searchParams.get('cap') || 12) }).catch((e) => ({ error: e.message })));
           if (run === 'settle') return json(res, 200, await settleHoopsPicks().catch((e) => ({ error: e.message })));
           if (run === 'close') return json(res, 200, await hoopsPicksCloseline().catch((e) => ({ error: e.message })));
-          return json(res, 400, { error: 'run=build|settle|close' });
+          if (run === 'prune') {
+            // quita las ACTIVAS duplicadas por (partido, familia) dejando la de mayor ventaja. Solo toca
+            // picks vivas: una liquidada es historia y la historia no se reescribe.
+            const seen = new Set(), keep = [];
+            const act = (db.hoopsPicks || []).filter((x) => x.status === 'ACTIVE').sort((a, b) => b.edge_pp - a.edge_pp);
+            for (const x of act) { const k = x.game_id + '|' + x.family; if (seen.has(k)) continue; seen.add(k); keep.push(x.id); }
+            const before = (db.hoopsPicks || []).length;
+            db.hoopsPicks = (db.hoopsPicks || []).filter((x) => x.status !== 'ACTIVE' || keep.indexOf(x.id) >= 0);
+            save();
+            return json(res, 200, { pruned: before - db.hoopsPicks.length, active: db.hoopsPicks.filter((x) => x.status === 'ACTIVE').length });
+          }
+          return json(res, 400, { error: 'run=build|settle|close|prune' });
         }
         const lgP = url.searchParams.get('league');
         const all = (db.hoopsPicks || []).filter((x) => !lgP || lgP === 'all' || x.league === lgP);

@@ -7433,6 +7433,62 @@
     var pls = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(bbTeamName(H)) + '</span></div>' + bbPlayers(d.players.home, lg) + '</div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(bbTeamName(A)) + '</span></div>' + bbPlayers(d.players.away, lg) + '</div>';
 
+    // 9b) LA PILA DEL MODELO — de dónde sale cada punto y qué capas están encendidas.
+    // Se muestra SIEMPRE, incluso lo medido-y-no-aplicado: una capa apagada por validación es información
+    // valiosa (dice que todavía no se ganó su sitio), no algo que esconder.
+    var stackHtml = '';
+    if (d.stack) {
+      var LY = d.stack.layers || {};
+      var chip = function (on, lab, tip) {
+        return '<span class="gx-bb-lchip ' + (on ? 'on' : 'off') + '" title="' + esc(tip || '') + '">' + (on ? '●' : '○') + ' ' + esc(lab) + '</span>';
+      };
+      var pr = (d.stack.parts || []).map(function (p) {
+        return '<div class="gx-bb-decrow"><span>' + esc(p.label) + '</span>' +
+          '<b class="' + (p.pts100 >= 0 ? 'up' : 'dn') + '">' + (p.pts100 > 0 ? '+' : '') + p.pts100 + '</b>' +
+          '<em class="' + (p.applied ? 'gx-bb-app' : 'gx-bb-noapp') + '">' + (p.applied ? 'aplicado' : 'medido, no aplicado') + '</em></div>';
+      }).join('');
+      var av = d.stack.availability || {};
+      var miss = [].concat((av.home && av.home.missing) || [], (av.away && av.away.missing) || []);
+      var missHtml = miss.length ? '<div class="gx-bb-ometa" style="padding:0 20px 8px"><span class="gx-bb-stale">Fuera: ' +
+        miss.map(function (m) { return esc(m.name) + ' (' + (m.min != null ? m.min.toFixed(0) + ' min' : '') + (m.impact != null ? ', impacto ' + (m.impact > 0 ? '+' : '') + m.impact.toFixed(1) : '') + ')'; }).join(' · ') + '</span></div>' : '';
+      var bl = d.stack.blend ? '<div class="gx-bb-ometa" style="padding:0 20px 8px"><span>Mezcla con el mercado: modelo ' +
+        Math.round(100 * d.stack.blend.p_model) + '% · mercado ' + Math.round(100 * d.stack.blend.p_market) + '% · peso del modelo ' +
+        Math.round(100 * d.stack.blend.w) + '%</span></div>' : '';
+      var V = d.stack.validation;
+      var vHtml = V && V.skill ? '<div class="gx-dim gx-bb-courtnote">Validación fuera de muestra (' + (V.n || 0) + ' partidos): base ' +
+        (V.skill.base != null ? V.skill.base.toFixed(4) : '—') + ' → con plantilla ' + (V.skill.roster != null ? V.skill.roster.toFixed(4) : '—') +
+        ' → con mezcla <b>' + (V.skill.blended != null ? (V.skill.blended > 0 ? '+' : '') + V.skill.blended.toFixed(4) : '—') + '</b> de skill contra el cierre.</div>' : '';
+      stackHtml = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La pila del modelo</span><span class="gx-ph-extra">' +
+        (d.stack.adj_margin_pts ? (d.stack.adj_margin_pts > 0 ? '+' : '') + d.stack.adj_margin_pts + ' pts de ajuste' : 'sin ajuste') + '</span></div>' +
+        '<div class="gx-bb-lchips">' + chip(LY.roster, 'Plantilla × minutos', 'RAPM sobre tramos, con las bajas de hoy') +
+          chip(LY.context, 'Calendario y descanso', 'back-to-back, viaje, altitud') +
+          chip(LY.blend, 'Mezcla con el mercado', 'encogimiento hacia el cierre') +
+          (d.stack.rapm ? '<span class="gx-bb-lchip info">' + d.stack.rapm.players + ' jugadores · ' + d.stack.rapm.stints.toLocaleString('es') + ' tramos</span>' : '') + '</div>' +
+        (pr ? '<div class="gx-bb-dec">' + pr + '</div>' : '') + missHtml + bl + vHtml + '</div>';
+    }
+
+    // 9c) PROPS DE JUGADOR — distribuciones sobre los minutos ya ajustados
+    var propsHtml = '';
+    if (d.props && d.props.length) {
+      propsHtml = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Props de jugador</span><span class="gx-ph-extra">distribución, no media</span></div>' +
+        '<div class="gx-bb-props">' + d.props.slice(0, 10).map(function (p) {
+          var cats = ['pts', 'reb', 'ast'].filter(function (c) { return p.props[c]; });
+          return '<div class="gx-bb-prop"><div class="gx-bb-prophead">' +
+            (p.headshot ? '<img src="' + esc(p.headshot) + '" alt="" onerror="this.remove()">' : '') +
+            '<b>' + esc(p.name || p.player_id) + '</b><span class="gx-dim">' + esc(p.team || '') + ' · ' + p.minutes + ' min</span></div>' +
+            cats.map(function (c) {
+              var q = p.props[c];
+              var mid = q.lines[Math.floor(q.lines.length / 2)] || q.lines[0];
+              return '<div class="gx-bb-propcat"><span class="gx-label">' + esc(q.label) + '</span>' +
+                '<b>' + q.mu.toFixed(1) + '</b>' +
+                '<div class="gx-bb-proplines">' + q.lines.map(function (l) {
+                  return '<span class="gx-bb-propline' + (l === mid ? ' mid' : '') + '">' + l.line + '<i>' + Math.round(100 * l.over) + '%</i></span>';
+                }).join('') + '</div></div>';
+            }).join('') + '</div>';
+        }).join('') + '</div>' +
+        '<div class="gx-dim gx-bb-courtnote">Sobre los minutos proyectados de hoy. El % es la probabilidad de superar esa línea, con la dispersión ajustada al historial de cada jugador (binomial negativa), no una Poisson que subestima los extremos.</div></div>';
+    }
+
     // 10) LECTURA GP (LLM) + PARTE DE BAJAS — la capa de observación e inteligencia narrada
     var rd = bbGet('read_' + lg + '_' + id, '/api/hoops/read?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
     var lang = (S.lang === 'en') ? 'en' : 'es';
@@ -7459,7 +7515,7 @@
             }).join('') + '</div>';
         }).join('') + '</div></div>';
     }
-    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + readHtml + injHtml + mkt + dist + why + exploit + fair + courts + ff + pls);
+    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + stackHtml + readHtml + injHtml + mkt + dist + why + propsHtml + exploit + fair + courts + ff + pls);
   }
   // Genera la lectura bajo demanda (POST) y repinta. Cuesta una llamada al LLM, por eso es un botón.
   function bbGenRead(id) {

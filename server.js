@@ -14283,7 +14283,16 @@ const server = http.createServer(async (req, res) => {
           model: C.fit ? { games: C.fit.games, teams: C.fit.teams, hca: C.fit.hca, lgORtg: C.fit.lgORtg, lgPace: C.fit.lgPace, sd: C.fit.sd, span: C.fit.span, at: C.fit.at } : null,
           ranking,
           finished: fin.map(g => ({ id: g.id, date: g.date, home: { ...(C.teams[g.home.id] || { id: g.home.id }), pts: g.home.pts }, away: { ...(C.teams[g.away.id] || { id: g.away.id }), pts: g.away.pts }, poss: g.poss, ot: g.ot })),
-          picks_enabled: false, picks_note: 'Picks apagadas: el modelo aún no bate al cierre del mercado (skill −0.012 en el backtest).',
+          // SALUD DE LA PILA: qué capas existen, cuáles están encendidas y con qué evidencia. Un modelo que
+          // no publica su propio diagnóstico obliga a confiar a ciegas.
+          stack: {
+            stint_coverage: C.stint_coverage != null ? C.stint_coverage : null,
+            rapm: C.rapm ? { players: C.rapm.n_players, stints: C.rapm.n_stints, lambda: C.rapm.lambda, hca: C.rapm.hca } : null,
+            context: C.ctx && C.ctx.ok ? { n: C.ctx.n, coef: C.ctx.coef } : null,
+            blend: C.blend && C.blend.ok ? { w: C.blend.w, n: C.blend.n, brier_market: C.blend.brier_market, brier_model: C.blend.brier_model } : null,
+            validation: C.validation || null,
+          },
+          picks_enabled: false, picks_note: 'Picks apagadas: el modelo aún no bate al cierre del mercado. La pila (plantilla, contexto, mezcla) se aplica capa a capa solo donde su validación fuera de muestra la respalda.',
         });
       }
       if (p === '/api/hoops/game') {
@@ -14307,7 +14316,17 @@ const server = http.createServer(async (req, res) => {
             completed: !!liveG.completed, status: liveG.status };
         }
         const sims = Math.max(2000, Math.min(60000, Number(url.searchParams.get('sims')) || 20000));
-        const gi = ST.gameIntel(C, g, { sims });
+        // LA PILA COMPLETA en el panel: el parte de bajas alimenta el reparto de minutos, el cierre de
+        // mercado alimenta la mezcla, y los props se calculan sobre los minutos ya ajustados.
+        const obsG = await hoopsInjuries(lg, gid).catch(() => null);
+        let mktProb = null;
+        const oG = (g.odds || [])[0];
+        if (oG && oG.hml != null && oG.aml != null) {
+          const impG = (x) => (x < 0 ? -x / (-x + 100) : 100 / (x + 100));
+          const ihG = impG(oG.hml), iaG = impG(oG.aml); mktProb = ihG / (ihG + iaG);
+        }
+        const gi = ST.gameIntel(C, g, { sims, injuries: obsG ? obsG.teams : null, marketProb: mktProb,
+          props: url.searchParams.get('props') !== '0' });
         if (!gi) return json(res, 404, { error: 'No encontrado' });
         return json(res, 200, gi);
       }

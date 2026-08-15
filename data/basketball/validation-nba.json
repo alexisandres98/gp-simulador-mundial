@@ -1,0 +1,30 @@
+{
+  "league": "nba",
+  "at": "2026-08-15T16:50:26.312Z",
+  "n": 772,
+  "n_market": 772,
+  "folds": 3,
+  "sims": 3000,
+  "brier_market": 0.18779,
+  "skill": {
+    "base": -0.02023,
+    "context": -0.02039,
+    "roster": -0.02236,
+    "blended": -0.00185
+  },
+  "layers": {
+    "context": {
+      "delta": -0.00016,
+      "on": false
+    },
+    "roster": {
+      "delta": -0.00197,
+      "on": false
+    },
+    "blend": {
+      "w": 0.134,
+      "on": true
+    }
+  },
+  "note": "Generado por scripts/hoops-validate.js. El motor lee `layers` y solo aplica las capas con on=true."
+}

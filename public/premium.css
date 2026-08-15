@@ -2075,3 +2075,25 @@ td .gx-calc-btn span { display: none; }
 .gx-bb-resbar.loss { background: #241616; border: 1px solid #f05a5a33; border-top: 0; color: #f0c6c6; }
 .gx-bb-resbar.void { background: #1a201e; border: 1px solid var(--gx-line); border-top: 0; color: #9fb3ab; }
 @media (max-width: 720px) { .gx-bb-picks { grid-template-columns: 1fr; padding: 6px 10px 12px; } }
+
+/* la pila del modelo y los props */
+.gx-bb-lchips { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 20px 4px; }
+.gx-bb-lchip { font-size: 11.5px; font-weight: 600; padding: 4px 11px; border-radius: 99px; border: 1px solid var(--gx-line); }
+.gx-bb-lchip.on { color: #2de6a3; border-color: #2de6a355; background: #12281f; }
+.gx-bb-lchip.off { color: #6f817a; }
+.gx-bb-lchip.info { color: #9fb3ab; background: #0e1815; }
+.gx-bb-app { color: #2de6a3; font-style: normal; font-size: 10.5px; }
+.gx-bb-noapp { color: #6f817a; font-style: normal; font-size: 10.5px; }
+.gx-bb-props { padding: 6px 20px 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.gx-bb-prop { border: 1px solid var(--gx-line); border-radius: 12px; padding: 10px 12px; background: #0e1815; }
+.gx-bb-prophead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.gx-bb-prophead img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #16211c; }
+.gx-bb-prophead b { font-size: 13.5px; }
+.gx-bb-prophead span { font-size: 10.5px; margin-left: auto; }
+.gx-bb-propcat { display: grid; grid-template-columns: 74px 40px 1fr; align-items: center; gap: 8px; padding: 3px 0; }
+.gx-bb-propcat b { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.gx-bb-proplines { display: flex; gap: 4px; flex-wrap: wrap; }
+.gx-bb-propline { font-size: 10px; color: #9fb3ab; border: 1px solid var(--gx-line); border-radius: 6px; padding: 2px 5px; font-variant-numeric: tabular-nums; }
+.gx-bb-propline.mid { border-color: #2de6a355; color: #eafff7; }
+.gx-bb-propline i { font-style: normal; display: block; font-size: 9.5px; color: #6f817a; text-align: center; }
+@media (max-width: 720px) { .gx-bb-props { grid-template-columns: 1fr; } }

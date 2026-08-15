@@ -32,6 +32,73 @@ function load(league, { season = null, force = false } = {}) {
   const byTeam = {}; for (const p of Object.values(players)) (byTeam[p.team_id] = byTeam[p.team_id] || []).push(p);
   const fit = games.length ? R.fitRatings(games, { validTeams: Object.keys(teams).length ? Object.keys(teams) : null }) : null;
   const out = { league, season: yr, games, teams, players, byTeam, fit, at: Date.now(), n: games.length };
+
+  // ── LA PILA COMPLETA (16-ago) ──────────────────────────────────────────────────────────────────────
+  // El rating de equipo es la base; encima van las capas que saben lo que la base no puede saber.
+  //
+  // EL AJUSTE NO SE HACE ACÁ. RAPM (4,5 s) y el peso de mezcla (1,0 s) se ajustan fuera de línea con
+  // `scripts/hoops-fit.js` y se sirven desde `fit-<liga>.json`. Hacerlo dentro de la carga costaba 5,7 s de
+  // CPU bloqueante cada 30 minutos, y en un proceso Node de un solo hilo eso congela el sitio entero, no
+  // solo baloncesto. Un modelo serio entrena en un sitio y sirve en otro; acá solo se sirve.
+  // Si el artefacto falta, las capas que dependen de él quedan apagadas y el resto sigue funcionando.
+  try {
+    const CX = require('./context');
+    const ESPN = require('../data-providers/basketball/espn');
+    const L = ESPN.LEAGUES[league] || {};
+
+    // 1-2) ARTEFACTO DE AJUSTE: RAPM, contexto y peso de mezcla, ya entrenados y versionados.
+    const art = rd(`fit-${league}.json`);
+    out.fit_artifact = art ? { at: art.at, games_n: art.games_n, ms: art.ms, stale: art.games_n !== games.length } : null;
+    out.stint_coverage = art ? art.stint_coverage : 0;
+    out.rapm = (art && art.rapm) || null;
+    out.ctx = (art && art.ctx) || null;
+
+    // 3) ESTADO DE CALENDARIO: barato (18 ms) y necesita el array de partidos vivo, así que sí va acá.
+    out.sched = CX.scheduleState(games);
+    // los partidos futuros no están en `sched` (se construye del histórico): resolver por equipo y fecha
+    out.schedFor = (game, side) => {
+      const id = String(game[side].id);
+      const hit = out.sched.get(String(game.id) + '|' + id);
+      if (hit) return hit;
+      const prev = games.filter((g) => String(g.home.id) === id || String(g.away.id) === id)
+        .map((g) => ({ t: Date.parse(g.date || 0), venue: g.home.abbr }))
+        .filter((x) => Number.isFinite(x.t) && x.t < Date.parse(game.date || 0))
+        .sort((a, b) => b.t - a.t)[0];
+      if (!prev) return null;
+      const rest = (Date.parse(game.date || 0) - prev.t) / 864e5;
+      const venue = game.home.abbr;
+      return {
+        rest_days: +rest.toFixed(2), b2b: rest < 1.4 ? 1 : 0,
+        three_in_four: 0, games_last7: 0,
+        travel_km: Math.round(CX.haversine(CX.venueOf(prev.venue), CX.venueOf(venue)) || 0),
+        road: side === 'away' ? 1 : 0, alt_m: (CX.venueOf(venue) || [0, 0, 0])[2],
+      };
+    };
+
+    // 4) PESO DE MEZCLA con el mercado: viene del artefacto, estimado con validación anidada (el rating que
+    // produce la probabilidad del modelo se ajusta con el 70% más antiguo y el peso se mide sobre el 30%
+    // que ese rating no vio). Estimarlo con los mismos partidos que ajustaron el rating devolvía w = 1 por
+    // construcción, que es el sesgo que más infla un backtest.
+    out.blend = (art && art.blend) || { w: 0, n: 0, ok: false, reason: 'sin artefacto de ajuste' };
+
+    // 5) VEREDICTO DE VALIDACIÓN: qué capas se ganaron su sitio en esta liga.
+    out.validation = rd(`validation-${league}.json`) || null;
+
+    // UNA SOLA AUTORIDAD PARA EL PESO. El artefacto estima w con un corte 70/30; la validación lo estima con
+    // ventana móvil de 3 pliegues y 3.000 simulaciones por partido, que es el método más exigente de los dos
+    // y además es el que publica el producto. Tener dos números distintos para lo mismo es como se cuelan los
+    // errores caros, así que manda la validación y el otro queda como diagnóstico.
+    const vb = out.validation && out.validation.layers && out.validation.layers.blend;
+    if (vb && vb.on && vb.w != null) {
+      out.blend = { ...out.blend, w: +Number(vb.w).toFixed(3), source: 'validación (ventana móvil)', w_split70: out.blend.w, ok: true };
+    } else if (out.blend && out.blend.ok) {
+      out.blend.source = 'corte 70/30';
+    }
+  } catch (e) {
+    out.stack_error = e.message;
+    console.error('[hoops-store] la pila avanzada falló:', e.message);
+  }
+
   G[league] = out;
   return out;
 }
@@ -168,10 +235,20 @@ function whatMatters({ sim, dec, hp, ap, ex, exA, market }) {
 }
 
 // ---- EL PANEL COMPLETO DE UN PARTIDO ---------------------------------------------------------------------
-function gameIntel(C, game, { sims = 20000, adj = null } = {}) {
+function gameIntel(C, game, { sims = 20000, adj = null, injuries = null, marketProb = null, props = false } = {}) {
   if (!C || !C.fit || !game) return null;
   const h = game.home.id, a = game.away.id;
-  const sim = S.simulate(C.fit, h, a, { n: sims, neutral: !!game.neutral, adj });
+  // LA PILA COMPLETA (16-ago): plantilla × minutos, contexto de calendario y mezcla con el mercado, cada
+  // capa aplicada solo si su validación fuera de muestra la respalda. Si el modelo avanzado no está
+  // disponible (dataset sin tramos, liga nueva) se cae al simulador base sin romper nada.
+  let stack = null;
+  try {
+    const MD = require('./model');
+    const ESPN2 = require('../data-providers/basketball/espn');
+    const L2 = ESPN2.LEAGUES[C.league] || {};
+    stack = MD.simulateGame(C, game, { injuries, L: L2, sims, seed: 13, market: marketProb });
+  } catch (e) { stack = null; }
+  const sim = stack || S.simulate(C.fit, h, a, { n: sims, neutral: !!game.neutral, adj });
   if (!sim) return null;
   const dec = R.decompose(C.fit, h, a, { neutral: !!game.neutral });
   const hp = teamProfile(C, h), ap = teamProfile(C, a);
@@ -209,7 +286,46 @@ function gameIntel(C, game, { sims = 20000, adj = null } = {}) {
     players: { home: playerSeason(C, h), away: playerSeason(C, a) },
     what_matters: whatMatters({ sim, dec, hp, ap, ex, exA, market }),
     model: { league: C.league, games: C.fit.games, teams: C.fit.teams, hca: C.fit.hca, at: C.fit.at },
+    // ── LA PILA, VISIBLE ───────────────────────────────────────────────────────────────────────────
+    // No basta con que el modelo use estas capas: el panel tiene que poder mostrar de dónde sale cada
+    // punto y qué capas están encendidas. Un ajuste que no se puede auditar es un número mágico.
+    stack: sim.projection_parts ? {
+      parts: sim.projection_parts, layers: sim.layers || null,
+      adj: sim.adj || null, adj_margin_pts: sim.adj_margin_pts || 0,
+      availability: sim.availability || null, context: sim.context || null,
+      blend: sim.blend || null, win_model: sim.win_model || null,
+      validation: C.validation ? { skill: C.validation.skill, layers: C.validation.layers, n: C.validation.n, at: C.validation.at } : null,
+      rapm: C.rapm ? { players: C.rapm.n_players, stints: C.rapm.n_stints, lambda: C.rapm.lambda } : null,
+    } : null,
+    props: props ? gameProps(C, game, sim) : null,
   };
 }
 
-module.exports = { load, teamProfile, leagueRanks, exploitMap, playerSeason, gameIntel, whatMatters, LEAGUES: ESPN.LEAGUES, DIR };
+// ---- PROPS DEL PARTIDO ----------------------------------------------------------------------------------
+// Distribuciones por jugador para las líneas que de verdad se cotizan. Usa los MINUTOS PROYECTADOS de la
+// pila (ya con las bajas aplicadas), no la media histórica: un prop sobre minutos equivocados es ruido caro.
+function gameProps(C, game, sim) {
+  try {
+    const PR = require('./props');
+    const MN = require('./minutes');
+    const ESPN2 = require('../data-providers/basketball/espn');
+    const L2 = ESPN2.LEAGUES[C.league] || {};
+    const av = (sim && sim.availability) || {};
+    const mins = (side, teamId) => {
+      const a = av[side];
+      if (a && a.minutes && a.minutes.map) return a.minutes.map;
+      const prof = MN.rotationProfile(C.games, teamId, { lastN: 15 });
+      const pj = prof ? MN.projectMinutes(prof, { L: L2 }) : null;
+      return pj ? pj.map : null;
+    };
+    const hm = mins('home', game.home.id), am = mins('away', game.away.id);
+    if (!hm || !am) return null;
+    // el ritmo proyectado escala las tasas: en un partido de 105 posesiones se anota más que en uno de 92
+    const paceFactor = sim && sim.poss && C.fit.lgPace ? sim.poss / C.fit.lgPace : 1;
+    const rows = PR.gameProps(C.games, { homeMinutes: hm, awayMinutes: am, homeId: String(game.home.id), awayId: String(game.away.id), paceFactor, top: 7 });
+    return rows.map((r) => ({ ...r, name: (C.players[r.player_id] || {}).name || null, headshot: (C.players[r.player_id] || {}).headshot || null,
+      team: (C.teams[r.team_id] || {}).abbr || null }));
+  } catch (e) { return null; }
+}
+
+module.exports = { load, teamProfile, leagueRanks, exploitMap, playerSeason, gameIntel, gameProps, whatMatters, LEAGUES: ESPN.LEAGUES, DIR };

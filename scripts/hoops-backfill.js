@@ -73,7 +73,11 @@ const wr = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(
   }
 
   // ---- 3) summaries de los que faltan ----
-  const pend = done.filter(g => !store.games[g.id]);
+  // --restints (16-ago): los partidos cosechados antes del módulo de quintetos no tienen `stints`. Este modo
+  // los vuelve a pedir para AÑADIRLOS sin re-cosechar lo que ya está bien. Sin esto habría que borrar el
+  // dataset y empezar de cero, que es tirar a la basura 1.500 partidos ya validados.
+  const needStints = args.restints ? done.filter(g => store.games[g.id] && !store.games[g.id].stints) : [];
+  const pend = done.filter(g => !store.games[g.id]).concat(needStints);
   const todo = MAX ? pend.slice(0, MAX) : pend;
   console.log(`  faltan ${pend.length}${MAX ? ` (se piden ${todo.length})` : ''}`);
   let ok = 0, fail = 0;
@@ -83,6 +87,7 @@ const wr = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(
       const s = await E.summary(LEAGUE, g.id);
       const d = s ? P.deriveGame(g, s, L) : null;
       if (d) { store.games[g.id] = d; ok++; } else fail++;
+      if (d && args.restints && !d.stints) fail++;   // se pidió tramos y no salieron: se ve, no se esconde
     } catch { fail++; }
     if ((i + 1) % 25 === 0 || i === todo.length - 1) {
       store.at = new Date().toISOString(); wr(gFile, store);   // guardado incremental: cortar no pierde nada
@@ -93,4 +98,16 @@ const wr = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(
   }
   store.at = new Date().toISOString(); wr(gFile, store);
   console.log(`[${LEAGUE} ${SEASON}] listo: ${Object.keys(store.games).length} partidos derivados.`);
+
+  // RE-AJUSTE ACOPLADO A LA COSECHA. El servidor lee `fit-<liga>.json` y no entrena nada; si la cosecha
+  // trae partidos nuevos y nadie vuelve a ajustar, el artefacto queda viejo en silencio. Se re-ajusta acá
+  // para que "hay datos nuevos" y "el modelo los conoce" no puedan separarse por olvido.
+  if (ok > 0 || !fs.existsSync(path.join(DIR, `fit-${LEAGUE}.json`))) {
+    try { require('./hoops-fit'); const { fitLeague } = require('./hoops-fit');
+      const out = fitLeague(LEAGUE);
+      if (out && !out.error) { wr(`fit-${LEAGUE}.json`, out);
+        console.log(`[${LEAGUE}] artefacto de ajuste reescrito: ${out.games_n} partidos · rapm ${out.rapm ? out.rapm.n_players : 0} jugadores · ${out.ms} ms`); }
+      else console.error(`[${LEAGUE}] re-ajuste no realizado:`, out && out.error);
+    } catch (e) { console.error(`[${LEAGUE}] re-ajuste falló:`, e.message); }
+  }
 })().catch(e => { console.error('fallo:', e.message); process.exit(1); });

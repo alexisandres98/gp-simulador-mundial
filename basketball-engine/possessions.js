@@ -19,8 +19,12 @@ function periodSecs(L, period) {
 }
 // segundos transcurridos desde el salto inicial, a partir de (periodo, reloj que cuenta hacia atrás)
 function elapsed(L, period, clock) {
-  const m = String(clock || '').match(/(\d+):(\d+)/);
-  const rem = m ? (+m[1] * 60 + +m[2]) : 0;
+  // ESPN cambia de formato bajo el minuto: "11:35" arriba, "2.0" (segundos.décimas) abajo. Leyendo solo
+  // mm:ss, el último minuto entero colapsaba al final del periodo — justo donde se decide la basura y donde
+  // los tramos importan. Se leen los dos formatos.
+  const c = String(clock || '').trim();
+  const m = c.match(/^(\d+):(\d+)/);
+  const rem = m ? (+m[1] * 60 + +m[2]) : (/^\d+(\.\d+)?$/.test(c) ? Math.round(parseFloat(c)) : 0);
   const reg = L.periods, len = (L.minutes / reg) * 60;
   const plen = period <= reg ? len : L.otMin * 60;
   return periodSecs(L, period - 1) + (plen - rem);
@@ -154,6 +158,20 @@ function deriveGame(game, sum, L) {
     odds: (sum.odds || []).filter(o => o.spread != null || o.over_under != null)
       .map(o => ({ b: o.book, sp: o.spread, ou: o.over_under, hml: o.home_ml, aml: o.away_ml })),
     players, shots,
+    // TRAMOS (16-ago): quiénes estaban en cancha en cada intervalo. Es la materia prima del RAPM, del
+    // reparto de minutos y del filtro de basura — los tres puntos que separaban este motor de uno serio.
+    // Se guarda empaquetado (arrays, no objetos) porque son ~35 tramos por partido y las claves repetidas
+    // triplicarían el fichero. `roster` mapea el índice de cada tramo al id del jugador.
+    ...(() => {
+      try {
+        const LU = require('./lineups');
+        const r = LU.buildStints(sum, game, L);
+        if (!r || !r.stints.length) return { stints: null, roster: null, lineup_quality: r ? r.quality : null };
+        LU.attachPossessions(r.stints, pos, L);
+        const gq = LU.markGarbage(r.stints, L);
+        return { stints: LU.packStints(r.stints), roster: r.roster, lineup_quality: { ...r.quality, ...gq } };
+      } catch (e) { return { stints: null, roster: null, lineup_quality: { ok: false, reason: e.message } }; }
+    })(),
   };
 }
 

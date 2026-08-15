@@ -1,5 +1,48 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🏀 BALONCESTO 15-ago — 4º deporte, ADMIN-ONLY (pestaña abierta, picks apagadas)
+- **Datos**: colector ESPN (`data-providers/basketball/espn.js`) — NBA, WNBA, NCAA M y F, gratis, con
+  play-by-play completo (~450 jugadas/partido: coordenadas de tiro, 63 tipos de jugada y SUSTITUCIONES).
+  Eso desbloquea quintetos, on/off, mapas de tiro y clutch **sin comprar un solo dato**.
+  Derivación en `basketball-engine/possessions.js` → 12,6KB por partido en vez de ~1MB de crudo.
+  **Cosechado: NBA 1.292 partidos + WNBA 275, cero fallos.** NCAA espera a noviembre (fuera de temporada).
+  Dos cosas se MIDIERON, no se supusieron: el aro está en (25,1) —lo dicen 238 mates/bandejas— y los tiros
+  libres se colaban como tiros de campo. Con ambas corregidas los tiros detectados cuadran con los FGA del
+  box score al **0,00%**.
+- **Motor** (`ratings.js` + `simulate.js`): ritmo × eficiencia ajustado por rival, no Elo. Monte Carlo con
+  ruido de tres piezas (posesiones compartidas + shock de ambiente compartido + ruido propio), los tres
+  sigma sacados de los residuos del ajuste. La ventaja de cancha se estima: 2,73 pts/100 en WNBA.
+- **BACKTEST walk-forward** (`scripts/hoops-backtest.js`), 1.185 partidos evaluados en dos ligas:
+  | | NBA | WNBA |
+  |---|---|---|
+  | Brier vs tasa base | 0.2056 / **skill +17,1%** | 0.2059 / **+15,0%** |
+  | Acierto | 67,5% | 67,3% |
+  | Cobertura banda 50% | **50,0%** | 55,6% |
+  | Cobertura banda 90% | **87,1%** | 87,9% |
+  | **vs cierre DraftKings** | **−0.0104** | **−0.0120** |
+  Habilidad real contra la tasa base y **incertidumbre honesta** (cuando dice 90%, cae el 87%). Pero el
+  mercado gana por ~1 punto de Brier en las dos ligas. **PICKS APAGADAS** hasta que ese número cambie de
+  signo; el panel lo dice explícitamente. Falta meter lesiones, descanso, rotaciones y quintetos — ese es
+  justo el hueco, y ahora hay vara para saber si cada módulo suma.
+- **Producto**: pestaña 🏀 con sub-ligas (NBA/WNBA/NCAA M/F) + Game Intelligence Center: probabilidad con
+  intervalo y confianza, marcador y posesiones proyectadas, curvas de margen y total, P(ganar por 1-5/6-10/
+  11+), descomposición del porqué (la suma da el margen), GP contra el mercado, cuotas justas, matriz de
+  explotación por zona, cancha con perfil de tiro, four factors enfrentados, plantillas con foto clickables
+  y "lo que decide este partido" (generado de los números, sin LLM, para que sea auditable).
+  Endpoints `/api/hoops/{state,game,team,player}`, gate admin (`GP_HOOPS_PUBLIC_ENABLED` para abrirlo).
+- **Cuotas**: `hoopsQuotesSweep` con 8 claves (NBA, WNBA, NCAA M/F, EuroLeague, NBL, pretemporada, summer
+  league) × h2h+spreads+totals al MISMO almacén que el fútbol → value/arbitraje/caídas/middles y la captura
+  de profundidad las ven sin tocar esas superficies. Las claves fuera de temporada se activan solas.
+- **PENDIENTE**: capa LLM de lectura por partido, capa de observación (noticias/lesiones), Ask GP y el
+  dashboard de jornada. Y el detector de garbage time sigue marcando el 64% — se arregla con quintetos.
+
+## 💳 PLAN 5M 15-ago — la plataforma vuelve a respirar
+- Clave nueva en Render, 5.000.000 de créditos. **Gastados hoy: 4.574 (0,09%).**
+- Ocho frenos de escasez soltados: regiones 3→5, sweep 30→12min, eventos/liga 25→60, ventana de props
+  144→240h, props 100→30min, Polymarket 30→60, AF por poll 6→20, pre-check 6h→2h.
+- Resultado medido: **57.353 cuotas en un barrido · value 40 · caídas 30 · middles 40 (estaban en 0) ·
+  arbitraje 108 con 14 ejecutables sobre 1.162 mercados escaneados · 7 casas con profundidad.**
+
 ## 🌍 COBERTURA TOTAL 13-ago (orden Alexis: "las quiero absolutamente todas") · construido, espera créditos
 - **Estado del proveedor**: The Odds API en **0/500 créditos** (plan gratuito agotado) → plataforma ciega
   desde el 12-ago. **Alexis sube el plan (dijo: 5M calls)**; al volver créditos TODO lo de abajo arranca solo.

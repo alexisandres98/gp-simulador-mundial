@@ -47,19 +47,42 @@ async function recordGoalValue(v, { client = db } = {}) {
   return { row: ex.rows[0], idempotent: true };
 }
 
+// PROFUNDIDAD (044, 15-ago): max_stake/depth_src son columnas NUEVAS. El código puede desplegarse antes de
+// que la migración corra (el runner es manual, ver /api/internal/migrate), y si la columna no existe todavía
+// el INSERT falla y se caerían TODAS las escrituras de cuotas — un precio sin profundidad sigue valiendo,
+// una tabla sin precios no. Se detecta una sola vez y se cae al INSERT viejo mientras tanto.
+let _depthCols = null;
+async function hasDepthCols(client) {
+  if (_depthCols !== null) return _depthCols;
+  try {
+    const r = await client.query(
+      `SELECT count(*)::int n FROM information_schema.columns
+        WHERE table_name='sportsbook_goal_quote_current' AND column_name IN ('max_stake','depth_src')`);
+    _depthCols = (r.rows[0] || {}).n === 2;
+  } catch { _depthCols = false; }
+  return _depthCols;
+}
+
 async function upsertGoalQuote(q, { client = db } = {}) {
+  const depth = await hasDepthCols(client);
+  const cols = ['data_provider', 'sportsbook_code', 'external_event_id', 'canonical_event_id', 'market_family', 'period',
+    'line', 'side', 'team_scope', 'market_id', 'odds_decimal', 'implied_probability', 'quote_status', 'is_live',
+    'provider_update', 'observed_at', 'ingestion_run_id'].concat(depth ? ['max_stake', 'depth_src'] : []);
+  const vals = [q.data_provider, q.sportsbook_code, q.external_event_id, q.canonical_event_id || null, q.market_family,
+    q.period || 'regulation_90m', q.line ?? null, q.side, q.team_scope || null, q.market_id || null,
+    q.odds_decimal ?? null, q.implied_probability ?? null, q.quote_status || 'open', !!q.is_live,
+    q.provider_update || null, q.ingestion_run_id || null].concat(depth ? [q.max_stake ?? null, q.depth_src || null] : []);
+  // `observed_at` va como now() literal, así que los $n saltan esa posición
+  const ph = []; let i = 0;
+  for (const c of cols) ph.push(c === 'observed_at' ? 'now()' : '$' + (++i));
   const r = await client.query(
-    `INSERT INTO sportsbook_goal_quote_current
-       (data_provider,sportsbook_code,external_event_id,canonical_event_id,market_family,period,line,side,team_scope,
-        market_id,odds_decimal,implied_probability,quote_status,is_live,provider_update,observed_at,ingestion_run_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,now(),$16)
+    `INSERT INTO sportsbook_goal_quote_current (${cols.join(',')})
+     VALUES (${ph.join(',')})
      ON CONFLICT (data_provider,sportsbook_code,external_event_id,market_family,period,line,side,team_scope)
      DO UPDATE SET odds_decimal=EXCLUDED.odds_decimal, implied_probability=EXCLUDED.implied_probability,
        quote_status=EXCLUDED.quote_status, is_live=EXCLUDED.is_live, provider_update=EXCLUDED.provider_update,
-       observed_at=now() RETURNING *`,
-    [q.data_provider, q.sportsbook_code, q.external_event_id, q.canonical_event_id || null, q.market_family, q.period || 'regulation_90m',
-     q.line ?? null, q.side, q.team_scope || null, q.market_id || null, q.odds_decimal ?? null, q.implied_probability ?? null,
-     q.quote_status || 'open', !!q.is_live, q.provider_update || null, q.ingestion_run_id || null]);
+       ${depth ? 'max_stake=EXCLUDED.max_stake, depth_src=EXCLUDED.depth_src,' : ''}
+       observed_at=now() RETURNING *`, vals);
   return r.rows[0];
 }
 

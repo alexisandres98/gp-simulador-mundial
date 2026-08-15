@@ -150,7 +150,7 @@ async function loadClubsMarkets(db, { provider = null, events = {}, now = Date.n
   for (let i = 0; i < ids.length; i += 80) {
     const r = await db.query(
       `SELECT g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side,
-              g.odds_decimal, g.is_live, g.observed_at,
+              g.odds_decimal, g.is_live, g.observed_at, g.max_stake, g.depth_src,
               m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
          FROM sportsbook_goal_quote_current g
          LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
@@ -185,7 +185,10 @@ async function loadClubsMarkets(db, { provider = null, events = {}, now = Date.n
       independence_group: indepGroup(row),
       source_role: row.source_role || 'market_consensus', outcome: side,
       odds_decimal: Number(row.odds_decimal),
-      observed_at: ms(row.observed_at), max_stake: null,
+      // max_stake REAL (044): era null fijo, así que el motor de arbitraje no podía distinguir una
+      // oportunidad de $50 de una de $5.000 y las marcaba a todas con profundidad sin verificar.
+      observed_at: ms(row.observed_at), max_stake: row.max_stake != null ? Number(row.max_stake) : null,
+      depth_src: row.depth_src || null,
       live: !!row.is_live, is_exchange: isExchange(row.sportsbook_code),
       venue_kind: 'sportsbook',
     });

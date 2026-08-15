@@ -56,7 +56,19 @@ async function soccerCompetitions(apiKey, timeoutMs) {
   return out;
 }
 
-const bestPrice = (sels, pred) => { let b = null; for (const s of (sels || [])) { if (!pred(s)) continue; const p = Number(s.price); if (p > 1 && (b == null || p > b)) b = p; } return b; };
+// PROFUNDIDAD (15-ago): Cloudbet publica `maxStake` por SELECCIÓN — el tope real que acepta a ese precio.
+// Es el dato que faltaba para dimensionar: sin él una señal de $50 y una de $5.000 se veían iguales.
+// Se devuelve junto al precio, no en lugar de él, para no tocar a ningún consumidor existente.
+const bestSel = (sels, pred) => {
+  let b = null;
+  for (const s of (sels || [])) {
+    if (!pred(s)) continue;
+    const p = Number(s.price);
+    if (p > 1 && (b == null || p > b.o)) b = { o: p, max: Number(s.maxStake) > 0 ? Number(s.maxStake) : null };
+  }
+  return b;
+};
+const bestPrice = (sels, pred) => { const b = bestSel(sels, pred); return b ? b.o : null; };
 
 // evento individual (con mercados) → { home, away, kickoff, markets:{h2h, totals[]} } | null
 function normalizeEvent(e) {
@@ -66,8 +78,9 @@ function normalizeEvent(e) {
   const mo = M['soccer.match_odds'];
   if (mo && mo.submarkets) {
     const sm = mo.submarkets['period=ft'] || Object.values(mo.submarkets)[0] || {};
-    const h = bestPrice(sm.selections, s => s.outcome === 'home'), d = bestPrice(sm.selections, s => s.outcome === 'draw'), a = bestPrice(sm.selections, s => s.outcome === 'away');
-    if (h > 1 && a > 1) out.markets.h2h = { home: h, draw: d || null, away: a };
+    const h = bestSel(sm.selections, s => s.outcome === 'home'), d = bestSel(sm.selections, s => s.outcome === 'draw'), a = bestSel(sm.selections, s => s.outcome === 'away');
+    if (h && a && h.o > 1 && a.o > 1) out.markets.h2h = { home: h.o, draw: (d && d.o) || null, away: a.o,
+      max: { home: h.max, draw: d ? d.max : null, away: a.max } };
   }
   // parser común de mercados over/under por línea (goles, córners, tarjetas — mismo shape de Cloudbet)
   const parseTotals = (mk) => {
@@ -78,10 +91,14 @@ function normalizeEvent(e) {
       const line = Number(String(s.params || '').match(/total=([\d.]+)/)?.[1]);
       const p = Number(s.price);
       if (!(line > 0) || !(p > 1)) continue;
-      (byLine[line] = byLine[line] || {})[s.outcome] = p;
+      (byLine[line] = byLine[line] || {})[s.outcome] = { o: p, max: Number(s.maxStake) > 0 ? Number(s.maxStake) : null };
     }
     const rows = [];
-    for (const line of Object.keys(byLine)) { const o = byLine[line]; if (o.over > 1 && o.under > 1) rows.push({ line: Number(line), over: o.over, under: o.under }); }
+    for (const line of Object.keys(byLine)) {
+      const o = byLine[line];
+      if (o.over && o.under && o.over.o > 1 && o.under.o > 1)
+        rows.push({ line: Number(line), over: o.over.o, under: o.under.o, max: { over: o.over.max, under: o.under.max } });
+    }
     return rows;
   };
   out.markets.totals = parseTotals(M['soccer.total_goals']);

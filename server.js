@@ -3597,6 +3597,9 @@ async function clubsSeedEventsAF({ force = false, hours = 96 } = {}) {
 // como venue ejecutable. Precio peer-to-peer = probabilidad (sin vig) → cuota = 1/precio. On-chain: sin
 // límites de cuenta, el tope real es la LIQUIDEZ del mercado — a escala sombra (stakes ≤$30) no muerde;
 // para escalar dinero real el ejecutor conectado deberá mirar la profundidad antes de colocar.
+// TOLERANCIA DE PROFUNDIDAD: cuánto peor que el mejor precio aceptamos al acumular tamaño. 2% por defecto —
+// más que eso ya no es "el precio que vimos", es otro precio, y contarlo como capacidad infla la señal.
+const DEPTH_TOL = () => Math.max(0.002, Math.min(0.2, Number(process.env.GP_DEPTH_TOL_PCT || 2) / 100));
 let _myriadRunning = false, _myriadLast = 0;
 async function myriadSweep({ force = false, dryRun = false } = {}) {
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
@@ -3620,16 +3623,24 @@ async function myriadSweep({ force = false, dryRun = false } = {}) {
       const swapped = !(cloudbetNameMatch(m.home, meta.home) && cloudbetNameMatch(m.away, meta.away));
       const oc = swapped ? { home: m.outcomes.away, draw: m.outcomes.draw, away: m.outcomes.home } : m.outcomes;
       out.matched++;
-      const pxm = {};
+      const pxm = {}, depm = {};
       for (const side of ['home', 'draw', 'away']) {
         const p = oc[side]; if (!(p > 0.01 && p < 0.99)) continue;
         const odds = +(1 / p).toFixed(3);
         pxm[side] = odds;
+        // PROFUNDIDAD EN UN AMM: Myriad no tiene libro de órdenes, tiene un pool — no existe un "tamaño al
+        // mejor precio", el precio se mueve con cada dólar. Se usa una COTA por impacto: en un CPMM el
+        // deslizamiento de un trade chico va como stake/L, así que el stake que mueve el precio ~tol es
+        // ≈ tol · L · p · (1−p). Es una ESTIMACIÓN, no un dato del venue, y por eso viaja marcada como
+        // myriad_amm: al repartir capital hay que tratarla distinto que un libro real.
+        const Lm = Number(m.liquidity) || 0;
+        const maxM = Lm > 0 ? +(DEPTH_TOL() * Lm * p * (1 - p)).toFixed(2) : null;
+        depm[side] = maxM;
         if (dryRun) { out.quotes++; continue; }
-        await grepo.upsertGoalQuote({ data_provider: 'myriad', sportsbook_code: 'myriad', external_event_id: 'myriad-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: odds, implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
+        await grepo.upsertGoalQuote({ data_provider: 'myriad', sportsbook_code: 'myriad', external_event_id: 'myriad-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: odds, implied_probability: p, quote_status: 'open', is_live: false, max_stake: maxM, depth_src: maxM != null ? 'myriad_amm' : null }).catch(() => {});
         out.quotes++;
       }
-      if (out.samples.length < 12) out.samples.push({ match: meta.home + ' vs ' + meta.away, league: meta.league, odds: pxm });
+      if (out.samples.length < 12) out.samples.push({ match: meta.home + ' vs ' + meta.away, league: meta.league, odds: pxm, depth_usd: depm });
     }
     if (!dryRun) _myriadLast = Date.now();  // el ensayo no consume la ventana del barrido real
   } catch (e) { out.error = e.message; }
@@ -3678,8 +3689,26 @@ async function polymarketSweep({ force = false } = {}) {
         const side = /draw|empate|tie/i.test(q) ? 'draw' : cloudbetNameMatch(q, meta.home) ? 'home' : cloudbetNameMatch(q, meta.away) ? 'away' : null;
         if (!side) continue;
         const p = Number(prices[0]);
-        await grepo.upsertGoalQuote({ data_provider: 'polymarket', sportsbook_code: 'polymarket', external_event_id: 'poly-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(1 / p).toFixed(3), implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
-        out.quotes++;
+        // profundidad REAL: el libro CLOB del token YES. Sus asks vienen de peor a mejor precio, así que se
+        // ordenan de menor a mayor y se acumula lo que entra sin pasarse de la tolerancia sobre el mejor ask.
+        let maxP = null;
+        try {
+          const ids = JSON.parse(mk.clobTokenIds || '[]');
+          if (ids[0]) {
+            const rb = await fetch(`https://clob.polymarket.com/book?token_id=${ids[0]}`, { signal: AbortSignal.timeout(8000) });
+            const bk = rb.ok ? await rb.json().catch(() => null) : null;
+            const asks = ((bk && bk.asks) || []).map(a => ({ px: Number(a.price), sz: Number(a.size) }))
+              .filter(a => a.px > 0 && a.px < 1 && a.sz > 0).sort((a, b) => a.px - b.px);
+            if (asks.length) {
+              const cap = asks[0].px * (1 + DEPTH_TOL());
+              let usd = 0;
+              for (const a of asks) { if (a.px > cap) break; usd += a.sz * a.px; }
+              maxP = +usd.toFixed(2);
+            }
+          }
+        } catch { /* sin libro este ciclo: la cuota entra igual, sin profundidad */ }
+        await grepo.upsertGoalQuote({ data_provider: 'polymarket', sportsbook_code: 'polymarket', external_event_id: 'poly-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(1 / p).toFixed(3), implied_probability: p, quote_status: 'open', is_live: false, max_stake: maxP, depth_src: maxP != null ? 'polymarket_book' : null }).catch(() => {});
+        out.quotes++; if (maxP != null) out.with_depth = (out.with_depth || 0) + 1;
       }
       await new Promise(r2 => setTimeout(r2, 300));
     }
@@ -3761,19 +3790,24 @@ async function kalshiClubsSweep({ force = false, dryRun = false } = {}) {
           (teams.some(t => cloudbetNameMatch(t, m.home)) && teams.some(t => cloudbetNameMatch(t, m.away))));
         if (!hit) continue;
         const [ceid, meta] = hit;
-        let wrote = 0; const px = {};
+        let wrote = 0; const px = {}, dep = {};
         for (const mk of mks) {
           const p = kalshiProb(mk, 'yes_ask'); // ask = precio de COMPRAR yes ahora (el ejecutable, con su spread)
           if (p == null) continue;
           const sub = String(mk.yes_sub_title || mk.subtitle || mk.title || '');
           const side = /draw|tie/i.test(sub) ? 'draw' : cloudbetNameMatch(sub, meta.home) ? 'home' : cloudbetNameMatch(sub, meta.away) ? 'away' : null;
           if (!side) continue;
-          if (dryRun) { out.quotes++; wrote++; px[side] = +(1 / p).toFixed(2); continue; }
-          px[side] = +(1 / p).toFixed(2);
-          await grepo.upsertGoalQuote({ data_provider: 'kalshi', sportsbook_code: 'kalshi', external_event_id: 'kalshi-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(1 / p).toFixed(3), implied_probability: p, quote_status: 'open', is_live: false }).catch(() => {});
+          // profundidad: contratos disponibles en el MEJOR ask × su precio = dólares colocables sin mover
+          // la línea. Viene en el mismo payload (yes_ask_size_fp), o sea gratis. Solo el primer nivel del
+          // libro a propósito: es la cota conservadora y la única que no exige otra llamada por mercado.
+          const szK = Number(mk.yes_ask_size_fp != null ? mk.yes_ask_size_fp : mk.yes_ask_size);
+          const maxK = Number.isFinite(szK) && szK > 0 ? +(szK * p).toFixed(2) : null;
+          if (dryRun) { out.quotes++; wrote++; px[side] = +(1 / p).toFixed(2); dep[side] = maxK; continue; }
+          px[side] = +(1 / p).toFixed(2); dep[side] = maxK;
+          await grepo.upsertGoalQuote({ data_provider: 'kalshi', sportsbook_code: 'kalshi', external_event_id: 'kalshi-' + ceid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: +(1 / p).toFixed(3), implied_probability: p, quote_status: 'open', is_live: false, max_stake: maxK, depth_src: maxK != null ? 'kalshi_book' : null }).catch(() => {});
           out.quotes++; wrote++;
         }
-        if (wrote) { out.matched++; if (out.samples.length < 12) out.samples.push({ match: meta.home + ' vs ' + meta.away, league: meta.league, odds: px }); }
+        if (wrote) { out.matched++; if (out.samples.length < 12) out.samples.push({ match: meta.home + ' vs ' + meta.away, league: meta.league, odds: px, depth_usd: dep }); }
       }
       await new Promise(r2 => setTimeout(r2, 250));
     }
@@ -3813,7 +3847,8 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
         const h = cb.markets.h2h, sides = swapped ? { home: h.away, draw: h.draw, away: h.home } : h;
         for (const side of ['home', 'draw', 'away']) {
           if (!(sides[side] > 1)) continue;
-          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: sides[side], implied_probability: 1 / sides[side], quote_status: 'open', is_live: false }).catch(() => {});
+          const mxH = (h.max || {}), mxS = swapped ? { home: mxH.away, draw: mxH.draw, away: mxH.home } : mxH;
+          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: sides[side], implied_probability: 1 / sides[side], quote_status: 'open', is_live: false, max_stake: mxS[side] ?? null, depth_src: mxS[side] != null ? 'cloudbet_max' : null }).catch(() => {});
           out.quotes++;
         }
       }
@@ -3828,7 +3863,8 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
         if (!(t.line > 0)) continue;
         for (const side of ['over', 'under']) {
           const o = t[side]; if (!(o > 1)) continue;
-          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: tf.fam, line: t.line, side, team_scope: tf.fam === 'match_total' ? undefined : 'total', market_id: tf.idp + '_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), odds_decimal: o, implied_probability: 1 / o, quote_status: 'open', is_live: false }).catch(() => {});
+          const mxT = (t.max || {})[side];
+          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: tf.fam, line: t.line, side, team_scope: tf.fam === 'match_total' ? undefined : 'total', market_id: tf.idp + '_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), odds_decimal: o, implied_probability: 1 / o, quote_status: 'open', is_live: false, max_stake: mxT ?? null, depth_src: mxT != null ? 'cloudbet_max' : null }).catch(() => {});
           out.quotes++;
         }
       }
@@ -13258,6 +13294,18 @@ const server = http.createServer(async (req, res) => {
     // VENUES GRATIS (15-ago): estado y disparo manual de los tres que no cuestan créditos — myriad, kalshi y
     // polymarket. Existe porque los tres fallaban EN SILENCIO (Myriad pedía mercados resueltos, Kalshi leía un
     // campo de precio que la API renombró) y sin una superficie donde mirarlos nadie se entera.
+    // MIGRACIONES (15-ago): el runner es `node database/migrate.js up` y la base NO es alcanzable desde
+    // fuera de Render, así que sin esto una columna nueva no se puede aplicar sin abrir una shell. GET
+    // muestra el estado, POST aplica las pendientes. Cada migración va en su transacción y queda registrada.
+    if (p === '/api/internal/migrate') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        const mig = require('./database/migrate');
+        if (req.method === 'POST') return json(res, 200, await mig.up());
+        return json(res, 200, await mig.status());
+      } catch (e) { return json(res, 200, { error: e.message }); }
+    }
     if (p === '/api/internal/venues') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -13272,7 +13320,26 @@ const server = http.createServer(async (req, res) => {
         if (run('cloudbet')) r.cloudbet = await cloudbetSweep({ force: true, dryRun: dry }).catch(e => ({ error: e.message }));
         return json(res, 200, r);
       }
+      // CAPACIDAD por casa y por familia: cuánto dinero admite de verdad cada mercado que cotizamos. Es la
+      // superficie que faltaba para decidir tamaño y reparto entre venues.
+      let cap = null;
+      try {
+        const dbcC = require('./database/client');
+        if (dbcC.isConfigured()) {
+          const rC = await dbcC.query(
+            `SELECT lower(sportsbook_code) book, market_family fam, depth_src,
+                    count(*)::int n, count(max_stake)::int con_dato,
+                    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY max_stake)::numeric, 2)::float mediana_usd,
+                    round(max(max_stake)::numeric, 2)::float max_usd
+               FROM sportsbook_goal_quote_current
+              WHERE observed_at > now() - interval '6 hours'
+              GROUP BY 1,2,3 ORDER BY 1,2`);
+          cap = rC.rows;
+        }
+      } catch (e) { cap = { error: e.message }; }
       return json(res, 200, {
+        depth_tol_pct: +(DEPTH_TOL() * 100).toFixed(2),
+        capacidad: cap,
         tracked_events: Object.keys(db.clubsQuoteEvents || {}).length,
         kalshi_series: (db.kalshiSeries || {}).n || 0, kalshi_series_at: (db.kalshiSeries || {}).at || null,
         kalshi_override: !!String(process.env.GP_KALSHI_SERIES || '').trim(),

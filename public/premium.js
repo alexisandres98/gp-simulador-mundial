@@ -1058,6 +1058,7 @@
   function viewNav(v) {
     if (v === 'bbgame') return 'bbgames';
     if (v === 'bbteam' || v === 'bbplayer') return 'bbteams';
+    if (BB_VIEWS.indexOf(v) >= 0) return v;   // si no, 'bbgames' caía en el default y ningún ítem quedaba activo
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
     if (CB_VIEWS.indexOf(v) >= 0) return v;

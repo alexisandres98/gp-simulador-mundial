@@ -117,14 +117,51 @@ degradados decorativos, números tabulares, y en móvil recomposición en vez de
   100; el bruto era +39,2. Así nacen las narrativas de "equipo clutch".
 - ESPN **no publica points-off-turnovers** en NBA ni WNBA: se devuelve como no observado, nunca como 0.
 
-**Lo que el blueprint pide y NO se construyó (y por qué):**
-- **Live** (233-242): el propio documento dice que no debe distraer del motor pre-partido hasta que la
-  latencia lo permita. No hay SLA de feed en vivo todavía.
-- **Play-type taxonomy** (18) y **tracking** (55, 58): ESPN no publica ni tipos de jugada ni datos de
-  seguimiento. Requeriría una fuente de pago.
-- **Árbitros** (121-125): el dato existe en el sumario pero sin muestra suficiente para regularizarlo.
-- **Bronze/Silver/Gold y point-in-time completo** (1-12): tenemos artefactos versionados y validación con
-  ventana móvil, pero no un almacén con tiempo efectivo por evento. Es la deuda estructural más grande.
+## 🧱 16-ago (tarde) — MEMORIA POINT-IN-TIME, VIVO Y ÁRBITROS
+
+**1-12 · DATA FABRIC — construido.** `data-fabric/{store,entities,provenance,snapshots}.js`.
+El problema tenía nombre: el parte de ESPN se sobrescribe, así que "en duda a las 18:00 → fuera a las
+19:30" se guardaba solo como "fuera", y cualquier backtest de esa noche creería que sabíamos a las 18:00
+lo que supimos a las 19:30. Ahora los partes entran como EVENTOS con sus tres tiempos y `asOf()`
+reconstruye qué sabíamos en cualquier instante — filtrando por **ingested**, no por effective, que es la
+fuga más difícil de ver. Además: IDs canónicos con alias por fuente (para cuando entren los datos de
+stats.nba.com), jerarquía de conflictos por dominio, cinco estados de ausencia, congelado por predicción
+con hash y auditoría de fuga. Endpoint `/api/hoops/fabric` (health · asof · history · timeline ·
+revisions · freeze). **`GP_FABRIC_DIR=/data/fabric`** en Render: sin eso escribía en disco efímero y se
+borraba en cada deploy.
+
+**233-242 · EN VIVO — construido y medido.** `basketball-engine/live.js`, `/api/hoops/live`.
+- El resto se simula como un partido más corto desde el marcador actual.
+- **La varianza del final no es la varianza del partido**: sobre 4 posesiones manda que cada una vale
+  0, 2 o 3 puntos (var ≈ 1,5). Con la varianza "de partido" salía +6 a 30 s = **100,0%**; ahora 99,2%.
+- **Validado sobre 8.071 estados reales**: Brier 0,150 · ECE 2,35 pp · **0,31 pp en el último minuto**.
+- **Dos correcciones probadas y rechazadas** (actualizar con el marcador de hoy; escalar la cancha /
+  Platt): mejoraban en muestra y empeoraban fuera (5,08 → 7,38 y → 8,64 pp). Era ruido, no sesgo.
+- **Latencia real medida: 27-39 s** en local y hasta 114 s en producción. Presupuesto: informar ≤ 90 s,
+  recomendar ≤ 20 s → **las recomendaciones en vivo quedan apagadas solas**. Es la compuerta 242.
+
+**121-125 · ÁRBITROS — se podía, se hizo, y no hay señal.** ESPN publica la terna y no la cosechábamos;
+ya entra en el pipeline y se backfillearon los 275 partidos WNBA. `basketball-engine/officials.js`,
+`/api/hoops/officials`. Efecto medido sobre residuos con encogimiento: **3 de 32 árbitros pasan |t|≥2 —
+justo lo que produce el azar con 32 pruebas— y NINGUNO sobrevive a Benjamini-Hochberg.** Capa apagada.
+Pendiente: backfillear las ternas de NBA (1.292 partidos, ~15 min) para repetir la prueba con 4× muestra.
+
+**18/55/58 · TIPOS DE JUGADA Y TRACKING — hay una vía gratis para NBA, no para WNBA.**
+`stats.nba.com` responde 200 y sirve, sin coste y sin clave: Synergy play types (30 equipos, temporada
+2025-26), tracking de penetraciones, defensa del aro por jugador (562 filas) y perfil de tiro por
+distancia del defensor. Los mismos endpoints con `LeagueID=10` (WNBA) devuelven **0 filas**: la NBA no
+publica Synergy ni tracking de la WNBA por ahí. Para WNBA haría falta proveedor de pago.
+
+**Corregido un error propio en la medida de calibración**: comprobaba si lo OBSERVADO caía dentro de su
+propio intervalo — una tautología que devuelve "calibrado" siempre. Con el fallo, el modelo en vivo
+parecía calibrado en 10 de 10 tramos; sin él, son 6 de 10.
+
+**Lo que el blueprint pide y sigue sin construirse (y por qué):**
+- **Tipos de jugada y tracking en WNBA**: sin fuente gratuita. Ver la tabla de costes en el informe.
+- **Comparación con precios EN VIVO**: The Odds API no cubre en vivo en nuestro plan, y sin precio en vivo
+  no hay CLV ni valor en vivo que medir. Es lo que falta para pasar de "informativo" a "completo".
+- **Coordenadas de tiro reales**: ESPN las trae en `plays.coordinate` y ya se guardan; falta usarlas para
+  el mapa de cancha del blueprint (248-249) en vez de las cinco zonas actuales.
 
 **LO QUE FALTA AHORA (ya no es estructura):**
 1. Acumular temporadas. Con una WNBA y dos NBA los priors son pobres y la validación no puede encender

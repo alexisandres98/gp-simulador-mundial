@@ -11127,7 +11127,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true' };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true' };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -13302,6 +13302,79 @@ const server = http.createServer(async (req, res) => {
     // MIGRACIONES (15-ago): el runner es `node database/migrate.js up` y la base NO es alcanzable desde
     // fuera de Render, así que sin esto una columna nueva no se puede aplicar sin abrir una shell. GET
     // muestra el estado, POST aplica las pendientes. Cada migración va en su transacción y queda registrada.
+    // ═══ BALONCESTO (15-ago) — el 4º deporte. ADMIN-ONLY hasta que el modelo bata al mercado ═══════════
+    // El motor y los paneles viven en basketball-engine/*; acá quedan solo las rutas. Se sirve la misma
+    // familia de vistas que combate: estado (calendario+ranking), partido (Game Intelligence), equipo y
+    // jugador. Nada de picks todavía: el backtest contra el cierre da skill NEGATIVO (−0.012) y publicar
+    // sería vender lo que ya sabemos que pierde.
+    if (p.startsWith('/api/hoops/')) {
+      const uH = getUser(req);
+      const hoopsPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_HOOPS_PUBLIC_ENABLED || '').trim());
+      if (!uH || !(uH.isAdmin || hoopsPublic)) return json(res, 404, { error: 'No encontrado' });
+      const ST = require('./basketball-engine/store');
+      const lg = String(url.searchParams.get('league') || 'wnba');
+      if (!ST.LEAGUES[lg]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(ST.LEAGUES) });
+      const C = ST.load(lg);
+      if (!C || !C.n) return json(res, 200, { league: lg, empty: true, note: 'sin dataset cosechado para esta liga' });
+
+      if (p === '/api/hoops/state') {
+        const now = Date.now();
+        const all = C.games.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const fin = all.filter(g => Date.parse(g.date || 0) < now).slice(0, 40);
+        // próximos: el dataset guarda jugados; los futuros salen del calendario en vivo de ESPN (cache 10min)
+        const ranks = ST.leagueRanks(C);
+        const ids = Object.keys((C.fit && C.fit.off) || {});
+        const ranking = ids.map(id => ({
+          ...(C.teams[id] || { id }),
+          net: +((C.fit.off[id] || 0) - (C.fit.def[id] || 0)).toFixed(2),
+          off: +(C.fit.off[id] || 0).toFixed(2), def: +(C.fit.def[id] || 0).toFixed(2),
+          pace: +(C.fit.pace[id] || 0).toFixed(2), gp: C.fit.n[id] || 0,
+          rank: ranks.net ? ranks.net[id] : null,
+        })).sort((a, b) => b.net - a.net);
+        return json(res, 200, {
+          league: lg, label: ST.LEAGUES[lg].label, leagues: Object.keys(ST.LEAGUES),
+          model: C.fit ? { games: C.fit.games, teams: C.fit.teams, hca: C.fit.hca, lgORtg: C.fit.lgORtg, lgPace: C.fit.lgPace, sd: C.fit.sd, span: C.fit.span, at: C.fit.at } : null,
+          ranking,
+          finished: fin.map(g => ({ id: g.id, date: g.date, home: { ...(C.teams[g.home.id] || { id: g.home.id }), pts: g.home.pts }, away: { ...(C.teams[g.away.id] || { id: g.away.id }), pts: g.away.pts }, poss: g.poss, ot: g.ot })),
+          picks_enabled: false, picks_note: 'Picks apagadas: el modelo aún no bate al cierre del mercado (skill −0.012 en el backtest).',
+        });
+      }
+      if (p === '/api/hoops/game') {
+        const gid = String(url.searchParams.get('id') || '');
+        const g = C.games.find(x => String(x.id) === gid);
+        if (!g) return json(res, 404, { error: 'No encontrado' });
+        const sims = Math.max(2000, Math.min(60000, Number(url.searchParams.get('sims')) || 20000));
+        return json(res, 200, ST.gameIntel(C, g, { sims }));
+      }
+      if (p === '/api/hoops/team') {
+        const tid = String(url.searchParams.get('id') || '');
+        const prof = ST.teamProfile(C, tid);
+        if (!prof) return json(res, 404, { error: 'No encontrado' });
+        const ranks = ST.leagueRanks(C);
+        return json(res, 200, { ...prof, rank: ranks.net ? { net: ranks.net[tid], off: ranks.off[tid], def: ranks.def[tid], pace: ranks.pace[tid], of: ranks.n } : null,
+          roster: ST.playerSeason(C, tid), league: lg });
+      }
+      if (p === '/api/hoops/player') {
+        const pid = String(url.searchParams.get('id') || '');
+        const meta = C.players[pid] || null;
+        const tid = meta ? meta.team_id : (C.games.flatMap(g => g.players || []).find(x => x.id === pid) || {}).t;
+        if (!tid) return json(res, 404, { error: 'No encontrado' });
+        const row = ST.playerSeason(C, tid).find(x => x.id === pid);
+        if (!row) return json(res, 404, { error: 'No encontrado' });
+        // log por partido: la base del futuro motor de props (distribuciones, no medias)
+        const log = C.games.filter(g => (g.players || []).some(x => x.id === pid))
+          .sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 25)
+          .map(g => { const x = (g.players || []).find(y => y.id === pid); const opp = g.home.id === tid ? g.away : g.home;
+            return { id: g.id, date: g.date, opp: opp.abbr, home: g.home.id === tid, min: x.min, pts: x.pts, reb: x.reb, ast: x.ast, fga: x.fga, tpm: x.tpm, pm: x.pm }; });
+        return json(res, 200, { ...row, team: C.teams[tid] || null, meta, log, league: lg });
+      }
+      if (p === '/api/hoops/refresh' && req.method === 'POST') {
+        const xk = process.env.GP_EXPORT_KEY || '';
+        if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+        return json(res, 200, { reloaded: !!ST.load(lg, { force: true }) });
+      }
+      return json(res, 404, { error: 'No encontrado' });
+    }
     if (p === '/api/internal/migrate') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

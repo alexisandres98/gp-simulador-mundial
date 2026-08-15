@@ -949,7 +949,7 @@
   }
 
   // ---------- state ----------
-  var S = { sport: 'futbol', cb: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -1021,6 +1021,9 @@
   ];
   var NAV2_CB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbask', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
+  // BALONCESTO (15-ago): 4º deporte, admin-only. Mismas superficies que combate — partidos, ranking, equipo,
+  // jugador — con sub-pestañas por liga (NBA / WNBA / NCAA M / NCAA F) igual que UFC/PFL/Boxeo.
+  var BB_VIEWS = ['bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer'];
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
@@ -1038,8 +1041,13 @@
     return CB_PICK_VIEWS.indexOf(v) < 0;
   }
   function cbSportAllowed() { return !!(S.me && (S.me.isAdmin || S.me.combatPublic)); }
+  function bbAllowed() { return !!(S.me && (S.me.isAdmin || S.me.hoopsPublic)); }
+  var BB_LEAGUES = [['nba', 'NBA'], ['wnba', 'WNBA'], ['ncaam', 'NCAA M'], ['ncaaw', 'NCAA F']];
+  function bbLg() { var k = (S.bb && S.bb.lg) || 'wnba'; return BB_LEAGUES.some(function (x) { return x[0] === k; }) ? k : 'wnba'; }
+  function bbLgLab() { var k = bbLg(); var f = BB_LEAGUES.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : 'WNBA'; }
   function sportOf(v) {
     if (CB_VIEWS.indexOf(v) >= 0) return 'combat';
+    if (BB_VIEWS.indexOf(v) >= 0) return 'hoops';
     if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
     return 'futbol';
   }
@@ -1142,7 +1150,7 @@
       '<div class="gx-sportbar" id="gx-sportbar">' +
         '<button class="gx-sport' + (S.sport !== 'combat' ? ' on' : '') + '" data-sportgo="futbol"><span class="gx-sport-ico">⚽</span>' + esc(t('sport_futbol')) + '</button>' +
         '<button class="gx-sport' + (S.sport === 'combat' ? ' on' : '') + ' gx-sport-cb" data-sportgo="combat"><span class="gx-sport-ico">🥊</span>' + esc(t('sport_combat')) + (cbSportAllowed() ? '' : '<span class="gx-sport-soon gx-cbsoon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
-        '<button class="gx-sport dim" disabled><span class="gx-sport-ico">🏀</span>' + esc(t('sport_nba')) + '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span></button>' +
+        '<button class="gx-sport' + (S.sport === 'hoops' ? ' on' : '') + (bbAllowed() ? '' : ' dim') + '"' + (bbAllowed() ? ' data-sportgo="hoops"' : ' disabled') + '><span class="gx-sport-ico">🏀</span>' + esc(t('sport_nba')) + (bbAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
       '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -3839,6 +3847,15 @@
     if (cbf) { S.cb.org = cbf[1]; if (!(S.view === 'cbfight' && S.cb.fightId === cbf[2])) { S.cb.fightId = cbf[2]; S.cb.fight = undefined; showView('cbfight'); } return; }
     var cbp = h.match(/^cbfighter\/(ufc|mma|boxing)-(.+)$/i);
     if (cbp) { S.cb.org = cbp[1]; if (!(S.view === 'cbfighter' && S.cb.fighterId === cbp[2])) { S.cb.fighterId = cbp[2]; S.cb.fighter = undefined; showView('cbfighter'); } return; }
+    // ── BALONCESTO ──────────────────────────────────────────────────────────────────────────────────
+    var bbg = h.match(/^bbgame\/([a-z]+)-([0-9]+)$/i);
+    if (bbg) { S.bb.lg = bbg[1]; if (!(S.view === 'bbgame' && S.bb.gameId === bbg[2])) { S.bb.gameId = bbg[2]; S.bb.game = undefined; showView('bbgame'); } return; }
+    var bbt = h.match(/^bbteam\/([a-z]+)-([0-9]+)$/i);
+    if (bbt) { S.bb.lg = bbt[1]; if (!(S.view === 'bbteam' && S.bb.teamId === bbt[2])) { S.bb.teamId = bbt[2]; S.bb.team = undefined; showView('bbteam'); } return; }
+    var bbp = h.match(/^bbplayer\/([a-z]+)-([0-9]+)$/i);
+    if (bbp) { S.bb.lg = bbp[1]; if (!(S.view === 'bbplayer' && S.bb.playerId === bbp[2])) { S.bb.playerId = bbp[2]; S.bb.player = undefined; showView('bbplayer'); } return; }
+    var bbv = h.match(/^(bbgames|bbteams)(?:\/([a-z]+))?$/);
+    if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
     var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
       if (cbv[2] === 'ufc' || cbv[2] === 'mma' || cbv[2] === 'boxing') S.cb.org = cbv[2]; // el sufijo de org vale en TODAS las vistas
@@ -4008,11 +4025,12 @@
   // Combate es admin-only hasta validar: para no-admins el botón es un teaser ("Próximamente"), no navega.
   function setSport(sport) {
     if (sport === 'combat' && !cbSportAllowed()) return;
+    if (sport === 'hoops' && !bbAllowed()) return;
     if (sport === S.sport) return;
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'hoops' ? 'bbgames' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -4036,7 +4054,8 @@
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
-    if (CB_VIEWS.indexOf(v) >= 0) renderCb(v);
+    if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
+    else if (CB_VIEWS.indexOf(v) >= 0) renderCb(v);
     else if (v === 'matches') renderMatches();
     else if (v === 'sim') renderSim();
     else if (v === 'teams') renderTeams();
@@ -6465,6 +6484,8 @@
   // verde vs esquina roja en todo (heroes cara a cara, tale-of-the-tape espejado, barra GP tira-y-afloja).
   // Server: /api/combat/* (404 no-admin). Estado: S.cb.* con cache por clave; org activa S.cb.org (ufc|mma).
   function cbOrg() { return S.cb.org === 'mma' || S.cb.org === 'boxing' ? S.cb.org : 'ufc'; }
+  // etiqueta corta de liga para las cabeceras de baloncesto
+  function bbTeamName(t) { return (t && (t.abbr || t.short || t.name)) || '—'; }
   function cbOrgLab() { return cbOrg() === 'mma' ? 'MMA' : cbOrg() === 'boxing' ? 'BOXEO' : 'UFC'; }
   function cbAva(f, side, cls) {
     var ini = (f.name || '?').split(' ').map(function (x) { return x[0] || ''; }).join('').slice(0, 2).toUpperCase();
@@ -6568,6 +6589,366 @@
     var ft2 = e.target.closest('[data-cbfilt]'); if (ft2) { S.cb.oppFilt = ft2.getAttribute('data-cbfilt'); renderCb('cbopps'); return; }
     var sb3 = e.target.closest('[data-cbsub]'); if (sb3) { S.cb.oppSub = sb3.getAttribute('data-cbsub'); renderCb('cbopps'); return; }
   }
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  // BALONCESTO — Game Intelligence Center (15-ago). Admin-only.
+  // Misma arquitectura que combate: un fetch cacheado por vista, un shell, una delegación de clicks.
+  // El panel de partido es el producto: probabilidad CON intervalo, distribuciones, el porqué desglosado,
+  // matriz de explotación por zona, cancha con el quinteto y las 5 cosas que importan.
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  function bbGet(key, url, ttl) {
+    var e = S.bb[key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
+    if (!e || !e._inflight) bbFetch(key, url, !!(e && e.v !== undefined));
+    return e && e.v !== undefined ? e.v : null;
+  }
+  function bbFetch(key, url, silent) {
+    var e = S.bb[key] = S.bb[key] || {};
+    e._inflight = true; var done = false;
+    var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'hoops') showView(S.view); }, 25000);
+    api(url).then(function (d) {
+      if (done) return; done = true; clearTimeout(to);
+      e.v = d || { _err: 1 }; e._at = Date.now(); e._inflight = false;
+      if (S.sport === 'hoops') showView(S.view);
+    }).catch(function () {
+      if (done) return; done = true; clearTimeout(to);
+      e._inflight = false; e.v = { _err: 1 }; e._at = Date.now();
+      if (S.sport === 'hoops') showView(S.view);
+    });
+  }
+  function bbTabs() {
+    return '<div class="gx-cb-tabs">' + BB_LEAGUES.map(function (x) {
+      return '<span class="gx-cb-tab' + (bbLg() === x[0] ? ' on' : '') + '" data-bblg="' + x[0] + '">' + esc(x[1]) + '</span>';
+    }).join('') + '<span class="gx-spacer"></span></div>';
+  }
+  function bbShell(title, inner) {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + inner + '</div></div>';
+    mv.onclick = bbClicks;
+  }
+  function bbLogo(t, cls) {
+    var ini = ((t && (t.abbr || t.name)) || '?').slice(0, 3).toUpperCase();
+    var img = t && t.logo ? '<img src="' + esc(t.logo) + '" alt="" decoding="async" onerror="this.remove()">' : '';
+    return '<div class="gx-bb-logo' + (cls ? ' ' + cls : '') + '">' + img + '<span>' + esc(ini) + '</span></div>';
+  }
+  var bbPct = function (x) { return (100 * (x || 0)).toFixed(1) + '%'; };
+  var bbSign = function (x) { return (x > 0 ? '+' : '') + x; };
+
+  // curva de distribución (margen o total) en SVG — el histograma que devuelve el simulador
+  function bbCurve(hist, opts) {
+    if (!hist || !hist.length) return '';
+    var w = 640, h = 128, pad = 8;
+    var max = hist.reduce(function (m, p) { return Math.max(m, p[1]); }, 0) || 1;
+    var xs = hist.map(function (p) { return p[0]; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var X = function (v) { return pad + (w - 2 * pad) * (v - x0) / ((x1 - x0) || 1); };
+    var Y = function (v) { return h - pad - (h - 2 * pad) * (v / max); };
+    var d = hist.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' ');
+    var area = d + ' L' + X(x1).toFixed(1) + ',' + (h - pad) + ' L' + X(x0).toFixed(1) + ',' + (h - pad) + ' Z';
+    var zero = (opts && opts.zero != null) ? '<line x1="' + X(opts.zero).toFixed(1) + '" y1="' + pad + '" x2="' + X(opts.zero).toFixed(1) + '" y2="' + (h - pad) + '" stroke="#5c6f68" stroke-width="1.5" stroke-dasharray="4 3"/>' : '';
+    var band = (opts && opts.band) ? '<rect x="' + X(opts.band[0]).toFixed(1) + '" y="' + pad + '" width="' + Math.max(1, X(opts.band[1]) - X(opts.band[0])).toFixed(1) + '" height="' + (h - 2 * pad) + '" fill="rgba(45,230,163,.10)"/>' : '';
+    return '<svg class="gx-bb-curve" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' + band +
+      '<path d="' + area + '" fill="rgba(45,230,163,.16)"/><path d="' + d + '" fill="none" stroke="#2de6a3" stroke-width="2"/>' + zero + '</svg>' +
+      '<div class="gx-bb-curvex"><span>' + (opts && opts.fmt ? opts.fmt(x0) : x0) + '</span><span>' + (opts && opts.fmt ? opts.fmt(x1) : x1) + '</span></div>';
+  }
+
+  // CANCHA: perfil de tiro por zona. Cada zona se colorea por puntos-por-tiro y muestra el volumen.
+  function bbCourt(profile, label) {
+    if (!profile) return '';
+    var Z = [
+      { k: 'rim', n: 'Aro', x: 50, y: 82, r: 15 },
+      { k: 'short_mid', n: 'Media corta', x: 50, y: 58, r: 13 },
+      { k: 'long_mid', n: 'Media larga', x: 50, y: 36, r: 13 },
+      { k: 'corner3', n: 'Esquina', x: 13, y: 84, r: 12 },
+      { k: 'atb3', n: 'Frontal', x: 50, y: 14, r: 13 },
+    ];
+    var col = function (pps) {
+      if (pps == null) return '#1c2a24';
+      if (pps >= 1.25) return 'rgba(45,230,163,.55)';
+      if (pps >= 1.08) return 'rgba(45,230,163,.32)';
+      if (pps >= 0.92) return 'rgba(240,180,41,.30)';
+      return 'rgba(240,90,90,.30)';
+    };
+    var cells = Z.map(function (z) {
+      var d = profile[z.k] || {};
+      return '<div class="gx-bb-zone" style="left:' + z.x + '%;top:' + z.y + '%;background:' + col(d.pps) + '">' +
+        '<b>' + (d.pps != null ? d.pps.toFixed(2) : '—') + '</b><i>' + z.n + '</i><span>' + (d.rate != null ? Math.round(100 * d.rate) + '%' : '') + '</span></div>';
+    }).join('');
+    // media cancha esquemática
+    var court = '<svg class="gx-bb-courtbg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+      '<rect x="1" y="1" width="98" height="98" rx="3" fill="none" stroke="#22332c" stroke-width="1"/>' +
+      '<circle cx="50" cy="93" r="4" fill="none" stroke="#22332c" stroke-width="1"/>' +
+      '<rect x="33" y="63" width="34" height="34" fill="none" stroke="#22332c" stroke-width="1"/>' +
+      '<path d="M8 97 A46 46 0 0 1 92 97" fill="none" stroke="#22332c" stroke-width="1"/>' +
+      '<circle cx="50" cy="30" r="9" fill="none" stroke="#22332c" stroke-width="1"/></svg>';
+    return '<div class="gx-bb-court"><div class="gx-label">' + esc(label) + '</div><div class="gx-bb-courtwrap">' + court + cells + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">Puntos por tiro · el % es cuánto del volumen sale de esa zona</div></div>';
+  }
+
+  function bbFactors(p, o) {
+    if (!p) return '';
+    var row = function (lab, a, b, fmt, better) {
+      var f = fmt || function (x) { return x == null ? '—' : x.toFixed(3); };
+      var win = (a != null && b != null) ? ((better === 'lo' ? a < b : a > b)) : null;
+      return '<tr><td>' + esc(lab) + '</td><td class="' + (win === true ? 'gx-bb-win' : '') + '">' + f(a) + '</td><td class="' + (win === false ? 'gx-bb-win' : '') + '">' + f(b) + '</td></tr>';
+    };
+    var n1 = function (x) { return x == null ? '—' : x.toFixed(1); };
+    return '<table class="gx-bb-tbl"><thead><tr><th></th><th>' + esc(bbTeamName(p.team)) + '</th><th>' + esc(bbTeamName(o.team)) + '</th></tr></thead><tbody>' +
+      row('Ataque (pts/100)', p.ortg, o.ortg, n1) +
+      row('Defensa (pts/100)', p.drtg, o.drtg, n1, 'lo') +
+      row('eFG%', p.efg, o.efg) +
+      row('eFG% concedido', p.efg_allowed, o.efg_allowed, null, 'lo') +
+      row('Pérdidas %', p.tov_pct, o.tov_pct, null, 'lo') +
+      row('Rebote ofensivo %', p.orb_pct, o.orb_pct) +
+      row('Tiros libres / tiro', p.ftr, o.ftr) +
+      row('% de tiros de 3', p.tpa_rate, o.tpa_rate) +
+      row('Puntos en pintura', p.paint, o.paint, n1) +
+      row('Contraataque', p.fastbreak, o.fastbreak, n1) +
+      '</tbody></table>';
+  }
+
+  function bbPlayers(list, lg) {
+    if (!list || !list.length) return '<div class="gx-empty">Sin datos de jugadores.</div>';
+    return '<div class="gx-bb-players">' + list.slice(0, 12).map(function (p) {
+      var img = p.headshot ? '<img src="' + esc(p.headshot) + '" alt="" decoding="async" onerror="this.remove()">' : '';
+      return '<a class="gx-bb-pl lnk" href="#bbplayer/' + esc(lg) + '-' + esc(p.id) + '">' +
+        '<span class="gx-bb-plav">' + img + '<i>' + esc((p.name || '?').split(' ').map(function (x) { return x[0] || ''; }).join('').slice(0, 2)) + '</i></span>' +
+        '<span class="gx-bb-plnm"><b>' + esc(p.name) + '</b><em>' + esc(p.pos || '') + (p.starter ? ' · titular' : '') + (p.injury ? ' · ' + esc(p.injury) : '') + '</em></span>' +
+        '<span class="gx-bb-plst"><b>' + p.pts + '</b><i>pts</i></span>' +
+        '<span class="gx-bb-plst"><b>' + p.reb + '</b><i>reb</i></span>' +
+        '<span class="gx-bb-plst"><b>' + p.ast + '</b><i>ast</i></span>' +
+        '<span class="gx-bb-plst"><b>' + p.min + '</b><i>min</i></span>' +
+        '<span class="gx-bb-plst"><b>' + p.usage + '%</b><i>uso</i></span></a>';
+    }).join('') + '</div>';
+  }
+
+  // ── LISTA DE PARTIDOS ────────────────────────────────────────────────────────────────────────────────
+  function renderBBGames() {
+    var lg = bbLg();
+    var d = bbGet('state_' + lg, '/api/hoops/state?league=' + lg);
+    if (!d) { bbShell('Baloncesto', bbTabs() + mvLoading()); return; }
+    if (d._err) { bbShell('Baloncesto', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (d.empty) { bbShell('Baloncesto', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(bbLgLab()) + ' sin dataset cosechado todavía.</b><span class="gx-dim">La temporada se cosecha con scripts/hoops-backfill.js</span></div></div>'); return; }
+    var m = d.model || {};
+    var head = '<div class="gx-panel gx-bb-modelbar">' +
+      '<div><span class="gx-label">Modelo</span><b>' + (m.games || 0) + '</b> partidos · <b>' + (m.teams || 0) + '</b> equipos</div>' +
+      '<div><span class="gx-label">Ventaja de cancha</span><b>' + (m.hca != null ? m.hca.toFixed(2) : '—') + '</b> pts/100</div>' +
+      '<div><span class="gx-label">Ritmo de liga</span><b>' + (m.lgPace != null ? m.lgPace.toFixed(1) : '—') + '</b> pos.</div>' +
+      '<div><span class="gx-label">Ataque de liga</span><b>' + (m.lgORtg != null ? m.lgORtg.toFixed(1) : '—') + '</b> pts/100</div>' +
+      '</div>';
+    var note = d.picks_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.picks_note) + '</span></div>' : '';
+    var rank = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Ranking GP · ajustado por rival</span></div><div class="gx-bb-rank">' +
+      (d.ranking || []).map(function (r, i) {
+        return '<a class="gx-bb-rankrow lnk" href="#bbteam/' + esc(lg) + '-' + esc(r.id) + '">' +
+          '<span class="gx-bb-rk">' + (i + 1) + '</span>' + bbLogo(r, 'sm') +
+          '<span class="gx-bb-rknm">' + esc(r.name || r.abbr || r.id) + '</span>' +
+          '<span class="gx-bb-rkv ' + (r.net >= 0 ? 'up' : 'dn') + '">' + bbSign(r.net) + '</span>' +
+          '<span class="gx-bb-rksub">at ' + bbSign(r.off) + ' · def ' + bbSign(r.def) + ' · ritmo ' + bbSign(r.pace) + ' · ' + r.gp + 'pj</span></a>';
+      }).join('') + '</div></div>';
+    var games = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Partidos analizados</span><span class="gx-ph-extra">' + (d.finished || []).length + '</span></div><div class="gx-bb-games">' +
+      (d.finished || []).map(function (g) {
+        return '<a class="gx-bb-grow lnk" href="#bbgame/' + esc(lg) + '-' + esc(g.id) + '">' +
+          '<span class="gx-bb-gdate">' + esc(String(g.date || '').slice(5, 10)) + '</span>' +
+          bbLogo(g.away, 'sm') + '<span class="gx-bb-gt">' + esc(bbTeamName(g.away)) + '</span><b>' + (g.away.pts != null ? g.away.pts : '') + '</b>' +
+          '<i>@</i>' + bbLogo(g.home, 'sm') + '<span class="gx-bb-gt">' + esc(bbTeamName(g.home)) + '</span><b>' + (g.home.pts != null ? g.home.pts : '') + '</b>' +
+          '<span class="gx-bb-gpos">' + (g.poss != null ? g.poss.toFixed(0) + ' pos' : '') + (g.ot ? ' · PR' : '') + '</span></a>';
+      }).join('') + '</div></div>';
+    bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + head + note + rank + games);
+  }
+
+  // ── GAME INTELLIGENCE CENTER ─────────────────────────────────────────────────────────────────────────
+  function renderBBGame() {
+    var lg = bbLg(), id = S.bb.gameId;
+    var d = bbGet('game_' + lg + '_' + id, '/api/hoops/game?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
+    if (!d) { bbShell('Partido', mvLoading()); return; }
+    if (d._err || !d.game) { bbShell('Partido', '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo cargar el partido.</b></div></div>'); return; }
+    var G = d.game, P = d.projection, H = G.home, A = G.away;
+    var back = '<div class="gx-cb-backrow"><span class="gx-clgate sh lnk" data-bbback="1">← Partidos</span></div>';
+
+    // 1) HERO: probabilidad con intervalo
+    var ph = Math.round(100 * P.win.home);
+    var hero = '<div class="gx-panel gx-bb-hero">' +
+      '<div class="gx-bb-heroteams">' +
+        '<div class="gx-bb-ht">' + bbLogo(A, 'xl') + '<b>' + esc(bbTeamName(A)) + '</b>' + (A.score != null ? '<em>' + A.score + '</em>' : '') + '</div>' +
+        '<div class="gx-bb-hmid"><span class="gx-label">Probabilidad GP</span>' +
+          '<div class="gx-bb-probs"><span>' + (100 - ph) + '%</span><span class="h">' + ph + '%</span></div>' +
+          '<div class="gx-bb-pbar"><i style="width:' + ph + '%"></i></div>' +
+          '<div class="gx-dim gx-bb-ci">Intervalo ' + bbPct(P.win_ci.lo) + ' – ' + bbPct(P.win_ci.hi) + ' · confianza <b>' + esc(P.confidence) + '</b></div>' +
+        '</div>' +
+        '<div class="gx-bb-ht">' + bbLogo(H, 'xl') + '<b>' + esc(bbTeamName(H)) + '</b>' + (H.score != null ? '<em>' + H.score + '</em>' : '') + '</div>' +
+      '</div>' +
+      '<div class="gx-bb-kpis">' +
+        '<div><span>Marcador proyectado</span><b>' + P.away_pts.toFixed(1) + ' – ' + P.home_pts.toFixed(1) + '</b></div>' +
+        '<div><span>Posesiones</span><b>' + P.poss.toFixed(1) + '</b></div>' +
+        '<div><span>Margen esperado</span><b>' + bbSign(+P.margin.toFixed(1)) + '</b></div>' +
+        '<div><span>Total esperado</span><b>' + P.total.toFixed(1) + '</b></div>' +
+        '<div><span>Prórroga</span><b>' + bbPct(P.ot_prob) + '</b></div>' +
+      '</div></div>';
+
+    // 2) LAS 5 COSAS QUE IMPORTAN
+    var wm = (d.what_matters || []).length ? '<div class="gx-panel gx-bb-wm"><div class="gx-ph"><span class="gx-label">Lo que decide este partido</span></div><ol>' +
+      d.what_matters.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>' : '';
+
+    // 3) DISTRIBUCIONES
+    var dist = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Distribución del margen</span><span class="gx-ph-extra">' + P.sims.toLocaleString('es') + ' simulaciones</span></div>' +
+      bbCurve(P.margin_hist, { zero: 0, band: [P.margin_q.p25, P.margin_q.p75], fmt: function (v) { return bbSign(v); } }) +
+      '<div class="gx-bb-qs"><span>p05 <b>' + bbSign(P.margin_q.p05) + '</b></span><span>p25 <b>' + bbSign(P.margin_q.p25) + '</b></span><span>mediana <b>' + bbSign(P.margin_q.p50) + '</b></span><span>p75 <b>' + bbSign(P.margin_q.p75) + '</b></span><span>p95 <b>' + bbSign(P.margin_q.p95) + '</b></span></div>' +
+      '<div class="gx-bb-bands">' +
+        '<div><span class="gx-dim">' + esc(bbTeamName(H)) + ' por 1-5</span><b>' + bbPct(P.bands.home_1_5) + '</b></div>' +
+        '<div><span class="gx-dim">por 6-10</span><b>' + bbPct(P.bands.home_6_10) + '</b></div>' +
+        '<div><span class="gx-dim">por 11+</span><b>' + bbPct(P.bands.home_11p) + '</b></div>' +
+        '<div><span class="gx-dim">' + esc(bbTeamName(A)) + ' por 1-5</span><b>' + bbPct(P.bands.away_1_5) + '</b></div>' +
+        '<div><span class="gx-dim">por 6-10</span><b>' + bbPct(P.bands.away_6_10) + '</b></div>' +
+        '<div><span class="gx-dim">por 11+</span><b>' + bbPct(P.bands.away_11p) + '</b></div>' +
+      '</div></div>' +
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Distribución del total</span></div>' +
+      bbCurve(P.total_hist, { band: [P.total_q.p25, P.total_q.p75] }) +
+      '<div class="gx-bb-qs"><span>p05 <b>' + P.total_q.p05 + '</b></span><span>p25 <b>' + P.total_q.p25 + '</b></span><span>mediana <b>' + P.total_q.p50 + '</b></span><span>p75 <b>' + P.total_q.p75 + '</b></span><span>p95 <b>' + P.total_q.p95 + '</b></span></div></div>';
+
+    // 4) POR QUÉ (descomposición)
+    var why = '';
+    if (d.why && d.why.parts) {
+      var mx = d.why.parts.reduce(function (m, x) { return Math.max(m, Math.abs(x.pp)); }, 0) || 1;
+      why = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por qué el modelo cree esto</span><span class="gx-ph-extra">puntos de margen</span></div><div class="gx-bb-dec">' +
+        d.why.parts.map(function (x) {
+          var w = Math.abs(x.pp) / mx * 50;
+          return '<div class="gx-bb-decrow"><span>' + esc(x.label) + '</span>' +
+            '<div class="gx-bb-decbar"><i class="' + (x.pp >= 0 ? 'p' : 'n') + '" style="width:' + w.toFixed(1) + '%;' + (x.pp >= 0 ? 'left:50%' : 'right:50%') + '"></i></div>' +
+            '<b class="' + (x.pp >= 0 ? 'up' : 'dn') + '">' + bbSign(x.pp) + '</b></div>';
+        }).join('') + '</div><div class="gx-dim gx-bb-decnote">Positivo favorece a ' + esc(bbTeamName(H)) + '. La suma da el margen proyectado (' + bbSign(+d.why.margin.toFixed(1)) + ').</div></div>';
+    }
+
+    // 5) MERCADO
+    var mkt = '';
+    if (d.market) {
+      var e = d.market.edge_pp;
+      mkt = '<div class="gx-panel gx-bb-mkt"><div class="gx-ph"><span class="gx-label">GP contra el mercado</span><span class="gx-ph-extra">' + esc(d.market.book || '') + '</span></div>' +
+        '<div class="gx-bb-mktrow"><div><span>Modelo</span><b>' + d.market.model_pct + '%</b></div>' +
+        '<div><span>Mercado</span><b>' + d.market.market_pct + '%</b></div>' +
+        '<div><span>Diferencia</span><b class="' + (e >= 0 ? 'up' : 'dn') + '">' + bbSign(e) + 'pp</b></div>' +
+        (d.market.spread != null ? '<div><span>Hándicap</span><b>' + bbSign(d.market.spread) + '</b></div>' : '') +
+        (d.market.total != null ? '<div><span>Total</span><b>' + d.market.total + '</b></div>' : '') +
+        '</div></div>';
+    }
+
+    // 6) CUOTAS JUSTAS
+    var fair = '';
+    if (d.markets) {
+      fair = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Cuotas justas GP</span><span class="gx-ph-extra">sin margen de casa</span></div>' +
+        '<div class="gx-bb-fair"><div><span class="gx-label">Ganador</span>' +
+        '<div class="gx-bb-fr"><span>' + esc(bbTeamName(H)) + '</span><b>' + (d.markets.moneyline.fair_home || '—') + '</b></div>' +
+        '<div class="gx-bb-fr"><span>' + esc(bbTeamName(A)) + '</span><b>' + (d.markets.moneyline.fair_away || '—') + '</b></div></div>' +
+        '<div><span class="gx-label">Hándicap (local)</span>' + d.markets.spread.slice(0, 8).map(function (x) {
+          return '<div class="gx-bb-fr"><span>' + bbSign(x.home_spread) + '</span><b>' + (x.fair_home || '—') + '</b><em>' + bbPct(x.home) + '</em></div>';
+        }).join('') + '</div>' +
+        '<div><span class="gx-label">Total</span>' + d.markets.total.map(function (x) {
+          return '<div class="gx-bb-fr"><span>' + x.line + '</span><b>O ' + (x.fair_over || '—') + '</b><em>U ' + (x.fair_under || '—') + '</em></div>';
+        }).join('') + '</div></div></div>';
+    }
+
+    // 7) MATRIZ DE EXPLOTACIÓN
+    var exRow = function (list, who) {
+      if (!list || !list.length) return '';
+      return '<div><span class="gx-label">' + esc(who) + ' ataca</span>' + list.map(function (x) {
+        var cls = x.grade === 'ventaja' ? 'ok' : x.grade === 'desventaja' ? 'bad' : 'mid';
+        return '<div class="gx-bb-exrow"><span>' + esc(x.label) + '</span>' +
+          '<em>' + x.pps.toFixed(2) + ' vs ' + x.allowed_pps.toFixed(2) + '</em>' +
+          '<b class="gx-bb-ex ' + cls + '">' + (x.impact > 0 ? '+' : '') + x.impact + '</b></div>';
+      }).join('') + '</div>';
+    };
+    var exploit = (d.exploit && (d.exploit.home.length || d.exploit.away.length)) ?
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Dónde se gana el partido</span><span class="gx-ph-extra">pts/100 tiros sobre lo que concede el rival</span></div>' +
+      '<div class="gx-bb-exwrap">' + exRow(d.exploit.home, bbTeamName(H)) + exRow(d.exploit.away, bbTeamName(A)) + '</div></div>' : '';
+
+    // 8) CANCHAS + FOUR FACTORS
+    var courts = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de tiro</span></div><div class="gx-bb-courts">' +
+      bbCourt(d.teams.home.shot_profile, bbTeamName(H)) + bbCourt(d.teams.away.shot_profile, bbTeamName(A)) + '</div></div>';
+    var ff = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de equipo</span><span class="gx-ph-extra">medias de temporada</span></div>' + bbFactors(d.teams.home, d.teams.away) + '</div>';
+
+    // 9) JUGADORES
+    var pls = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(bbTeamName(H)) + '</span></div>' + bbPlayers(d.players.home, lg) + '</div>' +
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(bbTeamName(A)) + '</span></div>' + bbPlayers(d.players.away, lg) + '</div>';
+
+    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + mkt + dist + why + exploit + fair + courts + ff + pls);
+  }
+
+  // ── EQUIPO ───────────────────────────────────────────────────────────────────────────────────────────
+  function renderBBTeam() {
+    var lg = bbLg(), id = S.bb.teamId;
+    var d = bbGet('team_' + lg + '_' + id, '/api/hoops/team?league=' + lg + '&id=' + encodeURIComponent(id), 300000);
+    if (!d) { bbShell('Equipo', mvLoading()); return; }
+    if (d._err || !d.team_id) { bbShell('Equipo', '<div class="gx-panel"><div class="gx-empty">No se pudo cargar.</div></div>'); return; }
+    var back = '<div class="gx-cb-backrow"><span class="gx-clgate sh lnk" data-bbback="1">← Baloncesto</span></div>';
+    var head = '<div class="gx-panel gx-bb-thead">' + bbLogo(d.team, 'xl') +
+      '<div><h2>' + esc((d.team && d.team.name) || d.team_id) + '</h2>' +
+      '<div class="gx-dim">' + d.record.w + '-' + d.record.l + ' · ' + d.games + ' partidos' + (d.rank ? ' · #' + d.rank.net + ' de ' + d.rank.of + ' en la liga' : '') + '</div></div>' +
+      '<div class="gx-bb-tkpi"><div><span>Neto ajustado</span><b class="' + (d.adj && d.adj.net >= 0 ? 'up' : 'dn') + '">' + (d.adj ? bbSign(d.adj.net) : '—') + '</b></div>' +
+      '<div><span>Ataque</span><b>' + (d.ortg != null ? d.ortg.toFixed(1) : '—') + '</b></div>' +
+      '<div><span>Defensa</span><b>' + (d.drtg != null ? d.drtg.toFixed(1) : '—') + '</b></div>' +
+      '<div><span>Ritmo</span><b>' + (d.poss != null ? d.poss.toFixed(1) : '—') + '</b></div></div></div>';
+    var courts = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de tiro</span></div><div class="gx-bb-courts">' +
+      bbCourt(d.shot_profile, 'Ataque') + bbCourt(d.shot_profile_allowed, 'Lo que concede') + '</div></div>';
+    var form = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos partidos</span></div><div class="gx-bb-games">' +
+      (d.form || []).map(function (f) {
+        return '<a class="gx-bb-grow lnk" href="#bbgame/' + esc(lg) + '-' + esc(f.id) + '">' +
+          '<span class="gx-bb-gdate">' + esc(String(f.date || '').slice(5, 10)) + '</span>' +
+          '<span class="gx-clgate ' + (f.w ? 'ok' : 'sh') + '">' + (f.w ? 'V' : 'D') + '</span>' +
+          '<span class="gx-bb-gt">' + (f.home ? 'vs ' : '@ ') + esc(f.opp || '') + '</span>' +
+          '<b>' + f.pf + '-' + f.pa + '</b><span class="gx-bb-gpos">ORtg ' + (f.ortg != null ? f.ortg.toFixed(1) : '') + '</span></a>';
+      }).join('') + '</div></div>';
+    var roster = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Plantilla</span></div>' + bbPlayers(d.roster, lg) + '</div>';
+    bbShell((d.team && d.team.name) || 'Equipo', back + head + courts + form + roster);
+  }
+
+  // ── JUGADOR ──────────────────────────────────────────────────────────────────────────────────────────
+  function renderBBPlayer() {
+    var lg = bbLg(), id = S.bb.playerId;
+    var d = bbGet('player_' + lg + '_' + id, '/api/hoops/player?league=' + lg + '&id=' + encodeURIComponent(id), 300000);
+    if (!d) { bbShell('Jugador', mvLoading()); return; }
+    if (d._err || !d.id) { bbShell('Jugador', '<div class="gx-panel"><div class="gx-empty">No se pudo cargar.</div></div>'); return; }
+    var back = '<div class="gx-cb-backrow"><span class="gx-clgate sh lnk" data-bbback="1">← Volver</span></div>';
+    var img = d.headshot ? '<img src="' + esc(d.headshot) + '" alt="" decoding="async" onerror="this.remove()">' : '';
+    var head = '<div class="gx-panel gx-bb-phead"><span class="gx-bb-pbig">' + img + '</span>' +
+      '<div><h2>' + esc(d.name) + '</h2><div class="gx-dim">' + esc([d.pos, d.height, (d.age ? d.age + ' años' : ''), (d.team ? d.team.name : '')].filter(Boolean).join(' · ')) + '</div>' +
+      (d.injury ? '<div class="gx-clgate sh">' + esc(d.injury) + '</div>' : '') + '</div>' +
+      '<div class="gx-bb-tkpi"><div><span>Puntos</span><b>' + d.pts + '</b></div><div><span>Rebotes</span><b>' + d.reb + '</b></div>' +
+      '<div><span>Asistencias</span><b>' + d.ast + '</b></div><div><span>Minutos</span><b>' + d.min + '</b></div>' +
+      '<div><span>Uso</span><b>' + d.usage + '%</b></div></div></div>';
+    var shoot = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Tiro</span></div><div class="gx-bb-kpis">' +
+      '<div><span>TC%</span><b>' + (d.fg != null ? (100 * d.fg).toFixed(1) + '%' : '—') + '</b></div>' +
+      '<div><span>T3%</span><b>' + (d.tp != null ? (100 * d.tp).toFixed(1) + '%' : '—') + '</b></div>' +
+      '<div><span>TL%</span><b>' + (d.ft != null ? (100 * d.ft).toFixed(1) + '%' : '—') + '</b></div>' +
+      '<div><span>eFG%</span><b>' + (d.efg != null ? (100 * d.efg).toFixed(1) + '%' : '—') + '</b></div>' +
+      '<div><span>Por 36 min</span><b>' + (d.p36 ? d.p36.pts + '/' + d.p36.reb + '/' + d.p36.ast : '—') + '</b></div></div></div>';
+    var log = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos partidos</span></div><div class="gx-bb-games">' +
+      (d.log || []).map(function (l) {
+        return '<a class="gx-bb-grow lnk" href="#bbgame/' + esc(lg) + '-' + esc(l.id) + '">' +
+          '<span class="gx-bb-gdate">' + esc(String(l.date || '').slice(5, 10)) + '</span>' +
+          '<span class="gx-bb-gt">' + (l.home ? 'vs ' : '@ ') + esc(l.opp || '') + '</span>' +
+          '<b>' + l.pts + ' pts</b><span class="gx-bb-gpos">' + l.reb + 'r · ' + l.ast + 'a · ' + l.min + 'min</span></a>';
+      }).join('') + '</div></div>';
+    bbShell(d.name, back + head + shoot + log);
+  }
+
+  function renderBBTeams() { renderBBGames(); }
+
+  function bbClicks(e) {
+    var lgb = e.target.closest('[data-bblg]');
+    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash('bbgames/' + S.bb.lg); return; }
+    if (e.target.closest('[data-bbback]')) { setHash('bbgames/' + bbLg()); return; }
+    var a = e.target.closest('a.lnk'); if (a && a.getAttribute('href')) return;   // los enlaces navegan solos
+  }
+
+  function renderBB(v) {
+    if (!S.me) { bbShell('Baloncesto', mvLoading()); return; }
+    if (!bbAllowed()) { showView('board'); return; }
+    if (v === 'bbgame') renderBBGame();
+    else if (v === 'bbteam') renderBBTeam();
+    else if (v === 'bbplayer') renderBBPlayer();
+    else if (v === 'bbteams') renderBBTeams();
+    else renderBBGames();
+  }
+
   function renderCb(v) {
     // carrera S.me con hash directo (patrón #perf): S.me arranca NULL (no undefined) hasta que /api/me llega —
     // esperar, no redirigir (el handler de llegada de me re-renderiza las vistas CB)

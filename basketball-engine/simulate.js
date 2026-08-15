@@ -125,8 +125,10 @@ function markets(sim, { spreads = null, totalsLines = null } = {}) {
   const fair = (p) => (p > 0.001 && p < 0.999 ? +(1 / p).toFixed(3) : null);
   return {
     moneyline: { home: sim.win.home, away: sim.win.away, fair_home: fair(sim.win.home), fair_away: fair(sim.win.away) },
-    // hándicap: "local −4.5" gana si el margen > 4.5. Solo líneas .5 para no lidiar con empates (push).
-    spread: sp.filter(half).map(line => { const p = pMarginGT(line); return { line, home: +p.toFixed(4), away: +(1 - p).toFixed(4), fair_home: fair(p), fair_away: fair(1 - p) }; }),
+    // HÁNDICAP. `line` es el umbral de MARGEN (el local cubre si margen > line); `home_spread` es la misma
+    // línea en convención de casa de apuestas, que es la inversa: umbral +4.5 ⇒ el local juega con −4.5.
+    // Se devuelven las dos porque mezclarlas es el error clásico y acá se paga en dinero.
+    spread: sp.filter(half).map(line => { const p = pMarginGT(line); return { line, home_spread: -line, away_spread: line, home: +p.toFixed(4), away: +(1 - p).toFixed(4), fair_home: fair(p), fair_away: fair(1 - p) }; }),
     total: tl.filter(half).map(line => { const p = pTotalGT(line); return { line, over: +p.toFixed(4), under: +(1 - p).toFixed(4), fair_over: fair(p), fair_under: fair(1 - p) }; }),
     ot: { yes: sim.ot_prob, fair_yes: fair(sim.ot_prob) },
   };

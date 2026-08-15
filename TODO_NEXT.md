@@ -13,6 +13,23 @@ Hoy: $20 → **$0.67/día**, ~29 días de autonomía sin recargar.
 ⚠️ **Render**: cambiar una env var por API NO basta — hay que disparar un deploy después o el proceso sigue
 con el valor viejo (pasó justo con `GP_LLM_BALANCE_AT`).
 
+## 🚨 BUG DE PRODUCCIÓN ENCONTRADO 15-ago — el escáner de fútbol devolvía CERO en silencio
+`market-scanner/quotes.js` acumulaba los lotes de la query con `rows.push(...r.rows)`. Extender un array de
+decenas de miles de filas como ARGUMENTOS supera el límite de la pila (`Maximum call stack size exceeded`), y
+con el plan de 5M —55.000 cuotas por barrido más las columnas de profundidad— empezó a pasar de verdad. El
+`.catch(() => [])` de `getClubsScan` se lo tragaba: **arbitraje, price-lag y middles vacíos, con la tabla
+llena y sin una sola línea de log.** Arreglado con un bucle en los tres sitios (el patrón estaba también en el
+módulo nuevo de baloncesto, donde aún no dolía por volumen) y el catch ahora loguea.
+Medido tras el arreglo: **1.175 mercados escaneados · 147 arbitrajes (32 ejecutables) · 680 price-lag.**
+Lo que lo destapó: `/api/internal/clubs-scan` ahora reporta cada escalón (eventos totales, sin baloncesto,
+dentro de ventana, mercados cargados, error del loader) en vez de un `available:false` mudo.
+**Regla que deja esto:** ningún catch de un cargador de datos puede ser mudo, y ningún feed vacío es
+"normal" hasta haberlo medido.
+
+⚠️ Efecto lateral esperado de separar deportes: los "40 middles" de fútbol de esta mañana incluían partidos
+de baloncesto (el sweep de hoops escribe `match_total` en el mismo almacén). Ahora esos viven en
+`/api/hoops/opps` y el de fútbol muestra los suyos, que hoy son 0.
+
 ## 🏀 BALONCESTO 15-ago — 4º deporte, ADMIN-ONLY (pestaña abierta, picks apagadas)
 - **Datos**: colector ESPN (`data-providers/basketball/espn.js`) — NBA, WNBA, NCAA M y F, gratis, con
   play-by-play completo (~450 jugadas/partido: coordenadas de tiro, 63 tipos de jugada y SUSTITUCIONES).

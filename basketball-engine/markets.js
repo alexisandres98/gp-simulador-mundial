@@ -174,10 +174,18 @@ function buildSurfaces(mkts, evs, { minBooks = 3, minEv = 2 } = {}) {
       const bestByLine = (side) => { const o = {}; for (const m of list) { const b = bestOf(m.q[side]); if (b && (!o[m.line] || b.o > o[m.line].o)) o[m.line] = { ...b, line: m.line }; } return o; };
       const lo = bestByLine(lowSide), hi = bestByLine(highSide);
       for (const a of Object.values(lo)) for (const b of Object.values(hi)) {
-        // total: Over 210 + Under 214 → gana doble si cae 211-213. hándicap: local -2.5 + visitante +5.5.
-        const gap = kind === 'total' ? b.line - a.line : a.line - (-b.line);
+        if (a.book === b.book) continue;                    // el middle vive ENTRE casas
+        // DÓNDE GANAN LAS DOS PATAS. Hay que ser exacto o se publican pares que no son middles:
+        //  total:    Over L1 gana si total > L1;  Under L2 gana si total < L2  → zona (L1, L2), hueco L2−L1.
+        //  hándicap: `line` está normalizada al HÁNDICAP DEL LOCAL. El local con hándicap Lh cubre si el
+        //            margen supera −Lh; la pata visitante de un mercado cuyo hándicap local es La cubre si
+        //            el margen es menor que −La. Las dos ganan en (−Lh, −La), o sea hueco Lh − La.
+        //            (La versión anterior sumaba Lh + La y publicaba pares donde las dos patas PIERDEN
+        //            juntas — el reverso exacto de un middle.)
+        const gap = kind === 'total' ? b.line - a.line : a.line - b.line;
         if (!(gap >= 2)) continue;
-        if (a.book === b.book) continue;
+        const zLo = kind === 'total' ? a.line : -a.line;
+        const zHi = kind === 'total' ? b.line : -b.line;
         const cost = (1 / a.o + 1 / b.o - 1) * 100;
         if (cost > 6) continue;
         middles.push({
@@ -186,7 +194,7 @@ function buildSurfaces(mkts, evs, { minBooks = 3, minEv = 2 } = {}) {
           low: { line: a.line, odds: r2(a.o), book: a.book, label: kind === 'total' ? 'Over ' + a.line : ev.home + ' ' + fmtSpread(a.line) },
           high: { line: b.line, odds: r2(b.o), book: b.book, label: kind === 'total' ? 'Under ' + b.line : ev.away + ' ' + fmtSpread(-b.line) },
           gap: +gap.toFixed(1), cost_pct: +cost.toFixed(2),
-          zone: kind === 'total' ? `${Math.ceil(a.line)}–${Math.floor(b.line)} puntos` : `${Math.ceil(Math.min(a.line, -b.line))}–${Math.floor(Math.max(a.line, -b.line))} de margen`,
+          zone: kind === 'total' ? `${Math.ceil(zLo)}–${Math.floor(zHi)} puntos` : `margen del local entre ${fmtSpread(Math.ceil(zLo))} y ${fmtSpread(Math.floor(zHi))}`,
         });
       }
     }

@@ -3520,6 +3520,14 @@ async function clubsQuotesSweep({ force = false } = {}) {
 // quedarse completa todo el año y se activa sola cuando arranca cada competición.
 const HOOPS_ODDS_KEYS = ['basketball_nba', 'basketball_wnba', 'basketball_ncaab', 'basketball_wncaab',
   'basketball_euroleague', 'basketball_nbl', 'basketball_nba_preseason', 'basketball_nba_summer_league'];
+// Calendario real de cada liga. Se usa SOLO para explicar una agenda vacía ("no hay partidos porque la
+// temporada arranca en noviembre") en vez de mostrar una lista muda que parece un error del producto.
+const HOOPS_SEASON_HINT = {
+  nba: 'La temporada regular va de octubre a abril; playoffs hasta junio. Pretemporada desde principios de octubre.',
+  wnba: 'La temporada va de mayo a septiembre; playoffs entre septiembre y octubre.',
+  ncaam: 'La temporada va de noviembre a marzo, con el torneo final (March Madness) en marzo y abril.',
+  ncaaw: 'La temporada va de noviembre a marzo, con el torneo final en marzo y abril.',
+};
 let _hoopsQLast = 0, _hoopsQRunning = false, _hoopsQOut = null;
 async function hoopsQuotesSweep({ force = false } = {}) {
   const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || ''; if (!key) return { skipped: 'no_key' };
@@ -6098,7 +6106,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return { skipped: 'sin ratings', published }; } }
   const RT = global._clubsRatings;
   clubsEnsureCups(RT); // 13-ago: eventos de copas (Libertadores/Leagues Cup/…) resuelven liga y entran al pipeline
-  const qevents = db.clubsQuoteEvents || {};
+  const qevents = require('./basketball-engine/markets').nonHoopsEvents(db.clubsQuoteEvents || {});   // el baloncesto tiene su propio pipeline
   if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep', published };
   const { consensus, freshQuotes } = require('./market-scanner/scanner');
   const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events: qevents, now: Date.now() }).catch(() => []);
@@ -8572,6 +8580,94 @@ async function combatFightAskBundle(C, ev, ft, org, lang, isAdmin) {
 
 // herramientas por deporte para el agente del chat
 function askToolsFor(sport, { u, lang, org }) {
+  // ── BALONCESTO (B5): el agente consulta la agenda, el partido, el equipo, el jugador y el tablero
+  // de precios. Las herramientas devuelven SOLO números de los engines y del mercado — el modelo redacta.
+  if (sport === 'hoops') {
+    const ST = require('./basketball-engine/store');
+    const ESPN = require('./data-providers/basketball/espn');
+    const MK = require('./basketball-engine/markets');
+    const { simulate } = require('./basketball-engine/simulate');
+    const LGS = Object.keys(ST.LEAGUES);
+    const lgOf = (x) => (ST.LEAGUES[x] ? x : 'wnba');
+    const findTeam = (C, name) => {
+      const n = String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, '').trim();
+      if (!n) return null;
+      let best = null;
+      for (const [id, t] of Object.entries(C.teams || {})) {
+        const cands = [t.name, t.short, t.location, t.abbr].filter(Boolean).map((x) => String(x).toLowerCase());
+        if (cands.some((c) => c === n || (n.length >= 3 && c.includes(n)))) { best = id; break; }
+      }
+      return best;
+    };
+    const tools = [
+      { name: 'agenda_baloncesto', description: 'Partidos de baloncesto de los próximos días con fecha UTC, día de la semana, estado (próximo/en vivo/final) y la proyección del modelo cuando la hay. Úsala para "hoy", "mañana", "el sábado".', input_schema: { type: 'object', properties: { liga: { type: 'string', enum: LGS }, dias: { type: 'number', description: 'ventana en días (default 3, máx 10)' } } } },
+      { name: 'detalle_partido_baloncesto', description: 'Detalle de UN partido: probabilidad de victoria con intervalo, marcador y total proyectados, posesiones, prórroga, reparto del margen por factor, cuatro factores de los dos equipos y qué decide el partido. Pasa uno o los dos nombres de equipo.', input_schema: { type: 'object', properties: { equipo1: { type: 'string' }, equipo2: { type: 'string' }, liga: { type: 'string', enum: LGS } }, required: ['equipo1'] } },
+      { name: 'perfil_equipo_baloncesto', description: 'Perfil de un equipo: balance, ataque y defensa por 100 posesiones ajustados por rival, ritmo, cuatro factores, perfil de tiro por zona y últimos partidos.', input_schema: { type: 'object', properties: { equipo: { type: 'string' }, liga: { type: 'string', enum: LGS } }, required: ['equipo'] } },
+      { name: 'jugadores_equipo', description: 'Los jugadores de un equipo con minutos, puntos, rebotes, asistencias, uso y eficiencia de tiro de la temporada.', input_schema: { type: 'object', properties: { equipo: { type: 'string' }, liga: { type: 'string', enum: LGS } }, required: ['equipo'] } },
+      { name: 'oportunidades_baloncesto', description: 'Las mejores diferencias de precio entre casas ahora mismo (value por line shopping) y los arbitrajes abiertos, en baloncesto.', input_schema: { type: 'object', properties: { liga: { type: 'string' } } } },
+    ];
+    const runTool = async (name, input) => {
+      const lg = lgOf(input.liga || 'wnba');
+      const C = ST.load(lg);
+      const L = ESPN.LEAGUES[lg] || {};
+      if (name === 'agenda_baloncesto') {
+        const dias = Math.min(10, Math.max(1, +input.dias || 3));
+        const gs = await ESPN.games(lg, { from: new Date(Date.now() - 12 * 3600e3), to: new Date(Date.now() + dias * 864e5) }).catch(() => []);
+        const rows = gs.slice(0, 40).map((g) => {
+          const r = { partido: `${g.away.name} en ${g.home.name}`, dia: askDow(g.date), utc: String(g.date).slice(0, 16) + 'Z', estado: g.status === 'in' ? 'en vivo' : g.completed ? 'final' : 'próximo', marcador: g.completed || g.status === 'in' ? `${g.away.score}-${g.home.score}` : null };
+          if (!g.completed && C && C.fit && C.fit.off[g.home.id] && C.fit.off[g.away.id]) {
+            const s = simulate(C.fit, g.home.id, g.away.id, { n: 6000, seed: 3, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
+            if (s) r.proyeccion = { favorito: s.win.home >= 0.5 ? g.home.name : g.away.name, prob_pct: Math.round(100 * Math.max(s.win.home, s.win.away)), marcador: `${s.home_pts.toFixed(0)}-${s.away_pts.toFixed(0)}`, total: +s.total.toFixed(1) };
+          }
+          return r;
+        });
+        return { liga: ST.LEAGUES[lg].label, n: rows.length, partidos: rows };
+      }
+      if (name === 'detalle_partido_baloncesto') {
+        for (const l2 of [lg, ...LGS.filter((x) => x !== lg)]) {
+          const C2 = ST.load(l2); if (!C2 || !C2.fit) continue;
+          const h = findTeam(C2, input.equipo1), a = input.equipo2 ? findTeam(C2, input.equipo2) : null;
+          if (!h) continue;
+          const gs = await ESPN.games(l2, { from: new Date(Date.now() - 12 * 3600e3), to: new Date(Date.now() + 10 * 864e5) }).catch(() => []);
+          const g = gs.find((x) => (x.home.id === h && (!a || x.away.id === a)) || (x.away.id === h && (!a || x.home.id === a)));
+          if (!g) continue;
+          const gi = ST.gameIntel(C2, { id: g.id, league: l2, date: g.date, neutral: !!g.neutral, venue: g.venue, home: { id: g.home.id, pts: g.home.score }, away: { id: g.away.id, pts: g.away.score }, completed: g.completed }, { sims: 8000 });
+          if (!gi) continue;
+          const obs = await hoopsInjuries(l2, g.id).catch(() => null);
+          return { liga: ST.LEAGUES[l2].label, ...hoopsDossier(gi, obs) };
+        }
+        return { error: 'no encontré ese partido en la agenda cargada' };
+      }
+      if (name === 'perfil_equipo_baloncesto' || name === 'jugadores_equipo') {
+        for (const l2 of [lg, ...LGS.filter((x) => x !== lg)]) {
+          const C2 = ST.load(l2); if (!C2 || !C2.n) continue;
+          const id = findTeam(C2, input.equipo); if (!id) continue;
+          if (name === 'jugadores_equipo') {
+            return { liga: ST.LEAGUES[l2].label, equipo: (C2.teams[id] || {}).name, jugadores: ST.playerSeason(C2, id).slice(0, 15).map((p) => ({ nombre: p.name, posicion: p.pos, minutos: p.min, puntos: p.pts, rebotes: p.reb, asistencias: p.ast, uso_pct: p.usage })) };
+          }
+          const pr = ST.teamProfile(C2, id); if (!pr) continue;
+          return { liga: ST.LEAGUES[l2].label, equipo: (C2.teams[id] || {}).name, balance: pr.record, ataque_por_100: pr.ortg, defensa_por_100: pr.drtg, ritmo_posesiones: pr.poss,
+            ajustado_por_rival: pr.adj, tiro_efectivo_pct: pr.efg, perdidas_pct: pr.tov_pct, rebote_ofensivo_pct: pr.orb_pct,
+            ultimos: (pr.form || []).slice(0, 6).map((f) => ({ fecha: String(f.date).slice(0, 10), rival: f.opp, local: f.home, marcador: `${f.pf}-${f.pa}`, resultado: f.w ? 'V' : 'D' })) };
+        }
+        return { error: 'no identifiqué ese equipo' };
+      }
+      if (name === 'oportunidades_baloncesto') {
+        const dbc = require('./database/client');
+        if (!dbc.isConfigured()) return { n: 0, nota: 'sin base de cuotas' };
+        const evs = MK.hoopsEvents(db.clubsQuoteEvents || {}, { league: MK.LEAGUE_KEYS[input.liga] ? input.liga : 'all' });
+        const ceids = Object.keys(evs);
+        if (!ceids.length) return { n: 0, nota: 'ninguna liga de baloncesto tiene partidos con cuotas en la ventana' };
+        const S2 = MK.buildSurfaces(MK.groupMarkets(await MK.loadQuotes(dbc, ceids)), evs);
+        return {
+          valor: S2.value.slice(0, 8).map((v) => ({ partido: `${v.event.away} en ${v.event.home}`, mercado: v.fam_label, seleccion: v.label, cuota: v.odds, casa: v.book, ventaja_pct: v.ev_pct, casas: v.books })),
+          arbitrajes: S2.arbs.slice(0, 5).map((x) => ({ partido: `${x.event.away} en ${x.event.home}`, mercado: x.fam_label, pata_a: `${x.a.label} ${x.a.odds} en ${x.a.book}`, pata_b: `${x.b.label} ${x.b.odds} en ${x.b.book}`, beneficio_pct: x.profit_pct })),
+        };
+      }
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'BALONCESTO (NBA · WNBA · NCAA masculino y femenino). Las picks de baloncesto están APAGADAS porque el modelo todavía no bate al cierre del mercado: si preguntan por picks, decilo con naturalidad y ofrecé la proyección y las diferencias de precio entre casas. Si preguntan por fútbol o combate, indicá el conmutador de deporte de arriba.' };
+  }
   if (sport !== 'combat') {
     const tools = [
       { name: 'agenda_futbol', description: 'Próximos partidos cargados en la plataforma (todas las ligas), con fecha UTC y día de la semana. Úsala para preguntas de "hoy", "mañana", "el sábado" o la jornada.', input_schema: { type: 'object', properties: { dias: { type: 'number', description: 'ventana en días (default 7, máx 14)' }, liga: { type: 'string', description: 'filtrar por nombre de liga o país (opcional)' } } } },
@@ -8661,6 +8757,164 @@ function askToolsFor(sport, { u, lang, org }) {
     return { error: 'herramienta desconocida' };
   };
   return { tools, runTool, sportLabel: 'COMBATE (UFC · MMA/PFL · Boxeo). Si preguntan por fútbol, indica el conmutador de deporte de arriba.' };
+}
+
+// ═══ B5 · BALONCESTO: CAPA LLM, OBSERVACIÓN Y ASK GP (15-ago) ══════════════════════════════════════
+// Misma doctrina que en los otros deportes: los engines calculan, el LLM narra. Nada de acá produce una
+// probabilidad; todo sale de basketball-engine y de datos observados (ESPN, cuotas).
+
+// ── OBSERVACIÓN: bajas y lesiones ─────────────────────────────────────────────────────────────────
+// ESPN publica el parte de lesiones ESTRUCTURADO en el summary del partido. No hace falta un LLM para
+// leerlo (sería caro y peor): el extractor se reserva para titulares en prosa, si algún día hay feed.
+// Cache 30 min por partido — el parte cambia por horas, no por minutos.
+async function hoopsInjuries(league, gameId) {
+  db.hoopsObs = db.hoopsObs || {};
+  const k = league + ':' + gameId, hit = db.hoopsObs[k];
+  if (hit && Date.now() - hit.at < 30 * 60e3) return hit;
+  const ESPN = require('./data-providers/basketball/espn');
+  const sum = await ESPN.summary(league, gameId).catch(() => null);
+  if (!sum) return hit || null;
+  const SEV = { out: 3, doubtful: 2, questionable: 1, probable: 1, 'day-to-day': 1 };
+  const teams = (sum.injuries || []).map((t) => ({
+    team_id: t.team_id,
+    items: (t.items || []).map((i) => ({
+      id: i.athlete_id, name: i.name, status: i.status, type: i.type, detail: i.detail,
+      severity: SEV[String(i.status || '').toLowerCase()] || 1,
+    })).sort((x, y) => y.severity - x.severity),
+  })).filter((t) => t.items.length);
+  const out = { at: Date.now(), league, game_id: String(gameId), teams, n: teams.reduce((s, t) => s + t.items.length, 0) };
+  db.hoopsObs[k] = out; save();
+  return out;
+}
+
+// ── DOSSIER DEL PARTIDO para el redactor ──────────────────────────────────────────────────────────
+// Números CON NOMBRE DE PRODUCTO, jamás features ni pesos. El redactor no puede filtrar lo que no recibe.
+function hoopsDossier(intel, obs) {
+  if (!intel) return null;
+  const T = intel.teams || {}, hp = T.home || {}, ap = T.away || {};
+  const pj = intel.projection || {};
+  const favHome = (pj.win || {}).home >= 0.5;
+  const nm = (t) => (t && (t.name || t.abbr)) || '';
+  const top = (list) => (list || []).slice(0, 4).map((p) => ({ nombre: p.name, posicion: p.pos, minutos: p.min, puntos: p.pts, rebotes: p.reb, asistencias: p.ast, uso_pct: p.usage, tiro_efectivo_pct: p.efg }));
+  const ZLAB = { rim: 'aro', short_mid: 'media corta', long_mid: 'media larga', corner3: 'triple de esquina', atb3: 'triple frontal' };
+  const zone = (z) => Object.entries(z || {}).map(([k, v]) => ({ zona: ZLAB[k] || k, puntos_por_tiro: v.pps, share_pct: v.rate != null ? +(100 * v.rate).toFixed(1) : null, intentos: v.n }));
+  return {
+    partido: `${nm(intel.game.away)} en ${nm(intel.game.home)}`,
+    liga: intel.game.league, fecha: intel.game.date, cancha_neutral: !!intel.game.neutral,
+    favorito_gp: { nombre: favHome ? nm(intel.game.home) : nm(intel.game.away), probabilidad_pct: +(100 * Math.max((pj.win || {}).home || 0, (pj.win || {}).away || 0)).toFixed(1), confianza: pj.confidence },
+    marcador_proyectado: { local: pj.home_pts, visitante: pj.away_pts, margen: pj.margin, total: pj.total, posesiones: pj.poss, prorroga_pct: +(100 * (pj.ot_prob || 0)).toFixed(1) },
+    reparto_del_margen: (((intel.why || {}).parts) || []).map((x) => ({ factor: x.label, puntos_de_margen: x.pp })),
+    equipos: {
+      local: { nombre: nm(intel.game.home), balance: hp.record, ataque_por_100: hp.ortg, defensa_por_100: hp.drtg, posesiones: hp.poss, tiro_efectivo_pct: hp.efg, tiro_efectivo_concedido_pct: hp.efg_allowed, perdidas_pct: hp.tov_pct, rebote_ofensivo_pct: hp.orb_pct, tiros_libres_por_tiro: hp.ftr, share_triples_pct: hp.tpa_rate, puntos_en_pintura: hp.paint, contraataque: hp.fastbreak, zonas_de_tiro: zone(hp.shot_profile), zonas_que_concede: zone(hp.shot_profile_allowed) },
+      visitante: { nombre: nm(intel.game.away), balance: ap.record, ataque_por_100: ap.ortg, defensa_por_100: ap.drtg, posesiones: ap.poss, tiro_efectivo_pct: ap.efg, tiro_efectivo_concedido_pct: ap.efg_allowed, perdidas_pct: ap.tov_pct, rebote_ofensivo_pct: ap.orb_pct, tiros_libres_por_tiro: ap.ftr, share_triples_pct: ap.tpa_rate, puntos_en_pintura: ap.paint, contraataque: ap.fastbreak, zonas_de_tiro: zone(ap.shot_profile), zonas_que_concede: zone(ap.shot_profile_allowed) },
+    },
+    jugadores: { local: top((intel.players || {}).home), visitante: top((intel.players || {}).away) },
+    ventajas_detectadas: {
+      del_local: ((intel.exploit || {}).home || []).slice(0, 3).map((x) => ({ donde: x.label, puntos_por_tiro: x.pps, concede_el_rival: x.allowed_pps })),
+      del_visitante: ((intel.exploit || {}).away || []).slice(0, 3).map((x) => ({ donde: x.label, puntos_por_tiro: x.pps, concede_el_rival: x.allowed_pps })),
+    },
+    lo_que_decide: (intel.what_matters || []).filter(Boolean),
+    mercado: intel.market || null,
+    bajas: obs && obs.teams ? obs.teams.map((t) => ({ equipo: t.team_id, ausencias: t.items.filter((i) => i.severity >= 2).map((i) => `${i.name} (${i.status})`) })).filter((t) => t.ausencias.length) : null,
+  };
+}
+
+// ── LECTURA GP DEL PARTIDO (1 llamada por partido, persistida) ────────────────────────────────────
+// Persistir es lo que hace el costo FIJO: un partido se redacta una vez y lo leen todos.
+async function hoopsGameRead(league, gameId, { force = false } = {}) {
+  db.hoopsReads = db.hoopsReads || {};
+  const k = league + ':' + gameId;
+  const cached = db.hoopsReads[k];
+  if (cached && !force && cached.es) return cached;
+  if (!llm.enabled() || !llm.budgetOk()) return cached || null;
+  const ST = require('./basketball-engine/store');
+  const C = ST.load(league); if (!C || !C.fit) return cached || null;
+  let g = (C.games || []).find((x) => String(x.id) === String(gameId));
+  if (!g) {
+    // PARTIDO QUE TODAVÍA NO SE JUGÓ: no está en el dataset (que es historia cosechada). Se arma el
+    // objeto mínimo desde el calendario en vivo para que la lectura previa exista ANTES del salto inicial,
+    // que es cuando de verdad sirve.
+    const ESPN2 = require('./data-providers/basketball/espn');
+    const gs = await ESPN2.games(league, { from: new Date(Date.now() - 24 * 3600e3), to: new Date(Date.now() + 10 * 864e5) }).catch(() => []);
+    const live = gs.find((x) => String(x.id) === String(gameId));
+    if (!live) return cached || null;
+    if (!C.fit.off[live.home.id] || !C.fit.off[live.away.id]) return cached || null;
+    g = { id: live.id, league, date: live.date, neutral: !!live.neutral, venue: live.venue,
+      home: { id: live.home.id, pts: live.home.score }, away: { id: live.away.id, pts: live.away.score }, completed: !!live.completed };
+  }
+  const intel = ST.gameIntel(C, g, { sims: 12000 });
+  const obs = await hoopsInjuries(league, gameId).catch(() => null);
+  const dos = hoopsDossier(intel, obs);
+  if (!dos) return cached || null;
+  try {
+    const w = await llm.writeGameRead(dos);
+    if (w && w.es) {
+      const out = { es: w.es, en: w.en, at: new Date().toISOString(), league, game_id: String(gameId) };
+      db.hoopsReads[k] = out; save();
+      return out;
+    }
+  } catch (e) { console.error('[hoops-read]', e.message); }
+  return cached || null;
+}
+
+// ── BRIEF DIARIO DE LA JORNADA ────────────────────────────────────────────────────────────────────
+// El tablero de "qué mirar hoy": los partidos del día con su proyección, dónde el modelo y el mercado
+// más se separan, y las mejores oportunidades de precio. La apertura en prosa la escribe el LLM UNA vez
+// al día; si no hay presupuesto, el tablero se muestra igual sin párrafo (degradación silenciosa).
+async function hoopsBrief(league) {
+  const ST = require('./basketball-engine/store');
+  const ESPN = require('./data-providers/basketball/espn');
+  const MK = require('./basketball-engine/markets');
+  const { simulate } = require('./basketball-engine/simulate');
+  const day = new Date().toISOString().slice(0, 10);
+  const C = ST.load(league);
+  const gs = await ESPN.games(league, { from: new Date(Date.now() - 12 * 3600e3), to: new Date(Date.now() + 36 * 3600e3) }).catch(() => []);
+  const L = ESPN.LEAGUES[league] || {};
+  const games = [];
+  for (const g of gs) {
+    const row = { id: g.id, date: g.date, status: g.status, detail: g.detail,
+      home: { id: g.home.id, abbr: g.home.abbr, name: g.home.name, logo: g.home.logo, score: g.home.score },
+      away: { id: g.away.id, abbr: g.away.abbr, name: g.away.name, logo: g.away.logo, score: g.away.score }, proj: null };
+    if (C && C.fit && C.fit.off[g.home.id] && C.fit.off[g.away.id]) {
+      const s = simulate(C.fit, g.home.id, g.away.id, { n: 8000, seed: 5, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
+      if (s) row.proj = { win: s.win, total: s.total, margin: s.margin, home_pts: s.home_pts, away_pts: s.away_pts, conf: s.conf, spread: -Math.round(s.margin * 2) / 2 };
+    }
+    games.push(row);
+  }
+  games.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  // oportunidades de precio del día (no dependen del modelo)
+  let value = [];
+  try {
+    const dbc = require('./database/client');
+    if (dbc.isConfigured()) {
+      const evs = MK.hoopsEvents(db.clubsQuoteEvents || {}, { league: MK.LEAGUE_KEYS[league] ? league : 'all', futureH: 36 });
+      const ceids = Object.keys(evs);
+      if (ceids.length) {
+        const rows = await MK.loadQuotes(dbc, ceids);
+        value = MK.buildSurfaces(MK.groupMarkets(rows), evs).value.slice(0, 6);
+      }
+    }
+  } catch (e) { console.error('[hoops-brief] mercados:', e.message); }
+  // apertura narrada: 1 llamada/día/liga, persistida
+  db.hoopsBrief = db.hoopsBrief || {};
+  const bk = league + ':' + day;
+  let intro = db.hoopsBrief[bk] || null;
+  if (!intro && llm.enabled() && llm.budgetOk() && games.length) {
+    try {
+      const w = await llm.writeBrief({
+        liga: ST.LEAGUES[league] ? ST.LEAGUES[league].label : league,
+        partidos_de_hoy: games.slice(0, 10).map((g) => ({
+          partido: `${g.away.name} en ${g.home.name}`, hora_utc: String(g.date).slice(11, 16),
+          proyeccion: g.proj ? { favorito: g.proj.win.home >= 0.5 ? g.home.name : g.away.name, prob_pct: Math.round(100 * Math.max(g.proj.win.home, g.proj.win.away)), marcador: `${g.proj.home_pts.toFixed(0)}-${g.proj.away_pts.toFixed(0)}`, total: g.proj.total.toFixed(1), linea_justa: g.proj.spread } : null,
+        })),
+        mejores_precios: value.map((v) => ({ partido: `${v.event.away} en ${v.event.home}`, mercado: v.fam_label, seleccion: v.label, cuota: v.odds, casa: v.book, ventaja_pct: v.ev_pct })),
+      }, 'hoops');
+      if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.hoopsBrief[bk] = intro; save(); }
+    } catch (e) { console.error('[hoops-brief] llm:', e.message); }
+  }
+  return { league, label: ST.LEAGUES[league] ? ST.LEAGUES[league].label : league, day, games, value, intro,
+    model_ready: !!(C && C.fit), counts: { games: games.length, value: value.length },
+    note: 'Picks de baloncesto apagadas: el modelo aún no bate al cierre. La proyección es informativa; las oportunidades de precio salen del mercado, no del modelo.' };
 }
 
 // ── Dossier PROFUNDO de una pick de pelea para el redactor (12-ago, "análisis de élite" de Alexis) ──
@@ -8839,10 +9093,62 @@ async function llmBriefPass() {
   } catch (e) { return { error: e.message }; }
   return { empty: true };
 }
+// ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
+// Escribe la lectura de los partidos de HOY que aún no la tienen, con tope por pasada para que el costo
+// sea predecible. Cada lectura se persiste: se paga una vez y la leen todos.
+async function llmHoopsReadsPass({ cap = 4 } = {}) {
+  if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
+  const ST = require('./basketball-engine/store');
+  const ESPN = require('./data-providers/basketball/espn');
+  let done = 0;
+  db.hoopsReads = db.hoopsReads || {};
+  for (const lg of Object.keys(ST.LEAGUES)) {
+    if (done >= cap) break;
+    const C = ST.load(lg); if (!C || !C.fit) continue;
+    const gs = await ESPN.games(lg, { from: new Date(Date.now() - 6 * 3600e3), to: new Date(Date.now() + 30 * 3600e3) }).catch(() => []);
+    for (const g of gs) {
+      if (done >= cap) break;
+      if (g.completed) continue;
+      if (db.hoopsReads[lg + ':' + g.id]) continue;
+      if (!C.fit.off[g.home.id] || !C.fit.off[g.away.id]) continue;
+      const r = await hoopsGameRead(lg, g.id).catch(() => null);
+      if (r && r.es) done++;
+    }
+  }
+  return { written: done };
+}
+
+// ── VIGÍA DE SALDO ──────────────────────────────────────────────────────────────────────────────
+// El presupuesto se auto-ajusta y nunca corta el servicio, pero el saldo SÍ se gasta: cuando queda
+// menos del 15% avisamos UNA vez por recarga. Cambiar GP_LLM_BALANCE_USD/AT en Render rearma el aviso.
+async function llmBalanceWatch() {
+  if (!llm.enabled()) return { skipped: 'off' };
+  const s = llm.budgetState();
+  if (!s.low || !s.loaded_usd) return { ok: true, remaining: s.remaining_usd };
+  const bal = llm.balance();
+  if (bal.alerted) return { already: true };
+  bal.alerted = true; save();
+  const to = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  const text = `Saldo de la API de Anthropic bajo.\n\n`
+    + `Recargado: $${s.loaded_usd} (${s.loaded_at || 's/f'})\nGastado: $${s.spent_usd}\nRestante: $${s.remaining_usd} (${s.pct_left}%)\n`
+    + `Presupuesto de hoy: $${s.daily_budget_usd} · gastado hoy $${s.today_usd} en ${s.today_calls} llamadas\n\n`
+    + `El LLM NO se detiene: el presupuesto diario es una fracción de lo que queda, así que se va achicando solo.\n`
+    + `Para recargar: sumá crédito en la consola de Anthropic y actualizá GP_LLM_BALANCE_USD y GP_LLM_BALANCE_AT en Render.`;
+  try { if (mailer.isConfigured() && to) await mailer.sendMail({ to, noListUnsub: true, subject: `⚠️ GP: saldo LLM al ${s.pct_left}% ($${s.remaining_usd})`, text }); } catch (e) { console.error('[llm] aviso de saldo:', e.message); }
+  console.warn('[llm] SALDO BAJO:', s.remaining_usd, 'de', s.loaded_usd);
+  return { alerted: true, remaining: s.remaining_usd };
+}
 // pasada del redactor cada 30 min (why nuevos + brief 1×/día); arranque suave a los 3 min
 if (llm.enabled()) {
-  setTimeout(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); llmFightReadsPass().catch(() => { }); }, 3 * 60e3);
-  setInterval(() => { llmAnnotatePickWhys().catch(() => { }); llmBriefPass().catch(() => { }); llmFightReadsPass().catch(() => { }); }, 30 * 60e3);
+  const llmPass = () => {
+    llmAnnotatePickWhys().catch(() => { });
+    llmBriefPass().catch(() => { });
+    llmFightReadsPass().catch(() => { });
+    llmHoopsReadsPass().catch(() => { });
+    llmBalanceWatch().catch(() => { });
+  };
+  setTimeout(llmPass, 3 * 60e3);
+  setInterval(llmPass, 30 * 60e3);
 }
 
 // ===== EJECUTOR EN LA SOMBRA (12-ago, orden de Alexis) ======================================================
@@ -11277,7 +11583,9 @@ function clubsPublicOn() { return clubsShadowFlagOn() && /^(1|true|yes|on)$/i.te
 function clubsAccessOk(sessEmail) { return !!sessEmail && (isAdmin(sessEmail) || clubsPublicOn()); }
 async function getClubsScan() {
   if (!clubsShadowFlagOn()) return null;
-  const events = db.clubsQuoteEvents || {};
+  // SIN baloncesto: su ganador es de dos salidas y el loader de clubes de-viga a tres — mezclarlos
+  // inflaría la probabilidad justa y ensuciaría el arbitraje de fútbol con partidos de NBA.
+  const events = require('./basketball-engine/markets').nonHoopsEvents(db.clubsQuoteEvents || {});
   if (!Object.keys(events).length) return null;
   const ttl = parseInt(process.env.MARKET_SCANNER_TTL_MS, 10) || 45000;
   if (Date.now() - _clubsScanCache.at < ttl) return _clubsScanCache.data; // cachea también el "sin mercados" (null)
@@ -12381,9 +12689,13 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req).catch(() => ({}));
       const q = String(b.q || '').slice(0, 400).trim();
       const lang = b.lang === 'en' ? 'en' : 'es';
-      const sport = b.sport === 'combat' ? 'combat' : 'futbol';
+      const sport = b.sport === 'combat' ? 'combat' : b.sport === 'hoops' ? 'hoops' : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
-      if (sport === 'combat') {
+      if (sport === 'hoops') {
+        // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
+        const hoopsPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_HOOPS_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || hoopsPub)) return json(res, 404, { error: 'No encontrado' });
+      } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
         // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
         if (!(u.isAdmin || String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true')) return json(res, 404, { error: 'No encontrado' });
@@ -12401,7 +12713,7 @@ const server = http.createServer(async (req, res) => {
       // la agenda con la fecha de hoy. Si el LLM está apagado/sin presupuesto/falla → camino viejo.
       const hist = Array.isArray(b.hist) ? b.hist.slice(-6) : [];
       let answer = null, link = null, usedLlm = false, subject = null;
-      if (llm.enabled() && llm.budgetOk()) {
+      if (llm.enabled() && llm.budgetOk('chat')) {   // 'chat' = tiene la reserva intocable del día
         try {
           const kit = askToolsFor(sport, { u, lang, org: org2 });
           const r = await llm.askAgent({ q, lang, hist, tools: kit.tools, runTool: kit.runTool, sportLabel: kit.sportLabel });
@@ -12410,7 +12722,14 @@ const server = http.createServer(async (req, res) => {
       }
       if (!answer) {
         // respaldo determinista (el de siempre): reglas por intención, sin LLM
-        if (sport === 'combat') {
+        if (sport === 'hoops') {
+          // Baloncesto no tiene camino de plantillas: el agente ES la superficie. Sin LLM disponible se
+          // dice, no se inventa — y se apunta a los paneles, que siguen funcionando sin presupuesto.
+          answer = lang === 'en'
+            ? 'The assistant is unavailable right now (daily budget spent). The basketball panels keep working: check Games for the projection and Opportunities for price differences across books.'
+            : 'El asistente no está disponible ahora mismo (presupuesto diario agotado). Los paneles de baloncesto siguen funcionando: mirá Partidos para la proyección y Oportunidades para las diferencias de precio entre casas.';
+          link = 'bbgames';
+        } else if (sport === 'combat') {
           const C2 = combatLoad(org2);
           await combatRefreshUpcoming(C2);
           const ca = await combatAsk(C2, q, org2, !!u.isAdmin);
@@ -13381,7 +13700,161 @@ const server = http.createServer(async (req, res) => {
       if (!uH || !(uH.isAdmin || hoopsPublic)) return json(res, 404, { error: 'No encontrado' });
       const ST = require('./basketball-engine/store');
       const lg = String(url.searchParams.get('league') || 'wnba');
+
+      // ── RUTAS DE MERCADO: NO dependen del dataset ────────────────────────────────────────────
+      // Arbitrar no necesita modelo, y la agenda tampoco. Van antes de la validación de liga para que
+      // funcionen con 'all' y con ligas que todavía no tienen temporada cosechada (Euroliga, NBL).
+      if (p === '/api/hoops/opps') {
+        const MK = require('./basketball-engine/markets');
+        const lgO = (lg === 'all' || MK.LEAGUE_KEYS[lg]) ? lg : 'all';
+        const dbc = require('./database/client');
+        const evs = MK.hoopsEvents(db.clubsQuoteEvents || {}, { league: lgO });
+        const ceids = Object.keys(evs);
+        const base = {
+          league: lgO, leagues: ['all', ...Object.keys(MK.LEAGUE_KEYS)], events: ceids.length,
+          picks: [], picks_enabled: false,
+          picks_note: 'Picks apagadas: el modelo aún no bate al cierre del mercado (skill −0.012 en el backtest). Value, arbitraje, caídas y middles NO dependen del modelo — salen de precios reales entre casas.',
+          refreshed_at: new Date().toISOString(),
+        };
+        if (!dbc.isConfigured()) return json(res, 200, { ...base, value: [], arbs: [], middles: [], dropping: [], note: 'sin base de cuotas' });
+        if (!ceids.length) return json(res, 200, { ...base, value: [], arbs: [], middles: [], dropping: [], note: 'sin partidos con cuotas en la ventana (temporada fuera de calendario)' });
+        try {
+          const rows = await MK.loadQuotes(dbc, ceids);
+          const mkts = MK.groupMarkets(rows);
+          const S = MK.buildSurfaces(mkts, evs);
+          // GP Take: el número del modelo al lado del precio, solo donde hay dataset que resuelva los nombres.
+          const { simulate, markets } = require('./basketball-engine/simulate');
+          const cache = new Map();
+          for (const lgm of (lgO === 'all' ? Object.keys(ST.LEAGUES) : [lgO])) {
+            const Cm = ST.LEAGUES[lgm] ? ST.load(lgm) : null;
+            if (Cm && Cm.fit) MK.attachModel(S.value, Cm, { simulate, markets, cache });
+          }
+          const drop = await MK.dropping(dbc, evs).catch(() => []);
+          return json(res, 200, {
+            ...base,
+            value: S.value.slice(0, 40), arbs: S.arbs.slice(0, 40), middles: S.middles.slice(0, 40), dropping: drop,
+            counts: { markets: mkts.length, quotes: rows.length, value: S.value.length, arbs: S.arbs.length, middles: S.middles.length, dropping: drop.length },
+          });
+        } catch (e) {
+          console.error('[hoops-opps]', e.message);
+          return json(res, 200, { ...base, value: [], arbs: [], middles: [], dropping: [], error: 'temporal' });
+        }
+      }
+
       if (!ST.LEAGUES[lg]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(ST.LEAGUES) });
+
+      // ── AGENDA REAL ──────────────────────────────────────────────────────────────────────────
+      // Misma estructura que fútbol: EN VIVO, PRÓXIMOS y FINALIZADOS, leídos del calendario de ESPN
+      // (no del dataset: el dataset es historia cosechada, la agenda es lo que pasa hoy). Cada liga
+      // tiene su propio calendario real y su propia temporada — fuera de ella la respuesta lo dice en
+      // vez de mentir con una lista vacía. Los próximos llevan la proyección del modelo cuando los
+      // equipos resuelven contra el dataset, y el precio de mercado cuando hay cuotas.
+      if (p === '/api/hoops/schedule') {
+        const cacheKey = 'hoops_sched_' + lg;
+        global._hoopsSched = global._hoopsSched || {};
+        const memo = global._hoopsSched[cacheKey];
+        const ttl = 60e3;
+        if (memo && Date.now() - memo.at < ttl && !url.searchParams.get('force')) return json(res, 200, memo.data);
+        const ESPN = require('./data-providers/basketball/espn');
+        const dayMs = 864e5, now = Date.now();
+        const back = Math.max(1, Math.min(14, Number(url.searchParams.get('back')) || 4));
+        const fwd = Math.max(1, Math.min(21, Number(url.searchParams.get('fwd')) || 10));
+        const gs = await ESPN.games(lg, { from: new Date(now - back * dayMs), to: new Date(now + fwd * dayMs) }).catch(() => []);
+        const Csc = ST.load(lg);
+        const { simulate, markets } = require('./basketball-engine/simulate');
+        const simCache = new Map();
+        const proj = (g) => {
+          if (!Csc || !Csc.fit) return null;
+          const h = g.home.id, a = g.away.id;
+          if (!Csc.fit.off[h] || !Csc.fit.off[a]) return null;
+          const ck = h + ':' + a + ':' + (g.neutral ? 'n' : 'h');
+          if (!simCache.has(ck)) {
+            const L = ESPN.LEAGUES[lg] || {};
+            const s = simulate(Csc.fit, h, a, { n: 12000, seed: 11, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
+            // `spread` es la línea JUSTA del local: el margen proyectado redondeado al medio punto, en
+            // convención de casa (margen +6 ⇒ el local juega -6). Es la referencia contra la que se lee
+            // el hándicap que cuelga el mercado.
+            simCache.set(ck, s ? { win: s.win, win_ci: s.win_ci, total: s.total, margin: s.margin, home_pts: s.home_pts, away_pts: s.away_pts, conf: s.conf, ot_prob: s.ot_prob, spread: -Math.round(s.margin * 2) / 2 } : null);
+          }
+          return simCache.get(ck);
+        };
+        // cuotas de mercado del partido, si el sweep las tiene (match por nombres normalizados)
+        const MK2 = require('./basketball-engine/markets');
+        const evsSc = MK2.hoopsEvents(db.clubsQuoteEvents || {}, { league: MK2.LEAGUE_KEYS[lg] ? lg : 'all', futureH: (fwd + 1) * 24, pastH: back * 24 });
+        const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+        const evIdx = {};
+        for (const [ceid, m] of Object.entries(evsSc)) evIdx[nrm(m.home) + '|' + nrm(m.away)] = { ceid, ...m };
+        const shape = (g) => {
+          const side = (x) => ({ id: x.id, abbr: x.abbr, name: x.name, short: x.short, logo: x.logo, color: x.color, score: x.score, record: x.record, line: x.line });
+          const mk = evIdx[nrm(g.home.name) + '|' + nrm(g.away.name)] || null;
+          return {
+            id: g.id, date: g.date, status: g.status, detail: g.detail, period: g.period, clock: g.clock,
+            neutral: g.neutral, venue: g.venue, completed: g.completed,
+            home: side(g.home), away: side(g.away),
+            in_dataset: !!(Csc && Csc.games && Csc.games.some(x => String(x.id) === String(g.id))),
+            proj: g.completed ? null : proj(g),
+            market_ceid: mk ? mk.ceid : null,
+          };
+        };
+        const live = gs.filter(g => g.status === 'in').map(shape);
+        const upcoming = gs.filter(g => g.status === 'pre').sort((a, b) => String(a.date).localeCompare(String(b.date))).map(shape);
+        const finished = gs.filter(g => g.completed).sort((a, b) => String(b.date).localeCompare(String(a.date))).map(shape);
+        // Fuera de temporada la ventana viene vacía: en vez de una lista muda, se muestran los últimos
+        // partidos del dataset y se dice CUÁNDO vuelve a haber baloncesto de esta liga.
+        let offseason = null;
+        if (!live.length && !upcoming.length && !finished.length) {
+          const lastDs = Csc && Csc.games ? Csc.games.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] : null;
+          offseason = { note: 'Sin partidos en la ventana: la temporada de ' + ST.LEAGUES[lg].label + ' está fuera de calendario.', last_game: lastDs ? lastDs.date : null, season_hint: HOOPS_SEASON_HINT[lg] || null };
+        }
+        const data = {
+          league: lg, label: ST.LEAGUES[lg].label, leagues: Object.keys(ST.LEAGUES),
+          window: { from: new Date(now - back * dayMs).toISOString().slice(0, 10), to: new Date(now + fwd * dayMs).toISOString().slice(0, 10) },
+          live, upcoming: upcoming.slice(0, 60), finished: finished.slice(0, 60),
+          counts: { live: live.length, upcoming: upcoming.length, finished: finished.length },
+          model_ready: !!(Csc && Csc.fit), offseason, refreshed_at: new Date().toISOString(),
+        };
+        global._hoopsSched[cacheKey] = { at: Date.now(), data };
+        return json(res, 200, data);
+      }
+
+      // ── BUSCADOR DE BALONCESTO ────────────────────────────────────────────────────────────────
+      // El buscador global es POR DEPORTE (misma decisión que en combate): estando en baloncesto busca
+      // equipos, jugadores y partidos de baloncesto, en TODAS las ligas con dataset, y nada más.
+      if (p === '/api/hoops/search') {
+        const q = String(url.searchParams.get('q') || '').trim();
+        if (q.length < 2) return json(res, 200, { q, teams: [], players: [], games: [] });
+        const nq = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const teams = [], players = [], games = [];
+        for (const l2 of Object.keys(ST.LEAGUES)) {
+          const C2 = ST.load(l2); if (!C2 || !C2.n) continue;
+          const lab = ST.LEAGUES[l2].label;
+          for (const [id, tm] of Object.entries(C2.teams || {})) {
+            const hay = [tm.name, tm.short, tm.location, tm.abbr].filter(Boolean).join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (hay.indexOf(nq) >= 0) teams.push({ league: l2, league_label: lab, id, name: tm.name, abbr: tm.abbr, logo: tm.logo, net: C2.fit ? +((C2.fit.off[id] || 0) - (C2.fit.def[id] || 0)).toFixed(2) : null });
+          }
+          for (const [id, pl] of Object.entries(C2.players || {})) {
+            const hay = String(pl.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (hay.indexOf(nq) >= 0) players.push({ league: l2, league_label: lab, id, name: pl.name, pos: pl.pos || null, headshot: pl.headshot || null, team: (C2.teams[pl.team_id] || {}).abbr || null, team_id: pl.team_id });
+          }
+          const tIds = new Set(teams.filter((x) => x.league === l2).map((x) => x.id));
+          if (tIds.size) {
+            for (const g of (C2.games || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))) {
+              if (!tIds.has(g.home.id) && !tIds.has(g.away.id)) continue;
+              games.push({ league: l2, league_label: lab, id: g.id, date: g.date,
+                home: { abbr: (C2.teams[g.home.id] || {}).abbr, pts: g.home.pts }, away: { abbr: (C2.teams[g.away.id] || {}).abbr, pts: g.away.pts } });
+              if (games.length >= 8) break;
+            }
+          }
+        }
+        players.sort((a, b) => String(a.name).length - String(b.name).length);
+        return json(res, 200, { q, teams: teams.slice(0, 8), players: players.slice(0, 8), games: games.slice(0, 8) });
+      }
+
+      // ── B5: BRIEF DE LA JORNADA ───────────────────────────────────────────────────────────────
+      // Funciona con o sin dataset: sin modelo muestra la jornada y los precios; con modelo, además,
+      // la proyección de cada partido y la apertura narrada.
+      if (p === '/api/hoops/brief') return json(res, 200, await hoopsBrief(lg).catch((e) => ({ league: lg, error: e.message, games: [], value: [] })));
+
       const C = ST.load(lg);
       if (!C || !C.n) return json(res, 200, { league: lg, empty: true, note: 'sin dataset cosechado para esta liga' });
 
@@ -13435,6 +13908,110 @@ const server = http.createServer(async (req, res) => {
           .map(g => { const x = (g.players || []).find(y => y.id === pid); const opp = g.home.id === tid ? g.away : g.home;
             return { id: g.id, date: g.date, opp: opp.abbr, home: g.home.id === tid, min: x.min, pts: x.pts, reb: x.reb, ast: x.ast, fga: x.fga, tpm: x.tpm, pm: x.pm }; });
         return json(res, 200, { ...row, team: C.teams[tid] || null, meta, log, league: lg });
+      }
+      // ── B5: LECTURA GP DEL PARTIDO (LLM) + parte de bajas ────────────────────────────────────
+      // GET devuelve la lectura guardada (gratis); POST la genera si falta. Persistida = costo fijo.
+      if (p === '/api/hoops/read') {
+        const gid = String(url.searchParams.get('id') || '');
+        if (!gid) return json(res, 400, { error: 'falta id' });
+        const force = req.method === 'POST' && url.searchParams.get('force') === '1';
+        const read = (req.method === 'POST')
+          ? await hoopsGameRead(lg, gid, { force }).catch((e) => ({ _err: e.message }))
+          : ((db.hoopsReads || {})[lg + ':' + gid] || null);
+        const obs = await hoopsInjuries(lg, gid).catch(() => null);
+        return json(res, 200, {
+          league: lg, game_id: gid, read: read && read.es ? read : null,
+          injuries: obs && obs.teams ? obs.teams : [],
+          llm: { enabled: llm.enabled(), budget_ok: llm.budgetOk(), budget: llm.budgetState() },
+        });
+      }
+      // ── B5: RENDIMIENTO — validación FUERA DE MUESTRA ────────────────────────────────────────
+      // Con las picks apagadas, "rendimiento" no puede ser unidades ganadas: sería inventar un track.
+      // Lo que sí se puede medir es lo único que decide si se encienden: si el modelo le gana al CIERRE.
+      //
+      // Y hay que medirlo BIEN. Evaluar con el rating ajustado sobre los MISMOS partidos que se predicen
+      // es in-sample: el modelo ya vio el resultado y sale ganándole al mercado por construcción (probado
+      // acá mismo: in-sample daba skill +0.007 cuando el backtest honesto da negativo). Así que se hace
+      // VENTANA EXPANDIDA: se reajusta el rating con los partidos ANTERIORES a cada bloque y se predice el
+      // bloque siguiente, que el modelo nunca vio. Es más caro (3 ajustes) y por eso se cachea 1 hora.
+      if (p === '/api/hoops/perf') {
+        global._hoopsPerf = global._hoopsPerf || {};
+        const memoP = global._hoopsPerf[lg];
+        if (memoP && Date.now() - memoP.at < 60 * 60e3 && !url.searchParams.get('force')) return json(res, 200, memoP.data);
+        const { simulate } = require('./basketball-engine/simulate');
+        const R = require('./basketball-engine/ratings');
+        const imp = (x) => (x < 0 ? -x / (-x + 100) : 100 / (x + 100));
+        const all = (C.games || []).filter(g => g.home.pts != null && g.away.pts != null)
+          .slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        const validTeams = Object.keys(C.teams || {});
+        const rows = [];
+        const FOLDS = 3;
+        const first = Math.floor(all.length * 0.4);                 // el primer 40% solo entrena
+        for (let f = 0; f < FOLDS && all.length > first + 10; f++) {
+          const cut = first + Math.floor((all.length - first) * f / FOLDS);
+          const nextCut = first + Math.floor((all.length - first) * (f + 1) / FOLDS);
+          const train = all.slice(0, cut), test = all.slice(cut, nextCut);
+          if (train.length < 30 || !test.length) continue;
+          let fit = null;
+          try { fit = R.fitRatings(train, { validTeams: validTeams.length ? validTeams : null }); } catch { continue; }
+          if (!fit) continue;
+          for (const g of test) {
+            if (!fit.off[g.home.id] || !fit.off[g.away.id]) continue;   // equipo sin historial en el tramo
+            const sim = simulate(fit, g.home.id, g.away.id, { n: 4000, seed: 21, neutral: !!g.neutral });
+            if (!sim) continue;
+            const o = (g.odds || [])[0];
+            let mkt = null;
+            if (o && o.hml != null && o.aml != null) { const ih = imp(o.hml), ia = imp(o.aml); mkt = ih / (ih + ia); }
+            rows.push({ fold: f + 1, p: sim.win.home, won: g.home.pts > g.away.pts ? 1 : 0, mkt,
+              margin: g.home.pts - g.away.pts, proj: sim.margin, total: g.home.pts + g.away.pts, proj_total: sim.total });
+          }
+        }
+        const n = rows.length;
+        const brier = n ? rows.reduce((a, r) => a + (r.p - r.won) ** 2, 0) / n : null;
+        const acc = n ? rows.filter((r) => (r.p >= 0.5) === !!r.won).length / n : null;
+        const withMkt = rows.filter((r) => r.mkt != null);
+        const brierMkt = withMkt.length ? withMkt.reduce((a, r) => a + (r.mkt - r.won) ** 2, 0) / withMkt.length : null;
+        const brierOurs = withMkt.length ? withMkt.reduce((a, r) => a + (r.p - r.won) ** 2, 0) / withMkt.length : null;
+        const skill = brierMkt != null && brierOurs != null ? +(brierMkt - brierOurs).toFixed(5) : null;
+        // Error estándar del skill por partido: sin esto, un +0.004 sobre 90 partidos parece una señal
+        // cuando es ruido. Se publica el intervalo para que la decisión no se tome sobre un espejismo.
+        let skillSe = null;
+        if (withMkt.length > 5) {
+          const d = withMkt.map((r) => ((r.mkt - r.won) ** 2) - ((r.p - r.won) ** 2));
+          const mu = d.reduce((a, x) => a + x, 0) / d.length;
+          const va = d.reduce((a, x) => a + (x - mu) ** 2, 0) / (d.length - 1);
+          skillSe = +Math.sqrt(va / d.length).toFixed(5);
+        }
+        const buckets = [];
+        for (let lo = 0; lo < 100; lo += 10) {
+          const sel = rows.filter((r) => r.p * 100 >= lo && r.p * 100 < lo + 10);
+          if (sel.length < 5) continue;
+          buckets.push({ range: `${lo}-${lo + 10}%`, n: sel.length,
+            predicted: +(100 * sel.reduce((a, r) => a + r.p, 0) / sel.length).toFixed(1),
+            actual: +(100 * sel.reduce((a, r) => a + r.won, 0) / sel.length).toFixed(1) });
+        }
+        const mae = (fn) => (n ? +(rows.reduce((a, r) => a + Math.abs(fn(r)), 0) / n).toFixed(2) : null);
+        const sig = skill != null && skillSe ? skill / skillSe : null;
+        const dataP = {
+          league: lg, label: ST.LEAGUES[lg].label,
+          method: 'ventana expandida: el rating se reajusta con los partidos anteriores a cada bloque y predice el bloque siguiente. Ningún partido evaluado entró en su propio ajuste.',
+          n, folds: FOLDS, dataset_games: all.length,
+          model: { games: C.fit.games, teams: C.fit.teams, hca: C.fit.hca, at: C.fit.at },
+          brier: brier != null ? +brier.toFixed(5) : null, accuracy_pct: acc != null ? +(100 * acc).toFixed(1) : null,
+          vs_close: { n: withMkt.length, brier_market: brierMkt != null ? +brierMkt.toFixed(5) : null,
+            brier_gp: brierOurs != null ? +brierOurs.toFixed(5) : null, skill, skill_se: skillSe,
+            t: sig != null ? +sig.toFixed(2) : null,
+            significant: sig != null ? Math.abs(sig) >= 2 : null },
+          margin_mae: mae((r) => r.margin - r.proj), total_mae: mae((r) => r.total - r.proj_total),
+          calibration: buckets,
+          picks_enabled: false,
+          verdict: skill == null ? 'Sin cierre de mercado en la muestra: no se puede medir la vara que importa.'
+            : (skill > 0 && sig != null && Math.abs(sig) >= 2) ? 'El modelo bate al cierre y la ventaja es estadísticamente distinguible del ruido. Candidato a encender picks tras verificación en la sombra.'
+              : skill > 0 ? 'El modelo bate al cierre en esta muestra, pero la ventaja NO se distingue del ruido (t < 2). No alcanza para encender picks.'
+                : 'El modelo NO bate al cierre. Por eso las picks de baloncesto están apagadas: publicarlas sería vender lo que ya sabemos que pierde.',
+        };
+        global._hoopsPerf[lg] = { at: Date.now(), data: dataP };
+        return json(res, 200, dataP);
       }
       if (p === '/api/hoops/refresh' && req.method === 'POST') {
         const xk = process.env.GP_EXPORT_KEY || '';
@@ -13688,7 +14265,8 @@ const server = http.createServer(async (req, res) => {
       }
       return json(res, 200, {
         enabled: llm.enabled(), budget_ok: llm.budgetOk(), usage: llm.usage(),
-        daily_budget_usd: +(process.env.GP_LLM_DAILY_USD || 1.5),
+        budget: llm.budgetState(),            // saldo, presupuesto derivado, reserva de chat y días de autonomía
+        daily_budget_usd: llm.dailyBudget(),
         ask_free_until: process.env.GP_ASK_FREE_UNTIL || '2026-08-11T00:00:00Z',
         models: { chat: process.env.GP_LLM_CHAT_MODEL || 'claude-sonnet-5', writer: process.env.GP_LLM_WRITER_MODEL || 'claude-sonnet-5', extract: process.env.GP_LLM_EXTRACT_MODEL || 'claude-haiku-4-5' },
         brief_day: (db.llmBrief || {}).day || null,
@@ -16651,7 +17229,7 @@ const server = http.createServer(async (req, res) => {
         const rowsD = [];
         for (const r of flagged) {
           const ev = (db.clubsQuoteEvents || {})[r.ceid];
-          if (!ev) continue;
+          if (!ev || ev.sport === 'basketball') continue;   // el baloncesto vive en /api/hoops/opps
           if (!live && ev.kickoff && Date.parse(ev.kickoff) < Date.now()) continue; // prepartido: el partido no arrancó
           const stale = (curBy[keyOf(r)] || []).filter(x => !isSharpBk(x.book) && x.o >= r.sharp_before * 0.985)
             .sort((a, b) => b.o - a.o).slice(0, 5).map(x => ({ book: x.book, o: +x.o.toFixed(2) }));
@@ -16701,7 +17279,8 @@ const server = http.createServer(async (req, res) => {
         for (const [k, m] of Object.entries(byMkt)) {
           const ceid = k.split('|')[0], fam = k.split('|')[1];
           const ev = (db.clubsQuoteEvents || {})[ceid];
-          if (!ev || (ev.kickoff && Date.parse(ev.kickoff) < Date.now())) continue;
+          if (!ev || ev.sport === 'basketball') continue;   // el baloncesto vive en /api/hoops/opps
+          if (ev.kickoff && Date.parse(ev.kickoff) < Date.now()) continue;
           // mejor cuota por línea y lado
           const bestAt = (arr) => { const by = {}; for (const r of arr) if (!by[r.line] || r.o > by[r.line].o) by[r.line] = r; return by; };
           const ov = bestAt(m.overs), un = bestAt(m.unders);

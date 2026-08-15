@@ -7,11 +7,22 @@
 // carrera"), nunca pesos, fórmulas ni nombres de features. El modelo no puede filtrar lo que
 // nunca recibe.
 //
-// CONTROLES DE COSTO (crédito inicial: $10):
-//  - Presupuesto DIARIO en USD (GP_LLM_DAILY_USD, default 1.5): al agotarse, TODAS las rutas
-//    LLM degradan en silencio al comportamiento por plantillas de siempre. Nada se rompe.
-//  - Medidor persistente en db.llmUsage (día, llamadas, tokens, USD, por-uso) — visible en
-//    /api/internal/llm.
+// CONTROLES DE COSTO — PRESUPUESTO QUE NO SE AGOTA (15-ago, saldo recargado a $20):
+//  - El gasto diario NO es una constante: se deriva del SALDO RESTANTE dividido por un horizonte
+//    (GP_LLM_HORIZON_DAYS, default 30). Gastar cada día 1/30 de lo que queda es una caída
+//    geométrica: el saldo tiende a cero pero nunca lo toca, así que el LLM NUNCA se apaga solo.
+//    Con $20 y horizonte 30 arranca en ~$0.67/día y va bajando si no se recarga.
+//  - RESERVA PARA EL CHAT: los jobs de fondo (redactor, extractor, brief) cortan antes que el chat.
+//    Un usuario preguntándole a GP siempre encuentra presupuesto aunque los jobs se lo hayan comido.
+//    GP_LLM_CHAT_RESERVE (default 0.35) = fracción del día intocable para el chat.
+//  - Suelo y techo: GP_LLM_DAILY_MIN_USD (0.10) y GP_LLM_DAILY_MAX_USD (3). GP_LLM_DAILY_USD, si
+//    está puesta, actúa como TECHO adicional (compatibilidad con la configuración vieja).
+//  - Contabilidad del saldo en db.llmBalance (recarga, gastado, restante) — sobrevive reinicios y
+//    se reinicia sola cuando cambia GP_LLM_BALANCE_USD/AT (o sea: cuando Alexis recarga).
+//  - Medidor diario persistente en db.llmUsage (día, llamadas, tokens, USD, por-uso).
+//    Todo visible en /api/internal/llm.
+//  - Al agotarse el presupuesto del día, TODAS las rutas LLM degradan en silencio al comportamiento
+//    por plantillas de siempre. Nada se rompe.
 //  - Modelos por uso (env-overridable): chat=Sonnet 5, redactor=Sonnet 5, extractor=Haiku 4.5.
 //  - Prompt caching en el system prompt del chat (lecturas al ~10% del precio).
 //  - Kill switch total: GP_LLM_ENABLED=false.
@@ -31,7 +42,50 @@ const MODELS = {
 let _db = null, _save = null;
 function init(db, save) { _db = db; _save = save; }
 function enabled() { return !!process.env.ANTHROPIC_API_KEY && String(process.env.GP_LLM_ENABLED || 'true') !== 'false'; }
-function dailyBudget() { return +(process.env.GP_LLM_DAILY_USD || 1.5); }
+
+// ── SALDO ────────────────────────────────────────────────────────────────────────────────────────
+// GP_LLM_BALANCE_USD = cuánto se recargó en la consola de Anthropic. GP_LLM_BALANCE_AT = etiqueta de
+// esa recarga (una fecha sirve). Cambiar cualquiera de las dos = recarga nueva → el contador de
+// gastado vuelve a cero. Sin GP_LLM_BALANCE_USD el saldo es "desconocido" (Infinity) y todo se
+// comporta como antes: manda GP_LLM_DAILY_USD.
+function balance() {
+  const at = String(process.env.GP_LLM_BALANCE_AT || '');
+  const loaded = +(process.env.GP_LLM_BALANCE_USD || 0);
+  let b = _db.llmBalance;
+  if (!b || b.at !== at || b.loaded_usd !== loaded) {
+    b = _db.llmBalance = { at, loaded_usd: loaded, spent_usd: 0, since: new Date().toISOString(), alerted: false };
+  }
+  return b;
+}
+function remainingUsd() {
+  const b = balance();
+  if (!(b.loaded_usd > 0)) return Infinity;                       // saldo no declarado
+  return Math.max(0, +(b.loaded_usd - b.spent_usd).toFixed(5));
+}
+// Presupuesto del día: 1/horizonte de lo que queda, con suelo, techo y el techo heredado de la env.
+function dailyBudget() {
+  const envCap = process.env.GP_LLM_DAILY_USD ? +process.env.GP_LLM_DAILY_USD : null;
+  const rem = remainingUsd();
+  if (!isFinite(rem)) return envCap != null ? envCap : 1.5;
+  const horizon = Math.max(1, +(process.env.GP_LLM_HORIZON_DAYS || 30));
+  const hi = +(process.env.GP_LLM_DAILY_MAX_USD || 3);
+  // El SUELO también es relativo: nunca más de 1/5 de lo que queda. Sin esto, un suelo fijo de $0.10
+  // vaciaría la cuenta linealmente al final; con esto el gasto sigue siendo una fracción del saldo y
+  // la caída es geométrica — el LLM nunca se apaga por saldo, solo pide recarga (flag `low`).
+  const lo = Math.min(Math.max(0, +(process.env.GP_LLM_DAILY_MIN_USD || 0.1)), rem / 5);
+  let d = Math.max(lo, rem / horizon);
+  d = Math.min(hi, d, rem);                                        // jamás por encima de lo que queda
+  if (envCap != null) d = Math.min(d, envCap);
+  return +d.toFixed(5);
+}
+// Techo por PRIORIDAD. El chat (usuario esperando una respuesta) llega al presupuesto completo; los
+// jobs de fondo se frenan antes, dejando la reserva intacta.
+function tierCap(tier) {
+  const d = dailyBudget();
+  if (tier === 'chat') return d;
+  const r = Math.min(0.9, Math.max(0, +(process.env.GP_LLM_CHAT_RESERVE || 0.35)));
+  return +(d * (1 - r)).toFixed(5);
+}
 function usage() {
   const day = new Date().toISOString().slice(0, 10);
   if (!_db.llmUsage || _db.llmUsage.day !== day) {
@@ -40,14 +94,40 @@ function usage() {
   }
   return _db.llmUsage;
 }
-function budgetOk() { return usage().usd < dailyBudget(); }
+// budgetOk() sin argumento = tier de fondo (así lo llaman todos los jobs existentes, y es el
+// comportamiento conservador correcto). budgetOk('chat') para lo interactivo.
+function budgetOk(tier) { return usage().usd < tierCap(tier === 'chat' ? 'chat' : 'bg'); }
+// Foto completa para el panel admin y /api/internal/llm.
+function budgetState() {
+  const u = usage(), b = balance(), rem = remainingUsd();
+  const daily = dailyBudget();
+  const days = isFinite(rem) && daily > 0 ? Math.floor(rem / daily) : null;
+  return {
+    enabled: enabled(),
+    loaded_usd: b.loaded_usd || 0, loaded_at: b.at || null, since: b.since || null,
+    spent_usd: +(b.spent_usd || 0).toFixed(4),
+    remaining_usd: isFinite(rem) ? +rem.toFixed(4) : null,
+    pct_left: isFinite(rem) && b.loaded_usd > 0 ? +(100 * rem / b.loaded_usd).toFixed(1) : null,
+    horizon_days: Math.max(1, +(process.env.GP_LLM_HORIZON_DAYS || 30)),
+    daily_budget_usd: daily,
+    bg_cap_usd: tierCap('bg'),
+    chat_reserve_pct: +(100 * Math.min(0.9, Math.max(0, +(process.env.GP_LLM_CHAT_RESERVE || 0.35)))).toFixed(0),
+    today_usd: +(u.usd || 0).toFixed(4), today_calls: u.calls || 0,
+    today_left_usd: +Math.max(0, daily - (u.usd || 0)).toFixed(4),
+    bg_open: budgetOk('bg'), chat_open: budgetOk('chat'),
+    days_at_this_rate: days,
+    low: isFinite(rem) && b.loaded_usd > 0 && rem < b.loaded_usd * 0.15,
+  };
+}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Llamada base. kind decide el modelo; el medidor carga el costo al uso que la originó.
 async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, cacheSystem = false }) {
   if (!enabled()) throw new Error('llm_disabled');
   const u = usage();
-  if (u.usd >= dailyBudget()) throw new Error('llm_budget');
+  // El corte depende de QUIÉN llama: el chat puede usar todo el día, los jobs respetan la reserva.
+  if (u.usd >= tierCap(kind === 'chat' ? 'chat' : 'bg')) throw new Error('llm_budget');
+  if (remainingUsd() <= 0) throw new Error('llm_balance');
   const model = MODELS[kind] ? MODELS[kind]() : MODELS.chat();
   const body = { model, max_tokens, messages };
   if (tools) body.tools = tools;
@@ -78,6 +158,7 @@ async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, 
     u.usd = +(u.usd + cost).toFixed(5);
     u.total_usd = +((u.total_usd || 0) + cost).toFixed(5);
     u.by[kind] = +((u.by[kind] || 0) + cost).toFixed(5);
+    const b = balance(); b.spent_usd = +((b.spent_usd || 0) + cost).toFixed(5);   // el saldo se descuenta acá
     if (_save) { try { _save(); } catch { /* el flush normal lo recoge */ } }
     return j;
   }
@@ -239,11 +320,32 @@ async function writeFightPreview(payload) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
+// ── Redactor PROFUNDO de BALONCESTO (15-ago, B5) ──────────────────────────────────────────────
+// Mismo estándar que la lectura de combate, con la gramática del baloncesto: ritmo, eficiencia, dónde
+// se gana el partido (zonas de tiro), rebote, pérdidas y el reparto de minutos. La probabilidad la pone
+// el simulador; acá se narra POR QUÉ el partido tiene esa forma. Vive en el cockpit del partido y la ve
+// cualquier plan → JAMÁS habla de picks ni de apuestas.
+async function writeGameRead(payload) {
+  const resp = await call({
+    kind: 'writer',
+    max_tokens: 3000,
+    system: 'Eres el analista de baloncesto de GP Simulador, al nivel de un scout profesional. Con el dossier JSON escribe la lectura del PARTIDO en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE, aunque el campo "mercado" diga otra cosa; si el mercado discrepa, esa discrepancia ES parte del análisis, nunca una razón para cambiar de bando. (1) LA FORMA DEL PARTIDO — a qué ritmo se juega, quién impone su tempo, dónde se gana en la cancha (aro, triple, línea de tiros libres, rebote ofensivo, pérdidas) y qué jugadores lo deciden, citando los números del dossier. (2) EL CAMINO DEL OTRO — el mejor argumento del rival, qué señal temprana diría que el partido se torció y qué factor lo volvería cerrado. PROHIBIDO: mencionar picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; hype. Tono: analista concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  if (!j || !j.es || !j.en) {
+    console.error('[llm] writeGameRead sin JSON usable · stop:', (resp && resp.stop_reason) || '?', '· texto:', textOf(resp).slice(0, 220).replace(/\n/g, ' '));
+    return null;
+  }
+  return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
+}
+
+const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol' };
 async function writeBrief(payload, sport) {
   const resp = await call({
     kind: 'writer',
     max_tokens: 700,
-    system: `Eres el analista jefe de GP Simulador escribiendo la apertura del brief diario de ${sport === 'combat' ? 'combate (UFC/MMA)' : 'fútbol'}. Con los datos del JSON, escribe UN párrafo de apertura (4-6 frases) que le diga al usuario qué mirar hoy: los cruces más interesantes, dónde el modelo y el mercado se separan, y qué señales hay. Solo números presentes en el JSON. Sin listas, sin encabezados, tono de newsletter premium. Cierra sin despedida. Responde SOLO un JSON {"es":"...","en":"..."}.`,
+    system: `Eres el analista jefe de GP Simulador escribiendo la apertura del brief diario de ${BRIEF_SPORT[sport] || BRIEF_SPORT.futbol}. Con los datos del JSON, escribe UN párrafo de apertura (4-6 frases) que le diga al usuario qué mirar hoy: los cruces más interesantes, dónde el modelo y el mercado se separan, y qué señales hay. Solo números presentes en el JSON. Sin listas, sin encabezados, tono de newsletter premium. Cierra sin despedida. Responde SOLO un JSON {"es":"...","en":"..."}.`,
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
   });
   const j = jsonOf(resp);
@@ -269,4 +371,4 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
-module.exports = { init, enabled, budgetOk, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeBrief, extractSignals };
+module.exports = { init, enabled, budgetOk, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals };

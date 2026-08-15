@@ -1021,12 +1021,15 @@
   ];
   var NAV2_CB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   // ── BALONCESTO: navegación propia, mismo criterio que combate (la sidebar entera cambia con el deporte).
-  var NAV_BB = [['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['alerts', 'bell', 'nav_alerts']];
+  var NAV_BB = [
+    ['bbopps', 'target-arrow', 'nav_opps'], ['bbbrief', 'news', 'nav_brief'], ['bbgames', 'ball-basketball', 'nav_bb_games'],
+    ['bbteams', 'shield', 'nav_teams'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']
+  ];
   var NAV2_BB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbask', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
   // BALONCESTO (15-ago): 4º deporte, admin-only. Mismas superficies que combate — partidos, ranking, equipo,
   // jugador — con sub-pestañas por liga (NBA / WNBA / NCAA M / NCAA F) igual que UFC/PFL/Boxeo.
-  var BB_VIEWS = ['bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer'];
+  var BB_VIEWS = ['bbopps', 'bbbrief', 'bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer', 'bbask', 'bbperf'];
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
@@ -1125,9 +1128,9 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isHoops ? ['alerts', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isHoops ? ['bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isHoops
-      ? [['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['alerts', 'bell', 'nav_alerts'], ['__more', 'dots', 'more']]
+      ? [['bbopps', 'target-arrow', 'nav_opps'], ['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbbrief', 'news', 'nav_brief'], ['bbteams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
       : isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
       : [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']];
@@ -1145,7 +1148,7 @@
       '<div id="gx-fbanner-slot">' + (founderBanner() || freeBanner()) + '</div>' +
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
-      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(t(S.sport === 'combat' ? 'cb_search_top' : 'search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
+      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(S.sport === 'hoops' ? 'Buscar equipo, jugadora o partido…' : t(S.sport === 'combat' ? 'cb_search_top' : 'search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
       // R2 (28-jul, orden de Alexis): fuera el contador 0-0-0 (gx-pulse) → la búsqueda respira; el
       // selector de deporte vive en su PROPIA barra bajo el header (sportbar) — ahí caben más deportes.
       '<div class="gx-spacer"></div>' +
@@ -1209,6 +1212,36 @@
       var nq = norm(q);
       // POR DEPORTE (8-ago, pedido de Alexis): en Combate el buscador busca COMBATE (peleas de las carteleras
       // en cache + peleadores server-side en las 3 orgs) y en Fútbol solo fútbol — cero cruces entre deportes.
+      // BALONCESTO (15-ago): mismo criterio. El índice vive en el server (el dataset no viaja al cliente:
+      // son 20 MB), así que la consulta va a /api/hoops/search y pinta equipos, jugadoras y partidos.
+      if (S.sport === 'hoops') {
+        S._bbq = q;
+        fetch('/api/hoops/search?q=' + encodeURIComponent(q), { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+          .then(function (j) {
+            if (S._bbq !== q || (inp.value || '').trim().toLowerCase() !== q) return;   // la consulta cambió
+            var h = '';
+            if (j && (j.teams || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_teams')) + '</div>' + j.teams.map(function (tt) {
+              return '<div class="gx-sr-i" data-sr-bbteam="' + esc(tt.league + '|' + tt.id) + '"><span class="fl">🏀</span><b>' + esc(tt.name) + '</b>' +
+                '<span class="gx-spacer"></span>' + (tt.net != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px;margin-right:6px">' + (tt.net > 0 ? '+' : '') + tt.net + '</span>' : '') +
+                '<span class="gx-dim" style="font-size:10.5px">' + esc(tt.league_label) + '</span></div>';
+            }).join('');
+            if (j && (j.players || []).length) h += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + j.players.map(function (pp) {
+              return '<div class="gx-sr-i" data-sr-bbplayer="' + esc(pp.league + '|' + pp.id) + '"><span class="fl">👤</span><b>' + esc(pp.name) + '</b>' +
+                '<span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc([pp.pos, pp.team].filter(Boolean).join(' · ')) + '</span>' +
+                '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:10.5px">' + esc(pp.league_label) + '</span></div>';
+            }).join('');
+            if (j && (j.games || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_matches')) + '</div>' + j.games.map(function (gg) {
+              return '<div class="gx-sr-i" data-sr-bbgame="' + esc(gg.league + '|' + gg.id) + '"><b>' + esc(gg.away.abbr || '') + '</b>' +
+                '<span class="gx-dim gx-mono" style="margin:0 6px">' + (gg.away.pts != null ? gg.away.pts : '') + '-' + (gg.home.pts != null ? gg.home.pts : '') + '</span>' +
+                '<b>' + esc(gg.home.abbr || '') + '</b><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(String(gg.date || '').slice(0, 10)) + '</span></div>';
+            }).join('');
+            if (!h) h = '<div class="gx-sr-empty gx-dim">' + esc(t('e_na')) + '</div>';
+            res.innerHTML = h; res.hidden = false;
+          });
+        res.innerHTML = '<div class="gx-sr-empty gx-dim">' + esc(t('cb_loading')) + '</div>'; res.hidden = false;
+        return;
+      }
       if (S.sport === 'combat') {
         var orgLab = { ufc: 'UFC', mma: 'MMA', boxing: 'BOX' };
         var frows = [];
@@ -1295,6 +1328,9 @@
       var mm = e.target.closest('[data-sr-match]'); if (mm) { inp.value = ''; hide(); openMatch(mm.getAttribute('data-sr-match')); return; }
       var cbf = e.target.closest('[data-sr-cbfighter]'); if (cbf) { inp.value = ''; hide(); var a1 = cbf.getAttribute('data-sr-cbfighter').split('|'); location.hash = '#cbfighter/' + a1[0] + '-' + a1[1]; return; }
       var cbm = e.target.closest('[data-sr-cbfight]'); if (cbm) { inp.value = ''; hide(); var a2 = cbm.getAttribute('data-sr-cbfight').split('|'); location.hash = '#cbfight/' + a2[0] + '-' + a2[1]; return; }
+      var bt = e.target.closest('[data-sr-bbteam]'); if (bt) { inp.value = ''; hide(); var b1 = bt.getAttribute('data-sr-bbteam').split('|'); setHash('bbteam/' + b1[0] + '-' + b1[1]); return; }
+      var bp = e.target.closest('[data-sr-bbplayer]'); if (bp) { inp.value = ''; hide(); var b2 = bp.getAttribute('data-sr-bbplayer').split('|'); setHash('bbplayer/' + b2[0] + '-' + b2[1]); return; }
+      var bg = e.target.closest('[data-sr-bbgame]'); if (bg) { inp.value = ''; hide(); var b3 = bg.getAttribute('data-sr-bbgame').split('|'); setHash('bbgame/' + b3[0] + '-' + b3[1]); return; }
     });
     document.addEventListener('click', function (e) { if (!e.target.closest('.gx-search')) hide(); });
   }
@@ -3862,7 +3898,7 @@
     if (bbt) { S.bb.lg = bbt[1]; if (!(S.view === 'bbteam' && S.bb.teamId === bbt[2])) { S.bb.teamId = bbt[2]; S.bb.team = undefined; showView('bbteam'); } return; }
     var bbp = h.match(/^bbplayer\/([a-z]+)-([0-9]+)$/i);
     if (bbp) { S.bb.lg = bbp[1]; if (!(S.view === 'bbplayer' && S.bb.playerId === bbp[2])) { S.bb.playerId = bbp[2]; S.bb.player = undefined; showView('bbplayer'); } return; }
-    var bbv = h.match(/^(bbgames|bbteams)(?:\/([a-z]+))?$/);
+    var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbask|bbperf)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
     var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
@@ -3883,11 +3919,11 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbgames: 'bbgames', bbteams: 'bbteams' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbask: 'bbask', bbperf: 'bbperf' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
-    if (nav === 'bbgames' || nav === 'bbteams') return nav + '/' + bbLg();
+    if (nav === 'bbgames' || nav === 'bbteams' || nav === 'bbopps' || nav === 'bbbrief' || nav === 'bbperf') return nav + '/' + bbLg();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -4040,7 +4076,7 @@
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'hoops' ? 'bbgames' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -6731,9 +6767,9 @@
     }).join('') + '</div>';
   }
 
-  // ── VISTAS DE LIGA: PARTIDOS y EQUIPOS ───────────────────────────────────────────────────────────────
-  // Las dos comen del MISMO payload (/api/hoops/state, una sola llamada cacheada); lo único que cambia es el
-  // panel bajo la barra de modelo. Se separan porque dos ítems de nav que pintan lo mismo son un bug visible.
+  // ── VISTA DE LIGA: EQUIPOS (ranking) ─────────────────────────────────────────────────────────────────
+  // Come de /api/hoops/state (ranking ajustado por rival). La agenda de partidos vive en su propia vista,
+  // que lee el calendario REAL de ESPN — son dos cosas distintas y por eso no comparten endpoint.
   function bbRankPanel(d, lg) {
     return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Ranking GP · ajustado por rival</span><span class="gx-ph-extra">' + (d.ranking || []).length + '</span></div><div class="gx-bb-rank">' +
       (d.ranking || []).map(function (r, i) {
@@ -6771,7 +6807,252 @@
     var body = kind === 'teams' ? bbRankPanel(d, lg) : bbGamesPanel(d, lg);
     bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + head + note + body);
   }
-  function renderBBGames() { bbLeagueView('games'); }
+  // ── AGENDA: EN VIVO · PRÓXIMOS · FINALIZADOS ─────────────────────────────────────────────────────────
+  // Misma estructura que la agenda de fútbol, pero con el calendario REAL de cada liga: el server lee el
+  // scoreboard de ESPN, no el dataset. Cada partido próximo lleva la proyección del modelo.
+  var BB_GTABS = [['live', 'En vivo'], ['upcoming', 'Próximos'], ['finished', 'Finalizados']];
+  function bbGameRow(g, lg, kind) {
+    var pr = g.proj || null;
+    var sc = function (x) { return x.score != null ? x.score : ''; };
+    var right = '';
+    if (kind === 'live') right = '<span class="gx-bb-glive">' + ic('circle') + esc(g.detail || 'En vivo') + '</span>';
+    else if (kind === 'finished') right = '<span class="gx-bb-gpos">Final</span>';
+    else if (pr) {
+      var favHome = pr.win.home >= 0.5;
+      right = '<span class="gx-bb-gproj"><b>' + Math.round(100 * Math.max(pr.win.home, pr.win.away)) + '%</b>' +
+        '<i>' + esc(favHome ? bbTeamName(g.home) : bbTeamName(g.away)) + '</i>' +
+        '<em>' + (pr.spread > 0 ? '+' : '') + pr.spread + ' · T ' + pr.total.toFixed(0) + '</em></span>';
+    } else right = '<span class="gx-bb-gpos gx-dim">sin proyección</span>';
+    var bar = pr ? '<span class="gx-bb-gbar"><i style="width:' + (100 * pr.win.away).toFixed(1) + '%"></i></span>' : '';
+    return '<a class="gx-bb-grow gx-bb-grow2 lnk" href="#bbgame/' + esc(lg) + '-' + esc(g.id) + '">' +
+      '<span class="gx-bb-gdate">' + esc(bbWhen(g.date, kind)) + '</span>' +
+      '<span class="gx-bb-gteam">' + bbLogo(g.away, 'sm') + '<b>' + esc(bbTeamName(g.away)) + '</b>' + (kind !== 'upcoming' ? '<u>' + sc(g.away) + '</u>' : '') + '</span>' +
+      '<i class="gx-bb-gat">@</i>' +
+      '<span class="gx-bb-gteam">' + bbLogo(g.home, 'sm') + '<b>' + esc(bbTeamName(g.home)) + '</b>' + (kind !== 'upcoming' ? '<u>' + sc(g.home) + '</u>' : '') + '</span>' +
+      bar + right + '</a>';
+  }
+  function bbWhen(d, kind) {
+    if (!d) return '';
+    var t = new Date(d); if (isNaN(t)) return String(d).slice(5, 10);
+    var hoy = new Date(); var mismo = t.toDateString() === hoy.toDateString();
+    var hh = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+    if (kind === 'finished') return ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2);
+    return mismo ? 'Hoy ' + hh : ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + ' ' + hh;
+  }
+  function renderBBGames() {
+    var lg = bbLg();
+    var d = bbGet('sched_' + lg, '/api/hoops/schedule?league=' + lg, 60000);
+    if (!d) { bbShell('Baloncesto', bbTabs() + mvLoading()); return; }
+    if (d._err) { bbShell('Baloncesto', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var C = d.counts || { live: 0, upcoming: 0, finished: 0 };
+    // la pestaña por defecto es la que tiene algo: en vivo manda, si no próximos, si no finalizados
+    var tab = S.bb.gTab;
+    if (!tab || !C[tab]) tab = C.live ? 'live' : C.upcoming ? 'upcoming' : 'finished';
+    var subs = '<div class="gx-bb-subtabs">' + BB_GTABS.map(function (x) {
+      return '<span class="gx-bb-subtab' + (tab === x[0] ? ' on' : '') + '" data-bbgtab="' + x[0] + '">' + esc(x[1]) +
+        '<em>' + (C[x[0]] || 0) + '</em>' + (x[0] === 'live' && C.live ? '<u class="gx-bb-dot"></u>' : '') + '</span>';
+    }).join('') + '</div>';
+    var list = (d[tab] || []);
+    var body;
+    if (d.offseason) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(d.offseason.note) + '</b>' +
+        (d.offseason.season_hint ? '<span class="gx-dim">' + esc(d.offseason.season_hint) + '</span>' : '') +
+        (d.offseason.last_game ? '<span class="gx-dim">Último partido cosechado: ' + esc(String(d.offseason.last_game).slice(0, 10)) + '</span>' : '') +
+        '</div></div>';
+    } else if (!list.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidos en esta pestaña.</b><span class="gx-dim">Ventana ' + esc(d.window.from) + ' → ' + esc(d.window.to) + '</span></div></div>';
+    } else {
+      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc((BB_GTABS.filter(function (x) { return x[0] === tab; })[0] || [])[1] || '') + '</span><span class="gx-ph-extra">' + list.length + '</span></div>' +
+        '<div class="gx-bb-games">' + list.map(function (g) { return bbGameRow(g, lg, tab); }).join('') + '</div></div>';
+    }
+    var note = !d.model_ready ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>Esta liga todavía no tiene el modelo ajustado: se muestra el calendario sin proyección.</span></div>' : '';
+    bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + subs + note + body);
+  }
+
+  // ── OPORTUNIDADES ────────────────────────────────────────────────────────────────────────────────────
+  // Las mismas cuatro familias que fútbol y combate. NINGUNA depende del modelo: value es line shopping
+  // contra el consenso sin margen, arbitraje es aritmética entre casas, caídas es movimiento de la línea
+  // afilada y middles es un hueco entre líneas. Por eso pueden publicarse con las picks apagadas.
+  var BB_OPPF = [['all', 'Todo'], ['value', 'Value'], ['arbs', 'Arbitraje'], ['dropping', 'Caídas'], ['middles', 'Middles']];
+  function bbOppLg() { var k = (S.bb && S.bb.oppLg) || 'all'; return k; }
+  function bbBookLab(b) { return String(b || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+  function bbEvLine(ev) {
+    return '<div class="gx-bb-ovent"><b>' + esc(ev.away) + '</b><i>en</i><b>' + esc(ev.home) + '</b>' +
+      '<span class="gx-dim">' + esc(ev.league_name || '') + (ev.kickoff ? ' · ' + esc(bbWhen(ev.kickoff, 'upcoming')) : '') + '</span></div>';
+  }
+  function renderBBOpps() {
+    var lgo = bbOppLg();
+    var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
+    var tabs = '<div class="gx-cb-tabs">' + [['all', 'Todas']].concat(BB_LEAGUES).concat([['euro', 'Euroliga/NBL']]).map(function (x) {
+      return '<span class="gx-cb-tab' + (lgo === x[0] ? ' on' : '') + '" data-bbopplg="' + x[0] + '">' + esc(x[1]) + '</span>';
+    }).join('') + '<span class="gx-spacer"></span></div>';
+    if (!d) { bbShell('Oportunidades', tabs + mvLoading()); return; }
+    if (d._err) { bbShell('Oportunidades', tabs + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var f = S.bb.oppFilt || 'all';
+    var cnt = { value: (d.value || []).length, arbs: (d.arbs || []).length, dropping: (d.dropping || []).length, middles: (d.middles || []).length };
+    cnt.all = cnt.value + cnt.arbs + cnt.dropping + cnt.middles;
+    var chips = '<div class="gx-bb-subtabs">' + BB_OPPF.map(function (x) {
+      return '<span class="gx-bb-subtab' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(x[1]) + '<em>' + (cnt[x[0]] || 0) + '</em></span>';
+    }).join('') + '</div>';
+    // por qué no hay picks — se dice de frente, no se esconde
+    var pn = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.picks_note || '') + '</span></div>';
+
+    var secValue = (!cnt.value) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Value · mejor precio contra el consenso</span><span class="gx-ph-extra">' + cnt.value + '</span></div><div class="gx-bb-opps">' +
+      (d.value || []).map(function (v) {
+        var gp = v.model != null ? '<span class="gx-bb-ogp' + (v.model_ev_pct >= 0 ? ' up' : ' dn') + '">GP Take ' + Math.round(100 * v.model) + '%' + (v.model_vs_market_pp != null ? ' <i>(' + (v.model_vs_market_pp > 0 ? '+' : '') + v.model_vs_market_pp + 'pp vs mercado)</i>' : '') + '</span>' : '';
+        return '<div class="gx-bb-opp">' + bbEvLine(v.event) +
+          '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(v.fam_label) + '</span><b class="gx-bb-osel">' + esc(v.label) + '</b>' +
+          '<span class="gx-bb-oodds">' + v.odds.toFixed(2) + '<i>' + esc(bbBookLab(v.book)) + '</i></span>' +
+          '<span class="gx-bb-oev up">+' + v.ev_pct.toFixed(1) + '%</span></div>' +
+          '<div class="gx-bb-ometa"><span>justa ' + v.fair_odds.toFixed(2) + '</span><span>' + v.books + ' casas</span><span>margen ' + v.vig_pct + '%</span>' +
+          (v.max_stake ? '<span>hasta $' + v.max_stake + '</span>' : '') + gp + '</div></div>';
+      }).join('') + '</div></div>';
+
+    var secArb = (!cnt.arbs) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Arbitraje · las dos patas en casas distintas</span><span class="gx-ph-extra">' + cnt.arbs + '</span></div><div class="gx-bb-opps">' +
+      (d.arbs || []).map(function (a) {
+        return '<div class="gx-bb-opp' + (a.executable ? ' exec' : '') + '">' + bbEvLine(a.event) +
+          '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(a.a.label) + '</b><span>' + a.a.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.a.book)) + '</span><em>' + a.a.stake_pct + '% del capital</em></div>' +
+          '<div class="gx-bb-arbleg"><b>' + esc(a.b.label) + '</b><span>' + a.b.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.b.book)) + '</span><em>' + a.b.stake_pct + '% del capital</em></div>' +
+          '<div class="gx-bb-arbp"><b>+' + a.profit_pct.toFixed(2) + '%</b><span>' + esc(a.fam_label) + '</span>' +
+          (a.max_payout ? '<em>hasta $' + a.max_payout + '</em>' : '<em class="gx-dim">profundidad sin verificar</em>') + '</div></div></div>';
+      }).join('') + '</div></div>';
+
+    var secDrop = (!cnt.dropping) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Caídas de cuota · la línea afilada se movió</span><span class="gx-ph-extra">' + cnt.dropping + '</span></div><div class="gx-bb-opps">' +
+      (d.dropping || []).map(function (r) {
+        return '<div class="gx-bb-opp">' + bbEvLine(r.event) +
+          '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(r.fam_label) + (r.line != null ? ' ' + r.line : '') + '</span>' +
+          '<b class="gx-bb-osel">' + esc(r.side) + '</b>' +
+          '<span class="gx-bb-odrop">' + r.sharp_before.toFixed(2) + ' → <b>' + r.sharp_now.toFixed(2) + '</b></span>' +
+          '<span class="gx-bb-oev dn">−' + r.drop_pct.toFixed(1) + '%</span></div>' +
+          (r.stale && r.stale.length ? '<div class="gx-bb-ometa"><span class="gx-bb-stale">Rezagadas: ' + r.stale.map(function (x) { return esc(bbBookLab(x.book)) + ' ' + x.o.toFixed(2); }).join(' · ') + '</span></div>'
+            : '<div class="gx-bb-ometa gx-dim"><span>Ninguna casa quedó atrás: el mercado ya absorbió el movimiento</span></div>') + '</div>';
+      }).join('') + '</div></div>';
+
+    var secMid = (!cnt.middles) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Middles · si cae en el medio, cobran las dos</span><span class="gx-ph-extra">' + cnt.middles + '</span></div><div class="gx-bb-opps">' +
+      (d.middles || []).map(function (m) {
+        return '<div class="gx-bb-opp">' + bbEvLine(m.event) +
+          '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(m.low.label) + '</b><span>' + m.low.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.low.book)) + '</span></div>' +
+          '<div class="gx-bb-arbleg"><b>' + esc(m.high.label) + '</b><span>' + m.high.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.high.book)) + '</span></div>' +
+          '<div class="gx-bb-arbp"><b>' + esc(m.zone) + '</b><span>' + esc(m.fam_label) + '</span><em>' + (m.cost_pct <= 0 ? 'además es surebet' : 'cuesta ' + m.cost_pct.toFixed(2) + '%') + '</em></div></div></div>';
+      }).join('') + '</div></div>';
+
+    var body = '';
+    if (f === 'all') body = secValue + secArb + secDrop + secMid;
+    else if (f === 'value') body = secValue;
+    else if (f === 'arbs') body = secArb;
+    else if (f === 'dropping') body = secDrop;
+    else body = secMid;
+    if (!body) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Sin oportunidades en esta vista ahora mismo.</b>' +
+        '<span class="gx-dim">' + esc(d.note || (d.events ? d.events + ' partidos con cuotas rastreados · el escáner corre cada 12 minutos' : 'Ninguna liga de baloncesto tiene partidos con cuotas en la ventana.')) + '</span></div></div>';
+    }
+    var head = '<div class="gx-panel gx-bb-modelbar"><div><span class="gx-label">Partidos con cuotas</span><b>' + (d.events || 0) + '</b></div>' +
+      (d.counts ? '<div><span class="gx-label">Mercados</span><b>' + d.counts.markets + '</b></div><div><span class="gx-label">Precios</span><b>' + d.counts.quotes + '</b></div>' : '') +
+      '<div><span class="gx-label">Actualizado</span><b>' + esc(String(d.refreshed_at || '').slice(11, 16)) + '</b></div></div>';
+    bbShell('Oportunidades · baloncesto', tabs + chips + head + pn + body);
+  }
+
+  // ── BRIEF DE LA JORNADA ──────────────────────────────────────────────────────────────────────────────
+  function renderBBBrief() {
+    var lg = bbLg();
+    var d = bbGet('brief_' + lg, '/api/hoops/brief?league=' + lg, 300000);
+    if (!d) { bbShell('Brief', bbTabs() + mvLoading()); return; }
+    if (d._err) { bbShell('Brief', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var lang = (S.lang === 'en') ? 'en' : 'es';
+    var intro = d.intro && d.intro[lang] ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div><p>' + esc(d.intro[lang]) + '</p></div>' : '';
+    var games = (d.games || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La jornada</span><span class="gx-ph-extra">' + d.games.length + '</span></div><div class="gx-bb-games">' +
+      d.games.map(function (g) { return bbGameRow(g, lg, g.status === 'in' ? 'live' : g.status === 'post' ? 'finished' : 'upcoming'); }).join('') + '</div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>No hay partidos de ' + esc(d.label || '') + ' en las próximas 36 horas.</b></div></div>';
+    var val = (d.value || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los mejores precios de hoy</span><span class="gx-ph-extra">' + d.value.length + '</span></div><div class="gx-bb-opps">' +
+      d.value.map(function (v) {
+        return '<div class="gx-bb-opp">' + bbEvLine(v.event) +
+          '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(v.fam_label) + '</span><b class="gx-bb-osel">' + esc(v.label) + '</b>' +
+          '<span class="gx-bb-oodds">' + v.odds.toFixed(2) + '<i>' + esc(bbBookLab(v.book)) + '</i></span>' +
+          '<span class="gx-bb-oev up">+' + v.ev_pct.toFixed(1) + '%</span></div></div>';
+      }).join('') + '</div></div>' : '';
+    var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.note || '') + '</span></div>';
+    bbShell('Brief · ' + esc(d.label || bbLgLab()), bbTabs() + intro + games + val + note);
+  }
+
+  // ── RENDIMIENTO: la validación honesta ───────────────────────────────────────────────────────────────
+  // No hay unidades ganadas porque no hay picks. Lo que se muestra es lo que decide si algún día las hay:
+  // si el modelo le gana al CIERRE del mercado, medido fuera de muestra y con su barra de error.
+  function renderBBPerf() {
+    var lg = bbLg();
+    var d = bbGet('perf_' + lg, '/api/hoops/perf?league=' + lg, 900000);
+    if (!d) { bbShell('Rendimiento', bbTabs() + mvLoading()); return; }
+    if (d._err) { bbShell('Rendimiento', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (d.empty) { bbShell('Rendimiento', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(bbLgLab()) + ' sin dataset cosechado todavía.</b></div></div>'); return; }
+    var vs = d.vs_close || {};
+    var good = vs.skill > 0;
+    var kpi = '<div class="gx-panel gx-bb-modelbar">' +
+      '<div><span class="gx-label">Partidos evaluados</span><b>' + (d.n || 0) + '</b> fuera de muestra</div>' +
+      '<div><span class="gx-label">Acierto</span><b>' + (d.accuracy_pct != null ? d.accuracy_pct + '%' : '—') + '</b></div>' +
+      '<div><span class="gx-label">Error de margen</span><b>' + (d.margin_mae != null ? d.margin_mae : '—') + '</b> pts</div>' +
+      '<div><span class="gx-label">Error de total</span><b>' + (d.total_mae != null ? d.total_mae : '—') + '</b> pts</div>' +
+      '</div>';
+    var skill = '<div class="gx-panel gx-bb-skill"><div class="gx-ph"><span class="gx-label">La vara real: contra el CIERRE del mercado</span><span class="gx-ph-extra">' + (vs.n || 0) + ' partidos con cierre</span></div>' +
+      '<div class="gx-bb-mktrow">' +
+      '<div><span>Brier del mercado</span><b>' + (vs.brier_market != null ? vs.brier_market.toFixed(4) : '—') + '</b></div>' +
+      '<div><span>Brier de GP</span><b>' + (vs.brier_gp != null ? vs.brier_gp.toFixed(4) : '—') + '</b></div>' +
+      '<div><span>Skill</span><b class="' + (good ? 'up' : 'dn') + '">' + (vs.skill != null ? (vs.skill > 0 ? '+' : '') + vs.skill.toFixed(4) : '—') + '</b></div>' +
+      '<div><span>Error estándar</span><b>' + (vs.skill_se != null ? '±' + vs.skill_se.toFixed(4) : '—') + '</b></div>' +
+      '<div><span>t</span><b class="' + (vs.significant ? 'up' : '') + '">' + (vs.t != null ? vs.t.toFixed(2) : '—') + '</b></div>' +
+      '</div>' +
+      '<div class="gx-bb-verdict ' + (good && vs.significant ? 'ok' : good ? 'mid' : 'bad') + '">' + esc(d.verdict || '') + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">' + esc(d.method || '') + '</div></div>';
+    var cal = (d.calibration || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Calibración</span><span class="gx-ph-extra">lo prometido contra lo ocurrido</span></div><div class="gx-bb-cal">' +
+      d.calibration.map(function (b) {
+        var diff = b.actual - b.predicted;
+        return '<div class="gx-bb-calrow"><span class="gx-bb-calr">' + esc(b.range) + '</span>' +
+          '<div class="gx-bb-calbar"><i class="pred" style="width:' + Math.min(100, b.predicted) + '%"></i><u class="act" style="left:' + Math.min(100, b.actual) + '%"></u></div>' +
+          '<span class="gx-bb-calv">' + b.predicted + '% → <b>' + b.actual + '%</b></span>' +
+          '<span class="gx-bb-caln ' + (Math.abs(diff) <= 6 ? 'ok' : Math.abs(diff) <= 12 ? 'mid' : 'bad') + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + '</span>' +
+          '<span class="gx-dim gx-bb-calc">' + b.n + '</span></div>';
+      }).join('') + '</div><div class="gx-dim gx-bb-courtnote">La barra es lo que el modelo prometió; la marca, lo que pasó. Cerca = bien calibrado.</div></div>' : '';
+    bbShell('Rendimiento · ' + bbLgLab(), bbTabs() + kpi + skill + cal);
+  }
+
+  // ── PREGÚNTALE A GP (baloncesto) ─────────────────────────────────────────────────────────────────────
+  function renderBBAsk() {
+    S.bb.ask = S.bb.ask || { hist: [], busy: false, err: null };
+    var A = S.bb.ask;
+    var sug = ['¿Quién gana el partido de hoy y por qué?', '¿Cómo viene el Minnesota Lynx?', '¿Dónde hay mejor precio ahora mismo?', '¿Qué jugadora está decidiendo los partidos de Indiana?'];
+    var thread = A.hist.length ? '<div class="gx-bb-thread">' + A.hist.map(function (h) {
+      return '<div class="gx-bb-q">' + esc(h.q) + '</div>' + (h.answer ? '<div class="gx-bb-a">' + esc(h.answer).replace(/\n/g, '<br>') + '</div>' : '<div class="gx-bb-a gx-dim">…</div>');
+    }).join('') + '</div>' : '';
+    var box = '<div class="gx-panel gx-bb-askbox">' +
+      '<div class="gx-ph"><span class="gx-label">Pregúntale a GP</span><span class="gx-ph-extra">baloncesto</span></div>' +
+      thread +
+      (A.busy ? '<div class="gx-bb-a gx-dim">Pensando…</div>' : '') +
+      (A.err ? '<div class="gx-bb-note gx-panel">' + ic('alert-triangle') + '<span>' + esc(A.err) + '</span></div>' : '') +
+      '<div class="gx-bb-askin"><input id="gx-bb-q" placeholder="Preguntá por un partido, un equipo, una jugadora o los precios…" autocomplete="off"' + (A.busy ? ' disabled' : '') + '>' +
+      '<button class="gx-btn" data-bbask="1"' + (A.busy ? ' disabled' : '') + '>' + ic('message-circle') + 'Preguntar</button></div>' +
+      '<div class="gx-bb-sugs">' + sug.map(function (s2) { return '<span class="gx-bb-sug" data-bbsug="' + esc(s2) + '">' + esc(s2) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">Responde solo con datos cargados en la plataforma. Si no tiene el dato, lo dice. No es consejo financiero.</div>' +
+      '</div>';
+    bbShell('Pregúntale a GP', box);
+    var inp = $('#gx-bb-q');
+    if (inp && !A.busy) { inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') bbAskGo(inp.value); }); setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30); }
+  }
+  function bbAskGo(q) {
+    q = (q || '').trim(); if (!q) return;
+    var A = S.bb.ask = S.bb.ask || { hist: [], busy: false, err: null };
+    if (A.busy) return;
+    A.busy = true; A.err = null; A.hist.push({ q: q, answer: null });
+    renderBBAsk();
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()),
+      body: JSON.stringify({ q: q, sport: 'hoops', lang: S.lang === 'en' ? 'en' : 'es', hist: A.hist.slice(0, -1).slice(-5) }) })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (j) {
+        A.busy = false;
+        if (j && j.answer) A.hist[A.hist.length - 1].answer = j.answer;
+        else { A.hist.pop(); A.err = (j && j.error === 'limit') ? 'Llegaste al límite de preguntas por hoy.' : 'No pude responder ahora mismo. Probá de nuevo en un momento.'; }
+        renderBBAsk();
+      })
+      .catch(function () { A.busy = false; A.hist.pop(); A.err = 'Error de red.'; renderBBAsk(); });
+  }
 
   // ── GAME INTELLIGENCE CENTER ─────────────────────────────────────────────────────────────────────────
   function renderBBGame() {
@@ -6886,35 +7167,128 @@
     var pls = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(bbTeamName(H)) + '</span></div>' + bbPlayers(d.players.home, lg) + '</div>' +
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(bbTeamName(A)) + '</span></div>' + bbPlayers(d.players.away, lg) + '</div>';
 
-    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + mkt + dist + why + exploit + fair + courts + ff + pls);
+    // 10) LECTURA GP (LLM) + PARTE DE BAJAS — la capa de observación e inteligencia narrada
+    var rd = bbGet('read_' + lg + '_' + id, '/api/hoops/read?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
+    var lang = (S.lang === 'en') ? 'en' : 'es';
+    var readHtml = '';
+    if (rd && rd.read && rd.read[lang]) {
+      readHtml = '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span><span class="gx-ph-extra">análisis del cruce</span></div>' +
+        rd.read[lang].split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>';
+    } else if (rd && rd.llm && rd.llm.enabled) {
+      readHtml = '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div>' +
+        '<div class="gx-empty"><b>Todavía no está escrita para este partido.</b>' +
+        '<span class="gx-dim">Se escribe una vez y queda guardada. Presupuesto de hoy: $' + ((rd.llm.budget && rd.llm.budget.today_left_usd) || 0).toFixed(2) + ' disponibles.</span>' +
+        '<button class="gx-btn" data-bbread="' + esc(id) + '">Escribir la lectura</button></div></div>';
+    }
+    var injHtml = '';
+    if (rd && rd.injuries && rd.injuries.length) {
+      var tn = {}; tn[H.id] = bbTeamName(H); tn[A.id] = bbTeamName(A);
+      injHtml = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Parte de bajas</span><span class="gx-ph-extra">ESPN</span></div><div class="gx-bb-inj">' +
+        rd.injuries.map(function (tt) {
+          return '<div class="gx-bb-injt"><span class="gx-label">' + esc(tn[tt.team_id] || tt.team_id) + '</span>' +
+            tt.items.slice(0, 8).map(function (i2) {
+              var cls = i2.severity >= 3 ? 'bad' : i2.severity === 2 ? 'mid' : 'ok';
+              return '<div class="gx-bb-injr"><b>' + esc(i2.name) + '</b><span class="gx-clgate ' + cls + '">' + esc(i2.status || '') + '</span>' +
+                (i2.detail ? '<em class="gx-dim">' + esc(i2.detail) + '</em>' : '') + '</div>';
+            }).join('') + '</div>';
+        }).join('') + '</div></div>';
+    }
+    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + readHtml + injHtml + mkt + dist + why + exploit + fair + courts + ff + pls);
+  }
+  // Genera la lectura bajo demanda (POST) y repinta. Cuesta una llamada al LLM, por eso es un botón.
+  function bbGenRead(id) {
+    var lg = bbLg();
+    var k = 'read_' + lg + '_' + id;
+    S.bb[k] = { v: { read: null, injuries: (S.bb[k] && S.bb[k].v && S.bb[k].v.injuries) || [], llm: { enabled: true, budget: {} }, _writing: 1 }, _at: Date.now() };
+    renderBBGame();
+    fetch('/api/hoops/read?league=' + lg + '&id=' + encodeURIComponent(id), { method: 'POST', headers: hdrs() })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (j) { S.bb[k] = { v: j || { _err: 1 }, _at: Date.now() }; renderBBGame(); })
+      .catch(function () { S.bb[k] = { v: { _err: 1 }, _at: Date.now() }; renderBBGame(); });
   }
 
   // ── EQUIPO ───────────────────────────────────────────────────────────────────────────────────────────
+  // Rediseño 15-ago: la versión anterior era una lista de números sueltos. Un perfil de equipo tiene que
+  // contestar de un vistazo TRES cosas: qué tan bueno es (y comparado con quién), CÓMO juega, y cómo viene.
+  // Por eso: cabecera con los colores del equipo y su puesto en la liga, barras de percentil contra la liga
+  // (un ataque de 112 no dice nada sin saber que es el 3º de 15), el ADN de juego, las canchas y la forma.
+  function bbPctBar(label, rank, of, val, fmt) {
+    if (rank == null || !of) return '';
+    var pct = 100 * (of - rank) / Math.max(1, of - 1);            // 1º = 100%
+    var cls = pct >= 75 ? 'ok' : pct >= 40 ? 'mid' : 'bad';
+    return '<div class="gx-bb-pcr"><span class="gx-bb-pcl">' + esc(label) + '</span>' +
+      '<div class="gx-bb-pcbar"><i class="' + cls + '" style="width:' + pct.toFixed(1) + '%"></i></div>' +
+      '<b class="gx-bb-pcv">' + (fmt ? fmt(val) : val) + '</b>' +
+      '<span class="gx-bb-pcrk ' + cls + '">#' + rank + '<em>/' + of + '</em></span></div>';
+  }
   function renderBBTeam() {
     var lg = bbLg(), id = S.bb.teamId;
     var d = bbGet('team_' + lg + '_' + id, '/api/hoops/team?league=' + lg + '&id=' + encodeURIComponent(id), 300000);
     if (!d) { bbShell('Equipo', mvLoading()); return; }
     if (d._err || !d.team_id) { bbShell('Equipo', '<div class="gx-panel"><div class="gx-empty">No se pudo cargar.</div></div>'); return; }
     var back = '<div class="gx-cb-backrow"><span class="gx-clgate sh lnk" data-bbback="1">← Baloncesto</span></div>';
-    var head = '<div class="gx-panel gx-bb-thead">' + bbLogo(d.team, 'xl') +
-      '<div><h2>' + esc((d.team && d.team.name) || d.team_id) + '</h2>' +
-      '<div class="gx-dim">' + d.record.w + '-' + d.record.l + ' · ' + d.games + ' partidos' + (d.rank ? ' · #' + d.rank.net + ' de ' + d.rank.of + ' en la liga' : '') + '</div></div>' +
-      '<div class="gx-bb-tkpi"><div><span>Neto ajustado</span><b class="' + (d.adj && d.adj.net >= 0 ? 'up' : 'dn') + '">' + (d.adj ? bbSign(d.adj.net) : '—') + '</b></div>' +
-      '<div><span>Ataque</span><b>' + (d.ortg != null ? d.ortg.toFixed(1) : '—') + '</b></div>' +
-      '<div><span>Defensa</span><b>' + (d.drtg != null ? d.drtg.toFixed(1) : '—') + '</b></div>' +
-      '<div><span>Ritmo</span><b>' + (d.poss != null ? d.poss.toFixed(1) : '—') + '</b></div></div></div>';
-    var courts = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de tiro</span></div><div class="gx-bb-courts">' +
+    var tm = d.team || {};
+    var col = tm.color ? '#' + String(tm.color).replace('#', '') : '#18E6A3';
+    var alt = tm.alt_color ? '#' + String(tm.alt_color).replace('#', '') : '#0b1512';
+    var rk = d.rank || {};
+    var n1 = function (x) { return x == null ? '—' : Number(x).toFixed(1); };
+    var n3 = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };
+    var wins = d.record ? d.record.w : 0, loss = d.record ? d.record.l : 0;
+    var winPct = (wins + loss) ? Math.round(100 * wins / (wins + loss)) : 0;
+
+    var hero = '<div class="gx-panel gx-bb-hero2" style="--tc:' + esc(col) + ';--ta:' + esc(alt) + '">' +
+      '<div class="gx-bb-hero2bg"></div>' +
+      '<div class="gx-bb-hero2main">' + bbLogo(tm, 'xl') +
+        '<div class="gx-bb-hero2id"><h2>' + esc(tm.name || d.team_id) + '</h2>' +
+          '<div class="gx-bb-hero2sub"><b>' + wins + '-' + loss + '</b><span>' + winPct + '% de victorias</span>' +
+          '<span>' + d.games + ' partidos</span>' + (rk.net ? '<span class="gx-bb-rankpill">#' + rk.net + ' de ' + rk.of + ' en la liga</span>' : '') + '</div></div>' +
+        '<div class="gx-bb-hero2net"><span>Neto ajustado</span><b class="' + (d.adj && d.adj.net >= 0 ? 'up' : 'dn') + '">' + (d.adj ? bbSign(d.adj.net) : '—') + '</b><em>pts / 100 pos.</em></div>' +
+      '</div></div>';
+
+    // percentiles contra la liga: lo que convierte un número en un juicio
+    var pcs = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Contra la liga</span><span class="gx-ph-extra">ajustado por rival</span></div><div class="gx-bb-pcs">' +
+      bbPctBar('Ataque (pts/100)', rk.off, rk.of, d.ortg, n1) +
+      bbPctBar('Defensa (pts/100)', rk.def, rk.of, d.drtg, n1) +
+      bbPctBar('Ritmo (posesiones)', rk.pace, rk.of, d.poss, n1) +
+      '</div><div class="gx-dim gx-bb-courtnote">La barra es el percentil de la liga: llena = primero, vacía = último.</div></div>';
+
+    // ADN de juego: cómo juega, no cuánto gana
+    var dna = [
+      ['Tiro efectivo', d.efg, n3, 'cuánto rinde cada tiro'],
+      ['Tiro efectivo concedido', d.efg_allowed, n3, 'cuánto le rinde al rival'],
+      ['Pérdidas', d.tov_pct, n3, 'de sus posesiones'],
+      ['Rebote ofensivo', d.orb_pct, n3, 'de los rebotes disponibles'],
+      ['Tiros libres por tiro', d.ftr, function (x) { return x == null ? '—' : x.toFixed(3); }, 'cuánto pisa la línea'],
+      ['Volumen de triples', d.tpa_rate, n3, 'de sus tiros son de tres'],
+      ['Puntos en pintura', d.paint, n1, 'por partido'],
+      ['Contraataque', d.fastbreak, n1, 'por partido'],
+      ['Asistencias', d.ast, n1, 'por partido'],
+      ['Rebotes', d.reb, n1, 'por partido'],
+    ];
+    var dnaHtml = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">ADN de juego</span><span class="gx-ph-extra">medias de temporada</span></div><div class="gx-bb-dna">' +
+      dna.map(function (r) {
+        return '<div class="gx-bb-dnac"><span>' + esc(r[0]) + '</span><b>' + r[2](r[1]) + '</b><em>' + esc(r[3]) + '</em></div>';
+      }).join('') + '</div></div>';
+
+    var courts = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de tiro</span><span class="gx-ph-extra">dónde tira y qué concede</span></div><div class="gx-bb-courts">' +
       bbCourt(d.shot_profile, 'Ataque') + bbCourt(d.shot_profile_allowed, 'Lo que concede') + '</div></div>';
-    var form = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos partidos</span></div><div class="gx-bb-games">' +
-      (d.form || []).map(function (f) {
+
+    // FORMA: tira de resultados + últimos partidos con su ORtg
+    var strip = (d.form || []).slice(0, 10).slice().reverse().map(function (f) {
+      return '<span class="gx-bb-fchip ' + (f.w ? 'w' : 'l') + '" title="' + esc((f.home ? 'vs ' : '@ ') + (f.opp || '') + ' ' + f.pf + '-' + f.pa) + '">' + (f.w ? 'V' : 'D') + '</span>';
+    }).join('');
+    var form = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Forma</span><span class="gx-ph-extra">' + (d.form || []).length + ' partidos</span></div>' +
+      (strip ? '<div class="gx-bb-fstrip">' + strip + '<span class="gx-dim">más antiguo → más reciente</span></div>' : '') +
+      '<div class="gx-bb-games">' + (d.form || []).map(function (f) {
         return '<a class="gx-bb-grow lnk" href="#bbgame/' + esc(lg) + '-' + esc(f.id) + '">' +
           '<span class="gx-bb-gdate">' + esc(String(f.date || '').slice(5, 10)) + '</span>' +
           '<span class="gx-clgate ' + (f.w ? 'ok' : 'sh') + '">' + (f.w ? 'V' : 'D') + '</span>' +
           '<span class="gx-bb-gt">' + (f.home ? 'vs ' : '@ ') + esc(f.opp || '') + '</span>' +
-          '<b>' + f.pf + '-' + f.pa + '</b><span class="gx-bb-gpos">ORtg ' + (f.ortg != null ? f.ortg.toFixed(1) : '') + '</span></a>';
+          '<b>' + f.pf + '-' + f.pa + '</b><span class="gx-bb-gpos">ataque ' + (f.ortg != null ? f.ortg.toFixed(1) : '') + '</span></a>';
       }).join('') + '</div></div>';
-    var roster = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Plantilla</span></div>' + bbPlayers(d.roster, lg) + '</div>';
-    bbShell((d.team && d.team.name) || 'Equipo', back + head + courts + form + roster);
+
+    var roster = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Plantilla</span><span class="gx-ph-extra">' + ((d.roster || []).length) + '</span></div>' + bbPlayers(d.roster, lg) + '</div>';
+    bbShell(tm.name || 'Equipo', back + hero + pcs + dnaHtml + courts + form + roster);
   }
 
   // ── JUGADOR ──────────────────────────────────────────────────────────────────────────────────────────
@@ -6952,8 +7326,14 @@
   function bbClicks(e) {
     var lgb = e.target.closest('[data-bblg]');
     // el selector de liga NO cambia de vista: si estoy en Equipos, cambiar de liga me deja en Equipos.
-    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash((S.view === 'bbteams' ? 'bbteams/' : 'bbgames/') + S.bb.lg); return; }
+    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash((['bbteams', 'bbopps', 'bbbrief', 'bbperf'].indexOf(S.view) >= 0 ? S.view : 'bbgames') + '/' + S.bb.lg); return; }
     if (e.target.closest('[data-bbback]')) { setHash('bbgames/' + bbLg()); return; }
+    var gt = e.target.closest('[data-bbgtab]'); if (gt) { S.bb.gTab = gt.getAttribute('data-bbgtab'); renderBBGames(); return; }
+    var of = e.target.closest('[data-bboppf]'); if (of) { S.bb.oppFilt = of.getAttribute('data-bboppf'); renderBBOpps(); return; }
+    var ol = e.target.closest('[data-bbopplg]'); if (ol) { S.bb.oppLg = ol.getAttribute('data-bbopplg'); renderBBOpps(); return; }
+    var sg = e.target.closest('[data-bbsug]'); if (sg) { bbAskGo(sg.getAttribute('data-bbsug')); return; }
+    if (e.target.closest('[data-bbask]')) { var qi = $('#gx-bb-q'); if (qi) bbAskGo(qi.value); return; }
+    var rd = e.target.closest('[data-bbread]'); if (rd) { bbGenRead(rd.getAttribute('data-bbread')); return; }
     var a = e.target.closest('a.lnk'); if (a && a.getAttribute('href')) return;   // los enlaces navegan solos
   }
 
@@ -6964,6 +7344,10 @@
     else if (v === 'bbteam') renderBBTeam();
     else if (v === 'bbplayer') renderBBPlayer();
     else if (v === 'bbteams') renderBBTeams();
+    else if (v === 'bbopps') renderBBOpps();
+    else if (v === 'bbbrief') renderBBBrief();
+    else if (v === 'bbask') renderBBAsk();
+    else if (v === 'bbperf') renderBBPerf();
     else renderBBGames();
   }
 

@@ -87,6 +87,13 @@ function fitLeague(league) {
   }
   const blend = MD.fitBlend(rows);
 
+  // 4) INTELIGENCIA DERIVADA DE LIGA: valor por zona de tiro (la base del eFG esperado) y los ajustes por
+  // rival de cada four factor. Son deterministas y cuestan ~200 ms en NBA: exactamente el tipo de cálculo
+  // que pertenece al artefacto y no a la petición de un usuario.
+  const ADV = require('../basketball-engine/advanced');
+  const zone = ADV.zoneBaseline(games);
+  const adjust = ADV.leagueAdjustments(games);
+
   return {
     league,
     at: new Date().toISOString(),
@@ -94,7 +101,7 @@ function fitLeague(league) {
     stint_games: withStints.length,
     stint_coverage: games.length ? +(withStints.length / games.length).toFixed(3) : 0,
     ms: Date.now() - t0,
-    rapm, ctx, blend,
+    rapm, ctx, blend, zone, adjust,
   };
 }
 

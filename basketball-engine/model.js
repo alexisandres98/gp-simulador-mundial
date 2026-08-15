@@ -20,13 +20,16 @@ const S = require('./simulate');
 
 // ---- AJUSTE POR DISPONIBILIDAD --------------------------------------------------------------------------
 // Devuelve el cambio en puntos por 100 posesiones (ataque y defensa) respecto al equipo habitual.
-function availabilityDelta(C, teamId, { injuries = null, L = null } = {}) {
+// `override` permite forzar la disponibilidad sin tocar el parte real: es lo que usa el árbol de escenarios
+// para preguntar "¿y si este jugador no juega?" sin inventar un parte de lesiones falso.
+function availabilityDelta(C, teamId, { injuries = null, L = null, override = null } = {}) {
   if (!C || !C.rapm) return null;
   const prof = MN.rotationProfile(C.games, teamId, { lastN: 15 });
   if (!prof) return null;
   const baseline = MN.projectMinutes(prof, { L });                      // el equipo de siempre
   if (!baseline) return null;
-  const { out, doubtful } = injuries ? MN.injuriesToRoster(injuries, teamId) : { out: [], doubtful: {} };
+  const { out, doubtful } = override ? { out: (override.out || []).map(String), doubtful: override.doubtful || {} }
+    : injuries ? MN.injuriesToRoster(injuries, teamId) : { out: [], doubtful: {} };
   const tonight = MN.projectMinutes(prof, { out, doubtful, L });
   if (!tonight) return null;
   const a = PLY.teamFromMinutes(C.rapm, baseline.map);
@@ -51,7 +54,7 @@ function availabilityDelta(C, teamId, { injuries = null, L = null } = {}) {
 
 // ---- PROYECCIÓN COMPLETA DE UN PARTIDO ------------------------------------------------------------------
 // Devuelve los ajustes listos para `simulate(..., { adj })` y el desglose de dónde viene cada punto.
-function projectGame(C, game, { injuries = null, L = null } = {}) {
+function projectGame(C, game, { injuries = null, L = null, override = null } = {}) {
   const h = String(game.home.id), a = String(game.away.id);
   const parts = [];
   let adjHome = 0, adjAway = 0, adjPace = 0;
@@ -66,8 +69,8 @@ function projectGame(C, game, { injuries = null, L = null } = {}) {
   const useBlend = LY ? !!(LY.blend && LY.blend.on) : !!(C && C.blend && C.blend.ok && C.blend.w > 0);
 
   // 1) disponibilidad (RAPM × minutos)
-  const dh = availabilityDelta(C, h, { injuries, L });
-  const da = availabilityDelta(C, a, { injuries, L });
+  const dh = availabilityDelta(C, h, { injuries, L, override: override && override.home });
+  const da = availabilityDelta(C, a, { injuries, L, override: override && override.away });
   if (dh) { if (useRoster) adjHome += dh.off - dh.def; if (Math.abs(dh.net) > 0.05) parts.push({ label: 'Plantilla local', pts100: dh.net, side: 'home', applied: useRoster }); }
   if (da) { if (useRoster) adjAway += da.off - da.def; if (Math.abs(da.net) > 0.05) parts.push({ label: 'Plantilla visitante', pts100: da.net, side: 'away', applied: useRoster }); }
 
@@ -138,9 +141,9 @@ function blend(pModel, pMarket, w) {
 }
 
 // ---- SIMULACIÓN CON TODA LA PILA ------------------------------------------------------------------------
-function simulateGame(C, game, { injuries = null, L = null, sims = 20000, seed = 13, market = null } = {}) {
+function simulateGame(C, game, { injuries = null, L = null, sims = 20000, seed = 13, market = null, override = null } = {}) {
   if (!C || !C.fit) return null;
-  const pr = projectGame(C, game, { injuries, L });
+  const pr = projectGame(C, game, { injuries, L, override });
   const sim = S.simulate(C.fit, String(game.home.id), String(game.away.id), {
     n: sims, seed, neutral: !!game.neutral, adj: pr.adj,
     regMin: (L && L.minutes) || 48, otMin: (L && L.otMin) || 5,

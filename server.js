@@ -9172,11 +9172,17 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
   if (!dbc.isConfigured()) return { skipped: 'sin base de cuotas' };
   const ST = require('./basketball-engine/store');
   const MK = require('./basketball-engine/markets');
+  const PRC = require('./basketball-engine/pricing');
+  const GATE = require('./basketball-engine/gates');
+  const SC = require('./basketball-engine/scenarios');
   const { simulate, markets } = require('./basketball-engine/simulate');
   const ESPN = require('./data-providers/basketball/espn');
   db.hoopsPicks = db.hoopsPicks || [];
   const have = new Set(db.hoopsPicks.map(hoopsPickKey));
   const out = { created: 0, considered: 0, leagues: 0 };
+  // EL REGISTRO DE DECISIONES DE LA NOCHE. No solo lo que se publica: también lo que se rechazó y por qué.
+  // Es lo que alimenta el panel de NO PICK y lo que permite auditar el criterio meses después.
+  const gateDecisions = [];
 
   for (const lg of Object.keys(ST.LEAGUES)) {
     if (out.created >= cap) break;
@@ -9207,6 +9213,16 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
         home: { id: g.home.id, pts: null }, away: { id: g.away.id, pts: null }, completed: false }, { sims: 6000 });
       if (!intel) continue;
       const Cteams = C.teams || {};
+      // INCERTIDUMBRE EPISTÉMICA DEL PARTIDO. Es el número contra el que se mide cada ventaja: si la
+      // ventaja no es claramente mayor que lo que NO sabemos, su signo es una moneda al aire.
+      let uncPp = null;
+      try {
+        const Lg = ESPN.LEAGUES[lg] || {};
+        const gg = { id: g.id, league: lg, date: g.date, neutral: !!g.neutral, home: { id: g.home.id, pts: null }, away: { id: g.away.id, pts: null } };
+        const sens = SC.sensitivity(C, gg, { L: Lg, sims: 3000, market: null });
+        const unc = SC.uncertainty(sim, null, sens);
+        uncPp = unc ? unc.epistemic_pp : null;
+      } catch { uncPp = null; }
       const cands = [];
       for (const m of list) {
         const fair = (() => { const a = m.q[m.sides[0]], b = m.q[m.sides[1]]; return (a.length >= 3 && b.length >= 3) ? m : null; })();
@@ -9214,18 +9230,29 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
         for (const side of m.sides) {
           const best = m.q[side].reduce((x, y) => (!x || y.o > x.o ? y : x), null);
           if (!best || !(best.o >= HOOPS_PICK_MIN_ODDS()) || !(best.o <= HOOPS_PICK_MAX_ODDS())) continue;
-          let pModel = null, selName = null, famLab = null;
+          let pModel = null, selName = null, famLab = null, pushProb = 0;
           if (m.fam === 'match_winner') {
             pModel = side === 'home' ? sim.win.home : sim.win.away;
             selName = side === 'home' ? ev.home : ev.away; famLab = 'GANADOR';
           } else if (m.fam === 'match_total') {
-            const hit = mk.total.find((x) => Math.abs(x.line - m.line) < 0.01);
-            const pOver = hit ? hit.over : (sim.total_hist || []).filter(([tt]) => tt > m.line).reduce((acc, [, pp]) => acc + pp, 0);
-            pModel = side === 'over' ? pOver : 1 - pOver;
+            // LÓGICA DE EMPUJE (blueprint 182). Un total de 168 puede caer EXACTAMENTE en 168 y devolver la
+            // apuesta. Tratarlo como dos resultados infla el valor esperado de todas las líneas enteras, que
+            // además son las más frecuentes en los números clave. `pushAware` devuelve gana/empuja/pierde.
+            const pa = PRC.pushAware(sim.total_hist || [], m.line, side === 'over' ? 'over' : 'under', { kind: 'total' });
+            if (pa) { pModel = pa.effective; pushProb = pa.push; }
+            else {
+              const hit = mk.total.find((x) => Math.abs(x.line - m.line) < 0.01);
+              const pOver = hit ? hit.over : (sim.total_hist || []).filter(([tt]) => tt > m.line).reduce((acc, [, pp]) => acc + pp, 0);
+              pModel = side === 'over' ? pOver : 1 - pOver;
+            }
             selName = (side === 'over' ? 'Más de ' : 'Menos de ') + m.line + ' puntos'; famLab = 'TOTAL';
           } else if (m.fam === 'spread') {
-            const pHome = (sim.margin_hist || []).filter(([mm]) => mm > -m.line).reduce((acc, [, pp]) => acc + pp, 0);
-            pModel = side === 'home' ? pHome : 1 - pHome;
+            const pa = PRC.pushAware(sim.margin_hist || [], m.line, side === 'home' ? 'home' : 'away', { kind: 'spread' });
+            if (pa) { pModel = pa.effective; pushProb = pa.push; }
+            else {
+              const pHome = (sim.margin_hist || []).filter(([mm]) => mm > -m.line).reduce((acc, [, pp]) => acc + pp, 0);
+              pModel = side === 'home' ? pHome : 1 - pHome;
+            }
             selName = (side === 'home' ? ev.home : ev.away) + ' ' + ((side === 'home' ? m.line : -m.line) > 0 ? '+' : '') + (side === 'home' ? m.line : -m.line);
             famLab = 'HÁNDICAP';
           }
@@ -9233,12 +9260,26 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           // consenso sin margen del propio mercado: la referencia honesta de "lo que cree el mercado"
           const med = (arr) => { const v = arr.map((x) => 1 / x.o).sort((x, y) => x - y); const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
           const ia = med(m.q[m.sides[0]]), ib = med(m.q[m.sides[1]]);
-          const pMarket = (side === m.sides[0] ? ia : ib) / (ia + ib);
+          // SIN VIG CON MÉTODO REGISTRADO (blueprint 168). El método proporcional reparte el margen por
+          // igual entre favorito y perdedor, y la casa no lo carga así. Shin modela el margen como dinero
+          // informado y se porta mejor en mercados de dos salidas con favoritos claros, que es baloncesto.
+          const nv = PRC.novig([1 / ia, 1 / ib], { method: 'shin' });
+          const pMarket = nv ? (side === m.sides[0] ? nv.p[0] : nv.p[1]) : (side === m.sides[0] ? ia : ib) / (ia + ib);
           const edgePp = 100 * (pModel - pMarket);
-          const evPct = (best.o * pModel - 1) * 100;
+          const evPct = pushProb > 0 ? (1 - pushProb) * (best.o * pModel - 1) * 100 : (best.o * pModel - 1) * 100;
+          const books = Math.min(m.q[m.sides[0]].length, m.q[m.sides[1]].length);
+          const price = PRC.priceRow({ p: pModel, pushProb, odds: best.o, targetEv: 0.02 });
+          // TODO candidato pasa por las compuertas, gane o pierda. Las que NO pasan son la salida más útil
+          // del sistema: un cero explicado vale más que doce picks sin justificar.
+          const decision = GATE.evaluate({
+            family: m.fam === 'match_winner' ? 'moneyline' : m.fam === 'spread' ? 'spread' : 'total',
+            selection: selName, game_id: String(g.id), books, price, uncertainty_pp: uncPp,
+            staleness: PRC.staleness({ at: best.at || null }), thesis: m.fam + '|' + side + '|' + String(g.id),
+          }, { validation: C.validation, published: gateDecisions.filter((d) => d.pick) });
+          gateDecisions.push({ ...decision, game: ev.home + ' – ' + ev.away, league: lg });
           if (edgePp < HOOPS_PICK_MIN_EDGE() || evPct <= 0) continue;
           out.considered++;
-          cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pMarket, edgePp, evPct, best, books: Math.min(m.q[m.sides[0]].length, m.q[m.sides[1]].length) });
+          cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pMarket, edgePp, evPct, best, books, pushProb, price, decision });
         }
       }
       cands.sort((a, b) => b.edgePp - a.edgePp);
@@ -9303,6 +9344,18 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
             pick_quality: quality,
             regime: 'monitor',                              // el chip MONITOR de la card, tal cual fútbol
           },
+          // ── PRECIO COMPLETO Y VEREDICTO DE COMPUERTAS (blueprint 183-198) ──────────────────────────
+          // El monitor es MODO SOMBRA: se registra todo para medir, se publica nada. Cada registro lleva
+          // además el veredicto de las compuertas, así que dentro de tres meses se podrá responder "¿de
+          // estas, cuáles habríamos publicado de verdad?" sin volver a correr nada.
+          push_prob: c.pushProb ? +c.pushProb.toFixed(4) : 0,
+          min_playable: c.price ? c.price.min_playable : null,
+          price_sensitivity: c.price ? c.price.sensitivity : null,
+          uncertainty_pp: uncPp,
+          gate: c.decision ? { pick: c.decision.pick, reason_code: c.decision.reason_code, reason: c.decision.reason,
+            counterfactual: c.decision.counterfactual, blocks: c.decision.blocks, expiry: c.decision.expiry,
+            thresholds: c.decision.thresholds } : null,
+          novig_method: 'shin',
         };
         if (have.has(hoopsPickKey(pick))) continue;
         have.add(hoopsPickKey(pick));
@@ -9312,7 +9365,23 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
       }
     }
   }
+  // EL REGISTRO DE "NO PICK". Se guarda el resumen de la pasada entera —cuántos candidatos, cuántos
+  // pasaron y el recuento por motivo de rechazo— más los diez rechazos más cercanos a serlo, que son los
+  // que de verdad enseñan dónde está el listón. Se conserva una semana: es un diagnóstico, no un histórico.
+  if (gateDecisions.length) {
+    db.hoopsGates = db.hoopsGates || [];
+    const near = gateDecisions.filter((d) => !d.pick && d.price && Number.isFinite(d.price.edge_pp))
+      .sort((a, b) => Math.abs(b.price.edge_pp) - Math.abs(a.price.edge_pp)).slice(0, 10)
+      .map((d) => ({ selection: d.selection, game: d.game, league: d.league, family_label: d.family_label,
+        edge_pp: d.price.edge_pp, ev_pct: d.price.ev_pct, odds: d.price.odds, min_playable: d.price.min_playable,
+        reason_code: d.reason_code, reason: d.reason, counterfactual: d.counterfactual }));
+    db.hoopsGates.unshift({ at: new Date().toISOString(), ...GATE.summarize(gateDecisions), near_misses: near });
+    db.hoopsGates = db.hoopsGates.filter((x) => Date.now() - Date.parse(x.at) < 7 * 864e5).slice(0, 60);
+    save();
+  }
+  out.gates = gateDecisions.length ? GATE.summarize(gateDecisions) : null;
   if (out.created) { save(); console.log('[hoops-picks] nacieron', out.created, 'picks (monitor privado)'); }
+  if (out.gates) console.log('[hoops-gates]', JSON.stringify(out.gates));
   return out;
 }
 
@@ -14326,7 +14395,8 @@ const server = http.createServer(async (req, res) => {
           const ihG = impG(oG.hml), iaG = impG(oG.aml); mktProb = ihG / (ihG + iaG);
         }
         const gi = ST.gameIntel(C, g, { sims, injuries: obsG ? obsG.teams : null, marketProb: mktProb,
-          props: url.searchParams.get('props') !== '0' });
+          props: url.searchParams.get('props') !== '0',
+          deep: url.searchParams.get('deep') !== '0' });
         if (!gi) return json(res, 404, { error: 'No encontrado' });
         return json(res, 200, gi);
       }
@@ -14406,7 +14476,10 @@ const server = http.createServer(async (req, res) => {
             let mkt = null;
             if (o && o.hml != null && o.aml != null) { const ih = imp(o.hml), ia = imp(o.aml); mkt = ih / (ih + ia); }
             rows.push({ fold: f + 1, p: sim.win.home, won: g.home.pts > g.away.pts ? 1 : 0, mkt,
-              margin: g.home.pts - g.away.pts, proj: sim.margin, total: g.home.pts + g.away.pts, proj_total: sim.total });
+              margin: g.home.pts - g.away.pts, proj: sim.margin, total: g.home.pts + g.away.pts, proj_total: sim.total,
+              date: g.date, home: g.home.id, away: g.away.id,
+              // los histogramas viajan para poder puntuar la DISTRIBUCIÓN entera, no solo el centro
+              margin_hist: sim.margin_hist || null, total_hist: sim.total_hist || null });
           }
         }
         const n = rows.length;
@@ -14447,6 +14520,32 @@ const server = http.createServer(async (req, res) => {
             significant: sig != null ? Math.abs(sig) >= 2 : null },
           margin_mae: mae((r) => r.margin - r.proj), total_mae: mae((r) => r.total - r.proj_total),
           calibration: buckets,
+          // ── MEDIDAS AMPLIADAS (blueprint 215-227) ────────────────────────────────────────────────
+          // Brier solo no basta: un modelo puede tener buen Brier por no opinar, o mal Brier por una sola
+          // catástrofe. Log loss castiga la sobreconfianza; la nitidez detecta al que se calibra callando;
+          // la descomposición de Murphy dice si el problema es difícil o el modelo es malo; el CRPS puntúa
+          // la distribución entera del margen y del total, no solo el ganador.
+          metrics: (() => {
+            try {
+              const M = require('./basketball-engine/metrics');
+              const bin = rows.map((r) => ({ p: r.p, y: r.won, p_market: r.mkt }));
+              return {
+                log_loss: M.logLoss(bin),
+                sharpness: M.sharpness(bin),
+                murphy: M.murphy(bin),
+                calibration: M.calibration(bin),
+                crps_margin: M.crpsMean(rows.filter((r) => r.margin_hist).map((r) => ({ hist: r.margin_hist, y: r.margin }))),
+                crps_total: M.crpsMean(rows.filter((r) => r.total_hist).map((r) => ({ hist: r.total_hist, y: r.total }))),
+                segments: M.segments(bin.map((b, i) => ({ ...b, month: String(rows[i].date || '').slice(0, 7),
+                  favorite: rows[i].mkt == null ? null : (rows[i].mkt >= 0.5 ? 'local favorito' : 'visitante favorito') })),
+                { mes: (r) => r.month || null, rol: (r) => r.favorite }),
+                scorecard: M.scorecard({ family: 'moneyline', label: 'Ganador', rows: bin,
+                  clv: M.clvStats((db.hoopsPicks || []).filter((p) => p.league === lg && p.clv_pct != null)) }),
+              };
+            } catch (e) { return { error: e.message }; }
+          })(),
+          // el registro de rechazos: cuántos candidatos hubo, cuántos pasaron y por qué no pasaron los demás
+          gates: (db.hoopsGates || [])[0] || null,
           picks_enabled: false,
           monitor: hoopsPicksTrack(),     // el experimento en papel, al lado de la validación del modelo
           verdict: skill == null ? 'Sin cierre de mercado en la muestra: no se puede medir la vara que importa.'

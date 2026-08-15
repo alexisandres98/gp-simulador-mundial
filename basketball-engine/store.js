@@ -52,6 +52,8 @@ function load(league, { season = null, force = false } = {}) {
     out.stint_coverage = art ? art.stint_coverage : 0;
     out.rapm = (art && art.rapm) || null;
     out.ctx = (art && art.ctx) || null;
+    out.zone = (art && art.zone) || null;       // valor por zona de tiro → base del eFG esperado
+    out.adjust = (art && art.adjust) || null;   // four factors ajustados por rival
 
     // 3) ESTADO DE CALENDARIO: barato (18 ms) y necesita el array de partidos vivo, así que sí va acá.
     out.sched = CX.scheduleState(games);
@@ -235,7 +237,7 @@ function whatMatters({ sim, dec, hp, ap, ex, exA, market }) {
 }
 
 // ---- EL PANEL COMPLETO DE UN PARTIDO ---------------------------------------------------------------------
-function gameIntel(C, game, { sims = 20000, adj = null, injuries = null, marketProb = null, props = false } = {}) {
+function gameIntel(C, game, { sims = 20000, adj = null, injuries = null, marketProb = null, props = false, deep = false } = {}) {
   if (!C || !C.fit || !game) return null;
   const h = game.home.id, a = game.away.id;
   // LA PILA COMPLETA (16-ago): plantilla × minutos, contexto de calendario y mezcla con el mercado, cada
@@ -298,7 +300,59 @@ function gameIntel(C, game, { sims = 20000, adj = null, injuries = null, marketP
       rapm: C.rapm ? { players: C.rapm.n_players, stints: C.rapm.n_stints, lambda: C.rapm.lambda } : null,
     } : null,
     props: props ? gameProps(C, game, sim) : null,
+    // ── LA CAPA PROFUNDA (16-ago, blueprint) ───────────────────────────────────────────────────────
+    // Rotaciones, escenarios, sensibilidad e incertidumbre. Va detrás de `deep` porque cuesta varias
+    // simulaciones extra y no todas las vistas la necesitan: la lista de partidos no, la ficha sí.
+    deep: deep ? gameDeep(C, game, { injuries, marketProb, sim, sims }) : null,
   };
+}
+
+// ---- LA CAPA PROFUNDA ------------------------------------------------------------------------------------
+// Cada bloque va en su propio try: que falle el árbol de escenarios no puede tumbar la ficha entera. Un
+// panel que desaparece es mejor que una pantalla en blanco, y el error se ve en `errors` en vez de
+// esconderse.
+function gameDeep(C, game, { injuries = null, marketProb = null, sim = null, sims = 8000 } = {}) {
+  const ESPN2 = require('../data-providers/basketball/espn');
+  const L = ESPN2.LEAGUES[C.league] || {};
+  const RO = require('./rotations');
+  const SC = require('./scenarios');
+  const ADV = require('./advanced');
+  const out = { errors: [] };
+  const h = String(game.home.id), a = String(game.away.id);
+  const safe = (name, fn) => { try { return fn(); } catch (e) { out.errors.push({ block: name, error: e.message }); return null; } };
+
+  // ROTACIÓN: la cinta de minutos y quién arranca/cierra, por equipo
+  out.rotation = safe('rotation', () => ({
+    home: RO.rotationTemplate(C.games, h), away: RO.rotationTemplate(C.games, a),
+    home_roles: RO.starterAndCloser(C.games, h), away_roles: RO.starterAndCloser(C.games, a),
+  }));
+  // QUINTETOS con regularización
+  out.lineups = safe('lineups', () => ({ home: RO.lineupRatings(C.games, h, { top: 8 }), away: RO.lineupRatings(C.games, a, { top: 8 }) }));
+  // ÁRBOL DE REEMPLAZO y redistribución de uso para los ausentes reales
+  out.replacement = safe('replacement', () => {
+    const MN = require('./minutes');
+    const res = {};
+    for (const [side, tid] of [['home', h], ['away', a]]) {
+      const { out: outIds } = MN.injuriesToRoster(injuries || [], tid);
+      if (!outIds.length) continue;
+      res[side] = { tree: RO.replacementTree(C.games, tid, outIds), usage: RO.usageRedistribution(C.games, tid, outIds) };
+    }
+    return Object.keys(res).length ? res : null;
+  });
+  // ESCENARIOS, SENSIBILIDAD E INCERTIDUMBRE
+  const tree = safe('scenarios', () => SC.scenarioTree(C, game, { injuries, L, sims: Math.min(6000, sims), market: marketProb }));
+  const sens = safe('sensitivity', () => SC.sensitivity(C, game, { injuries, L, sims: Math.min(5000, sims), market: marketProb }));
+  out.scenarios = tree; out.sensitivity = sens;
+  out.uncertainty = safe('uncertainty', () => SC.uncertainty(sim, tree, sens));
+  out.risks = safe('risks', () => SC.risks(sens, tree));
+  // PERFIL AVANZADO DE LOS DOS EQUIPOS (four factors ajustados, eFG esperado, cuartos, clutch, forma)
+  out.advanced = safe('advanced', () => ({
+    home: ADV.teamAdvanced(C.games, h, { adj: C.adjust, base: C.zone, fit: C.fit }),
+    away: ADV.teamAdvanced(C.games, a, { adj: C.adjust, base: C.zone, fit: C.fit }),
+    home_sustainable: ADV.sustainable(C.games, h, C.fit), away_sustainable: ADV.sustainable(C.games, a, C.fit),
+  }));
+  if (!out.errors.length) delete out.errors;
+  return out;
 }
 
 // ---- PROPS DEL PARTIDO ----------------------------------------------------------------------------------
@@ -328,4 +382,4 @@ function gameProps(C, game, sim) {
   } catch (e) { return null; }
 }
 
-module.exports = { load, teamProfile, leagueRanks, exploitMap, playerSeason, gameIntel, gameProps, whatMatters, LEAGUES: ESPN.LEAGUES, DIR };
+module.exports = { load, teamProfile, leagueRanks, exploitMap, playerSeason, gameIntel, gameDeep, gameProps, whatMatters, LEAGUES: ESPN.LEAGUES, DIR };

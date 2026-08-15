@@ -348,12 +348,19 @@ const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/
 async function writeBrief(payload, sport) {
   const resp = await call({
     kind: 'writer',
-    max_tokens: 700,
-    system: `Eres el analista jefe de GP Simulador escribiendo la apertura del brief diario de ${BRIEF_SPORT[sport] || BRIEF_SPORT.futbol}. Con los datos del JSON, escribe UN párrafo de apertura (4-6 frases) que le diga al usuario qué mirar hoy: los cruces más interesantes, dónde el modelo y el mercado se separan, y qué señales hay. Solo números presentes en el JSON. Sin listas, sin encabezados, tono de newsletter premium. Cierra sin despedida. Responde SOLO un JSON {"es":"...","en":"..."}.`,
+    // 15-ago: 700 se quedaba corto con jornadas de 10 partidos → el JSON salía truncado y jsonOf devolvía
+    // null, o sea brief sin apertura y en silencio. Mismo patrón que ya había pasado con las lecturas de
+    // combate. Se sube el techo Y se acota el largo en el prompt, que es lo que de verdad controla el costo.
+    max_tokens: 1400,
+    system: `Eres el analista jefe de GP Simulador escribiendo la apertura del brief diario de ${BRIEF_SPORT[sport] || BRIEF_SPORT.futbol}. Con los datos del JSON, escribe UN párrafo de apertura (4-6 frases, máximo 130 palabras por idioma) que le diga al usuario qué mirar hoy: los cruces más interesantes, dónde el modelo y el mercado se separan, y qué señales hay. Solo números presentes en el JSON. Sin listas, sin encabezados, tono de newsletter premium. Cierra sin despedida. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea, sin saltos de línea literales dentro de los strings.`,
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
   });
   const j = jsonOf(resp);
-  return j && j.es && j.en ? { es: String(j.es).slice(0, 1200), en: String(j.en).slice(0, 1200) } : null;
+  if (!j || !j.es || !j.en) {
+    console.error('[llm] writeBrief sin JSON usable · deporte:', sport, '· stop:', (resp && resp.stop_reason) || '?', '· texto:', textOf(resp).slice(0, 200).replace(/\n/g, ' '));
+    return null;
+  }
+  return { es: String(j.es).slice(0, 1200), en: String(j.en).slice(0, 1200) };
 }
 
 // ══ EXTRACTOR — observer (la pata que puede mejorar el rendimiento) ═════════════════════════

@@ -8117,6 +8117,344 @@
       '<div class="gx-label gx-cb-rdlab">' + esc(t('cb_rdist')) + '</div><div class="gx-cb-rdist">' + dist + '</div>' +
       '<div class="gx-dim gx-cb-subline" style="text-align:center">~' + pred.exp_rounds + ' ' + esc(t('cb_rounds')) + ' · ' + esc(t('cb_finish')) + ' ' + Math.round((pred.finish || 0) * 100) + '%</div></div></div>';
   }
+  // ══ LA CAPA PROFUNDA DE COMBATE (16-ago, blueprint 32-39) ════════════════════════════════════════════
+  // Los datos ya salían por /api/combat/fight?deep=1 y no los dibujaba nadie. Estas cinco piezas son ese
+  // payload hecho imagen. Sirven IGUAL para MMA y para boxeo porque el contrato es el mismo (`deep.axes`,
+  // `deep.phases`, `deep.phase_strip`, `dims`, `routes`, `fragility`, `projection`): la UI dibuja lo que
+  // viene en el JSON y NO tiene una lista de ejes escrita a mano — si mañana el motor de boxeo cambia un
+  // eje, esto lo sigue solo.
+  //
+  // LAS REGLAS QUE SE RESPETAN, Y QUE SON LAS MISMAS DE LAS PIEZAS DE BALONCESTO:
+  //  · UN COLOR, UN SIGNIFICADO. Verde = esquina 1, rojo = esquina 2, ámbar = incertidumbre y fragilidad,
+  //    gris = contexto. Ningún color decora: si algo es verde es porque es del peleador 1.
+  //  · SIN DEGRADADOS DECORATIVOS y sin barra que empiece en un valor que no sea cero o el centro.
+  //  · NÚMEROS TABULARES siempre, para que las columnas se puedan comparar de un vistazo.
+  //  · EN MÓVIL SE RECOMPONE, no se encoge: las comparaciones lado a lado se apilan (ver premium.css).
+  //  · SIN DATO NO HAY FILA. Una barra a cero por falta de dato es más cara que un hueco.
+  var CB_L = function (es, en) { return LANG === 'en' ? en : es; };
+  var cbPc = function (x, d) { return x == null ? '—' : (d ? (100 * x).toFixed(d) : Math.round(100 * x)) + '%'; };
+  // las notas del motor son fragmentos en minúscula pensados para encadenarse; cuando abren frase, mayúscula
+  var cbUp = function (s2) { return s2 ? String(s2).charAt(0).toUpperCase() + String(s2).slice(1) : ''; };
+
+  // ---- 1) EL CAMPO DE BATALLA (33) -------------------------------------------------------------------
+  // La pieza central. Arriba, DÓNDE se decide la pelea; debajo, las dimensiones del cruce en un ÚNICO eje
+  // compartido con el cero en el centro. La clave —y lo que la separa de un gráfico de barras cualquiera—
+  // es que cada fila lleva encima el peso de su fase: una ventaja enorme en una fase que casi nunca decide
+  // la pelea se ve pequeña, porque es pequeña.
+  function cbDeepField(deep, l1, l2) {
+    var mu = deep && deep.matchup;
+    if (!mu || !mu.dims || !mu.dims.length) return '';
+    var phLab = {};
+    (deep.phases || []).forEach(function (p) { phLab[p.key] = p.label; });
+    var strip = (deep.phase_strip || []).filter(function (k) { return mu.phase_prob[k] != null; });
+    var stripHtml = strip.length ? '<div class="gx-cbf-phases">' +
+      strip.map(function (k, i) {
+        var v = mu.phase_prob[k] || 0;
+        return '<div class="gx-cbf-ph p' + (i + 1) + '" style="flex:' + Math.max(0.04, v).toFixed(4) + '">' +
+          '<b>' + cbPc(v) + '</b><span>' + esc(phLab[k] || k) + '</span></div>';
+      }).join('') + '</div>' : '';
+    var mx = mu.dims.reduce(function (m, d) { return Math.max(m, Math.abs(d.edge || 0)); }, 0) || 1;
+    var rows = mu.dims.map(function (d) {
+      var reach = (mu.phase_prob && mu.phase_prob[d.phase]) || 0;
+      var w = Math.max(3, Math.abs(d.edge) / mx * 100);
+      var pos = d.edge > 0;
+      return '<div class="gx-cbf-row">' +
+        '<span class="gx-cbf-lab">' + esc(d.label) +
+          '<em>' + esc(phLab[d.phase] || d.phase) + ' · ' + cbPc(reach) + CB_L(' de la decisión', ' of the decision') + '</em></span>' +
+        '<div class="gx-cbf-bar">' +
+          '<div class="l">' + (pos ? '<i style="width:' + w.toFixed(1) + '%"></i>' : '') + '</div>' +
+          '<div class="r">' + (!pos ? '<i style="width:' + w.toFixed(1) + '%"></i>' : '') + '</div>' +
+          '<u style="width:' + Math.round(100 * reach) + '%"></u></div>' +
+        '<b class="gx-mono ' + (pos ? 'gr' : 'rd') + '">' + (pos ? '+' : '') + (d.edge != null ? d.edge.toFixed(2) : '—') + '</b>' +
+        (d.detail ? '<span class="gx-cbf-det gx-dim">' + esc(d.detail) + '</span>' : '') + '</div>';
+    }).join('');
+    var net = mu.net_edge;
+    return '<div class="gx-panel gx-mv-panel gx-cbf"><div class="gx-ph">' +
+      '<span class="gx-label">' + esc(CB_L('El campo de batalla', 'The battlefield')) + '</span>' +
+      '<span class="gx-ph-extra gx-dim">' + esc(CB_L('ataque de uno contra defensa del otro, pesado por dónde se decide',
+        'each attack against the other’s defence, weighted by where the fight is decided')) + '</span></div>' +
+      '<div class="gx-mod-body">' + stripHtml +
+      '<div class="gx-cbf-head"><span class="gr">' + esc(l1) + '</span>' +
+        '<em class="gx-dim">' + esc(CB_L('la línea fina bajo cada barra es el peso de esa fase',
+          'the thin line under each bar is that phase’s weight')) + '</em>' +
+        '<span class="rd">' + esc(l2) + '</span></div>' + rows +
+      (net != null ? '<div class="gx-cbf-net">' + esc(CB_L('Cruce neto', 'Net matchup')) + ': <b class="' + (net >= 0 ? 'gr' : 'rd') + '">' +
+        (net >= 0 ? '+' : '') + net.toFixed(2) + ' → ' + esc(net >= 0 ? l1 : l2) + '</b></div>' : '') +
+      (mu.summary && mu.summary.where ? '<div class="gx-dim gx-cbf-sum">' + esc(mu.summary.where) +
+        (mu.summary.styles ? ' · ' + esc(mu.summary.styles) : '') + '</div>' : '') +
+      '</div></div>';
+  }
+
+  // ---- 2) EL ADN DE LA PELEA (32) --------------------------------------------------------------------
+  // OCHO EJES, UNA SOLA PISTA POR EJE. Nada de radar: un radar hace que el área —que no significa nada—
+  // parezca el mensaje, y deforma la comparación según el orden en que se pongan los ejes. Aquí cada eje es
+  // una pista de percentil de 0 a 100 con las dos marcas encima, así que la pregunta "¿quién está más
+  // arriba en esto?" se contesta sin mover el ojo. Los percentiles son contra el resto de la organización.
+  function cbDeepDna(deep, l1, l2) {
+    var A = deep && deep.dna && deep.dna.a, B = deep && deep.dna && deep.dna.b;
+    if (!A || !B || !A.axes) return '';
+    var axes = (deep.axes || []).filter(function (a) { return A.axes[a.key] != null || B.axes[a.key] != null; });
+    if (!axes.length) return '';
+    var rows = axes.map(function (a) {
+      var va = A.axes[a.key], vb = B.axes[a.key];
+      // CUANDO LOS DOS EMPATAN, LAS DOS MARCAS SE PISAN y la pista parece tener un solo peleador. Se
+      // separan unos píxeles: es la única deformación que se permite, y solo cuando no hay diferencia
+      // que deformar.
+      var tie = (va != null && vb != null && Math.abs(va - vb) < 0.025);
+      var lead = (va != null && vb != null) ? (va > vb ? 'a' : vb > va ? 'b' : '') : '';
+      return '<div class="gx-cbd-row"><span class="gx-cbd-lab">' + esc(a.label) + '</span>' +
+        '<div class="gx-cbd-track">' +
+          (va != null ? '<i class="a" style="left:' + (100 * va).toFixed(1) + '%' + (tie ? ';margin-left:-9px' : '') + '" title="' + esc(l1) + ': ' + cbPc(va) + '"></i>' : '') +
+          (vb != null ? '<i class="b" style="left:' + (100 * vb).toFixed(1) + '%' + (tie ? ';margin-left:0' : '') + '" title="' + esc(l2) + ': ' + cbPc(vb) + '"></i>' : '') +
+        '</div>' +
+        // CADA CIFRA CON EL COLOR DE SU DUEÑO. Pintar las dos del color del que va ganando hacía leer
+        // "72 · 61" como si las dos fueran del mismo peleador.
+        '<b class="gx-mono gx-cbd-vals"><em class="gr' + (lead === 'a' ? ' w' : '') + '">' + (va != null ? Math.round(100 * va) : '—') + '</em>' +
+        '<u>·</u><em class="rd' + (lead === 'b' ? ' w' : '') + '">' + (vb != null ? Math.round(100 * vb) : '—') + '</em></b></div>';
+    }).join('');
+    var tags = function (V, cls, nm) {
+      var ar = V.archetype || {};
+      var sp = V.power_split;
+      return '<div class="gx-cbd-side"><div class="gx-cbd-name ' + cls + '">' + esc(nm) + '</div>' +
+        '<div class="gx-cbd-tags">' + (ar.tags || []).map(function (x) {
+          return '<span class="gx-clgate ' + (cls === 'gr' ? 'ok' : 'no') + '">' + esc(x) + '</span>'; }).join('') + '</div>' +
+        (sp ? '<div class="gx-cbd-split"><div class="gx-cbd-splitbar"><i style="width:' + Math.round(100 * (sp.power || 0)) + '%"></i></div>' +
+          '<span class="gx-dim">' + esc(CB_L('rompe', 'breaks it')) + ' ' + cbPc(sp.power) + ' · ' +
+          esc(CB_L('puntos', 'points')) + ' ' + cbPc(sp.points) + '</span></div>' : '') +
+        '<div class="gx-dim gx-cbd-conf">' + esc(CB_L('muestra', 'sample')) + ': ' +
+          (V.sample ? V.sample.fights + ' ' + esc(CB_L('peleas', 'fights')) : '—') +
+          ' · ' + esc(CB_L('confianza', 'confidence')) + ' ' + cbPc(V.confidence) +
+          (ar.note ? ' · ' + esc(ar.note) : '') + '</div></div>';
+    };
+    var noData = deep.no_data ? '<div class="gx-cbd-nodata gx-dim">' + ic('clipboard-text') + '<span>' +
+      esc(deep.no_data.punches || '') + '</span></div>' : '';
+    return '<div class="gx-panel gx-mv-panel gx-cbd"><div class="gx-ph">' +
+      '<span class="gx-label">' + esc(CB_L('ADN de la pelea', 'Fight DNA')) + '</span>' +
+      '<span class="gx-ph-extra gx-dim">' + esc(CB_L('percentil dentro de la organización', 'percentile within the organisation')) + '</span></div>' +
+      '<div class="gx-mod-body"><div class="gx-cbd-sides">' + tags(A, 'gr', l1) + tags(B, 'rd', l2) + '</div>' +
+      '<div class="gx-cbd-rows">' + rows + '</div>' + noData + '</div></div>';
+  }
+
+  // ---- 3) RUTA DE VICTORIA Y FRAGILIDAD (121-122) ----------------------------------------------------
+  // El camino concreto de cada esquina y —la parte que casi ningún producto publica— CUÁNTO DEPENDE el
+  // pronóstico de que ese camino se dé. Un favorito cuya ventaja entera vive en una sola fase es mucho más
+  // arriesgado que otro con la misma probabilidad repartida, y eso hay que decirlo antes, no después.
+  function cbDeepRoutes(deep, l1, l2) {
+    var mu = deep && deep.matchup;
+    if (!mu || !mu.routes) return '';
+    var phLab = {};
+    (deep.phases || []).forEach(function (p) { phLab[p.key] = p.label; });
+    var card = function (r, cls, nm) {
+      if (!r) return '<div class="gx-cbr-card"><div class="gx-cbr-name ' + cls + '">' + esc(nm) + '</div>' +
+        '<div class="gx-dim">' + esc(CB_L('sin ninguna dimensión a su favor en este cruce', 'no dimension favours this corner')) + '</div></div>';
+      return '<div class="gx-cbr-card"><div class="gx-cbr-name ' + cls + '">' + esc(nm) + '</div>' +
+        '<div class="gx-cbr-via">' + esc(r.via) + '</div>' +
+        '<div class="gx-cbr-meta"><span>' + esc(CB_L('ventaja', 'edge')) + ' <b class="gx-mono">' + (r.edge != null ? r.edge.toFixed(2) : '—') + '</b></span>' +
+        '<span>' + esc(phLab[r.phase] || r.phase) + ' <b class="gx-mono">' + cbPc(r.phase_prob) + '</b></span>' +
+        '<span>' + esc(CB_L('valor esperado', 'expected value')) + ' <b class="gx-mono">' + (r.expected_value != null ? r.expected_value.toFixed(2) : '—') + '</b></span></div>' +
+        (r.note ? '<div class="gx-cbr-warn">' + ic('alert-triangle') + '<span>' + esc(r.note) + '</span></div>' : '') + '</div>';
+    };
+    var fr = mu.fragility || {};
+    var lvl = fr.level === 'alta' ? 'hi' : fr.level === 'media' ? 'md' : 'lo';
+    var frag = fr.concentration != null ? '<div class="gx-cbr-frag ' + lvl + '">' +
+      '<div class="gx-cbr-fraghd"><span class="gx-label">' + esc(CB_L('Fragilidad del pronóstico', 'How fragile this read is')) + '</span>' +
+      '<b>' + esc(String(fr.level || '').toUpperCase()) + '</b></div>' +
+      '<div class="gx-cbr-fragbar"><i style="width:' + Math.round(100 * fr.concentration) + '%"></i></div>' +
+      '<div class="gx-cbr-fragsc"><span>' + esc(CB_L('repartida', 'spread out')) + '</span><span>' + esc(CB_L('toda en una fase', 'all in one phase')) + '</span></div>' +
+      '<div class="gx-dim">' + esc(CB_L('La dimensión que más pesa se lleva el ', 'The heaviest dimension carries ')) +
+        cbPc(fr.concentration) + esc(CB_L(' de la ventaja total. ', ' of the total edge. ')) + esc(cbUp(fr.note)) + '</div></div>' : '';
+    return '<div class="gx-panel gx-mv-panel gx-cbr"><div class="gx-ph">' +
+      '<span class="gx-label">' + esc(CB_L('Cómo gana cada uno', 'How each one wins')) + '</span>' +
+      '<span class="gx-ph-extra gx-dim">' + esc(CB_L('su mejor ventaja, y si la pelea llega a donde vive', 'their best edge, and whether the fight gets there')) + '</span></div>' +
+      '<div class="gx-mod-body"><div class="gx-cbr-cards">' + card(mu.routes.a, 'gr', l1) + card(mu.routes.b, 'rd', l2) + '</div>' + frag + '</div></div>';
+  }
+
+  // ---- 4) LA SALA DE TARJETAS (36) -------------------------------------------------------------------
+  // Si esto va a los papeles, ¿cómo queda? Y sobre todo: ¿QUÉ ASALTOS ESTÁN DE VERDAD EN EL AIRE? Un
+  // pronóstico que dice "gana 7-3 en asaltos" sin decir cuáles tres se le escapan no sirve para nada, y la
+  // franja de asaltos apretados es exactamente lo que decide una decisión dividida.
+  function cbDeepCards(deep, l1, l2) {
+    var pr = deep && deep.projection;
+    if (!pr || !pr.decision) return '';
+    var D = pr.decision, dist = (pr.distance && pr.distance.prob) || 0;
+    if (!(dist > 0.02)) return '';
+    var kinds = [
+      ['ud_a', CB_L('Unánime', 'Unanimous') + ' ' + l1, 'gr'],
+      ['sd_a', CB_L('Dividida', 'Split') + ' ' + l1, 'gr sd'],
+      ['md_a', CB_L('Mayoritaria', 'Majority') + ' ' + l1, 'gr sd'],
+      ['draw', CB_L('Empate', 'Draw'), 'dw'],
+      ['md_b', CB_L('Mayoritaria', 'Majority') + ' ' + l2, 'rd sd'],
+      ['sd_b', CB_L('Dividida', 'Split') + ' ' + l2, 'rd sd'],
+      ['ud_b', CB_L('Unánime', 'Unanimous') + ' ' + l2, 'rd'],
+    ].filter(function (k) { return D[k[0]] != null; });
+    var mxK = kinds.reduce(function (m, k) { return Math.max(m, D[k[0]] || 0); }, 0) || 1;
+    var rows = kinds.map(function (k) {
+      return '<div class="gx-cbs-row"><span>' + esc(k[1]) + '</span>' +
+        '<div class="gx-cbs-bar"><i class="' + k[2] + '" style="width:' + Math.round(100 * (D[k[0]] || 0) / mxK) + '%"></i></div>' +
+        '<b class="gx-mono">' + cbPc(D[k[0]], 1) + '</b></div>';
+    }).join('');
+    // LOS ASALTOS, UNO A UNO. La barra sale del CENTRO, que es el único punto neutro de un asalto.
+    // EL COLOR ES LA PROPIEDAD DEL ASALTO, y el gris es "no es de nadie". La primera versión pintaba de
+    // ámbar todo asalto a menos de 8 pp del 50 % y en una pelea pareja salían 10 de 12 marcados: un muro
+    // ámbar no dice "estos están en el aire", dice "el color no significa nada". Ahora el que no tiene
+    // dueño se queda en gris —que es exactamente lo que es— y el ojo se va solo a los que sí lo tienen.
+    var RD = pr.rounds || [];
+    var mxD = RD.reduce(function (m, r) { return Math.max(m, Math.abs((r.p_a || 0.5) - 0.5)); }, 0) || 0.5;
+    var OWN = 0.06;                                    // por debajo de 6 pp de ventaja el asalto no es de nadie
+    var rds = RD.map(function (r) {
+      var d = (r.p_a || 0.5) - 0.5;
+      var own = Math.abs(d) >= OWN;
+      // escala RELATIVA a la pelea: si todos los asaltos están apretados, igual se ve cuál lo está menos
+      var h = own ? Math.max(4, Math.min(26, Math.abs(d) / mxD * 26)) : 2;
+      return '<div class="gx-cbs-rcol' + (own ? '' : ' even') + '" title="' + esc(l1) + ' ' + cbPc(r.p_a) + '">' +
+        '<div class="gx-cbs-rbar"><i class="' + (!own ? 'nu' : d >= 0 ? 'gr' : 'rd') + '" style="height:' + h.toFixed(0) + 'px;' +
+        (own ? (d >= 0 ? 'bottom:50%' : 'top:50%') : 'top:50%;margin-top:-1px') + '"></i></div>' +
+        '<span>' + r.round + '</span></div>';
+    }).join('');
+    var nClose = RD.filter(function (r) { return Math.abs((r.p_a || 0.5) - 0.5) < OWN; }).length;
+    var card = D.card;
+    return '<div class="gx-panel gx-mv-panel gx-cbs"><div class="gx-ph">' +
+      '<span class="gx-label">' + esc(CB_L('Si va a las tarjetas', 'If it goes to the cards')) + '</span>' +
+      '<span class="gx-ph-extra gx-dim">' + cbPc(dist) + ' ' + esc(CB_L('de que llegue al límite', 'chance it goes the distance')) + '</span></div>' +
+      '<div class="gx-mod-body">' + rows +
+      (card ? '<div class="gx-cbs-card"><span class="gx-dim">' + esc(CB_L('Tarjeta típica', 'Typical card')) + '</span>' +
+        '<b class="gx-mono">' + esc(card.typical) + '</b>' +
+        '<span class="gx-dim">' + cbPc(card.within_2) + ' ' + esc(CB_L('de las tarjetas caen dentro de 2 puntos', 'of cards land within 2 points')) + '</span></div>' : '') +
+      '<div class="gx-label gx-cbs-rlab">' + esc(CB_L('Qué asaltos están en el aire', 'Which rounds are genuinely up for grabs')) + '</div>' +
+      '<div class="gx-cbs-rounds">' + rds + '</div>' +
+      '<div class="gx-dim gx-cbs-foot">' + (nClose
+        ? '<b>' + nClose + '</b> ' + esc(nClose === 1
+            ? CB_L('asalto sin dueño claro — ahí se decide una tarjeta dividida.', 'round with no clear owner — that is where a split decision is decided.')
+            : CB_L('asaltos sin dueño claro — ahí se decide una tarjeta dividida.', 'rounds with no clear owner — that is where a split decision is decided.'))
+        : esc(CB_L('Ningún asalto queda sin dueño claro: si llega al límite, la tarjeta debería ser cómoda.',
+            'No round is genuinely up for grabs: if this goes the distance, the card should be comfortable.'))) + '</div>' +
+      '</div></div>';
+  }
+
+  // ---- 5) LA SALA DE SIMULACIÓN (37) -----------------------------------------------------------------
+  // Método, asalto de finalización y duración salen TODOS de la misma simulación, así que son coherentes
+  // entre sí por construcción: no puede pasar que diga mucho KO temprano *y* mucha decisión, que es el
+  // defecto clásico de estimar cada mercado por separado y normalizar al final.
+  // Y aquí va lo que el sistema ha medido dos veces en dos deportes: los mercados DERIVADOS —asaltos y
+  // método— son donde hay señal, así que la tabla de totales va arriba y en grande, no escondida al final.
+  function cbDeepSim(deep, l1, l2) {
+    var pr = deep && deep.projection;
+    if (!pr || !pr.method) return '';
+    var M = pr.method, box = deep.sport === 'boxing';
+    var outs = box
+      ? [['a_ko', 'KO ' + l1, 'gr'], ['a_tko', 'TKO ' + l1, 'gr'], ['a_rtd', CB_L('Retirada', 'Retirement') + ' ' + l1, 'gr'], ['a_dec', CB_L('Decisión', 'Decision') + ' ' + l1, 'gr sd'],
+        ['draw', CB_L('Empate', 'Draw'), 'dw'],
+        ['b_dec', CB_L('Decisión', 'Decision') + ' ' + l2, 'rd sd'], ['b_rtd', CB_L('Retirada', 'Retirement') + ' ' + l2, 'rd'], ['b_tko', 'TKO ' + l2, 'rd'], ['b_ko', 'KO ' + l2, 'rd']]
+      : [['a_ko', 'KO/TKO ' + l1, 'gr'], ['a_sub', CB_L('Sumisión', 'Submission') + ' ' + l1, 'gr'], ['a_dec', CB_L('Decisión', 'Decision') + ' ' + l1, 'gr sd'],
+        ['draw', CB_L('Empate', 'Draw'), 'dw'],
+        ['b_dec', CB_L('Decisión', 'Decision') + ' ' + l2, 'rd sd'], ['b_sub', CB_L('Sumisión', 'Submission') + ' ' + l2, 'rd'], ['b_ko', 'KO/TKO ' + l2, 'rd']];
+    outs = outs.filter(function (o) { return M[o[0]] != null && M[o[0]] > 0.0005; });
+    var mxM = outs.reduce(function (m, o) { return Math.max(m, M[o[0]]); }, 0) || 1;
+    var mrows = outs.map(function (o) {
+      return '<div class="gx-cbs-row"><span>' + esc(o[1]) + '</span>' +
+        '<div class="gx-cbs-bar"><i class="' + o[2] + '" style="width:' + Math.round(100 * M[o[0]] / mxM) + '%"></i></div>' +
+        '<b class="gx-mono">' + cbPc(M[o[0]], 1) + '</b></div>';
+    }).join('');
+    // TOTALES DE ASALTOS: el mercado derivado, que es donde las dos mediciones del sistema dicen que hay algo
+    var allOvers = Object.keys(pr.time || {}).filter(function (k) { return /^over_\d+_5$/.test(k) && pr.time[k] != null; })
+      .sort(function (a, b) { return (+a.match(/\d+/)[0]) - (+b.match(/\d+/)[0]); });
+    // SOLO LA BANDA QUE SE COTIZA. Un combate a 12 genera once líneas de total y las de los extremos
+    // (97 % de más de 1,5) no las cuelga ninguna casa ni las lee nadie: son ruido delante del dato. Se
+    // muestran las seis alrededor de la mediana, que es donde de verdad se pone la línea.
+    var overs = allOvers;
+    if (allOvers.length > 6) {
+      var mid = allOvers.reduce(function (best, k, i) {
+        return Math.abs(pr.time[k] - 0.5) < Math.abs(pr.time[best] - 0.5) ? k : best; }, allOvers[0]);
+      var mi = allOvers.indexOf(mid);
+      var from = Math.max(0, Math.min(allOvers.length - 6, mi - 3));
+      overs = allOvers.slice(from, from + 6);
+    }
+    var tot = overs.length ? '<div class="gx-cbt"><div class="gx-cbt-hd"><span></span><b>' + esc(CB_L('Más de', 'Over')) + '</b><b>' + esc(CB_L('Menos de', 'Under')) + '</b></div>' +
+      overs.map(function (k) {
+        var line = k.replace('over_', '').replace('_5', '.5');
+        var ov = pr.time[k];
+        return '<div class="gx-cbt-row"><span>' + line + ' ' + esc(CB_L('asaltos', 'rounds')) + '</span>' +
+          '<b class="gx-mono">' + cbPc(ov, 1) + '</b><b class="gx-mono">' + cbPc(1 - ov, 1) + '</b></div>';
+      }).join('') + '</div>' : '';
+    // HISTOGRAMA DEL ASALTO DE FINALIZACIÓN, EN SU PROPIA ESCALA. Meter "llega al límite" como una columna
+    // más era lo honesto en apariencia y lo inútil en la práctica: con un 57 % al límite contra un 2-5 %
+    // por asalto, las doce columnas que importan quedaban aplastadas contra el suelo y no se distinguía R2
+    // de R9. El total al límite ya está arriba, en la tabla de totales, y se repite aquí en una línea.
+    var rof = pr.round_of_finish || [];
+    var mxR = rof.reduce(function (m, r) { return Math.max(m, r.any || 0); }, 0) || 1;
+    var hist = rof.map(function (r) {
+      return '<div class="gx-cbh-col"><div class="gx-cbh-bar"><i style="height:' + Math.max(2, Math.round(96 * (r.any || 0) / mxR)) + 'px"></i></div>' +
+        '<span>R' + r.round + '</span><b class="gx-mono">' + cbPc(r.any, 1) + '</b></div>';
+    }).join('');
+    var histFoot = pr.distance ? '<div class="gx-dim gx-cbs-note">' +
+      esc(CB_L('Escala propia de los asaltos. Además, un ', 'Scaled to the rounds themselves. On top of that, a ')) +
+      '<b class="gx-mono">' + cbPc(pr.distance.prob) + '</b>' +
+      esc(CB_L(' de las veces no se rompe y llega al límite.', ' of the time it never breaks and goes the distance.')) + '</div>' : '';
+    // duración: boxeo la mide en ASALTOS y MMA en MINUTOS — no se mezclan las unidades
+    var T = pr.time || {};
+    var unit = box ? CB_L('asaltos', 'rounds') : CB_L('min', 'min');
+    var mean = box ? T.mean_rounds : T.mean;
+    var dur = mean != null ? '<div class="gx-cbs-dur"><span>' + esc(CB_L('Duración', 'Duration')) + '</span>' +
+      '<b class="gx-mono">' + mean + ' ' + esc(unit) + '</b>' +
+      '<span class="gx-dim">' + esc(CB_L('mitad de las veces entre', 'half the time between')) + ' <b class="gx-mono">' + T.p25 + '</b> ' +
+      esc(CB_L('y', 'and')) + ' <b class="gx-mono">' + T.p75 + '</b></span></div>' : '';
+    var kd = pr.knockdowns ? '<div class="gx-cbs-kd"><span>' + esc(CB_L('Al menos un derribo', 'At least one knockdown')) + '</span>' +
+      '<b class="gx-mono">' + cbPc(pr.knockdowns.any) + '</b>' +
+      '<span class="gx-dim">' + esc(CB_L('y un ', 'and a ')) + cbPc(pr.knockdowns.swing) +
+      esc(CB_L(' de que gane quien iba perdiendo en las tarjetas', ' chance the fighter behind on the cards still wins')) + '</span></div>' : '';
+    // INCERTIDUMBRE: EN CUOTA, NO EN "pp". La parte aleatoria es la desviación de un Bernoulli, así que en
+    // cualquier pelea pareja vale ~50 y sale un "±46 pp" que no significa nada y asusta sin informar. Lo
+    // que sí varía de pelea a pelea, y lo único que baja con más datos, es la parte epistémica: esa va en
+    // puntos, con sus causas debajo. El reparto va en porcentaje, que es como se lee.
+    var unc = pr.uncertainty ? (function (u) {
+      var a = u.aleatoric_pp || 0, e = u.epistemic_pp || 0, s = a + e || 1;
+      var drv = (u.drivers || []).filter(function (d) { return d.pp; }).map(function (d) {
+        return '<div class="gx-cbu-drv"><span>' + esc(d.source) + (d.detail ? ' <em class="gx-dim">' + esc(d.detail) + '</em>' : '') + '</span>' +
+          '<b class="gx-mono">' + d.pp + ' pp</b></div>';
+      }).join('');
+      return '<div class="gx-bb-unc"><div class="gx-bb-uncbar">' +
+        '<i class="ale" style="width:' + Math.round(100 * a / s) + '%"></i><i class="epi" style="width:' + Math.round(100 * e / s) + '%"></i></div>' +
+        '<div class="gx-bb-uncleg"><span><i class="ale"></i>' + esc(CB_L('El propio combate', 'The fight itself')) + ' ' + Math.round(100 * a / s) + '%</span>' +
+        '<span><i class="epi"></i>' + esc(CB_L('Lo que no sabemos', 'What we do not know')) + ' ' + Math.round(100 * e / s) + '% · ' + e + ' pp</span></div>' +
+        (drv ? '<div class="gx-cbu-drvs">' + drv + '</div>' : '') +
+        '<div class="gx-dim">' + esc(u.note || '') + '</div></div>';
+    })(pr.uncertainty) : '';
+    return '<div class="gx-panel gx-mv-panel gx-cbsim"><div class="gx-ph">' +
+      '<span class="gx-label">' + esc(CB_L('Sala de simulación', 'Simulation room')) + '</span>' +
+      '<span class="gx-ph-extra gx-dim">' + (pr.sims ? pr.sims.toLocaleString() : '') + ' ' +
+      esc(CB_L('recorridos de la pelea, asalto a asalto', 'fight run-throughs, round by round')) + '</span></div>' +
+      '<div class="gx-mod-body">' +
+      '<div class="gx-label gx-cbs-rlab">' + esc(CB_L('Total de asaltos', 'Total rounds')) + '</div>' + tot + dur +
+      '<div class="gx-label gx-cbs-rlab">' + esc(CB_L('Cómo termina', 'How it ends')) + '</div>' + mrows +
+      (M.via_note ? '<div class="gx-dim gx-cbs-note">' + esc(M.via_note) + '</div>' : '') +
+      '<div class="gx-label gx-cbs-rlab">' + esc(CB_L('En qué asalto se rompe', 'Which round it breaks')) + '</div>' +
+      '<div class="gx-cbh">' + hist + '</div>' + histFoot + kd + unc + '</div></div>';
+  }
+
+  // ---- EL BLOQUE ENTERO, CON SU PROCEDENCIA POR DELANTE ----------------------------------------------
+  // La cabecera dice de dónde sale cada número ANTES de enseñarlos. No es un adorno legal: el ganador está
+  // anclado al modelo de habilidad y el resto sale del motor del deporte, y quien lee tiene derecho a saber
+  // cuál de las dos cosas está mirando.
+  function cbDeepSection(deep, f1n, f2n) {
+    if (!deep) return '';
+    var l1 = (f1n || '').split(' ').pop(), l2 = (f2n || '').split(' ').pop();
+    if (deep.available === false) {
+      return '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' +
+        esc(CB_L('Lectura profunda', 'Deep read')) + '</span></div><div class="gx-mod-body"><div class="gx-empty">' +
+        ic('clipboard-text') + '<b>' + esc(CB_L('Sin lectura profunda para esta pelea', 'No deep read for this fight')) + '</b>' +
+        '<span class="gx-dim">' + esc(deep.note || deep.error || '') + '</span></div></div></div>';
+    }
+    var an = (deep.projection && deep.projection.anchor) || null;
+    var hdr = '<div class="gx-panel gx-mv-panel gx-cbdeep-hd"><div class="gx-mod-body">' +
+      '<div class="gx-cbdeep-t">' + ic('glove') + '<b>' + esc(CB_L('Lectura profunda', 'Deep read')) + '</b>' +
+      '<span class="gx-dim">' + esc(deep.sport === 'boxing' ? CB_L('motor de boxeo', 'boxing engine') : CB_L('motor de fases', 'phase engine')) + '</span></div>' +
+      (an && an.note ? '<div class="gx-dim gx-cbdeep-note">' + esc(an.note) + '</div>' : '') +
+      (deep.disclaimer ? '<div class="gx-dim gx-cbdeep-note">' + esc(deep.disclaimer) + '</div>' : '') +
+      '</div></div>';
+    return hdr + cbDeepField(deep, l1, l2) + cbDeepDna(deep, l1, l2) + cbDeepRoutes(deep, l1, l2) +
+      cbDeepCards(deep, l1, l2) + cbDeepSim(deep, l1, l2);
+  }
+
   // ── #8 PREGUNTALE A GP: capa conversacional acotada a lo que el modelo sabe ──
   function renderCbAsk() {
     var st = S.cb.ask || (S.cb.ask = { q: '', a: null, loading: false, hist: [] });
@@ -8535,7 +8873,12 @@
     var predP = cbPredictionPanel(d.prediction, ft.f1.name, ft.f2.name);
     var liveP = cbLivePanel(d.live, d.live_probs, d.prob && d.prob.p1, ft.f1.name, ft.f2.name);
     var filmP = cbFilmPanel(d.film, ft.f1.name, ft.f2.name);
-    cbShell(t('cb_fights_title'), evline + hero + liveP + readP + '<div class="gx-cb-grid">' + predP + mxP + filmP + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
+    // LA CAPA PROFUNDA VA ARRIBA DEL TODO, después de la lectura (16-ago). Es la respuesta a la pregunta que
+    // la gente trae al abrir una pelea —cómo se gana esto y cuánto dura— y dejarla al final la convertiría
+    // en un apéndice. Las tablas de referencia (cinta, últimas 5, H2H, cuotas) se quedan detrás, que es su
+    // sitio: se consultan, no se leen.
+    var deepP = cbDeepSection(d.deep, ft.f1.name, ft.f2.name);
+    cbShell(t('cb_fights_title'), evline + hero + liveP + readP + deepP + '<div class="gx-cb-grid">' + predP + mxP + filmP + tape + intel + recent + h2h + books + cbm + '</div>', { back: 'cbfights' });
     // mientras la pelea corre, el cockpit se refresca solo (un único temporizador; muere al salir de la vista)
     if (d.live && d.live.state === 'in') {
       clearTimeout(S.cb._liveT);

@@ -1,5 +1,23 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🥊 COMBATE 16-ago: capa visual y motor de boxeo — LISTOS, SIN DESPLEGAR
+Detalle completo y todas las mediciones en `HANDOFF.md` §2. Lo que hay que saber aquí:
+- **Boxeo no tenía capa profunda**, no la tenía "adaptada de MMA": `espnstats-boxing.json` no existe, el
+  motor de fases producía 0 perfiles y `fightIntel` devolvía `available:false` para toda pelea de boxeo.
+  Ahora `combat-engine/boxing.js` produce 2.767 perfiles y está validado sobre 2.768 peleas fuera de
+  muestra (finalización AUC 0,694; asalto medio 5,11 contra 5,30 real; método dentro de 1,7 pp).
+- **Pendiente inmediato: desplegar.** Está en `claude/gpsim-combat-visual-boxing-276pin`, no en `main`.
+- **Lo primero que hay que mirar en cuanto esté vivo:** que el bloque `deep` de una pelea de boxeo real de
+  la agenda venga con `available: true` (peleadores con menos de 3 peleas en el histórico caen fuera, y en
+  carteleras chicas eso puede pasar) y cuánto tarda `/api/combat/fight` con el motor de boxeo dentro.
+- **Hipótesis abierta y preregistrada aquí para no cazarla a posteriori:** el ganador del motor de boxeo
+  SIN anclar tiene habilidad real (Brier 0,204 contra 0,250 de la moneda, 67,2 % de acierto), a diferencia
+  de MMA. Va anclado igual porque está descalibrado (3/8 tramos, ECE 3,79 pp) y porque el mercado de ganador
+  es el que pierde dinero. Si aparece histórico de cuotas de boxeo, **medir esto antes que nada**.
+- **Lo que NO se puede construir con el dato actual, para no volver a intentarlo:** jab/power desde conteo
+  de golpes (no hay CompuBox), derribos como mercado medido (no hay conteo de caídas) y el cruce
+  zurdo/diestro (los dos peleadores tienen guardia conocida solo en el 19,5 % de las peleas desde 2018).
+
 ## 📌 REVISIÓN DEL DOMINGO 23 DE AGOSTO — las 4 correcciones acordadas
 > **Decidido el 16-ago con Alexis:** el sistema corre **como está** hasta el domingo 23 acumulando datos de
 > toda la semana. Ese día se aplican las correcciones de abajo con la evidencia ya recogida. No tocar la

@@ -15452,11 +15452,22 @@ const server = http.createServer(async (req, res) => {
             if (url.searchParams.get('deep') === '0') return null;
             try {
               const CI = require('./combat-engine/intel');
-              const raw = (function () { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `espnstats-${C.org}.json`), 'utf8')).stats || {}; } catch { return {}; } })();
-              const I = CI.load(C.org, (C.fights && C.fights.fights) || [], raw);
-              const rds = Number(ft.rounds_sched) || (ft.main ? 5 : 3);
+              // BOXEO VA POR SU PROPIO MOTOR (16-ago). Antes entraba por aquí, buscaba `espnstats-boxing.json`
+              // —que NO EXISTE, ESPN no publica estadística de boxeo— y salía con `available:false`: la capa
+              // profunda de boxeo no estaba adaptada de MMA, sencillamente no estaba. Ahora usa
+              // `combat-engine/boxing.js`, que se alimenta de lo que el dataset de boxeo sí tiene.
+              const isBox = C.org === 'boxing';
+              const raw = isBox ? {} : (function () { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'combat', `espnstats-${C.org}.json`), 'utf8')).stats || {}; } catch { return {}; } })();
+              const I = CI.load(C.org, (C.fights && C.fights.fights) || [], raw,
+                isBox ? { sport: 'boxing', index: C.fighters || null } : {});
+              // el calendario real manda: en boxeo un combate a 12 y uno a 6 no son la misma pelea
+              const rds = Number(ft.rounds_sched) || (isBox ? 10 : (ft.main ? 5 : 3));
               // el ancla es la probabilidad del modelo de habilidad que ya calcula este endpoint
-              const di = CI.fightIntel(I, ft.f1.id, ft.f2.id, { rounds: rds, sims: 20000,
+              // BOXEO CORRE MENOS ITERACIONES A PROPÓSITO: 12 asaltos cuestan cuatro veces más que 3 y a
+              // 20.000 el endpoint se llevaba 294 ms solo en esto. Con 12.000 el error de Monte Carlo sobre
+              // una probabilidad del 50 % es de 0,46 pp — muy por debajo de la incertidumbre del modelo, así
+              // que no se pierde nada real y se recuperan 120 ms.
+              const di = CI.fightIntel(I, ft.f1.id, ft.f2.id, { rounds: rds, sims: isBox ? 12000 : 20000,
                 priorA: (pr && Number.isFinite(pr.p1)) ? pr.p1 : null });
               return di ? { ...di, engine: { fighters: I.fighters, built_ms: I.ms, org: C.org } } : null;
             } catch (e) { return { available: false, error: e.message }; }

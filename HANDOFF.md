@@ -1,12 +1,18 @@
-# HANDOFF — estado al 16-ago-2026, 19:35 UTC
+# HANDOFF — estado al 16-ago-2026 (capa visual de combate + motor de boxeo)
 
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
 
-## Estado: todo commiteado, pusheado y desplegado. Producción sana.
-- Último commit: `148b504` · rama `main` y `claude/gpsimulador-mobile-access-dxw6zy` sincronizadas.
-- Producción sirviendo `bc5f296` (el último commit es solo documentación, no necesita deploy).
-- Deploy: `curl -X POST .../services/srv-d8krl8flk1mc73c9hbi0/deploys -d '{"commitId":"<sha>"}'`
+## Estado: commiteado y pusheado a la rama de trabajo. **NO DESPLEGADO.**
+- Rama: `claude/gpsim-combat-visual-boxing-276pin`. `main` sigue en `148b504`.
+- **Producción sigue sirviendo `bc5f296`** — la capa visual y el motor de boxeo NO están vivos todavía.
+- Para desplegar hace falta fusionar a `main` y disparar el deploy:
+  `curl -X POST .../services/srv-d8krl8flk1mc73c9hbi0/deploys -d '{"commitId":"<sha>"}'`
+- Lo que SÍ se verificó contra producción: el sitio responde y `/api/combat/*` sigue admin-only (404 sin
+  token). El payload profundo no se pudo pedir a producción: esta sesión no tiene token de admin
+  (`scratchpad/gp_token.txt` se fue con el contenedor anterior). La verificación del render se hizo con
+  Playwright sobre el `premium.css` real y el payload real del motor, a 820 px y 390 px, sin desbordes ni
+  errores de JS.
 
 ---
 
@@ -55,29 +61,77 @@ tarjetas e incertidumbre.
 moneda, 7 de 8 tramos descalibrados) · método dentro de 3 pp en las cuatro categorías. Por eso el ganador
 va anclado al Elo.
 
-### PENDIENTE A — Capa visual de combate (secciones 32-39 del blueprint)
-Los datos YA salen por la API. Falta dibujar:
-- **Matchup Battlefield** (33) — la visual central: las 6 dimensiones del cruce en un eje compartido, con
-  la probabilidad de fase encima. Los datos: `deep.matchup.dims` y `deep.matchup.phase_prob`.
-- **Fight DNA** (32) — los 8 ejes de percentil como huella, no radar genérico. Datos: `deep.dna.a/b.axes`.
-- **Ruta de victoria y fragilidad** — `deep.matchup.routes` y `deep.matchup.fragility`.
-- **Scorecard Room** (36) — `deep.projection.decision` (unánime/dividida/mayoría/empate) y
-  `deep.projection.rounds` (qué asaltos están realmente en el aire).
-- **Simulation Room** (37) — `deep.projection.method`, `.round_of_finish`, `.time`.
-Referencia de estilo: las piezas de baloncesto en `public/premium.js` (busca `bbRotationRibbon`,
-`bbTornado`, `bbMatchupBoard`) y su CSS al final de `public/premium.css` (bloque `gx-bb-*`).
-Reglas: un color un significado, sin degradados decorativos, números tabulares, y en móvil recomposición
-en vez de encogimiento.
+### ✅ HECHO A — Capa visual de combate (secciones 32-39)
+Cinco piezas en `public/premium.js` (`cbDeepField`, `cbDeepDna`, `cbDeepRoutes`, `cbDeepCards`, `cbDeepSim`,
+envueltas por `cbDeepSection`) + su CSS al final de `public/premium.css` (bloque `gx-cbf/cbd/cbr/cbs/cbsim`).
+Van en el cockpit **después de la lectura y antes de las tablas de referencia**: es lo que la gente viene a
+buscar, no un apéndice.
 
-### PENDIENTE B — Motor de boxeo propio (secciones 14-18)
-Hoy boxeo usa el motor de MMA adaptado. El blueprint pide otro lenguaje: jab/power split, iniciativa por
-asalto, control espacial, tarjeta de 10 puntos, KD como evento que reescribe el asalto. Datos disponibles:
-`data/combat/fights-boxing.json` (16 MB) y `fighters-boxing.json`.
+**Sirven para los DOS deportes con el mismo código.** El contrato lo pone el payload
+(`deep.axes`, `deep.phases`, `deep.phase_strip`, `matchup.dims`, `routes`, `fragility`, `projection`) y la UI
+no tiene ninguna lista de ejes escrita a mano.
 
-### PENDIENTE C — Concentrar en ROUNDS/MÉTODO
-Es donde las dos mediciones dicen que hay algo. El ganador está anclado y no debe generar selecciones solo.
+Cuatro decisiones de diseño que se tomaron **mirando el render, no en abstracto** (banco de pruebas:
+Playwright + el `premium.css` real, 820 px y 390 px):
+- **El histograma de asalto de finalización va en su propia escala.** Con "llega al límite" (57 %) como una
+  columna más, los doce asaltos que importan (2-5 % cada uno) quedaban aplastados y no se distinguía R2 de
+  R9. El total al límite se dice en una línea debajo.
+- **La tabla de totales muestra solo las 6 líneas alrededor de la mediana.** Un combate a 12 genera once, y
+  "más de 1,5 asaltos al 97 %" no lo cuelga ninguna casa.
+- **Un asalto sin dueño se pinta GRIS, no ámbar.** La primera versión marcaba en ámbar todo asalto a menos
+  de 8 pp del 50 % y en una pelea pareja salían 10 de 12: un muro ámbar no dice "esto está en el aire".
+- **La incertidumbre se publica en cuota, no en "pp".** La parte aleatoria es la desviación de un Bernoulli
+  y en cualquier pelea pareja vale ~50 → salía un "±46 pp" que asusta sin informar. Se publica el reparto en
+  porcentaje y la parte epistémica en puntos con sus causas, que es lo único que baja con más datos.
 
----
+### ✅ HECHO B — Motor de boxeo propio (secciones 14-18)
+`combat-engine/boxing.js` + `scripts/boxing-validate.js`. Entra por la misma puerta (`intel.js` despacha por
+deporte) y el endpoint lo usa con `org=boxing`.
+
+**Lo primero que había que saber, y no era lo que creíamos:** boxeo no estaba "usando el motor de MMA
+adaptado" — **no tenía capa profunda en absoluto.** `intel.js` buscaba `espnstats-boxing.json`, ese archivo
+NO EXISTE (ESPN no publica estadística de boxeo), `buildProfiles` producía **0 perfiles** y `fightIntel`
+devolvía `available:false` para toda pelea de boxeo. Verificado ejecutando el camino que corre hoy en
+producción. Ahora produce 2.767 perfiles.
+
+**Lo que el dato de boxeo tiene:** asaltos pactados, asalto y reloj de final, método (KO/TKO/RTD/UD/SD/MD/
+PTS/TD), ganador; y por peleador alcance, altura, guardia, nacimiento, récord. **NO hay conteo de golpes.**
+El "jab/power split" que pide el blueprint no puede salir de CompuBox porque no tenemos CompuBox: se publica
+como un eje de **cuándo se resuelve la pelea**, con su procedencia escrita en el propio payload (`no_data`).
+
+**Validación fuera de muestra — 2.768 peleas desde 2017, ventana móvil por bloques:**
+
+| | Predicho | Real | |
+|---|---|---|---|
+| **¿Se rompe la pelea?** | 50,5 % | 51,1 % | **AUC 0,694** · Brier 0,221 vs 0,250 · deciles monótonos (24/22 → 82/81) |
+| **¿Cuándo?** | asalto 5,11 | 5,30 | corr 0,43 · "antes del 4º" 38,6/34,5 (AUC 0,685) |
+| KO | 16,3 % | 17,1 % | |
+| TKO | 30,0 % | 29,4 % | |
+| Retirada (RTD) | 4,2 % | 4,7 % | |
+| Decisión | 47,2 % | 48,9 % | |
+| Empate | 2,27 % | 1,77 % | |
+| Dividida/mayoritaria | 15,1 % | 17,8 % | de las decisiones |
+
+**⚠️ UNA MEDICIÓN QUE CONTRADICE LO QUE ESPERÁBAMOS.** En MMA el motor de fases salió PEOR que una moneda
+para el ganador (Brier 0,276 vs 0,250) y ese fue el argumento del anclaje. **En boxeo no pasa:** Brier
+**0,204 vs 0,250**, 67,2 % de acierto, y no es un artefacto del orden (f1 gana el 49,3 % en el archivo).
+Se ancla igual, por otras dos razones: (a) el principio medido en dos deportes dice que el mercado de
+ganador es donde se pierde dinero, discrimine o no el modelo; (b) 3 de 8 tramos siguen descalibrados
+(ECE 3,79 pp) — distingue, pero sus números aún no están para poner precio.
+**Si algún día hay histórico de cuotas de boxeo, esta es la primera hipótesis que merece una prueba real.**
+
+**Lo que se DESCARTÓ con su medición:** la guardia (zurdo/diestro). Hay dato para 1.296 de 1.406 peleadores
+del índice, pero en peleas desde 2018 **los dos** tienen guardia conocida solo el **19,5 %** de las veces.
+Una dimensión que falta en 4 de cada 5 cruces no puede ser una dimensión del cruce: se muestra como dato,
+no toca la probabilidad.
+
+**La única constante libre (`KAPPA_FIN = 0,50`) está ajustada contra la tasa real de finalización**, no a
+ojo. La primera versión, con los multiplicadores de fatiga y daño apilados sobre el peligro base, predecía
+**69,7 % de finalización contra un 51 % real** — el peligro ahora va anclado a la tasa medida de la liga
+(0,0527 por lado y asalto) en forma ataque × defensa.
+
+**⚠️ SIN DESPLEGAR.** Todo esto está en la rama `claude/gpsim-combat-visual-boxing-276pin`, no en `main`.
+Producción sigue sirviendo `bc5f296`.
 
 ## 3) LO QUE NO SE PUEDE MEDIR TODAVÍA (y por qué)
 - **ROI retrospectivo de combate**: no hay histórico de cuotas. El CLV del monitor es la única vara.

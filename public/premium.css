@@ -2248,3 +2248,194 @@ td .gx-calc-btn span { display: none; }
   .gx-bb-wfa{grid-template-columns:92px 1fr 56px}
   .gx-bb-lurow{grid-template-columns:1fr 46px 38px 34px}
 }
+
+/* ═══ LA CAPA PROFUNDA DE COMBATE (16-ago, blueprint 32-39) ═══════════════════════════════════════════
+   Un color, un significado: --gx-ac verde = esquina 1, rojo = esquina 2, ámbar = incertidumbre y
+   fragilidad, gris = contexto y peso de fase. Sin degradados decorativos: las únicas superficies con
+   color son las que codifican un lado. Todas las cifras en tabular para que las columnas se comparen. */
+
+.gx-cbdeep-hd .gx-mod-body{padding:13px 16px}
+.gx-cbdeep-t{display:flex;align-items:center;gap:8px;font-size:13px}
+.gx-cbdeep-t b{font-size:13px;letter-spacing:.02em}
+.gx-cbdeep-t svg{width:15px;height:15px;opacity:.8}
+.gx-cbdeep-note{font-size:11.5px;line-height:1.5;margin-top:6px}
+
+/* --- 1) campo de batalla --- */
+.gx-cbf-phases{display:flex;gap:3px;margin-bottom:14px}
+.gx-cbf-ph{min-width:0;border-radius:5px;padding:8px 9px;background:rgba(255,255,255,.05);overflow:hidden}
+.gx-cbf-ph.p1{background:rgba(255,255,255,.13)}
+.gx-cbf-ph.p2{background:rgba(255,255,255,.085)}
+.gx-cbf-ph.p3{background:rgba(255,255,255,.045)}
+.gx-cbf-ph b{display:block;font-size:15px;font-variant-numeric:tabular-nums;line-height:1.1}
+.gx-cbf-ph span{display:block;font-size:10px;color:var(--gx-text3,#5F747B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.gx-cbf-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;gap:10px;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)}
+.gx-cbf-head .gr{font-size:12px;font-weight:800;color:var(--gx-accent,#1FE3A4)}
+.gx-cbf-head .rd{font-size:12px;font-weight:800;color:#FF7A7A;text-align:right}
+.gx-cbf-head em{font-size:10px;font-style:normal;text-align:center;line-height:1.3}
+.gx-cbf-row{display:grid;grid-template-columns:1fr 190px 52px;gap:10px;align-items:center;padding:7px 0}
+.gx-cbf-lab{font-size:12px;display:flex;flex-direction:column;line-height:1.35;min-width:0}
+.gx-cbf-lab em{font-size:10px;font-style:normal;color:var(--gx-text3,#5F747B);font-variant-numeric:tabular-nums}
+.gx-cbf-bar{position:relative;display:grid;grid-template-columns:1fr 1fr;height:8px}
+.gx-cbf-bar .l,.gx-cbf-bar .r{background:rgba(255,255,255,.05);overflow:hidden;display:flex}
+.gx-cbf-bar .l{justify-content:flex-end;border-radius:4px 0 0 4px;border-right:1px solid rgba(255,255,255,.18)}
+.gx-cbf-bar .r{border-radius:0 4px 4px 0}
+.gx-cbf-bar .l i{height:100%;background:var(--gx-accent,#1FE3A4);border-radius:4px 0 0 4px}
+.gx-cbf-bar .r i{height:100%;background:#FF5E5E;border-radius:0 4px 4px 0}
+/* el peso de la fase: una línea fina bajo la barra, centrada. No compite con el dato, lo califica. */
+.gx-cbf-bar u{position:absolute;left:50%;transform:translateX(-50%);bottom:-5px;height:2px;border-radius:1px;background:rgba(255,255,255,.22)}
+.gx-cbf-row>b{font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.gx-cbf-row>b.gr{color:var(--gx-accent,#1FE3A4)}
+.gx-cbf-row>b.rd{color:#FF7A7A}
+.gx-cbf-det{grid-column:1/-1;font-size:10.5px;line-height:1.4;margin-top:-2px}
+.gx-cbf-net{margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;letter-spacing:.03em}
+.gx-cbf-net b{font-variant-numeric:tabular-nums}
+.gx-cbf-net b.gr{color:var(--gx-accent,#1FE3A4)}
+.gx-cbf-net b.rd{color:#FF7A7A}
+.gx-cbf-sum{font-size:11.5px;line-height:1.5;margin-top:7px}
+
+/* --- 2) ADN: una pista por eje, las dos marcas encima --- */
+.gx-cbd-sides{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.gx-cbd-name{font-size:12px;font-weight:800;margin-bottom:7px}
+.gx-cbd-name.gr{color:var(--gx-accent,#1FE3A4)}
+.gx-cbd-name.rd{color:#FF7A7A}
+.gx-cbd-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.gx-cbd-split{margin-bottom:6px}
+.gx-cbd-splitbar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:4px}
+.gx-cbd-splitbar i{display:block;height:100%;background:rgba(255,255,255,.4)}
+.gx-cbd-split span{font-size:10.5px;font-variant-numeric:tabular-nums}
+.gx-cbd-conf{font-size:10.5px;line-height:1.45}
+.gx-cbd-rows{padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+.gx-cbd-row{display:grid;grid-template-columns:132px 1fr 62px;gap:10px;align-items:center;padding:6px 0}
+.gx-cbd-lab{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-cbd-track{position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,.055)}
+.gx-cbd-track:after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:rgba(255,255,255,.12)}
+.gx-cbd-track i{position:absolute;top:50%;width:9px;height:9px;margin-left:-4.5px;margin-top:-4.5px;border-radius:50%}
+.gx-cbd-track i.a{background:var(--gx-accent,#1FE3A4);box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+.gx-cbd-track i.b{background:#FF5E5E;box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+.gx-cbd-row>b{font-size:11.5px;font-variant-numeric:tabular-nums;text-align:right;color:var(--gx-text3,#5F747B)}
+.gx-cbd-row>b.gr{color:var(--gx-accent,#1FE3A4)}
+.gx-cbd-row>b.rd{color:#FF7A7A}
+.gx-cbd-nodata{display:flex;gap:8px;align-items:flex-start;margin-top:14px;padding-top:11px;border-top:1px solid rgba(255,255,255,.06);font-size:10.5px;line-height:1.5}
+.gx-cbd-nodata svg{width:13px;height:13px;flex:none;margin-top:2px;opacity:.7}
+
+/* --- 3) rutas y fragilidad --- */
+.gx-cbr-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gx-cbr-card{border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:12px 13px}
+.gx-cbr-name{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.gx-cbr-name.gr{color:var(--gx-accent,#1FE3A4)}
+.gx-cbr-name.rd{color:#FF7A7A}
+.gx-cbr-via{font-size:14px;font-weight:700;line-height:1.25;margin-bottom:8px}
+.gx-cbr-meta{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--gx-text3,#5F747B)}
+.gx-cbr-meta b{color:var(--gx-text,#EAF1F2);font-variant-numeric:tabular-nums}
+.gx-cbr-warn{display:flex;gap:6px;align-items:flex-start;margin-top:9px;font-size:10.5px;line-height:1.45;color:var(--gx-warn,#F2C14E)}
+.gx-cbr-warn svg{width:13px;height:13px;flex:none;margin-top:1px}
+.gx-cbr-frag{margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.07)}
+.gx-cbr-fraghd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.gx-cbr-fraghd b{font-size:11px;letter-spacing:.07em}
+.gx-cbr-frag.lo .gx-cbr-fraghd b{color:var(--gx-accent,#1FE3A4)}
+.gx-cbr-frag.md .gx-cbr-fraghd b{color:var(--gx-warn,#F2C14E)}
+.gx-cbr-frag.hi .gx-cbr-fraghd b{color:#FF7A7A}
+.gx-cbr-fragbar{height:7px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+.gx-cbr-fragbar i{display:block;height:100%}
+.gx-cbr-frag.lo .gx-cbr-fragbar i{background:var(--gx-accent,#1FE3A4)}
+.gx-cbr-frag.md .gx-cbr-fragbar i{background:var(--gx-warn,#F2C14E)}
+.gx-cbr-frag.hi .gx-cbr-fragbar i{background:#FF5E5E}
+.gx-cbr-fragsc{display:flex;justify-content:space-between;margin:4px 0 7px;font-size:9.5px;color:var(--gx-text3,#5F747B);letter-spacing:.04em;text-transform:uppercase}
+.gx-cbr-frag>.gx-dim{font-size:11.5px;line-height:1.5}
+
+/* --- 4 y 5) tarjetas y simulación: comparten la fila de barra horizontal --- */
+.gx-cbs-row{display:grid;grid-template-columns:1fr 140px 54px;gap:10px;align-items:center;padding:4px 0}
+.gx-cbs-row>span{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-cbs-bar{height:7px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
+.gx-cbs-bar i{display:block;height:100%;border-radius:4px}
+.gx-cbs-bar i.gr{background:var(--gx-accent,#1FE3A4)}
+.gx-cbs-bar i.rd{background:#FF5E5E}
+.gx-cbs-bar i.dw{background:rgba(255,255,255,.32)}
+/* la decisión es el MISMO lado con menos convicción: mismo color, menos superficie. No un color nuevo. */
+.gx-cbs-bar i.sd{opacity:.5}
+.gx-cbs-row>b{font-size:11.5px;font-variant-numeric:tabular-nums;text-align:right}
+.gx-cbs-rlab{display:block;margin:16px 0 8px}
+.gx-cbs-rlab:first-child{margin-top:0}
+.gx-cbs-card{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px}
+.gx-cbs-card b{font-size:19px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.gx-cbs-rounds{display:flex;gap:3px;align-items:stretch}
+.gx-cbs-rcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.gx-cbs-rbar{position:relative;width:100%;height:62px;border-radius:4px;background:rgba(255,255,255,.04)}
+.gx-cbs-rbar:after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.16)}
+.gx-cbs-rbar i{position:absolute;left:20%;right:20%;border-radius:3px}
+.gx-cbs-rbar i.gr{background:var(--gx-accent,#1FE3A4)}
+.gx-cbs-rbar i.rd{background:#FF5E5E}
+.gx-cbs-rcol>span{font-size:10px;color:var(--gx-text3,#5F747B);font-variant-numeric:tabular-nums}
+/* un asalto SIN DUEÑO es la información, no un adorno: se marca en ámbar, el color de la incertidumbre */
+.gx-cbs-rcol.close .gx-cbs-rbar{background:rgba(242,193,78,.13);box-shadow:inset 0 0 0 1px rgba(242,193,78,.3)}
+.gx-cbs-rcol.close>span{color:var(--gx-warn,#F2C14E)}
+.gx-cbs-foot{font-size:11.5px;line-height:1.5;margin-top:9px}
+.gx-cbs-foot b{color:var(--gx-warn,#F2C14E)}
+.gx-cbs-note{font-size:10.5px;line-height:1.5;margin-top:8px}
+.gx-cbs-dur,.gx-cbs-kd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:10px;font-size:11.5px}
+.gx-cbs-dur>b,.gx-cbs-kd>b{font-size:17px;font-variant-numeric:tabular-nums}
+.gx-cbs-dur span b,.gx-cbs-kd span b{font-size:11.5px}
+.gx-cbs-kd{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+
+/* totales de asaltos: el mercado derivado, en tabla y no en barras — se lee comparando contra una cuota */
+.gx-cbt{border:1px solid rgba(255,255,255,.07);border-radius:9px;overflow:hidden}
+.gx-cbt-hd,.gx-cbt-row{display:grid;grid-template-columns:1fr 78px 78px;gap:8px;padding:6px 12px;align-items:baseline}
+.gx-cbt-hd{background:rgba(255,255,255,.04)}
+.gx-cbt-hd b{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--gx-text3,#5F747B);text-align:right}
+.gx-cbt-row{border-top:1px solid rgba(255,255,255,.05);font-size:11.5px}
+.gx-cbt-row b{font-variant-numeric:tabular-nums;text-align:right;font-size:12px}
+
+/* histograma del asalto de finalización */
+.gx-cbh{display:flex;gap:4px;align-items:flex-end}
+.gx-cbh-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.gx-cbh-bar{display:flex;align-items:flex-end;height:100px;width:100%}
+.gx-cbh-bar i{display:block;width:100%;border-radius:3px 3px 0 0;background:rgba(255,255,255,.34)}
+.gx-cbh-col.dist .gx-cbh-bar i{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
+.gx-cbh-col>span{font-size:10px;color:var(--gx-text3,#5F747B)}
+.gx-cbh-col>b{font-size:10.5px;font-variant-numeric:tabular-nums}
+
+@media (max-width:760px){
+  /* RECOMPOSICIÓN, NO ENCOGIMIENTO. Las barras espejadas del campo de batalla y las pistas del ADN son la
+     información: en móvil la etiqueta pasa ARRIBA y la barra se queda a ancho completo, en vez de dejar
+     una barra de 60 px que no se puede leer. Y las dos columnas de rutas se apilan. */
+  .gx-cbf-row{grid-template-columns:1fr 46px;grid-template-areas:"lab lab" "bar val";row-gap:5px;padding:9px 0}
+  .gx-cbf-lab{grid-area:lab}
+  .gx-cbf-bar{grid-area:bar}
+  .gx-cbf-row>b{grid-area:val}
+  /* la leyenda del peso de fase entre los dos nombres se partía en dos líneas: en móvil baja a su propia fila */
+  .gx-cbf-head{grid-template-columns:1fr 1fr;grid-template-areas:"a b" "leg leg";row-gap:4px}
+  .gx-cbf-head .gr{grid-area:a}.gx-cbf-head .rd{grid-area:b}
+  .gx-cbf-head em{grid-area:leg;text-align:left}
+  .gx-cbf-ph{padding:7px 6px}
+  .gx-cbf-ph b{font-size:13px}
+  .gx-cbd-sides,.gx-cbr-cards{grid-template-columns:1fr;gap:14px}
+  .gx-cbd-row{grid-template-columns:1fr 56px;grid-template-areas:"lab val" "trk trk";row-gap:5px}
+  .gx-cbd-lab{grid-area:lab;white-space:normal}
+  .gx-cbd-track{grid-area:trk}
+  .gx-cbd-row>b{grid-area:val}
+  /* la cabecera de panel es una fila con la etiqueta y su apostilla; con títulos largos como "Cómo gana
+     cada uno" la apostilla estrangulaba el título hasta partirlo palabra a palabra. En móvil se apilan. */
+  .gx-cbf .gx-ph,.gx-cbd .gx-ph,.gx-cbr .gx-ph,.gx-cbs .gx-ph,.gx-cbsim .gx-ph,.gx-cbdeep-hd .gx-ph{flex-direction:column;align-items:flex-start;gap:2px}
+  .gx-cbf .gx-ph-extra,.gx-cbd .gx-ph-extra,.gx-cbr .gx-ph-extra,.gx-cbs .gx-ph-extra,.gx-cbsim .gx-ph-extra{text-align:left}
+  .gx-cbs-row{grid-template-columns:1fr 82px 50px;gap:7px}
+  .gx-cbt-hd,.gx-cbt-row{grid-template-columns:1fr 62px 62px;padding:6px 10px}
+  .gx-cbs-rbar{height:52px}
+  .gx-cbh-bar{height:78px}
+  .gx-cbh-col>b{font-size:9.5px}
+}
+
+/* un asalto sin dueño se dibuja NEUTRO (gris, a ras del centro): el color codifica propiedad, y si nadie
+   la tiene no hay color que poner. Marcar en ámbar los 10 asaltos parejos de una pelea pareja no era
+   información, era un muro. */
+.gx-cbs-rbar i.nu{background:rgba(255,255,255,.26)}
+.gx-cbs-rcol.even>span{color:var(--gx-text3,#5F747B)}
+.gx-cbu-drvs{margin:9px 0 6px;display:flex;flex-direction:column;gap:3px}
+.gx-cbu-drv{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:10.5px}
+.gx-cbu-drv em{font-style:normal}
+.gx-cbu-drv b{font-variant-numeric:tabular-nums;flex:none}
+.gx-cbd-vals{display:flex;justify-content:flex-end;align-items:baseline;gap:3px}
+.gx-cbd-vals em{font-style:normal;opacity:.62}
+.gx-cbd-vals em.w{opacity:1;font-weight:800}
+.gx-cbd-vals em.gr{color:var(--gx-accent,#1FE3A4)}
+.gx-cbd-vals em.rd{color:#FF7A7A}
+.gx-cbd-vals u{text-decoration:none;color:var(--gx-text3,#5F747B);font-size:10px}

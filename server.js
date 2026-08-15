@@ -8784,6 +8784,21 @@ async function hoopsInjuries(league, gameId) {
   })).filter((t) => t.items.length);
   const out = { at: Date.now(), league, game_id: String(gameId), teams, n: teams.reduce((s, t) => s + t.items.length, 0) };
   db.hoopsObs[k] = out; save();
+  // ── EVENT SOURCING DEL PARTE (data-fabric, módulo 4) ──────────────────────────────────────────
+  // El parte de ESPN se SOBRESCRIBE: si a las 18:00 alguien figuraba "en duda" y a las 19:30 pasó a
+  // "fuera", el estado guardado pierde el primero. Un backtest de esa noche creería que a las 18:00 ya
+  // sabíamos lo de las 19:30 — y las picks saldrían mejor de lo que salieron. Acá cada cambio se añade
+  // como evento con su hora, así que "qué sabíamos a las 19:00" es una consulta y no una conjetura.
+  try {
+    const FAB = require('./data-fabric/store');
+    const nowIso = new Date().toISOString();
+    for (const t of teams) for (const i of t.items) {
+      FAB.appendIfChanged('injuries', {
+        entity: `${league}:player:${i.id}`, source: 'espn', observed_at: nowIso,
+        fields: { status: i.status, detail: i.detail || null, type: i.type || null, team_id: t.team_id, game_id: String(gameId) },
+      });
+    }
+  } catch (e) { console.error('[fabric] parte no registrado:', e.message); }
   return out;
 }
 
@@ -9496,6 +9511,10 @@ if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
   setTimeout(() => { buildHoopsPicks().catch(() => { }); settleHoopsPicks().catch(() => { }); hoopsPicksCloseline().catch(() => { }); }, 200 * 1000);
   setInterval(() => { buildHoopsPicks().catch(() => { }); settleHoopsPicks().catch(() => { }); }, 30 * 60 * 1000);
   setInterval(() => { hoopsPicksCloseline().catch(() => { }); }, 5 * 60 * 1000);   // el cierre se congela fino
+  // CONGELADO HISTÓRICO DIARIO (módulo 12). Cada 6 horas se reescribe el resumen del día en curso: conteos
+  // por dominio y hash de los ids. No es un backup — es la prueba de que el estado de ese día fue el que
+  // fue. Si mañana algo reescribe el log de eventos, el congelado lo delata.
+  setInterval(() => { try { require('./data-fabric/store').freeze(); } catch (e) { console.error('[fabric] congelado:', e.message); } }, 6 * 3600 * 1000);
 }
 
 // ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
@@ -14398,6 +14417,26 @@ const server = http.createServer(async (req, res) => {
           props: url.searchParams.get('props') !== '0',
           deep: url.searchParams.get('deep') !== '0' });
         if (!gi) return json(res, 404, { error: 'No encontrado' });
+        // ── CONGELADO POINT-IN-TIME (data-fabric, módulo 5) ────────────────────────────────────────
+        // Cada vez que el modelo opina sobre un partido futuro se guarda la fotografía de lo que tenía
+        // delante: versión del modelo, supuestos de alineación, precio de mercado y probabilidad. Es lo
+        // que permitirá contestar después "¿falló el modelo o le faltaba el dato?" sin volver a correr
+        // nada. Solo para partidos NO terminados: congelar un final no informa de nada.
+        if (!g.completed) {
+          try {
+            const SNP = require('./data-fabric/snapshots');
+            gi.snapshot = SNP.freezePrediction({ C, game: g, purpose: 'game_view',
+              inputs: { market: mktProb != null ? { p: +mktProb.toFixed(4), observed_at: new Date().toISOString() } : null,
+                sims, injuries: obsG ? obsG.teams : [],
+                availability: gi.stack && gi.stack.availability ? {
+                  home: (gi.stack.availability.home || {}).out || [], away: (gi.stack.availability.away || {}).out || [] } : null },
+              output: { p_home: gi.projection.win.home, p_model: gi.stack && gi.stack.win_model ? gi.stack.win_model.home : null,
+                margin: gi.projection.margin, total: gi.projection.total,
+                uncertainty_pp: gi.deep && gi.deep.uncertainty ? gi.deep.uncertainty.epistemic_pp : null,
+                layers: gi.stack ? gi.stack.layers : null } });
+            gi.timeline = SNP.timeline(lg, g.id).slice(-12);
+          } catch (e) { gi.snapshot_error = e.message; }
+        }
         return json(res, 200, gi);
       }
       if (p === '/api/hoops/team') {
@@ -14560,6 +14599,83 @@ const server = http.createServer(async (req, res) => {
         const xk = process.env.GP_EXPORT_KEY || '';
         if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
         return json(res, 200, { reloaded: !!ST.load(lg, { force: true }) });
+      }
+      // ── EN VIVO (módulos 233-242) ───────────────────────────────────────────────────────────────
+      // Estado + probabilidad del resto + presupuesto de latencia. La latencia NO es telemetría: es la
+      // compuerta. Si el feed llega tarde, la respuesta lo dice y las recomendaciones quedan apagadas.
+      if (p === '/api/hoops/live') {
+        const LVE = require('./basketball-engine/live');
+        const ESPNl = require('./data-providers/basketball/espn');
+        const Ll = ESPNl.LEAGUES[lg] || {};
+        const gid = String(url.searchParams.get('id') || '');
+        try {
+          const gs = await ESPNl.games(lg, { from: new Date(Date.now() - 8 * 3600e3), to: new Date(Date.now() + 8 * 3600e3) }).catch(() => []);
+          const inPlay = gs.filter((x) => x.status === 'in');
+          const target = gid ? gs.find((x) => String(x.id) === gid) : inPlay[0];
+          if (!target) return json(res, 200, { league: lg, live: [], note: 'no hay partidos en juego ahora mismo' });
+          // el wallclock de la última jugada es el reloj de la FUENTE: sin él no se puede acreditar latencia
+          const sum = await ESPNl.summary(lg, target.id).catch(() => null);
+          const ingestAt = new Date().toISOString();
+          const plays = (sum && sum.plays) || [];
+          const lastWall = (() => { for (let i = plays.length - 1; i >= 0; i--) { const w = plays[i].wallclock; if (w) return w; } return null; })();
+          const view = LVE.liveView(C, { id: target.id, league: lg, neutral: !!target.neutral,
+            home: { id: target.home.id }, away: { id: target.away.id } },
+          { period: target.period, clock: target.clock, home_score: target.home.score, away_score: target.away.score },
+          { L: Ll, sims: 20000, source_at: lastWall, ingest_at: ingestAt });
+          return json(res, 200, {
+            league: lg, game: { id: target.id, home: C.teams[target.home.id] || { id: target.home.id },
+              away: C.teams[target.away.id] || { id: target.away.id }, status: target.status || null },
+            ...view,
+            others: inPlay.filter((x) => String(x.id) !== String(target.id)).map((x) => ({ id: x.id, home: x.home.abbr, away: x.away.abbr, status: x.status })),
+          });
+        } catch (e) { return json(res, 500, { error: e.message }); }
+      }
+      // ── ÁRBITROS (módulos 121-125) ──────────────────────────────────────────────────────────────
+      if (p === '/api/hoops/officials') {
+        const OFF = require('./basketball-engine/officials');
+        global._hoopsRefs = global._hoopsRefs || {};
+        const memoR = global._hoopsRefs[lg];
+        if (memoR && Date.now() - memoR.at < 12 * 3600e3 && !url.searchParams.get('force')) return json(res, 200, memoR.data);
+        const fitR = OFF.fitOfficials(C.games || []);
+        global._hoopsRefs[lg] = { at: Date.now(), data: fitR };
+        return json(res, 200, fitR);
+      }
+      // ── DATA FABRIC: la memoria point-in-time, auditable desde fuera ─────────────────────────────
+      // `/api/hoops/fabric` con modo: health (estado del almacén), asof (qué sabíamos en un momento),
+      // history (la secuencia de un dato), timeline (la película de un partido) o freeze (cerrar el día).
+      if (p === '/api/hoops/fabric') {
+        const FAB = require('./data-fabric/store');
+        const SNP = require('./data-fabric/snapshots');
+        const mode = String(url.searchParams.get('mode') || 'health');
+        try {
+          if (mode === 'health') return json(res, 200, { ...FAB.health(), freezes: FAB.freezes({ limit: 7 }) });
+          if (mode === 'asof') {
+            const dom = String(url.searchParams.get('domain') || 'injuries');
+            const when = url.searchParams.get('at') || new Date().toISOString();
+            const by = url.searchParams.get('by') === 'effective' ? 'effective' : 'ingested';
+            const st = FAB.asOf(dom, when, { by });
+            return json(res, 200, { domain: dom, at: when, by, n: st.size,
+              note: by === 'ingested' ? 'reconstruido por lo que HABÍAMOS INGERIDO en ese momento (el corte correcto para un backtest)'
+                : 'reconstruido por lo que ERA CIERTO en ese momento (verdad final, no sirve para backtest)',
+              rows: [...st.values()].slice(0, 200).map((r) => ({ entity: r.entity, source: r.source, observed_at: r.observed_at, fields: r.fields })) });
+          }
+          if (mode === 'history') {
+            const dom = String(url.searchParams.get('domain') || 'injuries');
+            const ent = String(url.searchParams.get('entity') || '');
+            return json(res, 200, { domain: dom, entity: ent, rows: FAB.history(dom, ent) });
+          }
+          if (mode === 'timeline') {
+            const gid = String(url.searchParams.get('id') || '');
+            return json(res, 200, { league: lg, game_id: gid, snapshots: SNP.forGame(lg, gid).length, timeline: SNP.timeline(lg, gid) });
+          }
+          if (mode === 'freeze') {
+            const xk2 = process.env.GP_EXPORT_KEY || '';
+            if (!xk2 || url.searchParams.get('key') !== xk2) return json(res, 404, { error: 'No encontrado' });
+            return json(res, 200, FAB.freeze(url.searchParams.get('day') || null));
+          }
+          if (mode === 'revisions') return json(res, 200, { rows: FAB.revisions(String(url.searchParams.get('domain') || 'box')).slice(-100) });
+          return json(res, 400, { error: 'modo desconocido', modes: ['health', 'asof', 'history', 'timeline', 'freeze', 'revisions'] });
+        } catch (e) { return json(res, 500, { error: e.message }); }
       }
       return json(res, 404, { error: 'No encontrado' });
     }

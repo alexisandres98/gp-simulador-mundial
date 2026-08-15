@@ -146,6 +146,10 @@ function deriveGame(game, sum, L) {
       orb: num(p.OREB), drb: num(p.DREB) };
   });
   return {
+    // ÁRBITROS: la terna, tal como la publica ESPN. Se guarda cruda; el análisis (tasa de faltas del equipo
+    // arbitral, regularizada) vive en officials.js, no acá.
+    officials: (sum.officials || []).map((o) => o.name),
+    attendance: sum.attendance != null ? sum.attendance : null,
     id: game.id, league: game.league, date: game.date, season: game.season, season_type: game.season_type,
     neutral: !!game.neutral,
     home: { ...H, ff: ff(H, A) }, away: { ...A, ff: ff(A, H) },

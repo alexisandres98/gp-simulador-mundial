@@ -79,8 +79,11 @@ function calibration(rows, { bins = 10, minN = 5 } = {}) {
       predicted: r2(100 * sel.reduce((s, r) => s + r.p, 0) / sel.length),
       actual: r2(100 * k / sel.length),
       lo: r2(100 * ci.lo), hi: r2(100 * ci.hi),
-      // dentro del intervalo = no hay evidencia de descalibración en ese tramo
-      ok: (k / sel.length) >= ci.lo && (k / sel.length) <= ci.hi ? true : null });
+      // ¿ESTÁ CALIBRADO ESE TRAMO? La pregunta correcta es si LO PREDICHO cae dentro del intervalo de lo
+      // OBSERVADO. Comparar lo observado contra su propio intervalo devuelve `true` siempre —es una
+      // tautología— y hace que cualquier modelo parezca perfectamente calibrado. Es exactamente el error
+      // que tenía esta función y por el que dos tramos claramente sesgados salían marcados como correctos.
+      ok: (sel.reduce((s, r) => s + r.p, 0) / sel.length) >= ci.lo && (sel.reduce((s, r) => s + r.p, 0) / sel.length) <= ci.hi });
   }
   // ERROR DE CALIBRACIÓN ESPERADO: media ponderada de |predicho − observado|
   const tot = out.reduce((s, b) => s + b.n, 0) || 1;

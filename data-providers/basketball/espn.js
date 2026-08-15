@@ -119,7 +119,19 @@ async function summary(league, eventId) {
       shooting: !!p.shootingPlay, scoring: !!p.scoringPlay, points: Number(p.scoreValue) || 0,
       attempted: Number(p.pointsAttempted) || null,
       x: p.coordinate ? Number(p.coordinate.x) : null, y: p.coordinate ? Number(p.coordinate.y) : null,
+      // RELOJ DE PARED de la fuente: sin esto no se puede acreditar la latencia del feed en vivo, y sin
+      // acreditarla no se puede decidir si tenemos derecho a recomendar sobre un partido en curso.
+      wallclock: p.wallclock || null,
     })),
+    // ÁRBITROS (módulos 121-125). ESPN publica la terna completa en gameInfo.officials y no la estábamos
+    // cosechando. Con esto se puede medir el entorno de faltas de cada equipo arbitral —que afecta a los
+    // tiros libres y por tanto al total— sin inventar narrativas de sesgo: solo tasas regularizadas.
+    officials: ((j.gameInfo || {}).officials || []).map(o => ({
+      name: o.fullName || o.displayName || null,
+      role: ((o.position || {}).displayName) || null,
+      order: o.order != null ? Number(o.order) : null,
+    })).filter(o => o.name),
+    attendance: (j.gameInfo || {}).attendance != null ? Number((j.gameInfo || {}).attendance) : null,
     injuries: (j.injuries || []).map(t => ({
       team_id: String((t.team || {}).id || ''),
       items: (t.injuries || []).map(i => ({

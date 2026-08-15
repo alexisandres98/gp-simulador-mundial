@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_soon: 'Próximamente',
+      nav_bb_games: 'Partidos', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_soon: 'Próximamente',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_soon: 'Coming soon',
+      nav_bb_games: 'Games', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_soon: 'Coming soon',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1020,6 +1020,9 @@
     ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfollow', 'star', 'nav_follow'], ['alerts', 'bell', 'nav_alerts'], ['cbperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_CB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['cborgs', 'belt', 'nav_cb_orgs'], ['cbevo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  // ── BALONCESTO: navegación propia, mismo criterio que combate (la sidebar entera cambia con el deporte).
+  var NAV_BB = [['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['alerts', 'bell', 'nav_alerts']];
+  var NAV2_BB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbask', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
   // BALONCESTO (15-ago): 4º deporte, admin-only. Mismas superficies que combate — partidos, ranking, equipo,
   // jugador — con sub-pestañas por liga (NBA / WNBA / NCAA M / NCAA F) igual que UFC/PFL/Boxeo.
@@ -1053,6 +1056,8 @@
   }
 
   function viewNav(v) {
+    if (v === 'bbgame') return 'bbgames';
+    if (v === 'bbteam' || v === 'bbplayer') return 'bbteams';
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
     if (CB_VIEWS.indexOf(v) >= 0) return v;
@@ -1108,10 +1113,10 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS); // vistas implementadas (clickeables)
-    var isCombat = S.sport === 'combat';
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS); // vistas implementadas (clickeables)
+    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var NAV_A = isCombat ? NAV_CB : NAV, NAV_B = isCombat ? NAV2_CB : NAV2;
+    var NAV_A = isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
     var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
@@ -1119,8 +1124,10 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
-    var bnavItems = isCombat
+    var moreViews = isHoops ? ['alerts', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var bnavItems = isHoops
+      ? [['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['alerts', 'bell', 'nav_alerts'], ['__more', 'dots', 'more']]
+      : isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
       : [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']];
     var bnav = bnavItems
@@ -3875,9 +3882,11 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbgames: 'bbgames', bbteams: 'bbteams' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
+    // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
+    if (nav === 'bbgames' || nav === 'bbteams') return nav + '/' + bbLg();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -6721,8 +6730,30 @@
     }).join('') + '</div>';
   }
 
-  // ── LISTA DE PARTIDOS ────────────────────────────────────────────────────────────────────────────────
-  function renderBBGames() {
+  // ── VISTAS DE LIGA: PARTIDOS y EQUIPOS ───────────────────────────────────────────────────────────────
+  // Las dos comen del MISMO payload (/api/hoops/state, una sola llamada cacheada); lo único que cambia es el
+  // panel bajo la barra de modelo. Se separan porque dos ítems de nav que pintan lo mismo son un bug visible.
+  function bbRankPanel(d, lg) {
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Ranking GP · ajustado por rival</span><span class="gx-ph-extra">' + (d.ranking || []).length + '</span></div><div class="gx-bb-rank">' +
+      (d.ranking || []).map(function (r, i) {
+        return '<a class="gx-bb-rankrow lnk" href="#bbteam/' + esc(lg) + '-' + esc(r.id) + '">' +
+          '<span class="gx-bb-rk">' + (i + 1) + '</span>' + bbLogo(r, 'sm') +
+          '<span class="gx-bb-rknm">' + esc(r.name || r.abbr || r.id) + '</span>' +
+          '<span class="gx-bb-rkv ' + (r.net >= 0 ? 'up' : 'dn') + '">' + bbSign(r.net) + '</span>' +
+          '<span class="gx-bb-rksub">at ' + bbSign(r.off) + ' · def ' + bbSign(r.def) + ' · ritmo ' + bbSign(r.pace) + ' · ' + r.gp + 'pj</span></a>';
+      }).join('') + '</div></div>';
+  }
+  function bbGamesPanel(d, lg) {
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Partidos analizados</span><span class="gx-ph-extra">' + (d.finished || []).length + '</span></div><div class="gx-bb-games">' +
+      (d.finished || []).map(function (g) {
+        return '<a class="gx-bb-grow lnk" href="#bbgame/' + esc(lg) + '-' + esc(g.id) + '">' +
+          '<span class="gx-bb-gdate">' + esc(String(g.date || '').slice(5, 10)) + '</span>' +
+          bbLogo(g.away, 'sm') + '<span class="gx-bb-gt">' + esc(bbTeamName(g.away)) + '</span><b>' + (g.away.pts != null ? g.away.pts : '') + '</b>' +
+          '<i>@</i>' + bbLogo(g.home, 'sm') + '<span class="gx-bb-gt">' + esc(bbTeamName(g.home)) + '</span><b>' + (g.home.pts != null ? g.home.pts : '') + '</b>' +
+          '<span class="gx-bb-gpos">' + (g.poss != null ? g.poss.toFixed(0) + ' pos' : '') + (g.ot ? ' · PR' : '') + '</span></a>';
+      }).join('') + '</div></div>';
+  }
+  function bbLeagueView(kind) {
     var lg = bbLg();
     var d = bbGet('state_' + lg, '/api/hoops/state?league=' + lg);
     if (!d) { bbShell('Baloncesto', bbTabs() + mvLoading()); return; }
@@ -6736,24 +6767,10 @@
       '<div><span class="gx-label">Ataque de liga</span><b>' + (m.lgORtg != null ? m.lgORtg.toFixed(1) : '—') + '</b> pts/100</div>' +
       '</div>';
     var note = d.picks_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.picks_note) + '</span></div>' : '';
-    var rank = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Ranking GP · ajustado por rival</span></div><div class="gx-bb-rank">' +
-      (d.ranking || []).map(function (r, i) {
-        return '<a class="gx-bb-rankrow lnk" href="#bbteam/' + esc(lg) + '-' + esc(r.id) + '">' +
-          '<span class="gx-bb-rk">' + (i + 1) + '</span>' + bbLogo(r, 'sm') +
-          '<span class="gx-bb-rknm">' + esc(r.name || r.abbr || r.id) + '</span>' +
-          '<span class="gx-bb-rkv ' + (r.net >= 0 ? 'up' : 'dn') + '">' + bbSign(r.net) + '</span>' +
-          '<span class="gx-bb-rksub">at ' + bbSign(r.off) + ' · def ' + bbSign(r.def) + ' · ritmo ' + bbSign(r.pace) + ' · ' + r.gp + 'pj</span></a>';
-      }).join('') + '</div></div>';
-    var games = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Partidos analizados</span><span class="gx-ph-extra">' + (d.finished || []).length + '</span></div><div class="gx-bb-games">' +
-      (d.finished || []).map(function (g) {
-        return '<a class="gx-bb-grow lnk" href="#bbgame/' + esc(lg) + '-' + esc(g.id) + '">' +
-          '<span class="gx-bb-gdate">' + esc(String(g.date || '').slice(5, 10)) + '</span>' +
-          bbLogo(g.away, 'sm') + '<span class="gx-bb-gt">' + esc(bbTeamName(g.away)) + '</span><b>' + (g.away.pts != null ? g.away.pts : '') + '</b>' +
-          '<i>@</i>' + bbLogo(g.home, 'sm') + '<span class="gx-bb-gt">' + esc(bbTeamName(g.home)) + '</span><b>' + (g.home.pts != null ? g.home.pts : '') + '</b>' +
-          '<span class="gx-bb-gpos">' + (g.poss != null ? g.poss.toFixed(0) + ' pos' : '') + (g.ot ? ' · PR' : '') + '</span></a>';
-      }).join('') + '</div></div>';
-    bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + head + note + rank + games);
+    var body = kind === 'teams' ? bbRankPanel(d, lg) : bbGamesPanel(d, lg);
+    bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + head + note + body);
   }
+  function renderBBGames() { bbLeagueView('games'); }
 
   // ── GAME INTELLIGENCE CENTER ─────────────────────────────────────────────────────────────────────────
   function renderBBGame() {
@@ -6929,11 +6946,12 @@
     bbShell(d.name, back + head + shoot + log);
   }
 
-  function renderBBTeams() { renderBBGames(); }
+  function renderBBTeams() { bbLeagueView('teams'); }
 
   function bbClicks(e) {
     var lgb = e.target.closest('[data-bblg]');
-    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash('bbgames/' + S.bb.lg); return; }
+    // el selector de liga NO cambia de vista: si estoy en Equipos, cambiar de liga me deja en Equipos.
+    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash((S.view === 'bbteams' ? 'bbteams/' : 'bbgames/') + S.bb.lg); return; }
     if (e.target.closest('[data-bbback]')) { setHash('bbgames/' + bbLg()); return; }
     var a = e.target.closest('a.lnk'); if (a && a.getAttribute('href')) return;   // los enlaces navegan solos
   }

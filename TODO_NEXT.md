@@ -40,6 +40,37 @@
   Copas: cobertura parcial de equipos sin mapa AF (ecuatorianos/peruanos etc.) — se completa cuando el
   data pass diario les cree entradas. Lecturas del sistema (picks) llegan solas con el upgrade de créditos.
 
+## 📏 PROFUNDIDAD 15-ago — cuánto dinero entra de verdad a cada precio (base para dimensionar y repartir capital)
+- **Qué faltaba**: guardábamos el precio pero no la capacidad. `max_stake` iba en null → una oportunidad de
+  $50 y una de $5.000 se veían iguales. Sin esto no se puede dimensionar una apuesta ni repartir bankroll.
+- **Definición**: `max_stake` = USD colocables a un precio no peor que `GP_DEPTH_TOL_PCT` (2%) del mejor.
+  Fuente etiquetada en `depth_src`: `cloudbet_max` (tope de la casa, exacto) · `kalshi_book` (contratos en
+  el mejor ask × precio, exacto y conservador) · `polymarket_book` (libro CLOB acumulado, exacto) ·
+  `myriad_amm` (**estimación**: no hay libro sino pool; en un CPMM el stake que mueve el precio ~tol es
+  ≈ tol·L·p·(1−p) — no vale lo mismo que un libro real al repartir capital).
+- **CAPACIDAD MEDIDA (15-ago, mediana / máx por apuesta)**:
+  | casa | familia | mediana | máx |
+  |---|---|---|---|
+  | cloudbet | **cards_total** | **$223** | $312 |
+  | cloudbet | corners_total | $237 | $237 |
+  | cloudbet | match_total (goles) | $412 | $3.001 |
+  | cloudbet | match_winner | $302 | $384 |
+  | kalshi | match_winner | $338 | $41.924 |
+  | polymarket | match_winner | $1.008 | $22.057 |
+  | myriad *(aprox)* | match_winner | $1.827 | $2.500 |
+- **Lo que dice el dato para el plan de reparto de capital**: en **1X2** los cuatro venues suman **~$3.475
+  por partido** (kalshi+poly+myriad+cloudbet) — bastante más que el ejemplo de $400. En **cards under NO
+  hay reparto posible**: solo cotiza Cloudbet y el techo es ~$223 por apuesta. La familia candidata es
+  también la de menor capacidad.
+- Migración 044 (`max_stake`, `depth_src`) + **`/api/internal/migrate`** (GET estado, POST aplica) porque el
+  runner es manual y la base no es alcanzable desde fuera de Render. `upsertGoalQuote` detecta las columnas
+  una vez y cae al INSERT viejo si aún no están (nunca tumba las escrituras de precios).
+- Capacidad por casa/familia en `/api/internal/venues`.
+- **Ojo al leer arbitraje**: `arb_executable` bajó a 0 porque ahora las patas mezclan frescuras distintas y
+  el gate `stale` (desfase entre patas) las descarta — es el comportamiento honesto, converge según corren
+  los barridos de 15min. Pendiente menor: `loadClubsMarkets` marca `venue_kind:'sportsbook'` también para
+  kalshi/polymarket/myriad (son mercados de predicción); hoy no molesta porque su profundidad ya es real.
+
 ## 🔌 VENUES GRATIS 15-ago — Myriad y Kalshi por fin cotizan (la plataforma deja de depender de un solo proveedor)
 - **Diagnóstico**: The Odds API sigue en **0/500** (el plan NUNCA se subió; el panel
   `/api/internal/sportsbook/status` reporta 91.242 restantes y MIENTE — números viejos con fecha fresca,

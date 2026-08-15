@@ -2015,3 +2015,52 @@ td .gx-calc-btn span { display: none; }
   .gx-bb-hero2net{margin-left:0;text-align:left}
   .gx-bb-oodds{margin-left:0}
 }
+
+
+/* ── BALONCESTO · agenda con el markup de fútbol, picks del monitor y simulador (15-ago) ─────────── */
+.gx-duo span:first-child, .gx-duo span:last-child { min-width: 40px; }
+.gx-segn { font-style: normal; font-size: 10px; opacity: .65; margin-left: 3px; font-variant-numeric: tabular-nums; }
+.gx-bb-sig { display: inline-flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; }
+.gx-bb-sig b { font-size: 13px; color: #d7e7e0; }
+.gx-bb-sig i { font-style: normal; font-size: 11px; color: #6f817a; }
+.gx-bb-pickchip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #2de6a3; border: 1px solid #2de6a355; background: #12281f; border-radius: 99px; padding: 3px 9px; }
+.gx-bb-pickchip svg { width: 11px; height: 11px; }
+.gx-cell-team .gx-bb-logo { flex: none; }
+
+/* monitor privado */
+.gx-bb-monitor { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-color: #f0b42944; background: linear-gradient(180deg, #241d0d, #16130a); }
+.gx-bb-monitor svg { width: 20px; height: 20px; color: #f0b429; flex: none; margin-top: 2px; }
+.gx-bb-monitor b { display: block; font-size: 13.5px; color: #f3e0b0; margin-bottom: 3px; }
+.gx-bb-monitor span { display: block; font-size: 12.5px; line-height: 1.5; color: #b9ae8e; }
+.gx-bb-pick.win { border-color: #2de6a344; }
+.gx-bb-pick.loss { border-color: #f05a5a33; opacity: .82; }
+.gx-bb-pick.void { opacity: .68; }
+.gx-bb-pres { font-size: 14px; font-weight: 800; min-width: 66px; text-align: right; font-variant-numeric: tabular-nums; }
+.gx-bb-pres.win { color: #2de6a3; }
+.gx-bb-pres.loss { color: #f05a5a; }
+.gx-bb-pres.void { color: #9fb3ab; }
+.gx-bb-clvup { color: #2de6a3; font-weight: 700; }
+.gx-bb-clvdn { color: #f05a5a; font-weight: 700; }
+
+/* simulador */
+.gx-bb-simbox { padding-bottom: 14px; }
+.gx-bb-simrow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: end; padding: 12px 20px 6px; }
+.gx-bb-simside { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gx-bb-simside .gx-select { width: 100%; }
+.gx-bb-simswap { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--gx-line); background: #0f1a16; color: #9fb3ab; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .15s; }
+.gx-bb-simswap:hover { border-color: #2de6a3; color: #2de6a3; }
+.gx-bb-simneutral { display: flex; align-items: center; gap: 8px; padding: 8px 20px 0; font-size: 12.5px; color: #9fb3ab; cursor: pointer; }
+.gx-bb-simneutral input { accent-color: #2de6a3; }
+
+@media (max-width: 720px) {
+  .gx-bb-simrow { grid-template-columns: 1fr; gap: 10px; }
+  .gx-bb-simswap { justify-self: center; }
+}
+
+/* ficha de equipo: identidad y acciones */
+.gx-bb-tacts { display: flex; gap: 10px; flex-wrap: wrap; }
+.gx-bb-tacts .gx-btn { text-decoration: none; }
+.gx-bb-traits { padding: 8px 20px 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.gx-bb-trait { border-left: 3px solid #2de6a3; padding: 4px 0 4px 11px; }
+.gx-bb-trait b { display: block; font-size: 14px; font-weight: 700; color: #eafff7; }
+.gx-bb-trait span { display: block; font-size: 11.5px; color: #9fb3ab; margin-top: 2px; line-height: 1.45; }

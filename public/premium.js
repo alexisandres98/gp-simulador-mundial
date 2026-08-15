@@ -1023,13 +1023,13 @@
   // ── BALONCESTO: navegación propia, mismo criterio que combate (la sidebar entera cambia con el deporte).
   var NAV_BB = [
     ['bbopps', 'target-arrow', 'nav_opps'], ['bbbrief', 'news', 'nav_brief'], ['bbgames', 'ball-basketball', 'nav_bb_games'],
-    ['bbteams', 'shield', 'nav_teams'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']
+    ['bbteams', 'shield', 'nav_teams'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_BB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbask', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
   // BALONCESTO (15-ago): 4º deporte, admin-only. Mismas superficies que combate — partidos, ranking, equipo,
   // jugador — con sub-pestañas por liga (NBA / WNBA / NCAA M / NCAA F) igual que UFC/PFL/Boxeo.
-  var BB_VIEWS = ['bbopps', 'bbbrief', 'bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer', 'bbask', 'bbperf'];
+  var BB_VIEWS = ['bbopps', 'bbbrief', 'bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer', 'bbsim', 'bbask', 'bbperf'];
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
@@ -1128,9 +1128,9 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isHoops ? ['bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isHoops
-      ? [['bbopps', 'target-arrow', 'nav_opps'], ['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbbrief', 'news', 'nav_brief'], ['bbteams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']]
+      ? [['bbopps', 'target-arrow', 'nav_opps'], ['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['__more', 'dots', 'more']]
       : isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
       : [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']];
@@ -3898,7 +3898,7 @@
     if (bbt) { S.bb.lg = bbt[1]; if (!(S.view === 'bbteam' && S.bb.teamId === bbt[2])) { S.bb.teamId = bbt[2]; S.bb.team = undefined; showView('bbteam'); } return; }
     var bbp = h.match(/^bbplayer\/([a-z]+)-([0-9]+)$/i);
     if (bbp) { S.bb.lg = bbp[1]; if (!(S.view === 'bbplayer' && S.bb.playerId === bbp[2])) { S.bb.playerId = bbp[2]; S.bb.player = undefined; showView('bbplayer'); } return; }
-    var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbask|bbperf)(?:\/([a-z]+))?$/);
+    var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
     var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
@@ -3919,11 +3919,11 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbask: 'bbask', bbperf: 'bbperf' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
-    if (nav === 'bbgames' || nav === 'bbteams' || nav === 'bbopps' || nav === 'bbbrief' || nav === 'bbperf') return nav + '/' + bbLg();
+    if (['bbgames', 'bbteams', 'bbopps', 'bbbrief', 'bbperf', 'bbsim'].indexOf(nav) >= 0) return nav + '/' + bbLg();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -6807,150 +6807,250 @@
     var body = kind === 'teams' ? bbRankPanel(d, lg) : bbGamesPanel(d, lg);
     bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + head + note + body);
   }
-  // ── AGENDA: EN VIVO · PRÓXIMOS · FINALIZADOS ─────────────────────────────────────────────────────────
-  // Misma estructura que la agenda de fútbol, pero con el calendario REAL de cada liga: el server lee el
-  // scoreboard de ESPN, no el dataset. Cada partido próximo lleva la proyección del modelo.
-  var BB_GTABS = [['live', 'En vivo'], ['upcoming', 'Próximos'], ['finished', 'Finalizados']];
-  function bbGameRow(g, lg, kind) {
-    var pr = g.proj || null;
-    var sc = function (x) { return x.score != null ? x.score : ''; };
-    var right = '';
-    if (kind === 'live') right = '<span class="gx-bb-glive">' + ic('circle') + esc(g.detail || 'En vivo') + '</span>';
-    else if (kind === 'finished') right = '<span class="gx-bb-gpos">Final</span>';
-    else if (pr) {
-      var favHome = pr.win.home >= 0.5;
-      right = '<span class="gx-bb-gproj"><b>' + Math.round(100 * Math.max(pr.win.home, pr.win.away)) + '%</b>' +
-        '<i>' + esc(favHome ? bbTeamName(g.home) : bbTeamName(g.away)) + '</i>' +
-        '<em>' + (pr.spread > 0 ? '+' : '') + pr.spread + ' · T ' + pr.total.toFixed(0) + '</em></span>';
-    } else right = '<span class="gx-bb-gpos gx-dim">sin proyección</span>';
-    var bar = pr ? '<span class="gx-bb-gbar"><i style="width:' + (100 * pr.win.away).toFixed(1) + '%"></i></span>' : '';
-    return '<a class="gx-bb-grow gx-bb-grow2 lnk" href="#bbgame/' + esc(lg) + '-' + esc(g.id) + '">' +
-      '<span class="gx-bb-gdate">' + esc(bbWhen(g.date, kind)) + '</span>' +
-      '<span class="gx-bb-gteam">' + bbLogo(g.away, 'sm') + '<b>' + esc(bbTeamName(g.away)) + '</b>' + (kind !== 'upcoming' ? '<u>' + sc(g.away) + '</u>' : '') + '</span>' +
-      '<i class="gx-bb-gat">@</i>' +
-      '<span class="gx-bb-gteam">' + bbLogo(g.home, 'sm') + '<b>' + esc(bbTeamName(g.home)) + '</b>' + (kind !== 'upcoming' ? '<u>' + sc(g.home) + '</u>' : '') + '</span>' +
-      bar + right + '</a>';
+  // ── AGENDA: mismo diseño que Partidos de fútbol ──────────────────────────────────────────────────────
+  // Decisión 15-ago (pedido de Alexis): no inventar una lista propia. Partidos de fútbol ya resolvió este
+  // problema —cabecera con estados, agrupación por día, tabla densa en escritorio y tarjetas en móvil— y
+  // el usuario navega los dos deportes en la misma sesión. Se reusa el markup y las clases; lo único que
+  // cambia es la gramática del deporte: dos salidas en vez de tres, y la señal es la línea justa.
+  var BB_GTABS = [['all', 'Todos'], ['live', 'En vivo'], ['upcoming', 'Próximos'], ['finished', 'Finalizados']];
+  function bbDayKey(d) { var t = new Date(d); return isNaN(t) ? '?' : t.getFullYear() + '-' + (t.getMonth() + 1) + '-' + t.getDate(); }
+  function bbDayLabel(d) {
+    var t = new Date(d); if (isNaN(t)) return '—';
+    var hoy = new Date(), man = new Date(Date.now() + 864e5);
+    if (t.toDateString() === hoy.toDateString()) return 'Hoy';
+    if (t.toDateString() === man.toDateString()) return 'Mañana';
+    return t.toLocaleDateString(S.lang === 'en' ? 'en-GB' : 'es-ES', { weekday: 'short', day: '2-digit', month: 'short' });
   }
-  function bbWhen(d, kind) {
-    if (!d) return '';
-    var t = new Date(d); if (isNaN(t)) return String(d).slice(5, 10);
-    var hoy = new Date(); var mismo = t.toDateString() === hoy.toDateString();
-    var hh = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
-    if (kind === 'finished') return ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2);
-    return mismo ? 'Hoy ' + hh : ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + ' ' + hh;
+  function bbTime(d) { var t = new Date(d); return isNaN(t) ? '' : ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2); }
+  // celda de probabilidad de DOS salidas (en baloncesto no hay empate)
+  function bbDuoCell(pr) {
+    if (!pr) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    var h = Math.round(100 * pr.win.home), a = 100 - h;
+    return '<span class="gx-tri gx-gp gx-duo"><span' + (a >= h ? ' class="hi"' : '') + '>' + a + '%</span><span' + (h > a ? ' class="hi"' : '') + '>' + h + '%</span></span>';
+  }
+  function bbStateCell(g) {
+    var sc = (g.away.score != null && g.home.score != null && (g.status === 'in' || g.completed)) ? (g.away.score + ' - ' + g.home.score) : null;
+    if (g.status === 'in') return (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + '<span class="gx-live-pill">' + esc(g.detail || 'EN VIVO') + '</span>';
+    if (g.completed) return (sc ? '<span class="gx-mono" style="font-weight:600">' + esc(sc) + '</span> ' : '') + '<span class="gx-dim" style="font-size:11px">Final</span>';
+    return '<span class="gx-dim" style="font-size:11px">' + esc(bbTime(g.date)) + '</span>';
+  }
+  // SEÑAL: la línea justa del modelo y el total. Es lo que un lector de mercado mira primero, y es
+  // honesto: no es una pick, es la referencia del modelo contra la que se lee lo que cuelga la casa.
+  function bbSignalCell(g, picks) {
+    var pk = (picks || []).filter(function (p) { return String(p.game_id) === String(g.id); });
+    if (pk.length) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + pk.length + ' en monitor</span>';
+    if (!g.proj) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    return '<span class="gx-bb-sig"><b>' + (g.proj.spread > 0 ? '+' : '') + g.proj.spread + '</b><i>T ' + g.proj.total.toFixed(0) + '</i></span>';
+  }
+  function bbGamesTable(rows, lg, picks) {
+    return '<table class="gx-table"><thead><tr><th class="l">Hora</th><th class="l">Partido</th><th class="l">Estado</th><th class="grp">Probabilidad GP</th><th class="l">Señal</th><th></th></tr></thead><tbody>' +
+      rows.map(function (g) {
+        return '<tr class="gx-row" data-bbopen="' + esc(lg + '-' + g.id) + '">' +
+          '<td class="gx-time">' + esc(bbTime(g.date)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(g.venue ? String(g.venue).slice(0, 22) : bbLgLab()) + '</div></td>' +
+          '<td class="l"><div class="gx-cell-team">' + bbLogo(g.away, 'sm') +
+            '<div class="gx-teamnames"><b>' + esc(g.away.name || g.away.abbr) + '</b><span>' + esc(g.home.name || g.home.abbr) + '</span></div>' + bbLogo(g.home, 'sm') + '</div></td>' +
+          '<td class="l">' + bbStateCell(g) + '</td>' +
+          '<td>' + bbDuoCell(g.proj) + '</td>' +
+          '<td class="l">' + bbSignalCell(g, picks) + '</td>' +
+          '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function bbGamesCards(rows, lg, picks) {
+    return rows.map(function (g) {
+      return '<div class="gx-mcard" data-bbopen="' + esc(lg + '-' + g.id) + '">' +
+        '<div class="gx-mcard-top"><span class="gx-time">' + esc(bbTime(g.date)) + '</span><span class="gx-spacer"></span>' + bbStateCell(g) + '</div>' +
+        '<div class="gx-cell-team" style="margin:8px 0">' + bbLogo(g.away, 'sm') +
+          '<div class="gx-teamnames"><b>' + esc(g.away.name || g.away.abbr) + '</b><span>' + esc(g.home.name || g.home.abbr) + '</span></div>' + bbLogo(g.home, 'sm') + '</div>' +
+        '<div class="gx-mcard-rows"><div><span class="gx-label">Probabilidad GP</span>' + bbDuoCell(g.proj) + '</div></div>' +
+        '<div class="gx-mcard-foot"><span>' + bbSignalCell(g, picks) + '</span><span class="gx-mcard-cta">Analizar →</span></div></div>';
+    }).join('');
   }
   function renderBBGames() {
+    var mv = $('#gx-matchview'); if (!mv) return;
     var lg = bbLg();
     var d = bbGet('sched_' + lg, '/api/hoops/schedule?league=' + lg, 60000);
-    if (!d) { bbShell('Baloncesto', bbTabs() + mvLoading()); return; }
-    if (d._err) { bbShell('Baloncesto', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var pk = bbGet('picks_all', '/api/hoops/picks?league=all', 300000);
+    var picks = (pk && pk.active) || [];
+    var tab = S.bb.gTab || 'all';
+    var q = (S.bb.gQ || '').toLowerCase();
+    if (!d) { bbShell('Partidos', bbTabs() + mvLoading()); return; }
+    if (d._err) { bbShell('Partidos', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var C = d.counts || { live: 0, upcoming: 0, finished: 0 };
-    // la pestaña por defecto es la que tiene algo: en vivo manda, si no próximos, si no finalizados
-    var tab = S.bb.gTab;
-    if (!tab || !C[tab]) tab = C.live ? 'live' : C.upcoming ? 'upcoming' : 'finished';
-    var subs = '<div class="gx-bb-subtabs">' + BB_GTABS.map(function (x) {
-      return '<span class="gx-bb-subtab' + (tab === x[0] ? ' on' : '') + '" data-bbgtab="' + x[0] + '">' + esc(x[1]) +
-        '<em>' + (C[x[0]] || 0) + '</em>' + (x[0] === 'live' && C.live ? '<u class="gx-bb-dot"></u>' : '') + '</span>';
-    }).join('') + '</div>';
-    var list = (d[tab] || []);
+    var all = (d.live || []).concat(d.upcoming || [], d.finished || []);
+    var rows = tab === 'all' ? all : (d[tab] || []);
+    if (q) rows = rows.filter(function (g) { return ((g.home.name || '') + ' ' + (g.away.name || '')).toLowerCase().indexOf(q) >= 0; });
+    rows = rows.slice().sort(function (a, b) {
+      var la = a.status === 'in' ? 0 : a.completed ? 2 : 1, lb = b.status === 'in' ? 0 : b.completed ? 2 : 1;
+      if (la !== lb) return la - lb;
+      return la === 2 ? String(b.date).localeCompare(String(a.date)) : String(a.date).localeCompare(String(b.date));
+    });
+    var counts = { all: all.length, live: C.live, upcoming: C.upcoming, finished: C.finished };
+    var head = '<div class="gx-ohead"><h1>Partidos</h1>' +
+      '<div class="gx-seg" id="gx-bbtabs">' + BB_GTABS.map(function (x) {
+        return '<button data-bbgtab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + (counts[x[0]] ? ' <em class="gx-segn">' + counts[x[0]] + '</em>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<select class="gx-select" id="gx-bblg">' + BB_LEAGUES.map(function (x) { return '<option value="' + x[0] + '"' + (lg === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>' +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-bbsearch" placeholder="Buscar equipo…" value="' + esc(S.bb.gQ || '') + '"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' partidos</span></div>';
     var body;
     if (d.offseason) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(d.offseason.note) + '</b>' +
-        (d.offseason.season_hint ? '<span class="gx-dim">' + esc(d.offseason.season_hint) + '</span>' : '') +
-        (d.offseason.last_game ? '<span class="gx-dim">Último partido cosechado: ' + esc(String(d.offseason.last_game).slice(0, 10)) + '</span>' : '') +
-        '</div></div>';
-    } else if (!list.length) {
-      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidos en esta pestaña.</b><span class="gx-dim">Ventana ' + esc(d.window.from) + ' → ' + esc(d.window.to) + '</span></div></div>';
+        (d.offseason.season_hint ? '<span class="gx-dim">' + esc(d.offseason.season_hint) + '</span>' : '') + '</div></div>';
+    } else if (!rows.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>Sin partidos en esta vista.</b>' +
+        '<span class="gx-dim">Ventana ' + esc(d.window.from) + ' → ' + esc(d.window.to) + '</span></div></div>';
     } else {
-      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc((BB_GTABS.filter(function (x) { return x[0] === tab; })[0] || [])[1] || '') + '</span><span class="gx-ph-extra">' + list.length + '</span></div>' +
-        '<div class="gx-bb-games">' + list.map(function (g) { return bbGameRow(g, lg, tab); }).join('') + '</div></div>';
+      var groups = [], gmap = {};
+      rows.forEach(function (g) { var k = bbDayKey(g.date); if (!gmap[k]) { gmap[k] = { label: bbDayLabel(g.date), rows: [] }; groups.push(gmap[k]); } gmap[k].rows.push(g); });
+      body = groups.map(function (gr) {
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(gr.label) + '</span><span class="gx-dim">' + gr.rows.length + '</span></div>' +
+          '<div class="gx-panel gx-board gx-matches-desk">' + bbGamesTable(gr.rows, lg, picks) + '</div>' +
+          '<div class="gx-matches-mob">' + bbGamesCards(gr.rows, lg, picks) + '</div></div>';
+      }).join('');
     }
     var note = !d.model_ready ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>Esta liga todavía no tiene el modelo ajustado: se muestra el calendario sin proyección.</span></div>' : '';
-    bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + subs + note + body);
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + note + body + '</div></div>';
+    mv.onclick = bbClicks;
+    var si = $('#gx-bbsearch');
+    if (si) si.addEventListener('input', function () { S.bb.gQ = si.value; clearTimeout(S._bbq2); S._bbq2 = setTimeout(function () { var pos = si.selectionStart; renderBBGames(); var n = $('#gx-bbsearch'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }, 220); });
+    var sl = $('#gx-bblg');
+    if (sl) sl.addEventListener('change', function () { S.bb.lg = sl.value; setHash('bbgames/' + sl.value); });
   }
 
   // ── OPORTUNIDADES ────────────────────────────────────────────────────────────────────────────────────
-  // Las mismas cuatro familias que fútbol y combate. NINGUNA depende del modelo: value es line shopping
-  // contra el consenso sin margen, arbitraje es aritmética entre casas, caídas es movimiento de la línea
-  // afilada y middles es un hueco entre líneas. Por eso pueden publicarse con las picks apagadas.
-  var BB_OPPF = [['all', 'Todo'], ['value', 'Value'], ['arbs', 'Arbitraje'], ['dropping', 'Caídas'], ['middles', 'Middles']];
-  function bbOppLg() { var k = (S.bb && S.bb.oppLg) || 'all'; return k; }
+  // Mismos chips que fútbol: Picks · Value · Arbitraje · Caídas · Middles. Sin vista "Todo" — mezclar
+  // cuatro familias que se leen distinto no ayuda a decidir, y en fútbol nunca existió.
+  // Value, arbitraje, caídas y middles NO dependen del modelo (salen de precios entre casas). Las PICKS sí,
+  // y por eso viven en un monitor privado con su etiqueta puesta: el modelo aún no bate al cierre.
+  var BB_OPPF = [['picks', 'Picks'], ['value', 'Value'], ['arbs', 'Arbitraje'], ['dropping', 'Caídas'], ['middles', 'Middles']];
+  function bbOppLg() { return (S.bb && S.bb.oppLg) || 'all'; }
   function bbBookLab(b) { return String(b || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+  function bbWhen(d) {
+    if (!d) return '';
+    var t = new Date(d); if (isNaN(t)) return '';
+    var hoy = new Date();
+    var hh = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+    return (t.toDateString() === hoy.toDateString() ? 'Hoy ' : ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + ' ') + hh;
+  }
   function bbEvLine(ev) {
     return '<div class="gx-bb-ovent"><b>' + esc(ev.away) + '</b><i>en</i><b>' + esc(ev.home) + '</b>' +
-      '<span class="gx-dim">' + esc(ev.league_name || '') + (ev.kickoff ? ' · ' + esc(bbWhen(ev.kickoff, 'upcoming')) : '') + '</span></div>';
+      '<span class="gx-dim">' + esc(ev.league_name || '') + (ev.kickoff ? ' · ' + esc(bbWhen(ev.kickoff)) : '') + '</span></div>';
+  }
+  // ── PICKS DEL MONITOR ──
+  function bbPickCard(p, settled) {
+    var res = p.result_code;
+    var cls = res === 'WIN' ? 'win' : res === 'LOSS' ? 'loss' : res === 'VOID' ? 'void' : '';
+    return '<div class="gx-bb-opp gx-bb-pick ' + cls + '">' +
+      '<div class="gx-bb-ovent"><b>' + esc(p.event.away) + '</b><i>en</i><b>' + esc(p.event.home) + '</b>' +
+        '<span class="gx-dim">' + esc(p.league_label || '') + ' · ' + esc(bbWhen(p.event.kickoff_at)) + '</span></div>' +
+      '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(p.family_label) + '</span><b class="gx-bb-osel">' + esc(p.selection_name) + '</b>' +
+        '<span class="gx-bb-oodds">' + p.best_odds.toFixed(2) + '<i>' + esc(bbBookLab(p.best_book)) + '</i></span>' +
+        (settled
+          ? '<span class="gx-bb-pres ' + cls + '">' + (res === 'WIN' ? '✓ ' + (p.units > 0 ? '+' + p.units.toFixed(2) : '') + 'u' : res === 'LOSS' ? '✗ −1u' : 'push') + '</span>'
+          : '<span class="gx-bb-oev up">+' + p.edge_pp.toFixed(1) + 'pp</span>') + '</div>' +
+      '<div class="gx-bb-ometa">' +
+        '<span>modelo ' + Math.round(100 * p.model_prob) + '%</span><span>mercado ' + Math.round(100 * p.market_prob) + '%</span>' +
+        '<span>justa ' + p.fair_odds.toFixed(2) + '</span><span>' + p.books + ' casas</span>' +
+        (p.clv_pct != null ? '<span class="' + (p.clv_pct >= 0 ? 'gx-bb-clvup' : 'gx-bb-clvdn') + '">CLV ' + (p.clv_pct > 0 ? '+' : '') + p.clv_pct.toFixed(2) + '%</span>' : '') +
+        (settled && p.final_score ? '<span>' + p.final_score.away + '-' + p.final_score.home + '</span>' : '') +
+        '<span class="gx-dim">confianza ' + esc(p.confidence || '') + '</span></div></div>';
+  }
+  function bbPicksPanel() {
+    var d = bbGet('picks_' + bbOppLg(), '/api/hoops/picks?league=' + bbOppLg(), 120000);
+    if (!d) return mvLoading();
+    if (d._err) return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';
+    var T = d.track || {}, tot = T.total || {};
+    var warn = '<div class="gx-panel gx-bb-monitor">' + ic('eye') +
+      '<div><b>Monitor privado — no se publica</b><span>' + esc(d.note || '') + '</span></div></div>';
+    var kpi = '<div class="gx-panel gx-bb-modelbar">' +
+      '<div><span class="gx-label">Vivas</span><b>' + (T.active || 0) + '</b></div>' +
+      '<div><span class="gx-label">Liquidadas</span><b>' + (tot.n || 0) + '</b>' + (tot.n ? ' · ' + tot.w + '-' + tot.l : '') + '</div>' +
+      '<div><span class="gx-label">Unidades</span><b class="' + ((tot.units || 0) >= 0 ? 'up' : 'dn') + '">' + (tot.units != null ? (tot.units > 0 ? '+' : '') + tot.units.toFixed(2) : '—') + '</b></div>' +
+      '<div><span class="gx-label">ROI</span><b class="' + ((tot.roi || 0) >= 0 ? 'up' : 'dn') + '">' + (tot.roi != null ? (tot.roi > 0 ? '+' : '') + tot.roi + '%' : '—') + '</b></div>' +
+      '<div><span class="gx-label">CLV medio</span><b class="' + ((tot.clv_avg || 0) >= 0 ? 'up' : 'dn') + '">' + (tot.clv_avg != null ? (tot.clv_avg > 0 ? '+' : '') + tot.clv_avg + '%' : '—') + '</b>' + (tot.clv_n ? ' · ' + tot.clv_n : '') + '</div>' +
+      '</div>';
+    var clvNote = '<div class="gx-dim gx-bb-courtnote" style="padding:0 4px 6px">El número que decide no es el acierto sino el <b>CLV</b>: si compramos sistemáticamente por encima del cierre, hay edge aunque el resultado tarde en llegar. Con CLV negativo sostenido, estas picks no se encienden.</div>';
+    var act = (d.active || []).length
+      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Picks vivas</span><span class="gx-ph-extra">' + d.active.length + '</span></div><div class="gx-bb-opps">' +
+        d.active.map(function (p) { return bbPickCard(p, false); }).join('') + '</div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna pick viva ahora mismo.</b>' +
+        '<span class="gx-dim">Nacen cuando el modelo supera al consenso por ' + ((d.config || {}).min_edge_pp || 3) + 'pp o más con precio disponible. El motor revisa cada 30 minutos.</span></div></div>';
+    var set = (d.settled || []).length
+      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Liquidadas</span><span class="gx-ph-extra">' + d.settled.length + '</span></div><div class="gx-bb-opps">' +
+        d.settled.slice(0, 30).map(function (p) { return bbPickCard(p, true); }).join('') + '</div></div>' : '';
+    var fam = Object.keys(T.by_family || {}).length
+      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por familia</span></div><div class="gx-bb-dna">' +
+        Object.entries(T.by_family).map(function (kv) {
+          var f = kv[1];
+          return '<div class="gx-bb-dnac"><span>' + esc(kv[0]) + '</span><b class="' + (f.units >= 0 ? 'up' : 'dn') + '">' + (f.units > 0 ? '+' : '') + f.units.toFixed(2) + 'u</b>' +
+            '<em>' + f.n + ' picks · ' + f.w + '-' + f.l + (f.clv_avg != null ? ' · CLV ' + (f.clv_avg > 0 ? '+' : '') + f.clv_avg + '%' : '') + '</em></div>';
+        }).join('') + '</div></div>' : '';
+    return warn + kpi + clvNote + act + fam + set;
   }
   function renderBBOpps() {
     var lgo = bbOppLg();
-    var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
+    var f = S.bb.oppFilt || 'picks';
     var tabs = '<div class="gx-cb-tabs">' + [['all', 'Todas']].concat(BB_LEAGUES).concat([['euro', 'Euroliga/NBL']]).map(function (x) {
       return '<span class="gx-cb-tab' + (lgo === x[0] ? ' on' : '') + '" data-bbopplg="' + x[0] + '">' + esc(x[1]) + '</span>';
     }).join('') + '<span class="gx-spacer"></span></div>';
-    if (!d) { bbShell('Oportunidades', tabs + mvLoading()); return; }
-    if (d._err) { bbShell('Oportunidades', tabs + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
-    var f = S.bb.oppFilt || 'all';
-    var cnt = { value: (d.value || []).length, arbs: (d.arbs || []).length, dropping: (d.dropping || []).length, middles: (d.middles || []).length };
-    cnt.all = cnt.value + cnt.arbs + cnt.dropping + cnt.middles;
     var chips = '<div class="gx-bb-subtabs">' + BB_OPPF.map(function (x) {
-      return '<span class="gx-bb-subtab' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(x[1]) + '<em>' + (cnt[x[0]] || 0) + '</em></span>';
+      return '<span class="gx-bb-subtab' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(x[1]) + '</span>';
     }).join('') + '</div>';
-    // por qué no hay picks — se dice de frente, no se esconde
-    var pn = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.picks_note || '') + '</span></div>';
+    if (f === 'picks') { bbShell('Oportunidades · baloncesto', tabs + chips + bbPicksPanel()); return; }
 
-    var secValue = (!cnt.value) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Value · mejor precio contra el consenso</span><span class="gx-ph-extra">' + cnt.value + '</span></div><div class="gx-bb-opps">' +
-      (d.value || []).map(function (v) {
-        var gp = v.model != null ? '<span class="gx-bb-ogp' + (v.model_ev_pct >= 0 ? ' up' : ' dn') + '">GP Take ' + Math.round(100 * v.model) + '%' + (v.model_vs_market_pp != null ? ' <i>(' + (v.model_vs_market_pp > 0 ? '+' : '') + v.model_vs_market_pp + 'pp vs mercado)</i>' : '') + '</span>' : '';
-        return '<div class="gx-bb-opp">' + bbEvLine(v.event) +
-          '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(v.fam_label) + '</span><b class="gx-bb-osel">' + esc(v.label) + '</b>' +
-          '<span class="gx-bb-oodds">' + v.odds.toFixed(2) + '<i>' + esc(bbBookLab(v.book)) + '</i></span>' +
-          '<span class="gx-bb-oev up">+' + v.ev_pct.toFixed(1) + '%</span></div>' +
-          '<div class="gx-bb-ometa"><span>justa ' + v.fair_odds.toFixed(2) + '</span><span>' + v.books + ' casas</span><span>margen ' + v.vig_pct + '%</span>' +
-          (v.max_stake ? '<span>hasta $' + v.max_stake + '</span>' : '') + gp + '</div></div>';
-      }).join('') + '</div></div>';
-
-    var secArb = (!cnt.arbs) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Arbitraje · las dos patas en casas distintas</span><span class="gx-ph-extra">' + cnt.arbs + '</span></div><div class="gx-bb-opps">' +
-      (d.arbs || []).map(function (a) {
-        return '<div class="gx-bb-opp' + (a.executable ? ' exec' : '') + '">' + bbEvLine(a.event) +
-          '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(a.a.label) + '</b><span>' + a.a.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.a.book)) + '</span><em>' + a.a.stake_pct + '% del capital</em></div>' +
-          '<div class="gx-bb-arbleg"><b>' + esc(a.b.label) + '</b><span>' + a.b.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.b.book)) + '</span><em>' + a.b.stake_pct + '% del capital</em></div>' +
-          '<div class="gx-bb-arbp"><b>+' + a.profit_pct.toFixed(2) + '%</b><span>' + esc(a.fam_label) + '</span>' +
-          (a.max_payout ? '<em>hasta $' + a.max_payout + '</em>' : '<em class="gx-dim">profundidad sin verificar</em>') + '</div></div></div>';
-      }).join('') + '</div></div>';
-
-    var secDrop = (!cnt.dropping) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Caídas de cuota · la línea afilada se movió</span><span class="gx-ph-extra">' + cnt.dropping + '</span></div><div class="gx-bb-opps">' +
-      (d.dropping || []).map(function (r) {
-        return '<div class="gx-bb-opp">' + bbEvLine(r.event) +
-          '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(r.fam_label) + (r.line != null ? ' ' + r.line : '') + '</span>' +
-          '<b class="gx-bb-osel">' + esc(r.side) + '</b>' +
-          '<span class="gx-bb-odrop">' + r.sharp_before.toFixed(2) + ' → <b>' + r.sharp_now.toFixed(2) + '</b></span>' +
-          '<span class="gx-bb-oev dn">−' + r.drop_pct.toFixed(1) + '%</span></div>' +
-          (r.stale && r.stale.length ? '<div class="gx-bb-ometa"><span class="gx-bb-stale">Rezagadas: ' + r.stale.map(function (x) { return esc(bbBookLab(x.book)) + ' ' + x.o.toFixed(2); }).join(' · ') + '</span></div>'
-            : '<div class="gx-bb-ometa gx-dim"><span>Ninguna casa quedó atrás: el mercado ya absorbió el movimiento</span></div>') + '</div>';
-      }).join('') + '</div></div>';
-
-    var secMid = (!cnt.middles) ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Middles · si cae en el medio, cobran las dos</span><span class="gx-ph-extra">' + cnt.middles + '</span></div><div class="gx-bb-opps">' +
-      (d.middles || []).map(function (m) {
-        return '<div class="gx-bb-opp">' + bbEvLine(m.event) +
-          '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(m.low.label) + '</b><span>' + m.low.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.low.book)) + '</span></div>' +
-          '<div class="gx-bb-arbleg"><b>' + esc(m.high.label) + '</b><span>' + m.high.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.high.book)) + '</span></div>' +
-          '<div class="gx-bb-arbp"><b>' + esc(m.zone) + '</b><span>' + esc(m.fam_label) + '</span><em>' + (m.cost_pct <= 0 ? 'además es surebet' : 'cuesta ' + m.cost_pct.toFixed(2) + '%') + '</em></div></div></div>';
-      }).join('') + '</div></div>';
+    var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
+    if (!d) { bbShell('Oportunidades · baloncesto', tabs + chips + mvLoading()); return; }
+    if (d._err) { bbShell('Oportunidades · baloncesto', tabs + chips + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
 
     var body = '';
-    if (f === 'all') body = secValue + secArb + secDrop + secMid;
-    else if (f === 'value') body = secValue;
-    else if (f === 'arbs') body = secArb;
-    else if (f === 'dropping') body = secDrop;
-    else body = secMid;
+    if (f === 'value') {
+      body = (d.value || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Mejor precio contra el consenso</span><span class="gx-ph-extra">' + d.value.length + '</span></div><div class="gx-bb-opps">' +
+        d.value.map(function (v) {
+          var gp = v.model != null ? '<span class="gx-bb-ogp' + (v.model_ev_pct >= 0 ? ' up' : ' dn') + '">GP Take ' + Math.round(100 * v.model) + '%' + (v.model_vs_market_pp != null ? ' <i>(' + (v.model_vs_market_pp > 0 ? '+' : '') + v.model_vs_market_pp + 'pp vs mercado)</i>' : '') + '</span>' : '';
+          return '<div class="gx-bb-opp">' + bbEvLine(v.event) +
+            '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(v.fam_label) + '</span><b class="gx-bb-osel">' + esc(v.label) + '</b>' +
+            '<span class="gx-bb-oodds">' + v.odds.toFixed(2) + '<i>' + esc(bbBookLab(v.book)) + '</i></span>' +
+            '<span class="gx-bb-oev up">+' + v.ev_pct.toFixed(1) + '%</span></div>' +
+            '<div class="gx-bb-ometa"><span>justa ' + v.fair_odds.toFixed(2) + '</span><span>' + v.books + ' casas</span><span>margen ' + v.vig_pct + '%</span>' +
+            (v.max_stake ? '<span>hasta $' + v.max_stake + '</span>' : '') + gp + '</div></div>';
+        }).join('') + '</div></div>' : '';
+    } else if (f === 'arbs') {
+      body = (d.arbs || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Las dos patas en casas distintas</span><span class="gx-ph-extra">' + d.arbs.length + '</span></div><div class="gx-bb-opps">' +
+        d.arbs.map(function (a) {
+          return '<div class="gx-bb-opp' + (a.executable ? ' exec' : '') + '">' + bbEvLine(a.event) +
+            '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(a.a.label) + '</b><span>' + a.a.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.a.book)) + '</span><em>' + a.a.stake_pct + '% del capital</em></div>' +
+            '<div class="gx-bb-arbleg"><b>' + esc(a.b.label) + '</b><span>' + a.b.odds.toFixed(2) + ' · ' + esc(bbBookLab(a.b.book)) + '</span><em>' + a.b.stake_pct + '% del capital</em></div>' +
+            '<div class="gx-bb-arbp"><b>+' + a.profit_pct.toFixed(2) + '%</b><span>' + esc(a.fam_label) + '</span>' +
+            (a.max_payout ? '<em>hasta $' + a.max_payout + '</em>' : '<em class="gx-dim">profundidad sin verificar</em>') + '</div></div></div>';
+        }).join('') + '</div></div>' : '';
+    } else if (f === 'dropping') {
+      body = (d.dropping || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La línea afilada se movió</span><span class="gx-ph-extra">' + d.dropping.length + '</span></div><div class="gx-bb-opps">' +
+        d.dropping.map(function (r) {
+          return '<div class="gx-bb-opp">' + bbEvLine(r.event) +
+            '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(r.fam_label) + (r.line != null ? ' ' + r.line : '') + '</span>' +
+            '<b class="gx-bb-osel">' + esc(r.side) + '</b>' +
+            '<span class="gx-bb-odrop">' + r.sharp_before.toFixed(2) + ' → <b>' + r.sharp_now.toFixed(2) + '</b></span>' +
+            '<span class="gx-bb-oev dn">−' + r.drop_pct.toFixed(1) + '%</span></div>' +
+            (r.stale && r.stale.length ? '<div class="gx-bb-ometa"><span class="gx-bb-stale">Rezagadas: ' + r.stale.map(function (x) { return esc(bbBookLab(x.book)) + ' ' + x.o.toFixed(2); }).join(' · ') + '</span></div>'
+              : '<div class="gx-bb-ometa gx-dim"><span>Ninguna casa quedó atrás: el mercado ya absorbió el movimiento</span></div>') + '</div>';
+        }).join('') + '</div></div>' : '';
+    } else {
+      body = (d.middles || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Si cae en el medio, cobran las dos</span><span class="gx-ph-extra">' + d.middles.length + '</span></div><div class="gx-bb-opps">' +
+        d.middles.map(function (m) {
+          return '<div class="gx-bb-opp">' + bbEvLine(m.event) +
+            '<div class="gx-bb-arb"><div class="gx-bb-arbleg"><b>' + esc(m.low.label) + '</b><span>' + m.low.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.low.book)) + '</span></div>' +
+            '<div class="gx-bb-arbleg"><b>' + esc(m.high.label) + '</b><span>' + m.high.odds.toFixed(2) + ' · ' + esc(bbBookLab(m.high.book)) + '</span></div>' +
+            '<div class="gx-bb-arbp"><b>' + esc(m.zone) + '</b><span>' + esc(m.fam_label) + '</span><em>' + (m.cost_pct <= 0 ? 'además es surebet' : 'cuesta ' + m.cost_pct.toFixed(2) + '%') + '</em></div></div></div>';
+        }).join('') + '</div></div>' : '';
+    }
     if (!body) {
-      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-        '<b>Sin oportunidades en esta vista ahora mismo.</b>' +
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin oportunidades en esta vista ahora mismo.</b>' +
         '<span class="gx-dim">' + esc(d.note || (d.events ? d.events + ' partidos con cuotas rastreados · el escáner corre cada 12 minutos' : 'Ninguna liga de baloncesto tiene partidos con cuotas en la ventana.')) + '</span></div></div>';
     }
     var head = '<div class="gx-panel gx-bb-modelbar"><div><span class="gx-label">Partidos con cuotas</span><b>' + (d.events || 0) + '</b></div>' +
       (d.counts ? '<div><span class="gx-label">Mercados</span><b>' + d.counts.markets + '</b></div><div><span class="gx-label">Precios</span><b>' + d.counts.quotes + '</b></div>' : '') +
       '<div><span class="gx-label">Actualizado</span><b>' + esc(String(d.refreshed_at || '').slice(11, 16)) + '</b></div></div>';
-    bbShell('Oportunidades · baloncesto', tabs + chips + head + pn + body);
+    bbShell('Oportunidades · baloncesto', tabs + chips + head + body);
   }
 
   // ── BRIEF DE LA JORNADA ──────────────────────────────────────────────────────────────────────────────
@@ -6964,8 +7064,9 @@
       ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
         String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
       : (d.intro_error ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir (' + esc(d.intro_error) + '). El tablero de abajo no depende de ella.</span></div>' : '');
-    var games = (d.games || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La jornada</span><span class="gx-ph-extra">' + d.games.length + '</span></div><div class="gx-bb-games">' +
-      d.games.map(function (g) { return bbGameRow(g, lg, g.status === 'in' ? 'live' : g.status === 'post' ? 'finished' : 'upcoming'); }).join('') + '</div></div>'
+    var games = (d.games || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>La jornada</span><span class="gx-dim">' + d.games.length + '</span></div>' +
+      '<div class="gx-panel gx-board gx-matches-desk">' + bbGamesTable(d.games, lg, []) + '</div>' +
+      '<div class="gx-matches-mob">' + bbGamesCards(d.games, lg, []) + '</div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>No hay partidos de ' + esc(d.label || '') + ' en las próximas 36 horas.</b></div></div>';
     var val = (d.value || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los mejores precios de hoy</span><span class="gx-ph-extra">' + d.value.length + '</span></div><div class="gx-bb-opps">' +
       d.value.map(function (v) {
@@ -7015,6 +7116,93 @@
           '<span class="gx-dim gx-bb-calc">' + b.n + '</span></div>';
       }).join('') + '</div><div class="gx-dim gx-bb-courtnote">La barra es lo que el modelo prometió; la marca, lo que pasó. Cerca = bien calibrado.</div></div>' : '';
     bbShell('Rendimiento · ' + bbLgLab(), bbTabs() + kpi + skill + cal);
+  }
+
+  // ── SIMULADOR ────────────────────────────────────────────────────────────────────────────────────────
+  // Cruzar dos equipos que el calendario no dio. Mismo motor que el panel de partido: no es una versión
+  // simplificada, es LA simulación — por eso devuelve las mismas distribuciones y las mismas cuotas justas.
+  // La cancha se elige (local o neutral) porque la ventaja de cancha es un parámetro medido, no un adorno.
+  function renderBBSim() {
+    var lg = bbLg();
+    S.bb.sim = S.bb.sim || { home: '', away: '', neutral: false };
+    var Q = S.bb.sim;
+    var key = 'sim_' + lg + (Q.home && Q.away ? '_' + Q.home + '_' + Q.away + (Q.neutral ? '_n' : '') : '');
+    var url = '/api/hoops/sim?league=' + lg + (Q.home && Q.away ? '&home=' + encodeURIComponent(Q.home) + '&away=' + encodeURIComponent(Q.away) + (Q.neutral ? '&neutral=1' : '') : '');
+    var d = bbGet(key, url, 600000);
+    if (!d) { bbShell('Simulador', bbTabs() + mvLoading()); return; }
+    if (d._err) { bbShell('Simulador', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (d.empty) { bbShell('Simulador', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(bbLgLab()) + ' sin dataset cosechado todavía.</b></div></div>'); return; }
+    var teams = d.teams || [];
+    var opt = function (sel) { return '<option value="">Elegí un equipo</option>' + teams.map(function (tm) { return '<option value="' + esc(tm.id) + '"' + (sel === tm.id ? ' selected' : '') + '>' + esc(tm.name) + '</option>'; }).join(''); };
+    var picker = '<div class="gx-panel gx-bb-simbox"><div class="gx-ph"><span class="gx-label">Simulador</span><span class="gx-ph-extra">' + esc(d.label || bbLgLab()) + '</span></div>' +
+      '<div class="gx-bb-simrow">' +
+        '<div class="gx-bb-simside"><span class="gx-label">Visitante</span><select class="gx-select" data-bbsim="away">' + opt(Q.away) + '</select></div>' +
+        '<button class="gx-bb-simswap" data-bbsimswap="1" title="Intercambiar">' + ic('arrows-shuffle') + '</button>' +
+        '<div class="gx-bb-simside"><span class="gx-label">Local</span><select class="gx-select" data-bbsim="home">' + opt(Q.home) + '</select></div>' +
+      '</div>' +
+      '<label class="gx-bb-simneutral"><input type="checkbox" data-bbsimneutral="1"' + (Q.neutral ? ' checked' : '') + '> Cancha neutral <span class="gx-dim">(quita la ventaja de local)</span></label>' +
+      '<div class="gx-dim gx-bb-courtnote">Cruce hipotético con el rating ajustado por rival de la temporada en curso.</div></div>';
+
+    if (!d.sim) { bbShell('Simulador', bbTabs() + picker + '<div class="gx-panel"><div class="gx-empty">' + ic('arrows-shuffle') + '<b>Elegí dos equipos para simular el cruce.</b><span class="gx-dim">GP los enfrenta con su contexto actual.</span></div></div>'); bbBindSim(); return; }
+
+    var s2 = d.sim, P = s2.projection, H = s2.game.home, A = s2.game.away;
+    var ph = Math.round(100 * P.win.home);
+    var hero = '<div class="gx-panel gx-bb-hero">' +
+      '<div class="gx-bb-heroteams">' +
+        '<div class="gx-bb-ht">' + bbLogo(A, 'xl') + '<b>' + esc(bbTeamName(A)) + '</b></div>' +
+        '<div class="gx-bb-hmid"><span class="gx-label">Probabilidad GP</span>' +
+          '<div class="gx-bb-probs"><span>' + (100 - ph) + '%</span><span class="h">' + ph + '%</span></div>' +
+          '<div class="gx-bb-pbar"><i style="width:' + ph + '%"></i></div>' +
+          '<div class="gx-dim gx-bb-ci">Intervalo ' + bbPct(P.win_ci.lo) + ' – ' + bbPct(P.win_ci.hi) + ' · confianza <b>' + esc(P.confidence) + '</b>' + (d.neutral ? ' · cancha neutral' : '') + '</div>' +
+        '</div>' +
+        '<div class="gx-bb-ht">' + bbLogo(H, 'xl') + '<b>' + esc(bbTeamName(H)) + '</b></div>' +
+      '</div>' +
+      '<div class="gx-bb-kpis">' +
+        '<div><span>Marcador proyectado</span><b>' + P.away_pts.toFixed(1) + ' – ' + P.home_pts.toFixed(1) + '</b></div>' +
+        '<div><span>Posesiones</span><b>' + P.poss.toFixed(1) + '</b></div>' +
+        '<div><span>Margen esperado</span><b>' + bbSign(+P.margin.toFixed(1)) + '</b></div>' +
+        '<div><span>Total esperado</span><b>' + P.total.toFixed(1) + '</b></div>' +
+        '<div><span>Prórroga</span><b>' + bbPct(P.ot_prob) + '</b></div>' +
+      '</div></div>';
+    var wm = (s2.what_matters || []).length ? '<div class="gx-panel gx-bb-wm"><div class="gx-ph"><span class="gx-label">Lo que decidiría este cruce</span></div><ol>' +
+      s2.what_matters.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>' : '';
+    var dist = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Distribución del margen</span><span class="gx-ph-extra">' + P.sims.toLocaleString('es') + ' simulaciones</span></div>' +
+      bbCurve(P.margin_hist, { zero: 0, band: [P.margin_q.p25, P.margin_q.p75], fmt: function (v) { return bbSign(v); } }) +
+      '<div class="gx-bb-qs"><span>p05 <b>' + bbSign(P.margin_q.p05) + '</b></span><span>p25 <b>' + bbSign(P.margin_q.p25) + '</b></span><span>mediana <b>' + bbSign(P.margin_q.p50) + '</b></span><span>p75 <b>' + bbSign(P.margin_q.p75) + '</b></span><span>p95 <b>' + bbSign(P.margin_q.p95) + '</b></span></div></div>' +
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Distribución del total</span></div>' + bbCurve(P.total_hist, { band: [P.total_q.p25, P.total_q.p75] }) +
+      '<div class="gx-bb-qs"><span>p05 <b>' + P.total_q.p05 + '</b></span><span>p25 <b>' + P.total_q.p25 + '</b></span><span>mediana <b>' + P.total_q.p50 + '</b></span><span>p75 <b>' + P.total_q.p75 + '</b></span><span>p95 <b>' + P.total_q.p95 + '</b></span></div></div>';
+    var why = '';
+    if (s2.why && s2.why.parts) {
+      var mx = s2.why.parts.reduce(function (m, x) { return Math.max(m, Math.abs(x.pp)); }, 0) || 1;
+      why = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">De dónde sale el margen</span><span class="gx-ph-extra">puntos</span></div><div class="gx-bb-dec">' +
+        s2.why.parts.map(function (x) {
+          var w = Math.abs(x.pp) / mx * 50;
+          return '<div class="gx-bb-decrow"><span>' + esc(x.label) + '</span>' +
+            '<div class="gx-bb-decbar"><i class="' + (x.pp >= 0 ? 'p' : 'n') + '" style="width:' + w.toFixed(1) + '%;' + (x.pp >= 0 ? 'left:50%' : 'right:50%') + '"></i></div>' +
+            '<b class="' + (x.pp >= 0 ? 'up' : 'dn') + '">' + bbSign(x.pp) + '</b></div>';
+        }).join('') + '</div><div class="gx-dim gx-bb-decnote">Positivo favorece a ' + esc(bbTeamName(H)) + '.</div></div>';
+    }
+    var fair = s2.markets ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Cuotas justas GP</span><span class="gx-ph-extra">sin margen de casa</span></div>' +
+      '<div class="gx-bb-fair"><div><span class="gx-label">Ganador</span>' +
+      '<div class="gx-bb-fr"><span>' + esc(bbTeamName(H)) + '</span><b>' + (s2.markets.moneyline.fair_home || '—') + '</b></div>' +
+      '<div class="gx-bb-fr"><span>' + esc(bbTeamName(A)) + '</span><b>' + (s2.markets.moneyline.fair_away || '—') + '</b></div></div>' +
+      '<div><span class="gx-label">Hándicap (local)</span>' + s2.markets.spread.slice(0, 8).map(function (x) {
+        return '<div class="gx-bb-fr"><span>' + bbSign(x.home_spread) + '</span><b>' + (x.fair_home || '—') + '</b><em>' + bbPct(x.home) + '</em></div>';
+      }).join('') + '</div>' +
+      '<div><span class="gx-label">Total</span>' + s2.markets.total.map(function (x) {
+        return '<div class="gx-bb-fr"><span>' + x.line + '</span><b>O ' + (x.fair_over || '—') + '</b><em>U ' + (x.fair_under || '—') + '</em></div>';
+      }).join('') + '</div></div></div>' : '';
+    var ff = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de equipo</span><span class="gx-ph-extra">medias de temporada</span></div>' + bbFactors(s2.teams.home, s2.teams.away) + '</div>';
+    bbShell('Simulador · ' + bbLgLab(), bbTabs() + picker + hero + wm + dist + why + fair + ff);
+    bbBindSim();
+  }
+  // los <select> no disparan click: se enganchan aparte tras cada render
+  function bbBindSim() {
+    [].forEach.call(document.querySelectorAll('[data-bbsim]'), function (el) {
+      el.addEventListener('change', function () { S.bb.sim[el.getAttribute('data-bbsim')] = el.value; renderBBSim(); });
+    });
+    var nb = document.querySelector('[data-bbsimneutral]');
+    if (nb) nb.addEventListener('change', function () { S.bb.sim.neutral = !!nb.checked; renderBBSim(); });
   }
 
   // ── PREGÚNTALE A GP (baloncesto) ─────────────────────────────────────────────────────────────────────
@@ -7274,6 +7462,18 @@
         return '<div class="gx-bb-dnac"><span>' + esc(r[0]) + '</span><b>' + r[2](r[1]) + '</b><em>' + esc(r[3]) + '</em></div>';
       }).join('') + '</div></div>';
 
+    // IDENTIDAD: el retrato en una línea. Un equipo no es una tabla de medias — es "corre, tira de tres y
+    // no rebotea". Se deriva de los mismos números que ya están arriba, pero dicho como lo diría un scout.
+    var traits = [];
+    if (d.poss != null) traits.push(d.poss >= 84 ? ['Ritmo alto', 'juega rápido: más posesiones que la media'] : d.poss <= 79 ? ['Ritmo lento', 'controla el tempo y acorta el partido'] : ['Ritmo medio', 'ni acelera ni frena el partido']);
+    if (d.tpa_rate != null) traits.push(d.tpa_rate >= 0.36 ? ['Vive del triple', Math.round(100 * d.tpa_rate) + '% de sus tiros son de tres'] : d.tpa_rate <= 0.28 ? ['Juega por dentro', 'solo ' + Math.round(100 * d.tpa_rate) + '% de sus tiros son de tres'] : null);
+    if (d.orb_pct != null) traits.push(d.orb_pct >= 0.30 ? ['Domina el rebote ofensivo', 'se queda con el ' + Math.round(100 * d.orb_pct) + '% de sus fallos'] : d.orb_pct <= 0.22 ? ['No ataca el rebote', 'solo el ' + Math.round(100 * d.orb_pct) + '% de sus fallos'] : null);
+    if (d.tov_pct != null) traits.push(d.tov_pct <= 0.145 ? ['Cuida el balón', 'pierde el ' + (100 * d.tov_pct).toFixed(1) + '% de sus posesiones'] : d.tov_pct >= 0.18 ? ['Regala posesiones', 'pierde el ' + (100 * d.tov_pct).toFixed(1) + '%'] : null);
+    if (d.efg_allowed != null && rk.def) traits.push(rk.def <= Math.ceil(rk.of / 3) ? ['Defensa de élite', '#' + rk.def + ' de ' + rk.of + ' en puntos concedidos por 100'] : rk.def >= rk.of - Math.ceil(rk.of / 4) ? ['Defensa blanda', '#' + rk.def + ' de ' + rk.of + ' en puntos concedidos'] : null);
+    traits = traits.filter(Boolean).slice(0, 5);
+    var identity = traits.length ? '<div class="gx-panel gx-bb-ident"><div class="gx-ph"><span class="gx-label">Cómo juega</span></div><div class="gx-bb-traits">' +
+      traits.map(function (x) { return '<div class="gx-bb-trait"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('') + '</div></div>' : '';
+
     var courts = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de tiro</span><span class="gx-ph-extra">dónde tira y qué concede</span></div><div class="gx-bb-courts">' +
       bbCourt(d.shot_profile, 'Ataque') + bbCourt(d.shot_profile_allowed, 'Lo que concede') + '</div></div>';
 
@@ -7292,7 +7492,10 @@
       }).join('') + '</div></div>';
 
     var roster = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Plantilla</span><span class="gx-ph-extra">' + ((d.roster || []).length) + '</span></div>' + bbPlayers(d.roster, lg) + '</div>';
-    bbShell(tm.name || 'Equipo', back + hero + pcs + dnaHtml + courts + form + roster);
+    // barra de acceso rápido: desde el equipo se salta al simulador con él ya cargado
+    var acts = '<div class="gx-bb-tacts"><a class="gx-btn ghost lnk" href="#bbsim/' + esc(lg) + '" data-bbsimwith="' + esc(id) + '">' + ic('arrows-shuffle') + 'Simular un cruce</a>' +
+      '<a class="gx-btn ghost lnk" href="#bbgames/' + esc(lg) + '">' + ic('ball-basketball') + 'Ver la agenda</a></div>';
+    bbShell(tm.name || 'Equipo', back + hero + acts + identity + pcs + dnaHtml + courts + form + roster);
   }
 
   // ── JUGADOR ──────────────────────────────────────────────────────────────────────────────────────────
@@ -7330,7 +7533,7 @@
   function bbClicks(e) {
     var lgb = e.target.closest('[data-bblg]');
     // el selector de liga NO cambia de vista: si estoy en Equipos, cambiar de liga me deja en Equipos.
-    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash((['bbteams', 'bbopps', 'bbbrief', 'bbperf'].indexOf(S.view) >= 0 ? S.view : 'bbgames') + '/' + S.bb.lg); return; }
+    if (lgb) { S.bb.lg = lgb.getAttribute('data-bblg'); setHash((['bbteams', 'bbopps', 'bbbrief', 'bbperf', 'bbsim'].indexOf(S.view) >= 0 ? S.view : 'bbgames') + '/' + S.bb.lg); return; }
     if (e.target.closest('[data-bbback]')) { setHash('bbgames/' + bbLg()); return; }
     var gt = e.target.closest('[data-bbgtab]'); if (gt) { S.bb.gTab = gt.getAttribute('data-bbgtab'); renderBBGames(); return; }
     var of = e.target.closest('[data-bboppf]'); if (of) { S.bb.oppFilt = of.getAttribute('data-bboppf'); renderBBOpps(); return; }
@@ -7338,6 +7541,10 @@
     var sg = e.target.closest('[data-bbsug]'); if (sg) { bbAskGo(sg.getAttribute('data-bbsug')); return; }
     if (e.target.closest('[data-bbask]')) { var qi = $('#gx-bb-q'); if (qi) bbAskGo(qi.value); return; }
     var rd = e.target.closest('[data-bbread]'); if (rd) { bbGenRead(rd.getAttribute('data-bbread')); return; }
+    var sw = e.target.closest('[data-bbsimwith]');
+    if (sw) { S.bb.sim = S.bb.sim || {}; S.bb.sim.home = sw.getAttribute('data-bbsimwith'); S.bb.sim.away = ''; setHash('bbsim/' + bbLg()); return; }
+    var op = e.target.closest('[data-bbopen]'); if (op) { setHash('bbgame/' + op.getAttribute('data-bbopen')); return; }
+    if (e.target.closest('[data-bbsimswap]')) { var tmp = S.bb.sim.home; S.bb.sim.home = S.bb.sim.away; S.bb.sim.away = tmp; renderBBSim(); return; }
     var a = e.target.closest('a.lnk'); if (a && a.getAttribute('href')) return;   // los enlaces navegan solos
   }
 
@@ -7350,6 +7557,7 @@
     else if (v === 'bbteams') renderBBTeams();
     else if (v === 'bbopps') renderBBOpps();
     else if (v === 'bbbrief') renderBBBrief();
+    else if (v === 'bbsim') renderBBSim();
     else if (v === 'bbask') renderBBAsk();
     else if (v === 'bbperf') renderBBPerf();
     else renderBBGames();

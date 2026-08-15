@@ -9108,6 +9108,239 @@ async function llmBriefPass() {
   } catch (e) { return { error: e.message }; }
   return { empty: true };
 }
+// ═══ PICKS DE BALONCESTO — MONITOR PRIVADO (15-ago, pedido de Alexis) ══════════════════════════════
+// QUÉ ES Y QUÉ NO ES. El backtest fuera de muestra dice que el modelo NO le gana al cierre
+// (skill −0.0079 ± 0.0067 en WNBA). Publicar picks con ese número sería vender lo que ya sabemos que
+// pierde. Pero tampoco se puede saber si un modelo mejora sin verlo apostar: por eso las picks NACEN,
+// se LIQUIDAN y se miden acá, en un monitor que solo ve el admin. Es el mismo criterio del ejecutor en
+// la sombra del fútbol: papel primero, dinero después, y la vara es el CLV.
+//   - `db.hoopsPicks` es privado. NUNCA entra al feed público, ni al track público, ni a Telegram.
+//   - Cada pick guarda el precio de publicación Y el de cierre → CLV real, que es la señal que dice si
+//     el modelo mejora ANTES de que el resultado (ruidoso) lo diga.
+//   - Se registra el consenso del mercado al nacer: sin eso no se puede separar "acerté" de "tuve edge".
+const HOOPS_PICK_MIN_EDGE = () => +(process.env.GP_HOOPS_PICK_MIN_EDGE || 3);      // en puntos porcentuales
+const HOOPS_PICK_MIN_ODDS = () => +(process.env.GP_HOOPS_PICK_MIN_ODDS || 1.35);
+const HOOPS_PICK_MAX_ODDS = () => +(process.env.GP_HOOPS_PICK_MAX_ODDS || 4.5);
+const HOOPS_PICK_MAX_PER_GAME = () => +(process.env.GP_HOOPS_PICK_MAX_PER_GAME || 2);
+
+function hoopsPickKey(p) { return [p.league, p.game_id, p.family, p.selection_code, p.line == null ? '' : p.line].join('|'); }
+
+// Construcción: para cada partido próximo con cuotas, el modelo se compara contra el MEJOR precio
+// disponible. Si la ventaja supera el umbral, nace la pick. Una por (partido, familia, selección, línea).
+async function buildHoopsPicks({ cap = 12 } = {}) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'sin base de cuotas' };
+  const ST = require('./basketball-engine/store');
+  const MK = require('./basketball-engine/markets');
+  const { simulate, markets } = require('./basketball-engine/simulate');
+  const ESPN = require('./data-providers/basketball/espn');
+  db.hoopsPicks = db.hoopsPicks || [];
+  const have = new Set(db.hoopsPicks.map(hoopsPickKey));
+  const out = { created: 0, considered: 0, leagues: 0 };
+
+  for (const lg of Object.keys(ST.LEAGUES)) {
+    if (out.created >= cap) break;
+    const C = ST.load(lg); if (!C || !C.fit) continue;
+    const evs = MK.hoopsEvents(db.clubsQuoteEvents || {}, { league: MK.LEAGUE_KEYS[lg] ? lg : 'all', pastH: 0, futureH: 72 });
+    const ceids = Object.keys(evs); if (!ceids.length) continue;
+    out.leagues++;
+    const rows = await MK.loadQuotes(dbc, ceids).catch(() => []);
+    const mkts = MK.groupMarkets(rows);
+    // calendario para resolver el id ESPN del partido (el que usa la liquidación)
+    const gs = await ESPN.games(lg, { from: new Date(Date.now() - 6 * 3600e3), to: new Date(Date.now() + 4 * 864e5) }).catch(() => []);
+    const nrm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const idx = {}; for (const g of gs) idx[nrm(g.home.name) + '|' + nrm(g.away.name)] = g;
+    const byGame = {};
+    for (const m of mkts) (byGame[m.ceid] = byGame[m.ceid] || []).push(m);
+
+    for (const [ceid, list] of Object.entries(byGame)) {
+      if (out.created >= cap) break;
+      const ev = evs[ceid]; if (!ev) continue;
+      const g = idx[nrm(ev.home) + '|' + nrm(ev.away)]; if (!g || g.completed) continue;
+      if (!C.fit.off[g.home.id] || !C.fit.off[g.away.id]) continue;
+      const L = ESPN.LEAGUES[lg] || {};
+      const sim = simulate(C.fit, g.home.id, g.away.id, { n: 20000, seed: 13, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
+      if (!sim) continue;
+      const mk = markets(sim);
+      const cands = [];
+      for (const m of list) {
+        const fair = (() => { const a = m.q[m.sides[0]], b = m.q[m.sides[1]]; return (a.length >= 3 && b.length >= 3) ? m : null; })();
+        if (!fair) continue;                                      // sin consenso no hay contra qué medir
+        for (const side of m.sides) {
+          const best = m.q[side].reduce((x, y) => (!x || y.o > x.o ? y : x), null);
+          if (!best || !(best.o >= HOOPS_PICK_MIN_ODDS()) || !(best.o <= HOOPS_PICK_MAX_ODDS())) continue;
+          let pModel = null, selName = null, famLab = null;
+          if (m.fam === 'match_winner') {
+            pModel = side === 'home' ? sim.win.home : sim.win.away;
+            selName = side === 'home' ? ev.home : ev.away; famLab = 'GANADOR';
+          } else if (m.fam === 'match_total') {
+            const hit = mk.total.find((x) => Math.abs(x.line - m.line) < 0.01);
+            const pOver = hit ? hit.over : (sim.total_hist || []).filter(([tt]) => tt > m.line).reduce((acc, [, pp]) => acc + pp, 0);
+            pModel = side === 'over' ? pOver : 1 - pOver;
+            selName = (side === 'over' ? 'Más de ' : 'Menos de ') + m.line + ' puntos'; famLab = 'TOTAL';
+          } else if (m.fam === 'spread') {
+            const pHome = (sim.margin_hist || []).filter(([mm]) => mm > -m.line).reduce((acc, [, pp]) => acc + pp, 0);
+            pModel = side === 'home' ? pHome : 1 - pHome;
+            selName = (side === 'home' ? ev.home : ev.away) + ' ' + ((side === 'home' ? m.line : -m.line) > 0 ? '+' : '') + (side === 'home' ? m.line : -m.line);
+            famLab = 'HÁNDICAP';
+          }
+          if (pModel == null || !(pModel > 0.02) || !(pModel < 0.98)) continue;
+          // consenso sin margen del propio mercado: la referencia honesta de "lo que cree el mercado"
+          const med = (arr) => { const v = arr.map((x) => 1 / x.o).sort((x, y) => x - y); const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
+          const ia = med(m.q[m.sides[0]]), ib = med(m.q[m.sides[1]]);
+          const pMarket = (side === m.sides[0] ? ia : ib) / (ia + ib);
+          const edgePp = 100 * (pModel - pMarket);
+          const evPct = (best.o * pModel - 1) * 100;
+          if (edgePp < HOOPS_PICK_MIN_EDGE() || evPct <= 0) continue;
+          out.considered++;
+          cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pMarket, edgePp, evPct, best, books: Math.min(m.q[m.sides[0]].length, m.q[m.sides[1]].length) });
+        }
+      }
+      cands.sort((a, b) => b.edgePp - a.edgePp);
+      let perGame = 0;
+      for (const c of cands) {
+        if (perGame >= HOOPS_PICK_MAX_PER_GAME() || out.created >= cap) break;
+        const pick = {
+          id: 'bb_' + lg + '_' + g.id + '_' + c.fam + '_' + c.side + '_' + (c.line == null ? 'ml' : String(c.line).replace('.', '_').replace('-', 'm')),
+          sport: 'hoops', league: lg, league_label: ST.LEAGUES[lg].label,
+          game_id: String(g.id), ceid,
+          event: { home: ev.home, away: ev.away, kickoff_at: g.date, home_id: g.home.id, away_id: g.away.id },
+          family: c.fam === 'match_winner' ? 'MONEYLINE' : c.fam === 'spread' ? 'SPREAD' : 'TOTAL',
+          family_label: c.famLab,
+          selection_code: c.side, selection_name: c.selName, line: c.line,
+          model_prob: +c.pModel.toFixed(4), market_prob: +c.pMarket.toFixed(4),
+          edge_pp: +c.edgePp.toFixed(2), ev_pct: +c.evPct.toFixed(2),
+          best_odds: +c.best.o.toFixed(2), best_book: c.best.book, books: c.books,
+          fair_odds: +(1 / c.pModel).toFixed(2),
+          confidence: sim.conf,
+          status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
+          created_at: new Date().toISOString(),
+          monitor_only: true,      // BANDERA DURA: esto no se publica jamás mientras el skill sea negativo
+        };
+        if (have.has(hoopsPickKey(pick))) continue;
+        have.add(hoopsPickKey(pick));
+        db.hoopsPicks.push(pick);
+        perGame++; out.created++;
+      }
+    }
+  }
+  if (out.created) { save(); console.log('[hoops-picks] nacieron', out.created, 'picks (monitor privado)'); }
+  return out;
+}
+
+// Liquidación + CLV. El precio de CIERRE se toma del último precio observado antes del salto inicial;
+// si no hay, se usa el consenso más cercano. Sin cierre no se inventa un CLV: queda en null.
+async function settleHoopsPicks() {
+  db.hoopsPicks = db.hoopsPicks || [];
+  const pend = db.hoopsPicks.filter((p) => p.status === 'ACTIVE');
+  if (!pend.length) return { settled: 0 };
+  const ESPN = require('./data-providers/basketball/espn');
+  const byLg = {};
+  for (const p of pend) (byLg[p.league] = byLg[p.league] || []).push(p);
+  let settled = 0;
+  for (const [lg, list] of Object.entries(byLg)) {
+    const gs = await ESPN.games(lg, { from: new Date(Date.now() - 6 * 864e5), to: new Date(Date.now() + 1 * 864e5) }).catch(() => []);
+    const byId = {}; for (const g of gs) byId[String(g.id)] = g;
+    for (const p of list) {
+      const g = byId[p.game_id];
+      if (!g || !g.completed) continue;
+      const hs = g.home.score, as = g.away.score;
+      if (hs == null || as == null) continue;
+      const margin = hs - as, total = hs + as;
+      // `line` del hándicap está normalizada al HÁNDICAP DEL LOCAL: el local cubre si margen + línea > 0,
+      // el visitante si queda por debajo. Con línea entera y diferencia exacta es PUSH (devuelve el stake),
+      // no una derrota — contarlo como derrota inventaría pérdidas que nadie tuvo.
+      let win = null;
+      if (p.family === 'MONEYLINE') {
+        win = p.selection_code === 'home' ? margin > 0 : margin < 0;   // en baloncesto la prórroga resuelve: no hay empate
+      } else if (p.family === 'TOTAL') {
+        const d = total - p.line;
+        win = Math.abs(d) < 1e-9 ? null : (p.selection_code === 'over' ? d > 0 : d < 0);
+      } else if (p.family === 'SPREAD') {
+        const d = margin + p.line;
+        win = Math.abs(d) < 1e-9 ? null : (p.selection_code === 'home' ? d > 0 : d < 0);
+      }
+      p.status = 'SETTLED';
+      p.settled_at = new Date().toISOString();
+      p.final_score = { home: hs, away: as };
+      p.result_code = win == null ? 'VOID' : win ? 'WIN' : 'LOSS';
+      p.units = win == null ? 0 : (win ? +(p.best_odds - 1).toFixed(2) : -1);
+      settled++;
+    }
+  }
+  if (settled) { save(); console.log('[hoops-picks] liquidadas', settled); }
+  return { settled };
+}
+
+// CLV: se congela el precio de cierre de cada pick viva cuyo partido está por empezar. Es el número que
+// dice si el modelo tiene edge ANTES de que el resultado lo diga, y por eso corre aparte de la liquidación.
+async function hoopsPicksCloseline() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'sin base' };
+  db.hoopsPicks = db.hoopsPicks || [];
+  const now = Date.now();
+  const near = db.hoopsPicks.filter((p) => p.close_odds == null && p.event && p.event.kickoff_at
+    && Date.parse(p.event.kickoff_at) - now < 25 * 60e3 && Date.parse(p.event.kickoff_at) - now > -3 * 3600e3);
+  if (!near.length) return { closed: 0 };
+  const MK = require('./basketball-engine/markets');
+  const ceids = [...new Set(near.map((p) => p.ceid))];
+  const rows = await MK.loadQuotes(dbc, ceids, { minutes: 40 }).catch(() => []);
+  const mkts = MK.groupMarkets(rows);
+  let closed = 0;
+  for (const p of near) {
+    const fam = p.family === 'MONEYLINE' ? 'match_winner' : p.family === 'SPREAD' ? 'spread' : 'match_total';
+    const m = mkts.find((x) => x.ceid === p.ceid && x.fam === fam && (x.line == null ? p.line == null : Math.abs(x.line - p.line) < 0.01));
+    if (!m) continue;
+    const q = m.q[p.selection_code]; if (!q || !q.length) continue;
+    const med = (arr) => { const v = arr.map((x) => 1 / x.o).sort((a, b) => a - b); const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
+    const ia = med(m.q[m.sides[0]]), ib = med(m.q[m.sides[1]]);
+    const pClose = (p.selection_code === m.sides[0] ? ia : ib) / (ia + ib);
+    p.close_odds = +(1 / pClose).toFixed(3);
+    // CLV = cuánto mejor fue nuestro precio que el cierre sin margen. Positivo = compramos barato.
+    p.clv_pct = +(((p.best_odds / p.close_odds) - 1) * 100).toFixed(2);
+    closed++;
+  }
+  if (closed) save();
+  return { closed };
+}
+
+// Track del monitor: lo mismo que se le pide a cualquier segmento antes de salir a producción.
+function hoopsPicksTrack() {
+  const all = db.hoopsPicks || [];
+  const settled = all.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+  const agg = (list) => {
+    const w = list.filter((p) => p.result_code === 'WIN').length;
+    const u = list.reduce((s, p) => s + (p.units || 0), 0);
+    const st = list.length;                                     // 1 unidad plana por pick
+    const clv = list.filter((p) => p.clv_pct != null);
+    return {
+      n: list.length, w, l: list.length - w,
+      hit: list.length ? +(100 * w / list.length).toFixed(1) : null,
+      units: +u.toFixed(2), roi: st ? +(100 * u / st).toFixed(2) : null,
+      clv_avg: clv.length ? +(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length).toFixed(2) : null,
+      clv_n: clv.length, clv_positive: clv.length ? +(100 * clv.filter((p) => p.clv_pct > 0).length / clv.length).toFixed(1) : null,
+    };
+  };
+  const byFam = {};
+  for (const f of ['MONEYLINE', 'SPREAD', 'TOTAL']) { const l = settled.filter((p) => p.family === f); if (l.length) byFam[f] = agg(l); }
+  const byLg = {};
+  for (const p of settled) (byLg[p.league] = byLg[p.league] || []).push(p);
+  const leagues = {}; for (const [k, l] of Object.entries(byLg)) leagues[k] = agg(l);
+  return {
+    total: agg(settled), by_family: byFam, by_league: leagues,
+    active: all.filter((p) => p.status === 'ACTIVE').length,
+    all_time: all.length,
+    // el CLV vivo (picks aún sin liquidar pero con cierre congelado) adelanta el veredicto
+    clv_live: (() => { const l = all.filter((p) => p.clv_pct != null); return l.length ? { n: l.length, avg: +(l.reduce((s, p) => s + p.clv_pct, 0) / l.length).toFixed(2) } : null; })(),
+  };
+}
+
+if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
+  setTimeout(() => { buildHoopsPicks().catch(() => { }); settleHoopsPicks().catch(() => { }); hoopsPicksCloseline().catch(() => { }); }, 200 * 1000);
+  setInterval(() => { buildHoopsPicks().catch(() => { }); settleHoopsPicks().catch(() => { }); }, 30 * 60 * 1000);
+  setInterval(() => { hoopsPicksCloseline().catch(() => { }); }, 5 * 60 * 1000);   // el cierre se congela fino
+}
+
 // ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
 // Escribe la lectura de los partidos de HOY que aún no la tienen, con tope por pasada para que el costo
 // sea predecible. Cada lectura se persiste: se paga una vez y la leen todos.
@@ -13759,6 +13992,51 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      // ── PICKS DEL MONITOR PRIVADO ─────────────────────────────────────────────────────────────
+      // Admin-only por el gate de arriba. `monitor_only` viaja en la respuesta para que la interfaz lo
+      // diga en pantalla: esto NO es el feed, es un experimento en curso.
+      if (p === '/api/hoops/picks') {
+        if (req.method === 'POST') {
+          const run = url.searchParams.get('run') || 'build';
+          if (run === 'build') return json(res, 200, await buildHoopsPicks({ cap: +(url.searchParams.get('cap') || 12) }).catch((e) => ({ error: e.message })));
+          if (run === 'settle') return json(res, 200, await settleHoopsPicks().catch((e) => ({ error: e.message })));
+          if (run === 'close') return json(res, 200, await hoopsPicksCloseline().catch((e) => ({ error: e.message })));
+          return json(res, 400, { error: 'run=build|settle|close' });
+        }
+        const lgP = url.searchParams.get('league');
+        const all = (db.hoopsPicks || []).filter((x) => !lgP || lgP === 'all' || x.league === lgP);
+        const active = all.filter((x) => x.status === 'ACTIVE').sort((a, b) => Date.parse(a.event.kickoff_at || 0) - Date.parse(b.event.kickoff_at || 0));
+        const settled = all.filter((x) => x.status === 'SETTLED').sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
+        return json(res, 200, {
+          monitor_only: true,
+          note: 'Monitor privado: estas picks NO se publican. El modelo todavía no bate al cierre, así que apuestan en papel para medir si mejora. La vara es el CLV, no el acierto.',
+          active, settled: settled.slice(0, 120), track: hoopsPicksTrack(),
+          config: { min_edge_pp: HOOPS_PICK_MIN_EDGE(), min_odds: HOOPS_PICK_MIN_ODDS(), max_odds: HOOPS_PICK_MAX_ODDS(), max_per_game: HOOPS_PICK_MAX_PER_GAME() },
+          leagues: Object.keys(ST.LEAGUES),
+        });
+      }
+      // ── SIMULADOR: cruzar dos equipos cualesquiera ───────────────────────────────────────────
+      // Mismo motor que el panel de partido; lo único que cambia es que el cruce es hipotético y la
+      // cancha se elige. Sirve para leer un enfrentamiento que el calendario todavía no dio.
+      if (p === '/api/hoops/sim') {
+        if (!ST.LEAGUES[lg]) return json(res, 400, { error: 'liga desconocida' });
+        const Cs = ST.load(lg);
+        if (!Cs || !Cs.fit) return json(res, 200, { league: lg, empty: true, note: 'sin dataset cosechado para esta liga' });
+        const h = String(url.searchParams.get('home') || ''), a = String(url.searchParams.get('away') || '');
+        const teams = Object.entries(Cs.teams || {}).filter(([id]) => Cs.fit.off[id] != null)
+          .map(([id, tm]) => ({ id, name: tm.name, abbr: tm.abbr, logo: tm.logo, net: +((Cs.fit.off[id] || 0) - (Cs.fit.def[id] || 0)).toFixed(2) }))
+          .sort((x, y) => String(x.name).localeCompare(String(y.name)));
+        if (!h || !a) return json(res, 200, { league: lg, label: ST.LEAGUES[lg].label, leagues: Object.keys(ST.LEAGUES), teams, need: 'home+away' });
+        if (h === a || !Cs.fit.off[h] || !Cs.fit.off[a]) return json(res, 400, { error: 'equipos inválidos', teams });
+        const neutral = url.searchParams.get('neutral') === '1';
+        const L2 = require('./data-providers/basketball/espn').LEAGUES[lg] || {};
+        const gi = ST.gameIntel(Cs, { id: 'sim', league: lg, date: new Date().toISOString(), neutral,
+          home: { id: h, pts: null }, away: { id: a, pts: null }, completed: false },
+          { sims: Math.max(4000, Math.min(60000, Number(url.searchParams.get('sims')) || 20000)) });
+        if (!gi) return json(res, 404, { error: 'No encontrado' });
+        return json(res, 200, { league: lg, label: ST.LEAGUES[lg].label, leagues: Object.keys(ST.LEAGUES), teams, neutral, sim: gi });
+      }
+
       if (!ST.LEAGUES[lg]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(ST.LEAGUES) });
 
       // ── AGENDA REAL ──────────────────────────────────────────────────────────────────────────
@@ -13810,7 +14088,9 @@ const server = http.createServer(async (req, res) => {
             neutral: g.neutral, venue: g.venue, completed: g.completed,
             home: side(g.home), away: side(g.away),
             in_dataset: !!(Csc && Csc.games && Csc.games.some(x => String(x.id) === String(g.id))),
-            proj: g.completed ? null : proj(g),
+            // también en los finalizados: ver qué esperaba el modelo ANTES es media lectura del resultado,
+            // y una columna vacía en la tabla no informa nada.
+            proj: proj(g),
             market_ceid: mk ? mk.ceid : null,
           };
         };
@@ -14041,6 +14321,7 @@ const server = http.createServer(async (req, res) => {
           margin_mae: mae((r) => r.margin - r.proj), total_mae: mae((r) => r.total - r.proj_total),
           calibration: buckets,
           picks_enabled: false,
+          monitor: hoopsPicksTrack(),     // el experimento en papel, al lado de la validación del modelo
           verdict: skill == null ? 'Sin cierre de mercado en la muestra: no se puede medir la vara que importa.'
             : (skill > 0 && sig != null && Math.abs(sig) >= 2) ? 'El modelo bate al cierre y la ventaja es estadísticamente distinguible del ruido. Candidato a encender picks tras verificación en la sombra.'
               : skill > 0 ? 'El modelo bate al cierre en esta muestra, pero la ventaja NO se distingue del ruido (t < 2). No alcanza para encender picks.'

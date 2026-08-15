@@ -15482,7 +15482,23 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
       const cs = await getClubsScan().catch(e => ({ error: e.message }));
-      if (!cs) return json(res, 200, { available: false, events: Object.keys(db.clubsQuoteEvents || {}).length, flag: clubsShadowFlagOn() });
+      if (!cs) {
+        // DIAGNÓSTICO (15-ago): "available:false" a secas no dice NADA — puede ser el flag, el mapa de
+        // eventos, la ventana de kickoff o la query. Se reporta cada escalón para que la próxima vez la
+        // respuesta sea una medición y no una conjetura.
+        const MKd = require('./basketball-engine/markets');
+        const rawD = db.clubsQuoteEvents || {};
+        const evD = MKd.nonHoopsEvents(rawD);
+        const nowD = Date.now();
+        const inWin = Object.keys(evD).filter((id) => { const k = evD[id] && evD[id].kickoff ? +new Date(evD[id].kickoff) : NaN; return Number.isFinite(k) && k > nowD - 3 * 3600e3; });
+        let mkD = null, errD = null;
+        try { mkD = (await require('./market-scanner/quotes').loadClubsMarkets(require('./database/client'), { events: evD, now: nowD })).length; }
+        catch (e) { errD = e.message; }
+        return json(res, 200, { available: false, flag: clubsShadowFlagOn(),
+          events: Object.keys(rawD).length, events_no_hoops: Object.keys(evD).length,
+          events_hoops: Object.keys(rawD).length - Object.keys(evD).length,
+          events_in_window: inWin.length, markets_loaded: mkD, loader_error: errD });
+      }
       if (cs.error) return json(res, 200, { available: false, error: cs.error });
       const cdto = marketScannerDto.buildDto(cs, { resolveTeamId: () => null, maxItems: marketScanner.params.maxOpportunities });
       // muestra la resolución de tm_ ids (misma lógica que el merge de /api/beta/arbitrage) → verificar navegación al cockpit

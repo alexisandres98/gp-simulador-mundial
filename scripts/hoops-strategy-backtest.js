@@ -150,7 +150,7 @@ function settle(b) {
 
 function summarize(bets) {
   const byFam = {};
-  const out = { candidates: bets.length, families: {}, overall: null, by_edge: [], by_month: [] };
+  const out = { candidates: bets.length, families: {}, overall: null, by_edge: [], by_edge_band: [], by_month: [] };
   const picks = bets.filter((b) => {
     const F = GATE.familyOf(b.family);
     return Math.abs(b.edge_pp) >= F.min_edge_pp && b.ev_pct / 100 >= F.min_ev && b.edge_pp > 0;
@@ -179,6 +179,16 @@ function summarize(bets) {
     const sel = bets.filter((b) => b.edge_pp >= th);
     if (sel.length >= 20) out.by_edge.push({ min_edge_pp: th, ...agg(sel) });
   }
+  // ¿LA VENTAJA GRANDE ES MEJOR O PEOR? La lógica actual asume que más ventaja = mejor pick. Contra un
+  // cierre maduro puede ser justo al revés: una diferencia de 12 puntos con el mercado casi nunca es que el
+  // mercado se equivoque, es que nosotros nos equivocamos. Por eso se mide por BANDAS y no solo por umbral
+  // mínimo: un umbral mínimo mezcla las ventajas sanas con las delirantes.
+  const BANDS = [[2, 4], [4, 6], [6, 8], [8, 12], [12, 100]];
+  out.by_edge_band = BANDS.map(([lo, hi]) => {
+    const sel = bets.filter((b) => b.edge_pp >= lo && b.edge_pp < hi && b.ev_pct > 0);
+    return sel.length >= 25 ? { band: `${lo}-${hi === 100 ? '+' : hi} pp`, ...agg(sel) } : null;
+  }).filter(Boolean);
+
   // ESTABILIDAD EN EL TIEMPO (módulo 225). Una estrategia que pierde todos los meses es mala; una que gana
   // ocho y pierde uno enorme es peor, porque parece buena hasta que te arruina. Sin el desglose no se
   // distinguen.

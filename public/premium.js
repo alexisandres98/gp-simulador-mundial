@@ -6960,7 +6960,10 @@
     if (!d) { bbShell('Brief', bbTabs() + mvLoading()); return; }
     if (d._err) { bbShell('Brief', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
-    var intro = d.intro && d.intro[lang] ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div><p>' + esc(d.intro[lang]) + '</p></div>' : '';
+    var intro = d.intro && d.intro[lang]
+      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
+        String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
+      : (d.intro_error ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir (' + esc(d.intro_error) + '). El tablero de abajo no depende de ella.</span></div>' : '');
     var games = (d.games || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La jornada</span><span class="gx-ph-extra">' + d.games.length + '</span></div><div class="gx-bb-games">' +
       d.games.map(function (g) { return bbGameRow(g, lg, g.status === 'in' ? 'live' : g.status === 'post' ? 'finished' : 'upcoming'); }).join('') + '</div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>No hay partidos de ' + esc(d.label || '') + ' en las próximas 36 horas.</b></div></div>';

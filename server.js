@@ -8861,7 +8861,12 @@ async function hoopsGameRead(league, gameId, { force = false } = {}) {
 // El tablero de "qué mirar hoy": los partidos del día con su proyección, dónde el modelo y el mercado
 // más se separan, y las mejores oportunidades de precio. La apertura en prosa la escribe el LLM UNA vez
 // al día; si no hay presupuesto, el tablero se muestra igual sin párrafo (degradación silenciosa).
-async function hoopsBrief(league) {
+async function hoopsBrief(league, { force = false } = {}) {
+  // CACHÉ: la construcción cuesta ~9s (calendario de ESPN + una simulación por partido + query de cuotas).
+  // Sin esto la pestaña se queda 9 segundos en "Cargando" en CADA visita, que en producto es estar rota.
+  global._hoopsBriefMemo = global._hoopsBriefMemo || {};
+  const memo = global._hoopsBriefMemo[league];
+  if (memo && !force && Date.now() - memo.at < 5 * 60e3) return memo.data;
   const ST = require('./basketball-engine/store');
   const ESPN = require('./data-providers/basketball/espn');
   const MK = require('./basketball-engine/markets');
@@ -8899,6 +8904,11 @@ async function hoopsBrief(league) {
   db.hoopsBrief = db.hoopsBrief || {};
   const bk = league + ':' + day;
   let intro = db.hoopsBrief[bk] || null;
+  let introErr = null;
+  if (!intro && games.length) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+  }
   if (!intro && llm.enabled() && llm.budgetOk() && games.length) {
     try {
       const w = await llm.writeBrief({
@@ -8909,12 +8919,17 @@ async function hoopsBrief(league) {
         })),
         mejores_precios: value.map((v) => ({ partido: `${v.event.away} en ${v.event.home}`, mercado: v.fam_label, seleccion: v.label, cuota: v.odds, casa: v.book, ventaja_pct: v.ev_pct })),
       }, 'hoops');
-      if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.hoopsBrief[bk] = intro; save(); }
-    } catch (e) { console.error('[hoops-brief] llm:', e.message); }
+      if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.hoopsBrief[bk] = intro; save(); introErr = null; }
+      else introErr = 'el redactor no devolvió un texto usable';
+    } catch (e) { introErr = e.message; console.error('[hoops-brief] llm:', e.message); }
   }
-  return { league, label: ST.LEAGUES[league] ? ST.LEAGUES[league].label : league, day, games, value, intro,
+  const out = { league, label: ST.LEAGUES[league] ? ST.LEAGUES[league].label : league, day, games, value, intro,
+    intro_error: introErr,          // el fallo del redactor se VE; un brief sin apertura y sin razón es un bug mudo
     model_ready: !!(C && C.fit), counts: { games: games.length, value: value.length },
+    refreshed_at: new Date().toISOString(),
     note: 'Picks de baloncesto apagadas: el modelo aún no bate al cierre. La proyección es informativa; las oportunidades de precio salen del mercado, no del modelo.' };
+  global._hoopsBriefMemo[league] = { at: Date.now(), data: out };
+  return out;
 }
 
 // ── Dossier PROFUNDO de una pick de pelea para el redactor (12-ago, "análisis de élite" de Alexis) ──
@@ -13853,7 +13868,7 @@ const server = http.createServer(async (req, res) => {
       // ── B5: BRIEF DE LA JORNADA ───────────────────────────────────────────────────────────────
       // Funciona con o sin dataset: sin modelo muestra la jornada y los precios; con modelo, además,
       // la proyección de cada partido y la apertura narrada.
-      if (p === '/api/hoops/brief') return json(res, 200, await hoopsBrief(lg).catch((e) => ({ league: lg, error: e.message, games: [], value: [] })));
+      if (p === '/api/hoops/brief') return json(res, 200, await hoopsBrief(lg, { force: url.searchParams.get('force') === '1' }).catch((e) => ({ league: lg, error: e.message, games: [], value: [] })));
 
       const C = ST.load(lg);
       if (!C || !C.n) return json(res, 200, { league: lg, empty: true, note: 'sin dataset cosechado para esta liga' });

@@ -183,6 +183,46 @@ refresco de caché — 5,7 s de CPU bloqueante cada 30 min, que en Node de un hi
 Ahora se entrena fuera de línea y el servidor solo lee: carga de NBA 5.761 ms → **464 ms**. El re-ajuste
 está acoplado a `hoops-backfill.js` para que el artefacto no envejezca en silencio.
 
+
+## 🥊 16-ago — BLUEPRINT DE COMBATE, PRIMERA TANDA (aditivo, desplegado)
+
+**Lo que estaba sin usar.** El dataset de ESPN traía por pelea y peleador los golpes significativos por
+POSICIÓN (distancia/clinch/suelo) × OBJETIVO (cabeza/cuerpo/pierna) —nueve celdas—, derribos, avances
+posicionales (media guardia, lateral, montada, espalda), reversiones, sumisiones y tiempo de control.
+**7.998 peleas.** El modelo solo consumía agregados.
+
+| Módulo | Cubre | Qué aporta |
+|---|---|---|
+| `combat-engine/phases.js` | 57-90 | Perfil por las 9 celdas con decaimiento temporal y **ajuste por rival** · la CADENA de lucha: intento → derribo → control → avance → amenaza |
+| `combat-engine/style.js` | 101-122 | ADN en 8 ejes de percentil + arquetipos con confianza · cruce ATAQUE contra DEFENSA · **ruta de victoria** ponderada por probabilidad de fase · **fragilidad** del pronóstico |
+| `combat-engine/fightsim.js` | 123-146 | Riesgos competitivos (KO/sumisión/límite compiten por el mismo minuto) · fatiga que conecta estilo con método · **tres tarjetas de jueces** → unánime/dividida/mayoría/empate |
+| `combat-engine/intel.js` | — | Capa que sirve, caché por organización (404 ms) · `/api/combat/fight?deep=1` |
+| `scripts/combat-validate.js` | 211-232 | Validación con ventana móvil por bloques |
+
+### ⚠️ LA MEDICIÓN, Y LA CORRECCIÓN QUE FORZÓ (3.140 peleas)
+| | Resultado |
+|---|---|
+| **Quién gana** | Brier **0,276** contra **0,250** de decir siempre 50% → **peor que una moneda**. Cuando decía 93% ganaba el 67%; cuando decía 8% ganaba el 46%. 7 de 8 tramos descalibrados, resolución 0,004 |
+| **Cómo termina** | KO 29,4% vs 32,3% real · sumisión 19,4 vs 17,6 · decisión 51,2 vs 50,1 · límite 51,3 vs 50,1 → **las cuatro dentro de 3 pp** |
+
+**El monitor en vivo dice exactamente lo mismo** con 66 picks liquidadas: familia FIGHT con **CLV −8,34%**
+y familia ROUNDS con **CLV +4,88%** y 52,2% de acierto. Dos mediciones independientes coincidiendo.
+
+**Corrección aplicada:** el ganador lo fija el modelo de habilidad (Elo) y el método/asalto/duración el
+motor de fases. Se resuelve por búsqueda binaria el desplazamiento que hace que la simulación reproduzca el
+prior. Verificado: con ancla al 75%, Makhachev sale 74,7% y conserva su 36% de sumisión; Pereira-Adesanya
+mantiene 71% KO y 2% sumisión. Cada cruce conserva su firma.
+
+### 🔜 LO QUE FALTA DE ESTE BLUEPRINT
+1. **Capa visual** (secciones 32-39): Matchup Battlefield, Fight DNA como pieza gráfica, línea de tiempo
+   por asalto, Scorecard Room, Simulation Room. **Los datos ya salen por la API — falta dibujarlos.**
+2. **Motor de boxeo propio** (14-18): el documento pide otro lenguaje técnico (jab/power split, iniciativa
+   por asalto, tarjeta de 10 puntos). Hoy boxeo usa el motor de MMA adaptado.
+3. **Concentrar el trabajo en ROUNDS/MÉTODO**, que es donde las dos mediciones dicen que hay algo. El
+   ganador está anclado y no debe generar selecciones por sí solo.
+4. **Sin histórico de cuotas de combate** no se puede medir ROI retrospectivo. El CLV del monitor es la
+   única vara disponible, y por eso hay que dejarlo acumular.
+
 ## 🧭 16-ago — EL BLUEPRINT DE INTELIGENCIA, APLICADO COMO ADITIVO
 Documento de referencia: `GPsimulador_Basketball_Intelligence_Master_Blueprint` (349 módulos). No se
 reconstruyó nada: se auditó lo existente contra el documento y se construyó SOLO lo que faltaba.

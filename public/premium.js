@@ -7062,6 +7062,7 @@
     var lg = bbLg(), id = S.bb.gameId;
     var d = bbGet('game_' + lg + '_' + id, '/api/hoops/game?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
     if (!d) { bbShell('Partido', mvLoading()); return; }
+    if (d && d.no_rating) { bbShell('Partido', '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(d.note || '') + '</b><span class="gx-dim">El panel completo aparece en cuanto los dos equipos tengan partidos en la temporada.</span></div></div>'); return; }
     if (d._err || !d.game) { bbShell('Partido', '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo cargar el partido.</b></div></div>'); return; }
     var G = d.game, P = d.projection, H = G.home, A = G.away;
     var back = '<div class="gx-cb-backrow"><span class="gx-clgate sh lnk" data-bbback="1">← Partidos</span></div>';

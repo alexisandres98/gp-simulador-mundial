@@ -13897,10 +13897,25 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === '/api/hoops/game') {
         const gid = String(url.searchParams.get('id') || '');
-        const g = C.games.find(x => String(x.id) === gid);
-        if (!g) return json(res, 404, { error: 'No encontrado' });
+        let g = C.games.find(x => String(x.id) === gid);
+        if (!g) {
+          // PARTIDO QUE AÚN NO SE JUGÓ. El dataset es historia cosechada, así que un partido de la agenda
+          // no está en él — y la agenda enlaza justo ahí. Antes esto daba 404 y el panel decía "no se pudo
+          // cargar" en TODOS los partidos próximos, que son los únicos que importan antes del salto inicial.
+          // Se arma el objeto mínimo desde el calendario en vivo; el motor solo necesita los dos equipos.
+          const ESPN3 = require('./data-providers/basketball/espn');
+          const gsUp = await ESPN3.games(lg, { from: new Date(Date.now() - 24 * 3600e3), to: new Date(Date.now() + 12 * 864e5) }).catch(() => []);
+          const liveG = gsUp.find(x => String(x.id) === gid);
+          if (!liveG) return json(res, 404, { error: 'No encontrado' });
+          if (!C.fit || !C.fit.off[liveG.home.id] || !C.fit.off[liveG.away.id]) return json(res, 200, { league: lg, upcoming: true, no_rating: true, note: 'Alguno de los dos equipos todavía no tiene rating en esta temporada.' });
+          g = { id: liveG.id, league: lg, date: liveG.date, neutral: !!liveG.neutral, venue: liveG.venue,
+            home: { id: liveG.home.id, pts: liveG.home.score }, away: { id: liveG.away.id, pts: liveG.away.score },
+            completed: !!liveG.completed, status: liveG.status };
+        }
         const sims = Math.max(2000, Math.min(60000, Number(url.searchParams.get('sims')) || 20000));
-        return json(res, 200, ST.gameIntel(C, g, { sims }));
+        const gi = ST.gameIntel(C, g, { sims });
+        if (!gi) return json(res, 404, { error: 'No encontrado' });
+        return json(res, 200, gi);
       }
       if (p === '/api/hoops/team') {
         const tid = String(url.searchParams.get('id') || '');

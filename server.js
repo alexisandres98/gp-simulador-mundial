@@ -8973,7 +8973,7 @@ function combatPickDossier(p) {
 async function llmAnnotatePickWhys({ cap = 8 } = {}) {
   if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
   let done = 0;
-  const pools = [['futbol', db.dailyPicks || []], ['futbol', db.clubDailyPicks || []], ['combat', db.combatPicks || []]];
+  const pools = [['futbol', db.dailyPicks || []], ['futbol', db.clubDailyPicks || []], ['combat', db.combatPicks || []], ['hoops', db.hoopsPicks || []]];
   for (const [sport, pool] of pools) {
     for (const p of pool) {
       if (done >= cap) break;
@@ -9123,6 +9123,46 @@ const HOOPS_PICK_MIN_ODDS = () => +(process.env.GP_HOOPS_PICK_MIN_ODDS || 1.35);
 const HOOPS_PICK_MAX_ODDS = () => +(process.env.GP_HOOPS_PICK_MAX_ODDS || 4.5);
 const HOOPS_PICK_MAX_PER_GAME = () => +(process.env.GP_HOOPS_PICK_MAX_PER_GAME || 2);
 
+// ── EL PORQUÉ DE LA PICK ──────────────────────────────────────────────────────────────────────────
+// Misma doctrina que fútbol y combate: la narrativa se arma de FACTORES YA COMPUTADOS (proyección,
+// ritmo, cuatro factores, zonas de tiro, ventaja de cancha), nunca de pesos ni de la mecánica interna.
+// Es la plantilla; si hay presupuesto, el redactor la reescribe en prosa y esta queda de respaldo.
+function hoopsPickWhy(ctx) {
+  const { fam, selName, home, away, side, line, sim, hp, ap, ex, exA, edgePp, odds, books, conf } = ctx;
+  const n1 = (x) => (x == null ? '—' : Number(x).toFixed(1));
+  const favHome = sim.win.home >= 0.5;
+  const pctSel = Math.round(100 * ctx.pModel);
+  const es = [], en = [];
+
+  if (fam === 'match_winner') {
+    const meAtk = side === 'home' ? hp : ap, meDef = side === 'home' ? ap : hp;
+    es.push(`${selName} gana en el ${pctSel}% de las ${sim.n.toLocaleString('es')} simulaciones, con un marcador proyectado de ${n1(sim.home_pts)}-${n1(sim.away_pts)}.`);
+    es.push(`Su ataque produce ${n1(meAtk.ortg)} puntos por 100 posesiones contra una defensa que concede ${n1(meDef.drtg)}.`);
+    en.push(`${selName} wins ${pctSel}% of ${sim.n.toLocaleString('en')} simulations, with a projected ${n1(sim.home_pts)}-${n1(sim.away_pts)}.`);
+    en.push(`Their offense produces ${n1(meAtk.ortg)} points per 100 possessions against a defense allowing ${n1(meDef.drtg)}.`);
+  } else if (fam === 'match_total') {
+    const dir = side === 'over' ? 'por encima' : 'por debajo';
+    es.push(`El total proyectado es ${n1(sim.total)} puntos a un ritmo de ${n1(sim.poss)} posesiones, ${dir} de la línea de ${line}.`);
+    es.push(`La mediana de las ${sim.n.toLocaleString('es')} simulaciones cae en ${sim.total_q.p50} y el 50% central entre ${sim.total_q.p25} y ${sim.total_q.p75}.`);
+    en.push(`Projected total is ${n1(sim.total)} points at ${n1(sim.poss)} possessions, ${side === 'over' ? 'above' : 'below'} the ${line} line.`);
+    en.push(`The median of ${sim.n.toLocaleString('en')} simulations lands at ${sim.total_q.p50}, with the middle 50% between ${sim.total_q.p25} and ${sim.total_q.p75}.`);
+  } else {
+    es.push(`El margen proyectado es de ${sim.margin > 0 ? '+' : ''}${n1(sim.margin)} para el local y ${selName} cubre en el ${pctSel}% de las simulaciones.`);
+    es.push(`El 50% central del margen cae entre ${sim.margin_q.p25 > 0 ? '+' : ''}${sim.margin_q.p25} y ${sim.margin_q.p75 > 0 ? '+' : ''}${sim.margin_q.p75}.`);
+    en.push(`Projected margin is ${sim.margin > 0 ? '+' : ''}${n1(sim.margin)} for the home side and ${selName} covers in ${pctSel}% of simulations.`);
+    en.push(`The middle 50% of the margin lands between ${sim.margin_q.p25 > 0 ? '+' : ''}${sim.margin_q.p25} and ${sim.margin_q.p75 > 0 ? '+' : ''}${sim.margin_q.p75}.`);
+  }
+  // la ventaja concreta en la cancha: dónde se gana, no solo cuánto
+  const top = (side === 'away' ? exA : ex) || [];
+  if (top[0] && top[0].impact > 3) {
+    es.push(`Donde más se separa: ${top[0].label.toLowerCase()}, ${top[0].pps} puntos por tiro contra ${top[0].allowed_pps} que concede el rival.`);
+    en.push(`Biggest gap: ${top[0].label.toLowerCase()}, ${top[0].pps} points per shot against ${top[0].allowed_pps} allowed.`);
+  }
+  es.push(`El mercado paga ${odds} con ${books} casas cotizando, ${edgePp.toFixed(1)} puntos porcentuales por debajo de lo que ve el modelo. Confianza de muestra: ${conf}.`);
+  en.push(`The market pays ${odds} across ${books} books, ${edgePp.toFixed(1)} percentage points below the model's read. Sample confidence: ${conf}.`);
+  return { es: es.join(' '), en: en.join(' ') };
+}
+
 function hoopsPickKey(p) { return [p.league, p.game_id, p.family, p.selection_code, p.line == null ? '' : p.line].join('|'); }
 
 // Construcción: para cada partido próximo con cuotas, el modelo se compara contra el MEJOR precio
@@ -9162,6 +9202,11 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
       const sim = simulate(C.fit, g.home.id, g.away.id, { n: 20000, seed: 13, neutral: !!g.neutral, regMin: L.minutes || 48, otMin: L.otMin || 5 });
       if (!sim) continue;
       const mk = markets(sim);
+      // dossier del cruce: hace falta para narrar el porqué con perfiles y ventajas reales
+      const intel = ST.gameIntel(C, { id: g.id, league: lg, date: g.date, neutral: !!g.neutral,
+        home: { id: g.home.id, pts: null }, away: { id: g.away.id, pts: null }, completed: false }, { sims: 6000 });
+      if (!intel) continue;
+      const Cteams = C.teams || {};
       const cands = [];
       for (const m of list) {
         const fair = (() => { const a = m.q[m.sides[0]], b = m.q[m.sides[1]]; return (a.length >= 3 && b.length >= 3) ? m : null; })();
@@ -9205,6 +9250,14 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
       for (const c of cands) {
         if (perGame >= HOOPS_PICK_MAX_PER_GAME() || out.created >= cap) break;
         if (famUsed.has(c.fam)) continue;
+        // El "porqué" se arma acá, con el partido todavía en memoria: después el dossier ya no está.
+        const why = hoopsPickWhy({ fam: c.fam, selName: c.selName, side: c.side, line: c.line, pModel: c.pModel,
+          sim, hp: intel.teams.home, ap: intel.teams.away, ex: intel.exploit.home, exA: intel.exploit.away,
+          edgePp: c.edgePp, odds: +c.best.o.toFixed(2), books: c.books, conf: sim.conf });
+        // Calidad y confianza de datos, con el MISMO vocabulario que fútbol y combate para que la card
+        // sea la misma pieza y no un primo lejano.
+        const dataConf = sim.conf === 'alta' ? 'high' : sim.conf === 'media' ? 'med' : 'low';
+        const quality = (c.edgePp >= 7 && dataConf === 'high') ? 'strong' : (c.edgePp >= 4.5 ? 'moderate' : 'marginal');
         const pick = {
           id: 'bb_' + lg + '_' + g.id + '_' + c.fam + '_' + c.side + '_' + (c.line == null ? 'ml' : String(c.line).replace('.', '_').replace('-', 'm')),
           sport: 'hoops', league: lg, league_label: ST.LEAGUES[lg].label,
@@ -9212,7 +9265,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           event: { home: ev.home, away: ev.away, kickoff_at: g.date, home_id: g.home.id, away_id: g.away.id },
           family: c.fam === 'match_winner' ? 'MONEYLINE' : c.fam === 'spread' ? 'SPREAD' : 'TOTAL',
           family_label: c.famLab,
-          selection_code: c.side, selection_name: c.selName, line: c.line,
+          selection_code: c.side, selection_name: c.selName, line: c.line, side: c.side,
           model_prob: +c.pModel.toFixed(4), market_prob: +c.pMarket.toFixed(4),
           edge_pp: +c.edgePp.toFixed(2), ev_pct: +c.evPct.toFixed(2),
           best_odds: +c.best.o.toFixed(2), best_book: c.best.book, books: c.books,
@@ -9221,6 +9274,29 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
           created_at: new Date().toISOString(),
           monitor_only: true,      // BANDERA DURA: esto no se publica jamás mientras el skill sea negativo
+          // ── campos que consume pickCard() (la MISMA card de fútbol y combate) ──
+          home: ev.home, away: ev.away,
+          home_team_id: null, away_team_id: null,          // sin banderas: el logo va por bb_logos
+          bb_logos: { h: (Cteams[g.home.id] || {}).logo || null, a: (Cteams[g.away.id] || {}).logo || null },
+          competition_name: ST.LEAGUES[lg].label,
+          kickoff: g.date,
+          odds: +c.best.o.toFixed(2), book: c.best.book,
+          bb_hash: 'bbgame/' + lg + '-' + g.id,             // al tocar la card se abre el partido
+          why_es: why.es, why_en: why.en,
+          // stake sugerido: Kelly/4 sobre la probabilidad ENCOGIDA hacia el mercado. Encoger no es timidez:
+          // el modelo no bate al cierre, así que confiar en su probabilidad cruda sobredimensionaría el stake.
+          stake_pct: (() => {
+            const pShrunk = 0.35 * c.pModel + 0.65 * c.pMarket;
+            const b = c.best.o - 1, k = (b * pShrunk - (1 - pShrunk)) / b;
+            return k > 0 ? +Math.min(2.5, 100 * k / 4).toFixed(2) : null;
+          })(),
+          signals: {
+            win_prob: +c.pModel.toFixed(4),
+            edge_pp: +c.edgePp.toFixed(2),
+            data_confidence: dataConf,
+            pick_quality: quality,
+            regime: 'monitor',                              // el chip MONITOR de la card, tal cual fútbol
+          },
         };
         if (have.has(hoopsPickKey(pick))) continue;
         have.add(hoopsPickKey(pick));
@@ -14007,6 +14083,15 @@ const server = http.createServer(async (req, res) => {
           if (run === 'build') return json(res, 200, await buildHoopsPicks({ cap: +(url.searchParams.get('cap') || 12) }).catch((e) => ({ error: e.message })));
           if (run === 'settle') return json(res, 200, await settleHoopsPicks().catch((e) => ({ error: e.message })));
           if (run === 'close') return json(res, 200, await hoopsPicksCloseline().catch((e) => ({ error: e.message })));
+          if (run === 'refresh') {
+            // Rehace las picks VIVAS con el formato actual (las liquidadas son historia y no se tocan).
+            // Existe porque el formato de la card evolucionó y las picks nacidas antes no traían el porqué.
+            const before = (db.hoopsPicks || []).length;
+            db.hoopsPicks = (db.hoopsPicks || []).filter((x) => x.status !== 'ACTIVE');
+            save();
+            const r = await buildHoopsPicks({ cap: +(url.searchParams.get('cap') || 16) }).catch((e) => ({ error: e.message }));
+            return json(res, 200, { dropped: before - db.hoopsPicks.length + (r.created || 0) - (r.created || 0), rebuilt: r });
+          }
           if (run === 'prune') {
             // quita las ACTIVAS duplicadas por (partido, familia) dejando la de mayor ventaja. Solo toca
             // picks vivas: una liquidada es historia y la historia no se reescribe.
@@ -14018,7 +14103,7 @@ const server = http.createServer(async (req, res) => {
             save();
             return json(res, 200, { pruned: before - db.hoopsPicks.length, active: db.hoopsPicks.filter((x) => x.status === 'ACTIVE').length });
           }
-          return json(res, 400, { error: 'run=build|settle|close|prune' });
+          return json(res, 400, { error: 'run=build|settle|close|prune|refresh' });
         }
         const lgP = url.searchParams.get('league');
         const all = (db.hoopsPicks || []).filter((x) => !lgP || lgP === 'all' || x.league === lgP);

@@ -2064,3 +2064,14 @@ td .gx-calc-btn span { display: none; }
 .gx-bb-trait { border-left: 3px solid #2de6a3; padding: 4px 0 4px 11px; }
 .gx-bb-trait b { display: block; font-size: 14px; font-weight: 700; color: #eafff7; }
 .gx-bb-trait span { display: block; font-size: 11.5px; color: #9fb3ab; margin-top: 2px; line-height: 1.45; }
+
+/* picks de baloncesto: la card de siempre + la tira de resultado del monitor */
+.gx-bb-picks { padding: 6px 16px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.gx-bb-pickwrap { display: flex; flex-direction: column; }
+.gx-bb-pickwrap .gx-pick-card { height: 100%; }
+.gx-bb-resbar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 0 0 var(--gx-r2) var(--gx-r2); margin-top: -8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.gx-bb-resbar b { font-weight: 800; }
+.gx-bb-resbar.win { background: #12281f; border: 1px solid #2de6a344; border-top: 0; color: #bff0dc; }
+.gx-bb-resbar.loss { background: #241616; border: 1px solid #f05a5a33; border-top: 0; color: #f0c6c6; }
+.gx-bb-resbar.void { background: #1a201e; border: 1px solid var(--gx-line); border-top: 0; color: #9fb3ab; }
+@media (max-width: 720px) { .gx-bb-picks { grid-template-columns: 1fr; padding: 6px 10px 12px; } }

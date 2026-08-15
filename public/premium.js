@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_soon: 'Próximamente',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_soon: 'Próximamente',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_soon: 'Coming soon',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_soon: 'Coming soon',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1896,6 +1896,10 @@
       if (l.type === '1X2') return t('pf_wins', { team: pickTeam(p, l.selection) });
       return l.side === 'over' ? t('pf_over', { line: l.line }) : t('pf_under', { line: l.line });
     }).join(' ' + t('pf_combo_and') + ' ');
+    // BALONCESTO: la selección ya viene redactada del server con el nombre del equipo y la línea en
+    // convención de casa ("Seattle Storm +1.5", "Menos de 182.5 puntos"), que es como se lee un ticket.
+    if (p.family === 'MONEYLINE') return t('pf_wins', { team: p.selection_name || '' });
+    if (p.family === 'SPREAD' || p.family === 'TOTAL') return p.selection_name || '';
     if (p.family === 'FIGHT') return t('pf_wins', { team: p.selection_name || '' });
     if (p.family === 'METHOD' || p.family === 'ROUNDS') return p.selection_name || '';
     if (p.family === 'CORNERS') return t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line });
@@ -1933,7 +1937,7 @@
 
   function pickCard(p, opts) {
     opts = opts || {};
-    var famKey = (p.family === 'SOLID' || p.family === 'FIGHT') ? 'pf_fam_solid' : p.family === 'METHOD' ? 'pf_fam_method' : p.family === 'ROUNDS' ? 'pf_fam_rounds' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
+    var famKey = (p.family === 'SOLID' || p.family === 'FIGHT' || p.family === 'MONEYLINE') ? 'pf_fam_solid' : p.family === 'METHOD' ? 'pf_fam_method' : p.family === 'ROUNDS' ? 'pf_fam_rounds' : p.family === 'GOALS' ? 'pf_fam_goals' : p.family === 'SPREAD' ? 'pf_fam_spread' : p.family === 'TOTAL' ? 'pf_fam_points' : p.family === 'CORNERS' ? 'pf_fam_corners' : p.family === 'CARDS' ? 'pf_fam_cards' : p.family === 'PLAYER' ? 'pf_fam_player' : 'pf_fam_combo';
     var bucket = confBucket(p.confidence || 0);
     var confLabel = bucket === 'high' ? t('pf_conf_high') : bucket === 'med' ? t('pf_conf_med') : t('pf_conf_low');
     var hh = teamName(p.home_team_id, p.home), aa = teamName(p.away_team_id, p.away);
@@ -1942,9 +1946,13 @@
     // sintéticas por team-ids (teams-HOME-AWAY → base→contexto→GP + proyección de goles, vía h2h deep). Si hay 3 picks
     // del mismo partido, cada una abre el mismo análisis del partido.
     // picks de CLUB (shadow admin): club_eid abre el cockpit de club (mismo camino renderMatch cl-)
-    var openId = p.cb_hash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
-    var clickable = !!openId || !!p.cb_hash;
-    var openAttr = p.cb_hash ? ' data-openhash="' + esc(p.cb_hash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
+    // baloncesto usa el MISMO mecanismo que combate: hash directo al panel del partido y logos en vez de
+    // banderas. Dos variables y la card entera —chip de familia, porqué, cuota, señales, stake— se reusa.
+    var openHash = p.cb_hash || p.bb_hash || null;
+    var avas = p.cb_avas || p.bb_logos || null;
+    var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
+    var clickable = !!openId || !!openHash;
+    var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
       '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') +
       // Chip MONITOR (26-jul): solo lo ve el admin (los no-admin nunca reciben picks monitor). Distingue de
@@ -1953,9 +1961,9 @@
       (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') +
       (opts.welcome ? '' : '<button type="button" class="gx-pick-hide" data-hidepick="' + esc(pickKeyOf(p)) + '" title="' + esc(t(pickHidden(p) ? 'hp_unhide' : 'hp_hide')) + '">' + ic(pickHidden(p) ? 'eye' : 'eye-off') + '</button>') + '</div>' +
       (opts.hideMatch ? '' : '<div class="gx-pick-match">' +
-        (p.cb_avas ? '<span class="gx-pick-cbava gr">' + (p.cb_avas.h ? '<img src="' + esc(p.cb_avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
+        (avas ? '<span class="gx-pick-cbava gr">' + (avas.h ? '<img src="' + esc(avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b>' +
-        (p.cb_avas ? '<span class="gx-pick-cbava rd">' + (p.cb_avas.a ? '<img src="' + esc(p.cb_avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>') +
+        (avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>') +
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
@@ -6937,24 +6945,24 @@
       '<span class="gx-dim">' + esc(ev.league_name || '') + (ev.kickoff ? ' · ' + esc(bbWhen(ev.kickoff)) : '') + '</span></div>';
   }
   // ── PICKS DEL MONITOR ──
-  function bbPickCard(p, settled) {
+  // Se usa pickCard(): LA MISMA card de fútbol y combate, no una parecida. El server emite las picks de
+  // baloncesto con la forma que esa función espera (familia, cuota, casa, señales, stake, porqué, hash de
+  // apertura), así que la pieza es idéntica y lo único adaptado es la gramática del deporte.
+  // Las liquidadas llevan encima la tira de resultado, que el feed de fútbol no necesita porque su
+  // historial vive en Rendimiento; acá el monitor ES el rendimiento.
+  function bbPickResultBar(p) {
     var res = p.result_code;
-    var cls = res === 'WIN' ? 'win' : res === 'LOSS' ? 'loss' : res === 'VOID' ? 'void' : '';
-    return '<div class="gx-bb-opp gx-bb-pick ' + cls + '">' +
-      '<div class="gx-bb-ovent"><b>' + esc(p.event.away) + '</b><i>en</i><b>' + esc(p.event.home) + '</b>' +
-        '<span class="gx-dim">' + esc(p.league_label || '') + ' · ' + esc(bbWhen(p.event.kickoff_at)) + '</span></div>' +
-      '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(p.family_label) + '</span><b class="gx-bb-osel">' + esc(p.selection_name) + '</b>' +
-        '<span class="gx-bb-oodds">' + p.best_odds.toFixed(2) + '<i>' + esc(bbBookLab(p.best_book)) + '</i></span>' +
-        (settled
-          ? '<span class="gx-bb-pres ' + cls + '">' + (res === 'WIN' ? '✓ ' + (p.units > 0 ? '+' + p.units.toFixed(2) : '') + 'u' : res === 'LOSS' ? '✗ −1u' : 'push') + '</span>'
-          : '<span class="gx-bb-oev up">+' + p.edge_pp.toFixed(1) + 'pp</span>') + '</div>' +
-      '<div class="gx-bb-ometa">' +
-        '<span>modelo ' + Math.round(100 * p.model_prob) + '%</span><span>mercado ' + Math.round(100 * p.market_prob) + '%</span>' +
-        '<span>justa ' + p.fair_odds.toFixed(2) + '</span><span>' + p.books + ' casas</span>' +
-        (p.clv_pct != null ? '<span class="' + (p.clv_pct >= 0 ? 'gx-bb-clvup' : 'gx-bb-clvdn') + '">CLV ' + (p.clv_pct > 0 ? '+' : '') + p.clv_pct.toFixed(2) + '%</span>' : '') +
-        (settled && p.final_score ? '<span>' + p.final_score.away + '-' + p.final_score.home + '</span>' : '') +
-        '<span class="gx-dim">confianza ' + esc(p.confidence || '') + '</span></div></div>';
+    if (!res) return '';
+    var cls = res === 'WIN' ? 'win' : res === 'LOSS' ? 'loss' : 'void';
+    var txt = res === 'WIN' ? '✓ Ganada' : res === 'LOSS' ? '✗ Perdida' : 'Push (devuelta)';
+    return '<div class="gx-bb-resbar ' + cls + '"><b>' + txt + '</b>' +
+      (p.units != null ? '<span>' + (p.units > 0 ? '+' : '') + p.units.toFixed(2) + ' u</span>' : '') +
+      (p.final_score ? '<span>' + p.final_score.away + '-' + p.final_score.home + '</span>' : '') +
+      (p.clv_pct != null ? '<span class="' + (p.clv_pct >= 0 ? 'gx-bb-clvup' : 'gx-bb-clvdn') + '">CLV ' + (p.clv_pct > 0 ? '+' : '') + p.clv_pct.toFixed(2) + '%</span>' : '') +
+      '</div>';
   }
+  function bbPickCard(p) { return '<div class="gx-bb-pickwrap">' + pickCard(p, {}) + bbPickResultBar(p) + '</div>'; }
+
   function bbPicksPanel() {
     var d = bbGet('picks_' + bbOppLg(), '/api/hoops/picks?league=' + bbOppLg(), 120000);
     if (!d) return mvLoading();
@@ -6971,13 +6979,13 @@
       '</div>';
     var clvNote = '<div class="gx-dim gx-bb-courtnote" style="padding:0 4px 6px">El número que decide no es el acierto sino el <b>CLV</b>: si compramos sistemáticamente por encima del cierre, hay edge aunque el resultado tarde en llegar. Con CLV negativo sostenido, estas picks no se encienden.</div>';
     var act = (d.active || []).length
-      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Picks vivas</span><span class="gx-ph-extra">' + d.active.length + '</span></div><div class="gx-bb-opps">' +
-        d.active.map(function (p) { return bbPickCard(p, false); }).join('') + '</div></div>'
+      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Picks vivas</span><span class="gx-ph-extra">' + d.active.length + '</span></div><div class="gx-bb-picks">' +
+        d.active.map(bbPickCard).join('') + '</div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna pick viva ahora mismo.</b>' +
         '<span class="gx-dim">Nacen cuando el modelo supera al consenso por ' + ((d.config || {}).min_edge_pp || 3) + 'pp o más con precio disponible. El motor revisa cada 30 minutos.</span></div></div>';
     var set = (d.settled || []).length
-      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Liquidadas</span><span class="gx-ph-extra">' + d.settled.length + '</span></div><div class="gx-bb-opps">' +
-        d.settled.slice(0, 30).map(function (p) { return bbPickCard(p, true); }).join('') + '</div></div>' : '';
+      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Liquidadas</span><span class="gx-ph-extra">' + d.settled.length + '</span></div><div class="gx-bb-picks">' +
+        d.settled.slice(0, 30).map(bbPickCard).join('') + '</div></div>' : '';
     var fam = Object.keys(T.by_family || {}).length
       ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por familia</span></div><div class="gx-bb-dna">' +
         Object.entries(T.by_family).map(function (kv) {

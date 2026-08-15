@@ -193,9 +193,20 @@ function matchup(pa, pb, sa, sb, { league = null } = {}) {
 function phaseMass(pa, pb) {
   const Ag = pa.grappling, Bg = pb.grappling, A = pa.striking, B = pb.striking;
   if (!Ag || !Bg || !A || !B) return { pie: 0.75, clinch: 0.1, lucha: 0.1, suelo: 0.05 };
-  const aGround = (Ag.takedown.att_per15 || 0) * (1 - (Bg.takedown.defense || 0.5));
-  const bGround = (Bg.takedown.att_per15 || 0) * (1 - (Ag.takedown.defense || 0.5));
-  const groundPush = aGround + bGround;                     // derribos esperados por 15 min
+  // LOS INTENTOS NO BASTAN, Y ESTE ERROR SE VIO EN PRODUCCIÓN. Quien ya domina en el suelo deja de
+  // *intentar* derribos —está controlando— así que su tasa de intentos por 15 minutos SUBESTIMA cuánto
+  // lleva la pelea al suelo. Con solo intentos, Makhachev salía con un 21% de suelo y una probabilidad de
+  // 56% contra el 75% del mercado. El tiempo de control es la evidencia directa de dónde acaba la pelea,
+  // así que entra a la par: se toma lo mayor de las dos señales, no su media.
+  const aGround = Math.max(
+    (Ag.takedown.att_per15 || 0) * (1 - (Bg.takedown.defense || 0.5)),
+    ((Ag.control.min_per15 || 0) / 15) * 5 * (1 - (Bg.takedown.defense || 0.5)) * 2,
+  );
+  const bGround = Math.max(
+    (Bg.takedown.att_per15 || 0) * (1 - (Ag.takedown.defense || 0.5)),
+    ((Bg.control.min_per15 || 0) / 15) * 5 * (1 - (Ag.takedown.defense || 0.5)) * 2,
+  );
+  const groundPush = aGround + bGround;                     // presión de suelo esperada por 15 min
   const suelo = clamp01(groundPush / 5);
   const clinch = clamp01(((A.position.clinch || 0) + (B.position.clinch || 0)) / 2 * 1.6);
   const lucha = clamp01(suelo * 0.7 + clinch * 0.3);

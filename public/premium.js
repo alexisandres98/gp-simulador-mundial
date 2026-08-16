@@ -7156,40 +7156,124 @@
   // ── RENDIMIENTO: la validación honesta ───────────────────────────────────────────────────────────────
   // No hay unidades ganadas porque no hay picks. Lo que se muestra es lo que decide si algún día las hay:
   // si el modelo le gana al CIERRE del mercado, medido fuera de muestra y con su barra de error.
+  // ── RENDIMIENTO DE BALONCESTO ────────────────────────────────────────────────────────────────────────
+  // LA PESTAÑA COMPLETA DEL DEPORTE (16-ago, corrección de Alexis). Antes esta vista enseñaba SOLO la
+  // validación del modelo, y el track de picks —familias, CLV, unidades, historial— no estaba en ninguna
+  // pantalla. Ahora aquí está todo lo de baloncesto y NADA de fútbol: se entra por el conmutador 🏀 y se
+  // pulsa Rendimiento, igual que en fútbol y en combate, y cada deporte rinde cuentas en su propia casa.
+  //
+  // EL ORDEN NO ES COSMÉTICO. Primero el monitor de picks con la CLV DELANTE, después el historial, y al
+  // final la validación del modelo. Motivo: el track dice +15% de ROI sobre 20 picks, que es ruido, y la
+  // CLV —que ya tiene muestra— dice −2,4%. Poner el ROI en grande sería mentir con datos ciertos.
+  function bbPerfKpi(label, v, cls, sub) {
+    return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div>' +
+      '<div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div>' +
+      (sub ? '<div class="gx-kpi-sub gx-dim">' + esc(sub) + '</div>' : '') + '</div>';
+  }
   function renderBBPerf() {
     var lg = bbLg();
     var d = bbGet('perf_' + lg, '/api/hoops/perf?league=' + lg, 900000);
-    if (!d) { bbShell('Rendimiento', bbTabs() + mvLoading()); return; }
-    if (d._err) { bbShell('Rendimiento', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
-    if (d.empty) { bbShell('Rendimiento', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(bbLgLab()) + ' sin dataset cosechado todavía.</b></div></div>'); return; }
-    var vs = d.vs_close || {};
-    var good = vs.skill > 0;
-    var kpi = '<div class="gx-panel gx-bb-modelbar">' +
-      '<div><span class="gx-label">Partidos evaluados</span><b>' + (d.n || 0) + '</b> fuera de muestra</div>' +
-      '<div><span class="gx-label">Acierto</span><b>' + (d.accuracy_pct != null ? d.accuracy_pct + '%' : '—') + '</b></div>' +
-      '<div><span class="gx-label">Error de margen</span><b>' + (d.margin_mae != null ? d.margin_mae : '—') + '</b> pts</div>' +
-      '<div><span class="gx-label">Error de total</span><b>' + (d.total_mae != null ? d.total_mae : '—') + '</b> pts</div>' +
-      '</div>';
-    var skill = '<div class="gx-panel gx-bb-skill"><div class="gx-ph"><span class="gx-label">La vara real: contra el CIERRE del mercado</span><span class="gx-ph-extra">' + (vs.n || 0) + ' partidos con cierre</span></div>' +
-      '<div class="gx-bb-mktrow">' +
-      '<div><span>Brier del mercado</span><b>' + (vs.brier_market != null ? vs.brier_market.toFixed(4) : '—') + '</b></div>' +
-      '<div><span>Brier de GP</span><b>' + (vs.brier_gp != null ? vs.brier_gp.toFixed(4) : '—') + '</b></div>' +
-      '<div><span>Skill</span><b class="' + (good ? 'up' : 'dn') + '">' + (vs.skill != null ? (vs.skill > 0 ? '+' : '') + vs.skill.toFixed(4) : '—') + '</b></div>' +
-      '<div><span>Error estándar</span><b>' + (vs.skill_se != null ? '±' + vs.skill_se.toFixed(4) : '—') + '</b></div>' +
-      '<div><span>t</span><b class="' + (vs.significant ? 'up' : '') + '">' + (vs.t != null ? vs.t.toFixed(2) : '—') + '</b></div>' +
-      '</div>' +
-      '<div class="gx-bb-verdict ' + (good && vs.significant ? 'ok' : good ? 'mid' : 'bad') + '">' + esc(d.verdict || '') + '</div>' +
-      '<div class="gx-dim gx-bb-courtnote">' + esc(d.method || '') + '</div></div>';
-    var cal = (d.calibration || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Calibración</span><span class="gx-ph-extra">lo prometido contra lo ocurrido</span></div><div class="gx-bb-cal">' +
-      d.calibration.map(function (b) {
-        var diff = b.actual - b.predicted;
-        return '<div class="gx-bb-calrow"><span class="gx-bb-calr">' + esc(b.range) + '</span>' +
-          '<div class="gx-bb-calbar"><i class="pred" style="width:' + Math.min(100, b.predicted) + '%"></i><u class="act" style="left:' + Math.min(100, b.actual) + '%"></u></div>' +
-          '<span class="gx-bb-calv">' + b.predicted + '% → <b>' + b.actual + '%</b></span>' +
-          '<span class="gx-bb-caln ' + (Math.abs(diff) <= 6 ? 'ok' : Math.abs(diff) <= 12 ? 'mid' : 'bad') + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + '</span>' +
-          '<span class="gx-dim gx-bb-calc">' + b.n + '</span></div>';
-      }).join('') + '</div><div class="gx-dim gx-bb-courtnote">La barra es lo que el modelo prometió; la marca, lo que pasó. Cerca = bien calibrado.</div></div>' : '';
-    bbShell('Rendimiento · ' + bbLgLab(), bbTabs() + kpi + skill + cal);
+    var pk = bbGet('pperf_' + lg, '/api/hoops/picks?league=' + lg, 120000);
+    if (!d && !pk) { bbShell('Rendimiento', bbTabs() + mvLoading()); return; }
+
+    var sgn = function (v, suf) { return v != null ? (v > 0 ? '+' : '') + v + (suf || '') : '—'; };
+    var body = '';
+
+    // ── 1) MONITOR DE PICKS ────────────────────────────────────────────────────────────────────────────
+    if (pk && !pk._err && pk.track && pk.track.total) {
+      var T = pk.track.total, act = (pk.active || []).length;
+      var clvOk = T.clv_avg != null && T.clv_avg > 0;
+      body += '<div class="gx-ph" style="margin:2px 0 8px"><span class="gx-label">' + ic('target-arrow') + 'Monitor de picks · ' + esc(bbLgLab()) + '</span>' +
+        '<span class="gx-ph-extra"><span class="gx-clgate sh">PRIVADO</span>' +
+        '<span class="gx-dim" style="font-size:11px;margin-left:8px">' + (T.n || 0) + ' liquidadas · ' + act + ' activas</span></span></div>';
+      if (T.n) {
+        body += '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">' +
+          bbPerfKpi('CLV media · la vara', T.clv_avg != null ? sgn(T.clv_avg, '%') : '—', (clvOk ? 'gx-pos' : 'gx-neg'), T.clv_n ? 'n=' + T.clv_n : '') +
+          bbPerfKpi('Bate al cierre', T.clv_positive != null ? T.clv_positive + '%' : '—', (T.clv_positive >= 50 ? 'gx-pos' : 'gx-neg'), 'de las picks') +
+          bbPerfKpi('Acierto', T.hit != null ? T.hit + '%' : '—', '', (T.w || 0) + 'W-' + (T.l || 0) + 'L') +
+          bbPerfKpi('Unidades · ruido aún', T.units != null ? sgn(T.units, 'u') : '—', 'gx-dim', T.roi != null ? 'ROI ' + sgn(T.roi, '%') : '') + '</div>';
+        // por familia y por liga: la misma gramática que el resto del producto
+        var fam = pk.track.by_family || {};
+        var famRows = Object.keys(fam).map(function (f) {
+          var v = fam[f];
+          return '<span>' + esc(f) + ' <b>' + (v.w || 0) + '/' + (v.n || 0) + '</b> (' + (v.hit != null ? v.hit + '%' : '—') +
+            ' · ROI ' + (v.roi != null ? sgn(v.roi, '%') : '—') + ' · CLV ' + (v.clv_avg != null ? sgn(v.clv_avg, '%') : '—') + ')</span>';
+        }).join('');
+        if (famRows) body += teamPanel('layout-grid', 'Por familia', '<div class="gx-form-stats">' + famRows + '</div>');
+        var lgs = pk.track.by_league || {};
+        var lgRows = Object.keys(lgs).map(function (k) {
+          var v = lgs[k];
+          return '<span>' + esc(k.toUpperCase()) + ' <b>' + (v.w || 0) + '/' + (v.n || 0) + '</b> (ROI ' + (v.roi != null ? sgn(v.roi, '%') : '—') +
+            ' · CLV ' + (v.clv_avg != null ? sgn(v.clv_avg, '%') : '—') + ')</span>';
+        }).join('');
+        if (lgRows && Object.keys(lgs).length > 1) body += teamPanel('layout-grid', 'Por liga', '<div class="gx-form-stats">' + lgRows + '</div>');
+      }
+      // por qué la CLV manda y el ROI no — el aviso va SIEMPRE, haya o no muestra
+      body += '<div class="gx-panel"><div class="gx-mod-body">' +
+        '<p class="gx-mod-note gx-dim" style="margin:0 0 8px">' + esc(pk.note || '') + '</p>' +
+        (T.n ? '<p class="gx-mod-note gx-dim" style="margin:0">Con ' + T.n + ' picks liquidadas el ROI todavía es ruido: hace falta cerca de un millar para que signifique algo. El CLV se pronuncia con un centenar, y por eso encabeza este cuadro.</p>' : '') +
+        (pk.config ? '<div class="gx-form-stats" style="margin-top:10px"><span>Ventaja mínima <b>' + pk.config.min_edge_pp + ' pp</b></span>' +
+          '<span>Cuota <b>' + pk.config.min_odds + '–' + pk.config.max_odds + '</b></span>' +
+          '<span>Máx. por partido <b>' + pk.config.max_per_game + '</b></span></div>' : '') +
+        '</div></div>';
+
+      // ── 2) HISTORIAL ────────────────────────────────────────────────────────────────────────────────
+      var hist = (pk.settled || []).slice(0, 80);
+      if (hist.length) {
+        var rows = hist.map(function (x) {
+          var win = x.result_code === 'WIN', push = x.result_code === 'PUSH' || x.result_code === 'VOID';
+          var when = String(x.settled_at || '').slice(5, 10).split('-').reverse().join('/');
+          return '<tr><td class="l gx-dim gx-mono">' + esc(when) + '</td>' +
+            '<td class="l" title="' + esc(((x.event && x.event.away) || '') + ' vs ' + ((x.event && x.event.home) || '')) + '">' + esc((x.event && x.event.away) || '') + ' <span class="gx-dim">vs</span> ' + esc((x.event && x.event.home) || '') + '</td>' +
+            '<td class="l" title="' + esc(x.selection_name || x.selection_code || '') + '"><span class="gx-dim" style="font-size:10.5px">' + esc(x.family_label || x.family || '') + '</span> ' + esc(x.selection_name || x.selection_code || '') + '</td>' +
+            '<td class="gx-mono">' + (x.best_odds != null ? Number(x.best_odds).toFixed(2) : '—') + '</td>' +
+            '<td class="gx-mono ' + (x.clv_pct > 0 ? 'gx-pos' : x.clv_pct < 0 ? 'gx-neg' : '') + '">' + (x.clv_pct != null ? sgn(x.clv_pct, '%') : '—') + '</td>' +
+            '<td class="gx-mono ' + (x.units > 0 ? 'gx-pos' : x.units < 0 ? 'gx-neg' : '') + '">' + (x.units != null ? sgn(x.units, 'u') : '—') + '</td>' +
+            '<td><span class="gx-clgate ' + (push ? 'sh' : win ? 'ok' : 'no') + '">' + esc(push ? 'NULA' : win ? 'GANA' : 'PIERDE') + '</span></td></tr>';
+        }).join('');
+        body += '<div class="gx-panel gx-board"><div class="gx-ph"><span class="gx-label">Historial de picks</span>' +
+          '<span class="gx-ph-extra gx-dim" style="font-size:11px">últimas ' + hist.length + '</span></div>' +
+          '<div class="gx-perf-scroll"><table class="gx-table gx-bb-ptable"><thead><tr><th class="l">Fecha</th><th class="l">Partido</th><th class="l">Pick</th><th>Cuota</th><th>CLV</th><th>Unid.</th><th>Result.</th></tr></thead><tbody>' +
+          rows + '</tbody></table></div></div>';
+      }
+    }
+
+    // ── 3) VALIDACIÓN DEL MODELO ───────────────────────────────────────────────────────────────────────
+    body += '<div class="gx-ph" style="margin:18px 0 8px"><span class="gx-label">' + ic('chart-line') + 'Validación del modelo · ' + esc(bbLgLab()) + '</span></div>';
+    if (!d) body += mvLoading();
+    else if (d._err) body += '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';
+    else if (d.empty) body += '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(bbLgLab()) + ' sin dataset cosechado todavía.</b></div></div>';
+    else {
+      var vs = d.vs_close || {}, good = vs.skill > 0;
+      body += '<div class="gx-panel gx-bb-modelbar">' +
+        '<div><span class="gx-label">Partidos evaluados</span><b>' + (d.n || 0) + '</b> fuera de muestra</div>' +
+        '<div><span class="gx-label">Acierto</span><b>' + (d.accuracy_pct != null ? d.accuracy_pct + '%' : '—') + '</b></div>' +
+        '<div><span class="gx-label">Error de margen</span><b>' + (d.margin_mae != null ? d.margin_mae : '—') + '</b> pts</div>' +
+        '<div><span class="gx-label">Error de total</span><b>' + (d.total_mae != null ? d.total_mae : '—') + '</b> pts</div>' +
+        '</div>';
+      body += '<div class="gx-panel gx-bb-skill"><div class="gx-ph"><span class="gx-label">La vara real: contra el CIERRE del mercado</span><span class="gx-ph-extra">' + (vs.n || 0) + ' partidos con cierre</span></div>' +
+        '<div class="gx-bb-mktrow">' +
+        '<div><span>Brier del mercado</span><b>' + (vs.brier_market != null ? vs.brier_market.toFixed(4) : '—') + '</b></div>' +
+        '<div><span>Brier de GP</span><b>' + (vs.brier_gp != null ? vs.brier_gp.toFixed(4) : '—') + '</b></div>' +
+        '<div><span>Skill</span><b class="' + (good ? 'up' : 'dn') + '">' + (vs.skill != null ? (vs.skill > 0 ? '+' : '') + vs.skill.toFixed(4) : '—') + '</b></div>' +
+        '<div><span>Error estándar</span><b>' + (vs.skill_se != null ? '±' + vs.skill_se.toFixed(4) : '—') + '</b></div>' +
+        '<div><span>t</span><b class="' + (vs.significant ? 'up' : '') + '">' + (vs.t != null ? vs.t.toFixed(2) : '—') + '</b></div>' +
+        '</div>' +
+        '<div class="gx-bb-verdict ' + (good && vs.significant ? 'ok' : good ? 'mid' : 'bad') + '">' + esc(d.verdict || '') + '</div>' +
+        '<div class="gx-dim gx-bb-courtnote">' + esc(d.method || '') + '</div></div>';
+      if ((d.calibration || []).length) {
+        body += '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Calibración</span><span class="gx-ph-extra">lo prometido contra lo ocurrido</span></div><div class="gx-bb-cal">' +
+          d.calibration.map(function (b) {
+            var diff = b.actual - b.predicted;
+            return '<div class="gx-bb-calrow"><span class="gx-bb-calr">' + esc(b.range) + '</span>' +
+              '<div class="gx-bb-calbar"><i class="pred" style="width:' + Math.min(100, b.predicted) + '%"></i><u class="act" style="left:' + Math.min(100, b.actual) + '%"></u></div>' +
+              '<span class="gx-bb-calv">' + b.predicted + '% → <b>' + b.actual + '%</b></span>' +
+              '<span class="gx-bb-caln ' + (Math.abs(diff) <= 6 ? 'ok' : Math.abs(diff) <= 12 ? 'mid' : 'bad') + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + '</span>' +
+              '<span class="gx-dim gx-bb-calc">' + b.n + '</span></div>';
+          }).join('') + '</div><div class="gx-dim gx-bb-courtnote">La barra es lo que el modelo prometió; la marca, lo que pasó. Cerca = bien calibrado.</div></div>';
+      }
+    }
+    bbShell('Rendimiento · ' + bbLgLab(), bbTabs() + body);
   }
 
   // ── SIMULADOR ────────────────────────────────────────────────────────────────────────────────────────
@@ -9515,16 +9599,9 @@
       var isAdm = !!(S.me && S.me.isAdmin);
       // Track record de picks para TODOS (prueba social): admin usa el endpoint interno (más completo);
       // el resto el endpoint saneado /api/beta/picks-record (misma forma: track_record + picks liquidadas).
-      // BALONCESTO EN RENDIMIENTO (16-ago, reporte de Alexis: "no veo el cuadro de baloncesto"). No estaba
-      // roto: es que no existía aquí. Su track vivía SOLO dentro del deporte 🏀 (vista #bbperf), y quien
-      // abre "Rendimiento" espera ver ahí el rendimiento de todo. Se pide solo si el usuario tiene acceso
-      // a baloncesto (hoy admin-only), así que para el resto no añade ni una petición.
-      var bbReq = bbAllowed()
-        ? fetch('/api/hoops/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-        : Promise.resolve(null);
-      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), bbReq]).then(function (res) {
+      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) {
         // si la nueva petición falla, se conserva lo que ya había en vez de vaciar la pantalla
-        if (res[0] || res[1] || res[2] || res[3]) { S.perf = { sum: res[0], leg: res[1], picks: res[2], hoops: res[3] }; S.perfAt = Date.now(); }
+        if (res[0] || res[1] || res[2]) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; S.perfAt = Date.now(); }
         if (S.view === 'perf') renderPerf();
       });
       if (S.perf === null) return;   // primera carga: no hay nada que pintar todavía
@@ -9593,40 +9670,6 @@
           body += '<div class="gx-panel"><div style="padding:12px 16px;font-size:11.5px;color:var(--gx-text3)">Sin picks de clubes todavía — el motor corre cada 15 min sobre las ligas con cuotas; nacerán con los próximos partidos.</div></div>';
         }
       }
-      // ===== BALONCESTO · MONITOREO (16-ago) — el cuadro que faltaba en esta pantalla ======================
-      // POR QUÉ VA AQUÍ Y NO SOLO EN 🏀: su track existía únicamente dentro del deporte baloncesto, y quien
-      // abre "Rendimiento" viene a ver el rendimiento de TODO. No estaba roto: estaba en otra habitación.
-      //
-      // Y POR QUÉ SE PUBLICA CON LA CLV DELANTE Y NO EL ROI: estas picks son un experimento en papel que
-      // NO se publica, y con 20 liquidadas el ROI es ruido — cabe un +15% que no significa nada. La vara
-      // acordada del proyecto es el CLV, así que el CLV va primero y el ROI va marcado como lo que es.
-      var hp = d.hoops;
-      if (hp && hp.track && hp.track.total && hp.track.total.n && bbAllowed()) {
-        var ht = hp.track.total, hAct = (hp.active || []).length;
-        var clvOk = ht.clv_avg != null && ht.clv_avg > 0;
-        body += '<div class="gx-ph" style="margin:18px 0 8px"><span class="gx-label">' + ic('ball-basketball') + esc(LANG === 'en' ? 'Basketball · monitor' : 'Baloncesto · monitoreo') + '</span>' +
-          '<span class="gx-ph-extra"><span class="gx-clgate sh">' + esc(LANG === 'en' ? 'PRIVATE' : 'PRIVADO') + '</span>' +
-          '<span class="gx-dim" style="font-size:11px;margin-left:8px">' + ht.n + ' ' + esc(LANG === 'en' ? 'settled' : 'liquidadas') + ' · ' + hAct + ' ' + esc(LANG === 'en' ? 'active' : 'activas') + '</span></span></div>';
-        // LA VARA PRIMERO: CLV y cuánto bate al cierre. Después lo demás.
-        body += '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">' +
-          kpi(esc(LANG === 'en' ? 'CLV (the real bar)' : 'CLV (la vara real)'), ht.clv_avg != null ? sgn(ht.clv_avg, '%') : '—', (clvOk ? 'gx-pos' : 'gx-neg'), ht.clv_n ? 'n=' + ht.clv_n : '') +
-          kpi(esc(LANG === 'en' ? 'Beats the close' : 'Bate al cierre'), ht.clv_positive != null ? ht.clv_positive + '%' : '—', (ht.clv_positive >= 50 ? 'gx-pos' : 'gx-neg')) +
-          kpi(esc(LANG === 'en' ? 'Hit rate' : 'Acierto'), ht.hit != null ? ht.hit + '%' : '—', '', (ht.w || 0) + 'W-' + (ht.l || 0) + 'L') +
-          kpi(esc(LANG === 'en' ? 'Units (noise)' : 'Unidades (ruido)'), ht.units != null ? sgn(ht.units, 'u') : '—', 'gx-dim', ht.roi != null ? 'ROI ' + (ht.roi > 0 ? '+' : '') + ht.roi + '%' : '') + '</div>';
-        var hfam = hp.track.by_family || {};
-        var hfRows = Object.keys(hfam).map(function (f) { var v = hfam[f];
-          return '<span>' + esc(f) + ' <b>' + (v.w || 0) + '/' + (v.n || 0) + '</b> (ROI ' + (v.roi != null ? (v.roi > 0 ? '+' : '') + v.roi + '%' : '—') + ' · CLV ' + (v.clv_avg != null ? (v.clv_avg > 0 ? '+' : '') + v.clv_avg + '%' : '—') + ')</span>';
-        }).join('');
-        if (hfRows) body += teamPanel('layout-grid', LANG === 'en' ? 'By family' : 'Por familia', '<div class="gx-form-stats">' + hfRows + '</div>');
-        body += '<div class="gx-panel"><div class="gx-mod-body">' +
-          '<p class="gx-mod-note gx-dim" style="margin:0 0 8px">' + esc(hp.note || '') + '</p>' +
-          '<p class="gx-mod-note gx-dim" style="margin:0 0 10px">' + esc(LANG === 'en'
-            ? 'With ' + ht.n + ' settled picks the ROI is noise: it takes roughly a thousand to say anything. The CLV needs about a hundred, which is why it leads.'
-            : 'Con ' + ht.n + ' picks liquidadas el ROI es ruido: hacen falta cerca de mil para que diga algo. El CLV necesita un centenar, y por eso va delante.') + '</p>' +
-          '<button class="gx-btn" data-nav="bbperf" style="font-size:11px;padding:6px 14px">' + esc(LANG === 'en' ? 'Open model validation →' : 'Ver la validación del modelo →') + '</button>' +
-          '</div></div>';
-      }
-
       // ===== Métricas quant de las picks (CLV, precisión vs consenso, calibración). Misma forma admin/público. =====
       var q = pk.quant;
       if (q && ((q.clv && q.clv.n) || (q.model_vs_market && q.model_vs_market.n) || (q.calibration || []).length)) {

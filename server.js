@@ -14922,6 +14922,38 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/esports') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      // `?probe=<juego>` ejecuta el MISMO camino que las rutas de la UI (pizarra, ficha del motor y una
+      // partida) y devuelve tiempos y el error si lo hay. Existe porque el deporte es admin-only: sin esto,
+      // cuando Alexis dice "no me carga nada" no hay forma de saber si el fallo está en el servidor o en el
+      // navegador, y diagnosticar a ojo es cómo se pierde una tarde.
+      const probe = String(url.searchParams.get('probe') || '').toLowerCase();
+      if (probe) {
+        const ES = require('./esports-engine/store');
+        const out = { game: probe, steps: [] };
+        const step = async (name, fn) => {
+          const t0 = Date.now();
+          try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; }
+          catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message, stack: String(e.stack || '').split('\n').slice(1, 4) }); return null; }
+        };
+        const bd = await step('board', async () => {
+          const b = await ES.board(probe, { days: 3, maxEvents: 14 });
+          return b ? { items: b.items.length, shown: b.shown, total: b.total, picks: b.items.reduce((a, x) => a + x.picks, 0) } : null;
+        });
+        await step('model', async () => {
+          const E = ES.ENGINES[probe]; if (!E) throw new Error('juego desconocido');
+          return { families: E.GAME.families.length, rating: ES.ratings(probe).n };
+        });
+        await step('match', async () => {
+          const s = await ES.slate(probe, { days: 3 });
+          const ev = (s && s.events || [])[0];
+          if (!ev) return { skipped: 'sin partidas en la agenda' };
+          const m = await ES.analyzeMatch(probe, ev.id);
+          return m ? { id: ev.id, p: m.model.probability && m.model.probability.p, edges: m.edges.rows.length } : { id: ev.id, null_result: true };
+        });
+        out.ok = out.steps.every((s) => s.ok);
+        out.heap_mb = Math.round(process.memoryUsage().heapUsed / 1048576);
+        return json(res, 200, out);
+      }
       try {
         const ES = require('./esports-engine/store');
         const ov = await ES.overview({ days: +(url.searchParams.get('days') || 3) });

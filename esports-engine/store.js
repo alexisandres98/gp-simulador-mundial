@@ -9,20 +9,36 @@
 //   1. **UN MOTOR POR JUEGO, DESPACHADO AQUÍ.** cs2/lol/valorant/dota2 son cuatro archivos que no se
 //      conocen entre ellos. Este es el único sitio donde se elige cuál corre. Añadir un quinto juego es
 //      añadir un archivo y una línea en `ENGINES`, no tocar el resto.
-//   2. **EL RATING PROPIO NACE VACÍO Y CRECE SOLO.** GP no tiene acceso legal a histórico de esports, así
-//      que el Elo se construye desde cero con los resultados que el propio proveedor va cerrando
-//      (`harvest`). Al principio pesa 0 y toda la probabilidad es del mercado: eso NO es un fallo, es la
-//      doctrina de la casa puesta por delante. El peso crece con la muestra y tiene techo.
+//   2. **CS2 TIENE BASE PROPIA; LOS OTROS TRES NO, Y NO SE DISIMULA.** CS2 razona sobre 48.678 mapas
+//      cosechados por GP (`scripts/cs2-harvest.js`), con un modelo jerárquico validado fuera de muestra.
+//      LoL, Valorant y Dota 2 no tienen fuente de resultados todavía: su ritmo y su duración son PERFILES DE
+//      CIRCUITO escritos a mano. Los cuatro se enseñan; solo el que está medido apuesta.
 //   3. **LAS PICKS SOLO SALEN DE FAMILIAS DERIVADAS.** El ganador de serie se calcula, se enseña y se
 //      explica, pero NO genera pick. Baloncesto perdió 11,87 % de ROI ahí y combate −8,34 % de CLV. Esa
 //      puerta está cerrada por código, no por configuración, y quitarla debería costar un commit con nombre
 //      y apellidos.
+//   4. **TRES CASAS, NO UNA** (16-ago). Pinnacle, Bovada y Cloudbet entran por `data-providers/esports/books`
+//      y salen fundidas. Eso trae consenso, mejor precio y arbitraje — y sin consenso este producto no podía
+//      dar ni una pick.
+//
+// LOS TRES VETOS QUE APAGAN UNA PICK, en orden de cuántas matan. Están escritos donde se aplican y los tres
+// nacieron de una medición, no de una intuición:
+//   · `estructura_no_medida`        — el perfil de fondo es un supuesto de circuito (LoL dio una "ventaja"
+//                                     de 37,83 pp que era eso).
+//   · `ventaja_explicada_por_calibracion` — el residuo de nuestro propio ajuste explica la ventaja entera
+//                                     (mirage se queda 0,53 rondas corto y eso vale ~7 pp hacia el "menos").
+//   · la TESIS repetida             — 29 "picks" que eran 8 opiniones copiadas en distintas líneas.
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const C = require('./core');
-const CB = require('../data-providers/esports/cloudbet');
+// EL MOSTRADOR DE VARIAS CASAS. Desde el 16-ago este deporte ya no lee de una sola casa: Pinnacle (la
+// referencia de cierre del sector), Bovada (la más ancha) y Cloudbet (la de más cobertura) entran por la
+// misma puerta y salen fundidas, orientadas al mismo local y con su procedencia. Lo que cambia de verdad no
+// es la cantidad de precios: es que **ahora hay consenso**, y sin consenso este producto no podía dar picks
+// —`core.js` le cobraba a todas un recargo de 2,5 pp que era, en la práctica, un veto permanente.
+const BK = require('../data-providers/esports/books');
 
 const ENGINES = {
   cs2: require('./cs2'),
@@ -59,11 +75,20 @@ const SLATE_TTL = 10 * 60e3;
 const MARKET_TTL = 3 * 60e3;
 
 // ---- 1) AGENDA -------------------------------------------------------------------------------------------
+// La resolución de nombres entre casas se le presta al mostrador, y para CS2 se le presta la BUENA: la base
+// propia de 1.031 equipos sabe que "NIP" y "Ninjas In Pyjamas" son el mismo y —lo que importa más— sabe que
+// "Spirit" y "Spirit Academy" NO lo son. Fundir dos partidos distintos mezcla dos mercados y fabrica un
+// arbitraje que no existe, así que ante la duda se dejan separados.
+function resolverFor(game) {
+  if (game !== 'cs2') return null;
+  try { const CD = require('./cs2-data'); return (name) => CD.resolveTeam(name); } catch { return null; }
+}
+
 async function slate(game, { days = 7, force = false } = {}) {
   if (!ENGINES[game]) return null;
   const c = G.slate[game];
   if (c && !force && Date.now() - c.at < SLATE_TTL) return c.data;
-  const data = await CB.fixtures(game, { days });
+  const data = await BK.slate(game, { days, resolve: resolverFor(game) });
   G.slate[game] = { at: Date.now(), data };
   return data;
 }
@@ -72,17 +97,24 @@ async function slate(game, { days = 7, force = false } = {}) {
 // que cada título tiene abierto hoy, incluida la asimetría (LoL tiene kills, Valorant y Dota ni precio).
 async function overview({ days = 5 } = {}) {
   const games = [];
+  let srcs = [];
   for (const g of GAME_ORDER) {
     const E = ENGINES[g];
     const s = await slate(g, { days }).catch(() => null);
     const rt = ratings(g);
+    if (s && s.sources) srcs = s.sources;
+    const evs = (s && s.events) || [];
     games.push({
       game: g, label: E.GAME.label, short: E.GAME.short,
       unit: E.GAME.unit, default_bo: E.GAME.default_bo,
       native: E.GAME.native, edge_families: E.GAME.edge_families, families: E.GAME.families,
-      events: (s && s.events) ? s.events.length : 0,
+      events: evs.length,
+      // el dato que de verdad importa desde hoy: cuántos partidos tienen MÁS DE UNA casa. Con una sola no
+      // hay consenso, y sin consenso el listón de la pick sube 2,5 pp.
+      events_multibook: evs.filter((e) => (e.books || 0) > 1).length,
+      books: (s && s.books) || 0,
       competitions: (s && s.competitions) ? s.competitions.length : 0,
-      next: (s && s.events && s.events[0]) || null,
+      next: evs[0] || null,
       rating_matches: rt ? rt.n : 0,
       rating_teams: rt ? Object.keys(rt.elo).length : 0,
       closes_stored: closesCount(g),
@@ -94,12 +126,19 @@ async function overview({ days = 5 } = {}) {
     doctrine: PICK_DOCTRINE,
     // el cuadro de rating en cero tiene que venir con su motivo, o se lee como un fallo del sistema
     ratings_state: {
-      own_rating: false,
-      why: CB.RESULTS_UNAVAILABLE.why,
-      consequence: 'mientras no haya resultados, el ganador de serie es el consenso del mercado sin margen con 0 % de peso propio. La estructura derivada —mapas, rondas, duración y kills— sí es del modelo y no depende del rating.',
-      next: CB.RESULTS_UNAVAILABLE.next,
+      // CS2 sí tiene rating propio desde el 16-ago, y no viene de ninguna casa: sale de la cosecha histórica
+      // de GP (48.678 mapas). Los otros tres juegos siguen sin él, y mezclar las dos situaciones en una sola
+      // frase era mentir sobre la mitad del producto.
+      own_rating: 'cs2',
+      why: BK.RESULTS_UNAVAILABLE.why,
+      consequence: 'en CS2 la fuerza sale de la base propia (modelo jerárquico calibrado, validado fuera de muestra). En LoL, Valorant y Dota 2 el ganador sigue siendo el consenso del mercado sin margen con 0 % de peso propio; la estructura derivada —rondas, duración y kills— es del modelo y no depende del rating.',
+      next: BK.RESULTS_UNAVAILABLE.next,
     },
-    source: 'Cloudbet (única fuente de esports disponible para GP hoy; The Odds API no publica ni un deporte electrónico)',
+    // LAS CASAS, con su papel. No es adorno: es lo que explica por qué desde hoy pueden salir picks donde
+    // ayer no salía ninguna.
+    books: srcs,
+    books_probed: BK.BOOKS_PROBED,
+    source: srcs.filter((s) => s.available).map((s) => s.name).join(' + ') || 'sin casas disponibles',
     at: new Date().toISOString(),
   };
 }
@@ -157,12 +196,17 @@ async function snapshot(game, { withinMin = 180 } = {}) {
   const st = rd(`closes-${game}.json`) || { game, closes: {} };
   let saved = 0;
   for (const ev of evs) {
-    const mk = await market(game, ev.provider_id, { force: true }).catch(() => null);
+    const mk = await market(game, ev, { force: true }).catch(() => null);
     if (!mk || !mk.markets.length) continue;
     st.closes[ev.id] = {
       id: ev.id, provider_id: ev.provider_id, start_at: ev.start_at,
       home: ev.home, away: ev.away, competition: ev.competition,
-      rows: mk.markets.map((r) => ({ family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds })),
+      // CADA FILA GUARDA SU CASA, y esto es lo que convierte el archivo de cierres en algo que sirve. El CLV
+      // no se mide contra "el mercado": se mide contra un cierre concreto de una casa concreta, y el baremo
+      // del sector es el de Pinnacle. Sin la etiqueta de casa, los cierres de tres casas se mezclan en una
+      // media que no es el cierre de nadie y el día que haya resultados no se puede calcular nada hacia atrás.
+      rows: mk.markets.map((r) => ({ book: r.book, family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds })),
+      books: (mk.by_book || []).filter((b) => b.rows).map((b) => b.book),
       at: mk.at,
     };
     saved++;
@@ -176,21 +220,27 @@ async function snapshot(game, { withinMin = 180 } = {}) {
 // devuelve la verdad en vez de un cero silencioso.
 async function harvest(game) {
   const snap = await snapshot(game).catch(() => ({ saved: 0 }));
-  return { game, results_available: false, why: CB.RESULTS_UNAVAILABLE.why, next: CB.RESULTS_UNAVAILABLE.next, closes_saved: snap.saved };
+  return { game, results_available: false, why: BK.RESULTS_UNAVAILABLE.why, next: BK.RESULTS_UNAVAILABLE.next, closes_saved: snap.saved };
 }
 
 // ---- 3) UN PARTIDO -----------------------------------------------------------------------------------------
-async function market(game, providerId, { force = false } = {}) {
-  const key = game + ':' + providerId;
+// La caché se indexa por el id de GP y NO por el del proveedor, porque ahora un partido tiene un id por casa.
+async function market(game, ev, { force = false } = {}) {
+  if (!ev) return null;
+  const key = game + ':' + (ev.id || ev.provider_id);
   const c = G.markets[key];
   if (c && !force && Date.now() - c.at < MARKET_TTL) return c.data;
-  const data = await CB.markets(providerId, game).catch(() => null);
+  const data = await BK.markets(game, ev).catch(() => null);
   G.markets[key] = { at: Date.now(), data };
   return data;
 }
 
-function boOf(mk, fallback) {
-  // el formato se deduce del mercado: si hay hándicap de ±2.5 mapas o marcador 3-x, es BO5.
+function boOf(mk, fallback, ev = null) {
+  // Cuando una casa DECLARA el formato —Pinnacle lo hace, con `bestOfX`— se le cree a ella antes que a la
+  // deducción: deducir un BO5 de que exista una línea de ±2.5 falla en cuanto una casa publica un hándicap
+  // alternativo generoso, y equivocarse de formato descoloca la simulación entera de la serie.
+  if (ev && Number.isFinite(ev.bo) && ev.bo >= 1) return ev.bo;
+  // si no, se deduce del mercado: si hay hándicap de ±2.5 mapas o marcador 3-x, es BO5.
   const rows = (mk && mk.markets) || [];
   const maxAbs = rows.filter((r) => r.family === 'HANDICAP' && r.line != null)
     .reduce((m, r) => Math.max(m, Math.abs(r.line)), 0);
@@ -206,10 +256,11 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const E = ENGINES[game];
   if (!E) return null;
   const s = await slate(game, { days });
-  const ev = ((s && s.events) || []).find((e) => e.id === eventId || e.provider_id === String(eventId));
+  const ev = ((s && s.events) || []).find((e) => e.id === eventId || e.provider_id === String(eventId)
+    || (e.sources || []).some((x) => String(x.provider_id) === String(eventId)));
   if (!ev) return null;
-  const mk = await market(game, ev.provider_id);
-  const bo = boOf(mk, E.GAME.default_bo);
+  const mk = await market(game, ev);
+  const bo = boOf(mk, E.GAME.default_bo, ev);
   const rt = ratings(game);
   const a = ev.home.id, b = ev.away.id;
   const sample = Math.min(rt.matches[a] || 0, rt.matches[b] || 0);
@@ -221,15 +272,26 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     bo, sample, competition: ev.competition,
   });
   const edges = evaluateAll({ game, model, mk, ev, bo, sample });
+  // LO QUE SOLO SE VE CON VARIAS CASAS, y va aparte de las picks a propósito: el arbitraje NO pasa por el
+  // modelo, así que no hereda su riesgo. Si el modelo estuviera entero equivocado, esta sección seguiría
+  // siendo válida — es la única señal de la casa de la que se puede decir eso.
+  const cross = BK.crossBook((mk && mk.markets) || []);
+  const arbs = BK.arbitrages((mk && mk.markets) || []);
   return {
     event: ev, bo, sample,
     rating: { a: C.r2(rt.elo[a] || null), b: C.r2(rt.elo[b] || null), matches_a: rt.matches[a] || 0, matches_b: rt.matches[b] || 0 },
     model,
     market_raw: mk ? { markets: mk.markets, at: mk.at } : null,
+    books: mk ? { n: mk.books, by_book: mk.by_book, sources: ev.sources } : null,
+    // los mercados donde MÁS DE UNA casa opina: consenso sin margen, mejor precio de cada lado y dispersión.
+    // La dispersión es la señal de "aquí las casas no se ponen de acuerdo", que es donde vive tanto el valor
+    // como la trampa, y por eso se publica en vez de resolverse en silencio.
+    cross_book: cross.filter((m) => m.books > 1),
+    arbitrages: arbs,
     edges,
     provenance: C.provenance([
-      { source: 'Cloudbet — agenda', kind: 'proveedor', at: (s && s.at) || null },
-      mk ? { source: 'Cloudbet — mercados', kind: 'proveedor', at: mk.at } : null,
+      { source: `Agenda de ${(ev.sources || []).map((x) => x.book).join(' + ') || 'las casas'}`, kind: 'proveedor', at: (s && s.at) || null },
+      mk ? { source: `Mercados de ${(mk.by_book || []).filter((b) => b.rows).map((b) => b.book).join(' + ')}`, kind: 'proveedor', at: mk.at } : null,
       { source: 'Rating propio de GP', kind: 'derivado', at: rt.at },
     ]),
     doctrine: PICK_DOCTRINE,
@@ -245,7 +307,16 @@ function probFor(game, model, row) {
   const f = row.family, line = row.line, side = String(row.side || '').toLowerCase();
   const isOver = /^(over|más|mas)$/.test(side), isUnder = /^(under|menos)$/.test(side);
   const isHome = side === 'home', isAway = side === 'away';
-  const K = model.kills || null, R = model.rounds || null;
+  const K = model.kills || null;
+  // LA DISTRIBUCIÓN DEL MAPA QUE SE ESTÁ COTIZANDO, no la del primero. Una casa que cotiza el total de rondas
+  // del mapa 1, del 2 y del 3 por separado está haciendo TRES preguntas distintas: mapas distintos del pool,
+  // con duraciones distintas y con un reparto de fuerza distinto. Contestarlas con la misma distribución
+  // devolvía la misma probabilidad tres veces y la presentaba como tres oportunidades. Si el motor no tiene
+  // ese mapa —porque el veto no llega hasta ahí— la respuesta es NADA, no la del mapa 1 disfrazada de la del 3.
+  const byMap = model.rounds_by_map || null;
+  const R = row.map != null && byMap
+    ? (byMap[row.map] || null)
+    : (model.rounds || null);
   // el lado del hándicap y de los totales de equipo se lee del parámetro `team`, no del `side`:
   // en un total de equipo el side es over/under y quién es el equipo va aparte.
   const team = row.team === 'home' || row.team === 'away' ? row.team : null;
@@ -330,6 +401,45 @@ function probFor(game, model, row) {
   return null;
 }
 
+// ---- 4 bis) EL ERROR DE CALIBRACIÓN SE PAGA, NO SE COBRA -------------------------------------------------
+// LA MEDICIÓN QUE OBLIGÓ A ESCRIBIR ESTO. El ajuste del arrastre económico tiene UN grado de libertad y DOS
+// objetivos: se ajusta a la tasa de prórroga observada de cada mapa y la media de rondas queda como residuo.
+// En el conjunto del pool ese residuo es +0,063 rondas —o sea, insignificante— PERO NO ES UNIFORME:
+//
+//     dust2 −0,10 · mirage −0,53 · ancient +0,09 · nuke +0,34 · inferno +0,37 · anubis +0,11 · cache +0,16
+//
+// Mirage se queda medio round corto. Y medio round de sesgo en la media, con la densidad que tiene la
+// distribución de totales alrededor de la línea principal, vale del orden de SIETE PUNTOS de probabilidad
+// hacia el "menos". Cuando se comprobó, las tres únicas picks que el sistema producía eran exactamente eso:
+// "menos de 20,5 / 21,5 / 22,5 rondas en mirage" con ventajas de 5,8 a 9,6 pp. No eran una opinión sobre la
+// duración del mapa. Eran el residuo de nuestra propia calibración, cobrado como si fuera ventaja.
+//
+// La respuesta correcta no es re-tocar el arrastre hasta que la pick sobreviva —eso es ajustar la medición
+// para que diga lo que uno quiere— sino **hacer que el error se pague a sí mismo**: se traduce el residuo a
+// puntos de probabilidad EN ESA LÍNEA (residuo × densidad de la distribución en la línea), se suma a la
+// incertidumbre, y se exige que la ventaja lo supere. Una ventaja que nuestro propio error de calibración
+// puede producir entera no es una ventaja: es un NO PICK con motivo.
+function calibrationPp(family, R, line, team) {
+  if (!R || !R.calibration || !R.calibration.fitted || line == null) return 0;
+  const cal = R.calibration;
+  if (family === 'PRORROGA') {
+    // aquí la prórroga ES el objetivo del ajuste, así que el residuo es el de la prórroga y es pequeño
+    return C.r2(Math.abs(100 * ((cal.got_ot || 0) - (cal.target_ot || 0))));
+  }
+  const res = cal.rounds_residual;
+  if (!Number.isFinite(res) || !res) return 0;
+  const d = family === 'RONDAS_EQUIPO' && team ? (R.dist && R.dist[team]) : (R.dist && R.dist.total);
+  if (!d || !d.h) return 0;
+  // densidad discreta en la línea: la masa de los dos enteros que la rodean, promediada. Es exactamente la
+  // derivada de P(más de la línea) cuando toda la distribución se desplaza, que es lo que hace un sesgo en
+  // la media.
+  const lo = Math.floor(line), hi = Math.ceil(line);
+  const dens = ((d.h[lo] || 0) + (d.h[hi] || 0)) / 2;
+  // el total de un equipo se lleva aproximadamente la mitad del sesgo del total del mapa
+  const share = family === 'RONDAS_EQUIPO' ? 0.5 : 1;
+  return C.r2(Math.abs(res) * share * dens * 100);
+}
+
 // El margen está siempre medido desde el local. Para valorar el lado visitante se le da la vuelta al
 // histograma en vez de restar de uno: restar de uno cuenta el empate exacto para el lado equivocado, que es
 // justo el error que en una línea entera de hándicap mueve la probabilidad en la dirección cara.
@@ -352,6 +462,40 @@ function negHist(d) {
 // (cuántas rondas, cuántos kills, si hay prórroga) pagan la del perfil, que baja cuando el perfil está
 // medido en vez de supuesto.
 const VOLUME_FAMILIES = new Set(['RONDAS', 'RONDAS_EQUIPO', 'KILLS', 'KILLS_EQUIPO', 'PRORROGA']);
+
+// ---- LA REGLA QUE MÁS PICKS MATA, Y POR ESO MISMO LA MÁS IMPORTANTE -------------------------------------
+// UN SUPUESTO NO GENERA PICKS. Solo la estructura MEDIDA genera picks.
+//
+// LA MEDICIÓN QUE OBLIGÓ A ESCRIBIRLO. Al entrar las casas nuevas, LoL empezó a producir picks de total de
+// kills, y una de ellas venía con una ventaja de **37,83 pp**. Ese número no es una oportunidad: es un
+// diagnóstico. GP no tiene histórico de LoL —no hay fuente de resultados— así que su ritmo de kills es un
+// PERFIL DE CIRCUITO escrito a mano (`measured: false` en todas las ligas, siempre). El modelo esperaba unos
+// 28 kills en el mapa y la casa cotizaba 38: no estaban en desacuerdo sobre este partido, estaban en
+// desacuerdo sobre cuántos kills tiene un mapa de LoL, y de los dos el que ha visto los partidos es la casa.
+//
+// Esto es exactamente el fallo que ya costó dinero en baloncesto —picks que prometían 56,5 % de acierto y
+// daban 43,6 %— y la lección era que un modelo sin validar no puede opinar contra un cierre. Así que la
+// puerta se cierra por código, familia por familia, y solo la abre una estructura medida:
+//
+//   CS2        rondas, prórroga y fuerza por mapa MEDIDAS sobre 48.678 mapas del histórico propio  → SÍ
+//   LoL        ritmo de kills y duración: perfil de circuito, sin muestra propia                    → NO
+//   Valorant   sin perfil de rondas medido                                                          → NO
+//   Dota 2     ritmo y duración: perfil de circuito                                                 → NO
+//
+// No es un apagado temporal por prudencia: se reabre solo, sin tocar código, en cuanto cada motor pueda
+// declarar `measured: true` porque tiene datos detrás (OpenDota para Dota 2, la API de Riot para LoL).
+function basisFor(family, model, R) {
+  if (family === 'KILLS' || family === 'KILLS_EQUIPO' || family === 'KILLS_HANDICAP' || family === 'KILLS_DNB') {
+    return { measured: !!(model.tempo && model.tempo.measured), what: 'el ritmo de kills de la competición' };
+  }
+  if (family === 'RONDAS' || family === 'RONDAS_EQUIPO' || family === 'RONDAS_HANDICAP' || family === 'PRORROGA') {
+    return { measured: !!(R && R.measured), what: 'el perfil de rondas de este mapa' };
+  }
+  if (family === 'TOTAL_MAPAS' || family === 'HANDICAP') {
+    return { measured: !!(model.dataset && model.dataset.available), what: 'la fuerza por mapa del par' };
+  }
+  return { measured: false, what: 'la estructura de esta familia' };
+}
 function uncertaintyFor(family, model, baseUnc, books) {
   if (!VOLUME_FAMILIES.has(family)) return baseUnc;
   const measured = !!((model.tempo && model.tempo.measured) || (model.rounds && model.rounds.measured));
@@ -364,6 +508,15 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
   const rows = (mk && mk.markets) || [];
   const books = (model.market && model.market.books) || 0;
   const unc = model.uncertainty ? model.uncertainty.epistemic_pp : 8;
+  // CUÁNTAS CASAS COTIZAN **ESTA LÍNEA**, no cuántas cotizan el partido. La diferencia importa: en un mismo
+  // partido el ganador de la serie lo cotizan tres casas y el total de rondas por equipo lo cotiza una sola,
+  // y cobrarle a la segunda la profundidad de la primera es exactamente el error que el recargo por casa
+  // única existía para evitar. Cada línea paga su propia profundidad.
+  const depth = new Map();
+  for (const m of BK.crossBook(rows)) {
+    for (const s of m.sides) depth.set([m.family, m.map == null ? '' : m.map, m.team || '', m.line == null ? '' : m.line, s.side].join('|'), s.books);
+  }
+  const depthOf = (r) => depth.get([r.family, r.map == null ? '' : r.map, r.team || '', r.line == null ? '' : r.line, r.side].join('|')) || 1;
   const out = [], skipped = [];
   // NO SE BUSCA VALOR EN EL PRECIO CONTRA EL QUE TE HAS CALIBRADO. Si la probabilidad de serie salió del
   // hándicap de mapas, comparar el modelo contra ese mismo hándicap es compararlo consigo mismo: cualquier
@@ -384,31 +537,118 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
     }
     const got = probFor(game, model, r);
     if (!got || got.p == null) continue;
-    // en una misma línea y lado el proveedor puede repetir: nos quedamos con el mejor precio
+    // MISMA LÍNEA Y MISMO LADO EN VARIAS CASAS: se cobra contra el MEJOR precio, que es el que de verdad se
+    // puede tomar. Es también la razón por la que traer casas mejora el producto aunque el modelo no cambie:
+    // la misma probabilidad contra un precio mejor es más ventaja, sin haber acertado nada nuevo.
     const key = [r.family, r.line, r.side, r.period, r.map, r.team].join('|');
     const prev = byKey.get(key);
     if (prev && prev.odds >= r.odds) continue;
-    const uncF = uncertaintyFor(r.family, model, unc, books);
+    const nBooks = depthOf(r);
+    // el residuo de calibración de ESTE mapa en ESTA línea, en puntos de probabilidad
+    const byMapR = model.rounds_by_map || null;
+    const Rrow = r.map != null && byMapR ? (byMapR[r.map] || null) : (model.rounds || null);
+    const calPp = calibrationPp(r.family, Rrow, r.line, r.team);
+    const uncF = C.r2(Math.sqrt(uncertaintyFor(r.family, model, unc, nBooks) ** 2 + calPp ** 2));
     const ev2 = C.evaluateEdge({
       pGp: got.p, odds: r.odds, uncertaintyPp: uncF,
-      minEdgePp: 3, family: r.family, marketBooks: Math.max(1, books),
+      minEdgePp: 3, family: r.family, marketBooks: nBooks,
       freshMin: mk && mk.at ? (Date.now() - Date.parse(mk.at)) / 60000 : null,
     });
+    // EL PRIMER VETO: sin estructura medida detrás, no hay pick. Se calcula igual y se enseña igual —la
+    // comparación con el mercado es información— pero no se apuesta un supuesto.
+    const basis = basisFor(r.family, model, Rrow);
+    if (!basis.measured) {
+      ev2.pick = false;
+      ev2.no_pick_reasons = (ev2.no_pick_reasons || []).concat([{ code: 'estructura_no_medida',
+        text: `${basis.what} es un perfil de circuito, no una medición propia: GP todavía no tiene histórico de este juego. Una diferencia con el mercado aquí no dice que el mercado se equivoque, dice que nuestro supuesto y el suyo no coinciden — y quien ha visto los partidos es la casa.` }]);
+    }
+    // Y por encima de la incertidumbre, un veto propio: si el residuo de calibración por sí solo explica la
+    // ventaja, la ventaja es nuestra y no del mercado. No se apuesta contra el propio error.
+    if (calPp > 0 && ev2.edge_pp != null && ev2.edge_pp <= calPp) {
+      ev2.pick = false;
+      ev2.no_pick_reasons = (ev2.no_pick_reasons || []).concat([{ code: 'ventaja_explicada_por_calibracion',
+        text: `la ventaja (${ev2.edge_pp} pp) no supera el error de calibración del modelo de rondas en ${Rrow && Rrow.map ? Rrow.map : 'este mapa'} (±${calPp} pp, residuo de ${Rrow && Rrow.calibration ? Rrow.calibration.rounds_residual : '?'} rondas): la diferencia con el mercado la puede producir entera nuestro propio ajuste` }]);
+    }
     const row = { ...ev2, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team,
+      calibration_pp: calPp,
       uncertainty_pp: uncF, uncertainty_kind: VOLUME_FAMILIES.has(r.family) ? 'perfil de la liga' : 'conocimiento del emparejamiento',
-      label: r.family_label, how: got.how, max_stake: r.max_stake };
+      label: r.family_label, how: got.how, max_stake: r.max_stake,
+      // de QUÉ casa sale el precio que se está recomendando, y contra cuántas se midió. Una pick sin casa es
+      // una pick que nadie puede tomar.
+      book: r.book || null, books_quoting: nBooks,
+      basis_measured: basis.measured, basis: basis.what };
     byKey.set(key, row);
   }
   for (const v of byKey.values()) out.push(v);
   out.sort((a, b) => (b.pick - a.pick) || (b.edge_pp - a.edge_pp));
+
+  // ── UNA OPINIÓN, UNA PICK ────────────────────────────────────────────────────────────────────────────
+  // LO QUE SE VIO AL TRAER LAS CASAS NUEVAS: un partido pasó a producir 29 "picks". No eran 29 opiniones.
+  // "menos de 20,5", "menos de 21,5" y "menos de 22,5 rondas en mirage" son LA MISMA apuesta a tres precios,
+  // y "el visitante saca más rondas" aparecía a la vez como hándicap de rondas, como total del local por
+  // debajo y como total del visitante por encima. Publicarlas como oportunidades separadas no es un problema
+  // de presentación: es cómo una cartera acaba con todo el riesgo en una sola idea creyendo que está
+  // diversificada, que es exactamente lo que hunde un histórico.
+  //
+  // Se agrupan por TESIS —la afirmación de fondo— y sale UNA sola pick por tesis: la de mejor ventaja. Las
+  // demás no se tiran, se cuelgan de ella como líneas alternativas del mismo argumento, que es información
+  // útil (dice a qué precios sigue vivo) sin fingir que son apuestas independientes.
+  const picksRaw = out.filter((x) => x.pick);
+  const byThesis = new Map();
+  for (const p of picksRaw) {
+    const t = thesisOf(p);
+    if (!byThesis.has(t)) byThesis.set(t, []);
+    byThesis.get(t).push(p);
+  }
+  const picks = [];
+  for (const [t, list] of byThesis) {
+    list.sort((a, b) => b.edge_pp - a.edge_pp);
+    const head = list[0];
+    head.thesis = t;
+    head.same_thesis = list.slice(1).map((x) => ({ line: x.line, side: x.side, team: x.team, odds: x.odds,
+      book: x.book, edge_pp: x.edge_pp, family: x.family }));
+    head.correlated_n = list.length - 1;
+    picks.push(head);
+    for (const x of list.slice(1)) { x.pick = false; x.thesis = t; x.folded_into = head.thesis; }
+  }
+  picks.sort((a, b) => b.edge_pp - a.edge_pp);
+
   return {
     rows: out,
-    picks: out.filter((x) => x.pick),
-    no_picks: out.filter((x) => !x.pick),
+    picks,
+    // las que se plegaron NO son "no picks" por falta de valor: son la misma pick a otro precio, y mezclarlas
+    // con los rechazos haría ilegible el motivo de cada hueco
+    folded: picksRaw.length - picks.length,
+    no_picks: out.filter((x) => !x.pick && !x.folded_into),
     families_allowed: [...PICK_FAMILIES],
     excluded: skipped,
     note: out.length ? null : 'la casa no tiene todavía mercados derivados abiertos para este partido; suelen abrir en las horas previas al inicio.',
   };
+}
+
+// LA TESIS DE UNA APUESTA: la afirmación de fondo, despojada de la línea y de la familia en la que se
+// expresa. Dos apuestas con la misma tesis están casi perfectamente correlacionadas aunque el mercado las
+// venda por separado, y esto es lo que las junta.
+//   · volumen  → "este mapa da muchas/pocas rondas (o kills)"
+//   · margen   → "este equipo saca más rondas (o kills) que el otro"
+//   · prórroga → "este mapa se alarga"
+// El caso que hay que ver para entenderlo: "local menos de 12,5 rondas" y "visitante más de 12,5 rondas" son
+// la MISMA tesis —que el visitante domina el mapa— vendidas como dos mercados distintos.
+function thesisOf(r) {
+  const m = r.map == null ? 'serie' : `mapa ${r.map}`;
+  const f = r.family;
+  if (f === 'RONDAS' || f === 'KILLS') return `${m} · volumen · ${r.side}`;
+  if (f === 'TOTAL_MAPAS') return `serie · duración · ${r.side}`;
+  if (f === 'RONDAS_EQUIPO' || f === 'KILLS_EQUIPO') {
+    const dir = (r.team === 'home') === (String(r.side) === 'over') ? 'local' : 'visitante';
+    return `${m} · margen · ${dir}`;
+  }
+  if (f === 'RONDAS_HANDICAP' || f === 'KILLS_HANDICAP' || f === 'KILLS_DNB') {
+    return `${m} · margen · ${r.side === 'home' ? 'local' : 'visitante'}`;
+  }
+  if (f === 'HANDICAP') return `serie · margen · ${r.side === 'home' ? 'local' : 'visitante'}`;
+  if (f === 'PRORROGA') return `${m} · prórroga · ${r.side}`;
+  return `${m} · ${f} · ${r.side}`;
 }
 
 // ---- 5) LA PIZARRA DE UN JUEGO (todas las oportunidades del día) ---------------------------------------
@@ -426,18 +666,21 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
   // dos segundos y medio y el proveedor no se molesta (el límite que sí importa es el 429 por ráfaga, y
   // cuatro en paralelo está muy por debajo). No se sube más por la lección de memoria del 15-ago: lo que
   // tumbó el proceso fueron tres trabajos concurrentes, no uno lento.
-  const BATCH = 4;
+  // Con tres casas cada partido cuesta hasta tres peticiones en vez de una, así que la tanda baja de cuatro
+  // a tres partidos: son las mismas ~nueve peticiones simultáneas de antes, repartidas entre proveedores
+  // distintos (que además no comparten límite de ráfaga entre ellos).
+  const BATCH = 3;
   const mkts = new Map();
   for (let i = 0; i < use.length; i += BATCH) {
     const chunk = use.slice(i, i + BATCH);
-    const got = await Promise.all(chunk.map((ev) => market(game, ev.provider_id).catch(() => null)));
-    chunk.forEach((ev, k) => mkts.set(ev.provider_id, got[k]));
+    const got = await Promise.all(chunk.map((ev) => market(game, ev).catch(() => null)));
+    chunk.forEach((ev, k) => mkts.set(ev.id, got[k]));
   }
 
   const items = [];
   for (const ev of use) {
-    const mk = mkts.get(ev.provider_id) || null;
-    const bo = boOf(mk, E.GAME.default_bo);
+    const mk = mkts.get(ev.id) || null;
+    const bo = boOf(mk, E.GAME.default_bo, ev);
     const rt = ratings(game);
     const sample = Math.min(rt.matches[ev.home.id] || 0, rt.matches[ev.away.id] || 0);
     let model = null;
@@ -446,14 +689,20 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
         teams: { a: ev.home.name, b: ev.away.name }, bo, sample, competition: ev.competition });
     } catch { model = null; }
     const edges = model ? evaluateAll({ game, model, mk, ev, bo, sample }) : null;
+    const arbs = mk ? BK.arbitrages(mk.markets || []) : [];
     items.push({
       event: ev, bo,
       p_home: model && model.probability ? model.probability.p : null,
       anchor: model && model.probability ? model.probability.source : null,
-      books: model && model.market ? model.market.books : 0,
+      books: mk ? mk.books : (ev.books || 0),
+      // las casas que de verdad DEVOLVIERON precio, no las que listaban el partido: una casa que lo tiene en
+      // la agenda pero ya cerró el mercado (porque el partido empezó) no está cotizando nada.
+      book_list: mk ? (mk.by_book || []).filter((b) => b.rows).map((b) => b.book) : (ev.sources || []).map((x) => x.book),
       markets_n: (mk && mk.markets) ? mk.markets.length : 0,
       picks: edges ? edges.picks.length : 0,
       best: edges && edges.picks.length ? edges.picks[0] : null,
+      arbitrages: arbs.length,
+      best_arb: arbs[0] || null,
       highlight: highlightOf(game, model),
     });
   }
@@ -464,6 +713,11 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     shown: use.length, total: evs.length,
     truncated: evs.length > use.length ? evs.length - use.length : 0,
     competitions: (s && s.competitions) || [],
+    // qué casas contestaron HOY. Un partido con una casa y uno con tres no valen lo mismo y la pizarra
+    // tiene que poder decirlo sin que el usuario abra la ficha.
+    sources: (s && s.sources) || [],
+    books: (s && s.books) || 0,
+    arbitrages: items.reduce((a, x) => a + x.arbitrages, 0),
     doctrine: PICK_DOCTRINE,
     at: new Date().toISOString(),
   };

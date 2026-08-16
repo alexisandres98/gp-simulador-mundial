@@ -14970,10 +14970,14 @@ const server = http.createServer(async (req, res) => {
           ok: true,
           engines: ES.GAME_ORDER,
           provider_key: !!process.env.CLOUDBET_API_KEY,
+          // desde el 16-ago hay TRES casas y saber cuál contestó es la primera pregunta de cualquier
+          // diagnóstico: una pizarra vacía con Pinnacle viva no es el mismo problema que una con las tres caídas
+          books: ov.books,
+          books_up: (ov.books || []).filter((b) => b.available).map((b) => b.book),
           public_flag: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true',
           closes_job: String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false',
           closes_dir: ES.DIR, closes_dir_persistent: ES.DIR.indexOf(__dirname) !== 0,
-          games: ov.games.map((g) => ({ game: g.game, events: g.events, competitions: g.competitions, closes: g.closes_stored, rating: g.rating_matches })),
+          games: ov.games.map((g) => ({ game: g.game, events: g.events, multibook: g.events_multibook, competitions: g.competitions, closes: g.closes_stored, rating: g.rating_matches })),
           ratings_state: ov.ratings_state,
           heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576),
         });

@@ -349,18 +349,89 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
 
   const impact = mapProbs ? vetoImpact(poolProbs, mapProbs, bo, { anchoredP: pSeries }) : null;
 
+  // ── EL PASO QUE FALTABA: LOS MAPAS SE ANCLAN AL MISMO SITIO QUE LA SERIE ──────────────────────────────
+  // ESTO SALIÓ A LA LUZ AL PODER COMPARAR CONTRA DOS CASAS, y es el fallo más caro que había en este motor.
+  //
+  // El modelo publicaba P(local gana la serie) = 0,539 —anclada al mercado, como manda la doctrina— y a la
+  // vez simulaba las rondas con la probabilidad por mapa SIN anclar, que decía 0,42-0,45. O sea: por delante
+  // decía que el favorito era el local y por dentro jugaba como si el favorito fuera el visitante. Todo
+  // mercado de MARGEN —hándicap de rondas, rondas por equipo— heredaba esa contradicción y salía con
+  // "ventajas" de 12 a 15 pp que no eran una opinión sobre la duración del mapa: eran la opinión sobre QUIÉN
+  // GANA colada por la puerta de atrás, que es justo el mercado donde esta casa tiene prohibido apostar
+  // porque ya midió allí sus pérdidas en otros dos deportes.
+  //
+  // La corrección: se desplazan los logits de los mapas por una constante para que su media reproduzca la
+  // probabilidad por mapa que implica la serie YA ANCLADA. La FORMA del veto se conserva entera —qué mapa le
+  // va mejor a cada equipo y por cuánto, que es la aportación real de la base propia—, pero el NIVEL lo pone
+  // el mercado. Así la estructura sigue siendo de GP y el ganador sigue siendo del mercado.
+  // El desplazamiento NO se calcula igualando la media de los logits a la probabilidad por mapa del mercado:
+  // eso es la aproximación obvia y NO basta. Un "mejor de 3" no es lineal —el mapa 3 solo se juega si hay
+  // 1-1, y el arrastre de racha ya mete su propia curvatura— así que igualar la media dejaba la serie
+  // simulada en 0,39 cuando la anclada decía 0,26, y ese hueco de 13 pp reaparecía como "ventaja" en el
+  // hándicap de mapas. Se resuelve el desplazamiento que hace que la serie SIMULADA valga exactamente lo que
+  // vale la serie ANCLADA, por bisección, que es lo mismo que ya hace el ancla de hándicap en core.js.
+  const lg = (p) => Math.log(p / (1 - p));
+  const sg = (x) => 1 / (1 + Math.exp(-x));
+  const shiftBy = (d) => mapProbs.map((m) => (m.p_a == null ? null : sg(lg(clampRound(m.p_a)) + d)));
+  let mapShift = 0;
+  if (mapProbs && mapProbs.length && pSeries != null && mapProbs.some((m) => m.p_a != null)) {
+    const serieAt = (d) => C.simulateSeries(0.5, bo, { perMap: shiftBy(d).filter((x) => x != null), n: 2500, seed: 8171 }).p_series_a;
+    let lo = -3.5, hi = 3.5;
+    if (serieAt(lo) < pSeries && serieAt(hi) > pSeries) {
+      for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (serieAt(mid) < pSeries) lo = mid; else hi = mid; }
+      mapShift = (lo + hi) / 2;
+    }
+  }
+  const anchorMap = (p) => (p == null || !mapShift ? p : C.r4(sg(lg(clampRound(p)) + mapShift)));
+  const mapProbsA = mapProbs ? mapProbs.map((m) => ({ ...m, p_a_model: m.p_a, p_a: anchorMap(m.p_a) })) : null;
+
   // ── RONDAS, CALIBRADAS CONTRA EL MAPA QUE SE VA A JUGAR ───────────────────────────────────────────────
   // Ya no es "el mapa medio de CS2": es el primer mapa probable del veto, con SU perfil medido y SU arrastre
   // económico ajustado para reproducir SU tasa de prórroga real.
   const firstMap = mapProbs && mapProbs.length ? mapProbs[0].map : (pool[0] || null);
   const profile = firstMap ? CD.mapProfile(firstMap, { data: store }) : null;
   const drag = calibrateDrag(profile);
-  const pRoundBase = mapProbs && mapProbs.length && mapProbs[0].p_a != null ? mapProbs[0].p_a : pMap;
+  const pRoundBase = mapProbsA && mapProbsA.length && mapProbsA[0].p_a != null ? mapProbsA[0].p_a : pMap;
   const rounds = pRoundBase != null ? {
     ...mapRounds(clampRound(pRoundBase), { eco: drag.eco }),
     map: firstMap, map_name: MAP_NAMES[firstMap] || cap(firstMap),
     calibration: drag, observed: profile,
     measured: !!(profile && profile.measured),
+  } : null;
+
+  // ── UNA DISTRIBUCIÓN POR MAPA DE LA SERIE, QUE ANTES NO HABÍA ────────────────────────────────────────
+  // ESTO SE AÑADIÓ PORQUE UN FALLO REAL QUEDÓ A LA VISTA AL TRAER LA SEGUNDA CASA. Cloudbet apenas cotizaba
+  // rondas por mapa, así que el motor devolvía UNA sola distribución —la del primer mapa probable del veto— y
+  // nadie lo notaba. Pinnacle cotiza el total de rondas del mapa 1, del 2 y del 3 por separado, y el precio
+  // salía idéntico en los tres: la misma probabilidad de GP repetida tres veces contra tres precios
+  // distintos, presentada como tres oportunidades. No lo eran. Era una opinión copiada.
+  //
+  // Cada mapa de la serie tiene SU mapa del pool (el veto los ordena), SU perfil medido —Nuke y Overpass no
+  // duran lo mismo—, SU arrastre económico calibrado a su prórroga real y SU reparto de fuerza. Aquí se
+  // calcula esa terna para cada mapa que el veto deja en pie, y `store.js` cotiza la línea del mapa N contra
+  // la distribución del mapa N. Cuando el veto no llega hasta ese mapa, la respuesta es "no hay", no la del
+  // mapa 1 disfrazada.
+  const roundsByMap = {};
+  if (mapProbsA && mapProbsA.length) {
+    mapProbsA.forEach((mp, i) => {
+      if (mp.p_a == null) return;
+      const prof = CD.mapProfile(mp.map, { data: store });
+      const d = calibrateDrag(prof);
+      roundsByMap[i + 1] = {
+        ...mapRounds(clampRound(mp.p_a), { eco: d.eco, seed: 23 + i * 101 }),
+        map: mp.map, map_name: MAP_NAMES[mp.map] || cap(mp.map),
+        order: i + 1, p_map_a: mp.p_a, p_map_a_model: mp.p_a_model,
+        calibration: d, observed: prof, measured: !!(prof && prof.measured),
+      };
+    });
+  }
+  // el desplazamiento se PUBLICA, no se esconde: es la diferencia entre lo que opina la base propia y lo que
+  // cotiza el mercado, y quien lea la ficha tiene derecho a ver cuánto se le ha corregido al modelo.
+  const mapAnchoring = mapProbs && mapProbs.length ? {
+    shift_logit: C.r3(mapShift),
+    p_map_market: pMap,
+    model_vs_market_pp: C.r2(100 * ((mapProbs.reduce((a, m) => a + (m.p_a || 0), 0) / mapProbs.length) - (pMap || 0))),
+    why: 'la FORMA del veto es de GP (qué mapa le va mejor a cada equipo); el NIVEL lo pone el mercado. Sin este anclaje, la opinión sobre quién gana se colaba en los mercados de margen —hándicap de rondas, rondas por equipo— y fabricaba ventajas de 12 a 15 pp que no eran sobre la duración del mapa.',
   } : null;
 
   // ── VENTANA DE SHOCK DE ROSTER (blueprint 2.0, módulo 8) ─────────────────────────────────────────────
@@ -384,12 +455,18 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
           detail: shock.map((r) => `${r.name}: ${r.stable_days} días con estos cinco`).join(' · ') }]) }
     : uncBase;
 
-  const sim = pMap != null ? C.simulateSeries(pMap, bo, { perMap: mapProbs ? mapProbs.map((m) => m.p_a) : null }) : null;
+  // LA SIMULACIÓN DE LA SERIE TAMBIÉN VA CON LOS MAPAS ANCLADOS, y no es un detalle: cuando se le pasa
+  // `perMap`, `simulateSeries` IGNORA `pMap` y manda la lista. Pasándole los mapas sin anclar, la
+  // distribución de marcadores salía de un partido distinto del que el modelo estaba publicando —serie
+  // anclada al 0,539 y marcadores simulados desde el 0,45— y de ahí salían solas las "ventajas" en total de
+  // mapas y en hándicap de mapas, que se leen de esa misma distribución.
+  const sim = pMap != null ? C.simulateSeries(pMap, bo, { perMap: mapProbsA ? mapProbsA.map((m) => m.p_a) : null }) : null;
 
   return {
     game: 'cs2', bo,
     probability: anchored, market: cons, market_anchor: anchor ? { from: anchor.from, family: anchor.family, direct: anchor.direct, p_map: anchor.p_map != null ? anchor.p_map : null } : null, simulation: sim,
-    veto, veto_impact: impact, rounds, economy: ECONOMY_MODEL,
+    veto, veto_impact: impact, rounds, rounds_by_map: roundsByMap, map_anchoring: mapAnchoring,
+    economy: ECONOMY_MODEL,
     // la ficha de cada equipo con su logo y su historial por mapa: es lo que da cara al producto
     teams: { a: cardA, b: cardB, resolved: !!(idA && idB) },
     matchup,

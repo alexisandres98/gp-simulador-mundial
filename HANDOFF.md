@@ -72,6 +72,15 @@ salen de familias derivadas (rondas, kills, totales, hándicaps).
 - **El menú "más" del móvil lleva su rama de esports desde el principio** — es el fallo que ya mordió a
   combate el 2-ago y a baloncesto el 16-ago por la mañana; no se repitió.
 
+### Verificado EN PRODUCCIÓN (deploy `81fc4ea`, 16-ago 12:57)
+`GET /api/internal/esports?key=$GP_EXPORT_KEY` — misma llave que `/llm` y `/shadow`, no sirve inteligencia
+ni picks, solo estado. Devuelve: los cuatro motores cargan, la clave del proveedor está, el trabajo de
+cierres corre, y la agenda real (CS2 9 partidas / 5 ligas, LoL 21 / 9, Valorant 4 / 1, Dota 2 sin agenda).
+- **Los cierres se escriben en `/data/esports` (disco persistente), no en el repo.** Se corrigió tras
+  desplegar: el directorio del repo se recrea en cada deploy y habría borrado el histórico justo cuando
+  empieza a acumularse. La ruta interna dice cuál de los dos está en uso (`closes_dir_persistent`).
+- El resto de la plataforma sigue sana (`/`, `/api/aciertos`, `/api/ticker` en 200).
+
 ### Lo que falta en esports (por orden de valor)
 1. **Una fuente de resultados.** OpenDota (público) y la API de Riot son las dos primeras y no necesitan
    permiso comercial. Sin esto no hay rating propio, ni liquidación, ni ROI que enseñar.

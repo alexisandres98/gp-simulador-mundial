@@ -247,8 +247,9 @@ function whatMatters({ anchored, veto, mapProbs, unc, bo, rounds, cardA, cardB }
   }
   if (cardA && cardB && cardA.maps.length && cardB.maps.length) {
     const ba = cardA.maps[0], bb = cardB.maps[0];
-    out.push({ rank: out.length + 1, pp: null, driver: 'historial',
-      text: `${cardA.name} es más fuerte en ${MAP_NAMES[ba.map] || ba.map} (${Math.round(100 * ba.wr)} % en ${ba.n} mapas) y ${cardB.name} en ${MAP_NAMES[bb.map] || bb.map} (${Math.round(100 * bb.wr)} % en ${bb.n}).` });
+    const pct = (x) => (x > 0 ? '+' : '') + Math.round(1000 * x) / 10;
+    out.push({ rank: out.length + 1, pp: null, driver: 'efecto de mapa',
+      text: `Sobre su propio nivel, ${cardA.name} rinde ${pct(ba.effect || 0)} pp en ${MAP_NAMES[ba.map] || ba.map} (${ba.n} mapas) y ${cardB.name} ${pct(bb.effect || 0)} pp en ${MAP_NAMES[bb.map] || bb.map} (${bb.n}). El mapa corrige la fuerza global, no la sustituye.` });
   }
   if (veto && veto.shift_pp != null && Math.abs(veto.shift_pp) >= 1) {
     out.push({ rank: out.length + 1, pp: veto.shift_pp,
@@ -305,6 +306,7 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
   const cardB = idB ? CD.teamCard(idB, { data: store }) : null;
   const pool = (store.pool && store.pool.length ? store.pool : MAP_POOL.map((m) => m.key));
 
+  const globalStrength = (idA && idB) ? CD.globalStrength(idA, idB, { data: store }) : null;
   let strength = (ratings && ratings.map_strength) || null;
   let matchup = null;
   if (!strength && idA && idB) {
@@ -374,6 +376,10 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
     // la ficha de cada equipo con su logo y su historial por mapa: es lo que da cara al producto
     teams: { a: cardA, b: cardB, resolved: !!(idA && idB) },
     matchup,
+    // LA BASE GLOBAL, que ahora es la cifra principal del modelo: qué diría GP si ignorara el mapa. Se
+    // publica al lado del ajuste por mapa para que se vea cuánto aporta cada parte.
+    global_strength: globalStrength,
+    model: MODEL_CARD,
     // el bloque de "modelo propio": de dónde salió la probabilidad y con qué peso
     model_probability: modelP != null ? {
       p: C.r4(modelP),
@@ -394,6 +400,48 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
     native: GAME.native, edge_families: GAME.edge_families,
   };
 }
+// ── FICHA DEL MODELO (P0.9 del blueprint 2.0) ────────────────────────────────────────────────────────────
+// Cada constante declarada con su ESTADO: aprendida contra datos, convención, doctrina de la casa o
+// experimental. El blueprint lo pide porque una constante sin etiqueta se lee como si estuviera medida, y la
+// mayoría no lo están. Esto viaja en la respuesta de la API y se enseña en la interfaz.
+const MODEL_CARD = {
+  version: 'cs2-hier-cal-1',
+  family: 'jerárquico calibrado — Elo global + corrección por mapa encogida',
+  validated: {
+    method: 'walk-forward con punto en el tiempo estricto; ajuste en 2024-2025 y confirmación en 2026 sin volver a tocar',
+    window: '2024-01-09 → 2026-08-16 · 48.678 mapas · 40.432 puntuados',
+    confirmation: { maps: 14297, brier_skill_pct: 7.28, auc: 0.652, ece: 0.0081, calibration_slope: 0.999, logloss: 0.6554 },
+    beats: [
+      { name: 'moneda (0,5)', brier_skill_pct: 0 },
+      { name: 'Elo global', brier_skill_pct: 6.88 },
+      { name: 'Elo por mapa', brier_skill_pct: 3.04 },
+      { name: 'tasa por mapa', brier_skill_pct: 1.00 },
+      { name: 'modelo anterior de GP', brier_skill_pct: 2.12 },
+    ],
+    market_baseline: 'NO DISPONIBLE — GP no tiene histórico de cuotas de CS2. Es la comparación que falta y la que decide si alguna familia merece picks públicas.',
+  },
+  constants: [
+    { key: 'LAMBDA', value: 1.6, status: 'aprendida', note: 'peso del efecto de mapa sobre el logit; meseta plana entre 1,2 y 2,6' },
+    { key: 'CAL_SLOPE', value: 0.873, status: 'aprendida', note: 'corrige la sobreconfianza; lleva la pendiente de 0,88 a 0,999' },
+    { key: 'MAP_EFFECT_PRIOR', value: 20, status: 'aprendida', note: 'encogimiento del efecto de mapa por muestra' },
+    { key: 'HALF_LIFE_DAYS', value: 180, status: 'convención', note: 'decaimiento del historial; no se barrió' },
+    { key: 'PRIOR_MAPS', value: 12, status: 'convención', note: 'encogimiento de la tasa hacia el 50 %' },
+    { key: 'TIER_W', value: 's 1,00 · a 0,95 · b 0,80 · c 0,50 · d 0,35', status: 'convención', note: 'peso por calidad del torneo' },
+    { key: 'ELO K', value: 26, status: 'convención', note: 'con corrección logarítmica por margen de rondas' },
+    { key: 'coeficiente de veto', value: 6, status: 'experimental', note: 'SIN histórico de vetos: es una forma supuesta, no un ajuste' },
+    { key: 'ECO_DRAG por mapa', value: 'bisección', status: 'aprendida', note: 'ajustado para reproducir la prórroga real de cada mapa' },
+    { key: 'momentum de serie', value: 0.06, status: 'experimental', note: 'el blueprint 2.0 pide sustituirlo por correlación aprendida' },
+    { key: 'peso propio máximo', value: 0.45, status: 'doctrina', note: 'el mercado nunca pierde la voz en el ganador' },
+    { key: 'listón de ventaja', value: '3 pp (+2,5 con una sola casa)', status: 'doctrina', note: 'no aprendido por familia todavía' },
+  ],
+  pending: [
+    'baseline de mercado y CLV: hace falta histórico de cuotas de CS2',
+    'histórico de vetos reales para sustituir el coeficiente supuesto',
+    'roster: el modelo todavía no sabe si un equipo cambió de jugador ayer',
+    'datos de ronda (demos) para economía, lados T/CT y jugadores',
+  ],
+};
+
 const cap = (s) => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
 const MAP_NAMES = { mirage: 'Mirage', inferno: 'Inferno', nuke: 'Nuke', ancient: 'Ancient', dust2: 'Dust II', anubis: 'Anubis', train: 'Train', overpass: 'Overpass', cache: 'Cache', vertigo: 'Vertigo' };
 // la probabilidad de RONDA no es la de mapa: un 60 % de mapa es ~53 % de ronda. Se comprime hacia el centro.

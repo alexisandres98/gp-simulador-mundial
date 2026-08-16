@@ -14901,9 +14901,18 @@ const server = http.createServer(async (req, res) => {
           // la ficha del motor de un juego: qué es propio suyo, qué familias cotiza y dónde puede aportar
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
           const E = ES.ENGINES[gm];
+          // la ficha del modelo (P0.9) viaja aquí para que se pueda auditar sin abrir una partida
+          let card = null, dataset = null;
+          if (gm === 'cs2') {
+            try {
+              const probe = E.analyze({ market: { markets: [] }, ratings: {}, bo: 3, teams: null });
+              card = probe.model || null; dataset = probe.dataset || null;
+            } catch { /* la ficha es informativa: si falla, no tumba la ruta */ }
+          }
           return json(res, 200, {
             game: gm, ...E.GAME,
             pick_families: [...ES.PICK_FAMILIES], doctrine: ES.PICK_DOCTRINE,
+            model_card: card, dataset,
             rating: ES.ratings(gm), closes_stored: ES.closesCount(gm),
           });
         }

@@ -8429,19 +8429,25 @@
       .slice().sort(function (a, b) { return b.p_a - a.p_a; });
     if (!rows.length) return '';
     return esPanel('Quién manda en cada mapa', '<span class="gx-dim">medido sobre el histórico propio</span>',
+      // LA MARCA DE LA BASE es lo importante de este gráfico: la línea vertical no está en el 50 % sino en
+      // lo que el modelo diría IGNORANDO el mapa. Así la barra no mide "quién es mejor" —eso ya lo dice la
+      // base— sino cuánto mueve ESTE mapa, que es la única pregunta que el tablero de veto contesta.
       '<div class="gx-cs-spine">' + rows.map(function (x) {
-        var pct = 100 * x.p_a;
+        var pct = 100 * x.p_a, base = x.p_base != null ? 100 * x.p_base : 50;
+        var sh = x.shift_pp != null ? x.shift_pp : 0;
         return '<div class="gx-cs-sp">' +
           '<span class="gx-cs-sp-n">' + cs2MapArt(x.map, 'mini') + esc(cs2Name(x.map)) + '</span>' +
           '<div class="gx-cs-sp-bar"><i class="a" style="width:' + pct.toFixed(1) + '%"></i>' +
-            '<u style="left:50%"></u></div>' +
+            '<u style="left:' + base.toFixed(1) + '%" title="lo que diría el modelo sin mirar el mapa"></u></div>' +
           '<span class="gx-cs-sp-v ' + (x.p_a >= 0.5 ? 'up' : 'dn') + '">' + Math.round(pct) + '%</span>' +
-          '<span class="gx-cs-sp-s">' + (x.wr_a != null ? Math.round(100 * x.wr_a) + '%' : '—') + ' · ' +
-            (x.wr_b != null ? Math.round(100 * x.wr_b) + '%' : '—') + '</span>' +
+          '<span class="gx-cs-sp-s ' + (sh > 0 ? 'up' : sh < 0 ? 'dn' : '') + '">' + (sh > 0 ? '+' : '') + sh.toFixed(1) + ' pp</span>' +
         '</div>';
       }).join('') + '</div>' +
+      (rows[0] && rows[0].p_base != null
+        ? '<div class="gx-cs-baseline"><span>Fuerza global del emparejamiento</span><b>' + Math.round(100 * rows[0].p_base) + '%</b>' +
+          '<span class="gx-dim">la marca vertical de cada barra. Lo que sobra o falta es lo que aporta el mapa.</span></div>' : '') +
       '<div class="gx-cs-legend"><span>' + esc(ev.home.name) + '</span><span class="gx-spacer"></span><span>' + esc(ev.away.name) + '</span></div>' +
-      '<div class="gx-dim gx-es-note">La barra es la probabilidad de que ' + esc(ev.home.name) + ' gane ese mapa; a la derecha, la tasa de victoria histórica de cada uno por separado.</div>',
+      '<div class="gx-dim gx-es-note">La columna de la derecha es cuánto mueve cada mapa sobre la fuerza global, en puntos porcentuales. Un equipo puede ser mejor y aun así perder terreno en un mapa concreto.</div>',
       'gx-cs-ladder');
   }
 
@@ -8506,6 +8512,44 @@
       'gx-cs-teams');
   }
 
+  // ── 6 bis) FICHA DEL MODELO (P0.9 del blueprint 2.0) ──────────────────────────────────────────────────
+  // Qué modelo es, cómo se validó, contra qué alternativas gana, y CADA constante con su estado: aprendida
+  // contra datos, convención, doctrina o experimental. Una constante sin etiqueta se lee como si estuviera
+  // medida, y la mayoría no lo están.
+  var CS_STATUS = { aprendida: 'ap', convención: 'cv', doctrina: 'dc', experimental: 'ex' };
+  function cs2Model(d) {
+    var M = (d.model || {}).model; if (!M) return '';
+    var v = M.validated || {}, c = v.confirmation || {};
+    return esPanel('El modelo, y cómo se validó',
+      '<span class="gx-mono">' + esc(M.version) + '</span>',
+      '<div class="gx-es-lead">' + esc(M.family) + '</div>' +
+      '<div class="gx-es-kpis">' +
+        '<div><span>Skill de Brier</span><b>' + c.brier_skill_pct + '%</b></div>' +
+        '<div><span>AUC</span><b>' + c.auc + '</b></div>' +
+        '<div><span>ECE</span><b>' + c.ece + '</b></div>' +
+        '<div><span>Pendiente</span><b>' + c.calibration_slope + '</b></div>' +
+        '<div><span>Mapas de confirmación</span><b>' + (c.maps || 0).toLocaleString('es') + '</b></div>' +
+      '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc(v.method || '') + ' · ' + esc(v.window || '') + '</div>' +
+      '<table class="gx-t gx-es-t"><thead><tr><th>Contra qué se comparó</th><th class="r">Skill de Brier</th></tr></thead><tbody>' +
+      (v.beats || []).map(function (b) {
+        var win = b.brier_skill_pct < c.brier_skill_pct;
+        return '<tr><td>' + esc(b.name) + '</td><td class="r gx-mono ' + (win ? 'gx-dim' : 'gx-up') + '">' + b.brier_skill_pct + '%</td></tr>';
+      }).join('') +
+      '<tr class="pick"><td><b>este modelo</b></td><td class="r gx-mono gx-up"><b>' + c.brier_skill_pct + '%</b></td></tr>' +
+      '</tbody></table>' +
+      '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(v.market_baseline || '') + '</span></div>' +
+      '<div class="gx-cs-consts">' + (M.constants || []).map(function (k) {
+        return '<div class="gx-cs-const ' + esc(CS_STATUS[k.status] || 'cv') + '">' +
+          '<b>' + esc(k.key) + '</b><em>' + esc(String(k.value)) + '</em>' +
+          '<span class="tag">' + esc(k.status) + '</span>' +
+          '<span class="note">' + esc(k.note) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-cs-pending"><span class="gx-label">Lo que falta para cerrar el modelo</span><ul>' +
+      (M.pending || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>',
+      'gx-cs-modelp');
+  }
+
   // ── 6) LA PROCEDENCIA DEL CONJUNTO DE DATOS ────────────────────────────────────────────────────────────
   function cs2Dataset(d) {
     var ds = (d.model || {}).dataset; if (!ds) return '';
@@ -8539,7 +8583,7 @@
     // observado. Los otros tres juegos siguen con la vista genérica hasta que tengan su propia base.
     if (g === 'cs2') {
       var csHead = cs2Hero(d);
-      blocks = [cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Dataset(d)];
+      blocks = [cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d), cs2Dataset(d)];
       var edgesC = esEdges(d);
       esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + blocks.filter(Boolean).join('') + esProv(d));
       return;

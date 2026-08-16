@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'cs2');
-const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'meta.json'];
+const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'team-global.json', 'meta.json'];
 
 const G = global._cs2data = global._cs2data || { at: 0, stamp: '', data: null };
 
@@ -32,11 +32,13 @@ function load() {
   const s = stamp();
   if (G.data && G.stamp === s && Date.now() - G.at < 10 * 60e3) return G.data;
   const maps = rd('maps.json'), teams = rd('teams.json'), tm = rd('team-maps.json'), meta = rd('meta.json');
+  const tg = rd('team-global.json');
   const data = {
     available: !!(maps && maps.maps && tm && tm.teams),
     maps: (maps && maps.maps) || {},
     teams: (teams && teams.teams) || {},
     teamMaps: (tm && tm.teams) || {},
+    teamGlobal: (tg && tg.teams) || {},
     meta: meta || null,
     at: (meta && meta.at) || null,
   };
@@ -116,36 +118,83 @@ function resolveTeam(name, { data = load() } = {}) {
 //   · Tasa de victoria encogida: directa, pero no sabe contra quién se ganó.
 // Cuando una de las dos falta, manda la otra; cuando faltan las dos, el mapa se declara SIN DATOS en vez de
 // devolver 0,5 disfrazado de estimación.
+// ═══ EL MODELO JERÁRQUICO CALIBRADO ═══════════════════════════════════════════════════════════════════
+// ESTE BLOQUE SE REESCRIBIÓ ENTERO PORQUE LA VALIDACIÓN DIJO QUE LA VERSIÓN ANTERIOR ESTABA MAL.
+//
+// La versión anterior mezclaba un Elo POR MAPA con una tasa de victoria por mapa. Sonaba razonable —"en CS2
+// un equipo puede ser top en Mirage y flojo en Nuke"— y era lo que este archivo argumentaba con toda
+// confianza. La validación walk-forward sobre 40.432 mapas, con punto en el tiempo estricto, la desmontó:
+//
+//     predictor            skill de Brier      AUC
+//     elo_global                  6,88 %      0,649     ← un solo Elo por equipo, ignorando el mapa
+//     elo_mapa                    3,04 %      0,600     ← el Elo por mapa
+//     wr_mapa                     1,00 %      0,577
+//     modelo anterior (gp)        2,12 %      0,589     ← lo que servía producción
+//     jerárquico calibrado        7,28 %      0,652     ← este
+//
+// La lectura: el efecto de mapa EXISTE pero es pequeño, y tratarlo como un rating independiente parte el
+// historial del equipo en siete trozos. El ruido que añade esa partición se come la señal y deja el modelo
+// por debajo de ignorar el mapa por completo. La respuesta correcta no es tirar el mapa: es dejar de
+// tratarlo como rating y usarlo como CORRECCIÓN sobre la fuerza global.
+//
+//     logit(p) = CAL_SLOPE × [ logit(p_elo_global) + LAMBDA × (efecto_A − efecto_B) ]
+//
+// LAMBDA y el encogimiento del efecto se ajustaron en la ventana interna (2024-2025) y se confirmaron en
+// 2026 sin volver a tocarlos. CAL_SLOPE corrige la sobreconfianza: sin él la pendiente de calibración era
+// 0,88 (cuando decía 70 % la realidad era 67 %); con él es 0,999 y el ECE baja de 0,0165 a 0,0081.
 const ELO_SCALE = 400;
+const LAMBDA = 1.6;          // peso del efecto de mapa sobre el logit  (ajustado, meseta 1,2-2,6)
+const CAL_SLOPE = 0.873;     // corrección de sobreconfianza            (ajustado)
+const MODEL_VERSION = 'cs2-hier-cal-1';
+
 function matchupMaps(idA, idB, { data = load(), pool = null } = {}) {
   const A = data.teamMaps[idA], B = data.teamMaps[idB];
+  const GA = data.teamGlobal[idA], GB = data.teamGlobal[idB];
   const list = pool || data.pool;
+
+  // BASE: la fuerza global del par. Es lo que de verdad predice.
+  let pBase = null;
+  if (GA && GB && GA.elo != null && GB.elo != null) pBase = 1 / (1 + Math.pow(10, (GB.elo - GA.elo) / ELO_SCALE));
+  else if (GA && GB) pBase = clamp01(0.5 + (GA.wr - GB.wr));
+
   const out = [];
   for (const m of list) {
     const a = A && A.maps[m], b = B && B.maps[m];
     const info = data.maps[m] || null;
-    if (!a && !b) { out.push({ map: m, p_a: null, why: 'ninguno de los dos tiene historial en este mapa', n_a: 0, n_b: 0, info }); continue; }
-    let pElo = null;
-    if (a && a.elo != null && b && b.elo != null) pElo = 1 / (1 + Math.pow(10, (b.elo - a.elo) / ELO_SCALE));
-    let pWr = null;
-    if (a && b) pWr = clamp01(0.5 + (a.wr - b.wr));                 // dos tasas encogidas → diferencia
-    else if (a) pWr = clamp01(0.5 + (a.wr - 0.5) * 0.8);            // solo uno: se cree menos
-    else if (b) pWr = clamp01(0.5 - (b.wr - 0.5) * 0.8);
-    // el Elo pesa más cuanto más muestra hay detrás de los dos
-    const nMin = Math.min((a && a.n) || 0, (b && b.n) || 0);
-    const wElo = pElo == null ? 0 : Math.min(0.65, nMin / (nMin + 14));
-    const p = pElo == null ? pWr : (pWr == null ? pElo : pElo * wElo + pWr * (1 - wElo));
+    if (pBase == null) {
+      out.push({ map: m, p_a: null, why: 'sin fuerza global de alguno de los dos equipos', n_a: (a && a.n) || 0, n_b: (b && b.n) || 0, info });
+      continue;
+    }
+    const ea = a && a.effect != null ? a.effect : 0;
+    const eb = b && b.effect != null ? b.effect : 0;
+    const lg = Math.log(pBase / (1 - pBase)) + LAMBDA * (ea - eb);
+    const p = 1 / (1 + Math.exp(-lg * CAL_SLOPE));
     out.push({
-      map: m, p_a: r3(clamp(p, 0.12, 0.88)),
+      map: m, p_a: r3(clamp(p, 0.10, 0.90)),
+      p_base: r3(pBase),                                   // qué diría el modelo si ignorara el mapa
+      shift_pp: r3(100 * (p - pBase)),                      // cuánto aporta ESTE mapa, en puntos
       n_a: (a && a.n) || 0, n_b: (b && b.n) || 0,
       wr_a: a ? a.wr : null, wr_b: b ? b.wr : null,
+      effect_a: a ? a.effect : null, effect_b: b ? b.effect : null,
       rd_a: a ? a.rd : null, rd_b: b ? b.rd : null,
       elo_a: a ? a.elo : null, elo_b: b ? b.elo : null,
-      w_elo: r3(wElo),
       info,
     });
   }
   return out;
+}
+
+// La fuerza global del par, que ahora es la cifra principal del modelo y merece salir sola.
+function globalStrength(idA, idB, { data = load() } = {}) {
+  const GA = data.teamGlobal[idA], GB = data.teamGlobal[idB];
+  if (!GA || !GB) return null;
+  const p = GA.elo != null && GB.elo != null
+    ? 1 / (1 + Math.pow(10, (GB.elo - GA.elo) / ELO_SCALE))
+    : clamp01(0.5 + (GA.wr - GB.wr));
+  return {
+    p_map_base: r3(p), elo_a: GA.elo, elo_b: GB.elo, wr_a: GA.wr, wr_b: GB.wr,
+    n_a: GA.n, n_b: GB.n, model_version: MODEL_VERSION,
+  };
 }
 
 // ---- perfil de ronda de un mapa (lo que sustituye a las constantes inventadas) ---------------------------
@@ -172,13 +221,17 @@ function mapProfile(mapKey, { data = load() } = {}) {
 
 function teamCard(id, { data = load() } = {}) {
   const t = data.teams[id]; if (!t) return null;
-  const tm = data.teamMaps[id];
-  const maps = tm ? Object.entries(tm.maps).map(([k, v]) => ({ map: k, ...v })).sort((a, b) => b.wr - a.wr) : [];
-  return { ...t, maps, n: tm ? tm.n : 0 };
+  const tm = data.teamMaps[id], g = data.teamGlobal[id];
+  // se ordena por EFECTO, no por tasa bruta: lo interesante de un equipo no es dónde gana más —eso lo
+  // arrastra su nivel general— sino dónde gana más DE LO QUE LE TOCARÍA por su nivel.
+  const maps = tm ? Object.entries(tm.maps).map(([k, v]) => ({ map: k, ...v }))
+    .sort((a, b) => (b.effect ?? 0) - (a.effect ?? 0)) : [];
+  return { ...t, maps, n: tm ? tm.n : 0, elo: g ? g.elo : null, wr: g ? g.wr : null };
 }
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const clamp01 = (x) => clamp(x, 0, 1);
 const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
 
-module.exports = { load, resolveTeam, matchupMaps, mapProfile, teamCard, poolOf, norm, DIR };
+module.exports = { load, resolveTeam, matchupMaps, globalStrength, mapProfile, teamCard, poolOf, norm, DIR,
+  LAMBDA, CAL_SLOPE, ELO_SCALE, MODEL_VERSION };

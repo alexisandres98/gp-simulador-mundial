@@ -2751,3 +2751,27 @@ td .gx-calc-btn span { display: none; }
 /* el panel de mercado vacío no debe ocupar media pantalla por encima del tablero de veto */
 .gx-es-edges .gx-empty{padding:16px 14px}
 .gx-es-edges .gx-empty .gx-illo{display:none}
+
+/* ── FICHA DEL MODELO + ESCALERA CON BASE (blueprint 2.0, P0.9 y módulo 9) ──────────────────────────── */
+.gx-cs-sp-s.up{color:var(--gx-accent,#1FE3A4)} .gx-cs-sp-s.dn{color:#FF7A7A}
+.gx-cs-baseline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:9px 11px;margin:4px 0 8px;
+  border:1px dashed var(--gx-line2);border-radius:9px}
+.gx-cs-baseline b{font-size:17px;font-variant-numeric:tabular-nums;color:var(--gx-accent,#1FE3A4)}
+.gx-cs-baseline>span:first-child{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--gx-text4)}
+.gx-cs-baseline .gx-dim{font-size:10.5px;flex:1 1 220px}
+.gx-cs-warn{display:flex;gap:8px;align-items:flex-start;font-size:11px;line-height:1.5;color:#E8C46A;
+  border:1px solid rgba(232,196,106,.28);background:rgba(232,196,106,.05);border-radius:9px;padding:9px 11px;margin:11px 0}
+.gx-cs-consts{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:8px;margin-top:12px}
+.gx-cs-const{border:1px solid var(--gx-line);border-left-width:3px;border-radius:9px;padding:8px 10px;background:var(--gx-panel2)}
+.gx-cs-const.ap{border-left-color:var(--gx-accent,#1FE3A4)}      /* aprendida contra datos */
+.gx-cs-const.cv{border-left-color:rgba(255,255,255,.22)}          /* convención */
+.gx-cs-const.dc{border-left-color:#6AA8E8}                        /* doctrina de la casa */
+.gx-cs-const.ex{border-left-color:#E8C46A}                        /* experimental / supuesto */
+.gx-cs-const b{font-size:11.5px;font-family:var(--gx-mono);display:block}
+.gx-cs-const em{font-style:normal;font-size:13px;font-variant-numeric:tabular-nums;display:block;margin:2px 0 3px}
+.gx-cs-const .tag{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gx-text4)}
+.gx-cs-const .note{display:block;font-size:10px;color:var(--gx-text4);line-height:1.45;margin-top:4px}
+.gx-cs-pending{margin-top:13px;padding-top:11px;border-top:1px solid var(--gx-line)}
+.gx-cs-pending ul{margin:7px 0 0;padding-left:18px}
+.gx-cs-pending li{font-size:11.5px;color:var(--gx-text3);line-height:1.55;margin-bottom:3px}
+@media (max-width:760px){ .gx-cs-consts{grid-template-columns:1fr} }

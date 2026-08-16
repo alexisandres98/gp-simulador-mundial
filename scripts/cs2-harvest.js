@@ -105,6 +105,9 @@ const HALF_LIFE_DAYS = 180;          // un partido de hace medio año pesa la mi
 const PRIOR_MAPS = 12;               // encogimiento: con 3 mapas no hay "fuerza en Nuke", hay una anécdota
 const TIER_W = { s: 1.0, a: 0.95, b: 0.8, c: 0.5, d: 0.35 };
 const RECENT_DAYS = 100;             // ventana para deducir el pool activo y el ritmo del parche en curso
+const MAP_EFFECT_PRIOR = 20;         // encogimiento del efecto de mapa (ajustado en la ventana interna
+                                     // y confirmado en 2026 sin tocar: ver scripts/cs2-validate.js)
+const C_eloExp = (a, b) => 1 / (1 + Math.pow(10, (b - a) / 400));
 
 function decay(at, now) {
   const d = (now - Date.parse(at || 0)) / 864e5;
@@ -156,7 +159,9 @@ function aggregate({ teams, matches, games }) {
 
   const mapStats = {};        // mapa → distribución de rondas, prórroga, ventaja del que elige
   const teamMap = {};         // equipo → mapa → jugados/ganados/rondas
-  const elo = {};             // equipo → mapa → Elo propio
+  const teamAll = {};         // equipo → acumulador GLOBAL (todos los mapas juntos)
+  const elo = {};             // equipo → mapa → Elo por mapa (diagnóstico)
+  const eloAll = {};          // equipo → Elo GLOBAL ← la columna vertebral del modelo validado
   const ELO0 = 1500, K = 26;
   let matched = 0, unmatched = 0;
 
@@ -210,18 +215,28 @@ function aggregate({ teams, matches, games }) {
       const E = T[g.map] = T[g.map] || { n: 0, w: 0, wn: 0, ww: 0, rf: 0, ra: 0, last: null };
       E.n++; E.w += won; E.wn += wt; E.ww += wt * won; E.rf += rf; E.ra += ra;
       if (!E.last || String(g.at) > String(E.last)) E.last = g.at;
+      const G = teamAll[id] = teamAll[id] || { n: 0, w: 0, wn: 0, ww: 0, last: null };
+      G.n++; G.w += won; G.wn += wt; G.ww += wt * won;
+      if (!G.last || String(g.at) > String(G.last)) G.last = g.at;
     }
 
-    // --- Elo POR MAPA (no un Elo global: en CS2 un equipo puede ser top en Mirage y malo en Nuke) ---
+    // --- ELO ---
+    // El Elo por mapa se conserva como DIAGNÓSTICO, no como motor. La validación walk-forward demostró que
+    // predice peor que el global (3,04 % de skill frente a 6,88 %): partir el historial de un equipo en
+    // siete mapas deja cada trozo con un séptimo de la muestra y el ruido se come la señal específica.
     const ew = elo[w] = elo[w] || {}, el = elo[l] = elo[l] || {};
     ew[g.map] = ew[g.map] != null ? ew[g.map] : ELO0;
     el[g.map] = el[g.map] != null ? el[g.map] : ELO0;
-    const exp = 1 / (1 + Math.pow(10, (el[g.map] - ew[g.map]) / 400));
     // el margen de rondas informa: ganar 13-2 dice más que ganar 13-11
     const margin = Math.min(1.5, 1 + Math.log1p(Math.abs(g.w_score - g.l_score)) / 4);
     const k = K * tierW * margin;
-    ew[g.map] += k * (1 - exp);
-    el[g.map] -= k * (1 - exp);
+    const expM = C_eloExp(ew[g.map], el[g.map]);
+    ew[g.map] += k * (1 - expM); el[g.map] -= k * (1 - expM);
+    // ELO GLOBAL: la columna vertebral del modelo validado.
+    eloAll[w] = eloAll[w] != null ? eloAll[w] : ELO0;
+    eloAll[l] = eloAll[l] != null ? eloAll[l] : ELO0;
+    const expA = C_eloExp(eloAll[w], eloAll[l]);
+    eloAll[w] += k * (1 - expA); eloAll[l] -= k * (1 - expA);
   }
 
   // --- cierre de los agregados de mapa ---
@@ -249,25 +264,42 @@ function aggregate({ teams, matches, games }) {
     };
   }
 
-  // --- fuerza por mapa por equipo, encogida hacia el 50 % ---
+  // --- FUERZA GLOBAL Y EFECTO DE MAPA (el modelo validado del blueprint 2.0, módulo 9) ---
+  // El mapa deja de ser un rating independiente y pasa a ser una CORRECCIÓN sobre la fuerza global del
+  // equipo, encogida por su propia muestra. La validación walk-forward lo zanjó: el jerárquico calibrado
+  // da 7,28 % de skill de Brier sobre 2026 sin tocar, contra el 2,12 % del modelo anterior.
+  const shrunk = (ww, wn, nn) => {
+    const pbar = wn / Math.max(1, nn);
+    const v = (ww + PRIOR_MAPS * 0.5 * pbar) / (wn + PRIOR_MAPS * pbar);
+    return Number.isFinite(v) ? v : 0.5;
+  };
+  const teamGlobal = {};
+  for (const [id, G] of Object.entries(teamAll)) {
+    teamGlobal[id] = { n: G.n, wr: r3(shrunk(G.ww, G.wn, G.n)), elo: eloAll[id] != null ? r2(eloAll[id]) : null, last: G.last };
+  }
+
   const teamMaps = {};
   for (const [id, byMap] of Object.entries(teamMap)) {
     const o = {};
     let tot = 0;
+    const wrGlobal = teamGlobal[id] ? teamGlobal[id].wr : 0.5;
     for (const [m, E] of Object.entries(byMap)) {
-      const wr = (E.ww + PRIOR_MAPS * 0.5 * (E.wn / Math.max(1, E.n))) / (E.wn + PRIOR_MAPS * (E.wn / Math.max(1, E.n)));
+      const wr = shrunk(E.ww, E.wn, E.n);
       o[m] = {
-        n: E.n, w: E.w, raw_wr: r3(E.w / E.n), wr: r3(Number.isFinite(wr) ? wr : 0.5),
-        rd: r2((E.rf - E.ra) / E.n),                        // diferencia media de rondas: la señal fina
+        n: E.n, w: E.w, raw_wr: r3(E.w / E.n), wr: r3(wr),
+        // EFECTO DE MAPA: cuánto mejor o peor es este equipo en ESTE mapa que en su propio promedio,
+        // encogido por la muestra del mapa. Con tres mapas en Nuke el efecto es casi cero; con cuarenta, suyo.
+        effect: r3((wr - wrGlobal) * (E.n / (E.n + MAP_EFFECT_PRIOR))),
+        rd: r2((E.rf - E.ra) / E.n),
         last: E.last, elo: elo[id] && elo[id][m] != null ? r2(elo[id][m]) : null,
       };
       tot += E.n;
     }
-    if (tot >= 5) teamMaps[id] = { maps: o, n: tot };
+    if (tot >= 5) teamMaps[id] = { maps: o, n: tot, wr: wrGlobal, elo: teamGlobal[id] ? teamGlobal[id].elo : null };
   }
 
   return {
-    maps, teamMaps,
+    maps, teamMaps, teamGlobal,
     coverage: { games: rows.length, matched, unmatched, teams: Object.keys(teamMaps).length, maps: Object.keys(maps).length },
   };
 }
@@ -283,16 +315,19 @@ function writeAggregates(teams, agg) {
   wrAgg('teams.json', { teams: slim, at: new Date().toISOString(), n: Object.keys(slim).length });
   wrAgg('maps.json', { maps: agg.maps, at: new Date().toISOString() });
   wrAgg('team-maps.json', { teams: agg.teamMaps, at: new Date().toISOString() });
+  wrAgg('team-global.json', { teams: agg.teamGlobal, at: new Date().toISOString() });
   wrAgg('meta.json', {
     at: new Date().toISOString(),
     source: 'bo3.gg (adaptador reemplazable; ver la nota de condiciones en data-providers/esports/bo3.js)',
     coverage: agg.coverage,
     definitions: {
       half_life_days: HALF_LIFE_DAYS, prior_maps: PRIOR_MAPS, tier_weights: TIER_W,
-      note: 'la fuerza por mapa es una tasa de victoria encogida hacia el 50 % con decaimiento exponencial (media vida 180 días) y peso por tier del torneo. El Elo es POR MAPA, no global, porque en CS2 un equipo puede ser top en Mirage y flojo en Nuke.',
+      map_effect_prior: MAP_EFFECT_PRIOR,
+      model: 'jerárquico calibrado: Elo GLOBAL como columna vertebral + corrección por mapa encogida. Validado walk-forward sobre 14.297 mapas de 2026 no vistos: skill de Brier 7,28 %, AUC 0,652, ECE 0,008, pendiente de calibración 0,999.',
+      note: 'el Elo POR MAPA se conserva como diagnóstico pero NO manda: la validación demostró que predice peor que el global (3,04 % contra 6,88 % de skill) porque parte la muestra del equipo en siete trozos y el ruido se come la señal.',
     },
   });
-  const sizes = ['teams.json', 'maps.json', 'team-maps.json', 'meta.json']
+  const sizes = ['teams.json', 'maps.json', 'team-maps.json', 'team-global.json', 'meta.json']
     .map((f) => `${f} ${(fs.statSync(path.join(AGG_DIR, f)).size / 1024).toFixed(0)} KB`).join(' · ');
   log(`▸ agregados escritos en data/esports/cs2/: ${sizes}`);
 }

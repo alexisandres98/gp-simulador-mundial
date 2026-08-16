@@ -9515,9 +9515,16 @@
       var isAdm = !!(S.me && S.me.isAdmin);
       // Track record de picks para TODOS (prueba social): admin usa el endpoint interno (más completo);
       // el resto el endpoint saneado /api/beta/picks-record (misma forma: track_record + picks liquidadas).
-      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) {
+      // BALONCESTO EN RENDIMIENTO (16-ago, reporte de Alexis: "no veo el cuadro de baloncesto"). No estaba
+      // roto: es que no existía aquí. Su track vivía SOLO dentro del deporte 🏀 (vista #bbperf), y quien
+      // abre "Rendimiento" espera ver ahí el rendimiento de todo. Se pide solo si el usuario tiene acceso
+      // a baloncesto (hoy admin-only), así que para el resto no añade ni una petición.
+      var bbReq = bbAllowed()
+        ? fetch('/api/hoops/picks', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        : Promise.resolve(null);
+      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), bbReq]).then(function (res) {
         // si la nueva petición falla, se conserva lo que ya había en vez de vaciar la pantalla
-        if (res[0] || res[1] || res[2]) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; S.perfAt = Date.now(); }
+        if (res[0] || res[1] || res[2] || res[3]) { S.perf = { sum: res[0], leg: res[1], picks: res[2], hoops: res[3] }; S.perfAt = Date.now(); }
         if (S.view === 'perf') renderPerf();
       });
       if (S.perf === null) return;   // primera carga: no hay nada que pintar todavía
@@ -9586,6 +9593,40 @@
           body += '<div class="gx-panel"><div style="padding:12px 16px;font-size:11.5px;color:var(--gx-text3)">Sin picks de clubes todavía — el motor corre cada 15 min sobre las ligas con cuotas; nacerán con los próximos partidos.</div></div>';
         }
       }
+      // ===== BALONCESTO · MONITOREO (16-ago) — el cuadro que faltaba en esta pantalla ======================
+      // POR QUÉ VA AQUÍ Y NO SOLO EN 🏀: su track existía únicamente dentro del deporte baloncesto, y quien
+      // abre "Rendimiento" viene a ver el rendimiento de TODO. No estaba roto: estaba en otra habitación.
+      //
+      // Y POR QUÉ SE PUBLICA CON LA CLV DELANTE Y NO EL ROI: estas picks son un experimento en papel que
+      // NO se publica, y con 20 liquidadas el ROI es ruido — cabe un +15% que no significa nada. La vara
+      // acordada del proyecto es el CLV, así que el CLV va primero y el ROI va marcado como lo que es.
+      var hp = d.hoops;
+      if (hp && hp.track && hp.track.total && hp.track.total.n && bbAllowed()) {
+        var ht = hp.track.total, hAct = (hp.active || []).length;
+        var clvOk = ht.clv_avg != null && ht.clv_avg > 0;
+        body += '<div class="gx-ph" style="margin:18px 0 8px"><span class="gx-label">' + ic('ball-basketball') + esc(LANG === 'en' ? 'Basketball · monitor' : 'Baloncesto · monitoreo') + '</span>' +
+          '<span class="gx-ph-extra"><span class="gx-clgate sh">' + esc(LANG === 'en' ? 'PRIVATE' : 'PRIVADO') + '</span>' +
+          '<span class="gx-dim" style="font-size:11px;margin-left:8px">' + ht.n + ' ' + esc(LANG === 'en' ? 'settled' : 'liquidadas') + ' · ' + hAct + ' ' + esc(LANG === 'en' ? 'active' : 'activas') + '</span></span></div>';
+        // LA VARA PRIMERO: CLV y cuánto bate al cierre. Después lo demás.
+        body += '<div class="gx-kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">' +
+          kpi(esc(LANG === 'en' ? 'CLV (the real bar)' : 'CLV (la vara real)'), ht.clv_avg != null ? sgn(ht.clv_avg, '%') : '—', (clvOk ? 'gx-pos' : 'gx-neg'), ht.clv_n ? 'n=' + ht.clv_n : '') +
+          kpi(esc(LANG === 'en' ? 'Beats the close' : 'Bate al cierre'), ht.clv_positive != null ? ht.clv_positive + '%' : '—', (ht.clv_positive >= 50 ? 'gx-pos' : 'gx-neg')) +
+          kpi(esc(LANG === 'en' ? 'Hit rate' : 'Acierto'), ht.hit != null ? ht.hit + '%' : '—', '', (ht.w || 0) + 'W-' + (ht.l || 0) + 'L') +
+          kpi(esc(LANG === 'en' ? 'Units (noise)' : 'Unidades (ruido)'), ht.units != null ? sgn(ht.units, 'u') : '—', 'gx-dim', ht.roi != null ? 'ROI ' + (ht.roi > 0 ? '+' : '') + ht.roi + '%' : '') + '</div>';
+        var hfam = hp.track.by_family || {};
+        var hfRows = Object.keys(hfam).map(function (f) { var v = hfam[f];
+          return '<span>' + esc(f) + ' <b>' + (v.w || 0) + '/' + (v.n || 0) + '</b> (ROI ' + (v.roi != null ? (v.roi > 0 ? '+' : '') + v.roi + '%' : '—') + ' · CLV ' + (v.clv_avg != null ? (v.clv_avg > 0 ? '+' : '') + v.clv_avg + '%' : '—') + ')</span>';
+        }).join('');
+        if (hfRows) body += teamPanel('layout-grid', LANG === 'en' ? 'By family' : 'Por familia', '<div class="gx-form-stats">' + hfRows + '</div>');
+        body += '<div class="gx-panel"><div class="gx-mod-body">' +
+          '<p class="gx-mod-note gx-dim" style="margin:0 0 8px">' + esc(hp.note || '') + '</p>' +
+          '<p class="gx-mod-note gx-dim" style="margin:0 0 10px">' + esc(LANG === 'en'
+            ? 'With ' + ht.n + ' settled picks the ROI is noise: it takes roughly a thousand to say anything. The CLV needs about a hundred, which is why it leads.'
+            : 'Con ' + ht.n + ' picks liquidadas el ROI es ruido: hacen falta cerca de mil para que diga algo. El CLV necesita un centenar, y por eso va delante.') + '</p>' +
+          '<button class="gx-btn" data-nav="bbperf" style="font-size:11px;padding:6px 14px">' + esc(LANG === 'en' ? 'Open model validation →' : 'Ver la validación del modelo →') + '</button>' +
+          '</div></div>';
+      }
+
       // ===== Métricas quant de las picks (CLV, precisión vs consenso, calibración). Misma forma admin/público. =====
       var q = pk.quant;
       if (q && ((q.clv && q.clv.n) || (q.model_vs_market && q.model_vs_market.n) || (q.calibration || []).length)) {

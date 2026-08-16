@@ -108,13 +108,24 @@ db.sentTg = db.sentTg || {};         // inicializado temprano: markExistingTgSee
 // 250 MB hacia arriba, o cuando cae de golpe (el pico ya pasó). Coste: una llamada a memoryUsage() cada
 // 5 s, que es del orden de microsegundos. El log queda silencioso en operación normal.
 // `mark()` permite además que un trabajo declare qué está haciendo, para que la línea diga "durante X".
-let _memStep = 0, _memWhat = 'arranque';
-const memMark = (what) => { _memWhat = what; };
+// UNA SOLA ETIQUETA NO SIRVE, y la primera versión lo demostró en producción: los trabajos de fondo corren
+// CONCURRENTES, así que la etiqueta del último en marcar pisaba a la del que estaba reservando de verdad y
+// el pico de 1,3 GB salió atribuido a "reposo". Ahora se guarda una BITÁCORA de las últimas marcas con su
+// hora, y al cruzar un escalón se imprimen las de los últimos 45 segundos: quien esté reservando aparece
+// ahí sí o sí, aunque haya otros trabajos solapados.
+let _memStep = 0;
+const _memLog = [{ t: Date.now(), what: 'arranque' }];
+const memMark = (what) => { _memLog.push({ t: Date.now(), what }); if (_memLog.length > 24) _memLog.shift(); };
+const memRecent = () => {
+  const cut = Date.now() - 45000;
+  const r = _memLog.filter((x) => x.t >= cut).map((x) => x.what);
+  return (r.length ? r : [_memLog[_memLog.length - 1].what]).join(' → ');
+};
 setInterval(() => {
   const mb = Math.round(process.memoryUsage().heapUsed / 1048576);
   const step = Math.floor(mb / 250);
-  if (step > _memStep) console.log('[mem] montón', mb, 'MB (subiendo) durante:', _memWhat);
-  else if (step < _memStep - 1) console.log('[mem] montón', mb, 'MB (liberado) tras:', _memWhat);
+  if (step > _memStep) console.log('[mem] montón', mb, 'MB (subiendo) · en curso:', memRecent());
+  else if (step < _memStep - 1) console.log('[mem] montón', mb, 'MB (liberado) · tras:', memRecent());
   _memStep = step;
 }, 5000).unref();
 
@@ -3529,6 +3540,7 @@ async function clubsQuotesSweep({ force = false } = {}) {
     }
   } catch (e) { out.error = e.message; }
   finally { _clubsQuotesRunning = false; out.finished = new Date().toISOString(); _clubsQuotesOut = out; }
+  memMark('barrido:cuotas-clubes:fin');
   console.log('[clubs] quotes sweep:', JSON.stringify({ leagues: out.leagues, events: out.events, quotes: out.quotes, error: out.error || null }));
   return out;
 }
@@ -3692,6 +3704,7 @@ async function hoopsQuotesSweep({ force = false } = {}) {
     save();
   } catch (e) { out.error = e.message; }
   finally { _hoopsQRunning = false; out.finished = new Date().toISOString(); _hoopsQOut = out; }
+  memMark('barrido:cuotas-hoops:fin');
   console.log('[hoops] quotes sweep:', JSON.stringify({ keys: out.keys, events: out.events, quotes: out.quotes, error: out.error || null }));
   return out;
 }
@@ -9291,6 +9304,7 @@ function hoopsPickKey(p) { return [p.league, p.game_id, p.family, p.selection_co
 // Construcción: para cada partido próximo con cuotas, el modelo se compara contra el MEJOR precio
 // disponible. Si la ventaja supera el umbral, nace la pick. Una por (partido, familia, selección, línea).
 async function buildHoopsPicks({ cap = 12 } = {}) {
+  memMark('hoops:build:inicio');
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return { skipped: 'sin base de cuotas' };
   const ST = require('./basketball-engine/store');

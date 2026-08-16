@@ -8224,12 +8224,19 @@ function combatOddsArchive(C) {
   fs.mkdirSync(dir, { recursive: true });
   const day = new Date().toISOString().slice(0, 10);
   const file = path.join(dir, `combat-${C.org}-${day}.json.gz`);
+  // MEDICIÓN DEL COSTE (16-ago): este bloque salió señalado por el vigía como el que reserva ~1,4 GB
+  // transitorios entre las tres organizaciones. El ciclo leer-gunzip-parsear-serializar-gzip materializa
+  // el archivo del día entero SEIS veces en memoria a la vez, y es SÍNCRONO. Se registra el tamaño para
+  // saber cuánto pesa de verdad antes de decidir cómo partirlo.
   let doc = { org: C.org, day, snapshots: [] };
+  const gzBytes = (() => { try { return fs.statSync(file).size; } catch { return 0; } })();
   try { if (fs.existsSync(file)) doc = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString()); } catch { /* corrupto → se reescribe */ }
   doc.snapshots.push({ at: new Date().toISOString(), fights: rows });
   if (doc.snapshots.length > 240) doc.snapshots = doc.snapshots.slice(-240); // techo sano (~1 cada 6 min)
-  fs.writeFileSync(file, zlib.gzipSync(JSON.stringify(doc)));
-  console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas');
+  const json = JSON.stringify(doc);
+  fs.writeFileSync(file, zlib.gzipSync(json));
+  console.log('[combat-archive]', C.org, day, 'snapshot', doc.snapshots.length, '·', rows.length, 'peleas',
+    '· gz', Math.round(gzBytes / 1024), 'kB · json', Math.round(json.length / 1048576 * 10) / 10, 'MB');
 }
 
 // ===== #5 STATS DETALLADAS DE ESPN (30-jul) — PRECISIÓN, POSICIÓN Y GRAPPLING =========================

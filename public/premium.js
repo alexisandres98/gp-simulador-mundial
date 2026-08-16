@@ -952,7 +952,7 @@
   var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
 
   // ---------- icons ----------
   // ---- iconografía PROPIA (firma visual): set dibujado a mano, dual-tone (detalle en acento vía clase .a/.af).
@@ -9502,13 +9502,25 @@
     // esperar a /api/me antes del primer fetch: sin esto, entrar directo a #perf decidía admin=false y cacheaba
     // el endpoint público (la sección admin de clubes nunca aparecía hasta recargar desde otra vista)
     if (S.perf === undefined && S.me == null) { mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>'; setTimeout(function () { if (S.view === 'perf') renderPerf(); }, 500); return; }
-    if (S.perf === undefined) {
-      S.perf = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>';
+    // REFRESCO DE RENDIMIENTO (16-ago, reporte de Alexis: "las picks se liquidan y el ROI no se mueve").
+    // Y no se movía: `S.perf` se pedía UNA sola vez por carga de página y no se invalidaba en ningún sitio,
+    // así que quien dejaba la pestaña abierta veía los números congelados del momento en que entró. El
+    // servidor estaba bien —recalcula el track en cada petición, sin caché— pero el navegador nunca volvía
+    // a preguntar. Ahora, si el dato tiene más de 60 s, se vuelve a pedir EN SEGUNDO PLANO: se sigue
+    // pintando lo que ya hay (sin parpadeo de carga) y se repinta cuando llega lo nuevo.
+    var perfStale = S.perf && S.perfAt && (Date.now() - S.perfAt > 60000);
+    if (S.perf === undefined || perfStale) {
+      if (S.perf === undefined) { S.perf = null; mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_perf')) + mvLoading() + '</div></div>'; }
+      S.perfAt = Date.now();
       var isAdm = !!(S.me && S.me.isAdmin);
       // Track record de picks para TODOS (prueba social): admin usa el endpoint interno (más completo);
       // el resto el endpoint saneado /api/beta/picks-record (misma forma: track_record + picks liquidadas).
-      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; if (S.view === 'perf') renderPerf(); });
-      return;
+      Promise.all([fetch('/api/metrics/summary', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch('/api/aciertos', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }), fetch(isAdm ? '/api/internal/daily-picks' : '/api/beta/picks-record', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })]).then(function (res) {
+        // si la nueva petición falla, se conserva lo que ya había en vez de vaciar la pantalla
+        if (res[0] || res[1] || res[2]) { S.perf = { sum: res[0], leg: res[1], picks: res[2] }; S.perfAt = Date.now(); }
+        if (S.view === 'perf') renderPerf();
+      });
+      if (S.perf === null) return;   // primera carga: no hay nada que pintar todavía
     }
     var d = S.perf || {}, sum = d.sum, leg = d.leg;
     var kpi = function (label, v, cls, sub) { return '<div class="gx-panel gx-kpi"><div class="gx-label">' + esc(label) + '</div><div class="gx-kpi-main"><div class="gx-kpi-sel gx-mono ' + (cls || '') + '">' + v + '</div></div>' + (sub ? '<div class="gx-kpi-sub gx-dim">' + esc(sub) + '</div>' : '') + '</div>'; };

@@ -745,6 +745,10 @@ function asPickCard(r, { game, ev, bo, model }) {
     ...r,
     // ── los campos que consume pickCard(), la MISMA card de fútbol, combate y baloncesto ──
     family: CARD_FAMILY[r.family] || 'TOTAL',
+    // LA FAMILIA CRUDA SE CONSERVA, y no es un detalle: `family` se sobreescribe con la de la card
+    // (ROUNDS/SPREAD/TOTAL) y la que sabe LIQUIDAR es esta. Sin ella, una pick guardada no se puede
+    // liquidar después porque nadie sabe si "SPREAD" era hándicap de mapas o de rondas.
+    family_raw: r.family,
     fam_label: CARD_LABEL[r.family] || r.label || r.family,   // corto: el chip no da para más
     selection_name: selectionName(r, ev),
     home: ev.home.name, away: ev.away.name,
@@ -962,6 +966,222 @@ function simulate(game, aName, bName, { bo = 3 } = {}) {
   };
 }
 
+// ---- 7) EL BUCLE CERRADO: NACER, LIQUIDARSE Y MEDIRSE ---------------------------------------------------
+// LO QUE ESTO ARREGLA, DICHO SIN ADORNOS. Esports generaba picks y no podía liquidar NINGUNA, porque las
+// tres casas sirven catálogo de apuesta y no marcadores. Un deporte que no puede medirse no es un producto:
+// es una demo que nunca aprende. Con `data-providers/esports/results` entran las tres fuentes que sí
+// publican resultados (bo3 para CS2, OpenDota para Dota 2, lolesports para LoL) y el bucle se cierra.
+//
+// DOS PIEZAS, Y EL ORDEN IMPORTA:
+//   · `recordPicks` — la pick NACE y se guarda con su precio de entrada y el estado del mercado en ese
+//     momento. Sin esto no hay nada que liquidar después: hoy las picks se calculaban al vuelo en cada
+//     petición y se evaporaban. Es también lo que impide el autoengaño de "esa la habría acertado".
+//   · `settlePicks` — cuando el partido termina, se busca el resultado, se liquida y se calcula el CLV
+//     contra el CIERRE guardado. El CLV es la vara de esta casa y es la que habla primero: con 17 apuestas
+//     el ROI es ruido y el CLV ya dice algo.
+const PICKS_F = (g) => `picks-${g}.json`;
+
+// La pick se guarda una vez y NO se toca: si el motor cambia de opinión mañana, esa es otra pick. Reescribir
+// la de ayer con el criterio de hoy es exactamente cómo un histórico deja de servir para medir nada.
+async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
+  if (!ENGINES[game]) return { game, saved: 0 };
+  const s = await slate(game, { days: 2 }).catch(() => null);
+  // TOPE DE PARTIDOS POR PASADA, y no por prudencia abstracta: lo que tumbó la plataforma el 15-ago fueron
+  // trabajos de fondo concurrentes, y este corre encadenado con el de cierres cada 20 minutos. Diez partidos
+  // por pasada cubren de sobra la ventana de 12 h y dejan el pico donde está.
+  const evs = ((s && s.events) || []).filter((e) => {
+    if (!e.start_at) return false;
+    const mins = (Date.parse(e.start_at) - Date.now()) / 60000;
+    return mins > -30 && mins < withinMin;
+  }).slice(0, cap);
+  const st = rd(PICKS_F(game)) || { game, picks: {} };
+  let saved = 0;
+  for (const ev of evs) {
+    let out = null;
+    try { out = await analyzeMatch(game, ev.id, { days: 2 }); } catch { out = null; }
+    if (!out || !out.edges || !out.edges.picks.length) continue;
+    for (const p of out.edges.picks) {
+      if (st.picks[p.pick_id]) continue;                    // ya nació: no se reescribe
+      st.picks[p.pick_id] = {
+        pick_id: p.pick_id, game, event_id: ev.id,
+        start_at: ev.start_at, competition: ev.competition,
+        home: ev.home.name, away: ev.away.name, bo: out.bo,
+        // la familia CRUDA de esports (no la traducida para la card): es la que sabe liquidar
+        family: p.family_raw || p.family,
+        family_label: p.label || null,
+        line: p.line, side: p.side, map: p.map, team: p.team,
+        selection_name: p.selection_name,
+        odds: p.odds, book: p.book, books_quoting: p.books_quoting,
+        p_gp: p.p_gp, p_market: p.p_market, edge_pp: p.edge_pp,
+        uncertainty_pp: p.uncertainty_pp, calibration_pp: p.calibration_pp,
+        thesis: p.thesis, stake_pct: p.stake_pct,
+        born_at: new Date().toISOString(),
+        status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
+      };
+      saved++;
+    }
+  }
+  st.at = new Date().toISOString();
+  wr(PICKS_F(game), st);
+  return { game, saved, total: Object.keys(st.picks).length };
+}
+
+// ---- de un resultado a un veredicto ---------------------------------------------------------------------
+// Cada familia se liquida contra el dato que le corresponde y NUNCA contra uno parecido. Lo que la fuente no
+// trae devuelve `null` y la pick se queda sin liquidar con su motivo, que es infinitamente mejor que
+// inventarle un resultado: una pick mal liquidada envenena el histórico para siempre y no deja rastro.
+function settleOne(pk, res) {
+  const maps = res.maps || [];
+  const m = pk.map ? maps.find((x) => x.n === pk.map) : null;
+  const need = (v) => (v == null || Number.isNaN(v) ? null : v);
+  const cmp = (val, line, over) => {
+    if (val == null || line == null) return null;
+    if (val === line) return 'PUSH';                        // línea entera clavada: devuelve la apuesta
+    return (over ? val > line : val < line) ? 'WIN' : 'LOSS';
+  };
+  const isOver = pk.side === 'over', isUnder = pk.side === 'under';
+
+  if (pk.family === 'TOTAL_MAPAS') {
+    const played = res.maps_a + res.maps_b;
+    return cmp(played, pk.line, isOver);
+  }
+  if (pk.family === 'HANDICAP') {
+    const marg = res.maps_a - res.maps_b;                    // margen del LOCAL
+    const v = marg + pk.line;
+    if (v === 0) return 'PUSH';
+    return (pk.side === 'home' ? v > 0 : v < 0) ? 'WIN' : 'LOSS';
+  }
+  if (!pk.map) return null;                                  // el resto es por mapa
+  if (!m) return null;                                       // ese mapa no se jugó (serie corta): sin liquidar
+
+  if (pk.family === 'RONDAS') return cmp(need(m.rounds), pk.line, isOver);
+  if (pk.family === 'PRORROGA') {
+    if (m.ot == null) return null;
+    const hubo = !!m.ot;
+    return (/^(yes|si|sí)$/.test(String(pk.side)) ? hubo : !hubo) ? 'WIN' : 'LOSS';
+  }
+  if (pk.family === 'RONDAS_EQUIPO') {
+    const v = pk.team === 'home' ? need(m.score_a) : pk.team === 'away' ? need(m.score_b) : null;
+    return cmp(v, pk.line, isOver);
+  }
+  if (pk.family === 'RONDAS_HANDICAP') {
+    if (m.score_a == null || m.score_b == null) return null;
+    const v = (m.score_a - m.score_b) + pk.line;
+    if (v === 0) return 'PUSH';
+    return (pk.side === 'home' ? v > 0 : v < 0) ? 'WIN' : 'LOSS';
+  }
+  // KILLS: bo3 no publica kills por mapa. Se deja explícito y sin liquidar en vez de aproximarlo.
+  return null;
+}
+
+// El CLV se calcula igual que en baloncesto —`cuota_tomada / cuota_cierre − 1`— para que las cifras de los
+// cuatro deportes se puedan poner en la misma tabla sin nota al pie.
+function closeOddsFor(pk, closes) {
+  const c = closes && closes.closes && closes.closes[pk.event_id];
+  if (!c || !c.rows) return null;
+  const same = c.rows.filter((r) => r.family === pk.family && r.side === pk.side
+    && (r.line == null ? null : +r.line) === (pk.line == null ? null : +pk.line)
+    && (r.map || null) === (pk.map || null) && (r.team || null) === (pk.team || null));
+  if (!same.length) return null;
+  // el cierre de referencia es el de la MISMA casa si está; si no, el mejor precio del cierre
+  const mine = same.filter((r) => r.book === pk.book);
+  const pool = mine.length ? mine : same;
+  return pool.reduce((mx, r) => Math.max(mx, r.odds || 0), 0) || null;
+}
+
+const RES = require('../data-providers/esports/results');
+
+async function settlePicks(game, { sinceDays = 4 } = {}) {
+  const st = rd(PICKS_F(game));
+  if (!st || !st.picks) return { game, settled: 0, pending: 0, no_source: false };
+  const pend = Object.values(st.picks).filter((p) => p.status === 'ACTIVE'
+    && p.start_at && Date.parse(p.start_at) < Date.now() - 20 * 60e3);
+  if (!pend.length) return { game, settled: 0, pending: 0 };
+
+  const since = new Date(Date.now() - sinceDays * 864e5).toISOString().slice(0, 10);
+  const rs = await RES.results(game, { since }).catch(() => null);
+  if (!rs || !rs.available) return { game, settled: 0, pending: pend.length, no_source: true, why: (rs && rs.why) || 'sin fuente de resultados' };
+
+  const closes = rd(`closes-${game}.json`);
+  const resolve = resolverFor(game);
+  const key = (n) => {
+    if (resolve) { const id = resolve(n); if (id) return 'gp:' + id; }
+    return String(n || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  };
+  // El resultado se empareja por PAR DE EQUIPOS y ventana de tiempo, y se ORIENTA al local de la pick: si la
+  // fuente trae los lados al revés, todo lo que dependa del lado —hándicaps, totales por equipo— se liquida
+  // exactamente al revés. Es el mismo cuidado que se puso al fundir las casas, y por el mismo motivo.
+  const idx = rs.rows.map((r) => ({ r, ka: key(r.a), kb: key(r.b), t: Date.parse(r.at || 0) }));
+
+  let settled = 0, unmatched = 0, unsettleable = 0;
+  for (const pk of pend) {
+    const kh = key(pk.home), ka = key(pk.away), t = Date.parse(pk.start_at || 0);
+    const hit = idx.find((x) => Math.abs(x.t - t) < 12 * 3600e3
+      && ((x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh)));
+    if (!hit) { unmatched++; continue; }
+    const flip = hit.ka !== kh;
+    const r = flip
+      ? { ...hit.r, a: hit.r.b, b: hit.r.a, maps_a: hit.r.maps_b, maps_b: hit.r.maps_a,
+          maps: (hit.r.maps || []).map((m) => ({ ...m, score_a: m.score_b, score_b: m.score_a })) }
+      : hit.r;
+
+    const verdict = settleOne(pk, r);
+    if (!verdict) { unsettleable++; pk.unsettleable_why = 'la fuente no publica el dato de esta familia (o ese mapa no se jugó)'; continue; }
+    pk.status = 'SETTLED';
+    pk.result_code = verdict;
+    pk.units = verdict === 'WIN' ? +(pk.odds - 1).toFixed(3) : verdict === 'LOSS' ? -1 : 0;
+    pk.final = { maps: `${r.maps_a}-${r.maps_b}`, detail: (r.maps || []).map((m) => `${m.map || 'g' + m.n} ${m.score_a}-${m.score_b}${m.ot ? ' OT' : ''}`).join(' · ') };
+    pk.settled_at = new Date().toISOString();
+    pk.result_source = r.source;
+    const co = closeOddsFor(pk, closes);
+    if (co) { pk.close_odds = co; pk.clv_pct = +(((pk.odds / co) - 1) * 100).toFixed(2); }
+    settled++;
+  }
+  st.at = new Date().toISOString();
+  wr(PICKS_F(game), st);
+  return { game, settled, unmatched, unsettleable, pending: pend.length, source: rs.source };
+}
+
+// El cuadro de rendimiento del deporte. Se publica el CLV SEPARADO del ROI y por delante, porque con
+// muestras pequeñas el ROI es ruido y el CLV ya tiene señal — es la lección que dejó baloncesto.
+function track(game) {
+  const st = rd(PICKS_F(game));
+  const all = st && st.picks ? Object.values(st.picks) : [];
+  const settled = all.filter((p) => p.status === 'SETTLED');
+  const w = settled.filter((p) => p.result_code === 'WIN').length;
+  const l = settled.filter((p) => p.result_code === 'LOSS').length;
+  const push = settled.filter((p) => p.result_code === 'PUSH').length;
+  const units = settled.reduce((s, p) => s + (p.units || 0), 0);
+  const staked = settled.filter((p) => p.result_code !== 'PUSH').length;
+  const clvs = settled.filter((p) => p.clv_pct != null).map((p) => p.clv_pct);
+  const byFam = {};
+  for (const p of settled) {
+    const f = p.family || '?';
+    byFam[f] = byFam[f] || { n: 0, w: 0, units: 0, clv: [] };
+    byFam[f].n++; if (p.result_code === 'WIN') byFam[f].w++;
+    byFam[f].units += p.units || 0;
+    if (p.clv_pct != null) byFam[f].clv.push(p.clv_pct);
+  }
+  const avg = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null);
+  return {
+    game,
+    total: all.length, active: all.filter((p) => p.status === 'ACTIVE').length,
+    settled: settled.length, w, l, push,
+    units: +units.toFixed(2),
+    roi_pct: staked ? +(100 * units / staked).toFixed(2) : null,
+    hit_pct: (w + l) ? +(100 * w / (w + l)).toFixed(1) : null,
+    clv_avg_pct: avg(clvs), clv_n: clvs.length,
+    by_family: Object.fromEntries(Object.entries(byFam).map(([k, v]) => [k,
+      { n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2), clv_avg_pct: avg(v.clv) }])),
+    // la advertencia va DENTRO del dato, no en una nota aparte: con esta muestra el ROI no significa nada
+    reading: settled.length < 30
+      ? `muestra de ${settled.length}: el ROI todavía es ruido. El CLV es el número que ya dice algo, y hacen falta centenares de picks liquidadas por familia para hablar de ventaja.`
+      : 'muestra en construcción; el CLV sigue siendo la vara principal.',
+    source: (RES.SOURCES[game] || {}).name || null,
+    at: (st && st.at) || null,
+  };
+}
+
 function closesCount(game) {
   const st = rd(`closes-${game}.json`);
   return st && st.closes ? Object.keys(st.closes).length : 0;
@@ -970,5 +1190,5 @@ function closesCount(game) {
 module.exports = {
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, market, analyzeMatch, board, evaluateAll, probFor, boOf,
-  teamSearch, simulate,
+  teamSearch, simulate, recordPicks, settlePicks, track, settleOne,
 };

@@ -9688,10 +9688,19 @@ if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
 // CLV se calcula hacia atrás en vez de empezar de cero. Se recorre en SERIE y solo la ventana previa al
 // inicio (unos pocos eventos por vuelta) — la lección del pico de memoria de ayer, aplicada de entrada.
 if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
+  // EL BUCLE COMPLETO DE ESPORTS, y el orden NO es negociable:
+  //   1. NACER   — la pick se guarda con su precio de entrada antes de que empiece el partido. Sin esto no
+  //                hay nada que liquidar: hasta el 16-ago las picks se calculaban al vuelo y se evaporaban.
+  //   2. CERRAR  — se guarda el cierre de mercado, que es el baremo del CLV.
+  //   3. LIQUIDAR— cuando el partido termina, se busca el resultado y se cierra la pick con su CLV.
+  // Encadenado y no en paralelo, por la misma lección del 15-ago: lo que tumbó el proceso fueron trabajos
+  // concurrentes, no uno lento.
   const esChain = () => {
     const ES = require('./esports-engine/store');
-    memMark('esports:cierres');
-    return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.snapshot(g).catch(() => { })), Promise.resolve())
+    memMark('esports:picks');
+    return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.recordPicks(g).catch(() => { })), Promise.resolve())
+      .then(() => { memMark('esports:cierres'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.snapshot(g).catch(() => { })), Promise.resolve()); })
+      .then(() => { memMark('esports:liquidar'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.settlePicks(g).catch(() => { })), Promise.resolve()); })
       .then(() => memMark('reposo'));
   };
   setTimeout(esChain, 320 * 1000);
@@ -14937,6 +14946,18 @@ const server = http.createServer(async (req, res) => {
           if (!out) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
           return json(res, 200, out);
         }
+        // EL RENDIMIENTO DEL DEPORTE. Existe desde el 16-ago porque hasta entonces no podía existir: sin
+        // fuente de resultados no había nada que liquidar. Devuelve el CLV por delante del ROI a propósito.
+        if (p === '/api/esports/track') {
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          return json(res, 200, ES.track(gm));
+        }
+        if (p === '/api/esports/settle' && req.method === 'POST') {
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          const rec = await ES.recordPicks(gm).catch((e) => ({ error: e.message }));
+          const set = await ES.settlePicks(gm).catch((e) => ({ error: e.message }));
+          return json(res, 200, { record: rec, settle: set, track: ES.track(gm) });
+        }
         if (p === '/api/esports/snapshot' && req.method === 'POST') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
           return json(res, 200, await ES.snapshot(gm));
@@ -14998,7 +15019,16 @@ const server = http.createServer(async (req, res) => {
           public_flag: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true',
           closes_job: String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false',
           closes_dir: ES.DIR, closes_dir_persistent: ES.DIR.indexOf(__dirname) !== 0,
-          games: ov.games.map((g) => ({ game: g.game, events: g.events, multibook: g.events_multibook, competitions: g.competitions, closes: g.closes_stored, rating: g.rating_matches })),
+          games: ov.games.map((g) => {
+            const tr = ES.track(g.game);
+            const RS = require('./data-providers/esports/results').SOURCES[g.game] || {};
+            return { game: g.game, events: g.events, multibook: g.events_multibook, competitions: g.competitions,
+              closes: g.closes_stored, rating: g.rating_matches,
+              // desde el 16-ago el cuarto deporte SÍ se puede medir: se publica de qué fuente sale y cuánto
+              // lleva liquidado, que es la única forma de ver si el bucle está corriendo de verdad
+              results_source: RS.available ? RS.name : null,
+              picks: tr.total, settled: tr.settled, roi_pct: tr.roi_pct, clv_avg_pct: tr.clv_avg_pct };
+          }),
           ratings_state: ov.ratings_state,
           heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576),
         });

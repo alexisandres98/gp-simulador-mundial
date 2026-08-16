@@ -1418,7 +1418,20 @@
   }
   function openMoreSheet() {
     var isAdmin = !!(S.me && S.me.isAdmin);
-    var items = S.sport === 'combat'
+    // BUG MÓVIL DE BALONCESTO (16-ago, reporte de Alexis: "Rendimiento me lleva al de fútbol").
+    // Esta hoja tenía SOLO dos ramas —combate y "todo lo demás"—, así que con el deporte en 🏀 se pintaba
+    // el menú de FÚTBOL entero: su 'perf' navegaba al rendimiento de fútbol, y de paso el Daily Brief y
+    // "Preguntale a GP" de baloncesto quedaban inalcanzables desde el celular. Es exactamente el mismo
+    // fallo que se corrigió para combate el 2-ago, repetido al añadir el cuarto deporte.
+    // Mismo criterio que allí: las superficies de INTELIGENCIA van primero; lo compartido (cartera, casas,
+    // invitar, admin) al final y bajo sus mismos flags.
+    var items = S.sport === 'hoops'
+      ? [['bbbrief', 'news', 'nav_brief'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
+      : S.sport === 'combat'
       // BUG MÓVIL (2-ago, reporte de Alexis): el brief de combate, el mapa de la noche y "Preguntale a GP"
       // no estaban NI en la barra inferior NI aquí → en el celular eran inalcanzables. Van primeras porque
       // son las superficies de INTELIGENCIA, que es justo lo que ve el usuario no-admin con el flag público.

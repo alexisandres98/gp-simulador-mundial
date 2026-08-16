@@ -624,7 +624,9 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
 
   return {
     rows: out,
-    picks,
+    // las picks salen ya con la forma de la card de la casa: el frontend no adapta nada, igual que en
+    // baloncesto. Se conserva `edges.rows` sin decorar para las vistas que miran el detalle crudo.
+    picks: ev ? picks.map((r) => asPickCard(r, { game, ev, bo, model })) : picks,
     reasons,
     valued: out.length,
     // las que se plegaron NO son "no picks" por falta de valor: son la misma pick a otro precio, y mezclarlas
@@ -634,6 +636,144 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
     families_allowed: [...PICK_FAMILIES],
     excluded: skipped,
     note: out.length ? null : 'la casa no tiene todavía mercados derivados abiertos para este partido; suelen abrir en las horas previas al inicio.',
+  };
+}
+
+// ---- 4 ter) LA PICK, CON LA FORMA DE LA CASA -------------------------------------------------------------
+// Esports enseñaba sus picks en una tabla propia. Eso estaba mal por el mismo motivo por el que el calendario
+// estaba mal: **la casa ya tiene una card de pick** —la misma en fútbol, en combate y en baloncesto— y un
+// cuarto deporte con su propia forma no es personalidad, es deuda. El usuario aprende a leer una pick UNA vez.
+//
+// Se sigue el patrón que ya usa baloncesto: el SERVIDOR emite la pick con los campos que `pickCard()` espera
+// y el frontend no adapta nada. Lo único que cambia es la gramática del deporte —qué dice el ticket— porque
+// "Menos de 21.5 rondas · mapa 1" no se redacta como "Menos de 182.5 puntos".
+//
+// Las familias de esports se traducen a las que la card ya entiende, y no de cualquier manera: se eligen las
+// que devuelven `selection_name` tal cual, para que el ticket lo redacte esta capa (que sabe de rondas y de
+// mapas) y no la card (que no tiene por qué saberlo).
+const CARD_FAMILY = {
+  RONDAS: 'ROUNDS', RONDAS_EQUIPO: 'ROUNDS',
+  RONDAS_HANDICAP: 'SPREAD', HANDICAP: 'SPREAD', KILLS_HANDICAP: 'SPREAD',
+  TOTAL_MAPAS: 'TOTAL', KILLS: 'TOTAL', KILLS_EQUIPO: 'TOTAL',
+  PRORROGA: 'METHOD', KILLS_DNB: 'SPREAD',
+};
+const SIDED_FAM = new Set(['HANDICAP', 'RONDAS_HANDICAP', 'KILLS_HANDICAP']);
+
+// El chip de familia va en una esquina de la card, al lado del nombre de la competición, y ahí solo caben
+// DOS PALABRAS. Con el nombre largo ("Total de rondas del mapa") la cabecera se partía en tres líneas y
+// empujaba la hora fuera de sitio: la card compartida asume etiquetas cortas porque las de fútbol lo son
+// ("Ganador", "Goles"). El nombre completo no se pierde — vive en el ticket y en el porqué.
+const CARD_LABEL = {
+  RONDAS: 'Rondas', RONDAS_EQUIPO: 'Rondas equipo', RONDAS_HANDICAP: 'Hánd. rondas',
+  HANDICAP: 'Hánd. mapas', TOTAL_MAPAS: 'Total mapas',
+  KILLS: 'Kills', KILLS_EQUIPO: 'Kills equipo', KILLS_HANDICAP: 'Hánd. kills',
+  KILLS_DNB: 'Kills sin empate', PRORROGA: 'Prórroga',
+};
+
+// El ticket, redactado como se lee un ticket. La regla del signo importa: la línea que guarda el motor es
+// SIEMPRE la del local, así que el lado visitante se escribe con la línea negada — enseñarla tal cual diría
+// justo lo contrario de lo que se está apostando.
+function selectionName(r, ev) {
+  const A = (ev && ev.home && ev.home.name) || 'Local';
+  const B = (ev && ev.away && ev.away.name) || 'Visitante';
+  const teamOf = (k) => (k === 'home' ? A : k === 'away' ? B : null);
+  const mapTxt = r.map ? ` · mapa ${r.map}` : '';
+  const num = (x) => String(x).replace('.', ',');
+  const side = String(r.side || '').toLowerCase();
+
+  if (SIDED_FAM.has(r.family)) {
+    const who = teamOf(side) || side;
+    const line = side === 'away' && r.line != null ? -r.line : r.line;
+    const unit = r.family === 'HANDICAP' ? 'mapas' : r.family === 'KILLS_HANDICAP' ? 'kills' : 'rondas';
+    const sign = line > 0 ? '+' : '−';
+    return `${who} ${sign}${num(Math.abs(line))} ${unit}${mapTxt}`;
+  }
+  if (r.family === 'PRORROGA') return `${/^(yes|si|sí)$/.test(side) ? 'Sí' : 'No'} hay prórroga${mapTxt}`;
+
+  const mas = side === 'over' ? 'Más de' : 'Menos de';
+  if (r.family === 'TOTAL_MAPAS') return `${mas} ${num(r.line)} mapas`;
+  if (r.family === 'KILLS') return `${mas} ${num(r.line)} kills${mapTxt}`;
+  if (r.family === 'RONDAS') return `${mas} ${num(r.line)} rondas${mapTxt}`;
+  if (r.family === 'RONDAS_EQUIPO' || r.family === 'KILLS_EQUIPO') {
+    const who = teamOf(r.team) || '';
+    const unit = r.family === 'KILLS_EQUIPO' ? 'kills' : 'rondas';
+    return `${who}: ${mas.toLowerCase()} ${num(r.line)} ${unit}${mapTxt}`;
+  }
+  return `${r.family_label || r.family} · ${side}${r.line != null ? ' ' + num(r.line) : ''}${mapTxt}`;
+}
+
+// El "por qué". Se redacta con lo que el motor ya sabe y NO con adjetivos: de dónde sale la probabilidad,
+// cuánta ventaja hay contra qué precio, cuántas casas lo cotizan, qué error de calibración se le descontó y
+// qué otras líneas dicen lo mismo. Es la misma exigencia que en los otros tres deportes: la card puede
+// abrirse y tiene que aguantar la lectura.
+function pickWhy(r, ev, model) {
+  const parts = [];
+  parts.push(`La probabilidad de GP (${(100 * r.p_gp).toFixed(1)} %) sale de ${r.how}.`);
+  parts.push(`El mercado paga ${r.odds.toFixed(2)}, que implica ${(100 * r.p_market).toFixed(1)} %: ${r.edge_pp > 0 ? '+' : ''}${r.edge_pp} puntos de ventaja.`);
+  parts.push(r.books_quoting > 1
+    ? `Lo cotizan ${r.books_quoting} casas y el precio recomendado es el mejor de ellas (${r.book}).`
+    : `Lo cotiza una sola casa (${r.book}), así que el listón de ventaja sube 2,5 pp en vez de dar la pick por buena.`);
+  if (r.calibration_pp > 0) {
+    parts.push(`Al modelo de rondas de este mapa se le descuenta su propio error de calibración (±${r.calibration_pp} pp): la ventaja tiene que superarlo, y lo supera.`);
+  }
+  parts.push(`Margen de error del modelo en esta familia: ±${r.uncertainty_pp} pp (${r.uncertainty_kind}).`);
+  if (r.correlated_n) {
+    parts.push(`Hay ${r.correlated_n} línea${r.correlated_n > 1 ? 's' : ''} más con la misma tesis; se publica solo esta porque apostarlas todas sería la misma apuesta repetida, no una cartera.`);
+  }
+  const veto = model && model.veto_impact;
+  if (veto && r.map) parts.push(`Veto: ${String(veto.verdict).toLowerCase()} (${veto.shift_pp > 0 ? '+' : ''}${veto.shift_pp} pp sobre el reparto de mapas).`);
+  return parts.join(' ');
+}
+
+// Kelly/4 sobre la probabilidad de GP, con el mismo techo que baloncesto. No se usa la cruda del modelo sin
+// más: en esports no hay todavía NI UN resultado liquidado, así que el tamaño se mantiene deliberadamente
+// pequeño hasta que exista un histórico contra el que juzgarse.
+const STAKE_CAP = 2.0;
+function stakeOf(p, odds) {
+  const b = odds - 1;
+  if (!(b > 0)) return null;
+  const k = (b * p - (1 - p)) / b;
+  if (!(k > 0)) return null;
+  const raw = 100 * k / 4;
+  return { pct: +Math.min(STAKE_CAP, raw).toFixed(2), raw: +raw.toFixed(2), capped: raw > STAKE_CAP };
+}
+
+function asPickCard(r, { game, ev, bo, model }) {
+  const T = (model && model.teams) || {};
+  const st = stakeOf(r.p_gp, r.odds);
+  return {
+    ...r,
+    // ── los campos que consume pickCard(), la MISMA card de fútbol, combate y baloncesto ──
+    family: CARD_FAMILY[r.family] || 'TOTAL',
+    fam_label: CARD_LABEL[r.family] || r.label || r.family,   // corto: el chip no da para más
+    selection_name: selectionName(r, ev),
+    home: ev.home.name, away: ev.away.name,
+    home_team_id: null, away_team_id: null,      // sin banderas: en esports el escudo va por es_logos
+    es_logos: { h: (T.a && T.a.logo) || null, a: (T.b && T.b.logo) || null },
+    es_hash: `esmatch/${game}/${ev.id}`,
+    competition_name: ev.competition || null,
+    kickoff: ev.start_at || null,
+    // `confidence` es NUMÉRICA porque la card la usa para el color del indicador y la calculadora de stake la
+    // usa como probabilidad. Es la de GP para ESA selección, que es justo lo que dimensiona la apuesta.
+    confidence: r.p_gp,
+    sample_confidence: (r.confidence && r.confidence.level) || null,
+    pick_id: `es_${game}_${ev.id}_${r.family}_${r.side}_${r.line != null ? r.line : 'x'}_${r.map || 0}`,
+    why_es: pickWhy(r, ev, model) + (st && st.capped
+      ? ` Kelly/4 pediría ${String(st.raw).replace('.', ',')} % del banco y la casa lo recorta al tope de ${String(STAKE_CAP).replace('.', ',')} %: en esports todavía no hay NI UNA pick liquidada —ninguna casa publica resultados— así que el tamaño se mantiene pequeño hasta que exista un histórico contra el que juzgarse.`
+      : ''),
+    stake_pct: st ? st.pct : null,
+    stake_raw_pct: st ? st.raw : null,
+    stake_capped: !!(st && st.capped),
+    signals: {
+      win_prob: r.p_gp,
+      edge_pp: r.edge_pp,
+      data_confidence: (r.confidence && r.confidence.level) === 'alta' ? 'high' : (r.confidence && r.confidence.level) === 'media' ? 'med' : 'low',
+      pick_quality: r.edge_pp >= 6 ? 'strong' : r.edge_pp >= 4 ? 'moderate' : 'marginal',
+      // MONITOR, y no es prudencia decorativa: esports no tiene NI UN resultado liquidado —ninguna de las
+      // tres casas publica marcadores— así que no existe un histórico contra el que juzgar estas picks. El
+      // chip lo dice en la propia card en vez de dejar que se lean como un feed con historial detrás.
+      regime: 'monitor',
+    },
   };
 }
 
@@ -712,6 +852,9 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
       markets_n: (mk && mk.markets) ? mk.markets.length : 0,
       picks: edges ? edges.picks.length : 0,
       best: edges && edges.picks.length ? edges.picks[0] : null,
+      // TODAS las picks del partido, ya con forma de card. Antes solo viajaba la mejor y la pizarra de
+      // oportunidades no podía enseñar el resto: un partido con tres tesis distintas se veía como uno con una.
+      picks_list: edges ? edges.picks : [],
       // el motivo de cada NO, contado. Es lo que permite que la pantalla de oportunidades explique un hueco
       // en vez de dejarlo mudo.
       reasons: edges ? edges.reasons : null,

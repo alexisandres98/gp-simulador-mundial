@@ -1993,13 +1993,18 @@
     // picks de CLUB (shadow admin): club_eid abre el cockpit de club (mismo camino renderMatch cl-)
     // baloncesto usa el MISMO mecanismo que combate: hash directo al panel del partido y logos en vez de
     // banderas. Dos variables y la card entera —chip de familia, porqué, cuota, señales, stake— se reusa.
-    var openHash = p.cb_hash || p.bb_hash || null;
-    var avas = p.cb_avas || p.bb_logos || null;
+    // esports entra por la MISMA puerta que combate y baloncesto: un hash de apertura y un par de escudos.
+    // Tres deportes usando el mismo mecanismo es la señal de que el mecanismo era el correcto.
+    var openHash = p.cb_hash || p.bb_hash || p.es_hash || null;
+    var avas = p.cb_avas || p.bb_logos || p.es_logos || null;
     var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
     var clickable = !!openId || !!openHash;
     var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
     return '<div class="gx-pick-card gx-pick-' + p.family.toLowerCase() + (clickable ? ' gx-pick-clickable' : '') + '"' + openAttr + '>' +
-      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') +
+      // `fam_label` deja que el deporte ponga el nombre de SU familia en el chip. Lo usa esports, cuyas
+      // familias —rondas del mapa, hándicap de rondas, prórroga— no tienen equivalente en las de fútbol:
+      // forzarlas a "TOTAL DE PUNTOS" habría sido reutilizar la card mintiendo en la etiqueta.
+      '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(p.fam_label || t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') +
       // Chip MONITOR (26-jul): solo lo ve el admin (los no-admin nunca reciben picks monitor). Distingue de
       // un vistazo el track privado del feed público real — evita confundir "el feed sigue lleno".
       (p.signals && p.signals.regime === 'monitor' ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle">MONITOR</span>' : '') + '</span>' +
@@ -8184,39 +8189,34 @@
     var d = esGet('board_' + g, '/api/esports/board?game=' + g + '&days=3', 120000);
     if (!d) { esShell(t('nav_opps'), esTabs() + esLoading()); return; }
     if (d._err) { esShell(t('nav_opps'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    // TODAS las picks del día, no solo la mejor de cada partido: un partido con tres tesis distintas es
+    // tres oportunidades, y enseñar una era esconder dos.
     var rows = [];
-    (d.items || []).forEach(function (it) { if (it.best) rows.push({ it: it, e: it.best }); });
+    (d.items || []).forEach(function (it) {
+      (it.picks_list && it.picks_list.length ? it.picks_list : (it.best ? [it.best] : []))
+        .forEach(function (e) { rows.push({ it: it, e: e }); });
+    });
     rows.sort(function (a, b) { return (b.e.edge_pp || 0) - (a.e.edge_pp || 0); });
+    // las ocultas se respetan igual que en el feed de fútbol: es la misma card y el mismo almacén
+    var hidden = rows.filter(function (r) { return pickHidden(r.e); }).length;
+    if (!S.showHidden) rows = rows.filter(function (r) { return !pickHidden(r.e); });
     var head = '<div class="gx-es-hero"><div><b>' + esc(d.label) + '</b>' +
       '<span class="gx-dim">' + esc((d.native || []).join(' · ')) + '</span></div>' +
       '<span class="gx-spacer"></span>' +
       '<div class="gx-es-hero-n"><b>' + (d.items || []).length + '</b><span>partidas</span></div>' +
-      '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>con ventaja</span></div></div>';
+      '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>con ventaja</span></div></div>' +
+      (hidden ? '<div class="gx-dim gx-es-trunc">' + hidden + ' pick' + (hidden > 1 ? 's' : '') + ' oculta' + (hidden > 1 ? 's' : '') +
+        ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? 'volver a esconderlas' : 'mostrarlas') + '</a></div>' : '');
     var body;
     if (!rows.length) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna ventaja pasa el listón ahora mismo.</b>' +
         '<span class="gx-dim">' + esc((d.items || []).length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.' : 'La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.') + '</span></div></div>';
     } else {
-      body = '<div class="gx-panel gx-board"><div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
-        '<th>Partida</th><th>Mercado</th><th class="r">GP</th><th class="r">Mercado</th><th class="r">Ventaja</th><th class="r">Cuota</th><th>Casa</th><th>Confianza</th></tr></thead><tbody>' +
-        rows.map(function (r) {
-          var ev = r.it.event, e = r.e;
-          return '<tr data-esmatch="' + esc(ev.id) + '">' +
-            '<td><b>' + esc(ev.home.name) + '</b> <span class="gx-dim">vs</span> <b>' + esc(ev.away.name) + '</b>' +
-            '<div class="gx-dim" style="font-size:10.5px">' + esc(ev.competition || '') + ' · BO' + r.it.bo + '</div></td>' +
-            '<td>' + esc(esEdgeLabel(e)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(e.how || '') +
-              (e.correlated_n ? ' · ' + e.correlated_n + ' línea' + (e.correlated_n > 1 ? 's' : '') + ' más con la misma tesis' : '') + '</div></td>' +
-            '<td class="r gx-mono">' + esPct(e.p_gp) + '</td>' +
-            '<td class="r gx-mono">' + esPct(e.p_market) + '</td>' +
-            '<td class="r gx-mono ' + (e.edge_pp > 0 ? 'gx-up' : 'gx-down') + '">' + esSign(e.edge_pp) + ' pp</td>' +
-            '<td class="r gx-mono">' + (e.odds != null ? e.odds.toFixed(2) : '—') + '</td>' +
-            // UNA PICK SIN CASA ES UNA PICK QUE NADIE PUEDE TOMAR. Con tres casas el precio recomendado es el
-            // MEJOR de las tres, así que decir cuál es deja de ser un detalle y pasa a ser media instrucción.
-            '<td>' + (e.book ? '<span class="gx-es-book' + (e.book === 'pinnacle' ? ' sharp' : '') + '">' + esc(e.book.slice(0, 3).toUpperCase()) + '</span>' +
-              '<div class="gx-dim" style="font-size:9.5px">' + (e.books_quoting > 1 ? e.books_quoting + ' casas' : 'casa única') + '</div>' : '—') + '</td>' +
-            '<td><span class="gx-chip gx-chip-' + esc((e.confidence && e.confidence.level) || 'baja') + '">' + esc((e.confidence && e.confidence.level) || '—') + '</span></td>' +
-            '</tr>';
-        }).join('') + '</tbody></table></div></div>';
+      // LA MISMA CARD QUE FÚTBOL, COMBATE Y BALONCESTO. No una parecida: `pickCard()` tal cual, con los
+      // campos que el motor ya emite con esa forma. El usuario aprende a leer una pick UNA vez —chip de
+      // familia, ticket, porqué desplegable, cuota con su casa, confianza, señales y calculadora de stake—
+      // y esa lectura le vale en los cuatro deportes. Una tabla propia aquí no era personalidad, era deuda.
+      body = '<div class="gx-picks-feed">' + rows.map(function (r) { return pickCard(r.e, {}); }).join('') + '</div>';
     }
     esShell(t('nav_opps'), esTabs() + head + esArbs(d) + body + esWhyNot(d) + esDoctrine(d.doctrine));
   }
@@ -11327,10 +11327,12 @@
           var wpb = e.target.closest('[data-watchbtn]'); if (wpb) { e.preventDefault(); e.stopPropagation(); toggleWatchRow(wpb); return; }
           var wt = e.target.closest('[data-whytoggle]'); if (wt) { e.preventDefault(); e.stopPropagation(); var wb = wt.parentNode.querySelector('.gx-pick-why'); if (wb) { wb.hidden = !wb.hidden; wt.classList.toggle('open', !wb.hidden); } return; }
           // P9/P11 (13-ago): controles del board — ocultar pick, refrescar, auto on/off, ver ocultas
-          var hp = e.target.closest('[data-hidepick]'); if (hp) { e.preventDefault(); e.stopPropagation(); toggleHidePick(hp.getAttribute('data-hidepick')); var b9 = $('#gx-board'); if (b9 && S.oppSub === 'picks') picksFeed(b9); return; }
+          // esports reusa la card entera, así que también reusa su botón de ocultar: sin este repintado el
+          // clic guardaba la preferencia y no pasaba nada en pantalla, que se lee como un botón roto.
+          var hp = e.target.closest('[data-hidepick]'); if (hp) { e.preventDefault(); e.stopPropagation(); toggleHidePick(hp.getAttribute('data-hidepick')); if (S.sport === 'esports') { showView(S.view); return; } var b9 = $('#gx-board'); if (b9 && S.oppSub === 'picks') picksFeed(b9); return; }
           var fr = e.target.closest('[data-feedrefresh]'); if (fr) { e.preventDefault(); e.stopPropagation(); S.feedNew = 0; feedRefreshNow(); return; }
           var fa = e.target.closest('[data-feedauto]'); if (fa) { e.preventDefault(); e.stopPropagation(); lsSet('gp_feed_auto', feedAutoOn() ? '0' : null); var b10 = $('#gx-board'); if (b10 && S.oppSub === 'picks') picksFeed(b10); return; }
-          var sh = e.target.closest('[data-showhidden]'); if (sh) { e.preventDefault(); e.stopPropagation(); S.showHidden = !S.showHidden; var b11 = $('#gx-board'); if (b11 && S.oppSub === 'picks') picksFeed(b11); return; }
+          var sh = e.target.closest('[data-showhidden]'); if (sh) { e.preventDefault(); e.stopPropagation(); S.showHidden = !S.showHidden; if (S.sport === 'esports') { showView(S.view); return; } var b11 = $('#gx-board'); if (b11 && S.oppSub === 'picks') picksFeed(b11); return; }
           var oh = e.target.closest('[data-openhash]'); if (oh) { e.preventDefault(); setHash(oh.getAttribute('data-openhash')); return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }

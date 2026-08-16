@@ -613,9 +613,20 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
   }
   picks.sort((a, b) => b.edge_pp - a.edge_pp);
 
+  // EL RECUENTO DE POR QUÉ NO. Un hueco sin explicación se lee como un sistema roto —y es literalmente la
+  // pregunta que hizo Alexis al ver la pantalla vacía: "¿por qué no me aparecen las picks?". El motor sabe la
+  // respuesta línea por línea; lo que faltaba era sumarla y sacarla a la superficie.
+  const reasons = {};
+  for (const r of out) {
+    if (r.pick || r.folded_into) continue;
+    for (const x of r.no_pick_reasons || []) reasons[x.code] = (reasons[x.code] || 0) + 1;
+  }
+
   return {
     rows: out,
     picks,
+    reasons,
+    valued: out.length,
     // las que se plegaron NO son "no picks" por falta de valor: son la misma pick a otro precio, y mezclarlas
     // con los rechazos haría ilegible el motivo de cada hueco
     folded: picksRaw.length - picks.length,
@@ -701,9 +712,20 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
       markets_n: (mk && mk.markets) ? mk.markets.length : 0,
       picks: edges ? edges.picks.length : 0,
       best: edges && edges.picks.length ? edges.picks[0] : null,
+      // el motivo de cada NO, contado. Es lo que permite que la pantalla de oportunidades explique un hueco
+      // en vez de dejarlo mudo.
+      reasons: edges ? edges.reasons : null,
+      valued: edges ? edges.valued : 0,
       arbitrages: arbs.length,
+      arbs: arbs.slice(0, 4),
       best_arb: arbs[0] || null,
       highlight: highlightOf(game, model),
+      // LOS ESCUDOS VIAJAN CON LA PIZARRA. Estaban solo en la ficha del partido, así que el calendario era una
+      // lista de nombres — y un calendario de deporte sin caras no se parece a un calendario, se parece a un
+      // registro. El motor ya resolvió los equipos contra la base propia aquí mismo; no cuesta nada más.
+      crests: model && model.teams
+        ? { a: (model.teams.a && model.teams.a.logo) || null, b: (model.teams.b && model.teams.b.logo) || null }
+        : null,
     });
   }
   return {
@@ -744,6 +766,59 @@ function highlightOf(game, model) {
   return null;
 }
 
+// ---- 6) EL MOTOR COMO HERRAMIENTA, NO COMO CARTEL -------------------------------------------------------
+// La pestaña "El motor" enseñaba una lista de lo que el motor sabe hacer. Eso es un folleto: se lee una vez y
+// no se vuelve. Lo que la convierte en herramienta es poder PREGUNTARLE — elegir dos equipos cualesquiera del
+// histórico y ver qué dice el modelo de ese cruce, con su veto, su reparto por mapa y su distribución de
+// rondas, SIN que ninguna casa tenga que cotizarlo primero.
+//
+// Y eso solo se puede ofrecer desde que CS2 tiene base propia: hasta hoy la probabilidad nacía del mercado,
+// así que un cruce sin mercado no tenía respuesta. Ahora sí la tiene, y decir de dónde sale —modelo puro, sin
+// ancla— es parte de la respuesta.
+function teamSearch(game, q, { limit = 24 } = {}) {
+  if (game !== 'cs2') return { game, available: false, why: 'solo CS2 tiene base propia de equipos; los otros tres juegos todavía no tienen fuente de resultados.', teams: [] };
+  const CD = require('./cs2-data');
+  const data = CD.load();
+  const needle = CD.norm(q || '');
+  const rows = Object.values(data.teams)
+    .filter((t) => !needle || CD.norm(t.name).indexOf(needle) >= 0)
+    // se ordena por HISTORIAL, no alfabéticamente: quien busca "spirit" quiere Team Spirit, no su filial
+    .sort((a, b) => (b.n || 0) - (a.n || 0))
+    .slice(0, limit)
+    .map((t) => {
+      const g = data.teamGlobal[t.id];
+      return { id: t.id, name: t.name, logo: t.logo || null, rank: t.rank || null,
+        maps: t.n || 0, elo: g ? g.elo : null, wr: g ? g.wr : null };
+    });
+  return { game, available: true, teams: rows, total: Object.keys(data.teams).length, at: data.at };
+}
+
+// Un cruce simulado sin mercado. `bo` lo elige quien pregunta porque aquí no hay casa que lo declare.
+function simulate(game, aName, bName, { bo = 3 } = {}) {
+  const E = ENGINES[game];
+  if (!E) return null;
+  if (game !== 'cs2') return { game, available: false, why: 'el simulador necesita base propia y hoy solo la tiene CS2.' };
+  const CD = require('./cs2-data');
+  const data = CD.load();
+  const idA = CD.resolveTeam(aName, { data }), idB = CD.resolveTeam(bName, { data });
+  if (!idA || !idB) {
+    return { game, available: false, resolved: { a: idA, b: idB },
+      why: `no reconozco a ${!idA ? aName : bName} en la base propia. Se devuelve nada antes que el historial de otro equipo: darle a un equipo el pasado de otro es peor que no tener pasado, porque el modelo se pone seguro sobre una mentira.` };
+  }
+  if (idA === idB) return { game, available: false, why: 'los dos nombres resuelven al mismo equipo.' };
+  // se le pasa un mercado VACÍO a propósito: es la probabilidad del modelo sola, sin ancla ninguna
+  const model = E.analyze({ market: { markets: [] }, ratings: {}, bo, sample: 0,
+    teams: { a: data.teams[idA].name, b: data.teams[idB].name } });
+  return {
+    game, available: true, bo,
+    teams: { a: CD.teamCard(idA, { data }), b: CD.teamCard(idB, { data }) },
+    model,
+    standalone: true,
+    note: 'esta probabilidad NO está anclada a ninguna casa: es la del modelo sola, sobre la base propia de GP. En una partida real el mercado manda sobre el ganador y el modelo aporta la estructura — aquí se enseña el modelo desnudo a propósito, que es de lo que va esta pantalla.',
+    at: new Date().toISOString(),
+  };
+}
+
 function closesCount(game) {
   const st = rd(`closes-${game}.json`);
   return st && st.closes ? Object.keys(st.closes).length : 0;
@@ -752,4 +827,5 @@ function closesCount(game) {
 module.exports = {
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, market, analyzeMatch, board, evaluateAll, probFor, boOf,
+  teamSearch, simulate,
 };

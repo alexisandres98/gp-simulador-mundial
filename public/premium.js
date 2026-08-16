@@ -8198,22 +8198,81 @@
         '<span class="gx-dim">' + esc((d.items || []).length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.' : 'La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.') + '</span></div></div>';
     } else {
       body = '<div class="gx-panel gx-board"><div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
-        '<th>Partida</th><th>Mercado</th><th class="r">GP</th><th class="r">Mercado</th><th class="r">Ventaja</th><th class="r">Cuota</th><th>Confianza</th></tr></thead><tbody>' +
+        '<th>Partida</th><th>Mercado</th><th class="r">GP</th><th class="r">Mercado</th><th class="r">Ventaja</th><th class="r">Cuota</th><th>Casa</th><th>Confianza</th></tr></thead><tbody>' +
         rows.map(function (r) {
           var ev = r.it.event, e = r.e;
           return '<tr data-esmatch="' + esc(ev.id) + '">' +
             '<td><b>' + esc(ev.home.name) + '</b> <span class="gx-dim">vs</span> <b>' + esc(ev.away.name) + '</b>' +
             '<div class="gx-dim" style="font-size:10.5px">' + esc(ev.competition || '') + ' · BO' + r.it.bo + '</div></td>' +
-            '<td>' + esc(esEdgeLabel(e)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(e.how || '') + '</div></td>' +
+            '<td>' + esc(esEdgeLabel(e)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(e.how || '') +
+              (e.correlated_n ? ' · ' + e.correlated_n + ' línea' + (e.correlated_n > 1 ? 's' : '') + ' más con la misma tesis' : '') + '</div></td>' +
             '<td class="r gx-mono">' + esPct(e.p_gp) + '</td>' +
             '<td class="r gx-mono">' + esPct(e.p_market) + '</td>' +
             '<td class="r gx-mono ' + (e.edge_pp > 0 ? 'gx-up' : 'gx-down') + '">' + esSign(e.edge_pp) + ' pp</td>' +
             '<td class="r gx-mono">' + (e.odds != null ? e.odds.toFixed(2) : '—') + '</td>' +
+            // UNA PICK SIN CASA ES UNA PICK QUE NADIE PUEDE TOMAR. Con tres casas el precio recomendado es el
+            // MEJOR de las tres, así que decir cuál es deja de ser un detalle y pasa a ser media instrucción.
+            '<td>' + (e.book ? '<span class="gx-es-book' + (e.book === 'pinnacle' ? ' sharp' : '') + '">' + esc(e.book.slice(0, 3).toUpperCase()) + '</span>' +
+              '<div class="gx-dim" style="font-size:9.5px">' + (e.books_quoting > 1 ? e.books_quoting + ' casas' : 'casa única') + '</div>' : '—') + '</td>' +
             '<td><span class="gx-chip gx-chip-' + esc((e.confidence && e.confidence.level) || 'baja') + '">' + esc((e.confidence && e.confidence.level) || '—') + '</span></td>' +
             '</tr>';
         }).join('') + '</tbody></table></div></div>';
     }
-    esShell(t('nav_opps'), esTabs() + head + body + esDoctrine(d.doctrine));
+    esShell(t('nav_opps'), esTabs() + head + esArbs(d) + body + esWhyNot(d) + esDoctrine(d.doctrine));
+  }
+
+  // ── ARBITRAJE: LO ÚNICO QUE NO PASA POR EL MODELO ──────────────────────────────────────────────────────
+  // Va ARRIBA de las picks a propósito. Si el modelo estuviera entero equivocado, esta sección seguiría
+  // siendo válida: sale de que dos casas discrepen en el precio de los dos lados del mismo mercado, no de que
+  // GP tenga razón. Es la única fila de esta pantalla de la que se puede decir eso, y por eso va primero.
+  function esArbs(d) {
+    var all = [];
+    (d.items || []).forEach(function (it) { (it.arbs || []).forEach(function (a) { all.push({ it: it, a: a }); }); });
+    if (!all.length) return '';
+    all.sort(function (x, y) { return y.a.profit_pct - x.a.profit_pct; });
+    return esPanel('Arbitraje puro', '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Partida</th><th>Mercado</th><th>Patas</th><th class="r">Beneficio</th></tr></thead><tbody>' +
+      all.slice(0, 8).map(function (r) {
+        var ev = r.it.event, a = r.a;
+        return '<tr data-esmatch="' + esc(ev.id) + '">' +
+          '<td><b>' + esc(ev.home.name) + '</b> <span class="gx-dim">vs</span> <b>' + esc(ev.away.name) + '</b></td>' +
+          '<td>' + esc(a.family_label || a.family) + (a.line != null ? ' ' + a.line : '') + (a.map ? ' · mapa ' + a.map : '') + '</td>' +
+          '<td>' + (a.legs || []).map(function (l) {
+            return '<span class="gx-es-book' + (l.book === 'pinnacle' ? ' sharp' : '') + '">' + esc(l.book.slice(0, 3).toUpperCase()) + '</span> ' +
+              '<span class="gx-mono" style="font-size:11px">' + esc(l.side) + ' @' + l.odds.toFixed(2) + '</span>';
+          }).join(' <span class="gx-dim">+</span> ') + '</td>' +
+          '<td class="r gx-mono gx-up">+' + a.profit_pct + '%</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">Los límites de apuesta y la velocidad a la que la casa mueve el precio mandan: un arbitraje sobre el papel no es un arbitraje ejecutado.</div>');
+  }
+
+  // ── POR QUÉ NO HAY MÁS ─────────────────────────────────────────────────────────────────────────────────
+  // Escrito porque la primera pregunta al ver la pantalla casi vacía fue exactamente esa. El motor sabe el
+  // motivo de cada línea rechazada; lo que faltaba era sumarlo y enseñarlo. Un hueco sin explicación se lee
+  // como un sistema roto, y aquí el hueco es una decisión, no un fallo.
+  var ES_REASON = {
+    estructura_no_medida: ['Estructura sin medir', 'el perfil de fondo es un supuesto de circuito, no una medición propia. Hoy solo CS2 tiene base propia; en los otros tres juegos una diferencia con el mercado no dice que el mercado se equivoque.'],
+    ventaja_explicada_por_calibracion: ['La explica nuestro propio error', 'el residuo del ajuste de rondas de ese mapa basta para producir la diferencia entera. No se apuesta contra el error de uno mismo.'],
+    ventaja_insuficiente: ['Ventaja por debajo del listón', 'no llega al mínimo exigido (3 pp, y 5,5 si solo la cotiza una casa).'],
+    ventaja_bajo_ruido: ['Ventaja por debajo del ruido', 'la diferencia no supera la incertidumbre del propio modelo.'],
+    precio_viejo: ['Precio viejo', 'la cotización tiene más de 90 minutos.'],
+  };
+  function esWhyNot(d) {
+    var agg = {}, valued = 0;
+    (d.items || []).forEach(function (it) {
+      valued += it.valued || 0;
+      var r = it.reasons || {};
+      Object.keys(r).forEach(function (k) { agg[k] = (agg[k] || 0) + r[k]; });
+    });
+    var keys = Object.keys(agg).sort(function (a, b) { return agg[b] - agg[a]; });
+    if (!keys.length) return '';
+    return esPanel('Por qué no hay más', '<span class="gx-dim">' + valued + ' líneas valoradas</span>',
+      '<div class="gx-es-why-rows">' + keys.map(function (k) {
+        var m = ES_REASON[k] || [k.replace(/_/g, ' '), ''];
+        return '<div class="gx-es-whyr"><b>' + esc(m[0]) + '</b><em>' + agg[k] + '</em>' +
+          '<span>' + esc(m[1]) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">Una línea puede caer por varios motivos a la vez, así que la suma pasa del total. Todos estos filtros nacieron de una medición, no de una intuición.</div>');
   }
   // La línea que se muestra tiene que ser la DEL LADO QUE SE APUESTA. El proveedor publica la línea siempre
   // referida al local, así que enseñarla tal cual junto a "Visitante" decía lo contrario de lo que la
@@ -8233,36 +8292,138 @@
     return '<div class="gx-panel gx-es-doct">' + ic('shield') + '<div><b>Por qué no verás picks al ganador</b><span>' + esc(txt) + '</span></div></div>';
   }
 
-  // ---- 2) LA PIZARRA DEL JUEGO ---------------------------------------------------------------------------
+  // ---- 2) PARTIDAS: EL CALENDARIO, CON EL MISMO FORMATO QUE EL RESTO DE LA CASA -------------------------
+  // REESCRITA POR UNA QUEJA CONCRETA DE ALEXIS: "esas partidas deberían tener otro formato, eso no tiene hora
+  // ni tiene nada". Tenía razón y el fallo era de bulto: eran tarjetas sueltas, sin hora, sin día, sin
+  // escudos y sin orden — o sea, un listado, no un calendario. Fútbol y baloncesto llevan meses con la forma
+  // correcta y no había ningún motivo para inventar otra aquí.
+  //
+  // Se adopta LA MISMA gramática que `renderBBGames`, y a propósito la misma y no una parecida: agrupado por
+  // día con cabecera (Hoy / Mañana / vie 22 ago), hora en la primera columna, escudos reales, tabla en
+  // escritorio y tarjetas en móvil, buscador y segmentos con su contador. Se reutilizan `bbDayKey`,
+  // `bbDayLabel` y `bbTime` en vez de duplicarlos: si un día cambia el formato de fecha de la casa, cambia
+  // en los tres deportes a la vez.
+  //
+  // Lo único que NO se copia es la columna de estado, porque este deporte es distinto y disimularlo sería
+  // peor: ninguna de las tres casas publica resultados, así que aquí no hay "Final" con marcador. Un partido
+  // que empezó se marca EN VIVO y uno que terminó simplemente desaparece del catálogo. Se dice en la vista.
+  var ES_GTABS = [['all', 'Todas'], ['live', 'En vivo'], ['up', 'Próximas']];
+  function esIsLive(it) {
+    var t0 = Date.parse((it.event && it.event.start_at) || 0);
+    return !!t0 && t0 <= Date.now();
+  }
+  // La casa que cotiza, en chips. Es la información nueva de esta pantalla y merece sitio propio: un partido
+  // con tres casas y uno con una no valen lo mismo, y hasta hoy no había forma de verlo sin abrir la ficha.
+  function esBooksCell(it) {
+    var bs = it.book_list || [];
+    if (!bs.length) return '<span class="gx-dim" style="font-size:11px">sin precio</span>';
+    return '<span class="gx-es-books">' + bs.map(function (b) {
+      return '<span class="gx-es-book' + (b === 'pinnacle' ? ' sharp' : '') + '" title="' + esc(b === 'pinnacle' ? 'Pinnacle — referencia de cierre del sector' : b) + '">' + esc(b.slice(0, 3).toUpperCase()) + '</span>';
+    }).join('') + (bs.length > 1 ? '' : '<i class="gx-es-book-one" title="una sola casa: sin consenso, el listón de la pick sube 2,5 pp">1</i>') + '</span>';
+  }
+  function esStateCell(it) {
+    if (esIsLive(it)) return '<span class="gx-live-pill">EN VIVO</span>';
+    return '<span class="gx-dim" style="font-size:11px">BO' + it.bo + '</span>';
+  }
+  function esDuoCell(it) {
+    var p = it.p_home;
+    if (p == null) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    var h = Math.round(100 * p), a = 100 - h;
+    return '<span class="gx-tri gx-gp gx-duo"><span' + (h > a ? ' class="hi"' : '') + '>' + h + '%</span><span' + (a >= h ? ' class="hi"' : '') + '>' + a + '%</span></span>';
+  }
+  function esSignalCell(it) {
+    if (it.arbitrages) return '<span class="gx-bb-pickchip">' + ic('arrows-shuffle') + it.arbitrages + ' arb.</span>';
+    if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + ' con ventaja</span>';
+    if (it.highlight) return '<span class="gx-es-hl">' + esc(it.highlight) + '</span>';
+    return '<span class="gx-dim" style="font-size:11px">' + (it.markets_n ? it.markets_n + ' líneas' : 'mercado cerrado') + '</span>';
+  }
+  function esPair(it, cls) {
+    var ev = it.event, cr = it.crests || {};
+    return '<div class="gx-cell-team">' + cs2Crest({ name: ev.home.name, logo: cr.a }, cls) +
+      '<div class="gx-teamnames"><b>' + esc(ev.home.name) + '</b><span>' + esc(ev.away.name) + '</span></div>' +
+      cs2Crest({ name: ev.away.name, logo: cr.b }, cls) + '</div>';
+  }
+  function esGamesTable(rows) {
+    return '<table class="gx-table"><thead><tr><th class="l">Hora</th><th class="l">Partida</th><th class="l">Estado</th><th class="grp">Probabilidad GP</th><th class="l">Casas</th><th class="l">Señal</th><th></th></tr></thead><tbody>' +
+      rows.map(function (it) {
+        var ev = it.event;
+        return '<tr class="gx-row" data-esmatch="' + esc(ev.id) + '">' +
+          '<td class="gx-time">' + esc(bbTime(ev.start_at)) + '<div class="gx-dim" style="font-size:9.5px">' + esc(String(ev.competition || '').slice(0, 24)) + '</div></td>' +
+          '<td class="l">' + esPair(it, 'sm') + '</td>' +
+          '<td class="l">' + esStateCell(it) + '</td>' +
+          '<td>' + esDuoCell(it) + '</td>' +
+          '<td class="l">' + esBooksCell(it) + '</td>' +
+          '<td class="l">' + esSignalCell(it) + '</td>' +
+          '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function esGamesCards(rows) {
+    return rows.map(function (it) {
+      var ev = it.event;
+      return '<div class="gx-mcard" data-esmatch="' + esc(ev.id) + '">' +
+        '<div class="gx-mcard-top"><span class="gx-time">' + esc(bbTime(ev.start_at)) + '</span>' +
+          '<span class="gx-dim" style="font-size:10.5px">' + esc(ev.competition || '') + '</span>' +
+          '<span class="gx-spacer"></span>' + esStateCell(it) + '</div>' +
+        '<div style="margin:8px 0">' + esPair(it, 'sm') + '</div>' +
+        '<div class="gx-mcard-rows"><div><span class="gx-label">Probabilidad GP</span>' + esDuoCell(it) + '</div>' +
+          '<div><span class="gx-label">Casas</span>' + esBooksCell(it) + '</div></div>' +
+        '<div class="gx-mcard-foot"><span>' + esSignalCell(it) + '</span><span class="gx-mcard-cta">Analizar →</span></div></div>';
+    }).join('');
+  }
+
   function renderESBoard() {
     var g = esGame();
     var d = esGet('board_' + g, '/api/esports/board?game=' + g + '&days=3', 120000);
     if (!d) { esShell(t('es_nav_board'), esTabs() + esLoading()); return; }
     if (d._err) { esShell(t('es_nav_board'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var all = d.items || [];
+    var tab = S.es.gTab || 'all';
+    var q = (S.es.gQ || '').toLowerCase();
+    var live = all.filter(esIsLive), up = all.filter(function (x) { return !esIsLive(x); });
+    var rows = tab === 'live' ? live : tab === 'up' ? up : all;
+    if (q) rows = rows.filter(function (it) { return ((it.event.home.name || '') + ' ' + (it.event.away.name || '') + ' ' + (it.event.competition || '')).toLowerCase().indexOf(q) >= 0; });
+    // en vivo primero y el resto por hora, igual que en baloncesto
+    rows = rows.slice().sort(function (a, b) {
+      var la = esIsLive(a) ? 0 : 1, lb = esIsLive(b) ? 0 : 1;
+      if (la !== lb) return la - lb;
+      return String(a.event.start_at).localeCompare(String(b.event.start_at));
+    });
+    var counts = { all: all.length, live: live.length, up: up.length };
+    // sin <h1> propio: `esShell` ya pinta el título de la vista y ponerlo otra vez lo duplicaba en pantalla.
+    // Los controles sí van en una `gx-ohead`, que es la fila donde esta casa pone segmentos y buscador.
+    var head = '<div class="gx-ohead">' +
+      '<div class="gx-seg" id="gx-esgtabs">' + ES_GTABS.map(function (x) {
+        return '<button data-esgtab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + (counts[x[0]] ? ' <em class="gx-segn">' + counts[x[0]] + '</em>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-essearch" placeholder="Buscar equipo o liga…" value="' + esc(S.es.gQ || '') + '"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' partidas · ' + (d.books || 0) + ' casas</span></div>';
     var body;
-    if (!(d.items || []).length) {
-      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>Sin partidas en la ventana.</b>' +
-        '<span class="gx-dim">El proveedor no tiene agenda abierta para ' + esc(d.label) + ' en los próximos días.</span></div></div>';
+    if (!rows.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>Sin partidas en esta vista.</b>' +
+        '<span class="gx-dim">' + esc(all.length ? 'Prueba con otro segmento o limpia la búsqueda.' : 'Ninguna de las casas tiene agenda abierta para ' + d.label + ' en los próximos días.') + '</span></div></div>';
     } else {
-      body = '<div class="gx-es-cards">' + d.items.map(function (it) {
-        var ev = it.event;
-        var p = it.p_home;
-        return '<div class="gx-es-card" data-esmatch="' + esc(ev.id) + '">' +
-          '<div class="gx-es-card-h"><span class="gx-dim">' + esc(ev.competition || '—') + '</span><span class="gx-spacer"></span><span class="gx-dim gx-mono">BO' + it.bo + '</span></div>' +
-          '<div class="gx-es-card-t"><b>' + esc(ev.home.name) + '</b><span class="gx-mono">' + (p != null ? esPct0(p) : '—') + '</span></div>' +
-          '<div class="gx-es-card-t"><b>' + esc(ev.away.name) + '</b><span class="gx-mono">' + (p != null ? esPct0(1 - p) : '—') + '</span></div>' +
-          (p != null ? '<div class="gx-es-bar"><i style="width:' + (100 * p).toFixed(1) + '%"></i></div>' : '') +
-          '<div class="gx-es-card-f">' +
-            (it.highlight ? '<span class="gx-es-hl">' + esc(it.highlight) + '</span>' : '') +
-            '<span class="gx-spacer"></span>' +
-            (it.picks ? '<span class="gx-chip gx-chip-alta">' + it.picks + ' con ventaja</span>' : '<span class="gx-dim" style="font-size:10.5px">' + (it.markets_n ? it.markets_n + ' líneas' : 'mercado cerrado') + '</span>') +
-          '</div>' +
-          '<div class="gx-dim gx-es-anchor">' + esc(it.anchor || 'sin precio abierto todavía') + '</div>' +
-          '</div>';
-      }).join('') + '</div>';
+      var groups = [], gmap = {};
+      rows.forEach(function (it) {
+        var k = bbDayKey(it.event.start_at);
+        if (!gmap[k]) { gmap[k] = { label: bbDayLabel(it.event.start_at), rows: [] }; groups.push(gmap[k]); }
+        gmap[k].rows.push(it);
+      });
+      body = groups.map(function (gr) {
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(gr.label) + '</span><span class="gx-dim">' + gr.rows.length + '</span></div>' +
+          '<div class="gx-panel gx-board gx-matches-desk">' + esGamesTable(gr.rows) + '</div>' +
+          '<div class="gx-matches-mob">' + esGamesCards(gr.rows) + '</div></div>';
+      }).join('');
     }
+    // por qué no hay resultados en este calendario: hay que decirlo o se lee como un calendario roto
+    var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') +
+      '<span>Aquí no verás marcadores finales: ninguna de las tres casas publica resultados, así que una partida terminada sale del catálogo. El histórico de CS2 no depende de eso —sale de la cosecha propia— pero el calendario sí.</span></div>';
     var trunc = d.truncated ? '<div class="gx-dim gx-es-trunc">Se muestran ' + d.shown + ' de ' + d.total + ' partidas: quedan ' + d.truncated + ' fuera de esta vista.</div>' : '';
-    esShell(t('es_nav_board'), esTabs() + body + trunc + esDoctrine(d.doctrine));
+    esShell(t('es_nav_board'), esTabs() + head + body + trunc + note);
+    var si = $('#gx-essearch');
+    if (si) si.addEventListener('input', function () {
+      S.es.gQ = si.value; clearTimeout(S._esq);
+      S._esq = setTimeout(function () { var pos = si.selectionStart; renderESBoard(); var n = $('#gx-essearch'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }, 220);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -8864,28 +9025,108 @@
       '</div>';
   }
 
-  // ---- 4) EL MOTOR DEL JUEGO -----------------------------------------------------------------------------
+  // ---- 4) EL MOTOR: UNA HERRAMIENTA, NO UN FOLLETO -------------------------------------------------------
+  // REESCRITA POR OTRA QUEJA DE ALEXIS, y también tenía razón: "no le veo la funcionalidad a ese feature".
+  // Lo que había era una lista de lo que el motor sabe hacer. Eso es un folleto: se lee una vez y no se
+  // vuelve, porque no se le puede PREGUNTAR nada. Un motor que no se puede interrogar no se distingue de un
+  // texto que dice que existe.
+  //
+  // Ahora se le pregunta: se eligen DOS EQUIPOS CUALESQUIERA de los 1.031 del histórico propio y el modelo
+  // contesta —veto, fuerza por mapa, distribución de rondas— sin que ninguna casa tenga que cotizarlos. Eso
+  // solo se puede ofrecer desde que CS2 tiene base propia: mientras la probabilidad nacía del mercado, un
+  // cruce sin mercado no tenía respuesta que dar. Es, literalmente, la prueba de que el modelo es nuestro.
+  //
+  // Y debajo, lo que convierte una demo en una ficha auditable: las métricas de validación FUERA DE MUESTRA,
+  // contra qué alternativas se comparó, y cada constante etiquetada según de dónde salió (aprendida de los
+  // datos, convención del juego, doctrina de la casa). Un modelo que no enseña contra qué lo midieron es una
+  // opinión con gráficos.
+  function esSimTeams(g) {
+    var d = esGet('teams_' + g, '/api/esports/teams?game=' + g + '&limit=300', 900000);
+    return (d && d.teams) || [];
+  }
+  function esSimPanel(g, d) {
+    if (g !== 'cs2') {
+      return esPanel('Simulador de enfrentamiento', '<span class="gx-chip gx-chip-baja">no disponible</span>',
+        esGap('El simulador necesita base propia y hoy solo la tiene CS2. En ' + esc(d.label) + ' la probabilidad nace del mercado, así que un cruce sin partido cotizado no tiene nada que contestar. Se abre solo el día que este juego tenga fuente de resultados.'));
+    }
+    var teams = esSimTeams(g);
+    var a = S.es.simA || '', b = S.es.simB || '', bo = S.es.simBo || 3;
+    var opts = teams.map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join('');
+    var form =
+      '<div class="gx-es-sim">' +
+        '<div class="gx-es-simf">' +
+          '<label><span>Equipo A</span><input id="gx-essim-a" list="gx-esteams" placeholder="Vitality" value="' + esc(a) + '" autocomplete="off"></label>' +
+          '<label><span>Equipo B</span><input id="gx-essim-b" list="gx-esteams" placeholder="Astralis" value="' + esc(b) + '" autocomplete="off"></label>' +
+          '<label><span>Formato</span><select id="gx-essim-bo">' +
+            [1, 3, 5].map(function (n) { return '<option value="' + n + '"' + (bo === n ? ' selected' : '') + '>BO' + n + '</option>'; }).join('') +
+          '</select></label>' +
+          '<button class="gx-btn gx-btn-p" id="gx-essim-go">' + ic('calculator') + 'Simular</button>' +
+        '</div>' +
+        '<datalist id="gx-esteams">' + opts + '</datalist>' +
+        '<div class="gx-dim gx-es-note">' + (teams.length ? teams.length + ' equipos con perfil en la base propia. ' : '') +
+        'La probabilidad que sale aquí NO está anclada a ninguna casa: es la del modelo sola. En una partida real el mercado manda sobre el ganador y el modelo aporta la estructura — aquí se enseña desnudo a propósito.</div>' +
+      '</div>';
+    return esPanel('Simulador de enfrentamiento', '<span class="gx-chip gx-chip-alta">modelo puro</span>', form, 'gx-es-simp');
+  }
+  function esSimResult(g) {
+    var a = S.es.simA, b = S.es.simB, bo = S.es.simBo || 3;
+    if (g !== 'cs2' || !a || !b || !S.es.simRun) return '';
+    var key = 'sim_' + encodeURIComponent(a) + '_' + encodeURIComponent(b) + '_' + bo;
+    var s = esGet(key, '/api/esports/sim?game=' + g + '&a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + '&bo=' + bo, 900000);
+    if (!s) return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Simulando ' + esc(a) + ' vs ' + esc(b) + '…</b></div></div>';
+    if (s._err) return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';
+    if (!s.available) {
+      return '<div class="gx-panel gx-es-doct">' + ic('alert-triangle') + '<div><b>No se puede simular ese cruce</b><span>' + esc(s.why || '') + '</span></div></div>';
+    }
+    // se le da a los bloques de CS2 la misma forma que esperan de una partida real: `event` + `model`
+    var fake = { event: { home: { name: s.teams.a.name }, away: { name: s.teams.b.name } }, model: s.model };
+    var pr = s.model.probability || {};
+    var head = '<div class="gx-panel gx-cs-simhead">' +
+      '<div class="gx-cs-side">' + cs2Crest(s.teams.a, 'big') + '<b>' + esc(s.teams.a.name) + '</b>' +
+        '<span class="gx-dim">' + (s.teams.a.elo != null ? 'Elo ' + Math.round(s.teams.a.elo) : '') + ' · ' + s.teams.a.n + ' mapas</span></div>' +
+      '<div class="gx-cs-mid"><b class="gx-cs-p">' + esPct0(pr.p) + '</b><span class="gx-dim">BO' + s.bo + ' · modelo sin ancla</span>' +
+        '<div class="gx-es-bar"><i style="width:' + (100 * (pr.p || 0)).toFixed(1) + '%"></i></div>' +
+        '<b class="gx-cs-p2">' + esPct0(pr.p != null ? 1 - pr.p : null) + '</b></div>' +
+      '<div class="gx-cs-side">' + cs2Crest(s.teams.b, 'big') + '<b>' + esc(s.teams.b.name) + '</b>' +
+        '<span class="gx-dim">' + (s.teams.b.elo != null ? 'Elo ' + Math.round(s.teams.b.elo) : '') + ' · ' + s.teams.b.n + ' mapas</span></div>' +
+      '</div>';
+    return head + cs2Veto(fake) + cs2Ladder(fake) + cs2Rounds(fake) + cs2Teams(fake);
+  }
+
   function renderESModel() {
     var g = esGame();
     var d = esGet('model_' + g, '/api/esports/model?game=' + g, 600000);
     if (!d) { esShell(t('es_nav_model'), esTabs() + esLoading()); return; }
     if (d._err) { esShell(t('es_nav_model'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var body =
-      '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Lo que este juego tiene de propio</span></div>' +
-      '<div class="gx-es-native">' + (d.native || []).map(function (x) { return '<span class="gx-es-nat">' + esc(x) + '</span>'; }).join('') + '</div>' +
-      '<div class="gx-dim gx-es-note">Cada juego tiene su motor. No hay una plantilla común: lo que decide una serie de ' + esc(d.label) + ' no es lo que decide una de al lado, y por eso esta pestaña enseña cosas distintas de las otras tres.</div></div>' +
+      esSimPanel(g, d) +
+      esSimResult(g) +
+      // la ficha auditable: métricas fuera de muestra y constantes con su procedencia
+      cs2Model({ model: { model: d.model_card } }) +
+      cs2Dataset({ model: { dataset: d.dataset } }) +
       esPanel('Familias que cotiza el mercado', '', '<div class="gx-es-fams">' + (d.families || []).map(function (f) {
         var edge = (d.edge_families || []).indexOf(f) >= 0;
         return '<span class="gx-es-fam' + (edge ? ' on' : '') + '">' + esc(f.replace(/_/g, ' ')) + (edge ? ' ·  aporta' : '') + '</span>';
       }).join('') + '</div>' +
       '<div class="gx-dim gx-es-note">En verde, donde el motor aporta estructura que el precio no tiene. En el resto se enseña la cifra pero no se apuesta.</div>') +
-      esPanel('Rating propio', d.rating && d.rating.n ? '<span class="gx-mono">' + d.rating.n + ' partidas</span>' : '<span class="gx-chip gx-chip-baja">vacío</span>',
-        '<div class="gx-es-kpis"><div><span>Partidas observadas</span><b>' + ((d.rating && d.rating.n) || 0) + '</b></div>' +
-        '<div><span>Equipos con rating</span><b>' + ((d.rating && Object.keys(d.rating.elo || {}).length) || 0) + '</b></div>' +
-        '<div><span>Cierres guardados</span><b>' + (d.closes_stored || 0) + '</b></div></div>' +
-        esGap('El proveedor de mercado no publica resultados, así que el rating propio no arranca solo. Mientras tanto el ganador es el consenso del mercado sin margen, y lo que sí es de GP —mapas, rondas, duración y kills— no depende del rating.')) +
+      '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Lo que este juego tiene de propio</span></div>' +
+      '<div class="gx-es-native">' + (d.native || []).map(function (x) { return '<span class="gx-es-nat">' + esc(x) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">Cada juego tiene su motor. No hay una plantilla común: lo que decide una serie de ' + esc(d.label) + ' no es lo que decide una de al lado.</div></div>' +
       esDoctrine(d.doctrine);
     esShell(t('es_nav_model'), esTabs() + body);
+    var go = $('#gx-essim-go');
+    if (go) go.addEventListener('click', function () {
+      var ia = $('#gx-essim-a'), ib = $('#gx-essim-b'), sb = $('#gx-essim-bo');
+      S.es.simA = ia ? ia.value.trim() : ''; S.es.simB = ib ? ib.value.trim() : '';
+      S.es.simBo = sb ? +sb.value : 3; S.es.simRun = !!(S.es.simA && S.es.simB);
+      renderESModel();
+    });
+    // Enter en cualquiera de los dos campos dispara la simulación: obligar a bajar al botón después de
+    // escribir dos nombres es fricción gratis en una herramienta que se usa a ráfagas.
+    ['#gx-essim-a', '#gx-essim-b'].forEach(function (sel) {
+      var el = $(sel);
+      if (el) el.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var gb = $('#gx-essim-go'); if (gb) gb.click(); } });
+    });
   }
 
   // ---- 5) RENDIMIENTO / ESTADO ---------------------------------------------------------------------------
@@ -8916,6 +9157,8 @@
   }
 
   function esClicks(e) {
+    var seg = e.target.closest('[data-esgtab]');
+    if (seg) { S.es.gTab = seg.getAttribute('data-esgtab'); renderESBoard(); return; }
     var gt = e.target.closest('[data-esg]');
     if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
     var go = e.target.closest('[data-esgo]');

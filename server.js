@@ -14916,6 +14916,27 @@ const server = http.createServer(async (req, res) => {
             rating: ES.ratings(gm), closes_stored: ES.closesCount(gm),
           });
         }
+        // ── EL MOTOR COMO HERRAMIENTA ────────────────────────────────────────────────────────────────────
+        // Buscador de equipos y simulador de cruce. Existen porque la pestaña "El motor" era un folleto —una
+        // lista de lo que el motor sabe hacer— y un folleto se lee una vez. Con esto se le puede PREGUNTAR:
+        // dos equipos cualesquiera del histórico, sin que ninguna casa tenga que cotizarlos primero. Solo es
+        // posible desde que CS2 tiene base propia; antes, un cruce sin mercado no tenía respuesta.
+        if (p === '/api/esports/teams') {
+          return json(res, 200, ES.teamSearch(gm, url.searchParams.get('q') || '', {
+            // el tope es 400 y no 60 porque este listado alimenta el desplegable del simulador: con 60 la
+            // mitad de los equipos conocidos no salen y la herramienta parece que no los tiene
+            limit: Math.min(400, +(url.searchParams.get('limit') || 24)),
+          }));
+        }
+        if (p === '/api/esports/sim') {
+          const a = String(url.searchParams.get('a') || '').trim();
+          const b = String(url.searchParams.get('b') || '').trim();
+          if (!a || !b) return json(res, 400, { error: 'faltan los dos equipos', need: ['a', 'b'] });
+          const bo = [1, 3, 5].indexOf(+url.searchParams.get('bo')) >= 0 ? +url.searchParams.get('bo') : 3;
+          const out = ES.simulate(gm, a, b, { bo });
+          if (!out) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          return json(res, 200, out);
+        }
         if (p === '/api/esports/snapshot' && req.method === 'POST') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
           return json(res, 200, await ES.snapshot(gm));

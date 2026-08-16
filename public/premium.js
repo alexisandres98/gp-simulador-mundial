@@ -3978,11 +3978,14 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
     if (['bbgames', 'bbteams', 'bbopps', 'bbbrief', 'bbperf', 'bbsim'].indexOf(nav) >= 0) return nav + '/' + bbLg();
+    // esports: el juego elegido viaja en el hash, por el mismo motivo (volver a la sección te devuelve al
+    // juego en el que estabas, y el enlace se puede compartir apuntando a CS2 o a LoL)
+    if (['esopps', 'esboard', 'esmodel'].indexOf(nav) >= 0) return nav + '/' + esGame();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -3991,7 +3994,13 @@
     if (nav === 'matches' && S.mComp && S.mComp !== 'todos') return 'matches/' + S.mComp;
     return NAV_HASH[nav];
   }
-  function navTo(nav) { var hh = compHash(nav); setHash(hh != null ? hh : ''); }
+  // SI UNA VISTA NO ESTÁ EN LA TABLA, SE NAVEGA A SU PROPIO NOMBRE, no a la cadena vacía. La cadena vacía
+  // es el hash del board de fútbol, así que el olvido de una entrada no daba un error visible: daba un menú
+  // que "no hace nada" y te dejaba callado en otro deporte. Es exactamente lo que pasó al añadir esports —
+  // las cinco vistas existían, se pintaban y respondían por URL directa, pero ningún clic del menú llegaba
+  // a ellas. Con este respaldo, el peor caso de un olvido futuro es una vista sin sufijo, no una sección
+  // entera inalcanzable.
+  function navTo(nav) { var hh = compHash(nav); setHash(hh != null ? hh : (nav || '')); }
   // helper para los selectores: cambiar la competición actualiza el hash (setHash → onHash re-renderiza).
   function setCompHash(view, val, def) { setHash((!val || val === def) ? view : view + '/' + val); }
   function openTeam(id, fromHash) { if (!id) return; if (!fromHash) { S.returnTo = (S.view === 'teams' ? 'teams' : ''); setHash('team/' + id); } S.view = 'team'; S.teamId = id; S.teamTab = 'resumen'; applyView(); syncNavActive(); try { window.scrollTo(0, 0); } catch (e) {} renderTeam(); }

@@ -8515,14 +8515,24 @@
           '<span class="gx-spacer"></span><span class="gx-dim gx-mono">' + (x.fresh_min != null ? x.fresh_min + ' min' : '—') + '</span></div>';
       }).join('') + '</div>';
   }
-  // histograma pequeño reutilizable
+  // Histograma pequeño reutilizable. LA COLA SE RECORTA: la prórroga produce marcadores rarísimos con
+  // probabilidad casi cero, y dibujarlos todos metía dieciséis barras vacías que aplastaban las diez que
+  // de verdad tienen masa. Se corta donde se acumula el 99,5 % y se dice cuánto quedó fuera — un recorte
+  // silencioso se leería como "aquí no hay nada más".
   function esHist(rows, xKey, label) {
     if (!rows || !rows.length) return '';
-    var max = rows.reduce(function (m, r) { return Math.max(m, r.p); }, 0) || 1;
+    var sorted = rows.slice().sort(function (a, b) { return a[xKey] - b[xKey]; });
+    var acc = 0, cut = sorted.length;
+    for (var i = 0; i < sorted.length; i++) { acc += sorted[i].p; if (acc >= 0.995) { cut = i + 1; break; } }
+    var shown = sorted.slice(0, cut), rest = sorted.slice(cut);
+    var restP = rest.reduce(function (s, r) { return s + r.p; }, 0);
+    var max = shown.reduce(function (m, r) { return Math.max(m, r.p); }, 0) || 1;
     return '<div class="gx-es-hist"><span class="gx-label">' + esc(label) + '</span><div class="gx-es-hist-b">' +
-      rows.map(function (r) {
+      shown.map(function (r) {
         return '<div class="gx-es-hb" title="' + r[xKey] + ': ' + esPct(r.p) + '"><i style="height:' + (100 * r.p / max).toFixed(1) + '%"></i><span>' + r[xKey] + '</span></div>';
-      }).join('') + '</div></div>';
+      }).join('') + '</div>' +
+      (rest.length ? '<div class="gx-dim gx-es-note">Se recortan ' + rest.length + ' valores de la cola (prórrogas largas) que suman ' + esPct(restP) + '.</div>' : '') +
+      '</div>';
   }
 
   // ---- 4) EL MOTOR DEL JUEGO -----------------------------------------------------------------------------

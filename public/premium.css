@@ -2606,3 +2606,148 @@ td .gx-calc-btn span { display: none; }
 @media (max-width:420px){
   .gx-sport { font-size:11.5px; padding-left:8px; padding-right:8px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+   CS2 — CAPA VISUAL (16-ago). Reescrita tras el veredicto: "info apilada, sin una imagen, sin estética".
+   La idea rectora: CS2 es un juego de TERRENO, así que el terreno tiene que verse. El tablero de veto son
+   siete cartas con el plano de cada mapa; los equipos traen su escudo real; y el perfil de rondas enseña
+   la simulación ENCIMA de lo observado para que el usuario pueda juzgar al modelo, no solo creerle.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* -- escudos y planos ------------------------------------------------------------------------------- */
+.gx-cs-crest{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;
+  border:1px solid var(--gx-line2);border-radius:9px;background:var(--gx-panel2);overflow:hidden}
+.gx-cs-crest.big{width:52px;height:52px;border-radius:12px}
+.gx-cs-crest img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px}
+.gx-cs-crest i{font-style:normal;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--gx-text3)}
+.gx-cs-crest.big i{font-size:15px}
+.gx-cs-art{width:100%;height:auto;color:rgba(255,255,255,.20);display:block}
+.gx-cs-art .site{fill:rgba(31,227,164,.16);stroke:rgba(31,227,164,.55)}
+.gx-cs-art .mid{fill:rgba(255,255,255,.05);stroke:rgba(255,255,255,.22)}
+.gx-cs-art.mini{width:16px;height:12px;flex:none;color:rgba(255,255,255,.34)}
+
+/* -- héroe de probabilidad con halo de incertidumbre ------------------------------------------------ */
+.gx-cs-hero{background:linear-gradient(180deg,rgba(31,227,164,.045),transparent 62%),var(--gx-panel);
+  border:1px solid var(--gx-line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+.gx-cs-hero-top{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--gx-text4)}
+.gx-cs-comp{font-weight:600;color:var(--gx-text3);text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+.gx-cs-bo{font-family:var(--gx-mono);border:1px solid var(--gx-line2);border-radius:6px;padding:2px 7px}
+.gx-cs-when{font-family:var(--gx-mono)}
+.gx-cs-hero-body{display:flex;align-items:center;gap:16px;margin-top:14px}
+.gx-cs-side{display:flex;align-items:center;gap:11px;flex:1;min-width:0}
+.gx-cs-side.r{justify-content:flex-end;text-align:right}
+.gx-cs-side b{display:block;font-size:16px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-cs-side span{display:block;font-size:10.5px;color:var(--gx-text4);margin-top:2px}
+.gx-cs-side span.warn{color:#E8C46A}
+.gx-cs-pct{text-align:center;flex:none;padding:0 6px}
+.gx-cs-pct b{font-size:38px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--gx-accent,#1FE3A4)}
+.gx-cs-pct b em{font-style:normal;font-size:18px;opacity:.6;margin-left:1px}
+.gx-cs-pct span{display:block;font-size:11px;color:var(--gx-text4);margin-top:5px;font-variant-numeric:tabular-nums}
+.gx-cs-halo{position:relative;height:10px;border-radius:6px;background:var(--gx-line);margin-top:15px;overflow:hidden}
+.gx-cs-halo .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#12B98A,#1FE3A4);opacity:.55}
+.gx-cs-halo .band{position:absolute;top:0;bottom:0;background:rgba(31,227,164,.28)}
+.gx-cs-halo .mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:#EAF1F2;border-radius:2px}
+.gx-cs-anchor{display:flex;gap:7px;align-items:flex-start;font-size:11px;color:var(--gx-text3);margin-top:11px;line-height:1.45}
+
+/* -- tablero de veto: las siete cartas -------------------------------------------------------------- */
+.gx-cs-shock{display:flex;align-items:baseline;gap:12px;border:1px solid var(--gx-line);border-radius:11px;padding:11px 14px;margin-bottom:13px}
+.gx-cs-shock.favorable{border-color:rgba(31,227,164,.34);background:rgba(31,227,164,.05)}
+.gx-cs-shock.desfavorable{border-color:rgba(255,122,122,.3);background:rgba(255,122,122,.045)}
+.gx-cs-shock b{font-size:22px;font-variant-numeric:tabular-nums;flex:none}
+.gx-cs-shock span{font-size:11.5px;color:var(--gx-text3);line-height:1.4}
+.gx-cs-maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.gx-cs-map{border:1px solid var(--gx-line);border-radius:12px;padding:10px 11px 11px;background:var(--gx-panel2);position:relative;overflow:hidden}
+.gx-cs-map.pick{border-color:rgba(31,227,164,.45);background:linear-gradient(180deg,rgba(31,227,164,.07),var(--gx-panel2))}
+.gx-cs-map.dec{border-style:dashed;border-color:var(--gx-line2)}
+.gx-cs-map.ban{opacity:.42}
+.gx-cs-map.ban .gx-cs-art{color:rgba(255,255,255,.10)}
+.gx-cs-map.ban .gx-cs-art .site{fill:rgba(255,255,255,.04);stroke:rgba(255,255,255,.14)}
+.gx-cs-map-art{margin:-2px -3px 6px}
+.gx-cs-map-h{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.gx-cs-map-h b{font-size:13px;font-weight:650}
+.gx-cs-tag{font-size:8.5px;letter-spacing:.07em;color:var(--gx-text4);white-space:nowrap}
+.gx-cs-map.pick .gx-cs-tag{color:var(--gx-accent,#1FE3A4)}
+.gx-cs-map-bar{height:4px;border-radius:3px;background:var(--gx-line);margin:8px 0 5px;overflow:hidden}
+.gx-cs-map-bar>i{display:block;height:100%;background:linear-gradient(90deg,#12B98A,#1FE3A4)}
+.gx-cs-map-n{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-size:10px;color:var(--gx-text4)}
+.gx-cs-map-n em{font-style:normal;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--gx-text)}
+.gx-cs-map-n.none{color:var(--gx-text4);font-style:italic;margin-top:9px}
+.gx-cs-map-f{font-size:9.5px;color:var(--gx-text4);margin-top:6px;padding-top:6px;border-top:1px solid var(--gx-line);font-variant-numeric:tabular-nums}
+
+/* -- escalera de ventaja por mapa ------------------------------------------------------------------- */
+.gx-cs-spine{display:flex;flex-direction:column;gap:7px;margin:4px 0 10px}
+.gx-cs-sp{display:grid;grid-template-columns:104px 1fr 42px 74px;align-items:center;gap:10px}
+.gx-cs-sp-n{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gx-text2);white-space:nowrap}
+.gx-cs-sp-bar{position:relative;height:9px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
+.gx-cs-sp-bar .a{display:block;height:100%;background:linear-gradient(90deg,#12B98A,#1FE3A4);opacity:.75}
+.gx-cs-sp-bar u{position:absolute;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.34);text-decoration:none}
+.gx-cs-sp-v{text-align:right;font-family:var(--gx-mono);font-size:12.5px;font-weight:700}
+.gx-cs-sp-v.up{color:var(--gx-accent,#1FE3A4)} .gx-cs-sp-v.dn{color:var(--gx-text3)}
+.gx-cs-sp-s{text-align:right;font-family:var(--gx-mono);font-size:10px;color:var(--gx-text4)}
+.gx-cs-legend{display:flex;font-size:10.5px;color:var(--gx-text4);padding-top:6px;border-top:1px solid var(--gx-line)}
+
+/* -- rondas: simulación contra observado ------------------------------------------------------------ */
+.gx-cs-rhist{margin:8px 0 4px}
+.gx-cs-rbars{display:flex;align-items:flex-end;gap:5px;height:120px;padding:0 2px}
+.gx-cs-rb{flex:1;position:relative;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%}
+.gx-cs-rb>i{display:block;width:46%;border-radius:3px 3px 0 0;min-height:2px}
+.gx-cs-rb .sim{background:linear-gradient(180deg,rgba(31,227,164,.7),rgba(31,227,164,.2))}
+.gx-cs-rb .obs{background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.12))}
+.gx-cs-rb>span{position:absolute;bottom:-15px;font-size:9px;color:var(--gx-text4);font-variant-numeric:tabular-nums}
+.gx-cs-rkey{display:flex;gap:14px;align-items:center;margin-top:22px;font-size:10.5px;color:var(--gx-text4)}
+.gx-cs-rkey .sim::before,.gx-cs-rkey .obs::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.gx-cs-rkey .sim::before{background:rgba(31,227,164,.7)}
+.gx-cs-rkey .obs::before{background:rgba(255,255,255,.42)}
+
+/* -- fichas de equipo ------------------------------------------------------------------------------- */
+.gx-cs-tcs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gx-cs-tc{border:1px solid var(--gx-line);border-radius:12px;padding:12px 13px;background:var(--gx-panel2)}
+.gx-cs-tc.empty{display:flex;gap:9px;align-items:center;color:var(--gx-text4);font-size:11.5px}
+.gx-cs-tc-h{display:flex;align-items:center;gap:11px;margin-bottom:11px}
+.gx-cs-tc-h b{display:block;font-size:14px}
+.gx-cs-tc-h span{display:block;font-size:10.5px;color:var(--gx-text4);margin-top:2px}
+.gx-cs-tc-maps{display:flex;flex-direction:column;gap:5px}
+.gx-cs-tcm{display:grid;grid-template-columns:98px 1fr 36px 28px;align-items:center;gap:8px;font-size:11.5px}
+.gx-cs-tcm>span{display:flex;align-items:center;gap:5px;color:var(--gx-text2);white-space:nowrap}
+.gx-cs-tcm>i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#12B98A,#1FE3A4);opacity:.7;min-width:2px}
+.gx-cs-tcm>em{font-style:normal;text-align:right;font-family:var(--gx-mono);font-size:11.5px}
+.gx-cs-tcm>u{text-decoration:none;text-align:right;font-family:var(--gx-mono);font-size:9.5px;color:var(--gx-text4)}
+.gx-cs-ds{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;margin-top:12px}
+.gx-cs-ds b{display:block;font-size:12.5px;margin-bottom:3px}
+.gx-cs-ds span{display:block;font-size:11px;color:var(--gx-text3);line-height:1.5}
+
+@media (max-width:760px){
+  .gx-cs-hero{padding:14px 15px}
+  .gx-cs-hero-body{gap:9px}
+  .gx-cs-crest.big{width:40px;height:40px}
+  .gx-cs-side b{font-size:13px}
+  .gx-cs-pct b{font-size:28px}
+  .gx-cs-maps{grid-template-columns:repeat(2,1fr);gap:8px}
+  .gx-cs-sp{grid-template-columns:84px 1fr 38px;gap:7px}
+  .gx-cs-sp-s{display:none}
+  .gx-cs-tcs{grid-template-columns:1fr}
+  .gx-cs-tcm{grid-template-columns:84px 1fr 34px 26px}
+  .gx-cs-rbars{height:96px;gap:3px}
+}
+
+/* modelo contra mercado, y la etiqueta de estado del mapa en su propia línea (apretada no se leía) */
+.gx-cs-split{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px;padding-top:12px;border-top:1px solid var(--gx-line)}
+.gx-cs-split>div{flex:1 1 92px}
+.gx-cs-split .gx-label{display:block;margin-bottom:3px}
+.gx-cs-split b{font-size:16px;font-variant-numeric:tabular-nums}
+.gx-cs-split b.up{color:var(--gx-accent,#1FE3A4)} .gx-cs-split b.dn{color:#FF7A7A}
+.gx-cs-split.solo{display:flex;gap:9px;align-items:flex-start;flex-wrap:nowrap}
+.gx-cs-split.solo span{font-size:11.5px;color:var(--gx-text3);line-height:1.5}
+.gx-cs-split.solo b{font-size:11.5px;color:var(--gx-text)}
+.gx-cs-map-h{display:block}
+.gx-cs-tag{display:block;font-size:8.5px;letter-spacing:.07em;color:var(--gx-text4);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+
+/* EL POOL SE LEE COMO UN POOL. Con `auto-fill` los siete mapas caían en 6 + 1 y el último parecía un
+   error de maquetación en vez de la séptima carta del pool. Se fija a siete columnas en pantalla ancha
+   —que es exactamente lo que hay— y a cuatro/dos según baja el ancho. */
+@media (min-width:1080px){ .gx-cs-maps{grid-template-columns:repeat(7,1fr)} .gx-cs-map{padding:9px 9px 10px} .gx-cs-map-h b{font-size:12px} }
+@media (min-width:760px) and (max-width:1079px){ .gx-cs-maps{grid-template-columns:repeat(4,1fr)} }
+/* el panel de mercado vacío no debe ocupar media pantalla por encima del tablero de veto */
+.gx-es-edges .gx-empty{padding:16px 14px}
+.gx-es-edges .gx-empty .gx-illo{display:none}

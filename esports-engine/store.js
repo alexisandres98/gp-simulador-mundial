@@ -216,6 +216,8 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const model = E.analyze({
     market: mk,
     ratings: { elo_a: rt.elo[a], elo_b: rt.elo[b] },
+    // los NOMBRES van al motor: CS2 los resuelve contra su propio histórico para sacar la fuerza por mapa
+    teams: { a: ev.home.name, b: ev.away.name },
     bo, sample, competition: ev.competition,
   });
   const edges = evaluateAll({ game, model, mk, ev, bo, sample });
@@ -440,7 +442,8 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     const sample = Math.min(rt.matches[ev.home.id] || 0, rt.matches[ev.away.id] || 0);
     let model = null;
     try {
-      model = E.analyze({ market: mk, ratings: { elo_a: rt.elo[ev.home.id], elo_b: rt.elo[ev.away.id] }, bo, sample, competition: ev.competition });
+      model = E.analyze({ market: mk, ratings: { elo_a: rt.elo[ev.home.id], elo_b: rt.elo[ev.away.id] },
+        teams: { a: ev.home.name, b: ev.away.name }, bo, sample, competition: ev.competition });
     } catch { model = null; }
     const edges = model ? evaluateAll({ game, model, mk, ev, bo, sample }) : null;
     items.push({

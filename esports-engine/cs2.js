@@ -138,10 +138,43 @@ function vetoImpact(poolProbs, mapProbs, bo, { anchoredP = null } = {}) {
 // EL ARRASTRE ECONÓMICO NO ES UN ADORNO, es lo que hace que la distribución de rondas tenga la forma que
 // tiene. Quien pierde una ronda entra a la siguiente con menos dinero, y eso encadena rachas. Consecuencia
 // medible: los marcadores se separan más de lo que predice una moneda independiente y **el 12-12 es MENOS
-// frecuente de lo que sale del binomio** (16,1 % con moneda justa frente al ~11 % real del circuito). Sin
-// este término el modelo vendía prórrogas caras de forma sistemática, que es justo el mercado que aquí se
-// quiere atacar.
+// frecuente de lo que sale del binomio** (16,1 % con moneda justa frente al ~11 % real del circuito).
+//
+// EL VALOR YA NO SE ELIGE A OJO. Con el histórico propio (`data/esports/cs2/maps.json`) el arrastre se
+// AJUSTA POR MAPA para reproducir la tasa de prórroga que ese mapa tiene de verdad, que no es la misma en
+// todos: medido sobre el circuito, Overpass va al 8,2 % y Cache al 13,9 %. Este 0,055 queda solo como
+// respaldo para un mapa sin muestra suficiente.
 const ECO_DRAG = 0.055;
+
+// Ajuste por mapa: se busca el arrastre que hace que la prórroga simulada coincida con la observada. Es una
+// calibración contra datos, no una constante de autor, y se cachea porque cuesta unas cuantas simulaciones.
+const _dragCache = new Map();
+function calibrateDrag(profile) {
+  if (!profile || !profile.measured || profile.n < 80 || !(profile.overtime_p > 0)) return { eco: ECO_DRAG, fitted: false, target_ot: null };
+  const key = profile.map + ':' + profile.n;
+  if (_dragCache.has(key)) return _dragCache.get(key);
+  // la prórroga baja de forma monótona con el arrastre, así que basta una bisección
+  let lo = 0, hi = 0.16;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    const ot = mapRounds(0.5, { eco: mid, sims: 6000, seed: 4127 }).overtime_p;
+    if (ot > profile.overtime_p) lo = mid; else hi = mid;
+  }
+  const eco = C.r3((lo + hi) / 2);
+  const check = mapRounds(0.5, { eco, sims: 12000, seed: 4127 });
+  const out = {
+    eco, fitted: true,
+    target_ot: profile.overtime_p, got_ot: check.overtime_p,
+    target_rounds: profile.mean_rounds, got_rounds: check.mean_rounds,
+    // el ajuste tiene UN grado de libertad y DOS objetivos: se ajusta a la prórroga y se PUBLICA el residuo
+    // en rondas medias en vez de esconderlo. Si ese residuo crece, el modelo de ronda se queda corto y hay
+    // que cambiarlo, no re-tocar el arrastre.
+    rounds_residual: C.r2(check.mean_rounds - profile.mean_rounds),
+    n: profile.n,
+  };
+  _dragCache.set(key, out);
+  return out;
+}
 
 function mapRounds(pRoundA, { target = 13, sims = 20000, seed = 23, eco = ECO_DRAG } = {}) {
   const rnd = C.rng(seed);
@@ -206,8 +239,17 @@ const ECONOMY_MODEL = {
 
 // ---- 4) LO QUE IMPORTA (blueprint 122, 147) -------------------------------------------------------------
 // Cinco factores cuantificados, no cinco frases. Cada uno con su impacto en puntos y su procedencia.
-function whatMatters({ anchored, veto, mapProbs, unc, bo }) {
+function whatMatters({ anchored, veto, mapProbs, unc, bo, rounds, cardA, cardB }) {
   const out = [];
+  if (rounds && rounds.measured && rounds.observed) {
+    out.push({ rank: 1, pp: null, driver: 'mapa',
+      text: `${rounds.map_name} se juega a ${rounds.observed.mean_rounds} rondas de media y va a prórroga el ${(100 * rounds.observed.overtime_p).toFixed(1)} % de las veces — medido sobre ${rounds.observed.n} mapas del circuito, no estimado.` });
+  }
+  if (cardA && cardB && cardA.maps.length && cardB.maps.length) {
+    const ba = cardA.maps[0], bb = cardB.maps[0];
+    out.push({ rank: out.length + 1, pp: null, driver: 'historial',
+      text: `${cardA.name} es más fuerte en ${MAP_NAMES[ba.map] || ba.map} (${Math.round(100 * ba.wr)} % en ${ba.n} mapas) y ${cardB.name} en ${MAP_NAMES[bb.map] || bb.map} (${Math.round(100 * bb.wr)} % en ${bb.n}).` });
+  }
   if (veto && veto.shift_pp != null && Math.abs(veto.shift_pp) >= 1) {
     out.push({ rank: out.length + 1, pp: veto.shift_pp,
       text: `El reparto de mapas probable ${veto.shift_pp > 0 ? 'favorece' : 'perjudica'} al favorito (${veto.verdict.toLowerCase()}).`,
@@ -237,11 +279,17 @@ function whatMatters({ anchored, veto, mapProbs, unc, bo }) {
   out.push({ rank: out.length + 1, pp: null,
     text: `Serie al mejor de ${bo}: el formato reparte la varianza y castiga a quien depende de un solo mapa.`,
     driver: 'formato' });
-  return out.slice(0, 5).map((x, i) => ({ ...x, rank: i + 1 }));
+  return out.slice(0, 6).map((x, i) => ({ ...x, rank: i + 1 }));
 }
 
 // ---- 5) FACHADA ------------------------------------------------------------------------------------------
-function analyze({ market, ratings, bo = 3, sample = 0 }) {
+// AHORA EL MOTOR VA A BUSCAR SUS PROPIOS DATOS. Antes esperaba que alguien le pasara `ratings.map_strength`
+// y, como nadie los tenía, el árbol de veto —la feature bandera de CS2— nunca se dibujaba. Con el histórico
+// propio cosechado, la fuerza por mapa sale de aquí dentro: nombres de equipo → ids de GP → tasa de victoria
+// por mapa medida, encogida y con decaimiento. Lo que se pase por fuera sigue mandando (sirve para probar).
+function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
+  const CD = require('./cs2-data');
+  const store = CD.load();
   const bookRows = (market && market.markets) || [];
   // El ancla NO es solo la familia `SERIE`: la mayoría de partidos con mercado abierto no la cotizan y sí
   // cotizan marcador, hándicap o ganador de mapa. `marketAnchor` recorre esas fuentes en orden y dice de
@@ -250,37 +298,105 @@ function analyze({ market, ratings, bo = 3, sample = 0 }) {
   const cons = anchor ? anchor.market : null;
   const marketP = anchor ? anchor.p : null;
 
-  const modelP = ratings && ratings.elo_a != null && ratings.elo_b != null
-    ? C.eloProbability(ratings.elo_a, ratings.elo_b) : null;
-  const anchored = C.anchoredProbability(marketP, modelP, { n: sample });
+  // ── FUERZA POR MAPA, DE NUESTRA PROPIA BASE ────────────────────────────────────────────────────────────
+  const idA = teams ? CD.resolveTeam(teams.a) : null;
+  const idB = teams ? CD.resolveTeam(teams.b) : null;
+  const cardA = idA ? CD.teamCard(idA, { data: store }) : null;
+  const cardB = idB ? CD.teamCard(idB, { data: store }) : null;
+  const pool = (store.pool && store.pool.length ? store.pool : MAP_POOL.map((m) => m.key));
 
+  let strength = (ratings && ratings.map_strength) || null;
+  let matchup = null;
+  if (!strength && idA && idB) {
+    matchup = CD.matchupMaps(idA, idB, { data: store, pool });
+    const withData = matchup.filter((m) => m.p_a != null);
+    if (withData.length >= 3) {
+      strength = { a: {}, b: {} };
+      for (const m of withData) { strength.a[m.map] = m.p_a; strength.b[m.map] = C.r3(1 - m.p_a); }
+    }
+  }
+  const poolObjs = pool.map((k) => ({ key: k, name: MAP_NAMES[k] || cap(k) }));
+  const veto = strength ? vetoTree(strength, { bo, pool: poolObjs }) : null;
+  const mapProbs = veto ? veto.likely_maps : null;
+  const poolProbs = strength ? pool.map((k) => strength.a[k]).filter((x) => x != null) : null;
+
+  // ── LA PROBABILIDAD PROPIA DE GP, QUE YA NO DEPENDE DE QUE HAYA MERCADO ───────────────────────────────
+  // Este es el cambio que separa a un lector de precios de una plataforma de inteligencia. Con el histórico
+  // propio, la probabilidad de serie sale de simular los mapas que el veto va a dejar en pie — sin que
+  // ninguna casa tenga que opinar primero. Antes, un partido sin mercado abierto enseñaba un guion; ahora
+  // enseña la estimación de GP y dice que es suya.
+  //
+  // Sigue mandando el mercado cuando existe, y eso NO es contradicción: el mercado es el mejor estimador
+  // conocido del ganador y batirlo ahí es donde esta casa ya perdió dinero dos veces. Pero cuando el mercado
+  // calla, callar nosotros también sería desperdiciar la base que acabamos de construir.
+  let ownP = null;
+  if (mapProbs && mapProbs.length >= 2) {
+    ownP = C.simulateSeries(
+      mapProbs.reduce((a, m) => a + m.p_a, 0) / mapProbs.length, bo,
+      { perMap: mapProbs.map((m) => m.p_a), n: 20000, seed: 5501 },
+    ).p_series_a;
+  }
+  const eloP = ratings && ratings.elo_a != null && ratings.elo_b != null
+    ? C.eloProbability(ratings.elo_a, ratings.elo_b) : null;
+  const modelP = ownP != null ? ownP : eloP;
+  // la muestra que da peso al modelo es la del PAR: los mapas del que menos tiene
+  const ownSample = Math.max(sample, Math.min(cardA ? cardA.n : 0, cardB ? cardB.n : 0));
+  const anchored = C.anchoredProbability(marketP, modelP, { n: ownSample });
   const pSeries = anchored ? anchored.p : null;
   const pMap = pSeries != null ? C.seriesToMap(pSeries, bo) : null;
 
-  const strength = (ratings && ratings.map_strength) || null;
-  const veto = strength ? vetoTree(strength, { bo }) : null;
-  const mapProbs = veto ? veto.likely_maps : null;
-  const poolProbs = strength ? MAP_POOL.map((m) => strength.a[m.key]).filter((x) => x != null) : null;
   const impact = mapProbs ? vetoImpact(poolProbs, mapProbs, bo, { anchoredP: pSeries }) : null;
 
-  const unc = C.uncertainty({ p: pSeries != null ? pSeries : 0.5, sampleMatches: sample,
-    marketBooks: cons ? cons.books : 0,
-    missing: [].concat(strength ? [] : ['fuerza por mapa'], ['datos de ronda (demos)']) });
+  // ── RONDAS, CALIBRADAS CONTRA EL MAPA QUE SE VA A JUGAR ───────────────────────────────────────────────
+  // Ya no es "el mapa medio de CS2": es el primer mapa probable del veto, con SU perfil medido y SU arrastre
+  // económico ajustado para reproducir SU tasa de prórroga real.
+  const firstMap = mapProbs && mapProbs.length ? mapProbs[0].map : (pool[0] || null);
+  const profile = firstMap ? CD.mapProfile(firstMap, { data: store }) : null;
+  const drag = calibrateDrag(profile);
+  const pRoundBase = mapProbs && mapProbs.length && mapProbs[0].p_a != null ? mapProbs[0].p_a : pMap;
+  const rounds = pRoundBase != null ? {
+    ...mapRounds(clampRound(pRoundBase), { eco: drag.eco }),
+    map: firstMap, map_name: MAP_NAMES[firstMap] || cap(firstMap),
+    calibration: drag, observed: profile,
+    measured: !!(profile && profile.measured),
+  } : null;
+
+  const missing = [].concat(strength ? [] : ['fuerza por mapa'], profile ? [] : ['perfil de ronda del mapa'], ['datos de ronda (demos)']);
+  const unc = C.uncertainty({ p: pSeries != null ? pSeries : 0.5,
+    sampleMatches: ownSample, marketBooks: cons ? cons.books : 0, missing });
 
   const sim = pMap != null ? C.simulateSeries(pMap, bo, { perMap: mapProbs ? mapProbs.map((m) => m.p_a) : null }) : null;
-  const rounds = pMap != null ? mapRounds(clampRound(pMap)) : null;
 
   return {
     game: 'cs2', bo,
     probability: anchored, market: cons, market_anchor: anchor ? { from: anchor.from, family: anchor.family, direct: anchor.direct, p_map: anchor.p_map != null ? anchor.p_map : null } : null, simulation: sim,
     veto, veto_impact: impact, rounds, economy: ECONOMY_MODEL,
+    // la ficha de cada equipo con su logo y su historial por mapa: es lo que da cara al producto
+    teams: { a: cardA, b: cardB, resolved: !!(idA && idB) },
+    matchup,
+    // el bloque de "modelo propio": de dónde salió la probabilidad y con qué peso
+    model_probability: modelP != null ? {
+      p: C.r4(modelP),
+      from: ownP != null ? 'simulación de la serie sobre la fuerza por mapa medida' : 'Elo del par',
+      sample_maps: ownSample,
+      standalone: marketP == null,
+    } : null,
+    dataset: store.available ? {
+      available: true,
+      at: store.at, teams: Object.keys(store.teamMaps).length,
+      games: store.meta && store.meta.coverage ? store.meta.coverage.games : null,
+      pool,
+      note: 'fuerza por mapa, distribución de rondas y prórroga MEDIDAS sobre el histórico propio de GP, no supuestas.',
+    } : { available: false, note: 'todavía no hay histórico propio cosechado: ejecutar scripts/cs2-harvest.js' },
     uncertainty: unc,
-    what_matters: whatMatters({ anchored, veto: impact, mapProbs, unc, bo }),
-    map_pool: MAP_POOL, pool_version: POOL_VERSION,
+    what_matters: whatMatters({ anchored, veto: impact, mapProbs, unc, bo, rounds, cardA, cardB }),
+    map_pool: poolObjs, pool_version: POOL_VERSION,
     native: GAME.native, edge_families: GAME.edge_families,
   };
 }
+const cap = (s) => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
+const MAP_NAMES = { mirage: 'Mirage', inferno: 'Inferno', nuke: 'Nuke', ancient: 'Ancient', dust2: 'Dust II', anubis: 'Anubis', train: 'Train', overpass: 'Overpass', cache: 'Cache', vertigo: 'Vertigo' };
 // la probabilidad de RONDA no es la de mapa: un 60 % de mapa es ~53 % de ronda. Se comprime hacia el centro.
 const clampRound = (pMap) => C.clamp(0.5 + (pMap - 0.5) * 0.42, 0.32, 0.68);
 
-module.exports = { GAME, MAP_POOL, POOL_VERSION, vetoTree, vetoImpact, mapRounds, ECONOMY_MODEL, whatMatters, analyze };
+module.exports = { GAME, MAP_POOL, MAP_NAMES, POOL_VERSION, vetoTree, vetoImpact, mapRounds, calibrateDrag, ECONOMY_MODEL, whatMatters, analyze };

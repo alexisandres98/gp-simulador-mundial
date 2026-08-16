@@ -8265,6 +8265,258 @@
     esShell(t('es_nav_board'), esTabs() + body + trunc + esDoctrine(d.doctrine));
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  // CS2 — LA CAPA VISUAL (16-ago, reescrita tras el veredicto de Alexis: "info apilada sin estética")
+  //
+  // Lo que cambió de raíz: hasta ahora esto eran tablas. CS2 es un juego de TERRENO —el veto decide la serie
+  // antes del primer disparo— y un producto sobre CS2 que no enseña el terreno no está contando la historia.
+  // Así que el centro de la pantalla es el TABLERO DE VETO: los siete mapas del pool como cartas, con su
+  // plano, quién los vetó y quién los eligió, y la fuerza real de cada equipo en cada uno.
+  //
+  // DE DÓNDE SALEN LAS IMÁGENES, que era la queja concreta:
+  //   · LOGOS de equipo — reales, del histórico cosechado (cada equipo trae su `logo`).
+  //   · PLANOS de mapa  — DIBUJADOS AQUÍ en SVG. No se descargan de ningún sitio: son esquemas propios
+  //     (dos sitios, medio, conectores) con la silueta característica de cada mapa. Es lo mismo que ya hace
+  //     la casa con su iconografía, evita depender de imágenes de terceros y encima es más legible que una
+  //     captura: lo que importa de un mapa aquí es su forma, no su textura.
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+
+  // Planos esquemáticos. Cada uno se dibuja en una caja 100×72 con la misma gramática: los dos sitios de
+  // bomba en acento, el medio en gris, y la silueta del mapa en trazo fino. Reconocibles sin ser una copia.
+  var CS2_MAP_ART = {
+    mirage:   '<path d="M8 52h30v14H8zM62 10h30v16H62z" class="site"/><path d="M44 30h14v22H44z" class="mid"/><path d="M8 52 8 30 26 18 44 18 44 30 58 30 58 18 76 18 92 26 92 66 62 66 62 52 38 52 38 66 8 66Z"/><path d="M44 52h18M58 30v22M26 18v34"/>',
+    inferno:  '<path d="M12 12h26v16H12zM66 44h26v18H66z" class="site"/><path d="M40 30h18v18H40z" class="mid"/><path d="M12 12 12 62 40 62 40 48 58 48 58 62 92 62 92 30 74 30 74 12Z"/><path d="M38 20h36M40 48v14M58 30h16"/>',
+    nuke:     '<path d="M30 8h40v14H30zM30 50h40v14H30z" class="site"/><path d="M10 26h16v20H10z" class="mid"/><path d="M10 8 10 64 90 64 90 8Z"/><path d="M30 22h40M30 50h40M26 36h64M70 8v56"/>',
+    ancient:  '<path d="M10 44h26v20H10zM64 10h28v18H64z" class="site"/><path d="M42 28h18v18H42z" class="mid"/><path d="M10 20 28 8 72 8 92 20 92 64 10 64Z"/><path d="M36 44h6v20M60 28h4M42 46v18"/>',
+    dust2:    '<path d="M8 10h26v16H8zM70 44h24v20H70z" class="site"/><path d="M40 22h16v30H40z" class="mid"/><path d="M8 10 8 64 94 64 94 10Z"/><path d="M34 18h6M56 30h14M40 52h14v12M70 44V22h24"/>',
+    anubis:   '<path d="M8 40h24v22H8zM68 10h26v18H68z" class="site"/><path d="M40 26h20v22H40z" class="mid"/><path d="M8 12 32 12 32 26 68 26 68 10 94 10 94 62 8 62Z"/><path d="M32 40h8M60 26v22M40 48v14"/>',
+    train:    '<path d="M12 10h28v18H12zM12 46h28v18H12z" class="site"/><path d="M46 24h16v26H46z" class="mid"/><path d="M12 10 12 64 90 64 90 10Z"/><path d="M40 19h50M40 55h50M46 24v26M62 24v26M70 10v54"/>',
+    overpass: '<path d="M62 8h30v16H62zM58 44h34v20H58z" class="site"/><path d="M32 26h20v20H32z" class="mid"/><path d="M8 24 8 64 92 64 92 8 52 8 52 24Z"/><path d="M52 24h10M32 46v18M52 34h6"/>',
+    cache:    '<path d="M10 12h26v18H10zM64 42h28v20H64z" class="site"/><path d="M42 28h16v18H42z" class="mid"/><path d="M10 12 10 62 92 62 92 12Z"/><path d="M36 21h6M58 37h6M42 46v16M58 28V12"/>',
+    vertigo:  '<path d="M12 14h24v18H12zM56 40h30v20H56z" class="site"/><path d="M38 28h16v16H38z" class="mid"/><path d="M12 14 12 60 86 60 86 14Z"/><path d="M36 23h2M54 36h2M38 44v16"/>',
+  };
+  function cs2MapArt(key, cls) {
+    var d = CS2_MAP_ART[key] || CS2_MAP_ART.mirage;
+    return '<svg class="gx-cs-art' + (cls ? ' ' + cls : '') + '" viewBox="0 0 100 72" aria-hidden="true">' +
+      '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">' + d + '</g></svg>';
+  }
+  var CS2_MAP_NAME = { mirage:'Mirage', inferno:'Inferno', nuke:'Nuke', ancient:'Ancient', dust2:'Dust II',
+    anubis:'Anubis', train:'Train', overpass:'Overpass', cache:'Cache', vertigo:'Vertigo' };
+  var cs2Name = function (k) { return CS2_MAP_NAME[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : '—'); };
+
+  // Escudo de equipo: logo real si el histórico lo trae, y si no unas iniciales con la misma caja para que
+  // la rejilla no se descuadre. Nunca un hueco.
+  function cs2Crest(t, cls) {
+    var name = (t && t.name) || '—';
+    var ini = name.replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 3).toUpperCase() || '?';
+    var img = (t && t.logo) ? '<img src="' + esc(t.logo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
+    return '<span class="gx-cs-crest' + (cls ? ' ' + cls : '') + '">' + img + '<i>' + esc(ini) + '</i></span>';
+  }
+
+  // ── 1) HÉROE DE PROBABILIDAD (blueprint 144-145) ──────────────────────────────────────────────────────
+  // La cifra grande con su HALO DE INCERTIDUMBRE: la barra no es una línea, es una banda, porque una
+  // probabilidad sin su rango es una precisión falsa.
+  function cs2Hero(d) {
+    var ev = d.event, m = d.model || {}, pr = m.probability || null;
+    var p = pr ? pr.p : null, T = m.teams || {};
+    var u = m.uncertainty ? m.uncertainty.epistemic_pp : null;
+    var lo = p != null && u != null ? Math.max(2, 100 * p - u) : null;
+    var hi = p != null && u != null ? Math.min(98, 100 * p + u) : null;
+    return '<div class="gx-cs-hero">' +
+      '<div class="gx-cs-hero-top"><span class="gx-cs-comp">' + esc(ev.competition || '—') + '</span>' +
+        '<span class="gx-spacer"></span><span class="gx-cs-bo">BO' + d.bo + '</span>' +
+        (ev.start_at ? '<span class="gx-cs-when">' + esc(String(ev.start_at).replace('T', ' · ').slice(0, 16)) + '</span>' : '') + '</div>' +
+      '<div class="gx-cs-hero-body">' +
+        '<div class="gx-cs-side">' + cs2Crest(T.a || { name: ev.home.name }, 'big') +
+          '<div><b>' + esc(ev.home.name) + '</b>' + (T.a && T.a.n ? '<span>' + T.a.n + ' mapas en la base</span>' : '<span class="warn">sin histórico propio</span>') + '</div></div>' +
+        '<div class="gx-cs-pct"><b>' + (p != null ? (100 * p).toFixed(1) + '<em>%</em>' : '—') + '</b>' +
+          (u != null ? '<span>± ' + u + ' pp</span>' : '') + '</div>' +
+        '<div class="gx-cs-side r"><div><b>' + esc(ev.away.name) + '</b>' + (T.b && T.b.n ? '<span>' + T.b.n + ' mapas en la base</span>' : '<span class="warn">sin histórico propio</span>') + '</div>' +
+          cs2Crest(T.b || { name: ev.away.name }, 'big') + '</div>' +
+      '</div>' +
+      (p != null ? '<div class="gx-cs-halo">' +
+        (lo != null ? '<i class="band" style="left:' + lo.toFixed(1) + '%;width:' + (hi - lo).toFixed(1) + '%"></i>' : '') +
+        '<i class="fill" style="width:' + (100 * p).toFixed(1) + '%"></i>' +
+        '<i class="mark" style="left:' + (100 * p).toFixed(1) + '%"></i></div>' : '') +
+      cs2Split(m) +
+      '<div class="gx-cs-anchor">' + ic('shield') + '<span>' + esc(pr ? pr.source : 'sin precio abierto todavía') +
+        (m.market_anchor ? ' · leído del ' + esc(m.market_anchor.from) : '') + '</span></div>' +
+    '</div>';
+  }
+  // MODELO CONTRA MERCADO, uno al lado del otro. Cuando no hay mercado se dice que la cifra es de GP y por
+  // qué puede darla: es la diferencia entre "no sabemos" y "esto lo calculamos nosotros".
+  function cs2Split(m) {
+    var mp = m.model_probability, pr = m.probability;
+    if (!mp) return '';
+    if (mp.standalone) {
+      return '<div class="gx-cs-split solo">' + ic('database') +
+        '<span><b>Estimación propia de GP.</b> Ninguna casa cotiza este partido todavía: la cifra sale de simular la serie sobre la fuerza por mapa medida en ' +
+        mp.sample_maps + ' mapas del histórico propio, no de un precio.</span></div>';
+    }
+    if (pr && pr.market_p != null && pr.model_p != null) {
+      var gap = (pr.model_p - pr.market_p) * 100;
+      return '<div class="gx-cs-split"><div><span class="gx-label">Mercado</span><b>' + (100 * pr.market_p).toFixed(1) + '%</b></div>' +
+        '<div><span class="gx-label">Modelo de GP</span><b>' + (100 * pr.model_p).toFixed(1) + '%</b></div>' +
+        '<div><span class="gx-label">Diferencia</span><b class="' + (gap > 0 ? 'up' : 'dn') + '">' + (gap > 0 ? '+' : '') + gap.toFixed(1) + ' pp</b></div>' +
+        '<div><span class="gx-label">Peso propio</span><b>' + Math.round(100 * (pr.w_model || 0)) + '%</b></div></div>';
+    }
+    return '';
+  }
+
+  // ── 2) TABLERO DE VETO (blueprint 149-151) — la pieza bandera ──────────────────────────────────────────
+  // Los siete mapas del pool como cartas. Cada una dice su estado (vetada por quién, elegida por quién,
+  // decisiva) y la fuerza real de los dos equipos en ella. Es la pantalla que explica la serie.
+  function cs2Veto(d) {
+    var m = d.model || {}, v = m.veto, ev = d.event, T = m.teams || {};
+    if (!v) {
+      return esPanel('Tablero de veto', '', '<div class="gx-empty">' + ic('map-off') +
+        '<b>Sin fuerza por mapa para estos dos equipos.</b><span class="gx-dim">' +
+        esc(m.dataset && m.dataset.available
+          ? 'La base propia no tiene todavía suficientes mapas de uno de los dos. El árbol aparece en cuanto los tenga.'
+          : 'Todavía no se ha cosechado el histórico propio.') + '</span></div>', 'gx-cs-vetop');
+    }
+    var state = {};
+    (v.sequence || []).forEach(function (s) { state[s.map] = { kind: s.kind, who: s.who, p: s.p }; });
+    if (v.decider) state[v.decider.map] = { kind: 'decider' };
+    var byMap = {};
+    (m.matchup || []).forEach(function (x) { byMap[x.map] = x; });
+    var order = (m.map_pool || []).map(function (x) { return x.key; });
+    // Nombre CORTO en las cartas: "ELIGE Ninjas In Pyjamas" no cabe y se cortaba a la mitad, que es peor
+    // que no ponerlo. El nombre completo vive en el héroe, a dos centímetros de aquí.
+    var shortOf = function (nm) {
+      var s = String(nm || '').replace(/\b(Esports?|Gaming|Team|Club)\b/gi, '').trim();
+      if (s.length <= 12) return s;
+      var w = s.split(/\s+/);
+      if (w.length > 1) { var ini = w.map(function (x) { return x.charAt(0); }).join('').toUpperCase(); if (ini.length >= 2) return ini; }
+      return s.slice(0, 11) + '…';
+    };
+    var lab = function (who) { return shortOf(who === 'a' ? ev.home.name : ev.away.name); };
+
+    var cards = order.map(function (k) {
+      var st = state[k] || {}, mm = byMap[k] || {};
+      var pa = mm.p_a;
+      var cls = st.kind === 'pick' ? 'pick' : st.kind === 'decider' ? 'dec' : st.kind === 'ban' ? 'ban' : 'idle';
+      var tag = st.kind === 'pick' ? 'ELIGE ' + lab(st.who) : st.kind === 'decider' ? 'DECISIVO'
+        : st.kind === 'ban' ? 'VETA ' + lab(st.who) : 'FUERA';
+      return '<div class="gx-cs-map ' + cls + '">' +
+        '<div class="gx-cs-map-art">' + cs2MapArt(k) + '</div>' +
+        '<div class="gx-cs-map-h"><b>' + esc(cs2Name(k)) + '</b></div>' +
+        '<div class="gx-cs-tag">' + esc(tag) + '</div>' +
+        (pa != null
+          ? '<div class="gx-cs-map-bar"><i style="width:' + (100 * pa).toFixed(1) + '%"></i></div>' +
+            '<div class="gx-cs-map-n"><em>' + Math.round(100 * pa) + '%</em>' +
+            '<span>' + (mm.n_a || 0) + '·' + (mm.n_b || 0) + ' mapas</span></div>'
+          : '<div class="gx-cs-map-n none">sin historial</div>') +
+        (mm.info ? '<div class="gx-cs-map-f">' + mm.info.mean_rounds + ' rondas · ' + (100 * mm.info.overtime_p).toFixed(0) + '% prórroga</div>' : '') +
+      '</div>';
+    }).join('');
+
+    var imp = m.veto_impact;
+    var head = imp ? '<div class="gx-cs-shock ' + esc(String(imp.verdict).toLowerCase()) + '">' +
+      '<b>' + (imp.shift_pp > 0 ? '+' : '') + imp.shift_pp + ' pp</b>' +
+      '<span>' + esc(imp.verdict) + ' — lo que mueve el reparto de mapas frente a jugar el pool entero</span></div>' : '';
+
+    return esPanel('Tablero de veto', '<span class="gx-dim">' + esc(v.pool_version || '') + '</span>',
+      head + '<div class="gx-cs-maps">' + cards + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc(v.note) + '</div>', 'gx-cs-vetop');
+  }
+
+  // ── 3) ESCALERA DE MAPAS (blueprint 152-155) ───────────────────────────────────────────────────────────
+  // Los dos equipos enfrentados mapa a mapa, con su muestra. Lo que el blueprint llama Map Advantage Spine.
+  function cs2Ladder(d) {
+    var m = d.model || {}, ev = d.event;
+    var rows = (m.matchup || []).filter(function (x) { return x.p_a != null; })
+      .slice().sort(function (a, b) { return b.p_a - a.p_a; });
+    if (!rows.length) return '';
+    return esPanel('Quién manda en cada mapa', '<span class="gx-dim">medido sobre el histórico propio</span>',
+      '<div class="gx-cs-spine">' + rows.map(function (x) {
+        var pct = 100 * x.p_a;
+        return '<div class="gx-cs-sp">' +
+          '<span class="gx-cs-sp-n">' + cs2MapArt(x.map, 'mini') + esc(cs2Name(x.map)) + '</span>' +
+          '<div class="gx-cs-sp-bar"><i class="a" style="width:' + pct.toFixed(1) + '%"></i>' +
+            '<u style="left:50%"></u></div>' +
+          '<span class="gx-cs-sp-v ' + (x.p_a >= 0.5 ? 'up' : 'dn') + '">' + Math.round(pct) + '%</span>' +
+          '<span class="gx-cs-sp-s">' + (x.wr_a != null ? Math.round(100 * x.wr_a) + '%' : '—') + ' · ' +
+            (x.wr_b != null ? Math.round(100 * x.wr_b) + '%' : '—') + '</span>' +
+        '</div>';
+      }).join('') + '</div>' +
+      '<div class="gx-cs-legend"><span>' + esc(ev.home.name) + '</span><span class="gx-spacer"></span><span>' + esc(ev.away.name) + '</span></div>' +
+      '<div class="gx-dim gx-es-note">La barra es la probabilidad de que ' + esc(ev.home.name) + ' gane ese mapa; a la derecha, la tasa de victoria histórica de cada uno por separado.</div>',
+      'gx-cs-ladder');
+  }
+
+  // ── 4) PERFIL DE RONDAS: MODELO CONTRA REALIDAD ────────────────────────────────────────────────────────
+  // No solo la simulación: se enseña ENCIMA la distribución observada del mapa. Si las dos curvas no se
+  // parecen, el usuario lo ve — que es exactamente lo que un producto honesto tiene que permitir.
+  function cs2Rounds(d) {
+    var r = (d.model || {}).rounds; if (!r) return '';
+    var obs = r.observed;
+    var sim = (r.loser_distribution || []).slice().sort(function (a, b) { return a.loser_rounds - b.loser_rounds; });
+    var real = obs ? (obs.loser_distribution || []).slice().sort(function (a, b) { return a.rounds - b.rounds; }) : [];
+    var maxx = 13;
+    var mo = {}; real.forEach(function (x) { if (x.rounds <= maxx) mo[x.rounds] = x.p; });
+    var ms = {}; sim.forEach(function (x) { if (x.loser_rounds <= maxx) ms[x.loser_rounds] = x.p; });
+    var top = Math.max.apply(null, [].concat(Object.values(mo), Object.values(ms), [0.01]));
+    var bars = '';
+    for (var i = 0; i <= maxx; i++) {
+      var a = ms[i] || 0, b = mo[i] || 0;
+      bars += '<div class="gx-cs-rb" title="' + i + ' rondas · GP ' + (100 * a).toFixed(1) + '% · real ' + (100 * b).toFixed(1) + '%">' +
+        '<i class="sim" style="height:' + (100 * a / top).toFixed(1) + '%"></i>' +
+        '<i class="obs" style="height:' + (100 * b / top).toFixed(1) + '%"></i>' +
+        '<span>' + i + '</span></div>';
+    }
+    var cal = r.calibration || {};
+    return esPanel('Rondas en ' + esc(r.map_name || '—'),
+      (r.measured ? '<span class="gx-chip gx-chip-alta">calibrado</span>' : '<span class="gx-chip gx-chip-baja">sin muestra</span>'),
+      '<div class="gx-es-kpis">' +
+        '<div><span>Media GP</span><b>' + r.mean_rounds + '</b></div>' +
+        (obs ? '<div><span>Media real</span><b>' + obs.mean_rounds + '</b></div>' : '') +
+        '<div><span>Prórroga GP</span><b>' + (100 * r.overtime_p).toFixed(1) + '%</b></div>' +
+        (obs ? '<div><span>Prórroga real</span><b>' + (100 * obs.overtime_p).toFixed(1) + '%</b></div>' : '') +
+        (obs ? '<div><span>Mapas medidos</span><b>' + obs.n + '</b></div>' : '') +
+      '</div>' +
+      '<div class="gx-cs-rhist"><div class="gx-cs-rbars">' + bars + '</div>' +
+        '<div class="gx-cs-rkey"><span class="sim">simulación de GP</span><span class="obs">observado en el circuito</span>' +
+        '<span class="gx-spacer"></span><span class="gx-dim">rondas del perdedor</span></div></div>' +
+      (cal.fitted ? '<div class="gx-dim gx-es-note">El arrastre económico de este mapa se ajustó a <b>' + cal.eco +
+        '</b> para reproducir su prórroga real (' + (100 * cal.target_ot).toFixed(1) + '%). El residuo en rondas medias es ' +
+        cal.rounds_residual + ' — se publica en vez de esconderlo: si crece, el que falla es el modelo de ronda, no el ajuste.</div>'
+        : '<div class="gx-dim gx-es-note">Este mapa no tiene muestra suficiente en la base propia; se usa el arrastre por defecto.</div>'),
+      'gx-cs-rounds');
+  }
+
+  // ── 5) FICHAS DE EQUIPO ────────────────────────────────────────────────────────────────────────────────
+  function cs2Teams(d) {
+    var T = (d.model || {}).teams || {};
+    if (!T.a && !T.b) return '';
+    var card = function (t, side) {
+      if (!t) return '<div class="gx-cs-tc empty">' + ic('alert-triangle') + '<span>Sin histórico propio de este equipo</span></div>';
+      return '<div class="gx-cs-tc">' +
+        '<div class="gx-cs-tc-h">' + cs2Crest(t, 'big') + '<div><b>' + esc(t.name) + '</b>' +
+          '<span>' + t.n + ' mapas' + (t.rank ? ' · ranking ' + t.rank : '') + '</span></div></div>' +
+        '<div class="gx-cs-tc-maps">' + t.maps.slice(0, 7).map(function (mm) {
+          return '<div class="gx-cs-tcm"><span>' + cs2MapArt(mm.map, 'mini') + esc(cs2Name(mm.map)) + '</span>' +
+            '<i style="width:' + (100 * mm.wr).toFixed(0) + '%"></i>' +
+            '<em>' + Math.round(100 * mm.wr) + '%</em><u>' + mm.n + '</u></div>';
+        }).join('') + '</div></div>';
+    };
+    return esPanel('Los dos equipos, mapa a mapa', '',
+      '<div class="gx-cs-tcs">' + card(T.a, 'a') + card(T.b, 'b') + '</div>' +
+      '<div class="gx-dim gx-es-note">Tasa de victoria encogida hacia el 50 % y con decaimiento (media vida 180 días): un 70 % con cuatro mapas no vale lo que un 60 % con cuarenta, y el número lo refleja.</div>',
+      'gx-cs-teams');
+  }
+
+  // ── 6) LA PROCEDENCIA DEL CONJUNTO DE DATOS ────────────────────────────────────────────────────────────
+  function cs2Dataset(d) {
+    var ds = (d.model || {}).dataset; if (!ds) return '';
+    if (!ds.available) return '<div class="gx-panel gx-es-doct">' + ic('alert-triangle') +
+      '<div><b>Sin base propia todavía</b><span>' + esc(ds.note) + '</span></div></div>';
+    return '<div class="gx-panel gx-cs-ds">' + ic('database') +
+      '<div><b>Base histórica propia de GP</b><span>' + ds.games + ' mapas · ' + ds.teams +
+      ' equipos con perfil · pool activo deducido de lo que se juega: ' + esc((ds.pool || []).map(cs2Name).join(' · ')) + '</span>' +
+      '<span class="gx-dim">' + esc(ds.note) + '</span></div></div>';
+  }
+
   // ---- 3) CENTRO DE INTELIGENCIA DE UNA PARTIDA ----------------------------------------------------------
   // El orden de los bloques NO es el mismo en los cuatro juegos, y eso es deliberado: cada uno abre por
   // aquello que de verdad decide su partida.
@@ -8282,8 +8534,17 @@
     var ev = d.event, m = d.model || {};
     var head = esMatchHead(d);
     var blocks;
-    if (g === 'cs2') blocks = [esVeto(m, ev), esRounds(m, ev), esEconomy(m), esWhat(m), esUnc(m), esSim(m, ev)];
-    else if (g === 'lol') blocks = [esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esWhat(m), esUnc(m), esSim(m, ev)];
+    // CS2 ES EL PRODUCTO INSIGNIA y tiene su propia composición: héroe con escudos, tablero de veto con los
+    // planos de los siete mapas, escalera de fuerza por mapa y el perfil de rondas del modelo CONTRA el
+    // observado. Los otros tres juegos siguen con la vista genérica hasta que tengan su propia base.
+    if (g === 'cs2') {
+      var csHead = cs2Hero(d);
+      blocks = [cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Dataset(d)];
+      var edgesC = esEdges(d);
+      esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + blocks.filter(Boolean).join('') + esProv(d));
+      return;
+    }
+    if (g === 'lol') blocks = [esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esWhat(m), esUnc(m), esSim(m, ev)];
     else if (g === 'valorant') blocks = [esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m), esWhat(m), esUnc(m), esSim(m, ev)];
     else blocks = [esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
     var edges = esEdges(d);

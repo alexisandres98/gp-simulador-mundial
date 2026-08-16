@@ -80,6 +80,25 @@ cierres corre, y la agenda real (CS2 9 partidas / 5 ligas, LoL 21 / 9, Valorant 
   desplegar: el directorio del repo se recrea en cada deploy y habría borrado el histórico justo cuando
   empieza a acumularse. La ruta interna dice cuál de los dos está en uso (`closes_dir_persistent`).
 - El resto de la plataforma sigue sana (`/`, `/api/aciertos`, `/api/ticker` en 200).
+- **Sonda de servidor**: `?probe=<juego>` en la misma ruta interna ejecuta pizarra + ficha del motor +
+  una partida y devuelve tiempos y errores. Los cuatro juegos en verde (pizarra 1,5-2,9 s en frío).
+- **Navegación por clic verificada** en escritorio y móvil, en los cinco deportes.
+
+### 🐞 EL FALLO QUE SE ESCAPÓ AL PRIMER DESPLIEGUE, y la lección de método
+Alexis lo reportó en cuanto entró: *"me aparece la pestaña de Esport pero nada me carga"*. **`NAV_HASH` no
+tenía las cinco vistas de esports**, así que `compHash` devolvía `undefined` y `navTo` hacía `setHash('')`
+— que es el hash del board de FÚTBOL. Cada clic del menú, y el propio botón del deporte, cambiaban la barra
+lateral a esports y dejaban al usuario callado en otro deporte.
+
+**Las vistas estaban perfectas.** Se pintaban, respondían y devolvían datos correctos por URL directa. Lo
+que no existía era el camino del clic hasta ellas. Y ese es el punto: **toda la verificación previa navegó
+escribiendo la URL (`#esopps`), nunca pulsando el menú**, así que ese camino no se ejercitó ni una vez. Una
+prueba que entra por la puerta de atrás no prueba la puerta de delante.
+
+Corregido en tres partes: las cinco vistas en `NAV_HASH`; el juego elegido viaja en el hash
+(`#esboard/lol`), igual que la liga en baloncesto; y `navTo` cae al nombre de la vista en vez de a la cadena
+vacía cuando falta una entrada — porque la cadena vacía no da error visible, da un menú que "no hace nada".
+**Al añadir un sexto deporte: la prueba se hace a golpe de clic, no por URL.**
 
 ### Lo que falta en esports (por orden de valor)
 1. **Una fuente de resultados.** OpenDota (público) y la API de Riot son las dos primeras y no necesitan

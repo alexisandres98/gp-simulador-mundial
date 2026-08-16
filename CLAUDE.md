@@ -32,6 +32,13 @@
   markets) + `data-providers/basketball/espn.js`. Rutas `/api/hoops/*`. Picks APAGADAS: el modelo no bate
   al cierre (skill −0.0079 fuera de muestra en WNBA). Value/arbitraje/caídas/middles sí se publican porque
   salen de precios entre casas, no del modelo.
+- **Esports (5º deporte, admin-only):** `esports-engine/` (core + un motor POR JUEGO: `cs2`, `lol`,
+  `valorant`, `dota2` + `store`) y `data-providers/esports/cloudbet.js`. Rutas `/api/esports/*` tras
+  `GP_ESPORTS_PUBLIC_ENABLED` (sin poner = solo admin). **Los cuatro juegos NO comparten motor**: cada uno
+  tiene su lógica (veto en CS2, kills en LoL, ataque/defensa en Valorant, cola de duración en Dota 2).
+  Picks SOLO de familias derivadas — el ganador de serie está cerrado por código (`PICK_FAMILIES`).
+  **Cloudbet no publica resultados** (comprobado): no hay rating propio hasta que entre OpenDota/Riot; lo
+  que sí se acumula es el cierre de mercado en `data/esports/`.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

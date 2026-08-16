@@ -9682,6 +9682,22 @@ if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
   setInterval(() => { try { require('./data-fabric/store').freeze(); } catch (e) { console.error('[fabric] congelado:', e.message); } }, 6 * 3600 * 1000);
 }
 
+// ── ESPORTS: CONGELADO DEL CIERRE DE MERCADO (16-ago) ────────────────────────────────────────────────────
+// El proveedor no publica resultados, así que hoy no se puede liquidar nada. Lo que SÍ se puede hacer desde
+// el primer día es guardar el último precio antes del inicio: el día que entre una fuente de histórico, el
+// CLV se calcula hacia atrás en vez de empezar de cero. Se recorre en SERIE y solo la ventana previa al
+// inicio (unos pocos eventos por vuelta) — la lección del pico de memoria de ayer, aplicada de entrada.
+if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
+  const esChain = () => {
+    const ES = require('./esports-engine/store');
+    memMark('esports:cierres');
+    return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.snapshot(g).catch(() => { })), Promise.resolve())
+      .then(() => memMark('reposo'));
+  };
+  setTimeout(esChain, 320 * 1000);
+  setInterval(esChain, 20 * 60 * 1000);
+}
+
 // ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
 // Escribe la lectura de los partidos de HOY que aún no la tienen, con tope por pasada para que el costo
 // sea predecible. Cada lectura se persiste: se paga una vez y la leen todos.
@@ -12093,7 +12109,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true' };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true' };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -14847,6 +14863,58 @@ const server = http.createServer(async (req, res) => {
       }
       return json(res, 404, { error: 'No encontrado' });
     }
+
+    // ═══ ESPORTS (16-ago) — el 5º deporte. ADMIN-ONLY desde el primer día ══════════════════════════════
+    // Cuatro juegos que NO comparten motor: cs2 (veto y rondas), lol (kills y duración), valorant (veto,
+    // composiciones y asimetría ataque/defensa) y dota2 (draft, duración de cola larga y reversión). El
+    // despacho vive en esports-engine/store.js; acá solo hay rutas.
+    //
+    // Dos cosas que esta capa NO hace y conviene tener presentes al leerla: no publica picks de ganador de
+    // serie (la puerta está cerrada en el motor, no acá) y no tiene rating propio todavía, porque el
+    // proveedor no publica resultados. Las dos cosas se devuelven explicadas en el propio JSON.
+    if (p.startsWith('/api/esports/')) {
+      const uE = getUser(req);
+      const esPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
+      if (!uE || !(uE.isAdmin || esPublic)) return json(res, 404, { error: 'No encontrado' });
+      const ES = require('./esports-engine/store');
+      const gm = String(url.searchParams.get('game') || 'cs2').toLowerCase();
+      const okGame = !!ES.ENGINES[gm];
+      try {
+        if (p === '/api/esports/overview') {
+          return json(res, 200, await ES.overview({ days: +(url.searchParams.get('days') || 5) }));
+        }
+        if (p === '/api/esports/board') {
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          return json(res, 200, await ES.board(gm, {
+            days: +(url.searchParams.get('days') || 3),
+            maxEvents: Math.min(24, +(url.searchParams.get('max') || 14)),
+          }));
+        }
+        if (p === '/api/esports/match') {
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          const id = String(url.searchParams.get('id') || '');
+          const out = await ES.analyzeMatch(gm, id, { days: +(url.searchParams.get('days') || 7) });
+          if (!out) return json(res, 404, { error: 'partido no encontrado en la agenda del proveedor', game: gm, id });
+          return json(res, 200, out);
+        }
+        if (p === '/api/esports/model') {
+          // la ficha del motor de un juego: qué es propio suyo, qué familias cotiza y dónde puede aportar
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          const E = ES.ENGINES[gm];
+          return json(res, 200, {
+            game: gm, ...E.GAME,
+            pick_families: [...ES.PICK_FAMILIES], doctrine: ES.PICK_DOCTRINE,
+            rating: ES.ratings(gm), closes_stored: ES.closesCount(gm),
+          });
+        }
+        if (p === '/api/esports/snapshot' && req.method === 'POST') {
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          return json(res, 200, await ES.snapshot(gm));
+        }
+        return json(res, 404, { error: 'No encontrado' });
+      } catch (e) { return json(res, 500, { error: e.message, game: gm }); }
+    }
+
     if (p === '/api/internal/hoops-quotes') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

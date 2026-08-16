@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_soon: 'Próximamente',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_soon: 'Coming soon',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -949,7 +949,7 @@
   }
 
   // ---------- state ----------
-  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -1032,6 +1032,21 @@
   var BB_VIEWS = ['bbopps', 'bbbrief', 'bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer', 'bbsim', 'bbask', 'bbperf'];
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
+  // ── ESPORTS (16-ago): 5º deporte, admin-only desde el día uno. CUATRO JUEGOS QUE NO COMPARTEN MOTOR —
+  // cada uno es su propia pestaña porque su lógica es distinta de verdad, no una variante de la de al lado:
+  // CS2 se decide en el veto de mapas, LoL en el ritmo de liga y los kills, Valorant en la asimetría
+  // ataque/defensa por mapa y Dota 2 en una duración de cola larga que ningún otro tiene. La sección se
+  // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
+  var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
+  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf'];
+  var NAV_ES = [
+    ['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'],
+    ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']
+  ];
+  var NAV2_ES = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  function esAllowed() { return !!(S.me && (S.me.isAdmin || S.me.esportsPublic)); }
+  function esGame() { var k = (S.es && S.es.game) || 'cs2'; return ES_GAMES.some(function (x) { return x[0] === k; }) ? k : 'cs2'; }
+  function esGameLab() { var k = esGame(); var f = ES_GAMES.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : 'CS2'; }
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
   // LANZAMIENTO PÚBLICO DE COMBATE: con el flag ON, cualquier usuario con sesión entra a las superficies de
   // INTELIGENCIA; las de PICKS (Oportunidades y Rendimiento) siguen siendo admin. Con el flag OFF, todo
@@ -1054,6 +1069,7 @@
   function sportOf(v) {
     if (CB_VIEWS.indexOf(v) >= 0) return 'combat';
     if (BB_VIEWS.indexOf(v) >= 0) return 'hoops';
+    if (ES_VIEWS.indexOf(v) >= 0) return 'esports';
     if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
     return 'futbol';
   }
@@ -1062,6 +1078,8 @@
     if (v === 'bbgame') return 'bbgames';
     if (v === 'bbteam' || v === 'bbplayer') return 'bbteams';
     if (BB_VIEWS.indexOf(v) >= 0) return v;   // si no, 'bbgames' caía en el default y ningún ítem quedaba activo
+    if (v === 'esmatch') return 'esboard';
+    if (ES_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
     if (CB_VIEWS.indexOf(v) >= 0) return v;
@@ -1117,10 +1135,10 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS); // vistas implementadas (clickeables)
-    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops';
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS); // vistas implementadas (clickeables)
+    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var NAV_A = isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
+    var NAV_A = isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
     var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
@@ -1128,8 +1146,10 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
-    var bnavItems = isHoops
+    var moreViews = isEs ? ['esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var bnavItems = isEs
+      ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esmodel', 'book', 'es_nav_model'], ['esperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      : isHoops
       ? [['bbopps', 'target-arrow', 'nav_opps'], ['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['__more', 'dots', 'more']]
       : isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
@@ -1162,6 +1182,9 @@
         '<button class="gx-sport' + (S.sport !== 'combat' ? ' on' : '') + '" data-sportgo="futbol"><span class="gx-sport-ico">⚽</span>' + esc(t('sport_futbol')) + '</button>' +
         '<button class="gx-sport' + (S.sport === 'combat' ? ' on' : '') + ' gx-sport-cb" data-sportgo="combat"><span class="gx-sport-ico">🥊</span>' + esc(t('sport_combat')) + (cbSportAllowed() ? '' : '<span class="gx-sport-soon gx-cbsoon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
         '<button class="gx-sport' + (S.sport === 'hoops' ? ' on' : '') + (bbAllowed() ? '' : ' dim') + '"' + (bbAllowed() ? ' data-sportgo="hoops"' : ' disabled') + '><span class="gx-sport-ico">🏀</span>' + esc(t('sport_nba')) + (bbAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
+        // ESPORTS (16-ago): mismo trato que tuvo baloncesto — admin-only, y para el público un teaser
+        // "Proximamente" que anuncia el roadmap sin filtrar producto.
+        '<button class="gx-sport' + (S.sport === 'esports' ? ' on' : '') + (esAllowed() ? '' : ' dim') + '"' + (esAllowed() ? ' data-sportgo="esports"' : ' disabled') + '><span class="gx-sport-ico">\ud83c\udfae</span>' + esc(t('sport_esports')) + (esAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
       '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -1425,7 +1448,16 @@
     // fallo que se corrigió para combate el 2-ago, repetido al añadir el cuarto deporte.
     // Mismo criterio que allí: las superficies de INTELIGENCIA van primero; lo compartido (cartera, casas,
     // invitar, admin) al final y bajo sus mismos flags.
-    var items = S.sport === 'hoops'
+    // ESPORTS (16-ago): su rama va DESDE EL PRIMER DIA. El fallo de baloncesto de esta manana —el menu
+    // de "mas" en movil pintaba el de futbol y Rendimiento llevaba al de futbol— nacio justo de anadir
+    // un deporte sin anadir su rama aqui. No se repite.
+    var items = S.sport === 'esports'
+      ? [['esboard', 'device-gamepad', 'es_nav_board'], ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
+      : S.sport === 'hoops'
       ? [['bbbrief', 'news', 'nav_brief'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
@@ -3919,6 +3951,12 @@
     if (bbt) { S.bb.lg = bbt[1]; if (!(S.view === 'bbteam' && S.bb.teamId === bbt[2])) { S.bb.teamId = bbt[2]; S.bb.team = undefined; showView('bbteam'); } return; }
     var bbp = h.match(/^bbplayer\/([a-z]+)-([0-9]+)$/i);
     if (bbp) { S.bb.lg = bbp[1]; if (!(S.view === 'bbplayer' && S.bb.playerId === bbp[2])) { S.bb.playerId = bbp[2]; S.bb.player = undefined; showView('bbplayer'); } return; }
+    // ── ESPORTS: el id de partida es propio de GP (juego:local__visitante__fecha) y lleva ':' y '__',
+    // asi que el hash guarda el JUEGO aparte y el id va tal cual detras.
+    var esm = h.match(/^esmatch\/(cs2|lol|valorant|dota2)\/(.+)$/i);
+    if (esm) { S.es.game = esm[1]; if (!(S.view === 'esmatch' && S.es.matchId === esm[2])) { S.es.matchId = decodeURIComponent(esm[2]); S.es.match = undefined; showView('esmatch'); } return; }
+    var esv = h.match(/^(esopps|esboard|esmodel|esperf)(?:\/(cs2|lol|valorant|dota2))?$/i);
+    if (esv) { if (esv[2]) S.es.game = esv[2]; showView(esv[1]); return; }
     var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
     var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
@@ -4093,11 +4131,12 @@
   function setSport(sport) {
     if (sport === 'combat' && !cbSportAllowed()) return;
     if (sport === 'hoops' && !bbAllowed()) return;
+    if (sport === 'esports' && !esAllowed()) return;
     if (sport === S.sport) return;
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -4115,13 +4154,14 @@
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
     // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
-    if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
+    if (ES_VIEWS.indexOf(v) >= 0) renderES(v);
+    else if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
     else if (CB_VIEWS.indexOf(v) >= 0) renderCb(v);
     else if (v === 'matches') renderMatches();
     else if (v === 'sim') renderSim();
@@ -8059,6 +8099,493 @@
     else renderBBGames();
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  // ESPORTS (16-ago) — CUATRO JUEGOS, CUATRO PRODUCTOS
+  //
+  // La regla que gobierna todo este bloque: **una pestaña por juego, y cada pestaña enseña lo que ESE juego
+  // tiene de propio**. No hay una plantilla común rellenada con datos distintos. CS2 abre por el veto de
+  // mapas porque ahí se decide la serie; LoL abre por el ritmo de liga porque de ahí cuelgan los kills, que
+  // es el único derivado con precio abierto de los cuatro; Valorant abre por la asimetría ataque/defensa,
+  // que en algunos mapas vale más que la diferencia de nivel; Dota 2 abre por la duración, porque su cola
+  // larga es lo que separa su mercado del de LoL. Un usuario que entra a CS2 y a Dota tiene que notar que
+  // son dos productos, no dos filtros.
+  //
+  // Y la segunda regla, la de la casa: el GANADOR de la serie se calcula y se explica, pero NO genera pick.
+  // El motor cierra esa puerta por código; aquí solo se cuenta por qué.
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  function esGet(key, url, ttl) {
+    var e = S.es[key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
+    if (!e || !e._inflight) esFetch(key, url);
+    return e && e.v !== undefined ? e.v : null;
+  }
+  function esFetch(key, url) {
+    var e = S.es[key] = S.es[key] || {};
+    e._inflight = true; var done = false;
+    var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'esports') showView(S.view); }, 30000);
+    fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (d) {
+        if (done) return; done = true; clearTimeout(to);
+        e.v = d || { _err: 1 }; e._at = Date.now(); e._inflight = false;
+        if (S.sport === 'esports') showView(S.view);
+      });
+  }
+  function esTabs() {
+    return '<div class="gx-cb-tabs">' + ES_GAMES.map(function (x) {
+      return '<span class="gx-cb-tab' + (esGame() === x[0] ? ' on' : '') + '" data-esg="' + x[0] + '">' + esc(x[1]) + '</span>';
+    }).join('') + '<span class="gx-spacer"></span></div>';
+  }
+  // La primera carga de un juego pide la agenda y los mercados de hasta catorce partidas, así que se ven
+  // unos segundos de espera: conviene que digan lo que está pasando en vez del genérico "Cargando partido".
+  function esLoading() {
+    return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') +
+      '<b>Leyendo la agenda y los mercados de ' + esc(esGameLab()) + '…</b>' +
+      '<span class="gx-dim">La primera vez tarda unos segundos: se consultan los precios de cada partida una a una.</span></div></div>';
+  }
+  function esShell(title, inner) {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + inner + '</div></div>';
+    mv.onclick = esClicks;
+  }
+  var esPct = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };
+  var esPct0 = function (x) { return x == null ? '—' : Math.round(100 * x) + '%'; };
+  var esSign = function (x) { return x == null ? '—' : (x > 0 ? '+' : '') + x; };
+  function esPanel(label, extra, body, cls) {
+    return '<div class="gx-panel' + (cls ? ' ' + cls : '') + '"><div class="gx-ph"><span class="gx-label">' + esc(label) + '</span>' +
+      (extra ? '<span class="gx-ph-extra">' + extra + '</span>' : '') + '</div>' + body + '</div>';
+  }
+  // aviso permanente: cada juego dice qué le falta en vez de enseñar un hueco mudo
+  function esGap(txt) { return '<div class="gx-es-gap">' + ic('alert-triangle') + '<span>' + esc(txt) + '</span></div>'; }
+
+  function renderES(v) {
+    if (!S.me) { esShell('Esport', esLoading()); return; }
+    if (!esAllowed()) { showView('board'); return; }
+    if (v === 'esmatch') renderESMatch();
+    else if (v === 'esmodel') renderESModel();
+    else if (v === 'esperf') renderESPerf();
+    else if (v === 'esboard') renderESBoard();
+    else renderESOpps();
+  }
+
+  // ---- 1) OPORTUNIDADES: lo que el motor ve y el precio no ------------------------------------------------
+  function renderESOpps() {
+    var g = esGame();
+    var d = esGet('board_' + g, '/api/esports/board?game=' + g + '&days=3', 120000);
+    if (!d) { esShell(t('nav_opps'), esTabs() + esLoading()); return; }
+    if (d._err) { esShell(t('nav_opps'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var rows = [];
+    (d.items || []).forEach(function (it) { if (it.best) rows.push({ it: it, e: it.best }); });
+    rows.sort(function (a, b) { return (b.e.edge_pp || 0) - (a.e.edge_pp || 0); });
+    var head = '<div class="gx-es-hero"><div><b>' + esc(d.label) + '</b>' +
+      '<span class="gx-dim">' + esc((d.native || []).join(' · ')) + '</span></div>' +
+      '<span class="gx-spacer"></span>' +
+      '<div class="gx-es-hero-n"><b>' + (d.items || []).length + '</b><span>partidas</span></div>' +
+      '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>con ventaja</span></div></div>';
+    var body;
+    if (!rows.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna ventaja pasa el listón ahora mismo.</b>' +
+        '<span class="gx-dim">' + esc((d.items || []).length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.' : 'La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.') + '</span></div></div>';
+    } else {
+      body = '<div class="gx-panel gx-board"><div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
+        '<th>Partida</th><th>Mercado</th><th class="r">GP</th><th class="r">Mercado</th><th class="r">Ventaja</th><th class="r">Cuota</th><th>Confianza</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          var ev = r.it.event, e = r.e;
+          return '<tr data-esmatch="' + esc(ev.id) + '">' +
+            '<td><b>' + esc(ev.home.name) + '</b> <span class="gx-dim">vs</span> <b>' + esc(ev.away.name) + '</b>' +
+            '<div class="gx-dim" style="font-size:10.5px">' + esc(ev.competition || '') + ' · BO' + r.it.bo + '</div></td>' +
+            '<td>' + esc(esEdgeLabel(e)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(e.how || '') + '</div></td>' +
+            '<td class="r gx-mono">' + esPct(e.p_gp) + '</td>' +
+            '<td class="r gx-mono">' + esPct(e.p_market) + '</td>' +
+            '<td class="r gx-mono ' + (e.edge_pp > 0 ? 'gx-up' : 'gx-down') + '">' + esSign(e.edge_pp) + ' pp</td>' +
+            '<td class="r gx-mono">' + (e.odds != null ? e.odds.toFixed(2) : '—') + '</td>' +
+            '<td><span class="gx-chip gx-chip-' + esc((e.confidence && e.confidence.level) || 'baja') + '">' + esc((e.confidence && e.confidence.level) || '—') + '</span></td>' +
+            '</tr>';
+        }).join('') + '</tbody></table></div></div>';
+    }
+    esShell(t('nav_opps'), esTabs() + head + body + esDoctrine(d.doctrine));
+  }
+  // La línea que se muestra tiene que ser la DEL LADO QUE SE APUESTA. El proveedor publica la línea siempre
+  // referida al local, así que enseñarla tal cual junto a "Visitante" decía lo contrario de lo que la
+  // apuesta significa: con la casa cotizando "local −1.5", el lado visitante es visitante **+1.5**, no −1.5.
+  // Un signo mal puesto aquí manda a alguien al lado equivocado del mercado.
+  var ES_HCP = { HANDICAP: 1, RONDAS_HANDICAP: 1, KILLS_HANDICAP: 1 };
+  function esEdgeLabel(e) {
+    var side = { home: 'Local', away: 'Visitante', over: 'Más de', under: 'Menos de', yes: 'Sí', no: 'No' }[e.side] || e.side;
+    var team = e.team ? (e.team === 'home' ? ' (local)' : ' (visitante)') : '';
+    var line = e.line;
+    if (line != null && ES_HCP[e.family] && e.side === 'away') line = -line;
+    var lineTxt = line == null ? '' : ' ' + (ES_HCP[e.family] && line > 0 ? '+' : '') + line;
+    return (e.label || e.family) + ' · ' + side + lineTxt + team + (e.map ? ' · mapa ' + e.map : '');
+  }
+  function esDoctrine(txt) {
+    if (!txt) return '';
+    return '<div class="gx-panel gx-es-doct">' + ic('shield') + '<div><b>Por qué no verás picks al ganador</b><span>' + esc(txt) + '</span></div></div>';
+  }
+
+  // ---- 2) LA PIZARRA DEL JUEGO ---------------------------------------------------------------------------
+  function renderESBoard() {
+    var g = esGame();
+    var d = esGet('board_' + g, '/api/esports/board?game=' + g + '&days=3', 120000);
+    if (!d) { esShell(t('es_nav_board'), esTabs() + esLoading()); return; }
+    if (d._err) { esShell(t('es_nav_board'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var body;
+    if (!(d.items || []).length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>Sin partidas en la ventana.</b>' +
+        '<span class="gx-dim">El proveedor no tiene agenda abierta para ' + esc(d.label) + ' en los próximos días.</span></div></div>';
+    } else {
+      body = '<div class="gx-es-cards">' + d.items.map(function (it) {
+        var ev = it.event;
+        var p = it.p_home;
+        return '<div class="gx-es-card" data-esmatch="' + esc(ev.id) + '">' +
+          '<div class="gx-es-card-h"><span class="gx-dim">' + esc(ev.competition || '—') + '</span><span class="gx-spacer"></span><span class="gx-dim gx-mono">BO' + it.bo + '</span></div>' +
+          '<div class="gx-es-card-t"><b>' + esc(ev.home.name) + '</b><span class="gx-mono">' + (p != null ? esPct0(p) : '—') + '</span></div>' +
+          '<div class="gx-es-card-t"><b>' + esc(ev.away.name) + '</b><span class="gx-mono">' + (p != null ? esPct0(1 - p) : '—') + '</span></div>' +
+          (p != null ? '<div class="gx-es-bar"><i style="width:' + (100 * p).toFixed(1) + '%"></i></div>' : '') +
+          '<div class="gx-es-card-f">' +
+            (it.highlight ? '<span class="gx-es-hl">' + esc(it.highlight) + '</span>' : '') +
+            '<span class="gx-spacer"></span>' +
+            (it.picks ? '<span class="gx-chip gx-chip-alta">' + it.picks + ' con ventaja</span>' : '<span class="gx-dim" style="font-size:10.5px">' + (it.markets_n ? it.markets_n + ' líneas' : 'mercado cerrado') + '</span>') +
+          '</div>' +
+          '<div class="gx-dim gx-es-anchor">' + esc(it.anchor || 'sin precio abierto todavía') + '</div>' +
+          '</div>';
+      }).join('') + '</div>';
+    }
+    var trunc = d.truncated ? '<div class="gx-dim gx-es-trunc">Se muestran ' + d.shown + ' de ' + d.total + ' partidas: quedan ' + d.truncated + ' fuera de esta vista.</div>' : '';
+    esShell(t('es_nav_board'), esTabs() + body + trunc + esDoctrine(d.doctrine));
+  }
+
+  // ---- 3) CENTRO DE INTELIGENCIA DE UNA PARTIDA ----------------------------------------------------------
+  // El orden de los bloques NO es el mismo en los cuatro juegos, y eso es deliberado: cada uno abre por
+  // aquello que de verdad decide su partida.
+  function renderESMatch() {
+    var g = esGame(), id = S.es.matchId;
+    if (!id) { showView('esboard'); return; }
+    var key = 'match_' + g + '_' + id;
+    var d = esGet(key, '/api/esports/match?game=' + g + '&id=' + encodeURIComponent(id), 90000);
+    if (!d) { esShell('Partida', esBack() + esLoading()); return; }
+    if (d._err || d.error) {
+      esShell('Partida', esBack() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') +
+        '<b>' + esc(d.error || t('e_net')) + '</b><span class="gx-dim">La agenda del proveedor solo mira hacia delante: una partida que ya empezó puede desaparecer de ella.</span></div></div>');
+      return;
+    }
+    var ev = d.event, m = d.model || {};
+    var head = esMatchHead(d);
+    var blocks;
+    if (g === 'cs2') blocks = [esVeto(m, ev), esRounds(m, ev), esEconomy(m), esWhat(m), esUnc(m), esSim(m, ev)];
+    else if (g === 'lol') blocks = [esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esWhat(m), esUnc(m), esSim(m, ev)];
+    else if (g === 'valorant') blocks = [esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m), esWhat(m), esUnc(m), esSim(m, ev)];
+    else blocks = [esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
+    var edges = esEdges(d);
+    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + head + edges + blocks.filter(Boolean).join('') + esProv(d));
+  }
+  function esBack() { return '<div class="gx-back" data-esback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_board')) + '</span></div>'; }
+
+  function esMatchHead(d) {
+    var ev = d.event, pr = (d.model && d.model.probability) || null;
+    var p = pr ? pr.p : null;
+    var mkt = (d.model && d.model.market) || null;
+    return '<div class="gx-panel gx-es-head">' +
+      '<div class="gx-es-head-top"><span class="gx-dim">' + esc(ev.competition || '—') + '</span><span class="gx-spacer"></span>' +
+      '<span class="gx-dim gx-mono">BO' + d.bo + '</span>' + (ev.start_at ? '<span class="gx-dim gx-mono" style="margin-left:8px">' + esc(String(ev.start_at).replace('T', ' ').slice(0, 16)) + '</span>' : '') + '</div>' +
+      '<div class="gx-es-head-vs">' +
+        '<div class="gx-es-side"><b>' + esc(ev.home.name) + '</b><span class="gx-mono">' + (p != null ? esPct(p) : '—') + '</span></div>' +
+        '<div class="gx-es-side r"><b>' + esc(ev.away.name) + '</b><span class="gx-mono">' + (p != null ? esPct(1 - p) : '—') + '</span></div>' +
+      '</div>' +
+      (p != null ? '<div class="gx-es-bar big"><i style="width:' + (100 * p).toFixed(1) + '%"></i></div>' : '') +
+      '<div class="gx-es-anchor2">' + ic('shield') + '<span>' + esc(pr ? pr.source : 'sin precio abierto: el proveedor todavía no cotiza esta partida') + '</span></div>' +
+      (mkt ? '<div class="gx-es-mkt"><span>' + mkt.books + ' precio(s)</span><span>margen ' + esPct(mkt.overround) + '</span>' +
+        '<span>muestra propia ' + d.sample + ' partidas</span></div>' : '') +
+      '</div>';
+  }
+
+  // — VETO (CS2 y Valorant). El bloque bandera de estos dos juegos.
+  function esVeto(m, ev) {
+    var v = m.veto;
+    if (!v) return esPanel('Veto de mapas', '', '<div class="gx-empty">' + ic('map-off') +
+      '<b>Sin fuerza por mapa todavía.</b><span class="gx-dim">El árbol de veto necesita una estimación por mapa de cada equipo, y esa sale del histórico propio — que no existe mientras el proveedor no publique resultados.</span></div>', 'gx-es-veto');
+    var imp = m.veto_impact;
+    var seq = '<div class="gx-es-seq">' + (v.sequence || []).map(function (s) {
+      var who = s.who === 'a' ? (ev ? ev.home.name : 'A') : (ev ? ev.away.name : 'B');
+      return '<div class="gx-es-step ' + (s.kind === 'pick' ? 'pick' : 'ban') + '">' +
+        '<span class="gx-es-step-k">' + (s.kind === 'pick' ? 'ELIGE' : 'VETA') + '</span>' +
+        '<b>' + esc(s.name) + '</b><span class="gx-dim">' + esc(who) + '</span>' +
+        '<span class="gx-mono gx-dim">' + esPct0(s.p) + '</span></div>';
+    }).join('') + (v.decider ? '<div class="gx-es-step dec"><span class="gx-es-step-k">DECISIVO</span><b>' + esc(v.decider.name) + '</b><span class="gx-dim">lo que sobra</span></div>' : '') + '</div>';
+    var maps = '<table class="gx-t gx-es-t"><thead><tr><th>Mapa probable</th><th class="r">' + esc(ev ? ev.home.name : 'A') + '</th><th>Lectura</th></tr></thead><tbody>' +
+      (v.likely_maps || []).map(function (mm) {
+        return '<tr><td><b>' + esc(mm.name) + '</b></td><td class="r gx-mono">' + esPct0(mm.p_a) + '</td>' +
+          '<td class="gx-dim">' + esc(mm.note || (mm.p_a >= 0.55 ? 'terreno favorable' : mm.p_a <= 0.45 ? 'terreno hostil' : 'parejo')) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    var impHtml = imp ? '<div class="gx-es-impact ' + esc(String(imp.verdict).toLowerCase()) + '">' +
+      '<div><span class="gx-label">Impacto del veto</span><b>' + esSign(imp.shift_pp) + ' pp</b><span class="gx-dim">' + esc(imp.verdict) + '</span></div>' +
+      '<div class="gx-dim gx-es-impact-n">' + esc(imp.baseline) + ' → serie sobre los mapas que se van a jugar. ' +
+      (imp.market_p != null ? 'El precio del mercado (' + esPct0(imp.market_p) + ') va aparte: es otra escala y mezclarlas engañaría.' : '') + '</div></div>' : '';
+    return esPanel('Veto de mapas', esc(v.pool_version || ''), impHtml + seq + maps + '<div class="gx-dim gx-es-note">' + esc(v.note) + '</div>', 'gx-es-veto');
+  }
+
+  // — RONDAS (CS2 y Valorant). En Valorant además con la asimetría ataque/defensa, que no tiene análogo.
+  function esRounds(m, ev) {
+    var r = m.rounds;
+    if (!r) return null;
+    var lines = Object.keys(r.totals || {}).map(function (k) {
+      var line = k.replace('over_', '').replace('_', '.');
+      return '<tr><td class="gx-mono">' + esc(line) + '</td><td class="r gx-mono">' + esPct(r.totals[k]) + '</td><td class="r gx-mono">' + esPct(1 - r.totals[k]) + '</td></tr>';
+    }).join('');
+    var asym = r.p_round_defense != null
+      ? '<div class="gx-es-asym"><div><span class="gx-label">Defendiendo</span><b>' + esPct0(r.p_round_defense) + '</b></div>' +
+        '<div><span class="gx-label">Atacando</span><b>' + esPct0(r.p_round_attack) + '</b></div>' +
+        '<div><span class="gx-label">Sesgo del mapa</span><b>' + r.map_bias + '</b></div></div>'
+      : '';
+    var hist = esHist(r.loser_distribution, 'loser_rounds', 'Rondas del perdedor');
+    return esPanel('Rondas del mapa', '<span class="gx-mono">' + r.mean_rounds + ' de media</span>',
+      asym +
+      '<div class="gx-es-kpis"><div><span>Media</span><b>' + r.mean_rounds + '</b></div>' +
+      '<div><span>Prórroga</span><b>' + esPct(r.overtime_p) + '</b></div></div>' +
+      hist +
+      '<table class="gx-t gx-es-t"><thead><tr><th>Línea</th><th class="r">Más de</th><th class="r">Menos de</th></tr></thead><tbody>' + lines + '</tbody></table>' +
+      (r.note ? '<div class="gx-dim gx-es-note">' + esc(r.note) + '</div>' : ''), 'gx-es-rounds');
+  }
+
+  // — RITMO (LoL y Dota). La variable madre de los dos MOBA.
+  function esTempo(m) {
+    var tp = m.tempo; if (!tp) return null;
+    return esPanel('Ritmo del circuito', tp.measured ? '<span class="gx-chip gx-chip-alta">medido</span>' : '<span class="gx-chip gx-chip-baja">supuesto</span>',
+      '<div class="gx-es-kpis"><div><span>Kills por minuto</span><b>' + tp.kpm + '</b></div>' +
+      '<div><span>Duración base</span><b>' + tp.minutes + ' min</b></div>' +
+      '<div><span>Muestra propia</span><b>' + (tp.games || 0) + '</b></div></div>' +
+      '<div class="gx-es-lead">' + esc(tp.label) + '</div>' +
+      esGap(tp.note), 'gx-es-tempo');
+  }
+
+  // — DURACIÓN (LoL y Dota). En Dota es el bloque de apertura porque su cola es su firma.
+  function esDuration(m) {
+    var du = m.duration; if (!du) return null;
+    var lines = Object.keys(du.totals || {}).map(function (k) {
+      return '<tr><td class="gx-mono">' + esc(k.replace('over_', '').replace('_', '.')) + '</td><td class="r gx-mono">' + esPct(du.totals[k]) + '</td></tr>';
+    }).join('');
+    return esPanel('Duración de la partida', '<span class="gx-mono">' + du.mean_min + ' min</span>',
+      '<div class="gx-es-kpis"><div><span>Media</span><b>' + du.mean_min + '</b></div>' +
+      '<div><span>P10</span><b>' + du.p10 + '</b></div>' +
+      '<div><span>Mediana</span><b>' + du.p50 + '</b></div>' +
+      '<div><span>P90</span><b>' + du.p90 + '</b></div>' +
+      (du.p99 != null ? '<div><span>P99 (la cola)</span><b>' + du.p99 + '</b></div>' : '') + '</div>' +
+      '<table class="gx-t gx-es-t"><thead><tr><th>Más de (min)</th><th class="r">Probabilidad</th></tr></thead><tbody>' + lines + '</tbody></table>' +
+      '<div class="gx-dim gx-es-note">' + esc(du.note) + '</div>', 'gx-es-dur');
+  }
+
+  // — KILLS (LoL y Dota). En LoL es EL mercado: el único derivado con precio abierto de los cuatro juegos.
+  function esKills(m, ev) {
+    var k = m.kills; if (!k) return null;
+    var chain = '<div class="gx-es-chain">' + (k.chain || []).map(function (c, i) {
+      return '<div class="gx-es-chain-i"><span class="gx-es-chain-n">' + (i + 1) + '</span><div><b>' + esc(c.value) + '</b>' +
+        '<span>' + esc(c.step) + '</span><span class="gx-dim">' + esc(c.from) + '</span></div></div>';
+    }).join('') + '</div>';
+    var lines = Object.keys(k.totals || {}).map(function (kk) {
+      return '<tr><td class="gx-mono">' + esc(kk.replace('over_', '').replace('_', '.')) + '</td><td class="r gx-mono">' + esPct(k.totals[kk]) + '</td><td class="r gx-mono">' + esPct(1 - k.totals[kk]) + '</td></tr>';
+    }).join('');
+    return esPanel('Mercado de kills', '<span class="gx-mono">' + k.mean_kills + ' esperados</span>',
+      chain +
+      '<div class="gx-es-kpis"><div><span>' + esc(ev ? ev.home.name : 'Local') + '</span><b>' + k.team_a_mean + '</b></div>' +
+      '<div><span>' + esc(ev ? ev.away.name : 'Visitante') + '</span><b>' + k.team_b_mean + '</b></div>' +
+      (k.handicap_mean != null ? '<div><span>Hándicap medio</span><b>' + esSign(k.handicap_mean) + '</b></div>' : '') +
+      '<div><span>Reparto</span><b>' + esPct0(k.share_a) + '</b></div></div>' +
+      '<table class="gx-t gx-es-t"><thead><tr><th>Línea</th><th class="r">Más de</th><th class="r">Menos de</th></tr></thead><tbody>' + lines + '</tbody></table>' +
+      '<div class="gx-dim gx-es-note">' + esc(k.note) + '</div>', 'gx-es-kills');
+  }
+
+  // — DRAFT Y LADO (LoL y Dota). El equivalente del veto, pero de herramientas y no de terreno.
+  function esDraft(m, ev) {
+    var dr = m.draft; if (!dr) return null;
+    var sd = m.side;
+    // OJO CON LA LECTURA: los dos porcentajes son la probabilidad POR PARTIDA DEL MISMO EQUIPO según el lado
+    // que le toque, así que NO suman 100 y no deben parecer que lo intentan. Sin el nombre del equipo delante
+    // se leían como un reparto entre dos rivales, que es otra cosa.
+    var who = ev ? ev.home.name : 'El local';
+    var sideHtml = sd ? '<div class="gx-es-asym">' +
+      (sd.blue_p != null
+        ? '<div><span class="gx-label">' + esc(who) + ' desde el azul</span><b>' + esPct0(sd.blue_p) + '</b></div><div><span class="gx-label">' + esc(who) + ' desde el rojo</span><b>' + esPct0(sd.red_p) + '</b></div>'
+        : '<div><span class="gx-label">' + esc(who) + ' como Radiant</span><b>' + esPct0(sd.radiant_p) + '</b></div><div><span class="gx-label">' + esc(who) + ' como Dire</span><b>' + esPct0(sd.dire_p) + '</b></div>') +
+      '<div><span class="gx-label">Ventaja de lado</span><b>' + esSign(sd.edge_pp) + ' pp</b></div></div>' +
+      '<div class="gx-dim gx-es-note">Las dos cifras son del mismo equipo según el lado que le toque: no son un reparto entre rivales y no suman 100 %. ' + esc(sd.note) + '</div>' : '';
+    var ph = '<div class="gx-es-seq">' + (dr.phases || []).map(function (p) {
+      return '<div class="gx-es-step ban"><span class="gx-es-step-k">' + esc(p.key.toUpperCase()) + '</span><b>' + esc(p.label) + '</b><span class="gx-dim">' + esc(p.note) + '</span></div>';
+    }).join('') + '</div>';
+    return esPanel('Draft y lado', '', sideHtml + ph +
+      '<div class="gx-es-lead">' + esc(dr.tempo_link || '') + '</div>' +
+      (dr.pool_note ? '<div class="gx-dim gx-es-note">' + esc(dr.pool_note) + '</div>' : '') +
+      esGap(dr.missing), 'gx-es-draft');
+  }
+
+  // — OBJETIVOS (LoL). Lo que explica la duración y traduce kills en mapa.
+  function esObjectives(m) {
+    var o = m.objectives; if (!o) return null;
+    return esPanel('Objetivos neutrales', '<span class="gx-mono">control ' + esPct0(o.control_p) + '</span>',
+      '<table class="gx-t gx-es-t"><thead><tr><th>Objetivo</th><th class="r">Esperados</th><th>Por qué importa</th></tr></thead><tbody>' +
+      (o.items || []).map(function (i) {
+        return '<tr><td><b>' + esc(i.label) + '</b></td><td class="r gx-mono">' + i.expected + '</td><td class="gx-dim">' + esc(i.note) + '</td></tr>';
+      }).join('') + '</tbody></table>' + esGap(o.missing), 'gx-es-obj');
+  }
+
+  // — REVERSIÓN (Dota). Aegis y buyback: por qué la ventaja no es monótona.
+  function esComeback(m) {
+    var c = m.comeback; if (!c) return null;
+    return esPanel('Reversión: aegis y buyback', '<span class="gx-mono">' + c.roshan_expected + ' roshans</span>',
+      '<table class="gx-t gx-es-t"><thead><tr><th>Minuto</th><th class="r">Se revierte</th><th>Lectura</th></tr></thead><tbody>' +
+      (c.reversal_curve || []).map(function (r) {
+        return '<tr><td class="gx-mono">' + r.minute + '</td><td class="r gx-mono">' + esPct(r.reversal_p) + '</td><td class="gx-dim">' + esc(r.note) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div class="gx-es-lead">' + esc(c.aegis) + '</div>' +
+      '<div class="gx-es-lead">' + esc(c.buyback) + '</div>' +
+      esGap(c.note), 'gx-es-come');
+  }
+
+  // — COMPOSICIÓN (Valorant). Lo que CS2 no tiene.
+  function esComp(m) {
+    var c = m.composition; if (!c) return null;
+    return esPanel('Composición de agentes', c.map ? '<span class="gx-mono">' + esc(c.map.name) + '</span>' : '',
+      (c.demand ? '<div class="gx-es-lead">' + esc(c.demand) + '</div>' : '') +
+      '<table class="gx-t gx-es-t"><thead><tr><th>Rol</th><th>Para qué</th></tr></thead><tbody>' +
+      (c.roles || []).map(function (r) { return '<tr><td><b>' + esc(r.label) + '</b></td><td class="gx-dim">' + esc(r.note) + '</td></tr>'; }).join('') +
+      '</tbody></table>' + esGap(c.missing), 'gx-es-comp');
+  }
+
+  // — ECONOMÍA (CS2 y Valorant)
+  function esEconomy(m) {
+    var e = m.economy; if (!e) return null;
+    return esPanel('Economía de la ronda', '',
+      '<table class="gx-t gx-es-t"><thead><tr><th>Tipo de ronda</th><th>Qué significa</th></tr></thead><tbody>' +
+      (e.buys || []).map(function (b) { return '<tr><td><b>' + esc(b.label) + '</b></td><td class="gx-dim">' + esc(b.note) + '</td></tr>'; }).join('') +
+      '</tbody></table>' + (e.ults ? '<div class="gx-es-lead">' + esc(e.ults) + '</div>' : '') + esGap(e.note), 'gx-es-eco');
+  }
+
+  // — LO QUE IMPORTA / INCERTIDUMBRE / SIMULACIÓN (comunes, pero alimentados por cada motor)
+  function esWhat(m) {
+    var w = m.what_matters; if (!w || !w.length) return null;
+    return esPanel('Lo que decide esta partida', '',
+      '<div class="gx-es-what">' + w.map(function (x) {
+        return '<div class="gx-es-w"><span class="gx-es-wn">' + x.rank + '</span><div><p>' + esc(x.text) + '</p>' +
+          '<span class="gx-dim">' + esc(x.driver) + (x.pp != null ? ' · ' + esSign(x.pp) + ' pp' : '') + '</span></div></div>';
+      }).join('') + '</div>', 'gx-es-what-p');
+  }
+  function esUnc(m) {
+    var u = m.uncertainty; if (!u) return null;
+    return esPanel('Lo que GP no sabe', '<span class="gx-mono">±' + u.epistemic_pp + ' pp</span>',
+      '<div class="gx-es-kpis"><div><span>Azar del juego</span><b>±' + u.aleatoric_pp + '</b></div>' +
+      '<div><span>Ignorancia (accionable)</span><b>±' + u.epistemic_pp + '</b></div></div>' +
+      '<table class="gx-t gx-es-t"><thead><tr><th>De dónde viene</th><th class="r">pp</th><th>Detalle</th></tr></thead><tbody>' +
+      (u.drivers || []).map(function (d) { return '<tr><td>' + esc(d.source) + '</td><td class="r gx-mono">' + d.pp + '</td><td class="gx-dim">' + esc(d.detail) + '</td></tr>'; }).join('') +
+      '</tbody></table>' +
+      '<div class="gx-dim gx-es-note">La ventaja de una pick se compara contra esta cifra, no contra cero: 4 pp de ventaja con ±9 pp de error no es una ventaja.</div>', 'gx-es-unc');
+  }
+  function esSim(m, ev) {
+    var s = m.simulation; if (!s) return null;
+    return esPanel('Simulación de la serie', '<span class="gx-mono">' + s.sims.toLocaleString('es') + ' series</span>',
+      '<div class="gx-es-scores">' + (s.scores || []).map(function (x) {
+        return '<div class="gx-es-score"><b>' + esc(x.score) + '</b><span class="gx-mono">' + esPct(x.p) + '</span>' +
+          '<i style="width:' + (100 * x.p).toFixed(1) + '%"></i></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-es-kpis"><div><span>Mapas esperados</span><b>' + s.expected_maps + '</b></div>' +
+      '<div><span>Prob. por mapa</span><b>' + esPct0(s.p_map_a) + '</b></div></div>' +
+      '<div class="gx-dim gx-es-note">' + esc(s.correlation_note) + '</div>', 'gx-es-sim');
+  }
+  function esEdges(d) {
+    var e = d.edges; if (!e) return '';
+    if (!e.rows.length) return esPanel('Mercado derivado', '', '<div class="gx-empty">' + illo('radar') + '<b>' + esc(e.note || 'Sin líneas derivadas abiertas.') + '</b></div>', 'gx-es-edges');
+    var rows = e.rows.map(function (r) {
+      return '<tr class="' + (r.pick ? 'pick' : '') + '"><td>' + esc(esEdgeLabel(r)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(r.how || '') + '</div></td>' +
+        '<td class="r gx-mono">' + esPct(r.p_gp) + '</td><td class="r gx-mono">' + esPct(r.p_market) + '</td>' +
+        '<td class="r gx-mono ' + (r.edge_pp > 0 ? 'gx-up' : 'gx-down') + '">' + esSign(r.edge_pp) + '</td>' +
+        '<td class="r gx-mono">' + (r.odds != null ? r.odds.toFixed(2) : '—') + '</td>' +
+        '<td>' + (r.pick ? '<span class="gx-chip gx-chip-alta">PICK</span>'
+          : '<span class="gx-dim" style="font-size:10.5px">' + esc(((r.no_pick_reasons || [])[0] || {}).text || 'sin ventaja') + '</span>') + '</td></tr>';
+    }).join('');
+    return esPanel('Mercado derivado', '<span class="gx-mono">' + e.picks.length + ' / ' + e.rows.length + '</span>',
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Mercado</th><th class="r">GP</th><th class="r">Casa</th><th class="r">pp</th><th class="r">Cuota</th><th>Veredicto</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (e.excluded && e.excluded.length
+        ? e.excluded.map(function (x) { return '<div class="gx-dim gx-es-note">' + esc(x.family) + ': ' + esc(x.why) + '</div>'; }).join('')
+        : ''), 'gx-es-edges');
+  }
+  function esProv(d) {
+    var p = d.provenance || [];
+    return '<div class="gx-panel gx-es-prov"><div class="gx-ph"><span class="gx-label">De dónde sale cada cifra</span></div>' +
+      p.map(function (x) {
+        return '<div class="gx-es-prov-i"><b>' + esc(x.source) + '</b><span class="gx-dim">' + esc(x.kind) + '</span>' +
+          '<span class="gx-spacer"></span><span class="gx-dim gx-mono">' + (x.fresh_min != null ? x.fresh_min + ' min' : '—') + '</span></div>';
+      }).join('') + '</div>';
+  }
+  // histograma pequeño reutilizable
+  function esHist(rows, xKey, label) {
+    if (!rows || !rows.length) return '';
+    var max = rows.reduce(function (m, r) { return Math.max(m, r.p); }, 0) || 1;
+    return '<div class="gx-es-hist"><span class="gx-label">' + esc(label) + '</span><div class="gx-es-hist-b">' +
+      rows.map(function (r) {
+        return '<div class="gx-es-hb" title="' + r[xKey] + ': ' + esPct(r.p) + '"><i style="height:' + (100 * r.p / max).toFixed(1) + '%"></i><span>' + r[xKey] + '</span></div>';
+      }).join('') + '</div></div>';
+  }
+
+  // ---- 4) EL MOTOR DEL JUEGO -----------------------------------------------------------------------------
+  function renderESModel() {
+    var g = esGame();
+    var d = esGet('model_' + g, '/api/esports/model?game=' + g, 600000);
+    if (!d) { esShell(t('es_nav_model'), esTabs() + esLoading()); return; }
+    if (d._err) { esShell(t('es_nav_model'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var body =
+      '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Lo que este juego tiene de propio</span></div>' +
+      '<div class="gx-es-native">' + (d.native || []).map(function (x) { return '<span class="gx-es-nat">' + esc(x) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">Cada juego tiene su motor. No hay una plantilla común: lo que decide una serie de ' + esc(d.label) + ' no es lo que decide una de al lado, y por eso esta pestaña enseña cosas distintas de las otras tres.</div></div>' +
+      esPanel('Familias que cotiza el mercado', '', '<div class="gx-es-fams">' + (d.families || []).map(function (f) {
+        var edge = (d.edge_families || []).indexOf(f) >= 0;
+        return '<span class="gx-es-fam' + (edge ? ' on' : '') + '">' + esc(f.replace(/_/g, ' ')) + (edge ? ' ·  aporta' : '') + '</span>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">En verde, donde el motor aporta estructura que el precio no tiene. En el resto se enseña la cifra pero no se apuesta.</div>') +
+      esPanel('Rating propio', d.rating && d.rating.n ? '<span class="gx-mono">' + d.rating.n + ' partidas</span>' : '<span class="gx-chip gx-chip-baja">vacío</span>',
+        '<div class="gx-es-kpis"><div><span>Partidas observadas</span><b>' + ((d.rating && d.rating.n) || 0) + '</b></div>' +
+        '<div><span>Equipos con rating</span><b>' + ((d.rating && Object.keys(d.rating.elo || {}).length) || 0) + '</b></div>' +
+        '<div><span>Cierres guardados</span><b>' + (d.closes_stored || 0) + '</b></div></div>' +
+        esGap('El proveedor de mercado no publica resultados, así que el rating propio no arranca solo. Mientras tanto el ganador es el consenso del mercado sin margen, y lo que sí es de GP —mapas, rondas, duración y kills— no depende del rating.')) +
+      esDoctrine(d.doctrine);
+    esShell(t('es_nav_model'), esTabs() + body);
+  }
+
+  // ---- 5) RENDIMIENTO / ESTADO ---------------------------------------------------------------------------
+  // Honesto por diseño: sin resultados no hay ROI que enseñar, y un cuadro de ROI en cero sería mentira.
+  // Lo que sí se puede enseñar es qué está acumulando el sistema y cuánto falta para poder medirse.
+  function renderESPerf() {
+    var d = esGet('overview', '/api/esports/overview?days=5', 180000);
+    if (!d) { esShell(t('nav_perf'), esLoading()); return; }
+    if (d._err) { esShell(t('nav_perf'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var rs = d.ratings_state || {};
+    var body =
+      '<div class="gx-panel gx-es-why"><div class="gx-ph"><span class="gx-label">Por qué todavía no hay ROI</span></div>' +
+      '<p>' + esc(rs.why || '') + '</p>' +
+      '<p class="gx-dim">' + esc(rs.consequence || '') + '</p>' +
+      '<div class="gx-es-next"><span class="gx-label">Lo que desbloquea la medición</span>' +
+      (rs.next || []).map(function (x) { return '<span class="gx-es-nat">' + esc(x) + '</span>'; }).join('') + '</div></div>' +
+      esPanel('Estado de los cuatro juegos', '<span class="gx-dim">' + esc(d.source || '') + '</span>',
+        '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Juego</th><th class="r">Partidas</th><th class="r">Ligas</th><th class="r">Cierres</th><th class="r">Rating</th><th>Donde aporta</th></tr></thead><tbody>' +
+        (d.games || []).map(function (g) {
+          return '<tr data-esgo="' + esc(g.game) + '"><td><b>' + esc(g.label) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc((g.native || []).join(' · ')) + '</div></td>' +
+            '<td class="r gx-mono">' + g.events + '</td><td class="r gx-mono">' + g.competitions + '</td>' +
+            '<td class="r gx-mono">' + (g.closes_stored || 0) + '</td>' +
+            '<td class="r gx-mono">' + (g.rating_matches || 0) + '</td>' +
+            '<td class="gx-dim">' + esc((g.edge_families || []).join(', ').replace(/_/g, ' ').toLowerCase()) + '</td></tr>';
+        }).join('') + '</tbody></table></div>') +
+      esDoctrine(d.doctrine);
+    esShell(t('nav_perf'), body);
+  }
+
+  function esClicks(e) {
+    var gt = e.target.closest('[data-esg]');
+    if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
+    var go = e.target.closest('[data-esgo]');
+    if (go) { S.es.game = go.getAttribute('data-esgo'); setHash('esboard/' + S.es.game); return; }
+    if (e.target.closest('[data-esback]')) { setHash('esboard/' + esGame()); return; }
+    var mm = e.target.closest('[data-esmatch]');
+    if (mm) { setHash('esmatch/' + esGame() + '/' + encodeURIComponent(mm.getAttribute('data-esmatch'))); return; }
+  }
+
   function renderCb(v) {
     // carrera S.me con hash directo (patrón #perf): S.me arranca NULL (no undefined) hasta que /api/me llega —
     // esperar, no redirigir (el handler de llegada de me re-renderiza las vistas CB)
@@ -10187,7 +10714,8 @@
         document.documentElement.lang = LANG;
         // R2: deporte inicial — el hash manda (link directo a #cb*); si no, el último usado
         var h0 = ''; try { h0 = (location.hash || '').replace(/^#/, ''); } catch (e) {}
-        if (/^cb/.test(h0)) S.sport = 'combat';
+        if (/^es(opps|board|match|model|perf)/.test(h0)) S.sport = 'esports';
+        else if (/^cb/.test(h0)) S.sport = 'combat';
         else { var sp0; try { sp0 = localStorage.getItem('gp_sport'); } catch (e) {} if (sp0 === 'combat' && !h0) S.sport = 'combat'; }
         shell(); load(); loadCanon(); startLiveLoop();
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
@@ -10200,10 +10728,14 @@
             // el shell se pinta ANTES de que llegue /api/me → el sportbar se construyó sin saber si combate
             // está permitido. Si al llegar la sesión cambia el veredicto, se reconstruye (badge "Próximamente").
             if ((cbSportAllowed() && $('.gx-cbsoon')) || (bbAllowed() && $('.gx-sport.dim'))) shell();
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops') { S.sport = 'futbol'; shell(); } showView('board'); }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports') { S.sport = 'futbol'; shell(); } showView('board'); }
             // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
             // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por
             // enlace directo (mismo bug que ya tenía combate y por eso existe la rama de al lado).
+            // ESPORTS: misma rama y por el mismo motivo. Sin ella, entrar directo a #esopps dejaba la
+            // pantalla vacía — /api/me llega después del primer render y el shell() de arriba vacía
+            // #gx-matchview. Es el tercer deporte que tropieza con esto; aquí ya va desde el principio.
+            else if (ES_VIEWS.indexOf(S.view) >= 0) { applyView(); renderES(S.view); }
             else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }
             else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief', 'ask', 'betcheck'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, ask: renderAsk, betcheck: renderBetcheck }[S.view] || function () {})(); } }
         });

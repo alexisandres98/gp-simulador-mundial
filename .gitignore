@@ -23,3 +23,6 @@ data/clubs/af-team-map.json
 
 # caché de páginas de Wikipedia del harvester de boxeo (25MB, solo acelera re-procesar)
 data/combat/.boxing-cache.json
+
+# Cierres de mercado de esports: se acumulan en el disco de Render, no en git
+data/esports/

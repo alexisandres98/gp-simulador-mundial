@@ -1,7 +1,85 @@
-# HANDOFF — estado al 16-ago-2026 (capa visual de combate + motor de boxeo)
+# HANDOFF — estado al 16-ago-2026 (esports: quinto deporte, admin-only)
 
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
+
+## 🎮 ESPORTS — el quinto deporte, construido el 16-ago y ADMIN-ONLY desde el día uno
+
+**Qué hay.** Cuatro juegos que NO comparten motor, cada uno en su pestaña, porque su lógica es distinta de
+verdad: CS2 (veto de mapas, rondas, economía), LoL (ritmo de liga → duración → kills), Valorant (veto,
+composiciones y asimetría ataque/defensa) y Dota 2 (draft, duración de cola larga, reversión por aegis y
+buyback). Archivos: `esports-engine/{core,cs2,lol,valorant,dota2,store}.js` y
+`data-providers/esports/cloudbet.js`. Rutas `/api/esports/{overview,board,match,model,snapshot}`, todas
+detrás del mismo portón que baloncesto (`GP_ESPORTS_PUBLIC_ENABLED`, hoy sin poner = solo admin). En la UI:
+deporte **Esport** en la barra de deportes, con teaser "Próximamente" para el público.
+
+**La doctrina, puesta desde el minuto cero en vez de aprendida otra vez.** El ganador de serie se calcula,
+se enseña y se explica, pero **no genera picks**: la puerta está cerrada en `PICK_FAMILIES`, no en una
+variable de entorno. Es donde baloncesto perdió −11,87 % de ROI y combate −8,34 % de CLV. Las picks solo
+salen de familias derivadas (rondas, kills, totales, hándicaps).
+
+### Lo que se midió contra el proveedor, y conviene no volver a intentarlo
+- **The Odds API no tiene NI UN deporte electrónico** (0 de 75). Cloudbet sí, y ya estaba pagada.
+- **Cloudbet NO publica resultados.** Un evento terminado llega con `settlement: {}` y CERO mercados; el
+  catálogo de fixtures solo mira hacia delante; `/odds/results` y `/events/settled` son 404. Consecuencia
+  seria: **el rating propio de esports no puede arrancar solo.** El diseño lo aguanta (la probabilidad va
+  anclada al mercado con 0 % de peso propio) y la UI lo dice con todas las letras en Rendimiento, en vez de
+  enseñar un cuadro en cero que se leería como un fallo.
+- **Lo que sí se acumula desde hoy: el CIERRE de mercado** (`snapshot`, cada 20 min, `data/esports/`). Sin
+  resultados no se liquida, pero el día que entre una fuente de histórico el CLV se calcula hacia atrás.
+- **La mayoría de partidos NO cotiza el ganador de serie** pero sí marcador, hándicap y ganador de mapa. Por
+  eso `marketAnchor` recorre esas cuatro fuentes en orden y dice de cuál salió. Anclarse solo a `SERIE`
+  dejaba en blanco partidos con dieciséis líneas abiertas.
+
+### Cuatro errores que se encontraron MIDIENDO y que ya están corregidos (no repetirlos)
+1. **El prefijo de Valorant es `esport_valorant`, no `valorant`.** Asumirlo dejaba todos sus mercados a cero.
+2. **La línea vive en `sel.params`, no en la clave del submercado.** Leer solo la clave dejaba todas las
+   líneas en `null` y con eso ninguna familia derivada se podía valorar.
+3. **El hándicap se aplica SIEMPRE al local, con su signo; el lado visitante es el complemento.** Verificado
+   con un partido que cotizaba a la vez marcador, ganador de mapa y hándicap (UNiTY vs Misa): las tres
+   familias daban P(local 2-0) = 0,308 / 0,306 / 0,330. Agrupar por `Math.abs(line)` perdía el signo y
+   fabricaba un favorito del 62 % donde el mercado decía 90 %.
+4. **No se busca valor en el precio contra el que te has calibrado.** La familia que ancló la probabilidad
+   queda excluida de la valoración y se dice por qué. Sin eso salía una "ventaja" de +41,76 pp en el mismo
+   hándicap que era el ancla — y llegó a pintarse en pantalla antes de detectarla.
+
+### Dos decisiones de modelo que conviene entender antes de tocarlas
+- **Una sola casa no puede ser un veto permanente.** Bloquear toda pick con menos de dos casas significaba
+  cero picks para siempre (GP tiene UNA fuente de esports). En vez de ignorar el riesgo, **sube el listón**:
+  +2,5 pp de ventaja exigida cuando solo cotiza una casa, y se dice en la ficha.
+- **La incertidumbre no es la misma para todas las familias.** Un total de kills no depende de conocer a los
+  dos equipos, depende de si el perfil de ritmo de la liga es correcto. Cobrarle la ignorancia sobre el
+  emparejamiento (±15 pp con muestra cero) hacía imposible que ninguna línea de volumen pasara nunca. Ahora
+  las familias de VOLUMEN pagan la incertidumbre del perfil (±7,4 pp) y las de MARGEN la del par.
+
+### Calibraciones declaradas como supuesto (no como medición de GP)
+- Perfiles de ritmo por liga (LoL) y por circuito (Dota 2): referencia de circuito 2026.
+- Sesgo defensivo por mapa en Valorant: referencia de circuito.
+- **Arrastre económico por ronda** (CS2 0,055 / Valorant 0,065): calibrado para que la tasa de prórroga caiga
+  del 16,4 % del binomio al ~12,8 %, que es lo que da el circuito. El **signo importa y es fácil de
+  equivocar**: quien ganó la ronda anterior llega con dinero, así que la racha se refuerza (`+`). Con el
+  signo al revés el modelo revertía a la media y disparaba la prórroga al 19 %.
+- CS2: la carrera a 13 hacía IMPOSIBLE el 12-12 y la tasa de prórroga salía exactamente 0 — un imposible del
+  juego, no un resultado. Ahora son 24 rondas de regulación y bloques MR3 de prórroga.
+
+### Verificado (en local contra la API de producción de Cloudbet, con datos reales)
+- Los cuatro juegos responden; CS2 12 eventos / 5 ligas, LoL ~22 / 9, Valorant 4 / 1, Dota 2 sin agenda hoy.
+- Sumas de probabilidad coherentes en las diez familias derivadas (más/menos = 1, hándicaps complementarios).
+- Las cinco vistas pintan a 1400 px y a 390 px **sin un solo error de JS**, y los otros cuatro deportes
+  siguen intactos (fútbol, combate y baloncesto probados en la misma pasada).
+- El público (usuario beta no admin) ve **Esport · Próximamente** deshabilitado, las tres rutas devuelven
+  404 y un enlace directo a `#esopps` cae al board de fútbol.
+- **El menú "más" del móvil lleva su rama de esports desde el principio** — es el fallo que ya mordió a
+  combate el 2-ago y a baloncesto el 16-ago por la mañana; no se repitió.
+
+### Lo que falta en esports (por orden de valor)
+1. **Una fuente de resultados.** OpenDota (público) y la API de Riot son las dos primeras y no necesitan
+   permiso comercial. Sin esto no hay rating propio, ni liquidación, ni ROI que enseñar.
+2. Histórico de vetos y de drafts: hoy el árbol de veto se deriva de la fuerza por mapa, que a su vez no
+   existe todavía (por lo mismo del punto 1).
+3. Demos .dem para CS2 (economía real por ronda) — necesita solicitud aprobada en FACEIT.
+
+---
 
 ## Estado: desplegado y estable tras la caída del 16-ago (ver el bloque siguiente).
 - `origin/main` = **`117ccb7`** · deploy `dep-da0crhtbedkc73ag12t0` en **live** sirviendo ese commit.

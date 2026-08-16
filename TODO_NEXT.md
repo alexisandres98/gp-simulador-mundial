@@ -1,5 +1,20 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🎮 ESPORTS (nuevo el 16-ago): lo que bloquea que el quinto deporte valga algo
+El producto está entero y admin-only, pero **no puede medirse a sí mismo** porque Cloudbet no publica
+resultados (comprobado: evento terminado → `settlement` vacío y cero mercados; `/odds/results` es 404).
+1. **Fuente de resultados** — OpenDota y la API de Riot son públicas y no necesitan permiso comercial. Es
+   el desbloqueo número uno: sin ella no hay rating propio, ni liquidación, ni ROI, ni CLV.
+2. **Histórico de vetos y drafts** — el árbol de veto de CS2/Valorant hoy se deriva de la fuerza por mapa,
+   que tampoco existe todavía. Depende del punto 1.
+3. **Calibrar los supuestos declarados** — ritmo por liga (LoL/Dota), sesgo defensivo por mapa (Valorant) y
+   arrastre económico por ronda están puestos como referencia de circuito y marcados como tales en la UI.
+   En cuanto haya muestra propia, `calibrateTempo` los sustituye con encogimiento.
+4. Demos .dem para la economía real de CS2 — necesita solicitud aprobada en FACEIT.
+Mientras tanto el trabajo de `snapshot` guarda el cierre de mercado cada 20 min para que el CLV se pueda
+calcular hacia atrás el día que lleguen los resultados.
+
+
 ## 🔴 PENDIENTE DE LA CAÍDA DEL 16-ago: el pico de memoria sigue ahí (solo cabe mejor)
 La plataforma está estable, pero lo que la tumbó no está resuelto del todo — está **acomodado**.
 - Cada ciclo hay un pico transitorio de **~900 MB** (era 1429 MB antes de encadenar los trabajos). Cabe

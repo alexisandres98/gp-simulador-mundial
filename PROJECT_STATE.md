@@ -23,6 +23,8 @@ Fuentes externas:  ESPN scoreboard (marcadores), Polymarket gamma + Kalshi (merc
 | `engine.js` (~299 ln) | Modelo: `simulateTournament`, `matchProbs`, `liveMatchProbs`, `eloUpdate`, `explainTeam`, `effElo`, `assignThirds`, `cmpRows`. Constantes del modelo. |
 | `mailer.js` | Envío de email: Resend (HTTPS) → fallback relay Google Apps Script → fallback SMTP. `sendMail`, `isConfigured`. |
 | `data-providers/` (Fase 4) | Capa de datos contextuales server-side. `apiFootballProvider.js` (principal, key por env), `espnProvider.js` (fallback), `manualProvider.js` (lee `data/manual/*.json`), `cache.js` (TTL en memoria), `normalizer.js` (raw→Normalized*), `gpTake.js` (`generateGPTake` determinístico), `index.js` (orquestador `getMatchContext`/`getTeamContext` con prioridad API-Football→ESPN→manual). La UI nunca los llama directo. |
+| `esports-engine/` (16-ago) | **Quinto deporte, admin-only.** `core.js` (lo compartido: sin margen, consenso, `marketAnchor`, simulación de serie, ventaja y NO PICK, incertidumbre), y **un motor por juego que no se conoce con los de al lado**: `cs2.js` (veto de mapas, rondas con arrastre económico, prórroga MR3), `lol.js` (ritmo de liga → duración → kills, draft y lado, objetivos), `valorant.js` (veto con profundidad de agentes, asimetría ataque/defensa por mapa, prórroga por parejas), `dota2.js` (draft de 24 fases, duración de cola larga, reversión por aegis/buyback). `store.js` despacha, cachea, valora cada línea abierta y guarda el cierre de mercado. |
+| `data-providers/esports/cloudbet.js` | Única fuente viva de esports. Agenda, mercados normalizados a la taxonomía de GP e ids propios estables. Documenta lo que esta fuente **no** da: resultados. |
 | `data/manual/*.json` (Fase 4) | Editable a mano: `team_notes`, `key_players`, `manual_injuries`, `projected_lineups`, `tactical_notes`, `squad_notes`, `team_form_cache`, `apifootball_ids` (semilla de IDs). |
 | `data/tournament.js` | TEAMS (48, con elo/grupo/flag/host/aliases), GROUPS, GROUP_FIXTURES (desde fixtures-real.json), KNOCKOUT (estructura oficial R32→FINAL con slots W/R/T3/M/L). |
 | `data/fixtures-real.json` | 72 partidos de grupos reales (de ESPN, auditados) con espnId, datetime, matchday. |
@@ -52,6 +54,11 @@ Fuentes externas:  ESPN scoreboard (marcadores), Polymarket gamma + Kalshi (merc
 - `POST /api/admin/result` — (admin) registrar/corregir/eliminar resultado; recalcula Elo+sims, dispara alertas.
 - `POST /api/admin/refresh-markets` — (admin) forzar fetch de mercados.
 - `GET /api/admin/users` — (admin) base de usuarios + atribución por fuente + (UI tiene export CSV).
+- `GET /api/esports/overview` — **(admin)** panorama de los cuatro juegos: agenda, ligas, cierres guardados, estado del rating y por qué está vacío.
+- `GET /api/esports/board?game=` — **(admin)** pizarra de un juego: probabilidad anclada, mercados abiertos y ventajas por partida.
+- `GET /api/esports/match?game=&id=` — **(admin)** centro de inteligencia de una partida, con el bloque propio de cada juego.
+- `GET /api/esports/model?game=` — **(admin)** ficha del motor: qué tiene de propio, qué familias cotiza, dónde aporta, estado del rating.
+- `POST /api/esports/snapshot?game=` — **(admin)** fuerza el guardado del cierre de mercado.
 - `GET /api/stream` — SSE (eventos: hello, update, markets). Padding 2KB + heartbeat 25s para túneles/proxies.
 
 ## El modelo (engine.js) — constantes clave

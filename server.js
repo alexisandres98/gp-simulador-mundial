@@ -14915,6 +14915,28 @@ const server = http.createServer(async (req, res) => {
       } catch (e) { return json(res, 500, { error: e.message, game: gm }); }
     }
 
+    // Estado de esports sin necesidad de sesión, con la misma llave que `/api/internal/llm` y `/shadow`.
+    // No es un atajo para saltarse el portón: no sirve inteligencia ni picks, solo dice si los cuatro
+    // motores cargan, qué ve el proveedor y cuántos cierres se llevan guardados. Existe porque el producto
+    // es admin-only y sin esto la única forma de comprobar que vive en producción es iniciar sesión.
+    if (p === '/api/internal/esports') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        const ES = require('./esports-engine/store');
+        const ov = await ES.overview({ days: +(url.searchParams.get('days') || 3) });
+        return json(res, 200, {
+          ok: true,
+          engines: ES.GAME_ORDER,
+          provider_key: !!process.env.CLOUDBET_API_KEY,
+          public_flag: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true',
+          closes_job: String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false',
+          games: ov.games.map((g) => ({ game: g.game, events: g.events, competitions: g.competitions, closes: g.closes_stored, rating: g.rating_matches })),
+          ratings_state: ov.ratings_state,
+          heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576),
+        });
+      } catch (e) { return json(res, 500, { ok: false, error: e.message, stack: String(e.stack || '').split('\n').slice(0, 3) }); }
+    }
     if (p === '/api/internal/hoops-quotes') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

@@ -2775,3 +2775,16 @@ td .gx-calc-btn span { display: none; }
 .gx-cs-pending ul{margin:7px 0 0;padding-left:18px}
 .gx-cs-pending li{font-size:11.5px;color:var(--gx-text3);line-height:1.55;margin-bottom:3px}
 @media (max-width:760px){ .gx-cs-consts{grid-template-columns:1fr} }
+
+/* ── ROSTER: una marca no juega, juegan cinco personas ─────────────────────────────────────────────── */
+.gx-cs-roster{border:1px solid var(--gx-line);border-radius:9px;padding:8px 9px;margin-bottom:10px;background:rgba(255,255,255,.015)}
+.gx-cs-roster.shock{border-color:rgba(232,196,106,.34);background:rgba(232,196,106,.05)}
+.gx-cs-five{display:flex;flex-wrap:wrap;gap:5px}
+.gx-cs-pl{font-size:11px;border:1px solid var(--gx-line2);border-radius:6px;padding:3px 7px;background:var(--gx-panel)}
+.gx-cs-pl em{font-style:normal;font-size:8.5px;color:var(--gx-text4);margin-left:4px;text-transform:uppercase;letter-spacing:.05em}
+.gx-cs-pl.coach{opacity:.66}
+.gx-cs-rmeta{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--gx-text4);margin-top:7px;line-height:1.4}
+.gx-cs-roster.shock .gx-cs-rmeta{color:#E8C46A}
+.gx-cs-tcm>i.up{background:linear-gradient(90deg,#12B98A,#1FE3A4)}
+.gx-cs-tcm>i.dn{background:linear-gradient(90deg,rgba(255,122,122,.5),rgba(255,122,122,.85))}
+.gx-cs-tcm>em.up{color:var(--gx-accent,#1FE3A4)} .gx-cs-tcm>em.dn{color:#FF7A7A}

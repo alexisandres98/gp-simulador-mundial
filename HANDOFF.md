@@ -3,6 +3,64 @@
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
 
+## 🔬 CS2 2.0 — VALIDACIÓN, MODELO NUEVO Y ROSTER (16-ago, tercera pasada)
+
+Sobre el blueprint 2.0. Lo que sigue es lo entregado, y **lo primero es una corrección a mí mismo**.
+
+### ⚠️ LA VALIDACIÓN TUMBÓ EL MODELO QUE YO HABÍA DEFENDIDO
+`scripts/cs2-validate.js` recorre los 48.678 mapas en orden cronológico estricto y predice cada uno con el
+estado ANTERIOR a jugarlo (walk-forward por construcción, punto en el tiempo real). Cinco predictores sobre
+exactamente los mismos mapas:
+
+| predictor | skill de Brier | AUC |
+|---|---|---|
+| moneda (0,5) | 0 % | 0,500 |
+| **Elo GLOBAL** (ignora el mapa) | **6,88 %** | 0,649 |
+| Elo por mapa | 3,04 % | 0,600 |
+| tasa por mapa | 1,00 % | 0,577 |
+| **modelo que estaba desplegado** | **2,12 %** | 0,589 |
+
+El argumento «Elo POR MAPA, no global» que escribí con toda confianza en el código, en `PROJECT_STATE.md` y
+en el documento Word que entregué **estaba mal**. Partir el historial de un equipo en siete mapas deja cada
+trozo con un séptimo de la muestra; el ruido se come la señal y el modelo acaba por debajo de ignorar el
+mapa entero.
+
+### La corrección (módulo 9 del blueprint 2.0)
+El mapa no se tira: se degrada de rating a **corrección** sobre la fuerza global.
+`logit(p) = CAL_SLOPE × [ logit(p_elo_global) + LAMBDA × (efecto_A − efecto_B) ]`, con
+`efecto(equipo,mapa) = (su tasa en ese mapa − su tasa global)` encogido por muestra.
+λ y el encogimiento se ajustaron en 2024-2025 y **se confirmaron en 2026 sin volver a tocarlos**:
+
+**jerárquico calibrado → skill 7,28 % · AUC 0,652 · ECE 0,0081 · pendiente 0,999** (3,4× lo desplegado).
+
+### Roster: org ≠ roster (P0.5, el 2,0/10 del scorecard)
+`scripts/cs2-roster.js` — 20.278 jugadores, **2.443 organizaciones, 689 con quinteto completo, 44 con cambio
+reciente**. El proveedor da la plantilla ACTUAL, no el histórico, así que se toma una **foto diaria**: el
+lineage propio con fechas efectivas empieza hoy. Un cambio reciente **ensancha la incertidumbre** (+2,6 pp
+por equipo afectado) en vez de fingir que el historial sigue describiendo al equipo. Repesar el pasado por
+parecido de alineación queda pendiente y se declara como pendiente.
+
+### Ficha del modelo (P0.9)
+Cada constante etiquetada **aprendida / convención / doctrina / experimental**, con su motivo, servida en la
+API y pintada con código de color. Una constante sin etiqueta se lee como si estuviera medida y la mayoría
+no lo están (el coeficiente de veto y el momentum de serie son experimentales, no ajustes).
+
+### Lo que sigue faltando, por orden
+1. **Baseline de mercado y CLV** — sin histórico de cuotas de CS2 no se puede decidir si alguna familia
+   merece picks públicas. Es la comparación que falta y está declarada en pantalla.
+2. Histórico de vetos reales (Liquipedia) para sustituir el coeficiente supuesto.
+3. Multi-book: medido hoy, bo3 no da cuotas y Kalshi/Polymarket no cotizan partidos de CS2.
+4. Demos .dem para economía, lados T/CT y jugadores.
+
+### Operación nueva
+```bash
+node scripts/cs2-harvest.js                 # base histórica (semanal)
+node scripts/cs2-roster.js                  # plantillas + foto del día (DIARIO: cada día que falte es lineage perdido)
+node scripts/cs2-validate.js --json=...     # re-validar tras tocar el modelo
+```
+
+---
+
 ## 🔫 CS2 — BASE HISTÓRICA PROPIA Y CAPA VISUAL (16-ago, segunda pasada)
 
 Alexis rechazó la primera entrega con tres reproches justos: UI de tablas apiladas sin una imagen, foco

@@ -363,9 +363,26 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
     measured: !!(profile && profile.measured),
   } : null;
 
-  const missing = [].concat(strength ? [] : ['fuerza por mapa'], profile ? [] : ['perfil de ronda del mapa'], ['datos de ronda (demos)']);
-  const unc = C.uncertainty({ p: pSeries != null ? pSeries : 0.5,
+  // ── VENTANA DE SHOCK DE ROSTER (blueprint 2.0, módulo 8) ─────────────────────────────────────────────
+  // Si uno de los dos equipos cambió de alineación hace poco, su historial describe a OTRO equipo. No se
+  // puede repesar hacia atrás —GP todavía no tiene histórico de alineaciones, solo la foto de hoy— así que
+  // lo honesto es lo contrario de fingir precisión: reconocer que sabemos menos y ensanchar el margen.
+  const rosterA = cardA && cardA.roster, rosterB = cardB && cardB.roster;
+  const shock = [rosterA, rosterB].filter((r) => r && r.changed_recently);
+  const rosterPenalty = shock.length ? 2.6 * shock.length : 0;
+
+  const missing = [].concat(strength ? [] : ['fuerza por mapa'], profile ? [] : ['perfil de ronda del mapa'],
+    shock.length ? [`cambio de alineación reciente en ${shock.map((r) => r.name).join(' y ')}`] : [],
+    ['datos de ronda (demos)']);
+  const uncBase = C.uncertainty({ p: pSeries != null ? pSeries : 0.5,
     sampleMatches: ownSample, marketBooks: cons ? cons.books : 0, missing });
+  const unc = rosterPenalty
+    ? { ...uncBase,
+        epistemic_pp: C.r2(Math.sqrt(uncBase.epistemic_pp ** 2 + rosterPenalty ** 2)),
+        total_pp: C.r2(Math.sqrt(uncBase.aleatoric_pp ** 2 + uncBase.epistemic_pp ** 2 + rosterPenalty ** 2)),
+        drivers: uncBase.drivers.concat([{ source: 'alineación recién cambiada', pp: C.r2(rosterPenalty),
+          detail: shock.map((r) => `${r.name}: ${r.stable_days} días con estos cinco`).join(' · ') }]) }
+    : uncBase;
 
   const sim = pMap != null ? C.simulateSeries(pMap, bo, { perMap: mapProbs ? mapProbs.map((m) => m.p_a) : null }) : null;
 
@@ -379,6 +396,9 @@ function analyze({ market, ratings, bo = 3, sample = 0, teams = null }) {
     // LA BASE GLOBAL, que ahora es la cifra principal del modelo: qué diría GP si ignorara el mapa. Se
     // publica al lado del ajuste por mapa para que se vea cuánto aporta cada parte.
     global_strength: globalStrength,
+    rosters: { a: rosterA || null, b: rosterB || null, shock: shock.length,
+      note: store.rosterMeta ? store.rosterMeta.note : null,
+      history_reweight: 'PENDIENTE: repesar el historial por parecido de alineación necesita histórico de alineaciones, que GP empieza a construir hoy con una foto diaria. Mientras tanto un cambio reciente solo ensancha el margen; no reescribe el pasado.' },
     model: MODEL_CARD,
     // el bloque de "modelo propio": de dónde salió la probabilidad y con qué peso
     model_probability: modelP != null ? {

@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'cs2');
-const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'team-global.json', 'meta.json'];
+const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'team-global.json', 'rosters.json', 'meta.json'];
 
 const G = global._cs2data = global._cs2data || { at: 0, stamp: '', data: null };
 
@@ -32,13 +32,15 @@ function load() {
   const s = stamp();
   if (G.data && G.stamp === s && Date.now() - G.at < 10 * 60e3) return G.data;
   const maps = rd('maps.json'), teams = rd('teams.json'), tm = rd('team-maps.json'), meta = rd('meta.json');
-  const tg = rd('team-global.json');
+  const tg = rd('team-global.json'), ro = rd('rosters.json');
   const data = {
     available: !!(maps && maps.maps && tm && tm.teams),
     maps: (maps && maps.maps) || {},
     teams: (teams && teams.teams) || {},
     teamMaps: (tm && tm.teams) || {},
     teamGlobal: (tg && tg.teams) || {},
+    rosters: (ro && ro.teams) || {},
+    rosterMeta: ro ? { coverage: ro.coverage, note: ro.note, shock_days: ro.shock_days, at: ro.at } : null,
     meta: meta || null,
     at: (meta && meta.at) || null,
   };
@@ -221,12 +223,12 @@ function mapProfile(mapKey, { data = load() } = {}) {
 
 function teamCard(id, { data = load() } = {}) {
   const t = data.teams[id]; if (!t) return null;
-  const tm = data.teamMaps[id], g = data.teamGlobal[id];
+  const tm = data.teamMaps[id], g = data.teamGlobal[id], ro = data.rosters[id];
   // se ordena por EFECTO, no por tasa bruta: lo interesante de un equipo no es dónde gana más —eso lo
   // arrastra su nivel general— sino dónde gana más DE LO QUE LE TOCARÍA por su nivel.
   const maps = tm ? Object.entries(tm.maps).map(([k, v]) => ({ map: k, ...v }))
     .sort((a, b) => (b.effect ?? 0) - (a.effect ?? 0)) : [];
-  return { ...t, maps, n: tm ? tm.n : 0, elo: g ? g.elo : null, wr: g ? g.wr : null };
+  return { ...t, maps, n: tm ? tm.n : 0, elo: g ? g.elo : null, wr: g ? g.wr : null, roster: ro || null };
 }
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));

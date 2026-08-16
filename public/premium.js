@@ -8497,18 +8497,33 @@
     if (!T.a && !T.b) return '';
     var card = function (t, side) {
       if (!t) return '<div class="gx-cs-tc empty">' + ic('alert-triangle') + '<span>Sin histórico propio de este equipo</span></div>';
+      var R = t.roster;
+      // EL QUINTETO ES LO PRIMERO. Una marca no juega; juegan cinco personas. Si esos cinco cambiaron hace
+      // poco, el historial de la marca describe a otro equipo y hay que verlo antes que ninguna cifra.
+      var rosterHtml = R ? '<div class="gx-cs-roster' + (R.changed_recently ? ' shock' : '') + '">' +
+        '<div class="gx-cs-five">' + R.five.map(function (p) {
+          return '<span class="gx-cs-pl">' + esc(p.nick) + (p.role ? '<em>' + esc(p.role) + '</em>' : '') + '</span>';
+        }).join('') + (R.coach ? '<span class="gx-cs-pl coach">' + esc(R.coach.nick) + '<em>coach</em></span>' : '') + '</div>' +
+        '<div class="gx-cs-rmeta">' + (R.stable_days != null
+          ? (R.changed_recently ? ic('alert-triangle') : '') + '<b>' + R.stable_days + ' días</b> con esta alineación'
+            + (R.changed_recently ? ' — el historial describe en parte a otro equipo' : '')
+          : 'antigüedad de la alineación desconocida') + '</div></div>' : '';
       return '<div class="gx-cs-tc">' +
         '<div class="gx-cs-tc-h">' + cs2Crest(t, 'big') + '<div><b>' + esc(t.name) + '</b>' +
-          '<span>' + t.n + ' mapas' + (t.rank ? ' · ranking ' + t.rank : '') + '</span></div></div>' +
+          '<span>' + t.n + ' mapas' + (t.elo != null ? ' · Elo ' + Math.round(t.elo) : '') + (t.rank ? ' · ranking ' + t.rank : '') + '</span></div></div>' +
+        rosterHtml +
         '<div class="gx-cs-tc-maps">' + t.maps.slice(0, 7).map(function (mm) {
+          var e = mm.effect || 0;
           return '<div class="gx-cs-tcm"><span>' + cs2MapArt(mm.map, 'mini') + esc(cs2Name(mm.map)) + '</span>' +
-            '<i style="width:' + (100 * mm.wr).toFixed(0) + '%"></i>' +
-            '<em>' + Math.round(100 * mm.wr) + '%</em><u>' + mm.n + '</u></div>';
+            '<i class="' + (e >= 0 ? 'up' : 'dn') + '" style="width:' + Math.min(100, Math.abs(e) * 900).toFixed(0) + '%"></i>' +
+            '<em class="' + (e >= 0 ? 'up' : 'dn') + '">' + (e > 0 ? '+' : '') + (100 * e).toFixed(1) + '</em><u>' + mm.n + '</u></div>';
         }).join('') + '</div></div>';
     };
     return esPanel('Los dos equipos, mapa a mapa', '',
       '<div class="gx-cs-tcs">' + card(T.a, 'a') + card(T.b, 'b') + '</div>' +
-      '<div class="gx-dim gx-es-note">Tasa de victoria encogida hacia el 50 % y con decaimiento (media vida 180 días): un 70 % con cuatro mapas no vale lo que un 60 % con cuarenta, y el número lo refleja.</div>',
+      '<div class="gx-dim gx-es-note">La cifra de cada mapa es el <b>efecto</b>: cuántos puntos rinde ese equipo por encima o por debajo de <b>su propio nivel</b> en ese mapa, encogido por muestra. No es su tasa de victoria — esa la arrastra lo bueno que sea en general.</div>' +
+      ((d.model || {}).rosters && (d.model || {}).rosters.history_reweight
+        ? '<div class="gx-dim gx-es-note">' + esc(d.model.rosters.history_reweight) + '</div>' : ''),
       'gx-cs-teams');
   }
 

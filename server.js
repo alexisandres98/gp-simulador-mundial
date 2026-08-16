@@ -99,6 +99,25 @@ try { db = { ...db, ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) }; } catch {
 TEAMS.forEach(t => { if (db.elos[t.id] == null) db.elos[t.id] = t.elo; });
 db.sentAlerts = db.sentAlerts || {}; // inicializado temprano: markExistingFinalsSeen() lo usa al arrancar
 db.sentTg = db.sentTg || {};         // inicializado temprano: markExistingTgSeen() lo usa al arrancar
+// ── VIGÍA DE MEMORIA (16-ago, tras la caída de producción) ───────────────────────────────────────────────
+// POR QUÉ EXISTE. El 16-ago el proceso entró en bucle de caída por falta de memoria: arrancaba sano en
+// ~150 MB, daba un ÚNICO salto a 1,5 GB en menos de un minuto y moría. Desde fuera —métricas por minuto y
+// logs— se puede ver el salto pero NO quién lo provoca, porque el trabajo culpable muere antes de loguear
+// nada. Tres horas de arqueología de logs no bastaron para nombrarlo.
+// Esto lo nombra: muestrea el montón cada 5 s y escribe una línea SOLO cuando el uso cruza un escalón de
+// 250 MB hacia arriba, o cuando cae de golpe (el pico ya pasó). Coste: una llamada a memoryUsage() cada
+// 5 s, que es del orden de microsegundos. El log queda silencioso en operación normal.
+// `mark()` permite además que un trabajo declare qué está haciendo, para que la línea diga "durante X".
+let _memStep = 0, _memWhat = 'arranque';
+const memMark = (what) => { _memWhat = what; };
+setInterval(() => {
+  const mb = Math.round(process.memoryUsage().heapUsed / 1048576);
+  const step = Math.floor(mb / 250);
+  if (step > _memStep) console.log('[mem] montón', mb, 'MB (subiendo) durante:', _memWhat);
+  else if (step < _memStep - 1) console.log('[mem] montón', mb, 'MB (liberado) tras:', _memWhat);
+  _memStep = step;
+}, 5000).unref();
+
 let saveTimer = null;
 // Escritura síncrona de db.json. Con try/catch para que un fallo de disco no tumbe el proceso.
 function flushDb() {
@@ -9162,6 +9181,7 @@ async function llmFightReadsPass({ cap = 5 } = {}) {
   for (const org of Object.keys(COMBAT_ORGS)) {
     if (done >= cap) break;
     let C;
+    memMark('combate:carga+agenda ' + org);
     try { C = combatLoad(org); await combatRefreshUpcoming(C); } catch { continue; }
     const cands = [];
     for (const ev of (C.upcoming || [])) {
@@ -9620,9 +9640,20 @@ function hoopsPicksTrack() {
   };
 }
 
+// LOS TRES TRABAJOS DE BALONCESTO YA NO ARRANCAN A LA VEZ (16-ago, caída de producción).
+// Estaban los tres lanzados sin `await` en el mismo tick, así que sus picos de memoria se SUMABAN. El
+// proceso reventaba por falta de memoria a los ~215 s del arranque, es decir 15 s después de que este
+// temporizador de 200 s los soltara juntos, y entraba en bucle: arranque → 200 s → muerte → reinicio.
+// Encadenarlos no cambia NADA de la lógica de decisión (sigue congelada hasta el domingo 23): solo evita
+// que tres picos coincidan en el mismo instante.
+const hoopsChain = () => { memMark('hoops:build'); return buildHoopsPicks().catch(() => { })
+  .then(() => { memMark('hoops:settle'); return settleHoopsPicks().catch(() => { }); })
+  .then(() => { memMark('hoops:closeline'); return hoopsPicksCloseline().catch(() => { }); })
+  .then(() => memMark('reposo')); };
+
 if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
-  setTimeout(() => { buildHoopsPicks().catch(() => { }); settleHoopsPicks().catch(() => { }); hoopsPicksCloseline().catch(() => { }); }, 200 * 1000);
-  setInterval(() => { buildHoopsPicks().catch(() => { }); settleHoopsPicks().catch(() => { }); }, 30 * 60 * 1000);
+  setTimeout(hoopsChain, 200 * 1000);
+  setInterval(() => { buildHoopsPicks().catch(() => { }).then(() => settleHoopsPicks().catch(() => { })); }, 30 * 60 * 1000);
   setInterval(() => { hoopsPicksCloseline().catch(() => { }); }, 5 * 60 * 1000);   // el cierre se congela fino
   // CONGELADO HISTÓRICO DIARIO (módulo 12). Cada 6 horas se reescribe el resumen del día en curso: conteos
   // por dominio y hash de los ids. No es un backup — es la prueba de que el estado de ese día fue el que
@@ -10417,8 +10448,11 @@ function combatRefreshOdds(C) {
       C.odds = G.list || C.odds || [];
       C._nameMemo = new Map(); // nombres nuevos del feed → que se resuelvan de nuevo
     } catch { C.odds = C.odds || []; }
+    memMark('combate:cloudbet ' + C.org);
     try { await combatCloudbetRefresh(C); } catch { /* siguiente ciclo */ }
+    memMark('combate:archivo ' + C.org);
     try { combatOddsArchive(C); } catch (e) { console.error('[combat-archive]', e.message); }
+    memMark('reposo');
   })().finally(() => { C._oddsRefreshing = null; });
 }
 // ===== CLOUDBET COMO 2ª FUENTE (R2c, 28-jul): el Trading API cotiza mma (UFC+PFL+Oktagon) y boxing =====
@@ -18531,7 +18565,7 @@ server.listen(PORT, () => {
   // baloncesto: mismo ritmo, almacén compartido (las claves fuera de temporada no devuelven nada)
   setTimeout(() => { hoopsQuotesSweep().catch(e => console.error('[hoops] sweep:', e.message)); }, 90 * 1000);
   // captura de props para la revisión del domingo 23: solo mide, no decide nada
-  setTimeout(() => { hoopsPropsCapture().catch(e => console.error('[hoops-props]', e.message)); }, 150 * 1000);
+  setTimeout(() => { memMark('hoops:props'); hoopsPropsCapture().catch(e => console.error('[hoops-props]', e.message)); }, 150 * 1000);
   setInterval(() => { hoopsPropsCapture().catch(e => console.error('[hoops-props]', e.message)); }, 30 * 60 * 1000);
   setInterval(() => { hoopsQuotesSweep().catch(e => console.error('[hoops] sweep:', e.message)); }, 12 * 60 * 1000);
   // props de clubes (córners/tarjetas/assists/anytime): throttle interno 3h, eventos <48h; el intervalo pregunta c/30min

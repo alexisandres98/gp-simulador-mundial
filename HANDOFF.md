@@ -3,6 +3,57 @@
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
 
+## 🔫 CS2 — BASE HISTÓRICA PROPIA Y CAPA VISUAL (16-ago, segunda pasada)
+
+Alexis rechazó la primera entrega con tres reproches justos: UI de tablas apiladas sin una imagen, foco
+disperso en cuatro juegos cuando el blueprint era **solo de CS2**, y dependencia de un único proveedor
+pudiendo construir data propia. Esto es la respuesta.
+
+### La base propia (`data/esports/cs2/`, 956 KB versionados)
+`scripts/cs2-harvest.js` + `data-providers/esports/bo3.js` → **48.678 mapas, 48.486 con los dos equipos
+resueltos (99,6 %), 1.031 equipos con perfil**. El crudo (25 MB) queda en el disco persistente; solo viajan
+los agregados, que son *nuestras* definiciones de features:
+- fuerza por mapa encogida hacia el 50 % con decaimiento (media vida 180 días) y peso por tier
+- **Elo POR MAPA**, no global: en CS2 un equipo puede ser top en Mirage y flojo en Nuke
+- distribución real de rondas, prórroga y palizas por mapa
+
+Re-cosechar: `node scripts/cs2-harvest.js` (incremental) o `--aggregate-only` para re-derivar sin red.
+
+### Lo que cambió porque ahora hay datos
+| Antes | Ahora |
+|---|---|
+| fuerza por mapa `null` → **el tablero de veto no existía** | se dibuja con la fuerza real de los dos equipos |
+| prórroga 12,8 % asumida | **11,4 % medida**, y distinta por mapa |
+| arrastre económico elegido a ojo | **ajustado por mapa** para reproducir su prórroga real; el residuo en rondas se publica |
+| pool de mapas escrito a mano | **deducido de lo que se juega**, con desempate por tendencia |
+| sin mercado → pantalla con un guion | **GP da su propia probabilidad** simulando la serie sobre la fuerza por mapa |
+
+El desempate del pool merece una nota: Cache y Overpass empataban en volumen reciente, pero los 259 mapas de
+Cache son **todos** de los últimos 100 días (entra al pool) y los de Overpass son el rescoldo de 2.617
+históricos (sale). Ordenar por volumen a secas habría dejado fuera al mapa que se va a jugar.
+
+### Resolver a qué equipo pertenece cada mapa (fallaba en un tercio)
+El proveedor guarda el **nombre del clan**, no el id, y no coincide con el del equipo casi un tercio de las
+veces. Buscarlo entre 8.359 equipos fallaba en el 31 % y, cuando acertaba por casualidad, podía asignar el
+mapa al equipo equivocado — peor que perderlo. Se cambió el problema: **el mapa pertenece a uno de los DOS
+equipos de su partido**. De 31 % sin resolver a 0,4 %. Aparte, `norm()` NO limpia "academy"/"junior": al
+limpiarlos, Team Spirit heredaba el historial de su filial.
+
+### La capa visual
+Logos reales del histórico; **planos de los siete mapas dibujados en SVG aquí dentro** (dos sitios, medio y
+conectores — ninguna imagen de terceros, y más legible que una captura); héroe con halo de incertidumbre;
+tablero de veto con las siete cartas; escalera de ventaja por mapa; y el perfil de rondas con la simulación
+**dibujada encima de lo observado**, para que el modelo se pueda juzgar en vez de solo creer.
+
+### ⚠️ La dependencia que hay que resolver
+El `robots.txt` de bo3.gg desaconseja el acceso automatizado a `/api/`. Es el riesgo que el blueprint señala
+para HLTV. Decisión consciente y reversible: se usa para arrancar, detrás de un adaptador que es lo único
+que sabe que bo3 existe. **Hay que pedir acceso a Liquipedia** (tiene vía oficial) y, con él, cambiar de
+fuente cuesta un archivo. Lo que sigue faltando para el blueprint completo: veto histórico real (hoy el
+árbol se deriva de la fuerza por mapa), y demos .dem para la economía de ronda.
+
+---
+
 ## 🎮 ESPORTS — el quinto deporte, construido el 16-ago y ADMIN-ONLY desde el día uno
 
 **Qué hay.** Cuatro juegos que NO comparten motor, cada uno en su pestaña, porque su lógica es distinta de

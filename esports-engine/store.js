@@ -40,7 +40,16 @@ const PICK_FAMILIES = new Set([
 ]);
 const PICK_DOCTRINE = 'el ganador de serie no genera picks por decisión de la casa: es el mercado donde GP ya midió pérdidas en dos deportes (baloncesto −11,87 % de ROI, combate −8,34 % de CLV). Se calcula y se explica, pero no se apuesta.';
 
-const DIR = path.join(__dirname, '..', 'data', 'esports');
+// DÓNDE SE ESCRIBE, Y POR QUÉ NO EN EL REPO. Los cierres de mercado son lo ÚNICO que este deporte acumula
+// hoy, y el directorio del repo en Render se recrea en cada deploy: guardarlos ahí significaría empezar de
+// cero cada vez que se toca una línea de código, que es justo lo contrario de acumular histórico. Así que
+// van al disco persistente, al lado de `db.json`, con el mismo criterio que ya usan los datos de clubes.
+// Sin disco persistente (desarrollo local) cae al repo, que ahí sí es lo correcto.
+const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'esports');
+const REPO_DIR = path.join(__dirname, '..', 'data', 'esports');
+const DIR = (() => {
+  try { fs.mkdirSync(DISK_DIR, { recursive: true }); return DISK_DIR; } catch { return REPO_DIR; }
+})();
 const ensureDir = () => { try { fs.mkdirSync(DIR, { recursive: true }); } catch {} };
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
 const wr = (f, o) => { try { ensureDir(); fs.writeFileSync(path.join(DIR, f), JSON.stringify(o)); return true; } catch { return false; } };
@@ -484,6 +493,6 @@ function closesCount(game) {
 }
 
 module.exports = {
-  ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE,
+  ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, market, analyzeMatch, board, evaluateAll, probFor, boOf,
 };

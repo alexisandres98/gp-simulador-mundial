@@ -14931,6 +14931,7 @@ const server = http.createServer(async (req, res) => {
           provider_key: !!process.env.CLOUDBET_API_KEY,
           public_flag: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true',
           closes_job: String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false',
+          closes_dir: ES.DIR, closes_dir_persistent: ES.DIR.indexOf(__dirname) !== 0,
           games: ov.games.map((g) => ({ game: g.game, events: g.events, competitions: g.competitions, closes: g.closes_stored, rating: g.rating_matches })),
           ratings_state: ov.ratings_state,
           heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576),

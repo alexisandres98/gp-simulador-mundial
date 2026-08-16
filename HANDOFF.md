@@ -3,7 +3,7 @@
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
 
-## Estado: fusionado a `main`, desplegado y verificado en producción.
+## Estado: desplegado y estable tras la caída del 16-ago (ver el bloque siguiente).
 - `origin/main` = **`117ccb7`** · deploy `dep-da0crhtbedkc73ag12t0` en **live** sirviendo ese commit.
 - **Ojo con el `main` LOCAL de una sesión nueva:** el contenedor clona con profundidad 50, así que el `main`
   local puede ser una ventana vieja del histórico y `git merge` responde *"refusing to merge unrelated
@@ -50,6 +50,37 @@ además rompe el nivel (predice 28,8 % donde ocurre 50,3 %). Todo escrito con su
 **Lo que sí falta es dato**, y no se puede bajar desde aquí: Wikipedia devuelve 429 a la IP del sandbox con
 cualquier ritmo. Comando para correr desde fuera:
 `node scripts/combat-boxing-backfill.js --depth=3 --max=4000 --sleep=200` (idempotente, cachea).
+
+## 🚨 CAÍDA DE PRODUCCIÓN DEL 16-ago (05:06 → 09:05 UTC) — resuelta, causa raíz a medias
+
+**Síntoma:** 22 caídas por falta de memoria en bucle, 502 casi continuo durante ~4 horas. El proceso
+arrancaba sano en ~150 MB, daba **un único salto a 1,5 GB en menos de un minuto** y moría a los ~215 s.
+
+**Por qué nadie lo vio venir:** ningún despliegue del histórico había vivido más de 1,2 h — la tarde del
+15-ago hubo 25 redespliegues seguidos. El primer proceso que corrió una noche entera fue el de las 21:20,
+y llegó al pico. **El "no había OOM en 3 días" no probaba nada: el proceso nunca vivía lo suficiente.**
+
+**El error que hizo perder una hora:** subir la instancia a 4 GB **no cambió nada**, porque
+`NODE_OPTIONS=--max-old-space-size=1536` estaba fijado a mano en Render. Node se quedaba topado en 1,5 GB
+pasara lo que pasara con la RAM del contenedor — los logs de GC lo decían (`1544 MB`) y tardé en mirarlo.
+
+**Lo que restauró el servicio (tres cosas):**
+1. `NODE_OPTIONS` → `--max-old-space-size=3072`. **Esto es lo que de verdad levantó la plataforma.**
+2. Los tres trabajos de baloncesto (`buildHoopsPicks`, `settleHoopsPicks`, `hoopsPicksCloseline`) dejaron
+   de dispararse a la vez a los 200 s del arranque; ahora van encadenados. Pico: 1429 → 912 MB.
+3. Un vigía de memoria (`[mem]`) que muestrea el montón cada 5 s y, al cruzar escalones de 250 MB, imprime
+   la bitácora de trabajos de los últimos 45 s. **Sin él esto no se resuelve**: el trabajo que revienta
+   muere antes de loguear, y tres horas de arqueología de logs no bastaron.
+
+**Estado:** estable. Pico ~912 MB contra un techo de 3072, cero OOM, sitio en 200.
+
+**LO QUE FALTA (no urgente, pero real):** el pico de ~900 MB sigue siendo desproporcionado. El vigía lo
+atribuye sobre todo a `hoops:build` (el constructor de picks de baloncesto), con el bloque
+`combate:cloudbet` de las tres organizaciones aportando los primeros ~600 MB. **Dos hipótesis mías ya
+cayeron por medición**: no es `db.json` (259 MB de disco al 25 %, base en memoria sana) y no es el archivo
+de cuotas de combate (pesa 0,2-0,4 MB, medido en producción). Para cerrarlo hacen falta marcas finas
+dentro de `buildHoopsPicks` y de `combatCloudbetRefresh`. **Ojo: `buildHoopsPicks` es lógica de baloncesto
+y está congelada hasta el domingo 23** — instrumentar sí, reordenar su lógica no.
 
 ---
 

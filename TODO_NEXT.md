@@ -1,5 +1,20 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🔴 PENDIENTE DE LA CAÍDA DEL 16-ago: el pico de memoria sigue ahí (solo cabe mejor)
+La plataforma está estable, pero lo que la tumbó no está resuelto del todo — está **acomodado**.
+- Cada ciclo hay un pico transitorio de **~900 MB** (era 1429 MB antes de encadenar los trabajos). Cabe
+  porque el techo de Node subió a 3072 MB; si algo lo hace crecer otra vez, vuelve a caer.
+- El vigía `[mem]` (ya en producción) lo atribuye a **`hoops:build`** sobre todo, y al bloque
+  **`combate:cloudbet`** de las tres organizaciones los primeros ~600 MB.
+- **Descartado por medición, no por intuición:** `db.json` (disco al 25 %, base en memoria sana) y el
+  archivo de cuotas de combate (0,2-0,4 MB medidos en producción).
+- Siguiente paso: marcas finas dentro de `buildHoopsPicks` y `combatCloudbetRefresh`. **Instrumentar sí;
+  tocar la lógica de decisión de baloncesto NO hasta el domingo 23.**
+- **Regla que deja esto:** `NODE_OPTIONS` estaba fijado a `--max-old-space-size=1536`, así que subir la
+  instancia a 4 GB no sirvió de nada durante una hora. Si en el futuro se sube RAM, **revisar esa variable
+  primero**. Y ningún proceso había vivido más de 1,2 h por los redespliegues constantes: un bug que
+  aparece a las 8 horas era invisible.
+
 ## 🥊 COMBATE 16-ago: capa visual y motor de boxeo — DESPLEGADOS Y VERIFICADOS (`117ccb7`)
 Detalle completo y todas las mediciones en `HANDOFF.md` §2. Lo que hay que saber aquí:
 - **Boxeo no tenía capa profunda**, no la tenía "adaptada de MMA": `espnstats-boxing.json` no existe, el

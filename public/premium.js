@@ -118,6 +118,7 @@
       fresh_data: 'Datos recientes', aging_data: 'Datos envejecidos', stale_data: 'Datos desactualizados',
       fresh_price: 'Precio reciente', aging_price: 'Precio envejecido', stale_price: 'Precio desactualizado',
       mod_memo: 'Decision memo', mod_prob: 'Probabilidad GP', mod_markets: 'Mercados', mod_context: 'Contexto', mod_goals: 'Proyección de goles', mod_live: 'En vivo',
+      mvl_match: 'El partido', mvl_model: 'El modelo', mvl_context: 'Contexto',
       hero_gp: 'Probabilidad GP', hero_mkt: 'Mercado', hero_best: 'Mejor precio', hero_xg: 'xG esperado', hero_score: 'Marcador probable', period_90: '90 min · sin prórroga ni penales',
       ev_basis: 'Base de la evidencia',
       ev_pick: 'Pick GP publicada con seguimiento', ev_value: 'Value accionable sobre el precio actual', ev_analysis: 'Análisis GP del partido', ev_price_only: 'Lectura basada en el precio', ev_none: 'Sin evidencia accionable todavía',
@@ -524,6 +525,7 @@
       fresh_data: 'Recent data', aging_data: 'Aging data', stale_data: 'Stale data',
       fresh_price: 'Recent price', aging_price: 'Aging price', stale_price: 'Stale price',
       mod_memo: 'Decision memo', mod_prob: 'GP probability', mod_markets: 'Markets', mod_context: 'Context', mod_goals: 'Goal projection', mod_live: 'Live',
+      mvl_match: 'The match', mvl_model: 'The model', mvl_context: 'Context',
       hero_gp: 'GP probability', hero_mkt: 'Market', hero_best: 'Best price', hero_xg: 'Expected xG', hero_score: 'Likely score', period_90: '90 min · no extra time or penalties',
       ev_basis: 'Evidence basis',
       ev_pick: 'Published GP Pick with tracking', ev_value: 'Actionable value over the current price', ev_analysis: 'GP match analysis', ev_price_only: 'Price-based read', ev_none: 'No actionable evidence yet',
@@ -956,7 +958,7 @@
   var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, ten: { tour: 'atp' }, f1: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
-    teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
+    teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, mvLens: 'partido', h2h: {}, xgr: {}, intel: {}, style: {} };
 
   // ---------- icons ----------
   // ---- iconografía PROPIA (firma visual): set dibujado a mano, dual-tone (detalle en acento vía clase .a/.af).
@@ -5016,31 +5018,77 @@
     var hasEvents = fx && fx.events && fx.events.length;
     // Panel de oportunidad (si llegamos acá desde una card de Arbitraje/Precio atrasado, y corresponde a ESTE partido).
     var arbCtx = (S.arbCtx && S.arbCtx._openId === eid) ? S.arbCtx : null;
-    // A.7: navegación interna de secciones (sticky). Las secciones presentes definen el menú.
-    var sections = [];
-    if (arbCtx) sections.push({ id: 'oportunidad', key: 'arb_sec_opp' });
-    sections = sections.concat([{ id: 'resumen', key: 'tab_summary' }, { id: 'prob', key: 'mod_prob' }, { id: 'mercados', key: 'mod_markets' }, { id: 'contexto', key: 'mod_context' }]);
-    if (hasForm) sections.push({ id: 'forma', key: 'mod_form' });
-    if (hasLineups) sections.push({ id: 'alineaciones', key: 'mod_lineups' });
     var hasMom = fx && fx.momentum && fx.momentum.length > 2;
-    if (hasMom) sections.push({ id: 'momentum', key: 'mod_momentum' });
-    if (intel) sections.push({ id: 'intel', key: 'mod_intel' });
-    if (hasStats || hasEvents || live) sections.push({ id: 'stats', key: 'mod_stats' });
-    if (xgr) sections.push({ id: 'xg', key: 'mod_xg' });
-    if (!gpAbsent) sections.push({ id: 'goles', key: 'mod_goals' });
-    if (live) sections.push({ id: 'live', key: 'mod_live' });
     var sec = function (id, html) { return html ? '<div class="gx-sec" id="sec-' + id + '">' + html + '</div>' : ''; };
+    // LENTES DEL PARTIDO (fase 3, 17-ago). Las secciones se declaran UNA vez, en orden de lectura, con la
+    // lente a la que pertenecen; mvLensLayout se encarga del resto. El panel de oportunidad queda FUERA
+    // de las lentes (siempre visible): es lo accionable y llegar a él no puede depender de una pestaña.
+    var parts = [
+      { id: 'resumen', lens: 'partido', html: gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx) },
+      live ? { id: 'live', lens: 'partido', html: mvLive(fx) } : null,
+      pickReads ? { id: 'lecturas', lens: 'partido', html: pickReads } : null,
+      hasMom ? { id: 'momentum', lens: 'partido', html: mvMomentum(fx, header) } : null,
+      hasLineups ? { id: 'alineaciones', lens: 'partido', html: mvLineups(beta, fx) } : null,
+      (hasStats || hasEvents) ? { id: 'stats', lens: 'partido', html: mvStats(beta, fx) } : null,
+      xgr ? { id: 'xg', lens: 'partido', html: mvXg(xgr, header) } : null,
+      { id: 'prob', lens: 'modelo', html: gpAbsent ? mvProbAbsent() : mvProb(beta) },
+      { id: 'mercados', lens: 'modelo', html: mvMarkets(beta, fx, r) },
+      gpAbsent ? null : { id: 'goles', lens: 'modelo', html: mvGoals(beta) },
+      { id: 'contexto', lens: 'contexto', html: mvContext(beta, fx) },
+      hasForm ? { id: 'forma', lens: 'contexto', html: mvForm(beta, fx) } : null,
+      intel ? { id: 'intel', lens: 'contexto', html: mvIntel(intel, header) } : null,
+      styleD ? { id: 'estilo', lens: 'contexto', html: uiPlan() === 'sharp' ? mvStyle(styleD, header) : lockPanel('lock_sharp_t', 'lock_style_s') } : null,
+    ].filter(Boolean);
+    // Si se llegó pidiendo una sección concreta (data-cock-sec), la lente se abre donde vive esa sección.
+    if (S.pendingSec) {
+      var tgt = parts.filter(function (p2) { return p2.id === S.pendingSec; })[0];
+      if (tgt) S.mvLens = tgt.lens;
+    }
+    var lay = mvLensLayout(parts, sec);
     mv.innerHTML = mvShell(
       mvHero(beta, fx, r, live) +
-      mvNav(sections) +
+      lay.bar +
       (arbCtx ? mvOpportunity(arbCtx, header) : '') +
-      '<div class="gx-mv-grid">' +
-      '<div class="gx-mv-col">' + sec('resumen', gpAbsent ? mvGpAbsent(beta, fx) : mvMemo(beta, r, fx)) + sec('prob', gpAbsent ? mvProbAbsent() : mvProb(beta)) + sec('contexto', mvContext(beta, fx)) + (hasForm ? sec('forma', mvForm(beta, fx)) : '') + '</div>' +
-      '<div class="gx-mv-col">' + (live ? sec('live', mvLive(fx)) : '') + (pickReads ? sec('lecturas', pickReads) : '') + (hasMom ? sec('momentum', mvMomentum(fx, header)) : '') + (hasLineups ? sec('alineaciones', mvLineups(beta, fx)) : '') + sec('mercados', mvMarkets(beta, fx, r)) + ((hasStats || hasEvents) ? sec('stats', mvStats(beta, fx)) : '') + (xgr ? sec('xg', mvXg(xgr, header)) : '') + (intel ? sec('intel', mvIntel(intel, header)) : '') + (styleD ? sec('estilo', uiPlan() === 'sharp' ? mvStyle(styleD, header) : lockPanel('lock_sharp_t', 'lock_style_s')) : '') + (gpAbsent ? '' : sec('goles', mvGoals(beta))) + '</div>' +
-      '</div>'
+      lay.grid
     );
-    bindBack(); bindMvNav();
+    bindBack(); bindMvLens(function () { renderMatch(); });
     if (S.pendingSec) { var ps = S.pendingSec; S.pendingSec = null; var pel = document.getElementById('sec-' + ps); if (pel) setTimeout(function () { window.scrollTo({ top: pel.getBoundingClientRect().top + window.scrollY - 110, behavior: 'smooth' }); }, 80); }
+  }
+  // ---- LENTES CONTEXTUALES DEL PARTIDO DE FÚTBOL (fase 3, 17-ago) ----------------------------------------
+  // El partido de fútbol NO estaba en la situación de CS2/NFL/baloncesto: aquí ya había nav sticky con
+  // scrollspy y dos columnas en desktop, así que el patrón entra en su versión ligera. El MISMO nav sticky
+  // (misma posición, mismo CSS) deja de listar 9-11 anclas y pasa a filtrar tres lentes; dentro de la lente
+  // las secciones se reparten en las dos columnas que ya existían, partiendo por la MITAD del orden de
+  // lectura — así en móvil, donde la rejilla colapsa a una columna, el orden no cambia. Héroe, panel de
+  // oportunidad y rejilla intactos. Con una sola lente presente la barra no se pinta (no hay nada que
+  // filtrar) y la pantalla queda exactamente como estaba.
+  var MV_LENSES = [['partido', 'mvl_match'], ['modelo', 'mvl_model'], ['contexto', 'mvl_context']];
+  function mvLensLayout(parts, sec) {
+    var present = MV_LENSES.filter(function (l) { return parts.some(function (p) { return p.lens === l[0]; }); });
+    var cur = S.mvLens || 'partido';
+    if (!present.some(function (l) { return l[0] === cur; })) cur = (present[0] || ['partido'])[0];
+    S.mvLens = cur;
+    var mine = present.length > 1 ? parts.filter(function (p) { return p.lens === cur; }) : parts;
+    var half = Math.ceil(mine.length / 2);
+    var col = function (arr) { return '<div class="gx-mv-col">' + arr.map(function (p) { return sec(p.id, p.html); }).join('') + '</div>'; };
+    var grid = '<div class="gx-mv-grid">' + col(mine.slice(0, half)) + (mine.length > half ? col(mine.slice(half)) : '') + '</div>';
+    var bar = present.length > 1
+      ? '<nav class="gx-mv-nav" id="gx-mv-nav">' + present.map(function (l) {
+        return '<a data-mvlens="' + l[0] + '"' + (l[0] === cur ? ' class="on"' : '') + '>' + esc(t(l[1])) + '</a>';
+      }).join('') + '</nav>'
+      : '';
+    return { bar: bar, grid: grid, lens: cur };
+  }
+  function bindMvLens(rerender) {
+    var nav = $('#gx-mv-nav'); if (!nav) return;
+    [].forEach.call(nav.querySelectorAll('[data-mvlens]'), function (a) {
+      a.addEventListener('click', function () {
+        S.mvLens = a.getAttribute('data-mvlens');
+        // volver arriba de la zona de contenido: cambiar de lente es cambiar de vista, no seguir el scroll
+        try { window.scrollTo({ top: Math.max(0, (nav.getBoundingClientRect().top + window.scrollY) - 96) }); } catch (e) {}
+        rerender();
+      });
+    });
   }
   // ---- forma reciente (ambos equipos) ----
   function formResults(arr) { return '<span class="gx-formchips">' + (arr || []).slice(0, 5).map(function (x) { var c = x === 'W' ? 'w' : x === 'L' ? 'l' : 'd'; var lbl = LANG === 'en' ? x : { W: 'V', D: 'E', L: 'D' }[x] || x; return '<i class="gx-fc gx-fc-' + c + '">' + lbl + '</i>'; }).join('') + '</span>'; }

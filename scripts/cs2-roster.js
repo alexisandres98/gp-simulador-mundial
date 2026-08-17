@@ -75,6 +75,11 @@ async function harvestPlayers() {
           country_id: p.country_id != null ? p.country_id : null,
           photo: p.image_url || null,
           rating6m: Number.isFinite(p.six_month_avg_rating) ? p.six_month_avg_rating : null,
+          // para la ficha de jugador (17-ago): edad y premios. El rating de 6 meses es DEL PROVEEDOR, no
+          // nuestro — viaja etiquetado así hasta que exista estadística propia por mapa de jugador.
+          birthday: p.birthday || null,
+          winnings: Number.isFinite(p.total_winnings) && p.total_winnings > 0 ? p.total_winnings
+            : (Number.isFinite(p.total_prize) && p.total_prize > 0 ? p.total_prize : null),
           status: p.status,
         };
         n++;
@@ -207,5 +212,41 @@ function continuity(orgs, players) {
   });
   log(`  ${Object.keys(cont).length} organizaciones · ${withFive} con quinteto completo · ${changed} con cambio reciente`);
   log(`  fotos acumuladas: ${days} día(s)`);
+
+  // ── DIRECTORIO DE JUGADORES (17-ago, sección Jugadores del producto) ────────────────────────────────────
+  // Solo los que juegan HOY en un equipo que existe en nuestros agregados: el resto de los 20.000 son ruido
+  // histórico. Se versiona porque es lo que la ficha pinta; el crudo completo se queda en el disco local.
+  try {
+    const aggTeams = (JSON.parse(fs.readFileSync(path.join(AGG_DIR, 'teams.json'), 'utf8')) || {}).teams || {};
+    const byOrg = {};
+    for (const [org, c] of Object.entries(cont)) {
+      if (!aggTeams[org]) continue;                          // sin historial en la base → sin ficha
+      for (const f of (c.five || [])) {
+        const p = players[f.id] || {};
+        byOrg[f.id] = {
+          id: f.id, nick: p.nick || f.nick, name: p.name || null, role: p.role || f.role,
+          team: org, team_name: aggTeams[org].name,
+          photo: p.photo || null, country_id: p.country_id != null ? p.country_id : null,
+          birthday: p.birthday || null,
+          joined_at: p.joined_at || null,
+          rating6m: p.rating6m != null ? p.rating6m : null,
+          winnings: p.winnings != null ? p.winnings : null,
+        };
+      }
+      if (c.coach && players[c.coach.id]) {
+        const p = players[c.coach.id];
+        byOrg[c.coach.id] = { id: c.coach.id, nick: p.nick, name: p.name || null, role: 'coach', coach: true,
+          team: org, team_name: aggTeams[org].name, photo: p.photo || null,
+          country_id: p.country_id != null ? p.country_id : null, birthday: p.birthday || null,
+          joined_at: p.joined_at || null, rating6m: null, winnings: p.winnings != null ? p.winnings : null };
+      }
+    }
+    wrAgg('players.json', {
+      at: new Date().toISOString(), players: byOrg, n: Object.keys(byOrg).length,
+      note: 'jugadores de los quintetos ACTUALES de equipos con historial en la base. El rating de 6 meses es del proveedor (bo3), no de GP: viaja etiquetado con su procedencia hasta que exista estadística propia por mapa.',
+    });
+    log(`  directorio de jugadores: ${Object.keys(byOrg).length}`);
+  } catch (e) { log('  (directorio de jugadores omitido: ' + e.message + ')'); }
+
   log(`▸ listo en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 })();

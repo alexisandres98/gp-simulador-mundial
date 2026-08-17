@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1038,9 +1038,10 @@
   // ataque/defensa por mapa y Dota 2 en una duración de cola larga que ningún otro tiene. La sección se
   // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
   var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
-  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf'];
+  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit'];
   var NAV_ES = [
     ['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'],
+    ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'],
     ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_ES = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
@@ -1079,6 +1080,7 @@
     if (v === 'bbteam' || v === 'bbplayer') return 'bbteams';
     if (BB_VIEWS.indexOf(v) >= 0) return v;   // si no, 'bbgames' caía en el default y ningún ítem quedaba activo
     if (v === 'esmatch') return 'esboard';
+    if (v === 'esteam') return 'esteams';
     if (ES_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
@@ -1146,9 +1148,9 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isEs ? ['esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isEs ? ['escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isEs
-      ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esmodel', 'book', 'es_nav_model'], ['esperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
       : isHoops
       ? [['bbopps', 'target-arrow', 'nav_opps'], ['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['__more', 'dots', 'more']]
       : isCombat
@@ -1452,7 +1454,7 @@
     // de "mas" en movil pintaba el de futbol y Rendimiento llevaba al de futbol— nacio justo de anadir
     // un deporte sin anadir su rama aqui. No se repite.
     var items = S.sport === 'esports'
-      ? [['esboard', 'device-gamepad', 'es_nav_board'], ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']]
+      ? [['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'], ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['refer', 'user-plus', 'nav_refer']])
@@ -3960,7 +3962,9 @@
     // asi que el hash guarda el JUEGO aparte y el id va tal cual detras.
     var esm = h.match(/^esmatch\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (esm) { S.es.game = esm[1]; if (!(S.view === 'esmatch' && S.es.matchId === esm[2])) { S.es.matchId = decodeURIComponent(esm[2]); S.es.match = undefined; showView('esmatch'); } return; }
-    var esv = h.match(/^(esopps|esboard|esmodel|esperf)(?:\/(cs2|lol|valorant|dota2))?$/i);
+    var est = h.match(/^esteam\/(cs2|lol|valorant|dota2)\/(.+)$/i);
+    if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
+    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit)(?:\/(cs2|lol|valorant|dota2))?$/i);
     if (esv) { if (esv[2]) S.es.game = esv[2]; showView(esv[1]); return; }
     var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
@@ -3983,14 +3987,14 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
     if (['bbgames', 'bbteams', 'bbopps', 'bbbrief', 'bbperf', 'bbsim'].indexOf(nav) >= 0) return nav + '/' + bbLg();
     // esports: el juego elegido viaja en el hash, por el mismo motivo (volver a la sección te devuelve al
     // juego en el que estabas, y el enlace se puede compartir apuntando a CS2 o a LoL)
-    if (['esopps', 'esboard', 'esmodel'].indexOf(nav) >= 0) return nav + '/' + esGame();
+    if (['esopps', 'esboard', 'esmodel', 'esteams', 'escircuit'].indexOf(nav) >= 0) return nav + '/' + esGame();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -8180,6 +8184,9 @@
     else if (v === 'esmodel') renderESModel();
     else if (v === 'esperf') renderESPerf();
     else if (v === 'esboard') renderESBoard();
+    else if (v === 'esteams') renderESTeams();
+    else if (v === 'esteam') renderESTeam();
+    else if (v === 'escircuit') renderESCircuit();
     else renderESOpps();
   }
 
@@ -8307,7 +8314,7 @@
   // Lo único que NO se copia es la columna de estado, porque este deporte es distinto y disimularlo sería
   // peor: ninguna de las tres casas publica resultados, así que aquí no hay "Final" con marcador. Un partido
   // que empezó se marca EN VIVO y uno que terminó simplemente desaparece del catálogo. Se dice en la vista.
-  var ES_GTABS = [['all', 'Todas'], ['live', 'En vivo'], ['up', 'Próximas']];
+  var ES_GTABS = [['all', 'Todas'], ['live', 'En vivo'], ['up', 'Próximas'], ['fin', 'Finalizados']];
   function esIsLive(it) {
     var t0 = Date.parse((it.event && it.event.start_at) || 0);
     return !!t0 && t0 <= Date.now();
@@ -8373,6 +8380,9 @@
 
   function renderESBoard() {
     var g = esGame();
+    // FINALIZADOS (17-ago): la limitación de "aquí no verás marcadores" murió — los resultados salen de la
+    // fuente propia (bo3), no de las casas, así que el segmento vive en la misma pantalla que el calendario.
+    if ((S.es.gTab || 'all') === 'fin') { renderESFinished(); return; }
     var d = esGet('board_' + g, '/api/esports/board?game=' + g + '&days=3', 120000);
     if (!d) { esShell(t('es_nav_board'), esTabs() + esLoading()); return; }
     if (d._err) { esShell(t('es_nav_board'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
@@ -8416,7 +8426,7 @@
     }
     // por qué no hay resultados en este calendario: hay que decirlo o se lee como un calendario roto
     var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') +
-      '<span>Aquí no verás marcadores finales: ninguna de las tres casas publica resultados, así que una partida terminada sale del catálogo. El histórico de CS2 no depende de eso —sale de la cosecha propia— pero el calendario sí.</span></div>';
+      '<span>Las casas no publican resultados: una partida terminada sale de este calendario. Los marcadores reales viven en la pestaña «Finalizados», que sale de la fuente propia de GP, no de las casas.</span></div>';
     var trunc = d.truncated ? '<div class="gx-dim gx-es-trunc">Se muestran ' + d.shown + ' de ' + d.total + ' partidas: quedan ' + d.truncated + ' fuera de esta vista.</div>' : '';
     esShell(t('es_nav_board'), esTabs() + head + body + trunc + note);
     var si = $('#gx-essearch');
@@ -8759,7 +8769,7 @@
     // observado. Los otros tres juegos siguen con la vista genérica hasta que tengan su propia base.
     if (g === 'cs2') {
       var csHead = cs2Hero(d);
-      blocks = [cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d), cs2Dataset(d)];
+      blocks = [cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esH2H(d.h2h), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d), cs2Dataset(d)];
       var edgesC = esEdges(d);
       esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + blocks.filter(Boolean).join('') + esProv(d));
       return;
@@ -9090,7 +9100,7 @@
       '<div class="gx-cs-side">' + cs2Crest(s.teams.b, 'big') + '<b>' + esc(s.teams.b.name) + '</b>' +
         '<span class="gx-dim">' + (s.teams.b.elo != null ? 'Elo ' + Math.round(s.teams.b.elo) : '') + ' · ' + s.teams.b.n + ' mapas</span></div>' +
       '</div>';
-    return head + cs2Veto(fake) + cs2Ladder(fake) + cs2Rounds(fake) + cs2Teams(fake);
+    return head + esH2H(s.h2h) + cs2Veto(fake) + cs2Ladder(fake) + cs2Rounds(fake) + cs2Teams(fake);
   }
 
   function renderESModel() {
@@ -9222,9 +9232,360 @@
     esShell(t('nav_perf'), esTabs() + kpi + diag + byFam + abiertas + lista);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  // EL CATÁLOGO DE CS2 (17-ago): Finalizados · Equipos · Ranking GP · Jugadores · Ficha · El circuito · H2H
+  // Seis pantallas que salen ENTERAS de la base propia — ninguna necesita que una casa cotice nada. La
+  // gramática visual es la del resto de la casa: héroes con cifra protagonista, cards con borde fino,
+  // escudos reales del histórico y los planos SVG propios. Nada de tablas apiladas.
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  var esFormDots = function (arr) {
+    if (!arr || !arr.length) return '<span class="gx-dim" style="font-size:10.5px">sin series</span>';
+    return '<span class="gx-es-fdots">' + arr.map(function (r) { return '<i class="' + (r === 'W' ? 'w' : 'l') + '" title="' + (r === 'W' ? 'victoria' : 'derrota') + '"></i>'; }).join('') + '</span>';
+  };
+  var esMoveArrow = function (move, hasPrev) {
+    if (move == null) return hasPrev ? '<span class="gx-es-mv new">NUEVO</span>' : '<span class="gx-es-mv">—</span>';
+    if (move > 0) return '<span class="gx-es-mv up">▲' + move + '</span>';
+    if (move < 0) return '<span class="gx-es-mv dn">▼' + (-move) + '</span>';
+    return '<span class="gx-es-mv eq">=</span>';
+  };
+  var esDateShort = function (s) {
+    if (!s) return '—';
+    var d = new Date(s); if (isNaN(d)) return '—';
+    return d.toLocaleDateString(S.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short' });
+  };
+  var esMoney = function (x) {
+    if (x == null || !isFinite(x)) return null;
+    return '$' + Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+  function esAvatar(p, cls) {
+    var ini = String(p.nick || '?').slice(0, 2).toUpperCase();
+    var img = p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
+    return '<span class="gx-esp-ava' + (cls ? ' ' + cls : '') + '">' + img + '<i>' + esc(ini) + '</i></span>';
+  }
+  // buscador con foco conservado: el mismo patrón que el del calendario (re-render + restaurar cursor)
+  function esSearchBox(id, val, ph) {
+    return '<div class="gx-msearch">' + ic('search') + '<input id="' + id + '" placeholder="' + esc(ph) + '" value="' + esc(val || '') + '" autocomplete="off"></div>';
+  }
+  function esBindSearch(id, setter, rerender) {
+    var si = $('#' + id);
+    if (!si) return;
+    si.addEventListener('input', function () {
+      setter(si.value); clearTimeout(S._esq2);
+      S._esq2 = setTimeout(function () {
+        var pos = si.selectionStart; rerender();
+        var n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} }
+      }, 240);
+    });
+  }
+
+  // ---- FINALIZADOS: el segmento que mata la limitación de "no verás marcadores" ---------------------------
+  function renderESFinished() {
+    var g = esGame();
+    var head = '<div class="gx-ohead">' +
+      '<div class="gx-seg" id="gx-esgtabs">' + ES_GTABS.map(function (x) {
+        return '<button data-esgtab="' + x[0] + '"' + (x[0] === 'fin' ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+      }).join('') + '</div>' +
+      esSearchBox('gx-esfsearch', S.es.fQ, 'Buscar equipo…') + '<span class="gx-spacer"></span></div>';
+    if (g !== 'cs2') {
+      esShell(t('es_nav_board'), esTabs() + head + '<div class="gx-panel">' + esGap('Solo CS2 tiene fuente propia de resultados (bo3). ' + esGameLab() + ' liquidará picks el día que tenga la suya, y este segmento se abrirá solo.') + '</div>');
+      return;
+    }
+    var d = esGet('results_' + g, '/api/esports/results?game=' + g + '&days=12', 300000);
+    if (!d) { esShell(t('es_nav_board'), esTabs() + head + esLoading()); return; }
+    if (d._err) { esShell(t('es_nav_board'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var rows = d.results || [];
+    var q = (S.es.fQ || '').toLowerCase();
+    if (q) rows = rows.filter(function (r) { return ((r.a.name || '') + ' ' + (r.b.name || '')).toLowerCase().indexOf(q) >= 0; });
+    var body;
+    if (!rows.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin series terminadas en esta vista.</b>' +
+        '<span class="gx-dim">' + esc((d.results || []).length ? 'Limpia la búsqueda para ver todas.' : 'La fuente no reporta series terminadas en los últimos días.') + '</span></div></div>';
+    } else {
+      var groups = [], gmap = {};
+      rows.forEach(function (r) {
+        var k = bbDayKey(r.at);
+        if (!gmap[k]) { gmap[k] = { label: bbDayLabel(r.at), rows: [] }; groups.push(gmap[k]); }
+        gmap[k].rows.push(r);
+      });
+      body = groups.map(function (gr) {
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(gr.label) + '</span><span class="gx-dim">' + gr.rows.length + '</span></div>' +
+          '<div class="gx-esfin-list">' + gr.rows.map(function (r) {
+            var aWon = r.maps_a > r.maps_b;
+            var mapsChips = (r.maps || []).map(function (m) {
+              return '<span class="gx-esfin-map">' + esc(cs2Name(m.map)) + ' <b>' + m.score_a + '-' + m.score_b + '</b>' + (m.ot ? '<i>OT</i>' : '') + '</span>';
+            }).join('');
+            var sideA = '<div class="gx-esfin-side' + (aWon ? ' won' : '') + '"' + (r.a.id ? ' data-esteam="' + esc(r.a.id) + '"' : '') + '>' +
+              cs2Crest(r.a) + '<b>' + esc(r.a.name) + '</b></div>';
+            var sideB = '<div class="gx-esfin-side r' + (!aWon ? ' won' : '') + '"' + (r.b.id ? ' data-esteam="' + esc(r.b.id) + '"' : '') + '>' +
+              '<b>' + esc(r.b.name) + '</b>' + cs2Crest(r.b) + '</div>';
+            return '<div class="gx-panel gx-esfin-row"><div class="gx-esfin-main">' + sideA +
+              '<div class="gx-esfin-score"><b class="' + (aWon ? 'w' : '') + '">' + r.maps_a + '</b><i>–</i><b class="' + (!aWon ? 'w' : '') + '">' + r.maps_b + '</b></div>' +
+              sideB + '</div>' + (mapsChips ? '<div class="gx-esfin-maps">' + mapsChips + '</div>' : '') + '</div>';
+          }).join('') + '</div></div>';
+      }).join('');
+    }
+    var src = '<div class="gx-dim gx-es-trunc">' + esc(d.source || '') + ' · últimos ' + (d.days || 12) + ' días · marcadores de la fuente propia, no de las casas.</div>';
+    esShell(t('es_nav_board'), esTabs() + head + body + src);
+    esBindSearch('gx-esfsearch', function (v) { S.es.fQ = v; }, renderESFinished);
+  }
+
+  // ---- EQUIPOS: Directorio · Ranking GP · Jugadores -------------------------------------------------------
+  var ES_TTABS = [['dir', 'Directorio'], ['rank', 'Ranking GP'], ['players', 'Jugadores']];
+  function renderESTeams() {
+    var g = esGame(), tab = S.es.tTab || 'dir';
+    var segs = '<div class="gx-seg">' + ES_TTABS.map(function (x) {
+      return '<button data-estab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    if (g !== 'cs2') {
+      esShell(t('es_nav_teams'), esTabs() + '<div class="gx-ohead">' + segs + '</div>' +
+        '<div class="gx-panel">' + esGap('Solo CS2 tiene base propia de equipos y jugadores. En ' + esGameLab() + ' no hay fuente de resultados todavía, así que no hay nada honesto que enseñar aquí.') + '</div>');
+      return;
+    }
+    if (tab === 'rank') { renderESRanking(segs); return; }
+    if (tab === 'players') { renderESPlayers(segs); return; }
+    var q = (S.es.tQ || '').trim();
+    var key = 'dir_' + g + (q ? '_' + encodeURIComponent(q) : '');
+    var d = esGet(key, '/api/esports/directory?game=' + g + '&limit=120' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
+    var head = '<div class="gx-ohead">' + segs + esSearchBox('gx-estsearch', q, 'Buscar equipo…') + '<span class="gx-spacer"></span>' +
+      (d && d.total ? '<span class="gx-dim" style="font-size:11.5px">' + d.total + ' equipos en la base</span>' : '') + '</div>';
+    if (!d) { esShell(t('es_nav_teams'), esTabs() + head + esLoading()); esBindSearch('gx-estsearch', function (v) { S.es.tQ = v; }, renderESTeams); return; }
+    if (d._err || !d.available) {
+      esShell(t('es_nav_teams'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>');
+      esBindSearch('gx-estsearch', function (v) { S.es.tQ = v; }, renderESTeams);
+      return;
+    }
+    var rows = d.teams || [];
+    var body = rows.length
+      ? '<div class="gx-est-grid">' + rows.map(function (tm) {
+          return '<div class="gx-panel gx-est-card" data-esteam="' + esc(tm.id) + '">' +
+            '<div class="gx-est-top">' + cs2Crest(tm, 'mid') +
+              '<div class="gx-est-id"><b>' + esc(tm.name) + '</b>' +
+                '<span>' + (tm.rank_gp ? '#' + tm.rank_gp + ' GP' : 'sin ranking') + (tm.shock ? ' · <em class="gx-est-shock">plantilla movida</em>' : '') + '</span></div>' +
+              '<span class="gx-spacer"></span>' +
+              '<div class="gx-est-elo"><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Elo GP</span></div></div>' +
+            '<div class="gx-est-meta">' +
+              '<div class="gx-est-wr"><i style="width:' + (tm.wr != null ? (100 * tm.wr).toFixed(0) : 0) + '%"></i></div>' +
+              '<span class="gx-mono">' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</span>' +
+              '<span class="gx-dim">' + tm.n + ' mapas</span>' +
+              '<span class="gx-spacer"></span>' + esFormDots(tm.form) + '</div>' +
+          '</div>';
+        }).join('') + '</div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún equipo con ese nombre.</b><span class="gx-dim">La búsqueda entra a los ' + d.total + ' equipos de la base propia.</span></div></div>';
+    esShell(t('es_nav_teams'), esTabs() + head + body);
+    esBindSearch('gx-estsearch', function (v) { S.es.tQ = v; }, renderESTeams);
+  }
+
+  function renderESRanking(segs) {
+    var g = esGame();
+    var d = esGet('rank_' + g, '/api/esports/ranking?game=' + g, 600000);
+    var head = '<div class="gx-ohead">' + segs + '<span class="gx-spacer"></span>' +
+      (d && d.week ? '<span class="gx-dim" style="font-size:11.5px">semana ' + esc(d.week) + (d.prev_week ? ' · vs ' + esc(d.prev_week) : '') + '</span>' : '') + '</div>';
+    if (!d) { esShell(t('es_nav_teams'), esTabs() + head + esLoading()); return; }
+    if (d._err || !d.available) { esShell(t('es_nav_teams'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
+    var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Elo GP</th><th class="r">Victorias</th><th class="r">Mapas</th><th>Forma</th></tr></thead><tbody>' +
+      (d.rows || []).map(function (r) {
+        return '<tr data-esteam="' + esc(r.id) + '">' +
+          '<td class="r gx-mono gx-esr-rank">' + r.rank + '</td>' +
+          '<td>' + esMoveArrow(r.move, !!d.prev_week) + '</td>' +
+          '<td><div class="gx-esr-team">' + cs2Crest(r) + '<b>' + esc(r.name) + '</b></div></td>' +
+          '<td class="r gx-mono"><b>' + (r.elo != null ? Math.round(r.elo) : '—') + '</b></td>' +
+          '<td class="r gx-mono">' + (r.wr != null ? Math.round(100 * r.wr) + '%' : '—') + '</td>' +
+          '<td class="r gx-mono gx-dim">' + r.n + '</td>' +
+          '<td>' + esFormDots(r.form) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">Ranking por Elo propio de GP, validado fuera de muestra — no es el de HLTV ni el del proveedor. Entran equipos con ' + d.min_maps + '+ mapas en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + '</div></div>';
+    esShell(t('es_nav_teams'), esTabs() + head + body);
+  }
+
+  function renderESPlayers(segs) {
+    var g = esGame();
+    var q = (S.es.pQ || '').trim();
+    var key = 'players_' + g + (q ? '_' + encodeURIComponent(q) : '');
+    var d = esGet(key, '/api/esports/players?game=' + g + '&limit=120' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
+    var head = '<div class="gx-ohead">' + segs + esSearchBox('gx-espsearch', q, 'Buscar jugador o equipo…') + '<span class="gx-spacer"></span>' +
+      (d && d.total ? '<span class="gx-dim" style="font-size:11.5px">' + d.total + ' jugadores en quintetos activos</span>' : '') + '</div>';
+    if (!d) { esShell(t('es_nav_teams'), esTabs() + head + esLoading()); esBindSearch('gx-espsearch', function (v) { S.es.pQ = v; }, renderESTeams); return; }
+    if (d._err || !d.available) {
+      esShell(t('es_nav_teams'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>');
+      esBindSearch('gx-espsearch', function (v) { S.es.pQ = v; }, renderESTeams);
+      return;
+    }
+    var rows = d.players || [];
+    var body = rows.length
+      ? '<div class="gx-esp-grid">' + rows.map(function (p) {
+          // el rating del proveedor viene en escala 0-10 (ZywOo ≈ 7.2), no en la ~1.0 de HLTV: la barra
+          // se pinta sobre el rango real observado (4 = suplente flojo, 8 = techo del circuito)
+          var rat = p.rating6m != null ? p.rating6m : null;
+          var ratW = rat != null ? Math.max(4, Math.min(100, 100 * (rat - 4) / 4)) : 0;
+          return '<div class="gx-panel gx-esp-card"' + (p.team ? ' data-esteam="' + esc(p.team) + '"' : '') + '>' +
+            '<div class="gx-esp-top">' + esAvatar(p) +
+              '<div class="gx-esp-id"><b>' + esc(p.nick) + '</b><span>' + esc(p.name || '') + (p.age != null ? (p.name ? ' · ' : '') + p.age + ' años' : '') + '</span></div>' +
+              '<span class="gx-spacer"></span>' + (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') + '</div>' +
+            '<div class="gx-esp-team">' + cs2Crest({ name: p.team_name, logo: p.team_logo }, 'sm') + '<span>' + esc(p.team_name || '—') + '</span>' +
+              (p.joined_at ? '<em class="gx-dim">desde ' + esDateShort(p.joined_at) + '</em>' : '') + '</div>' +
+            '<div class="gx-esp-meta">' +
+              (rat != null ? '<div class="gx-esp-rat"><span>Rating 6m <em>(bo3)</em></span><div class="gx-esp-ratb"><i style="width:' + ratW.toFixed(0) + '%"></i></div><b class="gx-mono">' + rat.toFixed(2) + '</b></div>' : '<div class="gx-esp-rat"><span class="gx-dim">sin rating del proveedor</span></div>') +
+              (esMoney(p.winnings) ? '<div class="gx-esp-win"><span>Premios</span><b class="gx-mono">' + esMoney(p.winnings) + '</b></div>' : '') +
+            '</div></div>';
+        }).join('') + '</div>' +
+        '<div class="gx-dim gx-es-trunc">' + esc(d.rating_note || '') + '</div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún jugador con ese nombre.</b><span class="gx-dim">Se listan los quintetos actuales de los equipos con historial en la base.</span></div></div>';
+    esShell(t('es_nav_teams'), esTabs() + head + body);
+    esBindSearch('gx-espsearch', function (v) { S.es.pQ = v; }, renderESTeams);
+  }
+
+  // ---- FICHA DE EQUIPO ------------------------------------------------------------------------------------
+  function renderESTeam() {
+    var g = esGame(), id = S.es.teamId;
+    if (!id) { showView('esteams'); return; }
+    var d = esGet('team_' + g + '_' + encodeURIComponent(id), '/api/esports/team?game=' + g + '&id=' + encodeURIComponent(id), 600000);
+    var back = '<div class="gx-back" data-esteamsback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_teams')) + '</span></div>';
+    if (!d) { esShell('Equipo', back + esLoading()); return; }
+    if (d._err || !d.available) {
+      esShell('Equipo', back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>');
+      return;
+    }
+    var tm = d.team;
+    // HÉROE: escudo grande, nombre, posición GP con su flecha, y las tres cifras que definen al equipo
+    var hero = '<div class="gx-panel gx-est-hero">' +
+      '<div class="gx-est-hero-main">' + cs2Crest(tm, 'hero') +
+        '<div class="gx-est-hero-id"><b>' + esc(tm.name) + '</b>' +
+          '<div class="gx-est-hero-chips">' +
+            (d.rank_gp ? '<span class="gx-est-rankchip">#' + d.rank_gp.rank + ' Ranking GP ' + esMoveArrow(d.rank_gp.move, true) + '</span>' : '<span class="gx-est-rankchip off">fuera del top GP</span>') +
+            (tm.rank_provider ? '<span class="gx-dim" style="font-size:11px">#' + tm.rank_provider + ' proveedor</span>' : '') +
+            ((d.roster && d.roster.changed_recently) ? '<span class="gx-est-shock">plantilla movida hace poco</span>' : '') +
+          '</div></div>' +
+        '<span class="gx-spacer"></span>' +
+        '<button class="gx-btn gx-btn-p gx-est-simbtn" data-essim="' + esc(tm.name) + '">' + ic('arrows-shuffle') + 'Simular contra…</button></div>' +
+      '<div class="gx-est-hero-stats">' +
+        '<div><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Elo GP</span></div>' +
+        '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>victorias por mapa</span></div>' +
+        '<div><b>' + tm.n + '</b><span>mapas en la base</span></div>' +
+        '<div>' + esFormDots(((d.form || []).slice(0, 5).map(function (f) { return f.r; })).reverse()) + '<span>forma reciente</span></div>' +
+      '</div></div>';
+    // TERRENO: el efecto por mapa con su plano — dónde gana MÁS de lo que le tocaría por nivel
+    var mapsB = (d.maps || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Su terreno · efecto por mapa</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">vs. lo que le tocaría por nivel</span></span></div>' +
+      '<div class="gx-est-maps">' + d.maps.map(function (m) {
+        var eff = m.effect != null ? m.effect : 0;
+        var w = Math.min(100, Math.abs(100 * eff) / 0.25 * 100);
+        return '<div class="gx-est-map">' + cs2MapArt(m.map, 'sm') +
+          '<div class="gx-est-map-id"><b>' + esc(cs2Name(m.map)) + '</b><span class="gx-dim">' + (m.wr != null ? Math.round(100 * m.wr) + '% · ' : '') + m.n + ' mapas</span></div>' +
+          '<div class="gx-est-map-bar"><em></em><i class="' + (eff >= 0 ? 'pos' : 'neg') + '" style="width:' + Math.min(50, w / 2).toFixed(1) + '%"></i></div>' +
+          '<b class="gx-mono ' + (eff > 0.02 ? 'gx-up' : eff < -0.02 ? 'gx-down' : 'gx-dim') + '">' + (eff > 0 ? '+' : '') + Math.round(100 * eff) + ' pp</b></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">El efecto es la diferencia entre cómo le va en ese mapa y cómo le va en general — la señal que alimenta el tablero de veto del modelo.</div></div>' : '';
+    // QUINTETO: fotos reales, rol, edad y el rating del proveedor con su etiqueta
+    var five = (d.roster && d.roster.five) || [];
+    var rosterB = five.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Quinteto actual</span>' +
+      (d.roster.coach ? '<span class="gx-ph-extra"><span class="gx-dim">coach: ' + esc(d.roster.coach.nick) + '</span></span>' : '') + '</div>' +
+      '<div class="gx-est-five">' + five.map(function (p) {
+        return '<div class="gx-est-player">' + esAvatar(p, 'big') +
+          '<b>' + esc(p.nick) + '</b>' +
+          '<span class="gx-dim">' + (p.role ? esc(String(p.role).toUpperCase()) : '') + (p.age != null ? (p.role ? ' · ' : '') + p.age + 'a' : '') + '</span>' +
+          (p.rating6m != null ? '<em class="gx-mono">' + p.rating6m.toFixed(2) + ' <i>6m bo3</i></em>' : '<em class="gx-dim">—</em>') + '</div>';
+      }).join('') + '</div>' +
+      ((d.roster && d.roster.shock_note) ? '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(d.roster.shock_note) + '</span></div>' : '') + '</div>' : '';
+    // FORMA: las últimas series con rival, marcador y fecha
+    var formB = (d.form || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimas series</span></div>' +
+      '<div class="gx-est-form">' + d.form.map(function (f) {
+        return '<div class="gx-est-fr"' + (f.vs ? ' data-esteam="' + esc(f.vs) + '"' : '') + '>' +
+          '<i class="gx-est-res ' + (f.r === 'W' ? 'w' : 'l') + '">' + (f.r === 'W' ? 'V' : 'D') + '</i>' +
+          cs2Crest({ name: f.vs_name, logo: f.vs_logo }, 'sm') + '<span>' + esc(f.vs_name) + '</span>' +
+          '<span class="gx-spacer"></span><b class="gx-mono">' + esc(f.s || '') + '</b><em class="gx-dim">' + esDateShort(f.at) + '</em></div>';
+      }).join('') + '</div></div>' : '';
+    // RIVALES DE SIEMPRE: el H2H de la ficha — el balance contra los que más ha cruzado
+    var rivB = (d.rivals || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Rivales frecuentes</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">historial directo</span></span></div>' +
+      '<div class="gx-est-rivals">' + d.rivals.map(function (r) {
+        var pct = r.n ? r.wins / r.n : 0;
+        return '<div class="gx-est-rival" data-esteam="' + esc(r.id) + '">' + cs2Crest(r) +
+          '<div class="gx-est-rival-id"><b>' + esc(r.name) + '</b><span class="gx-dim">' + r.n + ' series · última ' + esDateShort(r.last) + '</span></div>' +
+          '<span class="gx-spacer"></span>' +
+          '<div class="gx-est-rival-rec"><b class="gx-mono">' + r.wins + '–' + (r.n - r.wins) + '</b>' +
+          '<div class="gx-esh2h-bar sm"><i style="width:' + (100 * pct).toFixed(0) + '%"></i></div></div></div>';
+      }).join('') + '</div></div>' : '';
+    esShell(tm.name, back + hero + mapsB + rosterB + formB + rivB + esProv(d));
+  }
+
+  // ---- EL CIRCUITO: el meta del pool de mapas -------------------------------------------------------------
+  function renderESCircuit() {
+    var g = esGame();
+    if (g !== 'cs2') {
+      esShell(t('es_nav_circuit'), esTabs() + '<div class="gx-panel">' + esGap('El circuito se mide sobre la base propia y hoy solo CS2 la tiene. Los perfiles de ' + esGameLab() + ' son supuestos de circuito, y un meta hecho de supuestos no es un meta.') + '</div>');
+      return;
+    }
+    var d = esGet('circuit_' + g, '/api/esports/circuit?game=' + g, 900000);
+    if (!d) { esShell(t('es_nav_circuit'), esTabs() + esLoading()); return; }
+    if (d._err || !d.available) { esShell(t('es_nav_circuit'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
+    var pool = (d.rows || []).filter(function (m) { return m.in_pool; });
+    var out = (d.rows || []).filter(function (m) { return !m.in_pool; });
+    var hero = '<div class="gx-es-hero"><div><b>El pool activo, medido</b>' +
+      '<span class="gx-dim">ritmo, prórrogas y especialistas de cada mapa — de la base propia, no de una lista escrita a mano</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + pool.length + '</b><span>en el pool</span></div></div>';
+    var cards = '<div class="gx-esc-grid">' + pool.map(function (m) {
+      var tr = m.trend || 0;
+      return '<div class="gx-panel gx-esc-card">' +
+        '<div class="gx-esc-top">' + cs2MapArt(m.map) + '<div class="gx-esc-id"><b>' + esc(cs2Name(m.map)) + '</b>' +
+          '<span class="gx-dim">' + m.recent_n + ' mapas recientes · ' + m.share_recent + '% del circuito</span></div>' +
+          '<span class="gx-spacer"></span>' +
+          '<span class="gx-esc-trend ' + (tr > 0.5 ? 'up' : tr < -0.5 ? 'dn' : '') + '">' + (tr > 0 ? '▲' : tr < 0 ? '▼' : '=') + ' ' + Math.abs(tr).toFixed(1) + ' pp</span></div>' +
+        '<div class="gx-esc-stats">' +
+          '<div><b>' + (m.mean_rounds != null ? m.mean_rounds.toFixed(1) : '—') + '</b><span>rondas medias</span></div>' +
+          '<div><b>' + (m.overtime_p != null ? (100 * m.overtime_p).toFixed(1) + '%' : '—') + '</b><span>prórroga</span></div>' +
+          '<div><b>' + (m.blowout_p != null ? (100 * m.blowout_p).toFixed(0) + '%' : '—') + '</b><span>palizas</span></div>' +
+          '<div><b>' + (m.decider_mean_rounds != null ? m.decider_mean_rounds.toFixed(1) : '—') + '</b><span>rondas de decider</span></div>' +
+        '</div>' +
+        ((m.specialists || []).length ? '<div class="gx-esc-spec"><span class="gx-dim">Quién manda aquí</span>' + m.specialists.map(function (s) {
+          return '<div class="gx-esc-specr" data-esteam="' + esc(s.id) + '">' + cs2Crest(s, 'sm') + '<span>' + esc(s.name) + '</span>' +
+            '<b class="gx-mono gx-up">+' + Math.round(100 * s.effect) + ' pp</b></div>';
+        }).join('') + '</div>' : '') +
+      '</div>';
+    }).join('') + '</div>';
+    var outB = out.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Fuera del pool</span></div>' +
+      '<div class="gx-esc-out">' + out.map(function (m) {
+        return '<span class="gx-esc-outm">' + esc(cs2Name(m.map)) + ' <em>' + m.n + ' mapas históricos</em></span>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">Se jugaron y salieron de la rotación. Su histórico sigue alimentando el modelo con menos peso.</div></div>' : '';
+    var note = '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>';
+    esShell(t('es_nav_circuit'), esTabs() + hero + cards + outB + note);
+  }
+
+  // ---- H2H: el historial directo, en la partida y en el simulador -----------------------------------------
+  function esH2H(h) {
+    if (!h) return '';
+    var total = h.n || 0;
+    var pctA = total ? h.wins_a / total : 0.5;
+    var body;
+    if (!total) {
+      body = '<div class="gx-esh2h-none">' + cs2Crest(h.a, 'sm') + '<span class="gx-dim">' + esc(h.note || 'sin series entre ellos en la base propia.') + '</span>' + cs2Crest(h.b, 'sm') + '</div>';
+    } else {
+      body = '<div class="gx-esh2h-main">' +
+        '<div class="gx-esh2h-side">' + cs2Crest(h.a) + '<b>' + esc(h.a.name) + '</b></div>' +
+        '<div class="gx-esh2h-score"><b>' + h.wins_a + '</b><i>–</i><b>' + h.wins_b + '</b><span>' + total + ' serie' + (total > 1 ? 's' : '') + '</span></div>' +
+        '<div class="gx-esh2h-side r"><b>' + esc(h.b.name) + '</b>' + cs2Crest(h.b) + '</div></div>' +
+        '<div class="gx-esh2h-bar"><i style="width:' + (100 * pctA).toFixed(0) + '%"></i></div>' +
+        ((h.recent || []).length ? '<div class="gx-esh2h-recent">' + h.recent.map(function (r) {
+          return '<div class="gx-esh2h-r"><em class="gx-dim">' + esDateShort(r.at) + '</em>' +
+            '<span>ganó <b>' + esc(r.winner) + '</b></span><b class="gx-mono">' + esc(r.score || '') + '</b>' +
+            (r.tier ? '<i class="gx-esh2h-tier">' + esc(String(r.tier)) + '</i>' : '') + '</div>';
+        }).join('') + '</div>' : '');
+    }
+    return '<div class="gx-panel gx-esh2h"><div class="gx-ph"><span class="gx-label">Historial directo</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">de la base propia — contexto, no señal</span></span></div>' + body + '</div>';
+  }
+
   function esClicks(e) {
     var seg = e.target.closest('[data-esgtab]');
     if (seg) { S.es.gTab = seg.getAttribute('data-esgtab'); renderESBoard(); return; }
+    var ttab = e.target.closest('[data-estab]');
+    if (ttab) { S.es.tTab = ttab.getAttribute('data-estab'); renderESTeams(); return; }
+    var team = e.target.closest('[data-esteam]');
+    if (team) { setHash('esteam/' + esGame() + '/' + encodeURIComponent(team.getAttribute('data-esteam'))); return; }
+    if (e.target.closest('[data-esteamsback]')) { setHash('esteams/' + esGame()); return; }
+    var sim = e.target.closest('[data-essim]');
+    if (sim) { S.es.simA = sim.getAttribute('data-essim'); S.es.simB = ''; S.es.simRun = false; setHash('esmodel/' + esGame()); return; }
     var gt = e.target.closest('[data-esg]');
     if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel', 'esperf'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
     var go = e.target.closest('[data-esgo]');

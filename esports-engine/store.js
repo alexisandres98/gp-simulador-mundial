@@ -295,6 +295,9 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     cross_book: cross.filter((m) => m.books > 1),
     arbitrages: arbs,
     edges,
+    // el historial directo entre los dos, si la base lo tiene (solo CS2). Contexto, no señal: el modelo ya
+    // pondera el pasado como corresponde; esto es para que quien mira entienda de dónde viene el cruce.
+    h2h: game === 'cs2' ? h2h(game, ev.home.name, ev.away.name) : null,
     provenance: C.provenance([
       { source: `Agenda de ${(ev.sources || []).map((x) => x.book).join(' + ') || 'las casas'}`, kind: 'proveedor', at: (s && s.at) || null },
       mk ? { source: `Mercados de ${(mk.by_book || []).filter((b) => b.rows).map((b) => b.book).join(' + ')}`, kind: 'proveedor', at: mk.at } : null,
@@ -966,6 +969,7 @@ function simulate(game, aName, bName, { bo = 3 } = {}) {
     game, available: true, bo,
     teams: { a: CD.teamCard(idA, { data }), b: CD.teamCard(idB, { data }) },
     model,
+    h2h: h2h(game, idA, idB),
     standalone: true,
     note: 'esta probabilidad NO está anclada a ninguna casa: es la del modelo sola, sobre la base propia de GP. En una partida real el mercado manda sobre el ganador y el modelo aporta la estructura — aquí se enseña el modelo desnudo a propósito, que es de lo que va esta pantalla.',
     at: new Date().toISOString(),
@@ -1285,8 +1289,242 @@ function closesCount(game) {
   return st && st.closes ? Object.keys(st.closes).length : 0;
 }
 
+// ---- 8) EL CATÁLOGO (17-ago): EQUIPOS · JUGADORES · RANKING · CIRCUITO · RESULTADOS · H2H ---------------
+// Seis productos que salen ENTEROS de la base propia — ninguno depende de que una casa cotice nada. Solo
+// CS2 los tiene, porque solo CS2 tiene base; los otros juegos devuelven el "por qué no" en vez de una
+// pantalla vacía sin explicación. Todo lo que se sirve aquí lleva su procedencia: el rating de 6 meses de
+// un jugador es del proveedor y se dice; el Elo de un equipo es de GP y también.
+const CATALOG_WHY = 'solo CS2 tiene base propia (88.000+ mapas cosechados y validados); para el resto de juegos no hay fuente de resultados todavía.';
+const noCatalog = (game) => ({ game, available: false, why: CATALOG_WHY });
+const cdOf = (game) => { if (game !== 'cs2') return null; try { return require('./cs2-data'); } catch { return null; } };
+const scoreDesc = (s) => {
+  // el marcador de una serie guardada viaja en el orden de origen; para enseñarlo junto al GANADOR se
+  // normaliza ganador-primero (en una serie el ganador siempre tiene más mapas, así que basta ordenar).
+  const m = String(s || '').match(/^(\d+)-(\d+)$/);
+  return m ? `${Math.max(+m[1], +m[2])}-${Math.min(+m[1], +m[2])}` : s || null;
+};
+const ageOf = (birthday) => {
+  const t = Date.parse(birthday || '');
+  return Number.isFinite(t) ? Math.floor((Date.now() - t) / (365.25 * 24 * 3600e3)) : null;
+};
+
+function teamsDirectory(game, { q = '', limit = 60 } = {}) {
+  const CD = cdOf(game); if (!CD) return noCatalog(game);
+  const data = CD.load();
+  if (!data.available) return { game, available: false, why: 'los agregados de la base propia no están cargados.' };
+  const needle = CD.norm(q);
+  const rankOf = new Map((((data.rankings || {}).rows) || []).map((r) => [r.id, r.rank]));
+  const rows = Object.values(data.teams)
+    .filter((t) => !needle || CD.norm(t.name).indexOf(needle) >= 0)
+    .map((t) => {
+      const g = data.teamGlobal[t.id], ro = data.rosters[t.id];
+      return {
+        id: t.id, name: t.name, logo: t.logo || null, country_id: t.country_id != null ? t.country_id : null,
+        rank_gp: rankOf.get(t.id) || null,
+        elo: g ? g.elo : null, wr: g ? g.wr : null, n: t.n || 0,
+        form: (data.form[t.id] || []).slice(-5).map((f) => f.r),
+        shock: !!(ro && ro.changed_recently),
+        five: !!(ro && ro.five && ro.five.length >= 5),
+      };
+    })
+    // ranqueados primero (por posición GP), después el resto por historial: quien abre el directorio quiere
+    // ver la élite arriba, no 1.000 filas alfabéticas.
+    .sort((a, b) => (a.rank_gp || 9e3) - (b.rank_gp || 9e3) || (b.n || 0) - (a.n || 0))
+    .slice(0, Math.max(1, Math.min(200, limit)));
+  return { game, available: true, teams: rows, total: Object.keys(data.teams).length, at: data.at };
+}
+
+function teamProfile(game, ref) {
+  const CD = cdOf(game); if (!CD) return noCatalog(game);
+  const data = CD.load();
+  const id = data.teams[ref] ? ref : CD.resolveTeam(String(ref || ''), { data });
+  if (!id) return { game, available: false, why: `no reconozco "${ref}" en la base propia.` };
+  const card = CD.teamCard(id, { data });
+  const rk = (((data.rankings || {}).rows) || []).find((r) => r.id === id) || null;
+  let move = null;
+  if (rk) {
+    const mv = CD.rankingMovement({ data });
+    const row = mv && mv.rows.find((r) => r.id === id);
+    move = row ? row.move : null;
+  }
+  // el quinteto de la ficha se enriquece con el directorio de jugadores (foto, edad, rating del proveedor)
+  const five = ((card.roster && card.roster.five) || []).map((f) => {
+    const p = data.players[f.id] || {};
+    return { ...f, name: p.name || null, photo: p.photo || null, age: ageOf(p.birthday),
+      country_id: p.country_id != null ? p.country_id : null, joined_at: p.joined_at || null,
+      rating6m: p.rating6m != null ? p.rating6m : null };
+  });
+  const coach = card.roster && card.roster.coach
+    ? { ...card.roster.coach, photo: (data.players[card.roster.coach.id] || {}).photo || null } : null;
+  // rivales más frecuentes: la puerta de entrada al H2H desde la ficha
+  const rivals = [];
+  for (const [k, P] of Object.entries(data.pairs)) {
+    const [x, y] = k.split('~');
+    if (x !== id && y !== id) continue;
+    const other = x === id ? y : x;
+    if (!data.teams[other]) continue;
+    const wins = x === id ? P.w_a : P.n - P.w_a;
+    rivals.push({ id: other, name: data.teams[other].name, logo: data.teams[other].logo || null,
+      n: P.n, wins, last: P.last || null });
+  }
+  rivals.sort((a, b) => b.n - a.n);
+  return {
+    game, available: true,
+    team: { id: card.id, name: card.name, logo: card.logo || null, country_id: card.country_id != null ? card.country_id : null,
+      rank_provider: card.rank || null, elo: card.elo, wr: card.wr, n: card.n },
+    rank_gp: rk ? { rank: rk.rank, move, week: data.rankings.week } : null,
+    maps: card.maps,                                   // efecto por mapa, ya ordenado por efecto
+    roster: card.roster ? { five, coach, changed_recently: !!card.roster.changed_recently,
+      shock_note: card.roster.changed_recently ? 'cambio de plantilla reciente: el historial pesa menos de lo que aparenta.' : null } : null,
+    form: (data.form[id] || []).slice().reverse().map((f) => ({ ...f,
+      vs_name: (data.teams[f.vs] || {}).name || f.vs, vs_logo: (data.teams[f.vs] || {}).logo || null })),
+    rivals: rivals.slice(0, 6),
+    provenance: C.provenance([
+      { source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
+      { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at },
+    ]),
+    at: data.at,
+  };
+}
+
+function playersDirectory(game, { q = '', limit = 80 } = {}) {
+  const CD = cdOf(game); if (!CD) return noCatalog(game);
+  const data = CD.load();
+  const all = Object.values(data.players || {});
+  if (!all.length) return { game, available: false, why: 'el directorio de jugadores todavía no se ha derivado (corre con la cosecha de plantillas).' };
+  const needle = CD.norm(q);
+  const rows = all
+    .filter((p) => !p.coach)
+    .filter((p) => !needle || CD.norm(p.nick).indexOf(needle) >= 0 || CD.norm(p.name || '').indexOf(needle) >= 0
+      || CD.norm(p.team_name || '').indexOf(needle) >= 0)
+    .map((p) => ({ ...p, age: ageOf(p.birthday),
+      team_logo: (data.teams[p.team] || {}).logo || null }))
+    // rating del proveedor manda en el orden; sin rating, al final — el orden ES una afirmación y se apoya
+    // en el único número disponible, etiquetado con su procedencia.
+    .sort((a, b) => (b.rating6m || 0) - (a.rating6m || 0))
+    .slice(0, Math.max(1, Math.min(300, limit)));
+  return { game, available: true, players: rows, total: all.filter((p) => !p.coach).length,
+    rating_note: 'rating de 6 meses del proveedor (bo3), no de GP: viaja etiquetado hasta que exista estadística propia por mapa.', at: data.at };
+}
+
+function rankingBoard(game) {
+  const CD = cdOf(game); if (!CD) return noCatalog(game);
+  const data = CD.load();
+  const mv = CD.rankingMovement({ data });
+  if (!mv) return { game, available: false, why: 'el ranking todavía no se ha derivado de la base.' };
+  return {
+    game, available: true, week: mv.week, prev_week: mv.prev_week, min_maps: mv.min_maps, at: mv.at,
+    rows: mv.rows.slice(0, 50).map((r) => ({ rank: r.rank, id: r.id, elo: r.elo, wr: r.wr, n: r.n,
+      move: r.move, name: (r.team || {}).name || r.id, logo: (r.team || {}).logo || null,
+      country_id: r.team && r.team.country_id != null ? r.team.country_id : null,
+      form: (data.form[r.id] || []).slice(-5).map((f) => f.r) })),
+    note: mv.prev_week ? null : 'primera semana con foto: las flechas de movimiento aparecen la semana que viene.',
+  };
+}
+
+function circuit(game) {
+  const CD = cdOf(game); if (!CD) return noCatalog(game);
+  const data = CD.load();
+  if (!data.available) return { game, available: false, why: 'los agregados de la base propia no están cargados.' };
+  const entries = Object.entries(data.maps).filter(([, m]) => (m.n || 0) >= 40);
+  const sumRecent = entries.reduce((s, [, m]) => s + (m.recent_n || 0), 0) || 1;
+  const sumAll = entries.reduce((s, [, m]) => s + (m.n || 0), 0) || 1;
+  const rankTop = new Set(((((data.rankings || {}).rows) || []).slice(0, 50)).map((r) => r.id));
+  const rows = entries.map(([k, m]) => {
+    const shareRecent = (m.recent_n || 0) / sumRecent, shareAll = (m.n || 0) / sumAll;
+    // quién manda en el mapa: mayor EFECTO (no tasa bruta) entre la élite, con muestra mínima en ese mapa
+    const specialists = [];
+    for (const id of rankTop) {
+      const tm = data.teamMaps[id];
+      const row = tm && tm.maps && tm.maps[k];
+      if (!row || (row.n || 0) < 12 || row.effect == null) continue;
+      specialists.push({ id, name: (data.teams[id] || {}).name || id, logo: (data.teams[id] || {}).logo || null,
+        effect: row.effect, wr: row.wr, n: row.n });
+    }
+    specialists.sort((a, b) => b.effect - a.effect);
+    return {
+      map: k, in_pool: (data.pool || []).includes(k),
+      n: m.n, recent_n: m.recent_n || 0,
+      share_recent: +(shareRecent * 100).toFixed(1), share_all: +(shareAll * 100).toFixed(1),
+      trend: +((shareRecent - shareAll) * 100).toFixed(1),     // + = se juega más que su media histórica
+      mean_rounds: m.recent_mean_rounds != null ? m.recent_mean_rounds : m.mean_rounds,
+      all_mean_rounds: m.mean_rounds,
+      overtime_p: m.recent_overtime_p != null ? m.recent_overtime_p : m.overtime_p,
+      blowout_p: m.blowout_p != null ? m.blowout_p : null,
+      decider_mean_rounds: m.decider_mean_rounds != null ? m.decider_mean_rounds : null,
+      specialists: specialists.slice(0, 3),
+    };
+  }).sort((a, b) => (b.in_pool - a.in_pool) || (b.recent_n - a.recent_n));
+  return {
+    game, available: true, pool: data.pool || [], rows,
+    note: 'el pool activo se deduce de lo que se juega de verdad en los últimos meses, no de una lista escrita a mano. "Tendencia" compara la cuota reciente del mapa contra su cuota histórica.',
+    at: data.at,
+  };
+}
+
+// Resultados recientes con marcador real de la serie — la pantalla que quita la limitación de "no verás
+// marcadores". La fuente es bo3 (la misma que liquida las picks) y se cachea fuerte: es una pantalla de
+// lectura, no de tiempo real.
+const RESULTS_TTL = 10 * 60e3;
+async function resultsRecent(game, { days = 10, force = false } = {}) {
+  if (game !== 'cs2') return { game, available: false, why: 'solo CS2 tiene fuente de resultados con marcador (bo3); Dota/LoL liquidarán picks pero no tienen esta pantalla todavía.' };
+  const c = G.resultsFeed && G.resultsFeed[game];
+  if (c && !force && Date.now() - c.at < RESULTS_TTL) return c.data;
+  const CD = cdOf(game);
+  const RES = require('../data-providers/esports/results');
+  const since = new Date(Date.now() - days * 24 * 3600e3).toISOString();
+  // el proveedor devuelve { available, rows } — no un array a secas
+  let rows = [];
+  try { const rr = await RES.results(game, { since, max: 260 }); rows = (rr && rr.rows) || []; } catch { rows = []; }
+  const data = CD ? CD.load() : null;
+  const deco = (name) => {
+    const id = data ? CD.resolveTeam(name, { data }) : null;
+    const t = id && data.teams[id];
+    return { name, id: id || null, logo: (t && t.logo) || null };
+  };
+  const out = {
+    game, available: true, days,
+    results: rows
+      .filter((r) => (r.maps_a || 0) !== (r.maps_b || 0))     // series sin ganador claro no se enseñan
+      .sort((a, b) => Date.parse(b.at || 0) - Date.parse(a.at || 0))
+      .map((r) => ({ at: r.at, a: deco(r.a), b: deco(r.b), maps_a: r.maps_a, maps_b: r.maps_b,
+        maps: (r.maps || []).map((m) => ({ n: m.n, map: m.map, score_a: m.score_a, score_b: m.score_b, ot: m.ot })) })),
+    source: 'bo3.gg — la misma fuente que liquida las picks de CS2',
+    at: new Date().toISOString(),
+  };
+  G.resultsFeed = G.resultsFeed || {};
+  G.resultsFeed[game] = { at: Date.now(), data: out };
+  return out;
+}
+
+// H2H orientado: pairs.json guarda cada par UNA vez con la convención "victorias del id menor", y aquí se
+// gira a la orientación que pide quien pregunta. La convención vive en un solo sitio (la cosecha) y este es
+// el único lector que la conoce.
+function h2h(game, refA, refB) {
+  const CD = cdOf(game); if (!CD) return null;
+  const data = CD.load();
+  const idA = data.teams[refA] ? refA : CD.resolveTeam(String(refA || ''), { data });
+  const idB = data.teams[refB] ? refB : CD.resolveTeam(String(refB || ''), { data });
+  if (!idA || !idB || idA === idB) return null;
+  const [x, y] = [idA, idB].sort();
+  const P = data.pairs[`${x}~${y}`];
+  const base = {
+    a: { id: idA, name: (data.teams[idA] || {}).name || refA, logo: (data.teams[idA] || {}).logo || null },
+    b: { id: idB, name: (data.teams[idB] || {}).name || refB, logo: (data.teams[idB] || {}).logo || null },
+  };
+  if (!P) return { ...base, n: 0, wins_a: 0, wins_b: 0, recent: [], note: 'sin series entre ellos en la base propia.' };
+  const winsA = idA === x ? P.w_a : P.n - P.w_a;
+  return {
+    ...base, n: P.n, wins_a: winsA, wins_b: P.n - winsA, last: P.last || null,
+    recent: (P.recent || []).slice().reverse().map((r) => ({
+      at: r.at || null, winner_id: r.w, winner: (data.teams[r.w] || {}).name || r.w,
+      score: scoreDesc(r.s), tier: r.tier || null })),
+  };
+}
+
 module.exports = {
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne,
+  teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h,
 };

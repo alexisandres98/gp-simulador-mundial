@@ -19,7 +19,8 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'cs2');
-const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'team-global.json', 'rosters.json', 'meta.json'];
+const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'team-global.json', 'rosters.json', 'meta.json',
+  'pairs.json', 'form.json', 'rankings.json', 'players.json'];
 
 const G = global._cs2data = global._cs2data || { at: 0, stamp: '', data: null };
 
@@ -33,6 +34,7 @@ function load() {
   if (G.data && G.stamp === s && Date.now() - G.at < 10 * 60e3) return G.data;
   const maps = rd('maps.json'), teams = rd('teams.json'), tm = rd('team-maps.json'), meta = rd('meta.json');
   const tg = rd('team-global.json'), ro = rd('rosters.json');
+  const pairs = rd('pairs.json'), form = rd('form.json'), rankings = rd('rankings.json'), players = rd('players.json');
   const data = {
     available: !!(maps && maps.maps && tm && tm.teams),
     maps: (maps && maps.maps) || {},
@@ -41,6 +43,12 @@ function load() {
     teamGlobal: (tg && tg.teams) || {},
     rosters: (ro && ro.teams) || {},
     rosterMeta: ro ? { coverage: ro.coverage, note: ro.note, shock_days: ro.shock_days, at: ro.at } : null,
+    // 17-ago — los agregados del producto Equipos/Jugadores/Ranking/H2H. Ausentes = objeto vacío, jamás
+    // undefined: la capa de arriba tiene que poder decir "sin historial entre ellos" sin reventar.
+    pairs: (pairs && pairs.pairs) || {},
+    form: (form && form.teams) || {},
+    rankings: rankings || null,
+    players: (players && players.players) || {},
     meta: meta || null,
     at: (meta && meta.at) || null,
   };
@@ -231,9 +239,34 @@ function teamCard(id, { data = load() } = {}) {
   return { ...t, maps, n: tm ? tm.n : 0, elo: g ? g.elo : null, wr: g ? g.wr : null, roster: ro || null };
 }
 
+// ---- ranking con movimiento (17-ago) ---------------------------------------------------------------------
+// La flecha compara contra la foto semanal ANTERIOR (rankings-history/). La primera semana no hay contra
+// qué comparar y se devuelve null — la UI enseña "—", no una flecha inventada.
+function rankingMovement({ data = load() } = {}) {
+  const R = data.rankings;
+  if (!R || !R.rows) return null;
+  let prev = null;
+  try {
+    const dir = path.join(DIR, 'rankings-history');
+    const files = fs.readdirSync(dir).filter((f) => /^\d{4}-W\d{2}\.json$/.test(f)).sort();
+    const prevFile = files.filter((f) => f !== `${R.week}.json`).pop();
+    if (prevFile) prev = JSON.parse(fs.readFileSync(path.join(dir, prevFile), 'utf8'));
+  } catch { /* sin historia todavía */ }
+  const prevRank = new Map(((prev && prev.rows) || []).map((r) => [r.id, r.rank]));
+  return {
+    week: R.week, at: R.at, min_maps: R.min_maps,
+    prev_week: prev ? prev.week : null,
+    rows: R.rows.map((r) => ({
+      ...r,
+      team: data.teams[r.id] || null,
+      move: prevRank.has(r.id) ? prevRank.get(r.id) - r.rank : null,   // + = subió
+    })),
+  };
+}
+
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const clamp01 = (x) => clamp(x, 0, 1);
 const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
 
-module.exports = { load, resolveTeam, matchupMaps, globalStrength, mapProfile, teamCard, poolOf, norm, DIR,
+module.exports = { load, resolveTeam, matchupMaps, globalStrength, mapProfile, teamCard, poolOf, norm, DIR, rankingMovement,
   LAMBDA, CAL_SLOPE, ELO_SCALE, MODEL_VERSION };

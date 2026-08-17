@@ -278,6 +278,35 @@ function aggregate({ teams, matches, games }) {
     teamGlobal[id] = { n: G.n, wr: r3(shrunk(G.ww, G.wn, G.n)), elo: eloAll[id] != null ? r2(eloAll[id]) : null, last: G.last };
   }
 
+  // ── H2H, FORMA Y SERIES (17-ago, para las secciones Equipos y el historial entre dos) ──────────────────
+  // Se derivan de los PARTIDOS (series), no de los mapas: el usuario piensa en "les ganamos 2-1", no en
+  // mapas sueltos. La orientación del par es alfabética por id — quien sirve el dato la voltea si hace falta.
+  const pairs = {};       // "a~b" → { n, w_a, last, recent:[últimas 8 series] }
+  const teamForm = {};    // id → últimas 10 series [{r, at, vs, s}]
+  const seriesSorted = Object.values(matches)
+    .filter((m) => m.winner != null && m.t1 != null && m.t2 != null)
+    .sort((a, b) => Date.parse(a.at || 0) - Date.parse(b.at || 0));
+  for (const m of seriesSorted) {
+    const A = byProv[m.t1], B = byProv[m.t2];
+    if (!A || !B || A.id === B.id) continue;
+    const aWon = m.winner === m.t1;
+    const [x, y] = [A.id, B.id].sort();
+    const k = `${x}~${y}`;
+    const P = pairs[k] = pairs[k] || { n: 0, w_a: 0, last: null, recent: [] };
+    P.n++;
+    // w_a cuenta las victorias del PRIMERO alfabético, que es la única convención estable entre corridas
+    if ((aWon && A.id === x) || (!aWon && B.id === x)) P.w_a++;
+    P.last = m.at || P.last;
+    P.recent.push({ at: m.at, s: `${m.s1 != null ? m.s1 : '?'}-${m.s2 != null ? m.s2 : '?'}`,
+      w: aWon ? A.id : B.id, tier: m.tier || null });
+    if (P.recent.length > 8) P.recent.shift();
+    for (const [me, rival, won, sf, sa] of [[A.id, B.id, aWon, m.s1, m.s2], [B.id, A.id, !aWon, m.s2, m.s1]]) {
+      const F = teamForm[me] = teamForm[me] || [];
+      F.push({ r: won ? 'W' : 'L', at: (m.at || '').slice(0, 10), vs: rival, s: `${sf != null ? sf : '?'}-${sa != null ? sa : '?'}` });
+      if (F.length > 10) F.shift();
+    }
+  }
+
   const teamMaps = {};
   for (const [id, byMap] of Object.entries(teamMap)) {
     const o = {};
@@ -299,8 +328,8 @@ function aggregate({ teams, matches, games }) {
   }
 
   return {
-    maps, teamMaps, teamGlobal,
-    coverage: { games: rows.length, matched, unmatched, teams: Object.keys(teamMaps).length, maps: Object.keys(maps).length },
+    maps, teamMaps, teamGlobal, pairs, teamForm,
+    coverage: { games: rows.length, matched, unmatched, teams: Object.keys(teamMaps).length, maps: Object.keys(maps).length, pairs: Object.keys(pairs).length },
   };
 }
 
@@ -327,7 +356,32 @@ function writeAggregates(teams, agg) {
       note: 'el Elo POR MAPA se conserva como diagnóstico pero NO manda: la validación demostró que predice peor que el global (3,04 % contra 6,88 % de skill) porque parte la muestra del equipo en siete trozos y el ruido se come la señal.',
     },
   });
-  const sizes = ['teams.json', 'maps.json', 'team-maps.json', 'team-global.json', 'meta.json']
+  // ── H2H entre pares (solo los que jugaron 2+ series: un cruce único no es historial) ──────────────────
+  const pairsSlim = {};
+  for (const [k, P] of Object.entries(agg.pairs || {})) if (P.n >= 2) pairsSlim[k] = P;
+  wrAgg('pairs.json', { at: new Date().toISOString(), pairs: pairsSlim, n: Object.keys(pairsSlim).length,
+    note: 'historial serie a serie entre pares de equipos. w_a = victorias del primero en orden alfabético de id; quien sirve el dato lo orienta.' });
+
+  // ── forma reciente por equipo (últimas 10 series) ─────────────────────────────────────────────────────
+  wrAgg('form.json', { at: new Date().toISOString(), teams: agg.teamForm || {} });
+
+  // ── RANKING GP + foto semanal (la flecha de movimiento necesita historia: empieza hoy) ────────────────
+  // El listón de 30 mapas no es estético: por debajo, el Elo es el prior con ruido y el ranking mentiría.
+  const rankRows = Object.entries(agg.teamGlobal)
+    .filter(([id, g]) => g.n >= 30 && g.elo != null && agg.teamMaps[id])
+    .sort((a, b) => b[1].elo - a[1].elo).slice(0, 200)
+    .map(([id, g], i) => ({ rank: i + 1, id, elo: g.elo, wr: g.wr, n: g.n, last: g.last }));
+  const wk = (() => { const d = new Date(); const on = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return d.getUTCFullYear() + '-W' + String(Math.ceil((((d - on) / 864e5) + on.getUTCDay() + 1) / 7)).padStart(2, '0'); })();
+  wrAgg('rankings.json', { at: new Date().toISOString(), week: wk, min_maps: 30, rows: rankRows });
+  const histDir = path.join(AGG_DIR, 'rankings-history');
+  try { fs.mkdirSync(histDir, { recursive: true }); } catch { }
+  const wkFile = path.join(histDir, `${wk}.json`);
+  // la foto de la semana se escribe UNA vez: sobreescribirla en cada corrida borraría el punto de partida
+  // contra el que se mide el movimiento de esa misma semana
+  if (!fs.existsSync(wkFile)) fs.writeFileSync(wkFile, JSON.stringify({ at: new Date().toISOString(), week: wk, rows: rankRows }));
+
+  const sizes = ['teams.json', 'maps.json', 'team-maps.json', 'team-global.json', 'pairs.json', 'form.json', 'rankings.json', 'meta.json']
     .map((f) => `${f} ${(fs.statSync(path.join(AGG_DIR, f)).size / 1024).toFixed(0)} KB`).join(' · ');
   log(`▸ agregados escritos en data/esports/cs2/: ${sizes}`);
 }

@@ -1,5 +1,19 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⏭️ LO PRIMERO DE LA PRÓXIMA SESIÓN (17-ago noche)
+1. **Mirar con Alexis las lentes de fútbol** (rama `claude/gpsim-continuation-vrjuww`, commit `650c56e`) y,
+   si convencen, empujar ese SHA a main. Si no, revertir es borrar un commit: nada más de la rama depende
+   de él salvo el orden (los scripts de Dota van encima).
+2. **Enviar las solicitudes de `SOLICITUDES_DATOS.md`**, por este orden: **GRID Open Access** (gratis,
+   CS2 + Dota 2 server-side — es el desbloqueo del dato ronda a ronda) → Liquipedia → Riot (prioridad baja,
+   su API pública no sirve partidas profesionales).
+3. **Revisar la sombra de props con la primera liquidación** (llega con la pasada diaria del 18-19-ago) y
+   leer el CLV nuevo: el componente que informa es la **línea**, no el precio.
+4. **Dota 2, siguiente paso medido**: pesar por liga / filtrar tier antes de tocar K — el AUC no se mueve
+   con K (0,571-0,577), así que el techo está en el dato. Solo después se enchufa el rating al motor.
+5. Sigue en pie el pendiente del domingo 23 (las cuatro correcciones de abajo) y los pendientes de Alexis:
+   rotar `API_FOOTBALL_KEY` y `RENDER_API_KEY`.
+
 ## 🎮 ESPORTS (nuevo el 16-ago): lo que bloquea que el quinto deporte valga algo
 El producto está entero y admin-only, pero **no puede medirse a sí mismo** porque Cloudbet no publica
 resultados (comprobado: evento terminado → `settlement` vacío y cero mercados; `/odds/results` es 404).

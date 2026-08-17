@@ -1,6 +1,54 @@
 # HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
 
-## 🧭 17-ago (cierre de sesión) — PUNTO DE RETOMA PARA LA PRÓXIMA SESIÓN
+## 🧭 17-ago (sesión de noche) — LO ÚLTIMO, LÉEME ANTES QUE NADA
+
+**En producción ahora mismo: `11a0fb2`.** Lo que sigue en la rama
+`claude/gpsim-continuation-vrjuww` **sin tocar main, esperando el OK de Alexis**: las lentes de fútbol y
+los scripts de Dota 2 (ver más abajo). Reglas fijas intactas: ejecutor en la sombra sin tocar; baloncesto
+congelado SOLO-RAMA hasta el domingo 23; a main solo por SHA.
+
+1. **Revisión de la sombra de props, y el fallo que destapó.** Las 24 tesis vivas estaban anotadas
+   **22 de 24 al MISMO precio** (1,893 → listón 0,5283): Underdog es un libro DFS y casi no mueve precio,
+   mueve la LÍNEA. El CLV que había medía solo `close_bar − bar` y encima descartaba las tesis cuya línea
+   se había movido → **medía cero por construcción justo en los casos informativos**. Corregido y
+   desplegado: CLV = **línea + precio**, la línea evaluada con la proyección CONGELADA al anotar (mu/sigma
+   guardados en la tesis), que es lo que aísla el movimiento del libro de la deriva del modelo. Retroactivo
+   (las tesis ya guardaban `mu`, `sigma` y `close_line`). Signos comprobados: over 26,5 que cierra en 28,5
+   = +13,2 pp; el mismo que cierra en 24,5 = −12,8 pp. Añadido también el **CLV provisional de las tesis
+   abiertas** (`perf_open`), porque con 0 liquidadas la familia estaba ciega.
+2. **Liquidadas: 0, y es lo esperado** — no un fallo. Las primeras tesis son de partidas del 18 y 19-ago;
+   liquidan con la pasada diaria siguiente. Al cierre de esta sesión: 24 activas, 2 con la línea ya movida.
+3. **Rutas internas nuevas** (misma llave `GP_EXPORT_KEY`, solo lectura, porque revisar una familia en
+   sombra desde una terminal no debería exigir sesión de navegador):
+   `/api/internal/esports?key=…&props=1` (track + resumen de pizarra) y `…&evidence=cs2`.
+4. **Evidencia de mercado: vacía todavía, con motivo medido.** `with_open_and_close: 0` y
+   `avg_passes: 1` — el trabajo de cierres corre a los 320 s del arranque y luego cada 20 min, y **cada
+   deploy reinicia ese reloj**: en un día de despliegues seguidos ningún evento llega a una segunda pasada
+   y la apertura nunca se congela. No es un bug del panel; es cadencia. En un día sin deploys se llena solo.
+5. **Fase 3 del rediseño (fútbol) — EN LA RAMA, pendiente de que Alexis lo mire.** Decisión tomada con él:
+   **versión ligera**, porque el partido de fútbol NO estaba como CS2/NFL/baloncesto (aquí ya había nav
+   sticky con scrollspy y dos columnas). El mismo nav deja de listar 9-11 anclas y pasa a filtrar tres
+   lentes (El partido / El modelo / Contexto, con su traducción al inglés); dentro de la lente las
+   secciones se reparten en las dos columnas existentes partiendo por la MITAD del orden de lectura, para
+   que en móvil el orden no cambie. Héroe y panel de oportunidad, intactos y siempre visibles. Medido en
+   México–Sudáfrica: **móvil 2.518 → 1.251 px, desktop 1.804 → 954 px**, cero errores JS a 430 y 1360 px.
+6. **Dota 2: base propia + la validación, ANTES de enchufar nada** (también en la rama).
+   `scripts/dota-harvest.js` bajó **30.000 partidas profesionales** (jul-2025 → ago-2026; 28.529 con los dos
+   equipos identificados, 2.069 equipos). `scripts/dota-validate.js`, walk-forward estricto:
+   **Elo+lado = 1,92 % de skill, AUC 0,574, ECE 0,017** contra 0,06 % de "saber de qué lado juegas".
+   CS2 con la misma validación da 7,28 % / 0,652 → **la señal de Dota 2 es real pero vale una cuarta parte**,
+   y el AUC no se mueve con K, así que el techo está en el dato (mezcla tier-1 con tier-3). **No habilita
+   picks**; sirve para tener rating propio y poder medir CLV cuando haya cuotas guardadas.
+7. **🔴 CORRECCIÓN al punto 5 de la sesión anterior (costes de datos):** existe **GRID Open Access**, que es
+   **GRATIS** y da datos oficiales de CS2 y Dota 2 (server-side, evento a evento) a proyectos pre-revenue.
+   Es el desbloqueo del dato ronda a ronda **sin los ~1.600 €/mes** que quedaron escritos. El feed de
+   apuestas (*Series Events*) queda fuera de Open Access y es de pago — conviene decirlo nosotros en la
+   solicitud. Y al revés: **la API pública de Riot NO sirve partidas profesionales**, solo cuentas
+   normales; para el circuito lo que hay es lolesports (que ya usamos) y Liquipedia → Riot baja de
+   prioridad. Los tres textos listos para enviar están en **`SOLICITUDES_DATOS.md`** (GRID, Liquipedia,
+   Riot); enviarlos necesita tu cuenta.
+
+## 🧭 17-ago (cierre de sesión anterior) — PUNTO DE RETOMA
 
 **Todo lo de abajo está DESPLEGADO y verificado en prod** (último deploy: lentes en todos los deportes).
 Estado de las reglas fijas: ejecutor en la sombra ($2.000, cards_under_v1) INTOCADO; baloncesto congelado

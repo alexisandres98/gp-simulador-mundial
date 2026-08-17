@@ -9980,9 +9980,24 @@ async function shadowSweep() {
     b.status = 'SETTLED'; b.result = p.result_code; b.settled_at = p.settled_at || new Date().toISOString();
     b.pnl = p.result_code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : p.result_code === 'LOSS' ? -b.stake : 0;
     b.closing = (p.closing && p.closing.odds) || null; b.clv = (typeof p.clv === 'number') ? p.clv : null;
+    // EL CLV DEL SOMBRA CON LOS PRECIOS DEL SOMBRA (17-ago, auditoría del lunes). El b.clv de arriba es el
+    // de la PICK: mejor cuota al publicar contra mejor cuota al cierre. Pero esta apuesta entró al precio
+    // EJECUTABLE, que suele ser peor — y copiar el CLV de otra entrada producía filas como "entrada 1,96 →
+    // cierre 2,47 → CLV 0", que es imposible con esos dos números. Se calcula el propio: entrada ejecutada
+    // contra el mismo cierre. Los dos viajan, cada uno con su nombre, porque responden preguntas distintas:
+    // clv = ¿publicamos antes de que el mercado se moviera? · clv_exec = ¿ejecutamos a buen precio?
+    b.clv_exec = b.closing > 1 && b.odds > 1 ? +(((b.odds / b.closing) - 1) * 100).toFixed(2) : null;
     S.bankroll = +(S.bankroll + b.pnl).toFixed(2);
     settled++;
   }
+  // migración de un solo uso: las liquidadas de antes del 17-ago no traían clv_exec y su cierre ya está
+  let backCl = 0;
+  for (const b of S.bets) {
+    if (b.status === 'SETTLED' && b.clv_exec == null && b.closing > 1 && b.odds > 1) {
+      b.clv_exec = +(((b.odds / b.closing) - 1) * 100).toFixed(2); backCl++;
+    }
+  }
+  if (backCl) save();
   if (placed || settled) save();
   return { placed, settled, bankroll: S.bankroll, open: S.bets.filter(b => b.status === 'OPEN').length, total_bets: S.bets.length };
 }
@@ -9995,6 +10010,8 @@ function shadowSummary(sinceMs) {
   const stakedSet = +st.reduce((s, b) => s + b.stake, 0).toFixed(2);
   const pnl = +st.reduce((s, b) => s + b.pnl, 0).toFixed(2);
   const clvs = st.map(b => b.clv).filter(c => typeof c === 'number');
+  // clv_exec (17-ago): el CLV de ESTA operación — entrada ejecutada contra cierre — separado del de la pick
+  const clvsEx = st.map(b => b.clv_exec).filter(c => typeof c === 'number');
   // capacidad real (13-ago): señales del segmento vs las que Cloudbet/Polymarket cotizaban de verdad,
   // y el "haircut" de precio (cuota ejecutable vs la mejor del mercado) — el costo real de ejecutar.
   const un = (S.unexec || []).filter(u => !sinceMs || Date.parse(u.at) >= sinceMs);
@@ -10006,6 +10023,7 @@ function shadowSummary(sinceMs) {
     avg_odds: rows.length ? +(rows.reduce((s, b) => s + b.odds, 0) / rows.length).toFixed(2) : null,
     avg_stake: rows.length ? +(staked / rows.length).toFixed(2) : null,
     clv_avg: clvs.length ? +(clvs.reduce((s, c) => s + c, 0) / clvs.length).toFixed(2) : null,
+    clv_exec_avg: clvsEx.length ? +(clvsEx.reduce((s, c) => s + c, 0) / clvsEx.length).toFixed(2) : null,
     signals, unexec: un.length, exec_rate_pct: signals ? +(100 * rows.length / signals).toFixed(1) : null,
     haircut_avg_pct: hair.length ? +(hair.reduce((s, h) => s + h, 0) / hair.length).toFixed(2) : null,
   };

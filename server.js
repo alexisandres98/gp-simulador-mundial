@@ -9810,6 +9810,18 @@ function shadowStake(S, p, odds) {
 // exec books (13-ago, Alexis): cloudbet (API key, ya ingerido) + los prediction markets conectables por
 // API/wallet — polymarket, myriad (persistido por myriadSweep) y kalshi. Los que aún no ingieren cuotas
 // POR PARTIDO de clubes (polymarket/kalshi: hoy solo campeón) se activan solos cuando su adaptador exista.
+//
+// PINNACLE: EVALUADA Y DESCARTADA COMO CASA EJECUTABLE (17-ago, investigación pedida por Alexis).
+// El diagnóstico de capacidad decía que 13 de las 16 señales no-ejecutables solo las cotizaba Pinnacle, así
+// que se investigó si una cuenta normal da API de apuesta. NO: **Pinnacle cerró su API al público el
+// 23-jul-2025** (fuente: su propia documentación oficial, github.com/pinnacleapi) — hoy solo la dan, por
+// solicitud a api@pinnacle.com, a apostadores de alto volumen seleccionados y a acuerdos comerciales. El
+// criterio del plan es que el sombra solo modela casas donde el sistema podrá ejecutar SOLO por API con
+// dinero real; una casa donde habría que apostar a mano no califica, así que NO entra en esta lista.
+// Sigue siendo fuente de PRECIO (esports y este diagnóstico): leer su cierre es gratis y es el baremo del
+// CLV del sector — referencia sí, venue no. Vía futura si algún día se quiere ejecutar a precio Pinnacle:
+// brokers con API (p.ej. Sportmarket Pro apunta a PS3838/Pinnacle; depósito ~€5k+) — decisión de negocio
+// aparte, no un cambio de código.
 const SHADOW_EXEC_BOOKS = () => String(process.env.GP_SHADOW_EXEC_BOOKS || 'cloudbet,polymarket,myriad,kalshi').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const SHADOW_FAM_MAP = { CARDS: 'cards_total', CORNERS: 'corners_total', GOALS: 'match_total', SOLID: 'match_winner' };
 async function shadowExecQuote(p) {

@@ -15623,6 +15623,29 @@ const server = http.createServer(async (req, res) => {
       // navegador, y diagnosticar a ojo es cómo se pierde una tarde.
       // `?track=<juego>` devuelve el rendimiento COMPLETO del monitor (families, picks recientes, CLV) con
       // la llave interna: el análisis del lunes necesita el detalle y la ruta de la UI pide sesión de admin.
+      // `?props=1` devuelve la sombra de props de CS2 (track completo + resumen de la pizarra) y
+      // `?evidence=<juego>` la evidencia de mercado. Las dos rutas de la UI piden sesión de admin y la
+      // revisión de la sombra hay que poder hacerla sin navegador — mismo criterio que `?track=`.
+      if (url.searchParams.get('props') === '1') {
+        const PR = require('./esports-engine/props');
+        const tr = PR.track();
+        let board = null;
+        try {
+          const b = await PR.board({});
+          board = { available: b.available, book: b.book, at: b.at, n: b.n, counts: b.counts,
+            shadow_rows: (b.rows || []).filter((r) => r.status === 'SOMBRA')
+              .map((r) => ({ player: r.player, team: r.team, rival: r.rival, stat: r.stat, line: r.line,
+                side: r.best && r.best.side, edge: r.best && r.best.edge, p_gp: r.best && r.best.p_gp,
+                start_at: (r.match || {}).start_at })).slice(0, 20) };
+        } catch (e) { board = { error: e.message }; }
+        return json(res, 200, { track: tr, board });
+      }
+      const evQ = String(url.searchParams.get('evidence') || '').toLowerCase();
+      if (evQ) {
+        const ES = require('./esports-engine/store');
+        if (!ES.ENGINES[evQ]) return json(res, 400, { error: 'juego desconocido' });
+        return json(res, 200, ES.marketEvidence(evQ));
+      }
       const trackQ = String(url.searchParams.get('track') || '').toLowerCase();
       if (trackQ) {
         const ES = require('./esports-engine/store');

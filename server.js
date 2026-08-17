@@ -15036,6 +15036,14 @@ const server = http.createServer(async (req, res) => {
         });
       } catch (e) { return json(res, 500, { ok: false, error: e.message, stack: String(e.stack || '').split('\n').slice(0, 3) }); }
     }
+    // Export de las picks del monitor de baloncesto, con la misma llave que combate y fútbol. Existía para
+    // los otros deportes y faltaba aquí: el análisis del lunes lo necesita para poder mirar la semana sin
+    // sesión de navegador. Solo lectura.
+    if (p === '/api/internal/hoops-picks') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      return json(res, 200, { count: (db.hoopsPicks || []).length, picks: db.hoopsPicks || [], exported_at: new Date().toISOString() });
+    }
     if (p === '/api/internal/hoops-quotes') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

@@ -14977,6 +14977,14 @@ const server = http.createServer(async (req, res) => {
       // partida) y devuelve tiempos y el error si lo hay. Existe porque el deporte es admin-only: sin esto,
       // cuando Alexis dice "no me carga nada" no hay forma de saber si el fallo está en el servidor o en el
       // navegador, y diagnosticar a ojo es cómo se pierde una tarde.
+      // `?track=<juego>` devuelve el rendimiento COMPLETO del monitor (families, picks recientes, CLV) con
+      // la llave interna: el análisis del lunes necesita el detalle y la ruta de la UI pide sesión de admin.
+      const trackQ = String(url.searchParams.get('track') || '').toLowerCase();
+      if (trackQ) {
+        const ES = require('./esports-engine/store');
+        if (!ES.ENGINES[trackQ]) return json(res, 400, { error: 'juego desconocido' });
+        return json(res, 200, ES.track(trackQ, { limit: 100 }));
+      }
       const probe = String(url.searchParams.get('probe') || '').toLowerCase();
       if (probe) {
         const ES = require('./esports-engine/store');

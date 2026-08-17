@@ -3039,3 +3039,10 @@ td .gx-calc-btn span { display: none; }
   .gx-esc-stats{grid-template-columns:repeat(2,1fr)}
   .gx-esh2h-side b{font-size:11.5px}
 }
+
+/* -- rating GP de jugador (17-ago): barra centrada en la media del circuito (1.00) + chips de stats -- */
+.gx-esp-ratb{position:relative}
+.gx-esp-ratb em{position:absolute;left:40%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.3);z-index:1}
+.gx-esp-stats{display:flex;gap:10px;font-size:10px;color:var(--gx-text4);flex-wrap:wrap}
+.gx-esp-stats b{color:var(--gx-text2);font-family:var(--gx-mono);font-weight:650}
+.gx-esp-best{font-size:9px;color:var(--gx-text4);border:1px solid var(--gx-line);border-radius:5px;padding:1.5px 6px;margin-top:4px}

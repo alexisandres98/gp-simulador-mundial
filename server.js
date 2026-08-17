@@ -264,7 +264,11 @@ async function cs2DailyJob() {
     db.ops.cs2_day = day; save();                      // se marca ANTES: un fallo no debe reintentar en bucle todo el día
     const h = await opsSpawn('cs2_harvest', ['scripts/cs2-harvest.js'], { heapMb: 240, timeoutMin: 40 });
     const r = await opsSpawn('cs2_roster', ['scripts/cs2-roster.js'], { heapMb: 200, timeoutMin: 25 });
-    opsLog('cs2_daily', { harvest: h.code != null ? h.code : h.error, roster: r.code != null ? r.code : r.error });
+    // scoreboards por jugador (17-ago): incremental — solo los mapas nuevos del día (~60-120 peticiones);
+    // con tope de juegos por si la pasada viene atrasada, para que el hijo nunca corra horas.
+    const ps = await opsSpawn('cs2_players', ['scripts/cs2-players-harvest.js', '--max=400'], { heapMb: 200, timeoutMin: 30 });
+    opsLog('cs2_daily', { harvest: h.code != null ? h.code : h.error, roster: r.code != null ? r.code : r.error,
+      players: ps.code != null ? ps.code : ps.error });
   } catch (e) { opsLog('cs2_daily', { error: e.message }); }
 }
 setTimeout(cs2DailyJob, 6 * 60e3);
@@ -15282,7 +15286,7 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const rawDir = path.join(path.dirname(DB_FILE), 'esports', 'cs2-raw');
-      const OKF = ['teams.json', 'matches.json', 'games.json', 'players.json', 'meta.json'];
+      const OKF = ['teams.json', 'matches.json', 'games.json', 'players.json', 'meta.json', 'player-games.json'];
       if (req.method === 'PUT' || req.method === 'POST') {
         const f = String(url.searchParams.get('file') || '');
         if (!OKF.includes(f)) return json(res, 400, { error: 'archivo no permitido', ok: OKF });

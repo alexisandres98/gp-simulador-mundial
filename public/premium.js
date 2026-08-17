@@ -9414,19 +9414,23 @@
     var rows = d.players || [];
     var body = rows.length
       ? '<div class="gx-esp-grid">' + rows.map(function (p) {
-          // el rating del proveedor viene en escala 0-10 (ZywOo ≈ 7.2), no en la ~1.0 de HLTV: la barra
-          // se pinta sobre el rango real observado (4 = suplente flojo, 8 = techo del circuito)
+          // EL RATING PROPIO manda (media del circuito = 1.00; barra centrada en la media). El del
+          // proveedor (escala 0-10, ZywOo ≈ 7.2) queda como segunda vara, chico y etiquetado.
+          var rg = p.rating_gp != null ? p.rating_gp : null;
+          var rgW = rg != null ? Math.max(4, Math.min(100, 100 * (rg - 0.6) / 1.0)) : 0;
           var rat = p.rating6m != null ? p.rating6m : null;
-          var ratW = rat != null ? Math.max(4, Math.min(100, 100 * (rat - 4) / 4)) : 0;
+          var ownRow = rg != null
+            ? '<div class="gx-esp-rat"><span>Rating GP</span><div class="gx-esp-ratb"><em></em><i style="width:' + rgW.toFixed(0) + '%"></i></div><b class="gx-mono ' + (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') + '">' + rg.toFixed(2) + '</b></div>' +
+              '<div class="gx-esp-stats"><span>ADR <b>' + (p.adr != null ? p.adr.toFixed(0) : '—') + '</b></span><span>KAST <b>' + (p.kast != null ? Math.round(100 * p.kast) + '%' : '—') + '</b></span><span>KPR <b>' + (p.kpr != null ? p.kpr.toFixed(2) : '—') + '</b></span><span class="gx-dim">' + (p.maps_n || 0) + ' mapas</span></div>'
+            : '<div class="gx-esp-rat"><span class="gx-dim">sin muestra propia suficiente en la ventana</span></div>';
           return '<div class="gx-panel gx-esp-card"' + (p.team ? ' data-esteam="' + esc(p.team) + '"' : '') + '>' +
             '<div class="gx-esp-top">' + esAvatar(p) +
               '<div class="gx-esp-id"><b>' + esc(p.nick) + '</b><span>' + esc(p.name || '') + (p.age != null ? (p.name ? ' · ' : '') + p.age + ' años' : '') + '</span></div>' +
               '<span class="gx-spacer"></span>' + (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') + '</div>' +
             '<div class="gx-esp-team">' + cs2Crest({ name: p.team_name, logo: p.team_logo }, 'sm') + '<span>' + esc(p.team_name || '—') + '</span>' +
               (p.joined_at ? '<em class="gx-dim">desde ' + esDateShort(p.joined_at) + '</em>' : '') + '</div>' +
-            '<div class="gx-esp-meta">' +
-              (rat != null ? '<div class="gx-esp-rat"><span>Rating 6m <em>(bo3)</em></span><div class="gx-esp-ratb"><i style="width:' + ratW.toFixed(0) + '%"></i></div><b class="gx-mono">' + rat.toFixed(2) + '</b></div>' : '<div class="gx-esp-rat"><span class="gx-dim">sin rating del proveedor</span></div>') +
-              (esMoney(p.winnings) ? '<div class="gx-esp-win"><span>Premios</span><b class="gx-mono">' + esMoney(p.winnings) + '</b></div>' : '') +
+            '<div class="gx-esp-meta">' + ownRow +
+              ((rat != null || esMoney(p.winnings)) ? '<div class="gx-esp-win"><span>' + (rat != null ? 'Proveedor (6m, 0-10): <b class="gx-mono">' + rat.toFixed(2) + '</b>' : '') + '</span><b class="gx-mono">' + (esMoney(p.winnings) || '') + '</b></div>' : '') +
             '</div></div>';
         }).join('') + '</div>' +
         '<div class="gx-dim gx-es-trunc">' + esc(d.rating_note || '') + '</div>'
@@ -9481,10 +9485,15 @@
     var rosterB = five.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Quinteto actual</span>' +
       (d.roster.coach ? '<span class="gx-ph-extra"><span class="gx-dim">coach: ' + esc(d.roster.coach.nick) + '</span></span>' : '') + '</div>' +
       '<div class="gx-est-five">' + five.map(function (p) {
+        // rating PROPIO primero; si el jugador no tiene muestra en la ventana, cae al del proveedor con
+        // su etiqueta — nunca un número sin procedencia
+        var r = p.rating_gp != null
+          ? '<em class="gx-mono ' + (p.rating_gp >= 1.05 ? 'gx-up' : p.rating_gp < 0.95 ? 'gx-down' : '') + '">' + p.rating_gp.toFixed(2) + ' <i>GP</i></em>'
+          : (p.rating6m != null ? '<em class="gx-mono">' + p.rating6m.toFixed(2) + ' <i>6m bo3</i></em>' : '<em class="gx-dim">—</em>');
         return '<div class="gx-est-player">' + esAvatar(p, 'big') +
           '<b>' + esc(p.nick) + '</b>' +
-          '<span class="gx-dim">' + (p.role ? esc(String(p.role).toUpperCase()) : '') + (p.age != null ? (p.role ? ' · ' : '') + p.age + 'a' : '') + '</span>' +
-          (p.rating6m != null ? '<em class="gx-mono">' + p.rating6m.toFixed(2) + ' <i>6m bo3</i></em>' : '<em class="gx-dim">—</em>') + '</div>';
+          '<span class="gx-dim">' + (p.role ? esc(String(p.role).toUpperCase()) : '') + (p.age != null ? (p.role ? ' · ' : '') + p.age + 'a' : '') + '</span>' + r +
+          (p.best_map ? '<span class="gx-esp-best">' + esc(cs2Name(p.best_map.map)) + ' · ADR ' + p.best_map.adr.toFixed(0) + '</span>' : '') + '</div>';
       }).join('') + '</div>' +
       ((d.roster && d.roster.shock_note) ? '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(d.roster.shock_note) + '</span></div>' : '') + '</div>' : '';
     // FORMA: las últimas series con rival, marcador y fecha

@@ -20,7 +20,7 @@ const path = require('path');
 
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'cs2');
 const FILES = ['maps.json', 'teams.json', 'team-maps.json', 'team-global.json', 'rosters.json', 'meta.json',
-  'pairs.json', 'form.json', 'rankings.json', 'players.json'];
+  'pairs.json', 'form.json', 'rankings.json', 'players.json', 'player-map-stats.json'];
 
 const G = global._cs2data = global._cs2data || { at: 0, stamp: '', data: null };
 
@@ -35,6 +35,7 @@ function load() {
   const maps = rd('maps.json'), teams = rd('teams.json'), tm = rd('team-maps.json'), meta = rd('meta.json');
   const tg = rd('team-global.json'), ro = rd('rosters.json');
   const pairs = rd('pairs.json'), form = rd('form.json'), rankings = rd('rankings.json'), players = rd('players.json');
+  const pstats = rd('player-map-stats.json');
   const data = {
     available: !!(maps && maps.maps && tm && tm.teams),
     maps: (maps && maps.maps) || {},
@@ -49,6 +50,11 @@ function load() {
     form: (form && form.teams) || {},
     rankings: rankings || null,
     players: (players && players.players) || {},
+    // 17-ago — estadística PROPIA por jugador y por mapa (scoreboards reales de la ventana de 180 días).
+    // `rating_gp` es nuestro, con fórmula publicada en el propio archivo; el del proveedor viaja al lado.
+    playerStats: (pstats && pstats.players) || {},
+    playerStatsMeta: pstats ? { at: pstats.at, window_days: pstats.window_days, min_rounds: pstats.min_rounds,
+      population: pstats.population, formula: pstats.formula } : null,
     meta: meta || null,
     at: (meta && meta.at) || null,
   };

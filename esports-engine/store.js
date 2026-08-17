@@ -1347,12 +1347,21 @@ function teamProfile(game, ref) {
     const row = mv && mv.rows.find((r) => r.id === id);
     move = row ? row.move : null;
   }
-  // el quinteto de la ficha se enriquece con el directorio de jugadores (foto, edad, rating del proveedor)
+  // el quinteto de la ficha se enriquece con el directorio de jugadores (foto, edad) y — desde el 17-ago —
+  // con la estadística PROPIA: rating GP, ADR/KAST reales y su mejor mapa en la ventana.
   const five = ((card.roster && card.roster.five) || []).map((f) => {
     const p = data.players[f.id] || {};
+    const st = data.playerStats[f.id] || null;
+    let bestMap = null;
+    if (st && st.maps) {
+      const e = Object.entries(st.maps).sort((a, b) => (b[1].adr || 0) - (a[1].adr || 0))[0];
+      if (e) bestMap = { map: e[0], adr: e[1].adr, n: e[1].n };
+    }
     return { ...f, name: p.name || null, photo: p.photo || null, age: ageOf(p.birthday),
       country_id: p.country_id != null ? p.country_id : null, joined_at: p.joined_at || null,
-      rating6m: p.rating6m != null ? p.rating6m : null };
+      rating6m: p.rating6m != null ? p.rating6m : null,
+      rating_gp: st ? st.rating_gp : null, adr: st ? st.adr : null, kast: st ? st.kast : null,
+      maps_n: st ? st.n : null, best_map: bestMap };
   });
   const coach = card.roster && card.roster.coach
     ? { ...card.roster.coach, photo: (data.players[card.roster.coach.id] || {}).photo || null } : null;
@@ -1393,18 +1402,27 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
   const all = Object.values(data.players || {});
   if (!all.length) return { game, available: false, why: 'el directorio de jugadores todavía no se ha derivado (corre con la cosecha de plantillas).' };
   const needle = CD.norm(q);
+  const hasOwn = Object.keys(data.playerStats).length > 0;
   const rows = all
     .filter((p) => !p.coach)
     .filter((p) => !needle || CD.norm(p.nick).indexOf(needle) >= 0 || CD.norm(p.name || '').indexOf(needle) >= 0
       || CD.norm(p.team_name || '').indexOf(needle) >= 0)
-    .map((p) => ({ ...p, age: ageOf(p.birthday),
-      team_logo: (data.teams[p.team] || {}).logo || null }))
-    // rating del proveedor manda en el orden; sin rating, al final — el orden ES una afirmación y se apoya
-    // en el único número disponible, etiquetado con su procedencia.
-    .sort((a, b) => (b.rating6m || 0) - (a.rating6m || 0))
+    .map((p) => {
+      const st = data.playerStats[p.id] || null;
+      return { ...p, age: ageOf(p.birthday), team_logo: (data.teams[p.team] || {}).logo || null,
+        rating_gp: st ? st.rating_gp : null, adr: st ? st.adr : null, kast: st ? st.kast : null,
+        kpr: st ? st.kpr : null, maps_n: st ? st.n : null, open_pr: st ? st.open_pr : null };
+    })
+    // desde el 17-ago manda el RATING PROPIO (fórmula publicada, media del circuito = 1.00); el del
+    // proveedor queda al lado como segunda vara. Sin estadística propia todavía, manda la del proveedor.
+    .sort((a, b) => hasOwn ? ((b.rating_gp || 0) - (a.rating_gp || 0) || (b.rating6m || 0) - (a.rating6m || 0))
+      : (b.rating6m || 0) - (a.rating6m || 0))
     .slice(0, Math.max(1, Math.min(300, limit)));
   return { game, available: true, players: rows, total: all.filter((p) => !p.coach).length,
-    rating_note: 'rating de 6 meses del proveedor (bo3), no de GP: viaja etiquetado hasta que exista estadística propia por mapa.', at: data.at };
+    own_stats: data.playerStatsMeta || null,
+    rating_note: hasOwn
+      ? 'Rating GP: propio, derivado del scoreboard real por mapa (ventana ' + ((data.playerStatsMeta || {}).window_days || 180) + ' días; media del circuito = 1.00). El de 6 meses del proveedor (escala 0-10) se enseña al lado.'
+      : 'rating de 6 meses del proveedor (bo3), no de GP: viaja etiquetado hasta que exista estadística propia por mapa.', at: data.at };
 }
 
 function rankingBoard(game) {

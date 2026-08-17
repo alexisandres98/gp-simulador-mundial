@@ -15027,7 +15027,9 @@ const server = http.createServer(async (req, res) => {
               // desde el 16-ago el cuarto deporte SÍ se puede medir: se publica de qué fuente sale y cuánto
               // lleva liquidado, que es la única forma de ver si el bucle está corriendo de verdad
               results_source: RS.available ? RS.name : null,
-              picks: tr.total, settled: tr.settled, roi_pct: tr.roi_pct, clv_avg_pct: tr.clv_avg_pct };
+              picks: tr.total, settled: tr.settled, roi_pct: tr.roi_pct, clv_avg_pct: tr.clv_avg_pct,
+              // el CLV es la vara de esta casa: cuando falta hay que poder ver POR QUÉ sin abrir sesión
+              clv_diag: tr.clv_diag };
           }),
           ratings_state: ov.ratings_state,
           heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576),

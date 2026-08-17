@@ -1038,11 +1038,11 @@
   // ataque/defensa por mapa y Dota 2 en una duración de cola larga que ningún otro tiene. La sección se
   // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
   var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
-  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit'];
+  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer'];
   // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
   // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
   // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
-  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflmodel', 'nflperf'];
+  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflplayer', 'nflmodel', 'nflperf'];
   var NAV_NFL = [
     ['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'],
     ['nflteams', 'shield', 'nav_teams'], ['nflplayers', 'user', 'sr_players'],
@@ -1092,10 +1092,11 @@
     if (v === 'bbteam' || v === 'bbplayer') return 'bbteams';
     if (BB_VIEWS.indexOf(v) >= 0) return v;   // si no, 'bbgames' caía en el default y ningún ítem quedaba activo
     if (v === 'esmatch') return 'esboard';
-    if (v === 'esteam') return 'esteams';
+    if (v === 'esteam' || v === 'esplayer') return 'esteams';
     if (ES_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'nflgame') return 'nflgames';
     if (v === 'nflteam') return 'nflteams';
+    if (v === 'nflplayer') return 'nflplayers';
     if (NFL_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
@@ -1298,7 +1299,7 @@
               return '<div class="gx-sr-i" data-sr-nflteam="' + esc(tt.abbr) + '"><span class="fl">🏈</span><b>' + esc(tt.name) + '</b><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(tt.abbr) + '</span></div>';
             }).join('');
             if (j && (j.players || []).length) h += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + j.players.map(function (pp) {
-              return '<div class="gx-sr-i" data-sr-nflplayer="' + esc(pp.name) + '"><span class="fl">👤</span><b>' + esc(pp.name) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc([pp.pos, pp.team].filter(Boolean).join(' · ')) + '</span></div>';
+              return '<div class="gx-sr-i" data-sr-nflplayer="' + esc(pp.id) + '"><span class="fl">👤</span><b>' + esc(pp.name) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc([pp.pos, pp.team].filter(Boolean).join(' · ')) + '</span></div>';
             }).join('');
             if (j && (j.games || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_matches')) + '</div>' + j.games.map(function (gg) {
               return '<div class="gx-sr-i" data-sr-nflgame="' + esc(gg.id) + '"><b>' + esc(gg.away) + '</b><span class="gx-dim" style="margin:0 6px">@</span><b>' + esc(gg.home) + '</b>' +
@@ -1323,7 +1324,7 @@
               return '<div class="gx-sr-i" data-sr-esteam="' + esc(tt.id) + '"><span class="fl">🎮</span><b>' + esc(tt.name) + '</b><span class="gx-spacer"></span>' + (tt.elo != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px">Elo ' + Math.round(tt.elo) + '</span>' : '') + '</div>';
             }).join('');
             if (j && (j.players || []).length) h += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + j.players.map(function (pp) {
-              return '<div class="gx-sr-i" data-sr-esteam="' + esc(pp.team || '') + '"><span class="fl">👤</span><b>' + esc(pp.nick) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(pp.team_name || '') + '</span>' +
+              return '<div class="gx-sr-i" data-sr-esplayer="' + esc(pp.id) + '"><span class="fl">👤</span><b>' + esc(pp.nick) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(pp.team_name || '') + '</span>' +
                 '<span class="gx-spacer"></span>' + (pp.rating_gp != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px">GP ' + pp.rating_gp.toFixed(2) + '</span>' : '') + '</div>';
             }).join('');
             if (j && (j.events || []).length) h += '<div class="gx-sr-h">' + esc(t('es_nav_board')) + '</div>' + j.events.map(function (ev2) {
@@ -1427,7 +1428,8 @@
       var bg = e.target.closest('[data-sr-bbgame]'); if (bg) { inp.value = ''; hide(); var b3 = bg.getAttribute('data-sr-bbgame').split('|'); setHash('bbgame/' + b3[0] + '-' + b3[1]); return; }
       var nt = e.target.closest('[data-sr-nflteam]'); if (nt) { inp.value = ''; hide(); setHash('nflteam/' + nt.getAttribute('data-sr-nflteam')); return; }
       var ng = e.target.closest('[data-sr-nflgame]'); if (ng) { inp.value = ''; hide(); setHash('nflgame/' + encodeURIComponent(ng.getAttribute('data-sr-nflgame'))); return; }
-      var np = e.target.closest('[data-sr-nflplayer]'); if (np) { inp.value = ''; hide(); S.nfl.pQ = np.getAttribute('data-sr-nflplayer'); S.nfl.pPos = 'all'; setHash('nflplayers'); return; }
+      var np = e.target.closest('[data-sr-nflplayer]'); if (np) { inp.value = ''; hide(); setHash('nflplayer/' + encodeURIComponent(np.getAttribute('data-sr-nflplayer'))); return; }
+      var ep3 = e.target.closest('[data-sr-esplayer]'); if (ep3) { inp.value = ''; hide(); setHash('esplayer/' + esGame() + '/' + encodeURIComponent(ep3.getAttribute('data-sr-esplayer'))); return; }
       var et2 = e.target.closest('[data-sr-esteam]'); if (et2) { inp.value = ''; hide(); var eid = et2.getAttribute('data-sr-esteam'); if (eid) setHash('esteam/' + esGame() + '/' + encodeURIComponent(eid)); return; }
       var em2 = e.target.closest('[data-sr-esmatch]'); if (em2) { inp.value = ''; hide(); setHash('esmatch/' + esGame() + '/' + encodeURIComponent(em2.getAttribute('data-sr-esmatch'))); return; }
     });
@@ -4045,6 +4047,10 @@
     // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
     var nfg = h.match(/^nflgame\/(.+)$/i);
     if (nfg) { if (!(S.view === 'nflgame' && S.nfl.gameId === decodeURIComponent(nfg[1]))) { S.nfl.gameId = decodeURIComponent(nfg[1]); showView('nflgame'); } return; }
+    var nfp = h.match(/^nflplayer\/(.+)$/i);
+    if (nfp) { if (!(S.view === 'nflplayer' && S.nfl.playerId === decodeURIComponent(nfp[1]))) { S.nfl.playerId = decodeURIComponent(nfp[1]); showView('nflplayer'); } return; }
+    var esp2 = h.match(/^esplayer\/(cs2|lol|valorant|dota2)\/(.+)$/i);
+    if (esp2) { S.es.game = esp2[1]; if (!(S.view === 'esplayer' && S.es.playerId === decodeURIComponent(esp2[2]))) { S.es.playerId = decodeURIComponent(esp2[2]); showView('esplayer'); } return; }
     var nft = h.match(/^nflteam\/([A-Za-z]{2,3})$/i);
     if (nft) { if (!(S.view === 'nflteam' && S.nfl.teamId === nft[1].toUpperCase())) { S.nfl.teamId = nft[1].toUpperCase(); showView('nflteam'); } return; }
     var nfv = h.match(/^(nflopps|nflgames|nflteams|nflplayers|nflmodel|nflperf)$/i);
@@ -8274,6 +8280,7 @@
     else if (v === 'esboard') renderESBoard();
     else if (v === 'esteams') renderESTeams();
     else if (v === 'esteam') renderESTeam();
+    else if (v === 'esplayer') renderESPlayer();
     else if (v === 'escircuit') renderESCircuit();
     else renderESOpps();
   }
@@ -8556,7 +8563,10 @@
   };
   function cs2MapArt(key, cls) {
     var d = CS2_MAP_ART[key] || CS2_MAP_ART.mirage;
-    return '<svg class="gx-cs-art' + (cls ? ' ' + cls : '') + '" viewBox="0 0 100 72" aria-hidden="true">' +
+    // cada mapa con su PALETA real (pedido de Alexis): el fondo y los sitios llevan el color del mapa —
+    // Mirage arena, Inferno fuego, Nuke acero, Ancient selva… La forma sigue siendo nuestro esquema propio.
+    return '<svg class="gx-cs-art m-' + esc(key || 'mirage') + (cls ? ' ' + cls : '') + '" viewBox="0 0 100 72" aria-hidden="true">' +
+      '<rect x="1" y="1" width="98" height="70" rx="7" class="mbg"/>' +
       '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">' + d + '</g></svg>';
   }
   var CS2_MAP_NAME = { mirage:'Mirage', inferno:'Inferno', nuke:'Nuke', ancient:'Ancient', dust2:'Dust II',
@@ -9511,7 +9521,7 @@
             ? '<div class="gx-esp-rat"><span>Rating GP</span><div class="gx-esp-ratb"><em></em><i style="width:' + rgW.toFixed(0) + '%"></i></div><b class="gx-mono ' + (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') + '">' + rg.toFixed(2) + '</b></div>' +
               '<div class="gx-esp-stats"><span>ADR <b>' + (p.adr != null ? p.adr.toFixed(0) : '—') + '</b></span><span>KAST <b>' + (p.kast != null ? Math.round(100 * p.kast) + '%' : '—') + '</b></span><span>KPR <b>' + (p.kpr != null ? p.kpr.toFixed(2) : '—') + '</b></span><span class="gx-dim">' + (p.maps_n || 0) + ' mapas</span></div>'
             : '<div class="gx-esp-rat"><span class="gx-dim">sin muestra propia suficiente en la ventana</span></div>';
-          return '<div class="gx-panel gx-esp-card"' + (p.team ? ' data-esteam="' + esc(p.team) + '"' : '') + '>' +
+          return '<div class="gx-panel gx-esp-card" data-esplayer="' + esc(p.id) + '">' +
             '<div class="gx-esp-top">' + esAvatar(p) +
               '<div class="gx-esp-id"><b>' + esc(p.nick) + '</b><span>' + esc(p.name || '') + (p.age != null ? (p.name ? ' · ' : '') + p.age + ' años' : '') + '</span></div>' +
               '<span class="gx-spacer"></span>' + (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') + '</div>' +
@@ -9578,7 +9588,7 @@
         var r = p.rating_gp != null
           ? '<em class="gx-mono ' + (p.rating_gp >= 1.05 ? 'gx-up' : p.rating_gp < 0.95 ? 'gx-down' : '') + '">' + p.rating_gp.toFixed(2) + ' <i>GP</i></em>'
           : (p.rating6m != null ? '<em class="gx-mono">' + p.rating6m.toFixed(2) + ' <i>6m bo3</i></em>' : '<em class="gx-dim">—</em>');
-        return '<div class="gx-est-player">' + esAvatar(p, 'big') +
+        return '<div class="gx-est-player" data-esplayer="' + esc(p.id) + '" style="cursor:pointer">' + esAvatar(p, 'big') +
           '<b>' + esc(p.nick) + '</b>' +
           '<span class="gx-dim">' + (p.role ? esc(String(p.role).toUpperCase()) : '') + (p.age != null ? (p.role ? ' · ' : '') + p.age + 'a' : '') + '</span>' + r +
           (p.best_map ? '<span class="gx-esp-best">' + esc(cs2Name(p.best_map.map)) + ' · ADR ' + p.best_map.adr.toFixed(0) + '</span>' : '') + '</div>';
@@ -9708,7 +9718,16 @@
   };
   var nflErr = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo cargar.</b></div></div>';
   var nflPct = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };
-  var nflSpread = function (x) { return x == null ? '—' : (x > 0 ? '-' : '+') + Math.abs(x).toFixed(1); }; // línea del local: margen positivo = local favorito = línea negativa en formato casa
+  // línea del local: margen positivo = local favorito = línea negativa en formato casa. |x|<0.05 = PK
+  // (pick'em, el término real de la NFL) — antes salía "-0.0", que es un error de imprenta, no un número.
+  var nflSpread = function (x) { if (x == null) return '—'; if (Math.abs(x) < 0.05) return 'PK'; return (x > 0 ? '-' : '+') + Math.abs(x).toFixed(1); };
+  // colores primarios reales de las 32 franquicias — las zonas de anotación y las barras van con ellos
+  var NFL_COLORS = { ARI: '#97233F', ATL: '#A71930', BAL: '#241773', BUF: '#00338D', CAR: '#0085CA', CHI: '#C83803',
+    CIN: '#FB4F14', CLE: '#FF3C00', DAL: '#003594', DEN: '#FB4F14', DET: '#0076B6', GB: '#203731', HOU: '#A71930',
+    IND: '#002C5F', JAX: '#006778', KC: '#E31837', LA: '#003594', LAC: '#0080C6', LV: '#A5ACAF', MIA: '#008E97',
+    MIN: '#4F2683', NE: '#002244', NO: '#D3BC8D', NYG: '#0B2265', NYJ: '#125740', PHI: '#004C54', PIT: '#FFB612',
+    SEA: '#69BE28', SF: '#AA0000', TB: '#D50A0A', TEN: '#4B92DB', WAS: '#5A1414' };
+  var nflColor = function (abbr) { return NFL_COLORS[abbr] || '#1FE3A4'; };
   function nflBack() { return '<div class="gx-back" data-nflback="1">' + ic('chevron-left') + '<span>' + esc(t('nfl_nav_games')) + '</span></div>'; }
   // la nota de régimen/sombra que acompaña TODO el deporte — el blueprint la exige visible, no en un footer
   function nflShadowNote(txt) {
@@ -9722,6 +9741,7 @@
     else if (v === 'nflteams') renderNflTeams();
     else if (v === 'nflteam') renderNflTeam();
     else if (v === 'nflplayers') renderNflPlayers();
+    else if (v === 'nflplayer') renderNflPlayer();
     else if (v === 'nflmodel') renderNflModel();
     else if (v === 'nflperf') renderNflPerf();
     else if (v === 'nflopps') renderNflOpps();
@@ -9853,7 +9873,7 @@
       else if (p.rush) line = stat('CAR/p', p.rush.car) + stat('YDS/p', p.rush.yds) + stat('YPC', p.rush.ypc) + stat('TD', p.rush.td);
       else if (p.recv) line = stat('TGT/p', p.recv.tgt) + stat('REC/p', p.recv.rec) + stat('YDS/p', p.recv.yds) + stat('TD', p.recv.td);
       else line = '<span class="gx-dim">rol de bajo volumen</span>';
-      return '<div class="gx-panel gx-esp-card" data-nflteam="' + esc(p.team) + '">' +
+      return '<div class="gx-panel gx-esp-card" data-nflplayer="' + esc(p.id) + '">' +
         '<div class="gx-esp-top">' + esAvatar({ nick: p.name, photo: p.headshot }) +
           '<div class="gx-esp-id"><b>' + esc(p.name) + '</b><span>' + esc(p.pos) + ' · temporada ' + p.season + ' · ' + p.g + ' partidos</span></div>' +
           '<span class="gx-spacer"></span><span class="gx-esp-role">' + esc(p.pos) + '</span></div>' +
@@ -9892,34 +9912,61 @@
   // El eje horizontal ES el margen del partido: el centro es el empate, cada yarda un punto. Sobre el campo
   // vive la distribución real del simulador, los banderines de GP y del mercado, y una LÍNEA MÓVIL que el
   // usuario arrastra para ver la probabilidad de cubrir CUALQUIER línea — toda la CDF, no un número suelto.
+  // LA CANCHA v3 (pedido de Alexis: "que SEA una cancha"): césped con franjas de 5 yardas, líneas y
+  // números de yarda de verdad, hash marks, zonas de anotación con el COLOR REAL de cada franquicia y la
+  // distribución del simulador integrada como columnas translúcidas sobre el césped. Los banderines viven
+  // en carriles separados (GP arriba-izquierda de su línea, MERCADO arriba, TU LÍNEA abajo) — sin choques.
   function nflFieldSVG(d) {
     var m = d.model; if (!m) return '';
     var hist = m.margin_hist || {};
-    var X = function (mg) { return 60 + ((Math.max(-25, Math.min(25, mg)) + 25) / 50) * 1000; };
+    var X = function (mg) { return 100 + ((Math.max(-25, Math.min(25, mg)) + 25) / 50) * 920; };
     var maxP = 0; Object.keys(hist).forEach(function (k) { if (hist[k] > maxP) maxP = hist[k]; });
-    var bars = Object.keys(hist).map(Number).filter(function (k) { return k >= -25 && k <= 25; }).map(function (k) {
-      var h = 210 * (hist[k] / maxP);
-      var key = Math.abs(k) === 3 || Math.abs(k) === 7;
-      return '<rect x="' + (X(k) - 8).toFixed(1) + '" y="' + (285 - h).toFixed(1) + '" width="16" height="' + h.toFixed(1) + '" rx="2.5" class="bar' + (key ? ' key' : '') + (k > 0 ? ' home' : k < 0 ? ' away' : '') + '"><title>' + (k > 0 ? d.home.abbr + ' por ' + k : k < 0 ? d.away.abbr + ' por ' + (-k) : 'empate') + ': ' + (100 * hist[k]).toFixed(1) + '%</title></rect>';
-    }).join('');
-    var yards = '';
+    var hc = nflColor(d.home.abbr), ac = nflColor(d.away.abbr);
+    // franjas de césped alternadas cada 5 "yardas" del eje
+    var stripes = '';
+    for (var s5 = 0; s5 < 10; s5++) {
+      stripes += '<rect x="' + (100 + s5 * 92) + '" y="46" width="92" height="288" class="turf' + (s5 % 2 ? ' t2' : '') + '"/>';
+    }
+    // líneas de yarda + números estilo cancha (a ambos lados, tipografía de campo)
+    var yards = '', nums = '';
     for (var yl = -25; yl <= 25; yl += 5) {
       var xx = X(yl);
-      yards += '<line x1="' + xx + '" y1="40" x2="' + xx + '" y2="300" class="' + (yl === 0 ? 'mid' : 'yd') + '"/>';
-      if (yl % 10 === 0 && yl !== 0) yards += '<text x="' + xx + '" y="330" class="ynum">' + Math.abs(yl) + '</text>';
+      yards += '<line x1="' + xx + '" y1="46" x2="' + xx + '" y2="334" class="' + (yl === 0 ? 'mid' : 'yd') + '"/>';
+      if (yl % 10 === 0 && yl !== 0) {
+        nums += '<text x="' + (xx - 6) + '" y="80" class="fnum">' + (Math.abs(yl) < 10 ? '0' : String(Math.abs(yl)).charAt(0)) + '</text><text x="' + (xx + 6) + '" y="80" class="fnum">0</text>' +
+          '<text x="' + (xx - 6) + '" y="326" class="fnum">' + (Math.abs(yl) < 10 ? '0' : String(Math.abs(yl)).charAt(0)) + '</text><text x="' + (xx + 6) + '" y="326" class="fnum">0</text>';
+      }
     }
+    // hash marks: dos carriles interiores, un tick por yarda — lo que hace que el ojo diga "cancha"
+    var hashes = '';
+    for (var hy = -25; hy <= 25; hy++) {
+      var hx = X(hy);
+      hashes += '<line x1="' + hx + '" y1="128" x2="' + hx + '" y2="136" class="hash"/><line x1="' + hx + '" y1="244" x2="' + hx + '" y2="252" class="hash"/>';
+    }
+    // la distribución: columnas translúcidas del color de cada franquicia, números clave con aro dorado
+    var bars = Object.keys(hist).map(Number).filter(function (k) { return k >= -25 && k <= 25; }).map(function (k) {
+      var h = 190 * (hist[k] / maxP);
+      var key = Math.abs(k) === 3 || Math.abs(k) === 7;
+      var fill = k > 0 ? hc : k < 0 ? ac : '#9DB0B5';
+      return '<rect x="' + (X(k) - 7).toFixed(1) + '" y="' + (322 - h).toFixed(1) + '" width="14" height="' + h.toFixed(1) + '" rx="2" fill="' + fill + '" class="bar' + (key ? ' key' : '') + '"><title>' + (k > 0 ? d.home.abbr + ' por ' + k : k < 0 ? d.away.abbr + ' por ' + (-k) : 'empate') + ': ' + (100 * hist[k]).toFixed(1) + '%</title></rect>';
+    }).join('');
     var gpX = X(m.mu_margin);
     var cons = d.market && d.market.consensus;
     var mkX = cons && cons.spread_line != null ? X(cons.spread_line) : null;
-    return '<div class="gx-nfl-fieldwrap"><svg viewBox="0 0 1120 360" class="gx-nfl-field" preserveAspectRatio="xMidYMid meet">' +
-      '<rect x="0" y="40" width="60" height="260" rx="6" class="ez away"/><rect x="1060" y="40" width="60" height="260" rx="6" class="ez home"/>' +
-      '<rect x="60" y="40" width="1000" height="260" class="turf"/>' +
-      yards + bars +
-      '<text x="30" y="175" class="ezlab" transform="rotate(-90 30 175)">' + esc(d.away.abbr) + '</text>' +
-      '<text x="1090" y="175" class="ezlab" transform="rotate(90 1090 175)">' + esc(d.home.abbr) + '</text>' +
-      (mkX != null ? '<g class="flag mkt"><line x1="' + mkX + '" y1="18" x2="' + mkX + '" y2="300"/><text x="' + mkX + '" y="12">MERCADO ' + nflSpread(cons.spread_line) + '</text></g>' : '') +
-      '<g class="flag gp"><line x1="' + gpX + '" y1="30" x2="' + gpX + '" y2="300"/><text x="' + gpX + '" y="27">GP ' + nflSpread(m.mu_margin) + '</text></g>' +
-      '<g class="flag you" id="gx-nfl-youflag" style="display:none"><line x1="560" y1="18" x2="560" y2="300"/><text x="560" y="12"></text></g>' +
+    // zonas de anotación con color real + diagonal sutil + nombre en vertical
+    var ez = function (x0, abbr, col) {
+      return '<g><rect x="' + x0 + '" y="46" width="88" height="288" rx="8" fill="' + col + '" class="ezfill"/>' +
+        '<rect x="' + x0 + '" y="46" width="88" height="288" rx="8" class="ezhatch"/>' +
+        '<text x="' + (x0 + 44) + '" y="190" class="ezlab" transform="rotate(' + (x0 < 500 ? -90 : 90) + ' ' + (x0 + 44) + ' 190)">' + esc(abbr) + '</text></g>';
+    };
+    return '<div class="gx-nfl-fieldwrap"><svg viewBox="0 0 1120 384" class="gx-nfl-field" preserveAspectRatio="xMidYMid meet">' +
+      '<rect x="8" y="46" width="1104" height="288" rx="10" class="fieldbg"/>' +
+      stripes + ez(10, d.away.abbr, ac) + ez(1022, d.home.abbr, hc) + yards + hashes + nums + bars +
+      '<line x1="100" y1="46" x2="100" y2="334" class="goal"/><line x1="1020" y1="46" x2="1020" y2="334" class="goal"/>' +
+      (mkX != null ? '<g class="flag mkt"><line x1="' + mkX + '" y1="34" x2="' + mkX + '" y2="334"/><text x="' + mkX + '" y="26">MERCADO ' + nflSpread(cons.spread_line) + '</text></g>' : '') +
+      '<g class="flag gp"><line x1="' + gpX + '" y1="46" x2="' + gpX + '" y2="334"/><text x="' + gpX + '" y="42">GP ' + nflSpread(m.mu_margin) + '</text></g>' +
+      '<g class="flag you" id="gx-nfl-youflag" style="display:none"><line x1="560" y1="46" x2="560" y2="352"/><text x="560" y="366"></text></g>' +
+      '<text x="560" y="380" class="axislab">← gana ' + esc(d.away.abbr) + ' · el eje es el margen final · gana ' + esc(d.home.abbr) + ' →</text>' +
     '</svg></div>';
   }
   function nflFieldBlock(d) {
@@ -9942,6 +9989,9 @@
       '<div class="gx-nfl-explorer">' +
         '<div class="gx-nfl-exprow"><span class="gx-label">Explorador de spread</span>' +
           '<input type="range" id="gx-nfl-spslider" min="0" max="' + (lad.length - 1) + '" value="' + defIdx + '" step="1">' +
+          '<div class="gx-nfl-jumps">' + [['PK', 0], ['-3', 3], ['-7', 7], ['+3', -3], ['+7', -7]].map(function (jj) {
+            return '<button class="gx-nfl-jump" data-nfljump="' + jj[1] + '">' + jj[0] + '</button>';
+          }).join('') + '</div>' +
           '<div class="gx-nfl-expout" id="gx-nfl-spout"></div></div>' +
         (tlad.length ? '<div class="gx-nfl-exprow"><span class="gx-label">Explorador de total</span>' +
           '<input type="range" id="gx-nfl-toslider" min="0" max="' + (tlad.length - 1) + '" value="' + tDefIdx + '" step="1">' +
@@ -9952,7 +10002,7 @@
   function nflBindField(d) {
     var m = d.model; if (!m) return;
     var lad = m.spread_ladder || [], tlad = m.total_ladder || [];
-    var X = function (mg) { return 60 + ((Math.max(-25, Math.min(25, mg)) + 25) / 50) * 1000; };
+    var X = function (mg) { return 100 + ((Math.max(-25, Math.min(25, mg)) + 25) / 50) * 920; };
     var sp = $('#gx-nfl-spslider'), spOut = $('#gx-nfl-spout');
     var flag = $('#gx-nfl-youflag');
     var updSp = function () {
@@ -9971,6 +10021,15 @@
       }
     };
     if (sp) { sp.addEventListener('input', updSp); updSp(); }
+    // saltos rápidos a las líneas que importan (PK y los números clave ±3/±7)
+    [].forEach.call(document.querySelectorAll('[data-nfljump]'), function (b) {
+      b.addEventListener('click', function () {
+        var target = +b.getAttribute('data-nfljump');
+        var bi = 0, bd = 1e9;
+        lad.forEach(function (r, i) { if (Math.abs(r.line - target) < bd) { bd = Math.abs(r.line - target); bi = i; } });
+        if (sp) { sp.value = bi; updSp(); }
+      });
+    });
     var to = $('#gx-nfl-toslider'), toOut = $('#gx-nfl-toout');
     var updTo = function () {
       if (!to || !tlad.length) return;
@@ -9999,7 +10058,7 @@
       if (!x || x._err) return '<div><b>' + esc(abbr) + '</b><span class="gx-dim" style="font-size:11.5px">cargando…</span></div>';
       var items = x.items || [];
       return '<div><b>' + esc(abbr) + '</b>' + (items.length ? '<div class="gx-est-form">' + items.slice(0, 6).map(function (i2) {
-        return '<div class="gx-est-fr"><span>' + esc(i2.player) + (i2.pos ? ' <em class="gx-dim">' + esc(i2.pos) + '</em>' : '') + '</span>' +
+        return '<div class="gx-est-fr" data-nflplayer="' + esc(i2.player) + '" style="cursor:pointer"><span>' + esc(i2.player) + (i2.pos ? ' <em class="gx-dim">' + esc(i2.pos) + '</em>' : '') + '</span>' +
           '<span class="gx-spacer"></span><em class="gx-nfl-injst">' + esc(i2.status || '—') + '</em></div>';
       }).join('') + '</div>' : '<span class="gx-dim" style="font-size:11.5px">sin reportes ahora</span>') + '</div>';
     };
@@ -10267,7 +10326,71 @@
     nflShell(t('nav_perf'), kpi + byFam + openB + doneB);
   }
 
+  // ---- FICHA DE JUGADOR NFL (v3): identidad, temporadas y la bitácora semana a semana --------------------
+  function renderNflPlayer() {
+    var id = S.nfl.playerId;
+    if (!id) { showView('nflplayers'); return; }
+    var d = nflGet('player_' + id, '/api/nfl/player?id=' + encodeURIComponent(id), 600000);
+    var back = '<div class="gx-back" data-nflplayersback="1">' + ic('chevron-left') + '<span>' + esc(t('sr_players')) + '</span></div>';
+    if (!d) { nflShell('Jugador', back + nflLoading()); return; }
+    if (d._err || !d.available) {
+      nflShell('Jugador', back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'No se pudo cargar.') + '</b></div></div>');
+      return;
+    }
+    var p = d.player;
+    var col = nflColor(p.team);
+    var hero = '<div class="gx-panel gx-est-hero" style="background:linear-gradient(180deg,' + col + '22,transparent 62%),var(--gx-panel)">' +
+      '<div class="gx-est-hero-main">' + esAvatar({ nick: p.name, photo: p.headshot }, 'big') +
+        '<div class="gx-est-hero-id"><b>' + esc(p.name) + '</b><div class="gx-est-hero-chips">' +
+          '<span class="gx-esp-role">' + esc(p.pos) + '</span>' +
+          '<span class="gx-est-rankchip" data-nflteam="' + esc(p.team) + '" style="cursor:pointer">' + esc(p.team_name) + '</span>' +
+        '</div></div><span class="gx-spacer"></span>' + cs2Crest({ name: p.team_name, logo: p.team_logo }, 'hero') + '</div></div>';
+    // por temporada: cada bloque de rol con sus números completos
+    var seasonRows = (d.seasons || []).map(function (s) {
+      var blocks = [];
+      if (s.pass) blocks.push('<div class="gx-nfl-statblk"><span class="gx-label">Pase · ' + s.season + '</span><div class="gx-es-kpis">' +
+        '<div><span>Yardas</span><b>' + s.pass.yds + '</b><i>' + s.pass.ypg + '/p</i></div>' +
+        '<div><span>TD / INT</span><b>' + s.pass.td + ' / ' + s.pass.int + '</b></div>' +
+        '<div><span>Completos</span><b>' + s.pass.cmp_pct + '%</b><i>' + s.pass.cmp + '/' + s.pass.att + '</i></div>' +
+        '<div><span>EPA/dropback</span><b>' + (s.pass.epa_db != null ? s.pass.epa_db : '—') + '</b></div>' +
+        '<div><span>Capturas</span><b>' + s.pass.sacks + '</b></div>' +
+        '<div><span>Partidos</span><b>' + s.g + '</b></div></div></div>');
+      if (s.rush) blocks.push('<div class="gx-nfl-statblk"><span class="gx-label">Carrera · ' + s.season + '</span><div class="gx-es-kpis">' +
+        '<div><span>Yardas</span><b>' + s.rush.yds + '</b><i>' + s.rush.ypg + '/p</i></div>' +
+        '<div><span>Acarreos</span><b>' + s.rush.car + '</b></div>' +
+        '<div><span>Por acarreo</span><b>' + s.rush.ypc + '</b></div>' +
+        '<div><span>TD</span><b>' + s.rush.td + '</b></div></div></div>');
+      if (s.recv) blocks.push('<div class="gx-nfl-statblk"><span class="gx-label">Recepción · ' + s.season + '</span><div class="gx-es-kpis">' +
+        '<div><span>Yardas</span><b>' + s.recv.yds + '</b><i>' + s.recv.ypg + '/p</i></div>' +
+        '<div><span>Rec / Targets</span><b>' + s.recv.rec + ' / ' + s.recv.tgt + '</b></div>' +
+        '<div><span>Atrapadas</span><b>' + s.recv.catch_pct + '%</b></div>' +
+        '<div><span>TD</span><b>' + s.recv.td + '</b></div></div></div>');
+      return blocks.join('');
+    }).join('');
+    // la bitácora: yardas por semana como columnas (el rol decide qué yardas se pintan)
+    var log = d.log || [];
+    var yOf = function (r) { return p.pos === 'QB' ? r.py : (p.group === 'RB' ? r.ry + r.ryd : r.ryd + r.ry); };
+    var maxY = 1; log.forEach(function (r) { if (yOf(r) > maxY) maxY = yOf(r); });
+    var logChart = log.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La temporada, semana a semana</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">' + (p.pos === 'QB' ? 'yardas de pase' : 'yardas totales') + ' por partido</span></span></div>' +
+      '<div class="gx-es-hist-b gx-nfl-logbars">' + log.map(function (r) {
+        var v = yOf(r);
+        return '<div class="gx-es-hb" title="' + r.s + ' S' + r.w + ' vs ' + esc(r.opp) + ': ' + v + ' yds"><i style="height:' + (100 * v / maxY).toFixed(1) + '%;background:' + (r.s % 2 ? col : 'rgba(31,227,164,.55)') + '"></i><span>' + (r.w === 1 ? "'" + String(r.s).slice(2) : '') + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-est-form" style="margin-top:12px">' + log.slice(-10).reverse().map(function (r) {
+        var det = p.pos === 'QB' ? (r.pc + '/' + r.pa + ' · ' + r.py + ' yds · ' + r.ptd + ' TD ' + r.pint + ' INT')
+          : (r.ca ? r.ca + ' car ' + r.ry + ' yds' : '') + (r.ca && r.tg ? ' · ' : '') + (r.tg ? r.rc + '/' + r.tg + ' rec ' + r.ryd + ' yds' : '');
+        return '<div class="gx-est-fr"><em class="gx-dim" style="flex:0 0 64px">' + r.s + ' S' + r.w + '</em><span>vs ' + esc(r.opp) + '</span>' +
+          '<span class="gx-spacer"></span><b class="gx-mono" style="font-size:11.5px">' + esc(det) + '</b></div>';
+      }).join('') + '</div></div>' : '';
+    nflShell(p.name, back + hero + '<div class="gx-nfl-statwrap">' + seasonRows + '</div>' + logChart +
+      '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
+  }
+
   function nflClicks(e) {
+    var pl = e.target.closest('[data-nflplayer]');
+    if (pl) { setHash('nflplayer/' + encodeURIComponent(pl.getAttribute('data-nflplayer'))); return; }
+    if (e.target.closest('[data-nflplayersback]')) { setHash('nflplayers'); return; }
     var ps = e.target.closest('[data-nflpos]');
     if (ps) { S.nfl.pPos = ps.getAttribute('data-nflpos'); renderNflPlayers(); return; }
     var g = e.target.closest('[data-nflgame]');
@@ -10290,7 +10413,60 @@
       '<div class="gx-nfl-readtxt">' + txt.split('\n\n').map(function (pp) { return '<p>' + esc(pp) + '</p>'; }).join('') + '</div></div>';
   }
 
+  // ---- FICHA DE JUGADOR CS2 (v3): el Rating GP con TODO su desglose -------------------------------------
+  function renderESPlayer() {
+    var g = esGame(), id = S.es.playerId;
+    if (!id) { showView('esteams'); return; }
+    var d = esGet('player_' + id, '/api/esports/player?game=' + g + '&id=' + encodeURIComponent(id), 600000);
+    var back = '<div class="gx-back" data-esteamsback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_teams')) + '</span></div>';
+    if (!d) { esShell('Jugador', back + esLoading()); return; }
+    if (d._err || !d.available) { esShell('Jugador', back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
+    var p = d.player, tt = d.totals;
+    var rg = d.rating_gp;
+    var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + esAvatar(p, 'big') +
+      '<div class="gx-est-hero-id"><b>' + esc(p.nick) + '</b><div class="gx-est-hero-chips">' +
+        (p.name ? '<span class="gx-dim" style="font-size:11.5px">' + esc(p.name) + '</span>' : '') +
+        (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') +
+        (p.team ? '<span class="gx-est-rankchip" data-esteam="' + esc(p.team) + '" style="cursor:pointer">' + esc(p.team_name || p.team) + '</span>' : '') +
+        (p.age != null ? '<span class="gx-dim" style="font-size:11px">' + p.age + ' años</span>' : '') +
+      '</div></div><span class="gx-spacer"></span>' +
+      '<div class="gx-esplayer-rg"><b class="' + (rg != null ? (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') : '') + '">' + (rg != null ? rg.toFixed(2) : '—') + '</b><span>Rating GP</span>' +
+        (d.provider_rating != null ? '<em>proveedor ' + (+d.provider_rating).toFixed(2) + ' <i>(0-10)</i></em>' : '') + '</div></div>' +
+      (tt ? '<div class="gx-est-hero-stats" style="grid-template-columns:repeat(6,1fr)">' +
+        '<div><b>' + tt.adr.toFixed(1) + '</b><span>ADR</span></div>' +
+        '<div><b>' + Math.round(100 * tt.kast) + '%</b><span>KAST</span></div>' +
+        '<div><b>' + tt.kpr.toFixed(2) + '</b><span>kills/ronda</span></div>' +
+        '<div><b>' + tt.dpr.toFixed(2) + '</b><span>muertes/ronda</span></div>' +
+        '<div><b>' + (tt.fk - tt.fd > 0 ? '+' : '') + (tt.fk - tt.fd) + '</b><span>duelos apertura</span></div>' +
+        '<div><b>' + tt.n + '</b><span>mapas · ' + tt.rounds + ' rondas</span></div>' +
+      '</div>' : '') +
+      ((p.winnings || tt) ? '<div class="gx-dim gx-es-note" style="margin-top:8px">' +
+        (tt ? Math.round(100 * (tt.hs_pct || 0)) + '% headshot · ' + tt.clutches + ' clutches · ' + tt.multi3plus + ' multi-kills 3+' : '') +
+        (p.winnings ? (tt ? ' · ' : '') + 'premios ' + esMoney(p.winnings) : '') +
+        (p.joined_at ? ' · en el equipo desde ' + esDateShort(p.joined_at) : '') + '</div>' : '') + '</div>';
+    var mapsB = (d.maps || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por mapa</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">ventana ' + ((d.meta || {}).window_days || 180) + ' días</span></span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Mapa</th><th class="r">Mapas</th><th class="r">Victorias</th><th class="r">ADR</th><th class="r">KAST</th><th class="r">K/R</th></tr></thead><tbody>' +
+      d.maps.map(function (mm) {
+        return '<tr><td><div class="gx-esr-team">' + cs2MapArt(mm.map, 'mini') + '<b>' + esc(cs2Name(mm.map)) + '</b></div></td>' +
+          '<td class="r gx-mono">' + mm.n + '</td><td class="r gx-mono">' + Math.round(100 * mm.wr) + '%</td>' +
+          '<td class="r gx-mono"><b>' + mm.adr.toFixed(1) + '</b></td><td class="r gx-mono">' + Math.round(100 * mm.kast) + '%</td>' +
+          '<td class="r gx-mono">' + mm.kpr.toFixed(2) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' : '';
+    var recB = (d.recent || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos mapas</span></div>' +
+      '<div class="gx-est-form">' + d.recent.map(function (r) {
+        return '<div class="gx-est-fr"><i class="gx-est-res ' + (r.win ? 'w' : 'l') + '">' + (r.win ? 'V' : 'D') + '</i>' +
+          cs2MapArt(r.map, 'mini') + '<span>' + esc(cs2Name(r.map)) + (r.vs ? ' <em class="gx-dim">vs ' + esc(r.vs) + '</em>' : '') + '</span>' +
+          '<span class="gx-spacer"></span><b class="gx-mono">' + r.k + '-' + r.d + '</b>' +
+          '<b class="gx-mono" style="min-width:64px;text-align:right">' + (r.adr != null ? r.adr.toFixed(0) + ' ADR' : '') + '</b>' +
+          '<em class="gx-dim">' + esc(r.at || '') + '</em></div>';
+      }).join('') + '</div></div>' : '';
+    esShell(p.nick, back + hero + mapsB + recB + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
+  }
+
   function esClicks(e) {
+    var epl = e.target.closest('[data-esplayer]');
+    if (epl) { setHash('esplayer/' + esGame() + '/' + encodeURIComponent(epl.getAttribute('data-esplayer'))); return; }
     var seg = e.target.closest('[data-esgtab]');
     if (seg) { S.es.gTab = seg.getAttribute('data-esgtab'); renderESBoard(); return; }
     var ttab = e.target.closest('[data-estab]');

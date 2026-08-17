@@ -1425,6 +1425,36 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
       : 'rating de 6 meses del proveedor (bo3), no de GP: viaja etiquetado hasta que exista estadística propia por mapa.', at: data.at };
 }
 
+// ── FICHA DE JUGADOR (17-ago v3): identidad + Rating GP + desglose por mapa + bitácora ──────────────────
+function playerProfile(game, id) {
+  const CD = cdOf(game); if (!CD) return noCatalog(game);
+  const data = CD.load();
+  const p = data.players[id] || null;
+  const st = data.playerStats[id] || null;
+  if (!p && !st) return { game, available: false, why: `no reconozco "${id}" entre los jugadores con ficha.` };
+  const team = p ? data.teams[p.team] : null;
+  const maps = st && st.maps ? Object.entries(st.maps).map(([k, m]) => ({ map: k, ...m }))
+    .sort((a, b) => (b.adr || 0) - (a.adr || 0)) : [];
+  return {
+    game, available: true,
+    player: {
+      id, nick: (st && st.nick) || (p && p.nick) || id, name: p ? p.name : null,
+      photo: p ? p.photo : null, role: p ? p.role : null, age: p ? ageOf(p.birthday) : null,
+      joined_at: p ? p.joined_at : null, winnings: p ? p.winnings : null,
+      team: p ? p.team : null, team_name: p ? p.team_name : null, team_logo: (team && team.logo) || null,
+    },
+    rating_gp: st ? st.rating_gp : null,
+    provider_rating: (st && st.provider_rating_avg != null) ? st.provider_rating_avg : (p ? p.rating6m : null),
+    totals: st ? { n: st.n, rounds: st.rounds, wr: st.wr, kpr: st.kpr, dpr: st.dpr, apr: st.apr, adr: st.adr,
+      kast: st.kast, open_pr: st.open_pr, fk: st.fk, fd: st.fd, clutches: st.clutches, multi3plus: st.multi3plus, hs_pct: st.hs_pct } : null,
+    maps, recent: (st && st.recent) || [],
+    meta: data.playerStatsMeta,
+    note: st ? 'Rating GP propio (media del circuito = 1.00, fórmula publicada en la ficha del motor); el del proveedor (0-10) viaja al lado. Todo sale del scoreboard real de la ventana.'
+      : 'sin muestra propia suficiente en la ventana: se enseña la identidad y el rating del proveedor, etiquetado.',
+    at: data.at,
+  };
+}
+
 function rankingBoard(game) {
   const CD = cdOf(game); if (!CD) return noCatalog(game);
   const data = CD.load();
@@ -1544,5 +1574,5 @@ module.exports = {
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne,
-  teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h,
+  teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h, playerProfile,
 };

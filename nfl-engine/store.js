@@ -620,6 +620,30 @@ function playersDirectory({ q = '', pos = 'all', limit = 80 } = {}) {
     at: M.data.at };
 }
 
+// ── 10b) FICHA DE JUGADOR (v3): identidad + temporadas + bitácora semanal ────────────────────────────────
+function playerProfile(id) {
+  const M = modelSnapshot();
+  if (!M) return { available: false };
+  const p = (M.data.players || {})[id];
+  if (!p) return { available: false, why: 'jugador fuera del directorio (solo hay ficha con volumen 2024-2025).' };
+  const seasons = Object.entries(p.seasons).map(([yr, s]) => ({
+    season: +yr, g: s.g,
+    pass: s.att ? { att: s.att, cmp: s.cmp, cmp_pct: +(100 * s.cmp / s.att).toFixed(1), yds: s.pyds, td: s.ptd, int: s.ints,
+      ypg: +(s.pyds / s.g).toFixed(1), epa_db: (s.att + s.sacks) ? +(s.pepa / (s.att + s.sacks)).toFixed(3) : null, sacks: s.sacks } : null,
+    rush: s.car ? { car: s.car, yds: s.ryds, td: s.rtd, ypc: +(s.ryds / s.car).toFixed(2), ypg: +(s.ryds / s.g).toFixed(1) } : null,
+    recv: s.tgt ? { tgt: s.tgt, rec: s.rec, yds: s.recyds, td: s.rectd, catch_pct: +(100 * s.rec / s.tgt).toFixed(1), ypg: +(s.recyds / s.g).toFixed(1) } : null,
+  })).sort((a, b) => b.season - a.season);
+  const log = (p.log || []).slice().sort((a, b) => (a.s - b.s) || (a.w - b.w));
+  return {
+    available: true,
+    player: { id: p.id, name: p.name, pos: p.pos, group: p.group, headshot: p.headshot,
+      team: D.CUR(p.team || ''), team_name: D.teamName(p.team || ''), team_logo: D.teamLogo(p.team || '') },
+    seasons, log,
+    note: 'nflverse, temporadas 2024-2025. El equipo es el ÚLTIMO visto — el roster 2026 se confirma en la Semana 1. Las distribuciones de props llegan con el motor de oportunidad (V1.2): esta ficha es historia medida, no proyección.',
+    at: M.data.at,
+  };
+}
+
 // ── 11) BUSCADOR (v2): equipos + partidos + jugadores, SOLO NFL ──────────────────────────────────────────
 function search(q) {
   const M = modelSnapshot();
@@ -681,5 +705,5 @@ async function injuriesFor(abbr) {
 module.exports = {
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, track,
   recordShadow, settleShadow, refreshOdds, modelSnapshot, weatherFor, DOCTRINE, DISK_DIR,
-  playersDirectory, search, injuriesFor,
+  playersDirectory, search, injuriesFor, playerProfile,
 };

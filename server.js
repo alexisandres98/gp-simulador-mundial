@@ -15366,6 +15366,11 @@ const server = http.createServer(async (req, res) => {
           if (!id) return json(res, 400, { error: 'falta el equipo', need: ['id'] });
           return json(res, 200, ES.teamProfile(gm, id));
         }
+        if (p === '/api/esports/player') {
+          const id = String(url.searchParams.get('id') || '').trim();
+          if (!id) return json(res, 400, { error: 'falta id' });
+          return json(res, 200, ES.playerProfile(gm, id));
+        }
         if (p === '/api/esports/players') {
           return json(res, 200, ES.playersDirectory(gm, { q: url.searchParams.get('q') || '',
             limit: Math.min(300, +(url.searchParams.get('limit') || 80)) }));
@@ -15449,6 +15454,17 @@ const server = http.createServer(async (req, res) => {
         }
         if (p === '/api/nfl/search') {
           return json(res, 200, NFL.search(String(url.searchParams.get('q') || '')));
+        }
+        if (p === '/api/nfl/player') {
+          const id = String(url.searchParams.get('id') || '').trim();
+          if (!id) return json(res, 400, { error: 'falta id' });
+          // se acepta también el NOMBRE (la disponibilidad de ESPN no trae nuestro id): se resuelve por buscador
+          let out = NFL.playerProfile(id);
+          if (!out.available) {
+            const hit = (NFL.search(id).players || [])[0];
+            if (hit) out = NFL.playerProfile(hit.id);
+          }
+          return json(res, 200, out);
         }
         if (p === '/api/nfl/read') {
           const id = String(url.searchParams.get('id') || '');

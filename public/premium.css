@@ -3131,3 +3131,47 @@ td .gx-calc-btn span { display: none; }
   .gx-nfl-expout{grid-column:1}
   .gx-nfl-field .ezlab{font-size:20px}
 }
+
+/* ═══ CANCHA v3 (17-ago): césped real, colores de franquicia, banderines por carril ═══ */
+.gx-nfl-field .fieldbg{fill:#0E1A12;stroke:var(--gx-line)}
+.gx-nfl-field .turf{fill:#12241733}
+.gx-nfl-field .turf.t2{fill:#1a332033}
+.gx-nfl-field .yd{stroke:rgba(255,255,255,.16);stroke-width:1.2}
+.gx-nfl-field .mid{stroke:rgba(255,255,255,.34);stroke-width:1.8}
+.gx-nfl-field .goal{stroke:rgba(255,255,255,.3);stroke-width:2.4}
+.gx-nfl-field .hash{stroke:rgba(255,255,255,.14);stroke-width:1.4}
+.gx-nfl-field .fnum{fill:rgba(255,255,255,.3);font-size:15px;font-weight:700;text-anchor:middle;font-family:var(--gx-mono);letter-spacing:.05em}
+.gx-nfl-field .ezfill{opacity:.5}
+.gx-nfl-field .ezhatch{fill:url(#gxhatch),none;fill:none;stroke:rgba(255,255,255,.14);stroke-width:1}
+.gx-nfl-field .ezlab{fill:rgba(255,255,255,.9);font-size:26px;font-weight:800;text-anchor:middle;letter-spacing:.28em}
+.gx-nfl-field .bar{opacity:.78;stroke:rgba(255,255,255,.28);stroke-width:.8}
+.gx-nfl-field .bar.key{stroke:#E8C46A;stroke-width:1.8;opacity:.92}
+.gx-nfl-field .flag text{paint-order:stroke;stroke:#07090c;stroke-width:4px}
+.gx-nfl-field .axislab{fill:rgba(255,255,255,.35);font-size:13px;text-anchor:middle;letter-spacing:.04em}
+.gx-nfl-jumps{grid-column:2;display:flex;gap:6px;margin-top:2px}
+.gx-nfl-jump{font-size:10.5px;font-weight:700;font-family:var(--gx-mono);color:var(--gx-text3);background:var(--gx-panel2);
+  border:1px solid var(--gx-line);border-radius:7px;padding:3px 10px;cursor:pointer}
+.gx-nfl-jump:hover{border-color:rgba(31,227,164,.5);color:#1FE3A4}
+.gx-nfl-statwrap{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.gx-nfl-statblk{border:1px solid var(--gx-line);border-radius:12px;padding:12px 14px;background:var(--gx-panel)}
+.gx-nfl-statblk>.gx-label{display:block;margin-bottom:8px}
+.gx-nfl-statblk .gx-es-kpis i{font-style:normal;font-size:10px;opacity:.55;display:block}
+.gx-nfl-logbars{height:120px}
+.gx-esplayer-rg{text-align:right;flex:none}
+.gx-esplayer-rg b{display:block;font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.gx-esplayer-rg span{font-size:9.5px;color:var(--gx-text4);text-transform:uppercase;letter-spacing:.06em}
+.gx-esplayer-rg em{display:block;font-style:normal;font-size:10.5px;color:var(--gx-text3);margin-top:3px}
+.gx-esplayer-rg em i{font-style:normal;opacity:.6}
+
+/* ═══ MAPAS CS2 CON SU PALETA (17-ago): fondo + sitios con el color real de cada mapa ═══ */
+.gx-cs-art .mbg{fill:rgba(255,255,255,.03);stroke:none}
+.gx-cs-art.m-mirage{color:#C9B896}.gx-cs-art.m-mirage .mbg{fill:#2A251B}.gx-cs-art.m-mirage .site{fill:rgba(232,196,106,.22);stroke:#E8C46A}.gx-cs-art.m-mirage .mid{stroke:#8f8468;fill:rgba(201,184,150,.08)}
+.gx-cs-art.m-inferno{color:#D9A08C}.gx-cs-art.m-inferno .mbg{fill:#2B1D17}.gx-cs-art.m-inferno .site{fill:rgba(232,122,90,.2);stroke:#E87A5A}.gx-cs-art.m-inferno .mid{stroke:#9a7160;fill:rgba(217,160,140,.08)}
+.gx-cs-art.m-nuke{color:#9DB8CC}.gx-cs-art.m-nuke .mbg{fill:#18222B}.gx-cs-art.m-nuke .site{fill:rgba(106,176,232,.2);stroke:#6AB0E8}.gx-cs-art.m-nuke .mid{stroke:#6d8296;fill:rgba(157,184,204,.08)}
+.gx-cs-art.m-ancient{color:#9CC9A4}.gx-cs-art.m-ancient .mbg{fill:#182b1e}.gx-cs-art.m-ancient .site{fill:rgba(90,232,122,.18);stroke:#5AE87A}.gx-cs-art.m-ancient .mid{stroke:#6d9678;fill:rgba(156,201,164,.08)}
+.gx-cs-art.m-dust2{color:#D9BE8C}.gx-cs-art.m-dust2 .mbg{fill:#2B2415}.gx-cs-art.m-dust2 .site{fill:rgba(232,180,90,.22);stroke:#E8B45A}.gx-cs-art.m-dust2 .mid{stroke:#9a8760;fill:rgba(217,190,140,.08)}
+.gx-cs-art.m-anubis{color:#8CC9C9}.gx-cs-art.m-anubis .mbg{fill:#152827}.gx-cs-art.m-anubis .site{fill:rgba(90,217,201,.2);stroke:#5AD9C9}.gx-cs-art.m-anubis .mid{stroke:#609691;fill:rgba(140,201,201,.08)}
+.gx-cs-art.m-train{color:#C9A48C}.gx-cs-art.m-train .mbg{fill:#28211B}.gx-cs-art.m-train .site{fill:rgba(201,139,90,.22);stroke:#C98B5A}.gx-cs-art.m-train .mid{stroke:#96775f;fill:rgba(201,164,140,.08)}
+.gx-cs-art.m-overpass{color:#AEC99C}.gx-cs-art.m-overpass .mbg{fill:#20261B}.gx-cs-art.m-overpass .site{fill:rgba(155,232,90,.18);stroke:#9BE85A}.gx-cs-art.m-overpass .mid{stroke:#7d9668;fill:rgba(174,201,156,.08)}
+.gx-cs-art.m-vertigo{color:#A9BCC9}.gx-cs-art.m-vertigo .mbg{fill:#1D2329}.gx-cs-art.m-vertigo .site{fill:rgba(160,184,200,.22);stroke:#A0B8C8}.gx-cs-art.m-vertigo .mid{stroke:#78909e;fill:rgba(169,188,201,.08)}
+.gx-cs-art.m-cache{color:#9CC9AE}.gx-cs-art.m-cache .mbg{fill:#1B2620}.gx-cs-art.m-cache .site{fill:rgba(122,232,160,.2);stroke:#7AE8A0}.gx-cs-art.m-cache .mid{stroke:#6d9682;fill:rgba(156,201,174,.08)}

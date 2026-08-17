@@ -198,6 +198,12 @@ function aggregate() {
       S2.car += num(r.carries) || 0; S2.ryds += num(r.rushing_yards) || 0; S2.rtd += num(r.rushing_tds) || 0; S2.repa += num(r.rushing_epa) || 0;
       S2.tgt += num(r.targets) || 0; S2.rec += num(r.receptions) || 0; S2.recyds += num(r.receiving_yards) || 0; S2.rectd += num(r.receiving_tds) || 0;
       S2.sacks += num(r.sacks_suffered) || 0;
+      // BITÁCORA SEMANAL (v3, páginas de jugador): la fila slim de cada semana — es lo que pinta el
+      // gráfico de la ficha y lo que permite ver la temporada partido a partido, como en fútbol.
+      (p.log = p.log || []).push({ s: +r.season, w: +r.week, t: r.season_type, team: r.team, opp: r.opponent_team,
+        pa: num(r.attempts) || 0, pc: num(r.completions) || 0, py: num(r.passing_yards) || 0, ptd: num(r.passing_tds) || 0, pint: num(r.passing_interceptions) || 0,
+        ca: num(r.carries) || 0, ry: num(r.rushing_yards) || 0, rtd: num(r.rushing_tds) || 0,
+        tg: num(r.targets) || 0, rc: num(r.receptions) || 0, ryd: num(r.receiving_yards) || 0, rctd: num(r.receiving_tds) || 0 });
     }
     log(`  jugadores ${y}: acumulados`);
   }

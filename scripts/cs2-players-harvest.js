@@ -117,7 +117,12 @@ function aggregate(store) {
     for (const r of g.rows) {
       if (!r.slug) continue;                          // sin identidad no hay atribución
       const p = P[r.slug] = P[r.slug] || { slug: r.slug, pid: r.pid, nick: r.nick, n: 0, rounds: 0,
-        k: 0, d: 0, a: 0, hs: 0, fk: 0, fd: 0, cl: 0, m3: 0, kast_w: 0, adr_w: 0, pr_w: 0, pr_n: 0, win: 0, maps: {} };
+        k: 0, d: 0, a: 0, hs: 0, fk: 0, fd: 0, cl: 0, m3: 0, kast_w: 0, adr_w: 0, pr_w: 0, pr_n: 0, win: 0, maps: {}, recent: [] };
+      // BITÁCORA (v3, ficha de jugador): los últimos mapas con rival, K-D, ADR y resultado
+      const enemy = (g.rows.find((x) => x.clan !== r.clan) || {}).clan || null;
+      p.recent.push({ at: (g.at || '').slice(0, 10), map: g.map, vs: enemy, k: r.k, d: r.d,
+        adr: r.adr, kast: r.kast, win: r.win });
+      if (p.recent.length > 12) p.recent.shift();
       p.nick = r.nick || p.nick;
       p.n++; p.rounds += rounds; p.win += r.win;
       p.k += r.k; p.d += r.d; p.a += r.a; p.hs += r.hs; p.fk += r.fk; p.fd += r.fd; p.cl += r.cl;
@@ -166,6 +171,7 @@ function aggregate(store) {
       hs_pct: p.k ? +(p.hs / p.k).toFixed(3) : null,
       provider_rating_avg: p.pr_n ? +(p.pr_w / p.pr_n).toFixed(3) : null,
       maps,
+      recent: (p.recent || []).slice().reverse(),
     };
   }
   wrAgg('player-map-stats.json', {

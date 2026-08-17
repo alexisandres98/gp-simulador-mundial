@@ -8577,7 +8577,7 @@
     var veto = rows.filter(function (r) { return r.status === 'VETO'; });
     var listed = rows.filter(function (r) { return r.status === 'LISTADA'; });
     var hero = '<div class="gx-es-hero"><div><b>Props de jugador</b>' +
-      '<span class="gx-dim">' + esc((d.book || 'libro blando') + ' · kills en mapas 1-2') + '</span></div>' +
+      '<span class="gx-dim">' + esc((d.book || 'libro blando') + ' · kills y headshots en mapas 1-2') + '</span></div>' +
       '<span class="gx-spacer"></span>' +
       '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>líneas</span></div>' +
       '<div class="gx-es-hero-n"><b>' + somb.length + '</b><span>en sombra</span></div></div>' +
@@ -8589,7 +8589,8 @@
       '<div><em>' + perf.n + '</em><span>liquidadas</span></div>' +
       '<div><em>' + (perf.hit != null ? (100 * perf.hit).toFixed(1) + '%' : '—') + '</em><span>acierto</span></div>' +
       '<div><em class="' + (perf.units > 0 ? 'gx-up' : perf.units < 0 ? 'gx-down' : '') + '">' + (perf.units > 0 ? '+' : '') + perf.units + 'u</em><span>unidades</span></div>' +
-      '<div><em>' + (perf.roi != null ? (perf.roi > 0 ? '+' : '') + (100 * perf.roi).toFixed(1) + '%' : '—') + '</em><span>ROI @precio</span></div></div>' +
+      '<div><em>' + (perf.roi != null ? (perf.roi > 0 ? '+' : '') + (100 * perf.roi).toFixed(1) + '%' : '—') + '</em><span>ROI @precio</span></div>' +
+      (perf.avg_clv != null ? '<div><em class="' + (perf.avg_clv > 0 ? 'gx-up' : 'gx-down') + '">' + (perf.avg_clv > 0 ? '+' : '') + (100 * perf.avg_clv).toFixed(1) + ' pp</em><span>CLV medio (' + perf.clv_n + ')</span></div>' : '') + '</div>' +
       '<div class="gx-dim gx-es-note">El listón de salida de la sombra es el de toda la casa: muestra fuera de muestra que aguante escrutinio, revisada antes de publicar nada.</div>') : '';
     function propRow(r) {
       var pr = r.proj || {}, b = r.best || {};
@@ -8640,7 +8641,7 @@
       }).join('') + '</tbody></table></div>') : '';
     var prov = d.provenance || {};
     var provP = esPanel('Cómo se calcula', '',
-      '<div class="gx-es-why-rows">' + ['lineas', 'proyeccion', 'sin_ajuste_rival', 'listones', 'doctrina'].map(function (k) {
+      '<div class="gx-es-why-rows">' + ['lineas', 'proyeccion', 'ajuste_rival', 'listones', 'doctrina'].map(function (k) {
         return prov[k] ? '<div class="gx-es-whyr"><b>' + esc(k.replace(/_/g, ' ')) + '</b><span>' + esc(prov[k]) + '</span></div>' : '';
       }).join('') + '</div>');
     esShell(t('es_nav_props'), hero + perfP + sombP + sinP + vetoP + listedP + settledP + provP + esDoctrine(null));

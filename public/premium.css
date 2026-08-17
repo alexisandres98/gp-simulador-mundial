@@ -3200,7 +3200,7 @@ td .gx-calc-btn span { display: none; }
 .gx-slip-actions { display: flex; gap: 7px; margin-top: 9px; }
 .gx-slip-disc { margin-top: 8px; color: var(--gx-text4); font-size: 9.5px; line-height: 1.35; }
 .gx-slip-addbtn.on { border-color: var(--gx-accent-line); color: var(--gx-accent); }
-.gx-es-props-perf { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.gx-es-props-perf { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .gx-es-props-perf > div { background: var(--gx-panel2); border: 1px solid var(--gx-line); border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 .gx-es-props-perf em { font-style: normal; font: 700 16px var(--gx-mono); color: var(--gx-text); }
 .gx-es-props-perf span { color: var(--gx-text3); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }

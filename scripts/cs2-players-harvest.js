@@ -120,7 +120,9 @@ function aggregate(store) {
         k: 0, d: 0, a: 0, hs: 0, fk: 0, fd: 0, cl: 0, m3: 0, kast_w: 0, adr_w: 0, pr_w: 0, pr_n: 0, win: 0, maps: {}, recent: [] };
       // BITÁCORA (v3, ficha de jugador): los últimos mapas con rival, K-D, ADR y resultado
       const enemy = (g.rows.find((x) => x.clan !== r.clan) || {}).clan || null;
-      p.recent.push({ at: (g.at || '').slice(0, 10), map: g.map, vs: enemy, k: r.k, d: r.d,
+      // `hs` entró el 17-ago para poder LIQUIDAR props de headshots desde el log propio; el crudo ya lo
+      // traía por mapa, así que la pasada diaria repuebla la bitácora entera con el campo.
+      p.recent.push({ at: (g.at || '').slice(0, 10), map: g.map, vs: enemy, k: r.k, d: r.d, hs: r.hs,
         adr: r.adr, kast: r.kast, win: r.win });
       if (p.recent.length > 12) p.recent.shift();
       p.nick = r.nick || p.nick;

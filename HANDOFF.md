@@ -16,7 +16,11 @@ replicaron sus dos ideas buenas con la disciplina de la casa:
   ejecutor en la sombra de la casa** (cards_under_v1 sigue intocable hasta el domingo 23). Barrido de
   anotación cada 2 h (`esPropsSweep`) + settle dentro de `cs2DailyJob`. Rutas
   `/api/esports/{props,propstrack}` (admin), vista **Props** en Esport. Al construirla había 385 líneas,
-  12 sobre el listón, 8 tesis anotadas. v1 declarado sin ajuste por rival (primer refinamiento pendiente).
+  12 sobre el listón, 8 tesis anotadas. v1 declarado sin ajuste por rival — y **v1.1 (misma tarde)** lo entregó: factor rival MEDIDO
+  (media de dpr del cinco rival vs poblacional, ≥3 medidos, recorte ±12 % por la trampa de filiales),
+  **headshots en mapas 1-2** como segunda stat (derivada de kills × proporción encogida; la bitácora
+  lleva `hs` fila a fila desde la pasada del 18-ago y con eso liquida) y **registro de CIERRE por tesis**
+  en cada barrido → CLV medio en el rendimiento (la métrica que decide antes que el acierto).
 - **Boleto GP** (todas las pick cards, los 4+ deportes): botón "Boleto" junto a la calculadora → fab
   flotante con panel: piernas, cuota combinada, prob GP combinada (solo con partidas distintas: piernas
   correlacionadas no multiplican y se avisa), EV, stake sugerido ¼-Kelly tope 2 %, copiar al portapapeles,

@@ -54,7 +54,7 @@ const MIN_RECENT_MAPS = 6;
 const MIN_ROUNDS = 500;
 const EDGE_MIN = 0.06;       // 6 pp sobre el listón del precio para entrar a la sombra
 const EDGE_CAP = 0.20;       // por encima, veto `ventaja_no_creible`
-const MODELED = new Set(['kills_on_maps_1_2']);
+const MODELED = new Set(['kills_on_maps_1_2', 'headshots_on_maps_1_2']);
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
 const phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
@@ -85,34 +85,74 @@ function ownBase() {
   for (const [tid, r] of Object.entries(data.rosters || {})) {
     for (const f of (r && r.five) || []) if (f && f.id) teamOf.set(f.id, tid);
   }
-  // media poblacional de kpr, ponderada por rondas — el ancla del encogimiento
-  let kprSum = 0, rSum = 0;
-  for (const p of Object.values(ps)) { if (p.kpr && p.rounds) { kprSum += p.kpr * p.rounds; rSum += p.rounds; } }
+  // medias poblacionales ponderadas por rondas — las anclas del encogimiento
+  let kprSum = 0, rSum = 0, dprSum = 0, dprW = 0, hsSum = 0, hsW = 0;
+  for (const p of Object.values(ps)) {
+    if (p.kpr && p.rounds) { kprSum += p.kpr * p.rounds; rSum += p.rounds; }
+    if (p.dpr && p.rounds) { dprSum += p.dpr * p.rounds; dprW += p.rounds; }
+    if (p.hs_pct != null && p.rounds) { hsSum += p.hs_pct * p.rounds; hsW += p.rounds; }
+  }
   const popKpr = rSum ? kprSum / rSum : 0.66;
+  const popDpr = dprW ? dprSum / dprW : 0.70;
+  const popHs = hsW ? hsSum / hsW : 0.45;
   // rondas medias RECIENTES del pool activo, medidas por la casa
   let mr = 0, mn = 0;
   for (const m of Object.values(data.maps || {})) {
     if (m && m.in_pool && m.recent_mean_rounds) { mr += m.recent_mean_rounds * (m.recent_n || 1); mn += (m.recent_n || 1); }
   }
   const expRounds = mn ? mr / mn : 21.4;
-  return { data, ps, byNick, teamOf, popKpr, expRounds };
+  return { data, ps, byNick, teamOf, popKpr, popDpr, popHs, expRounds };
+}
+
+// ---- factor rival, MEDIDO desde la base propia ----------------------------------------------------------
+// Las kills de un jugador salen de las muertes del rival: un cinco rival que muere más por ronda (dpr alto)
+// regala más kills. El factor es la media de dpr del cinco rival contra la media poblacional, con dos
+// frenos honestos: se exige el cinco casi entero medido (≥3 jugadores) y se recorta a ±12 % — el resolvedor
+// de equipos puede confundir filiales (MOUZ→MOUZ NXT, comprobado) y un factor recortado limita el daño de
+// una identidad equivocada.
+function rivalFactor(rivalName, base) {
+  try {
+    const CDm = require('./cs2-data');
+    const rid = rivalName ? CDm.resolveTeam(rivalName) : null;
+    if (!rid) return null;
+    const five = ((base.data.rosters[rid] || {}).five) || [];
+    const dprs = five.map((f) => (base.ps[f.id] || {}).dpr).filter((x) => Number.isFinite(x));
+    if (dprs.length < 3) return null;
+    const avg = dprs.reduce((a, b) => a + b, 0) / dprs.length;
+    return Math.max(0.88, Math.min(1.12, avg / base.popDpr));
+  } catch { return null; }
 }
 
 // ---- proyección de un jugador para "kills en mapas 1-2" -------------------------------------------------
-function projectKills12(p, base) {
+function projectKills12(p, base, factor) {
   if (!p) return null;
   if ((p.rounds || 0) < MIN_ROUNDS) return { veto: 'muestra_corta', why: `${p.rounds || 0} rondas en ventana (< ${MIN_ROUNDS})` };
   const recent = (p.recent || []).filter((r) => Number.isFinite(r.k));
   if (recent.length < MIN_RECENT_MAPS) return { veto: 'muestra_corta', why: `${recent.length} mapas recientes (< ${MIN_RECENT_MAPS})` };
   const kprHat = ((p.kpr || 0) * p.rounds + base.popKpr * SHRINK_ROUNDS) / (p.rounds + SHRINK_ROUNDS);
-  const mu = kprHat * base.expRounds * 2;
+  const mu = kprHat * base.expRounds * 2 * (factor || 1);
   const ks = recent.map((r) => r.k);
   const mean = ks.reduce((a, b) => a + b, 0) / ks.length;
   const sd1 = Math.sqrt(ks.reduce((a, b) => a + (b - mean) * (b - mean), 0) / Math.max(1, ks.length - 1));
   // suelo poissoniano ×1,15: los kills por mapa sobredispersan respecto a Poisson puro (rachas, cierres
   // 13-2, prórrogas), y un sigma optimista fabrica ventajas.
   const sigma = Math.max(sd1 * Math.SQRT2, Math.sqrt(mu) * 1.15, 4.0);
-  return { mu: +mu.toFixed(2), sigma: +sigma.toFixed(2), kpr_hat: +kprHat.toFixed(4), recent_maps: recent.length };
+  return { mu: +mu.toFixed(2), sigma: +sigma.toFixed(2), kpr_hat: +kprHat.toFixed(4), recent_maps: recent.length,
+    rival_factor: factor != null ? +factor.toFixed(3) : null };
+}
+
+// ---- headshots en mapas 1-2: derivada de la de kills ----------------------------------------------------
+// mu_hs = mu_kills × proporción de headshot encogida. La dispersión hereda la de kills escalada (+10 % por
+// la varianza extra de la proporción, aproximación declarada: la bitácora aún no trae hs fila a fila en
+// todos los jugadores; desde la pasada del 18-ago sí, y con eso se liquida).
+function projectHs12(p, base, factor) {
+  const k = projectKills12(p, base, factor);
+  if (!k || k.veto) return k;
+  const hsHat = (((p.hs_pct != null ? p.hs_pct : base.popHs) * p.rounds) + base.popHs * SHRINK_ROUNDS) / (p.rounds + SHRINK_ROUNDS);
+  const mu = k.mu * hsHat;
+  const sigma = Math.max(k.sigma * hsHat * 1.1, Math.sqrt(mu) * 1.15, 3.0);
+  return { mu: +mu.toFixed(2), sigma: +sigma.toFixed(2), hs_hat: +hsHat.toFixed(3), kpr_hat: k.kpr_hat,
+    recent_maps: k.recent_maps, rival_factor: k.rival_factor };
 }
 
 // ---- la pizarra completa --------------------------------------------------------------------------------
@@ -150,7 +190,10 @@ async function board({ force = false } = {}) {
         row.rival = mine != null ? parts[1 - mine] : null;
       }
     }
-    const pr = projectKills12(base.ps[slug], base);
+    const rf = rivalFactor(row.rival, base);
+    const pr = l.stat === 'headshots_on_maps_1_2'
+      ? projectHs12(base.ps[slug], base, rf)
+      : projectKills12(base.ps[slug], base, rf);
     if (pr && pr.veto) { row.status = 'VETO'; row.veto = pr.veto; row.why = pr.why; rows.push(row); continue; }
     row.proj = pr;
     const pOver = 1 - phi((l.line - pr.mu) / pr.sigma);
@@ -181,8 +224,8 @@ async function board({ force = false } = {}) {
     counts: rows.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a; }, {}),
     provenance: {
       lineas: 'Underdog (libro blando DFS), endpoint público, precio por pierna cuando lo publica.',
-      proyeccion: `kpr encogido (ancla poblacional ${base.popKpr.toFixed(3)}, K=${SHRINK_ROUNDS} rondas) × ${(base.expRounds * 2).toFixed(1)} rondas esperadas en 2 mapas (media reciente medida del pool propio). Dispersión: sd de sus últimos 12 mapas × √2 con suelo poissoniano ×1,15.`,
-      sin_ajuste_rival: 'la proyección v1 NO ajusta por rival; está declarado y es el primer refinamiento pendiente.',
+      proyeccion: `kpr encogido (ancla poblacional ${base.popKpr.toFixed(3)}, K=${SHRINK_ROUNDS} rondas) × ${(base.expRounds * 2).toFixed(1)} rondas esperadas en 2 mapas (media reciente medida del pool propio). Dispersión: sd de sus últimos 12 mapas × √2 con suelo poissoniano ×1,15. Headshots: la de kills × proporción de headshot encogida.`,
+      ajuste_rival: `medido desde la base propia: media de dpr del cinco rival contra la poblacional (${base.popDpr.toFixed(3)}), exigiendo ≥3 jugadores medidos y recortado a ±12 % porque el resolvedor puede confundir filiales.`,
       listones: `sombra desde ${EDGE_MIN * 100} pp sobre el listón del precio; veto por encima de ${EDGE_CAP * 100} pp.`,
       doctrina: 'familia EN SOMBRA: se anota y se liquida sola, no se publica como pick. Separada por completo del ejecutor en la sombra de la casa.',
     },
@@ -227,9 +270,39 @@ function recordShadow(bd) {
       };
       added++;
     }
-    if (added) { st.at = new Date().toISOString(); wr(st); }
+    const closes = updateCloses(bd, st);
+    if (added || closes) { st.at = new Date().toISOString(); wr(st); }
     return added;
   } catch { return 0; }
+}
+
+// El CIERRE de cada tesis activa, refrescado en cada barrido. Es la métrica de la casa: la ventaja de
+// verdad se mide contra la ÚLTIMA línea que el libro publicó antes del inicio (CLV), no contra el
+// resultado de una serie. Se guarda la línea del libro más cercana a la anotada, con su precio y su
+// listón; la última pasada antes del inicio queda como cierre.
+function updateCloses(bd, st) {
+  let changed = 0;
+  const now = Date.now();
+  for (const pk of Object.values(st.picks || {})) {
+    if (pk.status !== 'ACTIVE' || !pk.start_at || Date.parse(pk.start_at) < now) continue;
+    let bestRow = null, bestDiff = Infinity;
+    for (const r of bd.rows || []) {
+      if (r.game !== 'cs2' || r.slug !== pk.slug || r.stat !== pk.stat || !r.match) continue;
+      if (String(r.match.start_at || '').slice(0, 10) !== pk.day) continue;
+      const diff = Math.abs(r.line - pk.line);
+      if (diff < bestDiff) { bestDiff = diff; bestRow = r; }
+    }
+    const sv = bestRow && (bestRow.sides || []).find ? (bestRow.sides || []).find((s) => s.side === pk.side) : null;
+    if (!sv) continue;
+    pk.close_line = bestRow.line;
+    pk.close_price_dec = sv.price_dec || null;
+    pk.close_bar = sv.bar != null ? sv.bar : (sv.price_dec ? +(1 / sv.price_dec).toFixed(4) : null);
+    pk.close_p_gp = sv.p_gp != null ? sv.p_gp : null;
+    pk.close_edge = sv.edge != null ? sv.edge : null;
+    pk.close_at = new Date().toISOString();
+    changed++;
+  }
+  return changed;
 }
 
 // Liquidación desde la base PROPIA: los últimos 12 mapas de cada jugador traen (fecha, rival, kills) del
@@ -247,6 +320,7 @@ function settleShadow() {
     const started = Date.parse(pk.start_at || 0);
     if (!started || now - started < 6 * 3600e3) continue;   // la serie tiene que haber terminado
     const p = base.ps[pk.slug];
+    const field = pk.stat === 'headshots_on_maps_1_2' ? 'hs' : 'k';
     const rows = ((p && p.recent) || []).filter((r) => {
       if (!r || !Number.isFinite(r.k)) return false;
       const d = String(r.at || '');
@@ -254,9 +328,9 @@ function settleShadow() {
       if (!(dd <= 36 * 3600e3)) return false;               // mismo día del cruce, ±1 por husos
       return pk.rival ? norm(r.vs) === norm(pk.rival) || norm(r.vs).includes(norm(pk.rival)) || norm(pk.rival).includes(norm(r.vs)) : true;
     });
-    if (rows.length >= 2) {
-      const two = rows.slice(-2);                            // mapas 1-2 = últimas filas del grupo
-      const actual = two.reduce((a, r) => a + r.k, 0);
+    const two = rows.slice(-2);                              // mapas 1-2 = últimas filas del grupo
+    if (rows.length >= 2 && two.every((r) => Number.isFinite(r[field]))) {
+      const actual = two.reduce((a, r) => a + r[field], 0);
       const win = pk.side === 'over' ? actual > pk.line : actual < pk.line;
       pk.actual = actual; pk.maps_counted = rows.length;
       pk.settle_basis = 'scoreboard propio (últimos 12 mapas), mapas 1-2 = últimas 2 filas de la serie';
@@ -265,7 +339,8 @@ function settleShadow() {
       settled++;
     } else if (now - started > 7 * 86400e3) {
       // una semana sin scoreboard propio de esa serie: se anula en vez de dejarla eternamente activa
-      pk.status = 'VOID'; pk.void_why = rows.length === 1 ? 'solo 1 mapa en el log propio (¿bo1?)' : 'la serie no aparece en el log propio';
+      pk.status = 'VOID'; pk.void_why = rows.length >= 2 ? 'la bitácora no trae ' + (field === 'hs' ? 'headshots' : 'la stat') + ' para esa serie'
+        : rows.length === 1 ? 'solo 1 mapa en el log propio (¿bo1?)' : 'la serie no aparece en el log propio';
       pk.settled_at = new Date().toISOString();
       voided++;
     }
@@ -280,6 +355,11 @@ function perf(picks) {
   const priced = done.filter((p) => p.price_dec);
   let units = 0;
   for (const p of priced) units += p.status === 'WIN' ? p.price_dec - 1 : -1;
+  // CLV: nuestra P(GP) al anotar contra el LISTÓN del cierre (la última línea del libro antes del inicio,
+  // en la línea anotada o la más cercana). Positivo = el libro se movió hacia nosotros. Es la métrica que
+  // decide si la tesis tiene sustancia antes de que el acierto tenga muestra — la lección de combate.
+  const clvs = picks.filter((p) => p.status !== 'ACTIVE' && p.bar != null && p.close_bar != null && p.close_line === p.line)
+    .map((p) => p.close_bar - p.bar);
   return {
     n: done.length, wins, losses: done.length - wins,
     hit: done.length ? +(wins / done.length).toFixed(4) : null,
@@ -287,6 +367,8 @@ function perf(picks) {
     units: +units.toFixed(2),
     roi: priced.length ? +(units / priced.length).toFixed(4) : null,
     avg_edge: done.length ? +(done.reduce((a, p) => a + (p.edge || 0), 0) / done.length).toFixed(4) : null,
+    clv_n: clvs.length,
+    avg_clv: clvs.length ? +(clvs.reduce((a, b) => a + b, 0) / clvs.length).toFixed(4) : null,
   };
 }
 

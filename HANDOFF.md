@@ -17,8 +17,9 @@ Del docx "Product Feedback & Next-Level Review" de Alexis. Lo aplicado, en su or
 - **P1 · Estado del cinco** en la ficha de equipo: estabilidad medida en días (517 equipos la tienen),
   titulares incompletos declarados, y el aviso de cambio reciente ya existente.
 - **Pendiente del blueprint (no entró hoy, por diseño)**: round/economía/T-CT (necesita datos ronda a
-  ronda que bo3 no da), spatial intelligence, arquitectura visual menos vertical y verde escaso (rediseño
-  transversal — para sesión propia), roster timeline histórico (requiere fotos de plantilla acumuladas).
+  ronda que bo3 no da), spatial intelligence, arquitectura visual menos vertical: ENTREGADA en la pantalla más vertical (panel de partida CS2 →
+  lentes contextuales «La partida / El modelo / Contexto» con el gx-seg de la casa, héroe+oportunidades
+  siempre visibles, sticky); extenderla al resto de pantallas y el «verde escaso» siguen para sesión propia, roster timeline histórico (requiere fotos de plantilla acumuladas).
 
 ## 🎯 17-ago (tarde-2) — PROPS DE JUGADOR (familia nueva EN SOMBRA) + BOLETO GP
 

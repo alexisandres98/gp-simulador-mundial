@@ -3214,3 +3214,7 @@ td .gx-calc-btn span { display: none; }
 .gx-es-fpbar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gx-accent2), var(--gx-accent)); }
 .gx-es-fpr b { font-size: 12px; color: var(--gx-text); text-align: right; }
 .gx-es-fpd { grid-column: 2 / 4; font-size: 10px; margin-top: -3px; }
+
+/* ── Lentes contextuales del panel de partida CS2 (17-ago, blueprint de feedback) ──────────────────────── */
+.gx-es-lens { margin: 2px 0 12px; position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px); }
+.gx-es-lens button { flex: 1; }

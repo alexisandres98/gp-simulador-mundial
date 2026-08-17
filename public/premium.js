@@ -9040,10 +9040,26 @@
     // planos de los siete mapas, escalera de fuerza por mapa y el perfil de rondas del modelo CONTRA el
     // observado. Los otros tres juegos siguen con la vista genérica hasta que tengan su propia base.
     if (g === 'cs2') {
+      // LENTES CONTEXTUALES (17-ago, blueprint de feedback: "más profundidad no debe significar más
+      // scroll"). Antes esta pantalla apilaba 12+ paneles verticales. Ahora lo accionable queda SIEMPRE
+      // visible (héroe + oportunidades) y la profundidad vive detrás de tres lentes con el control
+      // segmentado de la casa: La partida (lectura + veto + escalera — el objeto insignia sigue delante),
+      // El modelo (simulado vs observado, incertidumbre, simulador, parámetros) y Contexto (equipos, h2h,
+      // base, procedencia). Misma información, misma gramática visual, un tercio del scroll.
       var csHead = cs2Hero(d);
-      blocks = [esReadBlock(g, ev.id), cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esH2H(d.h2h), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d), cs2Dataset(d)];
       var edgesC = esEdges(d);
-      esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + blocks.filter(Boolean).join('') + esProv(d));
+      var lens = S.es.lens || 'partida';
+      var LENSES = [
+        ['partida', 'La partida', [esReadBlock(g, ev.id), cs2Veto(d), cs2Ladder(d)]],
+        ['modelo', 'El modelo', [cs2Rounds(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d)]],
+        ['contexto', 'Contexto', [cs2Teams(d), esH2H(d.h2h), cs2Dataset(d), esProv(d)]],
+      ];
+      if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partida';
+      var lensBar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
+        return '<button data-eslens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+      }).join('') + '</div>';
+      var active = LENSES.filter(function (x) { return x[0] === lens; })[0];
+      esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + lensBar + active[2].filter(Boolean).join(''));
       return;
     }
     if (g === 'lol') blocks = [esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esWhat(m), esUnc(m), esSim(m, ev)];
@@ -10704,6 +10720,8 @@
   }
 
   function esClicks(e) {
+    var lensBtn = e.target.closest('[data-eslens]');
+    if (lensBtn) { S.es.lens = lensBtn.getAttribute('data-eslens'); renderESMatch(); return; }
     var epl = e.target.closest('[data-esplayer]');
     if (epl) { setHash('esplayer/' + esGame() + '/' + encodeURIComponent(epl.getAttribute('data-esplayer'))); return; }
     var seg = e.target.closest('[data-esgtab]');

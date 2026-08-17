@@ -85,6 +85,15 @@ async function harvest() {
     } catch (e) { log(`  stats_team_week_${y}: no disponible (${e.message})`); }
     await new Promise((r) => setTimeout(r, 300));
   }
+  // JUGADORES (17-ago, v2): las dos últimas temporadas bastan para el directorio — el que no jugó desde
+  // 2023 no está en ninguna plantilla 2026.
+  for (const y of SEASONS_STATS.filter((x) => x >= new Date().getUTCFullYear() - 2)) {
+    try {
+      const b = await dl(`https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_${y}.csv`, `stats_player_week_${y}.csv`);
+      log(`  stats_player_week_${y}: ${(b / 1024).toFixed(0)} KB`);
+    } catch (e) { log(`  stats_player_week_${y}: no disponible (${e.message})`); }
+    await new Promise((r) => setTimeout(r, 300));
+  }
 }
 
 function aggregate() {
@@ -168,6 +177,42 @@ function aggregate() {
     rows: tw,
   }));
   log(`  team-weeks.json: ${tw.length} filas`);
+
+  // ── JUGADORES: directorio con las dos últimas temporadas, por posición ────────────────────────────────
+  const players = {};
+  for (const y of SEASONS_STATS.filter((x) => x >= new Date().getUTCFullYear() - 2)) {
+    let rows;
+    try { rows = parseCsv(fs.readFileSync(path.join(RAW_DIR, `stats_player_week_${y}.csv`), 'utf8')); } catch { continue; }
+    for (const r of rows) {
+      if (r.season_type === 'PRE') continue;
+      const id = r.player_id; if (!id) continue;
+      const p = players[id] = players[id] || { id, name: r.player_display_name || r.player_name, pos: r.position,
+        group: r.position_group, headshot: r.headshot_url || null, team: r.team, seasons: {} };
+      p.name = r.player_display_name || p.name; p.pos = r.position || p.pos; p.team = r.team;   // el último visto manda
+      if (r.headshot_url) p.headshot = r.headshot_url;
+      const S2 = p.seasons[r.season] = p.seasons[r.season] || { g: 0, att: 0, cmp: 0, pyds: 0, ptd: 0, ints: 0, pepa: 0,
+        car: 0, ryds: 0, rtd: 0, repa: 0, tgt: 0, rec: 0, recyds: 0, rectd: 0, sacks: 0 };
+      S2.g++;
+      S2.att += num(r.attempts) || 0; S2.cmp += num(r.completions) || 0; S2.pyds += num(r.passing_yards) || 0;
+      S2.ptd += num(r.passing_tds) || 0; S2.ints += num(r.passing_interceptions) || 0; S2.pepa += num(r.passing_epa) || 0;
+      S2.car += num(r.carries) || 0; S2.ryds += num(r.rushing_yards) || 0; S2.rtd += num(r.rushing_tds) || 0; S2.repa += num(r.rushing_epa) || 0;
+      S2.tgt += num(r.targets) || 0; S2.rec += num(r.receptions) || 0; S2.recyds += num(r.receiving_yards) || 0; S2.rectd += num(r.receiving_tds) || 0;
+      S2.sacks += num(r.sacks_suffered) || 0;
+    }
+    log(`  jugadores ${y}: acumulados`);
+  }
+  // se versionan solo los que pesan: alguna temporada con volumen real (evita 4.000 filas de ruido)
+  const kept2 = {};
+  for (const [id, p] of Object.entries(players)) {
+    const vol = Object.values(p.seasons).some((s) => s.att >= 40 || s.car >= 25 || s.tgt >= 20);
+    if (vol) kept2[id] = p;
+  }
+  fs.writeFileSync(path.join(AGG_DIR, 'players.json'), JSON.stringify({
+    at: new Date().toISOString(), n: Object.keys(kept2).length,
+    note: 'directorio de jugadores con volumen real en las dos últimas temporadas (nflverse stats_player_week). Totales por temporada; la posición/equipo es la ÚLTIMA vista — el roster 2026 real se confirma con la Semana 1 (sin feed licenciado de roster, NFL-0069).',
+    players: kept2,
+  }));
+  log(`  players.json: ${Object.keys(kept2).length} jugadores con volumen`);
 
   // ── META ───────────────────────────────────────────────────────────────────────────────────────────────
   fs.writeFileSync(path.join(AGG_DIR, 'meta.json'), JSON.stringify({

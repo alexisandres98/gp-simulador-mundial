@@ -304,6 +304,26 @@ async function gameIntel(id) {
       margin_hist: model.sim.margin_hist, total_hist: model.sim.total_hist,
       key_mass: model.sim.key_mass, unc_pts: model.unc_pts, games_cur: model.games_cur,
       rating: model.rating, seed: model.sim.seed, model_version: model.model_version,
+      // ESCALERAS DE LÍNEAS ALTERNATIVAS (NFL-0464): toda la CDF al servicio de la UI interactiva — el
+      // usuario mueve la línea y ve la probabilidad real de cubrir/pasar, con su push. Paso 0.5.
+      spread_ladder: (() => {
+        const c = Math.round(model.muMargin * 2) / 2;
+        const out = [];
+        for (let l = c - 9; l <= c + 9; l += 0.5) {
+          const cv = model.sim.coverProb(l);
+          out.push({ line: +l.toFixed(1), p_home: +cv.p.toFixed(4), push: cv.push });
+        }
+        return out;
+      })(),
+      total_ladder: (() => {
+        const c = Math.round(model.muTotal * 2) / 2;
+        const out = [];
+        for (let l = c - 12; l <= c + 12; l += 0.5) {
+          const ov = model.sim.overProb(l);
+          out.push({ line: +l.toFixed(1), p_over: +ov.p.toFixed(4), push: ov.push });
+        }
+        return out;
+      })(),
     } : null,
     five,
     dna: { home: dna(H), away: dna(A), note: 'EPA/jugada contra la media de liga (positivo = mejor). Proceso, no resultado (NFL-0131).' },
@@ -562,7 +582,104 @@ function modelCard() {
   };
 }
 
+// ── 10) JUGADORES (v2): directorio por posición con las dos últimas temporadas ───────────────────────────
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+function playersDirectory({ q = '', pos = 'all', limit = 80 } = {}) {
+  const M = modelSnapshot();
+  if (!M) return { available: false };
+  const all = Object.values(M.data.players || {});
+  if (!all.length) return { available: false, why: 'el directorio de jugadores no está derivado (corre nfl-harvest).' };
+  const needle = norm(q);
+  const GROUPS = { qb: ['QB'], rb: ['RB', 'FB'], wr: ['WR'], te: ['TE'] };
+  const seasons = [...new Set(all.flatMap((p) => Object.keys(p.seasons)))].map(Number).sort((a, b) => b - a);
+  const last = seasons[0];
+  const rows = all
+    .filter((p) => pos === 'all' || (GROUPS[pos] || []).includes(p.pos))
+    .filter((p) => !needle || norm(p.name).indexOf(needle) >= 0 || norm(D.teamName(p.team)).indexOf(needle) >= 0 || norm(p.team).indexOf(needle) >= 0)
+    .map((p) => {
+      const s = p.seasons[last] || p.seasons[seasons[1]] || {};
+      const yr = p.seasons[last] ? last : seasons[1];
+      return {
+        id: p.id, name: p.name, pos: p.pos, team: D.CUR(p.team || ''), team_name: D.teamName(p.team || ''),
+        team_logo: D.teamLogo(p.team || ''), headshot: p.headshot,
+        season: yr, g: s.g || 0,
+        // por posición, lo que importa (por partido)
+        pass: s.att >= 40 ? { att: +(s.att / s.g).toFixed(1), yds: +(s.pyds / s.g).toFixed(1), td: s.ptd, int: s.ints,
+          cmp_pct: s.att ? +(100 * s.cmp / s.att).toFixed(1) : null, epa_db: (s.att + s.sacks) ? +(s.pepa / (s.att + s.sacks)).toFixed(3) : null } : null,
+        rush: s.car >= 25 ? { car: +(s.car / s.g).toFixed(1), yds: +(s.ryds / s.g).toFixed(1), td: s.rtd,
+          ypc: s.car ? +(s.ryds / s.car).toFixed(2) : null } : null,
+        recv: s.tgt >= 20 ? { tgt: +(s.tgt / s.g).toFixed(1), rec: +(s.rec / s.g).toFixed(1), yds: +(s.recyds / s.g).toFixed(1),
+          td: s.rectd, catch_pct: s.tgt ? +(100 * s.rec / s.tgt).toFixed(1) : null } : null,
+        vol: (s.att || 0) * 2 + (s.car || 0) + (s.tgt || 0),
+      };
+    })
+    .sort((a, b) => b.vol - a.vol)
+    .slice(0, Math.max(1, Math.min(200, limit)));
+  return { available: true, players: rows, total: all.length, season: last,
+    note: 'totales y por-partido de la última temporada jugada (nflverse). El equipo/posición es el último visto: el roster 2026 real se confirma con la Semana 1. Las distribuciones de props por jugador llegan con el motor de oportunidad (V1.2 del blueprint) — hasta entonces esto es un directorio, no un modelo.',
+    at: M.data.at };
+}
+
+// ── 11) BUSCADOR (v2): equipos + partidos + jugadores, SOLO NFL ──────────────────────────────────────────
+function search(q) {
+  const M = modelSnapshot();
+  if (!M) return { teams: [], games: [], players: [] };
+  const needle = norm(q);
+  if (needle.length < 2) return { teams: [], games: [], players: [] };
+  const teams = Object.keys(D.TEAMS).filter((a) => !['OAK', 'SD', 'STL'].includes(a))
+    .filter((a) => norm(D.teamName(a)).indexOf(needle) >= 0 || norm(a).indexOf(needle) >= 0)
+    .slice(0, 5).map((a) => ({ abbr: D.CUR(a), name: D.teamName(a), logo: D.teamLogo(a) }));
+  const season = M.data.currentSeason;
+  const games = M.data.games
+    .filter((g) => g.season === season && (norm(D.teamName(g.home)).indexOf(needle) >= 0 || norm(D.teamName(g.away)).indexOf(needle) >= 0))
+    .slice(0, 6).map((g) => ({ id: g.id, week: g.week, date: g.date, home: D.CUR(g.home), away: D.CUR(g.away),
+      final: g.result != null ? { hs: g.home_score, as: g.away_score } : null }));
+  const players = Object.values(M.data.players || {})
+    .filter((p) => norm(p.name).indexOf(needle) >= 0)
+    .sort((a, b) => { const v = (x) => Object.values(x.seasons).reduce((s, y) => s + (y.att || 0) * 2 + (y.car || 0) + (y.tgt || 0), 0); return v(b) - v(a); })
+    .slice(0, 6).map((p) => ({ id: p.id, name: p.name, pos: p.pos, team: D.CUR(p.team || ''), headshot: p.headshot }));
+  return { teams, games, players };
+}
+
+// ── 12) LESIONES (v2, mejor esfuerzo): ESPN core API, cacheado 6 h, SIEMPRE etiquetado ───────────────────
+// El blueprint exige feed licenciado para producción (NFL-0069); esto es el Tier 0 honesto: lo que ESPN
+// publica, con su fecha, marcado "mejor esfuerzo" — jamás se presenta como oficial (NFL-0080).
+const ESPN_TEAM_IDS = { ARI: 22, ATL: 1, BAL: 33, BUF: 2, CAR: 29, CHI: 3, CIN: 4, CLE: 5, DAL: 6, DEN: 7,
+  DET: 8, GB: 9, HOU: 34, IND: 11, JAX: 30, KC: 12, LA: 14, LAC: 24, LV: 13, MIA: 15, MIN: 16, NE: 17,
+  NO: 18, NYG: 19, NYJ: 20, PHI: 21, PIT: 23, SEA: 26, SF: 25, TB: 27, TEN: 10, WAS: 28 };
+async function injuriesFor(abbr) {
+  const t = D.CUR(abbr);
+  const espnId = ESPN_TEAM_IDS[t];
+  if (!espnId) return null;
+  G.inj = G.inj || {};
+  const c = G.inj[t];
+  if (c && Date.now() - c.at < 6 * 3600e3) return c.data;
+  try {
+    const r = await fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/teams/${espnId}/injuries?limit=12`, { signal: AbortSignal.timeout(12000) });
+    const j = await r.json();
+    const items = [];
+    for (const it of (j.items || []).slice(0, 8)) {
+      try {
+        const d = await fetch(String(it.$ref).replace('http://', 'https://'), { signal: AbortSignal.timeout(8000) }).then((x) => x.json());
+        const ath = d.athlete && d.athlete.$ref
+          ? await fetch(String(d.athlete.$ref).replace('http://', 'https://'), { signal: AbortSignal.timeout(8000) }).then((x) => x.json()).catch(() => null)
+          : null;
+        items.push({
+          player: ath ? ath.displayName : null, pos: ath && ath.position ? ath.position.abbreviation : null,
+          status: d.status || null, date: d.date || null,
+          detail: d.longComment || d.shortComment || (d.details && d.details.type && d.details.type.description) || null,
+        });
+      } catch { /* siguiente */ }
+    }
+    const data = { team: t, items: items.filter((x) => x.player), at: new Date().toISOString(),
+      note: 'reporte de ESPN, mejor esfuerzo — NO es el injury report oficial de la liga y puede venir tarde. Se enseña con su fecha; la decisión del motor no lo consume todavía (eso exige feed licenciado y point-in-time, NFL-0069/0378).' };
+    G.inj[t] = { at: Date.now(), data };
+    return data;
+  } catch { return c ? c.data : null; }
+}
+
 module.exports = {
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, track,
   recordShadow, settleShadow, refreshOdds, modelSnapshot, weatherFor, DOCTRINE, DISK_DIR,
+  playersDirectory, search, injuriesFor,
 };

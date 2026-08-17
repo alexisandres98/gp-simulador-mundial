@@ -382,4 +382,30 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
-module.exports = { init, enabled, budgetOk, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals };
+// ── Redactores de NFL y CS2 (17-ago, v2) ──────────────────────────────────────────────────────────
+// Mismas reglas maestras que la lectura de baloncesto: el favorito del dossier se defiende SIEMPRE, cero
+// picks/cuotas/edge, cero datos inventados, y cada métrica se nombra como viene en el JSON.
+async function writeNflRead(payload) {
+  const resp = await call({
+    kind: 'writer',
+    max_tokens: 3000,
+    system: 'Eres el analista de NFL de GP Simulador, al nivel de un scout profesional. Con el dossier JSON escribe la lectura del PARTIDO en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el "mercado" del dossier discrepa, esa discrepancia ES parte del análisis, jamás una razón para cambiar de bando. (1) LA FORMA DEL PARTIDO — de dónde sale la ventaja (pase o carrera, ofensa o defensa, citando los EPA del dossier), qué dice la diferencia de rating, cómo pesan el descanso, la sede o el clima si vienen en el JSON, y qué QB/entrenador conduce cada lado. (2) EL CAMINO DEL OTRO — el mejor argumento del rival con sus números, qué señal temprana diría que el partido se torció y qué lo volvería cerrado; si la incertidumbre del dossier es alta (inicio de temporada), DILO con su número. PROHIBIDO: mencionar picks, apuestas, cuotas, spread como recomendación, edge o valor; contradecir a favorito_gp; inventar datos; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  if (!j || !j.es || !j.en) { console.error('[llm] writeNflRead sin JSON usable · stop:', (resp && resp.stop_reason) || '?'); return null; }
+  return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
+}
+async function writeCs2Read(payload) {
+  const resp = await call({
+    kind: 'writer',
+    max_tokens: 3000,
+    system: 'Eres el analista de Counter-Strike 2 de GP Simulador, al nivel de un coach profesional. Con el dossier JSON escribe la lectura de la SERIE en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el mercado del dossier discrepa, esa discrepancia ES parte del análisis. (1) LA FORMA DE LA SERIE — dónde se decide el veto (qué mapas favorecen a cada lado según los efectos por mapa del dossier), la diferencia de Elo, la forma reciente y el historial directo si vienen, y qué jugadores cargan el equipo si el dossier trae ratings. (2) EL CAMINO DEL OTRO — el mejor mapa del rival, qué pasaría en el veto para que la serie se torciera, y el aviso de plantilla movida si el dossier lo marca. PROHIBIDO: picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar mapas o datos; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  if (!j || !j.es || !j.en) { console.error('[llm] writeCs2Read sin JSON usable · stop:', (resp && resp.stop_reason) || '?'); return null; }
+  return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
+}
+
+module.exports = { init, enabled, budgetOk, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read };

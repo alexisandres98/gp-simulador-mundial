@@ -18,8 +18,27 @@ Sexto deporte, construido del blueprint maestro de Alexis (Word). Lo entregado e
   Rendimiento (sombra). Probado con clicks a 1360/390px.
 - **Jobs**: cuotas (The Odds API, 1 llamada liga entera) + cierres + sombra cada 30 min SOLO con partidos
   a ≤9 días. Probe: `/api/internal/nfl?key=`. Kickoff real: mié 9-sep (SEA) y SF–LAR en Melbourne el 10.
-- **Pendiente natural (V1.2+ del blueprint)**: lesiones/roster licenciado, player props (motor de
-  oportunidad), 1H/alt-lines desde la misma CDF, Ask GP. Nada de eso se finge en la UI: se declara.
+- **Pendiente natural (V1.2+ del blueprint)**: roster licenciado, player props (motor de
+  oportunidad), 1H, Ask GP. Nada de eso se finge en la UI: se declara.
+
+### v2 (misma noche, pedidos de Alexis)
+- **Oportunidades NFL**: pantalla honesta — estado de cada familia con su porqué medido, el reloj al
+  kickoff, y lo que la sombra registra. **Jugadores**: directorio QB/RB/WR/TE (nflverse 2024-2025,
+  headshots, por-partido). **Partidos** reformateado a la gramática de la casa (tabla Hora·Partido·
+  Mercado·Probabilidad·Señal). **Buscador scoped**: en NFL solo NFL (`/api/nfl/search`), en Esport solo
+  CS2 (`/api/esports/search`).
+- **LA CANCHA INTERACTIVA** (Game Terminal): el eje es el margen (cada yarda = un punto), la
+  distribución del simulador pintada por bando sobre el césped, números clave recuadrados, banderines
+  GP/mercado, y DOS exploradores (spread y total) que arrastran una línea y leen la CDF completa de las
+  20.000 simulaciones — así se cotiza cualquier línea alternativa (NFL-0464) sin re-simular.
+- **Backtest de picks vs cierre** (2017-2025, en el Motor y en Oportunidades): ML −7/−10% ROI, spread y
+  total negativos en umbrales chicos; único bolsillo >breakeven: spread con desacuerdo ≥4 pts (53.2%,
+  +1.55%, 575 apuestas — dentro del ruido). Es la justificación NUMÉRICA de la sombra.
+- **Lecturas LLM** (`llm.writeNflRead` / `writeCs2Read` + `db.nflReads`/`db.esReads`): la capa de
+  contexto narrada del dossier estructurado, cacheada (se paga una vez), pasada de fondo
+  `llmEsNflReadsPass` (cap 3) + generación bajo demanda por ruta. Baloncesto ya la tenía.
+- **Disponibilidad NFL**: ESPN core API, cacheada 6 h, SIEMPRE etiquetada "mejor esfuerzo · no
+  oficial" — la decisión del motor no la consume (eso exige feed licenciado, NFL-0069).
 
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.

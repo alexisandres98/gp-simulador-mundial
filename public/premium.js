@@ -1042,9 +1042,10 @@
   // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
   // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
   // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
-  var NFL_VIEWS = ['nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflmodel', 'nflperf'];
+  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflmodel', 'nflperf'];
   var NAV_NFL = [
-    ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'],
+    ['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'],
+    ['nflteams', 'shield', 'nav_teams'], ['nflplayers', 'user', 'sr_players'],
     ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_NFL = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
@@ -1162,9 +1163,9 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isNfl ? ['nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isNfl ? ['nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isNfl
-      ? [['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflmodel', 'book', 'nfl_nav_model'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
       ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
       : isHoops
@@ -1186,7 +1187,7 @@
       '<div id="gx-fbanner-slot">' + (founderBanner() || freeBanner()) + '</div>' +
       '<header class="gx-top">' +
       '<div class="gx-top-brand"><div class="gx-logo" aria-hidden="true"><svg viewBox="0 0 34 34" width="34" height="34"><defs><linearGradient id="gxg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#12B98A"/><stop offset="1" stop-color="#1FE3A4"/></linearGradient></defs><rect x="8.5" y="18" width="4" height="8.5" rx="2" fill="rgba(31,227,164,.34)"/><rect x="15" y="13.5" width="4" height="13" rx="2" fill="rgba(31,227,164,.62)"/><rect x="21.5" y="7.5" width="4" height="19" rx="2" fill="url(#gxg)"/></svg></div><b>GP Intelligence</b></div>' +
-      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(S.sport === 'hoops' ? 'Buscar equipo, jugadora o partido…' : t(S.sport === 'combat' ? 'cb_search_top' : 'search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
+      '<div class="gx-search">' + ic('search') + '<input id="gx-search-i" autocomplete="off" spellcheck="false" placeholder="' + esc(S.sport === 'hoops' ? 'Buscar equipo, jugadora o partido…' : S.sport === 'nfl' ? 'Buscar equipo, jugador o partido NFL…' : S.sport === 'esports' ? 'Buscar equipo, jugador o serie de CS2…' : t(S.sport === 'combat' ? 'cb_search_top' : 'search')) + '"><div class="gx-search-res" id="gx-search-res" hidden></div></div>' +
       // R2 (28-jul, orden de Alexis): fuera el contador 0-0-0 (gx-pulse) → la búsqueda respira; el
       // selector de deporte vive en su PROPIA barra bajo el header (sportbar) — ahí caben más deportes.
       '<div class="gx-spacer"></div>' +
@@ -1285,6 +1286,56 @@
         res.innerHTML = '<div class="gx-sr-empty gx-dim">' + esc(t('cb_loading')) + '</div>'; res.hidden = false;
         return;
       }
+      // NFL (17-ago, v2): buscador SOLO de NFL — equipos, jugadores y partidos de la temporada, del server
+      if (S.sport === 'nfl') {
+        S._nflq = q;
+        fetch('/api/nfl/search?q=' + encodeURIComponent(q), { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+          .then(function (j) {
+            if (S._nflq !== q || (inp.value || '').trim().toLowerCase() !== q) return;
+            var h = '';
+            if (j && (j.teams || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_teams')) + '</div>' + j.teams.map(function (tt) {
+              return '<div class="gx-sr-i" data-sr-nflteam="' + esc(tt.abbr) + '"><span class="fl">🏈</span><b>' + esc(tt.name) + '</b><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(tt.abbr) + '</span></div>';
+            }).join('');
+            if (j && (j.players || []).length) h += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + j.players.map(function (pp) {
+              return '<div class="gx-sr-i" data-sr-nflplayer="' + esc(pp.name) + '"><span class="fl">👤</span><b>' + esc(pp.name) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc([pp.pos, pp.team].filter(Boolean).join(' · ')) + '</span></div>';
+            }).join('');
+            if (j && (j.games || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_matches')) + '</div>' + j.games.map(function (gg) {
+              return '<div class="gx-sr-i" data-sr-nflgame="' + esc(gg.id) + '"><b>' + esc(gg.away) + '</b><span class="gx-dim" style="margin:0 6px">@</span><b>' + esc(gg.home) + '</b>' +
+                (gg.final ? '<span class="gx-mono gx-dim" style="margin-left:8px">' + gg.final.as + '-' + gg.final.hs + '</span>' : '') +
+                '<span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">W' + gg.week + ' · ' + esc(gg.date) + '</span></div>';
+            }).join('');
+            if (!h) h = '<div class="gx-sr-empty gx-dim">' + esc(t('e_na')) + '</div>';
+            res.innerHTML = h; res.hidden = false;
+          });
+        res.innerHTML = '<div class="gx-sr-empty gx-dim">' + esc(t('cb_loading')) + '</div>'; res.hidden = false;
+        return;
+      }
+      // ESPORTS (17-ago, v2): buscador SOLO de CS2 — base propia de equipos/jugadores + agenda viva
+      if (S.sport === 'esports') {
+        S._esq2s = q;
+        fetch('/api/esports/search?game=' + esGame() + '&q=' + encodeURIComponent(q), { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+          .then(function (j) {
+            if (S._esq2s !== q || (inp.value || '').trim().toLowerCase() !== q) return;
+            var h = '';
+            if (j && (j.teams || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_teams')) + '</div>' + j.teams.map(function (tt) {
+              return '<div class="gx-sr-i" data-sr-esteam="' + esc(tt.id) + '"><span class="fl">🎮</span><b>' + esc(tt.name) + '</b><span class="gx-spacer"></span>' + (tt.elo != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px">Elo ' + Math.round(tt.elo) + '</span>' : '') + '</div>';
+            }).join('');
+            if (j && (j.players || []).length) h += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + j.players.map(function (pp) {
+              return '<div class="gx-sr-i" data-sr-esteam="' + esc(pp.team || '') + '"><span class="fl">👤</span><b>' + esc(pp.nick) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(pp.team_name || '') + '</span>' +
+                '<span class="gx-spacer"></span>' + (pp.rating_gp != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px">GP ' + pp.rating_gp.toFixed(2) + '</span>' : '') + '</div>';
+            }).join('');
+            if (j && (j.events || []).length) h += '<div class="gx-sr-h">' + esc(t('es_nav_board')) + '</div>' + j.events.map(function (ev2) {
+              return '<div class="gx-sr-i" data-sr-esmatch="' + esc(ev2.id) + '"><b>' + esc(ev2.home) + '</b><span class="gx-dim" style="margin:0 4px">vs</span><b>' + esc(ev2.away) + '</b>' +
+                '<span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(String(ev2.start_at || '').replace('T', ' ').slice(5, 16)) + '</span></div>';
+            }).join('');
+            if (!h) h = '<div class="gx-sr-empty gx-dim">' + esc(t('e_na')) + '</div>';
+            res.innerHTML = h; res.hidden = false;
+          });
+        res.innerHTML = '<div class="gx-sr-empty gx-dim">' + esc(t('cb_loading')) + '</div>'; res.hidden = false;
+        return;
+      }
       if (S.sport === 'combat') {
         var orgLab = { ufc: 'UFC', mma: 'MMA', boxing: 'BOX' };
         var frows = [];
@@ -1374,6 +1425,11 @@
       var bt = e.target.closest('[data-sr-bbteam]'); if (bt) { inp.value = ''; hide(); var b1 = bt.getAttribute('data-sr-bbteam').split('|'); setHash('bbteam/' + b1[0] + '-' + b1[1]); return; }
       var bp = e.target.closest('[data-sr-bbplayer]'); if (bp) { inp.value = ''; hide(); var b2 = bp.getAttribute('data-sr-bbplayer').split('|'); setHash('bbplayer/' + b2[0] + '-' + b2[1]); return; }
       var bg = e.target.closest('[data-sr-bbgame]'); if (bg) { inp.value = ''; hide(); var b3 = bg.getAttribute('data-sr-bbgame').split('|'); setHash('bbgame/' + b3[0] + '-' + b3[1]); return; }
+      var nt = e.target.closest('[data-sr-nflteam]'); if (nt) { inp.value = ''; hide(); setHash('nflteam/' + nt.getAttribute('data-sr-nflteam')); return; }
+      var ng = e.target.closest('[data-sr-nflgame]'); if (ng) { inp.value = ''; hide(); setHash('nflgame/' + encodeURIComponent(ng.getAttribute('data-sr-nflgame'))); return; }
+      var np = e.target.closest('[data-sr-nflplayer]'); if (np) { inp.value = ''; hide(); S.nfl.pQ = np.getAttribute('data-sr-nflplayer'); S.nfl.pPos = 'all'; setHash('nflplayers'); return; }
+      var et2 = e.target.closest('[data-sr-esteam]'); if (et2) { inp.value = ''; hide(); var eid = et2.getAttribute('data-sr-esteam'); if (eid) setHash('esteam/' + esGame() + '/' + encodeURIComponent(eid)); return; }
+      var em2 = e.target.closest('[data-sr-esmatch]'); if (em2) { inp.value = ''; hide(); setHash('esmatch/' + esGame() + '/' + encodeURIComponent(em2.getAttribute('data-sr-esmatch'))); return; }
     });
     document.addEventListener('click', function (e) { if (!e.target.closest('.gx-search')) hide(); });
   }
@@ -1472,7 +1528,7 @@
     // de "mas" en movil pintaba el de futbol y Rendimiento llevaba al de futbol— nacio justo de anadir
     // un deporte sin anadir su rama aqui. No se repite.
     var items = S.sport === 'nfl'
-      ? [['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']]
+      ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflplayers', 'user', 'sr_players'], ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['refer', 'user-plus', 'nav_refer']])
@@ -3991,7 +4047,7 @@
     if (nfg) { if (!(S.view === 'nflgame' && S.nfl.gameId === decodeURIComponent(nfg[1]))) { S.nfl.gameId = decodeURIComponent(nfg[1]); showView('nflgame'); } return; }
     var nft = h.match(/^nflteam\/([A-Za-z]{2,3})$/i);
     if (nft) { if (!(S.view === 'nflteam' && S.nfl.teamId === nft[1].toUpperCase())) { S.nfl.teamId = nft[1].toUpperCase(); showView('nflteam'); } return; }
-    var nfv = h.match(/^(nflgames|nflteams|nflmodel|nflperf)$/i);
+    var nfv = h.match(/^(nflopps|nflgames|nflteams|nflplayers|nflmodel|nflperf)$/i);
     if (nfv) { showView(nfv[1]); return; }
     var est = h.match(/^esteam\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
@@ -4018,7 +4074,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -8801,7 +8857,7 @@
     // observado. Los otros tres juegos siguen con la vista genérica hasta que tengan su propia base.
     if (g === 'cs2') {
       var csHead = cs2Hero(d);
-      blocks = [cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esH2H(d.h2h), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d), cs2Dataset(d)];
+      blocks = [esReadBlock(g, ev.id), cs2Veto(d), cs2Ladder(d), cs2Rounds(d), cs2Teams(d), esH2H(d.h2h), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d), cs2Dataset(d)];
       var edgesC = esEdges(d);
       esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + blocks.filter(Boolean).join('') + esProv(d));
       return;
@@ -9665,12 +9721,55 @@
     if (v === 'nflgame') renderNflGame();
     else if (v === 'nflteams') renderNflTeams();
     else if (v === 'nflteam') renderNflTeam();
+    else if (v === 'nflplayers') renderNflPlayers();
     else if (v === 'nflmodel') renderNflModel();
     else if (v === 'nflperf') renderNflPerf();
+    else if (v === 'nflopps') renderNflOpps();
     else renderNflGames();
   }
 
-  // ---- 1) COMMAND CENTER (§29): la parrilla con el delta GP-vs-mercado como protagonista ------------------
+  // ---- 1) PARTIDOS (§29): el MISMO formato que los demás deportes — tabla por día con Hora · Partido ·
+  // Estado · Probabilidad GP · Señal (pedido de Alexis: una sola gramática para toda la casa) --------------
+  function nflDuoCell(p) {
+    if (p == null) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    var h = Math.round(100 * p), a = 100 - h;
+    return '<span class="gx-tri gx-gp gx-duo"><span' + (a >= h ? ' class="hi"' : '') + '>' + a + '%</span><span' + (h > a ? ' class="hi"' : '') + '>' + h + '%</span></span>';
+  }
+  function nflSignalCell(g) {
+    if (!g.model) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    var hot = g.delta && ((g.delta.spread != null && Math.abs(g.delta.spread) >= 2) || (g.delta.total != null && Math.abs(g.delta.total) >= 2.5));
+    return '<span class="gx-bb-sig"><b>' + nflSpread(g.model.mu_margin) + '</b><i>T ' + g.model.mu_total.toFixed(0) + '</i></span>' +
+      (hot ? ' <span class="gx-nfl-hotchip" title="el modelo y el mercado se separan">Δ</span>' : '');
+  }
+  function nflStateCell(g) {
+    var mk = g.market && g.market.spread != null
+      ? '<span class="gx-mono" style="font-size:11px">' + nflSpread(g.market.spread) + (g.market.total != null ? ' · T ' + g.market.total.toFixed(0) : '') + '</span>'
+      : '<span class="gx-dim" style="font-size:11px">sin mercado</span>';
+    return mk;
+  }
+  function nflGamesTable(rows) {
+    return '<table class="gx-table"><thead><tr><th class="l">Hora</th><th class="l">Partido</th><th class="l">Mercado</th><th class="grp">Probabilidad GP</th><th class="l">Señal</th><th></th></tr></thead><tbody>' +
+      rows.map(function (g) {
+        return '<tr class="gx-row" data-nflgame="' + esc(g.id) + '">' +
+          '<td class="gx-time">' + esc(g.time ? g.time.slice(0, 5) : '') + '<div class="gx-dim" style="font-size:9.5px">' + esc(g.stadium ? String(g.stadium).slice(0, 22) : 'Semana ' + g.week) + '</div></td>' +
+          '<td class="l"><div class="gx-cell-team">' + cs2Crest(g.away, 'sm') +
+            '<div class="gx-teamnames"><b>' + esc(g.away.name) + '</b><span>' + esc(g.home.name) + '</span></div>' + cs2Crest(g.home, 'sm') + '</div></td>' +
+          '<td class="l">' + nflStateCell(g) + '</td>' +
+          '<td>' + nflDuoCell(g.model ? g.model.p_home : null) + '</td>' +
+          '<td class="l">' + nflSignalCell(g) + '</td>' +
+          '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function nflGamesCards(rows) {
+    return rows.map(function (g) {
+      return '<div class="gx-mcard" data-nflgame="' + esc(g.id) + '">' +
+        '<div class="gx-mcard-top"><span class="gx-time">' + esc(g.time ? g.time.slice(0, 5) : '') + '</span><span class="gx-spacer"></span>' + nflStateCell(g) + '</div>' +
+        '<div class="gx-cell-team" style="margin:8px 0">' + cs2Crest(g.away, 'sm') +
+          '<div class="gx-teamnames"><b>' + esc(g.away.name) + '</b><span>' + esc(g.home.name) + '</span></div>' + cs2Crest(g.home, 'sm') + '</div>' +
+        '<div class="gx-mcard-rows"><div><span class="gx-label">Probabilidad GP</span>' + nflDuoCell(g.model ? g.model.p_home : null) + '</div></div>' +
+        '<div class="gx-mcard-foot"><span>' + nflSignalCell(g) + '</span><span class="gx-mcard-cta">Analizar →</span></div></div>';
+    }).join('');
+  }
   function renderNflGames() {
     // 30 días de ventana: en temporada enseña las próximas 2 semanas; en agosto alcanza el kickoff del 9-sep
     var d = nflGet('slate', '/api/nfl/slate?days=30', 180000);
@@ -9678,45 +9777,92 @@
     if (d._err || !d.available) { nflShell(t('nfl_nav_games'), nflErr); return; }
     var rows = d.games || [];
     var hero = '<div class="gx-es-hero"><div><b>Semana ' + (d.week || '—') + ' · temporada ' + d.season + '</b>' +
-      '<span class="gx-dim">' + (d.books ? d.books + ' casas cotizando · cuotas de ' + esc(String(d.odds_at || '').replace('T', ' ').slice(0, 16)) : 'las casas abren mercados conforme se acerca la semana') + '</span></div>' +
+      '<span class="gx-dim">' + (d.books ? d.books + ' casas cotizando · cuotas de ' + esc(String(d.odds_at || '').replace('T', ' ').slice(11, 16)) + ' UTC' : 'las casas abren mercados conforme se acerca la semana') + '</span></div>' +
       '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + rows.length + '</b><span>partidos</span></div></div>' +
       (d.regime_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.regime_note) + '</span></div>' : '');
+    if (!rows.length) {
+      nflShell(t('nfl_nav_games'), hero + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Sin partidos en la ventana.</b><span class="gx-dim">La temporada 2026 arranca el miércoles 9 de septiembre (SEA recibe el kickoff; el 10 juegan SF–LAR en Melbourne).</span></div></div>' + nflShadowNote());
+      return;
+    }
     var groups = [], gmap = {};
     rows.forEach(function (g) {
       var k = g.date;
       if (!gmap[k]) { gmap[k] = { label: bbDayLabel(g.date + 'T12:00:00Z'), rows: [] }; groups.push(gmap[k]); }
       gmap[k].rows.push(g);
     });
-    if (!rows.length) {
-      nflShell(t('nfl_nav_games'), hero + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-        '<b>Sin partidos en la ventana.</b><span class="gx-dim">La temporada 2026 arranca el miércoles 9 de septiembre (SEA recibe el kickoff; el 10 juegan SF–LAR en Melbourne).</span></div></div>' + nflShadowNote());
-      return;
-    }
     var body = groups.map(function (gr) {
       return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(gr.label) + '</span><span class="gx-dim">' + gr.rows.length + '</span></div>' +
-        '<div class="gx-nfl-list">' + gr.rows.map(function (g) {
-          var p = g.model ? g.model.p_home : null;
-          var dsp = g.delta && g.delta.spread != null ? g.delta.spread : null;
-          var dtt = g.delta && g.delta.total != null ? g.delta.total : null;
-          return '<div class="gx-panel gx-nfl-row" data-nflgame="' + esc(g.id) + '">' +
-            '<div class="gx-nfl-main">' +
-              '<div class="gx-nfl-side">' + cs2Crest(g.away) + '<b>' + esc(g.away.abbr) + '</b></div>' +
-              '<span class="gx-dim gx-nfl-at">@</span>' +
-              '<div class="gx-nfl-side">' + cs2Crest(g.home) + '<b>' + esc(g.home.abbr) + '</b></div>' +
-              '<div class="gx-nfl-prob">' + (p != null ? '<div class="gx-es-bar"><i style="width:' + (100 * p).toFixed(1) + '%"></i></div><span class="gx-mono">' + nflPct(p) + ' ' + esc(g.home.abbr) + '</span>' : '<span class="gx-dim">sin modelo</span>') + '</div>' +
-              '<div class="gx-nfl-nums">' +
-                '<div><span>GP spread</span><b class="gx-mono">' + (g.model ? nflSpread(g.model.mu_margin) : '—') + '</b></div>' +
-                '<div><span>mercado</span><b class="gx-mono">' + (g.market && g.market.spread != null ? nflSpread(g.market.spread) : '—') + '</b></div>' +
-                '<div class="' + (dsp != null && Math.abs(dsp) >= 2 ? 'hot' : '') + '"><span>Δ</span><b class="gx-mono">' + (dsp != null ? (dsp > 0 ? '+' : '') + dsp.toFixed(1) : '—') + '</b></div>' +
-                '<div><span>GP total</span><b class="gx-mono">' + (g.model ? g.model.mu_total.toFixed(1) : '—') + '</b></div>' +
-                '<div><span>mercado</span><b class="gx-mono">' + (g.market && g.market.total != null ? g.market.total.toFixed(1) : '—') + '</b></div>' +
-                '<div class="' + (dtt != null && Math.abs(dtt) >= 2.5 ? 'hot' : '') + '"><span>Δ</span><b class="gx-mono">' + (dtt != null ? (dtt > 0 ? '+' : '') + dtt.toFixed(1) : '—') + '</b></div>' +
-              '</div>' +
-              '<div class="gx-nfl-when"><b>' + esc(g.time ? g.time.slice(0, 5) : '') + '</b><span>' + (g.model ? '± ' + g.model.unc_pts + ' pts' : '') + '</span></div>' +
-            '</div></div>';
-        }).join('') + '</div></div>';
+        '<div class="gx-panel gx-board gx-matches-desk">' + nflGamesTable(gr.rows) + '</div>' +
+        '<div class="gx-matches-mob">' + nflGamesCards(gr.rows) + '</div></div>';
     }).join('');
-    nflShell(t('nfl_nav_games'), hero + body + nflShadowNote() + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+    nflShell(t('nfl_nav_games'), hero + body + nflShadowNote());
+  }
+
+  // ---- 1b) OPORTUNIDADES: honesta — el estado de cada familia y el reloj hacia el kickoff ----------------
+  function renderNflOpps() {
+    var d = nflGet('model', '/api/nfl/model', 600000);
+    var tr = nflGet('track', '/api/nfl/track', 120000);
+    if (!d) { nflShell(t('nav_opps'), nflLoading()); return; }
+    if (d._err || !d.available) { nflShell(t('nav_opps'), nflErr); return; }
+    var kick = Date.parse('2026-09-09T20:20:00Z');
+    var daysLeft = Math.max(0, Math.ceil((kick - Date.now()) / 864e5));
+    var bt = (d.validation && d.validation.backtest && d.validation.backtest.families) || {};
+    var sp4 = bt.SPREAD && bt.SPREAD.umbral_4pts;
+    var hero = '<div class="gx-es-hero"><div><b>Cero picks públicas — y eso es una decisión, no un retraso</b>' +
+      '<span class="gx-dim">el backtest 2017-2025 contra el cierre no aprueba ninguna familia; todo corre en sombra acumulando registro</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + (daysLeft > 0 ? daysLeft : '—') + '</b><span>días al kickoff</span></div></div>';
+    var famB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El estado de cada familia, con su porqué medido</span></div>' +
+      '<div class="gx-es-why-rows">' + (d.families || []).map(function (f) {
+        return '<div class="gx-es-whyr"><b>' + esc(f.family) + '</b><em>' + esc(f.state.toUpperCase()) + '</em><span>' + esc(f.why) + '</span></div>';
+      }).join('') + '</div>' +
+      (sp4 ? '<div class="gx-cs-warn">' + ic('trending-up') + '<span>El único bolsillo del backtest por encima del breakeven: spread con desacuerdo ≥4 pts — ' + sp4.hit_pct + '% de acierto y ' + (sp4.roi_pct > 0 ? '+' : '') + sp4.roi_pct + '% de ROI en ' + sp4.n + ' apuestas AL CIERRE. Todavía dentro del ruido: es exactamente lo que la sombra 2026 va a verificar antes de abrir nada.</span></div>' : '') + '</div>';
+    var open = (tr && tr.open_list) || [];
+    var shadowB = open.length
+      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Lo que la sombra está registrando ahora</span><span class="gx-dim">' + open.length + '</span></div>' +
+        '<div class="gx-panel"><div class="gx-est-form">' + open.map(function (p) {
+          return '<div class="gx-est-fr" data-nflgame="' + esc(p.game_id) + '"><i class="gx-est-res" style="background:rgba(255,255,255,.08)">·</i>' +
+            '<span>' + esc(p.away) + ' @ ' + esc(p.home) + ' · ' + esc(p.family) + ' ' + esc(String(p.side)) + ' ' + p.line + ' @' + p.odds.toFixed(2) + '</span>' +
+            '<span class="gx-spacer"></span><b class="gx-mono">' + (p.edge_pp > 0 ? '+' : '') + p.edge_pp + ' pp</b></div>';
+        }).join('') + '</div>' +
+        '<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks.</div></div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('tickets') + '<b>La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.</b>' +
+        '<span class="gx-dim">Cuando una familia gane CLV fuera de muestra con muestra suficiente, esta pantalla se convierte en el feed de picks con la misma card de los demás deportes. Antes, no.</span></div></div>';
+    nflShell(t('nav_opps'), hero + famB + shadowB + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+  }
+
+  // ---- 1c) JUGADORES: directorio por posición ------------------------------------------------------------
+  var NFL_POS = [['all', 'Todos'], ['qb', 'QB'], ['rb', 'RB'], ['wr', 'WR'], ['te', 'TE']];
+  function renderNflPlayers() {
+    var pos = S.nfl.pPos || 'qb';
+    var q = (S.nfl.pQ || '').trim();
+    var d = nflGet('players_' + pos + '_' + q, '/api/nfl/players?pos=' + pos + '&limit=60' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
+    var segs = '<div class="gx-seg">' + NFL_POS.map(function (x) {
+      return '<button data-nflpos="' + x[0] + '"' + (pos === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    var head = '<div class="gx-ohead">' + segs + esSearchBox('gx-nflpsearch', q, 'Buscar jugador o equipo…') + '<span class="gx-spacer"></span>' +
+      (d && d.total ? '<span class="gx-dim" style="font-size:11.5px">' + d.total + ' jugadores con volumen</span>' : '') + '</div>';
+    if (!d) { nflShell(t('sr_players'), head + nflLoading()); esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderNflPlayers); return; }
+    if (d._err || !d.available) { nflShell(t('sr_players'), head + nflErr); esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderNflPlayers); return; }
+    var rows = d.players || [];
+    var stat = function (l, v) { return '<span>' + l + ' <b>' + (v == null ? '—' : v) + '</b></span>'; };
+    var body = rows.length ? '<div class="gx-esp-grid">' + rows.map(function (p) {
+      var line = '';
+      if (p.pass) line = stat('YDS/p', p.pass.yds) + stat('TD', p.pass.td) + stat('INT', p.pass.int) + stat('CMP%', p.pass.cmp_pct) + (p.pass.epa_db != null ? stat('EPA/db', p.pass.epa_db) : '');
+      else if (p.rush && p.recv) line = stat('CAR/p', p.rush.car) + stat('YDS/p', p.rush.yds) + stat('REC/p', p.recv.rec) + stat('TD', (p.rush.td + p.recv.td));
+      else if (p.rush) line = stat('CAR/p', p.rush.car) + stat('YDS/p', p.rush.yds) + stat('YPC', p.rush.ypc) + stat('TD', p.rush.td);
+      else if (p.recv) line = stat('TGT/p', p.recv.tgt) + stat('REC/p', p.recv.rec) + stat('YDS/p', p.recv.yds) + stat('TD', p.recv.td);
+      else line = '<span class="gx-dim">rol de bajo volumen</span>';
+      return '<div class="gx-panel gx-esp-card" data-nflteam="' + esc(p.team) + '">' +
+        '<div class="gx-esp-top">' + esAvatar({ nick: p.name, photo: p.headshot }) +
+          '<div class="gx-esp-id"><b>' + esc(p.name) + '</b><span>' + esc(p.pos) + ' · temporada ' + p.season + ' · ' + p.g + ' partidos</span></div>' +
+          '<span class="gx-spacer"></span><span class="gx-esp-role">' + esc(p.pos) + '</span></div>' +
+        '<div class="gx-esp-team">' + cs2Crest({ name: p.team_name, logo: p.team_logo }, 'sm') + '<span>' + esc(p.team_name) + '</span></div>' +
+        '<div class="gx-esp-meta"><div class="gx-esp-stats">' + line + '</div></div></div>';
+    }).join('') + '</div>' + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún jugador con ese filtro.</b></div></div>';
+    nflShell(t('sr_players'), head + body);
+    esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderNflPlayers);
   }
 
   // ---- 2) GAME INTELLIGENCE TERMINAL (§30) ----------------------------------------------------------------
@@ -9741,6 +9887,126 @@
         '<div class="gx-est-map-bar"><em></em><i class="' + (v >= 0 ? 'pos' : 'neg') + '" style="width:' + w.toFixed(1) + '%"></i></div>' +
         '<b class="gx-mono ' + (v > 0 ? 'gx-up' : v < 0 ? 'gx-down' : '') + '">' + (v > 0 ? '+' : '') + v + '</b></div>';
     }).join('') + '</div>';
+  }
+  // ── LA CANCHA (v2, blueprint NFL-0909/0910): la geometría del campo como gramática nativa ───────────────
+  // El eje horizontal ES el margen del partido: el centro es el empate, cada yarda un punto. Sobre el campo
+  // vive la distribución real del simulador, los banderines de GP y del mercado, y una LÍNEA MÓVIL que el
+  // usuario arrastra para ver la probabilidad de cubrir CUALQUIER línea — toda la CDF, no un número suelto.
+  function nflFieldSVG(d) {
+    var m = d.model; if (!m) return '';
+    var hist = m.margin_hist || {};
+    var X = function (mg) { return 60 + ((Math.max(-25, Math.min(25, mg)) + 25) / 50) * 1000; };
+    var maxP = 0; Object.keys(hist).forEach(function (k) { if (hist[k] > maxP) maxP = hist[k]; });
+    var bars = Object.keys(hist).map(Number).filter(function (k) { return k >= -25 && k <= 25; }).map(function (k) {
+      var h = 210 * (hist[k] / maxP);
+      var key = Math.abs(k) === 3 || Math.abs(k) === 7;
+      return '<rect x="' + (X(k) - 8).toFixed(1) + '" y="' + (285 - h).toFixed(1) + '" width="16" height="' + h.toFixed(1) + '" rx="2.5" class="bar' + (key ? ' key' : '') + (k > 0 ? ' home' : k < 0 ? ' away' : '') + '"><title>' + (k > 0 ? d.home.abbr + ' por ' + k : k < 0 ? d.away.abbr + ' por ' + (-k) : 'empate') + ': ' + (100 * hist[k]).toFixed(1) + '%</title></rect>';
+    }).join('');
+    var yards = '';
+    for (var yl = -25; yl <= 25; yl += 5) {
+      var xx = X(yl);
+      yards += '<line x1="' + xx + '" y1="40" x2="' + xx + '" y2="300" class="' + (yl === 0 ? 'mid' : 'yd') + '"/>';
+      if (yl % 10 === 0 && yl !== 0) yards += '<text x="' + xx + '" y="330" class="ynum">' + Math.abs(yl) + '</text>';
+    }
+    var gpX = X(m.mu_margin);
+    var cons = d.market && d.market.consensus;
+    var mkX = cons && cons.spread_line != null ? X(cons.spread_line) : null;
+    return '<div class="gx-nfl-fieldwrap"><svg viewBox="0 0 1120 360" class="gx-nfl-field" preserveAspectRatio="xMidYMid meet">' +
+      '<rect x="0" y="40" width="60" height="260" rx="6" class="ez away"/><rect x="1060" y="40" width="60" height="260" rx="6" class="ez home"/>' +
+      '<rect x="60" y="40" width="1000" height="260" class="turf"/>' +
+      yards + bars +
+      '<text x="30" y="175" class="ezlab" transform="rotate(-90 30 175)">' + esc(d.away.abbr) + '</text>' +
+      '<text x="1090" y="175" class="ezlab" transform="rotate(90 1090 175)">' + esc(d.home.abbr) + '</text>' +
+      (mkX != null ? '<g class="flag mkt"><line x1="' + mkX + '" y1="18" x2="' + mkX + '" y2="300"/><text x="' + mkX + '" y="12">MERCADO ' + nflSpread(cons.spread_line) + '</text></g>' : '') +
+      '<g class="flag gp"><line x1="' + gpX + '" y1="30" x2="' + gpX + '" y2="300"/><text x="' + gpX + '" y="27">GP ' + nflSpread(m.mu_margin) + '</text></g>' +
+      '<g class="flag you" id="gx-nfl-youflag" style="display:none"><line x1="560" y1="18" x2="560" y2="300"/><text x="560" y="12"></text></g>' +
+    '</svg></div>';
+  }
+  function nflFieldBlock(d) {
+    var m = d.model; if (!m || !m.spread_ladder || !m.spread_ladder.length) return '';
+    var cons = d.market && d.market.consensus;
+    var lad = m.spread_ladder, tlad = m.total_ladder || [];
+    var defIdx = 0, best = 1e9;
+    lad.forEach(function (r, i) {
+      var ref = cons && cons.spread_line != null ? cons.spread_line : m.mu_margin;
+      if (Math.abs(r.line - ref) < best) { best = Math.abs(r.line - ref); defIdx = i; }
+    });
+    var tDefIdx = 0; best = 1e9;
+    tlad.forEach(function (r, i) {
+      var ref = cons && cons.total_line != null ? cons.total_line : m.mu_total;
+      if (Math.abs(r.line - ref) < best) { best = Math.abs(r.line - ref); tDefIdx = i; }
+    });
+    return '<div class="gx-panel gx-nfl-fieldpanel"><div class="gx-ph"><span class="gx-label">El partido en el campo</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">el eje es el margen: cada yarda, un punto · arrastra la línea</span></span></div>' +
+      nflFieldSVG(d) +
+      '<div class="gx-nfl-explorer">' +
+        '<div class="gx-nfl-exprow"><span class="gx-label">Explorador de spread</span>' +
+          '<input type="range" id="gx-nfl-spslider" min="0" max="' + (lad.length - 1) + '" value="' + defIdx + '" step="1">' +
+          '<div class="gx-nfl-expout" id="gx-nfl-spout"></div></div>' +
+        (tlad.length ? '<div class="gx-nfl-exprow"><span class="gx-label">Explorador de total</span>' +
+          '<input type="range" id="gx-nfl-toslider" min="0" max="' + (tlad.length - 1) + '" value="' + tDefIdx + '" step="1">' +
+          '<div class="gx-nfl-expout" id="gx-nfl-toout"></div></div>' : '') +
+      '</div>' +
+      '<div class="gx-dim gx-es-note">Cada respuesta sale de la MISMA distribución de 20.000 simulaciones (residuos reales 2016-2025): mover la línea no re-simula nada, lee la CDF completa — así se cotiza una línea alternativa (NFL-0464). Verde: banderín GP; ámbar: consenso del mercado.</div></div>';
+  }
+  function nflBindField(d) {
+    var m = d.model; if (!m) return;
+    var lad = m.spread_ladder || [], tlad = m.total_ladder || [];
+    var X = function (mg) { return 60 + ((Math.max(-25, Math.min(25, mg)) + 25) / 50) * 1000; };
+    var sp = $('#gx-nfl-spslider'), spOut = $('#gx-nfl-spout');
+    var flag = $('#gx-nfl-youflag');
+    var updSp = function () {
+      if (!sp || !lad.length) return;
+      var r = lad[+sp.value];
+      var pH = r.p_home, pA = 1 - pH;
+      spOut.innerHTML = '<b class="gx-mono">' + esc(d.home.abbr) + ' ' + nflSpread(r.line) + '</b> cubre <b class="gx-mono ' + (pH >= 0.5 ? 'gx-up' : '') + '">' + (100 * pH).toFixed(1) + '%</b>' +
+        ' · <b class="gx-mono">' + esc(d.away.abbr) + ' ' + nflSpread(-r.line) + '</b> cubre <b class="gx-mono ' + (pA > 0.5 ? 'gx-up' : '') + '">' + (100 * pA).toFixed(1) + '%</b>' +
+        (r.push ? ' · push <span class="gx-mono">' + (100 * r.push).toFixed(1) + '%</span>' : '');
+      if (flag) {
+        flag.style.display = '';
+        var xx = X(r.line);
+        var ln = flag.querySelector('line'), tx = flag.querySelector('text');
+        ln.setAttribute('x1', xx); ln.setAttribute('x2', xx);
+        tx.setAttribute('x', xx); tx.textContent = 'TU LÍNEA ' + nflSpread(r.line);
+      }
+    };
+    if (sp) { sp.addEventListener('input', updSp); updSp(); }
+    var to = $('#gx-nfl-toslider'), toOut = $('#gx-nfl-toout');
+    var updTo = function () {
+      if (!to || !tlad.length) return;
+      var r = tlad[+to.value];
+      toOut.innerHTML = '<b class="gx-mono">' + r.line.toFixed(1) + '</b> → más <b class="gx-mono ' + (r.p_over >= 0.5 ? 'gx-up' : '') + '">' + (100 * r.p_over).toFixed(1) + '%</b>' +
+        ' · menos <b class="gx-mono ' + (r.p_over < 0.5 ? 'gx-up' : '') + '">' + (100 * (1 - r.p_over)).toFixed(1) + '%</b>' +
+        (r.push ? ' · push <span class="gx-mono">' + (100 * r.push).toFixed(1) + '%</span>' : '');
+    };
+    if (to) { to.addEventListener('input', updTo); updTo(); }
+  }
+  // Lectura GP + disponibilidad: capas que llegan tarde y no bloquean el terminal
+  function nflReadBlock(id) {
+    var rd = nflGet('read_' + id, '/api/nfl/read?id=' + encodeURIComponent(id), 600000);
+    if (!rd) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">Escribiendo la lectura…</div></div>';
+    if (rd.pending) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">' + esc(rd.why || 'La lectura se escribirá en la pasada de fondo.') + '</div></div>';
+    if (rd._err || !rd.es) return '';
+    var txt = (S.lang === 'en' && rd.en) ? rd.en : rd.es;
+    return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">narrada sobre el dossier estructurado — el LLM no inventa cifras</span></span></div>' +
+      '<div class="gx-nfl-readtxt">' + txt.split('\n\n').map(function (pp) { return '<p>' + esc(pp) + '</p>'; }).join('') + '</div></div>';
+  }
+  function nflInjBlock(d) {
+    var h = nflGet('inj_' + d.home.abbr, '/api/nfl/injuries?team=' + d.home.abbr, 3600000);
+    var a = nflGet('inj_' + d.away.abbr, '/api/nfl/injuries?team=' + d.away.abbr, 3600000);
+    var side = function (x, abbr) {
+      if (!x || x._err) return '<div><b>' + esc(abbr) + '</b><span class="gx-dim" style="font-size:11.5px">cargando…</span></div>';
+      var items = x.items || [];
+      return '<div><b>' + esc(abbr) + '</b>' + (items.length ? '<div class="gx-est-form">' + items.slice(0, 6).map(function (i2) {
+        return '<div class="gx-est-fr"><span>' + esc(i2.player) + (i2.pos ? ' <em class="gx-dim">' + esc(i2.pos) + '</em>' : '') + '</span>' +
+          '<span class="gx-spacer"></span><em class="gx-nfl-injst">' + esc(i2.status || '—') + '</em></div>';
+      }).join('') + '</div>' : '<span class="gx-dim" style="font-size:11.5px">sin reportes ahora</span>') + '</div>';
+    };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Disponibilidad</span>' +
+      '<span class="gx-ph-extra"><span class="gx-chip gx-chip-baja">mejor esfuerzo · no oficial</span></span></div>' +
+      '<div class="gx-nfl-forms">' + side(h, d.home.abbr) + side(a, d.away.abbr) + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc((h && h.note) || 'Reporte de ESPN con su fecha; la decisión del motor NO lo consume todavía — eso exige feed licenciado point-in-time (NFL-0069).') + '</div></div>';
   }
   function renderNflGame() {
     var id = S.nfl.gameId;
@@ -9847,7 +10113,9 @@
       '<div class="gx-est-form">' + (d.provenance || []).map(function (x) {
         return '<div class="gx-est-fr"><span>' + esc(x.source) + '</span><span class="gx-spacer"></span><em class="gx-dim">' + esc(x.kind) + '</em></div>';
       }).join('') + '</div></div>';
-    nflShell(d.home.abbr + ' vs ' + d.away.abbr, nflBack() + hero + mattersB + distB + dnaB + mkB + edB + wxB + formB + h2hB + prov);
+    nflShell(d.home.abbr + ' vs ' + d.away.abbr,
+      nflBack() + hero + nflReadBlock(d.id) + mattersB + nflFieldBlock(d) + distB + dnaB + mkB + edB + nflInjBlock(d) + wxB + formB + h2hB + prov);
+    nflBindField(d);
   }
 
   // ---- 3) EQUIPOS -----------------------------------------------------------------------------------------
@@ -9933,6 +10201,20 @@
       '<div class="gx-es-why-rows">' + (d.families || []).map(function (f) {
         return '<div class="gx-es-whyr"><b>' + esc(f.family) + '</b><em>' + esc(f.state.toUpperCase()) + '</em><span>' + esc(f.why) + '</span></div>';
       }).join('') + '</div></div>';
+    // BACKTEST DE PICKS (v2): ¿cómo nos habría ido apostando contra el cierre? La respuesta, sin maquillaje.
+    var bt = v.backtest && v.backtest.families;
+    var btB = bt ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Backtest de picks contra el cierre (2017-2025)</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">' + esc(v.backtest.rule || '') + '</span></span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Familia</th><th>Regla</th><th class="r">Apuestas</th><th class="r">Acierto</th><th class="r">ROI</th></tr></thead><tbody>' +
+      Object.entries(bt).map(function (kv) {
+        return Object.entries(kv[1]).map(function (tv) {
+          var s = tv[1];
+          return '<tr><td>' + esc(kv[0]) + '</td><td class="gx-dim">' + esc(tv[0].replace('umbral_', 'desacuerdo ≥').replace('pts', ' pts').replace('pp', ' pp')) + '</td>' +
+            '<td class="r gx-mono">' + s.n + '</td><td class="r gx-mono">' + (s.hit_pct == null ? '—' : s.hit_pct + '%') + (s.breakeven_pct ? ' <i style="font-style:normal;font-size:9.5px;opacity:.5">be ' + s.breakeven_pct + '%</i>' : '') + '</td>' +
+            '<td class="r gx-mono ' + (s.roi_pct > 0 ? 'gx-up' : s.roi_pct < 0 ? 'gx-down' : '') + '">' + (s.roi_pct == null ? '—' : (s.roi_pct > 0 ? '+' : '') + s.roi_pct + '%') + '</td></tr>';
+        }).join('');
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">Entrando AL CIERRE (el peor momento realista): el moneyline pierde −7/−10%, spread y total pierden en umbrales chicos, y el único bolsillo positivo — spread con desacuerdo ≥4 pts (+1.55% en 575) — sigue dentro del ruido. Esto es EXACTAMENTE por qué todo está en sombra: la sombra 2026 verifica ese bolsillo con precios reales antes de abrir nada.</div></div>' : '';
     var spec = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La especificación, completa</span></div>' +
       '<div class="gx-dim" style="font-size:12px;line-height:1.6">' + esc(d.spec || '') + '</div>' +
       (d.constants ? '<div class="gx-es-kpis" style="margin-top:12px">' +
@@ -9943,7 +10225,7 @@
         '<div><span>Pool de residuos</span><b>' + d.constants.resid_pool_n + '</b></div>' +
         (d.data ? '<div><span>Base</span><b>' + d.data.games + '</b><i style="font-style:normal;font-size:10px;opacity:.55;display:block">partidos desde ' + d.data.from + '</i></div>' : '') +
       '</div>' : '') + '</div>';
-    nflShell(t('nfl_nav_model'), head + bySeason + fams + spec + nflShadowNote());
+    nflShell(t('nfl_nav_model'), head + btB + bySeason + fams + spec + nflShadowNote());
   }
 
   // ---- 5) RENDIMIENTO (sombra) ----------------------------------------------------------------------------
@@ -9986,12 +10268,26 @@
   }
 
   function nflClicks(e) {
+    var ps = e.target.closest('[data-nflpos]');
+    if (ps) { S.nfl.pPos = ps.getAttribute('data-nflpos'); renderNflPlayers(); return; }
     var g = e.target.closest('[data-nflgame]');
     if (g) { setHash('nflgame/' + encodeURIComponent(g.getAttribute('data-nflgame'))); return; }
     var tm = e.target.closest('[data-nflteam]');
     if (tm) { setHash('nflteam/' + tm.getAttribute('data-nflteam')); return; }
     if (e.target.closest('[data-nflback]')) { setHash('nflgames'); return; }
     if (e.target.closest('[data-nflteamsback]')) { setHash('nflteams'); return; }
+  }
+
+  // ── Lectura GP de la serie (17-ago, v2): misma capa que baloncesto/NFL, narrada del dossier propio ─────
+  function esReadBlock(g, id) {
+    var rd = esGet('read_' + id, '/api/esports/read?game=' + g + '&id=' + encodeURIComponent(id), 600000);
+    if (!rd) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">Escribiendo la lectura…</div></div>';
+    if (rd.pending) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">' + esc(rd.why || '') + '</div></div>';
+    if (rd._err || !rd.es) return '';
+    var txt = (S.lang === 'en' && rd.en) ? rd.en : rd.es;
+    return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">narrada sobre el dossier propio — sin cifras inventadas</span></span></div>' +
+      '<div class="gx-nfl-readtxt">' + txt.split('\n\n').map(function (pp) { return '<p>' + esc(pp) + '</p>'; }).join('') + '</div></div>';
   }
 
   function esClicks(e) {

@@ -143,6 +143,71 @@ const log = (...a) => console.log(...a);
       brier_modelo: S.nb ? +(S.brier_m / S.nb).toFixed(4) : null, brier_cierre: S.nb ? +(S.brier_mkt / S.nb).toFixed(4) : null,
     };
   }
+  // ── 5b) BACKTEST DE PICKS contra el cierre (la pregunta de Alexis: ¿cómo nos habría ido apostando?) ────
+  // Regla simple y honesta: si el modelo se separa del cierre por ≥ un umbral, apuesta ese lado AL CIERRE
+  // a -110 (1.91), que es el peor precio realista — no hay CLV posible porque se entra en el cierre mismo.
+  // Es la prueba ácida del blueprint: solo una familia que gane AQUÍ fuera de muestra merecería salir de
+  // la sombra. El moneyline se evalúa contra el precio real de cierre (con su vig), no contra 1.91.
+  const backtest = { at_price: 1.91, rule: 'entrar AL CIERRE cuando |modelo − cierre| ≥ umbral; -110 en spread/total, precio real en ML', families: {} };
+  const PRICE = 1.91;
+  for (const thr of [2, 3, 4]) {
+    const F = { SPREAD: { n: 0, w: 0, p: 0, units: 0 }, TOTAL: { n: 0, w: 0, p: 0, units: 0 } };
+    for (const q of totPairs) {
+      const g = q.p.g;
+      const muM = q.p.diff + (q.p.neutral ? 0 : hfa);
+      const muT = baseAt(g.date) + kTotal * q.x;
+      if (g.spread_close != null && Math.abs(muM - g.spread_close) >= thr) {
+        const betHome = muM > g.spread_close;
+        const cover = g.result - g.spread_close;
+        const S3 = F.SPREAD; S3.n++;
+        if (cover === 0) S3.p++;
+        else if ((betHome && cover > 0) || (!betHome && cover < 0)) { S3.w++; S3.units += PRICE - 1; }
+        else S3.units -= 1;
+      }
+      if (g.total_close != null && g.total != null && Math.abs(muT - g.total_close) >= thr) {
+        const betOver = muT > g.total_close;
+        const dTot = g.total - g.total_close;
+        const S4 = F.TOTAL; S4.n++;
+        if (dTot === 0) S4.p++;
+        else if ((betOver && dTot > 0) || (!betOver && dTot < 0)) { S4.w++; S4.units += PRICE - 1; }
+        else S4.units -= 1;
+      }
+    }
+    for (const [fam, S5] of Object.entries(F)) {
+      const dec = S5.n - S5.p;
+      (backtest.families[fam] = backtest.families[fam] || {})['umbral_' + thr + 'pts'] = {
+        n: S5.n, hit_pct: dec ? +(100 * S5.w / dec).toFixed(1) : null,
+        roi_pct: S5.n ? +(100 * S5.units / S5.n).toFixed(2) : null,
+        breakeven_pct: +(100 / PRICE).toFixed(1),
+      };
+    }
+  }
+  // ML: contra el precio real de cierre, umbral en pp de probabilidad
+  for (const thrPp of [3, 5]) {
+    const S6 = { n: 0, w: 0, units: 0 };
+    for (const p2 of pred) {
+      const g = p2.g;
+      if (g.ml_home == null || g.ml_away == null || g.result == null || g.result === 0) continue;
+      const dec = (am) => (am > 0 ? 1 + am / 100 : 1 + 100 / -am);
+      const dh = dec(g.ml_home), da = dec(g.ml_away);
+      const ih = 1 / dh, ia = 1 / da;
+      const muM = p2.diff + (p2.neutral ? 0 : hfa);
+      const pMod = 1 / (1 + Math.exp(-muM / (13.4 * 0.6)));
+      const edgeH = (pMod - ih / (ih + ia)) * 100;
+      const side = edgeH > 0 ? 'home' : 'away';
+      if (Math.abs(edgeH) < thrPp) continue;
+      S6.n++;
+      const won = side === 'home' ? g.result > 0 : g.result < 0;
+      if (won) S6.units += (side === 'home' ? dh : da) - 1; else S6.units -= 1;
+      if (won) S6.w++;
+    }
+    (backtest.families.MONEYLINE = backtest.families.MONEYLINE || {})['umbral_' + thrPp + 'pp'] = {
+      n: S6.n, hit_pct: S6.n ? +(100 * S6.w / S6.n).toFixed(1) : null,
+      roi_pct: S6.n ? +(100 * S6.units / S6.n).toFixed(2) : null,
+    };
+  }
+  log('▸ backtest de picks vs cierre:', JSON.stringify(backtest.families));
+
   log('▸ validación (walk-forward, TODO fuera de muestra):');
   log(`  margen: MAE modelo ${mean(errM.map(Math.abs)).toFixed(2)} vs cierre ${mean(errMkt.map(Math.abs)).toFixed(2)}`);
   log(`  total : MAE modelo ${mean(errT.map(Math.abs)).toFixed(2)} vs cierre ${mean(errTmkt.map(Math.abs)).toFixed(2)}`);
@@ -165,6 +230,7 @@ const log = (...a) => console.log(...a);
         sd_error_margen_modelo: +sd(errM).toFixed(2), sd_error_margen_cierre: +sd(errMkt).toFixed(2),
       },
       by_season: seasons,
+      backtest,
     },
   }));
   log(`▸ model-priors.json escrito · ${((Date.now() - t0) / 1000).toFixed(1)} s`);

@@ -9890,6 +9890,113 @@ async function llmHoopsReadsPass({ cap = 4 } = {}) {
   return { written: done };
 }
 
+// ── LECTURAS DE NFL Y CS2 (17-ago, v2): la capa de observación/contexto vía LLM ───────────────────
+// Mismo contrato que la de baloncesto: el dossier sale de la base estructurada, el LLM SOLO narra, la
+// lectura se paga UNA vez y se persiste. Sin presupuesto → la pantalla vive igual sin párrafo.
+async function nflGameRead(gameId, { force = false } = {}) {
+  db.nflReads = db.nflReads || {};
+  const k = String(gameId);
+  const cached = db.nflReads[k];
+  if (cached && !force && cached.es) return cached;
+  if (!llm.enabled() || !llm.budgetOk()) return cached || null;
+  const NFL = require('./nfl-engine/store');
+  const gi = await NFL.gameIntel(gameId).catch(() => null);
+  if (!gi || !gi.model) return cached || null;
+  const fav = gi.model.p_home >= 0.5 ? gi.home : gi.away;
+  const dossier = {
+    partido: `${gi.away.name} @ ${gi.home.name}`, semana: gi.week, temporada: gi.season,
+    favorito_gp: { nombre: fav.name, probabilidad_pct: +(100 * (gi.model.p_home >= 0.5 ? gi.model.p_home : 1 - gi.model.p_home)).toFixed(1) },
+    margen_esperado_pts: gi.model.mu_margin, total_esperado_pts: gi.model.mu_total,
+    incertidumbre_pts: gi.model.unc_pts, partidos_2026_jugados: gi.model.games_cur,
+    rating_pts: { [gi.home.abbr]: gi.model.rating.home.pts, [gi.away.abbr]: gi.model.rating.away.pts },
+    adn_epa_vs_media: { [gi.home.abbr]: gi.dna.home, [gi.away.abbr]: gi.dna.away },
+    quarterbacks: { [gi.home.abbr]: gi.home.qb, [gi.away.abbr]: gi.away.qb },
+    entrenadores: { [gi.home.abbr]: gi.home.coach, [gi.away.abbr]: gi.away.coach },
+    descanso_dias: { [gi.home.abbr]: gi.home.rest, [gi.away.abbr]: gi.away.rest },
+    sede: { estadio: gi.stadium, techo: gi.roof, neutral: gi.neutral },
+    clima: gi.weather && gi.weather.temp_c != null ? { temp_c: gi.weather.temp_c, viento_kmh: gi.weather.wind_kmh, lluvia_pct: gi.weather.precip_p } : null,
+    mercado: gi.market && gi.market.consensus && gi.market.consensus.spread_line != null
+      ? { spread_consenso: gi.market.consensus.spread_line, total_consenso: gi.market.consensus.total_line } : null,
+    ultimos_cruces: (gi.h2h || []).slice(0, 3),
+  };
+  try {
+    const w = await llm.writeNflRead(dossier);
+    if (w && w.es) {
+      const out = { es: w.es, en: w.en, at: new Date().toISOString(), game_id: k };
+      db.nflReads[k] = out; save();
+      return out;
+    }
+  } catch (e) { console.error('[nfl-read]', e.message); }
+  return cached || null;
+}
+async function esGameRead(game, eventId, { force = false } = {}) {
+  if (game !== 'cs2') return null;   // solo el juego con base propia tiene qué narrar
+  db.esReads = db.esReads || {};
+  const k = game + ':' + eventId;
+  const cached = db.esReads[k];
+  if (cached && !force && cached.es) return cached;
+  if (!llm.enabled() || !llm.budgetOk()) return cached || null;
+  const ES = require('./esports-engine/store');
+  const d = await ES.analyzeMatch(game, eventId).catch(() => null);
+  if (!d || !d.model || !d.model.probability) return cached || null;
+  const p = d.model.probability.p;
+  const fav = p >= 0.5 ? d.event.home.name : d.event.away.name;
+  const T = d.model.teams || {};
+  const mapEff = (t) => t && t.maps ? Object.fromEntries(t.maps.slice(0, 5).map((m) => [m.map, m.effect])) : null;
+  const dossier = {
+    serie: `${d.event.home.name} vs ${d.event.away.name}`, formato: 'BO' + d.bo, competicion: d.event.competition,
+    favorito_gp: { nombre: fav, probabilidad_pct: +(100 * (p >= 0.5 ? p : 1 - p)).toFixed(1) },
+    elo_gp: { [d.event.home.name]: T.a ? T.a.elo : null, [d.event.away.name]: T.b ? T.b.elo : null },
+    efecto_por_mapa: { [d.event.home.name]: mapEff(T.a), [d.event.away.name]: mapEff(T.b) },
+    plantilla_movida: { [d.event.home.name]: !!(T.a && T.a.roster && T.a.roster.changed_recently), [d.event.away.name]: !!(T.b && T.b.roster && T.b.roster.changed_recently) },
+    historial_directo: d.h2h && d.h2h.n ? { series: d.h2h.n, victorias: { [d.h2h.a.name]: d.h2h.wins_a, [d.h2h.b.name]: d.h2h.wins_b } } : null,
+    mercado: d.model.market_anchor ? { fuente: d.model.market_anchor.from } : null,
+  };
+  try {
+    const w = await llm.writeCs2Read(dossier);
+    if (w && w.es) {
+      const out = { es: w.es, en: w.en, at: new Date().toISOString(), event_id: String(eventId) };
+      db.esReads[k] = out; save();
+      return out;
+    }
+  } catch (e) { console.error('[es-read]', e.message); }
+  return cached || null;
+}
+// pasada de fondo: lecturas de las series CS2 de las próximas 30 h y (en temporada) de los partidos NFL
+// de las próximas 40 h — tope chico por pasada, el costo es predecible y el resto se genera bajo demanda.
+async function llmEsNflReadsPass({ cap = 3 } = {}) {
+  if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
+  let done = 0;
+  try {
+    const ES = require('./esports-engine/store');
+    const s = await ES.slate('cs2', { days: 2 }).catch(() => null);
+    for (const ev of ((s && s.events) || [])) {
+      if (done >= cap) break;
+      const mins = (Date.parse(ev.start_at || 0) - Date.now()) / 60000;
+      if (!(mins > 0 && mins < 30 * 60)) continue;
+      if (db.esReads && db.esReads['cs2:' + ev.id]) continue;
+      const r = await esGameRead('cs2', ev.id).catch(() => null);
+      if (r && r.es) done++;
+    }
+  } catch { /* esports sin agenda */ }
+  try {
+    const NFL = require('./nfl-engine/store');
+    const M = NFL.modelSnapshot();
+    if (M) {
+      for (const g of M.data.games) {
+        if (done >= cap) break;
+        if (g.result != null || g.season !== M.data.currentSeason) continue;
+        const ms = Date.parse(g.date + 'T' + (g.time || '17:00') + ':00Z') - Date.now();
+        if (!(ms > 0 && ms < 40 * 3600e3)) continue;
+        if (db.nflReads && db.nflReads[g.id]) continue;
+        const r = await nflGameRead(g.id).catch(() => null);
+        if (r && r.es) done++;
+      }
+    }
+  } catch { /* nfl sin base */ }
+  return { written: done };
+}
+
 // ── VIGÍA DE SALDO ──────────────────────────────────────────────────────────────────────────────
 // El presupuesto se auto-ajusta y nunca corta el servicio, pero el saldo SÍ se gasta: cuando queda
 // menos del 15% avisamos UNA vez por recarga. Cambiar GP_LLM_BALANCE_USD/AT en Render rearma el aviso.
@@ -9917,6 +10024,7 @@ if (llm.enabled()) {
     llmBriefPass().catch(() => { });
     llmFightReadsPass().catch(() => { });
     llmHoopsReadsPass().catch(() => { });
+    llmEsNflReadsPass().catch(() => { });
     llmBalanceWatch().catch(() => { });
   };
   setTimeout(llmPass, 3 * 60e3);
@@ -15272,6 +15380,24 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, await ES.resultsRecent(gm, {
             days: Math.min(21, +(url.searchParams.get('days') || 10)) }));
         }
+        if (p === '/api/esports/read') {
+          const id = String(url.searchParams.get('id') || '');
+          if (!id) return json(res, 400, { error: 'falta id' });
+          const r = await esGameRead(gm, id).catch(() => null);
+          return json(res, 200, r || { pending: true, why: gm !== 'cs2' ? 'solo CS2 tiene base propia que narrar.' : (llm.enabled() ? 'sin presupuesto LLM ahora; la pasada de fondo la escribirá.' : 'redactor apagado.') });
+        }
+        if (p === '/api/esports/search') {
+          // buscador SOLO de esports: equipos + jugadores de la base propia y series de la agenda viva
+          const q = String(url.searchParams.get('q') || '');
+          const teams = (ES.teamsDirectory(gm, { q, limit: 5 }).teams || []).map((t2) => ({ id: t2.id, name: t2.name, logo: t2.logo, elo: t2.elo }));
+          const players = (ES.playersDirectory(gm, { q, limit: 5 }).players || []).map((p2) => ({ id: p2.id, nick: p2.nick, team: p2.team, team_name: p2.team_name, rating_gp: p2.rating_gp }));
+          const needle = q.toLowerCase();
+          const sl = await ES.slate(gm, { days: 4 }).catch(() => null);
+          const events = ((sl && sl.events) || []).filter((ev) =>
+            (ev.home.name + ' ' + ev.away.name + ' ' + (ev.competition || '')).toLowerCase().indexOf(needle) >= 0)
+            .slice(0, 5).map((ev) => ({ id: ev.id, home: ev.home.name, away: ev.away.name, start_at: ev.start_at }));
+          return json(res, 200, { teams, players, events });
+        }
         if (p === '/api/esports/h2h') {
           const a = String(url.searchParams.get('a') || '').trim();
           const b = String(url.searchParams.get('b') || '').trim();
@@ -15316,6 +15442,25 @@ const server = http.createServer(async (req, res) => {
         }
         if (p === '/api/nfl/model') return json(res, 200, NFL.modelCard());
         if (p === '/api/nfl/track') return json(res, 200, NFL.track());
+        if (p === '/api/nfl/players') {
+          return json(res, 200, NFL.playersDirectory({ q: url.searchParams.get('q') || '',
+            pos: String(url.searchParams.get('pos') || 'all').toLowerCase(),
+            limit: Math.min(200, +(url.searchParams.get('limit') || 80)) }));
+        }
+        if (p === '/api/nfl/search') {
+          return json(res, 200, NFL.search(String(url.searchParams.get('q') || '')));
+        }
+        if (p === '/api/nfl/read') {
+          const id = String(url.searchParams.get('id') || '');
+          if (!id) return json(res, 400, { error: 'falta id' });
+          const r = await nflGameRead(id).catch(() => null);
+          return json(res, 200, r || { pending: true, why: llm.enabled() ? 'sin presupuesto LLM en este momento; la lectura se escribirá en la pasada de fondo.' : 'redactor apagado.' });
+        }
+        if (p === '/api/nfl/injuries') {
+          const t = String(url.searchParams.get('team') || '').toUpperCase();
+          if (!t) return json(res, 400, { error: 'falta team' });
+          return json(res, 200, (await NFL.injuriesFor(t).catch(() => null)) || { team: t, items: [], note: 'sin datos del proveedor ahora mismo.' });
+        }
         if (p === '/api/nfl/settle' && req.method === 'POST') {
           const rec = await NFL.recordShadow().catch((e) => ({ error: e.message }));
           const set = await NFL.settleShadow().catch((e) => ({ error: e.message }));

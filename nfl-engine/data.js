@@ -20,7 +20,7 @@ const G = global._nfldata = global._nfldata || { at: 0, stamp: '', data: null };
 
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
 function stamp() {
-  try { return ['games.json', 'team-weeks.json', 'venues.json', 'model-priors.json'].map((f) => fs.statSync(path.join(DIR, f)).mtimeMs).join('|'); } catch { return ''; }
+  try { return ['games.json', 'team-weeks.json', 'venues.json', 'model-priors.json', 'players.json'].map((f) => { try { return fs.statSync(path.join(DIR, f)).mtimeMs; } catch { return 0; } }).join('|'); } catch { return ''; }
 }
 
 // ── identidad: abreviatura nflverse → nombre, ciudad y logo (ESPN CDN, mismas siglas casi siempre) ───────
@@ -47,12 +47,14 @@ function load() {
   const s = stamp();
   if (G.data && G.stamp === s && Date.now() - G.at < 10 * 60e3) return G.data;
   const games = rd('games.json'), tw = rd('team-weeks.json'), venues = rd('venues.json'), priors = rd('model-priors.json');
+  const players = rd('players.json');
   const data = {
     available: !!(games && games.games && tw && tw.rows),
     games: (games && games.games) || [],
     currentSeason: (games && games.current_season) || new Date().getUTCFullYear(),
     tw: (tw && tw.rows) || [],
     venues: (venues && venues.venues) || {},
+    players: (players && players.players) || {},
     priors: priors || null,
     at: (games && games.at) || null,
   };

@@ -14415,6 +14415,15 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/picks-export') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      // ?clubs=1 (17-ago): el feed de CLUBES (el que ve el suscriptor hoy) — las sesiones de contenido lo
+      // necesitan para elegir las picks del día sin sesión de admin. ?active=1 filtra a las vivas.
+      if (url.searchParams.get('clubs')) {
+        let rows = db.clubDailyPicks || [];
+        if (url.searchParams.get('active')) {
+          rows = rows.filter(x => x.status === 'ACTIVE' && x.regime !== 'monitor' && x.published === true);
+        }
+        return json(res, 200, { count: rows.length, picks: rows, exported_at: new Date().toISOString() });
+      }
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), exported_at: new Date().toISOString() });
     }
     // REEMPLAZO EDITORIAL de una pick ACTIVE (one-off, misma key): la vieja queda SUPERSEDED (fuera del feed y

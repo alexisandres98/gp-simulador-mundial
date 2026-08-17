@@ -185,14 +185,20 @@ function ratings(game) {
 // último consenso observado de cada familia antes del inicio. Sin resultados no se puede liquidar, pero el
 // día que entre una fuente de histórico el archivo de cierres ya estará ahí, y el CLV —que es la métrica
 // con la que esta casa juzga de verdad— se podrá calcular hacia atrás en vez de empezar de cero otra vez.
-async function snapshot(game, { withinMin = 180 } = {}) {
+// LA VENTANA SE ABRIÓ DE 3 h A 12 h, y no es un ajuste cosmético: es la causa medida de que el CLV saliera
+// vacío. Las picks NACEN hasta 12 h antes del partido, pero el cierre solo se guardaba en las 3 h previas, así
+// que una pick nacida temprano cuyo partido pasaba por la ventana entre dos pasadas se quedaba sin cierre
+// para siempre. Medido en producción el 17-ago: de 5 picks liquidadas, 4 sin cierre guardado.
+// Guardar de más no cuesta precisión —cada pasada SOBREESCRIBE el cierre del evento, así que el último
+// guardado antes del inicio sigue siendo el cierre real— solo cuesta peticiones, y por eso lleva tope.
+async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
   if (!ENGINES[game]) return { game, saved: 0 };
   const s = await slate(game, { days: 2, force: true }).catch(() => null);
   const evs = ((s && s.events) || []).filter((e) => {
     if (!e.start_at) return false;
     const mins = (Date.parse(e.start_at) - Date.now()) / 60000;
     return mins > -15 && mins < withinMin;    // la ventana previa al inicio, que es donde vive el cierre
-  });
+  }).sort((a, b) => Date.parse(a.start_at) - Date.parse(b.start_at)).slice(0, cap);
   const st = rd(`closes-${game}.json`) || { game, closes: {} };
   let saved = 0;
   for (const ev of evs) {

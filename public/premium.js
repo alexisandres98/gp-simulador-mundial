@@ -9132,35 +9132,101 @@
   // ---- 5) RENDIMIENTO / ESTADO ---------------------------------------------------------------------------
   // Honesto por diseño: sin resultados no hay ROI que enseñar, y un cuadro de ROI en cero sería mentira.
   // Lo que sí se puede enseñar es qué está acumulando el sistema y cuánto falta para poder medirse.
+  // Tira de resultado, igual que la de baloncesto: la card compartida no la trae porque el feed de fútbol
+  // no la necesita (su historial vive en Rendimiento). Aquí Rendimiento ES el historial.
+  function esResultBar(p) {
+    if (!p.result_code) return '';
+    var cls = p.result_code === 'WIN' ? 'win' : p.result_code === 'LOSS' ? 'loss' : 'void';
+    var txt = p.result_code === 'WIN' ? '✓ Ganada' : p.result_code === 'LOSS' ? '✗ Perdida' : 'Push (devuelta)';
+    return '<div class="gx-bb-resbar ' + cls + '"><b>' + txt + '</b>' +
+      (p.units != null ? '<span>' + (p.units > 0 ? '+' : '') + p.units.toFixed(2) + ' u</span>' : '') +
+      (p.final && p.final.maps ? '<span>' + esc(p.final.maps) + '</span>' : '') +
+      (p.clv_pct != null ? '<span class="' + (p.clv_pct >= 0 ? 'gx-bb-clvup' : 'gx-bb-clvdn') + '">CLV ' + (p.clv_pct > 0 ? '+' : '') + p.clv_pct.toFixed(2) + '%</span>'
+        : '<span class="gx-dim">sin CLV</span>') + '</div>';
+  }
+  // La pick guardada viene con la familia CRUDA (la que sabe liquidar), así que aquí se le vuelve a poner la
+  // forma de card para reusar `pickCard()` — la misma pieza de los otros tres deportes, también en el historial.
+  var ES_CARD_FAM = { RONDAS: 'ROUNDS', RONDAS_EQUIPO: 'ROUNDS', RONDAS_HANDICAP: 'SPREAD', HANDICAP: 'SPREAD',
+    KILLS_HANDICAP: 'SPREAD', TOTAL_MAPAS: 'TOTAL', KILLS: 'TOTAL', KILLS_EQUIPO: 'TOTAL', PRORROGA: 'METHOD' };
+  var ES_CARD_LAB = { RONDAS: 'Rondas', RONDAS_EQUIPO: 'Rondas equipo', RONDAS_HANDICAP: 'Hánd. rondas',
+    HANDICAP: 'Hánd. mapas', TOTAL_MAPAS: 'Total mapas', KILLS: 'Kills', KILLS_EQUIPO: 'Kills equipo',
+    KILLS_HANDICAP: 'Hánd. kills', PRORROGA: 'Prórroga' };
+  function esStoredCard(p) {
+    return {
+      family: ES_CARD_FAM[p.family] || 'TOTAL', fam_label: ES_CARD_LAB[p.family] || p.family,
+      selection_name: p.selection_name, home: p.home, away: p.away,
+      home_team_id: null, away_team_id: null,
+      competition_name: p.competition, kickoff: p.start_at,
+      odds: p.odds, book: p.book, confidence: p.p_gp, line: p.line, side: p.side,
+      es_hash: 'esmatch/cs2/' + p.event_id, pick_id: p.pick_id,
+      signals: { win_prob: p.p_gp, edge_pp: p.edge_pp, data_confidence: 'med',
+        pick_quality: p.edge_pp >= 6 ? 'strong' : 'moderate', regime: 'monitor' },
+    };
+  }
+
   function renderESPerf() {
-    var d = esGet('overview', '/api/esports/overview?days=5', 180000);
-    if (!d) { esShell(t('nav_perf'), esLoading()); return; }
-    if (d._err) { esShell(t('nav_perf'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
-    var rs = d.ratings_state || {};
-    var body =
-      '<div class="gx-panel gx-es-why"><div class="gx-ph"><span class="gx-label">Por qué todavía no hay ROI</span></div>' +
-      '<p>' + esc(rs.why || '') + '</p>' +
-      '<p class="gx-dim">' + esc(rs.consequence || '') + '</p>' +
-      '<div class="gx-es-next"><span class="gx-label">Lo que desbloquea la medición</span>' +
-      (rs.next || []).map(function (x) { return '<span class="gx-es-nat">' + esc(x) + '</span>'; }).join('') + '</div></div>' +
-      esPanel('Estado de los cuatro juegos', '<span class="gx-dim">' + esc(d.source || '') + '</span>',
-        '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Juego</th><th class="r">Partidas</th><th class="r">Ligas</th><th class="r">Cierres</th><th class="r">Rating</th><th>Donde aporta</th></tr></thead><tbody>' +
-        (d.games || []).map(function (g) {
-          return '<tr data-esgo="' + esc(g.game) + '"><td><b>' + esc(g.label) + '</b><div class="gx-dim" style="font-size:10.5px">' + esc((g.native || []).join(' · ')) + '</div></td>' +
-            '<td class="r gx-mono">' + g.events + '</td><td class="r gx-mono">' + g.competitions + '</td>' +
-            '<td class="r gx-mono">' + (g.closes_stored || 0) + '</td>' +
-            '<td class="r gx-mono">' + (g.rating_matches || 0) + '</td>' +
-            '<td class="gx-dim">' + esc((g.edge_families || []).join(', ').replace(/_/g, ' ').toLowerCase()) + '</td></tr>';
-        }).join('') + '</tbody></table></div>') +
-      esDoctrine(d.doctrine);
-    esShell(t('nav_perf'), body);
+    var g = esGame();
+    var d = esGet('track_' + g, '/api/esports/track?game=' + g, 60000);
+    if (!d) { esShell(t('nav_perf'), esTabs() + esLoading()); return; }
+    if (d._err) { esShell(t('nav_perf'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+
+    var kpi = '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Monitor privado de ' + esc(esGameLab()) + '</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">liquida ' + esc(d.source || '—') + '</span></span></div>' +
+      '<div class="gx-es-kpis">' +
+        '<div><span>Liquidadas</span><b>' + d.settled + '</b></div>' +
+        '<div><span>Ganadas / perdidas</span><b>' + d.w + ' / ' + d.l + (d.push ? ' <i style="font-style:normal;font-size:11px;opacity:.6">+' + d.push + ' push</i>' : '') + '</b></div>' +
+        '<div><span>Acierto</span><b>' + (d.hit_pct == null ? '—' : d.hit_pct + '%') + '</b></div>' +
+        '<div><span>Unidades</span><b class="' + (d.units > 0 ? 'gx-up' : d.units < 0 ? 'gx-down' : '') + '">' + (d.units > 0 ? '+' : '') + d.units + '</b></div>' +
+        '<div><span>ROI</span><b class="' + (d.roi_pct > 0 ? 'gx-up' : d.roi_pct < 0 ? 'gx-down' : '') + '">' + (d.roi_pct == null ? '—' : (d.roi_pct > 0 ? '+' : '') + d.roi_pct + '%') + '</b></div>' +
+        '<div><span>CLV medio</span><b class="' + (d.clv_avg_pct > 0 ? 'gx-up' : d.clv_avg_pct < 0 ? 'gx-down' : '') + '">' + (d.clv_avg_pct == null ? '—' : (d.clv_avg_pct > 0 ? '+' : '') + d.clv_avg_pct + '%') + '</b>' +
+          (d.clv_n ? '<i style="font-style:normal;font-size:10px;opacity:.55;display:block">sobre ' + d.clv_n + '</i>' : '') + '</div>' +
+        '<div><span>Abiertas</span><b>' + d.active + '</b></div>' +
+      '</div>' +
+      // LA ADVERTENCIA VA PEGADA A LOS NÚMEROS, no en una nota al pie: con esta muestra el ROI es ruido y
+      // enseñarlo grande sin decirlo es exactamente cómo se construye una expectativa falsa.
+      '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(d.reading || '') + '</span></div></div>';
+
+    var diag = d.clv_diag && d.clv_diag.sin_clv
+      ? esPanel('Por qué faltan CLV', '<span class="gx-dim">' + d.clv_diag.con_clv + ' con · ' + d.clv_diag.sin_clv + ' sin</span>',
+        '<div class="gx-es-why-rows">' +
+          '<div class="gx-es-whyr"><b>Sin cierre guardado</b><em>' + d.clv_diag.sin_cierre_guardado + '</em><span>no se llegó a guardar el cierre de mercado de ese partido.</span></div>' +
+          '<div class="gx-es-whyr"><b>El cierre no tenía esa línea</b><em>' + d.clv_diag.cierre_sin_esa_linea + '</em><span>el cierre existe pero la casa ya no cotizaba esa línea al guardarlo.</span></div>' +
+        '</div><div class="gx-dim gx-es-note">' + esc(d.clv_diag.nota || '') + '</div>')
+      : '';
+
+    var fams = Object.keys(d.by_family || {});
+    var byFam = fams.length ? esPanel('Por familia', '', '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
+      '<th>Familia</th><th class="r">Liquidadas</th><th class="r">Acierto</th><th class="r">Unidades</th><th class="r">CLV</th></tr></thead><tbody>' +
+      fams.map(function (f) {
+        var v = d.by_family[f];
+        return '<tr><td>' + esc((ES_CARD_LAB[f] || f).replace(/_/g, ' ')) + '</td>' +
+          '<td class="r gx-mono">' + v.n + '</td><td class="r gx-mono">' + (v.hit_pct == null ? '—' : v.hit_pct + '%') + '</td>' +
+          '<td class="r gx-mono ' + (v.units > 0 ? 'gx-up' : v.units < 0 ? 'gx-down' : '') + '">' + (v.units > 0 ? '+' : '') + v.units + '</td>' +
+          '<td class="r gx-mono">' + (v.clv_avg_pct == null ? '—' : v.clv_avg_pct + '%') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">Con esta muestra ninguna familia tiene todavía significación: la tabla existe para ver DÓNDE se está acumulando, no para decidir con ella.</div>') : '';
+
+    var lista = (d.recent || []).length
+      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Liquidadas</span><span class="gx-dim">' + d.recent.length + '</span></div>' +
+        '<div class="gx-picks-feed">' + d.recent.map(function (p) {
+          return '<div class="gx-bb-pickwrap">' + pickCard(esStoredCard(p), {}) + esResultBar(p) + '</div>';
+        }).join('') + '</div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('chart') + '<b>Todavía no hay picks liquidadas.</b>' +
+        '<span class="gx-dim">Las picks se guardan al nacer y se liquidan cuando el partido termina, contra ' + esc(d.source || 'la fuente de resultados') + '.</span></div></div>';
+
+    var abiertas = (d.open || []).length
+      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Abiertas</span><span class="gx-dim">' + d.open.length + '</span></div>' +
+        '<div class="gx-picks-feed">' + d.open.map(function (p) { return pickCard(esStoredCard(p), {}); }).join('') + '</div></div>'
+      : '';
+
+    esShell(t('nav_perf'), esTabs() + kpi + diag + byFam + abiertas + lista);
   }
 
   function esClicks(e) {
     var seg = e.target.closest('[data-esgtab]');
     if (seg) { S.es.gTab = seg.getAttribute('data-esgtab'); renderESBoard(); return; }
     var gt = e.target.closest('[data-esg]');
-    if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
+    if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel', 'esperf'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
     var go = e.target.closest('[data-esgo]');
     if (go) { S.es.game = go.getAttribute('data-esgo'); setHash('esboard/' + S.es.game); return; }
     if (e.target.closest('[data-esback]')) { setHash('esboard/' + esGame()); return; }

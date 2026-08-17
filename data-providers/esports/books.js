@@ -130,10 +130,28 @@ async function slate(game, { days = 7, resolve = null } = {}) {
       });
     }
   }
-  // el id de Cloudbet manda cuando existe, aunque el partido lo haya visto antes otra casa
+  // ── EL ID ES CANÓNICO Y NO DEPENDE DE QUÉ CASAS CONTESTARON ──────────────────────────────────────────
+  // ESTO SE REESCRIBIÓ POR UN FALLO QUE TARDÓ UN DÍA EN VERSE Y QUE HABRÍA ENVENENADO EL HISTÓRICO ENTERO.
+  // La primera versión usaba el id derivado de Cloudbet cuando Cloudbet tenía el partido, y el de otra casa
+  // cuando no. Consecuencia: **el mismo partido cambiaba de id entre pasadas** —según qué casa respondiera
+  // esa vez, o según qué nombre de equipo hubiera ganado la fusión ("paiN Academy" contra "paiN Gaming
+  // Academy")—. Con eso:
+  //   · el cierre guardado bajo un id no se encontraba al liquidar una pick nacida bajo otro → CLV SIEMPRE
+  //     NULO, que es justo la métrica que esta casa dice que manda;
+  //   · la misma pick se guardaba dos veces con dos ids distintos, inflando la muestra con duplicados.
+  // El id pasa a salir de la IDENTIDAD RESUELTA del par (la base propia de GP, no el nombre que use la casa)
+  // más la fecha. Con eso el mismo partido es el mismo partido aunque hoy lo cotice una casa y mañana tres.
   for (const m of merged) {
     const cb = m.sources.find((s) => s.book === 'cloudbet');
-    if (cb) { m.id = `${game}:${slugName(m.home.name)}__${slugName(m.away.name)}__${String(m.start_at || '').slice(0, 10)}`; m.provider_id = cb.provider_id; }
+    if (cb) m.provider_id = cb.provider_id;
+    // La hora del evento es la MÁS TEMPRANA de las casas, no la de la que respondiera primero. Dos motivos y
+    // los dos son de correctitud, no de estética: (1) el id lleva la fecha, y si una casa falta en una pasada
+    // la hora podía moverse lo justo para cruzar la medianoche UTC y cambiar el id del mismo partido;
+    // (2) la liquidación empareja por ventana de tiempo, así que una hora que baila es una pick que no
+    // encuentra su resultado.
+    const ts = m.sources.map((s) => Date.parse(s.start_at || 0)).filter(Boolean);
+    if (ts.length) m.start_at = new Date(Math.min(...ts)).toISOString();
+    m.id = canonicalId(game, m.pair_key, m.start_at);
     m.books = m.sources.length;
     delete m.t;
   }
@@ -148,6 +166,14 @@ async function slate(game, { days = 7, resolve = null } = {}) {
 }
 const slugName = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+// `pair_key` ya viene de la identidad RESUELTA contra la base propia (`gp:<id>`), así que dos casas que
+// escriben el nombre distinto producen la misma clave. La fecha va en UTC y sin hora: una casa puede mover
+// el inicio veinte minutos y eso no puede cambiar de qué partido estamos hablando.
+function canonicalId(game, pairKey, startAt) {
+  const pair = String(pairKey || '').replace(new RegExp('^' + game + ':'), '').replace(/gp:/g, '');
+  return `${game}:${String(startAt || '').slice(0, 10)}:${pair}`;
+}
 function dedupComps(got) {
   const m = new Map();
   for (const { r } of got) for (const c of (r && r.competitions) || []) if (c && c.name) m.set(c.name, c);
@@ -289,7 +315,7 @@ const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
 module.exports = {
-  ADAPTERS, enabled, slate, markets, crossBook, arbitrages, teamKey, norm,
+  ADAPTERS, enabled, slate, markets, crossBook, arbitrages, teamKey, norm, canonicalId,
   BOOKS_PROBED: BOV.BOOKS_PROBED,
   RESULTS_UNAVAILABLE: {
     available: false,

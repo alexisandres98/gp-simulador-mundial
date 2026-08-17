@@ -983,8 +983,68 @@ const PICKS_F = (g) => `picks-${g}.json`;
 
 // La pick se guarda una vez y NO se toca: si el motor cambia de opinión mañana, esa es otra pick. Reescribir
 // la de ayer con el criterio de hoy es exactamente cómo un histórico deja de servir para medir nada.
+// MIGRACIÓN DE UN SOLO USO, y queda escrita en vez de hacerse a mano en producción. Las primeras picks
+// nacieron con el id de evento ROTO —cambiaba según qué casas contestaran esa pasada— así que el mismo
+// partido aparecía con dos ids, la misma pick se guardaba dos veces y su cierre no se encontraba nunca (CLV
+// nulo). Aquí se recalcula el id canónico de cada pick guardada y se colapsan los duplicados quedándose con
+// la que nació ANTES: la primera es la que de verdad se habría tomado, y quedarse con la segunda sería
+// elegir el precio a toro pasado.
+const PICKS_SCHEMA = 2;
+function migratePicks(game, st) {
+  if (!st || st.schema === PICKS_SCHEMA) return { migrated: 0, merged: 0 };
+  const BK = require('../data-providers/esports/books');
+  const resolve = resolverFor(game);
+  const byKey = new Map();
+  let merged = 0;
+  for (const p of Object.values(st.picks || {})) {
+    const pair = [BK.teamKey(p.home, resolve), BK.teamKey(p.away, resolve)].sort().join('~');
+    const eid = BK.canonicalId(game, `${game}:${pair}`, p.start_at);
+    const key = [eid, p.family, p.line, p.side, p.map, p.team].join('|');
+    const prev = byKey.get(key);
+    if (prev) {
+      merged++;
+      // se conserva la que nació antes, pero si la duplicada trae resultado y la original no, se rescata:
+      // el veredicto es un hecho del partido, no del momento en que se guardó
+      if (!prev.result_code && p.result_code) Object.assign(prev, { status: p.status, result_code: p.result_code, units: p.units, final: p.final, settled_at: p.settled_at, result_source: p.result_source });
+      if (Date.parse(p.born_at || 0) < Date.parse(prev.born_at || 0)) { prev.born_at = p.born_at; prev.odds = p.odds; prev.book = p.book; }
+      continue;
+    }
+    p.event_id = eid;
+    p.pick_id = `es_${game}_${eid}_${p.family}_${p.side}_${p.line != null ? p.line : 'x'}_${p.map || 0}`;
+    byKey.set(key, p);
+  }
+  st.picks = Object.fromEntries([...byKey.values()].map((p) => [p.pick_id, p]));
+  st.schema = PICKS_SCHEMA;
+  return { migrated: byKey.size, merged };
+}
+
+// Los CIERRES estaban indexados por el mismo id roto, así que se migran con el mismo criterio. Si no, los
+// cierres ya guardados quedan huérfanos y el CLV de esas picks se pierde para siempre — y el cierre es
+// justamente lo único que este deporte llevaba acumulando desde antes de poder liquidar nada.
+function migrateCloses(game) {
+  const st = rd(`closes-${game}.json`);
+  if (!st || st.schema === PICKS_SCHEMA) return 0;
+  const BK = require('../data-providers/esports/books');
+  const resolve = resolverFor(game);
+  const out = {};
+  let moved = 0;
+  for (const c of Object.values(st.closes || {})) {
+    const hn = (c.home && c.home.name) || c.home, an = (c.away && c.away.name) || c.away;
+    const pair = [BK.teamKey(hn, resolve), BK.teamKey(an, resolve)].sort().join('~');
+    const eid = BK.canonicalId(game, `${game}:${pair}`, c.start_at);
+    if (eid !== c.id) moved++;
+    c.id = eid;
+    // si ya había uno bajo ese id canónico se conserva el MÁS RECIENTE: el cierre es el último precio visto
+    if (!out[eid] || String(c.at || '') > String(out[eid].at || '')) out[eid] = c;
+  }
+  st.closes = out; st.schema = PICKS_SCHEMA;
+  wr(`closes-${game}.json`, st);
+  return moved;
+}
+
 async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
   if (!ENGINES[game]) return { game, saved: 0 };
+  const movedCloses = migrateCloses(game);
   const s = await slate(game, { days: 2 }).catch(() => null);
   // TOPE DE PARTIDOS POR PASADA, y no por prudencia abstracta: lo que tumbó la plataforma el 15-ago fueron
   // trabajos de fondo concurrentes, y este corre encadenado con el de cierres cada 20 minutos. Diez partidos
@@ -994,7 +1054,8 @@ async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
     const mins = (Date.parse(e.start_at) - Date.now()) / 60000;
     return mins > -30 && mins < withinMin;
   }).slice(0, cap);
-  const st = rd(PICKS_F(game)) || { game, picks: {} };
+  const st = rd(PICKS_F(game)) || { game, picks: {}, schema: PICKS_SCHEMA };
+  const mig = migratePicks(game, st);
   let saved = 0;
   for (const ev of evs) {
     let out = null;
@@ -1023,7 +1084,7 @@ async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
   }
   st.at = new Date().toISOString();
   wr(PICKS_F(game), st);
-  return { game, saved, total: Object.keys(st.picks).length };
+  return { game, saved, total: Object.keys(st.picks).length, migrated: mig.merged || 0, closes_migrated: movedCloses };
 }
 
 // ---- de un resultado a un veredicto ---------------------------------------------------------------------
@@ -1094,9 +1155,21 @@ const RES = require('../data-providers/esports/results');
 async function settlePicks(game, { sinceDays = 4 } = {}) {
   const st = rd(PICKS_F(game));
   if (!st || !st.picks) return { game, settled: 0, pending: 0, no_source: false };
+  const closes0 = rd(`closes-${game}.json`);
+  // REPESCA DE CLV. Una pick ya liquidada sin CLV no volvía a mirarse nunca, así que si su cierre aparecía
+  // después —o se recuperaba al migrar los ids— el dato se perdía para siempre. El cierre es un hecho del
+  // pasado: si está, se usa, aunque la pick ya esté cerrada.
+  let backfilled = 0;
+  for (const p of Object.values(st.picks)) {
+    if (p.status !== 'SETTLED' || p.clv_pct != null) continue;
+    const co = closeOddsFor(p, closes0);
+    if (co) { p.close_odds = co; p.clv_pct = +(((p.odds / co) - 1) * 100).toFixed(2); backfilled++; }
+  }
+  if (backfilled) wr(PICKS_F(game), st);
+
   const pend = Object.values(st.picks).filter((p) => p.status === 'ACTIVE'
     && p.start_at && Date.parse(p.start_at) < Date.now() - 20 * 60e3);
-  if (!pend.length) return { game, settled: 0, pending: 0 };
+  if (!pend.length) return { game, settled: 0, pending: 0, clv_backfilled: backfilled };
 
   const since = new Date(Date.now() - sinceDays * 864e5).toISOString().slice(0, 10);
   const rs = await RES.results(game, { since }).catch(() => null);
@@ -1139,14 +1212,15 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
   }
   st.at = new Date().toISOString();
   wr(PICKS_F(game), st);
-  return { game, settled, unmatched, unsettleable, pending: pend.length, source: rs.source };
+  return { game, settled, unmatched, unsettleable, pending: pend.length, clv_backfilled: backfilled, source: rs.source };
 }
 
 // El cuadro de rendimiento del deporte. Se publica el CLV SEPARADO del ROI y por delante, porque con
 // muestras pequeñas el ROI es ruido y el CLV ya tiene señal — es la lección que dejó baloncesto.
-function track(game) {
+function track(game, { limit = 60 } = {}) {
   const st = rd(PICKS_F(game));
   const all = st && st.picks ? Object.values(st.picks) : [];
+  const closes = rd(`closes-${game}.json`);
   const settled = all.filter((p) => p.status === 'SETTLED');
   const w = settled.filter((p) => p.result_code === 'WIN').length;
   const l = settled.filter((p) => p.result_code === 'LOSS').length;
@@ -1177,6 +1251,24 @@ function track(game) {
     reading: settled.length < 30
       ? `muestra de ${settled.length}: el ROI todavía es ruido. El CLV es el número que ya dice algo, y hacen falta centenares de picks liquidadas por familia para hablar de ventaja.`
       : 'muestra en construcción; el CLV sigue siendo la vara principal.',
+    // POR QUÉ FALTA EL CLV, contado. Es la métrica que esta casa dice que manda, así que un hueco ahí no
+    // puede quedarse mudo: o no se guardó el cierre de ese partido, o se guardó y no tenía esa línea.
+    clv_diag: (() => {
+      const sinClv = settled.filter((p) => p.clv_pct == null);
+      const sinCierre = sinClv.filter((p) => !(closes && closes.closes && closes.closes[p.event_id])).length;
+      return {
+        con_clv: clvs.length, sin_clv: sinClv.length,
+        sin_cierre_guardado: sinCierre,
+        cierre_sin_esa_linea: sinClv.length - sinCierre,
+        nota: sinClv.length
+          ? 'el cierre se guarda en la ventana de 3 h previa al inicio; una pick nacida antes y con el partido ya empezado cuando corrió el trabajo se queda sin cierre y por tanto sin CLV.'
+          : null,
+      };
+    })(),
+    // las liquidadas, de la más reciente a la más vieja, para que Rendimiento pueda enseñarlas
+    recent: settled.slice().sort((a, b) => String(b.settled_at || '').localeCompare(String(a.settled_at || ''))).slice(0, limit),
+    open: all.filter((p) => p.status === 'ACTIVE')
+      .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || ''))).slice(0, 20),
     source: (RES.SOURCES[game] || {}).name || null,
     at: (st && st.at) || null,
   };

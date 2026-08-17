@@ -174,6 +174,118 @@ function backupDbDaily() {
 }
 setTimeout(backupDbDaily, 90 * 1000);            // al boot (90s después, sin competir con el arranque)
 setInterval(backupDbDaily, 6 * 3600 * 1000);     // chequeo cada 6h (escribe solo si falta el del día)
+
+// ═══ OPS AUTOMÁTICAS (17-ago) ════════════════════════════════════════════════════════════════════════════
+// Tres piezas que hasta hoy dependían de que alguien se acordara: el CSV de usuarios al correo del admin
+// (el backup en disco protege contra corrupción, pero si se pierde el DISCO el backup se va con él — el
+// correo es la copia fuera de la máquina), la cosecha diaria de CS2 (cada día sin foto de plantillas es
+// lineage perdido para siempre) y el backfill de boxeo (Wikipedia limita por IP la máquina de desarrollo;
+// desde Render sí sale). Todo corre en PROCESOS HIJO con tope de memoria: el servidor vive en 512 MB y un
+// trabajo de datos jamás debe poder tumbarlo — si el hijo se pasa, muere él, no la plataforma.
+db.ops = db.ops || {};
+const OPS = { running: {}, log: [] };
+const opsLog = (what, extra) => { OPS.log.push({ at: new Date().toISOString(), what, ...extra }); if (OPS.log.length > 40) OPS.log.shift(); };
+const opsToday = () => new Date().toISOString().slice(0, 10);
+const opsRssMb = () => Math.round(process.memoryUsage().rss / 1048576);
+
+// hijo con tope de heap, timeout y cola de una sola plaza por nombre. Guarda el final de su salida para
+// poder diagnosticar sin entrar a los logs de Render.
+function opsSpawn(name, args, { heapMb = 200, timeoutMin = 45 } = {}) {
+  if (OPS.running[name]) return Promise.resolve({ skipped: 'ya corriendo' });
+  OPS.running[name] = true;
+  return new Promise((resolve) => {
+    const { spawn } = require('child_process');
+    const t0 = Date.now();
+    let tail = '';
+    let child;
+    try {
+      child = spawn(process.execPath, ['--max-old-space-size=' + heapMb, ...args], { cwd: __dirname, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) { OPS.running[name] = false; opsLog(name, { error: e.message }); return resolve({ error: e.message }); }
+    const keep = (d) => { tail = (tail + d.toString()).slice(-2400); };
+    child.stdout.on('data', keep); child.stderr.on('data', keep);
+    const killer = setTimeout(() => { try { child.kill('SIGKILL'); } catch { } }, timeoutMin * 60e3);
+    child.on('exit', (code) => {
+      clearTimeout(killer); OPS.running[name] = false;
+      const out = { code, ms: Date.now() - t0, tail: tail.split('\n').filter(Boolean).slice(-8).join('\n') };
+      opsLog(name, out);
+      resolve(out);
+    });
+    child.on('error', (e) => { clearTimeout(killer); OPS.running[name] = false; opsLog(name, { error: e.message }); resolve({ error: e.message }); });
+  });
+}
+
+// ── CSV de usuarios al admin, diario. Va por Resend con adjunto; sin mailer configurado no hace nada. ────
+function usersCsv() {
+  const esc = (v) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const rows = [['email', 'created_at', 'verified', 'lang', 'follows', 'plan', 'last_seen']];
+  for (const [email, u] of Object.entries(db.users || {})) {
+    rows.push([email, u.createdAt ? new Date(u.createdAt).toISOString() : (u.created_at || ''), u.verified ? '1' : '0',
+      u.lang || '', (u.follows || []).length, (db.premiumGrants && db.premiumGrants[email] && db.premiumGrants[email].plan) || 'free',
+      u.lastSeen ? new Date(u.lastSeen).toISOString() : '']);
+  }
+  return rows.map((r) => r.map(esc).join(',')).join('\n');
+}
+async function emailUsersCsvDaily() {
+  try {
+    const day = opsToday();
+    if (db.ops.users_csv_day === day) return;
+    const admin = String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
+    const mailer = require('./mailer');
+    if (!admin || !mailer.isConfigured()) return;
+    const csv = usersCsv();
+    const n = Object.keys(db.users || {}).length;
+    await mailer.sendMail({
+      to: admin, noListUnsub: true,
+      subject: `GP · copia diaria de usuarios (${n}) — ${day}`,
+      text: `Copia diaria automática: ${n} usuarios registrados. El CSV va adjunto.\n\nEsta es la copia FUERA de la máquina: el backup en disco de Render protege contra corrupción del archivo, este correo protege contra perder el disco.`,
+      html: `<p>Copia diaria automática: <b>${n} usuarios</b> registrados. El CSV va adjunto.</p><p style="color:#888;font-size:13px">Esta es la copia fuera de la máquina: el backup en disco de Render protege contra corrupción del archivo; este correo protege contra perder el disco.</p>`,
+      attachments: [{ filename: `usuarios-gp-${day}.csv`, content: Buffer.from(csv, 'utf8').toString('base64') }],
+    });
+    db.ops.users_csv_day = day; save();
+    opsLog('users_csv', { sent: n });
+  } catch (e) { opsLog('users_csv', { error: e.message }); }
+}
+setTimeout(emailUsersCsvDaily, 4 * 60e3);
+setInterval(emailUsersCsvDaily, 6 * 3600e3);
+
+// ── CS2: cosecha incremental + foto de plantillas, diaria. ───────────────────────────────────────────────
+// El orden importa: la cosecha escribe el crudo de equipos que la foto de plantillas necesita para resolver
+// ids. El primer día en un disco vacío la cosecha es COMPLETA (~17 min a 260 ms por petición); después es
+// incremental y liviana. El guardia de RSS existe porque el hijo de agregación pica en ~210 MB: si el
+// servidor ya está gordo, mejor perder la pasada de hoy que arriesgar el contenedor entero.
+const cs2AutoOn = () => !/^(0|false|no|off)$/i.test(String(process.env.GP_CS2_HARVEST_ENABLED != null ? process.env.GP_CS2_HARVEST_ENABLED : '1').trim());
+async function cs2DailyJob() {
+  try {
+    if (!cs2AutoOn()) return;
+    const day = opsToday();
+    if (db.ops.cs2_day === day) return;
+    if (new Date().getUTCHours() < 9) return;            // ~3-4 am LATAM: la ventana más muerta del día
+    if (opsRssMb() > 230) { opsLog('cs2_daily', { skipped: 'rss ' + opsRssMb() + 'MB' }); return; }
+    db.ops.cs2_day = day; save();                      // se marca ANTES: un fallo no debe reintentar en bucle todo el día
+    const h = await opsSpawn('cs2_harvest', ['scripts/cs2-harvest.js'], { heapMb: 240, timeoutMin: 40 });
+    const r = await opsSpawn('cs2_roster', ['scripts/cs2-roster.js'], { heapMb: 200, timeoutMin: 25 });
+    opsLog('cs2_daily', { harvest: h.code != null ? h.code : h.error, roster: r.code != null ? r.code : r.error });
+  } catch (e) { opsLog('cs2_daily', { error: e.message }); }
+}
+setTimeout(cs2DailyJob, 6 * 60e3);
+setInterval(cs2DailyJob, 3600e3);
+
+// ── Boxeo: backfill de Wikipedia, una vez por boot y solo con la env puesta. ─────────────────────────────
+// La máquina de desarrollo tiene la IP limitada (429); Render no. Con GP_BOXING_BACKFILL=1 el servidor lo
+// corre UNA vez (por boot) a los 8 minutos del arranque, despacio (--sleep=200) para no molestar a nadie.
+// El resultado queda en data/combat/ del directorio del repo — se recoge por el endpoint interno y se
+// versiona; el flag se apaga después.
+async function boxingBackfillJob() {
+  try {
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_BOXING_BACKFILL || '').trim())) return;
+    if (db.ops.boxing_boot === BOOT_ID) return;
+    db.ops.boxing_boot = BOOT_ID;
+    const out = await opsSpawn('boxing_backfill', ['scripts/combat-boxing-backfill.js', '--depth=3', '--max=4000', '--sleep=200'], { heapMb: 160, timeoutMin: 120 });
+    opsLog('boxing_backfill_done', { code: out.code != null ? out.code : out.error });
+  } catch (e) { opsLog('boxing_backfill', { error: e.message }); }
+}
+const BOOT_ID = Date.now();
+setTimeout(boxingBackfillJob, 8 * 60e3);
 setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
 
 // Recalcula los Elo desde la base replicando todos los resultados finales (permite editar/borrar sin corromper ratings)
@@ -9348,9 +9460,13 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
     const ceids = Object.keys(evs); if (!ceids.length) continue;
     out.leagues++;
     const rows = await MK.loadQuotes(dbc, ceids).catch(() => []);
+    // instrumentación fina (17-ago): el pico de memoria de este trabajo vivía sin desglose — con una sola
+    // marca al inicio no se sabía si el gordo era la carga de cuotas, el calendario o la simulación.
+    memMark(`hoops:build:cuotas ${lg} (${rows.length} filas)`);
     const mkts = MK.groupMarkets(rows);
     // calendario para resolver el id ESPN del partido (el que usa la liquidación)
     const gs = await ESPN.games(lg, { from: new Date(Date.now() - 6 * 3600e3), to: new Date(Date.now() + 4 * 864e5) }).catch(() => []);
+    memMark(`hoops:build:simulando ${lg}`);
     const nrm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     const idx = {}; for (const g of gs) idx[nrm(g.home.name) + '|' + nrm(g.away.name)] = g;
     const byGame = {};
@@ -9563,6 +9679,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
   out.gates = gateDecisions.length ? GATE.summarize(gateDecisions) : null;
   if (out.created) { save(); console.log('[hoops-picks] nacieron', out.created, 'picks (monitor privado)'); }
   if (out.gates) console.log('[hoops-gates]', JSON.stringify(out.gates));
+  memMark(`hoops:build:fin (${out.created} picks, ${out.leagues} ligas)`);
   return out;
 }
 
@@ -10620,6 +10737,9 @@ async function combatCloudbetRefresh(C) {
       const t0 = Date.parse(e.date);
       return [-1, 0, 1].map(k => new Date(t0 + k * 864e5).toISOString().slice(0, 10));
     }))];
+    // instrumentación fina (17-ago): este trabajo tenía UNA marca al entrar — el desglose fixtures/detalles
+    // es lo que permite ver en qué fase vive el pico de memoria sin cambiar ni una decisión.
+    memMark(`combate:cb:fixtures ${C.org} (${days.length} días)`);
     const cbEvents = [];
     for (const d of days) {
       const j = await cbFetch(`https://sports-api.cloudbet.com/pub/v2/odds/fixtures?sport=${(COMBAT_ORGS[C.org] || COMBAT_ORGS.ufc).cbSport}&date=${d}`);
@@ -10628,6 +10748,7 @@ async function combatCloudbetRefresh(C) {
       }
       await new Promise(r => setTimeout(r, 400));
     }
+    memMark(`combate:cb:detalles ${C.org} (${cbEvents.length} eventos)`);
     const byComp = {};
     let fetched = 0;
     for (const ev of win) for (const ft of ev.fights) {
@@ -15087,6 +15208,40 @@ const server = http.createServer(async (req, res) => {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
           return json(res, 200, await ES.snapshot(gm));
         }
+        // ── EL CATÁLOGO (17-ago): seis pantallas que salen ENTERAS de la base propia ────────────────────
+        // Ninguna depende de que una casa cotice nada; por eso viven aparte de board/match. Solo CS2 las
+        // tiene (los demás juegos no tienen base) y el propio JSON lo explica en vez de devolver vacío.
+        if (p === '/api/esports/directory') {
+          return json(res, 200, ES.teamsDirectory(gm, { q: url.searchParams.get('q') || '',
+            limit: Math.min(200, +(url.searchParams.get('limit') || 60)) }));
+        }
+        if (p === '/api/esports/team') {
+          const id = String(url.searchParams.get('id') || '').trim();
+          if (!id) return json(res, 400, { error: 'falta el equipo', need: ['id'] });
+          return json(res, 200, ES.teamProfile(gm, id));
+        }
+        if (p === '/api/esports/players') {
+          return json(res, 200, ES.playersDirectory(gm, { q: url.searchParams.get('q') || '',
+            limit: Math.min(300, +(url.searchParams.get('limit') || 80)) }));
+        }
+        if (p === '/api/esports/ranking') {
+          return json(res, 200, ES.rankingBoard(gm));
+        }
+        if (p === '/api/esports/circuit') {
+          return json(res, 200, ES.circuit(gm));
+        }
+        if (p === '/api/esports/results') {
+          return json(res, 200, await ES.resultsRecent(gm, {
+            days: Math.min(21, +(url.searchParams.get('days') || 10)) }));
+        }
+        if (p === '/api/esports/h2h') {
+          const a = String(url.searchParams.get('a') || '').trim();
+          const b = String(url.searchParams.get('b') || '').trim();
+          if (!a || !b) return json(res, 400, { error: 'faltan los dos equipos', need: ['a', 'b'] });
+          const out = ES.h2h(gm, a, b);
+          if (!out) return json(res, 404, { error: 'no reconozco alguno de los dos equipos en la base propia', game: gm });
+          return json(res, 200, out);
+        }
         return json(res, 404, { error: 'No encontrado' });
       } catch (e) { return json(res, 500, { error: e.message, game: gm }); }
     }
@@ -15095,6 +15250,55 @@ const server = http.createServer(async (req, res) => {
     // No es un atajo para saltarse el portón: no sirve inteligencia ni picks, solo dice si los cuatro
     // motores cargan, qué ve el proveedor y cuántos cierres se llevan guardados. Existe porque el producto
     // es admin-only y sin esto la única forma de comprobar que vive en producción es iniciar sesión.
+    // ── OPS (17-ago): el panel único de los trabajos automáticos, con la llave interna. ──────────────────
+    // Qué corrió, cuándo, con qué código de salida y las últimas líneas de su salida — sin entrar a Render.
+    if (p === '/api/internal/ops') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      let backups = [];
+      try { backups = fs.readdirSync(BACKUP_DIR).filter(f => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().slice(-5); } catch { }
+      return json(res, 200, {
+        rss_mb: opsRssMb(), running: Object.keys(OPS.running).filter(k => OPS.running[k]),
+        days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null },
+        cs2_auto_enabled: cs2AutoOn(),
+        boxing_env: /^(1|true|yes|on)$/i.test(String(process.env.GP_BOXING_BACKFILL || '').trim()),
+        backups, log: OPS.log.slice().reverse(),
+      });
+    }
+    // ── CRUDO DE CS2 (17-ago): sembrar y auditar el almacén crudo del disco persistente. ─────────────────
+    // GET lista tamaños; PUT ?file=<nombre> con el JSON gzipeado en el cuerpo lo escribe. Existe para no
+    // obligar a Render a re-cosechar 88.000 mapas que ya están cosechados en otra máquina: se suben una vez
+    // (meta.json incluido) y a partir de ahí la cosecha diaria es incremental de verdad.
+    if (p === '/api/internal/cs2raw') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const rawDir = path.join(path.dirname(DB_FILE), 'esports', 'cs2-raw');
+      const OKF = ['teams.json', 'matches.json', 'games.json', 'players.json', 'meta.json'];
+      if (req.method === 'PUT' || req.method === 'POST') {
+        const f = String(url.searchParams.get('file') || '');
+        if (!OKF.includes(f)) return json(res, 400, { error: 'archivo no permitido', ok: OKF });
+        try {
+          const chunks = [];
+          let bytes = 0;
+          await new Promise((resolve, reject) => {
+            req.on('data', (c) => { bytes += c.length; if (bytes > 64e6) { reject(new Error('cuerpo > 64MB')); req.destroy(); } else chunks.push(c); });
+            req.on('end', resolve); req.on('error', reject);
+          });
+          let buf = Buffer.concat(chunks);
+          // gzip opcional: se detecta por la firma, no por cabecera, para que un curl simple también valga
+          if (buf[0] === 0x1f && buf[1] === 0x8b) buf = require('zlib').gunzipSync(buf);
+          JSON.parse(buf.toString('utf8'));               // validar antes de escribir: un crudo corrupto es peor que ninguno
+          fs.mkdirSync(rawDir, { recursive: true });
+          fs.writeFileSync(path.join(rawDir, f), buf);
+          return json(res, 200, { ok: true, file: f, bytes: buf.length });
+        } catch (e) { return json(res, 400, { error: e.message }); }
+      }
+      let files = [];
+      try { files = fs.readdirSync(rawDir).map(f => ({ file: f, bytes: (() => { try { return fs.statSync(path.join(rawDir, f)).size; } catch { return null; } })() })); } catch { }
+      let snaps = [];
+      try { snaps = fs.readdirSync(path.join(rawDir, 'roster-snapshots')).sort().slice(-10); } catch { }
+      return json(res, 200, { dir: rawDir, files, roster_snapshots: snaps });
+    }
     if (p === '/api/internal/esports') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

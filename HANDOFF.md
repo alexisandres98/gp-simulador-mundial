@@ -1,7 +1,32 @@
-# HANDOFF — estado al 16-ago-2026 (esports: quinto deporte, admin-only)
+# HANDOFF — estado al 17-ago-2026 (catálogo CS2 completo + ops automáticas)
 
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.
+
+## 🆕 17-ago (tarde) — CATÁLOGO CS2 (6 productos) + OPS AUTOMÁTICAS
+
+**Producto (todo servido de la base propia, nada depende de las casas):** Finalizados (marcadores bo3 reales
+en Partidas), Equipos (directorio + ficha con efecto por mapa/quinteto/forma/rivales), Ranking GP (top 50 por
+Elo propio validado; foto semanal en `data/esports/cs2/rankings-history/` — las flechas aparecen con la 2ª
+foto), Jugadores (rating 6m del proveedor, ETIQUETADO como suyo; escala 0-10, no la ~1.0 de HLTV), El
+circuito (meta del pool medido) y H2H (en partida, simulador y ficha). Rutas: `/api/esports/{directory,team,
+players,ranking,circuit,results,h2h}`. Vistas: `esteams/esteam/escircuit` + segmento `fin` en esboard.
+La base se re-cosechó COMPLETA: **88.502 mapas** (antes 48.678) — los agregados nuevos (`pairs.json`,
+`form.json`, `rankings.json`, `players.json`) salen de `cs2-harvest.js --aggregate-only` + `cs2-roster.js`.
+
+**Ops (server.js, bloque "OPS AUTOMÁTICAS"):** (1) CSV de usuarios DIARIO por correo al admin (adjunto
+Resend — copia fuera de la máquina); (2) cosecha CS2 diaria automática a las ≥09 UTC en hijos con tope de
+heap y guardia de RSS (`GP_CS2_HARVEST_ENABLED=0` la apaga; estado en `/api/internal/ops?key=`); (3)
+`/api/internal/cs2raw?key=` para SEMBRAR el crudo en el disco de Render (subir gzip; sin esto el primer día
+re-cosecharía todo); (4) backfill de boxeo con `GP_BOXING_BACKFILL=1` (una vez por boot, Wikipedia no limita
+la IP de Render); (5) panel de créditos arreglado: `quota_updated_at` (migración 045) — la fecha de la cuota
+ya no miente; (6) memMarks finos dentro de buildHoopsPicks y combatCloudbetRefresh (solo instrumentación).
+
+**⚠️ CONGELADO HASTA EL DOM 23:** las temporadas históricas de baloncesto (games-nba-2024/2025,
+games-wnba-2023/24/25, ~55 MB) están SOLO en la rama `claude/gpsim-combat-visual-boxing-276pin`, NO en main:
+`store.load()` re-ajusta el rating con TODOS los `games-*` del disco y meterlas ahora cambiaría la decisión
+en mitad de la ventana. El domingo 23: fast-forward de main a la rama + re-fit + validación. Los artefactos
+`fit-*.json` que el backfill reescribió se REVIRTIERON por lo mismo.
 
 ## 🔬 CS2 2.0 — VALIDACIÓN, MODELO NUEVO Y ROSTER (16-ago, tercera pasada)
 

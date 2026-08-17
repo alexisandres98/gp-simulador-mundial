@@ -11,7 +11,17 @@ const db = require('../database/client');
 async function adminStatus() {
   const out = { enabled: cfg.flags.enabled, write: cfg.flags.write, has_key: cfg.flags.hasKey, provider: cfg.params.providerName, regions: cfg.params.regions, market: 'h2h/1x2' };
   if (cfg.flags.enabled && db.isConfigured()) {
-    try { out.state = await repo.getState(cfg.params.providerName); } catch { /* noop */ }
+    try {
+      out.state = await repo.getState(cfg.params.providerName);
+      // el panel mentía (17-ago): updated_at se refresca en cada upsert aunque los números de cuota vengan
+      // conservados por COALESCE. `quota_updated_at` (045) es la fecha REAL de los números, y aquí se dice
+      // explícitamente cuándo la cuota que se enseña dejó de ser fresca.
+      if (out.state) {
+        const qa = out.state.quota_updated_at ? Date.parse(out.state.quota_updated_at) : null;
+        out.state.quota_age_min = qa ? Math.round((Date.now() - qa) / 60000) : null;
+        out.state.quota_stale = qa == null || (Date.now() - qa) > 6 * 3600e3;
+      }
+    } catch { /* noop */ }
   }
   return out;
 }

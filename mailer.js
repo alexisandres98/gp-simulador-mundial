@@ -98,13 +98,17 @@ async function sendViaWebhook({ to, subject, text, html }) {
 // opts.from: override del remitente (p.ej. nombre personal). opts.noListUnsub: omite el header List-Unsubscribe
 // — ese header es señal de "correo masivo" y empuja a la pestaña Promociones; para correos de estilo PERSONAL
 // (reactivación 1:1) conviene omitirlo y dejar la baja en el cuerpo, para que Gmail lo trate como Principal.
-async function sendViaResend({ to, subject, text, html, from, noListUnsub, replyTo }) {
+// opts.attachments: [{ filename, content }] con content en base64 — Resend los acepta tal cual. Solo el
+// camino Resend los soporta; relay GAS y SMTP los ignoran (los correos con adjunto son internos al admin,
+// que siempre viajan por Resend en producción).
+async function sendViaResend({ to, subject, text, html, from, noListUnsub, replyTo, attachments }) {
   const payload = {
     from: from || process.env.MAIL_FROM || 'GP Simulador del Mundial <codigo@gpsimulador.com>',
     to: [to],
     // replyTo por-mensaje (p.ej. soporte: responder va directo al usuario); fallback al global.
     reply_to: replyTo || process.env.MAIL_REPLY_TO || undefined,
     subject, text, html,
+    attachments: attachments && attachments.length ? attachments : undefined,
   };
   if (!noListUnsub) {
     // List-Unsubscribe mejora la entregabilidad anti-spam (exigido a remitentes de gran volumen):

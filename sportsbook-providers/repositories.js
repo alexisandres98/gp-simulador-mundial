@@ -74,13 +74,19 @@ async function upsertState(providerName, s = {}) {
   const r = await db.query(
     `INSERT INTO sportsbook_provider_state
        (provider_name, requests_used, requests_remaining, requests_last_cost, requests_reset_at,
-        last_success_at, last_error_at, last_error_code, provider_status, circuit_state, circuit_opened_at, consecutive_failures)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        last_success_at, last_error_at, last_error_code, provider_status, circuit_state, circuit_opened_at, consecutive_failures,
+        quota_updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+        CASE WHEN $2::int IS NOT NULL OR $3::int IS NOT NULL THEN now() ELSE NULL END)
      ON CONFLICT (provider_name) DO UPDATE SET
        requests_used=COALESCE(EXCLUDED.requests_used, sportsbook_provider_state.requests_used),
        requests_remaining=COALESCE(EXCLUDED.requests_remaining, sportsbook_provider_state.requests_remaining),
        requests_last_cost=COALESCE(EXCLUDED.requests_last_cost, sportsbook_provider_state.requests_last_cost),
        requests_reset_at=COALESCE(EXCLUDED.requests_reset_at, sportsbook_provider_state.requests_reset_at),
+       -- la marca de la CUOTA solo avanza cuando llegan números reales; sin esto, el trigger de updated_at
+       -- ponía fecha fresca sobre números conservados por COALESCE y el panel de créditos mentía (045)
+       quota_updated_at=CASE WHEN EXCLUDED.requests_used IS NOT NULL OR EXCLUDED.requests_remaining IS NOT NULL
+         THEN now() ELSE sportsbook_provider_state.quota_updated_at END,
        last_success_at=COALESCE(EXCLUDED.last_success_at, sportsbook_provider_state.last_success_at),
        last_error_at=COALESCE(EXCLUDED.last_error_at, sportsbook_provider_state.last_error_at),
        last_error_code=COALESCE(EXCLUDED.last_error_code, sportsbook_provider_state.last_error_code),

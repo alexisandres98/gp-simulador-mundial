@@ -1,5 +1,51 @@
 # HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
 
+## 🧭 17-ago (cierre de sesión) — PUNTO DE RETOMA PARA LA PRÓXIMA SESIÓN
+
+**Todo lo de abajo está DESPLEGADO y verificado en prod** (último deploy: lentes en todos los deportes).
+Estado de las reglas fijas: ejecutor en la sombra ($2.000, cards_under_v1) INTOCADO; baloncesto congelado
+SOLO-RAMA (`claude/gpsim-combat-visual-boxing-276pin`, commit en la punta) hasta el DOMINGO 23-ago;
+`GP_BOXING_BACKFILL=0` (backfill completo: 39.384 peleas / 1.417 boxeadores, en main).
+
+1. **Props de jugador CS2 vs Underdog, EN SOMBRA** (`esports-engine/props.js` +
+   `data-providers/esports/underdog.js` + rutas `/api/esports/{props,propstrack}` + vista Props):
+   v1.1 con factor rival (dpr del cinco rival, clamp ±12%), headshots como 2ª stat, CLV por tesis.
+   Barrido cada 2 h anota tesis solo; settle en cs2DailyJob. **POR QUÉ NO GENERA PICKS TODAVÍA** (si
+   Alexis pregunta): doctrina de la casa — toda familia nueva acumula muestra fuera de muestra en sombra
+   y se revisa con Alexis ANTES de publicar; el modelo v1.1 no está validado contra resultados aún (0
+   liquidadas al cierre de sesión; las primeras liquidan con la pasada diaria del 18-ago). El listón
+   está escrito en el propio track (`doctrine`). La bitácora de jugador lleva `hs` desde la pasada del
+   18-ago (para liquidar headshots; los anteriores caen a VOID con motivo).
+2. **Boleto GP**: combinador de piernas en TODAS las pick cards (localStorage `gp_slip`, ¼-Kelly tope
+   2 %, correlación avisada). Listener global con captura; botón junto a la calculadora.
+3. **Blueprint feedback CS2 aplicado**: apertura point-in-time en cierres (`snapshotCloses` congela
+   primera lectura), panel Evidencia de mercado en Rendimiento (`/api/esports/evidence`: cobertura,
+   apertura→cierre, CLV por casa), Huella GP (percentiles 6D en ficha de jugador), estado del cinco en
+   ficha de equipo.
+4. **LENTES CONTEXTUALES (arquitectura visual, fase 1+2 ENTREGADA)**: patrón `gx-seg` sticky
+   («La partida / El modelo / Contexto») aplicado a: partida CS2, partida esports genérica (LoL/VAL/Dota,
+   2 lentes), partido NFL (`data-nfllens`, bind de cancha solo en lente partida) y partido baloncesto
+   (`data-bblens`, era la pantalla más vertical: 17 bloques). Handlers: esClicks para esports; listener
+   global de captura para NFL/BB. El VERDE NO SE TOCA (decisión de Alexis 17-ago). PENDIENTE de la
+   fase 3: fútbol (renderMatch — producto público en vivo, hacerlo con Alexis mirando) y fichas de
+   equipo/jugador si se quiere.
+5. **Datos round-level (punto 1 del feedback) — investigación de costes (17-ago)**: PandaScore con
+   rondas detalladas ≈ €1.600/mes histórico, €4.000/mes live (pricing público). GRID/Bayes = enterprise
+   con presupuesto a medida (GRID tiene programas de acceso para proyectos pequeños — vale la pena
+   aplicar). **Gratis y oficiales para los OTROS esports**: Riot API (LoL y Valorant, gratis con
+   aprobación) y OpenDota/Steam (Dota 2, gratis) — dan detalle por partida que bo3 no tiene para CS2.
+   Camino recomendado: aplicar a GRID + pedir Riot API + Liquipedia (email pendiente de Alexis);
+   PandaScore solo si el producto ya paga.
+6. **Recordatorio programado**: trigger `trig_012Ai9w8HHmxRXL9GneDcAzv` dispara el 7-sep-2026 14:00 UTC
+   (sesión fresca, push+email a Alexis) para construir el ROSTER TIMELINE de CS2 con las ~3 semanas de
+   fotos diarias de plantilla ya acumuladas. Si hay <15 días de fotos, reprogramar.
+7. **Análisis LCS Larry** (competidor, lcslarry.com + @LCSLarry): escáner de props esports contra libros
+   DFS blandos, $150/mes vía Whop, track record auto-calificado no auditable (claims ~60% hit / 30% ROI).
+   Veredicto: modelo no comparable ni auditable; negocio listo en lo comercial. Sus 2 ideas buenas ya
+   replicadas (props → punto 1, boleto → punto 2). Pendientes de decisión de producto con Alexis:
+   track record público cuando la sombra aguante, comunidad de pago post-Mundial.
+
+
 ## 📋 17-ago (tarde-3) — BLUEPRINT DE FEEDBACK CS2 aplicado (P0 evidencia de mercado + P1 jugador/roster)
 
 Del docx "Product Feedback & Next-Level Review" de Alexis. Lo aplicado, en su orden de prioridad:

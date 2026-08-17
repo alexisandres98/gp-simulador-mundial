@@ -2199,6 +2199,15 @@
     }
   }, true);
   setTimeout(slipFab, 800);
+  // Lentes de NFL y baloncesto: capturadas a nivel documento (los shells de cada deporte tienen su propio
+  // onclick y así no hay que tocar cada uno). Esports maneja data-eslens en esClicks.
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-nfllens],[data-bblens]') : null;
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    if (b.hasAttribute('data-nfllens')) { S.nfl.lens = b.getAttribute('data-nfllens'); renderNflGame(); }
+    else { S.bb.lens = b.getAttribute('data-bblens'); renderBBGame(); }
+  }, true);
   // F2: hint discreto cuando la mejor cuota vive en una casa fuera de las del usuario (solo con casas guardadas)
   function myBooksHint(book) {
     var mine = (S.me && S.me.my_books) && (S.me.my_books_list || []);
@@ -8101,7 +8110,21 @@
         '<div class="gx-dim gx-bb-lunote">El número grande está encogido por posesiones jugadas; el pequeño es el bruto. Veinte posesiones y +12 no son un quinteto de +12.</div></div>';
       deepLow = rot + lus;
     }
-    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + wm + deepTop + stackHtml + readHtml + injHtml + mkt + dist + why + propsHtml + deepMid + exploit + fair + courts + ff + deepLow + pls);
+    // LENTES CONTEXTUALES (17-ago, mismo patrón que CS2 y NFL): esta era la pantalla más vertical de toda
+    // la casa (17 bloques apilados). Lo narrativo y accionable queda en la lente por defecto; el mercado y
+    // el modelo en la segunda; canchas, four factors y jugadores en Contexto.
+    var blens = S.bb.lens || 'partida';
+    var BLENSES = [
+      ['partida', 'El partido', wm + deepTop + stackHtml + readHtml + injHtml],
+      ['modelo', 'Mercado y modelo', mkt + dist + why + propsHtml + deepMid + exploit + fair],
+      ['contexto', 'Contexto', courts + ff + deepLow + pls],
+    ];
+    if (!BLENSES.some(function (x) { return x[0] === blens; })) blens = 'partida';
+    var bbar = '<div class="gx-seg gx-es-lens">' + BLENSES.map(function (x) {
+      return '<button data-bblens="' + x[0] + '"' + (x[0] === blens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    var bact = BLENSES.filter(function (x) { return x[0] === blens; })[0];
+    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + bbar + bact[2]);
   }
   // Genera la lectura bajo demanda (POST) y repinta. Cuesta una llamada al LLM, por eso es un botón.
   function bbGenRead(id) {
@@ -9062,11 +9085,22 @@
       esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + lensBar + active[2].filter(Boolean).join(''));
       return;
     }
-    if (g === 'lol') blocks = [esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esWhat(m), esUnc(m), esSim(m, ev)];
-    else if (g === 'valorant') blocks = [esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m), esWhat(m), esUnc(m), esSim(m, ev)];
-    else blocks = [esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
+    // Los tres juegos sin base propia usan el mismo patrón de lentes, con dos: la partida y el modelo.
+    var gameBlocks;
+    if (g === 'lol') gameBlocks = [esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m)];
+    else if (g === 'valorant') gameBlocks = [esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m)];
+    else gameBlocks = [esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev)];
+    var glens = S.es.lens === 'modelo' ? 'modelo' : 'partida';
+    var GLENSES = [
+      ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
+      ['modelo', 'El modelo', [esWhat(m), esUnc(m), esSim(m, ev), esProv(d)].filter(Boolean).join('')],
+    ];
+    var gbar = '<div class="gx-seg gx-es-lens">' + GLENSES.map(function (x) {
+      return '<button data-eslens="' + x[0] + '"' + (x[0] === glens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    var gact = GLENSES.filter(function (x) { return x[0] === glens; })[0];
     var edges = esEdges(d);
-    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + head + edges + blocks.filter(Boolean).join('') + esProv(d));
+    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + head + edges + gbar + gact[2]);
   }
   function esBack() { return '<div class="gx-back" data-esback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_board')) + '</span></div>'; }
 
@@ -10410,9 +10444,22 @@
       '<div class="gx-est-form">' + (d.provenance || []).map(function (x) {
         return '<div class="gx-est-fr"><span>' + esc(x.source) + '</span><span class="gx-spacer"></span><em class="gx-dim">' + esc(x.kind) + '</em></div>';
       }).join('') + '</div></div>';
-    nflShell(d.home.abbr + ' vs ' + d.away.abbr,
-      nflBack() + hero + nflReadBlock(d.id) + mattersB + nflFieldBlock(d) + distB + dnaB + mkB + edB + nflInjBlock(d) + wxB + formB + h2hB + prov);
-    nflBindField(d);
+    // LENTES CONTEXTUALES (17-ago, mismo patrón que CS2): héroe siempre visible, la profundidad detrás
+    // de tres lentes. La cancha interactiva y los veredictos van en la lente por defecto — lo accionable
+    // primero; distribución/ADN/mercado en El modelo; lesiones/clima/forma/h2h en Contexto.
+    var nlens = S.nfl.lens || 'partida';
+    var NLENSES = [
+      ['partida', 'El partido', nflReadBlock(d.id) + mattersB + nflFieldBlock(d) + edB],
+      ['modelo', 'El modelo', distB + dnaB + mkB],
+      ['contexto', 'Contexto', nflInjBlock(d) + wxB + formB + h2hB + prov],
+    ];
+    if (!NLENSES.some(function (x) { return x[0] === nlens; })) nlens = 'partida';
+    var nbar = '<div class="gx-seg gx-es-lens">' + NLENSES.map(function (x) {
+      return '<button data-nfllens="' + x[0] + '"' + (x[0] === nlens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    var nact = NLENSES.filter(function (x) { return x[0] === nlens; })[0];
+    nflShell(d.home.abbr + ' vs ' + d.away.abbr, nflBack() + hero + nbar + nact[2]);
+    if (nlens === 'partida') nflBindField(d);
   }
 
   // ---- 3) EQUIPOS -----------------------------------------------------------------------------------------

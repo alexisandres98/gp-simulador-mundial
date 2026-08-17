@@ -355,11 +355,31 @@ function perf(picks) {
   const priced = done.filter((p) => p.price_dec);
   let units = 0;
   for (const p of priced) units += p.status === 'WIN' ? p.price_dec - 1 : -1;
-  // CLV: nuestra P(GP) al anotar contra el LISTÓN del cierre (la última línea del libro antes del inicio,
-  // en la línea anotada o la más cercana). Positivo = el libro se movió hacia nosotros. Es la métrica que
-  // decide si la tesis tiene sustancia antes de que el acierto tenga muestra — la lección de combate.
-  const clvs = picks.filter((p) => p.status !== 'ACTIVE' && p.bar != null && p.close_bar != null && p.close_line === p.line)
-    .map((p) => p.close_bar - p.bar);
+  // CLV EN UN LIBRO DFS: el precio casi no se mueve, la LÍNEA sí (corregido el 17-ago tras mirar la sombra
+  // en producción). Medido: 22 de 24 tesis anotadas al MISMO precio (1,893 → listón 0,5283) y 2 con la línea
+  // ya movida. La versión anterior medía solo `close_bar − bar` y encima descartaba las tesis cuya línea
+  // había cambiado: es decir, medía cero por construcción justo en los casos informativos. Underdog sí varía
+  // precio de vez en cuando (se vieron 1,719 y 2,77), así que el componente de precio se conserva — pero
+  // aparte, no como la métrica entera.
+  //
+  // El CLV de esta familia tiene DOS componentes y se publican los dos por separado:
+  //   · línea  = P(nuestro lado en la línea anotada) − P(nuestro lado en la línea de cierre), las dos con la
+  //              proyección CONGELADA del momento de anotar (mu/sigma guardados en la tesis). Congelarla es
+  //              lo que aísla el movimiento del libro de la deriva de nuestro propio modelo.
+  //              Positivo = el libro se movió en contra de nuestro lado, o sea nos dejó la mejor línea.
+  //   · precio = listón de cierre − listón de entrada, con la misma dirección.
+  // El total es la suma, y es lo que el resto de la casa llama CLV.
+  const withClose = picks.filter((p) => p.status !== 'ACTIVE' && p.close_line != null && Number.isFinite(p.mu) && Number.isFinite(p.sigma));
+  const pSideAt = (p, line) => {
+    const over = 1 - phi((line - p.mu) / p.sigma);
+    return p.side === 'over' ? over : 1 - over;
+  };
+  const clvLine = withClose.map((p) => pSideAt(p, p.line) - pSideAt(p, p.close_line));
+  const priced2 = picks.filter((p) => p.status !== 'ACTIVE' && p.bar != null && p.close_bar != null);
+  const clvPrice = priced2.map((p) => p.close_bar - p.bar);
+  const clvTot = withClose.map((p, i) => clvLine[i] + (p.bar != null && p.close_bar != null ? p.close_bar - p.bar : 0));
+  const mean = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(4) : null);
+  const movedN = withClose.filter((p) => p.close_line !== p.line).length;
   return {
     n: done.length, wins, losses: done.length - wins,
     hit: done.length ? +(wins / done.length).toFixed(4) : null,
@@ -367,8 +387,12 @@ function perf(picks) {
     units: +units.toFixed(2),
     roi: priced.length ? +(units / priced.length).toFixed(4) : null,
     avg_edge: done.length ? +(done.reduce((a, p) => a + (p.edge || 0), 0) / done.length).toFixed(4) : null,
-    clv_n: clvs.length,
-    avg_clv: clvs.length ? +(clvs.reduce((a, b) => a + b, 0) / clvs.length).toFixed(4) : null,
+    clv_n: clvTot.length,
+    avg_clv: mean(clvTot),
+    clv_line_n: clvLine.length, avg_clv_line: mean(clvLine),
+    clv_price_n: clvPrice.length, avg_clv_price: mean(clvPrice),
+    lines_moved: movedN,
+    clv_note: 'CLV = línea + precio. La línea se evalúa con la proyección congelada al anotar, así que mide el movimiento del libro y no la deriva del modelo. En un libro DFS el precio casi no se mueve: el componente que informa es la línea.',
   };
 }
 

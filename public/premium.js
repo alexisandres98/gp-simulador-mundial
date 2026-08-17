@@ -8613,7 +8613,13 @@
       '<div><em>' + (perf.hit != null ? (100 * perf.hit).toFixed(1) + '%' : '—') + '</em><span>acierto</span></div>' +
       '<div><em class="' + (perf.units > 0 ? 'gx-up' : perf.units < 0 ? 'gx-down' : '') + '">' + (perf.units > 0 ? '+' : '') + perf.units + 'u</em><span>unidades</span></div>' +
       '<div><em>' + (perf.roi != null ? (perf.roi > 0 ? '+' : '') + (100 * perf.roi).toFixed(1) + '%' : '—') + '</em><span>ROI @precio</span></div>' +
-      (perf.avg_clv != null ? '<div><em class="' + (perf.avg_clv > 0 ? 'gx-up' : 'gx-down') + '">' + (perf.avg_clv > 0 ? '+' : '') + (100 * perf.avg_clv).toFixed(1) + ' pp</em><span>CLV medio (' + perf.clv_n + ')</span></div>' : '') + '</div>' +
+      (perf.avg_clv != null ? '<div><em class="' + (perf.avg_clv > 0 ? 'gx-up' : 'gx-down') + '">' + (perf.avg_clv > 0 ? '+' : '') + (100 * perf.avg_clv).toFixed(1) + ' pp</em><span>CLV medio (' + perf.clv_n + ')</span></div>' : '') +
+      // El desglose del CLV es la lectura ÚTIL en un libro DFS: el precio casi no se mueve, la línea sí.
+      // Enseñarlos juntos evita leer un CLV plano como "el libro no nos dio nada" cuando lo que pasó es
+      // que el libro no mueve precio nunca.
+      (perf.avg_clv_line != null ? '<div><em class="' + (perf.avg_clv_line > 0 ? 'gx-up' : perf.avg_clv_line < 0 ? 'gx-down' : '') + '">' + (perf.avg_clv_line > 0 ? '+' : '') + (100 * perf.avg_clv_line).toFixed(1) + ' pp</em><span>· por línea (' + (perf.lines_moved || 0) + ' movidas)</span></div>' : '') +
+      (perf.avg_clv_price != null ? '<div><em class="' + (perf.avg_clv_price > 0 ? 'gx-up' : perf.avg_clv_price < 0 ? 'gx-down' : '') + '">' + (perf.avg_clv_price > 0 ? '+' : '') + (100 * perf.avg_clv_price).toFixed(1) + ' pp</em><span>· por precio</span></div>' : '') + '</div>' +
+      (perf.clv_note ? '<div class="gx-dim gx-es-note">' + esc(perf.clv_note) + '</div>' : '') +
       '<div class="gx-dim gx-es-note">El listón de salida de la sombra es el de toda la casa: muestra fuera de muestra que aguante escrutinio, revisada antes de publicar nada.</div>') : '';
     function propRow(r) {
       var pr = r.proj || {}, b = r.best || {};

@@ -6686,6 +6686,12 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     // CORNERS en intermedias/blandas (ENCENDIDO 4-ago): mismo criterio de cards (edge post-blend ≥2pp, línea
     // genérica de abajo) pero SOLO con el gate LOO de la liga aprobado — sin backtest aprobado no se publica.
     if (p.family === 'CORNERS' && p.gate_status !== 'approved') { p.regime = 'monitor'; continue; }
+    // CARDS OVER A MONITOR (17-ago, revisión del lunes, aprobado por Alexis). La medición: 8-18 histórico,
+    // −12,6u (ROI −48 %) — la imagen invertida de la familia estrella. El edge de tarjetas es DIRECCIONAL:
+    // cuando el modelo pide "menos" gana (68 % a cuota 1,75); cuando pide "más" pierde casi la mitad de lo
+    // apostado. Se sigue generando y midiendo, pero deja de publicarse hasta que 50 picks de monitor digan
+    // otra cosa con CLV ≥ 0.
+    if (p.family === 'CARDS' && p.side === 'over') { p.regime = 'monitor'; continue; }
     // segmento público: el criterio de publicación ES el edge post-blend ≥ 2pp (⇔ crudo ≥ 4pp; 81/82
     // cards-under históricas lo cumplían). SIMÉTRICO: también promueve lo que nació 'monitor' por la regla
     // vieja de priceAboveFair — la calidad de compra la vigila el gate de CLV rolling, no un filtro estático.
@@ -7607,6 +7613,12 @@ function reclassifyClubSegments() {
     else if (old.family === 'CORNERS') {
       const want = (old.gate_status === 'approved' && old.blend_prob != null && isFinite(k) && (old.blend_prob - k) * 100 >= 2) ? 'edge' : 'monitor';
       if (old.regime !== want) { old.regime = want; n++; }
+    }
+    // CARDS over a monitor también AQUÍ: este reclasificador corre después del de la generación y ya
+    // devolvió a monitor una córner recién promovida por conocer solo la regla vieja — el mismo agujero
+    // aplicaría al cierre de cards over si solo se parchea el nacimiento.
+    else if (old.family === 'CARDS' && old.side === 'over') {
+      if (old.regime !== 'monitor') { old.regime = 'monitor'; n++; }
     }
     else if (old.blend_prob != null && isFinite(k)) {
       const want = (old.blend_prob - k) * 100 >= 2 ? 'edge' : 'monitor';
@@ -9815,6 +9827,38 @@ async function shadowExecQuote(p) {
     return (r && r.o > 1) ? { odds: r.o, book: r.b } : null;
   } catch { return null; }
 }
+// EL PORQUÉ DE UNA NO-EJECUTABLE (17-ago, pedido de Alexis en la revisión del lunes: "¿por qué esas del
+// sombra no fueron ejecutables?"). Hasta hoy la señal se sellaba sin motivo y el hueco no se podía auditar.
+// Tres diagnósticos, del más al menos informativo:
+//   solo_casas_no_conectables — el mercado EXISTE y está fresco, pero solo en casas sin API (se dice cuáles):
+//                               es el hueco de capacidad real, y se arregla conectando esa casa, no tocando
+//                               el modelo.
+//   cotizacion_vieja          — una casa conectable lo cotizó alguna vez pero la última observación pasa de
+//                               60 min: hueco de FRESCURA del sweep, no de cobertura.
+//   mercado_no_cotizado       — nadie cotiza esa familia/línea para ese partido: la pick nació de un precio
+//                               que ya no existe en ninguna parte.
+async function shadowUnexecDiag(p) {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { reason: 'db_off' };
+  const ceid = p.event && p.event.canonical_event_id;
+  const fam = SHADOW_FAM_MAP[p.family];
+  if (!ceid || !fam) return { reason: 'sin_mapa_de_mercado' };
+  const side = String(p.side || p.selection_code || '').toLowerCase();
+  const books = SHADOW_EXEC_BOOKS();
+  try {
+    const all = await dbc.query(
+      `SELECT lower(sportsbook_code) b, max(observed_at) at FROM sportsbook_goal_quote_current
+       WHERE canonical_event_id=$1 AND market_family=$2 AND ($3::numeric IS NULL OR line=$3) AND lower(side)=$4
+       GROUP BY 1 ORDER BY 2 DESC`, [ceid, fam, p.line != null ? p.line : null, side]).catch(() => ({ rows: [] }));
+    if (!all.rows.length) return { reason: 'mercado_no_cotizado' };
+    const inExec = all.rows.filter((r) => books.includes(r.b));
+    if (!inExec.length) {
+      return { reason: 'solo_casas_no_conectables', books_con_mercado: all.rows.slice(0, 6).map((r) => r.b) };
+    }
+    return { reason: 'cotizacion_vieja', book: inExec[0].b, last_seen: inExec[0].at };
+  } catch (e) { return { reason: 'diag_error', error: String(e.message || e).slice(0, 80) }; }
+}
+
 async function shadowSweep() {
   const S = shadowInit();
   S.unexec = S.unexec || []; S.unexec_count = S.unexec_count || 0;
@@ -9822,6 +9866,21 @@ async function shadowSweep() {
   // pasa de best_odds a precio EJECUTABLE. Anotada, nunca silenciosa — el mismo estándar del track público.
   if (S.cfg[0] && !S.cfg[0].amended_exec) {
     S.cfg[0].amended_exec = { at: new Date().toISOString(), change: 'entrada al precio EJECUTABLE (GP_SHADOW_EXEC_BOOKS: cloudbet/polymarket) en vez de la mejor cuota del mercado; señal sin mercado ejecutable = registrada como no-ejecutable. Cambio hecho con 0 apuestas colocadas.' };
+    save();
+  }
+  // ═ SEGUNDO SEGMENTO: corners_over_v1 (17-ago, revisión del lunes, aprobado por Alexis) ═════════════════
+  // Entrada NUEVA anotada, jamás edición del segmento vivo — la regla de este ejecutor desde el día uno.
+  // La medición que lo justifica: CORNERS over lleva 60 picks decididas con 68 % de acierto a cuota media
+  // 1,93 (+23 % de ROI), cinco semanas seguidas en positivo y CLV neutro. Y el espejo que obliga a la
+  // dirección: corners UNDER acierta casi lo mismo (66 %) y PIERDE dinero, porque a cuota 1,51 ese acierto
+  // es el punto de empate — el modelo ahí solo está de acuerdo con el precio. El edge de córners es
+  // direccional o no es. Regla congelada 3-4 semanas, misma disciplina que cards_under_v1.
+  if (!S.cfg.some((c) => c.key === 'corners_over_v1')) {
+    S.cfg.push({
+      key: 'corners_over_v1', sport: 'futbol', family: 'CORNERS', side: 'over',
+      frozen_at: new Date().toISOString(),
+      note: 'REGLA CONGELADA (17-ago, aprobada por Alexis en la revisión del lunes): toda CORNERS over que publique el motor (mismos gates internos) · stake kelly/4 cap 1.5% · entrada al precio EJECUTABLE (GP_SHADOW_EXEC_BOOKS) · sin mercado ejecutable = no-ejecutable. Base: 60 decididas, 68% acierto a 1,93, +23% ROI, 5 semanas seguidas en verde, CLV neutro.',
+    });
     save();
   }
   let placed = 0, settled = 0, unexec = 0;
@@ -9891,7 +9950,9 @@ async function shadowSweep() {
         // sin cuota ejecutable AÚN: si queda >30 min al kickoff, reintenta el próximo sweep (el ejecutor
         // real pollearía igual); con la ventana agotada se sella como NO EJECUTABLE — dato de capacidad.
         if (ko - now > 30 * 60e3) continue;
-        S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(), match: p.event ? `${p.event.home} vs ${p.event.away}` : null, line: p.line != null ? p.line : null, side: p.side || null, best_odds: p.best_odds, kickoff_at: (p.event && p.event.kickoff_at) || null });
+        // el sello lleva su PORQUÉ desde el 17-ago: sin él, "no ejecutable" era un hueco inauditables
+        const diag = await shadowUnexecDiag(p).catch(() => ({ reason: 'diag_error' }));
+        S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(), match: p.event ? `${p.event.home} vs ${p.event.away}` : null, league: p.league || null, line: p.line != null ? p.line : null, side: p.side || null, best_odds: p.best_odds, kickoff_at: (p.event && p.event.kickoff_at) || null, ...diag });
         if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
         S.unexec_count++; seen.add(p.pick_id); unexec++;
         continue;
@@ -10772,12 +10833,43 @@ async function buildCombatPicksOrg(org, out, dryRun) {
   db.combatPicks = db.combatPicks || [];
   db.marketOpenings = db.marketOpenings || {};
   const stable = (key) => 'cbp_' + require('crypto').createHash('sha256').update(key).digest('hex').slice(0, 16);
+  // ═ FILTRO ANTI-PELEAS-FANTASMA (17-ago, revisión del lunes, aprobado por Alexis) ═══════════════════════
+  // Lo que pasó la semana del 10-17: el sistema apostó "Moses Itauma vs Kabayel" Y "Moses Itauma vs Joshua"
+  // con horas de diferencia — más un "Joshua vs Fury" que nunca existió. Son carteleras ESPECULATIVAS que la
+  // casa lista sobre rumores; las 11 picks de boxeo de la semana acabaron ANULADAS, y por eso el rendimiento
+  // solo enseñaba UFC. La regla física que ninguna fuente puede romper: un peleador NO pelea dos veces en
+  // ±3 días. Si el calendario dice que sí, alguna de esas peleas es fantasma y no se apuesta NINGUNA de las
+  // dos — elegir cuál es la real sería adivinar.
+  const FANTASMA_MS = 3 * 864e5;
+  const fighterDates = {};
+  for (const ev of (C.upcoming || [])) {
+    if (!ev.date || Date.parse(ev.date) <= now) continue;
+    for (const ft of ev.fights || []) {
+      for (const f of [ft.f1, ft.f2]) {
+        if (!f || !f.id) continue;
+        (fighterDates[f.id] = fighterDates[f.id] || []).push(Date.parse(ev.date));
+      }
+    }
+  }
+  const esFantasma = (ft, evDate) => {
+    const t = Date.parse(evDate);
+    for (const f of [ft.f1, ft.f2]) {
+      if (!f || !f.id) continue;
+      // se cuentan TODAS las apariciones del peleador en la ventana, incluida la propia: 2+ = fantasma.
+      // Contar "las otras" fallaba en el caso de dos listados con exactamente la misma hora.
+      const enVentana = (fighterDates[f.id] || []).filter((d) => Math.abs(d - t) < FANTASMA_MS);
+      if (enVentana.length >= 2) return f.name || f.id;
+    }
+    return null;
+  };
   const fresh = [];
   for (const ev of (C.upcoming || [])) {
     if (!ev.date || Date.parse(ev.date) <= now) continue; // solo prepartido (estado por reloj)
     if (ev.date_tbd) continue; // fecha por confirmar (boxeo): cuotas especulativas — sin picks hasta que confirme
     for (const ft of ev.fights) {
       if (!ft.f1.id || !ft.f2.id) continue;
+      const dup = esFantasma(ft, ev.date);
+      if (dup) { out.fantasma = (out.fantasma || 0) + 1; continue; }   // peleador con 2 peleas en ±3 días
       out.fights++;
       // MUESTRA (7-ago): la regla del 31-jul ("con <3 peleas el Elo es el prior 1500 disfrazado; sin
       // muestra no se publica probabilidad") estaba en el display y en Ask pero NO acá — el pipeline
@@ -11105,7 +11197,7 @@ function combatPickWhy({ name, rival, m, k, eg, books, slot, parts, side }) {
     en: `GP reads this fight ${mp}% for ${name}, against the ${kp}% the market prices in (${books} book${books === 1 ? '' : 's'}).${fEN ? ' What tilts it: ' + fEN + '.' : ''} ${slot === 'main' ? 'Main-event bout.' : ''}`.trim(),
   };
 }
-function combatPicksTrack({ since = 0, excludeLeagues = null } = {}) {
+function combatPicksTrack({ since = 0, excludeLeagues = null, excludeFamilies = null } = {}) {
   // since (5-ago, lanzamiento público): el rendimiento del PÚBLICO arranca desde cero — solo picks de peleas
   // con KICKOFF desde el corte (las del finde pre-lanzamiento son historia interna del monitor). Por kickoff
   // y no por created_at: una pick nacida antes del corte para una pelea posterior SÍ es del track público
@@ -11113,7 +11205,10 @@ function combatPicksTrack({ since = 0, excludeLeagues = null } = {}) {
   // excludeLeagues (8-ago): boxeo genera en MONITOR admin-only — jamás entra al track del público hasta validar.
   const rows = (db.combatPicks || []).filter(p => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS')
     && (!since || Date.parse((p.event && p.event.kickoff_at) || p.created_at || 0) >= since)
-    && (!excludeLeagues || excludeLeagues.indexOf(p.league) < 0));
+    && (!excludeLeagues || excludeLeagues.indexOf(p.league) < 0)
+    // excludeFamilies (17-ago): FIGHT volvió a monitor — si el público no ve la pick, su liquidación
+    // tampoco puede entrar a su rendimiento, o el cuadro contaría apuestas que nadie pudo tomar.
+    && (!excludeFamilies || excludeFamilies.indexOf(p.family || 'FIGHT') < 0));
   const agg = (list) => {
     const w = list.filter(p => p.result_code === 'WIN').length;
     const u = list.reduce((s, p) => s + (p.units || 0), 0);
@@ -15372,6 +15467,45 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: 'run=sweep|report' });
       }
       const S = shadowInit();
+      // ?unexec_diag=1 (17-ago): diagnóstico RETROACTIVO de las selladas sin motivo. Funciona porque las
+      // cuotas quedan congeladas en la última observación cuando el evento sale de la ventana — la tabla
+      // conserva quién llegó a cotizar cada mercado aunque el partido ya haya pasado.
+      if (url.searchParams.get('unexec_diag')) {
+        const byPick = {}; for (const p of (db.clubDailyPicks || [])) byPick[p.pick_id] = p;
+        const out = [];
+        for (const u2 of (S.unexec || []).slice(-40)) {
+          if (u2.reason) { out.push(u2); continue; }          // las nuevas ya nacen con motivo
+          const p = byPick[u2.pick_id];
+          const diag = p ? await shadowUnexecDiag(p).catch(() => ({ reason: 'diag_error' })) : { reason: 'pick_no_encontrada' };
+          out.push({ ...u2, ...diag, retro: true });
+        }
+        const byReason = {};
+        for (const r of out) byReason[r.reason || '?'] = (byReason[r.reason || '?'] || 0) + 1;
+        return json(res, 200, { unexec: out, by_reason: byReason });
+      }
+      // ?closing_quality=1 (17-ago): auditoría de los CLV en 0,00 exacto. Distingue "el cierre es idéntico a
+      // la entrada porque el mercado no se movió" de "solo tenemos UNA observación y estamos comparando el
+      // precio consigo mismo". La clave es cuántas observaciones distintas hay entre publicación y cierre.
+      if (url.searchParams.get('closing_quality')) {
+        const byPick = {}; for (const p of (db.clubDailyPicks || [])) byPick[p.pick_id] = p;
+        const rows = [];
+        for (const b of S.bets.filter((x) => x.status === 'SETTLED' && x.result !== 'SUPERSEDED')) {
+          const p = byPick[b.pick_id];
+          rows.push({
+            match: b.match, placed_at: b.placed_at, odds_entrada: b.odds, clv: b.clv,
+            closing_odds: b.closing, closing_at: p && p.closing ? p.closing.at : null,
+            closing_fair: p && p.closing ? p.closing.fair_prob : null,
+            best_odds_pub: b.ref_best_odds,
+            // minutos entre la última observación del cierre y el kickoff: si es grande, el "cierre" es
+            // viejo y el CLV 0,00 es un artefacto de medición, no un mercado quieto
+            closing_min_antes_ko: p && p.closing && p.closing.at && b.kickoff_at
+              ? Math.round((Date.parse(b.kickoff_at) - Date.parse(p.closing.at)) / 60000) : null,
+          });
+        }
+        const zeros = rows.filter((r) => r.clv === 0).length;
+        const stale = rows.filter((r) => r.closing_min_antes_ko != null && r.closing_min_antes_ko > 90).length;
+        return json(res, 200, { rows, resumen: { total: rows.length, clv_cero_exacto: zeros, cierre_viejo_90min: stale } });
+      }
       return json(res, 200, {
         bankroll: S.bankroll, start: S.start_bankroll, created_at: S.created_at, cfg: S.cfg,
         exec_books: SHADOW_EXEC_BOOKS(),
@@ -15419,8 +15553,17 @@ const server = http.createServer(async (req, res) => {
       // hasta que el CLV contra mercado real las valide (misma vara que pasó MMA).
       // BOXEO PÚBLICO (12-ago, GO de Alexis; revisión post-finde): las picks de boxeo salen del admin-only
       // y su resultado entra al track visible. Mismo corte temporal del lanzamiento (CB_PUBLIC_SINCE).
-      const cbPickVisible = (x) => cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE();
-      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE() };
+      // FIGHT VUELVE A MONITOR (17-ago, revisión del lunes, aprobado por Alexis). La medición que lo ordena:
+      // el ganador de combate lleva CLV −5,66 % sobre 39 picks —el peor número de toda la casa— y la semana
+      // del 10-17 cerró 2-11 con −9,2u. Es el mismo mercado donde baloncesto perdió −11,87 % de ROI y donde
+      // esports tiene la puerta cerrada por código: sistemáticamente tomamos peor precio que el cierre. Se
+      // SIGUE generando y midiendo (el monitor existe para eso), pero el público deja de verlo. ROUNDS
+      // (CLV +1,75 %, el único positivo de combate) y METHOD siguen públicos. Interruptor por env para poder
+      // revertir sin desplegar si la revisión de un lunes futuro lo reabre.
+      const cbFightMonitor = String(process.env.GP_COMBAT_FIGHT_MONITOR || 'true') !== 'false';
+      const cbFamVisible = (x) => !(cbFightMonitor && (x.family || 'FIGHT') === 'FIGHT') || cbAdmin;
+      const cbPickVisible = (x) => (cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE()) && cbFamVisible(x);
+      const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE(), excludeFamilies: cbFightMonitor ? ['FIGHT'] : null };
       // Punto 3: visibilidad de PICK por plan — sharp ve todo; pro solo GANADOR (MÉTODO/ROUNDS son sharp);
       // free no ve chips de pick en cockpit/estado/mapa: su única pick vive en Oportunidades (tardía, 60min).
       const cbPickPlanOk = (x) => cbSharp || (cbProUp && (x.family || 'FIGHT') === 'FIGHT');

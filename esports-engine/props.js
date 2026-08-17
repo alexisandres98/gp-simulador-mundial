@@ -349,7 +349,12 @@ function settleShadow() {
   return { settled, voided };
 }
 
-function perf(picks) {
+// `openOnly` calcula el CLV PROVISIONAL de las tesis todavía abiertas: el mismo cálculo, pero contra la
+// última lectura del libro en vez de contra el cierre definitivo. Existe porque el CLV es lo que se lee
+// ANTES de que haya resultados, y esperar a la primera liquidación para ver si el libro se mueve hacia
+// nosotros deja la familia a ciegas justo en sus primeros días.
+function perf(picks, { openOnly = false } = {}) {
+  const closed = (p) => (openOnly ? p.status === 'ACTIVE' : p.status !== 'ACTIVE');
   const done = picks.filter((p) => p.status === 'WIN' || p.status === 'LOSS');
   const wins = done.filter((p) => p.status === 'WIN').length;
   const priced = done.filter((p) => p.price_dec);
@@ -369,13 +374,13 @@ function perf(picks) {
   //              Positivo = el libro se movió en contra de nuestro lado, o sea nos dejó la mejor línea.
   //   · precio = listón de cierre − listón de entrada, con la misma dirección.
   // El total es la suma, y es lo que el resto de la casa llama CLV.
-  const withClose = picks.filter((p) => p.status !== 'ACTIVE' && p.close_line != null && Number.isFinite(p.mu) && Number.isFinite(p.sigma));
+  const withClose = picks.filter((p) => closed(p) && p.close_line != null && Number.isFinite(p.mu) && Number.isFinite(p.sigma));
   const pSideAt = (p, line) => {
     const over = 1 - phi((line - p.mu) / p.sigma);
     return p.side === 'over' ? over : 1 - over;
   };
   const clvLine = withClose.map((p) => pSideAt(p, p.line) - pSideAt(p, p.close_line));
-  const priced2 = picks.filter((p) => p.status !== 'ACTIVE' && p.bar != null && p.close_bar != null);
+  const priced2 = picks.filter((p) => closed(p) && p.bar != null && p.close_bar != null);
   const clvPrice = priced2.map((p) => p.close_bar - p.bar);
   const clvTot = withClose.map((p, i) => clvLine[i] + (p.bar != null && p.close_bar != null ? p.close_bar - p.bar : 0));
   const mean = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(4) : null);
@@ -403,6 +408,8 @@ function track() {
   const settledRows = all.filter((p) => p.status !== 'ACTIVE').sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
   return {
     active, settled: settledRows.slice(0, 60), perf: perf(all),
+    // provisional: el movimiento del libro en las tesis vivas, con la última lectura como cierre interino
+    perf_open: perf(all, { openOnly: true }),
     voided: all.filter((p) => p.status === 'VOID').length,
     at: st.at || null,
     doctrine: 'Familia nueva EN SOMBRA (17-ago): proyección propia de kills (mapas 1-2, CS2) contra líneas de libro blando. Se anota y se liquida sola con el scoreboard propio; no publica picks y no toca el ejecutor en la sombra de la casa. Listón de salida: la muestra tiene que aguantar el mismo escrutinio que el resto de familias.',

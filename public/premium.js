@@ -8620,6 +8620,17 @@
       (perf.avg_clv_line != null ? '<div><em class="' + (perf.avg_clv_line > 0 ? 'gx-up' : perf.avg_clv_line < 0 ? 'gx-down' : '') + '">' + (perf.avg_clv_line > 0 ? '+' : '') + (100 * perf.avg_clv_line).toFixed(1) + ' pp</em><span>· por línea (' + (perf.lines_moved || 0) + ' movidas)</span></div>' : '') +
       (perf.avg_clv_price != null ? '<div><em class="' + (perf.avg_clv_price > 0 ? 'gx-up' : perf.avg_clv_price < 0 ? 'gx-down' : '') + '">' + (perf.avg_clv_price > 0 ? '+' : '') + (100 * perf.avg_clv_price).toFixed(1) + ' pp</em><span>· por precio</span></div>' : '') + '</div>' +
       (perf.clv_note ? '<div class="gx-dim gx-es-note">' + esc(perf.clv_note) + '</div>' : '') +
+      // CLV provisional de las tesis VIVAS: es el único número que dice algo antes de la primera
+      // liquidación, y se etiqueta como provisional para que no se lea como resultado.
+      (function () {
+        var po = tr && tr.perf_open;
+        if (!po || !po.clv_n) return '';
+        return '<div class="gx-dim gx-es-note"><b>Provisional, tesis abiertas:</b> CLV ' +
+          (po.avg_clv > 0 ? '+' : '') + (100 * po.avg_clv).toFixed(1) + ' pp (línea ' +
+          (po.avg_clv_line > 0 ? '+' : '') + (100 * po.avg_clv_line).toFixed(1) + ' pp · precio ' +
+          (po.avg_clv_price > 0 ? '+' : '') + (100 * po.avg_clv_price).toFixed(1) + ' pp) sobre ' + po.clv_n +
+          ' abiertas, ' + (po.lines_moved || 0) + ' con la línea ya movida. Se mide contra la última lectura del libro, no contra el cierre definitivo.</div>';
+      })() +
       '<div class="gx-dim gx-es-note">El listón de salida de la sombra es el de toda la casa: muestra fuera de muestra que aguante escrutinio, revisada antes de publicar nada.</div>') : '';
     function propRow(r) {
       var pr = r.proj || {}, b = r.best || {};

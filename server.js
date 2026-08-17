@@ -15299,6 +15299,26 @@ const server = http.createServer(async (req, res) => {
       try { snaps = fs.readdirSync(path.join(rawDir, 'roster-snapshots')).sort().slice(-10); } catch { }
       return json(res, 200, { dir: rawDir, files, roster_snapshots: snaps });
     }
+    // ── RECOGIDA DEL BACKFILL DE BOXEO (17-ago): el trabajo corre en Render (la IP de desarrollo está
+    // limitada por Wikipedia) pero escribe en el directorio del repo, que se recrea en cada deploy — este
+    // GET es cómo se recoge el resultado para versionarlo ANTES de que un deploy se lo lleve.
+    if (p === '/api/internal/boxingraw') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const OKB = ['fights-boxing.json', 'fighters-boxing.json', '.boxing-cache.json'];
+      const f = String(url.searchParams.get('file') || '');
+      if (!f) {
+        const dir = path.join(__dirname, 'data', 'combat');
+        const files = OKB.map(x => ({ file: x, bytes: (() => { try { return fs.statSync(path.join(dir, x)).size; } catch { return null; } })() }));
+        return json(res, 200, { dir, files });
+      }
+      if (!OKB.includes(f)) return json(res, 400, { error: 'archivo no permitido', ok: OKB });
+      try {
+        const buf = require('zlib').gzipSync(fs.readFileSync(path.join(__dirname, 'data', 'combat', f)));
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
+        return res.end(buf);
+      } catch (e) { return json(res, 404, { error: e.message }); }
+    }
     if (p === '/api/internal/esports') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

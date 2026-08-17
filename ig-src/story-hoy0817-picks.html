@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(165deg, #06090B 0%, #0B1714 48%, #0A5C3C 130%); color: #EAF1F2;
+  padding: 130px 70px 130px; position: relative; }
+.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 40px; }
+.badge { width: 52px; height: 52px; border-radius: 15px; background: rgba(31,227,164,.16);
+  display: flex; align-items: center; justify-content: center; font-size: 30px; border: 1px solid rgba(31,227,164,.42); }
+.bname { font-size: 30px; font-weight: 800; color:#fff; }
+.tag { margin-left: auto; background: rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4; font-weight: 800; font-size: 20px; padding: 10px 20px; border-radius: 99px; letter-spacing: 1.2px; }
+h1 { font-size: 66px; font-weight: 800; letter-spacing: -2px; margin-bottom: 10px; color:#fff; line-height:1.05; }
+.sub { font-size: 25px; color:#9DB0B5; font-weight:600; margin-bottom: 48px; }
+.pick { background: linear-gradient(160deg, #111A1E, #0D1417); border: 1px solid rgba(255,255,255,.10); border-radius: 24px; padding: 34px 40px; position: relative; overflow:hidden; margin-bottom: 26px; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#1FE3A4; }
+.fam { font-size: 22px; font-weight: 800; letter-spacing: 1.3px; color:#1FE3A4; text-transform:uppercase; }
+.note { font-size: 23px; font-weight: 600; color:#9DB0B5; margin: 8px 0 18px; }
+.bet { font-size: 50px; font-weight: 800; letter-spacing:-1px; color:#fff; margin-bottom: 22px; }
+.row { display:flex; align-items:flex-end; justify-content:space-between; }
+.conf { font-size: 23px; color:#9DB0B5; font-weight:600; display:flex; align-items:center; gap:10px; }
+.conf b { color:#fff; }
+.dot { width:14px; height:14px; border-radius:50%; background:#F2C14E; }
+.dot.high { background:#1FE3A4; }
+.odds { text-align:right; }
+.odds .ol { font-size: 18px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size: 58px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; line-height:1; }
+.foot { position:absolute; bottom: 90px; left: 70px; right: 70px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:28px; font-weight:800; padding:20px 40px; border-radius:99px; }
+.foot .small { font-size:21px; color:#9DB0B5; font-weight:600; max-width: 480px; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador</div><div class="tag">● HOY</div></div>
+  <h1>Las 3 picks del día 🎯</h1>
+  <div class="sub">17 ago · tres ligas, tres mercados distintos</div>
+  <div class="pick">
+    <div class="fam">Ganador · Coppa Italia (ITA)</div>
+    <div class="note">Palermo vs Lecce · 19:15 UTC</div>
+    <div class="bet">Gana Palermo</div>
+    <div class="row"><div class="conf"><span class="dot"></span>Confianza: <b>Media</b></div><div class="odds"><div class="ol">Mejor cuota</div><div class="ov">2.50</div></div></div>
+  </div>
+  <div class="pick">
+    <div class="fam">Córners · Championship (ENG)</div>
+    <div class="note">Cardiff City vs Wrexham · 19:00 UTC</div>
+    <div class="bet">Menos de 11.5 córners</div>
+    <div class="row"><div class="conf"><span class="dot high"></span>Confianza: <b>Alta</b></div><div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.40</div></div></div>
+  </div>
+  <div class="pick">
+    <div class="fam">Tarjetas · Brasileirão Série A</div>
+    <div class="note">Internacional vs Remo · 23:00 UTC</div>
+    <div class="bet">Menos de 5.5 tarjetas</div>
+    <div class="row"><div class="conf"><span class="dot high"></span>Confianza: <b>Alta</b></div><div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.52</div></div></div>
+  </div>
+  <div class="foot">
+    <div class="small">Picks diarias · 24 ligas · no es consejo financiero</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

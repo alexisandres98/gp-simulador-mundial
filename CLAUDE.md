@@ -32,6 +32,13 @@
   markets) + `data-providers/basketball/espn.js`. Rutas `/api/hoops/*`. Picks APAGADAS: el modelo no bate
   al cierre (skill −0.0079 fuera de muestra en WNBA). Value/arbitraje/caídas/middles sí se publican porque
   salen de precios entre casas, no del modelo.
+- **NFL (6º deporte, admin-only):** `nfl-engine/` (data point-in-time, simulador conjunto margen/total con
+  residuos reales vs cierre 2016-2025, store) + `scripts/nfl-harvest.js` (nflverse) y `scripts/nfl-fit.js`
+  (constantes + validación walk-forward → `data/nfl/model-priors.json`). Rutas `/api/nfl/*` tras
+  `GP_NFL_PUBLIC_ENABLED` (sin poner = solo admin); probe `/api/internal/nfl?key=`. **TODAS las familias en
+  SOMBRA** (el modelo queda a ~0.45 pts del cierre; blueprint NFL-1125) y el moneyline cerrado por doctrina.
+  El modelo es market-blind POR CONSTRUCCIÓN: ninguna cuota entra a la probabilidad. Jobs: cuotas+cierres+
+  sombra cada 30 min SOLO con partidos a ≤9 días (The Odds API, 1 llamada/pasada). Kickoff: 9-sep-2026.
 - **Esports (5º deporte, admin-only):** `esports-engine/` (core + un motor POR JUEGO: `cs2`, `lol`,
   `valorant`, `dota2` + `store`) y `data-providers/esports/cloudbet.js`. Rutas `/api/esports/*` tras
   `GP_ESPORTS_PUBLIC_ENABLED` (sin poner = solo admin). **Los cuatro juegos NO comparten motor**: cada uno

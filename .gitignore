@@ -34,3 +34,4 @@ data/esports/cs2-raw/
 
 # crudo de esports: vive en el disco persistente (o local); jamás en git (25MB+)
 /esports/
+/nfl-raw/

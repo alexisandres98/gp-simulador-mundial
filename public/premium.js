@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', sport_nfl: 'NFL', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', sport_nfl: 'NFL', nfl_nav_games: 'Games', nfl_nav_model: 'The engine',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -949,7 +949,7 @@
   }
 
   // ---------- state ----------
-  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -1039,6 +1039,16 @@
   // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
   var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
   var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit'];
+  // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
+  // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
+  // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
+  var NFL_VIEWS = ['nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflmodel', 'nflperf'];
+  var NAV_NFL = [
+    ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'],
+    ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']
+  ];
+  var NAV2_NFL = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  function nflAllowed() { return !!(S.me && (S.me.isAdmin || S.me.nflPublic)); }
   var NAV_ES = [
     ['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'],
     ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'],
@@ -1071,6 +1081,7 @@
     if (CB_VIEWS.indexOf(v) >= 0) return 'combat';
     if (BB_VIEWS.indexOf(v) >= 0) return 'hoops';
     if (ES_VIEWS.indexOf(v) >= 0) return 'esports';
+    if (NFL_VIEWS.indexOf(v) >= 0) return 'nfl';
     if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
     return 'futbol';
   }
@@ -1082,6 +1093,9 @@
     if (v === 'esmatch') return 'esboard';
     if (v === 'esteam') return 'esteams';
     if (ES_VIEWS.indexOf(v) >= 0) return v;
+    if (v === 'nflgame') return 'nflgames';
+    if (v === 'nflteam') return 'nflteams';
+    if (NFL_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
     if (CB_VIEWS.indexOf(v) >= 0) return v;
@@ -1137,10 +1151,10 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS); // vistas implementadas (clickeables)
-    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports';
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS); // vistas implementadas (clickeables)
+    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var NAV_A = isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
+    var NAV_A = isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
     var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
@@ -1148,8 +1162,10 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isEs ? ['escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
-    var bnavItems = isEs
+    var moreViews = isNfl ? ['nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var bnavItems = isNfl
+      ? [['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflmodel', 'book', 'nfl_nav_model'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      : isEs
       ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
       : isHoops
       ? [['bbopps', 'target-arrow', 'nav_opps'], ['bbgames', 'ball-basketball', 'nav_bb_games'], ['bbteams', 'shield', 'nav_teams'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['__more', 'dots', 'more']]
@@ -1187,6 +1203,8 @@
         // ESPORTS (16-ago): mismo trato que tuvo baloncesto — admin-only, y para el público un teaser
         // "Proximamente" que anuncia el roadmap sin filtrar producto.
         '<button class="gx-sport' + (S.sport === 'esports' ? ' on' : '') + (esAllowed() ? '' : ' dim') + '"' + (esAllowed() ? ' data-sportgo="esports"' : ' disabled') + '><span class="gx-sport-ico">\ud83c\udfae</span>' + esc(t('sport_esports')) + (esAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
+        // NFL (17-ago): mismo trato que tuvieron baloncesto y esports \u2014 admin-only, teaser al p\u00fablico
+        '<button class="gx-sport' + (S.sport === 'nfl' ? ' on' : '') + (nflAllowed() ? '' : ' dim') + '"' + (nflAllowed() ? ' data-sportgo="nfl"' : ' disabled') + '><span class="gx-sport-ico">\ud83c\udfc8</span>' + esc(t('sport_nfl')) + (nflAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
       '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -1453,7 +1471,13 @@
     // ESPORTS (16-ago): su rama va DESDE EL PRIMER DIA. El fallo de baloncesto de esta manana —el menu
     // de "mas" en movil pintaba el de futbol y Rendimiento llevaba al de futbol— nacio justo de anadir
     // un deporte sin anadir su rama aqui. No se repite.
-    var items = S.sport === 'esports'
+    var items = S.sport === 'nfl'
+      ? [['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
+      : S.sport === 'esports'
       ? [['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'], ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
@@ -3962,6 +3986,13 @@
     // asi que el hash guarda el JUEGO aparte y el id va tal cual detras.
     var esm = h.match(/^esmatch\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (esm) { S.es.game = esm[1]; if (!(S.view === 'esmatch' && S.es.matchId === esm[2])) { S.es.matchId = decodeURIComponent(esm[2]); S.es.match = undefined; showView('esmatch'); } return; }
+    // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
+    var nfg = h.match(/^nflgame\/(.+)$/i);
+    if (nfg) { if (!(S.view === 'nflgame' && S.nfl.gameId === decodeURIComponent(nfg[1]))) { S.nfl.gameId = decodeURIComponent(nfg[1]); showView('nflgame'); } return; }
+    var nft = h.match(/^nflteam\/([A-Za-z]{2,3})$/i);
+    if (nft) { if (!(S.view === 'nflteam' && S.nfl.teamId === nft[1].toUpperCase())) { S.nfl.teamId = nft[1].toUpperCase(); showView('nflteam'); } return; }
+    var nfv = h.match(/^(nflgames|nflteams|nflmodel|nflperf)$/i);
+    if (nfv) { showView(nfv[1]); return; }
     var est = h.match(/^esteam\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
     var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit)(?:\/(cs2|lol|valorant|dota2))?$/i);
@@ -3987,7 +4018,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -4154,7 +4185,7 @@
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -4172,13 +4203,14 @@
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
     // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
-    if (ES_VIEWS.indexOf(v) >= 0) renderES(v);
+    if (NFL_VIEWS.indexOf(v) >= 0) renderNfl(v);
+    else if (ES_VIEWS.indexOf(v) >= 0) renderES(v);
     else if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
     else if (CB_VIEWS.indexOf(v) >= 0) renderCb(v);
     else if (v === 'matches') renderMatches();
@@ -9585,6 +9617,383 @@
       '<span class="gx-ph-extra"><span class="gx-dim">de la base propia — contexto, no señal</span></span></div>' + body + '</div>';
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  // NFL — EL TERMINAL DE INTELIGENCIA (17-ago, blueprint V1). Claridad institucional, no dashboard genérico:
+  // el Command Center contesta en segundos dónde está el cambio y la diferencia GP-vs-mercado; el Game
+  // Terminal lleva de la probabilidad al mecanismo, al mercado y al veredicto — con la incertidumbre SIEMPRE
+  // visible (NFL-0009) y las etiquetas de sombra/investigación donde tocan (NFL-0030).
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  function nflGet(key, url, ttl) {
+    var e = S.nfl['c_' + key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
+    if (!e || !e._inflight) {
+      var slot = S.nfl['c_' + key] = S.nfl['c_' + key] || {};
+      slot._inflight = true;
+      var done = false;
+      var to = setTimeout(function () { if (done) return; done = true; slot._inflight = false; slot.v = { _err: 1 }; slot._at = Date.now(); if (S.sport === 'nfl') showView(S.view); }, 30000);
+      fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (d) {
+          if (done) return; done = true; clearTimeout(to);
+          slot.v = d || { _err: 1 }; slot._at = Date.now(); slot._inflight = false;
+          if (S.sport === 'nfl') showView(S.view);
+        });
+    }
+    return e && e.v !== undefined ? e.v : null;
+  }
+  function nflShell(title, inner) {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + inner + '</div></div>';
+    mv.onclick = nflClicks;
+  }
+  var nflLoading = function (txt) {
+    return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>' + esc(txt || 'Leyendo la base propia de NFL…') + '</b></div></div>';
+  };
+  var nflErr = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo cargar.</b></div></div>';
+  var nflPct = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };
+  var nflSpread = function (x) { return x == null ? '—' : (x > 0 ? '-' : '+') + Math.abs(x).toFixed(1); }; // línea del local: margen positivo = local favorito = línea negativa en formato casa
+  function nflBack() { return '<div class="gx-back" data-nflback="1">' + ic('chevron-left') + '<span>' + esc(t('nfl_nav_games')) + '</span></div>'; }
+  // la nota de régimen/sombra que acompaña TODO el deporte — el blueprint la exige visible, no en un footer
+  function nflShadowNote(txt) {
+    return '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(txt || 'Todas las familias de NFL están EN SOMBRA: el terminal enseña inteligencia, no picks. El registro privado acumula CLV por familia y solo la evidencia fuera de muestra puede abrir una (blueprint NFL-1125).') + '</span></div>';
+  }
+
+  function renderNfl(v) {
+    if (!S.me) { nflShell('NFL', nflLoading()); return; }
+    if (!nflAllowed()) { showView('board'); return; }
+    if (v === 'nflgame') renderNflGame();
+    else if (v === 'nflteams') renderNflTeams();
+    else if (v === 'nflteam') renderNflTeam();
+    else if (v === 'nflmodel') renderNflModel();
+    else if (v === 'nflperf') renderNflPerf();
+    else renderNflGames();
+  }
+
+  // ---- 1) COMMAND CENTER (§29): la parrilla con el delta GP-vs-mercado como protagonista ------------------
+  function renderNflGames() {
+    // 30 días de ventana: en temporada enseña las próximas 2 semanas; en agosto alcanza el kickoff del 9-sep
+    var d = nflGet('slate', '/api/nfl/slate?days=30', 180000);
+    if (!d) { nflShell(t('nfl_nav_games'), nflLoading()); return; }
+    if (d._err || !d.available) { nflShell(t('nfl_nav_games'), nflErr); return; }
+    var rows = d.games || [];
+    var hero = '<div class="gx-es-hero"><div><b>Semana ' + (d.week || '—') + ' · temporada ' + d.season + '</b>' +
+      '<span class="gx-dim">' + (d.books ? d.books + ' casas cotizando · cuotas de ' + esc(String(d.odds_at || '').replace('T', ' ').slice(0, 16)) : 'las casas abren mercados conforme se acerca la semana') + '</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + rows.length + '</b><span>partidos</span></div></div>' +
+      (d.regime_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.regime_note) + '</span></div>' : '');
+    var groups = [], gmap = {};
+    rows.forEach(function (g) {
+      var k = g.date;
+      if (!gmap[k]) { gmap[k] = { label: bbDayLabel(g.date + 'T12:00:00Z'), rows: [] }; groups.push(gmap[k]); }
+      gmap[k].rows.push(g);
+    });
+    if (!rows.length) {
+      nflShell(t('nfl_nav_games'), hero + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Sin partidos en la ventana.</b><span class="gx-dim">La temporada 2026 arranca el miércoles 9 de septiembre (SEA recibe el kickoff; el 10 juegan SF–LAR en Melbourne).</span></div></div>' + nflShadowNote());
+      return;
+    }
+    var body = groups.map(function (gr) {
+      return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(gr.label) + '</span><span class="gx-dim">' + gr.rows.length + '</span></div>' +
+        '<div class="gx-nfl-list">' + gr.rows.map(function (g) {
+          var p = g.model ? g.model.p_home : null;
+          var dsp = g.delta && g.delta.spread != null ? g.delta.spread : null;
+          var dtt = g.delta && g.delta.total != null ? g.delta.total : null;
+          return '<div class="gx-panel gx-nfl-row" data-nflgame="' + esc(g.id) + '">' +
+            '<div class="gx-nfl-main">' +
+              '<div class="gx-nfl-side">' + cs2Crest(g.away) + '<b>' + esc(g.away.abbr) + '</b></div>' +
+              '<span class="gx-dim gx-nfl-at">@</span>' +
+              '<div class="gx-nfl-side">' + cs2Crest(g.home) + '<b>' + esc(g.home.abbr) + '</b></div>' +
+              '<div class="gx-nfl-prob">' + (p != null ? '<div class="gx-es-bar"><i style="width:' + (100 * p).toFixed(1) + '%"></i></div><span class="gx-mono">' + nflPct(p) + ' ' + esc(g.home.abbr) + '</span>' : '<span class="gx-dim">sin modelo</span>') + '</div>' +
+              '<div class="gx-nfl-nums">' +
+                '<div><span>GP spread</span><b class="gx-mono">' + (g.model ? nflSpread(g.model.mu_margin) : '—') + '</b></div>' +
+                '<div><span>mercado</span><b class="gx-mono">' + (g.market && g.market.spread != null ? nflSpread(g.market.spread) : '—') + '</b></div>' +
+                '<div class="' + (dsp != null && Math.abs(dsp) >= 2 ? 'hot' : '') + '"><span>Δ</span><b class="gx-mono">' + (dsp != null ? (dsp > 0 ? '+' : '') + dsp.toFixed(1) : '—') + '</b></div>' +
+                '<div><span>GP total</span><b class="gx-mono">' + (g.model ? g.model.mu_total.toFixed(1) : '—') + '</b></div>' +
+                '<div><span>mercado</span><b class="gx-mono">' + (g.market && g.market.total != null ? g.market.total.toFixed(1) : '—') + '</b></div>' +
+                '<div class="' + (dtt != null && Math.abs(dtt) >= 2.5 ? 'hot' : '') + '"><span>Δ</span><b class="gx-mono">' + (dtt != null ? (dtt > 0 ? '+' : '') + dtt.toFixed(1) : '—') + '</b></div>' +
+              '</div>' +
+              '<div class="gx-nfl-when"><b>' + esc(g.time ? g.time.slice(0, 5) : '') + '</b><span>' + (g.model ? '± ' + g.model.unc_pts + ' pts' : '') + '</span></div>' +
+            '</div></div>';
+        }).join('') + '</div></div>';
+    }).join('');
+    nflShell(t('nfl_nav_games'), hero + body + nflShadowNote() + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+  }
+
+  // ---- 2) GAME INTELLIGENCE TERMINAL (§30) ----------------------------------------------------------------
+  function nflHist(hist, label, markLine) {
+    var keys = Object.keys(hist || {}).map(Number).sort(function (a, b) { return a - b; });
+    if (!keys.length) return '';
+    var max = Math.max.apply(null, keys.map(function (k) { return hist[k]; }));
+    return '<div class="gx-es-hist"><span class="gx-label">' + esc(label) + '</span><div class="gx-es-hist-b gx-nfl-histb">' +
+      keys.map(function (k) {
+        var mark = markLine != null && Math.abs(k - markLine) < 0.75;
+        return '<div class="gx-es-hb' + (mark ? ' mark' : '') + '" title="' + k + ': ' + (100 * hist[k]).toFixed(1) + '%"><i style="height:' + (100 * hist[k] / max).toFixed(1) + '%"></i>' + (k % 7 === 0 || keys.length < 22 ? '<span>' + k + '</span>' : '<span></span>') + '</div>';
+      }).join('') + '</div>' +
+      (markLine != null ? '<div class="gx-dim gx-es-note">La marca es la línea de consenso del mercado.</div>' : '') + '</div>';
+  }
+  function nflDnaBars(dna, abbr) {
+    var DIMS = [['pass_off', 'Pase (ofensa)', 0.25], ['rush_off', 'Carrera (ofensa)', 0.15], ['pass_def', 'Defensa aérea', 0.25], ['rush_def', 'Defensa terrestre', 0.15], ['expl_pass', 'Explosivos', 0.03], ['cpoe', 'CPOE', 5]];
+    return '<div class="gx-nfl-dna"><b>' + esc(abbr) + '</b>' + DIMS.map(function (dm) {
+      var v = dna ? dna[dm[0]] : null;
+      if (v == null) return '<div class="gx-est-map"><div class="gx-est-map-id"><b>' + dm[1] + '</b></div><span class="gx-dim">sin muestra</span></div>';
+      var w = Math.min(50, Math.abs(v) / dm[2] * 50);
+      return '<div class="gx-est-map"><div class="gx-est-map-id"><b>' + dm[1] + '</b></div>' +
+        '<div class="gx-est-map-bar"><em></em><i class="' + (v >= 0 ? 'pos' : 'neg') + '" style="width:' + w.toFixed(1) + '%"></i></div>' +
+        '<b class="gx-mono ' + (v > 0 ? 'gx-up' : v < 0 ? 'gx-down' : '') + '">' + (v > 0 ? '+' : '') + v + '</b></div>';
+    }).join('') + '</div>';
+  }
+  function renderNflGame() {
+    var id = S.nfl.gameId;
+    if (!id) { showView('nflgames'); return; }
+    var d = nflGet('game_' + id, '/api/nfl/game?id=' + encodeURIComponent(id), 120000);
+    if (!d) { nflShell('Partido', nflBack() + nflLoading('Armando el terminal del partido…')); return; }
+    if (d._err || d.error) { nflShell('Partido', nflBack() + nflErr); return; }
+    var m = d.model;
+    // HÉROE: probabilidad con banda de incertidumbre, fair lines GP contra el mercado
+    var p = m ? m.p_home : null;
+    var uncPp = m ? Math.min(30, m.unc_pts * 2.8) : null;
+    var lo = p != null && uncPp != null ? Math.max(2, 100 * p - uncPp) : null;
+    var hi = p != null && uncPp != null ? Math.min(98, 100 * p + uncPp) : null;
+    var cons = d.market && d.market.consensus;
+    var hero = '<div class="gx-cs-hero">' +
+      '<div class="gx-cs-hero-top"><span class="gx-cs-comp">Semana ' + d.week + ' · ' + esc(d.stadium || '') + (d.roof ? ' · ' + esc(d.roof) : '') + '</span>' +
+        '<span class="gx-spacer"></span><span class="gx-cs-when">' + esc(d.date) + (d.time ? ' · ' + d.time.slice(0, 5) + ' UTC' : '') + '</span></div>' +
+      '<div class="gx-cs-hero-body">' +
+        '<div class="gx-cs-side">' + cs2Crest(d.home, 'big') + '<div><b>' + esc(d.home.name) + '</b><span>' + esc(d.home.qb ? 'QB ' + d.home.qb : '') + (d.home.coach ? ' · ' + esc(d.home.coach) : '') + '</span></div></div>' +
+        '<div class="gx-cs-pct"><b>' + (p != null ? (100 * p).toFixed(1) + '<em>%</em>' : '—') + '</b>' + (m ? '<span>± ' + m.unc_pts + ' pts de rating</span>' : '') + '</div>' +
+        '<div class="gx-cs-side r"><div><b>' + esc(d.away.name) + '</b><span>' + esc(d.away.qb ? 'QB ' + d.away.qb : '') + (d.away.coach ? ' · ' + esc(d.away.coach) : '') + '</span></div>' + cs2Crest(d.away, 'big') + '</div>' +
+      '</div>' +
+      (p != null ? '<div class="gx-cs-halo">' + (lo != null ? '<i class="band" style="left:' + lo.toFixed(1) + '%;width:' + (hi - lo).toFixed(1) + '%"></i>' : '') + '<i class="fill" style="width:' + (100 * p).toFixed(1) + '%"></i><i class="mark" style="left:' + (100 * p).toFixed(1) + '%"></i></div>' : '') +
+      '<div class="gx-nfl-fair">' +
+        '<div><span>GP fair spread</span><b class="gx-mono">' + (m ? nflSpread(m.mu_margin) + ' ' + esc(d.home.abbr) : '—') + '</b><em>' + (cons && cons.spread_line != null ? 'mercado ' + nflSpread(cons.spread_line) : 'sin mercado') + '</em></div>' +
+        '<div><span>GP fair total</span><b class="gx-mono">' + (m ? m.mu_total.toFixed(1) : '—') + '</b><em>' + (cons && cons.total_line != null ? 'mercado ' + cons.total_line.toFixed(1) : 'sin mercado') + '</em></div>' +
+        '<div><span>Marcador esperado</span><b class="gx-mono">' + (m ? m.team_home_mu + ' – ' + m.team_away_mu : '—') + '</b><em>medianas, no un pronóstico exacto</em></div>' +
+      '</div>' +
+      '<div class="gx-cs-anchor">' + ic('shield') + '<span>Modelo market-blind: ninguna cuota entra a la probabilidad — el mercado se compara DESPUÉS (ortogonalidad por construcción, NFL-0596). Versión ' + esc(m ? m.model_version : '—') + ' · semilla ' + (m ? m.seed : '—') + '.</span></div>' +
+    '</div>';
+    // LO QUE IMPORTA (NFL-0860): cada driver con su número, nada de narrativa suelta
+    var mattersB = Array.isArray(d.five) && d.five.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Lo que importa</span></div>' +
+      '<div class="gx-nfl-five">' + d.five.map(function (x) { return '<div class="gx-nfl-fr">' + ic('arrow-right') + '<span>' + esc(x.txt) + '</span></div>'; }).join('') + '</div></div>' : '';
+    // DISTRIBUCIONES + NÚMEROS CLAVE
+    var distB = m ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La distribución, no un pronóstico</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">20.000 simulaciones · residuos reales 2016-2025</span></span></div>' +
+      nflHist(m.margin_hist, 'Margen (' + esc(d.home.abbr) + ' − ' + esc(d.away.abbr) + ')', cons ? cons.spread_line : null) +
+      nflHist(m.total_hist, 'Total de puntos', cons ? cons.total_line : null) +
+      '<div class="gx-nfl-keys"><span class="gx-label">Gravedad de números clave</span>' +
+        Object.entries(m.key_mass || {}).map(function (kv) { return '<div class="gx-nfl-key"><b>' + kv[0] + '</b><span class="gx-mono">' + (100 * kv[1]).toFixed(1) + '%</span></div>'; }).join('') +
+        '<span class="gx-dim gx-es-note">Masa de probabilidad en cada margen exacto (±). En NFL la línea que cruza un número clave vale más que medio punto en cualquier otro sitio (NFL-0460).</span></div></div>' : '';
+    // ADN
+    var dnaB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">ADN de los equipos</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">EPA/jugada vs media de liga · proceso, no resultado</span></span></div>' +
+      '<div class="gx-nfl-dnas">' + nflDnaBars(d.dna && d.dna.home, d.home.abbr) + nflDnaBars(d.dna && d.dna.away, d.away.abbr) + '</div></div>';
+    // MERCADO
+    var mkB = '';
+    if (d.market && d.market.books && d.market.books.length) {
+      mkB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Mercado · ' + d.market.books.length + ' casas</span></div>' +
+        '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Casa</th><th class="r">Spread</th><th class="r">Local</th><th class="r">Visita</th><th class="r">Total</th><th class="r">Más</th><th class="r">Menos</th><th class="r">ML local</th></tr></thead><tbody>' +
+        d.market.books.map(function (b) {
+          return '<tr><td>' + esc(b.book) + '</td>' +
+            '<td class="r gx-mono">' + (b.spread ? nflSpread(b.spread.line) : '—') + '</td>' +
+            '<td class="r gx-mono">' + (b.spread ? b.spread.home.toFixed(2) : '—') + '</td>' +
+            '<td class="r gx-mono">' + (b.spread ? b.spread.away.toFixed(2) : '—') + '</td>' +
+            '<td class="r gx-mono">' + (b.total ? b.total.line.toFixed(1) : '—') + '</td>' +
+            '<td class="r gx-mono">' + (b.total ? b.total.over.toFixed(2) : '—') + '</td>' +
+            '<td class="r gx-mono">' + (b.total ? b.total.under.toFixed(2) : '—') + '</td>' +
+            '<td class="r gx-mono">' + (b.ml ? b.ml.home.toFixed(2) : '—') + '</td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+    }
+    // VEREDICTOS (sombra)
+    var edB = '';
+    if (d.edges && (d.edges.candidates || []).length) {
+      edB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Veredictos del motor</span>' +
+        '<span class="gx-ph-extra"><span class="gx-chip gx-chip-baja">SOMBRA — no son picks</span></span></div>' +
+        '<div class="gx-es-why-rows">' + d.edges.candidates.map(function (c) {
+          var lab = c.family === 'SPREAD' ? ('Spread ' + (c.side === 'home' ? d.home.abbr : d.away.abbr) + ' ' + nflSpread(c.side === 'home' ? c.line : -c.line)) : ('Total ' + (c.side === 'over' ? 'más' : 'menos') + ' de ' + c.line);
+          return '<div class="gx-es-whyr"><b>' + esc(lab) + ' @' + c.odds.toFixed(2) + ' <i style="font-style:normal;font-size:10px;opacity:.6">' + esc(c.book) + '</i></b>' +
+            '<em class="' + (c.verdict === 'SHADOW_PICK' ? 'gx-up' : '') + '">' + (c.verdict === 'SHADOW_PICK' ? 'REGISTRA (sombra)' : 'NO PICK') + '</em>' +
+            '<span>GP ' + nflPct(c.p_model) + ' vs implícita ' + nflPct(c.p_implied) + ' → ventaja ' + (c.edge_pp > 0 ? '+' : '') + c.edge_pp + ' pp' +
+            (c.no_pick_reason ? ' · lo mata el gate «' + esc(c.no_pick_reason) + '»' : '') + '</span></div>';
+        }).join('') + '</div>' +
+        '<div class="gx-dim gx-es-note">' + esc(d.edges.verdict_note || '') + '</div></div>';
+    }
+    // CLIMA
+    var wxB = '';
+    if (d.weather) {
+      wxB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Weather Lens</span></div>' +
+        (d.weather.temp_c != null
+          ? '<div class="gx-es-kpis">' +
+            '<div><span>Temperatura</span><b>' + d.weather.temp_c + '°C</b></div>' +
+            '<div><span>Viento</span><b>' + d.weather.wind_kmh + ' km/h</b></div>' +
+            '<div><span>Rachas</span><b>' + d.weather.gust_kmh + ' km/h</b></div>' +
+            '<div><span>Lluvia</span><b>' + d.weather.precip_p + '%</b></div>' +
+            '<div><span>Horizonte</span><b>' + d.weather.horizon_h + ' h</b></div></div>'
+          : '') +
+        '<div class="gx-dim gx-es-note">' + esc(d.weather.note || '') + '</div></div>';
+    }
+    // FORMA + H2H
+    var formRow = function (f) {
+      return '<div class="gx-est-fr"><i class="gx-est-res ' + (f.w ? 'w' : 'l') + '">' + (f.w ? 'V' : 'D') + '</i>' +
+        '<span>' + (f.home ? 'vs' : '@') + ' ' + esc(f.vs) + '</span><span class="gx-spacer"></span>' +
+        '<b class="gx-mono">' + f.pts + '-' + f.opp_pts + '</b><em class="gx-dim">' + esc(String(f.date).slice(5)) + '</em></div>';
+    };
+    var formB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Forma reciente</span></div>' +
+      '<div class="gx-nfl-forms"><div><b>' + esc(d.home.abbr) + '</b><div class="gx-est-form">' + (d.form.home || []).slice().reverse().map(formRow).join('') + '</div></div>' +
+      '<div><b>' + esc(d.away.abbr) + '</b><div class="gx-est-form">' + (d.form.away || []).slice().reverse().map(formRow).join('') + '</div></div></div></div>';
+    var h2hB = (d.h2h || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos cruces</span></div>' +
+      '<div class="gx-est-form">' + d.h2h.map(function (x) {
+        return '<div class="gx-est-fr"><span>' + esc(x.away) + ' @ ' + esc(x.home) + '</span><span class="gx-spacer"></span><b class="gx-mono">' + x.as + '-' + x.hs + '</b><em class="gx-dim">' + esc(String(x.date).slice(0, 7)) + '</em></div>';
+      }).join('') + '</div></div>' : '';
+    var prov = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">De dónde sale cada cifra</span></div>' +
+      '<div class="gx-est-form">' + (d.provenance || []).map(function (x) {
+        return '<div class="gx-est-fr"><span>' + esc(x.source) + '</span><span class="gx-spacer"></span><em class="gx-dim">' + esc(x.kind) + '</em></div>';
+      }).join('') + '</div></div>';
+    nflShell(d.home.abbr + ' vs ' + d.away.abbr, nflBack() + hero + mattersB + distB + dnaB + mkB + edB + wxB + formB + h2hB + prov);
+  }
+
+  // ---- 3) EQUIPOS -----------------------------------------------------------------------------------------
+  function renderNflTeams() {
+    var d = nflGet('teams', '/api/nfl/teams', 600000);
+    if (!d) { nflShell(t('nav_teams'), nflLoading()); return; }
+    if (d._err || !d.available) { nflShell(t('nav_teams'), nflErr); return; }
+    var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+      '<th class="r">#</th><th>Equipo</th><th class="r">Récord</th><th class="r">Rating GP</th><th class="r">Pase Of.</th><th class="r">Carrera Of.</th><th class="r">Def. aérea</th><th class="r">Def. terrestre</th></tr></thead><tbody>' +
+      (d.teams || []).map(function (r) {
+        var cell = function (v) { return '<td class="r gx-mono ' + (v > 0 ? 'gx-up' : v < 0 ? 'gx-down' : '') + '">' + (v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2)) + '</td>'; };
+        return '<tr data-nflteam="' + esc(r.abbr) + '">' +
+          '<td class="r gx-mono gx-esr-rank">' + r.rank + '</td>' +
+          '<td><div class="gx-esr-team">' + cs2Crest(r) + '<b>' + esc(r.name) + '</b></div></td>' +
+          '<td class="r gx-mono">' + esc(r.record) + '</td>' +
+          '<td class="r gx-mono"><b>' + (r.rating != null ? (r.rating > 0 ? '+' : '') + r.rating.toFixed(1) : '—') + '</b></td>' +
+          cell(r.pass_off) + cell(r.rush_off) + cell(r.pass_def) + cell(r.rush_def) + '</tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + '</div></div>';
+    nflShell(t('nav_teams'), body);
+  }
+  function renderNflTeam() {
+    var id = S.nfl.teamId;
+    if (!id) { showView('nflteams'); return; }
+    var d = nflGet('team_' + id, '/api/nfl/team?id=' + encodeURIComponent(id), 600000);
+    var back = '<div class="gx-back" data-nflteamsback="1">' + ic('chevron-left') + '<span>' + esc(t('nav_teams')) + '</span></div>';
+    if (!d) { nflShell('Equipo', back + nflLoading()); return; }
+    if (d._err || !d.available) { nflShell('Equipo', back + nflErr); return; }
+    var tm = d.team || {};
+    var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + cs2Crest(tm, 'hero') +
+      '<div class="gx-est-hero-id"><b>' + esc(tm.name) + '</b><div class="gx-est-hero-chips">' +
+      '<span class="gx-est-rankchip">#' + tm.rank + ' Rating GP</span>' +
+      (d.qb ? '<span class="gx-dim" style="font-size:11px">QB ' + esc(d.qb) + '</span>' : '') +
+      (d.coach ? '<span class="gx-dim" style="font-size:11px">HC ' + esc(d.coach) + '</span>' : '') + '</div></div>' +
+      '<span class="gx-spacer"></span></div>' +
+      '<div class="gx-est-hero-stats">' +
+        '<div><b>' + (tm.rating != null ? (tm.rating > 0 ? '+' : '') + tm.rating.toFixed(1) : '—') + '</b><span>rating (pts)</span></div>' +
+        '<div><b>' + esc(tm.record || '—') + '</b><span>récord ' + d.season + '</span></div>' +
+        '<div><b>' + (tm.games_cur || 0) + '</b><span>partidos temporada</span></div>' +
+        '<div><b>' + d.season + '</b><span>temporada</span></div>' +
+      '</div>' +
+      '<div class="gx-dim gx-es-note" style="margin-top:8px">' + esc(d.qb_note || '') + '</div></div>';
+    var dnaB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">ADN</span><span class="gx-ph-extra"><span class="gx-dim">EPA/jugada vs media de liga</span></span></div>' + nflDnaBars(d.dna, tm.abbr) + '</div>';
+    var schedB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Calendario ' + d.season + '</span></div>' +
+      '<div class="gx-est-form">' + (d.schedule || []).map(function (s) {
+        return '<div class="gx-est-fr" data-nflgame="' + esc(s.id) + '"><em class="gx-dim" style="flex:0 0 34px">W' + s.week + '</em>' +
+          cs2Crest({ name: s.vs, logo: s.vs_logo }, 'sm') + '<span>' + (s.home ? 'vs' : '@') + ' ' + esc(s.vs) + '</span><span class="gx-spacer"></span>' +
+          (s.final ? '<b class="gx-mono">' + s.final.pts + '-' + s.final.opp + '</b>' : '<em class="gx-dim">' + esc(s.date.slice(5)) + '</em>') + '</div>';
+      }).join('') + '</div></div>';
+    var recentB = (d.recent || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos partidos</span></div>' +
+      '<div class="gx-est-form">' + d.recent.map(function (f) {
+        return '<div class="gx-est-fr"><i class="gx-est-res ' + (f.w ? 'w' : 'l') + '">' + (f.w ? 'V' : 'D') + '</i>' +
+          '<span>' + (f.home ? 'vs' : '@') + ' ' + esc(f.vs) + '</span><span class="gx-spacer"></span><b class="gx-mono">' + f.pts + '-' + f.opp_pts + '</b><em class="gx-dim">' + esc(String(f.date).slice(0, 10)) + '</em></div>';
+      }).join('') + '</div></div>' : '';
+    nflShell(tm.name || 'Equipo', back + hero + dnaB + schedB + recentB);
+  }
+
+  // ---- 4) EL MOTOR: model card con la validación COMPLETA a la vista (§34) --------------------------------
+  function renderNflModel() {
+    var d = nflGet('model', '/api/nfl/model', 600000);
+    if (!d) { nflShell(t('nfl_nav_model'), nflLoading()); return; }
+    if (d._err || !d.available) { nflShell(t('nfl_nav_model'), nflErr); return; }
+    var v = d.validation || {}, o = v.overall || {};
+    var head = '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Model card · ' + esc(d.model_version || '') + '</span></div>' +
+      '<div class="gx-es-kpis">' +
+        '<div><span>MAE margen (modelo)</span><b>' + (o.mae_margen_modelo != null ? o.mae_margen_modelo : '—') + '</b></div>' +
+        '<div><span>MAE margen (cierre)</span><b>' + (o.mae_margen_cierre != null ? o.mae_margen_cierre : '—') + '</b></div>' +
+        '<div><span>MAE total (modelo)</span><b>' + (o.mae_total_modelo != null ? o.mae_total_modelo : '—') + '</b></div>' +
+        '<div><span>MAE total (cierre)</span><b>' + (o.mae_total_cierre != null ? o.mae_total_cierre : '—') + '</b></div>' +
+        '<div><span>Brier ganador</span><b>' + (o.brier_modelo != null ? o.brier_modelo : '—') + '</b><i style="font-style:normal;font-size:10px;opacity:.55;display:block">cierre ' + (o.brier_cierre != null ? o.brier_cierre : '—') + '</i></div>' +
+        '<div><span>Partidos validados</span><b>' + (o.n || '—') + '</b></div>' +
+      '</div>' +
+      '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>Lectura honesta: el modelo queda a ~0.45 puntos del cierre en margen. Eso es EXCELENTE para entender un partido y NO es evidencia de batir al mercado — por eso todas las familias están en sombra. Walk-forward 2017-2025: cada partido predicho solo con lo anterior (NFL-0738).</span></div></div>';
+    var bySeason = v.by_season ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por temporada (fuera de muestra)</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Temporada</th><th class="r">n</th><th class="r">MAE margen GP</th><th class="r">MAE margen cierre</th><th class="r">Brier GP</th><th class="r">Brier cierre</th></tr></thead><tbody>' +
+      Object.entries(v.by_season).map(function (kv) {
+        var s = kv[1];
+        return '<tr><td class="gx-mono">' + kv[0] + '</td><td class="r gx-mono">' + s.n + '</td>' +
+          '<td class="r gx-mono">' + s.mae_margen_modelo + '</td><td class="r gx-mono">' + s.mae_margen_cierre + '</td>' +
+          '<td class="r gx-mono">' + (s.brier_modelo != null ? s.brier_modelo : '—') + '</td><td class="r gx-mono">' + (s.brier_cierre != null ? s.brier_cierre : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' : '';
+    var fams = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Familias y su estado</span></div>' +
+      '<div class="gx-es-why-rows">' + (d.families || []).map(function (f) {
+        return '<div class="gx-es-whyr"><b>' + esc(f.family) + '</b><em>' + esc(f.state.toUpperCase()) + '</em><span>' + esc(f.why) + '</span></div>';
+      }).join('') + '</div></div>';
+    var spec = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La especificación, completa</span></div>' +
+      '<div class="gx-dim" style="font-size:12px;line-height:1.6">' + esc(d.spec || '') + '</div>' +
+      (d.constants ? '<div class="gx-es-kpis" style="margin-top:12px">' +
+        '<div><span>HFA</span><b>' + d.constants.hfa + '</b></div>' +
+        '<div><span>k total</span><b>' + d.constants.k_total + '</b></div>' +
+        '<div><span>σ extra margen</span><b>' + d.constants.sigma_extra_margin + '</b></div>' +
+        '<div><span>σ extra total</span><b>' + d.constants.sigma_extra_total + '</b></div>' +
+        '<div><span>Pool de residuos</span><b>' + d.constants.resid_pool_n + '</b></div>' +
+        (d.data ? '<div><span>Base</span><b>' + d.data.games + '</b><i style="font-style:normal;font-size:10px;opacity:.55;display:block">partidos desde ' + d.data.from + '</i></div>' : '') +
+      '</div>' : '') + '</div>';
+    nflShell(t('nfl_nav_model'), head + bySeason + fams + spec + nflShadowNote());
+  }
+
+  // ---- 5) RENDIMIENTO (sombra) ----------------------------------------------------------------------------
+  function renderNflPerf() {
+    var d = nflGet('track', '/api/nfl/track', 60000);
+    if (!d) { nflShell(t('nav_perf'), nflLoading()); return; }
+    if (d._err) { nflShell(t('nav_perf'), nflErr); return; }
+    var kpi = '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Registro de SOMBRA</span>' +
+      '<span class="gx-ph-extra"><span class="gx-chip gx-chip-baja">privado · no son picks</span></span></div>' +
+      '<div class="gx-es-kpis">' +
+        '<div><span>Abiertas</span><b>' + d.open + '</b></div>' +
+        '<div><span>Liquidadas</span><b>' + d.settled + '</b></div>' +
+        '<div><span>Ganadas / perdidas</span><b>' + d.w + ' / ' + d.l + '</b></div>' +
+        '<div><span>Unidades</span><b class="' + (d.units > 0 ? 'gx-up' : d.units < 0 ? 'gx-down' : '') + '">' + (d.units > 0 ? '+' : '') + (d.units || 0) + '</b></div>' +
+        '<div><span>CLV medio</span><b class="' + (d.clv_avg_pct > 0 ? 'gx-up' : d.clv_avg_pct < 0 ? 'gx-down' : '') + '">' + (d.clv_avg_pct == null ? '—' : (d.clv_avg_pct > 0 ? '+' : '') + d.clv_avg_pct + '%') + '</b>' + (d.clv_n ? '<i style="font-style:normal;font-size:10px;opacity:.55;display:block">sobre ' + d.clv_n + '</i>' : '') + '</div>' +
+      '</div>' +
+      '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(d.reading || '') + '</span></div></div>';
+    var famRow = function (kv) {
+      var f = kv[1];
+      return '<tr><td>' + esc(kv[0]) + '</td><td class="r gx-mono">' + f.n + '</td><td class="r gx-mono">' + (f.hit_pct == null ? '—' : f.hit_pct + '%') + '</td>' +
+        '<td class="r gx-mono ' + (f.units > 0 ? 'gx-up' : f.units < 0 ? 'gx-down' : '') + '">' + (f.units > 0 ? '+' : '') + f.units + '</td>' +
+        '<td class="r gx-mono">' + (f.clv_avg_pct == null ? '—' : f.clv_avg_pct + '%') + '</td></tr>';
+    };
+    var byFam = Object.keys(d.by_family || {}).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por familia</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Familia</th><th class="r">n</th><th class="r">Acierto</th><th class="r">Unidades</th><th class="r">CLV</th></tr></thead><tbody>' +
+      Object.entries(d.by_family).map(famRow).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">La vara que decide es el CLV POSITIVO por familia con muestra — no el ROI (NFL-0667).</div></div>' : '';
+    var rowOf = function (p) {
+      return '<div class="gx-est-fr"' + (p.game_id ? ' data-nflgame="' + esc(p.game_id) + '"' : '') + '>' +
+        (p.result ? '<i class="gx-est-res ' + (p.result === 'WIN' ? 'w' : p.result === 'LOSS' ? 'l' : '') + '">' + (p.result === 'WIN' ? 'V' : p.result === 'LOSS' ? 'D' : '=') + '</i>' : '<i class="gx-est-res" style="background:rgba(255,255,255,.08)">·</i>') +
+        '<span>' + esc(p.away) + ' @ ' + esc(p.home) + ' · ' + esc(p.family) + ' ' + esc(String(p.side)) + ' ' + p.line + ' @' + p.odds.toFixed(2) + '</span>' +
+        '<span class="gx-spacer"></span>' +
+        (p.clv_pct != null ? '<b class="gx-mono ' + (p.clv_pct >= 0 ? 'gx-up' : 'gx-down') + '">CLV ' + (p.clv_pct > 0 ? '+' : '') + p.clv_pct + '%</b>' : '') +
+        '<em class="gx-dim">' + esc(String(p.kickoff || '').slice(5, 10)) + '</em></div>';
+    };
+    var openB = (d.open_list || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Abiertas (sombra)</span><span class="gx-dim">' + d.open_list.length + '</span></div><div class="gx-panel"><div class="gx-est-form">' + d.open_list.map(rowOf).join('') + '</div></div></div>' : '';
+    var doneB = (d.recent || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Liquidadas</span><span class="gx-dim">' + d.recent.length + '</span></div><div class="gx-panel"><div class="gx-est-form">' + d.recent.map(rowOf).join('') + '</div></div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('chart') + '<b>Todavía no hay registro liquidado.</b><span class="gx-dim">El bucle de sombra nace, cierra y liquida solo — la temporada arranca el 9 de septiembre.</span></div></div>';
+    nflShell(t('nav_perf'), kpi + byFam + openB + doneB);
+  }
+
+  function nflClicks(e) {
+    var g = e.target.closest('[data-nflgame]');
+    if (g) { setHash('nflgame/' + encodeURIComponent(g.getAttribute('data-nflgame'))); return; }
+    var tm = e.target.closest('[data-nflteam]');
+    if (tm) { setHash('nflteam/' + tm.getAttribute('data-nflteam')); return; }
+    if (e.target.closest('[data-nflback]')) { setHash('nflgames'); return; }
+    if (e.target.closest('[data-nflteamsback]')) { setHash('nflteams'); return; }
+  }
+
   function esClicks(e) {
     var seg = e.target.closest('[data-esgtab]');
     if (seg) { S.es.gTab = seg.getAttribute('data-esgtab'); renderESBoard(); return; }
@@ -11746,13 +12155,14 @@
             // el shell se pinta ANTES de que llegue /api/me → el sportbar se construyó sin saber si combate
             // está permitido. Si al llegar la sesión cambia el veredicto, se reconstruye (badge "Próximamente").
             if ((cbSportAllowed() && $('.gx-cbsoon')) || (bbAllowed() && $('.gx-sport.dim'))) shell();
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports') { S.sport = 'futbol'; shell(); } showView('board'); }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl') { S.sport = 'futbol'; shell(); } showView('board'); }
             // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
             // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por
             // enlace directo (mismo bug que ya tenía combate y por eso existe la rama de al lado).
             // ESPORTS: misma rama y por el mismo motivo. Sin ella, entrar directo a #esopps dejaba la
             // pantalla vacía — /api/me llega después del primer render y el shell() de arriba vacía
             // #gx-matchview. Es el tercer deporte que tropieza con esto; aquí ya va desde el principio.
+            else if (NFL_VIEWS.indexOf(S.view) >= 0) { applyView(); renderNfl(S.view); }
             else if (ES_VIEWS.indexOf(S.view) >= 0) { applyView(); renderES(S.view); }
             else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }
             else if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); } else if (['follow', 'alerts', 'refer', 'admin', 'registry', 'method', 'perf', 'sub', 'support', 'bets', 'books', 'brief', 'ask', 'betcheck'].indexOf(S.view) >= 0) { applyView(); ({ follow: renderFollow, alerts: renderAlerts, refer: renderRefer, admin: renderAdmin, registry: renderRegistry, method: renderMethod, perf: renderPerf, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief, ask: renderAsk, betcheck: renderBetcheck }[S.view] || function () {})(); } }

@@ -9840,6 +9840,31 @@ if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
   setInterval(esChain, 20 * 60 * 1000);
 }
 
+// ── NFL (17-ago): el mismo bucle, con el reloj de la NFL ─────────────────────────────────────────────────
+// Cuotas + cierres cada 30 min y el registro de sombra encadenado — pero SOLO cuando hay partidos a ≤9
+// días (fuera de temporada la liga duerme y gastar créditos de The Odds API en dormir es tirarlos). Una
+// llamada cubre la liga entera, así que el costo por pasada es fijo y chico.
+if (String(process.env.GP_NFL_JOBS_ENABLED || 'true') !== 'false') {
+  const nflChain = async () => {
+    try {
+      const NFL = require('./nfl-engine/store');
+      const M = NFL.modelSnapshot();
+      if (!M) return;
+      const soon = M.data.games.some((g) => g.result == null && g.season === M.data.currentSeason &&
+        Math.abs(Date.parse(g.date) - Date.now()) < 9 * 864e5);
+      if (!soon) return;
+      memMark('nfl:cuotas');
+      await NFL.refreshOdds({ force: true }).catch(() => { });
+      memMark('nfl:sombra');
+      await NFL.recordShadow().catch(() => { });
+      await NFL.settleShadow().catch(() => { });
+      memMark('reposo');
+    } catch (e) { console.error('[nfl-chain]', e.message); }
+  };
+  setTimeout(nflChain, 380 * 1000);
+  setInterval(nflChain, 30 * 60 * 1000);
+}
+
 // ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
 // Escribe la lectura de los partidos de HOY que aún no la tienen, con tope por pasada para que el costo
 // sea predecible. Cada lectura se persiste: se paga una vez y la leen todos.
@@ -12368,7 +12393,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true' };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true' };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -15263,6 +15288,66 @@ const server = http.createServer(async (req, res) => {
     // No es un atajo para saltarse el portón: no sirve inteligencia ni picks, solo dice si los cuatro
     // motores cargan, qué ve el proveedor y cuántos cierres se llevan guardados. Existe porque el producto
     // es admin-only y sin esto la única forma de comprobar que vive en producción es iniciar sesión.
+    // ═══ NFL (17-ago) — el 6º deporte. ADMIN-ONLY desde el primer día ═══════════════════════════════════
+    // El terminal de inteligencia del blueprint en su V1 honesta: base propia point-in-time (nflverse),
+    // modelo market-blind validado walk-forward contra el cierre 2017-2025, simulador conjunto con masa
+    // real en los números clave, mercado multi-casa y TODAS las familias en sombra (NFL-1125). El motor
+    // vive en nfl-engine/; acá solo hay rutas.
+    if (p.startsWith('/api/nfl/')) {
+      const uN = getUser(req);
+      const nflPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
+      if (!uN || !(uN.isAdmin || nflPublic)) return json(res, 404, { error: 'No encontrado' });
+      const NFL = require('./nfl-engine/store');
+      try {
+        if (p === '/api/nfl/slate') {
+          return json(res, 200, await NFL.slate({ days: Math.min(40, +(url.searchParams.get('days') || 12)) }));
+        }
+        if (p === '/api/nfl/game') {
+          const id = String(url.searchParams.get('id') || '');
+          const out = await NFL.gameIntel(id);
+          if (!out) return json(res, 404, { error: 'partido no encontrado en la base', id });
+          return json(res, 200, out);
+        }
+        if (p === '/api/nfl/teams') return json(res, 200, NFL.teamsDirectory());
+        if (p === '/api/nfl/team') {
+          const id = String(url.searchParams.get('id') || '').trim();
+          if (!id) return json(res, 400, { error: 'falta el equipo', need: ['id'] });
+          return json(res, 200, await NFL.teamProfile(id));
+        }
+        if (p === '/api/nfl/model') return json(res, 200, NFL.modelCard());
+        if (p === '/api/nfl/track') return json(res, 200, NFL.track());
+        if (p === '/api/nfl/settle' && req.method === 'POST') {
+          const rec = await NFL.recordShadow().catch((e) => ({ error: e.message }));
+          const set = await NFL.settleShadow().catch((e) => ({ error: e.message }));
+          return json(res, 200, { record: rec, settle: set, track: NFL.track() });
+        }
+        return json(res, 404, { error: 'No encontrado' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
+    // Estado de NFL sin sesión, con la llave interna (mismo criterio que /api/internal/esports): el deporte
+    // es admin-only y sin esto no hay forma de verificar producción sin iniciar sesión.
+    if (p === '/api/internal/nfl') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const NFL = require('./nfl-engine/store');
+      const out = { steps: [] };
+      const step = async (name, fn) => {
+        const t0 = Date.now();
+        try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; }
+        catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message }); return null; }
+      };
+      const s = await step('slate', async () => { const x = await NFL.slate({ days: 12 }); return x.available ? { games: x.games.length, week: x.week, books: x.books } : x; });
+      await step('game', async () => {
+        const x = await NFL.slate({ days: 30 });
+        if (!x.games.length) return { skip: 'sin partidos en ventana' };
+        const gi = await NFL.gameIntel(x.games[0].id);
+        return gi ? { id: gi.id, p_home: gi.model && gi.model.p_home, edges: (gi.edges.candidates || []).length, has_market: !!gi.market } : null;
+      });
+      await step('model_card', async () => { const m = NFL.modelCard(); return { version: m.model_version, mae: m.validation && m.validation.overall && m.validation.overall.mae_margen_modelo }; });
+      await step('track', async () => { const t = NFL.track(); return { open: t.open, settled: t.settled }; });
+      out.ok = out.steps.every((x) => x.ok);
+      return json(res, 200, out);
+    }
     // ── OPS (17-ago): el panel único de los trabajos automáticos, con la llave interna. ──────────────────
     // Qué corrió, cuándo, con qué código de salida y las últimas líneas de su salida — sin entrar a Render.
     if (p === '/api/internal/ops') {

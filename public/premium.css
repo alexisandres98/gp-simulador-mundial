@@ -3046,3 +3046,51 @@ td .gx-calc-btn span { display: none; }
 .gx-esp-stats{display:flex;gap:10px;font-size:10px;color:var(--gx-text4);flex-wrap:wrap}
 .gx-esp-stats b{color:var(--gx-text2);font-family:var(--gx-mono);font-weight:650}
 .gx-esp-best{font-size:9px;color:var(--gx-text4);border:1px solid var(--gx-line);border-radius:5px;padding:1.5px 6px;margin-top:4px}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+   NFL — EL TERMINAL DE INTELIGENCIA (17-ago). Claridad institucional: filas editoriales con el delta
+   GP-vs-mercado como protagonista, bandas de incertidumbre, histogramas con la línea del mercado
+   marcada y barras divergentes centradas en lo neutral. Cero casino.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+.gx-nfl-list{display:flex;flex-direction:column;gap:8px}
+.gx-nfl-row{padding:11px 14px;cursor:pointer;transition:border-color .15s}
+.gx-nfl-row:hover{border-color:rgba(31,227,164,.4)}
+.gx-nfl-main{display:flex;align-items:center;gap:10px}
+.gx-nfl-side{display:flex;align-items:center;gap:8px;flex:0 0 92px}
+.gx-nfl-side b{font-size:14px;font-weight:750}
+.gx-nfl-at{font-size:11px}
+.gx-nfl-prob{flex:0 0 150px;display:flex;flex-direction:column;gap:4px}
+.gx-nfl-prob span{font-size:10.5px;color:var(--gx-text4)}
+.gx-nfl-nums{display:flex;gap:14px;margin-left:auto}
+.gx-nfl-nums>div{text-align:right;min-width:52px}
+.gx-nfl-nums span{display:block;font-size:8.5px;color:var(--gx-text4);text-transform:uppercase;letter-spacing:.05em}
+.gx-nfl-nums b{font-size:13px;font-weight:650}
+.gx-nfl-nums .hot b{color:var(--gx-accent,#1FE3A4)}
+.gx-nfl-when{flex:0 0 62px;text-align:right}
+.gx-nfl-when b{display:block;font-size:12.5px;font-family:var(--gx-mono)}
+.gx-nfl-when span{font-size:9.5px;color:var(--gx-text4)}
+.gx-nfl-fair{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;padding-top:13px;border-top:1px solid var(--gx-line)}
+.gx-nfl-fair>div{text-align:center}
+.gx-nfl-fair span{display:block;font-size:9.5px;color:var(--gx-text4);text-transform:uppercase;letter-spacing:.05em}
+.gx-nfl-fair b{display:block;font-size:19px;font-weight:750;margin:3px 0 2px}
+.gx-nfl-fair em{font-style:normal;font-size:10.5px;color:var(--gx-text3)}
+.gx-nfl-five{display:flex;flex-direction:column;gap:7px}
+.gx-nfl-fr{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--gx-text2)}
+.gx-nfl-fr .ti{color:var(--gx-accent,#1FE3A4);flex:none;margin-top:2px}
+.gx-nfl-histb .gx-es-hb.mark i{background:#E8C46A}
+.gx-nfl-keys{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--gx-line)}
+.gx-nfl-key{border:1px solid var(--gx-line);border-radius:9px;padding:7px 12px;text-align:center;background:var(--gx-panel2)}
+.gx-nfl-key b{display:block;font-size:15px;font-weight:750}
+.gx-nfl-key span{font-size:10.5px;color:var(--gx-text3)}
+.gx-nfl-dnas{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.gx-nfl-dna>b{display:block;font-size:12px;font-weight:750;margin-bottom:6px;letter-spacing:.04em}
+.gx-nfl-forms{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.gx-nfl-forms>div>b{display:block;font-size:11.5px;font-weight:700;margin-bottom:6px}
+@media (max-width:760px){
+  .gx-nfl-main{flex-wrap:wrap;gap:8px}
+  .gx-nfl-prob{flex:1 1 100%;order:5}
+  .gx-nfl-nums{margin-left:0;flex:1 1 100%;order:6;justify-content:space-between}
+  .gx-nfl-when{margin-left:auto}
+  .gx-nfl-dnas,.gx-nfl-forms{grid-template-columns:1fr}
+  .gx-nfl-fair{grid-template-columns:1fr;gap:12px}
+}

@@ -1,4 +1,25 @@
-# HANDOFF — estado al 17-ago-2026 (catálogo CS2 completo + ops automáticas)
+# HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
+
+## 🏈 17-ago (noche) — NFL INTELLIGENCE TERMINAL (V1 del blueprint, admin-only)
+
+Sexto deporte, construido del blueprint maestro de Alexis (Word). Lo entregado es la columna V0→V1:
+- **Base propia point-in-time**: `scripts/nfl-harvest.js` baja nflverse (games.csv 1999→hoy CON cierres
+  históricos + stats_team_week 2016-2025 con EPA) → `data/nfl/` (games 3.033, team-weeks 5.522, venues con
+  coordenadas para clima). Crudo en `<disk>/nfl-raw/`.
+- **Modelo market-blind** (`nfl-engine/`): rating en puntos (opponent-adjusted, recency, carry 2025
+  encogido) + estados EPA de 4 lados → margen y total. `scripts/nfl-fit.js` = walk-forward 2017-2025:
+  **MAE margen 10.31 vs 9.86 del cierre · Brier 0.224 vs 0.210** — bueno, NO bate al mercado, y por eso
+  **TODO está en sombra** (registro privado + CLV; moneyline cerrado por doctrina). Simulador: pares de
+  residuos reales vs cierre (masa de números clave 3/6/7/10/14 real) + ruido por la varianza extra medida.
+- **Terminal** (pestaña NFL junto a Esport): Command Center (delta GP-vs-mercado por partido), Game
+  Intelligence Terminal (héroe con banda de incertidumbre, distribución margen/total con la línea del
+  mercado marcada, gravedad de números clave, ADN EPA divergente, grid multi-casa, veredictos con gates,
+  Weather Lens open-meteo, forma/h2h, procedencia), Equipos + ficha, Model card con la validación entera,
+  Rendimiento (sombra). Probado con clicks a 1360/390px.
+- **Jobs**: cuotas (The Odds API, 1 llamada liga entera) + cierres + sombra cada 30 min SOLO con partidos
+  a ≤9 días. Probe: `/api/internal/nfl?key=`. Kickoff real: mié 9-sep (SEA) y SF–LAR en Melbourne el 10.
+- **Pendiente natural (V1.2+ del blueprint)**: lesiones/roster licenciado, player props (motor de
+  oportunidad), 1H/alt-lines desde la misma CDF, Ask GP. Nada de eso se finge en la UI: se declara.
 
 > Punto de retoma para la siguiente sesión. Lee `CLAUDE.md` primero (reglas duras), luego esto, luego el
 > principio de `TODO_NEXT.md`.

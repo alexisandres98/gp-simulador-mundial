@@ -15312,6 +15312,12 @@ const server = http.createServer(async (req, res) => {
             maxEvents: Math.min(24, +(url.searchParams.get('max') || 14)),
           }));
         }
+        if (p === '/api/esports/evidence') {
+          // evidencia de mercado (17-ago, P0 del blueprint de feedback): cobertura de cierres con apertura,
+          // movimiento apertura→cierre y CLV por casa — la contraparte del CLV por familia que ya da track
+          if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          return json(res, 200, ES.marketEvidence(gm));
+        }
         if (p === '/api/esports/props') {
           // props de jugador contra libro blando (17-ago): pizarra global (CS2 proyecta; LoL/VAL se listan)
           const PR = require('./esports-engine/props');

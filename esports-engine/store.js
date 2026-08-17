@@ -204,7 +204,8 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
   for (const ev of evs) {
     const mk = await market(game, ev, { force: true }).catch(() => null);
     if (!mk || !mk.markets.length) continue;
-    st.closes[ev.id] = {
+    const prev = st.closes[ev.id] || null;
+    const entry = {
       id: ev.id, provider_id: ev.provider_id, start_at: ev.start_at,
       home: ev.home, away: ev.away, competition: ev.competition,
       // CADA FILA GUARDA SU CASA, y esto es lo que convierte el archivo de cierres en algo que sirve. El CLV
@@ -215,6 +216,25 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
       books: (mk.by_book || []).filter((b) => b.rows).map((b) => b.book),
       at: mk.at,
     };
+    // APERTURA + CINTA (17-ago, del blueprint de feedback CS2: "opening, current y closing point-in-time").
+    // Antes cada pasada SOBREESCRIBÍA la anterior: quedaba el cierre y se perdía todo lo demás. Ahora la
+    // primera lectura de un evento queda congelada como apertura, se cuenta cuántas pasadas lo vieron, y el
+    // ganador de serie lleva una cinta ligera (mejor precio por lado entre casas, hasta 30 puntos) — lo
+    // justo para medir apertura→cierre sin engordar el archivo con las ~200 filas de cada pasada.
+    if (prev && prev.open_rows) {
+      entry.open_rows = prev.open_rows; entry.open_at = prev.open_at;
+      entry.moves = (prev.moves || 1) + 1; entry.tape = prev.tape || [];
+    } else {
+      entry.open_rows = entry.rows; entry.open_at = mk.at; entry.moves = 1; entry.tape = [];
+    }
+    const serie = mk.markets.filter((r) => r.family === 'SERIE' && r.odds);
+    const bestOf = (side) => serie.filter((r) => r.side === side).reduce((mx, r) => Math.max(mx, r.odds), 0) || null;
+    const th = bestOf('home'), ta = bestOf('away');
+    if (th || ta) {
+      entry.tape.push({ t: mk.at, h: th, a: ta });
+      if (entry.tape.length > 30) entry.tape.splice(0, entry.tape.length - 30);
+    }
+    st.closes[ev.id] = entry;
     saved++;
   }
   st.at = new Date().toISOString();
@@ -1289,6 +1309,61 @@ function closesCount(game) {
   return st && st.closes ? Object.keys(st.closes).length : 0;
 }
 
+// ---- 7b) EVIDENCIA DE MERCADO (17-ago, P0 del blueprint de feedback CS2) --------------------------------
+// "El cuello de botella estratégico no es añadir otra métrica visual, sino completar la evidencia de
+// mercado que permita demostrar qué familias realmente superan al precio." Esta función junta, en un solo
+// objeto auditable, lo que la casa ya acumula: cobertura del archivo de cierres (¿cuántos eventos tienen
+// apertura Y cierre?), cuánto se mueve el mercado entre ambas, y el CLV liquidado cortado por familia Y
+// por casa. Separa a propósito predictividad (CLV) de rentabilidad (unidades): la doctrina del documento.
+function marketEvidence(game) {
+  const st = rd(`closes-${game}.json`);
+  const closes = st && st.closes ? Object.values(st.closes) : [];
+  const withOpen = closes.filter((c) => c.open_rows && c.open_at && c.at !== c.open_at);
+  // movimiento apertura→cierre del ganador de serie, en puntos de probabilidad implícita del mejor precio
+  const movers = [];
+  for (const c of withOpen) {
+    const best = (rows, side) => (rows || []).filter((r) => r.family === 'SERIE' && r.side === side && r.odds)
+      .reduce((mx, r) => Math.max(mx, r.odds), 0) || null;
+    const oh = best(c.open_rows, 'home'), ch = best(c.rows, 'home');
+    if (!oh || !ch) continue;
+    const shift = (1 / ch - 1 / oh) * 100;                  // + = el local se ENCARECIÓ (el mercado le creyó)
+    movers.push({
+      id: c.id, home: (c.home || {}).name, away: (c.away || {}).name, competition: c.competition,
+      open_at: c.open_at, close_at: c.at, moves: c.moves || 1,
+      open_odds: oh, close_odds: ch, shift_pp: +shift.toFixed(2),
+    });
+  }
+  movers.sort((a, b) => Math.abs(b.shift_pp) - Math.abs(a.shift_pp));
+  const avgAbs = movers.length ? +(movers.reduce((a, m) => a + Math.abs(m.shift_pp), 0) / movers.length).toFixed(2) : null;
+  // CLV liquidado por casa — el corte que faltaba (por familia ya lo sirve track())
+  const pst = rd(PICKS_F(game));
+  const settled = pst && pst.picks ? Object.values(pst.picks).filter((p) => p.status === 'SETTLED') : [];
+  const byBook = {};
+  for (const p of settled) {
+    if (p.clv_pct == null) continue;
+    const b = p.book || '?';
+    byBook[b] = byBook[b] || { n: 0, clv: 0 };
+    byBook[b].n++; byBook[b].clv += p.clv_pct;
+  }
+  return {
+    game,
+    coverage: {
+      closes: closes.length,
+      with_open_and_close: withOpen.length,
+      avg_passes: closes.length ? +(closes.reduce((a, c) => a + (c.moves || 1), 0) / closes.length).toFixed(1) : null,
+      note: 'la apertura se congela desde el 17-ago; los eventos anteriores solo tienen cierre y no entran al movimiento.',
+    },
+    movement: {
+      n: movers.length, avg_abs_shift_pp: avgAbs,
+      top: movers.slice(0, 6),
+      note: 'desplazamiento apertura→cierre del mejor precio del ganador de serie, en puntos de probabilidad implícita. Positivo = el mercado se movió hacia el local.',
+    },
+    clv_by_book: Object.fromEntries(Object.entries(byBook).map(([k, v]) => [k, { n: v.n, clv_avg_pct: +(v.clv / v.n).toFixed(2) }])),
+    doctrine: 'una familia no se promociona por ROI en muestra corta: necesita calibración, CLV, estabilidad temporal y confirmación fuera de muestra. Predictividad y rentabilidad se miden por separado.',
+    at: (st && st.at) || null,
+  };
+}
+
 // ---- 8) EL CATÁLOGO (17-ago): EQUIPOS · JUGADORES · RANKING · CIRCUITO · RESULTADOS · H2H ---------------
 // Seis productos que salen ENTEROS de la base propia — ninguno depende de que una casa cotice nada. Solo
 // CS2 los tiene, porque solo CS2 tiene base; los otros juegos devuelven el "por qué no" en vez de una
@@ -1448,6 +1523,30 @@ function playerProfile(game, id) {
     totals: st ? { n: st.n, rounds: st.rounds, wr: st.wr, kpr: st.kpr, dpr: st.dpr, apr: st.apr, adr: st.adr,
       kast: st.kast, open_pr: st.open_pr, fk: st.fk, fd: st.fd, clutches: st.clutches, multi3plus: st.multi3plus, hs_pct: st.hs_pct } : null,
     maps, recent: (st && st.recent) || [],
+    // HUELLA (17-ago, del blueprint de feedback: "pasar de stats a impacto contextual"). Percentil del
+    // jugador contra la POBLACIÓN CUALIFICADA de la ventana en las dimensiones que describen su rol de
+    // hecho: apertura (fk−fd/ronda), volumen (kpr), daño (adr), consistencia (kast), clutch y multi-kill
+    // por mapa. No es una proyección: es dónde se sienta entre sus pares, medido, y con la n al lado.
+    footprint: st ? (() => {
+      const pop = Object.values(data.playerStats || {});
+      const dims = {
+        apertura: (x) => x.open_pr,
+        volumen: (x) => x.kpr,
+        dano: (x) => x.adr,
+        consistencia: (x) => x.kast,
+        clutch: (x) => (x.n ? (x.clutches || 0) / x.n : null),
+        multikill: (x) => (x.n ? (x.multi3plus || 0) / x.n : null),
+      };
+      const out = {};
+      for (const [k, f] of Object.entries(dims)) {
+        const mine = f(st);
+        if (mine == null) { out[k] = null; continue; }
+        const vals = pop.map(f).filter((v) => v != null);
+        const below = vals.filter((v) => v < mine).length;
+        out[k] = { value: +(+mine).toFixed(3), pct: vals.length ? Math.round(100 * below / vals.length) : null };
+      }
+      return { dims: out, pop_n: pop.length };
+    })() : null,
     meta: data.playerStatsMeta,
     note: st ? 'Rating GP propio (media del circuito = 1.00, fórmula publicada en la ficha del motor); el del proveedor (0-10) viaja al lado. Todo sale del scoreboard real de la ventana.'
       : 'sin muestra propia suficiente en la ventana: se enseña la identidad y el rating del proveedor, etiquetado.',
@@ -1572,7 +1671,7 @@ function h2h(game, refA, refB) {
 
 module.exports = {
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
-  slate, overview, ratings, harvest, snapshot, closesCount, market, analyzeMatch, board, evaluateAll, probFor, boOf,
+  slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne,
   teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h, playerProfile,
 };

@@ -1,5 +1,25 @@
 # HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
 
+## 📋 17-ago (tarde-3) — BLUEPRINT DE FEEDBACK CS2 aplicado (P0 evidencia de mercado + P1 jugador/roster)
+
+Del docx "Product Feedback & Next-Level Review" de Alexis. Lo aplicado, en su orden de prioridad:
+- **P0 · Apertura + cinta point-in-time** (`store.snapshot`): antes cada pasada de cierres SOBREESCRIBÍA
+  la anterior — quedaba el cierre y se perdía la apertura. Ahora la primera lectura de cada evento queda
+  congelada (`open_rows`/`open_at`), se cuentan las pasadas (`moves`) y el ganador de serie lleva una
+  cinta ligera de hasta 30 puntos (mejor precio por lado). Acumula desde este deploy vía el job de 20 min.
+- **P0 · `marketEvidence(game)`** + ruta `/api/esports/evidence`: cobertura (cierres, con ambas puntas,
+  pasadas medias), movimiento apertura→cierre en pp de probabilidad implícita (top movers con nombres) y
+  **CLV por CASA** (el corte que faltaba; por familia ya lo daba `track()`). Panel "Evidencia de mercado"
+  en Rendimiento. Doctrina del documento dentro del dato: predictividad ≠ rentabilidad.
+- **P1 · Huella GP** en la ficha de jugador (`playerProfile.footprint`): percentil contra la población
+  cualificada en apertura/volumen/daño/consistencia/clutch/multi-kill — "impacto contextual, no más
+  campos". Smell test: ZywOo p99-p100 en todo.
+- **P1 · Estado del cinco** en la ficha de equipo: estabilidad medida en días (517 equipos la tienen),
+  titulares incompletos declarados, y el aviso de cambio reciente ya existente.
+- **Pendiente del blueprint (no entró hoy, por diseño)**: round/economía/T-CT (necesita datos ronda a
+  ronda que bo3 no da), spatial intelligence, arquitectura visual menos vertical y verde escaso (rediseño
+  transversal — para sesión propia), roster timeline histórico (requiere fotos de plantilla acumuladas).
+
 ## 🎯 17-ago (tarde-2) — PROPS DE JUGADOR (familia nueva EN SOMBRA) + BOLETO GP
 
 Del análisis de LCS Larry (competidor: escáner de props de esports contra libros DFS blandos). Se

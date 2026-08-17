@@ -9501,7 +9501,43 @@
         '<div class="gx-picks-feed">' + d.open.map(function (p) { return pickCard(esStoredCard(p), {}); }).join('') + '</div></div>'
       : '';
 
-    esShell(t('nav_perf'), esTabs() + kpi + diag + byFam + abiertas + lista);
+    esShell(t('nav_perf'), esTabs() + kpi + diag + byFam + esEvidence(g) + abiertas + lista);
+  }
+
+  // ── EVIDENCIA DE MERCADO (17-ago, P0 del blueprint de feedback CS2) ────────────────────────────────────
+  // La contraparte del monitor: no qué acertó GP, sino qué hizo EL MERCADO — cuántos eventos tienen
+  // apertura y cierre guardados, cuánto se movió el precio entre ambos y a qué casa se le ganó el cierre.
+  // Predictividad (CLV) y rentabilidad (unidades) se enseñan separadas a propósito.
+  function esEvidence(g) {
+    var d = esGet('evidence_' + g, '/api/esports/evidence?game=' + g, 300000);
+    if (!d || d._err) return '';
+    var cov = d.coverage || {}, mv = d.movement || {};
+    var books = Object.entries(d.clv_by_book || {});
+    var covB = '<div class="gx-es-kpis">' +
+      '<div><span>Cierres guardados</span><b>' + (cov.closes || 0) + '</b></div>' +
+      '<div><span>Con apertura y cierre</span><b>' + (cov.with_open_and_close || 0) + '</b></div>' +
+      '<div><span>Pasadas por evento</span><b>' + (cov.avg_passes != null ? cov.avg_passes : '—') + '</b></div>' +
+      '<div><span>Movimiento medio</span><b>' + (mv.avg_abs_shift_pp != null ? mv.avg_abs_shift_pp + ' pp' : '—') + '</b></div></div>';
+    var movB = (mv.top || []).length ? '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
+      '<th>Serie</th><th class="r">Apertura</th><th class="r">Cierre</th><th class="r">Movimiento</th><th class="r">Pasadas</th></tr></thead><tbody>' +
+      mv.top.map(function (m) {
+        return '<tr><td><b>' + esc(m.home || '—') + '</b> <span class="gx-dim">vs</span> <b>' + esc(m.away || '—') + '</b>' +
+          (m.competition ? '<div class="gx-dim" style="font-size:10.5px">' + esc(m.competition) + '</div>' : '') + '</td>' +
+          '<td class="r gx-mono">@' + (m.open_odds || 0).toFixed(2) + '</td>' +
+          '<td class="r gx-mono">@' + (m.close_odds || 0).toFixed(2) + '</td>' +
+          '<td class="r gx-mono ' + (m.shift_pp > 0 ? 'gx-up' : 'gx-down') + '">' + (m.shift_pp > 0 ? '+' : '') + m.shift_pp + ' pp</td>' +
+          '<td class="r gx-mono">' + (m.moves || 1) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esc(mv.note || '') + '</div>'
+      : '<div class="gx-dim gx-es-note">' + esc(cov.note || 'la apertura se congela desde el 17-ago; el movimiento aparecerá cuando los eventos nuevos tengan las dos puntas.') + '</div>';
+    var bookB = books.length ? '<div class="gx-es-why-rows">' + books.map(function (e2) {
+      var v = e2[1];
+      return '<div class="gx-es-whyr"><b>' + esc(prettyBook(e2[0])) + '</b><em class="' + (v.clv_avg_pct > 0 ? 'gx-up' : 'gx-down') + '">' +
+        (v.clv_avg_pct > 0 ? '+' : '') + v.clv_avg_pct + '%</em><span>CLV medio sobre ' + v.n + ' picks liquidadas con cierre de esa casa.</span></div>';
+    }).join('') + '</div>' : '';
+    return esPanel('Evidencia de mercado', '<span class="gx-dim">apertura → cierre, point-in-time</span>',
+      covB + movB + bookB +
+      '<div class="gx-dim gx-es-note">' + esc(d.doctrine || '') + '</div>');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -9754,8 +9790,20 @@
       '<div class="gx-dim gx-es-note">El efecto es la diferencia entre cómo le va en ese mapa y cómo le va en general — la señal que alimenta el tablero de veto del modelo.</div></div>' : '';
     // QUINTETO: fotos reales, rol, edad y el rating del proveedor con su etiqueta
     var five = (d.roster && d.roster.five) || [];
+    // ESTADO DEL CINCO (17-ago, blueprint de feedback: "el equipo histórico no siempre es el equipo
+    // actual"). Se enseña lo que la foto de plantillas sabe DE VERDAD: estabilidad medida en días cuando
+    // existe, tamaño incompleto cuando no se identificaron los cinco. Nada se inventa.
+    var roState = (function (ro) {
+      if (!ro) return '';
+      var bits = [];
+      if (ro.stable_days != null) bits.push('cinco estable desde hace ' + ro.stable_days + ' día' + (ro.stable_days === 1 ? '' : 's'));
+      else if (ro.stable_since) bits.push('estable desde ' + String(ro.stable_since).slice(0, 10));
+      if (ro.size != null && ro.size < 5) bits.push('solo ' + ro.size + ' titulares identificados');
+      if (ro.changed_recently) bits.push('cambio reciente: el histórico del equipo pesa menos que de costumbre');
+      return bits.length ? '<div class="gx-dim gx-es-note" style="margin-top:-2px">' + esc(bits.join(' · ')) + '</div>' : '';
+    })(d.roster);
     var rosterB = five.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Quinteto actual</span>' +
-      (d.roster.coach ? '<span class="gx-ph-extra"><span class="gx-dim">coach: ' + esc(d.roster.coach.nick) + '</span></span>' : '') + '</div>' +
+      (d.roster.coach ? '<span class="gx-ph-extra"><span class="gx-dim">coach: ' + esc(d.roster.coach.nick) + '</span></span>' : '') + '</div>' + roState +
       '<div class="gx-est-five">' + five.map(function (p) {
         // rating PROPIO primero; si el jugador no tiene muestra en la ventana, cae al del proveedor con
         // su etiqueta — nunca un número sin procedencia
@@ -10635,7 +10683,24 @@
           '<b class="gx-mono" style="min-width:64px;text-align:right">' + (r.adr != null ? r.adr.toFixed(0) + ' ADR' : '') + '</b>' +
           '<em class="gx-dim">' + esc(r.at || '') + '</em></div>';
       }).join('') + '</div></div>' : '';
-    esShell(p.nick, back + hero + mapsB + recB + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
+    // HUELLA GP (17-ago, blueprint de feedback: "pasar de stats a impacto contextual"): percentil del
+    // jugador contra la población cualificada en las dimensiones que describen su rol de hecho.
+    var fp = d.footprint;
+    var FP_LAB = { apertura: ['Apertura', '(fk−fd)/ronda: quién abre las rondas'], volumen: ['Volumen', 'kills por ronda'],
+      dano: ['Daño', 'ADR'], consistencia: ['Consistencia', 'KAST'], clutch: ['Clutch', 'clutches ganados por mapa'],
+      multikill: ['Multi-kill', 'mapas con 3+ kills en ronda'] };
+    var fpB = (fp && fp.dims) ? esPanel('Huella GP', '<span class="gx-dim">percentil entre ' + (fp.pop_n || 0) + ' jugadores cualificados</span>',
+      '<div class="gx-es-fp">' + Object.keys(FP_LAB).map(function (k) {
+        var v = fp.dims[k];
+        if (!v) return '';
+        var lab = FP_LAB[k];
+        return '<div class="gx-es-fpr"><span class="gx-es-fpl">' + esc(lab[0]) + '</span>' +
+          '<div class="gx-es-fpbar"><i style="width:' + Math.max(2, v.pct || 0) + '%"></i></div>' +
+          '<b class="gx-mono">p' + (v.pct != null ? v.pct : '—') + '</b>' +
+          '<span class="gx-dim gx-es-fpd">' + esc(lab[1]) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">No es proyección: es dónde se sienta entre sus pares en la ventana de 180 días, medido del scoreboard propio.</div>') : '';
+    esShell(p.nick, back + hero + fpB + mapsB + recB + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
   }
 
   function esClicks(e) {

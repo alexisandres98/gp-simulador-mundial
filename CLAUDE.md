@@ -44,6 +44,12 @@
   `GP_ESPORTS_PUBLIC_ENABLED` (sin poner = solo admin). **Los cuatro juegos NO comparten motor**: cada uno
   tiene su lógica (veto en CS2, kills en LoL, ataque/defensa en Valorant, cola de duración en Dota 2).
   Picks SOLO de familias derivadas — el ganador de serie está cerrado por código (`PICK_FAMILIES`).
+  **Props de jugador (17-ago, del análisis LCS Larry):** `esports-engine/props.js` + `data-providers/esports/underdog.js`
+  proyecta kills en mapas 1-2 (solo CS2, con scoreboard propio) contra líneas de Underdog (libro blando DFS,
+  precio por pierna) y anota tesis en SU PROPIA sombra (`props-cs2.json` en disco persistente, dedup por tesis,
+  liquidación automática desde los logs propios) — **separada por completo del ejecutor en la sombra de la casa**.
+  Barrido cada 2 h + settle en cs2DailyJob. Rutas `/api/esports/{props,propstrack}`, vista "Props" en Esport.
+  **Boleto GP:** combinador de piernas en todas las pick cards (cuota combinada, prob GP, EV, ¼ Kelly tope 2 %).
   **Cloudbet no publica resultados** (comprobado): no hay rating propio hasta que entre OpenDota/Riot; lo
   que sí se acumula es el cierre de mercado en `data/esports/`.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.

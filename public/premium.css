@@ -3175,3 +3175,33 @@ td .gx-calc-btn span { display: none; }
 .gx-cs-art.m-overpass{color:#AEC99C}.gx-cs-art.m-overpass .mbg{fill:#20261B}.gx-cs-art.m-overpass .site{fill:rgba(155,232,90,.18);stroke:#9BE85A}.gx-cs-art.m-overpass .mid{stroke:#7d9668;fill:rgba(174,201,156,.08)}
 .gx-cs-art.m-vertigo{color:#A9BCC9}.gx-cs-art.m-vertigo .mbg{fill:#1D2329}.gx-cs-art.m-vertigo .site{fill:rgba(160,184,200,.22);stroke:#A0B8C8}.gx-cs-art.m-vertigo .mid{stroke:#78909e;fill:rgba(169,188,201,.08)}
 .gx-cs-art.m-cache{color:#9CC9AE}.gx-cs-art.m-cache .mbg{fill:#1B2620}.gx-cs-art.m-cache .site{fill:rgba(122,232,160,.2);stroke:#7AE8A0}.gx-cs-art.m-cache .mid{stroke:#6d9682;fill:rgba(156,201,174,.08)}
+
+/* ── BOLETO GP + PROPS DE JUGADOR (17-ago) ─────────────────────────────────────────────────────────────── */
+#gx-slip { position: fixed; right: 14px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 260; }
+@media (max-width: 900px) { #gx-slip { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); } }
+.gx-slip-fab { display: flex; align-items: center; gap: 7px; padding: 11px 15px; border-radius: 999px; border: 1px solid var(--gx-accent-line); background: linear-gradient(180deg, var(--gx-panel2), var(--gx-panel)); color: var(--gx-accent); font: 700 13px var(--gx-sans); cursor: pointer; box-shadow: 0 8px 28px rgba(0,0,0,.5); }
+.gx-slip-fab em { font-style: normal; background: var(--gx-accent); color: #05231A; border-radius: 999px; min-width: 19px; height: 19px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; padding: 0 5px; }
+.gx-slip-panel { position: absolute; right: 0; bottom: 52px; width: min(340px, calc(100vw - 28px)); background: var(--gx-panel); border: 1px solid var(--gx-line2); border-radius: 14px; padding: 12px; box-shadow: 0 18px 48px rgba(0,0,0,.55); }
+.gx-slip-panel[hidden] { display: none; }
+.gx-slip-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; color: var(--gx-text); font-size: 13px; }
+.gx-slip-x { background: none; border: 0; color: var(--gx-text3); cursor: pointer; padding: 2px; }
+.gx-slip-legs { display: flex; flex-direction: column; gap: 6px; max-height: 38vh; overflow-y: auto; }
+.gx-slip-leg { display: flex; align-items: center; gap: 8px; background: var(--gx-panel2); border: 1px solid var(--gx-line); border-radius: 9px; padding: 7px 9px; font-size: 12px; }
+.gx-slip-leg > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.gx-slip-leg b { color: var(--gx-text); font-size: 12px; line-height: 1.25; }
+.gx-slip-leg .gx-dim { font-size: 10.5px; }
+.gx-slip-leg button { background: none; border: 0; color: var(--gx-text3); cursor: pointer; padding: 2px; }
+.gx-slip-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--gx-line); }
+.gx-slip-sum > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gx-slip-sum span { color: var(--gx-text3); font-size: 10.5px; }
+.gx-slip-sum em { font-style: normal; color: var(--gx-text); font-size: 13px; }
+.gx-slip-warn { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; font-size: 11px; color: var(--gx-warn); line-height: 1.35; }
+.gx-slip-warn.gx-dim { color: var(--gx-text3); }
+.gx-slip-actions { display: flex; gap: 7px; margin-top: 9px; }
+.gx-slip-disc { margin-top: 8px; color: var(--gx-text4); font-size: 9.5px; line-height: 1.35; }
+.gx-slip-addbtn.on { border-color: var(--gx-accent-line); color: var(--gx-accent); }
+.gx-es-props-perf { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.gx-es-props-perf > div { background: var(--gx-panel2); border: 1px solid var(--gx-line); border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.gx-es-props-perf em { font-style: normal; font: 700 16px var(--gx-mono); color: var(--gx-text); }
+.gx-es-props-perf span { color: var(--gx-text3); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+@media (max-width: 640px) { .gx-es-props-perf { grid-template-columns: repeat(2, 1fr); } }

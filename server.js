@@ -269,10 +269,31 @@ async function cs2DailyJob() {
     const ps = await opsSpawn('cs2_players', ['scripts/cs2-players-harvest.js', '--max=400'], { heapMb: 200, timeoutMin: 30 });
     opsLog('cs2_daily', { harvest: h.code != null ? h.code : h.error, roster: r.code != null ? r.code : r.error,
       players: ps.code != null ? ps.code : ps.error });
+    // Props en sombra (17-ago): con el scoreboard del día ya en disco, liquidar lo que quedó anotado.
+    // Sombra PROPIA de la familia de props — no toca el ejecutor en la sombra de la casa.
+    try {
+      const PR = require('./esports-engine/props');
+      const s = PR.settleShadow();
+      if (s.settled || s.voided) opsLog('cs2_props_settle', s);
+    } catch (e2) { opsLog('cs2_props_settle', { error: e2.message }); }
   } catch (e) { opsLog('cs2_daily', { error: e.message }); }
 }
 setTimeout(cs2DailyJob, 6 * 60e3);
 setInterval(cs2DailyJob, 3600e3);
+
+// ── Props de esports: barrido de anotación (17-ago). ────────────────────────────────────────────────────
+// La sombra de props solo aprende si alguien lee la pizarra, y una familia en sombra no puede depender de
+// que el admin abra una pantalla: cada 2 h se construye la pizarra (una llamada al libro) y `recordShadow`
+// anota las tesis nuevas por su cuenta. Silencioso salvo error; el estado vive en /api/esports/propstrack.
+async function esPropsSweep() {
+  try {
+    if (opsRssMb() > 260) return;
+    const PR = require('./esports-engine/props');
+    await PR.board({ force: true });
+  } catch (e) { opsLog('es_props_sweep', { error: e.message }); }
+}
+setTimeout(esPropsSweep, 8 * 60e3);
+setInterval(esPropsSweep, 2 * 3600e3);
 
 // ── Boxeo: backfill de Wikipedia, una vez por boot y solo con la env puesta. ─────────────────────────────
 // La máquina de desarrollo tiene la IP limitada (429); Render no. Con GP_BOXING_BACKFILL=1 el servidor lo
@@ -15290,6 +15311,15 @@ const server = http.createServer(async (req, res) => {
             days: +(url.searchParams.get('days') || 3),
             maxEvents: Math.min(24, +(url.searchParams.get('max') || 14)),
           }));
+        }
+        if (p === '/api/esports/props') {
+          // props de jugador contra libro blando (17-ago): pizarra global (CS2 proyecta; LoL/VAL se listan)
+          const PR = require('./esports-engine/props');
+          return json(res, 200, await PR.board({ force: url.searchParams.get('force') === '1' }));
+        }
+        if (p === '/api/esports/propstrack') {
+          const PR = require('./esports-engine/props');
+          return json(res, 200, PR.track());
         }
         if (p === '/api/esports/match') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });

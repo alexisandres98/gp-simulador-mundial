@@ -285,7 +285,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', sport_nfl: 'NFL', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'NFL', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -689,7 +689,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', sport_nfl: 'NFL', nfl_nav_games: 'Games', nfl_nav_model: 'The engine',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'NFL', nfl_nav_games: 'Games', nfl_nav_model: 'The engine',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1038,7 +1038,7 @@
   // ataque/defensa por mapa y Dota 2 en una duración de cola larga que ningún otro tiene. La sección se
   // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
   var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
-  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer'];
+  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer', 'esprops'];
   // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
   // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
   // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
@@ -1051,7 +1051,8 @@
   var NAV2_NFL = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   function nflAllowed() { return !!(S.me && (S.me.isAdmin || S.me.nflPublic)); }
   var NAV_ES = [
-    ['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'],
+    ['esopps', 'target-arrow', 'nav_opps'], ['esprops', 'user-star', 'es_nav_props'],
+    ['esboard', 'device-gamepad', 'es_nav_board'],
     ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'],
     ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']
   ];
@@ -2109,9 +2110,95 @@
       '</div>' +
       pickSignalsRow(p) +
       myBooksHint(p.book) + // F2: la mejor cuota está en una casa que el usuario no marcó
-      (p.odds != null && p.confidence != null ? '<div class="gx-calc-row">' + stakeCalcBtn(p.confidence, Number(p.odds), pickRecText(p), 'gp') + ' ' + watchBtn(p) + '</div>' : '') +
+      (p.odds != null && p.confidence != null ? '<div class="gx-calc-row">' + stakeCalcBtn(p.confidence, Number(p.odds), pickRecText(p), 'gp') + ' ' + watchBtn(p) + ' ' + slipBtn(p) + '</div>' : '') +
       '</div>';
   }
+
+  // ── BOLETO GP (17-ago): del "hay valor aquí" al "este es el boleto exacto" ─────────────────────────────
+  // La pieza que faltaba tras el análisis de LCS Larry: cada pick ya enseña cuota, casa y stake, pero
+  // combinar piernas era trabajo del usuario. El boleto junta piernas de CUALQUIER deporte de la casa,
+  // calcula cuota combinada, probabilidad GP combinada (solo si las piernas son de partidas distintas:
+  // piernas correlacionadas no multiplican) y el stake sugerido con el mismo criterio conservador de la
+  // calculadora (¼ de Kelly, tope 2 %). Vive en localStorage: sobrevive navegación, no cuentas.
+  function slipLoad() { try { var l = JSON.parse(localStorage.getItem('gp_slip') || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+  function slipSave(l) { try { localStorage.setItem('gp_slip', JSON.stringify(l.slice(0, 6))); } catch (e) {} slipFab(); }
+  function slipBtn(p) {
+    if (p.odds == null) return '';
+    var mm = teamName(p.home_team_id, p.home) + ' vs ' + teamName(p.away_team_id, p.away);
+    var leg = { k: pickKeyOf(p), m: mm, r: pickRecText(p), o: Number(p.odds),
+      pr: (p.signals && p.signals.win_prob != null) ? p.signals.win_prob : null,
+      b: p.book || null, f: p.fam_label || p.family || '' };
+    var inSlip = slipLoad().some(function (x) { return x.k === leg.k; });
+    return '<button type="button" class="gx-calc-frac gx-slip-addbtn' + (inSlip ? ' on' : '') + '" data-slipadd="' +
+      esc(encodeURIComponent(JSON.stringify(leg))) + '">' + ic('ticket') + ' ' + esc(inSlip ? t('slip_in') : t('slip_add')) + '</button>';
+  }
+  function slipFab() {
+    var legs = slipLoad();
+    var el = document.getElementById('gx-slip');
+    if (!legs.length) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'gx-slip'; document.body.appendChild(el); }
+    var open = el.getAttribute('data-open') === '1';
+    var comb = legs.reduce(function (a, l) { return a * (l.o || 1); }, 1);
+    var mset = {}; var dup = false;
+    legs.forEach(function (l) { if (mset[l.m]) dup = true; mset[l.m] = 1; });
+    var probOk = !dup && legs.every(function (l) { return l.pr != null; });
+    var prob = probOk ? legs.reduce(function (a, l) { return a * l.pr; }, 1) : null;
+    var ev = prob != null ? prob * comb - 1 : null;
+    var kelly = (ev != null && ev > 0 && comb > 1) ? Math.min(0.02, ((prob * comb - 1) / (comb - 1)) / 4) : null;
+    var body = '<div class="gx-slip-head">' + ic('ticket') + '<b>' + esc(t('slip_title')) + '</b><span class="gx-dim">' + legs.length + '/6</span>' +
+      '<span class="gx-spacer"></span><button type="button" class="gx-slip-x" data-slipfab>' + ic('x') + '</button></div>' +
+      '<div class="gx-slip-legs">' + legs.map(function (l, i) {
+        return '<div class="gx-slip-leg"><div><b>' + esc(l.r) + '</b><span class="gx-dim">' + esc(l.m) + (l.b ? ' · ' + esc(prettyBook(l.b)) : '') + '</span></div>' +
+          '<span class="gx-mono">@' + (l.o || 0).toFixed(2) + '</span><button type="button" data-sliprm="' + i + '">' + ic('x') + '</button></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-slip-sum">' +
+      '<div><span>' + esc(t('slip_comb')) + '</span><em class="gx-mono">@' + comb.toFixed(2) + '</em></div>' +
+      '<div><span>' + esc(t('slip_prob')) + '</span><em class="gx-mono">' + (prob != null ? (100 * prob).toFixed(1) + '%' : '—') + '</em></div>' +
+      '<div><span>EV</span><em class="gx-mono ' + (ev != null ? (ev > 0 ? 'gx-up' : 'gx-down') : '') + '">' + (ev != null ? (ev > 0 ? '+' : '') + (100 * ev).toFixed(1) + '%' : '—') + '</em></div>' +
+      (kelly != null ? '<div><span>' + esc(t('slip_stake')) + '</span><em class="gx-mono">' + (100 * kelly).toFixed(1) + '%</em></div>' : '') +
+      '</div>' +
+      (dup ? '<div class="gx-slip-warn">' + ic('alert-triangle') + esc(t('slip_corr')) + '</div>' : '') +
+      (!dup && !probOk ? '<div class="gx-slip-warn gx-dim">' + esc(t('slip_noprob')) + '</div>' : '') +
+      '<div class="gx-slip-actions"><button type="button" class="gx-calc-frac" data-slipcopy>' + ic('copy') + ' ' + esc(t('slip_copy')) + '</button>' +
+      '<button type="button" class="gx-calc-frac" data-slipclear>' + esc(t('slip_clear')) + '</button></div>' +
+      '<div class="gx-slip-disc">' + esc(t('disclaimer_short')) + '</div>';
+    el.innerHTML = '<button type="button" class="gx-slip-fab" data-slipfab>' + ic('ticket') + '<em>' + legs.length + '</em></button>' +
+      '<div class="gx-slip-panel"' + (open ? '' : ' hidden') + '>' + body + '</div>';
+  }
+  function slipText() {
+    var legs = slipLoad();
+    var comb = legs.reduce(function (a, l) { return a * (l.o || 1); }, 1);
+    return t('slip_title') + ' — gpsimulador.com\n' + legs.map(function (l) {
+      return '· ' + l.r + ' (' + l.m + ')' + (l.b ? ' — ' + prettyBook(l.b) : '') + ' @' + (l.o || 0).toFixed(2);
+    }).join('\n') + '\n' + t('slip_comb') + ': @' + comb.toFixed(2) + '\n' + t('disclaimer_short');
+  }
+  document.addEventListener('click', function (e) {
+    var tgt = e.target.closest ? e.target.closest('[data-slipadd],[data-sliprm],[data-slipfab],[data-slipclear],[data-slipcopy]') : null;
+    if (!tgt) return;
+    e.preventDefault(); e.stopPropagation();
+    if (tgt.hasAttribute('data-slipadd')) {
+      try {
+        var leg = JSON.parse(decodeURIComponent(tgt.getAttribute('data-slipadd')));
+        var legs = slipLoad();
+        var at = legs.findIndex(function (x) { return x.k === leg.k; });
+        if (at >= 0) legs.splice(at, 1); else legs.push(leg);   // el mismo botón añade y quita
+        slipSave(legs);
+        tgt.classList.toggle('on', at < 0);
+        tgt.innerHTML = ic('ticket') + ' ' + esc(at < 0 ? t('slip_in') : t('slip_add'));
+        if (at < 0) { var el2 = document.getElementById('gx-slip'); if (el2) el2.setAttribute('data-open', '1'); slipFab(); }
+      } catch (err) {}
+    } else if (tgt.hasAttribute('data-sliprm')) {
+      var ls = slipLoad(); ls.splice(+tgt.getAttribute('data-sliprm'), 1); slipSave(ls);
+    } else if (tgt.hasAttribute('data-slipclear')) {
+      slipSave([]);
+    } else if (tgt.hasAttribute('data-slipcopy')) {
+      try { navigator.clipboard.writeText(slipText()); tgt.innerHTML = ic('check') + ' ' + esc(t('slip_copied')); } catch (err) {}
+    } else if (tgt.hasAttribute('data-slipfab')) {
+      var el3 = document.getElementById('gx-slip');
+      if (el3) { var o = el3.getAttribute('data-open') === '1'; el3.setAttribute('data-open', o ? '0' : '1'); slipFab(); }
+    }
+  }, true);
+  setTimeout(slipFab, 800);
   // F2: hint discreto cuando la mejor cuota vive en una casa fuera de las del usuario (solo con casas guardadas)
   function myBooksHint(book) {
     var mine = (S.me && S.me.my_books) && (S.me.my_books_list || []);
@@ -4057,7 +4144,7 @@
     if (nfv) { showView(nfv[1]); return; }
     var est = h.match(/^esteam\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
-    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit)(?:\/(cs2|lol|valorant|dota2))?$/i);
+    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit|esprops)(?:\/(cs2|lol|valorant|dota2))?$/i);
     if (esv) { if (esv[2]) S.es.game = esv[2]; showView(esv[1]); return; }
     var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
@@ -4080,7 +4167,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -8282,6 +8369,7 @@
     else if (v === 'esteam') renderESTeam();
     else if (v === 'esplayer') renderESPlayer();
     else if (v === 'escircuit') renderESCircuit();
+    else if (v === 'esprops') renderESProps();
     else renderESOpps();
   }
 
@@ -8471,6 +8559,91 @@
           '<div><span class="gx-label">Casas</span>' + esBooksCell(it) + '</div></div>' +
         '<div class="gx-mcard-foot"><span>' + esSignalCell(it) + '</span><span class="gx-mcard-cta">Analizar →</span></div></div>';
     }).join('');
+  }
+
+  // ---- PROPS DE JUGADOR (17-ago): proyección propia contra libro blando, EN SOMBRA -----------------------
+  // La tesis salió del análisis de LCS Larry: el flanco blando de esports son los props de jugador en
+  // libros DFS. CS2 es el único título donde GP tiene scoreboard propio para proyectar; LoL/Valorant se
+  // listan sin valorar y se dice por qué. NADA de esta pantalla es una pick: es una familia acumulando
+  // muestra en su propia sombra (separada del ejecutor en la sombra de la casa).
+  function renderESProps() {
+    var d = esGet('props', '/api/esports/props', 180000);
+    var tr = esGet('propstrack', '/api/esports/propstrack', 180000);
+    if (!d) { esShell(t('es_nav_props'), esLoading()); return; }
+    if (d._err) { esShell(t('es_nav_props'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var rows = d.rows || [];
+    var somb = rows.filter(function (r) { return r.status === 'SOMBRA'; });
+    var sin = rows.filter(function (r) { return r.status === 'SIN_VENTAJA'; });
+    var veto = rows.filter(function (r) { return r.status === 'VETO'; });
+    var listed = rows.filter(function (r) { return r.status === 'LISTADA'; });
+    var hero = '<div class="gx-es-hero"><div><b>Props de jugador</b>' +
+      '<span class="gx-dim">' + esc((d.book || 'libro blando') + ' · kills en mapas 1-2') + '</span></div>' +
+      '<span class="gx-spacer"></span>' +
+      '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>líneas</span></div>' +
+      '<div class="gx-es-hero-n"><b>' + somb.length + '</b><span>en sombra</span></div></div>' +
+      '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> Todo lo que pasa el listón se anota y se liquida solo con el scoreboard propio, para acumular muestra. Registro aparte: no toca el ejecutor en la sombra de la casa.</span></div>';
+    var perf = (tr && !tr._err && tr.perf) || null;
+    var perfP = perf ? esPanel('La sombra hasta hoy',
+      '<span class="gx-dim">' + ((tr.active || []).length) + ' activas' + (tr.voided ? ' · ' + tr.voided + ' anuladas' : '') + '</span>',
+      '<div class="gx-es-props-perf">' +
+      '<div><em>' + perf.n + '</em><span>liquidadas</span></div>' +
+      '<div><em>' + (perf.hit != null ? (100 * perf.hit).toFixed(1) + '%' : '—') + '</em><span>acierto</span></div>' +
+      '<div><em class="' + (perf.units > 0 ? 'gx-up' : perf.units < 0 ? 'gx-down' : '') + '">' + (perf.units > 0 ? '+' : '') + perf.units + 'u</em><span>unidades</span></div>' +
+      '<div><em>' + (perf.roi != null ? (perf.roi > 0 ? '+' : '') + (100 * perf.roi).toFixed(1) + '%' : '—') + '</em><span>ROI @precio</span></div></div>' +
+      '<div class="gx-dim gx-es-note">El listón de salida de la sombra es el de toda la casa: muestra fuera de muestra que aguante escrutinio, revisada antes de publicar nada.</div>') : '';
+    function propRow(r) {
+      var pr = r.proj || {}, b = r.best || {};
+      var when = r.match && r.match.start_at ? fmtDateTime(r.match.start_at) : '—';
+      return '<tr>' +
+        '<td>' + (r.slug ? '<a href="#" data-esplayer="' + esc(r.slug) + '"><b>' + esc(r.player) + '</b></a>' : '<b>' + esc(r.player) + '</b>') +
+        (r.team ? '<div class="gx-dim" style="font-size:10.5px">' + esc(r.team) + (r.rival ? ' vs ' + esc(r.rival) : '') + '</div>' : '') + '</td>' +
+        '<td><span class="gx-mono">' + esc((b.side === 'under' ? 'Under' : 'Over') + ' ' + r.line) + '</span><div class="gx-dim" style="font-size:10.5px">' + esc(when) + '</div></td>' +
+        '<td class="r gx-mono">' + (pr.mu != null ? pr.mu.toFixed(1) + ' <span class="gx-dim">±' + pr.sigma.toFixed(1) + '</span>' : '—') + '</td>' +
+        '<td class="r gx-mono">' + (b.p_gp != null ? (100 * b.p_gp).toFixed(0) + '%' : '—') + '</td>' +
+        '<td class="r gx-mono">' + (b.bar != null ? (100 * b.bar).toFixed(0) + '%' : '—') + '</td>' +
+        '<td class="r gx-mono gx-up">+' + (100 * (b.edge || 0)).toFixed(1) + ' pp</td>' +
+        '<td class="r gx-mono">' + (b.price_dec ? '@' + b.price_dec.toFixed(2) : 'pick’em') + '</td></tr>';
+    }
+    var sombP = esPanel('Sobre el listón ahora', '<span class="gx-chip gx-chip-alta">se anotan, no se publican</span>',
+      somb.length
+        ? '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Jugador</th><th>Línea</th><th class="r">GP</th><th class="r">P(GP)</th><th class="r">Listón</th><th class="r">Ventaja</th><th class="r">Precio</th></tr></thead><tbody>' +
+          somb.map(propRow).join('') + '</tbody></table></div>' +
+          '<div class="gx-dim gx-es-note">Varias líneas del mismo jugador y lado son UNA sola tesis: a la sombra entra únicamente la de más ventaja, para no inflar la muestra con copias correladas.</div>'
+        : '<div class="gx-empty">' + illo('radar') + '<b>Ninguna línea supera el listón ahora.</b><span class="gx-dim">El libro abre y mueve props durante el día; la pizarra se refresca sola.</span></div>');
+    var sinP = sin.length ? esPanel('Valoradas sin ventaja', '<span class="gx-dim">' + sin.length + ' líneas</span>',
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Jugador</th><th>Línea</th><th class="r">GP</th><th class="r">P(GP)</th><th class="r">Listón</th><th class="r">Dif.</th><th class="r">Precio</th></tr></thead><tbody>' +
+      sin.slice(0, 30).map(function (r) {
+        var pr = r.proj || {}, b = r.best || {};
+        return '<tr>' +
+          '<td>' + (r.slug ? '<a href="#" data-esplayer="' + esc(r.slug) + '">' + esc(r.player) + '</a>' : esc(r.player)) + '</td>' +
+          '<td class="gx-mono">' + esc((b.side === 'under' ? 'U' : 'O') + ' ' + r.line) + '</td>' +
+          '<td class="r gx-mono">' + (pr.mu != null ? pr.mu.toFixed(1) : '—') + '</td>' +
+          '<td class="r gx-mono">' + (b.p_gp != null ? (100 * b.p_gp).toFixed(0) + '%' : '—') + '</td>' +
+          '<td class="r gx-mono">' + (b.bar != null ? (100 * b.bar).toFixed(0) + '%' : '—') + '</td>' +
+          '<td class="r gx-mono">' + (b.edge != null ? ((b.edge > 0 ? '+' : '') + (100 * b.edge).toFixed(1)) : '—') + '</td>' +
+          '<td class="r gx-mono">' + (b.price_dec ? '@' + b.price_dec.toFixed(2) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      (sin.length > 30 ? '<div class="gx-dim gx-es-note">Se enseñan las 30 más cercanas al listón; el resto está valorado igual.</div>' : '')) : '';
+    var vetoP = veto.length ? esPanel('Vetadas', '<span class="gx-dim">' + veto.length + '</span>',
+      '<div class="gx-es-why-rows">' + veto.slice(0, 10).map(function (r) {
+        return '<div class="gx-es-whyr"><b>' + esc(r.player) + ' · ' + esc(String(r.line)) + '</b><em>' + esc(r.veto) + '</em><span>' + esc(r.why || '') + '</span></div>';
+      }).join('') + '</div>') : '';
+    var listedP = listed.length ? '<div class="gx-dim gx-es-trunc">' + listed.length + ' líneas más listadas sin proyección (LoL / Valorant / stats no modeladas): sin base propia de jugador ahí, y no se disimula.</div>' : '';
+    var settled = (tr && !tr._err && tr.settled) || [];
+    var settledP = settled.length ? esPanel('Últimas liquidadas', '',
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Jugador</th><th>Línea</th><th class="r">Real</th><th class="r">Resultado</th></tr></thead><tbody>' +
+      settled.slice(0, 12).map(function (p2) {
+        return '<tr><td>' + esc(p2.player) + '<div class="gx-dim" style="font-size:10.5px">' + esc(p2.day || '') + (p2.rival ? ' vs ' + esc(p2.rival) : '') + '</div></td>' +
+          '<td class="gx-mono">' + esc((p2.side === 'under' ? 'U' : 'O') + ' ' + p2.line) + '</td>' +
+          '<td class="r gx-mono">' + (p2.actual != null ? p2.actual : '—') + '</td>' +
+          '<td class="r"><span class="gx-mono ' + (p2.status === 'WIN' ? 'gx-up' : p2.status === 'LOSS' ? 'gx-down' : 'gx-dim') + '">' + esc(p2.status) + '</span></td></tr>';
+      }).join('') + '</tbody></table></div>') : '';
+    var prov = d.provenance || {};
+    var provP = esPanel('Cómo se calcula', '',
+      '<div class="gx-es-why-rows">' + ['lineas', 'proyeccion', 'sin_ajuste_rival', 'listones', 'doctrina'].map(function (k) {
+        return prov[k] ? '<div class="gx-es-whyr"><b>' + esc(k.replace(/_/g, ' ')) + '</b><span>' + esc(prov[k]) + '</span></div>' : '';
+      }).join('') + '</div>');
+    esShell(t('es_nav_props'), hero + perfP + sombP + sinP + vetoP + listedP + settledP + provP + esDoctrine(null));
   }
 
   function renderESBoard() {

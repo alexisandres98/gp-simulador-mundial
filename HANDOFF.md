@@ -1,5 +1,30 @@
 # HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
 
+## 🎯 17-ago (tarde-2) — PROPS DE JUGADOR (familia nueva EN SOMBRA) + BOLETO GP
+
+Del análisis de LCS Larry (competidor: escáner de props de esports contra libros DFS blandos). Se
+replicaron sus dos ideas buenas con la disciplina de la casa:
+- **Props CS2 contra Underdog** (`esports-engine/props.js` + `data-providers/esports/underdog.js`):
+  Underdog publica su pizarra entera en un endpoint público CON precio por pierna (PrizePicks bloquea con
+  captcha, probado). Proyección PROPIA de kills en mapas 1-2: kpr encogido (ancla poblacional, K=250
+  rondas) × rondas esperadas medidas (~21,4/mapa), sigma de sus últimos 12 mapas ×√2 con suelo. Solo CS2
+  proyecta (único título con scoreboard propio); LoL/Valorant se listan sin valorar y se dice por qué.
+  Vetos: muestra_corta, ventaja_no_creible (>20 pp), stat_no_modelada. **Sombra PROPIA** en
+  `<disk>/esports/props-cs2.json` — UNA anotación por TESIS (día|jugador|stat|lado, la línea de más
+  ventaja), liquidación automática desde los logs propios (mapas 1-2 = últimas 2 filas de la serie en el
+  log, `settle_basis` escrito en cada pick), VOID a los 7 días sin scoreboard. **CERO contacto con el
+  ejecutor en la sombra de la casa** (cards_under_v1 sigue intocable hasta el domingo 23). Barrido de
+  anotación cada 2 h (`esPropsSweep`) + settle dentro de `cs2DailyJob`. Rutas
+  `/api/esports/{props,propstrack}` (admin), vista **Props** en Esport. Al construirla había 385 líneas,
+  12 sobre el listón, 8 tesis anotadas. v1 declarado sin ajuste por rival (primer refinamiento pendiente).
+- **Boleto GP** (todas las pick cards, los 4+ deportes): botón "Boleto" junto a la calculadora → fab
+  flotante con panel: piernas, cuota combinada, prob GP combinada (solo con partidas distintas: piernas
+  correlacionadas no multiplican y se avisa), EV, stake sugerido ¼-Kelly tope 2 %, copiar al portapapeles,
+  disclaimer. localStorage `gp_slip`, máx 6 piernas. Probado con Playwright (desktop + móvil, cero
+  errores JS).
+- Listón de salida de la sombra de props: el de toda la casa — muestra fuera de muestra revisada con
+  Alexis antes de publicar nada como pick.
+
 ## 🏈 17-ago (noche) — NFL INTELLIGENCE TERMINAL (V1 del blueprint, admin-only)
 
 Sexto deporte, construido del blueprint maestro de Alexis (Word). Lo entregado es la columna V0→V1:

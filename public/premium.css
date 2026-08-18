@@ -3700,3 +3700,6 @@ td .gx-calc-btn span { display: none; }
 .gx-f1-dk .gx-mono:last-child{text-align:right}
 .gx-f1-dk .gx-mono.hi{color:var(--gx-green,#1fe3a4);font-weight:700}
 .gx-f1-dk em{flex:1;text-align:center;font-style:normal;font-size:10px;opacity:.5}
+.gx-ten-score em{display:block;font-style:normal;font-size:9px;opacity:.45;margin-top:2px}
+.gx-ten-score.a{box-shadow:inset 0 0 0 1px rgba(31,227,164,.18)}
+.gx-ten-score.b{box-shadow:inset 0 0 0 1px rgba(122,162,255,.18)}

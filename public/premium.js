@@ -11584,16 +11584,20 @@
   }
 
   // fila comparativa de dos valores, con la barra proporcional de cada lado — el ladrillo de toda la capa
-  function tenCmp(label, va, vb, fmt, hint) {
+  // `lowerBetter` importa: en dobles faltas el que gana es el que tiene MENOS, y resaltar el número alto
+  // como si fuera lo bueno es decirle al lector justo lo contrario de lo que pasa.
+  function tenCmp(label, va, vb, fmt, hint, lowerBetter) {
     var f = fmt || function (v) { return v == null ? '—' : v; };
     var na = typeof va === 'number' ? va : 0, nb = typeof vb === 'number' ? vb : 0;
     var mx = Math.max(na, nb) || 1;
+    var aBest = lowerBetter ? (na < nb) : (na > nb);
+    var bBest = lowerBetter ? (nb < na) : (nb > na);
     return '<div class="gx-tcmp"' + (hint ? ' title="' + esc(hint) + '"' : '') + '>' +
-      '<span class="gx-tcmp-a gx-mono' + (na > nb ? ' hi' : '') + '">' + esc(String(f(va))) + '</span>' +
+      '<span class="gx-tcmp-a gx-mono' + (aBest ? ' hi' : '') + '">' + esc(String(f(va))) + '</span>' +
       '<div class="gx-tcmp-bars"><div class="gx-tcmp-l"><i style="width:' + Math.round(100 * na / mx) + '%"></i></div>' +
       '<span class="gx-tcmp-lab">' + esc(label) + '</span>' +
       '<div class="gx-tcmp-r"><i style="width:' + Math.round(100 * nb / mx) + '%"></i></div></div>' +
-      '<span class="gx-tcmp-b gx-mono' + (nb > na ? ' hi' : '') + '">' + esc(String(f(vb))) + '</span></div>';
+      '<span class="gx-tcmp-b gx-mono' + (bBest ? ' hi' : '') + '">' + esc(String(f(vb))) + '</span></div>';
   }
   var tenPctF = function (v) { return v == null ? '—' : Math.round(100 * v) + '%'; };
   var tenNumF = function (v) { return v == null ? '—' : (Math.round(v * 10) / 10); };
@@ -11610,25 +11614,42 @@
   }
 
   // 2) EL CAMINO: cómo se llega al resultado, set a set
+  // El compilador entrega los marcadores como {"3-1": {a: p, b: p}} — la clave es el MARGEN de sets y cada
+  // lado lleva su probabilidad de ganar por ahí. Se despliega en dos columnas con el marcador leído desde
+  // la perspectiva de cada jugador (3-1 para él es 1-3 para el otro).
+  function tenSetRows(ss) {
+    var out = { a: [], b: [] };
+    Object.keys(ss || {}).forEach(function (k) {
+      var v = ss[k]; if (!v) return;
+      var parts = String(k).split('-');
+      if (typeof v === 'number') { out.a.push([k, v]); return; }
+      if (v.a != null) out.a.push([k, v.a]);
+      if (v.b != null) out.b.push([parts[1] + '-' + parts[0], v.b]);
+    });
+    out.a.sort(function (x, y) { return y[1] - x[1]; });
+    out.b.sort(function (x, y) { return y[1] - x[1]; });
+    return out;
+  }
   function tenPathPanel(d) {
     var ss = (d.duel || {}).set_scores || null;
     if (!ss || !Object.keys(ss).length) return '';
-    var keys = Object.keys(ss);
-    var aWin = keys.filter(function (k) { var p = k.split('-'); return +p[0] > +p[1]; });
-    var bWin = keys.filter(function (k) { var p = k.split('-'); return +p[0] < +p[1]; });
-    var sum = function (arr) { return arr.reduce(function (t2, k) { return t2 + (ss[k] || 0); }, 0); };
-    var row = function (k) {
-      var v = ss[k] || 0;
-      return '<div class="gx-tpath-row"><b class="gx-mono">' + esc(k) + '</b>' +
-        '<div class="gx-tpath-bar"><i style="width:' + Math.round(100 * v / Math.max.apply(null, keys.map(function (x) { return ss[x]; }))) + '%"></i></div>' +
-        '<span class="gx-mono">' + (100 * v).toFixed(1) + '%</span></div>';
+    var R = tenSetRows(ss);
+    if (!R.a.length && !R.b.length) return '';
+    var all = R.a.concat(R.b);
+    var mx = Math.max.apply(null, all.map(function (x) { return x[1]; }).concat([0.01]));
+    var sum = function (arr) { return arr.reduce(function (t2, x) { return t2 + x[1]; }, 0); };
+    var row = function (x) {
+      return '<div class="gx-tpath-row"><b class="gx-mono">' + esc(x[0]) + '</b>' +
+        '<div class="gx-tpath-bar"><i style="width:' + Math.round(100 * x[1] / mx) + '%"></i></div>' +
+        '<span class="gx-mono">' + (100 * x[1]).toFixed(1) + '%</span></div>';
     };
     return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El camino al resultado</span>' +
       '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">marcador de sets · del compilador</span></div>' +
-      '<div class="gx-tpath"><div><div class="gx-tpath-h">' + esc(d.a.name.split(' ').slice(-1)[0]) + ' <span class="gx-mono">' + (100 * sum(aWin)).toFixed(0) + '%</span></div>' +
-      aWin.sort(function (x, y) { return ss[y] - ss[x]; }).map(row).join('') + '</div>' +
-      '<div><div class="gx-tpath-h">' + esc(d.b.name.split(' ').slice(-1)[0]) + ' <span class="gx-mono">' + (100 * sum(bWin)).toFixed(0) + '%</span></div>' +
-      bWin.sort(function (x, y) { return ss[y] - ss[x]; }).map(row).join('') + '</div></div>' +
+      '<div class="gx-tpath">' +
+      '<div><div class="gx-tpath-h">' + esc(d.a.name.split(' ').slice(-1)[0]) + ' <span class="gx-mono">' + (100 * sum(R.a)).toFixed(0) + '%</span></div>' +
+      R.a.map(row).join('') + '</div>' +
+      '<div><div class="gx-tpath-h">' + esc(d.b.name.split(' ').slice(-1)[0]) + ' <span class="gx-mono">' + (100 * sum(R.b)).toFixed(0) + '%</span></div>' +
+      R.b.map(row).join('') + '</div></div>' +
       '<div class="gx-dim gx-es-note">Ninguna casa publica el marcador exacto de sets con esta granularidad: sale del mismo compilador que produce el ganador, así que es coherente con él por construcción.</div></div>';
   }
 
@@ -11650,14 +11671,21 @@
       '<div class="gx-dim gx-es-note">La casa cotiza dos o tres líneas; el modelo tiene la curva completa, así que puede opinar de cualquier corte y no solo de los que alguien decidió publicar.</div></div>';
   }
 
-  // 4) MARCADORES DE SET más probables
+  // 4) MARCADORES DE SET más probables (los dos lados juntos, ordenados)
   function tenScoresPanel(d) {
     var ss = (d.duel || {}).set_scores || null;
     if (!ss || !Object.keys(ss).length) return '';
-    var arr = Object.keys(ss).map(function (k) { return [k, ss[k]]; }).sort(function (x, y) { return y[1] - x[1]; }).slice(0, 8);
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los ocho marcadores más probables</span></div>' +
+    var R = tenSetRows(ss);
+    var arr = R.a.map(function (x) { return [x[0], x[1], 'a']; })
+      .concat(R.b.map(function (x) { return [x[0], x[1], 'b']; }))
+      .sort(function (x, y) { return y[1] - x[1]; }).slice(0, 8);
+    if (!arr.length) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los ocho marcadores más probables</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">visto desde quien gana</span></div>' +
       '<div class="gx-ten-scores">' + arr.map(function (x) {
-        return '<div class="gx-ten-score"><b class="gx-mono">' + esc(x[0]) + '</b><span class="gx-mono">' + (100 * x[1]).toFixed(1) + '%</span></div>';
+        return '<div class="gx-ten-score' + (x[2] === 'a' ? ' a' : ' b') + '"><b class="gx-mono">' + esc(x[0]) + '</b>' +
+          '<span class="gx-mono">' + (100 * x[1]).toFixed(1) + '%</span>' +
+          '<em>' + esc((x[2] === 'a' ? d.a.name : d.b.name).split(' ').slice(-1)[0]) + '</em></div>';
       }).join('') + '</div></div>';
   }
 
@@ -11753,7 +11781,7 @@
       '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">carrera, sobre miles de puntos</span></div>' +
       '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
       tenCmp('aces', g(ca, 'ace_pct'), g(cb, 'ace_pct'), pf, 'porcentaje de saques que son ace') +
-      tenCmp('dobles faltas', g(ca, 'df_pct'), g(cb, 'df_pct'), pf, 'menos es mejor') +
+      tenCmp('dobles faltas', g(ca, 'df_pct'), g(cb, 'df_pct'), pf, 'menos es mejor', true) +
       tenCmp('primeros dentro', g(ca, 'first_in_pct'), g(cb, 'first_in_pct'), pf, 'porcentaje de primeros servicios dentro') +
       tenCmp('puntos ganados al saque', g(ca, 'spw_pct'), g(cb, 'spw_pct'), pf) +
       tenCmp('bolas de break salvadas', g(ca, 'bp_saved_pct'), g(cb, 'bp_saved_pct'), pf, 'cómo aguanta bajo presión') +

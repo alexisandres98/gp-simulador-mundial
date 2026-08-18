@@ -129,9 +129,9 @@ async function overview({ days = 5 } = {}) {
       // CS2 tiene rating propio desde el 16-ago (cosecha histórica de GP, 48.678 mapas) y LoL desde el
       // 18-ago (base Leaguepedia 2020→, Elo con lado y parche validado walk-forward) — se declara por
       // juego según qué base cargó de verdad, no por una lista escrita a mano.
-      own_rating: ['cs2', 'lol'].filter((g2) => !!cdOf(g2)).join('+') || 'ninguno',
+      own_rating: ['cs2', 'lol', 'valorant'].filter((g2) => !!cdOf(g2)).join('+') || 'ninguno',
       why: BK.RESULTS_UNAVAILABLE.why,
-      consequence: 'en CS2 la fuerza sale de la base propia (modelo jerárquico calibrado, validado fuera de muestra) y en LoL el Elo propio con lado y parche entra anclado a mercado con peso creciente por muestra. En Valorant y Dota 2 el ganador sigue siendo el consenso del mercado sin margen con 0 % de peso propio; la estructura derivada —rondas, duración y kills— es del modelo y no depende del rating.',
+      consequence: 'en CS2 la fuerza sale de la base propia (modelo jerárquico calibrado, validado fuera de muestra); en LoL el Elo propio con lado y parche entra anclado a mercado con peso creciente por muestra; en Valorant el Elo propio de series (margen+óxido validados) entra igual, y su fuerza por mapa medida alimenta el veto. En Dota 2 el ganador sigue siendo el consenso del mercado sin margen con 0 % de peso propio; la estructura derivada es del modelo y no depende del rating.',
       next: BK.RESULTS_UNAVAILABLE.next,
     },
     // LAS CASAS, con su papel. No es adorno: es lo que explica por qué desde hoy pueden salir picks donde
@@ -289,9 +289,26 @@ function lolOwnInput(ev, competition) {
     if (!r || r.elo_a == null || r.elo_b == null) return null;
     const t = LD.tempoFor(competition);
     return { ratings: { elo_a: r.elo_a, elo_b: r.elo_b }, sample: Math.min(r.matches_a, r.matches_b),
-      observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null, own: true };
+      observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null, own: true,
+      source: 'base propia (Leaguepedia, walk-forward validado)' };
   } catch { return null; }
 }
+// Valorant (18-ago): mismo criterio — Elo propio de series (vlr.gg, margen+óxido validados) y, cuando el
+// detalle por mapa existe, la fuerza por mapa MEDIDA y la profundidad de composición alimentan el árbol
+// de veto del motor en lugar de dejarlo sin ramas. Si algo no resuelve, cae al camino anterior.
+function valOwnInput(ev) {
+  try {
+    const VD = require('./valorant-data');
+    const r = VD.ratingsFor(ev.home.name, ev.away.name);
+    if (!r || r.elo_a == null || r.elo_b == null) return null;
+    const ratings = { elo_a: r.elo_a, elo_b: r.elo_b };
+    const vi = VD.vetoInput(ev.home.name, ev.away.name);
+    if (vi) { ratings.map_strength = vi.map_strength; if (vi.agent_depth) ratings.agent_depth = vi.agent_depth; }
+    return { ratings, sample: Math.min(r.matches_a, r.matches_b), observedTempo: null, own: true,
+      source: 'base propia (vlr.gg, walk-forward validado)' };
+  } catch { return null; }
+}
+const ownInputFor = (game, ev) => (game === 'lol' ? lolOwnInput(ev, ev.competition) : game === 'valorant' ? valOwnInput(ev) : null);
 
 async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const E = ENGINES[game];
@@ -304,7 +321,7 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const bo = boOf(mk, E.GAME.default_bo, ev);
   const rt = ratings(game);
   const a = ev.home.id, b = ev.away.id;
-  const own = game === 'lol' ? lolOwnInput(ev, ev.competition) : null;
+  const own = ownInputFor(game, ev);
   const sample = own ? own.sample : Math.min(rt.matches[a] || 0, rt.matches[b] || 0);
   const model = E.analyze({
     market: mk,
@@ -314,9 +331,14 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     bo, sample, competition: ev.competition,
     observedTempo: own ? own.observedTempo : null,
   });
-  // el Draft Room del cruce (solo LoL): pools medidos, comfort, fragilidad y meta del parche
+  // el cuarto propio del cruce: en LoL el Draft Room (pools, comfort, fragilidad, meta del parche);
+  // en Valorant la Sala de composición (pools de agentes, comfort, fragilidad, meta de la ventana).
+  // Misma forma de datos a propósito: la UI los renderiza con el mismo panel.
   if (game === 'lol' && model) {
     try { model.draft_room = require('./lol-data').draftIntel(ev.home.name, ev.away.name); } catch { }
+  }
+  if (game === 'valorant' && model) {
+    try { model.draft_room = require('./valorant-data').compIntel(ev.home.name, ev.away.name); } catch { }
   }
   const edges = evaluateAll({ game, model, mk, ev, bo, sample });
   // LO QUE SOLO SE VE CON VARIAS CASAS, y va aparte de las picks a propósito: el arbitraje NO pasa por el
@@ -327,7 +349,7 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   return {
     event: ev, bo, sample,
     rating: own
-      ? { a: own.ratings.elo_a, b: own.ratings.elo_b, matches_a: own.sample, matches_b: own.sample, source: 'base propia (Leaguepedia, walk-forward validado)' }
+      ? { a: own.ratings.elo_a, b: own.ratings.elo_b, matches_a: own.sample, matches_b: own.sample, source: own.source }
       : { a: C.r2(rt.elo[a] || null), b: C.r2(rt.elo[b] || null), matches_a: rt.matches[a] || 0, matches_b: rt.matches[b] || 0 },
     model,
     market_raw: mk ? { markets: mk.markets, at: mk.at } : null,
@@ -340,7 +362,7 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     edges,
     // el historial directo entre los dos, si la base lo tiene (solo CS2). Contexto, no señal: el modelo ya
     // pondera el pasado como corresponde; esto es para que quien mira entienda de dónde viene el cruce.
-    h2h: (game === 'cs2' || game === 'lol') ? h2h(game, ev.home.name, ev.away.name) : null,
+    h2h: (game === 'cs2' || game === 'lol' || game === 'valorant') ? h2h(game, ev.home.name, ev.away.name) : null,
     provenance: C.provenance([
       { source: `Agenda de ${(ev.sources || []).map((x) => x.book).join(' + ') || 'las casas'}`, kind: 'proveedor', at: (s && s.at) || null },
       mk ? { source: `Mercados de ${(mk.by_book || []).filter((b) => b.rows).map((b) => b.book).join(' + ')}`, kind: 'proveedor', at: mk.at } : null,
@@ -889,7 +911,7 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     const mk = mkts.get(ev.id) || null;
     const bo = boOf(mk, E.GAME.default_bo, ev);
     const rt = ratings(game);
-    const ownB = game === 'lol' ? lolOwnInput(ev, ev.competition) : null;
+    const ownB = ownInputFor(game, ev);
     const sample = ownB ? ownB.sample : Math.min(rt.matches[ev.home.id] || 0, rt.matches[ev.away.id] || 0);
     let model = null;
     try {
@@ -1401,6 +1423,7 @@ const cdOf = (game) => {
   // El contrato es el mismo (load/norm/resolveTeam/teamCard/rankingMovement) y cada juego pone su semántica.
   if (game === 'cs2') { try { return require('./cs2-data'); } catch { return null; } }
   if (game === 'lol') { try { const LD = require('./lol-data'); return LD.load().available ? LD : null; } catch { return null; } }
+  if (game === 'valorant') { try { const VD = require('./valorant-data'); return VD.load().available ? VD : null; } catch { return null; } }
   return null;
 };
 const scoreDesc = (s) => {
@@ -1494,13 +1517,16 @@ function teamProfile(game, ref) {
     form: (data.form[id] || []).slice().reverse().map((f) => ({ ...f,
       vs_name: (data.teams[f.vs] || {}).name || f.vs, vs_logo: (data.teams[f.vs] || {}).logo || null })),
     rivals: rivals.slice(0, 6),
-    // la procedencia dice la verdad POR JUEGO: la base de CS2 salió de bo3.gg; la de LoL es Leaguepedia
-    // y su licencia CC BY-SA exige atribución donde se enseñe el dato (RIGHTS.md, LOL-0036)
+    // la procedencia dice la verdad POR JUEGO: CS2 salió de bo3.gg; LoL de Leaguepedia (CC BY-SA exige
+    // atribución donde se enseñe el dato); Valorant de vlr.gg (research_only, RIGHTS.md)
     provenance: C.provenance(game === 'lol'
       ? [{ source: 'Base propia de GP, derivada de Leaguepedia (CC BY-SA 4.0) y validada walk-forward', kind: 'derivado', at: data.at },
         { source: 'Rating GP de jugadores: propio, del scoreboard por partida (media del rol = 1.00)', kind: 'derivado', at: data.at }]
-      : [{ source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
-        { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at }]),
+      : game === 'valorant'
+        ? [{ source: 'Base propia de GP, derivada de vlr.gg y validada walk-forward', kind: 'derivado', at: data.at },
+          { source: 'Rating GP de jugadores: propio, del scoreboard por mapa (media de la clase = 1.00)', kind: 'derivado', at: data.at }]
+        : [{ source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
+          { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at }]),
     at: data.at,
   };
 }
@@ -1511,6 +1537,23 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
   const all = Object.values(data.players || {});
   if (!all.length) return { game, available: false, why: 'el directorio de jugadores todavía no se ha derivado (corre con la cosecha de plantillas).' };
   const needle = CD.norm(q);
+  // Valorant habla en ACS/ADR/KAST por CLASE de agente: rama propia con sus columnas
+  if (game === 'valorant') {
+    const rows = all
+      .filter((p) => !needle || CD.norm(p.nick).indexOf(needle) >= 0 || CD.norm(p.team_name || '').indexOf(needle) >= 0)
+      .map((p) => {
+        const st = data.playerStats[p.id] || null;
+        return { id: p.id, nick: p.nick, role: p.role, team: p.team, team_name: p.team_name,
+          rating_gp: st ? st.rating_gp : null, games_n: st ? st.n : null, wr: st ? st.wr : null,
+          acs: st ? st.acs : null, adr: st ? st.adr : null, kast: st ? st.kast : null, kda: st ? st.kda : null };
+      })
+      .sort((a, b) => (b.rating_gp || 0) - (a.rating_gp || 0) || (b.games_n || 0) - (a.games_n || 0))
+      .slice(0, Math.max(1, Math.min(300, limit)));
+    return { game, available: true, valorant: true, players: rows, total: all.length,
+      own_stats: data.playerStatsMeta || null,
+      rating_note: 'Rating GP propio normalizado POR CLASE de agente (un centinela no compite con un duelista en ACS — V-0108); media de la clase = 1.00. Datos derivados de vlr.gg.',
+      at: data.at };
+  }
   // LoL habla su idioma (KP/KDA/CSPM por rol), no el de CS2 (ADR/KAST): rama propia con sus columnas
   if (game === 'lol') {
     const rows = all
@@ -1558,6 +1601,38 @@ function playerProfile(game, id) {
   const p = data.players[id] || null;
   const st = data.playerStats[id] || null;
   if (!p && !st) return { game, available: false, why: `no reconozco "${id}" entre los jugadores con ficha.` };
+  // ficha propia de Valorant: rating por CLASE, pool de agentes con recencia y bitácora. La huella
+  // compara contra la población de su clase (V-0108). Misma forma que la de LoL para que la UI la
+  // renderice con el mismo molde, con sus dimensiones propias.
+  if (game === 'valorant') {
+    const pop = Object.values(data.playerStats || {}).filter((x) => x.class === (st && st.class));
+    const pct = (f, invert = false) => {
+      if (!st) return null;
+      const mine = f(st); if (mine == null) return null;
+      const vals = pop.map(f).filter((v) => v != null);
+      const below = vals.filter((v) => (invert ? v > mine : v < mine)).length;
+      return { value: +(+mine).toFixed(2), pct: vals.length ? Math.round(100 * below / vals.length) : null };
+    };
+    return {
+      game, available: true, lol: true, valorant: true,   // lol:true = "usa la ficha texto-first"; el detalle diferencia abajo
+      player: { id, nick: (st && st.nick) || (p && p.nick) || id, role: (st && st.class) ? String(st.class).replace(/^\w/, (c) => c.toUpperCase()) : (p && p.role) || null,
+        team: (st && st.team) ? CD.resolveTeam(st.team, { data }) : (p ? p.team : null),
+        team_name: (st && st.team) || (p && p.team_name) || null },
+      rating_gp: st ? st.rating_gp : null,
+      totals: st ? { n: st.n, wr: st.wr, kda: st.kda, acs: st.acs, adr: st.adr, kast: st.kast, fk_fd: st.fk_fd } : null,
+      side_split: null,   // en Valorant los lados se alternan dentro del mapa: no hay reparto por lado de serie
+      champs: st ? (st.pool || []).slice(0, 8).map((c) => ({ ch: String(c.agent).replace(/^\w/, (x) => x.toUpperCase()), n: c.n,
+        wr: c.n ? +(c.w / c.n).toFixed(2) : null, rw: c.rw, last: c.last ? String(c.last).slice(0, 10) : null })) : [],
+      recent: (st && st.recent) ? st.recent.map((r) => ({ at: r.at, ch: String(r.agent || '').replace(/^\w/, (x) => x.toUpperCase()), vs: null, k: r.k, d: r.d, a: r.a, win: r.win, side: null, acs: r.acs })) : [],
+      footprint: st ? { role: st.class, pop_n: pop.length, dims: {
+        acs: pct((x) => x.acs), dano: pct((x) => x.adr), consistencia: pct((x) => x.kast),
+        apertura: pct((x) => x.fk_fd) } } : null,
+      meta: data.playerStatsMeta,
+      note: st ? 'Rating GP propio normalizado por clase de agente (media de la clase = 1.00; fórmula publicada en la ficha del motor). Datos derivados de vlr.gg.'
+        : 'sin muestra propia suficiente en la ventana (≥8 mapas en 365 días).',
+      at: data.at,
+    };
+  }
   // ficha propia de LoL: rating por rol, reparto por lado, pool de campeones con recencia y bitácora.
   // La huella compara contra la POBLACIÓN DE SU ROL (LOL-0007), no contra todo el circuito.
   if (game === 'lol') {
@@ -1652,17 +1727,19 @@ function rankingBoard(game) {
 }
 
 function championsBoard(game, { role = null } = {}) {
-  // el meta de campeones del parche vigente — hoy solo LoL lo deriva de su base (blueprint Fase 4);
-  // el contrato queda abierto para que otro juego con "unidades" (héroes de Dota) lo implemente igual.
+  // el meta de "unidades" del juego — campeones en LoL (por parche), agentes en Valorant (por ventana de
+  // 90 días, porque la fuente no publica el parche). El contrato es el mismo tablero; cada juego pone su
+  // corte temporal y lo declara.
   const CD = cdOf(game); if (!CD || typeof CD.championsBoard !== 'function') {
     return { game, available: false, why: 'este juego no tiene tablero de campeones en la base propia.' };
   }
   const out = CD.championsBoard({ role });
-  if (!out || !out.available) return { game, available: false, why: 'los agregados de campeones no están cargados todavía.' };
+  if (!out || !out.available) return { game, available: false, why: 'los agregados todavía no están cargados.' };
   return {
-    game, available: true, patch: out.patch, prev_patch: out.prev_patch, games_patch: out.games_patch,
+    game, available: true, patch: out.patch || null, prev_patch: out.prev_patch || null,
+    games_patch: out.games_patch || null, window: out.window || null, maps_cur: out.maps_cur || null,
     role: role || null, rows: out.rows.slice(0, 60), note: out.note,
-    rights_note: 'Datos derivados de Leaguepedia (CC BY-SA).',
+    rights_note: game === 'valorant' ? 'Datos derivados de vlr.gg.' : 'Datos derivados de Leaguepedia (CC BY-SA).',
   };
 }
 

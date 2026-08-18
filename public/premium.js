@@ -1064,6 +1064,9 @@
   function esAllowed() { return !!(S.me && (S.me.isAdmin || S.me.esportsPublic)); }
   function esGame() { var k = (S.es && S.es.game) || 'cs2'; return ES_GAMES.some(function (x) { return x[0] === k; }) ? k : 'cs2'; }
   function esGameLab() { var k = esGame(); var f = ES_GAMES.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : 'CS2'; }
+  // la unidad del historial propio, por juego: CS2 cuenta mapas, LoL partidas, Valorant series
+  function esUnit() { var g = esGame(); return g === 'lol' ? 'partidas' : g === 'valorant' ? 'series' : 'mapas'; }
+  function esBaseAttrib() { var g = esGame(); return g === 'lol' ? ' Datos derivados de Leaguepedia (CC BY-SA 4.0).' : g === 'valorant' ? ' Datos derivados de vlr.gg.' : ''; }
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
   // LANZAMIENTO PÚBLICO DE COMBATE: con el flag ON, cualquier usuario con sesión entra a las superficies de
   // INTELIGENCIA; las de PICKS (Oportunidades y Rendimiento) siguen siendo admin. Con el flag OFF, todo
@@ -9328,7 +9331,7 @@
     // LoL ya tiene base propia (18-ago): el Draft Room abre la lente de partida y el h2h medido la cierra.
     var gameBlocks;
     if (g === 'lol') gameBlocks = [esDraftRoom(m, ev), esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esH2H(d.h2h)];
-    else if (g === 'valorant') gameBlocks = [esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m)];
+    else if (g === 'valorant') gameBlocks = [esDraftRoom(m, ev), esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m), esH2H(d.h2h)];
     else gameBlocks = [esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev)];
     var glens = S.es.lens === 'modelo' ? 'modelo' : 'partida';
     var GLENSES = [
@@ -9511,9 +9514,15 @@
         '<i class="gx-mono">' + r.presence_pct + '%</i>' +
         (dw != null ? '<em class="' + (dw > 0.02 ? 'gx-up' : dw < -0.02 ? 'gx-dn' : 'gx-dim') + '">' + (dw > 0 ? '▲' : dw < 0 ? '▼' : '=') + '</em>' : '') + '</span>';
     }).join('');
-    return esPanel('Draft Room', dr.patch ? '<span class="gx-mono">parche ' + esc(dr.patch) + '</span>' : '',
+    // el mismo panel sirve al Draft Room de LoL (parche) y a la Sala de composición de Valorant (ventana)
+    var isVal = esGame() === 'valorant';
+    var pTitle = isVal ? 'Sala de composición' : 'Draft Room';
+    var pTag = isVal ? (dr.window ? '<span class="gx-mono">ventana 90 días</span>' : '')
+      : (dr.patch ? '<span class="gx-mono">parche ' + esc(dr.patch) + '</span>' : '');
+    var metaLabel = isVal ? 'El meta de la ventana' : 'El meta del parche';
+    return esPanel(pTitle, pTag,
       '<div class="gx-dr-grid">' + side(dr.a, 'a') + side(dr.b, 'b') + '</div>' +
-      (meta ? '<div class="gx-dr-metarow"><span class="gx-label">El meta del parche</span>' + meta + '</div>' : '') +
+      (meta ? '<div class="gx-dr-metarow"><span class="gx-label">' + metaLabel + '</span>' + meta + '</div>' : '') +
       '<div class="gx-dim gx-es-note">' + esc(dr.provenance || '') + ' ' + esc(dr.rights_note || '') + '</div>', 'gx-es-draftroom');
   }
 
@@ -9971,12 +9980,10 @@
     var segs = '<div class="gx-seg">' + ES_TTABS.map(function (x) {
       return '<button data-estab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
-    // CS2 y LoL tienen base propia (16 y 18-ago); Valorant y Dota 2 siguen sin fuente de resultados.
-    // El tab de Jugadores queda CS2-only: su ficha habla en ADR/KAST/mapas y a LoL le toca la suya
-    // propia (KP/KDA/CSPM por rol) cuando la base real esté cargada — enseñar columnas vacías no es abrirla.
-    if (g !== 'cs2' && g !== 'lol') {
+    // CS2, LoL y Valorant tienen base propia (16 y 18-ago); Dota 2 sigue sin fuente de resultados.
+    if (g === 'dota2') {
       esShell(t('es_nav_teams'), esTabs() + '<div class="gx-ohead">' + segs + '</div>' +
-        '<div class="gx-panel">' + esGap('Solo CS2 y LoL tienen base propia de equipos. En ' + esGameLab() + ' no hay fuente de resultados todavía, así que no hay nada honesto que enseñar aquí.') + '</div>');
+        '<div class="gx-panel">' + esGap('Solo CS2, LoL y Valorant tienen base propia de equipos. En ' + esGameLab() + ' no hay fuente de resultados todavía, así que no hay nada honesto que enseñar aquí.') + '</div>');
       return;
     }
     if (tab === 'rank') { renderESRanking(segs); return; }
@@ -10004,12 +10011,12 @@
             '<div class="gx-est-meta">' +
               '<div class="gx-est-wr"><i style="width:' + (tm.wr != null ? (100 * tm.wr).toFixed(0) : 0) + '%"></i></div>' +
               '<span class="gx-mono">' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</span>' +
-              '<span class="gx-dim">' + tm.n + (esGame() === 'lol' ? ' partidas' : ' mapas') + '</span>' +
+              '<span class="gx-dim">' + tm.n + ' ' + esUnit() + '</span>' +
               '<span class="gx-spacer"></span>' + esFormDots(tm.form) + '</div>' +
           '</div>';
         }).join('') + '</div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún equipo con ese nombre.</b><span class="gx-dim">La búsqueda entra a los ' + d.total + ' equipos de la base propia.</span></div></div>';
-    if (g === 'lol') body += '<div class="gx-dim gx-es-trunc">Datos derivados de Leaguepedia (CC BY-SA 4.0).</div>';
+    if (g !== 'cs2') body += '<div class="gx-dim gx-es-trunc">' + esBaseAttrib().trim() + '</div>';
     esShell(t('es_nav_teams'), esTabs() + head + body);
     esBindSearch('gx-estsearch', function (v) { S.es.tQ = v; }, renderESTeams);
   }
@@ -10022,7 +10029,7 @@
     if (!d) { esShell(t('es_nav_teams'), esTabs() + head + esLoading()); return; }
     if (d._err || !d.available) { esShell(t('es_nav_teams'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
-      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Elo GP</th><th class="r">Victorias</th><th class="r">' + (esGame() === 'lol' ? 'Partidas' : 'Mapas') + '</th><th>Forma</th></tr></thead><tbody>' +
+      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Elo GP</th><th class="r">Victorias</th><th class="r">' + (esUnit().charAt(0).toUpperCase() + esUnit().slice(1)) + '</th><th>Forma</th></tr></thead><tbody>' +
       (d.rows || []).map(function (r) {
         return '<tr data-esteam="' + esc(r.id) + '">' +
           '<td class="r gx-mono gx-esr-rank">' + r.rank + '</td>' +
@@ -10033,7 +10040,7 @@
           '<td class="r gx-mono gx-dim">' + r.n + '</td>' +
           '<td>' + esFormDots(r.form) + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<div class="gx-dim gx-es-note">Ranking por Elo propio de GP, validado fuera de muestra — no es el de HLTV ni el del proveedor. Entran equipos con ' + d.min_maps + '+ ' + (esGame() === 'lol' ? 'partidas recientes' : 'mapas') + ' en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + (esGame() === 'lol' ? ' Datos derivados de Leaguepedia (CC BY-SA 4.0).' : '') + '</div></div>';
+      '<div class="gx-dim gx-es-note">Ranking por Elo propio de GP, validado fuera de muestra — no es el de HLTV ni el del proveedor. Entran equipos con ' + d.min_maps + '+ ' + (esGame() === 'cs2' ? 'mapas' : esUnit() + ' recientes') + ' en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + esBaseAttrib() + '</div></div>';
     esShell(t('es_nav_teams'), esTabs() + head + body);
   }
 
@@ -10051,6 +10058,27 @@
       return;
     }
     var rows = d.players || [];
+    // Valorant: card propia en su idioma (rating GP por clase, ACS, ADR, KAST). Texto-first.
+    if (d.valorant) {
+      var bodyV = rows.length
+        ? '<div class="gx-esp-grid">' + rows.map(function (p) {
+            var rg = p.rating_gp != null ? p.rating_gp : null;
+            var rgW = rg != null ? Math.max(4, Math.min(100, 100 * (rg - 0.6) / 1.0)) : 0;
+            var ownRow = rg != null
+              ? '<div class="gx-esp-rat"><span>Rating GP</span><div class="gx-esp-ratb"><em></em><i style="width:' + rgW.toFixed(0) + '%"></i></div><b class="gx-mono ' + (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') + '">' + rg.toFixed(2) + '</b></div>' +
+                '<div class="gx-esp-stats"><span>ACS <b>' + (p.acs != null ? p.acs : '—') + '</b></span><span>ADR <b>' + (p.adr != null ? p.adr : '—') + '</b></span><span>KAST <b>' + (p.kast != null ? Math.round(p.kast) + '%' : '—') + '</b></span><span class="gx-dim">' + (p.games_n || 0) + ' mapas</span></div>'
+              : '<div class="gx-esp-rat"><span class="gx-dim">sin muestra propia suficiente en la ventana</span></div>';
+            return '<div class="gx-panel gx-esp-card" data-esplayer="' + esc(p.id) + '">' +
+              '<div class="gx-esp-top"><div class="gx-esp-id"><b>' + esc(p.nick) + '</b><span>' + esc(p.team_name || '—') + '</span></div>' +
+                '<span class="gx-spacer"></span>' + (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') + '</div>' +
+              '<div class="gx-esp-meta">' + ownRow + '</div></div>';
+          }).join('') + '</div>' +
+          '<div class="gx-dim gx-es-trunc">' + esc(d.rating_note || '') + '</div>'
+        : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún jugador con ese nombre.</b><span class="gx-dim">Se listan los jugadores con ≥8 mapas en la ventana de la base propia.</span></div></div>';
+      esShell(t('es_nav_teams'), esTabs() + head + bodyV);
+      esBindSearch('gx-espsearch', function (v) { S.es.pQ = v; }, renderESTeams);
+      return;
+    }
     // LoL: card propia en su idioma (rating GP por rol, KDA, participación en kills, CS/min).
     // Texto-first, sin fotos: la identidad visual de jugadores llega con una fuente de assets autorizada.
     if (d.lol) {
@@ -10125,18 +10153,20 @@
         '<button class="gx-btn gx-btn-p gx-est-simbtn" data-essim="' + esc(tm.name) + '">' + ic('arrows-shuffle') + 'Simular contra…</button></div>' +
       '<div class="gx-est-hero-stats">' +
         '<div><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Elo GP</span></div>' +
-        '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>' + (esGame() === 'lol' ? 'victorias por partida' : 'victorias por mapa') + '</span></div>' +
-        '<div><b>' + tm.n + '</b><span>' + (esGame() === 'lol' ? 'partidas en la base' : 'mapas en la base') + '</span></div>' +
+        '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>' + 'victorias por ' + esUnit().replace(/s$/, '') + '</span></div>' +
+        '<div><b>' + tm.n + '</b><span>' + esUnit() + ' en la base' + '</span></div>' +
         '<div>' + esFormDots(((d.form || []).slice(0, 5).map(function (f) { return f.r; })).reverse()) + '<span>forma reciente</span></div>' +
       '</div></div>';
-    // TERRENO: el efecto por mapa con su plano — dónde gana MÁS de lo que le tocaría por nivel
+    // TERRENO: el efecto por mapa — dónde gana MÁS de lo que le tocaría por nivel. El plano dibujado es
+    // de CS2; Valorant va texto-first (sus mapas no tienen arte propio en la casa todavía).
+    var isValT = esGame() === 'valorant';
     var mapsB = (d.maps || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Su terreno · efecto por mapa</span>' +
       '<span class="gx-ph-extra"><span class="gx-dim">vs. lo que le tocaría por nivel</span></span></div>' +
       '<div class="gx-est-maps">' + d.maps.map(function (m) {
         var eff = m.effect != null ? m.effect : 0;
         var w = Math.min(100, Math.abs(100 * eff) / 0.25 * 100);
-        return '<div class="gx-est-map">' + cs2MapArt(m.map, 'sm') +
-          '<div class="gx-est-map-id"><b>' + esc(cs2Name(m.map)) + '</b><span class="gx-dim">' + (m.wr != null ? Math.round(100 * m.wr) + '% · ' : '') + m.n + ' mapas</span></div>' +
+        return '<div class="gx-est-map">' + (isValT ? '' : cs2MapArt(m.map, 'sm')) +
+          '<div class="gx-est-map-id"><b>' + esc(isValT ? m.map : cs2Name(m.map)) + '</b><span class="gx-dim">' + (m.wr != null ? Math.round(100 * m.wr) + '% · ' : '') + m.n + ' mapas</span></div>' +
           '<div class="gx-est-map-bar"><em></em><i class="' + (eff >= 0 ? 'pos' : 'neg') + '" style="width:' + Math.min(50, w / 2).toFixed(1) + '%"></i></div>' +
           '<b class="gx-mono ' + (eff > 0.02 ? 'gx-up' : eff < -0.02 ? 'gx-down' : 'gx-dim') + '">' + (eff > 0 ? '+' : '') + Math.round(100 * eff) + ' pp</b></div>';
       }).join('') + '</div>' +
@@ -10194,9 +10224,9 @@
   // ---- EL CIRCUITO: el meta del pool de mapas -------------------------------------------------------------
   function renderESCircuit() {
     var g = esGame();
-    // cada juego enseña SU meta medido: CS2 el pool de mapas, LoL el meta de campeones del parche.
-    // Mismo hueco de navegación, semántica propia — el draft es el objeto-firma de LoL (blueprint Fase 4).
-    if (g === 'lol') { renderESChampions(); return; }
+    // cada juego enseña SU meta medido: CS2 el pool de mapas, LoL el meta de campeones del parche,
+    // Valorant el meta de agentes de la ventana. Mismo hueco de navegación, semántica propia.
+    if (g === 'lol' || g === 'valorant') { renderESChampions(); return; }
     if (g !== 'cs2') {
       esShell(t('es_nav_circuit'), esTabs() + '<div class="gx-panel">' + esGap('El circuito se mide sobre la base propia y hoy solo CS2 la tiene. Los perfiles de ' + esGameLab() + ' son supuestos de circuito, y un meta hecho de supuestos no es un meta.') + '</div>');
       return;
@@ -10237,29 +10267,40 @@
     esShell(t('es_nav_circuit'), esTabs() + hero + cards + outB + note);
   }
 
-  // ---- CAMPEONES (LoL, 18-ago): el meta del parche vigente, medido de la base propia ---------------------
-  // Ocupa el hueco de "El circuito" cuando el juego es LoL: presencia (picks+bans), WR encogida hacia 0,5
-  // (K=25 picks) y el delta contra el parche anterior. Texto-first a propósito: la política de Riot prohíbe
-  // usar sus assets en producto de apuestas (LOL-0043), así que aquí no hay arte de campeones, hay números.
+  // ---- CAMPEONES / AGENTES (18-ago): el meta vigente, medido de la base propia ---------------------------
+  // Ocupa el hueco de "El circuito": en LoL campeones por PARCHE (presencia = picks+bans, WR encogida,
+  // delta vs parche anterior); en Valorant agentes por VENTANA de 90 días (vlr no publica el parche y no
+  // se finge). Texto-first a propósito: la política de Riot prohíbe usar sus assets en producto de
+  // apuestas (LOL-0043 / V-0026), así que aquí no hay arte, hay números.
   var LOL_ROLES = [['', 'Todos'], ['Top', 'Top'], ['Jungle', 'Jungla'], ['Mid', 'Mid'], ['Bot', 'Bot'], ['Support', 'Soporte']];
+  var VAL_CLASSES = [['', 'Todos'], ['Duelist', 'Duelistas'], ['Initiator', 'Iniciadores'], ['Controller', 'Controladores'], ['Sentinel', 'Centinelas']];
   function renderESChampions() {
+    var g = esGame(), isVal = g === 'valorant';
+    var CHIPS = isVal ? VAL_CLASSES : LOL_ROLES;
+    var title = isVal ? 'Agentes' : 'Campeones';
     var role = S.es.lolRole || '';
-    var d = esGet('champs_lol', '/api/esports/champions?game=lol', 900000);
-    var chips = '<div class="gx-cb-tabs gx-lolrole-tabs">' + LOL_ROLES.map(function (x) {
+    if (role && !CHIPS.some(function (x) { return x[0] === role; })) role = '';   // filtro del otro juego
+    var d = esGet('champs_' + g, '/api/esports/champions?game=' + g, 900000);
+    var chips = '<div class="gx-cb-tabs gx-lolrole-tabs">' + CHIPS.map(function (x) {
       return '<span class="gx-cb-tab' + (role === x[0] ? ' on' : '') + '" data-esrole="' + x[0] + '">' + x[1] + '</span>';
     }).join('') + '<span class="gx-spacer"></span></div>';
-    if (!d) { esShell('Campeones', esTabs() + esLoading()); return; }
+    if (!d) { esShell(title, esTabs() + esLoading()); return; }
     if (d._err || !d.available) {
-      esShell('Campeones', esTabs() + '<div class="gx-panel">' + esGap(d.why || 'El meta de campeones se deriva de la base propia de LoL y todavía no está cargado: la primera cosecha está corriendo.') + '</div>');
+      esShell(title, esTabs() + '<div class="gx-panel">' + esGap(d.why || 'El meta se deriva de la base propia y todavía no está cargado: la cosecha está corriendo.') + '</div>');
       return;
     }
     var rows = (d.rows || []).filter(function (r) { return !role || r.role === role; }).slice(0, 30);
     var maxPres = rows.length ? rows[0].presence_pct || 1 : 1;
-    var hero = '<div class="gx-es-hero"><div><b>El meta del parche ' + esc(d.patch) + ', medido</b>' +
-      '<span class="gx-dim">presencia, tasa de victoria encogida y su delta contra el parche ' + esc(d.prev_patch || 'anterior') + ' — de la base propia, no de una tier list</span></div>' +
-      '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + d.games_patch + '</b><span>partidas en el parche</span></div></div>';
+    var hero = isVal
+      ? '<div class="gx-es-hero"><div><b>El meta de la ventana, medido</b>' +
+        '<span class="gx-dim">presencia y tasa de victoria encogida de los últimos 90 días, con su delta contra los 90 anteriores — de la base propia, no de una tier list</span></div>' +
+        '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + (d.maps_cur || '—') + '</b><span>mapas en la ventana</span></div></div>'
+      : '<div class="gx-es-hero"><div><b>El meta del parche ' + esc(d.patch) + ', medido</b>' +
+        '<span class="gx-dim">presencia, tasa de victoria encogida y su delta contra el parche ' + esc(d.prev_patch || 'anterior') + ' — de la base propia, no de una tier list</span></div>' +
+        '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + d.games_patch + '</b><span>partidas en el parche</span></div></div>';
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
-      '<th>Campeón</th><th>Rol</th><th>Presencia</th><th class="r">WR</th><th class="r">Δ parche</th><th class="r">Bans</th><th class="r">Picks</th></tr></thead><tbody>' +
+      '<th>' + (isVal ? 'Agente' : 'Campeón') + '</th><th>' + (isVal ? 'Clase' : 'Rol') + '</th><th>Presencia</th><th class="r">WR</th><th class="r">' + (isVal ? 'Δ ventana' : 'Δ parche') + '</th>' +
+      (isVal ? '' : '<th class="r">Bans</th>') + '<th class="r">Picks</th></tr></thead><tbody>' +
       rows.map(function (r) {
         var dw = r.delta_wr;
         var dCls = dw == null ? 'gx-dim' : dw > 0.02 ? 'gx-up' : dw < -0.02 ? 'gx-dn' : 'gx-dim';
@@ -10271,11 +10312,11 @@
             '<b class="gx-mono">' + r.presence_pct + '%</b></div></td>' +
           '<td class="r gx-mono"><b>' + (100 * r.wr_shrunk).toFixed(1) + '%</b></td>' +
           '<td class="r gx-mono ' + dCls + '">' + dTxt + '</td>' +
-          '<td class="r gx-mono gx-dim">' + r.bans + '</td>' +
+          (isVal ? '' : '<td class="r gx-mono gx-dim">' + r.bans + '</td>') +
           '<td class="r gx-mono gx-dim">' + r.n + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + ' Datos derivados de Leaguepedia (CC BY-SA 4.0).</div></div>';
-    esShell('Campeones', esTabs() + hero + chips + body);
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + ' ' + esc(d.rights_note || '') + '</div></div>';
+    esShell(title, esTabs() + hero + chips + body);
   }
 
   // ---- H2H: el historial directo, en la partida y en el simulador -----------------------------------------
@@ -11101,6 +11142,7 @@
   // Texto-first: sin arte de Riot (LOL-0043).
   function renderESPlayerLol(d, back) {
     var p = d.player, tt = d.totals, rg = d.rating_gp;
+    var isVal = !!d.valorant;   // misma ficha texto-first; Valorant pone sus dimensiones (ACS/ADR/KAST por clase)
     var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' +
       '<div class="gx-est-hero-id"><b>' + esc(p.nick) + '</b><div class="gx-est-hero-chips">' +
         (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') +
@@ -11108,18 +11150,28 @@
           : (p.team_name ? '<span class="gx-dim" style="font-size:11.5px">' + esc(p.team_name) + '</span>' : '')) +
       '</div></div><span class="gx-spacer"></span>' +
       '<div class="gx-esplayer-rg"><b class="' + (rg != null ? (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') : '') + '">' + (rg != null ? rg.toFixed(2) : '—') + '</b><span>Rating GP</span>' +
-        '<em>media del rol = 1.00</em></div></div>' +
+        '<em>media ' + (isVal ? 'de la clase' : 'del rol') + ' = 1.00</em></div></div>' +
       (tt ? '<div class="gx-est-hero-stats" style="grid-template-columns:repeat(6,1fr)">' +
-        '<div><b>' + (tt.kda != null ? tt.kda.toFixed(1) : '—') + '</b><span>KDA</span></div>' +
-        '<div><b>' + (tt.kp != null ? Math.round(100 * tt.kp) + '%' : '—') + '</b><span>particip. kills</span></div>' +
-        '<div><b>' + (tt.cspm != null ? tt.cspm.toFixed(1) : '—') + '</b><span>CS/min</span></div>' +
-        '<div><b>' + (tt.gpm != null ? tt.gpm : '—') + '</b><span>oro/min</span></div>' +
-        '<div><b>' + (tt.wr != null ? Math.round(100 * tt.wr) + '%' : '—') + '</b><span>victorias</span></div>' +
-        '<div><b>' + tt.n + '</b><span>partidas</span></div></div>' : '') + '</div>';
+        (isVal
+          ? '<div><b>' + (tt.acs != null ? tt.acs : '—') + '</b><span>ACS</span></div>' +
+            '<div><b>' + (tt.adr != null ? tt.adr : '—') + '</b><span>ADR</span></div>' +
+            '<div><b>' + (tt.kast != null ? Math.round(tt.kast) + '%' : '—') + '</b><span>KAST</span></div>' +
+            '<div><b>' + (tt.kda != null ? tt.kda.toFixed(1) : '—') + '</b><span>KDA</span></div>' +
+            '<div><b>' + (tt.wr != null ? Math.round(100 * tt.wr) + '%' : '—') + '</b><span>victorias</span></div>' +
+            '<div><b>' + tt.n + '</b><span>mapas</span></div>'
+          : '<div><b>' + (tt.kda != null ? tt.kda.toFixed(1) : '—') + '</b><span>KDA</span></div>' +
+            '<div><b>' + (tt.kp != null ? Math.round(100 * tt.kp) + '%' : '—') + '</b><span>particip. kills</span></div>' +
+            '<div><b>' + (tt.cspm != null ? tt.cspm.toFixed(1) : '—') + '</b><span>CS/min</span></div>' +
+            '<div><b>' + (tt.gpm != null ? tt.gpm : '—') + '</b><span>oro/min</span></div>' +
+            '<div><b>' + (tt.wr != null ? Math.round(100 * tt.wr) + '%' : '—') + '</b><span>victorias</span></div>' +
+            '<div><b>' + tt.n + '</b><span>partidas</span></div>') + '</div>' : '') + '</div>';
     // huella contra su ROL (percentiles medidos)
     var FP = d.footprint;
-    var fpB = FP ? esPanel('Huella GP contra su rol', '<span class="gx-dim" style="font-size:11px">' + FP.pop_n + ' ' + esc(FP.role || '') + ' cualificados</span>',
-      '<div class="gx-es-fp">' + [['participacion', 'Participación', 'presencia en las kills del equipo'], ['kda', 'KDA', 'tope 8 para que un smurf no rompa la escala'], ['farmeo', 'Farmeo', 'CS por minuto'], ['muertes', 'Limpieza', 'percentil alto = muere poco']].map(function (x) {
+    var fpDims = isVal
+      ? [['acs', 'Impacto', 'ACS medio por mapa'], ['dano', 'Daño', 'ADR medio'], ['consistencia', 'Consistencia', 'KAST: rondas donde aporta'], ['apertura', 'Apertura', 'first kills − first deaths por mapa']]
+      : [['participacion', 'Participación', 'presencia en las kills del equipo'], ['kda', 'KDA', 'tope 8 para que un smurf no rompa la escala'], ['farmeo', 'Farmeo', 'CS por minuto'], ['muertes', 'Limpieza', 'percentil alto = muere poco']];
+    var fpB = FP ? esPanel('Huella GP contra su ' + (isVal ? 'clase' : 'rol'), '<span class="gx-dim" style="font-size:11px">' + FP.pop_n + ' ' + esc(FP.role || '') + ' cualificados</span>',
+      '<div class="gx-es-fp">' + fpDims.map(function (x) {
         var v = FP.dims[x[0]];
         if (!v) return '';
         return '<div class="gx-es-fpr"><span class="gx-es-fpl">' + x[1] + '</span>' +
@@ -11127,7 +11179,7 @@
           '<b class="gx-mono">p' + (v.pct != null ? v.pct : '—') + '</b>' +
           '<span class="gx-dim gx-es-fpd">' + x[2] + '</span></div>';
       }).join('') + '</div>' +
-      '<div class="gx-dim gx-es-note">No es proyección: es dónde se sienta entre los de su rol en la ventana, medido del scoreboard propio.</div>') : '';
+      '<div class="gx-dim gx-es-note">No es proyección: es dónde se sienta entre los de su ' + (isVal ? 'clase' : 'rol') + ' en la ventana, medido del scoreboard propio.</div>') : '';
     // reparto por lado
     var sd = d.side_split;
     var sideB = sd && (sd.blue_n || sd.red_n) ? esPanel('Por lado del mapa', '',
@@ -11135,20 +11187,21 @@
         '<div><span class="gx-label">Lado azul</span><b>' + (sd.blue_wr != null ? Math.round(100 * sd.blue_wr) + '%' : '—') + '</b><span class="gx-dim">' + (sd.blue_n || 0) + ' partidas</span></div>' +
         '<div><span class="gx-label">Lado rojo</span><b>' + (sd.red_wr != null ? Math.round(100 * sd.red_wr) + '%' : '—') + '</b><span class="gx-dim">' + (sd.red_n || 0) + ' partidas</span></div>' +
       '</div><div class="gx-dim gx-es-note">Victorias del jugador según el lado que le tocó: el lado azul elige primero en el draft.</div>') : '';
-    // pool de campeones (chips del Draft Room)
-    var poolB = (d.champs || []).length ? esPanel('Pool de campeones', '<span class="gx-dim" style="font-size:11px">peso reciente, medio-vida 40 partidas</span>',
+    // pool (chips del Draft Room / la Sala de composición)
+    var poolB = (d.champs || []).length ? esPanel('Pool de ' + (isVal ? 'agentes' : 'campeones'), '<span class="gx-dim" style="font-size:11px">peso reciente, medio-vida 40 ' + (isVal ? 'mapas' : 'partidas') + '</span>',
       '<div class="gx-dr-pool">' + d.champs.map(function (c) {
-        return '<span class="gx-dr-ch" title="' + c.n + ' partidas' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.last ? ' · última ' + c.last : '') + '">' +
+        return '<span class="gx-dr-ch" title="' + c.n + (isVal ? ' mapas' : ' partidas') + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.last ? ' · última ' + c.last : '') + '">' +
           esc(c.ch) + '<i>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + ' · ' + c.n + '</i></span>';
       }).join('') + '</div>') : '';
     // bitácora
     var recB = (d.recent || []).length ? esPanel('Bitácora reciente', '',
-      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Fecha</th><th>Campeón</th><th>Rival</th><th class="r">K/D/A</th><th>Lado</th><th></th></tr></thead><tbody>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Fecha</th><th>' + (isVal ? 'Agente' : 'Campeón') + '</th>' +
+      (isVal ? '<th class="r">ACS</th>' : '<th>Rival</th>') + '<th class="r">K/D/A</th>' + (isVal ? '' : '<th>Lado</th>') + '<th></th></tr></thead><tbody>' +
       d.recent.slice(0, 10).map(function (r) {
         return '<tr><td class="gx-dim gx-mono">' + esc(r.at || '—') + '</td><td><b>' + esc(r.ch || '—') + '</b></td>' +
-          '<td class="gx-dim">' + esc(r.vs || '—') + '</td>' +
+          (isVal ? '<td class="r gx-mono">' + (r.acs != null ? r.acs : '—') + '</td>' : '<td class="gx-dim">' + esc(r.vs || '—') + '</td>') +
           '<td class="r gx-mono">' + (r.k != null ? r.k + '/' + r.d + '/' + r.a : '—') + '</td>' +
-          '<td class="gx-dim">' + (r.side === 'blue' ? 'azul' : r.side === 'red' ? 'rojo' : '—') + '</td>' +
+          (isVal ? '' : '<td class="gx-dim">' + (r.side === 'blue' ? 'azul' : r.side === 'red' ? 'rojo' : '—') + '</td>') +
           '<td>' + (r.win === 1 ? '<b class="gx-up">V</b>' : r.win === 0 ? '<b class="gx-dn">D</b>' : '—') + '</td></tr>';
       }).join('') + '</tbody></table></div>') : '';
     esShell(p.nick, back + hero + fpB + sideB + poolB + recB +

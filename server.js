@@ -330,6 +330,32 @@ async function lolHarvestJob() {
   } catch (e) { opsLog('lol_harvest', { error: e.message }); setTimeout(lolHarvestJob, 30 * 60e3); }
 }
 setTimeout(lolHarvestJob, 6 * 60e3);
+// Valorant (18-ago, blueprint 4.0 Fase 1): el ÍNDICE de series se cosechó desde el sandbox (vlr.gg no lo
+// limita) y viaja versionado; el DETALLE por serie (mapas/lados/agentes/scoreboard, miles de páginas) corre
+// aquí con la misma cadena paciente que LoL: /data/val-raw, reanudable, re-armado cada 20 min hasta que
+// state.json diga completo. GP_VAL_HARVEST=1 lo enciende; /api/internal/valraw enseña avance y recoge.
+async function valHarvestJob() {
+  try {
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_VAL_HARVEST || '').trim())) return;
+    const dir = process.env.GP_VAL_DIR || (fs.existsSync('/data') ? '/data/val-raw' : path.join(__dirname, 'data', 'esports', 'valorant'));
+    try {
+      const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+      if (st && st.complete) { opsLog('val_harvest_done', { complete: true, at: st.at }); return; }
+    } catch { }
+    // el índice versionado sirve de arranque: si el disco persistente aún no tiene series.json, se siembra
+    try {
+      if (!fs.existsSync(path.join(dir, 'series.json')) && fs.existsSync(path.join(__dirname, 'data', 'esports', 'valorant', 'series.json'))) {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.copyFileSync(path.join(__dirname, 'data', 'esports', 'valorant', 'series.json'), path.join(dir, 'series.json'));
+        opsLog('val_harvest_seed', { from: 'repo' });
+      }
+    } catch { }
+    const out = await opsSpawn('val_harvest', ['scripts/valorant-harvest.js', '--since=2024-01-01'], { heapMb: 300, timeoutMin: 150 });
+    opsLog('val_harvest_pass', { code: out.code != null ? out.code : out.error });
+    setTimeout(valHarvestJob, 20 * 60e3);
+  } catch (e) { opsLog('val_harvest', { error: e.message }); setTimeout(valHarvestJob, 30 * 60e3); }
+}
+setTimeout(valHarvestJob, 9 * 60e3);
 const BOOT_ID = Date.now();
 setTimeout(boxingBackfillJob, 8 * 60e3);
 setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
@@ -15696,6 +15722,26 @@ const server = http.createServer(async (req, res) => {
       if (!OKL.includes(fL)) return json(res, 400, { error: 'archivo no permitido', ok: OKL });
       try {
         const buf = require('zlib').gzipSync(fs.readFileSync(path.join(dirL, fL)));
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
+        return res.end(buf);
+      } catch (e) { return json(res, 404, { error: e.message }); }
+    }
+    // recogida de la cosecha de Valorant (mismo criterio que lolraw; gzip porque players-raw crece a MBs)
+    if (p === '/api/internal/valraw') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const OKV = ['series.json', 'maps.json', 'players-raw.json', 'state.json'];
+      const fV = String(url.searchParams.get('file') || '');
+      const dirV = process.env.GP_VAL_DIR || (fs.existsSync('/data') ? '/data/val-raw' : path.join(__dirname, 'data', 'esports', 'valorant'));
+      if (!fV) {
+        const files = OKV.map(x => { let st2 = null; try { st2 = fs.statSync(path.join(dirV, x)); } catch { }
+          return { file: x, bytes: st2 ? st2.size : null, mtime: st2 ? st2.mtime : null }; });
+        const log = (OPS.log || []).filter(l => String(l.what || '').startsWith('val_harvest')).slice(-5);
+        return json(res, 200, { dir: dirV, files, ops: log });
+      }
+      if (!OKV.includes(fV)) return json(res, 400, { error: 'archivo no permitido', ok: OKV });
+      try {
+        const buf = require('zlib').gzipSync(fs.readFileSync(path.join(dirV, fV)));
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
         return res.end(buf);
       } catch (e) { return json(res, 404, { error: e.message }); }

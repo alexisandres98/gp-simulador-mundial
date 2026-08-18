@@ -31,6 +31,11 @@ data/combat/.boxing-cache.json
 data/esports/*
 !data/esports/cs2/
 !data/esports/lol/
+!data/esports/valorant/
+# el crudo PESADO de valorant (detalle por partido de vlr.gg) no entra en git: se agrega a archivos
+# compactos que sí se versionan. series.json (índice liviano, es la base del Elo) SÍ se versiona.
+data/esports/valorant/maps.json
+data/esports/valorant/players-raw.json
 data/esports/cs2-raw/
 
 # crudo de esports: vive en el disco persistente (o local); jamás en git (25MB+)

@@ -389,6 +389,19 @@ async function tennisJob() {
   setTimeout(tennisJob, 30 * 60e3);
 }
 setTimeout(tennisJob, 5 * 60e3);
+
+// ── F1: refresco de la temporada desde Jolpica cada 6 h (resultados + quali → overlay en disco; con la
+// quali del sábado el estado pasa solo a POS-QUALI) + vigilancia diaria de cobertura de cuotas ─────────
+async function f1Job() {
+  try {
+    const F1 = require('./f1-engine/store');
+    const r = await F1.refreshSeason();
+    const ok2 = await F1.oddsKeysCheck();
+    opsLog('f1_job', { races: r.races, odds_covered: !!(ok2 && ok2.covered) });
+  } catch (e) { opsLog('f1_job', { error: e.message }); }
+  setTimeout(f1Job, 6 * 3600e3);
+}
+setTimeout(f1Job, 7 * 60e3);
 const BOOT_ID = Date.now();
 setTimeout(boxingBackfillJob, 8 * 60e3);
 setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
@@ -9173,6 +9186,56 @@ function askToolsFor(sport, { u, lang, org }) {
     };
     return { tools, runTool, sportLabel: 'FÚTBOL AMERICANO (NFL · College/NCAAF · CFL). TODAS las familias corren en sombra: si preguntan por picks, decí con naturalidad que el monitor es privado hasta que el registro lo gane, y ofrecé la proyección del modelo. Si preguntan por otros deportes, indicá el conmutador de arriba.' };
   }
+  // ── F1 (18-ago, blueprint 7.0): parrilla probabilística, campeonato, piloto, what-if y duelo ──────────
+  if (sport === 'f1') {
+    const F1 = require('./f1-engine/store');
+    const tools = [
+      { name: 'proxima_carrera_f1', description: 'La próxima carrera con la parrilla probabilística del gemelo: P(ganar), P(podio), P(puntos), riesgo de abandono e índices coche/piloto, con el estado de información (pre o pos clasificación).', input_schema: { type: 'object', properties: {} } },
+      { name: 'campeonato_f1', description: 'El mundial de pilotos y constructores con puntos oficiales + los índices del gemelo.', input_schema: { type: 'object', properties: {} } },
+      { name: 'piloto_f1', description: 'Ficha de un piloto: índice propio vs su coche, riesgo de abandono, ganancia media de posiciones y últimas carreras.', input_schema: { type: 'object', properties: { piloto: { type: 'string' } }, required: ['piloto'] } },
+      { name: 'que_pasa_si_f1', description: 'Contrafactual con la MISMA carrera simulada: mueve a un piloto a otra casilla de salida y mide cuánto cambia su probabilidad.', input_schema: { type: 'object', properties: { piloto: { type: 'string' }, casilla: { type: 'number' } }, required: ['piloto', 'casilla'] } },
+      { name: 'duelo_f1', description: 'P(A termina por delante de B) en la próxima carrera, del mismo conjunto de simulaciones del field.', input_schema: { type: 'object', properties: { piloto_a: { type: 'string' }, piloto_b: { type: 'string' } }, required: ['piloto_a', 'piloto_b'] } },
+    ];
+    const runTool = async (name, input) => {
+      if (name === 'proxima_carrera_f1') {
+        const b2 = F1.raceBoard();
+        if (!b2.available) return { error: b2.why };
+        return { carrera: b2.race, estado: b2.state_label, parrilla: b2.rows.slice(0, 14).map((r) => ({
+          piloto: r.name, equipo: r.constructor, casilla: r.grid,
+          prob_ganar_pct: Math.round(100 * r.p_win), prob_podio_pct: Math.round(100 * r.p_podium),
+          prob_puntos_pct: Math.round(100 * r.p_points), riesgo_abandono_pct: Math.round(100 * r.p_dnf),
+          indice_coche: r.car_idx, indice_piloto: r.drv_idx })) };
+      }
+      if (name === 'campeonato_f1') {
+        const st2 = F1.standings();
+        return { temporada: st2.season,
+          pilotos: st2.drivers.slice(0, 12).map((x) => ({ pos: x.pos, piloto: x.name, equipo: x.constructor, puntos: x.pts, victorias: x.wins })),
+          constructores: st2.constructors.slice(0, 11).map((x) => ({ pos: x.pos, equipo: x.name, puntos: x.pts })) };
+      }
+      if (name === 'piloto_f1') {
+        const dir = F1.driversDirectory({ q: String(input.piloto || '') });
+        const hit = dir.rows[0];
+        if (!hit) return { error: 'piloto fuera de la base' };
+        const pf2 = F1.driverProfile(hit.id);
+        if (!pf2.available) return { error: pf2.why };
+        return { piloto: pf2.name, equipo: pf2.constructor, indice_piloto: pf2.drv_idx, indice_coche: pf2.car_idx,
+          riesgo_abandono_pct: pf2.dnf_rate_pct, ganancia_media_posiciones: pf2.avg_gain,
+          puntos_temporada: pf2.season, ultimas: pf2.recent.slice(0, 8) };
+      }
+      if (name === 'que_pasa_si_f1') {
+        const w2 = F1.whatIf({ driver: String(input.piloto || ''), grid: +input.casilla });
+        if (!w2.available) return { error: w2.why };
+        return w2;
+      }
+      if (name === 'duelo_f1') {
+        const d2 = F1.duel(String(input.piloto_a || ''), String(input.piloto_b || ''));
+        if (!d2.available) return { error: d2.why };
+        return { carrera: d2.race, duelo: `${d2.a.name} vs ${d2.b.name}`, prob_a_delante_pct: Math.round(100 * d2.p_a_beats_b) };
+      }
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'FÓRMULA 1 (Race Intelligence Twin). Sin lado de mercado todavía (el proveedor de cuotas no cubre F1): nada de picks — ofrecé la parrilla probabilística, el campeonato, los índices coche/piloto y los contrafactuales. Si preguntan por otros deportes, indicá el conmutador de arriba.' };
+  }
   // ── TENIS (18-ago, blueprint 6.0): tablero, cruce, jugador, simulador, ranking GP y sombra ────────────
   if (sport === 'tennis') {
     const TEN = require('./tennis-engine/store');
@@ -9653,6 +9716,40 @@ async function tennisBrief(tour, { force = false } = {}) {
     refreshed_at: new Date().toISOString(),
     note: 'todas las familias de tenis corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
   global._tenBriefMemo[tour] = { at: Date.now(), data: out };
+  return out;
+}
+
+// ── Brief diario de F1 (18-ago, blueprint 7.0) ───────────────────────────────────────────────────────
+async function f1Brief({ force = false } = {}) {
+  global._f1BriefMemo = global._f1BriefMemo || {};
+  const memo = global._f1BriefMemo.x;
+  if (memo && !force && Date.now() - memo.at < 10 * 60e3) return memo.data;
+  const F1 = require('./f1-engine/store');
+  const day = new Date().toISOString().slice(0, 10);
+  const b = F1.raceBoard();
+  db.f1Brief = db.f1Brief || {};
+  let intro = db.f1Brief[day] || null;
+  let introErr = null;
+  if (!intro && b.available) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+    else {
+      try {
+        const w = await llm.writeBrief({
+          gran_premio: b.race, estado_informacion: b.state_label,
+          parrilla_probabilistica: b.rows.slice(0, 10).map((r) => ({ piloto: r.name, equipo: r.constructor,
+            prob_ganar_pct: Math.round(100 * r.p_win), prob_podio_pct: Math.round(100 * r.p_podium),
+            indice_coche: r.car_idx, indice_piloto: r.drv_idx })),
+        }, 'f1');
+        if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.f1Brief[day] = intro; save(); }
+        else introErr = 'el redactor no devolvió un texto usable';
+      } catch (e) { introErr = e.message; }
+    }
+  }
+  const out = { day, race: b.available ? b.race : null, state: b.state_label || null,
+    rows: b.available ? b.rows.slice(0, 12) : [], intro, intro_error: introErr,
+    refreshed_at: new Date().toISOString(), note: b.doctrine };
+  global._f1BriefMemo.x = { at: Date.now(), data: out };
   return out;
 }
 
@@ -12977,7 +13074,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true' };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true' };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -14168,7 +14265,7 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req).catch(() => ({}));
       const q = String(b.q || '').slice(0, 400).trim();
       const lang = b.lang === 'en' ? 'en' : 'es';
-      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis'].includes(b.sport) ? b.sport : 'futbol';
+      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis', 'f1'].includes(b.sport) ? b.sport : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
       if (sport === 'hoops') {
         // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
@@ -14183,6 +14280,9 @@ const server = http.createServer(async (req, res) => {
       } else if (sport === 'tennis') {
         const tenPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_TENNIS_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || tenPub)) return json(res, 404, { error: 'No encontrado' });
+      } else if (sport === 'f1') {
+        const f1Pub = /^(1|true|yes|on)$/i.test(String(process.env.GP_F1_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || f1Pub)) return json(res, 404, { error: 'No encontrado' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
         // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
@@ -15768,6 +15868,36 @@ const server = http.createServer(async (req, res) => {
     // Dos cosas que esta capa NO hace y conviene tener presentes al leerla: no publica picks de ganador de
     // serie (la puerta está cerrada en el motor, no acá) y no tiene rating propio todavía, porque el
     // proveedor no publica resultados. Las dos cosas se devuelven explicadas en el propio JSON.
+    // ── F1 (18-ago, blueprint 7.0): 8º deporte — Race Intelligence Twin, admin-only ──────────────────
+    if (p.startsWith('/api/f1/')) {
+      const uF = getUser(req);
+      const f1Public = /^(1|true|yes|on)$/i.test(String(process.env.GP_F1_PUBLIC_ENABLED || '').trim());
+      if (!uF || !(uF.isAdmin || f1Public)) return json(res, 404, { error: 'No encontrado' });
+      const F1 = require('./f1-engine/store');
+      try {
+        if (p === '/api/f1/board') return json(res, 200, F1.raceBoard());
+        if (p === '/api/f1/standings') return json(res, 200, F1.standings());
+        if (p === '/api/f1/drivers') return json(res, 200, F1.driversDirectory({ q: url.searchParams.get('q') || '' }));
+        if (p === '/api/f1/driver') {
+          const idF = String(url.searchParams.get('id') || '');
+          if (!idF) return json(res, 400, { error: 'falta id' });
+          return json(res, 200, F1.driverProfile(idF));
+        }
+        if (p === '/api/f1/whatif') {
+          const drv = String(url.searchParams.get('driver') || ''), gr = +url.searchParams.get('grid');
+          if (!drv || !gr) return json(res, 400, { error: 'faltan driver y grid' });
+          return json(res, 200, F1.whatIf({ driver: drv, grid: gr }));
+        }
+        if (p === '/api/f1/duel') {
+          const a2 = String(url.searchParams.get('a') || ''), b3 = String(url.searchParams.get('b') || '');
+          if (!a2 || !b3) return json(res, 400, { error: 'faltan a y b' });
+          return json(res, 200, F1.duel(a2, b3));
+        }
+        if (p === '/api/f1/model') return json(res, 200, F1.modelCard());
+        if (p === '/api/f1/brief') return json(res, 200, await f1Brief({ force: url.searchParams.get('force') === '1' }));
+        return json(res, 404, { error: 'ruta de f1 desconocida' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     // ── TENIS (18-ago, blueprint 6.0): 7º deporte, admin-only hasta que haya base licenciada ──────────
     if (p.startsWith('/api/tennis/')) {
       const uT = getUser(req);
@@ -16213,6 +16343,13 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
         return res.end(buf);
       } catch (e) { return json(res, 404, { error: e.message }); }
+    }
+    // sonda de F1: el estado del 8º deporte sin sesión
+    if (p === '/api/internal/f1') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const F1 = require('./f1-engine/store');
+      return json(res, 200, await F1.modelSnapshot().catch((e) => ({ error: e.message })));
     }
     // sonda de TENIS: el estado completo del 7º deporte sin sesión (modelo, cuotas, sombra, disco)
     if (p === '/api/internal/tennis') {

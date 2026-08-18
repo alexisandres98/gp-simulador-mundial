@@ -85,7 +85,7 @@ function fieldFor(st, entries, { useGrid = true } = {}) {
   return entries.map((r) => {
     const car = val(st.car, r.c, C.shrinkCar), drv = val(st.drv, r.d, C.shrinkDrv);
     const cd = val(st.carDnf, r.c, C.shrinkDnf), dd = val(st.drvDnf, r.d, C.shrinkDnf);
-    const dnf = Math.max(0.02, Math.min(0.45, C.dnfBase + 0.6 * cd.v + 0.4 * dd.v));
+    const dnf = Math.max(0.02, Math.min(0.45, C.dnfBase + 0.5 * (cd.v + dd.v) / 2)); // tasa = media coche/piloto sobre base chica: el mismo evento no se cuenta dos veces
     return {
       id: r.d, cid: r.c, perf: car.v + drv.v, grid: useGrid ? (r.grid || r.q || null) : null, dnf,
       car_v: car.v, drv_v: drv.v, car_n: Math.round(car.n), drv_n: Math.round(drv.n),
@@ -95,7 +95,7 @@ function fieldFor(st, entries, { useGrid = true } = {}) {
 
 const DEFAULTS = {
   hlCar: 10, hlDrv: 25, wq: 0.45, seasonKeep: 0.8, regimeKeep: 0.35, driverKeepBonus: 0.15,
-  hlDnf: 30, shrinkCar: 2, shrinkDrv: 4, shrinkDnf: 8, dnfBase: 0.06,
+  hlDnf: 30, shrinkCar: 2, shrinkDrv: 4, shrinkDnf: 8, dnfBase: 0.03,
 };
 
 module.exports = { newState, update, fieldFor, val, DEFAULTS, REG_BREAKS };

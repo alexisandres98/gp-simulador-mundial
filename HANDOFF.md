@@ -1,4 +1,34 @@
-# HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
+# HANDOFF — estado al 18-ago-2026 (los cuatro esports vivos + correcciones del día + caja negra)
+
+## 🕐 18-ago (mediodía) — LA OLA GRANDE DEL DÍA DESPLEGADA (`c3040a0` en main)
+
+**Todo lo pedido por Alexis el 18 está EN PRODUCCIÓN salvo las lentes de fútbol** (commit `804fa80`,
+ÚNICO que queda solo en la rama `claude/gpsim-continuation-vrjuww` — se despliega cuando Alexis lo
+apruebe mirándolo en preview; el partido de fútbol es el producto público en vivo).
+
+1. **Valorant y Dota 2 completos en código con base real.** Valorant: 33.073 series de vlr.gg
+   (holdout 8,0% de skill, AUC 0,66, n=893 — nivel CS2), Elo propio + `valorant-data.js` (Agentes,
+   Sala de composición con vetoInput medido, fichas). Dota 2: 49.645 partidas de OpenDota +
+   capa estratégica por Explorer SQL (meta 7.41 con 127 héroes, doctrina de 1.826 equipos,
+   2.291 jugadores por posición inferida de GPM) + `dota2-data.js` (Héroes, Draft Room con
+   doctrina, jugadores KP/KDA/GPM). Los CUATRO juegos con motor propio separado.
+2. **Correcciones del 18:** brief diario + Pregúntale a GP + simulador en Esport (4 juegos) y en
+   Fútbol americano (3 ligas); los 9 escudos CFL locales en `/logos/cfl_*.png`; Jugadores NFL ya
+   no rebota a partidos en College/CFL (muestra el hueco honesto); sonda
+   `/api/internal/hoops-brief?key=…&league=wnba` para diagnosticar el brief de baloncesto sin sesión.
+3. **REGLA DE CAJA NEGRA aplicada a toda la capa servida** (doctrina nueva, pisa a la vieja
+   "auditoría visible"): las APIs y la UI enseñan EVIDENCIA (ventanas de validación, tamaños de
+   muestra, métricas fuera de muestra) y NUNCA la receta — ni familias de modelo, ni constantes,
+   ni pesos, ni medias-vidas, ni fórmulas. Los internos completos siguen en las sondas con key y
+   en los docs del repo. Al tocar pantallas nuevas: no volver a filtrar la receta.
+4. **Barrido Playwright de 63 vistas (los 6 deportes, 4 juegos, 3 ligas):** cero errores JS propios,
+   cero imágenes rotas locales, cero "undefined/NaN" visibles. Ojo con el arnés: `gp_onboarded`
+   va con sufijo de email y hay que esperar ~8 s a que cargue la sesión antes de navegar por hash,
+   si no TODO rebota al tablero de fútbol y el barrido mide mentiras.
+5. **Cosechas en curso en Render (disco persistente, sobreviven deploys):** Valorant detalles
+   moliendo (`/data/val-raw`, 9.780 series pendientes a ritmo robots-friendly — días); LoL SIN
+   ventana de Fandom desde las 10:50 (plan B: Drive de Oracle's Elixir mañana, o cuenta bot de
+   Fandom de Alexis). Avance: `/api/internal/{valraw,lolraw}?key=$GP_EXPORT_KEY`.
 
 ## 🎮 18-ago (tarde) — LoL COMPLETO EN CÓDIGO, LA COSECHA MOLIENDO EN RENDER
 

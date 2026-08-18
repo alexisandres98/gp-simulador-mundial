@@ -3542,3 +3542,49 @@ td .gx-calc-btn span { display: none; }
 .gx-f1-qlabel{z-index:0}
 .gx-f1-dot2{z-index:2}
 .gx-f1-plane{padding:2px}
+
+/* ── TENIS: caras, tesis y panel de partido ────────────────────────────────────────────────────────── */
+.gx-ten-face{position:relative;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  flex:0 0 30px;border-radius:50%;overflow:hidden;background:#1a1d21;border:1px solid rgba(255,255,255,.12)}
+.gx-ten-face img{width:100%;height:100%;object-fit:cover;object-position:center top;position:absolute;inset:0}
+.gx-ten-face i{font-size:10px;font-weight:700;font-style:normal;opacity:.8}
+.gx-ten-face.big{width:56px;height:56px;flex:0 0 56px}
+.gx-ten-face.big i{font-size:15px}
+.gx-ten-card.clk{cursor:pointer;transition:transform .1s,border-color .15s}
+.gx-ten-card.clk:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.18)}
+.gx-ten-thesis{cursor:pointer;padding:11px 12px}
+.gx-ten-sel{margin:7px 0}
+.gx-ten-sel b{display:block;font-size:14px}
+.gx-ten-sel span{font-size:11px}
+.gx-ten-thfoot{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
+.gx-ten-thfoot em{display:block;font-style:normal;font-size:13px;font-weight:700}
+.gx-ten-thfoot span{font-size:9px;opacity:.5}
+.gx-ten-shadow{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.6;border:1px solid currentColor;border-radius:3px;padding:1px 4px;margin-left:6px}
+.gx-ten-hero{padding:12px}
+.gx-ten-vs{display:flex;align-items:center;gap:10px;margin:10px 0}
+.gx-ten-side{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;cursor:pointer;min-width:0}
+.gx-ten-side b{font-size:12.5px;text-align:center;line-height:1.2}
+.gx-ten-side em{font-style:normal;font-size:17px;font-weight:700}
+.gx-ten-vsx{font-size:10px;opacity:.35;letter-spacing:.08em}
+.gx-ten-duel{display:flex;flex-direction:column;gap:11px}
+.gx-ten-drow{display:flex;flex-direction:column;gap:5px}
+.gx-ten-dlab{font-size:11px;opacity:.6}
+.gx-ten-dbar{position:relative;height:16px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden;margin-bottom:4px}
+.gx-ten-dbar i{position:absolute;left:0;top:0;bottom:0;background:var(--gx-green,#1fe3a4);opacity:.75}
+.gx-ten-dbar.b i{background:#7aa2ff}
+.gx-ten-dbar em{position:absolute;right:6px;top:0;line-height:16px;font-style:normal;font-size:10px;font-weight:700}
+.gx-ten-hist{display:flex;align-items:flex-end;gap:2px;height:96px;margin:8px 0 4px}
+.gx-ten-hbar{flex:1;background:linear-gradient(180deg,var(--gx-green,#1fe3a4),rgba(31,227,164,.25));border-radius:2px 2px 0 0;min-height:3px}
+.gx-ten-haxis{display:flex;justify-content:space-between;font-size:9.5px}
+.gx-ten-scores{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.gx-ten-score{text-align:center;padding:7px 4px;border-radius:7px;background:rgba(255,255,255,.04)}
+.gx-ten-score b{display:block;font-size:13px}
+.gx-ten-score span{font-size:10px;opacity:.55}
+.gx-ten-h2h{display:flex;align-items:center;gap:8px;font-size:12px}
+.gx-ten-h2h b{font-size:18px}
+.gx-ten-prof{display:flex;align-items:center;gap:9px;padding:7px 0;cursor:pointer}
+.gx-ten-profid b{display:block;font-size:12.5px}
+.gx-ten-profid span{font-size:10.5px}
+.gx-ten-profk{text-align:right}
+.gx-ten-profk em{display:block;font-style:normal;font-size:14px;font-weight:700}
+.gx-ten-profk span{font-size:9px;opacity:.5}

@@ -16005,6 +16005,7 @@ const server = http.createServer(async (req, res) => {
       try {
         if (p === '/api/tennis/board') return json(res, 200, await TEN.board(tnQ));
         if (p === '/api/tennis/agenda') return json(res, 200, await TEN.agenda());
+        if (p === '/api/tennis/match') return json(res, 200, await TEN.matchDetail(url.searchParams.get('id') || ''));
         if (p === '/api/tennis/players') {
           return json(res, 200, TEN.playersDirectory(tnQ, { q: url.searchParams.get('q') || '', limit: Math.min(200, +(url.searchParams.get('limit') || 80)) }));
         }

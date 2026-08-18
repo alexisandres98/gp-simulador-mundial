@@ -254,6 +254,8 @@ async function board(tour) {
     };
     if (model.available) {
       row.gp = { p_a: model.p_a, exp_games: model.exp_games, tb_any: model.tb_any, hold_a: model.hold_a, hold_b: model.hold_b };
+      row.photo_a = photoOf(model.tour, model.a.id);
+      row.photo_b = photoOf(model.tour, model.b.id);
       row.candidates = evaluateEdges(model, mk);
       row.shadow_n = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').length;
     } else row.why = model.why;
@@ -263,6 +265,63 @@ async function board(tour) {
   return {
     rows, refreshed_at: odds ? new Date(odds.at).toISOString() : null, doctrine: DOCTRINE,
     note: rows.length ? null : 'sin torneos con cuotas activas en la ventana (The Odds API publica por torneo: se abren solos cuando arranca el siguiente)',
+  };
+}
+
+// ── LAS CARAS (19-ago) ──────────────────────────────────────────────────────────────────────────────────
+// Manifiesto aparte, con procedencia y licencia por archivo: las imágenes son de Wikimedia Commons
+// (CC BY-SA), elegidas por derechos —las de ATP/WTA son de sus federaciones y no se pueden auto-hospedar—.
+let TAS = null;
+function tenAssets() {
+  if (TAS) return TAS;
+  try { TAS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'tennis', 'assets.json'), 'utf8')); }
+  catch { TAS = { players: {} }; }
+  return TAS;
+}
+function photoOf(tour, id) {
+  const r = (tenAssets().players || {})[tour + ':' + id];
+  return r && r.photo ? '/logos/tennis/' + r.photo : null;
+}
+
+// ── LA FICHA DE UN PARTIDO (19-ago) ─────────────────────────────────────────────────────────────────────
+// El tablero enseñaba tarjetas que no se podían abrir: no había panel de inteligencia en tenis, que es
+// justo donde vive lo único que este deporte tiene y ningún otro — el compilador EXACTO de puntuación.
+// Esto reúne, para UN evento del mercado, todo lo que el motor ya calculaba por dentro: el duelo de saque
+// y resto, la distribución de juegos, los marcadores de set, el h2h medido, las fichas de los dos y las
+// tesis con su veredicto. No calcula nada nuevo; deja de esconderlo.
+async function matchDetail(eventId) {
+  const odds = await refreshOdds().catch(() => null);
+  const ev = ((odds && odds.rows) || []).find((r) => String(r.id) === String(eventId));
+  if (!ev) return { available: false, why: 'ese partido ya no está en la ventana de cuotas' };
+  const model = eventModel(ev);
+  const mk = marketOf(ev);
+  const base = {
+    id: ev.id, tourney: ev._ttitle, tour: tourOfKey(ev._tkey),
+    surface: D.SURFACES[surfOfKey(ev._tkey)], best_of: bo5Keys.test(ev._tkey) ? 5 : 3,
+    commence: ev.commence_time, books: mk.books, market: mk.consensus, best: mk.best,
+    a_ref: ev.home_team, b_ref: ev.away_team, doctrine: DOCTRINE,
+  };
+  if (!model.available) return { ...base, available: false, why: model.why };
+  const md = model.dist;
+  const cst = D.build().T[model.tour].cst;
+  const cal = (cst.gamesCal || {})[model.best_of === 5 ? 'bo5' : 'bo3'] || [0, 1];
+  const shift = model.exp_games - md.expGames;
+  const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round((g + shift) * 2) / 2, r3(p)]);
+  return {
+    ...base, available: true,
+    a: { ...model.a, photo: photoOf(model.tour, model.a.id) },
+    b: { ...model.b, photo: photoOf(model.tour, model.b.id) },
+    p_a: model.p_a, p_set_a: model.p_set_a, exp_games: model.exp_games, tb_any: model.tb_any,
+    duel: {
+      hold_a: model.hold_a, hold_b: model.hold_b,
+      break_a: r3(1 - model.hold_b), break_b: r3(1 - model.hold_a),
+      tb_any: model.tb_any, exp_games: model.exp_games,
+      set_scores: md.setScores, total_games: bucket(md.totalGames),
+    },
+    h2h: h2h(model.tour, model.a.id, model.b.id),
+    profiles: { a: playerProfile(model.tour, model.a.id), b: playerProfile(model.tour, model.b.id) },
+    candidates: evaluateEdges(model, mk),
+    model_version: model.model_version,
   };
 }
 
@@ -428,7 +487,7 @@ function playersDirectory(tour, { q = '', limit = 80 } = {}) {
     if (nq && !D.norm(p.name).includes(nq)) continue;
     if (prof.w + prof.l < 10) continue;
     rows.push({
-      id, name: p.name, hand: p.hand, country: p.country, ht: p.ht,
+      id, name: p.name, hand: p.hand, country: p.country, ht: p.ht, photo: photoOf(tour, id),
       elo: Math.round(t.elo.get(id) || 1500), rank: prof.rank, wl: prof.w + '-' + prof.l,
       last: prof.lastDate, inactive: prof.lastDate < +String(new Date(Date.now() - 150 * 864e5).toISOString().slice(0, 10).replace(/-/g, '')),
     });
@@ -571,7 +630,7 @@ async function modelSnapshot() {
   };
 }
 
-module.exports = {
+module.exports = { matchDetail,
   DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, track,
   playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, simMatch, modelCard, modelSnapshot,
   eventModel, marketOf,

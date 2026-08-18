@@ -1057,9 +1057,9 @@
   function nflAllowed() { return !!(S.me && (S.me.isAdmin || S.me.nflPublic)); }
   // ── TENIS (18-ago, blueprint 6.0): 7º deporte, al lado de NFL. ATP/WTA con selector como las ligas
   // de fútbol americano; base propia validada; TODAS las familias en sombra; admin-only de arranque.
-  var TEN_VIEWS = ['tengames', 'tenrank', 'tenplayers', 'tenplayer', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel'];
+  var TEN_VIEWS = ['tenopps', 'tengames', 'tenmatch', 'tenrank', 'tenplayers', 'tenplayer', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel'];
   var NAV_TEN = [
-    ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'],
+    ['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'],
     ['tenbrief', 'news', 'nav_brief'], ['tenask', 'message-circle', 'nav_cb_ask'], ['tensim', 'adjustments', 'nav_sim'],
     ['tenplayers', 'user', 'sr_players'], ['tenmodel', 'book', 'ten_nav_model'],
     ['alerts', 'bell', 'nav_alerts'], ['tenperf', 'chart-line', 'nav_perf']
@@ -4311,7 +4311,7 @@
     // ── TENIS ────────────────────────────────────────────────────────────────────────────────────────
     var tnp = h.match(/^tenplayer\/(atp|wta)-(\d+)$/i);
     if (tnp) { S.ten.tour = tnp[1].toLowerCase(); if (!(S.view === 'tenplayer' && S.ten.playerId === tnp[2])) { S.ten.playerId = tnp[2]; showView('tenplayer'); } return; }
-    var tnv = h.match(/^(tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel)(?:\/(atp|wta))?$/i);
+    var tnv = h.match(/^(tenopps|tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel)(?:\/(atp|wta))?$/i);
     if (tnv) { if (tnv[2]) S.ten.tour = tnv[2].toLowerCase(); showView(tnv[1]); return; }
     // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
     var nfg = h.match(/^nflgame\/(.+)$/i);
@@ -4349,7 +4349,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -4519,7 +4519,7 @@
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tengames' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tenopps' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -11256,6 +11256,8 @@
 
   function renderTennis(v) {
     if (!tenAllowed()) { showView('board'); return; }
+    if (v === 'tenopps') return renderTenOpps();
+    if (v === 'tenmatch') return renderTenMatch();
     if (v === 'tengames') return renderTenGames();
     if (v === 'tenrank') return renderTenRank();
     if (v === 'tenplayers') return renderTenPlayers();
@@ -11266,6 +11268,87 @@
     if (v === 'tenask') return renderTenAsk();
     if (v === 'tenmodel') return renderTenModel();
     renderTenGames();
+  }
+
+  // ── LA CARA DEL JUGADOR ─────────────────────────────────────────────────────────────────────────────
+  // El tenis es el deporte más personal de la casa y no tenía una sola foto. El retrato cae a las iniciales
+  // cuando no hay imagen, nunca a un hueco gris.
+  function tenFace(p, cls) {
+    var nm = (p && (p.name || p.ref)) || '?';
+    var ini = nm.split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase();
+    return '<span class="gx-ten-face' + (cls ? ' ' + cls : '') + '"' + (p && p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
+      (p && p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+      '<i>' + esc(ini) + '</i></span>';
+  }
+
+  // ── OPORTUNIDADES DE TENIS ──────────────────────────────────────────────────────────────────────────
+  // La pestaña no tenía board de oportunidades, aunque el motor lleva desde el primer día evaluando cada
+  // línea y marcando tesis. Aquí están, con la MISMA card que el resto de la casa, y con la etiqueta que
+  // les corresponde: en tenis TODAS las familias corren en sombra por doctrina —el modelo bate a ranking y
+  // a Elo puro fuera de muestra, pero contra el MERCADO todavía no hay prueba— así que esto no son picks
+  // públicas y la pantalla no finge que lo sean. Lo que sí son es el registro que va a decidirlo.
+  function renderTenOpps() {
+    var d = tenGet('board_' + tenTour(), '/api/tennis/board?tour=' + tenTour(), 120000);
+    if (!d) { tenShell(t('nav_opps'), tenTourBar() + tenLoading()); return; }
+    if (d._err) { tenShell(t('nav_opps'), tenTourBar() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
+    var rows = d.rows || [];
+    var theses = [];
+    rows.forEach(function (r) {
+      (r.candidates || []).forEach(function (c) {
+        if (c.verdict === 'SHADOW_PICK') theses.push({ r: r, c: c });
+      });
+    });
+    theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
+    var top = theses[0];
+    var strip = '<div class="gx-estop">' +
+      '<div class="gx-panel gx-estop-c' + (top ? ' on' : '') + '"><div class="gx-label">' + ic('target-arrow') + 'Tesis del día</div>' +
+      (top ? '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(tenFamLabel(top.c)) + '</div>' +
+        '<div class="gx-estop-sub">' + esc(top.r.a) + ' vs ' + esc(top.r.b) + '</div></div>' +
+        '<div class="gx-estop-foot"><span class="gx-mono">' + (top.c.odds != null ? odd(top.c.odds) : '—') + '</span>' +
+        '<span class="gx-pp gx-pos">+' + (top.c.edge_pp || 0).toFixed(1) + ' pp</span></div>'
+        : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna tesis pasa el listón</div>' +
+          '<div class="gx-estop-sub">decir NO también es un resultado</div></div>') + '</div>' +
+      '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('eye') + 'Régimen</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">Todo en sombra</div>' +
+      '<div class="gx-estop-sub">' + theses.length + ' tesis vivas · ' + rows.length + ' partidos</div></div></div></div>';
+    var body;
+    if (!theses.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>' + (rows.length ? 'Ninguna línea pasa el listón ahora mismo.' : 'Sin torneos con cuotas activas en la ventana.') + '</b>' +
+        '<span class="gx-dim">' + esc(rows.length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido.' : (d.note || '')) + '</span></div></div>';
+    } else {
+      body = '<div class="gx-picks-feed">' + theses.map(function (x) {
+        return tenThesisCard(x.r, x.c);
+      }).join('') + '</div>';
+    }
+    tenShell(t('nav_opps'), tenTourBar() + strip + body +
+      '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc((d.doctrine || '').slice(0, 260)) + '</span></div>');
+  }
+
+  function tenFamLabel(c) {
+    if (c.family === 'ML') return 'Ganador del partido';
+    if (c.family === 'TOTAL') return (c.side === 'over' ? 'Más de ' : 'Menos de ') + c.line + ' juegos';
+    if (c.family === 'SPREAD') return 'Hándicap de juegos ' + (c.line > 0 ? '+' : '') + c.line;
+    return c.family;
+  }
+
+  // la tesis con la MISMA anatomía de la pick card de la casa: qué, a cuánto, dónde, y por qué
+  function tenThesisCard(r, c) {
+    var who = c.side === 'a' ? r.a : c.side === 'b' ? r.b : null;
+    var sel = c.family === 'ML' ? who
+      : c.family === 'SPREAD' ? who + ' ' + (c.line > 0 ? '+' : '') + c.line + ' juegos'
+      : (c.side === 'over' ? 'Más de ' : 'Menos de ') + c.line + ' juegos';
+    return '<div class="gx-panel gx-ten-thesis" data-tenmatch="' + esc(r.id) + '">' +
+      '<div class="gx-ten-head"><span class="gx-chip">' + esc(tenFamLabel(c)) + '</span>' +
+      '<span class="gx-ten-shadow">sombra</span><span class="gx-spacer"></span>' +
+      '<span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(r.tourney || '') + '</span></div>' +
+      '<div class="gx-ten-sel"><b>' + esc(sel) + '</b><span class="gx-dim">' + esc(r.a) + ' vs ' + esc(r.b) + '</span></div>' +
+      '<div class="gx-ten-thfoot">' +
+        '<div><em class="gx-mono">' + tenPct(c.p_model) + '</em><span>GP</span></div>' +
+        '<div><em class="gx-mono">' + tenPct(c.p_implied) + '</em><span>mercado</span></div>' +
+        '<div><em class="gx-mono gx-up">+' + (c.edge_pp || 0).toFixed(1) + '</em><span>pp</span></div>' +
+        '<div><em class="gx-mono">' + (c.odds != null ? odd(c.odds) : '—') + '</em><span>' + esc(c.book || '') + '</span></div>' +
+      '</div></div>';
   }
 
   // ── PARTIDOS: el tablero desde el feed de cuotas (modelo vs mercado, todo en sombra) ─────────────────
@@ -11282,11 +11365,12 @@
       var bar = pA != null
         ? '<div class="gx-ten-bar"><i style="width:' + Math.round(100 * pA) + '%"></i>' + (mkA != null ? '<em style="left:' + Math.round(100 * mkA) + '%"></em>' : '') + '</div>'
         : '';
-      return '<div class="gx-panel gx-ten-card">' +
+      // LA TARJETA SE ABRE (19-ago): antes era un bloque muerto — el usuario tocaba y no pasaba nada.
+      return '<div class="gx-panel gx-ten-card' + (r.available ? ' clk' : '') + '"' + (r.available ? ' data-tenmatch="' + esc(r.id) + '"' : '') + '>' +
         '<div class="gx-ten-head"><span class="gx-dim">' + esc(r.tourney || '') + ' · ' + esc(r.surface || '') + (r.best_of === 5 ? ' · bo5' : '') + '</span><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(whenTxt) + '</span></div>' +
-        '<div class="gx-ten-row">' + tenChip(r.a) + '<b class="gx-ten-name">' + esc(r.a) + '</b>' +
+        '<div class="gx-ten-row">' + tenFace({ name: r.a, photo: r.photo_a }) + '<b class="gx-ten-name">' + esc(r.a) + '</b>' +
           '<span class="gx-mono gx-ten-p' + (pA != null && pA >= 0.5 ? ' hi' : '') + '">' + tenPct(pA) + '</span></div>' +
-        '<div class="gx-ten-row">' + tenChip(r.b) + '<b class="gx-ten-name">' + esc(r.b) + '</b>' +
+        '<div class="gx-ten-row">' + tenFace({ name: r.b, photo: r.photo_b }) + '<b class="gx-ten-name">' + esc(r.b) + '</b>' +
           '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span></div>' +
         bar +
         '<div class="gx-ten-meta gx-dim">' +
@@ -11299,6 +11383,122 @@
     }).join('') : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin torneos con cuotas activas en la ventana.</b><span class="gx-dim">' + esc(d.note || 'The Odds API publica por torneo: los siguientes se abren solos cuando arrancan.') + '</span></div></div>';
     body += '<div class="gx-dim gx-es-trunc">Todas las familias de tenis corren EN SOMBRA: nada de esto es una pick. ' + TEN_ATTRIB + '</div>';
     tenShell(t('ten_nav_games'), body);
+  }
+
+  // ── EL PANEL DE INTELIGENCIA DE UN PARTIDO ──────────────────────────────────────────────────────────
+  // No existía: las tarjetas del tablero no se podían abrir. Y es justo donde vive lo único que el tenis
+  // tiene y ningún otro deporte de la casa — el COMPILADOR EXACTO de puntuación. Aquí se ve entero: el
+  // duelo de saque y resto (que es de lo que se compone todo lo demás), la distribución de marcadores de
+  // set, la de juegos totales, el h2h medido y las tesis con su veredicto.
+  function renderTenMatch() {
+    var id = S.ten.matchId;
+    var d = tenGet('m_' + id, '/api/tennis/match?id=' + encodeURIComponent(id), 120000);
+    if (!d) { tenShell('Partido', tenLoading()); return; }
+    var back = '<a href="#" class="gx-back" data-tenback>' + ic('arrow-left') + ' Partidos</a>';
+    if (!d.available) {
+      tenShell('Partido', back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') +
+        '<b>' + esc(d.why || 'sin lectura') + '</b><span class="gx-dim">' + esc((d.a_ref || '') + ' vs ' + (d.b_ref || '')) + '</span></div></div>');
+      return;
+    }
+    var pa = d.p_a;
+    var hero = '<div class="gx-panel gx-ten-hero">' +
+      '<div class="gx-ten-herotop"><span class="gx-dim">' + esc([d.tourney, d.surface, d.best_of === 5 ? 'al mejor de 5' : 'al mejor de 3'].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<div class="gx-ten-vs">' +
+        '<div class="gx-ten-side" data-tenplayer="' + esc(d.a.id) + '">' + tenFace(d.a, 'big') + '<b>' + esc(d.a.name) + '</b><em class="gx-mono">' + tenPct(pa) + '</em></div>' +
+        '<span class="gx-ten-vsx">vs</span>' +
+        '<div class="gx-ten-side b" data-tenplayer="' + esc(d.b.id) + '">' + tenFace(d.b, 'big') + '<b>' + esc(d.b.name) + '</b><em class="gx-mono">' + tenPct(1 - pa) + '</em></div>' +
+      '</div>' +
+      '<div class="gx-ten-bar"><i style="width:' + Math.round(100 * pa) + '%"></i>' +
+        (d.market && d.market.ml_p_a != null ? '<em style="left:' + Math.round(100 * d.market.ml_p_a) + '%" title="consenso de mercado"></em>' : '') + '</div>' +
+      '<div class="gx-ten-meta gx-dim">' +
+        (d.market && d.market.ml_p_a != null ? '<span>mercado ' + tenPct(d.market.ml_p_a) + ' · ' + (d.books || 0) + ' casas</span>' : '<span>sin consenso</span>') +
+        '<span>' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + ' juegos esperados</span>' +
+        '<span>TB ' + tenPct(d.tb_any) + '</span></div></div>';
+
+    // OBJETO FIRMA: el duelo saque-resto. Todo lo demás del modelo se compila DESDE estos cuatro números.
+    var du = d.duel || {};
+    var srv = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El duelo: saque contra resto</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">de aquí se compila todo lo demás</span></div>' +
+      '<div class="gx-ten-duel">' +
+        tenDuelRow('Conserva su saque', du.hold_a, du.hold_b, d) +
+        tenDuelRow('Rompe el del otro', du.break_a, du.break_b, d) +
+      '</div>' +
+      '<div class="gx-dim gx-es-note">El compilador va punto → juego → set → partido con la alternancia real del saque y el desempate resuelto exacto, no simulado.</div></div>';
+
+    // distribución de juegos totales: la curva propia, no la escalera de la casa
+    var tg = (du.total_games || []).slice().sort(function (x, y) { return x[0] - y[0]; });
+    var games = '';
+    if (tg.length > 3) {
+      var mx = Math.max.apply(null, tg.map(function (x) { return x[1]; }));
+      games = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Juegos totales</span>' +
+        '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">distribución propia · media ' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + '</span></div>' +
+        '<div class="gx-ten-hist">' + tg.map(function (x) {
+          return '<span class="gx-ten-hbar" title="' + x[0] + ' juegos · ' + (100 * x[1]).toFixed(1) + '%" style="height:' + Math.max(3, Math.round(100 * x[1] / mx)) + '%"></span>';
+        }).join('') + '</div>' +
+        '<div class="gx-ten-haxis gx-dim"><span>' + tg[0][0] + '</span><span>' + tg[tg.length - 1][0] + '</span></div></div>';
+    }
+
+    // marcadores de set exactos: lo que ninguna casa publica y el compilador sí sabe
+    var ss = du.set_scores || null;
+    var sets = '';
+    if (ss && Object.keys(ss).length) {
+      var arr = Object.keys(ss).map(function (k) { return [k, ss[k]]; }).sort(function (x, y) { return y[1] - x[1]; }).slice(0, 8);
+      sets = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Marcadores de set más probables</span></div>' +
+        '<div class="gx-ten-scores">' + arr.map(function (x) {
+          return '<div class="gx-ten-score"><b class="gx-mono">' + esc(x[0]) + '</b><span class="gx-mono">' + (100 * x[1]).toFixed(1) + '%</span></div>';
+        }).join('') + '</div></div>';
+    }
+
+    var h = d.h2h || {};
+    var h2hP = (h.n ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Historial directo</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + h.n + ' partidos medidos</span></div>' +
+      '<div class="gx-ten-h2h"><b class="gx-mono">' + (h.w_a != null ? h.w_a : '—') + '</b><span class="gx-dim">' + esc(d.a.name) + '</span>' +
+      '<span class="gx-spacer"></span><span class="gx-dim">' + esc(d.b.name) + '</span><b class="gx-mono">' + (h.w_b != null ? h.w_b : '—') + '</b></div></div>' : '');
+
+    var cands = (d.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK'; });
+    var th = cands.length ? '<div class="gx-picks-feed">' + cands.map(function (c) {
+      return tenThesisCard({ id: d.id, a: d.a.name, b: d.b.name, tourney: d.tourney }, c);
+    }).join('') + '</div>' : '';
+    var noPick = !cands.length ? '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+      '<b>Ninguna línea de este partido pasa el listón.</b><span class="gx-dim">El motor valoró las abiertas y ninguna supera su propio ruido.</span></div></div>' : '';
+
+    var lens = S.ten.lens || 'partido';
+    var LENSES = [
+      ['partido', 'El partido', srv + games + sets],
+      ['tesis', 'Las tesis', th + noPick],
+      ['contexto', 'Contexto', h2hP + tenProfPanel(d)],
+    ];
+    if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partido';
+    var bar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
+      return '<button data-tenlens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    var act = LENSES.filter(function (x) { return x[0] === lens; })[0];
+    tenShell('Partido', back + hero + bar + act[2] +
+      '<div class="gx-dim gx-es-trunc">Todo en sombra: nada de esto es una pick. ' + TEN_ATTRIB + '</div>');
+  }
+
+  function tenDuelRow(label, va, vb, d) {
+    var a = va == null ? 0 : va, b = vb == null ? 0 : vb;
+    return '<div class="gx-ten-drow"><span class="gx-ten-dlab">' + esc(label) + '</span>' +
+      '<div class="gx-ten-dbars">' +
+        '<div class="gx-ten-dbar a"><i style="width:' + Math.round(100 * a) + '%"></i><em class="gx-mono">' + tenPct(va) + '</em></div>' +
+        '<div class="gx-ten-dbar b"><i style="width:' + Math.round(100 * b) + '%"></i><em class="gx-mono">' + tenPct(vb) + '</em></div>' +
+      '</div></div>';
+  }
+
+  function tenProfPanel(d) {
+    var pr = d.profiles || {};
+    var one = function (p, who) {
+      if (!p || !p.available) return '';
+      return '<div class="gx-ten-prof" data-tenplayer="' + esc(who.id) + '">' + tenFace(who) +
+        '<div class="gx-ten-profid"><b>' + esc(who.name) + '</b>' +
+        '<span class="gx-dim">' + esc([p.country, p.hand === 'L' ? 'zurdo' : p.hand === 'R' ? 'diestro' : null].filter(Boolean).join(' · ')) + '</span></div>' +
+        '<span class="gx-spacer"></span>' +
+        '<div class="gx-ten-profk"><em class="gx-mono">' + (p.elo != null ? Math.round(p.elo) : '—') + '</em><span>Elo GP</span></div></div>';
+    };
+    var body = one(pr.a, d.a) + one(pr.b, d.b);
+    if (!body) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los dos jugadores</span></div>' + body + '</div>';
   }
 
   // ── RANKING GP ───────────────────────────────────────────────────────────────────────────────────────
@@ -11332,7 +11532,7 @@
       var rows = d.rows || [];
       body = rows.length ? '<div class="gx-est-grid">' + rows.map(function (p) {
         return '<div class="gx-panel gx-est-card" data-tenplayer="' + p.id + '">' +
-          '<div class="gx-est-top">' + tenChip(p.name) +
+          '<div class="gx-est-top">' + tenFace(p, 'big') +
             '<div class="gx-est-id"><b>' + esc(p.name) + '</b><span>' + esc([p.country, p.hand === 'L' ? (S.lang === 'en' ? 'left-handed' : 'zurdo') : null].filter(Boolean).join(' · ')) + (p.inactive ? ' · <em style="color:#e5a84d">inactivo</em>' : '') + '</span></div>' +
             '<span class="gx-spacer"></span>' +
             '<div class="gx-est-elo"><b>' + p.elo + '</b><span>Elo GP</span></div></div>' +
@@ -11533,6 +11733,12 @@
 
   // ── CLICKS ───────────────────────────────────────────────────────────────────────────────────────────
   function tenClicks(e) {
+    var mt = e.target.closest('[data-tenmatch]');
+    if (mt) { S.ten.matchId = mt.getAttribute('data-tenmatch'); S.ten.lens = 'partido'; showView('tenmatch'); return; }
+    var bk = e.target.closest('[data-tenback]');
+    if (bk) { e.preventDefault(); showView('tengames'); return; }
+    var tl = e.target.closest('[data-tenlens]');
+    if (tl) { S.ten.lens = tl.getAttribute('data-tenlens'); renderTenMatch(); return; }
     var tb = e.target.closest('[data-tentour]');
     if (tb) {
       var nt = tb.getAttribute('data-tentour');

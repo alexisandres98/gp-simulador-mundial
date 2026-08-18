@@ -460,16 +460,36 @@ async function settleShadow() {
       const evs = [];
       for (const e of (j && j.events) || []) for (const comp of e.competitions || []) evs.push({ e, comp });
       const la = lastName(p.a), lb = lastName(p.b);
+      // NOMBRES DEL MARCADOR: ESPN no siempre cuelga al jugador de `competitor.athlete`. Se recogen todas
+      // las formas conocidas para que el cruce no dependa de una sola, y se guarda una muestra en el parte:
+      // "sin_cruce" a secas no distingue entre "el día vino vacío" y "los nombres no casan".
+      const nameOf = (x) => D.norm(
+        (x.athlete && (x.athlete.displayName || x.athlete.shortName || x.athlete.fullName))
+        || x.displayName || x.shortName
+        || ((x.roster || []).map((r) => (r.athlete || {}).displayName || '').join(' '))
+        || ''
+      );
       const hit = evs.find(({ comp }) => {
-        const names = (comp.competitors || []).map((x) => D.norm((x.athlete || {}).displayName || ''));
-        return names.some((n) => n.endsWith(la)) && names.some((n) => n.endsWith(lb));
+        const names = (comp.competitors || []).map(nameOf);
+        return names.some((n) => n.endsWith(la) || n.includes(la)) && names.some((n) => n.endsWith(lb) || n.includes(lb));
       });
-      if (!hit) { diag.sin_cruce++; continue; }
+      if (!hit) {
+        diag.sin_cruce++;
+        diag.eventos_vistos = (diag.eventos_vistos || 0) + evs.length;
+        // una sola muestra basta para ver si el problema es el día vacío o la forma del nombre
+        if (!diag.muestra) {
+          diag.muestra = {
+            buscaba: [la, lb], dia: day, eventos: evs.length,
+            vistos: evs.slice(0, 3).flatMap(({ comp }) => (comp.competitors || []).map(nameOf)).slice(0, 6),
+          };
+        }
+        continue;
+      }
       const status = ((hit.e.status || {}).type || {}).name || ((hit.comp.status || {}).type || {}).name || '';
       if (!/FINAL|RETIRED|WALKOVER/i.test(status)) { diag.no_final++; continue; }
       const cs = hit.comp.competitors || [];
-      const ca = cs.find((x) => D.norm((x.athlete || {}).displayName || '').endsWith(la));
-      const cb = cs.find((x) => D.norm((x.athlete || {}).displayName || '').endsWith(lb));
+      const ca = cs.find((x) => { const n = nameOf(x); return n.endsWith(la) || n.includes(la); });
+      const cb = cs.find((x) => { const n = nameOf(x); return n.endsWith(lb) || n.includes(lb); });
       if (!ca || !cb) { diag.sin_marcador++; continue; }
       const setsA = (ca.linescores || []).map((x) => +x.value), setsB = (cb.linescores || []).map((x) => +x.value);
       const gA = setsA.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0), gB = setsB.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);

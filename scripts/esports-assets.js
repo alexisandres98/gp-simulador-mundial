@@ -79,9 +79,8 @@ async function teamLogos(game, teams) {
     if (total == null) total = (j && j.total && j.total.count) || 0;
     if (!rows.length) break;
     for (const t of rows) {
-      if (!t.image_url) continue;
       const k = slug(t.name);
-      if (k && !byName.has(k)) byName.set(k, t.image_url);
+      if (k && !byName.has(k)) byName.set(k, { url: t.image_url || null, bo3: t.id });
     }
     offset += rows.length;
     if (offset >= total) break;
@@ -91,11 +90,14 @@ async function teamLogos(game, teams) {
 
   // 2) cruzar con nuestra base y auto-hospedar
   let saved = 0, miss = 0;
+  const linkOut = (prev.bo3_team || {});
   for (const t of teams) {
-    if (manifest[t.id]) continue;
+    if (manifest[t.id]) { const c0 = slug(t.name); if (byName.has(c0) && byName.get(c0).bo3) linkOut[t.id] = byName.get(c0).bo3; continue; }
     const cands = [slug(t.name), slug(String(t.name).replace(/\s+(Esports|Esport|Gaming|Team|Club)$/i, '')), slug(String(t.name).replace(/^Team\s+/i, ''))];
-    let url = null;
-    for (const c of cands) { if (c && byName.has(c)) { url = byName.get(c); break; } }
+    let hit = null;
+    for (const c of cands) { if (c && byName.has(c)) { hit = byName.get(c); break; } }
+    if (hit && hit.bo3) (linkOut[t.id] = hit.bo3);
+    const url = hit && hit.url;
     if (!url) { manifest[t.id] = null; miss++; continue; }
     try {
       const buf = await get(url, { json: false, tries: 2 });
@@ -110,7 +112,59 @@ async function teamLogos(game, teams) {
   console.log(`[assets:${game}] escudos guardados: ${saved} · sin coincidencia: ${miss} · manifiesto: ${Object.values(manifest).filter(Boolean).length}/${Object.keys(manifest).length}`);
   fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   fs.writeFileSync(manifestPath, JSON.stringify({ ...prev, at: new Date().toISOString(),
-    source: 'bo3.gg (mismo proveedor que los escudos de CS2) — auto-hospedados', teams: manifest }));
+    source: 'bo3.gg (mismo proveedor que los escudos de CS2) — auto-hospedados', teams: manifest, bo3_team: linkOut }));
+}
+
+// ── PLANTILLAS CON CARA para LoL y Valorant: bo3 publica 20k jugadores con equipo y foto. Sin base de
+// estadística propia todavía, la IDENTIDAD ya se puede servir — que es justo lo que faltaba en pantalla.
+async function rosters(game, teams) {
+  const B = require(path.join(__dirname, '..', 'data-providers', 'esports', 'bo3.js'));
+  const disc = BO3_DISC[game];
+  const manifestPath = path.join(__dirname, '..', 'data', 'esports', game, 'assets.json');
+  const prev = (() => { try { return JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch { return {}; } })();
+  const link = prev.bo3_team || {};
+  const wanted = new Map();                       // bo3TeamId → myTeamId
+  for (const t of teams) if (link[t.id]) wanted.set(link[t.id], t.id);
+  if (!wanted.size) { console.log(`[assets:${game}] sin cruce de equipos para plantillas`); return; }
+  const dir = path.join(OUTROOT, game, 'players');
+  fs.mkdirSync(dir, { recursive: true });
+  const byTeam = {};
+  let offset = 0, total = null;
+  for (;;) {
+    const j = await B.req(`/players?page[limit]=100&page[offset]=${offset}&filter[players.discipline_id][eq]=${disc}`);
+    const rows = (j && j.results) || [];
+    if (total == null) total = (j && j.total && j.total.count) || 0;
+    if (!rows.length) break;
+    for (const p of rows) {
+      const my = wanted.get(p.team_id);
+      if (!my) continue;
+      (byTeam[my] = byTeam[my] || []).push({ id: String(p.id), nick: p.nickname || p.name || ('#' + p.id), img: p.image_url || null });
+    }
+    offset += rows.length;
+    if (offset >= total) break;
+    await sleep(260);
+  }
+  const players = prev.players || {};
+  let saved = 0;
+  for (const [my, arr] of Object.entries(byTeam)) {
+    for (const p of arr.slice(0, 7)) {
+      const rec = players[p.id] = players[p.id] || { nick: p.nick, team: my };
+      rec.nick = p.nick; rec.team = my;
+      if (rec.photo || !p.img) continue;
+      try {
+        const buf = await get(p.img, { json: false, tries: 2 });
+        if (buf && buf.length > 300) {
+          const ext = /webp/i.test(p.img) ? 'webp' : /\.jpe?g/i.test(p.img) ? 'jpg' : 'png';
+          fs.writeFileSync(path.join(dir, `${p.id}.${ext}`), buf);
+          rec.photo = `${p.id}.${ext}`; saved++;
+        }
+      } catch { }
+      await sleep(110);
+    }
+  }
+  console.log(`[assets:${game}] plantillas: ${Object.keys(byTeam).length} equipos · ${Object.keys(players).length} jugadores · ${saved} caras nuevas`);
+  fs.writeFileSync(manifestPath, JSON.stringify({ ...prev, teams: prev.teams, bo3_team: link,
+    players_source: 'bo3.gg /players (identidad y foto)', players }));
 }
 
 // ── Dota 2: escudos desde OpenDota (/api/teams trae logo_url para ~900 equipos, UNA sola llamada) ──────
@@ -189,6 +243,7 @@ async function dotaPlayers() {
     await teamLogos(g, teams);
     // Dota 2 tiene DOS proveedores de escudo: bo3.gg cubre la mayoría y OpenDota completa los que faltan.
     if (g === 'dota2') await dotaLogos(teams);
+    if (process.argv.includes('--rosters')) await rosters(g, teams.slice(0, 200));
   }
   if (process.argv.includes('--players') || GAME === 'all' || GAME === 'dota2') await dotaPlayers();
   console.log('[assets] LISTO');

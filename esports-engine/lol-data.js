@@ -134,6 +134,50 @@ function load() {
     rosters[tid] = { five, coach: null, changed_recently: false };
   }
 
+  // PLANTILLA DE IDENTIDAD (19-ago): las caras vienen del catálogo oficial de LoL Esports y se pegan por
+  // NICK, no por id — la estadística la lleva Leaguepedia y la foto la lleva Riot, son dos numeraciones
+  // distintas para la misma persona. Donde el quinteto YA está medido, la cara se le añade encima; donde
+  // no hay medición todavía, el quinteto se sirve igual con nombre y cara, marcado como identidad.
+  {
+    const face = {};                                             // nick normalizado → {photo, real, role, country}
+    for (const rec of Object.values(AS.players || {})) {
+      if (!rec || !rec.nick) continue;
+      const k = String(rec.nick).toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (k && !face[k]) face[k] = rec;
+    }
+    for (const p of Object.values(players)) {
+      const k = String(p.nick || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const f = k && face[k];
+      if (!f) continue;
+      if (f.photo && !p.photo) p.photo = '/logos/es/lol/players/' + f.photo;
+      if (f.real && !p.name) p.name = f.real;
+      if (f.country && !p.country) p.country = f.country;
+      if (f.role && !p.role) p.role = f.role.replace(/^./, (c) => c.toUpperCase());
+    }
+    for (const r of Object.values(rosters)) {
+      for (const q of (r.five || [])) {
+        const src = players[q.id];
+        if (src) { if (src.photo) q.photo = src.photo; if (src.name) q.name = src.name; if (src.country) q.country = src.country; }
+      }
+    }
+    const byTeam = {};
+    for (const [pid, rec] of Object.entries(AS.players || {})) {
+      if (!rec || !rec.team) continue;
+      (byTeam[rec.team] = byTeam[rec.team] || []).push({ id: pid, nick: rec.nick || ('#' + pid),
+        role: rec.role ? rec.role.replace(/^./, (c) => c.toUpperCase()) : null, name: rec.real || null,
+        photo: rec.photo ? '/logos/es/lol/players/' + rec.photo : null, identity_only: true });
+    }
+    for (const [tid, arr] of Object.entries(byTeam)) {
+      if (rosters[tid] && (rosters[tid].five || []).length) continue;
+      rosters[tid] = { five: arr.slice(0, 5), coach: null, changed_recently: false, identity_only: true };
+    }
+    for (const p2 of Object.values(byTeam).flat()) {
+      if (!players[p2.id]) players[p2.id] = { id: p2.id, nick: p2.nick, name: p2.name || null, role: p2.role || null,
+        team: null, team_name: null, photo: p2.photo, country: p2.country || null, country_id: null,
+        birthday: null, rating6m: null, identity_only: true };
+    }
+  }
+
   // tempo MEDIDO por liga (últimos 180 días): kills/min y duración — sustituye el perfil de circuito asumido
   const cut180 = new Date(Date.parse(String(lastAt).replace(' ', 'T') + 'Z') - 180 * 864e5).toISOString().slice(0, 19);
   const tempoAgg = {};
@@ -287,7 +331,9 @@ function draftIntel(nameA, nameB) {
         rw: c.rw, flex: flexSet.has(c.ch),
         // comfort = peso reciente × señal de rendimiento encogida (K=6): volumen sin rendimiento no es comfort
         comfort: +(c.rw * ((c.w + 3) / (c.n + 6))).toFixed(2) }));
-      return { id: f.id, nick: f.nick, role: f.role, rating_gp: st.rating_gp || null, n: st.n || 0, pool };
+      return { id: f.id, nick: f.nick, role: f.role, rating_gp: st.rating_gp || null, n: st.n || 0, pool,
+        photo: f.photo || null, name: f.name || null, country: f.country || null,
+        identity_only: !!f.identity_only };
     });
     const comfortTotal = five.reduce((s, p) => s + p.pool.reduce((x, c) => x + c.comfort, 0), 0);
     // fragilidad: quitar los 3 picks más cómodos del equipo y medir cuánto comfort queda (LOL-0207)

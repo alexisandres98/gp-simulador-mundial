@@ -9419,12 +9419,12 @@
     // lentes— y encima cada uno pone SU objeto firma delante: el tablero de mapas en Valorant, el tablero
     // de draft en LoL y el mapa Radiant/Dire con la curva de duración en Dota 2.
     var gameBlocks;
-    if (g === 'lol') gameBlocks = [esReadBlock(g, ev.id), esDraftRoom(m, ev), esObjectives(m), esTempo(m), esKills(m, ev)];
-    else if (g === 'valorant') gameBlocks = [esReadBlock(g, ev.id), valMapBoard(m, ev), esDraftRoom(m, ev), esRounds(m, ev), esEconomy(m)];
-    else gameBlocks = [esReadBlock(g, ev.id), dotaSideBoard(m, ev), esDraftRoom(m, ev), esComeback(m), esKills(m, ev)];
-    var modelBlocks = g === 'lol' ? [esKillsExplorer(m), esDuration(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)]
-      : g === 'valorant' ? [esRoundsExplorer(d), esVeto(m, ev), esComp(m), esWhat(m), esUnc(m), esSim(m, ev)]
-      : [esKillsExplorer(m), esDuration(m), esTempo(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
+    if (g === 'lol') gameBlocks = [esReadBlock(g, ev.id), esWhat(m), esDraftRoom(m, ev), esObjectives(m), esTempo(m), esKills(m, ev)];
+    else if (g === 'valorant') gameBlocks = [esReadBlock(g, ev.id), esWhat(m), valMapBoard(m, ev), esDraftRoom(m, ev), esRounds(m, ev), esEconomy(m)];
+    else gameBlocks = [esReadBlock(g, ev.id), esWhat(m), dotaSideBoard(m, ev), esDraftRoom(m, ev), esComeback(m), esKills(m, ev)];
+    var modelBlocks = g === 'lol' ? [esKillsExplorer(m), esDuration(m), esDraft(m, ev), esUnc(m), esSim(m, ev)]
+      : g === 'valorant' ? [esRoundsExplorer(d), esVeto(m, ev), esComp(m), esUnc(m), esSim(m, ev)]
+      : [esKillsExplorer(m), esDuration(m), esTempo(m), esDraft(m, ev), esUnc(m), esSim(m, ev)];
     var glens = S.es.lens || 'partida';
     var GLENSES = [
       ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
@@ -9468,12 +9468,15 @@
     if (!dr || !dr.available) return null;
     var side = function (s, name, cls) {
       if (!s || !s.resolved || !(s.five || []).length) return '';
-      return '<div class="gx-rost-side ' + cls + '"><div class="gx-rost-team">' + esc(s.name || name) + '</div>' +
+      var idOnly = (s.five || []).every(function (p) { return p.identity_only; });
+      return '<div class="gx-rost-side ' + cls + '"><div class="gx-rost-team">' + esc(s.name || name) +
+        (idOnly ? '<span class="gx-rost-tag">identidad</span>' : '') + '</div>' +
         s.five.map(function (p) {
-          return '<div class="gx-rost-p" ' + (p.photo ? '' : '') + '>' +
+          var sub = [p.role || null, p.name || null].filter(Boolean).join(' · ') || '—';
+          return '<div class="gx-rost-p" data-esplayer="' + esc(p.id) + '">' +
             esAvatar({ nick: p.nick, photo: p.photo }, 'big') +
-            '<div class="gx-rost-pid"><b>' + esc(p.nick) + '</b>' +
-            '<span class="gx-dim">' + esc(p.role || '—') + (p.n ? ' · ' + p.n + ' partidas' : '') + '</span></div>' +
+            '<div class="gx-rost-pid"><b>' + esc(p.nick) + (p.country ? ' <span class="gx-rost-ct">' + esc(p.country) + '</span>' : '') + '</b>' +
+            '<span class="gx-dim">' + esc(sub) + (p.n ? ' · ' + p.n + ' partidas' : '') + '</span></div>' +
             (p.rating_gp != null ? '<span class="gx-rost-r gx-mono">' + p.rating_gp.toFixed(2) + '</span>' : '') + '</div>';
         }).join('') + '</div>';
     };
@@ -9493,13 +9496,15 @@
     var sel = S.es.valMap || (maps[0] && maps[0].name);
     var cards = maps.map(function (mm) {
       var on = mm.name === sel;
-      var pa = mm.p_a != null ? mm.p_a : 0.5;
+      var pa = mm.p_a;
       var bias = mm.bias != null ? mm.bias : (v.map_bias || 0.5);
       var def = Math.round(100 * bias), atk = 100 - def;
       return '<div class="gx-vmap' + (on ? ' on' : '') + '" data-valmap="' + esc(mm.name) + '">' +
         '<div class="gx-vmap-top"><b>' + esc(mm.name) + '</b>' +
-          '<span class="gx-mono' + (pa >= 0.55 ? ' gx-up' : pa <= 0.45 ? ' gx-dn' : '') + '">' + Math.round(100 * pa) + '%</span></div>' +
-        '<div class="gx-vmap-bar"><i style="width:' + (100 * pa).toFixed(0) + '%"></i></div>' +
+          (pa != null ? '<span class="gx-mono' + (pa >= 0.55 ? ' gx-up' : pa <= 0.45 ? ' gx-dn' : '') + '">' + Math.round(100 * pa) + '%</span>'
+            : '<span class="gx-dim" style="font-size:9.5px">sin fuerza medida</span>') + '</div>' +
+        (pa != null ? '<div class="gx-vmap-bar"><i style="width:' + (100 * pa).toFixed(0) + '%"></i></div>'
+          : '<div class="gx-vmap-bar"><i class="def" style="width:' + def + '%"></i></div>') +
         '<div class="gx-vmap-sides"><span title="rondas que gana el que defiende">DEF ' + def + '%</span>' +
           '<span title="rondas que gana el que ataca">ATK ' + atk + '%</span></div>' +
         (mm.note ? '<div class="gx-vmap-note gx-dim">' + esc(mm.note) + '</div>' : '') + '</div>';
@@ -9509,7 +9514,8 @@
     var detail = '<div class="gx-vmap-detail"><div><span class="gx-label">' + esc(cur.name) + ' · lectura</span>' +
       '<p class="gx-dim">' + esc(cur.note || 'Mapa equilibrado: lo que cambia no es quién gana, sino cuántas rondas se juegan.') + '</p></div>' +
       '<div class="gx-vmap-kpis">' +
-        '<div><span class="gx-dim">' + esc(ev.home.name) + '</span><b class="gx-mono">' + Math.round(100 * (cur.p_a != null ? cur.p_a : 0.5)) + '%</b></div>' +
+        (cur.p_a != null ? '<div><span class="gx-dim">' + esc(ev.home.name) + '</span><b class="gx-mono">' + Math.round(100 * cur.p_a) + '%</b></div>' : '') +
+        '<div><span class="gx-dim">defensa gana la ronda</span><b class="gx-mono">' + Math.round(100 * (cur.bias != null ? cur.bias : 0.5)) + '%</b></div>' +
         (r.mean_rounds != null ? '<div><span class="gx-dim">rondas esperadas</span><b class="gx-mono">' + r.mean_rounds + '</b></div>' : '') +
         (r.overtime_p != null ? '<div><span class="gx-dim">prórroga</span><b class="gx-mono">' + Math.round(100 * r.overtime_p) + '%</b></div>' : '') +
       '</div></div>';
@@ -9740,7 +9746,7 @@
     var dr = m.draft_room;
     if (!dr || !dr.available) return null;
     var side = function (s, cls) {
-      if (!s || !s.resolved) return '<div class="gx-dr-side ' + cls + '"><div class="gx-dr-team"><b>' + esc((s && s.name) || '—') + '</b></div>' +
+      if (!s || !s.resolved || !(s.five || []).length) return '<div class="gx-dr-side ' + cls + '"><div class="gx-dr-team"><b>' + esc((s && s.name) || '—') + '</b></div>' +
         '<div class="gx-dim gx-es-note">Sin quinteto en la base propia: el draft de este lado se queda sin leer.</div></div>';
       var frag = s.fragility_pct;
       var fCls = frag == null ? '' : frag >= 45 ? 'gx-dn' : frag <= 30 ? 'gx-up' : '';
@@ -9755,6 +9761,7 @@
             '<div class="gx-dr-phead">' + esAvatar({ nick: p.nick, photo: p.photo }) +
               '<div class="gx-dr-pid"><b>' + esc(p.nick) + '</b><span class="gx-dim">' + esc(p.role || '—') + (p.n ? ' · ' + p.n : '') + '</span></div>' +
               (p.rating_gp != null ? '<span class="gx-dr-rating gx-mono' + (p.rating_gp >= 1.05 ? ' gx-up' : p.rating_gp <= 0.95 ? ' gx-dn' : '') + '">' + p.rating_gp.toFixed(2) + '</span>' : '') + '</div>' +
+            ((p.pool || []).length ? '' : '<div class="gx-dr-idonly gx-dim">plantilla confirmada · rendimiento por jugador todavía sin medir</div>') +
             '<div class="gx-dr-pool">' + (p.pool || []).slice(0, 4).map(function (c) {
               return '<span class="gx-dr-ch' + (c.flex ? ' flex' : '') + '" title="' + c.n + ' partidas' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.flex ? ' · flex (2+ roles en el parche)' : '') + '">' +
                 '<i class="gx-dr-cbar" style="width:' + Math.round(100 * (c.comfort || 0) / mx) + '%"></i>' +
@@ -9827,10 +9834,19 @@
   // — LO QUE IMPORTA / INCERTIDUMBRE / SIMULACIÓN (comunes, pero alimentados por cada motor)
   function esWhat(m) {
     var w = m.what_matters; if (!w || !w.length) return null;
-    return esPanel('Lo que decide esta partida', '',
+    // 19-ago: deja de ser una lista numerada y pasa a ser una CAPA DE OBSERVACIÓN — cada motor devuelve el
+    // peso en puntos de probabilidad, así que se ve de un vistazo cuál factor manda y cuánto.
+    var mx = w.reduce(function (a, x) { return Math.max(a, Math.abs(x.pp || 0)); }, 0);
+    return esPanel('Lo que decide esta partida', mx ? '<span class="gx-dim" style="font-size:10.5px">barra = peso en puntos de probabilidad</span>' : '',
       '<div class="gx-es-what">' + w.map(function (x) {
-        return '<div class="gx-es-w"><span class="gx-es-wn">' + x.rank + '</span><div><p>' + esc(x.text) + '</p>' +
-          '<span class="gx-dim">' + esc(x.driver) + (x.pp != null ? ' · ' + esSign(x.pp) + ' pp' : '') + '</span></div></div>';
+        var pp = x.pp != null ? x.pp : null;
+        var wpx = mx && pp != null ? Math.max(4, Math.round(100 * Math.abs(pp) / mx)) : 0;
+        return '<div class="gx-esw2">' +
+          '<div class="gx-esw2-h"><span class="gx-es-wn">' + x.rank + '</span>' +
+          '<b>' + esc(x.driver) + '</b>' +
+          (pp != null ? '<span class="gx-spacer"></span><span class="gx-mono ' + (pp > 0 ? 'gx-up' : pp < 0 ? 'gx-dn' : 'gx-dim') + '">' + esSign(pp) + ' pp</span>' : '') + '</div>' +
+          (wpx ? '<div class="gx-esw2-bar"><i class="' + (pp > 0 ? 'up' : 'dn') + '" style="width:' + wpx + '%"></i></div>' : '') +
+          '<p>' + esc(x.text) + '</p></div>';
       }).join('') + '</div>', 'gx-es-what-p');
   }
   function esUnc(m) {

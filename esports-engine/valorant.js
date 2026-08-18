@@ -241,7 +241,15 @@ function analyze({ market, ratings, bo = 3, sample = 0 }) {
   const pMap = pSeries != null ? C.seriesToMap(pSeries, bo) : null;
 
   const strength = (ratings && ratings.map_strength) || null;
-  const veto = strength ? vetoTree(strength, { bo, depth: (ratings && ratings.agent_depth) || null }) : null;
+  // 19-ago: sin fuerza por equipo medida el árbol de veto no se puede simular, pero el POOL y su reparto
+  // ataque/defensa SÍ son estructura conocida del juego. Antes se devolvía null y la pantalla se quedaba sin
+  // su objeto propio; ahora se sirve el pool con su sesgo y se declara que la preferencia por equipo falta.
+  const veto = strength ? vetoTree(strength, { bo, depth: (ratings && ratings.agent_depth) || null }) : {
+    structure_only: true,
+    likely_maps: MAP_POOL.map((m) => ({ map: m.key, name: m.name, p_a: null, bias: m.bias, note: m.note })),
+    sequence: [], decider: null, pool_version: POOL_VERSION,
+    note: 'pool y reparto ataque/defensa del juego (estructura conocida). La preferencia de veto por equipo necesita fuerza por mapa medida: la cosecha de detalle está en marcha y este tablero se completa solo cuando entre.',
+  };
   const mapProbs = veto ? veto.likely_maps : null;
 
   const firstMap = mapProbs && mapProbs.length ? mapProbs[0] : null;

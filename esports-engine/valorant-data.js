@@ -126,6 +126,49 @@ function load() {
     rosters[tid] = { five, coach: null, changed_recently: false };
   }
 
+  // PLANTILLA DE IDENTIDAD (19-ago): la identidad (nick, nombre real, país y cara) viene de la ficha de
+  // equipo del proveedor y se pega por NICK — la estadística y la identidad llevan numeraciones distintas
+  // para la misma persona. Donde el quinteto ya está medido, la cara se añade encima; donde todavía no hay
+  // medición, el quinteto se sirve igual y se marca como identidad, no como medición.
+  {
+    const face = {};
+    for (const rec of Object.values(AS.players || {})) {
+      if (!rec || !rec.nick) continue;
+      const k = String(rec.nick).toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (k && !face[k]) face[k] = rec;
+    }
+    for (const p of Object.values(players)) {
+      const k = String(p.nick || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const f = k && face[k];
+      if (!f) continue;
+      if (f.photo && !p.photo) p.photo = '/logos/es/valorant/players/' + f.photo;
+      if (f.real && !p.name) p.name = f.real;
+      if (f.country && !p.country) p.country = f.country;
+    }
+    for (const r of Object.values(rosters)) {
+      for (const q of (r.five || [])) {
+        const src = players[q.id];
+        if (src) { if (src.photo) q.photo = src.photo; if (src.name) q.name = src.name; if (src.country) q.country = src.country; }
+      }
+    }
+    const byTeam = {};
+    for (const [pid, rec] of Object.entries(AS.players || {})) {
+      if (!rec || !rec.team) continue;
+      (byTeam[rec.team] = byTeam[rec.team] || []).push({ id: pid, nick: rec.nick || ('#' + pid),
+        role: rec.role ? cap(rec.role) : null, name: rec.real || null, country: rec.country || null,
+        photo: rec.photo ? '/logos/es/valorant/players/' + rec.photo : null, identity_only: true });
+    }
+    for (const [tid, arr] of Object.entries(byTeam)) {
+      if (rosters[tid] && (rosters[tid].five || []).length) continue;
+      rosters[tid] = { five: arr.slice(0, 5), coach: null, changed_recently: false, identity_only: true };
+    }
+    for (const p2 of Object.values(byTeam).flat()) {
+      if (!players[p2.id]) players[p2.id] = { id: p2.id, nick: p2.nick, name: p2.name || null, role: p2.role || null,
+        team: null, team_name: null, photo: p2.photo, country: p2.country || null, country_id: null,
+        birthday: null, rating6m: null, identity_only: true };
+    }
+  }
+
   // mapas del circuito (para la ficha de equipo y el veto): fuerza propia por mapa desde map-stats
   const teamMaps = {};
   if (MS && MS.teams) {
@@ -236,7 +279,9 @@ function compIntel(nameA, nameB) {
         wr: c.n ? +(c.w / c.n).toFixed(2) : null, rw: c.rw,
         flex: (st.classes_played || 1) >= 3,
         comfort: +(c.rw * ((c.w + 3) / (c.n + 6))).toFixed(2) }));
-      return { id: f.id, nick: f.nick, role: f.role, rating_gp: st.rating_gp || null, n: st.n || 0, pool };
+      return { id: f.id, nick: f.nick, role: f.role, rating_gp: st.rating_gp || null, n: st.n || 0, pool,
+        photo: f.photo || null, name: f.name || null, country: f.country || null,
+        identity_only: !!f.identity_only };
     });
     const comfortTotal = five.reduce((s, p) => s + p.pool.reduce((x, c) => x + c.comfort, 0), 0);
     const allPicks = five.flatMap((p) => p.pool.map((c) => c.comfort)).sort((x, y) => y - x);

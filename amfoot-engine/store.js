@@ -654,7 +654,9 @@ function modelCard(lg) {
       { family: 'TOTAL', state: 'shadow', why: (v.overall ? `MAE ${v.overall.mae_total_modelo} vs ${v.overall.mae_total_cierre} del cierre` : 'en sombra') + '. La familia más cercana al breakeven en el backtest: la sombra decide.' },
       { family: 'MONEYLINE', state: 'closed', why: 'cerrado por doctrina de la casa (pérdidas medidas del ganador en dos deportes).' },
     ],
-    spec: data.priors.spec, hfa: data.priors.hfa, constants: { halflife: data.priors.halflife, carry: data.priors.carry, cap: data.priors.cap, sd_win: data.priors.sd_win },
+    // CAJA NEGRA (18-ago, orden de Alexis): la ficha enseña la EVIDENCIA (validación, MAE, muestras);
+    // la receta (spec, HFA, constantes) es interna y no sale por la API.
+    spec: 'modelo propio de GP — composición reservada; validado walk-forward contra el cierre',
     validation: v, doctrine: C.doctrine, at: data.priors.at,
   };
 }

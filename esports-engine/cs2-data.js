@@ -54,7 +54,7 @@ function load() {
     // `rating_gp` es nuestro, con fórmula publicada en el propio archivo; el del proveedor viaja al lado.
     playerStats: (pstats && pstats.players) || {},
     playerStatsMeta: pstats ? { at: pstats.at, window_days: pstats.window_days, min_rounds: pstats.min_rounds,
-      population: pstats.population, formula: pstats.formula } : null,
+      population: pstats.population } : null,
     meta: meta || null,
     at: (meta && meta.at) || null,
   };

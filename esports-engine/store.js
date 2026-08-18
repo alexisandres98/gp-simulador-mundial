@@ -131,7 +131,8 @@ async function overview({ days = 5 } = {}) {
       // juego según qué base cargó de verdad, no por una lista escrita a mano.
       own_rating: ['cs2', 'lol', 'valorant', 'dota2'].filter((g2) => !!cdOf(g2)).join('+') || 'ninguno',
       why: BK.RESULTS_UNAVAILABLE.why,
-      consequence: 'los CUATRO juegos tienen base propia desde el 18-ago: CS2 (modelo jerárquico, 7,3 % de skill), LoL (Elo con lado y parche), Valorant (Elo de series con margen y óxido) y Dota 2 (Elo con lado Radiant, 1,9 % de skill — señal real pero modesta, y el peso propio lo refleja). Todo entra ANCLADO a mercado con peso creciente por muestra; la estructura derivada es del modelo y no depende del rating.',
+      // caja negra (18-ago): se dice QUÉ hay (base propia validada) y su fuerza relativa, no CÓMO se construye
+      consequence: 'los CUATRO juegos tienen base propia de GP validada fuera de muestra desde el 18-ago — la señal de CS2 es la más fuerte y la de Dota 2 la más modesta, y el peso propio de cada juego lo refleja. Todo entra ANCLADO a mercado con peso creciente por muestra; la estructura derivada es del modelo y no depende del rating.',
       next: BK.RESULTS_UNAVAILABLE.next,
     },
     // LAS CASAS, con su papel. No es adorno: es lo que explica por qué desde hoy pueden salir picks donde
@@ -1572,7 +1573,7 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
       .slice(0, Math.max(1, Math.min(300, limit)));
     return { game, available: true, dota: true, players: rows, total: all.length,
       own_stats: data.playerStatsMeta || null,
-      rating_note: 'Rating GP propio normalizado POR POSICIÓN 1-5, inferida del rango de oro dentro del equipo — un hard support no compite con un carry en GPM; media de la posición = 1.00. Datos derivados de OpenDota.',
+      rating_note: 'Rating GP propio por posición 1-5 (media de la posición = 1.00), derivado del rendimiento medido en la base propia. Datos derivados de OpenDota.',
       at: data.at };
   }
   // Valorant habla en ACS/ADR/KAST por CLASE de agente: rama propia con sus columnas
@@ -1589,7 +1590,7 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
       .slice(0, Math.max(1, Math.min(300, limit)));
     return { game, available: true, valorant: true, players: rows, total: all.length,
       own_stats: data.playerStatsMeta || null,
-      rating_note: 'Rating GP propio normalizado POR CLASE de agente (un centinela no compite con un duelista en ACS — V-0108); media de la clase = 1.00. Datos derivados de vlr.gg.',
+      rating_note: 'Rating GP propio por clase de agente (media de la clase = 1.00), derivado del rendimiento medido en la base propia. Datos derivados de vlr.gg.',
       at: data.at };
   }
   // LoL habla su idioma (KP/KDA/CSPM por rol), no el de CS2 (ADR/KAST): rama propia con sus columnas
@@ -1606,7 +1607,7 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
       .slice(0, Math.max(1, Math.min(300, limit)));
     return { game, available: true, lol: true, players: rows, total: all.length,
       own_stats: data.playerStatsMeta || null,
-      rating_note: 'Rating GP propio normalizado POR ROL (un support no compite con un mid en CS/min — LOL-0007); media del rol = 1.00. Datos derivados de Leaguepedia (CC BY-SA 4.0).',
+      rating_note: 'Rating GP propio por rol (media del rol = 1.00), derivado del rendimiento medido en la base propia. Datos derivados de Leaguepedia (CC BY-SA 4.0).',
       at: data.at };
   }
   const hasOwn = Object.keys(data.playerStats).length > 0;
@@ -1665,7 +1666,7 @@ function playerProfile(game, id) {
         participacion: pct((x) => x.kp), kda: pct((x) => Math.min(8, x.kda)),
         farmeo: pct((x) => x.gpm), muertes: pct((x) => x.dpm, true) } } : null,
       meta: data.playerStatsMeta,
-      note: st ? 'Rating GP propio normalizado por posición (media de la posición = 1.00; fórmula publicada en la ficha del motor). Datos derivados de OpenDota.'
+      note: st ? 'Rating GP propio (media de la posición = 1.00), del rendimiento medido en la base propia. Datos derivados de OpenDota.'
         : 'sin muestra propia suficiente en la ventana (≥8 partidas en 365 días).',
       at: data.at,
     };
@@ -1697,7 +1698,7 @@ function playerProfile(game, id) {
         acs: pct((x) => x.acs), dano: pct((x) => x.adr), consistencia: pct((x) => x.kast),
         apertura: pct((x) => x.fk_fd) } } : null,
       meta: data.playerStatsMeta,
-      note: st ? 'Rating GP propio normalizado por clase de agente (media de la clase = 1.00; fórmula publicada en la ficha del motor). Datos derivados de vlr.gg.'
+      note: st ? 'Rating GP propio (media de la clase = 1.00), del rendimiento medido en la base propia. Datos derivados de vlr.gg.'
         : 'sin muestra propia suficiente en la ventana (≥8 mapas en 365 días).',
       at: data.at,
     };
@@ -1728,7 +1729,7 @@ function playerProfile(game, id) {
         participacion: pct((x) => x.kp), kda: pct((x) => Math.min(8, x.kda)),
         farmeo: pct((x) => x.cspm), muertes: pct((x) => x.dpg, true) } } : null,
       meta: data.playerStatsMeta,
-      note: st ? 'Rating GP propio normalizado por rol (media del rol = 1.00; fórmula publicada en la ficha del motor). Datos derivados de Leaguepedia (CC BY-SA 4.0).'
+      note: st ? 'Rating GP propio (media del rol = 1.00), del rendimiento medido en la base propia. Datos derivados de Leaguepedia (CC BY-SA 4.0).'
         : 'sin muestra propia suficiente en la ventana (≥8 partidas en 365 días).',
       at: data.at,
     };
@@ -1774,7 +1775,7 @@ function playerProfile(game, id) {
       return { dims: out, pop_n: pop.length };
     })() : null,
     meta: data.playerStatsMeta,
-    note: st ? 'Rating GP propio (media del circuito = 1.00, fórmula publicada en la ficha del motor); el del proveedor (0-10) viaja al lado. Todo sale del scoreboard real de la ventana.'
+    note: st ? 'Rating GP propio (media del circuito = 1.00); el del proveedor (0-10) viaja al lado. Todo sale del scoreboard real de la ventana.'
       : 'sin muestra propia suficiente en la ventana: se enseña la identidad y el rating del proveedor, etiquetado.',
     at: data.at,
   };

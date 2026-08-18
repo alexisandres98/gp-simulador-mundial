@@ -115,7 +115,7 @@ function load() {
     available: matches.length > 1000,
     matches, teams, teamGlobal, rosters, pairs, form, rankings,
     players, playerStats, playerStatsMeta: PS.players && Object.keys(PS.players).length
-      ? { at: PS.at, window_days: PS.window_days, population: PS.population, formula: PS.formula } : null,
+      ? { at: PS.at, window_days: PS.window_days, population: PS.population } : null,
     heroMeta: HM, doctrine: TD,
     side_advantage_elo: priors.side_advantage_elo || 0,
     priors, maps: {}, pool: [],
@@ -181,7 +181,7 @@ function heroesBoard({ role = null } = {}) {
     .map((r) => ({ ch: r.name, role: r.role, n: r.n, wr: r.wr, wr_shrunk: r.wr_shrunk,
       presence_pct: r.presence_pct, bans: r.bans, delta_wr: r.delta_wr }));
   return { available: true, patch: d.heroMeta.patch, prev_patch: d.heroMeta.prev_patch,
-    games_patch: d.heroMeta.games_patch, shrink_k: d.heroMeta.shrink_k, rows, note: d.heroMeta.note };
+    games_patch: d.heroMeta.games_patch, rows, note: 'tasa de victoria ajustada por muestra; presencia = participación del héroe (picks y bans) sobre las partidas del parche.' };
 }
 
 // inteligencia de draft para un cruce (la forma del Draft Room, con la doctrina de equipo de Dota)
@@ -214,7 +214,7 @@ function draftIntel(nameA, nameB) {
     available: true, patch: (d.heroMeta && d.heroMeta.patch) || null,
     a: side(nameA), b: side(nameB),
     meta_top: (board.rows || []).slice(0, 10).map((r) => ({ ch: r.ch, role: r.role, presence_pct: r.presence_pct, wr_shrunk: r.wr_shrunk, delta_wr: r.delta_wr })),
-    provenance: 'pools y comfort: recencia jugador×héroe (medio-vida 40 partidas) × señal encogida; doctrina de equipo del draft real (medio-vida 60 picks); meta del parche vigente. El modelo secuencial de draft (D-0448+) llega con más capas.',
+    provenance: 'pools, comfort, fragilidad y doctrina de equipo medidos de la base propia de GP sobre el parche vigente.',
     rights_note: 'Datos derivados de OpenDota.',
   };
 }

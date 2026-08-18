@@ -15407,12 +15407,21 @@ const server = http.createServer(async (req, res) => {
           // la ficha del motor de un juego: qué es propio suyo, qué familias cotiza y dónde puede aportar
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
           const E = ES.ENGINES[gm];
-          // la ficha del modelo (P0.9) viaja aquí para que se pueda auditar sin abrir una partida
+          // REGLA DE CAJA NEGRA (18-ago, orden de Alexis): la ficha enseña la EVIDENCIA (ventana, muestra,
+          // métricas fuera de muestra) y reserva la COMPOSICIÓN — ni familia del modelo, ni constantes, ni
+          // pesos, ni pendientes salen por la API. Lo interno se audita por las sondas internas con llave.
           let card = null, dataset = null;
           if (gm === 'cs2') {
             try {
               const probe = E.analyze({ market: { markets: [] }, ratings: {}, bo: 3, teams: null });
-              card = probe.model || null; dataset = probe.dataset || null;
+              const mc = probe.model || null;
+              if (mc) {
+                card = { version: mc.version, family: 'modelo propio de GP — composición reservada',
+                  validated: mc.validated ? { method: 'validado fuera de muestra, punto en el tiempo estricto',
+                    window: mc.validated.window, confirmation: mc.validated.confirmation,
+                    market_baseline: mc.validated.market_baseline } : null };
+              }
+              dataset = probe.dataset || null;
             } catch { /* la ficha es informativa: si falla, no tumba la ruta */ }
           }
           return json(res, 200, {

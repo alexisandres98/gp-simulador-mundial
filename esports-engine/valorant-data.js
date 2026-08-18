@@ -136,7 +136,7 @@ function load() {
     available: series.length > 500,
     series, teams, teamGlobal, rosters, pairs, form, rankings,
     players, playerStats, playerStatsMeta: PS.players && Object.keys(PS.players).length
-      ? { at: PS.at, window_days: PS.window_days, population: PS.population, formula: PS.formula } : null,
+      ? { at: PS.at, window_days: PS.window_days, population: PS.population } : null,
     agents: AG, mapStats: MS, comps: CO, teamMaps,
     priors, maps: {}, pool: [],
     meta: META, at: META.at || new Date().toISOString(),
@@ -211,8 +211,8 @@ function agentsBoard({ role = null } = {}) {
     .filter((r) => !role || r.class === String(role).toLowerCase())
     .map((r) => ({ ch: cap(r.agent), role: cap(r.class || '—'), n: r.n, wr: r.wr, wr_shrunk: r.wr_shrunk,
       presence_pct: r.presence_pct, bans: null, delta_wr: r.delta_wr }));
-  return { available: true, window: d.agents.window, maps_cur: d.agents.maps_cur, shrink_k: d.agents.shrink_k,
-    rows, note: d.agents.note };
+  return { available: true, window: d.agents.window, maps_cur: d.agents.maps_cur,
+    rows, note: 'tasa de victoria ajustada por muestra; presencia = picks del agente sobre los huecos de la ventana de 90 días.' };
 }
 
 // ── inteligencia de composición para un cruce (la forma del Draft Room, con semántica de Valorant) ──────
@@ -243,7 +243,7 @@ function compIntel(nameA, nameB) {
     available: true, patch: null, window: (d.agents && d.agents.window) || null,
     a: side(nameA), b: side(nameB),
     meta_top: (board.rows || []).slice(0, 10).map((r) => ({ ch: r.ch, role: r.role, presence_pct: r.presence_pct, wr_shrunk: r.wr_shrunk, delta_wr: r.delta_wr })),
-    provenance: 'pools y comfort: recencia jugador×agente (medio-vida 40 mapas) × señal de rendimiento encogida, sobre la base propia; el meta es la ventana de 90 días medida. La sinergia de composición y el counter-graph (V-0131) llegan con más muestra.',
+    provenance: 'pools, comfort y fragilidad medidos de la base propia de GP sobre la ventana vigente.',
     rights_note: 'Datos derivados de vlr.gg.',
   };
 }

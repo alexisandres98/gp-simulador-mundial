@@ -571,8 +571,9 @@ function modelCard() {
   return {
     available: !!p,
     model_version: p ? p.model_version : null,
-    spec: p ? p.spec : null,
-    constants: p ? { hfa: p.hfa, k_total: p.k_total, sigma_extra_margin: p.sigma_extra_margin, sigma_extra_total: p.sigma_extra_total, resid_pool_n: (p.resid_pool || []).length } : null,
+    // CAJA NEGRA (18-ago, orden de Alexis): la ficha enseña la EVIDENCIA (validación, MAE, muestras);
+    // la receta (spec, HFA, k, sigmas) es interna y no sale por la API.
+    spec: 'modelo propio de GP — composición reservada; market-blind y validado walk-forward contra el cierre',
     validation: p ? p.validation : null,
     data: M ? { games: M.data.games.length, from: 2016, team_weeks: M.data.tw.length, at: M.data.at } : null,
     families: [

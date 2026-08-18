@@ -257,7 +257,7 @@
       lc_pub: 'Publicada', lc_started: 'En juego', lc_await: 'Esperando liquidación', lc_settled: 'Liquidada',
       rc_win: 'Acierto', rc_loss: 'Fallo', rc_void: 'Anulada', rc_pending: 'Pendiente', rc_settled: 'Liquidada',
       me_gp_t: 'GP Intelligence', me_gp_b: 'Partimos de una probabilidad inicial estadística y aplicamos el contexto verificado para llegar a la Probabilidad GP final. No usamos nombres de versiones internas: lo que ves es la lectura GP vigente.',
-      me_base_t: 'Base estadística', me_base_b: 'Ratings Elo por selección, modelo de goles de Poisson/Dixon-Coles y simulación Monte Carlo del torneo (miles de corridas) para estimar resultados y caminos.',
+      me_base_t: 'Base estadística', me_base_b: 'Un modelo estadístico propio de GP, entrenado con historial real y simulación masiva de escenarios, estima resultados y caminos. La composición del modelo es tecnología interna de la casa.',
       me_ctx_t: 'Contexto', me_ctx_b: 'Forma reciente, disponibilidad del plantel, calidad, solidez y condiciones se evalúan y ajustan la probabilidad inicial. El efecto se refleja como ajuste neto, con su evidencia y frescura.',
       me_market_t: 'Mercado', me_market_b: 'Comparamos la Probabilidad GP contra casas, exchanges y prediction markets, mostrando precio implícito, sin margen y mejor precio cuando es posible.',
       me_unc_t: 'Incertidumbre', me_unc_b: 'Cada lectura incluye su nivel de confianza y los riesgos relevantes. La confianza es un único valor; nunca afirmamos un nivel y lo contradecimos en el texto.',
@@ -663,7 +663,7 @@
       lc_pub: 'Published', lc_started: 'In play', lc_await: 'Awaiting settlement', lc_settled: 'Settled',
       rc_win: 'Win', rc_loss: 'Loss', rc_void: 'Void', rc_pending: 'Pending', rc_settled: 'Settled',
       me_gp_t: 'GP Intelligence', me_gp_b: 'We start from a statistical initial probability and apply verified context to reach the final GP probability. We don’t expose internal version names: what you see is the current GP read.',
-      me_base_t: 'Statistical base', me_base_b: 'Per-team Elo ratings, a Poisson/Dixon-Coles goals model and a tournament Monte Carlo simulation (thousands of runs) to estimate results and paths.',
+      me_base_t: 'Statistical base', me_base_b: 'A proprietary GP statistical model, trained on real history with massive scenario simulation, estimates outcomes and paths. The model composition is in-house technology.',
       me_ctx_t: 'Context', me_ctx_b: 'Recent form, squad availability, quality, solidity and conditions are evaluated and adjust the initial probability. The effect is shown as a net adjustment, with its evidence and freshness.',
       me_market_t: 'Market', me_market_b: 'We compare the GP probability against books, exchanges and prediction markets, showing implied price, no-vig and best price when possible.',
       me_unc_t: 'Uncertainty', me_unc_b: 'Every read includes its confidence level and the relevant risks. Confidence is a single value; we never claim a level and contradict it in the text.',
@@ -9229,7 +9229,7 @@
     };
     return esPanel('Los dos equipos, mapa a mapa', '',
       '<div class="gx-cs-tcs">' + card(T.a, 'a') + card(T.b, 'b') + '</div>' +
-      '<div class="gx-dim gx-es-note">La cifra de cada mapa es el <b>efecto</b>: cuántos puntos rinde ese equipo por encima o por debajo de <b>su propio nivel</b> en ese mapa, encogido por muestra. No es su tasa de victoria — esa la arrastra lo bueno que sea en general.</div>' +
+      '<div class="gx-dim gx-es-note">La cifra de cada mapa es el <b>efecto</b>: cuántos puntos rinde ese equipo por encima o por debajo de <b>su propio nivel</b> en ese mapa, ajustado por muestra. No es su tasa de victoria — esa la arrastra lo bueno que sea en general.</div>' +
       ((d.model || {}).rosters && (d.model || {}).rosters.history_reweight
         ? '<div class="gx-dim gx-es-note">' + esc(d.model.rosters.history_reweight) + '</div>' : ''),
       'gx-cs-teams');
@@ -9254,22 +9254,22 @@
         '<div><span>Mapas de confirmación</span><b>' + (c.maps || 0).toLocaleString('es') + '</b></div>' +
       '</div>' +
       '<div class="gx-dim gx-es-note">' + esc(v.method || '') + ' · ' + esc(v.window || '') + '</div>' +
-      '<table class="gx-t gx-es-t"><thead><tr><th>Contra qué se comparó</th><th class="r">Skill de Brier</th></tr></thead><tbody>' +
+      ((v.beats || []).length ? '<table class="gx-t gx-es-t"><thead><tr><th>Contra qué se comparó</th><th class="r">Skill de Brier</th></tr></thead><tbody>' +
       (v.beats || []).map(function (b) {
         var win = b.brier_skill_pct < c.brier_skill_pct;
         return '<tr><td>' + esc(b.name) + '</td><td class="r gx-mono ' + (win ? 'gx-dim' : 'gx-up') + '">' + b.brier_skill_pct + '%</td></tr>';
       }).join('') +
       '<tr class="pick"><td><b>este modelo</b></td><td class="r gx-mono gx-up"><b>' + c.brier_skill_pct + '%</b></td></tr>' +
-      '</tbody></table>' +
+      '</tbody></table>' : '') +
       '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(v.market_baseline || '') + '</span></div>' +
-      '<div class="gx-cs-consts">' + (M.constants || []).map(function (k) {
+      ((M.constants || []).length ? '<div class="gx-cs-consts">' + (M.constants || []).map(function (k) {
         return '<div class="gx-cs-const ' + esc(CS_STATUS[k.status] || 'cv') + '">' +
           '<b>' + esc(k.key) + '</b><em>' + esc(String(k.value)) + '</em>' +
           '<span class="tag">' + esc(k.status) + '</span>' +
           '<span class="note">' + esc(k.note) + '</span></div>';
-      }).join('') + '</div>' +
-      '<div class="gx-cs-pending"><span class="gx-label">Lo que falta para cerrar el modelo</span><ul>' +
-      (M.pending || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>',
+      }).join('') + '</div>' : '') +
+      ((M.pending || []).length ? '<div class="gx-cs-pending"><span class="gx-label">Lo que falta para cerrar el modelo</span><ul>' +
+      (M.pending || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : ''),
       'gx-cs-modelp');
   }
 
@@ -10312,10 +10312,10 @@
     var maxPres = rows.length ? rows[0].presence_pct || 1 : 1;
     var hero = isVal
       ? '<div class="gx-es-hero"><div><b>El meta de la ventana, medido</b>' +
-        '<span class="gx-dim">presencia y tasa de victoria encogida de los últimos 90 días, con su delta contra los 90 anteriores — de la base propia, no de una tier list</span></div>' +
+        '<span class="gx-dim">presencia y tasa de victoria ajustada de los últimos 90 días, con su delta contra los 90 anteriores — de la base propia, no de una tier list</span></div>' +
         '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + (d.maps_cur || '—') + '</b><span>mapas en la ventana</span></div></div>'
       : '<div class="gx-es-hero"><div><b>El meta del parche ' + esc(d.patch) + ', medido</b>' +
-        '<span class="gx-dim">presencia, tasa de victoria encogida y su delta contra el parche ' + esc(d.prev_patch || 'anterior') + ' — de la base propia, no de una tier list</span></div>' +
+        '<span class="gx-dim">presencia, tasa de victoria ajustada y su delta contra el parche ' + esc(d.prev_patch || 'anterior') + ' — de la base propia, no de una tier list</span></div>' +
         '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + d.games_patch + '</b><span>partidas en el parche</span></div></div>';
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
       '<th>' + (isVal ? 'Agente' : isDota ? 'Héroe' : 'Campeón') + '</th><th>' + (isVal ? 'Clase' : 'Rol') + '</th><th>Presencia</th><th class="r">WR</th><th class="r">' + (isVal ? 'Δ ventana' : 'Δ parche') + '</th>' +
@@ -11210,7 +11210,7 @@
         '<div><span class="gx-label">Lado rojo</span><b>' + (sd.red_wr != null ? Math.round(100 * sd.red_wr) + '%' : '—') + '</b><span class="gx-dim">' + (sd.red_n || 0) + ' partidas</span></div>' +
       '</div><div class="gx-dim gx-es-note">Victorias del jugador según el lado que le tocó: el lado azul elige primero en el draft.</div>') : '';
     // pool (chips del Draft Room / la Sala de composición)
-    var poolB = (d.champs || []).length ? esPanel('Pool de ' + (isVal ? 'agentes' : isDota ? 'héroes' : 'campeones'), '<span class="gx-dim" style="font-size:11px">peso reciente, medio-vida 40 ' + (isVal ? 'mapas' : 'partidas') + '</span>',
+    var poolB = (d.champs || []).length ? esPanel('Pool de ' + (isVal ? 'agentes' : isDota ? 'héroes' : 'campeones'), '<span class="gx-dim" style="font-size:11px">peso reciente</span>',
       '<div class="gx-dr-pool">' + d.champs.map(function (c) {
         return '<span class="gx-dr-ch" title="' + c.n + (isVal ? ' mapas' : ' partidas') + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.last ? ' · última ' + c.last : '') + '">' +
           esc(c.ch) + '<i>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + ' · ' + c.n + '</i></span>';

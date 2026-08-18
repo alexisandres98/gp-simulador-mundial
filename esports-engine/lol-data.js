@@ -129,7 +129,7 @@ function load() {
   const data = {
     available: games.length > 500,
     games, teams, teamGlobal, rosters, pairs, form, rankings,
-    players, playerStats, playerStatsMeta: PS.players ? { at: PS.at, window_days: PS.window_days, population: PS.population, formula: PS.formula } : null,
+    players, playerStats, playerStatsMeta: PS.players ? { at: PS.at, window_days: PS.window_days, population: PS.population } : null,
     champions: CH, leagueTempo,
     side_advantage_elo: priors.side_advantage_elo || +sideElo.toFixed(1),
     priors, maps: {}, pool: [],
@@ -240,7 +240,7 @@ function championsBoard({ role = null } = {}) {
       delta_wr: pv && pv.n >= 10 ? +((o.w / o.n) - (pv.w / pv.n)).toFixed(3) : null };
   }).sort((a, b) => b.presence_pct - a.presence_pct);
   return { available: true, patch: cur, prev_patch: prev, games_patch: gamesCur, shrink_k: KSH, rows,
-    note: `wr encogida hacia 0,5 con K=${KSH} picks; presencia = (picks del rol + bans del campeón) / partidas del parche ${cur}. El sesgo de orden de pick (blind vs counter) NO está controlado todavía y se declara (LOL-0186).` };
+    note: `tasa de victoria ajustada por muestra; presencia = participación del campeón (picks y bans) sobre las partidas del parche ${cur}.` };
 }
 
 // ── inteligencia de draft para un cruce (Draft Room V1) ──────────────────────────────────────────────────
@@ -280,7 +280,7 @@ function draftIntel(nameA, nameB) {
     available: true, patch: board.patch || null,
     a: side(nameA), b: side(nameB),
     meta_top: (board.rows || []).slice(0, 10).map((r) => ({ ch: r.ch, role: r.role, presence_pct: r.presence_pct, wr_shrunk: r.wr_shrunk, delta_wr: r.delta_wr })),
-    provenance: 'pools y comfort: mastery jugador×campeón con recencia (medio-vida 40 partidas) sobre la base propia; meta: posterior del parche vigente con encogimiento. Todo MEDIDO; el orden de pick y las tendencias de coach llegan con el draft secuencial (LOL-0208+).',
+    provenance: 'pools, comfort y fragilidad medidos de la base propia de GP sobre el parche vigente.',
     rights_note: 'Datos derivados de Leaguepedia (CC BY-SA).',
   };
 }

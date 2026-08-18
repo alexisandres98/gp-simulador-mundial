@@ -35,3 +35,10 @@ data/esports/cs2-raw/
 # crudo de esports: vive en el disco persistente (o local); jamás en git (25MB+)
 /esports/
 /nfl-raw/
+
+# disco local del motor amfoot (en prod vive en /data/amfoot)
+/amfoot/
+# artefactos locales de correr el server fuera de Render (en prod viven en /data/*)
+/nfl/
+data/fabric/
+data/clubs/odds-archive/

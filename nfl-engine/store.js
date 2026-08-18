@@ -379,8 +379,11 @@ function gate(c) {
   // Noise gate (NFL-0684): la ventaja debe dominar la incertidumbre epistémica. La incertidumbre en PUNTOS
   // se convierte a pp por la pendiente local de la CDF (~2.8 pp por punto alrededor del centro).
   const uncPp = c.model.unc_pts * 2.8;
-  gates.push({ gate: 'noise', pass: Math.abs(edgePp) > uncPp, detail: `|${edgePp.toFixed(1)} pp| vs incertidumbre ${uncPp.toFixed(1)} pp` });
-  gates.push({ gate: 'edge', pass: Math.abs(edgePp) >= 3, detail: 'listón mínimo 3 pp' });
+  // 18-ago: el edge se exige POSITIVO. Con abs() los DOS lados del mismo mercado pasaban los gates a la
+  // vez (el lado -EV incluido) — se vio en la primera pasada real de la sombra de CFL, y aquí estaba el
+  // mismo latente esperando a que abrieran los mercados de la Semana 1.
+  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp` });
+  gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' });
   gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
   gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });
   const pass = gates.every((x) => x.pass);

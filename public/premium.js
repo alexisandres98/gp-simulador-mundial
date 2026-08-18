@@ -10200,7 +10200,23 @@
   // Terminal lleva de la probabilidad al mecanismo, al mercado y al veredicto — con la incertidumbre SIEMPRE
   // visible (NFL-0009) y las etiquetas de sombra/investigación donde tocan (NFL-0030).
   // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+  // ── FÚTBOL AMERICANO MULTI-LIGA (18-ago): NFL · College · CFL en la misma pestaña ──────────────────────
+  // El mismo molde que baloncesto (WNBA/NBA): un selector de liga arriba y las MISMAS pantallas debajo.
+  // El backend de College/CFL (/api/amfoot/*) emite los DTOs con la forma de /api/nfl/*, así que el rewire
+  // vive en UN punto: nflGet reescribe la URL y prefija la clave de caché con la liga.
+  var AMF_LEAGUES = [['nfl', 'NFL'], ['ncaaf', 'College'], ['cfl', 'CFL']];
+  function nflLg() { return S.nfl.lg || 'nfl'; }
+  function nflLgBar() {
+    return '<div class="gx-seg gx-es-lens" style="margin-bottom:10px">' + AMF_LEAGUES.map(function (x) {
+      return '<button data-amflg="' + x[0] + '"' + (x[0] === nflLg() ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+  }
   function nflGet(key, url, ttl) {
+    var lgQ = nflLg();
+    if (lgQ !== 'nfl') {
+      key = lgQ + '_' + key;
+      url = url.replace('/api/nfl/', '/api/amfoot/') + (url.indexOf('?') >= 0 ? '&' : '?') + 'league=' + lgQ;
+    }
     var e = S.nfl['c_' + key];
     var age = e && e._at ? Date.now() - e._at : Infinity;
     if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
@@ -10221,7 +10237,7 @@
   }
   function nflShell(title, inner) {
     var mv = $('#gx-matchview'); if (!mv) return;
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + inner + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + nflLgBar() + inner + '</div></div>';
     mv.onclick = nflClicks;
   }
   var nflLoading = function (txt) {
@@ -10386,6 +10402,7 @@
   // ---- 1c) JUGADORES: directorio por posición ------------------------------------------------------------
   var NFL_POS = [['all', 'Todos'], ['qb', 'QB'], ['rb', 'RB'], ['wr', 'WR'], ['te', 'TE']];
   function renderNflPlayers() {
+    if (nflLg() !== 'nfl') { nflShell(t('sr_players'), '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin base de jugador en esta liga todavía.</b><span class="gx-dim">El directorio de jugadores existe solo en NFL (nflverse). Para College el camino natural son los PPA de CFBD; se construye cuando la sombra de equipos aguante.</span></div></div>'); return; }
     var pos = S.nfl.pPos || 'qb';
     var q = (S.nfl.pQ || '').trim();
     var d = nflGet('players_' + pos + '_' + q, '/api/nfl/players?pos=' + pos + '&limit=60' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
@@ -10613,7 +10630,7 @@
     var hi = p != null && uncPp != null ? Math.min(98, 100 * p + uncPp) : null;
     var cons = d.market && d.market.consensus;
     var hero = '<div class="gx-cs-hero">' +
-      '<div class="gx-cs-hero-top"><span class="gx-cs-comp">Semana ' + d.week + ' · ' + esc(d.stadium || '') + (d.roof ? ' · ' + esc(d.roof) : '') + '</span>' +
+      '<div class="gx-cs-hero-top"><span class="gx-cs-comp">' + (d.week != null ? 'Semana ' + d.week : esc((AMF_LEAGUES.filter(function (x) { return x[0] === nflLg(); })[0] || [])[1] || '')) + (d.stadium ? ' · ' + esc(d.stadium) : '') + (d.roof ? ' · ' + esc(d.roof) : '') + '</span>' +
         '<span class="gx-spacer"></span><span class="gx-cs-when">' + esc(d.date) + (d.time ? ' · ' + d.time.slice(0, 5) + ' UTC' : '') + '</span></div>' +
       '<div class="gx-cs-hero-body">' +
         '<div class="gx-cs-side">' + cs2Crest(d.home, 'big') + '<div><b>' + esc(d.home.name) + '</b><span>' + esc(d.home.qb ? 'QB ' + d.home.qb : '') + (d.home.coach ? ' · ' + esc(d.home.coach) : '') + '</span></div></div>' +
@@ -10709,9 +10726,9 @@
     // primero; distribución/ADN/mercado en El modelo; lesiones/clima/forma/h2h en Contexto.
     var nlens = S.nfl.lens || 'partida';
     var NLENSES = [
-      ['partida', 'El partido', nflReadBlock(d.id) + mattersB + nflFieldBlock(d) + edB],
+      ['partida', 'El partido', (nflLg() === 'nfl' ? nflReadBlock(d.id) : '') + mattersB + nflFieldBlock(d) + edB],
       ['modelo', 'El modelo', distB + dnaB + mkB],
-      ['contexto', 'Contexto', nflInjBlock(d) + wxB + formB + h2hB + prov],
+      ['contexto', 'Contexto', (nflLg() === 'nfl' ? nflInjBlock(d) : '') + wxB + formB + h2hB + prov],
     ];
     if (!NLENSES.some(function (x) { return x[0] === nlens; })) nlens = 'partida';
     var nbar = '<div class="gx-seg gx-es-lens">' + NLENSES.map(function (x) {
@@ -10933,6 +10950,18 @@
   }
 
   function nflClicks(e) {
+    var lgB = e.target.closest('[data-amflg]');
+    if (lgB) {
+      var nlg = lgB.getAttribute('data-amflg');
+      if (nlg !== nflLg()) {
+        S.nfl.lg = nlg;
+        // los detalles (partido/equipo) llevan ids de la liga anterior; y Jugadores solo existe en NFL
+        if (S.view === 'nflgame' || S.view === 'nflteam' || S.view === 'nflplayer') { setHash('nflgames'); showView('nflgames'); }
+        else if (S.view === 'nflplayers' && nlg !== 'nfl') { setHash('nflgames'); showView('nflgames'); }
+        else showView(S.view);
+      }
+      return;
+    }
     var pl = e.target.closest('[data-nflplayer]');
     if (pl) { setHash('nflplayer/' + encodeURIComponent(pl.getAttribute('data-nflplayer'))); return; }
     if (e.target.closest('[data-nflplayersback]')) { setHash('nflplayers'); return; }

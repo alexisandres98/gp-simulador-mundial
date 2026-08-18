@@ -9884,6 +9884,28 @@ if (String(process.env.GP_NFL_JOBS_ENABLED || 'true') !== 'false') {
   };
   setTimeout(nflChain, 380 * 1000);
   setInterval(nflChain, 30 * 60 * 1000);
+  // Las otras dos ligas de fútbol americano (18-ago), con el mismo reloj y la misma condición de partidos
+  // a ≤9 días. En SERIE detrás de NFL (la lección del 15-ago: lo que tumba el proceso son trabajos
+  // concurrentes) y con resultados refrescados ANTES de liquidar. CFL juega YA; college desde el 29-ago.
+  const amfootChain = async () => {
+    try {
+      const AF = require('./amfoot-engine/store');
+      for (const lg of Object.keys(AF.LEAGUES)) {
+        await AF.refreshResults(lg).catch(() => { });
+        const M = AF.modelSnapshot(lg);
+        if (!M) continue;
+        const soon = M.data.games.some((g) => g.hp == null && Math.abs(Date.parse(g.date) - Date.now()) < 9 * 864e5);
+        if (!soon) continue;
+        memMark('amfoot:' + lg);
+        await AF.refreshOdds(lg, { force: true }).catch(() => { });
+        await AF.recordShadow(lg).catch(() => { });
+        await AF.settleShadow(lg).catch(() => { });
+      }
+      memMark('reposo');
+    } catch (e) { console.error('[amfoot-chain]', e.message); }
+  };
+  setTimeout(amfootChain, 420 * 1000);
+  setInterval(amfootChain, 30 * 60 * 1000);
 }
 
 // ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
@@ -15460,6 +15482,30 @@ const server = http.createServer(async (req, res) => {
     // modelo market-blind validado walk-forward contra el cierre 2017-2025, simulador conjunto con masa
     // real en los números clave, mercado multi-casa y TODAS las familias en sombra (NFL-1125). El motor
     // vive en nfl-engine/; acá solo hay rutas.
+    // ── FÚTBOL AMERICANO MÁS ALLÁ DE LA NFL (18-ago): NCAAF y CFL con los MISMOS DTOs que /api/nfl/*.
+    // La UI de la pestaña usa estas rutas cuando la liga seleccionada no es NFL. Mismo gate que NFL
+    // (admin-only mientras no exista flag público): todo corre en sombra y va al monitor privado.
+    if (p.startsWith('/api/amfoot/')) {
+      const uA = getUser(req);
+      const nflPublicA = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
+      if (!uA || !(uA.isAdmin || nflPublicA)) return json(res, 404, { error: 'No encontrado' });
+      const AF = require('./amfoot-engine/store');
+      const lgA = String(url.searchParams.get('league') || 'ncaaf').toLowerCase();
+      if (!AF.LEAGUES[lgA]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AF.LEAGUES) });
+      try {
+        if (p === '/api/amfoot/slate') return json(res, 200, await AF.slate(lgA, { days: Math.min(40, +(url.searchParams.get('days') || 12)) }));
+        if (p === '/api/amfoot/game') {
+          const out = await AF.gameIntel(lgA, String(url.searchParams.get('id') || ''));
+          if (!out) return json(res, 404, { error: 'partido no encontrado en la base' });
+          return json(res, 200, out);
+        }
+        if (p === '/api/amfoot/teams') return json(res, 200, AF.teamsDirectory(lgA));
+        if (p === '/api/amfoot/team') return json(res, 200, await AF.teamProfile(lgA, String(url.searchParams.get('id') || '')));
+        if (p === '/api/amfoot/model') return json(res, 200, AF.modelCard(lgA));
+        if (p === '/api/amfoot/track') return json(res, 200, AF.track(lgA));
+        return json(res, 404, { error: 'No encontrado' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p.startsWith('/api/nfl/')) {
       const uN = getUser(req);
       const nflPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
@@ -15542,6 +15588,16 @@ const server = http.createServer(async (req, res) => {
       });
       await step('model_card', async () => { const m = NFL.modelCard(); return { version: m.model_version, mae: m.validation && m.validation.overall && m.validation.overall.mae_margen_modelo }; });
       await step('track', async () => { const t = NFL.track(); return { open: t.open, settled: t.settled }; });
+      // las otras dos ligas de fútbol americano, en la misma sonda: un solo curl responde por la pestaña entera
+      const AF = require('./amfoot-engine/store');
+      for (const lgP of Object.keys(AF.LEAGUES)) {
+        await step('amfoot:' + lgP, async () => {
+          await AF.refreshResults(lgP).catch(() => null);
+          const x = await AF.slate(lgP, { days: 14 });
+          const t = AF.track(lgP);
+          return x.available ? { games: x.games.length, books: x.books, shadow_open: t.open, settled: t.settled } : x;
+        });
+      }
       out.ok = out.steps.every((x) => x.ok);
       return json(res, 200, out);
     }

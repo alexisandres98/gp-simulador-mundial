@@ -15998,7 +15998,11 @@ const server = http.createServer(async (req, res) => {
       if (!uF || !(uF.isAdmin || f1Public)) return json(res, 404, { error: 'No encontrado' });
       const F1 = require('./f1-engine/store');
       try {
-        if (p === '/api/f1/board') return json(res, 200, F1.raceBoard());
+        if (p === '/api/f1/board') {
+          const rd = url.searchParams.get('round');
+          return json(res, 200, F1.raceBoard(rd != null && rd !== '' ? +rd : undefined));
+        }
+        if (p === '/api/f1/calendar') return json(res, 200, F1.calendar());
         if (p === '/api/f1/standings') return json(res, 200, F1.standings());
         if (p === '/api/f1/drivers') return json(res, 200, F1.driversDirectory({ q: url.searchParams.get('q') || '' }));
         if (p === '/api/f1/driver') {

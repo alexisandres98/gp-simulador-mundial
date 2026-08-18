@@ -3619,3 +3619,84 @@ td .gx-calc-btn span { display: none; }
 .gx-amf-face img + i { display: none; }
 /* y el retrato manda sobre cualquier resto del contenedor */
 .gx-esp-ava img, .gx-f1-face img, .gx-ten-face img, .gx-amf-face img { z-index: 1; }
+
+/* ── TENIS: la capa de observación ───────────────────────────────────────────────────────────────────
+   La fila comparativa es el ladrillo: valor a la izquierda, dos barras que crecen hacia fuera desde la
+   etiqueta central, valor a la derecha. Se lee de un vistazo quién manda en cada cosa. */
+.gx-tcmp-head{display:flex;align-items:center;font-size:11px;opacity:.6;margin:2px 0 8px}
+.gx-tcmp{display:flex;align-items:center;gap:8px;margin:7px 0}
+.gx-tcmp-a,.gx-tcmp-b{font-size:12px;min-width:44px;opacity:.65}
+.gx-tcmp-b{text-align:right}
+.gx-tcmp-a.hi,.gx-tcmp-b.hi{opacity:1;font-weight:700;color:var(--gx-green,#1fe3a4)}
+.gx-tcmp-bars{flex:1;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px}
+.gx-tcmp-l,.gx-tcmp-r{height:6px;border-radius:3px;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
+.gx-tcmp-l i{position:absolute;right:0;top:0;bottom:0;background:var(--gx-green,#1fe3a4);opacity:.7;border-radius:3px}
+.gx-tcmp-r i{position:absolute;left:0;top:0;bottom:0;background:#7aa2ff;opacity:.7;border-radius:3px}
+.gx-tcmp-lab{font-size:9.5px;opacity:.5;white-space:nowrap;text-align:center}
+
+/* el camino al resultado: dos columnas de marcadores de set */
+.gx-tpath{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.gx-tpath-h{font-size:11px;opacity:.7;margin-bottom:6px;font-weight:600}
+.gx-tpath-h .gx-mono{opacity:.55;font-weight:400}
+.gx-tpath-row{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:11px}
+.gx-tpath-row b{min-width:26px}
+.gx-tpath-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden}
+.gx-tpath-bar i{display:block;height:100%;background:var(--gx-green,#1fe3a4);opacity:.65}
+.gx-tpath-row span.gx-mono{min-width:38px;text-align:right;opacity:.7}
+
+/* superficie */
+.gx-tsurf{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:6px;font-size:12px}
+.gx-tsurf.on{background:rgba(31,227,164,.07);box-shadow:inset 0 0 0 1px rgba(31,227,164,.18)}
+.gx-tsurf .gx-mono{min-width:60px}
+.gx-tsurf .gx-mono:last-child{text-align:right}
+.gx-tsurf .gx-mono.hi{color:var(--gx-green,#1fe3a4);font-weight:700}
+.gx-tsurf-n{flex:1;text-align:center;font-size:10.5px;opacity:.6}
+.gx-tsurf em{font-style:normal;font-size:10px}
+
+/* forma reciente */
+.gx-tform-side{margin-bottom:12px}
+.gx-tform-h{display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:6px}
+.gx-tform-streak{display:flex;gap:3px}
+.gx-tform-d{width:16px;height:16px;border-radius:4px;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.gx-tform-d.w{background:rgba(31,227,164,.18);color:var(--gx-green,#1fe3a4)}
+.gx-tform-d.l{background:rgba(229,72,77,.16);color:#e5484d}
+.gx-tform-row{display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-top:1px solid rgba(255,255,255,.04)}
+.gx-tform-opp{max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-tform-row .gx-mono{font-size:10.5px}
+
+/* h2h */
+.gx-ten-h2hlist{margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07)}
+.gx-ten-h2hrow{display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0}
+
+/* histograma: la barra de la línea de la casa se marca */
+.gx-ten-hbar.mk{background:linear-gradient(180deg,#7aa2ff,rgba(122,162,255,.25))}
+.gx-ten-mrow{display:flex;align-items:center;gap:9px;margin:6px 0}
+.gx-ten-mrow .gx-ten-name{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-ten-mrow .gx-ten-p{opacity:.6}
+.gx-ten-mrow .gx-ten-p.hi{opacity:1;font-weight:700;color:var(--gx-green,#1fe3a4)}
+
+/* ── F1: calendario de carreras y duelo ──────────────────────────────────────────────────────────────── */
+.gx-f1-cal{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.gx-f1-cal::-webkit-scrollbar{display:none}
+.gx-f1-calit{position:relative;flex:0 0 auto;min-width:78px;padding:7px 9px;border-radius:9px;cursor:pointer;
+  background:rgba(255,255,255,.04);border:1px solid transparent;text-align:left;color:inherit;font:inherit}
+.gx-f1-calit:hover{background:rgba(255,255,255,.07)}
+.gx-f1-calit.on{border-color:var(--gx-green,#1fe3a4);background:rgba(31,227,164,.09)}
+.gx-f1-calit b{display:block;font-size:11px}
+.gx-f1-calit span{display:block;font-size:10px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-f1-calit em{display:block;font-style:normal;font-size:9px;opacity:.45;margin-top:1px}
+.gx-f1-spr{position:absolute;top:5px;right:6px;font-style:normal;font-size:8px;font-weight:800;
+  background:rgba(229,168,77,.2);color:#e5a84d;border-radius:3px;padding:0 3px}
+.gx-f1-duelsel{display:flex;align-items:center;gap:8px;margin:8px 0}
+.gx-f1-duelsel select{flex:1;min-width:0;background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(255,255,255,.12);
+  border-radius:7px;padding:6px 8px;font-size:12px;font-family:inherit}
+.gx-f1-duelfaces{display:flex;align-items:center;gap:10px;margin:10px 0 4px}
+.gx-f1-duelbar{position:relative;flex:1;height:24px;border-radius:6px;background:rgba(122,162,255,.28);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.gx-f1-duelbar i{position:absolute;left:0;top:0;bottom:0;opacity:.85}
+.gx-f1-duelbar b{position:relative;font-size:11px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.gx-f1-duelname{display:flex;font-size:10.5px;opacity:.6;margin-bottom:8px}
+.gx-f1-dk{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font-size:12px}
+.gx-f1-dk .gx-mono{min-width:56px}
+.gx-f1-dk .gx-mono:last-child{text-align:right}
+.gx-f1-dk .gx-mono.hi{color:var(--gx-green,#1fe3a4);font-weight:700}
+.gx-f1-dk em{flex:1;text-align:center;font-style:normal;font-size:10px;opacity:.5}

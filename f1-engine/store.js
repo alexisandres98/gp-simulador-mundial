@@ -148,11 +148,40 @@ function badgeOf(cid) {
 }
 
 // ── COMMAND CENTER: la parrilla probabilística de la próxima carrera ────────────────────────────────────
-function raceBoard() {
+// EL CALENDARIO ENTERO (19-ago, pedido de Alexis: "no deberíamos solamente poder analizar la próxima
+// carrera sino todas las siguientes"). Devuelve las rondas restantes con lo poco que se sabe de cada una
+// —fecha, circuito, país, si tiene sprint— para que la pestaña pueda ofrecerlas y el gemelo corra sobre
+// la que se elija. La clasificación solo existe para la inmediata, así que las demás se simulan en estado
+// PRE-QUALI y se dice: es una lectura de coche y piloto, sin parrilla.
+function calendar() {
   const d = load();
+  const today = new Date().toISOString().slice(0, 10);
+  const races = (d.schedule.races || []).slice().sort((a, b) => a.round - b.round);
   const next = nextRace(d);
+  return {
+    available: !!races.length, season: d.schedule.season,
+    rows: races.map((r) => ({
+      round: r.round, season: r.season || d.schedule.season, name: r.name, date: r.date, time: r.time || null,
+      circuit: r.circuit, locality: r.locality, country: r.country, sprint: r.sprint || null,
+      done: r.date < today, is_next: !!(next && r.round === next.round),
+      days: Math.ceil((Date.parse(r.date + 'T12:00:00Z') - Date.now()) / 864e5),
+    })),
+    attribution: ATTRIB,
+  };
+}
+
+function raceBoard(round) {
+  const d = load();
+  // con ronda: esa carrera. Sin ronda: la próxima, como siempre.
+  const next = round != null
+    ? (d.schedule.races || []).find((r) => +r.round === +round) || nextRace(d)
+    : nextRace(d);
   if (!next) return { available: false, why: 'sin calendario' };
-  const { entries, state } = currentField(d, next);
+  const isNext = !round || (nextRace(d) || {}).round === +round;
+  const cf = currentField(d, next);
+  const entries = cf.entries;
+  // una ronda futura NO puede estar pos-clasificación aunque el overlay traiga la de la inmediata
+  const state = isNext ? cf.state : 'PRE_QUALI';
   const field = R.fieldFor(d.st, entries, { useGrid: state === 'POST_QUALI' });
   const simCfg = { ...d.priors.sim, gridW: state === 'POST_QUALI' ? d.priors.sim.gridW : 0, seed: next.season * 100 + next.round };
   const res = SIM.simulateRace(field, simCfg);
@@ -399,4 +428,4 @@ async function modelSnapshot() {
   };
 }
 
-module.exports = { coverage, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, DISK_DIR, DOCTRINE };
+module.exports = { coverage, calendar, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, DISK_DIR, DOCTRINE };

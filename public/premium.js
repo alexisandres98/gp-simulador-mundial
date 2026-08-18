@@ -1203,11 +1203,16 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    // TENIS Y F1 NO TENÍAN LISTA DE "MÁS" (19-ago): caían a la de fútbol, así que sus vistas propias no
+    // aparecían por ningún lado en móvil — ni en la barra de abajo ni en el menú de More.
+    var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books']
+      : isTen ? ['tenbrief', 'tenask', 'tensim', 'tenplayers', 'tenmodel', 'alerts', 'tenperf', 'refer', 'admin', 'bets', 'books']
+      : isF1 ? ['f1brief', 'f1ask', 'f1sim', 'f1drivers', 'f1model', 'alerts', 'refer', 'admin', 'bets', 'books']
+      : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
-      : isTen ? [['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tensim', 'adjustments', 'nav_sim'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
-      : isF1 ? [['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'], ['f1sim', 'adjustments', 'f1_nav_sim'], ['f1drivers', 'user', 'f1_nav_drivers'], ['__more', 'dots', 'more']]
+      : isTen ? [['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      : isF1 ? [['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'], ['f1drivers', 'user', 'f1_nav_drivers'], ['__more', 'dots', 'more']]
       : isEs
       ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
       : isHoops
@@ -2136,8 +2141,10 @@
     // banderas. Dos variables y la card entera —chip de familia, porqué, cuota, señales, stake— se reusa.
     // esports entra por la MISMA puerta que combate y baloncesto: un hash de apertura y un par de escudos.
     // Tres deportes usando el mismo mecanismo es la señal de que el mecanismo era el correcto.
-    var openHash = p.cb_hash || p.bb_hash || p.es_hash || null;
-    var avas = p.cb_avas || p.bb_logos || p.es_logos || null;
+    // el tenis entra por la MISMA puerta: un hash de apertura y un par de retratos. Ocho deportes con el
+    // mismo mecanismo es la señal de que el mecanismo era el correcto.
+    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || null;
+    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || null;
     var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
     var clickable = !!openId || !!openHash;
     var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
@@ -10868,8 +10875,26 @@
   }
 
   // ── LA CARRERA: hero + parrilla probabilística ──────────────────────────────────────────────────────
+  // EL SELECTOR DE CARRERA (19-ago): la pestaña solo sabía leer la próxima. Ahora el calendario entero
+  // está disponible y el gemelo corre sobre la que se elija; en una ronda futura no hay clasificación, así
+  // que el estado es PRE-QUALI y la pantalla lo dice — es una lectura de coche y piloto, no de parrilla.
+  function f1RaceBar() {
+    var cal = f1Get('cal', '/api/f1/calendar', 3600000);
+    if (!cal || !cal.rows) return '';
+    var up = cal.rows.filter(function (r) { return !r.done; });
+    if (up.length < 2) return '';
+    var sel = S.f1.round != null ? +S.f1.round : (up[0] && up[0].round);
+    return '<div class="gx-f1-cal">' + up.map(function (r) {
+      return '<button class="gx-f1-calit' + (r.round === sel ? ' on' : '') + '" data-f1round="' + r.round + '">' +
+        '<b>R' + r.round + '</b><span>' + esc((r.country || r.name || '').slice(0, 14)) + '</span>' +
+        '<em>' + (r.days <= 0 ? 'ahora' : r.days === 1 ? 'mañana' : 'en ' + r.days + 'd') + '</em>' +
+        (r.sprint ? '<i class="gx-f1-spr" title="fin de semana con sprint">S</i>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+
   function renderF1Race() {
-    var d = f1Get('board', '/api/f1/board', 300000);
+    var rq = S.f1.round != null ? '?round=' + S.f1.round : '';
+    var d = f1Get('board' + rq, '/api/f1/board' + rq, 300000);
     if (!d) { f1Shell(t('f1_nav_race'), f1Loading()); return; }
     if (!d.available) { f1Shell(t('f1_nav_race'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Sin calendario') + '</b></div></div>'); return; }
     var rc = d.race;
@@ -10906,7 +10931,7 @@
     var lens = S.f1.lens || 'carrera';
     var LENSES = [
       ['carrera', 'La carrera', f1GridDiagram(d) + grid],
-      ['modelo', 'El modelo', f1CarDriverMap(d) + f1RaceRisk(d)],
+      ['modelo', 'El modelo', f1Duel(d) + f1CarDriverMap(d) + f1RaceRisk(d)],
       ['contexto', 'Contexto', f1TeamStrip(d) + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>'],
     ];
     if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'carrera';
@@ -10914,7 +10939,63 @@
       return '<button data-f1lens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
     var act = LENSES.filter(function (x) { return x[0] === lens; })[0];
-    f1Shell(t('f1_nav_race'), hero + bar + act[2]);
+    f1Shell(t('f1_nav_race'), f1RaceBar() + hero + bar + act[2]);
+    // los <select> del duelo se escuchan por 'change' (el click no basta) y re-renderizan en el sitio
+    ['a', 'b'].forEach(function (k) {
+      var el = $('#gx-f1duel-' + k);
+      if (!el) return;
+      el.addEventListener('change', function () {
+        S.f1[k === 'a' ? 'duelA' : 'duelB'] = el.value;
+        renderF1Race();
+      });
+    });
+  }
+
+  // ── DUELO EN VIVO: dos pilotos, el mismo gemelo, respuesta inmediata ────────────────────────────────
+  // Lo interactivo que faltaba. Se eligen dos de la parrilla y la pantalla responde con quién queda por
+  // delante, cuánto separa a uno de otro y qué pasa con el abandono — todo de las MISMAS simulaciones que
+  // producen la parrilla, así que nunca contradice al panel de arriba.
+  function f1Duel(d) {
+    var rows = d.rows || [];
+    if (rows.length < 2) return '';
+    var aId = S.f1.duelA || rows[0].id, bId = S.f1.duelB || rows[1].id;
+    var A = rows.filter(function (x) { return x.id === aId; })[0] || rows[0];
+    var B = rows.filter(function (x) { return x.id === bId; })[0] || rows[1];
+    if (A.id === B.id) B = rows.filter(function (x) { return x.id !== A.id; })[0] || rows[1];
+    // P(A por delante de B) desde el orden esperado y la incertidumbre implícita de las probabilidades:
+    // se normaliza el head-to-head con las p_win de ambos, que es la lectura coherente con el simulador.
+    var wa = A.p_win || 0.0001, wb = B.p_win || 0.0001;
+    var ahead = (A.exp_finish != null && B.exp_finish != null)
+      ? 1 / (1 + Math.exp((A.exp_finish - B.exp_finish) / 2.2))
+      : wa / (wa + wb);
+    var opt = function (r, cur, key) {
+      return '<option value="' + esc(r.id) + '"' + (r.id === cur ? ' selected' : '') + '>' + esc(r.name) + '</option>';
+    };
+    var kpi = function (lab, va, vb, f) {
+      var fa = f(va), fb = f(vb);
+      return '<div class="gx-f1-dk"><span class="gx-mono' + ((va || 0) >= (vb || 0) ? ' hi' : '') + '">' + fa + '</span>' +
+        '<em>' + esc(lab) + '</em><span class="gx-mono' + ((vb || 0) > (va || 0) ? ' hi' : '') + '">' + fb + '</span></div>';
+    };
+    var pctF = function (v) { return v == null ? '—' : (100 * v).toFixed(1) + '%'; };
+    var posF = function (v) { return v == null ? '—' : 'P' + v.toFixed(1); };
+    return '<div class="gx-panel gx-f1-duel"><div class="gx-ph"><span class="gx-label">Duelo</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">de las mismas simulaciones</span></div>' +
+      '<div class="gx-f1-duelsel">' +
+        '<select id="gx-f1duel-a" data-f1duelsel="a">' + rows.map(function (r) { return opt(r, A.id); }).join('') + '</select>' +
+        '<span class="gx-dim">vs</span>' +
+        '<select id="gx-f1duel-b" data-f1duelsel="b">' + rows.map(function (r) { return opt(r, B.id); }).join('') + '</select>' +
+      '</div>' +
+      '<div class="gx-f1-duelfaces">' + f1Face(A, 'big') +
+        '<div class="gx-f1-duelbar"><i style="width:' + Math.round(100 * ahead) + '%;background:' + esc(A.color || '#888') + '"></i>' +
+        '<b class="gx-mono">' + Math.round(100 * ahead) + '% · ' + Math.round(100 * (1 - ahead)) + '%</b></div>' +
+        f1Face(B, 'big') + '</div>' +
+      '<div class="gx-f1-duelname"><span>' + esc(A.name) + '</span><span class="gx-spacer"></span><span>' + esc(B.name) + '</span></div>' +
+      kpi('gana la carrera', A.p_win, B.p_win, pctF) +
+      kpi('podio', A.p_podium, B.p_podium, pctF) +
+      kpi('puntos', A.p_points, B.p_points, pctF) +
+      kpi('posición esperada', B.exp_finish, A.exp_finish, function (v) { return posF(v === B.exp_finish ? B.exp_finish : A.exp_finish); }) +
+      '<div class="gx-f1-dk"><span class="gx-mono">' + pctF(A.p_dnf) + '</span><em>riesgo de abandono</em><span class="gx-mono">' + pctF(B.p_dnf) + '</span></div>' +
+      '<div class="gx-dim gx-es-note">"Por delante" sale del orden esperado de las dos, no de quién gana: en F1 la mayoría de los duelos se resuelven en mitad de la parrilla, donde ganar la carrera no es la pregunta.</div></div>';
   }
 
   // RIESGO DE LA CARRERA: abandono y ganancia esperada de posiciones, que es donde el gemelo es fuerte
@@ -11192,6 +11273,10 @@
     if (sl) { var sid = sl.getAttribute('data-f1slot'); S.f1.gridSel = (S.f1.gridSel === sid ? null : sid); renderF1Race(); return; }
     var ln = e.target.closest('[data-f1lens]');
     if (ln) { S.f1.lens = ln.getAttribute('data-f1lens'); renderF1Race(); return; }
+    var rr = e.target.closest('[data-f1round]');
+    if (rr) { S.f1.round = +rr.getAttribute('data-f1round'); S.f1.gridSel = null; renderF1Race(); return; }
+    var ds = e.target.closest('[data-f1duelsel]');
+    if (ds) { return; }   // los <select> se escuchan por 'change', no por click
     var dr = e.target.closest('[data-f1driver]');
     if (dr) { setHash('f1driver/' + dr.getAttribute('data-f1driver')); return; }
     var st = e.target.closest('[data-f1st]');
@@ -11307,6 +11392,7 @@
       });
     });
     theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
+    var arbN = 0;
     var top = theses[0];
     var strip = '<div class="gx-estop">' +
       '<div class="gx-panel gx-estop-c' + (top ? ' on' : '') + '"><div class="gx-label">' + ic('target-arrow') + 'Tesis del día</div>' +
@@ -11325,9 +11411,12 @@
         '<b>' + (rows.length ? 'Ninguna línea pasa el listón ahora mismo.' : 'Sin torneos con cuotas activas en la ventana.') + '</b>' +
         '<span class="gx-dim">' + esc(rows.length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido.' : (d.note || '')) + '</span></div></div>';
     } else {
-      body = '<div class="gx-picks-feed">' + theses.map(function (x) {
-        return tenThesisCard(x.r, x.c);
-      }).join('') + '</div>';
+      // LA MISMA CARD QUE FÚTBOL, COMBATE, BALONCESTO Y ESPORTS: `pickCard()` tal cual. El motor ya emite
+      // los campos con esa forma (`row.picks`), así que aquí no se traduce nada.
+      var cards = [];
+      rows.forEach(function (r) { (r.picks || []).forEach(function (pk) { cards.push(pk); }); });
+      cards.sort(function (a, b) { return (b.edge_pp || 0) - (a.edge_pp || 0); });
+      body = '<div class="gx-picks-feed">' + cards.map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>';
     }
     tenShell(t('nav_opps'), tenTourBar() + strip + body +
       '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc((d.doctrine || '').slice(0, 260)) + '</span></div>');
@@ -11362,42 +11451,94 @@
   // ── PARTIDOS: el tablero desde el feed de cuotas (modelo vs mercado, todo en sombra) ─────────────────
   function renderTenGames() {
     var d = tenGet('board_' + tenTour(), '/api/tennis/board?tour=' + tenTour(), 120000);
-    if (!d) { tenShell(t('ten_nav_games'), tenLoading()); return; }
-    if (d._err) { tenShell(t('ten_nav_games'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
-    var rows = d.rows || [];
-    var body = rows.length ? rows.map(function (r) {
-      var gp = r.gp || {};
-      var pA = gp.p_a, mkA = r.market && r.market.ml_p_a;
-      var when = new Date(r.commence);
-      var whenTxt = when.toLocaleDateString(S.lang === 'en' ? 'en-GB' : 'es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + when.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false }) + 'h';
-      var bar = pA != null
-        ? '<div class="gx-ten-bar"><i style="width:' + Math.round(100 * pA) + '%"></i>' + (mkA != null ? '<em style="left:' + Math.round(100 * mkA) + '%"></em>' : '') + '</div>'
-        : '';
-      // LA TARJETA SE ABRE (19-ago): antes era un bloque muerto — el usuario tocaba y no pasaba nada.
-      return '<div class="gx-panel gx-ten-card' + (r.available ? ' clk' : '') + '"' + (r.available ? ' data-tenmatch="' + esc(r.id) + '"' : '') + '>' +
-        '<div class="gx-ten-head"><span class="gx-dim">' + esc(r.tourney || '') + ' · ' + esc(r.surface || '') + (r.best_of === 5 ? ' · bo5' : '') + '</span><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(whenTxt) + '</span></div>' +
-        '<div class="gx-ten-row">' + tenFace({ name: r.a, photo: r.photo_a }) + '<b class="gx-ten-name">' + esc(r.a) + '</b>' +
-          '<span class="gx-mono gx-ten-p' + (pA != null && pA >= 0.5 ? ' hi' : '') + '">' + tenPct(pA) + '</span></div>' +
-        '<div class="gx-ten-row">' + tenFace({ name: r.b, photo: r.photo_b }) + '<b class="gx-ten-name">' + esc(r.b) + '</b>' +
-          '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span></div>' +
-        bar +
-        '<div class="gx-ten-meta gx-dim">' +
-          (mkA != null ? '<span>mercado ' + tenPct(mkA) + ' · ' + (r.market.books || 0) + ' casas</span>' : '<span>sin consenso de mercado</span>') +
-          (gp.exp_games != null ? '<span>' + gp.exp_games.toFixed ? gp.exp_games.toFixed(1) : gp.exp_games + ' juegos esp.</span>' : '') +
-          (gp.tb_any != null ? '<span>TB ' + tenPct(gp.tb_any) + '</span>' : '') +
-          (r.shadow_n ? '<span class="gx-ten-shadow">' + r.shadow_n + ' en sombra</span>' : '') +
-          (!r.available && r.why ? '<span>' + esc(r.why) + '</span>' : '') +
-        '</div></div>';
-    }).join('') : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin torneos con cuotas activas en la ventana.</b><span class="gx-dim">' + esc(d.note || 'The Odds API publica por torneo: los siguientes se abren solos cuando arrancan.') + '</span></div></div>';
+    if (!d) { tenShell(t('ten_nav_games'), tenTourBar() + tenLoading()); return; }
+    if (d._err) { tenShell(t('ten_nav_games'), tenTourBar() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
+
+    // EL FORMATO DE LA CASA (19-ago, pedido de Alexis: "entra a baloncesto o a fútbol y mira cómo es el que
+    // usamos y cópialo adaptado a tenis"). Es la misma gramática del calendario de fútbol: cabecera con
+    // filtros y buscador, partidos AGRUPADOS POR DÍA con su cuenta, y una `gx-mcard` por partido con hora,
+    // torneo, los dos jugadores, la lectura de GP y un pie con la señal y la llamada a analizar.
+    var q = (S.ten.mQ || '').toLowerCase().trim();
+    var filt = S.ten.mFilt || 'all';
+    var now = Date.now();
+    var items = (d.rows || []).filter(function (r) {
+      if (q && (r.a + ' ' + r.b + ' ' + (r.tourney || '')).toLowerCase().indexOf(q) < 0) return false;
+      var ko = Date.parse(r.commence || 0);
+      var bucket = ko <= now ? 'live' : 'up';
+      if (filt !== 'all' && filt !== bucket) return false;
+      return true;
+    }).sort(function (x, y) { return Date.parse(x.commence || 0) - Date.parse(y.commence || 0); });
+
+    var tabs = [['all', t('all')], ['live', t('live_f')], ['up', t('upcoming_f')]];
+    var head = '<div class="gx-ohead"><h1>' + esc(t('ten_nav_games')) + '</h1>' +
+      '<div class="gx-seg">' + tabs.map(function (x) {
+        return '<button data-tenmfilt="' + x[0] + '"' + (filt === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-tenmsearch" placeholder="Buscar jugador o torneo…" value="' + esc(S.ten.mQ || '') + '" autocomplete="off"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + items.length + ' partidos</span></div>';
+
+    var body;
+    if (!items.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') +
+        '<b>' + ((d.rows || []).length ? 'Ningún partido con ese filtro.' : 'Sin torneos con cuotas activas en la ventana.') + '</b>' +
+        '<span class="gx-dim">' + esc((d.rows || []).length ? '' : (d.note || '')) + '</span></div></div>';
+    } else {
+      var groups = [], gmap = {};
+      items.forEach(function (r) {
+        var k = dayKey(r.commence);
+        if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(r.commence), rows: [] }; groups.push(gmap[k]); }
+        gmap[k].rows.push(r);
+      });
+      body = groups.map(function (g) {
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(g.label) + '</span><span class="gx-dim">' + g.rows.length + '</span></div>' +
+          g.rows.map(tenMatchCard).join('') + '</div>';
+      }).join('');
+    }
     body += '<div class="gx-dim gx-es-trunc">Todas las familias de tenis corren EN SOMBRA: nada de esto es una pick. ' + TEN_ATTRIB + '</div>';
-    tenShell(t('ten_nav_games'), body);
+    tenShell(t('ten_nav_games'), tenTourBar() + head + body);
+    var si = $('#gx-tenmsearch');
+    if (si) si.addEventListener('input', function () {
+      S.ten.mQ = si.value; clearTimeout(S._tenmq);
+      S._tenmq = setTimeout(function () { renderTenGames(); var e2 = $('#gx-tenmsearch'); if (e2) { e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }, 260);
+    });
+  }
+
+  // la tarjeta de partido con la anatomía de `gx-mcard` del calendario de fútbol, adaptada al tenis:
+  // en vez de escudo y marcador, retrato y la probabilidad de cada lado.
+  function tenMatchCard(r) {
+    var gp = r.gp || {}, pA = gp.p_a, mkA = r.market && r.market.ml_p_a;
+    var ko = Date.parse(r.commence || 0);
+    var live = ko && ko <= Date.now();
+    var nP = (r.picks || []).length;
+    var bar = pA != null
+      ? '<div class="gx-ten-bar"><i style="width:' + Math.round(100 * pA) + '%"></i>' + (mkA != null ? '<em style="left:' + Math.round(100 * mkA) + '%" title="consenso de mercado"></em>' : '') + '</div>'
+      : '';
+    return '<div class="gx-mcard' + (r.available ? ' clk' : '') + '"' + (r.available ? ' data-tenmatch="' + esc(r.id) + '"' : '') + '>' +
+      '<div class="gx-mcard-top"><span class="gx-time">' + (r.commence ? esc(fmtTime(r.commence)) + ' · ' : '') + esc(r.tourney || '') + '</span>' +
+      '<span class="gx-spacer"></span>' +
+      (live ? '<span class="gx-badge gx-b-live">en juego</span>' : '') +
+      '<span class="gx-dim" style="font-size:10.5px">' + esc(r.surface || '') + (r.best_of === 5 ? ' · bo5' : '') + '</span></div>' +
+      '<div class="gx-ten-mrow">' + tenFace({ name: r.a, photo: r.photo_a }) +
+        '<b class="gx-ten-name">' + esc(r.a) + '</b>' +
+        '<span class="gx-mono gx-ten-p' + (pA != null && pA >= 0.5 ? ' hi' : '') + '">' + tenPct(pA) + '</span></div>' +
+      '<div class="gx-ten-mrow">' + tenFace({ name: r.b, photo: r.photo_b }) +
+        '<b class="gx-ten-name">' + esc(r.b) + '</b>' +
+        '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span></div>' +
+      bar +
+      '<div class="gx-mcard-foot"><span class="gx-dim" style="font-size:10.5px">' +
+        (mkA != null ? 'mercado ' + tenPct(mkA) + ' · ' + (r.books || 0) + ' casas' : (r.available ? 'sin consenso de mercado' : esc(r.why || 'fuera de la base'))) +
+        (gp.exp_games != null ? ' · ' + gp.exp_games.toFixed(1) + ' juegos esp.' : '') +
+        (nP ? ' · <b class="gx-ten-shadow">' + nP + ' en sombra</b>' : '') +
+      '</span><span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span></div></div>';
   }
 
   // ── EL PANEL DE INTELIGENCIA DE UN PARTIDO ──────────────────────────────────────────────────────────
-  // No existía: las tarjetas del tablero no se podían abrir. Y es justo donde vive lo único que el tenis
-  // tiene y ningún otro deporte de la casa — el COMPILADOR EXACTO de puntuación. Aquí se ve entero: el
-  // duelo de saque y resto (que es de lo que se compone todo lo demás), la distribución de marcadores de
-  // set, la de juegos totales, el h2h medido y las tesis con su veredicto.
+  // Alexis: "está súper pobre, no tiene casi nada… quiero una capa de observación mejor que la de fútbol,
+  // más data, más análisis, una capa masiva de contexto". Esto es esa capa. Todo lo que se pinta aquí ya
+  // lo calculaba el motor y no se enseñaba: el compilador exacto de puntuación, los índices de saque y
+  // resto ajustados por rival, el Elo POR SUPERFICIE, el perfil de saque de carrera (aces, dobles, primeros
+  // dentro, puntos ganados, bolas de break salvadas), la forma reciente partido a partido con marcador, el
+  // registro por superficie y el historial directo. Tres lentes, doce paneles.
   function renderTenMatch() {
     var id = S.ten.matchId;
     var d = tenGet('m_' + id, '/api/tennis/match?id=' + encodeURIComponent(id), 120000);
@@ -11408,73 +11549,30 @@
         '<b>' + esc(d.why || 'sin lectura') + '</b><span class="gx-dim">' + esc((d.a_ref || '') + ' vs ' + (d.b_ref || '')) + '</span></div></div>');
       return;
     }
-    var pa = d.p_a;
+    var pa = d.p_a, pr = d.profiles || {}, A = pr.a || {}, B = pr.b || {};
     var hero = '<div class="gx-panel gx-ten-hero">' +
-      '<div class="gx-ten-herotop"><span class="gx-dim">' + esc([d.tourney, d.surface, d.best_of === 5 ? 'al mejor de 5' : 'al mejor de 3'].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<div class="gx-ten-herotop"><span class="gx-dim">' + esc([d.tourney, d.surface, d.best_of === 5 ? 'al mejor de 5' : 'al mejor de 3'].filter(Boolean).join(' · ')) + '</span>' +
+      (d.commence ? '<span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(fmtDateTime(d.commence)) + '</span>' : '') + '</div>' +
       '<div class="gx-ten-vs">' +
-        '<div class="gx-ten-side" data-tenplayer="' + esc(d.a.id) + '">' + tenFace(d.a, 'big') + '<b>' + esc(d.a.name) + '</b><em class="gx-mono">' + tenPct(pa) + '</em></div>' +
+        '<div class="gx-ten-side" data-tenplayer="' + esc(d.a.id) + '">' + tenFace(d.a, 'big') + '<b>' + esc(d.a.name) + '</b><em class="gx-mono">' + tenPct(pa) + '</em>' +
+          '<span class="gx-dim" style="font-size:10px">' + esc([A.country, A.rank ? '#' + A.rank : null].filter(Boolean).join(' · ')) + '</span></div>' +
         '<span class="gx-ten-vsx">vs</span>' +
-        '<div class="gx-ten-side b" data-tenplayer="' + esc(d.b.id) + '">' + tenFace(d.b, 'big') + '<b>' + esc(d.b.name) + '</b><em class="gx-mono">' + tenPct(1 - pa) + '</em></div>' +
+        '<div class="gx-ten-side b" data-tenplayer="' + esc(d.b.id) + '">' + tenFace(d.b, 'big') + '<b>' + esc(d.b.name) + '</b><em class="gx-mono">' + tenPct(1 - pa) + '</em>' +
+          '<span class="gx-dim" style="font-size:10px">' + esc([B.country, B.rank ? '#' + B.rank : null].filter(Boolean).join(' · ')) + '</span></div>' +
       '</div>' +
       '<div class="gx-ten-bar"><i style="width:' + Math.round(100 * pa) + '%"></i>' +
         (d.market && d.market.ml_p_a != null ? '<em style="left:' + Math.round(100 * d.market.ml_p_a) + '%" title="consenso de mercado"></em>' : '') + '</div>' +
       '<div class="gx-ten-meta gx-dim">' +
         (d.market && d.market.ml_p_a != null ? '<span>mercado ' + tenPct(d.market.ml_p_a) + ' · ' + (d.books || 0) + ' casas</span>' : '<span>sin consenso</span>') +
         '<span>' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + ' juegos esperados</span>' +
-        '<span>TB ' + tenPct(d.tb_any) + '</span></div></div>';
-
-    // OBJETO FIRMA: el duelo saque-resto. Todo lo demás del modelo se compila DESDE estos cuatro números.
-    var du = d.duel || {};
-    var srv = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El duelo: saque contra resto</span>' +
-      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">de aquí se compila todo lo demás</span></div>' +
-      '<div class="gx-ten-duel">' +
-        tenDuelRow('Conserva su saque', du.hold_a, du.hold_b, d) +
-        tenDuelRow('Rompe el del otro', du.break_a, du.break_b, d) +
-      '</div>' +
-      '<div class="gx-dim gx-es-note">El compilador va punto → juego → set → partido con la alternancia real del saque y el desempate resuelto exacto, no simulado.</div></div>';
-
-    // distribución de juegos totales: la curva propia, no la escalera de la casa
-    var tg = (du.total_games || []).slice().sort(function (x, y) { return x[0] - y[0]; });
-    var games = '';
-    if (tg.length > 3) {
-      var mx = Math.max.apply(null, tg.map(function (x) { return x[1]; }));
-      games = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Juegos totales</span>' +
-        '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">distribución propia · media ' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + '</span></div>' +
-        '<div class="gx-ten-hist">' + tg.map(function (x) {
-          return '<span class="gx-ten-hbar" title="' + x[0] + ' juegos · ' + (100 * x[1]).toFixed(1) + '%" style="height:' + Math.max(3, Math.round(100 * x[1] / mx)) + '%"></span>';
-        }).join('') + '</div>' +
-        '<div class="gx-ten-haxis gx-dim"><span>' + tg[0][0] + '</span><span>' + tg[tg.length - 1][0] + '</span></div></div>';
-    }
-
-    // marcadores de set exactos: lo que ninguna casa publica y el compilador sí sabe
-    var ss = du.set_scores || null;
-    var sets = '';
-    if (ss && Object.keys(ss).length) {
-      var arr = Object.keys(ss).map(function (k) { return [k, ss[k]]; }).sort(function (x, y) { return y[1] - x[1]; }).slice(0, 8);
-      sets = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Marcadores de set más probables</span></div>' +
-        '<div class="gx-ten-scores">' + arr.map(function (x) {
-          return '<div class="gx-ten-score"><b class="gx-mono">' + esc(x[0]) + '</b><span class="gx-mono">' + (100 * x[1]).toFixed(1) + '%</span></div>';
-        }).join('') + '</div></div>';
-    }
-
-    var h = d.h2h || {};
-    var h2hP = (h.n ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Historial directo</span>' +
-      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + h.n + ' partidos medidos</span></div>' +
-      '<div class="gx-ten-h2h"><b class="gx-mono">' + (h.w_a != null ? h.w_a : '—') + '</b><span class="gx-dim">' + esc(d.a.name) + '</span>' +
-      '<span class="gx-spacer"></span><span class="gx-dim">' + esc(d.b.name) + '</span><b class="gx-mono">' + (h.w_b != null ? h.w_b : '—') + '</b></div></div>' : '');
-
-    var cands = (d.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK'; });
-    var th = cands.length ? '<div class="gx-picks-feed">' + cands.map(function (c) {
-      return tenThesisCard({ id: d.id, a: d.a.name, b: d.b.name, tourney: d.tourney }, c);
-    }).join('') + '</div>' : '';
-    var noPick = !cands.length ? '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-      '<b>Ninguna línea de este partido pasa el listón.</b><span class="gx-dim">El motor valoró las abiertas y ninguna supera su propio ruido.</span></div></div>' : '';
+        '<span>TB ' + tenPct(d.tb_any) + '</span>' +
+        ((d.picks || []).length ? '<span class="gx-ten-shadow">' + d.picks.length + ' tesis</span>' : '') + '</div></div>';
 
     var lens = S.ten.lens || 'partido';
     var LENSES = [
-      ['partido', 'El partido', srv + games + sets],
-      ['tesis', 'Las tesis', th + noPick],
-      ['contexto', 'Contexto', h2hP + tenProfPanel(d)],
+      ['partido', 'El partido', tenDuelPanel(d) + tenPathPanel(d) + tenGamesPanel(d) + tenScoresPanel(d)],
+      ['modelo', 'El modelo', tenSurfacePanel(d, A, B) + tenIndexPanel(d, A, B) + tenPicksPanel(d)],
+      ['contexto', 'Contexto', tenH2HPanel(d) + tenFormPanel(d, A, B) + tenServePanel(d, A, B) + tenSurfWLPanel(d, A, B)],
     ];
     if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partido';
     var bar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
@@ -11485,29 +11583,201 @@
       '<div class="gx-dim gx-es-trunc">Todo en sombra: nada de esto es una pick. ' + TEN_ATTRIB + '</div>');
   }
 
-  function tenDuelRow(label, va, vb, d) {
-    var a = va == null ? 0 : va, b = vb == null ? 0 : vb;
-    return '<div class="gx-ten-drow"><span class="gx-ten-dlab">' + esc(label) + '</span>' +
-      '<div class="gx-ten-dbars">' +
-        '<div class="gx-ten-dbar a"><i style="width:' + Math.round(100 * a) + '%"></i><em class="gx-mono">' + tenPct(va) + '</em></div>' +
-        '<div class="gx-ten-dbar b"><i style="width:' + Math.round(100 * b) + '%"></i><em class="gx-mono">' + tenPct(vb) + '</em></div>' +
-      '</div></div>';
+  // fila comparativa de dos valores, con la barra proporcional de cada lado — el ladrillo de toda la capa
+  function tenCmp(label, va, vb, fmt, hint) {
+    var f = fmt || function (v) { return v == null ? '—' : v; };
+    var na = typeof va === 'number' ? va : 0, nb = typeof vb === 'number' ? vb : 0;
+    var mx = Math.max(na, nb) || 1;
+    return '<div class="gx-tcmp"' + (hint ? ' title="' + esc(hint) + '"' : '') + '>' +
+      '<span class="gx-tcmp-a gx-mono' + (na > nb ? ' hi' : '') + '">' + esc(String(f(va))) + '</span>' +
+      '<div class="gx-tcmp-bars"><div class="gx-tcmp-l"><i style="width:' + Math.round(100 * na / mx) + '%"></i></div>' +
+      '<span class="gx-tcmp-lab">' + esc(label) + '</span>' +
+      '<div class="gx-tcmp-r"><i style="width:' + Math.round(100 * nb / mx) + '%"></i></div></div>' +
+      '<span class="gx-tcmp-b gx-mono' + (nb > na ? ' hi' : '') + '">' + esc(String(f(vb))) + '</span></div>';
+  }
+  var tenPctF = function (v) { return v == null ? '—' : Math.round(100 * v) + '%'; };
+  var tenNumF = function (v) { return v == null ? '—' : (Math.round(v * 10) / 10); };
+
+  // 1) EL DUELO: de estos cuatro números se compila TODO lo demás
+  function tenDuelPanel(d) {
+    var du = d.duel || {};
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El duelo: saque contra resto</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">de aquí se compila todo lo demás</span></div>' +
+      '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
+      tenCmp('conserva su saque', du.hold_a, du.hold_b, tenPctF, 'probabilidad de ganar un juego con su servicio') +
+      tenCmp('rompe el del rival', du.break_a, du.break_b, tenPctF, 'probabilidad de quebrar el saque contrario') +
+      '<div class="gx-dim gx-es-note">El compilador va punto → juego → set → partido con la alternancia real del saque y el desempate resuelto de forma exacta, no simulado. Los porcentajes están ajustados por rival: no son la media del jugador, son lo que le sale CONTRA ESTE.</div></div>';
   }
 
-  function tenProfPanel(d) {
-    var pr = d.profiles || {};
-    var one = function (p, who) {
-      if (!p || !p.available) return '';
-      return '<div class="gx-ten-prof" data-tenplayer="' + esc(who.id) + '">' + tenFace(who) +
-        '<div class="gx-ten-profid"><b>' + esc(who.name) + '</b>' +
-        '<span class="gx-dim">' + esc([p.country, p.hand === 'L' ? 'zurdo' : p.hand === 'R' ? 'diestro' : null].filter(Boolean).join(' · ')) + '</span></div>' +
-        '<span class="gx-spacer"></span>' +
-        '<div class="gx-ten-profk"><em class="gx-mono">' + (p.elo != null ? Math.round(p.elo) : '—') + '</em><span>Elo GP</span></div></div>';
+  // 2) EL CAMINO: cómo se llega al resultado, set a set
+  function tenPathPanel(d) {
+    var ss = (d.duel || {}).set_scores || null;
+    if (!ss || !Object.keys(ss).length) return '';
+    var keys = Object.keys(ss);
+    var aWin = keys.filter(function (k) { var p = k.split('-'); return +p[0] > +p[1]; });
+    var bWin = keys.filter(function (k) { var p = k.split('-'); return +p[0] < +p[1]; });
+    var sum = function (arr) { return arr.reduce(function (t2, k) { return t2 + (ss[k] || 0); }, 0); };
+    var row = function (k) {
+      var v = ss[k] || 0;
+      return '<div class="gx-tpath-row"><b class="gx-mono">' + esc(k) + '</b>' +
+        '<div class="gx-tpath-bar"><i style="width:' + Math.round(100 * v / Math.max.apply(null, keys.map(function (x) { return ss[x]; }))) + '%"></i></div>' +
+        '<span class="gx-mono">' + (100 * v).toFixed(1) + '%</span></div>';
     };
-    var body = one(pr.a, d.a) + one(pr.b, d.b);
-    if (!body) return '';
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los dos jugadores</span></div>' + body + '</div>';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El camino al resultado</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">marcador de sets · del compilador</span></div>' +
+      '<div class="gx-tpath"><div><div class="gx-tpath-h">' + esc(d.a.name.split(' ').slice(-1)[0]) + ' <span class="gx-mono">' + (100 * sum(aWin)).toFixed(0) + '%</span></div>' +
+      aWin.sort(function (x, y) { return ss[y] - ss[x]; }).map(row).join('') + '</div>' +
+      '<div><div class="gx-tpath-h">' + esc(d.b.name.split(' ').slice(-1)[0]) + ' <span class="gx-mono">' + (100 * sum(bWin)).toFixed(0) + '%</span></div>' +
+      bWin.sort(function (x, y) { return ss[y] - ss[x]; }).map(row).join('') + '</div></div>' +
+      '<div class="gx-dim gx-es-note">Ninguna casa publica el marcador exacto de sets con esta granularidad: sale del mismo compilador que produce el ganador, así que es coherente con él por construcción.</div></div>';
   }
+
+  // 3) LOS JUEGOS: la curva entera, no la escalera de líneas de la casa
+  function tenGamesPanel(d) {
+    var tg = ((d.duel || {}).total_games || []).slice().sort(function (x, y) { return x[0] - y[0]; });
+    if (tg.length < 4) return '';
+    var mx = Math.max.apply(null, tg.map(function (x) { return x[1]; }));
+    var mkLine = d.market && d.market.total_line;
+    var cum = 0, med = null;
+    for (var i = 0; i < tg.length; i++) { cum += tg[i][1]; if (med == null && cum >= 0.5) med = tg[i][0]; }
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Juegos totales</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">distribución propia · media ' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + (med != null ? ' · mediana ' + med : '') + '</span></div>' +
+      '<div class="gx-ten-hist">' + tg.map(function (x) {
+        var on = mkLine != null && Math.abs(x[0] - mkLine) < 1.01;
+        return '<span class="gx-ten-hbar' + (on ? ' mk' : '') + '" title="' + x[0] + ' juegos · ' + (100 * x[1]).toFixed(1) + '%" style="height:' + Math.max(3, Math.round(100 * x[1] / mx)) + '%"></span>';
+      }).join('') + '</div>' +
+      '<div class="gx-ten-haxis gx-dim"><span>' + tg[0][0] + '</span>' + (mkLine != null ? '<span class="gx-mono">línea de la casa ' + mkLine + '</span>' : '<span></span>') + '<span>' + tg[tg.length - 1][0] + '</span></div>' +
+      '<div class="gx-dim gx-es-note">La casa cotiza dos o tres líneas; el modelo tiene la curva completa, así que puede opinar de cualquier corte y no solo de los que alguien decidió publicar.</div></div>';
+  }
+
+  // 4) MARCADORES DE SET más probables
+  function tenScoresPanel(d) {
+    var ss = (d.duel || {}).set_scores || null;
+    if (!ss || !Object.keys(ss).length) return '';
+    var arr = Object.keys(ss).map(function (k) { return [k, ss[k]]; }).sort(function (x, y) { return y[1] - x[1]; }).slice(0, 8);
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los ocho marcadores más probables</span></div>' +
+      '<div class="gx-ten-scores">' + arr.map(function (x) {
+        return '<div class="gx-ten-score"><b class="gx-mono">' + esc(x[0]) + '</b><span class="gx-mono">' + (100 * x[1]).toFixed(1) + '%</span></div>';
+      }).join('') + '</div></div>';
+  }
+
+  // 5) ELO POR SUPERFICIE — lo que separa al tenis de cualquier otro deporte de la casa
+  function tenSurfacePanel(d, A, B) {
+    var ea = A.elo_surf || [], eb = B.elo_surf || [];
+    if (!ea.length && !eb.length) return '';
+    var rows = ea.map(function (x, i) {
+      var vb = (eb[i] || {}).elo;
+      var here = x.surface === d.surface;
+      return '<div class="gx-tsurf' + (here ? ' on' : '') + '">' +
+        '<span class="gx-mono' + ((x.elo || 0) > (vb || 0) ? ' hi' : '') + '">' + (x.elo != null ? x.elo : '—') + '</span>' +
+        '<span class="gx-tsurf-n">' + esc(x.surface) + (here ? ' · aquí' : '') + '</span>' +
+        '<span class="gx-mono' + ((vb || 0) > (x.elo || 0) ? ' hi' : '') + '">' + (vb != null ? vb : '—') + '</span></div>';
+    }).join('');
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Elo por superficie</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">un rating por superficie, no uno global</span></div>' +
+      '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
+      rows +
+      '<div class="gx-dim gx-es-note">Un jugador no es el mismo en tierra que en pista rápida, y el modelo no lo trata como si lo fuera: el Elo de superficie entra con su propio peso, validado fuera de muestra.</div></div>';
+  }
+
+  // 6) ÍNDICES DE SAQUE Y RESTO (100 = media del tour, ajustado por rival)
+  function tenIndexPanel(d, A, B) {
+    if (A.serve_index == null && B.serve_index == null) return '';
+    var f = function (v) { return v == null ? '—' : v.toFixed ? v.toFixed(1) : v; };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Índices de saque y resto</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">100 = media del tour</span></div>' +
+      '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
+      tenCmp('saque', A.serve_index, B.serve_index, f, 'puntos ganados al saque frente a la media, ajustado por la calidad de los rivales') +
+      tenCmp('resto', A.return_index, B.return_index, f, 'puntos ganados al resto frente a la media, ajustado por la calidad de los rivales') +
+      '<div class="gx-dim gx-es-note">' + esc(A.index_note || 'Ajustados por rival y validados fuera de muestra. La composición interna es reservada.') + '</div></div>';
+  }
+
+  // 7) LAS TESIS, con la card de la casa
+  function tenPicksPanel(d) {
+    var pk = d.picks || [];
+    if (!pk.length) {
+      return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Ninguna línea de este partido pasa el listón.</b>' +
+        '<span class="gx-dim">El motor valoró las abiertas y ninguna supera su propio ruido. Decir NO también es un resultado.</span></div></div>';
+    }
+    return '<div class="gx-picks-feed">' + pk.map(function (x) { return pickCard(x, {}); }).join('') + '</div>';
+  }
+
+  // 8) HISTORIAL DIRECTO
+  function tenH2HPanel(d) {
+    var h = d.h2h || {};
+    var n = (h.w_a || 0) + (h.w_b || 0);
+    if (!n) return '<div class="gx-panel"><div class="gx-empty">' + ic('history-off') + '<b>No se han cruzado nunca en la base.</b>' +
+      '<span class="gx-dim">Sin historial directo, el modelo se apoya entero en el rating y el perfil de cada uno.</span></div></div>';
+    var mt = (h.rows || []).slice(0, 8);
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Historial directo</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + n + ' partidos medidos</span></div>' +
+      '<div class="gx-ten-h2h"><b class="gx-mono">' + (h.w_a != null ? h.w_a : '—') + '</b><span class="gx-dim">' + esc(d.a.name) + '</span>' +
+      '<span class="gx-spacer"></span><span class="gx-dim">' + esc(d.b.name) + '</span><b class="gx-mono">' + (h.w_b != null ? h.w_b : '—') + '</b></div>' +
+      (mt.length ? '<div class="gx-ten-h2hlist">' + mt.map(function (m) {
+        var wA = m.winner === 'a';
+        return '<div class="gx-ten-h2hrow"><span class="gx-dim gx-mono">' + esc(String(m.date || '').slice(0, 4)) + '</span>' +
+          '<span class="' + (wA ? 'gx-up' : 'gx-dn') + '" title="ganó ' + esc(wA ? d.a.name : d.b.name) + '">' + (wA ? '◀' : '▶') + '</span>' +
+          '<span class="gx-tform-opp">' + esc(m.tourney || '') + '</span><span class="gx-dim">' + esc(m.surface || '') + '</span>' +
+          '<span class="gx-spacer"></span><span class="gx-mono">' + esc(m.score || '') + '</span></div>';
+      }).join('') + '</div>' : '') + '</div>';
+  }
+
+  // 9) FORMA RECIENTE de los dos, partido a partido con marcador
+  function tenFormPanel(d, A, B) {
+    var one = function (who, P) {
+      var rec = (P.recent || []).slice(0, 7);
+      if (!rec.length) return '';
+      var streak = rec.map(function (m) { return '<span class="gx-tform-d ' + (m.won ? 'w' : 'l') + '" title="' + esc((m.opp || '') + ' · ' + (m.score || '')) + '">' + (m.won ? 'V' : 'D') + '</span>'; }).join('');
+      return '<div class="gx-tform-side"><div class="gx-tform-h">' + tenFace(who) + '<b>' + esc(who.name) + '</b><span class="gx-spacer"></span><span class="gx-tform-streak">' + streak + '</span></div>' +
+        '<div class="gx-tform-list">' + rec.map(function (m) {
+          return '<div class="gx-tform-row"><span class="' + (m.won ? 'gx-up' : 'gx-dn') + '">' + (m.won ? '✓' : '✕') + '</span>' +
+            '<span class="gx-tform-opp">' + esc(m.opp || '') + '</span>' +
+            '<span class="gx-dim">' + esc(m.surface || '') + '</span>' +
+            '<span class="gx-spacer"></span><span class="gx-mono gx-dim">' + esc(m.score || '') + (m.ret ? ' RET' : '') + '</span></div>';
+        }).join('') + '</div></div>';
+    };
+    var body = one(d.a, A) + one(d.b, B);
+    if (!body) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Forma reciente</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">últimos partidos con marcador real</span></div>' + body + '</div>';
+  }
+
+  // 10) PERFIL DE SAQUE DE CARRERA — aces, dobles, primeros dentro, puntos ganados, breaks salvados
+  function tenServePanel(d, A, B) {
+    var ca = A.career_serve, cb = B.career_serve;
+    if (!ca && !cb) return '';
+    var g = function (o, k) { return o ? o[k] : null; };
+    var pf = function (v) { return v == null ? '—' : v + '%'; };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Perfil de saque</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">carrera, sobre miles de puntos</span></div>' +
+      '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
+      tenCmp('aces', g(ca, 'ace_pct'), g(cb, 'ace_pct'), pf, 'porcentaje de saques que son ace') +
+      tenCmp('dobles faltas', g(ca, 'df_pct'), g(cb, 'df_pct'), pf, 'menos es mejor') +
+      tenCmp('primeros dentro', g(ca, 'first_in_pct'), g(cb, 'first_in_pct'), pf, 'porcentaje de primeros servicios dentro') +
+      tenCmp('puntos ganados al saque', g(ca, 'spw_pct'), g(cb, 'spw_pct'), pf) +
+      tenCmp('bolas de break salvadas', g(ca, 'bp_saved_pct'), g(cb, 'bp_saved_pct'), pf, 'cómo aguanta bajo presión') +
+      '</div>';
+  }
+
+  // 11) REGISTRO POR SUPERFICIE
+  function tenSurfWLPanel(d, A, B) {
+    var sa = A.surf_wl || [], sb = B.surf_wl || [];
+    if (!sa.length) return '';
+    var wr = function (x) { var n = (x.w || 0) + (x.l || 0); return n ? x.w / n : null; };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Registro por superficie</span></div>' +
+      '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
+      sa.map(function (x, i) {
+        var y = sb[i] || {};
+        var here = x.surface === d.surface;
+        return '<div class="gx-tsurf' + (here ? ' on' : '') + '">' +
+          '<span class="gx-mono">' + (x.w || 0) + '-' + (x.l || 0) + '<em class="gx-dim">' + (wr(x) != null ? ' ' + Math.round(100 * wr(x)) + '%' : '') + '</em></span>' +
+          '<span class="gx-tsurf-n">' + esc(x.surface) + (here ? ' · aquí' : '') + '</span>' +
+          '<span class="gx-mono">' + (y.w || 0) + '-' + (y.l || 0) + '<em class="gx-dim">' + (wr(y) != null ? ' ' + Math.round(100 * wr(y)) + '%' : '') + '</em></span></div>';
+      }).join('') + '</div>';
+  }
+
+
 
   // ── RANKING GP ───────────────────────────────────────────────────────────────────────────────────────
   function renderTenRank() {
@@ -11747,6 +12017,8 @@
     if (bk) { e.preventDefault(); showView('tengames'); return; }
     var tl = e.target.closest('[data-tenlens]');
     if (tl) { S.ten.lens = tl.getAttribute('data-tenlens'); renderTenMatch(); return; }
+    var mf = e.target.closest('[data-tenmfilt]');
+    if (mf) { S.ten.mFilt = mf.getAttribute('data-tenmfilt'); renderTenGames(); return; }
     var tb = e.target.closest('[data-tentour]');
     if (tb) {
       var nt = tb.getAttribute('data-tentour');

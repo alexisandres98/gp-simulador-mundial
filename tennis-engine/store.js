@@ -258,6 +258,7 @@ async function board(tour) {
       row.photo_b = photoOf(model.tour, model.b.id);
       row.candidates = evaluateEdges(model, mk);
       row.shadow_n = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').length;
+      row.picks = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').map((c) => tenPickCard(c, row, model));
     } else row.why = model.why;
     rows.push(row);
   }
@@ -265,6 +266,72 @@ async function board(tour) {
   return {
     rows, refreshed_at: odds ? new Date(odds.at).toISOString() : null, doctrine: DOCTRINE,
     note: rows.length ? null : 'sin torneos con cuotas activas en la ventana (The Odds API publica por torneo: se abren solos cuando arranca el siguiente)',
+  };
+}
+
+// ── LA TESIS CON LA FORMA DE LA CARD DE LA CASA (19-ago) ────────────────────────────────────────────────
+// Alexis: "el formato de las picks no es el que usamos". Cierto: el tenis se estaba pintando con una card
+// propia. El usuario aprende a leer UNA pick —chip de familia, ticket, porqué, cuota con su casa, confianza,
+// señales y calculadora de stake— y esa lectura le vale en los ocho deportes; una card distinta aquí no era
+// personalidad, era deuda. Esto traduce la tesis a los campos EXACTOS que consume pickCard(), igual que ya
+// hacen combate, baloncesto y esports.
+const TEN_CARD_FAMILY = { ML: 'SOLID', TOTAL: 'TOTAL', SPREAD: 'SPREAD' };
+const TEN_STAKE_CAP = 2;
+function tenStake(p, odds) {
+  if (!(p > 0 && odds > 1)) return null;
+  const b = odds - 1, k = (p * b - (1 - p)) / b;         // Kelly completo
+  if (!(k > 0)) return null;
+  const raw = +(100 * k / 4).toFixed(2);                  // cuarto de Kelly, la doctrina de la casa
+  return { pct: Math.min(TEN_STAKE_CAP, raw), raw, capped: raw > TEN_STAKE_CAP };
+}
+function tenSelectionName(c, row) {
+  const who = c.side === 'a' ? row.a : c.side === 'b' ? row.b : null;
+  if (c.family === 'ML') return `Gana ${who}`;
+  if (c.family === 'SPREAD') return `${who} ${c.line > 0 ? '+' : ''}${c.line} juegos`;
+  return `${c.side === 'over' ? 'Más' : 'Menos'} de ${c.line} juegos`;
+}
+function tenWhy(c, row, model) {
+  const bits = [];
+  const who = c.side === 'a' ? row.a : c.side === 'b' ? row.b : null;
+  if (c.family === 'ML') {
+    bits.push(`El compilador va punto a punto con la alternancia real del saque: con los porcentajes de saque y resto de este par en ${row.surface || 'esta superficie'}, ${who} gana ${(100 * c.p_model).toFixed(1)} % de las veces contra el ${(100 * c.p_implied).toFixed(1)} % que implica la cuota.`);
+  } else if (c.family === 'TOTAL') {
+    bits.push(`La duración no se estima con un promedio: sale de la distribución completa de juegos que produce el compilador (media ${model && model.exp_games != null ? model.exp_games.toFixed(1) : '—'}), y sobre esa curva el ${c.side === 'over' ? 'más' : 'menos'} de ${c.line} pesa ${(100 * c.p_model).toFixed(1)} %.`);
+  } else {
+    bits.push(`El hándicap se lee sobre la distribución de MARGEN de juegos del compilador, no sobre el ganador: ${who} cubre ${c.line > 0 ? '+' : ''}${c.line} en ${(100 * c.p_model).toFixed(1)} % de las simulaciones.`);
+  }
+  bits.push('Modelo market-blind por construcción: el precio no entra nunca al cálculo, así que la diferencia con la casa es una discrepancia real y no un eco de su propia línea.');
+  bits.push('EN SOMBRA: todas las familias de tenis se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.');
+  return bits.join(' ');
+}
+function tenPickCard(c, row, model) {
+  const st = tenStake(c.p_model, c.odds);
+  return {
+    ...c,
+    family: TEN_CARD_FAMILY[c.family] || 'TOTAL',
+    family_raw: c.family,
+    fam_label: c.family === 'ML' ? 'Ganador' : c.family === 'TOTAL' ? 'Juegos' : 'Hándicap',
+    selection_name: tenSelectionName(c, row),
+    home: row.a, away: row.b,
+    home_team_id: null, away_team_id: null,
+    ten_avas: { h: row.photo_a || null, a: row.photo_b || null },
+    ten_hash: `tenmatch/${row.id}`,
+    competition_name: row.tourney || null,
+    kickoff: row.commence || null,
+    confidence: c.p_model,
+    model_prob: c.p_model, market_prob: c.p_implied,
+    pick_id: `ten_${row.id}_${c.family}_${c.side}_${c.line != null ? c.line : 'x'}`,
+    why_es: tenWhy(c, row, model),
+    stake_pct: st ? st.pct : null,
+    stake_raw_pct: st ? st.raw : null,
+    stake_capped: !!(st && st.capped),
+    shadow: true,
+    signals: {
+      win_prob: c.p_model,
+      edge_pp: c.edge_pp,
+      data_confidence: 'med',
+      pick_quality: c.edge_pp >= 6 ? 'strong' : c.edge_pp >= 4 ? 'moderate' : 'marginal',
+    },
   };
 }
 
@@ -321,6 +388,10 @@ async function matchDetail(eventId) {
     h2h: h2h(model.tour, model.a.id, model.b.id),
     profiles: { a: playerProfile(model.tour, model.a.id), b: playerProfile(model.tour, model.b.id) },
     candidates: evaluateEdges(model, mk),
+    picks: evaluateEdges(model, mk).filter((c) => c.verdict === 'SHADOW_PICK')
+      .map((c) => tenPickCard(c, { id: ev.id, a: model.a.name, b: model.b.name, tourney: ev._ttitle,
+        commence: ev.commence_time, surface: D.SURFACES[surfOfKey(ev._tkey)],
+        photo_a: photoOf(model.tour, model.a.id), photo_b: photoOf(model.tour, model.b.id) }, model)),
     model_version: model.model_version,
   };
 }

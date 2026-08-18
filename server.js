@@ -290,6 +290,14 @@ setInterval(cs2DailyJob, 3600e3);
 async function amfootRostersJob() {
   try {
     if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_AMF_ROSTERS || '').trim())) return;
+    // GUARDIA DE MEMORIA Y DE CONCURRENCIA (19-ago). Se añadió DESPUÉS de ver la sonda con tres cosechas a
+    // la vez y 801 MB de RSS: lo que tumbó la plataforma el 15-ago fueron exactamente trabajos de fondo
+    // concurrentes, y todos los demás jobs de la casa llevan este freno menos este. La plataforma está EN
+    // VIVO durante el Mundial: una cosecha de plantillas no vale un minuto de caída.
+    if (opsRssMb() > 300) { opsLog('amf_rosters', { skipped: 'rss ' + opsRssMb() + 'MB' }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
+    const heavy = ['lol_harvest', 'val_harvest', 'cs2_harvest', 'ten_harvest'];
+    const busy = heavy.filter((k) => OPS.running[k]);
+    if (busy.length) { opsLog('amf_rosters', { skipped: 'ocupado: ' + busy.join(',') }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
     const AF = require('./amfoot-engine/store');
     const dir = AF.DISK_DIR;
     const fresh = (lg) => {
@@ -298,15 +306,18 @@ async function amfootRostersJob() {
         return Date.now() - st.mtimeMs < 7 * 864e5;
       } catch { return false; }
     };
-    const todo = ['ncaaf', 'cfl'].filter((lg) => !fresh(lg));
+    // CFL PRIMERO: son 9 equipos contra los 130+ de college. La liga barata entrega valor en un minuto y
+    // deja la cara para el final; al revés, college se come la ventana y la CFL no llega nunca.
+    const todo = ['cfl', 'ncaaf'].filter((lg) => !fresh(lg));
     if (!todo.length) { opsLog('amf_rosters', { skipped: 'al día' }); return; }
     for (const lg of todo) {
-      const out = await opsSpawn('amf_rosters_' + lg, ['scripts/amfoot-rosters.js', '--league=' + lg], { heapMb: 220, timeoutMin: 45 });
-      opsLog('amf_rosters', { league: lg, code: out.code != null ? out.code : out.error });
+      if (opsRssMb() > 320) { opsLog('amf_rosters', { stopped: 'rss ' + opsRssMb() + 'MB', pending: lg }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
+      const out = await opsSpawn('amf_rosters_' + lg, ['scripts/amfoot-rosters.js', '--league=' + lg], { heapMb: 200, timeoutMin: 35 });
+      opsLog('amf_rosters', { league: lg, code: out.code != null ? out.code : out.error, rss: opsRssMb() });
     }
   } catch (e) { opsLog('amf_rosters', { error: e.message }); }
 }
-setTimeout(amfootRostersJob, 9 * 60e3);
+setTimeout(amfootRostersJob, 12 * 60e3);
 
 // ── Props de esports: barrido de anotación (17-ago). ────────────────────────────────────────────────────
 // La sombra de props solo aprende si alguien lee la pizarra, y una familia en sombra no puede depender de

@@ -422,7 +422,14 @@ async function tennisJob() {
     const rec = await TEN.recordShadow().catch((e) => ({ error: e.message }));
     const set = await TEN.settleShadow().catch((e) => ({ error: e.message }));
     TEN.snapshotRanks();
-    if ((rec && rec.recorded) || (set && set.settled)) opsLog('tennis_job', { recorded: rec.recorded || 0, settled: set.settled || 0 });
+    // SE REGISTRA TAMBIÉN CUANDO NO SE LIQUIDA NADA HABIENDO VENCIDAS: ese es justo el caso que interesa.
+    // Antes el job solo dejaba rastro si algo se movía, así que doce partidos ya jugados sin liquidar no
+    // dejaban ni una línea en la sonda.
+    const venc = (set && set.diag && set.diag.vencidas) || 0;
+    if ((rec && rec.recorded) || (set && set.settled) || venc) {
+      opsLog('tennis_job', { recorded: (rec && rec.recorded) || 0, settled: (set && set.settled) || 0,
+        vencidas: venc, diag: (set && set.diag) || null, err: (set && set.errors && set.errors[0]) || null });
+    }
   } catch (e) { opsLog('tennis_job', { error: e.message }); }
   setTimeout(tennisJob, 30 * 60e3);
 }

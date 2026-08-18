@@ -430,7 +430,13 @@ async function espnDay(tn, day) {
   if (sb && Date.now() - sb.at < 10 * 60e3) return sb.j;
   const lg = tn === 0 ? 'atp' : 'wta';
   const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/tennis/${lg}/scoreboard?dates=${day}`, { signal: AbortSignal.timeout(15000) });
-  const j = await r.json();
+  // ERRORES CON NOMBRE (19-ago): un 403 devolvía HTML, `r.json()` reventaba con "Unexpected token <" y ese
+  // error caía en el catch por-pick del liquidador, que hacía `continue` en silencio. Resultado: doce
+  // partidos ya jugados sin liquidar y CERO pistas de por qué. Ahora el fallo se llama por su nombre.
+  if (!r.ok) throw new Error(`espn ${lg} ${day}: HTTP ${r.status}`);
+  const txt = await r.text();
+  let j;
+  try { j = JSON.parse(txt); } catch { throw new Error(`espn ${lg} ${day}: respuesta no-JSON (${txt.slice(0, 40).replace(/\s+/g, ' ')}…)`); }
   G.sb[key] = { at: Date.now(), j };
   return j;
 }
@@ -439,12 +445,16 @@ function lastName(s) { const p = D.norm(s).split(' '); return p[p.length - 1] ||
 async function settleShadow() {
   const st = rdD('picks.json') || { picks: [] };
   const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.commence) < Date.now() - 2 * 3600e3);
-  if (!open.length) return { settled: 0 };
+  if (!open.length) return { settled: 0, pending: 0, diag: {} };
   let settled = 0;
+  // DIAGNÓSTICO DEL LIQUIDADOR: sin esto, "0 liquidadas" es indistinguible de "la fuente está caída".
+  // Se cuenta por MOTIVO y viaja hasta la sonda, que es donde se mira cuando algo no cuadra.
+  const diag = { vencidas: open.length, sin_fuente: 0, sin_cruce: 0, no_final: 0, sin_marcador: 0, ok: 0, void_tiempo: 0 };
+  const errs = [];
   const closes = rdD('closes.json') || { closes: {} };
   for (const p of open) {
     try {
-      if (Date.parse(p.commence) < Date.now() - 4 * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = 'sin resultado casado en 4 días (walkover/cambio de agenda probable)'; settled++; continue; }
+      if (Date.parse(p.commence) < Date.now() - 4 * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = 'sin resultado casado en 4 días (walkover/cambio de agenda probable)'; settled++; diag.void_tiempo++; continue; }
       const day = p.commence.slice(0, 10).replace(/-/g, '');
       const j = await espnDay(p.tour, day);
       const evs = [];
@@ -454,13 +464,13 @@ async function settleShadow() {
         const names = (comp.competitors || []).map((x) => D.norm((x.athlete || {}).displayName || ''));
         return names.some((n) => n.endsWith(la)) && names.some((n) => n.endsWith(lb));
       });
-      if (!hit) continue;
+      if (!hit) { diag.sin_cruce++; continue; }
       const status = ((hit.e.status || {}).type || {}).name || ((hit.comp.status || {}).type || {}).name || '';
-      if (!/FINAL|RETIRED|WALKOVER/i.test(status)) continue;
+      if (!/FINAL|RETIRED|WALKOVER/i.test(status)) { diag.no_final++; continue; }
       const cs = hit.comp.competitors || [];
       const ca = cs.find((x) => D.norm((x.athlete || {}).displayName || '').endsWith(la));
       const cb = cs.find((x) => D.norm((x.athlete || {}).displayName || '').endsWith(lb));
-      if (!ca || !cb) continue;
+      if (!ca || !cb) { diag.sin_marcador++; continue; }
       const setsA = (ca.linescores || []).map((x) => +x.value), setsB = (cb.linescores || []).map((x) => +x.value);
       const gA = setsA.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0), gB = setsB.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
       const aWon = ca.winner === true || (ca.winner == null && gA > gB);
@@ -483,15 +493,25 @@ async function settleShadow() {
         if (cp) { p.close_price = cp; p.clv_pct = +((p.odds / cp - 1) * 100).toFixed(2); }
       }
       p.settled_at = new Date().toISOString();
-      settled++;
-    } catch { /* siguiente pasada */ }
+      settled++; diag.ok++;
+    } catch (e) {
+      // el fallo se ANOTA con su mensaje en vez de desaparecer: la primera pista de que la fuente cayó
+      diag.sin_fuente++;
+      if (errs.length < 3) errs.push(String(e && e.message || e).slice(0, 120));
+    }
   }
   if (settled) wrD('picks.json', st);
-  return { settled };
+  // el parte SIEMPRE se guarda, aunque no se liquide nada: es justo el caso en el que hace falta mirarlo
+  try {
+    const dg = rdD('settle-diag.json') || {};
+    wrD('settle-diag.json', { ...dg, at: new Date().toISOString(), diag, errors: errs, settled });
+  } catch { }
+  return { settled, diag, errors: errs };
 }
 
 function track(tour) {
   const st = rdD('picks.json') || { picks: [] };
+  const settleDiag = rdD('settle-diag.json') || null;
   const mine = st.picks.filter((p) => tour == null || p.tour === tour);
   const done = mine.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
@@ -517,6 +537,9 @@ function track(tour) {
     }])),
     recent: done.slice(-40).reverse(), open_list: mine.filter((p) => p.status === 'OPEN').slice(-30).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
+    // el parte del liquidador viaja con el track: "0 liquidadas" y "la fuente está caída" se parecen
+    // demasiado como para dejarlos indistinguibles
+    settle_diag: settleDiag,
   };
 }
 

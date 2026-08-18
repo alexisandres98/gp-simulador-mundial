@@ -129,9 +129,9 @@ async function overview({ days = 5 } = {}) {
       // CS2 tiene rating propio desde el 16-ago (cosecha histórica de GP, 48.678 mapas) y LoL desde el
       // 18-ago (base Leaguepedia 2020→, Elo con lado y parche validado walk-forward) — se declara por
       // juego según qué base cargó de verdad, no por una lista escrita a mano.
-      own_rating: ['cs2', 'lol', 'valorant'].filter((g2) => !!cdOf(g2)).join('+') || 'ninguno',
+      own_rating: ['cs2', 'lol', 'valorant', 'dota2'].filter((g2) => !!cdOf(g2)).join('+') || 'ninguno',
       why: BK.RESULTS_UNAVAILABLE.why,
-      consequence: 'en CS2 la fuerza sale de la base propia (modelo jerárquico calibrado, validado fuera de muestra); en LoL el Elo propio con lado y parche entra anclado a mercado con peso creciente por muestra; en Valorant el Elo propio de series (margen+óxido validados) entra igual, y su fuerza por mapa medida alimenta el veto. En Dota 2 el ganador sigue siendo el consenso del mercado sin margen con 0 % de peso propio; la estructura derivada es del modelo y no depende del rating.',
+      consequence: 'los CUATRO juegos tienen base propia desde el 18-ago: CS2 (modelo jerárquico, 7,3 % de skill), LoL (Elo con lado y parche), Valorant (Elo de series con margen y óxido) y Dota 2 (Elo con lado Radiant, 1,9 % de skill — señal real pero modesta, y el peso propio lo refleja). Todo entra ANCLADO a mercado con peso creciente por muestra; la estructura derivada es del modelo y no depende del rating.',
       next: BK.RESULTS_UNAVAILABLE.next,
     },
     // LAS CASAS, con su papel. No es adorno: es lo que explica por qué desde hoy pueden salir picks donde
@@ -308,7 +308,20 @@ function valOwnInput(ev) {
       source: 'base propia (vlr.gg, walk-forward validado)' };
   } catch { return null; }
 }
-const ownInputFor = (game, ev) => (game === 'lol' ? lolOwnInput(ev, ev.competition) : game === 'valorant' ? valOwnInput(ev) : null);
+// Dota 2 (18-ago): el Elo propio existe desde el 17 (OpenDota, 1,92 % de skill validado — señal real,
+// cuatro veces menor que CS2) y recién ahora se enchufa, anclado a mercado: con ese skill el peso propio
+// que le da anchoredProbability por muestra es exactamente el que le corresponde — modesto.
+function dotaOwnInput(ev) {
+  try {
+    const DD = require('./dota2-data');
+    const r = DD.ratingsFor(ev.home.name, ev.away.name);
+    if (!r || r.elo_a == null || r.elo_b == null) return null;
+    return { ratings: { elo_a: r.elo_a, elo_b: r.elo_b }, sample: Math.min(r.matches_a, r.matches_b),
+      observedTempo: null, own: true, source: 'base propia (OpenDota, walk-forward validado)' };
+  } catch { return null; }
+}
+const ownInputFor = (game, ev) => (game === 'lol' ? lolOwnInput(ev, ev.competition)
+  : game === 'valorant' ? valOwnInput(ev) : game === 'dota2' ? dotaOwnInput(ev) : null);
 
 async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const E = ENGINES[game];
@@ -340,6 +353,9 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   if (game === 'valorant' && model) {
     try { model.draft_room = require('./valorant-data').compIntel(ev.home.name, ev.away.name); } catch { }
   }
+  if (game === 'dota2' && model) {
+    try { model.draft_room = require('./dota2-data').draftIntel(ev.home.name, ev.away.name); } catch { }
+  }
   const edges = evaluateAll({ game, model, mk, ev, bo, sample });
   // LO QUE SOLO SE VE CON VARIAS CASAS, y va aparte de las picks a propósito: el arbitraje NO pasa por el
   // modelo, así que no hereda su riesgo. Si el modelo estuviera entero equivocado, esta sección seguiría
@@ -362,7 +378,8 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     edges,
     // el historial directo entre los dos, si la base lo tiene (solo CS2). Contexto, no señal: el modelo ya
     // pondera el pasado como corresponde; esto es para que quien mira entienda de dónde viene el cruce.
-    h2h: (game === 'cs2' || game === 'lol' || game === 'valorant') ? h2h(game, ev.home.name, ev.away.name) : null,
+    h2h: h2h(game, ev.home.name, ev.away.name),   // los cuatro juegos tienen base propia desde el 18-ago; sin base devuelve null solo
+
     provenance: C.provenance([
       { source: `Agenda de ${(ev.sources || []).map((x) => x.book).join(' + ') || 'las casas'}`, kind: 'proveedor', at: (s && s.at) || null },
       mk ? { source: `Mercados de ${(mk.by_book || []).filter((b) => b.rows).map((b) => b.book).join(' + ')}`, kind: 'proveedor', at: mk.at } : null,
@@ -1424,6 +1441,7 @@ const cdOf = (game) => {
   if (game === 'cs2') { try { return require('./cs2-data'); } catch { return null; } }
   if (game === 'lol') { try { const LD = require('./lol-data'); return LD.load().available ? LD : null; } catch { return null; } }
   if (game === 'valorant') { try { const VD = require('./valorant-data'); return VD.load().available ? VD : null; } catch { return null; } }
+  if (game === 'dota2') { try { const DD = require('./dota2-data'); return DD.load().available ? DD : null; } catch { return null; } }
   return null;
 };
 const scoreDesc = (s) => {
@@ -1525,8 +1543,11 @@ function teamProfile(game, ref) {
       : game === 'valorant'
         ? [{ source: 'Base propia de GP, derivada de vlr.gg y validada walk-forward', kind: 'derivado', at: data.at },
           { source: 'Rating GP de jugadores: propio, del scoreboard por mapa (media de la clase = 1.00)', kind: 'derivado', at: data.at }]
-        : [{ source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
-          { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at }]),
+        : game === 'dota2'
+          ? [{ source: 'Base propia de GP, derivada de OpenDota y validada walk-forward', kind: 'derivado', at: data.at },
+            { source: 'Rating GP de jugadores: propio, por posición 1-5 inferida del oro (media de la posición = 1.00)', kind: 'derivado', at: data.at }]
+          : [{ source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
+            { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at }]),
     at: data.at,
   };
 }
@@ -1537,6 +1558,23 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
   const all = Object.values(data.players || {});
   if (!all.length) return { game, available: false, why: 'el directorio de jugadores todavía no se ha derivado (corre con la cosecha de plantillas).' };
   const needle = CD.norm(q);
+  // Dota 2 habla en KP/KDA/GPM por POSICIÓN (1-5, inferida del oro): rama propia con sus columnas
+  if (game === 'dota2') {
+    const rows = all
+      .filter((p) => !needle || CD.norm(p.nick).indexOf(needle) >= 0 || CD.norm(p.team_name || '').indexOf(needle) >= 0)
+      .map((p) => {
+        const st = data.playerStats[p.id] || null;
+        return { id: p.id, nick: p.nick, role: p.role, team: p.team, team_name: p.team_name,
+          rating_gp: st ? st.rating_gp : null, games_n: st ? st.n : null, wr: st ? st.wr : null,
+          kda: st ? st.kda : null, kp: st ? st.kp : null, gpm: st ? st.gpm : null };
+      })
+      .sort((a, b) => (b.rating_gp || 0) - (a.rating_gp || 0) || (b.games_n || 0) - (a.games_n || 0))
+      .slice(0, Math.max(1, Math.min(300, limit)));
+    return { game, available: true, dota: true, players: rows, total: all.length,
+      own_stats: data.playerStatsMeta || null,
+      rating_note: 'Rating GP propio normalizado POR POSICIÓN 1-5, inferida del rango de oro dentro del equipo — un hard support no compite con un carry en GPM; media de la posición = 1.00. Datos derivados de OpenDota.',
+      at: data.at };
+  }
   // Valorant habla en ACS/ADR/KAST por CLASE de agente: rama propia con sus columnas
   if (game === 'valorant') {
     const rows = all
@@ -1601,6 +1639,37 @@ function playerProfile(game, id) {
   const p = data.players[id] || null;
   const st = data.playerStats[id] || null;
   if (!p && !st) return { game, available: false, why: `no reconozco "${id}" entre los jugadores con ficha.` };
+  // ficha propia de Dota 2: rating por POSICIÓN, pool de héroes con recencia y bitácora. La huella
+  // compara contra la población de su posición. Mismo molde texto-first que LoL/Valorant.
+  if (game === 'dota2') {
+    const pop = Object.values(data.playerStats || {}).filter((x) => x.pos === (st && st.pos));
+    const pct = (f, invert = false) => {
+      if (!st) return null;
+      const mine = f(st); if (mine == null) return null;
+      const vals = pop.map(f).filter((v) => v != null);
+      const below = vals.filter((v) => (invert ? v > mine : v < mine)).length;
+      return { value: +(+mine).toFixed(2), pct: vals.length ? Math.round(100 * below / vals.length) : null };
+    };
+    return {
+      game, available: true, lol: true, dota: true,   // lol:true = molde texto-first; dota diferencia etiquetas
+      player: { id, nick: (st && st.nick) || (p && p.nick) || id, role: st ? 'Pos ' + st.pos : (p && p.role) || null,
+        team: (st && st.team_id) ? 't' + st.team_id : (p ? p.team : null),
+        team_name: (p && p.team_name) || null },
+      rating_gp: st ? st.rating_gp : null,
+      totals: st ? { n: st.n, wr: st.wr, kda: st.kda, kp: st.kp, gpm: st.gpm, xpm: st.xpm, dpm: st.dpm } : null,
+      side_split: null,
+      champs: st ? (st.pool || []).slice(0, 8).map((c) => ({ ch: c.name, n: c.n,
+        wr: c.n ? +(c.w / c.n).toFixed(2) : null, rw: c.rw, last: c.last ? new Date(c.last * 1000).toISOString().slice(0, 10) : null })) : [],
+      recent: (st && st.recent) ? st.recent.map((r) => ({ at: r.at, ch: r.hero, vs: r.vs, k: r.k, d: r.d, a: r.a, win: r.win, side: null })) : [],
+      footprint: st ? { role: 'Pos ' + st.pos, pop_n: pop.length, dims: {
+        participacion: pct((x) => x.kp), kda: pct((x) => Math.min(8, x.kda)),
+        farmeo: pct((x) => x.gpm), muertes: pct((x) => x.dpm, true) } } : null,
+      meta: data.playerStatsMeta,
+      note: st ? 'Rating GP propio normalizado por posición (media de la posición = 1.00; fórmula publicada en la ficha del motor). Datos derivados de OpenDota.'
+        : 'sin muestra propia suficiente en la ventana (≥8 partidas en 365 días).',
+      at: data.at,
+    };
+  }
   // ficha propia de Valorant: rating por CLASE, pool de agentes con recencia y bitácora. La huella
   // compara contra la población de su clase (V-0108). Misma forma que la de LoL para que la UI la
   // renderice con el mismo molde, con sus dimensiones propias.
@@ -1739,7 +1808,7 @@ function championsBoard(game, { role = null } = {}) {
     game, available: true, patch: out.patch || null, prev_patch: out.prev_patch || null,
     games_patch: out.games_patch || null, window: out.window || null, maps_cur: out.maps_cur || null,
     role: role || null, rows: out.rows.slice(0, 60), note: out.note,
-    rights_note: game === 'valorant' ? 'Datos derivados de vlr.gg.' : 'Datos derivados de Leaguepedia (CC BY-SA).',
+    rights_note: game === 'valorant' ? 'Datos derivados de vlr.gg.' : game === 'dota2' ? 'Datos derivados de OpenDota.' : 'Datos derivados de Leaguepedia (CC BY-SA).',
   };
 }
 

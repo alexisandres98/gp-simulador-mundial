@@ -1,0 +1,59 @@
+{
+ "at": "2026-08-18T11:50:42.914Z",
+ "model_version": "dota-elo-side-1",
+ "source": "base propia (OpenDota, research_only — RIGHTS.md)",
+ "constants": {
+  "K": 12,
+  "min_n": 8,
+  "side_step": 2
+ },
+ "side_advantage_elo": 3.7,
+ "radiant_wr_pct": 51.3,
+ "matches": 49645,
+ "teams": 3326,
+ "validation": {
+  "cualificadas": [
+   {
+    "name": "moneda",
+    "n": 39434,
+    "brier": 0.25,
+    "skill_pct": 0,
+    "auc": 0.5,
+    "ece": 0.0101,
+    "logloss": 0.69315,
+    "hit_pct": 51.01
+   },
+   {
+    "name": "lado",
+    "n": 39434,
+    "brier": 0.2499,
+    "skill_pct": 0.04,
+    "auc": 0.5032,
+    "ece": 0.0036,
+    "logloss": 0.69295,
+    "hit_pct": 50.83
+   },
+   {
+    "name": "elo",
+    "n": 39434,
+    "brier": 0.24433,
+    "skill_pct": 2.27,
+    "auc": 0.5798,
+    "ece": 0.0176,
+    "logloss": 0.68145,
+    "hit_pct": 55.26
+   },
+   {
+    "name": "elo_lado",
+    "n": 39434,
+    "brier": 0.24444,
+    "skill_pct": 2.22,
+    "auc": 0.5798,
+    "ece": 0.0194,
+    "logloss": 0.68171,
+    "hit_pct": 55.35
+   }
+  ],
+  "note": "walk-forward estricto; skill de Brier NO es rentabilidad — la probabilidad publicada sigue anclada a mercado y el peso propio (modesto: ~1,9 % de skill medido el 17-ago) sube solo con la muestra."
+ }
+}

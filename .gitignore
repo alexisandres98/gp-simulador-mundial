@@ -36,6 +36,10 @@ data/esports/*
 # compactos que sí se versionan. series.json (índice liviano, es la base del Elo) SÍ se versiona.
 data/esports/valorant/maps.json
 data/esports/valorant/players-raw.json
+!data/esports/dota2/
+# el crudo del Explorer de OpenDota (drafts ~1M filas, scoreboard ~500k) tampoco: se agrega compacto
+data/esports/dota2/drafts.json
+data/esports/dota2/players-raw.json
 data/esports/cs2-raw/
 
 # crudo de esports: vive en el disco persistente (o local); jamás en git (25MB+)

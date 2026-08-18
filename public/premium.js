@@ -1065,8 +1065,8 @@
   function esGame() { var k = (S.es && S.es.game) || 'cs2'; return ES_GAMES.some(function (x) { return x[0] === k; }) ? k : 'cs2'; }
   function esGameLab() { var k = esGame(); var f = ES_GAMES.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : 'CS2'; }
   // la unidad del historial propio, por juego: CS2 cuenta mapas, LoL partidas, Valorant series
-  function esUnit() { var g = esGame(); return g === 'lol' ? 'partidas' : g === 'valorant' ? 'series' : 'mapas'; }
-  function esBaseAttrib() { var g = esGame(); return g === 'lol' ? ' Datos derivados de Leaguepedia (CC BY-SA 4.0).' : g === 'valorant' ? ' Datos derivados de vlr.gg.' : ''; }
+  function esUnit() { var g = esGame(); return g === 'lol' || g === 'dota2' ? 'partidas' : g === 'valorant' ? 'series' : 'mapas'; }
+  function esBaseAttrib() { var g = esGame(); return g === 'lol' ? ' Datos derivados de Leaguepedia (CC BY-SA 4.0).' : g === 'valorant' ? ' Datos derivados de vlr.gg.' : g === 'dota2' ? ' Datos derivados de OpenDota.' : ''; }
   var SHARED_VIEWS = ['bets', 'books', 'alerts', 'refer', 'calc', 'sub', 'support', 'admin'];
   // LANZAMIENTO PÚBLICO DE COMBATE: con el flag ON, cualquier usuario con sesión entra a las superficies de
   // INTELIGENCIA; las de PICKS (Oportunidades y Rendimiento) siguen siendo admin. Con el flag OFF, todo
@@ -9332,7 +9332,7 @@
     var gameBlocks;
     if (g === 'lol') gameBlocks = [esDraftRoom(m, ev), esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esH2H(d.h2h)];
     else if (g === 'valorant') gameBlocks = [esDraftRoom(m, ev), esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m), esH2H(d.h2h)];
-    else gameBlocks = [esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev)];
+    else gameBlocks = [esDraftRoom(m, ev), esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev), esH2H(d.h2h)];
     var glens = S.es.lens === 'modelo' ? 'modelo' : 'partida';
     var GLENSES = [
       ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
@@ -9506,7 +9506,9 @@
               return '<span class="gx-dr-ch' + (c.flex ? ' flex' : '') + '" title="' + c.n + ' partidas' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.flex ? ' · flex (2+ roles en el parche)' : '') + '">' +
                 esc(c.ch) + '<i>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + '</i></span>';
             }).join('') + '</div></div>';
-        }).join('') + '</div>';
+        }).join('') +
+        ((s.doctrine_top || []).length ? '<div class="gx-dr-player"><div class="gx-dr-pid"><span class="gx-dim" style="font-size:10.5px">doctrina del equipo (draft real)</span></div><div class="gx-dr-pool">' +
+          s.doctrine_top.map(function (c) { return '<span class="gx-dr-ch" title="' + c.n + ' picks' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + '">' + esc(c.ch) + '<i>' + c.n + '</i></span>'; }).join('') + '</div></div>' : '') + '</div>';
     };
     var meta = (dr.meta_top || []).slice(0, 6).map(function (r) {
       var dw = r.delta_wr;
@@ -9980,12 +9982,7 @@
     var segs = '<div class="gx-seg">' + ES_TTABS.map(function (x) {
       return '<button data-estab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
-    // CS2, LoL y Valorant tienen base propia (16 y 18-ago); Dota 2 sigue sin fuente de resultados.
-    if (g === 'dota2') {
-      esShell(t('es_nav_teams'), esTabs() + '<div class="gx-ohead">' + segs + '</div>' +
-        '<div class="gx-panel">' + esGap('Solo CS2, LoL y Valorant tienen base propia de equipos. En ' + esGameLab() + ' no hay fuente de resultados todavía, así que no hay nada honesto que enseñar aquí.') + '</div>');
-      return;
-    }
+    // los CUATRO juegos tienen base propia desde el 18-ago; si alguna no cargó, el API lo dice con su porqué
     if (tab === 'rank') { renderESRanking(segs); return; }
     if (tab === 'players') { renderESPlayers(segs); return; }
     var q = (S.es.tQ || '').trim();
@@ -10058,6 +10055,27 @@
       return;
     }
     var rows = d.players || [];
+    // Dota 2: card propia en su idioma (rating GP por posición, KDA, KP, GPM). Texto-first.
+    if (d.dota) {
+      var bodyD = rows.length
+        ? '<div class="gx-esp-grid">' + rows.map(function (p) {
+            var rg = p.rating_gp != null ? p.rating_gp : null;
+            var rgW = rg != null ? Math.max(4, Math.min(100, 100 * (rg - 0.6) / 1.0)) : 0;
+            var ownRow = rg != null
+              ? '<div class="gx-esp-rat"><span>Rating GP</span><div class="gx-esp-ratb"><em></em><i style="width:' + rgW.toFixed(0) + '%"></i></div><b class="gx-mono ' + (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') + '">' + rg.toFixed(2) + '</b></div>' +
+                '<div class="gx-esp-stats"><span>KDA <b>' + (p.kda != null ? p.kda.toFixed(1) : '—') + '</b></span><span>KP <b>' + (p.kp != null ? Math.round(100 * p.kp) + '%' : '—') + '</b></span><span>GPM <b>' + (p.gpm != null ? p.gpm : '—') + '</b></span><span class="gx-dim">' + (p.games_n || 0) + ' partidas</span></div>'
+              : '<div class="gx-esp-rat"><span class="gx-dim">sin muestra propia suficiente en la ventana</span></div>';
+            return '<div class="gx-panel gx-esp-card" data-esplayer="' + esc(p.id) + '">' +
+              '<div class="gx-esp-top"><div class="gx-esp-id"><b>' + esc(p.nick) + '</b><span>' + esc(p.team_name || '—') + '</span></div>' +
+                '<span class="gx-spacer"></span>' + (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') + '</div>' +
+              '<div class="gx-esp-meta">' + ownRow + '</div></div>';
+          }).join('') + '</div>' +
+          '<div class="gx-dim gx-es-trunc">' + esc(d.rating_note || '') + '</div>'
+        : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún jugador con ese nombre.</b><span class="gx-dim">Se listan los jugadores con ≥8 partidas en la ventana de la base propia.</span></div></div>';
+      esShell(t('es_nav_teams'), esTabs() + head + bodyD);
+      esBindSearch('gx-espsearch', function (v) { S.es.pQ = v; }, renderESTeams);
+      return;
+    }
     // Valorant: card propia en su idioma (rating GP por clase, ACS, ADR, KAST). Texto-first.
     if (d.valorant) {
       var bodyV = rows.length
@@ -10226,7 +10244,7 @@
     var g = esGame();
     // cada juego enseña SU meta medido: CS2 el pool de mapas, LoL el meta de campeones del parche,
     // Valorant el meta de agentes de la ventana. Mismo hueco de navegación, semántica propia.
-    if (g === 'lol' || g === 'valorant') { renderESChampions(); return; }
+    if (g === 'lol' || g === 'valorant' || g === 'dota2') { renderESChampions(); return; }
     if (g !== 'cs2') {
       esShell(t('es_nav_circuit'), esTabs() + '<div class="gx-panel">' + esGap('El circuito se mide sobre la base propia y hoy solo CS2 la tiene. Los perfiles de ' + esGameLab() + ' son supuestos de circuito, y un meta hecho de supuestos no es un meta.') + '</div>');
       return;
@@ -10274,10 +10292,11 @@
   // apuestas (LOL-0043 / V-0026), así que aquí no hay arte, hay números.
   var LOL_ROLES = [['', 'Todos'], ['Top', 'Top'], ['Jungle', 'Jungla'], ['Mid', 'Mid'], ['Bot', 'Bot'], ['Support', 'Soporte']];
   var VAL_CLASSES = [['', 'Todos'], ['Duelist', 'Duelistas'], ['Initiator', 'Iniciadores'], ['Controller', 'Controladores'], ['Sentinel', 'Centinelas']];
+  var DOTA_ROLES = [['', 'Todos'], ['Carry', 'Carries'], ['Support', 'Supports'], ['Nuker', 'Nukers'], ['Initiator', 'Iniciadores']];
   function renderESChampions() {
-    var g = esGame(), isVal = g === 'valorant';
-    var CHIPS = isVal ? VAL_CLASSES : LOL_ROLES;
-    var title = isVal ? 'Agentes' : 'Campeones';
+    var g = esGame(), isVal = g === 'valorant', isDota = g === 'dota2';
+    var CHIPS = isVal ? VAL_CLASSES : isDota ? DOTA_ROLES : LOL_ROLES;
+    var title = isVal ? 'Agentes' : isDota ? 'Héroes' : 'Campeones';
     var role = S.es.lolRole || '';
     if (role && !CHIPS.some(function (x) { return x[0] === role; })) role = '';   // filtro del otro juego
     var d = esGet('champs_' + g, '/api/esports/champions?game=' + g, 900000);
@@ -10299,7 +10318,7 @@
         '<span class="gx-dim">presencia, tasa de victoria encogida y su delta contra el parche ' + esc(d.prev_patch || 'anterior') + ' — de la base propia, no de una tier list</span></div>' +
         '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + d.games_patch + '</b><span>partidas en el parche</span></div></div>';
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
-      '<th>' + (isVal ? 'Agente' : 'Campeón') + '</th><th>' + (isVal ? 'Clase' : 'Rol') + '</th><th>Presencia</th><th class="r">WR</th><th class="r">' + (isVal ? 'Δ ventana' : 'Δ parche') + '</th>' +
+      '<th>' + (isVal ? 'Agente' : isDota ? 'Héroe' : 'Campeón') + '</th><th>' + (isVal ? 'Clase' : 'Rol') + '</th><th>Presencia</th><th class="r">WR</th><th class="r">' + (isVal ? 'Δ ventana' : 'Δ parche') + '</th>' +
       (isVal ? '' : '<th class="r">Bans</th>') + '<th class="r">Picks</th></tr></thead><tbody>' +
       rows.map(function (r) {
         var dw = r.delta_wr;
@@ -11143,6 +11162,7 @@
   function renderESPlayerLol(d, back) {
     var p = d.player, tt = d.totals, rg = d.rating_gp;
     var isVal = !!d.valorant;   // misma ficha texto-first; Valorant pone sus dimensiones (ACS/ADR/KAST por clase)
+    var isDota = !!d.dota;      // y Dota 2 las suyas (KP/KDA/GPM por posición)
     var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' +
       '<div class="gx-est-hero-id"><b>' + esc(p.nick) + '</b><div class="gx-est-hero-chips">' +
         (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') +
@@ -11150,7 +11170,7 @@
           : (p.team_name ? '<span class="gx-dim" style="font-size:11.5px">' + esc(p.team_name) + '</span>' : '')) +
       '</div></div><span class="gx-spacer"></span>' +
       '<div class="gx-esplayer-rg"><b class="' + (rg != null ? (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') : '') + '">' + (rg != null ? rg.toFixed(2) : '—') + '</b><span>Rating GP</span>' +
-        '<em>media ' + (isVal ? 'de la clase' : 'del rol') + ' = 1.00</em></div></div>' +
+        '<em>media ' + (isVal ? 'de la clase' : isDota ? 'de la posición' : 'del rol') + ' = 1.00</em></div></div>' +
       (tt ? '<div class="gx-est-hero-stats" style="grid-template-columns:repeat(6,1fr)">' +
         (isVal
           ? '<div><b>' + (tt.acs != null ? tt.acs : '—') + '</b><span>ACS</span></div>' +
@@ -11167,10 +11187,12 @@
             '<div><b>' + tt.n + '</b><span>partidas</span></div>') + '</div>' : '') + '</div>';
     // huella contra su ROL (percentiles medidos)
     var FP = d.footprint;
-    var fpDims = isVal
+    var fpDims = isDota
+      ? [['participacion', 'Participación', 'presencia en las kills del equipo'], ['kda', 'KDA', 'tope 8 para que un smurf no rompa la escala'], ['farmeo', 'Farmeo', 'oro por minuto (GPM)'], ['muertes', 'Limpieza', 'percentil alto = muere poco']]
+      : isVal
       ? [['acs', 'Impacto', 'ACS medio por mapa'], ['dano', 'Daño', 'ADR medio'], ['consistencia', 'Consistencia', 'KAST: rondas donde aporta'], ['apertura', 'Apertura', 'first kills − first deaths por mapa']]
       : [['participacion', 'Participación', 'presencia en las kills del equipo'], ['kda', 'KDA', 'tope 8 para que un smurf no rompa la escala'], ['farmeo', 'Farmeo', 'CS por minuto'], ['muertes', 'Limpieza', 'percentil alto = muere poco']];
-    var fpB = FP ? esPanel('Huella GP contra su ' + (isVal ? 'clase' : 'rol'), '<span class="gx-dim" style="font-size:11px">' + FP.pop_n + ' ' + esc(FP.role || '') + ' cualificados</span>',
+    var fpB = FP ? esPanel('Huella GP contra su ' + (isVal ? 'clase' : isDota ? 'posición' : 'rol'), '<span class="gx-dim" style="font-size:11px">' + FP.pop_n + ' ' + esc(FP.role || '') + ' cualificados</span>',
       '<div class="gx-es-fp">' + fpDims.map(function (x) {
         var v = FP.dims[x[0]];
         if (!v) return '';
@@ -11179,7 +11201,7 @@
           '<b class="gx-mono">p' + (v.pct != null ? v.pct : '—') + '</b>' +
           '<span class="gx-dim gx-es-fpd">' + x[2] + '</span></div>';
       }).join('') + '</div>' +
-      '<div class="gx-dim gx-es-note">No es proyección: es dónde se sienta entre los de su ' + (isVal ? 'clase' : 'rol') + ' en la ventana, medido del scoreboard propio.</div>') : '';
+      '<div class="gx-dim gx-es-note">No es proyección: es dónde se sienta entre los de su ' + (isVal ? 'clase' : isDota ? 'posición' : 'rol') + ' en la ventana, medido del scoreboard propio.</div>') : '';
     // reparto por lado
     var sd = d.side_split;
     var sideB = sd && (sd.blue_n || sd.red_n) ? esPanel('Por lado del mapa', '',
@@ -11188,14 +11210,14 @@
         '<div><span class="gx-label">Lado rojo</span><b>' + (sd.red_wr != null ? Math.round(100 * sd.red_wr) + '%' : '—') + '</b><span class="gx-dim">' + (sd.red_n || 0) + ' partidas</span></div>' +
       '</div><div class="gx-dim gx-es-note">Victorias del jugador según el lado que le tocó: el lado azul elige primero en el draft.</div>') : '';
     // pool (chips del Draft Room / la Sala de composición)
-    var poolB = (d.champs || []).length ? esPanel('Pool de ' + (isVal ? 'agentes' : 'campeones'), '<span class="gx-dim" style="font-size:11px">peso reciente, medio-vida 40 ' + (isVal ? 'mapas' : 'partidas') + '</span>',
+    var poolB = (d.champs || []).length ? esPanel('Pool de ' + (isVal ? 'agentes' : isDota ? 'héroes' : 'campeones'), '<span class="gx-dim" style="font-size:11px">peso reciente, medio-vida 40 ' + (isVal ? 'mapas' : 'partidas') + '</span>',
       '<div class="gx-dr-pool">' + d.champs.map(function (c) {
         return '<span class="gx-dr-ch" title="' + c.n + (isVal ? ' mapas' : ' partidas') + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.last ? ' · última ' + c.last : '') + '">' +
           esc(c.ch) + '<i>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + ' · ' + c.n + '</i></span>';
       }).join('') + '</div>') : '';
     // bitácora
     var recB = (d.recent || []).length ? esPanel('Bitácora reciente', '',
-      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Fecha</th><th>' + (isVal ? 'Agente' : 'Campeón') + '</th>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Fecha</th><th>' + (isVal ? 'Agente' : isDota ? 'Héroe' : 'Campeón') + '</th>' +
       (isVal ? '<th class="r">ACS</th>' : '<th>Rival</th>') + '<th class="r">K/D/A</th>' + (isVal ? '' : '<th>Lado</th>') + '<th></th></tr></thead><tbody>' +
       d.recent.slice(0, 10).map(function (r) {
         return '<tr><td class="gx-dim gx-mono">' + esc(r.at || '—') + '</td><td><b>' + esc(r.ch || '—') + '</b></td>' +

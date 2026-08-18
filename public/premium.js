@@ -8713,9 +8713,9 @@
       pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(e.ticket || e.label || e.family || '—') + '</div>' +
         '<div class="gx-estop-sub">' + esc((ev.home && ev.home.name) || '') + ' vs ' + esc((ev.away && ev.away.name) || '') + '</div></div>' +
         '<div class="gx-estop-foot"><span class="gx-mono">' + (e.odds != null ? odd(e.odds) : '—') + '</span>' +
-        (e.edge_pp != null ? '<span class="gx-pp gx-pos">' + pp(e.edge_pp) + '</span>' : '') + '</div>';
+        (e.edge_pp != null ? '<span class="gx-pp gx-pos">+' + e.edge_pp.toFixed(1) + ' pp</span>' : '') + '</div>';
     } else {
-      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna ventaja pasa el listón</div>' +
+      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esc(t('none_active_pick')) + '</div>' +
         '<div class="gx-estop-sub">decir NO PICK también es un resultado</div></div>';
     }
     var arbBox;
@@ -8730,7 +8730,7 @@
         '<div class="gx-estop-sub">' + esc(t('no_arb_sub')) + '</div></div>';
     }
     return '<div class="gx-estop">' +
-      '<div class="gx-panel gx-estop-c' + (top ? ' on' : '') + '" data-esoppsub="picks"><div class="gx-label">' + ic('target-arrow') + 'Pick del día</div>' + pickBox + '</div>' +
+      '<div class="gx-panel gx-estop-c' + (top ? ' on' : '') + '" data-esoppsub="picks"><div class="gx-label">' + ic('target-arrow') + esc(t('pf_pick_of_day')) + '</div>' + pickBox + '</div>' +
       '<div class="gx-panel gx-estop-c' + (arb ? ' on' : '') + '" data-esoppsub="arb"><div class="gx-label">' + ic('scale') + esc(t('arb_best')) + '</div>' + arbBox + '</div>' +
       '</div>';
   }
@@ -9532,22 +9532,48 @@
   // que hacía que CS2 se viera como un producto y Valorant como una tabla.
   function valMapBoard(m, ev) {
     var v = m.veto;
-    var maps = (v && v.likely_maps) || [];
+    // EL TABLERO ES EL POOL ENTERO, SIEMPRE (19-ago). Antes se pintaba `likely_maps`, que es la SALIDA del
+    // árbol de veto: con fuerza medida el árbol se queda con los mapas que de verdad sobreviven al veto —dos
+    // o tres, a veces uno—, así que medir mejor hacía que el tablero encogiera de siete cards a una. Es la
+    // lectura correcta y la presentación equivocada. Ahora se pintan los siete mapas del pool y encima se
+    // superpone lo que el árbol sabe de cada uno: la fuerza medida del par y la probabilidad de que cada
+    // equipo lo elija. Los que no sobreviven al veto se marcan como tales en vez de desaparecer.
+    var pool = (m.map_pool || []).map(function (x) { return { name: x.name, key: x.key, bias: x.bias, note: x.note }; });
+    var likely = {};
+    ((v && v.likely_maps) || []).forEach(function (x) { likely[x.name] = x; });
+    var pick = { a: {}, b: {} };
+    ['a', 'b'].forEach(function (side) {
+      (((v && v.pick_probabilities) || {})[side] || []).forEach(function (x) { pick[side][x.name] = x.p; });
+    });
+    var maps = (pool.length ? pool : ((v && v.likely_maps) || [])).map(function (x) {
+      var L = likely[x.name];
+      return { name: x.name, bias: x.bias, note: x.note, p_a: L ? L.p_a : null, alive: !!L,
+        pick_a: pick.a[x.name] != null ? pick.a[x.name] : null, pick_b: pick.b[x.name] != null ? pick.b[x.name] : null };
+    });
     if (!maps.length) return null;
-    var sel = S.es.valMap || (maps[0] && maps[0].name);
+    var firstAlive = maps.filter(function (x) { return x.alive; })[0] || maps[0];
+    var sel = S.es.valMap || firstAlive.name;
+    if (!maps.some(function (x) { return x.name === sel; })) sel = firstAlive.name;
     var cards = maps.map(function (mm) {
       var on = mm.name === sel;
       var pa = mm.p_a;
       var bias = mm.bias != null ? mm.bias : (v.map_bias || 0.5);
       var def = Math.round(100 * bias), atk = 100 - def;
-      return '<div class="gx-vmap' + (on ? ' on' : '') + '" data-valmap="' + esc(mm.name) + '">' +
+      var fuera = mm.alive === false;
+      return '<div class="gx-vmap' + (on ? ' on' : '') + (fuera ? ' out' : '') + '" data-valmap="' + esc(mm.name) + '">' +
         '<div class="gx-vmap-top"><b>' + esc(mm.name) + '</b>' +
           (pa != null ? '<span class="gx-mono' + (pa >= 0.55 ? ' gx-up' : pa <= 0.45 ? ' gx-dn' : '') + '">' + Math.round(100 * pa) + '%</span>'
+            : fuera ? '<span class="gx-dim" style="font-size:9.5px" title="el árbol de veto lo descarta antes de jugarse">cae en el veto</span>'
             : '<span class="gx-dim" style="font-size:9.5px">sin fuerza medida</span>') + '</div>' +
         (pa != null ? '<div class="gx-vmap-bar"><i style="width:' + (100 * pa).toFixed(0) + '%"></i></div>'
           : '<div class="gx-vmap-bar"><i class="def" style="width:' + def + '%"></i></div>') +
         '<div class="gx-vmap-sides"><span title="rondas que gana el que defiende">DEF ' + def + '%</span>' +
           '<span title="rondas que gana el que ataca">ATK ' + atk + '%</span></div>' +
+        ((mm.pick_a != null || mm.pick_b != null)
+          ? '<div class="gx-vmap-pick" title="probabilidad de que cada equipo elija este mapa">' +
+              '<span>' + esc((ev.home.name || '').slice(0, 9)) + ' <b class="gx-mono">' + (mm.pick_a != null ? Math.round(100 * mm.pick_a) + '%' : '—') + '</b></span>' +
+              '<span>' + esc((ev.away.name || '').slice(0, 9)) + ' <b class="gx-mono">' + (mm.pick_b != null ? Math.round(100 * mm.pick_b) + '%' : '—') + '</b></span>' +
+            '</div>' : '') +
         (mm.note ? '<div class="gx-vmap-note gx-dim">' + esc(mm.note) + '</div>' : '') + '</div>';
     }).join('');
     var cur = maps.filter(function (x) { return x.name === sel; })[0] || maps[0];

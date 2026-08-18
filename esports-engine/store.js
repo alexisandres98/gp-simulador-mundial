@@ -1494,10 +1494,13 @@ function teamProfile(game, ref) {
     form: (data.form[id] || []).slice().reverse().map((f) => ({ ...f,
       vs_name: (data.teams[f.vs] || {}).name || f.vs, vs_logo: (data.teams[f.vs] || {}).logo || null })),
     rivals: rivals.slice(0, 6),
-    provenance: C.provenance([
-      { source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
-      { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at },
-    ]),
+    // la procedencia dice la verdad POR JUEGO: la base de CS2 salió de bo3.gg; la de LoL es Leaguepedia
+    // y su licencia CC BY-SA exige atribución donde se enseñe el dato (RIGHTS.md, LOL-0036)
+    provenance: C.provenance(game === 'lol'
+      ? [{ source: 'Base propia de GP, derivada de Leaguepedia (CC BY-SA 4.0) y validada walk-forward', kind: 'derivado', at: data.at },
+        { source: 'Rating GP de jugadores: propio, del scoreboard por partida (media del rol = 1.00)', kind: 'derivado', at: data.at }]
+      : [{ source: 'Base propia de GP (bo3.gg cosechado y validado)', kind: 'derivado', at: data.at },
+        { source: 'Rating de jugadores: del proveedor (6 meses), no de GP', kind: 'proveedor', at: data.at }]),
     at: data.at,
   };
 }

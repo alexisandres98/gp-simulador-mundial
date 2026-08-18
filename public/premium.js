@@ -9971,13 +9971,23 @@
     var segs = '<div class="gx-seg">' + ES_TTABS.map(function (x) {
       return '<button data-estab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
-    if (g !== 'cs2') {
+    // CS2 y LoL tienen base propia (16 y 18-ago); Valorant y Dota 2 siguen sin fuente de resultados.
+    // El tab de Jugadores queda CS2-only: su ficha habla en ADR/KAST/mapas y a LoL le toca la suya
+    // propia (KP/KDA/CSPM por rol) cuando la base real esté cargada — enseñar columnas vacías no es abrirla.
+    if (g !== 'cs2' && g !== 'lol') {
       esShell(t('es_nav_teams'), esTabs() + '<div class="gx-ohead">' + segs + '</div>' +
-        '<div class="gx-panel">' + esGap('Solo CS2 tiene base propia de equipos y jugadores. En ' + esGameLab() + ' no hay fuente de resultados todavía, así que no hay nada honesto que enseñar aquí.') + '</div>');
+        '<div class="gx-panel">' + esGap('Solo CS2 y LoL tienen base propia de equipos. En ' + esGameLab() + ' no hay fuente de resultados todavía, así que no hay nada honesto que enseñar aquí.') + '</div>');
       return;
     }
     if (tab === 'rank') { renderESRanking(segs); return; }
-    if (tab === 'players') { renderESPlayers(segs); return; }
+    if (tab === 'players') {
+      if (g !== 'cs2') {
+        esShell(t('es_nav_teams'), esTabs() + '<div class="gx-ohead">' + segs + '</div>' +
+          '<div class="gx-panel">' + esGap('La ficha de jugador habla en ADR/KAST (CS2). La de LoL — KP, KDA, CSPM por rol — llega cuando su base propia termine de cargar; los quintetos ya se leen en el Draft Room de cada partida.') + '</div>');
+        return;
+      }
+      renderESPlayers(segs); return;
+    }
     var q = (S.es.tQ || '').trim();
     var key = 'dir_' + g + (q ? '_' + encodeURIComponent(q) : '');
     var d = esGet(key, '/api/esports/directory?game=' + g + '&limit=120' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
@@ -10001,11 +10011,12 @@
             '<div class="gx-est-meta">' +
               '<div class="gx-est-wr"><i style="width:' + (tm.wr != null ? (100 * tm.wr).toFixed(0) : 0) + '%"></i></div>' +
               '<span class="gx-mono">' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</span>' +
-              '<span class="gx-dim">' + tm.n + ' mapas</span>' +
+              '<span class="gx-dim">' + tm.n + (esGame() === 'lol' ? ' partidas' : ' mapas') + '</span>' +
               '<span class="gx-spacer"></span>' + esFormDots(tm.form) + '</div>' +
           '</div>';
         }).join('') + '</div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún equipo con ese nombre.</b><span class="gx-dim">La búsqueda entra a los ' + d.total + ' equipos de la base propia.</span></div></div>';
+    if (g === 'lol') body += '<div class="gx-dim gx-es-trunc">Datos derivados de Leaguepedia (CC BY-SA 4.0).</div>';
     esShell(t('es_nav_teams'), esTabs() + head + body);
     esBindSearch('gx-estsearch', function (v) { S.es.tQ = v; }, renderESTeams);
   }
@@ -10018,7 +10029,7 @@
     if (!d) { esShell(t('es_nav_teams'), esTabs() + head + esLoading()); return; }
     if (d._err || !d.available) { esShell(t('es_nav_teams'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
-      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Elo GP</th><th class="r">Victorias</th><th class="r">Mapas</th><th>Forma</th></tr></thead><tbody>' +
+      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Elo GP</th><th class="r">Victorias</th><th class="r">' + (esGame() === 'lol' ? 'Partidas' : 'Mapas') + '</th><th>Forma</th></tr></thead><tbody>' +
       (d.rows || []).map(function (r) {
         return '<tr data-esteam="' + esc(r.id) + '">' +
           '<td class="r gx-mono gx-esr-rank">' + r.rank + '</td>' +
@@ -10029,7 +10040,7 @@
           '<td class="r gx-mono gx-dim">' + r.n + '</td>' +
           '<td>' + esFormDots(r.form) + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<div class="gx-dim gx-es-note">Ranking por Elo propio de GP, validado fuera de muestra — no es el de HLTV ni el del proveedor. Entran equipos con ' + d.min_maps + '+ mapas en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + '</div></div>';
+      '<div class="gx-dim gx-es-note">Ranking por Elo propio de GP, validado fuera de muestra — no es el de HLTV ni el del proveedor. Entran equipos con ' + d.min_maps + '+ ' + (esGame() === 'lol' ? 'partidas recientes' : 'mapas') + ' en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + (esGame() === 'lol' ? ' Datos derivados de Leaguepedia (CC BY-SA 4.0).' : '') + '</div></div>';
     esShell(t('es_nav_teams'), esTabs() + head + body);
   }
 
@@ -10099,8 +10110,8 @@
         '<button class="gx-btn gx-btn-p gx-est-simbtn" data-essim="' + esc(tm.name) + '">' + ic('arrows-shuffle') + 'Simular contra…</button></div>' +
       '<div class="gx-est-hero-stats">' +
         '<div><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Elo GP</span></div>' +
-        '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>victorias por mapa</span></div>' +
-        '<div><b>' + tm.n + '</b><span>mapas en la base</span></div>' +
+        '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>' + (esGame() === 'lol' ? 'victorias por partida' : 'victorias por mapa') + '</span></div>' +
+        '<div><b>' + tm.n + '</b><span>' + (esGame() === 'lol' ? 'partidas en la base' : 'mapas en la base') + '</span></div>' +
         '<div>' + esFormDots(((d.form || []).slice(0, 5).map(function (f) { return f.r; })).reverse()) + '<span>forma reciente</span></div>' +
       '</div></div>';
     // TERRENO: el efecto por mapa con su plano — dónde gana MÁS de lo que le tocaría por nivel

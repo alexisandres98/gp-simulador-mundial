@@ -73,7 +73,8 @@ function teamMeta(lg) {
     }
   } else {
     for (const [name, abbr] of Object.entries(CFL_ABBR)) {
-      out.info[name] = { abbr, name, logo: null, conference: null };
+      // logos CFL servidos por la casa (18-ago, pedido de Alexis): /logos/cfl_<abbr>.png
+      out.info[name] = { abbr, name, logo: '/logos/cfl_' + abbr.toLowerCase() + '.png', conference: null };
       out.byName.set(nrm(name), name);
     }
   }
@@ -661,5 +662,31 @@ function modelCard(lg) {
   };
 }
 
+// ── SIMULADOR DE ENFRENTAMIENTO (18-ago): mismo contrato que nfl-engine.simMatch, para College y CFL
+function simMatch(lg, homeRef, awayRef, { neutral = false } = {}) {
+  const M = modelSnapshot(lg);
+  if (!M) return { available: false, why: 'el modelo de la liga no está cargado.' };
+  const meta = teamMeta(lg);
+  const find = (ref) => {
+    const k = nrm(ref);
+    if (!k) return null;
+    if (meta.byName.has(k)) return meta.byName.get(k);
+    for (const name of Object.keys(meta.info)) if (k.length >= 4 && nrm(name).includes(k)) return name;
+    return null;
+  };
+  const h = find(homeRef), a = find(awayRef);
+  if (!h || !a) return { available: false, why: `no reconozco a ${!h ? homeRef : awayRef} en ${LEAGUES[lg] ? LEAGUES[lg].label : lg}.` };
+  if (h === a) return { available: false, why: 'los dos nombres resuelven al mismo equipo.' };
+  const seasonNow = new Date().getUTCFullYear();
+  const model = gameModel({ date: 'sim', home: h, away: a, neutral, season: seasonNow }, M);
+  if (!model) return { available: false, why: 'algún equipo no tiene rating todavía.' };
+  const dir = teamsDirectory(lg);
+  const row = (t) => ((dir && dir.teams) || []).find((x) => x.name === t) || { name: t, ...infoOf(lg, t) };
+  return { available: true, neutral, league: lg, home: row(h), away: row(a),
+    model: { muMargin: model.muMargin, muTotal: model.muTotal, unc_pts: model.unc_pts, sim: model.sim },
+    note: 'proyección del modelo propio sin cuotas: en un partido real el mercado también habla.',
+    at: new Date().toISOString() };
+}
+
 module.exports = { LEAGUES, load, modelSnapshot, gameModel, refreshOdds, refreshResults, marketFor,
-  slate, gameIntel, teamsDirectory, teamProfile, modelCard, recordShadow, settleShadow, track, DISK_DIR };
+  slate, gameIntel, teamsDirectory, teamProfile, modelCard, recordShadow, settleShadow, track, DISK_DIR, simMatch };

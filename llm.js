@@ -344,7 +344,8 @@ async function writeGameRead(payload) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
-const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol' };
+const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol',
+  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)' };
 async function writeBrief(payload, sport) {
   const resp = await call({
     kind: 'writer',

@@ -706,8 +706,36 @@ async function injuriesFor(abbr) {
   } catch { return c ? c.data : null; }
 }
 
+// ── SIMULADOR DE ENFRENTAMIENTO (18-ago, pedido de Alexis): dos equipos cualesquiera, local o neutral.
+// Reusa gameModel con un partido sintético — misma matemática que un partido real, sin cuotas.
+function simMatch(homeRef, awayRef, { neutral = false } = {}) {
+  const M = modelSnapshot();
+  if (!M) return { available: false, why: 'el modelo no está cargado.' };
+  const find = (ref) => {
+    const k = String(ref || '').toLowerCase().trim();
+    for (const [abbr, arr] of Object.entries(D.TEAMS)) {
+      const name = arr[0];
+      if (abbr.toLowerCase() === k || String(name).toLowerCase() === k || (k.length >= 4 && String(name).toLowerCase().includes(k))) return D.CUR(abbr);
+    }
+    return null;
+  };
+  const h = find(homeRef), a = find(awayRef);
+  if (!h || !a) return { available: false, why: `no reconozco a ${!h ? homeRef : awayRef}.` };
+  if (h === a) return { available: false, why: 'los dos nombres resuelven al mismo equipo.' };
+  const g = { id: 'sim|' + h + '|' + a + '|' + (neutral ? 'n' : 'h'), home: h, away: a,
+    location: neutral ? 'Neutral' : 'Home', season: M.data.currentSeason };
+  const model = gameModel(g, M);
+  if (!model) return { available: false, why: 'algún equipo no tiene rating todavía.' };
+  const dir = teamsDirectory();
+  const row = (t) => (dir.teams || []).find((x) => x.abbr === t) || null;
+  return { available: true, neutral, home: row(h), away: row(a),
+    model: { muMargin: model.muMargin, muTotal: model.muTotal, unc_pts: model.unc_pts, sim: model.sim },
+    note: 'proyección del modelo propio sin cuotas: en un partido real el mercado también habla. El campo de escenarios de abajo lee esta misma distribución.',
+    at: new Date().toISOString() };
+}
+
 module.exports = {
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, track,
   recordShadow, settleShadow, refreshOdds, modelSnapshot, weatherFor, DOCTRINE, DISK_DIR,
-  playersDirectory, search, injuriesFor, playerProfile,
+  playersDirectory, search, injuriesFor, playerProfile, simMatch,
 };

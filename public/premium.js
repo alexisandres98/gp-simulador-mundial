@@ -1042,13 +1042,14 @@
   // ataque/defensa por mapa y Dota 2 en una duración de cola larga que ningún otro tiene. La sección se
   // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
   var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
-  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer', 'esprops'];
+  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer', 'esprops', 'esbrief', 'esask'];
   // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
   // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
   // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
-  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflplayer', 'nflmodel', 'nflperf'];
+  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflplayer', 'nflmodel', 'nflperf', 'nflbrief', 'nflask', 'nflsim'];
   var NAV_NFL = [
     ['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'],
+    ['nflbrief', 'news', 'nav_brief'], ['nflask', 'message-circle', 'nav_cb_ask'], ['nflsim', 'adjustments', 'nav_sim'],
     ['nflteams', 'shield', 'nav_teams'], ['nflplayers', 'user', 'sr_players'],
     ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']
   ];
@@ -1057,6 +1058,7 @@
   var NAV_ES = [
     ['esopps', 'target-arrow', 'nav_opps'], ['esprops', 'user-star', 'es_nav_props'],
     ['esboard', 'device-gamepad', 'es_nav_board'],
+    ['esbrief', 'news', 'nav_brief'], ['esask', 'message-circle', 'nav_cb_ask'],
     ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'],
     ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']
   ];
@@ -1172,7 +1174,7 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isNfl ? ['nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
@@ -4256,11 +4258,11 @@
     if (esp2) { S.es.game = esp2[1]; if (!(S.view === 'esplayer' && S.es.playerId === decodeURIComponent(esp2[2]))) { S.es.playerId = decodeURIComponent(esp2[2]); showView('esplayer'); } return; }
     var nft = h.match(/^nflteam\/([A-Za-z]{2,3})$/i);
     if (nft) { if (!(S.view === 'nflteam' && S.nfl.teamId === nft[1].toUpperCase())) { S.nfl.teamId = nft[1].toUpperCase(); showView('nflteam'); } return; }
-    var nfv = h.match(/^(nflopps|nflgames|nflteams|nflplayers|nflmodel|nflperf)$/i);
+    var nfv = h.match(/^(nflopps|nflgames|nflteams|nflplayers|nflmodel|nflperf|nflbrief|nflask|nflsim)$/i);
     if (nfv) { showView(nfv[1]); return; }
     var est = h.match(/^esteam\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
-    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit|esprops)(?:\/(cs2|lol|valorant|dota2))?$/i);
+    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit|esprops|esbrief|esask)(?:\/(cs2|lol|valorant|dota2))?$/i);
     if (esv) { if (esv[2]) S.es.game = esv[2]; showView(esv[1]); return; }
     var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
@@ -4283,14 +4285,14 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
     if (['bbgames', 'bbteams', 'bbopps', 'bbbrief', 'bbperf', 'bbsim'].indexOf(nav) >= 0) return nav + '/' + bbLg();
     // esports: el juego elegido viaja en el hash, por el mismo motivo (volver a la sección te devuelve al
     // juego en el que estabas, y el enlace se puede compartir apuntando a CS2 o a LoL)
-    if (['esopps', 'esboard', 'esmodel', 'esteams', 'escircuit'].indexOf(nav) >= 0) return nav + '/' + esGame();
+    if (['esopps', 'esboard', 'esmodel', 'esteams', 'escircuit', 'esbrief', 'esask'].indexOf(nav) >= 0) return nav + '/' + esGame();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -7545,7 +7547,7 @@
     var games = (d.games || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>La jornada</span><span class="gx-dim">' + d.games.length + '</span></div>' +
       '<div class="gx-panel gx-board gx-matches-desk">' + bbGamesTable(d.games, lg, []) + '</div>' +
       '<div class="gx-matches-mob">' + bbGamesCards(d.games, lg, []) + '</div></div>'
-      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>No hay partidos de ' + esc(d.label || '') + ' en las próximas 36 horas.</b></div></div>';
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + (d.espn_error ? 'El calendario no respondió (' + esc(d.espn_error) + ') — reintenta en un momento.' : 'No hay partidos de ' + esc(d.label || '') + ' en las próximas 36 horas.') + '</b></div></div>';
     var val = (d.value || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los mejores precios de hoy</span><span class="gx-ph-extra">' + d.value.length + '</span></div><div class="gx-bb-opps">' +
       d.value.map(function (v) {
         return '<div class="gx-bb-opp">' + bbEvLine(v.event) +
@@ -8551,6 +8553,8 @@
     else if (v === 'esplayer') renderESPlayer();
     else if (v === 'escircuit') renderESCircuit();
     else if (v === 'esprops') renderESProps();
+    else if (v === 'esbrief') renderESBrief();
+    else if (v === 'esask') renderESAsk();
     else renderESOpps();
   }
 
@@ -9665,10 +9669,8 @@
     return (d && d.teams) || [];
   }
   function esSimPanel(g, d) {
-    if (g !== 'cs2') {
-      return esPanel('Simulador de enfrentamiento', '<span class="gx-chip gx-chip-baja">no disponible</span>',
-        esGap('El simulador necesita base propia y hoy solo la tiene CS2. En ' + esc(d.label) + ' la probabilidad nace del mercado, así que un cruce sin partido cotizado no tiene nada que contestar. Se abre solo el día que este juego tenga fuente de resultados.'));
-    }
+    // desde el 18-ago los cuatro juegos tienen base propia: el simulador abre en todos
+
     var teams = esSimTeams(g);
     var a = S.es.simA || '', b = S.es.simB || '', bo = S.es.simBo || 3;
     var opts = teams.map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join('');
@@ -9690,7 +9692,7 @@
   }
   function esSimResult(g) {
     var a = S.es.simA, b = S.es.simB, bo = S.es.simBo || 3;
-    if (g !== 'cs2' || !a || !b || !S.es.simRun) return '';
+    if (!a || !b || !S.es.simRun) return '';
     var key = 'sim_' + encodeURIComponent(a) + '_' + encodeURIComponent(b) + '_' + bo;
     var s = esGet(key, '/api/esports/sim?game=' + g + '&a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + '&bo=' + bo, 900000);
     if (!s) return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Simulando ' + esc(a) + ' vs ' + esc(b) + '…</b></div></div>';
@@ -9703,14 +9705,20 @@
     var pr = s.model.probability || {};
     var head = '<div class="gx-panel gx-cs-simhead">' +
       '<div class="gx-cs-side">' + cs2Crest(s.teams.a, 'big') + '<b>' + esc(s.teams.a.name) + '</b>' +
-        '<span class="gx-dim">' + (s.teams.a.elo != null ? 'Elo ' + Math.round(s.teams.a.elo) : '') + ' · ' + s.teams.a.n + ' mapas</span></div>' +
+        '<span class="gx-dim">' + (s.teams.a.elo != null ? 'Elo ' + Math.round(s.teams.a.elo) : '') + ' · ' + s.teams.a.n + ' ' + esUnit() + '</span></div>' +
       '<div class="gx-cs-mid"><b class="gx-cs-p">' + esPct0(pr.p) + '</b><span class="gx-dim">BO' + s.bo + ' · modelo sin ancla</span>' +
         '<div class="gx-es-bar"><i style="width:' + (100 * (pr.p || 0)).toFixed(1) + '%"></i></div>' +
         '<b class="gx-cs-p2">' + esPct0(pr.p != null ? 1 - pr.p : null) + '</b></div>' +
       '<div class="gx-cs-side">' + cs2Crest(s.teams.b, 'big') + '<b>' + esc(s.teams.b.name) + '</b>' +
-        '<span class="gx-dim">' + (s.teams.b.elo != null ? 'Elo ' + Math.round(s.teams.b.elo) : '') + ' · ' + s.teams.b.n + ' mapas</span></div>' +
+        '<span class="gx-dim">' + (s.teams.b.elo != null ? 'Elo ' + Math.round(s.teams.b.elo) : '') + ' · ' + s.teams.b.n + ' ' + esUnit() + '</span></div>' +
       '</div>';
-    return head + esH2H(s.h2h) + cs2Veto(fake) + cs2Ladder(fake) + cs2Rounds(fake) + cs2Teams(fake);
+    // cada juego enseña SU estructura: CS2 el veto/escalera/rondas; los otros tres su sala propia + bloques
+    if (g === 'cs2') return head + esH2H(s.h2h) + cs2Veto(fake) + cs2Ladder(fake) + cs2Rounds(fake) + cs2Teams(fake);
+    var m2 = s.model || {};
+    var blocks = g === 'lol' ? [esDraftRoom(m2, fake.event), esTempo(m2), esDuration(m2), esKills(m2, fake.event)]
+      : g === 'valorant' ? [esDraftRoom(m2, fake.event), esVeto(m2, fake.event), esRounds(m2, fake.event)]
+      : [esDraftRoom(m2, fake.event), esDuration(m2), esKills(m2, fake.event)];
+    return head + esH2H(s.h2h) + blocks.filter(Boolean).join('');
   }
 
   function renderESModel() {
@@ -10429,6 +10437,127 @@
     return '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(txt || 'Todas las familias de NFL están EN SOMBRA: el terminal enseña inteligencia, no picks. El registro privado acumula CLV por familia y solo la evidencia fuera de muestra puede abrir una (blueprint NFL-1125).') + '</span></div>';
   }
 
+
+  // ── BRIEF DE FÚTBOL AMERICANO (18-ago): la semana de la liga con la lectura del modelo ────────────────
+  function renderNflBrief() {
+    var lg = nflLg();
+    var d = nflGet('brief_' + lg, '/api/nfl/brief?league=' + (lg === 'college' ? 'ncaaf' : lg), 600000);
+    if (!d) { nflShell('Brief', nflLoading()); return; }
+    if (d._err) { nflShell('Brief', '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var lang = (S.lang === 'en') ? 'en' : 'es';
+    var intro = d.intro && d.intro[lang]
+      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de la semana</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
+        String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
+      : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. El tablero de abajo no depende de ella.</span></div>' : '');
+    var games = (d.games || []);
+    var rows = games.length ? '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">Los próximos partidos</span><span class="gx-ph-extra">' + games.length + '</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Partido</th><th class="r">Fecha</th><th class="r">Margen GP</th><th class="r">Total GP</th><th class="r">Prob. local</th></tr></thead><tbody>' +
+      games.map(function (g) {
+        var hn = (g.home && g.home.name) || g.home, an = (g.away && g.away.name) || g.away;
+        var m = g.model || {};
+        return '<tr data-nflgame="' + esc(g.id) + '" style="cursor:pointer">' +
+          '<td><b>' + esc(an) + '</b> en <b>' + esc(hn) + '</b>' + (g.week != null ? ' <span class="gx-dim">· sem ' + g.week + '</span>' : '') + '</td>' +
+          '<td class="r gx-mono gx-dim">' + esc(String(g.date || '').slice(0, 10)) + '</td>' +
+          '<td class="r gx-mono">' + (m.mu_margin != null ? (m.mu_margin > 0 ? '+' : '') + m.mu_margin : '—') + '</td>' +
+          '<td class="r gx-mono">' + (m.mu_total != null ? m.mu_total : '—') + '</td>' +
+          '<td class="r gx-mono"><b>' + (m.p_home != null ? Math.round(100 * m.p_home) + '%' : '—') + '</b></td></tr>';
+      }).join('') + '</tbody></table></div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidos de ' + esc(d.label || '') + ' en la ventana.</b></div></div>';
+    var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.note || '') + '</span></div>';
+    nflShell('Brief · ' + esc(d.label || ''), intro + rows + note);
+  }
+
+  // ── PREGÚNTALE A GP · FÚTBOL AMERICANO (18-ago) ────────────────────────────────────────────────────────
+  function renderNflAsk() {
+    S.nfl.ask = S.nfl.ask || { hist: [], busy: false, err: null };
+    var A = S.nfl.ask;
+    var sug = ['¿Qué proyecta el modelo para la Semana 1?', '¿Cómo llegan los Chiefs?', '¿Quién ganaría Alabama vs Georgia en cancha neutral?', '¿Cómo va el monitor en sombra de la CFL?'];
+    var thread = A.hist.length ? '<div class="gx-bb-thread">' + A.hist.map(function (h) {
+      return '<div class="gx-bb-q">' + esc(h.q) + '</div>' + (h.answer ? '<div class="gx-bb-a">' + esc(h.answer).replace(/\n/g, '<br>') + '</div>' : '<div class="gx-bb-a gx-dim">…</div>');
+    }).join('') + '</div>' : '';
+    var box = '<div class="gx-panel gx-bb-askbox">' +
+      '<div class="gx-ph"><span class="gx-label">Pregúntale a GP</span><span class="gx-ph-extra">fútbol americano</span></div>' +
+      thread +
+      (A.busy ? '<div class="gx-bb-a gx-dim">Pensando…</div>' : '') +
+      (A.err ? '<div class="gx-bb-note gx-panel">' + ic('alert-triangle') + '<span>' + esc(A.err) + '</span></div>' : '') +
+      '<div class="gx-bb-askin"><input id="gx-nfl-q" placeholder="Pregunta por un partido, un equipo o la sombra…" autocomplete="off"' + (A.busy ? ' disabled' : '') + '>' +
+      '<button class="gx-btn" data-nflask="1"' + (A.busy ? ' disabled' : '') + '>' + ic('message-circle') + 'Preguntar</button></div>' +
+      '<div class="gx-bb-sugs">' + sug.map(function (s2) { return '<span class="gx-bb-sug" data-nflasksug="' + esc(s2) + '">' + esc(s2) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">Responde solo con datos cargados en la plataforma. Si no tiene el dato, lo dice. No es consejo financiero.</div>' +
+      '</div>';
+    nflShell('Pregúntale a GP', box);
+    var inp = $('#gx-nfl-q');
+    if (inp && !A.busy) { inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') nflAskGo(inp.value); }); setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30); }
+  }
+  function nflAskGo(q) {
+    q = (q || '').trim(); if (!q) return;
+    var A = S.nfl.ask = S.nfl.ask || { hist: [], busy: false, err: null };
+    if (A.busy) return;
+    A.busy = true; A.err = null; A.hist.push({ q: q, answer: null });
+    renderNflAsk();
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()),
+      body: JSON.stringify({ q: q, sport: 'nfl', lang: S.lang === 'en' ? 'en' : 'es', hist: A.hist.slice(0, -1).slice(-5) }) })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (j) {
+        A.busy = false;
+        if (j && j.answer) A.hist[A.hist.length - 1].answer = j.answer;
+        else { A.hist.pop(); A.err = (j && j.error === 'limit') ? 'Llegaste al límite de preguntas por hoy.' : 'No pude responder ahora mismo. Prueba de nuevo en un momento.'; }
+        renderNflAsk();
+      })
+      .catch(function () { A.busy = false; A.hist.pop(); A.err = 'Error de red.'; renderNflAsk(); });
+  }
+
+  // ── SIMULADOR DE FÚTBOL AMERICANO (18-ago): dos equipos cualesquiera, local o neutral ─────────────────
+  function renderNflSim() {
+    var lg = nflLg();
+    var lgApi = lg === 'college' ? 'ncaaf' : lg;
+    var teamsUrl = lg === 'nfl' ? '/api/nfl/teams' : '/api/amfoot/teams?league=' + lgApi;
+    var td = nflGet('simteams_' + lg, teamsUrl, 900000);
+    var teams = (td && td.teams) || [];
+    var a = S.nfl.simA || '', b = S.nfl.simB || '', neutral = !!S.nfl.simN;
+    var opts = teams.map(function (x) { return '<option value="' + esc(x.name || x.abbr) + '">'; }).join('');
+    var form = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Simulador de enfrentamiento</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">' + teams.length + ' equipos en la base</span></span></div>' +
+      '<div class="gx-es-sim"><div class="gx-es-simf">' +
+        '<label><span>Local</span><input id="gx-nflsim-a" list="gx-nflteams" placeholder="' + (lg === 'nfl' ? 'Chiefs' : lg === 'cfl' ? 'Toronto Argonauts' : 'Alabama') + '" value="' + esc(a) + '" autocomplete="off"></label>' +
+        '<label><span>Visitante</span><input id="gx-nflsim-b" list="gx-nflteams" placeholder="' + (lg === 'nfl' ? 'Bills' : lg === 'cfl' ? 'Ottawa Redblacks' : 'Georgia') + '" value="' + esc(b) + '" autocomplete="off"></label>' +
+        '<label><span>Cancha</span><select id="gx-nflsim-n"><option value=""' + (!neutral ? ' selected' : '') + '>Local</option><option value="1"' + (neutral ? ' selected' : '') + '>Neutral</option></select></label>' +
+        '<button class="gx-btn" data-nflsimgo="1">Simular</button>' +
+      '</div><datalist id="gx-nflteams">' + opts + '</datalist>' +
+      '<div class="gx-dim gx-es-note">Proyección del modelo propio sin cuotas — en un partido real el mercado también habla.</div></div></div>';
+    var result = '';
+    if (S.nfl.simRun && a && b) {
+      var key = 'sim_' + lg + '_' + encodeURIComponent(a) + '_' + encodeURIComponent(b) + '_' + (neutral ? 'n' : 'h');
+      var sd = nflGet(key, '/api/nfl/sim?league=' + lgApi + '&home=' + encodeURIComponent(a) + '&away=' + encodeURIComponent(b) + (neutral ? '&neutral=1' : ''), 900000);
+      if (!sd) result = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Simulando…</b></div></div>';
+      else if (sd._err || !sd.available) result = '<div class="gx-panel gx-es-doct">' + ic('alert-triangle') + '<div><b>No se puede simular ese cruce</b><span>' + esc((sd && sd.why) || t('e_net')) + '</span></div></div>';
+      else {
+        var m = sd.model || {}; var sim = m.sim || {};
+        var ph = sim.p_home != null ? sim.p_home : null;
+        var hn = (sd.home && (sd.home.name || sd.home.abbr)) || a, an = (sd.away && (sd.away.name || sd.away.abbr)) || b;
+        result = '<div class="gx-panel gx-cs-simhead">' +
+          '<div class="gx-cs-side">' + (sd.home && sd.home.logo ? '<img src="' + esc(sd.home.logo) + '" style="width:52px;height:52px;object-fit:contain">' : '') + '<b>' + esc(hn) + '</b><span class="gx-dim">local' + (sd.neutral ? ' (neutral)' : '') + '</span></div>' +
+          '<div class="gx-cs-mid"><b class="gx-cs-p">' + (ph != null ? Math.round(100 * ph) + '%' : '—') + '</b><span class="gx-dim">probabilidad local</span>' +
+            '<div class="gx-es-bar"><i style="width:' + (ph != null ? (100 * ph).toFixed(1) : 0) + '%"></i></div>' +
+            '<b class="gx-cs-p2">' + (ph != null ? Math.round(100 * (1 - ph)) + '%' : '—') + '</b></div>' +
+          '<div class="gx-cs-side">' + (sd.away && sd.away.logo ? '<img src="' + esc(sd.away.logo) + '" style="width:52px;height:52px;object-fit:contain">' : '') + '<b>' + esc(an) + '</b><span class="gx-dim">visitante</span></div>' +
+          '</div>' +
+          '<div class="gx-panel gx-bb-modelbar">' +
+          '<div><span class="gx-label">Margen proyectado</span><b>' + (m.muMargin != null ? (m.muMargin > 0 ? '+' : '') + m.muMargin : '—') + '</b></div>' +
+          '<div><span class="gx-label">Total proyectado</span><b>' + (m.muTotal != null ? m.muTotal : '—') + '</b></div>' +
+          '<div><span class="gx-label">Incertidumbre</span><b>±' + (m.unc_pts != null ? m.unc_pts : '—') + ' pts</b></div>' +
+          '</div>' +
+          '<div class="gx-dim gx-es-trunc">' + esc(sd.note || '') + '</div>';
+      }
+    }
+    nflShell('Simulador', form + result);
+    var ia = $('#gx-nflsim-a'), ib = $('#gx-nflsim-b'), inn = $('#gx-nflsim-n');
+    var sync = function () { S.nfl.simA = ia ? ia.value : ''; S.nfl.simB = ib ? ib.value : ''; S.nfl.simN = !!(inn && inn.value); };
+    if (ia) ia.addEventListener('change', sync);
+    if (ib) ib.addEventListener('change', sync);
+    if (inn) inn.addEventListener('change', function () { sync(); S.nfl.simRun = false; renderNflSim(); });
+  }
+
   function renderNfl(v) {
     if (!S.me) { nflShell('NFL', nflLoading()); return; }
     if (!nflAllowed()) { showView('board'); return; }
@@ -10436,6 +10565,9 @@
     else if (v === 'nflteams') renderNflTeams();
     else if (v === 'nflteam') renderNflTeam();
     else if (v === 'nflplayers') renderNflPlayers();
+    else if (v === 'nflbrief') renderNflBrief();
+    else if (v === 'nflask') renderNflAsk();
+    else if (v === 'nflsim') renderNflSim();
     else if (v === 'nflplayer') renderNflPlayer();
     else if (v === 'nflmodel') renderNflModel();
     else if (v === 'nflperf') renderNflPerf();
@@ -11118,6 +11250,13 @@
   }
 
   function nflClicks(e) {
+    var nsug = e.target.closest('[data-nflasksug]'); if (nsug) { nflAskGo(nsug.getAttribute('data-nflasksug')); return; }
+    if (e.target.closest('[data-nflask]')) { var qn = $('#gx-nfl-q'); if (qn) nflAskGo(qn.value); return; }
+    if (e.target.closest('[data-nflsimgo]')) {
+      var sa = $('#gx-nflsim-a'), sb = $('#gx-nflsim-b'), sn = $('#gx-nflsim-n');
+      S.nfl.simA = sa ? sa.value : ''; S.nfl.simB = sb ? sb.value : ''; S.nfl.simN = !!(sn && sn.value);
+      S.nfl.simRun = !!(S.nfl.simA && S.nfl.simB); renderNflSim(); return;
+    }
     var lgB = e.target.closest('[data-amflg]');
     if (lgB) {
       var nlg = lgB.getAttribute('data-amflg');
@@ -11126,6 +11265,7 @@
         // los detalles (partido/equipo/jugador) llevan ids de la liga anterior → a la lista; las vistas
         // de LISTA se quedan donde están (18-ago, reporte de Alexis: Jugadores rebotaba a Partidos — ahora
         // Jugadores se queda y muestra su directorio o su hueco honesto según la liga)
+        S.nfl.simRun = false; S.nfl.simA = ''; S.nfl.simB = '';   // el simulador no arrastra equipos de otra liga
         if (S.view === 'nflgame' || S.view === 'nflteam' || S.view === 'nflplayer') { setHash('nflgames'); showView('nflgames'); }
         else showView(S.view);
       }
@@ -11300,6 +11440,83 @@
     esShell(p.nick, back + hero + fpB + mapsB + recB + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
   }
 
+
+  // ── BRIEF DE ESPORT (18-ago, pedido de Alexis): la jornada del juego con la lectura de la casa ─────────
+  function renderESBrief() {
+    var g = esGame();
+    var d = esGet('brief_' + g, '/api/esports/brief?game=' + g, 300000);
+    if (!d) { esShell('Brief', esTabs() + esLoading()); return; }
+    if (d._err) { esShell('Brief', esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    var lang = (S.lang === 'en') ? 'en' : 'es';
+    var intro = d.intro && d.intro[lang]
+      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
+        String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
+      : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. El tablero de abajo no depende de ella.</span></div>' : '');
+    var items = (d.items || []);
+    var rows = items.length ? '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">La jornada</span><span class="gx-ph-extra">' + items.length + '</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Cruce</th><th>Competición</th><th class="r">Hora UTC</th><th class="r">Prob. GP</th><th>Señal</th></tr></thead><tbody>' +
+      items.map(function (x) {
+        return '<tr data-esmatch="' + esc(x.id) + '" style="cursor:pointer">' +
+          '<td><b>' + esc(x.home) + '</b> vs <b>' + esc(x.away) + '</b></td>' +
+          '<td class="gx-dim">' + esc(x.competition || '—') + '</td>' +
+          '<td class="r gx-mono">' + (x.start_at ? esc(String(x.start_at).slice(11, 16)) : '—') + '</td>' +
+          '<td class="r gx-mono"><b>' + (x.p_home != null ? Math.round(100 * Math.max(x.p_home, 1 - x.p_home)) + '% ' + esc(x.p_home >= 0.5 ? x.home : x.away) : '—') + '</b></td>' +
+          '<td>' + (x.best ? '<span class="gx-es-fam on">' + esc((x.best.family || '').replace(/_/g, ' ')) + ' @' + x.best.odds + '</span>' : '<span class="gx-dim">—</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidas próximas de ' + esc(d.label || '') + ' en la agenda.</b></div></div>';
+    var act = (d.active_picks || []).length ? esPanel('Señales activas', '<span class="gx-mono">' + d.active_picks.length + '</span>',
+      '<div class="gx-dr-pool">' + d.active_picks.map(function (p) {
+        return '<span class="gx-dr-ch" title="' + esc(p.match || '') + '">' + esc(p.family) + (p.side ? ' · ' + esc(p.side) + ' ' + (p.line != null ? p.line : '') : '') + '</span>';
+      }).join('') + '</div>') : '';
+    var meta = d.meta && (d.meta.top || []).length ? esPanel('El meta que se mueve', d.meta.patch ? '<span class="gx-mono">parche ' + esc(d.meta.patch) + '</span>' : '<span class="gx-mono">90 días</span>',
+      '<div class="gx-dr-pool">' + d.meta.top.map(function (r) {
+        var dw = r.delta_wr;
+        return '<span class="gx-dr-ch"><b>' + esc(r.name) + '</b><i>' + r.presence_pct + '%' + (dw != null ? (dw > 0 ? ' ▲' : dw < 0 ? ' ▼' : '') : '') + '</i></span>';
+      }).join('') + '</div>') : '';
+    var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.note || '') + '</span></div>';
+    esShell('Brief · ' + esc(d.label || esGameLab()), esTabs() + intro + rows + act + meta + note);
+  }
+
+  // ── PREGÚNTALE A GP · ESPORT (18-ago) ───────────────────────────────────────────────────────────────────
+  function renderESAsk() {
+    S.es.ask = S.es.ask || { hist: [], busy: false, err: null };
+    var A = S.es.ask;
+    var sug = ['¿Qué se juega hoy en ' + esGameLab() + '?', '¿Cómo llega Team Spirit?', '¿Qué dice el meta ahora mismo?', '¿Hay señales activas del monitor?'];
+    var thread = A.hist.length ? '<div class="gx-bb-thread">' + A.hist.map(function (h) {
+      return '<div class="gx-bb-q">' + esc(h.q) + '</div>' + (h.answer ? '<div class="gx-bb-a">' + esc(h.answer).replace(/\n/g, '<br>') + '</div>' : '<div class="gx-bb-a gx-dim">…</div>');
+    }).join('') + '</div>' : '';
+    var box = '<div class="gx-panel gx-bb-askbox">' +
+      '<div class="gx-ph"><span class="gx-label">Pregúntale a GP</span><span class="gx-ph-extra">esports</span></div>' +
+      thread +
+      (A.busy ? '<div class="gx-bb-a gx-dim">Pensando…</div>' : '') +
+      (A.err ? '<div class="gx-bb-note gx-panel">' + ic('alert-triangle') + '<span>' + esc(A.err) + '</span></div>' : '') +
+      '<div class="gx-bb-askin"><input id="gx-es-q" placeholder="Pregunta por una partida, un equipo, el meta o las señales…" autocomplete="off"' + (A.busy ? ' disabled' : '') + '>' +
+      '<button class="gx-btn" data-esask="1"' + (A.busy ? ' disabled' : '') + '>' + ic('message-circle') + 'Preguntar</button></div>' +
+      '<div class="gx-bb-sugs">' + sug.map(function (s2) { return '<span class="gx-bb-sug" data-esasksug="' + esc(s2) + '">' + esc(s2) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">Responde solo con datos cargados en la plataforma. Si no tiene el dato, lo dice. No es consejo financiero.</div>' +
+      '</div>';
+    esShell('Pregúntale a GP', esTabs() + box);
+    var inp = $('#gx-es-q');
+    if (inp && !A.busy) { inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') esAskGo(inp.value); }); setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30); }
+  }
+  function esAskGo(q) {
+    q = (q || '').trim(); if (!q) return;
+    var A = S.es.ask = S.es.ask || { hist: [], busy: false, err: null };
+    if (A.busy) return;
+    A.busy = true; A.err = null; A.hist.push({ q: q, answer: null });
+    renderESAsk();
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()),
+      body: JSON.stringify({ q: q, sport: 'esports', lang: S.lang === 'en' ? 'en' : 'es', hist: A.hist.slice(0, -1).slice(-5) }) })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (j) {
+        A.busy = false;
+        if (j && j.answer) A.hist[A.hist.length - 1].answer = j.answer;
+        else { A.hist.pop(); A.err = (j && j.error === 'limit') ? 'Llegaste al límite de preguntas por hoy.' : 'No pude responder ahora mismo. Prueba de nuevo en un momento.'; }
+        renderESAsk();
+      })
+      .catch(function () { A.busy = false; A.hist.pop(); A.err = 'Error de red.'; renderESAsk(); });
+  }
+
   function esClicks(e) {
     var lensBtn = e.target.closest('[data-eslens]');
     if (lensBtn) { S.es.lens = lensBtn.getAttribute('data-eslens'); renderESMatch(); return; }
@@ -11313,6 +11530,8 @@
     if (seg) { S.es.gTab = seg.getAttribute('data-esgtab'); renderESBoard(); return; }
     var ttab = e.target.closest('[data-estab]');
     if (ttab) { S.es.tTab = ttab.getAttribute('data-estab'); renderESTeams(); return; }
+    var asug = e.target.closest('[data-esasksug]'); if (asug) { esAskGo(asug.getAttribute('data-esasksug')); return; }
+    if (e.target.closest('[data-esask]')) { var qi2 = $('#gx-es-q'); if (qi2) esAskGo(qi2.value); return; }
     var rl = e.target.closest('[data-esrole]');
     if (rl) { S.es.lolRole = rl.getAttribute('data-esrole'); renderESChampions(); return; }
     var team = e.target.closest('[data-esteam]');

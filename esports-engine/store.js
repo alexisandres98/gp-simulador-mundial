@@ -1017,8 +1017,8 @@ function highlightOf(game, model) {
 // así que un cruce sin mercado no tenía respuesta. Ahora sí la tiene, y decir de dónde sale —modelo puro, sin
 // ancla— es parte de la respuesta.
 function teamSearch(game, q, { limit = 24 } = {}) {
-  if (game !== 'cs2') return { game, available: false, why: 'solo CS2 tiene base propia de equipos; los otros tres juegos todavía no tienen fuente de resultados.', teams: [] };
-  const CD = require('./cs2-data');
+  const CD = game === 'cs2' ? require('./cs2-data') : cdOf(game);
+  if (!CD) return { game, available: false, why: 'la base propia de este juego no está cargada todavía.', teams: [] };
   const data = CD.load();
   const needle = CD.norm(q || '');
   const rows = Object.values(data.teams)
@@ -1038,7 +1038,31 @@ function teamSearch(game, q, { limit = 24 } = {}) {
 function simulate(game, aName, bName, { bo = 3 } = {}) {
   const E = ENGINES[game];
   if (!E) return null;
-  if (game !== 'cs2') return { game, available: false, why: 'el simulador necesita base propia y hoy solo la tiene CS2.' };
+  // desde el 18-ago los CUATRO juegos tienen base propia: CS2 con su simulador de mapas; LoL, Valorant y
+  // Dota 2 con el Elo propio validado (el motor de cada juego pone la estructura encima).
+  if (game !== 'cs2') {
+    const CD2 = cdOf(game);
+    if (!CD2) return { game, available: false, why: 'la base propia de este juego no está cargada todavía.' };
+    const d2 = CD2.load();
+    const iA = CD2.resolveTeam(aName, { data: d2 }), iB = CD2.resolveTeam(bName, { data: d2 });
+    if (!iA || !iB) return { game, available: false, resolved: { a: iA, b: iB },
+      why: `no reconozco a ${!iA ? aName : bName} en la base propia. Se devuelve nada antes que el historial de otro equipo.` };
+    if (iA === iB) return { game, available: false, why: 'los dos nombres resuelven al mismo equipo.' };
+    const cardA = CD2.teamCard(iA, { data: d2 }), cardB = CD2.teamCard(iB, { data: d2 });
+    const ratings = { elo_a: cardA.elo != null ? cardA.elo : 1500, elo_b: cardB.elo != null ? cardB.elo : 1500 };
+    const model = E.analyze({ market: { markets: [] }, ratings, bo,
+      sample: Math.min(cardA.n || 0, cardB.n || 0), teams: { a: cardA.name, b: cardB.name } });
+    if (model) {
+      try {
+        if (game === 'lol') model.draft_room = require('./lol-data').draftIntel(cardA.name, cardB.name);
+        if (game === 'valorant') model.draft_room = require('./valorant-data').compIntel(cardA.name, cardB.name);
+        if (game === 'dota2') model.draft_room = require('./dota2-data').draftIntel(cardA.name, cardB.name);
+      } catch { }
+    }
+    return { game, available: true, bo, teams: { a: cardA, b: cardB }, model, h2h: h2h(game, iA, iB), standalone: true,
+      note: 'probabilidad del modelo propio de GP sola, sin ancla de mercado — en una partida real el mercado manda sobre el ganador; aquí se enseña el modelo desnudo a propósito.',
+      at: new Date().toISOString() };
+  }
   const CD = require('./cs2-data');
   const data = CD.load();
   const idA = CD.resolveTeam(aName, { data }), idB = CD.resolveTeam(bName, { data });

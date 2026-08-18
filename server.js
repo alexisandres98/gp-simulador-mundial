@@ -8991,6 +8991,155 @@ function askToolsFor(sport, { u, lang, org }) {
     };
     return { tools, runTool, sportLabel: 'BALONCESTO (NBA · WNBA · NCAA masculino y femenino). Las picks de baloncesto están APAGADAS porque el modelo todavía no bate al cierre del mercado: si preguntan por picks, decilo con naturalidad y ofrecé la proyección y las diferencias de precio entre casas. Si preguntan por fútbol o combate, indicá el conmutador de deporte de arriba.' };
   }
+  // ── ESPORTS (18-ago): agenda, análisis de partida, equipo, meta y picks de los cuatro juegos ──────────
+  if (sport === 'esports') {
+    const ES = require('./esports-engine/store');
+    const GAMES = ['cs2', 'lol', 'valorant', 'dota2'];
+    const gOf = (x) => (GAMES.includes(String(x)) ? String(x) : 'cs2');
+    const tools = [
+      { name: 'agenda_esports', description: 'Partidas próximas de un juego (CS2, LoL, Valorant o Dota 2) con cruce, competición, hora UTC y formato. Úsala para "hoy", "mañana" o "qué se juega".', input_schema: { type: 'object', properties: { juego: { type: 'string', enum: GAMES }, dias: { type: 'number', description: 'ventana (default 3, máx 7)' } }, required: ['juego'] } },
+      { name: 'analisis_partida_esports', description: 'La lectura de UNA partida próxima: probabilidad GP, casas que cotizan, señales activas y la sala de draft/composición (pools de jugadores, comfort). Pasa el juego y uno o dos nombres de equipo.', input_schema: { type: 'object', properties: { juego: { type: 'string', enum: GAMES }, equipo1: { type: 'string' }, equipo2: { type: 'string' } }, required: ['juego', 'equipo1'] } },
+      { name: 'equipo_esports', description: 'Perfil de un equipo en la base propia: Elo GP, victorias, historial, forma reciente, quinteto con ratings y rivales frecuentes.', input_schema: { type: 'object', properties: { juego: { type: 'string', enum: GAMES }, equipo: { type: 'string' } }, required: ['juego', 'equipo'] } },
+      { name: 'simular_cruce_esports', description: 'Enfrenta a DOS equipos cualesquiera de la base propia con el modelo de GP (sin necesidad de que haya partida cotizada): probabilidad, estructura y sala de draft.', input_schema: { type: 'object', properties: { juego: { type: 'string', enum: GAMES }, equipo1: { type: 'string' }, equipo2: { type: 'string' }, bo: { type: 'number' } }, required: ['juego', 'equipo1', 'equipo2'] } },
+      { name: 'meta_del_juego', description: 'El meta vigente medido: campeones de LoL por parche, agentes de Valorant por ventana, héroes de Dota por parche, mapas de CS2 — presencia, tasa de victoria y movimiento.', input_schema: { type: 'object', properties: { juego: { type: 'string', enum: GAMES } }, required: ['juego'] } },
+      { name: 'picks_esports', description: 'Las señales/picks del monitor de esports: activas y rendimiento del registro (aciertos, unidades, CLV).', input_schema: { type: 'object', properties: { juego: { type: 'string', enum: GAMES } }, required: ['juego'] } },
+    ];
+    const runTool = async (name, input) => {
+      const gm2 = gOf(input.juego);
+      if (name === 'agenda_esports') {
+        const dias = Math.min(7, Math.max(1, +input.dias || 3));
+        const sl2 = await ES.slate(gm2, { days: dias }).catch(() => null);
+        return { juego: gm2, partidas: ((sl2 && sl2.events) || []).slice(0, 25).map((ev) => ({
+          cruce: `${ev.home.name} vs ${ev.away.name}`, competicion: ev.competition || null,
+          utc: ev.start_at ? String(ev.start_at).slice(0, 16).replace('T', ' ') + 'Z' : null, dia: ev.start_at ? askDow(ev.start_at) : null })) };
+      }
+      if (name === 'analisis_partida_esports') {
+        const sl2 = await ES.slate(gm2, { days: 5 }).catch(() => null);
+        const n1 = String(input.equipo1 || '').toLowerCase(), n2 = String(input.equipo2 || '').toLowerCase();
+        const ev = ((sl2 && sl2.events) || []).find((e) => {
+          const s2 = (e.home.name + ' ' + e.away.name).toLowerCase();
+          return s2.includes(n1) && (!n2 || s2.includes(n2));
+        });
+        if (!ev) return { error: 'no encuentro esa partida en la agenda próxima', juego: gm2 };
+        const a = await ES.analyzeMatch(gm2, ev.id).catch(() => null);
+        if (!a) return { error: 'no pude analizarla ahora mismo' };
+        const pr = a.model && a.model.probability;
+        return { cruce: `${ev.home.name} vs ${ev.away.name}`, bo: a.bo,
+          prob_local_pct: pr && pr.p != null ? Math.round(100 * pr.p) : null,
+          casas: a.books ? a.books.n : 0,
+          senales: ((a.edges && a.edges.picks) || []).slice(0, 4).map((p3) => ({ familia: p3.family_label || p3.family, seleccion: p3.selection, cuota: p3.odds })),
+          sala_draft: a.model && a.model.draft_room && a.model.draft_room.available ? {
+            a: a.model.draft_room.a && a.model.draft_room.a.resolved ? { fragilidad_pct: a.model.draft_room.a.fragility_pct,
+              jugadores: (a.model.draft_room.a.five || []).map((f) => ({ nick: f.nick, rol: f.role, rating: f.rating_gp })) } : null,
+            b: a.model.draft_room.b && a.model.draft_room.b.resolved ? { fragilidad_pct: a.model.draft_room.b.fragility_pct,
+              jugadores: (a.model.draft_room.b.five || []).map((f) => ({ nick: f.nick, rol: f.role, rating: f.rating_gp })) } : null,
+          } : null,
+          h2h: a.h2h && a.h2h.n ? { series: a.h2h.n, gana_a: a.h2h.wins_a } : null };
+      }
+      if (name === 'equipo_esports') {
+        const tp = ES.teamProfile(gm2, String(input.equipo || ''));
+        if (!tp || !tp.available) return { error: (tp && tp.why) || 'equipo no reconocido en la base propia' };
+        return { equipo: tp.team.name, elo: tp.team.elo, victorias_pct: tp.team.wr != null ? Math.round(100 * tp.team.wr) : null,
+          historial: tp.team.n, forma: (tp.form || []).slice(0, 5).map((f) => f.r),
+          quinteto: ((tp.roster && tp.roster.five) || []).map((f) => f.nick + (f.role ? ' (' + f.role + ')' : '')),
+          rivales: (tp.rivals || []).slice(0, 3).map((r) => ({ rival: r.name, series: r.n, ganadas: r.wins })) };
+      }
+      if (name === 'simular_cruce_esports') {
+        const s3 = ES.simulate(gm2, String(input.equipo1 || ''), String(input.equipo2 || ''), { bo: [1, 3, 5].includes(+input.bo) ? +input.bo : 3 });
+        if (!s3 || !s3.available) return { error: (s3 && s3.why) || 'no pude simular ese cruce' };
+        const pr = s3.model && s3.model.probability;
+        return { cruce: `${s3.teams.a.name} vs ${s3.teams.b.name}`, bo: s3.bo,
+          prob_a_pct: pr && pr.p != null ? Math.round(100 * pr.p) : null,
+          elo: { a: s3.teams.a.elo, b: s3.teams.b.elo },
+          h2h: s3.h2h && s3.h2h.n ? { series: s3.h2h.n, gana_a: s3.h2h.wins_a } : null,
+          nota: 'probabilidad del modelo propio sin ancla de mercado' };
+      }
+      if (name === 'meta_del_juego') {
+        if (gm2 === 'cs2') {
+          const c2 = ES.circuit('cs2');
+          return c2 && c2.available ? { juego: 'cs2', mapas: (c2.rows || []).filter((m) => m.in_pool).map((m) => ({ mapa: m.map, rondas_medias: m.mean_rounds, prorroga_pct: Math.round(100 * (m.overtime_p || 0)) })) } : { error: 'sin circuito cargado' };
+        }
+        const cb2 = ES.championsBoard(gm2, {});
+        if (!cb2 || !cb2.available) return { error: 'el meta de este juego todavía no está cargado' };
+        return { juego: gm2, corte: cb2.patch ? 'parche ' + cb2.patch : 'ventana de 90 días',
+          top: cb2.rows.slice(0, 10).map((r) => ({ nombre: r.ch, rol: r.role, presencia_pct: r.presence_pct,
+            victorias_pct: Math.round(100 * r.wr_shrunk), movimiento_pp: r.delta_wr != null ? Math.round(100 * r.delta_wr) : null })) };
+      }
+      if (name === 'picks_esports') {
+        const tr2 = ES.track(gm2, { limit: 20 });
+        return { juego: gm2, activas: (tr2.open || []).slice(0, 8).map((p3) => ({ familia: p3.family_label || p3.family, cruce: p3.home + ' vs ' + p3.away, lado: p3.side, linea: p3.line })),
+          registro: { total: tr2.total, ganadas: tr2.w, perdidas: tr2.l, unidades: tr2.units, acierto_pct: tr2.hit_pct, clv_pct: tr2.clv_avg_pct } };
+      }
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'ESPORTS (CS2 · LoL · Valorant · Dota 2). Los cuatro juegos tienen base propia de GP; las señales públicas siguen la doctrina de la casa (familias derivadas, ganador anclado a mercado). Si preguntan por otros deportes, indicá el conmutador de arriba.' };
+  }
+  // ── FÚTBOL AMERICANO (18-ago): agenda, partido, equipo, simulador y sombra de NFL/College/CFL ─────────
+  if (sport === 'nfl') {
+    const NFLS = require('./nfl-engine/store');
+    const AMF = require('./amfoot-engine/store');
+    const LGS2 = ['nfl', 'ncaaf', 'cfl'];
+    const lgOf2 = (x) => (LGS2.includes(String(x)) ? String(x) : 'nfl');
+    const tools = [
+      { name: 'agenda_futbol_americano', description: 'Próximos partidos de NFL, College (ncaaf) o CFL con fecha, semana y la proyección del modelo (margen y total).', input_schema: { type: 'object', properties: { liga: { type: 'string', enum: LGS2 }, dias: { type: 'number', description: 'ventana (default 12, máx 30)' } }, required: ['liga'] } },
+      { name: 'detalle_partido_fa', description: 'Detalle de UN partido: proyección de margen y total con su incertidumbre, probabilidad local, clima y mercado si hay casas cotizando. Pasa la liga y uno o dos equipos.', input_schema: { type: 'object', properties: { liga: { type: 'string', enum: LGS2 }, equipo1: { type: 'string' }, equipo2: { type: 'string' } }, required: ['liga', 'equipo1'] } },
+      { name: 'equipo_fa', description: 'Perfil de un equipo: rating del modelo, balance y contexto.', input_schema: { type: 'object', properties: { liga: { type: 'string', enum: LGS2 }, equipo: { type: 'string' } }, required: ['liga', 'equipo'] } },
+      { name: 'simular_partido_fa', description: 'Enfrenta a DOS equipos cualesquiera (local o cancha neutral) con el modelo propio: margen, total y probabilidad, sin cuotas.', input_schema: { type: 'object', properties: { liga: { type: 'string', enum: LGS2 }, local: { type: 'string' }, visitante: { type: 'string' }, neutral: { type: 'boolean' } }, required: ['liga', 'local', 'visitante'] } },
+      { name: 'sombra_fa', description: 'El monitor en sombra de la liga: cuántas señales registradas y cómo va el registro privado. Las familias de fútbol americano NO publican picks todavía.', input_schema: { type: 'object', properties: { liga: { type: 'string', enum: LGS2 } }, required: ['liga'] } },
+    ];
+    const slateOf = (lg2, days) => (lg2 === 'nfl' ? NFLS.slate({ days }) : AMF.slate(lg2, { days }));
+    const runTool = async (name, input) => {
+      const lg2 = lgOf2(input.liga);
+      if (name === 'agenda_futbol_americano') {
+        const dias = Math.min(30, Math.max(1, +input.dias || 12));
+        const sl2 = await slateOf(lg2, dias).catch(() => null);
+        return { liga: lg2, partidos: ((sl2 && sl2.games) || []).slice(0, 25).map((g) => ({
+          partido: `${(g.away && g.away.name) || g.away} en ${(g.home && g.home.name) || g.home}`,
+          fecha: g.date || null, semana: g.week != null ? g.week : null,
+          proyeccion: g.model ? { margen_local: g.model.mu_margin != null ? g.model.mu_margin : g.model.muMargin,
+            total: g.model.mu_total != null ? g.model.mu_total : g.model.muTotal,
+            prob_local_pct: g.model.p_home != null ? Math.round(100 * g.model.p_home) : null } : null })) };
+      }
+      if (name === 'detalle_partido_fa') {
+        const sl2 = await slateOf(lg2, 25).catch(() => null);
+        const n1 = String(input.equipo1 || '').toLowerCase(), n2 = String(input.equipo2 || '').toLowerCase();
+        const g = ((sl2 && sl2.games) || []).find((x) => {
+          const s2 = (((x.home && x.home.name) || x.home) + ' ' + ((x.away && x.away.name) || x.away)).toLowerCase();
+          return s2.includes(n1) && (!n2 || s2.includes(n2));
+        });
+        if (!g) return { error: 'no encuentro ese partido en la agenda próxima', liga: lg2 };
+        const gi = lg2 === 'nfl' ? await NFLS.gameIntel(g.id).catch(() => null) : await AMF.gameIntel(lg2, g.id).catch(() => null);
+        if (!gi) return { error: 'no pude leer el partido ahora mismo' };
+        const m3 = gi.model || {};
+        return { partido: `${(gi.away && gi.away.name) || g.away} en ${(gi.home && gi.home.name) || g.home}`,
+          fecha: gi.date || g.date || null,
+          proyeccion: { margen_local: m3.mu_margin, total: m3.mu_total, prob_local_pct: m3.p_home != null ? Math.round(100 * m3.p_home) : null, incertidumbre_pts: m3.unc_pts },
+          clima: gi.weather ? { resumen: gi.weather.summary || null, viento: gi.weather.wind || null } : null,
+          casas: gi.books || (gi.market && gi.market.books) || 0 };
+      }
+      if (name === 'equipo_fa') {
+        const tp = lg2 === 'nfl' ? NFLS.teamProfile(String(input.equipo || '')) : AMF.teamProfile(lg2, String(input.equipo || ''));
+        if (!tp || tp.available === false) return { error: 'equipo no reconocido', liga: lg2 };
+        return tp.team ? { equipo: tp.team.name || tp.team.abbr, resumen: tp.team } : tp;
+      }
+      if (name === 'simular_partido_fa') {
+        const out = lg2 === 'nfl' ? NFLS.simMatch(String(input.local || ''), String(input.visitante || ''), { neutral: !!input.neutral })
+          : AMF.simMatch(lg2, String(input.local || ''), String(input.visitante || ''), { neutral: !!input.neutral });
+        if (!out.available) return { error: out.why };
+        return { partido: `${(out.away && out.away.name) || ''} en ${(out.home && out.home.name) || ''}${out.neutral ? ' (neutral)' : ''}`,
+          margen_local: out.model.muMargin, total: out.model.muTotal,
+          prob_local_pct: out.model.sim && out.model.sim.p_home != null ? Math.round(100 * out.model.sim.p_home) : null,
+          incertidumbre_pts: out.model.unc_pts, nota: 'modelo propio sin cuotas' };
+      }
+      if (name === 'sombra_fa') {
+        const tr2 = lg2 === 'nfl' ? NFLS.track() : AMF.track(lg2);
+        return { liga: lg2, sombra: tr2 || { note: 'sin registros todavía' },
+          doctrina: 'todas las familias de fútbol americano corren EN SOMBRA: no hay picks públicas hasta que el registro privado lo gane.' };
+      }
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'FÚTBOL AMERICANO (NFL · College/NCAAF · CFL). TODAS las familias corren en sombra: si preguntan por picks, decí con naturalidad que el monitor es privado hasta que el registro lo gane, y ofrecé la proyección del modelo. Si preguntan por otros deportes, indicá el conmutador de arriba.' };
+  }
   if (sport !== 'combat') {
     const tools = [
       { name: 'agenda_futbol', description: 'Próximos partidos cargados en la plataforma (todas las ligas), con fecha UTC y día de la semana. Úsala para preguntas de "hoy", "mañana", "el sábado" o la jornada.', input_schema: { type: 'object', properties: { dias: { type: 'number', description: 'ventana en días (default 7, máx 14)' }, liga: { type: 'string', description: 'filtrar por nombre de liga o país (opcional)' } } } },
@@ -9211,7 +9360,10 @@ async function hoopsBrief(league, { force = false } = {}) {
   const { simulate } = require('./basketball-engine/simulate');
   const day = new Date().toISOString().slice(0, 10);
   const C = ST.load(league);
-  const gs = await ESPN.games(league, { from: new Date(Date.now() - 12 * 3600e3), to: new Date(Date.now() + 36 * 3600e3) }).catch(() => []);
+  // el error de calendario NO se traga (18-ago): "0 partidos" por un 403 de ESPN y "0 partidos" porque
+  // de verdad no hay jornada son estados distintos y el brief debe distinguirlos.
+  let espnError = null;
+  const gs = await ESPN.games(league, { from: new Date(Date.now() - 12 * 3600e3), to: new Date(Date.now() + 36 * 3600e3) }).catch((e) => { espnError = e.message; return []; });
   const L = ESPN.LEAGUES[league] || {};
   const games = [];
   for (const g of gs) {
@@ -9263,10 +9415,122 @@ async function hoopsBrief(league, { force = false } = {}) {
   }
   const out = { league, label: ST.LEAGUES[league] ? ST.LEAGUES[league].label : league, day, games, value, intro,
     intro_error: introErr,          // el fallo del redactor se VE; un brief sin apertura y sin razón es un bug mudo
+    espn_error: espnError,          // ídem el calendario: 0 partidos por un 403 no es "no hay jornada"
     model_ready: !!(C && C.fit), counts: { games: games.length, value: value.length },
     refreshed_at: new Date().toISOString(),
     note: 'Picks de baloncesto apagadas: el modelo aún no bate al cierre. La proyección es informativa; las oportunidades de precio salen del mercado, no del modelo.' };
   global._hoopsBriefMemo[league] = { at: Date.now(), data: out };
+  return out;
+}
+
+// ── BRIEF DE ESPORTS (18-ago, pedido de Alexis): la jornada del juego con la lectura de la casa ─────────
+// Misma gramática que el brief de baloncesto: agenda + probabilidades ancladas + picks activas + el meta
+// que se mueve, y una apertura narrada (1 llamada/día/juego, persistida). Sin presupuesto LLM el tablero
+// sigue: la apertura es adorno, los números no.
+async function esportsBrief(game, { force = false } = {}) {
+  global._esBriefMemo = global._esBriefMemo || {};
+  const memo = global._esBriefMemo[game];
+  if (memo && !force && Date.now() - memo.at < 5 * 60e3) return memo.data;
+  const ES = require('./esports-engine/store');
+  const day = new Date().toISOString().slice(0, 10);
+  const b = await ES.board(game, { days: 2, maxEvents: 12 }).catch(() => null);
+  const items = ((b && b.items) || []).map((x) => ({
+    id: x.event.id, home: x.event.home.name, away: x.event.away.name,
+    competition: x.event.competition || null, start_at: x.event.start_at || null, bo: x.bo,
+    p_home: x.p_home, books: x.books, picks: x.picks,
+    best: x.best ? { family: x.best.family, selection: x.best.selection, odds: x.best.odds, book: x.best.book } : null,
+    crests: x.crests || null, highlight: x.highlight || null,
+  }));
+  // picks activas de la familia derivada (el track ya es la verdad)
+  const tr = ES.track(game, { limit: 30 });
+  const active = ((tr && tr.open) || []).slice(0, 8)
+    .map((p2) => ({ family: p2.family_label || p2.family, side: p2.side, line: p2.line,
+      match: (p2.home && p2.away) ? `${p2.home} vs ${p2.away}` : null, start_at: p2.start_at || null }));
+  // el meta que se mueve (LoL campeones · Valorant agentes · Dota héroes)
+  let meta = null;
+  try {
+    const cb = ES.championsBoard(game, {});
+    if (cb && cb.available) meta = { patch: cb.patch || null, window: cb.window || null,
+      top: cb.rows.slice(0, 5).map((r) => ({ name: r.ch, role: r.role, presence_pct: r.presence_pct, delta_wr: r.delta_wr })) };
+  } catch { }
+  db.esBrief = db.esBrief || {};
+  const bk = game + ':' + day;
+  let intro = db.esBrief[bk] || null;
+  let introErr = null;
+  if (!intro && items.length) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+    else {
+      try {
+        const w = await llm.writeBrief({
+          juego: (b && b.label) || game,
+          partidas_de_hoy: items.slice(0, 10).map((x) => ({ cruce: `${x.home} vs ${x.away}`, competicion: x.competition,
+            hora_utc: x.start_at ? String(x.start_at).slice(11, 16) : null, bo: 'BO' + x.bo,
+            prob_favorito_pct: x.p_home != null ? Math.round(100 * Math.max(x.p_home, 1 - x.p_home)) : null,
+            favorito: x.p_home != null ? (x.p_home >= 0.5 ? x.home : x.away) : null })),
+          picks_activas: active,
+          meta_del_momento: meta,
+        }, 'esports');
+        if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.esBrief[bk] = intro; save(); }
+        else introErr = 'el redactor no devolvió un texto usable';
+      } catch (e) { introErr = e.message; }
+    }
+  }
+  const out = { game, label: (b && b.label) || game, day, items, active_picks: active, meta, intro, intro_error: introErr,
+    books: (b && b.books) || 0, refreshed_at: new Date().toISOString(),
+    note: 'las picks nacen de las familias derivadas con la doctrina de la casa; el ganador de serie va anclado a mercado.' };
+  global._esBriefMemo[game] = { at: Date.now(), data: out };
+  return out;
+}
+
+// ── BRIEF DE FÚTBOL AMERICANO (18-ago): la semana de la liga con la lectura del modelo ──────────────────
+async function amfootBrief(lg, { force = false } = {}) {
+  global._nflBriefMemo = global._nflBriefMemo || {};
+  const memo = global._nflBriefMemo[lg];
+  if (memo && !force && Date.now() - memo.at < 10 * 60e3) return memo.data;
+  const isNfl = lg === 'nfl';
+  const NFLS = require('./nfl-engine/store');
+  const AMF = require('./amfoot-engine/store');
+  const day = new Date().toISOString().slice(0, 10);
+  // NFL en pretemporada mira 25 días (la Semana 1 aparece con antelación); College/CFL con 12 basta
+  const sl = isNfl ? await NFLS.slate({ days: 25 }).catch(() => null) : await AMF.slate(lg, { days: 12 }).catch(() => null);
+  const games = ((sl && sl.games) || []).slice(0, 16).map((g) => ({
+    id: g.id, date: g.date || g.kickoff || null, week: g.week != null ? g.week : null,
+    home: g.home, away: g.away,
+    model: g.model ? { p_home: g.model.p_home != null ? g.model.p_home : (g.model.sim ? g.model.sim.p_home : null),
+      mu_margin: g.model.mu_margin != null ? g.model.mu_margin : g.model.muMargin,
+      mu_total: g.model.mu_total != null ? g.model.mu_total : g.model.muTotal } : null,
+    books: g.books || 0,
+  }));
+  const tr = isNfl ? NFLS.track() : AMF.track(lg);
+  const shadow = tr ? { picks: (tr.picks || tr.rows || []).length, summary: tr.summary || null } : null;
+  db.nflBrief = db.nflBrief || {};
+  const bk = lg + ':' + day;
+  let intro = db.nflBrief[bk] || null;
+  let introErr = null;
+  if (!intro && games.length) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+    else {
+      try {
+        const w = await llm.writeBrief({
+          liga: isNfl ? 'NFL' : (AMF.LEAGUES[lg] ? AMF.LEAGUES[lg].label : lg),
+          partidos_proximos: games.slice(0, 10).map((g) => ({
+            partido: `${(g.away && g.away.name) || g.away} en ${(g.home && g.home.name) || g.home}`,
+            fecha: g.date ? String(g.date).slice(0, 10) : null,
+            proyeccion: g.model ? { margen_local: g.model.mu_margin, total: g.model.mu_total,
+              prob_local_pct: g.model.p_home != null ? Math.round(100 * g.model.p_home) : null } : null })),
+          sombra: shadow,
+        }, 'nfl');
+        if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.nflBrief[bk] = intro; save(); }
+        else introErr = 'el redactor no devolvió un texto usable';
+      } catch (e) { introErr = e.message; }
+    }
+  }
+  const out = { league: lg, label: isNfl ? 'NFL' : (AMF.LEAGUES[lg] ? AMF.LEAGUES[lg].label : lg), day, games,
+    shadow, intro, intro_error: introErr, refreshed_at: new Date().toISOString(),
+    note: 'todas las familias de fútbol americano corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
+  global._nflBriefMemo[lg] = { at: Date.now(), data: out };
   return out;
 }
 
@@ -13782,12 +14046,18 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req).catch(() => ({}));
       const q = String(b.q || '').slice(0, 400).trim();
       const lang = b.lang === 'en' ? 'en' : 'es';
-      const sport = b.sport === 'combat' ? 'combat' : b.sport === 'hoops' ? 'hoops' : 'futbol';
+      const sport = ['combat', 'hoops', 'esports', 'nfl'].includes(b.sport) ? b.sport : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
       if (sport === 'hoops') {
         // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
         const hoopsPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_HOOPS_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || hoopsPub)) return json(res, 404, { error: 'No encontrado' });
+      } else if (sport === 'esports') {
+        const esPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || esPub)) return json(res, 404, { error: 'No encontrado' });
+      } else if (sport === 'nfl') {
+        const nflPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || nflPub)) return json(res, 404, { error: 'No encontrado' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
         // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
@@ -13822,6 +14092,16 @@ const server = http.createServer(async (req, res) => {
             ? 'The assistant is unavailable right now (daily budget spent). The basketball panels keep working: check Games for the projection and Opportunities for price differences across books.'
             : 'El asistente no está disponible ahora mismo (presupuesto diario agotado). Los paneles de baloncesto siguen funcionando: mirá Partidos para la proyección y Oportunidades para las diferencias de precio entre casas.';
           link = 'bbgames';
+        } else if (sport === 'esports') {
+          answer = lang === 'en'
+            ? 'The assistant is unavailable right now (daily budget spent). The esports panels keep working: Matches for the board, Opportunities for the signals, and each match page for the full read.'
+            : 'El asistente no está disponible ahora mismo (presupuesto diario agotado). Los paneles de Esport siguen funcionando: Partidas para la pizarra, Oportunidades para las señales y la ficha de cada partida para la lectura completa.';
+          link = 'esboard';
+        } else if (sport === 'nfl') {
+          answer = lang === 'en'
+            ? 'The assistant is unavailable right now (daily budget spent). The football panels keep working: Games for the projections and the shadow monitor in Performance.'
+            : 'El asistente no está disponible ahora mismo (presupuesto diario agotado). Los paneles de fútbol americano siguen funcionando: Partidos para las proyecciones y el monitor en sombra en Rendimiento.';
+          link = 'nflgames';
         } else if (sport === 'combat') {
           const C2 = combatLoad(org2);
           await combatRefreshUpcoming(C2);
@@ -15492,6 +15772,9 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/esports/ranking') {
           return json(res, 200, ES.rankingBoard(gm));
         }
+        if (p === '/api/esports/brief') {
+          return json(res, 200, await esportsBrief(gm, { force: url.searchParams.get('force') === '1' }));
+        }
         if (p === '/api/esports/champions') {
           // meta de campeones del parche vigente (LoL, blueprint Fase 4); ?role=Top|Jungle|Mid|Bot|Support
           return json(res, 200, ES.championsBoard(gm, { role: url.searchParams.get('role') || null }));
@@ -15574,6 +15857,21 @@ const server = http.createServer(async (req, res) => {
       try {
         if (p === '/api/nfl/slate') {
           return json(res, 200, await NFL.slate({ days: Math.min(40, +(url.searchParams.get('days') || 12)) }));
+        }
+        // brief y simulador por LIGA (18-ago): league=nfl|ncaaf|cfl — el brief narra la semana, el
+        // simulador enfrenta a dos equipos cualesquiera con el modelo propio (sin cuotas)
+        if (p === '/api/nfl/brief') {
+          const lgB = ['ncaaf', 'cfl'].includes(String(url.searchParams.get('league'))) ? String(url.searchParams.get('league')) : 'nfl';
+          return json(res, 200, await amfootBrief(lgB, { force: url.searchParams.get('force') === '1' }));
+        }
+        if (p === '/api/nfl/sim') {
+          const lgS = ['ncaaf', 'cfl'].includes(String(url.searchParams.get('league'))) ? String(url.searchParams.get('league')) : 'nfl';
+          const hS = String(url.searchParams.get('home') || ''), aS = String(url.searchParams.get('away') || '');
+          if (!hS || !aS) return json(res, 400, { error: 'faltan home y away' });
+          const neutral = url.searchParams.get('neutral') === '1';
+          const AMFs = require('./amfoot-engine/store');
+          const out = lgS === 'nfl' ? NFL.simMatch(hS, aS, { neutral }) : AMFs.simMatch(lgS, hS, aS, { neutral });
+          return json(res, 200, out);
         }
         if (p === '/api/nfl/game') {
           const id = String(url.searchParams.get('id') || '');
@@ -15872,6 +16170,15 @@ const server = http.createServer(async (req, res) => {
     // Export de las picks del monitor de baloncesto, con la misma llave que combate y fútbol. Existía para
     // los otros deportes y faltaba aquí: el análisis del lunes lo necesita para poder mirar la semana sin
     // sesión de navegador. Solo lectura.
+    // sonda del brief de baloncesto (18-ago, reporte "no funciona"): el MISMO JSON que sirve la pestaña,
+    // sin sesión — para diagnosticar desde una terminal qué está viendo el producto en prod.
+    if (p === '/api/internal/hoops-brief') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const lgB = String(url.searchParams.get('league') || 'wnba');
+      const r = await hoopsBrief(lgB, { force: url.searchParams.get('force') === '1' }).catch((e) => ({ league: lgB, error: e.message }));
+      return json(res, 200, r);
+    }
     if (p === '/api/internal/hoops-picks') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

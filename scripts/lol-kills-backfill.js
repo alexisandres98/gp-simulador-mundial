@@ -7,8 +7,15 @@
 // CIRCUITO · supuesto · muestra propia 0" y TODAS las familias de kills caen por `estructura_no_medida`.
 //
 // Por qué un script aparte y no re-correr la cosecha: la cosecha re-pide las 18 columnas y REESCRIBE la
-// fila entera; esto pide TRES (id + los dos kills) y las FUNDE sobre lo que ya hay. Menos bytes contra un
-// limitador que va por cubo de fichas, y ningún riesgo de pisar campos buenos con una respuesta parcial.
+// fila entera; esto pide lo justo y lo FUNDE sobre lo que ya hay. Menos bytes contra un limitador que va
+// por cubo de fichas, y ningún riesgo de pisar campos buenos con una respuesta parcial.
+//
+// EL CRUCE NO PUEDE IR POR GameId (comprobado): la base viva NO salió de la cosecha de Leaguepedia sino del
+// espejo de HuggingFace (gptilt/lol-esports-matches, linaje Leaguepedia), y ese espejo re-numera las filas
+// con un entero secuencial — sus claves son "1", "2", "3", no "2026 Asia Masters_Day 1_1_1". Un cruce por
+// id daba 0 de 500 en la primera página. Se cruza por CLAVE NATURAL: instante exacto + los dos equipos,
+// que el espejo copia tal cual del origen. El instante es lo que distingue los mapas de una misma serie
+// (tres partidas LNG vs IG el mismo día a las 09:14, 10:16 y 11:06).
 //
 // El limitador de Fandom es un cubo que se rellena: comprobado que una petición pasa y la siguiente no.
 // Así que se va despacio a propósito y se espera largo ante un 429 — esto tarda lo que tarde, pero no
@@ -39,7 +46,7 @@ function readGames() {
 async function cargo(where, limit) {
   const q = new URLSearchParams({
     action: 'cargoquery', format: 'json', tables: 'ScoreboardGames',
-    fields: 'ScoreboardGames.GameId,ScoreboardGames.Team1Kills,ScoreboardGames.Team2Kills,ScoreboardGames.DateTime_UTC',
+    fields: 'ScoreboardGames.Team1,ScoreboardGames.Team2,ScoreboardGames.Team1Kills,ScoreboardGames.Team2Kills,ScoreboardGames.DateTime_UTC',
     where, order_by: 'ScoreboardGames.DateTime_UTC ASC', limit: String(limit),
   });
   for (let i = 0; i < 30; i++) {
@@ -58,10 +65,21 @@ async function cargo(where, limit) {
   throw new Error('limitado sin ventana tras 30 intentos');
 }
 
+const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+const keyOf = (at, t1, t2) => `${String(at || '').slice(0, 19)}|${norm(t1)}|${norm(t2)}`;
+
 (async () => {
   const G = readGames();
   const rows = G.data.rows || {};
   const total = Object.keys(rows).length;
+  // índice por clave natural; y un segundo índice sin orden de equipos por si el espejo invirtió los lados
+  const byKey = new Map(), byLoose = new Map();
+  for (const g of Object.values(rows)) {
+    if (!g.at) continue;
+    byKey.set(keyOf(g.at, g.t1, g.t2), g);
+    const pair = [norm(g.t1), norm(g.t2)].sort().join('|');
+    byLoose.set(`${String(g.at).slice(0, 19)}|${pair}`, g);
+  }
   const faltan0 = Object.values(rows).filter((r) => (r.at || '') >= SINCE && r.k1 == null).length;
   console.log(`[kills] ${total} partidas en disco · ${faltan0} sin kills desde ${SINCE.slice(0, 10)}`);
 
@@ -75,10 +93,19 @@ async function cargo(where, limit) {
       const dt = r['DateTime UTC'] || '';
       if (dt > maxDt) maxDt = dt;
       vistas++;
-      const g = rows[r.GameId];
+      const at = String(dt).slice(0, 19);
+      let g = byKey.get(keyOf(at, r.Team1, r.Team2));
+      let flip = false;
+      if (!g) {                                          // mismo instante, lados al revés en el espejo
+        const pair = [norm(r.Team1), norm(r.Team2)].sort().join('|');
+        g = byLoose.get(`${at}|${pair}`);
+        if (g) flip = norm(g.t1) !== norm(r.Team1);
+      }
       if (!g) continue;                                  // partida que la base no tiene: no se inventa
-      const k1 = N(r.Team1Kills), k2 = N(r.Team2Kills);
-      if (k1 == null || k2 == null) continue;
+      const a = N(r.Team1Kills), bK = N(r.Team2Kills);
+      if (a == null || bK == null) continue;
+      // los kills viajan CON su equipo: si el espejo guardó los lados invertidos, se invierten también
+      const k1 = flip ? bK : a, k2 = flip ? a : bK;
       if (g.k1 === k1 && g.k2 === k2) continue;
       g.k1 = k1; g.k2 = k2; tocadas++; nuevas++;
     }

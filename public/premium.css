@@ -3465,3 +3465,80 @@ td .gx-calc-btn span { display: none; }
 .gx-vmap.out:hover{opacity:.8}
 .gx-vmap-pick{display:flex;justify-content:space-between;gap:6px;margin-top:5px;font-size:9.5px;opacity:.65}
 .gx-vmap-pick b{font-size:10px;opacity:.95}
+
+/* ── F1: caras, parrilla, plano coche×piloto ────────────────────────────────────────────────────────── */
+.gx-f1-face{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  flex:0 0 34px;border-radius:50%;overflow:hidden;background:#1a1d21;border:2px solid var(--f1c,#555)}
+.gx-f1-face img{width:100%;height:100%;object-fit:cover;object-position:center top;position:absolute;inset:0}
+.gx-f1-face i{font-size:10px;font-weight:700;letter-spacing:.02em;opacity:.75;font-style:normal}
+.gx-f1-face.big{width:54px;height:54px;flex:0 0 54px}
+.gx-f1-face.big i{font-size:13px}
+.gx-f1-badge{height:13px;width:auto;vertical-align:-2px;margin-right:5px;object-fit:contain;opacity:.9}
+.gx-f1-row.rich{gap:9px}
+
+/* la parrilla: dos columnas escalonadas, el impar adelantado */
+.gx-f1-track{position:relative;padding:6px 0 2px}
+.gx-f1-slots{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.gx-f1-slot{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,.03);border:1px solid transparent;border-left:3px solid var(--f1c,#555)}
+.gx-f1-slot.odd{transform:translateY(16px)}
+.gx-f1-slot:hover{background:rgba(255,255,255,.06)}
+.gx-f1-slot.on{border-color:var(--f1c,#555);background:rgba(255,255,255,.08)}
+.gx-f1-slotpos{font-size:10px;opacity:.5;min-width:14px}
+.gx-f1-slotwho{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.gx-f1-slotwho b{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-f1-slotwho span{font-size:10px;opacity:.55}
+.gx-f1-line{margin-top:26px;border-top:2px dashed rgba(255,255,255,.14);text-align:center}
+.gx-f1-line span{font-size:9.5px;opacity:.4;letter-spacing:.08em;text-transform:uppercase;background:var(--gx-panel,#111);padding:0 8px;position:relative;top:-7px}
+.gx-f1-sloti{display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07);font-size:12px}
+.gx-f1-sloti b{display:block;font-size:13px}
+.gx-f1-sloti span.gx-dim{font-size:10.5px}
+.gx-f1-slotk{text-align:right;min-width:52px}
+.gx-f1-slotk em{display:block;font-style:normal;font-size:13px;font-weight:700}
+.gx-f1-slotk span{font-size:9px;opacity:.5}
+
+/* plano coche × piloto */
+.gx-f1-plane{position:relative;height:230px;margin:8px 0 4px;border-radius:10px;
+  background:linear-gradient(90deg,rgba(229,72,77,.07),rgba(31,227,164,.07));
+  border:1px solid rgba(255,255,255,.08);overflow:hidden}
+.gx-f1-plane::before,.gx-f1-plane::after{content:'';position:absolute;background:rgba(255,255,255,.10)}
+.gx-f1-plane::before{left:50%;top:0;bottom:0;width:1px}
+.gx-f1-plane::after{top:50%;left:0;right:0;height:1px}
+.gx-f1-qlabel{position:absolute;font-size:8.5px;line-height:1.25;opacity:.32;text-transform:uppercase;letter-spacing:.05em;pointer-events:none}
+.gx-f1-qlabel span{opacity:.7}
+.gx-f1-qlabel.tl{top:6px;left:8px}.gx-f1-qlabel.tr{top:6px;right:8px;text-align:right}
+.gx-f1-qlabel.bl{bottom:6px;left:8px}.gx-f1-qlabel.br{bottom:6px;right:8px;text-align:right}
+.gx-f1-dot2{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(0,0,0,.45);transition:transform .12s}
+.gx-f1-dot2:hover{transform:scale(1.25);z-index:3}
+.gx-f1-dot2 i{font-size:7.5px;font-weight:800;font-style:normal;color:#0b0d0e;letter-spacing:-.02em}
+.gx-f1-axes{text-align:center;font-size:9.5px;opacity:.4;letter-spacing:.03em}
+
+/* riesgo, equipos, convicción, cobertura */
+.gx-f1-risk,.gx-f1-conv{display:flex;flex-direction:column;gap:7px}
+.gx-f1-riskrow,.gx-f1-convrow{display:flex;align-items:center;gap:8px;cursor:pointer;padding:3px 0}
+.gx-f1-riskrow .gx-f1-winbar{flex:1}
+.gx-f1-convk{text-align:right;min-width:48px}
+.gx-f1-convk em{display:block;font-style:normal;font-size:13px;font-weight:700}
+.gx-f1-convk span{font-size:9px;opacity:.5}
+.gx-f1-teams{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:430px){.gx-f1-teams{grid-template-columns:1fr}}
+.gx-f1-team{padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.03);border-left:3px solid var(--f1c,#555)}
+.gx-f1-teamhead{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:7px}
+.gx-f1-teamhead img{height:16px;width:auto;object-fit:contain}
+.gx-f1-teamdrv{display:flex;gap:10px}
+.gx-f1-teamdrv span{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px}
+.gx-f1-teamdrv em{font-style:normal;opacity:.8}
+.gx-f1-nomkt{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.45;padding:11px 12px}
+.gx-f1-cov{display:flex;flex-direction:column;gap:6px}
+.gx-f1-covrow{display:flex;align-items:center;gap:8px;font-size:12px}
+.gx-f1-covrow .gx-dim{font-size:10.5px}
+.gx-f1-covdot{width:8px;height:8px;border-radius:50%;background:#e5484d;flex:0 0 8px}
+.gx-f1-covdot.on{background:var(--gx-green,#1fe3a4)}
+
+/* la parrilla escalonada necesita aire abajo: el desplazamiento del impar se salía de la caja */
+.gx-f1-slots{padding-bottom:20px}
+/* las etiquetas de cuadrante van DETRÁS de los puntos, nunca encima */
+.gx-f1-qlabel{z-index:0}
+.gx-f1-dot2{z-index:2}
+.gx-f1-plane{padding:2px}

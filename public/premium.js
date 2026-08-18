@@ -1069,9 +1069,9 @@
   var TEN_TOURS = [['atp', 'ATP'], ['wta', 'WTA']];
   function tenTour() { return (S.ten && S.ten.tour) === 'wta' ? 'wta' : 'atp'; }
   // ── F1 (18-ago, blueprint 7.0): 8º deporte, al lado de Tenis. Race Intelligence Twin admin-only.
-  var F1_VIEWS = ['f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model'];
+  var F1_VIEWS = ['f1opps', 'f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model'];
   var NAV_F1 = [
-    ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'],
+    ['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'],
     ['f1brief', 'news', 'nav_brief'], ['f1ask', 'message-circle', 'nav_cb_ask'], ['f1sim', 'adjustments', 'f1_nav_sim'],
     ['f1drivers', 'user', 'f1_nav_drivers'], ['f1model', 'book', 'ten_nav_model'],
     ['alerts', 'bell', 'nav_alerts']
@@ -4306,7 +4306,7 @@
     // ── F1 ───────────────────────────────────────────────────────────────────────────────────────────
     var f1p = h.match(/^f1driver\/([a-z_]+)$/i);
     if (f1p) { if (!(S.view === 'f1driver' && S.f1.driverId === f1p[1])) { S.f1.driverId = f1p[1]; showView('f1driver'); } return; }
-    var f1v = h.match(/^(f1race|f1standings|f1drivers|f1sim|f1brief|f1ask|f1model)$/i);
+    var f1v = h.match(/^(f1opps|f1race|f1standings|f1drivers|f1sim|f1brief|f1ask|f1model)$/i);
     if (f1v) { showView(f1v[1]); return; }
     // ── TENIS ────────────────────────────────────────────────────────────────────────────────────────
     var tnp = h.match(/^tenplayer\/(atp|wta)-(\d+)$/i);
@@ -4349,7 +4349,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -4519,7 +4519,7 @@
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'f1' ? 'f1race' : sport === 'tennis' ? 'tengames' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tengames' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -10754,9 +10754,100 @@
       '<span class="gx-f1-teambar" style="background:' + esc(r.color || '#555') + '"></span>' +
       '<b class="gx-mono">' + esc(r.code || (r.name || '').slice(0, 3).toUpperCase()) + '</b></span>';
   }
+  // LA CARA (19-ago). La pestaña entera no tenía una sola foto: ni pilotos ni escuderías. Ahora el retrato
+  // lleva ANILLO DEL COLOR DE SU EQUIPO, que en F1 es identificación real —el color es un hecho del deporte,
+  // no decoración— y cae al dorsal de tres letras cuando no hay retrato, sin dejar un hueco gris.
+  function f1Face(r, cls) {
+    var ini = esc(r.code || (r.name || '?').slice(0, 3).toUpperCase());
+    var col = esc(r.color || '#555');
+    return '<span class="gx-f1-face' + (cls ? ' ' + cls : '') + '" style="--f1c:' + col + '">' +
+      (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+      '<i class="gx-mono">' + ini + '</i></span>';
+  }
+  function f1Badge(r) {
+    return r.badge ? '<img class="gx-f1-badge" src="' + esc(r.badge) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
+  }
+
+  // ── OBJETO FIRMA DE LA F1: LA PARRILLA DE SALIDA DE VERDAD ──────────────────────────────────────────
+  // Una lista ordenada no es una parrilla. En F1 la parrilla es una imagen concreta —dos columnas
+  // escalonadas, el impar adelantado— y es la que explica media carrera: quién arranca al lado de quién,
+  // quién tiene delante a un coche lento, dónde está el riesgo de la primera curva. Se dibuja con las
+  // casillas REALES cuando ya hubo clasificación y con el orden esperado del gemelo cuando todavía no.
+  function f1GridDiagram(d) {
+    var rows = (d.rows || []).slice();
+    if (!rows.length) return '';
+    var hasGrid = rows.some(function (r) { return r.grid; });
+    var order = hasGrid ? rows.slice().sort(function (a, b) { return (a.grid || 99) - (b.grid || 99); }) : rows;
+    var sel = S.f1.gridSel || null;
+    var slots = order.slice(0, 22).map(function (r, i) {
+      var pos = hasGrid ? (r.grid || i + 1) : i + 1;
+      var on = sel === r.id;
+      return '<div class="gx-f1-slot' + (i % 2 ? ' odd' : '') + (on ? ' on' : '') + '" data-f1slot="' + esc(r.id) + '" style="--f1c:' + esc(r.color || '#555') + '">' +
+        '<span class="gx-f1-slotpos gx-mono">' + pos + '</span>' +
+        f1Face(r) +
+        '<div class="gx-f1-slotwho"><b>' + esc((r.name || '').split(' ').slice(-1)[0]) + '</b>' +
+        '<span class="gx-mono">' + (100 * (r.p_win || 0)).toFixed(0) + '%</span></div></div>';
+    }).join('');
+    var cur = sel ? rows.filter(function (x) { return x.id === sel; })[0] : null;
+    var detail = cur ? '<div class="gx-f1-sloti">' + f1Face(cur, 'big') +
+      '<div><b>' + esc(cur.name) + '</b><span class="gx-dim">' + esc(cur.constructor) + (cur.grid ? ' · sale P' + cur.grid : '') + '</span></div>' +
+      '<span class="gx-spacer"></span>' +
+      '<div class="gx-f1-slotk"><em class="gx-mono">' + (100 * (cur.p_win || 0)).toFixed(1) + '%</em><span>gana</span></div>' +
+      '<div class="gx-f1-slotk"><em class="gx-mono">' + (100 * (cur.p_podium || 0)).toFixed(0) + '%</em><span>podio</span></div>' +
+      '<div class="gx-f1-slotk"><em class="gx-mono">' + (100 * (cur.p_dnf || 0)).toFixed(0) + '%</em><span>abandona</span></div></div>'
+      : '<div class="gx-f1-sloti gx-dim">Tocá una casilla para ver a su piloto.</div>';
+    return '<div class="gx-panel gx-f1-gridmap"><div class="gx-ph"><span class="gx-label">La parrilla</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + (hasGrid ? 'casillas reales de la clasificación' : 'orden esperado por el gemelo — todavía no hay clasificación') + '</span></div>' +
+      '<div class="gx-f1-track"><div class="gx-f1-slots">' + slots + '</div>' +
+      '<div class="gx-f1-line"><span>línea de meta</span></div></div>' + detail + '</div>';
+  }
+
+  // ── EL OTRO OBJETO FIRMA: EL MAPA COCHE × PILOTO ────────────────────────────────────────────────────
+  // Es la lectura que ningún otro deporte de la casa puede hacer y la razón de ser del modelo: separar
+  // cuánto del resultado es la máquina y cuánto es quien la conduce. Un plano en vez de dos barras: eje X
+  // el coche, eje Y el piloto, 100 = media del campo. Los cuadrantes se leen solos.
+  function f1CarDriverMap(d) {
+    var rows = (d.rows || []).filter(function (r) { return r.car_idx != null && r.drv_idx != null; });
+    if (rows.length < 4) return '';
+    var xs = rows.map(function (r) { return r.car_idx; }), ys = rows.map(function (r) { return r.drv_idx; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    var px = function (v) { return x1 > x0 ? 6 + 88 * (v - x0) / (x1 - x0) : 50; };
+    var py = function (v) { return y1 > y0 ? 94 - 88 * (v - y0) / (y1 - y0) : 50; };
+    // SEPARACIÓN DE COLISIONES: los compañeros de equipo comparten coche por definición, así que sus puntos
+    // caen en la misma vertical y se tapaban unos a otros. Un empujón determinista —siempre el mismo, para
+    // que el plano no baile entre renders— los separa lo justo sin mentir sobre dónde están.
+    var placed = [];
+    var pts = rows.map(function (r) {
+      var x = px(r.car_idx), y = py(r.drv_idx), guard = 0;
+      while (guard++ < 24 && placed.some(function (q) { return Math.abs(q.x - x) < 7 && Math.abs(q.y - y) < 7; })) {
+        x += (guard % 2 ? 5.5 : -5.5); y += (guard % 3 ? 3.2 : -3.2);
+        x = Math.max(5, Math.min(95, x)); y = Math.max(7, Math.min(93, y));
+      }
+      placed.push({ x: x, y: y });
+      return { r: r, x: x, y: y };
+    });
+    var dots = pts.map(function (o) {
+      var r = o.r;
+      return '<span class="gx-f1-dot2" data-f1driver="' + esc(r.id) + '" title="' + esc(r.name) + ' · coche ' + r.car_idx + ' · piloto ' + r.drv_idx + '"' +
+        ' style="left:' + o.x.toFixed(1) + '%;top:' + o.y.toFixed(1) + '%;background:' + esc(r.color || '#888') + '">' +
+        '<i class="gx-mono">' + esc(r.code || '') + '</i></span>';
+    }).join('');
+    return '<div class="gx-panel gx-f1-cdmap"><div class="gx-ph"><span class="gx-label">Coche × Piloto</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">100 = media del campo · lo que el modelo separa</span></div>' +
+      '<div class="gx-f1-plane">' +
+        '<div class="gx-f1-qlabel tl">piloto fuerte<br><span>coche flojo</span></div>' +
+        '<div class="gx-f1-qlabel tr">piloto fuerte<br><span>coche fuerte</span></div>' +
+        '<div class="gx-f1-qlabel bl">piloto flojo<br><span>coche flojo</span></div>' +
+        '<div class="gx-f1-qlabel br">piloto flojo<br><span>coche fuerte</span></div>' +
+        dots + '</div>' +
+      '<div class="gx-f1-axes"><span>← coche más lento · coche más rápido →</span></div>' +
+      '<div class="gx-dim gx-es-note">Los dos índices salen de la MISMA descomposición walk-forward: el del coche manda en la forma del resultado, el del piloto es lo que le queda por encima de su máquina.</div></div>';
+  }
 
   function renderF1(v) {
     if (!f1Allowed()) { showView('board'); return; }
+    if (v === 'f1opps') return renderF1Opps();
     if (v === 'f1race') return renderF1Race();
     if (v === 'f1standings') return renderF1Standings();
     if (v === 'f1drivers') return renderF1Drivers();
@@ -10784,13 +10875,15 @@
         (days > 0 ? '<span class="gx-f1-count gx-mono">' + (days === 1 ? 'mañana' : 'en ' + days + ' días') + '</span>' : '<span class="gx-f1-count gx-mono live">fin de semana de carrera</span>') +
         (rc.sprint ? '<span class="gx-dim" style="font-size:11px">sprint: ' + esc(rc.sprint) + '</span>' : '') + '</div></div>';
     var maxW = Math.max.apply(null, d.rows.map(function (r) { return r.p_win || 0; }).concat([0.01]));
+    // LA FILA LLEVA CARA Y MARCA. Era código de tres letras sobre fondo gris; ahora es el retrato del
+    // piloto con el anillo de su equipo y el escudo de la escudería, que es como se reconoce una parrilla.
     var grid = '<div class="gx-panel gx-f1-grid"><div class="gx-ph"><span class="gx-label">Parrilla probabilística</span>' +
       '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">ganador · podio · puntos · riesgo — de las mismas simulaciones</span></div>' +
       '<div class="gx-f1-gridrows">' + d.rows.map(function (r, i) {
-        return '<div class="gx-f1-row" data-f1driver="' + esc(r.id) + '">' +
+        return '<div class="gx-f1-row rich" data-f1driver="' + esc(r.id) + '">' +
           '<span class="gx-f1-pos gx-mono">' + (i + 1) + '</span>' +
-          f1DriverChip(r) +
-          '<div class="gx-f1-who"><b>' + esc(r.name) + '</b><span class="gx-dim">' + esc(r.constructor) + (r.grid ? ' · P' + r.grid : '') + '</span></div>' +
+          f1Face(r) +
+          '<div class="gx-f1-who"><b>' + esc(r.name) + '</b><span class="gx-dim">' + f1Badge(r) + esc(r.constructor) + (r.grid ? ' · P' + r.grid : '') + '</span></div>' +
           '<div class="gx-f1-bars">' +
             '<div class="gx-f1-winbar"><i style="width:' + Math.round(100 * (r.p_win || 0) / maxW) + '%;background:' + esc(r.color || 'var(--gx-green)') + '"></i></div>' +
             '<div class="gx-f1-mini gx-dim gx-mono">pod ' + Math.round(100 * (r.p_podium || 0)) + '% · pts ' + Math.round(100 * (r.p_points || 0)) + '% · dnf ' + Math.round(100 * (r.p_dnf || 0)) + '%</div>' +
@@ -10799,7 +10892,93 @@
         '</div>';
       }).join('') + '</div>' +
       '<div class="gx-dim gx-es-note">' + esc(d.note || '') + ' ' + esc(d.attribution || '') + '</div></div>';
-    f1Shell(t('f1_nav_race'), hero + grid + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+    // TRES LENTES, la misma gramática que ya usan los esports y el fútbol: la carrera (lo que se ve), el
+    // modelo (de dónde sale) y el contexto (quién es quién). Una sola columna de 22 filas no es una pantalla
+    // de inteligencia, es un listado.
+    var lens = S.f1.lens || 'carrera';
+    var LENSES = [
+      ['carrera', 'La carrera', f1GridDiagram(d) + grid],
+      ['modelo', 'El modelo', f1CarDriverMap(d) + f1RaceRisk(d)],
+      ['contexto', 'Contexto', f1TeamStrip(d) + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>'],
+    ];
+    if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'carrera';
+    var bar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
+      return '<button data-f1lens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+    var act = LENSES.filter(function (x) { return x[0] === lens; })[0];
+    f1Shell(t('f1_nav_race'), hero + bar + act[2]);
+  }
+
+  // RIESGO DE LA CARRERA: abandono y ganancia esperada de posiciones, que es donde el gemelo es fuerte
+  // (holdout 2025: la FORMA del resultado) y no en el ganador. Se enseña lo que el modelo sabe hacer.
+  function f1RaceRisk(d) {
+    var rows = (d.rows || []).slice().sort(function (a, b) { return (b.p_dnf || 0) - (a.p_dnf || 0); }).slice(0, 8);
+    if (!rows.length) return '';
+    var mx = Math.max.apply(null, rows.map(function (r) { return r.p_dnf || 0; }).concat([0.01]));
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Dónde está el riesgo</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">abandono esperado — de las mismas simulaciones</span></div>' +
+      '<div class="gx-f1-risk">' + rows.map(function (r) {
+        return '<div class="gx-f1-riskrow" data-f1driver="' + esc(r.id) + '">' + f1Face(r) +
+          '<div class="gx-f1-who"><b>' + esc((r.name || '').split(' ').slice(-1)[0]) + '</b>' +
+          '<span class="gx-dim">' + esc(r.constructor) + '</span></div>' +
+          '<div class="gx-f1-winbar"><i style="width:' + Math.round(100 * (r.p_dnf || 0) / mx) + '%;background:#e5484d"></i></div>' +
+          '<span class="gx-mono">' + (100 * (r.p_dnf || 0)).toFixed(1) + '%</span></div>';
+      }).join('') + '</div></div>';
+  }
+
+  // LOS EQUIPOS DE LA PARRILLA: escudo, color y sus dos pilotos — el "quién es quién" que faltaba.
+  function f1TeamStrip(d) {
+    var by = {};
+    (d.rows || []).forEach(function (r) { (by[r.cid] = by[r.cid] || { cid: r.cid, name: r.constructor, color: r.color, badge: r.badge, drv: [] }).drv.push(r); });
+    var teams = Object.values(by).sort(function (a, b) {
+      return Math.max.apply(null, b.drv.map(function (x) { return x.p_win || 0; })) - Math.max.apply(null, a.drv.map(function (x) { return x.p_win || 0; }));
+    });
+    if (!teams.length) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los equipos</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">el color de constructor es un hecho del deporte</span></div>' +
+      '<div class="gx-f1-teams">' + teams.map(function (tm) {
+        return '<div class="gx-f1-team" style="--f1c:' + esc(tm.color || '#555') + '">' +
+          '<div class="gx-f1-teamhead">' + (tm.badge ? '<img src="' + esc(tm.badge) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+          '<b>' + esc(tm.name) + '</b></div>' +
+          '<div class="gx-f1-teamdrv">' + tm.drv.map(function (r) {
+            return '<span data-f1driver="' + esc(r.id) + '">' + f1Face(r) + '<em>' + esc((r.name || '').split(' ').slice(-1)[0]) + '</em></span>';
+          }).join('') + '</div></div>';
+      }).join('') + '</div></div>';
+  }
+
+  // ── OPORTUNIDADES: la pestaña que faltaba, y la verdad de por qué está vacía ─────────────────────────
+  // F1 es el único deporte de la casa SIN cobertura de mercado: se comprobó en los dos proveedores del plan
+  // —The Odds API no lista motorsport y Cloudbet tiene la categoría con CERO eventos— así que no hay precio
+  // contra el que medir nada y por tanto no hay picks. Esta pantalla no finge lo contrario: enseña las
+  // convicciones del gemelo ordenadas (que es información aunque no sea apuesta), dice exactamente qué se
+  // miró y cuándo, y deja claro que el día que el proveedor abra motorsport la sombra se enciende sola.
+  function renderF1Opps() {
+    var d = f1Get('board', '/api/f1/board', 300000);
+    var cov = f1Get('cov', '/api/f1/coverage', 900000);
+    if (!d) { f1Shell(t('nav_opps'), f1Loading()); return; }
+    if (!d.available) { f1Shell(t('nav_opps'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Sin calendario') + '</b></div></div>'); return; }
+    var rows = (d.rows || []).slice(0, 6);
+    var head = '<div class="gx-panel gx-f1-nomkt">' + ic('alert-triangle') +
+      '<span><b>Sin mercado que medir.</b> F1 es el único deporte de la casa sin cobertura de casas en el plan actual: ' +
+      'ni el proveedor principal lista motorsport ni el secundario publica eventos. Sin precio no hay ventaja que calcular, ' +
+      'y una convicción del modelo no es una pick. Cuando se abra la cobertura, la sombra arranca sola.</span></div>';
+    var conv = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Lo que sostiene el gemelo</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">convicción del modelo · NO son picks</span></div>' +
+      '<div class="gx-f1-conv">' + rows.map(function (r) {
+        return '<div class="gx-f1-convrow" data-f1driver="' + esc(r.id) + '">' + f1Face(r) +
+          '<div class="gx-f1-who"><b>' + esc(r.name) + '</b><span class="gx-dim">' + esc(r.constructor) + '</span></div>' +
+          '<div class="gx-f1-convk"><em class="gx-mono">' + (100 * (r.p_win || 0)).toFixed(1) + '%</em><span>gana</span></div>' +
+          '<div class="gx-f1-convk"><em class="gx-mono">' + (100 * (r.p_podium || 0)).toFixed(0) + '%</em><span>podio</span></div>' +
+          '<div class="gx-f1-convk"><em class="gx-mono">' + (100 * (r.p_points || 0)).toFixed(0) + '%</em><span>puntos</span></div></div>';
+      }).join('') + '</div></div>';
+    var watch = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Vigilancia de cobertura</span>' +
+      (cov && cov.at ? '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">último vistazo: ' + esc(String(cov.at).slice(0, 16).replace('T', ' ')) + '</span>' : '') + '</div>' +
+      '<div class="gx-f1-cov">' + ((cov && cov.books) || [{ book: 'proveedor principal', ok: false, note: 'no lista motorsport' }, { book: 'proveedor secundario', ok: false, note: 'categoría sin eventos' }]).map(function (b) {
+        return '<div class="gx-f1-covrow"><span class="gx-f1-covdot' + (b.ok ? ' on' : '') + '"></span>' +
+          '<b>' + esc(b.book) + '</b><span class="gx-dim">' + esc(b.note || (b.ok ? 'cotiza' : 'sin cobertura')) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">Se revisa sola cada día. En cuanto una casa abra el mercado de carrera, esta pantalla deja de ser una vigilancia y pasa a ser un board.</div></div>';
+    f1Shell(t('nav_opps'), head + conv + watch + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
   }
 
   // ── CAMPEONATO: puntos oficiales + Coche × Piloto ───────────────────────────────────────────────────
@@ -10851,8 +11030,8 @@
       var rows = (d.rows || []).filter(function (r) { return r.active || q; });
       body = '<div class="gx-est-grid">' + rows.map(function (r) {
         return '<div class="gx-panel gx-est-card" data-f1driver="' + esc(r.id) + '">' +
-          '<div class="gx-est-top">' + f1DriverChip(r, true) +
-            '<div class="gx-est-id"><b>' + esc(r.name) + '</b><span>' + esc([r.constructor, r.country].filter(Boolean).join(' · ')) + '</span></div>' +
+          '<div class="gx-est-top">' + f1Face(r, 'big') +
+            '<div class="gx-est-id"><b>' + esc(r.name) + '</b><span>' + f1Badge(r) + esc([r.constructor, r.country].filter(Boolean).join(' · ')) + '</span></div>' +
             '<span class="gx-spacer"></span>' +
             '<div class="gx-est-elo"><b>' + (r.drv_idx != null ? r.drv_idx : '—') + '</b><span>índice piloto</span></div></div>' +
         '</div>';
@@ -10869,8 +11048,8 @@
     if (!d) { f1Shell(t('f1_nav_drivers'), f1Loading()); return; }
     if (!d.available) { f1Shell(t('f1_nav_drivers'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || '') + '</b></div></div>'); return; }
     var hero = '<div class="gx-panel gx-est-hero" style="border-left:3px solid ' + esc(d.color || '#555') + '"><div class="gx-est-hero-main">' +
-      f1DriverChip(d, true) +
-      '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name) + '</b><span class="gx-dim">' + esc([d.constructor, d.country].filter(Boolean).join(' · ')) + '</span></div>' +
+      f1Face(d, 'big') +
+      '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name) + '</b><span class="gx-dim">' + f1Badge(d) + esc([d.constructor, d.country].filter(Boolean).join(' · ')) + '</span></div>' +
       '<span class="gx-spacer"></span>' +
       '<div class="gx-est-elo"><b>' + d.season.pts + '</b><span>pts ' + d.season.year + '</span></div></div>' +
       '<div style="margin-top:12px">' + f1SplitBar(d.car_idx, d.drv_idx, d.color) + '</div>' +
@@ -11000,6 +11179,11 @@
   }
 
   function f1Clicks(e) {
+    // la casilla de la parrilla selecciona EN SITIO (no navega): el diagrama es para comparar vecinos
+    var sl = e.target.closest('[data-f1slot]');
+    if (sl) { var sid = sl.getAttribute('data-f1slot'); S.f1.gridSel = (S.f1.gridSel === sid ? null : sid); renderF1Race(); return; }
+    var ln = e.target.closest('[data-f1lens]');
+    if (ln) { S.f1.lens = ln.getAttribute('data-f1lens'); renderF1Race(); return; }
     var dr = e.target.closest('[data-f1driver]');
     if (dr) { setHash('f1driver/' + dr.getAttribute('data-f1driver')); return; }
     var st = e.target.closest('[data-f1st]');

@@ -15989,6 +15989,7 @@ const server = http.createServer(async (req, res) => {
           if (!a2 || !b3) return json(res, 400, { error: 'faltan a y b' });
           return json(res, 200, F1.duel(a2, b3));
         }
+        if (p === '/api/f1/coverage') return json(res, 200, await F1.coverage());
         if (p === '/api/f1/model') return json(res, 200, F1.modelCard());
         if (p === '/api/f1/brief') return json(res, 200, await f1Brief({ force: url.searchParams.get('force') === '1' }));
         return json(res, 404, { error: 'ruta de f1 desconocida' });

@@ -126,6 +126,27 @@ function currentField(d, next) {
 
 function colorOf(cid) { return TEAM_COLOR[cid] || null; }
 
+// ── CARAS Y MARCAS (19-ago) ─────────────────────────────────────────────────────────────────────────────
+// El color de constructor es un HECHO del deporte y por eso vive en el código; la foto no lo es, así que
+// viaja en un manifiesto con su procedencia y su licencia. Origen: Wikipedia/Commons (CC BY-SA), elegido
+// por derechos y no por comodidad — las fotos del sitio oficial son de FOM y no se pueden auto-hospedar.
+// La atribución se sirve junto a la ruta para poder rendirla en pantalla.
+let AS = null;
+function assets() {
+  if (AS) return AS;
+  try { AS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'f1', 'assets.json'), 'utf8')); }
+  catch { AS = { drivers: {}, constructors: {} }; }
+  return AS;
+}
+function photoOf(driverId) {
+  const r = (assets().drivers || {})[driverId];
+  return r && r.photo ? '/logos/f1/' + r.photo : null;
+}
+function badgeOf(cid) {
+  const r = (assets().constructors || {})[cid];
+  return r && r.photo ? '/logos/f1/' + r.photo : null;
+}
+
 // ── COMMAND CENTER: la parrilla probabilística de la próxima carrera ────────────────────────────────────
 function raceBoard() {
   const d = load();
@@ -154,6 +175,7 @@ function raceBoard() {
     return {
       id: f.id, code: drv.code || null, name: drv.name, country: drv.country || null,
       constructor: (d.constructors[f.cid] || {}).name || f.cid, cid: f.cid, color: colorOf(f.cid),
+      photo: photoOf(f.id), badge: badgeOf(f.cid),
       grid: f.grid, p_win: r3(winBlend ? winBlend.get(f.id) : s.p_win), p_win_twin: r3(s.p_win),
       p_podium: r3(s.p_podium), p_top6: r3(s.p_top6), p_points: r3(s.p_points),
       exp_finish: r2(s.exp_finish), p_dnf: r3(s.p_dnf),
@@ -188,11 +210,12 @@ function standings() {
     const car = R.val(d.st.car, a.cid, d.priors.ratings.shrinkCar), dr = R.val(d.st.drv, a.id, d.priors.ratings.shrinkDrv);
     return { pos: i + 1, id: a.id, name: (d.drivers[a.id] || {}).name || a.id, code: (d.drivers[a.id] || {}).code,
       constructor: (d.constructors[a.cid] || {}).name || a.cid, cid: a.cid, color: colorOf(a.cid),
+      photo: photoOf(a.id), badge: badgeOf(a.cid),
       pts: a.pts, wins: a.wins, podiums: a.podiums,
       car_idx: r2(100 + 20 * car.v), drv_idx: r2(100 + 20 * dr.v) };
   });
   const rowsC = [...cons.values()].sort((a, b) => b.pts - a.pts).map((c, i) => ({
-    pos: i + 1, id: c.id, name: (d.constructors[c.id] || {}).name || c.id, color: colorOf(c.id),
+    pos: i + 1, id: c.id, name: (d.constructors[c.id] || {}).name || c.id, color: colorOf(c.id), badge: badgeOf(c.id),
     pts: c.pts, wins: c.wins, car_idx: r2(100 + 20 * R.val(d.st.car, c.id, d.priors.ratings.shrinkCar).v),
   }));
   return { season: year, drivers: rowsD, constructors: rowsC, attribution: ATTRIB,
@@ -213,6 +236,7 @@ function driversDirectory({ q = '' } = {}) {
     const dr = R.val(d.st.drv, id, d.priors.ratings.shrinkDrv);
     rows.push({ id, name: drv.name, code: drv.code, country: drv.country,
       constructor: (d.constructors[info.cid] || {}).name || info.cid, cid: info.cid, color: colorOf(info.cid),
+      photo: photoOf(info.id || id), badge: badgeOf(info.cid),
       drv_idx: r2(100 + 20 * dr.v), n: Math.round(dr.n), active: info.season === year });
   }
   rows.sort((a, b) => (b.active - a.active) || (b.drv_idx - a.drv_idx));
@@ -242,6 +266,7 @@ function driverProfile(id) {
   return {
     available: true, id, name: drv.name, code: drv.code, country: drv.country, dob: drv.dob,
     constructor: cid ? (d.constructors[cid] || {}).name : null, cid, color: colorOf(cid),
+    photo: photoOf(id), badge: badgeOf(cid),
     season: { year, pts: ptsSeason },
     drv_idx: r2(100 + 20 * dr.v), car_idx: r2(100 + 20 * car.v), sample: Math.round(dr.n),
     dnf_rate_pct: r2(100 * dnf.v),
@@ -319,6 +344,35 @@ async function oddsKeysCheck() {
   } catch { return G.oddsKeys || { covered: false, keys: [] }; }
 }
 
+// VIGILANCIA DE COBERTURA para la pantalla de Oportunidades (19-ago). `oddsKeysCheck` mira el proveedor
+// principal; esto añade el secundario y devuelve un parte legible por libro, para que la pantalla pueda
+// decir QUÉ se miró y CUÁNDO en vez de un vacío sin explicación.
+async function coverage() {
+  const books = [];
+  const main = await oddsKeysCheck().catch(() => null);
+  books.push({
+    book: 'The Odds API', ok: !!(main && main.covered),
+    note: !main ? 'sin clave configurada' : main.covered
+      ? `${main.keys.filter((k) => k.active).length} mercado(s) de motorsport activos`
+      : 'no lista motorsport en el plan actual',
+  });
+  // Cloudbet publica la categoría formula-1 pero con cero eventos: se comprueba en vivo, no se asume
+  const cb = process.env.CLOUDBET_API_KEY || '';
+  let cbOk = false, cbNote = 'sin clave configurada';
+  if (cb) {
+    try {
+      const r = await fetch('https://sports-api.cloudbet.com/pub/v2/odds/sports/formula-1?limit=5',
+        { headers: { 'X-API-Key': cb }, signal: AbortSignal.timeout(15000) });
+      const j = await r.json();
+      const n = ((j && j.categories) || []).reduce((a, c) => a + ((c.competitions || []).length), 0);
+      cbOk = n > 0;
+      cbNote = n > 0 ? `${n} competición(es) abiertas` : 'categoría publicada, cero eventos';
+    } catch (e) { cbNote = 'no respondió'; }
+  }
+  books.push({ book: 'Cloudbet', ok: cbOk, note: cbNote });
+  return { at: new Date().toISOString(), covered: books.some((b) => b.ok), books };
+}
+
 function modelCard() {
   const d = load();
   const P = d.priors;
@@ -345,4 +399,4 @@ async function modelSnapshot() {
   };
 }
 
-module.exports = { load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, DISK_DIR, DOCTRINE };
+module.exports = { coverage, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, DISK_DIR, DOCTRINE };

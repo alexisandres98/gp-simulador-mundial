@@ -9529,7 +9529,21 @@
         }).join('') + '</div>';
     };
     var body = side(dr.a, ev.home.name, 'a') + side(dr.b, ev.away.name, 'b');
-    if (!body) return null;
+    // SIN QUINTETO NO SE DESAPARECE, SE DICE (19-ago). Antes el panel devolvía null y la lente de contexto
+    // se quedaba con dos paneles sin explicar por qué faltaba el tercero. Un hueco silencioso parece un
+    // error de la pantalla; un hueco declarado es información: estos equipos no están en la base propia.
+    if (!body) {
+      var falta = [dr.a, dr.b].map(function (x, i) {
+        var nm = i === 0 ? ev.home.name : ev.away.name;
+        return (!x || !x.resolved || !((x.five || []).length)) ? nm : null;
+      }).filter(Boolean);
+      return esPanel('Las plantillas', '',
+        '<div class="gx-empty" style="padding:14px 8px">' + ic('users-off') +
+        '<b>Sin plantilla en la base propia' + (falta.length === 1 ? ' de ' + esc(falta[0]) : '') + '.</b>' +
+        '<span class="gx-dim">' + esc(falta.length > 1 ? 'Ninguno de los dos equipos está en el catálogo de plantillas todavía.' : 'El otro lado sí está; a este le falta.') +
+        ' El catálogo cubre el circuito principal y se amplía con cada pasada — mientras tanto, el modelo lee el partido por rating de equipo, no por jugadores.</span></div>',
+        'gx-es-roster');
+    }
     return esPanel('Las plantillas', '<span class="gx-dim" style="font-size:10.5px">rating propio: 1.00 = media del rol</span>',
       '<div class="gx-rost-grid">' + body + '</div>', 'gx-es-roster');
   }

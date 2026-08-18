@@ -1,5 +1,36 @@
 # HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
 
+## 🏈 18-ago — FÚTBOL AMERICANO COMPLETO: la pestaña NFL ahora es NFL · College · CFL
+
+**Desplegado y verificado en prod (`cfca83a`).** El encargo de Alexis: extender la inteligencia de NFL a
+las ligas menos eficientes, TODO generando picks al monitor privado. Hecho con la doctrina intacta
+(market-blind, sombra, moneyline cerrado). La sonda responde por las tres ligas:
+`/api/internal/nfl?key=…` → pasos `amfoot:ncaaf` y `amfoot:cfl` (College 8 partidos/22 casas y CFL
+8/20 al desplegar).
+
+1. **Datos.** NCAAF: CFBD (key gratis de Alexis, en Render como `CFBD_API_KEY`) — 11.260 partidos FBS
+   2014-2026, 8.614 con cierre histórico; 38 llamadas de 1.000/mes. CFL: cosido de CUATRO fuentes —
+   ESPN 2021-22 (transporte curl; Akamai rechaza fetch de Node), Wikipedia 2023-25 POR EQUIPO con doble
+   testigo (254/257 confirmados), scoreboard oficial cfl.ca para 2026, y **los cierres "imposibles"
+   salieron del HISTÓRICO de The Odds API** (el plan de la casa lo incluye: /historical/events da los
+   kickoffs por 1 crédito, snapshot a kickoff−5min captura el cierre) → 254/453 con cierre, ~28k créditos.
+2. **Fit walk-forward por liga** (`scripts/amfoot-fit.js` → `data/amfoot/priors-*.json`): NCAAF MAE
+   margen 13,59 vs 12,34 del cierre (TOTAL roza breakeven: 52,9% umbral 6, n=2.199); CFL 10,55 vs 9,88 y
+   total a 0,12 del cierre — **backtest TOTAL CFL 57-65% en n=43/26, la señal de liga blanda que la
+   sombra tiene que confirmar o matar**. CFL 2026 anota +6 pts (cambio de reglas, 53,0→59,1 medidos):
+   base móvil corta (50) por eso.
+3. **Motor** `amfoot-engine/store.js`: arquitectura nfl-engine con dimensión de liga, MISMOS DTOs → la UI
+   de NFL rinde las tres ligas con un selector (molde baloncesto). Overlay de resultados en disco
+   persistente (CFBD/cfl.ca). Jobs cada 30 min, ventana ≤9 días: **CFL registra sombra YA** (juega esta
+   semana), college desde el ~20-ago (kickoff 29-ago).
+4. **🔴 BUG REAL CORREGIDO EN NFL:** los gates usaban |edge| → los DOS lados del mismo mercado pasaban a
+   la vez (la primera pasada CFL registró el lado -EV). Corregido en ambos motores: edge positivo. El
+   latente de NFL habría debutado con los mercados de la Semana 1.
+5. Primera pasada real de sombra CFL (local): 5 picks — 4 TOTAL under + 1 SPREAD, solo lado +EV.
+   `/api/amfoot/{slate,game,teams,model,track}?league=` con el gate de NFL; Jugadores/lecturas/lesiones
+   quedan solo-NFL y la UI lo declara.
+
+
 ## 🧭 17-ago (sesión de noche) — LO ÚLTIMO, LÉEME ANTES QUE NADA
 
 **En producción ahora mismo: `11a0fb2`.** Lo que sigue en la rama

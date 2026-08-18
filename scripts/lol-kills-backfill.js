@@ -1,10 +1,15 @@
-// scripts/lol-kills-backfill.js — LOS KILLS QUE FALTABAN EN LA BASE DE LoL (19-ago).
+// scripts/lol-kills-backfill.js — LO QUE FALTABA EN LA BASE DE LoL: KILLS Y OBJETIVOS (19-ago).
 //
-// Diagnóstico: `games.json.gz` trae 84.586 partidas CON duración y con `k1`/`k2` NULOS. No es que
-// Leaguepedia no los publique —`ScoreboardGames.Team1Kills` responde perfectamente— es que las filas se
-// guardaron ANTES de que el `slim` de lol-harvest.js pidiera esos dos campos, y la cosecha incremental no
-// vuelve sobre lo ya escrito. Consecuencia visible: `leagueTempo` sale vacío, el panel enseña "RITMO DEL
-// CIRCUITO · supuesto · muestra propia 0" y TODAS las familias de kills caen por `estructura_no_medida`.
+// Diagnóstico: `games.json.gz` trae 84.586 partidas con duración y con TODO LO DEMÁS NULO — kills, dragones,
+// barones, heraldos, torres y oro. No es que Leaguepedia no lo publique (`ScoreboardGames` tiene las nueve
+// columnas y responden perfectamente): la base viva salió del espejo de HuggingFace, que solo copió
+// id/equipos/ganador/fecha/parche/duración. Consecuencias visibles: `leagueTempo` vacío, el panel diciendo
+// "RITMO DEL CIRCUITO · supuesto · muestra propia 0", todas las familias de kills cayendo por
+// `estructura_no_medida`, y el panel de OBJETIVOS NEUTRALES —que es lo más propio de LoL, lo que ningún
+// otro juego de la casa tiene— enseñando un perfil de circuito en vez de una medición.
+//
+// Se piden las nueve columnas en la MISMA página: el limitador de Fandom cobra por petición, no por ancho,
+// así que traer kills y objetivos juntos cuesta exactamente lo mismo que traer solo kills.
 //
 // Por qué un script aparte y no re-correr la cosecha: la cosecha re-pide las 18 columnas y REESCRIBE la
 // fila entera; esto pide lo justo y lo FUNDE sobre lo que ya hay. Menos bytes contra un limitador que va
@@ -46,7 +51,9 @@ function readGames() {
 async function cargo(where, limit) {
   const q = new URLSearchParams({
     action: 'cargoquery', format: 'json', tables: 'ScoreboardGames',
-    fields: 'ScoreboardGames.Team1,ScoreboardGames.Team2,ScoreboardGames.Team1Kills,ScoreboardGames.Team2Kills,ScoreboardGames.DateTime_UTC',
+    fields: ['Team1', 'Team2', 'Team1Kills', 'Team2Kills', 'Team1Dragons', 'Team2Dragons',
+      'Team1Barons', 'Team2Barons', 'Team1Towers', 'Team2Towers', 'Team1Gold', 'Team2Gold', 'DateTime_UTC']
+      .map((f) => 'ScoreboardGames.' + f).join(','),
     where, order_by: 'ScoreboardGames.DateTime_UTC ASC', limit: String(limit),
   });
   for (let i = 0; i < 30; i++) {
@@ -80,8 +87,8 @@ const keyOf = (at, t1, t2) => `${String(at || '').slice(0, 19)}|${norm(t1)}|${no
     const pair = [norm(g.t1), norm(g.t2)].sort().join('|');
     byLoose.set(`${String(g.at).slice(0, 19)}|${pair}`, g);
   }
-  const faltan0 = Object.values(rows).filter((r) => (r.at || '') >= SINCE && r.k1 == null).length;
-  console.log(`[kills] ${total} partidas en disco · ${faltan0} sin kills desde ${SINCE.slice(0, 10)}`);
+  const faltan0 = Object.values(rows).filter((r) => (r.at || '') >= SINCE && (r.k1 == null || r.d1 == null)).length;
+  console.log(`[kills] ${total} partidas en disco · ${faltan0} sin kills u objetivos desde ${SINCE.slice(0, 10)}`);
 
   let cursor = SINCE, page = 0, tocadas = 0, vistas = 0, stall = 0;
   while (true) {
@@ -102,12 +109,19 @@ const keyOf = (at, t1, t2) => `${String(at || '').slice(0, 19)}|${norm(t1)}|${no
         if (g) flip = norm(g.t1) !== norm(r.Team1);
       }
       if (!g) continue;                                  // partida que la base no tiene: no se inventa
-      const a = N(r.Team1Kills), bK = N(r.Team2Kills);
-      if (a == null || bK == null) continue;
-      // los kills viajan CON su equipo: si el espejo guardó los lados invertidos, se invierten también
-      const k1 = flip ? bK : a, k2 = flip ? a : bK;
-      if (g.k1 === k1 && g.k2 === k2) continue;
-      g.k1 = k1; g.k2 = k2; tocadas++; nuevas++;
+      // TODAS las columnas viajan CON su equipo: si el espejo guardó los lados invertidos, se invierte el
+      // par entero — poner los dragones del azul en el rojo sería peor que no tenerlos.
+      const PAIR = [['k', 'Kills'], ['d', 'Dragons'], ['b', 'Barons'], ['tw', 'Towers'], ['g', 'Gold']];
+      let touched = false;
+      for (const [key, col] of PAIR) {
+        const a = N(r['Team1' + col]), bv = N(r['Team2' + col]);
+        if (a == null || bv == null) continue;
+        const v1 = flip ? bv : a, v2 = flip ? a : bv;
+        if (g[key + '1'] === v1 && g[key + '2'] === v2) continue;
+        g[key + '1'] = v1; g[key + '2'] = v2; touched = true;
+      }
+      if (!touched) continue;
+      tocadas++; nuevas++;
     }
     if (maxDt === cursor) {                              // pagina entera dentro del mismo segundo: se empuja
       maxDt = new Date(Date.parse(cursor.replace(' ', 'T') + 'Z') + 1000).toISOString().slice(0, 19).replace('T', ' ');
@@ -126,5 +140,6 @@ const keyOf = (at, t1, t2) => `${String(at || '').slice(0, 19)}|${norm(t1)}|${no
   const gzPath = path.join(DIR, 'games.json.gz');
   fs.writeFileSync(gzPath, zlib.gzipSync(Buffer.from(JSON.stringify(G.data)), { level: 9 }));
   const conKills = Object.values(rows).filter((r) => r.k1 != null).length;
-  console.log(`[kills] LISTO: ${tocadas} partidas rellenadas · ${conKills}/${total} con kills · gz regenerado`);
+  const conObj = Object.values(rows).filter((r) => r.d1 != null).length;
+  console.log(`[kills] LISTO: ${tocadas} rellenadas · ${conKills}/${total} con kills · ${conObj} con objetivos · gz regenerado`);
 })().catch((e) => { console.error('[kills] ' + e.message); process.exit(1); });

@@ -1,0 +1,12 @@
+{
+ "source": "Jeff Sackmann tennis_atp/tennis_wta (CC BY-NC-SA 4.0) — research/attribution, no comercial",
+ "built_at": "2026-08-18T15:55:49.705Z",
+ "rows": 61422,
+ "players": 2538,
+ "tourneys": 1816,
+ "last_match_date": {
+  "atp": 20260525,
+  "wta": 20260525
+ },
+ "years": "2015-2026"
+}

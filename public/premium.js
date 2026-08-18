@@ -11396,8 +11396,8 @@
   // públicas y la pantalla no finge que lo sean. Lo que sí son es el registro que va a decidirlo.
   function renderTenOpps() {
     var d = tenGet('board_' + tenTour(), '/api/tennis/board?tour=' + tenTour(), 120000);
-    if (!d) { tenShell(t('nav_opps'), tenTourBar() + tenLoading()); return; }
-    if (d._err) { tenShell(t('nav_opps'), tenTourBar() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
+    if (!d) { tenShell(t('nav_opps'), tenLoading()); return; }
+    if (d._err) { tenShell(t('nav_opps'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
     var rows = d.rows || [];
     var theses = [];
     rows.forEach(function (r) {
@@ -11432,7 +11432,7 @@
       cards.sort(function (a, b) { return (b.edge_pp || 0) - (a.edge_pp || 0); });
       body = '<div class="gx-picks-feed">' + cards.map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>';
     }
-    tenShell(t('nav_opps'), tenTourBar() + strip + body +
+    tenShell(t('nav_opps'), strip + body +
       '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc((d.doctrine || '').slice(0, 260)) + '</span></div>');
   }
 
@@ -11465,8 +11465,8 @@
   // ── PARTIDOS: el tablero desde el feed de cuotas (modelo vs mercado, todo en sombra) ─────────────────
   function renderTenGames() {
     var d = tenGet('board_' + tenTour(), '/api/tennis/board?tour=' + tenTour(), 120000);
-    if (!d) { tenShell(t('ten_nav_games'), tenTourBar() + tenLoading()); return; }
-    if (d._err) { tenShell(t('ten_nav_games'), tenTourBar() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
+    if (!d) { tenShell(t('ten_nav_games'), tenLoading()); return; }
+    if (d._err) { tenShell(t('ten_nav_games'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
 
     // EL FORMATO DE LA CASA (19-ago, pedido de Alexis: "entra a baloncesto o a fútbol y mira cómo es el que
     // usamos y cópialo adaptado a tenis"). Es la misma gramática del calendario de fútbol: cabecera con
@@ -11509,7 +11509,7 @@
       }).join('');
     }
     body += '<div class="gx-dim gx-es-trunc">Todas las familias de tenis corren EN SOMBRA: nada de esto es una pick. ' + TEN_ATTRIB + '</div>';
-    tenShell(t('ten_nav_games'), tenTourBar() + head + body);
+    tenShell(t('ten_nav_games'), head + body);
     var si = $('#gx-tenmsearch');
     if (si) si.addEventListener('input', function () {
       S.ten.mQ = si.value; clearTimeout(S._tenmq);

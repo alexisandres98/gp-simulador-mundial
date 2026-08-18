@@ -22,3 +22,11 @@ mercado-solo sin romper nada: `lol-data.js` declara `available:false` y el resto
 ## Aprobación humana (LOL-0045)
 Fuente aprobada por Alexis el 18-ago-2026 en sesión ("sigue el blueprint"), con esta ficha como registro.
 La revisión legal formal (LOL-0049) queda pendiente ANTES de cualquier lanzamiento público de picks de LoL.
+
+## Actualización 18-ago-2026 — la base entra por el espejo archivístico
+Fandom limita la cosecha directa (ventanas de horas); la base histórica entró por el espejo
+**gptilt/lol-esports-matches** (Hugging Face, CC BY-SA 3.0), que es él mismo derivado de
+Leaguepedia/lol.fandom.com — MISMA clase de derechos (`research_attribution_ccbysa`), misma
+atribución obligatoria a Leaguepedia, mismo veto a uso betting_commercial. 84.586 partidas
+2021→ago-2026 con picks/bans. El scoreboard POR JUGADOR sigue pendiente de la cadena de
+Leaguepedia (fichas de jugador y pools del Draft Room a media luz hasta que entre).

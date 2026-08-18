@@ -17,7 +17,11 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'lol');
-const rdf = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
+// la base grande viaja gzip en el repo (games/drafts pesan 28 MB planos): .gz primero, plano después
+const rdf = (f) => {
+  try { return JSON.parse(require('zlib').gunzipSync(fs.readFileSync(path.join(DIR, f + '.gz'))).toString('utf8')); } catch { }
+  try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; }
+};
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const slug = (s) => norm(s).replace(/ /g, '-');
@@ -89,7 +93,17 @@ function load() {
   const cut90 = new Date(Date.parse(String(lastAt).replace(' ', 'T') + 'Z') - 90 * 864e5).toISOString().slice(0, 19).replace(' ', 'T');
   const recentN = {};
   for (const g of games) if ((g.at || '').replace(' ', 'T') >= cut90) { recentN[slug(g.t1)] = (recentN[slug(g.t1)] || 0) + 1; recentN[slug(g.t2)] = (recentN[slug(g.t2)] || 0) + 1; }
-  const rankRows = Object.keys(teams).filter((id) => (recentN[id] || 0) >= 10)
+  // 18-ago (reporte de Alexis): el Elo se INFLA en piscinas cerradas de tier-2 (ERL/academias juegan solo
+  // entre sí y nadie las corrige hacia abajo) → el ranking lo encabezaban Galions/Solary por delante de
+  // LCK/LPL. El ranking GP es del CIRCUITO PRINCIPAL: solo equipos con partidas recientes en tier-1.
+  const TIER1 = /^(LCK$|LPL$|LEC$|LCS$|LTA|LCP$|LLA$|CBLOL$|Worlds|World Championship|MSI|Mid-Season|First Stand|Esports World Cup)/i;
+  const recentT1 = {};
+  for (const g of games) if ((g.at || '').replace(' ', 'T') >= cut90 && TIER1.test(leagueKey(g.page) || '')) {
+    recentT1[slug(g.t1)] = (recentT1[slug(g.t1)] || 0) + 1; recentT1[slug(g.t2)] = (recentT1[slug(g.t2)] || 0) + 1;
+  }
+  const t1Ids = Object.keys(teams).filter((id) => (recentT1[id] || 0) >= 6);
+  const poolIds = t1Ids.length >= 15 ? t1Ids : Object.keys(teams).filter((id) => (recentN[id] || 0) >= 10);
+  const rankRows = poolIds
     .sort((x, y) => (elo[y] || 0) - (elo[x] || 0)).slice(0, 60)
     .map((id, i) => ({ id, rank: i + 1, elo: +elo[id].toFixed(0), wr: teamGlobal[id].wr, n: recentN[id] || 0, team: teams[id] }));
   const rankings = { week: isoWeek(Date.parse(String(lastAt).replace(' ', 'T') + 'Z')), rows: rankRows };

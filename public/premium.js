@@ -8994,13 +8994,25 @@
 
   // Escudo de equipo: logo real si el histórico lo trae, y si no unas iniciales con la misma caja para que
   // la rejilla no se descuadre. Nunca un hueco.
+  // matiz determinista por nombre (18-ago, reporte "sin foto no se ve nada"): cada equipo/jugador sin
+  // logo recibe una identidad de color ESTABLE (hash → hue) en vez de un tile gris idéntico al de al lado.
+  function nameHue(name) {
+    var h = 0, str = String(name || '');
+    for (var i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; }
+    return h % 360;
+  }
+  function crestTint(name) {
+    var h = nameHue(name);
+    return 'background:linear-gradient(140deg,hsl(' + h + ',44%,26%),hsl(' + ((h + 40) % 360) + ',52%,12%));color:hsl(' + h + ',88%,74%);border-color:hsl(' + h + ',45%,34%)';
+  }
   function cs2Crest(t, cls) {
     var name = (t && t.name) || '—';
     var ini = name.replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 3).toUpperCase() || '?';
     // onload marca el escudo como cargado y la inicial se esconde: con logos PNG transparentes (NFL) las
     // letras se veían DETRÁS del escudo (reporte de Alexis, 18-ago).
     var img = (t && t.logo) ? '<img src="' + esc(t.logo) + '" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add(\'ok\')" onerror="this.remove()">' : '';
-    return '<span class="gx-cs-crest' + (cls ? ' ' + cls : '') + '">' + img + '<i>' + esc(ini) + '</i></span>';
+    var tint = (t && t.logo) ? '' : ' style="' + crestTint(name) + '"';
+    return '<span class="gx-cs-crest' + (cls ? ' ' + cls : '') + '"' + tint + '>' + img + '<i style="color:inherit">' + esc(ini) + '</i></span>';
   }
 
   // ── 1) HÉROE DE PROBABILIDAD (blueprint 144-145) ──────────────────────────────────────────────────────
@@ -9914,7 +9926,8 @@
   function esAvatar(p, cls) {
     var ini = String(p.nick || '?').slice(0, 2).toUpperCase();
     var img = p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
-    return '<span class="gx-esp-ava' + (cls ? ' ' + cls : '') + '">' + img + '<i>' + esc(ini) + '</i></span>';
+    var tint = p.photo ? '' : ' style="' + crestTint(p.nick || '?') + '"';
+    return '<span class="gx-esp-ava' + (cls ? ' ' + cls : '') + '"' + tint + '>' + img + '<i style="color:inherit">' + esc(ini) + '</i></span>';
   }
   // buscador con foco conservado: el mismo patrón que el del calendario (re-render + restaurar cursor)
   function esSearchBox(id, val, ph) {

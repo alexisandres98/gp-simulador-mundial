@@ -30,7 +30,10 @@ const K0 = +arg('k', 0);          // 0 = barrer
 const MIN_N = +arg('min-n', 10);
 const OUT = arg('json', null);
 
-const raw = JSON.parse(fs.readFileSync(path.join(DIR, 'games.json'), 'utf8'));
+const raw = (() => {
+  try { return JSON.parse(require('zlib').gunzipSync(fs.readFileSync(path.join(DIR, 'games.json.gz'))).toString('utf8')); } catch { }
+  return JSON.parse(fs.readFileSync(path.join(DIR, 'games.json'), 'utf8'));
+})();
 const all = Object.values(raw.rows)
   .filter((g) => g.t1 && g.t2 && g.win && g.at)
   .sort((a, b) => (a.at < b.at ? -1 : 1));

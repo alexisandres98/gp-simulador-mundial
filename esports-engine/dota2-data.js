@@ -88,7 +88,17 @@ function load() {
   const cut90 = lastAt - 90 * 86400;
   const recentN = {};
   for (const m of matches) if ((m.at || 0) >= cut90) { recentN[tidOf(m.r_id)] = (recentN[tidOf(m.r_id)] || 0) + 1; recentN[tidOf(m.d_id)] = (recentN[tidOf(m.d_id)] || 0) + 1; }
-  const rankRows = Object.keys(teams).filter((id) => (recentN[id] || 0) >= 15)
+  // 18-ago (reporte de Alexis): el Elo se infla en piscinas cerradas de tier-2/3 (ligas menores que solo
+  // juegan entre sí) → "TEAM VISION" encabezaba el ranking. El ranking GP es del CIRCUITO PRINCIPAL:
+  // solo equipos con partidas recientes en los torneos grandes (lg_name viaja en la base).
+  const T1DOTA = /(The International|Riyadh|Esports World Cup|ESL One|DreamLeague|PGL |BLAST|FISSURE|EPT |Elite League|Games of the Future|Major)/i;
+  const recentT1 = {};
+  for (const m of matches) if ((m.at || 0) >= cut90 && T1DOTA.test(m.lg_name || '')) {
+    recentT1[tidOf(m.r_id)] = (recentT1[tidOf(m.r_id)] || 0) + 1; recentT1[tidOf(m.d_id)] = (recentT1[tidOf(m.d_id)] || 0) + 1;
+  }
+  const t1Ids = Object.keys(teams).filter((id) => (recentT1[id] || 0) >= 6);
+  const poolIds = t1Ids.length >= 15 ? t1Ids : Object.keys(teams).filter((id) => (recentN[id] || 0) >= 15);
+  const rankRows = poolIds
     .sort((x, y) => (elo[y] || 0) - (elo[x] || 0)).slice(0, 60)
     .map((id, i) => ({ id, rank: i + 1, elo: +elo[id].toFixed(0), wr: teamGlobal[id].wr, n: recentN[id] || 0, team: teams[id] }));
   const rankings = { week: isoWeek(lastAt * 1000), rows: rankRows };

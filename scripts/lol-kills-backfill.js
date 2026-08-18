@@ -83,7 +83,33 @@ async function cargo(where, limit) {
 const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
 const keyOf = (at, t1, t2) => `${String(at || '').slice(0, 19)}|${norm(t1)}|${norm(t2)}`;
 
+// CERROJO DE INSTANCIA ÚNICA (19-ago). Este script carga games.json ENTERO en memoria y reescribe el
+// archivo completo en cada página. Dos instancias a la vez no se reparten el trabajo: cada una parte de la
+// foto que leyó al arrancar y la última en escribir borra lo que hizo la otra. Pasó de verdad —quedaron dos
+// corriendo y el registro decía 1.498 partidas rellenadas mientras en disco había 270—, así que deja de
+// depender de que quien lo lanza se acuerde.
+const LOCK = path.join(DIR, '.kills-backfill.lock');
+function acquireLock() {
+  try {
+    const prev = JSON.parse(fs.readFileSync(LOCK, 'utf8'));
+    // un cerrojo huérfano (proceso muerto) no debe bloquear para siempre
+    let alive = false;
+    try { process.kill(prev.pid, 0); alive = true; } catch { alive = false; }
+    if (alive && prev.pid !== process.pid) {
+      console.error(`[kills] ya hay una instancia corriendo (pid ${prev.pid}). Dos a la vez se pisan la escritura: salgo.`);
+      process.exit(2);
+    }
+  } catch { /* sin cerrojo previo, o ilegible: seguimos */ }
+  fs.mkdirSync(DIR, { recursive: true });
+  fs.writeFileSync(LOCK, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
+  const release = () => { try { fs.unlinkSync(LOCK); } catch { } };
+  process.on('exit', release);
+  process.on('SIGINT', () => { release(); process.exit(130); });
+  process.on('SIGTERM', () => { release(); process.exit(143); });
+}
+
 (async () => {
+  acquireLock();
   const G = readGames();
   const rows = G.data.rows || {};
   const total = Object.keys(rows).length;

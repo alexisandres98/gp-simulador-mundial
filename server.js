@@ -356,6 +356,24 @@ async function valHarvestJob() {
   } catch (e) { opsLog('val_harvest', { error: e.message }); setTimeout(valHarvestJob, 30 * 60e3); }
 }
 setTimeout(valHarvestJob, 9 * 60e3);
+
+// ── TENIS: cosecha de la base histórica (Sackmann ATP/WTA, CC BY-NC-SA — ver data/tennis/RIGHTS.md).
+// El sandbox de desarrollo no llega a GitHub; Render sí. Descarga una vez a /data/tennis-raw y se
+// apaga sola (state.json complete). Encadena pasadas por si una descarga falla a mitad.
+async function tenHarvestJob() {
+  try {
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_TEN_HARVEST || '').trim())) return;
+    const dir = process.env.GP_TEN_DIR || (fs.existsSync('/data') ? '/data/tennis-raw' : path.join(__dirname, 'data', 'tennis', 'raw'));
+    try {
+      const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+      if (st && st.complete) { opsLog('ten_harvest_done', { complete: true, at: st.at }); return; }
+    } catch { }
+    const out = await opsSpawn('ten_harvest', ['scripts/tennis-harvest.js'], { heapMb: 250, timeoutMin: 60 });
+    opsLog('ten_harvest_pass', { code: out.code != null ? out.code : out.error });
+    setTimeout(tenHarvestJob, 20 * 60e3);
+  } catch (e) { opsLog('ten_harvest', { error: e.message }); setTimeout(tenHarvestJob, 30 * 60e3); }
+}
+setTimeout(tenHarvestJob, 3 * 60e3);
 const BOOT_ID = Date.now();
 setTimeout(boxingBackfillJob, 8 * 60e3);
 setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
@@ -16049,6 +16067,27 @@ const server = http.createServer(async (req, res) => {
       if (!OKV.includes(fV)) return json(res, 400, { error: 'archivo no permitido', ok: OKV });
       try {
         const buf = require('zlib').gzipSync(fs.readFileSync(path.join(dirV, fV)));
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
+        return res.end(buf);
+      } catch (e) { return json(res, 404, { error: e.message }); }
+    }
+    // recogida de la cosecha de tenis (Sackmann; los CSV van gzip, el listado enseña avance)
+    if (p === '/api/internal/tenraw') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const fT = String(url.searchParams.get('file') || '');
+      const okT = (n) => /^(atp|wta)_(matches_20\d\d|players)\.csv$/.test(n) || n === 'state.json';
+      const dirT = process.env.GP_TEN_DIR || (fs.existsSync('/data') ? '/data/tennis-raw' : path.join(__dirname, 'data', 'tennis', 'raw'));
+      if (!fT) {
+        let names = []; try { names = fs.readdirSync(dirT).filter(okT).sort(); } catch { }
+        const files = names.map(x => { let st2 = null; try { st2 = fs.statSync(path.join(dirT, x)); } catch { }
+          return { file: x, bytes: st2 ? st2.size : null, mtime: st2 ? st2.mtime : null }; });
+        const log = (OPS.log || []).filter(l => String(l.what || '').startsWith('ten_harvest')).slice(-5);
+        return json(res, 200, { dir: dirT, files, ops: log });
+      }
+      if (!okT(fT)) return json(res, 400, { error: 'archivo no permitido' });
+      try {
+        const buf = require('zlib').gzipSync(fs.readFileSync(path.join(dirT, fT)));
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
         return res.end(buf);
       } catch (e) { return json(res, 404, { error: e.message }); }

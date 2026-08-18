@@ -1,4 +1,61 @@
-# HANDOFF — estado al 19-ago-2026 (los cuatro esports con caras, y los tres pequeños generando picks)
+# HANDOFF — estado al 19-ago-2026 (F1 y tenis reconstruidos, College/CFL con jugadores, la sombra arreglada)
+
+## 🏁 19-ago (noche) — LA RONDA DE ALEXIS, PUNTO POR PUNTO (`e1811a7` en main)
+
+**1. "Muchas picks de fútbol saliendo en void" — no era el feed, era el ejecutor.**
+El feed público está sano: 63 liquidadas, 38-25, solo 2 VOID reales. El ejecutor en la sombra reportaba 9
+anuladas de 30 (30 %) y NINGUNA lo estaba: su `result_code` era SUPERSEDED. Dos errores encadenados —
+copiaba el código de la pick tal cual (pero SUPERSEDED es un hecho sobre la SEÑAL, no sobre la posición: el
+dinero de papel ya estaba en esa línea a ese precio) y el resumen contaba como "anulada" todo lo liquidado
+que no fuera WIN ni LOSS. Ahora una apuesta colocada se liquida contra el total REAL y contra SU PROPIA
+línea; sin dato sigue abierta y solo a las 72 h se anula. Incluye reparación de las nueve, corrigiendo el
+bankroll por la DIFERENCIA. **No toca la regla congelada de `cards_under_v1`.** Ojo: el ROI que se venía
+leyendo tenía nueve apuestas metiendo stake en el denominador y cero en el numerador.
+
+**2. F1 reconstruida.** 26/26 pilotos y 12/12 escuderías con foto (Wikimedia Commons, CC BY-SA — las de FOM
+no se pueden auto-hospedar). Objetos firma: LA PARRILLA de verdad (dos columnas escalonadas) y el PLANO
+COCHE × PILOTO con cuadrantes. Tres lentes. **Las 12 rondas restantes** son analizables, no solo la próxima
+(`raceBoard(round)` + `calendar()`), con el cuidado de forzar PRE-QUALI en rondas futuras. DUELO interactivo
+piloto contra piloto. Pestaña de Oportunidades honesta: **F1 es el único deporte SIN cobertura de mercado**
+—comprobado en vivo en los dos proveedores— así que enseña convicciones ordenadas y una vigilancia de
+cobertura, y dice que una convicción no es una pick.
+
+**3. Tenis rehecho.** Calendario con el FORMATO DE LA CASA (grupos por día + `gx-mcard`), picks por
+`pickCard()` —la misma card de los otros siete deportes— y **once paneles en tres lentes**: duelo saque/resto
+ajustado por rival, camino al resultado, curva completa de juegos con la línea de la casa marcada, ocho
+marcadores más probables, Elo POR SUPERFICIE, índices de saque y resto, h2h partido a partido, forma
+reciente, perfil de saque de carrera y registro por superficie. 549 jugadores con cara.
+
+**4. College y CFL con jugadores.** El motor no tenía capa de jugadores: se creó entera (cosecha, directorio,
+ficha, rutas, pantallas). **No inventa rating individual** — este modelo puntúa EQUIPOS y la ficha lo dice.
+Corre en Render (`GP_AMF_ROSTERS=1`): ESPN devuelve 403 a la IP de desarrollo.
+
+**5. Las iniciales ya no se escriben ENCIMA de las fotos.** Las cuatro caras que escribí pintaban siempre el
+elemento de iniciales, también con retrato. Combate y baloncesto ya lo tenían bien con `img + span
+{display:none}`; ahora se aplica lo mismo en los cuatro, con clase + regla de hermano + vuelta atrás si la
+imagen falla.
+
+**6. Oportunidades no se veía en móvil** en tenis ni en F1: la barra inferior de ambos no incluía la vista
+y ninguno tenía lista de "Más" propia. Corregido: Oportunidades abre la barra en los dos.
+
+### ⚠️ DOS FALLOS DE OPERACIÓN QUE ME PILLÉ A MÍ MISMO (y valen más que las features)
+
+- **El job de plantillas iba SIN freno de memoria.** La sonda enseñó tres cosechas a la vez y **801 MB de
+  RSS** — el modo de fallo que tumbó la plataforma el 15-ago. Todos los jobs de la casa llevan freno; el mío
+  no. Ahora: no arranca por encima de 300 MB ni con otra cosecha pesada en vuelo, corta entre ligas a 320,
+  se reprograma a 45 min, y hace **CFL primero** (9 equipos contra 130+). No hubo caída: es para que no la haya.
+- **El rellenado de LoL corría DUPLICADO y se borraba a sí mismo.** El log decía 1.498 partidas y en disco
+  había 270: dos instancias, cada una con su foto de `games.json` en memoria, reescribiendo el archivo
+  entero. Ahora hay cerrojo por pid (con limpieza de cerrojo huérfano y liberación en exit/SIGINT/SIGTERM).
+
+### Estado de las cosechas
+- **LoL kills+objetivos**: arranca en el borde de la ventana de 180 días (no en enero: las primeras páginas
+  se gastaban en partidas que el modelo ni mira). 500 en ventana con kills y objetivos, 2.227 con kills desde
+  enero. Sigue moliendo contra el limitador de Fandom.
+- **Plantillas College/CFL**: pendiente, difiriendo correctamente mientras `lol_harvest` ocupa memoria.
+- **Tenis**: el tablero depende del feed por torneo — Cincinnati terminó, el US Open abre solo.
+
+# (histórico) estado al 19-ago-2026 (los cuatro esports con caras, y los tres pequeños generando picks)
 
 ## 🎮 19-ago — EL TRABAJO DETALLADO DE ESPORTS (`ffa12e5` en main)
 

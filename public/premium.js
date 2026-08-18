@@ -9980,14 +9980,7 @@
       return;
     }
     if (tab === 'rank') { renderESRanking(segs); return; }
-    if (tab === 'players') {
-      if (g !== 'cs2') {
-        esShell(t('es_nav_teams'), esTabs() + '<div class="gx-ohead">' + segs + '</div>' +
-          '<div class="gx-panel">' + esGap('La ficha de jugador habla en ADR/KAST (CS2). La de LoL — KP, KDA, CSPM por rol — llega cuando su base propia termine de cargar; los quintetos ya se leen en el Draft Room de cada partida.') + '</div>');
-        return;
-      }
-      renderESPlayers(segs); return;
-    }
+    if (tab === 'players') { renderESPlayers(segs); return; }
     var q = (S.es.tQ || '').trim();
     var key = 'dir_' + g + (q ? '_' + encodeURIComponent(q) : '');
     var d = esGet(key, '/api/esports/directory?game=' + g + '&limit=120' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
@@ -10058,6 +10051,28 @@
       return;
     }
     var rows = d.players || [];
+    // LoL: card propia en su idioma (rating GP por rol, KDA, participación en kills, CS/min).
+    // Texto-first, sin fotos: la identidad visual de jugadores llega con una fuente de assets autorizada.
+    if (d.lol) {
+      var bodyL = rows.length
+        ? '<div class="gx-esp-grid">' + rows.map(function (p) {
+            var rg = p.rating_gp != null ? p.rating_gp : null;
+            var rgW = rg != null ? Math.max(4, Math.min(100, 100 * (rg - 0.6) / 1.0)) : 0;
+            var ownRow = rg != null
+              ? '<div class="gx-esp-rat"><span>Rating GP</span><div class="gx-esp-ratb"><em></em><i style="width:' + rgW.toFixed(0) + '%"></i></div><b class="gx-mono ' + (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') + '">' + rg.toFixed(2) + '</b></div>' +
+                '<div class="gx-esp-stats"><span>KDA <b>' + (p.kda != null ? p.kda.toFixed(1) : '—') + '</b></span><span>KP <b>' + (p.kp != null ? Math.round(100 * p.kp) + '%' : '—') + '</b></span><span>CS/min <b>' + (p.cspm != null ? p.cspm.toFixed(1) : '—') + '</b></span><span class="gx-dim">' + (p.games_n || 0) + ' partidas</span></div>'
+              : '<div class="gx-esp-rat"><span class="gx-dim">sin muestra propia suficiente en la ventana</span></div>';
+            return '<div class="gx-panel gx-esp-card" data-esplayer="' + esc(p.id) + '">' +
+              '<div class="gx-esp-top"><div class="gx-esp-id"><b>' + esc(p.nick) + '</b><span>' + esc(p.team_name || '—') + '</span></div>' +
+                '<span class="gx-spacer"></span>' + (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') + '</div>' +
+              '<div class="gx-esp-meta">' + ownRow + '</div></div>';
+          }).join('') + '</div>' +
+          '<div class="gx-dim gx-es-trunc">' + esc(d.rating_note || '') + '</div>'
+        : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún jugador con ese nombre.</b><span class="gx-dim">Se listan los jugadores con ≥8 partidas en la ventana de la base propia.</span></div></div>';
+      esShell(t('es_nav_teams'), esTabs() + head + bodyL);
+      esBindSearch('gx-espsearch', function (v) { S.es.pQ = v; }, renderESTeams);
+      return;
+    }
     var body = rows.length
       ? '<div class="gx-esp-grid">' + rows.map(function (p) {
           // EL RATING PROPIO manda (media del circuito = 1.00; barra centrada en la media). El del
@@ -11081,6 +11096,65 @@
   }
 
   // ---- FICHA DE JUGADOR CS2 (v3): el Rating GP con TODO su desglose -------------------------------------
+  // La ficha de LoL habla el idioma del juego (18-ago, blueprint 3.0): rating GP normalizado POR ROL,
+  // reparto azul/rojo, pool de campeones con recencia (los mismos chips del Draft Room) y bitácora.
+  // Texto-first: sin arte de Riot (LOL-0043).
+  function renderESPlayerLol(d, back) {
+    var p = d.player, tt = d.totals, rg = d.rating_gp;
+    var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' +
+      '<div class="gx-est-hero-id"><b>' + esc(p.nick) + '</b><div class="gx-est-hero-chips">' +
+        (p.role ? '<span class="gx-esp-role">' + esc(String(p.role).toUpperCase()) + '</span>' : '') +
+        (p.team ? '<span class="gx-est-rankchip" data-esteam="' + esc(p.team) + '" style="cursor:pointer">' + esc(p.team_name || p.team) + '</span>'
+          : (p.team_name ? '<span class="gx-dim" style="font-size:11.5px">' + esc(p.team_name) + '</span>' : '')) +
+      '</div></div><span class="gx-spacer"></span>' +
+      '<div class="gx-esplayer-rg"><b class="' + (rg != null ? (rg >= 1.05 ? 'gx-up' : rg < 0.95 ? 'gx-down' : '') : '') + '">' + (rg != null ? rg.toFixed(2) : '—') + '</b><span>Rating GP</span>' +
+        '<em>media del rol = 1.00</em></div></div>' +
+      (tt ? '<div class="gx-est-hero-stats" style="grid-template-columns:repeat(6,1fr)">' +
+        '<div><b>' + (tt.kda != null ? tt.kda.toFixed(1) : '—') + '</b><span>KDA</span></div>' +
+        '<div><b>' + (tt.kp != null ? Math.round(100 * tt.kp) + '%' : '—') + '</b><span>particip. kills</span></div>' +
+        '<div><b>' + (tt.cspm != null ? tt.cspm.toFixed(1) : '—') + '</b><span>CS/min</span></div>' +
+        '<div><b>' + (tt.gpm != null ? tt.gpm : '—') + '</b><span>oro/min</span></div>' +
+        '<div><b>' + (tt.wr != null ? Math.round(100 * tt.wr) + '%' : '—') + '</b><span>victorias</span></div>' +
+        '<div><b>' + tt.n + '</b><span>partidas</span></div></div>' : '') + '</div>';
+    // huella contra su ROL (percentiles medidos)
+    var FP = d.footprint;
+    var fpB = FP ? esPanel('Huella GP contra su rol', '<span class="gx-dim" style="font-size:11px">' + FP.pop_n + ' ' + esc(FP.role || '') + ' cualificados</span>',
+      '<div class="gx-es-fp">' + [['participacion', 'Participación', 'presencia en las kills del equipo'], ['kda', 'KDA', 'tope 8 para que un smurf no rompa la escala'], ['farmeo', 'Farmeo', 'CS por minuto'], ['muertes', 'Limpieza', 'percentil alto = muere poco']].map(function (x) {
+        var v = FP.dims[x[0]];
+        if (!v) return '';
+        return '<div class="gx-es-fpr"><span class="gx-es-fpl">' + x[1] + '</span>' +
+          '<div class="gx-es-fpbar"><i style="width:' + Math.max(2, v.pct || 0) + '%"></i></div>' +
+          '<b class="gx-mono">p' + (v.pct != null ? v.pct : '—') + '</b>' +
+          '<span class="gx-dim gx-es-fpd">' + x[2] + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">No es proyección: es dónde se sienta entre los de su rol en la ventana, medido del scoreboard propio.</div>') : '';
+    // reparto por lado
+    var sd = d.side_split;
+    var sideB = sd && (sd.blue_n || sd.red_n) ? esPanel('Por lado del mapa', '',
+      '<div class="gx-es-asym">' +
+        '<div><span class="gx-label">Lado azul</span><b>' + (sd.blue_wr != null ? Math.round(100 * sd.blue_wr) + '%' : '—') + '</b><span class="gx-dim">' + (sd.blue_n || 0) + ' partidas</span></div>' +
+        '<div><span class="gx-label">Lado rojo</span><b>' + (sd.red_wr != null ? Math.round(100 * sd.red_wr) + '%' : '—') + '</b><span class="gx-dim">' + (sd.red_n || 0) + ' partidas</span></div>' +
+      '</div><div class="gx-dim gx-es-note">Victorias del jugador según el lado que le tocó: el lado azul elige primero en el draft.</div>') : '';
+    // pool de campeones (chips del Draft Room)
+    var poolB = (d.champs || []).length ? esPanel('Pool de campeones', '<span class="gx-dim" style="font-size:11px">peso reciente, medio-vida 40 partidas</span>',
+      '<div class="gx-dr-pool">' + d.champs.map(function (c) {
+        return '<span class="gx-dr-ch" title="' + c.n + ' partidas' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.last ? ' · última ' + c.last : '') + '">' +
+          esc(c.ch) + '<i>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + ' · ' + c.n + '</i></span>';
+      }).join('') + '</div>') : '';
+    // bitácora
+    var recB = (d.recent || []).length ? esPanel('Bitácora reciente', '',
+      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Fecha</th><th>Campeón</th><th>Rival</th><th class="r">K/D/A</th><th>Lado</th><th></th></tr></thead><tbody>' +
+      d.recent.slice(0, 10).map(function (r) {
+        return '<tr><td class="gx-dim gx-mono">' + esc(r.at || '—') + '</td><td><b>' + esc(r.ch || '—') + '</b></td>' +
+          '<td class="gx-dim">' + esc(r.vs || '—') + '</td>' +
+          '<td class="r gx-mono">' + (r.k != null ? r.k + '/' + r.d + '/' + r.a : '—') + '</td>' +
+          '<td class="gx-dim">' + (r.side === 'blue' ? 'azul' : r.side === 'red' ? 'rojo' : '—') + '</td>' +
+          '<td>' + (r.win === 1 ? '<b class="gx-up">V</b>' : r.win === 0 ? '<b class="gx-dn">D</b>' : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>') : '';
+    esShell(p.nick, back + hero + fpB + sideB + poolB + recB +
+      '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
+  }
+
   function renderESPlayer() {
     var g = esGame(), id = S.es.playerId;
     if (!id) { showView('esteams'); return; }
@@ -11088,6 +11162,8 @@
     var back = '<div class="gx-back" data-esteamsback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_teams')) + '</span></div>';
     if (!d) { esShell('Jugador', back + esLoading()); return; }
     if (d._err || !d.available) { esShell('Jugador', back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
+    // ── FICHA PROPIA DE LoL: rating por rol, reparto por lado, pool con recencia y bitácora ──────────────
+    if (d.lol) { renderESPlayerLol(d, back); return; }
     var p = d.player, tt = d.totals;
     var rg = d.rating_gp;
     var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + esAvatar(p, 'big') +

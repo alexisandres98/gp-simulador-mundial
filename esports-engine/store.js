@@ -1511,6 +1511,23 @@ function playersDirectory(game, { q = '', limit = 80 } = {}) {
   const all = Object.values(data.players || {});
   if (!all.length) return { game, available: false, why: 'el directorio de jugadores todavía no se ha derivado (corre con la cosecha de plantillas).' };
   const needle = CD.norm(q);
+  // LoL habla su idioma (KP/KDA/CSPM por rol), no el de CS2 (ADR/KAST): rama propia con sus columnas
+  if (game === 'lol') {
+    const rows = all
+      .filter((p) => !needle || CD.norm(p.nick).indexOf(needle) >= 0 || CD.norm(p.team_name || '').indexOf(needle) >= 0)
+      .map((p) => {
+        const st = data.playerStats[p.id] || null;
+        return { id: p.id, nick: p.nick, role: p.role, team: p.team, team_name: p.team_name,
+          rating_gp: st ? st.rating_gp : null, games_n: st ? st.n : null, wr: st ? st.wr : null,
+          kda: st ? st.kda : null, kp: st ? st.kp : null, cspm: st ? st.cspm : null };
+      })
+      .sort((a, b) => (b.rating_gp || 0) - (a.rating_gp || 0) || (b.games_n || 0) - (a.games_n || 0))
+      .slice(0, Math.max(1, Math.min(300, limit)));
+    return { game, available: true, lol: true, players: rows, total: all.length,
+      own_stats: data.playerStatsMeta || null,
+      rating_note: 'Rating GP propio normalizado POR ROL (un support no compite con un mid en CS/min — LOL-0007); media del rol = 1.00. Datos derivados de Leaguepedia (CC BY-SA 4.0).',
+      at: data.at };
+  }
   const hasOwn = Object.keys(data.playerStats).length > 0;
   const rows = all
     .filter((p) => !p.coach)
@@ -1541,6 +1558,37 @@ function playerProfile(game, id) {
   const p = data.players[id] || null;
   const st = data.playerStats[id] || null;
   if (!p && !st) return { game, available: false, why: `no reconozco "${id}" entre los jugadores con ficha.` };
+  // ficha propia de LoL: rating por rol, reparto por lado, pool de campeones con recencia y bitácora.
+  // La huella compara contra la POBLACIÓN DE SU ROL (LOL-0007), no contra todo el circuito.
+  if (game === 'lol') {
+    const pop = Object.values(data.playerStats || {}).filter((x) => x.role === (st && st.role));
+    const pct = (f, invert = false) => {
+      if (!st) return null;
+      const mine = f(st); if (mine == null) return null;
+      const vals = pop.map(f).filter((v) => v != null);
+      const below = vals.filter((v) => (invert ? v > mine : v < mine)).length;
+      return { value: +(+mine).toFixed(2), pct: vals.length ? Math.round(100 * below / vals.length) : null };
+    };
+    return {
+      game, available: true, lol: true,
+      player: { id, nick: (st && st.nick) || (p && p.nick) || id, role: (st && st.role) || (p && p.role) || null,
+        team: (st && st.team) ? CD.resolveTeam(st.team, { data }) : (p ? p.team : null),
+        team_name: (st && st.team) || (p && p.team_name) || null },
+      rating_gp: st ? st.rating_gp : null,
+      totals: st ? { n: st.n, wr: st.wr, kda: st.kda, kp: st.kp, cspm: st.cspm, gpm: st.gpm, dpg: st.dpg } : null,
+      side_split: st ? st.side_split : null,
+      champs: st ? (st.champs || []).slice(0, 8).map((c) => ({ ch: c.ch, n: c.n,
+        wr: c.n ? +(c.w / c.n).toFixed(2) : null, rw: c.rw, last: c.last ? String(c.last).slice(0, 10) : null })) : [],
+      recent: (st && st.recent) ? st.recent.slice().reverse() : [],
+      footprint: st ? { role: st.role, pop_n: pop.length, dims: {
+        participacion: pct((x) => x.kp), kda: pct((x) => Math.min(8, x.kda)),
+        farmeo: pct((x) => x.cspm), muertes: pct((x) => x.dpg, true) } } : null,
+      meta: data.playerStatsMeta,
+      note: st ? 'Rating GP propio normalizado por rol (media del rol = 1.00; fórmula publicada en la ficha del motor). Datos derivados de Leaguepedia (CC BY-SA 4.0).'
+        : 'sin muestra propia suficiente en la ventana (≥8 partidas en 365 días).',
+      at: data.at,
+    };
+  }
   const team = p ? data.teams[p.team] : null;
   const maps = st && st.maps ? Object.entries(st.maps).map(([k, m]) => ({ map: k, ...m }))
     .sort((a, b) => (b.adr || 0) - (a.adr || 0)) : [];

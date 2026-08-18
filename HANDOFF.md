@@ -1,4 +1,37 @@
-# HANDOFF — estado al 18-ago-2026 (los cuatro esports vivos + correcciones del día + caja negra)
+# HANDOFF — estado al 18-ago-2026 (OCHO deportes: tenis y F1 nacen, LoL revive)
+
+## 🏆 18-ago (noche) — TENIS (7º) Y F1 (8º) EN PRODUCCIÓN + EL REVIVAL DE LOS ESPORTS (`902de37`)
+
+1. **TENIS (blueprint 6.0), al lado de NFL, admin-only.** Los repos de Sackmann fueron RETIRADOS de
+   GitHub: la base entró por el espejo archivístico Aneeshers/tennis-sackmann-archive (misma licencia
+   CC BY-NC-SA → sin uso comercial: RIGHTS.md manda, reemplazar por fuente licenciada antes de abrir
+   al público). 61.422 partidos ATP+WTA 2015→may-2026. Compilador EXACTO punto→juego→set→partido
+   (`tennis-engine/compiler.js`, verificado contra Monte Carlo) con choque de ejecución medido.
+   HOLDOUT único: ATP 10,5% skill/AUC 0,711 · WTA 11,7%/0,723; forma calibrada bate al ingenuo.
+   Cuotas por descubrimiento dinámico de torneos de The Odds API (Cincinnati vivo, US Open llega
+   solo), sombra market-blind con retiro→VOID: **24 tesis abiertas ya en prod**. Pestaña completa:
+   tablero GP-vs-mercado, Ranking GP, fichas, DUELO SAQUE-RESTO (objeto firma), sombra, brief, ask.
+2. **F1 (blueprint 7.0), al lado de Tenis, admin-only.** Base Jolpica-F1 (CC BY 4.0 — la mejor clase
+   de derechos de la casa), 263 carreras 2014→2026. `f1-engine/`: descomposición COCHE×PILOTO
+   walk-forward (el cambio reglamentario de 2022 midió en dev cuánto coche sobrevive a un cambio de
+   reglas: eso hereda 2026) + gemelo Monte Carlo del field completo con common random numbers.
+   Holdout: Spearman 0,687, Brier podio 0,067; en el GANADOR pos-quali el prior de casilla sigue
+   delante (1,058 vs 1,161) Y SE DICE — sin picks. The Odds API NO cubre F1 (comprobado): terminal
+   de inteligencia puro con vigilancia diaria de cobertura. UI: hero del GP (Dutch GP 23-ago),
+   PARRILLA PROBABILÍSTICA con color de constructor, mundial con barra Coche×Piloto, WHAT-IF de
+   casilla, duelo, brief/ask/motor. Overlay Jolpica cada 6 h: la quali del sábado activa POS-QUALI.
+3. **El reporte de Alexis sobre los esports ("como si no hubiéramos hecho nada") — resuelto.**
+   (a) LoL estaba VACÍO (Fandom nunca abrió): base por espejo gptilt/lol-esports-matches (HF,
+   CC BY-SA, linaje Leaguepedia) — 84.586 partidas 2021→16-ago-2026, validación real 12,75% de skill
+   (ventana intacta), Campeones con el meta del parche 26.15. Fichas de jugador siguen pendientes de
+   la cadena de Leaguepedia (se dice en pantalla). (b) Rankings tier-2 arriba (Galions/TEAM VISION):
+   ahora son del CIRCUITO PRINCIPAL (filtro de ligas/torneos grandes, con fallback). (c) Tiles grises:
+   identidad de COLOR determinista por nombre en crests y avatares de toda la casa.
+4. **Cosechas**: Valorant details sigue moliendo en Render (agentes/quintetos se abren solos al
+   completar). Sombra de tenis liquidará sola por ESPN. F1 y tenis con jobs propios.
+5. **Sondas**: `/api/internal/{tennis,f1,tenraw,esports}?key=$GP_EXPORT_KEY`.
+
+# (histórico) estado al 18-ago-2026 (los cuatro esports vivos + correcciones del día + caja negra)
 
 ## 🕐 18-ago (mediodía) — LA OLA GRANDE DEL DÍA DESPLEGADA (`c3040a0` en main)
 

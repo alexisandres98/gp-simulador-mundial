@@ -7068,6 +7068,40 @@ function settleClubDailyPicks() {
   if (settled) save();
   return { settled };
 }
+// EL TOTAL REAL DE UN PARTIDO PARA UNA FAMILIA DE PROPS (19-ago). Vivía embebido dentro de
+// settleClubDailyPicks, atado a la línea de ESA pick. Se extrae porque el ejecutor en la sombra necesita
+// exactamente el mismo número para liquidar SU línea, que no siempre coincide con la de la pick viva:
+// cuando la señal se re-emite (u10,5 → u11,5) la apuesta ya colocada sigue estando en la línea vieja.
+// Devuelve null mientras no haya dato — quien llama decide si espera o anula por tiempo.
+function clubPropTotal(league, ev, family) {
+  if (family !== 'CORNERS' && family !== 'CARDS') return null;
+  const ko = +new Date((ev && ev.kickoff_at) || 0);
+  if (!ko) return null;
+  try {
+    const ms = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${league}.json`), 'utf8')).matches || [];
+    const row = ms.find((m2) => ((m2.home.code === ev.home_team_id && m2.away.code === ev.away_team_id)
+      || (m2.home.code === ev.away_team_id && m2.away.code === ev.home_team_id))
+      && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
+    if (row) {
+      return family === 'CORNERS'
+        ? (Number(row.home.corners) || 0) + (Number(row.away.corners) || 0)
+        : (Number(row.home.yellows) || 0) + (Number(row.home.reds) || 0) + (Number(row.away.yellows) || 0) + (Number(row.away.reds) || 0);
+    }
+  } catch { }
+  // mismo fallback TSA que usa el liquidador: las tarjetas salen del player-history agrupando por partido
+  if (family === 'CARDS') {
+    try {
+      const rows = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${league}.json`), 'utf8')).rows || [];
+      const near = rows.filter((r2) => Math.abs(+new Date(r2.date) - ko) < 2 * 86400e3
+        && (r2.team === ev.home_team_id || r2.team === ev.away_team_id));
+      const byMatch = {};
+      near.forEach((r2) => { (byMatch[r2.match] = byMatch[r2.match] || new Set()).add(r2.team); });
+      const mid = Object.keys(byMatch).find((k) => byMatch[k].has(ev.home_team_id) && byMatch[k].has(ev.away_team_id));
+      if (mid) return near.filter((r2) => r2.match === mid).reduce((a, r2) => a + (Number(r2.yc) || 0) + (Number(r2.rc) || 0), 0);
+    } catch { }
+  }
+  return null;
+}
 // RECUPERACIÓN (23-jul): rescata resultados de picks que quedaron SUPERSEDED por el prune agresivo pero cuyo
 // partido YA se jugó y no dejó ningún hermano liquidado para ese mercado. Reactiva la superseded más reciente por
 // (evento, familia, mercado) y deja que settleClubDailyPicks la liquide con el marcador real. Idempotente y sin
@@ -10834,8 +10868,30 @@ async function shadowSweep() {
     if (b.status !== 'OPEN') continue;
     const p = byPick[b.pick_id];
     if (!p || p.status !== 'SETTLED') continue;
-    b.status = 'SETTLED'; b.result = p.result_code; b.settled_at = p.settled_at || new Date().toISOString();
-    b.pnl = p.result_code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : p.result_code === 'LOSS' ? -b.stake : 0;
+    // UNA APUESTA COLOCADA NO SE DES-COLOCA (19-ago). Antes esto copiaba el result_code de la pick tal cual,
+    // así que cuando el motor RE-EMITÍA la señal (u10,5 → u11,5, o el prune la sacaba del feed) la pick
+    // quedaba SUPERSEDED y la apuesta del sombra heredaba ese código con pnl 0. Pero SUPERSEDED es un hecho
+    // sobre la SEÑAL, no sobre la posición: el dinero de papel ya estaba en esa línea a ese precio, y el
+    // partido lo resuelve igual. Resultado del error: 9 de 30 apuestas figuraban sin desenlace, el resumen
+    // las contaba como "anuladas" y su stake entraba al denominador del ROI aportando cero.
+    // Ahora, si la pick fue superseded, la apuesta se liquida contra el total REAL del partido y contra SU
+    // PROPIA línea —no la de la pick que la reemplazó—, que es la única lectura fiel a lo que se apostó.
+    let code = p.result_code;
+    if (code === 'SUPERSEDED') {
+      const tot = clubPropTotal(p.league, p.event, b.family);
+      if (tot == null) {
+        // sin dato todavía: se queda ABIERTA. Solo a las 72 h del kickoff se anula de verdad, mismo
+        // criterio honesto que el liquidador de picks — sin fuente no se inventa el resultado.
+        const ko2 = +new Date(b.kickoff_at || (p.event && p.event.kickoff_at) || 0);
+        if (!(ko2 && Date.now() - ko2 > 72 * 3600e3)) continue;
+        code = 'VOID';
+      } else {
+        code = ((b.side === 'over') === (tot > Number(b.line))) ? 'WIN' : 'LOSS';
+        b.settled_from = 'total_real_linea_propia';
+      }
+    }
+    b.status = 'SETTLED'; b.result = code; b.settled_at = p.settled_at || new Date().toISOString();
+    b.pnl = code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : code === 'LOSS' ? -b.stake : 0;
     b.closing = (p.closing && p.closing.odds) || null; b.clv = (typeof p.clv === 'number') ? p.clv : null;
     // EL CLV DEL SOMBRA CON LOS PRECIOS DEL SOMBRA (17-ago, auditoría del lunes). El b.clv de arriba es el
     // de la PICK: mejor cuota al publicar contra mejor cuota al cierre. Pero esta apuesta entró al precio
@@ -10847,6 +10903,23 @@ async function shadowSweep() {
     S.bankroll = +(S.bankroll + b.pnl).toFixed(2);
     settled++;
   }
+  // REPARACIÓN DE UN SOLO USO (19-ago): las apuestas que ya quedaron liquidadas como SUPERSEDED antes del
+  // arreglo de arriba siguen sin desenlace y con pnl 0. Se re-liquidan contra el total real y su propia
+  // línea, y el bankroll se corrige por la DIFERENCIA (no por el pnl entero: el 0 anterior ya está dentro).
+  let reSup = 0;
+  for (const b of S.bets) {
+    if (b.status !== 'SETTLED' || b.result !== 'SUPERSEDED') continue;
+    const p2 = byPick[b.pick_id];
+    if (!p2 || !p2.event) continue;
+    const tot = clubPropTotal(p2.league, p2.event, b.family);
+    if (tot == null) continue;
+    const code = ((b.side === 'over') === (tot > Number(b.line))) ? 'WIN' : 'LOSS';
+    const pnl = code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : -b.stake;
+    S.bankroll = +(S.bankroll + (pnl - (b.pnl || 0))).toFixed(2);
+    b.result = code; b.pnl = pnl; b.settled_from = 'total_real_linea_propia (reparado)';
+    reSup++;
+  }
+  if (reSup) { save(); opsLog('shadow_resettle_superseded', { fixed: reSup, bankroll: S.bankroll }); }
   // migración de un solo uso: las liquidadas de antes del 17-ago no traían clv_exec y su cierre ya está
   let backCl = 0;
   for (const b of S.bets) {
@@ -10875,7 +10948,12 @@ function shadowSummary(sinceMs) {
   const hair = rows.filter(b => b.ref_best_odds > 1).map(b => 100 * (b.odds / b.ref_best_odds - 1));
   const signals = rows.length + un.length;
   return {
-    bets: rows.length, open: rows.length - st.length, settled: st.length, w, l, voids: st.length - w - l,
+    // `voids` contaba TODO lo liquidado que no fuera WIN ni LOSS, así que los SUPERSEDED se enseñaban como
+    // "anuladas". Ahora cada cosa por su nombre: anulada es PUSH/VOID (devuelve stake), y superseded —que
+    // tras el arreglo de arriba solo queda en el histórico viejo— viaja aparte y no se disfraza de anulación.
+    bets: rows.length, open: rows.length - st.length, settled: st.length, w, l,
+    voids: st.filter((b) => b.result === 'VOID' || b.result === 'PUSH').length,
+    superseded: st.filter((b) => b.result === 'SUPERSEDED').length,
     staked, pnl, roi_pct: stakedSet ? +(100 * pnl / stakedSet).toFixed(1) : null,
     avg_odds: rows.length ? +(rows.reduce((s, b) => s + b.odds, 0) / rows.length).toFixed(2) : null,
     avg_stake: rows.length ? +(staked / rows.length).toFixed(2) : null,

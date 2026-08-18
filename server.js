@@ -374,6 +374,21 @@ async function tenHarvestJob() {
   } catch (e) { opsLog('ten_harvest', { error: e.message }); setTimeout(tenHarvestJob, 30 * 60e3); }
 }
 setTimeout(tenHarvestJob, 3 * 60e3);
+
+// ── TENIS: cuotas + sombra cada 30 min (The Odds API publica por TORNEO; el descubrimiento de claves
+// activas va cacheado 12 h y cuesta 1 llamada — sin torneos activos la pasada no gasta nada más) ─────
+async function tennisJob() {
+  try {
+    const TEN = require('./tennis-engine/store');
+    await TEN.refreshOdds().catch(() => null);
+    const rec = await TEN.recordShadow().catch((e) => ({ error: e.message }));
+    const set = await TEN.settleShadow().catch((e) => ({ error: e.message }));
+    TEN.snapshotRanks();
+    if ((rec && rec.recorded) || (set && set.settled)) opsLog('tennis_job', { recorded: rec.recorded || 0, settled: set.settled || 0 });
+  } catch (e) { opsLog('tennis_job', { error: e.message }); }
+  setTimeout(tennisJob, 30 * 60e3);
+}
+setTimeout(tennisJob, 5 * 60e3);
 const BOOT_ID = Date.now();
 setTimeout(boxingBackfillJob, 8 * 60e3);
 setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
@@ -9158,6 +9173,56 @@ function askToolsFor(sport, { u, lang, org }) {
     };
     return { tools, runTool, sportLabel: 'FÚTBOL AMERICANO (NFL · College/NCAAF · CFL). TODAS las familias corren en sombra: si preguntan por picks, decí con naturalidad que el monitor es privado hasta que el registro lo gane, y ofrecé la proyección del modelo. Si preguntan por otros deportes, indicá el conmutador de arriba.' };
   }
+  // ── TENIS (18-ago, blueprint 6.0): tablero, cruce, jugador, simulador, ranking GP y sombra ────────────
+  if (sport === 'tennis') {
+    const TEN = require('./tennis-engine/store');
+    const tourOf = (x) => (String(x).toLowerCase() === 'wta' ? 1 : 0);
+    const tools = [
+      { name: 'agenda_tenis', description: 'Los partidos de ATP o WTA con cuotas activas (torneos en juego), con la probabilidad del modelo GP, los juegos esperados y el consenso de mercado.', input_schema: { type: 'object', properties: { tour: { type: 'string', enum: ['atp', 'wta'] } }, required: ['tour'] } },
+      { name: 'jugador_tenis', description: 'Ficha de un jugador: Elo GP (general y por superficie), balance, saque de carrera (aces, dobles, % primeros), índices de saque/resto y últimos partidos.', input_schema: { type: 'object', properties: { tour: { type: 'string', enum: ['atp', 'wta'] }, jugador: { type: 'string' } }, required: ['tour', 'jugador'] } },
+      { name: 'simular_cruce_tenis', description: 'Enfrenta a DOS jugadores con el modelo propio en una superficie dada (dura/arcilla/hierba) y formato bo3/bo5: probabilidad, holds, breaks, P(tiebreak), juegos esperados y h2h real.', input_schema: { type: 'object', properties: { tour: { type: 'string', enum: ['atp', 'wta'] }, jugador_a: { type: 'string' }, jugador_b: { type: 'string' }, superficie: { type: 'string', enum: ['dura', 'arcilla', 'hierba'] }, bo5: { type: 'boolean' } }, required: ['tour', 'jugador_a', 'jugador_b'] } },
+      { name: 'ranking_gp_tenis', description: 'El top del ranking por Elo propio de GP del tour (no es el ranking oficial; ese va al lado).', input_schema: { type: 'object', properties: { tour: { type: 'string', enum: ['atp', 'wta'] } }, required: ['tour'] } },
+      { name: 'sombra_tenis', description: 'El monitor en sombra del tenis: señales registradas y el registro privado. Las familias de tenis NO publican picks.', input_schema: { type: 'object', properties: {} } },
+    ];
+    const runTool = async (name, input) => {
+      const tn = tourOf(input.tour);
+      if (name === 'agenda_tenis') {
+        const b = await TEN.board(tn).catch(() => null);
+        return { tour: input.tour, partidos: ((b && b.rows) || []).slice(0, 20).map((r) => ({
+          partido: `${r.a} vs ${r.b}`, torneo: r.tourney, comienza: r.commence, superficie: r.surface,
+          gp: r.available ? { prob_a_pct: Math.round(100 * r.gp.p_a), juegos_esperados: r.gp.exp_games, prob_tiebreak_pct: Math.round(100 * r.gp.tb_any) } : null,
+          mercado: r.market ? { prob_a_pct: r.market.ml_p_a != null ? Math.round(100 * r.market.ml_p_a) : null, linea_total: r.market.total_line, casas: r.market.books } : null })) };
+      }
+      if (name === 'jugador_tenis') {
+        const D2 = require('./tennis-engine/data');
+        const pl = D2.resolvePlayer(tn, String(input.jugador || ''));
+        if (!pl) return { error: 'jugador fuera de la base propia' };
+        const pf = TEN.playerProfile(tn, pl.id);
+        if (!pf.available) return { error: pf.why };
+        return { jugador: pf.name, mano: pf.hand, pais: pf.country, ranking_oficial: pf.rank, elo_gp: pf.elo,
+          elo_por_superficie: pf.elo_surf, balance: pf.wl, saque_carrera: pf.career_serve,
+          indice_saque: pf.serve_index, indice_resto: pf.return_index,
+          ultimos: pf.recent.slice(0, 8), nota: pf.inactive_note || undefined };
+      }
+      if (name === 'simular_cruce_tenis') {
+        const surf = { dura: 0, arcilla: 1, hierba: 2 }[String(input.superficie || 'dura')] || 0;
+        const out = TEN.simMatch(tn, String(input.jugador_a || ''), String(input.jugador_b || ''), { surface: surf, bestOf: input.bo5 ? 5 : 3 });
+        if (!out.available) return { error: out.why };
+        return { cruce: `${out.a.name} vs ${out.b.name} (${out.surface}, bo${out.best_of})`,
+          prob_a_pct: Math.round(100 * out.p_a), duelo: out.duel, h2h: { [out.a.name]: out.h2h.w_a, [out.b.name]: out.h2h.w_b },
+          nota: 'modelo propio market-blind; estimaciones estadísticas, no consejo financiero' };
+      }
+      if (name === 'ranking_gp_tenis') {
+        const rk = TEN.rankingBoard(tn);
+        return { tour: input.tour, top: rk.rows.slice(0, 20).map((r) => ({ pos: r.pos, jugador: r.name, elo_gp: r.elo, ranking_oficial: r.rank })) };
+      }
+      if (name === 'sombra_tenis') {
+        return { sombra: TEN.track(), doctrina: 'todas las familias de tenis corren EN SOMBRA (el ganador solo como referencia): no hay picks públicas de tenis.' };
+      }
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'TENIS (ATP · WTA). Base propia validada fuera de muestra; TODAS las familias en sombra — si preguntan por picks, decí con naturalidad que el monitor es privado y ofrecé la proyección del modelo (probabilidad, juegos esperados, tiebreak). Si preguntan por otros deportes, indicá el conmutador de arriba.' };
+  }
   if (sport !== 'combat') {
     const tools = [
       { name: 'agenda_futbol', description: 'Próximos partidos cargados en la plataforma (todas las ligas), con fecha UTC y día de la semana. Úsala para preguntas de "hoy", "mañana", "el sábado" o la jornada.', input_schema: { type: 'object', properties: { dias: { type: 'number', description: 'ventana en días (default 7, máx 14)' }, liga: { type: 'string', description: 'filtrar por nombre de liga o país (opcional)' } } } },
@@ -9549,6 +9614,45 @@ async function amfootBrief(lg, { force = false } = {}) {
     shadow, intro, intro_error: introErr, refreshed_at: new Date().toISOString(),
     note: 'todas las familias de fútbol americano corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
   global._nflBriefMemo[lg] = { at: Date.now(), data: out };
+  return out;
+}
+
+// ── Brief diario de TENIS (18-ago, blueprint 6.0): apertura narrada 1/día/tour + el tablero ──────────
+async function tennisBrief(tour, { force = false } = {}) {
+  global._tenBriefMemo = global._tenBriefMemo || {};
+  const memo = global._tenBriefMemo[tour];
+  if (memo && !force && Date.now() - memo.at < 10 * 60e3) return memo.data;
+  const TEN = require('./tennis-engine/store');
+  const day = new Date().toISOString().slice(0, 10);
+  const b = await TEN.board(tour).catch(() => ({ rows: [] }));
+  const games = (b.rows || []).slice(0, 16);
+  db.tenBrief = db.tenBrief || {};
+  const bk = tour + ':' + day;
+  let intro = db.tenBrief[bk] || null;
+  let introErr = null;
+  if (!intro && games.length) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+    else {
+      try {
+        const w = await llm.writeBrief({
+          tour: tour === 1 ? 'WTA' : 'ATP',
+          partidos: games.slice(0, 10).map((r) => ({
+            partido: `${r.a} vs ${r.b}`, torneo: r.tourney, superficie: r.surface,
+            gp: r.available ? { prob_a_pct: Math.round(100 * r.gp.p_a), juegos_esperados: r.gp.exp_games } : null,
+            mercado_prob_a_pct: r.market && r.market.ml_p_a != null ? Math.round(100 * r.market.ml_p_a) : null,
+          })),
+          sombra: TEN.track(tour),
+        }, 'tennis');
+        if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.tenBrief[bk] = intro; save(); }
+        else introErr = 'el redactor no devolvió un texto usable';
+      } catch (e) { introErr = e.message; }
+    }
+  }
+  const out = { tour: tour === 1 ? 'wta' : 'atp', day, games, intro, intro_error: introErr,
+    refreshed_at: new Date().toISOString(),
+    note: 'todas las familias de tenis corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
+  global._tenBriefMemo[tour] = { at: Date.now(), data: out };
   return out;
 }
 
@@ -12873,7 +12977,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true' };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true' };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -14064,7 +14168,7 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req).catch(() => ({}));
       const q = String(b.q || '').slice(0, 400).trim();
       const lang = b.lang === 'en' ? 'en' : 'es';
-      const sport = ['combat', 'hoops', 'esports', 'nfl'].includes(b.sport) ? b.sport : 'futbol';
+      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis'].includes(b.sport) ? b.sport : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
       if (sport === 'hoops') {
         // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
@@ -14076,6 +14180,9 @@ const server = http.createServer(async (req, res) => {
       } else if (sport === 'nfl') {
         const nflPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || nflPub)) return json(res, 404, { error: 'No encontrado' });
+      } else if (sport === 'tennis') {
+        const tenPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_TENNIS_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || tenPub)) return json(res, 404, { error: 'No encontrado' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
         // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
@@ -15661,6 +15768,42 @@ const server = http.createServer(async (req, res) => {
     // Dos cosas que esta capa NO hace y conviene tener presentes al leerla: no publica picks de ganador de
     // serie (la puerta está cerrada en el motor, no acá) y no tiene rating propio todavía, porque el
     // proveedor no publica resultados. Las dos cosas se devuelven explicadas en el propio JSON.
+    // ── TENIS (18-ago, blueprint 6.0): 7º deporte, admin-only hasta que haya base licenciada ──────────
+    if (p.startsWith('/api/tennis/')) {
+      const uT = getUser(req);
+      const tenPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_TENNIS_PUBLIC_ENABLED || '').trim());
+      if (!uT || !(uT.isAdmin || tenPublic)) return json(res, 404, { error: 'No encontrado' });
+      const TEN = require('./tennis-engine/store');
+      const tnQ = String(url.searchParams.get('tour') || 'atp').toLowerCase() === 'wta' ? 1 : 0;
+      try {
+        if (p === '/api/tennis/board') return json(res, 200, await TEN.board(tnQ));
+        if (p === '/api/tennis/agenda') return json(res, 200, await TEN.agenda());
+        if (p === '/api/tennis/players') {
+          return json(res, 200, TEN.playersDirectory(tnQ, { q: url.searchParams.get('q') || '', limit: Math.min(200, +(url.searchParams.get('limit') || 80)) }));
+        }
+        if (p === '/api/tennis/player') {
+          const idT = url.searchParams.get('id');
+          if (!idT) return json(res, 400, { error: 'falta id' });
+          return json(res, 200, TEN.playerProfile(tnQ, +idT));
+        }
+        if (p === '/api/tennis/ranking') return json(res, 200, TEN.rankingBoard(tnQ));
+        if (p === '/api/tennis/sim') {
+          const a = String(url.searchParams.get('a') || ''), b2 = String(url.searchParams.get('b') || '');
+          if (!a || !b2) return json(res, 400, { error: 'faltan jugadores', need: ['a', 'b'] });
+          const surfQ = { dura: 0, arcilla: 1, hierba: 2, moqueta: 3 }[String(url.searchParams.get('surface') || 'dura')] || 0;
+          return json(res, 200, TEN.simMatch(tnQ, a, b2, { surface: surfQ, bestOf: url.searchParams.get('bo') === '5' ? 5 : 3 }));
+        }
+        if (p === '/api/tennis/track') return json(res, 200, TEN.track(url.searchParams.has('tour') ? tnQ : null));
+        if (p === '/api/tennis/model') return json(res, 200, TEN.modelCard());
+        if (p === '/api/tennis/brief') return json(res, 200, await tennisBrief(tnQ, { force: url.searchParams.get('force') === '1' }));
+        if (p === '/api/tennis/search') {
+          const D2 = require('./tennis-engine/data');
+          const pl = D2.resolvePlayer(tnQ, String(url.searchParams.get('q') || ''));
+          return json(res, 200, { hit: pl ? { id: pl.id, name: pl.name } : null });
+        }
+        return json(res, 404, { error: 'ruta de tenis desconocida' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p.startsWith('/api/esports/')) {
       const uE = getUser(req);
       const esPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
@@ -16070,6 +16213,14 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
         return res.end(buf);
       } catch (e) { return json(res, 404, { error: e.message }); }
+    }
+    // sonda de TENIS: el estado completo del 7º deporte sin sesión (modelo, cuotas, sombra, disco)
+    if (p === '/api/internal/tennis') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const TEN = require('./tennis-engine/store');
+      const snap = await TEN.modelSnapshot().catch((e) => ({ error: e.message }));
+      return json(res, 200, snap);
     }
     // recogida de la cosecha de tenis (Sackmann; los CSV van gzip, el listado enseña avance)
     if (p === '/api/internal/tenraw') {

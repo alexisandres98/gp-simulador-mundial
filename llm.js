@@ -345,7 +345,7 @@ async function writeGameRead(payload) {
 }
 
 const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol',
-  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)' };
+  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)' };
 async function writeBrief(payload, sport) {
   const resp = await call({
     kind: 'writer',

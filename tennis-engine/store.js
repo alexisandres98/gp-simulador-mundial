@@ -1,0 +1,578 @@
+// tennis-engine/store.js — EL TERMINAL DE TENIS (blueprint 6.0): agenda, mercado, sombra y catálogo
+//
+// Mecánica de la casa, calcada de NFL/amfoot: modelo market-blind POR CONSTRUCCIÓN (ninguna cuota
+// entra a la probabilidad), TODAS las familias en SOMBRA, registro privado con CLV contra el cierre
+// capturado, y catálogo servido solo con EVIDENCIA (caja negra: nada de constantes ni fórmulas).
+// El calendario/las parejas salen del propio feed de cuotas (The Odds API publica por TORNEO, con
+// descubrimiento dinámico de claves activas) + ESPN para agenda del día y liquidación.
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const D = require('./data.js');
+const C = require('./compiler.js');
+
+const DISK_DIR = fs.existsSync('/data') ? '/data/tennis' : path.join(__dirname, '..', 'data', 'tennis', 'disk');
+const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
+const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
+const G = { odds: null, sports: null, espn: {}, sb: {} };
+
+const DOCTRINE = 'todas las familias de tenis están EN SOMBRA: el modelo (walk-forward 2015-2024, holdout 2025→) bate a ranking y Elo puro fuera de muestra, pero contra el MERCADO no hay prueba todavía — eso es exactamente lo que la sombra va a medir, familia por familia, con CLV contra el cierre capturado. El ganador se registra como familia de referencia (benchmark de calidad), jamás como pick. Base propia derivada del proyecto de Jeff Sackmann (CC BY-NC-SA 4.0): tenis es admin-only y sin uso comercial hasta que exista fuente licenciada.';
+
+function rdD(f) { try { return JSON.parse(fs.readFileSync(path.join(DISK_DIR, f), 'utf8')); } catch { return null; } }
+function wrD(f, obj) {
+  try {
+    fs.mkdirSync(DISK_DIR, { recursive: true });
+    const tmp = path.join(DISK_DIR, '.' + f + '.tmp');
+    fs.writeFileSync(tmp, JSON.stringify(obj));
+    fs.renameSync(tmp, path.join(DISK_DIR, f));
+  } catch { }
+}
+
+// ── TORNEOS: superficie y formato por clave de The Odds API (fallback: dura, bo3) ────────────────────────
+const SURF_BY_KEY = [
+  [/french_open|monte_carlo|madrid|italian|barcelona|munich|hamburg|charleston|strasbourg|stuttgart/, 1],
+  [/wimbledon|halle|queens|bad_homburg|german_open/, 2],
+]; // el resto: dura (0)
+const surfOfKey = (k) => { for (const [re, s] of SURF_BY_KEY) if (re.test(k)) return s; return 0; };
+const bo5Keys = /tennis_atp_(aus_open|french_open|wimbledon|us_open)/;
+const tourOfKey = (k) => (k.startsWith('tennis_wta') ? 1 : 0);
+
+// ── CUOTAS: descubrimiento dinámico de torneos activos + 1 llamada por torneo ───────────────────────────
+const ODDS_TTL = 30 * 60e3, SPORTS_TTL = 12 * 3600e3;
+async function activeTennisKeys() {
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+  if (!key) return [];
+  if (G.sports && Date.now() - G.sports.at < SPORTS_TTL) return G.sports.keys;
+  const st = rdD('sports-cache.json');
+  if (st && Date.now() - st.at < SPORTS_TTL) { G.sports = st; return st.keys; }
+  try {
+    const r = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${key}&all=true`, { signal: AbortSignal.timeout(20000) });
+    const j = await r.json();
+    if (!Array.isArray(j)) return (st || {}).keys || [];
+    const keys = j.filter((s) => s.active && /^tennis_(atp|wta)_/.test(s.key)).map((s) => ({ key: s.key, title: s.title }));
+    G.sports = { at: Date.now(), keys };
+    wrD('sports-cache.json', G.sports);
+    return keys;
+  } catch { return (st || G.sports || {}).keys || []; }
+}
+
+async function refreshOdds({ force = false } = {}) {
+  const key = process.env.SPORTSBOOK_PROVIDER_API_KEY || '';
+  if (!key) return null;
+  if (G.odds && !force && Date.now() - G.odds.at < ODDS_TTL) return G.odds;
+  const keys = await activeTennisKeys();
+  if (!keys.length) { G.odds = { at: Date.now(), rows: [] }; return G.odds; }
+  const rows = [];
+  for (const s of keys) {
+    try {
+      const r = await fetch(`https://api.the-odds-api.com/v4/sports/${s.key}/odds?apiKey=${key}&regions=eu,us&markets=h2h,totals,spreads&oddsFormat=decimal`, { signal: AbortSignal.timeout(20000) });
+      try { if (global._oddsCredits) { const v = Number(r.headers.get('x-requests-remaining')); if (Number.isFinite(v)) { global._oddsCredits.remaining = v; global._oddsCredits.at = Date.now(); } } } catch { }
+      const j = await r.json();
+      if (Array.isArray(j)) for (const ev of j) { ev._tkey = s.key; ev._ttitle = s.title; rows.push(ev); }
+    } catch { }
+  }
+  G.odds = { at: Date.now(), rows };
+  snapshotCloses(rows);
+  return G.odds;
+}
+
+// mercados de UN evento, fundidos por casa, con consenso sin vig y mejor precio ejecutable
+function marketOf(ev) {
+  const pa = ev.home_team, pb = ev.away_team; // "home"/"away" son etiquetas del proveedor, no localía
+  const out = { books: 0, ml: [], total: [], spread: [] };
+  for (const bk of ev.bookmakers || []) {
+    for (const mk of bk.markets || []) {
+      if (mk.key === 'h2h') {
+        const a = (mk.outcomes || []).find((o) => o.name === pa), b = (mk.outcomes || []).find((o) => o.name === pb);
+        if (a && b) out.ml.push({ book: bk.key, a: a.price, b: b.price });
+      }
+      if (mk.key === 'totals') {
+        const o = (mk.outcomes || []).find((x) => x.name === 'Over'), u = (mk.outcomes || []).find((x) => x.name === 'Under');
+        if (o && u && o.point != null) out.total.push({ book: bk.key, line: o.point, over: o.price, under: u.price });
+      }
+      if (mk.key === 'spreads') {
+        const a = (mk.outcomes || []).find((o) => o.name === pa), b = (mk.outcomes || []).find((o) => o.name === pb);
+        if (a && b && a.point != null) out.spread.push({ book: bk.key, line: a.point, a: a.price, b: b.price });
+      }
+    }
+  }
+  out.books = (ev.bookmakers || []).length;
+  const med = (xs) => { const s = xs.filter(Number.isFinite).sort((x, y) => x - y); return s.length ? s[(s.length - 1) >> 1] : null; };
+  const novig = (a, b) => { const ia = 1 / a, ib = 1 / b; return ia / (ia + ib); };
+  out.consensus = {
+    ml_p_a: out.ml.length ? r3(novig(med(out.ml.map((x) => x.a)), med(out.ml.map((x) => x.b)))) : null,
+    total_line: med(out.total.map((x) => x.line)),
+    spread_line: med(out.spread.map((x) => x.line)),
+    books: out.books,
+  };
+  const best = (rows, side) => rows.reduce((bst, x) => (!bst || (x[side] || 0) > (bst[side] || 0) ? x : bst), null);
+  out.best = {
+    ml_a: best(out.ml, 'a'), ml_b: best(out.ml, 'b'),
+    total_over: best(out.total.filter((x) => x.line === out.consensus.total_line), 'over'),
+    total_under: best(out.total.filter((x) => x.line === out.consensus.total_line), 'under'),
+    spread_a: best(out.spread.filter((x) => x.line === out.consensus.spread_line), 'a'),
+    spread_b: best(out.spread.filter((x) => x.line === out.consensus.spread_line), 'b'),
+  };
+  return out;
+}
+
+// cierres: el último snapshot antes del comienzo ES el cierre (misma mecánica que NFL/esports)
+function snapshotCloses(rows) {
+  const st = rdD('closes.json') || { closes: {} };
+  const now = Date.now();
+  let dirty = false;
+  for (const ev of rows) {
+    const t = Date.parse(ev.commence_time || 0);
+    if (!(t > now - 3600e3)) continue;
+    const mk = marketOf(ev);
+    st.closes[ev.id] = {
+      a: ev.home_team, b: ev.away_team, tkey: ev._tkey, commence: ev.commence_time, at: new Date().toISOString(),
+      ml_p_a: mk.consensus.ml_p_a, ml_a: mk.best.ml_a ? mk.best.ml_a.a : null, ml_b: mk.best.ml_b ? mk.best.ml_b.b : null,
+      total_line: mk.consensus.total_line, total_over: mk.best.total_over ? mk.best.total_over.over : null, total_under: mk.best.total_under ? mk.best.total_under.under : null,
+      spread_line: mk.consensus.spread_line, spread_a: mk.best.spread_a ? mk.best.spread_a.a : null, spread_b: mk.best.spread_b ? mk.best.spread_b.b : null,
+    };
+    dirty = true;
+  }
+  // limpieza: cierres de hace más de 30 días fuera
+  for (const [id, c] of Object.entries(st.closes)) if (Date.parse(c.commence) < now - 30 * 864e5) { delete st.closes[id]; dirty = true; }
+  if (dirty) wrD('closes.json', st);
+}
+
+// ── EL MODELO SOBRE UN EVENTO: resolver jugadores, compilar el partido, comparar con el mercado ─────────
+function eventModel(ev) {
+  const tn = tourOfKey(ev._tkey), surf = surfOfKey(ev._tkey);
+  const bo = bo5Keys.test(ev._tkey) ? 5 : 3;
+  const A = D.resolvePlayer(tn, ev.home_team), B = D.resolvePlayer(tn, ev.away_team);
+  if (!A || !B || A.id === B.id) return { available: false, why: 'jugador fuera de la base propia (aún sin historial suficiente)', a: ev.home_team, b: ev.away_team };
+  const mp = D.matchProb(tn, A.id, B.id, surf);
+  const cst = D.build().T[tn].cst;
+  const md = C.matchDist(mp.paSrv, mp.pbSrv, bo, cst.shock || 0);
+  // ganador: ensamble congelado (mezcla en logit del Elo mixto y el compilado)
+  const logit = (p) => Math.log(p / (1 - p)), sg = (x) => 1 / (1 + Math.exp(-x));
+  const clampP = (p) => Math.max(1e-4, Math.min(1 - 1e-4, p));
+  const u = cst.ensembleU || 0;
+  const pA = sg((1 - u) * logit(clampP(mp.pMix)) + u * logit(clampP(md.pA)));
+  const cal = (cst.gamesCal || {})[bo === 5 ? 'bo5' : 'bo3'] || [0, 1];
+  return {
+    available: true, tour: tn, surface: surf, best_of: bo,
+    a: { id: A.id, name: A.name, ref: ev.home_team }, b: { id: B.id, name: B.name, ref: ev.away_team },
+    p_a: r3(pA), dist: md, exp_games: r2(cal[0] + cal[1] * md.expGames), tb_any: r3(md.tbAny),
+    hold_a: r3(md.holdA), hold_b: r3(md.holdB), p_set_a: r3(md.pSetA),
+    model_version: (D.build().priors || {}).model_version || 'tennis-sr-1',
+  };
+}
+
+// P(juegos > linea) y P(margen A > -linea) desde las distribuciones compiladas + calibración de juegos
+function distProbs(model, totalLine, spreadLineA) {
+  const md = model.dist;
+  const shift = model.exp_games - md.expGames; // la calibración desplaza la dist (misma forma)
+  let pOver = null, pushT = 0, pCoverA = null, pushS = 0;
+  if (totalLine != null) {
+    let over = 0, push = 0;
+    for (const [g, p] of md.totalGames) { const gs = g + shift; if (gs > totalLine + 1e-9) over += p; else if (Math.abs(gs - totalLine) < 0.5) { if (Math.abs(gs - totalLine) < 1e-9) push += p; } }
+    pOver = over; pushT = push;
+  }
+  if (spreadLineA != null) {
+    let cover = 0, push = 0;
+    for (const [m, p] of md.margin) { const v = m + spreadLineA; if (v > 1e-9) cover += p; else if (Math.abs(v) < 1e-9) push += p; }
+    pCoverA = cover; pushS = push;
+  }
+  return { pOver, pushT, pCoverA, pushS };
+}
+
+function gate(c) {
+  const edgePp = (c.p_model - c.p_implied) * 100;
+  const gates = [];
+  // la incertidumbre epistémica del ganador se aproxima por el desacuerdo entre las dos vistas del
+  // ensamble (Elo mixto vs compilado): si discrepan, la ventaja tiene que superar ese desacuerdo.
+  const uncPp = Math.min(8, Math.abs((c.unc_pp != null ? c.unc_pp : 2)));
+  gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' });
+  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs desacuerdo interno ${uncPp.toFixed(1)} pp` });
+  gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
+  gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });
+  gates.push({ gate: 'freshness', pass: !c.stale, detail: c.stale ? 'jugador con >120 días sin partido en la base: incertidumbre manda' : 'ambos jugadores activos en la base' });
+  const pass = gates.every((x) => x.pass);
+  return {
+    family: c.family, side: c.side, line: c.line != null ? c.line : null, odds: c.odds, book: c.book,
+    p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp), gates,
+    verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
+    no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate,
+    benchmark: c.family === 'ML' || undefined,
+  };
+}
+
+function evaluateEdges(model, mk) {
+  const out = [];
+  const dec2p = (d) => 1 / d;
+  const d = D.build();
+  const staleOf = (id, tn) => { const p = d.T[tn].prof.get(id); if (!p) return true; const last = p.lastDate; const now = +new Date().toISOString().slice(0, 10).replace(/-/g, ''); return String(now).slice(0, 4) * 372 + +String(now).slice(4, 6) * 31 + +String(now).slice(6, 8) - (String(last).slice(0, 4) * 372 + +String(last).slice(4, 6) * 31 + +String(last).slice(6, 8)) > 124; };
+  const stale = staleOf(model.a.id, model.tour) || staleOf(model.b.id, model.tour);
+  const uncPp = Math.abs(model.dist.pA - model.p_a) * 100 + 2; // desacuerdo compilado-vs-ensamble + suelo
+  // ML — familia de REFERENCIA (benchmark de calidad; en sombra como las demás, jamás pick pública)
+  if (mk.best.ml_a && mk.best.ml_b) {
+    for (const side of ['a', 'b']) {
+      const b = side === 'a' ? mk.best.ml_a : mk.best.ml_b;
+      const odds = side === 'a' ? b.a : b.b;
+      out.push(gate({ family: 'ML', side, odds, book: b.book, p_model: side === 'a' ? model.p_a : 1 - model.p_a, p_implied: dec2p(odds), unc_pp: uncPp, stale }));
+    }
+  }
+  const dp = distProbs(model, mk.consensus.total_line, mk.consensus.spread_line);
+  if (dp.pOver != null && mk.best.total_over && mk.best.total_under) {
+    for (const side of ['over', 'under']) {
+      const b = side === 'over' ? mk.best.total_over : mk.best.total_under;
+      const odds = side === 'over' ? b.over : b.under;
+      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale }));
+    }
+  }
+  if (dp.pCoverA != null && mk.best.spread_a && mk.best.spread_b) {
+    for (const side of ['a', 'b']) {
+      const b = side === 'a' ? mk.best.spread_a : mk.best.spread_b;
+      const odds = side === 'a' ? b.a : b.b;
+      out.push(gate({ family: 'SPREAD', side, line: mk.consensus.spread_line, odds, book: b.book, p_model: side === 'a' ? dp.pCoverA : 1 - dp.pCoverA - dp.pushS, p_implied: dec2p(odds), push_p: dp.pushS, unc_pp: uncPp, stale }));
+    }
+  }
+  return out;
+}
+
+// ── EL TABLERO ───────────────────────────────────────────────────────────────────────────────────────────
+async function board(tour) {
+  const odds = await refreshOdds().catch(() => null);
+  const rows = [];
+  const now = Date.now();
+  for (const ev of (odds && odds.rows) || []) {
+    if (tour != null && tourOfKey(ev._tkey) !== tour) continue;
+    const t = Date.parse(ev.commence_time || 0);
+    if (!(t > now - 4 * 3600e3 && t < now + 9 * 864e5)) continue;
+    const model = eventModel(ev);
+    const mk = marketOf(ev);
+    const row = {
+      id: ev.id, tourney: ev._ttitle, tkey: ev._tkey, tour: tourOfKey(ev._tkey),
+      surface: D.SURFACES[surfOfKey(ev._tkey)], best_of: bo5Keys.test(ev._tkey) ? 5 : 3,
+      a: ev.home_team, b: ev.away_team, commence: ev.commence_time, books: mk.books,
+      market: mk.consensus, available: model.available,
+    };
+    if (model.available) {
+      row.gp = { p_a: model.p_a, exp_games: model.exp_games, tb_any: model.tb_any, hold_a: model.hold_a, hold_b: model.hold_b };
+      row.candidates = evaluateEdges(model, mk);
+      row.shadow_n = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').length;
+    } else row.why = model.why;
+    rows.push(row);
+  }
+  rows.sort((x, y) => Date.parse(x.commence) - Date.parse(y.commence));
+  return {
+    rows, refreshed_at: odds ? new Date(odds.at).toISOString() : null, doctrine: DOCTRINE,
+    note: rows.length ? null : 'sin torneos con cuotas activas en la ventana (The Odds API publica por torneo: se abren solos cuando arranca el siguiente)',
+  };
+}
+
+// ── LA SOMBRA ────────────────────────────────────────────────────────────────────────────────────────────
+async function recordShadow() {
+  const b = await board();
+  const st = rdD('picks.json') || { picks: [] };
+  const have = new Set(st.picks.map((p) => p.key));
+  let n = 0;
+  for (const row of b.rows) {
+    if (!row.available) continue;
+    const start = Date.parse(row.commence);
+    if (!(start > Date.now() && start - Date.now() < 6 * 864e5)) continue;
+    for (const c of row.candidates || []) {
+      if (c.verdict !== 'SHADOW_PICK') continue;
+      const key = `${row.id}|${c.family}|${c.side}|${c.line}`;
+      if (have.has(key)) continue;
+      have.add(key); n++;
+      st.picks.push({
+        key, event_id: row.id, tkey: row.tkey, tourney: row.tourney, tour: row.tour, surface: row.surface, best_of: row.best_of,
+        a: row.a, b: row.b, family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
+        p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, benchmark: !!c.benchmark,
+        commence: row.commence, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow',
+      });
+    }
+  }
+  if (n) wrD('picks.json', st);
+  return { recorded: n, total: st.picks.length };
+}
+
+// liquidación por ESPN (marcadores finales por gira y día; se casan por apellidos normalizados)
+async function espnDay(tn, day) {
+  const key = tn + ':' + day;
+  let sb = G.sb[key];
+  if (sb && Date.now() - sb.at < 10 * 60e3) return sb.j;
+  const lg = tn === 0 ? 'atp' : 'wta';
+  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/tennis/${lg}/scoreboard?dates=${day}`, { signal: AbortSignal.timeout(15000) });
+  const j = await r.json();
+  G.sb[key] = { at: Date.now(), j };
+  return j;
+}
+function lastName(s) { const p = D.norm(s).split(' '); return p[p.length - 1] || ''; }
+
+async function settleShadow() {
+  const st = rdD('picks.json') || { picks: [] };
+  const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.commence) < Date.now() - 2 * 3600e3);
+  if (!open.length) return { settled: 0 };
+  let settled = 0;
+  const closes = rdD('closes.json') || { closes: {} };
+  for (const p of open) {
+    try {
+      if (Date.parse(p.commence) < Date.now() - 4 * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = 'sin resultado casado en 4 días (walkover/cambio de agenda probable)'; settled++; continue; }
+      const day = p.commence.slice(0, 10).replace(/-/g, '');
+      const j = await espnDay(p.tour, day);
+      const evs = [];
+      for (const e of (j && j.events) || []) for (const comp of e.competitions || []) evs.push({ e, comp });
+      const la = lastName(p.a), lb = lastName(p.b);
+      const hit = evs.find(({ comp }) => {
+        const names = (comp.competitors || []).map((x) => D.norm((x.athlete || {}).displayName || ''));
+        return names.some((n) => n.endsWith(la)) && names.some((n) => n.endsWith(lb));
+      });
+      if (!hit) continue;
+      const status = ((hit.e.status || {}).type || {}).name || ((hit.comp.status || {}).type || {}).name || '';
+      if (!/FINAL|RETIRED|WALKOVER/i.test(status)) continue;
+      const cs = hit.comp.competitors || [];
+      const ca = cs.find((x) => D.norm((x.athlete || {}).displayName || '').endsWith(la));
+      const cb = cs.find((x) => D.norm((x.athlete || {}).displayName || '').endsWith(lb));
+      if (!ca || !cb) continue;
+      const setsA = (ca.linescores || []).map((x) => +x.value), setsB = (cb.linescores || []).map((x) => +x.value);
+      const gA = setsA.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0), gB = setsB.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+      const aWon = ca.winner === true || (ca.winner == null && gA > gB);
+      const retired = /RETIRED|WALKOVER/i.test(status);
+      let win = null;
+      if (p.family === 'ML') win = retired ? null : (p.side === 'a' ? (aWon ? 1 : 0) : (aWon ? 0 : 1));
+      if (p.family === 'TOTAL') { const total = gA + gB; win = retired ? null : (p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0)); }
+      if (p.family === 'SPREAD') { const v = (gA - gB) + p.line; win = retired ? null : (p.side === 'a' ? (v > 0 ? 1 : v === 0 ? null : 0) : (v < 0 ? 1 : v === 0 ? null : 0)); }
+      p.status = 'SETTLED';
+      p.result = retired ? 'VOID' : win == null ? 'PUSH' : win ? 'WIN' : 'LOSS';
+      if (retired) p.void_reason = 'retiro/walkover: liquidación VOID por regla de sombra (las casas difieren; T-0442)';
+      p.final = { games_a: gA, games_b: gB, sets_a: setsA, sets_b: setsB, status };
+      p.units = win == null || retired ? 0 : win ? +(p.odds - 1).toFixed(3) : -1;
+      const cl = closes.closes[p.event_id];
+      if (cl) {
+        let cp = null;
+        if (p.family === 'ML') cp = p.side === 'a' ? cl.ml_a : cl.ml_b;
+        if (p.family === 'TOTAL' && cl.total_line === p.line) cp = p.side === 'over' ? cl.total_over : cl.total_under;
+        if (p.family === 'SPREAD' && cl.spread_line === p.line) cp = p.side === 'a' ? cl.spread_a : cl.spread_b;
+        if (cp) { p.close_price = cp; p.clv_pct = +((p.odds / cp - 1) * 100).toFixed(2); }
+      }
+      p.settled_at = new Date().toISOString();
+      settled++;
+    } catch { /* siguiente pasada */ }
+  }
+  if (settled) wrD('picks.json', st);
+  return { settled };
+}
+
+function track(tour) {
+  const st = rdD('picks.json') || { picks: [] };
+  const mine = st.picks.filter((p) => tour == null || p.tour === tour);
+  const done = mine.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
+  const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
+  const units = done.reduce((s, p) => s + (p.units || 0), 0);
+  const clv = done.filter((p) => p.clv_pct != null);
+  const byFam = {};
+  for (const p of done) {
+    const F = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [] };
+    F.n++; if (p.result === 'WIN') F.w++; F.units += p.units || 0;
+    if (p.clv_pct != null) F.clv.push(p.clv_pct);
+  }
+  return {
+    regime: 'shadow', doctrine: DOCTRINE,
+    open: mine.filter((p) => p.status === 'OPEN').length,
+    settled: done.length, w, l, push: done.filter((p) => p.result === 'PUSH').length,
+    voided: mine.filter((p) => p.result === 'VOID').length,
+    units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
+    clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
+    by_family: Object.fromEntries(Object.entries(byFam).map(([k, F]) => [k, {
+      n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units),
+      clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,
+      note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined,
+    }])),
+    recent: done.slice(-40).reverse(), open_list: mine.filter((p) => p.status === 'OPEN').slice(-30).reverse(),
+    reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
+  };
+}
+
+// ── AGENDA DEL DÍA (ESPN) ────────────────────────────────────────────────────────────────────────────────
+async function agenda() {
+  const out = { rows: [], espn_error: null };
+  for (const tn of [0, 1]) {
+    try {
+      const j = await espnDay(tn, new Date().toISOString().slice(0, 10).replace(/-/g, ''));
+      for (const e of (j && j.events) || []) {
+        for (const comp of (e.competitions || []).slice(0, 40)) {
+          const cs = comp.competitors || [];
+          if (cs.length !== 2) continue;
+          out.rows.push({
+            tour: tn, tourney: e.name || '', status: ((comp.status || {}).type || {}).shortDetail || '',
+            state: ((comp.status || {}).type || {}).state || '',
+            a: (cs[0].athlete || {}).displayName || '', b: (cs[1].athlete || {}).displayName || '',
+            score_a: (cs[0].linescores || []).map((x) => x.value).join('-'),
+            score_b: (cs[1].linescores || []).map((x) => x.value).join('-'),
+            winner: cs[0].winner ? 'a' : cs[1].winner ? 'b' : null,
+          });
+        }
+      }
+    } catch (e) { out.espn_error = e.message; }
+  }
+  return out;
+}
+
+// ── CATÁLOGO ─────────────────────────────────────────────────────────────────────────────────────────────
+const ATTRIB = 'Base propia derivada del proyecto de Jeff Sackmann (CC BY-NC-SA 4.0) — uso interno de investigación, sin fines comerciales.';
+
+function playersDirectory(tour, { q = '', limit = 80 } = {}) {
+  const d = D.build(); const t = d.T[tour];
+  const nq = D.norm(q);
+  const rows = [];
+  for (const [id, prof] of t.prof) {
+    const p = d.players[tour + ':' + id];
+    if (!p) continue;
+    if (nq && !D.norm(p.name).includes(nq)) continue;
+    if (prof.w + prof.l < 10) continue;
+    rows.push({
+      id, name: p.name, hand: p.hand, country: p.country, ht: p.ht,
+      elo: Math.round(t.elo.get(id) || 1500), rank: prof.rank, wl: prof.w + '-' + prof.l,
+      last: prof.lastDate, inactive: prof.lastDate < +String(new Date(Date.now() - 150 * 864e5).toISOString().slice(0, 10).replace(/-/g, '')),
+    });
+  }
+  rows.sort((x, y) => y.elo - x.elo);
+  return { rows: rows.slice(0, limit), total: rows.length, attribution: ATTRIB, freshness: d.meta.last_match_date };
+}
+
+function rankingBoard(tour) {
+  const dir = playersDirectory(tour, { limit: 100 });
+  const snap = rdD('rank-snap.json') || {};
+  const prev = (snap[tour] || {}).order || [];
+  const rows = dir.rows.filter((r) => !r.inactive).slice(0, 60).map((r, i) => {
+    const was = prev.indexOf(r.id);
+    return { pos: i + 1, ...r, move: was >= 0 ? was - i : null };
+  });
+  return {
+    rows, snapshot_at: (snap[tour] || {}).at || null, attribution: ATTRIB, freshness: dir.freshness,
+    note: 'ranking por Elo propio de GP validado fuera de muestra — no es el ranking oficial (que aparece al lado). La flecha compara contra la foto semanal anterior.',
+  };
+}
+
+function snapshotRanks() {
+  const snap = rdD('rank-snap.json') || {};
+  const now = Date.now();
+  let changed = false;
+  for (const tn of [0, 1]) {
+    const cur = snap[tn];
+    if (cur && now - Date.parse(cur.at) < 6.5 * 864e5) continue;
+    const dir = playersDirectory(tn, { limit: 100 });
+    snap[tn] = { at: new Date().toISOString(), order: dir.rows.filter((r) => !r.inactive).slice(0, 60).map((r) => r.id) };
+    changed = true;
+  }
+  if (changed) wrD('rank-snap.json', snap);
+  return { changed };
+}
+
+function playerProfile(tour, id) {
+  const d = D.build(); const t = d.T[tour];
+  const p = d.players[tour + ':' + id], prof = t.prof.get(+id);
+  if (!p || !prof) return { available: false, why: 'jugador fuera de la base propia' };
+  const dev = (m) => { const o = m.get(+id); return o && o.w >= 3 ? (o.v / o.w) * (o.w / (o.w + t.cst.shrinkK)) : 0; };
+  const idx = (v) => r2(100 + v * 1000); // índice 100 = media del tour (presentación, no la receta)
+  return {
+    available: true, id: +id, name: p.name, hand: p.hand, country: p.country, ht: p.ht,
+    dob: p.dob, rank: prof.rank, wl: { w: prof.w, l: prof.l },
+    elo: Math.round(t.elo.get(+id) || 1500),
+    elo_surf: t.eloSurf.map((m, i) => ({ surface: D.SURFACES[i], elo: m.has(+id) ? Math.round(m.get(+id)) : null })),
+    surf_wl: prof.surf.map((x, i) => ({ surface: D.SURFACES[i], w: x[0], l: x[1] })),
+    serve_index: idx(dev(t.srv)), return_index: idx(dev(t.ret)),
+    career_serve: prof.sv > 200 ? {
+      ace_pct: r2(100 * prof.ace / prof.sv), df_pct: r2(100 * prof.df / prof.sv),
+      first_in_pct: r2(100 * prof.in1 / prof.sv), spw_pct: r2(100 * prof.spwS / Math.max(1, prof.spwN)),
+      bp_saved_pct: prof.bpF > 20 ? r2(100 * prof.bpS / prof.bpF) : null,
+    } : null,
+    recent: prof.recent.slice().reverse().map((m) => ({
+      date: m.d, opp: (d.players[tour + ':' + m.opp] || {}).name || m.opp, won: m.won,
+      score: m.score, surface: D.SURFACES[m.surf] || null, tourney: m.t, ret: m.ret,
+    })),
+    last_date: prof.lastDate,
+    inactive_note: prof.lastDate < +String(new Date(Date.now() - 150 * 864e5).toISOString().slice(0, 10).replace(/-/g, '')) ? 'sin partidos recientes en la base: la incertidumbre del rating es alta' : null,
+    attribution: ATTRIB, freshness: d.meta.last_match_date,
+    index_note: 'índices de saque y resto: 100 = media del tour, ajustados por rival y validados fuera de muestra. La composición interna es reservada.',
+  };
+}
+
+function h2h(tour, idA, idB) {
+  const d = D.build(); const F = d.F;
+  const rows = [];
+  let wA = 0, wB = 0;
+  for (const r of d.rows) {
+    if (r[F.tour] !== tour) continue;
+    const w = r[F.wid], l = r[F.lid];
+    if (!((w === +idA && l === +idB) || (w === +idB && l === +idA))) continue;
+    if (w === +idA) wA++; else wB++;
+    rows.push({ date: r[F.date], winner: w === +idA ? 'a' : 'b', score: r[F.score], surface: D.SURFACES[r[F.surface]] || null, tourney: (d.tourneys[r[F.tid]] || {}).name });
+  }
+  return { w_a: wA, w_b: wB, rows: rows.slice(-12).reverse() };
+}
+
+// ── SIMULADOR / DUELO SAQUE-RESTO (el objeto firma del tenis) ────────────────────────────────────────────
+function simMatch(tour, refA, refB, { surface = 0, bestOf = 3 } = {}) {
+  const A = D.resolvePlayer(tour, refA), B = D.resolvePlayer(tour, refB);
+  if (!A || !B) return { available: false, why: `no encuentro a ${!A ? refA : refB} en la base propia de ${tour === 0 ? 'ATP' : 'WTA'}` };
+  if (A.id === B.id) return { available: false, why: 'los dos nombres resuelven al mismo jugador' };
+  const mp = D.matchProb(tour, A.id, B.id, surface);
+  const cst = D.build().T[tour].cst;
+  const md = C.matchDist(mp.paSrv, mp.pbSrv, bestOf, cst.shock || 0);
+  const logit = (p) => Math.log(p / (1 - p)), sg = (x) => 1 / (1 + Math.exp(-x));
+  const clampP = (p) => Math.max(1e-4, Math.min(1 - 1e-4, p));
+  const u = cst.ensembleU || 0;
+  const pA = sg((1 - u) * logit(clampP(mp.pMix)) + u * logit(clampP(md.pA)));
+  const cal = (cst.gamesCal || {})[bestOf === 5 ? 'bo5' : 'bo3'] || [0, 1];
+  const shift = (cal[0] + cal[1] * md.expGames) - md.expGames;
+  const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round((g + shift) * 2) / 2, r3(p)]);
+  return {
+    available: true, tour, surface: D.SURFACES[surface], best_of: bestOf,
+    a: { id: A.id, name: A.name, hand: A.hand, country: A.country }, b: { id: B.id, name: B.name, hand: B.hand, country: B.country },
+    p_a: r3(pA), p_set_a: r3(md.pSetA),
+    duel: {
+      hold_a: r3(md.holdA), hold_b: r3(md.holdB), break_a: r3(1 - md.holdB), break_b: r3(1 - md.holdA),
+      tb_any: r3(md.tbAny), exp_games: r2(md.expGames + shift),
+      set_scores: md.setScores, total_games: bucket(md.totalGames),
+    },
+    h2h: h2h(tour, A.id, B.id),
+    profiles: { a: playerProfile(tour, A.id), b: playerProfile(tour, B.id) },
+    note: 'compilado punto→juego→set→partido con las reglas exactas del tenis: ganador, totales y probabilidad de tiebreak salen del mismo estado. Validado fuera de muestra; composición interna reservada. Estimaciones de un modelo estadístico — no consejo financiero.',
+    attribution: ATTRIB,
+  };
+}
+
+function modelCard() {
+  const d = D.build();
+  const H = (lbl) => ((d.priors.tours[lbl] || {}).holdout || {});
+  return {
+    name: 'Modelo de tenis GP', version: (d.priors || {}).model_version || 'tennis-sr-1',
+    family: 'modelo propio de GP — composición reservada',
+    doctrine: DOCTRINE,
+    base: { matches: d.rows.length, players: Object.keys(d.players).length, window: d.meta.years, freshness: d.meta.last_match_date, source: 'derivada del proyecto de Jeff Sackmann (CC BY-NC-SA 4.0)' },
+    validation: {
+      protocol: 'walk-forward estricto: constantes en desarrollo 2015-2024, holdout 2025→may-2026 evaluado UNA vez, ATP y WTA por separado; market-blind por construcción',
+      atp: { n: (H('atp').ens || {}).n, skill_pct: r2((H('atp').ens || {}).skill_pct), auc: r3((H('atp').ens || {}).auc), games_mae: r2(H('atp').games_mae), games_mae_naive: r2(H('atp').games_mae_naive), tb_brier: r3(H('atp').tb_brier) },
+      wta: { n: (H('wta').ens || {}).n, skill_pct: r2((H('wta').ens || {}).skill_pct), auc: r3((H('wta').ens || {}).auc), games_mae: r2(H('wta').games_mae), games_mae_naive: r2(H('wta').games_mae_naive), tb_brier: r3(H('wta').tb_brier) },
+      note: 'skill = mejora del log-loss sobre la moneda; el ranking oficial se queda en ~8,8%. Skill ≠ rentabilidad: contra el mercado decide la sombra.',
+    },
+    families: { ML: 'referencia (benchmark), jamás pick', TOTAL: 'sombra', SPREAD: 'sombra' },
+    disclaimer: 'estimaciones de un modelo estadístico, no consejo financiero.',
+  };
+}
+
+async function modelSnapshot() {
+  const d = D.build();
+  const odds = G.odds;
+  return {
+    base: { rows: d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date },
+    priors: d.priors.model_version, tours: Object.keys(d.priors.tours || {}),
+    odds: odds ? { at: new Date(odds.at).toISOString(), events: odds.rows.length, tourneys: [...new Set(odds.rows.map((e) => e._tkey))] } : null,
+    active_keys: await activeTennisKeys().catch(() => []),
+    track: track(), disk: DISK_DIR,
+  };
+}
+
+module.exports = {
+  DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, track,
+  playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, simMatch, modelCard, modelSnapshot,
+  eventModel, marketOf,
+};

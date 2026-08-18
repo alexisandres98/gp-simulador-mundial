@@ -30,6 +30,7 @@ data/combat/.boxing-cache.json
 # fuera — meterlo aquí repetiría el error que llevó los builds de clubes a 17 minutos.
 data/esports/*
 !data/esports/cs2/
+!data/esports/lol/
 data/esports/cs2-raw/
 
 # crudo de esports: vive en el disco persistente (o local); jamás en git (25MB+)

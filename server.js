@@ -309,6 +309,20 @@ async function boxingBackfillJob() {
     opsLog('boxing_backfill_done', { code: out.code != null ? out.code : out.error });
   } catch (e) { opsLog('boxing_backfill', { error: e.message }); }
 }
+// LoL (18-ago, blueprint 3.0 Fase 1): la cosecha de Leaguepedia corre en Render por la misma razón que
+// el backfill de boxeo — la IP del sandbox está limitada por Fandom (429 inmediato, verificado) y la de
+// Render no. GP_LOL_HARVEST=1 la corre UNA vez por boot, lenta (1 req/3,5 s) y reanudable; el resultado
+// (data/esports/lol/) se recoge por /api/internal/lolraw y se versiona. Apagar el flag después.
+async function lolHarvestJob() {
+  try {
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_LOL_HARVEST || '').trim())) return;
+    if (db.ops.lol_harvest_boot === BOOT_ID) return;
+    db.ops.lol_harvest_boot = BOOT_ID;
+    const out = await opsSpawn('lol_harvest', ['scripts/lol-harvest.js', '--sleep=3500'], { heapMb: 220, timeoutMin: 150 });
+    opsLog('lol_harvest_done', { code: out.code != null ? out.code : out.error });
+  } catch (e) { opsLog('lol_harvest', { error: e.message }); }
+}
+setTimeout(lolHarvestJob, 6 * 60e3);
 const BOOT_ID = Date.now();
 setTimeout(boxingBackfillJob, 8 * 60e3);
 setInterval(() => { try { if (typeof affMatureCommissions === 'function') affMatureCommissions(); } catch { } }, 3600 * 1000); // afiliados: madura comisiones (pending→available a los 7d) cada hora
@@ -15653,6 +15667,27 @@ const server = http.createServer(async (req, res) => {
     // ── RECOGIDA DEL BACKFILL DE BOXEO (17-ago): el trabajo corre en Render (la IP de desarrollo está
     // limitada por Wikipedia) pero escribe en el directorio del repo, que se recrea en cada deploy — este
     // GET es cómo se recoge el resultado para versionarlo ANTES de que un deploy se lo lleve.
+    // recogida de la cosecha de LoL (mismo criterio que boxingraw: la base se cosecha en Render y se
+    // versiona en el repo; gzip porque players.json puede pasar de 50 MB)
+    if (p === '/api/internal/lolraw') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const OKL = ['games.json', 'players.json', 'drafts.json'];
+      const fL = String(url.searchParams.get('file') || '');
+      const dirL = path.join(__dirname, 'data', 'esports', 'lol');
+      if (!fL) {
+        const files = OKL.map(x => { let st2 = null; try { st2 = fs.statSync(path.join(dirL, x)); } catch { }
+          return { file: x, bytes: st2 ? st2.size : null, mtime: st2 ? st2.mtime : null }; });
+        const log = (OPS.log || []).filter(l => String(l.what || '').startsWith('lol_harvest')).slice(-5);
+        return json(res, 200, { dir: dirL, files, ops: log });
+      }
+      if (!OKL.includes(fL)) return json(res, 400, { error: 'archivo no permitido', ok: OKL });
+      try {
+        const buf = require('zlib').gzipSync(fs.readFileSync(path.join(dirL, fL)));
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
+        return res.end(buf);
+      } catch (e) { return json(res, 404, { error: e.message }); }
+    }
     if (p === '/api/internal/boxingraw') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

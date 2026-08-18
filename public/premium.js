@@ -11123,9 +11123,10 @@
       var nlg = lgB.getAttribute('data-amflg');
       if (nlg !== nflLg()) {
         S.nfl.lg = nlg;
-        // los detalles (partido/equipo) llevan ids de la liga anterior; y Jugadores solo existe en NFL
+        // los detalles (partido/equipo/jugador) llevan ids de la liga anterior → a la lista; las vistas
+        // de LISTA se quedan donde están (18-ago, reporte de Alexis: Jugadores rebotaba a Partidos — ahora
+        // Jugadores se queda y muestra su directorio o su hueco honesto según la liga)
         if (S.view === 'nflgame' || S.view === 'nflteam' || S.view === 'nflplayer') { setHash('nflgames'); showView('nflgames'); }
-        else if (S.view === 'nflplayers' && nlg !== 'nfl') { setHash('nflgames'); showView('nflgames'); }
         else showView(S.view);
       }
       return;

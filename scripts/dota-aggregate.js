@@ -51,7 +51,9 @@ function main() {
       if (r.p) { e.picks++; const won = (r.t === 0) === !!m.r_win; if (won) e.wins++; }
       else e.bans++;
     }
-    const pids = Object.entries(matchesByPatch).filter(([, n]) => n >= 250).map(([pid]) => +pid).sort((a, b) => b - a);
+    // el Explorer devuelve el NOMBRE del parche ('7.41') como string — se ordena numérico, se compara string
+    const pids = Object.entries(matchesByPatch).filter(([, n]) => n >= 250).map(([pid]) => pid)
+      .sort((a, b) => parseFloat(b) - parseFloat(a));
     const cur = pids[0], prev = pids[1];
     const K = 25;
     const rows = Object.values(byPatch).filter((e) => e.pid === cur && e.picks > 0).map((e) => {
@@ -61,10 +63,10 @@ function main() {
         presence_pct: +(100 * (e.picks + e.bans) / matchesByPatch[cur]).toFixed(1), bans: e.bans,
         delta_wr: pv && pv.picks >= 10 ? +((e.wins / e.picks) - (pv.wins / pv.picks)).toFixed(3) : null };
     }).sort((a, b) => b.presence_pct - a.presence_pct);
-    wr('hero-meta.json', { at: new Date().toISOString(), patch: patchName(cur), prev_patch: prev != null ? patchName(prev) : null,
+    wr('hero-meta.json', { at: new Date().toISOString(), patch: String(cur), prev_patch: prev != null ? String(prev) : null,
       games_patch: matchesByPatch[cur], shrink_k: K, rows,
       note: `wr encogida hacia 0,5 con K=${K} picks; presencia = (picks + bans del héroe) / partidas del parche. El orden de pick (first phase vs last) no está controlado todavía y se declara.` });
-    console.log(`[agg:dota] hero-meta: ${rows.length} héroes en el parche ${patchName(cur)} (${matchesByPatch[cur]} partidas)`);
+    console.log(`[agg:dota] hero-meta: ${rows.length} héroes en el parche ${cur} (${matchesByPatch[cur]} partidas)`);
   } else console.log('[agg:dota] sin drafts/patches todavía — hero-meta se salta');
 
   // ── doctrina por equipo: pools de héroes con recencia (365d) ───────────────────────────────────────────

@@ -120,7 +120,18 @@ function load() {
     side_advantage_elo: priors.side_advantage_elo || 0,
     priors, maps: {}, pool: [],
     meta: META, at: META.at || new Date().toISOString(),
-    byName: new Map(Object.values(teams).map((t) => [norm(t.name), t.id])),
+    // IDENTIDAD (bug cazado 18-ago): en Dota hay CINCO equipos llamados "Team Spirit" — el real (569
+    // partidas) y clones amateur con 1. Ante nombres en colisión, el nombre resuelve al id con MÁS
+    // historial: darle al Spirit real el roster de un clon (o al revés) es el pecado de identidad de la casa.
+    byName: (() => {
+      const m = new Map();
+      for (const t of Object.values(teams)) {
+        const k = norm(t.name);
+        const cur = m.get(k);
+        if (!cur || (teams[cur].n || 0) < t.n) m.set(k, t.id);
+      }
+      return m;
+    })(),
     rights: 'Base propia derivada de OpenDota (research_only) — rating interno, catálogo admin y sombra; sin picks públicas (RIGHTS.md).',
   };
   G.data = data; G.at = Date.now();

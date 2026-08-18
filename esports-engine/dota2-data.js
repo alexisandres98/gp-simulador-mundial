@@ -130,7 +130,7 @@ function load() {
     const byPos = {};
     for (const st of arr.sort((a, b) => b.n - a.n)) if (!byPos[st.pos]) byPos[st.pos] = st;
     const five = Object.values(byPos).sort((a, b) => a.pos - b.pos).slice(0, 5)
-      .map((st) => ({ id: st.id, nick: st.nick, role: 'Pos ' + st.pos }));
+      .map((st) => ({ id: st.id, nick: st.nick, role: 'Pos ' + st.pos }));   // la foto se cruza en draftIntel
     rosters[tid] = { five, coach: null, changed_recently: false };
   }
 
@@ -252,7 +252,9 @@ function draftIntel(nameA, nameB) {
       const pool = (st.pool || []).slice(0, 6).map((c) => ({ ch: c.name, n: c.n,
         wr: c.n ? +(c.w / c.n).toFixed(2) : null, rw: c.rw, flex: false,
         comfort: +(c.rw * ((c.w + 3) / (c.n + 6))).toFixed(2) }));
-      return { id: f.id, nick: f.nick, role: f.role, rating_gp: st.rating_gp || null, n: st.n || 0, pool };
+      const pi = d.players[f.id] || {};
+      return { id: f.id, nick: pi.nick || f.nick, role: f.role, rating_gp: st.rating_gp || null, n: st.n || 0, pool,
+        photo: pi.photo || null, country: pi.country_id || null };
     });
     const comfortTotal = five.reduce((s, p) => s + p.pool.reduce((x, c) => x + c.comfort, 0), 0);
     const allPicks = five.flatMap((p) => p.pool.map((c) => c.comfort)).sort((x, y) => y - x);

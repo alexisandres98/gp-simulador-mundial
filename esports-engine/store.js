@@ -331,6 +331,26 @@ function dotaOwnInput(ev) {
 const ownInputFor = (game, ev) => (game === 'lol' ? lolOwnInput(ev, ev.competition)
   : game === 'valorant' ? valOwnInput(ev) : game === 'dota2' ? dotaOwnInput(ev) : null);
 
+// LAS FICHAS DE LOS DOS EQUIPOS (19-ago, pedido de Alexis: "no hay fotos, es una pila de datos"). CS2 las
+// trae de su motor y por eso su héroe tiene escudo, muestra y forma; los otros tres las traen de su capa de
+// datos y se adjuntan con la MISMA forma, así el héroe de CS2 sirve para los cuatro — y de paso la pizarra
+// y las pick cards heredan el escudo, que es lo que convierte una lista de nombres en un calendario.
+function attachTeamCards(game, model, ev) {
+  if (!model || model.teams || game === 'cs2') return;
+  try {
+    const DL = require(`./${game}-data`);
+    const dd = DL.load();
+    if (!dd || !dd.available) return;
+    const ida = DL.resolveTeam(ev.home.name, { data: dd }), idb = DL.resolveTeam(ev.away.name, { data: dd });
+    const card = (id, fallbackName) => {
+      if (!id) return { name: fallbackName, logo: null, n: 0, elo: null, wr: null, form: [], roster: null };
+      const c = DL.teamCard(id, { data: dd });
+      return { ...c, form: (dd.form && dd.form[id]) || [], roster: c.roster || (dd.rosters || {})[id] || null };
+    };
+    model.teams = { a: card(ida, ev.home.name), b: card(idb, ev.away.name) };
+  } catch { /* sin base propia: el héroe cae al monograma, como antes */ }
+}
+
 async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const E = ENGINES[game];
   if (!E) return null;
@@ -356,24 +376,8 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   // medida del PAR — no del juego en general. CS2 la trae de su propio histórico dentro del motor; los
   // otros tres la traen de su capa de datos y se adjunta aquí para que la puerta sea la misma para todos.
   if (own && own.dataset && !model.dataset) model.dataset = own.dataset;
-  // LAS FICHAS DE LOS DOS EQUIPOS (19-ago, pedido de Alexis: "no hay fotos, es una pila de datos"). CS2
-  // las trae de su motor y por eso su héroe tiene escudo, muestra y forma; los otros tres las traen de su
-  // capa de datos y se adjuntan aquí con la MISMA forma, así el héroe de CS2 sirve para los cuatro.
-  if (!model.teams && game !== 'cs2') {
-    try {
-      const DL = require(`./${game}-data`);
-      const dd = DL.load();
-      if (dd && dd.available) {
-        const ida = DL.resolveTeam(ev.home.name, { data: dd }), idb = DL.resolveTeam(ev.away.name, { data: dd });
-        const card = (id, fallbackName) => {
-          if (!id) return { name: fallbackName, logo: null, n: 0, elo: null, wr: null, form: [], roster: null };
-          const c = DL.teamCard(id, { data: dd });
-          return { ...c, form: (dd.form && dd.form[id]) || [], roster: c.roster || (dd.rosters || {})[id] || null };
-        };
-        model.teams = { a: card(ida, ev.home.name), b: card(idb, ev.away.name) };
-      }
-    } catch { /* sin base propia: el héroe cae al monograma, como antes */ }
-  }
+  attachTeamCards(game, model, ev);
+
   // el cuarto propio del cruce: en LoL el Draft Room (pools, comfort, fragilidad, meta del parche);
   // en Valorant la Sala de composición (pools de agentes, comfort, fragilidad, meta de la ventana).
   // Misma forma de datos a propósito: la UI los renderiza con el mismo panel.
@@ -966,6 +970,8 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
         teams: { a: ev.home.name, b: ev.away.name }, bo, sample, competition: ev.competition,
         observedTempo: ownB ? ownB.observedTempo : null });
     } catch { model = null; }
+    if (model && ownB && ownB.dataset && !model.dataset) model.dataset = ownB.dataset;
+    attachTeamCards(game, model, ev);
     const edges = model ? evaluateAll({ game, model, mk, ev, bo, sample }) : null;
     const arbs = mk ? BK.arbitrages(mk.markets || []) : [];
     items.push({

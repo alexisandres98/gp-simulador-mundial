@@ -397,11 +397,20 @@ async function writeNflRead(payload) {
   if (!j || !j.es || !j.en) { console.error('[llm] writeNflRead sin JSON usable · stop:', (resp && resp.stop_reason) || '?'); return null; }
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
-async function writeCs2Read(payload) {
+async function writeCs2Read(payload, game) {
+  // 19-ago: el mismo redactor sirve a los cuatro juegos. Lo que cambia es DÓNDE se decide la serie, y eso
+  // se le dice explícitamente para que narre el objeto real de cada juego y no el veto de CS2 en todos.
+  const LENTE = {
+    cs2: 'el VETO DE MAPAS (qué mapas favorecen a cada lado según los efectos por mapa del dossier)',
+    valorant: 'el TABLERO DE MAPAS y el reparto ataque/defensa (usa `rondas` y los mapas del dossier)',
+    lol: 'el DRAFT y el RITMO DE LA LIGA (usa `draft`, `ritmo` y `duracion` del dossier)',
+    dota2: 'el DRAFT, el LADO del mapa y la DURACIÓN (usa `draft`, `lado`, `ritmo` y `duracion` del dossier)',
+  }[game || 'cs2'];
+  const JUEGO = { cs2: 'Counter-Strike 2', valorant: 'Valorant', lol: 'League of Legends', dota2: 'Dota 2' }[game || 'cs2'];
   const resp = await call({
     kind: 'writer',
     max_tokens: 3000,
-    system: 'Eres el analista de Counter-Strike 2 de GP Simulador, al nivel de un coach profesional. Con el dossier JSON escribe la lectura de la SERIE en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el mercado del dossier discrepa, esa discrepancia ES parte del análisis. (1) LA FORMA DE LA SERIE — dónde se decide el veto (qué mapas favorecen a cada lado según los efectos por mapa del dossier), la diferencia de Elo, la forma reciente y el historial directo si vienen, y qué jugadores cargan el equipo si el dossier trae ratings. (2) EL CAMINO DEL OTRO — el mejor mapa del rival, qué pasaría en el veto para que la serie se torciera, y el aviso de plantilla movida si el dossier lo marca. PROHIBIDO: picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar mapas o datos; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
+    system: 'Eres el analista de ' + JUEGO + ' de GP Simulador, al nivel de un coach profesional. Con el dossier JSON escribe la lectura de la SERIE en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el mercado del dossier discrepa, esa discrepancia ES parte del análisis. (1) LA FORMA DE LA SERIE — dónde se decide: ' + LENTE + ', la diferencia de Elo, la forma reciente y el historial directo si vienen, y qué jugadores cargan el equipo si el dossier trae ratings. (2) EL CAMINO DEL OTRO — por dónde gana el rival y qué tendría que pasar para que la serie se torciera, y el aviso de plantilla movida si el dossier lo marca. PROHIBIDO: picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar mapas, héroes, campeones o datos que no estén en el dossier; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
   });
   const j = jsonOf(resp);

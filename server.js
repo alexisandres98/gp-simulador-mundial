@@ -10503,7 +10503,9 @@ async function nflGameRead(gameId, { force = false } = {}) {
   return cached || null;
 }
 async function esGameRead(game, eventId, { force = false } = {}) {
-  if (game !== 'cs2') return null;   // solo el juego con base propia tiene qué narrar
+  // 19-ago: los CUATRO juegos tienen base propia y quinteto, así que los cuatro tienen qué narrar. El
+  // dossier se arma con lo que CADA juego mide de verdad — mapas en CS2/Valorant, draft y ritmo en LoL,
+  // lado y duración en Dota 2 — y el redactor nunca ve un número que el motor no haya calculado.
   db.esReads = db.esReads || {};
   const k = game + ':' + eventId;
   const cached = db.esReads[k];
@@ -10525,8 +10527,24 @@ async function esGameRead(game, eventId, { force = false } = {}) {
     historial_directo: d.h2h && d.h2h.n ? { series: d.h2h.n, victorias: { [d.h2h.a.name]: d.h2h.wins_a, [d.h2h.b.name]: d.h2h.wins_b } } : null,
     mercado: d.model.market_anchor ? { fuente: d.model.market_anchor.from } : null,
   };
+  // lo que solo tiene ESTE juego
+  const M = d.model;
+  if (game === 'lol' || game === 'dota2') {
+    if (M.tempo) dossier.ritmo = { kills_por_minuto: M.tempo.kpm, minutos_base: M.tempo.minutes, medido: !!M.tempo.measured, competicion: M.tempo.label || M.tempo.league };
+    if (M.duration) dossier.duracion = { media_min: M.duration.mean_min, p10: M.duration.p10, p90: M.duration.p90 };
+    if (M.kills) dossier.kills = { total_esperado: M.kills.mean_total != null ? M.kills.mean_total : null };
+  }
+  if (game === 'dota2' && M.side) dossier.lado = { radiant_pct: M.side.radiant_p != null ? +(100 * M.side.radiant_p).toFixed(1) : null, ventaja_pp: M.side.edge_pp };
+  if (game === 'valorant' && M.rounds) dossier.rondas = { media: M.rounds.mean_rounds, prorroga_pct: M.rounds.overtime_p != null ? +(100 * M.rounds.overtime_p).toFixed(1) : null, sesgo_mapa: M.rounds.map_bias };
+  if (M.draft_room && M.draft_room.available) {
+    const dr2 = M.draft_room;
+    dossier.draft = {
+      [d.event.home.name]: { fragilidad_pct: dr2.a && dr2.a.fragility_pct, quinteto: ((dr2.a && dr2.a.five) || []).map((x) => x.nick) },
+      [d.event.away.name]: { fragilidad_pct: dr2.b && dr2.b.fragility_pct, quinteto: ((dr2.b && dr2.b.five) || []).map((x) => x.nick) },
+    };
+  }
   try {
-    const w = await llm.writeCs2Read(dossier);
+    const w = await llm.writeCs2Read(dossier, game);
     if (w && w.es) {
       const out = { es: w.es, en: w.en, at: new Date().toISOString(), event_id: String(eventId) };
       db.esReads[k] = out; save();
@@ -16081,7 +16099,7 @@ const server = http.createServer(async (req, res) => {
           const id = String(url.searchParams.get('id') || '');
           if (!id) return json(res, 400, { error: 'falta id' });
           const r = await esGameRead(gm, id).catch(() => null);
-          return json(res, 200, r || { pending: true, why: gm !== 'cs2' ? 'solo CS2 tiene base propia que narrar.' : (llm.enabled() ? 'sin presupuesto LLM ahora; la pasada de fondo la escribirá.' : 'redactor apagado.') });
+          return json(res, 200, r || { pending: true, why: llm.enabled() ? (llm.budgetOk() ? 'la pasada de fondo la escribirá en breve.' : 'sin presupuesto de redactor para hoy; vuelve mañana.') : 'redactor apagado.' });
         }
         if (p === '/api/esports/search') {
           // buscador SOLO de esports: equipos + jugadores de la base propia y series de la agenda viva

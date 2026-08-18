@@ -8729,7 +8729,7 @@
   // motivo de cada línea rechazada; lo que faltaba era sumarlo y enseñarlo. Un hueco sin explicación se lee
   // como un sistema roto, y aquí el hueco es una decisión, no un fallo.
   var ES_REASON = {
-    estructura_no_medida: ['Estructura sin medir', 'el perfil de fondo es un supuesto de circuito, no una medición propia. Hoy solo CS2 tiene base propia; en los otros tres juegos una diferencia con el mercado no dice que el mercado se equivoque.'],
+    estructura_no_medida: ['Estructura sin medir', 'esta familia concreta se apoya en un perfil de circuito y no en una medición propia todavía: una diferencia con el mercado aquí no dice que el mercado se equivoque. Las familias con estructura medida sí se valoran y aparecen arriba.'],
     ventaja_explicada_por_calibracion: ['La explica nuestro propio error', 'el residuo del ajuste de rondas de ese mapa basta para producir la diferencia entera. No se apuesta contra el error de uno mismo.'],
     ventaja_insuficiente: ['Ventaja por debajo del listón', 'no llega al mínimo exigido (3 pp, y 5,5 si solo la cotiza una casa).'],
     ventaja_bajo_ruido: ['Ventaja por debajo del ruido', 'la diferencia no supera la incertidumbre del propio modelo.'],
@@ -9090,10 +9090,10 @@
         (ev.start_at ? '<span class="gx-cs-when">' + esc(String(ev.start_at).replace('T', ' · ').slice(0, 16)) + '</span>' : '') + '</div>' +
       '<div class="gx-cs-hero-body">' +
         '<div class="gx-cs-side">' + cs2Crest(T.a || { name: ev.home.name }, 'big') +
-          '<div><b>' + esc(ev.home.name) + '</b>' + (T.a && T.a.n ? '<span>' + T.a.n + ' mapas en la base</span>' : '<span class="warn">sin histórico propio</span>') + '</div></div>' +
+          '<div><b>' + esc(ev.home.name) + '</b>' + (T.a && T.a.n ? '<span>' + T.a.n + ' ' + esUnit() + ' en la base</span>' : '<span class="warn">sin histórico propio</span>') + '</div></div>' +
         '<div class="gx-cs-pct"><b>' + (p != null ? (100 * p).toFixed(1) + '<em>%</em>' : '—') + '</b>' +
           (u != null ? '<span>± ' + u + ' pp</span>' : '') + '</div>' +
-        '<div class="gx-cs-side r"><div><b>' + esc(ev.away.name) + '</b>' + (T.b && T.b.n ? '<span>' + T.b.n + ' mapas en la base</span>' : '<span class="warn">sin histórico propio</span>') + '</div>' +
+        '<div class="gx-cs-side r"><div><b>' + esc(ev.away.name) + '</b>' + (T.b && T.b.n ? '<span>' + T.b.n + ' ' + esUnit() + ' en la base</span>' : '<span class="warn">sin histórico propio</span>') + '</div>' +
           cs2Crest(T.b || { name: ev.away.name }, 'big') + '</div>' +
       '</div>' +
       (p != null ? '<div class="gx-cs-halo">' +
@@ -9405,22 +9405,158 @@
     }
     // Los juegos sin composición propia usan el mismo patrón de lentes, con dos: la partida y el modelo.
     // LoL ya tiene base propia (18-ago): el Draft Room abre la lente de partida y el h2h medido la cierra.
+    // 19-ago: los tres juegos dejan de ser "la vista genérica". Ya tienen base propia, escudos y quintetos,
+    // así que heredan la composición insignia de CS2 —héroe con escudos y halo de incertidumbre, tres
+    // lentes— y encima cada uno pone SU objeto firma delante: el tablero de mapas en Valorant, el tablero
+    // de draft en LoL y el mapa Radiant/Dire con la curva de duración en Dota 2.
     var gameBlocks;
-    if (g === 'lol') gameBlocks = [esDraftRoom(m, ev), esTempo(m), esDuration(m), esKills(m, ev), esDraft(m, ev), esObjectives(m), esH2H(d.h2h)];
-    else if (g === 'valorant') gameBlocks = [esDraftRoom(m, ev), esVeto(m, ev), esRounds(m, ev), esComp(m), esEconomy(m), esH2H(d.h2h)];
-    else gameBlocks = [esDraftRoom(m, ev), esDuration(m), esComeback(m), esTempo(m), esKills(m, ev), esDraft(m, ev), esH2H(d.h2h)];
-    var glens = S.es.lens === 'modelo' ? 'modelo' : 'partida';
+    if (g === 'lol') gameBlocks = [esReadBlock(g, ev.id), esDraftRoom(m, ev), esObjectives(m), esTempo(m), esKills(m, ev)];
+    else if (g === 'valorant') gameBlocks = [esReadBlock(g, ev.id), valMapBoard(m, ev), esDraftRoom(m, ev), esRounds(m, ev), esEconomy(m)];
+    else gameBlocks = [esReadBlock(g, ev.id), dotaSideBoard(m, ev), esDraftRoom(m, ev), esComeback(m), esKills(m, ev)];
+    var modelBlocks = g === 'lol' ? [esDuration(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)]
+      : g === 'valorant' ? [esVeto(m, ev), esComp(m), esWhat(m), esUnc(m), esSim(m, ev)]
+      : [esDuration(m), esTempo(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
+    var glens = S.es.lens || 'partida';
     var GLENSES = [
       ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
-      ['modelo', 'El modelo', [esWhat(m), esUnc(m), esSim(m, ev), esProv(d)].filter(Boolean).join('')],
+      ['modelo', 'El modelo', modelBlocks.filter(Boolean).join('')],
+      ['contexto', 'Contexto', [esTeamStrip(m, ev), esRosterPanel(m, ev), esH2H(d.h2h), esProv(d)].filter(Boolean).join('')],
     ];
+    if (!GLENSES.some(function (x) { return x[0] === glens; })) glens = 'partida';
     var gbar = '<div class="gx-seg gx-es-lens">' + GLENSES.map(function (x) {
       return '<button data-eslens="' + x[0] + '"' + (x[0] === glens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
     var gact = GLENSES.filter(function (x) { return x[0] === glens; })[0];
     var edges = esEdges(d);
-    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + head + edges + gbar + gact[2]);
+    // el héroe de CS2 sirve para los cuatro desde que el modelo trae las fichas de equipo con escudo
+    var richHead = (m.teams && (m.teams.a || m.teams.b)) ? cs2Hero(d) : head;
+    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + richHead + edges + gbar + gact[2]);
   }
+  // ── TIRA DE EQUIPOS (los tres juegos): Elo propio, muestra, victorias y forma reciente, uno frente a otro.
+  function esTeamStrip(m, ev) {
+    var T = m.teams || {};
+    if (!T.a && !T.b) return null;
+    var side = function (c, name, cls) {
+      c = c || {};
+      var form = (c.form || []).slice(-6).map(function (f) {
+        return '<i class="gx-tsf ' + (f.r === 'W' ? 'w' : 'l') + '" title="' + esc((f.at || '') + ' · ' + (f.score || '')) + '"></i>';
+      }).join('');
+      return '<div class="gx-ts-side ' + cls + '">' + cs2Crest({ name: c.name || name, logo: c.logo }, 'mid') +
+        '<div class="gx-ts-id"><b>' + esc(c.name || name) + '</b>' +
+        '<span class="gx-dim">' + (c.n ? c.n + ' en la base' : 'sin muestra propia') + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + '</span>' +
+        (form ? '<div class="gx-ts-form">' + form + '</div>' : '') + '</div>' +
+        '<div class="gx-ts-elo"><b class="gx-mono">' + (c.elo != null ? c.elo : '—') + '</b><span>Elo GP</span></div></div>';
+    };
+    var gap = (T.a && T.b && T.a.elo != null && T.b.elo != null) ? (T.a.elo - T.b.elo) : null;
+    return esPanel('Los dos equipos', gap != null ? '<span class="gx-mono">' + (gap > 0 ? '+' : '') + gap + ' de Elo</span>' : '',
+      '<div class="gx-ts-grid">' + side(T.a, ev.home.name, 'a') + side(T.b, ev.away.name, 'b') + '</div>' +
+      '<div class="gx-dim gx-es-note">Elo propio de GP validado fuera de muestra; la forma son los últimos resultados de la base. No es el ranking del proveedor.</div>', 'gx-es-strip');
+  }
+
+  // ── PLANTILLAS CON CARA: el quinteto de cada lado con su foto, rol y rating propio.
+  function esRosterPanel(m, ev) {
+    var dr = m.draft_room;
+    if (!dr || !dr.available) return null;
+    var side = function (s, name, cls) {
+      if (!s || !s.resolved || !(s.five || []).length) return '';
+      return '<div class="gx-rost-side ' + cls + '"><div class="gx-rost-team">' + esc(s.name || name) + '</div>' +
+        s.five.map(function (p) {
+          return '<div class="gx-rost-p" ' + (p.photo ? '' : '') + '>' +
+            esAvatar({ nick: p.nick, photo: p.photo }, 'big') +
+            '<div class="gx-rost-pid"><b>' + esc(p.nick) + '</b>' +
+            '<span class="gx-dim">' + esc(p.role || '—') + (p.n ? ' · ' + p.n + ' partidas' : '') + '</span></div>' +
+            (p.rating_gp != null ? '<span class="gx-rost-r gx-mono">' + p.rating_gp.toFixed(2) + '</span>' : '') + '</div>';
+        }).join('') + '</div>';
+    };
+    var body = side(dr.a, ev.home.name, 'a') + side(dr.b, ev.away.name, 'b');
+    if (!body) return null;
+    return esPanel('Las plantillas', '<span class="gx-dim" style="font-size:10.5px">rating propio: 1.00 = media del rol</span>',
+      '<div class="gx-rost-grid">' + body + '</div>', 'gx-es-roster');
+  }
+
+  // ── OBJETO FIRMA DE VALORANT: el tablero de mapas. Cada mapa es una card con su reparto ataque/defensa
+  // medido y la preferencia de cada equipo — el equivalente exacto del tablero de veto de CS2, que es lo
+  // que hacía que CS2 se viera como un producto y Valorant como una tabla.
+  function valMapBoard(m, ev) {
+    var v = m.veto;
+    var maps = (v && v.likely_maps) || [];
+    if (!maps.length) return null;
+    var sel = S.es.valMap || (maps[0] && maps[0].name);
+    var cards = maps.map(function (mm) {
+      var on = mm.name === sel;
+      var pa = mm.p_a != null ? mm.p_a : 0.5;
+      var bias = mm.bias != null ? mm.bias : (v.map_bias || 0.5);
+      var def = Math.round(100 * bias), atk = 100 - def;
+      return '<div class="gx-vmap' + (on ? ' on' : '') + '" data-valmap="' + esc(mm.name) + '">' +
+        '<div class="gx-vmap-top"><b>' + esc(mm.name) + '</b>' +
+          '<span class="gx-mono' + (pa >= 0.55 ? ' gx-up' : pa <= 0.45 ? ' gx-dn' : '') + '">' + Math.round(100 * pa) + '%</span></div>' +
+        '<div class="gx-vmap-bar"><i style="width:' + (100 * pa).toFixed(0) + '%"></i></div>' +
+        '<div class="gx-vmap-sides"><span title="rondas que gana el que defiende">DEF ' + def + '%</span>' +
+          '<span title="rondas que gana el que ataca">ATK ' + atk + '%</span></div>' +
+        (mm.note ? '<div class="gx-vmap-note gx-dim">' + esc(mm.note) + '</div>' : '') + '</div>';
+    }).join('');
+    var cur = maps.filter(function (x) { return x.name === sel; })[0] || maps[0];
+    var r = m.rounds || {};
+    var detail = '<div class="gx-vmap-detail"><div><span class="gx-label">' + esc(cur.name) + ' · lectura</span>' +
+      '<p class="gx-dim">' + esc(cur.note || 'Mapa equilibrado: lo que cambia no es quién gana, sino cuántas rondas se juegan.') + '</p></div>' +
+      '<div class="gx-vmap-kpis">' +
+        '<div><span class="gx-dim">' + esc(ev.home.name) + '</span><b class="gx-mono">' + Math.round(100 * (cur.p_a != null ? cur.p_a : 0.5)) + '%</b></div>' +
+        (r.mean_rounds != null ? '<div><span class="gx-dim">rondas esperadas</span><b class="gx-mono">' + r.mean_rounds + '</b></div>' : '') +
+        (r.overtime_p != null ? '<div><span class="gx-dim">prórroga</span><b class="gx-mono">' + Math.round(100 * r.overtime_p) + '%</b></div>' : '') +
+      '</div></div>';
+    return esPanel('Tablero de mapas', esc((v && v.pool_version) || ''),
+      '<div class="gx-vmap-grid">' + cards + '</div>' + detail +
+      '<div class="gx-dim gx-es-note">' + esc((v && v.note) || '') + '</div>', 'gx-es-vmaps');
+  }
+
+  // ── OBJETO FIRMA DE DOTA 2: el mapa con sus dos lados y la CURVA de duración. La ventaja de Radiant no
+  // es una fila de tabla: es geografía del mapa, y la duración es una distribución, no un promedio.
+  function dotaSideBoard(m, ev) {
+    var s = m.side || m.draft_side || null;
+    var dur = m.duration || null;
+    if (!s && !dur) return null;
+    var pR = s ? (s.radiant_p != null ? s.radiant_p : s.p_radiant) : null;
+    var edge = s ? (s.edge_pp != null ? s.edge_pp : s.side_edge_pp) : null;
+    var mapSvg = '<svg viewBox="0 0 120 120" class="gx-dsb-map" aria-hidden="true">' +
+      '<defs><linearGradient id="gxRad" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="rgba(31,227,164,.35)"/><stop offset="1" stop-color="rgba(31,227,164,0)"/></linearGradient>' +
+      '<linearGradient id="gxDire" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(229,72,77,.35)"/><stop offset="1" stop-color="rgba(229,72,77,0)"/></linearGradient></defs>' +
+      '<rect x="2" y="2" width="116" height="116" rx="10" fill="none" stroke="rgba(255,255,255,.10)"/>' +
+      '<path d="M4 116 L116 116 L4 4 Z" fill="url(#gxRad)"/>' +
+      '<path d="M116 4 L116 116 L4 4 Z" fill="url(#gxDire)"/>' +
+      '<path d="M4 116 L116 4" stroke="rgba(255,255,255,.16)" stroke-dasharray="4 4"/>' +
+      '<circle cx="26" cy="94" r="6" fill="rgba(31,227,164,.75)"/><circle cx="94" cy="26" r="6" fill="rgba(229,72,77,.75)"/>' +
+      '<text x="26" y="112" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.55)">RADIANT</text>' +
+      '<text x="94" y="16" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.55)">DIRE</text></svg>';
+    var curve = '';
+    // LA CURVA SALE DE LA ESCALERA REAL DEL MODELO: `totals` es P(la partida pase de X minutos) para cada
+    // línea que la casa cotiza. Es exactamente lo que el mercado pregunta, así que se pinta tal cual y no
+    // como un histograma inventado.
+    var tot = (dur && dur.totals) || null;
+    if (tot) {
+      var rows = Object.keys(tot).map(function (k) {
+        return { x: parseFloat(String(k).replace('over_', '').replace('_', '.')), p: tot[k] };
+      }).filter(function (r) { return isFinite(r.x); }).sort(function (a, b) { return a.x - b.x; });
+      if (rows.length > 1) {
+        var pts = rows.map(function (r, i) {
+          return (100 * i / (rows.length - 1)).toFixed(2) + ',' + (40 - 38 * r.p).toFixed(2);
+        }).join(' ');
+        curve = '<div class="gx-dsb-curve"><span class="gx-label">Probabilidad de pasar de cada línea</span>' +
+          '<svg viewBox="0 0 100 44" preserveAspectRatio="none"><polygon points="0,44 ' + pts + ' 100,44" fill="rgba(31,227,164,.13)"/>' +
+          '<polyline points="' + pts + '" fill="none" stroke="var(--gx-green,#1FE3A4)" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>' +
+          '<div class="gx-dsb-axis gx-dim"><span>' + rows[0].x + ' min · ' + Math.round(100 * rows[0].p) + '%</span>' +
+          '<span>' + rows[rows.length - 1].x + ' min · ' + Math.round(100 * rows[rows.length - 1].p) + '%</span></div></div>';
+      }
+    }
+    var kpis = '<div class="gx-dsb-kpis">' +
+      (pR != null ? '<div><span class="gx-dim">' + esc(ev.home.name) + ' como Radiant</span><b class="gx-mono">' + Math.round(100 * pR) + '%</b></div>' : '') +
+      (edge != null ? '<div><span class="gx-dim">ventaja de lado</span><b class="gx-mono">' + (edge > 0 ? '+' : '') + edge + ' pp</b></div>' : '') +
+      (dur && dur.mean_min != null ? '<div><span class="gx-dim">duración media</span><b class="gx-mono">' + dur.mean_min + ' min</b></div>' : '') +
+      (dur && dur.p_over != null ? '<div><span class="gx-dim">supera la línea</span><b class="gx-mono">' + Math.round(100 * dur.p_over) + '%</b></div>' : '') + '</div>';
+    return esPanel('El mapa y sus dos lados', '',
+      '<div class="gx-dsb-grid">' + mapSvg + '<div class="gx-dsb-right">' + kpis + curve + '</div></div>' +
+      '<div class="gx-dim gx-es-note">La ventaja de Radiant se aprende en línea del histórico propio, no se asume: en Dota el lado es terreno, no cosmética.</div>', 'gx-es-dsb');
+  }
+
   function esBack() { return '<div class="gx-back" data-esback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_board')) + '</span></div>'; }
 
   function esMatchHead(d) {
@@ -9576,11 +9712,17 @@
         '<div class="gx-dr-team"><b>' + esc(s.name) + '</b><span class="gx-spacer"></span>' +
           (frag != null ? '<span class="gx-dr-frag ' + fCls + '" title="cuánto comfort se lleva vetarle sus 3 picks más cómodos">fragilidad <b class="gx-mono">' + frag + '%</b></span>' : '') + '</div>' +
         (s.five || []).map(function (p) {
+          // el comfort ya viene medido (peso reciente × rendimiento encogido): se pinta como BARRA, que es
+          // lo que deja leer de un vistazo dónde está el pool de verdad y dónde el relleno.
+          var mx = (p.pool || []).reduce(function (a, c) { return Math.max(a, c.comfort || 0); }, 0) || 1;
           return '<div class="gx-dr-player">' +
-            '<div class="gx-dr-pid"><b>' + esc(p.nick) + '</b><span class="gx-dim">' + esc(p.role || '—') + (p.rating_gp != null ? ' · GP ' + p.rating_gp.toFixed(2) : '') + '</span></div>' +
-            '<div class="gx-dr-pool">' + (p.pool || []).slice(0, 3).map(function (c) {
+            '<div class="gx-dr-phead">' + esAvatar({ nick: p.nick, photo: p.photo }) +
+              '<div class="gx-dr-pid"><b>' + esc(p.nick) + '</b><span class="gx-dim">' + esc(p.role || '—') + (p.n ? ' · ' + p.n : '') + '</span></div>' +
+              (p.rating_gp != null ? '<span class="gx-dr-rating gx-mono' + (p.rating_gp >= 1.05 ? ' gx-up' : p.rating_gp <= 0.95 ? ' gx-dn' : '') + '">' + p.rating_gp.toFixed(2) + '</span>' : '') + '</div>' +
+            '<div class="gx-dr-pool">' + (p.pool || []).slice(0, 4).map(function (c) {
               return '<span class="gx-dr-ch' + (c.flex ? ' flex' : '') + '" title="' + c.n + ' partidas' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.flex ? ' · flex (2+ roles en el parche)' : '') + '">' +
-                esc(c.ch) + '<i>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + '</i></span>';
+                '<i class="gx-dr-cbar" style="width:' + Math.round(100 * (c.comfort || 0) / mx) + '%"></i>' +
+                '<b>' + esc(c.ch) + '</b><em>' + (c.wr != null ? Math.round(100 * c.wr) + '%' : '—') + '</em></span>';
             }).join('') + '</div></div>';
         }).join('') +
         ((s.doctrine_top || []).length ? '<div class="gx-dr-player"><div class="gx-dr-pid"><span class="gx-dim" style="font-size:10.5px">doctrina del equipo (draft real)</span></div><div class="gx-dr-pool">' +
@@ -12251,6 +12393,8 @@
   }
 
   function esClicks(e) {
+    var vm = e.target.closest('[data-valmap]');
+    if (vm) { S.es.valMap = vm.getAttribute('data-valmap'); renderESMatch(); return; }
     var lensBtn = e.target.closest('[data-eslens]');
     if (lensBtn) { S.es.lens = lensBtn.getAttribute('data-eslens'); renderESMatch(); return; }
     var oppF = e.target.closest('[data-esoppfilt]');

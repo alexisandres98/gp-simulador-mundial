@@ -3372,3 +3372,61 @@ td .gx-calc-btn span { display: none; }
 .gx-f1-split-r em{font-style:normal;width:34px;text-align:right;flex:none}
 .gx-f1-duelres{margin-top:12px;font-size:13.5px;line-height:1.5}
 @media (max-width:520px){.gx-f1-who{flex-basis:120px}.gx-f1-mini{display:none}}
+
+/* ═══ ESPORTS 19-ago: tira de equipos, plantillas con cara, tablero de mapas (Valorant), mapa de Dota ═══ */
+.gx-ts-grid{display:grid;grid-template-columns:1fr;gap:8px}
+.gx-ts-side{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:11px;padding:10px 12px}
+.gx-ts-side.b{flex-direction:row-reverse;text-align:right}
+.gx-ts-id{flex:1;min-width:0}
+.gx-ts-id b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-ts-id>span{font-size:10.5px}
+.gx-ts-form{display:flex;gap:3px;margin-top:5px}
+.gx-ts-side.b .gx-ts-form{justify-content:flex-end}
+.gx-tsf{width:14px;height:4px;border-radius:2px;display:block}
+.gx-tsf.w{background:var(--gx-green,#1FE3A4)}
+.gx-tsf.l{background:rgba(229,72,77,.65)}
+.gx-ts-elo{text-align:center;flex:none}
+.gx-ts-elo b{display:block;font-size:16px}
+.gx-ts-elo span{font-size:9.5px;color:var(--gx-dim,#8b94a7)}
+.gx-rost-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.gx-rost-team{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--gx-dim,#8b94a7);margin-bottom:6px}
+.gx-rost-p{display:flex;align-items:center;gap:9px;padding:6px 2px;border-top:1px solid rgba(255,255,255,.05)}
+.gx-rost-p:first-of-type{border-top:0}
+.gx-rost-pid{flex:1;min-width:0}
+.gx-rost-pid b{display:block;font-size:13px}
+.gx-rost-pid span{font-size:10.5px}
+.gx-rost-r{font-size:13px;font-weight:700}
+.gx-dr-phead{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.gx-dr-rating{font-size:12px;font-weight:700;flex:none}
+.gx-dr-ch{position:relative;overflow:hidden}
+.gx-dr-cbar{position:absolute;left:0;top:0;bottom:0;background:rgba(31,227,164,.16);z-index:0;border-radius:6px}
+.gx-dr-ch b,.gx-dr-ch em{position:relative;z-index:1;font-style:normal}
+.gx-dr-ch em{margin-left:5px;opacity:.65;font-size:9.5px}
+.gx-vmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.gx-vmap{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:11px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s}
+.gx-vmap:hover{border-color:rgba(31,227,164,.35)}
+.gx-vmap.on{border-color:var(--gx-green,#1FE3A4);background:rgba(31,227,164,.06)}
+.gx-vmap-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.gx-vmap-top b{font-size:12.5px}
+.gx-vmap-bar{height:4px;border-radius:2px;background:rgba(255,255,255,.07);margin:7px 0 5px;overflow:hidden}
+.gx-vmap-bar i{display:block;height:100%;background:linear-gradient(90deg,rgba(31,227,164,.9),rgba(31,227,164,.5))}
+.gx-vmap-sides{display:flex;justify-content:space-between;font-size:9.5px;color:var(--gx-dim,#8b94a7);font-variant-numeric:tabular-nums}
+.gx-vmap-note{font-size:9.5px;margin-top:5px;line-height:1.35}
+.gx-vmap-detail{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+.gx-vmap-detail p{font-size:12px;line-height:1.5;margin:4px 0 0}
+.gx-vmap-detail>div:first-child{flex:1;min-width:150px}
+.gx-vmap-kpis{display:flex;gap:14px}
+.gx-vmap-kpis>div{display:flex;flex-direction:column;gap:2px}
+.gx-vmap-kpis span{font-size:10px}
+.gx-vmap-kpis b{font-size:15px}
+.gx-dsb-grid{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.gx-dsb-map{width:120px;height:120px;flex:none}
+.gx-dsb-right{flex:1;min-width:170px}
+.gx-dsb-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.gx-dsb-kpis>div{display:flex;flex-direction:column;gap:2px}
+.gx-dsb-kpis span{font-size:10px}
+.gx-dsb-kpis b{font-size:15px}
+.gx-dsb-curve{margin-top:12px}
+.gx-dsb-curve svg{width:100%;height:52px;display:block;margin-top:6px}
+.gx-dsb-axis{display:flex;justify-content:space-between;font-size:9.5px;margin-top:2px}
+@media(min-width:620px){.gx-ts-grid,.gx-rost-grid{grid-template-columns:1fr 1fr}}

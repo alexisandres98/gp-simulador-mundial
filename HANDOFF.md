@@ -1,4 +1,47 @@
-# HANDOFF — estado al 18-ago-2026 (OCHO deportes: tenis y F1 nacen, LoL revive)
+# HANDOFF — estado al 19-ago-2026 (los cuatro esports con caras, y los tres pequeños generando picks)
+
+## 🎮 19-ago — EL TRABAJO DETALLADO DE ESPORTS (`ffa12e5` en main)
+
+Pedido de Alexis: fuera de CS2 los otros tres se veían "como una pila de estadísticas", sin fotos, sin
+capas de contexto, sin picks. Cuatro olas desplegadas, en orden de causa:
+
+1. **LAS CARAS (`1037e67`).** El `/players` de bo3.gg era inservible para plantillas —ignora el filtro de
+   disciplina (misma tabla plana de 20.289 filas para LoL y para Valorant) y trae `team_id` nulo—, que es
+   por qué las dos cosechas anteriores terminaban en "0 equipos · 0 jugadores". Cada juego tiene ahora SU
+   fuente en `scripts/esports-rosters.js`: **LoL** por el catálogo oficial de LoL Esports (118 equipos
+   cruzados → 695 jugadores, 645 caras, con rol y nombre real) y **Valorant** por vlr.gg, leyendo el
+   ranking mundial + 11 regiones para descubrir id/nombre/escudo de 1.513 equipos y luego la ficha de cada
+   uno (147 cruzados → 787 jugadores, 399 caras, con país). Las caras se pegan por NICK, no por id: la
+   estadística y la identidad son numeraciones distintas de la misma persona. Peso: 235 MB de PNG a
+   resolución completa → 6,0 MB en webp de 160 px.
+
+2. **LA RESOLUCIÓN DE NOMBRE (`6c797c8`).** La casa escribe "G2", "Secret", "Spirit", "Bilibili"; la base
+   los tiene completos. El emparejado por prefijo no llegaba ("g2" cae por el guardia de longitud, "secret"
+   no es prefijo de "team secret"), y el partido no se quedaba sin pick: se quedaba SIN RATING — ni lectura,
+   ni veto honesto, ni quinteto, con el Draft Room imprimiendo "el draft de este lado se queda sin leer"
+   para Team Spirit. Índice de alias con la regla de colisión de cada juego: en LoL y Valorant vale solo si
+   UNA marca lo reclama; en Dota 2, donde hay cinco "Team Spirit", gana el de más historial. Valorant pasa
+   de resolver 4 de 11 partidas a 10.
+
+3. **VALORANT DEJA DE SER EL JUEGO SIN PICKS (`ffa12e5`).** `detail_series` llevaba semanas en 0 y la causa
+   no era la fuente: una sola página mala lanzaba y el `throw` mataba la pasada entera antes de escribir una
+   fila. Con el fallo tolerado, la primera pasada honesta dio **998 series, 0 descartadas** → 10 mapas con
+   muestra, 307 equipos con historial por mapa, 29 agentes, 995 jugadores cualificados, 306 composiciones.
+
+4. **PICKS EN LOS TRES.** Valorant 0 → 4, Dota 2 5 → 9, LoL 1. **Ningún listón se ha tocado**: siguen donde
+   estaban hasta la revisión del domingo 23. Lo que subió fue la BASE, no la permisividad.
+
+**UI**: cabecera "Pick del día · Mejor arbitraje" en el board de los cuatro juegos; tablero de mapas de
+Valorant enseñando el POOL ENTERO (siete cards) con fuerza medida y probabilidad de elección por equipo,
+atenuando los que caen en el veto en vez de esconderlos; plantillas con cara, país, nombre real y rol; el
+aviso de "todavía sin medir" una vez por equipo y no cinco veces bajo cinco caras.
+
+**Pendiente vivo**: LoL tiene 84.586 partidas CON duración pero SIN kills (la cosecha guardó las filas antes
+de que el `slim` pidiera `Team1Kills`/`Team2Kills`), así que las familias de kills siguen vetadas por
+`estructura_no_medida`. La Cargo API de Leaguepedia SÍ responde desde el sandbox (comprobado); el rellenado
+desde 2026-01-01 —9.295 partidas a reescribir— va peleando con el limitador de la wiki.
+
+# (histórico) estado al 18-ago-2026 (OCHO deportes: tenis y F1 nacen, LoL revive)
 
 ## 🏆 18-ago (noche) — TENIS (7º) Y F1 (8º) EN PRODUCCIÓN + EL REVIVAL DE LOS ESPORTS (`902de37`)
 

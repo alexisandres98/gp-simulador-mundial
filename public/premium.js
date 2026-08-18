@@ -2288,6 +2288,15 @@
       return '<b class="gx-mono">' + t('g_over') + ' ' + line.toFixed(1) + '</b> <b class="gx-mono ' + (1 - cum >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - cum) + '</b>' +
         ' · <b class="gx-mono">' + t('g_under') + '</b> <b class="gx-mono ' + (cum > 0.5 ? 'gx-up' : '') + '">' + gxpPct(cum) + '</b>';
     },
+    // KILLS (LoL y Dota 2): el histograma del total de kills sale del propio simulador, así que el usuario
+    // puede mover la línea a CUALQUIER valor —no solo a los cinco que cotiza la casa— y ver la probabilidad.
+    es_kills: function (d, line) {
+      var h = (d && d.h) || {}, under = 0, n = Math.floor(line);
+      for (var kk in h) { if (+kk <= n) under += h[kk]; }
+      return '<b class="gx-mono">' + (LANG === 'en' ? 'Under' : 'Menos de') + ' ' + line.toFixed(1) + '</b> <b class="gx-mono ' + (under >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(under) + '</b>' +
+        ' · <b class="gx-mono">' + (LANG === 'en' ? 'Over' : 'Más de') + '</b> <b class="gx-mono ' + (under < 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - under) + '</b>' +
+        (d.mean != null ? ' <span class="gx-dim">· media ' + d.mean + '</span>' : '');
+    },
     cb_rounds: function (d, line) {
       var n = Math.floor(line), under = 0;
       (d.dist || []).forEach(function (rd) { if (rd.r <= n) under += rd.p; });
@@ -9413,9 +9422,9 @@
     if (g === 'lol') gameBlocks = [esReadBlock(g, ev.id), esDraftRoom(m, ev), esObjectives(m), esTempo(m), esKills(m, ev)];
     else if (g === 'valorant') gameBlocks = [esReadBlock(g, ev.id), valMapBoard(m, ev), esDraftRoom(m, ev), esRounds(m, ev), esEconomy(m)];
     else gameBlocks = [esReadBlock(g, ev.id), dotaSideBoard(m, ev), esDraftRoom(m, ev), esComeback(m), esKills(m, ev)];
-    var modelBlocks = g === 'lol' ? [esDuration(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)]
-      : g === 'valorant' ? [esVeto(m, ev), esComp(m), esWhat(m), esUnc(m), esSim(m, ev)]
-      : [esDuration(m), esTempo(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
+    var modelBlocks = g === 'lol' ? [esKillsExplorer(m), esDuration(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)]
+      : g === 'valorant' ? [esRoundsExplorer(d), esVeto(m, ev), esComp(m), esWhat(m), esUnc(m), esSim(m, ev)]
+      : [esKillsExplorer(m), esDuration(m), esTempo(m), esDraft(m, ev), esWhat(m), esUnc(m), esSim(m, ev)];
     var glens = S.es.lens || 'partida';
     var GLENSES = [
       ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
@@ -9555,6 +9564,33 @@
     return esPanel('El mapa y sus dos lados', '',
       '<div class="gx-dsb-grid">' + mapSvg + '<div class="gx-dsb-right">' + kpis + curve + '</div></div>' +
       '<div class="gx-dim gx-es-note">La ventaja de Radiant se aprende en línea del histórico propio, no se asume: en Dota el lado es terreno, no cosmética.</div>', 'gx-es-dsb');
+  }
+
+  // ── EXPLORADOR DE KILLS: la línea se mueve y la probabilidad responde. Es el objeto interactivo que CS2
+  // no tiene, y aquí es el mercado que de verdad importa en LoL y Dota 2.
+  function esKillsExplorer(m) {
+    var k = m.kills;
+    var h = k && k.dist && k.dist.total && k.dist.total.h;
+    if (!h) return '';
+    var mean = k.mean_kills || k.mean_total || null;
+    var keys = Object.keys(h).map(Number).filter(function (x) { return isFinite(x); });
+    if (keys.length < 5) return '';
+    var lo = Math.max(5, Math.round(Math.min.apply(null, keys) + 2)) + 0.5;
+    var hi = Math.round(Math.max.apply(null, keys) - 2) + 0.5;
+    var def = mean ? Math.round(mean) + 0.5 : Math.round((lo + hi) / 2) + 0.5;
+    def = Math.max(lo, Math.min(hi, def));
+    var xd = { h: h, mean: mean };
+    var jumps = [];
+    Object.keys((k.totals || {})).slice(0, 3).forEach(function (kk) {
+      var v = parseFloat(String(kk).replace('over_', '').replace('_', '.'));
+      if (isFinite(v)) jumps.push([String(v).replace('.', ','), v]);
+    });
+    return '<div class="gx-panel" data-gxp-panel="es" data-gxp="' + esc(JSON.stringify(xd)) + '">' +
+      '<div class="gx-ph"><span class="gx-label">Explorador de kills</span>' +
+      '<span class="gx-ph-extra gx-dim">' + (mean != null ? '~' + mean + ' esperados' : '') + '</span></div>' +
+      '<div class="gx-mod-body"><div class="gx-explorer">' +
+      gxpRowHtml('es-kills', xd, 'Línea de kills', lo, hi, def, jumps) +
+      '</div><div class="gx-dim gx-es-note">La distribución sale del simulador propio, no de la escalera de la casa: por eso la línea se puede mover a cualquier valor y no solo a los que alguien cotiza.</div></div></div>';
   }
 
   function esBack() { return '<div class="gx-back" data-esback="1">' + ic('chevron-left') + '<span>' + esc(t('es_nav_board')) + '</span></div>'; }

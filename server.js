@@ -281,6 +281,33 @@ async function cs2DailyJob() {
 setTimeout(cs2DailyJob, 6 * 60e3);
 setInterval(cs2DailyJob, 3600e3);
 
+// ── Plantillas de College y CFL (19-ago). ───────────────────────────────────────────────────────────────
+// La pestaña de Jugadores estaba vacía en las dos ligas porque el motor no tenía capa de jugadores. La
+// cosecha vive en scripts/amfoot-rosters.js y CORRE AQUÍ y no en desarrollo: ESPN (Akamai) responde 403 a
+// la IP del sandbox —comprobado con fetch y con curl, con user-agent de navegador— y normal desde Render.
+// Una pasada por arranque, gateada por GP_AMF_ROSTERS, y se apaga sola cuando el archivo ya existe y es
+// reciente: las plantillas cambian por temporada, no por hora.
+async function amfootRostersJob() {
+  try {
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_AMF_ROSTERS || '').trim())) return;
+    const AF = require('./amfoot-engine/store');
+    const dir = AF.DISK_DIR;
+    const fresh = (lg) => {
+      try {
+        const st = fs.statSync(path.join(dir, `roster-${lg}.json`));
+        return Date.now() - st.mtimeMs < 7 * 864e5;
+      } catch { return false; }
+    };
+    const todo = ['ncaaf', 'cfl'].filter((lg) => !fresh(lg));
+    if (!todo.length) { opsLog('amf_rosters', { skipped: 'al día' }); return; }
+    for (const lg of todo) {
+      const out = await opsSpawn('amf_rosters_' + lg, ['scripts/amfoot-rosters.js', '--league=' + lg], { heapMb: 220, timeoutMin: 45 });
+      opsLog('amf_rosters', { league: lg, code: out.code != null ? out.code : out.error });
+    }
+  } catch (e) { opsLog('amf_rosters', { error: e.message }); }
+}
+setTimeout(amfootRostersJob, 9 * 60e3);
+
 // ── Props de esports: barrido de anotación (17-ago). ────────────────────────────────────────────────────
 // La sombra de props solo aprende si alguien lee la pizarra, y una familia en sombra no puede depender de
 // que el admin abra una pantalla: cada 2 h se construye la pizarra (una llamada al libro) y `recordShadow`
@@ -16232,6 +16259,11 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, out);
         }
         if (p === '/api/amfoot/teams') return json(res, 200, AF.teamsDirectory(lgA));
+        if (p === '/api/amfoot/players') return json(res, 200, AF.playersDirectory(lgA, {
+          q: url.searchParams.get('q') || '', team: url.searchParams.get('team') || '',
+          limit: Math.min(240, +(url.searchParams.get('limit') || 120)),
+        }));
+        if (p === '/api/amfoot/player') return json(res, 200, AF.playerProfile(lgA, String(url.searchParams.get('id') || '')));
         if (p === '/api/amfoot/team') return json(res, 200, await AF.teamProfile(lgA, String(url.searchParams.get('id') || '')));
         if (p === '/api/amfoot/model') return json(res, 200, AF.modelCard(lgA));
         if (p === '/api/amfoot/track') return json(res, 200, AF.track(lgA));

@@ -1046,7 +1046,7 @@
   // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
   // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
   // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
-  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflplayer', 'nflmodel', 'nflperf', 'nflbrief', 'nflask', 'nflsim'];
+  var NFL_VIEWS = ['nflopps', 'nflgames', 'nflgame', 'nflteams', 'nflteam', 'nflplayers', 'nflplayer', 'amfplayer', 'nflmodel', 'nflperf', 'nflbrief', 'nflask', 'nflsim'];
   var NAV_NFL = [
     ['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'],
     ['nflbrief', 'news', 'nav_brief'], ['nflask', 'message-circle', 'nav_cb_ask'], ['nflsim', 'adjustments', 'nav_sim'],
@@ -1131,7 +1131,7 @@
     if (ES_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'nflgame') return 'nflgames';
     if (v === 'nflteam') return 'nflteams';
-    if (v === 'nflplayer') return 'nflplayers';
+    if (v === 'nflplayer' || v === 'amfplayer') return 'nflplayers';
     if (NFL_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'tenplayer') return 'tenplayers';
     if (TEN_VIEWS.indexOf(v) >= 0) return v;
@@ -11953,6 +11953,7 @@
     else if (v === 'nflteams') renderNflTeams();
     else if (v === 'nflteam') renderNflTeam();
     else if (v === 'nflplayers') renderNflPlayers();
+    else if (v === 'amfplayer') renderAmfPlayer();
     else if (v === 'nflbrief') renderNflBrief();
     else if (v === 'nflask') renderNflAsk();
     else if (v === 'nflsim') renderNflSim();
@@ -12089,8 +12090,79 @@
 
   // ---- 1c) JUGADORES: directorio por posición ------------------------------------------------------------
   var NFL_POS = [['all', 'Todos'], ['qb', 'QB'], ['rb', 'RB'], ['wr', 'WR'], ['te', 'TE']];
+  // ── PLANTILLAS DE COLLEGE Y CFL ─────────────────────────────────────────────────────────────────────
+  // Identidad, no medición: este motor puntúa EQUIPOS. La ficha da nombre, dorsal, posición, físico,
+  // procedencia y cara — y el rating del equipo al que pertenece, diciendo que es del equipo. Inventar un
+  // número por jugador donde no hay base por jugador sería exactamente lo que la casa no hace.
+  function amfFace(p, cls) {
+    var nm = p.name || '?';
+    var ini = nm.split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase();
+    return '<span class="gx-amf-face' + (cls ? ' ' + cls : '') + '"' + (p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
+      (p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+      '<i>' + esc(ini) + '</i></span>';
+  }
+
+  function renderAmfPlayers() {
+    var lg = nflLg();
+    var q = (S.nfl.pQ || '').trim();
+    // nflGet ya añade `league=` cuando la liga no es NFL: aquí no se repite el parámetro
+    var d = nflGet('amfp_' + q, '/api/amfoot/players?limit=140' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
+    var head = '<div class="gx-ohead">' + esSearchBox('gx-nflpsearch', q, 'Buscar jugador o equipo…') + '<span class="gx-spacer"></span>' +
+      (d && d.available ? '<span class="gx-dim" style="font-size:11.5px">' + d.n + ' en ' + d.teams + ' equipos</span>' : '') + '</div>';
+    var bind = function () { esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderAmfPlayers); };
+    if (!d) { nflShell(t('sr_players'), head + nflLoading()); bind(); return; }
+    if (!d.available) {
+      nflShell(t('sr_players'), head + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>La plantilla de ' + esc(d.label || lg) + ' todavía no está cosechada.</b>' +
+        '<span class="gx-dim">' + esc(d.why || '') + '</span></div></div>');
+      bind(); return;
+    }
+    var rows = d.rows || [];
+    var body = rows.length ? '<div class="gx-esp-grid">' + rows.map(function (p) {
+      return '<div class="gx-panel gx-amf-pcard" data-amfplayer="' + esc(p.id) + '">' +
+        '<div class="gx-esp-top">' + amfFace(p) +
+          '<div class="gx-est-id"><b>' + esc(p.name || '—') + '</b>' +
+          '<span>' + esc([p.pos, p.jersey ? '#' + p.jersey : null, p.team].filter(Boolean).join(' · ')) + '</span></div></div>' +
+        '<div class="gx-est-meta"><span class="gx-dim">' + esc([p.ht, p.wt, p.year].filter(Boolean).join(' · ') || '—') + '</span>' +
+        (p.hometown ? '<span class="gx-dim">' + esc(p.hometown) + '</span>' : '') + '</div></div>';
+    }).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ningún jugador con ese nombre.</b></div></div>';
+    if (d.truncated) body += '<div class="gx-dim gx-es-trunc">' + d.truncated + ' más — afiná la búsqueda.</div>';
+    body += '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + ' Fuente: ' + esc(d.source || '') + '.</div>';
+    nflShell(t('sr_players'), head + body);
+    bind();
+  }
+
+  function renderAmfPlayer() {
+    var lg = nflLg(), id = S.nfl.amfPlayerId;
+    var d = nflGet('amfpl_' + id, '/api/amfoot/player?id=' + encodeURIComponent(id), 600000);
+    var back = '<a href="#" class="gx-back" data-amfback>' + ic('arrow-left') + ' ' + esc(t('sr_players')) + '</a>';
+    if (!d) { nflShell(t('sr_players'), back + nflLoading()); return; }
+    if (!d.available) { nflShell(t('sr_players'), back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || '') + '</b></div></div>'); return; }
+    var p = d.player, tm = d.team;
+    var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + amfFace(p, 'big') +
+      '<div class="gx-est-id"><b style="font-size:19px">' + esc(p.name || '') + '</b>' +
+      '<span class="gx-dim">' + esc([p.pos, p.jersey ? '#' + p.jersey : null].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<span class="gx-spacer"></span>' +
+      (tm && tm.rating != null ? '<div class="gx-est-elo"><b>' + tm.rating.toFixed(1) + '</b><span>rating del EQUIPO</span></div>' : '') + '</div>' +
+      '<div class="gx-ten-statgrid" style="margin-top:10px">' +
+      [['Equipo', p.team || '—'], ['Físico', [p.ht, p.wt].filter(Boolean).join(' · ') || '—'],
+       ['Año', p.year || '—'], ['Procedencia', p.hometown || '—']].map(function (x) {
+        return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b>' + esc(String(x[1])) + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + '</div></div>';
+    var mates = (d.mates || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Su plantilla</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + d.mates.length + ' compañeros</span></div>' +
+      '<div class="gx-amf-mates">' + d.mates.map(function (m) {
+        return '<div class="gx-amf-mate" data-amfplayer="' + esc(m.id) + '">' + amfFace(m) +
+          '<span><b>' + esc(m.name || '') + '</b><em>' + esc([m.pos, m.jersey ? '#' + m.jersey : null].filter(Boolean).join(' · ')) + '</em></span></div>';
+      }).join('') + '</div></div>' : '';
+    nflShell(t('sr_players'), back + hero + mates);
+  }
+
   function renderNflPlayers() {
-    if (nflLg() !== 'nfl') { nflShell(t('sr_players'), '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin base de jugador en esta liga todavía.</b><span class="gx-dim">El directorio de jugadores existe solo en NFL (nflverse). Para College el camino natural son los PPA de CFBD; se construye cuando la sombra de equipos aguante.</span></div></div>'); return; }
+    // COLLEGE Y CFL YA TIENEN PLANTILLA (19-ago): antes esto era un muro que decía "no hay base" y dejaba
+    // la pestaña muerta en dos de las tres ligas. Ahora cada liga va a SU directorio.
+    if (nflLg() !== 'nfl') return renderAmfPlayers();
     var pos = S.nfl.pPos || 'qb';
     var q = (S.nfl.pQ || '').trim();
     var d = nflGet('players_' + pos + '_' + q, '/api/nfl/players?pos=' + pos + '&limit=60' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
@@ -12638,6 +12710,10 @@
   }
 
   function nflClicks(e) {
+    var ap = e.target.closest('[data-amfplayer]');
+    if (ap) { S.nfl.amfPlayerId = ap.getAttribute('data-amfplayer'); showView('amfplayer'); return; }
+    var ab = e.target.closest('[data-amfback]');
+    if (ab) { e.preventDefault(); showView('nflplayers'); return; }
     var nsug = e.target.closest('[data-nflasksug]'); if (nsug) { nflAskGo(nsug.getAttribute('data-nflasksug')); return; }
     if (e.target.closest('[data-nflask]')) { var qn = $('#gx-nfl-q'); if (qn) nflAskGo(qn.value); return; }
     if (e.target.closest('[data-nflsimgo]')) {

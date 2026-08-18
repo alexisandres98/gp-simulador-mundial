@@ -3588,3 +3588,18 @@ td .gx-calc-btn span { display: none; }
 .gx-ten-profk{text-align:right}
 .gx-ten-profk em{display:block;font-style:normal;font-size:14px;font-weight:700}
 .gx-ten-profk span{font-size:9px;opacity:.5}
+
+/* plantillas de College y CFL */
+.gx-amf-face{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  flex:0 0 34px;border-radius:50%;overflow:hidden;background:#1a1d21;border:1px solid rgba(255,255,255,.12)}
+.gx-amf-face img{width:100%;height:100%;object-fit:cover;object-position:center top;position:absolute;inset:0}
+.gx-amf-face i{font-size:10px;font-weight:700;font-style:normal;opacity:.8}
+.gx-amf-face.big{width:58px;height:58px;flex:0 0 58px}
+.gx-amf-face.big i{font-size:15px}
+.gx-amf-pcard{cursor:pointer;transition:transform .1s}
+.gx-amf-pcard:hover{transform:translateY(-1px)}
+.gx-amf-mates{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+@media (max-width:430px){.gx-amf-mates{grid-template-columns:1fr}}
+.gx-amf-mate{display:flex;align-items:center;gap:7px;cursor:pointer;padding:4px 0}
+.gx-amf-mate b{display:block;font-size:11.5px}
+.gx-amf-mate em{font-style:normal;font-size:10px;opacity:.55}

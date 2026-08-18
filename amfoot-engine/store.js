@@ -595,6 +595,67 @@ async function gameIntel(lg, id) {
   };
 }
 
+// ── JUGADORES (19-ago) ──────────────────────────────────────────────────────────────────────────────────
+// La pestaña de Jugadores es compartida con la NFL y al cambiar a College o CFL se quedaba vacía: este
+// motor nunca tuvo capa de jugadores. La plantilla la cosecha `scripts/amfoot-rosters.js` desde ESPN
+// (nombre, dorsal, posición, altura, peso, año, procedencia y headshot auto-hospedado) y aquí solo se
+// sirve. Se dice SIEMPRE lo que es: una plantilla con identidad, no una medición por jugador — este modelo
+// puntúa equipos, no jugadores, y fingir lo contrario sería inventarse un número.
+const RST = {};
+function rosterOf(lg) {
+  if (RST[lg] !== undefined) return RST[lg];
+  let j = null;
+  for (const dir of [DISK_DIR, REPO_DIR]) {
+    try { j = JSON.parse(fs.readFileSync(path.join(dir, `roster-${lg}.json`), 'utf8')); break; } catch { }
+  }
+  RST[lg] = j;
+  return j;
+}
+const normName = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+function playersDirectory(lg, { q = '', team = '', limit = 120 } = {}) {
+  const R = rosterOf(lg);
+  const C = LEAGUES[lg];
+  if (!R || !R.players) {
+    return { available: false, league: lg, label: C && C.label,
+      why: 'la plantilla de esta liga todavía no está cosechada (corre en Render: ESPN bloquea la IP de desarrollo).' };
+  }
+  const nq = normName(q), nt = normName(team);
+  const rows = Object.values(R.players).filter((p) => {
+    if (nq && !normName(p.name).includes(nq)) return false;
+    if (nt && !normName(p.team).includes(nt)) return false;
+    return true;
+  });
+  rows.sort((a, b) => normName(a.team).localeCompare(normName(b.team)) || (+(a.jersey || 999) - +(b.jersey || 999)));
+  return {
+    available: true, league: lg, label: C && C.label,
+    n: Object.keys(R.players).length, teams: Object.keys(R.teams || {}).length,
+    rows: rows.slice(0, limit).map((p) => ({ ...p, photo: p.photo ? `/logos/amfoot/${lg}/${p.photo}` : null })),
+    truncated: Math.max(0, rows.length - limit),
+    at: R.at, source: R.source,
+    note: 'plantilla e identidad; este modelo puntúa EQUIPOS, no jugadores — no hay rating individual y no se inventa.',
+  };
+}
+
+function playerProfile(lg, id) {
+  const R = rosterOf(lg);
+  if (!R || !R.players || !R.players[id]) return { available: false, why: 'ese jugador no está en la plantilla cosechada' };
+  const p = R.players[id];
+  const mates = Object.values(R.players).filter((x) => x.team_id === p.team_id && x.id !== p.id)
+    .sort((a, b) => (+(a.jersey || 999) - +(b.jersey || 999)))
+    .slice(0, 60)
+    .map((x) => ({ id: x.id, name: x.name, pos: x.pos, jersey: x.jersey, photo: x.photo ? `/logos/amfoot/${lg}/${x.photo}` : null }));
+  // el equipo SÍ está medido, así que la ficha del jugador enseña el rating de SU equipo y dice que es eso
+  let team = null;
+  try { team = teamsDirectory(lg).rows.find((t) => normName(t.name) === normName(p.team)) || null; } catch { }
+  return {
+    available: true, league: lg, label: (LEAGUES[lg] || {}).label,
+    player: { ...p, photo: p.photo ? `/logos/amfoot/${lg}/${p.photo}` : null },
+    team, mates, at: R.at, source: R.source,
+    note: 'lo medido aquí es el EQUIPO. La ficha da identidad de jugador y el rating del equipo al que pertenece; un rating individual exigiría una base por jugador que este modelo no tiene.',
+  };
+}
+
 function teamsDirectory(lg) {
   const C = LEAGUES[lg];
   const M = modelSnapshot(lg);
@@ -688,5 +749,5 @@ function simMatch(lg, homeRef, awayRef, { neutral = false } = {}) {
     at: new Date().toISOString() };
 }
 
-module.exports = { LEAGUES, load, modelSnapshot, gameModel, refreshOdds, refreshResults, marketFor,
+module.exports = { playersDirectory, playerProfile, LEAGUES, load, modelSnapshot, gameModel, refreshOdds, refreshResults, marketFor,
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, recordShadow, settleShadow, track, DISK_DIR, simMatch };

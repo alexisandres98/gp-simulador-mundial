@@ -1,5 +1,38 @@
 # HANDOFF — estado al 17-ago-2026 (NFL: 6º deporte + catálogo CS2 completo + ops automáticas)
 
+## 🎮 18-ago (tarde) — LoL COMPLETO EN CÓDIGO, LA COSECHA MOLIENDO EN RENDER
+
+**En producción: `75265e6`.** El blueprint 3.0 de LoL (docx de Alexis) construido de punta a punta y
+**probado con datos sintéticos en el formato exacto de la cosecha** (generador en scratchpad; los
+sintéticos NO se versionan, se borraron). Lo único que falta es la BASE REAL, que se está cosechando
+sola en Render. El punto de retoma exacto:
+
+1. **Cosecha (Fase 1) — cadena paciente en Render, `/data/lol-raw` (persistente).** La 1ª pasada enseñó
+   que Fandom limita también la IP de Render (cubo: ~6 páginas y ~10 min de bloqueo) y el script se
+   rendía dando tablas por terminadas con 0 filas — PEOR que fallar. Corregido: espera las ventanas
+   (hasta ~2 h por llamada), escritura atómica, y el server reencadena pasadas cada 20 min hasta que
+   `state.json` diga `complete` (`lolHarvestJob`). Avance visible en
+   `/api/internal/lolraw?key=$GP_EXPORT_KEY` (games.json creciendo desde las 10:51). Con el ritmo
+   medido, games (~160 páginas) tarda horas y players 2023→ (~700 páginas) un día-plus. **Cuando
+   state.json esté completo: bajar los tres archivos por lolraw (gzip), correr `lol-aggregate.js` +
+   `lol-validate.js`, commitear la base compacta + priors, y APAGAR GP_LOL_HARVEST en Render.**
+   Plan B si no converge: Oracle's Elixir (Drive con cuota agotada el 18; reintentar; IDs en scratchpad).
+2. **Todo lo demás YA ESTÁ desplegado y probado** (`129f249` + `a4ec5ad` + `75265e6`): `lol-data.js`
+   (contrato cs2-data + championsBoard + draftIntel + tempoFor medido por liga), store integrado (Elo
+   propio anclado a mercado con peso por muestra, `draft_room` en analyzeMatch, h2h, ratings_state por
+   juego), vista **Campeones** (en el hueco de El circuito para LoL), **Draft Room V1** en la partida,
+   **Equipos/Ranking/Jugadores/ficha de jugador** propios de LoL (KP/KDA/CSPM por rol), atribución
+   CC BY-SA donde se enseña el dato. Con la carpeta `data/esports/lol/` vacía todo degrada honesto
+   (available:false) — ese es el estado de prod hasta que la base real se commitee.
+3. **Bug de identidad cazado por el smoke-test:** `resolveTeam` resolvía academias al primer equipo
+   ("Nongshim RedForce Challengers" → quinteto de Nongshim RedForce). Ahora un prefijo compartido solo
+   es variante si lo que sobra es palabra de organización; los marcadores de segundo equipo
+   (challengers/academy/GC/2/B…) NO resuelven. Mejor sin ficha que con la ficha de otro.
+4. **Derechos (Fase 0):** `data/esports/lol/RIGHTS.md` — Leaguepedia es CC BY-SA
+   (research_attribution_ccbysa, NO betting_commercial_ok): LoL sigue admin-only, familias en sombra,
+   probabilidad pública anclada a mercado; la base propia afina peso y alimenta catálogo/draft. La
+   política de Riot PROHÍBE apuestas → nada de Riot API ni assets de campeones (texto-first).
+
 ## 🏈 18-ago — FÚTBOL AMERICANO COMPLETO: la pestaña NFL ahora es NFL · College · CFL
 
 **Desplegado y verificado en prod (`cfca83a`).** El encargo de Alexis: extender la inteligencia de NFL a

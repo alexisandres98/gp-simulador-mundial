@@ -36,6 +36,11 @@ data/esports/*
 # compactos que sí se versionan. series.json (índice liviano, es la base del Elo) SÍ se versiona.
 data/esports/valorant/maps.json
 data/esports/valorant/players-raw.json
+# el estado plano de la cosecha de LoL (16 MB, cursor reanudable): lo que se versiona es el .gz que lee
+# el motor. Se siembra desde el .gz cuando hay que rellenar campos y se vuelve a comprimir al terminar.
+data/esports/lol/games.json
+data/esports/lol/drafts.json
+data/esports/lol/players.json
 !data/esports/dota2/
 # el crudo del Explorer de OpenDota (drafts ~1M filas, scoreboard ~500k) tampoco: se agrega compacto
 data/esports/dota2/drafts.json

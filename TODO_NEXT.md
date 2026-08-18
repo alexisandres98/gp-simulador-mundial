@@ -1,5 +1,16 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🏈 FÚTBOL AMERICANO (18-ago): lo que queda tras el build
+1. **Vigilar la primera semana de sombra CFL** (juega 20-23 ago): picks TOTAL under con edges 8-19pp —
+   o el mercado está blando o el total del modelo se queda corto tras el cambio de reglas 2026. El CLV
+   de esas picks lo dirá ANTES que el acierto. No subir el listón ni tocar la base hasta tener 2 semanas.
+2. College arranca el 29-ago: la cadena registra sola desde ~20-ago (ventana 9 días). Semana 1 con
+   incertidumbre máxima por diseño (NFL-0032 aplicado a college).
+3. Mejorables declarados: cierres CFL 2025/2026 incompletos (60/85 y 19/42 — fechas con huso cruzado en
+   el matcher histórico), ADN por dimensión de college (PPA de CFBD, gasta llamadas), abreviaturas CFBD
+   a veces largas. Ninguno bloquea la sombra.
+4. La cosecha CFBD incremental (resultados 2026) la hace el propio server cada 6 h con 1 llamada.
+
 ## ⏭️ LO PRIMERO DE LA PRÓXIMA SESIÓN (17-ago noche)
 1. **Mirar con Alexis las lentes de fútbol** (rama `claude/gpsim-continuation-vrjuww`, commit `650c56e`) y,
    si convencen, empujar ese SHA a main. Si no, revertir es borrar un commit: nada más de la rama depende

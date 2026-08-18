@@ -5,7 +5,10 @@
 
 ## Registro de fuentes
 
-### 1. Jeff Sackmann — tennis_atp / tennis_wta (GitHub)
+### 1. Base Sackmann vía espejo archivístico (Aneeshers/tennis-sackmann-archive)
+> Los repos originales `JeffSackmann/tennis_atp` y `tennis_wta` fueron retirados de GitHub
+> (comprobado 18-ago-2026). El espejo archivístico conserva la instantánea de los commits
+> upstream de jun-2026 bajo la MISMA licencia; la atribución sigue siendo a Jeff Sackmann.
 - **Qué da:** historial de partidos ATP y WTA (fecha, torneo, superficie, nivel, ronda, formato,
   jugadores con mano/altura/edad/ranking, marcador, y las estadísticas de saque por jugador:
   aces, dobles faltas, puntos de saque, primeros adentro, ganados con primero/segundo, juegos

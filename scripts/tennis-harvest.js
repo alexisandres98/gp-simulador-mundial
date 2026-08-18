@@ -23,10 +23,14 @@ const YEARS = []; for (let y = 2015; y <= 2026; y++) YEARS.push(y);
 const CUR_YEAR = new Date().getUTCFullYear();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Los repos originales de Sackmann (tennis_atp/tennis_wta) fueron RETIRADOS de GitHub (comprobado
+// 18-ago-2026). La fuente es el espejo archivístico Aneeshers/tennis-sackmann-archive (misma licencia
+// CC BY-NC-SA 4.0, instantánea de los commits upstream de jun-2026, carpetas atp/ y wta/).
+const MIRROR = 'Aneeshers/tennis-sackmann-archive';
 const FILES = [];
 for (const tour of ['atp', 'wta']) {
-  for (const y of YEARS) FILES.push({ repo: `tennis_${tour}`, file: `${tour}_matches_${y}.csv`, optional: y >= CUR_YEAR });
-  FILES.push({ repo: `tennis_${tour}`, file: `${tour}_players.csv`, optional: false });
+  for (const y of YEARS) FILES.push({ dir: tour, file: `${tour}_matches_${y}.csv`, optional: y >= CUR_YEAR - 1 });
+  FILES.push({ dir: tour, file: `${tour}_players.csv`, optional: false });
 }
 
 function wr(file, body) {
@@ -58,8 +62,8 @@ async function get(url) {
     const yearMatch = f.file.match(/_(\d{4})\.csv$/);
     const isCurrent = yearMatch && +yearMatch[1] >= CUR_YEAR;
     if (!FORCE && !isCurrent && fs.existsSync(dest) && fs.statSync(dest).size > 500) { got.push(f.file); continue; }
-    const url = `https://raw.githubusercontent.com/JeffSackmann/${f.repo}/master/${f.file}`;
-    const body = await get(url);
+    let body = await get(`https://raw.githubusercontent.com/${MIRROR}/main/${f.dir}/${f.file}`);
+    if (body == null) body = await get(`https://raw.githubusercontent.com/${MIRROR}/master/${f.dir}/${f.file}`);
     if (body == null || body.length < 200) {
       if (!f.optional) throw new Error(`falta ${f.file} (no opcional)`); // sale ≠0 → la cadena reintenta
       console.log(`[tenis] ${f.file}: aún no existe en la fuente (opcional)`);

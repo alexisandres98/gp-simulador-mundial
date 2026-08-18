@@ -309,18 +309,25 @@ async function boxingBackfillJob() {
     opsLog('boxing_backfill_done', { code: out.code != null ? out.code : out.error });
   } catch (e) { opsLog('boxing_backfill', { error: e.message }); }
 }
-// LoL (18-ago, blueprint 3.0 Fase 1): la cosecha de Leaguepedia corre en Render por la misma razón que
-// el backfill de boxeo — la IP del sandbox está limitada por Fandom (429 inmediato, verificado) y la de
-// Render no. GP_LOL_HARVEST=1 la corre UNA vez por boot, lenta (1 req/3,5 s) y reanudable; el resultado
-// (data/esports/lol/) se recoge por /api/internal/lolraw y se versiona. Apagar el flag después.
+// LoL (18-ago, blueprint 3.0 Fase 1): la cosecha de Leaguepedia corre en Render porque la IP del sandbox
+// está limitada por Fandom (429 inmediato, verificado). La primera pasada (08:58) enseñó que la de Render
+// TAMBIÉN está limitada, solo que con un cubo: un puñado de páginas y ~10 min de bloqueo. Así que esto no
+// es "una pasada": es una CADENA — cada pasada espera las ventanas del límite, avanza lo que el cubo dé,
+// escribe en /data/lol-raw (disco persistente: los deploys no la borran) y, si el proceso sale sin haber
+// terminado las tres tablas (state.json), la siguiente pasada se programa sola a los 20 min. La cosecha
+// converge en horas o días; /api/internal/lolraw enseña el avance. Apagar GP_LOL_HARVEST al terminar.
 async function lolHarvestJob() {
   try {
     if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_LOL_HARVEST || '').trim())) return;
-    if (db.ops.lol_harvest_boot === BOOT_ID) return;
-    db.ops.lol_harvest_boot = BOOT_ID;
+    const dir = process.env.GP_LOL_DIR || (fs.existsSync('/data') ? '/data/lol-raw' : path.join(__dirname, 'data', 'esports', 'lol'));
+    try {
+      const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+      if (st && st.complete) { opsLog('lol_harvest_done', { complete: true, at: st.at }); return; }
+    } catch { }
     const out = await opsSpawn('lol_harvest', ['scripts/lol-harvest.js', '--sleep=3500'], { heapMb: 220, timeoutMin: 150 });
-    opsLog('lol_harvest_done', { code: out.code != null ? out.code : out.error });
-  } catch (e) { opsLog('lol_harvest', { error: e.message }); }
+    opsLog('lol_harvest_pass', { code: out.code != null ? out.code : out.error });
+    setTimeout(lolHarvestJob, 20 * 60e3);
+  } catch (e) { opsLog('lol_harvest', { error: e.message }); setTimeout(lolHarvestJob, 30 * 60e3); }
 }
 setTimeout(lolHarvestJob, 6 * 60e3);
 const BOOT_ID = Date.now();
@@ -15450,6 +15457,10 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/esports/ranking') {
           return json(res, 200, ES.rankingBoard(gm));
         }
+        if (p === '/api/esports/champions') {
+          // meta de campeones del parche vigente (LoL, blueprint Fase 4); ?role=Top|Jungle|Mid|Bot|Support
+          return json(res, 200, ES.championsBoard(gm, { role: url.searchParams.get('role') || null }));
+        }
         if (p === '/api/esports/circuit') {
           return json(res, 200, ES.circuit(gm));
         }
@@ -15672,9 +15683,10 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/lolraw') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      const OKL = ['games.json', 'players.json', 'drafts.json'];
+      const OKL = ['games.json', 'players.json', 'drafts.json', 'state.json'];
       const fL = String(url.searchParams.get('file') || '');
-      const dirL = path.join(__dirname, 'data', 'esports', 'lol');
+      // el mismo directorio que usa el harvest: disco persistente en prod, repo en local
+      const dirL = process.env.GP_LOL_DIR || (fs.existsSync('/data') ? '/data/lol-raw' : path.join(__dirname, 'data', 'esports', 'lol'));
       if (!fL) {
         const files = OKL.map(x => { let st2 = null; try { st2 = fs.statSync(path.join(dirL, x)); } catch { }
           return { file: x, bytes: st2 ? st2.size : null, mtime: st2 ? st2.mtime : null }; });

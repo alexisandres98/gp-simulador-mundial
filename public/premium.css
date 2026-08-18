@@ -3229,6 +3229,39 @@ td .gx-calc-btn span { display: none; }
 .gx-es-fpr b { font-size: 12px; color: var(--gx-text); text-align: right; }
 .gx-es-fpd { grid-column: 2 / 4; font-size: 10px; margin-top: -3px; }
 
+/* ── CAMPEONES de LoL (18-ago, blueprint 3.0 Fase 4) — texto-first: sin arte de Riot (LOL-0043) ────────── */
+.gx-lolrole-tabs { margin: 2px 0 10px; }
+.gx-lolpres { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.gx-lolpres-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--gx-panel3); overflow: hidden; min-width: 56px; }
+.gx-lolpres-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gx-accent2), var(--gx-accent)); }
+.gx-lolpres b { font-size: 12px; }
+
+/* ── DRAFT ROOM V1 (LoL, 18-ago) — dos quintetos frente a frente, texto-first ──────────────────────────── */
+.gx-dr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .gx-dr-grid { grid-template-columns: 1fr; } }
+.gx-dr-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gx-dr-team { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--gx-line); }
+.gx-dr-team > b { font-size: 13.5px; }
+.gx-dr-frag { font-size: 11px; color: var(--gx-text3); white-space: nowrap; }
+.gx-dr-frag b { font-size: 11.5px; }
+.gx-dr-player { display: flex; flex-direction: column; gap: 3px; }
+.gx-dr-pid { display: flex; align-items: baseline; gap: 7px; }
+.gx-dr-pid b { font-size: 12.5px; }
+.gx-dr-pid span { font-size: 10.5px; }
+.gx-dr-pool { display: flex; flex-wrap: wrap; gap: 5px; }
+.gx-dr-ch { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
+  background: var(--gx-panel3); border: 1px solid var(--gx-line); font-size: 11px; font-weight: 600; color: var(--gx-text2); }
+.gx-dr-ch i { font-style: normal; font-size: 10px; color: var(--gx-text3); font-family: var(--gx-mono-f, monospace); }
+.gx-dr-ch.flex { border-color: var(--gx-accent2); }
+.gx-dr-metarow { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gx-line); }
+.gx-dr-metarow .gx-label { width: 100%; }
+.gx-dr-meta { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
+  background: var(--gx-panel3); border: 1px solid var(--gx-line); font-size: 11px; }
+.gx-dr-meta b { font-weight: 600; }
+.gx-dr-meta span { font-size: 10px; }
+.gx-dr-meta i { font-style: normal; font-size: 10px; color: var(--gx-text3); }
+.gx-dr-meta em { font-style: normal; font-size: 9px; }
+
 /* ── Lentes contextuales del panel de partida CS2 (17-ago, blueprint de feedback) ──────────────────────── */
 .gx-es-lens { margin: 2px 0 12px; position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px); }
 .gx-es-lens button { flex: 1; }

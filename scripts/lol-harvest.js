@@ -34,32 +34,51 @@
 const fs = require('fs');
 const path = require('path');
 
-const DIR = path.join(__dirname, '..', 'data', 'esports', 'lol');
+// En Render el checkout (/opt/render/project/src) se BORRA en cada deploy: la cosecha dura horas y tiene
+// que sobrevivirlos, así que en producción vive en el disco persistente (/data, el mismo de db.json).
+const DIR = process.env.GP_LOL_DIR || (fs.existsSync('/data') ? '/data/lol-raw' : path.join(__dirname, '..', 'data', 'esports', 'lol'));
 const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=`)); return h ? h.split('=')[1] : d; };
 const ONLY = arg('only', '');
 const SLEEP = +arg('sleep', 3500);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const UA = 'GP-Simulador/1.0 (codigo@gpsimulador.com; cosecha lenta 1req/3.5s, contacto en el UA)';
+const UA = 'GP-Simulador/1.0 (codigo@gpsimulador.com; cosecha lenta y reanudable, contacto en el UA)';
 
+// LECCIÓN DE LA PRIMERA PASADA (18-ago, 08:58): el límite de Fandom para IPs anónimas es un cubo — deja
+// pasar un puñado de páginas y bloquea ~10 minutos. Rendirse tras 6 reintentos daba la tabla por terminada
+// con 0 filas, que es PEOR que fallar: contamina el estado con un "LISTO" falso. Ahora el ratelimit se
+// ESPERA (la ventana entera, las veces que haga falta dentro de un tope de ~2 h por llamada) y si aún así
+// no pasa, se LANZA error: el job sale con código ≠ 0 y la siguiente pasada reanuda desde el cursor.
 let calls = 0;
 async function cargo(params) {
   const qs = new URLSearchParams({ action: 'cargoquery', format: 'json', limit: '500', ...params });
   const url = 'https://lol.fandom.com/api.php?' + qs.toString();
-  for (let i = 0; i < 6; i++) {
+  let netTries = 0;
+  for (let i = 0; i < 14; i++) {
     calls++;
     try {
       const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(40000) });
       const j = await r.json();
-      if (j.error && j.error.code === 'ratelimited') { console.log(`[lol] ratelimited, espero ${30 * (i + 1)}s…`); await sleep(30000 * (i + 1)); continue; }
+      if (j.error && j.error.code === 'ratelimited') {
+        const wait = i === 0 ? 90e3 : 600e3;   // primero corto por si fue el final del cubo; después la ventana entera
+        console.log(`[lol] ratelimited (${i + 1}/14), espero ${Math.round(wait / 1000)}s…`);
+        await sleep(wait); continue;
+      }
       if (j.error) throw new Error(j.error.info || j.error.code);
       return (j.cargoquery || []).map((x) => x.title);
-    } catch (e) { if (i === 5) throw e; await sleep(8000 * (i + 1)); }
+    } catch (e) { if (++netTries >= 6) throw e; await sleep(8000 * netTries); }
   }
-  return [];
+  throw new Error('ratelimited persistente: ~2h esperando sin ventana. Se reanuda en la próxima pasada.');
 }
 
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
-const wr = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(path.join(DIR, f), JSON.stringify(o)); };
+// escritura atómica (tmp + rename): el job corre con timeout y un SIGKILL a mitad de un writeFileSync
+// directo dejaría el archivo corrupto y la reanudación muerta.
+const wr = (f, o) => {
+  fs.mkdirSync(DIR, { recursive: true });
+  const p = path.join(DIR, f);
+  fs.writeFileSync(p + '.tmp', JSON.stringify(o));
+  fs.renameSync(p + '.tmp', p);
+};
 
 // paginación por fecha ASC (offset grande en Cargo es lento y frágil): se avanza con el último timestamp
 // visto y se funde por clave única — reanudable por construcción.
@@ -166,6 +185,9 @@ async function main() {
       }),
     });
   }
+  // llegar aquí significa que las TRES tablas terminaron de verdad (el ratelimit ya no "termina" tablas:
+  // lanza error y el proceso sale ≠ 0). El marcador le dice al server que deje de reencadenar pasadas.
+  wr('state.json', { complete: true, at: new Date().toISOString(), calls });
   console.log(`[lol] COSECHA COMPLETA · ${calls} llamadas totales`);
 }
 

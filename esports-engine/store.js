@@ -126,12 +126,12 @@ async function overview({ days = 5 } = {}) {
     doctrine: PICK_DOCTRINE,
     // el cuadro de rating en cero tiene que venir con su motivo, o se lee como un fallo del sistema
     ratings_state: {
-      // CS2 sí tiene rating propio desde el 16-ago, y no viene de ninguna casa: sale de la cosecha histórica
-      // de GP (48.678 mapas). Los otros tres juegos siguen sin él, y mezclar las dos situaciones en una sola
-      // frase era mentir sobre la mitad del producto.
-      own_rating: 'cs2',
+      // CS2 tiene rating propio desde el 16-ago (cosecha histórica de GP, 48.678 mapas) y LoL desde el
+      // 18-ago (base Leaguepedia 2020→, Elo con lado y parche validado walk-forward) — se declara por
+      // juego según qué base cargó de verdad, no por una lista escrita a mano.
+      own_rating: ['cs2', 'lol'].filter((g2) => !!cdOf(g2)).join('+') || 'ninguno',
       why: BK.RESULTS_UNAVAILABLE.why,
-      consequence: 'en CS2 la fuerza sale de la base propia (modelo jerárquico calibrado, validado fuera de muestra). En LoL, Valorant y Dota 2 el ganador sigue siendo el consenso del mercado sin margen con 0 % de peso propio; la estructura derivada —rondas, duración y kills— es del modelo y no depende del rating.',
+      consequence: 'en CS2 la fuerza sale de la base propia (modelo jerárquico calibrado, validado fuera de muestra) y en LoL el Elo propio con lado y parche entra anclado a mercado con peso creciente por muestra. En Valorant y Dota 2 el ganador sigue siendo el consenso del mercado sin margen con 0 % de peso propio; la estructura derivada —rondas, duración y kills— es del modelo y no depende del rating.',
       next: BK.RESULTS_UNAVAILABLE.next,
     },
     // LAS CASAS, con su papel. No es adorno: es lo que explica por qué desde hoy pueden salir picks donde
@@ -278,6 +278,21 @@ function boOf(mk, fallback, ev = null) {
   return fallback;
 }
 
+// LoL (18-ago): cuando la base propia resuelve a los DOS equipos, su Elo (historial completo 2020→, lado
+// azul y recencia por parche, constantes validadas walk-forward) sustituye al Elo de resultados liquidados
+// (~30 partidas), y el tempo MEDIDO de la liga sustituye al perfil de circuito asumido. Si no resuelve,
+// todo cae al camino anterior sin romperse — el ancla de mercado absorbe la diferencia.
+function lolOwnInput(ev, competition) {
+  try {
+    const LD = require('./lol-data');
+    const r = LD.ratingsFor(ev.home.name, ev.away.name);
+    if (!r || r.elo_a == null || r.elo_b == null) return null;
+    const t = LD.tempoFor(competition);
+    return { ratings: { elo_a: r.elo_a, elo_b: r.elo_b }, sample: Math.min(r.matches_a, r.matches_b),
+      observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null, own: true };
+  } catch { return null; }
+}
+
 async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const E = ENGINES[game];
   if (!E) return null;
@@ -289,14 +304,20 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const bo = boOf(mk, E.GAME.default_bo, ev);
   const rt = ratings(game);
   const a = ev.home.id, b = ev.away.id;
-  const sample = Math.min(rt.matches[a] || 0, rt.matches[b] || 0);
+  const own = game === 'lol' ? lolOwnInput(ev, ev.competition) : null;
+  const sample = own ? own.sample : Math.min(rt.matches[a] || 0, rt.matches[b] || 0);
   const model = E.analyze({
     market: mk,
-    ratings: { elo_a: rt.elo[a], elo_b: rt.elo[b] },
+    ratings: own ? own.ratings : { elo_a: rt.elo[a], elo_b: rt.elo[b] },
     // los NOMBRES van al motor: CS2 los resuelve contra su propio histórico para sacar la fuerza por mapa
     teams: { a: ev.home.name, b: ev.away.name },
     bo, sample, competition: ev.competition,
+    observedTempo: own ? own.observedTempo : null,
   });
+  // el Draft Room del cruce (solo LoL): pools medidos, comfort, fragilidad y meta del parche
+  if (game === 'lol' && model) {
+    try { model.draft_room = require('./lol-data').draftIntel(ev.home.name, ev.away.name); } catch { }
+  }
   const edges = evaluateAll({ game, model, mk, ev, bo, sample });
   // LO QUE SOLO SE VE CON VARIAS CASAS, y va aparte de las picks a propósito: el arbitraje NO pasa por el
   // modelo, así que no hereda su riesgo. Si el modelo estuviera entero equivocado, esta sección seguiría
@@ -305,7 +326,9 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
   const arbs = BK.arbitrages((mk && mk.markets) || []);
   return {
     event: ev, bo, sample,
-    rating: { a: C.r2(rt.elo[a] || null), b: C.r2(rt.elo[b] || null), matches_a: rt.matches[a] || 0, matches_b: rt.matches[b] || 0 },
+    rating: own
+      ? { a: own.ratings.elo_a, b: own.ratings.elo_b, matches_a: own.sample, matches_b: own.sample, source: 'base propia (Leaguepedia, walk-forward validado)' }
+      : { a: C.r2(rt.elo[a] || null), b: C.r2(rt.elo[b] || null), matches_a: rt.matches[a] || 0, matches_b: rt.matches[b] || 0 },
     model,
     market_raw: mk ? { markets: mk.markets, at: mk.at } : null,
     books: mk ? { n: mk.books, by_book: mk.by_book, sources: ev.sources } : null,
@@ -317,7 +340,7 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     edges,
     // el historial directo entre los dos, si la base lo tiene (solo CS2). Contexto, no señal: el modelo ya
     // pondera el pasado como corresponde; esto es para que quien mira entienda de dónde viene el cruce.
-    h2h: game === 'cs2' ? h2h(game, ev.home.name, ev.away.name) : null,
+    h2h: (game === 'cs2' || game === 'lol') ? h2h(game, ev.home.name, ev.away.name) : null,
     provenance: C.provenance([
       { source: `Agenda de ${(ev.sources || []).map((x) => x.book).join(' + ') || 'las casas'}`, kind: 'proveedor', at: (s && s.at) || null },
       mk ? { source: `Mercados de ${(mk.by_book || []).filter((b) => b.rows).map((b) => b.book).join(' + ')}`, kind: 'proveedor', at: mk.at } : null,
@@ -866,11 +889,13 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     const mk = mkts.get(ev.id) || null;
     const bo = boOf(mk, E.GAME.default_bo, ev);
     const rt = ratings(game);
-    const sample = Math.min(rt.matches[ev.home.id] || 0, rt.matches[ev.away.id] || 0);
+    const ownB = game === 'lol' ? lolOwnInput(ev, ev.competition) : null;
+    const sample = ownB ? ownB.sample : Math.min(rt.matches[ev.home.id] || 0, rt.matches[ev.away.id] || 0);
     let model = null;
     try {
-      model = E.analyze({ market: mk, ratings: { elo_a: rt.elo[ev.home.id], elo_b: rt.elo[ev.away.id] },
-        teams: { a: ev.home.name, b: ev.away.name }, bo, sample, competition: ev.competition });
+      model = E.analyze({ market: mk, ratings: ownB ? ownB.ratings : { elo_a: rt.elo[ev.home.id], elo_b: rt.elo[ev.away.id] },
+        teams: { a: ev.home.name, b: ev.away.name }, bo, sample, competition: ev.competition,
+        observedTempo: ownB ? ownB.observedTempo : null });
     } catch { model = null; }
     const edges = model ? evaluateAll({ game, model, mk, ev, bo, sample }) : null;
     const arbs = mk ? BK.arbitrages(mk.markets || []) : [];
@@ -1371,7 +1396,13 @@ function marketEvidence(game) {
 // un jugador es del proveedor y se dice; el Elo de un equipo es de GP y también.
 const CATALOG_WHY = 'solo CS2 tiene base propia (88.000+ mapas cosechados y validados); para el resto de juegos no hay fuente de resultados todavía.';
 const noCatalog = (game) => ({ game, available: false, why: CATALOG_WHY });
-const cdOf = (game) => { if (game !== 'cs2') return null; try { return require('./cs2-data'); } catch { return null; } };
+const cdOf = (game) => {
+  // el catálogo por juego: CS2 desde el 16-ago; LoL desde el 18-ago (base Leaguepedia, ver RIGHTS.md).
+  // El contrato es el mismo (load/norm/resolveTeam/teamCard/rankingMovement) y cada juego pone su semántica.
+  if (game === 'cs2') { try { return require('./cs2-data'); } catch { return null; } }
+  if (game === 'lol') { try { const LD = require('./lol-data'); return LD.load().available ? LD : null; } catch { return null; } }
+  return null;
+};
 const scoreDesc = (s) => {
   // el marcador de una serie guardada viaja en el orden de origen; para enseñarlo junto al GANADOR se
   // normaliza ganador-primero (en una serie el ganador siempre tiene más mapas, así que basta ordenar).
@@ -1569,6 +1600,21 @@ function rankingBoard(game) {
   };
 }
 
+function championsBoard(game, { role = null } = {}) {
+  // el meta de campeones del parche vigente — hoy solo LoL lo deriva de su base (blueprint Fase 4);
+  // el contrato queda abierto para que otro juego con "unidades" (héroes de Dota) lo implemente igual.
+  const CD = cdOf(game); if (!CD || typeof CD.championsBoard !== 'function') {
+    return { game, available: false, why: 'este juego no tiene tablero de campeones en la base propia.' };
+  }
+  const out = CD.championsBoard({ role });
+  if (!out || !out.available) return { game, available: false, why: 'los agregados de campeones no están cargados todavía.' };
+  return {
+    game, available: true, patch: out.patch, prev_patch: out.prev_patch, games_patch: out.games_patch,
+    role: role || null, rows: out.rows.slice(0, 60), note: out.note,
+    rights_note: 'Datos derivados de Leaguepedia (CC BY-SA).',
+  };
+}
+
 function circuit(game) {
   const CD = cdOf(game); if (!CD) return noCatalog(game);
   const data = CD.load();
@@ -1674,4 +1720,5 @@ module.exports = {
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne,
   teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h, playerProfile,
+  championsBoard,
 };

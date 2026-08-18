@@ -181,8 +181,11 @@ async function harvestDetails(seriesSt) {
     .filter((s) => s.at && s.at >= SINCE && !done.has(s.id))
     // walkovers y series sin marcador no tienen página útil
     .filter((s) => s.s1 != null && s.s2 != null && (s.s1 + s.s2) > 0)
-    .sort((a, b) => (a.at < b.at ? -1 : 1));
-  console.log(`[val] details: ${todo.length} series pendientes desde ${SINCE} (${done.size} ya en disco)`);
+    // LO RECIENTE PRIMERO (19-ago): la cosecha iba de 2024 hacia adelante y los agregados —que miran
+    // ventanas de 90/365 días— salían VACÍOS aunque hubiera miles de filas en disco. El producto necesita
+    // la temporada en curso; el histórico profundo llega después y solo mejora las muestras.
+    .sort((a, b) => (a.at > b.at ? -1 : 1));
+  console.log(`[val] details: ${todo.length} series pendientes desde ${SINCE}, LO RECIENTE PRIMERO (${done.size} ya en disco)`);
   let n = 0;
   for (const s of todo) {
     let det;

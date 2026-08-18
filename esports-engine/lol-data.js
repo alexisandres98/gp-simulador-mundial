@@ -40,6 +40,7 @@ function load() {
   const PS = rdf('player-stats.json') || { players: {} };
   const CH = rdf('champions.json') || { rows: [], bans: [], games_by_patch: {} };
   const META = rdf('meta.json') || {};
+  const AS = rdf('assets.json') || { teams: {}, players: {} };   // escudos y fotos auto-hospedados
   const games = Object.values(gamesRaw.rows).filter((g) => g.t1 && g.t2 && g.win && g.at).sort((a, b) => (a.at < b.at ? -1 : 1));
 
   // equipos + liga (primer segmento de OverviewPage: "LCK/2026 Season/…" → LCK)
@@ -57,6 +58,12 @@ function load() {
   for (const t of Object.values(teams)) {
     t.league = Object.entries(t._lg).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     delete t._lg;
+  }
+  // ESCUDO AUTO-HOSPEDADO (19-ago): el manifiesto lo escribe scripts/esports-assets.js. Sin entrada, el
+  // equipo cae al monograma tintado — nunca a un hueco.
+  for (const t of Object.values(teams)) {
+    const f = (AS.teams || {})[t.id];
+    if (f) t.logo = '/logos/es/lol/' + f;
   }
 
   // Elo walk-forward con las constantes VALIDADAS (priors.json) + lado azul + recencia por parche
@@ -180,7 +187,7 @@ function teamCard(id, { data = null } = {}) {
   const d = data || load();
   const t = d.teams[id] || { id, name: id };
   const g = d.teamGlobal[id] || {};
-  return { id, name: t.name, logo: null, country_id: null, rank: null,
+  return { id, name: t.name, logo: t.logo || null, country_id: null, rank: null,
     elo: g.elo != null ? g.elo : null, wr: g.wr != null ? g.wr : null, n: g.n || 0,
     maps: [],                                          // LoL no tiene mapas: el objeto del juego es el draft
     roster: d.rosters[id] || null };
@@ -299,5 +306,17 @@ function draftIntel(nameA, nameB) {
   };
 }
 
-module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, tempoFor,
+// ¿estructura propia MEDIDA para este par? (19-ago) Puerta de las familias de mapas: la fuerza del par
+// sale de 84k partidas con Elo validado walk-forward; sin muestra de los DOS equipos no se valora.
+function datasetFor(nameA, nameB) {
+  const d = load();
+  if (!d.available) return null;
+  const r = ratingsFor(nameA, nameB);
+  const pair = r ? Math.min(r.matches_a, r.matches_b) : 0;
+  return { available: !!r && pair >= 15, at: d.at, teams: Object.keys(d.teams || {}).length,
+    games: (d.games || []).length, pair_sample: pair, unit: 'partidas',
+    source: 'base propia de LoL (linaje Leaguepedia), validada walk-forward' };
+}
+
+module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, tempoFor, datasetFor,
   championsBoard, draftIntel, DIR, MODEL_VERSION: 'lol-elo-side-patch-1' };

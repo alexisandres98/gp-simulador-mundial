@@ -40,6 +40,7 @@ function load() {
   const MS = rdf('map-stats.json') || null;
   const CO = rdf('comps.json') || null;
   const META = rdf('meta.json') || {};
+  const AS = rdf('assets.json') || { teams: {}, players: {} };   // escudos y fotos auto-hospedados
   const series = Object.values(seriesRaw.rows)
     .filter((s) => s.t1 && s.t2 && s.at && s.s1 != null && s.s2 != null && (s.s1 + s.s2) > 0 && s.s1 !== s.s2)
     .sort((a, b) => (a.at + (a.time || '') < b.at + (b.time || '') ? -1 : 1));
@@ -58,6 +59,11 @@ function load() {
   for (const t of Object.values(teams)) {
     t.league = Object.entries(t._ev).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     delete t._ev;
+  }
+  // ESCUDO AUTO-HOSPEDADO (19-ago): manifiesto de scripts/esports-assets.js; sin entrada, monograma tintado.
+  for (const t of Object.values(teams)) {
+    const f = (AS.teams || {})[t.id];
+    if (f) t.logo = '/logos/es/valorant/' + f;
   }
 
   // Elo walk-forward con las constantes VALIDADAS (priors.json): margen de serie + óxido por inactividad
@@ -180,7 +186,7 @@ function teamCard(id, { data = null } = {}) {
     rounds_share: m.rounds_share,
     effect: m.wr != null ? +(((m.w + base * 6) / (m.n + 6)) - base).toFixed(3) : null }))
     .sort((a, b) => (b.effect ?? 0) - (a.effect ?? 0)) : [];
-  return { id, name: t.name, logo: null, country_id: null, rank: null,
+  return { id, name: t.name, logo: t.logo || null, country_id: null, rank: null,
     elo: g.elo != null ? g.elo : null, wr: g.wr != null ? g.wr : null, n: g.n || 0,
     maps, roster: d.rosters[id] || null };
 }
@@ -300,5 +306,16 @@ function vetoInput(nameA, nameB) {
   return { map_strength: ms, agent_depth: (Object.keys(depth.a).length || Object.keys(depth.b).length) ? depth : null };
 }
 
-module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor,
+// ¿estructura propia MEDIDA para este par? (19-ago) 33k series de vlr.gg con Elo validado walk-forward.
+function datasetFor(nameA, nameB) {
+  const d = load();
+  if (!d.available) return null;
+  const r = ratingsFor(nameA, nameB);
+  const pair = r ? Math.min(r.matches_a, r.matches_b) : 0;
+  return { available: !!r && pair >= 15, at: d.at, teams: Object.keys(d.teams || {}).length,
+    games: (d.series || []).length, pair_sample: pair, unit: 'series',
+    source: 'base propia de Valorant (vlr.gg), validada walk-forward' };
+}
+
+module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, datasetFor,
   agentsBoard, championsBoard: agentsBoard, compIntel, mapsFor, vetoInput, DIR, MODEL_VERSION: 'val-elo-series-1' };

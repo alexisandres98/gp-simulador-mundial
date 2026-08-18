@@ -291,6 +291,7 @@ function lolOwnInput(ev, competition) {
     const t = LD.tempoFor(competition);
     return { ratings: { elo_a: r.elo_a, elo_b: r.elo_b }, sample: Math.min(r.matches_a, r.matches_b),
       observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null, own: true,
+      dataset: LD.datasetFor(ev.home.name, ev.away.name),
       source: 'base propia (Leaguepedia, walk-forward validado)' };
   } catch { return null; }
 }
@@ -306,6 +307,7 @@ function valOwnInput(ev) {
     const vi = VD.vetoInput(ev.home.name, ev.away.name);
     if (vi) { ratings.map_strength = vi.map_strength; if (vi.agent_depth) ratings.agent_depth = vi.agent_depth; }
     return { ratings, sample: Math.min(r.matches_a, r.matches_b), observedTempo: null, own: true,
+      dataset: VD.datasetFor(ev.home.name, ev.away.name),
       source: 'base propia (vlr.gg, walk-forward validado)' };
   } catch { return null; }
 }
@@ -317,8 +319,13 @@ function dotaOwnInput(ev) {
     const DD = require('./dota2-data');
     const r = DD.ratingsFor(ev.home.name, ev.away.name);
     if (!r || r.elo_a == null || r.elo_b == null) return null;
+    // 19-ago: r_score/d_score de OpenDota SON los kills → el ritmo del torneo pasa de perfil asumido a
+    // MEDIDO, que es la puerta que las familias de kills necesitaban para poder generar picks.
+    const t = DD.tempoFor(ev.competition);
     return { ratings: { elo_a: r.elo_a, elo_b: r.elo_b }, sample: Math.min(r.matches_a, r.matches_b),
-      observedTempo: null, own: true, source: 'base propia (OpenDota, walk-forward validado)' };
+      observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null, own: true,
+      dataset: DD.datasetFor(ev.home.name, ev.away.name),
+      source: 'base propia (OpenDota, walk-forward validado)' };
   } catch { return null; }
 }
 const ownInputFor = (game, ev) => (game === 'lol' ? lolOwnInput(ev, ev.competition)
@@ -345,6 +352,28 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     bo, sample, competition: ev.competition,
     observedTempo: own ? own.observedTempo : null,
   });
+  // LA ESTRUCTURA PROPIA MEDIDA (19-ago). `basisFor` exige, para las familias de mapas, que exista fuerza
+  // medida del PAR — no del juego en general. CS2 la trae de su propio histórico dentro del motor; los
+  // otros tres la traen de su capa de datos y se adjunta aquí para que la puerta sea la misma para todos.
+  if (own && own.dataset && !model.dataset) model.dataset = own.dataset;
+  // LAS FICHAS DE LOS DOS EQUIPOS (19-ago, pedido de Alexis: "no hay fotos, es una pila de datos"). CS2
+  // las trae de su motor y por eso su héroe tiene escudo, muestra y forma; los otros tres las traen de su
+  // capa de datos y se adjuntan aquí con la MISMA forma, así el héroe de CS2 sirve para los cuatro.
+  if (!model.teams && game !== 'cs2') {
+    try {
+      const DL = require(`./${game}-data`);
+      const dd = DL.load();
+      if (dd && dd.available) {
+        const ida = DL.resolveTeam(ev.home.name, { data: dd }), idb = DL.resolveTeam(ev.away.name, { data: dd });
+        const card = (id, fallbackName) => {
+          if (!id) return { name: fallbackName, logo: null, n: 0, elo: null, wr: null, form: [], roster: null };
+          const c = DL.teamCard(id, { data: dd });
+          return { ...c, form: (dd.form && dd.form[id]) || [], roster: c.roster || (dd.rosters || {})[id] || null };
+        };
+        model.teams = { a: card(ida, ev.home.name), b: card(idb, ev.away.name) };
+      }
+    } catch { /* sin base propia: el héroe cae al monograma, como antes */ }
+  }
   // el cuarto propio del cruce: en LoL el Draft Room (pools, comfort, fragilidad, meta del parche);
   // en Valorant la Sala de composición (pools de agentes, comfort, fragilidad, meta de la ventana).
   // Misma forma de datos a propósito: la UI los renderiza con el mismo panel.

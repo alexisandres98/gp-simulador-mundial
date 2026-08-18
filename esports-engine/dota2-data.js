@@ -35,6 +35,7 @@ function load() {
   const HM = rdf('hero-meta.json') || null;
   const TD = rdf('team-doctrine.json') || null;
   const META = rdf('meta.json') || {};
+  const AS = rdf('assets.json') || { teams: {}, players: {} };   // escudos y fotos auto-hospedados
   const matches = Object.values(M.matches).filter((m) => m.r_id && m.d_id && m.r && m.d)
     .sort((a, b) => (a.at || 0) - (b.at || 0));
 
@@ -52,6 +53,12 @@ function load() {
   for (const t of Object.values(teams)) {
     t.league = Object.entries(t._lg).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     delete t._lg;
+  }
+  // ESCUDO AUTO-HOSPEDADO (19-ago): el manifiesto lo escribe scripts/esports-assets.js. Sin entrada, el
+  // equipo cae al monograma tintado — nunca a un hueco.
+  for (const t of Object.values(teams)) {
+    const f = (AS.teams || {})[t.id];
+    if (f) t.logo = '/logos/es/dota2/' + f;
   }
 
   // Elo walk-forward con las constantes VALIDADAS + ventaja de Radiant online (igual que la validación)
@@ -107,8 +114,14 @@ function load() {
   const players = {}; const playerStats = {}; const fiveOf = {};
   for (const st of Object.values(PS.players || {})) {
     const tid = st.team_id ? tidOf(st.team_id) : null;
-    players[st.id] = { id: st.id, nick: st.nick, name: null, role: 'Pos ' + st.pos, team: tid,
-      team_name: tid && teams[tid] ? teams[tid].name : null, photo: null, country_id: null, birthday: null, rating6m: null };
+    // IDENTIDAD REAL (19-ago): la base cruda de Explorer solo trae account_id, así que la ficha enseñaba
+    // "#518198". OpenDota /proPlayers devuelve nombre de guerra, país y avatar de Steam: se cruzan aquí.
+    const ap = (AS.players || {})[st.id] || {};
+    if (ap.nick) st.nick = ap.nick;
+    players[st.id] = { id: st.id, nick: ap.nick || st.nick, name: null, role: 'Pos ' + st.pos, team: tid,
+      team_name: tid && teams[tid] ? teams[tid].name : null,
+      photo: ap.photo ? '/logos/es/dota2/players/' + ap.photo : null,
+      country_id: ap.country || null, birthday: null, rating6m: null };
     playerStats[st.id] = st;
     if (tid) (fiveOf[tid] = fiveOf[tid] || []).push(st);
   }
@@ -121,9 +134,29 @@ function load() {
     rosters[tid] = { five, coach: null, changed_recently: false };
   }
 
+  // TEMPO MEDIDO POR TORNEO (19-ago): r_score/d_score de OpenDota SON los kills del equipo, y `dur` los
+  // segundos de partida — con eso el ritmo del circuito deja de ser un perfil asumido y pasa a medirse.
+  // Ventana de 180 días para que el meta vigente mande sobre el histórico profundo.
+  const cutT = lastAt - 180 * 86400;
+  const tempoAgg = {};
+  for (const m of matches) {
+    if ((m.at || 0) < cutT || !(m.dur > 600) || m.r_score == null || m.d_score == null) continue;
+    const lg = m.lg_name || 'otros';
+    const t = tempoAgg[lg] = tempoAgg[lg] || { league: lg, n: 0, kills: 0, min: 0 };
+    t.n++; t.kills += (m.r_score + m.d_score); t.min += m.dur / 60;
+  }
+  const leagueTempo = {};
+  for (const t of Object.values(tempoAgg)) {
+    if (t.n < 12) continue;                        // muestra mínima para llamarlo medición
+    leagueTempo[t.league] = { league: t.league, n: t.n, kpm: +(t.kills / t.min).toFixed(3), mean_min: +(t.min / t.n).toFixed(1) };
+  }
+  // y el agregado global del circuito profesional, como red de seguridad cuando el torneo es nuevo
+  const gAll = Object.values(tempoAgg).reduce((a, t) => ({ n: a.n + t.n, kills: a.kills + t.kills, min: a.min + t.min }), { n: 0, kills: 0, min: 0 });
+  const tempoAll = gAll.n >= 200 ? { league: 'circuito profesional', n: gAll.n, kpm: +(gAll.kills / gAll.min).toFixed(3), mean_min: +(gAll.min / gAll.n).toFixed(1) } : null;
+
   const data = {
     available: matches.length > 1000,
-    matches, teams, teamGlobal, rosters, pairs, form, rankings,
+    matches, teams, teamGlobal, rosters, pairs, form, rankings, leagueTempo, tempoAll,
     players, playerStats, playerStatsMeta: PS.players && Object.keys(PS.players).length
       ? { at: PS.at, window_days: PS.window_days, population: PS.population } : null,
     heroMeta: HM, doctrine: TD,
@@ -169,7 +202,7 @@ function teamCard(id, { data = null } = {}) {
   const d = data || load();
   const t = d.teams[id] || { id, name: id };
   const g = d.teamGlobal[id] || {};
-  return { id, name: t.name, logo: null, country_id: null, rank: null,
+  return { id, name: t.name, logo: t.logo || null, country_id: null, rank: null,
     elo: g.elo != null ? g.elo : null, wr: g.wr != null ? g.wr : null, n: g.n || 0,
     maps: [],                                          // Dota no tiene mapas: el objeto del juego es el draft
     roster: d.rosters[id] || null };
@@ -240,5 +273,32 @@ function draftIntel(nameA, nameB) {
   };
 }
 
-module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor,
+// ritmo MEDIDO del torneo (o del circuito si el torneo es nuevo). Lo consume el motor para el total de
+// kills y la duración: sustituye el perfil de circuito asumido por una medición con su muestra.
+function tempoFor(competition) {
+  const d = load();
+  if (!d.available) return null;
+  const nq = norm(competition || '');
+  let best = null;
+  for (const t of Object.values(d.leagueTempo || {})) {
+    const lk = norm(t.league);
+    if (nq && lk && (nq.includes(lk) || lk.includes(nq))) {
+      if (!best || t.league.length > best.league.length) best = t;   // el nombre MÁS específico gana
+    }
+  }
+  return best || d.tempoAll || null;
+}
+// ¿hay estructura propia MEDIDA para este par? Es la puerta de las familias de mapas: sin muestra de los
+// dos equipos en la base, una diferencia con el mercado no es ventaja, es desconocimiento.
+function datasetFor(nameA, nameB) {
+  const d = load();
+  if (!d.available) return null;
+  const r = ratingsFor(nameA, nameB);
+  const pair = r ? Math.min(r.matches_a, r.matches_b) : 0;
+  return { available: !!r && pair >= 15, at: d.at, teams: Object.keys(d.teams || {}).length,
+    games: (d.matches || []).length, pair_sample: pair, unit: 'partidas',
+    source: 'base propia de Dota 2 (OpenDota), validada walk-forward' };
+}
+
+module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, tempoFor, datasetFor,
   heroesBoard, championsBoard: heroesBoard, draftIntel, DIR, MODEL_VERSION: 'dota-elo-side-1' };

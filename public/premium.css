@@ -3448,3 +3448,14 @@ td .gx-calc-btn span { display: none; }
 .gx-rost-ct{font-size:9px;font-weight:700;letter-spacing:.04em;opacity:.55;vertical-align:1px}
 .gx-rost-tag{margin-left:6px;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   opacity:.5;border:1px solid currentColor;border-radius:3px;padding:1px 4px}
+
+/* cabecera de oportunidades: pick del día + mejor arbitraje, la gramática KPI del board de fútbol */
+.gx-estop{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+@media (max-width:520px){.gx-estop{grid-template-columns:1fr}}
+.gx-estop-c{padding:10px 12px;cursor:pointer;transition:border-color .15s,transform .1s}
+.gx-estop-c:hover{transform:translateY(-1px)}
+.gx-estop-c.on{border-color:color-mix(in srgb,var(--gx-acc,#4ade80) 45%,transparent)}
+.gx-estop-main{margin-top:6px}
+.gx-estop-sel{font-weight:700;font-size:13.5px;line-height:1.25}
+.gx-estop-sub{font-size:11px;opacity:.6;margin-top:2px}
+.gx-estop-foot{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px}

@@ -175,6 +175,25 @@ function load() {
       }
       return m;
     })(),
+    // ALIAS (19-ago): la casa escribe "Spirit" donde la base tiene "Team Spirit", y el emparejado por
+    // prefijo no lo alcanza —"spirit" no es prefijo de "team spirit" ni al revés—, así que el partido se
+    // quedaba sin quinteto y el draft "sin leer". Se indexan las variantes sin la palabra de organización
+    // con LA MISMA regla de colisión que byName: ante varios reclamantes gana el de más historial, que es
+    // justo lo que evita darle al Spirit real el roster de uno de sus cinco clones amateur.
+    byAlias: (() => {
+      const m = new Map();
+      for (const t of Object.values(teams)) {
+        const n = norm(t.name);
+        if (!n) continue;
+        for (const v of [n.replace(/^team /, ''), n.replace(/ (esports?|e sports|gaming|club|team)$/, '')]) {
+          const a = v.trim();
+          if (!a || a === n || a.length < 2) continue;
+          const cur = m.get(a);
+          if (!cur || (teams[cur].n || 0) < t.n) m.set(a, t.id);
+        }
+      }
+      return m;
+    })(),
     rights: 'Base propia derivada de OpenDota (research_only) — rating interno, catálogo admin y sombra; sin picks públicas (RIGHTS.md).',
   };
   G.data = data; G.at = Date.now();
@@ -186,6 +205,7 @@ function resolveTeam(name, { data = null } = {}) {
   const k = norm(name);
   if (!k) return null;
   if (d.byName && d.byName.has(k)) return d.byName.get(k);
+  if (d.byAlias && d.byAlias.has(k)) return d.byAlias.get(k);
   // mismo guard de identidad que LoL/Valorant: los marcadores de segundo equipo no resuelven al principal
   const SQUAD = /(^| )(academy|academia|youth|rookies?|prospects?|female|fe|2|ii|b|junior)( |$)/;
   for (const [n2, id] of d.byName || []) {

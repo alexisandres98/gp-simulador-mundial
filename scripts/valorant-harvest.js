@@ -186,11 +186,20 @@ async function harvestDetails(seriesSt) {
     // la temporada en curso; el histórico profundo llega después y solo mejora las muestras.
     .sort((a, b) => (a.at > b.at ? -1 : 1));
   console.log(`[val] details: ${todo.length} series pendientes desde ${SINCE}, LO RECIENTE PRIMERO (${done.size} ya en disco)`);
-  let n = 0;
+  let n = 0, bad = 0;
   for (const s of todo) {
-    let det;
+    // UNA PÁGINA MALA NO MATA LA COSECHA (19-ago): antes un solo fallo lanzaba y la pasada entera moría con
+    // cero filas escritas — que es exactamente por qué `detail_series` llevaba semanas en 0. Ahora se anota
+    // el fallo, se sigue, y solo se aborta si TODO lo reciente falla (ahí el problema es la fuente, no la fila).
+    let det = null;
     try { det = parseDetail(await page(`https://www.vlr.gg/${s.id}/${s.slug || 'x'}`)); }
-    catch (e) { console.log(`[val] detalle ${s.id}: ${e.message}`); throw e; }
+    catch (e) {
+      bad++;
+      if (bad <= 5) console.log(`[val] detalle ${s.id}: ${e.message}`);
+      if (bad >= 25 && n === 0) { console.log('[val] details: 25 fallos seguidos sin una sola serie buena — la fuente cambió, corto.'); break; }
+      await sleep(SLEEP);
+      continue;
+    }
     maps.rows[s.id] = { at: s.at, patch: det.patch, maps: det.maps };
     for (const p of det.players) (players.rows[`${s.id}|${p.gid}|${p.pid}`] = { sid: s.id, at: s.at, ...p });
     n++;
@@ -203,7 +212,7 @@ async function harvestDetails(seriesSt) {
   }
   maps.at = players.at = new Date().toISOString();
   wr('maps.json', maps); wr('players-raw.json', players);
-  console.log(`[val] details LISTO`);
+  console.log(`[val] details LISTO: ${n} series nuevas · ${bad} páginas descartadas`);
 }
 
 (async () => {

@@ -190,6 +190,27 @@ function load() {
     priors, maps: {}, pool: [],
     meta: META, at: META.at || new Date().toISOString(),
     byName: new Map(Object.values(teams).map((t) => [norm(t.name), t.id])),
+    // ALIAS INEQUÍVOCOS (19-ago): la casa escribe "G2", "Secret" o "Liquid Brazil" donde la base tiene
+    // "G2 Esports", "Team Secret" y "Liquid Brazil". El emparejado por prefijo no los alcanza —"g2" tiene
+    // dos letras y "secret" no es prefijo de "team secret"— y el partido se quedaba SIN rating: ni pick, ni
+    // veto honesto, nada. Se indexan las variantes sin la palabra de organización, y SOLO cuando una sola
+    // marca las reclama: si dos equipos comparten alias, el alias se descarta antes que arriesgar confundirlos.
+    byAlias: (() => {
+      const claim = new Map();
+      for (const t of Object.values(teams)) {
+        const n = norm(t.name);
+        if (!n) continue;
+        for (const v of [n.replace(/^team /, ''), n.replace(/ (esports?|e sports|gaming|club|team)$/, '')]) {
+          const a = v.trim();
+          if (!a || a === n || a.length < 2) continue;
+          if (!claim.has(a)) claim.set(a, new Set());
+          claim.get(a).add(t.id);
+        }
+      }
+      const out = new Map();
+      for (const [a, ids] of claim) if (ids.size === 1) out.set(a, [...ids][0]);
+      return out;
+    })(),
     rights: 'Base propia derivada de vlr.gg (research_only) — rating interno, catálogo admin y sombra; sin picks públicas (RIGHTS.md).',
   };
   G.data = data; G.at = Date.now();
@@ -201,6 +222,7 @@ function resolveTeam(name, { data = null } = {}) {
   const k = norm(name);
   if (!k) return null;
   if (d.byName && d.byName.has(k)) return d.byName.get(k);
+  if (d.byAlias && d.byAlias.has(k)) return d.byAlias.get(k);
   // mismo guard de identidad que LoL: un prefijo compartido solo es variante si lo que sobra es palabra
   // de organización; los marcadores de segundo equipo (GC/academy/challengers…) NO resuelven al principal
   // — en Valorant los Game Changers comparten marca con el equipo principal sistemáticamente (V-0043).

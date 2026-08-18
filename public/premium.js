@@ -8669,6 +8669,7 @@
       '<span class="gx-spacer"></span>' +
       '<div class="gx-es-hero-n"><b>' + (d.items || []).length + '</b><span>partidas</span></div>' +
       '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>con ventaja</span></div></div>' +
+      esTopStrip(d, rows) +
       (hidden ? '<div class="gx-dim gx-es-trunc">' + hidden + ' pick' + (hidden > 1 ? 's' : '') + ' oculta' + (hidden > 1 ? 's' : '') +
         ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? 'volver a esconderlas' : 'mostrarlas') + '</a></div>' : '');
     var inner;
@@ -8692,6 +8693,46 @@
       inner = body + esWhyNot(d);
     }
     esShell(t('nav_opps'), esTabs() + head + hero + inner + esDoctrine(d.doctrine));
+  }
+
+  // ── LA CABECERA DE DOS CAJAS: PICK DEL DÍA Y MEJOR ARBITRAJE ──────────────────────────────────────────
+  // La misma gramática de KPI del board de fútbol, con la misma promesa: lo primero que ve el ojo es lo
+  // único que hay que mirar si solo se va a mirar una cosa. Y las dos cajas dicen la verdad cuando no hay
+  // nada: "ninguna ventaja pasa el listón" es un resultado del motor, no un hueco de la pantalla.
+  function esTopStrip(d, rows) {
+    var top = rows.slice().sort(function (a, b) { return (b.e.edge_pp || 0) - (a.e.edge_pp || 0); })[0];
+    var arb = null;
+    (d.items || []).forEach(function (it) {
+      (it.arbs || it.arbitrages || []).forEach(function (a) {
+        if (!arb || (a.margin_pct || 0) > (arb.a.margin_pct || 0)) arb = { a: a, it: it };
+      });
+    });
+    var pickBox;
+    if (top) {
+      var e = top.e, ev = top.it.event || {};
+      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(e.ticket || e.label || e.family || '—') + '</div>' +
+        '<div class="gx-estop-sub">' + esc((ev.home && ev.home.name) || '') + ' vs ' + esc((ev.away && ev.away.name) || '') + '</div></div>' +
+        '<div class="gx-estop-foot"><span class="gx-mono">' + (e.odds != null ? odd(e.odds) : '—') + '</span>' +
+        (e.edge_pp != null ? '<span class="gx-pp gx-pos">' + pp(e.edge_pp) + '</span>' : '') + '</div>';
+    } else {
+      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna ventaja pasa el listón</div>' +
+        '<div class="gx-estop-sub">decir NO PICK también es un resultado</div></div>';
+    }
+    var arbBox;
+    if (arb) {
+      var ae = arb.it.event || {};
+      arbBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(arb.a.label || arb.a.family || 'Arbitraje') + '</div>' +
+        '<div class="gx-estop-sub">' + esc((ae.home && ae.home.name) || '') + ' vs ' + esc((ae.away && ae.away.name) || '') + '</div></div>' +
+        '<div class="gx-estop-foot"><span class="gx-mono">' + ((arb.a.margin_pct != null) ? arb.a.margin_pct.toFixed(2) + '%' : '—') + '</span>' +
+        '<span class="gx-pp gx-blue">sin modelo</span></div>';
+    } else {
+      arbBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esc(t('no_arb')) + '</div>' +
+        '<div class="gx-estop-sub">' + esc(t('no_arb_sub')) + '</div></div>';
+    }
+    return '<div class="gx-estop">' +
+      '<div class="gx-panel gx-estop-c' + (top ? ' on' : '') + '" data-esoppsub="picks"><div class="gx-label">' + ic('target-arrow') + 'Pick del día</div>' + pickBox + '</div>' +
+      '<div class="gx-panel gx-estop-c' + (arb ? ' on' : '') + '" data-esoppsub="arb"><div class="gx-label">' + ic('scale') + esc(t('arb_best')) + '</div>' + arbBox + '</div>' +
+      '</div>';
   }
 
   // ── ARBITRAJE: LO ÚNICO QUE NO PASA POR EL MODELO ──────────────────────────────────────────────────────
@@ -9750,9 +9791,13 @@
         '<div class="gx-dim gx-es-note">Sin quinteto en la base propia: el draft de este lado se queda sin leer.</div></div>';
       var frag = s.fragility_pct;
       var fCls = frag == null ? '' : frag >= 45 ? 'gx-dn' : frag <= 30 ? 'gx-up' : '';
+      // el aviso de "todavía sin medir" es UNO por equipo, no uno por jugador: repetirlo cinco veces no lo
+      // hacía más honesto, solo enterraba la plantilla bajo su propia nota al pie.
+      var noPool = (s.five || []).every(function (p) { return !(p.pool || []).length; });
       return '<div class="gx-dr-side ' + cls + '">' +
         '<div class="gx-dr-team"><b>' + esc(s.name) + '</b><span class="gx-spacer"></span>' +
           (frag != null ? '<span class="gx-dr-frag ' + fCls + '" title="cuánto comfort se lleva vetarle sus 3 picks más cómodos">fragilidad <b class="gx-mono">' + frag + '%</b></span>' : '') + '</div>' +
+        (noPool ? '<div class="gx-dr-idonly gx-dim">plantilla confirmada · rendimiento por jugador todavía sin medir</div>' : '') +
         (s.five || []).map(function (p) {
           // el comfort ya viene medido (peso reciente × rendimiento encogido): se pinta como BARRA, que es
           // lo que deja leer de un vistazo dónde está el pool de verdad y dónde el relleno.
@@ -9761,7 +9806,7 @@
             '<div class="gx-dr-phead">' + esAvatar({ nick: p.nick, photo: p.photo }) +
               '<div class="gx-dr-pid"><b>' + esc(p.nick) + '</b><span class="gx-dim">' + esc(p.role || '—') + (p.n ? ' · ' + p.n : '') + '</span></div>' +
               (p.rating_gp != null ? '<span class="gx-dr-rating gx-mono' + (p.rating_gp >= 1.05 ? ' gx-up' : p.rating_gp <= 0.95 ? ' gx-dn' : '') + '">' + p.rating_gp.toFixed(2) + '</span>' : '') + '</div>' +
-            ((p.pool || []).length ? '' : '<div class="gx-dr-idonly gx-dim">plantilla confirmada · rendimiento por jugador todavía sin medir</div>') +
+            ((p.pool || []).length || noPool ? '' : '<div class="gx-dr-idonly gx-dim">sin pool medido</div>') +
             '<div class="gx-dr-pool">' + (p.pool || []).slice(0, 4).map(function (c) {
               return '<span class="gx-dr-ch' + (c.flex ? ' flex' : '') + '" title="' + c.n + ' partidas' + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + (c.flex ? ' · flex (2+ roles en el parche)' : '') + '">' +
                 '<i class="gx-dr-cbar" style="width:' + Math.round(100 * (c.comfort || 0) / mx) + '%"></i>' +

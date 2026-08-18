@@ -251,7 +251,9 @@ function analyze({ market, ratings, bo = 3, sample = 0 }) {
   const unc = C.uncertainty({
     p: pSeries != null ? pSeries : 0.5, sampleMatches: sample,
     marketBooks: cons ? cons.books : 0,
-    missing: [].concat(strength ? [] : ['fuerza por mapa'], ['composiciones de agentes', 'datos de ronda']),
+    // Valorant es el único de los cuatro al que todavía le falta el detalle: la cosecha de mapas y
+    // scoreboard está moliendo. Mientras no esté, se cobra — y cuando entre, esta lista se vacía sola.
+    missing: [].concat(strength ? [] : ['fuerza por mapa medida'], rounds && rounds.measured ? [] : ['perfil de rondas por mapa'], ['composiciones de agentes']),
   });
 
   const sim = pMap != null ? C.simulateSeries(pMap, bo, { perMap: mapProbs ? mapProbs.map((m) => m.p_a) : null }) : null;

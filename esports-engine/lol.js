@@ -269,7 +269,10 @@ function analyze({ market, ratings, bo = 3, sample = 0, competition = null, obse
   const unc = C.uncertainty({
     p: pSeries != null ? pSeries : 0.5, sampleMatches: sample,
     marketBooks: cons ? cons.books : 0,
-    missing: [].concat(tempo.measured ? [] : ['ritmo medido de la liga'], ['histórico de draft', 'datos de partida (Riot API)']),
+    // 19-ago: el histórico de draft YA existe (37.990 drafts propios + meta por parche), así que dejó de
+    // ser un faltante y dejó de cobrar incertidumbre. Lo que sigue faltando —y se cobra— es el scoreboard
+    // por partida: sin él no hay kills medidos, que es justo lo que cierra las familias de volumen.
+    missing: [].concat(tempo.measured ? [] : ['ritmo de kills medido de la liga'], ['scoreboard por partida (kills y oro por jugador)']),
   });
 
   const sim = pMap != null ? C.simulateSeries(pMap, bo) : null;

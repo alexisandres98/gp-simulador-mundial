@@ -243,7 +243,9 @@ function analyze({ market, ratings, bo = 3, sample = 0, competition = null, obse
   const unc = C.uncertainty({
     p: pSeries != null ? pSeries : 0.5, sampleMatches: sample,
     marketBooks: cons ? cons.books : 0,
-    missing: [].concat(tempo.measured ? [] : ['ritmo medido del circuito'], ['histórico de draft', 'datos de partida (OpenDota)']),
+    // 19-ago: draft (picks/bans), meta de héroes por parche y doctrina de equipo YA están en la base, y el
+    // ritmo se mide de r_score/d_score. Solo se cobra lo que falta de verdad: el detalle por jugador.
+    missing: [].concat(tempo.measured ? [] : ['ritmo medido del circuito'], ['detalle por jugador de cada partida']),
   });
 
   const sim = pMap != null ? C.simulateSeries(pMap, bo) : null;

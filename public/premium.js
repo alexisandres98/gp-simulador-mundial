@@ -109,7 +109,9 @@
       unc_copy: 'Las estimaciones internas no convergen del todo en este partido.',
       thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para sostener una lectura más fuerte.',
       thesis_ctx2: 'GP apoya su lectura en {factors}.',
-      e_na: 'Datos no disponibles', e_net: 'No se pudo cargar — revisa la conexión y vuelve a intentar.', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Cuota no disponible ahora', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
+      e_na: 'Datos no disponibles', e_net: 'No se pudo cargar — revisa la conexión y vuelve a intentar.',
+      xp_ends_before: 'Termina antes del', xp_goes_past: 'Pasa del', xp_decision: 'decisión', xp_covers: 'cubre', xp_ot: 'prórroga', xp_title: 'Explorador de línea', xp_note_shared: 'Mover la línea no re-simula nada: lee la misma distribución ya calculada del modelo.',
+      xp_fut_title: 'El marcador, interactivo', xp_fut_best: 'el marcador más probable — toca cualquier celda', xp_fut_note: 'Rejilla: Poisson por lado desde las λ de la proyección, con independencia entre lados declarada (la misma aproximación de la escalera O/U). El total es exacto: la suma de Poisson es Poisson.', xp_cb_title: 'Explorador de asaltos', xp_cb_note: 'Equivale al mercado de más/menos asaltos: «termina antes del 2,5» es el under 2,5. Sale de la distribución de final por asalto de las 10.000 simulaciones.', xp_bb_title: 'Explorador de línea', xp_bb_note: 'Hándicap punto a punto desde las 20.000 simulaciones. El total usa tramos de 5 puntos del simulador con reparto lineal dentro del tramo — aproximación declarada.', xp_es_title: 'Explorador de rondas del mapa', xp_es_note: 'Total del mapa = 13 + rondas del perdedor (MR12); la prórroga cae siempre del lado over. Sale de la distribución de rondas medida en la base propia.', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Cuota no disponible ahora', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
       trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'No disponible', lus_stale: 'Desactualizada',
       // ---- Corte 2: Match Cockpit profundo ----
       back: 'Oportunidades', open_cockpit: 'Abrir cockpit completo', refresh: 'Actualizar',
@@ -513,7 +515,9 @@
       unc_copy: 'Internal estimates don’t fully converge for this match.',
       thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to support a stronger read.',
       thesis_ctx2: 'GP backs its read on {factors}.',
-      e_na: 'Data unavailable', e_net: 'Couldn\u2019t load \u2014 check your connection and try again.', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Odds not currently available', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
+      e_na: 'Data unavailable', e_net: 'Couldn\u2019t load \u2014 check your connection and try again.',
+      xp_ends_before: 'Ends by', xp_goes_past: 'Goes past', xp_decision: 'decision', xp_covers: 'covers', xp_ot: 'overtime', xp_title: 'Line explorer', xp_note_shared: 'Moving the line re-simulates nothing: it reads the same precomputed model distribution.',
+      xp_fut_title: 'The scoreline, interactive', xp_fut_best: 'most likely score — tap any cell', xp_fut_note: 'Grid: per-side Poisson from the projection λ, independence between sides declared (same approximation as the O/U ladder). The total is exact: a sum of Poissons is Poisson.', xp_cb_title: 'Rounds explorer', xp_cb_note: 'Maps to the over/under rounds market: \u201cends by 2.5\u201d is the under 2.5. Reads the per-round finish distribution from the 10,000 sims.', xp_bb_title: 'Line explorer', xp_bb_note: 'Point-by-point spread from the 20,000 sims. The total uses the simulator\u2019s 5-point buckets with linear split inside the bucket \u2014 declared approximation.', xp_es_title: 'Map rounds explorer', xp_es_note: 'Map total = 13 + loser\u2019s rounds (MR12); overtime always falls on the over side. Reads the rounds distribution measured on our own base.', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Odds not currently available', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
       trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'Unavailable', lus_stale: 'Stale',
       // ---- Corte 2: Deep Match Cockpit ----
       back: 'Opportunities', open_cockpit: 'Open full cockpit', refresh: 'Refresh',
@@ -2212,6 +2216,102 @@
     else if (b.hasAttribute('data-nfloppsub')) { S.nfl.oppSub = b.getAttribute('data-nfloppsub'); renderNflOpps(); }
     else { S.bb.lens = b.getAttribute('data-bblens'); renderBBGame(); }
   }, true);
+
+  // ══ EXPLORADORES DE LA CASA (18-ago, pedido de Alexis: algo interactivo PROPIO de cada deporte) ═════════
+  // La gramática del explorador de NFL —mover una línea y leer la distribución YA simulada, sin re-simular
+  // nada— llevada a los otros cuatro deportes, cada uno sobre SU distribución nativa:
+  //   fútbol     → marcador exacto + total de goles desde las λ de la proyección (Poisson; independencia declarada)
+  //   combate    → asaltos: la distribución de final por asalto del simulador (round_dist + decisión)
+  //   baloncesto → hándicap y total desde margin_hist/total_hist de las 20.000 simulaciones
+  //   CS2        → rondas del mapa desde la distribución de rondas del perdedor (total = 13 + las del perdedor)
+  // UN par de listeners delegados a nivel documento ('input' y 'click' burbujean): cada panel lleva sus
+  // datos en data-gxp del contenedor, así los re-render de cada vista no re-bindean nada.
+  function gxpPois(l, k) { var p = Math.exp(-l); for (var i = 1; i <= k; i++) p *= l / i; return p; }
+  function gxpPct(p) { return (100 * Math.max(0, Math.min(1, p))).toFixed(1) + '%'; }
+  function gxpData(el) { var pn = el.closest('[data-gxp-panel]'); if (!pn) return null; try { return { pn: pn, d: JSON.parse(pn.getAttribute('data-gxp') || '{}') } ; } catch (e) { return null; } }
+  // Cada `calc` devuelve el HTML del readout para una línea dada; se usa igual al pintar (estado inicial)
+  // y al mover el slider, así el primer render y la interacción nunca divergen.
+  var GXP = {
+    fut_total: function (d, line) {
+      var lam = d.lh + d.la, cum = 0, k = Math.floor(line);
+      for (var i = 0; i <= k; i++) cum += gxpPois(lam, i);
+      return '<b class="gx-mono">' + t('g_over') + ' ' + line.toFixed(1) + '</b> <b class="gx-mono ' + (1 - cum >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - cum) + '</b>' +
+        ' · <b class="gx-mono">' + t('g_under') + '</b> <b class="gx-mono ' + (cum > 0.5 ? 'gx-up' : '') + '">' + gxpPct(cum) + '</b>';
+    },
+    cb_rounds: function (d, line) {
+      var n = Math.floor(line), under = 0;
+      (d.dist || []).forEach(function (rd) { if (rd.r <= n) under += rd.p; });
+      return '<b class="gx-mono">' + t('xp_ends_before') + ' ' + line.toFixed(1) + '</b> <b class="gx-mono ' + (under >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(under) + '</b>' +
+        ' · <b class="gx-mono">' + t('xp_goes_past') + '</b> <b class="gx-mono ' + (under < 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - under) + '</b>' +
+        ' <span class="gx-dim">· ' + t('xp_decision') + ' ' + gxpPct(d.distance || 0) + '</span>';
+    },
+    bb_spread: function (d, line) {
+      var over = 0; (d.h || []).forEach(function (kv) { if (kv[0] > line) over += kv[1]; });
+      return '<b class="gx-mono">' + esc(d.hn) + ' ' + (line > 0 ? '-' : '+') + Math.abs(line).toFixed(1) + '</b> ' + t('xp_covers') + ' <b class="gx-mono ' + (over >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(over) + '</b>' +
+        ' · <b class="gx-mono">' + esc(d.an) + ' ' + (line > 0 ? '+' : '-') + Math.abs(line).toFixed(1) + '</b> <b class="gx-mono ' + (over < 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - over) + '</b>';
+    },
+    bb_total: function (d, line) {
+      // los buckets del simulador son de 5 puntos (centro t cubre [t-2.5, t+2.5)); dentro del bucket que
+      // contiene la línea se reparte linealmente y se declara como aproximación en la nota del panel
+      var over = 0;
+      (d.t || []).forEach(function (kv) {
+        var lo = kv[0] - 2.5, hi = kv[0] + 2.5;
+        if (lo >= line) over += kv[1];
+        else if (hi > line) over += kv[1] * ((hi - line) / 5);
+      });
+      return '<b class="gx-mono">' + t('g_over') + ' ' + line.toFixed(1) + '</b> <b class="gx-mono ' + (over >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(over) + '</b>' +
+        ' · <b class="gx-mono">' + t('g_under') + '</b> <b class="gx-mono ' + (over < 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - over) + '</b>';
+    },
+    es_rounds: function (d, line) {
+      // total del mapa = 13 + rondas del perdedor (MR12); 12+ del perdedor = prórroga → total ≥ 25, así
+      // que la prórroga cae SIEMPRE del lado over con el tope de línea en 24,5
+      var over = 0;
+      (d.dist || []).forEach(function (rd) {
+        var total = rd.loser_rounds >= 12 ? 25 : 13 + rd.loser_rounds;
+        if (total > line) over += rd.p;
+      });
+      return '<b class="gx-mono">' + t('g_over') + ' ' + line.toFixed(1) + '</b> <b class="gx-mono ' + (over >= 0.5 ? 'gx-up' : '') + '">' + gxpPct(over) + '</b>' +
+        ' · <b class="gx-mono">' + t('g_under') + '</b> <b class="gx-mono ' + (over < 0.5 ? 'gx-up' : '') + '">' + gxpPct(1 - over) + '</b>' +
+        ' <span class="gx-dim">· ' + t('xp_ot') + ' ' + gxpPct(d.ot || 0) + '</span>';
+    },
+  };
+  // el slider guarda la línea ×10 (enteros: los ranges con step decimal acumulan flotantes feos)
+  function gxpUpdate(sl) {
+    var kind = (sl.getAttribute('data-gxp-sl') || '').replace(/-/g, '_');
+    var fn = GXP[kind]; if (!fn) return;
+    var ctx = gxpData(sl); if (!ctx) return;
+    var out = ctx.pn.querySelector('[data-gxp-out="' + sl.getAttribute('data-gxp-sl') + '"]');
+    if (out) out.innerHTML = fn(ctx.d, (+sl.value) / 10);
+  }
+  document.addEventListener('input', function (e) {
+    var sl = e.target && e.target.closest ? e.target.closest('input[data-gxp-sl]') : null;
+    if (sl) gxpUpdate(sl);
+  }, true);
+  document.addEventListener('click', function (e) {
+    if (!e.target || !e.target.closest) return;
+    var j = e.target.closest('[data-gxp-jump]');
+    if (j) {
+      var row = j.closest('.gx-xprow'), sl2 = row && row.querySelector('input[data-gxp-sl]');
+      if (sl2) { sl2.value = j.getAttribute('data-gxp-jump'); gxpUpdate(sl2); }
+      return;
+    }
+    var cell = e.target.closest('[data-gxp-cell]');
+    if (cell) {
+      var pn = cell.closest('[data-gxp-panel]'); if (!pn) return;
+      [].forEach.call(pn.querySelectorAll('.gx-sgcell.on'), function (c) { c.classList.remove('on'); });
+      cell.classList.add('on');
+      var out2 = pn.querySelector('[data-gxp-out="fut-cell"]');
+      if (out2) out2.innerHTML = '<b class="gx-mono">' + esc(cell.getAttribute('data-score')) + '</b> · ' + gxpPct(+cell.getAttribute('data-p')) + ' <span class="gx-dim">· ' + esc(cell.getAttribute('data-lab') || '') + '</span>';
+    }
+  }, true);
+  // fila estándar del explorador: slider + saltos + readout inicial calculado con la MISMA función
+  function gxpRowHtml(kind, data, label, minL, maxL, defL, jumps) {
+    var k = kind.replace(/-/g, '_');
+    return '<div class="gx-xprow"><span class="gx-label">' + esc(label) + '</span>' +
+      '<input type="range" data-gxp-sl="' + kind + '" min="' + Math.round(minL * 10) + '" max="' + Math.round(maxL * 10) + '" step="10" value="' + Math.round(defL * 10) + '">' +
+      (jumps && jumps.length ? '<div class="gx-xpjumps">' + jumps.map(function (jj) { return '<button class="gx-xpjump" data-gxp-jump="' + Math.round(jj[1] * 10) + '">' + esc(jj[0]) + '</button>'; }).join('') + '</div>' : '') +
+      '<div class="gx-xpout" data-gxp-out="' + kind + '">' + GXP[k](data, defL) + '</div></div>';
+  }
   // F2: hint discreto cuando la mejor cuota vive en una casa fuera de las del usuario (solo con casas guardadas)
   function myBooksHint(book) {
     var mine = (S.me && S.me.my_books) && (S.me.my_books_list || []);
@@ -5464,8 +5564,44 @@
     var marginHtml = mRow(t('g_either2'), wm.either_by_2_plus) + mRow(t('g_team_by2', { team: hN }), wm.home_by_2_plus) + mRow(t('g_team_by2', { team: aN }), wm.away_by_2_plus) + mRow(t('g_draw'), wm.draw);
     var combosHtml = mRow(t('g_team_wino25', { team: hN }), cm.home_win_and_over_2_5) + mRow(t('g_team_wino25', { team: aN }), cm.away_win_and_over_2_5) + mRow(t('g_wintonil'), cm.win_to_nil_either) + mRow(t('g_team_cs', { team: hN }), cm.home_clean_sheet) + mRow(t('g_team_cs', { team: aN }), cm.away_clean_sheet);
     var scores = (gi.top_scores || []).slice(0, 5);
+    // EXPLORADOR DEL MARCADOR (18-ago): lo interactivo PROPIO del fútbol. La rejilla de marcadores exactos
+    // sale de las MISMAS λ de la proyección (Poisson por lado, independencia declarada — la misma
+    // aproximación con la que goalInsights arma la escalera O/U); el slider de total lee Poisson(λh+λa),
+    // que es exacto para la suma. Tocar una celda o mover la línea no re-simula nada.
+    var xpHtml = '';
+    if (eg.HOME > 0 && eg.AWAY > 0) {
+      var lh = +eg.HOME, la = +eg.AWAY;
+      var tail = function (l, arr) { var s2 = 0; for (var q = 0; q < arr.length; q++) s2 += arr[q]; return Math.max(0, 1 - s2); };
+      var ph = [], pa = [];
+      for (var gI = 0; gI <= 4; gI++) { ph.push(gxpPois(lh, gI)); pa.push(gxpPois(la, gI)); }
+      ph.push(tail(lh, ph)); pa.push(tail(la, pa));
+      var lab = function (i2) { return i2 === 5 ? '5+' : String(i2); };
+      var bestP = 0, bestS = '';
+      var cells = '';
+      for (var hg = 0; hg <= 5; hg++) {
+        cells += '<span class="hd">' + lab(hg) + '</span>';
+        for (var ag = 0; ag <= 5; ag++) {
+          var pc = ph[hg] * pa[ag];
+          if (pc > bestP) { bestP = pc; bestS = lab(hg) + '-' + lab(ag); }
+          var labTxt = hg > ag ? (LANG === 'en' ? hN + ' wins' : 'gana ' + hN) : hg < ag ? (LANG === 'en' ? aN + ' wins' : 'gana ' + aN) : t('g_draw');
+          cells += '<span class="gx-sgcell' + (pc >= 0.06 ? ' top' : '') + '" data-gxp-cell="1" data-score="' + lab(hg) + '-' + lab(ag) + '" data-p="' + pc.toFixed(4) + '" data-lab="' + esc(labTxt) + '"' +
+            ' style="background:rgba(31,227,164,' + Math.min(0.55, 0.04 + pc * 4).toFixed(3) + ')">' + (pc >= 0.02 ? Math.round(pc * 100) : '·') + '</span>';
+        }
+      }
+      var headRow = '<span class="hd"></span>' + [0, 1, 2, 3, 4, 5].map(function (i3) { return '<span class="hd">' + lab(i3) + '</span>'; }).join('');
+      var futD = { lh: lh, la: la };
+      var defL = Math.max(0.5, Math.min(6.5, Math.round(lh + la) + 0.5));
+      xpHtml = '<div class="gx-mod-sub gx-label">' + esc(t('xp_fut_title')) + '</div>' +
+        '<div data-gxp-panel="fut" data-gxp="' + esc(JSON.stringify(futD)) + '">' +
+        '<div class="gx-dim" style="font-size:11px;margin-bottom:2px">' + esc(hN) + ' ↓ · ' + esc(aN) + ' →</div>' +
+        '<div class="gx-scoregrid">' + headRow + cells + '</div>' +
+        '<div class="gx-xpout" data-gxp-out="fut-cell" style="margin-top:6px"><b class="gx-mono">' + esc(bestS) + '</b> · ' + gxpPct(bestP) + ' <span class="gx-dim">· ' + esc(t('xp_fut_best')) + '</span></div>' +
+        '<div class="gx-explorer">' + gxpRowHtml('fut-total', futD, t('g_total'), 0.5, 6.5, defL, [['1.5', 1.5], ['2.5', 2.5], ['3.5', 3.5]]) + '</div>' +
+        '<div class="gx-dim gx-es-note">' + esc(t('xp_note_shared')) + ' ' + esc(t('xp_fut_note')) + '</div></div>';
+    }
     return head + '<div class="gx-mod-body">' +
       '<div class="gx-g-stats">' + stat(t('g_xg'), (eg.HOME != null ? Number(eg.HOME).toFixed(2) : '—') + ' – ' + (eg.AWAY != null ? Number(eg.AWAY).toFixed(2) : '—')) + stat(t('g_total'), eg.TOTAL != null ? Number(eg.TOTAL).toFixed(2) : '—') + (btts ? stat(t('g_btts'), esc(t('g_yes')) + ' ' + pct0(btts.yes)) : '') + '</div>' +
+      xpHtml +
       (dist.length ? '<div class="gx-mod-sub gx-label">' + esc(t('g_dist')) + '</div>' + distHtml : '') +
       '<div class="gx-mod-sub gx-label">' + esc(t('g_ou')) + '</div>' + LAD.map(ladRow).filter(Boolean).join('') +
       (marginHtml ? '<div class="gx-mod-sub gx-label">' + esc(t('g_margin')) + '</div>' + marginHtml : '') +
@@ -7942,6 +8078,21 @@
       '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Distribución del total</span></div>' +
       bbCurve(P.total_hist, { band: [P.total_q.p25, P.total_q.p75] }) +
       '<div class="gx-bb-qs"><span>p05 <b>' + P.total_q.p05 + '</b></span><span>p25 <b>' + P.total_q.p25 + '</b></span><span>mediana <b>' + P.total_q.p50 + '</b></span><span>p75 <b>' + P.total_q.p75 + '</b></span><span>p95 <b>' + P.total_q.p95 + '</b></span></div></div>';
+    // EXPLORADOR DE LÍNEA (18-ago): lo interactivo PROPIO del baloncesto — el patrón del explorador de
+    // NFL sobre los mismos histogramas que pintan las dos curvas de arriba: hándicap punto a punto
+    // (margin_hist, ±30 recortado por el simulador) y total en tramos de 5 (total_hist).
+    if ((P.margin_hist || []).length && (P.total_hist || []).length) {
+      var xbD = { h: P.margin_hist, t: P.total_hist, hn: bbTeamName(H), an: bbTeamName(A) };
+      var xbSp = Math.max(-20.5, Math.min(20.5, Math.round(P.margin_q.p50) + 0.5));
+      var xbTo = Math.round(P.total_q.p50) + 0.5;
+      var xbToMin = Math.max(P.total_hist[0][0] - 2.5, xbTo - 25), xbToMax = Math.min(P.total_hist[P.total_hist.length - 1][0] + 2.5, xbTo + 25);
+      dist += '<div class="gx-panel" data-gxp-panel="bb" data-gxp="' + esc(JSON.stringify(xbD)) + '">' +
+        '<div class="gx-ph"><span class="gx-label">' + esc(t('xp_bb_title')) + '</span><span class="gx-ph-extra gx-dim">' + P.sims.toLocaleString('es') + ' simulaciones</span></div>' +
+        '<div class="gx-explorer" style="padding:0 14px 12px">' +
+        gxpRowHtml('bb-spread', xbD, 'Hándicap', -20.5, 20.5, xbSp, [['-10,5', -10.5], ['-5,5', -5.5], ['+5,5', 5.5], ['+10,5', 10.5]]) +
+        gxpRowHtml('bb-total', xbD, 'Total', xbToMin, xbToMax, xbTo, []) +
+        '</div><div class="gx-dim gx-es-note" style="padding:0 14px 12px">' + esc(t('xp_note_shared')) + ' ' + esc(t('xp_bb_note')) + '</div></div>';
+    }
 
     // 4) POR QUÉ (descomposición)
     var why = '';
@@ -8477,19 +8628,32 @@
     if (opts && opts.filter) all = all.filter(function (r) { return opts.filter((r.it.event || {}).start_at); });
     if (!all.length) return '';
     all.sort(function (x, y) { return y.a.profit_pct - x.a.profit_pct; });
+    // LA MISMA CARD DE ARBITRAJE DE FÚTBOL, no una tabla propia (pedido de Alexis, 18-ago — el mismo
+    // criterio que ya siguieron las pick cards: el usuario aprende a leer un arbitraje UNA vez). El markup
+    // es el de arbCard (gx-arb-card: chip de familia, fila del cruce, una fila por pata con su reparto de
+    // stake, ROI al pie); el reparto de stake es el del arbitraje puro: proporcional a 1/cuota.
+    var cards = all.slice(0, 8).map(function (r) {
+      var ev = r.it.event, a = r.a;
+      var inv = (a.legs || []).map(function (l) { return 1 / l.odds; });
+      var invSum = inv.reduce(function (x, y) { return x + y; }, 0) || 1;
+      var legs = (a.legs || []).map(function (l, li) {
+        return '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(l.side) + (a.line != null ? ' ' + a.line : '') + '</span>' +
+          '<span class="gx-arb-leg-odds gx-mono">' + Number(l.odds).toFixed(2) + '</span>' +
+          '<span class="gx-arb-leg-book"><span class="gx-es-book' + (l.book === 'pinnacle' ? ' sharp' : '') + '">' + esc(l.book.slice(0, 3).toUpperCase()) + '</span> ' + esc(prettyBook(l.book) || l.book) + '</span>' +
+          '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(100 * inv[li] / invSum) + '%</span></div>';
+      }).join('');
+      var mkt = esc(a.family_label || a.family) + (a.line != null ? ' ' + a.line : '') + (a.map ? ' · mapa ' + a.map : '');
+      return '<div class="gx-arb-card gx-pick-clickable gx-arb-exe" data-esmatch="' + esc(ev.id) + '">' +
+        '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span>' +
+        '<span class="gx-pick-time">' + mkt + ' · ' + esc(fmtDateTime(ev.start_at)) + '</span></div>' +
+        '<div class="gx-arb-match">' + cs2Crest(ev.home) + '<b>' + esc(ev.home.name) + ' vs ' + esc(ev.away.name) + '</b>' + cs2Crest(ev.away) + '</div>' +
+        '<div class="gx-arb-legs">' + legs + '</div>' +
+        '<div class="gx-pick-foot"><div class="gx-arb-roi gx-pos">' + ic('shield-check') + esc(t('arb_roi')) + ': <b>+' + a.profit_pct + '%</b></div>' +
+        '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
+        '</div>';
+    }).join('');
     return esPanel('Arbitraje puro', '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
-      '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Partida</th><th>Mercado</th><th>Patas</th><th class="r">Beneficio</th></tr></thead><tbody>' +
-      all.slice(0, 8).map(function (r) {
-        var ev = r.it.event, a = r.a;
-        return '<tr data-esmatch="' + esc(ev.id) + '">' +
-          '<td><b>' + esc(ev.home.name) + '</b> <span class="gx-dim">vs</span> <b>' + esc(ev.away.name) + '</b></td>' +
-          '<td>' + esc(a.family_label || a.family) + (a.line != null ? ' ' + a.line : '') + (a.map ? ' · mapa ' + a.map : '') + '</td>' +
-          '<td>' + (a.legs || []).map(function (l) {
-            return '<span class="gx-es-book' + (l.book === 'pinnacle' ? ' sharp' : '') + '">' + esc(l.book.slice(0, 3).toUpperCase()) + '</span> ' +
-              '<span class="gx-mono" style="font-size:11px">' + esc(l.side) + ' @' + l.odds.toFixed(2) + '</span>';
-          }).join(' <span class="gx-dim">+</span> ') + '</td>' +
-          '<td class="r gx-mono gx-up">+' + a.profit_pct + '%</td></tr>';
-      }).join('') + '</tbody></table></div>' +
+      cards +
       '<div class="gx-dim gx-es-note">Los límites de apuesta y la velocidad a la que la casa mueve el precio mandan: un arbitraje sobre el papel no es un arbitraje ejecutado.</div>');
   }
 
@@ -8973,6 +9137,28 @@
   // ── 4) PERFIL DE RONDAS: MODELO CONTRA REALIDAD ────────────────────────────────────────────────────────
   // No solo la simulación: se enseña ENCIMA la distribución observada del mapa. Si las dos curvas no se
   // parecen, el usuario lo ve — que es exactamente lo que un producto honesto tiene que permitir.
+  // EXPLORADOR DE RONDAS (18-ago): lo interactivo PROPIO de CS2 — arrastrar la línea de total de rondas
+  // del mapa y leer la MISMA distribución medida que pinta cs2Rounds (total = 13 + rondas del perdedor;
+  // la prórroga siempre cae del lado over). Debajo, los marcadores de serie del simulador correlacionado.
+  function esRoundsExplorer(d) {
+    var m = d.model || {}; var r = m.rounds;
+    if (!r || !(r.loser_distribution || []).length) return '';
+    var xd = { dist: r.loser_distribution, ot: r.overtime_p || 0 };
+    var mean = r.mean_rounds || 21;
+    var defL = Math.max(15.5, Math.min(24.5, Math.round(mean) + 0.5));
+    var sim = m.simulation;
+    var serie = (sim && (sim.scores || []).length)
+      ? '<div class="gx-label" style="margin-top:10px">' + (LANG === 'en' ? 'Series scoreline' : 'Marcador de la serie') + '</div>' +
+        '<div class="gx-serscore">' + sim.scores.map(function (sc) { return '<span>' + esc(sc.score) + ' <b>' + (100 * sc.p).toFixed(1) + '%</b></span>'; }).join('') + '</div>' +
+        '<div class="gx-dim gx-es-note">' + esc(sim.correlation_note || '') + '</div>'
+      : '';
+    return '<div class="gx-panel" data-gxp-panel="es" data-gxp="' + esc(JSON.stringify(xd)) + '">' +
+      '<div class="gx-ph"><span class="gx-label">' + esc(t('xp_es_title')) + '</span><span class="gx-ph-extra gx-dim">~' + mean.toFixed(1) + ' ' + (LANG === 'en' ? 'rounds/map' : 'rondas/mapa') + '</span></div>' +
+      '<div class="gx-mod-body"><div class="gx-explorer">' +
+      gxpRowHtml('es-rounds', xd, LANG === 'en' ? 'Rounds line' : 'Línea de rondas', 15.5, 24.5, defL, [['18,5', 18.5], ['20,5', 20.5], ['22,5', 22.5]]) +
+      '</div>' + serie +
+      '<div class="gx-dim gx-es-note">' + esc(t('xp_note_shared')) + ' ' + esc(t('xp_es_note')) + '</div></div></div>';
+  }
   function cs2Rounds(d) {
     var r = (d.model || {}).rounds; if (!r) return '';
     var obs = r.observed;
@@ -9127,7 +9313,7 @@
       var lens = S.es.lens || 'partida';
       var LENSES = [
         ['partida', 'La partida', [esReadBlock(g, ev.id), cs2Veto(d), cs2Ladder(d)]],
-        ['modelo', 'El modelo', [cs2Rounds(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d)]],
+        ['modelo', 'El modelo', [cs2Rounds(d), esRoundsExplorer(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d)]],
         ['contexto', 'Contexto', [cs2Teams(d), esH2H(d.h2h), cs2Dataset(d), esProv(d)]],
       ];
       if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partida';
@@ -11776,6 +11962,18 @@
     }
     var mxP = cbMatchupPanel(d.breakdown, ft.f1.name, ft.f2.name);
     var predP = cbPredictionPanel(d.prediction, ft.f1.name, ft.f2.name);
+    // EXPLORADOR DE ASALTOS (18-ago): lo interactivo PROPIO del combate — arrastrar la línea de asaltos y
+    // leer la MISMA distribución de final por asalto que ya pinta el panel de predicción. round_dist es
+    // P(termina en el asalto r); el acumulado hasta N es el under N,5 del mercado de asaltos.
+    if (d.prediction && (d.prediction.round_dist || []).length > 1) {
+      var xpR = d.prediction.round_dist.length;
+      var xpD = { dist: d.prediction.round_dist, distance: d.prediction.distance || 0 };
+      var xpJumps = []; for (var xj = 1; xj < xpR; xj++) xpJumps.push([xj + ',5', xj + 0.5]);
+      predP += '<div class="gx-panel gx-mv-panel" data-gxp-panel="cb" data-gxp="' + esc(JSON.stringify(xpD)) + '">' +
+        '<div class="gx-ph"><span class="gx-label">' + esc(t('xp_cb_title')) + '</span></div><div class="gx-mod-body">' +
+        '<div class="gx-explorer">' + gxpRowHtml('cb-rounds', xpD, t('cb_rounds'), 1.5, xpR - 0.5, Math.min(2.5, xpR - 0.5), xpJumps.slice(0, 4)) + '</div>' +
+        '<div class="gx-dim gx-es-note">' + esc(t('xp_note_shared')) + ' ' + esc(t('xp_cb_note')) + '</div></div></div>';
+    }
     var liveP = cbLivePanel(d.live, d.live_probs, d.prob && d.prob.p1, ft.f1.name, ft.f2.name);
     var filmP = cbFilmPanel(d.film, ft.f1.name, ft.f2.name);
     // LA CAPA PROFUNDA VA ARRIBA DEL TODO, después de la lectura (16-ago). Es la respuesta a la pregunta que

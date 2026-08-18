@@ -3232,3 +3232,30 @@ td .gx-calc-btn span { display: none; }
 /* ── Lentes contextuales del panel de partida CS2 (17-ago, blueprint de feedback) ──────────────────────── */
 .gx-es-lens { margin: 2px 0 12px; position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px); }
 .gx-es-lens button { flex: 1; }
+
+/* ═══ EXPLORADORES DE LA CASA (18-ago) — la gramática del explorador de NFL, generalizada ═══
+   Un explorador por deporte, cada uno leyendo SU distribución ya calculada (nada se re-simula al mover):
+   fútbol = marcador Poisson desde las λ de la proyección; combate = round_dist del simulador; baloncesto =
+   margin_hist/total_hist de las 20.000 simulaciones; CS2 = distribución de rondas del perdedor + serie. */
+.gx-explorer{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.gx-xprow{display:grid;grid-template-columns:150px 1fr;gap:4px 16px;align-items:center}
+.gx-xprow input[type=range]{width:100%;accent-color:#1FE3A4;height:22px}
+.gx-xpout{grid-column:2;font-size:13px;color:var(--gx-text2)}
+.gx-xpout b{font-weight:700}
+.gx-xpjumps{grid-column:2;display:flex;gap:6px;margin-top:2px;flex-wrap:wrap}
+.gx-xpjump{font-size:10.5px;font-weight:700;font-family:var(--gx-mono);color:var(--gx-text3);background:var(--gx-panel2);
+  border:1px solid var(--gx-line);border-radius:7px;padding:3px 10px;cursor:pointer}
+@media (hover:hover){ .gx-xpjump:hover{border-color:rgba(31,227,164,.5);color:#1FE3A4} }
+@media (max-width:640px){ .gx-xprow{grid-template-columns:1fr} .gx-xpout{grid-column:1} .gx-xpjumps{grid-column:1} }
+/* rejilla de marcador exacto (fútbol): celdas tocables, intensidad = probabilidad */
+.gx-scoregrid{display:grid;grid-template-columns:34px repeat(6,1fr);gap:3px;margin-top:6px;max-width:430px}
+.gx-scoregrid .hd{font-size:10px;color:var(--gx-text4);display:flex;align-items:center;justify-content:center;font-family:var(--gx-mono)}
+.gx-sgcell{position:relative;border-radius:6px;background:rgba(31,227,164,.05);border:1px solid transparent;cursor:pointer;
+  aspect-ratio:1.5;display:flex;align-items:center;justify-content:center;font-family:var(--gx-mono);font-size:10.5px;color:var(--gx-text3)}
+.gx-sgcell.on{border-color:#1FE3A4;color:#EAF1F2}
+.gx-sgcell.top{color:#BFEFE0}
+/* marcadores de serie (CS2) */
+.gx-serscore{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.gx-serscore span{font-family:var(--gx-mono);font-size:12px;color:var(--gx-text2);background:var(--gx-panel2);
+  border:1px solid var(--gx-line);border-radius:8px;padding:4px 10px}
+.gx-serscore span b{color:#1FE3A4}

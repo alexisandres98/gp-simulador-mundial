@@ -3292,3 +3292,44 @@ td .gx-calc-btn span { display: none; }
 .gx-serscore span{font-family:var(--gx-mono);font-size:12px;color:var(--gx-text2);background:var(--gx-panel2);
   border:1px solid var(--gx-line);border-radius:8px;padding:4px 10px}
 .gx-serscore span b{color:#1FE3A4}
+
+/* ═══ TENIS (18-ago, blueprint 6.0) — tablero, duelo saque-resto, ficha, ranking ═══ */
+.gx-ten-card{padding:13px 14px;margin-bottom:10px}
+.gx-ten-head{display:flex;align-items:center;font-size:11px;margin-bottom:9px}
+.gx-ten-row{display:flex;align-items:center;gap:9px;padding:3px 0}
+.gx-ten-row .gx-cs-crest{width:26px;height:26px;font-size:10px;flex:none}
+.gx-ten-name{font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.gx-ten-p{font-size:14px;color:var(--gx-dim,#8b94a7)}
+.gx-ten-p.hi{color:var(--gx-green,#1FE3A4);font-weight:700}
+.gx-ten-bar{position:relative;height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin:8px 0 2px;overflow:visible}
+.gx-ten-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:linear-gradient(90deg,rgba(31,227,164,.85),rgba(31,227,164,.45))}
+.gx-ten-bar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:#6ea8fe;border-radius:1px;transform:translateX(-1px)}
+.gx-ten-bar.big{height:8px;margin:12px 0 4px}
+.gx-ten-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;margin-top:8px}
+.gx-ten-shadow{color:var(--gx-green,#1FE3A4)}
+.gx-ten-statgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin-top:4px}
+.gx-ten-stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.gx-ten-stat b{font-size:14px}
+.gx-ten-stat span{font-size:10.5px}
+.gx-ten-surfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px}
+.gx-ten-surf{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:9px 10px;display:flex;flex-direction:column;gap:2px}
+.gx-ten-surf b{font-size:11.5px;text-transform:capitalize}
+.gx-ten-duel{padding:16px}
+.gx-ten-duelhead{display:flex;align-items:center;gap:10px}
+.gx-ten-duelside{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.gx-ten-duelside.r{flex-direction:row-reverse;text-align:right}
+.gx-ten-duelside b{font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-ten-bigp{font-size:19px;font-weight:800;color:var(--gx-green,#1FE3A4);font-variant-numeric:tabular-nums}
+.gx-ten-vs{font-size:10.5px;flex:none;text-align:center}
+.gx-ten-duelgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin-top:12px}
+.gx-ten-setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.gx-ten-dist{display:flex;align-items:flex-end;gap:3px;padding:8px 2px 0;overflow-x:auto}
+.gx-ten-distbar{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:16px}
+.gx-ten-distbar i{display:block;width:11px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,rgba(31,227,164,.85),rgba(31,227,164,.25))}
+.gx-ten-distbar span{font-size:9px;color:var(--gx-dim,#8b94a7);font-variant-numeric:tabular-nums}
+.gx-ten-h2h{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid rgba(255,255,255,.05);font-size:12px}
+.gx-ten-h2h:first-of-type{border-top:0}
+.gx-ten-h2h b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-tensim-f{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+.gx-tensim-f input{flex:1;min-width:120px;background:#0b1512;border:1px solid var(--gx-line);border-radius:11px;padding:10px 12px;color:#eafff7;font-size:13px;font-family:inherit}
+.gx-tensim-f select{background:#0b1512;border:1px solid var(--gx-line);border-radius:11px;padding:10px 10px;color:#eafff7;font-size:12.5px;font-family:inherit}

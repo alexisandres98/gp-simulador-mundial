@@ -287,7 +287,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'NFL', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'NFL', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_model: 'El motor',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -693,7 +693,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'NFL', nfl_nav_games: 'Games', nfl_nav_model: 'The engine',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'NFL', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_model: 'The engine',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -953,7 +953,7 @@
   }
 
   // ---------- state ----------
-  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, ten: { tour: 'atp' }, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -1055,6 +1055,19 @@
   ];
   var NAV2_NFL = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   function nflAllowed() { return !!(S.me && (S.me.isAdmin || S.me.nflPublic)); }
+  // ── TENIS (18-ago, blueprint 6.0): 7º deporte, al lado de NFL. ATP/WTA con selector como las ligas
+  // de fútbol americano; base propia validada; TODAS las familias en sombra; admin-only de arranque.
+  var TEN_VIEWS = ['tengames', 'tenrank', 'tenplayers', 'tenplayer', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel'];
+  var NAV_TEN = [
+    ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'],
+    ['tenbrief', 'news', 'nav_brief'], ['tenask', 'message-circle', 'nav_cb_ask'], ['tensim', 'adjustments', 'nav_sim'],
+    ['tenplayers', 'user', 'sr_players'], ['tenmodel', 'book', 'ten_nav_model'],
+    ['alerts', 'bell', 'nav_alerts'], ['tenperf', 'chart-line', 'nav_perf']
+  ];
+  var NAV2_TEN = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  function tenAllowed() { return !!(S.me && (S.me.isAdmin || S.me.tennisPublic)); }
+  var TEN_TOURS = [['atp', 'ATP'], ['wta', 'WTA']];
+  function tenTour() { return (S.ten && S.ten.tour) === 'wta' ? 'wta' : 'atp'; }
   var NAV_ES = [
     ['esopps', 'target-arrow', 'nav_opps'], ['esprops', 'user-star', 'es_nav_props'],
     ['esboard', 'device-gamepad', 'es_nav_board'],
@@ -1093,6 +1106,7 @@
     if (BB_VIEWS.indexOf(v) >= 0) return 'hoops';
     if (ES_VIEWS.indexOf(v) >= 0) return 'esports';
     if (NFL_VIEWS.indexOf(v) >= 0) return 'nfl';
+    if (TEN_VIEWS.indexOf(v) >= 0) return 'tennis';
     if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
     return 'futbol';
   }
@@ -1108,6 +1122,8 @@
     if (v === 'nflteam') return 'nflteams';
     if (v === 'nflplayer') return 'nflplayers';
     if (NFL_VIEWS.indexOf(v) >= 0) return v;
+    if (v === 'tenplayer') return 'tenplayers';
+    if (TEN_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
     if (v === 'cbfighter') return 'cbfighters';
     if (CB_VIEWS.indexOf(v) >= 0) return v;
@@ -1163,10 +1179,10 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS); // vistas implementadas (clickeables)
-    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl';
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS).concat(TEN_VIEWS); // vistas implementadas (clickeables)
+    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var NAV_A = isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
+    var NAV_A = isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
     var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
@@ -1177,6 +1193,7 @@
     var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      : isTen ? [['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tensim', 'adjustments', 'nav_sim'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
       ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
       : isHoops
@@ -1217,6 +1234,7 @@
         '<button class="gx-sport' + (S.sport === 'esports' ? ' on' : '') + (esAllowed() ? '' : ' dim') + '"' + (esAllowed() ? ' data-sportgo="esports"' : ' disabled') + '><span class="gx-sport-ico">\ud83c\udfae</span>' + esc(t('sport_esports')) + (esAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
         // NFL (17-ago): mismo trato que tuvieron baloncesto y esports \u2014 admin-only, teaser al p\u00fablico
         '<button class="gx-sport' + (S.sport === 'nfl' ? ' on' : '') + (nflAllowed() ? '' : ' dim') + '"' + (nflAllowed() ? ' data-sportgo="nfl"' : ' disabled') + '><span class="gx-sport-ico">\ud83c\udfc8</span>' + esc(t('sport_nfl')) + (nflAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
+        (tenAllowed() ? '<button class="gx-sport' + (S.sport === 'tennis' ? ' on' : '') + '" data-sportgo="tennis"><span class="gx-sport-ico">\ud83c\udfbe</span>' + esc(t('sport_tennis')) + '</button>' : '') +
       '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -1541,6 +1559,12 @@
     // un deporte sin anadir su rama aqui. No se repite.
     var items = S.sport === 'nfl'
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflplayers', 'user', 'sr_players'], ['nflmodel', 'book', 'nfl_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['nflperf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
+      : S.sport === 'tennis'
+      ? [['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenplayers', 'user', 'sr_players'], ['tenbrief', 'news', 'nav_brief'], ['tenask', 'message-circle', 'nav_cb_ask'], ['tenmodel', 'book', 'ten_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['tenperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['refer', 'user-plus', 'nav_refer']])
@@ -4249,6 +4273,11 @@
     // asi que el hash guarda el JUEGO aparte y el id va tal cual detras.
     var esm = h.match(/^esmatch\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (esm) { S.es.game = esm[1]; if (!(S.view === 'esmatch' && S.es.matchId === esm[2])) { S.es.matchId = decodeURIComponent(esm[2]); S.es.match = undefined; showView('esmatch'); } return; }
+    // ── TENIS ────────────────────────────────────────────────────────────────────────────────────────
+    var tnp = h.match(/^tenplayer\/(atp|wta)-(\d+)$/i);
+    if (tnp) { S.ten.tour = tnp[1].toLowerCase(); if (!(S.view === 'tenplayer' && S.ten.playerId === tnp[2])) { S.ten.playerId = tnp[2]; showView('tenplayer'); } return; }
+    var tnv = h.match(/^(tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel)(?:\/(atp|wta))?$/i);
+    if (tnv) { if (tnv[2]) S.ten.tour = tnv[2].toLowerCase(); showView(tnv[1]); return; }
     // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
     var nfg = h.match(/^nflgame\/(.+)$/i);
     if (nfg) { if (!(S.view === 'nflgame' && S.nfl.gameId === decodeURIComponent(nfg[1]))) { S.nfl.gameId = decodeURIComponent(nfg[1]); showView('nflgame'); } return; }
@@ -4285,7 +4314,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -4293,6 +4322,7 @@
     // esports: el juego elegido viaja en el hash, por el mismo motivo (volver a la sección te devuelve al
     // juego en el que estabas, y el enlace se puede compartir apuntando a CS2 o a LoL)
     if (['esopps', 'esboard', 'esmodel', 'esteams', 'escircuit', 'esbrief', 'esask'].indexOf(nav) >= 0) return nav + '/' + esGame();
+    if (['tengames', 'tenrank', 'tenplayers', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel'].indexOf(nav) >= 0) return nav + '/' + tenTour();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
     if (nav === 'bracket' && S.bComp && S.bComp !== 'wc') return 'bracket/' + S.bComp;
@@ -4448,11 +4478,12 @@
     if (sport === 'combat' && !cbSportAllowed()) return;
     if (sport === 'hoops' && !bbAllowed()) return;
     if (sport === 'esports' && !esAllowed()) return;
+    if (sport === 'tennis' && !tenAllowed()) return;
     if (sport === S.sport) return;
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'tennis' ? 'tengames' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -4470,13 +4501,14 @@
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
     // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(v) >= 0 && !tenAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
     applyView(); syncNavActive();
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
-    if (NFL_VIEWS.indexOf(v) >= 0) renderNfl(v);
+    if (TEN_VIEWS.indexOf(v) >= 0) renderTennis(v);
+    else if (NFL_VIEWS.indexOf(v) >= 0) renderNfl(v);
     else if (ES_VIEWS.indexOf(v) >= 0) renderES(v);
     else if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
     else if (CB_VIEWS.indexOf(v) >= 0) renderCb(v);
@@ -10393,6 +10425,355 @@
   // El mismo molde que baloncesto (WNBA/NBA): un selector de liga arriba y las MISMAS pantallas debajo.
   // El backend de College/CFL (/api/amfoot/*) emite los DTOs con la forma de /api/nfl/*, así que el rewire
   // vive en UN punto: nflGet reescribe la URL y prefija la clave de caché con la liga.
+
+  // ═══════════════════ TENIS (18-ago, blueprint 6.0): el 7º deporte ═══════════════════════════════════
+  // El objeto firma es el DUELO SAQUE-RESTO: holds, breaks, P(tiebreak), juegos esperados y marcadores
+  // de set salen del MISMO compilador punto→juego→set→partido (no pueden contradecirse). Caja negra:
+  // evidencia sí, receta jamás. Atribución CC BY-NC-SA visible donde se enseña la base.
+  function tenGet(key, url, ttl) {
+    var e = S.ten[key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
+    if (!e || !e._inflight) tenFetch(key, url);
+    return e && e.v !== undefined ? e.v : null;
+  }
+  function tenFetch(key, url) {
+    var e = S.ten[key] = S.ten[key] || {};
+    e._inflight = true; var done = false;
+    var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'tennis') showView(S.view); }, 30000);
+    fetch(url, { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) {
+        if (done) return; done = true; clearTimeout(to);
+        e._inflight = false; e.v = j || { _err: 1 }; e._at = Date.now();
+        if (S.sport === 'tennis') showView(S.view);
+      });
+  }
+  function tenTourBar() {
+    return '<div class="gx-seg gx-es-lens" style="margin-bottom:10px">' + TEN_TOURS.map(function (x) {
+      return '<button data-tentour="' + x[0] + '"' + (x[0] === tenTour() ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+  function tenShell(title, inner) {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + tenTourBar() + inner + '</div></div>';
+    mv.onclick = tenClicks;
+  }
+  var tenLoading = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Leyendo la base propia de tenis…</b></div></div>'; };
+  var TEN_ATTRIB = 'Base propia derivada del proyecto de Jeff Sackmann (CC BY-NC-SA 4.0) — investigación interna, sin uso comercial.';
+  function tenPct(x) { return x == null ? '—' : Math.round(100 * x) + '%'; }
+  function tenChip(name) {
+    return '<span class="gx-cs-crest" style="' + crestTint(name) + '"><i style="color:inherit">' + esc(String(name || '?').replace(/[^A-Za-z ]/g, '').split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?') + '</i></span>';
+  }
+
+  function renderTennis(v) {
+    if (!tenAllowed()) { showView('board'); return; }
+    if (v === 'tengames') return renderTenGames();
+    if (v === 'tenrank') return renderTenRank();
+    if (v === 'tenplayers') return renderTenPlayers();
+    if (v === 'tenplayer') return renderTenPlayer();
+    if (v === 'tensim') return renderTenSim();
+    if (v === 'tenperf') return renderTenPerf();
+    if (v === 'tenbrief') return renderTenBrief();
+    if (v === 'tenask') return renderTenAsk();
+    if (v === 'tenmodel') return renderTenModel();
+    renderTenGames();
+  }
+
+  // ── PARTIDOS: el tablero desde el feed de cuotas (modelo vs mercado, todo en sombra) ─────────────────
+  function renderTenGames() {
+    var d = tenGet('board_' + tenTour(), '/api/tennis/board?tour=' + tenTour(), 120000);
+    if (!d) { tenShell(t('ten_nav_games'), tenLoading()); return; }
+    if (d._err) { tenShell(t('ten_nav_games'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
+    var rows = d.rows || [];
+    var body = rows.length ? rows.map(function (r) {
+      var gp = r.gp || {};
+      var pA = gp.p_a, mkA = r.market && r.market.ml_p_a;
+      var when = new Date(r.commence);
+      var whenTxt = when.toLocaleDateString(S.lang === 'en' ? 'en-GB' : 'es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + when.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false }) + 'h';
+      var bar = pA != null
+        ? '<div class="gx-ten-bar"><i style="width:' + Math.round(100 * pA) + '%"></i>' + (mkA != null ? '<em style="left:' + Math.round(100 * mkA) + '%"></em>' : '') + '</div>'
+        : '';
+      return '<div class="gx-panel gx-ten-card">' +
+        '<div class="gx-ten-head"><span class="gx-dim">' + esc(r.tourney || '') + ' · ' + esc(r.surface || '') + (r.best_of === 5 ? ' · bo5' : '') + '</span><span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(whenTxt) + '</span></div>' +
+        '<div class="gx-ten-row">' + tenChip(r.a) + '<b class="gx-ten-name">' + esc(r.a) + '</b>' +
+          '<span class="gx-mono gx-ten-p' + (pA != null && pA >= 0.5 ? ' hi' : '') + '">' + tenPct(pA) + '</span></div>' +
+        '<div class="gx-ten-row">' + tenChip(r.b) + '<b class="gx-ten-name">' + esc(r.b) + '</b>' +
+          '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span></div>' +
+        bar +
+        '<div class="gx-ten-meta gx-dim">' +
+          (mkA != null ? '<span>mercado ' + tenPct(mkA) + ' · ' + (r.market.books || 0) + ' casas</span>' : '<span>sin consenso de mercado</span>') +
+          (gp.exp_games != null ? '<span>' + gp.exp_games.toFixed ? gp.exp_games.toFixed(1) : gp.exp_games + ' juegos esp.</span>' : '') +
+          (gp.tb_any != null ? '<span>TB ' + tenPct(gp.tb_any) + '</span>' : '') +
+          (r.shadow_n ? '<span class="gx-ten-shadow">' + r.shadow_n + ' en sombra</span>' : '') +
+          (!r.available && r.why ? '<span>' + esc(r.why) + '</span>' : '') +
+        '</div></div>';
+    }).join('') : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin torneos con cuotas activas en la ventana.</b><span class="gx-dim">' + esc(d.note || 'The Odds API publica por torneo: los siguientes se abren solos cuando arrancan.') + '</span></div></div>';
+    body += '<div class="gx-dim gx-es-trunc">Todas las familias de tenis corren EN SOMBRA: nada de esto es una pick. ' + TEN_ATTRIB + '</div>';
+    tenShell(t('ten_nav_games'), body);
+  }
+
+  // ── RANKING GP ───────────────────────────────────────────────────────────────────────────────────────
+  function renderTenRank() {
+    var d = tenGet('rank_' + tenTour(), '/api/tennis/ranking?tour=' + tenTour(), 600000);
+    if (!d) { tenShell(t('ten_nav_rank'), tenLoading()); return; }
+    var rows = d.rows || [];
+    var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+      '<th class="r">#</th><th></th><th>' + (S.lang === 'en' ? 'Player' : 'Jugador') + '</th><th class="r">Elo GP</th><th class="r">Rank of.</th><th class="r">W-L</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        var mv = r.move == null ? '<span class="gx-dim">·</span>' : r.move > 0 ? '<span style="color:var(--gx-green)">▲' + r.move + '</span>' : r.move < 0 ? '<span style="color:#e5484d">▼' + (-r.move) + '</span>' : '<span class="gx-dim">=</span>';
+        return '<tr data-tenplayer="' + r.id + '"><td class="r gx-mono gx-esr-rank">' + r.pos + '</td>' +
+          '<td style="font-size:10.5px">' + mv + '</td>' +
+          '<td><div class="gx-esr-team">' + tenChip(r.name) + '<b>' + esc(r.name) + '</b>' + (r.country ? ' <span class="gx-dim" style="font-size:10.5px">' + esc(r.country) + '</span>' : '') + '</div></td>' +
+          '<td class="r gx-mono"><b>' + r.elo + '</b></td>' +
+          '<td class="r gx-mono gx-dim">' + (r.rank || '—') + '</td>' +
+          '<td class="r gx-mono gx-dim">' + esc(r.wl || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + ' ' + TEN_ATTRIB + '</div></div>';
+    tenShell(t('ten_nav_rank'), body);
+  }
+
+  // ── JUGADORES ────────────────────────────────────────────────────────────────────────────────────────
+  function renderTenPlayers() {
+    var q = S.ten.pQ || '';
+    var d = tenGet('dir_' + tenTour() + '_' + q, '/api/tennis/players?tour=' + tenTour() + '&q=' + encodeURIComponent(q), 300000);
+    var head = '<div class="gx-msearch">' + ic('search') + '<input id="gx-tensearch" placeholder="' + (S.lang === 'en' ? 'Search player…' : 'Buscar jugador…') + '" value="' + esc(q) + '" autocomplete="off"></div>';
+    var body;
+    if (!d) body = tenLoading();
+    else {
+      var rows = d.rows || [];
+      body = rows.length ? '<div class="gx-est-grid">' + rows.map(function (p) {
+        return '<div class="gx-panel gx-est-card" data-tenplayer="' + p.id + '">' +
+          '<div class="gx-est-top">' + tenChip(p.name) +
+            '<div class="gx-est-id"><b>' + esc(p.name) + '</b><span>' + esc([p.country, p.hand === 'L' ? (S.lang === 'en' ? 'left-handed' : 'zurdo') : null].filter(Boolean).join(' · ')) + (p.inactive ? ' · <em style="color:#e5a84d">inactivo</em>' : '') + '</span></div>' +
+            '<span class="gx-spacer"></span>' +
+            '<div class="gx-est-elo"><b>' + p.elo + '</b><span>Elo GP</span></div></div>' +
+          '<div class="gx-est-meta"><span class="gx-mono gx-dim">' + esc(p.wl) + '</span><span class="gx-dim">rank of. ' + (p.rank || '—') + '</span></div>' +
+        '</div>';
+      }).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + (S.lang === 'en' ? 'No player by that name.' : 'Ningún jugador con ese nombre.') + '</b></div></div>';
+      body += '<div class="gx-dim gx-es-trunc">' + TEN_ATTRIB + '</div>';
+    }
+    tenShell(t('sr_players'), head + body);
+    var si = $('#gx-tensearch');
+    if (si) si.addEventListener('input', function () { S.ten.pQ = si.value; clearTimeout(S._tenq); S._tenq = setTimeout(renderTenPlayers, 250); });
+  }
+
+  // ── FICHA DE JUGADOR ─────────────────────────────────────────────────────────────────────────────────
+  function renderTenPlayer() {
+    var id = S.ten.playerId;
+    var d = tenGet('pl_' + tenTour() + '_' + id, '/api/tennis/player?tour=' + tenTour() + '&id=' + id, 600000);
+    if (!d) { tenShell(t('sr_players'), tenLoading()); return; }
+    if (!d.available) { tenShell(t('sr_players'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Fuera de la base') + '</b></div></div>'); return; }
+    var age = d.dob ? Math.floor((Date.now() - Date.parse(String(d.dob).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'))) / (365.25 * 864e5)) : null;
+    var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + esAvatar({ nick: d.name }, 'big') +
+      '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name) + '</b>' +
+      '<span class="gx-dim">' + esc([d.country, d.hand === 'L' ? 'zurdo' : d.hand === 'R' ? 'diestro' : null, d.ht ? d.ht + ' cm' : null, age ? age + ' años' : null].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-est-elo"><b>' + d.elo + '</b><span>Elo GP</span></div>' +
+      '<div class="gx-est-elo"><b>' + (d.rank || '—') + '</b><span>rank of.</span></div></div>' +
+      (d.inactive_note ? '<div class="gx-dim" style="margin-top:8px">' + ic('alert-triangle') + ' ' + esc(d.inactive_note) + '</div>' : '') + '</div>';
+    var surf = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por superficie</span></div><div class="gx-ten-surfgrid">' +
+      (d.elo_surf || []).map(function (x, i) {
+        var wl = (d.surf_wl || [])[i] || {};
+        return '<div class="gx-ten-surf"><b>' + esc(x.surface) + '</b><span class="gx-mono">' + (x.elo || '—') + '</span><span class="gx-dim gx-mono">' + (wl.w || 0) + '-' + (wl.l || 0) + '</span></div>';
+      }).join('') + '</div></div>';
+    var cs = d.career_serve;
+    var serve = cs ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">El saque de carrera</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">índices: 100 = media del tour</span></div>' +
+      '<div class="gx-ten-statgrid">' +
+      [['Aces', cs.ace_pct + '%'], ['Dobles faltas', cs.df_pct + '%'], ['Primeros adentro', cs.first_in_pct + '%'], ['Pts ganados al saque', cs.spw_pct + '%'], ['BP salvados', cs.bp_saved_pct != null ? cs.bp_saved_pct + '%' : '—'], ['Índice saque', d.serve_index], ['Índice resto', d.return_index]].map(function (x) {
+        return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono">' + x[1] + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.index_note || '') + '</div></div>' : '';
+    var rec = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimos partidos</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>Fecha</th><th></th><th>Rival</th><th>Marcador</th><th>Sup.</th></tr></thead><tbody>' +
+      (d.recent || []).slice(0, 12).map(function (m) {
+        return '<tr><td class="gx-mono gx-dim">' + String(m.date).replace(/^(\d{4})(\d{2})(\d{2})$/, '$3/$2') + '</td>' +
+          '<td><b style="color:' + (m.won ? 'var(--gx-green)' : '#e5484d') + '">' + (m.won ? 'W' : 'L') + '</b></td>' +
+          '<td>' + esc(m.opp) + '</td><td class="gx-mono gx-dim">' + esc(m.score || '') + (m.ret ? ' RET' : '') + '</td>' +
+          '<td class="gx-dim">' + esc(m.surface || '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-trunc">' + TEN_ATTRIB + '</div></div>';
+    tenShell(t('sr_players'), hero + surf + serve + rec);
+  }
+
+  // ── SIMULADOR / DUELO SAQUE-RESTO (el objeto firma) ──────────────────────────────────────────────────
+  function renderTenSim() {
+    var st = S.ten.sim || {};
+    var form = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + (S.lang === 'en' ? 'Face off any two players' : 'Enfrenta a dos jugadores cualesquiera') + '</span></div>' +
+      '<div class="gx-tensim-f">' +
+      '<input id="gx-tensim-a" placeholder="' + (tenTour() === 'atp' ? 'Alcaraz' : 'Sabalenka') + '" value="' + esc(st.a || '') + '" autocomplete="off">' +
+      '<span class="gx-dim">vs</span>' +
+      '<input id="gx-tensim-b" placeholder="' + (tenTour() === 'atp' ? 'Sinner' : 'Swiatek') + '" value="' + esc(st.b || '') + '" autocomplete="off">' +
+      '<select id="gx-tensim-surf">' + [['dura', 'Dura'], ['arcilla', 'Arcilla'], ['hierba', 'Hierba']].map(function (x) { return '<option value="' + x[0] + '"' + (st.surf === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>' +
+      '<label class="gx-dim" style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" id="gx-tensim-bo5"' + (st.bo5 ? ' checked' : '') + '> bo5</label>' +
+      '<button class="gx-btn" data-tensimgo>' + (S.lang === 'en' ? 'Simulate' : 'Simular') + '</button></div>' +
+      '<div class="gx-dim gx-es-note">' + (S.lang === 'en' ? 'Own model, market-blind: point → game → set → match with real tennis rules.' : 'Modelo propio, sin cuotas: punto → juego → set → partido con las reglas reales del tenis.') + '</div></div>';
+    var res = '';
+    var r = st.result;
+    if (st.loading) res = tenLoading();
+    else if (r && !r.available) res = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(r.why || '') + '</b></div></div>';
+    else if (r) {
+      var du = r.duel;
+      var head = '<div class="gx-panel gx-ten-duel"><div class="gx-ten-duelhead">' +
+        '<div class="gx-ten-duelside">' + tenChip(r.a.name) + '<b>' + esc(r.a.name) + '</b><span class="gx-ten-bigp">' + tenPct(r.p_a) + '</span></div>' +
+        '<span class="gx-ten-vs gx-dim">' + esc(r.surface) + ' · bo' + r.best_of + '</span>' +
+        '<div class="gx-ten-duelside r">' + tenChip(r.b.name) + '<b>' + esc(r.b.name) + '</b><span class="gx-ten-bigp">' + tenPct(1 - r.p_a) + '</span></div></div>' +
+        '<div class="gx-ten-bar big"><i style="width:' + Math.round(100 * r.p_a) + '%"></i></div>' +
+        '<div class="gx-ten-duelgrid">' +
+        [['Hold ' + r.a.name.split(' ').pop(), tenPct(du.hold_a)], ['Hold ' + r.b.name.split(' ').pop(), tenPct(du.hold_b)],
+         ['Break a favor', tenPct(du.break_a)], ['Break en contra', tenPct(du.break_b)],
+         ['P(tiebreak)', tenPct(du.tb_any)], ['Juegos esperados', du.exp_games]].map(function (x) {
+          return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono">' + x[1] + '</b></div>';
+        }).join('') + '</div></div>';
+      var sets = r.setScores || (r.duel && r.duel.set_scores) || {};
+      var setRows = Object.keys(sets).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Marcador de sets</span></div><div class="gx-ten-setgrid">' +
+        Object.entries(sets).map(function (kv) {
+          var tot = (kv[1].a || 0) + (kv[1].b || 0);
+          return '<div class="gx-ten-stat"><span class="gx-dim">' + kv[0] + '</span><b class="gx-mono">' + tenPct(kv[1].a || 0) + ' / ' + tenPct(kv[1].b || 0) + '</b><span class="gx-dim" style="font-size:10px">' + esc(r.a.name.split(' ').pop()) + ' / ' + esc(r.b.name.split(' ').pop()) + '</span></div>';
+        }).join('') + '</div></div>' : '';
+      var tg = (du.total_games || []);
+      var maxP = Math.max.apply(null, tg.map(function (x) { return x[1]; }).concat([0.001]));
+      var gbars = tg.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Juegos totales — distribución</span></div><div class="gx-ten-dist">' +
+        tg.map(function (x) { return '<div class="gx-ten-distbar" title="' + x[0] + ': ' + (100 * x[1]).toFixed(1) + '%"><i style="height:' + Math.max(3, Math.round(56 * x[1] / maxP)) + 'px"></i><span>' + x[0] + '</span></div>'; }).join('') +
+        '</div></div>' : '';
+      var h2 = r.h2h && (r.h2h.w_a + r.h2h.w_b) ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Cara a cara real</span><span class="gx-ph-extra gx-mono">' + r.h2h.w_a + ' – ' + r.h2h.w_b + '</span></div>' +
+        (r.h2h.rows || []).slice(0, 6).map(function (m) {
+          return '<div class="gx-ten-h2h"><span class="gx-mono gx-dim">' + String(m.date).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1/$2') + '</span><b>' + (m.winner === 'a' ? esc(r.a.name) : esc(r.b.name)) + '</b><span class="gx-dim gx-mono">' + esc(m.score || '') + '</span><span class="gx-dim">' + esc(m.surface || '') + '</span></div>';
+        }).join('') + '</div>' : '';
+      res = head + setRows + gbars + h2 + '<div class="gx-dim gx-es-trunc">' + esc(r.note || '') + '</div>';
+    }
+    tenShell(t('nav_sim'), form + res);
+  }
+
+  // ── SOMBRA ───────────────────────────────────────────────────────────────────────────────────────────
+  function renderTenPerf() {
+    var d = tenGet('track', '/api/tennis/track', 120000);
+    if (!d) { tenShell(t('nav_perf'), tenLoading()); return; }
+    var kpi = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Monitor privado de tenis</span></div>' +
+      '<div class="gx-ten-statgrid">' +
+      [['Abiertas', d.open], ['Liquidadas', d.settled], ['Aciertos', d.w + '-' + d.l], ['Unidades', d.units != null ? d.units : '—'], ['CLV medio', d.clv_avg_pct != null ? d.clv_avg_pct + '%' : '—'], ['Anuladas (retiros)', d.voided || 0]].map(function (x) {
+        return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono">' + x[1] + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.reading || '') + '</div></div>';
+    var fam = d.by_family && Object.keys(d.by_family).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por familia</span></div><div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>Familia</th><th class="r">N</th><th class="r">Acierto</th><th class="r">Unidades</th><th class="r">CLV</th></tr></thead><tbody>' +
+      Object.entries(d.by_family).map(function (kv) {
+        return '<tr><td><b>' + kv[0] + '</b>' + (kv[1].note ? ' <span class="gx-dim" style="font-size:10px">' + esc(kv[1].note) + '</span>' : '') + '</td><td class="r gx-mono">' + kv[1].n + '</td><td class="r gx-mono">' + (kv[1].hit_pct != null ? kv[1].hit_pct + '%' : '—') + '</td><td class="r gx-mono">' + (kv[1].units != null ? kv[1].units : '—') + '</td><td class="r gx-mono">' + (kv[1].clv_avg_pct != null ? kv[1].clv_avg_pct + '%' : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' : '';
+    var open = (d.open_list || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Tesis abiertas</span></div>' +
+      d.open_list.slice(0, 12).map(function (p) {
+        return '<div class="gx-ten-h2h"><b>' + esc(p.a) + ' vs ' + esc(p.b) + '</b><span class="gx-dim">' + p.family + ' ' + esc(String(p.side)) + (p.line != null ? ' ' + p.line : '') + ' @' + p.odds + '</span><span class="gx-mono gx-dim">+' + p.edge_pp + 'pp</span></div>';
+      }).join('') + '</div>' : '';
+    tenShell(t('nav_perf'), kpi + fam + open + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+  }
+
+  // ── BRIEF ────────────────────────────────────────────────────────────────────────────────────────────
+  function renderTenBrief() {
+    var d = tenGet('brief_' + tenTour(), '/api/tennis/brief?tour=' + tenTour(), 300000);
+    if (!d) { tenShell(t('nav_brief'), tenLoading()); return; }
+    var intro = d.intro && d.intro.es ? '<div class="gx-panel gx-brief-intro"><p>' + esc(S.lang === 'en' && d.intro.en ? d.intro.en : d.intro.es) + '</p><span class="gx-dim" style="font-size:10.5px">GP · ' + esc(String(d.day || '')) + '</span></div>'
+      : '<div class="gx-panel"><div class="gx-dim">' + (d.intro_error === 'sin presupuesto de jobs para hoy' ? 'La apertura narrada vuelve mañana (presupuesto del redactor agotado hoy); abajo va el tablero completo.' : 'Sin apertura narrada todavía hoy.') + '</div></div>';
+    var rows = (d.games || []).map(function (r) {
+      var gp = r.gp || {};
+      return '<tr><td>' + esc(r.a) + '<span class="gx-dim"> vs </span>' + esc(r.b) + '</td><td class="gx-dim">' + esc(r.tourney || '') + '</td>' +
+        '<td class="r gx-mono">' + (gp.p_a != null ? tenPct(gp.p_a) : '—') + '</td>' +
+        '<td class="r gx-mono gx-dim">' + (r.market && r.market.ml_p_a != null ? tenPct(r.market.ml_p_a) : '—') + '</td></tr>';
+    }).join('');
+    var table = rows ? '<div class="gx-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Partido</th><th>Torneo</th><th class="r">GP</th><th class="r">Mercado</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' : '';
+    tenShell(t('nav_brief'), intro + table + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>');
+  }
+
+  // ── PREGÚNTALE A GP ──────────────────────────────────────────────────────────────────────────────────
+  function renderTenAsk() {
+    S.ten.ask = S.ten.ask || { hist: [], busy: false };
+    var A = S.ten.ask;
+    var sug = tenTour() === 'atp'
+      ? ['¿Cómo llega Alcaraz?', 'Simula Alcaraz vs Sinner en dura', '¿Qué dice el ranking GP?', '¿Cómo va la sombra de tenis?']
+      : ['¿Cómo llega Sabalenka?', 'Simula Swiatek vs Gauff en arcilla', '¿Qué dice el ranking GP?', '¿Cómo va la sombra de tenis?'];
+    var thread = A.hist.length ? '<div class="gx-bb-thread">' + A.hist.map(function (h) {
+      return '<div class="gx-bb-q">' + esc(h.q) + '</div>' + (h.answer ? '<div class="gx-bb-a">' + esc(h.answer).replace(/\n/g, '<br>') + '</div>' : '<div class="gx-bb-a gx-dim">…</div>');
+    }).join('') + '</div>' : '';
+    var box = '<div class="gx-panel gx-bb-askbox">' +
+      '<div class="gx-ph"><span class="gx-label">Pregúntale a GP</span><span class="gx-ph-extra">tenis · ' + esc(tenTour().toUpperCase()) + '</span></div>' +
+      thread +
+      (A.busy ? '<div class="gx-bb-a gx-dim">Pensando…</div>' : '') +
+      '<div class="gx-bb-askin"><input id="gx-ten-q" placeholder="Pregunta por un partido, un jugador o la sombra…" autocomplete="off"' + (A.busy ? ' disabled' : '') + '>' +
+      '<button class="gx-btn" data-tenaskgo' + (A.busy ? ' disabled' : '') + '>' + ic('message-circle') + 'Preguntar</button></div>' +
+      '<div class="gx-bb-sugs">' + sug.map(function (s2) { return '<span class="gx-bb-sug" data-tenasksug="' + esc(s2) + '">' + esc(s2) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">Responde solo con datos cargados en la plataforma. Si no tiene el dato, lo dice. No es consejo financiero.</div>' +
+      '</div>';
+    tenShell(t('nav_cb_ask'), box);
+    var inp = $('#gx-ten-q');
+    if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') tenAskGo(inp.value); });
+  }
+  function tenAskGo(qArg) {
+    var inp = $('#gx-ten-q'); var q = String(qArg || (inp && inp.value) || '').trim(); if (!q) return;
+    var A = S.ten.ask;
+    A.hist.push({ q: q, answer: null }); A.busy = true; renderTenAsk();
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()),
+      body: JSON.stringify({ q: q, sport: 'tennis', lang: S.lang === 'en' ? 'en' : 'es', hist: A.hist.slice(0, -1).slice(-5).map(function (h) { return { q: h.q, a: h.answer }; }) }) })
+      .then(function (r) { return r.json(); }).catch(function () { return null; })
+      .then(function (j) {
+        A.busy = false;
+        A.hist[A.hist.length - 1].answer = (j && (j.a || j.answer || j.text)) || 'No pude responder ahora mismo.';
+        if (S.view === 'tenask') renderTenAsk();
+      });
+  }
+
+  // ── EL MOTOR ─────────────────────────────────────────────────────────────────────────────────────────
+  function renderTenModel() {
+    var d = tenGet('model', '/api/tennis/model', 3600000);
+    if (!d) { tenShell(t('ten_nav_model'), tenLoading()); return; }
+    var vt = d.validation || {};
+    var tourBlock = function (lbl, h) {
+      if (!h || h.n == null) return '';
+      return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + lbl + ' — holdout intocable</span><span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">n=' + h.n + '</span></div>' +
+        '<div class="gx-ten-statgrid">' +
+        [['Skill vs moneda', h.skill_pct + '%'], ['AUC', h.auc], ['MAE juegos', h.games_mae], ['MAE ingenuo', h.games_mae_naive], ['Brier tiebreak', h.tb_brier]].map(function (x) {
+          return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono">' + x[1] + '</b></div>';
+        }).join('') + '</div></div>';
+    };
+    var body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(d.name || '') + '</span></div>' +
+      '<p class="gx-dim" style="font-size:12.5px;line-height:1.55">' + esc(d.doctrine || '') + '</p>' +
+      '<div class="gx-dim gx-es-note">' + esc((vt.protocol || '')) + '</div></div>' +
+      tourBlock('ATP', vt.atp) + tourBlock('WTA', vt.wta) +
+      '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">La base</span></div><div class="gx-ten-statgrid">' +
+      [['Partidos', (d.base || {}).matches], ['Jugadores', (d.base || {}).players], ['Ventana', (d.base || {}).window], ['Frescura', JSON.stringify(((d.base || {}).freshness || {})).replace(/[{}"]/g, ' ')]].map(function (x) {
+        return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono" style="font-size:12px">' + esc(String(x[1] || '—')) + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc((vt.note || '')) + ' ' + esc((d.base || {}).source || '') + '</div></div>';
+    tenShell(t('ten_nav_model'), body);
+  }
+
+  // ── CLICKS ───────────────────────────────────────────────────────────────────────────────────────────
+  function tenClicks(e) {
+    var tb = e.target.closest('[data-tentour]');
+    if (tb) {
+      var nt = tb.getAttribute('data-tentour');
+      if (nt !== tenTour()) { S.ten.tour = nt; S.ten.sim = null; setHash(compHash(viewNav(S.view)) || S.view); showView(S.view); }
+      return;
+    }
+    var pl = e.target.closest('[data-tenplayer]');
+    if (pl) { setHash('tenplayer/' + tenTour() + '-' + pl.getAttribute('data-tenplayer')); return; }
+    var go = e.target.closest('[data-tensimgo]');
+    if (go) {
+      var a = ($('#gx-tensim-a') || {}).value || '', b = ($('#gx-tensim-b') || {}).value || '';
+      var surf = ($('#gx-tensim-surf') || {}).value || 'dura', bo5 = !!(($('#gx-tensim-bo5') || {}).checked);
+      if (!a.trim() || !b.trim()) return;
+      S.ten.sim = { a: a, b: b, surf: surf, bo5: bo5, loading: true };
+      renderTenSim();
+      fetch('/api/tennis/sim?tour=' + tenTour() + '&a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + '&surface=' + surf + (bo5 ? '&bo=5' : ''), { headers: hdrs() })
+        .then(function (r) { return r.json(); }).catch(function () { return null; })
+        .then(function (j) {
+          S.ten.sim = { a: a, b: b, surf: surf, bo5: bo5, result: j || { available: false, why: 'sin respuesta' } };
+          if (S.view === 'tensim') renderTenSim();
+        });
+      return;
+    }
+    var ag = e.target.closest('[data-tenaskgo]');
+    if (ag) { tenAskGo(); return; }
+    var asug = e.target.closest('[data-tenasksug]');
+    if (asug) { tenAskGo(asug.getAttribute('data-tenasksug')); return; }
+  }
+
   var AMF_LEAGUES = [['nfl', 'NFL'], ['ncaaf', 'College'], ['cfl', 'CFL']];
   function nflLg() { return S.nfl.lg || 'nfl'; }
   function nflLgBar() {
@@ -13715,13 +14096,14 @@
             // el shell se pinta ANTES de que llegue /api/me → el sportbar se construyó sin saber si combate
             // está permitido. Si al llegar la sesión cambia el veredicto, se reconstruye (badge "Próximamente").
             if ((cbSportAllowed() && $('.gx-cbsoon')) || (bbAllowed() && $('.gx-sport.dim'))) shell();
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl') { S.sport = 'futbol'; shell(); } showView('board'); }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(S.view) >= 0 && !tenAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl' || S.sport === 'tennis') { S.sport = 'futbol'; shell(); } showView('board'); }
             // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
             // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por
             // enlace directo (mismo bug que ya tenía combate y por eso existe la rama de al lado).
             // ESPORTS: misma rama y por el mismo motivo. Sin ella, entrar directo a #esopps dejaba la
             // pantalla vacía — /api/me llega después del primer render y el shell() de arriba vacía
             // #gx-matchview. Es el tercer deporte que tropieza con esto; aquí ya va desde el principio.
+            else if (TEN_VIEWS.indexOf(S.view) >= 0) { applyView(); renderTennis(S.view); }
             else if (NFL_VIEWS.indexOf(S.view) >= 0) { applyView(); renderNfl(S.view); }
             else if (ES_VIEWS.indexOf(S.view) >= 0) { applyView(); renderES(S.view); }
             else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }

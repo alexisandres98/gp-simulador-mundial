@@ -109,7 +109,7 @@
       unc_copy: 'Las estimaciones internas no convergen del todo en este partido.',
       thesis_price_only: 'La diferencia proviene sobre todo del precio: el contexto disponible no aporta evidencia suficiente para sostener una lectura más fuerte.',
       thesis_ctx2: 'GP apoya su lectura en {factors}.',
-      e_na: 'Datos no disponibles', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Cuota no disponible ahora', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
+      e_na: 'Datos no disponibles', e_net: 'No se pudo cargar — revisa la conexión y vuelve a intentar.', e_nomarket: 'Mercado no cargado', e_lineups: 'Alineación pendiente', e_partial: 'Contexto parcial', e_noprice: 'Cuota no disponible ahora', e_gp_na: 'GP Intelligence no disponible', e_stale: 'Datos desactualizados',
       trust_data: 'Datos', trust_market: 'Mercado', trust_lineup: 'Alineación', trust_context: 'Contexto', t_sources: '{n} fuentes', t_pending: 'Pendiente', t_confirmed: 'Confirmada', t_broad: 'Amplio', t_partial: 'Parcial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'No disponible', lus_stale: 'Desactualizada',
       // ---- Corte 2: Match Cockpit profundo ----
       back: 'Oportunidades', open_cockpit: 'Abrir cockpit completo', refresh: 'Actualizar',
@@ -292,7 +292,7 @@
       cb_gpprob: 'PROBABILIDAD GP', cb_market: 'mercado', cb_books_n: 'casas', cb_no_odds: 'sin cuotas aún', cb_best_odds: 'mejor cuota',
       cb_method: 'MÉTODO DE VICTORIA', cb_finish: 'termina', cb_inside2: 'antes del 3º', cb_tale: 'Tale of the tape', cb_age: 'Edad', cb_height: 'Altura', cb_exp: 'Peleas', cb_kow: 'KO', cb_subw: 'SUB', cb_streak: 'Racha', cb_intel: 'Inteligencia', cb_intel_none: 'Sin señales — pelea limpia de banderas.',
       cb_recent: 'Últimas 5', cb_h2h: 'Historial entre ellos', cb_odds_by_book: 'Cuotas por casa', cb_form: 'Forma',
-      cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.',
+      cb_search_ph: 'Buscar peleador…', cb_all_divs: 'Todas las divisiones', cb_no_results: 'Sin resultados para esa búsqueda.', cb_no_cards: 'Sin cartelera cargada ahora mismo — se refresca sola cuando la organización anuncia.',
       cb_search_top: 'Buscar peleadores, peleas…', cb_sr_fighters: 'Peleadores', cb_sr_fights: 'Peleas',
       cb_by_family: 'Por tipo de pick', cb_fam_fight: 'Ganador', cb_fam_method: 'Método', cb_fam_rounds: 'Rounds',
       cb_seg_past: 'Finalizados', cb_final: 'Finalizada', cb_winner: 'Ganador', cb_st_title: 'Qué pasó · números de la pelea', cb_active: 'Activas',
@@ -513,7 +513,7 @@
       unc_copy: 'Internal estimates don’t fully converge for this match.',
       thesis_price_only: 'The gap comes mainly from price: the available context doesn’t provide enough evidence to support a stronger read.',
       thesis_ctx2: 'GP backs its read on {factors}.',
-      e_na: 'Data unavailable', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Odds not currently available', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
+      e_na: 'Data unavailable', e_net: 'Couldn\u2019t load \u2014 check your connection and try again.', e_nomarket: 'Market not loaded', e_lineups: 'Lineup pending', e_partial: 'Partial context', e_noprice: 'Odds not currently available', e_gp_na: 'GP Intelligence unavailable', e_stale: 'Stale data',
       trust_data: 'Data', trust_market: 'Market', trust_lineup: 'Lineup', trust_context: 'Context', t_sources: '{n} sources', t_pending: 'Pending', t_confirmed: 'Confirmed', t_broad: 'Broad', t_partial: 'Partial', t_base: 'Base', lus_probable: 'Probable', lus_unavailable: 'Unavailable', lus_stale: 'Stale',
       // ---- Corte 2: Deep Match Cockpit ----
       back: 'Opportunities', open_cockpit: 'Open full cockpit', refresh: 'Refresh',
@@ -696,7 +696,7 @@
       cb_gpprob: 'GP PROBABILITY', cb_market: 'market', cb_books_n: 'books', cb_no_odds: 'no odds yet', cb_best_odds: 'best odds',
       cb_method: 'METHOD OF VICTORY', cb_finish: 'finish', cb_inside2: 'inside 2 rounds', cb_tale: 'Tale of the tape', cb_age: 'Age', cb_height: 'Height', cb_exp: 'Fights', cb_kow: 'KO', cb_subw: 'SUB', cb_streak: 'Streak', cb_intel: 'Intelligence', cb_intel_none: 'No signals — a clean fight, no red flags.',
       cb_recent: 'Last 5', cb_h2h: 'Head to head', cb_odds_by_book: 'Odds by book', cb_form: 'Form',
-      cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.',
+      cb_search_ph: 'Search fighter…', cb_all_divs: 'All divisions', cb_no_results: 'No results for that search.', cb_no_cards: 'No fight card loaded right now — it refreshes when the organization announces.',
       cb_search_top: 'Search fighters, fights…', cb_sr_fighters: 'Fighters', cb_sr_fights: 'Fights',
       cb_by_family: 'By pick type', cb_fam_fight: 'Winner', cb_fam_method: 'Method', cb_fam_rounds: 'Rounds',
       cb_seg_past: 'Results', cb_final: 'Final', cb_winner: 'Winner', cb_st_title: 'What happened · fight numbers', cb_active: 'Active',
@@ -10916,7 +10916,7 @@
         }).join('');
         return '<div class="gx-panel gx-cb-event"><div class="gx-cb-evhead"><b>' + esc(ev.name) + '</b><span class="gx-dim">' + esc(cbWhen(ev.date, false)) + ' · ' + (ev.fights || []).length + ' ' + esc(t('cb_fights_n')) + '</span></div><div class="gx-cb-card">' + rows2 + '</div></div>';
       }).join('');
-      if (!(dr.events || []).length) ph = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_results')) + '</b></div></div>';
+      if (!(dr.events || []).length) ph = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_cards')) + '</b></div></div>';
       cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + ph); wireSeg(); return;
     }
     var d = cbGet('state_' + cbOrg(), '/api/combat/state?org=' + cbOrg());
@@ -10930,7 +10930,7 @@
       return '<div class="gx-panel gx-cb-event"><div class="gx-cb-evhead"><b>' + esc(ev.name) + '</b><span class="gx-dim">' + esc(cbWhen(ev.date)) + ' · ' + ev.fights.length + ' ' + esc(t('cb_fights_n')) + '</span></div>' +
         hero + (rows ? '<div class="gx-cb-card"><div class="gx-label gx-cb-cardlab">' + esc(t('cb_card')) + '</div>' + rows + '</div>' : '') + '</div>';
     }).join('');
-    if (!(d.cards || []).length) html = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_results')) + '</b></div></div>';
+    if (!(d.cards || []).length) html = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('cb_no_cards')) + '</b></div></div>';
     cbShell(t('cb_fights_title'), cbOrgTabs() + segHtml + html); wireSeg();
   }
   // hero de UNA pelea (usado en calendario compacto y arriba del cockpit completo)

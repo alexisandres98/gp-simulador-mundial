@@ -1,0 +1,80 @@
+{
+ "ratings": {
+  "hlCar": 6,
+  "hlDrv": 15,
+  "wq": 0.35,
+  "seasonKeep": 0.8,
+  "regimeKeep": 0.6,
+  "driverKeepBonus": 0.15,
+  "hlDnf": 30,
+  "shrinkCar": 2,
+  "shrinkDrv": 4,
+  "shrinkDnf": 8,
+  "dnfBase": 0.06
+ },
+ "sim": {
+  "sigma": 0.4,
+  "gridW": 0.7,
+  "sims": 4000
+ },
+ "blendU": 0.4,
+ "holdout_postquali": {
+  "n": 35,
+  "logloss": 1.407764458422177,
+  "skill_vs_uniform_pct": 53.00766791312517,
+  "podium_brier": 0.06788952739251043,
+  "dnf_brier": 0.10656571411234393,
+  "logloss_blend": 1.161,
+  "skill_blend_pct": 61.3,
+  "spearman": 0.687,
+  "grid_baseline_ll": 1.058
+ },
+ "holdout_prequali": {
+  "n": 35,
+  "logloss": 2.014537844520957,
+  "skill_vs_uniform_pct": 32.75307468878027,
+  "podium_brier": 0.08620436841192787,
+  "dnf_brier": 0.10656571411234393,
+  "spearman": 0.687,
+  "grid_baseline_ll": null
+ },
+ "model_version": "f1-twin-1",
+ "built_at": "2026-08-18T18:01:31.524Z",
+ "dev": {
+  "spearman": 0.752,
+  "winner_ll": 1.394
+ },
+ "grid_prior": [
+  0.01,
+  0.4979,
+  0.2322,
+  0.1021,
+  0.0396,
+  0.0187,
+  0.0313,
+  0.0063,
+  0.0063,
+  0.0063,
+  0.0189,
+  0.0021,
+  0.0021,
+  0.0021,
+  0.0105,
+  0.0021,
+  0.0021,
+  0.0062,
+  0.0021,
+  0.0021,
+  0.0025,
+  0.0104,
+  0.0109,
+  0.01,
+  0.01,
+  0.01,
+  0.01,
+  0.01,
+  0.01,
+  0.01,
+  0.01
+ ]
+}

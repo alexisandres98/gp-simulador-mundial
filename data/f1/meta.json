@@ -1,0 +1,13 @@
+{
+ "built_at": "2026-08-18T17:57:00.019Z",
+ "source": "Jolpica-F1 (api.jolpi.ca), datos CC BY 4.0 — atribución obligatoria",
+ "window": "2014-2026",
+ "races": 263,
+ "drivers": 63,
+ "last_completed": {
+  "season": 2026,
+  "round": 11,
+  "name": "Hungarian Grand Prix",
+  "date": "2026-07-26"
+ }
+}

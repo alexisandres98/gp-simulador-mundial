@@ -26,7 +26,13 @@
 // Así que se va despacio a propósito y se espera largo ante un 429 — esto tarda lo que tarde, pero no
 // pierde el trabajo: escribe a disco en cada página y se reanuda por el cursor.
 //
-// USO: node scripts/lol-kills-backfill.js [--since=2026-01-01] [--sleep=20000]
+// EMPEZAR POR DONDE IMPORTA (19-ago): el agregado de tempo mira una ventana de 180 DÍAS, así que rellenar
+// desde enero gasta las primeras páginas —y con ellas las fichas del limitador, que es lo escaso— en
+// partidas que el modelo ni siquiera va a mirar. Se arranca en el borde de esa ventana y se sigue hacia
+// adelante: la primera página ya sirve para algo. Lo viejo se puede rellenar después, o no rellenarse.
+// Es la misma lección que la cosecha de Valorant: lo RECIENTE primero.
+//
+// USO: node scripts/lol-kills-backfill.js [--since=2026-02-21] [--sleep=20000]
 'use strict';
 
 const fs = require('fs');
@@ -34,7 +40,9 @@ const path = require('path');
 const zlib = require('zlib');
 
 const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=`)); return h ? h.split('=')[1] : d; };
-const SINCE = arg('since', '2026-01-01') + ' 00:00:00';
+// por defecto, el borde de la ventana de tempo (180 días), no el principio del año
+const defSince = new Date(Date.now() - 178 * 864e5).toISOString().slice(0, 10);
+const SINCE = arg('since', defSince) + ' 00:00:00';
 const SLEEP = +arg('sleep', 20000);
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'lol');
 const UA = 'GPSimulador/1.0 (codigo@gpsimulador.com)';

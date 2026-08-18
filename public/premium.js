@@ -1165,7 +1165,7 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
-    var moreViews = isNfl ? ['nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    var moreViews = isNfl ? ['nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books'] : isEs ? ['esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
@@ -1537,7 +1537,9 @@
         .concat([['refer', 'user-plus', 'nav_refer']])
         .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
       : S.sport === 'esports'
-      ? [['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'], ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']]
+      // 18-ago (reporte de Alexis): Props no estaba NI en la barra inferior NI aquí → en el celular era
+      // inalcanzable. El mismo fallo de "deporte nuevo sin su rama" pero con una vista nueva.
+      ? [['esprops', 'user-star', 'es_nav_props'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'], ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['refer', 'user-plus', 'nav_refer']])
@@ -2202,10 +2204,12 @@
   // Lentes de NFL y baloncesto: capturadas a nivel documento (los shells de cada deporte tienen su propio
   // onclick y así no hay que tocar cada uno). Esports maneja data-eslens en esClicks.
   document.addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('[data-nfllens],[data-bblens]') : null;
+    var b = e.target.closest ? e.target.closest('[data-nfllens],[data-bblens],[data-nfloppfilt],[data-nfloppsub]') : null;
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
     if (b.hasAttribute('data-nfllens')) { S.nfl.lens = b.getAttribute('data-nfllens'); renderNflGame(); }
+    else if (b.hasAttribute('data-nfloppfilt')) { S.nfl.oppFilt = b.getAttribute('data-nfloppfilt'); renderNflOpps(); }
+    else if (b.hasAttribute('data-nfloppsub')) { S.nfl.oppSub = b.getAttribute('data-nfloppsub'); renderNflOpps(); }
     else { S.bb.lens = b.getAttribute('data-bblens'); renderBBGame(); }
   }, true);
   // F2: hint discreto cuando la mejor cuota vive en una casa fuera de las del usuario (solo con casas guardadas)
@@ -8413,34 +8417,64 @@
     // las ocultas se respetan igual que en el feed de fútbol: es la misma card y el mismo almacén
     var hidden = rows.filter(function (r) { return pickHidden(r.e); }).length;
     if (!S.showHidden) rows = rows.filter(function (r) { return !pickHidden(r.e); });
-    var head = '<div class="gx-es-hero"><div><b>' + esc(d.label) + '</b>' +
+    // CABECERA = LA MISMA GRAMÁTICA DEL BOARD DE FÚTBOL (gx-ohead + gx-seg + gx-prodchip), el mismo
+    // espejo que ya hicieron combate y baloncesto (pedido de Alexis, 18-ago: "Oportunidades debe verse
+    // como en los demás deportes"). El filtro de reloj es el de combate; los chips son los productos que
+    // este deporte tiene DE VERDAD: Picks del día y Arbitraje puro. No se pintan chips de productos que
+    // aquí no existen.
+    var oppFilt = S.es.oppFilt || 'all', oppSub = S.es.oppSub || 'picks';
+    var now = Date.now();
+    var inWindow = function (startAt) {
+      var ko = Date.parse(startAt || 0);
+      if (oppFilt === 'live') return ko <= now && now - ko < 7 * 3600e3;
+      if (oppFilt === 'up') return ko > now;
+      return true;
+    };
+    var head = '<div class="gx-ohead" style="margin:0">' +
+      '<div class="gx-seg">' + [['all', t('all')], ['live', t('live_f')], ['up', t('upcoming_f')]].map(function (x) {
+        return '<button data-esoppfilt="' + x[0] + '" class="' + (oppFilt === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
+      }).join('') + '</div>' +
+      '<div style="display:flex;gap:8px">' + [['picks', t('picks')], ['arb', t('arb')]].map(function (x) {
+        return '<span class="gx-prodchip' + (oppSub === x[0] ? ' on' : '') + '" data-esoppsub="' + x[0] + '">' + esc(x[1]) + '</span>';
+      }).join('') + '</div></div>';
+    var hero = '<div class="gx-es-hero"><div><b>' + esc(d.label) + '</b>' +
       '<span class="gx-dim">' + esc((d.native || []).join(' · ')) + '</span></div>' +
       '<span class="gx-spacer"></span>' +
       '<div class="gx-es-hero-n"><b>' + (d.items || []).length + '</b><span>partidas</span></div>' +
       '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>con ventaja</span></div></div>' +
       (hidden ? '<div class="gx-dim gx-es-trunc">' + hidden + ' pick' + (hidden > 1 ? 's' : '') + ' oculta' + (hidden > 1 ? 's' : '') +
         ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? 'volver a esconderlas' : 'mostrarlas') + '</a></div>' : '');
-    var body;
-    if (!rows.length) {
-      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna ventaja pasa el listón ahora mismo.</b>' +
-        '<span class="gx-dim">' + esc((d.items || []).length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.' : 'La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.') + '</span></div></div>';
+    var inner;
+    if (oppSub === 'arb') {
+      inner = esArbs(d, { filter: inWindow }) ||
+        '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('opp_arb_na')) + '</b>' +
+        '<span class="gx-dim">' + esc(t('opp_arb_note')) + '</span></div></div>';
     } else {
-      // LA MISMA CARD QUE FÚTBOL, COMBATE Y BALONCESTO. No una parecida: `pickCard()` tal cual, con los
-      // campos que el motor ya emite con esa forma. El usuario aprende a leer una pick UNA vez —chip de
-      // familia, ticket, porqué desplegable, cuota con su casa, confianza, señales y calculadora de stake—
-      // y esa lectura le vale en los cuatro deportes. Una tabla propia aquí no era personalidad, era deuda.
-      body = '<div class="gx-picks-feed">' + rows.map(function (r) { return pickCard(r.e, {}); }).join('') + '</div>';
+      var shown = rows.filter(function (r) { return inWindow((r.it.event || {}).start_at); });
+      var body;
+      if (!shown.length) {
+        body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna ventaja pasa el listón ahora mismo.</b>' +
+          '<span class="gx-dim">' + esc((d.items || []).length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.' : 'La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.') + '</span></div></div>';
+      } else {
+        // LA MISMA CARD QUE FÚTBOL, COMBATE Y BALONCESTO. No una parecida: `pickCard()` tal cual, con los
+        // campos que el motor ya emite con esa forma. El usuario aprende a leer una pick UNA vez —chip de
+        // familia, ticket, porqué desplegable, cuota con su casa, confianza, señales y calculadora de stake—
+        // y esa lectura le vale en los cuatro deportes. Una tabla propia aquí no era personalidad, era deuda.
+        body = '<div class="gx-picks-feed">' + shown.map(function (r) { return pickCard(r.e, {}); }).join('') + '</div>';
+      }
+      inner = body + esWhyNot(d);
     }
-    esShell(t('nav_opps'), esTabs() + head + esArbs(d) + body + esWhyNot(d) + esDoctrine(d.doctrine));
+    esShell(t('nav_opps'), esTabs() + head + hero + inner + esDoctrine(d.doctrine));
   }
 
   // ── ARBITRAJE: LO ÚNICO QUE NO PASA POR EL MODELO ──────────────────────────────────────────────────────
   // Va ARRIBA de las picks a propósito. Si el modelo estuviera entero equivocado, esta sección seguiría
   // siendo válida: sale de que dos casas discrepen en el precio de los dos lados del mismo mercado, no de que
   // GP tenga razón. Es la única fila de esta pantalla de la que se puede decir eso, y por eso va primero.
-  function esArbs(d) {
+  function esArbs(d, opts) {
     var all = [];
     (d.items || []).forEach(function (it) { (it.arbs || []).forEach(function (a) { all.push({ it: it, a: a }); }); });
+    if (opts && opts.filter) all = all.filter(function (r) { return opts.filter((r.it.event || {}).start_at); });
     if (!all.length) return '';
     all.sort(function (x, y) { return y.a.profit_pct - x.a.profit_pct; });
     return esPanel('Arbitraje puro', '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
@@ -8792,7 +8826,9 @@
   function cs2Crest(t, cls) {
     var name = (t && t.name) || '—';
     var ini = name.replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 3).toUpperCase() || '?';
-    var img = (t && t.logo) ? '<img src="' + esc(t.logo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
+    // onload marca el escudo como cargado y la inicial se esconde: con logos PNG transparentes (NFL) las
+    // letras se veían DETRÁS del escudo (reporte de Alexis, 18-ago).
+    var img = (t && t.logo) ? '<img src="' + esc(t.logo) + '" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add(\'ok\')" onerror="this.remove()">' : '';
     return '<span class="gx-cs-crest' + (cls ? ' ' + cls : '') + '">' + img + '<i>' + esc(ini) + '</i></span>';
   }
 
@@ -10137,7 +10173,28 @@
         '<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks.</div></div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('tickets') + '<b>La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.</b>' +
         '<span class="gx-dim">Cuando una familia gane CLV fuera de muestra con muestra suficiente, esta pantalla se convierte en el feed de picks con la misma card de los demás deportes. Antes, no.</span></div></div>';
-    nflShell(t('nav_opps'), hero + famB + shadowB + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+    // CABECERA = LA MISMA GRAMÁTICA DEL BOARD DE FÚTBOL (pedido de Alexis, 18-ago), el espejo que ya
+    // tienen combate, baloncesto y esports. Los chips dicen la verdad de cada producto: Picks es el estado
+    // de las familias (todas en sombra, con su porqué), Value y Arbitraje declaran que aún no se publican.
+    var oppSub = S.nfl.oppSub || 'picks';
+    var head = '<div class="gx-ohead" style="margin:0">' +
+      '<div class="gx-seg">' + [['all', t('all')], ['live', t('live_f')], ['up', t('upcoming_f')]].map(function (x) {
+        return '<button data-nfloppfilt="' + x[0] + '" class="' + ((S.nfl.oppFilt || 'all') === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
+      }).join('') + '</div>' +
+      '<div style="display:flex;gap:8px">' + [['picks', t('picks')], ['value', t('value')], ['arb', t('arb')]].map(function (x) {
+        return '<span class="gx-prodchip' + (oppSub === x[0] ? ' on' : '') + '" data-nfloppsub="' + x[0] + '">' + esc(x[1]) + '</span>';
+      }).join('') + '</div></div>';
+    var inner;
+    if (oppSub === 'value') {
+      inner = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>El value de NFL corre en sombra, no en público.</b>' +
+        '<span class="gx-dim">El modelo queda a ~0,45 pts del cierre (MAE 10,31 vs 9,86) y el backtest 2017-2025 no aprueba ninguna familia: publicar value con esa distancia sería vender ruido. El registro privado acumula CLV; si una familia lo gana fuera de muestra, este chip se enciende.</span></div></div>';
+    } else if (oppSub === 'arb') {
+      inner = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('opp_arb_na')) + '</b>' +
+        '<span class="gx-dim">La comparación multi-casa del partido ya existe (grid de mercado en cada Game Terminal); el detector de arbitraje puro entre casas de NFL todavía no está construido, y no se finge.</span></div></div>';
+    } else {
+      inner = famB + shadowB;
+    }
+    nflShell(t('nav_opps'), head + hero + inner + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
   }
 
   // ---- 1c) JUGADORES: directorio por posición ------------------------------------------------------------
@@ -10786,6 +10843,10 @@
   function esClicks(e) {
     var lensBtn = e.target.closest('[data-eslens]');
     if (lensBtn) { S.es.lens = lensBtn.getAttribute('data-eslens'); renderESMatch(); return; }
+    var oppF = e.target.closest('[data-esoppfilt]');
+    if (oppF) { S.es.oppFilt = oppF.getAttribute('data-esoppfilt'); renderESOpps(); return; }
+    var oppS = e.target.closest('[data-esoppsub]');
+    if (oppS) { S.es.oppSub = oppS.getAttribute('data-esoppsub'); renderESOpps(); return; }
     var epl = e.target.closest('[data-esplayer]');
     if (epl) { setHash('esplayer/' + esGame() + '/' + encodeURIComponent(epl.getAttribute('data-esplayer'))); return; }
     var seg = e.target.closest('[data-esgtab]');

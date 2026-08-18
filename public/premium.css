@@ -3603,3 +3603,19 @@ td .gx-calc-btn span { display: none; }
 .gx-amf-mate{display:flex;align-items:center;gap:7px;cursor:pointer;padding:4px 0}
 .gx-amf-mate b{display:block;font-size:11.5px}
 .gx-amf-mate em{font-style:normal;font-size:10px;opacity:.55}
+
+/* ── LAS INICIALES SON RESPALDO, NO ETIQUETA ─────────────────────────────────────────────────────────
+   Cuando hay retrato, las letras NO se pintan: `has-photo` las esconde. Si la imagen falla al cargar, el
+   onerror quita la clase y las iniciales reaparecen solas. O cara, o letras — nunca las dos encima. */
+.gx-esp-ava.has-photo > i,
+.gx-f1-face.has-photo > i,
+.gx-ten-face.has-photo > i,
+.gx-amf-face.has-photo > i { display: none; }
+/* misma regla de hermano que ya usaban combate y baloncesto, como segunda defensa: si hay <img> delante,
+   las iniciales no se pintan aunque la clase faltara por cualquier motivo */
+.gx-esp-ava img + i,
+.gx-f1-face img + i,
+.gx-ten-face img + i,
+.gx-amf-face img + i { display: none; }
+/* y el retrato manda sobre cualquier resto del contenedor */
+.gx-esp-ava img, .gx-f1-face img, .gx-ten-face img, .gx-amf-face img { z-index: 1; }

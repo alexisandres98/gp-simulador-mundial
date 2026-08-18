@@ -60,8 +60,9 @@ async function savePhoto(url, name) {
 
   for (const tour of tours) {
     const label = tour ? 'WTA' : 'ATP';
-    const rows = (T.playersDirectory(tour, { q: '', limit: LIMIT }).rows || [])
-      .filter((r) => !r.inactive).slice(0, LIMIT);
+    // NO se filtran los inactivos (19-ago): el directorio los sigue enseñando —Federer, Nadal y compañía
+    // aparecen por Elo— y sin foto salían con el círculo de iniciales. Si están en la lista, llevan cara.
+    const rows = (T.playersDirectory(tour, { q: '', limit: LIMIT }).rows || []).slice(0, LIMIT);
     console.log(`[tenis:${label}] a cubrir: ${rows.length}`);
     let n = 0, miss = 0;
     for (const r of rows) {

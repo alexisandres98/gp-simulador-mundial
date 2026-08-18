@@ -10248,11 +10248,20 @@
     if (x == null || !isFinite(x)) return null;
     return '$' + Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
+  // LAS INICIALES SON EL RESPALDO, NO UNA ETIQUETA ENCIMA (19-ago, reporte de Alexis). Antes el <i> se
+  // pintaba SIEMPRE, también cuando había foto, y quedaba escrito sobre la cara. Ahora, cuando hay retrato,
+  // el contenedor lleva `has-photo` y el CSS esconde las letras; si la imagen falla al cargar, el onerror
+  // quita esa clase y las iniciales vuelven a aparecer solas. Respaldo de verdad: o cara, o letras, nunca
+  // las dos cosas a la vez.
+  function faceImg(src) {
+    return '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async"' +
+      ' onerror="var w=this.parentNode;if(w){w.classList.remove(\'has-photo\')}this.remove()">';
+  }
   function esAvatar(p, cls) {
     var ini = String(p.nick || '?').slice(0, 2).toUpperCase();
-    var img = p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
     var tint = p.photo ? '' : ' style="' + crestTint(p.nick || '?') + '"';
-    return '<span class="gx-esp-ava' + (cls ? ' ' + cls : '') + '"' + tint + '>' + img + '<i style="color:inherit">' + esc(ini) + '</i></span>';
+    return '<span class="gx-esp-ava' + (cls ? ' ' + cls : '') + (p.photo ? ' has-photo' : '') + '"' + tint + '>' +
+      (p.photo ? faceImg(p.photo) : '') + '<i style="color:inherit">' + esc(ini) + '</i></span>';
   }
   // buscador con foco conservado: el mismo patrón que el del calendario (re-render + restaurar cursor)
   function esSearchBox(id, val, ph) {
@@ -10760,9 +10769,8 @@
   function f1Face(r, cls) {
     var ini = esc(r.code || (r.name || '?').slice(0, 3).toUpperCase());
     var col = esc(r.color || '#555');
-    return '<span class="gx-f1-face' + (cls ? ' ' + cls : '') + '" style="--f1c:' + col + '">' +
-      (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
-      '<i class="gx-mono">' + ini + '</i></span>';
+    return '<span class="gx-f1-face' + (cls ? ' ' + cls : '') + (r.photo ? ' has-photo' : '') + '" style="--f1c:' + col + '">' +
+      (r.photo ? faceImg(r.photo) : '') + '<i class="gx-mono">' + ini + '</i></span>';
   }
   function f1Badge(r) {
     return r.badge ? '<img class="gx-f1-badge" src="' + esc(r.badge) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '';
@@ -11276,9 +11284,9 @@
   function tenFace(p, cls) {
     var nm = (p && (p.name || p.ref)) || '?';
     var ini = nm.split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase();
-    return '<span class="gx-ten-face' + (cls ? ' ' + cls : '') + '"' + (p && p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
-      (p && p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
-      '<i>' + esc(ini) + '</i></span>';
+    return '<span class="gx-ten-face' + (cls ? ' ' + cls : '') + (p && p.photo ? ' has-photo' : '') + '"' +
+      (p && p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
+      (p && p.photo ? faceImg(p.photo) : '') + '<i>' + esc(ini) + '</i></span>';
   }
 
   // ── OPORTUNIDADES DE TENIS ──────────────────────────────────────────────────────────────────────────
@@ -12097,9 +12105,9 @@
   function amfFace(p, cls) {
     var nm = p.name || '?';
     var ini = nm.split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase();
-    return '<span class="gx-amf-face' + (cls ? ' ' + cls : '') + '"' + (p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
-      (p.photo ? '<img src="' + esc(p.photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
-      '<i>' + esc(ini) + '</i></span>';
+    return '<span class="gx-amf-face' + (cls ? ' ' + cls : '') + (p.photo ? ' has-photo' : '') + '"' +
+      (p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
+      (p.photo ? faceImg(p.photo) : '') + '<i>' + esc(ini) + '</i></span>';
   }
 
   function renderAmfPlayers() {

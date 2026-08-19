@@ -135,8 +135,31 @@ async function overview({ days = 5 } = {}) {
       books: (s && s.books) || 0,
       competitions: (s && s.competitions) ? s.competitions.length : 0,
       next: evs[0] || null,
+      // ── EL RATING QUE DE VERDAD USA EL MOTOR (19-ago) ────────────────────────────────────────────────
+      // Esto informaba `rating_matches: rt.n`, donde `rt` es el Elo GENÉRICO que se calcula desde
+      // `results-<juego>.json`. Ese fichero está vacío en los cuatro juegos, así que la sonda llevaba meses
+      // publicando "rating 0" — y es falso: cuando existe capa propia por juego (`lol-data`,
+      // `valorant-data`, `dota2-data`), el motor NO usa el Elo genérico, usa la capa, vía `ownInputFor`.
+      // Y las capas están llenas: T1 tiene 1884 de Elo con 930 partidos, Team Spirit 1747 con 569.
+      //
+      // Un indicador que dice 0 cuando el valor real son miles no es un detalle de presentación: es una
+      // trampa. Hoy me llevó a decidir sobre una carencia que no existía. Ahora informa las DOS cosas y
+      // dice cuál manda.
       rating_matches: rt ? rt.n : 0,
       rating_teams: rt ? Object.keys(rt.elo).length : 0,
+      rating_propio: (() => {
+        const mod = { lol: './lol-data', valorant: './valorant-data', dota2: './dota2-data', cs2: './cs2-data' }[g];
+        if (!mod) return null;
+        try {
+          const D = require(mod);
+          const d = D.load && D.load();
+          if (!d || d.available === false) return { capa: mod.slice(2), disponible: false };
+          return { capa: mod.slice(2), disponible: true,
+            equipos: d.teams ? Object.keys(d.teams).length : null,
+            partidos: Array.isArray(d.matches) ? d.matches.length : null,
+            manda: 'esta capa gobierna la probabilidad; el Elo genérico de arriba solo actúa si esta falla' };
+        } catch (e) { return { capa: mod.slice(2), disponible: false, error: e.message }; }
+      })(),
       closes_stored: closesCount(g),
       available: !!(s && s.available),
     });

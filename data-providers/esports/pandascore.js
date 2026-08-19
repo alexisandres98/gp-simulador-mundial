@@ -17,13 +17,8 @@
 //     es un problema de casas, no de datos— y conviene no confundirse: esto es la mitad de datos del
 //     problema, no la de precio.
 //
-// LO QUE SÍ DESBLOQUEA, en orden de valor:
-//   1. RATING PROPIO en LoL, Valorant y Dota 2. Quién ganó a quién, cuándo, en qué competición y con qué
-//      marcador es exactamente lo que un rating necesita. 46.931 partidos de LoL, 38.329 de Dota 2 y
-//      17.924 de Valorant, terminados y accesibles.
-//   2. DURACIÓN POR MAPA en Dota 2, que es la familia sobre la que ese motor está construido y para la que
-//      no tenía ni una observación propia.
-//   3. Catálogo de equipos y jugadores con imagen para los cuatro, sin depender de raspar nada.
+// LO COSECHADO, cifras finales: 45.548 partidos de LoL, 37.965 de Dota 2 y 17.921 de Valorant, con sus
+// 202.481 mapas. Más el catálogo de equipos y jugadores con imagen para los cuatro, sin raspar nada.
 //
 // PROFUNDIDAD REAL, medida: CS2 y LoL desde el 13-ene-2016, Dota 2 desde el 6-ene-2016, Valorant desde el
 // 30-ene-2021 (el juego es de 2020).

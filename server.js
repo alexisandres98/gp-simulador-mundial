@@ -162,9 +162,11 @@ const memRecent = () => {
 // con CLV positivo—. Con el anillo, la pregunta pasa a ser la correcta: no "¿está alta la memoria ahora
 // mismo?" sino "¿ha estado alta durante el último medio minuto?".
 const RSS_RING = [];
+const LIVE_RING = [];
 setInterval(() => {
   const mb = Math.round(process.memoryUsage().heapUsed / 1048576);
   try { RSS_RING.push(opsRssMb()); if (RSS_RING.length > 6) RSS_RING.shift(); } catch { /* antes del arranque */ }
+  try { LIVE_RING.push(opsLiveMb()); if (LIVE_RING.length > 6) LIVE_RING.shift(); } catch { /* antes del arranque */ }
   const step = Math.floor(mb / 250);
   if (step > _memStep) console.log('[mem] montón', mb, 'MB (subiendo) · en curso:', memRecent());
   else if (step < _memStep - 1) console.log('[mem] montón', mb, 'MB (liberado) · tras:', memRecent());
@@ -229,6 +231,16 @@ const OPS = { running: {}, log: [] };
 const opsLog = (what, extra) => { OPS.log.push({ at: new Date().toISOString(), what, ...extra }); if (OPS.log.length > 40) OPS.log.shift(); };
 const opsToday = () => new Date().toISOString().slice(0, 10);
 const opsRssMb = () => Math.round(process.memoryUsage().rss / 1048576);
+// LA MEMORIA VIVA, QUE NO ES EL RSS (19-ago). El RSS de un proceso Node NO BAJA cuando se libera memoria:
+// V8 devuelve las páginas al asignador, no al sistema operativo. Medido en producción con la plataforma en
+// reposo y CERO trabajos en vuelo, el RSS subió 1.078 → 1.311 → 1.331 → 1.359 MB en menos de un minuto
+// solo por servir peticiones. Es decir: el techo se cruza SIEMPRE y con el tiempo, y desde ese momento
+// ningún trabajo de fondo vuelve a correr — que es exactamente lo que llevaba dos días pasándole a las
+// plantillas de College y de la CFL, con la variable puesta y el contador de frenos clavado en 3.
+// La memoria que de verdad ocupa el proceso es la que V8 tiene VIVA: montón usado + lo externo (buffers,
+// sockets). Eso sí sube y baja. El RSS se conserva como segunda guardia, muy arriba, para el caso real de
+// que el contenedor esté a punto de morir; pero quien decide es la memoria viva.
+const opsLiveMb = () => { const m = process.memoryUsage(); return Math.round((m.heapUsed + m.external) / 1048576); };
 // ── EL TECHO DE MEMORIA, EN UN SOLO SITIO (19-ago) ──────────────────────────────────────────────────────
 // Los frenos de los jobs estaban clavados entre 230 y 320 MB, calibrados cuando el proceso era pequeño. El
 // servicio hoy sirve OCHO deportes con bases grandes en memoria y reposa entre 675 y 780 MB — es decir, los
@@ -238,14 +250,25 @@ const opsRssMb = () => Math.round(process.memoryUsage().rss / 1048576);
 // Ahora hay un techo único, ajustable por env, con margen sobre el reposo observado y muy por debajo de
 // donde el contenedor moriría. Cada guardia dice su nombre cuando frena: nada de returns mudos.
 const OPS_RSS_CEIL = Math.max(400, +(process.env.GP_OPS_RSS_CEIL_MB || 1200));
+// Techo sobre la memoria VIVA. Reposo observado con ocho deportes cargados: 300-500 MB de montón usado.
+// 900 deja sitio de sobra para un barrido de cuotas y sigue muy por debajo de donde el contenedor muere.
+const OPS_LIVE_CEIL = Math.max(300, +(process.env.GP_OPS_LIVE_CEIL_MB || 900));
+// Guardia de catástrofe sobre el RSS: solo para el caso de que el proceso esté de verdad al borde. Muy por
+// encima del techo antiguo, porque el RSS de Node crece monótonamente y cruzarlo no significa "lleno".
+const OPS_RSS_HARD = Math.max(OPS_RSS_CEIL, +(process.env.GP_OPS_RSS_HARD_MB || 1800));
 function opsMemOk(what, marginMb = 0) {
-  const now = opsRssMb();
-  const lim = OPS_RSS_CEIL - marginMb;
+  const now = opsLiveMb();
+  const lim = OPS_LIVE_CEIL - marginMb;
   // el MÍNIMO de los últimos ~30 s: un pico no descalifica, una memoria estructuralmente alta sí
-  const ring = (typeof RSS_RING !== 'undefined' && RSS_RING.length) ? RSS_RING : [];
-  const rss = ring.length ? Math.min(now, ...ring) : now;
-  if (rss <= lim) return true;
-  opsLog(what, { skipped: `rss ${rss}MB (mínimo de ${ring.length + 1} muestras, ahora ${now}MB) > techo ${lim}MB` });
+  const ring = (typeof LIVE_RING !== 'undefined' && LIVE_RING.length) ? LIVE_RING : [];
+  const live = ring.length ? Math.min(now, ...ring) : now;
+  const rss = opsRssMb();
+  if (rss > OPS_RSS_HARD) {
+    opsLog(what, { skipped: `rss ${rss}MB > guardia de catástrofe ${OPS_RSS_HARD}MB` });
+    return false;
+  }
+  if (live <= lim) return true;
+  opsLog(what, { skipped: `memoria viva ${live}MB (mínimo de ${ring.length + 1} muestras, ahora ${now}MB) > techo ${lim}MB · rss ${rss}MB` });
   return false;
 }
 
@@ -16607,7 +16630,11 @@ const server = http.createServer(async (req, res) => {
         }
       } catch { }
       return json(res, 200, {
-        rss_mb: opsRssMb(), running: Object.keys(OPS.running).filter(k => OPS.running[k]),
+        rss_mb: opsRssMb(), live_mb: opsLiveMb(),
+        mem: (() => { const m = process.memoryUsage(); const M = (x) => Math.round(x / 1048576);
+          return { rss: M(m.rss), heap_total: M(m.heapTotal), heap_used: M(m.heapUsed), external: M(m.external),
+            techo_vivo: OPS_LIVE_CEIL, guardia_rss: OPS_RSS_HARD, anillo_vivo: LIVE_RING.slice(), anillo_rss: RSS_RING.slice() }; })(),
+        running: Object.keys(OPS.running).filter(k => OPS.running[k]),
         days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null },
         rosters, amf_skips: db.ops.amf_skips || 0,
         cs2_auto_enabled: cs2AutoOn(),

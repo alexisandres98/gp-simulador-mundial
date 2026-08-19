@@ -983,6 +983,11 @@
     // COMBATE (R2): guante y cinturón — mismos trazos del set
     'glove': '<path d="M7.5 11V7.8A3.3 3.3 0 0 1 10.8 4.5h3.4a3.3 3.3 0 0 1 3.3 3.3V12a5 5 0 0 1-5 5h-.6"/><path d="M7.5 11a2.2 2.2 0 0 0 0 4.4h2"/><path class="a" d="M11 8.2h3.6"/><path d="M9.5 17v2.5h5.8"/>',
     'belt': '<ellipse cx="12" cy="12" rx="5" ry="4.2"/><path d="M7 9.6 3.5 8.4v7.2L7 14.4M17 9.6l3.5-1.2v7.2L17 14.4"/><path class="a" d="M12 9.9l.9 1.5 1.7.2-1.2 1.2.3 1.7-1.7-.8-1.7.8.3-1.7-1.2-1.2 1.7-.2Z"/>',
+    // BANDERA A CUADROS (19-ago). No es decoración: es LA identidad de la F1, y "La carrera" salía sin
+    // ícono en la barra y en la hoja de "Más". El set de Tabler de esta versión NO trae `flag-checkered`
+    // —comprobado en el CSS del propio vendor—, y el respaldo del helper es una clase de fuente que
+    // simplemente no pinta nada. Se dibuja con los trazos de la casa en vez de caer a un ícono genérico.
+    'flag-checkered': '<path d="M5.2 21V3.6"/><path d="M5.2 4.4h13.6v8.8H5.2z"/><path class="a" fill="currentColor" stroke="none" opacity=".85" d="M5.2 4.4h4.5v2.9H5.2zM14.3 4.4h4.5v2.9h-4.5zM9.7 7.3h4.6v2.9H9.7zM5.2 10.2h4.5v3H5.2zM14.3 10.2h4.5v3h-4.5z"/>',
   };
   var ic = function (n) {
     var c = IC_SVG[n];
@@ -4311,11 +4316,17 @@
     var esm = h.match(/^esmatch\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (esm) { S.es.game = esm[1]; if (!(S.view === 'esmatch' && S.es.matchId === esm[2])) { S.es.matchId = decodeURIComponent(esm[2]); S.es.match = undefined; showView('esmatch'); } return; }
     // ── F1 ───────────────────────────────────────────────────────────────────────────────────────────
-    var f1p = h.match(/^f1driver\/([a-z_]+)$/i);
+    var f1p = h.match(/^f1driver\/([a-z0-9_-]+)$/i);
     if (f1p) { if (!(S.view === 'f1driver' && S.f1.driverId === f1p[1])) { S.f1.driverId = f1p[1]; showView('f1driver'); } return; }
     var f1v = h.match(/^(f1opps|f1race|f1standings|f1drivers|f1sim|f1brief|f1ask|f1model)$/i);
     if (f1v) { showView(f1v[1]); return; }
     // ── TENIS ────────────────────────────────────────────────────────────────────────────────────────
+    // EL PANEL DEL PARTIDO NO SE ABRÍA DESDE LA PICK (19-ago). La card de tenis trae `ten_hash` =
+    // `tenmatch/<id>` como los otros siete deportes, el clic hacía `setHash(...)` correctamente… y el
+    // router NO tenía la ruta. El hash caía hasta el final y no pasaba nada: un botón que se pinta como
+    // pulsable y no hace nada. El id del partido es un hash hexadecimal propio, así que se acepta tal cual.
+    var tnm = h.match(/^tenmatch\/(.+)$/i);
+    if (tnm) { var tid = decodeURIComponent(tnm[1]); if (!(S.view === 'tenmatch' && S.ten.matchId === tid)) { S.ten.matchId = tid; S.ten.lens = 'partido'; showView('tenmatch'); } return; }
     var tnp = h.match(/^tenplayer\/(atp|wta)-(\d+)$/i);
     if (tnp) { S.ten.tour = tnp[1].toLowerCase(); if (!(S.view === 'tenplayer' && S.ten.playerId === tnp[2])) { S.ten.playerId = tnp[2]; showView('tenplayer'); } return; }
     var tnv = h.match(/^(tenopps|tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel)(?:\/(atp|wta))?$/i);
@@ -11217,9 +11228,10 @@
 
   function renderF1Driver() {
     var id = S.f1.driverId;
+    var f1b = f1Back('f1drivers', t('f1_nav_drivers'));
     var d = f1Get('drv_' + id, '/api/f1/driver?id=' + encodeURIComponent(id), 600000);
-    if (!d) { f1Shell(t('f1_nav_drivers'), f1Loading()); return; }
-    if (!d.available) { f1Shell(t('f1_nav_drivers'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || '') + '</b></div></div>'); return; }
+    if (!d) { f1Shell(t('f1_nav_drivers'), f1b + f1Loading()); return; }
+    if (!d.available) { f1Shell(t('f1_nav_drivers'), f1b + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || '') + '</b></div></div>'); return; }
     var hero = '<div class="gx-panel gx-est-hero" style="border-left:3px solid ' + esc(d.color || '#555') + '"><div class="gx-est-hero-main">' +
       f1Face(d, 'big') +
       '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name) + '</b><span class="gx-dim">' + f1Badge(d) + esc([d.constructor, d.country].filter(Boolean).join(' · ')) + '</span></div>' +
@@ -11241,7 +11253,7 @@
           '<td class="r gx-mono" ' + cls + '>' + esc(String(fin)) + '</td>' +
           '<td class="r gx-mono gx-dim">' + (m.pts || 0) + '</td></tr>';
       }).join('') + '</tbody></table></div><div class="gx-dim gx-es-trunc">' + esc(d.attribution || '') + '</div></div>';
-    f1Shell(t('f1_nav_drivers'), hero + rec);
+    f1Shell(t('f1_nav_drivers'), f1b + hero + rec);
   }
 
   // ── Y SI…: contrafactual de casilla + duelo ─────────────────────────────────────────────────────────
@@ -11352,6 +11364,8 @@
   }
 
   function f1Clicks(e) {
+    var f1bk = e.target.closest('[data-f1backto]');
+    if (f1bk) { e.preventDefault(); setHash(f1bk.getAttribute('data-f1backto')); return; }
     // la casilla de la parrilla selecciona EN SITIO (no navega): el diagrama es para comparar vecinos
     var sl = e.target.closest('[data-f1slot]');
     if (sl) { var sid = sl.getAttribute('data-f1slot'); S.f1.gridSel = (S.f1.gridSel === sid ? null : sid); renderF1Race(); return; }
@@ -11941,9 +11955,10 @@
   // ── FICHA DE JUGADOR ─────────────────────────────────────────────────────────────────────────────────
   function renderTenPlayer() {
     var id = S.ten.playerId;
+    var tnb = tenBack('tenplayers', t('sr_players'));
     var d = tenGet('pl_' + tenTour() + '_' + id, '/api/tennis/player?tour=' + tenTour() + '&id=' + id, 600000);
-    if (!d) { tenShell(t('sr_players'), tenLoading()); return; }
-    if (!d.available) { tenShell(t('sr_players'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Fuera de la base') + '</b></div></div>'); return; }
+    if (!d) { tenShell(t('sr_players'), tnb + tenLoading()); return; }
+    if (!d.available) { tenShell(t('sr_players'), tnb + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Fuera de la base') + '</b></div></div>'); return; }
     var age = d.dob ? Math.floor((Date.now() - Date.parse(String(d.dob).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'))) / (365.25 * 864e5)) : null;
     var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + esAvatar({ nick: d.name }, 'big') +
       '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name) + '</b>' +
@@ -11972,7 +11987,7 @@
           '<td class="gx-dim">' + esc(m.surface || '—') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       '<div class="gx-dim gx-es-trunc">' + TEN_ATTRIB + '</div></div>';
-    tenShell(t('sr_players'), hero + surf + serve + rec);
+    tenShell(t('sr_players'), tnb + hero + surf + serve + rec);
   }
 
   // ── SIMULADOR / DUELO SAQUE-RESTO (el objeto firma) ──────────────────────────────────────────────────
@@ -12126,9 +12141,13 @@
   // ── CLICKS ───────────────────────────────────────────────────────────────────────────────────────────
   function tenClicks(e) {
     var mt = e.target.closest('[data-tenmatch]');
-    if (mt) { S.ten.matchId = mt.getAttribute('data-tenmatch'); S.ten.lens = 'partido'; showView('tenmatch'); return; }
+    // por el HASH, no por showView directo: así el atrás del navegador y un enlace pegado llevan al mismo
+    // sitio que el clic, que es lo que ya hacen combate, baloncesto, esports y NFL.
+    if (mt) { setHash('tenmatch/' + encodeURIComponent(mt.getAttribute('data-tenmatch'))); return; }
     var bk = e.target.closest('[data-tenback]');
-    if (bk) { e.preventDefault(); showView('tengames'); return; }
+    if (bk) { e.preventDefault(); setHash('tengames'); return; }
+    var bk2 = e.target.closest('[data-tenbackto]');
+    if (bk2) { e.preventDefault(); setHash(bk2.getAttribute('data-tenbackto')); return; }
     var tl = e.target.closest('[data-tenlens]');
     if (tl) { S.ten.lens = tl.getAttribute('data-tenlens'); renderTenMatch(); return; }
     var mf = e.target.closest('[data-tenmfilt]');
@@ -12214,6 +12233,11 @@
     SEA: '#69BE28', SF: '#AA0000', TB: '#D50A0A', TEN: '#4B92DB', WAS: '#5A1414' };
   var nflColor = function (abbr) { return NFL_COLORS[abbr] || '#1FE3A4'; };
   function nflBack() { return '<div class="gx-back" data-nflback="1">' + ic('chevron-left') + '<span>' + esc(t('nfl_nav_games')) + '</span></div>'; }
+  // VOLVER ATRÁS EN TENIS Y F1 (19-ago). Combate, baloncesto, esports y NFL llevaban su botón de volver
+  // desde el principio; tenis solo lo tenía en el partido y F1 en ninguna pantalla. Entrar a una ficha de
+  // jugador o de piloto era un callejón sin salida en móvil, donde no hay atrás del navegador a la vista.
+  function tenBack(to, label) { return '<div class="gx-back" data-tenbackto="' + esc(to) + '">' + ic('chevron-left') + '<span>' + esc(label) + '</span></div>'; }
+  function f1Back(to, label) { return '<div class="gx-back" data-f1backto="' + esc(to) + '">' + ic('chevron-left') + '<span>' + esc(label) + '</span></div>'; }
   // la nota de régimen/sombra que acompaña TODO el deporte — el blueprint la exige visible, no en un footer
   function nflShadowNote(txt) {
     return '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(txt || 'Todas las familias de NFL están EN SOMBRA: el terminal enseña inteligencia, no picks. El registro privado acumula CLV por familia y solo la evidencia fuera de muestra puede abrir una (blueprint NFL-1125).') + '</span></div>';
@@ -14915,7 +14939,7 @@
       : (a.available < a.min_withdraw) ? '<p class="gx-dim" style="font-size:12.5px">' + t('aff_wd_min', { min: '$' + a.min_withdraw }) + '</p>'
         : (a.cooldown_until && new Date(a.cooldown_until) > new Date()) ? '<p class="gx-dim" style="font-size:12.5px">' + esc(t('aff_wd_cooldown')) + '</p>'
           : '<p class="gx-dim" style="font-size:12.5px">' + t('aff_wd_ready', { amt: money(a.available) }) + '</p>';
-    var withdraw = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('bank') + ' ' + esc(t('aff_withdraw')) + '</span></div><div class="gx-mod-body">' +
+    var withdraw = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + ic('building-bank') + ' ' + esc(t('aff_withdraw')) + '</span></div><div class="gx-mod-body">' +
       wdState +
       '<button class="gx-btn' + (canW ? '' : ' gx-btn-dim') + '" id="gx-aff-wd" style="margin-top:12px"' + (canW ? '' : ' disabled') + '>' + esc(t('aff_request')) + '</button>' +
       '<div class="m-msg" id="gx-aff-wdmsg" style="margin-top:8px"></div>' +

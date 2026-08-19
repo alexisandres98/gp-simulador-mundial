@@ -16711,6 +16711,26 @@ const server = http.createServer(async (req, res) => {
         backups, log: OPS.log.slice().reverse(),
       });
     }
+    // ── ODDSPAPI (19-ago): sonda de cobertura del proveedor de 348 casas ─────────────────────────────────
+    // Solo lectura y con presupuesto: sin `?gastar=1` NO gasta un solo crédito de pago (la cuenta y el
+    // histórico son gratis en ese proveedor). Con `?gastar=N` mira además cuántos partidos con cuotas hay
+    // en los deportes pedidos, a un crédito por deporte. El plan de prueba son 250 en total y no se
+    // reponen: el valor por defecto tenía que ser cero.
+    if (p === '/api/internal/oddspapi') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        const OP = require('./data-providers/oddspapi');
+        if (!OP.enabled()) return json(res, 200, { enabled: false, why: 'sin ODDSPAPI_KEY en el entorno' });
+        const gastar = Math.max(0, Math.min(8, +(url.searchParams.get('gastar') || 0)));
+        const pedidos = String(url.searchParams.get('deportes') || 'dota2,tenis').split(',').filter(Boolean);
+        const out = await OP.probe({ deportes: gastar ? pedidos.slice(0, gastar) : [], dias: 3 });
+        out.nota = gastar
+          ? `se han gastado ${out.gastado_en_esta_sonda} peticiones de pago de las ${out.cuenta && out.cuenta.restantes} que quedaban`
+          : 'sonda gratuita: solo la cuenta. Añade ?gastar=N&deportes=dota2,tenis para mirar cobertura real, a 1 crédito por deporte.';
+        return json(res, 200, out);
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     // ── CRUDO DE CS2 (17-ago): sembrar y auditar el almacén crudo del disco persistente. ─────────────────
     // GET lista tamaños; PUT ?file=<nombre> con el JSON gzipeado en el cuerpo lo escribe. Existe para no
     // obligar a Render a re-cosechar 88.000 mapas que ya están cosechados en otra máquina: se suben una vez

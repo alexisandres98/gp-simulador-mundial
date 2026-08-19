@@ -24,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const { simulate } = require('../nfl-engine/simulate');
+const POST = require('../nfl-engine/posterior');
 
 const REPO_DIR = path.join(__dirname, '..', 'data', 'amfoot');
 const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'amfoot');
@@ -248,7 +249,7 @@ function modelSnapshot(lg) {
 }
 
 const gid = (g) => `${g.date}|${g.home}|${g.away}`;
-function gameModel(g, M) {
+function gameModel(g, M, { withFan = false } = {}) {
   const rh = M.R.teams[g.home], ra = M.R.teams[g.away];
   if (!rh || !ra) return null;
   const muMargin = rh.pts - ra.pts + (g.neutral ? 0 : M.priors.hfa);
@@ -264,8 +265,21 @@ function gameModel(g, M) {
     resid_pool: M.priors.resid_pool, outcome_atlas: M.priors.outcome_atlas, sigma_extra_margin: M.priors.sigma_extra_margin, sigma_extra_total: M.priors.sigma_extra_total,
   }, n: 20000, seed });
   if (!sim) return null;
+  // MISMO ABANICO QUE NFL (19-ago): la posterior sobre la probabilidad, calculada una vez por partido.
+  // Solo donde hay atlas: sin él el simulador cae al método viejo y desplazar el centro sí sería válido,
+  // pero prefiero no tener dos caminos de decisión distintos según la liga — CFL sigue con las reglas
+  // viejas y lo dice, que es más honesto que fingir una posterior sobre una distribución que no la soporta.
+  const pr = { resid_pool: M.priors.resid_pool, outcome_atlas: M.priors.outcome_atlas,
+    sigma_extra_margin: M.priors.sigma_extra_margin, sigma_extra_total: M.priors.sigma_extra_total };
+  // solo cuando hace falta: cuesta ~0,9 s por partido y el listado de la jornada no decide nada
+  const fan = (withFan && (M.priors.outcome_atlas || []).length >= 900)
+    ? POST.buildFan({ simulate, muMargin, muTotal, priors: pr,
+      sigmaM: POST.epistemicSigma(M.priors.sigma_extra_margin, uncPts),
+      sigmaT: POST.epistemicSigma(M.priors.sigma_extra_total, uncPts), seed: seed >>> 0 })
+    : null;
   return { home: g.home, away: g.away, neutral: !!g.neutral, muMargin: r2(muMargin), muTotal: r2(muTotal),
-    rating: { home: rh, away: ra }, unc_pts: uncPts, games_cur: gc, sim, model_version: M.priors.model_version };
+    rating: { home: rh, away: ra }, unc_pts: uncPts, games_cur: gc, sim, fan,
+    model_version: M.priors.model_version };
 }
 
 // ── casas (The Odds API, 1 llamada por liga) + cierres ───────────────────────────────────────────────────
@@ -375,9 +389,7 @@ function evaluateEdges(model, mk) {
 }
 function gate(c) {
   const edgePp = (c.p_model - c.p_implied) * 100;
-  // La conversión de puntos a pp se LEE de la distribución en ESTA línea, no de una pendiente fija: un
-  // punto vale mucho más cruzando un número clave que en mitad de la cola. Misma nota larga que en
-  // nfl-engine/store.js.
+  // La conversión de puntos a pp se LEE de la distribución en ESTA línea, no de una pendiente fija.
   const uncPp = (() => {
     const u = c.model.unc_pts;
     if (!(u > 0)) return 0;
@@ -387,19 +399,26 @@ function gate(c) {
     if (!lo || !hi || lo.p == null || hi.p == null) return u * 2.8;
     return Math.abs(lo.p - hi.p) * 100 / 2;
   })();
-  // el edge se exige POSITIVO: con abs() los dos lados del mismo mercado pasaban a la vez y la sombra
-  // registraba también el lado -EV (visto en la primera pasada de CFL; el mismo latente existía en NFL)
-  const gates = [
-    { gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp` },
-    { gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' },
-    { gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción' },
-    { gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` },
-  ];
+  // LA POSTERIOR DECIDE donde hay abanico (College); donde no lo hay (CFL, muestra corta) siguen las reglas
+  // viejas y el veredicto lo dice. Ver la nota larga en nfl-engine/posterior.js.
+  const post = c.model.fan ? POST.edgePosterior({ fan: c.model.fan, family: c.family, line: c.line, side: c.side, odds: c.odds }) : null;
+  const dec = POST.decide(post);
+  const gates = [];
+  if (post) { for (const x of dec.checks) gates.push({ gate: x.check, pass: x.pass, detail: x.detail }); }
+  else {
+    gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `sin posterior · ${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp` });
+    gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'sin posterior · listón mínimo 3 pp (con signo)' });
+  }
+  gates.push({ gate: 'diagnostico_ventaja', pass: true, detail: `ventaja puntual ${edgePp.toFixed(1)} pp · incertidumbre ${uncPp.toFixed(1)} pp (informativo)` });
+  gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción' });
+  gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });
   const pass = gates.every((x) => x.pass);
   return { family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp),
+    posterior: post, posterior_governs: !!post,
     gates, verdict: pass ? 'SHADOW_PICK' : 'NO_PICK', no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate };
 }
+
 
 async function recordShadow(lg) {
   const M = modelSnapshot(lg);
@@ -418,7 +437,7 @@ async function recordShadow(lg) {
     const dEv = String(ev.commence_time).slice(0, 10);
     const g = M.data.games.find((x) => (x.home === home && x.away === away) && (x.date === dEv || Math.abs(Date.parse(x.date) - Date.parse(dEv)) <= 864e5) && x.hp == null);
     if (!g) continue;
-    const model = gameModel(g, M);
+    const model = gameModel(g, M, { withFan: true });
     const mk = marketFor(lg, g, odds);
     if (!model || !mk) continue;
     for (const c of evaluateEdges(model, mk).candidates) {
@@ -552,7 +571,7 @@ async function gameIntel(lg, id) {
   if (!M) return null;
   const g = M.data.games.find((x) => gid(x) === id);
   if (!g) return null;
-  const model = gameModel(g, M);
+  const model = gameModel(g, M, { withFan: true });
   const odds = await refreshOdds(lg).catch(() => null);
   const mk = marketFor(lg, g, odds);
   const ih = infoOf(lg, g.home), ia = infoOf(lg, g.away);

@@ -6,11 +6,18 @@
 // si fuera un número exacto. No lo es: es una estimación con su propio error. Una pick debería poder decir
 // "P(ventaja > 0) = 94 %" y no solo "ventaja +5,2 pp, incertidumbre ±3,4".
 //
-// CÓMO SE CONSTRUYE LA POSTERIOR, SIN SIMULAR MÁS. El simulador devuelve la distribución del PARTIDO dado
-// un centro conocido (`marginalize:false`): eso es el azar del deporte. Nuestro error sobre dónde está ese
-// centro es otra cosa y vive aparte, en puntos. Como desplazar el centro es lo mismo que desplazar la
-// línea —P(M+d > L) = P(M > L−d)— basta sortear el error K veces y leer la CDF que ya está calculada. La
-// posterior sale gratis: ni una simulación extra.
+// CÓMO SE CONSTRUYE, Y EL ATAJO QUE NO VALE. La tentación es sortear el error del centro y releer la CDF
+// ya calculada, apoyándose en que P(M+d > L) = P(M > L−d). Ese atajo exige que la distribución sea
+// INVARIANTE A TRASLACIÓN, y la nuestra no lo es: desde que el atlas coloca la masa de los números clave
+// en su sitio absoluto —el 3 y el 7 son el 3 y el 7, no se mueven con el favoritismo— desplazar la línea
+// deja de ser lo mismo que desplazar el centro. Se probó y la posterior salía 3 pp por debajo de la
+// marginal, que es otra forma de calcular lo mismo. La invarianza se rompió justo al arreglar los números
+// clave, que era el arreglo bueno.
+//
+// Así que se hace lo correcto y se paga: se sortea el centro K veces y se SIMULA en cada uno. Cada
+// simulación trae su propia banda de partidos reales, con los números clave donde de verdad están para ese
+// nivel de favoritismo. Es más caro, y por eso el resultado se calcula una vez por partido y de ahí se leen
+// todas las líneas y familias, en vez de una vez por mercado.
 //
 // QUÉ SE MIDE CON ELLA:
 //   · P(ventaja > 0) — la probabilidad de que la ventaja exista, no su tamaño.
@@ -54,27 +61,45 @@ function epistemicSigma(sigmaExtra, uncPts) {
   return Math.sqrt(a * a + b * b);
 }
 
-// ── LA POSTERIOR ────────────────────────────────────────────────────────────────────────────────────────
-// `cdf(line)` es la función del simulador (coverProb u overProb) sobre la distribución ALEATORIA.
-// `side` dice de qué lado se apuesta: la probabilidad del lado contrario es 1−p, y el empuje no es ni una
-// cosa ni la otra (devuelve el stake, así que no entra en el EV con signo).
-function edgePosterior({ cdf, line, side, sigmaEpi, odds, K = 512, seed = 991 }) {
-  if (typeof cdf !== 'function' || !(odds > 1)) return null;
+// ── EL ABANICO: K simulaciones con el centro sorteado ───────────────────────────────────────────────────
+// Se calcula UNA vez por partido. Cada elemento es una simulación completa en un centro posible, y de ella
+// se pueden leer después todas las líneas y las dos familias sin volver a simular.
+// K Y nPer, ELEGIDOS POR CONVERGENCIA, NO A OJO. La media del abanico tiene error de muestreo sobre K —con
+// 48 centros el error típico es ~2 pp— y eso se ve: contra una marginal de referencia de 50,94 %, K=48 da
+// 47,06 %, K=120 da 50,21 %, K=240 da 50,70 % y K=400 da 51,32 %. Que ambas converjan al mismo sitio es la
+// comprobación de que la posterior y la probabilidad publicada son dos cálculos de lo mismo. K=240 con 800
+// simulaciones por centro cuesta ~1,1 s por partido y ya está dentro del ruido.
+function buildFan({ simulate, muMargin, muTotal, priors, sigmaM, sigmaT, K = 240, nPer = 800, seed = 991 }) {
   const rnd = rng(seed);
+  const fan = [];
+  for (let k = 0; k < K; k++) {
+    const dm = gauss(rnd) * (sigmaM || 0);
+    const dt = gauss(rnd) * (sigmaT || 0);
+    const s = simulate({ muMargin: muMargin + dm, muTotal: muTotal + dt, priors,
+      n: nPer, seed: (seed + k * 7919) >>> 0, marginalize: false, smooth: 0 });
+    if (s) fan.push(s);
+  }
+  return fan;
+}
+
+// ── LA POSTERIOR ────────────────────────────────────────────────────────────────────────────────────────
+// `fan` son las simulaciones del abanico. `side` dice de qué lado se apuesta: la probabilidad del contrario
+// es 1−p, y el empuje no es ni una cosa ni la otra (devuelve el stake, así que no entra en el EV con signo).
+function edgePosterior({ fan, family, line, side, odds }) {
+  if (!Array.isArray(fan) || fan.length < 12 || !(odds > 1)) return null;
   const ps = [], evs = [];
   const flip = side === 'away' || side === 'under' || side === 'b';
-  for (let k = 0; k < K; k++) {
-    // desplazar el centro d puntos = leer la CDF d puntos más abajo
-    const d = gauss(rnd) * (sigmaEpi || 0);
-    const r = cdf(line - d);
+  for (const s of fan) {
+    const f = family === 'TOTAL' ? s.overProb : s.coverProb;
+    if (typeof f !== 'function') continue;
+    const r = f(line);
     if (!r || r.p == null) continue;
     const p = flip ? 1 - r.p : r.p;
     const push = r.push || 0;
     ps.push(p);
-    // EV por unidad apostada, con el empuje devolviendo el stake
     evs.push((1 - push) * (p * (odds - 1) - (1 - p)));
   }
-  if (ps.length < 32) return null;
+  if (ps.length < 12) return null;
   ps.sort((a, b) => a - b);
   const sorted = evs.slice().sort((a, b) => a - b);
   const q = (arr, f) => arr[Math.min(arr.length - 1, Math.floor(arr.length * f))];
@@ -89,7 +114,7 @@ function edgePosterior({ cdf, line, side, sigmaEpi, odds, K = 512, seed = 991 })
     edge_pp: r2(100 * (pMean - pMarket)),
     p_edge_gt0: r3(pEdge),
     ev_mean: r4(mean(evs)), ev_p05: r4(q(sorted, 0.05)), ev_p25: r4(q(sorted, 0.25)),
-    sigma_epi_pts: r2(sigmaEpi), draws: ps.length,
+    draws: ps.length,
   };
 }
 
@@ -101,7 +126,14 @@ function edgePosterior({ cdf, line, side, sigmaEpi, odds, K = 512, seed = 991 })
 //     y por lo que una ventaja enorme y frágil pasaba igual que una pequeña y sólida.
 // Los cortes son declarados, no ajustados sobre el holdout: ajustarlos ahí sería elegir el umbral que mejor
 // queda en la única muestra que no debe tocarse.
-const DEFAULTS = { min_p_edge: 0.80, min_ev: 0.015, min_ev_p05: -0.06 };
+// LOS CORTES, DECLARADOS Y NO AJUSTADOS SOBRE EL HOLDOUT (ajustarlos ahí sería elegir el umbral que mejor
+// queda en la única muestra que no debe tocarse):
+//   · 75 % de P(ventaja>0): en tres de cada cuatro mundos posibles la ventaja existe.
+//   · 2 % de EV esperado: que además valga la pena después del margen de la casa.
+//   · el percentil 5 NO gobierna, solo avisa. Un percentil de una apuesta suelta no es una medida de riesgo
+//     de cartera, y ponerle un suelo estricto convierte la compuerta en un interruptor de apagado
+//     disfrazado de matemática. Se deja como guardia de catástrofe, muy abajo, y se publica siempre.
+const DEFAULTS = { min_p_edge: 0.75, min_ev: 0.02, min_ev_p05: -0.35 };
 
 function decide(post, cfg = {}) {
   const C = { ...DEFAULTS, ...cfg };
@@ -112,9 +144,9 @@ function decide(post, cfg = {}) {
     { check: 'ev_esperado', pass: post.ev_mean >= C.min_ev,
       detail: `EV esperado ${(100 * post.ev_mean).toFixed(1)} % · mínimo ${(100 * C.min_ev).toFixed(1)} %` },
     { check: 'peor_caso', pass: post.ev_p05 >= C.min_ev_p05,
-      detail: `EV en el percentil 5: ${(100 * post.ev_p05).toFixed(1)} % · suelo ${(100 * C.min_ev_p05).toFixed(1)} %` },
+      detail: `EV en el percentil 5: ${(100 * post.ev_p05).toFixed(1)} % · guardia de catástrofe ${(100 * C.min_ev_p05).toFixed(0)} %` },
   ];
   return { pass: checks.every((x) => x.pass), checks };
 }
 
-module.exports = { edgePosterior, epistemicSigma, decide, DEFAULTS };
+module.exports = { buildFan, edgePosterior, epistemicSigma, decide, DEFAULTS };

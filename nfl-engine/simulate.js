@@ -59,6 +59,9 @@ function discreteNoise(rnd, sigma) {
 // muestra, que es el defecto que se acaba de corregir. Lo que se busca es no cruzar un partido de 2,5 de
 // hándicap con uno de 62 puntos de total, no clonar el total.
 const TOTAL_TOL = 7;
+// ancho del núcleo de suavizado del atlas, en puntos (ver la nota larga en el bucle de simulación)
+const ATLAS_SMOOTH = 1.8;
+const EMPTY_BAND = [];   // marcador: con centro fijo la banda ya está resuelta en `fixedList`
 const OKBUF = new Int32Array(4096);   // reutilizado por sorteo; evita reservar memoria 20.000 veces
 function buildAtlas(atlas) {
   // índice ordenado por línea de cierre para poder buscar vecinos por bisección
@@ -86,7 +89,7 @@ function nearestBand(idx, line, k) {
 // centro conocido — el azar del deporte, sin nuestro error dentro. Esa segunda es la que hace falta para
 // construir una POSTERIOR sobre la probabilidad: si el error del modelo ya está mezclado dentro, la
 // probabilidad sale sin dispersión y no se puede decir "P(ventaja>0) = 94 %", solo "la ventaja es 5,2 pp".
-function simulate({ muMargin, muTotal, priors, n = 20000, seed = 17, marginalize = true }) {
+function simulate({ muMargin, muTotal, priors, n = 20000, seed = 17, marginalize = true, smooth = null }) {
   const pool = (priors && priors.resid_pool) || [];
   const atlasRaw = (priors && priors.outcome_atlas) || [];
   if (!pool.length && !atlasRaw.length) return null;
@@ -102,14 +105,36 @@ function simulate({ muMargin, muTotal, priors, n = 20000, seed = 17, marginalize
   const margins = new Array(n), totals = new Array(n);
   let homeWin = 0, tie = 0;
   const marginMass = {}, totalMass = {};
+  // CON EL CENTRO FIJO, LA BANDA NO CAMBIA ENTRE SORTEOS. Es el caso del abanico de la posterior, que apaga
+  // el suavizado: ahí el filtro por total se calcula UNA vez por simulación en vez de una vez por sorteo.
+  // Sin esto, College tardaba 2,8 s por partido —800 sorteos × 300 vecinos × 240 centros— y eso saca la
+  // posterior de cualquier ruta de petición.
+  const fixedCentre = useAtlas && !marginalize && smooth === 0;
+  let fixedList = null, fixedN = 0, fixedStart = 0;
   for (let i = 0; i < n; i++) {
     let m, t;
     if (useAtlas) {
       // 1) ¿dónde está de verdad nuestra media? nuestro error contra el cierre, medido fuera de muestra
-      const lineM = marginalize ? muMargin + gaussOf(rnd, sm) : muMargin;
-      const lineT = marginalize ? muTotal + gaussOf(rnd, st) : muTotal;
+      // SUAVIZADO DEL ATLAS (19-ago). La ventana de K partidos con la línea buscada trae ~1,1 puntos de
+      // ruido en su media realizada (K=126, sd 12,3). Eso NO es sesgo: la regresión global de resultado
+      // sobre línea da pendiente 1,03 e intercepto 0,04, o sea que la línea es insesgada y no hay nada que
+      // invertir —se probó y la corrección salía de 0,04 a 0,37 puntos contra un ruido de 1,10—. Lo que hay
+      // es ruido de muestreo, y el ruido se quita promediando: se sortea el centro de la ventana con un
+      // núcleo estrecho, que barre ventanas vecinas y cancela su ruido.
+      //
+      // Es exactamente lo que la marginal ya hacía sin querer con `sigma_extra`, y por eso la marginal
+      // salía bien y la aleatoria mal cuando se le quitó el sorteo. Aquí el núcleo se declara por lo que
+      // es —un ancho de suavizado, no una afirmación sobre nuestra incertidumbre— y es pequeño: 1,8 puntos
+      // sumados en cuadratura a 12,3 ensanchan la distribución un 1 %.
+      // `smooth` deja apagar el suavizado cuando quien llama ya promedia entre centros — es el caso del
+      // abanico de la posterior, que sortea 48 centros distintos: ahí el núcleo sobra y, sumado al propio
+      // abanico, suaviza dos veces y arrastra la probabilidad hacia la media global del atlas.
+      const kM = marginalize ? sm : (smooth == null ? ATLAS_SMOOTH : smooth);
+      const kT = marginalize ? st : (smooth == null ? ATLAS_SMOOTH : smooth);
+      const lineM = muMargin + gaussOf(rnd, kM);
+      const lineT = muTotal + gaussOf(rnd, kT);
       // 2) un partido histórico que se jugó con esa línea de hándicap…
-      const band = nearestBand(idx, lineM, K);
+      const band = (fixedCentre && fixedList) ? EMPTY_BAND : nearestBand(idx, lineM, K);
       // …y, de esa banda, uno que además se pareciera en total, para no romper la relación margen-total.
       //
       // CÓMO NO HACERLO (19-ago, corregido el mismo día que se introdujo): coger "el más parecido de 12
@@ -127,14 +152,20 @@ function simulate({ muMargin, muTotal, priors, n = 20000, seed = 17, marginalize
       // la dispersión del margen se quedaba en 9,75 puntos contra los 13,1 reales de una banda de esa línea.
       // Aquí se listan los que valen y se sortea entre ellos por igual; si son muy pocos, se ensancha la
       // tolerancia en vez de insistir sobre los mismos.
-      let tol = TOTAL_TOL, cnt = 0;
-      for (let pass = 0; pass < 3; pass++) {
-        cnt = 0;
-        for (let j = 0; j < band.length; j++) if (Math.abs(idx.rows[band[j]][1] - lineT) <= tol) OKBUF[cnt++] = band[j];
-        if (cnt >= 24) break;
-        tol *= 2;
+      let cnt;
+      if (fixedCentre && fixedList) { cnt = fixedN; }
+      else {
+        let tol = TOTAL_TOL; cnt = 0;
+        for (let pass = 0; pass < 3; pass++) {
+          cnt = 0;
+          for (let j = 0; j < band.length; j++) if (Math.abs(idx.rows[band[j]][1] - lineT) <= tol) OKBUF[cnt++] = band[j];
+          if (cnt >= 24) break;
+          tol *= 2;
+        }
+        if (fixedCentre) { fixedList = OKBUF.slice(0, cnt); fixedN = cnt; fixedStart = band.length ? band[0] : 0; }
       }
-      const g = idx.rows[cnt ? OKBUF[(rnd() * cnt) | 0] : band[(rnd() * band.length) | 0]];
+      const src = (fixedCentre && fixedList) ? fixedList : OKBUF;
+      const g = idx.rows[cnt ? src[(rnd() * cnt) | 0] : band[(rnd() * band.length) | 0]];
       m = g[2]; t = g[3];                        // marcador REAL, copiado tal cual
     } else {
       const p = pool[(rnd() * pool.length) | 0];

@@ -49,7 +49,7 @@ function modelSnapshot() {
   return G.model;
 }
 
-function gameModel(g, M) {
+function gameModel(g, M, { withFan = false } = {}) {
   const home = D.CUR(g.home), away = D.CUR(g.away);
   const rh = M.R.teams[home], ra = M.R.teams[away];
   const H = M.E.teams[home], A = M.E.teams[away];
@@ -72,12 +72,17 @@ function gameModel(g, M) {
   // DISTRIBUCIÓN ALEATORIA APARTE: la del partido dado un centro conocido, sin nuestro error dentro. Es la
   // que necesita la posterior sobre la probabilidad (ver nfl-engine/posterior.js). `sim` sigue siendo la
   // marginal —la que se enseña— para que ninguna pantalla cambie de número por este añadido.
-  const simAle = simulate({ muMargin, muTotal, priors: M.data.priors, n: 20000, seed, marginalize: false });
   const sigmaEpi = POST.epistemicSigma(M.data.priors.sigma_extra_margin, uncPts);
+  const sigmaEpiT = POST.epistemicSigma(M.data.priors.sigma_extra_total, uncPts);
+  // EL ABANICO se calcula UNA vez por partido y de él se leen todas las líneas y familias. Es lo caro de
+  // la posterior (K simulaciones en vez de una), y por eso se hace aquí y no dentro de cada compuerta.
+  // EL ABANICO SOLO CUANDO HACE FALTA. Cuesta ~0,8 s por partido y solo lo necesita quien va a decidir
+  // (la sombra y la ficha de un partido). El listado de la jornada no decide nada, así que no lo paga.
+  const fan = withFan ? POST.buildFan({ simulate, muMargin, muTotal, priors: M.data.priors,
+    sigmaM: sigmaEpi, sigmaT: sigmaEpiT, seed: seed >>> 0 }) : null;
   return { home, away, neutral, muMargin: r2(muMargin), muTotal: r2(muTotal),
-    rating: { home: rh, away: ra }, unc_pts: uncPts, games_cur: gc, sim, sim_ale: simAle,
-    sigma_epi_pts: r2(sigmaEpi),
-    sigma_epi_total: r2(POST.epistemicSigma(M.data.priors.sigma_extra_total, uncPts)),
+    rating: { home: rh, away: ra }, unc_pts: uncPts, games_cur: gc, sim, fan,
+    sigma_epi_pts: r2(sigmaEpi), sigma_epi_total: r2(sigmaEpiT),
     model_version: M.data.priors.model_version };
 }
 
@@ -254,7 +259,7 @@ async function gameIntel(id) {
   if (!M) return null;
   const g = M.data.games.find((x) => x.id === id || String(x.espn) === String(id));
   if (!g) return null;
-  const model = gameModel(g, M);
+  const model = gameModel(g, M, { withFan: true });
   const odds = await refreshOdds().catch(() => null);
   const mk = marketFor(g, odds);
   const wx = await weatherFor(g).catch(() => null);
@@ -394,33 +399,37 @@ function gate(c) {
     if (!lo || !hi || lo.p == null || hi.p == null) return u * 2.8;
     return Math.abs(lo.p - hi.p) * 100 / 2;
   })();
-  // ── LA POSTERIOR SE CALCULA Y SE PUBLICA, PERO TODAVÍA NO DECIDE (19-ago) ─────────────────────────────
-  // El objetivo es sustituir los dos umbrales por P(ventaja>0), EV esperado y peor caso. La maquinaria ya
-  // está (posterior.js) y su número entra aquí para que se acumule y se pueda auditar contra los
-  // resultados. NO gobierna el veredicto todavía, y el motivo es concreto: la distribución aleatoria se
-  // muestrea de una banda de partidos históricos con la misma línea, y la media realizada de esa banda
-  // trae ~1,1 puntos de ruido de muestreo con 126 partidos. La marginal no lo sufre —el sorteo del centro
-  // promedia entre bandas y lo lava—, pero la aleatoria sola sí, y una posterior centrada en el sitio
-  // equivocado produciría un "P(ventaja>0) = 94 %" tan seguro como falso. Primero se corrige el centrado
-  // de la banda; hasta entonces, decidir con ella sería cambiar dos reglas torpes por una elegante y peor.
-  const ale = c.model.sim_ale;
-  const cdf = ale ? (c.family === 'TOTAL' ? ale.overProb : ale.coverProb) : null;
-  const sigmaEpi = c.family === 'TOTAL' ? c.model.sigma_epi_total : c.model.sigma_epi_pts;
-  const post = cdf ? POST.edgePosterior({
-    cdf, line: c.line, side: c.side, sigmaEpi, odds: c.odds,
-    seed: 991 + Math.round(Math.abs(c.line) * 10) + (c.family === 'TOTAL' ? 7 : 0),
+  // ── LA POSTERIOR DECIDE (19-ago) ──────────────────────────────────────────────────────────────────────
+  // Sustituye a `ventaja ≥ 3 pp` y `ventaja > incertidumbre`. Las dos trataban la probabilidad como un
+  // número exacto y no lo es. Ahora se sortea nuestro error sobre el centro, se SIMULA en cada centro —el
+  // atajo de desplazar la línea no vale desde que los números clave están en su sitio absoluto: la
+  // distribución dejó de ser invariante a traslación— y se decide con lo que ese abanico dice.
+  //
+  // Lo que cambia en la práctica: una ventaja nominal de 9 pp a cuota 2,40 solo tiene P(ventaja>0) = 75 %,
+  // y con las reglas viejas habría salido como pick sin más. Ahora hay que llegar a 93 % para que salga.
+  const post = c.model.fan ? POST.edgePosterior({
+    fan: c.model.fan, family: c.family, line: c.line, side: c.side, odds: c.odds,
   }) : null;
+  const dec = POST.decide(post);
 
+  // LA POSTERIOR YA GOBIERNA (19-ago). Los dos umbrales viejos se quedan como DIAGNÓSTICO visible —sirven
+  // para leer de un vistazo por qué algo pasó o no— pero el veredicto lo dan P(ventaja>0) y el EV esperado.
   const gates = [];
-  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp (leída de la distribución en esta línea)` });
-  gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' });
+  if (post) {
+    for (const x of dec.checks) gates.push({ gate: x.check, pass: x.pass, detail: x.detail });
+  } else {
+    // sin abanico no hay posterior: se cae a las reglas viejas en vez de dejar pasar todo
+    gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `sin posterior · ${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp` });
+    gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'sin posterior · listón mínimo 3 pp' });
+  }
+  gates.push({ gate: 'diagnostico_ventaja', pass: true, detail: `ventaja puntual ${edgePp.toFixed(1)} pp · incertidumbre en esta línea ${uncPp.toFixed(1)} pp (informativo, ya no decide)` });
   gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
   gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });
   const pass = gates.every((x) => x.pass);
   return {
     family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp),
-    posterior: post, posterior_governs: false,
+    posterior: post, posterior_governs: !!post,
     gates, verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
     no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate,
   };
@@ -441,7 +450,7 @@ async function recordShadow() {
     const g = M.data.games.find((x) => x.id === row.id);
     const kickoff = Date.parse(g.date + 'T' + (g.time || '17:00') + ':00Z');
     if (!(kickoff > Date.now() && kickoff - Date.now() < 6 * 864e5)) continue;
-    const model = gameModel(g, M);
+    const model = gameModel(g, M, { withFan: true });
     const mk = marketFor(g, odds);
     if (!model || !mk) continue;
     for (const c of evaluateEdges(g, model, mk).candidates) {

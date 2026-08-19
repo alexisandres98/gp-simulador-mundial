@@ -192,6 +192,27 @@ async function lolResultsWithKills(opts) {
   return lolResults(opts || {});
 }
 
+// Lee la cosecha propia de Valorant del disco persistente (o del repo en desarrollo). Sin red.
+function valorantResults({ since = null } = {}) {
+  const fs = require('fs'), path = require('path');
+  const disk = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', '..', 'db.json')), 'esports', 'valorant');
+  const repo = path.join(__dirname, '..', '..', 'data', 'esports', 'valorant');
+  let doc = null;
+  for (const d of [disk, repo]) {
+    try { doc = JSON.parse(fs.readFileSync(path.join(d, 'series.json'), 'utf8')); break; } catch { /* siguiente */ }
+  }
+  if (!doc || !doc.rows) return [];
+  const from = since || new Date(Date.now() - 5 * 864e5).toISOString().slice(0, 10);
+  return Object.values(doc.rows)
+    .filter((r) => r && r.at && r.at >= from && r.s1 != null && r.s2 != null)
+    .map((r) => ({
+      source: 'vlr', provider_id: r.id, at: r.at + 'T12:00:00Z',
+      a: r.t1, b: r.t2, maps_a: +r.s1, maps_b: +r.s2,
+      // sin detalle por mapa todavía: se declara vacío en vez de inventar rondas
+      maps: [], competition: r.event || null,
+    }));
+}
+
 const SOURCES = {
   cs2: { fn: cs2Results, name: 'bo3.gg', available: true,
     note: 'la misma fuente del histórico propio: llega al detalle de ronda y prórroga por mapa, que es donde CS2 genera sus picks.' },
@@ -205,8 +226,14 @@ const SOURCES = {
   // vacío) se cae a lolesports, que al menos permite liquidar el ganador de mapa y los totales de mapas.
   lol: { fn: lolResultsWithKills, name: 'leaguepedia', available: true,
     note: 'kills y duración por partida, de la misma fuente que la base histórica; con lolesports de respaldo para el marcador de serie.' },
-  valorant: { fn: async () => [], available: false,
-    note: 'sin fuente de resultados todavía. Es el único de los cuatro que sigue sin poder liquidarse, y se dice en vez de disimularlo.' },
+  // VALORANT LIQUIDA DE SU PROPIA COSECHA (19-ago). Estaba marcado "sin fuente" y por eso 2 picks y cero
+  // liquidadas. Pero la cosecha de vlr.gg que ya corre escribe `series.json` en el disco con el marcador de
+  // mapas de cada serie: no hace falta pedir nada, basta leer lo que ya tenemos. Cubre las familias de
+  // MAPAS (total y hándicap). Las de RONDAS necesitan el detalle por mapa —`maps.json`, que la misma
+  // cosecha escribe— y se añadirán cuando ese archivo esté completo en el disco de producción; hasta
+  // entonces esas picks quedan declaradas inliquidables, que es distinto de fingir que no hay fuente.
+  valorant: { fn: valorantResults, name: 'vlr.gg (cosecha propia)', available: true,
+    note: 'marcador de mapas de la cosecha propia; el detalle por ronda llega cuando maps.json esté completo.' },
 };
 
 async function results(game, { since = null, max = 300 } = {}) {

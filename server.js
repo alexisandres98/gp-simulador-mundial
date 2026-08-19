@@ -7158,7 +7158,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
 // Un VOID es "no lo supimos". Si después se sabe, corregirlo no es maquillar el registro: es lo contrario.
 // Por eso corre en seco por defecto y hay que pedirle explícitamente que escriba.
 function recoverVoidClubPicks({ apply = false } = {}) {
-  const out = { revisadas: 0, recuperadas: 0, sin_dato: 0, por_familia: {}, por_liga: {}, cambios: [], apply };
+  const out = { revisadas: 0, recuperadas: 0, sin_dato: 0, por_familia: {}, por_liga: {}, cambios: [], faltantes: [], apply };
   const phCache = {};
   const matches = (lg) => {
     if (phCache[lg] === undefined) {
@@ -7166,6 +7166,26 @@ function recoverVoidClubPicks({ apply = false } = {}) {
       catch { phCache[lg] = []; }
     }
     return phCache[lg];
+  };
+  // SEGUNDA FUENTE (19-ago). El archivo de props solo tiene los partidos que alguna vez pasaron por la
+  // pantalla de props; los marcadores finales que el propio servidor persiste desde el directo viven en
+  // otro fichero. Para SOLID —que solo necesita goles— ese segundo fichero basta, y no cuesta nada
+  // mirarlo antes de rendirse. Córners y tarjetas siguen dependiendo del primero: ese dato no está.
+  const resCache = {};
+  const results = (lg) => {
+    if (resCache[lg] === undefined) {
+      try { resCache[lg] = JSON.parse(fs.readFileSync(clubDataFile(`results-${lg}.json`), 'utf8')).rows || []; }
+      catch { resCache[lg] = []; }
+    }
+    return resCache[lg];
+  };
+  const golesDe = (lg, h, a, ko) => {
+    const r = results(lg).find((x) => ((String(x.home_id) === String(h) && String(x.away_id) === String(a))
+      || (String(x.home_id) === String(a) && String(x.away_id) === String(h)))
+      && Math.abs(+new Date(x.date || 0) - ko) < 2 * 86400e3);
+    if (!r || r.hg == null || r.ag == null) return null;
+    const flip = String(r.home_id) !== String(h);
+    return { hg: Number(flip ? r.ag : r.hg), ag: Number(flip ? r.hg : r.ag) };
   };
   const all = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])];
   for (const p of all) {
@@ -7176,7 +7196,26 @@ function recoverVoidClubPicks({ apply = false } = {}) {
     const row = matches(p.league).find((m) => m.home && m.away
       && ((m.home.code === h && m.away.code === a) || (m.home.code === a && m.away.code === h))
       && Math.abs(+new Date(m.date) - ko) < 2 * 86400e3);
-    if (!row) { out.sin_dato++; continue; }
+    const faltante = () => {
+      out.sin_dato++;
+      if (out.faltantes.length < 80) out.faltantes.push({ family: p.family, liga: p.competition_name || p.league,
+        partido: `${p.event.home} - ${p.event.away}`, fecha: String(p.event.kickoff_at || '').slice(0, 10),
+        necesita: p.family === 'SOLID' ? 'goles' : p.family === 'CORNERS' ? 'córners' : p.family === 'CARDS' ? 'tarjetas' : 'familia no recuperable' });
+    };
+    if (!row) {
+      // sin fila de props, SOLID todavía puede salvarse con los goles del archivo de marcadores
+      const g = p.family === 'SOLID' ? golesDe(p.league, h, a, ko) : null;
+      if (!g) { faltante(); continue; }
+      const real = g.hg > g.ag ? 'home' : g.ag > g.hg ? 'away' : 'draw';
+      const code2 = String(p.selection_code || '').toLowerCase() === real ? 'WIN' : 'LOSS';
+      out.recuperadas++;
+      out.por_familia[p.family] = (out.por_familia[p.family] || 0) + 1;
+      out.por_liga[p.competition_name || p.league] = (out.por_liga[p.competition_name || p.league] || 0) + 1;
+      if (out.cambios.length < 40) out.cambios.push({ family: p.family, liga: p.competition_name || p.league,
+        partido: `${p.event.home} - ${p.event.away}`, de: 'VOID', a: code2, cuota: p.best_odds, fuente: 'marcadores' });
+      if (apply) { p.result_code = code2; p.recovered_at = new Date().toISOString(); }
+      continue;
+    }
     // orientar al local de la pick: si el histórico trae los lados al revés, todo lo que dependa del lado
     // se liquidaría exactamente al contrario
     const flip = row.home.code !== h;
@@ -7184,7 +7223,7 @@ function recoverVoidClubPicks({ apply = false } = {}) {
     let code = null;
     if (p.family === 'SOLID') {
       const hg = Number(H.goals), ag = Number(A.goals);
-      if (!Number.isFinite(hg) || !Number.isFinite(ag)) { out.sin_dato++; continue; }
+      if (!Number.isFinite(hg) || !Number.isFinite(ag)) { faltante(); continue; }
       const real = hg > ag ? 'home' : ag > hg ? 'away' : 'draw';
       code = String(p.selection_code || '').toLowerCase() === real ? 'WIN' : 'LOSS';
     } else if (p.family === 'CORNERS' || p.family === 'CARDS') {
@@ -7192,9 +7231,9 @@ function recoverVoidClubPicks({ apply = false } = {}) {
         ? (Number(H.corners) || 0) + (Number(A.corners) || 0)
         : (Number(H.yellows) || 0) + (Number(H.reds) || 0) + (Number(A.yellows) || 0) + (Number(A.reds) || 0);
       const line = Number(p.line);
-      if (!Number.isFinite(line)) { out.sin_dato++; continue; }
+      if (!Number.isFinite(line)) { faltante(); continue; }
       code = tot === line ? 'PUSH' : ((p.side === 'over') === (tot > line) ? 'WIN' : 'LOSS');
-    } else { out.sin_dato++; continue; }
+    } else { faltante(); continue; }
     out.recuperadas++;
     out.por_familia[p.family] = (out.por_familia[p.family] || 0) + 1;
     out.por_liga[p.competition_name || p.league] = (out.por_liga[p.competition_name || p.league] || 0) + 1;

@@ -9977,7 +9977,25 @@ async function esportsBrief(game, { force = false } = {}) {
     p_home: x.p_home, books: x.books, picks: x.picks,
     best: x.best ? { family: x.best.family, selection: x.best.selection, odds: x.best.odds, book: x.best.book } : null,
     crests: x.crests || null, highlight: x.highlight || null,
+    // la lectura del motor en números (veto en CS2, kills en LoL, prórroga en Valorant, cola en Dota 2)
+    read: x.read || null, book_list: x.book_list || [],
   }));
+  // LAS TRES SUPERFICIES DE MERCADO EN LA PORTADA. Existen desde hoy y son lo único de esta pantalla que no
+  // depende del modelo, así que un brief que no las mencione está escondiendo la parte más sólida.
+  const sur = (b && b.surfaces) || null;
+  const mercado = sur ? {
+    arbs: sur.counts.arbs, middles: sur.counts.middles, dropping: sur.counts.dropping,
+    best_arb: sur.arbs[0] || null, best_middle: sur.middles[0] || null, best_drop: sur.dropping[0] || null,
+    why: sur.why || null,
+  } : null;
+  // POR QUÉ NO HAY MÁS PICKS, sumado. El motor guarda el motivo de cada línea rechazada y el brief nunca lo
+  // enseñaba: una jornada sin picks se leía como un sistema apagado en vez de como una decisión.
+  const motivos = (() => {
+    const agg = {}; let valued = 0;
+    for (const x of ((b && b.items) || [])) { valued += x.valued || 0; for (const [k, v] of Object.entries(x.reasons || {})) agg[k] = (agg[k] || 0) + v; }
+    const keys = Object.keys(agg).sort((k1, k2) => agg[k2] - agg[k1]);
+    return keys.length ? { valued, top: keys.slice(0, 5).map((k) => ({ motivo: k, n: agg[k] })) } : null;
+  })();
   // picks activas de la familia derivada (el track ya es la verdad)
   const tr = ES.track(game, { limit: 30 });
   const active = ((tr && tr.open) || []).slice(0, 8)
@@ -10007,6 +10025,13 @@ async function esportsBrief(game, { force = false } = {}) {
             favorito: x.p_home != null ? (x.p_home >= 0.5 ? x.home : x.away) : null })),
           picks_activas: active,
           meta_del_momento: meta,
+          // AL REDACTOR LE FALTABA TODO LO PROPIO DEL JUEGO. Recibía cruce, hora y probabilidad —o sea, lo
+          // que ya se ve en la tabla— y por eso escribía lo mismo para CS2 que para Dota 2. Ahora recibe la
+          // lectura del motor de cada partida (el veto, las rondas, los kills, la duración según el juego),
+          // el estado del mercado entre casas y el motivo de los NO.
+          lectura_del_motor: items.slice(0, 8).filter((x) => x.read).map((x) => ({ cruce: `${x.home} vs ${x.away}`, ...x.read })),
+          mercado_entre_casas: mercado ? { arbitrajes: mercado.arbs, middles: mercado.middles, caidas: mercado.dropping } : null,
+          por_que_no_hay_mas: motivos,
         }, 'esports');
         if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.esBrief[bk] = intro; save(); }
         else introErr = 'el redactor no devolvió un texto usable';
@@ -10014,7 +10039,8 @@ async function esportsBrief(game, { force = false } = {}) {
     }
   }
   const out = { game, label: (b && b.label) || game, day, items, active_picks: active, meta, intro, intro_error: introErr,
-    books: (b && b.books) || 0, refreshed_at: new Date().toISOString(),
+    market: mercado, why_not: motivos,
+    sources: (b && b.sources) || [], books: (b && b.books) || 0, refreshed_at: new Date().toISOString(),
     note: 'las picks nacen de las familias derivadas con la doctrina de la casa; el ganador de serie va anclado a mercado.' };
   global._esBriefMemo[game] = { at: Date.now(), data: out };
   return out;
@@ -10031,16 +10057,48 @@ async function amfootBrief(lg, { force = false } = {}) {
   const day = new Date().toISOString().slice(0, 10);
   // NFL en pretemporada mira 25 días (la Semana 1 aparece con antelación); College/CFL con 12 basta
   const sl = isNfl ? await NFLS.slate({ days: 25 }).catch(() => null) : await AMF.slate(lg, { days: 12 }).catch(() => null);
+  // EL BRIEF ESTABA TIRANDO LO ÚNICO INTERESANTE (19-ago, "ese daily brief está pésimo"). El motor ya
+  // calcula por partido la línea de consenso del mercado y la DIFERENCIA con su propia proyección —el campo
+  // `delta`, que es la fila del Command Center— y este mapeo se quedaba con el margen y el total pelados.
+  // O sea: la pantalla enseñaba lo que opina el modelo sin decir nunca contra qué opina, que es como
+  // publicar la mitad de una discusión. Ahora viaja el mercado y viaja la diferencia.
   const games = ((sl && sl.games) || []).slice(0, 16).map((g) => ({
     id: g.id, date: g.date || g.kickoff || null, week: g.week != null ? g.week : null,
     home: g.home, away: g.away,
     model: g.model ? { p_home: g.model.p_home != null ? g.model.p_home : (g.model.sim ? g.model.sim.p_home : null),
       mu_margin: g.model.mu_margin != null ? g.model.mu_margin : g.model.muMargin,
-      mu_total: g.model.mu_total != null ? g.model.mu_total : g.model.muTotal } : null,
+      mu_total: g.model.mu_total != null ? g.model.mu_total : g.model.muTotal,
+      unc_pts: g.model.unc_pts != null ? g.model.unc_pts : null } : null,
+    market: g.market || null, delta: g.delta || null,
     books: g.books || 0,
   }));
+  // DÓNDE DISCREPAMOS, ordenado por tamaño de la discrepancia. Es la sección que convierte el brief en algo
+  // que se lee: no "esto proyecta el modelo" sino "aquí el modelo y el mercado no se ponen de acuerdo, y
+  // esto es lo que cuesta esa diferencia en puntos". Y con el aviso puesto: en sombra, una diferencia
+  // grande es tanto una candidata como un síntoma de que el modelo no vio algo que el mercado sí.
+  const desacuerdos = games
+    .filter((g) => g.delta && g.delta.spread != null)
+    .map((g) => ({ id: g.id, date: g.date, week: g.week, home: g.home, away: g.away,
+      model_margin: g.model ? g.model.mu_margin : null, market_spread: g.market ? g.market.spread : null,
+      d_spread: g.delta.spread, d_total: g.delta.total,
+      model_total: g.model ? g.model.mu_total : null, market_total: g.market ? g.market.total : null,
+      books: g.market ? g.market.books : null, unc_pts: g.model ? g.model.unc_pts : null }))
+    .sort((a, b) => Math.abs(b.d_spread) - Math.abs(a.d_spread))
+    .slice(0, 8);
+  const conPrecio = games.filter((g) => g.market && g.market.spread != null).length;
   const tr = isNfl ? NFLS.track() : AMF.track(lg);
-  const shadow = tr ? { picks: (tr.picks || tr.rows || []).length, summary: tr.summary || null } : null;
+  // `tr.summary` NO EXISTE y nunca existió: `track()` devuelve los números en plano (settled, units,
+  // clv_avg_pct…). Así que el brief llevaba `summary: null` desde el primer día y el bloque del registro en
+  // sombra salía vacío en pantalla sin que nada fallara. Se arma aquí con los campos que sí devuelve.
+  const shadow = tr ? {
+    picks: tr.open != null ? tr.open : (tr.picks || tr.rows || []).length,
+    summary: {
+      open: tr.open || 0, settled: tr.settled || 0, w: tr.w || 0, l: tr.l || 0,
+      units: tr.units != null ? tr.units : null, roi_pct: tr.roi_pct != null ? tr.roi_pct : null,
+      clv_avg_pct: tr.clv_avg_pct != null ? tr.clv_avg_pct : null, clv_n: tr.clv_n || 0,
+      by_family: tr.by_family || null, reading: tr.reading || null,
+    },
+  } : null;
   db.nflBrief = db.nflBrief || {};
   const bk = lg + ':' + day;
   let intro = db.nflBrief[bk] || null;
@@ -10057,6 +10115,14 @@ async function amfootBrief(lg, { force = false } = {}) {
             fecha: g.date ? String(g.date).slice(0, 10) : null,
             proyeccion: g.model ? { margen_local: g.model.mu_margin, total: g.model.mu_total,
               prob_local_pct: g.model.p_home != null ? Math.round(100 * g.model.p_home) : null } : null })),
+          // AL REDACTOR TAMBIÉN LE FALTABA LA MITAD. Recibía solo la proyección del modelo, así que solo
+          // podía escribir "el modelo ve a los locales por seis" una y otra vez — de ahí la prosa genérica.
+          // Con la línea del mercado y la diferencia delante ya tiene de qué hablar.
+          desacuerdos: desacuerdos.slice(0, 5).map((x) => ({
+            partido: `${(x.away && x.away.name) || x.away} en ${(x.home && x.home.name) || x.home}`,
+            margen_gp: x.model_margin, linea_mercado: x.market_spread, diferencia_pts: x.d_spread,
+            total_gp: x.model_total, total_mercado: x.market_total, diferencia_total: x.d_total,
+            casas: x.books })),
           sombra: shadow,
         }, 'nfl');
         if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.nflBrief[bk] = intro; save(); }
@@ -10065,6 +10131,15 @@ async function amfootBrief(lg, { force = false } = {}) {
     }
   }
   const out = { league: lg, label: isNfl ? 'NFL' : (AMF.LEAGUES[lg] ? AMF.LEAGUES[lg].label : lg), day, games,
+    disagreements: desacuerdos,
+    // el estado del mercado, que hasta ahora no se decía en ninguna parte: cuántos partidos tienen precio,
+    // cuántas casas y de cuándo es la lectura. Un brief sin eso no se puede fechar.
+    market_state: { games: games.length, with_price: conPrecio, books: (sl && sl.books) || 0,
+      odds_at: (sl && sl.odds_at) || null,
+      why: conPrecio ? null : (games.length
+        ? 'ninguna casa abrió todavía estos partidos: las líneas suelen salir en los días previos'
+        : 'no hay partidos de esta liga en la ventana') },
+    regime_note: (sl && sl.regime_note) || null,
     shadow, intro, intro_error: introErr, refreshed_at: new Date().toISOString(),
     note: 'todas las familias de fútbol americano corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
   global._nflBriefMemo[lg] = { at: Date.now(), data: out };

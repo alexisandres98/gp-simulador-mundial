@@ -12483,32 +12483,103 @@
 
 
   // ── BRIEF DE FÚTBOL AMERICANO (18-ago): la semana de la liga con la lectura del modelo ────────────────
+  // ── BRIEF DE FÚTBOL AMERICANO (reescrito el 19-ago) ────────────────────────────────────────────────────
+  // Alexis: "ese daily brief está pésimo". Lo estaba, y el motivo no era de maquetación: la pantalla
+  // enseñaba lo que opina el modelo sin decir NUNCA contra qué opina. Un margen de +6,3 no significa nada
+  // suelto; significa algo al lado de la línea que pide el mercado. El motor ya calculaba las dos cosas y
+  // la diferencia entre ellas —el campo `delta`, la fila del Command Center— y el brief las tiraba.
+  //
+  // Ahora la pantalla se ordena por lo que de verdad se lee: primero la lectura narrada, después DÓNDE
+  // DISCREPAMOS (que es el brief de verdad), después el registro en sombra, y al final el calendario con
+  // las dos columnas enfrentadas. Y el estado del mercado arriba: cuántos partidos tienen precio, cuántas
+  // casas y de cuándo es la lectura — sin eso un brief no se puede fechar.
+  function nflPts(x, signo) {
+    if (x == null) return '—';
+    return (signo && x > 0 ? '+' : '') + (Math.round(x * 10) / 10);
+  }
   function renderNflBrief() {
     var lg = nflLg();
     var d = nflGet('brief_' + lg, '/api/nfl/brief?league=' + (lg === 'college' ? 'ncaaf' : lg), 600000);
     if (!d) { nflShell('Brief', nflLoading()); return; }
     if (d._err) { nflShell('Brief', '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
+    var ms = d.market_state || {};
+
+    // 1) la tira de estado: tres números y de cuándo son
+    var strip = '<div class="gx-estop">' +
+      '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('calendar') + 'En la ventana</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (ms.games || 0) + ' partidos</div>' +
+      '<div class="gx-estop-sub">' + esc(d.label || '') + (d.games && d.games[0] && d.games[0].week != null ? ' · semana ' + d.games[0].week : '') + '</div></div></div>' +
+      '<div class="gx-panel gx-estop-c' + (ms.with_price ? ' on' : '') + '"><div class="gx-label">' + ic('scale') + 'Con precio</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (ms.with_price || 0) + ' de ' + (ms.games || 0) + '</div>' +
+      '<div class="gx-estop-sub">' + esc(ms.books ? ms.books + ' casas' : (ms.why || 'sin líneas todavía')) + '</div></div>' +
+      (ms.odds_at ? '<div class="gx-estop-foot"><span class="gx-mono gx-dim">lectura ' + esc(fmtDateTime(ms.odds_at)) + '</span></div>' : '') + '</div>' +
+      '</div>';
+
+    // 2) la lectura narrada
     var intro = d.intro && d.intro[lang]
       ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de la semana</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
         String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
-      : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. El tablero de abajo no depende de ella.</span></div>' : '');
+      : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. Todo lo de abajo sale del motor y no depende de ella.</span></div>' : '');
+
+    // 3) DÓNDE DISCREPAMOS — el brief de verdad
+    var dis = d.disagreements || [];
+    var disPanel;
+    if (dis.length) {
+      disPanel = '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">Dónde discrepamos con el mercado</span>' +
+        '<span class="gx-ph-extra">' + dis.length + ' cruces</span></div>' +
+        '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+        '<th>Partido</th><th class="r">Margen GP</th><th class="r">Línea casa</th><th class="r">Diferencia</th><th class="r">Total GP / casa</th></tr></thead><tbody>' +
+        dis.map(function (x) {
+          var hn = (x.home && x.home.name) || x.home, an = (x.away && x.away.name) || x.away;
+          // la diferencia se pinta con color solo cuando SUPERA la propia incertidumbre del modelo: por
+          // debajo de ella, discrepar no es discrepar, es ruido — y darle color sería mentir con estilo.
+          var fuerte = x.unc_pts != null && Math.abs(x.d_spread) > x.unc_pts;
+          return '<tr data-nflgame="' + esc(x.id) + '" style="cursor:pointer">' +
+            '<td><b>' + esc(an) + '</b> en <b>' + esc(hn) + '</b>' +
+            (x.books ? ' <span class="gx-dim">· ' + x.books + ' casas</span>' : '') + '</td>' +
+            '<td class="r gx-mono">' + nflPts(x.model_margin, true) + '</td>' +
+            '<td class="r gx-mono gx-dim">' + nflPts(x.market_spread, true) + '</td>' +
+            '<td class="r gx-mono"><b class="' + (fuerte ? (x.d_spread > 0 ? 'gx-pos' : 'gx-neg') : 'gx-dim') + '">' + nflPts(x.d_spread, true) + ' pts</b></td>' +
+            '<td class="r gx-mono gx-dim">' + nflPts(x.model_total) + ' / ' + nflPts(x.market_total) + '</td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        '<div class="gx-dim gx-es-note">La diferencia está en puntos y va con signo del local. Se resalta solo cuando supera la incertidumbre que el propio modelo declara para ese partido: por debajo de eso, discrepar es ruido. Y en sombra una diferencia grande es tanto una candidata como la señal de que el modelo no vio algo que el mercado sí.</div></div>';
+    } else {
+      disPanel = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Todavía no hay contra qué comparar.</b>' +
+        '<span class="gx-dim">' + esc(ms.why || 'ninguna casa abrió estos partidos: las líneas suelen salir en los días previos.') + '</span></div></div>';
+    }
+
+    // 4) el registro en sombra, con sus números y su advertencia de muestra
+    var sh = d.shadow && d.shadow.summary ? d.shadow.summary : null;
+    var shPanel = sh ? '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">El registro en sombra</span>' +
+      '<span class="gx-ph-extra">' + (sh.settled || 0) + ' liquidadas · ' + (sh.open || 0) + ' abiertas</span></div>' +
+      '<div class="gx-es-why-rows">' +
+      '<div class="gx-es-whyr"><b>CLV medio</b><em>' + (sh.clv_avg_pct != null ? (sh.clv_avg_pct > 0 ? '+' : '') + sh.clv_avg_pct + '%' : '—') + '</em>' +
+      '<span>la vara real: si el precio que tomamos bate al de cierre. Con ' + (sh.clv_n || 0) + ' medidas.</span></div>' +
+      '<div class="gx-es-whyr"><b>Unidades</b><em>' + (sh.units != null ? (sh.units > 0 ? '+' : '') + sh.units : '—') + '</em>' +
+      '<span>' + (sh.roi_pct != null ? 'ROI ' + sh.roi_pct + '% sobre las liquidadas.' : 'sin liquidadas todavía.') + '</span></div>' +
+      '</div>' + (sh.reading ? '<div class="gx-dim gx-es-note">' + esc(sh.reading) + '</div>' : '') + '</div>' : '';
+
+    // 5) el calendario, ahora con las dos columnas enfrentadas
     var games = (d.games || []);
     var rows = games.length ? '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">Los próximos partidos</span><span class="gx-ph-extra">' + games.length + '</span></div>' +
-      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Partido</th><th class="r">Fecha</th><th class="r">Margen GP</th><th class="r">Total GP</th><th class="r">Prob. local</th></tr></thead><tbody>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Partido</th><th class="r">Fecha</th><th class="r">Margen GP</th><th class="r">Línea casa</th><th class="r">Total GP</th><th class="r">Prob. local</th></tr></thead><tbody>' +
       games.map(function (g) {
         var hn = (g.home && g.home.name) || g.home, an = (g.away && g.away.name) || g.away;
-        var m = g.model || {};
+        var m = g.model || {}, mk = g.market || {};
         return '<tr data-nflgame="' + esc(g.id) + '" style="cursor:pointer">' +
           '<td><b>' + esc(an) + '</b> en <b>' + esc(hn) + '</b>' + (g.week != null ? ' <span class="gx-dim">· sem ' + g.week + '</span>' : '') + '</td>' +
           '<td class="r gx-mono gx-dim">' + esc(String(g.date || '').slice(0, 10)) + '</td>' +
-          '<td class="r gx-mono">' + (m.mu_margin != null ? (m.mu_margin > 0 ? '+' : '') + m.mu_margin : '—') + '</td>' +
-          '<td class="r gx-mono">' + (m.mu_total != null ? m.mu_total : '—') + '</td>' +
+          '<td class="r gx-mono">' + nflPts(m.mu_margin, true) + '</td>' +
+          '<td class="r gx-mono gx-dim">' + nflPts(mk.spread, true) + '</td>' +
+          '<td class="r gx-mono">' + nflPts(m.mu_total) + '</td>' +
           '<td class="r gx-mono"><b>' + (m.p_home != null ? Math.round(100 * m.p_home) + '%' : '—') + '</b></td></tr>';
       }).join('') + '</tbody></table></div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidos de ' + esc(d.label || '') + ' en la ventana.</b></div></div>';
-    var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.note || '') + '</span></div>';
-    nflShell('Brief · ' + esc(d.label || ''), intro + rows + note);
+
+    var reg = d.regime_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.regime_note) + '</span></div>' : '';
+    var note = '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>' + esc(d.note || '') + '</span></div>';
+    nflShell('Brief · ' + esc(d.label || ''), strip + intro + disPanel + shPanel + rows + reg + note);
   }
 
   // ── PREGÚNTALE A GP · FÚTBOL AMERICANO (18-ago) ────────────────────────────────────────────────────────
@@ -13569,39 +13640,99 @@
 
 
   // ── BRIEF DE ESPORT (18-ago, pedido de Alexis): la jornada del juego con la lectura de la casa ─────────
+  // ── BRIEF DE ESPORT (reescrito el 19-ago) ──────────────────────────────────────────────────────────────
+  // Alexis: "el daily brief en CS2 mejóralo". El diagnóstico, mirándolo: los dos paneles que enriquecían la
+  // pantalla —el meta de campeones y las señales activas— NO APLICAN a CS2. El meta sale de `championsBoard`,
+  // que existe para LoL, Valorant y Dota 2; en CS2 devuelve nada. Así que en el único juego con base propia
+  // de verdad (48.678 mapas) el brief quedaba en apertura narrada + tabla + aviso.
+  //
+  // Lo que CS2 sí tiene y no se estaba enseñando: el VETO —qué mapas se caen y cuánto mueve eso la
+  // probabilidad, que es LA pieza del juego—, las rondas esperadas, y desde hoy las tres superficies de
+  // mercado. Se enseña lo que cada juego tiene de propio en lugar de una plantilla común: el veto en CS2,
+  // los kills en LoL, la prórroga en Valorant, la cola de duración en Dota 2.
+  function esReadChips(r) {
+    if (!r) return '';
+    var out = [];
+    if (r.veto) out.push('<span class="gx-dr-ch"><b>Veto</b><i>' + esc(String(r.veto.verdict || '').toLowerCase()) + (r.veto.shift_pp != null ? ' ' + (r.veto.shift_pp > 0 ? '+' : '') + r.veto.shift_pp + ' pp' : '') + '</i></span>');
+    if (r.rounds != null) out.push('<span class="gx-dr-ch"><b>Rondas</b><i>' + r.rounds + (r.overtime_pct != null ? ' · ' + r.overtime_pct + '% prórroga' : '') + '</i></span>');
+    if (r.kills != null) out.push('<span class="gx-dr-ch"><b>Kills</b><i>' + r.kills + '</i></span>');
+    if (r.minutes != null) out.push('<span class="gx-dr-ch"><b>Duración</b><i>' + r.minutes + ' min' + (r.minutes_p99 != null ? ' (cola ' + r.minutes_p99 + ')' : '') + '</i></span>');
+    return out.join('');
+  }
   function renderESBrief() {
     var g = esGame();
     var d = esGet('brief_' + g, '/api/esports/brief?game=' + g, 300000);
     if (!d) { esShell('Brief', esTabs() + esLoading()); return; }
     if (d._err) { esShell('Brief', esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
+    var items = (d.items || []);
+    var mk = d.market || null;
+
+    // 1) la tira: la jornada y lo que se ve entre casas
+    var strip = '<div class="gx-estop">' +
+      '<div class="gx-panel gx-estop-c' + (items.length ? ' on' : '') + '"><div class="gx-label">' + ic('device-gamepad') + 'La jornada</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + items.length + ' partidas</div>' +
+      '<div class="gx-estop-sub">' + esc((d.sources || []).map(function (x) { return prettyBook(x.book || x) || (x.book || x); }).join(' · ') || (d.books ? d.books + ' casas' : 'sin precio todavía')) + '</div></div></div>' +
+      '<div class="gx-panel gx-estop-c' + (mk && (mk.arbs || mk.middles || mk.dropping) ? ' on' : '') + '"><div class="gx-label">' + ic('scale') + 'Entre casas</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (mk ? (mk.arbs + ' arb · ' + mk.middles + ' mid · ' + mk.dropping + ' caídas') : '—') + '</div>' +
+      '<div class="gx-estop-sub">' + esc(mk && mk.why ? mk.why : 'no depende del modelo: sale de que las casas discrepen') + '</div></div>' +
+      '<div class="gx-estop-foot"><span class="gx-dim">ver en Oportunidades ' + ic('arrow-right') + '</span></div></div>' +
+      '</div>';
+
+    // 2) la lectura narrada
     var intro = d.intro && d.intro[lang]
       ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
         String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
-      : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. El tablero de abajo no depende de ella.</span></div>' : '');
-    var items = (d.items || []);
+      : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. Todo lo de abajo sale del motor y no depende de ella.</span></div>' : '');
+
+    // 3) LO QUE DICE EL MOTOR DE CADA CRUCE — la parte propia del juego, que es la que faltaba
+    var conRead = items.filter(function (x) { return x.read; });
+    var lecturas = conRead.length ? esPanel(
+      g === 'cs2' ? 'El veto y las rondas, cruce a cruce' : g === 'lol' ? 'Kills y duración, cruce a cruce'
+        : g === 'valorant' ? 'Rondas y prórroga, cruce a cruce' : 'Duración, cruce a cruce',
+      '<span class="gx-mono">' + conRead.length + '</span>',
+      conRead.slice(0, 8).map(function (x) {
+        return '<div class="gx-es-whyr" data-esmatch="' + esc(x.id) + '" style="cursor:pointer">' +
+          '<b>' + esc(x.home) + ' vs ' + esc(x.away) + '</b>' +
+          '<em>' + (x.p_home != null ? Math.round(100 * Math.max(x.p_home, 1 - x.p_home)) + '%' : '—') + '</em>' +
+          '<span><div class="gx-dr-pool">' + esReadChips(x.read) + '</div></span></div>';
+      }).join('') +
+      '<div class="gx-dim gx-es-note">Estos números salen de la base propia del juego, no del precio. La probabilidad de al lado es la del modelo, y en las familias ancladas se compara contra el mercado antes de decidir nada.</div>') : '';
+
+    // 4) la jornada
     var rows = items.length ? '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">La jornada</span><span class="gx-ph-extra">' + items.length + '</span></div>' +
-      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Cruce</th><th>Competición</th><th class="r">Hora UTC</th><th class="r">Prob. GP</th><th>Señal</th></tr></thead><tbody>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>Cruce</th><th>Competición</th><th class="r">Hora UTC</th><th class="r">Prob. GP</th><th class="r">Casas</th><th>Señal</th></tr></thead><tbody>' +
       items.map(function (x) {
         return '<tr data-esmatch="' + esc(x.id) + '" style="cursor:pointer">' +
           '<td><b>' + esc(x.home) + '</b> vs <b>' + esc(x.away) + '</b></td>' +
           '<td class="gx-dim">' + esc(x.competition || '—') + '</td>' +
           '<td class="r gx-mono">' + (x.start_at ? esc(String(x.start_at).slice(11, 16)) : '—') + '</td>' +
           '<td class="r gx-mono"><b>' + (x.p_home != null ? Math.round(100 * Math.max(x.p_home, 1 - x.p_home)) + '% ' + esc(x.p_home >= 0.5 ? x.home : x.away) : '—') + '</b></td>' +
+          '<td class="r gx-mono gx-dim">' + ((x.book_list || []).length || x.books || 0) + '</td>' +
           '<td>' + (x.best ? '<span class="gx-es-fam on">' + esc((x.best.family || '').replace(/_/g, ' ')) + ' @' + x.best.odds + '</span>' : '<span class="gx-dim">—</span>') + '</td></tr>';
       }).join('') + '</tbody></table></div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidas próximas de ' + esc(d.label || '') + ' en la agenda.</b></div></div>';
+
     var act = (d.active_picks || []).length ? esPanel('Señales activas', '<span class="gx-mono">' + d.active_picks.length + '</span>',
       '<div class="gx-dr-pool">' + d.active_picks.map(function (p) {
         return '<span class="gx-dr-ch" title="' + esc(p.match || '') + '">' + esc(p.family) + (p.side ? ' · ' + esc(p.side) + ' ' + (p.line != null ? p.line : '') : '') + '</span>';
       }).join('') + '</div>') : '';
+
+    // 5) POR QUÉ NO HAY MÁS — una jornada sin picks es una decisión, no un sistema apagado
+    var wn = d.why_not;
+    var why = wn && wn.top && wn.top.length ? esPanel('Por qué no hay más', '<span class="gx-dim">' + wn.valued + ' líneas valoradas</span>',
+      '<div class="gx-es-why-rows">' + wn.top.map(function (r) {
+        var m = ES_REASON[r.motivo] || [String(r.motivo).replace(/_/g, ' '), ''];
+        return '<div class="gx-es-whyr"><b>' + esc(m[0]) + '</b><em>' + r.n + '</em><span>' + esc(m[1]) + '</span></div>';
+      }).join('') + '</div>') : '';
+
     var meta = d.meta && (d.meta.top || []).length ? esPanel('El meta que se mueve', d.meta.patch ? '<span class="gx-mono">parche ' + esc(d.meta.patch) + '</span>' : '<span class="gx-mono">90 días</span>',
       '<div class="gx-dr-pool">' + d.meta.top.map(function (r) {
         var dw = r.delta_wr;
         return '<span class="gx-dr-ch"><b>' + esc(r.name) + '</b><i>' + r.presence_pct + '%' + (dw != null ? (dw > 0 ? ' ▲' : dw < 0 ? ' ▼' : '') : '') + '</i></span>';
       }).join('') + '</div>') : '';
-    var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.note || '') + '</span></div>';
-    esShell('Brief · ' + esc(d.label || esGameLab()), esTabs() + intro + rows + act + meta + note);
+    var note = '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>' + esc(d.note || '') + '</span></div>';
+    esShell('Brief · ' + esc(d.label || esGameLab()), esTabs() + strip + intro + lecturas + rows + act + why + meta + note);
   }
 
   // ── PREGÚNTALE A GP · ESPORT (18-ago) ───────────────────────────────────────────────────────────────────

@@ -1068,6 +1068,12 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
       arbs: arbs.slice(0, 4),
       best_arb: arbs[0] || null,
       highlight: highlightOf(game, model),
+      // LA LECTURA DEL MOTOR EN NÚMEROS, no en una frase. `highlight` es una cadena para pintar de un
+      // vistazo; el brief necesita los números sueltos para poder ordenar por ellos y para dárselos al
+      // redactor. Cada juego pone LO SUYO —el veto en CS2, los kills en LoL, la prórroga en Valorant, la
+      // cola de duración en Dota 2— porque es justo lo que hace que estas cuatro pestañas sean cuatro
+      // productos y no cuatro copias.
+      read: readOf(game, model),
       // LOS ESCUDOS VIAJAN CON LA PIZARRA. Estaban solo en la ficha del partido, así que el calendario era una
       // lista de nombres — y un calendario de deporte sin caras no se parece a un calendario, se parece a un
       // registro. El motor ya resolvió los equipos contra la base propia aquí mismo; no cuesta nada más.
@@ -1110,6 +1116,18 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     doctrine: PICK_DOCTRINE,
     at: new Date().toISOString(),
   };
+}
+
+// La lectura del motor EN NÚMEROS, para que el brief pueda ordenar por ella y el redactor citarla.
+function readOf(game, model) {
+  if (!model) return null;
+  const o = {};
+  if (model.veto_impact) o.veto = { verdict: model.veto_impact.verdict, shift_pp: model.veto_impact.shift_pp };
+  if (model.rounds) { o.rounds = model.rounds.mean_rounds; if (model.rounds.overtime_p != null) o.overtime_pct = Math.round(100 * model.rounds.overtime_p); }
+  if (model.kills) o.kills = model.kills.mean_kills;
+  if (model.duration) { o.minutes = model.duration.mean_min; if (model.duration.p99 != null) o.minutes_p99 = model.duration.p99; }
+  if (model.dataset && model.dataset.n != null) o.sample = model.dataset.n;
+  return Object.keys(o).length ? o : null;
 }
 
 // La frase que distingue a cada juego en la pizarra. No es adorno: es lo que le dice al usuario POR QUÉ

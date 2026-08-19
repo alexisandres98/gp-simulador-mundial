@@ -311,9 +311,14 @@ async function amfootRostersJob() {
     // concurrentes, y todos los demás jobs de la casa llevan este freno menos este. La plataforma está EN
     // VIVO durante el Mundial: una cosecha de plantillas no vale un minuto de caída.
     if (!opsMemOk('amf_rosters', 150)) { setTimeout(amfootRostersJob, 45 * 60e3); return; }
+    // CONCURRENCIA: TOPE, NO EXCLUSIVA (19-ago). Bloquear con UNA cosecha en vuelo sonaba prudente, pero
+    // lol_harvest y val_harvest son cadenas que se re-arman cada 20 min hasta completarse: con esa regla
+    // este trabajo no encontraba hueco NUNCA — el mismo defecto que el techo obsoleto, por otra puerta.
+    // El recurso escaso de verdad es la memoria, y de eso ya se encarga el techo; aquí solo se evita el
+    // apilamiento: se frena a partir de DOS pesadas en vuelo, no de una.
     const heavy = ['lol_harvest', 'val_harvest', 'cs2_harvest', 'ten_harvest'];
     const busy = heavy.filter((k) => OPS.running[k]);
-    if (busy.length) { opsLog('amf_rosters', { skipped: 'ocupado: ' + busy.join(',') }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
+    if (busy.length >= 2) { opsLog('amf_rosters', { skipped: 'apilamiento: ' + busy.join(',') }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
     const AF = require('./amfoot-engine/store');
     const dir = AF.DISK_DIR;
     const fresh = (lg) => {

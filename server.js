@@ -311,7 +311,12 @@ async function cs2DailyJob() {
     const day = opsToday();
     if (db.ops.cs2_day === day) return;
     if (new Date().getUTCHours() < 9) return;            // ~3-4 am LATAM: la ventana más muerta del día
-    if (!opsMemOk('cs2_daily', 150)) return;
+    // UN PICO NO DEBE COSTAR UNA HORA (19-ago). El trabajo corre cada hora y el freno de memoria mira UNA
+    // muestra: si cae justo mientras un barrido de cuotas infla el RSS —pasa a 1483 MB y baja solo a los
+    // segundos—, se pierde la pasada entera hasta la hora siguiente. Visto en producción: `cs2_daily`
+    // saltado por "rss 1483MB > techo 1050MB" siendo CS2 el único deporte con CLV positivo de la casa.
+    // Se reintenta en 8 minutos, que es más de lo que dura un pico y menos de lo que cuesta perder el día.
+    if (!opsMemOk('cs2_daily', 150)) { setTimeout(cs2DailyJob, 8 * 60e3); return; }
     db.ops.cs2_day = day; save();                      // se marca ANTES: un fallo no debe reintentar en bucle todo el día
     const h = await opsSpawn('cs2_harvest', ['scripts/cs2-harvest.js'], { heapMb: 240, timeoutMin: 40 });
     const r = await opsSpawn('cs2_roster', ['scripts/cs2-roster.js'], { heapMb: 200, timeoutMin: 25 });

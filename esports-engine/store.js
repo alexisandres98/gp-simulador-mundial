@@ -240,7 +240,15 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
   }
   st.at = new Date().toISOString();
   wr(`closes-${game}.json`, st);
-  return { game, saved, total: Object.keys(st.closes).length };
+  // POR QUÉ SE GUARDÓ CERO. Dota 2 lleva 0 cierres con 7 eventos en la agenda, y con el retorno de antes no
+  // había forma de saber si es que ningún evento cayó en la ventana previa, si el proveedor no cotiza ese
+  // juego, o si hay un fallo. Un cero sin motivo no se puede revisar el lunes. Ahora el motivo viaja.
+  return { game, saved, total: Object.keys(st.closes).length,
+    diag: { eventos_agenda: ((s && s.events) || []).length, en_ventana: evs.length,
+      sin_mercado: evs.length - saved,
+      why: !((s && s.events) || []).length ? 'el proveedor no lista eventos de este juego'
+        : !evs.length ? `hay ${((s && s.events) || []).length} eventos pero ninguno dentro de la ventana de ${withinMin} min previa al inicio`
+          : saved === 0 ? 'eventos en ventana pero el proveedor no devolvió mercados para ninguno' : null } };
 }
 
 // Se conserva el nombre `harvest` porque es el que usan los trabajos de fondo del resto de deportes, pero
@@ -1289,7 +1297,31 @@ function settleOne(pk, res) {
     if (v === 0) return 'PUSH';
     return (pk.side === 'home' ? v > 0 : v < 0) ? 'WIN' : 'LOSS';
   }
-  // KILLS: bo3 no publica kills por mapa. Se deja explícito y sin liquidar en vez de aproximarlo.
+  // ── KILLS (19-ago) ───────────────────────────────────────────────────────────────────────────────────
+  // Antes esto era `return null` con la nota "bo3 no publica kills por mapa". Cierto para CS2 — y sigue
+  // siéndolo — pero se llevó por delante a LoL, que es JUSTO el juego con mercado de kills abierto y donde
+  // están todas sus picks: 18 generadas y cero liquidadas, para siempre. Ahora, cuando la fuente trae
+  // kills (Leaguepedia en LoL, OpenDota en Dota 2), se liquidan; cuando no los trae, se sigue devolviendo
+  // null y la pick queda declarada como inliquidable en vez de inventarse el dato.
+  const kA = m ? need(m.kills_a) : null, kB = m ? need(m.kills_b) : null;
+  const kTot = (kA != null && kB != null) ? kA + kB : (m ? need(m.kills_total) : null);
+  if (pk.family === 'KILLS') return cmp(kTot, pk.line, isOver);
+  if (pk.family === 'KILLS_EQUIPO') {
+    const v = pk.team === 'home' ? kA : pk.team === 'away' ? kB : null;
+    return cmp(v, pk.line, isOver);
+  }
+  if (pk.family === 'KILLS_HANDICAP') {
+    if (kA == null || kB == null) return null;
+    const v = (kA - kB) + pk.line;
+    if (v === 0) return 'PUSH';
+    return (pk.side === 'home' ? v > 0 : v < 0) ? 'WIN' : 'LOSS';
+  }
+  if (pk.family === 'KILLS_DNB') {
+    // "sin empate": el empate exacto en kills devuelve la apuesta
+    if (kA == null || kB == null) return null;
+    if (kA === kB) return 'PUSH';
+    return (pk.side === 'home' ? kA > kB : kB > kA) ? 'WIN' : 'LOSS';
+  }
   return null;
 }
 

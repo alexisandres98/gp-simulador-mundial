@@ -182,13 +182,29 @@ async function lolResults({ since } = {}) {
   return out;
 }
 
+// Leaguepedia primero (trae kills), lolesports de respaldo (solo marcador).
+async function lolResultsWithKills(opts) {
+  try {
+    const LP = require('./leaguepedia');
+    const rows = await LP.lolGamesWithKills(opts || {});
+    if (rows && rows.length) return rows;
+  } catch { /* cubo vacío o caída: se cae al respaldo */ }
+  return lolResults(opts || {});
+}
+
 const SOURCES = {
   cs2: { fn: cs2Results, name: 'bo3.gg', available: true,
     note: 'la misma fuente del histórico propio: llega al detalle de ronda y prórroga por mapa, que es donde CS2 genera sus picks.' },
   dota2: { fn: dota2Results, name: 'OpenDota', available: true,
     note: 'pública y sin clave; da ganador, kills y duración por partida.' },
-  lol: { fn: lolResults, name: 'lolesports', available: true,
-    note: 'marcador de serie; el detalle por partida (kills, duración) necesita otra llamada todavía sin construir.' },
+  // LoL LIQUIDA POR LEAGUEPEDIA, NO POR LOLESPORTS (19-ago). lolesports da el marcador de serie y nada más,
+  // y LoL genera sus picks en las familias de KILLS: 18 picks generadas y CERO liquidadas, porque
+  // `settleOne` no tenía el dato y devolvía null. Leaguepedia trae kills y duración POR PARTIDA y es la
+  // misma fuente de la que salió nuestra base histórica, así que el marcador y el detalle vienen del mismo
+  // sitio y no pueden contradecirse. Si Leaguepedia falla (su limitador es un cubo de fichas y a veces está
+  // vacío) se cae a lolesports, que al menos permite liquidar el ganador de mapa y los totales de mapas.
+  lol: { fn: lolResultsWithKills, name: 'leaguepedia', available: true,
+    note: 'kills y duración por partida, de la misma fuente que la base histórica; con lolesports de respaldo para el marcador de serie.' },
   valorant: { fn: async () => [], available: false,
     note: 'sin fuente de resultados todavía. Es el único de los cuatro que sigue sin poder liquidarse, y se dice en vez de disimularlo.' },
 };

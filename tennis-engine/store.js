@@ -676,6 +676,96 @@ function playersDirectory(tour, { q = '', limit = 80 } = {}) {
   return { rows: rows.slice(0, limit), total: rows.length, attribution: ATTRIB, freshness: d.meta.last_match_date };
 }
 
+// ── CARGA Y DESCANSO (19-ago) ────────────────────────────────────────────────────────────────────────────
+// Alexis pidió una sección destacada de datos y que mirara "qué busca siempre la gente que busca data de
+// fútbol". En fútbol lo que siempre se mira antes de un partido es CÓMO LLEGA cada equipo: descanso desde
+// el último partido, minutos en las piernas, congestión de calendario. En tenis eso pesa MÁS, no menos —no
+// hay banquillo, no hay cambios, y el que jugó tres horas antesdeayer las lleva encima él solo— y no estaba
+// en ninguna pantalla.
+//
+// Se calcula del registro propio de partidos, sin pedir nada nuevo: partidos de los últimos 7, 14 y 30
+// días, sets y JUEGOS jugados (que es la unidad de desgaste real: un 7-6 7-6 cansa más que un 6-1 6-2 y
+// dura el doble), días desde el último partido, retiros y abandonos, y si viene de cambiar de superficie.
+//
+// LO QUE ESTO NO ES: no es una señal del modelo ni entra en ninguna probabilidad. Es contexto medido, y va
+// declarado como tal. Meterlo al modelo exige el peaje completo de validación; enseñarlo, no.
+const JUEGOS_RE = /(\d+)\s*[-–]\s*(\d+)/g;
+function cargaDeUnPartido(score) {
+  // del marcador salen sets y juegos. Los tie-breaks entre paréntesis se ignoran a propósito: "7-6(4)" son
+  // trece juegos, no diecisiete.
+  const limpio = String(score || '').replace(/\([^)]*\)/g, ' ');
+  let sets = 0, juegos = 0, m;
+  JUEGOS_RE.lastIndex = 0;
+  while ((m = JUEGOS_RE.exec(limpio))) { const a = +m[1], b = +m[2]; if (a > 15 || b > 15) continue; sets++; juegos += a + b; }
+  return { sets, juegos };
+}
+const aFecha = (n) => { const s = String(n); return Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)); };
+
+function loadBoard(tour, { limit = 60 } = {}) {
+  const d = D.build(); const t = d.T[tour];
+  if (!t) return { available: false, why: 'ese tour no está en la base propia' };
+  // el "hoy" del tablero es la última fecha de la BASE, no la del reloj: si la cosecha va dos días por
+  // detrás, contar desde hoy inventaría descanso que nadie ha tenido. Y `last_match_date` NO es un número:
+  // es un objeto con una fecha POR TOUR ({atp, wta}) — pasarlo tal cual a la conversión daba NaN, y con
+  // NaN todos los filtros de ventana pasan, así que el tablero salía lleno de jugadores retirados.
+  const corte = (() => { const lm = d.meta.last_match_date;
+    if (lm && typeof lm === 'object') return tour === 1 ? (lm.wta || lm.atp) : (lm.atp || lm.wta);
+    return lm; })();
+  const hoy = aFecha(corte);
+  const rows = [];
+  for (const [id, prof] of t.prof) {
+    const p = d.players[tour + ':' + id];
+    if (!p || prof.w + prof.l < 10) continue;
+    const rec = (prof.recent || []).slice();
+    if (!rec.length) continue;
+    const ult = rec[rec.length - 1];
+    const dias = Math.round((hoy - aFecha(ult.d)) / 864e5);
+    if (dias > 45) continue;                       // fuera de circulación: su carga no dice nada de hoy
+    const ventana = (n) => rec.filter((m) => (hoy - aFecha(m.d)) / 864e5 <= n);
+    const suma = (arr) => arr.reduce((acc, m) => { const c = cargaDeUnPartido(m.score); acc.sets += c.sets; acc.juegos += c.juegos; return acc; }, { sets: 0, juegos: 0 });
+    const v7 = ventana(7), v14 = ventana(14), v30 = ventana(30);
+    const s14 = suma(v14);
+    const ult5 = rec.slice(-5).map((m) => (m.won ? 'W' : 'L'));
+    // cambio de superficie: la del último partido contra la que más jugó en los treinta días previos
+    const porSup = {};
+    for (const m of v30) porSup[m.surf] = (porSup[m.surf] || 0) + 1;
+    const dominante = Object.entries(porSup).sort((a, b) => b[1] - a[1])[0];
+    const cambio = dominante && +dominante[0] !== ult.surf;
+    rows.push({
+      id, name: p.name, country: p.country, photo: photoOf(tour, id),
+      rank: prof.rank, elo: Math.round(t.elo.get(id) || 1500),
+      days_off: dias,
+      m7: v7.length, m14: v14.length, m30: v30.length,
+      sets14: s14.sets, games14: s14.juegos,
+      // el desgaste por partido, que es lo que distingue "jugó cuatro" de "jugó cuatro maratones"
+      games_per_match: v14.length ? +(s14.juegos / v14.length).toFixed(1) : null,
+      last_date: ult.d, last_surface: D.SURFACES[ult.surf] || null,
+      surface_switch: !!cambio,
+      retirements: rec.filter((m) => m.ret && (hoy - aFecha(m.d)) / 864e5 <= 60).length,
+      form: ult5,
+      streak: (() => { let n = 0; for (let i = rec.length - 1; i >= 0; i--) { if (i === rec.length - 1) { n = rec[i].won ? 1 : -1; continue; } if (rec[i].won === (n > 0)) n += n > 0 ? 1 : -1; else break; } return n; })(),
+    });
+  }
+  // se ordena por CARGA, que es la pregunta de la pantalla: quién llega con más piernas gastadas
+  rows.sort((a, b) => (b.games14 - a.games14) || (b.m14 - a.m14));
+  const conJuego = rows.filter((r) => r.m14 > 0);
+  return {
+    available: rows.length > 0, tour, rows: rows.slice(0, limit), total: rows.length,
+    as_of: corte,
+    medians: conJuego.length ? {
+      games14: conJuego.map((r) => r.games14).sort((a, b) => a - b)[conJuego.length >> 1],
+      m14: conJuego.map((r) => r.m14).sort((a, b) => a - b)[conJuego.length >> 1],
+    } : null,
+    attribution: ATTRIB, freshness: d.meta.last_match_date,
+    // EL RETRASO DE LA BASE VA EN PORTADA, no en una nota al pie. Esta pantalla se lee como "cómo llega
+    // fulano HOY", y si el último partido cargado es de hace semanas eso es exactamente lo que NO dice.
+    lag_days: baseLagDays(),
+    note: 'contexto medido del registro propio, NO una señal del modelo: no entra en ninguna probabilidad. ' +
+      'Los juegos son la unidad de desgaste —un 7-6 7-6 cansa el doble que un 6-1 6-2 y dura el doble— y el ' +
+      'corte de fechas es el último partido de la base, no el reloj: contar desde hoy inventaría descanso que nadie tuvo.',
+  };
+}
+
 function rankingBoard(tour) {
   const dir = playersDirectory(tour, { limit: 100 });
   const snap = rdD('rank-snap.json') || {};
@@ -819,7 +909,7 @@ async function modelSnapshot() {
   };
 }
 
-module.exports = { matchDetail,
+module.exports = { loadBoard, matchDetail,
   DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, track,
   playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, simMatch, modelCard, modelSnapshot,
   eventModel, marketOf,

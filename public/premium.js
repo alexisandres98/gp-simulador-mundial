@@ -299,7 +299,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -705,7 +705,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1074,9 +1074,9 @@
   function nflAllowed() { return !!(S.me && (S.me.isAdmin || S.me.nflPublic)); }
   // ── TENIS (18-ago, blueprint 6.0): 7º deporte, al lado de NFL. ATP/WTA con selector como las ligas
   // de fútbol americano; base propia validada; TODAS las familias en sombra; admin-only de arranque.
-  var TEN_VIEWS = ['tenopps', 'tengames', 'tenmatch', 'tenrank', 'tenplayers', 'tenplayer', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel'];
+  var TEN_VIEWS = ['tenopps', 'tengames', 'tenmatch', 'tenrank', 'tenplayers', 'tenplayer', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel', 'tenload'];
   var NAV_TEN = [
-    ['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'],
+    ['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenload', 'activity', 'ten_nav_load'], ['tenrank', 'trophy', 'ten_nav_rank'],
     ['tenbrief', 'news', 'nav_brief'], ['tenask', 'message-circle', 'nav_cb_ask'], ['tensim', 'adjustments', 'nav_sim'],
     ['tenplayers', 'user', 'sr_players'], ['tenmodel', 'book', 'ten_nav_model'],
     ['alerts', 'bell', 'nav_alerts'], ['tenperf', 'chart-line', 'nav_perf']
@@ -4382,7 +4382,7 @@
     if (tnm) { var tid = decodeURIComponent(tnm[1]); if (!(S.view === 'tenmatch' && S.ten.matchId === tid)) { S.ten.matchId = tid; S.ten.lens = 'partido'; showView('tenmatch'); } return; }
     var tnp = h.match(/^tenplayer\/(atp|wta)-(\d+)$/i);
     if (tnp) { S.ten.tour = tnp[1].toLowerCase(); if (!(S.view === 'tenplayer' && S.ten.playerId === tnp[2])) { S.ten.playerId = tnp[2]; showView('tenplayer'); } return; }
-    var tnv = h.match(/^(tenopps|tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel)(?:\/(atp|wta))?$/i);
+    var tnv = h.match(/^(tenopps|tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel|tenload)(?:\/(atp|wta))?$/i);
     if (tnv) { if (tnv[2]) S.ten.tour = tnv[2].toLowerCase(); showView(tnv[1]); return; }
     // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
     var nfg = h.match(/^nflgame\/(.+)$/i);
@@ -4420,7 +4420,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -11807,6 +11807,7 @@
     if (v === 'tenmatch') return renderTenMatch();
     if (v === 'tengames') return renderTenGames();
     if (v === 'tenrank') return renderTenRank();
+    if (v === 'tenload') return renderTenLoad();
     if (v === 'tenplayers') return renderTenPlayers();
     if (v === 'tenplayer') return renderTenPlayer();
     if (v === 'tensim') return renderTenSim();
@@ -12284,6 +12285,68 @@
       }).join('') + '</tbody></table></div>' +
       '<div class="gx-dim gx-es-note">' + esc(d.note || '') + ' ' + TEN_ATTRIB + '</div></div>';
     tenShell(t('ten_nav_rank'), body);
+  }
+
+  // ── CARGA Y DESCANSO (19-ago) ──────────────────────────────────────────────────────────────────────────
+  // Alexis pidió una sección destacada de datos y que mirara qué busca siempre quien busca data de fútbol.
+  // En fútbol, lo que se mira antes de cualquier partido es CÓMO LLEGA cada equipo: descanso, minutos en
+  // las piernas, congestión de calendario. En tenis eso pesa más, no menos —no hay banquillo, no hay
+  // cambios, y el que jugó tres horas antesdeayer las lleva encima él solo— y no estaba en ninguna pantalla.
+  //
+  // La unidad no son los partidos, son los JUEGOS: un 7-6 7-6 cansa el doble que un 6-1 6-2 y dura el
+  // doble. Por eso la tabla ordena por juegos en catorce días y enseña el promedio por partido al lado —
+  // es lo que distingue "jugó cuatro" de "jugó cuatro maratones".
+  function tenLoadTint(v, med) {
+    if (v == null || !med) return '';
+    if (v >= med * 1.6) return ' gx-neg';
+    if (v <= med * 0.5) return ' gx-pos';
+    return '';
+  }
+  function renderTenLoad() {
+    var d = tenGet('load_' + tenTour(), '/api/tennis/load?tour=' + tenTour(), 600000);
+    if (!d) { tenShell(t('ten_nav_load'), tenLoading()); return; }
+    if (d._err) { tenShell(t('ten_nav_load'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (!d.available) {
+      tenShell(t('ten_nav_load'), '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Sin actividad reciente en la base.</b><span class="gx-dim">' + esc(d.why || '') + '</span></div></div>');
+      return;
+    }
+    var med = d.medians || {};
+    // EL RETRASO DE LA BASE, EN PORTADA. Esta pantalla se lee como "cómo llega fulano HOY"; si el último
+    // partido cargado es de hace semanas, eso es exactamente lo que NO dice, y callarlo sería el peor sitio
+    // para callarlo.
+    var aviso = (d.lag_days != null && d.lag_days > 10)
+      ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>El último partido cargado en la base es de hace <b>' +
+        d.lag_days + ' días</b> (' + esc(String(d.as_of || '')) + '). Esto es la carga <b>a esa fecha</b>, no la de hoy.</span></div>'
+      : '';
+    var hero = '<div class="gx-es-hero"><div><b>Cómo llega cada jugador</b>' +
+      '<span class="gx-dim">partidos, sets y juegos en las últimas dos semanas — el desgaste que no se ve en el ranking</span></div>' +
+      '<span class="gx-spacer"></span>' +
+      (med.games14 != null ? '<div class="gx-es-hero-n"><b>' + med.games14 + '</b><span>juegos · mediana</span></div>' : '') +
+      '<div class="gx-es-hero-n"><b>' + d.total + '</b><span>en circulación</span></div></div>';
+    var body = '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">Carga de 14 días</span>' +
+      '<span class="gx-ph-extra">de más a menos gastado</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+      // el orden de columnas lo manda el móvil: la tabla scrollea, así que lo que ordena la lista —los
+      // juegos— tiene que caber en el primer pantallazo. Antes quedaba fuera y la tabla parecía ordenada
+      // por nada.
+      '<th>Jugador</th><th class="r">Juegos</th><th class="r">J/P</th><th class="r">P·14d</th><th class="r">Desc.</th><th class="r">Sets</th><th>Forma</th></tr></thead><tbody>' +
+      (d.rows || []).map(function (r) {
+        return '<tr data-tenplayer="' + r.id + '" style="cursor:pointer">' +
+          '<td><div class="gx-esr-team">' + tenFace(r) + '<b>' + esc(r.name) + '</b>' +
+          (r.rank ? '<span class="gx-dim" style="font-size:10.5px">#' + r.rank + '</span>' : '') + '</div>' +
+          (r.surface_switch ? '<span class="gx-dim" style="font-size:10.5px">cambió de superficie · ahora ' + esc(r.last_surface || '') + '</span>' : '') +
+          (r.retirements ? '<span class="gx-dim" style="font-size:10.5px">' + r.retirements + ' retiro' + (r.retirements > 1 ? 's' : '') + ' en 60 días</span>' : '') +
+          '</td>' +
+          '<td class="r gx-mono"><b class="' + tenLoadTint(r.games14, med.games14).trim() + '">' + r.games14 + '</b></td>' +
+          '<td class="r gx-mono gx-dim">' + (r.games_per_match != null ? r.games_per_match : '—') + '</td>' +
+          '<td class="r gx-mono">' + r.m14 + '</td>' +
+          '<td class="r gx-mono' + (r.days_off >= 14 ? ' gx-dim' : '') + '">' + r.days_off + 'd</td>' +
+          '<td class="r gx-mono gx-dim">' + r.sets14 + '</td>' +
+          '<td>' + (r.form || []).map(function (f) { return '<span class="gx-es-fr ' + (f === 'W' ? 'w' : 'l') + '">' + esc(f) + '</span>'; }).join('') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + ' ' + TEN_ATTRIB + '</div></div>';
+    tenShell(t('ten_nav_load'), aviso + hero + body);
   }
 
   // ── JUGADORES ────────────────────────────────────────────────────────────────────────────────────────

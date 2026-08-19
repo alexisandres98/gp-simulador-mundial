@@ -16476,6 +16476,8 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, TEN.playerProfile(tnQ, +idT));
         }
         if (p === '/api/tennis/ranking') return json(res, 200, TEN.rankingBoard(tnQ));
+        // CARGA Y DESCANSO: cómo llega cada jugador. Contexto medido, no señal del modelo.
+        if (p === '/api/tennis/load') return json(res, 200, TEN.loadBoard(tnQ, { limit: 60 }));
         if (p === '/api/tennis/sim') {
           const a = String(url.searchParams.get('a') || ''), b2 = String(url.searchParams.get('b') || '');
           if (!a || !b2) return json(res, 400, { error: 'faltan jugadores', need: ['a', 'b'] });

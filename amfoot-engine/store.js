@@ -250,7 +250,15 @@ function modelSnapshot(lg) {
 }
 
 const gid = (g) => `${g.date}|${g.home}|${g.away}`;
-function gameModel(g, M, { withFan = false } = {}) {
+// `light` = LO QUE UNA FILA DE LISTA NECESITA, Y NADA MÁS (19-ago, reporte de Alexis: "todo lo referente a
+// College y CFL no carga"). No era que no cargara: era que TARDABA 110 SEGUNDOS y el front se rinde a los
+// 30, así que la pantalla se quedaba en "Leyendo la base propia…" para siempre.
+// El motivo: cada fila del listado disparaba 20.000 simulaciones de Monte Carlo. En la NFL eso son 17
+// partidos y se nota poco; en College la ventana de 30 días trae 187 y son 46 segundos de reloj.
+// Pero de toda esa simulación la lista solo lee UNA cifra —la probabilidad del local—, y para una lista
+// 4.000 tiradas la dan con menos de un punto de error típico. El panel del partido, que sí enseña la
+// distribución entera y los números clave, se queda con las 20.000 intactas.
+function gameModel(g, M, { withFan = false, light = false } = {}) {
   const rh = M.R.teams[g.home], ra = M.R.teams[g.away];
   if (!rh || !ra) return null;
   const muMargin = rh.pts - ra.pts + (g.neutral ? 0 : M.priors.hfa);
@@ -264,7 +272,7 @@ function gameModel(g, M, { withFan = false } = {}) {
   let seed = 11; for (const ch of gid(g)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const sim = simulate({ muMargin, muTotal, priors: {
     resid_pool: M.priors.resid_pool, outcome_atlas: M.priors.outcome_atlas, sigma_extra_margin: M.priors.sigma_extra_margin, sigma_extra_total: M.priors.sigma_extra_total,
-  }, n: 20000, seed });
+  }, n: light ? 4000 : 20000, seed });
   if (!sim) return null;
   // MISMO ABANICO QUE NFL (19-ago): la posterior sobre la probabilidad, calculada una vez por partido.
   // Solo donde hay atlas: sin él el simulador cae al método viejo y desplazar el centro sí sería válido,
@@ -552,15 +560,23 @@ function upcoming(data, { days = 12 } = {}) {
   const to = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
   return data.games.filter((g) => g.date >= now && g.date <= to && g.hp == null);
 }
+// CACHÉ DE LA JORNADA. Aun con las simulaciones ligeras, 187 partidos de College son ~10 s: aceptable una
+// vez, inaceptable en cada pintado (y el front repinta al cambiar de liga, al volver atrás, al llegar la
+// sesión). La jornada solo cambia cuando se refrescan las cuotas —cada 30 min— o cuando cambia el modelo,
+// así que 5 minutos de caché no envejecen nada y convierten la segunda carga en instantánea.
+const SLATE_CACHE = {};
 async function slate(lg, { days = 12 } = {}) {
   const C = LEAGUES[lg];
+  const ck = `${lg}|${days}`;
+  const hit = SLATE_CACHE[ck];
+  if (hit && Date.now() - hit.at < 5 * 60e3) return hit.data;
   const M = modelSnapshot(lg);
   if (!M) return { available: false, why: `los agregados de ${C ? C.label : lg} no están cargados.` };
   const odds = await refreshOdds(lg).catch(() => null);
   const rows = upcoming(M.data, { days });
   const out = [];
   for (const g of rows) {
-    const model = gameModel(g, M);
+    const model = gameModel(g, M, { light: true });
     const mk = marketFor(lg, g, odds);
     const ih = infoOf(lg, g.home), ia = infoOf(lg, g.away);
     out.push({
@@ -576,7 +592,7 @@ async function slate(lg, { days = 12 } = {}) {
     });
   }
   out.sort((a, b) => String(a.date + (a.time || '')).localeCompare(String(b.date + (b.time || ''))));
-  return {
+  const res = {
     available: true, season: C.season, days, league: lg, label: C.label,
     week: out.length ? out[0].week : null, games: out,
     books: odds ? [...new Set(odds.rows.flatMap((e) => (e.bookmakers || []).map((b) => b.key)))].length : 0,
@@ -586,6 +602,8 @@ async function slate(lg, { days = 12 } = {}) {
       : 'CFL: 9 equipos y ~85 partidos por temporada — la muestra anual es chica y el sistema lo dice en vez de disimularlo.',
     doctrine: C.doctrine, at: new Date().toISOString(),
   };
+  SLATE_CACHE[ck] = { at: Date.now(), data: res };
+  return res;
 }
 
 async function gameIntel(lg, id) {
@@ -654,14 +672,24 @@ async function gameIntel(lg, id) {
 // (nombre, dorsal, posición, altura, peso, año, procedencia y headshot auto-hospedado) y aquí solo se
 // sirve. Se dice SIEMPRE lo que es: una plantilla con identidad, no una medición por jugador — este modelo
 // puntúa equipos, no jugadores, y fingir lo contrario sería inventarse un número.
+// UN FALLO NO SE CACHEA PARA SIEMPRE (19-ago). Esto memorizaba el resultado con `RST[lg] !== undefined`,
+// así que la PRIMERA lectura mandaba: si alguien abría la pestaña de jugadores antes de que la cosecha
+// escribiera el fichero, el `null` se quedaba grabado y la plantilla no aparecía jamás — ni cuando el
+// archivo ya estaba en disco. Solo un reinicio lo arreglaba.
+// Es exactamente lo que pasó hoy: la cosecha de College aterrizó a las 11:11 con 982 jugadores y la
+// pantalla seguía diciendo "todavía no está cosechada", porque el proceso llevaba desde las 10:44 con el
+// `null` memorizado. Un acierto se cachea sin plazo (una plantilla cambia por temporada); un fallo se
+// reintenta cada cinco minutos, que es lo que cuesta leer un fichero.
 const RST = {};
 function rosterOf(lg) {
-  if (RST[lg] !== undefined) return RST[lg];
+  const c = RST[lg];
+  if (c && c.j) return c.j;
+  if (c && !c.j && Date.now() - c.at < 5 * 60e3) return null;
   let j = null;
   for (const dir of [DISK_DIR, REPO_DIR]) {
     try { j = JSON.parse(fs.readFileSync(path.join(dir, `roster-${lg}.json`), 'utf8')); break; } catch { }
   }
-  RST[lg] = j;
+  RST[lg] = { j, at: Date.now() };
   return j;
 }
 const normName = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();

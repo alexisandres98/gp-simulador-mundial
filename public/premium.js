@@ -1087,6 +1087,19 @@
   function tenTour() { return (S.ten && S.ten.tour) === 'wta' ? 'wta' : 'atp'; }
   // ── F1 (18-ago, blueprint 7.0): 8º deporte, al lado de Tenis. Race Intelligence Twin admin-only.
   var F1_VIEWS = ['f1opps', 'f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model'];
+  // UNA SOLA TABLA vista→deporte. `sportOf` ya la tenía escrita a mano abajo; tenerla dos veces es
+  // exactamente el defecto que este arreglo viene a cerrar, así que se declara aquí y de aquí bebe todo.
+  var SPORT_VIEWS = [['combat', CB_VIEWS], ['hoops', BB_VIEWS], ['esports', ES_VIEWS],
+    ['nfl', NFL_VIEWS], ['tennis', TEN_VIEWS], ['f1', F1_VIEWS]];
+  // De una DIRECCIÓN (con su cola: `tenmatch/abc`, `f1driver/x`) al deporte. Devuelve null si la vista no
+  // pertenece a ningún deporte con barra propia — así el arranque sabe distinguir "esto es fútbol" de
+  // "esto no dice nada, usa lo último que usó el usuario".
+  function sportForHash(h) {
+    var v = String(h || '').replace(/^#/, '').split('/')[0].split('?')[0];
+    if (!v) return null;
+    for (var i = 0; i < SPORT_VIEWS.length; i++) if (SPORT_VIEWS[i][1].indexOf(v) >= 0) return SPORT_VIEWS[i][0];
+    return null;
+  }
   var NAV_F1 = [
     ['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'],
     ['f1brief', 'news', 'nav_brief'], ['f1ask', 'message-circle', 'nav_cb_ask'], ['f1sim', 'adjustments', 'f1_nav_sim'],
@@ -1129,12 +1142,8 @@
   function bbLg() { var k = (S.bb && S.bb.lg) || 'wnba'; return BB_LEAGUES.some(function (x) { return x[0] === k; }) ? k : 'wnba'; }
   function bbLgLab() { var k = bbLg(); var f = BB_LEAGUES.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : 'WNBA'; }
   function sportOf(v) {
-    if (CB_VIEWS.indexOf(v) >= 0) return 'combat';
-    if (BB_VIEWS.indexOf(v) >= 0) return 'hoops';
-    if (ES_VIEWS.indexOf(v) >= 0) return 'esports';
-    if (NFL_VIEWS.indexOf(v) >= 0) return 'nfl';
-    if (TEN_VIEWS.indexOf(v) >= 0) return 'tennis';
-    if (F1_VIEWS.indexOf(v) >= 0) return 'f1';
+    var sp = sportForHash(v);
+    if (sp) return sp;
     if (SHARED_VIEWS.indexOf(v) >= 0) return S.sport || 'futbol'; // neutral: conserva el deporte activo
     return 'futbol';
   }
@@ -10946,6 +10955,9 @@
   }
 
   function renderF1(v) {
+    // mismo defecto que tenía tenis: `f1Allowed()` mira `S.me`, que en el arranque es null, así que un
+    // enlace directo a F1 caía en fútbol antes de saber si el usuario tiene acceso. Se espera.
+    if (!S.me) { f1Shell(t('nav_opps'), f1Loading()); return; }
     if (!f1Allowed()) { showView('board'); return; }
     if (v === 'f1opps') return renderF1Opps();
     if (v === 'f1race') return renderF1Race();
@@ -11314,8 +11326,13 @@
       }).join('') + '</div><div class="gx-dim gx-es-trunc">Índice de piloto: residual sobre su coche, 100 = media del campo. ' + esc(d.attribution || '') + '</div>';
     }
     f1Shell(t('f1_nav_drivers'), head + body);
-    var si = $('#gx-f1search');
-    if (si) si.addEventListener('input', function () { S.f1.dQ = si.value; clearTimeout(S._f1q); S._f1q = setTimeout(renderF1Drivers, 250); });
+    // EL BUSCADOR SE DESTRUÍA A SÍ MISMO (19-ago, reporte de Alexis: "el buscador en la parte de pilotos no
+    // funciona"). Al teclear, el temporizador llamaba a `renderF1Drivers`, que reconstruye la pantalla
+    // entera — incluido el propio `<input>`. El nuevo campo nace SIN FOCO y con el cursor perdido, así que
+    // la primera letra entraba y la segunda ya no iba a ninguna parte: el buscador parecía muerto.
+    // Fútbol, equipos, baloncesto y esports resolvieron esto guardando la posición del cursor y
+    // devolviendo el foco tras el repintado. F1 era el único que no lo hacía; ahora usa el mismo helper.
+    esBindSearch('gx-f1search', function (v) { S.f1.dQ = v; }, renderF1Drivers);
   }
 
   function renderF1Driver() {
@@ -11540,6 +11557,15 @@
   }
 
   function renderTennis(v) {
+    // NO BOTAR A FÚTBOL MIENTRAS NO SE SABE QUIÉN ERES (19-ago, reporte de Alexis: "cuando le das a tenis
+    // se queda marcado fútbol" y "hay muchos bugs en tenis que te mandan a fútbol").
+    // `tenAllowed()` mira `S.me`, y `S.me` llega DESPUÉS del primer render: en el arranque siempre es null.
+    // Así que abrir tenis por enlace directo, recargar dentro de tenis, o volver con el botón de atrás
+    // ejecutaba `showView('board')` y te dejaba en fútbol —con fútbol marcado en la barra— antes de que la
+    // sesión hubiera llegado siquiera. No era "no tienes permiso": era "todavía no sé si lo tienes".
+    // NFL, esports, baloncesto y combate ya esperaban con un estado de carga; tenis y F1 eran los dos que
+    // faltaban. Se espera, y cuando `me` llega el guard de arranque decide de verdad.
+    if (!S.me) { tenShell(t('nav_opps'), tenLoading()); return; }
     if (!tenAllowed()) { showView('board'); return; }
     if (v === 'tenopps') return renderTenOpps();
     if (v === 'tenmatch') return renderTenMatch();
@@ -12284,7 +12310,14 @@
     var lgQ = nflLg();
     if (lgQ !== 'nfl') {
       key = lgQ + '_' + key;
-      url = url.replace('/api/nfl/', '/api/amfoot/');
+      // NO TODAS LAS RUTAS DE NFL TIENEN GEMELA EN AMFOOT (19-ago). Esto reescribía `/api/nfl/*` →
+      // `/api/amfoot/*` a ciegas, pero solo existen ocho rutas amfoot. `brief` y `sim` viven bajo
+      // `/api/nfl/` y ya aceptan `league=` ellas mismas: al reescribirlas se pedía `/api/amfoot/brief`,
+      // que es 404, y la pantalla decía "no se pudo cargar — revisa la conexión" en College y en la CFL.
+      // Un 404 nuestro disfrazado de problema de red del usuario.
+      var AMF_ROUTES = ['slate', 'game', 'teams', 'team', 'players', 'player', 'track', 'model'];
+      var ruta = (url.match(/^\/api\/nfl\/([a-z]+)/) || [])[1];
+      if (ruta && AMF_ROUTES.indexOf(ruta) >= 0) url = url.replace('/api/nfl/', '/api/amfoot/');
       // no duplicar `league=` cuando quien llama ya la puso (las rutas de jugadores nacen apuntando a
       // /api/amfoot/ y tienen que declararla ellas mismas)
       if (url.indexOf('league=') < 0) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'league=' + lgQ;
@@ -15674,9 +15707,18 @@
         document.documentElement.lang = LANG;
         // R2: deporte inicial — el hash manda (link directo a #cb*); si no, el último usado
         var h0 = ''; try { h0 = (location.hash || '').replace(/^#/, ''); } catch (e) {}
-        if (/^es(opps|board|match|model|perf)/.test(h0)) S.sport = 'esports';
-        else if (/^cb/.test(h0)) S.sport = 'combat';
-        else { var sp0; try { sp0 = localStorage.getItem('gp_sport'); } catch (e) {} if (sp0 === 'combat' && !h0) S.sport = 'combat'; }
+        // ── EL DEPORTE INICIAL SALE DEL HASH, DE LOS NUEVE (19-ago) ─────────────────────────────────────
+        // Esto solo reconocía `es*` y `cb*`. Con cualquier otra dirección directa —#tenopps, #nflgames,
+        // #bbopps, #f1drivers— el deporte se quedaba en el último usado o en fútbol, así que ABRIR TENIS
+        // DEJABA FÚTBOL MARCADO EN LA BARRA, y desde ahí cualquier control de la barra devolvía al usuario
+        // a fútbol. No era un bug de tenis: era de todos los deportes añadidos después de combate, y tenis
+        // es donde se notó porque es el que más se abre por enlace.
+        // Ahora se deduce de las MISMAS listas de vistas que ya gobiernan el enrutado, así que añadir un
+        // deporte no puede volver a olvidarse: si su vista está en la lista, la barra lo marca.
+        S.sport = sportForHash(h0) || (function () {
+          var sp0; try { sp0 = localStorage.getItem('gp_sport'); } catch (e) {}
+          return (!h0 && sp0) ? sp0 : S.sport;
+        })();
         shell(); load(); loadCanon(); startLiveLoop();
         fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
           // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra

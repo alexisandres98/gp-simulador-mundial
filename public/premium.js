@@ -299,7 +299,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'NFL', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -705,7 +705,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'NFL', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -7084,6 +7084,7 @@
   // verde vs esquina roja en todo (heroes cara a cara, tale-of-the-tape espejado, barra GP tira-y-afloja).
   // Server: /api/combat/* (404 no-admin). Estado: S.cb.* con cache por clave; org activa S.cb.org (ufc|mma).
   function cbOrg() { return S.cb.org === 'mma' || S.cb.org === 'boxing' ? S.cb.org : 'ufc'; }
+  function cbOrgLabel() { var o = cbOrg(); return o === 'mma' ? 'MMA · PFL' : o === 'boxing' ? 'boxeo' : 'UFC'; }
   // etiqueta corta de liga para las cabeceras de baloncesto
   function bbTeamName(t) { return (t && (t.abbr || t.short || t.name)) || '—'; }
   function cbOrgLab() { return cbOrg() === 'mma' ? 'MMA' : cbOrg() === 'boxing' ? 'BOXEO' : 'UFC'; }
@@ -7529,9 +7530,13 @@
         visiblePicks(d.active).map(bbPickCard).join('') + '</div>' + hiddenNote(d.active) + '</div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna pick viva ahora mismo.</b>' +
         '<span class="gx-dim">Nacen cuando el modelo supera al consenso por ' + ((d.config || {}).min_edge_pp || 3) + 'pp o más con precio disponible. El motor revisa cada 30 minutos.</span></div></div>';
+    // LAS LIQUIDADAS NO VAN EN OPORTUNIDADES (19-ago, pedido de Alexis). Oportunidades responde a "¿qué
+    // puedo hacer ahora?"; una pick ya resuelta no es una oportunidad, es historial — y mezclarlas obliga a
+    // leer la fecha de cada card para saber si sirve. El registro completo (80 filas, con su resultado y su
+    // CLV) ya vive en Rendimiento, que es donde se va a mirar cómo lo estamos haciendo.
     var set = (d.settled || []).length
-      ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Liquidadas</span><span class="gx-ph-extra">' + d.settled.length + '</span></div><div class="gx-bb-picks">' +
-        d.settled.slice(0, 30).map(bbPickCard).join('') + '</div></div>' : '';
+      ? '<div class="gx-dim gx-es-trunc">' + d.settled.length + ' liquidadas · el historial con su resultado y su CLV está en ' +
+        '<a href="#bbperf" style="text-decoration:underline">Rendimiento</a>.</div>' : '';
     var fam = Object.keys(T.by_family || {}).length
       ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por familia</span></div><div class="gx-bb-dna">' +
         Object.entries(T.by_family).map(function (kv) {
@@ -7643,8 +7648,14 @@
     var tabs = '<div class="gx-cb-tabs">' + [['all', 'Todas']].concat(BB_LEAGUES).concat([['euro', 'Euroliga/NBL']]).map(function (x) {
       return '<span class="gx-cb-tab' + (lgo === x[0] ? ' on' : '') + '" data-bbopplg="' + x[0] + '">' + esc(x[1]) + '</span>';
     }).join('') + '<span class="gx-spacer"></span></div>';
-    var chips = '<div class="gx-bb-subtabs">' + BB_OPPF.map(function (x) {
-      return '<span class="gx-bb-subtab' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(x[1]) + '</span>';
+    // LAS DOS FILAS NO SON LA MISMA COSA Y NO DEBEN VERSE IGUAL (19-ago, reporte de Alexis). Arriba se
+    // elige DÓNDE se mira (la liga) y abajo QUÉ se mira (picks, value, arbitraje, caídas, middles). En
+    // combate, fútbol y esports eso se distingue de un vistazo: la liga va en píldora redonda y la familia
+    // en chip cuadrado. Baloncesto tenía las dos en píldora —`gx-bb-subtab` es 999px de radio igual que
+    // `gx-cb-tab`— así que las dos filas parecían el mismo control repetido.
+    // Se pasa a `gx-prodchip`, que es el chip de familia de la casa: el mismo que ya usan los otros tres.
+    var chips = '<div class="gx-bb-oppfams">' + BB_OPPF.map(function (x) {
+      return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(x[1]) + '</span>';
     }).join('') + '</div>';
     if (f === 'picks') { bbShell('Oportunidades · baloncesto', tabs + chips + bbPicksPanel()); return; }
 
@@ -9514,7 +9525,11 @@
       var LENSES = [
         ['partida', 'La partida', [esReadBlock(g, ev.id), cs2Veto(d), cs2Ladder(d)]],
         ['modelo', 'El modelo', [cs2Rounds(d), esRoundsExplorer(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d)]],
-        ['contexto', 'Contexto', [cs2Teams(d), esH2H(d.h2h), cs2Dataset(d), esProv(d)]],
+        // SIN EL BLOQUE DE PROCEDENCIA EN EL PANEL DE LA PARTIDA (19-ago, pedido de Alexis). "De dónde sale
+        // cada cifra" es una lista de fuentes con su antigüedad: información de auditoría, no de decisión.
+        // En la pantalla del partido competía por espacio con lo que sí se mira. Sigue en la ficha del
+        // equipo, que es donde se va a comprobar la procedencia.
+        ['contexto', 'Contexto', [cs2Teams(d), esH2H(d.h2h), cs2Dataset(d)]],
       ];
       if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partida';
       var lensBar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
@@ -9541,7 +9556,7 @@
     var GLENSES = [
       ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
       ['modelo', 'El modelo', modelBlocks.filter(Boolean).join('')],
-      ['contexto', 'Contexto', [esTeamStrip(m, ev), esRosterPanel(m, ev), esH2H(d.h2h), esProv(d)].filter(Boolean).join('')],
+      ['contexto', 'Contexto', [esTeamStrip(m, ev), esRosterPanel(m, ev), esH2H(d.h2h)].filter(Boolean).join('')],
     ];
     if (!GLENSES.some(function (x) { return x[0] === glens; })) glens = 'partida';
     var gbar = '<div class="gx-seg gx-es-lens">' + GLENSES.map(function (x) {
@@ -12036,7 +12051,12 @@
         var mv = r.move == null ? '<span class="gx-dim">·</span>' : r.move > 0 ? '<span style="color:var(--gx-green)">▲' + r.move + '</span>' : r.move < 0 ? '<span style="color:#e5484d">▼' + (-r.move) + '</span>' : '<span class="gx-dim">=</span>';
         return '<tr data-tenplayer="' + r.id + '"><td class="r gx-mono gx-esr-rank">' + r.pos + '</td>' +
           '<td style="font-size:10.5px">' + mv + '</td>' +
-          '<td><div class="gx-esr-team">' + tenChip(r.name) + '<b>' + esc(r.name) + '</b>' + (r.country ? ' <span class="gx-dim" style="font-size:10.5px">' + esc(r.country) + '</span>' : '') + '</div></td>' +
+          // EL RETRATO, QUE YA VENÍA EN EL DATO (19-ago, reporte de Alexis: "el ranking GP no tiene foto").
+          // El servidor manda `photo` en 58 de los 60 del ranking, y la tabla dibujaba iniciales de colores
+          // con `tenChip(name)` — es decir, se estaba tirando el dato bueno. `tenFace` es el mismo retrato
+          // que ya usan el panel del partido, el simulador y las pick cards, y cae solo a las iniciales
+          // cuando no hay foto o la imagen falla.
+          '<td><div class="gx-esr-team">' + tenFace(r) + '<b>' + esc(r.name) + '</b>' + (r.country ? ' <span class="gx-dim" style="font-size:10.5px">' + esc(r.country) + '</span>' : '') + '</div></td>' +
           '<td class="r gx-mono"><b>' + r.elo + '</b></td>' +
           '<td class="r gx-mono gx-dim">' + (r.rank || '—') + '</td>' +
           '<td class="r gx-mono gx-dim">' + esc(r.wl || '') + '</td></tr>';
@@ -12127,9 +12147,9 @@
     else if (r) {
       var du = r.duel;
       var head = '<div class="gx-panel gx-ten-duel"><div class="gx-ten-duelhead">' +
-        '<div class="gx-ten-duelside">' + tenChip(r.a.name) + '<b>' + esc(r.a.name) + '</b><span class="gx-ten-bigp">' + tenPct(r.p_a) + '</span></div>' +
+        '<div class="gx-ten-duelside">' + tenFace(r.a) + '<b>' + esc(r.a.name) + '</b><span class="gx-ten-bigp">' + tenPct(r.p_a) + '</span></div>' +
         '<span class="gx-ten-vs gx-dim">' + esc(r.surface) + ' · bo' + r.best_of + '</span>' +
-        '<div class="gx-ten-duelside r">' + tenChip(r.b.name) + '<b>' + esc(r.b.name) + '</b><span class="gx-ten-bigp">' + tenPct(1 - r.p_a) + '</span></div></div>' +
+        '<div class="gx-ten-duelside r">' + tenFace(r.b) + '<b>' + esc(r.b.name) + '</b><span class="gx-ten-bigp">' + tenPct(1 - r.p_a) + '</span></div></div>' +
         '<div class="gx-ten-bar big"><i style="width:' + Math.round(100 * r.p_a) + '%"></i></div>' +
         '<div class="gx-ten-duelgrid">' +
         [['Hold ' + r.a.name.split(' ').pop(), tenPct(du.hold_a)], ['Hold ' + r.b.name.split(' ').pop(), tenPct(du.hold_b)],
@@ -12346,7 +12366,10 @@
     mv.onclick = nflClicks;
   }
   var nflLoading = function (txt) {
-    return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>' + esc(txt || 'Leyendo la base propia de NFL…') + '</b></div></div>';
+    // LA PESTAÑA NO ES SOLO LA NFL (19-ago, pedido de Alexis). Cubre NFL, College y la CFL, así que el
+    // rótulo pasa a ser el del DEPORTE —"Americano"— y no el de una de sus tres ligas. Las ligas siguen
+    // llamándose por su nombre en el selector, que es donde ese nombre sí significa algo.
+    return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>' + esc(txt || 'Leyendo la base propia de fútbol americano…') + '</b></div></div>';
   };
   var nflErr = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo cargar.</b></div></div>';
   var nflPct = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };
@@ -12493,7 +12516,7 @@
   }
 
   function renderNfl(v) {
-    if (!S.me) { nflShell('NFL', nflLoading()); return; }
+    if (!S.me) { nflShell(t('sport_nfl'), nflLoading()); return; }
     if (!nflAllowed()) { showView('board'); return; }
     if (v === 'nflgame') renderNflGame();
     else if (v === 'nflteams') renderNflTeams();
@@ -14815,7 +14838,19 @@
       if (!picks.length) {
         // CANDADO, no "sin picks": si hay picks hoy pero el plan no las ve, el vacío jamás parece "sin señal"
         if (lk && lk.count > 0) body = '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(t('lock_picks_t')) + '</b><span class="gx-dim">' + esc(lk.delayed ? t('lock_delay') : t('lock_picks_s')) + '</span><a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
-        else body = '<div class="gx-empty">' + illo('tickets') + '<b>' + esc(t('cb_no_picks')) + '</b></div>';
+        // UN CERO TIENE QUE DECIR POR QUÉ (19-ago, reporte de Alexis: "por qué no hay picks de MMA si hay
+        // pelea de PFL el viernes"). El mensaje genérico —"el motor genera cuando hay edge ≥2pp"— sugiere
+        // que el motor miró y no encontró ventaja. En MMA no es eso: es que NO HAY MERCADO QUE MIRAR. La
+        // única casa de combate que tenemos lista 7 peleas de UFC y 4 de boxeo, y CERO de MMA, así que la
+        // velada de PFL del viernes no existe para el motor. Son dos ceros muy distintos y hasta ahora se
+        // leían igual.
+        else {
+          var cbFights = (d.cloudbet && d.cloudbet[cbOrg()] && d.cloudbet[cbOrg()].fights);
+          body = '<div class="gx-empty">' + illo('tickets') +
+            (cbFights === 0
+              ? '<b>Sin mercado para ' + esc(cbOrgLabel()) + ' ahora mismo.</b><span class="gx-dim">No es que el motor no encuentre ventaja: la casa que cubre combate no tiene ni una pelea de esta organización en su catálogo, así que no hay precio contra el que medirse. Sin mercado tampoco hay value ni arbitraje.</span>'
+              : '<b>' + esc(t('cb_no_picks')) + '</b>') + '</div>';
+        }
       } else {
         var shaped = picks.map(cbShapePick);
         body = '<div class="gx-pick-ofday"><div class="gx-label gx-pod-label">★ ' + esc(t('pf_pick_of_day')) + '</div>' + pickCard(shaped[0], {}) + '</div>' +

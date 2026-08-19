@@ -765,7 +765,9 @@ function simMatch(tour, refA, refB, { surface = 0, bestOf = 3 } = {}) {
   const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round((g + shift) * 2) / 2, r3(p)]);
   return {
     available: true, tour, surface: D.SURFACES[surface], best_of: bestOf,
-    a: { id: A.id, name: A.name, hand: A.hand, country: A.country }, b: { id: B.id, name: B.name, hand: B.hand, country: B.country },
+    // el retrato viaja con el jugador: el simulador dibujaba iniciales de colores teniendo la foto a mano
+    a: { id: A.id, name: A.name, hand: A.hand, country: A.country, photo: photoOf(tour, A.id) },
+    b: { id: B.id, name: B.name, hand: B.hand, country: B.country, photo: photoOf(tour, B.id) },
     p_a: r3(pA), p_set_a: r3(md.pSetA),
     duel: {
       hold_a: r3(md.holdA), hold_b: r3(md.holdB), break_a: r3(1 - md.holdB), break_b: r3(1 - md.holdA),

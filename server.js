@@ -17827,6 +17827,19 @@ const server = http.createServer(async (req, res) => {
           value: cbSharp ? value.slice(0, 20) : [], arbs: cbSharp ? arbs : [],
           locks: cbSharp ? null : { value: 'sharp', arbs: 'sharp' },
           track: combatPicksTrack(cbTrackOpts),
+          // CUÁNTAS PELEAS CON CUOTAS VE EL MOTOR, POR ORGANIZACIÓN (19-ago). Sin esto la pantalla no puede
+          // distinguir "miré y no hay ventaja" de "no hay nada que mirar", y son dos ceros muy distintos:
+          // hoy la casa lista 7 peleas de UFC, 4 de boxeo y CERO de MMA, así que la velada de PFL del
+          // viernes sencillamente no existe para el motor.
+          cloudbet: (() => {
+            const out = {};
+            for (const o of Object.keys(COMBAT_ORGS)) {
+              const Cx = (global._combat || {})[COMBAT_ORGS[o].file];
+              out[o] = { fights: Cx && Cx.cbb ? Object.keys(Cx.cbb.byComp || {}).length : 0,
+                at: Cx && Cx.cbb && Cx.cbb.at ? new Date(Cx.cbb.at).toISOString() : null };
+            }
+            return out;
+          })(),
         });
       }
       // R2: RENDIMIENTO combat — track + liquidadas (formato del perf de fútbol; admin-only por el gate)

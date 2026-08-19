@@ -289,8 +289,11 @@ function lolOwnInput(ev, competition) {
     const r = LD.ratingsFor(ev.home.name, ev.away.name);
     if (!r || r.elo_a == null || r.elo_b == null) return null;
     const t = LD.tempoFor(competition);
+    const o = LD.objectivesFor ? LD.objectivesFor(competition) : null;
     return { ratings: { elo_a: r.elo_a, elo_b: r.elo_b }, sample: Math.min(r.matches_a, r.matches_b),
-      observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null, own: true,
+      observedTempo: t ? { games: t.n, kpm: t.kpm, minutes: t.mean_min } : null,
+      // conteos REALES de dragones/barones/torres de la liga: el panel de objetivos deja de ser aritmética
+      observedObjectives: o, own: true,
       dataset: LD.datasetFor(ev.home.name, ev.away.name),
       source: 'base propia (Leaguepedia, walk-forward validado)' };
   } catch { return null; }
@@ -371,6 +374,7 @@ async function analyzeMatch(game, eventId, { days = 7 } = {}) {
     teams: { a: ev.home.name, b: ev.away.name },
     bo, sample, competition: ev.competition,
     observedTempo: own ? own.observedTempo : null,
+    observedObjectives: own ? own.observedObjectives : null,
   });
   // LA ESTRUCTURA PROPIA MEDIDA (19-ago). `basisFor` exige, para las familias de mapas, que exista fuerza
   // medida del PAR — no del juego en general. CS2 la trae de su propio histórico dentro del motor; los

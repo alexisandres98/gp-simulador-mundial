@@ -3703,3 +3703,9 @@ td .gx-calc-btn span { display: none; }
 .gx-ten-score em{display:block;font-style:normal;font-size:9px;opacity:.45;margin-top:2px}
 .gx-ten-score.a{box-shadow:inset 0 0 0 1px rgba(31,227,164,.18)}
 .gx-ten-score.b{box-shadow:inset 0 0 0 1px rgba(122,162,255,.18)}
+
+/* objetivos: medido vs supuesto, distinguibles de un vistazo */
+.gx-obj-m{font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gx-green,#1fe3a4);
+  background:rgba(31,227,164,.10);border-radius:3px;padding:1px 4px;white-space:nowrap}
+.gx-obj-s{font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.45;
+  border:1px solid currentColor;border-radius:3px;padding:0 4px;white-space:nowrap}

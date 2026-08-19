@@ -9882,13 +9882,28 @@
   }
 
   // — OBJETIVOS (LoL). Lo que explica la duración y traduce kills en mapa.
+  // CADA FILA DICE SI ES MEDIDA O SUPUESTO (19-ago). El panel enseñaba cuatro números iguales de aspecto,
+  // unos venidos de una media real de la liga y otros de una fórmula sobre la duración. Ahora se distinguen:
+  // la medida lleva su muestra, el supuesto lo dice, y la cabecera resume de dónde viene el conjunto.
   function esObjectives(m) {
     var o = m.objectives; if (!o) return null;
-    return esPanel('Objetivos neutrales', '<span class="gx-mono">control ' + esPct0(o.control_p) + '</span>',
-      '<table class="gx-t gx-es-t"><thead><tr><th>Objetivo</th><th class="r">Esperados</th><th>Por qué importa</th></tr></thead><tbody>' +
+    var head = o.measured
+      ? '<span class="gx-chip">medido · ' + o.sample + ' partidas' + (o.league ? ' · ' + esc(o.league) : '') + '</span>'
+      : '<span class="gx-chip gx-dim">perfil de circuito</span>';
+    return esPanel('Objetivos neutrales', head + ' <span class="gx-mono">control ' + esPct0(o.control_p) + '</span>',
+      '<table class="gx-t gx-es-t"><thead><tr><th>Objetivo</th><th class="r">Esperados</th><th></th><th>Por qué importa</th></tr></thead><tbody>' +
       (o.items || []).map(function (i) {
-        return '<tr><td><b>' + esc(i.label) + '</b></td><td class="r gx-mono">' + i.expected + '</td><td class="gx-dim">' + esc(i.note) + '</td></tr>';
-      }).join('') + '</tbody></table>' + esGap(o.missing), 'gx-es-obj');
+        return '<tr><td><b>' + esc(i.label) + '</b></td><td class="r gx-mono">' + i.expected + '</td>' +
+          '<td>' + (i.measured
+            ? '<span class="gx-obj-m" title="media real de la liga en 180 días' + (i.n ? ', ' + i.n + ' partidas' : '') + ', escalada por la duración de este partido">medido</span>'
+            : '<span class="gx-obj-s" title="aritmética sobre la duración: la liga no tiene muestra propia todavía">supuesto</span>') + '</td>' +
+          '<td class="gx-dim">' + esc(i.note) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      (o.measured && o.duration_factor && Math.abs(o.duration_factor - 1) > 0.02
+        ? '<div class="gx-dim gx-es-note">Las medias de la liga se escalan ×' + o.duration_factor.toFixed(2) +
+          ' porque este partido se espera ' + (o.duration_factor > 1 ? 'más largo' : 'más corto') +
+          ' que el típico de su competición — un promedio plano no vería esa diferencia.</div>' : '') +
+      esGap(o.missing), 'gx-es-obj');
   }
 
   // — REVERSIÓN (Dota). Aegis y buyback: por qué la ventaja no es monótona.

@@ -181,21 +181,46 @@ function load() {
   // tempo MEDIDO por liga (últimos 180 días): kills/min y duración — sustituye el perfil de circuito asumido
   const cut180 = new Date(Date.parse(String(lastAt).replace(' ', 'T') + 'Z') - 180 * 864e5).toISOString().slice(0, 19);
   const tempoAgg = {};
+  // OBJETIVOS MEDIDOS (19-ago). El panel de objetivos neutrales —lo más propio de LoL, lo que ningún otro
+  // juego de la casa tiene— venía calculando dragones como `minutos/6,2` y barones como `(m−20)/9`, con la
+  // nota honesta de que eran "esperanzas del modelo, no medias observadas". Con el rellenado ya hay conteos
+  // REALES por partida (d/b/tw), así que se promedian por liga en la MISMA pasada que el ritmo: cero coste
+  // extra, y el panel pasa de fórmula a medición donde hay muestra.
+  const objAgg = {};
   for (const g of games) {
-    if ((g.at || '') < cut180 || g.len == null || g.k1 == null) continue;
+    if ((g.at || '') < cut180 || g.len == null) continue;
     const lk = leagueKey(g.page); if (!lk) continue;
-    const t = tempoAgg[lk] = tempoAgg[lk] || { n: 0, kills: 0, min: 0 };
-    t.n++; t.kills += (g.k1 + g.k2); t.min += g.len;
+    if (g.k1 != null) {
+      const t = tempoAgg[lk] = tempoAgg[lk] || { n: 0, kills: 0, min: 0 };
+      t.n++; t.kills += (g.k1 + g.k2); t.min += g.len;
+    }
+    if (g.d1 != null || g.b1 != null || g.tw1 != null) {
+      const o = objAgg[lk] = objAgg[lk] || { n: 0, dra: 0, bar: 0, tow: 0, min: 0, nd: 0, nb: 0, nt: 0 };
+      o.n++; o.min += g.len;
+      if (g.d1 != null) { o.dra += (g.d1 + g.d2); o.nd++; }
+      if (g.b1 != null) { o.bar += (g.b1 + g.b2); o.nb++; }
+      if (g.tw1 != null) { o.tow += (g.tw1 + g.tw2); o.nt++; }
+    }
   }
   const leagueTempo = {};
   for (const [lk, t] of Object.entries(tempoAgg)) if (t.n >= 20)
     leagueTempo[lk] = { league: lk, n: t.n, kpm: +(t.kills / t.min).toFixed(3), mean_min: +(t.min / t.n).toFixed(1) };
+  // el listón es el mismo que el del ritmo: por debajo de 20 partidas la media dice más del azar que de la liga
+  const leagueObjectives = {};
+  for (const [lk, o] of Object.entries(objAgg)) if (o.n >= 20) {
+    leagueObjectives[lk] = {
+      league: lk, n: o.n, mean_min: +(o.min / o.n).toFixed(1),
+      dragons: o.nd >= 20 ? +(o.dra / o.nd).toFixed(2) : null,
+      barons: o.nb >= 20 ? +(o.bar / o.nb).toFixed(2) : null,
+      towers: o.nt >= 20 ? +(o.tow / o.nt).toFixed(2) : null,
+    };
+  }
 
   const data = {
     available: games.length > 500,
     games, teams, teamGlobal, rosters, pairs, form, rankings,
     players, playerStats, playerStatsMeta: PS.players ? { at: PS.at, window_days: PS.window_days, population: PS.population } : null,
-    champions: CH, leagueTempo,
+    champions: CH, leagueTempo, leagueObjectives,
     side_advantage_elo: priors.side_advantage_elo || +sideElo.toFixed(1),
     priors, maps: {}, pool: [],
     meta: META, at: META.at || new Date().toISOString(),
@@ -284,15 +309,36 @@ function tempoFor(competition) {
   const d = load();
   if (!d.available || !competition) return null;
   const k = norm(competition);
-  let best = null;
+  // EL EXACTO GANA SIEMPRE (19-ago). "el nombre más específico gana" es buena regla para desambiguar
+  // parciales, pero atropella al exacto: con la competición "LCK" el más largo es "LCK Academy Series" y
+  // el partido de la liga principal se llevaba el ritmo de la academia, que es otro torneo con otro ritmo.
+  let best = null, exact = null;
   for (const t of Object.values(d.leagueTempo || {})) {
     const lk = norm(t.league);
-    if (k === lk || k.includes(lk) || lk.includes(k)) {
-      if (!best || t.league.length > best.league.length) best = t;   // el nombre MÁS específico gana
+    if (k === lk) { exact = t; break; }
+    if (k.includes(lk) || lk.includes(k)) {
+      if (!best || t.league.length > best.league.length) best = t;   // entre parciales, el más específico
     }
   }
-  return best;
+  return exact || best;
 }
+
+// mismo emparejado de nombre de liga que el ritmo, sobre los conteos MEDIDOS de objetivos
+function objectivesFor(competition) {
+  const d = load();
+  if (!d.available || !competition) return null;
+  const k = norm(competition);
+  let best = null, exact = null;
+  for (const o of Object.values(d.leagueObjectives || {})) {
+    const lk = norm(o.league);
+    if (k === lk) { exact = o; break; }
+    if (k.includes(lk) || lk.includes(k)) {
+      if (!best || o.league.length > best.league.length) best = o;
+    }
+  }
+  return exact || best;
+}
+
 
 // ── posterior de campeón por parche×rol (para la vista Campeones y el Draft Room) ────────────────────────
 function championsBoard({ role = null } = {}) {
@@ -386,5 +432,5 @@ function datasetFor(nameA, nameB) {
     source: 'base propia de LoL (linaje Leaguepedia), validada walk-forward' };
 }
 
-module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, tempoFor, datasetFor,
+module.exports = { objectivesFor, load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, tempoFor, datasetFor,
   championsBoard, draftIntel, DIR, MODEL_VERSION: 'lol-elo-side-patch-1' };

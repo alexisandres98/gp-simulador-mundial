@@ -139,21 +139,43 @@ function durationModel(pMap, tempo, { sims = 20000, seed = 41 } = {}) {
 
 // Objetivos neutrales. No hay mercado abierto para ellos hoy, pero son el esqueleto narrativo de la partida
 // y lo que explica la duración: cada dragón alma y cada barón acelera el cierre.
-function objectiveModel(pMap, duration) {
+// OBJETIVOS: MEDIDOS CUANDO HAY MUESTRA, FÓRMULA CUANDO NO (19-ago).
+// Hasta hoy esto era aritmética sobre la duración —dragones = minutos/6,2, barones = (m−20)/9— y lo decía:
+// "esperanzas del modelo, no medias observadas". Con los conteos reales por partida ya en la base, la media
+// de la liga MANDA donde existe, y se escala por la duración de ESTE partido frente a la duración típica de
+// esa liga: un partido más largo tiene más dragones que la media de su liga, y eso el promedio plano no lo ve.
+// Donde no hay muestra se conserva la fórmula y se sigue diciendo que es un supuesto. Nunca se mezcla en
+// silencio: cada ítem viaja con `measured`.
+function objectiveModel(pMap, duration, obs) {
   const m = duration.mean_min;
+  // factor de duración: cuánto se aparta ESTE partido de la duración típica de su liga (acotado, para que
+  // un valor atípico no dispare el conteo)
+  const ratio = (obs && obs.mean_min > 0) ? C.clamp(m / obs.mean_min, 0.7, 1.4) : 1;
+  const item = (key, label, formula, measured, note) => {
+    const useM = measured != null && measured > 0;
+    return { key, label, expected: C.r2(useM ? measured * ratio : formula),
+      measured: useM, n: useM ? (obs && obs.n) || null : null, note };
+  };
   return {
     items: [
-      { key: 'dragons', label: 'Dragones', expected: C.r2(Math.min(6, m / 6.2)),
-        note: 'uno cada ~5 min al principio y el alma sobre el cuarto: quien la toma suele cerrar en los 8 minutos siguientes' },
-      { key: 'baron', label: 'Barones', expected: C.r2(Math.max(0, (m - 20) / 9)),
-        note: 'aparece en el minuto 20; el primero es el que más veces termina la partida' },
-      { key: 'herald', label: 'Heraldo', expected: C.r2(m > 14 ? 1.4 : 0.7),
-        note: 'convierte ventaja temprana en torre, que es lo que traduce kills en mapa' },
-      { key: 'towers', label: 'Torres', expected: C.r2(4.6 + m * 0.20),
-        note: 'la torre es la moneda real del mapa: los kills sin torres no ganan partidas' },
+      item('dragons', 'Dragones', Math.min(6, m / 6.2), obs && obs.dragons,
+        'uno cada ~5 min al principio y el alma sobre el cuarto: quien la toma suele cerrar en los 8 minutos siguientes'),
+      item('baron', 'Barones', Math.max(0, (m - 20) / 9), obs && obs.barons,
+        'aparece en el minuto 20; el primero es el que más veces termina la partida'),
+      // el heraldo no viene en la base: se queda como supuesto y se declara
+      item('herald', 'Heraldo', m > 14 ? 1.4 : 0.7, null,
+        'convierte ventaja temprana en torre, que es lo que traduce kills en mapa'),
+      item('towers', 'Torres', 4.6 + m * 0.20, obs && obs.towers,
+        'la torre es la moneda real del mapa: los kills sin torres no ganan partidas'),
     ],
     control_p: C.r4(C.clamp(0.5 + (pMap - 0.5) * 0.85, 0.15, 0.85)),
-    missing: 'los conteos por equipo requieren histórico de partida (Riot API); hoy son esperanzas del modelo, no medias observadas.',
+    measured: !!(obs && obs.n),
+    sample: (obs && obs.n) || 0,
+    league: (obs && obs.league) || null,
+    duration_factor: +ratio.toFixed(3),
+    missing: (obs && obs.n)
+      ? 'medias REALES de la liga en los últimos 180 días, escaladas por la duración esperada de este partido. El reparto POR EQUIPO sigue sin medirse: eso exige el histórico de partida de Riot.'
+      : 'sin muestra propia de esta liga: los conteos son aritmética sobre la duración, no medias observadas.',
   };
 }
 
@@ -245,7 +267,7 @@ function whatMatters({ anchored, tempo, duration, kills, unc, bo }) {
 }
 
 // ---- 6) FACHADA ------------------------------------------------------------------------------------------
-function analyze({ market, ratings, bo = 3, sample = 0, competition = null, observedTempo = null }) {
+function analyze({ market, ratings, bo = 3, sample = 0, competition = null, observedTempo = null, observedObjectives = null }) {
   const bookRows = (market && market.markets) || [];
   // El ancla NO es solo la familia `SERIE`: la mayoría de partidos con mercado abierto no la cotizan y sí
   // cotizan marcador, hándicap o ganador de mapa. `marketAnchor` recorre esas fuentes en orden y dice de
@@ -264,7 +286,7 @@ function analyze({ market, ratings, bo = 3, sample = 0, competition = null, obse
   const tempo = calibrateTempo(tempoOf(competition), observedTempo);
   const duration = pMap != null ? durationModel(pMap, tempo) : null;
   const kills = (pMap != null && duration) ? killsModel(pMap, tempo, duration) : null;
-  const objectives = (pMap != null && duration) ? objectiveModel(pMap, duration) : null;
+  const objectives = (pMap != null && duration) ? objectiveModel(pMap, duration, observedObjectives) : null;
 
   const unc = C.uncertainty({
     p: pSeries != null ? pSeries : 0.5, sampleMatches: sample,

@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const D = require('./data');
 const { simulate } = require('./simulate');
+const POST = require('./posterior');
 
 const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'nfl');
 const ensure = () => { try { fs.mkdirSync(DISK_DIR, { recursive: true }); } catch { } };
@@ -68,8 +69,15 @@ function gameModel(g, M) {
   // semilla determinista por partido + versión (NFL-0479)
   let seed = 7; for (const ch of String(g.id)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const sim = simulate({ muMargin, muTotal, priors: M.data.priors, n: 20000, seed });
+  // DISTRIBUCIÓN ALEATORIA APARTE: la del partido dado un centro conocido, sin nuestro error dentro. Es la
+  // que necesita la posterior sobre la probabilidad (ver nfl-engine/posterior.js). `sim` sigue siendo la
+  // marginal —la que se enseña— para que ninguna pantalla cambie de número por este añadido.
+  const simAle = simulate({ muMargin, muTotal, priors: M.data.priors, n: 20000, seed, marginalize: false });
+  const sigmaEpi = POST.epistemicSigma(M.data.priors.sigma_extra_margin, uncPts);
   return { home, away, neutral, muMargin: r2(muMargin), muTotal: r2(muTotal),
-    rating: { home: rh, away: ra }, unc_pts: uncPts, games_cur: gc, sim,
+    rating: { home: rh, away: ra }, unc_pts: uncPts, games_cur: gc, sim, sim_ale: simAle,
+    sigma_epi_pts: r2(sigmaEpi),
+    sigma_epi_total: r2(POST.epistemicSigma(M.data.priors.sigma_extra_total, uncPts)),
     model_version: M.data.priors.model_version };
 }
 
@@ -375,28 +383,36 @@ function evaluateEdges(g, model, mk) {
 }
 function gate(c) {
   const edgePp = (c.p_model - c.p_implied) * 100;
-  const gates = [];
-  // Noise gate (NFL-0684): la ventaja debe dominar la incertidumbre epistémica. La incertidumbre vive en
-  // PUNTOS y el listón en puntos porcentuales, así que hay que convertirla.
-  //
-  // ANTES SE CONVERTÍA CON UNA CONSTANTE (2,8 pp por punto) y eso es falso fuera del centro: un punto vale
-  // mucho más moviendo −2,5 a −3,5 —que cruza el número clave donde cae el 14,7 % de los partidos— que
-  // moviendo −8 a −9, donde casi no hay masa. Con una pendiente única, la compuerta era demasiado severa
-  // en las líneas grandes y demasiado blanda justo donde el error importa. Ahora la conversión se LEE de la
-  // distribución que ya tenemos: cuánta probabilidad se mueve de verdad si la línea se corre ±incertidumbre.
+  // La conversión de puntos a pp se LEE de la distribución en ESTA línea, no de una pendiente fija: un punto
+  // vale mucho más cruzando el 3 —donde cae el 14,7 % de los partidos— que moviendo −8 a −9.
   const uncPp = (() => {
     const u = c.model.unc_pts;
     if (!(u > 0)) return 0;
     const f = c.family === 'TOTAL' ? c.model.sim.overProb : c.model.sim.coverProb;
-    if (typeof f !== 'function') return u * 2.8;              // sin CDF a mano, el respaldo de siempre
+    if (typeof f !== 'function') return u * 2.8;
     const lo = f(c.line - u), hi = f(c.line + u);
     if (!lo || !hi || lo.p == null || hi.p == null) return u * 2.8;
-    return Math.abs(lo.p - hi.p) * 100 / 2;                   // media anchura del intervalo, en pp
+    return Math.abs(lo.p - hi.p) * 100 / 2;
   })();
-  // 18-ago: el edge se exige POSITIVO. Con abs() los DOS lados del mismo mercado pasaban los gates a la
-  // vez (el lado -EV incluido) — se vio en la primera pasada real de la sombra de CFL, y aquí estaba el
-  // mismo latente esperando a que abrieran los mercados de la Semana 1.
-  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp (leída de la distribución en esta línea, no de una pendiente fija)` });
+  // ── LA POSTERIOR SE CALCULA Y SE PUBLICA, PERO TODAVÍA NO DECIDE (19-ago) ─────────────────────────────
+  // El objetivo es sustituir los dos umbrales por P(ventaja>0), EV esperado y peor caso. La maquinaria ya
+  // está (posterior.js) y su número entra aquí para que se acumule y se pueda auditar contra los
+  // resultados. NO gobierna el veredicto todavía, y el motivo es concreto: la distribución aleatoria se
+  // muestrea de una banda de partidos históricos con la misma línea, y la media realizada de esa banda
+  // trae ~1,1 puntos de ruido de muestreo con 126 partidos. La marginal no lo sufre —el sorteo del centro
+  // promedia entre bandas y lo lava—, pero la aleatoria sola sí, y una posterior centrada en el sitio
+  // equivocado produciría un "P(ventaja>0) = 94 %" tan seguro como falso. Primero se corrige el centrado
+  // de la banda; hasta entonces, decidir con ella sería cambiar dos reglas torpes por una elegante y peor.
+  const ale = c.model.sim_ale;
+  const cdf = ale ? (c.family === 'TOTAL' ? ale.overProb : ale.coverProb) : null;
+  const sigmaEpi = c.family === 'TOTAL' ? c.model.sigma_epi_total : c.model.sigma_epi_pts;
+  const post = cdf ? POST.edgePosterior({
+    cdf, line: c.line, side: c.side, sigmaEpi, odds: c.odds,
+    seed: 991 + Math.round(Math.abs(c.line) * 10) + (c.family === 'TOTAL' ? 7 : 0),
+  }) : null;
+
+  const gates = [];
+  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp (leída de la distribución en esta línea)` });
   gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' });
   gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
   gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });
@@ -404,10 +420,13 @@ function gate(c) {
   return {
     family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp),
+    posterior: post, posterior_governs: false,
     gates, verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
     no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate,
   };
 }
+
+
 
 // ── 8) EL BUCLE DE SOMBRA: registrar, liquidar, medir (privado) ──────────────────────────────────────────
 async function recordShadow() {

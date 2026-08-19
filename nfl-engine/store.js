@@ -32,7 +32,7 @@ const G = global._nfl = global._nfl || { odds: null, sb: {}, wx: {}, model: null
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
 const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
 
-const DOCTRINE = 'todas las familias de NFL están EN SOMBRA: el modelo (walk-forward 2017-2025) queda a ~0.45 puntos del cierre en margen — excelente para entender el partido, no probado para batir al mercado. Se registra todo en privado, se mide CLV por familia, y solo la evidencia fuera de muestra puede subir una familia de estado (blueprint NFL-1125). El ganador (moneyline) además está cerrado por doctrina de la casa.';
+const DOCTRINE = 'todas las familias de NFL están EN SOMBRA: el modelo (walk-forward 2017-2025) queda a ~0.45 puntos del cierre en margen — excelente para entender el partido, no probado para batir al mercado. Se registra todo en privado, se mide CLV por familia, y solo la evidencia fuera de muestra puede subir una familia de estado (blueprint NFL-1125). El ganador (moneyline) está REABIERTO en sombra con prior en contra declarado: se cerró por pérdidas medidas en otros dos deportes, pero esa no es una medición de NFL y el cierre impedía tenerla.';
 
 // ── 1) MODELO DEL PARTIDO (market-blind) ─────────────────────────────────────────────────────────────────
 function modelSnapshot() {
@@ -153,6 +153,11 @@ function marketFor(g, odds) {
     spread_away: best(sp.map((x, i) => ({ ...x, book: Object.keys(out.spread)[i] })), 'away'),
     total_over: best(tt.map((x, i) => ({ ...x, book: Object.keys(out.total)[i] })), 'over'),
     total_under: best(tt.map((x, i) => ({ ...x, book: Object.keys(out.total)[i] })), 'under'),
+    // EL GANADOR VUELVE A TENER MEJOR PRECIO (19-ago). Los precios de moneyline se recogían desde el primer
+    // día —`out.ml` está lleno— pero nadie calculaba el mejor por lado, porque la familia estaba cerrada y
+    // no había a qué medirse. Al reabrirla en sombra hace falta el precio ejecutable, igual que en las otras.
+    ml_home: best(mls.map((x, i) => ({ ...x, book: Object.keys(out.ml)[i] })), 'home'),
+    ml_away: best(mls.map((x, i) => ({ ...x, book: Object.keys(out.ml)[i] })), 'away'),
   };
   return out;
 }
@@ -381,9 +386,31 @@ function evaluateEdges(g, model, mk) {
         p_model: pModel, p_implied: dec2p(b[side]), model, push_p: ov.push }));
     }
   }
+  // ── EL GANADOR, REABIERTO EN SOMBRA (19-ago, decisión de Alexis: "no cierres ninguna familia de ningún
+  // deporte hasta tener más muestra") ────────────────────────────────────────────────────────────────────
+  // Estaba cerrado por doctrina: GP midió pérdidas en el mercado de ganador en baloncesto y en combate, y
+  // el Brier de este modelo (0.224) es peor que el del cierre (0.210). Las dos cosas siguen siendo ciertas
+  // y NINGUNA se borra — viajan pegadas a la familia como prior en contra.
+  // Pero cerrar la familia tenía un coste que no se estaba contando: garantiza que jamás haya medición
+  // propia de NFL. La NFL no ha jugado un solo partido de esta temporada; la muestra que decidiría es
+  // exactamente la que el cierre impide recoger. Y como TODO esto vive en sombra y en admin —ninguna pick
+  // se publica—, abrir cuesta cero y compra la única cosa que falta.
+  // El listón NO se relaja: pasa por la misma posterior que las demás. Si el ganador no aporta, la
+  // posterior lo dirá con datos de NFL en vez de con datos prestados de otros dos deportes.
+  if (mk.best.ml_home && mk.best.ml_away && model.sim && typeof model.sim.coverProb === 'function') {
+    const cv0 = model.sim.coverProb(0);   // ganar el partido = cubrir la línea 0; el empate es el push
+    for (const side of ['home', 'away']) {
+      const b = side === 'home' ? mk.best.ml_home : mk.best.ml_away;
+      if (!b || !(b[side] > 1)) continue;
+      const pModel = side === 'home' ? cv0.p : 1 - cv0.p;
+      out.push(gate({ family: 'MONEYLINE', side, line: 0, odds: b[side], book: b.book,
+        p_model: pModel, p_implied: dec2p(b[side]), model, push_p: cv0.push,
+        prior_contra: 'familia reabierta en sombra CON prior en contra: GP midió pérdidas en el mercado de ganador en baloncesto (−11,87 % de ROI) y en combate (−8,34 % de CLV), y el Brier de este modelo (0.224) es peor que el del cierre (0.210). Se abre para tener muestra propia de NFL, no porque se espere que gane.' }));
+    }
+  }
   return {
     candidates: out,
-    verdict_note: 'familias en SOMBRA: los veredictos se registran y se liquidan en privado; nada de esto es una pick pública (NFL-1125). El ganador (moneyline) ni se evalúa: doctrina de la casa.',
+    verdict_note: 'familias en SOMBRA: los veredictos se registran y se liquidan en privado; nada de esto es una pick pública (NFL-1125). El ganador está reabierto en sombra con prior en contra declarado — se mide, no se publica.',
   };
 }
 function gate(c) {
@@ -429,6 +456,9 @@ function gate(c) {
   return {
     family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp),
+    // el prior en contra viaja DENTRO de la fila: si acaba en el registro de la sombra, la razón por la que
+    // esta familia se abrió tiene que estar en la misma fila, no en una nota de pantalla
+    prior_contra: c.prior_contra || null,
     posterior: post, posterior_governs: !!post,
     gates, verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
     no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate,
@@ -464,6 +494,9 @@ async function recordShadow() {
         home: D.CUR(g.home), away: D.CUR(g.away), week: g.week, season: g.season, kickoff: new Date(kickoff).toISOString(),
         model_version: model.model_version, seed: model.sim.seed, unc_pts: model.unc_pts,
         status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow',
+        // si la familia se abrió con prior en contra, eso forma parte del registro: la revisión tiene que
+        // poder separar las que entraron con historia mala de las que entraron limpias
+        prior_contra: c.prior_contra || null,
       });
     }
   }
@@ -621,7 +654,7 @@ function modelCard() {
     families: [
       { family: 'SPREAD', state: 'shadow', why: 'MAE 10.31 vs 9.86 del cierre: bueno, no probado superior. Acumula registro privado + CLV.' },
       { family: 'TOTAL', state: 'shadow', why: 'MAE 10.80 vs 10.51 del cierre: ídem.' },
-      { family: 'MONEYLINE', state: 'closed', why: 'cerrado por doctrina de la casa (pérdidas medidas en dos deportes) y Brier 0.224 vs 0.210 del cierre.' },
+      { family: 'MONEYLINE', state: 'shadow', prior: 'en contra', why: 'reabierta en sombra (19-ago): el prior sigue siendo malo —pérdidas medidas en el ganador en baloncesto y combate, Brier 0.224 contra 0.210 del cierre— pero ese prior viene de otros deportes y cerrar la familia garantizaba no tener nunca muestra de NFL. Se registra con su etiqueta y se juzga por su propio CLV.' },
       { family: 'PROPS', state: 'research', why: 'la matriz del blueprint las prioriza (recepciones/carreras), pero exigen el motor de oportunidad (V1.2) que aún no existe. No se finge.' },
     ],
     doctrine: DOCTRINE,

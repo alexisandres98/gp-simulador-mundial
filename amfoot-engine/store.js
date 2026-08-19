@@ -4,7 +4,8 @@
 // haya edge; quiero TODO generando picks, todo al monitor privado". Este motor es la arquitectura de
 // nfl-engine con una dimensión de LIGA, al estilo esports (un juego = su config, sin compartir supuestos):
 //
-//   · MISMA doctrina: market-blind por construcción, TODAS las familias en SOMBRA, moneyline cerrado.
+//   · MISMA doctrina: market-blind por construcción, TODAS las familias en SOMBRA. El moneyline estuvo
+//     cerrado hasta el 19-ago; ahora entra en sombra con su prior en contra declarado (ver evaluateEdges).
 //     La sombra SÍ genera picks — se registran en privado con su precio, se liquidan solas y se mide CLV.
 //   · MISMOS DTOs que nfl-engine/store (slate/gameIntel/teams/track/modelCard): la UI de NFL rinde estas
 //     ligas sin una card nueva. Lo que una liga no tiene viaja en null y la UI ya sabe decir "sin muestra".
@@ -360,6 +361,9 @@ function marketFor(lg, g, odds) {
   out.best = {
     spread_home: best(sp, 'home', out.spread), spread_away: best(sp, 'away', out.spread),
     total_over: best(tt, 'over', out.total), total_under: best(tt, 'under', out.total),
+    // el mejor precio del ganador: los precios ya se recogían, pero al estar la familia cerrada nadie los
+    // reducía a un ejecutable. Al reabrirla en sombra hace falta, igual que en las otras dos.
+    ml_home: best(mls, 'home', out.ml), ml_away: best(mls, 'away', out.ml),
   };
   return out;
 }
@@ -385,7 +389,21 @@ function evaluateEdges(model, mk) {
         p_model: side === 'over' ? ov.p : 1 - ov.p, p_implied: 1 / b[side], model, push_p: ov.push }));
     }
   }
-  return { candidates: out, verdict_note: 'familias en SOMBRA: los veredictos se registran y liquidan en privado; nada de esto es una pick pública. El moneyline ni se evalúa (doctrina de la casa).' };
+  // EL GANADOR, REABIERTO EN SOMBRA (19-ago) — misma decisión y mismo razonamiento que en NFL: el prior en
+  // contra viene de OTROS deportes (baloncesto y combate), no de fútbol americano, y mantener la familia
+  // cerrada garantizaba que nunca hubiera medición propia. College y la CFL están además en el momento
+  // exacto en que esa muestra se puede empezar a juntar. Todo en sombra y en admin: no se publica nada.
+  if (mk.best.ml_home && mk.best.ml_away && model.sim && typeof model.sim.coverProb === 'function') {
+    const cv0 = model.sim.coverProb(0);
+    for (const side of ['home', 'away']) {
+      const b = side === 'home' ? mk.best.ml_home : mk.best.ml_away;
+      if (!b || !(b[side] > 1)) continue;
+      out.push(gate({ family: 'MONEYLINE', side, line: 0, odds: b[side], book: b.book,
+        p_model: side === 'home' ? cv0.p : 1 - cv0.p, p_implied: 1 / b[side], model, push_p: cv0.push,
+        prior_contra: 'familia reabierta en sombra CON prior en contra: GP midió pérdidas en el mercado de ganador en baloncesto (−11,87 % de ROI) y en combate (−8,34 % de CLV). Se abre para tener muestra propia de fútbol americano, no porque se espere que gane.' }));
+    }
+  }
+  return { candidates: out, verdict_note: 'familias en SOMBRA: los veredictos se registran y liquidan en privado; nada de esto es una pick pública. El ganador está reabierto en sombra con prior en contra declarado — se mide, no se publica.' };
 }
 function gate(c) {
   const edgePp = (c.p_model - c.p_implied) * 100;
@@ -415,6 +433,8 @@ function gate(c) {
   const pass = gates.every((x) => x.pass);
   return { family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp),
+    // el prior en contra viaja DENTRO de la fila, para que llegue entero al registro de la sombra
+    prior_contra: c.prior_contra || null,
     posterior: post, posterior_governs: !!post,
     gates, verdict: pass ? 'SHADOW_PICK' : 'NO_PICK', no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate };
 }
@@ -452,6 +472,9 @@ async function recordShadow(lg) {
         week: g.week || null, season: g.season, kickoff: new Date(kickoff).toISOString(), odds_event: ev.id,
         model_version: model.model_version, seed: model.sim.seed, unc_pts: model.unc_pts,
         status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow',
+        // si la familia se abrió con prior en contra, eso forma parte del registro: la revisión tiene que
+        // poder separar las que entraron con historia mala de las que entraron limpias
+        prior_contra: c.prior_contra || null,
       });
     }
   }
@@ -744,7 +767,7 @@ function modelCard(lg) {
     market_blind: true, families: [
       { family: 'SPREAD', state: 'shadow', why: (v.overall ? `MAE ${v.overall.mae_margen_modelo} vs ${v.overall.mae_margen_cierre} del cierre` : 'en sombra') + '. Acumula registro privado + CLV.' },
       { family: 'TOTAL', state: 'shadow', why: (v.overall ? `MAE ${v.overall.mae_total_modelo} vs ${v.overall.mae_total_cierre} del cierre` : 'en sombra') + '. La familia más cercana al breakeven en el backtest: la sombra decide.' },
-      { family: 'MONEYLINE', state: 'closed', why: 'cerrado por doctrina de la casa (pérdidas medidas del ganador en dos deportes).' },
+      { family: 'MONEYLINE', state: 'shadow', prior: 'en contra', why: 'reabierta en sombra (19-ago): el prior sigue siendo malo —pérdidas medidas del ganador en baloncesto y en combate— pero viene de otros deportes y cerrar la familia garantizaba no tener nunca muestra propia. Se registra con su etiqueta y se juzga por su propio CLV.' },
     ],
     // CAJA NEGRA (18-ago, orden de Alexis): la ficha enseña la EVIDENCIA (validación, MAE, muestras);
     // la receta (spec, HFA, constantes) es interna y no sale por la API.

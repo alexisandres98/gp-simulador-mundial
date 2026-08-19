@@ -48,13 +48,28 @@ const ENGINES = {
 };
 const GAME_ORDER = ['cs2', 'lol', 'valorant', 'dota2'];
 
-// La puerta cerrada del punto 3. Si alguna vez se abre, que se vea en el diff.
+// LA PUERTA SE ABRE, Y SE VE EN EL DIFF (19-ago, decisión de Alexis: "no cierres ninguna familia de ningún
+// deporte hasta tener más muestra").
+//
+// El ganador de serie estaba fuera por una razón que, mirada de cerca, no era evidencia sobre ESTE deporte:
+// GP midió pérdidas en el mercado de ganador en BALONCESTO (−11,87 % de ROI) y en COMBATE (−8,34 % de CLV).
+// Eso es un prior fuerte y sigue siéndolo — pero un prior tomado de otros dos deportes no es una medición
+// de esports, y cerrar la familia garantiza que nunca la haya. Una puerta cerrada no produce el dato que
+// justificaría cerrarla; solo lo hace imposible.
+//
+// Todo esto vive en SOMBRA y en admin: nada de aquí se publica. Así que abrir cuesta exactamente cero
+// dinero y compra la única cosa que falta, que es muestra. Lo que NO cambia es la honestidad de la
+// etiqueta: SERIE entra marcada con su prior en contra, y la revisión la juzgará por su CLV como a todas.
 const PICK_FAMILIES = new Set([
   'TOTAL_MAPAS', 'HANDICAP',
   'RONDAS', 'RONDAS_EQUIPO', 'RONDAS_HANDICAP', 'PRORROGA',
   'KILLS', 'KILLS_EQUIPO', 'KILLS_HANDICAP', 'KILLS_DNB',
+  'SERIE',
 ]);
-const PICK_DOCTRINE = 'el ganador de serie no genera picks por decisión de la casa: es el mercado donde GP ya midió pérdidas en dos deportes (baloncesto −11,87 % de ROI, combate −8,34 % de CLV). Se calcula y se explica, pero no se apuesta.';
+// Familias que entran CON PRIOR EN CONTRA: se registran en sombra, pero la tarjeta lo dice y la revisión
+// las mira aparte. No es lo mismo una familia sin historia que una con historia mala en otro deporte.
+const PICK_PRIOR_CONTRA = { SERIE: 'el ganador de serie entra en sombra CON prior en contra: es el mercado donde GP midió pérdidas en otros dos deportes (baloncesto −11,87 % de ROI, combate −8,34 % de CLV). Se abre para tener muestra propia de esports, no porque se espere que gane. La revisión la juzga por su CLV, aparte del resto.' };
+const PICK_DOCTRINE = 'el ganador de serie se registra en SOMBRA con prior en contra: GP midió pérdidas en ese mercado en baloncesto y en combate, pero eso no es una medición de esports y cerrar la familia impedía tenerla. Nada de esto se publica.';
 
 // DÓNDE SE ESCRIBE, Y POR QUÉ NO EN EL REPO. Los cierres de mercado son lo ÚNICO que este deporte acumula
 // hoy, y el directorio del repo en Render se recrea en cada deploy: guardarlos ahí significaría empezar de
@@ -668,10 +683,7 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
       }
       continue;
     }
-    if (!PICK_FAMILIES.has(r.family)) {
-      if (r.family === 'SERIE') skipped.push({ family: 'SERIE', why: PICK_DOCTRINE });
-      continue;
-    }
+    if (!PICK_FAMILIES.has(r.family)) continue;
     const got = probFor(game, model, r);
     if (!got || got.p == null) continue;
     // MISMA LÍNEA Y MISMO LADO EN VARIAS CASAS: se cobra contra el MEJOR precio, que es el que de verdad se
@@ -713,7 +725,10 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
       // de QUÉ casa sale el precio que se está recomendando, y contra cuántas se midió. Una pick sin casa es
       // una pick que nadie puede tomar.
       book: r.book || null, books_quoting: nBooks,
-      basis_measured: basis.measured, basis: basis.what };
+      basis_measured: basis.measured, basis: basis.what,
+      // FAMILIA CON PRIOR EN CONTRA: viaja pegado a la pick, no en una nota de pantalla. Si la fila acaba
+      // en el registro de la sombra, la razón por la que se abrió tiene que estar dentro de la fila.
+      prior_contra: PICK_PRIOR_CONTRA[r.family] || null };
     byKey.set(key, row);
   }
   for (const v of byKey.values()) out.push(v);

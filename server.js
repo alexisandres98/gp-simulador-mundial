@@ -187,6 +187,22 @@ const OPS = { running: {}, log: [] };
 const opsLog = (what, extra) => { OPS.log.push({ at: new Date().toISOString(), what, ...extra }); if (OPS.log.length > 40) OPS.log.shift(); };
 const opsToday = () => new Date().toISOString().slice(0, 10);
 const opsRssMb = () => Math.round(process.memoryUsage().rss / 1048576);
+// ── EL TECHO DE MEMORIA, EN UN SOLO SITIO (19-ago) ──────────────────────────────────────────────────────
+// Los frenos de los jobs estaban clavados entre 230 y 320 MB, calibrados cuando el proceso era pequeño. El
+// servicio hoy sirve OCHO deportes con bases grandes en memoria y reposa entre 675 y 780 MB — es decir, los
+// CUATRO frenos saltaban SIEMPRE y sus trabajos no corrían nunca. Un freno que nunca deja pasar no protege:
+// apaga la función en silencio. El barrido de props de CS2 llevaba así quién sabe cuánto, y encima sin
+// dejar ni una línea.
+// Ahora hay un techo único, ajustable por env, con margen sobre el reposo observado y muy por debajo de
+// donde el contenedor moriría. Cada guardia dice su nombre cuando frena: nada de returns mudos.
+const OPS_RSS_CEIL = Math.max(400, +(process.env.GP_OPS_RSS_CEIL_MB || 1200));
+function opsMemOk(what, marginMb = 0) {
+  const rss = opsRssMb();
+  const lim = OPS_RSS_CEIL - marginMb;
+  if (rss <= lim) return true;
+  opsLog(what, { skipped: `rss ${rss}MB > techo ${lim}MB` });
+  return false;
+}
 
 // hijo con tope de heap, timeout y cola de una sola plaza por nombre. Guarda el final de su salida para
 // poder diagnosticar sin entrar a los logs de Render.
@@ -260,7 +276,7 @@ async function cs2DailyJob() {
     const day = opsToday();
     if (db.ops.cs2_day === day) return;
     if (new Date().getUTCHours() < 9) return;            // ~3-4 am LATAM: la ventana más muerta del día
-    if (opsRssMb() > 230) { opsLog('cs2_daily', { skipped: 'rss ' + opsRssMb() + 'MB' }); return; }
+    if (!opsMemOk('cs2_daily', 150)) return;
     db.ops.cs2_day = day; save();                      // se marca ANTES: un fallo no debe reintentar en bucle todo el día
     const h = await opsSpawn('cs2_harvest', ['scripts/cs2-harvest.js'], { heapMb: 240, timeoutMin: 40 });
     const r = await opsSpawn('cs2_roster', ['scripts/cs2-roster.js'], { heapMb: 200, timeoutMin: 25 });
@@ -294,7 +310,7 @@ async function amfootRostersJob() {
     // la vez y 801 MB de RSS: lo que tumbó la plataforma el 15-ago fueron exactamente trabajos de fondo
     // concurrentes, y todos los demás jobs de la casa llevan este freno menos este. La plataforma está EN
     // VIVO durante el Mundial: una cosecha de plantillas no vale un minuto de caída.
-    if (opsRssMb() > 300) { opsLog('amf_rosters', { skipped: 'rss ' + opsRssMb() + 'MB' }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
+    if (!opsMemOk('amf_rosters', 150)) { setTimeout(amfootRostersJob, 45 * 60e3); return; }
     const heavy = ['lol_harvest', 'val_harvest', 'cs2_harvest', 'ten_harvest'];
     const busy = heavy.filter((k) => OPS.running[k]);
     if (busy.length) { opsLog('amf_rosters', { skipped: 'ocupado: ' + busy.join(',') }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
@@ -311,7 +327,7 @@ async function amfootRostersJob() {
     const todo = ['cfl', 'ncaaf'].filter((lg) => !fresh(lg));
     if (!todo.length) { opsLog('amf_rosters', { skipped: 'al día' }); return; }
     for (const lg of todo) {
-      if (opsRssMb() > 320) { opsLog('amf_rosters', { stopped: 'rss ' + opsRssMb() + 'MB', pending: lg }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
+      if (!opsMemOk('amf_rosters', 100)) { opsLog('amf_rosters', { stopped: 'techo', pending: lg }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
       const out = await opsSpawn('amf_rosters_' + lg, ['scripts/amfoot-rosters.js', '--league=' + lg], { heapMb: 200, timeoutMin: 35 });
       opsLog('amf_rosters', { league: lg, code: out.code != null ? out.code : out.error, rss: opsRssMb() });
     }
@@ -325,7 +341,7 @@ setTimeout(amfootRostersJob, 12 * 60e3);
 // anota las tesis nuevas por su cuenta. Silencioso salvo error; el estado vive en /api/esports/propstrack.
 async function esPropsSweep() {
   try {
-    if (opsRssMb() > 260) return;
+    if (!opsMemOk('es_props_sweep', 150)) return;
     const PR = require('./esports-engine/props');
     await PR.board({ force: true });
   } catch (e) { opsLog('es_props_sweep', { error: e.message }); }

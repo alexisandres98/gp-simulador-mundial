@@ -376,13 +376,27 @@ function evaluateEdges(g, model, mk) {
 function gate(c) {
   const edgePp = (c.p_model - c.p_implied) * 100;
   const gates = [];
-  // Noise gate (NFL-0684): la ventaja debe dominar la incertidumbre epistémica. La incertidumbre en PUNTOS
-  // se convierte a pp por la pendiente local de la CDF (~2.8 pp por punto alrededor del centro).
-  const uncPp = c.model.unc_pts * 2.8;
+  // Noise gate (NFL-0684): la ventaja debe dominar la incertidumbre epistémica. La incertidumbre vive en
+  // PUNTOS y el listón en puntos porcentuales, así que hay que convertirla.
+  //
+  // ANTES SE CONVERTÍA CON UNA CONSTANTE (2,8 pp por punto) y eso es falso fuera del centro: un punto vale
+  // mucho más moviendo −2,5 a −3,5 —que cruza el número clave donde cae el 14,7 % de los partidos— que
+  // moviendo −8 a −9, donde casi no hay masa. Con una pendiente única, la compuerta era demasiado severa
+  // en las líneas grandes y demasiado blanda justo donde el error importa. Ahora la conversión se LEE de la
+  // distribución que ya tenemos: cuánta probabilidad se mueve de verdad si la línea se corre ±incertidumbre.
+  const uncPp = (() => {
+    const u = c.model.unc_pts;
+    if (!(u > 0)) return 0;
+    const f = c.family === 'TOTAL' ? c.model.sim.overProb : c.model.sim.coverProb;
+    if (typeof f !== 'function') return u * 2.8;              // sin CDF a mano, el respaldo de siempre
+    const lo = f(c.line - u), hi = f(c.line + u);
+    if (!lo || !hi || lo.p == null || hi.p == null) return u * 2.8;
+    return Math.abs(lo.p - hi.p) * 100 / 2;                   // media anchura del intervalo, en pp
+  })();
   // 18-ago: el edge se exige POSITIVO. Con abs() los DOS lados del mismo mercado pasaban los gates a la
   // vez (el lado -EV incluido) — se vio en la primera pasada real de la sombra de CFL, y aquí estaba el
   // mismo latente esperando a que abrieran los mercados de la Semana 1.
-  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp` });
+  gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs incertidumbre ${uncPp.toFixed(1)} pp (leída de la distribución en esta línea, no de una pendiente fija)` });
   gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' });
   gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
   gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });

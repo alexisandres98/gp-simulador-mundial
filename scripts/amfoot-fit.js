@@ -176,7 +176,7 @@ const baseAt = (date, win = CFG.baseWin || 300) => {
   // ── 3) validación vs cierre + pool de residuos ─────────────────────────────────────────────────────────
   const mean = (xs) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
   const sd = (xs) => { const m = mean(xs); return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))); };
-  const eM = [], eMkt = [], eT = [], eTmkt = [], pool = [];
+  const eM = [], eMkt = [], eT = [], eTmkt = [], pool = [], atlas = [];
   const brier = { model: [], market: [] };
   for (const q of totPreds) {
     const g = q.g;
@@ -187,6 +187,11 @@ const baseAt = (date, win = CFG.baseWin || 300) => {
       if (g.total_close != null) {
         eTmkt.push((g.hp + g.ap) - g.total_close);
         pool.push([+((g.hp - g.ap) - g.spread_close).toFixed(1), +((g.hp + g.ap) - g.total_close).toFixed(1)]);
+        // ATLAS DE DESENLACES REALES (19-ago): la línea que tenía el partido y el marcador que salió. El
+        // simulador lo prefiere al pool de residuos cuando hay muestra suficiente (nota larga en
+        // nfl-engine/simulate.js): sumar residuos difumina la masa de los números clave; copiar marcadores
+        // reales la deja donde de verdad está. Con muestra corta —CFL— cae solo al método viejo.
+        atlas.push([+g.spread_close, +g.total_close, +(g.hp - g.ap), +(g.hp + g.ap)]);
       }
     }
     if (g.ml_home != null && g.ml_away != null && g.hp !== g.ap) {
@@ -245,6 +250,7 @@ const baseAt = (date, win = CFG.baseWin || 300) => {
     sigma_margin: +sd(eM).toFixed(2), sigma_total: +sd(eT).toFixed(2),
     sigma_extra_margin: +sigmaExtraM.toFixed(2), sigma_extra_total: +sigmaExtraT.toFixed(2),
     resid_pool: pool,
+    outcome_atlas: atlas,
     spec: `margen = rating(local) − rating(visita) + HFA (0 en neutral); rating = solucionador iterativo opponent-adjusted con recencia (halflife ${best.hl}) y arrastre entre temporadas ${best.cy}. total = base móvil de liga + ½·(tendencia de anotación de cada equipo). Distribución: normal bivariada con las sigmas medidas fuera de muestra${pool.length >= 150 ? ' + pool de residuos reales vs cierre' : ' (pool de residuos aún corto: normal pura, declarado)'}. Market-blind por construcción.`,
     validation: {
       note: `walk-forward semanal ${CFG.firstSeason}→: cada partido predicho SOLO con lo anterior. Cierre = benchmark, no label.`,

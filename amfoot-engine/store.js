@@ -261,7 +261,7 @@ function gameModel(g, M) {
   const uncPts = +((M.priors.sigma_margin / 3.7) / Math.sqrt(1 + gc)).toFixed(2);
   let seed = 11; for (const ch of gid(g)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const sim = simulate({ muMargin, muTotal, priors: {
-    resid_pool: M.priors.resid_pool, sigma_extra_margin: M.priors.sigma_extra_margin, sigma_extra_total: M.priors.sigma_extra_total,
+    resid_pool: M.priors.resid_pool, outcome_atlas: M.priors.outcome_atlas, sigma_extra_margin: M.priors.sigma_extra_margin, sigma_extra_total: M.priors.sigma_extra_total,
   }, n: 20000, seed });
   if (!sim) return null;
   return { home: g.home, away: g.away, neutral: !!g.neutral, muMargin: r2(muMargin), muTotal: r2(muTotal),
@@ -375,7 +375,18 @@ function evaluateEdges(model, mk) {
 }
 function gate(c) {
   const edgePp = (c.p_model - c.p_implied) * 100;
-  const uncPp = c.model.unc_pts * 2.8;
+  // La conversión de puntos a pp se LEE de la distribución en ESTA línea, no de una pendiente fija: un
+  // punto vale mucho más cruzando un número clave que en mitad de la cola. Misma nota larga que en
+  // nfl-engine/store.js.
+  const uncPp = (() => {
+    const u = c.model.unc_pts;
+    if (!(u > 0)) return 0;
+    const f = c.family === 'TOTAL' ? (c.model.sim && c.model.sim.overProb) : (c.model.sim && c.model.sim.coverProb);
+    if (typeof f !== 'function') return u * 2.8;
+    const lo = f(c.line - u), hi = f(c.line + u);
+    if (!lo || !hi || lo.p == null || hi.p == null) return u * 2.8;
+    return Math.abs(lo.p - hi.p) * 100 / 2;
+  })();
   // el edge se exige POSITIVO: con abs() los dos lados del mismo mercado pasaban a la vez y la sombra
   // registraba también el lado -EV (visto en la primera pasada de CFL; el mismo latente existía en NFL)
   const gates = [

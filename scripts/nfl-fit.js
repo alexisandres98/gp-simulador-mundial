@@ -101,6 +101,30 @@ const log = (...a) => console.log(...a);
   }
   log(`▸ pool de residuos vs cierre: ${pool.length} pares (margen, total)`);
 
+  // ── 4b) ATLAS DE DESENLACES REALES (19-ago) ────────────────────────────────────────────────────────────
+  // POR QUÉ EL POOL DE RESIDUOS NO BASTA, medido y no supuesto. El fútbol americano amontona resultados en
+  // 3 y en 7 porque así se puntúa: |margen| = 3 pasa el 14,70 % de las veces y |margen| = 7 el 8,48 %,
+  // contra ~4,6 % de 1, 2 o 4. Esa masa vive en el MARGEN ABSOLUTO, no en el residuo. Al sumar un residuo
+  // (resultado − cierre) sobre NUESTRA media, la masa se corre a donde nuestra media la lleve y se difumina;
+  // el simulador salía dando 6,2 % en el 3 y 6,5 % en el 1, o sea una distribución casi PLANA justo en el
+  // tramo donde viven casi todas las líneas de hándicap. Consecuencia directa y cara: la probabilidad de
+  // empuje en la línea 3 salía ~6 % cuando la real ronda el 9-10 %, y la compuerta de empuje (<6 %) dejaba
+  // pasar apuestas que debía frenar.
+  //
+  // EL ATLAS lo arregla sin inventar nada: guarda los DESENLACES REALES junto con la línea que tenían.
+  // Al simular no se suma nada — se BUSCA en el atlas: primero se sortea dónde está de verdad nuestra media
+  // (nuestro error contra el cierre es conocido y medido), y luego se toma un partido histórico que se
+  // jugó con esa línea y se copia su margen y su total TAL CUAL. Cada muestra es un marcador que ocurrió,
+  // así que los números clave caen donde de verdad caen, el par (margen, total) conserva su correlación y
+  // las colas son las de verdad. El precio a pagar es que hace falta muestra por tramo de línea, y por eso
+  // el motor cae al método viejo cuando el atlas es pequeño (CFL).
+  const atlas = [];
+  for (const g of withLine) {
+    if (g.total == null || g.total_close == null) continue;
+    atlas.push([+g.spread_close, +g.total_close, +g.result, +g.total]);
+  }
+  log(`▸ atlas de desenlaces reales: ${atlas.length} partidos (línea de cierre + marcador real)`);
+
   // ── 5) validación: modelo vs mercado, walk-forward, por temporada ──────────────────────────────────────
   const bySeason = {};
   const errM = [], errMkt = [], errT = [], errTmkt = [];
@@ -219,6 +243,7 @@ const log = (...a) => console.log(...a);
     hfa: +hfa.toFixed(2), k_total: +kTotal.toFixed(2),
     sigma_extra_margin: +sigmaExtraM.toFixed(2), sigma_extra_total: +sigmaExtraT.toFixed(2),
     resid_pool: pool,
+    outcome_atlas: atlas,
     spec: 'margen = rating(local) − rating(visita) + HFA (0 en neutral). total = base móvil de liga (200 partidos previos) + k·EPA compuesta de los cuatro lados. Distribución: mu + par de residuos (margen,total) muestreado del histórico vs cierre 2016-2025 (masa real en números clave y correlación margen-total) + ruido discreto por la varianza extra del modelo medida fuera de muestra.',
     validation: {
       note: 'walk-forward semanal 2017→: cada partido predicho SOLO con lo anterior. El cierre es el benchmark, no el label (NFL-0757). El modelo NO lee ninguna cuota: es market-blind por construcción (NFL-0521/0596).',

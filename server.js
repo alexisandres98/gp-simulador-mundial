@@ -480,7 +480,19 @@ async function f1Job() {
     const F1 = require('./f1-engine/store');
     const r = await F1.refreshSeason();
     const ok2 = await F1.oddsKeysCheck();
-    opsLog('f1_job', { races: r.races, odds_covered: !!(ok2 && ok2.covered) });
+    // LAS LLAMADAS SE ANOTAN SOLAS (19-ago). Si solo se emitieran al abrir la pantalla, el historial
+    // dependería de que alguien entrase antes de la carrera — y una llamada anotada después no vale nada.
+    // Se emiten para las próximas cinco rondas y se liquida lo que ya corrió.
+    let takes = 0;
+    try {
+      const cal = F1.calendar();
+      for (const row of (cal.rows || []).filter((x) => !x.done).slice(0, 5)) {
+        const tk = F1.takesFor(row.round);
+        takes += ((tk.stored || {}).added) || 0;
+      }
+    } catch (e) { opsLog('f1_takes', { error: e.message }); }
+    const st = F1.settleTakes();
+    opsLog('f1_job', { races: r.races, odds_covered: !!(ok2 && ok2.covered), takes_nuevas: takes, takes_liquidadas: st.settled });
   } catch (e) { opsLog('f1_job', { error: e.message }); }
   setTimeout(f1Job, 6 * 3600e3);
 }
@@ -16076,6 +16088,11 @@ const server = http.createServer(async (req, res) => {
           if (!a2 || !b3) return json(res, 400, { error: 'faltan a y b' });
           return json(res, 200, F1.duel(a2, b3));
         }
+        if (p === '/api/f1/takes') {
+          const rd = url.searchParams.get('round');
+          return json(res, 200, F1.takesFor(rd != null && rd !== '' ? +rd : undefined));
+        }
+        if (p === '/api/f1/taketrack') return json(res, 200, F1.takeTrack());
         if (p === '/api/f1/coverage') return json(res, 200, await F1.coverage());
         if (p === '/api/f1/model') return json(res, 200, F1.modelCard());
         if (p === '/api/f1/brief') return json(res, 200, await f1Brief({ force: url.searchParams.get('force') === '1' }));

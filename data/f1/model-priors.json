@@ -24,10 +24,22 @@
   "skill_vs_uniform_pct": 53.643165450988974,
   "podium_brier": 0.06736206709431344,
   "dnf_brier": 0.10610532134188638,
+  "points_brier": 0.17453415898058272,
+  "duel_acc": 0.724907063197026,
+  "duel_n": 269,
+  "duel_grid_acc": 0.7434944237918215,
+  "duel_form_acc": 0.6024590163934426,
+  "duel_form_n": 244,
   "logloss_blend": 1.15,
   "skill_blend_pct": 61.6,
   "spearman": 0.687,
-  "grid_baseline_ll": 1.058
+  "grid_baseline_ll": 1.058,
+  "baseline": {
+   "podium_brier": 0.06191129745152218,
+   "points_brier": 0.16565262077059292,
+   "dnf_brier": 0.10675397800514926,
+   "n": 721
+  }
  },
  "holdout_prequali": {
   "n": 35,
@@ -35,11 +47,23 @@
   "skill_vs_uniform_pct": 33.302566527862844,
   "podium_brier": 0.08598745544382798,
   "dnf_brier": 0.10610532134188638,
+  "points_brier": 0.19074084032593608,
+  "duel_acc": 0.6617100371747212,
+  "duel_n": 269,
+  "duel_grid_acc": 0.7434944237918215,
+  "duel_form_acc": 0.6024590163934426,
+  "duel_form_n": 244,
   "spearman": 0.687,
-  "grid_baseline_ll": null
+  "grid_baseline_ll": null,
+  "baseline": {
+   "podium_brier": 0.12444174757281401,
+   "points_brier": 0.25,
+   "dnf_brier": 0.10675397800514926,
+   "n": 721
+  }
  },
  "model_version": "f1-twin-1",
- "built_at": "2026-08-18T18:04:55.622Z",
+ "built_at": "2026-08-19T01:50:33.715Z",
  "dev": {
   "spearman": 0.752,
   "winner_ll": 1.405

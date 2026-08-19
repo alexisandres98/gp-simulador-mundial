@@ -19,7 +19,7 @@ const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
 const G = { data: null, at: 0, live: null, liveAt: 0, oddsKeys: null, oddsAt: 0 };
 
 const ATTRIB = 'Datos de Jolpica-F1 (CC BY 4.0).';
-const DOCTRINE = 'F1 corre como TERMINAL DE INTELIGENCIA: el gemelo de carrera está validado walk-forward (holdout 2025→ evaluado una vez) y es fuerte en la FORMA del resultado — orden completo, podio, abandonos, duelos —, mientras que en el mercado de ganador pos-clasificación el prior de casilla sigue delante y se declara. Sin cobertura de casas en el plan actual no hay lado mercado: cuando el proveedor abra motorsport, la sombra se enciende sola. Nada de esto es una pick.';
+const DOCTRINE = 'F1 corre como TERMINAL DE INTELIGENCIA: el gemelo de carrera está validado walk-forward (holdout 2025→) y su fuerza está ANTES de la clasificación —sin parrilla que mirar, gana claro a la tasa base en podio, en puntos y en el duelo entre compañeros—. Con la parrilla ya publicada la casilla predice mejor que el gemelo en todas las familias medidas, así que ahí no publica: es el mismo criterio que cierra el mercado de ganador. Sin cobertura de casas en el plan actual no hay lado mercado: cuando el proveedor abra motorsport, la sombra se enciende sola. Nada de esto es una pick.';
 
 // colores REALES de constructor (el color es un hecho del deporte, no un asset): 2026 + recientes
 const TEAM_COLOR = {
@@ -170,21 +170,29 @@ function calendar() {
   };
 }
 
-function raceBoard(round) {
+// NÚCLEO COMPARTIDO (19-ago): el tablero y las llamadas necesitan EXACTAMENTE el mismo field y la misma
+// configuración de simulación — si cada uno lo reconstruyera por su cuenta, un cambio en uno dejaría al
+// otro hablando de otra carrera. Se extrae una vez y lo usan los dos.
+function boardCore(round) {
   const d = load();
   // con ronda: esa carrera. Sin ronda: la próxima, como siempre.
   const next = round != null
     ? (d.schedule.races || []).find((r) => +r.round === +round) || nextRace(d)
     : nextRace(d);
-  if (!next) return { available: false, why: 'sin calendario' };
+  if (!next) return null;
   const isNext = !round || (nextRace(d) || {}).round === +round;
   const cf = currentField(d, next);
-  const entries = cf.entries;
   // una ronda futura NO puede estar pos-clasificación aunque el overlay traiga la de la inmediata
   const state = isNext ? cf.state : 'PRE_QUALI';
-  const field = R.fieldFor(d.st, entries, { useGrid: state === 'POST_QUALI' });
+  const field = R.fieldFor(d.st, cf.entries, { useGrid: state === 'POST_QUALI' });
   const simCfg = { ...d.priors.sim, gridW: state === 'POST_QUALI' ? d.priors.sim.gridW : 0, seed: next.season * 100 + next.round };
-  const res = SIM.simulateRace(field, simCfg);
+  return { d, next, state, field, simCfg, res: SIM.simulateRace(field, simCfg) };
+}
+
+function raceBoard(round) {
+  const core = boardCore(round);
+  if (!core) return { available: false, why: 'sin calendario' };
+  const { d, next, state, field, simCfg, res } = core;
   const byId = new Map(res.map((x) => [x.id, x]));
   // ensamble de ganador con prior de casilla (solo pos-quali, el peso validado en dev)
   let winBlend = null;
@@ -217,6 +225,204 @@ function raceBoard(round) {
     rows, attribution: ATTRIB, doctrine: DOCTRINE,
     last_completed: d.meta.last_completed, overlay_at: d.overlay_at,
     note: 'ganador = ensamble validado del gemelo con el prior de casilla cuando hay parrilla; podio, top-6, puntos, abandono y orden esperado salen de las MISMAS simulaciones del field completo. Índices coche/piloto: 100 = media del campo.',
+  };
+}
+
+
+// ── GP TAKE (19-ago) ────────────────────────────────────────────────────────────────────────────────────
+// Alexis: "en f1 tampoco veo panel de oportunidades ni lo veo generando pick". La respuesta honesta es que
+// una pick necesita un precio y F1 no tiene mercado en ningún proveedor del plan (comprobado hoy otra vez:
+// The Odds API no lista motorsport y Cloudbet publica la categoría con CERO eventos). Lo que sí puede
+// hacerse —y es lo que de verdad vale— es publicar LLAMADAS del modelo, fechadas, con su probabilidad, y
+// liquidarlas después para que exista un historial verificable. No son apuestas y así se dicen.
+//
+// QUÉ SE PUBLICA Y POR QUÉ. Al medir familia por familia contra un baseline honesto en el mismo holdout
+// apareció lo importante: DESPUÉS de la clasificación, la casilla ya sabe todo lo que sabe el gemelo y
+// algo más —podio 0,0674 contra 0,0619 de la casilla; puntos 0,1745 contra 0,1657; duelo 72,5 % contra
+// 74,3 %; ganador 1,389 contra 1,058—. El gemelo PIERDE contra mirar la parrilla. ANTES de la clasificación
+// no hay parrilla que mirar y ahí el gemelo gana claro: podio 0,0860 contra 0,1244 de la tasa base, puntos
+// 0,1907 contra 0,2500, duelo 66,2 % contra 60,2 % de la forma del campeonato.
+// Conclusión aplicada tal cual: LAS LLAMADAS SOLO SALEN EN PRE-CLASIFICACIÓN. Con parrilla en la mano la
+// pantalla lo dice y no publica nada — publicar algo peor que mirar la casilla sería vender ruido.
+// El abandono queda fuera en los dos estados: 0,1061 contra 0,1068 de la tasa base es un empate, y un
+// empate no es una llamada.
+const TAKE_MIN = { podium: 0.55, points_yes: 0.85, points_no: 0.15, duel_gap: 0.8 };
+
+function takeEvidence(d) {
+  const h = (d.priors && d.priors.holdout_prequali) || {};
+  const b = h.baseline || {};
+  return {
+    podium: { metric: 'Brier', model: r3(h.podium_brier), baseline: r3(b.podium_brier), baseline_label: 'tasa base del campo', n: h.n || null },
+    points: { metric: 'Brier', model: r3(h.points_brier), baseline: r3(b.points_brier), baseline_label: 'tasa base del campo', n: h.n || null },
+    duel: { metric: 'acierto', model: r3(h.duel_acc), baseline: r3(h.duel_form_acc), baseline_label: 'quien va mejor en el campeonato', n: h.duel_n || null },
+  };
+}
+
+function takesFor(round) {
+  const b = raceBoard(round);
+  if (!b.available) return { available: false, why: b.why || 'sin calendario' };
+  const core = boardCore(round);
+  const d = load();
+  const ev = takeEvidence(d);
+  const base = { season: b.race.season, round: b.race.round, race: b.race.name, date: b.race.date };
+  if (b.state === 'POST_QUALI') {
+    return { available: false, state: b.state, race: b.race, evidence: ev,
+      why: 'Con la parrilla ya publicada, la casilla de clasificación predice esta carrera mejor que el gemelo en todas las familias medidas. Cuando el modelo no aporta, no publica: el tablero de parrilla sigue ahí para leer la carrera.',
+      takes: [] };
+  }
+  // REFERENCIA DE TEMPORADA: lo que este piloto viene haciendo. Sin mercado, esta es la única vara honesta
+  // para decidir qué merece publicarse: "Stroll no puntúa" al 98 % no es una llamada, es el calendario.
+  // Solo sale a la luz lo que se APARTA de esa referencia — y la referencia viaja con la llamada para que
+  // el historial pueda puntuar al gemelo CONTRA ella y no contra el aire.
+  const ref = seasonRates(d, base.season, base.round);
+  const rows = b.rows || [];
+  const out = [];
+  const push = (family, subject_id, subject, side, p, refP, why, extra) => {
+    out.push({ key: `${base.season}|${base.round}|${family}|${subject_id}|${side}`,
+      ...base, family, subject_id, subject, side, p: r3(p), ref: r3(refP),
+      gap_pp: refP == null ? null : r2(100 * (p - refP)), why, ...(extra || {}), at: new Date().toISOString() });
+  };
+  const MIN_GAP = 0.15;
+  for (const r of rows) {
+    const rr = ref[r.id] || {};
+    // PODIO: o el gemelo lo pone arriba con convicción, o se aparta claramente de su temporada
+    if (r.p_podium >= TAKE_MIN.podium || (rr.podium != null && r.p_podium - rr.podium >= MIN_GAP && r.p_podium >= 0.3)) {
+      push('PODIO', r.id, r.name, 'si', r.p_podium, rr.podium,
+        `${r.name} sube al podio en ${Math.round(100 * r.p_podium)} de cada 100 simulaciones` +
+        (rr.podium != null ? `, cuando esta temporada lo hace en ${Math.round(100 * rr.podium)} de cada 100` : ' (sin temporada previa que comparar)') +
+        `. Coche ${r.car_idx} y piloto ${r.drv_idx} sobre una media de campo de 100.`, { n_ref: rr.n || null });
+    }
+    // PUNTOS: en los dos sentidos, pero SOLO si el gemelo se aparta de lo que el piloto viene haciendo
+    if (rr.points != null && rr.n >= 3) {
+      const gap = r.p_points - rr.points;
+      // LA LLAMADA TIENE QUE APOSTAR POR SU LADO. Con solo el hueco contra la temporada salían cosas como
+      // "Hamilton NO puntúa" con el gemelo dándole 76 % de puntuar —el hueco existía, pero el lado era el
+      // contrario—. Un matiz sobre la confianza no es una llamada: el lado publicado debe ser, además, el
+      // desenlace más probable según el propio modelo.
+      if (gap >= MIN_GAP && r.p_points >= 0.5) {
+        push('PUNTOS', r.id, r.name, 'si', r.p_points, rr.points,
+          `${r.name} puntúa en ${Math.round(100 * r.p_points)} de cada 100 simulaciones, muy por encima del ${Math.round(100 * rr.points)} % con que lo viene haciendo: el gemelo ve el coche mejor de lo que dice su temporada.`, { n_ref: rr.n });
+      } else if (-gap >= MIN_GAP && r.p_points <= 0.5) {
+        push('PUNTOS', r.id, r.name, 'no', 1 - r.p_points, 1 - rr.points,
+          `${r.name} se queda fuera de los puntos: el gemelo solo lo mete entre los diez en ${Math.round(100 * r.p_points)} de cada 100, contra el ${Math.round(100 * rr.points)} % de su temporada.`, { n_ref: rr.n });
+      }
+    }
+  }
+  // DUELO ENTRE COMPAÑEROS: mismo coche, solo queda el piloto. La probabilidad sale del H2H sobre las
+  // MISMAS simulaciones (correlación real del field), no de una media de holdout.
+  const byTeam = new Map();
+  for (const r of rows) { if (!byTeam.has(r.cid)) byTeam.set(r.cid, []); byTeam.get(r.cid).push(r); }
+  for (const pair of byTeam.values()) {
+    if (pair.length !== 2) continue;
+    const [x, y] = pair.slice().sort((a, c) => (a.exp_finish || 99) - (c.exp_finish || 99));
+    const p = core ? SIM.h2hProb(core.field, core.simCfg, x.id, y.id) : null;
+    if (p == null || p < 0.62) continue;                    // sin convicción no hay llamada
+    const px = (ref[x.id] || {}).pts || 0, py = (ref[y.id] || {}).pts || 0;
+    const refSide = px === py ? null : (px > py ? 1 : 0);   // referencia: quien va mejor en el campeonato
+    push('DUELO', x.id + '_vs_' + y.id, `${x.name} por delante de ${y.name}`, 'si', p, refSide == null ? null : (refSide ? 0.602 : 0.398),
+      `Mismo coche, así que solo queda el piloto: ${x.name} termina por delante de ${y.name} en ${Math.round(100 * p)} de cada 100 simulaciones` +
+      (refSide === 0 ? `, y va POR DETRÁS en el campeonato (${px} a ${py} puntos) — el gemelo contradice a la tabla.`
+        : refSide === 1 ? `, coherente con el campeonato (${px} a ${py} puntos).`
+          : `, y el campeonato no desempata (${px} a ${py} puntos): aquí la tabla no dice nada y solo habla el gemelo.`),
+      { contra_referencia: refSide === 0 });
+  }
+  const rec = recordTakes(out);
+  return { available: true, state: b.state, race: b.race, takes: out, evidence: ev, stored: rec,
+    doctrine: 'Llamadas del modelo, no apuestas: F1 no tiene mercado en ningún proveedor del plan, así que no hay precio contra el que medir ventaja. Cada llamada queda fechada y se liquida sola cuando acaba la carrera — el historial de abajo es el único juez.' };
+}
+
+// lo que cada piloto viene haciendo ESTA temporada hasta la ronda anterior (referencia, no predicción)
+function seasonRates(d, season, round) {
+  const out = {};
+  for (const race of d.races) {
+    if (race.season !== season || race.round >= round) continue;
+    const rows = Object.values(race.rows || {});
+    if (!rows.some((x) => x.pos != null)) continue;
+    for (const r of rows) {
+      const o = (out[r.d] = out[r.d] || { n: 0, pod: 0, pts10: 0, pts: 0 });
+      o.n++; o.pts += r.pts || 0;
+      if (r.pos != null && r.pos <= 3) o.pod++;
+      if (r.pos != null && r.pos <= 10) o.pts10++;
+    }
+  }
+  for (const id of Object.keys(out)) {
+    const o = out[id];
+    o.podium = o.n ? o.pod / o.n : null;
+    o.points = o.n ? o.pts10 / o.n : null;
+  }
+  return out;
+}
+
+// ── memoria: se anotan al emitirse (dedup por clave) y se liquidan cuando la carrera termina ────────────
+function recordTakes(list) {
+  if (!list.length) return { added: 0 };
+  const st = rdD('takes.json') || { rows: {}, at: null };
+  let added = 0;
+  for (const t of list) {
+    if (st.rows[t.key]) continue;
+    st.rows[t.key] = { ...t, result: null };
+    added++;
+  }
+  if (added) { st.at = new Date().toISOString(); wrD('takes.json', st); }
+  return { added, total: Object.keys(st.rows).length };
+}
+
+function settleTakes() {
+  const st = rdD('takes.json');
+  if (!st || !st.rows) return { settled: 0 };
+  const d = load();
+  const byKey = new Map(d.races.map((r) => [r.season + '|' + r.round, r]));
+  let settled = 0;
+  for (const k of Object.keys(st.rows)) {
+    const t = st.rows[k];
+    if (t.result) continue;
+    const race = byKey.get(t.season + '|' + t.round);
+    if (!race) continue;
+    const rows = Object.values(race.rows || {});
+    if (!rows.some((x) => x.pos != null)) continue;         // todavía no hay resultado
+    const pos = (id) => { const r = rows.find((x) => x.d === id); return r && r.pos != null ? r.pos : null; };
+    let hit = null;
+    if (t.family === 'PODIO') { const p = pos(t.subject_id); hit = p != null && p <= 3; }
+    else if (t.family === 'PUNTOS') { const p = pos(t.subject_id); const inPts = p != null && p <= 10; hit = t.side === 'si' ? inPts : !inPts; }
+    else if (t.family === 'DUELO') {
+      const [a, c] = String(t.subject_id).split('_vs_');
+      const pa = pos(a), pc = pos(c);
+      if (pa == null || pc == null) { t.result = 'VOID'; t.settled_at = new Date().toISOString(); settled++; continue; }
+      hit = pa < pc;
+    }
+    if (hit == null) continue;
+    t.result = hit ? 'ACIERTO' : 'FALLO';
+    t.settled_at = new Date().toISOString();
+    settled++;
+  }
+  if (settled) { st.at = new Date().toISOString(); wrD('takes.json', st); }
+  return { settled, total: Object.keys(st.rows).length };
+}
+
+function takeTrack() {
+  settleTakes();
+  const st = rdD('takes.json') || { rows: {} };
+  const all = Object.values(st.rows || {}).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const closed = all.filter((t) => t.result === 'ACIERTO' || t.result === 'FALLO');
+  const byFam = {};
+  for (const t of closed) {
+    const f = (byFam[t.family] = byFam[t.family] || { n: 0, ok: 0, brier: 0 });
+    f.n++; if (t.result === 'ACIERTO') f.ok++;
+    f.brier += Math.pow((t.p || 0) - (t.result === 'ACIERTO' ? 1 : 0), 2);
+  }
+  const fams = Object.entries(byFam).map(([family, f]) => ({
+    family, n: f.n, acierto: r3(f.ok / f.n), brier: r3(f.brier / f.n),
+  })).sort((a, b) => b.n - a.n);
+  const d = load();
+  return {
+    available: true, n_total: all.length, n_liquidadas: closed.length,
+    abiertas: all.filter((t) => !t.result).length,
+    void: all.filter((t) => t.result === 'VOID').length,
+    families: fams, evidence: takeEvidence(d),
+    rows: all.slice(0, 60),
+    note: closed.length < 20
+      ? 'Historial recién abierto: con menos de veinte llamadas liquidadas ningún porcentaje significa nada todavía. Se publica igual porque esconderlo hasta que luzca bien es exactamente lo que no hacemos.'
+      : 'Cada llamada se anotó ANTES de la carrera y se liquidó con el resultado oficial. El Brier premia estar seguro y acertar, y castiga estar seguro y fallar.',
   };
 }
 
@@ -412,7 +618,7 @@ function modelCard() {
     validation: {
       protocol: 'walk-forward estricto: constantes en desarrollo 2014-2024 (el cambio reglamentario de 2022 midió cuánta historia de coche sobrevive a un cambio de reglas — eso hereda 2026), holdout 2025→ evaluado UNA vez, dos estados de información',
       holdout_postquali: P.holdout_postquali, holdout_prequali: P.holdout_prequali,
-      reading: 'la fuerza del gemelo está en la FORMA del resultado (orden completo, podio, abandonos, duelos coherentes). En el ganador pos-clasificación el prior de casilla queda delante del ensamble (1.058 vs 1.161 de log-loss) y SE DICE: por eso no hay picks de ganador ni las habría sin batir eso primero.',
+      reading: 'DÓNDE SIRVE Y DÓNDE NO, medido familia por familia contra un baseline honesto en el mismo holdout (19-ago). ANTES de la clasificación el gemelo gana claro: Brier de podio 0,086 contra 0,124 de la tasa base del campo, puntos 0,191 contra 0,250, duelo entre compañeros 66,2 % contra 60,2 % de "quien va mejor en el campeonato". DESPUÉS de la clasificación pierde contra mirar la parrilla en TODAS las familias: podio 0,067 contra 0,062, puntos 0,175 contra 0,166, duelo 72,5 % contra 74,3 %, ganador 1,389 (ensamble 1,150) contra 1,058. La casilla ya contiene lo que el gemelo sabe y algo más. Aplicado tal cual: las llamadas de GP solo se publican en PRE-clasificación; con parrilla en la mano el modelo no publica nada. El abandono queda fuera en los dos estados (0,1061 contra 0,1068 de la tasa base es un empate, y un empate no es una llamada).',
     },
     market: { covered: false, note: 'The Odds API sin cobertura F1 en el plan actual (comprobado 18-ago-2026); el descubrimiento corre a diario y la sombra se enciende sola si abre.' },
     disclaimer: 'estimaciones de un modelo estadístico, no consejo financiero.',
@@ -428,4 +634,4 @@ async function modelSnapshot() {
   };
 }
 
-module.exports = { coverage, calendar, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, DISK_DIR, DOCTRINE };
+module.exports = { coverage, calendar, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, takesFor, settleTakes, takeTrack, DISK_DIR, DOCTRINE };

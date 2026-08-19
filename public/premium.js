@@ -11070,33 +11070,88 @@
   // contra el que medir nada y por tanto no hay picks. Esta pantalla no finge lo contrario: enseña las
   // convicciones del gemelo ordenadas (que es información aunque no sea apuesta), dice exactamente qué se
   // miró y cuándo, y deja claro que el día que el proveedor abra motorsport la sombra se enciende sola.
+  // ── GP TAKE: la respuesta honesta a "F1 no genera picks" ────────────────────────────────────────────
+  // No hay mercado de F1 en ningún proveedor del plan, así que no hay precio contra el que medir ventaja
+  // y no puede haber pick. Lo que sí hay —y es lo que de verdad se puede defender— son LLAMADAS del
+  // modelo: fechadas antes de la carrera, con su probabilidad, contra una referencia trivial declarada,
+  // y liquidadas solas después. El historial de abajo es el único juez.
+  var F1FAM = {
+    PODIO: { label: 'Podio', ic: 'trophy', ev: 'podium' },
+    PUNTOS: { label: 'Puntos', ic: 'target', ev: 'points' },
+    DUELO: { label: 'Duelo de compañeros', ic: 'swords', ev: 'duel' },
+  };
+  function f1TakeCard(tk, ev) {
+    var F = F1FAM[tk.family] || { label: tk.family, ic: 'zap' };
+    var e = ev && ev[F.ev];
+    var pct = Math.round(100 * (tk.p || 0));
+    var refPct = tk.ref != null ? Math.round(100 * tk.ref) : null;
+    var side = tk.side === 'no' ? 'NO' : 'SÍ';
+    var bar = refPct == null ? '' :
+      '<div class="gx-f1-tkbar"><span class="gx-f1-tkfill" style="width:' + pct + '%"></span>' +
+      '<i class="gx-f1-tkref" style="left:' + refPct + '%" title="referencia: ' + refPct + '%"></i></div>' +
+      '<div class="gx-f1-tkleg"><span>gemelo <b class="gx-mono">' + pct + '%</b></span>' +
+      '<span class="gx-dim">referencia <b class="gx-mono">' + refPct + '%</b></span>' +
+      (tk.gap_pp != null ? '<span class="' + (tk.gap_pp > 0 ? 'gx-up' : 'gx-down') + ' gx-mono">' + (tk.gap_pp > 0 ? '+' : '') + tk.gap_pp.toFixed(1) + ' pp</span>' : '') + '</div>';
+    return '<div class="gx-f1-take' + (tk.contra_referencia ? ' contra' : '') + '">' +
+      '<div class="gx-f1-tktop"><span class="gx-chip">' + esc(F.label) + '</span>' +
+        '<span class="gx-f1-tkside' + (tk.side === 'no' ? ' no' : '') + '">' + side + '</span>' +
+        '<span class="gx-spacer"></span><span class="gx-f1-tkp gx-mono">' + pct + '%</span></div>' +
+      '<div class="gx-f1-tkwho"><b>' + esc(tk.subject) + '</b></div>' + bar +
+      '<div class="gx-f1-tkwhy gx-dim">' + esc(tk.why || '') + '</div>' +
+      (e && e.model != null ? '<div class="gx-f1-tkev gx-dim">Esta familia, medida fuera de muestra antes de publicar nada: ' +
+        esc(e.metric) + ' ' + e.model + ' contra ' + (e.baseline != null ? e.baseline : '—') + ' de ' + esc(e.baseline_label) +
+        (e.n ? ' · n=' + e.n : '') + '.</div>' : '') + '</div>';
+  }
+
   function renderF1Opps() {
-    var d = f1Get('board', '/api/f1/board', 300000);
+    var rq = S.f1.round != null ? '?round=' + S.f1.round : '';
+    var tk = f1Get('takes' + rq, '/api/f1/takes' + rq, 300000);
+    var tr = f1Get('taketrack', '/api/f1/taketrack', 300000);
     var cov = f1Get('cov', '/api/f1/coverage', 900000);
-    if (!d) { f1Shell(t('nav_opps'), f1Loading()); return; }
-    if (!d.available) { f1Shell(t('nav_opps'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Sin calendario') + '</b></div></div>'); return; }
-    var rows = (d.rows || []).slice(0, 6);
+    if (!tk) { f1Shell(t('nav_opps'), f1Loading()); return; }
+    var bar = f1RaceBar();
     var head = '<div class="gx-panel gx-f1-nomkt">' + ic('alert-triangle') +
       '<span><b>Sin mercado que medir.</b> F1 es el único deporte de la casa sin cobertura de casas en el plan actual: ' +
       'ni el proveedor principal lista motorsport ni el secundario publica eventos. Sin precio no hay ventaja que calcular, ' +
-      'y una convicción del modelo no es una pick. Cuando se abra la cobertura, la sombra arranca sola.</span></div>';
-    var conv = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Lo que sostiene el gemelo</span>' +
-      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">convicción del modelo · NO son picks</span></div>' +
-      '<div class="gx-f1-conv">' + rows.map(function (r) {
-        return '<div class="gx-f1-convrow" data-f1driver="' + esc(r.id) + '">' + f1Face(r) +
-          '<div class="gx-f1-who"><b>' + esc(r.name) + '</b><span class="gx-dim">' + esc(r.constructor) + '</span></div>' +
-          '<div class="gx-f1-convk"><em class="gx-mono">' + (100 * (r.p_win || 0)).toFixed(1) + '%</em><span>gana</span></div>' +
-          '<div class="gx-f1-convk"><em class="gx-mono">' + (100 * (r.p_podium || 0)).toFixed(0) + '%</em><span>podio</span></div>' +
-          '<div class="gx-f1-convk"><em class="gx-mono">' + (100 * (r.p_points || 0)).toFixed(0) + '%</em><span>puntos</span></div></div>';
-      }).join('') + '</div></div>';
+      'así que aquí no hay picks: hay <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>';
+    var body;
+    if (tk.available === false && tk.state === 'POST_QUALI') {
+      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Esta carrera no lleva llamadas</span>' +
+        '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">pos-clasificación</span></div>' +
+        '<div class="gx-f1-mute">' + ic('shield-off') + '<span>' + esc(tk.why || '') + '</span></div>' +
+        '<div class="gx-dim gx-es-note">Medido en el mismo holdout: con parrilla en la mano la casilla gana al gemelo en podio, en puntos, en duelos y en ganador. Publicar algo peor que mirar la parrilla sería vender ruido.</div></div>';
+    } else if (!tk.available) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(tk.why || 'Sin calendario') + '</b></div></div>';
+    } else if (!(tk.takes || []).length) {
+      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Sin llamadas en esta carrera</span></div>' +
+        '<div class="gx-f1-mute">' + ic('shield-off') + '<span>El gemelo no se aparta lo suficiente de lo que cada piloto viene haciendo esta temporada. Coincidir con lo obvio no es una llamada.</span></div></div>';
+    } else {
+      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Llamadas de GP · ' + esc(tk.race.name) + '</span>' +
+        '<span class="gx-ph-extra gx-mono">' + tk.takes.length + '</span></div>' +
+        '<div class="gx-f1-takes">' + tk.takes.map(function (x) { return f1TakeCard(x, tk.evidence); }).join('') + '</div>' +
+        '<div class="gx-dim gx-es-note">' + esc(tk.doctrine || '') + '</div></div>';
+    }
+    var track = '';
+    if (tr && tr.available) {
+      var fams = (tr.families || []).map(function (f) {
+        return '<div class="gx-f1-trrow"><b>' + esc((F1FAM[f.family] || {}).label || f.family) + '</b>' +
+          '<span class="gx-mono">' + f.n + ' llamadas</span>' +
+          '<span class="gx-mono ' + (f.acierto >= 0.5 ? 'gx-up' : 'gx-down') + '">' + Math.round(100 * f.acierto) + '% acierto</span>' +
+          '<span class="gx-dim gx-mono">Brier ' + (f.brier != null ? f.brier.toFixed(3) : '—') + '</span></div>';
+      }).join('');
+      track = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Historial de llamadas</span>' +
+        '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + tr.n_liquidadas + ' liquidadas · ' + tr.abiertas + ' abiertas</span></div>' +
+        (fams ? '<div class="gx-f1-track">' + fams + '</div>' : '<div class="gx-f1-mute">' + ic('hourglass') + '<span>Todavía no ha corrido ninguna carrera con llamadas anotadas. En cuanto corra, esto se llena solo.</span></div>') +
+        '<div class="gx-dim gx-es-note">' + esc(tr.note || '') + '</div></div>';
+    }
     var watch = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Vigilancia de cobertura</span>' +
       (cov && cov.at ? '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">último vistazo: ' + esc(String(cov.at).slice(0, 16).replace('T', ' ')) + '</span>' : '') + '</div>' +
       '<div class="gx-f1-cov">' + ((cov && cov.books) || [{ book: 'proveedor principal', ok: false, note: 'no lista motorsport' }, { book: 'proveedor secundario', ok: false, note: 'categoría sin eventos' }]).map(function (b) {
         return '<div class="gx-f1-covrow"><span class="gx-f1-covdot' + (b.ok ? ' on' : '') + '"></span>' +
           '<b>' + esc(b.book) + '</b><span class="gx-dim">' + esc(b.note || (b.ok ? 'cotiza' : 'sin cobertura')) + '</span></div>';
       }).join('') + '</div>' +
-      '<div class="gx-dim gx-es-note">Se revisa sola cada día. En cuanto una casa abra el mercado de carrera, esta pantalla deja de ser una vigilancia y pasa a ser un board.</div></div>';
-    f1Shell(t('nav_opps'), head + conv + watch + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+      '<div class="gx-dim gx-es-note">Se revisa sola cada día. En cuanto una casa abra el mercado de carrera, estas llamadas pasan a tener precio contra el que medirse y la sombra arranca.</div></div>';
+    f1Shell(t('nav_opps'), bar + head + body + track + watch);
   }
 
   // ── CAMPEONATO: puntos oficiales + Coche × Piloto ───────────────────────────────────────────────────
@@ -11303,7 +11358,9 @@
     var ln = e.target.closest('[data-f1lens]');
     if (ln) { S.f1.lens = ln.getAttribute('data-f1lens'); renderF1Race(); return; }
     var rr = e.target.closest('[data-f1round]');
-    if (rr) { S.f1.round = +rr.getAttribute('data-f1round'); S.f1.gridSel = null; renderF1Race(); return; }
+    // la tira de carreras vive en DOS pantallas (la carrera y las llamadas): se re-dibuja la que está
+    // abierta, no siempre la de carrera — si no, elegir ronda desde Oportunidades te sacaba de allí.
+    if (rr) { S.f1.round = +rr.getAttribute('data-f1round'); S.f1.gridSel = null; showView(S.view); return; }
     var ds = e.target.closest('[data-f1duelsel]');
     if (ds) { return; }   // los <select> se escuchan por 'change', no por click
     var dr = e.target.closest('[data-f1driver]');

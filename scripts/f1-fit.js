@@ -27,13 +27,17 @@ console.log(`[f1-fit] ${done.length} carreras completadas ${done[0].season}→${
 function replay(C, evalFrom, evalTo, { collectSim = false, simCfg = null, useGrid = true } = {}) {
   const st = R.newState(C);
   const out = [];
+  // puntos de campeonato ANTES de cada carrera: es el baseline honesto del duelo entre compañeros cuando
+  // todavía no hay parrilla — "el que va mejor en la temporada gana el duelo" es lo que diría cualquiera.
+  let ptsBefore = new Map(), ptsSeason = null;
   for (const race of done) {
+    if (ptsSeason !== race.season) { ptsSeason = race.season; ptsBefore = new Map(); }
     const inWin = race.season >= evalFrom && race.season < evalTo;
     if (inWin) {
       const entries = Object.values(race.rows);
       const field = R.fieldFor(st, entries, { useGrid });
       const winner = entries.find((r) => r.pos === 1);
-      const rec = { key: race.season + '|' + race.round, season: race.season, winner: winner && winner.d, field, entries };
+      const rec = { key: race.season + '|' + race.round, season: race.season, winner: winner && winner.d, field, entries, pts_before: new Map(ptsBefore) };
       if (collectSim && winner) {
         const res = S.simulateRace(field, { ...simCfg, seed: race.season * 100 + race.round });
         rec.sim = new Map(res.map((x) => [x.id, x]));
@@ -41,6 +45,7 @@ function replay(C, evalFrom, evalTo, { collectSim = false, simCfg = null, useGri
       out.push(rec);
     }
     R.update(st, race);
+    for (const r of Object.values(race.rows)) ptsBefore.set(r.d, (ptsBefore.get(r.d) || 0) + (r.pts || 0));
   }
   return out;
 }
@@ -62,24 +67,47 @@ function rankCorr(recs) { // Spearman medio entre perf esperada y posición fina
 }
 
 function simMetrics(recs) {
-  let ll = 0, n = 0, podBr = 0, podN = 0, dnfBr = 0, dnfN = 0;
+  let ll = 0, n = 0, podBr = 0, podN = 0, dnfBr = 0, dnfN = 0, ptsBr = 0, ptsN = 0;
+  // DUELO ENTRE COMPAÑEROS: la pregunta donde el coche se cancela y solo queda el piloto. Se mide aparte
+  // porque es la familia sobre la que el gemelo va a publicar llamadas, y una métrica global de orden no
+  // dice nada sobre ella. Baseline honesto: la casilla de clasificación, que es lo que cualquiera miraría.
+  let duOk = 0, duN = 0, duGrid = 0, duGridN = 0, duForm = 0, duFormN = 0;
   for (const rec of recs) {
     if (!rec.sim || !rec.winner) continue;
     const w = rec.sim.get(rec.winner);
     ll += -Math.log(Math.max(1e-4, w ? w.p_win : 1e-4)); n++;
     for (const r of rec.entries) {
       const sm = rec.sim.get(r.d); if (!sm) continue;
-      if (r.pos != null || /^R/.test(String(r.txt || '')) || r.pos == null) {
-        const isPod = r.pos != null && r.pos <= 3 ? 1 : 0;
-        podBr += (sm.p_podium - isPod) ** 2; podN++;
-        const isDnf = r.pos == null && !/^(D|E|W|F)$/.test(String(r.txt || '')) ? 1 : 0;
-        dnfBr += (sm.p_dnf - isDnf) ** 2; dnfN++;
-      }
+      const isPod = r.pos != null && r.pos <= 3 ? 1 : 0;
+      podBr += (sm.p_podium - isPod) ** 2; podN++;
+      const isPts = r.pos != null && r.pos <= 10 ? 1 : 0;
+      if (sm.p_points != null) { ptsBr += (sm.p_points - isPts) ** 2; ptsN++; }
+      const isDnf = r.pos == null && !/^(D|E|W|F)$/.test(String(r.txt || '')) ? 1 : 0;
+      dnfBr += (sm.p_dnf - isDnf) ** 2; dnfN++;
+    }
+    const byTeam = new Map();
+    for (const r of rec.entries) { if (!byTeam.has(r.c)) byTeam.set(r.c, []); byTeam.get(r.c).push(r); }
+    for (const pair of byTeam.values()) {
+      if (pair.length !== 2) continue;                    // un tercer piloto en la temporada no es un duelo
+      const [a, b] = pair;
+      if (a.pos == null || b.pos == null) continue;       // sin los dos clasificados no hay duelo que juzgar
+      const sa = rec.sim.get(a.d), sb = rec.sim.get(b.d);
+      if (!sa || !sb || sa.exp_finish == null || sb.exp_finish == null) continue;
+      const predA = sa.exp_finish < sb.exp_finish;        // menor posición esperada = mejor
+      const realA = a.pos < b.pos;
+      duN++; if (predA === realA) duOk++;
+      if (a.grid && b.grid) { duGridN++; if ((a.grid < b.grid) === realA) duGrid++; }
+      const pa = (rec.pts_before && rec.pts_before.get(a.d)) || 0, pb = (rec.pts_before && rec.pts_before.get(b.d)) || 0;
+      if (pa !== pb) { duFormN++; if ((pa > pb) === realA) duForm++; }
     }
   }
   const nField = 20;
   return { n, logloss: ll / n, skill_vs_uniform_pct: 100 * (1 - (ll / n) / Math.log(nField)),
-    podium_brier: podBr / podN, dnf_brier: dnfBr / dnfN };
+    podium_brier: podBr / podN, dnf_brier: dnfBr / dnfN,
+    points_brier: ptsN ? ptsBr / ptsN : null,
+    duel_acc: duN ? duOk / duN : null, duel_n: duN,
+    duel_grid_acc: duGridN ? duGrid / duGridN : null,
+    duel_form_acc: duFormN ? duForm / duFormN : null, duel_form_n: duFormN };
 }
 
 // ── 1) barrido de RATINGS en dev por correlación de orden (barato, sin sim) ─────────────────────────────
@@ -101,6 +129,45 @@ for (const race of done) {
   }
 }
 const gridPrior = gridWins.map((w, i) => (gridN[i] ? (w + 0.5) / (gridN[i] + 12) : 0.01));
+
+// ── BASELINES POR FAMILIA (19-ago) ──────────────────────────────────────────────────────────────────────
+// Un Brier suelto no dice si el modelo sirve: 0,10 en abandonos suena bien hasta que se ve que la tasa
+// base de abandonos ya da 0,10. Antes de PUBLICAR una llamada de una familia hay que enseñar contra qué
+// gana. Los baselines se construyen SOLO con desarrollo (igual que las constantes) y se evalúan en el
+// holdout junto al modelo, en la misma pasada.
+const gPodW = new Array(31).fill(0), gPtsW = new Array(31).fill(0), gCnt = new Array(31).fill(0);
+let dnfW = 0, dnfC = 0;
+for (const race of done) {
+  if (race.season >= DEV_END) continue;
+  for (const r of Object.values(race.rows)) {
+    dnfC++; if (r.pos == null && !/^(D|E|W|F)$/.test(String(r.txt || ''))) dnfW++;
+    if (!r.grid || r.grid > 30) continue;
+    gCnt[r.grid]++;
+    if (r.pos != null && r.pos <= 3) gPodW[r.grid]++;
+    if (r.pos != null && r.pos <= 10) gPtsW[r.grid]++;
+  }
+}
+const gridPodium = gPodW.map((w, i) => (gCnt[i] ? (w + 1) / (gCnt[i] + 6) : 0.15));
+const gridPoints = gPtsW.map((w, i) => (gCnt[i] ? (w + 1) / (gCnt[i] + 3) : 0.5));
+const dnfBaseRate = dnfC ? dnfW / dnfC : 0.12;
+
+// Los mismos registros del holdout, puntuados por los baselines en vez de por el gemelo.
+function baseMetrics(recs, { useGrid = true } = {}) {
+  let podBr = 0, ptsBr = 0, dnfBr = 0, n = 0;
+  for (const rec of recs) {
+    for (const r of rec.entries) {
+      const g = r.grid && r.grid <= 30 ? r.grid : 30;
+      const isPod = r.pos != null && r.pos <= 3 ? 1 : 0;
+      const isPts = r.pos != null && r.pos <= 10 ? 1 : 0;
+      const isDnf = r.pos == null && !/^(D|E|W|F)$/.test(String(r.txt || '')) ? 1 : 0;
+      // sin parrilla el baseline honesto es la tasa base del campo, no la casilla
+      const pPod = useGrid ? gridPodium[g] : 3 / 20;
+      const pPts = useGrid ? gridPoints[g] : 10 / 20;
+      podBr += (pPod - isPod) ** 2; ptsBr += (pPts - isPts) ** 2; dnfBr += (dnfBaseRate - isDnf) ** 2; n++;
+    }
+  }
+  return n ? { podium_brier: podBr / n, points_brier: ptsBr / n, dnf_brier: dnfBr / n, n } : null;
+}
 
 // ensamble ganador: sim^(1-u) × priorParrilla^u, renormalizado por carrera (sin cuotas: parrilla es dato)
 function blendWin(rec, u) {
@@ -156,8 +223,10 @@ for (const [label, useGrid] of [['POS-QUALI (parrilla real)', true], ['PRE-QUALI
     }
     llGrid = s / n;
   }
-  console.log(`[HOLDOUT ${label}] n=${m.n} · LL ganador ${m.logloss.toFixed(3)}${m.logloss_blend != null ? ` · ENSAMBLE ${m.logloss_blend}` : ''} (${llGrid != null ? `baseline parrilla ${llGrid.toFixed(3)}` : 'sin parrilla'}) · Brier podio ${m.podium_brier.toFixed(4)} · Brier DNF ${m.dnf_brier.toFixed(4)} · Spearman ${rc.toFixed(3)}`);
-  cfg['holdout_' + (useGrid ? 'postquali' : 'prequali')] = { ...m, spearman: +rc.toFixed(3), grid_baseline_ll: llGrid != null ? +llGrid.toFixed(3) : null };
+  console.log(`[HOLDOUT ${label}] n=${m.n} · LL ganador ${m.logloss.toFixed(3)}${m.logloss_blend != null ? ` · ENSAMBLE ${m.logloss_blend}` : ''} (${llGrid != null ? `baseline parrilla ${llGrid.toFixed(3)}` : 'sin parrilla'}) · Brier podio ${m.podium_brier.toFixed(4)} · Brier DNF ${m.dnf_brier.toFixed(4)} · Brier puntos ${m.points_brier != null ? m.points_brier.toFixed(4) : '—'} · Duelo compañeros ${m.duel_acc != null ? (100 * m.duel_acc).toFixed(1) + '% (n=' + m.duel_n + ', casilla ' + (100 * m.duel_grid_acc).toFixed(1) + '%)' : '—'} · Spearman ${rc.toFixed(3)}`);
+  const bm = baseMetrics(recs, { useGrid });
+  console.log(`[BASELINE ${label}] Brier podio ${bm.podium_brier.toFixed(4)} · Brier puntos ${bm.points_brier.toFixed(4)} · Brier DNF ${bm.dnf_brier.toFixed(4)} (tasa base ${(100 * dnfBaseRate).toFixed(1)}%)`);
+  cfg['holdout_' + (useGrid ? 'postquali' : 'prequali')] = { ...m, spearman: +rc.toFixed(3), grid_baseline_ll: llGrid != null ? +llGrid.toFixed(3) : null, baseline: bm };
 }
 
 cfg.model_version = 'f1-twin-1';

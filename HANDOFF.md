@@ -48,6 +48,29 @@ y ninguno tenía lista de "Más" propia. Corregido: Oportunidades abre la barra 
   había 270: dos instancias, cada una con su foto de `games.json` en memoria, reescribiendo el archivo
   entero. Ahora hay cerrojo por pid (con limpieza de cerrojo huérfano y liberación en exit/SIGINT/SIGTERM).
 
+### 🔧 LA SOMBRA DE TENIS NO LIQUIDABA — arreglada, y la cadena vale como lección
+
+Treinta y una tesis abiertas y CERO liquidadas, con once partidos ya jugados. El diagnóstico llevó cuatro
+pasadas y cada una acortó la siguiente, porque ESPN responde 403 a la IP de desarrollo y el camino solo se
+puede mirar desde Render:
+
+  1. **El silencio.** `espnDay` hacía `r.json()` sin mirar el estado (un 403 devuelve HTML → "Unexpected
+     token <"), ese error caía en un `catch {}` por-pick que hacía `continue`, y el job solo escribía en la
+     sonda SI algo se había liquidado. "No se liquidó nada" y "la fuente está caída" eran indistinguibles.
+     → parte por MOTIVO (vencidas / sin_fuente / sin_cruce / no_final / sin_marcador / ok), guardado en
+     disco AUNQUE no se liquide nada, y visible en /api/internal/tennis.
+  2. **Primera lectura:** `sin_fuente: 0, sin_cruce: 11`. No era la red: era el cruce.
+  3. **Segunda lectura**, con muestra: `eventos: 0`. Tampoco era el cruce — no había NADA que cruzar.
+  4. **La causa:** el liquidador leía `j.events` y el marcador de tenis de ESPN cuelga los partidos de
+     `sports[].leagues[].events`, la misma forma que ya usaba su endpoint de equipos.
+
+**Resultado: `settled: 11`, `ok: 11`, todos los contadores de fallo a cero.** El registro vivo va 3W-8L,
+−4,87 u, con la propia pantalla diciendo "con 11 liquidadas TODO es ruido".
+
+La lección para quien retome: cuando un camino solo existe en producción, **no se adivina — se instrumenta**.
+Las tres correcciones de anoche (job sin freno de memoria, script sin cerrojo, liquidador sin parte) son la
+misma omisión repetida: código que falla en silencio.
+
 ### Estado de las cosechas
 - **LoL kills+objetivos**: arranca en el borde de la ventana de 180 días (no en enero: las primeras páginas
   se gastaban en partidas que el modelo ni mira). 500 en ventana con kills y objetivos, 2.227 con kills desde

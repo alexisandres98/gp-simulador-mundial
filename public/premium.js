@@ -1044,13 +1044,13 @@
   // ── BALONCESTO: navegación propia, mismo criterio que combate (la sidebar entera cambia con el deporte).
   var NAV_BB = [
     ['bbopps', 'target-arrow', 'nav_opps'], ['bbbrief', 'news', 'nav_brief'], ['bbgames', 'ball-basketball', 'nav_bb_games'],
-    ['bbteams', 'shield', 'nav_teams'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']
+    ['bbteams', 'shield', 'nav_teams'], ['bbevo', 'trophy', 'nav_evo'], ['bbsim', 'arrows-shuffle', 'nav_sim'], ['bbask', 'message-circle', 'nav_cb_ask'], ['alerts', 'bell', 'nav_alerts'], ['bbperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_BB = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   var CB_VIEWS = ['cbopps', 'cbbrief', 'cbcard', 'cbask', 'cbfights', 'cbfight', 'cbfighters', 'cbfighter', 'cbsim', 'cbfollow', 'cbperf', 'cborgs', 'cbevo'];
   // BALONCESTO (15-ago): 4º deporte, admin-only. Mismas superficies que combate — partidos, ranking, equipo,
   // jugador — con sub-pestañas por liga (NBA / WNBA / NCAA M / NCAA F) igual que UFC/PFL/Boxeo.
-  var BB_VIEWS = ['bbopps', 'bbbrief', 'bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer', 'bbsim', 'bbask', 'bbperf'];
+  var BB_VIEWS = ['bbopps', 'bbbrief', 'bbgames', 'bbgame', 'bbteams', 'bbteam', 'bbplayer', 'bbsim', 'bbask', 'bbperf', 'bbevo'];
   // Vistas COMPARTIDAS entre deportes (la cuenta es una sola: cartera, casas, alertas, invitar, admin…).
   // No pertenecen a ningún deporte → no deben arrastrarte de Combate a Fútbol: el shell se queda donde estás.
   // ── ESPORTS (16-ago): 5º deporte, admin-only desde el día uno. CUATRO JUEGOS QUE NO COMPARTEN MOTOR —
@@ -4399,8 +4399,8 @@
     if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
     var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit|esprops|esbrief|esask)(?:\/(cs2|lol|valorant|dota2))?$/i);
     if (esv) { if (esv[2]) S.es.game = esv[2]; showView(esv[1]); return; }
-    var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf)(?:\/([a-z]+))?$/);
-    if (bbv) { if (bbv[2]) { S.bb.lg = bbv[2]; S.bb.state = undefined; } showView(bbv[1]); return; }
+    var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf|bbevo)(?:\/([a-z]+))?$/);
+    if (bbv) { if (bbv[2]) { if (bbv[1] === 'bbevo') S.bb.evoLg = bbv[2]; else { S.bb.lg = bbv[2]; S.bb.state = undefined; } } showView(bbv[1]); return; }
     var cbv = h.match(/^(cbbrief|cbcard|cbask|cbfights|cbfighters|cbsim|cbfollow|cbperf|cborgs|cbevo|cb)(?:\/([a-z0-9_]+))?$/); // 'cb' AL FINAL: si va primero se come el prefijo de los demás
     if (cbv) {
       if (cbv[2] === 'ufc' || cbv[2] === 'mma' || cbv[2] === 'boxing') S.cb.org = cbv[2]; // el sufijo de org vale en TODAS las vistas
@@ -4420,7 +4420,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -8588,6 +8588,9 @@
     var gt = e.target.closest('[data-bbgtab]'); if (gt) { S.bb.gTab = gt.getAttribute('data-bbgtab'); renderBBGames(); return; }
     var of = e.target.closest('[data-bboppf]'); if (of) { S.bb.oppFilt = of.getAttribute('data-bboppf'); renderBBOpps(); return; }
     var ol = e.target.closest('[data-bbopplg]'); if (ol) { S.bb.oppLg = ol.getAttribute('data-bbopplg'); renderBBOpps(); return; }
+    var el = e.target.closest('[data-bbevolg]'); if (el) { S.bb.evoLg = el.getAttribute('data-bbevolg'); S.bb.evoSel = null; renderBBEvo(); return; }
+    var et = e.target.closest('[data-bbevotab]'); if (et) { S.bb.evoTab = et.getAttribute('data-bbevotab'); renderBBEvo(); return; }
+    var es2 = e.target.closest('[data-bbevosel]'); if (es2) { S.bb.evoSel = es2.getAttribute('data-bbevosel') || null; renderBBEvo(); return; }
     var sg = e.target.closest('[data-bbsug]'); if (sg) { bbAskGo(sg.getAttribute('data-bbsug')); return; }
     if (e.target.closest('[data-bbask]')) { var qi = $('#gx-bb-q'); if (qi) bbAskGo(qi.value); return; }
     var rd = e.target.closest('[data-bbread]'); if (rd) { bbGenRead(rd.getAttribute('data-bbread')); return; }
@@ -8629,7 +8632,137 @@
     else if (v === 'bbsim') renderBBSim();
     else if (v === 'bbask') renderBBAsk();
     else if (v === 'bbperf') renderBBPerf();
+    else if (v === 'bbevo') renderBBEvo();
     else renderBBGames();
+  }
+
+  // ── CLASIFICACIÓN, CUADRO Y EVOLUCIÓN (19-ago) ─────────────────────────────────────────────────────────
+  // Alexis pidió "bracket o evolución, lo que aplique mejor o ambas". Aplican las dos, pero no la misma en
+  // cada momento: un cuadro solo existe cuando la liga entra en playoffs, y una clasificación existe siempre
+  // y es de donde SALE el cuadro. Así que se enseña la tabla, el cuadro derivado de ella declarado como
+  // PROYECTADO, y la curva de cada equipo — que es la que contesta lo que la tabla no puede: si un equipo
+  // está mejorando o está viviendo de lo que hizo en mayo.
+  //
+  // Todo sale del registro de partidos propio. Ni una llamada nueva a nadie.
+  function bbEvoLg() { var k = (S.bb && S.bb.evoLg); return k || 'wnba'; }
+  function renderBBEvo() {
+    var lg = bbEvoLg();
+    var tabs = '<div class="gx-cb-tabs">' + BB_LEAGUES.map(function (x) {
+      return '<span class="gx-cb-tab' + (lg === x[0] ? ' on' : '') + '" data-bbevolg="' + x[0] + '">' + esc(x[1]) + '</span>';
+    }).join('') + '<span class="gx-spacer"></span></div>';
+    var d = bbGet('standings_' + lg, '/api/hoops/standings?league=' + lg, 600000);
+    if (!d) { bbShell('Clasificación', tabs + mvLoading()); return; }
+    if (d._err) { bbShell('Clasificación', tabs + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (!d.available) {
+      bbShell('Clasificación', tabs + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin clasificación para esta liga.</b>' +
+        '<span class="gx-dim">' + esc(d.why || '') + '</span></div></div>');
+      return;
+    }
+    var st = d.standings, br = d.bracket, ev = d.evolution;
+    var f = (S.bb && S.bb.evoTab) || 'tabla';
+    var chips = '<div class="gx-bb-oppfams">' + [['tabla', 'Clasificación'], ['cuadro', 'Cuadro'], ['curva', 'Evolución']].map(function (x) {
+      return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bbevotab="' + x[0] + '">' + esc(x[1]) + '</span>';
+    }).join('') + '</div>';
+
+    var body;
+    if (f === 'tabla') {
+      var grupos = st.by_conference
+        ? [['E', 'Este'], ['W', 'Oeste']].map(function (c) { return { label: c[1], rows: st.rows.filter(function (r) { return r.conf === c[0]; }) }; })
+        : [{ label: null, rows: st.rows }];
+      body = grupos.map(function (G) {
+        return '<div class="gx-panel gx-esr-panel">' +
+          '<div class="gx-ph"><span class="gx-label">' + esc(G.label || ('Temporada ' + (st.season || ''))) + '</span>' +
+          '<span class="gx-ph-extra">' + G.rows.length + ' equipos</span></div>' +
+          '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>#</th><th>Equipo</th><th class="r">G-P</th><th class="r">%</th>' +
+          '<th class="r">Dif</th><th class="r">Neto</th><th class="r">Casa</th><th class="r">Fuera</th><th class="r">Últ. 10</th><th class="r">Racha</th></tr></thead><tbody>' +
+          G.rows.map(function (r) {
+            var dentro = r.seed <= st.playoff_spots;
+            return '<tr data-bbteam="' + esc(r.id) + '" style="cursor:pointer"' + (dentro ? '' : ' class="gx-dim"') + '>' +
+              '<td class="gx-mono">' + r.seed + '</td>' +
+              '<td><div class="gx-esr-team">' + (r.logo ? '<img src="' + esc(r.logo) + '" alt="" loading="lazy">' : '') + '<b>' + esc(r.name) + '</b></div></td>' +
+              '<td class="r gx-mono">' + r.w + '-' + r.l + '</td>' +
+              '<td class="r gx-mono">' + (r.pct != null ? r.pct.toFixed(3).replace(/^0/, '') : '—') + '</td>' +
+              '<td class="r gx-mono">' + (r.diff != null ? (r.diff > 0 ? '+' : '') + r.diff : '—') + '</td>' +
+              '<td class="r gx-mono"><b class="' + (r.net > 0 ? 'gx-pos' : r.net < 0 ? 'gx-neg' : '') + '">' + (r.net != null ? (r.net > 0 ? '+' : '') + r.net : '—') + '</b></td>' +
+              '<td class="r gx-mono gx-dim">' + esc(r.home) + '</td>' +
+              '<td class="r gx-mono gx-dim">' + esc(r.away) + '</td>' +
+              '<td class="r gx-mono">' + esc(r.last10) + '</td>' +
+              '<td class="r gx-mono">' + esc(r.streak) + '</td></tr>';
+          }).join('') + '</tbody></table></div>' +
+          '<div class="gx-dim gx-es-note">Las ' + st.playoff_spots + ' primeras entran; el resto sale atenuado. «Neto» son puntos por 100 posesiones a favor menos en contra, que no premia a quien juega rápido — el diferencial por partido sí.</div></div>';
+      }).join('');
+    } else if (f === 'cuadro') {
+      body = (br.groups || []).map(function (G) {
+        return '<div class="gx-panel gx-esr-panel">' +
+          '<div class="gx-ph"><span class="gx-label">' + esc(G.label || 'Cuadro proyectado') + '</span>' +
+          '<span class="gx-ph-extra">' + G.pairs.length + ' cruces</span></div>' +
+          '<div class="gx-bb-bracket">' + G.pairs.map(function (pr) {
+            return '<div class="gx-bb-tie">' +
+              '<div class="gx-bb-side"><span class="gx-bb-seed">' + pr.hi.seed + '</span>' +
+              (pr.hi.logo ? '<img src="' + esc(pr.hi.logo) + '" alt="" loading="lazy">' : '') +
+              '<b>' + esc(pr.hi.name) + '</b><span class="gx-mono gx-dim">' + pr.hi.w + '-' + pr.hi.l + '</span></div>' +
+              '<div class="gx-bb-vs">vs</div>' +
+              '<div class="gx-bb-side"><span class="gx-bb-seed">' + pr.lo.seed + '</span>' +
+              (pr.lo.logo ? '<img src="' + esc(pr.lo.logo) + '" alt="" loading="lazy">' : '') +
+              '<b>' + esc(pr.lo.name) + '</b><span class="gx-mono gx-dim">' + pr.lo.w + '-' + pr.lo.l + '</span></div>' +
+              '</div>';
+          }).join('') + '</div>' +
+          ((G.out || []).length ? '<div class="gx-dim gx-es-note">Fuera por ahora: ' + G.out.map(function (r) { return esc(r.abbr) + ' (' + r.w + '-' + r.l + ')'; }).join(' · ') + '</div>' : '') +
+          '</div>';
+      }).join('') +
+      '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(br.why) + (br.note ? ' ' + br.note + '.' : '') + '</span></div>';
+    } else {
+      body = bbEvoChart(ev) +
+        '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>' + esc(ev.why) + '</span></div>';
+    }
+    var pie = '<div class="gx-dim gx-es-note">Registro propio: ' + st.games + ' partidos de temporada regular' +
+      (st.last_game ? ' · último cargado ' + esc(String(st.last_game).slice(0, 10)) : '') + '.</div>';
+    bbShell('Clasificación · ' + esc((BB_LEAGUES.filter(function (x) { return x[0] === lg; })[0] || [, lg])[1]), tabs + chips + body + pie);
+  }
+  // LA CURVA. Un punto por partido jugado, con el acumulado TRAS ese partido — no el partido suelto. Por eso
+  // se aplana según avanza la temporada: es una media, y una media con cuarenta partidos dentro ya no se
+  // mueve con uno. Justo por eso sirve para ver quién cambió de verdad.
+  function bbEvoChart(ev) {
+    var rows = (ev && ev.rows) || [];
+    if (!rows.length) return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidos suficientes.</b></div></div>';
+    // ARRANCA EN EL TERCER PARTIDO. Con uno solo la media acumulada es el propio partido —±30 puntos por 100
+    // posesiones es normal en un partido suelto— y esa punta se come la escala entera: las treinta y cinco
+    // jornadas siguientes quedan aplastadas contra el eje. No se oculta nada que se pueda leer: lo que se
+    // quita es ruido que impide ver el resto.
+    var DESDE = 3;
+    var maxPj = 0, lo = 0, hi = 0;
+    rows.forEach(function (r) {
+      (r.points || []).forEach(function (p) {
+        if (p.pj > maxPj) maxPj = p.pj;
+        if (p.pj >= DESDE && p.net != null) { if (p.net < lo) lo = p.net; if (p.net > hi) hi = p.net; }
+      });
+    });
+    if (!maxPj) return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin partidos suficientes.</b></div></div>';
+    var pad = Math.max(2, (hi - lo) * 0.1); lo -= pad; hi += pad;
+    var W = 640, H = 240, ML = 34, MB = 18;
+    var X = function (pj) { return ML + (W - ML - 6) * ((pj - DESDE) / Math.max(1, maxPj - DESDE)); };
+    var Y = function (v) { return 6 + (H - 6 - MB) * (1 - (v - lo) / Math.max(0.001, hi - lo)); };
+    var COL = ['#1FE3A4', '#5AA9FF', '#FFB86B', '#FF6B8A', '#B78BFF', '#4FD1C5', '#F6E05E', '#FC8181', '#9AE6B4', '#90CDF4', '#D6BCFA', '#FBD38D'];
+    var sel = (S.bb && S.bb.evoSel) || null;
+    var cero = '<line x1="' + ML + '" y1="' + Y(0) + '" x2="' + (W - 6) + '" y2="' + Y(0) + '" stroke="var(--gx-line,#26313a)" stroke-dasharray="3 3"/>' +
+      '<text x="2" y="' + (Y(0) + 3) + '" font-size="9" fill="var(--gx-dim,#7b8a94)">0</text>';
+    var lines = rows.map(function (r, i) {
+      if (sel && sel !== r.id) return '';
+      var pts = (r.points || []).filter(function (p) { return p.net != null && p.pj >= DESDE; })
+        .map(function (p) { return X(p.pj).toFixed(1) + ',' + Y(p.net).toFixed(1); }).join(' ');
+      if (!pts) return '';
+      return '<polyline points="' + pts + '" fill="none" stroke="' + COL[i % COL.length] + '" stroke-width="' + (sel ? 2.6 : 1.8) + '" stroke-linejoin="round" opacity="' + (sel ? 1 : 0.9) + '"/>';
+    }).join('');
+    var leyenda = '<div class="gx-dr-pool">' + rows.map(function (r, i) {
+      return '<span class="gx-dr-ch' + (sel === r.id ? ' on' : '') + '" data-bbevosel="' + esc(r.id) + '" style="cursor:pointer;border-left:3px solid ' + COL[i % COL.length] + '">' +
+        '<b>' + esc(r.abbr) + '</b><i>' + r.w + '-' + r.l + ' · ' + (r.net > 0 ? '+' : '') + r.net + '</i></span>';
+    }).join('') + (sel ? '<span class="gx-dr-ch" data-bbevosel="" style="cursor:pointer">ver todos</span>' : '') + '</div>';
+    return '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">' + esc(ev.metric) + '</span>' +
+      '<span class="gx-ph-extra">' + rows.length + ' equipos · ' + maxPj + ' partidos</span></div>' +
+      '<div class="gx-perf-scroll"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;min-width:420px">' + cero + lines +
+      '<text x="' + ML + '" y="' + (H - 4) + '" font-size="9" fill="var(--gx-dim,#7b8a94)">partido ' + DESDE + '</text>' +
+      '<text x="' + (W - 6) + '" y="' + (H - 4) + '" font-size="9" text-anchor="end" fill="var(--gx-dim,#7b8a94)">partido ' + maxPj + '</text>' +
+      '</svg></div>' + leyenda + '</div>';
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════════════

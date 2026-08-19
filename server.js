@@ -15885,6 +15885,20 @@ const server = http.createServer(async (req, res) => {
       // ── PICKS DEL MONITOR PRIVADO ─────────────────────────────────────────────────────────────
       // Admin-only por el gate de arriba. `monitor_only` viaja en la respuesta para que la interfaz lo
       // diga en pantalla: esto NO es el feed, es un experimento en curso.
+      // ── CLASIFICACIÓN, CUADRO Y EVOLUCIÓN (19-ago) ──────────────────────────────────────────
+      // Todo sale del registro de partidos propio: ni una llamada nueva a nadie. Va aquí arriba, junto a
+      // las rutas de mercado, porque tampoco necesita el fit del modelo — solo el dataset cargado.
+      if (p === '/api/hoops/standings') {
+        const SD = require('./basketball-engine/standings');
+        const lgS = ST.LEAGUES[lg] ? lg : 'wnba';
+        const C = ST.load(lgS);
+        if (!C) return json(res, 200, { league: lgS, available: false, why: 'el registro de partidos de esta liga no está cargado' });
+        const st = SD.standings(C);
+        if (!st || !st.rows.length) return json(res, 200, { league: lgS, available: false, why: 'no hay partidos de temporada regular en el registro de esta liga' });
+        return json(res, 200, { available: true, league: lgS, leagues: Object.keys(ST.LEAGUES),
+          standings: st, bracket: SD.bracket(C), evolution: SD.evolution(C, { top: 12 }),
+          refreshed_at: new Date().toISOString() });
+      }
       if (p === '/api/hoops/picks') {
         if (req.method === 'POST') {
           const run = url.searchParams.get('run') || 'build';

@@ -3544,6 +3544,11 @@ td .gx-calc-btn span { display: none; }
 .gx-f1-tkmk{display:flex;flex-direction:column;gap:1px;font-size:11px}
 .gx-f1-tkmk em{font-style:normal;opacity:.55;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase}
 .gx-f1-tkblock{flex:1 1 100%;font-size:10.5px;opacity:.7;line-height:1.4}
+/* fila de sujeto ÚNICO en la card de la casa: un mercado outright no enfrenta a nadie, así que no lleva
+   "vs" ni segundo retrato. La escudería va debajo del nombre, en pequeño. */
+.gx-pick-match.solo{justify-content:flex-start;gap:9px}
+.gx-pick-match.solo b{flex:0 1 auto}
+.gx-pick-subsub{font-size:11px;opacity:.6;font-weight:600}
 .gx-f1-cov{display:flex;flex-direction:column;gap:6px}
 .gx-f1-covrow{display:flex;align-items:center;gap:8px;font-size:12px}
 .gx-f1-covrow .gx-dim{font-size:10.5px}

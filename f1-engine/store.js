@@ -418,6 +418,66 @@ async function takesFor(round) {
         at: new Date().toISOString() });
     }
   }
+  // ── LA PICK, CON LA FORMA DE LA CASA (19-ago) ──────────────────────────────────────────────────────────
+  // F1 enseñaba sus tesis en una tarjeta propia. Estaba mal por el mismo motivo por el que lo estuvo en
+  // esports, baloncesto y tenis: cuando una pick de F1 se lee distinto que una de fútbol, el usuario tiene
+  // que aprender a leer dos productos. La card de la casa —familia, sujeto, "nuestra pick", por qué, cuota
+  // con casa, probabilidad, ventaja y stake— es la misma para los nueve deportes; lo único que cambia es
+  // quién es el sujeto.
+  // Solo se decora lo que TIENE PRECIO. Una llamada sin contrato detrás no es una pick y no debe vestirse
+  // como una: no tiene cuota, ni casa, ni stake que calcular, y ponerle la card de pick sería sugerir que
+  // se puede jugar. Esas se quedan en su tarjeta de llamada, que es lo que son.
+  for (const x of out) {
+    const m = x.market;
+    if (!m || !m.is_pick) continue;
+    // La escudería NO está en el catálogo de pilotos —ahí solo hay identidad: código, país, fecha de
+    // nacimiento—; está en la fila de la PARRILLA, que es donde se sabe qué coche lleva cada uno ESTA
+    // temporada. Un piloto cambia de equipo; su fecha de nacimiento no.
+    const gridRow = (b.rows || []).find((r) => r.id === x.subject_id) || {};
+    x.family = x.family;                       // PODIO | PUNTOS | DUELO — el front ya sabe rotularlas
+    x.fam_label = x.family === 'PODIO' ? 'Podio' : x.family === 'PUNTOS' ? 'Puntos' : 'Duelo de compañeros';
+    // IDENTIDAD DE LA PICK. La card la usa para ocultar y para el boleto, y la deriva de `pick_id`, `id` o
+    // del identificador del partido — que en F1 no existe: aquí no hay "partido", hay carrera y piloto. Sin
+    // esto la clave salía "|PODIO||si" para TODAS las picks de podio, así que ocultar una ocultaba las dos
+    // y el boleto no distinguía a Verstappen de Russell. El motor ya generaba una clave única por tesis
+    // (temporada|ronda|familia|piloto|lado); solo había que ponerla donde la card la busca.
+    x.pick_id = x.key;
+    x.competition_name = `F1 · ${base.race}`;
+    x.kickoff = base.date ? `${base.date}T${(b.race && b.race.time) || '13:00:00Z'}` : null;
+    // el sujeto es UNO: el piloto. La card de la casa aprendió esta forma justo para esto.
+    x.subject = x.subject;
+    x.subject_sub = gridRow.constructor || null;
+    x.f1_avas = { h: gridRow.photo || photoOf(x.subject_id), a: null };
+    x.f1_hash = `f1driver/${x.subject_id}`;
+    // redactada como un ticket, no como una etiqueta
+    x.selection_name = x.family === 'PODIO' ? `${x.subject} sube al podio`
+      : x.family === 'PUNTOS' ? `${x.subject} termina en los puntos`
+        : `${x.subject} por delante de su compañero`;
+    x.odds = m.odds;
+    x.book = m.book;
+    x.edge_pp = m.edge_pp;
+    x.model_prob = x.p;
+    x.market_prob = m.p_market;
+    // La confianza NO se inventa: sale de la ventaja medida, acotada. Es la misma escala que usan los
+    // demás deportes para que el color del punto signifique lo mismo en toda la casa.
+    x.confidence = Math.max(0, Math.min(1, (m.edge_pp || 0) / 20));
+    x.signals = { win_prob: x.p, edge_pp: m.edge_pp, regime: 'monitor',
+      data_confidence: (m.open_interest || 0) >= 1000 ? 'high' : (m.open_interest || 0) >= 300 ? 'med' : 'low',
+      pick_quality: (m.edge_pp || 0) >= 8 ? 'strong' : 'marginal' };
+    // EL PORQUÉ, en el mismo campo que lo esperan las otras ocho cards. El motor ya redactaba una frase con
+    // los números dentro; solo faltaba ponerla donde la card la busca, o el desplegable salía vacío.
+    x.why_es = x.why;
+    x.why_en = x.why;
+    // STAKE SUGERIDO: cuarto de Kelly con tope del 2 %, el mismo criterio conservador que el resto de la
+    // casa. Se calcula aquí y no en pantalla para que el número que ve el usuario salga de un solo sitio.
+    // Con cuota `o` y probabilidad `p`, Kelly = (p·o − 1) / (o − 1); si el EV es negativo, no hay stake.
+    x.stake_pct = (() => {
+      const o = m.odds, pr = x.p;
+      if (!(o > 1) || !(pr > 0)) return null;
+      const k = (pr * o - 1) / (o - 1);
+      return k > 0 ? +(100 * Math.min(0.02, k / 4)).toFixed(1) : null;
+    })();
+  }
   const rec = recordTakes(out);
   const nPick = out.filter((x) => x.kind === 'pick').length;
   return { available: true, state: b.state, race: b.race, takes: out, evidence: ev, stored: rec,

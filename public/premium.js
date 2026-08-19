@@ -1882,6 +1882,23 @@
   function hiddenIds() { try { return JSON.parse(lsGet('gp_hidden_picks') || '[]'); } catch (e) { return []; } }
   function pickKeyOf(p) { return String(p.pick_id || p.id || ((p.event_id || p.club_eid || '') + '|' + (p.family || '') + '|' + (p.line != null ? p.line : '') + '|' + (p.side || p.selection_code || ''))); }
   function pickHidden(p) { return hiddenIds().indexOf(pickKeyOf(p)) >= 0; }
+  // OCULTAR TENÍA QUE FUNCIONAR EN LOS NUEVE DEPORTES, Y FUNCIONABA EN DOS (19-ago). El botón del ojo va
+  // DENTRO de `pickCard()`, así que sale en todas las cards de la casa — pero el filtrado estaba escrito
+  // solo en el feed de fútbol y en el de combate. En baloncesto, esports, tenis y F1 el clic guardaba la
+  // preferencia y la pick seguía ahí: un botón que no hace nada es peor que un botón que no está, porque
+  // el usuario cree que el producto está roto y tiene razón.
+  // Con un solo sitio donde se decide qué se ve, añadir un deporte deja de poder olvidarlo.
+  function visiblePicks(arr) {
+    if (!Array.isArray(arr)) return [];
+    return S.showHidden ? arr : arr.filter(function (p) { return !pickHidden(p); });
+  }
+  // "hay N ocultas · mostrarlas" — el escape para que ocultar no sea un agujero sin retorno
+  function hiddenNote(arr) {
+    var n = (Array.isArray(arr) ? arr : []).filter(function (p) { return pickHidden(p); }).length;
+    if (!n) return '';
+    return '<div class="gx-dim gx-es-trunc">' + n + (n === 1 ? ' pick oculta' : ' picks ocultas') +
+      ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? 'volver a esconderlas' : 'mostrarlas') + '</a></div>';
+  }
   function toggleHidePick(k) {
     var h = hiddenIds(); var i = h.indexOf(k);
     if (i >= 0) h.splice(i, 1); else h.push(k);
@@ -2108,6 +2125,9 @@
     // convención de casa ("Seattle Storm +1.5", "Menos de 182.5 puntos"), que es como se lee un ticket.
     if (p.family === 'MONEYLINE') return t('pf_wins', { team: p.selection_name || '' });
     if (p.family === 'SPREAD' || p.family === 'TOTAL') return p.selection_name || '';
+    // F1: el motor redacta la selección con el nombre del piloto y el mercado ("Max Verstappen sube al
+    // podio"), igual que baloncesto redacta "Seattle Storm +1.5". Así se lee como un ticket.
+    if (p.family === 'PODIO' || p.family === 'PUNTOS' || p.family === 'DUELO') return p.selection_name || '';
     if (p.family === 'FIGHT') return t('pf_wins', { team: p.selection_name || '' });
     if (p.family === 'METHOD' || p.family === 'ROUNDS') return p.selection_name || '';
     if (p.family === 'CORNERS') return t(p.side === 'over' ? 'pf_over_corners' : 'pf_under_corners', { line: p.line });
@@ -2160,8 +2180,8 @@
     // Tres deportes usando el mismo mecanismo es la señal de que el mecanismo era el correcto.
     // el tenis entra por la MISMA puerta: un hash de apertura y un par de retratos. Ocho deportes con el
     // mismo mecanismo es la señal de que el mecanismo era el correcto.
-    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || null;
-    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || null;
+    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || null;
+    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || null;
     var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
     var clickable = !!openId || !!openHash;
     var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
@@ -2175,10 +2195,22 @@
       (p.signals && p.signals.regime === 'monitor' ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle">MONITOR</span>' : '') + '</span>' +
       (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') +
       (opts.welcome ? '' : '<button type="button" class="gx-pick-hide" data-hidepick="' + esc(pickKeyOf(p)) + '" title="' + esc(t(pickHidden(p) ? 'hp_unhide' : 'hp_hide')) + '">' + ic(pickHidden(p) ? 'eye' : 'eye-off') + '</button>') + '</div>' +
-      (opts.hideMatch ? '' : '<div class="gx-pick-match">' +
+      // ── UN SOLO SUJETO (19-ago) ────────────────────────────────────────────────────────────────────
+      // Ocho deportes enfrentan a dos: local contra visitante, peleador contra peleador, jugador contra
+      // jugador. F1 no. "Verstappen sube al podio" es un mercado de SUJETO ÚNICO contra el campo entero,
+      // y forzarlo a la fila de "A vs B" obliga a inventarse un rival que no existe — o a dejar el hueco
+      // con un "vs" colgando, que es peor.
+      // Así que la card aprende la forma que le faltaba, en vez de que F1 se haga una card aparte. Sirve
+      // igual para cualquier mercado de ganador absoluto (el campeón del Mundial es el mismo caso).
+      (opts.hideMatch ? '' : (p.subject
+        ? '<div class="gx-pick-match solo">' +
+          (avas && avas.h ? '<span class="gx-pick-cbava gr"><img src="' + esc(avas.h) + '" alt="" onerror="this.remove()"></span>' : '') +
+          '<b>' + esc(p.subject) + '</b>' +
+          (p.subject_sub ? '<span class="gx-pick-subsub">' + esc(p.subject_sub) + '</span>' : '') + '</div>'
+        : '<div class="gx-pick-match">' +
         (avas ? '<span class="gx-pick-cbava gr">' + (avas.h ? '<img src="' + esc(avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b>' +
-        (avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>') +
+        (avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>')) +
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
@@ -7485,7 +7517,7 @@
     var clvNote = '<div class="gx-dim gx-bb-courtnote" style="padding:0 4px 6px">El número que decide no es el acierto sino el <b>CLV</b>: si compramos sistemáticamente por encima del cierre, hay edge aunque el resultado tarde en llegar. Con CLV negativo sostenido, estas picks no se encienden.</div>';
     var act = (d.active || []).length
       ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Picks vivas</span><span class="gx-ph-extra">' + d.active.length + '</span></div><div class="gx-bb-picks">' +
-        d.active.map(bbPickCard).join('') + '</div></div>'
+        visiblePicks(d.active).map(bbPickCard).join('') + '</div>' + hiddenNote(d.active) + '</div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna pick viva ahora mismo.</b>' +
         '<span class="gx-dim">Nacen cuando el modelo supera al consenso por ' + ((d.config || {}).min_edge_pp || 3) + 'pp o más con precio disponible. El motor revisa cada 30 minutos.</span></div></div>';
     var set = (d.settled || []).length
@@ -10240,7 +10272,8 @@
 
     var abiertas = (d.open || []).length
       ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Abiertas</span><span class="gx-dim">' + d.open.length + '</span></div>' +
-        '<div class="gx-picks-feed">' + d.open.map(function (p) { return pickCard(esStoredCard(p), {}); }).join('') + '</div></div>'
+        '<div class="gx-picks-feed">' + visiblePicks(d.open.map(esStoredCard)).map(function (p) { return pickCard(p, {}); }).join('') + '</div>' +
+        hiddenNote(d.open.map(esStoredCard)) + '</div>'
       : '';
 
     esShell(t('nav_perf'), esTabs() + kpi + diag + byFam + esEvidence(g) + abiertas + lista);
@@ -11180,13 +11213,25 @@
       // porque el orden es por tamaño de desacuerdo. Quien abre Oportunidades busca lo que tiene precio.
       var conP = tk.takes.filter(function (x) { return x.market && x.market.is_pick; });
       var sinP = tk.takes.filter(function (x) { return !(x.market && x.market.is_pick); });
-      var pane = function (label, extra, arr) {
-        return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + label + '</span>' +
-          '<span class="gx-ph-extra gx-mono">' + extra + '</span></div>' +
-          '<div class="gx-f1-takes">' + arr.map(function (x) { return f1TakeCard(x, tk.evidence); }).join('') + '</div></div>';
-      };
-      body = (conP.length ? pane('Picks con precio · ' + esc(tk.race.name), conP.length, conP) : '') +
-        (sinP.length ? pane(conP.length ? 'Llamadas del modelo · sin precio' : 'Llamadas de GP · ' + esc(tk.race.name), sinP.length, sinP) : '') +
+      // LA MISMA CARD QUE LOS OTROS OCHO DEPORTES (19-ago). Lo que tiene precio se enseña con `pickCard()`
+      // —familia, sujeto, "nuestra pick", por qué, cuota con casa, probabilidad, ventaja y stake—, que es
+      // exactamente lo que ya se lee en fútbol, esports, baloncesto, combate y tenis. Un usuario no debería
+      // tener que aprender a leer dos productos según el deporte que abra.
+      // Lo que NO tiene precio se queda en la tarjeta de llamada, y no por comodidad: una llamada no tiene
+      // cuota, ni casa, ni stake que calcular. Vestirla de pick sería sugerir que se puede jugar.
+      var picks = conP.length
+        ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Picks con precio · ' + esc(tk.race.name) + '</span>' +
+          '<span class="gx-ph-extra gx-mono">' + conP.length + '</span></div></div>' +
+          '<div class="gx-picks-feed">' + visiblePicks(conP).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' +
+          hiddenNote(conP)
+        : '';
+      var llamadas = sinP.length
+        ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' +
+          (conP.length ? 'Llamadas del modelo · sin precio' : 'Llamadas de GP · ' + esc(tk.race.name)) + '</span>' +
+          '<span class="gx-ph-extra gx-mono">' + sinP.length + '</span></div>' +
+          '<div class="gx-f1-takes">' + sinP.map(function (x) { return f1TakeCard(x, tk.evidence); }).join('') + '</div></div>'
+        : '';
+      body = picks + llamadas +
         '<div class="gx-panel"><div class="gx-dim gx-es-note">' + esc(tk.doctrine || '') + '</div></div>';
     }
     var track = '';
@@ -11563,7 +11608,7 @@
       var cards = [];
       rows.forEach(function (r) { (r.picks || []).forEach(function (pk) { cards.push(pk); }); });
       cards.sort(function (a, b) { return (b.edge_pp || 0) - (a.edge_pp || 0); });
-      body = '<div class="gx-picks-feed">' + cards.map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>';
+      body = '<div class="gx-picks-feed">' + visiblePicks(cards).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' + hiddenNote(cards);
     }
     tenShell(t('nav_opps'), strip + body +
       '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc(clampFrase(d.doctrine || '', 420)) + '</span></div>');
@@ -15665,10 +15710,13 @@
           // P9/P11 (13-ago): controles del board — ocultar pick, refrescar, auto on/off, ver ocultas
           // esports reusa la card entera, así que también reusa su botón de ocultar: sin este repintado el
           // clic guardaba la preferencia y no pasaba nada en pantalla, que se lee como un botón roto.
-          var hp = e.target.closest('[data-hidepick]'); if (hp) { e.preventDefault(); e.stopPropagation(); toggleHidePick(hp.getAttribute('data-hidepick')); if (S.sport === 'esports') { showView(S.view); return; } var b9 = $('#gx-board'); if (b9 && S.oppSub === 'picks') picksFeed(b9); return; }
+          // REPINTAR DONDE SEA QUE ESTÉ LA CARD (19-ago). Esto solo sabía repintar fútbol y esports, así que
+          // en los demás deportes el clic guardaba la preferencia y la pick seguía en pantalla — se lee como
+          // un botón roto, que es peor que no tenerlo. Ahora repinta el deporte que esté abierto.
+          var hp = e.target.closest('[data-hidepick]'); if (hp) { e.preventDefault(); e.stopPropagation(); toggleHidePick(hp.getAttribute('data-hidepick')); if (S.sport && S.sport !== 'futbol') { showView(S.view); return; } var b9 = $('#gx-board'); if (b9 && S.oppSub === 'picks') picksFeed(b9); return; }
           var fr = e.target.closest('[data-feedrefresh]'); if (fr) { e.preventDefault(); e.stopPropagation(); S.feedNew = 0; feedRefreshNow(); return; }
           var fa = e.target.closest('[data-feedauto]'); if (fa) { e.preventDefault(); e.stopPropagation(); lsSet('gp_feed_auto', feedAutoOn() ? '0' : null); var b10 = $('#gx-board'); if (b10 && S.oppSub === 'picks') picksFeed(b10); return; }
-          var sh = e.target.closest('[data-showhidden]'); if (sh) { e.preventDefault(); e.stopPropagation(); S.showHidden = !S.showHidden; if (S.sport === 'esports') { showView(S.view); return; } var b11 = $('#gx-board'); if (b11 && S.oppSub === 'picks') picksFeed(b11); return; }
+          var sh = e.target.closest('[data-showhidden]'); if (sh) { e.preventDefault(); e.stopPropagation(); S.showHidden = !S.showHidden; if (S.sport && S.sport !== 'futbol') { showView(S.view); return; } var b11 = $('#gx-board'); if (b11 && S.oppSub === 'picks') picksFeed(b11); return; }
           var oh = e.target.closest('[data-openhash]'); if (oh) { e.preventDefault(); setHash(oh.getAttribute('data-openhash')); return; }
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }

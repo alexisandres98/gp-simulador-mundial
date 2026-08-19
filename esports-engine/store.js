@@ -1013,6 +1013,11 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
   }
 
   const items = [];
+  const supArbs = [], supMids = [], supDrops = [];
+  // el archivo de cierres guarda la APERTURA de cada evento (`open_rows`, congelada en la primera pasada).
+  // Se lee UNA vez para toda la pizarra, no una por partido.
+  const abiertas = rd(`closes-${game}.json`);
+  const evLite = (e) => ({ id: e.id, home: e.home, away: e.away, competition: e.competition, start_at: e.start_at });
   for (const ev of use) {
     const mk = mkts.get(ev.id) || null;
     const bo = boOf(mk, E.GAME.default_bo, ev);
@@ -1029,6 +1034,18 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     attachTeamCards(game, model, ev);
     const edges = model ? evaluateAll({ game, model, mk, ev, bo, sample }) : null;
     const arbs = mk ? BK.arbitrages(mk.markets || []) : [];
+    // LAS TRES SUPERFICIES QUE NO PASAN POR EL MODELO (19-ago, pedido de Alexis: "agrega arbitraje, caídas y
+    // middles"). El arbitraje ya se calculaba y solo vivía dentro de la ficha del partido; los middles y las
+    // caídas no existían en esports. Van juntas a propósito: las tres salen de precios entre casas, así que
+    // si el modelo estuviera entero equivocado las tres seguirían siendo válidas — y son lo único de lo que
+    // se puede decir eso. Las caídas necesitan un ANTES, y el antes es la apertura que ya guarda el archivo
+    // de cierres desde el 17-ago: la primera lectura de cada evento queda congelada ahí.
+    const mids = mk ? BK.middles(mk.markets || []) : [];
+    const ab = abiertas && abiertas.closes && abiertas.closes[ev.id];
+    const caidas = (mk && ab && ab.open_rows) ? BK.dropping(ab.open_rows, mk.markets || []) : [];
+    for (const x of arbs) supArbs.push({ ...x, event: evLite(ev) });
+    for (const x of mids) supMids.push({ ...x, event: evLite(ev) });
+    for (const x of caidas) supDrops.push({ ...x, event: evLite(ev), since: ab.open_at || null, reads: ab.moves || null });
     items.push({
       event: ev, bo,
       p_home: model && model.probability ? model.probability.p : null,
@@ -1071,6 +1088,25 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
     sources: (s && s.sources) || [],
     books: (s && s.books) || 0,
     arbitrages: items.reduce((a, x) => a + x.arbitrages, 0),
+    // las tres superficies de mercado, ya planas y con su partido dentro, listas para pintarse como pestañas
+    surfaces: {
+      arbs: supArbs.sort((a, b) => b.profit_pct - a.profit_pct).slice(0, 40),
+      middles: supMids.sort((a, b) => a.cost_pct - b.cost_pct).slice(0, 40),
+      dropping: supDrops.slice(0, 40),
+      counts: { arbs: supArbs.length, middles: supMids.length, dropping: supDrops.length },
+      // POR QUÉ PUEDE VENIR VACÍO, contado en vez de callado. Las tres necesitan más de una casa cotizando el
+      // MISMO mercado, y las caídas necesitan además una lectura anterior guardada. Un cero sin motivo no se
+      // puede revisar el lunes.
+      why: (() => {
+        const varias = items.filter((x) => (x.book_list || []).length > 1).length;
+        const conApertura = use.filter((e) => abiertas && abiertas.closes && abiertas.closes[e.id] && abiertas.closes[e.id].open_rows).length;
+        if (!items.length) return 'no hay partidos en la agenda de este juego ahora mismo';
+        if (!varias) return `los ${items.length} partidos de la agenda los cotiza una sola casa: sin dos casas no hay arbitraje ni middle posible`;
+        if (!conApertura) return `hay ${varias} partidos con varias casas, pero ninguno tiene todavía una lectura de apertura guardada: las caídas necesitan un antes`;
+        return null;
+      })(),
+      diag: { partidos: items.length, con_varias_casas: items.filter((x) => (x.book_list || []).length > 1).length },
+    },
     doctrine: PICK_DOCTRINE,
     at: new Date().toISOString(),
   };

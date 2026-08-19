@@ -1864,6 +1864,9 @@ td .gx-calc-btn span { display: none; }
 /* ── BALONCESTO · agenda, oportunidades, brief, rendimiento, ask y ficha de equipo (15-ago) ────────── */
 .gx-bb-subtabs{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px}
 .gx-bb-oppfams{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+/* esports: la misma fila de chips de familia. Cuatro chips no caben en 360px sin envolver, y en la
+   cabecera van al lado del segmento de reloj, así que se deja envolver en vez de recortar. */
+.gx-es-oppfams{display:flex;gap:8px;flex-wrap:wrap}
 .gx-bb-subtab{position:relative;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--gx-line);background:#0f1a16;color:#9fb3ab;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s}
 .gx-bb-subtab:hover{border-color:#2de6a355;color:#d7e7e0}
 .gx-bb-subtab.on{background:linear-gradient(180deg,#1c3a2f,#142a22);border-color:#2de6a3;color:#eafff7}

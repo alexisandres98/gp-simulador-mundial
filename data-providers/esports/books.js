@@ -311,11 +311,128 @@ function arbitrages(rows) {
     .sort((a, b) => b.profit_pct - a.profit_pct);
 }
 
+// ── MIDDLES ─────────────────────────────────────────────────────────────────────────────────────────────
+// Un middle no es un arbitraje: se paga un coste pequeño y a cambio hay una franja de resultados donde ganan
+// LAS DOS patas. Con totales es directo —Over 24,5 en una casa y Under 26,5 en otra ganan las dos si el mapa
+// acaba en 25 o 26 rondas—; con hándicap hay que tener cuidado con el signo, y ahí es donde se equivoca todo
+// el mundo. En esta casa `line` está normalizada al HÁNDICAP DEL LOCAL: el local con hándicap Lh cubre si el
+// margen supera −Lh, y la pata visitante de un mercado cuyo hándicap local es La cubre si el margen es menor
+// que −La. Las dos ganan en (−Lh, −La), o sea hueco Lh − La. Sumar los dos números en vez de restarlos
+// publica pares donde las dos patas PIERDEN juntas, que es el reverso exacto de un middle.
+//
+// EL HUECO MÍNIMO DEPENDE DE LA UNIDAD, y por eso no hay una constante única. Un hueco de 1 en mapas es una
+// serie entera; un hueco de 1 en rondas de CS2 es ruido, porque media ronda de diferencia no existe y las
+// líneas se mueven de dos en dos. Cada familia declara el suyo.
+const MIDDLE_GAP = { TOTAL_MAPAS: 1, HANDICAP: 1, RONDAS: 2, RONDAS_EQUIPO: 2, RONDAS_HANDICAP: 2,
+  KILLS: 2, KILLS_EQUIPO: 2, KILLS_HANDICAP: 2 };
+const MIDDLE_LOW = { HANDICAP: 'home', RONDAS_HANDICAP: 'home', KILLS_HANDICAP: 'home' };  // el resto, over/under
+
+function middles(rows, { maxCostPct = 6 } = {}) {
+  // se agrupa por TODO menos la línea: la línea es justo lo que tiene que variar entre las dos patas
+  const groups = new Map();
+  for (const r of rows || []) {
+    if (!(r.odds > 1) || r.line == null || !MIDDLE_GAP[r.family]) continue;
+    const k = [r.family, r.map == null ? '' : r.map, r.team || '', r.period || ''].join('|');
+    if (!groups.has(k)) groups.set(k, { family: r.family, family_label: r.family_label, map: r.map, team: r.team, period: r.period, rows: [] });
+    groups.get(k).rows.push(r);
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    const esHcp = !!MIDDLE_LOW[g.family];
+    const ladoBajo = MIDDLE_LOW[g.family] || 'over';
+    const ladoAlto = esHcp ? 'away' : 'under';
+    // mejor precio de cada lado EN CADA LÍNEA: un middle se arma con las dos mejores puntas, no con cualquiera
+    const mejorPorLinea = (side) => {
+      const o = new Map();
+      for (const r of g.rows) {
+        if (r.side !== side) continue;
+        const prev = o.get(r.line);
+        if (!prev || r.odds > prev.odds) o.set(r.line, { line: r.line, odds: r.odds, book: r.book });
+      }
+      return [...o.values()];
+    };
+    const bajos = mejorPorLinea(ladoBajo), altos = mejorPorLinea(ladoAlto);
+    for (const a of bajos) for (const b of altos) {
+      if (a.book === b.book) continue;                       // el middle vive ENTRE casas, como el arbitraje
+      const hueco = esHcp ? a.line - b.line : b.line - a.line;
+      if (!(hueco >= MIDDLE_GAP[g.family])) continue;
+      const coste = (1 / a.odds + 1 / b.odds - 1) * 100;
+      if (coste > maxCostPct) continue;
+      const zLo = esHcp ? -a.line : a.line, zHi = esHcp ? -b.line : b.line;
+      out.push({
+        family: g.family, family_label: g.family_label, map: g.map, team: g.team, period: g.period,
+        low: { line: a.line, odds: r2(a.odds), book: a.book, side: ladoBajo },
+        high: { line: b.line, odds: r2(b.odds), book: b.book, side: ladoAlto },
+        gap: +hueco.toFixed(1), cost_pct: +coste.toFixed(2),
+        // la franja donde ganan las dos, en la unidad de la familia
+        zone: esHcp
+          ? `margen del local entre ${Math.ceil(Math.min(zLo, zHi))} y ${Math.floor(Math.max(zLo, zHi))}`
+          : `entre ${Math.ceil(zLo)} y ${Math.floor(zHi)}`,
+        note: 'middle: se pagan las dos patas y las dos ganan si el resultado cae en la franja. El coste es lo que se pierde si no cae.',
+      });
+    }
+  }
+  out.sort((a, b) => (a.cost_pct - b.cost_pct) || (b.gap - a.gap));
+  return out;
+}
+
+// ── CAÍDAS DE CUOTA ─────────────────────────────────────────────────────────────────────────────────────
+// La lectura de la casa de referencia AHORA contra la de la primera vez que se vio el mercado. Si el precio
+// cayó, entró dinero informado y la línea se movió; las casas que todavía no la movieron son donde queda el
+// precio viejo. Esto NO pasa por el modelo: si el modelo estuviera entero equivocado, la señal seguiría en pie.
+//
+// Se mide SOLO contra la casa afilada, y esto no es un detalle. Una casa blanda mueve su precio por su propio
+// riesgo —porque le entró un cliente grande, o porque copió tarde— y su caída no dice nada del partido. La
+// caída que importa es la de quien no limita cuentas ganadoras, porque esa solo se mueve cuando el precio
+// estaba mal.
+function dropping(openRows, nowRows, { minDropPct = 5, sharpBooks = null } = {}) {
+  const afiladas = new Set(sharpBooks || ADAPTERS.filter((a) => a.sharp).map((a) => a.key));
+  const mejor = (rows, filtro) => {
+    const m = new Map();
+    for (const r of rows || []) {
+      if (!(r.odds > 1) || !filtro(r.book)) continue;
+      const k = keyOf(r) + '|' + r.side;
+      const prev = m.get(k);
+      if (!prev || r.odds > prev.odds) m.set(k, r);
+    }
+    return m;
+  };
+  const antes = mejor(openRows, (b) => afiladas.has(b));
+  const ahora = mejor(nowRows, (b) => afiladas.has(b));
+  const blandas = mejor(nowRows, (b) => !afiladas.has(b));
+  const out = [];
+  for (const [k, a] of ahora) {
+    const b0 = antes.get(k);
+    if (!b0) continue;
+    const caida = 100 * (1 - a.odds / b0.odds);
+    if (!(caida >= minDropPct)) continue;
+    // las rezagadas: casas blandas que TODAVÍA pagan el precio de antes (con un 1,5 % de tolerancia, que es
+    // el ruido normal entre casas). Son el único motivo por el que una caída se publica en vez de anotarse.
+    const rezagadas = (nowRows || [])
+      .filter((r) => !afiladas.has(r.book) && r.odds >= b0.odds * 0.985 && keyOf(r) + '|' + r.side === k)
+      .sort((x, y) => y.odds - x.odds).slice(0, 5)
+      .map((r) => ({ book: r.book, odds: r2(r.odds) }));
+    out.push({
+      family: a.family, family_label: a.family_label, map: a.map, team: a.team, line: a.line, side: a.side,
+      sharp_book: a.book, sharp_before: r2(b0.odds), sharp_now: r2(a.odds),
+      drop_pct: +caida.toFixed(1),
+      move_pp: +(100 * ((1 / a.odds) - (1 / b0.odds))).toFixed(1),
+      stale: rezagadas,
+      note: rezagadas.length
+        ? 'la casa de referencia bajó el precio y estas todavía no lo movieron: ahí queda el precio viejo.'
+        : 'la casa de referencia bajó el precio y el resto ya lo siguió: queda como señal de movimiento, no como precio aprovechable.',
+    });
+    void blandas;
+  }
+  out.sort((a, b) => (b.stale.length - a.stale.length) || (b.drop_pct - a.drop_pct));
+  return out;
+}
+
 const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
 module.exports = {
-  ADAPTERS, enabled, slate, markets, crossBook, arbitrages, teamKey, norm, canonicalId,
+  ADAPTERS, enabled, slate, markets, crossBook, arbitrages, middles, dropping, teamKey, norm, canonicalId,
   BOOKS_PROBED: BOV.BOOKS_PROBED,
   RESULTS_UNAVAILABLE: {
     available: false,

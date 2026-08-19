@@ -8743,7 +8743,7 @@
       '<div class="gx-seg">' + [['all', t('all')], ['live', t('live_f')], ['up', t('upcoming_f')]].map(function (x) {
         return '<button data-esoppfilt="' + x[0] + '" class="' + (oppFilt === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
       }).join('') + '</div>' +
-      '<div style="display:flex;gap:8px">' + [['picks', t('picks')], ['arb', t('arb')]].map(function (x) {
+      '<div class="gx-es-oppfams">' + [['picks', t('picks')], ['arb', t('arb')], ['drop', 'Caídas'], ['mid', 'Middles']].map(function (x) {
         return '<span class="gx-prodchip' + (oppSub === x[0] ? ' on' : '') + '" data-esoppsub="' + x[0] + '">' + esc(x[1]) + '</span>';
       }).join('') + '</div></div>';
     var hero = '<div class="gx-es-hero"><div><b>' + esc(d.label) + '</b>' +
@@ -8759,6 +8759,8 @@
       inner = esArbs(d, { filter: inWindow }) ||
         '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('opp_arb_na')) + '</b>' +
         '<span class="gx-dim">' + esc(t('opp_arb_note')) + '</span></div></div>';
+    } else if (oppSub === 'drop' || oppSub === 'mid') {
+      inner = esSurface(d, oppSub, inWindow);
     } else {
       var shown = rows.filter(function (r) { return inWindow((r.it.event || {}).start_at); });
       var body;
@@ -8854,6 +8856,91 @@
     return esPanel('Arbitraje puro', '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
       cards +
       '<div class="gx-dim gx-es-note">Los límites de apuesta y la velocidad a la que la casa mueve el precio mandan: un arbitraje sobre el papel no es un arbitraje ejecutado.</div>');
+  }
+
+  // ── CAÍDAS Y MIDDLES: LAS OTRAS DOS QUE NO PASAN POR EL MODELO ─────────────────────────────────────────
+  // Van con el arbitraje y no con las picks, y el motivo es el mismo que hace que el arbitraje vaya primero:
+  // las tres salen de que las casas discrepen entre ellas, no de que GP tenga razón. Si el modelo estuviera
+  // entero equivocado, estas tres pestañas seguirían siendo válidas.
+  //
+  // Se pintan con las MISMAS cards que baloncesto —`gx-mcard` para la caída, `gx-arb-card` de dos patas para
+  // el middle— porque el usuario ya aprendió a leerlas allí. Lo único propio de este deporte es cómo se dice
+  // el lado: aquí una línea puede referirse a un mapa concreto y a un equipo concreto, y callarlo convierte
+  // "Más de 26.5" en un número sin unidad.
+  var ES_HCP_F = { HANDICAP: 1, RONDAS_HANDICAP: 1, KILLS_HANDICAP: 1 };
+  var ES_UNIT = { RONDAS: 'rondas', RONDAS_EQUIPO: 'rondas', KILLS: 'kills', KILLS_EQUIPO: 'kills', TOTAL_MAPAS: 'mapas' };
+  function esLadoTxt(r, side, line, ev) {
+    var eq = function (w) { return w === 'home' ? ((ev.home && ev.home.name) || 'Local') : ((ev.away && ev.away.name) || 'Visitante'); };
+    if (ES_HCP_F[r.family]) {
+      // la línea viaja SIEMPRE referida al local: el lado visitante es el signo contrario, y enseñarla tal
+      // cual mandaría al lado opuesto del mercado
+      var L = side === 'away' ? -line : line;
+      return eq(side) + ' ' + (L > 0 ? '+' : '') + L;
+    }
+    if (side === 'over' || side === 'under') {
+      var quien = r.team ? ' de ' + eq(r.team) : '';
+      return (side === 'over' ? 'Más de ' : 'Menos de ') + line + ' ' + (ES_UNIT[r.family] || '') + quien;
+    }
+    return eq(side);
+  }
+  function esCtx(r, ev) {
+    return esc(r.family_label || r.family) + (r.map ? ' · mapa ' + r.map : '') + ' · ' + esc(fmtDateTime(ev.start_at));
+  }
+  function esSurface(d, cual, inWindow) {
+    var sur = d.surfaces || {};
+    var rows = (cual === 'drop' ? sur.dropping : sur.middles) || [];
+    rows = rows.filter(function (r) { return inWindow((r.event || {}).start_at); });
+    if (!rows.length) {
+      var por = sur.why || (cual === 'drop'
+        ? 'No hay ninguna línea que la casa de referencia haya movido lo bastante desde que la vimos por primera vez.'
+        : 'Ninguna pareja de líneas deja hueco suficiente a un coste razonable ahora mismo.');
+      return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>' + esc(cual === 'drop' ? 'Sin caídas ahora mismo' : 'Sin middles baratos ahora') + '</b>' +
+        '<span class="gx-dim">' + esc(por) + '</span></div></div>';
+    }
+    var cards = rows.slice(0, 24).map(function (r) {
+      var ev = r.event || {};
+      if (cual === 'drop') {
+        var stale = (r.stale || []).map(function (x) {
+          return '<span class="gx-val-bk">' + esc(prettyBook(x.book) || x.book) + ' <b>' + Number(x.odds).toFixed(2) + '</b></span>';
+        }).join('');
+        return '<div class="gx-mcard gx-pick-clickable" data-esmatch="' + esc(ev.id) + '">' +
+          '<div class="gx-mcard-top"><span class="gx-pick-fam">' + esc(r.family_label || r.family) + '</span>' +
+          '<span class="gx-dim" style="font-size:10.5px">' + esCtx(r, ev) + '</span><span class="gx-spacer"></span>' +
+          '<span class="gx-edge gx-pos">−' + r.drop_pct + '%</span></div>' +
+          '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames">' +
+          '<b>' + esc((ev.home && ev.home.name) || '') + ' vs ' + esc((ev.away && ev.away.name) || '') + '</b>' +
+          '<span>' + esc(esLadoTxt(r, r.side, r.line, ev)) + '</span></div></div>' +
+          '<div class="gx-mcard-foot"><span class="gx-mono gx-dim"><s>' + Number(r.sharp_before).toFixed(2) + '</s> → ' +
+          '<b style="color:var(--gx-text,#EDF2F4)">' + Number(r.sharp_now).toFixed(2) + '</b> · ' + esc(prettyBook(r.sharp_book) || r.sharp_book) + '</span>' +
+          '<span class="gx-mono gx-pos">+' + r.move_pp + 'pp</span></div>' +
+          (stale ? '<div class="gx-val-line"><span class="gx-val-bk fair">rezagadas</span>' + stale + '</div>'
+            : '<div class="gx-dim" style="font-size:10.5px;margin-top:5px">El resto ya siguió el movimiento: queda como señal, no como precio aprovechable.</div>') +
+          '</div>';
+      }
+      return '<div class="gx-arb-card gx-mcard gx-pick-clickable" data-esmatch="' + esc(ev.id) + '">' +
+        '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(r.family_label || r.family) + '</span>' +
+        '<span class="gx-pick-time">' + esCtx(r, ev) + '</span></div>' +
+        '<div class="gx-arb-match"><b>' + esc((ev.home && ev.home.name) || '') + ' vs ' + esc((ev.away && ev.away.name) || '') + '</b></div>' +
+        '<div class="gx-arb-legs">' +
+        '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(esLadoTxt(r, r.low.side, r.low.line, ev)) + '</span>' +
+        '<span class="gx-arb-leg-odds gx-mono">' + Number(r.low.odds).toFixed(2) + '</span>' +
+        '<span class="gx-arb-leg-book">' + esc(prettyBook(r.low.book) || r.low.book) + '</span></div>' +
+        '<div class="gx-arb-leg"><span class="gx-arb-leg-sel">' + esc(esLadoTxt(r, r.high.side, r.high.line, ev)) + '</span>' +
+        '<span class="gx-arb-leg-odds gx-mono">' + Number(r.high.odds).toFixed(2) + '</span>' +
+        '<span class="gx-arb-leg-book">' + esc(prettyBook(r.high.book) || r.high.book) + '</span></div>' +
+        '</div>' +
+        '<div class="gx-pick-foot"><span class="gx-mono ' + (r.cost_pct <= 0 ? 'gx-pos' : 'gx-dim') + '">costo ' +
+        (r.cost_pct >= 0 ? '' : '+') + Math.abs(r.cost_pct) + '%' + (r.cost_pct <= 0 ? ' · surebet' : '') + '</span>' +
+        '<span class="gx-mono gx-pos">zona doble ' + esc(r.zone) + '</span></div>' +
+        '</div>';
+    }).join('');
+    var nota = cual === 'drop'
+      ? 'La casa de referencia baja el precio cuando entra dinero informado. Lo aprovechable son las rezagadas: las casas que todavía no lo movieron.'
+      : 'En un middle se pagan las dos patas y las dos cobran si el resultado cae en la franja. El costo es lo que se pierde si no cae.';
+    return esPanel(cual === 'drop' ? 'Caídas de cuota' : 'Middles entre casas',
+      '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
+      cards + '<div class="gx-dim gx-es-note">' + esc(nota) + '</div>');
   }
 
   // ── POR QUÉ NO HAY MÁS ─────────────────────────────────────────────────────────────────────────────────

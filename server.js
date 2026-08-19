@@ -87,6 +87,41 @@ const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'db.json');
 // deploy a 114MB → builds de 17min). Se sirven del disco persistente <dir(DB_FILE)>/clubs/ si están ahí;
 // fallback al repo (data/clubs/) para dev y para los archivos chicos (ratings.json queda versionado).
 const CLUB_DATA_DISK = path.join(path.dirname(DB_FILE), 'clubs');
+// ── EL MARCADOR FINAL SE GUARDA EN DISCO (19-ago) ───────────────────────────────────────────────────────
+// EL BUG QUE ESTO ARREGLA, medido en producción: 24 de las últimas 30 picks de fútbol liquidadas salieron
+// VOID (80 %, contra un 10,75 % histórico). No era el modelo: era que el marcador desaparecía.
+//
+// `db.clubResults` es una caché VIVA y se poda a las 3 h de que un partido acaba. El liquidador de 72 h
+// busca el marcador ahí y, si no está, en `results-<liga>.json` del disco — que estaba VACÍO en 39 de 45
+// ligas (mediana 30 bytes, o sea `{"rows":[]}`), porque ese fichero lo escribe un SCRIPT MANUAL que alguien
+// corre desde su portátil y sube a prod. El servidor no lo ejecutaba nunca. Resultado: si una pick no se
+// liquidaba en esas 3 horas —porque las tarjetas o los córners aún no estaban, o porque la pick se creó
+// después—, el marcador se borraba y a las 72 h se anulaba "honestamente" un partido que sí se jugó.
+//
+// La liquidación de un producto en vivo no puede depender de que alguien se acuerde. Cada final que el
+// servidor ya ve —y los ve todos, por ESPN y por TSA— se persiste aquí. El fichero se cura solo.
+function persistClubFinal(lgKey, p) {
+  if (!lgKey || !p || p.status !== 'final' || p.hg == null || p.ag == null) return false;
+  try {
+    const f = clubDataFile(`results-${lgKey}.json`);
+    let doc = { league: lgKey, rows: [] };
+    try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); if (j && Array.isArray(j.rows)) doc = j; } catch { /* nuevo */ }
+    const id = `live-${lgKey}-${p.home_id}-${p.away_id}-${new Date(p.at || Date.now()).toISOString().slice(0, 10)}`;
+    // dedup por el par de equipos dentro de ±2 días: el mismo partido puede llegar por ESPN y por TSA
+    const ko = +new Date(p.at || Date.now());
+    const dup = doc.rows.some((r) => String(r.home_id) === String(p.home_id) && String(r.away_id) === String(p.away_id)
+      && Math.abs(+new Date(r.date || 0) - ko) < 2 * 86400e3);
+    if (dup) return false;
+    doc.rows.push({ id, date: new Date(p.at || Date.now()).toISOString(), home_id: p.home_id, away_id: p.away_id,
+      hg: p.hg, ag: p.ag, winner: p.winner || (p.hg > p.ag ? p.home_id : p.ag > p.hg ? p.away_id : null), src: 'live' });
+    const tmp = f + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(doc)); fs.renameSync(tmp, f);
+    // la caché en memoria del fichero tiene que enterarse, o el liquidador seguirá viendo el vacío
+    try { if (global._clubsResults) delete global._clubsResults[lgKey]; } catch { /* */ }
+    try { if (global._askFormMemo) delete global._askFormMemo[lgKey]; } catch { /* */ }
+    return true;
+  } catch { return false; }
+}
 function clubDataFile(name) {
   try { const d = path.join(CLUB_DATA_DISK, name); if (fs.existsSync(d)) return d; } catch { /* */ }
   return path.join(__dirname, 'data', 'clubs', name);
@@ -5228,7 +5263,7 @@ async function clubScoresSync({ force = false } = {}) {
         if (!same) {
           // F0.4: al TRANSICIONAR a final, actualizar el Elo dinámico (una sola vez por partido).
           const wasFinal = prev && prev.status === 'final';
-          if (payload.status === 'final' && !wasFinal && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
+          if (payload.status === 'final' && !wasFinal && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; persistClubFinal(lgKey, payload); }
           else if (prev && prev.elo_applied) payload.elo_applied = true;
           db.clubResults[key] = payload; out.changed++; anyChange = true; console.log(`[clubs-score] ${lgKey} ${H.team.displayName} ${hg}-${ag} ${A.team.displayName} ${payload.status}${payload.status === 'live' ? ` ${minute}'` : ''}`);
         }
@@ -5343,7 +5378,7 @@ async function clubResultsTsaSync({ force = false, mode = 'full' } = {}) {
         const same = prev && prev.status === payload.status && prev.hg === hg && prev.ag === ag && prev.minute === payload.minute;
         if (same) continue;
         db.clubResults[key] = payload; anyChange = true;
-        if (fin) { out.added++; anyFinal = true; } else out.live++;
+        if (fin) { out.added++; anyFinal = true; persistClubFinal(lgKey, payload); } else out.live++;
         console.log(`[clubs-score:tsa] ${lgKey} ${m.home_team.name} ${hg}-${ag} ${m.away_team.name} ${payload.status}${payload.status === 'live' ? ` ~${payload.minute}'` : ''}`);
       }
       await new Promise(r2 => setTimeout(r2, 1200)); // rate limit compartido de TSA

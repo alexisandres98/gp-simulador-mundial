@@ -10850,13 +10850,16 @@ if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
     memMark('esports:picks');
     return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.recordPicks(g).catch(() => { })), Promise.resolve())
       .then(() => { memMark('esports:cierres'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.snapshot(g).catch(() => { })), Promise.resolve()); })
-      .then(() => { memMark('esports:liquidar'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.settlePicks(g).catch(() => { })), Promise.resolve()); })
-      // ANTES de liquidar nada más: retirar las picks nacidas de un partido con los lados cruzados. Su
-      // resultado no mediría al modelo, mediría al fallo, y el registro es lo único que aquí manda.
+      // RETIRAR ANTES DE LIQUIDAR, y el orden aquí es correctitud, no estética. `retireCrossedPicks` solo
+      // toca picks en ACTIVE; si la liquidación va primero, la pasada en la que el partido termina le pone
+      // WIN o LOSS y la retirada ya no la encuentra. Justo las que más importan —las de un partido que
+      // acaba de jugarse— se quedarían dentro del registro con un resultado real que no mide al modelo,
+      // mide al fallo. Puesto al revés, esta red no habría atrapado nada.
       .then(() => ES.GAME_ORDER.reduce((pr, g) => pr.then(() => {
         const r = ES.retireCrossedPicks(g);
         if (r && r.retired) console.log('[esports] picks retiradas por lados cruzados:', JSON.stringify(r));
       }).catch(() => { }), Promise.resolve()))
+      .then(() => { memMark('esports:liquidar'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.settlePicks(g).catch(() => { })), Promise.resolve()); })
       .then(() => memMark('reposo'));
   };
   setTimeout(esChain, 320 * 1000);

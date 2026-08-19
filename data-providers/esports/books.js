@@ -223,13 +223,56 @@ async function markets(game, mergedEvent, { only = null } = {}) {
     } catch (e) { return { book: s.book, rows: [], at: null, error: String((e && e.message) || e) }; }
   }));
 
+  // ── SEGUNDA PASADA: LA ORIENTACIÓN SE DECIDE POR PRECIO, PORQUE POR NOMBRE YA FALLÓ ──────────────────
+  // El 19-ago apareció un "arbitraje" del +269 % en CS2. No era una casa despistada: dos casas tenían
+  // invertidos el local y el visitante y la comprobación por nombre —comparar el nombre del local de la casa
+  // con el del evento fundido— no lo detectó. Con los lados cruzados, `crossBook` funde el local de una con
+  // el visitante de la otra: las dos filas son EL MISMO LADO, sumar sus mejores precios da un número
+  // precioso y falso, y —mucho peor que el arbitraje— el CONSENSO que ancla al modelo sale de la mediana de
+  // las dos orientaciones, o sea 50/50 en un partido de 94/6. Eso no rompe nada visiblemente: fabrica
+  // ventaja enorme en todas las familias y la pick sale con toda naturalidad.
+  //
+  // El nombre es un dato del proveedor y puede venir mal, tarde o distinto. El PRECIO no miente: si tras
+  // darle la vuelta a una casa su favorito coincide con el de las demás y antes no, es que estaba al revés.
+  // Se toma como referencia la casa con más mercados de dos salidas (a igualdad, la afilada) y se corrige a
+  // las demás contra ella. Es una corrección barata y sin red: solo cambia algo cuando el desacuerdo es
+  // mayor dándole la vuelta que sin dársela.
+  const pHomeDe = (rows0) => {
+    const m = new Map();
+    for (const r of rows0 || []) {
+      if (!(r.odds > 1) || (r.side !== 'home' && r.side !== 'away')) continue;
+      const k = keyOf(r);
+      if (!m.has(k)) m.set(k, {});
+      const c = m.get(k);
+      if (!c[r.side] || r.odds > c[r.side]) c[r.side] = r.odds;
+    }
+    const ps = [];
+    for (const c of m.values()) { if (!(c.home > 1) || !(c.away > 1)) continue; const ih = 1 / c.home, ia = 1 / c.away; ps.push(ih / (ih + ia)); }
+    return ps.length ? { p: ps.reduce((a, b) => a + b, 0) / ps.length, n: ps.length } : null;
+  };
+  const conP = got.map((g) => ({ g, ph: pHomeDe(g.rows) })).filter((x) => x.ph);
+  if (conP.length >= 2) {
+    const esAfilada = (bk) => ((ADAPTERS.find((z) => z.key === bk) || {}).sharp ? 1 : 0);
+    conP.sort((a, b) => (b.ph.n - a.ph.n) || (esAfilada(b.g.book) - esAfilada(a.g.book)));
+    const ref = conP[0];
+    for (const x of conP.slice(1)) {
+      const dir = Math.abs(x.ph.p - ref.ph.p), inv = Math.abs((1 - x.ph.p) - ref.ph.p);
+      if (inv < dir - 0.15) {          // margen para no darle la vuelta a una discrepancia normal
+        x.g.rows = orient(x.g.rows, true);
+        x.g.reoriented_by_price = { was_p_home: r4(x.ph.p), ref: ref.g.book, ref_p_home: r4(ref.ph.p) };
+      }
+    }
+  }
+
   const rows = [];
   for (const g of got) for (const r of g.rows) rows.push({ ...r, book: g.book });
   const at = got.map((g) => g.at).filter(Boolean).sort()[0] || new Date().toISOString();
   return {
     provider_id: mergedEvent.provider_id, game, markets: rows, at,
     by_book: got.map((g) => ({ book: g.book, rows: g.rows.length, at: g.at, flipped: !!g.flipped,
+      reoriented_by_price: g.reoriented_by_price || null,
       disabled: g.disabled || 0, error: g.error || null })),
+    orientation: orientationCheck(rows),
     books: got.filter((g) => g.rows.length).length,
     disabled_selections: got.reduce((s, g) => s + (g.disabled || 0), 0),
   };
@@ -300,15 +343,78 @@ function crossBook(rows) {
 // Arbitrajes de verdad: dos lados del MISMO mercado en casas DISTINTAS. Si las dos patas salen de la misma
 // casa no es arbitraje, es que la casa tiene el mercado mal montado y lo va a anular — así que se exige que
 // las casas sean distintas y se dice por qué.
+// TECHO DE CORDURA. Un arbitraje real entre casas vive entre el 0,5 % y el 3 %; por encima del 8 % lo que
+// hay no es una casa despistada, es un dato mal leído — una línea que no es la misma, un mercado con más
+// salidas de las que creemos, o los lados cambiados. Se corta ahí y se dice por qué en vez de publicarlo.
+const ARB_MAX_PCT = 8;
 function arbitrages(rows) {
+  const or = orientationCheck(rows);
+  if (!or.ok) return [];
   return crossBook(rows)
-    .filter((m) => m.arbitrage && new Set(m.arbitrage.legs.map((l) => l.book)).size >= 2)
+    .filter((m) => m.arbitrage && m.arbitrage.profit_pct <= ARB_MAX_PCT && new Set(m.arbitrage.legs.map((l) => l.book)).size >= 2)
     .map((m) => ({
       family: m.family, family_label: m.family_label, map: m.map, team: m.team, line: m.line,
       profit_pct: m.arbitrage.profit_pct, legs: m.arbitrage.legs,
       note: 'arbitraje puro: no depende del modelo, solo de que las dos casas mantengan el precio. Los límites de apuesta y la velocidad de cambio mandan.',
     }))
     .sort((a, b) => b.profit_pct - a.profit_pct);
+}
+
+// ── LA GUARDIA DE ORIENTACIÓN ───────────────────────────────────────────────────────────────────────────
+// ESTO SALIÓ DE UN ARBITRAJE DEL +269 % (19-ago), y no era una oportunidad: era este fallo. Cuando dos casas
+// tienen invertidos el local y el visitante y la reorientación no lo corrige, `crossBook` funde el "local"
+// de una con el "visitante" de la otra. Las dos filas son EL MISMO LADO del partido, así que sumar sus
+// mejores precios da un número precioso y falso — y como el arbitraje se publica diciendo "esto no depende
+// del modelo", que es la etiqueta más creíble de la casa, es exactamente el sitio donde un dato falso hace
+// más daño.
+//
+// La comprobación no se fía de los nombres, que es lo que ya falló: se fía de los PRECIOS. Cada casa que
+// cotiza los dos lados de un mercado de dos salidas declara implícitamente a quién ve favorito; se le quita
+// el margen y queda su probabilidad del local. Dos casas pueden discrepar —de eso vive esta pantalla— pero
+// no pueden discrepar en veinticinco puntos sobre quién va a ganar. Si lo hacen, no están hablando del mismo
+// lado, y ninguna superficie cruzada de ese partido se publica.
+//
+// El umbral es deliberadamente ancho. Un 25 pp de diferencia entre dos casas sobre el mismo favorito no
+// ocurre en un mercado real ni en el peor partido desalineado del calendario; una inversión de lados produce
+// diferencias de 60-90 pp. Ancho a propósito: prefiero no cazar una discrepancia rarísima y legítima a
+// publicar un arbitraje inventado.
+const ORIENT_MAX_PP = 25;
+function orientationCheck(rows) {
+  const porCasa = new Map();
+  for (const r of rows || []) {
+    if (!(r.odds > 1) || (r.side !== 'home' && r.side !== 'away')) continue;
+    const k = keyOf(r);
+    if (!porCasa.has(r.book)) porCasa.set(r.book, new Map());
+    const m = porCasa.get(r.book);
+    if (!m.has(k)) m.set(k, {});
+    const cell = m.get(k);
+    // el mejor precio de cada lado dentro de la MISMA casa
+    if (!cell[r.side] || r.odds > cell[r.side]) cell[r.side] = r.odds;
+  }
+  // la probabilidad del local de cada casa, sin margen, promediada sobre los mercados donde tiene los dos lados
+  const pDe = new Map();
+  for (const [book, m] of porCasa) {
+    const ps = [];
+    for (const cell of m.values()) {
+      if (!(cell.home > 1) || !(cell.away > 1)) continue;
+      const ih = 1 / cell.home, ia = 1 / cell.away;
+      ps.push(ih / (ih + ia));
+    }
+    if (ps.length) pDe.set(book, ps.reduce((a, b) => a + b, 0) / ps.length);
+  }
+  if (pDe.size < 2) return { ok: true, books: pDe.size, spread_pp: null, why: null };
+  const vals = [...pDe.entries()].sort((a, b) => a[1] - b[1]);
+  const lo = vals[0], hi = vals[vals.length - 1];
+  const spread = 100 * (hi[1] - lo[1]);
+  const books_p = Object.fromEntries([...pDe].map(([b, p]) => [b, r4(p)]));
+  if (spread <= ORIENT_MAX_PP) return { ok: true, books: pDe.size, spread_pp: r2(spread), why: null, books_p };
+  return {
+    ok: false, books: pDe.size, spread_pp: r2(spread),
+    why: `${lo[0]} da al local un ${Math.round(100 * lo[1])} % y ${hi[0]} un ${Math.round(100 * hi[1])} %: ` +
+      'esa diferencia no es discrepancia de mercado, es que una de las dos tiene invertidos local y visitante. ' +
+      'No se publica ninguna superficie cruzada de este partido.',
+    books_p,
+  };
 }
 
 // ── MIDDLES ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -328,6 +434,9 @@ const MIDDLE_GAP = { TOTAL_MAPAS: 1, HANDICAP: 1, RONDAS: 2, RONDAS_EQUIPO: 2, R
 const MIDDLE_LOW = { HANDICAP: 'home', RONDAS_HANDICAP: 'home', KILLS_HANDICAP: 'home' };  // el resto, over/under
 
 function middles(rows, { maxCostPct = 6 } = {}) {
+  // la misma guardia que el arbitraje, y por el mismo motivo: con los lados cambiados, un "middle" es dos
+  // veces la misma apuesta con un coste negativo precioso
+  if (!orientationCheck(rows).ok) return [];
   // se agrupa por TODO menos la línea: la línea es justo lo que tiene que variar entre las dos patas
   const groups = new Map();
   for (const r of rows || []) {
@@ -432,7 +541,7 @@ const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
 module.exports = {
-  ADAPTERS, enabled, slate, markets, crossBook, arbitrages, middles, dropping, teamKey, norm, canonicalId,
+  ADAPTERS, enabled, slate, markets, crossBook, arbitrages, middles, dropping, orientationCheck, orient, teamKey, norm, canonicalId,
   BOOKS_PROBED: BOV.BOOKS_PROBED,
   RESULTS_UNAVAILABLE: {
     available: false,

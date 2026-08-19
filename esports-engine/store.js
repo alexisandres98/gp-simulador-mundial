@@ -1350,6 +1350,44 @@ async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
   return { game, saved, total: Object.keys(st.picks).length, migrated: mig.merged || 0, closes_migrated: movedCloses };
 }
 
+// ---- RETIRADA DE PICKS NACIDAS CON LOS LADOS CRUZADOS (19-ago) ------------------------------------------
+// Sale del mismo fallo que la guardia de orientación de `books.js`: cuando dos casas tienen invertidos el
+// local y el visitante, el CONSENSO que ancla al modelo es la mediana de las dos orientaciones. En el
+// partido que lo destapó eso daba 50/50 donde las dos casas estaban de acuerdo en 87/13, y con un ancla así
+// TODAS las familias parecen tener treinta y siete puntos de ventaja. No falla nada visiblemente: nacen
+// picks perfectamente formadas, con su tesis y su stake — y en ese partido nacieron dieciséis, incluidas
+// dos que apuestan los dos lados del mismo hándicap.
+//
+// Esas picks no se pueden dejar liquidar: ganen o pierdan, su resultado no mide al modelo, mide al fallo, y
+// el registro es lo único que esta casa dice que manda. Se retiran con motivo explícito, que es lo mismo que
+// se hace en fútbol con las que quedan fuera de doctrina. NO se borran: borrar resultados no se hace aquí.
+function retireCrossedPicks(game) {
+  const st = rd(PICKS_F(game));
+  if (!st || !st.picks) return { game, retired: 0 };
+  const cl = rd(`closes-${game}.json`);
+  if (!cl || !cl.closes) return { game, retired: 0, why: 'sin cierres guardados con los que comprobar' };
+  const malos = new Set();
+  for (const [id, e] of Object.entries(cl.closes)) {
+    for (const rows of [e.rows, e.open_rows]) {
+      const o = BK.orientationCheck(rows || []);
+      if (o.books >= 2 && !o.ok) { malos.add(id); break; }
+    }
+  }
+  if (!malos.size) return { game, retired: 0, events: 0 };
+  let n = 0;
+  for (const p of Object.values(st.picks)) {
+    if (p.status !== 'ACTIVE' || !malos.has(p.event_id)) continue;
+    p.status = 'SETTLED'; p.result_code = 'SUPERSEDED';
+    p.settled_at = new Date().toISOString();
+    p.result_source = 'guardia de orientación: las casas de este partido tenían cruzados local y visitante, ' +
+      'así que el consenso que ancló esta pick no era el consenso de nadie';
+    p.units = 0;
+    n++;
+  }
+  if (n) { st.at = new Date().toISOString(); wr(PICKS_F(game), st); }
+  return { game, retired: n, events: malos.size };
+}
+
 // ---- de un resultado a un veredicto ---------------------------------------------------------------------
 // Cada familia se liquida contra el dato que le corresponde y NUNCA contra uno parecido. Lo que la fuente no
 // trae devuelve `null` y la pick se queda sin liquidar con su motivo, que es infinitamente mejor que
@@ -2105,7 +2143,7 @@ function h2h(game, refA, refB) {
   };
 }
 
-module.exports = {
+module.exports = { retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne,

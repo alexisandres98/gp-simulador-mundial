@@ -10851,6 +10851,12 @@ if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
     return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.recordPicks(g).catch(() => { })), Promise.resolve())
       .then(() => { memMark('esports:cierres'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.snapshot(g).catch(() => { })), Promise.resolve()); })
       .then(() => { memMark('esports:liquidar'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.settlePicks(g).catch(() => { })), Promise.resolve()); })
+      // ANTES de liquidar nada más: retirar las picks nacidas de un partido con los lados cruzados. Su
+      // resultado no mediría al modelo, mediría al fallo, y el registro es lo único que aquí manda.
+      .then(() => ES.GAME_ORDER.reduce((pr, g) => pr.then(() => {
+        const r = ES.retireCrossedPicks(g);
+        if (r && r.retired) console.log('[esports] picks retiradas por lados cruzados:', JSON.stringify(r));
+      }).catch(() => { }), Promise.resolve()))
       .then(() => memMark('reposo'));
   };
   setTimeout(esChain, 320 * 1000);

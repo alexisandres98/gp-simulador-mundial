@@ -5,6 +5,18 @@
   'use strict';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  // RECORTE QUE NO PARTE PALABRAS. Un `slice(n)` seco deja frases como "…familia por familia, con C", que
+  // en pantalla no se lee como un resumen sino como un error. Se prefiere terminar en el punto anterior;
+  // si no hay ninguno dentro del límite, en el último espacio y con puntos suspensivos.
+  var clampFrase = function (txt, max) {
+    var t = String(txt == null ? '' : txt).trim();
+    if (t.length <= max) return t;
+    var corte = t.slice(0, max);
+    var punto = Math.max(corte.lastIndexOf('. '), corte.lastIndexOf('; '), corte.lastIndexOf(' — '));
+    if (punto > max * 0.5) return t.slice(0, punto + 1);
+    var esp = corte.lastIndexOf(' ');
+    return (esp > 0 ? corte.slice(0, esp) : corte) + '…';
+  };
   var token = function () { try { return localStorage.getItem('wc_token') || ''; } catch (e) { return ''; } };
   var hdrs = function () { return token() ? { Authorization: 'Bearer ' + token() } : {}; };
 
@@ -11103,11 +11115,26 @@
       '<div class="gx-f1-tkleg"><span>gemelo <b class="gx-mono">' + pct + '%</b></span>' +
       '<span class="gx-dim">referencia <b class="gx-mono">' + refPct + '%</b></span>' +
       (tk.gap_pp != null ? '<span class="' + (tk.gap_pp > 0 ? 'gx-up' : 'gx-down') + ' gx-mono">' + (tk.gap_pp > 0 ? '+' : '') + tk.gap_pp.toFixed(1) + ' pp</span>' : '') + '</div>';
-    return '<div class="gx-f1-take' + (tk.contra_referencia ? ' contra' : '') + '">' +
+    // EL MERCADO, CUANDO LO HAY, ES LO PRINCIPAL DE LA TARJETA (19-ago). Una tesis con contrato detrás no
+    // es la misma cosa que una llamada: tiene ventaja medida contra un precio, cuota, horquilla e interés
+    // abierto. Enseñarla con la misma cara que una llamada sin precio borra justo la diferencia que
+    // importa. Y el interés abierto va SIEMPRE al lado de la cuota: en un exchange, un precio sin nadie
+    // detrás no es una cuota.
+    var m = tk.market;
+    var mkt = !m ? '' :
+      '<div class="gx-f1-tkmkt' + (m.is_pick ? ' on' : '') + '">' +
+        '<span class="gx-f1-tkmk"><em>precio</em><b class="gx-mono">' + Math.round(100 * m.p_market) + '%</b></span>' +
+        '<span class="gx-f1-tkmk"><em>cuota</em><b class="gx-mono">' + (m.odds != null ? m.odds.toFixed(2) : '—') + '</b></span>' +
+        '<span class="gx-f1-tkmk"><em>ventaja</em><b class="gx-mono ' + (m.edge_pp > 0 ? 'gx-up' : 'gx-down') + '">' + (m.edge_pp > 0 ? '+' : '') + m.edge_pp + ' pp</b></span>' +
+        '<span class="gx-f1-tkmk"><em>interés abierto</em><b class="gx-mono">' + Math.round(m.open_interest || 0).toLocaleString('es') + '</b></span>' +
+        (m.blocked ? '<span class="gx-f1-tkblock">' + esc(m.blocked) + '</span>' : '') +
+      '</div>';
+    return '<div class="gx-f1-take' + (tk.contra_referencia ? ' contra' : '') + (m && m.is_pick ? ' pick' : '') + '">' +
       '<div class="gx-f1-tktop"><span class="gx-chip">' + esc(F.label) + '</span>' +
         '<span class="gx-f1-tkside' + (tk.side === 'no' ? ' no' : '') + '">' + side + '</span>' +
+        (m && m.is_pick ? '<span class="gx-f1-tkbadge">PICK · KALSHI</span>' : '') +
         '<span class="gx-spacer"></span><span class="gx-f1-tkp gx-mono">' + pct + '%</span></div>' +
-      '<div class="gx-f1-tkwho"><b>' + esc(tk.subject) + '</b></div>' + bar +
+      '<div class="gx-f1-tkwho"><b>' + esc(tk.subject) + '</b></div>' + bar + mkt +
       '<div class="gx-f1-tkwhy gx-dim">' + esc(tk.why || '') + '</div>' +
       (e && e.model != null ? '<div class="gx-f1-tkev gx-dim">Esta familia, medida fuera de muestra antes de publicar nada: ' +
         esc(e.metric) + ' ' + e.model + ' contra ' + (e.baseline != null ? e.baseline : '—') + ' de ' + esc(e.baseline_label) +
@@ -11121,10 +11148,21 @@
     var cov = f1Get('cov', '/api/f1/coverage', 900000);
     if (!tk) { f1Shell(t('nav_opps'), f1Loading()); return; }
     var bar = f1RaceBar();
-    var head = '<div class="gx-panel gx-f1-nomkt">' + ic('alert-triangle') +
-      '<span><b>Sin mercado que medir.</b> F1 es el único deporte de la casa sin cobertura de casas en el plan actual: ' +
-      'ni el proveedor principal lista motorsport ni el secundario publica eventos. Sin precio no hay ventaja que calcular, ' +
-      'así que aquí no hay picks: hay <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>';
+    // EL CARTEL TIENE QUE MIRAR EL MERCADO, NO RECORDARLO (19-ago). Este aviso decía "sin mercado que medir"
+    // siempre, porque cuando se escribió era verdad. Con Kalshi dentro hay carreras con contratos
+    // utilizables y picks con ventaja, cuota e interés abierto — y la pantalla seguía anunciando que no
+    // había precio JUSTO ENCIMA de las picks precio en mano. Ahora dice lo que el propio payload reporta.
+    var mkS = tk && tk.market ? tk.market : null;
+    var nPick = mkS ? (mkS.picks || 0) : 0;
+    var head = nPick
+      ? '<div class="gx-panel gx-f1-mkt">' + ic('circle-check') +
+        '<span><b>' + nPick + (nPick === 1 ? ' pick con precio' : ' picks con precio') + '.</b> Kalshi cotiza podio y puntos de esta carrera: ' +
+        (mkS.summary ? esc(String(mkS.summary.utilizables)) + ' de ' + esc(String(mkS.summary.contratos)) + ' contratos tienen horquilla utilizable' : 'hay contratos con horquilla utilizable') +
+        '. Es un <b>exchange</b>, no una casa: el precio lo sostiene otro participante, así que cada pick enseña su interés abierto — un precio que nadie sostiene no es una cuota. ' +
+        'Lo demás siguen siendo <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>'
+      : '<div class="gx-panel gx-f1-nomkt">' + ic('alert-triangle') +
+        '<span><b>Sin precio utilizable en esta carrera.</b> El proveedor principal no lista motorsport y en el exchange ningún contrato de hoy tiene horquilla estrecha. ' +
+        'Sin precio no hay ventaja que calcular, así que aquí no hay picks: hay <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>';
     var body;
     if (tk.available === false && tk.state === 'POST_QUALI') {
       body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Esta carrera no lleva llamadas</span>' +
@@ -11137,10 +11175,19 @@
       body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Sin llamadas en esta carrera</span></div>' +
         '<div class="gx-f1-mute">' + ic('shield-off') + '<span>El gemelo no se aparta lo suficiente de lo que cada piloto viene haciendo esta temporada. Coincidir con lo obvio no es una llamada.</span></div></div>';
     } else {
-      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Llamadas de GP · ' + esc(tk.race.name) + '</span>' +
-        '<span class="gx-ph-extra gx-mono">' + tk.takes.length + '</span></div>' +
-        '<div class="gx-f1-takes">' + tk.takes.map(function (x) { return f1TakeCard(x, tk.evidence); }).join('') + '</div>' +
-        '<div class="gx-dim gx-es-note">' + esc(tk.doctrine || '') + '</div></div>';
+      // PICKS ARRIBA, LLAMADAS DEBAJO (19-ago). Con Kalshi dentro la lista mezcla dos cosas distintas, y
+      // las picks —las únicas medidas contra un precio real— quedaban enterradas bajo seis llamadas
+      // porque el orden es por tamaño de desacuerdo. Quien abre Oportunidades busca lo que tiene precio.
+      var conP = tk.takes.filter(function (x) { return x.market && x.market.is_pick; });
+      var sinP = tk.takes.filter(function (x) { return !(x.market && x.market.is_pick); });
+      var pane = function (label, extra, arr) {
+        return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + label + '</span>' +
+          '<span class="gx-ph-extra gx-mono">' + extra + '</span></div>' +
+          '<div class="gx-f1-takes">' + arr.map(function (x) { return f1TakeCard(x, tk.evidence); }).join('') + '</div></div>';
+      };
+      body = (conP.length ? pane('Picks con precio · ' + esc(tk.race.name), conP.length, conP) : '') +
+        (sinP.length ? pane(conP.length ? 'Llamadas del modelo · sin precio' : 'Llamadas de GP · ' + esc(tk.race.name), sinP.length, sinP) : '') +
+        '<div class="gx-panel"><div class="gx-dim gx-es-note">' + esc(tk.doctrine || '') + '</div></div>';
     }
     var track = '';
     if (tr && tr.available) {
@@ -11519,7 +11566,7 @@
       body = '<div class="gx-picks-feed">' + cards.map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>';
     }
     tenShell(t('nav_opps'), strip + body +
-      '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc((d.doctrine || '').slice(0, 260)) + '</span></div>');
+      '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc(clampFrase(d.doctrine || '', 420)) + '</span></div>');
   }
 
   function tenFamLabel(c) {

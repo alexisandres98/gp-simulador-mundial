@@ -3530,6 +3530,20 @@ td .gx-calc-btn span { display: none; }
 .gx-f1-teamdrv span{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px}
 .gx-f1-teamdrv em{font-style:normal;opacity:.8}
 .gx-f1-nomkt{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.45;padding:11px 12px}
+/* mismo cuerpo que el aviso de "sin mercado", pero en verde: cuando SÍ hay precio la pantalla no debe
+   parecer una advertencia. El icono hereda el color del panel. */
+.gx-f1-mkt{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.45;padding:11px 12px;color:var(--gx-green,#1fe3a4)}
+.gx-f1-mkt b{color:inherit}
+/* tesis CON contrato detrás: se distingue de la llamada sin precio por el filo, no por el ruido */
+.gx-f1-take.pick{border-color:color-mix(in srgb,var(--gx-green,#1fe3a4) 45%,transparent)}
+.gx-f1-tkbadge{font-size:9px;letter-spacing:.06em;font-weight:700;padding:2px 6px;border-radius:4px;
+  background:color-mix(in srgb,var(--gx-green,#1fe3a4) 18%,transparent);color:var(--gx-green,#1fe3a4)}
+.gx-f1-tkmkt{display:flex;flex-wrap:wrap;gap:10px 14px;margin:8px 0 2px;padding:8px 10px;border-radius:7px;
+  background:rgba(255,255,255,.03)}
+.gx-f1-tkmkt.on{background:color-mix(in srgb,var(--gx-green,#1fe3a4) 8%,transparent)}
+.gx-f1-tkmk{display:flex;flex-direction:column;gap:1px;font-size:11px}
+.gx-f1-tkmk em{font-style:normal;opacity:.55;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase}
+.gx-f1-tkblock{flex:1 1 100%;font-size:10.5px;opacity:.7;line-height:1.4}
 .gx-f1-cov{display:flex;flex-direction:column;gap:6px}
 .gx-f1-covrow{display:flex;align-items:center;gap:8px;font-size:12px}
 .gx-f1-covrow .gx-dim{font-size:10.5px}

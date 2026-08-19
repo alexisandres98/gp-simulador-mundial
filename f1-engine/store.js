@@ -423,7 +423,14 @@ async function takesFor(round) {
   return { available: true, state: b.state, race: b.race, takes: out, evidence: ev, stored: rec,
     market: { source: 'kalshi', at: mk.at, summary: mk.summary, errors: mk.errors, picks: nPick,
       note: nPick ? `${nPick} con precio utilizable en Kalshi: son picks, no llamadas` : 'sin precio utilizable ahora mismo: todo queda en llamadas' },
-    doctrine: 'Llamadas del modelo, no apuestas: F1 no tiene mercado en ningún proveedor del plan, así que no hay precio contra el que medir ventaja. Cada llamada queda fechada y se liquida sola cuando acaba la carrera — el historial de abajo es el único juez.' };
+    // LA DOCTRINA DEPENDE DE SI HAY PRECIO, Y AHORA A VECES LO HAY (19-ago). La frase fija decía "F1 no
+    // tiene mercado en ningún proveedor del plan" y se quedó escrita cuando era verdad. Desde que Kalshi
+    // entró como segundo proveedor hay carreras con contratos utilizables y picks de verdad — y seguir
+    // diciendo que no hay mercado mientras se sirven picks contra ese mercado es, sencillamente, mentir
+    // en pantalla. Se dice lo que hay en cada carrera.
+    doctrine: nPick
+      ? `Con precio hay picks: ${nPick} de estas tesis se miden contra un contrato real de Kalshi —libro de órdenes visible, no cuota de casa— y llevan ventaja, cuota, horquilla e interés abierto. El resto son llamadas del modelo: quedan fechadas y se liquidan solas al acabar la carrera. Todo en sombra; el historial de abajo es el único juez.`
+      : 'Llamadas del modelo, no apuestas: hoy ningún contrato de esta carrera tiene horquilla utilizable, así que no hay precio contra el que medir ventaja. Cada llamada queda fechada y se liquida sola cuando acaba la carrera — el historial de abajo es el único juez.' };
 }
 
 // lo que cada piloto viene haciendo ESTA temporada hasta la ronda anterior (referencia, no predicción)

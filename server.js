@@ -435,6 +435,11 @@ async function amfootRostersJob() {
   } catch (e) { opsLog('amf_rosters', { error: e.message }); }
 }
 setTimeout(amfootRostersJob, 12 * 60e3);
+// Y UNA RE-ARMA PERIÓDICA (19-ago). Hasta hoy esto era UNA oportunidad por arranque, a los 12 minutos. Esta
+// plataforma se despliega varias veces al día y cada despliegue reinicia ese reloj: bastaba con desplegar
+// dentro de la ventana para que el trabajo no llegara a correr nunca. Cada 6 horas se vuelve a intentar; si
+// ya está al día, sale en una línea sin tocar nada.
+setInterval(amfootRostersJob, 6 * 3600e3);
 
 // ── Props de esports: barrido de anotación (17-ago). ────────────────────────────────────────────────────
 // La sombra de props solo aprende si alguien lee la pizarra, y una familia en sombra no puede depender de

@@ -27,7 +27,16 @@ const PHOTOS = arg('photos', '1') !== '0';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const OUTROOT = path.join(__dirname, '..', 'public', 'logos', 'amfoot');
-const DATA = path.join(__dirname, '..', 'data', 'amfoot');
+// DÓNDE SE ESCRIBE, Y POR QUÉ NO EN EL REPO (19-ago). Esto escribía en data/amfoot, que en Render es el
+// directorio del REPO — y ese directorio se recrea entero en cada despliegue. La cosecha podía correr
+// perfectamente, escribir sus 130 equipos, y desaparecer con el siguiente deploy sin dejar rastro. Peor:
+// la sonda de ops mira el disco PERSISTENTE, así que informaba `null` aunque el trabajo hubiera terminado
+// bien. Dos días de "las plantillas no aterrizan" con el trabajo haciendo su parte.
+// Ahora va al disco persistente, al lado de db.json, con el mismo criterio que esports, F1 y tenis. Sin
+// disco (desarrollo local) cae al repo, que ahí sí es lo correcto.
+const DISK = path.dirname(process.env.DB_FILE || '');
+const DATA = (DISK && fs.existsSync(DISK)) ? path.join(DISK, 'amfoot')
+  : (fs.existsSync('/data') ? '/data/amfoot' : path.join(__dirname, '..', 'data', 'amfoot'));
 
 const ESPN = { ncaaf: 'college-football', cfl: 'cfl' };
 
@@ -107,6 +116,19 @@ async function league(lg) {
     }
   }
   fs.mkdirSync(DATA, { recursive: true });
+  // UNA COSECHA VACÍA NO ES UNA COSECHA (19-ago). Comprobado hoy contra ESPN: college-football devuelve 100
+  // jugadores por equipo, y la CFL devuelve los seis grupos de posición VACÍOS en los nueve equipos. ESPN
+  // no publica plantillas de la CFL. Escribir igualmente un archivo con cero jugadores tenía dos efectos
+  // malos: la pantalla decía "todavía no está cosechada" —que promete que viene y no viene—, y el trabajo
+  // se daba por hecho durante siete días y volvía a intentar contra una fuente que no tiene el dato.
+  // Ahora un cero se escribe como lo que es: una laguna de fuente, con su fecha y su motivo.
+  if (!nP) {
+    out.gap = { source: 'ESPN', why: 'ESPN devuelve los grupos de posición vacíos en los nueve equipos: no publica plantillas de esta liga.',
+      checked_at: new Date().toISOString(), teams_seen: teams.length };
+    fs.writeFileSync(path.join(DATA, `roster-${lg}.json`), JSON.stringify(out));
+    console.log(`[amf:${lg}] SIN DATO EN LA FUENTE: ${teams.length} equipos listados, 0 jugadores. ESPN no publica plantillas de esta liga.`);
+    return;
+  }
   fs.writeFileSync(path.join(DATA, `roster-${lg}.json`), JSON.stringify(out));
   console.log(`[amf:${lg}] LISTO: ${nT} equipos · ${nP} jugadores · ${nF} caras`);
 }

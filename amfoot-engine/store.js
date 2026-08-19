@@ -669,6 +669,16 @@ const normName = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/
 function playersDirectory(lg, { q = '', team = '', limit = 120 } = {}) {
   const R = rosterOf(lg);
   const C = LEAGUES[lg];
+  // TRES ESTADOS, NO DOS (19-ago). "No hay plantilla" puede significar dos cosas muy distintas y hasta hoy
+  // se decían igual: que la cosecha aún no ha corrido —y entonces llega— o que la FUENTE no tiene el dato,
+  // que es el caso de la CFL: ESPN lista sus nueve equipos y devuelve los seis grupos de posición vacíos en
+  // todos. Prometer "todavía no está cosechada" cuando no va a estarlo nunca por esa vía es una promesa
+  // falsa, y encima esconde el trabajo real que falta (una fuente por equipo).
+  if (R && R.gap && (!R.players || !Object.keys(R.players).length)) {
+    return { available: false, league: lg, label: C && C.label, gap: true, source_checked: R.gap.source,
+      checked_at: R.gap.checked_at,
+      why: `${R.gap.source} no publica las plantillas de esta liga: lista sus ${R.gap.teams_seen} equipos y devuelve las posiciones vacías en todos. No es que falte cosechar — falta una fuente. Hasta que la haya, este motor puntúa EQUIPOS, que es lo que de verdad mide.` };
+  }
   if (!R || !R.players) {
     return { available: false, league: lg, label: C && C.label,
       why: 'la plantilla de esta liga todavía no está cosechada (corre en Render: ESPN bloquea la IP de desarrollo).' };

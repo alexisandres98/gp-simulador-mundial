@@ -258,7 +258,71 @@ function takeEvidence(d) {
   };
 }
 
-function takesFor(round) {
+// ── MERCADO REAL: KALSHI (19-ago) ───────────────────────────────────────────────────────────────────────
+// F1 dejó de ser el deporte sin mercado. Kalshi cotiza `KXF1RACEPODIUM` y `KXF1TOP10` — justo las dos
+// familias donde el gemelo bate al baseline ANTES de la clasificación. El podio tiene liquidez de verdad
+// (horquillas de 1-4 puntos, 7.274 de interés abierto en el contrato de Verstappen); el top-10 está fino y
+// la mayoría de sus contratos no pasan la guardia de horquilla, así que casi siempre se queda en llamada.
+//
+// Con precio, una llamada se convierte en PICK: hay una ventaja medible contra alguien que opina lo
+// contrario. Sin precio utilizable, sigue siendo llamada. La misma pantalla enseña las dos y dice cuál es
+// cuál — mezclarlas sería exactamente lo que llevamos toda la semana evitando.
+const KAL = require('../data-providers/kalshi');
+const G_MK = { at: 0, data: null };
+const normName = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/\b(jr|sr|de|van|von)\b/g, '').replace(/[^a-z]/g, '');
+
+async function f1Market({ ttlMs = 10 * 60e3 } = {}) {
+  if (G_MK.data && Date.now() - G_MK.at < ttlMs) return G_MK.data;
+  try {
+    const m = await KAL.f1Markets();
+    const byFam = {};
+    for (const [fam, rows] of Object.entries(m.families || {})) {
+      byFam[fam] = new Map(rows.filter((r) => r.usable).map((r) => [normName(r.driver_name), r]));
+    }
+    G_MK.data = { at: m.at, byFam, summary: m.summary, errors: m.errors };
+    G_MK.at = Date.now();
+  } catch (e) { G_MK.data = { at: new Date().toISOString(), byFam: {}, summary: null, errors: [e.message] }; G_MK.at = Date.now(); }
+  return G_MK.data;
+}
+
+// listón declarado: 4 pp de ventaja y cuota utilizable. No se ajusta sobre el holdout — el holdout ya se
+// gastó midiendo si el modelo sirve, y volver a tocarlo para elegir el umbral sería usar dos veces la
+// única muestra que no se puede reutilizar.
+const F1_MIN_EDGE_PP = 4;
+// DOS GUARDIAS QUE NO SON OPCIONALES, y las dos salieron de mirar la primera tanda de picks reales:
+//
+//   · LIQUIDEZ. Salían picks contra contratos con 5 de interés abierto. Un precio que nadie sostiene no es
+//     una opinión contraria: es un hueco en la pantalla. Por debajo de 200 no se cruza.
+//   · LA COLA. El modelo daba 11,2 % de podio a un piloto que el libro paga a 1,5 %, y eso produce un EV
+//     nominal del 460 %. No es ventaja: es que nuestra cola es más gorda que la suya justo donde tenemos
+//     menos datos, que es el error clásico del favorito-longshot al revés. Se exige que la probabilidad
+//     propia no pase de 2,5 veces la del mercado; por encima, la discrepancia se enseña como desacuerdo,
+//     no como pick. Las probabilidades del modelo suman exactamente 3,000 en podio y 10,000 en puntos, así
+//     que esto NO es un fallo de normalización: es desconfianza declarada en nuestra propia cola.
+const F1_MIN_OI = 200;
+const F1_MAX_RATIO = 2.5;
+
+function f1PickFrom(mk, family, driverName, pModel) {
+  const map = (mk && mk.byFam && mk.byFam[family]) || null;
+  if (!map || pModel == null) return null;
+  const row = map.get(normName(driverName));
+  if (!row || row.p_mid == null || !(row.odds_yes > 1)) return null;
+  const edgePp = 100 * (pModel - row.p_mid);
+  const oi = row.open_interest || 0;
+  const ratio = row.p_mid > 0 ? pModel / row.p_mid : Infinity;
+  const bloqueo = oi < F1_MIN_OI ? 'sin liquidez: nadie sostiene ese precio'
+    : ratio > F1_MAX_RATIO ? `desacuerdo de cola: el modelo dice ${ratio.toFixed(1)}× lo que paga el libro, y ahí desconfiamos de nuestra propia cola`
+      : null;
+  return {
+    has_market: true, p_market: row.p_mid, odds: row.odds_yes, spread_pp: r2(100 * row.spread),
+    open_interest: oi, ticker: row.ticker, book: 'kalshi', ratio: r2(ratio),
+    edge_pp: r2(edgePp), is_pick: edgePp >= F1_MIN_EDGE_PP && !bloqueo, blocked: bloqueo,
+    ev_pct: r2(100 * (pModel * (row.odds_yes - 1) - (1 - pModel))),
+  };
+}
+
+async function takesFor(round) {
   const b = raceBoard(round);
   if (!b.available) return { available: false, why: b.why || 'sin calendario' };
   const core = boardCore(round);
@@ -275,12 +339,18 @@ function takesFor(round) {
   // Solo sale a la luz lo que se APARTA de esa referencia — y la referencia viaja con la llamada para que
   // el historial pueda puntuar al gemelo CONTRA ella y no contra el aire.
   const ref = seasonRates(d, base.season, base.round);
+  const mk = await f1Market();
   const rows = b.rows || [];
   const out = [];
-  const push = (family, subject_id, subject, side, p, refP, why, extra) => {
+  const push = (family, subject_id, subject, side, p, refP, why, extra, driverName) => {
+    // SI HAY PRECIO, ES PICK. El mercado solo existe para PODIO y PUNTOS y solo del lado "sí": una llamada
+    // negativa ("no puntúa") no tiene contrato equivalente utilizable, así que se queda como llamada.
+    const mkt = (side === 'si' && driverName) ? f1PickFrom(mk, family, driverName, p) : null;
     out.push({ key: `${base.season}|${base.round}|${family}|${subject_id}|${side}`,
       ...base, family, subject_id, subject, side, p: r3(p), ref: r3(refP),
-      gap_pp: refP == null ? null : r2(100 * (p - refP)), why, ...(extra || {}), at: new Date().toISOString() });
+      gap_pp: refP == null ? null : r2(100 * (p - refP)), why, ...(extra || {}),
+      market: mkt, kind: mkt && mkt.is_pick ? 'pick' : 'llamada',
+      at: new Date().toISOString() });
   };
   const MIN_GAP = 0.15;
   for (const r of rows) {
@@ -290,7 +360,7 @@ function takesFor(round) {
       push('PODIO', r.id, r.name, 'si', r.p_podium, rr.podium,
         `${r.name} sube al podio en ${Math.round(100 * r.p_podium)} de cada 100 simulaciones` +
         (rr.podium != null ? `, cuando esta temporada lo hace en ${Math.round(100 * rr.podium)} de cada 100` : ' (sin temporada previa que comparar)') +
-        `. Coche ${r.car_idx} y piloto ${r.drv_idx} sobre una media de campo de 100.`, { n_ref: rr.n || null });
+        `. Coche ${r.car_idx} y piloto ${r.drv_idx} sobre una media de campo de 100.`, { n_ref: rr.n || null }, r.name);
     }
     // PUNTOS: en los dos sentidos, pero SOLO si el gemelo se aparta de lo que el piloto viene haciendo
     if (rr.points != null && rr.n >= 3) {
@@ -301,7 +371,7 @@ function takesFor(round) {
       // desenlace más probable según el propio modelo.
       if (gap >= MIN_GAP && r.p_points >= 0.5) {
         push('PUNTOS', r.id, r.name, 'si', r.p_points, rr.points,
-          `${r.name} puntúa en ${Math.round(100 * r.p_points)} de cada 100 simulaciones, muy por encima del ${Math.round(100 * rr.points)} % con que lo viene haciendo: el gemelo ve el coche mejor de lo que dice su temporada.`, { n_ref: rr.n });
+          `${r.name} puntúa en ${Math.round(100 * r.p_points)} de cada 100 simulaciones, muy por encima del ${Math.round(100 * rr.points)} % con que lo viene haciendo: el gemelo ve el coche mejor de lo que dice su temporada.`, { n_ref: rr.n }, r.name);
       } else if (-gap >= MIN_GAP && r.p_points <= 0.5) {
         push('PUNTOS', r.id, r.name, 'no', 1 - r.p_points, 1 - rr.points,
           `${r.name} se queda fuera de los puntos: el gemelo solo lo mete entre los diez en ${Math.round(100 * r.p_points)} de cada 100, contra el ${Math.round(100 * rr.points)} % de su temporada.`, { n_ref: rr.n });
@@ -326,8 +396,33 @@ function takesFor(round) {
           : `, y el campeonato no desempata (${px} a ${py} puntos): aquí la tabla no dice nada y solo habla el gemelo.`),
       { contra_referencia: refSide === 0 });
   }
+  // ── CON PRECIO, EL CRITERIO ES OTRO (19-ago) ─────────────────────────────────────────────────────────
+  // La regla de "apartarse 15 pp de lo que ese piloto viene haciendo" existía PORQUE no había mercado: era
+  // detección de anomalías, no de ventaja, y así lo concedimos. Donde ahora hay precio utilizable, sobra:
+  // se recorre el campo entero y se emite pick cuando la ventaja contra el libro llega al listón. Sin esto,
+  // el mercado líquido de la casa —el podio— casi nunca se cruzaba, porque el podio rara vez se aparta de
+  // la temporada de un piloto.
+  const yaHay = new Set(out.map((x) => `${x.family}|${x.subject_id}|${x.side}`));
+  for (const r of rows) {
+    for (const [family, pModel] of [['PODIO', r.p_podium], ['PUNTOS', r.p_points]]) {
+      if (pModel == null) continue;
+      if (yaHay.has(`${family}|${r.id}|si`)) continue;
+      const mkt = f1PickFrom(mk, family, r.name, pModel);
+      if (!mkt || !mkt.is_pick) continue;
+      const rr = ref[r.id] || {};
+      out.push({ key: `${base.season}|${base.round}|${family}|${r.id}|si`, ...base,
+        family, subject_id: r.id, subject: r.name, side: 'si', p: r3(pModel),
+        ref: r3(family === 'PODIO' ? rr.podium : rr.points), n_ref: rr.n || null,
+        gap_pp: null, market: mkt, kind: 'pick',
+        why: `${r.name} ${family === 'PODIO' ? 'sube al podio' : 'puntúa'} en ${Math.round(100 * pModel)} de cada 100 simulaciones y el libro lo paga a ${Math.round(100 * mkt.p_market)} %: ${mkt.edge_pp} puntos de ventaja a cuota ${mkt.odds}, con horquilla de ${mkt.spread_pp} pp e interés abierto de ${Math.round(mkt.open_interest || 0)}.`,
+        at: new Date().toISOString() });
+    }
+  }
   const rec = recordTakes(out);
+  const nPick = out.filter((x) => x.kind === 'pick').length;
   return { available: true, state: b.state, race: b.race, takes: out, evidence: ev, stored: rec,
+    market: { source: 'kalshi', at: mk.at, summary: mk.summary, errors: mk.errors, picks: nPick,
+      note: nPick ? `${nPick} con precio utilizable en Kalshi: son picks, no llamadas` : 'sin precio utilizable ahora mismo: todo queda en llamadas' },
     doctrine: 'Llamadas del modelo, no apuestas: F1 no tiene mercado en ningún proveedor del plan, así que no hay precio contra el que medir ventaja. Cada llamada queda fechada y se liquida sola cuando acaba la carrera — el historial de abajo es el único juez.' };
 }
 
@@ -634,4 +729,4 @@ async function modelSnapshot() {
   };
 }
 
-module.exports = { coverage, calendar, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, takesFor, settleTakes, takeTrack, DISK_DIR, DOCTRINE };
+module.exports = { coverage, calendar, load, refreshSeason, raceBoard, standings, driversDirectory, driverProfile, whatIf, duel, modelCard, modelSnapshot, oddsKeysCheck, takesFor, settleTakes, takeTrack, f1Market, f1PickFrom, DISK_DIR, DOCTRINE };

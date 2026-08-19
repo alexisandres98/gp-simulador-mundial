@@ -158,18 +158,32 @@ function expiry(cand, P) {
 // Traduce el veredicto de validación a un estado de ciclo de vida, que es el vocabulario del blueprint.
 // El estado por defecto NO es "producción": es "investigación". Una familia se gana el derecho a publicar.
 const LIFECYCLE = ['research', 'shadow', 'candidate', 'production', 'degraded', 'retired'];
+// RECOGER MUESTRA NO ES PUBLICAR (19-ago). Hasta hoy una familia sin validación quedaba bloqueada del todo:
+// ni pick, ni registro, ni cierre guardado. El efecto secundario es que NUNCA podía ganarse el derecho a
+// publicar, porque para validarse hace falta muestra y la muestra solo llega registrando. Un círculo
+// cerrado que se parece a la prudencia y no lo es.
+//
+// Ahora una familia sin validación entra en MONITOR: se registra en el track privado, se guarda su cierre
+// y se mide su CLV, con la etiqueta puesta. La tarjeta lleva el distintivo MONITOR y solo la ve el admin,
+// así que nadie de fuera confunde "estamos midiendo esto" con "esto es una recomendación".
+//
+// El interruptor existe por si algún día hay que volver a cerrarlo: `GP_HOOPS_MONITOR_ALL=0`.
+const MONITOR_ALL = String(process.env.GP_HOOPS_MONITOR_ALL || '1') !== '0';
 function familyHealth(validation, family) {
-  if (!validation) return { status: 'no_publica', stage: 'research', reason: 'sin validación para esta liga' };
+  const monitor = (stage, reason, extra) => (MONITOR_ALL
+    ? { status: 'publica', stage: 'shadow', regime: 'monitor', monitor: true, reason: reason + ' — se registra en monitor para acumular muestra y CLV, no es recomendación', ...(extra || {}) }
+    : { status: 'no_publica', stage, reason, ...(extra || {}) });
+  if (!validation) return monitor('research', 'sin validación para esta liga');
   const sk = validation.skill || {};
   const best = sk.blended != null ? sk.blended : sk.base;
-  // moneyline es la única familia que hoy tenemos medida contra el cierre; el resto no ha sido validada y
-  // por tanto NO publica. Decirlo así es más útil que inventar un estado optimista.
+  // moneyline es la única familia medida contra el cierre; el resto todavía no. Eso se dice, pero ya no
+  // impide recoger muestra.
   if (family === 'moneyline') {
-    if (best == null) return { status: 'no_publica', stage: 'research', reason: 'sin medición' };
-    if (best < 0) return { status: 'no_publica', stage: 'shadow', reason: `por detrás del cierre (skill ${r2(best)})`, skill: best };
+    if (best == null) return monitor('research', 'sin medición');
+    if (best < 0) return monitor('shadow', `por detrás del cierre (skill ${r2(best)})`, { skill: best });
     return { status: 'publica', stage: 'candidate', reason: `skill ${r2(best)} sobre el cierre`, skill: best };
   }
-  return { status: 'no_publica', stage: 'research', reason: 'familia sin validación fuera de muestra todavía' };
+  return monitor('research', 'familia sin validación fuera de muestra todavía');
 }
 
 // ---- RESUMEN DE UNA NOCHE --------------------------------------------------------------------------------

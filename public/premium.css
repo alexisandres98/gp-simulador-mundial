@@ -3775,3 +3775,19 @@ td .gx-calc-btn span { display: none; }
 }
 /* la columna G-P partía "28-7" en dos líneas y una tabla de clasificación con el balance roto no se lee */
 .gx-esr-t td.gx-mono, .gx-esr-t th.r { white-space: nowrap; }
+
+/* ── TORNEOS DE ESPORT (19-ago) ──────────────────────────────────────────────────────────────────────── */
+.gx-es-tourbody { border-left: 2px solid var(--gx-accent-line, #1b4d3e); margin: 4px 0 12px 6px; padding-left: 10px; }
+.gx-es-tour-games { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.gx-es-tourg { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+  padding: 7px 10px; border: 1px solid var(--gx-line, #26313a); border-radius: 8px; font-size: 12.5px; cursor: pointer; }
+.gx-es-tourg b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-es-tourg span { font-size: 11px; white-space: nowrap; }
+.gx-es-fr { display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; font-size: 9.5px;
+  font-weight: 700; border-radius: 3px; margin-right: 2px; }
+.gx-es-fr.w { background: var(--gx-accent-soft, #10352a); color: var(--gx-green, #1FE3A4); }
+.gx-es-fr.l { background: #3a2226; color: #ff8fa3; }
+@media (max-width: 560px) { .gx-es-tourg { grid-template-columns: 1fr; gap: 2px; } }
+/* la racha de forma partía en dos líneas y una racha rota no se lee de un vistazo */
+.gx-esr-t td .gx-es-fr { vertical-align: middle; }
+.gx-esr-t td:last-child { white-space: nowrap; }

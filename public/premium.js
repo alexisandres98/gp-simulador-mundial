@@ -299,7 +299,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -705,7 +705,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1059,7 +1059,7 @@
   // ataque/defensa por mapa y Dota 2 en una duración de cola larga que ningún otro tiene. La sección se
   // navega igual que los otros deportes (misma sidebar, mismas pestañas) y el juego se elige con tabs.
   var ES_GAMES = [['cs2', 'CS2'], ['lol', 'LoL'], ['valorant', 'VALORANT'], ['dota2', 'DOTA 2']];
-  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer', 'esprops', 'esbrief', 'esask'];
+  var ES_VIEWS = ['esopps', 'esboard', 'esmatch', 'esmodel', 'esperf', 'esteams', 'esteam', 'escircuit', 'esplayer', 'esprops', 'esbrief', 'esask', 'estour'];
   // ── NFL (17-ago): el 6º deporte — un TERMINAL DE INTELIGENCIA, no una página de picks. No hay vista de
   // "Oportunidades" a propósito: todas las familias están en sombra (blueprint NFL-1125) y fingir un feed
   // de picks vacío sería peor que no tenerlo. La entrada es el Command Center (Partidos).
@@ -1112,7 +1112,7 @@
     ['esopps', 'target-arrow', 'nav_opps'], ['esprops', 'user-star', 'es_nav_props'],
     ['esboard', 'device-gamepad', 'es_nav_board'],
     ['esbrief', 'news', 'nav_brief'], ['esask', 'message-circle', 'nav_cb_ask'],
-    ['esteams', 'shield', 'es_nav_teams'], ['escircuit', 'map', 'es_nav_circuit'],
+    ['esteams', 'shield', 'es_nav_teams'], ['estour', 'trophy', 'es_nav_tour'], ['escircuit', 'map', 'es_nav_circuit'],
     ['esmodel', 'book', 'es_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['esperf', 'chart-line', 'nav_perf']
   ];
   var NAV2_ES = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
@@ -4397,7 +4397,7 @@
     if (nfv) { showView(nfv[1]); return; }
     var est = h.match(/^esteam\/(cs2|lol|valorant|dota2)\/(.+)$/i);
     if (est) { S.es.game = est[1]; if (!(S.view === 'esteam' && S.es.teamId === decodeURIComponent(est[2]))) { S.es.teamId = decodeURIComponent(est[2]); showView('esteam'); } return; }
-    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit|esprops|esbrief|esask)(?:\/(cs2|lol|valorant|dota2))?$/i);
+    var esv = h.match(/^(esopps|esboard|esmodel|esperf|esteams|escircuit|esprops|esbrief|esask|estour)(?:\/(cs2|lol|valorant|dota2))?$/i);
     if (esv) { if (esv[2]) S.es.game = esv[2]; showView(esv[1]); return; }
     var bbv = h.match(/^(bbopps|bbbrief|bbgames|bbteams|bbsim|bbask|bbperf|bbevo)(?:\/([a-z]+))?$/);
     if (bbv) { if (bbv[2]) { if (bbv[1] === 'bbevo') S.bb.evoLg = bbv[2]; else { S.bb.lg = bbv[2]; S.bb.state = undefined; } } showView(bbv[1]); return; }
@@ -4420,14 +4420,14 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
     if (['bbgames', 'bbteams', 'bbopps', 'bbbrief', 'bbperf', 'bbsim'].indexOf(nav) >= 0) return nav + '/' + bbLg();
     // esports: el juego elegido viaja en el hash, por el mismo motivo (volver a la sección te devuelve al
     // juego en el que estabas, y el enlace se puede compartir apuntando a CS2 o a LoL)
-    if (['esopps', 'esboard', 'esmodel', 'esteams', 'escircuit', 'esbrief', 'esask'].indexOf(nav) >= 0) return nav + '/' + esGame();
+    if (['esopps', 'esboard', 'esmodel', 'esteams', 'escircuit', 'esbrief', 'esask', 'estour'].indexOf(nav) >= 0) return nav + '/' + esGame();
     if (['tengames', 'tenrank', 'tenplayers', 'tensim', 'tenperf', 'tenbrief', 'tenask', 'tenmodel'].indexOf(nav) >= 0) return nav + '/' + tenTour();
     if (!clubsOn()) return NAV_HASH[nav];
     if (nav === 'groups' && S.gComp && S.gComp !== 'wc') return 'groups/' + S.gComp;
@@ -8836,6 +8836,7 @@
     else if (v === 'esteam') renderESTeam();
     else if (v === 'esplayer') renderESPlayer();
     else if (v === 'escircuit') renderESCircuit();
+    else if (v === 'estour') renderESTournaments();
     else if (v === 'esprops') renderESProps();
     else if (v === 'esbrief') renderESBrief();
     else if (v === 'esask') renderESAsk();
@@ -13868,6 +13869,64 @@
     esShell('Brief · ' + esc(d.label || esGameLab()), esTabs() + strip + intro + lecturas + rows + act + why + meta + note);
   }
 
+  // ── TORNEOS (19-ago) ───────────────────────────────────────────────────────────────────────────────────
+  // Pedido de Alexis: "alguna sección tipo bracket o grupo o evolución para los torneos". De las tres, la
+  // única que hoy se puede publicar sin inventar nada es el GRUPO, y conviene decir por qué:
+  //   · el CUADRO oficial no lo publica ninguna de las tres casas —quién sale de cada llave, quién espera
+  //     en semifinales— y dibujarlo a partir del calendario sería inventarlo;
+  //   · la EVOLUCIÓN del rating necesita fotos semanales y solo hay una: hoy sería una línea recta con
+  //     pinta de dato. Dentro de un mes es una curva de verdad.
+  // Lo que sí se tiene: qué equipos hay en cada torneo, cómo llegan según la base propia y qué se juega
+  // cuándo. Un equipo que la base no reconoce sale igual, con su hueco declarado — en los circuitos
+  // menores es la mitad del cuadro, y esconderlos daría un torneo de cuatro equipos.
+  function renderESTournaments() {
+    var g = esGame();
+    var d = esGet('tour_' + g, '/api/esports/tournaments?game=' + g, 600000);
+    if (!d) { esShell(t('es_nav_tour'), esTabs() + esLoading()); return; }
+    if (d._err) { esShell(t('es_nav_tour'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (!d.available) {
+      esShell(t('es_nav_tour'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Sin torneos en la agenda de ' + esc(esGameLab()) + '.</b><span class="gx-dim">' + esc(d.why || '') + '</span></div></div>');
+      return;
+    }
+    var abierto = (S.es && S.es.tourOpen) || (d.rows[0] && d.rows[0].competition);
+    var hero = '<div class="gx-es-hero"><div><b>' + d.rows.length + ' torneos en ' + d.days + ' días</b>' +
+      '<span class="gx-dim">quién juega, cómo llega y cuándo — la agenda de las casas, el rating de la base propia</span></div>' +
+      '<span class="gx-spacer"></span>' +
+      '<div class="gx-es-hero-n"><b>' + d.rows.reduce(function (a, c) { return a + c.n_matches; }, 0) + '</b><span>partidas</span></div></div>';
+    var cuerpo = d.rows.map(function (C) {
+      var on = C.competition === abierto;
+      var cab = '<div class="gx-es-whyr" data-estour="' + esc(C.competition) + '" style="cursor:pointer">' +
+        '<b>' + esc(C.competition) + '</b><em>' + C.n_matches + '</em>' +
+        '<span>' + C.n_teams + ' equipos · ' + C.ranked + ' con ranking propio' +
+        (C.starts ? ' · desde ' + esc(fmtDateTime(C.starts)) : '') + '</span></div>';
+      if (!on) return cab;
+      var equipos = '<div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>#</th><th>Equipo</th><th class="r">Rating GP</th><th class="r">Mapas</th><th>Forma</th></tr></thead><tbody>' +
+        C.teams.map(function (tm) {
+          return '<tr>' +
+            '<td class="gx-mono">' + (tm.rank ? tm.rank : '—') + '</td>' +
+            '<td><div class="gx-esr-team">' + (tm.logo ? '<img src="' + esc(tm.logo) + '" alt="" loading="lazy">' : '') + '<b>' + esc(tm.name) + '</b></div>' +
+            (tm.why_no_rank ? '<span class="gx-dim" style="font-size:10.5px">' + esc(tm.why_no_rank) + '</span>' : '') + '</td>' +
+            '<td class="r gx-mono">' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</td>' +
+            '<td class="r gx-mono gx-dim">' + (tm.n != null ? tm.n : '—') + '</td>' +
+            '<td>' + (tm.form && tm.form.length
+              ? tm.form.map(function (f) { return '<span class="gx-es-fr ' + (f === 'W' ? 'w' : 'l') + '">' + esc(f) + '</span>'; }).join('')
+              : '<span class="gx-dim">—</span>') + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+      var partidas = '<div class="gx-es-tour-games">' + C.matches.map(function (m) {
+        return '<div class="gx-es-tourg" data-esmatch="' + esc(m.id) + '">' +
+          '<span class="gx-mono gx-dim">' + esc(m.live ? 'EN VIVO' : fmtDateTime(m.start_at)) + '</span>' +
+          '<b>' + esc(m.home.name) + ' vs ' + esc(m.away.name) + '</b>' +
+          '<span class="gx-dim">' + (m.bo ? 'BO' + m.bo + ' · ' : '') + m.books + (m.books === 1 ? ' casa' : ' casas') + '</span></div>';
+      }).join('') + '</div>';
+      return cab + '<div class="gx-es-tourbody">' + equipos + partidas + '</div>';
+    }).join('');
+    var nota = '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>' + esc(d.note) + '</span></div>';
+    esShell(t('es_nav_tour'), esTabs() + hero +
+      '<div class="gx-panel gx-esr-panel"><div class="gx-ph"><span class="gx-label">Torneos en la agenda</span>' +
+      '<span class="gx-ph-extra">toca uno para abrirlo</span></div><div class="gx-es-why-rows">' + cuerpo + '</div></div>' + nota);
+  }
+
   // ── PREGÚNTALE A GP · ESPORT (18-ago) ───────────────────────────────────────────────────────────────────
   function renderESAsk() {
     S.es.ask = S.es.ask || { hist: [], busy: false, err: null };
@@ -13915,6 +13974,8 @@
     if (lensBtn) { S.es.lens = lensBtn.getAttribute('data-eslens'); renderESMatch(); return; }
     var oppF = e.target.closest('[data-esoppfilt]');
     if (oppF) { S.es.oppFilt = oppF.getAttribute('data-esoppfilt'); renderESOpps(); return; }
+    var tr2 = e.target.closest('[data-estour]');
+    if (tr2) { var k2 = tr2.getAttribute('data-estour'); S.es.tourOpen = (S.es.tourOpen === k2 ? null : k2); renderESTournaments(); return; }
     var oppS = e.target.closest('[data-esoppsub]');
     if (oppS) { S.es.oppSub = oppS.getAttribute('data-esoppsub'); renderESOpps(); return; }
     var epl = e.target.closest('[data-esplayer]');
@@ -13933,7 +13994,7 @@
     var sim = e.target.closest('[data-essim]');
     if (sim) { S.es.simA = sim.getAttribute('data-essim'); S.es.simB = ''; S.es.simRun = false; setHash('esmodel/' + esGame()); return; }
     var gt = e.target.closest('[data-esg]');
-    if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel', 'esperf'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
+    if (gt) { S.es.game = gt.getAttribute('data-esg'); setHash((['esopps', 'esboard', 'esmodel', 'esperf', 'estour'].indexOf(S.view) >= 0 ? S.view : 'esboard') + '/' + S.es.game); return; }
     var go = e.target.closest('[data-esgo]');
     if (go) { S.es.game = go.getAttribute('data-esgo'); setHash('esboard/' + S.es.game); return; }
     if (e.target.closest('[data-esback]')) { setHash('esboard/' + esGame()); return; }

@@ -2026,6 +2026,85 @@ function rankingBoard(game) {
   };
 }
 
+// ---- TORNEOS: LA COMPETICIÓN COMO UNIDAD, NO EL PARTIDO SUELTO -------------------------------------------
+// Pedido de Alexis (19-ago): "vamos a agregar alguna sección tipo bracket o grupo o evolución para los
+// torneos". Aquí hay que ser honesto con lo que se tiene y con lo que no:
+//
+//   · Un BRACKET oficial no se puede pintar. Ninguna de las tres casas publica la estructura del cuadro
+//     —quién sale de cada llave, quién espera en semifinales— y dibujar un cuadro inventado a partir del
+//     calendario sería exactamente el tipo de dato falso que esta casa no publica.
+//   · Una EVOLUCIÓN de rating tampoco, todavía: la foto semanal del ranking empezó a guardarse hace una
+//     semana, así que hoy hay UN punto. Dentro de un mes será una curva; hoy sería una línea recta con
+//     pinta de dato.
+//   · Lo que SÍ se tiene es el GRUPO: qué equipos hay en cada torneo, cómo llegan según la base propia
+//     —rating, forma reciente— y qué se juega cuándo. Eso es lo que se publica.
+//
+// La agenda sale del proveedor y el rating y la forma de la base propia de GP. Un equipo que la base no
+// reconoce aparece igual, con su hueco declarado: media plantilla de los torneos menores no está en el
+// ranking, y esconderlos daría un torneo con cuatro equipos.
+function tournamentsBoard(game, { days = 14 } = {}) {
+  const CD = cdOf(game);
+  const rank = (() => { try { return rankingBoard(game); } catch { return null; } })();
+  const porId = new Map(((rank && rank.rows) || []).map((r) => [r.id, r]));
+  const data = (() => { try { return CD ? CD.load() : null; } catch { return null; } })();
+  const idDe = (nombre) => { try { return (CD && data) ? CD.resolveTeam(nombre, { data }) : null; } catch { return null; } };
+
+  return (async () => {
+    const s = await slate(game, { days }).catch(() => null);
+    const evs = (s && s.events) || [];
+    // CADA CASA NOMBRA EL TORNEO A SU MANERA y sin normalizar salen duplicados que parecen torneos distintos:
+    // "United21" y "United 21", "ESL Challenger League Europe" y "CS2 - ESL Challenger League Europe". Se
+    // agrupa por una clave sin el prefijo del juego, sin espacios y sin acentos, y se enseña el nombre más
+    // largo de los que llegaron —que suele ser el completo.
+    const claveComp = (x) => String(x || 'Sin competición')
+      .replace(/^\s*(cs\s*2|cs:?go|lol|league of legends|valorant|dota\s*2)\s*[-–:·|]\s*/i, '')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const nombreComp = (x) => String(x || 'Sin competición')
+      .replace(/^\s*(CS\s*2|CS:?GO|LoL|League of Legends|Valorant|Dota\s*2)\s*[-–:·|]\s*/i, '').trim() || 'Sin competición';
+    const comps = new Map();
+    for (const ev of evs) {
+      const k = claveComp(ev.competition);
+      const nombre = nombreComp(ev.competition);
+      if (!comps.has(k)) comps.set(k, { competition: nombre, matches: [], teams: new Map() });
+      const C = comps.get(k);
+      if (nombre.length > C.competition.length) C.competition = nombre;
+      C.matches.push({ id: ev.id, start_at: ev.start_at, bo: ev.bo || null,
+        home: ev.home, away: ev.away, books: (ev.sources || []).length,
+        live: !!ev.start_at && Date.parse(ev.start_at) <= Date.now() });
+      for (const t of [ev.home, ev.away]) {
+        if (C.teams.has(t.name)) continue;
+        const id = idDe(t.name);
+        const r = id ? porId.get(id) : null;
+        C.teams.set(t.name, {
+          name: t.name, id: id || null, logo: t.logo || (r && r.logo) || null,
+          rank: r ? r.rank : null, elo: r ? r.elo : null, wr: r ? r.wr : null, n: r ? r.n : null,
+          form: r ? r.form : null,
+          // el hueco, dicho: en los circuitos menores la mitad de los equipos no llega al mínimo de mapas
+          why_no_rank: r ? null : (id ? 'en la base pero sin mapas suficientes para entrar al ranking'
+            : 'la base propia no reconoce a este equipo todavía'),
+        });
+      }
+    }
+    const rows = [...comps.values()].map((C) => ({
+      competition: C.competition,
+      matches: C.matches.sort((a, b) => String(a.start_at).localeCompare(String(b.start_at))),
+      teams: [...C.teams.values()].sort((a, b) => (b.elo || 0) - (a.elo || 0)),
+      n_matches: C.matches.length, n_teams: C.teams.size,
+      ranked: [...C.teams.values()].filter((t) => t.rank).length,
+      starts: C.matches.length ? C.matches[0].start_at : null,
+      ends: C.matches.length ? C.matches[C.matches.length - 1].start_at : null,
+    })).sort((a, b) => (b.n_matches - a.n_matches) || String(a.starts).localeCompare(String(b.starts)));
+    return {
+      game, available: rows.length > 0, days, rows,
+      rating_at: rank && rank.at ? rank.at : null,
+      why: rows.length ? null : `el proveedor no lista partidas de ${game} en los próximos ${days} días`,
+      note: 'la agenda sale de las casas; el rating y la forma, de la base propia de GP. No hay cuadro oficial: ' +
+        'ninguna casa publica la estructura de llaves, y dibujar uno a partir del calendario sería inventarlo.',
+      at: new Date().toISOString(),
+    };
+  })();
+}
+
 function championsBoard(game, { role = null } = {}) {
   // el meta de "unidades" del juego — campeones en LoL (por parche), agentes en Valorant (por ventana de
   // 90 días, porque la fuente no publica el parche). El contrato es el mismo tablero; cada juego pone su
@@ -2143,7 +2222,7 @@ function h2h(game, refA, refB) {
   };
 }
 
-module.exports = { retireCrossedPicks,
+module.exports = { tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne,

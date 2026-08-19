@@ -16625,6 +16625,9 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/esports/brief') {
           return json(res, 200, await esportsBrief(gm, { force: url.searchParams.get('force') === '1' }));
         }
+        if (p === '/api/esports/tournaments') {
+          return json(res, 200, await ES.tournamentsBoard(gm, { days: 14 }));
+        }
         if (p === '/api/esports/champions') {
           // meta de campeones del parche vigente (LoL, blueprint Fase 4); ?role=Top|Jungle|Mid|Bot|Support
           return json(res, 200, ES.championsBoard(gm, { role: url.searchParams.get('role') || null }));

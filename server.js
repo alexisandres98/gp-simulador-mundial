@@ -4756,12 +4756,46 @@ function clubStandingsFromResults(league, rows) {
 // tabla del prefijo de resultados + season sim del calendario restante (MISMO projectSeason). Elo actual
 // (estático a lo largo de la serie) — proyección retrospectiva honesta. Mismo shape que st.history del
 // Mundial ({date, probs{id:champ%}}) → renderEvo del cliente lo grafica sin variantes. Memo por mtime.
+// EL MARCADOR, DERIVADO DEL EVENT DATA. FotMob no publica el resultado en este archivo, pero sí cada
+// disparo con su tipo. Un gol es un disparo con `event: 'Goal'`; el gol EN PROPIA suma para el rival, y por
+// eso se mira `own_goal` antes de asignar el bando — sin eso, un partido con gol en propia sale al revés.
+// Comprobado contra Alavés-Getafe del 15-ago: 3-0, que es el resultado real.
+function clubResultsFromFotmob(fp) {
+  let doc = null;
+  try { doc = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch { return []; }
+  const out = [];
+  for (const m of (doc.matches || [])) {
+    if (!m.homeCode || !m.awayCode || !Array.isArray(m.shots) || !m.shots.length) continue;
+    let hg = 0, ag = 0;
+    for (const sh of m.shots) {
+      if (String(sh.event || '').toLowerCase() !== 'goal') continue;
+      const paraLocal = sh.own_goal ? sh.team !== 'home' : sh.team === 'home';
+      if (paraLocal) hg++; else ag++;
+    }
+    out.push({ id: 'fot-' + m.matchId, date: m.utc, home_id: m.homeCode, away_id: m.awayCode,
+      hg, ag, winner: hg > ag ? m.homeCode : ag > hg ? m.awayCode : null, src: 'fotmob' });
+  }
+  return out;
+}
 function clubEvoHistory(league) {
   if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
   const L = (global._clubsRatings.leagues || {})[league];
   if (!L) return null;
   let fp = null, stamp = '0';
-  try { fp = clubDataFile(`results-${league}.json`); stamp = String(fs.statSync(fp).mtimeMs); } catch { return { available: false }; }
+  try { fp = clubDataFile(`results-${league}.json`); stamp = String(fs.statSync(fp).mtimeMs); } catch { fp = null; }
+  // SEGUNDA FUENTE PARA LA EVOLUCIÓN (19-ago, reporte de Alexis: "la parte de evolución no está
+  // funcionando en muchas de las ligas nuevas que están en temporada").
+  // La evolución se construye desde `results-<liga>.json`, y 31 de los 45 de ese tipo están VACÍOS: pesan
+  // 25-30 bytes, que es un `rows: []`. Se llenaban con un script manual, así que las ligas incorporadas
+  // después nunca lo tuvieron y la pantalla respondía `available: false` sin decir por qué. Las pocas con
+  // algo dentro funcionaban "a medias", que es exactamente lo que se veía.
+  // Pero el archivo de event data de FotMob SÍ está —40 ligas, algunos de 1,7 MB— y aunque no trae el
+  // marcador, trae los disparos con su tipo: un gol es un disparo con `event: 'Goal'`, y el gol en propia
+  // cuenta para el rival. De ahí sale el resultado exacto sin pedirle nada a nadie.
+  let fFp = null, fStamp = '0';
+  try { fFp = clubDataFile(`fotmob-${league}.json`); fStamp = String(fs.statSync(fFp).mtimeMs); } catch { fFp = null; }
+  if (!fp && !fFp) return { available: false, why: 'esta liga no tiene todavía archivo de resultados ni de eventos.' };
+  stamp = stamp + '|' + fStamp;
   global._clubEvo = global._clubEvo || {};
   const c = global._clubEvo[league];
   if (c && c.stamp === stamp) return c.data;
@@ -4774,7 +4808,17 @@ function clubEvoHistory(league) {
   try {
   let data = { available: false };
   try {
-    const all = (JSON.parse(fs.readFileSync(fp, 'utf8')).rows || [])
+    // el archivo propio de resultados (lo que persiste el directo) …
+    let base = [];
+    if (fp) { try { base = JSON.parse(fs.readFileSync(fp, 'utf8')).rows || []; } catch { base = []; } }
+    // … más lo que se puede reconstruir del event data, que es lo que salva a las ligas nuevas
+    const fromFot = fFp ? clubResultsFromFotmob(fFp) : [];
+    const seen = new Set(base.map(r => `${r.home_id}|${r.away_id}|${String(r.date).slice(0, 10)}`));
+    for (const r of fromFot) {
+      const k = `${r.home_id}|${r.away_id}|${String(r.date).slice(0, 10)}`;
+      if (!seen.has(k)) { seen.add(k); base.push(r); }
+    }
+    const all = base
       .filter(r => r.hg != null && L.ratings[r.home_id] && L.ratings[r.away_id])
       .sort((a, b) => new Date(a.date) - new Date(b.date));
     const dates = [...new Set(all.map(r => String(r.date).slice(0, 10)))].slice(-40); // cap: últimas 40 jornadas-fecha

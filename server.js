@@ -323,14 +323,19 @@ async function amfootRostersJob() {
     // siempre hay dos en vuelo y este trabajo se quedaba esperando un hueco que no llega. Tras tres frenos
     // seguidos por apilamiento se pasa igual: el freno que de verdad protege es el techo de memoria —que
     // sigue aplicándose arriba—, y una cosecha de plantillas de nueve equipos no es lo que tumba nada.
-    OPS.amfSkips = OPS.amfSkips || 0;
-    if (busy.length >= 2 && OPS.amfSkips < 3) {
-      OPS.amfSkips++;
-      opsLog('amf_rosters', { skipped: 'apilamiento: ' + busy.join(',') + ' (' + OPS.amfSkips + '/3)' });
+    // EL CONTADOR VA A DISCO, NO A MEMORIA (19-ago). Vivía en `OPS`, que se borra entero en cada deploy —
+    // y esta plataforma se despliega varias veces al día. Con el contador en memoria, cualquier deploy
+    // devolvía los frenos a cero y el escape no llegaba a dispararse nunca: el mismo bucle que se quiso
+    // romper, ahora atado al ritmo de los despliegues. Peor todavía, obligaba a RETENER despliegues para
+    // no reiniciarlo, que es exactamente al revés de como debe funcionar un freno.
+    db.ops.amf_skips = db.ops.amf_skips || 0;
+    if (busy.length >= 2 && db.ops.amf_skips < 3) {
+      db.ops.amf_skips++; save();
+      opsLog('amf_rosters', { skipped: 'apilamiento: ' + busy.join(',') + ' (' + db.ops.amf_skips + '/3)' });
       setTimeout(amfootRostersJob, 45 * 60e3); return;
     }
     if (busy.length >= 2) opsLog('amf_rosters', { forzado: 'tres frenos seguidos; el techo de memoria manda' });
-    OPS.amfSkips = 0;
+    if (db.ops.amf_skips) { db.ops.amf_skips = 0; save(); }
     const AF = require('./amfoot-engine/store');
     const dir = AF.DISK_DIR;
     const fresh = (lg) => {
@@ -16442,9 +16447,26 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       let backups = [];
       try { backups = fs.readdirSync(BACKUP_DIR).filter(f => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().slice(-5); } catch { }
+      // ESTADO DE LAS PLANTILLAS EN EL DISCO PERSISTENTE (19-ago). `opsLog` vive en memoria y se borra en
+      // cada deploy, así que preguntar "¿llegó la cosecha de plantillas?" no tenía respuesta fiable desde
+      // fuera: había que adivinarla mirando si la pestaña enseñaba jugadores. Aquí se dice lo que hay en
+      // disco —cuántos jugadores y de cuándo—, que es el hecho, no el rastro del trabajo.
+      const rosters = {};
+      try {
+        const AFs = require('./amfoot-engine/store');
+        for (const lg of ['cfl', 'ncaaf']) {
+          const f = path.join(AFs.DISK_DIR, `roster-${lg}.json`);
+          try {
+            const st = fs.statSync(f);
+            let n = null; try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); n = Array.isArray(j) ? j.length : Object.keys(j.players || j.rows || j).length; } catch { }
+            rosters[lg] = { at: new Date(st.mtimeMs).toISOString(), kb: Math.round(st.size / 1024), jugadores: n };
+          } catch { rosters[lg] = null; }
+        }
+      } catch { }
       return json(res, 200, {
         rss_mb: opsRssMb(), running: Object.keys(OPS.running).filter(k => OPS.running[k]),
         days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null },
+        rosters, amf_skips: db.ops.amf_skips || 0,
         cs2_auto_enabled: cs2AutoOn(),
         boxing_env: /^(1|true|yes|on)$/i.test(String(process.env.GP_BOXING_BACKFILL || '').trim()),
         backups, log: OPS.log.slice().reverse(),

@@ -156,8 +156,15 @@ const memRecent = () => {
   const r = _memLog.filter((x) => x.t >= cut).map((x) => x.what);
   return (r.length ? r : [_memLog[_memLog.length - 1].what]).join(' → ');
 };
+// ANILLO DE RSS (19-ago). El freno de memoria miraba UNA muestra, y los picos de esta plataforma son
+// transitorios: un barrido de cuotas sube el RSS a 1.483 MB y lo suelta a los segundos. Juzgar en ese
+// instante hacía que trabajos legítimos se saltaran —`cs2_daily` perdió pasadas siendo el único deporte
+// con CLV positivo—. Con el anillo, la pregunta pasa a ser la correcta: no "¿está alta la memoria ahora
+// mismo?" sino "¿ha estado alta durante el último medio minuto?".
+const RSS_RING = [];
 setInterval(() => {
   const mb = Math.round(process.memoryUsage().heapUsed / 1048576);
+  try { RSS_RING.push(opsRssMb()); if (RSS_RING.length > 6) RSS_RING.shift(); } catch { /* antes del arranque */ }
   const step = Math.floor(mb / 250);
   if (step > _memStep) console.log('[mem] montón', mb, 'MB (subiendo) · en curso:', memRecent());
   else if (step < _memStep - 1) console.log('[mem] montón', mb, 'MB (liberado) · tras:', memRecent());
@@ -232,10 +239,13 @@ const opsRssMb = () => Math.round(process.memoryUsage().rss / 1048576);
 // donde el contenedor moriría. Cada guardia dice su nombre cuando frena: nada de returns mudos.
 const OPS_RSS_CEIL = Math.max(400, +(process.env.GP_OPS_RSS_CEIL_MB || 1200));
 function opsMemOk(what, marginMb = 0) {
-  const rss = opsRssMb();
+  const now = opsRssMb();
   const lim = OPS_RSS_CEIL - marginMb;
+  // el MÍNIMO de los últimos ~30 s: un pico no descalifica, una memoria estructuralmente alta sí
+  const ring = (typeof RSS_RING !== 'undefined' && RSS_RING.length) ? RSS_RING : [];
+  const rss = ring.length ? Math.min(now, ...ring) : now;
   if (rss <= lim) return true;
-  opsLog(what, { skipped: `rss ${rss}MB > techo ${lim}MB` });
+  opsLog(what, { skipped: `rss ${rss}MB (mínimo de ${ring.length + 1} muestras, ahora ${now}MB) > techo ${lim}MB` });
   return false;
 }
 
@@ -356,7 +366,13 @@ async function amfootRostersJob() {
     // este trabajo no encontraba hueco NUNCA — el mismo defecto que el techo obsoleto, por otra puerta.
     // El recurso escaso de verdad es la memoria, y de eso ya se encarga el techo; aquí solo se evita el
     // apilamiento: se frena a partir de DOS pesadas en vuelo, no de una.
-    const heavy = ['lol_harvest', 'val_harvest', 'cs2_harvest', 'ten_harvest'];
+    // QUÉ CUENTA COMO "PESADO", CORREGIDO (19-ago). `lol_harvest` y `val_harvest` son cadenas que se
+    // re-arman cada 20 minutos y NINGUNA se ha marcado nunca completa: en la práctica están siempre en
+    // vuelo. Tratarlas como trabajo en curso convertía el tope de concurrencia en un veto permanente — las
+    // plantillas de College y CFL llevan dos días sin aterrizar por esto, con `GP_AMF_ROSTERS=1` puesto y
+    // el contador de frenos clavado. No son trabajo en vuelo, son ruido de fondo; el recurso escaso de
+    // verdad es la memoria y de eso se encarga el techo, que sigue aplicándose arriba.
+    const heavy = ['cs2_harvest', 'ten_harvest'];
     const busy = heavy.filter((k) => OPS.running[k]);
     // ESCAPE POR INANICIÓN: `lol_harvest` y `val_harvest` son cadenas que se re-arman cada 20 min y NINGUNA
     // ha llegado nunca a marcarse completa (state.json no existe en ninguno de los dos discos), así que casi

@@ -490,6 +490,31 @@ async function lolHarvestJob() {
   } catch (e) { opsLog('lol_harvest', { error: e.message }); setTimeout(lolHarvestJob, 30 * 60e3); }
 }
 setTimeout(lolHarvestJob, 6 * 60e3);
+// ── PandaScore: la base histórica de los TRES juegos que no la tenían (19-ago) ──────────────────────────
+// Esports declara `rating: 0` en sus cuatro juegos desde que existe. CS2 salió de ahí con cosecha propia;
+// LoL, Valorant y Dota 2 llevaban meses esperando a OpenDota, a Riot y a Liquipedia. PandaScore los cubre
+// a los tres desde 2016 con quién ganó a quién, en qué competición, con qué marcador de serie y —esto es
+// lo que a Dota 2 le faltaba entero— la DURACIÓN de cada mapa.
+//
+// EL LIMITADOR ES POR HORA (1.000 peticiones) y el barrido completo son ~1.070 páginas: no cabe en una
+// ventana. Por eso la cosecha es reanudable por cursor y esto se re-arma cada hora, gastando el
+// presupuesto de esa hora y parando limpio. Converge en dos o tres pasadas y luego se vuelve incremental
+// sola (el cursor alcanza la fecha de hoy y cada pasada solo trae lo nuevo).
+//
+// NO trae rondas de CS2 ni kills de LoL: esos endpoints son de pago y devuelven 403. La liquidación de
+// picks sigue viniendo de donde venía. Esto es base histórica, no liquidador.
+async function pandaHarvestJob() {
+  try {
+    if (!String(process.env.PANDASCORE_TOKEN || '').trim()) return;
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_PANDA_HARVEST || '').trim())) return;
+    if (!opsMemOk('panda_harvest', 150)) { setTimeout(pandaHarvestJob, 30 * 60e3); return; }
+    const out = await opsSpawn('panda_harvest', ['scripts/esports-pandascore-harvest.js', '--game=lol,dota2,valorant', '--budget=880'],
+      { heapMb: 320, timeoutMin: 55 });
+    opsLog('panda_harvest', { code: out.code != null ? out.code : out.error, rss: opsRssMb() });
+    setTimeout(pandaHarvestJob, 62 * 60e3);   // la cuota es por hora: se vuelve cuando se ha repuesto
+  } catch (e) { opsLog('panda_harvest', { error: e.message }); setTimeout(pandaHarvestJob, 62 * 60e3); }
+}
+setTimeout(pandaHarvestJob, 9 * 60e3);
 // Valorant (18-ago, blueprint 4.0 Fase 1): el ÍNDICE de series se cosechó desde el sandbox (vlr.gg no lo
 // limita) y viaja versionado; el DETALLE por serie (mapas/lados/agentes/scoreboard, miles de páginas) corre
 // aquí con la misma cadena paciente que LoL: /data/val-raw, reanudable, re-armado cada 20 min hasta que
@@ -16911,6 +16936,27 @@ const server = http.createServer(async (req, res) => {
               clv_diag: tr.clv_diag };
           }),
           ratings_state: ov.ratings_state,
+          // PANDASCORE (19-ago): el avance de la base histórica que por fin da rating propio a LoL,
+          // Valorant y Dota 2. Se lee del disco —no se llama a la red— para que la sonda no gaste cuota.
+          pandascore: (() => {
+            try {
+              const PS = require('./data-providers/esports/pandascore');
+              const root = path.dirname(DB_FILE);
+              const dir = fs.existsSync(path.join(root, 'esports', 'pandascore'))
+                ? path.join(root, 'esports', 'pandascore')
+                : path.join(__dirname, 'data', 'esports', 'pandascore');
+              const out = { token: PS.enabled(), job: /^(1|true|yes|on)$/i.test(String(process.env.GP_PANDA_HARVEST || '').trim()), dir, games: {} };
+              for (const g of ['lol', 'dota2', 'valorant', 'cs2']) {
+                try {
+                  const j = JSON.parse(fs.readFileSync(path.join(dir, `${g}.json`), 'utf8'));
+                  const mapas = (j.matches || []).reduce((n, m) => n + (m.maps || []).length, 0);
+                  const dur = (j.matches || []).reduce((n, m) => n + (m.maps || []).filter((x) => x.minutes != null).length, 0);
+                  out.games[g] = { partidos: (j.matches || []).length, mapas, con_duracion: dur, cursor: j.cursor, completo: !!j.complete, at: j.at };
+                } catch { out.games[g] = null; }
+              }
+              return out;
+            } catch (e) { return { error: e.message }; }
+          })(),
           heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576),
         });
       } catch (e) { return json(res, 500, { ok: false, error: e.message, stack: String(e.stack || '').split('\n').slice(0, 3) }); }

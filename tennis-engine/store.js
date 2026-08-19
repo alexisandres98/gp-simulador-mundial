@@ -181,21 +181,55 @@ function distProbs(model, totalLine, spreadLineA) {
   return { pOver, pushT, pCoverA, pushS };
 }
 
+// EL RETRASO DE LA BASE, QUE NO ES LO MISMO QUE UN JUGADOR PARADO (19-ago). Los repos de Sackmann fueron
+// retirados de GitHub y el espejo que los sustituye es una INSTANTÁNEA: su último partido es del 25 de mayo
+// de 2026. Es decir, la base no avanza — y el motor está puntuando Cincinnati sin Roland Garros, sin
+// Wimbledon y sin toda la gira de pista rápida. Eso no es un detalle de mantenimiento: es forma de tres
+// meses que el modelo no ha visto, y tiene que entrar en la incertidumbre de cada tesis y decirse en voz
+// alta, no quedarse en una nota de linaje que nadie abre.
+// Se traduce a puntos con una regla declarada, no ajustada: un punto porcentual de incertidumbre extra por
+// cada 30 días de retraso, con tope de 4. No pretende ser una medición —no hay muestra para medirla— sino
+// un impuesto honesto y acotado sobre una ventaja que se calcula con información vieja.
+function baseLagDays() {
+  try {
+    const d = D.build();
+    // `last_match_date` es un objeto por circuito ({atp, wta}); manda el MÁS ANTIGUO, que es el que de
+    // verdad limita: si la base de la WTA se queda atrás, el retraso de la casa es ése.
+    const lm = (d.meta && d.meta.last_match_date) || null;
+    const vals = lm && typeof lm === 'object' ? Object.values(lm).map(String) : [String(lm || '')];
+    const ok = vals.filter((x) => x.length === 8).sort();
+    if (!ok.length) return null;
+    const last = ok[0];
+    const t = Date.UTC(+last.slice(0, 4), +last.slice(4, 6) - 1, +last.slice(6, 8));
+    return Math.max(0, Math.round((Date.now() - t) / 864e5));
+  } catch { return null; }
+}
+const lagUncPp = (lag) => (lag == null ? 0 : Math.min(4, lag / 30));
+
 function gate(c) {
   const edgePp = (c.p_model - c.p_implied) * 100;
   const gates = [];
   // la incertidumbre epistémica del ganador se aproxima por el desacuerdo entre las dos vistas del
   // ensamble (Elo mixto vs compilado): si discrepan, la ventaja tiene que superar ese desacuerdo.
-  const uncPp = Math.min(8, Math.abs((c.unc_pp != null ? c.unc_pp : 2)));
+  // Y encima, el impuesto por lo vieja que esté la base: no es desacuerdo interno, es información ausente.
+  const uncPp = Math.min(10, Math.abs((c.unc_pp != null ? c.unc_pp : 2)) + lagUncPp(c.base_lag_days));
   gates.push({ gate: 'edge', pass: edgePp >= 3, detail: 'listón mínimo 3 pp (con signo: solo el lado +EV)' });
   gates.push({ gate: 'noise', pass: edgePp > uncPp, detail: `${edgePp.toFixed(1)} pp vs desacuerdo interno ${uncPp.toFixed(1)} pp` });
   gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
   gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.06, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)}%` });
-  gates.push({ gate: 'freshness', pass: !c.stale, detail: c.stale ? 'jugador con >120 días sin partido en la base: incertidumbre manda' : 'ambos jugadores activos en la base' });
+  gates.push({ gate: 'freshness', pass: !c.stale, detail: c.stale ? 'jugador con >120 días sin jugar ANTES del final de la base: no es que falte el dato, es que no compitió' : 'ambos jugadores activos hasta donde llega la base' });
+  // La vejez de la base NO cierra la tesis: tenis entero está en sombra y cerrar familias antes de tener
+  // muestra es justo lo que esta casa decidió no volver a hacer. Se cobra en incertidumbre —arriba— y se
+  // publica aquí, para que la revisión sepa con qué información se decidió cada una.
+  gates.push({ gate: 'base_al_dia', pass: true, informativo: true,
+    detail: c.base_lag_days == null ? 'sin fecha de corte en la base'
+      : c.base_lag_days <= 21 ? `base al día (corte hace ${c.base_lag_days} días)`
+      : `la base va ${c.base_lag_days} días por detrás del calendario real: +${lagUncPp(c.base_lag_days).toFixed(1)} pp de incertidumbre y forma reciente no vista` });
   const pass = gates.every((x) => x.pass);
   return {
     family: c.family, side: c.side, line: c.line != null ? c.line : null, odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp), gates,
+    base_lag_days: c.base_lag_days != null ? c.base_lag_days : null, unc_pp: r2(uncPp),
     verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
     no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate,
     benchmark: c.family === 'ML' || undefined,
@@ -206,15 +240,29 @@ function evaluateEdges(model, mk) {
   const out = [];
   const dec2p = (d) => 1 / d;
   const d = D.build();
-  const staleOf = (id, tn) => { const p = d.T[tn].prof.get(id); if (!p) return true; const last = p.lastDate; const now = +new Date().toISOString().slice(0, 10).replace(/-/g, ''); return String(now).slice(0, 4) * 372 + +String(now).slice(4, 6) * 31 + +String(now).slice(6, 8) - (String(last).slice(0, 4) * 372 + +String(last).slice(4, 6) * 31 + +String(last).slice(6, 8)) > 124; };
+  // LA REFERENCIA ES EL FINAL DE LA BASE, NO HOY (19-ago). Esta puerta pregunta "¿este jugador lleva
+  // meses sin competir?" y la respuesta se buscaba contra la fecha de hoy. Con la base congelada el 25 de
+  // mayo eso mide otra cosa: mide lo vieja que está la base, y la mide igual para TODOS. El efecto es una
+  // puerta que primero no salta nunca —a 86 días de retraso, nadie llega a los 124— y que a partir de
+  // finales de septiembre saltará para el campo entero el mismo día, sin que ningún jugador haya cambiado
+  // nada. Ninguno de los dos estados dice nada del jugador.
+  // Contra el ÚLTIMO PARTIDO DE LA BASE la pregunta vuelve a ser la original: de todo el tenis que la base
+  // sí vio, ¿cuánto se lo perdió este jugador? Eso sí distingue a un lesionado de un activo. Lo que la base
+  // no ha visto de NADIE es un problema aparte y se cobra aparte, en la incertidumbre.
+  const dayNum = (s) => String(s).slice(0, 4) * 372 + +String(s).slice(4, 6) * 31 + +String(s).slice(6, 8);
+  const lmCut = (d.meta && d.meta.last_match_date) || null;
+  const cutTour = lmCut && typeof lmCut === 'object' ? String(lmCut[model.tour === 1 ? 'wta' : 'atp'] || '') : String(lmCut || '');
+  const cut = cutTour.length === 8 ? cutTour : new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const staleOf = (id, tn) => { const p = d.T[tn].prof.get(id); if (!p) return true; return dayNum(cut) - dayNum(p.lastDate) > 124; };
   const stale = staleOf(model.a.id, model.tour) || staleOf(model.b.id, model.tour);
+  const lag = baseLagDays();
   const uncPp = Math.abs(model.dist.pA - model.p_a) * 100 + 2; // desacuerdo compilado-vs-ensamble + suelo
   // ML — familia de REFERENCIA (benchmark de calidad; en sombra como las demás, jamás pick pública)
   if (mk.best.ml_a && mk.best.ml_b) {
     for (const side of ['a', 'b']) {
       const b = side === 'a' ? mk.best.ml_a : mk.best.ml_b;
       const odds = side === 'a' ? b.a : b.b;
-      out.push(gate({ family: 'ML', side, odds, book: b.book, p_model: side === 'a' ? model.p_a : 1 - model.p_a, p_implied: dec2p(odds), unc_pp: uncPp, stale }));
+      out.push(gate({ family: 'ML', side, odds, book: b.book, p_model: side === 'a' ? model.p_a : 1 - model.p_a, p_implied: dec2p(odds), unc_pp: uncPp, stale, base_lag_days: lag }));
     }
   }
   const dp = distProbs(model, mk.consensus.total_line, mk.consensus.spread_line);
@@ -222,14 +270,14 @@ function evaluateEdges(model, mk) {
     for (const side of ['over', 'under']) {
       const b = side === 'over' ? mk.best.total_over : mk.best.total_under;
       const odds = side === 'over' ? b.over : b.under;
-      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale }));
+      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale, base_lag_days: lag }));
     }
   }
   if (dp.pCoverA != null && mk.best.spread_a && mk.best.spread_b) {
     for (const side of ['a', 'b']) {
       const b = side === 'a' ? mk.best.spread_a : mk.best.spread_b;
       const odds = side === 'a' ? b.a : b.b;
-      out.push(gate({ family: 'SPREAD', side, line: mk.consensus.spread_line, odds, book: b.book, p_model: side === 'a' ? dp.pCoverA : 1 - dp.pCoverA - dp.pushS, p_implied: dec2p(odds), push_p: dp.pushS, unc_pp: uncPp, stale }));
+      out.push(gate({ family: 'SPREAD', side, line: mk.consensus.spread_line, odds, book: b.book, p_model: side === 'a' ? dp.pCoverA : 1 - dp.pCoverA - dp.pushS, p_implied: dec2p(odds), push_p: dp.pushS, unc_pp: uncPp, stale, base_lag_days: lag }));
     }
   }
   return out;
@@ -738,7 +786,14 @@ function modelCard() {
     name: 'Modelo de tenis GP', version: (d.priors || {}).model_version || 'tennis-sr-1',
     family: 'modelo propio de GP — composición reservada',
     doctrine: DOCTRINE,
-    base: { matches: d.rows.length, players: Object.keys(d.players).length, window: d.meta.years, freshness: d.meta.last_match_date, source: 'derivada del proyecto de Jeff Sackmann (CC BY-NC-SA 4.0)' },
+    base: { matches: d.rows.length, players: Object.keys(d.players).length, window: d.meta.years, freshness: d.meta.last_match_date, source: 'derivada del proyecto de Jeff Sackmann (CC BY-NC-SA 4.0)',
+      // LA BASE NO AVANZA, Y ESO SE DICE AQUÍ (19-ago). Los repos originales fueron retirados de GitHub y el
+      // espejo que los reemplaza es una instantánea, no un flujo. Callarlo sería servir un modelo como si
+      // estuviera al día cuando no lo está.
+      lag_days: baseLagDays(),
+      lag_note: (() => { const l = baseLagDays(); return l == null ? null : l <= 21
+        ? 'la base llega hasta hace pocos días'
+        : `la base se detiene ${l} días antes de hoy: la fuente pública original fue retirada y el espejo que la sustituye es una instantánea, no un flujo. El modelo no ha visto la forma de esos ${l} días y cada tesis lo paga en incertidumbre.`; })() },
     validation: {
       protocol: 'walk-forward estricto: constantes en desarrollo 2015-2024, holdout 2025→may-2026 evaluado UNA vez, ATP y WTA por separado; market-blind por construcción',
       atp: { n: (H('atp').ens || {}).n, skill_pct: r2((H('atp').ens || {}).skill_pct), auc: r3((H('atp').ens || {}).auc), games_mae: r2(H('atp').games_mae), games_mae_naive: r2(H('atp').games_mae_naive), tb_brier: r3(H('atp').tb_brier) },

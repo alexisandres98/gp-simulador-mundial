@@ -121,15 +121,42 @@ function acquireLock() {
     const pair = [norm(g.t1), norm(g.t2)].sort().join('|');
     byLoose.set(`${String(g.at).slice(0, 19)}|${pair}`, g);
   }
-  const faltan0 = Object.values(rows).filter((r) => (r.at || '') >= SINCE && (r.k1 == null || r.d1 == null)).length;
+  const pendientes = Object.values(rows).filter((r) => (r.at || '') >= SINCE && (r.k1 == null || r.d1 == null));
+  const faltan0 = pendientes.length;
   console.log(`[kills] ${total} partidas en disco · ${faltan0} sin kills u objetivos desde ${SINCE.slice(0, 10)}`);
 
-  let cursor = SINCE, page = 0, tocadas = 0, vistas = 0, stall = 0;
+  // ── EMPEZAR EN EL PRIMER HUECO DE VERDAD (19-ago, tras verlo fallar entero) ──────────────────────────
+  // El arranque por defecto era el borde de la ventana de 180 días. Pero la ventana ya puede estar
+  // rellenada por delante: hoy las partidas hasta el 19-abr estaban completas y los huecos empezaban ahí.
+  // El script gastó tres páginas —y sus fichas del limitador, que es el recurso escaso— re-caminando
+  // partidas que ya tenían todo, y encima el detector de parón lo interpretó como "no hay nada que
+  // rellenar" y cortó 120 días ANTES de llegar a los 5.074 huecos reales. Se arranca donde falta algo.
+  //
+  // `--since` explícito sigue mandando: si alguien quiere re-pedir un tramo ya completo (para corregirlo),
+  // tiene que poder.
+  const sinceExplicit = process.argv.some((a) => a.startsWith('--since='));
+  let arranque = SINCE;
+  // EL CURSOR GUARDADO MANDA SOBRE EL PRIMER HUECO (19-ago, visto al relanzar). Tras una pasada larga quedan
+  // huecos ANTIGUOS que el cruce por clave natural no supo emparejar —partidas que el espejo no tiene,
+  // nombres que no casan—. Arrancar en el primer hueco manda al script a re-caminar meses de páginas casi
+  // llenas para rescatar un puñado de filas imposibles, y cada página cuesta una ficha del limitador, que es
+  // el recurso escaso. Si hay cursor se sigue desde ahí; el primer hueco solo decide cuando no lo hay.
+  if (!sinceExplicit && G.data.kills_cursor && G.data.kills_cursor > SINCE) {
+    arranque = G.data.kills_cursor;
+    console.log(`[kills] reanudo en ${arranque} (cursor guardado)`);
+  } else if (!sinceExplicit && pendientes.length) {
+    const primerHueco = pendientes.reduce((m, r) => (r.at < m ? r.at : m), pendientes[0].at);
+    // se retrocede un minuto para no perder la partida justo en el borde por el `>=` de la consulta
+    arranque = String(primerHueco).slice(0, 19);
+    console.log(`[kills] primer hueco en ${arranque} — se arranca ahí y no en el borde de la ventana`);
+  }
+
+  let cursor = arranque, page = 0, tocadas = 0, vistas = 0, stall = 0;
   while (true) {
     const got = await cargo(`ScoreboardGames.DateTime_UTC>='${cursor}'`, 500);
     if (!got.length) break;
     page++;
-    let maxDt = cursor, nuevas = 0;
+    let maxDt = cursor, nuevas = 0, podian = 0;
     for (const r of got) {
       const dt = r['DateTime UTC'] || '';
       if (dt > maxDt) maxDt = dt;
@@ -143,6 +170,7 @@ function acquireLock() {
         if (g) flip = norm(g.t1) !== norm(r.Team1);
       }
       if (!g) continue;                                  // partida que la base no tiene: no se inventa
+      if (g.k1 == null || g.d1 == null) podian++;        // esta fila SÍ tenía hueco: cuenta para el parón
       // TODAS las columnas viajan CON su equipo: si el espejo guardó los lados invertidos, se invierte el
       // par entero — poner los dragones del azul en el rojo sería peor que no tenerlos.
       const PAIR = [['k', 'Kills'], ['d', 'Dragons'], ['b', 'Barons'], ['tw', 'Towers'], ['g', 'Gold']];
@@ -161,11 +189,19 @@ function acquireLock() {
       maxDt = new Date(Date.parse(cursor.replace(' ', 'T') + 'Z') + 1000).toISOString().slice(0, 19).replace('T', ' ');
     }
     cursor = maxDt;
+    G.data.kills_cursor = cursor;                        // reanudar donde se paró, no donde se empezó
     fs.writeFileSync(G.path + '.tmp', JSON.stringify(G.data));
     fs.renameSync(G.path + '.tmp', G.path);
     console.log(`[kills] p${page}: +${nuevas} (rellenadas ${tocadas} de ${vistas} vistas) · cursor ${cursor}`);
-    if (nuevas === 0) { if (++stall >= 3) { console.log('[kills] 3 paginas sin rellenar nada — fin'); break; } }
-    else stall = 0;
+    // EL PARÓN SE MIDE CONTRA LO QUE FALTABA, NO CONTRA LO QUE SE RELLENÓ. Una página que rellena 0 porque
+    // esas partidas YA estaban completas no es un callejón sin salida: es trabajo ya hecho. Confundir las
+    // dos cosas es lo que cortó la pasada de hoy a 120 días de los huecos. Solo cuenta como parón la página
+    // en la que había filas que SÍ podíamos haber rellenado y no se rellenó ninguna — eso sí es que el
+    // cruce por clave natural dejó de funcionar y seguir pidiendo no arregla nada.
+    if (nuevas === 0 && podian > 0) {
+      if (++stall >= 3) { console.log('[kills] 3 paginas con huecos y ningun cruce — el cruce falla, paro'); break; }
+    } else stall = 0;
+    if (nuevas === 0 && podian === 0) console.log(`[kills] p${page}: ya estaba completa, sigo`);
     if (got.length < 500) break;
     await sleep(SLEEP);
   }

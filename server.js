@@ -7099,6 +7099,75 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
 // Liquidación: MISMO settleOne del Mundial con el marcador final de clubResults (ligas domésticas = 90').
 // PLAYER (goles/assists del jugador): con el player-history de la liga si el backfill trae el match (±4 días);
 // sin dato a las 72h del kickoff → VOID (honesto: sin fuente no se inventa el resultado).
+// ── RECUPERACIÓN RETROACTIVA DE ANULADAS (19-ago) ───────────────────────────────────────────────────────
+// 43 picks de fútbol quedaron en VOID —24 de las últimas 30 liquidadas— porque el marcador se borraba a las
+// 3 h y el fichero de resultados del disco estaba vacío. El bug de raíz ya está tapado (los finales se
+// persisten), pero eso no devuelve el pasado: esas picks siguen sin resultado y sin contar en el
+// rendimiento, y el ROI que se venía leyendo tenía 43 apuestas con stake en el denominador y cero en el
+// numerador.
+//
+// LA BUENA NOTICIA es que el dato SÍ existe y estaba en el sitio de al lado: `props-history-<liga>.json`
+// guarda, por partido, goles, córners, amarillas y rojas de cada lado. Con eso se liquidan las tres
+// familias que se anularon (SOLID por goles, CORNERS y CARDS por su total). No se inventa nada: si el
+// partido no está en el histórico, la pick se queda anulada y se dice.
+//
+// Un VOID es "no lo supimos". Si después se sabe, corregirlo no es maquillar el registro: es lo contrario.
+// Por eso corre en seco por defecto y hay que pedirle explícitamente que escriba.
+function recoverVoidClubPicks({ apply = false } = {}) {
+  const out = { revisadas: 0, recuperadas: 0, sin_dato: 0, por_familia: {}, por_liga: {}, cambios: [], apply };
+  const phCache = {};
+  const matches = (lg) => {
+    if (phCache[lg] === undefined) {
+      try { phCache[lg] = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${lg}.json`), 'utf8')).matches || []; }
+      catch { phCache[lg] = []; }
+    }
+    return phCache[lg];
+  };
+  const all = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])];
+  for (const p of all) {
+    if (p.result_code !== 'VOID' || !p.event || !p.league) continue;
+    out.revisadas++;
+    const ko = +new Date(p.event.kickoff_at || 0);
+    const h = p.event.home_team_id, a = p.event.away_team_id;
+    const row = matches(p.league).find((m) => m.home && m.away
+      && ((m.home.code === h && m.away.code === a) || (m.home.code === a && m.away.code === h))
+      && Math.abs(+new Date(m.date) - ko) < 2 * 86400e3);
+    if (!row) { out.sin_dato++; continue; }
+    // orientar al local de la pick: si el histórico trae los lados al revés, todo lo que dependa del lado
+    // se liquidaría exactamente al contrario
+    const flip = row.home.code !== h;
+    const H = flip ? row.away : row.home, A = flip ? row.home : row.away;
+    let code = null;
+    if (p.family === 'SOLID') {
+      const hg = Number(H.goals), ag = Number(A.goals);
+      if (!Number.isFinite(hg) || !Number.isFinite(ag)) { out.sin_dato++; continue; }
+      const real = hg > ag ? 'home' : ag > hg ? 'away' : 'draw';
+      code = String(p.selection_code || '').toLowerCase() === real ? 'WIN' : 'LOSS';
+    } else if (p.family === 'CORNERS' || p.family === 'CARDS') {
+      const tot = p.family === 'CORNERS'
+        ? (Number(H.corners) || 0) + (Number(A.corners) || 0)
+        : (Number(H.yellows) || 0) + (Number(H.reds) || 0) + (Number(A.yellows) || 0) + (Number(A.reds) || 0);
+      const line = Number(p.line);
+      if (!Number.isFinite(line)) { out.sin_dato++; continue; }
+      code = tot === line ? 'PUSH' : ((p.side === 'over') === (tot > line) ? 'WIN' : 'LOSS');
+    } else { out.sin_dato++; continue; }
+    out.recuperadas++;
+    out.por_familia[p.family] = (out.por_familia[p.family] || 0) + 1;
+    out.por_liga[p.competition_name || p.league] = (out.por_liga[p.competition_name || p.league] || 0) + 1;
+    if (out.cambios.length < 40) out.cambios.push({ family: p.family, liga: p.competition_name || p.league,
+      partido: `${p.event.home} - ${p.event.away}`, de: 'VOID', a: code, cuota: p.best_odds });
+    if (apply) {
+      p.result_code = code;
+      p.recovered_at = new Date().toISOString();
+      p.recovered_from = 'props-history';
+      const o = Number(p.best_odds) || 0;
+      p.units = code === 'WIN' ? +(o - 1).toFixed(2) : code === 'LOSS' ? -1 : 0;
+    }
+  }
+  if (apply && out.recuperadas) save();
+  return out;
+}
+
 function settleClubDailyPicks() {
   const { settleOne } = require('./pick-engine/dailyPicks');
   let settled = 0;
@@ -17956,6 +18025,14 @@ const server = http.createServer(async (req, res) => {
     }
     // RECUPERACIÓN de resultados de picks supersedidas por el prune (23-jul): reactiva las de partidos ya
     // jugados sin hermano liquidado y las liquida. Idempotente (POST). Sin sesión, key-gated.
+    // RECUPERAR ANULADAS. En seco por defecto: `?apply=1` para escribir. Idempotente — una pick ya
+    // recuperada deja de ser VOID y no vuelve a entrar.
+    if (p === '/api/internal/clubs-void-recover') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try { return json(res, 200, recoverVoidClubPicks({ apply: url.searchParams.get('apply') === '1' })); }
+      catch (e) { return json(res, 200, { error: e.message }); }
+    }
     if (p === '/api/internal/clubs-picks-recover' && req.method === 'POST') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

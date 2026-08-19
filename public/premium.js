@@ -12239,7 +12239,10 @@
     var lgQ = nflLg();
     if (lgQ !== 'nfl') {
       key = lgQ + '_' + key;
-      url = url.replace('/api/nfl/', '/api/amfoot/') + (url.indexOf('?') >= 0 ? '&' : '?') + 'league=' + lgQ;
+      url = url.replace('/api/nfl/', '/api/amfoot/');
+      // no duplicar `league=` cuando quien llama ya la puso (las rutas de jugadores nacen apuntando a
+      // /api/amfoot/ y tienen que declararla ellas mismas)
+      if (url.indexOf('league=') < 0) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'league=' + lgQ;
     }
     var e = S.nfl['c_' + key];
     var age = e && e._at ? Date.now() - e._at : Infinity;
@@ -12570,8 +12573,13 @@
   function renderAmfPlayers() {
     var lg = nflLg();
     var q = (S.nfl.pQ || '').trim();
-    // nflGet ya añade `league=` cuando la liga no es NFL: aquí no se repite el parámetro
-    var d = nflGet('amfp_' + q, '/api/amfoot/players?limit=140' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
+    // LA LIGA HAY QUE PONERLA AQUÍ (19-ago). El comentario anterior decía que `nflGet` ya la añadía, y es
+    // verdad a medias: solo la añade cuando reescribe una URL de `/api/nfl/`, y esta ya nace apuntando a
+    // `/api/amfoot/`. Resultado: la petición salía SIN liga, el servidor caía a su valor por defecto
+    // —ncaaf— y la pestaña de jugadores de la CFL enseñaba la plantilla de College. La clave de caché sí
+    // llevaba la liga, así que las dos ligas guardaban por separado exactamente los mismos jugadores, que
+    // es la forma más difícil de darse cuenta.
+    var d = nflGet('amfp_' + lg + '_' + q, '/api/amfoot/players?league=' + lg + '&limit=140' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
     var head = '<div class="gx-ohead">' + esSearchBox('gx-nflpsearch', q, 'Buscar jugador o equipo…') + '<span class="gx-spacer"></span>' +
       (d && d.available ? '<span class="gx-dim" style="font-size:11.5px">' + d.n + ' en ' + d.teams + ' equipos</span>' : '') + '</div>';
     var bind = function () { esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderAmfPlayers); };
@@ -12599,7 +12607,9 @@
 
   function renderAmfPlayer() {
     var lg = nflLg(), id = S.nfl.amfPlayerId;
-    var d = nflGet('amfpl_' + id, '/api/amfoot/player?id=' + encodeURIComponent(id), 600000);
+    // mismo defecto que en la lista: sin `league=` el servidor caía a College y la ficha de un jugador de
+    // la CFL salía "ese jugador no está en la plantilla cosechada"
+    var d = nflGet('amfpl_' + lg + '_' + id, '/api/amfoot/player?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
     var back = '<a href="#" class="gx-back" data-amfback>' + ic('arrow-left') + ' ' + esc(t('sr_players')) + '</a>';
     if (!d) { nflShell(t('sr_players'), back + nflLoading()); return; }
     if (!d.available) { nflShell(t('sr_players'), back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || '') + '</b></div></div>'); return; }

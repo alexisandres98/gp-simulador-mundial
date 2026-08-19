@@ -69,7 +69,12 @@ const PICK_FAMILIES = new Set([
 // Familias que entran CON PRIOR EN CONTRA: se registran en sombra, pero la tarjeta lo dice y la revisión
 // las mira aparte. No es lo mismo una familia sin historia que una con historia mala en otro deporte.
 const PICK_PRIOR_CONTRA = { SERIE: 'el ganador de serie entra en sombra CON prior en contra: es el mercado donde GP midió pérdidas en otros dos deportes (baloncesto −11,87 % de ROI, combate −8,34 % de CLV). Se abre para tener muestra propia de esports, no porque se espere que gane. La revisión la juzga por su CLV, aparte del resto.' };
-const PICK_DOCTRINE = 'el ganador de serie se registra en SOMBRA con prior en contra: GP midió pérdidas en ese mercado en baloncesto y en combate, pero eso no es una medición de esports y cerrar la familia impedía tenerla. Nada de esto se publica.';
+// Y UNA ACLARACIÓN QUE HAY QUE DEJAR ESCRITA: abrir la familia NO significa que vaya a producir picks en
+// todos los partidos. Cuando la probabilidad de GP se ancla al precio del ganador de serie —que es el caso
+// normal en CS2— esa familia queda vetada por ORTOGONALIDAD, que es una regla distinta y correcta: medirse
+// contra el precio que uno mismo usó de prior es medirse contra uno mismo. Ese veto se queda. Lo que
+// desaparece es el cierre por doctrina, que era otra cosa.
+const PICK_DOCTRINE = 'el ganador de serie ya no está cerrado por doctrina: se registra en SOMBRA con prior en contra (GP midió pérdidas en ese mercado en baloncesto y en combate, pero eso no es una medición de esports y el cierre impedía tenerla). Cuando la probabilidad de GP se ancla a ese mismo mercado, la familia sigue vetada por ortogonalidad — no por doctrina — porque medirse contra el propio prior no mide nada. Nada de esto se publica.';
 
 // DÓNDE SE ESCRIBE, Y POR QUÉ NO EN EL REPO. Los cierres de mercado son lo ÚNICO que este deporte acumula
 // hoy, y el directorio del repo en Render se recrea en cada deploy: guardarlos ahí significaría empezar de

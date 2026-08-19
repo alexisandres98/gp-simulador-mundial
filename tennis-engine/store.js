@@ -457,8 +457,23 @@ async function settleShadow() {
       if (Date.parse(p.commence) < Date.now() - 4 * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = 'sin resultado casado en 4 días (walkover/cambio de agenda probable)'; settled++; diag.void_tiempo++; continue; }
       const day = p.commence.slice(0, 10).replace(/-/g, '');
       const j = await espnDay(p.tour, day);
+      // ESPN NO SIEMPRE CUELGA LOS EVENTOS EN LA RAÍZ (19-ago). El parte de la pasada anterior lo dejó
+      // claro: `eventos: 0` con la fuente respondiendo bien. En tenis el marcador los anida bajo
+      // sports[].leagues[].events —la misma forma que ya usa su endpoint de equipos— mientras que el
+      // código solo miraba `j.events`. Se aceptan las dos formas y se anota cuál vino.
       const evs = [];
-      for (const e of (j && j.events) || []) for (const comp of e.competitions || []) evs.push({ e, comp });
+      const roots = [];
+      if (j && Array.isArray(j.events)) roots.push(...j.events);
+      for (const sp of (j && j.sports) || []) for (const lg of sp.leagues || []) if (Array.isArray(lg.events)) roots.push(...lg.events);
+      for (const e of roots) {
+        const comps = e.competitions || e.groupings || [];
+        for (const comp of comps) {
+          // en tenis una "grouping" agrupa partidos (individual masculino, dobles…): puede traer
+          // competitions dentro en vez de competitors sueltos
+          if (Array.isArray(comp.competitions)) { for (const c2 of comp.competitions) evs.push({ e, comp: c2 }); }
+          else evs.push({ e, comp });
+        }
+      }
       const la = lastName(p.a), lb = lastName(p.b);
       // NOMBRES DEL MARCADOR: ESPN no siempre cuelga al jugador de `competitor.athlete`. Se recogen todas
       // las formas conocidas para que el cruce no dependa de una sola, y se guarda una muestra en el parte:
@@ -480,6 +495,9 @@ async function settleShadow() {
         if (!diag.muestra) {
           diag.muestra = {
             buscaba: [la, lb], dia: day, eventos: evs.length,
+            // las claves de la raíz dicen dónde vienen de verdad los partidos si siguen sin aparecer
+            claves: j ? Object.keys(j).slice(0, 8) : null,
+            n_raiz: roots.length,
             vistos: evs.slice(0, 3).flatMap(({ comp }) => (comp.competitors || []).map(nameOf)).slice(0, 6),
           };
         }

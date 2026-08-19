@@ -318,7 +318,19 @@ async function amfootRostersJob() {
     // apilamiento: se frena a partir de DOS pesadas en vuelo, no de una.
     const heavy = ['lol_harvest', 'val_harvest', 'cs2_harvest', 'ten_harvest'];
     const busy = heavy.filter((k) => OPS.running[k]);
-    if (busy.length >= 2) { opsLog('amf_rosters', { skipped: 'apilamiento: ' + busy.join(',') }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
+    // ESCAPE POR INANICIÓN: `lol_harvest` y `val_harvest` son cadenas que se re-arman cada 20 min y NINGUNA
+    // ha llegado nunca a marcarse completa (state.json no existe en ninguno de los dos discos), así que casi
+    // siempre hay dos en vuelo y este trabajo se quedaba esperando un hueco que no llega. Tras tres frenos
+    // seguidos por apilamiento se pasa igual: el freno que de verdad protege es el techo de memoria —que
+    // sigue aplicándose arriba—, y una cosecha de plantillas de nueve equipos no es lo que tumba nada.
+    OPS.amfSkips = OPS.amfSkips || 0;
+    if (busy.length >= 2 && OPS.amfSkips < 3) {
+      OPS.amfSkips++;
+      opsLog('amf_rosters', { skipped: 'apilamiento: ' + busy.join(',') + ' (' + OPS.amfSkips + '/3)' });
+      setTimeout(amfootRostersJob, 45 * 60e3); return;
+    }
+    if (busy.length >= 2) opsLog('amf_rosters', { forzado: 'tres frenos seguidos; el techo de memoria manda' });
+    OPS.amfSkips = 0;
     const AF = require('./amfoot-engine/store');
     const dir = AF.DISK_DIR;
     const fresh = (lg) => {

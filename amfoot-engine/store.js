@@ -448,30 +448,50 @@ function gate(c) {
 }
 
 
+// UN CERO TIENE QUE TRAER SU MOTIVO (20-ago). College llevaba días con catorce partidos en la agenda,
+// veintidós casas cotizando y CERO picks en sombra, mientras la CFL registraba doce con el mismo código.
+// La función devolvía `{ recorded: 0 }` y ahí se acababa la información: no había forma de saber si
+// fallaba el nombre del equipo, si el partido no estaba en el calendario propio o si simplemente ninguna
+// línea pasaba el listón. Son tres problemas distintos con tres arreglos distintos, y sin contarlos hay
+// que adivinar. Ahora cada descarte se cuenta y viaja en el retorno.
 async function recordShadow(lg) {
+  const diag = { eventos: 0, sin_nombre: 0, fuera_de_ventana: 0, sin_partido_propio: 0, sin_modelo: 0,
+    sin_mercado: 0, candidatas: 0, no_shadow_pick: 0, ya_estaba: 0, ejemplos_sin_nombre: [], ejemplos_sin_partido: [] };
   const M = modelSnapshot(lg);
-  if (!M) return { recorded: 0 };
+  if (!M) return { recorded: 0, why: 'los agregados de esta liga no están cargados', diag };
   const odds = await refreshOdds(lg).catch(() => null);
-  if (!odds) return { recorded: 0 };
+  if (!odds) return { recorded: 0, why: 'el proveedor de cuotas no devolvió nada', diag };
   const st = rdD(`${lg}-picks.json`) || { picks: [] };
   const have = new Set(st.picks.map((p) => p.key));
   let n = 0;
   for (const ev of odds.rows || []) {
+    diag.eventos++;
     const home = resolveOddsName(lg, ev.home_team), away = resolveOddsName(lg, ev.away_team);
-    if (!home || !away) continue;
+    if (!home || !away) {
+      diag.sin_nombre++;
+      if (diag.ejemplos_sin_nombre.length < 6) diag.ejemplos_sin_nombre.push(`${ev.home_team} vs ${ev.away_team}`);
+      continue;
+    }
     const kickoff = Date.parse(ev.commence_time || 0);
-    if (!(kickoff > Date.now() && kickoff - Date.now() < 6 * 864e5)) continue;
+    if (!(kickoff > Date.now() && kickoff - Date.now() < 6 * 864e5)) { diag.fuera_de_ventana++; continue; }
     // el partido en la agenda propia (por fecha del kickoff, tolerando el día previo por husos)
     const dEv = String(ev.commence_time).slice(0, 10);
     const g = M.data.games.find((x) => (x.home === home && x.away === away) && (x.date === dEv || Math.abs(Date.parse(x.date) - Date.parse(dEv)) <= 864e5) && x.hp == null);
-    if (!g) continue;
+    if (!g) {
+      diag.sin_partido_propio++;
+      if (diag.ejemplos_sin_partido.length < 6) diag.ejemplos_sin_partido.push(`${home} vs ${away} (${dEv})`);
+      continue;
+    }
     const model = gameModel(g, M, { withFan: true });
     const mk = marketFor(lg, g, odds);
-    if (!model || !mk) continue;
-    for (const c of evaluateEdges(model, mk).candidates) {
-      if (c.verdict !== 'SHADOW_PICK') continue;
+    if (!model) { diag.sin_modelo++; continue; }
+    if (!mk) { diag.sin_mercado++; continue; }
+    const cands = evaluateEdges(model, mk).candidates;
+    diag.candidatas += cands.length;
+    for (const c of cands) {
+      if (c.verdict !== 'SHADOW_PICK') { diag.no_shadow_pick++; continue; }
       const key = `${gid(g)}|${c.family}|${c.side}|${c.line}`;
-      if (have.has(key)) continue;
+      if (have.has(key)) { diag.ya_estaba++; continue; }
       have.add(key); n++;
       st.picks.push({
         key, league: lg, game_id: gid(g), family: c.family, side: c.side, line: c.line,
@@ -487,7 +507,13 @@ async function recordShadow(lg) {
     }
   }
   if (n) wrD(`${lg}-picks.json`, st);
-  return { recorded: n, total: st.picks.length };
+  const why = n ? null
+    : !diag.eventos ? 'el proveedor no lista partidos de esta liga'
+      : diag.sin_nombre === diag.eventos ? 'ningún nombre de equipo del proveedor resuelve al catálogo propio'
+        : diag.sin_partido_propio && !diag.candidatas ? 'los partidos resuelven de nombre pero no están en el calendario propio (o ya tienen resultado)'
+          : diag.candidatas ? `se valoraron ${diag.candidatas} líneas y ninguna llegó a SHADOW_PICK`
+            : 'ningún partido del proveedor cayó dentro de la ventana de seis días';
+  return { recorded: n, total: st.picks.length, why, diag };
 }
 
 async function settleShadow(lg) {

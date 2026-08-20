@@ -16963,7 +16963,11 @@ const server = http.createServer(async (req, res) => {
           await AF.refreshResults(lgP).catch(() => null);
           const x = await AF.slate(lgP, { days: 14 });
           const t = AF.track(lgP);
-          return x.available ? { games: x.games.length, books: x.books, shadow_open: t.open, settled: t.settled } : x;
+          // `?rec=1` ejecuta el registro en sombra y devuelve su diagnóstico. Sin esto, un cero solo se
+          // podía mirar desde dentro: College llevaba días con partidos y casas y cero picks, y la sonda
+          // no tenía nada que enseñar más que el cero.
+          const rec = url.searchParams.get('rec') === '1' ? await AF.recordShadow(lgP).catch((e) => ({ error: e.message })) : null;
+          return x.available ? { games: x.games.length, books: x.books, shadow_open: t.open, settled: t.settled, rec } : x;
         });
       }
       out.ok = out.steps.every((x) => x.ok);

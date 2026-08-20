@@ -1,3 +1,47 @@
+# HANDOFF — estado al 20-ago-2026 (props reparadas, tablero de familias en pie)
+
+## 🎯 20-ago (tarde) — el instrumento que faltaba
+
+**El tablero de familias (`/api/internal/edge-board?key=`).** Ocho deportes medían su rendimiento en ocho
+pantallas y ninguna contestaba la pregunta del negocio. Ahora hay una: recoge cada motor, aplica UN
+veredicto escrito una sola vez —CLV medio, dispersión, t = media/(sd/√n)— y publica el objetivo familia a
+familia, las CANDIDATAS de fuera del objetivo y las descartables. Dos decisiones importan más que el código:
+la unidad es **familia + lado + banda** (sumar tarjetas under blandas con over eficientes fue lo que escondió
+la familia estrella durante semanas) y trae **`n_para_t2` = (2·sd/media)²**, que convierte "no sabemos" en
+"faltan 648".
+
+Lleva una guarda que ya cazó un falso positivo: si el cierre casi no se mueve, la dispersión se hace
+diminuta y un CLV de +0,02 % sale con t=1,4. Córners under en ligas intermedias estaba siendo ascendido a
+candidata por eso. Por debajo de 0,5 pp de dispersión la familia pasa a `SIN_MOVIMIENTO`.
+
+**Lectura del 20-ago:** una sola familia confirmada en toda la casa — CS2 hándicap de rondas (CLV +2,44 %,
+t=2,38, n=46 con cierre). Tarjetas under en intermedias: PLANA (−0,28 %, t=−0,63, n=64). Props CS2: PLANA
+(+0,08 % de línea sobre 91). Goles over: EN CONTRA (−1,83 % con sd 2,14 sobre 36 — t≈−5). Y un hallazgo
+estructural: **el CLV de córners tiene dispersión de 0 a 1,2 pp** frente a 3,6 en tarjetas — o el cierre de
+córners no se está capturando bien, o esa línea no se mueve; en cualquiera de los dos casos esa familia hoy
+no se puede confirmar ni descartar con nuestra vara.
+
+**Props CS2: la liquidación no salía de la serie, salía del montón.** Filtraba la bitácora por fecha ±36 h
+y rival y se quedaba con "las dos últimas filas", asumiendo que el montón era una serie y venía en orden
+cronológico. Ninguna de las dos cosas era cierta: el orden era el de inserción de la cosecha. Salían sumas
+imposibles para dos mapas (44, 51, 56 kills contra líneas de 27,5). La bitácora pasa a traer serie
+(`match_id`) y número de mapa, se ordena por fecha de verdad, y la liquidación agrupa por serie y toma los
+mapas 1 y 2 **por su número**; cuando la serie no se puede identificar, anula en vez de adivinar. Las dos
+filas que se suman quedan escritas en la pick.
+
+Consecuencia que hay que tener delante: **las 87 liquidaciones viejas se rehicieron** y la familia pasó de
+"47-40, ROI +3,01 %" a **48-43, ROI +0,51 %, CLV +0,07 %**. El +3 % era de la base rota.
+
+**Y la regla queda congelada: `props_cs2_v2`, listón 10 pp** (v1 entraba desde 6, que es poco cuando el
+libro cobra por pierna a −112 y la proyección a dos mapas tiene sigma de 5 a 10 kills). Cada tesis guarda
+con qué versión nació y el seguimiento reporta por versión: v1 y v2 no son la misma familia.
+
+**Ejecución vía API, comprobado en vivo, no de memoria.** Kalshi tiene API de trading real y **sí lista
+córners** (MLS, Liga MX, EPL, La Liga, Serie A, Ligue 1, Bundesliga, UCL, Championship) — y **no lista
+tarjetas en ningún deporte**. Polymarket no tiene ni córners ni tarjetas. Y el cuello de botella real está
+en otro sitio: **las 40 apuestas ejecutadas de la sombra fueron todas a Cloudbet y ninguna fue de MLS** —
+las 13 señales de tarjetas de MLS existen solo en Pinnacle entre nuestras casas.
+
 # HANDOFF — estado al 20-ago-2026 (Valorant medido, College resuelto)
 
 ## 🎯 20-ago — Valorant deja de ser el deporte sin picks, y College deja de dar cero sin motivo

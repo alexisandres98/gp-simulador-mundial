@@ -17279,7 +17279,7 @@ const server = http.createServer(async (req, res) => {
                   const primera = k0.length ? subs[k0[0]] : null;
                   fila.estructura[mk] = { submercados: k0.slice(0, 6), n_submercados: k0.length,
                     claves_submercado: primera ? Object.keys(primera) : null,
-                    seleccion_muestra: primera && Array.isArray(primera.selections) ? primera.selections.slice(0, 2) : null };
+                    seleccion_muestra: primera && Array.isArray(primera.selections) ? primera.selections.slice(0, Math.min(12, Math.max(2, +(url.searchParams.get('sel') || 2)))) : null };
                 }
               }
               out.claves_crudas.push(fila);

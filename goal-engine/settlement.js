@@ -21,6 +21,18 @@ function marketMeta(marketId) {
   if (m) return { market_id: id, scope: 'exact_score', h: Number(m[1]), a: Number(m[2]), period: 'REGULATION', push: false };
   if (id === 'EXACT_SCORE_ANY_OTHER') return { market_id: id, scope: 'exact_score_other', period: 'REGULATION', push: false };
   if (isComboId(id)) return { market_id: id, scope: 'combo', period: 'REGULATION', push: false };
+  // familias derivadas del mismo marcador (20-ago)
+  m = id.match(/^DOUBLE_CHANCE_(HOME_DRAW|HOME_AWAY|DRAW_AWAY)$/);
+  if (m) return { market_id: id, scope: 'double_chance', pair: m[1].toLowerCase(), period: 'REGULATION', push: false };
+  m = id.match(/^DRAW_NO_BET_(HOME|AWAY)$/);
+  if (m) return { market_id: id, scope: 'draw_no_bet', side: m[1].toLowerCase(), period: 'REGULATION', push: true };
+  // AH_HOME_M0_5 = local −0,5 ; AH_AWAY_P1_25 = visitante +1,25. La línea va referida al lado de la selección.
+  m = id.match(/^AH_(HOME|AWAY)_(M|P)(\d+)(?:_(\d+))?$/);
+  if (m) {
+    const line = (m[2] === 'M' ? -1 : 1) * Number(m[4] != null ? `${m[3]}.${m[4]}` : m[3]);
+    return { market_id: id, scope: 'asian_handicap', side: m[1].toLowerCase(), line, period: 'REGULATION',
+      kind: lineKind(line), push: Number.isInteger(line) };
+  }
   return null;
 }
 
@@ -74,6 +86,16 @@ function settle(marketId, score = {}) {
     case 'exact_score_other': return (h > GRID_MAX || a > GRID_MAX) ? 'won' : 'lost';
     case 'winning_margin': return settleWinningMargin(marketId, d, ad) ? 'won' : 'lost';
     case 'combo': return settleCombo(marketId, h, a) ? 'won' : 'lost';
+    case 'double_chance': {
+      const gano = meta.pair === 'home_draw' ? d >= 0 : meta.pair === 'draw_away' ? d <= 0 : d !== 0;
+      return gano ? 'won' : 'lost';
+    }
+    // el empate DEVUELVE: es un push, no una derrota. Liquidarlo como derrota le quita a la familia una
+    // cuarta parte de sus resoluciones y la hace parecer mucho peor de lo que es.
+    case 'draw_no_bet': return d === 0 ? 'push' : ((meta.side === 'home') === (d > 0) ? 'won' : 'lost');
+    // el margen se mide desde el lado de la selección y la línea se le SUMA; el resto es la misma mecánica
+    // de medias, enteras y cuartos que ya gobierna los totales
+    case 'asian_handicap': return settleLine(meta.side === 'home' ? d : -d, -meta.line, 'over');
     default: return 'unknown';
   }
 }

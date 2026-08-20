@@ -17210,7 +17210,23 @@ const server = http.createServer(async (req, res) => {
         };
         const bd = await step('board', async () => {
           const b = await ES.board(probe, { days: 3, maxEvents: 14 });
-          return b ? { items: b.items.length, shown: b.shown, total: b.total, picks: b.items.reduce((a, x) => a + x.picks, 0) } : null;
+          if (!b) return null;
+          // EL PORQUÉ DE CADA NO, SUMADO. La sonda decía cuántas picks salieron y nada más, así que la
+          // pregunta que se hace siempre —"¿por qué esta familia no produce nunca?"— no tenía respuesta sin
+          // abrir sesión. El motor guarda el motivo de CADA línea rechazada; aquí se agregan por motivo y,
+          // lo que de verdad hacía falta, se cuenta qué familias llegan a estar COTIZADAS: una familia que
+          // nunca aparece en el mercado no es una familia rechazada, es una familia que nadie ofrece, y son
+          // dos problemas distintos con dos arreglos distintos.
+          const motivos = {}, cotizadas = {}, valoradas = {};
+          for (const it of b.items) {
+            for (const [k, v] of Object.entries(it.reasons || {})) motivos[k] = (motivos[k] || 0) + v;
+            for (const r of ((it.market_families) || [])) cotizadas[r] = (cotizadas[r] || 0) + 1;
+            for (const p2 of (it.picks_list || [])) valoradas[p2.family_raw || p2.family] = (valoradas[p2.family_raw || p2.family] || 0) + 1;
+          }
+          return { items: b.items.length, shown: b.shown, total: b.total,
+            picks: b.items.reduce((a, x) => a + x.picks, 0),
+            valoradas: b.items.reduce((a, x) => a + (x.valued || 0), 0),
+            motivos, familias_cotizadas: cotizadas, familias_con_pick: valoradas };
         });
         await step('model', async () => {
           const E = ES.ENGINES[probe]; if (!E) throw new Error('juego desconocido');

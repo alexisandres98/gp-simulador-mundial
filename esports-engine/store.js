@@ -1084,6 +1084,9 @@ async function board(game, { days = 3, maxEvents = 14 } = {}) {
       // la agenda pero ya cerró el mercado (porque el partido empezó) no está cotizando nada.
       book_list: mk ? (mk.by_book || []).filter((b) => b.rows).map((b) => b.book) : (ev.sources || []).map((x) => x.book),
       markets_n: (mk && mk.markets) ? mk.markets.length : 0,
+      // QUÉ FAMILIAS LLEGA A COTIZAR EL MERCADO EN ESTE PARTIDO. Sin esto no se puede distinguir una
+      // familia que el motor RECHAZA de una que ninguna casa OFRECE — y son dos problemas distintos.
+      market_families: mk && mk.markets ? [...new Set(mk.markets.map((r) => r.family))] : [],
       picks: edges ? edges.picks.length : 0,
       best: edges && edges.picks.length ? edges.picks[0] : null,
       // TODAS las picks del partido, ya con forma de card. Antes solo viajaba la mejor y la pizarra de

@@ -40,6 +40,7 @@ const POOL_VERSION = '2026-08';
 // esta fuerza y aquí sí. Declarado como referencia de circuito, no como medición propia: se sustituye en
 // cuanto haya histórico de rondas por mapa.
 const BIAS_NOTE = 'la ventaja defensiva por mapa es una referencia del circuito 2026, no una medición de GP. Es el parámetro que más mueve la primera mitad y el primero que se recalibra cuando entre histórico de rondas.';
+const BIAS_MEDIDO = 'la ventaja defensiva por mapa está MEDIDA sobre las mitades ataque/defensa de la base propia, no asumida. El pool y su reparto salen de lo que se está jugando, no de una lista escrita a mano.';
 
 const GAME = {
   key: 'valorant', label: 'Valorant', short: 'VAL',
@@ -112,8 +113,8 @@ const ROLES = [
   { key: 'iniciador', label: 'Iniciador', note: 'información antes de entrar: lo que convierte un 5v5 en un 5v4' },
   { key: 'centinela', label: 'Centinela', note: 'retiene y vigila flancos; el rol que sostiene el sesgo defensivo del mapa' },
 ];
-function compositionModel(mapKey) {
-  const m = MAP_POOL.find((x) => x.key === mapKey) || null;
+function compositionModel(mapKey, pool = MAP_POOL) {
+  const m = (pool || MAP_POOL).find((x) => x.key === mapKey) || MAP_POOL.find((x) => x.key === mapKey) || null;
   return {
     roles: ROLES,
     map: m ? { key: m.key, name: m.name, bias: m.bias, note: m.note } : null,
@@ -134,6 +135,37 @@ function compositionModel(mapKey) {
 // tramos y no de forma continua. Sin este término la tasa de prórroga salía en 15,5 % —que es exactamente
 // el binomio de una moneda justa— cuando el circuito está en torno al 11 %.
 const ECO_DRAG = 0.065;
+
+// AJUSTE POR MAPA (20-ago): el 0,065 de arriba deja de ser la respuesta y pasa a ser el respaldo. Con el
+// detalle cosechado (mitades ataque/defensa de miles de mapas) cada mapa tiene SU tasa de prórroga real
+// —Fracture al 8,6 %, Summit al 15,3 %— y el arrastre se busca por bisección hasta reproducirla. Es la
+// misma mecánica de CS2 y por la misma razón: una constante de autor no puede describir diez mapas.
+// El ajuste tiene UN grado de libertad y DOS objetivos (prórroga y rondas medias): se ajusta a la
+// prórroga y se PUBLICA el residuo en rondas, que es lo que luego cobra `calibrationPp` en store.js.
+const _dragCache = new Map();
+function calibrateDrag(profile) {
+  if (!profile || !profile.measured || profile.n < 40 || !(profile.overtime_p > 0)) {
+    return { eco: ECO_DRAG, fitted: false, target_ot: null };
+  }
+  const bias = profile.def_round_share != null ? profile.def_round_share : 0.5;
+  const key = profile.map + ':' + profile.n;
+  if (_dragCache.has(key)) return _dragCache.get(key);
+  let lo = 0, hi = 0.18;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    const ot = mapRounds(0.5, bias, { eco: mid, sims: 6000, seed: 4127 }).overtime_p;
+    if (ot > profile.overtime_p) lo = mid; else hi = mid;
+  }
+  const eco = C.r3((lo + hi) / 2);
+  const check = mapRounds(0.5, bias, { eco, sims: 12000, seed: 4127 });
+  const out = { eco, fitted: true,
+    target_ot: profile.overtime_p, got_ot: check.overtime_p,
+    target_rounds: profile.mean_rounds, got_rounds: check.mean_rounds,
+    rounds_residual: C.r2(check.mean_rounds - profile.mean_rounds),
+    n: profile.n };
+  _dragCache.set(key, out);
+  return out;
+}
 
 function mapRounds(pRoundA, mapBias, { target = 13, sims = 20000, seed = 29, eco = ECO_DRAG } = {}) {
   const rnd = C.rng(seed);
@@ -240,21 +272,76 @@ function analyze({ market, ratings, bo = 3, sample = 0 }) {
   const pSeries = anchored ? anchored.p : null;
   const pMap = pSeries != null ? C.seriesToMap(pSeries, bo) : null;
 
+  // ── EL POOL, MEDIDO ────────────────────────────────────────────────────────────────────────────────────
+  // El pool escrito a mano envejece con cada acto y ya no coincidía con lo que se juega (listaba Icebox y
+  // Abyss, que no aparecen en la muestra, y no listaba Split, Breeze, Pearl ni Fracture, que son cuatro de
+  // los siete mapas más jugados). Se lee del circuito cuando hay muestra; si no, queda el escrito.
+  let VD = null; try { VD = require('./valorant-data'); } catch { }
+  const vdData = VD ? (() => { try { return VD.load(); } catch { return null; } })() : null;
+  const poolMed = VD && vdData ? VD.circuitPool({ data: vdData }) : null;
+  const POOL = poolMed && poolMed.length >= 5 ? poolMed : MAP_POOL;
+  const perfil = (k) => (VD && vdData && k ? VD.mapProfile(k, { data: vdData }) : null);
+
   const strength = (ratings && ratings.map_strength) || null;
   // 19-ago: sin fuerza por equipo medida el árbol de veto no se puede simular, pero el POOL y su reparto
   // ataque/defensa SÍ son estructura conocida del juego. Antes se devolvía null y la pantalla se quedaba sin
   // su objeto propio; ahora se sirve el pool con su sesgo y se declara que la preferencia por equipo falta.
-  const veto = strength ? vetoTree(strength, { bo, depth: (ratings && ratings.agent_depth) || null }) : {
+  const veto = strength ? vetoTree(strength, { bo, pool: POOL, depth: (ratings && ratings.agent_depth) || null }) : {
     structure_only: true,
-    likely_maps: MAP_POOL.map((m) => ({ map: m.key, name: m.name, p_a: null, bias: m.bias, note: m.note })),
+    likely_maps: POOL.map((m) => ({ map: m.key, name: m.name, p_a: null, bias: m.bias, note: m.note || null })),
     sequence: [], decider: null, pool_version: POOL_VERSION,
     note: 'pool y reparto ataque/defensa del juego (estructura conocida). La preferencia de veto por equipo necesita fuerza por mapa medida: la cosecha de detalle está en marcha y este tablero se completa solo cuando entre.',
   };
   const mapProbs = veto ? veto.likely_maps : null;
 
   const firstMap = mapProbs && mapProbs.length ? mapProbs[0] : null;
-  const bias = firstMap ? firstMap.bias : 0.51;
-  const rounds = pMap != null ? mapRounds(clampRound(pMap), bias) : null;
+  // ── RONDAS, CALIBRADAS CONTRA EL MAPA QUE SE VA A JUGAR ────────────────────────────────────────────────
+  // Antes esto era "el mapa medio de Valorant con un sesgo de autor". Ahora es el primer mapa probable del
+  // veto, con SU reparto ataque/defensa medido y SU arrastre económico ajustado a SU prórroga real.
+  const perfil1 = firstMap ? perfil(firstMap.map) : null;
+  const bias = perfil1 ? perfil1.def_round_share : (firstMap ? firstMap.bias : 0.51);
+  let drag1 = calibrateDrag(perfil1);
+  // SIN VETO SIMULABLE NO SE SABE QUÉ MAPA SE JUEGA. El perfil de rondas sigue MEDIDO —eso no cambia— pero
+  // se está aplicando el del mapa más jugado a un mapa que puede ser otro. Ese desconocimiento no se calla:
+  // se suma en cuadratura al residuo de calibración la dispersión de rondas medias ENTRE mapas del pool, que
+  // es exactamente lo que se puede equivocar uno al no saber cuál sale. Y ese residuo es lo que después cobra
+  // `calibrationPp` en store.js: si la ventaja no supera nuestro propio error, no hay pick.
+  if (!strength && drag1.fitted && POOL.length > 2) {
+    const ms = POOL.map((m) => perfil(m.key)).filter((x) => x && x.mean_rounds != null).map((x) => x.mean_rounds);
+    if (ms.length > 2) {
+      const mu = ms.reduce((a, b) => a + b, 0) / ms.length;
+      const sd = Math.sqrt(ms.reduce((a, b) => a + (b - mu) ** 2, 0) / ms.length);
+      drag1 = { ...drag1, map_assumed: true, map_spread_rounds: C.r2(sd),
+        rounds_residual: C.r2(Math.sign(drag1.rounds_residual || 1) * Math.sqrt((drag1.rounds_residual || 0) ** 2 + sd * sd)) };
+    }
+  }
+  const rounds = pMap != null ? {
+    ...mapRounds(clampRound(pMap), bias, { eco: drag1.eco }),
+    map: firstMap ? firstMap.map : null, map_name: firstMap ? firstMap.name : null,
+    calibration: drag1, observed: perfil1, measured: !!(perfil1 && perfil1.measured),
+  } : null;
+
+  // ── UNA DISTRIBUCIÓN POR MAPA DE LA SERIE ──────────────────────────────────────────────────────────────
+  // El mismo fallo que se corrigió en CS2 seguía vivo aquí: la casa cotiza el total de rondas del mapa 1, del
+  // 2 y del 3 por separado y el motor devolvía una sola distribución. Tres precios distintos contra una
+  // misma opinión no son tres oportunidades. Cada mapa lleva ahora su perfil, su arrastre y su reparto.
+  // solo con veto simulable: sin fuerza por mapa medida el "mapa 3" del mercado no es el tercer mapa del
+  // pool por uso, es un mapa desconocido — y cotizar la línea del 3 contra el tercero más jugado sería
+  // inventarse el orden. Sin veto, esta tabla no existe y esas líneas se quedan sin valorar. Correcto.
+  const roundsByMap = {};
+  if (strength && mapProbs && mapProbs.length && pMap != null) {
+    mapProbs.forEach((mp, i) => {
+      const prof = perfil(mp.map);
+      const d = calibrateDrag(prof);
+      const b = prof ? prof.def_round_share : mp.bias;
+      const pA = mp.p_a != null ? mp.p_a : pMap;
+      roundsByMap[i + 1] = {
+        ...mapRounds(clampRound(pA), b, { eco: d.eco, seed: 29 + i * 101 }),
+        map: mp.map, map_name: mp.name, order: i + 1, p_map_a: mp.p_a != null ? mp.p_a : null,
+        calibration: d, observed: prof, measured: !!(prof && prof.measured),
+      };
+    });
+  }
 
   const unc = C.uncertainty({
     p: pSeries != null ? pSeries : 0.5, sampleMatches: sample,
@@ -269,11 +356,12 @@ function analyze({ market, ratings, bo = 3, sample = 0 }) {
   return {
     game: 'valorant', bo,
     probability: anchored, market: cons, market_anchor: anchor ? { from: anchor.from, family: anchor.family, direct: anchor.direct, p_map: anchor.p_map != null ? anchor.p_map : null } : null, simulation: sim,
-    veto, rounds, economy: ECONOMY_MODEL,
-    composition: compositionModel(firstMap ? firstMap.map : null),
+    veto, rounds, rounds_by_map: Object.keys(roundsByMap).length ? roundsByMap : null, economy: ECONOMY_MODEL,
+    composition: compositionModel(firstMap ? firstMap.map : null, POOL),
     uncertainty: unc,
     what_matters: whatMatters({ anchored, veto, rounds, unc, bo }),
-    map_pool: MAP_POOL, pool_version: POOL_VERSION, bias_note: BIAS_NOTE,
+    map_pool: POOL, pool_version: poolMed ? 'medido/' + POOL_VERSION : POOL_VERSION,
+    bias_note: poolMed ? BIAS_MEDIDO : BIAS_NOTE,
     native: GAME.native, edge_families: GAME.edge_families,
   };
 }

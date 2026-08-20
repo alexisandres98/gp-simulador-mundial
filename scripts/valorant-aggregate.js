@@ -17,7 +17,11 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = process.env.GP_VAL_DIR || (fs.existsSync('/data') ? '/data/val-raw' : path.join(__dirname, '..', 'data', 'esports', 'valorant'));
-const OUT = path.join(__dirname, '..', 'data', 'esports', 'valorant');
+// SALIDA EN DISCO PERSISTENTE CUANDO LO HAY (20-ago). Antes esto escribía SIEMPRE en el repo, que Render
+// recrea en cada despliegue: si el agregado corría en producción, su resultado desaparecía al siguiente
+// deploy y volvía la foto congelada del último commit. Los agregados van al disco y el lector los prefiere
+// desde ahí; el repo queda como semilla para el sandbox y para el primer arranque.
+const OUT = process.env.GP_VAL_OUT || (fs.existsSync('/data') ? '/data/val-agg' : path.join(__dirname, '..', 'data', 'esports', 'valorant'));
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
 const wr = (f, o) => { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, f), JSON.stringify(o)); };
 

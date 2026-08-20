@@ -506,7 +506,7 @@ function gate(c) {
 // que adivinar. Ahora cada descarte se cuenta y viaja en el retorno.
 async function recordShadow(lg) {
   const diag = { eventos: 0, sin_nombre: 0, fuera_de_ventana: 0, sin_partido_propio: 0, sin_modelo: 0,
-    sin_mercado: 0, candidatas: 0, no_shadow_pick: 0, ya_estaba: 0, ejemplos_sin_nombre: [], ejemplos_sin_partido: [] };
+    sin_mercado: 0, candidatas: 0, no_shadow_pick: 0, ya_estaba: 0, proximo: null, ejemplos_sin_nombre: [], ejemplos_sin_partido: [] };
   const M = modelSnapshot(lg);
   if (!M) return { recorded: 0, why: 'los agregados de esta liga no están cargados', diag };
   const odds = await refreshOdds(lg).catch(() => null);
@@ -528,6 +528,9 @@ async function recordShadow(lg) {
       continue;
     }
     const kickoff = Date.parse(ev.commence_time || 0);
+    // el primer partido con los dos nombres resueltos: sin esto, "fuera de ventana" no distingue entre
+    // "la temporada empieza en dos semanas" y "la ventana está mal puesta"
+    if (kickoff > Date.now() && (!diag.proximo || kickoff < Date.parse(diag.proximo))) diag.proximo = new Date(kickoff).toISOString();
     if (!(kickoff > Date.now() && kickoff - Date.now() < 6 * 864e5)) { diag.fuera_de_ventana++; continue; }
     // el partido en la agenda propia (por fecha del kickoff, tolerando el día previo por husos)
     const dEv = String(ev.commence_time).slice(0, 10);

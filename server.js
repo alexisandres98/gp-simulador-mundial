@@ -523,9 +523,14 @@ async function valHarvestJob() {
   try {
     if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_VAL_HARVEST || '').trim())) return;
     const dir = process.env.GP_VAL_DIR || (fs.existsSync('/data') ? '/data/val-raw' : path.join(__dirname, 'data', 'esports', 'valorant'));
+    // "COMPLETO" NO ES "TERMINADO" (20-ago). Cuando la cosecha alcanzaba lo pendiente se marcaba completa y
+    // el trabajo no volvía a correr NUNCA — con lo cual las series de esta semana, que son justo las que el
+    // modelo necesita, no entraban jamás. Completo significa "alcanzada": se sigue pasando cada 6 h para
+    // recoger lo nuevo, que es barato porque solo baja lo que no está en disco.
+    let alcanzada = false;
     try {
       const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
-      if (st && st.complete) { opsLog('val_harvest_done', { complete: true, at: st.at }); return; }
+      if (st && st.complete) { alcanzada = true; opsLog('val_harvest_al_dia', { at: st.at }); }
     } catch { }
     // el índice versionado sirve de arranque: si el disco persistente aún no tiene series.json, se siembra
     try {
@@ -536,11 +541,30 @@ async function valHarvestJob() {
       }
     } catch { }
     const out = await opsSpawn('val_harvest', ['scripts/valorant-harvest.js', '--since=2024-01-01'], { heapMb: 300, timeoutMin: 150 });
-    opsLog('val_harvest_pass', { code: out.code != null ? out.code : out.error });
-    setTimeout(valHarvestJob, 20 * 60e3);
+    opsLog('val_harvest_pass', { code: out.code != null ? out.code : out.error, al_dia: alcanzada });
+    setTimeout(valHarvestJob, (alcanzada ? 6 * 60 : 20) * 60e3);
   } catch (e) { opsLog('val_harvest', { error: e.message }); setTimeout(valHarvestJob, 30 * 60e3); }
 }
 setTimeout(valHarvestJob, 9 * 60e3);
+// Y EL AGREGADO, QUE NO CORRÍA EN NINGÚN SITIO (20-ago). La cosecha llevaba días moliendo —de 998 series de
+// detalle a 8.925— y el producto seguía leyendo la foto que se commiteó el 18: nada de lo cosechado desde
+// entonces llegaba al modelo. `valorant-aggregate.js` solo se ejecutaba a mano desde el sandbox y además
+// escribía en el repo, que Render recrea en cada despliegue. Ahora corre aquí cada 6 h, escribe en el disco
+// persistente y `valorant-data` lo prefiere desde ahí. Es lo que convierte la cosecha en modelo.
+async function valAggJob() {
+  try {
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_VAL_HARVEST || '').trim())) return;
+    const dirV = process.env.GP_VAL_DIR || (fs.existsSync('/data') ? '/data/val-raw' : path.join(__dirname, 'data', 'esports', 'valorant'));
+    // sin crudo nuevo no hay nada que agregar
+    if (!fs.existsSync(path.join(dirV, 'maps.json'))) { setTimeout(valAggJob, 60 * 60e3); return; }
+    const out = await opsSpawn('val_agg', ['scripts/valorant-aggregate.js'], { heapMb: 900, timeoutMin: 25 });
+    opsLog('val_agg_pass', { code: out.code != null ? out.code : out.error });
+    // el catálogo cachea 10 min en memoria; se invalida para que el agregado nuevo entre sin esperar
+    try { global._valdata = { data: null, at: 0 }; } catch { }
+    setTimeout(valAggJob, 6 * 3600e3);
+  } catch (e) { opsLog('val_agg', { error: e.message }); setTimeout(valAggJob, 60 * 60e3); }
+}
+setTimeout(valAggJob, 14 * 60e3);
 
 // ── TENIS: cosecha de la base histórica (Sackmann ATP/WTA, CC BY-NC-SA — ver data/tennis/RIGHTS.md).
 // El sandbox de desarrollo no llega a GitHub; Render sí. Descarga una vez a /data/tennis-raw y se

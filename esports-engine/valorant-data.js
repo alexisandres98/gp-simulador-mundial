@@ -18,7 +18,15 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = path.join(__dirname, '..', 'data', 'esports', 'valorant');
-const rdf = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
+// DISCO PRIMERO, REPO DESPUÉS (20-ago). El agregado que corre en producción escribe en el disco persistente;
+// el repo lleva la semilla versionada. Se prefiere archivo a archivo —no carpeta a carpeta— porque hay
+// piezas que solo existen en el repo (escudos, priors, derechos) y piezas que solo se refrescan en disco.
+const DISK = process.env.GP_VAL_OUT || (fs.existsSync('/data') ? '/data/val-agg' : null);
+const archivo = (f) => {
+  if (DISK) { try { const d = path.join(DISK, f); if (fs.existsSync(d)) return d; } catch { } }
+  return path.join(DIR, f);
+};
+const rdf = (f) => { try { return JSON.parse(fs.readFileSync(archivo(f), 'utf8')); } catch { return null; } };
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const slug = (s) => norm(s).replace(/ /g, '-');
@@ -340,6 +348,46 @@ function mapsFor(nameA, nameB) {
   return out;
 }
 
+// ── PERFIL DE RONDA DE UN MAPA (lo que sustituye a las constantes de circuito) ───────────────────────────
+// Mismo contrato que cs2-data.mapProfile, y por la misma razón: el motor de rondas tiene que calibrarse
+// contra lo que ese mapa hace DE VERDAD —cuántas rondas dura, cuántas prórrogas produce y cuánto pesa el
+// lado atacante— y no contra un número de autor. La medición sale de map-stats.json, que a su vez sale del
+// detalle cosechado en vlr.gg (mitades t/ct por mapa). Sin muestra suficiente devuelve null y el motor
+// declara que esa familia no tiene estructura medida.
+const MIN_MAPAS = 40;
+function mapProfile(mapKey, { data = null } = {}) {
+  const d = data || load();
+  const MS = d && d.mapStats;
+  if (!MS || !Array.isArray(MS.rows)) return null;
+  const k = norm(mapKey);
+  const row = MS.rows.find((r) => norm(r.map) === k);
+  if (!row || !(row.n >= MIN_MAPAS)) return null;
+  if (row.atk_round_share == null) return null;
+  return {
+    map: k, name: row.map, n: row.n, recent_n: row.recent_n || 0,
+    mean_rounds: row.mean_rounds, overtime_p: row.overtime_p,
+    atk_round_share: row.atk_round_share,
+    // el motor razona en probabilidad de ronda de la DEFENSA (el `bias` del pool): es el complemento
+    def_round_share: +(1 - row.atk_round_share).toFixed(3),
+    in_rotation: !!row.in_rotation,
+    window_days: (MS.window_days && MS.window_days.circuit) || null,
+    source: 'base propia de Valorant (mitades ataque/defensa por mapa)',
+    measured: true,
+  };
+}
+// El pool REAL del circuito, ordenado por uso reciente. El pool escrito a mano envejece con cada acto;
+// este se lee de lo que se está jugando. Solo mapas con muestra y en rotación.
+function circuitPool({ data = null } = {}) {
+  const d = data || load();
+  const MS = d && d.mapStats;
+  if (!MS || !Array.isArray(MS.rows)) return null;
+  const rows = MS.rows.filter((r) => r.in_rotation && r.n >= MIN_MAPAS && r.atk_round_share != null)
+    .sort((a, b) => (b.recent_n || 0) - (a.recent_n || 0));
+  if (rows.length < 5) return null;
+  return rows.map((r) => ({ key: norm(r.map), name: r.map, n: r.n,
+    bias: +(1 - r.atk_round_share).toFixed(3), measured: true }));
+}
+
 // entrada del árbol de veto del motor (map_strength + agent_depth por clave de mapa del pool).
 // La fuerza por mapa es la WR propia encogida hacia 0,5 (K=8 mapas) enfrentada entre los dos; la
 // profundidad es la familiaridad de composición (cuota de la comp más usada en ese mapa). Mapas nuevos
@@ -385,4 +433,5 @@ function datasetFor(nameA, nameB) {
 }
 
 module.exports = { load, norm, resolveTeam, teamCard, rankingMovement, ratingsFor, datasetFor,
-  agentsBoard, championsBoard: agentsBoard, compIntel, mapsFor, vetoInput, DIR, MODEL_VERSION: 'val-elo-series-1' };
+  agentsBoard, championsBoard: agentsBoard, compIntel, mapsFor, vetoInput, mapProfile, circuitPool,
+  DIR, MODEL_VERSION: 'val-elo-series-1' };

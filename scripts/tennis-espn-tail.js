@@ -100,10 +100,18 @@ const masDias = (n, d) => { const t = Date.parse(aISO(n) + 'T00:00:00Z') + d * 8
 
   const lm = meta.last_match_date || {};
   const desdeBase = Math.max(+lm.atp || 0, +lm.wta || 0);
-  const desde = +arg('desde', masDias(desdeBase, 1));
+  // SE VUELVE DOS DÍAS ATRÁS, NO AL DÍA SIGUIENTE. Dos motivos y ninguno es prudencia: los partidos del
+  // último día pueden estar A MEDIAS cuando corre el trabajo —un partido en curso no entra, y sin volver
+  // sobre él no entraría nunca—, y el cuadro de un torneo se completa hacia atrás según se juegan las
+  // rondas. Repetir días no duplica nada: cada partido se dedupe por tour, fecha, jugadores y ronda.
+  const desde = +arg('desde', masDias(desdeBase, -2));
   const hasta = +arg('hasta', aNum(new Date().toISOString()));
   const paso = Math.max(1, +arg('paso', 2));
-  if (!(desde > 20000000) || hasta < desde) { console.error('[cola] ventana inválida', desde, hasta); process.exit(1); }
+  if (!(desde > 20000000)) { console.error('[cola] ventana inválida', desde, hasta); process.exit(1); }
+  // ESTAR AL DÍA NO ES UN FALLO. La primera versión salía con código 1 cuando la base ya llegaba a hoy
+  // —que es el estado NORMAL una vez la cola funciona— y el trabajo diario registraba un error todos los
+  // días. Un error que sale siempre deja de leerse, y el día que sea de verdad tampoco se va a leer.
+  if (hasta < desde) { console.log(`[cola] la base ya llega a ${desdeBase}: nada que traer`); return { rows: 0, last: lm, out: OUT }; }
 
   // ── índices para resolver identidad ───────────────────────────────────────────────────────────────────
   // ── IDENTIDAD DEL JUGADOR ─────────────────────────────────────────────────────────────────────────────

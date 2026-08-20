@@ -36,6 +36,10 @@ function wantedLeague(key) {
 const isPriority = (key) => KEY_INCLUDE.some(re => re.test(key));
 
 let _cache = { at: 0, data: [] };
+// tamaño de lote y pausa entre lotes: ajustables por env sin desplegar, porque el límite de tasa de una casa
+// no es una constante del universo y se descubre midiendo
+const LOTE = Number(process.env.CLOUDBET_BATCH) || 3;
+const PAUSA = Number(process.env.CLOUDBET_PAUSE_MS) || 250;
 
 async function cbGet(path, apiKey, timeoutMs) {
   const ctrl = AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
@@ -111,12 +115,21 @@ function normalizeEvent(e) {
 
 // fetchCloudbetSoccer() → [ eventos normalizados con precios ]. Sin key → []. Cachea 60s. Nunca lanza.
 // maxEvents acota el nº de requests por ciclo (1 por partido). Solo partidos dentro de la ventana horas.
-async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, timeoutMs = 9000, ttlMs = 60000, now = Date.now(), windowH = 72, maxEvents = Number(process.env.CLOUDBET_MAX_EVENTS) || 200 } = {}) {
+async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, timeoutMs = 9000, ttlMs = 60000, now = Date.now(), windowH = 72, maxEvents = Number(process.env.CLOUDBET_MAX_EVENTS) || 200, stats = null } = {}) {
   if (!apiKey) return [];
   if (_cache.data.length && (now - _cache.at) < ttlMs) return _cache.data;
   const out = [];
+  // DIAGNÓSTICO (20-ago). Los dos `catch` mudos de abajo estaban comiéndose el 90 % de la cosecha sin que
+  // nadie lo supiera: se leían 19 partidos de más de 200 y desde fuera parecía que Cloudbet no cotizaba
+  // nada. Un fallo silencioso en un colector es indistinguible de una casa que no cubre el mercado, y las
+  // dos cosas llevan a decisiones opuestas. Ahora se cuentan y se devuelven si el llamante los pide.
+  const S = stats || {};
+  S.competiciones = 0; S.comp_fallidas = 0; S.ids = 0; S.detalle_ok = 0; S.detalle_fallido = 0;
+  S.sin_mercados = 0; S.errores = S.errores || {};
+  const anota = (e) => { const k = (e && e.message) || 'desconocido'; S.errores[k] = (S.errores[k] || 0) + 1; };
   try {
     const comps = await soccerCompetitions(apiKey, timeoutMs);
+    S.competiciones = comps.length;
     // las prioritarias primero: si el tope de eventos aprieta, las grandes nunca se quedan fuera
     comps.sort((a, b) => (isPriority(b.key) ? 1 : 0) - (isPriority(a.key) ? 1 : 0));
     const fromS = Math.floor(now / 1000), toS = fromS + windowH * 3600;
@@ -128,16 +141,22 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
         for (const e of (j.events || [])) {
           if (e.type === 'EVENT_TYPE_EVENT' && e.home && e.away && e.id) { ids.push({ id: e.id, comp: c.key }); if (ids.length >= maxEvents) break; }
         }
-      } catch { /* liga sin cobertura este ciclo */ }
+      } catch (e) { S.comp_fallidas++; anota(e); }   // liga sin cobertura este ciclo — o límite de tasa
     }
-    // detalle de cada partido en LOTES paralelos (mucho más rápido que secuencial)
-    for (let i = 0; i < ids.length; i += 6) {
-      const batch = ids.slice(i, i + 6);
+    S.ids = ids.length;
+    // detalle de cada partido en LOTES paralelos. El lote es de 3 y con pausa: con 6 a pelo Cloudbet
+    // devolvía 429 en la mayoría y el colector se quedaba con las migajas, en silencio.
+    for (let i = 0; i < ids.length; i += LOTE) {
+      const batch = ids.slice(i, i + LOTE);
       const res = await Promise.all(batch.map(({ id, comp }) =>
-        cbGet(`/pub/v2/odds/events/${id}`, apiKey, timeoutMs).then(ev => { const n = normalizeEvent(ev); if (n) n.competition = comp; return n; }).catch(() => null)));
+        cbGet(`/pub/v2/odds/events/${id}`, apiKey, timeoutMs)
+          .then(ev => { S.detalle_ok++; const n = normalizeEvent(ev); if (n) n.competition = comp; else S.sin_mercados++; return n; })
+          .catch((e) => { S.detalle_fallido++; anota(e); return null; })));
       for (const n of res) if (n) out.push(n);
+      if (i + LOTE < ids.length && PAUSA) await new Promise((r) => setTimeout(r, PAUSA));
     }
-  } catch { return _cache.data; } // fallo en el listado de deportes → último bueno
+  } catch (e) { S.listado_error = e.message; return _cache.data; } // fallo en el listado de deportes → último bueno
+  S.devueltos = out.length;
   if (out.length) _cache = { at: now, data: out };
   return out.length ? out : _cache.data;
 }

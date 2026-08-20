@@ -17239,7 +17239,9 @@ const server = http.createServer(async (req, res) => {
       }
       // cobertura tal y como la ve HOY el colector, liga a liga
       try {
-        const evs = await CB.fetchCloudbetSoccer({ apiKey, ttlMs: 0, windowH: 96 });
+        const stats = {};
+        const evs = await CB.fetchCloudbetSoccer({ apiKey, ttlMs: 0, windowH: 96, stats });
+        out.cosecha = stats;
         const porLiga = {};
         for (const e of evs) {
           const k = e.competition || '?';

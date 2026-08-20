@@ -7359,6 +7359,104 @@ function recoverVoidClubPicks({ apply = false } = {}) {
   return out;
 }
 
+// ── TERCERA FUENTE PARA LAS VOID: API-FOOTBALL (20-ago) ──────────────────────────────────────────────────
+// De las 79 picks liquidadas como VOID, la pasada anterior recuperó 9 y se quedaron 70. Mirando el motivo
+// una por una: 30 necesitan córners, 24 necesitan GOLES —veinte de ellas de la liga finlandesa—, 3
+// necesitan tarjetas y 13 son de familias que no se pueden liquidar hacia atrás (goleador, props de
+// jugador: eso exige el detalle del partido, no el resultado).
+//
+// Que a 24 picks les falten los GOLES es lo que delata dónde está el problema: no es que el dato no
+// exista, es que las dos fuentes locales están vacías para esas ligas. El archivo de props solo tiene los
+// partidos que alguna vez pasaron por la pantalla de props, y el de marcadores está a cero en la mayoría
+// de las ligas pequeñas.
+//
+// API-Football sí tiene las tres cosas —resultado, córners y tarjetas— y desde ayer el mapa de equipos
+// cubre el 97 % del catálogo, así que los dos equipos de cada pick resuelven. Dos peticiones por partido:
+// el partido y sus estadísticas. Con el plan actual eso no se nota.
+//
+// SE LIQUIDA CON LA MISMA ARITMÉTICA QUE LAS OTRAS DOS FUENTES, no con una parecida: mismo criterio de
+// empate en la línea (PUSH), mismo cálculo de unidades. Y cada pick recuperada anota DE DÓNDE salió, para
+// que el registro diga siempre contra qué dato se liquidó.
+async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
+  const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+  const out = { fuente: 'api-football', apply, revisadas: 0, recuperadas: 0, sin_dato: 0, llamadas: 0,
+    por_familia: {}, por_liga: {}, cambios: [], faltantes: [] };
+  if (!afk) { out.error = 'sin API_FOOTBALL_KEY'; return out; }
+  const host = process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io';
+  const af = async (qs) => {
+    const r = await fetch(`https://${host}${qs}`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(20000) });
+    out.llamadas++;
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (j.errors && Object.keys(j.errors).length) throw new Error(JSON.stringify(j.errors).slice(0, 120));
+    return j.response || [];
+  };
+  const RECUP = new Set(['SOLID', 'CORNERS', 'CARDS']);
+  const all = [...(db.clubDailyPicks || []), ...(db.dailyPicks || [])];
+  const pend = all.filter((p) => p.result_code === 'VOID' && p.event && p.league && RECUP.has(p.family));
+  for (const p of pend.slice(0, limit)) {
+    out.revisadas++;
+    const etiqueta = { family: p.family, liga: p.competition_name || p.league,
+      partido: `${p.event.home} - ${p.event.away}`, fecha: String(p.event.kickoff_at || '').slice(0, 10) };
+    const afH = clubAfIdOf(p.league, p.event.home_team_id), afA = clubAfIdOf(p.league, p.event.away_team_id);
+    if (!afH || !afA) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'mapeo del equipo a API-Football' }); continue; }
+    let fx = null;
+    try {
+      // el cruce directo entre los dos equipos: evita depender de que la liga esté bien identificada
+      const r = await af(`/fixtures/headtohead?h2h=${afH}-${afA}&last=20`);
+      const ko = +new Date(p.event.kickoff_at || 0);
+      fx = r.find((x) => Math.abs(+new Date((x.fixture || {}).date || 0) - ko) < 2 * 86400e3
+        && String(((x.fixture || {}).status || {}).short || '') === 'FT') || null;
+    } catch (e) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'API-Football: ' + e.message }); continue; }
+    if (!fx) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'el partido no aparece terminado en API-Football' }); continue; }
+    // orientar al local de la pick: API-Football tiene su propio local y puede no ser el nuestro
+    const flip = String((fx.teams || {}).home && fx.teams.home.id) !== String(afH);
+    let code = null;
+    if (p.family === 'SOLID') {
+      const g = fx.goals || {};
+      const hg = Number(flip ? g.away : g.home), ag = Number(flip ? g.home : g.away);
+      if (!Number.isFinite(hg) || !Number.isFinite(ag)) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'goles' }); continue; }
+      const real = hg > ag ? 'home' : ag > hg ? 'away' : 'draw';
+      code = String(p.selection_code || '').toLowerCase() === real ? 'WIN' : 'LOSS';
+    } else {
+      let st = [];
+      try { st = await af(`/fixtures/statistics?fixture=${fx.fixture.id}`); }
+      catch (e) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'estadísticas: ' + e.message }); continue; }
+      const valor = (tipo) => st.reduce((acc, bloque) => {
+        const it = (bloque.statistics || []).find((x) => String(x.type || '').toLowerCase() === tipo);
+        const v = it ? Number(it.value) : null;
+        return acc + (Number.isFinite(v) ? v : 0);
+      }, 0);
+      const hayTipo = (tipo) => st.some((b) => (b.statistics || []).some((x) => String(x.type || '').toLowerCase() === tipo && x.value != null));
+      let tot = null;
+      if (p.family === 'CORNERS') { if (hayTipo('corner kicks')) tot = valor('corner kicks'); }
+      else if (hayTipo('yellow cards') || hayTipo('red cards')) tot = valor('yellow cards') + valor('red cards');
+      const line = Number(p.line);
+      if (tot == null || !Number.isFinite(line)) {
+        out.sin_dato++;
+        out.faltantes.push({ ...etiqueta, necesita: tot == null ? (p.family === 'CORNERS' ? 'córners (API-Football no los publica en este partido)' : 'tarjetas (API-Football no las publica en este partido)') : 'línea de la pick' });
+        continue;
+      }
+      code = tot === line ? 'PUSH' : ((p.side === 'over') === (tot > line) ? 'WIN' : 'LOSS');
+    }
+    out.recuperadas++;
+    out.por_familia[p.family] = (out.por_familia[p.family] || 0) + 1;
+    out.por_liga[etiqueta.liga] = (out.por_liga[etiqueta.liga] || 0) + 1;
+    if (out.cambios.length < 60) out.cambios.push({ ...etiqueta, de: 'VOID', a: code, cuota: p.best_odds, fuente: 'api-football' });
+    if (apply) {
+      p.result_code = code;
+      p.recovered_at = new Date().toISOString();
+      p.recovered_from = 'api-football';
+      const o = Number(p.best_odds) || 0;
+      p.units = code === 'WIN' ? +(o - 1).toFixed(2) : code === 'LOSS' ? -1 : 0;
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  if (apply && out.recuperadas) save();
+  out.pendientes_totales = pend.length;
+  return out;
+}
+
 function settleClubDailyPicks() {
   const { settleOne } = require('./pick-engine/dailyPicks');
   let settled = 0;
@@ -18386,8 +18484,15 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/clubs-void-recover') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      try { return json(res, 200, recoverVoidClubPicks({ apply: url.searchParams.get('apply') === '1' })); }
-      catch (e) { return json(res, 200, { error: e.message }); }
+      try {
+        const aplicar = url.searchParams.get('apply') === '1';
+        // ?af=1 añade la tercera fuente (API-Football). Va detrás de las dos locales a propósito: si el dato
+        // está en disco no hay motivo para gastar una petición.
+        const local = recoverVoidClubPicks({ apply: aplicar });
+        if (url.searchParams.get('af') !== '1') return json(res, 200, local);
+        const remoto = await recoverVoidClubPicksAF({ apply: aplicar, limit: Math.max(1, Math.min(120, +(url.searchParams.get('limit') || 80))) });
+        return json(res, 200, { local, api_football: remoto });
+      } catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/internal/clubs-picks-recover' && req.method === 'POST') {
       const xk = process.env.GP_EXPORT_KEY || '';

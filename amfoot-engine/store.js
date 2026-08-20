@@ -62,34 +62,84 @@ const LEAGUES = {
 const CFL_ABBR = { 'BC Lions': 'BC', 'Calgary Stampeders': 'CGY', 'Edmonton Elks': 'EDM', 'Saskatchewan Roughriders': 'SSK', 'Winnipeg Blue Bombers': 'WPG', 'Hamilton Tiger-Cats': 'HAM', 'Toronto Argonauts': 'TOR', 'Ottawa Redblacks': 'OTT', 'Montreal Alouettes': 'MTL' };
 
 // ── identidad de equipo ──────────────────────────────────────────────────────────────────────────────────
+// nrm convierte el apóstrofe en espacio ("Hawai'i" -> "hawai i"); para cotejar nombres de casa hace falta
+// pegarlo ("hawaii"). Los puntos y guiones corren la misma suerte.
+const nrmT = (s) => nrm(String(s || '').replace(/['\u2019`\u00b4.]/g, ''));
+// La casa y el proveedor de calendario no nombran igual a las mismas escuelas. Clave = nombre de la casa
+// ya normalizado (sin mascota); valor = nombre del catálogo propio.
+const NCAAF_ALIAS = {
+  'appalachian state': 'App State',
+  'brigham young': 'BYU',
+  'central florida': 'UCF',
+  'connecticut': 'UConn',
+  'fiu': 'Florida International',
+  'florida intl': 'Florida International',
+  'hawaii': "Hawai'i",
+  'louisiana lafayette': 'Louisiana',
+  'louisiana monroe': 'UL Monroe',
+  'ulm': 'UL Monroe',
+  'umass': 'Massachusetts',
+  'miami fl': 'Miami',
+  'miami florida': 'Miami',
+  'miami oh': 'Miami (OH)',
+  'miami ohio': 'Miami (OH)',
+  'middle tennessee state': 'Middle Tennessee',
+  'mississippi': 'Ole Miss',
+  'north carolina state': 'NC State',
+  'nevada las vegas': 'UNLV',
+  'pitt': 'Pittsburgh',
+  'sam houston state': 'Sam Houston',
+  'san jose state': 'San José State',
+  'southern california': 'USC',
+  'southern methodist': 'SMU',
+  'southern mississippi': 'Southern Miss',
+  'texas christian': 'TCU',
+  'texas el paso': 'UTEP',
+  'texas san antonio': 'UTSA',
+  'alabama birmingham': 'UAB',
+  'louisiana state': 'LSU',
+};
 function teamMeta(lg) {
   if (G['tm_' + lg]) return G['tm_' + lg];
   const out = { byName: new Map(), info: {} };
   if (lg === 'ncaaf') {
     const t = rdR(LEAGUES.ncaaf.teamsFile);
+    const mascota = new Map();
     for (const row of (t && t.teams) || []) {
       out.info[row.school] = { abbr: row.abbr || row.school, name: row.school, logo: row.logo, conference: row.conference };
+      if (row.mascot) mascota.set(row.school, row.mascot);
       // The Odds API nombra "TCU Horned Frogs" (escuela + mascota); CFBD nombra "TCU"
-      out.byName.set(nrm(row.school), row.school);
-      if (row.mascot) out.byName.set(nrm(row.school + ' ' + row.mascot), row.school);
+      out.byName.set(nrmT(row.school), row.school);
+      if (row.mascot) out.byName.set(nrmT(row.school + ' ' + row.mascot), row.school);
+    }
+    for (const [ali, school] of Object.entries(NCAAF_ALIAS)) {
+      if (!out.info[school]) continue;
+      const k = nrmT(ali);
+      if (!out.byName.has(k)) out.byName.set(k, school);
+      const ms = mascota.get(school);
+      if (ms) { const km = nrmT(ali + ' ' + ms); if (!out.byName.has(km)) out.byName.set(km, school); }
     }
   } else {
     for (const [name, abbr] of Object.entries(CFL_ABBR)) {
       // logos CFL servidos por la casa (18-ago, pedido de Alexis): /logos/cfl_<abbr>.png
       out.info[name] = { abbr, name, logo: '/logos/cfl_' + abbr.toLowerCase() + '.png', conference: null };
-      out.byName.set(nrm(name), name);
+      out.byName.set(nrmT(name), name);
     }
   }
+  // claves largas primero: "miami oh" tiene que ganarle a "miami" cuando llega "Miami (OH) RedHawks"
+  out.prefijos = [...out.byName.keys()].sort((a, b) => b.length - a.length);
   G['tm_' + lg] = out;
   return out;
 }
 const infoOf = (lg, team) => teamMeta(lg).info[team] || { abbr: team, name: team, logo: null };
 function resolveOddsName(lg, oddsName) {
   const m = teamMeta(lg);
-  const k = nrm(oddsName);
+  const k = nrmT(oddsName);
+  if (!k) return null;
   if (m.byName.has(k)) return m.byName.get(k);
-  // último recurso college: la escuela es prefijo del nombre del libro ("Miami (OH) RedHawks")
-  for (const [name] of Object.entries(m.info)) if (k.startsWith(nrm(name))) return name;
+  // la escuela es prefijo del nombre del libro ("Miami (OH) RedHawks"): gana la coincidencia más larga,
+  // y solo si corta en frontera de palabra (si no, "Ohio" se comería "Ohio State")
+  for (const p of m.prefijos || []) if (k.startsWith(p + ' ')) return m.byName.get(p);
   return null;
 }
 
@@ -469,7 +519,12 @@ async function recordShadow(lg) {
     const home = resolveOddsName(lg, ev.home_team), away = resolveOddsName(lg, ev.away_team);
     if (!home || !away) {
       diag.sin_nombre++;
-      if (diag.ejemplos_sin_nombre.length < 6) diag.ejemplos_sin_nombre.push(`${ev.home_team} vs ${ev.away_team}`);
+      // nombres distintos, no pares: un nombre sin resolver aparece en muchos partidos y con seis ejemplos
+      // de pares no se sabe cuál de los dos lados falla
+      for (const [n0, r0] of [[ev.home_team, home], [ev.away_team, away]]) {
+        if (r0 || !n0) continue;
+        if (diag.ejemplos_sin_nombre.length < 40 && !diag.ejemplos_sin_nombre.includes(n0)) diag.ejemplos_sin_nombre.push(n0);
+      }
       continue;
     }
     const kickoff = Date.parse(ev.commence_time || 0);

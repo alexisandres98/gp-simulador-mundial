@@ -176,6 +176,8 @@ function simulate(pa, pb, {
     : { prior_a: null, tilt: 0, source: null,
       note: 'SIN anclar: la validación mostró que este motor por sí solo predice al ganador peor que una moneda (Brier 0,276 vs 0,250)' };
   out.matchup = M;
+  // el contexto viaja SIEMPRE, aunque no aplique: que el factor sea 1 y `measured:false` es información
+  out.contexto = ctx;
   out.uncertainty = uncertainty(out, pa, pb, M);
   return out;
 }
@@ -295,8 +297,6 @@ function core(pa, pb, M, H, { rounds = 3, roundMin = 5, n = 20000, seed = 17, ca
       close: Math.abs(w / n - 0.5) < 0.08 ? true : false })),
     sims: n, rounds_sched: rounds,
     hazards: { ko_a_per_min: r4(H.ko_a), ko_b_per_min: r4(H.ko_b), sub_a_per_min: r4(H.sub_a), sub_b_per_min: r4(H.sub_b), stand_share: H.stand_share },
-    // el contexto viaja SIEMPRE, aunque no aplique: que el factor sea 1 y `measured:false` es información
-    contexto: ctx,
   };
   return out;
 }

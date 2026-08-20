@@ -19,6 +19,14 @@ const KEY_INCLUDE = [
   /^soccer-spain-laliga$/, /^soccer-germany-bundesliga$/, /^soccer-italy-serie-a$/, /^soccer-france-ligue-1$/,
   /^soccer-argentina-(primera-division|liga-profesional)/, /^soccer-colombia-primera-a$/, /^soccer-japan-j1-league$/,
   /^soccer-china-super-league$/,
+  // 20-ago: las ligas donde de verdad viven nuestras señales y que la lista no nombraba. Championship es la
+  // ÚNICA de las nuestras donde Cloudbet cotiza tarjetas Y córners (comprobado partido a partido), y las
+  // sudamericanas de copa son las que sí traen tarjetas. Estar fuera de esta lista no las excluía —entra
+  // todo el fútbol real— pero las dejaba al final de la cola, que con un cupo de 200 es lo mismo.
+  /^soccer-england-championship$/, /^soccer-brazil-brasileiro-serie-b$/,
+  /^soccer-argentina-primera-nacional$/, /^soccer-denmark-superliga$/,
+  /^soccer-international-clubs-copa-(libertadores|sudamericana)$/,
+  /^soccer-portugal-primeira-liga$/, /^soccer-netherlands-eredivisie$/,
 ];
 const LEAGUE_EXCLUDE = /u1[6789]|u2[0-3]|women|-srl|simulated|reserve|next-pro|regional|youth|amateur|esoccer|cyber/i;
 // 14-ago (cobertura total + independencia de The Odds API): la lista blanca de 15 ligas era el cuello de
@@ -229,7 +237,11 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
     // en 72-96 h el presupuesto de 200 partidos se lo comían esos esqueletos —181 de 200 en la medición— y
     // los partidos de HOY, que sí tienen precio, se quedaban fuera. No era que la casa no cotizara: era que
     // le preguntábamos demasiado pronto y gastábamos el cupo en preguntarlo.
-    ids.sort((a, b) => Date.parse(a.ko || 0) - Date.parse(b.ko || 0));
+    // PRIMERO LAS NUESTRAS, Y DENTRO DE ELLAS LAS QUE EMPIEZAN ANTES. Ordenar solo por hora dejaba el cupo
+    // en manos del calendario mundial: la primera pasada se lo llevaron la tercera finlandesa y la cuarta
+    // islandesa, ligas que no seguimos, mientras Brasil y Championship —donde sí tenemos modelo y equipos
+    // resueltos— quedaban fuera. Un colector tiene que gastar su presupuesto donde su casa puede usarlo.
+    ids.sort((a, b) => (isPriority(b.comp) ? 1 : 0) - (isPriority(a.comp) ? 1 : 0) || Date.parse(a.ko || 0) - Date.parse(b.ko || 0));
     S.ids_totales = ids.length;
     const cola = ids.slice(0, maxEvents);
     S.ids = cola.length;

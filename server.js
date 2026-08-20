@@ -582,6 +582,45 @@ async function tennisJob() {
 }
 setTimeout(tennisJob, 5 * 60e3);
 
+// ── LA COLA DE LA BASE DE TENIS, UNA VEZ AL DÍA (20-ago) ─────────────────────────────────────────────────
+// La base salía entera de los repos de Jeff Sackmann, y esos repos fueron RETIRADOS de GitHub: el espejo
+// que queda está congelado en mayo. Sin esto la base envejece un día por día y no hay cosecha que la
+// arregle, porque la fuente no existe. La cola la mantiene viva con el marcador público de ESPN.
+//
+// Va en un PROCESO APARTE a propósito. El script recorre ~90 respuestas de medio mega y reescribe un JSON
+// de 8 MB; hacerlo dentro del servidor es justo la clase de trabajo que ya tumbó el proceso una vez. En un
+// hijo, si revienta, revienta él.
+let _tenTailRunning = false;
+async function tennisTailJob() {
+  const proximo = () => setTimeout(tennisTailJob, 24 * 3600e3);
+  if (_tenTailRunning) return proximo();
+  // el freno de memoria manda igual que en el resto de trabajos pesados
+  if (typeof opsMemOk === 'function' && !opsMemOk('tennis_tail', 200)) { setTimeout(tennisTailJob, 30 * 60e3); return; }
+  _tenTailRunning = true;
+  try {
+    const { spawn } = require('child_process');
+    const ps = spawn(process.execPath, [path.join(__dirname, 'scripts', 'tennis-espn-tail.js'), '--apply', '--paso=2'],
+      { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let cola = '';
+    const cap = (b) => { cola = (cola + b.toString()).slice(-1200); };
+    ps.stdout.on('data', cap); ps.stderr.on('data', cap);
+    const code = await new Promise((res) => {
+      const to = setTimeout(() => { try { ps.kill('SIGKILL'); } catch { } res(-2); }, 25 * 60e3);
+      ps.on('close', (c) => { clearTimeout(to); res(c); });
+      ps.on('error', () => { clearTimeout(to); res(-1); });
+    });
+    const linea = cola.split('\n').filter((x) => /\[cola\]/.test(x)).slice(-3).join(' | ');
+    opsLog('tennis_tail', { code, resumen: linea.slice(0, 400) });
+    // SOLO SE RECONSTRUYE SI SE ESCRIBIÓ ALGO. Reproducir 63.000 partidos cuesta, y hacerlo para nada es
+    // pagar el precio sin la mejora.
+    if (code === 0 && /escrito en/.test(cola)) {
+      try { require('./tennis-engine/data').reset(); opsLog('tennis_tail', { recargada: true }); } catch (e) { opsLog('tennis_tail', { reset_err: e.message }); }
+    }
+  } catch (e) { opsLog('tennis_tail', { error: e.message }); }
+  finally { _tenTailRunning = false; proximo(); }
+}
+setTimeout(tennisTailJob, 11 * 60e3);
+
 // ── F1: refresco de la temporada desde Jolpica cada 6 h (resultados + quali → overlay en disco; con la
 // quali del sábado el estado pasa solo a POS-QUALI) + vigilancia diaria de cobertura de cuotas ─────────
 async function f1Job() {

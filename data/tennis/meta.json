@@ -1,12 +1,25 @@
 {
  "source": "Jeff Sackmann tennis_atp/tennis_wta (CC BY-NC-SA 4.0) — research/attribution, no comercial",
- "built_at": "2026-08-18T15:55:49.705Z",
- "rows": 61422,
- "players": 2538,
- "tourneys": 1816,
+ "built_at": "2026-08-20T07:16:43.925Z",
+ "rows": 63036,
+ "players": 2632,
+ "tourneys": 1846,
  "last_match_date": {
-  "atp": 20260525,
-  "wta": 20260525
+  "atp": 20260820,
+  "wta": 20260820
  },
- "years": "2015-2026"
+ "years": "2015-2026",
+ "tail": {
+  "source": "ESPN scoreboard (público)",
+  "from": 20260526,
+  "to": 20260820,
+  "rows": 1614,
+  "spine_until": 20260525,
+  "lacks": [
+   "saque/resto (aces, dobles faltas, puntos, break points)",
+   "minutos",
+   "ranking del momento"
+  ],
+  "note": "los repos de Jeff Sackmann fueron retirados de GitHub; la espina histórica llega hasta 20260525 y de ahí en adelante el dato viene del marcador público de ESPN."
+ }
 }

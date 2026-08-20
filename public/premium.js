@@ -12315,10 +12315,15 @@
     // EL RETRASO DE LA BASE, EN PORTADA. Esta pantalla se lee como "cómo llega fulano HOY"; si el último
     // partido cargado es de hace semanas, eso es exactamente lo que NO dice, y callarlo sería el peor sitio
     // para callarlo.
+    // DOS AVISOS DISTINTOS Y NO INTERCAMBIABLES. El primero es el retraso: si el último partido cargado es
+    // de hace semanas, esta pantalla no dice "cómo llega hoy" y hay que decirlo antes que nada. El segundo
+    // es la costura: desde el 20-ago la base son dos cosas pegadas —una espina con estadística de saque
+    // hasta mayo y una cola diaria que solo trae marcador—, y esta pantalla vive entera de la cola.
     var aviso = (d.lag_days != null && d.lag_days > 10)
       ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>El último partido cargado en la base es de hace <b>' +
         d.lag_days + ' días</b> (' + esc(String(d.as_of || '')) + '). Esto es la carga <b>a esa fecha</b>, no la de hoy.</span></div>'
-      : '';
+      : (d.seam ? '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>Partidos, sets y juegos vienen del marcador público desde el <b>' +
+        esc(String(d.seam.tail_from)) + '</b>; hasta ahí, de la base histórica. Para esta pantalla es el mismo dato — lo que la fuente nueva no trae es la estadística de saque, que no se usa aquí.</span></div>' : '');
     var hero = '<div class="gx-es-hero"><div><b>Cómo llega cada jugador</b>' +
       '<span class="gx-dim">partidos, sets y juegos en las últimas dos semanas — el desgaste que no se ve en el ranking</span></div>' +
       '<span class="gx-spacer"></span>' +
@@ -12556,6 +12561,13 @@
       [['Partidos', (d.base || {}).matches], ['Jugadores', (d.base || {}).players], ['Ventana', (d.base || {}).window], ['Frescura', JSON.stringify(((d.base || {}).freshness || {})).replace(/[{}"]/g, ' ')]].map(function (x) {
         return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono" style="font-size:12px">' + esc(String(x[1] || '—')) + '</b></div>';
       }).join('') + '</div>' +
+      // LA COSTURA DE LA BASE, EN LA FICHA DEL MOTOR. Desde el 20-ago la base son dos cosas pegadas y quien
+      // lea "índice de saque" tiene derecho a saber de cuándo es ese índice: el Elo se actualiza a diario,
+      // el saque se quedó donde acabó la espina.
+      ((d.base || {}).seam ? '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>' +
+        'La base tiene una costura declarada: hasta <b>' + esc(String(d.base.seam.spine_until)) + '</b> con estadística de saque y resto; desde <b>' +
+        esc(String(d.base.seam.tail_from)) + '</b>, ' + d.base.seam.tail_rows + ' partidos del marcador público. Se actualiza ' +
+        esc(d.base.seam.what_updates) + '; ' + esc(d.base.seam.what_is_frozen) + '. ' + esc(d.base.seam.why) + '</span></div>' : '') +
       '<div class="gx-dim gx-es-note">' + esc((vt.note || '')) + ' ' + esc((d.base || {}).source || '') + '</div></div>';
     tenShell(t('ten_nav_model'), body);
   }

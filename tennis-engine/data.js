@@ -10,20 +10,34 @@
 const fs = require('fs');
 const path = require('path');
 
-const BASE = path.join(__dirname, '..', 'data', 'tennis');
+// LA BASE PUEDE VIVIR EN EL DISCO PERSISTENTE, y desde el 20-ago tiene que poder. Motivo: los repos de
+// Jeff Sackmann fueron retirados de GitHub, así que la base ya no se refresca sola desde la fuente — se le
+// pega una cola diaria derivada del marcador público de ESPN. Esa cola la escribe un trabajo del servidor,
+// y lo que un trabajo escribe en el repo se pierde en el siguiente despliegue. Así que se mira primero el
+// disco (mismo patrón que los datos de clubes) y se cae al repo cuando no hay disco: en local, en un
+// despliegue nuevo antes del primer refresco, y en cualquier entorno sin volumen.
+const REPO_BASE = path.join(__dirname, '..', 'data', 'tennis');
+const DISK_BASE = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'tennis');
+const archivo = (n) => { try { const d = path.join(DISK_BASE, n); if (fs.existsSync(d)) return d; } catch { /* sin disco */ } return path.join(REPO_BASE, n); };
+const BASE = REPO_BASE;   // se conserva por compatibilidad con quien lo importe
 const logit = (p) => Math.log(p / (1 - p));
 const sig = (x) => 1 / (1 + Math.exp(-x));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const SURFACES = ['dura', 'arcilla', 'hierba', 'moqueta'];
 
 let D = null; // estado construido una vez por proceso
+// Se reconstruye SOLO cuando la cola escribe: reproducir 63.000 partidos cuesta, y hacerlo por si acaso en
+// cada petición sería peor que la base vieja.
+function reset() { D = null; }
 
 function build() {
   if (D) return D;
-  const { schema, tourneys, rows } = JSON.parse(fs.readFileSync(path.join(BASE, 'matches.json'), 'utf8'));
-  const players = JSON.parse(fs.readFileSync(path.join(BASE, 'players.json'), 'utf8'));
-  const priors = JSON.parse(fs.readFileSync(path.join(BASE, 'model-priors.json'), 'utf8'));
-  const meta = JSON.parse(fs.readFileSync(path.join(BASE, 'meta.json'), 'utf8'));
+  // matches/players/meta pueden venir del disco (los refresca la cola); los priors NO: son constantes
+  // congeladas del walk-forward y viajan con el código a propósito.
+  const { schema, tourneys, rows } = JSON.parse(fs.readFileSync(archivo('matches.json'), 'utf8'));
+  const players = JSON.parse(fs.readFileSync(archivo('players.json'), 'utf8'));
+  const priors = JSON.parse(fs.readFileSync(path.join(REPO_BASE, 'model-priors.json'), 'utf8'));
+  const meta = JSON.parse(fs.readFileSync(archivo('meta.json'), 'utf8'));
   const F = {}; schema.forEach((k, i) => { F[k] = i; });
 
   const T = [{}, {}]; // por tour: estado del modelo + catálogo
@@ -132,4 +146,4 @@ function resolvePlayer(tn, name) {
 
 function playerOf(tn, id) { const d = build(); return d.players[tn + ':' + id] || null; }
 
-module.exports = { build, matchProb, resolvePlayer, playerOf, norm, BASE, SURFACES };
+module.exports = { reset, build, matchProb, resolvePlayer, playerOf, norm, BASE, SURFACES };

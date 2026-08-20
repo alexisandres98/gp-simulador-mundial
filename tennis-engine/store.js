@@ -760,6 +760,7 @@ function loadBoard(tour, { limit = 60 } = {}) {
     // EL RETRASO DE LA BASE VA EN PORTADA, no en una nota al pie. Esta pantalla se lee como "cómo llega
     // fulano HOY", y si el último partido cargado es de hace semanas eso es exactamente lo que NO dice.
     lag_days: baseLagDays(),
+    seam: (() => { const t = d.meta.tail; return t ? { spine_until: t.spine_until, tail_from: t.from } : null; })(),
     note: 'contexto medido del registro propio, NO una señal del modelo: no entra en ninguna probabilidad. ' +
       'Los juegos son la unidad de desgaste —un 7-6 7-6 cansa el doble que un 6-1 6-2 y dura el doble— y el ' +
       'corte de fechas es el último partido de la base, no el reloj: contar desde hoy inventaría descanso que nadie tuvo.',
@@ -885,7 +886,18 @@ function modelCard() {
       lag_days: baseLagDays(),
       lag_note: (() => { const l = baseLagDays(); return l == null ? null : l <= 21
         ? 'la base llega hasta hace pocos días'
-        : `la base se detiene ${l} días antes de hoy: la fuente pública original fue retirada y el espejo que la sustituye es una instantánea, no un flujo. El modelo no ha visto la forma de esos ${l} días y cada tesis lo paga en incertidumbre.`; })() },
+        : `la base se detiene ${l} días antes de hoy: la fuente pública original fue retirada y el espejo que la sustituye es una instantánea, no un flujo. El modelo no ha visto la forma de esos ${l} días y cada tesis lo paga en incertidumbre.`; })(),
+      // LA COSTURA DE LA BASE, DICHA (20-ago). Desde que los repos originales desaparecieron, la base son
+      // dos cosas pegadas: una ESPINA con saque, resto y break points hasta mayo, y una COLA diaria sacada
+      // del marcador público que trae ganador, sets y juegos y NADA de saque. El Elo —que es lo que mueve
+      // la probabilidad— se actualiza entero con la cola; los índices de saque y resto se quedan congelados
+      // donde acabó la espina. Servir eso sin decirlo sería enseñar un índice de saque de agosto que en
+      // realidad es de mayo.
+      seam: (() => { const t = d.meta.tail; if (!t) return null;
+        return { spine_until: t.spine_until, tail_from: t.from, tail_rows: t.rows,
+          what_updates: 'Elo general y por superficie, forma, balance y racha',
+          what_is_frozen: `índices de saque y resto, aces, dobles faltas y break points: congelados en ${t.spine_until}`,
+          why: 'los repos públicos de Jeff Sackmann fueron retirados de GitHub; de ahí en adelante el dato viene del marcador público, que no publica estadística de saque.' }; })() },
     validation: {
       protocol: 'walk-forward estricto: constantes en desarrollo 2015-2024, holdout 2025→may-2026 evaluado UNA vez, ATP y WTA por separado; market-blind por construcción',
       atp: { n: (H('atp').ens || {}).n, skill_pct: r2((H('atp').ens || {}).skill_pct), auc: r3((H('atp').ens || {}).auc), games_mae: r2(H('atp').games_mae), games_mae_naive: r2(H('atp').games_mae_naive), tb_brier: r3(H('atp').tb_brier) },

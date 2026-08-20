@@ -1,3 +1,42 @@
+# HANDOFF — estado al 20-ago-2026 (Valorant medido, College resuelto)
+
+## 🎯 20-ago — Valorant deja de ser el deporte sin picks, y College deja de dar cero sin motivo
+
+**Valorant: la cosecha llevaba días moliendo y el modelo leía la foto del 18.** El detalle pasó de 998
+series a 8.925 (20.981 mapas) y nada llegaba al producto porque la cadena estaba cortada en tres sitios:
+el agregado no corría en ningún trabajo (solo a mano desde el sandbox), escribía en el repo —que Render
+recrea en cada despliegue— y la cosecha se marcaba "completa" y no volvía a correr nunca, con lo cual las
+series de esta semana no entraban jamás. Ahora: trabajo de agregado cada 6 h, salida a disco persistente,
+lectura disco-primero archivo a archivo, y "completa" pasa a significar "alcanzada" (repasa cada 6 h).
+
+Con la cadena entera, la estructura que faltaba para picks queda MEDIDA y las familias de rondas se abren
+solas por el mismo portón que ya tenía CS2 (`basisFor`): el pool sale de lo que se juega (13 mapas con
+muestra, 609 equipos con historial por mapa), el reparto ataque/defensa se mide sobre las mitades
+cosechadas, el arrastre económico se ajusta por bisección a la prórroga real de cada mapa y el residuo en
+rondas se publica para que lo cobre el veto de calibración. Resultado en vivo: **de 0 picks a 56** sobre 14
+partidos (RONDAS 19, RONDAS_HANDICAP 24, HANDICAP 9, RONDAS_EQUIPO 4), con el veto de calibración
+rechazando 419 líneas. **Ese volumen hay que mirarlo en la revisión**: 4 picks por partido es mucho y es
+justo el patrón que en fútbol acabó en sobreemisión.
+
+Sin veto simulable no se sabe qué mapa se juega: el perfil sigue medido pero se suma en cuadratura la
+dispersión de rondas entre mapas, y la tabla por mapa no se construye — cotizar la línea del mapa 3 contra
+el tercero más jugado sería inventarse el orden.
+
+**PRORROGA sigue sin cotizar.** El motor la tiene entera (probabilidad, calibración, etiquetas); lo que no
+existe es una casa que la liste en las que alcanzamos. En Valorant "hay prórroga" es exactamente "más de
+25,5 rondas", así que se puede sintetizar en cuanto una casa cotice esa línea del escalón — hoy no la
+cotizan porque su escalera de rondas vive en 20,5-23,5.
+
+**College daba cero y ahora se sabe por qué.** El diagnóstico de registro en sombra contó los descartes:
+43 de 111 eventos caían por nombre. Dos causas — el apóstrofe (`nrm` convierte "Hawai\'i" en "hawai i" y
+nunca casaba con "Hawaii Rainbow Warriors") y el nombre corto (la casa dice "UMass", "Connecticut",
+"North Carolina State"; el catálogo dice "Massachusetts", "UConn", "NC State"). Se añadió normalización sin
+apóstrofes, 30 equivalencias y coincidencia por prefijo más largo con frontera de palabra — antes
+"Miami (OH) RedHawks" caía en "Miami" porque el bucle tomaba el primero que casara. Quedan 39 sin resolver
+y **todos son de FCS** (Albany, Bethune-Cookman, Merrimack, West Georgia, Idaho, VMI…): no tenemos datos de
+esas escuelas y el partido debe descartarse. CFL nunca estuvo roto: sus 24 líneas se valoran y ninguna pasa
+el listón, que es una respuesta distinta de un cero.
+
 # HANDOFF — estado al 19-ago-2026 (F1 y tenis reconstruidos, College/CFL con jugadores, la sombra arreglada)
 
 ## 🏁 19-ago (noche) — LA RONDA DE ALEXIS, PUNTO POR PUNTO (`e1811a7` en main)

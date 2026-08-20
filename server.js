@@ -4557,12 +4557,12 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       // una doble oportunidad "local o empate" es nuestra "empate o visitante", y un hándicap de −0,5 es
       // uno de +0,5. Escribirlas sin girar sería peor que no escribirlas: probabilidades invertidas que
       // parecen ventaja justo donde hay desventaja.
-      const q = (fam, mid, odds, max, extra) => grepo.upsertGoalQuote({
+      const q = (fam, mid, odds, max, extra) => { out.por_familia = out.por_familia || {}; out.por_familia[fam] = (out.por_familia[fam] || 0) + 1; return grepo.upsertGoalQuote({
         data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid,
         market_family: fam, market_id: mid, odds_decimal: odds, implied_probability: 1 / odds,
         quote_status: 'open', is_live: false, max_stake: max != null ? max : null,
         depth_src: max != null ? 'cloudbet_max' : null, ...(extra || {}),
-      }).catch(() => { });
+      }).catch(() => { }); };
       if (cb.markets.dc) {
         const d = cb.markets.dc, mx = d.max || {};
         // girar: el "local+empate" de ellos es nuestro "empate+visitante" cuando los lados están cambiados
@@ -4606,6 +4606,8 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       }
       // totales (over/under; simétricos, el swap no afecta) — goles + córners + tarjetas (13-ago: los dos
       // últimos son los mercados EJECUTABLES del ejecutor en la sombra; sin ellos la capacidad real es 0)
+      out.por_familia = out.por_familia || {};
+      if (cb.markets.h2h) out.por_familia.match_winner = (out.por_familia.match_winner || 0) + 3;
       const totFams = [
         { rows: cb.markets.totals, fam: 'match_total', idp: 'TOTAL_GOALS' },
         { rows: cb.markets.corners || [], fam: 'corners_total', idp: 'CORNERS' },
@@ -4613,6 +4615,7 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       ];
       for (const tf of totFams) for (const t of tf.rows) {
         if (!(t.line > 0)) continue;
+        out.por_familia[tf.fam] = (out.por_familia[tf.fam] || 0) + 2;
         for (const side of ['over', 'under']) {
           const o = t[side]; if (!(o > 1)) continue;
           const mxT = (t.max || {})[side];

@@ -78,7 +78,8 @@ const bestPrice = (sels, pred) => { const b = bestSel(sels, pred); return b ? b.
 function normalizeEvent(e) {
   const home = e.home && e.home.name, away = e.away && e.away.name;
   if (!home || !away || e.type !== 'EVENT_TYPE_EVENT') return null;
-  const M = e.markets || {}, out = { home, away, kickoff: e.cutoffTime || null, markets: { h2h: null, totals: [] } };
+  const M = e.markets || {}, out = { home, away, kickoff: e.cutoffTime || null,
+    markets: { h2h: null, totals: [], dc: null, dnb: null, btts: null, ah: [], team_totals: [] } };
   const mo = M['soccer.match_odds'];
   if (mo && mo.submarkets) {
     const sm = mo.submarkets['period=ft'] || Object.values(mo.submarkets)[0] || {};
@@ -110,7 +111,82 @@ function normalizeEvent(e) {
   // donde vive el segmento en verificación (cards-under). Claves ausentes → arrays vacíos, cero ruido.
   out.markets.corners = parseTotals(M['soccer.total_corners']);
   out.markets.cards = parseTotals(M['soccer.total_bookings'] || M['soccer.total_cards']);
-  return (out.markets.h2h || out.markets.totals.length || out.markets.corners.length || out.markets.cards.length) ? out : null;
+
+  // ── FAMILIAS QUE LA CASA YA COTIZABA Y NO LEÍAMOS (20-ago) ──────────────────────────────────────────────
+  // Medido: en los partidos que el colector descartaba, Cloudbet cotizaba entre 14 y 25 mercados. Estos
+  // cuatro son los que el motor de goles sabe valorar sin medir nada nuevo, porque salen de la misma matriz
+  // de marcador. Los de MITADES quedan fuera a propósito: repartir el gol entre los dos tiempos es una
+  // suposición que GP no ha medido, y una familia sin estructura medida no se apuesta.
+  const selsDe = (mk, sub) => {
+    const m = M[mk]; if (!m || !m.submarkets) return [];
+    const s2 = sub ? m.submarkets[sub] : (m.submarkets['period=ft'] || Object.values(m.submarkets)[0]);
+    return (s2 && s2.selections) || [];
+  };
+  // doble oportunidad: outcomes home_draw / home_away / draw_away
+  {
+    const sel = selsDe('soccer.double_chance');
+    const g = (o) => bestSel(sel, (x) => x.outcome === o);
+    const hd = g('home_draw'), ha = g('home_away'), da = g('draw_away');
+    if (hd || ha || da) out.markets.dc = { home_draw: hd ? hd.o : null, home_away: ha ? ha.o : null, draw_away: da ? da.o : null,
+      max: { home_draw: hd ? hd.max : null, home_away: ha ? ha.max : null, draw_away: da ? da.max : null } };
+  }
+  // empate no válido: outcomes home / away
+  {
+    const sel = selsDe('soccer.draw_no_bet');
+    const h = bestSel(sel, (x) => x.outcome === 'home'), a = bestSel(sel, (x) => x.outcome === 'away');
+    if (h && a) out.markets.dnb = { home: h.o, away: a.o, max: { home: h.max, away: a.max } };
+  }
+  // ambos marcan: outcomes yes / no
+  {
+    const sel = selsDe('soccer.both_teams_to_score');
+    const y = bestSel(sel, (x) => x.outcome === 'yes'), n = bestSel(sel, (x) => x.outcome === 'no');
+    if (y && n) out.markets.btts = { yes: y.o, no: n.o, max: { yes: y.max, no: n.max } };
+  }
+  // HÁNDICAP ASIÁTICO. La convención se COMPROBÓ contra la casa antes de escribir esto, porque de haberla
+  // supuesto se habría invertido cada línea del visitante en silencio: `handicap=X` es la línea del LOCAL y
+  // la selección visitante es su espejo (−X). Verificado en un partido con favorito visitante: con
+  // handicap=-0.5 el local paga 2,70 y el visitante 1,32; con handicap=+0.5 se invierte a 1,45 y 2,30. Si la
+  // línea fuera de cada selección, el visitante favorito con +0,5 tendría que pagar menos, no más.
+  {
+    const sel = selsDe('soccer.asian_handicap');
+    const byLine = {};
+    for (const x of sel) {
+      const l = Number(String(x.params || '').match(/handicap=(-?[\d.]+)/)?.[1]);
+      const p = Number(x.price);
+      if (!Number.isFinite(l) || !(p > 1)) continue;
+      const k = String(l);
+      (byLine[k] = byLine[k] || {})[x.outcome] = { o: p, max: Number(x.maxStake) > 0 ? Number(x.maxStake) : null };
+    }
+    const rows = [];
+    for (const [k, o] of Object.entries(byLine)) {
+      if (!o.home || !o.away) continue;
+      rows.push({ line: Number(k), home: o.home.o, away: o.away.o, max: { home: o.home.max, away: o.away.max } });
+    }
+    if (rows.length) out.markets.ah = rows;
+  }
+  // totales de equipo: submercados `period=ft&team=home|away`, params `team=…&total=…`
+  {
+    const rows = [];
+    for (const equipo of ['home', 'away']) {
+      const sel = selsDe('soccer.team_total_goals', 'period=ft&team=' + equipo);
+      const byLine = {};
+      for (const x of sel) {
+        const l = Number(String(x.params || '').match(/total=([\d.]+)/)?.[1]);
+        const p = Number(x.price);
+        if (!(l > 0) || !(p > 1)) continue;
+        (byLine[l] = byLine[l] || {})[x.outcome] = { o: p, max: Number(x.maxStake) > 0 ? Number(x.maxStake) : null };
+      }
+      for (const [l, o] of Object.entries(byLine)) {
+        if (!o.over || !o.under) continue;
+        rows.push({ team: equipo, line: Number(l), over: o.over.o, under: o.under.o, max: { over: o.over.max, under: o.under.max } });
+      }
+    }
+    if (rows.length) out.markets.team_totals = rows;
+  }
+
+  const hayAlgo = out.markets.h2h || out.markets.totals.length || out.markets.corners.length || out.markets.cards.length
+    || out.markets.dc || out.markets.dnb || out.markets.btts || (out.markets.ah || []).length || (out.markets.team_totals || []).length;
+  return hayAlgo ? out : null;
 }
 
 // fetchCloudbetSoccer() → [ eventos normalizados con precios ]. Sin key → []. Cachea 60s. Nunca lanza.

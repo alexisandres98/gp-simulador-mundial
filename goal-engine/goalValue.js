@@ -23,7 +23,17 @@ function thresholds() {
 function gpProbForMarket(lh, la, marketId) {
   const out = goalEngine.goalModelOutput(lh, la);
   const m = out.markets.find(x => x.market_id === marketId);
-  return m ? m.probability : null;
+  if (m) return m.probability;
+  // FAMILIAS EXTENDIDAS (20-ago): `out.markets` solo trae totales, ambos-marcan y totales de equipo. Los
+  // totales asiáticos, el margen, los combos y las tres familias nuevas —doble oportunidad, empate no
+  // válido y hándicap asiático— viven en `extendedMarkets`, que se calcula sobre la MISMA matriz. Sin este
+  // repliegue, cualquier cuota de esas familias entraba y salía como `unknown_market`: ingerida, jamás
+  // valorada. Un mercado que se guarda pero no se valora es trabajo que no produce nada.
+  try {
+    const mk = require('./markets');
+    const e = mk.extendedMarkets(out._matrix).find((x) => x.market_id === marketId);
+    return e ? e.probability : null;
+  } catch { return null; }
 }
 
 // Sensibilidad: P(market | λ_total ± delta). Reparte el delta proporcional a las lambdas.

@@ -170,6 +170,9 @@ function build({ db, pickClvNum, hoopsTrack, combatTrack } = {}) {
     return out;
   });
 
+  // FÚTBOL, FAMILIAS DERIVADAS — la sombra nueva del 20-ago, con su propia vara y su propio almacén
+  intenta('futbol-derivadas', () => deByFamily('futbol-deriv', require('./futbol-derivadas').track().by_family));
+
   // FÚTBOL AMERICANO — NFL y las dos ligas de amfoot
   intenta('nfl', () => deByFamily('nfl', require('./nfl-engine/store').track().by_family));
   intenta('amfoot', () => {

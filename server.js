@@ -4551,6 +4551,59 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
           out.quotes++;
         }
       }
+      // ── FAMILIAS NUEVAS (20-ago): las que la casa ya cotizaba y no leíamos ──────────────────────────
+      // El motor de goles las valora desde la MISMA matriz de marcador, así que no hay estructura nueva que
+      // medir. Lo que sí hay que cuidar es la ORIENTACIÓN: si el local de Cloudbet es nuestro visitante,
+      // una doble oportunidad "local o empate" es nuestra "empate o visitante", y un hándicap de −0,5 es
+      // uno de +0,5. Escribirlas sin girar sería peor que no escribirlas: probabilidades invertidas que
+      // parecen ventaja justo donde hay desventaja.
+      const q = (fam, mid, odds, max, extra) => grepo.upsertGoalQuote({
+        data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid,
+        market_family: fam, market_id: mid, odds_decimal: odds, implied_probability: 1 / odds,
+        quote_status: 'open', is_live: false, max_stake: max != null ? max : null,
+        depth_src: max != null ? 'cloudbet_max' : null, ...(extra || {}),
+      }).catch(() => { });
+      if (cb.markets.dc) {
+        const d = cb.markets.dc, mx = d.max || {};
+        // girar: el "local+empate" de ellos es nuestro "empate+visitante" cuando los lados están cambiados
+        const pares = swapped
+          ? [['DOUBLE_CHANCE_DRAW_AWAY', 'home_draw'], ['DOUBLE_CHANCE_HOME_AWAY', 'home_away'], ['DOUBLE_CHANCE_HOME_DRAW', 'draw_away']]
+          : [['DOUBLE_CHANCE_HOME_DRAW', 'home_draw'], ['DOUBLE_CHANCE_HOME_AWAY', 'home_away'], ['DOUBLE_CHANCE_DRAW_AWAY', 'draw_away']];
+        for (const [mid, k] of pares) if (d[k] > 1) { await q('double_chance', mid, d[k], mx[k], { line: 0 }); out.quotes++; }
+      }
+      if (cb.markets.dnb) {
+        const d = cb.markets.dnb, mx = d.max || {};
+        for (const lado of ['home', 'away']) {
+          const suyo = swapped ? (lado === 'home' ? 'away' : 'home') : lado;
+          if (d[suyo] > 1) { await q('draw_no_bet', 'DRAW_NO_BET_' + lado.toUpperCase(), d[suyo], mx[suyo], { line: 0, side: lado }); out.quotes++; }
+        }
+      }
+      if (cb.markets.btts) {   // simétrico: el swap no le afecta
+        const b = cb.markets.btts, mx = b.max || {};
+        for (const lado of ['yes', 'no']) if (b[lado] > 1) { await q('btts', 'BTTS_' + lado.toUpperCase(), b[lado], mx[lado], { line: 0, side: lado }); out.quotes++; }
+      }
+      for (const r of (cb.markets.ah || [])) {
+        // `line` viene referida al LOCAL DE ELLOS; si están cambiados, nuestra línea local es la contraria
+        const linea = swapped ? -r.line : r.line;
+        const precio = { home: swapped ? r.away : r.home, away: swapped ? r.home : r.away };
+        const tope = { home: swapped ? (r.max || {}).away : (r.max || {}).home, away: swapped ? (r.max || {}).home : (r.max || {}).away };
+        const tag = (l) => (l < 0 ? 'M' : 'P') + String(Math.abs(l)).replace('.', '_');
+        for (const lado of ['home', 'away']) {
+          const l2 = lado === 'home' ? linea : -linea;      // la línea del visitante es el espejo
+          if (!(precio[lado] > 1)) continue;
+          await q('asian_handicap', `AH_${lado.toUpperCase()}_${tag(l2)}`, precio[lado], tope[lado], { line: l2, side: lado });
+          out.quotes++;
+        }
+      }
+      for (const r of (cb.markets.team_totals || [])) {
+        const equipo = swapped ? (r.team === 'home' ? 'away' : 'home') : r.team;
+        for (const lado of ['over', 'under']) {
+          if (!(r[lado] > 1)) continue;
+          await q('team_total', `${equipo.toUpperCase()}_TEAM_TOTAL_${lado.toUpperCase()}_${String(r.line).replace('.', '_')}`,
+            r[lado], (r.max || {})[lado], { line: r.line, side: lado, team_scope: equipo });
+          out.quotes++;
+        }
+      }
       // totales (over/under; simétricos, el swap no afecta) — goles + córners + tarjetas (13-ago: los dos
       // últimos son los mercados EJECUTABLES del ejecutor en la sombra; sin ellos la capacidad real es 0)
       const totFams = [
@@ -6760,6 +6813,65 @@ function clubFreezePublished() {
   if (n) { save(); console.log('[clubs-picks] freeze → published:', n); }
   return n;
 }
+// ── FAMILIAS DERIVADAS EN SOMBRA (20-ago) ────────────────────────────────────────────────────────────────
+// Doble oportunidad, empate no válido, hándicap asiático, totales de equipo y ambos-marcan: la casa ya las
+// cotizaba y no las leíamos. Viven en `futbol-derivadas.js`, con su propio almacén en disco, y NO tocan
+// `db.clubDailyPicks` ni `curate` — si algo aquí se rompe, el feed público no se entera. Ese aislamiento es
+// deliberado: es la única forma de encender cinco familias de golpe sin arriesgar lo que ya funciona.
+function derivadasLambdas(ceid, meta) {
+  const lg = meta && meta.league; if (!lg) return null;
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
+  const RT = clubsEnsureCups(global._clubsRatings);
+  const L = RT.leagues[lg]; if (!L) return null;
+  const hId = resolveClubId(lg, meta.home), aId = resolveClubId(lg, meta.away);
+  if (!hId || !aId || hId === aId) return null;
+  let l = null;
+  try { const gf = clubGoalsFit(lg); if (gf) l = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId); } catch { l = null; }
+  if (!l) { const rh = clubElo(lg, hId), ra = clubElo(lg, aId); l = lambdas(rh + (L.hfa || 60), ra); }
+  if (!l || !(l[0] > 0) || !(l[1] > 0)) return null;
+  // el mismo ajuste del observador que usan las demás familias: si el modelo de la casa se corrige en vivo,
+  // estas familias se corrigen con él o estarían midiendo contra un modelo distinto del que publicamos
+  return [l[0] * clubObserverLambdaFactor(lg, hId), l[1] * clubObserverLambdaFactor(lg, aId)];
+}
+function derivadasScore(p) {
+  const lg = p.league; if (!lg) return null;
+  const hId = resolveClubId(lg, p.home), aId = resolveClubId(lg, p.away);
+  if (!hId || !aId) return null;
+  try {
+    global._clubsResults = global._clubsResults || {};
+    if (!global._clubsResults[lg]) { try { global._clubsResults[lg] = JSON.parse(fs.readFileSync(clubDataFile(`results-${lg}.json`), 'utf8')).rows || []; } catch { global._clubsResults[lg] = []; } }
+    const ko = +new Date(p.kickoff_at || 0);
+    const row = global._clubsResults[lg].find((m) => m.hg != null
+      && ((m.home_id === hId && m.away_id === aId) || (m.home_id === aId && m.away_id === hId))
+      && Math.abs(+new Date(m.date) - ko) < 2 * 86400e3);
+    if (!row) return null;
+    // el marcador SIEMPRE orientado a NUESTRO local: si el archivo lo trae al revés, se gira. Liquidar un
+    // hándicap con los lados cambiados invierte el resultado, que es peor que no liquidarlo.
+    return row.home_id === hId ? { homeGoals: row.hg, awayGoals: row.ag } : { homeGoals: row.ag, awayGoals: row.hg };
+  } catch { return null; }
+}
+let _derivRunning = false, _derivLast = 0, _derivOut = null;
+async function derivadasJob({ force = false } = {}) {
+  if (_derivRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _derivLast < 15 * 60e3) return { skipped: 'throttle' };
+  _derivRunning = true;
+  const out = { started: new Date().toISOString() };
+  try {
+    const dbc = require('./database/client');
+    if (!dbc.isConfigured()) { out.skipped = 'db_off'; return out; }
+    const D = require('./futbol-derivadas');
+    const qevents = require('./basketball-engine/markets').nonHoopsEvents(db.clubsQuoteEvents || {});
+    out.record = await D.record({ dbc, qevents, lambdasFor: derivadasLambdas }).catch((e) => ({ error: e.message }));
+    out.closes = await D.closes({ dbc }).catch((e) => ({ error: e.message }));
+    out.settle = D.settle({ scoreFor: derivadasScore });
+    _derivLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _derivRunning = false; out.finished = new Date().toISOString(); _derivOut = out; }
+  return out;
+}
+setTimeout(() => { derivadasJob().catch((e) => console.error('[derivadas]', e.message)); }, 5 * 60e3);
+setInterval(() => { derivadasJob().catch((e) => console.error('[derivadas]', e.message)); }, 20 * 60e3);
+
 async function buildClubDailyPicks({ dryRun = false } = {}) {
   // ANTES de cualquier early-return: el freeze depende del reloj, no de que el sweep traiga mercados.
   const published = clubFreezePublished();
@@ -17353,6 +17465,14 @@ const server = http.createServer(async (req, res) => {
         }), { partidos: 0, con_1x2: 0, con_goles: 0, con_corners: 0, con_tarjetas: 0 });
       } catch (e) { out.cobertura_error = e.message; }
       return json(res, 200, out);
+    }
+    // familias derivadas de fútbol: estado de la sombra nueva. `?run=1` fuerza una pasada.
+    if (p === '/api/internal/futbol-derivadas') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const D = require('./futbol-derivadas');
+      const run = url.searchParams.get('run') === '1' ? await derivadasJob({ force: true }) : (_derivOut || null);
+      return json(res, 200, { pasada: run, track: D.track() });
     }
     // ── EL TABLERO DE FAMILIAS (20-ago) ────────────────────────────────────────────────────────────────
     // Ocho deportes miden su rendimiento en ocho pantallas distintas y ninguna contesta la pregunta del

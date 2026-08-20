@@ -113,13 +113,58 @@ function solveTilt(pa, pb, M, H, target, opts) {
   return (lo + hi) / 2;
 }
 
+// ---- CONTEXTO DE LA PELEA (20-ago): árbitro y báscula, SI Y SOLO SI están medidos --------------------
+// El enchufe existe; hoy no hace nada, y eso es un resultado, no un olvido. Se midió el efecto del ÁRBITRO
+// sobre la tasa de finalización contra lo esperado de cada pelea (división × asaltos × lustro) sobre 8.937
+// peleas, y el de FALLAR EL PESO sobre las 1.806 con datos de báscula. Dentro de muestra el árbitro parece
+// tener efecto —John McCarthy termina el 62,4 % frente al 56,9 % esperado, z=2,62— pero con 24 árbitros
+// probados un z de 2,6 es lo que sale por puro azar, y la validación walk-forward lo confirma: el Brier
+// EMPEORA (0,2466 → 0,2470) y solo 1 de 12 años mejora. El peso, con 67 peleas fallidas, no llega ni a eso.
+//
+// Así que el ajuste queda escrito, medido y APAGADO por su propia validación. `officials-priors-<liga>.json`
+// lleva `measured:false`; el día que la báscula acumule muestra o aparezca una liga donde el árbitro sí
+// pese, se re-fitea, el archivo dice `measured:true` y esto se enciende solo. Ese es el trato: la puerta la
+// abre la medición, no la intuición.
+let _priors = { at: 0, data: null };
+function priorsOficiales() {
+  if (_priors.data !== null && Date.now() - _priors.at < 10 * 60e3) return _priors.data;
+  let d = null;
+  try {
+    const fs = require('fs'), path = require('path');
+    d = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'combat', 'officials-priors-ufc.json'), 'utf8'));
+  } catch { d = null; }
+  _priors = { at: Date.now(), data: d };
+  return d;
+}
+// factor multiplicativo sobre los peligros de finalización. 1 = sin efecto.
+function factorContexto({ referee = null, pesoFallado = null } = {}) {
+  const P = priorsOficiales();
+  const out = { factor: 1, partes: [], measured: false };
+  if (!P) return out;
+  if (referee && P.arbitros && P.arbitros.measured) {
+    const e = (P.arbitros.efectos || {})[referee];
+    if (e && e.factor_finish) { out.factor *= e.factor_finish; out.partes.push({ que: 'árbitro', quien: referee, x: e.factor_finish, n: e.n }); out.measured = true; }
+  }
+  if (pesoFallado != null && P.peso && P.peso.measured) {
+    const e = (P.peso.efectos || {})[pesoFallado ? 'fallo' : 'limpio'];
+    if (e && e.factor_finish) { out.factor *= e.factor_finish; out.partes.push({ que: 'báscula', quien: pesoFallado ? 'falló el peso' : 'limpio', x: e.factor_finish, n: e.n }); out.measured = true; }
+  }
+  // techo de seguridad: ningún contexto puede mover la finalización más de un 15 %
+  out.factor = Math.max(0.85, Math.min(1.15, out.factor));
+  return out;
+}
+
 function simulate(pa, pb, {
   rounds = 3, roundMin = 5, n = 20000, seed = 17, mu = null, sa = null, sb = null,
-  cardioA = 0.5, cardioB = 0.5, priorA = null,
+  cardioA = 0.5, cardioB = 0.5, priorA = null, referee = null, pesoFallado = null,
 } = {}) {
   const M = mu || SY.matchup(pa, pb, sa, sb);
   if (!M) return null;
-  const H = hazards(pa, pb, M);
+  const H0 = hazards(pa, pb, M);
+  const ctx = factorContexto({ referee, pesoFallado });
+  const H = H0 && ctx.factor !== 1
+    ? { ...H0, ko_a: H0.ko_a * ctx.factor, ko_b: H0.ko_b * ctx.factor, sub_a: H0.sub_a * ctx.factor, sub_b: H0.sub_b * ctx.factor }
+    : H0;
   if (!H) return null;
   const base = { rounds, roundMin, cardioA, cardioB };
   // si llega una probabilidad de habilidad (Elo), se ancla a ella; si no, se corre sin anclar y se avisa
@@ -250,6 +295,8 @@ function core(pa, pb, M, H, { rounds = 3, roundMin = 5, n = 20000, seed = 17, ca
       close: Math.abs(w / n - 0.5) < 0.08 ? true : false })),
     sims: n, rounds_sched: rounds,
     hazards: { ko_a_per_min: r4(H.ko_a), ko_b_per_min: r4(H.ko_b), sub_a_per_min: r4(H.sub_a), sub_b_per_min: r4(H.sub_b), stand_share: H.stand_share },
+    // el contexto viaja SIEMPRE, aunque no aplique: que el factor sea 1 y `measured:false` es información
+    contexto: ctx,
   };
   return out;
 }
@@ -278,4 +325,4 @@ function uncertainty(out, pa, pb, M) {
   };
 }
 
-module.exports = { simulate, core, solveTilt, hazards, roundEdge, uncertainty, rng, gauss };
+module.exports = { simulate, core, solveTilt, hazards, roundEdge, uncertainty, rng, gauss, factorContexto, priorsOficiales };

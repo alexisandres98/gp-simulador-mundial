@@ -1,0 +1,459 @@
+{
+ "at": "2026-08-20T17:53:55.700Z",
+ "liga": "ufc",
+ "baseline": {
+  "n": 8964,
+  "finish_global": 0.5311,
+  "duracion_global": 634.8
+ },
+ "arbitros": {
+  "measured": false,
+  "validacion": {
+   "n": 6086,
+   "años_evaluados": 12,
+   "años_con_mejora": 1,
+   "brier_sin": 0.24658,
+   "brier_con": 0.24702,
+   "mejora_pct": -0.179,
+   "mejora": false
+  },
+  "k_encogimiento": 120,
+  "min_peleas": 60,
+  "efectos": {
+   "John McCarthy": {
+    "n": 542,
+    "finish_obs": 0.6236,
+    "finish_esp": 0.5685,
+    "factor_finish": 1.0794,
+    "factor_duracion": 0.9775,
+    "z": 2.62
+   },
+   "Mario Yamasaki": {
+    "n": 385,
+    "finish_obs": 0.5792,
+    "finish_esp": 0.5457,
+    "factor_finish": 1.0468,
+    "factor_duracion": 0.9488,
+    "z": 1.34
+   },
+   "Steve Mazzagatti": {
+    "n": 197,
+    "finish_obs": 0.6142,
+    "finish_esp": 0.5811,
+    "factor_finish": 1.0354,
+    "factor_duracion": 0.9956,
+    "z": 0.95
+   },
+   "Herb Dean": {
+    "n": 1307,
+    "finish_obs": 0.5692,
+    "finish_esp": 0.5401,
+    "factor_finish": 1.0494,
+    "factor_duracion": 1.0254,
+    "z": 2.13
+   },
+   "Yves Lavigne": {
+    "n": 264,
+    "finish_obs": 0.5076,
+    "finish_esp": 0.5455,
+    "factor_finish": 0.9523,
+    "factor_duracion": 1.0369,
+    "z": -1.25
+   },
+   "Kerry Hatley": {
+    "n": 165,
+    "finish_obs": 0.5152,
+    "finish_esp": 0.5198,
+    "factor_finish": 0.9949,
+    "factor_duracion": 1.0055,
+    "z": -0.12
+   },
+   "Dan Miragliotta": {
+    "n": 491,
+    "finish_obs": 0.5642,
+    "finish_esp": 0.5406,
+    "factor_finish": 1.0351,
+    "factor_duracion": 0.9986,
+    "z": 1.06
+   },
+   "Kevin Mulhall": {
+    "n": 60,
+    "finish_obs": 0.4833,
+    "finish_esp": 0.5289,
+    "factor_finish": 0.9713,
+    "factor_duracion": 1.0231,
+    "z": -0.71
+   },
+   "Josh Rosenthal": {
+    "n": 120,
+    "finish_obs": 0.4917,
+    "finish_esp": 0.5364,
+    "factor_finish": 0.9583,
+    "factor_duracion": 1.0348,
+    "z": -0.99
+   },
+   "Leon Roberts": {
+    "n": 194,
+    "finish_obs": 0.4639,
+    "finish_esp": 0.5346,
+    "factor_finish": 0.9183,
+    "factor_duracion": 1.0354,
+    "z": -1.99
+   },
+   "Marc Goddard": {
+    "n": 610,
+    "finish_obs": 0.5033,
+    "finish_esp": 0.5336,
+    "factor_finish": 0.9525,
+    "factor_duracion": 1.0729,
+    "z": -1.52
+   },
+   "Keith Peterson": {
+    "n": 409,
+    "finish_obs": 0.4645,
+    "finish_esp": 0.499,
+    "factor_finish": 0.9466,
+    "factor_duracion": 1.0682,
+    "z": -1.41
+   },
+   "Jason Herzog": {
+    "n": 541,
+    "finish_obs": 0.5176,
+    "finish_esp": 0.5056,
+    "factor_finish": 1.0194,
+    "factor_duracion": 1.025,
+    "z": 0.56
+   },
+   "Steve Percival": {
+    "n": 88,
+    "finish_obs": 0.5,
+    "finish_esp": 0.5058,
+    "factor_finish": 0.9951,
+    "factor_duracion": 1.0007,
+    "z": -0.11
+   },
+   "John Sharp": {
+    "n": 75,
+    "finish_obs": 0.4933,
+    "finish_esp": 0.51,
+    "factor_finish": 0.9874,
+    "factor_duracion": 1.0085,
+    "z": -0.29
+   },
+   "Chris Tognoni": {
+    "n": 501,
+    "finish_obs": 0.503,
+    "finish_esp": 0.4952,
+    "factor_finish": 1.0127,
+    "factor_duracion": 0.9875,
+    "z": 0.35
+   },
+   "Kevin MacDonald": {
+    "n": 115,
+    "finish_obs": 0.5652,
+    "finish_esp": 0.5023,
+    "factor_finish": 1.0613,
+    "factor_duracion": 0.9671,
+    "z": 1.36
+   },
+   "Jerin Valel": {
+    "n": 92,
+    "finish_obs": 0.4348,
+    "finish_esp": 0.5011,
+    "factor_finish": 0.9425,
+    "factor_duracion": 1.0406,
+    "z": -1.29
+   },
+   "Jacob Montalvo": {
+    "n": 81,
+    "finish_obs": 0.4568,
+    "finish_esp": 0.4956,
+    "factor_finish": 0.9684,
+    "factor_duracion": 1.0237,
+    "z": -0.71
+   },
+   "Mike Beltran": {
+    "n": 236,
+    "finish_obs": 0.5085,
+    "finish_esp": 0.5281,
+    "factor_finish": 0.9754,
+    "factor_duracion": 1.0145,
+    "z": -0.61
+   },
+   "Mark Smith": {
+    "n": 555,
+    "finish_obs": 0.5153,
+    "finish_esp": 0.5224,
+    "factor_finish": 0.9889,
+    "factor_duracion": 1.0117,
+    "z": -0.34
+   },
+   "Lukas Bosacki": {
+    "n": 73,
+    "finish_obs": 0.4795,
+    "finish_esp": 0.5238,
+    "factor_finish": 0.968,
+    "factor_duracion": 1.004,
+    "z": -0.76
+   },
+   "Rich Mitchell": {
+    "n": 76,
+    "finish_obs": 0.4737,
+    "finish_esp": 0.5082,
+    "factor_finish": 0.9737,
+    "factor_duracion": 1.0092,
+    "z": -0.61
+   },
+   "Daniel Movahedi": {
+    "n": 61,
+    "finish_obs": 0.4262,
+    "finish_esp": 0.5027,
+    "factor_finish": 0.9487,
+    "factor_duracion": 1.0174,
+    "z": -1.21
+   }
+  }
+ },
+ "peso": {
+  "measured": false,
+  "validacion": {
+   "n": 978,
+   "años_evaluados": 9,
+   "años_con_mejora": 3,
+   "brier_sin": 0.2495,
+   "brier_con": 0.24958,
+   "mejora_pct": -0.033,
+   "mejora": false
+  },
+  "k_encogimiento": 40,
+  "efectos": {
+   "limpio": {
+    "n": 1739,
+    "finish_obs": 0.5239,
+    "finish_esp": 0.5222,
+    "factor_finish": 1.0031,
+    "factor_duracion": 1.015,
+    "z": 0.14
+   },
+   "fallo": {
+    "n": 67,
+    "finish_obs": 0.5224,
+    "finish_esp": 0.5056,
+    "factor_finish": 1.0208,
+    "factor_duracion": 0.9975,
+    "z": 0.28
+   }
+  }
+ },
+ "banco": {
+  "tendencia_de_finalizacion": {
+   "measured": true,
+   "validacion": {
+    "n": 6086,
+    "años_evaluados": 12,
+    "años_con_mejora": 12,
+    "brier_sin": 0.24658,
+    "brier_con": 0.24207,
+    "mejora_pct": 1.83,
+    "mejora": true
+   },
+   "efectos": {
+    "<0.6": {
+     "n": 321,
+     "finish_obs": 0.7196,
+     "finish_esp": 0.5841,
+     "factor_finish": 1.143,
+     "factor_duracion": 0.8822,
+     "z": 4.98
+    },
+    "<0.45": {
+     "n": 2349,
+     "finish_obs": 0.6126,
+     "finish_esp": 0.5535,
+     "factor_finish": 1.0984,
+     "factor_duracion": 0.9677,
+     "z": 5.82
+    },
+    "<0.3": {
+     "n": 3143,
+     "finish_obs": 0.4613,
+     "finish_esp": 0.5128,
+     "factor_finish": 0.9057,
+     "factor_duracion": 1.0899,
+     "z": -5.81
+    },
+    "<0.15": {
+     "n": 868,
+     "finish_obs": 0.3756,
+     "finish_esp": 0.4783,
+     "factor_finish": 0.8255,
+     "factor_duracion": 1.0971,
+     "z": -6.11
+    }
+   }
+  },
+  "parón_desde_la_última": {
+   "measured": false,
+   "validacion": {
+    "n": 6086,
+    "años_evaluados": 12,
+    "años_con_mejora": 6,
+    "brier_sin": 0.24658,
+    "brier_con": 0.24652,
+    "mejora_pct": 0.024,
+    "mejora": false
+   },
+   "efectos": {
+    "<180": {
+     "n": 2866,
+     "finish_obs": 0.5433,
+     "finish_esp": 0.5352,
+     "factor_finish": 1.0141,
+     "factor_duracion": 1.0098,
+     "z": 0.88
+    },
+    "<450": {
+     "n": 1430,
+     "finish_obs": 0.4972,
+     "finish_esp": 0.5199,
+     "factor_finish": 0.9617,
+     "factor_duracion": 1.0519,
+     "z": -1.74
+    },
+    "<300": {
+     "n": 2887,
+     "finish_obs": 0.5158,
+     "finish_esp": 0.5214,
+     "factor_finish": 0.9899,
+     "factor_duracion": 1.0305,
+     "z": -0.61
+    },
+    "<700": {
+     "n": 598,
+     "finish_obs": 0.505,
+     "finish_esp": 0.5158,
+     "factor_finish": 0.9844,
+     "factor_duracion": 1.0121,
+     "z": -0.53
+    },
+    ">=700": {
+     "n": 393,
+     "finish_obs": 0.5929,
+     "finish_esp": 0.5303,
+     "factor_finish": 1.0782,
+     "factor_duracion": 0.9754,
+     "z": 2.51
+    }
+   }
+  },
+  "edad_media_del_cruce": {
+   "measured": false,
+   "validacion": {
+    "n": 6086,
+    "años_evaluados": 12,
+    "años_con_mejora": 6,
+    "brier_sin": 0.24658,
+    "brier_con": 0.2467,
+    "mejora_pct": -0.05,
+    "mejora": false
+   },
+   "efectos": {
+    "<27": {
+     "n": 1350,
+     "finish_obs": 0.543,
+     "finish_esp": 0.5189,
+     "factor_finish": 1.0405,
+     "factor_duracion": 0.9752,
+     "z": 1.79
+    },
+    ">=36": {
+     "n": 399,
+     "finish_obs": 0.5664,
+     "finish_esp": 0.5507,
+     "factor_finish": 1.019,
+     "factor_duracion": 1.0253,
+     "z": 0.64
+    },
+    "<30": {
+     "n": 2878,
+     "finish_obs": 0.5156,
+     "finish_esp": 0.52,
+     "factor_finish": 0.9921,
+     "factor_duracion": 1.0194,
+     "z": -0.48
+    },
+    "<33": {
+     "n": 2858,
+     "finish_obs": 0.536,
+     "finish_esp": 0.5253,
+     "factor_finish": 1.019,
+     "factor_duracion": 1.0023,
+     "z": 1.16
+    },
+    "<36": {
+     "n": 1412,
+     "finish_obs": 0.5184,
+     "finish_esp": 0.5379,
+     "factor_finish": 0.9683,
+     "factor_duracion": 1.0711,
+     "z": -1.48
+    }
+   }
+  },
+  "experiencia_del_novato": {
+   "measured": true,
+   "validacion": {
+    "n": 6086,
+    "años_evaluados": 12,
+    "años_con_mejora": 7,
+    "brier_sin": 0.24658,
+    "brier_con": 0.24603,
+    "mejora_pct": 0.224,
+    "mejora": true
+   },
+   "efectos": {
+    "<1": {
+     "n": 2226,
+     "finish_obs": 0.5898,
+     "finish_esp": 0.5316,
+     "factor_finish": 1.1004,
+     "factor_duracion": 0.9258,
+     "z": 5.57
+    },
+    "<3": {
+     "n": 2725,
+     "finish_obs": 0.5182,
+     "finish_esp": 0.5216,
+     "factor_finish": 0.9939,
+     "factor_duracion": 0.9963,
+     "z": -0.36
+    },
+    "<6": {
+     "n": 2007,
+     "finish_obs": 0.5117,
+     "finish_esp": 0.5232,
+     "factor_finish": 0.98,
+     "factor_duracion": 1.0368,
+     "z": -1.04
+    },
+    "<10": {
+     "n": 1286,
+     "finish_obs": 0.5008,
+     "finish_esp": 0.5278,
+     "factor_finish": 0.9557,
+     "factor_duracion": 1.0905,
+     "z": -1.96
+    },
+    ">=10": {
+     "n": 720,
+     "finish_obs": 0.5069,
+     "finish_esp": 0.5346,
+     "factor_finish": 0.9595,
+     "factor_duracion": 1.1087,
+     "z": -1.5
+    }
+   }
+  }
+ },
+ "nota": "Los factores son razones observado/esperado ENCOGIDAS por muestra, y lo esperado sale del estrato de la propia pelea (división × asaltos programados × lustro) para no medir a qué peleas mandan al árbitro. `measured:false` = el ajuste no mejoró fuera de muestra y el simulador debe ignorarlo."
+}

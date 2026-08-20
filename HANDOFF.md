@@ -1,3 +1,61 @@
+# HANDOFF — estado al 20-ago-2026 (CLV por casa: el mapa completo)
+
+## 📍 EL TABLERO POR CASA (`/api/internal/edge-board?key=` → `por_casa`)
+
+Cada motor publica `by_family_book`. Lo que sale, con ≥8 liquidadas con cierre:
+
+| deporte | familia | casa | ¿API? | n | CLV | sd |
+|---|---|---|---|---|---|---|
+| cs2 | rondas hándicap | Pinnacle | no | 24 | **+3,10 %** | 5,47 |
+| cs2 | rondas hándicap | Bovada | no | 21 | **+2,90 %** | 7,56 |
+| cs2 | rondas hándicap | **Cloudbet** | **sí** | 9 | **−3,13 %** | 6,06 |
+| cs2 | rondas total | Pinnacle | no | 19 | +1,16 % | 2,00 |
+| **combate** | **ROUNDS** | **Cloudbet** | **sí** | **27** | **+1,75 %** | 5,27 |
+| combate | METHOD | Cloudbet | sí | 14 | +0,28 % | 14,68 |
+| combate | FIGHT | betonline | no | 16 | −3,24 % | 16,71 |
+| **fútbol** | **CARDS** | **Pinnacle** | no | **65** | **−0,42 %** | **1,69** (t=−2,02) |
+| fútbol | CARDS | Cloudbet | sí | 19 | +0,24 % | 6,03 |
+| fútbol | CORNERS | leovegas | no | 107 | +0,07 % | 0,55 |
+| fútbol | SOLID | smarkets | no | 32 | +0,89 % | 4,95 |
+
+**Tres conclusiones que corrigen lo que creíamos:**
+
+1. **El hándicap de rondas de CS2 tiene ventaja real y NO es cosa de una sola casa**: +3,10 % en Pinnacle y
+   +2,90 % en Bovada, dos libros independientes. En Cloudbet, −3,13 %. El problema es de ejecución, no de
+   modelo.
+2. **Tarjetas under NO se arregla ejecutando en Pinnacle.** Ahí da −0,42 % con t=−2,02 sobre 65. Es pequeño
+   en magnitud pero medible y con el signo equivocado: la familia no tiene ventaja ni en el libro más
+   afilado. Eso es un problema de MODELO, no de ejecución.
+3. **Córners no tiene nada que medir**: dispersión del CLV de 0 a 1,4 pp en todas las casas. El cierre no se
+   mueve, así que ni se confirma ni se descarta.
+
+**Y aparece lo único ejecutable con ventaja: `combate ROUNDS` en Cloudbet, +1,75 % sobre 27.**
+
+## 🥊 EL MODELO DE COMBATE — dónde falla y dónde funciona
+
+| familia | n | CLV | lectura |
+|---|---|---|---|
+| FIGHT (ganador) | 31 | **−6,35 %** (t=−2,29) | pierde de forma medible |
+| ROUNDS | 27 | **+1,75 %** | gana |
+| METHOD | 14 | +0,28 % | plano/positivo |
+
+Global: 79 liquidadas, 28-51, acierto 35,4 %, CLV −2,32 %.
+
+**El diagnóstico es de arquitectura, no de calibración.** El modelo de GANADOR es un Elo con features
+(edad, años, mentón, racha, kilometraje, envergadura), validado walk-forward: skill 0,0166 y **61 % de
+acierto en UFC**. El problema es que el mercado del ganador de UFC es de los más eficientes que existe
+—en Kalshi tiene interés abierto mediano de 21.358 contratos y horquilla de **1 céntimo**— y ahí un 61 %
+no bate a nadie. Estamos apostando un modelo peor que el mercado contra el mercado.
+
+El de RONDAS/MÉTODO es otra cosa: `fightsim.js` simula rutas con **riesgos competitivos** (KO, sumisión y
+llegar al final compiten en el tiempo) sobre vectores de estilo continuos de `style.js`. Es estructura
+propia, y compite contra un mercado que pone mucho cuidado en el ganador y mucho menos en las derivadas.
+Es el mismo patrón que en fútbol: el 1X2 nos gana y las derivadas no.
+
+**Recomendación:** cerrar FIGHT (t=−2,29 sobre 31 no es mala suerte), concentrar el esfuerzo en ROUNDS y
+MÉTODO, y no tocar el Elo — que está bien hecho y sirve como insumo del simulador de rutas aunque no sirva
+para apostar el ganador.
+
 # HANDOFF — estado al 20-ago-2026 (la ventaja no está donde podemos ejecutar)
 
 ## 🔴 EL HALLAZGO DEL DÍA — el CLV de la familia confirmada, partido por casa

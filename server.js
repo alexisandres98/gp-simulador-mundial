@@ -17264,8 +17264,11 @@ const server = http.createServer(async (req, res) => {
           const comps = await CB.soccerCompetitions(apiKey, 12000);
           const fromS = Math.floor(Date.now() / 1000);
           const ids = [];
-          for (const c of comps) {
-            if (ids.length >= 60) break;
+          // acotado de verdad: con 60 competiciones la sonda tardaba más que el tiempo de respuesta y
+          // devolvía 502. Se respeta `liga=` y se cortan las competiciones a diez.
+          const lista = comps.filter((c) => !liga || new RegExp(liga, 'i').test(c.key)).slice(0, 10);
+          for (const c of lista) {
+            if (ids.length >= 40) break;
             const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c.key)}?limit=20&from=${fromS}&to=${fromS + 72 * 3600}`,
               { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) }).then((r) => r.json()).catch(() => null);
             for (const e of ((j && j.events) || [])) if (e.type === 'EVENT_TYPE_EVENT' && e.id) ids.push({ id: e.id, comp: c.key, ko: e.cutoffTime || null });

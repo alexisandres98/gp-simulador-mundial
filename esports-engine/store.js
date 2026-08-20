@@ -99,9 +99,38 @@ const MARKET_TTL = 3 * 60e3;
 // propia de 1.031 equipos sabe que "NIP" y "Ninjas In Pyjamas" son el mismo y —lo que importa más— sabe que
 // "Spirit" y "Spirit Academy" NO lo son. Fundir dos partidos distintos mezcla dos mercados y fabrica un
 // arbitraje que no existe, así que ante la duda se dejan separados.
+// DOS RESOLUTORES, Y LA DIFERENCIA ENTRE ELLOS ES DELIBERADA.
+//
+// El de la AGENDA solo se activa en CS2 y así se queda. No es que a los otros les falte: es que el id
+// canónico del evento SALE del par resuelto, y cambiar la resolución cambia el id de partidos que ya
+// tienen cierres y picks guardados bajo el id viejo. Eso es exactamente el fallo que costó un día de
+// depuración y dejó el CLV a nulo (ver la nota larga en `slate`). Encenderlo en LoL, Valorant y Dota 2
+// exige migrar el histórico primero, y esa es una tarea con su propio riesgo.
 function resolverFor(game) {
   if (game !== 'cs2') return null;
   try { const CD = require('./cs2-data'); return (name) => CD.resolveTeam(name); } catch { return null; }
+}
+
+// El de la LIQUIDACIÓN sí se activa en los cuatro, y aquí no hay ningún riesgo de identidad porque no
+// genera ids: solo empareja el nombre que guardó la pick con el nombre que publica la fuente de
+// resultados. Sin él, ese emparejamiento era comparación de cadenas pelada.
+//
+// EL COSTE DE NO TENERLO, medido: Dota 2 tenía 12 picks vencidas y CERO liquidadas. La casa dice "Aurora
+// Gaming" y OpenDota dice "Aurora"; la casa "Nigma Galaxy" y la fuente "Team Nigma Galaxy" — dos cadenas
+// distintas, ninguna coincidencia, la pick se queda abierta para siempre y el registro nunca crece. Con
+// el resolutor de cada juego, 15 de 16 nombres de OpenDota resuelven a un equipo de la base propia.
+// La ventana de ±12 h que ya existía sigue mandando: dos partidos del mismo par en el mismo día son la
+// misma serie, así que resolver mejor no puede emparejar con una serie ajena.
+const DATA_MOD = { cs2: 'cs2-data', lol: 'lol-data', valorant: 'valorant-data', dota2: 'dota2-data' };
+function resolverParaLiquidar(game) {
+  const mod = DATA_MOD[game];
+  if (!mod) return null;
+  try {
+    const CD = require('./' + mod);
+    if (typeof CD.resolveTeam !== 'function') return null;
+    const data = CD.load();
+    return (name) => { try { return CD.resolveTeam(name, { data }); } catch { return null; } };
+  } catch { return null; }
 }
 
 async function slate(game, { days = 7, force = false } = {}) {
@@ -1501,7 +1530,7 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
   if (!rs || !rs.available) return { game, settled: 0, pending: pend.length, no_source: true, why: (rs && rs.why) || 'sin fuente de resultados' };
 
   const closes = rd(`closes-${game}.json`);
-  const resolve = resolverFor(game);
+  const resolve = resolverParaLiquidar(game);
   const key = (n) => {
     if (resolve) { const id = resolve(n); if (id) return 'gp:' + id; }
     return String(n || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
@@ -1536,8 +1565,17 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
     settled++;
   }
   st.at = new Date().toISOString();
+  const resumen = { at: st.at, settled, unmatched, unsettleable, pending: pend.length, source: rs.source, resolver: !!resolve };
+  st.last_settle = resumen;   // queda guardado para que la sonda pueda contar el cero sin volver a liquidar
   wr(PICKS_F(game), st);
-  return { game, settled, unmatched, unsettleable, pending: pend.length, clv_backfilled: backfilled, source: rs.source };
+  return { game, settled, unmatched, unsettleable, pending: pend.length, clv_backfilled: backfilled, source: rs.source,
+    // POR QUÉ SE LIQUIDÓ CERO. Un cero sin motivo no se puede revisar el lunes, y este deporte ya tuvo
+    // doce picks vencidas sin liquidar durante días sin que nada lo dijera.
+    why: settled ? null
+      : unmatched === pend.length ? `las ${pend.length} vencidas no encuentran su partido en ${rs.source}: o la fuente no lo publica todavía, o los nombres no resuelven al mismo equipo`
+        : unsettleable ? `${unsettleable} vencidas emparejadas pero sin el dato que su familia necesita en ${rs.source}`
+          : null,
+    resolver: !!resolve };
 }
 
 // El cuadro de rendimiento del deporte. Se publica el CLV SEPARADO del ROI y por delante, porque con
@@ -1564,6 +1602,8 @@ function track(game, { limit = 60 } = {}) {
   const avg = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null);
   return {
     game,
+    // lo que dejó dicho la última pasada del liquidador, para que un cero se pueda leer sin repetirla
+    last_settle: (st && st.last_settle) || null,
     total: all.length, active: all.filter((p) => p.status === 'ACTIVE').length,
     settled: settled.length, w, l, push,
     units: +units.toFixed(2),

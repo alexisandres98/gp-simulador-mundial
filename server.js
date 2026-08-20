@@ -17139,7 +17139,11 @@ const server = http.createServer(async (req, res) => {
               results_source: RS.available ? RS.name : null,
               picks: tr.total, settled: tr.settled, roi_pct: tr.roi_pct, clv_avg_pct: tr.clv_avg_pct,
               // el CLV es la vara de esta casa: cuando falta hay que poder ver POR QUÉ sin abrir sesión
-              clv_diag: tr.clv_diag };
+              clv_diag: tr.clv_diag,
+              // LA ÚLTIMA LIQUIDACIÓN, CON SU MOTIVO. Dota 2 estuvo con doce picks vencidas y cero
+              // liquidadas sin que nada lo dijera: el resultado del liquidador se quedaba en la respuesta
+              // del trabajo y no llegaba a ninguna parte que se pudiera mirar.
+              settle: tr.last_settle || null };
           }),
           ratings_state: ov.ratings_state,
           // PANDASCORE (19-ago): el avance de la base histórica que por fin da rating propio a LoL,

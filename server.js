@@ -17286,7 +17286,12 @@ const server = http.createServer(async (req, res) => {
               if (n) conPrecio.push(k + ':' + n);
             }
             out.descartados.push({ liga: it.comp, partido: `${ev.home && ev.home.name} v ${ev.away && ev.away.name}`,
-              ko: ev.cutoffTime || null, mercados_con_precio: conPrecio.slice(0, 14), n_con_precio: conPrecio.length });
+              ko: ev.cutoffTime || null, tipo: ev.type || null,
+              // las cuatro que nos importan, SIEMPRE, y aparte el resto: la lista alfabética recortada
+              // escondía justo `soccer.match_odds`, que es la que decide si el partido entra o no
+              nuestras: ['soccer.match_odds', 'soccer.total_goals', 'soccer.total_corners', 'soccer.total_bookings']
+                .map((k) => k + '=' + (conPrecio.find((x) => x.startsWith(k + ':')) || 'sin precio')),
+              mercados_con_precio: conPrecio.slice(0, 30), n_con_precio: conPrecio.length });
           }
         } catch (e) { out.descartados_error = e.message; }
       }

@@ -134,12 +134,17 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
     comps.sort((a, b) => (isPriority(b.key) ? 1 : 0) - (isPriority(a.key) ? 1 : 0));
     const fromS = Math.floor(now / 1000), toS = fromS + windowH * 3600;
     const ids = [];
+    // se recogen TODOS los identificadores (el listado por competición es una petición barata) y el tope se
+    // aplica DESPUÉS de ordenar por hora de inicio. Antes el tope cortaba durante la recogida, así que el
+    // orden no era "los que empiezan antes" sino "los primeros de las ligas prioritarias": el presupuesto
+    // se gastaba en partidos de dentro de tres días —sin precio— mientras los de esta tarde se quedaban fuera.
+    const TECHO_IDS = Number(process.env.CLOUDBET_MAX_IDS) || 1500;
     for (const c of comps) {
-      if (ids.length >= maxEvents) break;
+      if (ids.length >= TECHO_IDS) break;
       try {
         const j = await cbGet(`/pub/v2/odds/competitions/${encodeURIComponent(c.key)}?limit=60&from=${fromS}&to=${toS}`, apiKey, timeoutMs);
         for (const e of (j.events || [])) {
-          if (e.type === 'EVENT_TYPE_EVENT' && e.home && e.away && e.id) { ids.push({ id: e.id, comp: c.key, ko: e.cutoffTime || null }); if (ids.length >= maxEvents) break; }
+          if (e.type === 'EVENT_TYPE_EVENT' && e.home && e.away && e.id) { ids.push({ id: e.id, comp: c.key, ko: e.cutoffTime || null }); if (ids.length >= TECHO_IDS) break; }
         }
       } catch (e) { S.comp_fallidas++; anota(e); }   // liga sin cobertura este ciclo — o límite de tasa
     }
@@ -149,11 +154,13 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
     // los partidos de HOY, que sí tienen precio, se quedaban fuera. No era que la casa no cotizara: era que
     // le preguntábamos demasiado pronto y gastábamos el cupo en preguntarlo.
     ids.sort((a, b) => Date.parse(a.ko || 0) - Date.parse(b.ko || 0));
-    S.ids = ids.length;
+    S.ids_totales = ids.length;
+    const cola = ids.slice(0, maxEvents);
+    S.ids = cola.length;
     // detalle de cada partido en LOTES paralelos. El lote es de 3 y con pausa: con 6 a pelo Cloudbet
     // devolvía 429 en la mayoría y el colector se quedaba con las migajas, en silencio.
-    for (let i = 0; i < ids.length; i += LOTE) {
-      const batch = ids.slice(i, i + LOTE);
+    for (let i = 0; i < cola.length; i += LOTE) {
+      const batch = cola.slice(i, i + LOTE);
       const res = await Promise.all(batch.map(({ id, comp }) =>
         cbGet(`/pub/v2/odds/events/${id}`, apiKey, timeoutMs)
           .then(ev => {
@@ -172,7 +179,7 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
           })
           .catch((e) => { S.detalle_fallido++; anota(e); return null; })));
       for (const n of res) if (n) out.push(n);
-      if (i + LOTE < ids.length && PAUSA) await new Promise((r) => setTimeout(r, PAUSA));
+      if (i + LOTE < cola.length && PAUSA) await new Promise((r) => setTimeout(r, PAUSA));
     }
   } catch (e) { S.listado_error = e.message; return _cache.data; } // fallo en el listado de deportes → último bueno
   S.devueltos = out.length;

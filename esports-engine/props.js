@@ -496,6 +496,9 @@ function perf(picks, { openOnly = false } = {}) {
     clv_n: clvTot.length,
     avg_clv: mean(clvTot),
     clv_line_n: clvLine.length, avg_clv_line: mean(clvLine),
+    // la dispersión, para que el tablero de familias pueda calcular el estadístico y no solo la media
+    sd_clv_line: (() => { if (clvLine.length < 2) return null; const m = clvLine.reduce((a, b) => a + b, 0) / clvLine.length;
+      return +Math.sqrt(clvLine.reduce((a, b) => a + (b - m) ** 2, 0) / (clvLine.length - 1)).toFixed(4); })(),
     clv_price_n: clvPrice.length, avg_clv_price: mean(clvPrice),
     lines_moved: movedN,
     clv_note: 'CLV = línea + precio. La línea se evalúa con la proyección congelada al anotar, así que mide el movimiento del libro y no la deriva del modelo. En un libro DFS el precio casi no se mueve: el componente que informa es la línea.',

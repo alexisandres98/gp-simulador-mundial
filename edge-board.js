@@ -112,10 +112,14 @@ function build({ db, pickClvNum, hoopsTrack, combatTrack } = {}) {
   const errores = [];
   const intenta = (que, fn) => { try { const r = fn(); if (r) filas.push(...r); } catch (e) { errores.push(`${que}: ${e.message}`); } };
 
-  // FÚTBOL — la familia estrella vive aquí y su unidad es familia+lado+banda
+  // FÚTBOL — la familia estrella vive aquí y su unidad es familia+lado+banda.
+  // Las dos listas: `dailyPicks` es la del Mundial y `clubDailyPicks` la de clubes, que es donde viven las
+  // tarjetas y los córners. Leer solo la primera daba n=6 en la familia estrella y n=3 en córners.
   intenta('futbol', () => {
-    if (!db || !Array.isArray(db.dailyPicks)) return null;
-    const done = db.dailyPicks.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+    if (!db) return null;
+    const todas = [].concat(Array.isArray(db.dailyPicks) ? db.dailyPicks : [], Array.isArray(db.clubDailyPicks) ? db.clubDailyPicks : []);
+    if (!todas.length) return null;
+    const done = todas.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
     return dePicks('futbol', done, {
       clvDe: (p) => (pickClvNum ? pickClvNum(p) : (typeof p.clv === 'number' ? p.clv : null)),
       ladoDe: (p) => p.side || (p.selection_code && /UNDER/i.test(p.selection_code) ? 'under' : p.selection_code && /OVER/i.test(p.selection_code) ? 'over' : null),
@@ -149,7 +153,8 @@ function build({ db, pickClvNum, hoopsTrack, combatTrack } = {}) {
       // en un libro DFS el CLV que informa es el de LÍNEA; se usa ese y se dice
       out.push(fila({ deporte: 'cs2-props', familia: rule, n: p.n, hit: p.hit != null ? 100 * p.hit : null,
         roi: p.roi != null ? 100 * p.roi : null,
-        clv: p.avg_clv_line != null ? 100 * p.avg_clv_line : null, clvSd: null, clvN: p.clv_line_n || 0,
+        clv: p.avg_clv_line != null ? 100 * p.avg_clv_line : null,
+        clvSd: p.sd_clv_line != null ? 100 * p.sd_clv_line : null, clvN: p.clv_line_n || 0,
         extra: 'CLV de línea (libro DFS: el precio casi no se mueve)' }));
     }
     return out;

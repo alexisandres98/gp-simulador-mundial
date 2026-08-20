@@ -39,6 +39,7 @@ const path = require('path');
 const DIR = process.env.GP_LOL_DIR || (fs.existsSync('/data') ? '/data/lol-raw' : path.join(__dirname, '..', 'data', 'esports', 'lol'));
 const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=`)); return h ? h.split('=')[1] : d; };
 const ONLY = arg('only', '');
+const FORCE = process.argv.includes('--force');
 const SLEEP = +arg('sleep', 3500);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const UA = 'GP-Simulador/1.0 (codigo@gpsimulador.com; cosecha lenta y reanudable, contacto en el UA)';
@@ -86,6 +87,13 @@ async function harvestTable({ file, table, fields, since, keyOf, slim, extraWher
   const st = rd(file) || { rights_class: 'research_attribution_ccbysa', source: 'Leaguepedia (lol.fandom.com) Cargo API', rows: {} };
   let cursor = st.cursor || since;
   let total = Object.keys(st.rows).length;
+  // UNA TABLA TERMINADA NO SE VUELVE A RECORRER, y esto es lo que tenía atascada la cosecha entera.
+  // Fandom no limita por segundo: da un cubo de unas pocas páginas y bloquea ~10 minutos, y al agotarlo
+  // el script sale con error. Cada pasada empezaba por `games` —ya completa desde hace días— y gastaba el
+  // cubo confirmando su final; el proceso moría ahí y `players` no llegaba a empezar NUNCA. Dos meses de
+  // pasadas y `players.json` sin crear. Con el marcador, la primera pasada cierra `games` y la siguiente
+  // entra directa a lo que falta.
+  if (st.done && !FORCE) { console.log(`[lol] ${table}: ya completa (${total} filas) — se salta`); return; }
   console.log(`[lol] ${table}: reanudo desde ${cursor} · ${total} filas en disco`);
   let stall = 0;
   const df = dateField || `${table}.DateTime_UTC`;
@@ -122,6 +130,10 @@ async function harvestTable({ file, table, fields, since, keyOf, slim, extraWher
     if (rows.length < 480 && stall === 0) { /* última página con filas nuevas: una vuelta más confirma el fin */ }
     await sleep(SLEEP);
   }
+  // se marca AQUÍ y no antes: llegar al final del bucle es la única forma de saber que la tabla terminó.
+  // Si el límite de Fandom mata el proceso a mitad, no se pasa por esta línea y la próxima pasada reanuda.
+  st.done = true; st.done_at = new Date().toISOString();
+  wr(file, st);
   console.log(`[lol] ${table} LISTO: ${total} filas`);
 }
 
@@ -129,8 +141,9 @@ const N = (x) => (x == null || x === '' ? null : +x);
 
 async function main() {
   fs.mkdirSync(DIR, { recursive: true });
+  const TABLAS = [];
   if (!ONLY || ONLY === 'games') {
-    await harvestTable({
+    TABLAS.push({
       file: 'games.json', table: 'ScoreboardGames', since: '2020-01-01 00:00:00',
       fields: ['GameId', 'Team1', 'Team2', 'WinTeam', 'DateTime_UTC', 'Patch', 'Gamelength_Number',
         'Team1Kills', 'Team2Kills', 'Team1Dragons', 'Team2Dragons', 'Team1Barons', 'Team2Barons',
@@ -148,7 +161,7 @@ async function main() {
     });
   }
   if (!ONLY || ONLY === 'players') {
-    await harvestTable({
+    TABLAS.push({
       file: 'players.json', table: 'ScoreboardPlayers', since: '2023-01-01 00:00:00',
       fields: ['GameId', 'Link', 'Champion', 'Role', 'Kills', 'Deaths', 'Assists', 'CS', 'Gold',
         'Team', 'Side', 'PlayerWin', 'DateTime_UTC']
@@ -163,7 +176,7 @@ async function main() {
     });
   }
   if (!ONLY || ONLY === 'drafts') {
-    await harvestTable({
+    TABLAS.push({
       file: 'drafts.json', table: 'PicksAndBansS7', since: '2024-01-01 00:00:00',
       joinTables: 'PicksAndBansS7,ScoreboardGames',
       joinOn: 'PicksAndBansS7.GameId=ScoreboardGames.GameId',
@@ -185,6 +198,14 @@ async function main() {
       }),
     });
   }
+  // EL ORDEN LO DECIDE LA NECESIDAD, no la lista. Con orden fijo, cada pasada empezaba por la tabla que
+  // ya estaba completa y gastaba ahí el cubo de Fandom; la que faltaba no llegaba a empezar nunca. Va
+  // primero la que menos filas tiene en disco — la vacía antes que ninguna.
+  const filas = (f) => { const st = rd(f); if (!st) return -1; if (st.done && !FORCE) return Infinity; return Object.keys(st.rows || {}).length; };
+  TABLAS.sort((a, b) => filas(a.file) - filas(b.file));
+  console.log('[lol] orden de esta pasada: ' + TABLAS.map((t) => `${t.file}(${filas(t.file) === Infinity ? 'completa' : filas(t.file)})`).join(' → '));
+  for (const t of TABLAS) await harvestTable(t);
+
   // llegar aquí significa que las TRES tablas terminaron de verdad (el ratelimit ya no "termina" tablas:
   // lanza error y el proceso sale ≠ 0). El marcador le dice al server que deje de reencadenar pasadas.
   wr('state.json', { complete: true, at: new Date().toISOString(), calls });

@@ -17193,6 +17193,72 @@ const server = http.createServer(async (req, res) => {
         return res.end(buf);
       } catch (e) { return json(res, 404, { error: e.message }); }
     }
+    // ── SONDA DE CLOUDBET (20-ago) ─────────────────────────────────────────────────────────────────────
+    // La pregunta es concreta: ¿se puede ejecutar sin cuenta nueva? Para contestarla hay que saber qué
+    // cotiza Cloudbet DE VERDAD por liga —no qué creemos que cotiza— y con qué nombre llama a cada mercado.
+    // El colector busca las tarjetas en `soccer.total_bookings` y `soccer.total_cards`; si Cloudbet la llama
+    // de otra forma, el array sale vacío y desde fuera parece "no cotiza tarjetas" cuando es "no la leemos".
+    // `?raw=<n>` devuelve las CLAVES DE MERCADO crudas de los primeros n partidos, que es lo único que
+    // distingue las dos cosas.
+    if (p === '/api/internal/cloudbet-probe') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const apiKey = process.env.CLOUDBET_API_KEY || '';
+      if (!apiKey) return json(res, 200, { error: 'sin CLOUDBET_API_KEY' });
+      const CB = require('./market-scanner/venues/cloudbet');
+      const out = {};
+      const raw = Math.min(6, Math.max(0, +(url.searchParams.get('raw') || 0)));
+      const liga = String(url.searchParams.get('liga') || '');
+      try {
+        const comps = await CB.soccerCompetitions(apiKey, 12000);
+        out.competiciones = comps.length;
+        out.competiciones_muestra = comps.filter((c) => !liga || new RegExp(liga, 'i').test(c.key)).slice(0, 40).map((c) => c.key);
+      } catch (e) { out.competiciones_error = e.message; }
+      // claves de mercado crudas: la respuesta a "¿no cotiza o no leemos?"
+      if (raw) {
+        out.claves_crudas = [];
+        try {
+          const comps = await CB.soccerCompetitions(apiKey, 12000);
+          const objetivo = comps.filter((c) => (liga ? new RegExp(liga, 'i').test(c.key) : true)).slice(0, 3);
+          const fromS = Math.floor(Date.now() / 1000);
+          for (const c of objetivo) {
+            const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c.key)}?limit=20&from=${fromS}&to=${fromS + 96 * 3600}`,
+              { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) }).then((r) => r.json()).catch(() => null);
+            for (const e of ((j && j.events) || []).slice(0, raw)) {
+              if (e.type !== 'EVENT_TYPE_EVENT' || !e.id) continue;
+              const ev = await fetch(`${CB.HOST}/pub/v2/odds/events/${e.id}`, { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+                .then((r) => r.json()).catch(() => null);
+              if (!ev) continue;
+              out.claves_crudas.push({ liga: c.key, partido: `${ev.home && ev.home.name} v ${ev.away && ev.away.name}`,
+                cutoff: ev.cutoffTime || null, mercados: Object.keys(ev.markets || {}) });
+              if (out.claves_crudas.length >= raw) break;
+            }
+            if (out.claves_crudas.length >= raw) break;
+          }
+        } catch (e) { out.claves_error = e.message; }
+      }
+      // cobertura tal y como la ve HOY el colector, liga a liga
+      try {
+        const evs = await CB.fetchCloudbetSoccer({ apiKey, ttlMs: 0, windowH: 96 });
+        const porLiga = {};
+        for (const e of evs) {
+          const k = e.competition || '?';
+          const g = porLiga[k] = porLiga[k] || { partidos: 0, con_1x2: 0, con_goles: 0, con_corners: 0, con_tarjetas: 0, lineas_tarjetas: 0 };
+          g.partidos++;
+          if (e.markets.h2h) g.con_1x2++;
+          if ((e.markets.totals || []).length) g.con_goles++;
+          if ((e.markets.corners || []).length) g.con_corners++;
+          if ((e.markets.cards || []).length) { g.con_tarjetas++; g.lineas_tarjetas += e.markets.cards.length; }
+        }
+        out.eventos = evs.length;
+        out.por_liga = Object.fromEntries(Object.entries(porLiga).sort((a, b) => b[1].partidos - a[1].partidos));
+        out.total = Object.values(porLiga).reduce((a, g) => ({
+          partidos: a.partidos + g.partidos, con_1x2: a.con_1x2 + g.con_1x2, con_goles: a.con_goles + g.con_goles,
+          con_corners: a.con_corners + g.con_corners, con_tarjetas: a.con_tarjetas + g.con_tarjetas,
+        }), { partidos: 0, con_1x2: 0, con_goles: 0, con_corners: 0, con_tarjetas: 0 });
+      } catch (e) { out.cobertura_error = e.message; }
+      return json(res, 200, out);
+    }
     // ── EL TABLERO DE FAMILIAS (20-ago) ────────────────────────────────────────────────────────────────
     // Ocho deportes miden su rendimiento en ocho pantallas distintas y ninguna contesta la pregunta del
     // negocio: en qué familias hay ventaja, en cuáles no, y cuánto falta para saberlo. Esto la contesta con

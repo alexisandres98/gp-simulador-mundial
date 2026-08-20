@@ -6819,16 +6819,22 @@ function clubFreezePublished() {
 // `db.clubDailyPicks` ni `curate` — si algo aquí se rompe, el feed público no se entera. Ese aislamiento es
 // deliberado: es la única forma de encender cinco familias de golpe sin arriesgar lo que ya funciona.
 function derivadasLambdas(ceid, meta) {
-  const lg = meta && meta.league; if (!lg) return null;
-  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return null; } }
+  // el porqué de un cero se cuenta, no se adivina: sin esto "sin_lambdas: 10" no dice si falta la liga, el
+  // equipo o el ajuste, y son tres arreglos distintos
+  const D = global._derivDiag = global._derivDiag || {};
+  const no = (k) => { D[k] = (D[k] || 0) + 1; return null; };
+  const lg = meta && meta.league; if (!lg) return no('sin_liga');
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return no('sin_ratings'); } }
   const RT = clubsEnsureCups(global._clubsRatings);
-  const L = RT.leagues[lg]; if (!L) return null;
+  const L = RT.leagues[lg]; if (!L) return no('liga_desconocida:' + lg);
   const hId = resolveClubId(lg, meta.home), aId = resolveClubId(lg, meta.away);
-  if (!hId || !aId || hId === aId) return null;
+  if (!hId) return no('equipo_sin_resolver:' + lg);
+  if (!aId) return no('equipo_sin_resolver:' + lg);
+  if (hId === aId) return no('mismo_equipo');
   let l = null;
   try { const gf = clubGoalsFit(lg); if (gf) l = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId); } catch { l = null; }
   if (!l) { const rh = clubElo(lg, hId), ra = clubElo(lg, aId); l = lambdas(rh + (L.hfa || 60), ra); }
-  if (!l || !(l[0] > 0) || !(l[1] > 0)) return null;
+  if (!l || !(l[0] > 0) || !(l[1] > 0)) return no('sin_lambdas_de_liga:' + lg);
   // el mismo ajuste del observador que usan las demás familias: si el modelo de la casa se corrige en vivo,
   // estas familias se corrigen con él o estarían midiendo contra un modelo distinto del que publicamos
   return [l[0] * clubObserverLambdaFactor(lg, hId), l[1] * clubObserverLambdaFactor(lg, aId)];
@@ -6861,7 +6867,9 @@ async function derivadasJob({ force = false } = {}) {
     if (!dbc.isConfigured()) { out.skipped = 'db_off'; return out; }
     const D = require('./futbol-derivadas');
     const qevents = require('./basketball-engine/markets').nonHoopsEvents(db.clubsQuoteEvents || {});
+    global._derivDiag = {};
     out.record = await D.record({ dbc, qevents, lambdasFor: derivadasLambdas }).catch((e) => ({ error: e.message }));
+    out.diag_lambdas = global._derivDiag;
     out.closes = await D.closes({ dbc }).catch((e) => ({ error: e.message }));
     out.settle = D.settle({ scoreFor: derivadasScore });
     _derivLast = Date.now();

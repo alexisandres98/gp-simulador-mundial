@@ -4541,13 +4541,20 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       if (out.samples.length < 8) out.samples.push({ cloudbet: cb.home + ' v ' + cb.away, matched: meta.home + ' v ' + meta.away, league: meta.league, h2h: cb.markets.h2h, totals: cb.markets.totals.length });
       if (dryRun) continue;
       const eid = 'cloudbet-' + ceid;
+      const q = (fam, mid, odds, max, extra) => grepo.upsertGoalQuote({
+        data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid,
+        market_family: fam, market_id: mid, odds_decimal: odds, implied_probability: 1 / odds,
+        quote_status: 'open', is_live: false, max_stake: max != null ? max : null,
+        depth_src: max != null ? 'cloudbet_max' : null, ...(extra || {}),
+      }).then((r) => { if (r) { out.por_familia = out.por_familia || {}; out.por_familia[fam] = (out.por_familia[fam] || 0) + 1; } return r; })
+        .catch(() => { out.fallos = (out.fallos || 0) + 1; });
       // 1X2 (orientado a NUESTRO home): si swapped, home↔away de Cloudbet se intercambian
       if (cb.markets.h2h) {
         const h = cb.markets.h2h, sides = swapped ? { home: h.away, draw: h.draw, away: h.home } : h;
         for (const side of ['home', 'draw', 'away']) {
           if (!(sides[side] > 1)) continue;
           const mxH = (h.max || {}), mxS = swapped ? { home: mxH.away, draw: mxH.draw, away: mxH.home } : mxH;
-          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: 'match_winner', line: 0, side, market_id: 'MATCH_WINNER_' + side.toUpperCase(), odds_decimal: sides[side], implied_probability: 1 / sides[side], quote_status: 'open', is_live: false, max_stake: mxS[side] ?? null, depth_src: mxS[side] != null ? 'cloudbet_max' : null }).catch(() => {});
+          await q('match_winner', 'MATCH_WINNER_' + side.toUpperCase(), sides[side], mxS[side], { line: 0, side });
           out.quotes++;
         }
       }
@@ -4557,19 +4564,20 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       // una doble oportunidad "local o empate" es nuestra "empate o visitante", y un hándicap de −0,5 es
       // uno de +0,5. Escribirlas sin girar sería peor que no escribirlas: probabilidades invertidas que
       // parecen ventaja justo donde hay desventaja.
-      const q = (fam, mid, odds, max, extra) => { out.por_familia = out.por_familia || {}; out.por_familia[fam] = (out.por_familia[fam] || 0) + 1; return grepo.upsertGoalQuote({
-        data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid,
-        market_family: fam, market_id: mid, odds_decimal: odds, implied_probability: 1 / odds,
-        quote_status: 'open', is_live: false, max_stake: max != null ? max : null,
-        depth_src: max != null ? 'cloudbet_max' : null, ...(extra || {}),
-      }).catch(() => { }); };
+      // el contador va DESPUÉS del upsert: contar intentos y llamarlos cuotas escritas es cómo un fallo
+      // silencioso de la base se disfraza de cobertura
       if (cb.markets.dc) {
         const d = cb.markets.dc, mx = d.max || {};
         // girar: el "local+empate" de ellos es nuestro "empate+visitante" cuando los lados están cambiados
         const pares = swapped
           ? [['DOUBLE_CHANCE_DRAW_AWAY', 'home_draw'], ['DOUBLE_CHANCE_HOME_AWAY', 'home_away'], ['DOUBLE_CHANCE_HOME_DRAW', 'draw_away']]
           : [['DOUBLE_CHANCE_HOME_DRAW', 'home_draw'], ['DOUBLE_CHANCE_HOME_AWAY', 'home_away'], ['DOUBLE_CHANCE_DRAW_AWAY', 'draw_away']];
-        for (const [mid, k] of pares) if (d[k] > 1) { await q('double_chance', mid, d[k], mx[k], { line: 0 }); out.quotes++; }
+        // CADA OPCIÓN CON SU PROPIO `side`. La clave única de la tabla es
+        // (proveedor, casa, evento, familia, periodo, línea, side, ámbito): con `side` vacío las tres dobles
+        // oportunidades del mismo partido colisionaban y se sobrescribían entre ellas, dejando UNA fila con
+        // el market_id de la última escrita. Escribir tres cosas distintas en la misma casilla no es un
+        // detalle de esquema: es guardar un precio con la etiqueta de otro.
+        for (const [mid, k] of pares) if (d[k] > 1) { await q('double_chance', mid, d[k], mx[k], { line: 0, side: k }); out.quotes++; }
       }
       if (cb.markets.dnb) {
         const d = cb.markets.dnb, mx = d.max || {};
@@ -4606,8 +4614,6 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       }
       // totales (over/under; simétricos, el swap no afecta) — goles + córners + tarjetas (13-ago: los dos
       // últimos son los mercados EJECUTABLES del ejecutor en la sombra; sin ellos la capacidad real es 0)
-      out.por_familia = out.por_familia || {};
-      if (cb.markets.h2h) out.por_familia.match_winner = (out.por_familia.match_winner || 0) + 3;
       const totFams = [
         { rows: cb.markets.totals, fam: 'match_total', idp: 'TOTAL_GOALS' },
         { rows: cb.markets.corners || [], fam: 'corners_total', idp: 'CORNERS' },
@@ -4615,11 +4621,11 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       ];
       for (const tf of totFams) for (const t of tf.rows) {
         if (!(t.line > 0)) continue;
-        out.por_familia[tf.fam] = (out.por_familia[tf.fam] || 0) + 2;
         for (const side of ['over', 'under']) {
           const o = t[side]; if (!(o > 1)) continue;
           const mxT = (t.max || {})[side];
-          await grepo.upsertGoalQuote({ data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid, market_family: tf.fam, line: t.line, side, team_scope: tf.fam === 'match_total' ? undefined : 'total', market_id: tf.idp + '_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), odds_decimal: o, implied_probability: 1 / o, quote_status: 'open', is_live: false, max_stake: mxT ?? null, depth_src: mxT != null ? 'cloudbet_max' : null }).catch(() => {});
+          await q(tf.fam, tf.idp + '_' + side.toUpperCase() + '_' + String(t.line).replace('.', '_'), o, mxT,
+            { line: t.line, side, team_scope: tf.fam === 'match_total' ? undefined : 'total' });
           out.quotes++;
         }
       }

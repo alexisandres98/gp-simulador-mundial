@@ -17263,8 +17263,15 @@ const server = http.createServer(async (req, res) => {
               // normalizador como "sin mercados" teniendo match_odds y total_goals en el crudo, así que el
               // fallo está en cómo se leen los submercados, no en lo que la casa publica.
               if (url.searchParams.get('struct') === '1') {
+                // `solo_con_precio=1`: saltar los esqueletos sin precio, que no enseñan nada de la forma real
+                if (url.searchParams.get('solo_con_precio') === '1') {
+                  const vivo = Object.values(ev.markets || {}).some((m) => Object.values((m && m.submarkets) || {})
+                    .some((sm) => ((sm && sm.selections) || []).some((x) => Number(x.price) > 1)));
+                  if (!vivo) continue;
+                }
                 fila.estructura = {};
-                for (const mk of ['soccer.match_odds', 'soccer.total_goals', 'soccer.total_corners', 'soccer.total_bookings']) {
+                const lista = String(url.searchParams.get('mk') || 'soccer.match_odds,soccer.total_goals,soccer.total_corners,soccer.total_bookings').split(',').map((x) => x.trim()).filter(Boolean);
+                for (const mk of lista) {
                   const m = (ev.markets || {})[mk];
                   if (!m) { fila.estructura[mk] = 'ausente'; continue; }
                   const subs = m.submarkets || {};

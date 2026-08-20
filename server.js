@@ -11577,6 +11577,34 @@ function shadowSummary(sinceMs) {
     clv_exec_avg: clvsEx.length ? +(clvsEx.reduce((s, c) => s + c, 0) / clvsEx.length).toFixed(2) : null,
     signals, unexec: un.length, exec_rate_pct: signals ? +(100 * rows.length / signals).toFixed(1) : null,
     haircut_avg_pct: hair.length ? +(hair.reduce((s, h) => s + h, 0) / hair.length).toFixed(2) : null,
+    // ── CAPACIDAD vs EJECUCIÓN (20-ago) ────────────────────────────────────────────────────────────────
+    // El 52 % de ejecución mezclaba dos cosas que no son la misma y que llevan a decisiones opuestas: las
+    // señales que NO PUDIMOS tomar (fallo nuestro, precio, ventana) y las que NO EXISTÍAN en ninguna casa
+    // conectable (la liga no la cotiza nadie con API — medido: MLS tarjetas y córners solo viven en
+    // DraftKings, BetRivers, MyBookie y LeoVegas, y ninguna tiene API pública de apuestas).
+    //
+    // Lo primero se arregla con ingeniería. Lo segundo no se arregla con ingeniería, y contarlo como fallo
+    // de ejecución hace pensar que hay la mitad de capacidad de la que hay. `exec_rate_conectable_pct` es
+    // el número que mide LO NUESTRO: de las señales que tenían dónde ejecutarse, cuántas se ejecutaron.
+    capacidad: (() => {
+      const SIN_VIA = new Set(['solo_casas_no_conectables', 'sin_casas', 'mercado_no_listado']);
+      const sinVia = un.filter((u) => SIN_VIA.has(u.reason));
+      const nuestras = un.filter((u) => !SIN_VIA.has(u.reason));
+      const porLiga = {};
+      for (const u of sinVia) { const k = u.league || '?'; porLiga[k] = (porLiga[k] || 0) + 1; }
+      const porMotivo = {};
+      for (const u of un) { const k = u.reason || 'sin_motivo_anotado'; porMotivo[k] = (porMotivo[k] || 0) + 1; }
+      const conVia = rows.length + nuestras.length;
+      return {
+        senales: signals,
+        sin_via_de_ejecucion: sinVia.length,
+        sin_via_por_liga: porLiga,
+        fallos_propios: nuestras.length,
+        por_motivo: porMotivo,
+        exec_rate_conectable_pct: conVia ? +(100 * rows.length / conVia).toFixed(1) : null,
+        nota: 'exec_rate_pct mide cuánto del total se tomó; exec_rate_conectable_pct mide cuánto de lo TOMABLE se tomó. La diferencia entre los dos es cobertura de mercado, no ejecución, y no se arregla con código.',
+      };
+    })(),
   };
 }
 async function shadowWeeklyReport({ force = false } = {}) {

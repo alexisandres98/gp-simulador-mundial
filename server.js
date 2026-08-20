@@ -17254,6 +17254,39 @@ const server = http.createServer(async (req, res) => {
           }
         } catch (e) { out.claves_error = e.message; }
       }
+      // `?why=n`: de los partidos que el colector descarta, QUÉ mercados tienen precio. 165 de 200 salían
+      // como "tienen precio pero ninguna familia nos sirve", y esa frase no distingue entre un parser roto
+      // y una casa que a esa hora solo cotiza goleadores. Hay que mirar los mercados con precio, uno a uno.
+      const why = Math.min(8, Math.max(0, +(url.searchParams.get('why') || 0)));
+      if (why) {
+        out.descartados = [];
+        try {
+          const comps = await CB.soccerCompetitions(apiKey, 12000);
+          const fromS = Math.floor(Date.now() / 1000);
+          const ids = [];
+          for (const c of comps) {
+            if (ids.length >= 60) break;
+            const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c.key)}?limit=20&from=${fromS}&to=${fromS + 72 * 3600}`,
+              { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) }).then((r) => r.json()).catch(() => null);
+            for (const e of ((j && j.events) || [])) if (e.type === 'EVENT_TYPE_EVENT' && e.id) ids.push({ id: e.id, comp: c.key, ko: e.cutoffTime || null });
+          }
+          ids.sort((a, b) => Date.parse(a.ko || 0) - Date.parse(b.ko || 0));
+          for (const it of ids) {
+            if (out.descartados.length >= why) break;
+            const ev = await fetch(`${CB.HOST}/pub/v2/odds/events/${it.id}`, { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+              .then((r) => r.json()).catch(() => null);
+            if (!ev) continue;
+            if (CB.normalizeEvent(ev)) continue;                 // este el colector sí lo usa
+            const conPrecio = [];
+            for (const [k, m] of Object.entries(ev.markets || {})) {
+              const n = Object.values((m && m.submarkets) || {}).reduce((a, sm) => a + ((sm && sm.selections) || []).filter((x) => Number(x.price) > 1).length, 0);
+              if (n) conPrecio.push(k + ':' + n);
+            }
+            out.descartados.push({ liga: it.comp, partido: `${ev.home && ev.home.name} v ${ev.away && ev.away.name}`,
+              ko: ev.cutoffTime || null, mercados_con_precio: conPrecio.slice(0, 14), n_con_precio: conPrecio.length });
+          }
+        } catch (e) { out.descartados_error = e.message; }
+      }
       // cobertura tal y como la ve HOY el colector, liga a liga
       try {
         const stats = {};

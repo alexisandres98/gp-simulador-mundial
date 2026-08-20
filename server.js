@@ -17229,8 +17229,25 @@ const server = http.createServer(async (req, res) => {
               const ev = await fetch(`${CB.HOST}/pub/v2/odds/events/${e.id}`, { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
                 .then((r) => r.json()).catch(() => null);
               if (!ev) continue;
-              out.claves_crudas.push({ liga: c.key, partido: `${ev.home && ev.home.name} v ${ev.away && ev.away.name}`,
-                cutoff: ev.cutoffTime || null, mercados: Object.keys(ev.markets || {}) });
+              const fila = { liga: c.key, partido: `${ev.home && ev.home.name} v ${ev.away && ev.away.name}`,
+                cutoff: ev.cutoffTime || null, tipo: ev.type || null, mercados: Object.keys(ev.markets || {}) };
+              // `?struct=1`: la ESTRUCTURA de dos mercados concretos. 181 de 200 eventos salen del
+              // normalizador como "sin mercados" teniendo match_odds y total_goals en el crudo, así que el
+              // fallo está en cómo se leen los submercados, no en lo que la casa publica.
+              if (url.searchParams.get('struct') === '1') {
+                fila.estructura = {};
+                for (const mk of ['soccer.match_odds', 'soccer.total_goals', 'soccer.total_corners', 'soccer.total_bookings']) {
+                  const m = (ev.markets || {})[mk];
+                  if (!m) { fila.estructura[mk] = 'ausente'; continue; }
+                  const subs = m.submarkets || {};
+                  const k0 = Object.keys(subs);
+                  const primera = k0.length ? subs[k0[0]] : null;
+                  fila.estructura[mk] = { submercados: k0.slice(0, 6), n_submercados: k0.length,
+                    claves_submercado: primera ? Object.keys(primera) : null,
+                    seleccion_muestra: primera && Array.isArray(primera.selections) ? primera.selections.slice(0, 2) : null };
+                }
+              }
+              out.claves_crudas.push(fila);
               if (out.claves_crudas.length >= raw) break;
             }
             if (out.claves_crudas.length >= raw) break;

@@ -1,3 +1,42 @@
+# HANDOFF — estado al 20-ago-2026 (Cloudbet medido en la fuente)
+
+## 🎯 20-ago (noche) — ¿se puede ejecutar sin cuenta nueva? Medido, no supuesto
+
+**Para MLS, no, y no es culpa nuestra.** Los eventos de MLS en Cloudbet publican 31 mercados y **ninguno es
+de tarjetas ni de córners** — las claves `soccer.total_corners` y `soccer.total_bookings` no existen en su
+esqueleto. Por liga, comprobado partido a partido: Championship tiene córners **y** tarjetas; Brasil B tiene
+córners; Brasileirão A, Argentina y MLS no tienen ninguno de los dos. De las 70 señales de tarjetas de la
+ventana, Cloudbet solo podría tomar las 10 de Championship.
+
+Y las señales de MLS que se sellaron como no ejecutables lo dicen con nombres: las cotizaban **DraftKings,
+BetRivers, MyBookie y LeoVegas**. Ninguna tiene API pública de apuestas. Ese mercado, hoy, no tiene vía
+automática.
+
+**Pero la medición encontró algo más grande.** El colector de Cloudbet estaba leyendo **19 de 854** partidos
+disponibles, con dos defectos encadenados:
+
+1. **El tope de 200 se aplicaba DURANTE la recogida, no después de ordenar.** Cloudbet publica el esqueleto
+   del mercado días antes con todas las selecciones en `SELECTION_DISABLED` y precio 0: existe la línea, no
+   existe el precio. El presupuesto se gastaba en esos esqueletos —181 de 200 en la primera medición— y los
+   partidos de esa misma tarde, que sí tenían precio, se quedaban fuera. Ahora se recogen todos los
+   identificadores, se ordenan por hora de inicio y el tope se aplica al final. **19 → 34 partidos útiles**,
+   30 con 1X2 y 28 con goles donde antes había 3 y 3.
+2. **Dos `catch` mudos** hacían indistinguible "la casa no cubre el mercado" de "el colector falló". Son dos
+   problemas con respuestas opuestas —escribir código o abrir una cuenta— y el silencio los mezclaba. Ahora
+   se cuentan competiciones fallidas, detalles fallidos, sin-precio y sin-familia-útil por separado.
+
+**Y hay inventario que estamos tirando.** En los partidos que el colector descarta, Cloudbet **sí** cotiza
+14-25 mercados que no leemos: hándicap asiático, doble oportunidad, empate no válido, ambos marcan, marcador
+exacto, totales por mitad, totales de equipo. Leerlos es el mayor desbloqueo de ejecución automática
+disponible sin cuenta nueva — pero son familias nuevas y tienen que pasar por la sombra y el tablero antes
+de valer nada.
+
+**La sombra separa capacidad de ejecución.** El 52,4 % mezclaba las señales que no pudimos tomar con las que
+no existían en ninguna casa conectable. Separadas: 23 de 39 no ejecutadas son `solo_casas_no_conectables`
+(18 de MLS), y **la ejecución real sobre lo tomable es 72,9 %**. La diferencia entre los dos números es
+cobertura de mercado, no ejecución, y no se arregla con código. Sonda: `/api/internal/cloudbet-probe?key=`
+(`raw`, `struct`, `why`, `liga`).
+
 # HANDOFF — estado al 20-ago-2026 (props reparadas, tablero de familias en pie)
 
 ## 🎯 20-ago (tarde) — el instrumento que faltaba

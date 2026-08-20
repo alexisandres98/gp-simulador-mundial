@@ -70,6 +70,9 @@ const RULE = {
   edge_cap: 0.20,
   note: 'listón de entrada 10 pp sobre el precio, veto por encima de 20 pp. Congelado: no se toca mientras se acumula muestra. v1 (6 pp, del 17-ago) queda anulada junto con sus liquidaciones, que salieron de una base rota.',
 };
+// versión del LIQUIDADOR (distinta de la versión de la regla: una dice cómo se decide entrar, la otra cómo
+// se decide el resultado). Al subirla, `reopenLegacySettled` rehace todo lo liquidado con versiones viejas.
+const SETTLE_VERSION = 'v3';
 const EDGE_MIN = RULE.edge_min;
 const EDGE_CAP = RULE.edge_cap;
 const MODELED = new Set(['kills_on_maps_1_2', 'headshots_on_maps_1_2']);
@@ -405,7 +408,11 @@ function settleShadow() {
       pk.maps_counted = 2;
       pk.maps_in_window = cand.length;
       pk.settle_basis = 'scoreboard propio · ' + motivo + ' · mapas 1 y 2 por número';
-      pk.settle_version = 'v2';
+      // LAS DOS FILAS QUE SE SUMARON, ESCRITAS EN LA PICK. El comentario prometía auditabilidad y solo
+      // guardaba una frase; una suma de 56 kills en dos mapas hay que poder comprobarla sin adivinar.
+      pk.settle_rows = dos.map((r) => ({ at: r.ts || r.at, mid: r.mid != null ? r.mid : null,
+        num: r.num != null ? r.num : null, map: r.map, vs: r.vs, k: r.k, hs: r.hs }));
+      pk.settle_version = SETTLE_VERSION;
       pk.status = win ? 'WIN' : 'LOSS';
       pk.settled_at = new Date().toISOString();
       settled++;
@@ -414,7 +421,7 @@ function settleShadow() {
       pk.status = 'VOID';
       pk.void_why = motivo || (cand.length ? 'la bitácora no trae la stat de esa serie' : 'la serie no aparece en el log propio');
       pk.maps_in_window = cand.length;
-      pk.settle_version = 'v2';
+      pk.settle_version = SETTLE_VERSION;
       pk.settled_at = new Date().toISOString();
       voided++;
     }
@@ -431,12 +438,12 @@ function reopenLegacySettled() {
   const st = rd();
   let n = 0;
   for (const pk of Object.values(st.picks || {})) {
-    if (pk.settle_version === 'v2') continue;
+    if (pk.settle_version === SETTLE_VERSION) continue;
     if (pk.status !== 'WIN' && pk.status !== 'LOSS' && pk.status !== 'VOID') continue;
     pk.status = 'ACTIVE';
     pk.reopened_at = new Date().toISOString();
-    pk.reopened_why = 'liquidada con la base v1 (montón de la ventana, orden no cronológico): se rehace';
-    delete pk.actual; delete pk.maps_counted; delete pk.settled_at; delete pk.void_why;
+    pk.reopened_why = `liquidada con el liquidador ${pk.settle_version || 'v1'}: se rehace con ${SETTLE_VERSION}`;
+    delete pk.actual; delete pk.maps_counted; delete pk.settled_at; delete pk.void_why; delete pk.settle_rows;
     n++;
   }
   if (n) { st.at = new Date().toISOString(); wr(st); }

@@ -1,3 +1,52 @@
+# HANDOFF — estado al 20-ago-2026 (cinco familias nuevas encendidas en sombra)
+
+## 🎯 20-ago (noche) — el inventario que estábamos tirando, encendido
+
+Medir Cloudbet dejó a la vista que en los partidos que el colector descartaba la casa cotizaba entre 14 y
+25 mercados. **Cinco de ellos los sabe valorar el motor de goles sin medir nada nuevo**, porque salen de la
+misma matriz de marcador que ya calcula: doble oportunidad, empate no válido, hándicap asiático de goles,
+totales de equipo y ambos-marcan. Encendidas las cinco, en sombra.
+
+**Motor** (`goal-engine/markets.js` + `settlement.js`). La regla que gobierna las tres nuevas: donde el
+mercado DEVUELVE (empate en el empate-no-válido, línea entera en el hándicap) la probabilidad que se compara
+contra el precio es la CONDICIONAL. Comparar una bruta contra un precio que devuelve le regala al mercado la
+masa entera del empate, que en fútbol es una cuarta parte del partido. El hándicap trata sus tres tipos de
+línea por separado: media sin devolución, entera con push, y cuarto partido en dos mitades sobre las líneas
+vecinas. Comprobado: los pares complementarios suman exactamente 1, hándicap 0 = empate no válido,
+−0,5 = ganar, +0,5 = doble oportunidad; y 21 casos de liquidación, cuartos y devoluciones incluidos.
+
+**Ingesta.** La convención del hándicap se COMPROBÓ contra la casa antes de escribir el código: `handicap=X`
+es la línea del LOCAL y el visitante es su espejo. Verificado en un partido con favorito visitante — con
+−0,5 el local paga 2,70 y el visitante 1,32; con +0,5 se invierte a 1,45 y 2,30. De haberla supuesto se
+habría invertido cada línea del visitante en silencio. La orientación se gira cuando el local de la casa es
+nuestro visitante.
+
+**Sombra aparte** (`futbol-derivadas.js`, almacén propio en disco). No toca `db.clubDailyPicks` ni `curate`:
+es la única forma de encender cinco familias de golpe sin arriesgar el feed que ven los usuarios. Regla
+congelada `derivadas_v1`: 3 pp contra el precio sin vig, veto por encima de 15. Trabajo cada 20 min
+(registro + cierres + liquidación). Ruta `/api/internal/futbol-derivadas?key=` (`?run=1` fuerza pasada).
+Entra al tablero de familias como deporte `futbol-deriv`.
+
+**Fuera a propósito:** los mercados por MITADES. Repartir el gol entre los dos tiempos es una suposición sin
+medir, y una familia sin estructura medida no se apuesta.
+
+**Dos bugs que salieron por el camino y valían más que la función:**
+
+1. **El valorador solo miraba la lista corta de mercados.** Los totales asiáticos, el margen, los combos y
+   estas cinco viven en la lista extendida. Sin el repliegue, cualquier cuota de esas familias entraba y
+   salía como `unknown_market`: ingerida, jamás valorada.
+2. **Las tres dobles oportunidades iban a la misma casilla.** La clave única de la tabla incluye `side`, y
+   se escribían sin él: colisionaban y quedaba UNA fila por partido con el `market_id` de la última y el
+   precio de esa misma. El valorador habría comparado la probabilidad de local-o-empate contra el precio de
+   empate-o-visitante sin que nada chirriara. Salió a la luz al mover el contador por familia DESPUÉS del
+   upsert — contar intentos y llamarlos cuotas escritas es cómo un fallo silencioso se disfraza de cobertura.
+
+**Estado en vivo:** barrido de Cloudbet 74 eventos, 21 casados, 110 cuotas (48 tarjetas, 24 doble
+oportunidad, 16 empate no válido, 16 ambos-marcan, 6 córners). Registro: 60 mercados valorados, **8 tesis
+abiertas** (4 empate no válido, 4 doble oportunidad) en Championship y Brasileirão, 50 bajo listón, 2
+vetadas por ventaja no creíble. Hándicap asiático y totales de equipo aún sin precio: Cloudbet los publica
+pero los cotiza más cerca del saque — el parser está probado contra un evento sintético y entrarán solos.
+
 # HANDOFF — estado al 20-ago-2026 (Cloudbet medido en la fuente)
 
 ## 🎯 20-ago (noche) — ¿se puede ejecutar sin cuenta nueva? Medido, no supuesto

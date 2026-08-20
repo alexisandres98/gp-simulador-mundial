@@ -17491,6 +17491,51 @@ const server = http.createServer(async (req, res) => {
       const run = url.searchParams.get('run') === '1' ? await derivadasJob({ force: true }) : (_derivOut || null);
       return json(res, 200, { pasada: run, track: D.track() });
     }
+    // ── PROFUNDIDAD REAL POR FAMILIA (20-ago) ──────────────────────────────────────────────────────────
+    // Para proyectar cuánto rinde un bankroll no basta la ventaja: hace falta saber CUÁNTO ACEPTA la casa a
+    // ese precio. Cloudbet publica `maxStake` por selección y lo venimos guardando; esto lo resume por
+    // familia y por liga en vez de dejarlo enterrado en la tabla. Sin este número, cualquier proyección de
+    // beneficio es una multiplicación con un factor inventado.
+    if (p === '/api/internal/depth') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const dbc = require('./database/client');
+      const out = { at: new Date().toISOString() };
+      if (dbc.isConfigured()) {
+        const q = await dbc.query(
+          `SELECT market_family, sportsbook_code, count(*)::int n,
+                  count(max_stake)::int con_tope,
+                  min(max_stake)::float mn, max(max_stake)::float mx,
+                  percentile_disc(0.25) within group (order by max_stake)::float p25,
+                  percentile_disc(0.5)  within group (order by max_stake)::float p50,
+                  percentile_disc(0.75) within group (order by max_stake)::float p75
+             FROM sportsbook_goal_quote_current
+            WHERE observed_at > now() - interval '48 hours' AND coalesce(quote_status,'open') = 'open'
+            GROUP BY 1,2 ORDER BY 1,2`).catch((e) => ({ rows: [], error: e.message }));
+        out.futbol = q.rows || [];
+        if (q.error) out.futbol_error = q.error;
+      } else out.futbol_error = 'db_off';
+      // esports: el tope viaja en cada pick (max_stake de la casa) — es la misma pregunta en el otro deporte
+      try {
+        const ES = require('./esports-engine/store');
+        const porFam = {};
+        for (const g of ES.GAME_ORDER) {
+          const t = ES.track(g, { limit: 400 });
+          for (const p2 of (t.open || []).concat(t.recent || [])) {
+            const k = g + '·' + p2.family;
+            const e = porFam[k] = porFam[k] || { n: 0, con_tope: 0, topes: [] };
+            e.n++;
+            if (Number(p2.max_stake) > 0) { e.con_tope++; e.topes.push(Number(p2.max_stake)); }
+          }
+        }
+        out.esports = Object.fromEntries(Object.entries(porFam).map(([k, e]) => {
+          const t2 = e.topes.sort((a, b) => a - b);
+          const q2 = (f) => (t2.length ? t2[Math.floor(f * (t2.length - 1))] : null);
+          return [k, { n: e.n, con_tope: e.con_tope, mn: t2[0] ?? null, p25: q2(0.25), p50: q2(0.5), p75: q2(0.75), mx: t2[t2.length - 1] ?? null }];
+        }));
+      } catch (e) { out.esports_error = e.message; }
+      return json(res, 200, out);
+    }
     // ── EL TABLERO DE FAMILIAS (20-ago) ────────────────────────────────────────────────────────────────
     // Ocho deportes miden su rendimiento en ocho pantallas distintas y ninguna contesta la pregunta del
     // negocio: en qué familias hay ventaja, en cuáles no, y cuánto falta para saberlo. Esto la contesta con

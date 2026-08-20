@@ -17109,6 +17109,10 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const F1 = require('./f1-engine/store');
+      // `?track=1` devuelve el registro en sombra por familia. La sonda enseñaba el estado del modelo y la
+      // cobertura de cuotas, pero no lo único que contesta "¿esta familia bate al cierre?" — y esa es la
+      // pregunta que se hace cada semana. Sin sesión no había forma de verlo.
+      if (url.searchParams.get('track') === '1') return json(res, 200, F1.takeTrack());
       return json(res, 200, await F1.modelSnapshot().catch((e) => ({ error: e.message })));
     }
     // sonda de TENIS: el estado completo del 7º deporte sin sesión (modelo, cuotas, sombra, disco)

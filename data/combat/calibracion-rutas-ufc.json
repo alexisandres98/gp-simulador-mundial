@@ -1,0 +1,267 @@
+{
+ "at": "2026-08-20T18:44:56.956Z",
+ "liga": "ufc",
+ "sims": 1200,
+ "ventana": "2016-2026",
+ "temperatura": {
+  "a": 0.0985,
+  "b": -0.0072,
+  "measured": true,
+  "validacion": {
+   "n": 3278,
+   "años_evaluados": 9,
+   "años_con_mejora": 9,
+   "brier_sin": 0.28812,
+   "brier_con": 0.24693,
+   "mejora_pct": 14.3,
+   "mejora": true
+  },
+  "por_año": [
+   {
+    "año": 2018,
+    "n": 328,
+    "a": 0.0554,
+    "b": 0.0379,
+    "brier_sin": 0.2955,
+    "brier_con": 0.2462
+   },
+   {
+    "año": 2019,
+    "n": 346,
+    "a": 0.0761,
+    "b": 0.0811,
+    "brier_sin": 0.2971,
+    "brier_con": 0.2493
+   },
+   {
+    "año": 2020,
+    "n": 321,
+    "a": 0.0707,
+    "b": 0.0415,
+    "brier_sin": 0.2905,
+    "brier_con": 0.2474
+   },
+   {
+    "año": 2021,
+    "n": 389,
+    "a": 0.0744,
+    "b": 0.006,
+    "brier_sin": 0.298,
+    "brier_con": 0.2481
+   },
+   {
+    "año": 2022,
+    "n": 423,
+    "a": 0.0747,
+    "b": -0.0061,
+    "brier_sin": 0.2957,
+    "brier_con": 0.2476
+   },
+   {
+    "año": 2023,
+    "n": 380,
+    "a": 0.0797,
+    "b": 0.0141,
+    "brier_sin": 0.2547,
+    "brier_con": 0.2428
+   },
+   {
+    "año": 2024,
+    "n": 421,
+    "a": 0.0959,
+    "b": 0.0327,
+    "brier_sin": 0.2915,
+    "brier_con": 0.2483
+   },
+   {
+    "año": 2025,
+    "n": 431,
+    "a": 0.0938,
+    "b": -0.0072,
+    "brier_sin": 0.2863,
+    "brier_con": 0.2467
+   },
+   {
+    "año": 2026,
+    "n": 239,
+    "a": 0.0958,
+    "b": -0.0128,
+    "brier_sin": 0.2826,
+    "brier_con": 0.2453
+   }
+  ],
+  "curva_calibrada": [
+   {
+    "decil": 1,
+    "n": 388,
+    "predicho": 0.373,
+    "real": 0.423
+   },
+   {
+    "decil": 2,
+    "n": 389,
+    "predicho": 0.453,
+    "real": 0.396
+   },
+   {
+    "decil": 3,
+    "n": 388,
+    "predicho": 0.471,
+    "real": 0.405
+   },
+   {
+    "decil": 4,
+    "n": 389,
+    "predicho": 0.481,
+    "real": 0.483
+   },
+   {
+    "decil": 5,
+    "n": 389,
+    "predicho": 0.489,
+    "real": 0.483
+   },
+   {
+    "decil": 6,
+    "n": 388,
+    "predicho": 0.498,
+    "real": 0.446
+   },
+   {
+    "decil": 7,
+    "n": 389,
+    "predicho": 0.508,
+    "real": 0.535
+   },
+   {
+    "decil": 8,
+    "n": 388,
+    "predicho": 0.519,
+    "real": 0.536
+   },
+   {
+    "decil": 9,
+    "n": 389,
+    "predicho": 0.536,
+    "real": 0.584
+   },
+   {
+    "decil": 10,
+    "n": 389,
+    "predicho": 0.577,
+    "real": 0.614
+   }
+  ],
+  "nota": "logit(p_calibrada) = a·logit(p_cruda) + b sobre la probabilidad de que la pelea TERMINE antes del límite. a<1 encoge el exceso de confianza del simulador."
+ },
+ "n": 3886,
+ "predicho": 0.47,
+ "real": 0.49,
+ "sesgo_pp": -2.001,
+ "brier": 0.29247,
+ "por_decil": [
+  {
+   "decil": 1,
+   "n": 388,
+   "predicho": 0.024,
+   "real": 0.423
+  },
+  {
+   "decil": 2,
+   "n": 389,
+   "predicho": 0.141,
+   "real": 0.396
+  },
+  {
+   "decil": 3,
+   "n": 388,
+   "predicho": 0.248,
+   "real": 0.405
+  },
+  {
+   "decil": 4,
+   "n": 389,
+   "predicho": 0.332,
+   "real": 0.483
+  },
+  {
+   "decil": 5,
+   "n": 389,
+   "predicho": 0.406,
+   "real": 0.483
+  },
+  {
+   "decil": 6,
+   "n": 388,
+   "predicho": 0.498,
+   "real": 0.446
+  },
+  {
+   "decil": 7,
+   "n": 389,
+   "predicho": 0.596,
+   "real": 0.535
+  },
+  {
+   "decil": 8,
+   "n": 388,
+   "predicho": 0.7,
+   "real": 0.536
+  },
+  {
+   "decil": 9,
+   "n": 389,
+   "predicho": 0.819,
+   "real": 0.584
+  },
+  {
+   "decil": 10,
+   "n": 389,
+   "predicho": 0.941,
+   "real": 0.614
+  }
+ ],
+ "por_tramo": [
+  {
+   "tramo": "muy bajo",
+   "n": 499,
+   "predicho": 0.25,
+   "real": 0.331,
+   "sesgo_pp": -8.051,
+   "z": 3.823
+  },
+  {
+   "tramo": "bajo",
+   "n": 1908,
+   "predicho": 0.442,
+   "real": 0.443,
+   "sesgo_pp": -0.13,
+   "z": 0.114
+  },
+  {
+   "tramo": "medio",
+   "n": 1182,
+   "predicho": 0.618,
+   "real": 0.616,
+   "sesgo_pp": 0.177,
+   "z": -0.125
+  },
+  {
+   "tramo": "alto",
+   "n": 91,
+   "predicho": 0.604,
+   "real": 0.681,
+   "sesgo_pp": -7.69,
+   "z": 1.574
+  },
+  {
+   "tramo": "sin dato",
+   "n": 206,
+   "predicho": 0.363,
+   "real": 0.51,
+   "sesgo_pp": -14.663,
+   "z": 4.21
+  }
+ ],
+ "nota": "Perfiles reconstruidos año a año SOLO con peleas anteriores (walk-forward nativo). El sesgo es predicho − real sobre \"termina antes del límite\": positivo = el simulador ve más finalizaciones de las que hay."
+}

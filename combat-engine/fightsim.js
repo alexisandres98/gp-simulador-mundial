@@ -29,6 +29,7 @@ const SY = require('./style');
 
 const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
+const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -113,6 +114,63 @@ function solveTilt(pa, pb, M, H, target, opts) {
   return (lo + hi) / 2;
 }
 
+// ---- CALIBRACIÓN DE LA DURACIÓN (20-ago) ----------------------------------------------------------------
+// EL HALLAZGO QUE ESTO ARREGLA. Se simularon 3.886 peleas de 2016 a 2026 reconstruyendo los perfiles año a
+// año solo con el pasado, y se comparó la probabilidad de "termina antes del límite" contra lo que pasó:
+//
+//     decil  1   predicho  2,4 %   ·  real 42,3 %
+//     decil 10   predicho 94,1 %   ·  real 61,4 %
+//
+// El simulador abre su escala de 2 % a 94 % cuando la realidad solo se abre de 42 % a 61 %. No es que no
+// sepa —la tasa real sube de forma monótona del decil 1 al 10, así que hay señal— es que se pasa de listo
+// por un orden de magnitud. Y el Brier crudo (0,288) era PEOR que decir siempre 49 % (0,250): una
+// probabilidad informada y mal calibrada puede rendir menos que no opinar.
+//
+// EL ARREGLO ES EL CANÓNICO: temperatura sobre el logit, logit(p') = a·logit(p) + b, con a=0,0985. Validado
+// walk-forward: Brier 0,28812 → 0,24693, **−14,3 %, mejorando en 9 de 9 años**.
+//
+// CÓMO SE APLICA SIN ROMPER EL RESTO. Recalibrar solo el número publicado dejaría el método, el asalto y la
+// duración contando otra historia. Así que la corrección se hace DONDE VIVE EL ERROR: se busca por bisección
+// el multiplicador de los peligros que hace que la finalización simulada coincida con la calibrada. Es el
+// mismo truco que `solveTilt` usa para anclar el ganador, y mantiene coherentes método, asalto y tarjetas.
+let _cal = { at: 0, data: null };
+function calibracionRutas() {
+  if (_cal.data !== null && Date.now() - _cal.at < 10 * 60e3) return _cal.data;
+  let d = null;
+  try {
+    const fs = require('fs'), path = require('path');
+    const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'combat', 'calibracion-rutas-ufc.json'), 'utf8'));
+    d = j && j.temperatura && j.temperatura.measured ? j.temperatura : null;
+  } catch { d = null; }
+  _cal = { at: Date.now(), data: d };
+  return d;
+}
+const _lg = (p) => { const q = Math.min(0.999, Math.max(0.001, p)); return Math.log(q / (1 - q)); };
+const _sg = (z) => 1 / (1 + Math.exp(-z));
+// PISO DE PELIGRO. Multiplicar cero por lo que sea sigue siendo cero: hay cruces cuyos perfiles no dan ni
+// poder ni amenaza de sumisión y el simulador les asigna 0,0 % de finalización. Ninguna pelea real tiene
+// cero. La calibración lo dice sin ambages —el decil más bajo predice 2,4 % y termina el 42,3 %— así que lo
+// que falta no es un multiplicador más grande, es un peligro irreducible que no dependa del perfil. Se pone
+// pequeño y el multiplicador se encarga del nivel; su único trabajo es que la escala pueda moverse.
+const PISO = 0.004;
+const conPiso = (H, m) => ({ ...H,
+  ko_a: (H.ko_a + PISO) * m, ko_b: (H.ko_b + PISO) * m,
+  sub_a: (H.sub_a + PISO) * m, sub_b: (H.sub_b + PISO) * m });
+
+// multiplicador de peligros que lleva la finalización simulada al objetivo calibrado
+function solveFinish(pa, pb, M, H, target, opts) {
+  let lo = Math.log(0.12), hi = Math.log(9);
+  const escala = (m) => conPiso(H, m);
+  for (let i = 0; i < 11; i++) {
+    const mid = (lo + hi) / 2;
+    const r = core(pa, pb, M, escala(Math.exp(mid)), { ...opts, n: 900, seed: 733 });
+    const pFin = r.distance ? (r.distance.finish_prob != null ? r.distance.finish_prob : 1 - r.distance.prob) : null;
+    if (pFin == null) return 1;
+    if (pFin < target) lo = mid; else hi = mid;
+  }
+  return Math.exp((lo + hi) / 2);
+}
+
 // ---- CONTEXTO DE LA PELEA (20-ago): árbitro y báscula, SI Y SOLO SI están medidos --------------------
 // El enchufe existe; hoy no hace nada, y eso es un resultado, no un olvido. Se midió el efecto del ÁRBITRO
 // sobre la tasa de finalización contra lo esperado de cada pelea (división × asaltos × lustro) sobre 8.937
@@ -156,17 +214,36 @@ function factorContexto({ referee = null, pesoFallado = null } = {}) {
 
 function simulate(pa, pb, {
   rounds = 3, roundMin = 5, n = 20000, seed = 17, mu = null, sa = null, sb = null,
-  cardioA = 0.5, cardioB = 0.5, priorA = null, referee = null, pesoFallado = null,
+  cardioA = 0.5, cardioB = 0.5, priorA = null, referee = null, pesoFallado = null, calibrar = true,
 } = {}) {
   const M = mu || SY.matchup(pa, pb, sa, sb);
   if (!M) return null;
   const H0 = hazards(pa, pb, M);
   const ctx = factorContexto({ referee, pesoFallado });
-  const H = H0 && ctx.factor !== 1
+  let H = H0 && ctx.factor !== 1
     ? { ...H0, ko_a: H0.ko_a * ctx.factor, ko_b: H0.ko_b * ctx.factor, sub_a: H0.sub_a * ctx.factor, sub_b: H0.sub_b * ctx.factor }
     : H0;
   if (!H) return null;
   const base = { rounds, roundMin, cardioA, cardioB };
+  // CALIBRACIÓN DE LA DURACIÓN, antes de nada más: se mide la finalización cruda, se pasa por la
+  // temperatura y se reescalan los peligros para que el simulador diga lo que la validación dice que debe
+  // decir. Todo lo que venga después —el anclaje del ganador incluido— corre ya sobre los peligros buenos.
+  let cal = null;
+  const T = calibrar === false ? null : calibracionRutas();
+  if (T) {
+    const crudo = core(pa, pb, M, H, { ...base, n: 900, seed: 733 });
+    const pCrudo = crudo.distance ? (crudo.distance.finish_prob != null ? crudo.distance.finish_prob : 1 - crudo.distance.prob) : null;
+    if (pCrudo == null) { cal = { aplicada: false, nota: 'el simulador no devolvió duración' }; }
+    const pCal = pCrudo == null ? null : _sg(T.a * _lg(pCrudo) + T.b);
+    const m = pCal == null ? 1 : solveFinish(pa, pb, M, H, pCal, base);
+    if (pCal != null) H = conPiso(H, m);
+    if (pCal != null) cal = { aplicada: true, p_finish_cruda: r4(pCrudo), p_finish_calibrada: r4(pCal), multiplicador: r3(m),
+      a: T.a, b: T.b, tope_alcanzado: m <= 0.121 || m >= 8.9,
+      validacion: T.validacion || null,
+      nota: 'el simulador crudo abre su escala de 2 % a 94 % cuando la realidad se abre de 42 % a 61 %; la temperatura la encoge y el multiplicador la traslada a los peligros para que método, asalto y duración sigan contando la misma historia.' };
+  } else {
+    cal = { aplicada: false, nota: 'sin calibración medida en disco: el simulador corre crudo y su probabilidad de duración está sin corregir.' };
+  }
   // si llega una probabilidad de habilidad (Elo), se ancla a ella; si no, se corre sin anclar y se avisa
   const tilt = (priorA != null && priorA > 0.02 && priorA < 0.98) ? solveTilt(pa, pb, M, H, priorA, base) : 0;
   const out = core(pa, pb, M, H, { ...base, n, seed, tilt });
@@ -178,6 +255,7 @@ function simulate(pa, pb, {
   out.matchup = M;
   // el contexto viaja SIEMPRE, aunque no aplique: que el factor sea 1 y `measured:false` es información
   out.contexto = ctx;
+  out.calibracion = cal;
   out.uncertainty = uncertainty(out, pa, pb, M);
   return out;
 }
@@ -325,4 +403,4 @@ function uncertainty(out, pa, pb, M) {
   };
 }
 
-module.exports = { simulate, core, solveTilt, hazards, roundEdge, uncertainty, rng, gauss, factorContexto, priorsOficiales };
+module.exports = { simulate, core, solveTilt, solveFinish, hazards, roundEdge, uncertainty, rng, gauss, factorContexto, priorsOficiales, calibracionRutas };

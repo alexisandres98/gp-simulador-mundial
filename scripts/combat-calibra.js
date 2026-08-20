@@ -145,8 +145,62 @@ const media = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null)
     console.log(`   ${rr} asaltos n=${String(g.length).padStart(4)} predicho ${(100 * media(g.map((x) => x.p_fin))).toFixed(1)} % · real ${(100 * media(g.map((x) => x.real))).toFixed(1)} %`);
   }
 
+  // ── EL ARREGLO: TEMPERATURA SOBRE EL LOGIT ─────────────────────────────────────────────────────────────
+  // La curva de arriba no dice "el modelo no sabe": dice que sabe y que se pasa de listo. La tasa real sube
+  // de forma monótona del decil 1 al 10 (42 % → 61 %), así que hay señal; lo que está roto es la ESCALA, que
+  // se abre de 2 % a 94 % cuando la realidad solo se abre de 42 % a 61 %.
+  //
+  // El arreglo canónico de eso es una temperatura: logit(p') = a·logit(p) + b, con `a` < 1 encogiendo el
+  // exceso de confianza. Un solo parámetro (más el intercepto) y se ajusta por descenso simple. Se valida
+  // año a año como todo lo demás: se fitea con lo anterior y se mide en el año siguiente.
+  const lg = (p) => Math.log(Math.min(0.999, Math.max(0.001, p)) / (1 - Math.min(0.999, Math.max(0.001, p))));
+  const sg = (z) => 1 / (1 + Math.exp(-z));
+  function fitTemp(rows) {
+    let a = 0.5, b = 0;
+    for (let it = 0; it < 4000; it++) {
+      let ga = 0, gb = 0;
+      for (const r of rows) { const x = lg(r.p_fin), p = sg(a * x + b), e = p - r.real; ga += e * x; gb += e; }
+      a -= 0.5 * ga / rows.length; b -= 0.5 * gb / rows.length;
+    }
+    return { a: +a.toFixed(4), b: +b.toFixed(4) };
+  }
+  const años = [...new Set(filas.map((r) => r.año))].sort();
+  let bSin = 0, bCon = 0, nV = 0, mejores = 0;
+  const porAño = [];
+  for (const y of años) {
+    const pas = filas.filter((r) => r.año < y), tst = filas.filter((r) => r.año === y);
+    if (pas.length < 600 || !tst.length) continue;
+    const t = fitTemp(pas);
+    let s0 = 0, s1 = 0;
+    for (const r of tst) { const p1 = sg(t.a * lg(r.p_fin) + t.b); s0 += (r.p_fin - r.real) ** 2; s1 += (p1 - r.real) ** 2; }
+    bSin += s0; bCon += s1; nV += tst.length; if (s1 < s0) mejores++;
+    porAño.push({ año: y, n: tst.length, a: t.a, b: t.b, brier_sin: +(s0 / tst.length).toFixed(4), brier_con: +(s1 / tst.length).toFixed(4) });
+  }
+  const temp = fitTemp(filas);
+  const val = nV ? {
+    n: nV, años_evaluados: porAño.length, años_con_mejora: mejores,
+    brier_sin: +(bSin / nV).toFixed(5), brier_con: +(bCon / nV).toFixed(5),
+    mejora_pct: +(100 * (bSin - bCon) / bSin).toFixed(2),
+    mejora: bCon < bSin && mejores > porAño.length / 2,
+  } : { n: 0, mejora: false };
+  console.log('');
+  console.log(`TEMPERATURA AJUSTADA: a=${temp.a} b=${temp.b}  (a<1 = el simulador se pasa de confiado)`);
+  console.log(`   validación walk-forward: Brier ${val.brier_sin} → ${val.brier_con} (${val.mejora_pct} %) · mejora en ${val.años_con_mejora}/${val.años_evaluados} años · ${val.mejora ? 'PASA' : 'NO PASA'}`);
+  const calDec = [];
+  {
+    const cal = filas.map((r) => ({ p: sg(temp.a * lg(r.p_fin) + temp.b), real: r.real })).sort((x, y) => x.p - y.p);
+    for (let i = 0; i < 10; i++) {
+      const g = cal.slice(Math.floor(i * cal.length / 10), Math.floor((i + 1) * cal.length / 10));
+      calDec.push({ decil: i + 1, n: g.length, predicho: r3(media(g.map((x) => x.p))), real: r3(media(g.map((x) => x.real))) });
+    }
+    console.log('   curva YA CALIBRADA:');
+    for (const d of calDec) console.log(`      decil ${String(d.decil).padStart(2)} predicho ${(100 * d.predicho).toFixed(1)} % · real ${(100 * d.real).toFixed(1)} % · sesgo ${((d.predicho - d.real) * 100).toFixed(1).padStart(6)} pp`);
+  }
+
   const out = {
     at: new Date().toISOString(), liga, sims: SIMS, ventana: `${DESDE}-${HASTA}`,
+    temperatura: { ...temp, measured: val.mejora, validacion: val, por_año: porAño, curva_calibrada: calDec,
+      nota: 'logit(p_calibrada) = a·logit(p_cruda) + b sobre la probabilidad de que la pelea TERMINE antes del límite. a<1 encoge el exceso de confianza del simulador.' },
     n: filas.length, predicho: r3(pred), real: r3(real), sesgo_pp: r3(100 * (pred - real)), brier: +brier.toFixed(5),
     por_decil: porDecil, por_tramo: porTramo,
     nota: 'Perfiles reconstruidos año a año SOLO con peleas anteriores (walk-forward nativo). El sesgo es predicho − real sobre "termina antes del límite": positivo = el simulador ve más finalizaciones de las que hay.',

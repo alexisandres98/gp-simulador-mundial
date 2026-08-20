@@ -52,8 +52,26 @@ const BOARD_TTL = 10 * 60e3;
 const SHRINK_ROUNDS = 250;
 const MIN_RECENT_MAPS = 6;
 const MIN_ROUNDS = 500;
-const EDGE_MIN = 0.06;       // 6 pp sobre el listón del precio para entrar a la sombra
-const EDGE_CAP = 0.20;       // por encima, veto `ventaja_no_creible`
+// ── LA REGLA, CONGELADA (20-ago) ─────────────────────────────────────────────────────────────────────────
+// Mismo criterio que `cards_under_v1` en el ejecutor de la casa: la regla se escribe, se fecha y NO se
+// vuelve a tocar mientras se acumula la muestra. Cambiarla a mitad de la ventana destruye lo único que la
+// ventana produce, que es una muestra comparable.
+//
+// v1 entraba desde 6 pp. Era demasiado bajo para esta familia y por dos razones distintas: Underdog es un
+// libro DFS que cobra por pierna a −112 (listón 52,83 %), así que 6 pp de ventaja bruta dejan muy poco
+// después del listón; y la proyección de kills a dos mapas tiene una dispersión propia grande (sigma de 5
+// a 10 kills), de modo que a 6 pp la mitad de lo que entra es ruido con nombre. v2 sube a 10 pp y ahí se
+// queda. Cada tesis anotada guarda con qué versión y con qué listón nació, para poder comparar después
+// sin depender de la memoria.
+const RULE = {
+  version: 'props_cs2_v2',
+  frozen_at: '2026-08-20',
+  edge_min: 0.10,
+  edge_cap: 0.20,
+  note: 'listón de entrada 10 pp sobre el precio, veto por encima de 20 pp. Congelado: no se toca mientras se acumula muestra. v1 (6 pp, del 17-ago) queda anulada junto con sus liquidaciones, que salieron de una base rota.',
+};
+const EDGE_MIN = RULE.edge_min;
+const EDGE_CAP = RULE.edge_cap;
 const MODELED = new Set(['kills_on_maps_1_2', 'headshots_on_maps_1_2']);
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -226,7 +244,7 @@ async function board({ force = false } = {}) {
       lineas: 'Underdog (libro blando DFS), endpoint público, precio por pierna cuando lo publica.',
       proyeccion: `kpr encogido (ancla poblacional ${base.popKpr.toFixed(3)}, K=${SHRINK_ROUNDS} rondas) × ${(base.expRounds * 2).toFixed(1)} rondas esperadas en 2 mapas (media reciente medida del pool propio). Dispersión: sd de sus últimos 12 mapas × √2 con suelo poissoniano ×1,15. Headshots: la de kills × proporción de headshot encogida.`,
       ajuste_rival: `medido desde la base propia: media de dpr del cinco rival contra la poblacional (${base.popDpr.toFixed(3)}), exigiendo ≥3 jugadores medidos y recortado a ±12 % porque el resolvedor puede confundir filiales.`,
-      listones: `sombra desde ${EDGE_MIN * 100} pp sobre el listón del precio; veto por encima de ${EDGE_CAP * 100} pp.`,
+      listones: `regla ${RULE.version} (congelada el ${RULE.frozen_at}): sombra desde ${(EDGE_MIN * 100).toFixed(0)} pp sobre el listón del precio; veto por encima de ${(EDGE_CAP * 100).toFixed(0)} pp.`,
       doctrina: 'familia EN SOMBRA: se anota y se liquida sola, no se publica como pick. Separada por completo del ejecutor en la sombra de la casa.',
     },
   };
@@ -267,6 +285,7 @@ function recordShadow(bd) {
         mu: r.proj.mu, sigma: r.proj.sigma,
         start_at: r.match.start_at, match_title: (r.match || {}).title || null,
         recorded_at: new Date().toISOString(), status: 'ACTIVE',
+        rule_version: RULE.version, rule_edge_min: RULE.edge_min,
       };
       added++;
     }
@@ -305,11 +324,18 @@ function updateCloses(bd, st) {
   return changed;
 }
 
-// Liquidación desde la base PROPIA: los últimos 12 mapas de cada jugador traen (fecha, rival, kills) del
-// scoreboard real. Para "mapas 1-2" se toman los DOS PRIMEROS mapas de esa serie; el log viene del más
-// reciente al más antiguo, así que dentro de una serie los mapas 1-2 son las ÚLTIMAS filas del grupo.
-// Con series de 2 filas el orden ni siquiera importa (se suman ambas). La base de la liquidación queda
-// escrita en cada pick (`settle_basis`) para poder auditarla.
+// LIQUIDACIÓN DESDE LA BASE PROPIA — REHECHA EL 20-ago.
+//
+// La versión anterior filtraba la bitácora del jugador por fecha (±36 h) y rival y se quedaba con "las dos
+// últimas filas del montón", asumiendo que el montón era UNA serie y que venía en orden cronológico. Las
+// dos cosas eran falsas: ±36 h abarca tres días de calendario y se tragaba series enteras (se vieron grupos
+// de 3, 5 y hasta 10 filas), y el orden del log no era cronológico sino de inserción de la cosecha. El
+// resultado eran sumas imposibles para dos mapas —44, 51 kills— contra líneas de 27,5 y 31,5.
+//
+// Ahora la bitácora trae `mid` (serie) y `num` (número de mapa), así que la serie se identifica en vez de
+// adivinarse: se agrupa por serie, se elige la serie del cruce y se toman los mapas 1 y 2 POR SU NÚMERO.
+// Cuando la identidad de la serie no se puede establecer, esto NO liquida: anula y lo dice. Una prop
+// liquidada contra los mapas equivocados es peor que una prop sin liquidar, porque entra en la muestra.
 function settleShadow() {
   const st = rd();
   const base = ownBase();
@@ -321,32 +347,100 @@ function settleShadow() {
     if (!started || now - started < 6 * 3600e3) continue;   // la serie tiene que haber terminado
     const p = base.ps[pk.slug];
     const field = pk.stat === 'headshots_on_maps_1_2' ? 'hs' : 'k';
-    const rows = ((p && p.recent) || []).filter((r) => {
-      if (!r || !Number.isFinite(r.k)) return false;
-      const d = String(r.at || '');
-      const dd = Math.abs(Date.parse(d) - Date.parse(pk.day));
-      if (!(dd <= 36 * 3600e3)) return false;               // mismo día del cruce, ±1 por husos
-      return pk.rival ? norm(r.vs) === norm(pk.rival) || norm(r.vs).includes(norm(pk.rival)) || norm(pk.rival).includes(norm(r.vs)) : true;
-    });
-    const two = rows.slice(-2);                              // mapas 1-2 = últimas filas del grupo
-    if (rows.length >= 2 && two.every((r) => Number.isFinite(r[field]))) {
-      const actual = two.reduce((a, r) => a + r[field], 0);
+    const casaRival = (r) => (pk.rival
+      ? norm(r.vs) === norm(pk.rival) || norm(r.vs).includes(norm(pk.rival)) || norm(pk.rival).includes(norm(r.vs))
+      : true);
+    // ventana estrecha: la referencia es el SAQUE de la serie, no el día suelto, y ±20 h ya cubre cualquier
+    // huso sin abarcar el día siguiente entero
+    const cerca = (r) => {
+      const t = Date.parse(r.ts || r.at || 0);
+      if (!Number.isFinite(t)) return false;
+      const ref = Number.isFinite(started) ? started : Date.parse(pk.day);
+      return Math.abs(t - ref) <= 20 * 3600e3;
+    };
+    const cand = ((p && p.recent) || []).filter((r) => r && Number.isFinite(r.k) && cerca(r) && casaRival(r));
+
+    // agrupar por serie. Sin `mid` (bitácora vieja) la serie no se puede identificar y el grupo entero
+    // queda como una sola candidata "sin identificar".
+    const series = new Map();
+    for (const r of cand) {
+      const k = r.mid != null ? 'm' + r.mid : 'sin_id';
+      if (!series.has(k)) series.set(k, []);
+      series.get(k).push(r);
+    }
+    let elegida = null, motivo = null;
+    const conId = [...series.entries()].filter(([k]) => k !== 'sin_id');
+    if (conId.length === 1) { elegida = conId[0][1]; motivo = 'serie identificada'; }
+    else if (conId.length > 1) {
+      // dos series del mismo jugador contra el mismo rival en la ventana: se queda la que empieza más cerca
+      // del saque anotado, y solo si la otra está claramente más lejos. Si empatan, no se liquida.
+      const dist = (g) => Math.min(...g.map((r) => Math.abs(Date.parse(r.ts || r.at || 0) - started)));
+      const ord = conId.map(([, g]) => ({ g, d: dist(g) })).sort((a, b) => a.d - b.d);
+      if (ord[1].d - ord[0].d >= 4 * 3600e3) { elegida = ord[0].g; motivo = 'serie más cercana al saque'; }
+      else motivo = 'dos series indistinguibles en la ventana';
+    } else if (series.has('sin_id')) {
+      const g = series.get('sin_id');
+      // bitácora vieja: solo se acepta cuando el grupo ES la serie de dos mapas. Con tres o más filas no
+      // hay forma de saber cuáles son los mapas 1 y 2 y no se inventa.
+      if (g.length === 2) { elegida = g; motivo = 'bitácora sin identificador de serie, grupo de dos mapas'; }
+      else motivo = `bitácora sin identificador de serie y ${g.length} mapas en la ventana`;
+    }
+
+    let dos = null;
+    if (elegida) {
+      const conNum = elegida.filter((r) => Number.isFinite(r.num));
+      if (conNum.length >= 2) {
+        dos = conNum.slice().sort((a, b) => a.num - b.num).filter((r) => r.num <= 2);
+        if (dos.length !== 2) { dos = null; motivo = 'la serie no trae los mapas 1 y 2 numerados'; }
+      } else if (elegida.length === 2) {
+        dos = elegida.slice().sort((a, b) => Date.parse(a.ts || a.at || 0) - Date.parse(b.ts || b.at || 0));
+        motivo += ' (sin numeración: serie de dos mapas)';
+      } else { dos = null; motivo = 'la serie no trae numeración de mapa y tiene más de dos'; }
+    }
+
+    if (dos && dos.every((r) => Number.isFinite(r[field]))) {
+      const actual = dos.reduce((a, r) => a + r[field], 0);
       const win = pk.side === 'over' ? actual > pk.line : actual < pk.line;
-      pk.actual = actual; pk.maps_counted = rows.length;
-      pk.settle_basis = 'scoreboard propio (últimos 12 mapas), mapas 1-2 = últimas 2 filas de la serie';
+      pk.actual = actual;
+      pk.maps_counted = 2;
+      pk.maps_in_window = cand.length;
+      pk.settle_basis = 'scoreboard propio · ' + motivo + ' · mapas 1 y 2 por número';
+      pk.settle_version = 'v2';
       pk.status = win ? 'WIN' : 'LOSS';
       pk.settled_at = new Date().toISOString();
       settled++;
     } else if (now - started > 7 * 86400e3) {
-      // una semana sin scoreboard propio de esa serie: se anula en vez de dejarla eternamente activa
-      pk.status = 'VOID'; pk.void_why = rows.length >= 2 ? 'la bitácora no trae ' + (field === 'hs' ? 'headshots' : 'la stat') + ' para esa serie'
-        : rows.length === 1 ? 'solo 1 mapa en el log propio (¿bo1?)' : 'la serie no aparece en el log propio';
+      // una semana sin poder identificar la serie: se anula EN VEZ de liquidar contra el montón
+      pk.status = 'VOID';
+      pk.void_why = motivo || (cand.length ? 'la bitácora no trae la stat de esa serie' : 'la serie no aparece en el log propio');
+      pk.maps_in_window = cand.length;
+      pk.settle_version = 'v2';
       pk.settled_at = new Date().toISOString();
       voided++;
     }
   }
   if (settled || voided) { st.at = new Date().toISOString(); wr(st); }
   return { settled, voided };
+}
+
+// REAPERTURA DE LO LIQUIDADO CON LA BASE ROTA (20-ago). Las 60 primeras liquidaciones salieron del montón,
+// no de la serie: sus `actual` no son de dos mapas y por tanto su WIN/LOSS no significa nada. Se devuelven a
+// ACTIVE para que el liquidador nuevo las rehaga; las que ya no estén en la bitácora (el log guarda 12
+// mapas por jugador) acabarán en VOID con su motivo, que es la respuesta honesta.
+function reopenLegacySettled() {
+  const st = rd();
+  let n = 0;
+  for (const pk of Object.values(st.picks || {})) {
+    if (pk.settle_version === 'v2') continue;
+    if (pk.status !== 'WIN' && pk.status !== 'LOSS' && pk.status !== 'VOID') continue;
+    pk.status = 'ACTIVE';
+    pk.reopened_at = new Date().toISOString();
+    pk.reopened_why = 'liquidada con la base v1 (montón de la ventana, orden no cronológico): se rehace';
+    delete pk.actual; delete pk.maps_counted; delete pk.settled_at; delete pk.void_why;
+    n++;
+  }
+  if (n) { st.at = new Date().toISOString(); wr(st); }
+  return { reopened: n };
 }
 
 // `openOnly` calcula el CLV PROVISIONAL de las tesis todavía abiertas: el mismo cálculo, pero contra la
@@ -411,9 +505,16 @@ function track() {
     // provisional: el movimiento del libro en las tesis vivas, con la última lectura como cierre interino
     perf_open: perf(all, { openOnly: true }),
     voided: all.filter((p) => p.status === 'VOID').length,
+    rule: RULE,
+    // la muestra por versión de regla: v1 y v2 no son la misma familia y no se pueden sumar
+    by_rule: (() => {
+      const g = {};
+      for (const p of all) { const k = p.rule_version || 'props_cs2_v1'; (g[k] = g[k] || []).push(p); }
+      return Object.fromEntries(Object.entries(g).map(([k, v]) => [k, { n: v.length, ...perf(v) }]));
+    })(),
     at: st.at || null,
     doctrine: 'Familia nueva EN SOMBRA (17-ago): proyección propia de kills (mapas 1-2, CS2) contra líneas de libro blando. Se anota y se liquida sola con el scoreboard propio; no publica picks y no toca el ejecutor en la sombra de la casa. Listón de salida: la muestra tiene que aguantar el mismo escrutinio que el resto de familias.',
   };
 }
 
-module.exports = { board, track, settleShadow, EDGE_MIN, EDGE_CAP };
+module.exports = { board, track, settleShadow, reopenLegacySettled, RULE, EDGE_MIN, EDGE_CAP };

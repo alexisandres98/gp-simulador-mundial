@@ -75,12 +75,14 @@ async function harvest() {
     await sleep(B3.THROTTLE_MS);
     if (!Array.isArray(j) || !j.length) {
       // sin scoreboard (partida antigua o sin demo): se marca para no volver a pedirla cada día
-      store[g.provider_id] = { at: g.at, map: g.map, empty: 1 };
+      store[g.provider_id] = { at: g.at, map: g.map, mid: g.match_id != null ? g.match_id : null, num: g.number != null ? g.number : null, empty: 1 };
       empty++;
       continue;
     }
     store[g.provider_id] = {
       at: g.at, map: g.map, rounds: g.rounds != null ? g.rounds : null,
+      // serie y número de mapa: lo que permite liquidar "mapas 1+2" sin adivinar
+      mid: g.match_id != null ? g.match_id : null, num: g.number != null ? g.number : null,
       rows: j.map((r) => ({
         // identidad: el player_id/slug del perfil anidado; sin él la fila no se puede atribuir y se guarda
         // solo con el steam_profile_id por si el perfil aparece después
@@ -109,9 +111,18 @@ async function harvest() {
 // ── 2) AGREGADO + RATING GP ──────────────────────────────────────────────────────────────────────────────
 function aggregate(store) {
   const since = Date.now() - WINDOW_DAYS * 864e5;
+  // LA BITÁCORA NECESITA SABER A QUÉ SERIE PERTENECE CADA MAPA (20-ago). Sin eso, liquidar una prop de
+  // "mapas 1+2" es adivinar: el filtro por fecha ±36 h se traga la serie entera —y a veces dos— y el
+  // "toma los dos primeros" se aplicaba sobre un montón cuyo orden ni siquiera era cronológico
+  // (`Object.values(store)` es orden de inserción de la cosecha, no de fecha). games.json sí trae
+  // `match_id` y `number`: se cruzan aquí y viajan en cada fila del log.
+  const games = rdRaw('games.json') || {};
   const P = {};   // slug → acumuladores
-  for (const g of Object.values(store)) {
+  for (const [gid, g] of Object.entries(store)) {
     if (g.empty || !g.rows || Date.parse(g.at || 0) < since) continue;
+    const G = games[gid] || null;
+    const mid = g.mid != null ? g.mid : (G ? G.match_id : null);
+    const num = g.num != null ? g.num : (G ? G.number : null);
     const rounds = g.rounds != null ? g.rounds : g.rows.reduce((m, r) => Math.max(m, r.k + r.d), 0) || null;
     if (!rounds || !g.map) continue;
     for (const r of g.rows) {
@@ -122,9 +133,11 @@ function aggregate(store) {
       const enemy = (g.rows.find((x) => x.clan !== r.clan) || {}).clan || null;
       // `hs` entró el 17-ago para poder LIQUIDAR props de headshots desde el log propio; el crudo ya lo
       // traía por mapa, así que la pasada diaria repuebla la bitácora entera con el campo.
-      p.recent.push({ at: (g.at || '').slice(0, 10), map: g.map, vs: enemy, k: r.k, d: r.d, hs: r.hs,
+      p.recent.push({ at: (g.at || '').slice(0, 10), ts: g.at || null, mid: mid != null ? mid : null,
+        num: num != null ? num : null, map: g.map, vs: enemy, k: r.k, d: r.d, hs: r.hs,
         adr: r.adr, kast: r.kast, win: r.win });
-      if (p.recent.length > 12) p.recent.shift();
+      // el recorte a 12 se hace AL FINAL, después de ordenar: recortar aquí, sobre un orden de inserción
+      // que no es cronológico, tiraba mapas recientes y dejaba viejos.
       p.nick = r.nick || p.nick;
       p.n++; p.rounds += rounds; p.win += r.win;
       p.k += r.k; p.d += r.d; p.a += r.a; p.hs += r.hs; p.fk += r.fk; p.fd += r.fd; p.cl += r.cl;
@@ -173,7 +186,14 @@ function aggregate(store) {
       hs_pct: p.k ? +(p.hs / p.k).toFixed(3) : null,
       provider_rating_avg: p.pr_n ? +(p.pr_w / p.pr_n).toFixed(3) : null,
       maps,
-      recent: (p.recent || []).slice().reverse(),
+      // el log, DE VERDAD ordenado: más reciente primero, y dentro de una serie el mapa de número mayor
+      // primero. Antes se invertía el orden de inserción y se llamaba a eso cronología.
+      recent: (p.recent || []).slice().sort((a, b) => {
+        const ta = Date.parse(a.ts || a.at || 0), tb = Date.parse(b.ts || b.at || 0);
+        if (ta !== tb) return tb - ta;
+        if (a.mid != null && b.mid != null && a.mid === b.mid) return (b.num || 0) - (a.num || 0);
+        return 0;
+      }).slice(0, 12),
     };
   }
   wrAgg('player-map-stats.json', {

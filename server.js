@@ -17203,6 +17203,19 @@ const server = http.createServer(async (req, res) => {
       // revisión de la sombra hay que poder hacerla sin navegador — mismo criterio que `?track=`.
       if (url.searchParams.get('props') === '1') {
         const PR = require('./esports-engine/props');
+        // `?props_reopen=1`: devuelve a ACTIVE lo liquidado con la base v1 (montón de la ventana, orden no
+        // cronológico) para que el liquidador nuevo lo rehaga. Es una operación de una sola vez y por eso
+        // vive tras la llave interna en vez de en un trabajo automático.
+        if (url.searchParams.get('props_reopen') === '1') {
+          // 1) reagregar la bitácora para que traiga serie y número de mapa (no toca la red)
+          const ag = await opsSpawn('cs2_players_agg', ['scripts/cs2-players-harvest.js', '--aggregate-only'], { heapMb: 260, timeoutMin: 8 })
+            .catch((e) => ({ error: e.message }));
+          try { global._cs2data = { data: null, at: 0 }; } catch { }
+          const r = PR.reopenLegacySettled();
+          const s2 = PR.settleShadow();
+          return json(res, 200, { aggregate: ag.code != null ? ag.code : ag.error, tail: (ag.tail || '').slice(-300),
+            reopen: r, settle: s2, track: PR.track() });
+        }
         const tr = PR.track();
         let board = null;
         try {

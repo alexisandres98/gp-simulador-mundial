@@ -557,11 +557,20 @@ function track() {
   const clv = done.filter((p) => p.clv_pct != null);
   const clvSd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length;
     return r2(Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1))); };
+  // POR FAMILIA **Y CASA** (20-ago). El CLV de una familia promediado entre casas esconde lo único que
+  // decide si se puede ganar dinero: en CS2 el hándicap de rondas daba +2,44 % de media y, partido por casa,
+  // era +3,53 % en la afilada y −3,13 % en la única que podemos ejecutar por API. Un promedio así no informa,
+  // desinforma.
+  const byFB = {};
   const byFam = {};
   for (const p of done) {
     const F = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [], };
     F.n++; if (p.result === 'WIN') F.w++; F.units += p.units || 0;
     if (p.clv_pct != null) F.clv.push(p.clv_pct);
+    const bk = p.book || p.best_book || 'sin_casa';
+    const B = byFB[p.family + ' · ' + bk] = byFB[p.family + ' · ' + bk] || { n: 0, w: 0, units: 0, clv: [], book: bk, family: p.family };
+    B.n++; if (p.result === 'WIN') B.w++; B.units += p.units || 0;
+    if (p.clv_pct != null) B.clv.push(p.clv_pct);
   }
   return {
     regime: 'shadow', doctrine: DOCTRINE,
@@ -574,6 +583,11 @@ function track() {
       clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,
       // la media del CLV sin su dispersión no se puede juzgar: +0,5 % sobre 30 picks con sd 8 es ruido y
       // sobre 300 con sd 2 es ventaja. El tablero de familias necesita las dos para calcular el estadístico.
+      clv_n: F.clv.length, clv_sd: clvSd(F.clv),
+    }])),
+    by_family_book: Object.fromEntries(Object.entries(byFB).map(([k, F]) => [k, {
+      family: F.family, book: F.book, n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units),
+      clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,
       clv_n: F.clv.length, clv_sd: clvSd(F.clv),
     }])),
     recent: done.slice(-40).reverse(), open_list: st.picks.filter((p) => p.status === 'OPEN').slice(-30).reverse(),

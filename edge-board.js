@@ -92,27 +92,43 @@ function deByFamily(deporte, byFamily) {
   }
   return out;
 }
+// ── LO MISMO, PERO POR CASA ──────────────────────────────────────────────────────────────────────────────
+// El promedio de una familia entre casas puede tener el signo contrario al de la casa donde de verdad se
+// apostaría. Pasó: CS2 hándicap de rondas daba +2,44 % de media y era +3,53 % en la afilada y −3,13 % en la
+// única conectable por API. Mientras la ejecución dependa de UNA casa, la fila que decide es la de esa casa.
+function deByFamilyBook(deporte, byFB) {
+  const out = [];
+  for (const f of Object.values(byFB || {})) {
+    out.push({ ...fila({ deporte, familia: f.family, n: f.n, hit: f.hit_pct,
+      roi: f.units != null && f.n ? 100 * f.units / f.n : null,
+      clv: f.clv_avg_pct, clvSd: f.clv_sd, clvN: f.clv_n }), casa: f.book });
+  }
+  return out;
+}
 
 // ── fútbol y los dos deportes que viven en db: se agrupan AQUÍ por familia+lado+banda ─────────────────────
-function dePicks(deporte, picks, { clvDe, ladoDe, bandaDe, oddsDe }) {
+function dePicks(deporte, picks, { clvDe, ladoDe, bandaDe, oddsDe, casaDe = null }) {
   const g = new Map();
   for (const p of picks) {
-    const k = [p.family || '?', (ladoDe ? ladoDe(p) : null) || '', (bandaDe ? bandaDe(p) : null) || ''].join('|');
+    const k = [p.family || '?', (ladoDe ? ladoDe(p) : null) || '', (bandaDe ? bandaDe(p) : null) || '',
+      casaDe ? (casaDe(p) || 'sin_casa') : ''].join('|');
     if (!g.has(k)) g.set(k, []);
     g.get(k).push(p);
   }
   const out = [];
   for (const [k, list] of g) {
-    const [familia, lado, banda] = k.split('|');
+    const [familia, lado, banda, casa] = k.split('|');
     const w = list.filter((p) => p.result_code === 'WIN').length;
     const stake = list.length;
     const ret = list.reduce((s, p) => s + (p.result_code === 'WIN' ? Number(oddsDe ? oddsDe(p) : p.best_odds || 0) : 0), 0);
     const clvs = list.map((p) => clvDe(p)).filter((x) => Number.isFinite(x));
-    out.push(fila({ deporte, familia, lado: lado || null, banda: banda || null, n: list.length,
+    const f2 = fila({ deporte, familia, lado: lado || null, banda: banda || null, n: list.length,
       hit: list.length ? 100 * w / list.length : null,
       roi: stake ? 100 * (ret - stake) / stake : null,
       clv: clvs.length ? clvs.reduce((a, b) => a + b, 0) / clvs.length : null,
-      clvSd: sd(clvs), clvN: clvs.length }));
+      clvSd: sd(clvs), clvN: clvs.length });
+    if (casaDe) f2.casa = casa || null;
+    out.push(f2);
   }
   return out;
 }
@@ -217,12 +233,64 @@ function build({ db, pickClvNum, hoopsTrack, combatTrack } = {}) {
     .sort((a, b) => (b.t || 0) - (a.t || 0));
   const descartables = filas.filter((r) => r.estado === 'DESCARTAR');
 
+  // ── EL MISMO TABLERO, POR CASA ─────────────────────────────────────────────────────────────────────────
+  // Solo importa la casa donde SE PUEDE ejecutar. Se marca cuál es conectable por API para que la lectura no
+  // dependa de recordarlo: una familia con CLV positivo en una casa sin API es información, no es negocio.
+  const CONECTABLES = new Set(['cloudbet', 'polymarket', 'kalshi', 'myriad']);
+  const porCasa = [];
+  const conCasa = (que, fn) => { try { const r = fn(); if (r) porCasa.push(...r); } catch (e) { errores.push(`casa:${que}: ${e.message}`); } };
+  conCasa('esports', () => {
+    const ES = require('./esports-engine/store');
+    const out = [];
+    for (const g of ES.GAME_ORDER) out.push(...deByFamilyBook(g, ES.track(g, { limit: 1 }).by_family_book));
+    return out;
+  });
+  conCasa('nfl', () => deByFamilyBook('nfl', require('./nfl-engine/store').track().by_family_book));
+  conCasa('amfoot', () => {
+    const AF = require('./amfoot-engine/store');
+    const out = [];
+    for (const lg of Object.keys(AF.LEAGUES)) out.push(...deByFamilyBook(lg, AF.track(lg).by_family_book));
+    return out;
+  });
+  conCasa('tenis', () => deByFamilyBook('tenis', require('./tennis-engine/store').track().by_family_book));
+  conCasa('futbol', () => {
+    if (!db) return null;
+    const todas = [].concat(Array.isArray(db.dailyPicks) ? db.dailyPicks : [], Array.isArray(db.clubDailyPicks) ? db.clubDailyPicks : []);
+    const done = todas.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+    return dePicks('futbol', done, {
+      clvDe: (p) => (pickClvNum ? pickClvNum(p) : null),
+      ladoDe: (p) => p.side || null,
+      casaDe: (p) => p.best_book || p.book || null,
+    });
+  });
+  conCasa('combate', () => {
+    if (!db || !Array.isArray(db.combatPicks)) return null;
+    const done = db.combatPicks.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+    return dePicks('combate', done, { clvDe: (p) => (Number.isFinite(p.clv_pct) ? p.clv_pct : null), casaDe: (p) => p.best_book || p.book || null });
+  });
+  conCasa('baloncesto', () => {
+    if (!db || !Array.isArray(db.hoopsPicks)) return null;
+    const done = db.hoopsPicks.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
+    return dePicks('baloncesto', done, { clvDe: (p) => (Number.isFinite(p.clv_pct) ? p.clv_pct : null), casaDe: (p) => p.best_book || p.book || null });
+  });
+  for (const r of porCasa) r.conectable = CONECTABLES.has(String(r.casa || '').toLowerCase());
+  porCasa.sort((a, b) => (b.clv_n || 0) - (a.clv_n || 0));
+  // LO EJECUTABLE Y BUENO: lo único que puede convertirse en dinero sin abrir una cuenta nueva
+  const ejecutable_con_ventaja = porCasa.filter((r) => r.conectable && (r.clv_pct || 0) > 0 && (r.clv_n || 0) >= 10)
+    .sort((a, b) => (b.t || 0) - (a.t || 0));
+  // Y EL COSTE DE NO PODER EJECUTAR: familias con ventaja en casas sin API
+  const ventaja_inalcanzable = porCasa.filter((r) => !r.conectable && (r.t || 0) >= 1 && (r.clv_n || 0) >= 10)
+    .sort((a, b) => (b.t || 0) - (a.t || 0));
+
   const resumen = filas.reduce((a, r) => { a[r.estado] = (a[r.estado] || 0) + 1; return a; }, {});
   return {
     at: new Date().toISOString(),
     doctrina: 'La vara es el CLV, no el ROI. Una familia entra al objetivo cuando su CLV bate al cierre con t≥2 sobre muestra propia; sale cuando pierde con t≤−2 y al menos 100 liquidadas. Entre medias se acumula, no se decide. `n_para_t2` es cuántas liquidadas con CLV harían falta para confirmar el CLV que hoy se observa.',
     listones: { n_min: N_MIN, n_para_descartar: N_CONFIRMA, t_confirma: 2, t_descarta: -2 },
-    resumen, objetivo, candidatas, descartables, filas, errores,
+    resumen, objetivo, candidatas, descartables, filas,
+    por_casa: porCasa, ejecutable_con_ventaja, ventaja_inalcanzable,
+    casas_conectables: [...CONECTABLES],
+    errores,
   };
 }
 

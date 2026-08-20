@@ -1595,12 +1595,21 @@ function track(game, { limit = 60 } = {}) {
   const staked = settled.filter((p) => p.result_code !== 'PUSH').length;
   const clvs = settled.filter((p) => p.clv_pct != null).map((p) => p.clv_pct);
   const byFam = {};
+  // POR FAMILIA **Y CASA**: aquí se vio por primera vez que el hándicap de rondas daba +3,53 % en la casa
+  // afilada y −3,13 % en la única conectable por API. El promedio entre casas no informa, desinforma.
+  const byFB = {};
   for (const p of settled) {
     const f = p.family || '?';
     byFam[f] = byFam[f] || { n: 0, w: 0, units: 0, clv: [] };
     byFam[f].n++; if (p.result_code === 'WIN') byFam[f].w++;
     byFam[f].units += p.units || 0;
     if (p.clv_pct != null) byFam[f].clv.push(p.clv_pct);
+    const bk = p.book || 'sin_casa';
+    const k2 = f + ' · ' + bk;
+    byFB[k2] = byFB[k2] || { n: 0, w: 0, units: 0, clv: [], family: f, book: bk };
+    byFB[k2].n++; if (p.result_code === 'WIN') byFB[k2].w++;
+    byFB[k2].units += p.units || 0;
+    if (p.clv_pct != null) byFB[k2].clv.push(p.clv_pct);
   }
   const avg = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null);
   // dispersión del CLV: la media sola no se puede juzgar. El tablero de familias la usa para el estadístico.
@@ -1619,6 +1628,9 @@ function track(game, { limit = 60 } = {}) {
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, v]) => [k,
       { n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2),
         clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),
+    by_family_book: Object.fromEntries(Object.entries(byFB).map(([k, v]) => [k,
+      { family: v.family, book: v.book, n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null,
+        units: +v.units.toFixed(2), clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),
     // la advertencia va DENTRO del dato, no en una nota aparte: con esta muestra el ROI no significa nada
     reading: settled.length < 30
       ? `muestra de ${settled.length}: el ROI todavía es ruido. El CLV es el número que ya dice algo, y hacen falta centenares de picks liquidadas por familia para hablar de ventaja.`

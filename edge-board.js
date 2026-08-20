@@ -54,6 +54,14 @@ function veredicto({ n, clv, clvSd, clvN }) {
     return { estado: 'SIN_CLV', t: null, n_para_t2: null,
       lectura: `hay ${n} liquidadas pero solo ${clvN || 0} con cierre guardado: sin CLV no hay vara.` };
   }
+  // GUARDA CONTRA EL FALSO POSITIVO DEL ESTADÍSTICO. Si el libro casi no se mueve entre nuestra toma y el
+  // cierre, la dispersión del CLV se hace diminuta y un CLV de +0,02 % sale con t=1,4 — que no dice
+  // "ventaja", dice "no hay contra qué medir". Apareció de verdad en córners under de ligas intermedias.
+  const SD_MIN = 0.5;   // puntos porcentuales
+  if (clvSd < SD_MIN) {
+    return { estado: 'SIN_MOVIMIENTO', t: null, n_para_t2: null,
+      lectura: `el cierre se mueve ${r2(clvSd)} pp de media sobre ${clvN} picks: no hay movimiento contra el que medirse. Un CLV de ${r2(clv)} % aquí no es señal, es un libro quieto.` };
+  }
   const t = clv / (clvSd / Math.sqrt(clvN));
   const nT2 = clv !== 0 ? Math.ceil((2 * clvSd / clv) ** 2) : null;
   let estado, lectura;
@@ -62,7 +70,9 @@ function veredicto({ n, clv, clvSd, clvN }) {
   else if (t <= -2 && clvN >= N_CONFIRMA) { estado = 'DESCARTAR'; lectura = `CLV ${r2(clv)} % con t=${r2(t)} sobre ${clvN}: pierde contra el cierre de forma medible. No es mala suerte.`; }
   else if (t <= -1) { estado = 'EN_CONTRA'; lectura = `CLV ${r2(clv)} % con t=${r2(t)}: va en contra; con más muestra esto se descarta.`; }
   else { estado = 'PLANA'; lectura = `CLV ${r2(clv)} % con t=${r2(t)}: indistinguible del mercado. Ni ventaja ni desventaja medible.`; }
-  return { estado, t: r2(t), n_para_t2: nT2 && nT2 > 0 && nT2 < 1e6 ? nT2 : null, lectura };
+  // solo tiene sentido enseñar "cuántas faltan" cuando faltan: una familia ya confirmada no necesita meta
+  const faltan = nT2 && nT2 > clvN && nT2 < 1e6 ? nT2 : null;
+  return { estado, t: r2(t), n_para_t2: faltan, faltan_liquidadas: faltan ? faltan - clvN : 0, lectura };
 }
 
 const fila = (o) => {

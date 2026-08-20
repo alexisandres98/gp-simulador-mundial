@@ -17464,6 +17464,29 @@ const server = http.createServer(async (req, res) => {
         const stats = {};
         const evs = await CB.fetchCloudbetSoccer({ apiKey, ttlMs: 0, windowH: 96, stats });
         out.cosecha = stats;
+        // PROFUNDIDAD, DE LA FUENTE. Cloudbet publica `maxStake` por selección: es el tope real que acepta a
+        // ese precio y el factor que decide si un bankroll de 2.000 o de 10.000 cabe en la señal. Se lee en
+        // vivo en vez de en la tabla porque la tabla se ahoga y porque aquí no hay dudas de frescura.
+        const topes = {};
+        const anotaTope = (fam, v) => { if (!(v > 0)) return; (topes[fam] = topes[fam] || []).push(v); };
+        for (const e of evs) {
+          const m = e.markets || {};
+          if (m.h2h && m.h2h.max) for (const k of ['home', 'draw', 'away']) anotaTope('1x2', m.h2h.max[k]);
+          for (const [fam, filas] of [['goles', m.totals], ['corners', m.corners], ['tarjetas', m.cards]])
+            for (const t of (filas || [])) for (const s2 of ['over', 'under']) anotaTope(fam, (t.max || {})[s2]);
+          if (m.dc && m.dc.max) for (const k of ['home_draw', 'home_away', 'draw_away']) anotaTope('doble_oportunidad', m.dc.max[k]);
+          if (m.dnb && m.dnb.max) for (const k of ['home', 'away']) anotaTope('empate_no_valido', m.dnb.max[k]);
+          if (m.btts && m.btts.max) for (const k of ['yes', 'no']) anotaTope('ambos_marcan', m.btts.max[k]);
+          for (const r of (m.ah || [])) for (const k of ['home', 'away']) anotaTope('handicap_asiatico', (r.max || {})[k]);
+          for (const r of (m.team_totals || [])) for (const k of ['over', 'under']) anotaTope('total_equipo', (r.max || {})[k]);
+        }
+        out.profundidad = Object.fromEntries(Object.entries(topes).map(([k, a]) => {
+          const t = a.sort((x, y) => x - y);
+          const q2 = (f) => t[Math.floor(f * (t.length - 1))];
+          return [k, { n: t.length, min: +t[0].toFixed(2), p25: +q2(0.25).toFixed(2), mediana: +q2(0.5).toFixed(2),
+            p75: +q2(0.75).toFixed(2), p90: +q2(0.9).toFixed(2), max: +t[t.length - 1].toFixed(2),
+            suma: +t.reduce((x, y) => x + y, 0).toFixed(2) }];
+        }));
         const porLiga = {};
         for (const e of evs) {
           const k = e.competition || '?';

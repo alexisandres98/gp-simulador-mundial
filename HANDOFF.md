@@ -1,3 +1,51 @@
+# HANDOFF — estado al 20-ago-2026 (el simulador de rutas, calibrado)
+
+## 🔴 EL HALLAZGO: el simulador sabía y se pasaba de listo por un orden de magnitud
+
+Se simularon **3.886 peleas de 2016 a 2026**, reconstruyendo los perfiles año a año SOLO con el pasado
+(`scripts/combat-calibra.js`). Probabilidad de "termina antes del límite" contra lo que pasó:
+
+| decil | predicho | real | sesgo |
+|---|---|---|---|
+| 1 | 2,4 % | 42,3 % | **−39,9 pp** |
+| 5 | 40,6 % | 48,3 % | −7,7 pp |
+| 10 | 94,1 % | 61,4 % | **+32,7 pp** |
+
+La escala del simulador va de 2 % a 94 %; la de la realidad, de 42 % a 61 %. **Hay señal** —la tasa real
+sube de forma monótona del decil 1 al 10— pero el Brier crudo (0,286) era **peor que decir siempre la tasa
+base** (0,250). Una probabilidad informada y mal calibrada rinde menos que no opinar.
+
+Por asaltos: 3 asaltos 43,7 % predicho vs 47,9 % real; **5 asaltos 70,4 % vs 56,9 %**.
+
+## ✅ EL ARREGLO, VALIDADO
+
+Temperatura sobre el logit, `a = 0,0985`, `b = −0,0072`.
+
+- **Walk-forward: Brier 0,28812 → 0,24693 (−14,3 %), mejorando en 9 de 9 años.**
+- Extremo a extremo en 2025: 0,28626 → 0,24671, **por primera vez por debajo de la referencia de no
+  opinar** (0,24977).
+
+Se aplica **donde vive el error**, no sobre el número publicado: bisección del multiplicador de peligros que
+lleva la finalización simulada al objetivo calibrado — mismo truco que `solveTilt` usa para anclar al
+ganador. Así método, asalto, duración y tarjetas siguen contando la misma historia.
+
+**Piso de peligro (`PISO = 0,004`).** Multiplicar cero por lo que sea sigue siendo cero: hay cruces cuyos
+perfiles no dan poder ni amenaza de sumisión y el simulador les daba 0,0 %. Ninguna pelea real tiene cero.
+Con el piso, ningún cruce alcanza el tope del multiplicador y el error medio entre lo simulado y el objetivo
+es 0,011 — el ruido de Montecarlo.
+
+**Consecuencia esperada:** las ventajas de RONDAS van a encogerse mucho, porque nacían de comparar un 94 %
+inventado contra un mercado en 60. Menos picks y más creíbles es el objetivo. Hay que vigilar el volumen y
+el CLV de la familia en la revisión.
+
+## 🐛 Y un fallo propio que salió por el camino
+
+El commit anterior metió el objeto de contexto en el `return` de `core()`, donde esa variable no existe:
+`FS.simulate` lanzaba `ReferenceError` en **todas** las llamadas, así que la ficha de pelea y la generación
+de picks de combate quedaron rotas desde ese despliegue. El seguimiento seguía respondiendo porque lee de la
+base, no del motor, y por eso no cantó. Arreglado en `579c9d1`; salió a la luz al montar el banco de
+calibración, que fue lo primero que volvió a llamar al simulador de verdad.
+
 # HANDOFF — estado al 20-ago-2026 (CLV por casa: el mapa completo)
 
 ## 📍 EL TABLERO POR CASA (`/api/internal/edge-board?key=` → `por_casa`)

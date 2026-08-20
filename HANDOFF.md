@@ -1,3 +1,60 @@
+# HANDOFF — estado al 20-ago-2026 (la ventaja no está donde podemos ejecutar)
+
+## 🔴 EL HALLAZGO DEL DÍA — el CLV de la familia confirmada, partido por casa
+
+CS2 hándicap de rondas venía leyéndose como "CONFIRMADA, CLV +2,44 %". Partido por casa:
+
+| casa | n | CLV | t | ¿API? |
+|---|---|---|---|---|
+| **Pinnacle** | 18 | **+3,53 %** | **+2,66** | no |
+| Bovada | 17 | +1,34 % | +0,97 | no |
+| **Cloudbet** | 9 | **−3,13 %** | −1,55 | **sí** |
+
+**La ventaja vive entera en las casas que NO podemos ejecutar.** El +2,44 % era un promedio dominado por
+Pinnacle y Bovada; en la única casa conectable el signo se invierte. Lo mismo en fútbol: las 40 apuestas de
+la sombra fueron todas a Cloudbet y su CLV ejecutado es **−1,07 %** (sd 7,17, t=−0,72) pese a un ROI
+observado de +35 % — que es varianza, no ventaja.
+
+Mecanismo probable, y hay que verificarlo con más muestra: cuando Cloudbet es el mejor precio de una línea,
+suele ser porque las afiladas ya se movieron y él no. Tomamos el precio que queda, no el que dio la señal.
+
+## 📊 PROFUNDIDAD REAL DE CLOUDBET (tope por selección, medido en la fuente, 69 partidos)
+
+| familia | mediana | p25 | máx |
+|---|---|---|---|
+| tarjetas | $244 | $184 | $1.977 |
+| córners | $237 | $222 | $252 |
+| doble oportunidad | $341 | $175 | $17.287 |
+| empate no válido | $216 | $108 | $17.287 |
+| ambos marcan | $226 | $141 | $1.837 |
+| hándicap asiático | $218 | $142 | $677 |
+
+La profundidad NO es el cuello de botella hasta $10.000 al 1,5 % ($150/apuesta). A 3 % con $10.000 ($300) sí
+muerde. El cuello de botella es el signo del CLV en la casa ejecutable.
+
+## 📈 PROYECCIÓN CON DINERO REAL (275 apuestas ejecutables/mes medidas; CLV ponderado −1,86 %)
+
+| bankroll | stake 1,5 % | volumen/mes | esperado | sd mensual | rango 90 % |
+|---|---|---|---|---|---|
+| $2.000 | $30 | $8.250 | **−$153** | $487 | −$954 a +$648 |
+| $5.000 | $75 | $20.625 | **−$383** | $1.217 | −$2.385 a +$1.619 |
+| $10.000 | $150 | $41.250 | **−$766** | $2.434 | −$4.770 a +$3.239 |
+
+Contrafactual: si el hándicap de CS2 se ejecutara al precio de Pinnacle (+3,53 %, 244 señales/mes),
+serían **+$258, +$646 y +$1.292 al mes** — 12,9 % mensual sobre el bankroll. Ese es el tamaño del premio y
+mide exactamente cuánto cuesta el problema de ejecución.
+
+## 🔎 LO QUE COTIZAN LAS CUATRO CASAS CONECTADAS, MEDIDO
+
+- **Kalshi** — catálogo enorme (3.472 series deportivas) pero la liquidez está concentrada: UFC con OI
+  mediano **21.358** y horquilla de **1 céntimo**; EPL ganador OI 632 y 5,5 céntimos; **todo lo demás vacío**
+  (NFL partido OI 40 y 21 céntimos; MLS ganador OI 0; córners EPL OI 0). Las familias exóticas existen como
+  tickers sin fondo.
+- **Polymarket** — sin córners ni tarjetas; su profundidad está en futuros y campeonatos, no en familias de
+  partido.
+- **Myriad** — solo 1X2 de partido, sin familias.
+- **Cloudbet** — la única con familias de partido de verdad, y donde nuestro CLV sale negativo.
+
 # HANDOFF — estado al 20-ago-2026 (cinco familias nuevas encendidas en sombra)
 
 ## 🎯 20-ago (noche) — el inventario que estábamos tirando, encendido

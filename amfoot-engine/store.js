@@ -617,6 +617,8 @@ function track(lg) {
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
+  const clvSd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length;
+    return r2(Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1))); };
   const byFam = {};
   for (const p of done) {
     const F = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [] };
@@ -632,6 +634,9 @@ function track(lg) {
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, F]) => [k, {
       n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units),
       clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,
+      // la media del CLV sin su dispersión no se puede juzgar: +0,5 % sobre 30 picks con sd 8 es ruido y
+      // sobre 300 con sd 2 es ventaja. El tablero de familias necesita las dos para calcular el estadístico.
+      clv_n: F.clv.length, clv_sd: clvSd(F.clv),
     }])),
     recent: done.slice(-40).reverse(), open_list: st.picks.filter((p) => p.status === 'OPEN').slice(-30).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',

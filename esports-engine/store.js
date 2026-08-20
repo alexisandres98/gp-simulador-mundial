@@ -1603,6 +1603,9 @@ function track(game, { limit = 60 } = {}) {
     if (p.clv_pct != null) byFam[f].clv.push(p.clv_pct);
   }
   const avg = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null);
+  // dispersión del CLV: la media sola no se puede juzgar. El tablero de familias la usa para el estadístico.
+  const sdOf = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length;
+    return +Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1)).toFixed(2); };
   return {
     game,
     // lo que dejó dicho la última pasada del liquidador, para que un cero se pueda leer sin repetirla
@@ -1614,7 +1617,8 @@ function track(game, { limit = 60 } = {}) {
     hit_pct: (w + l) ? +(100 * w / (w + l)).toFixed(1) : null,
     clv_avg_pct: avg(clvs), clv_n: clvs.length,
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, v]) => [k,
-      { n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2), clv_avg_pct: avg(v.clv) }])),
+      { n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2),
+        clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),
     // la advertencia va DENTRO del dato, no en una nota aparte: con esta muestra el ROI no significa nada
     reading: settled.length < 30
       ? `muestra de ${settled.length}: el ROI todavía es ruido. El CLV es el número que ya dice algo, y hacen falta centenares de picks liquidadas por familia para hablar de ventaja.`

@@ -10954,6 +10954,8 @@ async function hoopsPicksCloseline() {
 // Track del monitor: lo mismo que se le pide a cualquier segmento antes de salir a producción.
 function hoopsPicksTrack() {
   const all = db.hoopsPicks || [];
+  const clvSd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length;
+    return +Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1)).toFixed(2); };
   const settled = all.filter((p) => p.status === 'SETTLED' && (p.result_code === 'WIN' || p.result_code === 'LOSS'));
   const agg = (list) => {
     const w = list.filter((p) => p.result_code === 'WIN').length;
@@ -10966,6 +10968,8 @@ function hoopsPicksTrack() {
       units: +u.toFixed(2), roi: st ? +(100 * u / st).toFixed(2) : null,
       clv_avg: clv.length ? +(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length).toFixed(2) : null,
       clv_n: clv.length, clv_positive: clv.length ? +(100 * clv.filter((p) => p.clv_pct > 0).length / clv.length).toFixed(1) : null,
+      // dispersión del CLV: sin ella la media no se puede juzgar (ver tablero de familias)
+      clv_sd: clvSd(clv.map((p) => p.clv_pct)),
     };
   };
   const byFam = {};
@@ -17188,6 +17192,19 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
         return res.end(buf);
       } catch (e) { return json(res, 404, { error: e.message }); }
+    }
+    // ── EL TABLERO DE FAMILIAS (20-ago) ────────────────────────────────────────────────────────────────
+    // Ocho deportes miden su rendimiento en ocho pantallas distintas y ninguna contesta la pregunta del
+    // negocio: en qué familias hay ventaja, en cuáles no, y cuánto falta para saberlo. Esto la contesta con
+    // una sola vara —el CLV y su estadístico— y de paso enseña lo que está FUERA del objetivo y ya mide
+    // bien, que es de donde salen las candidatas nuevas.
+    if (p === '/api/internal/edge-board') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const EB = require('./edge-board');
+      const out = EB.build({ db, pickClvNum, hoopsTrack: hoopsPicksTrack, combatTrack: combatPicksTrack });
+      if (url.searchParams.get('full') !== '1') out.filas = out.filas.filter((r) => (r.n || 0) >= 5);
+      return json(res, 200, out);
     }
     if (p === '/api/internal/esports') {
       const xk = process.env.GP_EXPORT_KEY || '';

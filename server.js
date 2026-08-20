@@ -7434,9 +7434,19 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
       const line = Number(p.line);
       if (tot == null || !Number.isFinite(line)) {
         out.sin_dato++;
-        out.faltantes.push({ ...etiqueta, necesita: tot == null ? (p.family === 'CORNERS' ? 'córners (API-Football no los publica en este partido)' : 'tarjetas (API-Football no las publica en este partido)') : 'línea de la pick' });
+        // EL MOTIVO TIENE QUE SER EL DE VERDAD. Comprobado el 20-ago contra un partido concreto de la MLS
+        // —Cincinnati-San Jose del 1-ago—: el partido SE ENCUENTRA y figura terminado, pero
+        // `/fixtures/statistics` viene vacío, y `clubMatchStats` (la función que ya existía, distinta de
+        // esta) devuelve null para el mismo partido. O sea: no es que ese partido no tenga córners, es que
+        // esta cuenta no está devolviendo estadística de partido. Decir "no los publica en este partido"
+        // mandaría a buscar donde no es.
+        out.faltantes.push({ ...etiqueta,
+          necesita: tot == null
+            ? `${p.family === 'CORNERS' ? 'córners' : 'tarjetas'}: la cuenta de API-Football no devuelve estadística de partido (/fixtures/statistics vacío, comprobado también con la ruta de contexto)`
+            : 'la pick no tiene línea guardada' });
         continue;
       }
+      out.stats_ok = (out.stats_ok || 0) + 1;
       code = tot === line ? 'PUSH' : ((p.side === 'over') === (tot > line) ? 'WIN' : 'LOSS');
     }
     out.recuperadas++;

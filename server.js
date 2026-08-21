@@ -18134,6 +18134,19 @@ const server = http.createServer(async (req, res) => {
         brief_day: (db.llmBrief || {}).day || null,
         obs_llm: { combat_fighters: Object.keys(db.combatObsLLM || {}).length, club_teams: Object.keys(db.clubObsLLM || {}).length },
         whys_annotated: [...(db.dailyPicks || []), ...(db.clubDailyPicks || []), ...(db.combatPicks || [])].filter(x => x.why_ai_es).length,
+        // cuántas lecturas hay escritas por deporte, y una muestra de la última — sin esto, saber si un
+        // deporte nuevo llegó a redactarse obligaba a entrar con sesión de admin a buscar la ficha
+        lecturas: Object.fromEntries(['esReads', 'nflReads', 'hoopsReads', 'tennisReads', 'f1Reads', 'amfootReads']
+          .map((k) => [k.replace('Reads', ''), Object.keys(db[k] || {}).length])),
+        ultima_lectura: (() => {
+          let mejor = null;
+          for (const k of ['tennisReads', 'f1Reads', 'amfootReads', 'esReads', 'nflReads', 'hoopsReads']) {
+            for (const [id, v] of Object.entries(db[k] || {})) {
+              if (v && v.es && (!mejor || String(v.at) > String(mejor.at))) mejor = { deporte: k.replace('Reads', ''), id, at: v.at, es: String(v.es).slice(0, 320) };
+            }
+          }
+          return mejor;
+        })(),
       });
     }
     if (p === '/api/internal/clubs-picks') {

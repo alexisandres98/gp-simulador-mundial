@@ -590,7 +590,14 @@ function track() {
       clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,
       clv_n: F.clv.length, clv_sd: clvSd(F.clv),
     }])),
-    recent: done.slice(-40).reverse(), open_list: st.picks.filter((p) => p.status === 'OPEN').slice(-30).reverse(),
+    recent: done.slice(-40).reverse(),
+    // mismo motivo que en amfoot: la card de picks de la casa enseña nombre entero y escudo, y quien sabe
+    // traducir una abreviatura a las dos cosas es el directorio de equipos, no la pantalla
+    open_list: st.picks.filter((p) => p.status === 'OPEN').slice(-30).reverse().map((p) => ({
+      ...p,
+      home_name: D.teamName(p.home) || p.home, away_name: D.teamName(p.away) || p.away,
+      home_logo: D.teamLogo(p.home) || null, away_logo: D.teamLogo(p.away) || null,
+    })),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla existe para acumular el registro, no para leerlo todavía.` : 'la vara es el CLV por familia, no el ROI.',
   };
 }

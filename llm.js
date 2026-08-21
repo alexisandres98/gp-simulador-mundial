@@ -529,7 +529,14 @@ async function writeGameRead(payload, aviso) {
 
 const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol',
   esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)', f1: 'Fórmula 1' };
-async function writeBrief(payload, sport) {
+// EL `aviso` ES EL TERCER ARGUMENTO DE TODO ESCRITOR (21-ago). Cuando entró el verificador, los nueve
+// escritores pasaron a aceptar un aviso final —la lista de números señalados en el intento anterior— y a
+// éste se le añadió al prompt pero NO a la firma. Resultado: `aviso` era un identificador libre y la
+// función lanzaba ReferenceError en la PRIMERA línea de la llamada, siempre y en todos los deportes. La
+// apertura del brief llevaba desde entonces sin escribirse en ningún sitio, y el mensaje que veía el
+// usuario —"la apertura narrada no se pudo escribir"— es el mismo que sale cuando el proveedor está
+// caído: un fallo de programación disfrazado de fallo de red. Lo caza scripts/llm-smoke.js.
+async function writeBrief(payload, sport, aviso = null) {
   const resp = await call({
     kind: 'writer', json: true,
     // 15-ago: 700 se quedaba corto con jornadas de 10 partidos → el JSON salía truncado y jsonOf devolvía

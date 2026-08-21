@@ -652,7 +652,18 @@ function track(lg) {
       clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,
       clv_n: F.clv.length, clv_sd: clvSd(F.clv),
     }])),
-    recent: done.slice(-40).reverse(), open_list: st.picks.filter((p) => p.status === 'OPEN').slice(-30).reverse(),
+    recent: done.slice(-40).reverse(),
+    // EL REGISTRO ABIERTO SALE CON LO QUE PIDE LA CARD DE LA CASA (21-ago). Guardamos la abreviatura para
+    // que la fila ocupe poco, pero la card de picks —la misma de los otros siete deportes— enseña el
+    // nombre entero y el escudo. Se resuelven aquí, que es donde vive el directorio de equipos, en vez de
+    // que la pantalla se invente un mapa de abreviaturas a logos.
+    open_list: st.picks.filter((p) => p.status === 'OPEN').slice(-30).reverse().map((p) => ({
+      ...p,
+      home_name: p.home_full || infoOf(lg, p.home_full || p.home).name || p.home,
+      away_name: p.away_full || infoOf(lg, p.away_full || p.away).name || p.away,
+      home_logo: infoOf(lg, p.home_full || p.home).logo || null,
+      away_logo: infoOf(lg, p.away_full || p.away).logo || null,
+    })),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
   };
 }

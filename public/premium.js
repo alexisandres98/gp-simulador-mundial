@@ -2189,8 +2189,9 @@
     // Tres deportes usando el mismo mecanismo es la señal de que el mecanismo era el correcto.
     // el tenis entra por la MISMA puerta: un hash de apertura y un par de retratos. Ocho deportes con el
     // mismo mecanismo es la señal de que el mecanismo era el correcto.
-    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || null;
-    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || null;
+    // el noveno deporte entra por la MISMA puerta: un hash de apertura y un par de escudos
+    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || p.nfl_hash || null;
+    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || p.nfl_logos || null;
     var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
     var clickable = !!openId || !!openHash;
     var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
@@ -13009,6 +13010,48 @@
   }
 
   // ---- 1b) OPORTUNIDADES: honesta — el estado de cada familia y el reloj hacia el kickoff ----------------
+  // ── EL REGISTRO DE SOMBRA, CON LA CARD DE LA CASA (21-ago) ─────────────────────────────────────────
+  // Fútbol americano era el ÚNICO de los nueve deportes que pintaba sus veredictos como una fila de texto
+  // —"SSK @ BC · TOTAL under 63.5 @1.93"— en vez de con `pickCard()`. Eso obliga al usuario a aprender un
+  // formato distinto justo en el deporte donde menos contexto tiene, y le esconde lo que la card sí enseña:
+  // la casa con su logo, la confianza, la calculadora de stake, el botón de seguimiento y el boleto.
+  //
+  // QUE SIGA SIENDO SOMBRA NO ES UNA RAZÓN PARA PINTARLO PEOR. Tenis y esports también están en sombra y
+  // usan la card desde el primer día, con el aviso al pie diciendo lo que es. El chip MONITOR de la propia
+  // card ya distingue el registro privado del feed público, así que la etiqueta no se pierde por usarla.
+  var AMF_CARD_LAB = { SPREAD: 'Hándicap', TOTAL: 'Total de puntos', MONEYLINE: 'Ganador' };
+  function amfSel(p) {
+    var hn = p.home_name || p.home_full || p.home, an = p.away_name || p.away_full || p.away;
+    if (p.family === 'TOTAL') {
+      return (p.side === 'over' ? 'Más de ' : 'Menos de ') + p.line + ' puntos';
+    }
+    if (p.family === 'SPREAD') {
+      // `line` es el margen esperado del LOCAL (positivo = local favorito), así que el ticket del local
+      // lleva el signo invertido y el del visitante el mismo. Escribirlo al revés seria publicar el
+      // hándicap contrario al que se registró.
+      var v = p.side === 'home' ? -p.line : p.line;
+      var sg = Math.abs(v) < 0.05 ? 'PK' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1);
+      return (p.side === 'home' ? hn : an) + ' ' + sg;
+    }
+    return p.side === 'home' ? hn : an;      // MONEYLINE: pickRecText le pone el "gana"
+  }
+  function amfStoredCard(p) {
+    var hn = p.home_name || p.home_full || p.home, an = p.away_name || p.away_full || p.away;
+    return {
+      family: p.family === 'MONEYLINE' ? 'MONEYLINE' : p.family,
+      fam_label: AMF_CARD_LAB[p.family] || p.family,
+      selection_name: amfSel(p), home: hn, away: an,
+      home_team_id: null, away_team_id: null,
+      competition_name: (AMF_LEAGUES.filter(function (x) { return x[0] === nflLg(); })[0] || [])[1] || null,
+      kickoff: p.kickoff, odds: p.odds, book: p.book, confidence: p.p_model,
+      line: p.line, side: p.side, pick_id: p.key,
+      nfl_hash: p.game_id ? 'nflgame/' + encodeURIComponent(p.game_id) : null,
+      nfl_logos: (p.home_logo || p.away_logo) ? { h: p.home_logo, a: p.away_logo } : null,
+      signals: { win_prob: p.p_model, edge_pp: p.edge_pp, data_confidence: 'med',
+        pick_quality: p.edge_pp >= 6 ? 'strong' : 'moderate', regime: 'monitor' },
+    };
+  }
+
   function renderNflOpps() {
     var d = nflGet('model', '/api/nfl/model', 600000);
     var tr = nflGet('track', '/api/nfl/track', 120000);
@@ -13029,14 +13072,10 @@
     var open = (tr && tr.open_list) || [];
     var shadowB = open.length
       ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Lo que la sombra está registrando ahora</span><span class="gx-dim">' + open.length + '</span></div>' +
-        '<div class="gx-panel"><div class="gx-est-form">' + open.map(function (p) {
-          return '<div class="gx-est-fr" data-nflgame="' + esc(p.game_id) + '"><i class="gx-est-res" style="background:rgba(255,255,255,.08)">·</i>' +
-            '<span>' + esc(p.away) + ' @ ' + esc(p.home) + ' · ' + esc(p.family) + ' ' + esc(String(p.side)) + ' ' + p.line + ' @' + p.odds.toFixed(2) + '</span>' +
-            '<span class="gx-spacer"></span><b class="gx-mono">' + (p.edge_pp > 0 ? '+' : '') + p.edge_pp + ' pp</b></div>';
-        }).join('') + '</div>' +
-        '<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks.</div></div></div>'
+        '<div class="gx-picks-feed">' + visiblePicks(open.map(amfStoredCard)).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' +
+        '<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks públicas — el chip MONITOR de cada card lo dice.</div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('tickets') + '<b>La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.</b>' +
-        '<span class="gx-dim">Cuando una familia gane CLV fuera de muestra con muestra suficiente, esta pantalla se convierte en el feed de picks con la misma card de los demás deportes. Antes, no.</span></div></div>';
+        '<span class="gx-dim">Los veredictos se pintan con la misma card que los demás deportes, marcados como MONITOR: se registran y se liquidan en privado. Cuando una familia gane CLV fuera de muestra con muestra suficiente, se quita esa marca y pasan a ser picks públicas. Antes, no.</span></div></div>';
     // CABECERA = LA MISMA GRAMÁTICA DEL BOARD DE FÚTBOL (pedido de Alexis, 18-ago), el espejo que ya
     // tienen combate, baloncesto y esports. Los chips dicen la verdad de cada producto: Picks es el estado
     // de las familias (todas en sombra, con su porqué), Value y Arbitraje declaran que aún no se publican.

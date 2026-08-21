@@ -1,4 +1,4 @@
-# HANDOFF — estado al 21-ago-2026 (tres proveedores de LLM, ocho deportes con voz)
+# HANDOFF — estado al 21-ago-2026 (tres proveedores de LLM, ocho deportes con voz, la prensa leída en cinco)
 
 ## 🔌 EL LLM DEJA DE APAGARSE
 
@@ -36,6 +36,59 @@ con ella la lectura entera).
 1. El tope de la pasada era un contador **único**: esports, que siempre tiene agenda, se lo bebía entero.
    Un tope compartido entre desiguales no reparte. Ahora cada deporte tiene su cuota.
 2. La pizarra de tenis devuelve `rows`, no `items` — con la clave equivocada el bucle no entraba nunca.
+
+## 🔎 EL VERIFICADOR DE ALUCINACIONES
+
+Cada lectura la escribe un modelo desde un dossier y hasta hoy **nadie comprobaba** que la prosa no se
+inventara números. La instrucción "prohibido inventar datos" iba en todos los prompts y era lo único que
+había: una petición, no un control.
+
+**Código primero, modelo después.** Preguntarle a un LLM "¿este número está en el JSON?" es pedirle
+exactamente lo que peor hace. El **código** extrae los números del texto y los del dossier y encuentra los
+que no casan —eso es aritmética—; el **modelo** solo juzga los sospechosos, que es donde hace falta
+criterio ("31-21" no está en el dossier pero se deduce de dos campos que sí). Sin sospechosos no hay
+llamada: la mayoría de lecturas se verifican gratis y en un milisegundo. Y verifica **otro proveedor
+distinto del que escribió** — un modelo revisando su propio texto tiende a ratificarse.
+
+Escribe → verifica → reescribe una vez con la lista de números señalados → descarta si vuelve a fallar (la
+plantilla es mejor que una cifra falsa). Un verificador caído **nunca** bloquea la publicación.
+Contadores en `/api/internal/llm` bajo `verificador`. Apagable con `GP_LLM_VERIFY=false`.
+
+## 📰 LA PRENSA, LEÍDA EN CINCO DEPORTES
+
+`observer/deportes.js` + vocabulario por deporte en `llm.js`. Antes solo fútbol y combate; ahora también
+**esports, tenis y fútbol americano** (NFL, College y CFL).
+
+**Por qué importa:** los modelos son ciegos a la plantilla *por construcción* —miden lo que un equipo hizo,
+no quién va a estar— y eso deja tres huecos que el mercado sí ve y ninguna API publica: el **stand-in** en
+esports, la **retirada de cuadro** en tenis y el **quarterback** en fútbol americano. En College y la CFL
+no hay parte de lesionados consumible: esto es lo único que hay.
+
+**Display, nunca modelo.** Se pinta con la cita textual y el número de medios que la publicaron, y entra al
+dossier del redactor marcada como PRENSA. Ninguna señal toca una probabilidad.
+
+Estado y forzado: `/api/internal/observer?key=` (GET estado, POST `&dom=esports|tennis|amfoot` fuerza
+barrido). Barrido cada 3 h por deporte, escalonado. Apagable con `GP_OBS_DEPORTES=false`.
+
+### Lo que hubo que medir (cinco fallos que no se veían leyendo el código)
+1. **El tope de salida y el razonamiento.** Estaba fijo en 900 tokens. De 1.056 tokens de respuesta, ~200
+   eran el JSON y el resto **razonamiento del modelo**, que cuenta contra el mismo tope. Segunda vez que
+   este mecanismo muerde (antes con Gemini). Queda escrito: en modelos que razonan, el tope de salida es
+   *respuesta + pensamiento*.
+2. **Fallar en silencio.** Devolver `[]` cuando la respuesta no parsea hacía indistinguible "no hay
+   señales" de "el proveedor se cayó". Ahora lanza y el parte lo recoge.
+3. **Lotes largos pierden recall.** Con 24 titulares devolvía las señales de un sujeto y se dejaba las de
+   los otros dos; en trozos de diez los encontraba todos. Se parte en trozos de 10, y un trozo caído ya no
+   se lleva por delante los que sí funcionaron.
+4. **Una eliminación no es una señal.** "FaZe exits Esports World Cup" salía como retirada del torneo
+   cuando lo que pasó es que perdieron. Una señal falsa se lee como un hecho: vale más no darla.
+5. **El nombre no es el mismo a los dos lados (tenis).** La pizarra trae el del proveedor de cuotas y el
+   detalle el de nuestra base. Guardar por uno y buscar por el otro daba cero señales **siempre y en
+   silencio**. Se prueban las dos claves.
+
+Probado contra la prensa real del 21-ago: capta la duda de Mahomes, la lesión de rodilla de Sinner, la
+vuelta de Alcaraz tras cuatro meses, el expulsado de TCU y el stand-in de Vitality — y **no** se traga las
+eliminaciones de torneo ni las renovaciones de contrato.
 
 ## 📊 ESTADO EN VIVO
 

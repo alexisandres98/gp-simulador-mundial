@@ -23,11 +23,25 @@
 - **Cache-busting:** el server inyecta `?v=<mtime>` a `app.js`/`style.css` en `index.html` → cada deploy fuerza recarga del código en todos los navegadores (no más versiones viejas en desktop).
 - **Contenido redes:** HTML en `ig-src/` → render a PNG con **Chrome headless** (renderizar de a UNO; el 2º en un script se cuelga) → servidos en `gpsimulador.com/ig/*.png`.
 - **🔑 PENDIENTE:** rotar la API key de API-Football (quedó expuesta en chat) y actualizar `API_FOOTBALL_KEY` en Render.
-- **LLM (Anthropic):** `llm.js` es la única puerta. El presupuesto diario se DERIVA del saldo restante
-  (`GP_LLM_BALANCE_USD` / `GP_LLM_BALANCE_AT`) dividido por `GP_LLM_HORIZON_DAYS` → caída geométrica, nunca
-  se apaga solo. `GP_LLM_CHAT_RESERVE` (35%) es intocable para el chat: los jobs de fondo cortan antes.
-  Recargar = actualizar las dos vars de saldo **y disparar un deploy** (cambiar env por API no basta).
-  Estado: `/api/internal/llm?key=$GP_EXPORT_KEY`.
+- **LLM (tres proveedores):** `llm.js` es la única puerta, con **cadena de reserva**: chat = Anthropic →
+  Gemini → Groq; redactores = Gemini → Groq → Anthropic; extractor = Groq → Gemini → Anthropic. Vars:
+  `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`. El presupuesto **solo raciona lo de pago**: se
+  DERIVA del saldo restante (`GP_LLM_BALANCE_USD` / `GP_LLM_BALANCE_AT`) dividido por
+  `GP_LLM_HORIZON_DAYS` → caída geométrica, nunca se apaga solo. `GP_LLM_CHAT_RESERVE` es intocable para
+  el chat. Recargar = actualizar las dos vars de saldo **y disparar un deploy** (cambiar env por API no
+  basta). Estado: `/api/internal/llm?key=$GP_EXPORT_KEY`.
+  **Ojo con los modelos que razonan:** el techo de salida es *respuesta + pensamiento*, no solo respuesta.
+  Nos ha mordido dos veces (Gemini truncando JSON, Groq cortando el extractor a mitad).
+- **Verificador de lecturas (`GP_LLM_VERIFY`, on):** ninguna lectura se publica sin comprobar sus números
+  contra el dossier. El **código** encuentra los que no casan, el **modelo** —siempre otro distinto del que
+  escribió— juzga solo los sospechosos. Escribe → verifica → reescribe una vez → descarta. Un verificador
+  caído nunca bloquea la publicación. Contadores en `/api/internal/llm` bajo `verificador`.
+- **Observación de prensa (`GP_OBS_DEPORTES`, on):** `observer/deportes.js` lee Google News por sujeto y
+  extrae señales tipadas en **fútbol, combate, esports, tenis y fútbol americano** (vocabulario propio por
+  deporte en `llm.js`). Tapa el hueco que los modelos tienen por construcción —son ciegos a la plantilla—:
+  stand-ins en esports, retiradas de cuadro en tenis, quarterbacks en NFL/College/CFL. **DISPLAY, NUNCA
+  MODELO**: se pintan con su cita textual y entran al dossier del redactor marcadas como PRENSA; ninguna
+  toca una probabilidad. Estado y forzado: `/api/internal/observer?key=` (POST `&dom=`).
 - **Baloncesto (4º deporte, admin-only):** `basketball-engine/` (possessions, ratings, simulate, store,
   markets) + `data-providers/basketball/espn.js`. Rutas `/api/hoops/*`. Picks APAGADAS: el modelo no bate
   al cierre (skill −0.0079 fuera de muestra en WNBA). Value/arbitraje/caídas/middles sí se publican porque

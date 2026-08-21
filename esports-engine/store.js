@@ -1599,7 +1599,10 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
     sin_casar: sinCasar };
   st.last_settle = resumen;   // queda guardado para que la sonda pueda contar el cero sin volver a liquidar
   wr(PICKS_F(game), st);
-  return { game, settled, unmatched, unsettleable, pending: pend.length, clv_backfilled: backfilled, source: rs.source,
+  // EL PARTE QUE SE GUARDA Y EL QUE SE DEVUELVE TIENEN QUE SER EL MISMO. Eran dos objetos distintos: el
+  // diagnóstico nuevo se escribía en disco y NO salía por la respuesta, así que disparar la liquidación a
+  // mano —que es justo cuando quieres verlo— devolvía el parte viejo sin los motivos.
+  return { game, ...resumen, clv_backfilled: backfilled,
     // POR QUÉ SE LIQUIDÓ CERO. Un cero sin motivo no se puede revisar el lunes, y este deporte ya tuvo
     // doce picks vencidas sin liquidar durante días sin que nada lo dijera.
     why: settled ? null

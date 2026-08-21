@@ -195,11 +195,26 @@ async function lolResultsWithKills(opts) {
 // Lee la cosecha propia de Valorant del disco persistente (o del repo en desarrollo). Sin red.
 function valorantResults({ since = null } = {}) {
   const fs = require('fs'), path = require('path');
-  const disk = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', '..', 'db.json')), 'esports', 'valorant');
-  const repo = path.join(__dirname, '..', '..', 'data', 'esports', 'valorant');
-  let doc = null;
-  for (const d of [disk, repo]) {
-    try { doc = JSON.parse(fs.readFileSync(path.join(d, 'series.json'), 'utf8')); break; } catch { /* siguiente */ }
+  // LEER DONDE LA COSECHA ESCRIBE DE VERDAD (21-ago). Esto leía `<disco>/esports/valorant/series.json` y
+  // la cosecha escribe en `/data/val-raw` (su GP_VAL_DIR). Dos directorios distintos: el liquidador caía
+  // siempre a la copia del repo, congelada el 17-ago, y por eso Valorant tenía 94 picks abiertas y CERO
+  // liquidadas — no por nombres ni por fechas, sino porque leía un archivo que nadie actualiza desde que
+  // se sembró. Se prueban las rutas en el orden en que es probable que estén, y gana la que traiga la
+  // serie más reciente: si hay dos copias, la buena es la que está al día, no la primera que exista.
+  const cands = [
+    process.env.GP_VAL_DIR,
+    fs.existsSync('/data') ? '/data/val-raw' : null,
+    path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', '..', 'db.json')), 'esports', 'valorant'),
+    path.join(__dirname, '..', '..', 'data', 'esports', 'valorant'),
+  ].filter(Boolean);
+  let doc = null, mejor = '';
+  for (const d of cands) {
+    let cand = null;
+    try { cand = JSON.parse(fs.readFileSync(path.join(d, 'series.json'), 'utf8')); } catch { continue; }
+    if (!cand || !cand.rows) continue;
+    let ult = '';
+    for (const r of Object.values(cand.rows)) if (r && r.at && r.at > ult) ult = r.at;
+    if (ult > mejor) { mejor = ult; doc = cand; }
   }
   if (!doc || !doc.rows) return [];
   const from = since || new Date(Date.now() - 5 * 864e5).toISOString().slice(0, 10);

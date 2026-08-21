@@ -221,7 +221,11 @@ function valorantResults({ since = null } = {}) {
   return Object.values(doc.rows)
     .filter((r) => r && r.at && r.at >= from && r.s1 != null && r.s2 != null)
     .map((r) => ({
-      source: 'vlr', provider_id: r.id, at: r.at + 'T12:00:00Z',
+      // `day_only`: esta fuente solo publica el DÍA, así que la hora es un relleno. El liquidador tiene que
+      // saberlo — comparar un mediodía inventado contra la hora real de la serie con una ventana de ±12 h
+      // deja fuera todo lo que se juega de madrugada o a última hora, que en un circuito global es media
+      // agenda. Sin la marca, esos fallos parecen "la fuente no lo tiene" y son "la hora es mentira".
+      source: 'vlr', provider_id: r.id, at: r.at + 'T12:00:00Z', day_only: true,
       a: r.t1, b: r.t2, maps_a: +r.s1, maps_b: +r.s2,
       // sin detalle por mapa todavía: se declara vacío en vez de inventar rondas
       maps: [], competition: r.event || null,

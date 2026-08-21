@@ -1541,7 +1541,13 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
   // El resultado se empareja por PAR DE EQUIPOS y ventana de tiempo, y se ORIENTA al local de la pick: si la
   // fuente trae los lados al revés, todo lo que dependa del lado —hándicaps, totales por equipo— se liquida
   // exactamente al revés. Es el mismo cuidado que se puso al fundir las casas, y por el mismo motivo.
-  const idx = rs.rows.map((r) => ({ r, ka: key(r.a), kb: key(r.b), t: Date.parse(r.at || 0) }));
+  const idx = rs.rows.map((r) => ({ r, ka: key(r.a), kb: key(r.b), t: Date.parse(r.at || 0), dia: !!r.day_only }));
+  // LA VENTANA SE AJUSTA A LA PRECISIÓN DE LA FUENTE. ±12 h vale cuando la fuente da la hora real; cuando
+  // solo da el día y rellena con un mediodía, una serie a las 00:00 o a las 23:15 se sale por poco y se
+  // queda sin liquidar para siempre. Con día-solo se admite ±30 h, que cubre el día entero y el de al lado
+  // sin llegar a poder confundirse con otra serie del mismo par: dos enfrentamientos iguales separados por
+  // menos de 30 h son, en la práctica, la misma serie.
+  const ventana = (x) => (x.dia ? 30 : 12) * 3600e3;
 
   let settled = 0, unmatched = 0, unsettleable = 0;
   // POR QUÉ NO CASA, NO SOLO CUÁNTAS (21-ago). El resumen decía `unmatched: 82` y ahí se acababa la
@@ -1551,7 +1557,7 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
   const sinCasar = [];
   for (const pk of pend) {
     const kh = key(pk.home), ka = key(pk.away), t = Date.parse(pk.start_at || 0);
-    const hit = idx.find((x) => Math.abs(x.t - t) < 12 * 3600e3
+    const hit = idx.find((x) => Math.abs(x.t - t) < ventana(x)
       && ((x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh)));
     if (!hit) {
       unmatched++;

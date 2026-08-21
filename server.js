@@ -18027,6 +18027,18 @@ const server = http.createServer(async (req, res) => {
       // `?props=1` devuelve la sombra de props de CS2 (track completo + resumen de la pizarra) y
       // `?evidence=<juego>` la evidencia de mercado. Las dos rutas de la UI piden sesión de admin y la
       // revisión de la sombra hay que poder hacerla sin navegador — mismo criterio que `?track=`.
+      // DISPARAR LA LIQUIDACIÓN A MANO, CON LLAVE. La ruta que ya existía pide sesión de admin, y el
+      // diagnóstico de por qué una pick no casa solo se escribe cuando el liquidador CORRE: sin poder
+      // dispararlo hay que esperar al pase de fondo para ver el resultado de cada cambio. Eso convierte
+      // una iteración de un minuto en una de media hora.
+      const sg = String(url.searchParams.get('settle') || '');
+      if (sg) {
+        const ES2 = require('./esports-engine/store');
+        if (!ES2.ENGINES[sg]) return json(res, 400, { error: 'juego desconocido', games: ES2.GAME_ORDER });
+        const set = await ES2.settlePicks(sg).catch((e) => ({ error: e.message }));
+        const t2 = ES2.track(sg);
+        return json(res, 200, { game: sg, settle: set, liquidadas: t2.settled, abiertas: t2.open_n, atascadas: t2.open_vencidas });
+      }
       if (url.searchParams.get('props') === '1') {
         const PR = require('./esports-engine/props');
         // `?props_reopen=1`: devuelve a ACTIVE lo liquidado con la base v1 (montón de la ventana, orden no

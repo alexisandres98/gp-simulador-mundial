@@ -18031,6 +18031,21 @@ const server = http.createServer(async (req, res) => {
       // diagnóstico de por qué una pick no casa solo se escribe cuando el liquidador CORRE: sin poder
       // dispararlo hay que esperar al pase de fondo para ver el resultado de cada cambio. Eso convierte
       // una iteración de un minuto en una de media hora.
+      // LA FUENTE DE RESULTADOS, EN CRUDO. Valorant llevaba 94 picks abiertas y CERO liquidadas, y el parte
+      // decía que su fuente devuelve 7 filas de UN solo día mientras la cosecha presume de 33.104 series
+      // "al día". Una de las dos cosas es mentira y no se puede saber cuál sin mirar el crudo.
+      const rawg = String(url.searchParams.get('rawres') || '');
+      if (rawg) {
+        const RES2 = require('./data-providers/esports/results');
+        const dias = Math.min(30, Math.max(1, +(url.searchParams.get('dias') || 7)));
+        const since = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
+        const r = await RES2.results(rawg, { since }).catch((e) => ({ available: false, why: e.message }));
+        const rows = r.rows || [];
+        const porDia = {};
+        for (const x of rows) { const d2 = String(x.at || '').slice(0, 10); porDia[d2] = (porDia[d2] || 0) + 1; }
+        return json(res, 200, { game: rawg, since, available: r.available, source: r.source, why: r.why,
+          filas: rows.length, por_dia: porDia, muestra: rows.slice(0, 8) });
+      }
       const sg = String(url.searchParams.get('settle') || '');
       if (sg) {
         const ES2 = require('./esports-engine/store');

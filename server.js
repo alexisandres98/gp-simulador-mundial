@@ -11239,7 +11239,7 @@ async function llmHoopsReadsPass({ cap = 4 } = {}) {
       if (r && r.es) done++;
     }
   }
-  return { written: done };
+  return { written: done, por_deporte: porDeporte };
 }
 
 // ── LECTURAS DE TENIS, F1 Y FÚTBOL AMERICANO UNIVERSITARIO/CFL (21-ago) ──────────────────────────
@@ -11275,9 +11275,9 @@ async function tennisMatchRead(matchId, { force = false } = {}) {
   } catch (e) { console.error('[tennis-read]', e.message); }
   return db.tennisReads[k] || null;
 }
-async function f1RaceRead(round, { force = false } = {}) {
+async function f1RaceRead(round, { force = false, key = null } = {}) {
   db.f1Reads = db.f1Reads || {};
-  const k = String(round || 'next');
+  const k = String(key || round || 'next');
   if (db.f1Reads[k] && !force && db.f1Reads[k].es) return db.f1Reads[k];
   if (!llm.enabled() || !llm.budgetOk()) return db.f1Reads[k] || null;
   const F1 = require('./f1-engine/store');
@@ -11424,19 +11424,26 @@ async function esGameRead(game, eventId, { force = false } = {}) {
 // de las próximas 40 h — tope chico por pasada, el costo es predecible y el resto se genera bajo demanda.
 // TOPE SUBIDO DE 3 A 12 (21-ago): el tope existía porque cada lectura costaba saldo de Anthropic. Con
 // Gemini y Groq al frente de la cadena el coste es cero y lo único que limita es el tiempo de la pasada.
+// CADA DEPORTE CON SU CUOTA (21-ago). El tope era un contador único, así que el primer deporte del
+// bucle —esports, que siempre tiene agenda— se lo bebía entero y tenis, F1 y College no llegaban a
+// escribir nunca. Un tope compartido entre desiguales no reparte: se lo lleva el que llega primero.
 async function llmEsNflReadsPass({ cap = +(process.env.GP_LLM_READS_CAP || 12) } = {}) {
+  const porDeporte = {};
+  const CUOTA = Math.max(2, Math.ceil(cap / 5));
+  const cuota = (d) => CUOTA - (porDeporte[d] || 0);
+  const anota = (d) => { porDeporte[d] = (porDeporte[d] || 0) + 1; };
   if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
   let done = 0;
   try {
     const ES = require('./esports-engine/store');
     const s = await ES.slate('cs2', { days: 2 }).catch(() => null);
     for (const ev of ((s && s.events) || [])) {
-      if (done >= cap) break;
+      if (cuota('es') <= 0) break;
       const mins = (Date.parse(ev.start_at || 0) - Date.now()) / 60000;
       if (!(mins > 0 && mins < 30 * 60)) continue;
       if (db.esReads && db.esReads['cs2:' + ev.id]) continue;
       const r = await esGameRead('cs2', ev.id).catch(() => null);
-      if (r && r.es) done++;
+      if (r && r.es) { done++; anota('es'); }
     }
   } catch { /* esports sin agenda */ }
   try {
@@ -11444,13 +11451,13 @@ async function llmEsNflReadsPass({ cap = +(process.env.GP_LLM_READS_CAP || 12) }
     const M = NFL.modelSnapshot();
     if (M) {
       for (const g of M.data.games) {
-        if (done >= cap) break;
+        if (cuota('nfl') <= 0) break;
         if (g.result != null || g.season !== M.data.currentSeason) continue;
         const ms = Date.parse(g.date + 'T' + (g.time || '17:00') + ':00Z') - Date.now();
         if (!(ms > 0 && ms < 40 * 3600e3)) continue;
         if (db.nflReads && db.nflReads[g.id]) continue;
         const r = await nflGameRead(g.id).catch(() => null);
-        if (r && r.es) done++;
+        if (r && r.es) { done++; anota('nfl'); }
       }
     }
   } catch { /* nfl sin base */ }
@@ -11460,29 +11467,35 @@ async function llmEsNflReadsPass({ cap = +(process.env.GP_LLM_READS_CAP || 12) }
   try {
     const TEN = require('./tennis-engine/store');
     const b = await TEN.board().catch(() => null);
-    for (const it of ((b && b.items) || []).slice(0, 12)) {
-      if (done >= cap) break;
+    // la pizarra de tenis devuelve `rows`, no `items` — con la clave equivocada el bucle no entraba nunca
+    for (const it of ((b && b.rows) || []).slice(0, 12)) {
+      if (cuota('tennis') <= 0) break;
       if (db.tennisReads && db.tennisReads[it.id]) continue;
       const r = await tennisMatchRead(it.id).catch(() => null);
-      if (r && r.es) done++;
+      if (r && r.es) { done++; anota('tennis'); }
     }
   } catch { /* tenis sin pizarra */ }
   try {
-    if (done < cap && !(db.f1Reads && db.f1Reads.next)) {
-      const r = await f1RaceRead('next').catch(() => null);
-      if (r && r.es) done++;
+    // la lectura de F1 se REESCRIBE cuando cambia el estado del fin de semana (pre-quali → post-quali
+    // cambia la parrilla y por tanto la lectura entera), así que la clave lleva el estado dentro
+    const F1x = require('./f1-engine/store');
+    const bb = F1x.raceBoard();
+    const kf1 = bb && bb.available !== false ? `next|${bb.state || '?'}` : null;
+    if (kf1 && !(db.f1Reads && db.f1Reads[kf1])) {
+      const r = await f1RaceRead('next', { key: kf1 }).catch(() => null);
+      if (r && r.es) { done++; anota('f1'); }
     }
   } catch { /* f1 sin calendario */ }
   try {
     const AF = require('./amfoot-engine/store');
     for (const lg of Object.keys(AF.LEAGUES)) {
-      if (done >= cap) break;
+      if (cuota('amfoot') <= 0) break;
       const sl = await AF.slate(lg, { days: 8 }).catch(() => null);
       for (const g of ((sl && sl.games) || []).slice(0, 8)) {
-        if (done >= cap) break;
+        if (cuota('amfoot') <= 0) break;
         if (db.amfootReads && db.amfootReads[`${lg}|${g.id}`]) continue;
         const r = await amfootGameRead(lg, g.id).catch(() => null);
-        if (r && r.es) done++;
+        if (r && r.es) { done++; anota('amfoot'); }
       }
     }
   } catch { /* amfoot sin agenda */ }

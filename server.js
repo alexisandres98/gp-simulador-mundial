@@ -13332,7 +13332,10 @@ async function runObsDeporte(dominio) {
     // College puede meter 130 equipos en una jornada: el tope y el orden por hora de inicio son lo que
     // mantiene el barrido educado con la fuente y el gasto acotado.
     maxSujetos: dominio === 'amfoot' ? 28 : 24,
-    capLlm: 40, porSujeto: dominio === 'tennis' ? 6 : 8,
+    // el tope del lote sube de 40 a 70: con 40 el barrido de tenis descartaba 32 titulares en silencio —y
+    // ahora el parte lo decía, que es como se vio. Los trozos son de diez y las llamadas son gratis; lo
+    // único que cuesta es tiempo de un job de fondo que corre cada tres horas.
+    capLlm: 70, porSujeto: dominio === 'tennis' ? 6 : 8,
   });
   save();
   return r;

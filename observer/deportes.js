@@ -136,14 +136,28 @@ async function barrer({ dominio, sujetos, store, llm, refrescoH = 3, capLlm = 40
       // UN TROZO CAÍDO NO SE LLEVA EL BARRIDO. Con el error subiendo desde el bucle, un fallo en el tercer
       // trozo tiraba también las señales buenas de los dos primeros — y en el parte quedaba un cero que
       // parecía "no había nada". Ahora cada trozo falla solo y el parte dice cuántos fallaron.
-      for (let i = 0; i < lote.length; i += TROZO) {
-        const parte = lote.slice(i, i + TROZO);
+      // Y SI UN TROZO FALLA, SE PARTE EN DOS Y SE REINTENTA. En producción sigue cayendo ~1 trozo de cada
+      // cuatro, y la causa da igual —techo de salida o límite de ritmo del proveedor—: las dos se arreglan
+      // mandando menos de golpe. Partir por la mitad convierte perder diez titulares en perder cinco como
+      // mucho, y normalmente ninguno. Un solo reintento: si la mitad también falla, se deja ir.
+      const pide = async (parte, base, prof) => {
         out.llm_calls = (out.llm_calls || 0) + 1;
         try {
           const r = await llm.extractSignals(parte, dominio);
-          for (const g of r) sigs.push({ ...g, i: g.i + i });
-        } catch (e) { out.llm_fallos = (out.llm_fallos || 0) + 1; out.llm_error = e.message; }
-      }
+          for (const g of r) sigs.push({ ...g, i: g.i + base });
+          return true;
+        } catch (e) {
+          if (prof === 0 && parte.length > 2) {
+            const m = Math.ceil(parte.length / 2);
+            const a = await pide(parte.slice(0, m), base, 1);
+            const b = await pide(parte.slice(m), base + m, 1);
+            if (a || b) { out.llm_partidos = (out.llm_partidos || 0) + 1; return a && b; }
+          }
+          out.llm_fallos = (out.llm_fallos || 0) + 1; out.llm_error = e.message;
+          return false;
+        }
+      };
+      for (let i = 0; i < lote.length; i += TROZO) await pide(lote.slice(i, i + TROZO), i, 0);
       out.llm_signals = sigs.length;
       // UNA SEÑAL POR TIPO, CON SU RECUENTO DE FUENTES. Seis medios contando la misma vuelta de Alcaraz son
       // SEIS ITEMS y UNA noticia: pintarlos los seis llena el panel de ruido y hace parecer que pasaron seis

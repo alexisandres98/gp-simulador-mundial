@@ -10171,7 +10171,7 @@ async function hoopsGameRead(league, gameId, { force = false } = {}) {
   const dos = hoopsDossier(intel, obs);
   if (!dos) return cached || null;
   try {
-    const w = await llm.writeGameRead(dos);
+    const w = await llm.escribirVerificado((pl, av) => llm.writeGameRead(pl, av), dos, { etiqueta: 'hoops:' + k });
     if (w && w.es) {
       const out = { es: w.es, en: w.en, at: new Date().toISOString(), league, game_id: String(gameId) };
       db.hoopsReads[k] = out; save();
@@ -10570,7 +10570,8 @@ async function llmAnnotatePickWhys({ cap = 8 } = {}) {
       // los fallos — la card usa la plantilla why_es mientras tanto y el pase siguiente reintenta).
       if (sport === 'combat' && (p.family || 'FIGHT') === 'FIGHT') {
         try {
-          const w2 = await llm.writeFightRead(combatPickDossier(p));
+          const dosF = combatPickDossier(p);
+          const w2 = await llm.escribirVerificado((pl, av) => llm.writeFightRead(pl, av), dosF, { etiqueta: 'combate:' + (p.selection_name || p.pick_id) });
           if (w2) { p.why_ai_es = w2.es; p.why_ai_en = w2.en; done++; save(); }
           else console.error('[llm] fight-read devolvió null para', p.selection_name, '— reintento en el próximo pase');
         } catch (e) {
@@ -11270,7 +11271,7 @@ async function tennisMatchRead(matchId, { force = false } = {}) {
     mercado: d.market || null,
   };
   try {
-    const w = await llm.writeTennisRead(dossier);
+    const w = await llm.escribirVerificado((pl, av) => llm.writeTennisRead(pl, av), dossier, { etiqueta: 'tenis:' + k });
     if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), match_id: k }; db.tennisReads[k] = out; save(); return out; }
   } catch (e) { console.error('[tennis-read]', e.message); }
   return db.tennisReads[k] || null;
@@ -11295,7 +11296,7 @@ async function f1RaceRead(round, { force = false, key = null } = {}) {
     mercado: b.market || null,
   };
   try {
-    const w = await llm.writeF1Read(dossier);
+    const w = await llm.escribirVerificado((pl, av) => llm.writeF1Read(pl, av), dossier, { etiqueta: 'f1:' + k });
     if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), round: k }; db.f1Reads[k] = out; save(); return out; }
   } catch (e) { console.error('[f1-read]', e.message); }
   return db.f1Reads[k] || null;
@@ -11324,7 +11325,7 @@ async function amfootGameRead(lg, gameId, { force = false } = {}) {
     mercado: gi.market && gi.market.consensus ? gi.market.consensus : null,
   };
   try {
-    const w = await llm.writeAmfootRead(dossier, lg);
+    const w = await llm.escribirVerificado((pl, av) => llm.writeAmfootRead(pl, lg, av), dossier, { etiqueta: 'amfoot:' + k });
     if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), league: lg, game_id: String(gameId) }; db.amfootReads[k] = out; save(); return out; }
   } catch (e) { console.error('[amfoot-read]', e.message); }
   return db.amfootReads[k] || null;
@@ -11360,7 +11361,7 @@ async function nflGameRead(gameId, { force = false } = {}) {
     ultimos_cruces: (gi.h2h || []).slice(0, 3),
   };
   try {
-    const w = await llm.writeNflRead(dossier);
+    const w = await llm.escribirVerificado((pl, av) => llm.writeNflRead(pl, av), dossier, { etiqueta: 'nfl:' + k });
     if (w && w.es) {
       const out = { es: w.es, en: w.en, at: new Date().toISOString(), game_id: k };
       db.nflReads[k] = out; save();
@@ -11411,7 +11412,7 @@ async function esGameRead(game, eventId, { force = false } = {}) {
     };
   }
   try {
-    const w = await llm.writeCs2Read(dossier, game);
+    const w = await llm.escribirVerificado((pl, av) => llm.writeCs2Read(pl, game, av), dossier, { etiqueta: game + ':' + k });
     if (w && w.es) {
       const out = { es: w.es, en: w.en, at: new Date().toISOString(), event_id: String(eventId) };
       db.esReads[k] = out; save();
@@ -18147,6 +18148,8 @@ const server = http.createServer(async (req, res) => {
         brief_day: (db.llmBrief || {}).day || null,
         obs_llm: { combat_fighters: Object.keys(db.combatObsLLM || {}).length, club_teams: Object.keys(db.clubObsLLM || {}).length },
         whys_annotated: [...(db.dailyPicks || []), ...(db.clubDailyPicks || []), ...(db.combatPicks || [])].filter(x => x.why_ai_es).length,
+        // el verificador: cuántas pasaron limpias, cuántas hubo que reescribir y cuántas se descartaron
+        verificador: db.llmVerify || { ok: 0, reescritas: 0, descartadas: 0, sin_sospechosos: 0, ultimos: [] },
         // cuántas lecturas hay escritas por deporte, y una muestra de la última — sin esto, saber si un
         // deporte nuevo llegó a redactarse obligaba a entrar con sesión de admin a buscar la ficha
         lecturas: Object.fromEntries(['esReads', 'nflReads', 'hoopsReads', 'tennisReads', 'f1Reads', 'amfootReads']

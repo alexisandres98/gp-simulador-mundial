@@ -286,10 +286,11 @@ async function callGemini({ model, system, messages, max_tokens, json }) {
 
 // Llamada base. `kind` decide la CADENA de proveedores; el medidor carga el costo al uso que la originó
 // y solo los proveedores de pago tocan el saldo.
-async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, cacheSystem = false, json = false }) {
+async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, cacheSystem = false, json = false, _cadena = null }) {
   if (!enabled()) throw new Error('llm_disabled');
   const u = usage();
-  const cadena = CHAIN(kind);
+  // `_cadena` permite forzar proveedores concretos. Lo usa el verificador para no juzgarse a sí mismo.
+  const cadena = (_cadena && _cadena.length ? _cadena.filter((n) => PROV[n] && PROV[n].key()) : CHAIN(kind));
   if (!cadena.length) throw new Error('llm_sin_proveedor');
   const errores = [];
   for (const nombre of cadena) {
@@ -455,27 +456,27 @@ async function askWrite({ q, lang, bundle }) {
 // ══ REDACTOR — why de picks y brief narrado ═════════════════════════════════════════════════
 // Entra: factores ya templados (la narrativa de plantilla actual + campos legibles de la pick).
 // Sale: {es, en}. El prompt prohíbe números nuevos; la plantilla vieja queda de respaldo.
-async function writePickWhy(payload) {
+async function writePickWhy(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 420,
     system: 'Eres el redactor de GP Simulador. Reescribes la justificación de una pick deportiva como lo haría un analista profesional: natural, concreta, sin hype. PROHIBIDO: inventar números o datos que no estén en el JSON de entrada; mencionar cómo funciona el modelo por dentro; prometer resultados. Obligatorio: 2-3 frases por idioma, terminando con la idea de valor vs mercado cuando el edge esté en la entrada. Responde SOLO un JSON {"es":"...","en":"..."}.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
-  return j && j.es && j.en ? { es: String(j.es).slice(0, 600), en: String(j.en).slice(0, 600) } : null;
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 600), en: String(j.en).slice(0, 600), _prov: resp._prov } : null;
 }
 
 // ── Redactor PROFUNDO de combate (12-ago, orden de Alexis: análisis "de pronosticador de élite") ──
 // La PROBABILIDAD la pone el modelo estadístico (calibrado, backtesteado); la PROFUNDIDAD la pone este
 // redactor, anclado SOLO al dossier (breakdown + film + estilos + intel + método + historial + mercado).
 // Doctrina de caja negra intacta: narra la pelea y sus números, jamás el mecanismo del sistema.
-async function writeFightRead(payload) {
+async function writeFightRead(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 3000, // 12-ago: dossiers ricos (estelares) truncaban a 900 y a 1800 → JSON inválido; 3000 + límite de palabras en el prompt
     system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura de la pelea para la pick indicada, en DOS párrafos por idioma (máximo 110 palabras por párrafo — la brevedad es parte del oficio): (1) LA TESIS — qué inclina la pelea a favor de la pick y su CAMINO de victoria concreto (dónde y cómo gana: distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL RIESGO — el mejor argumento del rival y la señal concreta que invalidaría la tesis (qué habría que ver en la jaula para saber que salió mal). Si el dossier trae edge vs mercado, cierra con UNA frase sobre el valor del precio. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
   if (!j || !j.es || !j.en) {
@@ -491,12 +492,12 @@ async function writeFightRead(payload) {
 // CRUCE completo: la lectura vive en el cockpit de la pelea y la ve cualquier plan, así que JAMÁS debe
 // nombrar la pick ni hablar de apuestas — analiza; si el dossier trae la lectura de la casa, la tesis
 // debe ser COHERENTE con ella (jamás contradecirla), pero sin mencionarla.
-async function writeFightPreview(payload) {
+async function writeFightPreview(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura profunda de la PELEA, en DOS párrafos por idioma (máximo 110 palabras por párrafo — la brevedad es parte del oficio). REGLA MAESTRA: el favorito del pronóstico es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — esa es la lectura del sistema y tu tesis la defiende SIEMPRE, aunque tu conocimiento previo o el campo "mercado" digan lo contrario; si "mercado" discrepa de favorito_gp, esa discrepancia ES parte del análisis (qué está viendo el sistema que el consenso no pondera), jamás una razón para cambiar de bando. (1) LA FORMA DE LA PELEA — cómo se pelea este cruce y el camino concreto de favorito_gp (distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL CAMINO DEL OTRO — el mejor argumento del rival, la señal temprana de que la pelea se torció y qué factor la haría cerrada. Si "lectura_de_la_casa" viene en el dossier, tu tesis debe ser coherente con ese lado SIN nombrarla. PROHIBIDO: mencionar picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
   if (!j || !j.es || !j.en) {
@@ -511,12 +512,12 @@ async function writeFightPreview(payload) {
 // se gana el partido (zonas de tiro), rebote, pérdidas y el reparto de minutos. La probabilidad la pone
 // el simulador; acá se narra POR QUÉ el partido tiene esa forma. Vive en el cockpit del partido y la ve
 // cualquier plan → JAMÁS habla de picks ni de apuestas.
-async function writeGameRead(payload) {
+async function writeGameRead(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de baloncesto de GP Simulador, al nivel de un scout profesional. Con el dossier JSON escribe la lectura del PARTIDO en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE, aunque el campo "mercado" diga otra cosa; si el mercado discrepa, esa discrepancia ES parte del análisis, nunca una razón para cambiar de bando. (1) LA FORMA DEL PARTIDO — a qué ritmo se juega, quién impone su tempo, dónde se gana en la cancha (aro, triple, línea de tiros libres, rebote ofensivo, pérdidas) y qué jugadores lo deciden, citando los números del dossier. (2) EL CAMINO DEL OTRO — el mejor argumento del rival, qué señal temprana diría que el partido se torció y qué factor lo volvería cerrado. PROHIBIDO: mencionar picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; hype. NOMBRÁ CADA MÉTRICA COMO VIENE EN EL JSON: si el campo dice tiro_efectivo_pct escribí \"tiro efectivo\", jamás \"TS%\" ni ningún otro acrónimo — son métricas distintas y renombrarlas es inventar un dato. Tono: analista concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
   if (!j || !j.es || !j.en) {
@@ -536,7 +537,7 @@ async function writeBrief(payload, sport) {
     // combate. Se sube el techo Y se acota el largo en el prompt, que es lo que de verdad controla el costo.
     max_tokens: 1400,
     system: `Eres el analista jefe de GP Simulador escribiendo la apertura del brief diario de ${BRIEF_SPORT[sport] || BRIEF_SPORT.futbol}. Con los datos del JSON, escribe UN párrafo de apertura (4-6 frases, máximo 130 palabras por idioma) que le diga al usuario qué mirar hoy: los cruces más interesantes, dónde el modelo y el mercado se separan, y qué señales hay. Solo números presentes en el JSON. Sin listas, sin encabezados, tono de newsletter premium. Cierra sin despedida. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea, sin saltos de línea literales dentro de los strings.`,
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
   if (!j || !j.es || !j.en) {
@@ -565,59 +566,192 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
+// ── EL VERIFICADOR DE ALUCINACIONES (21-ago) ─────────────────────────────────────────────────────
+// EL AGUJERO QUE TAPA. Cada lectura la escribe un modelo a partir de un dossier, y hasta hoy NADIE
+// comprobaba que la prosa no se inventara números. La instrucción "prohibido inventar datos" iba en
+// todos los prompts y era lo único que había: una petición, no un control. Publicábamos a ciegas.
+//
+// POR QUÉ SE PUEDE AHORA Y NO ANTES. Verificar cuesta una llamada más por lectura. Con un solo proveedor
+// de pago eso duplicaba la factura de la parte más cara del sistema. Con dos proveedores gratuitos cuesta
+// cero — y además permite lo que de verdad importa: que verifique OTRO modelo distinto del que escribió.
+// Un modelo revisando su propio texto tiende a ratificarse.
+//
+// CÓDIGO PRIMERO, MODELO DESPUÉS. Preguntarle a un LLM "¿este número está en el JSON?" es pedirle
+// exactamente lo que peor hace. Así que el trabajo se reparte: el CÓDIGO extrae los números del texto y
+// los del dossier y encuentra los que no casan —eso es aritmética, no criterio— y el MODELO solo juzga
+// los sospechosos, que es donde sí hace falta criterio ("31-21" no está en el dossier pero se deduce de
+// dos campos que sí están). Sin sospechosos no hay llamada: la mayoría de lecturas se verifican gratis
+// y en un milisegundo.
+//
+// QUÉ SE MIRA Y QUÉ NO. Solo números, porque son lo único falsable: "Stanford es favorito" es un juicio,
+// "9,8 puntos" es un hecho. Y no todos los números: se ignoran los enteros pequeños sueltos (un "dos
+// párrafos" o un "3 downs" no es una estadística inventada) y se aceptan las formas derivadas obvias
+// —×100 para porcentajes, redondeos— porque el dossier trae 0,684 y la prosa escribe 68,4 %.
+const VERIF_ON = () => String(process.env.GP_LLM_VERIFY || 'true') !== 'false';
+
+// todos los números del dossier, con sus formas derivadas legítimas
+function numerosDossier(obj, acc = new Set(), prof = 0) {
+  if (prof > 6 || obj == null) return acc;
+  if (typeof obj === 'number' && Number.isFinite(obj)) {
+    for (const v of [obj, obj * 100, Math.round(obj), Math.round(obj * 10) / 10, Math.round(obj * 100) / 100,
+      Math.round(obj * 100), Math.round(obj * 1000) / 10, Math.abs(obj), Math.abs(obj * 100)]) {
+      if (Number.isFinite(v)) acc.add(+v.toFixed(3));
+    }
+    return acc;
+  }
+  if (typeof obj === 'string') {                       // números embebidos en texto del dossier
+    for (const m of obj.matchAll(/-?\d+(?:[.,]\d+)?/g)) {
+      const v = parseFloat(String(m[0]).replace(',', '.'));
+      if (Number.isFinite(v)) { acc.add(+v.toFixed(3)); acc.add(+(v * 100).toFixed(3)); acc.add(+Math.round(v).toFixed(3)); }
+    }
+    return acc;
+  }
+  if (Array.isArray(obj)) { for (const x of obj) numerosDossier(x, acc, prof + 1); return acc; }
+  if (typeof obj === 'object') {
+    for (const [k, v] of Object.entries(obj)) { numerosDossier(k, acc, prof + 1); numerosDossier(v, acc, prof + 1); }
+  }
+  return acc;
+}
+// números de la prosa que MERECEN comprobación
+function numerosTexto(txt) {
+  const out = [];
+  for (const m of String(txt || '').matchAll(/(-?\d+(?:[.,]\d+)?)\s*(%)?/g)) {
+    const raw = m[0].trim();
+    const v = parseFloat(m[1].replace(',', '.'));
+    if (!Number.isFinite(v)) continue;
+    const decimal = /[.,]/.test(m[1]);
+    const pct = !!m[2];
+    // UN ENTERO PEQUEÑO SUELTO NO ES UNA ESTADÍSTICA. "3 downs", "12 jugadores", "5 asaltos", "2 sets":
+    // son reglas del deporte, y en un dossier lleno de decimales una cifra inventada de verdad casi
+    // siempre lleva coma o porcentaje. El corte se pone en 25 a propósito: prefiero dejar pasar un entero
+    // bajo dudoso a bloquear una lectura buena, porque la alternativa a publicar no es publicar mejor, es
+    // no publicar nada. Los decimales y los porcentajes se comprueban SIEMPRE, sin importar su tamaño.
+    if (!decimal && !pct && Math.abs(v) < 25) continue;
+    // los años no son datos del dossier y aparecen legítimamente
+    if (!decimal && !pct && v >= 1900 && v <= 2100) continue;
+    out.push({ raw, val: v, pct });
+  }
+  return out;
+}
+const casa = (v, set) => {
+  for (const c of [v, Math.round(v * 10) / 10, Math.round(v), Math.round(v * 100) / 100]) {
+    if (set.has(+c.toFixed(3))) return true;
+    // tolerancia de redondeo: el dossier trae 9,83 y la prosa escribe 9,8
+    for (const d of set) if (Math.abs(d - c) <= Math.max(0.051, Math.abs(c) * 0.005)) return true;
+  }
+  return false;
+};
+
+// Devuelve { ok, sospechosos[], inventados[], como } — `ok:false` = NO publicar.
+async function verificarLectura({ texto, dossier, escritor = null }) {
+  if (!VERIF_ON()) return { ok: true, como: 'apagado' };
+  const set = numerosDossier(dossier);
+  const nums = numerosTexto(texto);
+  const sosp = nums.filter((n) => !casa(n.val, set));
+  if (!sosp.length) return { ok: true, sospechosos: [], como: 'sin sospechosos (solo código)' };
+  // hay candidatos: que los juzgue OTRO modelo, no el que escribió
+  const cadena = CHAIN('extract').filter((n) => n !== escritor);
+  if (!cadena.length) return { ok: true, sospechosos: sosp.map((x) => x.raw), como: 'sin verificador independiente' };
+  try {
+    const resp = await call({
+      kind: 'extract', json: true, max_tokens: 500,
+      _cadena: cadena,
+      system: 'Verificas datos. Recibes un DOSSIER (JSON con los únicos datos válidos) y una lista de NÚMEROS que aparecen en un texto. Para cada número di si está SOPORTADO por el dossier — cuenta como soportado si aparece tal cual, si es el mismo valor en otra unidad (0,62 y 62 %), si es un redondeo, o si se deduce de forma directa de campos del dossier (una suma, una resta, un marcador formado por dos campos). También cuenta como soportado un número que sea una REGLA CONOCIDA del deporte y no una estadística (asaltos de una pelea, jugadores en el campo, downs, sets de un partido, vueltas de un circuito). Marca como NO soportado solo lo que pretende ser un DATO del enfrentamiento y no se puede obtener del dossier de ninguna de esas formas. Responde SOLO un JSON: [{"n":"<el número tal cual>","soportado":true|false}]',
+      messages: [{ role: 'user', content: JSON.stringify({ dossier, numeros: sosp.map((x) => x.raw) }) }],
+    });
+    const j = jsonOf(resp);
+    if (!Array.isArray(j)) return { ok: true, sospechosos: sosp.map((x) => x.raw), como: 'el verificador no devolvió lista' };
+    const malos = j.filter((x) => x && x.soportado === false).map((x) => String(x.n));
+    return { ok: !malos.length, sospechosos: sosp.map((x) => x.raw), inventados: malos,
+      como: 'juzgado por ' + (resp._prov || '?') };
+  } catch (e) {
+    // el verificador caído no puede bloquear la publicación: se avisa y se deja pasar
+    return { ok: true, sospechosos: sosp.map((x) => x.raw), como: 'verificador caído: ' + e.message };
+  }
+}
+// Envoltura: escribe, verifica y —si el verificador encuentra números inventados— reescribe UNA vez
+// avisando de cuáles. Si la segunda también falla, no se publica: la plantilla de siempre es mejor que
+// una lectura con un dato falso.
+async function escribirVerificado(fn, payload, { etiqueta = 'lectura' } = {}) {
+  const stats = _db && (_db.llmVerify = _db.llmVerify || { ok: 0, reescritas: 0, descartadas: 0, sin_sospechosos: 0, ultimos: [] });
+  let out = await fn(payload, null);
+  if (!out || !out.es) return null;
+  let v = await verificarLectura({ texto: out.es, dossier: payload, escritor: out._prov || null });
+  if (v.ok) {
+    if (stats) { stats.ok++; if (!(v.sospechosos || []).length) stats.sin_sospechosos++; }
+    return out;
+  }
+  const aviso = `AVISO DEL VERIFICADOR: en tu texto anterior estos números NO están soportados por el dossier y no se pueden deducir de él: ${(v.inventados || []).join(', ')}. Reescribe usando SOLO cifras que estén en el dossier; si un dato no está, no lo menciones.`;
+  const out2 = await fn(payload, aviso);
+  if (out2 && out2.es) {
+    const v2 = await verificarLectura({ texto: out2.es, dossier: payload, escritor: out2._prov || null });
+    if (v2.ok) {
+      if (stats) { stats.reescritas++; stats.ultimos = [{ etiqueta, inventados: v.inventados, at: new Date().toISOString(), resuelto: true }].concat(stats.ultimos || []).slice(0, 20); }
+      return out2;
+    }
+    v = v2;
+  }
+  if (stats) {
+    stats.descartadas++;
+    stats.ultimos = [{ etiqueta, inventados: v.inventados || [], at: new Date().toISOString(), resuelto: false }].concat(stats.ultimos || []).slice(0, 20);
+  }
+  console.error('[verificador] descartada', etiqueta, '— inventados:', (v.inventados || []).join(', '));
+  return null;
+}
+
 // ── LOS TRES DEPORTES QUE NO TENÍAN VOZ (21-ago) ─────────────────────────────────────────────────
 // Tenis, F1 y fútbol americano universitario/CFL llevaban meses con motor, pantallas y picks, y sin una
 // sola línea escrita: sus fichas enseñaban números y ni una lectura. No se habían hecho por una razón
 // muy concreta —cada redactor costaba dinero del saldo de Anthropic y el presupuesto ya iba justo— y esa
 // razón acaba de desaparecer. Mismas reglas maestras que los demás: el dossier manda, el LLM narra, y
 // jamás sale de aquí una probabilidad, un mecanismo interno ni una promesa.
-async function writeTennisRead(payload) {
+async function writeTennisRead(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 2000,
     system: 'Eres el analista de tenis de GP Simulador. Con el dossier JSON escribe la lectura del partido en DOS párrafos por idioma (máximo 100 palabras cada uno): (1) EL PARTIDO — qué decide el duelo en ESTA superficie, citando los números del dossier (saque, resto, Elo por superficie, historial directo, forma); (2) EL GUION Y EL RIESGO — cómo se rompe el patrón y qué habría que ver en pista para saber que la lectura falló. Si el dossier trae línea de juegos o de sets, cierra con UNA frase sobre por dónde va la duración. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
-  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200) } : null;
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200), _prov: resp._prov } : null;
 }
-async function writeF1Read(payload) {
+async function writeF1Read(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 2000,
     system: 'Eres el analista de Fórmula 1 de GP Simulador. Con el dossier JSON escribe la lectura del gran premio en DOS párrafos por idioma (máximo 100 palabras cada uno): (1) EL CIRCUITO Y LA PARRILLA — qué pide este trazado y a quién favorece según los números del dossier (ritmo, clasificación frente a carrera, historial en la pista, fiabilidad); (2) DÓNDE SE DECIDE — el momento concreto de la carrera que ordena el resultado (salida, ventana de paradas, degradación, tráfico) y qué lo invalidaría. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
-  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200) } : null;
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200), _prov: resp._prov } : null;
 }
-async function writeAmfootRead(payload, liga) {
+async function writeAmfootRead(payload, liga, aviso) {
   const nombre = liga === 'cfl' ? 'la CFL (fútbol americano canadiense: 12 jugadores, 3 downs, campo más ancho y largo)' : 'el fútbol americano universitario (FBS)';
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 2000,
     system: `Eres el analista de ${nombre} de GP Simulador. Con el dossier JSON escribe la lectura del partido en DOS párrafos por idioma (máximo 100 palabras cada uno): (1) EL PARTIDO — qué inclina el choque según los números del dossier (fuerza de los dos ataques y defensas, ritmo, margen esperado, total esperado, localía); (2) EL RIESGO — el mejor argumento del otro lado y la señal concreta que invalidaría la lectura. Si el dossier trae mercado, cierra con UNA frase comparando el margen o el total propio con el del consenso, SIN recomendar nada. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.`,
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
-  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200) } : null;
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200), _prov: resp._prov } : null;
 }
 
 // ── Redactores de NFL y CS2 (17-ago, v2) ──────────────────────────────────────────────────────────
 // Mismas reglas maestras que la lectura de baloncesto: el favorito del dossier se defiende SIEMPRE, cero
 // picks/cuotas/edge, cero datos inventados, y cada métrica se nombra como viene en el JSON.
-async function writeNflRead(payload) {
+async function writeNflRead(payload, aviso) {
   const resp = await call({
     kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de NFL de GP Simulador, al nivel de un scout profesional. Con el dossier JSON escribe la lectura del PARTIDO en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el "mercado" del dossier discrepa, esa discrepancia ES parte del análisis, jamás una razón para cambiar de bando. (1) LA FORMA DEL PARTIDO — de dónde sale la ventaja (pase o carrera, ofensa o defensa, citando los EPA del dossier), qué dice la diferencia de rating, cómo pesan el descanso, la sede o el clima si vienen en el JSON, y qué QB/entrenador conduce cada lado. (2) EL CAMINO DEL OTRO — el mejor argumento del rival con sus números, qué señal temprana diría que el partido se torció y qué lo volvería cerrado; si la incertidumbre del dossier es alta (inicio de temporada), DILO con su número. PROHIBIDO: mencionar picks, apuestas, cuotas, spread como recomendación, edge o valor; contradecir a favorito_gp; inventar datos; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
   if (!j || !j.es || !j.en) { console.error('[llm] writeNflRead sin JSON usable · stop:', (resp && resp.stop_reason) || '?'); return null; }
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
-async function writeCs2Read(payload, game) {
+async function writeCs2Read(payload, game, aviso) {
   // 19-ago: el mismo redactor sirve a los cuatro juegos. Lo que cambia es DÓNDE se decide la serie, y eso
   // se le dice explícitamente para que narre el objeto real de cada juego y no el veto de CS2 en todos.
   const LENTE = {
@@ -631,11 +765,12 @@ async function writeCs2Read(payload, game) {
     kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de ' + JUEGO + ' de GP Simulador, al nivel de un coach profesional. Con el dossier JSON escribe la lectura de la SERIE en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el mercado del dossier discrepa, esa discrepancia ES parte del análisis. (1) LA FORMA DE LA SERIE — dónde se decide: ' + LENTE + ', la diferencia de Elo, la forma reciente y el historial directo si vienen, y qué jugadores cargan el equipo si el dossier trae ratings. (2) EL CAMINO DEL OTRO — por dónde gana el rival y qué tendría que pasar para que la serie se torciera, y el aviso de plantilla movida si el dossier lo marca. PROHIBIDO: picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar mapas, héroes, campeones o datos que no estén en el dossier; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
   });
   const j = jsonOf(resp);
   if (!j || !j.es || !j.en) { console.error('[llm] writeCs2Read sin JSON usable · stop:', (resp && resp.stop_reason) || '?'); return null; }
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
-module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead };
+module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead,
+  verificarLectura, escribirVerificado, numerosTexto, numerosDossier };

@@ -77,6 +77,7 @@ SIMS=20000 node server.js      # más precisión de simulación
 
 # verificar sintaxis (NO hay lint/test formal en el repo)
 node --check server.js && node --check engine.js && node --check public/app.js
+node scripts/llm-smoke.js    # firmas de los 10 escritores + el parseador de JSON (sin red, sin coste)
 
 # preview durante desarrollo: usar las tools preview_* del harness (.claude/launch.json -> "worldcup")
 ```

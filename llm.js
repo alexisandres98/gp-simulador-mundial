@@ -374,7 +374,35 @@ function jsonOf(resp) {
       out += ch;
     } else { if (ch === '"') ins = true; out += ch; }
   }
-  try { return JSON.parse(out); } catch { return null; }
+  try { return JSON.parse(out); } catch { /* tercer intento abajo */ }
+  // 21-ago: BASURA DESPUÉS DEL JSON. Gemini flash-lite se atasca al cerrar y repite el final —
+  //   ..."estos mercados."}\nmercados."}\nestos mercados clave."}
+  // El JSON está COMPLETO y es correcto; lo que sobra es lo que viene detrás. Como parseábamos el texto
+  // entero, una respuesta perfectamente usable se tiraba a la basura. Medido: fallaba 1 de cada 4 briefs,
+  // y como el caller solo ve `null`, el usuario leía "no se pudo escribir la apertura" en un día en que el
+  // modelo la había escrito bien. Se corta en la llave que cierra el primer valor y se ignora el resto.
+  const rec = recortaPrimerJson(out) || recortaPrimerJson(t);
+  if (rec) { try { return JSON.parse(rec); } catch { /* nada que hacer */ } }
+  return null;
+}
+// primer valor JSON completo del texto: cuenta llaves y corchetes FUERA de strings y corta donde cierra
+function recortaPrimerJson(t) {
+  const ini = t.search(/[{[]/);
+  if (ini < 0) return null;
+  let prof = 0, ins = false, esc = false;
+  for (let i = ini; i < t.length; i++) {
+    const ch = t[i];
+    if (ins) {
+      if (esc) { esc = false; continue; }
+      if (ch === '\\') { esc = true; continue; }
+      if (ch === '"') ins = false;
+      continue;
+    }
+    if (ch === '"') { ins = true; continue; }
+    if (ch === '{' || ch === '[') prof++;
+    else if (ch === '}' || ch === ']') { prof--; if (prof === 0) return t.slice(ini, i + 1); }
+  }
+  return null;
 }
 
 // ══ CHAT — Pregúntale a GP ══════════════════════════════════════════════════════════════════

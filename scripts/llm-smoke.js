@@ -56,6 +56,27 @@ const ESCRITORES = [
   for (const d of ['futbol', 'combat', 'esports', 'tennis', 'amfoot']) {
     if (!llm.DOMINIOS[d]) rotos.push(`DOMINIOS.${d}: falta el vocabulario del deporte`);
   }
-  if (rotos.length) { console.error('\nFIRMAS ROTAS:\n  - ' + rotos.join('\n  - ')); process.exit(1); }
-  console.log('\nlos 10 escritores + el extractor arrancan bien.');
+  // ── EL PARSEADOR, QUE ES POR DONDE SE PIERDEN LAS RESPUESTAS BUENAS ──────────────────────────────
+  // Gemini flash-lite se atasca al cerrar el JSON y repite el final. La respuesta está completa y es
+  // correcta; lo que sobra viene DETRÁS. Parseando el texto entero, 1 de cada 4 briefs se tiraba a la
+  // basura y el usuario leía "no se pudo escribir la apertura" un día en que sí se había escrito.
+  const CASOS = [
+    ['basura repetida al final', '{"es":"hola","en":"hi"}\nmarkets."}\nthese specific markets."}', (j) => j && j.es === 'hola'],
+    ['limpio', '{"es":"a","en":"b"}', (j) => j && j.en === 'b'],
+    ['con fence', '```json\n{"es":"a","en":"b"}\n```', (j) => j && j.es === 'a'],
+    ['array con basura detrás', '[{"i":0,"type":"OUT"}]\n]}basura', (j) => Array.isArray(j) && j.length === 1],
+    ['llaves dentro de un string', '{"es":"usa } y { dentro","en":"b"}\nsobra"}', (j) => j && j.es === 'usa } y { dentro'],
+    ['salto de línea literal dentro', '{"es":"linea1\nlinea2","en":"b"}', (j) => j && j.es.indexOf('\n') > 0],
+    // este DEBE dar null: una respuesta cortada de verdad no se puede rescatar, y fingir que sí sería
+    // peor que fallar — publicaríamos media frase como si fuera el texto completo
+    ['truncado de verdad → null', '{"es":"sin cerrar', (j) => j === null],
+  ];
+  for (const [nombre, txt, comprueba] of CASOS) {
+    let j = null;
+    try { j = llm.jsonOf({ content: [{ type: 'text', text: txt }] }); } catch (e) { rotos.push(`jsonOf(${nombre}): lanzó ${e.message}`); continue; }
+    if (!comprueba(j)) rotos.push(`jsonOf(${nombre}): devolvió ${JSON.stringify(j)}`);
+    else console.log(`  jsonOf · ${nombre}`);
+  }
+  if (rotos.length) { console.error('\nROTO:\n  - ' + rotos.join('\n  - ')); process.exit(1); }
+  console.log('\nlos 10 escritores, el extractor y el parseador funcionan.');
 })();

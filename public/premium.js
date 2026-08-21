@@ -8822,6 +8822,38 @@
     return '<div class="gx-panel' + (cls ? ' ' + cls : '') + '"><div class="gx-ph"><span class="gx-label">' + esc(label) + '</span>' +
       (extra ? '<span class="gx-ph-extra">' + extra + '</span>' : '') + '</div>' + body + '</div>';
   }
+  // ── SEÑALES DE PRENSA (21-ago) ─────────────────────────────────────────────────────────────────────
+  // UN SOLO RENDERIZADOR PARA LOS CUATRO DEPORTES NUEVOS. La capa de observación devuelve la misma forma en
+  // esports, tenis, NFL y College/CFL, así que pintarla cuatro veces sería cuatro sitios donde arreglar el
+  // mismo fallo. Y el usuario aprende a leer ESTE bloque una vez y le vale en todos.
+  //
+  // LO QUE ESTE BLOQUE DICE DE SÍ MISMO. La cabecera avisa de que el modelo NO usa esto. No es humildad
+  // decorativa: es la diferencia entre una plataforma que enseña de dónde sale cada cosa y una que mezcla
+  // una probabilidad medida con un titular de ayer. Va abajo del panel por lo mismo — es contexto para
+  // interpretar el número, no un insumo del número.
+  //
+  // Y SIEMPRE CON LA CITA. Cada señal enseña el fragmento textual que la sustenta y cuántos medios la
+  // publicaron. Así el lector puede no creernos: si la frase no dice lo que decimos, se ve al instante.
+  function gpSenales(lista, opts) {
+    if (!lista || !lista.length) return '';
+    opts = opts || {};
+    var ORD = { high: 0, warn: 1, info: 2 };
+    var xs = lista.slice().sort(function (a, b) { return (ORD[a.severity] || 3) - (ORD[b.severity] || 3); }).slice(0, 8);
+    var body = '<div class="gx-sen-list">' + xs.map(function (x) {
+      var txt = String(x.es || '').replace(/^📰\s*/, '');
+      var corte = txt.indexOf(' — ');
+      var quien = corte > 0 ? txt.slice(0, corte) : txt;
+      var dice = corte > 0 ? txt.slice(corte + 3) : '';
+      return '<div class="gx-sen gx-sen-' + esc(x.severity || 'info') + '">' +
+        '<i class="gx-sen-dot"></i>' +
+        '<div class="gx-sen-b"><b>' + esc(quien) + '</b>' +
+        (dice ? '<span class="gx-sen-q">' + esc(dice) + '</span>' : '') +
+        (x.source ? '<em class="gx-dim">' + esc(x.source) + '</em>' : '') + '</div></div>';
+    }).join('') + '</div>';
+    return esPanel(opts.label || 'Señales de prensa',
+      '<span class="gx-dim">contexto — el modelo no las usa</span>', body, 'gx-senales');
+  }
+
   // aviso permanente: cada juego dice qué le falta en vez de enseñar un hueco mudo
   function esGap(txt) { return '<div class="gx-es-gap">' + ic('alert-triangle') + '<span>' + esc(txt) + '</span></div>'; }
 
@@ -9750,7 +9782,7 @@
         // cada cifra" es una lista de fuentes con su antigüedad: información de auditoría, no de decisión.
         // En la pantalla del partido competía por espacio con lo que sí se mira. Sigue en la ficha del
         // equipo, que es donde se va a comprobar la procedencia.
-        ['contexto', 'Contexto', [cs2Teams(d), esH2H(d.h2h), cs2Dataset(d)]],
+        ['contexto', 'Contexto', [cs2Teams(d), gpSenales(d.senales), esH2H(d.h2h), cs2Dataset(d)]],
       ];
       if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partida';
       var lensBar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
@@ -9777,7 +9809,9 @@
     var GLENSES = [
       ['partida', 'La partida', gameBlocks.filter(Boolean).join('')],
       ['modelo', 'El modelo', modelBlocks.filter(Boolean).join('')],
-      ['contexto', 'Contexto', [esTeamStrip(m, ev), esRosterPanel(m, ev), esH2H(d.h2h)].filter(Boolean).join('')],
+      // las señales van PEGADAS al panel de plantilla a propósito: es donde el lector está mirando quién
+      // juega, y un stand-in anunciado ayer es exactamente la corrección de ese panel
+      ['contexto', 'Contexto', [esTeamStrip(m, ev), esRosterPanel(m, ev), gpSenales(d.senales), esH2H(d.h2h)].filter(Boolean).join('')],
     ];
     if (!GLENSES.some(function (x) { return x[0] === glens; })) glens = 'partida';
     var gbar = '<div class="gx-seg gx-es-lens">' + GLENSES.map(function (x) {
@@ -12027,7 +12061,10 @@
     var LENSES = [
       ['partido', 'El partido', tenDuelPanel(d) + tenPathPanel(d) + tenGamesPanel(d) + tenScoresPanel(d)],
       ['modelo', 'El modelo', tenSurfacePanel(d, A, B) + tenIndexPanel(d, A, B) + tenPicksPanel(d)],
-      ['contexto', 'Contexto', tenH2HPanel(d) + tenFormPanel(d, A, B) + tenServePanel(d, A, B) + tenSurfWLPanel(d, A, B)],
+      // EN TENIS LAS SEÑALES VAN LAS PRIMERAS DEL CONTEXTO. En un deporte individual una retirada o una
+      // molestia no es un matiz del pronóstico: es lo que decide si el partido se juega. Enterrarla debajo
+      // del historial directo sería ordenar la pantalla al revés de como se lee.
+      ['contexto', 'Contexto', gpSenales(d.senales) + tenH2HPanel(d) + tenFormPanel(d, A, B) + tenServePanel(d, A, B) + tenSurfWLPanel(d, A, B)],
     ];
     if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partido';
     var bar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) {
@@ -13431,7 +13468,10 @@
     var NLENSES = [
       ['partida', 'El partido', (nflLg() === 'nfl' ? nflReadBlock(d.id) : '') + mattersB + nflFieldBlock(d) + edB],
       ['modelo', 'El modelo', distB + dnaB + mkB],
-      ['contexto', 'Contexto', (nflLg() === 'nfl' ? nflInjBlock(d) : '') + wxB + formB + h2hB + prov],
+      // LAS SEÑALES ANTES DEL PARTE DE LESIONADOS, Y EN COLLEGE/CFL EN SU LUGAR. En NFL el parte oficial
+      // es el dato bueno y esto es lo que la prensa añade encima. En College y la CFL no hay parte oficial
+      // consumible: esto es lo ÚNICO que hay sobre quién va a jugar, y hasta hoy la pantalla no decía nada.
+      ['contexto', 'Contexto', gpSenales(d.senales) + (nflLg() === 'nfl' ? nflInjBlock(d) : '') + wxB + formB + h2hB + prov],
     ];
     if (!NLENSES.some(function (x) { return x[0] === nlens; })) nlens = 'partida';
     var nbar = '<div class="gx-seg gx-es-lens">' + NLENSES.map(function (x) {

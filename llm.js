@@ -551,17 +551,122 @@ async function writeBrief(payload, sport) {
 // Entra: lote de titulares/snippets de noticias con el nombre del sujeto. Sale: señales tipadas.
 // Es EXTRACCIÓN (doctrina): el resultado se guarda versionado y solo llega a display; si algún
 // día una señal quiere entrar al modelo, paga el peaje completo de backtest primero.
+// LOS OCHO DEPORTES, NO DOS (21-ago). El extractor existía desde julio pero solo corría en fútbol y
+// combate — no por diseño sino por factura: cada barrido son ~40 titulares por deporte y con un único
+// proveedor de pago extenderlo a ocho multiplicaba por cuatro la parte más cara del sistema. Con dos
+// proveedores gratuitos el coste marginal es cero y lo único que queda es el trabajo de hacerlo bien.
+//
+// CADA DEPORTE TIENE SUS PROPIAS SEÑALES. Un vocabulario común ("lesión, duda, baja") desperdicia lo que
+// de verdad mueve el precio en cada disciplina: en esports es el ROSTER —un stand-in cambia el equipo que
+// juega, no el que está en el rating— y en fútbol americano es QUIÉN ES EL QUARTERBACK, que vale más que
+// el resto de la plantilla junta. Un tipo genérico "cambio en la plantilla" los mete a los dos en el mismo
+// saco y pierde exactamente la información por la que se hace esto.
+//
+// DISPLAY, NUNCA MODELO. Igual que en fútbol y combate: se guarda versionado, se pinta con la cita textual
+// que lo sustenta, y si algún día una señal quiere entrar a una probabilidad paga el peaje completo de
+// backtest walk-forward. Una señal sin histórico no tiene derecho a mover un número.
+const DOMINIOS = {
+  futbol: {
+    que: 'fútbol',
+    sujeto: 'el equipo indicado',
+    tipos: {
+      OUT: 'baja confirmada para el partido', INJURY: 'lesión sin baja confirmada',
+      SUSPENDED: 'sanción o expulsión que le hace perderse el partido', DOUBT: 'en duda',
+      RETURN: 'vuelve de lesión o sanción', CAMP: 'cambio de entrenador o cuerpo técnico',
+    },
+    ruido: 'Ignora clickbait, rumores de fichajes y noticias de otro partido.',
+  },
+  combat: {
+    que: 'MMA/boxeo',
+    sujeto: 'el peleador indicado (no su rival ni terceros)',
+    tipos: {
+      OUT: 'baja confirmada de la pelea', INJURY: 'lesión sin baja confirmada',
+      WEIGHT: 'falló o luchará por dar el peso, hospitalizado en el corte',
+      REPLACEMENT: 'entra como reemplazo / short notice', CAMP: 'cambio de campamento o equipo técnico',
+      SUSPENDED: 'suspensión', DOUBT: 'en duda',
+    },
+    ruido: 'Ignora clickbait, trash talk, rumores de terceros y noticias de otra pelea.',
+  },
+  // ESPORTS — la razón principal de extender esto. El rating mide a un EQUIPO, pero quien juega es un
+  // quinteto concreto: un stand-in de la academia o un titular con problemas de visado rompen la
+  // correspondencia entre el rating y lo que va a estar en el servidor, y eso no lo publica ninguna API.
+  esports: {
+    que: 'esports (CS2, League of Legends, Valorant, Dota 2)',
+    sujeto: 'el equipo indicado (no su rival ni terceros)',
+    tipos: {
+      ROSTER: 'cambio ANUNCIADO de la plantilla titular: fichaje, salida, traspaso o jugador apartado',
+      STANDIN: 'jugará con suplente, stand-in, prestado o jugador de la academia',
+      BENCH: 'un titular queda en el banquillo o es apartado del equipo',
+      VISA: 'problema de visado, viaje o logística que impide jugar a alguien',
+      ILLNESS: 'enfermedad o lesión física de un jugador',
+      ORG: 'cambio de entrenador, analista o dirección deportiva',
+      FORFEIT: 'el equipo RENUNCIA a jugar: no se presenta, abandona el torneo sin jugar o concede un walkover',
+    },
+    // EL ERROR QUE HAY QUE MATAR AQUÍ. Probando esto el 21-ago, "FaZe exits Esports World Cup" salió
+    // clasificado como FORFEIT: el equipo no renunció a nada, PERDIÓ. Y un equipo eliminado no es una señal
+    // —es un resultado— así que la etiqueta habría dicho al usuario que un equipo se retiró cuando lo que
+    // pasó fue que cayó en cuartos. Vale más no dar señal que dar una falsa: la falsa se lee como un hecho.
+    ruido: 'CRÍTICO: una eliminación NO es una señal, y una RENOVACIÓN de contrato tampoco ("extends", "re-signs", "renews", "amplía contrato"): el equipo sigue siendo el mismo, no ha cambiado nada de cara al próximo partido. "eliminated", "exits", "knocked out", "falls to", "loses to", "advances", "beats" describen un partido YA JUGADO, no algo que vaya a pasar — para esos items devuelve nada. Solo son señales los hechos que afectan a un partido AÚN NO JUGADO. Ignora también rumores sin fuente identificada, contenido de creadores y noticias de otro juego.',
+  },
+  // TENIS — deporte individual: la baja ES el evento. Una retirada de cuadro previa al partido no es
+  // contexto, es que el partido no existe; y una retirada en pista el día anterior dice más de la carga
+  // física del jugador que cualquier estadística de saque.
+  tennis: {
+    que: 'tenis',
+    sujeto: 'el jugador o jugadora indicado (no su rival)',
+    tipos: {
+      OUT: 'se retira del torneo o del cuadro antes de jugar',
+      RETIRED: 'abandonó un partido en pista o lo dio por perdido a mitad',
+      INJURY: 'lesión física reportada sin retirada confirmada',
+      ILLNESS: 'enfermedad, virus o problema físico no traumático',
+      DOUBT: 'duda para jugar, tratamiento médico o molestias',
+      RETURN: 'vuelve a competir tras lesión o parón',
+      WALKOVER: 'pasa de ronda sin jugar porque su rival se retiró',
+    },
+    ruido: 'Ignora clickbait, declaraciones sin contenido físico y noticias de otro torneo o de años anteriores.',
+  },
+  // FÚTBOL AMERICANO — la NFL sí publica parte de lesionados estructurado, pero College y CFL no publican
+  // NADA que se pueda consumir: ahí la prensa local es la única fuente. Y el QB va como tipo propio porque
+  // en este deporte un cambio de titular en esa posición mueve la línea más que cualquier otra noticia.
+  amfoot: {
+    que: 'fútbol americano (NFL, College football, CFL)',
+    sujeto: 'el equipo indicado (no su rival)',
+    tipos: {
+      QB: 'cambia el quarterback titular, se lesiona o su disponibilidad está en duda',
+      OUT: 'un titular importante confirmado fuera del partido',
+      INJURY: 'lesión de un titular sin baja confirmada',
+      DOUBT: 'titular en duda, questionable o limitado en los entrenamientos',
+      SUSPENDED: 'sanción disciplinaria, de la liga o problema de elegibilidad',
+      COACH: 'cambio de entrenador jefe o de coordinador ofensivo/defensivo',
+    },
+    ruido: 'Ignora clickbait, mercado de fichajes fuera de temporada, recruiting y noticias de otra semana.',
+  },
+};
 async function extractSignals(items, domain) {
   if (!items.length) return [];
+  const D = DOMINIOS[domain] || DOMINIOS.futbol;
+  const tipos = Object.entries(D.tipos).map(([k, v]) => `${k} (${v})`).join(', ');
   const resp = await call({
     kind: 'extract', json: true,
-    max_tokens: 900,
-    system: `Extraes señales estructuradas de titulares deportivos de ${domain === 'combat' ? 'MMA/boxeo' : 'fútbol'}. Para cada item devuelve una señal SOLO si el texto la afirma sobre EL SUJETO indicado (no sobre su rival ni terceros). Tipos: OUT (baja confirmada de la pelea/partido), INJURY (lesión sin baja confirmada), WEIGHT (falló o luchará por dar el peso, hospitalizado en el corte), REPLACEMENT (entra como reemplazo / short notice), CAMP (cambio de campamento/equipo técnico), SUSPENDED (suspensión), DOUBT (en duda). Severidad: 1 leve, 2 media, 3 grave. Ignora clickbait, rumores de terceros y noticias de otra pelea/partido. Responde SOLO un JSON: [{"i":<índice del item>,"type":"...","severity":1|2|3,"quote":"fragmento textual que lo sustenta"}] — array vacío si no hay señales.`,
+    // EL TOPE VA CON EL TAMAÑO DEL LOTE, Y CON MUCHO AIRE. Estaba fijo en 900 desde que el extractor era
+    // solo para fútbol; un lote de doce titulares lo desbordaba, la respuesta salía cortada a mitad de un
+    // JSON y el barrido reportaba cero señales sobre noticias que sí las tenían.
+    //
+    // Y el desborde no era por el JSON: midiéndolo, de 1.056 tokens de salida el JSON eran ~200 y el resto
+    // RAZONAMIENTO del modelo, que cuenta contra el mismo tope. Es la segunda vez que este mismo mecanismo
+    // nos muerde —antes con los thinking tokens de Gemini— así que aquí queda escrito: en los modelos que
+    // razonan, el tope de salida NO es el tamaño de la respuesta, es respuesta + razonamiento. De ahí el
+    // suelo de 2.500: no sobra, es lo que cuesta pensar antes de escribir la primera llave.
+    max_tokens: Math.min(8000, 2500 + items.length * 200),
+    system: `Extraes señales estructuradas de titulares deportivos de ${D.que}. Para cada item devuelve una señal SOLO si el texto la afirma sobre ${D.sujeto}. Tipos: ${tipos}. Severidad: 1 leve, 2 media, 3 grave. ${D.ruido} Responde SOLO un JSON COMPACTO, sin saltos de línea ni sangría: [{"i":<índice del item>,"type":"...","severity":1|2|3,"quote":"<fragmento textual, máximo 12 palabras>"}] — array vacío si no hay señales.`,
     messages: [{ role: 'user', content: JSON.stringify(items.map((x, i) => ({ i, subject: x.subject, title: x.title, snippet: (x.snippet || '').slice(0, 300) }))) }],
   });
   const j = jsonOf(resp);
-  if (!Array.isArray(j)) return [];
-  const TYPES = new Set(['OUT', 'INJURY', 'WEIGHT', 'REPLACEMENT', 'CAMP', 'SUSPENDED', 'DOUBT']);
+  // FALLAR EN VOZ ALTA. Devolver [] cuando la respuesta no es usable hacía indistinguible "no hay señales"
+  // de "el proveedor se cayó": el barrido reportaba cero y nadie se enteraba. Nos pasó hoy mismo probando
+  // tenis, con seis titulares que sí tenían señal. Ahora el barrido lo recoge como llm_error y se ve.
+  if (!Array.isArray(j)) throw new Error(`extractSignals sin JSON usable (stop: ${(resp && resp.stop_reason) || '?'})`);
+  const TYPES = new Set(Object.keys(D.tipos));
   return j.filter((s) => s && TYPES.has(s.type) && items[s.i])
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
@@ -772,5 +877,5 @@ async function writeCs2Read(payload, game, aviso) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
-module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead,
+module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, DOMINIOS, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead,
   verificarLectura, escribirVerificado, numerosTexto, numerosDossier };

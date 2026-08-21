@@ -11268,6 +11268,10 @@ async function tennisMatchRead(matchId, { force = false } = {}) {
     } : null,
     elo_superficie: { [d.a.name]: d.a.elo_surface ?? d.a.elo ?? null, [d.b.name]: d.b.elo_surface ?? d.b.elo ?? null },
     historial_directo: d.h2h && d.h2h.total ? { partidos: d.h2h.total, gana_a: d.h2h.a_wins, gana_b: d.h2h.b_wins } : null,
+    // PRENSA, NO BASE (21-ago): va marcado aparte a propósito. El redactor puede mencionarlo, pero no
+    // puede confundirlo con un dato del modelo, y el verificador de números tampoco lo cuenta como fuente.
+    prensa: (() => { const x = obsParaDossier('tennis', [obsClave(d.a.name), obsClave(d.a.ref)]), y = obsParaDossier('tennis', [obsClave(d.b.name), obsClave(d.b.ref)]);
+      return (x || y) ? { [d.a.name]: x, [d.b.name]: y } : null; })(),
     mercado: d.market || null,
   };
   try {
@@ -11323,6 +11327,10 @@ async function amfootGameRead(lg, gameId, { force = false } = {}) {
     factores: (gi.five || []).map((f) => f.txt).filter(Boolean).slice(0, 6),
     ultimos_cruces: (gi.h2h || []).slice(0, 3),
     mercado: gi.market && gi.market.consensus ? gi.market.consensus : null,
+    // PRENSA, NO BASE: College y CFL no publican parte de lesionados consumible, así que esto es lo único
+    // que hay sobre quién va a jugar. Va marcado aparte para que el redactor no lo mezcle con el modelo.
+    prensa: (() => { const x = obsParaDossier('amfoot', `${lg}:${obsClave(gi.home.name)}`), y = obsParaDossier('amfoot', `${lg}:${obsClave(gi.away.name)}`);
+      return (x || y) ? { [gi.home.name]: x, [gi.away.name]: y } : null; })(),
   };
   try {
     const w = await llm.escribirVerificado((pl, av) => llm.writeAmfootRead(pl, lg, av), dossier, { etiqueta: 'amfoot:' + k });
@@ -11358,6 +11366,10 @@ async function nflGameRead(gameId, { force = false } = {}) {
     clima: gi.weather && gi.weather.temp_c != null ? { temp_c: gi.weather.temp_c, viento_kmh: gi.weather.wind_kmh, lluvia_pct: gi.weather.precip_p } : null,
     mercado: gi.market && gi.market.consensus && gi.market.consensus.spread_line != null
       ? { spread_consenso: gi.market.consensus.spread_line, total_consenso: gi.market.consensus.total_line } : null,
+    // PRENSA, NO BASE: la NFL sí publica parte de lesionados y ya está arriba en `quarterbacks`; esto es
+    // lo que la prensa dice ADEMÁS, y va marcado aparte para que se lea como lo que es.
+    prensa: (() => { const x = obsParaDossier('amfoot', `nfl:${obsClave(gi.home.name)}`), y = obsParaDossier('amfoot', `nfl:${obsClave(gi.away.name)}`);
+      return (x || y) ? { [gi.home.name]: x, [gi.away.name]: y } : null; })(),
     ultimos_cruces: (gi.h2h || []).slice(0, 3),
   };
   try {
@@ -11394,6 +11406,10 @@ async function esGameRead(game, eventId, { force = false } = {}) {
     plantilla_movida: { [d.event.home.name]: !!(T.a && T.a.roster && T.a.roster.changed_recently), [d.event.away.name]: !!(T.b && T.b.roster && T.b.roster.changed_recently) },
     historial_directo: d.h2h && d.h2h.n ? { series: d.h2h.n, victorias: { [d.h2h.a.name]: d.h2h.wins_a, [d.h2h.b.name]: d.h2h.wins_b } } : null,
     mercado: d.model.market_anchor ? { fuente: d.model.market_anchor.from } : null,
+    // PRENSA, NO BASE: aquí es donde más falta hace. `plantilla_movida` de arriba sale de nuestro propio
+    // registro y va con semanas de retraso; un stand-in anunciado ayer solo está en la prensa.
+    prensa: (() => { const x = obsParaDossier('esports', `${game}:${obsClave(d.event.home.name)}`), y = obsParaDossier('esports', `${game}:${obsClave(d.event.away.name)}`);
+      return (x || y) ? { [d.event.home.name]: x, [d.event.away.name]: y } : null; })(),
   };
   // lo que solo tiene ESTE juego
   const M = d.model;
@@ -13204,6 +13220,149 @@ function combatNewsFlags(ft) {
 if (combatObserverOn()) {
   setTimeout(() => runCombatObserver().catch(() => { }), 200 * 1000);
   setInterval(() => runCombatObserver().catch(() => { }), 3 * 3600 * 1000);
+}
+
+// ══ LA CAPA DE OBSERVACIÓN EN ESPORTS, TENIS Y FÚTBOL AMERICANO (21-ago) ═══════════════════════════
+// Fútbol y combate leían la prensa desde julio; los otros seis deportes no, y no por criterio sino por
+// factura: con un solo proveedor de pago, extender el extractor multiplicaba por cuatro la parte más cara
+// del sistema. Con dos proveedores gratuitos el coste marginal es cero.
+//
+// LO QUE ESTA CAPA VE Y EL MODELO NO. Todos nuestros modelos son ciegos a la plantilla POR CONSTRUCCIÓN:
+// miden lo que un equipo HIZO, no quién va a estar. Eso es deliberado —es lo que los hace auditables— pero
+// deja tres huecos concretos que el mercado sí ve y ninguna API publica:
+//   · esports — un stand-in de la academia rompe la correspondencia entre el rating y los cinco que van a
+//     estar en el servidor. Es la señal que más mueve el precio en CS2 y LoL, y la que peor capturamos.
+//   · tenis — la retirada de cuadro no es contexto, es que el partido no existe; y un abandono en pista el
+//     día antes dice más de la carga física que cualquier estadística de saque.
+//   · fútbol americano — la NFL publica parte de lesionados, pero College y CFL no publican NADA
+//     consumible. Y en este deporte el quarterback titular vale más que el resto de la plantilla junta.
+//
+// DISPLAY, NUNCA MODELO. Igual que en los dos deportes que ya la tenían: se guarda versionado, se pinta
+// con la cita textual que la sustenta, entra al dossier del redactor como CONTEXTO —marcado como prensa,
+// no como dato— y jamás toca una probabilidad. Para eso tendría que pasar el peaje de validación
+// walk-forward, y una señal sin histórico no tiene derecho a mover un número.
+const OBSD = require('./observer/deportes');
+const obsDeportesOn = () => String(process.env.GP_OBS_DEPORTES || 'true') !== 'false' && llm.enabled();
+const obsClave = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const OBS_KW = { cs2: 'CS2 Counter-Strike', lol: '"League of Legends" LoL', valorant: 'Valorant', dota2: 'Dota 2' };
+
+// sujetos de esports: los equipos con serie en los próximos días, los que juegan antes primero
+async function obsSujetosEsports() {
+  const ES = require('./esports-engine/store');
+  const vistos = new Set(); const filas = [];
+  for (const g of ES.GAME_ORDER) {
+    const s = await ES.slate(g, { days: 4 }).catch(() => null);
+    for (const ev of ((s && s.events) || [])) {
+      const t = Date.parse(ev.start_at || 0);
+      if (!(t > Date.now() - 3 * 3600e3 && t < Date.now() + 4 * 864e5)) continue;
+      for (const lado of ['home', 'away']) {
+        const nm = ev[lado] && ev[lado].name;
+        if (!nm) continue;
+        const id = `${g}:${obsClave(nm)}`;
+        if (vistos.has(id)) continue;
+        vistos.add(id);
+        filas.push({ id, name: nm, t, langs: ['en'], meta: { game: g }, q: `"${nm}" ${OBS_KW[g] || ''}`.trim() });
+      }
+    }
+  }
+  return filas.sort((a, b) => a.t - b.t);
+}
+// sujetos de tenis: los jugadores con partido en la pizarra. EN + ES — media pizarra del circuito es
+// latinoamericana o española y la prensa local publica la molestia antes que la agencia internacional.
+async function obsSujetosTenis() {
+  const TEN = require('./tennis-engine/store');
+  const b = await TEN.board().catch(() => null);
+  const vistos = new Set(); const filas = [];
+  for (const r of ((b && b.rows) || [])) {
+    const t = Date.parse(r.commence || 0);
+    if (!(t > Date.now() - 3 * 3600e3 && t < Date.now() + 5 * 864e5)) continue;
+    for (const lado of ['a', 'b']) {
+      const nm = r[lado];
+      if (!nm) continue;
+      const id = obsClave(nm);
+      if (vistos.has(id)) continue;
+      vistos.add(id);
+      filas.push({ id, name: nm, t, langs: ['en', 'es'], meta: { tour: r.tour }, q: `"${nm}" tennis` });
+    }
+  }
+  return filas.sort((a, b2) => a.t - b2.t);
+}
+// sujetos de fútbol americano: NFL + College + CFL. College tiene ~130 equipos por jornada, así que el
+// orden por hora de inicio no es cosmético — es lo que decide en qué se gasta el tope del barrido.
+async function obsSujetosAmfoot() {
+  const filas = []; const vistos = new Set();
+  const mete = (lg, nm, t) => {
+    if (!nm) return;
+    const id = `${lg}:${obsClave(nm)}`;
+    if (vistos.has(id)) return;
+    vistos.add(id);
+    const dep = lg === 'nfl' ? 'NFL' : lg === 'cfl' ? 'CFL' : '"college football"';
+    filas.push({ id, name: nm, t, langs: ['en'], meta: { league: lg }, q: `"${nm}" ${dep} football` });
+  };
+  try {
+    const NFL = require('./nfl-engine/store');
+    const sl = await NFL.slate({ days: 9 }).catch(() => null);
+    for (const g of ((sl && sl.games) || [])) {
+      const t = Date.parse((g.date || '') + 'T' + (g.time || '17:00') + ':00Z');
+      mete('nfl', g.home && (g.home.name || g.home), t); mete('nfl', g.away && (g.away.name || g.away), t);
+    }
+  } catch { /* nfl sin base */ }
+  try {
+    const AF = require('./amfoot-engine/store');
+    for (const lg of Object.keys(AF.LEAGUES)) {
+      const sl = await AF.slate(lg, { days: 9 }).catch(() => null);
+      for (const g of ((sl && sl.games) || [])) {
+        const t = Date.parse((g.date || '') + 'T' + (g.time || '17:00') + ':00Z');
+        mete(lg, g.home && (g.home.name || g.home), t); mete(lg, g.away && (g.away.name || g.away), t);
+      }
+    }
+  } catch { /* amfoot sin agenda */ }
+  return filas.filter((x) => Number.isFinite(x.t) && x.t > Date.now() - 6 * 3600e3).sort((a, b) => a.t - b.t);
+}
+
+async function runObsDeporte(dominio) {
+  if (!obsDeportesOn()) return { skipped: 'disabled' };
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot' }[dominio];
+  if (!SLOT) return { skipped: 'dominio' };
+  db[SLOT] = db[SLOT] || {};
+  const sujetos = dominio === 'esports' ? await obsSujetosEsports()
+    : dominio === 'tennis' ? await obsSujetosTenis() : await obsSujetosAmfoot();
+  const r = await OBSD.barrer({
+    dominio, sujetos, store: db[SLOT], llm,
+    // College puede meter 130 equipos en una jornada: el tope y el orden por hora de inicio son lo que
+    // mantiene el barrido educado con la fuente y el gasto acotado.
+    maxSujetos: dominio === 'amfoot' ? 28 : 24,
+    capLlm: 40, porSujeto: dominio === 'tennis' ? 6 : 8,
+  });
+  save();
+  return r;
+}
+// Banderas de un sujeto, en la forma que ya consumen los paneles del resto de deportes.
+//
+// ACEPTA VARIAS CLAVES A PROPÓSITO. En tenis el nombre NO es el mismo a los dos lados: la pizarra trae el
+// del proveedor de cuotas ("C. Alcaraz") y el detalle del partido trae el de NUESTRA base ("Carlos
+// Alcaraz"), porque el detalle resuelve el jugador contra el histórico propio. Guardar por uno y buscar
+// por el otro habría dado cero señales siempre, y en silencio — el peor tipo de fallo, porque parece que
+// la capa funciona y simplemente no hay noticias. Se prueban las dos.
+const obsSenales = (dominio, ids, opts) => {
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot' }[dominio];
+  const lista = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+  for (const id of lista) {
+    try { const f = OBSD.banderas(dominio, db[SLOT] || {}, id, opts || {}); if (f.length) return f; } catch { /* sigue */ }
+  }
+  return [];
+};
+// las mismas señales resumidas para el DOSSIER del redactor. Van marcadas como PRENSA y con la cita, para
+// que el modelo pueda mencionarlas sin poder confundirlas con un dato de la base.
+const obsParaDossier = (dominio, ids) => {
+  const f = obsSenales(dominio, ids);
+  if (!f.length) return null;
+  return f.slice(0, 4).map((x) => ({ tipo: x.type, gravedad: x.severity, prensa: x.es.replace(/^📰\s*/, '') }));
+};
+if (obsDeportesOn()) {
+  // escalonados para no salir los tres a la vez ni chocar con los dos que ya existían (150 s y 200 s)
+  const arranca = (dom, ms) => { setTimeout(() => runObsDeporte(dom).catch(() => { }), ms); setInterval(() => runObsDeporte(dom).catch(() => { }), 3 * 3600 * 1000); };
+  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000);
 }
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
@@ -16941,7 +17100,12 @@ const server = http.createServer(async (req, res) => {
       try {
         if (p === '/api/tennis/board') return json(res, 200, await TEN.board(tnQ));
         if (p === '/api/tennis/agenda') return json(res, 200, await TEN.agenda());
-        if (p === '/api/tennis/match') return json(res, 200, await TEN.matchDetail(url.searchParams.get('id') || ''));
+        if (p === '/api/tennis/match') {
+          const out = await TEN.matchDetail(url.searchParams.get('id') || '');
+          if (out && out.a && out.b) out.senales = [...obsSenales('tennis', [obsClave(out.a.name), obsClave(out.a.ref)], { lado: 'a' }),
+            ...obsSenales('tennis', [obsClave(out.b.name), obsClave(out.b.ref)], { lado: 'b' })];
+          return json(res, 200, out);
+        }
         if (p === '/api/tennis/read') {
           const id = String(url.searchParams.get('id') || '');
           if (!id) return json(res, 400, { error: 'falta id' });
@@ -17014,6 +17178,11 @@ const server = http.createServer(async (req, res) => {
           const id = String(url.searchParams.get('id') || '');
           const out = await ES.analyzeMatch(gm, id, { days: +(url.searchParams.get('days') || 7) });
           if (!out) return json(res, 404, { error: 'partido no encontrado en la agenda del proveedor', game: gm, id });
+          // SEÑALES DE PRENSA (21-ago). Se pegan acá y no dentro del motor a propósito: los motores no ven
+          // db y no deben verla — son piezas puras que se pueden probar sueltas. La capa de observación es
+          // del servidor, y además esto deja claro en el propio JSON que el modelo NO las usó.
+          out.senales = [...obsSenales('esports', `${gm}:${obsClave(out.event.home.name)}`, { lado: 'home' }),
+            ...obsSenales('esports', `${gm}:${obsClave(out.event.away.name)}`, { lado: 'away' })];
           return json(res, 200, out);
         }
         if (p === '/api/esports/model') {
@@ -17182,6 +17351,8 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/amfoot/game') {
           const out = await AF.gameIntel(lgA, String(url.searchParams.get('id') || ''));
           if (!out) return json(res, 404, { error: 'partido no encontrado en la base' });
+          out.senales = [...obsSenales('amfoot', `${lgA}:${obsClave(out.home.name)}`, { lado: 'home' }),
+            ...obsSenales('amfoot', `${lgA}:${obsClave(out.away.name)}`, { lado: 'away' })];
           return json(res, 200, out);
         }
         if (p === '/api/amfoot/teams') return json(res, 200, AF.teamsDirectory(lgA));
@@ -17224,6 +17395,8 @@ const server = http.createServer(async (req, res) => {
           const id = String(url.searchParams.get('id') || '');
           const out = await NFL.gameIntel(id);
           if (!out) return json(res, 404, { error: 'partido no encontrado en la base', id });
+          out.senales = [...obsSenales('amfoot', `nfl:${obsClave(out.home.name)}`, { lado: 'home' }),
+            ...obsSenales('amfoot', `nfl:${obsClave(out.away.name)}`, { lado: 'away' })];
           return json(res, 200, out);
         }
         if (p === '/api/nfl/teams') return json(res, 200, NFL.teamsDirectory());
@@ -17671,6 +17844,34 @@ const server = http.createServer(async (req, res) => {
     // ese precio. Cloudbet publica `maxStake` por selección y lo venimos guardando; esto lo resume por
     // familia y por liga en vez de dejarlo enterrado en la tabla. Sin este número, cualquier proyección de
     // beneficio es una multiplicación con un factor inventado.
+    // ── LA CAPA DE OBSERVACIÓN DE LOS TRES DEPORTES NUEVOS (21-ago) ────────────────────────────────
+    // GET: qué hay guardado ahora mismo, por deporte y por sujeto, con las señales y su cita. POST: fuerza
+    // un barrido — existe porque la primera vez que se enciende un deporte nuevo, si no hay forma de
+    // dispararlo a mano, hay que esperar tres horas para saber si funciona (y eso ya nos pasó con Valorant).
+    if (p === '/api/internal/observer') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const dom = String(url.searchParams.get('dom') || '');
+      if (req.method === 'POST') {
+        if (!['esports', 'tennis', 'amfoot'].includes(dom)) return json(res, 400, { error: 'dom desconocido', dom: ['esports', 'tennis', 'amfoot'] });
+        return json(res, 200, await runObsDeporte(dom).catch((e) => ({ error: e.message })));
+      }
+      const resumen = (slot, dominio) => {
+        const st = db[slot] || {};
+        const sujetos = Object.entries(st).map(([id, v]) => ({ id, name: v.name, at: v.at, meta: v.meta || null,
+          signals: (v.signals || []).map((x) => ({ type: x.type, severity: x.severity, quote: x.quote, source: x.source })) }));
+        const porTipo = {};
+        for (const s2 of sujetos) for (const g of s2.signals) porTipo[g.type] = (porTipo[g.type] || 0) + 1;
+        return { dominio, sujetos: sujetos.length, con_senal: sujetos.filter((x) => x.signals.length).length,
+          senales: sujetos.reduce((a, x) => a + x.signals.length, 0), por_tipo: porTipo,
+          ultimos: sujetos.filter((x) => x.signals.length).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 12) };
+      };
+      return json(res, 200, {
+        enabled: obsDeportesOn(), at: new Date().toISOString(),
+        doctrina: 'display, nunca modelo: las señales se pintan con su cita y entran al dossier del redactor como PRENSA; ninguna toca una probabilidad.',
+        esports: resumen('obsEsports', 'esports'), tennis: resumen('obsTennis', 'tennis'), amfoot: resumen('obsAmfoot', 'amfoot'),
+      });
+    }
     if (p === '/api/internal/depth') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

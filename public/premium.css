@@ -3791,3 +3791,20 @@ td .gx-calc-btn span { display: none; }
 /* la racha de forma partía en dos líneas y una racha rota no se lee de un vistazo */
 .gx-esr-t td .gx-es-fr { vertical-align: middle; }
 .gx-esr-t td:last-child { white-space: nowrap; }
+
+/* ── SEÑALES DE PRENSA (21-ago) ─────────────────────────────────────────────────────────────────────
+   Un bloque, cuatro deportes. La jerarquía la lleva un punto de color a la izquierda y NO el tamaño del
+   texto: son avisos de contexto, y hacer que una lesión grave grite más que la probabilidad medida sería
+   invertir la importancia de la pantalla. Deliberadamente sobrio — el modelo no usa esto y se nota. */
+.gx-senales .gx-sen-list { display: flex; flex-direction: column; gap: 1px; background: var(--gx-line); }
+.gx-sen { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; background: var(--gx-panel); }
+.gx-sen-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex: 0 0 auto; background: var(--gx-text4); }
+.gx-sen-high .gx-sen-dot { background: var(--gx-neg); box-shadow: 0 0 0 3px rgba(255,107,107,.14); }
+.gx-sen-warn .gx-sen-dot { background: var(--gx-warn); box-shadow: 0 0 0 3px rgba(242,193,78,.13); }
+.gx-sen-info .gx-sen-dot { background: var(--gx-text3); }
+.gx-sen-b { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gx-sen-b > b { font-size: 12.5px; font-weight: 600; color: var(--gx-text); line-height: 1.3; }
+/* la cita va en cursiva y con el color del cuerpo: es texto de otro, no nuestro */
+.gx-sen-q { font-size: 11.5px; font-style: italic; color: var(--gx-text2); line-height: 1.45; overflow-wrap: anywhere; }
+.gx-sen-b > em { font-style: normal; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+@media (max-width: 560px) { .gx-sen { padding: 9px 12px; } .gx-sen-b > b { font-size: 12px; } }

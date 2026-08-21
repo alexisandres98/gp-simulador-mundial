@@ -17872,16 +17872,17 @@ const server = http.createServer(async (req, res) => {
         return t && AHORA - t > MARGEN;
       }).length;
 
+      // las picks de fútbol viven en db.dailyPicks, no en Postgres: la primera versión de esta sonda
+      // preguntó por una tabla `daily_picks` que no existe y se llevó un error en vez de un dato
       try {
-        const dbc = require('./database/client');
-        if (!dbc.isConfigured()) pon('futbol_clubes', { nota: 'sin base de datos configurada' });
-        else {
-          const q = await dbc.query(`SELECT status, count(*)::int n,
-              count(*) FILTER (WHERE kickoff_at < now() - interval '6 hours')::int vencidas
-            FROM daily_picks GROUP BY status`);
-          const f = (st) => (q.rows || []).find((r) => r.status === st) || { n: 0, vencidas: 0 };
-          pon('futbol', { liquidadas: f('SETTLED').n, abiertas: f('ACTIVE').n, atascadas: f('ACTIVE').vencidas });
-        }
+        const todas = db.dailyPicks || [];
+        const abiertas = todas.filter((p) => p.status !== 'SETTLED');
+        const koDe = (p) => (p.event && (p.event.kickoff_at || p.event.kickoff)) || p.kickoff || null;
+        pon('futbol', {
+          liquidadas: todas.filter((p) => p.status === 'SETTLED').length,
+          abiertas: abiertas.length,
+          atascadas: abiertas.filter((p) => { const t = Date.parse(koDe(p) || 0); return t && AHORA - t > MARGEN; }).length,
+        });
       } catch (e) { pon('futbol', { error: e.message }); }
 
       try {
@@ -17890,15 +17891,21 @@ const server = http.createServer(async (req, res) => {
           nota: 'cierra por evento: no publica la lista de abiertas con su fecha' });
       } catch (e) { pon('combate', { error: e.message }); }
 
-      try { const t = hoopsPicksTrack(); pon('baloncesto', { liquidadas: t.settled, abiertas: t.active, atascadas: null }); }
-      catch (e) { pon('baloncesto', { error: e.message }); }
+      try {
+        const t = hoopsPicksTrack();
+        const abiertas = (db.hoopsPicks || []).filter((p) => p.status === 'ACTIVE');
+        pon('baloncesto', { liquidadas: (t.total && t.total.n) || 0, abiertas: t.active,
+          atascadas: abiertas.filter((p) => { const t2 = Date.parse((p.event && p.event.kickoff_at) || 0); return t2 && AHORA - t2 > MARGEN; }).length });
+      } catch (e) { pon('baloncesto', { error: e.message }); }
 
       try {
         const ES = require('./esports-engine/store');
         for (const g of ES.GAME_ORDER) {
           const t = ES.track(g, { limit: 400 });
-          pon('esports_' + g, { liquidadas: t.settled, abiertas: t.active,
-            atascadas: vencidas(t.open, 'start_at'), ultimo_intento: t.last_settle || null });
+          // `t.open` viene recortada a 20 para la pantalla: contar sobre ella daba 20 clavado en los cuatro
+          // juegos, que es el tope y no el dato. `open_vencidas` va sobre todas.
+          pon('esports_' + g, { liquidadas: t.settled, abiertas: t.open_n != null ? t.open_n : t.active,
+            atascadas: t.open_vencidas, ultimo_intento: t.last_settle || null });
         }
       } catch (e) { pon('esports', { error: e.message }); }
 

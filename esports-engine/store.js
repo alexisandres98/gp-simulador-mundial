@@ -1681,6 +1681,14 @@ function track(game, { limit = 60 } = {}) {
     recent: settled.slice().sort((a, b) => String(b.settled_at || '').localeCompare(String(a.settled_at || ''))).slice(0, limit),
     open: all.filter((p) => p.status === 'ACTIVE')
       .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || ''))).slice(0, 20),
+    // `open` está recortada a 20 para la pantalla, así que CONTAR sobre ella miente por abajo. Estas dos
+    // van sobre todas: `open_n` cuántas hay de verdad y `open_vencidas` cuántas llevan más de 6 h con el
+    // partido ya jugado — que es la única cifra que distingue "aún no se juega" de "el liquidador está
+    // roto". Contar sobre una lista recortada fue exactamente el error que la sonda de liquidación cometió
+    // la primera vez que se ejecutó: los cuatro juegos daban 20 clavado, que es el tope, no el dato.
+    open_n: all.filter((p) => p.status === 'ACTIVE').length,
+    open_vencidas: all.filter((p) => p.status === 'ACTIVE' && p.start_at
+      && Date.now() - Date.parse(p.start_at) > 6 * 3600e3).length,
     source: (RES.SOURCES[game] || {}).name || null,
     at: (st && st.at) || null,
   };

@@ -90,6 +90,54 @@ Probado contra la prensa real del 21-ago: capta la duda de Mahomes, la lesión d
 vuelta de Alcaraz tras cuatro meses, el expulsado de TCU y el stand-in de Vitality — y **no** se traga las
 eliminaciones de torneo ni las renovaciones de contrato.
 
+## ✅ AUDITORÍA DE LIQUIDACIÓN (21-ago)
+
+`/api/internal/settle?key=` da los nueve deportes de un tirón. La cifra que importa **no es "cuántas
+liquidadas" sino `atascadas`**: picks abiertas cuyo partido ya se jugó hace más de 6 h. Cero liquidadas y
+cero atascadas es sano (no ha empezado la temporada); 200 liquidadas y 90 atascadas está roto aunque el
+total tenga buena pinta.
+
+| deporte | liquidadas | abiertas | atascadas |
+|---|---|---|---|
+| fútbol (Mundial + clubes) | 96 + 684 | 0 | **0** |
+| combate | 79 | 18 | 0 |
+| baloncesto | 50 | 15 | **0** |
+| tenis ATP / WTA | 19 / 27 | 5 / 1 | **0** |
+| NFL · College | 0 | 0 | **0** (temporada sin empezar) |
+| CFL | 4 | 14 | **0** |
+| F1 | 0 | 69 | **0** (carreras aún no corridas) |
+| esports CS2 | 207 | 92 | **85** |
+| esports LoL | 77 | 39 | **31** |
+| esports Valorant | 0 → **14** | 80 | **60** |
+| esports Dota 2 | 31 | 4 | **2** |
+
+**Todo sano menos esports.** Y dentro de esports hay dos problemas distintos que conviene no mezclar.
+
+### Valorant leía un archivo que nadie actualizaba (ARREGLADO)
+94 picks y cero liquidadas desde que existe el deporte. No eran los nombres —JD Gaming, TYLOO y All Gamers
+aparecen igual a los dos lados— ni las fechas ni la cobertura: **la cosecha escribe en `/data/val-raw` y el
+liquidador leía `<disco>/esports/valorant`**. Dos directorios distintos, así que siempre caía a la copia del
+repo, congelada el 17-ago, mientras las picks pendientes eran del 19 y el 20.
+
+Lo delató poder ver la fuente **en crudo y por día**: 58 filas que se paran en seco el 17 mientras la
+cosecha presume de 33.104 series "al día". Dos cifras que no pueden ser ciertas a la vez.
+
+Ahora se prueban las cuatro rutas posibles y gana **la que traiga la serie más reciente**, no la primera que
+exista. Con dos copias en disco la buena es la que está al día; quedarse con la primera es como se llegó
+aquí. Además la ventana de emparejamiento se ajusta a la precisión de la fuente: vlr.gg publica el DÍA y
+rellena la hora con un mediodía, así que comparar contra ±12 h dejaba fuera todo lo que se juega de
+madrugada o a última hora — media agenda en un circuito global.
+
+### Lo que sigue atascado, y por qué (PENDIENTE)
+- **~55 de Valorant y 27 de CS2 son `unsettleable`**, no `unmatched`: la serie SÍ se empareja, pero la
+  fuente no publica el dato que esa familia necesita (rondas por mapa). Son picks que **no se pueden
+  liquidar nunca** con la fuente actual y se acumulan en abiertas para siempre. La pregunta de producto no
+  es cómo liquidarlas: es **si deberíamos generarlas**.
+- **65 de CS2 y 20 de LoL son `unmatched`** con la fuente cubriendo esas fechas. Descartado que sea nivel de
+  torneo: los MISMOS torneos aparecen liquidados y atascados (CCT European Series 2 Qualifier: 36 liquidadas
+  y 2 atascadas; LCK Challengers: 23 y 6). Queda como variantes de nombre en equipos de tier bajo —el mismo
+  problema que se resolvió en College con una tabla de alias.
+
 ## 📊 ESTADO EN VIVO
 
 ```

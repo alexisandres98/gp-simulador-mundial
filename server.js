@@ -18105,6 +18105,10 @@ const server = http.createServer(async (req, res) => {
         if (run === 'whys') return json(res, 200, await llmAnnotatePickWhys({ cap: +(url.searchParams.get('cap') || 8) }));
         if (run === 'brief') return json(res, 200, await llmBriefPass());
         if (run === 'fightreads') return json(res, 200, await llmFightReadsPass({ cap: +(url.searchParams.get('cap') || 5) }));
+        // la pasada que escribe esports, NFL y —desde el 21-ago— tenis, F1 y College/CFL. Existía sin
+        // forma de dispararla a mano, así que la primera lectura de un deporte nuevo había que esperarla.
+        if (run === 'reads') return json(res, 200, await llmEsNflReadsPass({ cap: +(url.searchParams.get('cap') || 12) }));
+        if (run === 'hoopsreads') return json(res, 200, await llmHoopsReadsPass({ cap: +(url.searchParams.get('cap') || 4) }));
         // diagnóstico Punto 1: ver el dossier EXACTO que recibe el redactor / re-escribir UNA lectura
         if (run === 'dossier' || run === 'fightread1') {
           const org2 = COMBAT_ORGS[String(url.searchParams.get('org') || '')] ? String(url.searchParams.get('org')) : 'ufc';

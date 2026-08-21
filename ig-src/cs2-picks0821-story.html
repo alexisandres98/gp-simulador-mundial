@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1080px; height:1920px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:#07090c; color:#EDF2F4; position:relative; overflow:hidden; }
+.glow-g { position:absolute; top:-260px; left:-260px; width:900px; height:900px; border-radius:50%;
+  background:radial-gradient(circle,rgba(31,227,164,.20),transparent 62%); }
+.glow-b { position:absolute; bottom:-320px; right:-260px; width:1000px; height:1000px; border-radius:50%;
+  background:radial-gradient(circle,rgba(90,140,255,.13),transparent 62%); }
+.grain { position:absolute; inset:0; opacity:.05; background-image:repeating-conic-gradient(#fff 0 .0001%, transparent 0 .0002%); }
+/* la altura del lienzo va ESCRITA, no en 100%: en el render headless el viewport de layout no es el que
+   dice --window-size, y con 100% el pie se calculaba contra otra altura y se salía de la foto. */
+.wrap { position:relative; height:1920px; padding:140px 70px 96px; display:flex; flex-direction:column; }
+.top { display:flex; align-items:center; gap:16px; margin-bottom:44px; }
+.badge { width:62px; height:62px; border-radius:18px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.42);
+  display:flex; align-items:center; justify-content:center; font-size:32px; }
+.bname { font-size:33px; font-weight:800; letter-spacing:-.5px; }
+.new { margin-left:auto; font-size:20px; font-weight:800; letter-spacing:.13em; color:#1FE3A4;
+  border:1px solid rgba(31,227,164,.5); padding:11px 22px; border-radius:99px; background:rgba(31,227,164,.1); }
+h1 { font-size:78px; line-height:1.02; font-weight:800; letter-spacing:-2.6px; margin-bottom:14px; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size:27px; color:#9DB0B5; font-weight:600; margin-bottom:56px; }
+.card { background:linear-gradient(165deg,#10171c,#0b1013); border:1px solid rgba(255,255,255,.09);
+  border-radius:26px; padding:34px 40px 32px; margin-bottom:26px; position:relative; overflow:hidden; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:9px; background:#1FE3A4; }
+.tag { font-size:21px; font-weight:800; letter-spacing:.11em; color:#1FE3A4; text-transform:uppercase; margin-bottom:12px; }
+.who { font-size:31px; font-weight:800; letter-spacing:-.5px; margin-bottom:6px; }
+.when { font-size:23px; color:#9DB0B5; font-weight:600; margin-bottom:22px; }
+.bet { font-size:44px; font-weight:800; letter-spacing:-1px; line-height:1.12; margin-bottom:26px; }
+.bar { height:14px; border-radius:99px; overflow:hidden; background:rgba(255,255,255,.08); margin-bottom:14px; }
+.bar .l { height:100%; background:#1FE3A4; }
+.row { display:flex; align-items:center; justify-content:space-between; }
+.nums { font-size:25px; font-weight:800; color:#1FE3A4; }
+.nums small { color:#5F747B; font-weight:700; margin-left:12px; font-size:21px; }
+.odds { background:#1FE3A4; color:#06231A; font-size:27px; font-weight:800; padding:13px 26px; border-radius:99px; }
+.foot { margin-top:auto; display:flex; align-items:center; justify-content:space-between; }
+.free { font-size:25px; font-weight:800; color:#1FE3A4; max-width:520px; line-height:1.35; }
+.free span { display:block; color:#9DB0B5; font-weight:600; font-size:21px; margin-top:6px; }
+.cta { font-size:27px; font-weight:800; color:#06231A; background:#1FE3A4; padding:20px 36px; border-radius:99px; }
+.disc { position:absolute; bottom:44px; left:70px; font-size:18px; color:#4A5B61; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow-g"></div><div class="glow-b"></div><div class="grain"></div>
+  <div class="wrap">
+    <div class="top"><div class="badge">🎮</div><div class="bname">GP Simulador</div><div class="new">CS2 · HOY</div></div>
+    <h1>3 picks de CS2<br><span class="g">para hoy</span></h1>
+    <div class="sub">21 ago · Esports World Cup + CCT European Series</div>
+
+    <div class="card">
+      <div class="tag">Hándicap de rondas · EWC</div>
+      <div class="who">Legacy vs Falcons</div>
+      <div class="when">BO3 · hoy 13:55 UTC</div>
+      <div class="bet">Falcons −3.5 rondas · mapa 2</div>
+      <div class="bar"><div class="l" style="width:66%"></div></div>
+      <div class="row"><div class="nums">GP 66%<small>mercado 52%</small></div><div class="odds">@1.91</div></div>
+    </div>
+
+    <div class="card">
+      <div class="tag">Total de mapas · EWC</div>
+      <div class="who">Legacy vs Falcons</div>
+      <div class="when">BO3 · hoy 13:55 UTC</div>
+      <div class="bet">Menos de 2.5 mapas · serie 2-0</div>
+      <div class="bar"><div class="l" style="width:63%"></div></div>
+      <div class="row"><div class="nums">GP 63%<small>mercado 58%</small></div><div class="odds">@1.71</div></div>
+    </div>
+
+    <div class="card">
+      <div class="tag">Hándicap de rondas · CCT EU 7</div>
+      <div class="who">MASONIC vs ex-Zero Tenacity</div>
+      <div class="when">BO3 · hoy 14:00 UTC</div>
+      <div class="bet">ex-Zero Tenacity −2.5 rondas · mapa 1</div>
+      <div class="bar"><div class="l" style="width:60%"></div></div>
+      <div class="row"><div class="nums">GP 60%<small>mercado 56%</small></div><div class="odds">@1.80</div></div>
+    </div>
+
+    <div class="foot">
+      <div class="free">GRATIS 7 DÍAS<span>picks liquidadas en público · 8 deportes</span></div>
+      <div class="cta">gpsimulador.com</div>
+    </div>
+  </div>
+  <div class="disc">Estimaciones de un modelo estadístico — no consejo financiero. 18+.</div>
+</body></html>

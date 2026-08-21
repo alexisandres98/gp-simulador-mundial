@@ -1544,11 +1544,33 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
   const idx = rs.rows.map((r) => ({ r, ka: key(r.a), kb: key(r.b), t: Date.parse(r.at || 0) }));
 
   let settled = 0, unmatched = 0, unsettleable = 0;
+  // POR QUÉ NO CASA, NO SOLO CUÁNTAS (21-ago). El resumen decía `unmatched: 82` y ahí se acababa la
+  // historia: con ese número no se puede distinguir "la fuente no trae esa serie" de "la trae con otro
+  // nombre" de "la trae con otra fecha". Son tres fallos distintos con tres arreglos distintos, y sin
+  // saber cuál es hay que adivinar. Valorant llevaba 94 picks abiertas y CERO liquidadas por esto.
+  const sinCasar = [];
   for (const pk of pend) {
     const kh = key(pk.home), ka = key(pk.away), t = Date.parse(pk.start_at || 0);
     const hit = idx.find((x) => Math.abs(x.t - t) < 12 * 3600e3
       && ((x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh)));
-    if (!hit) { unmatched++; continue; }
+    if (!hit) {
+      unmatched++;
+      if (sinCasar.length < 6) {
+        // ¿existe el par en la fuente aunque sea fuera de la ventana de tiempo? Eso separa un problema de
+        // NOMBRE (no aparece nunca) de uno de FECHA (aparece, pero con otra hora).
+        const porNombre = idx.find((x) => (x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh));
+        sinCasar.push({
+          serie: `${pk.home} vs ${pk.away}`, start_at: pk.start_at,
+          clave_local: kh, clave_visita: ka,
+          en_la_fuente_por_nombre: !!porNombre,
+          fuente_at: porNombre ? new Date(porNombre.t).toISOString() : null,
+          horas_de_diferencia: porNombre ? +(Math.abs(porNombre.t - t) / 3600e3).toFixed(1) : null,
+          diagnostico: porNombre ? 'el par SÍ está en la fuente: falla la ventana de tiempo'
+            : 'el par NO está en la fuente con esas claves: o no la cubre, o los nombres no resuelven igual',
+        });
+      }
+      continue;
+    }
     const flip = hit.ka !== kh;
     const r = flip
       ? { ...hit.r, a: hit.r.b, b: hit.r.a, maps_a: hit.r.maps_b, maps_b: hit.r.maps_a,
@@ -1568,7 +1590,13 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
     settled++;
   }
   st.at = new Date().toISOString();
-  const resumen = { at: st.at, settled, unmatched, unsettleable, pending: pend.length, source: rs.source, resolver: !!resolve };
+  const fechas = idx.map((x) => x.t).filter(Boolean).sort((a, b) => a - b);
+  const resumen = { at: st.at, settled, unmatched, unsettleable, pending: pend.length, source: rs.source, resolver: !!resolve,
+    // el estado de la FUENTE va en el mismo parte: sin esto no se sabe si el problema es nuestro o suyo
+    fuente_filas: idx.length,
+    fuente_desde: fechas.length ? new Date(fechas[0]).toISOString().slice(0, 10) : null,
+    fuente_hasta: fechas.length ? new Date(fechas[fechas.length - 1]).toISOString().slice(0, 10) : null,
+    sin_casar: sinCasar };
   st.last_settle = resumen;   // queda guardado para que la sonda pueda contar el cero sin volver a liquidar
   wr(PICKS_F(game), st);
   return { game, settled, unmatched, unsettleable, pending: pend.length, clv_backfilled: backfilled, source: rs.source,

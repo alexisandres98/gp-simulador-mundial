@@ -623,6 +623,10 @@ function track(tour) {
   return {
     regime: 'shadow', doctrine: DOCTRINE,
     open: mine.filter((p) => p.status === 'OPEN').length,
+    // LA LISTA, NO SOLO EL NÚMERO (21-ago). Con un contador no se puede saber si una tesis abierta lleva
+    // dos horas o dos semanas esperando, y ésa es justo la diferencia entre "aún no se juega" y "el
+    // liquidador está atascado". Sin ella, un settler roto no se nota hasta que alguien mira a mano.
+    open_list: mine.filter((p) => p.status === 'OPEN').slice(-40).reverse(),
     settled: done.length, w, l, push: done.filter((p) => p.result === 'PUSH').length,
     voided: mine.filter((p) => p.result === 'VOID').length,
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,

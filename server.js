@@ -17851,7 +17851,87 @@ const server = http.createServer(async (req, res) => {
     // GET: qué hay guardado ahora mismo, por deporte y por sujeto, con las señales y su cita. POST: fuerza
     // un barrido — existe porque la primera vez que se enciende un deporte nuevo, si no hay forma de
     // dispararlo a mano, hay que esperar tres horas para saber si funciona (y eso ya nos pasó con Valorant).
-    if (p === '/api/internal/observer') {
+    // ── ¿SE ESTÁN LIQUIDANDO LAS PICKS? UN SOLO SITIO PARA LOS NUEVE DEPORTES (21-ago) ───────────────
+    // Contestar "¿las picks se liquidan y pasan a rendimiento?" costaba nueve consultas distintas, y dos de
+    // ellas eran imposibles sin sesión de admin. Esa pregunta hay que poder hacerla de un tirón: cuando una
+    // liquidación se atasca, el registro deja de crecer EN SILENCIO y el rendimiento miente por omisión —
+    // no enseña números malos, enseña menos números.
+    //
+    // LA CIFRA QUE IMPORTA NO ES "CUÁNTAS LIQUIDADAS" SINO `atascadas`: picks abiertas cuyo partido ya se
+    // jugó hace rato. Un deporte con 0 liquidadas y 0 atascadas está sano (no ha empezado la temporada);
+    // uno con 200 liquidadas y 90 atascadas está roto aunque el total tenga buena pinta.
+    if (p === '/api/internal/settle') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const AHORA = Date.now();
+      const MARGEN = 6 * 3600e3;          // tiempo para que el partido acabe Y la fuente publique el resultado
+      const out = { at: new Date(AHORA).toISOString(), deportes: {} };
+      const pon = (k, v) => { out.deportes[k] = v; };
+      const vencidas = (lista, campo) => (lista || []).filter((x) => {
+        const t = Date.parse((x && x[campo]) || 0);
+        return t && AHORA - t > MARGEN;
+      }).length;
+
+      try {
+        const dbc = require('./database/client');
+        if (!dbc.isConfigured()) pon('futbol_clubes', { nota: 'sin base de datos configurada' });
+        else {
+          const q = await dbc.query(`SELECT status, count(*)::int n,
+              count(*) FILTER (WHERE kickoff_at < now() - interval '6 hours')::int vencidas
+            FROM daily_picks GROUP BY status`);
+          const f = (st) => (q.rows || []).find((r) => r.status === st) || { n: 0, vencidas: 0 };
+          pon('futbol', { liquidadas: f('SETTLED').n, abiertas: f('ACTIVE').n, atascadas: f('ACTIVE').vencidas });
+        }
+      } catch (e) { pon('futbol', { error: e.message }); }
+
+      try {
+        const t = combatPicksTrack();
+        pon('combate', { liquidadas: (t.total && t.total.n) || t.settled || 0, abiertas: t.active || 0, atascadas: null,
+          nota: 'cierra por evento: no publica la lista de abiertas con su fecha' });
+      } catch (e) { pon('combate', { error: e.message }); }
+
+      try { const t = hoopsPicksTrack(); pon('baloncesto', { liquidadas: t.settled, abiertas: t.active, atascadas: null }); }
+      catch (e) { pon('baloncesto', { error: e.message }); }
+
+      try {
+        const ES = require('./esports-engine/store');
+        for (const g of ES.GAME_ORDER) {
+          const t = ES.track(g, { limit: 400 });
+          pon('esports_' + g, { liquidadas: t.settled, abiertas: t.active,
+            atascadas: vencidas(t.open, 'start_at'), ultimo_intento: t.last_settle || null });
+        }
+      } catch (e) { pon('esports', { error: e.message }); }
+
+      try { const NFL = require('./nfl-engine/store'); const t = NFL.track();
+        pon('nfl', { liquidadas: t.settled, abiertas: t.open, atascadas: vencidas(t.open_list, 'kickoff') }); }
+      catch (e) { pon('nfl', { error: e.message }); }
+
+      try {
+        const AF = require('./amfoot-engine/store');
+        for (const lg of Object.keys(AF.LEAGUES)) { const t = AF.track(lg);
+          pon('amfoot_' + lg, { liquidadas: t.settled, abiertas: t.open, atascadas: vencidas(t.open_list, 'kickoff') }); }
+      } catch (e) { pon('amfoot', { error: e.message }); }
+
+      try {
+        const TEN = require('./tennis-engine/store');
+        for (const [nom, tour] of [['atp', 0], ['wta', 1]]) { const t = TEN.track(tour);
+          pon('tenis_' + nom, { liquidadas: t.settled, abiertas: t.open, atascadas: vencidas(t.open_list, 'commence') }); }
+      } catch (e) { pon('tenis', { error: e.message }); }
+
+      try { const F1x = require('./f1-engine/store'); const t = F1x.takeTrack();
+        pon('f1', { liquidadas: t.n_liquidadas, abiertas: t.abiertas, atascadas: null,
+          nota: 'las tesis de F1 se liquidan con el resultado oficial de la carrera, no por partido' }); }
+      catch (e) { pon('f1', { error: e.message }); }
+
+      // el veredicto en una línea, para no tener que leerse el JSON entero
+      const rotos = Object.entries(out.deportes).filter(([, v]) => v && v.atascadas > 0).map(([k, v]) => `${k}: ${v.atascadas}`);
+      out.veredicto = rotos.length ? 'ATASCADOS → ' + rotos.join(' · ') : 'ningún deporte con picks vencidas sin liquidar';
+      return json(res, 200, out);
+    }
+    // OJO CON EL NOMBRE: `/api/internal/observer` YA EXISTÍA (el observer de jugadores del Mundial, con
+    // sesión de admin). Al llamar igual a ésta, que va antes en el despacho, la vieja quedó inalcanzable
+    // sin que nadie lo notara. Dos rutas distintas no pueden compartir path.
+    if (p === '/api/internal/observer-deportes') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const dom = String(url.searchParams.get('dom') || '');

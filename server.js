@@ -11242,6 +11242,94 @@ async function llmHoopsReadsPass({ cap = 4 } = {}) {
   return { written: done };
 }
 
+// ── LECTURAS DE TENIS, F1 Y FÚTBOL AMERICANO UNIVERSITARIO/CFL (21-ago) ──────────────────────────
+// Tres deportes con motor, pantallas y picks, y sin una sola línea escrita: sus fichas enseñaban números
+// y ni una lectura. No es que se hubieran olvidado — cada redactor costaba saldo de Anthropic y el
+// presupuesto iba justo. Con dos proveedores gratuitos delante de la cadena esa razón desapareció.
+// Mismo contrato que las otras cinco: el dossier sale de la base estructurada, el LLM SOLO narra, la
+// lectura se escribe UNA vez y se persiste; sin redactor la pantalla vive igual sin párrafo.
+async function tennisMatchRead(matchId, { force = false } = {}) {
+  db.tennisReads = db.tennisReads || {};
+  const k = String(matchId);
+  if (db.tennisReads[k] && !force && db.tennisReads[k].es) return db.tennisReads[k];
+  if (!llm.enabled() || !llm.budgetOk()) return db.tennisReads[k] || null;
+  const TEN = require('./tennis-engine/store');
+  const d = await TEN.matchDetail(k).catch(() => null);
+  if (!d || !d.available || !d.a || !d.b) return db.tennisReads[k] || null;
+  const pct = (x) => (x == null ? null : +(100 * x).toFixed(1));
+  const dossier = {
+    partido: `${d.a.name} vs ${d.b.name}`, torneo: d.tourney, superficie: d.surface, al_mejor_de: d.best_of,
+    favorito_gp: { nombre: d.p_a >= 0.5 ? d.a.name : d.b.name, probabilidad_pct: pct(d.p_a >= 0.5 ? d.p_a : 1 - d.p_a) },
+    saque_y_resto: d.duel ? {
+      conserva_saque_pct: { [d.a.name]: pct(d.duel.hold_a), [d.b.name]: pct(d.duel.hold_b) },
+      rompe_pct: { [d.a.name]: pct(d.duel.break_a), [d.b.name]: pct(d.duel.break_b) },
+      juegos_esperados: d.duel.exp_games, prob_algun_tiebreak_pct: pct(d.duel.tb_any),
+    } : null,
+    elo_superficie: { [d.a.name]: d.a.elo_surface ?? d.a.elo ?? null, [d.b.name]: d.b.elo_surface ?? d.b.elo ?? null },
+    historial_directo: d.h2h && d.h2h.total ? { partidos: d.h2h.total, gana_a: d.h2h.a_wins, gana_b: d.h2h.b_wins } : null,
+    mercado: d.market || null,
+  };
+  try {
+    const w = await llm.writeTennisRead(dossier);
+    if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), match_id: k }; db.tennisReads[k] = out; save(); return out; }
+  } catch (e) { console.error('[tennis-read]', e.message); }
+  return db.tennisReads[k] || null;
+}
+async function f1RaceRead(round, { force = false } = {}) {
+  db.f1Reads = db.f1Reads || {};
+  const k = String(round || 'next');
+  if (db.f1Reads[k] && !force && db.f1Reads[k].es) return db.f1Reads[k];
+  if (!llm.enabled() || !llm.budgetOk()) return db.f1Reads[k] || null;
+  const F1 = require('./f1-engine/store');
+  const b = F1.raceBoard(round && round !== 'next' ? +round : undefined);
+  if (!b || b.available === false || !Array.isArray(b.rows) || !b.rows.length) return db.f1Reads[k] || null;
+  const top = b.rows.slice().sort((x, y) => (y.p_win || 0) - (x.p_win || 0)).slice(0, 6)
+    .map((r) => ({ piloto: r.name, escuderia: r.constructor, parrilla: r.grid ?? null,
+      gana_pct: r.p_win != null ? +(100 * r.p_win).toFixed(1) : null,
+      podio_pct: r.p_podium != null ? +(100 * r.p_podium).toFixed(1) : null,
+      puntos_pct: r.p_points != null ? +(100 * r.p_points).toFixed(1) : null }));
+  const dossier = {
+    gran_premio: b.race || b.name || b.gp || null, circuito: b.circuit || b.track || null,
+    ronda: b.round ?? round ?? null, estado: b.state || null, vueltas: b.laps ?? null,
+    favoritos: top, notas_del_trazado: b.track_notes || b.circuit_notes || null,
+    mercado: b.market || null,
+  };
+  try {
+    const w = await llm.writeF1Read(dossier);
+    if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), round: k }; db.f1Reads[k] = out; save(); return out; }
+  } catch (e) { console.error('[f1-read]', e.message); }
+  return db.f1Reads[k] || null;
+}
+async function amfootGameRead(lg, gameId, { force = false } = {}) {
+  db.amfootReads = db.amfootReads || {};
+  const k = `${lg}|${gameId}`;
+  if (db.amfootReads[k] && !force && db.amfootReads[k].es) return db.amfootReads[k];
+  if (!llm.enabled() || !llm.budgetOk()) return db.amfootReads[k] || null;
+  const AF = require('./amfoot-engine/store');
+  const gi = await AF.gameIntel(lg, gameId).catch(() => null);
+  if (!gi || !gi.model) return db.amfootReads[k] || null;
+  const m = gi.model;
+  const fav = m.p_home >= 0.5 ? gi.home : gi.away;
+  const dossier = {
+    liga: lg === 'cfl' ? 'CFL' : 'College (FBS)',
+    partido: `${gi.away.name} @ ${gi.home.name}`, semana: gi.week, temporada: gi.season, fecha: gi.date,
+    campo_neutral: !!gi.neutral,
+    favorito_gp: { nombre: fav.name, probabilidad_pct: +(100 * (m.p_home >= 0.5 ? m.p_home : 1 - m.p_home)).toFixed(1) },
+    margen_esperado_pts: m.mu_margin, total_esperado_pts: m.mu_total,
+    puntos_esperados: { [gi.home.name]: m.team_home_mu, [gi.away.name]: m.team_away_mu },
+    incertidumbre_pts: m.unc_pts, partidos_jugados_temporada: m.games_cur,
+    conferencias: { [gi.home.name]: gi.home.conference || null, [gi.away.name]: gi.away.conference || null },
+    factores: (gi.five || []).map((f) => f.txt).filter(Boolean).slice(0, 6),
+    ultimos_cruces: (gi.h2h || []).slice(0, 3),
+    mercado: gi.market && gi.market.consensus ? gi.market.consensus : null,
+  };
+  try {
+    const w = await llm.writeAmfootRead(dossier, lg);
+    if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), league: lg, game_id: String(gameId) }; db.amfootReads[k] = out; save(); return out; }
+  } catch (e) { console.error('[amfoot-read]', e.message); }
+  return db.amfootReads[k] || null;
+}
+
 // ── LECTURAS DE NFL Y CS2 (17-ago, v2): la capa de observación/contexto vía LLM ───────────────────
 // Mismo contrato que la de baloncesto: el dossier sale de la base estructurada, el LLM SOLO narra, la
 // lectura se paga UNA vez y se persiste. Sin presupuesto → la pantalla vive igual sin párrafo.
@@ -11334,7 +11422,9 @@ async function esGameRead(game, eventId, { force = false } = {}) {
 }
 // pasada de fondo: lecturas de las series CS2 de las próximas 30 h y (en temporada) de los partidos NFL
 // de las próximas 40 h — tope chico por pasada, el costo es predecible y el resto se genera bajo demanda.
-async function llmEsNflReadsPass({ cap = 3 } = {}) {
+// TOPE SUBIDO DE 3 A 12 (21-ago): el tope existía porque cada lectura costaba saldo de Anthropic. Con
+// Gemini y Groq al frente de la cadena el coste es cero y lo único que limita es el tiempo de la pasada.
+async function llmEsNflReadsPass({ cap = +(process.env.GP_LLM_READS_CAP || 12) } = {}) {
   if (!llm.enabled() || !llm.budgetOk()) return { skipped: 'off_or_budget' };
   let done = 0;
   try {
@@ -11364,6 +11454,38 @@ async function llmEsNflReadsPass({ cap = 3 } = {}) {
       }
     }
   } catch { /* nfl sin base */ }
+  // ── LOS TRES NUEVOS (21-ago) ───────────────────────────────────────────────────────────────────
+  // Se escriben en la misma pasada y con el mismo tope: si el presupuesto (o la cadena de proveedores)
+  // se agota a mitad, lo que ya se escribió queda y el resto lo recoge el pase siguiente.
+  try {
+    const TEN = require('./tennis-engine/store');
+    const b = await TEN.board().catch(() => null);
+    for (const it of ((b && b.items) || []).slice(0, 12)) {
+      if (done >= cap) break;
+      if (db.tennisReads && db.tennisReads[it.id]) continue;
+      const r = await tennisMatchRead(it.id).catch(() => null);
+      if (r && r.es) done++;
+    }
+  } catch { /* tenis sin pizarra */ }
+  try {
+    if (done < cap && !(db.f1Reads && db.f1Reads.next)) {
+      const r = await f1RaceRead('next').catch(() => null);
+      if (r && r.es) done++;
+    }
+  } catch { /* f1 sin calendario */ }
+  try {
+    const AF = require('./amfoot-engine/store');
+    for (const lg of Object.keys(AF.LEAGUES)) {
+      if (done >= cap) break;
+      const sl = await AF.slate(lg, { days: 8 }).catch(() => null);
+      for (const g of ((sl && sl.games) || []).slice(0, 8)) {
+        if (done >= cap) break;
+        if (db.amfootReads && db.amfootReads[`${lg}|${g.id}`]) continue;
+        const r = await amfootGameRead(lg, g.id).catch(() => null);
+        if (r && r.es) done++;
+      }
+    }
+  } catch { /* amfoot sin agenda */ }
   return { written: done };
 }
 
@@ -16758,6 +16880,10 @@ const server = http.createServer(async (req, res) => {
       if (!uF || !(uF.isAdmin || f1Public)) return json(res, 404, { error: 'No encontrado' });
       const F1 = require('./f1-engine/store');
       try {
+        if (p === '/api/f1/read') {
+          const r = await f1RaceRead(url.searchParams.get('round') || 'next').catch(() => null);
+          return json(res, 200, r || { pending: true, why: llm.enabled() ? 'la lectura se escribirá en la pasada de fondo.' : 'redactor apagado.' });
+        }
         if (p === '/api/f1/board') {
           const rd = url.searchParams.get('round');
           return json(res, 200, F1.raceBoard(rd != null && rd !== '' ? +rd : undefined));
@@ -16802,6 +16928,12 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/tennis/board') return json(res, 200, await TEN.board(tnQ));
         if (p === '/api/tennis/agenda') return json(res, 200, await TEN.agenda());
         if (p === '/api/tennis/match') return json(res, 200, await TEN.matchDetail(url.searchParams.get('id') || ''));
+        if (p === '/api/tennis/read') {
+          const id = String(url.searchParams.get('id') || '');
+          if (!id) return json(res, 400, { error: 'falta id' });
+          const r = await tennisMatchRead(id).catch(() => null);
+          return json(res, 200, r || { pending: true, why: llm.enabled() ? 'la lectura se escribirá en la pasada de fondo.' : 'redactor apagado.' });
+        }
         if (p === '/api/tennis/players') {
           return json(res, 200, TEN.playersDirectory(tnQ, { q: url.searchParams.get('q') || '', limit: Math.min(200, +(url.searchParams.get('limit') || 80)) }));
         }
@@ -17026,6 +17158,12 @@ const server = http.createServer(async (req, res) => {
       const lgA = String(url.searchParams.get('league') || 'ncaaf').toLowerCase();
       if (!AF.LEAGUES[lgA]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AF.LEAGUES) });
       try {
+        if (p === '/api/amfoot/read') {
+          const id = String(url.searchParams.get('id') || '');
+          if (!id) return json(res, 400, { error: 'falta id' });
+          const r = await amfootGameRead(lgA, id).catch(() => null);
+          return json(res, 200, r || { pending: true, why: llm.enabled() ? 'la lectura se escribirá en la pasada de fondo.' : 'redactor apagado.' });
+        }
         if (p === '/api/amfoot/slate') return json(res, 200, await AF.slate(lgA, { days: Math.min(40, +(url.searchParams.get('days') || 12)) }));
         if (p === '/api/amfoot/game') {
           const out = await AF.gameIntel(lgA, String(url.searchParams.get('id') || ''));

@@ -565,6 +565,44 @@ async function extractSignals(items, domain) {
     .map((s) => ({ i: s.i, type: s.type, severity: Math.max(1, Math.min(3, +s.severity || 1)), quote: String(s.quote || '').slice(0, 200) }));
 }
 
+// ── LOS TRES DEPORTES QUE NO TENÍAN VOZ (21-ago) ─────────────────────────────────────────────────
+// Tenis, F1 y fútbol americano universitario/CFL llevaban meses con motor, pantallas y picks, y sin una
+// sola línea escrita: sus fichas enseñaban números y ni una lectura. No se habían hecho por una razón
+// muy concreta —cada redactor costaba dinero del saldo de Anthropic y el presupuesto ya iba justo— y esa
+// razón acaba de desaparecer. Mismas reglas maestras que los demás: el dossier manda, el LLM narra, y
+// jamás sale de aquí una probabilidad, un mecanismo interno ni una promesa.
+async function writeTennisRead(payload) {
+  const resp = await call({
+    kind: 'writer', json: 'esen',
+    max_tokens: 2000,
+    system: 'Eres el analista de tenis de GP Simulador. Con el dossier JSON escribe la lectura del partido en DOS párrafos por idioma (máximo 100 palabras cada uno): (1) EL PARTIDO — qué decide el duelo en ESTA superficie, citando los números del dossier (saque, resto, Elo por superficie, historial directo, forma); (2) EL GUION Y EL RIESGO — cómo se rompe el patrón y qué habría que ver en pista para saber que la lectura falló. Si el dossier trae línea de juegos o de sets, cierra con UNA frase sobre por dónde va la duración. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200) } : null;
+}
+async function writeF1Read(payload) {
+  const resp = await call({
+    kind: 'writer', json: 'esen',
+    max_tokens: 2000,
+    system: 'Eres el analista de Fórmula 1 de GP Simulador. Con el dossier JSON escribe la lectura del gran premio en DOS párrafos por idioma (máximo 100 palabras cada uno): (1) EL CIRCUITO Y LA PARRILLA — qué pide este trazado y a quién favorece según los números del dossier (ritmo, clasificación frente a carrera, historial en la pista, fiabilidad); (2) DÓNDE SE DECIDE — el momento concreto de la carrera que ordena el resultado (salida, ventana de paradas, degradación, tráfico) y qué lo invalidaría. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200) } : null;
+}
+async function writeAmfootRead(payload, liga) {
+  const nombre = liga === 'cfl' ? 'la CFL (fútbol americano canadiense: 12 jugadores, 3 downs, campo más ancho y largo)' : 'el fútbol americano universitario (FBS)';
+  const resp = await call({
+    kind: 'writer', json: 'esen',
+    max_tokens: 2000,
+    system: `Eres el analista de ${nombre} de GP Simulador. Con el dossier JSON escribe la lectura del partido en DOS párrafos por idioma (máximo 100 palabras cada uno): (1) EL PARTIDO — qué inclina el choque según los números del dossier (fuerza de los dos ataques y defensas, ritmo, margen esperado, total esperado, localía); (2) EL RIESGO — el mejor argumento del otro lado y la señal concreta que invalidaría la lectura. Si el dossier trae mercado, cierra con UNA frase comparando el margen o el total propio con el del consenso, SIN recomendar nada. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.`,
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+  const j = jsonOf(resp);
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200) } : null;
+}
+
 // ── Redactores de NFL y CS2 (17-ago, v2) ──────────────────────────────────────────────────────────
 // Mismas reglas maestras que la lectura de baloncesto: el favorito del dossier se defiende SIEMPRE, cero
 // picks/cuotas/edge, cero datos inventados, y cada métrica se nombra como viene en el JSON.
@@ -600,4 +638,4 @@ async function writeCs2Read(payload, game) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
-module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read };
+module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead };

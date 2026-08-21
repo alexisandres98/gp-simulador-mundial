@@ -1,3 +1,56 @@
+# HANDOFF — estado al 21-ago-2026 (tres proveedores de LLM, ocho deportes con voz)
+
+## 🔌 EL LLM DEJA DE APAGARSE
+
+`llm.js` pasa de una puerta a tres, con cadena de reserva. Reparto y por qué:
+
+| uso | cadena | razón |
+|---|---|---|
+| chat | Anthropic → Gemini → Groq | es lo único que ve texto de usuarios reales y lo único con herramientas |
+| redactores | **Gemini** → Groq → Anthropic | mejor español, esquema JSON nativo; solo ven factores ya traducidos |
+| extractor | **Groq** → Gemini → Anthropic | extracción estructurada, 1,4 s, sin datos de usuario |
+
+Si el primero falla —429, 503, timeout— se prueba el siguiente. Un redactor solo cae a plantilla cuando
+fallan **los tres**. Comprobado con la clave de Gemini rota a propósito: Groq contestó en 1,1 s.
+
+Dos cosas estaban atadas a Anthropic sin necesidad: `enabled()` exigía su clave (quitarla apagaba el LLM
+entero) y `budgetOk()` frenaba los jobs al llegar al tope diario aunque hubiera proveedores gratis
+esperando. El presupuesto ahora **solo raciona lo de pago**.
+
+### Lo que hubo que medir antes de elegir modelo
+- **Gemini cuenta el pensamiento dentro del techo de salida**: `gemini-3.6-flash` gastó 1.917 tokens
+  pensando y devolvió el JSON truncado. El elegido es `gemini-3.1-flash-lite`, que no piensa. Y
+  `thinkingBudget: 0` lo rechaza con 400 — no hay escapatoria.
+- **El modo JSON de Groq exige un objeto en la raíz.** El extractor devuelve un array, así que activarlo
+  ahí tiraba la llamada al siguiente de la cadena sin motivo.
+- `qwen3.6-27b` no sostiene JSON en español; `openai/gpt-oss-120b` sí.
+
+## 🗣️ TENIS, F1 Y COLLEGE/CFL ESTRENAN LECTURA
+
+Tres deportes con motor, pantallas y picks llevaban meses sin una línea escrita — no por olvido, sino
+porque cada redactor costaba saldo. Rutas nuevas: `/api/tennis/read`, `/api/f1/read`, `/api/amfoot/read`.
+La de F1 se reescribe al cambiar el estado del fin de semana (pre-quali → post-quali cambia la parrilla y
+con ella la lectura entera).
+
+**Dos fallos que los dejaban mudos, visibles solo mirando producción:**
+1. El tope de la pasada era un contador **único**: esports, que siempre tiene agenda, se lo bebía entero.
+   Un tope compartido entre desiguales no reparte. Ahora cada deporte tiene su cuota.
+2. La pizarra de tenis devuelve `rows`, no `items` — con la clave equivocada el bucle no entraba nunca.
+
+## 📊 ESTADO EN VIVO
+
+```
+lecturas   esports 32 · hoops 21 · amfoot 9 · tenis 4 · F1 2 · NFL 0
+llamadas   56 hoy → Gemini 53 · Groq 3
+gasto      $0,4926 — el mismo de antes de encender nada
+```
+
+El tope de la pasada sube de 3 a 12 (`GP_LLM_READS_CAP`) y se puede disparar a mano:
+`POST /api/internal/llm?key=…&run=reads&cap=20`. La sonda cuenta lecturas por deporte y enseña la última.
+
+**🔑 Pendiente:** las dos claves nuevas circularon por chat — rotar cuando convenga. Están en Render como
+`GROQ_API_KEY` y `GEMINI_API_KEY`.
+
 # HANDOFF — estado al 20-ago-2026 (el simulador de rutas, calibrado)
 
 ## 🔴 EL HALLAZGO: el simulador sabía y se pasaba de listo por un orden de magnitud

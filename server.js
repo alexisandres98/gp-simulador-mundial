@@ -17925,10 +17925,20 @@ const server = http.createServer(async (req, res) => {
           pon('tenis_' + nom, { liquidadas: t.settled, abiertas: t.open, atascadas: vencidas(t.open_list, 'commence') }); }
       } catch (e) { pon('tenis', { error: e.message }); }
 
-      try { const F1x = require('./f1-engine/store'); const t = F1x.takeTrack();
-        pon('f1', { liquidadas: t.n_liquidadas, abiertas: t.abiertas, atascadas: null,
-          nota: 'las tesis de F1 se liquidan con el resultado oficial de la carrera, no por partido' }); }
-      catch (e) { pon('f1', { error: e.message }); }
+      // F1 NO SE MIDE POR PARTIDO SINO POR CARRERA, así que `atascadas` se calcula distinto: una tesis está
+      // atascada si su ronda YA se corrió. Sin esto, F1 salía con un guion y quedaba fuera del veredicto —
+      // que es exactamente como Valorant pasó semanas con 94 abiertas y cero liquidadas sin que nadie lo
+      // viera. Un deporte que no se puede auditar es un deporte que se asume sano.
+      try {
+        const F1x = require('./f1-engine/store'); const t = F1x.takeTrack();
+        const cal = F1x.calendar() || {};
+        const corridas = new Set((cal.rows || []).filter((r) => r.done || r.result || r.winner).map((r) => r.round));
+        const abiertas = (t.rows || []).filter((r) => !r.result);
+        pon('f1', { liquidadas: t.n_liquidadas, abiertas: t.abiertas,
+          atascadas: abiertas.filter((r) => corridas.has(r.round)).length,
+          carreras_corridas: corridas.size,
+          nota: 'una tesis está atascada si su carrera ya se corrió y sigue sin resultado' });
+      } catch (e) { pon('f1', { error: e.message }); }
 
       // el veredicto en una línea, para no tener que leerse el JSON entero
       const rotos = Object.entries(out.deportes).filter(([, v]) => v && v.atascadas > 0).map(([k, v]) => `${k}: ${v.atascadas}`);

@@ -39,9 +39,70 @@ const MODELS = {
   extract: () => process.env.GP_LLM_EXTRACT_MODEL || 'claude-haiku-4-5',
 };
 
+// ── TRES PROVEEDORES, UNA PUERTA (21-ago) ────────────────────────────────────────────────────────
+// Hasta hoy el LLM era Anthropic y punto: cuando se acababa el presupuesto del día, TODO degradaba a
+// plantillas. Con dos claves gratuitas encima (Groq y Gemini) la pregunta deja de ser cuánto gastar y
+// pasa a ser dónde mandar cada cosa.
+//
+// EL REPARTO, Y POR QUÉ ES ASÍ:
+//   · CHAT → Anthropic. Es lo único que ve texto escrito por usuarios reales, y es lo único que usa
+//     herramientas (el formato de tools de Anthropic no es el de nadie más). Además ahora le sobra
+//     presupuesto, porque los redactores han dejado de comérselo.
+//   · REDACTORES → Gemini, con Groq detrás. Solo ven factores YA traducidos (etiquetas de producto),
+//     jamás pesos ni fórmulas: la doctrina de caja negra se cumple igual con proveedor gratis. Gemini
+//     escribe mejor español y respeta esquema JSON nativo; Groq responde en menos de un segundo.
+//   · EXTRACTOR → Groq. Extracción estructurada, sin prosa y sin datos de usuario: velocidad pura.
+//
+// Y LO QUE DE VERDAD CAMBIA: una cadena. Si el primero falla —límite de tasa, 503, timeout— se prueba
+// el siguiente. Un redactor solo cae a plantilla cuando fallan LOS TRES. Antes bastaba con que se
+// acabara el día.
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GEMINI_URL = (m) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+const PROV = {
+  anthropic: {
+    key: () => process.env.ANTHROPIC_API_KEY || '',
+    free: false,
+    model: (kind) => (MODELS[kind] ? MODELS[kind]() : MODELS.chat()),
+    tools: true,
+  },
+  groq: {
+    key: () => process.env.GROQ_API_KEY || '',
+    free: true,
+    // gpt-oss-120b es el único del catálogo gratuito que sostiene JSON en español sin romperse
+    model: (kind) => (kind === 'extract'
+      ? (process.env.GP_LLM_GROQ_EXTRACT || 'openai/gpt-oss-120b')
+      : (process.env.GP_LLM_GROQ_MODEL || 'openai/gpt-oss-120b')),
+    tools: false,
+  },
+  gemini: {
+    key: () => process.env.GEMINI_API_KEY || '',
+    free: true,
+    // flash-lite NO gasta tokens de pensamiento: los modelos con razonamiento se comen el techo de
+    // salida antes de cerrar el JSON (medido: 1.917 tokens de pensamiento y el JSON truncado)
+    model: () => process.env.GP_LLM_GEMINI_MODEL || 'gemini-3.1-flash-lite',
+    tools: false,
+  },
+};
+// cadena por uso, configurable sin desplegar
+const CHAIN = (kind) => {
+  const env = process.env['GP_LLM_CHAIN_' + String(kind).toUpperCase()];
+  const def = kind === 'chat' ? 'anthropic,gemini,groq'
+    : kind === 'extract' ? 'groq,gemini,anthropic'
+      : 'gemini,groq,anthropic';
+  return String(env || def).split(',').map((x) => x.trim()).filter((x) => PROV[x] && PROV[x].key());
+};
+
 let _db = null, _save = null;
 function init(db, save) { _db = db; _save = save; }
-function enabled() { return !!process.env.ANTHROPIC_API_KEY && String(process.env.GP_LLM_ENABLED || 'true') !== 'false'; }
+// ENCENDIDO = HAY ALGÚN PROVEEDOR. Antes esto exigía la clave de Anthropic, así que quitarla apagaba
+// el LLM entero aunque hubiera dos claves gratis puestas.
+function enabled() {
+  if (String(process.env.GP_LLM_ENABLED || 'true') === 'false') return false;
+  return Object.values(PROV).some((p) => !!p.key());
+}
+// ¿Hay algún proveedor GRATIS disponible para este uso? Si lo hay, el presupuesto deja de ser un
+// portón: no hay nada que racionar.
+function hayGratis(kind) { return CHAIN(kind).some((n) => PROV[n].free); }
 
 // ── SALDO ────────────────────────────────────────────────────────────────────────────────────────
 // GP_LLM_BALANCE_USD = cuánto se recargó en la consola de Anthropic. GP_LLM_BALANCE_AT = etiqueta de
@@ -100,7 +161,14 @@ function usage() {
 }
 // budgetOk() sin argumento = tier de fondo (así lo llaman todos los jobs existentes, y es el
 // comportamiento conservador correcto). budgetOk('chat') para lo interactivo.
-function budgetOk(tier) { return usage().usd < tierCap(tier === 'chat' ? 'chat' : 'bg'); }
+// Con un proveedor gratis en la cadena, SIEMPRE hay presupuesto: lo que se raciona es el saldo de
+// Anthropic, y lo gratis no lo toca. Sin esto, los jobs seguirían parándose al llegar al tope diario
+// aunque tuvieran a Gemini y a Groq esperando.
+function budgetOk(tier) {
+  const kind = tier === 'chat' ? 'chat' : 'writer';
+  if (hayGratis(kind)) return true;
+  return usage().usd < tierCap(tier === 'chat' ? 'chat' : 'bg');
+}
 // Foto completa para el panel admin y /api/internal/llm.
 function budgetState() {
   const u = usage(), b = balance(), rem = remainingUsd();
@@ -121,53 +189,167 @@ function budgetState() {
     bg_open: budgetOk('bg'), chat_open: budgetOk('chat'),
     days_at_this_rate: days,
     low: isFinite(rem) && b.loaded_usd > 0 && rem < b.loaded_usd * 0.15,
+    // el reparto real: qué cadena sirve cada uso y cuánto ha movido hoy cada proveedor
+    cadenas: { chat: CHAIN('chat'), writer: CHAIN('writer'), extract: CHAIN('extract') },
+    proveedores: Object.fromEntries(Object.entries(PROV).map(([k, v]) => [k, { hay_clave: !!v.key(), gratis: v.free }])),
+    hoy_por_proveedor: u.by_prov || {},
   };
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Llamada base. kind decide el modelo; el medidor carga el costo al uso que la originó.
-async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, cacheSystem = false }) {
-  if (!enabled()) throw new Error('llm_disabled');
-  const u = usage();
-  // El corte depende de QUIÉN llama: el chat puede usar todo el día, los jobs respetan la reserva.
-  if (u.usd >= tierCap(kind === 'chat' ? 'chat' : 'bg')) throw new Error('llm_budget');
-  if (remainingUsd() <= 0) throw new Error('llm_balance');
-  const model = MODELS[kind] ? MODELS[kind]() : MODELS.chat();
+// ── LAS TRES LLAMADAS, CADA UNA EN SU DIALECTO ───────────────────────────────────────────────────
+// Las tres devuelven la MISMA forma que devolvía Anthropic —`{content:[{type:'text',text}], usage}`—
+// para que ni un solo llamador de arriba se entere de quién contestó. Ese es todo el truco: el
+// dialecto se traduce aquí abajo y `textOf`/`jsonOf` siguen funcionando sin tocarse.
+async function callAnthropic({ model, system, messages, tools, max_tokens, cacheSystem }) {
   const body = { model, max_tokens, messages };
   if (tools) body.tools = tools;
   if (system) body.system = cacheSystem ? [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] : system;
-  let lastErr = null;
-  for (let att = 0; att < 3; att++) {
-    let r;
-    try {
-      r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(50000),
-      });
-    } catch (e) { lastErr = e; await sleep(1200 * (att + 1)); continue; }
-    if (r.status === 429 || r.status >= 500) { lastErr = new Error('llm_http_' + r.status); await sleep(1600 * (att + 1)); continue; }
-    const j = await r.json().catch(() => null);
-    if (!j) { lastErr = new Error('llm_badjson'); continue; }
-    if (j.error) { u.errors++; throw new Error('llm_api: ' + (j.error.message || j.error.type)); }
-    const us = j.usage || {};
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': PROV.anthropic.key(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(50000),
+  });
+  if (r.status === 429 || r.status >= 500) throw new Error('llm_http_' + r.status);
+  const j = await r.json().catch(() => null);
+  if (!j) throw new Error('llm_badjson');
+  if (j.error) throw new Error('llm_api: ' + (j.error.message || j.error.type));
+  return j;
+}
+// Groq habla OpenAI: el system es un mensaje más y el contenido es texto plano.
+async function callGroq({ model, system, messages, max_tokens, json }) {
+  const ms = [];
+  if (system) ms.push({ role: 'system', content: system });
+  for (const m of messages || []) {
+    ms.push({ role: m.role, content: typeof m.content === 'string' ? m.content
+      : (m.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n') });
+  }
+  const body = { model, messages: ms, max_tokens, temperature: 0.4 };
+  // El modo JSON de Groq exige un OBJETO en la raíz. El extractor devuelve un ARRAY, así que activarlo
+  // ahí hace fallar la validación y tira la llamada al siguiente de la cadena sin motivo. Se activa solo
+  // donde el contrato es un objeto ({es,en}); para el resto manda el prompt y el parser tolerante.
+  if (json === 'esen') body.response_format = { type: 'json_object' };
+  const r = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + PROV.groq.key(), 'content-type': 'application/json' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(50000),
+  });
+  if (r.status === 429 || r.status >= 500) throw new Error('llm_http_' + r.status);
+  const j = await r.json().catch(() => null);
+  if (!j) throw new Error('llm_badjson');
+  if (j.error) throw new Error('llm_api: ' + (j.error.message || j.error.code));
+  const txt = ((j.choices || [])[0] || {}).message || {};
+  const us = j.usage || {};
+  return { content: [{ type: 'text', text: txt.content || '' }],
+    usage: { input_tokens: us.prompt_tokens || 0, output_tokens: us.completion_tokens || 0 }, _prov: 'groq' };
+}
+// Gemini tiene su propia forma: systemInstruction aparte, `contents` con role user/model, y un techo de
+// salida que INCLUYE el pensamiento — por eso el modelo elegido es uno que no piensa.
+async function callGemini({ model, system, messages, max_tokens, json }) {
+  const contents = [];
+  for (const m of messages || []) {
+    const txt = typeof m.content === 'string' ? m.content
+      : (m.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+    if (!txt) continue;
+    contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: txt }] });
+  }
+  if (!contents.length) throw new Error('llm_sin_contenido');
+  const body = { contents, generationConfig: { maxOutputTokens: max_tokens, temperature: 0.4 } };
+  if (system) body.systemInstruction = { parts: [{ text: system }] };
+  // esquema nativo: pedir {es,en} por contrato es más fiable que pedirlo por prosa
+  if (json) {
+    body.generationConfig.responseMimeType = 'application/json';
+    if (json === 'esen') {
+      body.generationConfig.responseSchema = { type: 'OBJECT',
+        properties: { es: { type: 'STRING' }, en: { type: 'STRING' } }, required: ['es', 'en'] };
+    }
+  }
+  const r = await fetch(GEMINI_URL(model) + '?key=' + encodeURIComponent(PROV.gemini.key()), {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(50000),
+  });
+  if (r.status === 429 || r.status >= 500) throw new Error('llm_http_' + r.status);
+  const j = await r.json().catch(() => null);
+  if (!j) throw new Error('llm_badjson');
+  if (j.error) throw new Error('llm_api: ' + (j.error.message || j.error.status));
+  const c = (j.candidates || [])[0] || {};
+  const text = ((c.content || {}).parts || []).map((p) => p.text || '').join('');
+  // MAX_TOKENS con texto a medias devuelve JSON roto: mejor fallar y que la cadena pruebe al siguiente
+  if (!text || (c.finishReason && c.finishReason !== 'STOP' && !text.trim().endsWith('}'))) {
+    throw new Error('llm_corte_' + (c.finishReason || 'vacio'));
+  }
+  const us = j.usageMetadata || {};
+  return { content: [{ type: 'text', text }],
+    usage: { input_tokens: us.promptTokenCount || 0, output_tokens: us.candidatesTokenCount || 0 }, _prov: 'gemini' };
+}
+
+// Llamada base. `kind` decide la CADENA de proveedores; el medidor carga el costo al uso que la originó
+// y solo los proveedores de pago tocan el saldo.
+async function call({ kind = 'chat', system, messages, tools, max_tokens = 512, cacheSystem = false, json = false }) {
+  if (!enabled()) throw new Error('llm_disabled');
+  const u = usage();
+  const cadena = CHAIN(kind);
+  if (!cadena.length) throw new Error('llm_sin_proveedor');
+  const errores = [];
+  for (const nombre of cadena) {
+    const P = PROV[nombre];
+    // el presupuesto SOLO frena a los de pago: un proveedor gratis no tiene por qué respetar una
+    // reserva que existe para no vaciar una cuenta con saldo
+    if (!P.free) {
+      if (u.usd >= tierCap(kind === 'chat' ? 'chat' : 'bg')) { errores.push(nombre + ':presupuesto'); continue; }
+      if (remainingUsd() <= 0) { errores.push(nombre + ':saldo'); continue; }
+    }
+    // las herramientas solo las entiende Anthropic: con un llamador que pide tools, el resto de la
+    // cadena responde igual pero SIN ellas (degradado y vivo, en vez de muerto)
+    const model = P.model(kind);
+    for (let att = 0; att < (P.free ? 2 : 3); att++) {
+      try {
+        let j;
+        if (nombre === 'anthropic') j = await callAnthropic({ model, system, messages, tools, max_tokens, cacheSystem });
+        else if (nombre === 'groq') j = await callGroq({ model, system, messages, max_tokens, json });
+        else j = await callGemini({ model, system, messages, max_tokens, json });
+        contabilizar(kind, nombre, model, j);
+        j._prov = nombre; j._model = model;
+        return j;
+      } catch (e) {
+        errores.push(nombre + ':' + e.message);
+        if (/llm_api|llm_sin_contenido/.test(e.message)) break;      // error de forma: no insistir
+        await sleep((P.free ? 700 : 1500) * (att + 1));
+      }
+    }
+  }
+  u.errors++;
+  const err = new Error('llm_failed: ' + errores.slice(0, 6).join(' | '));
+  err.cadena = errores;
+  throw err;
+}
+// El medidor, con el proveedor dentro. Lo gratis suma llamadas y tokens pero cero dólares — y eso hay
+// que poder verlo, porque es justo la prueba de que el reparto está funcionando.
+function contabilizar(kind, prov, model, j) {
+  const u = usage();
+  const us = j.usage || {};
+  let cost = 0;
+  if (prov === 'anthropic') {
     const [pi, po] = PRICES[model] || PRICES['claude-sonnet-5'];
-    const cost = ((us.input_tokens || 0) + (us.cache_creation_input_tokens || 0) * 1.25) * pi / 1e6
+    cost = ((us.input_tokens || 0) + (us.cache_creation_input_tokens || 0) * 1.25) * pi / 1e6
       + (us.cache_read_input_tokens || 0) * pi * 0.1 / 1e6
       + (us.output_tokens || 0) * po / 1e6;
-    u.calls++;
-    u.in_tokens += (us.input_tokens || 0) + (us.cache_creation_input_tokens || 0) + (us.cache_read_input_tokens || 0);
-    u.out_tokens += us.output_tokens || 0;
+  }
+  u.calls++;
+  u.in_tokens += (us.input_tokens || 0) + (us.cache_creation_input_tokens || 0) + (us.cache_read_input_tokens || 0);
+  u.out_tokens += us.output_tokens || 0;
+  u.by_prov = u.by_prov || {};
+  const bp = u.by_prov[prov] = u.by_prov[prov] || { calls: 0, in: 0, out: 0, usd: 0 };
+  bp.calls++; bp.in += us.input_tokens || 0; bp.out += us.output_tokens || 0;
+  if (cost) {
+    bp.usd = +(bp.usd + cost).toFixed(5);
     u.usd = +(u.usd + cost).toFixed(5);
     u.total_usd = +((u.total_usd || 0) + cost).toFixed(5);
     u.by[kind] = +((u.by[kind] || 0) + cost).toFixed(5);
-    const b = balance(); b.spent_usd = +((b.spent_usd || 0) + cost).toFixed(5);   // el saldo se descuenta acá
-    if (_save) { try { _save(); } catch { /* el flush normal lo recoge */ } }
-    return j;
+    const b = balance(); b.spent_usd = +((b.spent_usd || 0) + cost).toFixed(5);
   }
-  usage().errors++;
-  throw lastErr || new Error('llm_failed');
+  if (_save) { try { _save(); } catch { /* el flush normal lo recoge */ } }
 }
 function textOf(resp) { return (resp && resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim(); }
 // Los modelos a veces envuelven el JSON en fences — parse robusto, null si no hay JSON.
@@ -275,7 +457,7 @@ async function askWrite({ q, lang, bundle }) {
 // Sale: {es, en}. El prompt prohíbe números nuevos; la plantilla vieja queda de respaldo.
 async function writePickWhy(payload) {
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: 'esen',
     max_tokens: 420,
     system: 'Eres el redactor de GP Simulador. Reescribes la justificación de una pick deportiva como lo haría un analista profesional: natural, concreta, sin hype. PROHIBIDO: inventar números o datos que no estén en el JSON de entrada; mencionar cómo funciona el modelo por dentro; prometer resultados. Obligatorio: 2-3 frases por idioma, terminando con la idea de valor vs mercado cuando el edge esté en la entrada. Responde SOLO un JSON {"es":"...","en":"..."}.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
@@ -290,7 +472,7 @@ async function writePickWhy(payload) {
 // Doctrina de caja negra intacta: narra la pelea y sus números, jamás el mecanismo del sistema.
 async function writeFightRead(payload) {
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: 'esen',
     max_tokens: 3000, // 12-ago: dossiers ricos (estelares) truncaban a 900 y a 1800 → JSON inválido; 3000 + límite de palabras en el prompt
     system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura de la pelea para la pick indicada, en DOS párrafos por idioma (máximo 110 palabras por párrafo — la brevedad es parte del oficio): (1) LA TESIS — qué inclina la pelea a favor de la pick y su CAMINO de victoria concreto (dónde y cómo gana: distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL RIESGO — el mejor argumento del rival y la señal concreta que invalidaría la tesis (qué habría que ver en la jaula para saber que salió mal). Si el dossier trae edge vs mercado, cierra con UNA frase sobre el valor del precio. PROHIBIDO: inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
@@ -311,7 +493,7 @@ async function writeFightRead(payload) {
 // debe ser COHERENTE con ella (jamás contradecirla), pero sin mencionarla.
 async function writeFightPreview(payload) {
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de combate de GP Simulador, al nivel de un pronosticador de élite. Con el dossier JSON escribe la lectura profunda de la PELEA, en DOS párrafos por idioma (máximo 110 palabras por párrafo — la brevedad es parte del oficio). REGLA MAESTRA: el favorito del pronóstico es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — esa es la lectura del sistema y tu tesis la defiende SIEMPRE, aunque tu conocimiento previo o el campo "mercado" digan lo contrario; si "mercado" discrepa de favorito_gp, esa discrepancia ES parte del análisis (qué está viendo el sistema que el consenso no pondera), jamás una razón para cambiar de bando. (1) LA FORMA DE LA PELEA — cómo se pelea este cruce y el camino concreto de favorito_gp (distancia, presión, derribos, control, desgaste tardío), citando los números del dossier que lo sustentan; (2) EL CAMINO DEL OTRO — el mejor argumento del rival, la señal temprana de que la pelea se torció y qué factor la haría cerrada. Si "lectura_de_la_casa" viene en el dossier, tu tesis debe ser coherente con ese lado SIN nombrarla. PROHIBIDO: mencionar picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; prometer resultados; hype. Tono: analista profesional, concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
@@ -331,7 +513,7 @@ async function writeFightPreview(payload) {
 // cualquier plan → JAMÁS habla de picks ni de apuestas.
 async function writeGameRead(payload) {
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de baloncesto de GP Simulador, al nivel de un scout profesional. Con el dossier JSON escribe la lectura del PARTIDO en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE, aunque el campo "mercado" diga otra cosa; si el mercado discrepa, esa discrepancia ES parte del análisis, nunca una razón para cambiar de bando. (1) LA FORMA DEL PARTIDO — a qué ritmo se juega, quién impone su tempo, dónde se gana en la cancha (aro, triple, línea de tiros libres, rebote ofensivo, pérdidas) y qué jugadores lo deciden, citando los números del dossier. (2) EL CAMINO DEL OTRO — el mejor argumento del rival, qué señal temprana diría que el partido se torció y qué factor lo volvería cerrado. PROHIBIDO: mencionar picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar datos que no estén en el JSON; describir el funcionamiento interno del sistema; hype. NOMBRÁ CADA MÉTRICA COMO VIENE EN EL JSON: si el campo dice tiro_efectivo_pct escribí \"tiro efectivo\", jamás \"TS%\" ni ningún otro acrónimo — son métricas distintas y renombrarlas es inventar un dato. Tono: analista concreto, sin relleno. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los dos párrafos con \\n\\n dentro del string, jamás con saltos de línea literales.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
@@ -348,7 +530,7 @@ const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/
   esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)', f1: 'Fórmula 1' };
 async function writeBrief(payload, sport) {
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: true,
     // 15-ago: 700 se quedaba corto con jornadas de 10 partidos → el JSON salía truncado y jsonOf devolvía
     // null, o sea brief sin apertura y en silencio. Mismo patrón que ya había pasado con las lecturas de
     // combate. Se sube el techo Y se acota el largo en el prompt, que es lo que de verdad controla el costo.
@@ -371,7 +553,7 @@ async function writeBrief(payload, sport) {
 async function extractSignals(items, domain) {
   if (!items.length) return [];
   const resp = await call({
-    kind: 'extract',
+    kind: 'extract', json: true,
     max_tokens: 900,
     system: `Extraes señales estructuradas de titulares deportivos de ${domain === 'combat' ? 'MMA/boxeo' : 'fútbol'}. Para cada item devuelve una señal SOLO si el texto la afirma sobre EL SUJETO indicado (no sobre su rival ni terceros). Tipos: OUT (baja confirmada de la pelea/partido), INJURY (lesión sin baja confirmada), WEIGHT (falló o luchará por dar el peso, hospitalizado en el corte), REPLACEMENT (entra como reemplazo / short notice), CAMP (cambio de campamento/equipo técnico), SUSPENDED (suspensión), DOUBT (en duda). Severidad: 1 leve, 2 media, 3 grave. Ignora clickbait, rumores de terceros y noticias de otra pelea/partido. Responde SOLO un JSON: [{"i":<índice del item>,"type":"...","severity":1|2|3,"quote":"fragmento textual que lo sustenta"}] — array vacío si no hay señales.`,
     messages: [{ role: 'user', content: JSON.stringify(items.map((x, i) => ({ i, subject: x.subject, title: x.title, snippet: (x.snippet || '').slice(0, 300) }))) }],
@@ -388,7 +570,7 @@ async function extractSignals(items, domain) {
 // picks/cuotas/edge, cero datos inventados, y cada métrica se nombra como viene en el JSON.
 async function writeNflRead(payload) {
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de NFL de GP Simulador, al nivel de un scout profesional. Con el dossier JSON escribe la lectura del PARTIDO en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el "mercado" del dossier discrepa, esa discrepancia ES parte del análisis, jamás una razón para cambiar de bando. (1) LA FORMA DEL PARTIDO — de dónde sale la ventaja (pase o carrera, ofensa o defensa, citando los EPA del dossier), qué dice la diferencia de rating, cómo pesan el descanso, la sede o el clima si vienen en el JSON, y qué QB/entrenador conduce cada lado. (2) EL CAMINO DEL OTRO — el mejor argumento del rival con sus números, qué señal temprana diría que el partido se torció y qué lo volvería cerrado; si la incertidumbre del dossier es alta (inicio de temporada), DILO con su número. PROHIBIDO: mencionar picks, apuestas, cuotas, spread como recomendación, edge o valor; contradecir a favorito_gp; inventar datos; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
@@ -408,7 +590,7 @@ async function writeCs2Read(payload, game) {
   }[game || 'cs2'];
   const JUEGO = { cs2: 'Counter-Strike 2', valorant: 'Valorant', lol: 'League of Legends', dota2: 'Dota 2' }[game || 'cs2'];
   const resp = await call({
-    kind: 'writer',
+    kind: 'writer', json: 'esen',
     max_tokens: 3000,
     system: 'Eres el analista de ' + JUEGO + ' de GP Simulador, al nivel de un coach profesional. Con el dossier JSON escribe la lectura de la SERIE en DOS párrafos por idioma (máximo 110 palabras por párrafo). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el mercado del dossier discrepa, esa discrepancia ES parte del análisis. (1) LA FORMA DE LA SERIE — dónde se decide: ' + LENTE + ', la diferencia de Elo, la forma reciente y el historial directo si vienen, y qué jugadores cargan el equipo si el dossier trae ratings. (2) EL CAMINO DEL OTRO — por dónde gana el rival y qué tendría que pasar para que la serie se torciera, y el aviso de plantilla movida si el dossier lo marca. PROHIBIDO: picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; inventar mapas, héroes, campeones o datos que no estén en el dossier; hype. Nombra cada métrica como viene en el JSON. Tono: analista concreto. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa párrafos con \\n\\n dentro del string.',
     messages: [{ role: 'user', content: JSON.stringify(payload) }],
@@ -418,4 +600,4 @@ async function writeCs2Read(payload, game) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
-module.exports = { init, enabled, budgetOk, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read };
+module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, writeNflRead, writeCs2Read };

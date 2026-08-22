@@ -249,7 +249,7 @@
       cl_tab_summary: 'Resumen', cl_tab_form: 'Forma', cl_tab_results: 'Resultados', cl_no_results: 'Sin resultados registrados.', cl_no_news: 'Sin novedades de disponibilidad por ahora.', cl_local: 'Cond.', cl_score: 'Marc.', cl_home_h: 'L', cl_away_a: 'V',
       cl_season: 'Proyección de temporada', cl_champion: 'Campeón', cl_top: 'Top', cl_proj_finish: 'Posición proy.', cl_releg: 'Descenso', cl_title_race: 'Lucha por el título', cl_remaining: 'partidos restantes', cl_season_note: 'Simulación de los partidos que faltan (calendario reconstruido) con la fuerza actual. Se actualiza cada jornada.',
       cl_no_markets: 'Sin cuotas disponibles para este partido.', cl_h2h: 'Enfrentamientos directos', cl_no_lineups: 'Alineación no publicada aún (llega cerca del partido).', nav_lineups: 'Alineaciones',
-      nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas de API-Football, descanso, forma y hallazgos de disponibilidad de la capa de observación.', cl_ctx_applied: 'Contexto aplicado (disponibilidad)', cl_ctx_base: 'base',
+      nav_context: 'Contexto', cl_no_context: 'Contexto no disponible.', cl_injuries: 'Bajas y lesiones', cl_no_injuries: 'Sin bajas reportadas.', cl_rest: 'Descanso', cl_days: 'días', cl_context_sub: 'Bajas confirmadas, descanso, forma y hallazgos de disponibilidad de la capa de observación.', cl_ctx_applied: 'Contexto aplicado (disponibilidad)', cl_ctx_base: 'base',
       cl_cross: 'Cruce entre ligas: cada liga se calibra por separado, la comparación es aproximada (sin ajuste inter-liga todavía).',
       cl_note_ctx: 'Fase clubes en construcción: contexto, alineaciones, jugadores y picks por liga llegan tras sus gates. Este análisis usa el núcleo del modelo (ratings + proyección de goles).',
       cl_xg: 'xG esperado', cl_o25: 'Más de 2.5 goles', cl_btts: 'Ambos anotan', cl_scores: 'Marcadores más probables',
@@ -320,7 +320,7 @@
       cb_sim_pick: 'Elegí dos peleadores para simular la pelea.', cb_sim_a: 'Esquina verde', cb_sim_b: 'Esquina roja', cb_sim_run: 'Simular pelea', cb_sim_swap: 'Invertir esquinas',
       cb_picks: 'Picks activas', cb_value: 'Valor de compra', cb_value_sub: 'mejor cuota vs consenso de mercado', cb_arb: 'Arbitraje', cb_arb_none: 'Sin arbitrajes 2-way ejecutables ahora.', cb_no_picks: 'Sin picks activas — el motor genera cuando hay edge post-blend ≥2pp.', cb_monitor: 'monitor privado', cb_public_track: 'todo a la vista · ganadas y perdidas',
       cb_track: 'Track record', cb_settled: 'Liquidadas', cb_no_settled: 'Todavía no liquida ninguna pick.', cb_units: 'unidades', cb_hit: 'acierto', cb_clv: 'CLV medio',
-      cb_org_since: 'desde', cb_org_active: 'activos', cb_org_next: 'Próximo evento', cb_org_top: 'Élite por Elo', cb_org_hist: 'histórico',
+      cb_org_since: 'desde', cb_org_active: 'activos', cb_org_next: 'Próximo evento', cb_org_top: 'Élite por nivel', cb_org_hist: 'histórico',
       cb_evo_top: 'La élite en el tiempo', cb_evo_up: 'En ascenso', cb_evo_down: 'En caída', cb_evo_12m: 'últimos 12 meses',
       cb_follow_none: 'Todavía no seguís a ningún peleador. Entrá a un perfil y tocá ★ Seguir.', cb_follow_btn: 'Seguir', cb_following: '★ Siguiendo', cb_next_fight: 'Próxima pelea',
       cb_division: 'División', cb_opp_quality: 'Nivel de oposición', cb_cage_min: 'Minutos de jaula', cb_ko_losses: 'KOs recibidos', cb_last: 'última',
@@ -655,7 +655,7 @@
       cl_tab_summary: 'Summary', cl_tab_form: 'Form', cl_tab_results: 'Results', cl_no_results: 'No results recorded.', cl_no_news: 'No availability news right now.', cl_local: 'H/A', cl_score: 'Score', cl_home_h: 'H', cl_away_a: 'A',
       cl_season: 'Season projection', cl_champion: 'Champion', cl_top: 'Top', cl_proj_finish: 'Proj. finish', cl_releg: 'Relegation', cl_title_race: 'Title race', cl_remaining: 'matches left', cl_season_note: 'Simulation of the remaining matches (schedule reconstructed) with current strength. Updates every matchday.',
       cl_no_markets: 'No odds available for this match.', cl_h2h: 'Head to head', cl_no_lineups: 'Lineup not published yet (arrives near kickoff).', nav_lineups: 'Lineups',
-      nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Absences from API-Football, rest, form and availability findings from the observation layer.', cl_ctx_applied: 'Context applied (availability)', cl_ctx_base: 'base',
+      nav_context: 'Context', cl_no_context: 'Context unavailable.', cl_injuries: 'Injuries & absences', cl_no_injuries: 'No absences reported.', cl_rest: 'Rest', cl_days: 'days', cl_context_sub: 'Confirmed absences, rest, form and availability findings from the observation layer.', cl_ctx_applied: 'Context applied (availability)', cl_ctx_base: 'base',
       cl_cross: 'Cross-league matchup: each league is calibrated separately, the comparison is approximate (no inter-league anchoring yet).',
       cl_note_ctx: 'Clubs phase under construction: context, lineups, players and per-league picks arrive after their gates. This analysis uses the model core (ratings + goal projection).',
       cl_xg: 'Expected goals', cl_o25: 'Over 2.5 goals', cl_btts: 'Both teams score', cl_scores: 'Most likely scores',
@@ -726,7 +726,7 @@
       cb_sim_pick: 'Pick two fighters to simulate the fight.', cb_sim_a: 'Green corner', cb_sim_b: 'Red corner', cb_sim_run: 'Simulate fight', cb_sim_swap: 'Swap corners',
       cb_picks: 'Active picks', cb_value: 'Buy-side value', cb_value_sub: 'best odds vs market consensus', cb_arb: 'Arbitrage', cb_arb_none: 'No executable 2-way arbs right now.', cb_no_picks: 'No active picks — the engine generates when post-blend edge ≥2pp.', cb_monitor: 'private monitor', cb_public_track: 'everything in the open · wins and losses',
       cb_track: 'Track record', cb_settled: 'Settled', cb_no_settled: 'No settled picks yet.', cb_units: 'units', cb_hit: 'hit rate', cb_clv: 'avg CLV',
-      cb_org_since: 'since', cb_org_active: 'active', cb_org_next: 'Next event', cb_org_top: 'Elo elite', cb_org_hist: 'historical',
+      cb_org_since: 'since', cb_org_active: 'active', cb_org_next: 'Next event', cb_org_top: 'Top tier', cb_org_hist: 'historical',
       cb_evo_top: 'The elite over time', cb_evo_up: 'Rising', cb_evo_down: 'Falling', cb_evo_12m: 'last 12 months',
       cb_follow_none: 'You are not following any fighter yet. Open a profile and tap ★ Follow.', cb_follow_btn: 'Follow', cb_following: '★ Following', cb_next_fight: 'Next fight',
       cb_division: 'Division', cb_opp_quality: 'Opposition level', cb_cage_min: 'Cage minutes', cb_ko_losses: 'KO losses', cb_last: 'last',
@@ -1399,7 +1399,7 @@
             if (S._esq2s !== q || (inp.value || '').trim().toLowerCase() !== q) return;
             var h = '';
             if (j && (j.teams || []).length) h += '<div class="gx-sr-h">' + esc(t('nav_teams')) + '</div>' + j.teams.map(function (tt) {
-              return '<div class="gx-sr-i" data-sr-esteam="' + esc(tt.id) + '"><span class="fl">🎮</span><b>' + esc(tt.name) + '</b><span class="gx-spacer"></span>' + (tt.elo != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px">Elo ' + Math.round(tt.elo) + '</span>' : '') + '</div>';
+              return '<div class="gx-sr-i" data-sr-esteam="' + esc(tt.id) + '"><span class="fl">🎮</span><b>' + esc(tt.name) + '</b><span class="gx-spacer"></span>' + (tt.elo != null ? '<span class="gx-dim gx-mono" style="font-size:10.5px">Nivel ' + Math.round(tt.elo) + '</span>' : '') + '</div>';
             }).join('');
             if (j && (j.players || []).length) h += '<div class="gx-sr-h">' + esc(t('sr_players')) + '</div>' + j.players.map(function (pp) {
               return '<div class="gx-sr-i" data-sr-esplayer="' + esc(pp.id) + '"><span class="fl">👤</span><b>' + esc(pp.nick) + '</b><span class="gx-dim" style="margin-left:6px;font-size:10.5px">' + esc(pp.team_name || '') + '</span>' +
@@ -4253,7 +4253,15 @@
     if (ma) { var risk = ma.risks && ma.risks.indexOf('LINEUP_NOT_CONFIRMED') >= 0; return { code: risk ? 'UNAVAILABLE' : 'PROBABLE' }; }
     return { code: null };
   }
-  function lineupSource(fx) { var ps = fx && fx.providerStatus; if (!ps) return null; if (ps.usedApiFootball) return 'API-Football'; if (ps.usedEspnFallback) return 'ESPN'; if (ps.usedManualFallback) return LANG === 'en' ? 'Manual' : 'Manual'; return null; }
+  // CAJA NEGRA: al usuario le sirve saber CUÁNTO fiarse de la alineación, no de quién la sacamos. Antes
+  // devolvía el nombre del proveedor, que es el dato que no se publica. Ahora devuelve la confianza.
+  function lineupSource(fx) {
+    var ps = fx && fx.providerStatus; if (!ps) return null;
+    if (ps.usedApiFootball) return LANG === 'en' ? 'Confirmed' : 'Confirmada';
+    if (ps.usedEspnFallback) return LANG === 'en' ? 'Provisional' : 'Provisional';
+    if (ps.usedManualFallback) return LANG === 'en' ? 'Reviewed by hand' : 'Revisada a mano';
+    return null;
+  }
   function luLabel(code) { return code === 'CONFIRMED' ? t('t_confirmed') : code === 'PROBABLE' ? t('lus_probable') : code === 'STALE' ? t('lus_stale') : code === 'UNAVAILABLE' ? t('lus_unavailable') : '…'; }
   function dataTrust(r, ma, fx) {
     var fresh = ma && ma.analysis ? ma.analysis.data_freshness_code : null;
@@ -6061,7 +6069,7 @@
       '<select class="gx-select" id="gx-mcomp"><option value="todos">' + esc(t('cl_all_comps')) + '</option><option value="wc">' + esc(t('cl_wc')) + '</option>' + Ls.map(function (x) { return '<option value="' + esc(x.key) + '"' + (S.mComp === x.key ? ' selected' : '') + '>' + esc(x.name.split(' · ')[0]) + (x.starts ? ' · ' + esc(x.starts) : '') + '</option>'; }).join('') + '</select>' +
       '<div class="gx-msearch">' + ic('search') + '<input id="gx-msearch-i" placeholder="' + esc(t('m_search')) + '" value="' + esc(S.mQuery) + '"></div>' +
       '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' ' + esc(t('matches')) + '</span></div>';
-    var meta = L ? '<div class="gx-panel" style="padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + leagueLogo(L.key) + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11.5px">' + esc(L.name) + ' · ' + esc(L.country) + ' · ' + esc(t('cl_hfa')) + ' +' + L.hfa + ' Elo · ' + L.n_matches + ' ' + esc(t('matches')) + '</span></div>' : '';
+    var meta = L ? '<div class="gx-panel" style="padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + leagueLogo(L.key) + clubGateChip(L.gate) + '<span class="gx-dim" style="font-size:11.5px">' + esc(L.name) + ' · ' + esc(L.country) + ' · ' + esc(t('cl_hfa')) + ' +' + L.hfa + ' Nivel · ' + L.n_matches + ' ' + esc(t('matches')) + '</span></div>' : '';
     var body;
     if (!L) body = '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>…</b></div></div>';
     else if (!rows.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esc(S.mFilt === 'live' ? t('cl_no_live') : S.mFilt === 'fin' ? t('cl_no_final') : (L.starts ? t('cl_preseason') : t('m_empty'))) + '</b></div></div>';
@@ -6172,9 +6180,9 @@
   }
   function simElo(id, comp) {
     if (!id) return '';
-    if (comp && comp !== 'wc') { var L = clubLeague(comp); var tm2 = L ? (L.table || []).filter(function (x) { return x.id === id; })[0] : null; return tm2 ? '<span class="gx-sim-elo gx-mono">Elo ' + Math.round(tm2.elo) + '</span>' : ''; }
+    if (comp && comp !== 'wc') { var L = clubLeague(comp); var tm2 = L ? (L.table || []).filter(function (x) { return x.id === id; })[0] : null; return tm2 ? '<span class="gx-sim-elo gx-mono">Nivel ' + Math.round(tm2.elo) + '</span>' : ''; }
     var tm = (S.stTeams || []).filter(function (x) { return x.id === id; })[0]; if (!tm) return '';
-    return '<span class="gx-sim-elo gx-mono">Elo ' + Math.round(tm.currentElo || tm.elo || 0) + '</span>';
+    return '<span class="gx-sim-elo gx-mono">Nivel ' + Math.round(tm.currentElo || tm.elo || 0) + '</span>';
   }
   function bindSim() {
     var a = $('#gx-sim-a'), b = $('#gx-sim-b'), sw = $('#gx-sim-swap'), go = $('#gx-sim-go');
@@ -6212,9 +6220,9 @@
     return '<div class="gx-panel gx-hero">' +
       '<div class="gx-hero-meta">' + ic('flask') + esc(t('sim_hypo')) + '<span class="gx-spacer"></span>' + (d.cross_league ? '<span class="gx-clgate sh">' + esc(t('cl_neutral')).toUpperCase() + '</span>' : '') + '</div>' +
       '<div class="gx-hero-teams">' +
-      '<div class="gx-hero-side"><span class="fl">' + flag(d.home.id) + '</span><b>' + esc(d.home.name) + '</b><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(d.home.league_name || '') + ' · Elo ' + d.home.elo + '</span></div>' +
+      '<div class="gx-hero-side"><span class="fl">' + flag(d.home.id) + '</span><b>' + esc(d.home.name) + '</b><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(d.home.league_name || '') + ' · Nivel ' + d.home.elo + '</span></div>' +
       '<div class="gx-hero-mid"><div class="gx-hero-vs">' + esc(t('vs')) + '</div></div>' +
-      '<div class="gx-hero-side"><span class="fl">' + flag(d.away.id) + '</span><b>' + esc(d.away.name) + '</b><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(d.away.league_name || '') + ' · Elo ' + d.away.elo + '</span></div>' +
+      '<div class="gx-hero-side"><span class="fl">' + flag(d.away.id) + '</span><b>' + esc(d.away.name) + '</b><span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(d.away.league_name || '') + ' · Nivel ' + d.away.elo + '</span></div>' +
       '</div>' +
       '<div class="gx-pbar"><i class="h" style="width:' + (pH * 100) + '%"></i><i class="d" style="width:' + (pD * 100) + '%"></i><i class="a" style="width:' + (pA * 100) + '%"></i></div>' +
       '<div class="gx-plabels"><span>' + esc(d.home.name) + ' <b>' + pct0(pH) + '</b></span><span>X <b>' + pct0(pD) + '</b></span><span>' + esc(d.away.name) + ' <b>' + pct0(pA) + '</b></span></div>' +
@@ -6354,7 +6362,7 @@
         '<td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
     }).join('');
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head +
-      '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th><th class="l">' + esc(t('group')) + '</th><th>Elo</th><th class="l">' + esc(t('tm_champion')) + '</th><th>' + esc(t('tm_advance')) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></div></div>';
+      '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th><th class="l">' + esc(t('group')) + '</th><th>Nivel</th><th class="l">' + esc(t('tm_champion')) + '</th><th>' + esc(t('tm_advance')) + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></div></div>';
     var si = $('#gx-tsearch-i'); if (si) si.addEventListener('input', function () { S.tQuery = si.value; clearTimeout(S._tq); S._tq = setTimeout(function () { var p = si.selectionStart; renderTeams(); var n = $('#gx-tsearch-i'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} } }, 220); });
     wireTeamComp();
   }
@@ -6383,7 +6391,7 @@
     }).join('');
     var note = L.starts ? '<div class="gx-arb-warn" style="margin-bottom:10px">' + ic('info-circle') + esc(t('cl_preseason')) + '</div>' : '';
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + head + note +
-      '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th>' + (hasSt ? '<th>' + esc(t('cl_pj')) + '</th><th>' + esc(t('cl_pts')) + '</th><th>' + esc(t('cl_dif')) + '</th>' : '') + '<th>Elo</th><th></th></tr></thead><tbody>' + trs + '</tbody></table></div></div></div>';
+      '<div class="gx-panel gx-board"><table class="gx-table"><thead><tr><th class="l">#</th><th class="l">' + esc(t('nav_teams')) + '</th>' + (hasSt ? '<th>' + esc(t('cl_pj')) + '</th><th>' + esc(t('cl_pts')) + '</th><th>' + esc(t('cl_dif')) + '</th>' : '') + '<th>Nivel</th><th></th></tr></thead><tbody>' + trs + '</tbody></table></div></div></div>';
     var si = $('#gx-tsearch-i'); if (si) si.addEventListener('input', function () { S.tQuery = si.value; clearTimeout(S._tq); S._tq = setTimeout(function () { var p = si.selectionStart; renderTeams(); var n = $('#gx-tsearch-i'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} } }, 220); });
     wireTeamComp();
     [].forEach.call(mv.querySelectorAll('[data-nav-cteam]'), function (el) {
@@ -6410,7 +6418,7 @@
     var pos = st ? (L.standings.indexOf(st) + 1) : null;
     var name = (me && me.name) || (st && st.name) || id;
     var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + leagueLogo(L.key) + esc(L.name) + '<span class="gx-spacer"></span>' + clubGateChip(L.gate) + '</div>' +
-      '<div class="gx-team-id"><span class="fl big">' + clubBadge(id) + '</span><div><b>' + esc(name) + '</b><span class="gx-mono gx-dim">' + (me ? 'Elo ' + Math.round(me.elo) + (rank ? ' · #' + rank + ' ' + esc(t('cl_of')) + ' ' + tbl.length : '') : esc(t('cl_new'))) + '</span></div></div>' +
+      '<div class="gx-team-id"><span class="fl big">' + clubBadge(id) + '</span><div><b>' + esc(name) + '</b><span class="gx-mono gx-dim">' + (me ? 'Nivel ' + Math.round(me.elo) + (rank ? ' · #' + rank + ' ' + esc(t('cl_of')) + ' ' + tbl.length : '') : esc(t('cl_new'))) + '</span></div></div>' +
       (st ? '<div class="gx-hero-grid">' +
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_pos')) + '</span><b class="gx-mono">' + pos + '°</b></div>' +
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_pts')) + '</span><b class="gx-mono">' + st.pts + '</b></div>' +
@@ -6640,8 +6648,8 @@
     }
     if (!td || td._empty) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
     var prob = function (label, v) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + pct1(v) + '</b></div>'; };
-    var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + esc(t('comp')) + (td.group ? ' · ' + esc(t('group')) + ' ' + esc(td.group) : '') + '<span class="gx-spacer"></span>' + (td.rank ? '<span class="gx-dim">#' + td.rank + ' Elo</span>' : '') + '</div>' +
-      '<div class="gx-team-id"><span class="fl big">' + flag(id) + '</span><div><b>' + esc(teamName(id, td.name)) + '</b><span class="gx-mono gx-dim">Elo ' + Math.round(td.elo || 0) + (td.eloDelta != null ? ' · ' + (td.eloDelta >= 0 ? '+' : '') + Math.round(td.eloDelta) : '') + '</span></div></div>' +
+    var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + esc(t('comp')) + (td.group ? ' · ' + esc(t('group')) + ' ' + esc(td.group) : '') + '<span class="gx-spacer"></span>' + (td.rank ? '<span class="gx-dim">#' + td.rank + ' Nivel</span>' : '') + '</div>' +
+      '<div class="gx-team-id"><span class="fl big">' + flag(id) + '</span><div><b>' + esc(teamName(id, td.name)) + '</b><span class="gx-mono gx-dim">Nivel ' + Math.round(td.elo || 0) + (td.eloDelta != null ? ' · ' + (td.eloDelta >= 0 ? '+' : '') + Math.round(td.eloDelta) : '') + '</span></div></div>' +
       '<div class="gx-hero-grid">' + prob(t('tm_champion'), td.championProbability) + prob(t('tm_final'), td.finalProbability) + prob(t('tm_semi'), td.semifinalsProbability) + prob(t('tm_qf'), td.quarterfinalsProbability) + prob(t('tm_advance'), td.advanceProbability) + (td.groupWinProbability != null ? prob(t('tm_groupwin'), td.groupWinProbability) : '') + '</div>' +
       '<div class="gx-team-actions"><button class="gx-btn ghost gx-follow" data-follow="' + esc(id) + '">' + ic(isFollowing(id) ? 'star-filled' : 'star') + ' ' + esc(t(isFollowing(id) ? 'tm_following' : 'tm_follow')) + '</button><span class="gx-hero-note gx-dim">' + esc(t('tm_sim_note')) + '</span></div></div>';
     // tabs
@@ -8410,7 +8418,7 @@
         (d.stack.adj_margin_pts ? (d.stack.adj_margin_pts > 0 ? '+' : '') + d.stack.adj_margin_pts + ' pts de ajuste' : 'sin ajuste') + '</span></div>' +
         '<div class="gx-bb-lchips">' + chip(LY.roster, 'Plantilla × minutos', 'RAPM sobre tramos, con las bajas de hoy') +
           chip(LY.context, 'Calendario y descanso', 'back-to-back, viaje, altitud') +
-          chip(LY.blend, 'Mezcla con el mercado', 'encogimiento hacia el cierre') +
+          chip(LY.blend, 'Mezcla con el mercado', 'cuánto pesa el precio frente al modelo') +
           (d.stack.rapm ? '<span class="gx-bb-lchip info">' + d.stack.rapm.players + ' jugadores · ' + d.stack.rapm.stints.toLocaleString('es') + ' tramos</span>' : '') + '</div>' +
         (pr ? '<div class="gx-bb-dec">' + pr + '</div>' : '') + missHtml + bl + vHtml + '</div>';
     }
@@ -9248,7 +9256,7 @@
     var bs = it.book_list || [];
     if (!bs.length) return '<span class="gx-dim" style="font-size:11px">sin precio</span>';
     return '<span class="gx-es-books">' + bs.map(function (b) {
-      return '<span class="gx-es-book' + (b === 'pinnacle' ? ' sharp' : '') + '" title="' + esc(b === 'pinnacle' ? 'Pinnacle — referencia de cierre del sector' : b) + '">' + esc(b.slice(0, 3).toUpperCase()) + '</span>';
+      return '<span class="gx-es-book' + (b === 'pinnacle' ? ' sharp' : '') + '" title="' + esc(prettyBook(b) || b) + '">' + esc(b.slice(0, 3).toUpperCase()) + '</span>';
     }).join('') + (bs.length > 1 ? '' : '<i class="gx-es-book-one" title="una sola casa: sin consenso, el listón de la pick sube 2,5 pp">1</i>') + '</span>';
   }
   function esStateCell(it) {
@@ -9720,7 +9728,7 @@
       '<div class="gx-cs-rhist"><div class="gx-cs-rbars">' + bars + '</div>' +
         '<div class="gx-cs-rkey"><span class="sim">simulación de GP</span><span class="obs">observado en el circuito</span>' +
         '<span class="gx-spacer"></span><span class="gx-dim">rondas del perdedor</span></div></div>' +
-      (cal.fitted ? '<div class="gx-dim gx-es-note">El arrastre económico de este mapa se ajustó a <b>' + cal.eco +
+      (cal.fitted ? '<div class="gx-dim gx-es-note">Este mapa está calibrado contra su propio historial: <b>' + cal.eco +
         '</b> para reproducir su prórroga real (' + (100 * cal.target_ot).toFixed(1) + '%). El residuo en rondas medias es ' +
         cal.rounds_residual + ' — se publica en vez de esconderlo: si crece, el que falla es el modelo de ronda, no el ajuste.</div>'
         : '<div class="gx-dim gx-es-note">Este mapa no tiene muestra suficiente en la base propia; se usa el arrastre por defecto.</div>'),
@@ -9746,7 +9754,7 @@
           : 'antigüedad de la alineación desconocida') + '</div></div>' : '';
       return '<div class="gx-cs-tc">' +
         '<div class="gx-cs-tc-h">' + cs2Crest(t, 'big') + '<div><b>' + esc(t.name) + '</b>' +
-          '<span>' + t.n + ' mapas' + (t.elo != null ? ' · Elo ' + Math.round(t.elo) : '') + (t.rank ? ' · ranking ' + t.rank : '') + '</span></div></div>' +
+          '<span>' + t.n + ' mapas' + (t.elo != null ? ' · Nivel ' + Math.round(t.elo) : '') + (t.rank ? ' · ranking ' + t.rank : '') + '</span></div></div>' +
         rosterHtml +
         '<div class="gx-cs-tc-maps">' + t.maps.slice(0, 7).map(function (mm) {
           var e = mm.effect || 0;
@@ -9903,12 +9911,12 @@
         '<div class="gx-ts-id"><b>' + esc(c.name || name) + '</b>' +
         '<span class="gx-dim">' + (c.n ? c.n + ' en la base' : 'sin muestra propia') + (c.wr != null ? ' · ' + Math.round(100 * c.wr) + '% victorias' : '') + '</span>' +
         (form ? '<div class="gx-ts-form">' + form + '</div>' : '') + '</div>' +
-        '<div class="gx-ts-elo"><b class="gx-mono">' + (c.elo != null ? c.elo : '—') + '</b><span>Elo GP</span></div></div>';
+        '<div class="gx-ts-elo"><b class="gx-mono">' + (c.elo != null ? c.elo : '—') + '</b><span>Nivel GP</span></div></div>';
     };
     var gap = (T.a && T.b && T.a.elo != null && T.b.elo != null) ? (T.a.elo - T.b.elo) : null;
-    return esPanel('Los dos equipos', gap != null ? '<span class="gx-mono">' + (gap > 0 ? '+' : '') + gap + ' de Elo</span>' : '',
+    return esPanel('Los dos equipos', gap != null ? '<span class="gx-mono">' + (gap > 0 ? '+' : '') + gap + ' de nivel</span>' : '',
       '<div class="gx-ts-grid">' + side(T.a, ev.home.name, 'a') + side(T.b, ev.away.name, 'b') + '</div>' +
-      '<div class="gx-dim gx-es-note">Elo propio de GP validado fuera de muestra; la forma son los últimos resultados de la base. No es el ranking del proveedor.</div>', 'gx-es-strip');
+      '<div class="gx-dim gx-es-note">Nivel propio de GP, validado fuera de muestra sobre nuestra base; la forma son los últimos resultados. No es el ranking de ninguna web pública.</div>', 'gx-es-strip');
   }
 
   // ── PLANTILLAS CON CARA: el quinteto de cada lado con su foto, rol y rating propio.
@@ -10479,12 +10487,12 @@
     var pr = s.model.probability || {};
     var head = '<div class="gx-panel gx-cs-simhead">' +
       '<div class="gx-cs-side">' + cs2Crest(s.teams.a, 'big') + '<b>' + esc(s.teams.a.name) + '</b>' +
-        '<span class="gx-dim">' + (s.teams.a.elo != null ? 'Elo ' + Math.round(s.teams.a.elo) : '') + ' · ' + s.teams.a.n + ' ' + esUnit() + '</span></div>' +
+        '<span class="gx-dim">' + (s.teams.a.elo != null ? 'Nivel ' + Math.round(s.teams.a.elo) : '') + ' · ' + s.teams.a.n + ' ' + esUnit() + '</span></div>' +
       '<div class="gx-cs-mid"><b class="gx-cs-p">' + esPct0(pr.p) + '</b><span class="gx-dim">BO' + s.bo + ' · modelo sin ancla</span>' +
         '<div class="gx-es-bar"><i style="width:' + (100 * (pr.p || 0)).toFixed(1) + '%"></i></div>' +
         '<b class="gx-cs-p2">' + esPct0(pr.p != null ? 1 - pr.p : null) + '</b></div>' +
       '<div class="gx-cs-side">' + cs2Crest(s.teams.b, 'big') + '<b>' + esc(s.teams.b.name) + '</b>' +
-        '<span class="gx-dim">' + (s.teams.b.elo != null ? 'Elo ' + Math.round(s.teams.b.elo) : '') + ' · ' + s.teams.b.n + ' ' + esUnit() + '</span></div>' +
+        '<span class="gx-dim">' + (s.teams.b.elo != null ? 'Nivel ' + Math.round(s.teams.b.elo) : '') + ' · ' + s.teams.b.n + ' ' + esUnit() + '</span></div>' +
       '</div>';
     // cada juego enseña SU estructura: CS2 el veto/escalera/rondas; los otros tres su sala propia + bloques
     if (g === 'cs2') return head + esH2H(s.h2h) + cs2Veto(fake) + cs2Ladder(fake) + cs2Rounds(fake) + cs2Teams(fake);
@@ -10797,7 +10805,7 @@
               '<div class="gx-est-id"><b>' + esc(tm.name) + '</b>' +
                 '<span>' + (tm.rank_gp ? '#' + tm.rank_gp + ' GP' : 'sin ranking') + (tm.shock ? ' · <em class="gx-est-shock">plantilla movida</em>' : '') + '</span></div>' +
               '<span class="gx-spacer"></span>' +
-              '<div class="gx-est-elo"><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Elo GP</span></div></div>' +
+              '<div class="gx-est-elo"><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Nivel GP</span></div></div>' +
             '<div class="gx-est-meta">' +
               '<div class="gx-est-wr"><i style="width:' + (tm.wr != null ? (100 * tm.wr).toFixed(0) : 0) + '%"></i></div>' +
               '<span class="gx-mono">' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</span>' +
@@ -10819,7 +10827,7 @@
     if (!d) { esShell(t('es_nav_teams'), esTabs() + head + esLoading()); return; }
     if (d._err || !d.available) { esShell(t('es_nav_teams'), esTabs() + head + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || t('e_net')) + '</b></div></div>'); return; }
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
-      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Elo GP</th><th class="r">Victorias</th><th class="r">' + (esUnit().charAt(0).toUpperCase() + esUnit().slice(1)) + '</th><th>Forma</th></tr></thead><tbody>' +
+      '<th class="r">#</th><th></th><th>Equipo</th><th class="r">Nivel GP</th><th class="r">Victorias</th><th class="r">' + (esUnit().charAt(0).toUpperCase() + esUnit().slice(1)) + '</th><th>Forma</th></tr></thead><tbody>' +
       (d.rows || []).map(function (r) {
         return '<tr data-esteam="' + esc(r.id) + '">' +
           '<td class="r gx-mono gx-esr-rank">' + r.rank + '</td>' +
@@ -10830,7 +10838,7 @@
           '<td class="r gx-mono gx-dim">' + r.n + '</td>' +
           '<td>' + esFormDots(r.form) + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<div class="gx-dim gx-es-note">Ranking por Elo propio de GP, validado fuera de muestra — no es el de HLTV ni el del proveedor. Entran equipos con ' + d.min_maps + '+ ' + (esGame() === 'cs2' ? 'mapas' : esUnit() + ' recientes') + ' en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + esBaseAttrib() + '</div></div>';
+      '<div class="gx-dim gx-es-note">Ranking propio de GP, validado fuera de muestra sobre nuestra base — no es el de ninguna web pública. Entran equipos con ' + d.min_maps + '+ ' + (esGame() === 'cs2' ? 'mapas' : esUnit() + ' recientes') + ' en la base. La flecha compara contra la foto de la semana anterior' + (d.note ? '. ' + esc(d.note) : '.') + esBaseAttrib() + '</div></div>';
     esShell(t('es_nav_teams'), esTabs() + head + body);
   }
 
@@ -10963,7 +10971,7 @@
         '<span class="gx-spacer"></span>' +
         '<button class="gx-btn gx-btn-p gx-est-simbtn" data-essim="' + esc(tm.name) + '">' + ic('arrows-shuffle') + 'Simular contra…</button></div>' +
       '<div class="gx-est-hero-stats">' +
-        '<div><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Elo GP</span></div>' +
+        '<div><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Nivel GP</span></div>' +
         '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>' + 'victorias por ' + esUnit().replace(/s$/, '') + '</span></div>' +
         '<div><b>' + tm.n + '</b><span>' + esUnit() + ' en la base' + '</span></div>' +
         '<div>' + esFormDots(((d.form || []).slice(0, 5).map(function (f) { return f.r; })).reverse()) + '<span>forma reciente</span></div>' +
@@ -11598,7 +11606,7 @@
         '. Es un <b>exchange</b>, no una casa: el precio lo sostiene otro participante, así que cada pick enseña su interés abierto — un precio que nadie sostiene no es una cuota. ' +
         'Lo demás siguen siendo <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>'
       : '<div class="gx-panel gx-f1-nomkt">' + ic('alert-triangle') +
-        '<span><b>Sin precio utilizable en esta carrera.</b> El proveedor principal no lista motorsport y en el exchange ningún contrato de hoy tiene horquilla estrecha. ' +
+        '<span><b>Sin precio utilizable en esta carrera.</b> Hoy no hay ningún mercado de carrera con horquilla lo bastante estrecha para medir ventaja contra él. ' +
         'Sin precio no hay ventaja que calcular, así que aquí no hay picks: hay <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>';
     var body;
     if (tk.available === false && tk.state === 'POST_QUALI') {
@@ -11651,14 +11659,23 @@
         (fams ? '<div class="gx-f1-track">' + fams + '</div>' : '<div class="gx-f1-mute">' + ic('hourglass') + '<span>Todavía no ha corrido ninguna carrera con llamadas anotadas. En cuanto corra, esto se llena solo.</span></div>') +
         '<div class="gx-dim gx-es-note">' + esc(tr.note || '') + '</div></div>';
     }
-    var watch = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Vigilancia de cobertura</span>' +
+    // CAJA NEGRA (22-ago). Este panel listaba a NUESTROS proveedores por su nombre y con su estado
+    // operativo —"no lista motorsport", "sin clave configurada"—, o sea el mapa de con quién trabajamos y
+    // dónde nos falla. Eso es justo lo que la regla de la casa prohíbe enseñar: no revelamos ni los
+    // proveedores ni la mecánica. Queda SOLO para admin; al público se le dice la misma idea —que esto se
+    // revisa a diario y que el día que haya precio se enciende— sin decir a quién se le pregunta.
+    var esAdmin = !!(S.me && S.me.isAdmin);
+    var watch = !esAdmin ? '' : '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Vigilancia de cobertura</span>' +
       (cov && cov.at ? '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">último vistazo: ' + esc(String(cov.at).slice(0, 16).replace('T', ' ')) + '</span>' : '') + '</div>' +
       '<div class="gx-f1-cov">' + ((cov && cov.books) || [{ book: 'proveedor principal', ok: false, note: 'no lista motorsport' }, { book: 'proveedor secundario', ok: false, note: 'categoría sin eventos' }]).map(function (b) {
         return '<div class="gx-f1-covrow"><span class="gx-f1-covdot' + (b.ok ? ' on' : '') + '"></span>' +
           '<b>' + esc(b.book) + '</b><span class="gx-dim">' + esc(b.note || (b.ok ? 'cotiza' : 'sin cobertura')) + '</span></div>';
       }).join('') + '</div>' +
       '<div class="gx-dim gx-es-note">Se revisa sola cada día. En cuanto una casa abra el mercado de carrera, estas llamadas pasan a tener precio contra el que medirse y la sombra arranca.</div></div>';
-    f1Shell(t('nav_opps'), bar + head + body + track + watch);
+    // la versión pública: la misma promesa, sin la lista de casas ni su estado
+    var watchPub = esAdmin ? '' : '<div class="gx-panel"><div class="gx-dim gx-es-note">' +
+      'El mercado de carrera se revisa a diario. En cuanto haya un precio utilizable, estas llamadas pasan a medirse contra él y aparecen como picks.</div></div>';
+    f1Shell(t('nav_opps'), bar + head + body + track + watch + watchPub);
   }
 
   // ── CAMPEONATO: puntos oficiales + Coche × Piloto ───────────────────────────────────────────────────
@@ -12315,11 +12332,11 @@
         '<span class="gx-tsurf-n">' + esc(x.surface) + (here ? ' · aquí' : '') + '</span>' +
         '<span class="gx-mono' + ((vb || 0) > (x.elo || 0) ? ' hi' : '') + '">' + (vb != null ? vb : '—') + '</span></div>';
     }).join('');
-    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Elo por superficie</span>' +
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Nivel por superficie</span>' +
       '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">un rating por superficie, no uno global</span></div>' +
       '<div class="gx-tcmp-head"><b>' + esc(d.a.name.split(' ').slice(-1)[0]) + '</b><span class="gx-spacer"></span><b>' + esc(d.b.name.split(' ').slice(-1)[0]) + '</b></div>' +
       rows +
-      '<div class="gx-dim gx-es-note">Un jugador no es el mismo en tierra que en pista rápida, y el modelo no lo trata como si lo fuera: el Elo de superficie entra con su propio peso, validado fuera de muestra.</div></div>';
+      '<div class="gx-dim gx-es-note">Un jugador no es el mismo en tierra que en pista rápida, y el modelo no lo trata como si lo fuera: cada superficie tiene su propio nivel medido, validado fuera de muestra.</div></div>';
   }
 
   // 6) ÍNDICES DE SAQUE Y RESTO (100 = media del tour, ajustado por rival)
@@ -12427,7 +12444,7 @@
     if (!d) { tenShell(t('ten_nav_rank'), tenLoading()); return; }
     var rows = d.rows || [];
     var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
-      '<th class="r">#</th><th></th><th>' + (S.lang === 'en' ? 'Player' : 'Jugador') + '</th><th class="r">Elo GP</th><th class="r">Rank of.</th><th class="r">W-L</th></tr></thead><tbody>' +
+      '<th class="r">#</th><th></th><th>' + (S.lang === 'en' ? 'Player' : 'Jugador') + '</th><th class="r">Nivel GP</th><th class="r">Rank of.</th><th class="r">W-L</th></tr></thead><tbody>' +
       rows.map(function (r) {
         var mv = r.move == null ? '<span class="gx-dim">·</span>' : r.move > 0 ? '<span style="color:var(--gx-green)">▲' + r.move + '</span>' : r.move < 0 ? '<span style="color:#e5484d">▼' + (-r.move) + '</span>' : '<span class="gx-dim">=</span>';
         return '<tr data-tenplayer="' + r.id + '"><td class="r gx-mono gx-esr-rank">' + r.pos + '</td>' +
@@ -12527,7 +12544,7 @@
           '<div class="gx-est-top">' + tenFace(p, 'big') +
             '<div class="gx-est-id"><b>' + esc(p.name) + '</b><span>' + esc([p.country, p.hand === 'L' ? (S.lang === 'en' ? 'left-handed' : 'zurdo') : null].filter(Boolean).join(' · ')) + (p.inactive ? ' · <em style="color:#e5a84d">inactivo</em>' : '') + '</span></div>' +
             '<span class="gx-spacer"></span>' +
-            '<div class="gx-est-elo"><b>' + p.elo + '</b><span>Elo GP</span></div></div>' +
+            '<div class="gx-est-elo"><b>' + p.elo + '</b><span>Nivel GP</span></div></div>' +
           '<div class="gx-est-meta"><span class="gx-mono gx-dim">' + esc(p.wl) + '</span><span class="gx-dim">rank of. ' + (p.rank || '—') + '</span></div>' +
         '</div>';
       }).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + (S.lang === 'en' ? 'No player by that name.' : 'Ningún jugador con ese nombre.') + '</b></div></div>';
@@ -12549,7 +12566,7 @@
     var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + esAvatar({ nick: d.name }, 'big') +
       '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name) + '</b>' +
       '<span class="gx-dim">' + esc([d.country, d.hand === 'L' ? 'zurdo' : d.hand === 'R' ? 'diestro' : null, d.ht ? d.ht + ' cm' : null, age ? age + ' años' : null].filter(Boolean).join(' · ')) + '</span></div>' +
-      '<span class="gx-spacer"></span><div class="gx-est-elo"><b>' + d.elo + '</b><span>Elo GP</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-est-elo"><b>' + d.elo + '</b><span>Nivel GP</span></div>' +
       '<div class="gx-est-elo"><b>' + (d.rank || '—') + '</b><span>rank of.</span></div></div>' +
       (d.inactive_note ? '<div class="gx-dim" style="margin-top:8px">' + ic('alert-triangle') + ' ' + esc(d.inactive_note) + '</div>' : '') + '</div>';
     var surf = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por superficie</span></div><div class="gx-ten-surfgrid">' +
@@ -14364,7 +14381,7 @@
         '<div class="gx-cb-mid"><div class="gx-cb-vs">VS</div><div class="gx-label gx-cb-problab">' + esc(t('cb_gpprob')) + '</div>' +
           '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
           '<div class="gx-cb-pcts"><span>' + p1 + '%</span><span class="p2">' + (100 - p1) + '%</span></div>' + mkt +
-          '<div class="gx-dim gx-cb-subline">Elo ' + (pr.r1 || '—') + ' · ' + (pr.r2 || '—') + (ft.odds ? ' · ' + esc(t('cb_best_odds')) + ' ' + ft.odds.f1 + ' / ' + ft.odds.f2 : ' · ' + esc(t('cb_no_odds'))) + '</div>' +
+          '<div class="gx-dim gx-cb-subline">Nivel ' + (pr.r1 || '—') + ' · ' + (pr.r2 || '—') + (ft.odds ? ' · ' + esc(t('cb_best_odds')) + ' ' + ft.odds.f1 + ' / ' + ft.odds.f2 : ' · ' + esc(t('cb_no_odds'))) + '</div>' +
           (compact ? '' : cbMethod(ft.method)) + pick + '</div>' +
         side(ft.f2, 2) + '</div></div>';
   }
@@ -15300,7 +15317,7 @@
     var mom = d.momentum || {};
     var recTxt = function (r) { return r ? r.w + '-' + r.l : '—'; };
     var momP = '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_momentum')) + '</span>' +
-      (mom.delta_12m != null ? '<span class="gx-ph-extra gx-mono ' + (mom.delta_12m >= 0 ? 'gx-cb-up' : 'gx-cb-down') + '">' + (mom.delta_12m >= 0 ? '▲ +' : '▼ ') + mom.delta_12m + ' Elo · ' + esc(t('cb_mom_delta')) + '</span>' : '') + '</div>' +
+      (mom.delta_12m != null ? '<span class="gx-ph-extra gx-mono ' + (mom.delta_12m >= 0 ? 'gx-cb-up' : 'gx-cb-down') + '">' + (mom.delta_12m >= 0 ? '▲ +' : '▼ ') + mom.delta_12m + ' Nivel · ' + esc(t('cb_mom_delta')) + '</span>' : '') + '</div>' +
       '<div class="gx-mod-body gx-cb-tiles">' +
       '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + recTxt(mom.l3) + '</div><div class="gx-label">L3</div></div>' +
       '<div class="gx-cb-tile"><div class="gx-mono gx-cb-tileval">' + recTxt(mom.l5) + '</div><div class="gx-label">L5</div></div>' +
@@ -15425,7 +15442,7 @@
         result = '<div class="gx-cb-hero"><div class="gx-cb-mid" style="max-width:460px;margin:0 auto"><div class="gx-label gx-cb-problab">' + esc(t('cb_gpprob')) + '</div>' +
           '<div class="gx-cb-bar"><i style="width:' + p1 + '%"></i></div>' +
           '<div class="gx-cb-pcts"><span>' + esc((a.name || '').split(' ').pop()) + ' ' + p1 + '%</span><span class="p2">' + (100 - p1) + '% ' + esc((b.name || '').split(' ').pop()) + '</span></div>' +
-          '<div class="gx-dim gx-cb-subline">Elo ' + d.prob.r1 + ' · ' + d.prob.r2 + ' · ' + esc(d.weight || '') + '</div>' + cbMethod(d.method) + '</div></div>' +
+          '<div class="gx-dim gx-cb-subline">Nivel ' + d.prob.r1 + ' · ' + d.prob.r2 + ' · ' + esc(d.weight || '') + '</div>' + cbMethod(d.method) + '</div></div>' +
           cbReadPanel(d.gp_read, d.confidence) +
           '<div class="gx-cb-grid">' + cbPredictionPanel(d.prediction, a.name, b.name) + cbMatchupPanel(d.breakdown, a.name, b.name) + '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_tale')) + '</span></div><div class="gx-mod-body gx-cb-tape">' + rows + '</div></div>' +
           '<div class="gx-panel gx-mv-panel"><div class="gx-ph"><span class="gx-label">' + esc(t('cb_intel')) + '</span></div><div class="gx-mod-body">' +

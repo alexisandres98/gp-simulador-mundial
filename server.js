@@ -1114,6 +1114,15 @@ db.affCommissions = db.affCommissions || [];   // [{ id, affiliate, referred, pl
 db.affWithdrawals = db.affWithdrawals || [];    // [{ id, affiliate, amount, chain, asset, address, status:'requested'|'paid'|'rejected', requested_at, decided_at, tx_hash, note }]
 db.betaGrants = db.betaGrants || {};           // beta entitlement por admin: email → {status,grantedBy,grantedAt,reason}
 db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shadow/admin). Registro completo §6.
+// ── LA PRUEBA GRATIS DE 3 DÍAS, RETIRADA (21-ago, decisión de Alexis) ────────────────────────────────
+// Un solo interruptor para las tres puertas por las que se ofrecía: la bandera de /api/me (banner in-app),
+// la inyección de la página de planes y el mapa de checkout. Apagado, el usuario FREE vuelve a ver el
+// banner de "mejorá tu plan" de siempre y un enlace viejo a la prueba devuelve plan inválido en vez de
+// abrir una compra que ya no existe.
+//
+// NO CANCELA NADA EN CURSO: quitar la oferta y cortarle el trial a quien ya lo está usando son dos cosas
+// distintas, y esto solo hace la primera. Las membresías vivas siguen su curso en Whop.
+const TRIAL_ON = false;
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
 db.tsaXg = db.tsaXg || {};
 db.tsaPlayers = db.tsaPlayers || {};              // stats por jugador de partidos TERMINADOS (TheStatsAPI): cache permanente para settlement de props.                     // xG observado por partido TERMINADO (TheStatsAPI): cache PERMANENTE (1 fetch por partido, plan 12 req/min).
@@ -15319,7 +15328,7 @@ const server = http.createServer(async (req, res) => {
         daily_brief: featFor('GP_DAILY_BRIEF_ENABLED', u), // F4 GP Daily Brief
         // FREE TRIAL Sharp (27-jul): elegible = plan free + nunca lo usó + plan configurado. Gobierna el
         // modal de entrada, el banner in-app y el CTA de /plans (una sola prueba por cuenta, de por vida).
-        trial_eligible: !!(plansEnforced() && planFor(u.email) === 'free' && !(db.users[u.email] || {}).trial_used && process.env.WHOP_PLAN_SHARP_TRIAL),
+        trial_eligible: TRIAL_ON && !!(plansEnforced() && planFor(u.email) === 'free' && !(db.users[u.email] || {}).trial_used && process.env.WHOP_PLAN_SHARP_TRIAL),
       });
     }
     // ONBOARDING: marca "ya vio el tour de bienvenida" (persistente por cuenta, no por dispositivo).
@@ -20861,7 +20870,7 @@ const server = http.createServer(async (req, res) => {
           sharp_m: process.env.WHOP_PLAN_SHARP_M || '', sharp_y: process.env.WHOP_PLAN_SHARP_Y || '',
           pro_c: process.env.WHOP_PLAN_PRO_CRYPTO || '', sharp_c: process.env.WHOP_PLAN_SHARP_CRYPTO || '',
           sharp_t: process.env.WHOP_PLAN_SHARP_TRIAL || '',
-          trial_eligible: sessEmail ? !!(planFor(sessEmail) === 'free' && !(db.users[sessEmail] || {}).trial_used) : true,
+          trial_eligible: TRIAL_ON && (sessEmail ? !!(planFor(sessEmail) === 'free' && !(db.users[sessEmail] || {}).trial_used) : true),
           left: await whopFounderSpotsLeft().catch(() => null),
           plan: sessEmail ? planFor(sessEmail) : null, // plan ACTUAL del usuario → la página marca "Tu plan actual" en el correcto
         };
@@ -20883,8 +20892,10 @@ const server = http.createServer(async (req, res) => {
         // Cripto (26-jul): planes ONE-TIME de 30 días (Whop solo soporta cripto en pagos únicos vía Coinbase
         // Commerce). Al expirar, Whop manda el webhook de expiración → el grant cae solo → el usuario re-compra.
         pro_c: process.env.WHOP_PLAN_PRO_CRYPTO, sharp_c: process.env.WHOP_PLAN_SHARP_CRYPTO,
-        // FREE TRIAL Sharp 3 días (27-jul): tarjeta requerida, $0 hoy, cobra $59 el día 3, cancelable 1-clic.
-        sharp_t: process.env.WHOP_PLAN_SHARP_TRIAL,
+        // FREE TRIAL Sharp 3 días (27-jul, RETIRADO el 21-ago): mientras TRIAL_ON esté apagado el plan
+        // desaparece del mapa, así que un enlace viejo al checkout de la prueba devuelve "plan inválido"
+        // en vez de abrir una compra que ya no ofrecemos.
+        ...(TRIAL_ON ? { sharp_t: process.env.WHOP_PLAN_SHARP_TRIAL } : {}),
       };
       const planId = PLANS[String(url.searchParams.get('plan') || '')];
       if (!planId) { json(res, 400, { error: 'plan inválido' }); return; }

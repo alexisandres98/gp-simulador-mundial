@@ -1086,7 +1086,7 @@
   var TEN_TOURS = [['atp', 'ATP'], ['wta', 'WTA']];
   function tenTour() { return (S.ten && S.ten.tour) === 'wta' ? 'wta' : 'atp'; }
   // ── F1 (18-ago, blueprint 7.0): 8º deporte, al lado de Tenis. Race Intelligence Twin admin-only.
-  var F1_VIEWS = ['f1opps', 'f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model'];
+  var F1_VIEWS = ['f1opps', 'f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model', 'f1perf'];
   // UNA SOLA TABLA vista→deporte. `sportOf` ya la tenía escrita a mano abajo; tenerla dos veces es
   // exactamente el defecto que este arreglo viene a cerrar, así que se declara aquí y de aquí bebe todo.
   var SPORT_VIEWS = [['combat', CB_VIEWS], ['hoops', BB_VIEWS], ['esports', ES_VIEWS],
@@ -1104,6 +1104,10 @@
     ['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'],
     ['f1brief', 'news', 'nav_brief'], ['f1ask', 'message-circle', 'nav_cb_ask'], ['f1sim', 'adjustments', 'f1_nav_sim'],
     ['f1drivers', 'user', 'f1_nav_drivers'], ['f1model', 'book', 'ten_nav_model'],
+    // F1 ERA EL ÚNICO DE LOS NUEVE SIN RENDIMIENTO (21-ago). Su historial de llamadas vivía dentro de
+    // Oportunidades, así que en móvil —donde la barra solo tiene cuatro sitios y el resto va al cajón— no
+    // había NADA que tocar para llegar a él. Ocho deportes tienen su pantalla; el noveno también.
+    ['f1perf', 'chart-line', 'nav_perf'],
     ['alerts', 'bell', 'nav_alerts']
   ];
   var NAV2_F1 = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
@@ -1233,12 +1237,12 @@
     // aparecían por ningún lado en móvil — ni en la barra de abajo ni en el menú de More.
     var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books']
       : isTen ? ['tenbrief', 'tenask', 'tensim', 'tenplayers', 'tenmodel', 'alerts', 'tenperf', 'refer', 'admin', 'bets', 'books']
-      : isF1 ? ['f1brief', 'f1ask', 'f1sim', 'f1drivers', 'f1model', 'alerts', 'refer', 'admin', 'bets', 'books']
+      : isF1 ? ['f1brief', 'f1ask', 'f1sim', 'f1drivers', 'f1model', 'alerts', 'f1perf', 'refer', 'admin', 'bets', 'books']
       : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isTen ? [['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
-      : isF1 ? [['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'], ['f1drivers', 'user', 'f1_nav_drivers'], ['__more', 'dots', 'more']]
+      : isF1 ? [['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'], ['f1perf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
       ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
       : isHoops
@@ -4372,7 +4376,7 @@
     // ── F1 ───────────────────────────────────────────────────────────────────────────────────────────
     var f1p = h.match(/^f1driver\/([a-z0-9_-]+)$/i);
     if (f1p) { if (!(S.view === 'f1driver' && S.f1.driverId === f1p[1])) { S.f1.driverId = f1p[1]; showView('f1driver'); } return; }
-    var f1v = h.match(/^(f1opps|f1race|f1standings|f1drivers|f1sim|f1brief|f1ask|f1model)$/i);
+    var f1v = h.match(/^(f1opps|f1race|f1standings|f1drivers|f1sim|f1brief|f1ask|f1model|f1perf)$/i);
     if (f1v) { showView(f1v[1]); return; }
     // ── TENIS ────────────────────────────────────────────────────────────────────────────────────────
     // EL PANEL DEL PARTIDO NO SE ABRÍA DESDE LA PICK (19-ago). La card de tenis trae `ten_hash` =
@@ -4421,7 +4425,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model', f1perf: 'f1perf' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -11231,6 +11235,7 @@
     if (!S.me) { f1Shell(t('nav_opps'), f1Loading()); return; }
     if (!f1Allowed()) { showView('board'); return; }
     if (v === 'f1opps') return renderF1Opps();
+    if (v === 'f1perf') return renderF1Perf();
     if (v === 'f1race') return renderF1Race();
     if (v === 'f1standings') return renderF1Standings();
     if (v === 'f1drivers') return renderF1Drivers();
@@ -11455,6 +11460,60 @@
       (e && e.model != null ? '<div class="gx-f1-tkev gx-dim">Esta familia, medida fuera de muestra antes de publicar nada: ' +
         esc(e.metric) + ' ' + e.model + ' contra ' + (e.baseline != null ? e.baseline : '—') + ' de ' + esc(e.baseline_label) +
         (e.n ? ' · n=' + e.n : '') + '.</div>' : '') + '</div>';
+  }
+
+  // ── RENDIMIENTO DE F1 (21-ago) ─────────────────────────────────────────────────────────────────────
+  // El historial de llamadas existía pero vivía DENTRO de Oportunidades, y en móvil eso lo hacía
+  // inalcanzable: la barra de abajo solo tiene cuatro sitios y F1 no gastaba ninguno en rendimiento.
+  //
+  // F1 NO SE MIDE COMO LOS DEMÁS, y la pantalla tiene que decirlo. Aquí no hay CLV ni unidades porque casi
+  // nada de esto se apuesta: son LLAMADAS anotadas antes de la carrera y liquidadas con el resultado
+  // oficial. La vara es el BRIER —premia estar seguro y acertar, castiga estar seguro y fallar—, que es la
+  // medida honesta de un pronóstico cuando no hay precio contra el que medirse.
+  function renderF1Perf() {
+    var d = f1Get('taketrack', '/api/f1/taketrack', 120000);
+    if (!d) { f1Shell(t('nav_perf'), f1Loading()); return; }
+    if (d._err) { f1Shell(t('nav_perf'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (!d.available) {
+      f1Shell(t('nav_perf'), '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>Todavía no hay llamadas anotadas.</b><span class="gx-dim">Cada llamada se anota ANTES de la carrera y se liquida con el resultado oficial. En cuanto corra una, esta pantalla se llena sola.</span></div></div>');
+      return;
+    }
+    var kpi = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Monitor privado de F1</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">anotadas antes de la carrera</span></div>' +
+      '<div class="gx-ten-statgrid">' +
+      [['Anotadas', d.n_total], ['Liquidadas', d.n_liquidadas], ['Abiertas', d.abiertas], ['Anuladas', d.void || 0]].map(function (x) {
+        return '<div class="gx-ten-stat"><span class="gx-dim">' + x[0] + '</span><b class="gx-mono">' + x[1] + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + '</div></div>';
+
+    var fams = (d.families || []);
+    var tabla = fams.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Por familia</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">Brier: más bajo es mejor</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>Familia</th><th class="r">Llamadas</th><th class="r">Acierto</th><th class="r">Brier</th></tr></thead><tbody>' +
+      fams.map(function (f) {
+        var lab = (F1FAM[f.family] || {}).label || f.family;
+        return '<tr><td><b>' + esc(lab) + '</b></td>' +
+          '<td class="r gx-mono">' + f.n + '</td>' +
+          '<td class="r gx-mono ' + (f.acierto >= 0.5 ? 'gx-up' : 'gx-down') + '">' + Math.round(100 * f.acierto) + '%</td>' +
+          '<td class="r gx-mono">' + (f.brier != null ? f.brier.toFixed(3) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>'
+      : '<div class="gx-panel"><div class="gx-f1-mute">' + ic('hourglass') +
+        '<span>Ninguna carrera con llamadas anotadas ha corrido todavía. En cuanto corra, esto se llena solo.</span></div></div>';
+
+    // las últimas llamadas ya resueltas, con lo que se dijo y lo que pasó
+    var cerradas = (d.rows || []).filter(function (r) { return r.result === 'ACIERTO' || r.result === 'FALLO'; }).slice(0, 14);
+    var hist = cerradas.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Últimas llamadas resueltas</span></div>' +
+      cerradas.map(function (r) {
+        var ok = r.result === 'ACIERTO';
+        return '<div class="gx-ten-h2h"><b>' + esc(r.subject || '—') + '</b>' +
+          '<span class="gx-dim">' + esc((F1FAM[r.family] || {}).label || r.family) + (r.round != null ? ' · ronda ' + r.round : '') + '</span>' +
+          '<span class="gx-mono gx-dim">' + Math.round(100 * (r.p || 0)) + '%</span>' +
+          '<span class="gx-mono ' + (ok ? 'gx-up' : 'gx-down') + '">' + (ok ? 'acierto' : 'fallo') + '</span></div>';
+      }).join('') + '</div>' : '';
+
+    f1Shell(t('nav_perf'), kpi + tabla + hist +
+      '<div class="gx-dim gx-es-trunc">En F1 la vara es el Brier y no el ROI: casi nada de esto tiene precio contra el que medirse, así que lo que se juzga es la calidad del pronóstico, no el retorno. ' + esc(d.note || '') + '</div>');
   }
 
   function renderF1Opps() {

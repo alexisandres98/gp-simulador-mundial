@@ -3832,6 +3832,7 @@ td .gx-calc-btn span { display: none; }
 .gx-cbet-txt b { font-family: var(--gx-display); font-size: 14.5px; font-weight: 700; color: var(--gx-text); letter-spacing: -.01em; }
 .gx-cbet-sub { font-size: 12.5px; color: var(--gx-text2); line-height: 1.4; }
 .gx-cbet-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; text-align: right; }
+.gx-cbet > .gx-cbet-18 { align-self: flex-end; }
 .gx-cbet-offer { font-size: 11.5px; font-weight: 600; color: var(--gx-text2); white-space: nowrap; }
 .gx-cbet-btn {
   display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
@@ -3841,6 +3842,30 @@ td .gx-calc-btn span { display: none; }
 .gx-cbet:hover .gx-cbet-btn { background: rgba(91,168,255,.22); }
 .gx-cbet-btn svg { width: 13px; height: 13px }
 .gx-cbet-18 { font-size: 9.5px; color: var(--gx-text4); letter-spacing: .03em; white-space: nowrap; }
+
+/* --- versión con el arte oficial de Cloudbet ---------------------------------------------------
+   Cuando el PNG del deporte carga, la banda deja de ser un componente nuestro y pasa a ser el
+   creativo: fuera panel, fuera borde, fuera nuestro texto y nuestro botón (el arte ya trae el suyo).
+   Lo único que sobrevive es el 18+, que el creativo no incluye y no puede faltar. La clase la pone
+   el propio `onload` de la imagen, así que si el archivo no está esto nunca se activa. */
+.gx-cbet-art { display: none; width: 100%; }
+/* Nunca ampliar por encima del tamaño nativo del creativo: el leaderboard es de 728 px y estirarlo a
+   los ~1050 del contenedor lo deja borroso. Se centra en vez de crecer. En móvil sí llena, porque el
+   creativo de 320 sobre una pantalla de 390 es un 1,2x que no se nota. */
+.gx-cbet-art img { display: block; width: 100%; height: auto; border-radius: 10px; margin: 0 auto; }
+@media (min-width: 900px) { .gx-cbet-art img { max-width: 728px; } }
+.gx-cbet.has-art {
+  display: block; padding: 0; background: none; border: 0; border-left: 0;
+  margin-bottom: 16px; position: relative;
+}
+.gx-cbet.has-art:hover { transform: none; }
+.gx-cbet.has-art .gx-cbet-art { display: block; }
+.gx-cbet.has-art .gx-cbet-logo,
+.gx-cbet.has-art .gx-cbet-txt,
+.gx-cbet.has-art .gx-cbet-right { display: none; }
+.gx-cbet.has-art .gx-cbet-18 {
+  display: block; text-align: right; margin-top: 5px; white-space: normal;
+}
 
 @media (max-width: 720px) {
   /* En móvil la banda se rompe en tres filas: marca+titular, la oferta, y el botón con el 18+ al lado.
@@ -3855,6 +3880,6 @@ td .gx-calc-btn span { display: none; }
   }
   .gx-cbet-offer { flex: 1 0 100%; white-space: normal; }
   .gx-cbet-btn { flex: none; }
-  .gx-cbet-18 { flex: none; }
+  .gx-cbet > .gx-cbet-18 { flex: 1 0 100%; align-self: flex-start; text-align: left; }
 }
 @media (prefers-reduced-motion: reduce) { .gx-cbet { transition: none } .gx-cbet:hover { transform: none } }

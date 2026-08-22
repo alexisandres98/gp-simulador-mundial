@@ -31,6 +31,13 @@ body { background:
 h1 { font-family:var(--disp); font-size:clamp(34px,5.4vw,54px); font-weight:700; letter-spacing:-.03em; line-height:1.06; text-wrap:balance; }
 h1 b { color:var(--ac); }
 .sub { color:var(--tx2); font-size:16.5px; max-width:560px; margin:16px auto 0; line-height:1.55; }
+.sports { list-style:none; display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin:24px auto 0; max-width:862px; }
+.sports li { display:flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--panel); border-radius:99px; padding:6px 12px 6px 10px; font-size:12.5px; font-weight:600; color:var(--tx2); white-space:nowrap; }
+.sports li.live { border-color:var(--acl); background:var(--acs); color:var(--tx); }
+.sports li em { font-style:normal; font-size:14px; line-height:1; }
+.sports li s { text-decoration:none; font-size:9.5px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--tx3); border-left:1px solid var(--line2); padding-left:7px; }
+.sports li.live s { color:var(--ac); border-left-color:var(--acl); }
+.sports-t { text-align:center; margin-top:30px; font-size:11.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--tx3); }
 .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:44px; align-items:stretch; }
 @media (max-width:860px){ .plans { grid-template-columns:1fr; max-width:430px; margin-left:auto; margin-right:auto; } }
 .plan { display:flex; flex-direction:column; background:linear-gradient(165deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:18px; padding:26px 24px; position:relative; }
@@ -86,6 +93,8 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
     <div class="eyebrow"><i></i><span data-k="eye"></span></div>
     <h1 data-k="h1"></h1>
     <p class="sub" data-k="sub"></p>
+    <div class="sports-t" data-k="sports_t"></div>
+    <ul class="sports" id="sports"></ul>
     <p style="margin:16px 0 0"><a href="/calidad" data-k="quality_link" style="color:var(--ac);font-weight:700;font-size:14px;text-decoration:none"></a></p>
   </header>
 
@@ -106,9 +115,16 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
 (function () {
   var D = {
     es: {
-      eye: 'Planes · fútbol y combate, todo el año',
-      h1: 'La ventaja completa del modelo: <b>fútbol y combate</b>.',
-      sub: 'El mismo sistema que siguió el Mundial en público, ahora sobre fútbol de clubes todos los días y deportes de combate: UFC, MMA y boxeo. Elegí tu plan y cancelá cuando quieras.',
+      eye: 'Planes · nueve deportes, todo el año',
+      h1: 'Una plataforma. <b>Nueve deportes.</b> El mismo método detrás.',
+      sub: 'Ya no somos una web de fútbol. Fútbol, UFC/MMA y boxeo están abiertos hoy; tenis, baloncesto, esports, fútbol americano y F1 tienen motor propio construido y van abriendo por fases. Los planes de Sharp entran primero en cada uno.',
+      sports_t: 'Los nueve, con modelo propio',
+      sports_live: 'Abierto', sports_soon: 'Abriendo',
+      sports: [
+        ['⚽', 'Fútbol', 1], ['🥊', 'UFC / MMA', 1], ['🥊', 'Boxeo', 1],
+        ['🎾', 'Tenis', 0], ['🏀', 'Baloncesto', 0], ['🎮', 'Esports', 0],
+        ['🏈', 'NFL', 0], ['🏈', 'College · CFL', 0], ['🏎️', 'F1', 0]
+      ],
       quality_link: 'Mirá la calidad del sistema, medida como un fondo →',
       faq_t: 'Preguntas frecuentes',
       foot_disc: 'Sugerencias educativas basadas en análisis estadístico. No es consejo financiero. Apostá con responsabilidad. 18+.',
@@ -120,21 +136,22 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
       cta_crypto: '₿ Pagar con cripto · 1 mes', cta_crypto_note: 'BTC, USDC, USDT y más · pago único de 30 días, sin tarjeta ni renovación automática',
       trial_cta: '🎁 Probar GRATIS 3 días', trial_note: 'Hoy pagas $0 · $59/mes solo si te quedas · cancelas en 1 clic', trial_or: 'o suscribirme directo', trial_bar: 'Prueba Sharp GRATIS por 3 días — sin cargo hoy',
       f_free: [
-        ['on', '1 pick del día (con delay), solo ganador — fútbol y combate'],
-        ['on', 'Probabilidades de cada partido'],
+        ['on', '1 pick del día (con delay), solo ganador'],
+        ['on', 'Probabilidades de cada partido y de cada pelea'],
         ['on', '<b>Combate</b>: agenda UFC/MMA/boxeo, fichas de peleadores, predicción de cada pelea y rendimiento público'],
         ['on', 'Marcadores en vivo y simulador'],
-        ['off', 'Picks completas del día'],
-        ['off', 'Proyección de goles'],
+        ['off', 'Todas las picks del día, sin delay'],
+        ['off', 'Los deportes que van abriendo'],
         ['off', 'Calculadora de stake'],
         ['off', 'Value y arbitraje']
       ],
       f_pro: [
-        ['on', '<b>Todas las picks del día</b>: ganador y goles, sin delay'],
-        ['on', '<b>Picks de combate</b>: ganador de cada pelea (UFC/MMA/boxeo), sin delay'],
+        ['on', '<b>Todas las picks del día, sin delay</b>: fútbol (ganador y goles) y combate (ganador de cada pelea)'],
+        ['on', '<b>Cada deporte nuevo, incluido</b> en cuanto abre — sin pagar aparte, sin cambiar de plan'],
+        ['on', '<b>Boleto GP</b>: combiná piernas de cualquier deporte con cuota combinada, probabilidad y EV'],
         ['on', '<b>Film study</b> de cada pelea + brief de cartelera con slate y parlay de la noche'],
         ['on', 'Análisis completo de cada partido (cockpit) con el porqué de cada pick'],
-        ['on', '<b>Pregúntale a GP</b>: el chat del modelo, fútbol y combate'],
+        ['on', '<b>Pregúntale a GP</b>: el chat del modelo, en cada deporte que tengas abierto'],
         ['on', '<b>Perfiles de jugador</b> con radar de scouting y proyecciones'],
         ['on', '<b>Proyección de goles</b> de cada partido'],
         ['on', 'Calculadora de stake con gestión de bankroll'],
@@ -145,78 +162,90 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
         ['off', 'Mi cartera, value y arbitraje en tiempo real']
       ],
       f_sharp: [
+        ['on', '<b>Entrás primero en cada deporte nuevo</b>: tenis, baloncesto, esports, fútbol americano y F1 antes que nadie'],
         ['on', '<b>Picks de córners, tarjetas, goleadores y asistencias</b>'],
         ['on', '<b>Combate completo</b>: picks de método y rounds, value, arbitraje y movimiento de línea'],
-        ['on', '<b>Mi cartera</b>: registrá tus apuestas y seguí tu P&L, ROI y CLV personal'],
+        ['on', '<b>Mi cartera</b>: registrá tus apuestas de todos los deportes y seguí tu P&amp;L, ROI y CLV personal'],
         ['on', '<b>Value</b>: cuotas mal pagadas detectadas por el modelo'],
-        ['on', '<b>Arbitraje y precio atrasado</b>: scanner en tiempo real'],
+        ['on', '<b>Arbitraje y precio atrasado</b>: scanner en tiempo real sobre 40+ casas'],
         ['on', '<b>Perfil táctico de cada cruce</b>: event data remate a remate'],
         ['on', 'Alertas prioritarias (Telegram privado)'],
-        ['on', 'Acceso anticipado a cada mercado y deporte nuevo'],
         ['on', 'Todo lo del plan Pro']
       ],
       faqs: [
-        ['¿Qué incluye cada plan?', 'Free: 1 pick del día (con delay) más probabilidades, marcadores en vivo, simulador y toda la inteligencia de combate (agenda, fichas, predicción de cada pelea). Pro: todas las picks del día sin delay — ganador y goles en fútbol, ganador de cada pelea en combate — más brief de cartelera, Pregúntale a GP, análisis completo, perfiles de jugador, proyección de goles y calculadora de stake. Sharp: todo lo de Pro más córners, tarjetas, goleadores y asistencias, picks de método y rounds en combate, tu cartera personal, value, arbitraje, movimiento de línea y acceso anticipado a nuevos mercados y deportes.'],
+        ['¿Qué deportes cubre GP Simulador?', 'Nueve, cada uno con su propio modelo — no es un modelo de fútbol reciclado. Abiertos hoy: fútbol (cualquier liga que las casas coticen, en cualquier parte del mundo), UFC/MMA y boxeo. Construidos y abriendo por fases: tenis (ATP y WTA), baloncesto, esports (CS2, League of Legends, Valorant y Dota 2), fútbol americano (NFL, College y CFL) y Fórmula 1. Cada deporte tiene su propia pantalla, su historial público y su brief diario.'],
+        ['¿Los deportes nuevos cuestan aparte?', 'No. Tu plan los incluye en cuanto abren, sin subida de precio ni cambio de suscripción. Sharp además entra en cada uno antes que el resto.'],
+        ['¿Por qué unos están abiertos y otros no?', 'Porque un deporte no se abre cuando funciona la pantalla, se abre cuando el modelo pasa su validación fuera de muestra. Hasta entonces corre en sombra: genera sus jugadas, se liquidan y se miden, pero no se publican. Preferimos abrir tarde a publicar un número que no nos creemos.'],
+        ['¿Qué incluye cada plan?', 'Free: 1 pick del día (con delay), probabilidades, marcadores en vivo, simulador y toda la inteligencia de combate. Pro: todas las picks del día sin delay, cada deporte nuevo incluido al abrir, Boleto GP, análisis completo de cada partido, Pregúntale a GP, perfiles de jugador, proyección de goles y calculadora de stake. Sharp: todo lo de Pro más entrada anticipada a cada deporte nuevo, córners, tarjetas, goleadores y asistencias, método y rounds en combate, tu cartera personal, value, arbitraje y movimiento de línea.'],
         ['¿Puedo cancelar cuando quiera?', 'Sí. Cancelás en un clic desde tu perfil y no se te cobra el mes siguiente. Sin permanencia ni letra chica.'],
-        ['¿Qué cubre la plataforma?', 'El mismo sistema del Mundial, ahora sobre fútbol de clubes todo el año y también deportes de combate: UFC, MMA y boxeo, con modelo propio, predicción de cada pelea y track público. A medida que cada liga entra en temporada, el modelo la sigue: cualquier liga que las casas coticen, en cualquier parte del mundo, con picks diarias verificadas y el análisis completo de cada partido.'],
         ['¿Hay reembolso?', 'Sí: si no te convence, tenés 24 horas desde el primer pago para pedir el reembolso completo, sin preguntas.'],
         ['¿Esto garantiza ganancias?', 'No. Publicamos análisis y jugadas verificadas con transparencia total: el historial es público, con aciertos y errores. No es consejo financiero.']
       ]
     },
     en: {
-      eye: 'Plans · football & combat, all year',
-      h1: 'The full model edge: <b>football & combat</b>.',
-      sub: 'The same system that followed the World Cup in public, now on club football every day and combat sports: UFC, MMA and boxing. Choose your plan and cancel anytime.',
+      eye: 'Plans · nine sports, all year',
+      h1: 'One platform. <b>Nine sports.</b> The same method behind all of them.',
+      sub: 'We are no longer a football site. Football, UFC/MMA and boxing are open today; tennis, basketball, esports, American football and F1 each have their own engine built and are opening in phases. Sharp goes in first on every one.',
+      sports_t: 'All nine, each with its own model',
+      sports_live: 'Open', sports_soon: 'Opening',
+      sports: [
+        ['⚽', 'Football', 1], ['🥊', 'UFC / MMA', 1], ['🥊', 'Boxing', 1],
+        ['🎾', 'Tennis', 0], ['🏀', 'Basketball', 0], ['🎮', 'Esports', 0],
+        ['🏈', 'NFL', 0], ['🏈', 'College · CFL', 0], ['🏎️', 'F1', 0]
+      ],
       quality_link: 'See the system quality, measured like a fund →',
       faq_t: 'Frequently asked questions',
       foot_disc: 'Educational suggestions based on statistical analysis. Not financial advice. Bet responsibly. 18+.',
-      foot_legal: '<a href="/terms" style="color:inherit">Terms & conditions</a> · <a href="/refunds" style="color:inherit">Refund policy</a> · <a href="/privacy" style="color:inherit">Privacy</a>',
+      foot_legal: '<a href="/terms" style="color:inherit">Terms &amp; conditions</a> · <a href="/refunds" style="color:inherit">Refund policy</a> · <a href="/privacy" style="color:inherit">Privacy</a>',
       free_name: 'Free', pro_name: 'Pro', sharp_name: 'Sharp',
       badge: 'Most popular',
       mo: '/mo', annual_pro: 'Annual: $190/yr → pay 10 months, get 12', annual_sharp: 'Annual: $590/yr → pay 10 months, get 12', annual_save: 'Save 2 months',
       cta_free: 'Your current plan', cta_current: 'Your current plan', cta_included: 'Included in your plan', cta_upgrade: 'Upgrade to Sharp', cta: 'Coming soon', cta_buy: 'Subscribe', cta_note: 'Available soon', cta_note_live: 'Secure payment via Whop · cancel anytime',
-      cta_crypto: '₿ Pay with crypto · 1 month', cta_crypto_note: 'BTC, USDC, USDT & more · one-time 30-day payment, no card, no auto-renewal',
+      cta_crypto: '₿ Pay with crypto · 1 month', cta_crypto_note: 'BTC, USDC, USDT &amp; more · one-time 30-day payment, no card, no auto-renewal',
       trial_cta: '🎁 Start your FREE 3-day trial', trial_note: '$0 today · $59/mo only if you stay · cancel in one click', trial_or: 'or subscribe directly', trial_bar: 'Try Sharp FREE for 3 days — no charge today',
       f_free: [
-        ['on', '1 pick a day (delayed), winner only — football & combat'],
-        ['on', 'Probabilities for every match'],
+        ['on', '1 pick a day (delayed), winner only'],
+        ['on', 'Probabilities for every match and every fight'],
         ['on', '<b>Combat</b>: UFC/MMA/boxing agenda, fighter profiles, a prediction for every fight and the public track record'],
         ['on', 'Live scores and simulator'],
-        ['off', 'Full daily picks'],
-        ['off', 'Goal projection'],
+        ['off', 'Every daily pick, no delay'],
+        ['off', 'The sports as they open'],
         ['off', 'Stake calculator'],
-        ['off', 'Value & arbitrage']
+        ['off', 'Value &amp; arbitrage']
       ],
       f_pro: [
-        ['on', '<b>All daily picks</b>: winner & goals, no delay'],
-        ['on', '<b>Combat picks</b>: the winner of every fight (UFC/MMA/boxing), no delay'],
+        ['on', '<b>Every daily pick, no delay</b>: football (winner &amp; goals) and combat (the winner of every fight)'],
+        ['on', '<b>Every new sport included</b> the moment it opens — no extra fee, no plan change'],
+        ['on', '<b>GP Slip</b>: combine legs from any sport with combined odds, probability and EV'],
         ['on', '<b>Film study</b> for every fight + fight-card brief with slate and the parlay of the night'],
         ['on', 'Full match analysis (cockpit) with the why behind every pick'],
-        ['on', '<b>Ask GP</b>: the model’s chat, football & combat'],
+        ['on', '<b>Ask GP</b>: the model’s chat, on every sport you have open'],
         ['on', '<b>Player profiles</b> with scouting radar and projections'],
         ['on', '<b>Goal projection</b> for every match'],
         ['on', 'Stake calculator with bankroll management'],
         ['on', 'Email alerts'],
         ['on', 'Everything in Free'],
-        ['off', 'Corners, cards, goalscorers & assists picks'],
-        ['off', 'Method & rounds picks in combat'],
-        ['off', 'My bets, value & arbitrage in real time']
+        ['off', 'Corners, cards, goalscorers &amp; assists picks'],
+        ['off', 'Method &amp; rounds picks in combat'],
+        ['off', 'My bets, value &amp; arbitrage in real time']
       ],
       f_sharp: [
-        ['on', '<b>Corners, cards, goalscorers & assists picks</b>'],
-        ['on', '<b>Full combat</b>: method & rounds picks, value, arbitrage and line movement'],
-        ['on', '<b>My bets</b>: log your wagers and track your P&L, ROI and personal CLV'],
+        ['on', '<b>You go in first on every new sport</b>: tennis, basketball, esports, American football and F1 before anyone else'],
+        ['on', '<b>Corners, cards, goalscorers &amp; assists picks</b>'],
+        ['on', '<b>Full combat</b>: method &amp; rounds picks, value, arbitrage and line movement'],
+        ['on', '<b>My bets</b>: log wagers across every sport and track your P&amp;L, ROI and personal CLV'],
         ['on', '<b>Value</b>: mispriced odds caught by the model'],
-        ['on', '<b>Arbitrage & stale prices</b>: real-time scanner'],
+        ['on', '<b>Arbitrage &amp; stale prices</b>: real-time scanner across 40+ sportsbooks'],
         ['on', '<b>Tactical profile of every matchup</b>: shot-by-shot event data'],
         ['on', 'Priority alerts (private Telegram)'],
-        ['on', 'Early access to every new market and sport'],
         ['on', 'Everything in Pro']
       ],
       faqs: [
-        ['What does each plan include?', 'Free: 1 pick a day (delayed) plus probabilities, live scores, the simulator and all the combat intelligence (agenda, fighter profiles, a prediction for every fight). Pro: all daily picks with no delay — winner & goals in football, the winner of every fight in combat — plus the fight-card brief, Ask GP, full match analysis, player profiles, goal projection and the stake calculator. Sharp: everything in Pro plus corners, cards, goalscorers & assists, method & rounds picks in combat, your personal bet tracker, value, arbitrage, line movement and early access to new markets and sports.'],
+        ['Which sports does GP Simulador cover?', 'Nine, each with its own model — not one football model recycled. Open today: football (whatever league the sportsbooks price, anywhere in the world), UFC/MMA and boxing. Built and opening in phases: tennis (ATP and WTA), basketball, esports (CS2, League of Legends, Valorant and Dota 2), American football (NFL, College and CFL) and Formula 1. Every sport gets its own screen, its own public track record and its own daily brief.'],
+        ['Do new sports cost extra?', 'No. Your plan includes them the moment they open — no price rise, no new subscription. Sharp also gets in before everyone else.'],
+        ['Why are some open and others not?', 'Because a sport does not open when the screen works, it opens when the model clears out-of-sample validation. Until then it runs in shadow: it generates its plays, they get settled and measured, but nothing is published. We would rather open late than publish a number we do not believe.'],
+        ['What does each plan include?', 'Free: 1 pick a day (delayed), probabilities, live scores, the simulator and all the combat intelligence. Pro: every daily pick with no delay, every new sport included as it opens, the GP Slip, full match analysis, Ask GP, player profiles, goal projection and the stake calculator. Sharp: everything in Pro plus early entry to every new sport, corners, cards, goalscorers &amp; assists, method &amp; rounds in combat, your personal bet tracker, value, arbitrage and line movement.'],
         ['Can I cancel anytime?', 'Yes. One click from your profile and you won’t be charged the next month. No lock-in, no fine print.'],
-        ['What does the platform cover?', 'The same World Cup system, now on club football all year — and combat sports too: UFC, MMA and boxing, with a dedicated model, a prediction for every fight and a public track record. As each league comes into season the model follows it: whatever league the sportsbooks price, anywhere in the world, with daily verified picks and full analysis of every match.'],
         ['Is there a refund?', 'Yes: if it’s not for you, you have 24 hours from your first payment for a full refund, no questions asked.'],
         ['Does this guarantee profits?', 'No. We publish verified analysis and plays with full transparency: the track record is public, hits and misses. Not financial advice.']
       ]
@@ -229,6 +258,10 @@ details p { margin-top:10px; color:var(--tx2); font-size:13.5px; line-height:1.6
   function render() {
     document.documentElement.lang = lang;
     document.querySelectorAll('[data-k]').forEach(function (el) { var v = T(el.getAttribute('data-k')); if (v != null) el.innerHTML = v; });
+    document.getElementById('sports').innerHTML = T('sports').map(function (sp) {
+      return '<li class="' + (sp[2] ? 'live' : '') + '"><em>' + sp[0] + '</em>' + sp[1] +
+        '<s>' + T(sp[2] ? 'sports_live' : 'sports_soon') + '</s></li>';
+    }).join('');
     // checkout REAL de Whop (los plan IDs los inyecta el server desde env; sin IDs → botón "Muy pronto")
     var W = window.__WHOP || {};
     var co = function (key) { return '/api/founder/checkout?plan=' + key; };

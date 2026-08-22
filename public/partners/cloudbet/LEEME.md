@@ -7,17 +7,17 @@ veces, y sin riesgo de dejar un hueco si falta alguno.
 
 ## Los archivos
 
-Dos por deporte. Nombre = `<deporte>-<ancho>x<alto>.png`.
+Dos por deporte. Nombre = `<deporte>-<ancho>x<alto>.webp`.
 
 | deporte | escritorio (≥900 px) | móvil (<900 px) | creatividad de Cloudbet |
 |---|---|---|---|
-| combate | `combate-728x90.png` | `combate-320x100.png` | boxeador · *Knockout odds* |
-| esport | `esport-728x90.png` | `esport-320x100.png` | guerrero · *Clutch the win* |
-| baloncesto | `baloncesto-728x90.png` | `baloncesto-320x100.png` | base · *Beat the buzzer* |
-| tenis | `tenis-728x90.png` | `tenis-320x100.png` | tenista · *Serve you better* |
-| futbol | `futbol-728x90.png` | `futbol-320x100.png` | futbolista · *Drive the attack* |
+| combate | `combate-728x90.webp` | `combate-320x100.webp` | boxeador · *Knockout odds* |
+| esport | `esport-728x90.webp` | `esport-320x100.webp` | guerrero · *Clutch the win* |
+| baloncesto | `baloncesto-728x90.webp` | `baloncesto-320x100.webp` | base · *Beat the buzzer* |
+| tenis | `tenis-728x90.webp` | `tenis-320x100.webp` | tenista · *Serve you better* |
+| futbol | `futbol-728x90.webp` | `futbol-320x100.webp` | futbolista · *Drive the attack* |
 
-Fútbol todavía no está cableado (ver el comentario en `CBET_ON`), pero se puede dejar el archivo listo.
+Fútbol todavía no está cableado (ver el comentario en `CBET_ON`), pero el archivo ya está aquí.
 
 ## Dónde aparece cada uno
 
@@ -31,11 +31,13 @@ análisis no va, porque ahí el usuario está leyendo, no decidiendo dónde apos
 
 ## Notas
 
-- Optimizar antes de subir: se cargan en cada pintado de la sección.
+- Ya optimizados: los JPG/PNG originales de Drive (981 KB en total) se reencodaron a WebP q=0.88 → 160 KB,
+  un 84 % menos. Cada banda pesa entre 10 y 21 KB. Si se sustituye alguno, reencodar igual.
 - El aviso de **18+** lo pone el producto encima del arte: las creatividades no lo traen.
 - Cada sección sale con su propio `src` en el enlace, así que `/api/internal/outclicks?key=` dice
   cuál convierte y cuál es decorado.
 - Tamaños que Cloudbet también entrega y que hoy no se usan (300x250, 300x600, 160x600, 120x600,
   970x90): reservados para la barra lateral del board de fútbol cuando se decida esa colocación.
 
-De la carpeta "2026 assets" de Alexis · 22-ago-2026.
+Origen: Drive → `cloudbet/2026 assets/Static Banners/` (Sports/{Boxing,Basketball,Tennis,Soccer}/EN
+y Generic/Esports Generic/EN). Descargados el 22-ago-2026.

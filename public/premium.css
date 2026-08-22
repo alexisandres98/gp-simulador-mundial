@@ -3852,11 +3852,13 @@ td .gx-calc-btn span { display: none; }
 /* Nunca ampliar por encima del tamaño nativo del creativo: el leaderboard es de 728 px y estirarlo a
    los ~1050 del contenedor lo deja borroso. Se centra en vez de crecer. En móvil sí llena, porque el
    creativo de 320 sobre una pantalla de 390 es un 1,2x que no se nota. */
-.gx-cbet-art img { display: block; width: 100%; height: auto; border-radius: 10px; margin: 0 auto; }
-@media (min-width: 900px) { .gx-cbet-art img { max-width: 728px; } }
+.gx-cbet-art img { display: block; width: 100%; height: auto; border-radius: 10px; }
 .gx-cbet.has-art {
   display: block; padding: 0; background: none; border: 0; border-left: 0;
-  margin-bottom: 16px; position: relative;
+  margin: 0 auto 16px; position: relative;
+  /* el bloque entero se capa al ancho del creativo para que el 18+ quede alineado con el arte
+     y no colgando del borde del contenedor */
+  max-width: 728px;
 }
 .gx-cbet.has-art:hover { transform: none; }
 .gx-cbet.has-art .gx-cbet-art { display: block; }

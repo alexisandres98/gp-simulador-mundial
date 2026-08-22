@@ -7179,8 +7179,8 @@
     // funciona igual. Así se pueden soltar los PNG en /partners/cloudbet/ sin tocar código.
     var base = '/partners/cloudbet/' + kind;
     var art = '<picture class="gx-cbet-art">' +
-      '<source media="(min-width:900px)" srcset="' + base + '-728x90.png">' +
-      '<img src="' + base + '-320x100.png" alt="Cloudbet" draggable="false" ' +
+      '<source media="(min-width:900px)" srcset="' + base + '-728x90.webp">' +
+      '<img src="' + base + '-320x100.webp" alt="Cloudbet" draggable="false" ' +
         'onload="var a=this.closest(\'.gx-cbet\');if(a)a.classList.add(\'has-art\')" ' +
         'onerror="var q=this.closest(\'picture\');if(q)q.remove()">' +
       '</picture>';

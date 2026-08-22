@@ -1509,7 +1509,7 @@ function closeOddsFor(pk, closes) {
 
 const RES = require('../data-providers/esports/results');
 
-async function settlePicks(game, { sinceDays = 4 } = {}) {
+async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   const st = rd(PICKS_F(game));
   if (!st || !st.picks) return { game, settled: 0, pending: 0, no_source: false };
   const closes0 = rd(`closes-${game}.json`);
@@ -1528,8 +1528,20 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
     && p.start_at && Date.parse(p.start_at) < Date.now() - 20 * 60e3);
   if (!pend.length) return { game, settled: 0, pending: 0, clv_backfilled: backfilled };
 
-  const since = new Date(Date.now() - sinceDays * 864e5).toISOString().slice(0, 10);
-  const rs = await RES.results(game, { since }).catch(() => null);
+  // LA VENTANA DE LA FUENTE SE CALCULA DESDE LA PICK PENDIENTE MÁS ANTIGUA (22-ago). Estaba fija en cuatro
+  // días, así que una pick cuyo partido se jugó hace cinco NO PODÍA liquidarse nunca: a la fuente no se le
+  // preguntaba por ese día. Así se apilaron 90 vencidas en CS2 y 85 en Valorant, y el diagnóstico decía "el
+  // par no está en la fuente" —cierto, pero porque nadie lo había pedido—. No era el matcher de nombres.
+  // Con tope, para que una pick zombi no obligue a barrer el archivo entero en cada pasada.
+  const masVieja = Math.min(...pend.map((p) => Date.parse(p.start_at || 0) || Infinity));
+  const diasNec = Number.isFinite(masVieja) ? Math.ceil((Date.now() - masVieja) / 864e5) + 1 : sinceDays;
+  const dias = Math.min(maxDias, Math.max(sinceDays, diasNec));
+  const since = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
+  // Y EL TOPE DE FILAS TIENE QUE CRECER CON LA VENTANA. La fuente ordena por fecha DESCENDENTE: un tope
+  // corto recorta justo las MÁS ANTIGUAS, que son las únicas que esta ventana viene a rescatar. Ampliar
+  // `since` sin ampliar `max` no habría arreglado nada y habría parecido que el arreglo no servía.
+  const maxFilas = Math.min(1500, Math.max(300, dias * 60));
+  const rs = await RES.results(game, { since, max: maxFilas }).catch(() => null);
   if (!rs || !rs.available) return { game, settled: 0, pending: pend.length, no_source: true, why: (rs && rs.why) || 'sin fuente de resultados' };
 
   const closes = rd(`closes-${game}.json`);
@@ -1599,6 +1611,9 @@ async function settlePicks(game, { sinceDays = 4 } = {}) {
   const fechas = idx.map((x) => x.t).filter(Boolean).sort((a, b) => a - b);
   const resumen = { at: st.at, settled, unmatched, unsettleable, pending: pend.length, source: rs.source, resolver: !!resolve,
     // el estado de la FUENTE va en el mismo parte: sin esto no se sabe si el problema es nuestro o suyo
+    // la ventana pedida viaja en el parte: sin esto, un `fuente_desde` corto no distingue "la fuente no
+    // tiene más" de "no se le pidió más", que es exactamente el fallo que esto viene a cerrar
+    ventana_dias: dias, ventana_desde: since, tope_filas: maxFilas,
     fuente_filas: idx.length,
     fuente_desde: fechas.length ? new Date(fechas[0]).toISOString().slice(0, 10) : null,
     fuente_hasta: fechas.length ? new Date(fechas[fechas.length - 1]).toISOString().slice(0, 10) : null,

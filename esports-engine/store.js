@@ -1608,6 +1608,17 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
           maps: (hit.r.maps || []).map((m) => ({ ...m, score_a: m.score_b, score_b: m.score_a })) }
       : hit.r;
 
+    // UNA FILA DE PARSEO RECHAZADO SOLO PUEDE ANULAR, NUNCA DECIDIR. Sus nombres salen del slug del partido
+    // y el resolutor los acierta a medias: "ence prospects" cae en `gp:ence` y "vitality academy" en
+    // `gp:vitality`, o sea la ORGANIZACIÓN en vez de la filial. Con eso, dejar que una de estas filas
+    // dictara un WIN/LOSS podría liquidar la pick del primer equipo con el resultado de su academia. Se
+    // usan para lo único que son fiables: certificar que de ese partido no va a haber dato.
+    if (r.parse_rejected) {
+      pk.status = 'SETTLED'; pk.result_code = 'VOID'; pk.units = 0;
+      pk.settled_at = new Date().toISOString(); pk.result_source = r.source;
+      pk.unsettleable_why = 'la fuente descartó el parseo de este partido: el detalle por mapa no va a existir';
+      voided++; continue;
+    }
     const verdict = settleOne(pk, r);
     if (!verdict) {
       // LA FUENTE DIJO QUE NO VA A HABER DATO (22-ago). bo3 marca ~19 % de los partidos como `rejected`:
@@ -1616,12 +1627,6 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
       // dejarla ACTIVE para siempre engorda el contador de atascadas y tapa los fallos de verdad.
       // Se cierra VOID (cero unidades, sin CLV), que es lo honesto: no se ganó ni se perdió, no se pudo
       // saber. `unsettleable` se reserva ya solo para las que TODAVÍA podrían resolverse.
-      if (r.parse_rejected) {
-        pk.status = 'SETTLED'; pk.result_code = 'VOID'; pk.units = 0;
-        pk.settled_at = new Date().toISOString(); pk.result_source = r.source;
-        pk.unsettleable_why = 'la fuente descartó el parseo de este partido: el detalle por mapa no va a existir';
-        voided++; continue;
-      }
       unsettleable++; pk.unsettleable_why = 'la fuente no publica el dato de esta familia (o ese mapa no se jugó)'; continue;
     }
     pk.status = 'SETTLED';

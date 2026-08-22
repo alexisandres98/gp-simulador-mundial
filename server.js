@@ -18063,6 +18063,9 @@ const server = http.createServer(async (req, res) => {
         const porDia = {};
         for (const x of rows) { const d2 = String(x.at || '').slice(0, 10); porDia[d2] = (porDia[d2] || 0) + 1; }
         return json(res, 200, { game: rawg, since, available: r.available, source: r.source, why: r.why,
+          // `diag` cuenta las series que la fuente trae pero que se caen al construirlas (sin nombre de
+          // clan, sin marcador). Es lo que separa "no cubre ese torneo" de "lo cubre a medias".
+          diag: r.diag || null,
           filas: rows.length, por_dia: porDia, muestra: rows.slice(0, 8) });
       }
       const sg = String(url.searchParams.get('settle') || '');

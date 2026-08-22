@@ -72,12 +72,17 @@ async function cs2Results({ since, max = 300 } = {}) {
   }
 
   const out = [];
+  // POR QUÉ SE CAE UNA SERIE, NO SOLO CUÁNTAS SALEN (22-ago). Las series se construyen desde los MAPAS y se
+  // descartan en silencio en dos sitios: cuando el conjunto de mapas no deja exactamente dos nombres de
+  // equipo, y cuando ningún mapa trae marcador. Sin contarlo, un torneo que la fuente publica sin nombre de
+  // clan es indistinguible de un torneo que la fuente no cubre — y son dos problemas distintos.
+  const diag = { matches: rows.length, games: games.length, grupos: byMatch.size, sin_dos_nombres: 0, sin_marcador: 0, series: 0 };
   for (const [mid, gs] of byMatch) {
     const m = byId.get(mid) || null;
     gs.sort((x, y) => (x.number || 0) - (y.number || 0));
     // los dos nombres del enfrentamiento salen del conjunto de mapas; si algún mapa no los trae, se descarta
     const names = [...new Set(gs.flatMap((g) => [g.w_name, g.l_name]).filter(Boolean))];
-    if (names.length !== 2) continue;
+    if (names.length !== 2) { diag.sin_dos_nombres++; continue; }
     const [a, b] = names;
     const maps = gs.map((g) => {
       const aWon = g.w_name === a;
@@ -89,7 +94,7 @@ async function cs2Results({ since, max = 300 } = {}) {
         score_b: aWon ? Number(g.l_score) : Number(g.w_score),
       };
     }).filter((x) => Number.isFinite(x.score_a) && Number.isFinite(x.score_b));
-    if (!maps.length) continue;
+    if (!maps.length) { diag.sin_marcador++; continue; }
     out.push({
       source: 'bo3', provider_id: mid,
       at: (m && m.at) || gs[0].at || null,
@@ -102,6 +107,8 @@ async function cs2Results({ since, max = 300 } = {}) {
       has_rounds: true, has_kills: false,
     });
   }
+  diag.series = out.length;
+  Object.defineProperty(out, 'diag', { value: diag, enumerable: false });
   return out;
 }
 
@@ -261,7 +268,7 @@ async function results(game, { since = null, max = 300 } = {}) {
   if (!S.available) return { game, available: false, why: S.note, rows: [] };
   try {
     const rows = await S.fn({ since, max });
-    return { game, available: true, source: S.name, note: S.note, rows, at: new Date().toISOString() };
+    return { game, available: true, source: S.name, note: S.note, rows, diag: (rows && rows.diag) || null, at: new Date().toISOString() };
   } catch (e) {
     return { game, available: false, error: String((e && e.message) || e), rows: [] };
   }

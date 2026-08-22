@@ -3017,7 +3017,7 @@ async function shareOp(ev, text) {
   const url = 'https://gpsimulador.com/?ref=share';
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'GP Simulador del Mundial', text, url });
+      await navigator.share({ title: 'GP Simulador', text, url });
       return;
     } catch (e) {
       if (e && e.name === 'AbortError') return; // el usuario cerró el menú: no es error

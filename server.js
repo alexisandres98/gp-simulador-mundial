@@ -1122,6 +1122,9 @@ db.goalPicks = db.goalPicks || [];             // GOLES G5: Picks de goles (shad
 //
 // NO CANCELA NADA EN CURSO: quitar la oferta y cortarle el trial a quien ya lo está usando son dos cosas
 // distintas, y esto solo hace la primera. Las membresías vivas siguen su curso en Whop.
+// Enlace de afiliado de Cloudbet (acuerdo firmado el 12-ago, 35% RS desde el 1-ago). Se puede sustituir
+// sin desplegar con GP_CLOUDBET_AFF — si mañana cambian la landing o el token, es una variable de entorno.
+const CLOUDBET_AFF = 'https://cldbt.cloud/go/en/landing/bitcoin-bonus?af_token=10b67639021ea6322fa76b96a7d59a41';
 const TRIAL_ON = false;
 db.dailyPicks = db.dailyPicks || [];           // PICKS DIARIAS (producto /x): auto-publicadas, feed efímero. Track record solo admin.
 db.tsaXg = db.tsaXg || {};
@@ -17497,6 +17500,23 @@ const server = http.createServer(async (req, res) => {
     }
     // ── OPS (17-ago): el panel único de los trabajos automáticos, con la llave interna. ──────────────────
     // Qué corrió, cuándo, con qué código de salida y las últimas líneas de su salida — sin entrar a Render.
+    // ¿QUÉ SUPERFICIE MANDA GENTE A CLOUDBET? (22-ago) El panel de ellos no lo dice, así que lo contamos acá.
+    // Sin esto, decidir dónde poner el banner y dónde quitarlo sería a ojo.
+    if (p === '/api/internal/outclicks') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const bk = (db.outClicks || {}).cloudbet || {};
+      const porFuente = {}, porDia = {};
+      for (const [dia, srcs] of Object.entries(bk)) {
+        porDia[dia] = Object.values(srcs).reduce((a, b) => a + b, 0);
+        for (const [sr, n] of Object.entries(srcs)) porFuente[sr] = (porFuente[sr] || 0) + n;
+      }
+      const total = Object.values(porDia).reduce((a, b) => a + b, 0);
+      return json(res, 200, { casa: 'cloudbet', total,
+        por_fuente: Object.fromEntries(Object.entries(porFuente).sort((a, b) => b[1] - a[1])),
+        por_dia: Object.fromEntries(Object.entries(porDia).sort().reverse().slice(0, 30)),
+        destino: (process.env.GP_CLOUDBET_AFF || CLOUDBET_AFF).replace(/af_token=([^&]{6})[^&]*/, 'af_token=$1…') });
+    }
     if (p === '/api/internal/ops') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -21895,6 +21915,32 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
+    }
+    // ═══ SALIDA A CLOUDBET, CON CONTADOR PROPIO (22-ago) ═══════════════════════════════════════════════
+    // El acuerdo (35% RS desde el 1-ago) se cobra por un enlace de afiliado, y hasta hoy el producto
+    // enlazaba a cloudbet.com a pelo: cada clic desde el escáner, las oportunidades o la pantalla de casas
+    // se fue sin acreditar. El enlace vive en una env para poder rotarlo sin desplegar.
+    //
+    // POR QUÉ UN REDIRECTOR Y NO EL ENLACE DIRECTO. El panel de Cloudbet enseña SU lado del embudo —
+    // registros y depósitos— y nada de dónde salió el clic. Sin contar de este lado no se puede saber qué
+    // superficie convierte y cuál es decorado, que es justo lo que hay que saber para decidir dónde
+    // ponerlo y dónde quitarlo. Se cuenta por origen y por día, agregado: ni un dato de usuario.
+    if (p === '/go/cloudbet') {
+      const dest = process.env.GP_CLOUDBET_AFF || CLOUDBET_AFF;
+      const src = String(url.searchParams.get('src') || 'directo').slice(0, 32).replace(/[^a-z0-9_-]/gi, '');
+      const dia = new Date().toISOString().slice(0, 10);
+      try {
+        db.outClicks = db.outClicks || {};
+        const bk = db.outClicks.cloudbet = db.outClicks.cloudbet || {};
+        const d = bk[dia] = bk[dia] || {};
+        d[src || 'directo'] = (d[src || 'directo'] || 0) + 1;
+        // poda: 90 días de historia bastan para decidir, y evita que esto crezca sin techo en db.json
+        const corte = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+        for (const k of Object.keys(bk)) if (k < corte) delete bk[k];
+        save();
+      } catch { /* contar nunca puede romper la salida: si falla el registro, el usuario igual llega */ }
+      res.writeHead(302, { Location: dest, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+      return res.end();
     }
     // ===== SEO: páginas públicas de PRONÓSTICO por partido (server-rendered → indexables sin JS) =====
     // /pronostico/<local>-vs-<visita> (ES) · /prediction/<home>-vs-<away> (EN) · índices · sitemap dinámico.

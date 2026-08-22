@@ -299,7 +299,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', cbet_kicker: 'Casa asociada', cbet_cb_t: 'Patrocinador oficial de la PFL', cbet_cb_s: 'La única casa que cotiza método y rounds de cada pelea — de ahí salen estas picks.', cbet_es_t: 'La casa de los cuatro juegos', cbet_es_s: 'CS2, League of Legends, Valorant y Dota 2 en un solo sitio, con mercados por mapa.', cbet_offer: 'Paquete de bienvenida hasta $2.500', cbet_cta: 'Abrir cuenta', cbet_18: '18+ · juega con responsabilidad', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -705,7 +705,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', cbet_kicker: 'Partner sportsbook', cbet_cb_t: 'Official PFL sponsor', cbet_cb_s: 'The only book pricing method and rounds on every fight — that is where these picks come from.', cbet_es_t: 'The book that covers all four games', cbet_es_s: 'CS2, League of Legends, Valorant and Dota 2 in one place, with map-level markets.', cbet_offer: 'Welcome package up to $2,500', cbet_cta: 'Open an account', cbet_18: '18+ · gamble responsibly', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -4911,9 +4911,13 @@
     onexbet: 'https://1xbet.com', coolbet: 'https://www.coolbet.com', grosvenor: 'https://www.grosvenorcasinos.com', pmu_fr: 'https://www.pmu.fr', unibet_se2: 'https://www.unibet.se',
     polymarket: 'https://polymarket.com', kalshi: 'https://kalshi.com', novig: 'https://novig.us', prophetx: 'https://prophetbettingexchange.com', myriad: 'https://myriad.markets',
     // CASAS CRIPTO. `stake` lleva el código de afiliado de GP (25-jul): todo enlace saliente a Stake desde el
-    // escáner/oportunidades/casas acredita la referencia. Cloudbet queda con URL limpia hasta cerrar el acuerdo
-    // (ahí se le agrega su código igual que acá).
-    stake: 'https://stake.com/?c=qLKRRqOf', cloudbet: 'https://www.cloudbet.com',
+    // escáner/oportunidades/casas acredita la referencia.
+    // CLOUDBET (22-ago): acuerdo firmado el 12-ago con 35% de revenue share desde el 1-ago, y el enlace
+    // seguía siendo la URL limpia — o sea que veinte días de clics se fueron sin acreditar. Ahora sale por
+    // NUESTRO redirector en vez de ir directo al enlace de afiliado: así el clic queda contado por origen
+    // de este lado antes de salir. El panel de ellos enseña registros y depósitos, nunca de qué pantalla
+    // vino la persona, y esa es justo la parte que hace falta para decidir dónde ponerlo.
+    stake: 'https://stake.com/?c=qLKRRqOf', cloudbet: '/go/cloudbet?src=casa',
     rollbit: 'https://rollbit.com', bcgame: 'https://bc.game',
     // PARTNERS.IO (27-jul): links de afiliado del grupo Coingaming — Sportsbet.io + casinos hermanos
     sportsbetio: 'https://go.sportsbet.io?asset_id=37501966',
@@ -7157,6 +7161,34 @@
   function cbWhen(d, withTime) {
     try { return new Date(d).toLocaleString(LANG === 'en' ? 'en-US' : 'es-ES', withTime === false ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
   }
+  // ═══ BANDA DE CLOUDBET (22-ago) ═══════════════════════════════════════════════════════════════════
+  // Acuerdo firmado: 35% de revenue share. Va en las dos secciones donde Cloudbet no es "una casa más"
+  // sino LA fuente: en combate es la única que cotiza método y rounds —esas picks existen porque ella las
+  // cotiza— y en esport es la única presente en los cuatro juegos. Por eso la banda dice algo cierto del
+  // producto en vez de ser un logo pegado: el argumento es el mismo que ya vive en el motor.
+  // Va solo en las vistas de entrada de cada sección (una por sección, no en las trece), sale con su
+  // propio `src` para poder medir cada superficie por separado, y lleva el 18+ pegado.
+  function cbetBanner(kind) {
+    var t1 = kind === 'esport' ? 'cbet_es_t' : 'cbet_cb_t';
+    var s1 = kind === 'esport' ? 'cbet_es_s' : 'cbet_cb_s';
+    return '<a class="gx-cbet" href="/go/cloudbet?src=' + esc(kind) + '" target="_blank" rel="noopener noreferrer sponsored">' +
+      '<img class="gx-cbet-logo" src="/books/cloudbet.png" alt="Cloudbet" draggable="false" onerror="this.remove()">' +
+      '<span class="gx-cbet-txt">' +
+        '<span class="gx-cbet-kick">' + esc(t('cbet_kicker')) + '</span>' +
+        '<b>' + esc(t(t1)) + '</b>' +
+        '<span class="gx-cbet-sub">' + esc(t(s1)) + '</span>' +
+      '</span>' +
+      '<span class="gx-cbet-right">' +
+        '<span class="gx-cbet-offer">' + esc(t('cbet_offer')) + '</span>' +
+        '<span class="gx-cbet-btn">' + esc(t('cbet_cta')) + ' ' + ic('arrow-right') + '</span>' +
+        '<span class="gx-cbet-18">' + esc(t('cbet_18')) + '</span>' +
+      '</span></a>';
+  }
+  // Las vistas donde aparece: la pizarra de oportunidades y la agenda de cada sección. En las fichas de
+  // peleador, los simuladores y el resto NO — ahí el usuario está leyendo, no decidiendo dónde apostar.
+  var CBET_ON = { cbopps: 'combate', cbfights: 'combate', esopps: 'esport', esboard: 'esport' };
+  function cbetFor(view) { var k = CBET_ON[view]; return k ? cbetBanner(k) : ''; }
+
   function cbShell(title, inner, opts) {
     var mv = $('#gx-matchview'); if (!mv) return;
     // scroll memory: al volver a una vista ya visitada, restaurar la posición (naturalidad de navegación)
@@ -7164,7 +7196,7 @@
     var back = (opts && opts.back) ? '<div class="gx-cb-backrow"><span class="gx-clgate sh gx-cb-back" data-cbgoback="' + esc(opts.back) + '">← ' + esc(t(opts.backLabel || 'cb_fights_title')) + '</span></div>' : '';
     if (S.cb._lastHash && S.cb._lastHash !== hk) (S.cb._scroll = S.cb._scroll || {})[S.cb._lastHash] = window.scrollY || 0;
     S.cb._lastHash = hk;
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title, opts && opts.extra) + back + inner + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title, opts && opts.extra) + back + cbetFor(S.view) + inner + '</div></div>';
     mv.onclick = cbClicks; // delegación única de la sección (se reasigna en cada render — sin listeners duplicados)
     var sy = (S.cb._scroll || {})[hk];
     if (sy) requestAnimationFrame(function () { try { window.scrollTo(0, sy); } catch (e) {} });
@@ -8817,7 +8849,7 @@
   }
   function esShell(title, inner) {
     var mv = $('#gx-matchview'); if (!mv) return;
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + inner + '</div></div>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + cbetFor(S.view) + inner + '</div></div>';
     mv.onclick = esClicks;
   }
   var esPct = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };

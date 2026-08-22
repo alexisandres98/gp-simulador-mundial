@@ -76,7 +76,7 @@ async function cs2Results({ since, max = 300 } = {}) {
   // descartan en silencio en dos sitios: cuando el conjunto de mapas no deja exactamente dos nombres de
   // equipo, y cuando ningún mapa trae marcador. Sin contarlo, un torneo que la fuente publica sin nombre de
   // clan es indistinguible de un torneo que la fuente no cubre — y son dos problemas distintos.
-  const diag = { matches: rows.length, games: games.length, grupos: byMatch.size, sin_dos_nombres: 0, sin_marcador: 0, series: 0 };
+  const diag = { matches: rows.length, games: games.length, grupos: byMatch.size, sin_dos_nombres: 0, sin_marcador: 0, rechazadas: 0, rechazadas_sin_nombre: 0, series: 0 };
   for (const [mid, gs] of byMatch) {
     const m = byId.get(mid) || null;
     gs.sort((x, y) => (x.number || 0) - (y.number || 0));
@@ -106,6 +106,32 @@ async function cs2Results({ since, max = 300 } = {}) {
       // es parte del contrato — liquidar a ciegas sería inventarse un resultado.
       has_rounds: true, has_kills: false,
     });
+  }
+  // ── LAS QUE bo3 NO VA A PARSEAR NUNCA (22-ago) ──────────────────────────────────────────────────────
+  // De 277 partidos terminados en siete días, bo3 marca 52 como `rejected` y 22 como `partially_done`: no
+  // hay demo o no la pudieron leer, y el detalle por mapa NO va a existir jamás. Esos partidos no generan
+  // ni una fila de mapa, así que para el liquidador no existían — y sus picks se quedaban ACTIVE para
+  // siempre, engordando el contador de atascadas y tapando los fallos de verdad.
+  // Se emiten como fila de SERIE (marcador de mapas, sin detalle) y marcadas, para que el liquidador pueda
+  // cerrarlas con honestidad en vez de dejarlas colgando. Los nombres salen del slug —"a-vs-b-dd-mm-aaaa"—
+  // porque el partido solo trae ids numéricos del proveedor.
+  const nombresDelSlug = (slug) => {
+    const sinFecha = String(slug || '').replace(/-\d{2}-\d{2}-\d{4}$/, '');
+    const par = sinFecha.split('-vs-');
+    if (par.length !== 2 || !par[0] || !par[1]) return null;
+    return par.map((x) => x.replace(/-/g, ' ').trim());
+  };
+  for (const m of rows) {
+    if (byMatch.has(m.provider_id)) continue;              // ya salió con sus mapas
+    if (m.parsed !== 'rejected') continue;                 // 'waiting' llega en ~2 días: no se toca
+    const nn = nombresDelSlug(m.slug);
+    if (!nn || !(Number.isFinite(+m.s1) && Number.isFinite(+m.s2))) { diag.rechazadas_sin_nombre++; continue; }
+    out.push({
+      source: 'bo3', provider_id: m.provider_id, at: m.at || null,
+      a: nn[0], b: nn[1], maps_a: +m.s1, maps_b: +m.s2, maps: [],
+      has_rounds: false, has_kills: false, parse_rejected: true,
+    });
+    diag.rechazadas++;
   }
   diag.series = out.length;
   Object.defineProperty(out, 'diag', { value: diag, enumerable: false });

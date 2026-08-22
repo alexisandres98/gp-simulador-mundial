@@ -135,6 +135,10 @@ function normMatch(m) {
     s1: m.team1_score, s2: m.team2_score,
     bo: m.bo_type, tier: m.tier, tournament: m.tournament_id,
     at: m.start_date,
+    // `parsed_status` es la palabra del proveedor sobre si va a haber detalle por mapa: 'done' lo hay,
+    // 'waiting' llegará (se resuelve en ~2 días), 'rejected' NO va a llegar nunca. Sin este campo no se
+    // puede distinguir una pick que espera dato de una que espera un dato que no existe.
+    parsed: m.parsed_status || null,
   };
 }
 // El mapa se normaliza a "local/visitante" usando el nombre del clan, porque el proveedor guarda ganador y

@@ -1561,6 +1561,13 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   // menos de 30 h son, en la práctica, la misma serie.
   const ventana = (x) => (x.dia ? 30 : 12) * 3600e3;
 
+  // ¿DE QUÉ TORNEOS SON LAS QUE NO CASAN? (22-ago) Con la ventana ya arreglada, lo que queda sin casar o es
+  // un nombre que no resuelve o un torneo que la fuente NO CUBRE. Son dos arreglos distintos —un alias
+  // contra cambiar de proveedor— y agrupando por competición se ve cuál es en un vistazo: si el 90 % sale
+  // de tres torneos, no hay nada que arreglar en el matcher.
+  const porCompeticion = {};
+  const equiposEnFuente = new Set();
+  for (const x of idx) { equiposEnFuente.add(x.ka); equiposEnFuente.add(x.kb); }
   let settled = 0, unmatched = 0, unsettleable = 0;
   // POR QUÉ NO CASA, NO SOLO CUÁNTAS (21-ago). El resumen decía `unmatched: 82` y ahí se acababa la
   // historia: con ese número no se puede distinguir "la fuente no trae esa serie" de "la trae con otro
@@ -1573,13 +1580,19 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
       && ((x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh)));
     if (!hit) {
       unmatched++;
-      if (sinCasar.length < 6) {
+      const comp = pk.competition || '(sin competición)';
+      porCompeticion[comp] = (porCompeticion[comp] || 0) + 1;
+      if (sinCasar.length < 12) {
         // ¿existe el par en la fuente aunque sea fuera de la ventana de tiempo? Eso separa un problema de
         // NOMBRE (no aparece nunca) de uno de FECHA (aparece, pero con otra hora).
         const porNombre = idx.find((x) => (x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh));
         sinCasar.push({
           serie: `${pk.home} vs ${pk.away}`, start_at: pk.start_at,
           clave_local: kh, clave_visita: ka,
+          competicion: pk.competition || null,
+          // cada lado por separado: si NINGUNO de los dos equipos aparece en la fuente, no es un alias —
+          // es que la fuente no cubre ese torneo, y ahí el matcher no tiene nada que hacer
+          local_en_fuente: equiposEnFuente.has(kh), visita_en_fuente: equiposEnFuente.has(ka),
           en_la_fuente_por_nombre: !!porNombre,
           fuente_at: porNombre ? new Date(porNombre.t).toISOString() : null,
           horas_de_diferencia: porNombre ? +(Math.abs(porNombre.t - t) / 3600e3).toFixed(1) : null,
@@ -1617,7 +1630,8 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     fuente_filas: idx.length,
     fuente_desde: fechas.length ? new Date(fechas[0]).toISOString().slice(0, 10) : null,
     fuente_hasta: fechas.length ? new Date(fechas[fechas.length - 1]).toISOString().slice(0, 10) : null,
-    sin_casar: sinCasar };
+    sin_casar: sinCasar,
+    sin_casar_por_competicion: Object.fromEntries(Object.entries(porCompeticion).sort((a, b) => b[1] - a[1]).slice(0, 15)) };
   st.last_settle = resumen;   // queda guardado para que la sonda pueda contar el cero sin volver a liquidar
   wr(PICKS_F(game), st);
   // EL PARTE QUE SE GUARDA Y EL QUE SE DEVUELVE TIENEN QUE SER EL MISMO. Eran dos objetos distintos: el

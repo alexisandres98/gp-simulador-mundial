@@ -3810,78 +3810,68 @@ td .gx-calc-btn span { display: none; }
 @media (max-width: 560px) { .gx-sen { padding: 9px 12px; } .gx-sen-b > b { font-size: 12px; } }
 
 /* ═══ BANDA DE CLOUDBET (22-ago) ═══════════════════════════════════════════════════════════════════
-   Casa asociada, en combate y esport. Se construye con los tokens del terminal para que sea parte de
-   la pantalla y no un anuncio incrustado: mismo panel, misma línea, misma tipografía. El único color
-   propio es el azul de la marca en el filo izquierdo y en el botón — suficiente para que se lea como
-   "esto es de otra casa" sin romper el verde de GP, que sigue significando "esto lo dice el modelo". */
+   EL ARTE ES EL ESTADO POR DEFECTO, NO EL PREMIO (23-ago). La primera versión pintaba la banda de texto
+   y la sustituía por el creativo en el `onload` de la imagen: al entrar a un deporte se veía un parpadeo
+   —primero la banda nuestra, luego el creativo— en cada pintado. La lógica estaba del revés. Ahora el
+   creativo se pinta directo y la banda de texto SOLO aparece si la imagen falla (`onerror`), que es el
+   caso raro. Sin parpadeo, y la caída sigue existiendo.
+   El hueco se reserva con `aspect-ratio` en cada punto de corte para que la imagen no empuje el
+   contenido al aterrizar. */
 .gx-cbet {
-  display: flex; align-items: center; gap: 16px; text-decoration: none;
+  display: block; margin: 0 auto 16px; max-width: 728px; text-decoration: none;
+  border: 0; background: none; padding: 0; position: relative;
+}
+.gx-cbet:focus-visible { outline: 2px solid var(--gx-blue); outline-offset: 3px; border-radius: 10px; }
+.gx-cbet-art { display: block; width: 100%; }
+.gx-cbet-art img {
+  display: block; width: 100%; height: auto; border-radius: 10px;
+  aspect-ratio: 320 / 100;                       /* móvil: la pieza de 320x100 */
+  background: var(--gx-panel);                   /* el hueco reservado no es un agujero blanco */
+}
+@media (min-width: 900px) { .gx-cbet-art img { aspect-ratio: 728 / 90; } }
+.gx-cbet-18 {
+  display: block; text-align: right; margin-top: 5px;
+  font-size: 9.5px; color: var(--gx-text4); letter-spacing: .03em;
+}
+/* en modo arte, la banda de texto no existe */
+.gx-cbet .gx-cbet-logo,
+.gx-cbet .gx-cbet-txt,
+.gx-cbet .gx-cbet-right { display: none; }
+
+/* --- CAÍDA: solo si el creativo no carga -------------------------------------------------------- */
+.gx-cbet.no-art {
+  display: flex; align-items: center; gap: 16px; max-width: none;
   background: linear-gradient(100deg, rgba(91,168,255,.075), rgba(91,168,255,.015) 46%, transparent 72%), var(--gx-panel);
   border: 1px solid var(--gx-line); border-left: 2px solid var(--gx-blue);
-  border-radius: 12px; padding: 13px 16px; margin: 0 0 16px;
-  transition: border-color .15s, background .15s, transform .12s;
+  border-radius: 12px; padding: 13px 16px; flex-wrap: wrap;
+  transition: border-color .15s, background .15s;
 }
-.gx-cbet:hover { border-color: var(--gx-line2); border-left-color: var(--gx-blue); transform: translateY(-1px); }
-.gx-cbet:focus-visible { outline: 2px solid var(--gx-blue); outline-offset: 2px; }
-.gx-cbet-logo { width: 34px; height: 34px; border-radius: 8px; flex: none; object-fit: contain; background: rgba(255,255,255,.05); }
-.gx-cbet-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.gx-cbet-kick {
-  font-size: 9.5px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
-  color: var(--gx-blue);
-}
+.gx-cbet.no-art:hover { border-color: var(--gx-line2); }
+.gx-cbet.no-art .gx-cbet-art { display: none; }
+.gx-cbet.no-art .gx-cbet-logo { display: block; width: 34px; height: 34px; border-radius: 8px; flex: none; object-fit: contain; background: rgba(255,255,255,.05); }
+.gx-cbet.no-art .gx-cbet-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.gx-cbet.no-art .gx-cbet-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; text-align: right; }
+.gx-cbet.no-art .gx-cbet-18 { align-self: flex-end; margin-top: 0; white-space: nowrap; }
+.gx-cbet-kick { font-size: 9.5px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: var(--gx-blue); }
 .gx-cbet-txt b { font-family: var(--gx-display); font-size: 14.5px; font-weight: 700; color: var(--gx-text); letter-spacing: -.01em; }
 .gx-cbet-sub { font-size: 12.5px; color: var(--gx-text2); line-height: 1.4; }
-.gx-cbet-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; text-align: right; }
-.gx-cbet > .gx-cbet-18 { align-self: flex-end; }
 .gx-cbet-offer { font-size: 11.5px; font-weight: 600; color: var(--gx-text2); white-space: nowrap; }
 .gx-cbet-btn {
   display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   background: rgba(91,168,255,.14); border: 1px solid rgba(91,168,255,.42); color: var(--gx-blue);
   font-size: 12.5px; font-weight: 700; border-radius: 8px; padding: 6px 12px;
 }
-.gx-cbet:hover .gx-cbet-btn { background: rgba(91,168,255,.22); }
-.gx-cbet-btn svg { width: 13px; height: 13px }
-.gx-cbet-18 { font-size: 9.5px; color: var(--gx-text4); letter-spacing: .03em; white-space: nowrap; }
-
-/* --- versión con el arte oficial de Cloudbet ---------------------------------------------------
-   Cuando el PNG del deporte carga, la banda deja de ser un componente nuestro y pasa a ser el
-   creativo: fuera panel, fuera borde, fuera nuestro texto y nuestro botón (el arte ya trae el suyo).
-   Lo único que sobrevive es el 18+, que el creativo no incluye y no puede faltar. La clase la pone
-   el propio `onload` de la imagen, así que si el archivo no está esto nunca se activa. */
-.gx-cbet-art { display: none; width: 100%; }
-/* Nunca ampliar por encima del tamaño nativo del creativo: el leaderboard es de 728 px y estirarlo a
-   los ~1050 del contenedor lo deja borroso. Se centra en vez de crecer. En móvil sí llena, porque el
-   creativo de 320 sobre una pantalla de 390 es un 1,2x que no se nota. */
-.gx-cbet-art img { display: block; width: 100%; height: auto; border-radius: 10px; }
-.gx-cbet.has-art {
-  display: block; padding: 0; background: none; border: 0; border-left: 0;
-  margin: 0 auto 16px; position: relative;
-  /* el bloque entero se capa al ancho del creativo para que el 18+ quede alineado con el arte
-     y no colgando del borde del contenedor */
-  max-width: 728px;
-}
-.gx-cbet.has-art:hover { transform: none; }
-.gx-cbet.has-art .gx-cbet-art { display: block; }
-.gx-cbet.has-art .gx-cbet-logo,
-.gx-cbet.has-art .gx-cbet-txt,
-.gx-cbet.has-art .gx-cbet-right { display: none; }
-.gx-cbet.has-art .gx-cbet-18 {
-  display: block; text-align: right; margin-top: 5px; white-space: normal;
-}
+.gx-cbet.no-art:hover .gx-cbet-btn { background: rgba(91,168,255,.22); }
+.gx-cbet-btn svg { width: 13px; height: 13px; }
 
 @media (max-width: 720px) {
-  /* En móvil la banda se rompe en tres filas: marca+titular, la oferta, y el botón con el 18+ al lado.
-     El bloque de la derecha tiene que PODER envolver — sin `flex-wrap` la oferta se comprime en una
-     columna de dos palabras por línea y el 18+ se le monta al botón. */
-  .gx-cbet { flex-wrap: wrap; gap: 10px 12px; padding: 14px; }
-  .gx-cbet-txt { flex: 1 1 0; }
-  .gx-cbet-sub { display: none; }               /* en móvil manda el titular, no la explicación */
-  .gx-cbet-right {
+  .gx-cbet.no-art { gap: 10px 12px; padding: 14px; }
+  .gx-cbet.no-art .gx-cbet-sub { display: none; }
+  .gx-cbet.no-art .gx-cbet-right {
     flex: 1 0 100%; flex-direction: row; flex-wrap: wrap;
     align-items: center; justify-content: flex-start; gap: 8px 10px; text-align: left;
   }
-  .gx-cbet-offer { flex: 1 0 100%; white-space: normal; }
-  .gx-cbet-btn { flex: none; }
-  .gx-cbet > .gx-cbet-18 { flex: 1 0 100%; align-self: flex-start; text-align: left; }
+  .gx-cbet.no-art .gx-cbet-offer { flex: 1 0 100%; white-space: normal; }
+  .gx-cbet.no-art .gx-cbet-18 { flex: 1 0 100%; align-self: flex-start; text-align: left; }
 }
-@media (prefers-reduced-motion: reduce) { .gx-cbet { transition: none } .gx-cbet:hover { transform: none } }
+@media (prefers-reduced-motion: reduce) { .gx-cbet.no-art { transition: none; } }

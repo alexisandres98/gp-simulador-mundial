@@ -7182,15 +7182,17 @@
     var par = T[kind] || T.combate, t1 = par[0], s1 = par[1];
     // ARTE OFICIAL POR DEPORTE, CON CAÍDA AL TEXTO. Cloudbet manda creatividades distintas por vertical
     // —el boxeador para combate, el guerrero para esport— y esas convierten mucho mejor que una banda
-    // genérica, que es exactamente lo que la gente ya no ve. Se piden por nombre de archivo; si el archivo
-    // no está, `onerror` quita la imagen y queda la banda de texto, que dice algo cierto del producto y
-    // funciona igual. Así se pueden soltar los PNG en /partners/cloudbet/ sin tocar código.
+    // genérica, que es exactamente lo que la gente ya no ve.
+    // EL ARTE SE PINTA DIRECTO. La primera versión hacía al revés —banda de texto y sustitución en el
+    // `onload`— y eso se veía como un parpadeo al entrar a cada deporte. Ahora el creativo es el estado
+    // por defecto del CSS y la banda de texto solo aparece si la imagen falla (`onerror` → `.no-art`),
+    // que es el caso raro. El hueco queda reservado con aspect-ratio para que nada salte al aterrizar.
     var base = '/partners/cloudbet/' + kind;
     var art = '<picture class="gx-cbet-art">' +
       '<source media="(min-width:900px)" srcset="' + base + '-728x90.webp">' +
-      '<img src="' + base + '-320x100.webp" alt="Cloudbet" draggable="false" ' +
-        'onload="var a=this.closest(\'.gx-cbet\');if(a)a.classList.add(\'has-art\')" ' +
-        'onerror="var q=this.closest(\'picture\');if(q)q.remove()">' +
+      '<img src="' + base + '-320x100.webp" alt="Cloudbet" draggable="false" decoding="async" ' +
+        // el arte YA es el estado por defecto: solo hace falta avisar cuando NO carga
+        'onerror="var a=this.closest(\'.gx-cbet\');if(a)a.classList.add(\'no-art\')">' +
       '</picture>';
     return '<a class="gx-cbet" href="/go/cloudbet?src=' + esc(kind) + '" target="_blank" rel="noopener noreferrer sponsored">' +
       art +

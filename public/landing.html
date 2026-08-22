@@ -468,7 +468,8 @@ body.v3 .tr.big span{color:var(--tx2)}
   <button class="blink" data-login>·</button>
   <button class="btn" data-signup>·</button>
 </div></nav>
-<a class="trialbar" href="/plans"><span class="tb-dot"></span><b data-k="trb_b">Prueba Sharp GRATIS 3 días</b><span class="tb-sub" data-k="trb_s">Hoy pagas $0 · cancelas en 1 clic</span><span class="tb-go" data-k="trb_go">Empezar →</span></a>
+<!-- barra de la prueba de 3 días: retirada el 22-ago junto con el resto de la oferta.
+     Era markup estático y no pasaba por `trial_eligible`, por eso sobrevivió al interruptor del servidor. -->
 
 <main class="wrap">
   <div class="lbanner" id="lbanner" role="button" tabindex="0"><span class="lbanner-dot"></span><span class="lbanner-tx" data-k="lb_txt">·</span><span class="lbanner-cta" data-k="lb_cta">·</span></div>

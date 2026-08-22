@@ -1,5 +1,28 @@
 # TODO_NEXT.md — GP Simulador
 
+## 📅 LUNES: LANZAMIENTO PÚBLICO DE LOS NUEVE DEPORTES
+Decisión de Alexis (22-ago): el landing nuevo queda **aprobado y aparcado** hasta el lunes, y se publica
+el mismo día que se abran los deportes. No se sube antes: un landing que vende nueve deportes con seis
+cerrados es una promesa que el producto no puede cumplir esa tarde.
+
+- **Landing nuevo (listo, privado):** https://claude.ai/code/artifact/537931a8-0d74-45b6-bba7-fa509d840484
+  Fuente en el scratchpad de la sesión (`landing/landing.html`) — **no está versionado en el repo**. Si el
+  contenedor se recicla antes del lunes hay que releerlo del artifact (`action:"read"`) antes de tocarlo.
+  Lleva las dos capturas reales (móvil + escritorio), el cuadro comparativo y cero números negativos.
+- **Página de planes: YA HECHA** (`public/founder.html`, commit `202f81b`, en producción). Los seis deportes
+  cerrados salen como ABRIENDO. **El lunes hay que pasarlos a ABIERTO**: es el array `sports` en los bloques
+  `es` y `en` — cambiar el tercer campo de `0` a `1` en los que se abran.
+- **Los interruptores** (Render, hoy sin poner = admin-only): `GP_HOOPS_PUBLIC_ENABLED`,
+  `GP_ESPORTS_PUBLIC_ENABLED`, `GP_NFL_PUBLIC_ENABLED`, `GP_TENNIS_PUBLIC_ENABLED`, `GP_F1_PUBLIC_ENABLED`.
+  Cambiar env por API **no basta**: hay que disparar un deploy.
+- **Antes de abrir cada uno, mirar su sombra.** Doctrina de la casa: un deporte abre cuando el modelo pasa
+  validación fuera de muestra, no cuando la pantalla funciona. NFL y fútbol americano están TODAS las
+  familias en sombra (blueprint NFL-1125) y tenis igual — abrirlos con picks públicas contradice lo que la
+  propia página de planes acaba de prometer. Si se abren solo como inteligencia (fichas, brief, pizarra)
+  sin picks, eso es coherente; conviene decidirlo explícitamente deporte por deporte.
+- **Pendiente suelto:** `sub_free_note` (`public/premium.js:32`) todavía dice "Acceso completo gratis durante
+  el Mundial. Los planes llegan pronto". El Mundial terminó y los planes cobran.
+
 ## 🏈 FÚTBOL AMERICANO (18-ago): lo que queda tras el build
 1. **Vigilar la primera semana de sombra CFL** (juega 20-23 ago): picks TOTAL under con edges 8-19pp —
    o el mercado está blando o el total del modelo se queda corto tras el cambio de reglas 2026. El CLV

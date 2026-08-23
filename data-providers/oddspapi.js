@@ -176,10 +176,12 @@ function flattenOdds(j) {
   return out;
 }
 
-async function odds(fixtureId, { books = null, format = 'decimal', verbosity = 3 } = {}) {
+async function odds(fixtureId, { books = null, format = 'decimal', verbosity = 3, extra = null } = {}) {
   if (!fixtureId) throw new Error('falta fixtureId');
+  // `extra` existe para la sonda de compra: hay que poder preguntarle al proveedor con otros parámetros
+  // (otra verbosidad, otra lista de mercados) SIN tocar el código cada vez. En producción va siempre null.
   const j = await call('/odds', { fixtureId, bookmakers: books ? books.join(',') : null,
-    oddsFormat: format, verbosity });
+    oddsFormat: format, verbosity, ...(extra || {}) });
   return flattenOdds(j);
 }
 
@@ -300,6 +302,8 @@ async function depth({ deportes = [], dias = 3 } = {}) {
       // se mira el PRIMERO con cuotas: una llamada trae todas las casas y todos los mercados de ese partido
       const el = con[0];
       reg.mirado = `${el.a} vs ${el.b} · ${el.tournament} · ${el.start}`;
+      reg.fixture_id = el.id;
+      reg.start = el.start;
       const o = await odds(el.id);
       const casas = Object.keys(o.books).sort();
       reg.casas = casas.length;

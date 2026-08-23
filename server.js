@@ -17602,6 +17602,24 @@ const server = http.createServer(async (req, res) => {
         const pedidos = String(url.searchParams.get('deportes') || 'dota2,tenis').split(',').filter(Boolean);
         // `profundidad=1` es la sonda que decide la compra: casas, familias y líneas alternativas por
         // deporte, a 2 créditos cada uno en vez de 1. La normal solo cuenta partidos.
+        // MODO CRUDO: repreguntar por UN partido concreto con otros parámetros. Es lo que separa
+        // "el proveedor no tiene ese mercado" de "no se lo estábamos pidiendo bien" — y esa diferencia
+        // decide si se paga una suscripción o no.
+        const crudo = String(url.searchParams.get('crudo') || '').trim();
+        if (crudo) {
+          const vb = url.searchParams.get('verbosity');
+          const extra = {};
+          for (const par of String(url.searchParams.get('extra') || '').split(',').filter(Boolean)) {
+            const i = par.indexOf(':'); if (i > 0) extra[par.slice(0, i)] = par.slice(i + 1);
+          }
+          const o = await OP.odds(crudo, { verbosity: vb != null ? +vb : 3, extra: Object.keys(extra).length ? extra : null });
+          const porMercado = Object.fromEntries(Object.entries(o.markets).map(([m, lados]) =>
+            [m, { salidas: Object.keys(lados).length, casas: new Set(Object.values(lados).flat().map((q) => q.book)).size }]));
+          return json(res, 200, { partido: `${o.a} vs ${o.b}`, torneo: o.tournament,
+            casas: Object.keys(o.books).length, mercados: Object.keys(o.markets).length,
+            por_mercado: porMercado, verbosity: vb != null ? +vb : 3, extra,
+            gastado: OP.gastado(), cuenta: await OP.account().catch(() => null) });
+        }
         const hondo = /^(1|true|si|sí)$/i.test(String(url.searchParams.get('profundidad') || ''));
         const cuantos = hondo ? Math.min(4, gastar) : gastar;   // 2 créditos por deporte en modo hondo
         const out = hondo

@@ -40,6 +40,7 @@
       lock_bets_s: 'Mi cartera —tu P&L, ROI y CLV personal— es parte del plan Sharp.',
       lock_style_s: 'El perfil táctico (event data remate a remate) es parte del plan Sharp.',
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
+      nw_lead: 'Semana abierta · 5 deportes', nw_sub: 'Baloncesto, esports, americano, tenis y F1 abiertos para todos hasta el {d}.', nw_cta: 'Entrar',
       lock_new_t: 'La semana abierta terminó', lock_new_s: 'Baloncesto, esports, fútbol americano, tenis y F1 estuvieron abiertos para todos durante siete días. Ahora forman parte de los planes Pro y Sharp — fútbol y combate siguen como estaban.',
       lock_player_s: 'Los perfiles de jugador con radar de scouting y proyecciones son parte de los planes Pro y Sharp.',
       lock_calc_s: 'La calculadora de stake con gestión de bankroll es parte de los planes Pro y Sharp.',
@@ -448,6 +449,7 @@
       lock_bets_s: 'My bets —your personal P&L, ROI and CLV— is part of the Sharp plan.',
       lock_style_s: 'The tactical profile (shot-by-shot event data) is part of the Sharp plan.',
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
+      nw_lead: 'Open week · 5 new sports', nw_sub: 'Basketball, esports, American football, tennis and F1 open to everyone until {d}.', nw_cta: 'Go in',
       lock_new_t: 'The open week is over', lock_new_s: 'Basketball, esports, American football, tennis and F1 were open to everyone for seven days. They are now part of the Pro and Sharp plans — football and combat sports are unchanged.',
       lock_player_s: 'Player profiles with scouting radar and projections are part of the Pro and Sharp plans.',
       lock_calc_s: 'The stake calculator with bankroll management is part of the Pro and Sharp plans.',
@@ -1160,6 +1162,14 @@
     var pl = S.me.plan || 'free';
     return pl === 'pro' || pl === 'sharp';
   }
+  function nuevosHasta() {
+    var ms = (S.me && S.me.newSportsFreeUntil) || 0;
+    if (!ms) return '';
+    // el corte es a medianoche UTC: se nombra el día ANTERIOR, que es el último completo de la ventana
+    var d = new Date(ms - 1);
+    try { return d.toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' }); }
+    catch (e) { return d.toISOString().slice(0, 10); }
+  }
   function lockNuevos() { return lockPanel('lock_new_t', 'lock_new_s'); }
 
   function bbAllowed() { return !!(S.me && (S.me.isAdmin || S.me.hoopsPublic)); }
@@ -1244,6 +1254,18 @@
   // banner (retirado). Solo plan free; paid/admin → vacío. Se pinta en el mismo slot cuando llega S.me.
   function freeBanner() {
     if (!S.me || uiPlan() !== 'free') return '';
+    // SEMANA ABIERTA (23-ago): mientras la ventana esté viva, el usuario Free ve QUÉ tiene abierto y hasta
+    // cuándo, en vez del CTA genérico de upgrade. Sin esto la promesa existe en el servidor y en ningún
+    // sitio más: nadie usa una puerta que no sabe que está abierta. Lleva a esport porque es el único de
+    // los cinco con partidas todos los días del año — la puerta abierta debe dar a una sala con gente.
+    if (nuevosLibres()) {
+      return '<a class="gx-fbanner gx-freebanner" href="#esopps">' +
+        '<span class="gx-fbanner-pulse"></span>' +
+        '<b>' + esc(t('nw_lead')) + '</b>' +
+        '<span class="gx-fbanner-sub">' + esc(t('nw_sub', { d: nuevosHasta() })) + '</span>' +
+        '<span class="gx-fbanner-cta">' + esc(t('nw_cta')) + ' ' + ic('arrow-right') + '</span>' +
+        '</a>';
+    }
     // FREE TRIAL (27-jul): si es elegible, el banner in-app VENDE la prueba gratis (clickeable directo al
     // checkout del trial); si ya la usó, cae al banner de upgrade de siempre.
     if (S.me.trial_eligible) {

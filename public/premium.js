@@ -1152,6 +1152,24 @@
     return 'futbol';
   }
 
+  // ═══ RENDIMIENTO: SOLO ADMIN (23-ago, orden de Alexis, "hasta nuevo aviso") ═══════════════════════
+  // La pantalla de Rendimiento de los siete deportes deja de existir para el usuario. No se oculta solo el
+  // ítem del menú —eso deja la URL abierta a quien la escriba— sino que se cierra en las cuatro puertas:
+  // la barra lateral, la hoja de "Más" del móvil, la barra inferior del móvil y el enrutador. Quien llegue
+  // por hash aterriza en las oportunidades de su deporte, no en una pantalla vacía.
+  var PERF_VIEWS = ['perf', 'cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
+  function perfOK() { return !!(S.me && S.me.isAdmin); }
+  // las listas de nav vienen en dos formas: cadenas ('nflperf') y tuplas (['nflperf', icono, etiqueta])
+  function sinPerf(list) {
+    if (perfOK()) return list;
+    return list.filter(function (x) {
+      var k = (typeof x === 'string') ? x : (x && x[0]);
+      return PERF_VIEWS.indexOf(k) < 0;
+    });
+  }
+  // a dónde cae quien pide Rendimiento sin permiso: la pizarra de SU deporte
+  var PERF_HOME = { perf: 'opps', cbperf: 'cbopps', bbperf: 'bbopps', esperf: 'esopps', nflperf: 'nflopps', tenperf: 'tenopps', f1perf: 'f1opps' };
+
   function viewNav(v) {
     if (v === 'bbgame') return 'bbgames';
     if (v === 'bbteam' || v === 'bbplayer') return 'bbteams';
@@ -1226,7 +1244,7 @@
     var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis', isF1 = S.sport === 'f1';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
     var NAV_A = isF1 ? NAV_F1 : isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isF1 ? NAV2_F1 : isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
-    var navHtml = NAV_A.map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    var navHtml = sinPerf(NAV_A).map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
     // 9-ago (pedido Alexis): Rendimiento y Oportunidades de combate SALEN del gate de admin — el track
@@ -1239,6 +1257,7 @@
       : isTen ? ['tenbrief', 'tenask', 'tensim', 'tenplayers', 'tenmodel', 'alerts', 'tenperf', 'refer', 'admin', 'bets', 'books']
       : isF1 ? ['f1brief', 'f1ask', 'f1sim', 'f1drivers', 'f1model', 'alerts', 'f1perf', 'refer', 'admin', 'bets', 'books']
       : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
+    moreViews = sinPerf(moreViews);
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isTen ? [['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
@@ -1250,6 +1269,7 @@
       : isCombat
       ? [['cbopps', 'target-arrow', 'nav_opps'], ['cbfights', 'glove', 'nav_cb_fights'], ['cbsim', 'arrows-shuffle', 'nav_sim'], ['cbfighters', 'user', 'nav_cb_fighters'], ['__more', 'dots', 'more']]
       : [['opps', 'target-arrow', 'nav_opps'], ['matches', 'ball-football', 'nav_matches'], ['sim', 'arrows-shuffle', 'nav_sim'], ['teams', 'shield', 'nav_teams'], ['__more', 'dots', 'more']];
+    bnavItems = sinPerf(bnavItems);
     var bnav = bnavItems
       .map(function (n) { if (n[0] === '__more') { var act = moreViews.indexOf(cur) >= 0 ? ' on' : ''; return '<a class="' + act.trim() + '" data-more="1">' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; } var clk = live.indexOf(n[0]) >= 0; return '<a class="' + (n[0] === cur ? 'on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></a>'; }).join('');
     $('#gx-root').innerHTML =
@@ -4646,7 +4666,7 @@
     else if (v === 'follow') renderFollow();
     else if (v === 'alerts') renderAlerts();
     else if (v === 'refer') renderRefer();
-    else if (v === 'perf') renderPerf();
+    else if (v === 'perf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderPerf(); }
     else if (v === 'calc') renderCalc();
     else if (v === 'sub') renderSub();
     else if (v === 'support') renderSupport();
@@ -8708,7 +8728,7 @@
     else if (v === 'bbbrief') renderBBBrief();
     else if (v === 'bbsim') renderBBSim();
     else if (v === 'bbask') renderBBAsk();
-    else if (v === 'bbperf') renderBBPerf();
+    else if (v === 'bbperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderBBPerf(); }
     else if (v === 'bbevo') renderBBEvo();
     else renderBBGames();
   }
@@ -8939,7 +8959,7 @@
     if (!esAllowed()) { showView('board'); return; }
     if (v === 'esmatch') renderESMatch();
     else if (v === 'esmodel') renderESModel();
-    else if (v === 'esperf') renderESPerf();
+    else if (v === 'esperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESPerf(); }
     else if (v === 'esboard') renderESBoard();
     else if (v === 'esteams') renderESTeams();
     else if (v === 'esteam') renderESTeam();
@@ -11307,7 +11327,7 @@
     if (!S.me) { f1Shell(t('nav_opps'), f1Loading()); return; }
     if (!f1Allowed()) { showView('board'); return; }
     if (v === 'f1opps') return renderF1Opps();
-    if (v === 'f1perf') return renderF1Perf();
+    if (v === 'f1perf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderF1Perf(); }
     if (v === 'f1race') return renderF1Race();
     if (v === 'f1standings') return renderF1Standings();
     if (v === 'f1drivers') return renderF1Drivers();
@@ -11986,7 +12006,7 @@
     if (v === 'tenplayers') return renderTenPlayers();
     if (v === 'tenplayer') return renderTenPlayer();
     if (v === 'tensim') return renderTenSim();
-    if (v === 'tenperf') return renderTenPerf();
+    if (v === 'tenperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderTenPerf(); }
     if (v === 'tenbrief') return renderTenBrief();
     if (v === 'tenask') return renderTenAsk();
     if (v === 'tenmodel') return renderTenModel();
@@ -13073,7 +13093,7 @@
     else if (v === 'nflsim') renderNflSim();
     else if (v === 'nflplayer') renderNflPlayer();
     else if (v === 'nflmodel') renderNflModel();
-    else if (v === 'nflperf') renderNflPerf();
+    else if (v === 'nflperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderNflPerf(); }
     else if (v === 'nflopps') renderNflOpps();
     else renderNflGames();
   }
@@ -14311,7 +14331,7 @@
     else if (v === 'cbfighter') renderCbFighter();
     else if (v === 'cbsim') renderCbSim();
     else if (v === 'cbfollow') renderCbFollow();
-    else if (v === 'cbperf') renderCbPerf();
+    else if (v === 'cbperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderCbPerf(); }
     else if (v === 'cborgs') renderCbOrgs();
     else if (v === 'cbevo') renderCbEvo();
   }

@@ -1193,10 +1193,9 @@
   // PROPIA lista, que no pasaba por aquí — así que Rendimiento seguía apareciendo en el móvil aunque al
   // pulsarlo no entrara. Peor que ocultarlo del todo: una puerta que se ve y no abre. Ya filtra.
   //
-  // Y AHORA TAMBIÉN PARA EL ADMIN, que es lo que se pidió: "quítala del menú para todos los usuarios".
-  // El ítem desaparece de todas las listas sin excepción. El admin NO pierde la pantalla —el enrutador le
-  // sigue dejando pasar— pero tiene que llegar por hash: #cbperf, #esperf, #perf, etc. Es a propósito:
-  // mientras el rendimiento esté retirado, que no lo enseñe ni el menú del dueño.
+  // EL ADMIN CONSERVA EL ATAJO (23-ago, segunda orden de Alexis: "consérvalo en mi menú, solo para mí").
+  // Para el usuario el ítem no existe en ninguna de las cinco puertas; para el admin sigue en su sitio.
+  // El enrutador ya distinguía a los dos, así que aquí basta con no filtrarle la lista.
   var PERF_VIEWS = ['perf', 'cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
   // "El motor" describe CÓMO funciona el modelo, que es justo lo que la caja negra no publica. Se cierra
   // por la misma puerta que Rendimiento. En fútbol el equivalente es 'method', que ya era admin desde antes.
@@ -1205,6 +1204,7 @@
   function perfOK() { return !!(S.me && S.me.isAdmin); }
   // las listas de nav vienen en dos formas: cadenas ('nflperf') y tuplas (['nflperf', icono, etiqueta])
   function sinPerf(list) {
+    if (perfOK()) return list;   // admin: el atajo se queda
     return list.filter(function (x) {
       var k = (typeof x === 'string') ? x : (x && x[0]);
       return PERF_VIEWS_ALL.indexOf(k) < 0;

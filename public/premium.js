@@ -1183,11 +1183,20 @@
     return 'futbol';
   }
 
-  // ═══ RENDIMIENTO: SOLO ADMIN (23-ago, orden de Alexis, "hasta nuevo aviso") ═══════════════════════
+  // ═══ RENDIMIENTO: FUERA DEL MENÚ (23-ago, orden de Alexis, "hasta nuevo aviso") ═══════════════════
   // La pantalla de Rendimiento de los siete deportes deja de existir para el usuario. No se oculta solo el
-  // ítem del menú —eso deja la URL abierta a quien la escriba— sino que se cierra en las cuatro puertas:
-  // la barra lateral, la hoja de "Más" del móvil, la barra inferior del móvil y el enrutador. Quien llegue
-  // por hash aterriza en las oportunidades de su deporte, no en una pantalla vacía.
+  // ítem del menú —eso deja la URL abierta a quien la escriba— sino que se cierra en las cinco puertas:
+  // la barra lateral, la hoja de "Más" del móvil, la barra inferior del móvil, la rejilla de "Más" y el
+  // enrutador. Quien llegue por hash aterriza en las oportunidades de su deporte, no en una pantalla vacía.
+  //
+  // SEGUNDA PASADA (23-ago, con captura de Alexis): la hoja de "Más" se construye en `openMore()` con SU
+  // PROPIA lista, que no pasaba por aquí — así que Rendimiento seguía apareciendo en el móvil aunque al
+  // pulsarlo no entrara. Peor que ocultarlo del todo: una puerta que se ve y no abre. Ya filtra.
+  //
+  // Y AHORA TAMBIÉN PARA EL ADMIN, que es lo que se pidió: "quítala del menú para todos los usuarios".
+  // El ítem desaparece de todas las listas sin excepción. El admin NO pierde la pantalla —el enrutador le
+  // sigue dejando pasar— pero tiene que llegar por hash: #cbperf, #esperf, #perf, etc. Es a propósito:
+  // mientras el rendimiento esté retirado, que no lo enseñe ni el menú del dueño.
   var PERF_VIEWS = ['perf', 'cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
   // "El motor" describe CÓMO funciona el modelo, que es justo lo que la caja negra no publica. Se cierra
   // por la misma puerta que Rendimiento. En fútbol el equivalente es 'method', que ya era admin desde antes.
@@ -1196,7 +1205,6 @@
   function perfOK() { return !!(S.me && S.me.isAdmin); }
   // las listas de nav vienen en dos formas: cadenas ('nflperf') y tuplas (['nflperf', icono, etiqueta])
   function sinPerf(list) {
-    if (perfOK()) return list;
     return list.filter(function (x) {
       var k = (typeof x === 'string') ? x : (x && x[0]);
       return PERF_VIEWS_ALL.indexOf(k) < 0;
@@ -1724,6 +1732,11 @@
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['groups', 'layout-grid', 'nav_groups'], ['bracket', 'tournament', 'nav_bracket'], ['evo', 'trending-up', 'nav_evo'], ['refer', 'user-plus', 'nav_refer']])
         .concat(isAdmin ? [['registry', 'file-check', 'nav_registry'], ['method', 'book', 'nav_method'], ['admin', 'settings', 'nav_admin']] : []);
+    // La hoja de "Más" tenía su propia lista y nunca pasaba por el filtro: Rendimiento seguía saliendo en
+    // el móvil aunque al pulsarlo el enrutador lo devolviera. Se filtra aquí, en el único sitio por el que
+    // pasan las siete ramas, en vez de borrar el ítem de cada una — así el día que se reponga basta con
+    // tocar `sinPerf` y vuelve solo en las cinco puertas a la vez.
+    items = sinPerf(items);
     var existing = document.getElementById('gx-more-sheet'); if (existing) existing.remove();
     var sheet = document.createElement('div'); sheet.id = 'gx-more-sheet'; sheet.className = 'gx-sheet-wrap';
     sheet.innerHTML = '<div class="gx-sheet-bg"></div><div class="gx-sheet"><div class="gx-sheet-h"><b>' + esc(t('more')) + '</b><button class="gx-sheet-x" aria-label="close">' + ic('x') + '</button></div><div class="gx-sheet-grid">' +

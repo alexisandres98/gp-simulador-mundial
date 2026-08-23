@@ -4,6 +4,10 @@
      base64 dentro, que es como tiene que ir en produccion.
      NO ESTA EN RUTA: el lunes se promueve sobre public/landing.html. -->
 <title>GP Simulador</title>
+<!-- NOINDEX mientras no sea el landing oficial: este fichero es alcanzable por URL y un
+     duplicado indexado del landing en el propio dominio se hace competencia a si mismo en
+     buscadores. Se quita el dia que sustituya a landing.html. -->
+<meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">

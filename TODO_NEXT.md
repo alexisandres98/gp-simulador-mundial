@@ -1,38 +1,24 @@
 # TODO_NEXT.md — GP Simulador
 
-## 📅 LUNES: LANZAMIENTO PÚBLICO DE LOS NUEVE DEPORTES
-Decisión de Alexis (22-ago): el landing nuevo queda **aprobado y aparcado** hasta el lunes, y se publica
-el mismo día que se abran los deportes. No se sube antes: un landing que vende nueve deportes con seis
-cerrados es una promesa que el producto no puede cumplir esa tarde.
+## ✅ 23-AGO: LOS NUEVE, ABIERTOS
+Hecho hoy. El landing nuevo **ya es** `public/landing.html` — no se copió el fichero tal cual: el que
+estaba en el artifact era una maqueta **sin formulario de alta** (su botón enlazaba a la propia web), así
+que se injertó el diseño nuevo sobre la maquinaria del vivo. Lo que se conservó, y por qué:
+- el script de sincronía de sesión (sin él, un usuario con sesión se queda en el landing en vez de entrar),
+- la cabeza entera: SEO, OG, canonical, JSON-LD y las fuentes propias de `/fonts`,
+- `landing.js` y el modal de alta real (`data-signup`), que es lo único que esta página tiene que hacer,
+- cajas ocultas (`#pillars`, `#scan`, `#plays`…) que `landing.js` rellena **sin comprobar si existen**: si
+  faltan, revienta a media carga y se lleva por delante el cableado del alta. Comprobado sin errores.
+- Los CTA llevan `data-k2="cta"` para que `fillStatic` no les reescriba la clase y se lleve el diseño.
 
-- **Landing nuevo (listo, privado):** https://claude.ai/code/artifact/537931a8-0d74-45b6-bba7-fa509d840484
-  **La fuente YA ESTÁ EN EL REPO**: `public/landing-nuevo.html` (43 KB) + `public/landing/` (660 KB de
-  imágenes). Antes vivía solo en el scratchpad y un reciclado de contenedor se la llevó; eso ya no puede
-  volver a pasar. **No está en ruta**: el lunes se promueve encima de `public/landing.html`.
-  Lleva las dos capturas reales (móvil + escritorio), el cuadro comparativo, cero números negativos y,
-  desde el 23-ago, bucle de fondo propio en el hero + los nueve deportes con imagen (`public/landing/`,
-  generadas con Higgsfield: sin marcas ni caras, usables en publicidad sin permiso de nadie).
-  **Ojo con las etiquetas de estado**: las cinco tarjetas nuevas dicen "SEMANA ABIERTA" — si la ventana
-  se mueve o se cierra, hay que cambiarlas a mano (están en el HTML, no salen de ninguna API).
-- **Página de planes: YA HECHA** (`public/founder.html`, commit `202f81b`, en producción). Los seis deportes
-  cerrados salen como ABRIENDO. **El lunes hay que pasarlos a ABIERTO**: es el array `sports` en los bloques
-  `es` y `en` — cambiar el tercer campo de `0` a `1` en los que se abran.
-- **Los interruptores** (Render, hoy sin poner = admin-only): `GP_HOOPS_PUBLIC_ENABLED`,
-  `GP_ESPORTS_PUBLIC_ENABLED`, `GP_NFL_PUBLIC_ENABLED`, `GP_TENNIS_PUBLIC_ENABLED`, `GP_F1_PUBLIC_ENABLED`.
-  Cambiar env por API **no basta**: hay que disparar un deploy.
-- **Semana abierta (23-ago, orden de Alexis):** los cinco deportes nuevos —baloncesto, esports, fútbol
-  americano, tenis y F1— salen **abiertos a todos los planes durante 7 días**; combate y fútbol se quedan
-  como están. Ya implementado: `GP_NEWSPORTS_FREE_UNTIL` (default `2026-08-31T00:00:00Z`), mismo patrón que
-  `GP_COMBAT_FREE_UNTIL`. Mientras dure, pasa cualquiera con sesión; al vencer quedan en **Pro/Sharp** y el
-  usuario Free ve un candado, no una pantalla rota. **Si el lanzamiento se corre de día, hay que mover esa
-  fecha** — si no, la semana abierta empieza tarde y acaba antes de los siete días.
-- **Antes de abrir cada uno, mirar su sombra.** Doctrina de la casa: un deporte abre cuando el modelo pasa
-  validación fuera de muestra, no cuando la pantalla funciona. NFL y fútbol americano están TODAS las
-  familias en sombra (blueprint NFL-1125) y tenis igual — abrirlos con picks públicas contradice lo que la
-  propia página de planes acaba de prometer. Si se abren solo como inteligencia (fichas, brief, pizarra)
-  sin picks, eso es coherente; conviene decidirlo explícitamente deporte por deporte.
-- **Pendiente suelto:** `sub_free_note` (`public/premium.js:32`) todavía dice "Acceso completo gratis durante
-  el Mundial. Los planes llegan pronto". El Mundial terminó y los planes cobran.
+**Si se vuelve a tocar el landing desde un artifact, repetir ese injerto.** Un `cp` deja la página bonita
+y muerta.
+
+Interruptores encendidos en Render (los cinco `*_PUBLIC_ENABLED`) y `GP_NEWSPORTS_FREE_UNTIL` con la fecha
+real de cierre de la semana abierta. Página de planes: los nueve en ABIERTO.
+
+**Sigue oculto hasta nuevo aviso:** Rendimiento y "El motor", en los siete deportes, para todos menos el
+admin (que conserva el atajo en su menú).
 
 ## 🏈 FÚTBOL AMERICANO (18-ago): lo que queda tras el build
 1. **Vigilar la primera semana de sombra CFL** (juega 20-23 ago): picks TOTAL under con edges 8-19pp —

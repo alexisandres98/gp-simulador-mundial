@@ -12,7 +12,7 @@
   var DICT = {
     es: {
       nav_login: 'Entrar', nav_cta: 'Crear cuenta',
-      lb_txt: 'Terminó el Mundial: ahora cubrimos el fútbol de clubes todos los días.', lb_cta: 'Crear cuenta gratis',
+      lb_txt: 'Nueve deportes abiertos: baloncesto, esports, americano, tenis y F1, gratis esta semana.', lb_cta: 'Crear cuenta gratis',
       eyebrow: '+500 picks liquidadas en público',
       h1: 'El modelo que <span class="g">le discute el precio</span> al mercado.',
       sub: 'Simulamos cada partido 10,000 veces, comparamos contra 40+ casas y publicamos cada pick con su porqué, su cuota congelada y su resultado liquidado en público. Fútbol y combate, en tu idioma.',
@@ -106,7 +106,7 @@
       trb_b: 'Prueba Sharp GRATIS 3 días', trb_s: 'Hoy pagas $0 · cancelas en 1 clic', trb_go: 'Empezar →',
       a_eye: 'Acceso gratis', a_h: 'Entra o crea tu cuenta', a_sub: 'Sin contraseña. Te enviamos un código a tu email y entras al instante.',
       a_email_l: 'Tu email', a_email_ph: 'tucorreo@email.com', a_send: 'Enviar código',
-      a_micro: 'Gratis durante el Mundial · sin tarjeta · sin spam',
+      a_micro: 'Nueve deportes · sin tarjeta · sin spam',
       a_sent_h: 'Revisa tu email', a_sent_sub: 'Te enviamos un enlace y un código a <b>{email}</b>. Toca el enlace del correo y entras al instante.',
       a_spam: '¿No lo ves? Revisa <b>Spam</b> o <b>Promociones</b> — puede tardar hasta 1 minuto.',
       a_open_mail: 'Abrir mi correo', a_resend: 'Reenviar código', a_resend_in: 'Reenviar en {s}s', a_resent: '✓ Correo reenviado',
@@ -140,7 +140,7 @@
     },
     en: {
       nav_login: 'Log in', nav_cta: 'Sign up',
-      lb_txt: 'The World Cup is over: we now cover club football every day.', lb_cta: 'Create free account',
+      lb_txt: 'Nine sports open: basketball, esports, American football, tennis and F1, free this week.', lb_cta: 'Create free account',
       eyebrow: '500+ picks settled in public',
       h1: 'The model that <span class="g">argues with the market</span> over price.',
       sub: 'We simulate every match 10,000 times, compare against 40+ books and publish every pick with its reasoning, its frozen odds and its result settled in public. Football and combat, in your language.',
@@ -233,7 +233,7 @@
       trb_b: 'Try Sharp FREE for 3 days', trb_s: '$0 today · cancel in one click', trb_go: 'Start →',
       a_eye: 'Free access', a_h: 'Log in or sign up', a_sub: 'No password. We email you a code and you’re in instantly.',
       a_email_l: 'Your email', a_email_ph: 'you@email.com', a_send: 'Send code',
-      a_micro: 'Free during the World Cup · no card · no spam',
+      a_micro: 'Nine sports · no card · no spam',
       a_sent_h: 'Check your email', a_sent_sub: 'We sent a link and a code to <b>{email}</b>. Tap the link in the email to log in instantly.',
       a_spam: "Don't see it? Check your <b>Spam</b> or <b>Promotions</b> folder — it can take up to a minute.",
       a_open_mail: 'Open my email', a_resend: 'Resend code', a_resend_in: 'Resend in {s}s', a_resent: '✓ Email resent',

@@ -226,6 +226,22 @@ async function lolResultsWithKills(opts) {
 }
 
 // Lee la cosecha propia de Valorant del disco persistente (o del repo en desarrollo). Sin red.
+// Traduce el detalle por mapa de la cosecha (`maps.json`) a la forma que entiende el liquidador. Las
+// `halves` traen el reparto por lado (t / ct / ot): la presencia de un tramo `ot` es lo que marca prórroga,
+// que en Valorant cambia el total de rondas y por tanto decide los mercados de totales.
+function mapasDe(reg) {
+  if (!reg || !Array.isArray(reg.maps)) return [];
+  return reg.maps.map((m, i) => {
+    const a = Number(m.s1), b = Number(m.s2);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    return {
+      n: i + 1, map: m.map || null, rounds: a + b,
+      ot: (m.halves || []).some((h) => h && h.side === 'ot') ? 1 : 0,
+      score_a: a, score_b: b,
+    };
+  }).filter(Boolean);
+}
+
 function valorantResults({ since = null } = {}) {
   const fs = require('fs'), path = require('path');
   // LEER DONDE LA COSECHA ESCRIBE DE VERDAD (21-ago). Esto leía `<disco>/esports/valorant/series.json` y
@@ -240,16 +256,24 @@ function valorantResults({ since = null } = {}) {
     path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', '..', 'db.json')), 'esports', 'valorant'),
     path.join(__dirname, '..', '..', 'data', 'esports', 'valorant'),
   ].filter(Boolean);
-  let doc = null, mejor = '';
+  let doc = null, mejor = '', dirGanador = null;
   for (const d of cands) {
     let cand = null;
     try { cand = JSON.parse(fs.readFileSync(path.join(d, 'series.json'), 'utf8')); } catch { continue; }
     if (!cand || !cand.rows) continue;
     let ult = '';
     for (const r of Object.values(cand.rows)) if (r && r.at && r.at > ult) ult = r.at;
-    if (ult > mejor) { mejor = ult; doc = cand; }
+    if (ult > mejor) { mejor = ult; doc = cand; dirGanador = d; }
   }
   if (!doc || !doc.rows) return [];
+  // EL DETALLE POR MAPA SÍ EXISTE (23-ago). Esto devolvía `maps: []` con la nota "sin detalle por mapa
+  // todavía", y por eso 112 de 117 picks vencidas de Valorant quedaban declaradas inliquidables: las
+  // familias de RONDAS necesitan el marcador de cada mapa y aquí no llegaba ninguno. Pero la cosecha
+  // ESCRIBE ese detalle en `maps.json` desde hace semanas —4 MB en el disco de producción, al día— y
+  // nadie lo estaba leyendo. Mismo fallo que el del directorio equivocado de agosto: el dato estaba, el
+  // lector no. Se lee del MISMO directorio que ganó arriba, para no volver a cruzar dos copias.
+  let det = {};
+  try { det = (JSON.parse(fs.readFileSync(path.join(dirGanador, 'maps.json'), 'utf8')) || {}).rows || {}; } catch { det = {}; }
   const from = since || new Date(Date.now() - 5 * 864e5).toISOString().slice(0, 10);
   return Object.values(doc.rows)
     .filter((r) => r && r.at && r.at >= from && r.s1 != null && r.s2 != null)
@@ -260,8 +284,13 @@ function valorantResults({ since = null } = {}) {
       // agenda. Sin la marca, esos fallos parecen "la fuente no lo tiene" y son "la hora es mentira".
       source: 'vlr', provider_id: r.id, at: r.at + 'T12:00:00Z', day_only: true,
       a: r.t1, b: r.t2, maps_a: +r.s1, maps_b: +r.s2,
-      // sin detalle por mapa todavía: se declara vacío en vez de inventar rondas
-      maps: [], competition: r.event || null,
+      competition: r.event || null,
+      // el detalle viene en el MISMO orden de equipos que la serie (t1 → s1), así que el volteo que hace
+      // el liquidador cuando la fuente trae los lados al revés sirve igual para estos mapas.
+      maps: mapasDe(det[r.id]),
+      // solo se declara que hay rondas cuando de verdad las hay para ESA serie: prometerlo en general
+      // haría que una serie sin detalle se liquidara con un cero en vez de quedarse pendiente.
+      has_rounds: !!(det[r.id] && (det[r.id].maps || []).length), has_kills: false,
     }));
 }
 

@@ -6,9 +6,14 @@ el mismo día que se abran los deportes. No se sube antes: un landing que vende 
 cerrados es una promesa que el producto no puede cumplir esa tarde.
 
 - **Landing nuevo (listo, privado):** https://claude.ai/code/artifact/537931a8-0d74-45b6-bba7-fa509d840484
-  Fuente en el scratchpad de la sesión (`landing/landing.html`) — **no está versionado en el repo**. Si el
-  contenedor se recicla antes del lunes hay que releerlo del artifact (`action:"read"`) antes de tocarlo.
-  Lleva las dos capturas reales (móvil + escritorio), el cuadro comparativo y cero números negativos.
+  **La fuente YA ESTÁ EN EL REPO**: `public/landing-nuevo.html` (43 KB) + `public/landing/` (660 KB de
+  imágenes). Antes vivía solo en el scratchpad y un reciclado de contenedor se la llevó; eso ya no puede
+  volver a pasar. **No está en ruta**: el lunes se promueve encima de `public/landing.html`.
+  Lleva las dos capturas reales (móvil + escritorio), el cuadro comparativo, cero números negativos y,
+  desde el 23-ago, bucle de fondo propio en el hero + los nueve deportes con imagen (`public/landing/`,
+  generadas con Higgsfield: sin marcas ni caras, usables en publicidad sin permiso de nadie).
+  **Ojo con las etiquetas de estado**: las cinco tarjetas nuevas dicen "SEMANA ABIERTA" — si la ventana
+  se mueve o se cierra, hay que cambiarlas a mano (están en el HTML, no salen de ninguna API).
 - **Página de planes: YA HECHA** (`public/founder.html`, commit `202f81b`, en producción). Los seis deportes
   cerrados salen como ABRIENDO. **El lunes hay que pasarlos a ABIERTO**: es el array `sports` en los bloques
   `es` y `en` — cambiar el tercer campo de `0` a `1` en los que se abran.

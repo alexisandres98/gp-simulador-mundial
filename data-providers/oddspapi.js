@@ -279,6 +279,60 @@ function twoWayEdge(market) {
 
 // ── SONDA ───────────────────────────────────────────────────────────────────────────────────────────────
 // Gasta como mucho UNA petición de pago por deporte pedido, y por defecto NINGUNA: la cuenta es gratis.
+// SONDA DE PROFUNDIDAD (23-ago) — la que decide si se paga y por QUÉ casa.
+// `probe` cuenta partidos, que responde "¿hay mercado?". Esto responde las tres preguntas que de verdad
+// mandan en una tarifa que cobra POR CASA: qué casas cotizan, qué familias cotizan, y cuántas líneas
+// alternativas hay por familia. Sin líneas alternativas el feed no vale nada para nosotros: 85 de nuestros
+// 89 fallos de CLV en CS2 son literalmente "el cierre no lleva esa línea".
+// Cuesta 2 créditos por deporte (partidos + cuotas). El histórico va de regalo y se mira igual, porque
+// confirma lo único que importa de verdad: que se puede reconstruir un cierre.
+async function depth({ deportes = [], dias = 3 } = {}) {
+  const out = { at: new Date().toISOString(), cuenta: null, deportes: {}, errores: [] };
+  try { out.cuenta = await account(); } catch (e) { out.errores.push('cuenta: ' + e.message); return out; }
+  for (const d of deportes) {
+    const sportId = SPORT[d];
+    try {
+      const fx = await fixtures(d, { days: dias });
+      const con = fx.filter((x) => x.has_odds);
+      const reg = { partidos: fx.length, con_cuotas: con.length,
+        torneos: new Set(con.map((x) => x.tournament)).size };
+      if (!con.length) { reg.nota = 'ningún partido con cuotas en la ventana'; out.deportes[d] = reg; continue; }
+      // se mira el PRIMERO con cuotas: una llamada trae todas las casas y todos los mercados de ese partido
+      const el = con[0];
+      reg.mirado = `${el.a} vs ${el.b} · ${el.tournament} · ${el.start}`;
+      const o = await odds(el.id);
+      const casas = Object.keys(o.books).sort();
+      reg.casas = casas.length;
+      reg.casas_lista = casas;
+      // ¿están las tres que ya usamos?
+      const busca = (re) => casas.filter((c) => re.test(c));
+      reg.nuestras = { pinnacle: busca(/pinnacle/i), bovada: busca(/bovada/i), cloudbet: busca(/cloudbet/i),
+        kalshi: busca(/kalshi/i), polymarket: busca(/polymarket/i) };
+      // familias y LÍNEAS ALTERNATIVAS: cuántos identificadores de mercado distintos caen en cada familia
+      const fam = {};
+      for (const mid of Object.keys(o.markets)) {
+        const f = familyOf(sportId, +mid) || ('SIN_MAPEAR:' + mid);
+        const g = (fam[f] = fam[f] || { lineas: 0, mercados: [], casas: new Set() });
+        g.lineas++; g.mercados.push(+mid);
+        for (const lado of Object.values(o.markets[mid])) for (const q of lado) g.casas.add(q.book);
+      }
+      reg.familias = Object.fromEntries(Object.entries(fam).map(([k, v]) =>
+        [k, { lineas_alternativas: v.lineas, casas_que_la_cotizan: v.casas.size }]));
+      reg.mercados_totales = Object.keys(o.markets).length;
+      // el histórico NO cuesta: se comprueba que existe serie y que hay cierre reconstruible
+      try {
+        const h = await historicalOdds(el.id);
+        const cl = closingFrom(h, el.start);
+        reg.historico = { series: Object.keys(h.series).length, con_cierre: Object.keys(cl).length,
+          gratis: true };
+      } catch (e) { reg.historico = { error: e.message }; }
+      out.deportes[d] = reg;
+    } catch (e) { out.errores.push(`${d}: ${e.message}`); }
+  }
+  out.gastado_en_esta_sonda = G.spent;
+  return out;
+}
+
 async function probe({ deportes = [], dias = 3 } = {}) {
   const out = { enabled: enabled(), at: new Date().toISOString(), cuenta: null, deportes: {}, errores: [] };
   if (!enabled()) { out.why = 'sin ODDSPAPI_KEY en el entorno'; return out; }
@@ -297,5 +351,5 @@ async function probe({ deportes = [], dias = 3 } = {}) {
 }
 
 module.exports = { enabled, account, sports, tournaments, fixtures, odds, historicalOdds,
-  closingFrom, twoWayEdge, familyOf, flattenOdds, probe, SPORT, MARKET, budget,
+  closingFrom, twoWayEdge, familyOf, flattenOdds, probe, depth, SPORT, MARKET, budget,
   gastado: () => G.spent };

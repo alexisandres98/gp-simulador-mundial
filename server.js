@@ -17600,10 +17600,16 @@ const server = http.createServer(async (req, res) => {
         if (!OP.enabled()) return json(res, 200, { enabled: false, why: 'sin ODDSPAPI_KEY en el entorno' });
         const gastar = Math.max(0, Math.min(8, +(url.searchParams.get('gastar') || 0)));
         const pedidos = String(url.searchParams.get('deportes') || 'dota2,tenis').split(',').filter(Boolean);
-        const out = await OP.probe({ deportes: gastar ? pedidos.slice(0, gastar) : [], dias: 3 });
+        // `profundidad=1` es la sonda que decide la compra: casas, familias y líneas alternativas por
+        // deporte, a 2 créditos cada uno en vez de 1. La normal solo cuenta partidos.
+        const hondo = /^(1|true|si|sí)$/i.test(String(url.searchParams.get('profundidad') || ''));
+        const cuantos = hondo ? Math.min(4, gastar) : gastar;   // 2 créditos por deporte en modo hondo
+        const out = hondo
+          ? await OP.depth({ deportes: cuantos ? pedidos.slice(0, cuantos) : [], dias: 3 })
+          : await OP.probe({ deportes: gastar ? pedidos.slice(0, gastar) : [], dias: 3 });
         out.nota = gastar
           ? `se han gastado ${out.gastado_en_esta_sonda} peticiones de pago de las ${out.cuenta && out.cuenta.restantes} que quedaban`
-          : 'sonda gratuita: solo la cuenta. Añade ?gastar=N&deportes=dota2,tenis para mirar cobertura real, a 1 crédito por deporte.';
+          : 'sonda gratuita: solo la cuenta. Añade ?gastar=N&deportes=dota2,tenis para mirar cobertura real, a 1 crédito por deporte; suma &profundidad=1 para casas, familias y líneas alternativas, a 2.';
         return json(res, 200, out);
       } catch (e) { return json(res, 500, { error: e.message }); }
     }

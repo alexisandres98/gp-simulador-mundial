@@ -1158,17 +1158,22 @@
   // la barra lateral, la hoja de "Más" del móvil, la barra inferior del móvil y el enrutador. Quien llegue
   // por hash aterriza en las oportunidades de su deporte, no en una pantalla vacía.
   var PERF_VIEWS = ['perf', 'cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
+  // "El motor" describe CÓMO funciona el modelo, que es justo lo que la caja negra no publica. Se cierra
+  // por la misma puerta que Rendimiento. En fútbol el equivalente es 'method', que ya era admin desde antes.
+  var MODEL_VIEWS = ['esmodel', 'f1model', 'tenmodel', 'nflmodel'];
+  var PERF_VIEWS_ALL = PERF_VIEWS.concat(MODEL_VIEWS);
   function perfOK() { return !!(S.me && S.me.isAdmin); }
   // las listas de nav vienen en dos formas: cadenas ('nflperf') y tuplas (['nflperf', icono, etiqueta])
   function sinPerf(list) {
     if (perfOK()) return list;
     return list.filter(function (x) {
       var k = (typeof x === 'string') ? x : (x && x[0]);
-      return PERF_VIEWS.indexOf(k) < 0;
+      return PERF_VIEWS_ALL.indexOf(k) < 0;
     });
   }
-  // a dónde cae quien pide Rendimiento sin permiso: la pizarra de SU deporte
-  var PERF_HOME = { perf: 'opps', cbperf: 'cbopps', bbperf: 'bbopps', esperf: 'esopps', nflperf: 'nflopps', tenperf: 'tenopps', f1perf: 'f1opps' };
+  // a dónde cae quien pide una de estas sin permiso: la pizarra de SU deporte
+  var PERF_HOME = { perf: 'opps', cbperf: 'cbopps', bbperf: 'bbopps', esperf: 'esopps', nflperf: 'nflopps', tenperf: 'tenopps', f1perf: 'f1opps',
+    esmodel: 'esopps', f1model: 'f1opps', tenmodel: 'tenopps', nflmodel: 'nflopps' };
 
   function viewNav(v) {
     if (v === 'bbgame') return 'bbgames';
@@ -4666,7 +4671,7 @@
     else if (v === 'follow') renderFollow();
     else if (v === 'alerts') renderAlerts();
     else if (v === 'refer') renderRefer();
-    else if (v === 'perf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderPerf(); }
+    else if (v === 'perf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderPerf(); }
     else if (v === 'calc') renderCalc();
     else if (v === 'sub') renderSub();
     else if (v === 'support') renderSupport();
@@ -8728,7 +8733,7 @@
     else if (v === 'bbbrief') renderBBBrief();
     else if (v === 'bbsim') renderBBSim();
     else if (v === 'bbask') renderBBAsk();
-    else if (v === 'bbperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderBBPerf(); }
+    else if (v === 'bbperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderBBPerf(); }
     else if (v === 'bbevo') renderBBEvo();
     else renderBBGames();
   }
@@ -8958,8 +8963,8 @@
     if (!S.me) { esShell('Esport', esLoading()); return; }
     if (!esAllowed()) { showView('board'); return; }
     if (v === 'esmatch') renderESMatch();
-    else if (v === 'esmodel') renderESModel();
-    else if (v === 'esperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESPerf(); }
+    else if (v === 'esmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESModel(); }
+    else if (v === 'esperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESPerf(); }
     else if (v === 'esboard') renderESBoard();
     else if (v === 'esteams') renderESTeams();
     else if (v === 'esteam') renderESTeam();
@@ -11327,7 +11332,7 @@
     if (!S.me) { f1Shell(t('nav_opps'), f1Loading()); return; }
     if (!f1Allowed()) { showView('board'); return; }
     if (v === 'f1opps') return renderF1Opps();
-    if (v === 'f1perf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderF1Perf(); }
+    if (v === 'f1perf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderF1Perf(); }
     if (v === 'f1race') return renderF1Race();
     if (v === 'f1standings') return renderF1Standings();
     if (v === 'f1drivers') return renderF1Drivers();
@@ -11335,7 +11340,7 @@
     if (v === 'f1sim') return renderF1Sim();
     if (v === 'f1brief') return renderF1Brief();
     if (v === 'f1ask') return renderF1Ask();
-    if (v === 'f1model') return renderF1Model();
+    if (v === 'f1model') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderF1Model(); }
     renderF1Race();
   }
 
@@ -12006,10 +12011,10 @@
     if (v === 'tenplayers') return renderTenPlayers();
     if (v === 'tenplayer') return renderTenPlayer();
     if (v === 'tensim') return renderTenSim();
-    if (v === 'tenperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderTenPerf(); }
+    if (v === 'tenperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderTenPerf(); }
     if (v === 'tenbrief') return renderTenBrief();
     if (v === 'tenask') return renderTenAsk();
-    if (v === 'tenmodel') return renderTenModel();
+    if (v === 'tenmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderTenModel(); }
     renderTenGames();
   }
 
@@ -13092,8 +13097,8 @@
     else if (v === 'nflask') renderNflAsk();
     else if (v === 'nflsim') renderNflSim();
     else if (v === 'nflplayer') renderNflPlayer();
-    else if (v === 'nflmodel') renderNflModel();
-    else if (v === 'nflperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderNflPerf(); }
+    else if (v === 'nflmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderNflModel(); }
+    else if (v === 'nflperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderNflPerf(); }
     else if (v === 'nflopps') renderNflOpps();
     else renderNflGames();
   }
@@ -14331,7 +14336,7 @@
     else if (v === 'cbfighter') renderCbFighter();
     else if (v === 'cbsim') renderCbSim();
     else if (v === 'cbfollow') renderCbFollow();
-    else if (v === 'cbperf') { if (PERF_VIEWS.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderCbPerf(); }
+    else if (v === 'cbperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderCbPerf(); }
     else if (v === 'cborgs') renderCbOrgs();
     else if (v === 'cbevo') renderCbEvo();
   }

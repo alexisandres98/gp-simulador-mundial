@@ -1568,7 +1568,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   const porCompeticion = {};
   const equiposEnFuente = new Set();
   for (const x of idx) { equiposEnFuente.add(x.ka); equiposEnFuente.add(x.kb); }
-  let settled = 0, unmatched = 0, unsettleable = 0, voided = 0;
+  let settled = 0, unmatched = 0, unsettleable = 0, voided = 0, caducadas = 0;
   // POR QUÉ NO CASA, NO SOLO CUÁNTAS (21-ago). El resumen decía `unmatched: 82` y ahí se acababa la
   // historia: con ese número no se puede distinguir "la fuente no trae esa serie" de "la trae con otro
   // nombre" de "la trae con otra fecha". Son tres fallos distintos con tres arreglos distintos, y sin
@@ -1579,6 +1579,18 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     const hit = idx.find((x) => Math.abs(x.t - t) < ventana(x)
       && ((x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh)));
     if (!hit) {
+      // CADUCIDAD (23-ago). Una pick que sigue sin aparecer en la fuente semanas después no va a aparecer
+      // nunca: bo3 parsea en ~2 días y descarta el ~19 % de los partidos para siempre, y la ventana más
+      // ancha que llegamos a pedir es de 30 días. Pasado ese plazo la pick no está esperando dato, está
+      // esperando un dato que no existe, y dejarla ACTIVE para siempre engorda el contador de atascadas y
+      // tapa los fallos nuevos — que es exactamente como se perdieron las 94 de Valorant en agosto.
+      // Se cierra VOID: ni ganada ni perdida, no se pudo saber. Nunca antes de los 21 días.
+      if (Date.now() - t > 21 * 864e5) {
+        pk.status = 'SETTLED'; pk.result_code = 'VOID'; pk.units = 0;
+        pk.settled_at = new Date().toISOString(); pk.result_source = 'caducidad';
+        pk.unsettleable_why = 'la fuente nunca publicó este partido: 21 días sin aparecer';
+        caducadas++; continue;
+      }
       unmatched++;
       const comp = pk.competition || '(sin competición)';
       porCompeticion[comp] = (porCompeticion[comp] || 0) + 1;
@@ -1641,7 +1653,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   }
   st.at = new Date().toISOString();
   const fechas = idx.map((x) => x.t).filter(Boolean).sort((a, b) => a - b);
-  const resumen = { at: st.at, settled, unmatched, unsettleable, anuladas_sin_parseo: voided, pending: pend.length, source: rs.source, resolver: !!resolve,
+  const resumen = { at: st.at, settled, unmatched, unsettleable, anuladas_sin_parseo: voided, caducadas, pending: pend.length, source: rs.source, resolver: !!resolve,
     // el estado de la FUENTE va en el mismo parte: sin esto no se sabe si el problema es nuestro o suyo
     // la ventana pedida viaja en el parte: sin esto, un `fuente_desde` corto no distingue "la fuente no
     // tiene más" de "no se le pidió más", que es exactamente el fallo que esto viene a cerrar
@@ -1659,7 +1671,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   return { game, ...resumen, clv_backfilled: backfilled,
     // POR QUÉ SE LIQUIDÓ CERO. Un cero sin motivo no se puede revisar el lunes, y este deporte ya tuvo
     // doce picks vencidas sin liquidar durante días sin que nada lo dijera.
-    why: (settled || voided) ? null
+    why: (settled || voided || caducadas) ? null
       : unmatched === pend.length ? `las ${pend.length} vencidas no encuentran su partido en ${rs.source}: o la fuente no lo publica todavía, o los nombres no resuelven al mismo equipo`
         : unsettleable ? `${unsettleable} vencidas emparejadas pero sin el dato que su familia necesita en ${rs.source}`
           : null,

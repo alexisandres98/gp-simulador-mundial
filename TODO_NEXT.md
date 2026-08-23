@@ -15,6 +15,12 @@ cerrados es una promesa que el producto no puede cumplir esa tarde.
 - **Los interruptores** (Render, hoy sin poner = admin-only): `GP_HOOPS_PUBLIC_ENABLED`,
   `GP_ESPORTS_PUBLIC_ENABLED`, `GP_NFL_PUBLIC_ENABLED`, `GP_TENNIS_PUBLIC_ENABLED`, `GP_F1_PUBLIC_ENABLED`.
   Cambiar env por API **no basta**: hay que disparar un deploy.
+- **Semana abierta (23-ago, orden de Alexis):** los cinco deportes nuevos —baloncesto, esports, fútbol
+  americano, tenis y F1— salen **abiertos a todos los planes durante 7 días**; combate y fútbol se quedan
+  como están. Ya implementado: `GP_NEWSPORTS_FREE_UNTIL` (default `2026-08-31T00:00:00Z`), mismo patrón que
+  `GP_COMBAT_FREE_UNTIL`. Mientras dure, pasa cualquiera con sesión; al vencer quedan en **Pro/Sharp** y el
+  usuario Free ve un candado, no una pantalla rota. **Si el lanzamiento se corre de día, hay que mover esa
+  fecha** — si no, la semana abierta empieza tarde y acaba antes de los siete días.
 - **Antes de abrir cada uno, mirar su sombra.** Doctrina de la casa: un deporte abre cuando el modelo pasa
   validación fuera de muestra, no cuando la pantalla funciona. NFL y fútbol americano están TODAS las
   familias en sombra (blueprint NFL-1125) y tenis igual — abrirlos con picks públicas contradice lo que la

@@ -1188,6 +1188,25 @@ function effectivePlan(email, asplan) {
   return planFor(email);
 }
 
+// VENTANA DE LANZAMIENTO MULTIDEPORTE (23-ago, orden de Alexis): los cinco deportes nuevos —baloncesto,
+// esports, fútbol americano (NFL/NCAAF/CFL), tenis y F1— salen ABIERTOS A TODOS LOS PLANES durante 7 días.
+// La mitad de "abiertos" ya era cierta sin escribir nada: estas rutas nunca comprobaron plan, solo
+// visibilidad (GP_*_PUBLIC_ENABLED). Lo que faltaba era el CIERRE — sin fecha de corte, "gratis 7 días"
+// es gratis para siempre. Se copia el precedente de combate (GP_COMBAT_FREE_UNTIL): mientras dure la
+// ventana entra cualquiera con sesión; cuando vence, quedan en Pro/Sharp igual que combate. Una sola
+// fecha para los cinco porque salen el mismo lunes; se mueve por env sin desplegar código.
+function newSportsFreeUntil() {
+  const t = Date.parse(process.env.GP_NEWSPORTS_FREE_UNTIL || '2026-08-31T00:00:00Z');
+  return Number.isFinite(t) ? t : 0;
+}
+// true = este usuario puede entrar a un deporte nuevo. Admin y pre-lanzamiento de pagos pasan siempre.
+function newSportsPlanOk(u) {
+  if (!u) return false;
+  if (u.isAdmin || !plansEnforced()) return true;
+  if (Date.now() < newSportsFreeUntil()) return true;
+  return ['pro', 'sharp'].indexOf(effectivePlan(u.email)) >= 0;
+}
+
 // Genera (si falta) un código de referido único para un usuario. Link: gpsimulador.com/?ref=<code>
 function ensureRefCode(email) {
   const u = db.users[email];
@@ -14253,7 +14272,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true' };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', newSportsFreeUntil: newSportsFreeUntil() };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -15450,18 +15469,23 @@ const server = http.createServer(async (req, res) => {
         // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
         const hoopsPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_HOOPS_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || hoopsPub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'esports') {
         const esPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || esPub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'nfl') {
         const nflPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || nflPub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'tennis') {
         const tenPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_TENNIS_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || tenPub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'f1') {
         const f1Pub = /^(1|true|yes|on)$/i.test(String(process.env.GP_F1_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || f1Pub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
         // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
@@ -16484,6 +16508,8 @@ const server = http.createServer(async (req, res) => {
       const uH = getUser(req);
       const hoopsPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_HOOPS_PUBLIC_ENABLED || '').trim());
       if (!uH || !(uH.isAdmin || hoopsPublic)) return json(res, 404, { error: 'No encontrado' });
+      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
+      if (!newSportsPlanOk(uH)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const ST = require('./basketball-engine/store');
       const lg = String(url.searchParams.get('league') || 'wnba');
 
@@ -17066,6 +17092,8 @@ const server = http.createServer(async (req, res) => {
       const uF = getUser(req);
       const f1Public = /^(1|true|yes|on)$/i.test(String(process.env.GP_F1_PUBLIC_ENABLED || '').trim());
       if (!uF || !(uF.isAdmin || f1Public)) return json(res, 404, { error: 'No encontrado' });
+      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
+      if (!newSportsPlanOk(uF)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const F1 = require('./f1-engine/store');
       try {
         if (p === '/api/f1/read') {
@@ -17110,6 +17138,8 @@ const server = http.createServer(async (req, res) => {
       const uT = getUser(req);
       const tenPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_TENNIS_PUBLIC_ENABLED || '').trim());
       if (!uT || !(uT.isAdmin || tenPublic)) return json(res, 404, { error: 'No encontrado' });
+      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
+      if (!newSportsPlanOk(uT)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const TEN = require('./tennis-engine/store');
       const tnQ = String(url.searchParams.get('tour') || 'atp').toLowerCase() === 'wta' ? 1 : 0;
       try {
@@ -17159,6 +17189,8 @@ const server = http.createServer(async (req, res) => {
       const uE = getUser(req);
       const esPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
       if (!uE || !(uE.isAdmin || esPublic)) return json(res, 404, { error: 'No encontrado' });
+      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
+      if (!newSportsPlanOk(uE)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const ES = require('./esports-engine/store');
       const gm = String(url.searchParams.get('game') || 'cs2').toLowerCase();
       const okGame = !!ES.ENGINES[gm];
@@ -17352,6 +17384,8 @@ const server = http.createServer(async (req, res) => {
       const uA = getUser(req);
       const nflPublicA = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
       if (!uA || !(uA.isAdmin || nflPublicA)) return json(res, 404, { error: 'No encontrado' });
+      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
+      if (!newSportsPlanOk(uA)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const AF = require('./amfoot-engine/store');
       const lgA = String(url.searchParams.get('league') || 'ncaaf').toLowerCase();
       if (!AF.LEAGUES[lgA]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AF.LEAGUES) });
@@ -17386,6 +17420,8 @@ const server = http.createServer(async (req, res) => {
       const uN = getUser(req);
       const nflPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
       if (!uN || !(uN.isAdmin || nflPublic)) return json(res, 404, { error: 'No encontrado' });
+      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
+      if (!newSportsPlanOk(uN)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const NFL = require('./nfl-engine/store');
       try {
         if (p === '/api/nfl/slate') {

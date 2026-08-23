@@ -40,6 +40,7 @@
       lock_bets_s: 'Mi cartera —tu P&L, ROI y CLV personal— es parte del plan Sharp.',
       lock_style_s: 'El perfil táctico (event data remate a remate) es parte del plan Sharp.',
       lock_pro_t: 'Disponible desde el plan Pro', lock_pro_s: 'La proyección de goles de cada partido es parte de los planes Pro y Sharp.',
+      lock_new_t: 'La semana abierta terminó', lock_new_s: 'Baloncesto, esports, fútbol americano, tenis y F1 estuvieron abiertos para todos durante siete días. Ahora forman parte de los planes Pro y Sharp — fútbol y combate siguen como estaban.',
       lock_player_s: 'Los perfiles de jugador con radar de scouting y proyecciones son parte de los planes Pro y Sharp.',
       lock_calc_s: 'La calculadora de stake con gestión de bankroll es parte de los planes Pro y Sharp.',
       onb_1t: 'Las picks del día', onb_1s: 'El modelo publica jugadas verificadas cada día en 24 ligas, con historial público de aciertos y errores. Tu pick gratis diaria te espera en el board.',
@@ -447,6 +448,7 @@
       lock_bets_s: 'My bets —your personal P&L, ROI and CLV— is part of the Sharp plan.',
       lock_style_s: 'The tactical profile (shot-by-shot event data) is part of the Sharp plan.',
       lock_pro_t: 'Available from the Pro plan', lock_pro_s: 'The goal projection for every match is part of the Pro and Sharp plans.',
+      lock_new_t: 'The open week is over', lock_new_s: 'Basketball, esports, American football, tennis and F1 were open to everyone for seven days. They are now part of the Pro and Sharp plans — football and combat sports are unchanged.',
       lock_player_s: 'Player profiles with scouting radar and projections are part of the Pro and Sharp plans.',
       lock_calc_s: 'The stake calculator with bankroll management is part of the Pro and Sharp plans.',
       onb_1t: "Today's picks", onb_1s: 'The model publishes verified plays every day across 24 leagues, with a public track record of hits and misses. Your free daily pick is waiting on the board.',
@@ -1141,6 +1143,25 @@
     return CB_PICK_VIEWS.indexOf(v) < 0;
   }
   function cbSportAllowed() { return !!(S.me && (S.me.isAdmin || S.me.combatPublic)); }
+  // ═══ VENTANA DE LANZAMIENTO MULTIDEPORTE (23-ago, orden de Alexis) ══════════════════════════════
+  // Los cinco deportes nuevos —baloncesto, esports, fútbol americano, tenis y F1— abren para TODOS los
+  // planes durante siete días. Esto es el espejo exacto de `newSportsPlanOk` en el servidor, que es quien
+  // manda: aquí no se decide nada, solo se evita que el día que venza la ventana un usuario Free se coma
+  // cinco pantallas rotas a base de 403 en vez de un candado que le explique qué pasó y a dónde ir.
+  // Mientras no se sabe quién eres (`S.me` null) NO se bloquea: cada deporte ya tiene su estado de carga.
+  function nuevosLibres() {
+    var t = (S.me && S.me.newSportsFreeUntil) || 0;
+    return t > 0 && Date.now() < t;
+  }
+  function nuevosOK() {
+    if (!S.me) return true;
+    if (S.me.isAdmin || !S.me.plans_enforced) return true;
+    if (nuevosLibres()) return true;
+    var pl = S.me.plan || 'free';
+    return pl === 'pro' || pl === 'sharp';
+  }
+  function lockNuevos() { return lockPanel('lock_new_t', 'lock_new_s'); }
+
   function bbAllowed() { return !!(S.me && (S.me.isAdmin || S.me.hoopsPublic)); }
   var BB_LEAGUES = [['nba', 'NBA'], ['wnba', 'WNBA'], ['ncaam', 'NCAA M'], ['ncaaw', 'NCAA F']];
   function bbLg() { var k = (S.bb && S.bb.lg) || 'wnba'; return BB_LEAGUES.some(function (x) { return x[0] === k; }) ? k : 'wnba'; }
@@ -8725,6 +8746,7 @@
   function renderBB(v) {
     if (!S.me) { bbShell('Baloncesto', mvLoading()); return; }
     if (!bbAllowed()) { showView('board'); return; }
+    if (!nuevosOK()) { bbShell('Baloncesto', lockNuevos()); return; }
     if (v === 'bbgame') renderBBGame();
     else if (v === 'bbteam') renderBBTeam();
     else if (v === 'bbplayer') renderBBPlayer();
@@ -8962,6 +8984,7 @@
   function renderES(v) {
     if (!S.me) { esShell('Esport', esLoading()); return; }
     if (!esAllowed()) { showView('board'); return; }
+    if (!nuevosOK()) { esShell('Esport', lockNuevos()); return; }
     if (v === 'esmatch') renderESMatch();
     else if (v === 'esmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESModel(); }
     else if (v === 'esperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESPerf(); }
@@ -11331,6 +11354,7 @@
     // enlace directo a F1 caía en fútbol antes de saber si el usuario tiene acceso. Se espera.
     if (!S.me) { f1Shell(t('nav_opps'), f1Loading()); return; }
     if (!f1Allowed()) { showView('board'); return; }
+    if (!nuevosOK()) { f1Shell(t('nav_opps'), lockNuevos()); return; }
     if (v === 'f1opps') return renderF1Opps();
     if (v === 'f1perf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderF1Perf(); }
     if (v === 'f1race') return renderF1Race();
@@ -12003,6 +12027,7 @@
     // faltaban. Se espera, y cuando `me` llega el guard de arranque decide de verdad.
     if (!S.me) { tenShell(t('nav_opps'), tenLoading()); return; }
     if (!tenAllowed()) { showView('board'); return; }
+    if (!nuevosOK()) { tenShell(t('nav_opps'), lockNuevos()); return; }
     if (v === 'tenopps') return renderTenOpps();
     if (v === 'tenmatch') return renderTenMatch();
     if (v === 'tengames') return renderTenGames();
@@ -13088,6 +13113,7 @@
   function renderNfl(v) {
     if (!S.me) { nflShell(t('sport_nfl'), nflLoading()); return; }
     if (!nflAllowed()) { showView('board'); return; }
+    if (!nuevosOK()) { nflShell(t('sport_nfl'), lockNuevos()); return; }
     if (v === 'nflgame') renderNflGame();
     else if (v === 'nflteams') renderNflTeams();
     else if (v === 'nflteam') renderNflTeam();

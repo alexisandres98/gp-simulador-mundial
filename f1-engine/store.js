@@ -19,7 +19,7 @@ const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
 const G = { data: null, at: 0, live: null, liveAt: 0, oddsKeys: null, oddsAt: 0 };
 
 const ATTRIB = 'Datos de Jolpica-F1 (CC BY 4.0).';
-const DOCTRINE = 'F1 corre como TERMINAL DE INTELIGENCIA: el gemelo de carrera está validado walk-forward (holdout 2025→) y su fuerza está ANTES de la clasificación —sin parrilla que mirar, gana claro a la tasa base en podio, en puntos y en el duelo entre compañeros—. Con la parrilla ya publicada la casilla predice mejor que el gemelo en todas las familias medidas, así que ahí no publica: es el mismo criterio que cierra el mercado de ganador. Sin cobertura de casas en el plan actual no hay lado mercado: cuando el proveedor abra motorsport, la sombra se enciende sola. Nada de esto es una pick.';
+const DOCTRINE = 'F1 corre como TERMINAL DE INTELIGENCIA: el modelo de carrera está validado walk-forward (holdout 2025→) y su fuerza está ANTES de la clasificación —sin parrilla que mirar, gana claro a la tasa base en podio, en puntos y en el duelo entre compañeros—. Con la parrilla ya publicada la casilla predice mejor que el modelo en todas las familias medidas, así que ahí no publica: es el mismo criterio que cierra el mercado de ganador. Sin cobertura de casas en el plan actual no hay lado mercado: cuando el proveedor abra motorsport, la sombra se enciende sola. Nada de esto es una pick.';
 
 // colores REALES de constructor (el color es un hecho del deporte, no un asset): 2026 + recientes
 const TEAM_COLOR = {
@@ -150,7 +150,7 @@ function badgeOf(cid) {
 // ── COMMAND CENTER: la parrilla probabilística de la próxima carrera ────────────────────────────────────
 // EL CALENDARIO ENTERO (19-ago, pedido de Alexis: "no deberíamos solamente poder analizar la próxima
 // carrera sino todas las siguientes"). Devuelve las rondas restantes con lo poco que se sabe de cada una
-// —fecha, circuito, país, si tiene sprint— para que la pestaña pueda ofrecerlas y el gemelo corra sobre
+// —fecha, circuito, país, si tiene sprint— para que la pestaña pueda ofrecerlas y GP corra sobre
 // la que se elija. La clasificación solo existe para la inmediata, así que las demás se simulan en estado
 // PRE-QUALI y se dice: es una lectura de coche y piloto, sin parrilla.
 function calendar() {
@@ -221,10 +221,10 @@ function raceBoard(round) {
   }).sort((a, b) => (b.p_win || 0) - (a.p_win || 0));
   return {
     available: true, race: { season: next.season, round: next.round, name: next.name, circuit: next.circuit, country: next.country, locality: next.locality, date: next.date, time: next.time, quali: next.quali, sprint: next.sprint },
-    state, state_label: state === 'POST_QUALI' ? 'pos-clasificación (parrilla real)' : 'pre-clasificación (el gemelo estima la parrilla)',
+    state, state_label: state === 'POST_QUALI' ? 'pos-clasificación (parrilla real)' : 'pre-clasificación (GP estima la parrilla)',
     rows, attribution: ATTRIB, doctrine: DOCTRINE,
     last_completed: d.meta.last_completed, overlay_at: d.overlay_at,
-    note: 'ganador = ensamble validado del gemelo con el prior de casilla cuando hay parrilla; podio, top-6, puntos, abandono y orden esperado salen de las MISMAS simulaciones del field completo. Índices coche/piloto: 100 = media del campo.',
+    note: 'ganador = ensamble validado del modelo con el prior de casilla cuando hay parrilla; podio, top-6, puntos, abandono y orden esperado salen de las MISMAS simulaciones del field completo. Índices coche/piloto: 100 = media del campo.',
   };
 }
 
@@ -237,10 +237,10 @@ function raceBoard(round) {
 // liquidarlas después para que exista un historial verificable. No son apuestas y así se dicen.
 //
 // QUÉ SE PUBLICA Y POR QUÉ. Al medir familia por familia contra un baseline honesto en el mismo holdout
-// apareció lo importante: DESPUÉS de la clasificación, la casilla ya sabe todo lo que sabe el gemelo y
+// apareció lo importante: DESPUÉS de la clasificación, la casilla ya sabe todo lo que sabe el modelo y
 // algo más —podio 0,0674 contra 0,0619 de la casilla; puntos 0,1745 contra 0,1657; duelo 72,5 % contra
 // 74,3 %; ganador 1,389 contra 1,058—. El gemelo PIERDE contra mirar la parrilla. ANTES de la clasificación
-// no hay parrilla que mirar y ahí el gemelo gana claro: podio 0,0860 contra 0,1244 de la tasa base, puntos
+// no hay parrilla que mirar y ahí el modelo gana claro: podio 0,0860 contra 0,1244 de la tasa base, puntos
 // 0,1907 contra 0,2500, duelo 66,2 % contra 60,2 % de la forma del campeonato.
 // Conclusión aplicada tal cual: LAS LLAMADAS SOLO SALEN EN PRE-CLASIFICACIÓN. Con parrilla en la mano la
 // pantalla lo dice y no publica nada — publicar algo peor que mirar la casilla sería vender ruido.
@@ -260,7 +260,7 @@ function takeEvidence(d) {
 
 // ── MERCADO REAL: KALSHI (19-ago) ───────────────────────────────────────────────────────────────────────
 // F1 dejó de ser el deporte sin mercado. Kalshi cotiza `KXF1RACEPODIUM` y `KXF1TOP10` — justo las dos
-// familias donde el gemelo bate al baseline ANTES de la clasificación. El podio tiene liquidez de verdad
+// familias donde el modelo bate al baseline ANTES de la clasificación. El podio tiene liquidez de verdad
 // (horquillas de 1-4 puntos, 7.274 de interés abierto en el contrato de Verstappen); el top-10 está fino y
 // la mayoría de sus contratos no pasan la guardia de horquilla, así que casi siempre se queda en llamada.
 //
@@ -331,13 +331,13 @@ async function takesFor(round) {
   const base = { season: b.race.season, round: b.race.round, race: b.race.name, date: b.race.date };
   if (b.state === 'POST_QUALI') {
     return { available: false, state: b.state, race: b.race, evidence: ev,
-      why: 'Con la parrilla ya publicada, la casilla de clasificación predice esta carrera mejor que el gemelo en todas las familias medidas. Cuando el modelo no aporta, no publica: el tablero de parrilla sigue ahí para leer la carrera.',
+      why: 'Con la parrilla ya publicada, la casilla de clasificación predice esta carrera mejor que el modelo en todas las familias medidas. Cuando el modelo no aporta, no publica: el tablero de parrilla sigue ahí para leer la carrera.',
       takes: [] };
   }
   // REFERENCIA DE TEMPORADA: lo que este piloto viene haciendo. Sin mercado, esta es la única vara honesta
   // para decidir qué merece publicarse: "Stroll no puntúa" al 98 % no es una llamada, es el calendario.
   // Solo sale a la luz lo que se APARTA de esa referencia — y la referencia viaja con la llamada para que
-  // el historial pueda puntuar al gemelo CONTRA ella y no contra el aire.
+  // el historial pueda puntuar al modelo CONTRA ella y no contra el aire.
   const ref = seasonRates(d, base.season, base.round);
   const mk = await f1Market();
   const rows = b.rows || [];
@@ -355,26 +355,26 @@ async function takesFor(round) {
   const MIN_GAP = 0.15;
   for (const r of rows) {
     const rr = ref[r.id] || {};
-    // PODIO: o el gemelo lo pone arriba con convicción, o se aparta claramente de su temporada
+    // PODIO: o GP lo pone arriba con convicción, o se aparta claramente de su temporada
     if (r.p_podium >= TAKE_MIN.podium || (rr.podium != null && r.p_podium - rr.podium >= MIN_GAP && r.p_podium >= 0.3)) {
       push('PODIO', r.id, r.name, 'si', r.p_podium, rr.podium,
         `${r.name} sube al podio en ${Math.round(100 * r.p_podium)} de cada 100 simulaciones` +
         (rr.podium != null ? `, cuando esta temporada lo hace en ${Math.round(100 * rr.podium)} de cada 100` : ' (sin temporada previa que comparar)') +
         `. Coche ${r.car_idx} y piloto ${r.drv_idx} sobre una media de campo de 100.`, { n_ref: rr.n || null }, r.name);
     }
-    // PUNTOS: en los dos sentidos, pero SOLO si el gemelo se aparta de lo que el piloto viene haciendo
+    // PUNTOS: en los dos sentidos, pero SOLO si GP se aparta de lo que el piloto viene haciendo
     if (rr.points != null && rr.n >= 3) {
       const gap = r.p_points - rr.points;
       // LA LLAMADA TIENE QUE APOSTAR POR SU LADO. Con solo el hueco contra la temporada salían cosas como
-      // "Hamilton NO puntúa" con el gemelo dándole 76 % de puntuar —el hueco existía, pero el lado era el
+      // "Hamilton NO puntúa" con GP dándole 76 % de puntuar —el hueco existía, pero el lado era el
       // contrario—. Un matiz sobre la confianza no es una llamada: el lado publicado debe ser, además, el
       // desenlace más probable según el propio modelo.
       if (gap >= MIN_GAP && r.p_points >= 0.5) {
         push('PUNTOS', r.id, r.name, 'si', r.p_points, rr.points,
-          `${r.name} puntúa en ${Math.round(100 * r.p_points)} de cada 100 simulaciones, muy por encima del ${Math.round(100 * rr.points)} % con que lo viene haciendo: el gemelo ve el coche mejor de lo que dice su temporada.`, { n_ref: rr.n }, r.name);
+          `${r.name} puntúa en ${Math.round(100 * r.p_points)} de cada 100 simulaciones, muy por encima del ${Math.round(100 * rr.points)} % con que lo viene haciendo: GP ve el coche mejor de lo que dice su temporada.`, { n_ref: rr.n }, r.name);
       } else if (-gap >= MIN_GAP && r.p_points <= 0.5) {
         push('PUNTOS', r.id, r.name, 'no', 1 - r.p_points, 1 - rr.points,
-          `${r.name} se queda fuera de los puntos: el gemelo solo lo mete entre los diez en ${Math.round(100 * r.p_points)} de cada 100, contra el ${Math.round(100 * rr.points)} % de su temporada.`, { n_ref: rr.n });
+          `${r.name} se queda fuera de los puntos: GP solo lo mete entre los diez en ${Math.round(100 * r.p_points)} de cada 100, contra el ${Math.round(100 * rr.points)} % de su temporada.`, { n_ref: rr.n });
       }
     }
   }
@@ -391,9 +391,9 @@ async function takesFor(round) {
     const refSide = px === py ? null : (px > py ? 1 : 0);   // referencia: quien va mejor en el campeonato
     push('DUELO', x.id + '_vs_' + y.id, `${x.name} por delante de ${y.name}`, 'si', p, refSide == null ? null : (refSide ? 0.602 : 0.398),
       `Mismo coche, así que solo queda el piloto: ${x.name} termina por delante de ${y.name} en ${Math.round(100 * p)} de cada 100 simulaciones` +
-      (refSide === 0 ? `, y va POR DETRÁS en el campeonato (${px} a ${py} puntos) — el gemelo contradice a la tabla.`
+      (refSide === 0 ? `, y va POR DETRÁS en el campeonato (${px} a ${py} puntos) — GP contradice a la tabla.`
         : refSide === 1 ? `, coherente con el campeonato (${px} a ${py} puntos).`
-          : `, y el campeonato no desempata (${px} a ${py} puntos): aquí la tabla no dice nada y solo habla el gemelo.`),
+          : `, y el campeonato no desempata (${px} a ${py} puntos): aquí la tabla no dice nada y solo habla el modelo.`),
       { contra_referencia: refSide === 0 });
   }
   // ── CON PRECIO, EL CRITERIO ES OTRO (19-ago) ─────────────────────────────────────────────────────────
@@ -616,7 +616,7 @@ function standings() {
     pts: c.pts, wins: c.wins, car_idx: r2(100 + 20 * R.val(d.st.car, c.id, d.priors.ratings.shrinkCar).v),
   }));
   return { season: year, drivers: rowsD, constructors: rowsC, attribution: ATTRIB,
-    note: 'puntos y victorias son OFICIALES de la temporada; los índices coche/piloto son el estado del gemelo (100 = media del campo), validados walk-forward. La composición interna es reservada.' };
+    note: 'puntos y victorias son OFICIALES de la temporada; los índices coche/piloto son el estado dGP (100 = media del campo), validados walk-forward. La composición interna es reservada.' };
 }
 
 // ── FICHAS ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -680,7 +680,7 @@ function whatIf({ driver, grid }) {
   const next = nextRace(d);
   const { entries, state } = currentField(d, next);
   const field = R.fieldFor(d.st, entries, { useGrid: true });
-  // parrilla base: real si existe; si no, la implícita del gemelo (orden por perf)
+  // parrilla base: real si existe; si no, la implícita dGP (orden por perf)
   if (state !== 'POST_QUALI') {
     field.slice().sort((a, b) => b.perf - a.perf).forEach((f, i) => { f.grid = i + 1; });
   }
@@ -780,7 +780,7 @@ function modelCard() {
     validation: {
       protocol: 'walk-forward estricto: constantes en desarrollo 2014-2024 (el cambio reglamentario de 2022 midió cuánta historia de coche sobrevive a un cambio de reglas — eso hereda 2026), holdout 2025→ evaluado UNA vez, dos estados de información',
       holdout_postquali: P.holdout_postquali, holdout_prequali: P.holdout_prequali,
-      reading: 'DÓNDE SIRVE Y DÓNDE NO, medido familia por familia contra un baseline honesto en el mismo holdout (19-ago). ANTES de la clasificación el gemelo gana claro: Brier de podio 0,086 contra 0,124 de la tasa base del campo, puntos 0,191 contra 0,250, duelo entre compañeros 66,2 % contra 60,2 % de "quien va mejor en el campeonato". DESPUÉS de la clasificación pierde contra mirar la parrilla en TODAS las familias: podio 0,067 contra 0,062, puntos 0,175 contra 0,166, duelo 72,5 % contra 74,3 %, ganador 1,389 (ensamble 1,150) contra 1,058. La casilla ya contiene lo que el gemelo sabe y algo más. Aplicado tal cual: las llamadas de GP solo se publican en PRE-clasificación; con parrilla en la mano el modelo no publica nada. El abandono queda fuera en los dos estados (0,1061 contra 0,1068 de la tasa base es un empate, y un empate no es una llamada).',
+      reading: 'DÓNDE SIRVE Y DÓNDE NO, medido familia por familia contra un baseline honesto en el mismo holdout (19-ago). ANTES de la clasificación GP gana claro: Brier de podio 0,086 contra 0,124 de la tasa base del campo, puntos 0,191 contra 0,250, duelo entre compañeros 66,2 % contra 60,2 % de "quien va mejor en el campeonato". DESPUÉS de la clasificación pierde contra mirar la parrilla en TODAS las familias: podio 0,067 contra 0,062, puntos 0,175 contra 0,166, duelo 72,5 % contra 74,3 %, ganador 1,389 (ensamble 1,150) contra 1,058. La casilla ya contiene lo que GP sabe y algo más. Aplicado tal cual: las llamadas de GP solo se publican en PRE-clasificación; con parrilla en la mano el modelo no publica nada. El abandono queda fuera en los dos estados (0,1061 contra 0,1068 de la tasa base es un empate, y un empate no es una llamada).',
     },
     market: { covered: false, note: 'The Odds API sin cobertura F1 en el plan actual (comprobado 18-ago-2026); el descubrimiento corre a diario y la sombra se enciende sola si abre.' },
     disclaimer: 'estimaciones de un modelo estadístico, no consejo financiero.',

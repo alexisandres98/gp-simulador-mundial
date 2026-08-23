@@ -1170,6 +1170,13 @@
     try { return d.toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' }); }
     catch (e) { return d.toISOString().slice(0, 10); }
   }
+  // ═══ SALA DE MÁQUINAS: SOLO ADMIN (23-ago, orden de Alexis) ══════════════════════════════════════
+  // "Monitor privado — no se publica", "cero picks públicas y eso es una decisión", el estado de cada
+  // familia con su porqué, el desglose por familia con sus unidades y su CLV, "lo que falta para cerrar
+  // el modelo". Todo eso le cuenta al usuario CÓMO administramos el modelo, no qué hacer con su dinero —
+  // y varias enseñan números en rojo de familias que además no puede jugar. Se cierran por la misma
+  // puerta que Rendimiento, y por la misma razón: son evidencia de taller, no producto.
+  function soloAdmin(html) { return perfOK() ? html : ''; }
   function lockNuevos() { return lockPanel('lock_new_t', 'lock_new_s'); }
 
   function bbAllowed() { return !!(S.me && (S.me.isAdmin || S.me.hoopsPublic)); }
@@ -7702,7 +7709,8 @@
           return '<div class="gx-bb-dnac"><span>' + esc(kv[0]) + '</span><b class="' + (f.units >= 0 ? 'up' : 'dn') + '">' + (f.units > 0 ? '+' : '') + f.units.toFixed(2) + 'u</b>' +
             '<em>' + f.n + ' picks · ' + f.w + '-' + f.l + (f.clv_avg != null ? ' · CLV ' + (f.clv_avg > 0 ? '+' : '') + f.clv_avg + '%' : '') + '</em></div>';
         }).join('') + '</div></div>' : '';
-    return warn + kpi + clvNote + act + fam + set;
+    // El usuario ve las picks; el taller (monitor, unidades, CLV y desglose por familia) es de admin.
+    return soloAdmin(warn + kpi + clvNote) + act + soloAdmin(fam + set);
   }
   // ── LAS CUATRO SUPERFICIES, con el markup de fútbol ──────────────────────────────────────────────────
   // Misma decisión que con las picks: no se inventa una tabla propia. Value usa gx-table con las columnas
@@ -9102,7 +9110,7 @@
       }
       inner = body + esWhyNot(d);
     }
-    esShell(t('nav_opps'), esTabs() + head + hero + inner + esDoctrine(d.doctrine));
+    esShell(t('nav_opps'), esTabs() + head + hero + inner + soloAdmin(esDoctrine(d.doctrine)));
   }
 
   // ── LA CABECERA DE DOS CAJAS: PICK DEL DÍA Y MEJOR ARBITRAJE ──────────────────────────────────────────
@@ -9414,7 +9422,7 @@
       '<span class="gx-spacer"></span>' +
       '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>líneas</span></div>' +
       '<div class="gx-es-hero-n"><b>' + somb.length + '</b><span>en sombra</span></div></div>' +
-      '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> Todo lo que pasa el listón se anota y se liquida solo con el scoreboard propio, para acumular muestra. Registro aparte: no toca el ejecutor en la sombra de la casa.</span></div>';
+      soloAdmin('<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> Todo lo que pasa el listón se anota y se liquida solo con el scoreboard propio, para acumular muestra. Registro aparte: no toca el ejecutor en la sombra de la casa.</span></div>');
     var perf = (tr && !tr._err && tr.perf) || null;
     var perfP = perf ? esPanel('La sombra hasta hoy',
       '<span class="gx-dim">' + ((tr.active || []).length) + ' activas' + (tr.voided ? ' · ' + tr.voided + ' anuladas' : '') + '</span>',
@@ -9441,7 +9449,7 @@
           (po.avg_clv_price > 0 ? '+' : '') + (100 * po.avg_clv_price).toFixed(1) + ' pp) sobre ' + po.clv_n +
           ' abiertas, ' + (po.lines_moved || 0) + ' con la línea ya movida. Se mide contra la última lectura del libro, no contra el cierre definitivo.</div>';
       })() +
-      '<div class="gx-dim gx-es-note">El listón de salida de la sombra es el de toda la casa: muestra fuera de muestra que aguante escrutinio, revisada antes de publicar nada.</div>') : '';
+      soloAdmin('<div class="gx-dim gx-es-note">El listón de salida de la sombra es el de toda la casa: muestra fuera de muestra que aguante escrutinio, revisada antes de publicar nada.</div>')) : '';
     function propRow(r) {
       var pr = r.proj || {}, b = r.best || {};
       var when = r.match && r.match.start_at ? fmtDateTime(r.match.start_at) : '—';
@@ -9937,7 +9945,9 @@
       var lens = S.es.lens || 'partida';
       var LENSES = [
         ['partida', 'La partida', [esReadBlock(g, ev.id), cs2Veto(d), cs2Ladder(d)]],
-        ['modelo', 'El modelo', [cs2Rounds(d), esRoundsExplorer(d), esWhat(m), esUnc(m), esSim(m, ev), cs2Model(d)]],
+        // `cs2Model` son las constantes del modelo y la lista de lo que le falta para cerrarse: la receta,
+        // que es justo lo que la caja negra no publica. La pestaña sigue existiendo sin ella.
+        ['modelo', 'El modelo', [cs2Rounds(d), esRoundsExplorer(d), esWhat(m), esUnc(m), esSim(m, ev), soloAdmin(cs2Model(d))]],
         // SIN EL BLOQUE DE PROCEDENCIA EN EL PANEL DE LA PARTIDA (19-ago, pedido de Alexis). "De dónde sale
         // cada cifra" es una lista de fuentes con su antigüedad: información de auditoría, no de decisión.
         // En la pantalla del partido competía por espacio con lo que sí se mira. Sigue en la ficha del
@@ -11287,7 +11297,7 @@
     mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content">' + viewHead(title) + inner + '</div></div>';
     mv.onclick = f1Clicks;
   }
-  var f1Loading = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Leyendo el gemelo de carrera…</b></div></div>'; };
+  var f1Loading = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Leyendo la carrera…</b></div></div>'; };
   function f1Dot(color) { return '<span class="gx-f1-dot" style="background:' + esc(color || '#666') + '"></span>'; }
   function f1DriverChip(r, big) {
     return '<span class="gx-f1-driver' + (big ? ' big' : '') + '">' +
@@ -11336,7 +11346,7 @@
       '<div class="gx-f1-slotk"><em class="gx-mono">' + (100 * (cur.p_dnf || 0)).toFixed(0) + '%</em><span>abandona</span></div></div>'
       : '<div class="gx-f1-sloti gx-dim">Tocá una casilla para ver a su piloto.</div>';
     return '<div class="gx-panel gx-f1-gridmap"><div class="gx-ph"><span class="gx-label">La parrilla</span>' +
-      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + (hasGrid ? 'casillas reales de la clasificación' : 'orden esperado por el gemelo — todavía no hay clasificación') + '</span></div>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + (hasGrid ? 'casillas reales de la clasificación' : 'orden esperado por GP — todavía no hay clasificación') + '</span></div>' +
       '<div class="gx-f1-track"><div class="gx-f1-slots">' + slots + '</div>' +
       '<div class="gx-f1-line"><span>línea de meta</span></div></div>' + detail + '</div>';
   }
@@ -11589,7 +11599,7 @@
     var bar = refPct == null ? '' :
       '<div class="gx-f1-tkbar"><span class="gx-f1-tkfill" style="width:' + pct + '%"></span>' +
       '<i class="gx-f1-tkref" style="left:' + refPct + '%" title="referencia: ' + refPct + '%"></i></div>' +
-      '<div class="gx-f1-tkleg"><span>gemelo <b class="gx-mono">' + pct + '%</b></span>' +
+      '<div class="gx-f1-tkleg"><span>GP <b class="gx-mono">' + pct + '%</b></span>' +
       '<span class="gx-dim">referencia <b class="gx-mono">' + refPct + '%</b></span>' +
       (tk.gap_pp != null ? '<span class="' + (tk.gap_pp > 0 ? 'gx-up' : 'gx-down') + ' gx-mono">' + (tk.gap_pp > 0 ? '+' : '') + tk.gap_pp.toFixed(1) + ' pp</span>' : '') + '</div>';
     // EL MERCADO, CUANDO LO HAY, ES LO PRINCIPAL DE LA TARJETA (19-ago). Una tesis con contrato detrás no
@@ -11613,7 +11623,7 @@
         '<span class="gx-spacer"></span><span class="gx-f1-tkp gx-mono">' + pct + '%</span></div>' +
       '<div class="gx-f1-tkwho"><b>' + esc(tk.subject) + '</b></div>' + bar + mkt +
       '<div class="gx-f1-tkwhy gx-dim">' + esc(tk.why || '') + '</div>' +
-      (e && e.model != null ? '<div class="gx-f1-tkev gx-dim">Esta familia, medida fuera de muestra antes de publicar nada: ' +
+      (perfOK() && e && e.model != null ? '<div class="gx-f1-tkev gx-dim">Esta familia, medida fuera de muestra antes de publicar nada: ' +
         esc(e.metric) + ' ' + e.model + ' contra ' + (e.baseline != null ? e.baseline : '—') + ' de ' + esc(e.baseline_label) +
         (e.n ? ' · n=' + e.n : '') + '.</div>' : '') + '</div>';
   }
@@ -11696,15 +11706,20 @@
         'Sin precio no hay ventaja que calcular, así que aquí no hay picks: hay <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>';
     var body;
     if (tk.available === false && tk.state === 'POST_QUALI') {
-      body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Esta carrera no lleva llamadas</span>' +
-        '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">pos-clasificación</span></div>' +
-        '<div class="gx-f1-mute">' + ic('shield-off') + '<span>' + esc(tk.why || '') + '</span></div>' +
-        '<div class="gx-dim gx-es-note">Medido en el mismo holdout: con parrilla en la mano la casilla gana al gemelo en podio, en puntos, en duelos y en ganador. Publicar algo peor que mirar la parrilla sería vender ruido.</div></div>';
+      // El usuario no necesita el acta del holdout para entender una pantalla vacía. Ve el vacío de
+      // siempre, con la misma voz que los otros ocho deportes; el porqué medido se queda en el taller.
+      body = perfOK()
+        ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Esta carrera no lleva llamadas</span>' +
+          '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">pos-clasificación</span></div>' +
+          '<div class="gx-f1-mute">' + ic('shield-off') + '<span>' + esc(tk.why || '') + '</span></div>' +
+          '<div class="gx-dim gx-es-note">Medido en el mismo holdout: con parrilla en la mano la casilla gana al gemelo en podio, en puntos, en duelos y en ganador. Publicar algo peor que mirar la parrilla sería vender ruido.</div></div>'
+        : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Sin jugadas en esta carrera.</b>' +
+          '<span class="gx-dim">Con la parrilla ya publicada, el modelo no aporta nada por encima de lo que dice la propia clasificación. Vuelve en el próximo gran premio.</span></div></div>';
     } else if (!tk.available) {
       body = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(tk.why || 'Sin calendario') + '</b></div></div>';
     } else if (!(tk.takes || []).length) {
       body = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Sin llamadas en esta carrera</span></div>' +
-        '<div class="gx-f1-mute">' + ic('shield-off') + '<span>El gemelo no se aparta lo suficiente de lo que cada piloto viene haciendo esta temporada. Coincidir con lo obvio no es una llamada.</span></div></div>';
+        '<div class="gx-f1-mute">' + ic('shield-off') + '<span>El modelo no se aparta lo suficiente de lo que cada piloto viene haciendo esta temporada. Coincidir con lo obvio no es una jugada.</span></div></div>';
     } else {
       // PICKS ARRIBA, LLAMADAS DEBAJO (19-ago). Con Kalshi dentro la lista mezcla dos cosas distintas, y
       // las picks —las únicas medidas contra un precio real— quedaban enterradas bajo seis llamadas
@@ -11730,7 +11745,7 @@
           '<div class="gx-f1-takes">' + sinP.map(function (x) { return f1TakeCard(x, tk.evidence); }).join('') + '</div></div>'
         : '';
       body = picks + llamadas +
-        '<div class="gx-panel"><div class="gx-dim gx-es-note">' + esc(tk.doctrine || '') + '</div></div>';
+        soloAdmin('<div class="gx-panel"><div class="gx-dim gx-es-note">' + esc(tk.doctrine || '') + '</div></div>');
     }
     var track = '';
     if (tr && tr.available) {
@@ -11761,7 +11776,8 @@
     // la versión pública: la misma promesa, sin la lista de casas ni su estado
     var watchPub = esAdmin ? '' : '<div class="gx-panel"><div class="gx-dim gx-es-note">' +
       'El mercado de carrera se revisa a diario. En cuanto haya un precio utilizable, estas llamadas pasan a medirse contra él y aparecen como picks.</div></div>';
-    f1Shell(t('nav_opps'), bar + head + body + track + watch + watchPub);
+    // Las explicaciones de por qué hoy no hay precio son de taller: el usuario ve las cards y ya.
+    f1Shell(t('nav_opps'), bar + soloAdmin(head) + body + soloAdmin(track) + watch + watchPub);
   }
 
   // ── CAMPEONATO: puntos oficiales + Coche × Piloto ───────────────────────────────────────────────────
@@ -12117,9 +12133,9 @@
         '<span class="gx-pp gx-pos">+' + (top.c.edge_pp || 0).toFixed(1) + ' pp</span></div>'
         : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna tesis pasa el listón</div>' +
           '<div class="gx-estop-sub">decir NO también es un resultado</div></div>') + '</div>' +
-      '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('eye') + 'Régimen</div>' +
-      '<div class="gx-estop-main"><div class="gx-estop-sel">Todo en sombra</div>' +
-      '<div class="gx-estop-sub">' + theses.length + ' tesis vivas · ' + rows.length + ' partidos</div></div></div></div>';
+      '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('eye') + (perfOK() ? 'Régimen' : 'En juego') + '</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (perfOK() ? 'Todo en sombra' : theses.length + (theses.length === 1 ? ' tesis' : ' tesis')) + '</div>' +
+      '<div class="gx-estop-sub">' + (perfOK() ? theses.length + ' tesis vivas · ' + rows.length + ' partidos' : rows.length + ' partidos en la ventana') + '</div></div></div></div>';
     var body;
     if (!theses.length) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
@@ -12134,7 +12150,7 @@
       body = '<div class="gx-picks-feed">' + visiblePicks(cards).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' + hiddenNote(cards);
     }
     tenShell(t('nav_opps'), strip + body +
-      '<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc(clampFrase(d.doctrine || '', 420)) + '</span></div>');
+      soloAdmin('<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>Familia en sombra, no picks.</b> ' + esc(clampFrase(d.doctrine || '', 420)) + '</span></div>'));
   }
 
   function tenFamLabel(c) {
@@ -12950,7 +12966,7 @@
   function f1Back(to, label) { return '<div class="gx-back" data-f1backto="' + esc(to) + '">' + ic('chevron-left') + '<span>' + esc(label) + '</span></div>'; }
   // la nota de régimen/sombra que acompaña TODO el deporte — el blueprint la exige visible, no en un footer
   function nflShadowNote(txt) {
-    return '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(txt || 'Todas las familias de NFL están EN SOMBRA: el terminal enseña inteligencia, no picks. El registro privado acumula CLV por familia y solo la evidencia fuera de muestra puede abrir una (blueprint NFL-1125).') + '</span></div>';
+    return soloAdmin('<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(txt || 'Todas las familias de NFL están EN SOMBRA: el terminal enseña inteligencia, no picks. El registro privado acumula CLV por familia y solo la evidencia fuera de muestra puede abrir una (blueprint NFL-1125).') + '</span></div>');
   }
 
 
@@ -13299,9 +13315,11 @@
     var shadowB = open.length
       ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Lo que la sombra está registrando ahora</span><span class="gx-dim">' + open.length + '</span></div>' +
         '<div class="gx-picks-feed">' + visiblePicks(open.map(amfStoredCard)).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' +
-        '<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks públicas — el chip MONITOR de cada card lo dice.</div></div>'
-      : '<div class="gx-panel"><div class="gx-empty">' + illo('tickets') + '<b>La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.</b>' +
-        '<span class="gx-dim">Los veredictos se pintan con la misma card que los demás deportes, marcados como MONITOR: se registran y se liquidan en privado. Cuando una familia gane CLV fuera de muestra con muestra suficiente, se quita esa marca y pasan a ser picks públicas. Antes, no.</span></div></div>';
+        soloAdmin('<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks públicas — el chip MONITOR de cada card lo dice.</div>') + '</div>'
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('tickets') + '<b>' + (perfOK()
+        ? 'La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.'
+        : 'Todavía no hay jugadas en fútbol americano.') + '</b>' +
+        soloAdmin('<span class="gx-dim">Los veredictos se pintan con la misma card que los demás deportes, marcados como MONITOR: se registran y se liquidan en privado. Cuando una familia gane CLV fuera de muestra con muestra suficiente, se quita esa marca y pasan a ser picks públicas. Antes, no.</span>') + '</div></div>';
     // CABECERA = LA MISMA GRAMÁTICA DEL BOARD DE FÚTBOL (pedido de Alexis, 18-ago), el espejo que ya
     // tienen combate, baloncesto y esports. Los chips dicen la verdad de cada producto: Picks es el estado
     // de las familias (todas en sombra, con su porqué), Value y Arbitraje declaran que aún no se publican.
@@ -13316,14 +13334,17 @@
     var inner;
     if (oppSub === 'value') {
       inner = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>El value de NFL corre en sombra, no en público.</b>' +
-        '<span class="gx-dim">El modelo queda a ~0,45 pts del cierre (MAE 10,31 vs 9,86) y el backtest 2017-2025 no aprueba ninguna familia: publicar value con esa distancia sería vender ruido. El registro privado acumula CLV; si una familia lo gana fuera de muestra, este chip se enciende.</span></div></div>';
+        soloAdmin('<span class="gx-dim">El modelo queda a ~0,45 pts del cierre (MAE 10,31 vs 9,86) y el backtest 2017-2025 no aprueba ninguna familia: publicar value con esa distancia sería vender ruido. El registro privado acumula CLV; si una familia lo gana fuera de muestra, este chip se enciende.</span>') + '</div></div>';
     } else if (oppSub === 'arb') {
       inner = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('opp_arb_na')) + '</b>' +
-        '<span class="gx-dim">La comparación multi-casa del partido ya existe (grid de mercado en cada Game Terminal); el detector de arbitraje puro entre casas de NFL todavía no está construido, y no se finge.</span></div></div>';
+        soloAdmin('<span class="gx-dim">La comparación multi-casa del partido ya existe (grid de mercado en cada Game Terminal); el detector de arbitraje puro entre casas de NFL todavía no está construido, y no se finge.</span>') + '</div></div>';
     } else {
-      inner = famB + shadowB;
+      // `famB` es el estado interno de cada familia con su porqué medido: taller. Las cards de la
+      // sombra sí se quedan — llevan su chip MONITOR y eso ya dice lo que hay que saber.
+      inner = soloAdmin(famB) + shadowB;
     }
-    nflShell(t('nav_opps'), head + hero + inner + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>');
+    nflShell(t('nav_opps'), head + soloAdmin(hero) + inner +
+      soloAdmin('<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>'));
   }
 
   // ---- 1c) JUGADORES: directorio por posición ------------------------------------------------------------

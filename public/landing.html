@@ -2,10 +2,20 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<script>/* FUSIÓN: si ya hay sesión (localStorage) pero el server sirvió la landing porque la cookie falta o no coincide,
-   sincronizamos la cookie y recargamos → el server sirve la plataforma en la raíz. Corre ANTES de pintar; se
-   auto-detiene cuando la cookie coincide (no hay bucle). El anónimo (sin token) no hace nada y ve la landing. */
-try{var _t=localStorage.getItem('wc_token');var _c=(document.cookie.match(/(?:^|;\s*)wc_token=([^;]+)/)||[])[1];if(_t&&decodeURIComponent(_c||'')!==_t){document.cookie='wc_token='+_t+';path=/;max-age=31536000;SameSite=Lax';location.reload();}}catch(e){}</script>
+<script>/* CON SESIÓN NO SE PINTA LA LANDING (reescrito 23-ago).
+   Antes esto solo actuaba si la cookie NO coincidía con localStorage, y lo hacía con `location.reload()`.
+   Dos problemas, los dos vistos: (1) recargar la MISMA url la puede resolver el navegador del caché, y el
+   caché guarda la landing de antes de existir la sesión — así que la recarga devolvía otra vez la landing;
+   (2) si la cookie SÍ coincidía pero el servidor había servido la landing igualmente, no pasaba nada y el
+   usuario se quedaba ahí hasta recargar a mano. Que es exactamente lo que se reportó.
+   Ahora: con token, se repara la cookie y se pide la plataforma con una url que no puede salir del caché,
+   por `replace` para no dejar la landing en el historial. El pestillo de sesión corta cualquier bucle: si
+   al segundo intento el servidor insiste en la landing, se deja ver en vez de recargar para siempre. */
+try{var _t=localStorage.getItem('wc_token');
+if(_t){var _c=(document.cookie.match(/(?:^|;\s*)wc_token=([^;]+)/)||[])[1];
+if(decodeURIComponent(_c||'')!==_t)document.cookie='wc_token='+_t+';path=/;max-age=31536000;SameSite=Lax';
+if(!sessionStorage.getItem('gp_boot')){sessionStorage.setItem('gp_boot','1');location.replace('/?e='+Date.now());}}
+else{try{sessionStorage.removeItem('gp_boot');}catch(e){}}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GP Simulador · El modelo que le discute el precio al mercado</title>
 <meta name="description" content="Cada pick con su porqué, su cuota congelada y su resultado liquidado en público — más de 500 ya liquidadas. Fútbol (44 ligas) y combate (UFC, MMA, boxeo), en tu idioma.">

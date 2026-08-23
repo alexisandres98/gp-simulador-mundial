@@ -20836,7 +20836,11 @@ const server = http.createServer(async (req, res) => {
             html = html.replace(`<script src="premium.js?v=${vjs}">`, `<script src="premium-qa.js?v=${vqa}"></script><script src="premium.js?v=${vjs}">`);
           } catch {}
         }
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        // NO-STORE, no `no-cache` (23-ago). La raíz decide POR COOKIE si sirve la landing o la
+        // plataforma, así que una copia guardada es una copia de la decisión de otro momento: el
+        // navegador te devolvía la landing de antes de entrar. `no-cache` permite guardarla y
+        // revalidar; `no-store` prohíbe guardarla, que es lo único que cierra el caso.
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, must-revalidate' });
         return res.end(html);
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
@@ -20847,7 +20851,11 @@ const server = http.createServer(async (req, res) => {
         const vjs = Math.floor(fs.statSync(path.join(__dirname, 'public', 'landing.js')).mtimeMs);
         // __GPL3: landing v3 (clubes) conocida ANTES del primer paint — sin swap visible de copy/hero.
         let html = fs.readFileSync(lf, 'utf8').replace('src="/landing.js"', `src="/landing.js?v=${vjs}"`).replace('</head>', `<script>window.__GPDL=${JSON.stringify(defaultLang())};window.__GPL3=${landingV3On()};window.__GPM=${String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true'};window.__GCID=${JSON.stringify((process.env.GOOGLE_CLIENT_ID || '').trim())}</script>${gaSnippet()}</head>`);
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' });
+        // NO-STORE, no `no-cache` (23-ago). La raíz decide POR COOKIE si sirve la landing o la
+        // plataforma, así que una copia guardada es una copia de la decisión de otro momento: el
+        // navegador te devolvía la landing de antes de entrar. `no-cache` permite guardarla y
+        // revalidar; `no-store` prohíbe guardarla, que es lo único que cierra el caso.
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, must-revalidate' });
         return res.end(html);
       } catch { /* si algo falla, cae al servido estático normal (index viejo) */ }
     }

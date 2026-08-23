@@ -601,7 +601,7 @@
         if (!res.ok || !res.j.token) { if (msg) { msg.className = 'm-msg err'; msg.textContent = res.j.error || T('e_net'); } return; }
         try { localStorage.setItem('wc_token', res.j.token); document.cookie = 'wc_token=' + res.j.token + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
         renderAuthSuccess();
-        setTimeout(function () { location.href = '/'; }, 1100);
+        setTimeout(function () { location.replace('/?e=' + Date.now()); }, 700);
       })
       .catch(function () { if (msg) { msg.className = 'm-msg err'; msg.textContent = T('e_net'); } });
   }
@@ -720,7 +720,7 @@
         // sesión en localStorage (APIs) + cookie (el server sirve la plataforma en la raíz sin redirección)
         try { localStorage.setItem('wc_token', res.j.token); document.cookie = 'wc_token=' + res.j.token + ';path=/;max-age=31536000;SameSite=Lax'; } catch (e) {}
         renderAuthSuccess();
-        setTimeout(function () { location.href = '/'; }, 1100);
+        setTimeout(function () { location.replace('/?e=' + Date.now()); }, 700);
       })
       .catch(function () { sending = false; btn.disabled = false; btn.textContent = T('a_verify'); msg.className = 'm-msg err'; msg.textContent = T('e_net'); });
   }

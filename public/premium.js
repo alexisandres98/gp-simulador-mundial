@@ -9289,6 +9289,7 @@
     precio_viejo: ['Precio viejo', 'la cotización tiene más de 90 minutos.'],
   };
   function esWhyNot(d) {
+    if (!perfOK()) return '';
     var agg = {}, valued = 0;
     (d.items || []).forEach(function (it) {
       valued += it.valued || 0;
@@ -14255,7 +14256,7 @@
 
     // 5) POR QUÉ NO HAY MÁS — una jornada sin picks es una decisión, no un sistema apagado
     var wn = d.why_not;
-    var why = wn && wn.top && wn.top.length ? esPanel('Por qué no hay más', '<span class="gx-dim">' + wn.valued + ' líneas valoradas</span>',
+    var why = perfOK() && wn && wn.top && wn.top.length ? esPanel('Por qué no hay más', '<span class="gx-dim">' + wn.valued + ' líneas valoradas</span>',
       '<div class="gx-es-why-rows">' + wn.top.map(function (r) {
         var m = ES_REASON[r.motivo] || [String(r.motivo).replace(/_/g, ' '), ''];
         return '<div class="gx-es-whyr"><b>' + esc(m[0]) + '</b><em>' + r.n + '</em><span>' + esc(m[1]) + '</span></div>';
@@ -16568,16 +16569,39 @@
           return (!h0 && sp0) ? sp0 : S.sport;
         })();
         shell(); load(); loadCanon(); startLiveLoop();
-        fetch('/api/me', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (me) {
-          // Guard: /x es la plataforma nueva para usuarios CON acceso beta (o admin). Si alguien sin acceso entra
-          // manualmente a /x, lo devolvemos a la plataforma actual (no debe quedar atrapado con datos gateados).
-          if (!me || (!me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
+        // UN FALLO DE RED NO ES UN CIERRE DE SESIÓN (23-ago). Este `catch` devolvía null y el guard de
+        // abajo trataba el null como "no tienes acceso": borraba el token, borraba la cookie y te echaba
+        // al landing. O sea que un segundo de mal wifi en el metro te desconectaba, y al volver tenías que
+        // entrar otra vez. Ahora se distingue: 401/403 es el servidor diciendo que no; cualquier otra cosa
+        // —red caída, 500, timeout— es un problema nuestro y la sesión se queda quieta.
+        fetch('/api/me', { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : (r.status === 401 || r.status === 403 ? 'NO' : null); })
+          .catch(function () { return null; })
+          .then(function (me) {
+          if (me === 'NO' || (me && !me.beta_access && !me.isAdmin)) { try { localStorage.removeItem('wc_token'); document.cookie = 'wc_token=;path=/;max-age=0'; } catch (e) {} if (!/[?&]noredir=1/.test(location.search)) { location.replace('/landing'); return; } }
+          if (me === 'NO') me = null;
           if (me) { S.me = me; syncAdminUI(); syncFounderBanner(); maybeOnboard(); if (!document.getElementById('gx-onb')) maybeTrialModal(); loadPlayerIndex(); loadClubsPlayerIndex();
             // FASE CLUBES shadow: /api/me llega DESPUÉS del primer render por hash → precargar clubes y
             // repintar Partidos para que el selector de competición aparezca sin interacción extra.
             // el shell se pinta ANTES de que llegue /api/me → el sportbar se construyó sin saber si combate
             // está permitido. Si al llegar la sesión cambia el veredicto, se reconstruye (badge "Próximamente").
-            if ((cbSportAllowed() && $('.gx-cbsoon')) || (bbAllowed() && $('.gx-sport.dim'))) shell();
+            // EL SHELL SE PINTA ANTES DE QUE LLEGUE /api/me, así que nace con TODOS los deportes en
+            // "Próximamente". Esto solo lo repintaba si cambiaba el veredicto de COMBATE o de BALONCESTO;
+            // con cinco deportes nuevos, atarlo a dos era confiar en la suerte. Ahora se pregunta por los
+            // seis: si alguno está permitido y su botón no existe (o combate sigue con su etiqueta), el
+            // shell está desactualizado y se repinta. Sin esto el usuario ve "Próximamente" hasta recargar.
+            var barraVieja = (cbSportAllowed() && $('.gx-cbsoon')) ||
+              [['hoops', bbAllowed()], ['esports', esAllowed()], ['nfl', nflAllowed()],
+               ['tennis', tenAllowed()], ['f1', f1Allowed()]].some(function (x) {
+                return x[1] && !$('[data-sportgo="' + x[0] + '"]');
+              });
+            if (barraVieja) shell();
+            // Y EL CUERPO TAMBIÉN. Cada `render*` de deporte empieza con `if (!S.me) { …loading; return; }`,
+            // así que quien abre un enlace directo a una vista de deporte llega ANTES que la sesión y se
+            // queda mirando el cargando para siempre: no había nada que volviera a llamar al enrutador
+            // cuando `me` llegaba. Ese es el "hay que recargar para que aparezcan las cosas". Se repinta la
+            // vista actual una sola vez, ya con la sesión en la mano.
+            try { showView(S.view); } catch (e) {}
             if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(S.view) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(S.view) >= 0 && !f1Allowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl' || S.sport === 'tennis' || S.sport === 'f1') { S.sport = 'futbol'; shell(); } showView('board'); }
             // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
             // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por

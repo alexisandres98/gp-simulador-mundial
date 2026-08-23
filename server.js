@@ -1983,6 +1983,78 @@ function launchEmail(lang) {
 // (que llega a Principal): texto plano 1:1 firmado por Alexis, CERO etiquetas <a> (la URL va como texto),
 // sin imágenes ni botones, termina con una PREGUNTA (invita respuesta = señal fuerte de Principal), y se
 // envía con from: REENGAGE_FROM + noListUnsub (la baja vive en el cuerpo).
+// LANZAMIENTO DE LOS NUEVE (23-ago) — el correo que anuncia los cinco deportes nuevos y su semana
+// abierta. Va con la MISMA receta anti-Promociones que ya funcionó en el lanzamiento de la fusión y en el
+// de combate, y conviene dejarla escrita porque cada pieza está por un motivo, no por estilo:
+//   · remitente con NOMBRE de persona (REENGAGE_FROM) y no una marca;
+//   · SIN cabecera List-Unsubscribe (`noListUnsub`) — es la señal que más empuja a Promociones en Gmail;
+//     la baja se ofrece respondiendo, que además es una respuesta y por tanto engagement positivo;
+//   · CERO enlaces, cero imágenes, cero botones: el HTML es el mismo texto en párrafos. Un correo con
+//     <a> y banners es un correo de campaña y se clasifica como tal;
+//   · el dominio se escribe en texto plano para que el lector lo teclee;
+//   · asunto en minúsculas, sin emoji y sin promesa: parece escrito a mano porque lo está;
+//   · termina con una PREGUNTA. Las respuestas son la señal más fuerte que existe para la bandeja.
+// Sobre el contenido: no lleva un solo número de rendimiento. El registro público está retirado ahora
+// mismo, y prometer un porcentaje que el lector no puede ir a comprobar es exactamente lo que esta casa
+// no hace.
+function gpNineEmail(lang) {
+  const en = lang === 'en';
+  if (en) {
+    const subject = 'we are not just football any more';
+    const text = `Hi,
+
+I'm Alexis, the person behind GP Simulador. I'm writing to you directly because something big changed today and I'd rather you heard it from me than from a post.
+
+Until this week we were football and combat sports. From today we are nine: basketball (NBA, WNBA and NCAA), esports (CS2, League of Legends, Valorant and Dota 2), American football (NFL, college and CFL), tennis (ATP and WTA) and Formula 1.
+
+None of them is the one next door with a different name. Each has its own engine, because a map veto in CS2 looks nothing like a fighter's weight cut or wet asphalt on a race track. That is what took us months.
+
+And here is the part I wanted to tell you: those five new sports are open on every plan until 30 August. Nothing to pay, no card, no changing your subscription. Log in with your usual account at gpsimulador.com and look at any of them. Football and combat stay exactly as they were.
+
+After the 30th they move to Pro and Sharp. That's why I'm telling you now and not next week — so you try them properly and decide with a reason, instead of finding out once the door closed.
+
+One more thing, because I'd rather say it myself: not everything running inside gets published. A sport only publishes plays once the model proves it beats the market in that sport, and in several of them it is still being measured. You'll find analysis, probabilities and price comparison across all nine; plays, in the ones that earned them.
+
+Which of the five will you open first? Reply and tell me — I read every answer, and whatever repeats most is what we work on next.
+
+Alexis
+GP Simulador
+
+Estimates from a statistical model, not financial advice. Bet responsibly. 18+.
+
+(If you'd rather not get my emails, reply "unsubscribe" and I'll take you off the list.)`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'ya no somos solo fútbol';
+  const text = `Hola,
+
+Soy Alexis, el que está detrás de GP Simulador. Te escribo directo porque hoy cambió algo grande y prefiero que te enteres por mí y no por una publicación.
+
+Hasta esta semana éramos fútbol y combate. Desde hoy somos nueve: baloncesto (NBA, WNBA y NCAA), esports (CS2, League of Legends, Valorant y Dota 2), fútbol americano (NFL, college y CFL), tenis (ATP y WTA) y Fórmula 1.
+
+Ninguno es el de al lado con otro nombre. Cada uno tiene su propio motor, porque el veto de mapas de un CS2 no se parece en nada al corte de peso de un peleador ni al asfalto mojado de una carrera. Eso es lo que nos llevó meses.
+
+Y acá va lo que quería contarte: esos cinco deportes nuevos están abiertos en todos los planes hasta el 30 de agosto. Sin pagar nada, sin tarjeta y sin cambiar tu suscripción. Entrá con tu cuenta de siempre en gpsimulador.com y mirá cualquiera de ellos. Fútbol y combate siguen igual que estaban.
+
+Después del 30 quedan en Pro y Sharp. Por eso te aviso ahora y no la semana que viene: la idea es que los pruebes con calma y decidas con criterio, no que te enteres cuando ya se cerró la puerta.
+
+Una cosa más, porque prefiero decirla yo: no todo lo que corre por dentro sale publicado. Un deporte solo publica jugadas cuando el modelo demuestra que le gana al mercado en ese deporte, y en varios todavía se está midiendo. Vas a encontrar análisis, probabilidades y comparación de precios en los nueve; jugadas, en los que se las ganaron.
+
+¿Cuál de los cinco vas a abrir primero? Respondeme y contame — leo todas las respuestas, y lo que más se repite es lo próximo que atendemos.
+
+Alexis
+GP Simulador
+
+Estimaciones de un modelo estadístico, no consejo financiero. Apostá con responsabilidad. 18+.
+
+(Si preferís no recibir mis correos, respondé "baja" y te saco de la lista.)`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 function launchPersonalEmail(lang) {
   const en = lang === 'en';
   const tr = dailyPicksTrackRecord().overall || {};
@@ -20735,6 +20807,8 @@ const server = http.createServer(async (req, res) => {
                   : (variant === 'features_en') ? () => featuresEmail('en')
                     : (variant === 'gpintel_es') ? () => gpIntelEmail('es')
                       : (variant === 'gpintel_en') ? () => gpIntelEmail('en')
+                        : (variant === 'gpnine_es') ? () => ({ ...gpNineEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                          : (variant === 'gpnine_en') ? () => ({ ...gpNineEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                         : (variant === 'gpcombat_es') ? () => gpCombatEmail('es')
                           : (variant === 'gpcombat_en') ? () => gpCombatEmail('en')
                         : (variant === 'gpcombat2_es') ? () => gpCombat2Email('es')

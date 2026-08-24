@@ -1494,17 +1494,53 @@ function settleOne(pk, res) {
 
 // El CLV se calcula igual que en baloncesto —`cuota_tomada / cuota_cierre − 1`— para que las cifras de los
 // cuatro deportes se puedan poner en la misma tabla sin nota al pie.
+// EL PROBLEMA QUE ESTO RESUELVE (25-ago). El hándicap de kills de LoL lleva 132 picks liquidadas y solo
+// ONCE con CLV. No es que falte el cierre —hay 149 cierres guardados—: es que la línea se mueve. Nacemos
+// en +2,5 y la casa cierra en +3,5, y como este casador exigía la línea EXACTA, el 92 % de la familia se
+// quedaba sin medir. Con una familia sin medir no se puede decidir nada, y era justo la que mejor pinta
+// tenía de toda la casa.
+//
+// La corrección es la que usa cualquiera que mida CLV sobre hándicaps: si la línea exacta no está en el
+// cierre, se INTERPOLA sobre la escalera de la misma casa. Con dos reglas que la hacen honesta:
+//   · se interpola en PROBABILIDAD implícita, no en cuota — la cuota no es lineal en la línea;
+//   · se marca de dónde salió (`exacta` / `interpolada`), porque un cierre interpolado es evidencia más
+//     débil y el informe tiene que poder separarlas en vez de mezclarlas en una media que nadie pidió.
+// Y un límite: fuera de 3 puntos de distancia no se interpola. A esa distancia ya no es la misma apuesta.
+const CLOSE_MAX_GAP = 3;
+
 function closeOddsFor(pk, closes) {
   const c = closes && closes.closes && closes.closes[pk.event_id];
   if (!c || !c.rows) return null;
-  const same = c.rows.filter((r) => r.family === pk.family && r.side === pk.side
-    && (r.line == null ? null : +r.line) === (pk.line == null ? null : +pk.line)
-    && (r.map || null) === (pk.map || null) && (r.team || null) === (pk.team || null));
-  if (!same.length) return null;
-  // el cierre de referencia es el de la MISMA casa si está; si no, el mejor precio del cierre
-  const mine = same.filter((r) => r.book === pk.book);
-  const pool = mine.length ? mine : same;
-  return pool.reduce((mx, r) => Math.max(mx, r.odds || 0), 0) || null;
+  const mismaApuesta = (r) => r.family === pk.family && r.side === pk.side
+    && (r.map || null) === (pk.map || null) && (r.team || null) === (pk.team || null);
+
+  const exactas = c.rows.filter((r) => mismaApuesta(r)
+    && (r.line == null ? null : +r.line) === (pk.line == null ? null : +pk.line));
+  const mejor = (rows) => {
+    const mine = rows.filter((r) => r.book === pk.book);
+    const pool = mine.length ? mine : rows;
+    return pool.reduce((mx, r) => Math.max(mx, r.odds || 0), 0) || null;
+  };
+  if (exactas.length) {
+    const o = mejor(exactas);
+    return o ? { odds: o, src: 'exacta' } : null;
+  }
+
+  // ── sin línea exacta: la escalera de la misma casa ──────────────────────────────────────────
+  if (pk.line == null) return null;
+  const mia = +pk.line;
+  const escalera = c.rows.filter((r) => mismaApuesta(r) && r.line != null && r.odds > 1
+    && r.book === pk.book && Math.abs(+r.line - mia) <= CLOSE_MAX_GAP);
+  if (escalera.length < 2) return null;
+  const pts = escalera.map((r) => ({ x: +r.line, p: 1 / r.odds })).sort((a, b) => a.x - b.x);
+  const abajo = [...pts].reverse().find((q) => q.x <= mia);
+  const arriba = pts.find((q) => q.x >= mia);
+  // hacen falta los dos lados: extrapolar fuera de la escalera es inventarse un precio que nunca existió
+  if (!abajo || !arriba || abajo.x === arriba.x) return null;
+  const t = (mia - abajo.x) / (arriba.x - abajo.x);
+  const pInterp = abajo.p + t * (arriba.p - abajo.p);
+  if (!(pInterp > 0.01 && pInterp < 0.99)) return null;
+  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada' };
 }
 
 const RES = require('../data-providers/esports/results');
@@ -1520,7 +1556,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   for (const p of Object.values(st.picks)) {
     if (p.status !== 'SETTLED' || p.clv_pct != null) continue;
     const co = closeOddsFor(p, closes0);
-    if (co) { p.close_odds = co; p.clv_pct = +(((p.odds / co) - 1) * 100).toFixed(2); backfilled++; }
+    if (co) { p.close_odds = co.odds; p.close_src = co.src; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
   }
   if (backfilled) wr(PICKS_F(game), st);
 
@@ -1648,7 +1684,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     pk.settled_at = new Date().toISOString();
     pk.result_source = r.source;
     const co = closeOddsFor(pk, closes);
-    if (co) { pk.close_odds = co; pk.clv_pct = +(((pk.odds / co) - 1) * 100).toFixed(2); }
+    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
     settled++;
   }
   st.at = new Date().toISOString();
@@ -1691,16 +1727,24 @@ function track(game, { limit = 60 } = {}) {
   const units = settled.reduce((s, p) => s + (p.units || 0), 0);
   const staked = settled.filter((p) => p.result_code !== 'PUSH').length;
   const clvs = settled.filter((p) => p.clv_pct != null).map((p) => p.clv_pct);
+  // DE DÓNDE SALIÓ CADA CIERRE. Un CLV interpolado sobre la escalera es evidencia más débil que uno con
+  // la línea exacta. Mezclarlos en una sola media sin decirlo sería justo lo que esta casa le reprocha a
+  // las demás, así que el recuento viaja al lado del número.
+  const srcCount = (rows) => rows.reduce((a, p) => {
+    const k = p.close_src || (p.clv_pct != null ? "exacta" : null);
+    if (k) a[k] = (a[k] || 0) + 1;
+    return a;
+  }, {});
   const byFam = {};
   // POR FAMILIA **Y CASA**: aquí se vio por primera vez que el hándicap de rondas daba +3,53 % en la casa
   // afilada y −3,13 % en la única conectable por API. El promedio entre casas no informa, desinforma.
   const byFB = {};
   for (const p of settled) {
     const f = p.family || '?';
-    byFam[f] = byFam[f] || { n: 0, w: 0, units: 0, clv: [] };
+    byFam[f] = byFam[f] || { n: 0, w: 0, units: 0, clv: [], rows: [] };
     byFam[f].n++; if (p.result_code === 'WIN') byFam[f].w++;
     byFam[f].units += p.units || 0;
-    if (p.clv_pct != null) byFam[f].clv.push(p.clv_pct);
+    if (p.clv_pct != null) { byFam[f].clv.push(p.clv_pct); byFam[f].rows.push(p); }
     const bk = p.book || 'sin_casa';
     const k2 = f + ' · ' + bk;
     byFB[k2] = byFB[k2] || { n: 0, w: 0, units: 0, clv: [], family: f, book: bk };
@@ -1722,9 +1766,10 @@ function track(game, { limit = 60 } = {}) {
     roi_pct: staked ? +(100 * units / staked).toFixed(2) : null,
     hit_pct: (w + l) ? +(100 * w / (w + l)).toFixed(1) : null,
     clv_avg_pct: avg(clvs), clv_n: clvs.length,
+    clv_src: srcCount(settled.filter((p) => p.clv_pct != null)),
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, v]) => [k,
       { n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2),
-        clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),
+        clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv), clv_src: srcCount(v.rows) }])),
     by_family_book: Object.fromEntries(Object.entries(byFB).map(([k, v]) => [k,
       { family: v.family, book: v.book, n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null,
         units: +v.units.toFixed(2), clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),

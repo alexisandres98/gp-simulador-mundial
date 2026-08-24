@@ -140,9 +140,15 @@ const ok = (cond, txt, detalle) => {
   ok(f11.motivo === 'seleccion_cerrada', 'esperando a que reabra', f11.motivo);
   casa.seleccion = { ...casa.seleccion, status: 'SELECTION_ENABLED' };
 
-  console.log('\n12. sin ventaja se DESCARTA, no se reintenta');
+  console.log('\n12. sin ventaja se APUESTA IGUAL (para poder comparar con el papel) pero se marca');
   const f12 = await RE.intentar(senal({ model_prob: 0.4 }), pick, { cbIdx: IDX });
-  ok(f12.status === 'DESCARTADA' && f12.motivo === 'sin_ventaja', 'descartada para siempre', f12.status);
+  ok(f12.status === 'PLACED', 'se coloca, como hace la sombra', f12.status);
+  ok(f12.ev_modelo_pct < 0, 'con su EV negativo anotado', f12.ev_modelo_pct);
+  ok(RE.board().por_ev.sin_ventaja.colocadas >= 1, 'y contada aparte en el tablero', RE.board().por_ev.sin_ventaja);
+  process.env.GP_REAL_EXIGIR_VENTAJA = '1';
+  const f12b = await RE.intentar(senal({ model_prob: 0.4 }), pick, { cbIdx: IDX });
+  ok(f12b.status === 'DESCARTADA', 'con el interruptor puesto vuelve a filtrarlas', f12b.status);
+  delete process.env.GP_REAL_EXIGIR_VENTAJA;
 
   console.log('\n13. el suelo de cartera frena');
   casa.saldo = 45; await RE.refrescarSaldo();

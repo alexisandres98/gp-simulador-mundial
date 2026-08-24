@@ -19166,6 +19166,18 @@ const server = http.createServer(async (req, res) => {
           const S3 = shadowInit();
           const byPick3 = {}; for (const q of (db.clubDailyPicks || [])) byPick3[q.pick_id] = q;
           const ahora3 = Date.now();
+          // reabrir lo que se descartó por un criterio que ya no aplica. Cuando se decidió que el ejecutor
+          // real tiene que tomar TODO lo que toma la sombra, las que se habían sellado por `sin_ventaja`
+          // dejaron de estar bien selladas: si su partido no ha empezado, vuelven a la cola.
+          const LR = RE.load();
+          let reabiertas = 0;
+          for (const b of LR.bets) {
+            if (b.status === 'DESCARTADA' && b.motivo === 'sin_ventaja'
+              && b.kickoff_at && Date.parse(b.kickoff_at) > ahora3) {
+              b.status = 'PENDIENTE'; b.motivo = null; reabiertas++;
+            }
+          }
+          if (reabiertas) RE.save();
           const cand = S3.bets.filter((x) => x.status === 'OPEN' && x.segment === RE.SEGMENTO
             && x.kickoff_at && Date.parse(x.kickoff_at) > ahora3 && byPick3[x.pick_id]);
           const out2 = [];
@@ -19173,7 +19185,7 @@ const server = http.createServer(async (req, res) => {
             const r2 = await RE.intentar(sb, byPick3[sb.pick_id], { cbIdx: db.cbEventIdx || {} }).catch((e) => ({ status: 'ERROR', motivo: e.message }));
             if (r2) out2.push({ match: sb.match, linea: sb.line, estado: r2.status, motivo: r2.motivo || null, stake: r2.stake || null, cuota: r2.odds_real || r2.precio_vivo || null });
           }
-          return json(res, 200, { candidatas: cand.length, resultado: out2 });
+          return json(res, 200, { reabiertas, candidatas: cand.length, resultado: out2 });
         }
         if (run === 'plan') return json(res, 200, await realDailyMail('plan', { force: true }));
         if (run === 'parte') return json(res, 200, await realDailyMail('parte', { force: true }));

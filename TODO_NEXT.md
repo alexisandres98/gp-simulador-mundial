@@ -41,7 +41,16 @@ se reenvía) · PLACED · SETTLED · CADUCADA (se acabó el tiempo) · DESCARTAD
 
 **Frenos:** `GP_REAL_ENABLED` (maestro), `GP_REAL_DRY` (ensayo), tope por apuesta en dólares, tope de
 exposición abierta —lo que está en el aire cuenta como comprometido—, parada diaria por pérdida, suelo de
-cartera, deslizamiento máximo, y rechazo de cualquier apuesta con Kelly no positiva.
+cartera y deslizamiento máximo.
+
+**LA VENTAJA SE MIDE, NO SE FILTRA (25-ago, decisión de Alexis).** El ejecutor llegó a rechazar las señales
+con `prob × cuota ≤ 1`. Sonaba prudente y rompía lo único que este primer mes existe para medir: la sombra
+SÍ las toma, así que filtrarlas convertía la diferencia entre los dos registros en "dos criterios distintos"
+en vez de "papel contra dinero". Son el 14 % de las señales con EV medio −2,1 % — unos 0,3 puntos de EV
+global. Se apuestan, se marcan con su `ev_modelo_pct` y el tablero las cuenta APARTE en `por_ev`, para poder
+contestar dentro de un mes si de verdad perdieron. `GP_REAL_EXIGIR_VENTAJA=1` vuelve a filtrarlas si el dato
+lo pide. **Ojo con el porqué: esto NO es una discusión sobre CLV.** `sin_ventaja` compara el precio con la
+probabilidad del propio modelo, no con el cierre.
 
 **LA CASA TIENE DOS APIS DE APUESTAS Y SOLO UNA NOS DEJA ENTRAR.** Con llave `trading` y cuenta fondeada,
 toda la familia REST `/pub/vN/bets/*` —colocar, consultar estado, historial— devuelve **403 con página de

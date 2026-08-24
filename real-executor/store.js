@@ -240,9 +240,22 @@ async function colocar(fila, { cbIdx = {} } = {}) {
     save(); return fila;
   };
 
-  // 1) la ventaja y el stake. Si el modelo no le da valor a este precio no hay nada que apostar, y eso no
-  //    va a cambiar en el próximo barrido: es lo único que se descarta de verdad.
-  if (kellyDe(fila.model_prob, fila.odds_sombra) <= 0) return parar('sin_ventaja', { prob: fila.model_prob });
+  // 1) LA VENTAJA: SE MIDE, PERO NO SE FILTRA (25-ago, decisión de Alexis).
+  //    Este ejecutor rechazaba las señales cuyo `prob × cuota ≤ 1` —el modelo diciendo que a ese precio
+  //    pierde—. Sonaba prudente y rompía lo único que este primer mes existe para medir: la sombra SÍ las
+  //    toma, así que filtrarlas aquí convertía la diferencia entre los dos registros en "dos criterios
+  //    distintos" en vez de "papel contra dinero". El +44,9 % del papel incluye esas apuestas; el resultado
+  //    real tiene que incluirlas para poder ponerse al lado.
+  //    Medido antes de decidir: son el 14 % de las señales, con EV medio −2,1 %. Incluirlas cuesta unos
+  //    0,3 puntos de EV global. Romper la comparabilidad costaba el experimento entero.
+  //    Se marca cada una con su EV para poder contestar dentro de un mes si de verdad perdieron, que es la
+  //    única forma honesta de cerrar esta discusión: con datos y no con intuición.
+  //    `GP_REAL_EXIGIR_VENTAJA=1` vuelve a filtrarlas si algún día la medición dice que hay que hacerlo.
+  const evModelo = (fila.model_prob > 0 && fila.odds_sombra > 1) ? fila.model_prob * fila.odds_sombra - 1 : null;
+  fila.ev_modelo_pct = evModelo == null ? null : +(100 * evModelo).toFixed(2);
+  if (on('GP_REAL_EXIGIR_VENTAJA', false) && kellyDe(fila.model_prob, fila.odds_sombra) <= 0) {
+    return parar('sin_ventaja', { prob: fila.model_prob });
+  }
   const stake = stakeDe(fila.model_prob, fila.odds_sombra);
   fila.stake = stake;
 
@@ -599,6 +612,25 @@ function board({ limit = 40 } = {}) {
     deslizamiento_medio_pct: slip.length ? +(slip.reduce((a, x) => a + x, 0) / slip.length).toFixed(3) : null,
     deslizamiento_n: slip.length,
     recorte_por_tope_n: colocadas.filter((b) => (b.recorte_pct || 0) < 0).length,
+    // ── LAS QUE EL MODELO NO DABA POR BUENAS ───────────────────────────────────────────────────────────
+    // Se apuestan igual, para que el registro real sea comparable con el de papel. Pero van contadas
+    // APARTE, porque la pregunta "¿de verdad perdían?" solo se puede contestar si el subconjunto se puede
+    // aislar. Dentro de un mes esto decide si se vuelven a filtrar o no, y lo decide el dato.
+    por_ev: (() => {
+      const grupo = (rows) => {
+        const st = rows.filter((b) => b.status === 'SETTLED');
+        const apostado = st.reduce((a, b) => a + (b.stake || 0), 0);
+        const pl = st.reduce((a, b) => a + (b.pnl || 0), 0);
+        return { colocadas: rows.length, liquidadas: st.length,
+          w: st.filter((b) => b.resultado === 'WIN').length,
+          apostado: +apostado.toFixed(2), pnl: +pl.toFixed(2),
+          roi_pct: apostado ? +(100 * pl / apostado).toFixed(2) : null };
+      };
+      const con = colocadas.filter((b) => (b.ev_modelo_pct || 0) > 0);
+      const sin = colocadas.filter((b) => b.ev_modelo_pct != null && b.ev_modelo_pct <= 0);
+      return { con_ventaja: grupo(con), sin_ventaja: grupo(sin),
+        nota: 'las de EV no positivo se apuestan a propósito, para que el registro real sea comparable con el del papel. Van aparte para poder medir si costaron dinero.' };
+    })(),
     por_que_pendiente: cuenta(pendientes),
     por_que_caducada: cuenta(caducadas),
     dias: L.dias,

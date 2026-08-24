@@ -269,6 +269,34 @@ function resolverPorNombre(fila, slate) {
   return { cb_id: cands[0].cb_id, home: cands[0].home, away: cands[0].away, kickoff: cands[0].kickoff };
 }
 
+// POR QUÉ NO RESOLVIÓ, condición por condición. `resolverPorNombre` devuelve null por cinco motivos
+// distintos y el diagnóstico los daba todos como "sin_id_de_evento", que no se puede arreglar porque no
+// dice nada. Esto enseña los candidatos que SÍ casaron de nombre y qué filtro los tumbó: es la diferencia
+// entre "la casa no lo tiene" y "lo tiene y nosotros lo estamos descartando".
+function resolverDiag(fila, slate) {
+  const m = String(fila.match || '').split(/\s+vs\s+/i);
+  if (m.length !== 2) return { motivo: 'el nombre del partido no tiene la forma "A vs B"' };
+  const [c1, c2] = m;
+  const lista = (slate && Array.isArray(slate.ev) && slate.ev.length)
+    ? slate.ev.map((e) => ({ cb_id: e.id, home: e.h, away: e.a, kickoff: e.ko })) : [];
+  if (!lista.length) return { motivo: 'la agenda de la casa está vacía' };
+  const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
+  const porNombre = lista.filter((e) => (casanNombres(e.home, c1) && casanNombres(e.away, c2))
+    || (casanNombres(e.home, c2) && casanNombres(e.away, c1)));
+  if (!porNombre.length) {
+    // ¿casa AL MENOS UNO de los dos equipos? Separa "no está el partido" de "está con otro nombre".
+    const medio = lista.filter((e) => casanNombres(e.home, c1) || casanNombres(e.away, c1)
+      || casanNombres(e.home, c2) || casanNombres(e.away, c2)).slice(0, 4);
+    return { motivo: 'ningún partido casa los DOS nombres', agenda: lista.length,
+      casan_uno: medio.map((e) => `${e.home} v ${e.away}`) };
+  }
+  return { motivo: porNombre.length > 1 ? 'más de un candidato: no se apuesta' : 'candidato único, mirar los filtros',
+    candidatos: porNombre.slice(0, 4).map((e) => ({ id: e.cb_id, partido: `${e.home} v ${e.away}`,
+      saque_casa: e.kickoff, saque_nuestro: fila.kickoff_at,
+      horas_de_diferencia: (ko && e.kickoff) ? +((Date.parse(e.kickoff) - ko) / 3600e3).toFixed(1) : null,
+      ya_empezo: e.kickoff ? Date.parse(e.kickoff) < Date.now() : null })) };
+}
+
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
 async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
   const C = CFG(), L = load();
@@ -538,7 +566,9 @@ async function preflight(pares, { cbIdx = {}, slate = null } = {}) {
     f.ceid = ceid;
     let idx = ceid ? (cbIdx || {})[ceid] : null;
     if (!idx || !idx.cb_id) idx = resolverPorNombre({ match: sb.match, kickoff_at: sb.kickoff_at }, slate);
-    if (!idx || !idx.cb_id) { f.paso = 'sin_id_de_evento'; out.push(f); continue; }
+    if (!idx || !idx.cb_id) { f.paso = 'sin_id_de_evento';
+      f.por_que = resolverDiag({ match: sb.match, kickoff_at: sb.kickoff_at }, slate);
+      out.push(f); continue; }
     f.cb_event_id = idx.cb_id;
     const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);
     if (!ev) { f.paso = 'evento_ilegible'; out.push(f); continue; }
@@ -694,5 +724,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, resolverPorNombre, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

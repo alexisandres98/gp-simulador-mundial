@@ -19116,6 +19116,24 @@ const server = http.createServer(async (req, res) => {
         const run = url.searchParams.get('run') || '';
         if (run === 'saldo') return json(res, 200, { saldo: await RE.refrescarSaldo() });
         if (run === 'liquidar') return json(res, 200, await RE.liquidar());
+        // `run=recuperar`: mete en el libro las señales que el sombra YA tiene abiertas y que nunca pasaron
+        // por el ejecutor real —las que nacieron antes de encenderlo—. Sin esto, la primera apuesta real
+        // habría que esperarla a que el motor publique una señal nueva, que pueden ser horas. No relaja
+        // ningún control: cada una entra por la misma puerta, con el mismo perímetro, y el precio se relee
+        // en vivo igual que siempre. Solo las de partido aún por empezar, claro.
+        if (run === 'recuperar') {
+          const S3 = shadowInit();
+          const byPick3 = {}; for (const q of (db.clubDailyPicks || [])) byPick3[q.pick_id] = q;
+          const ahora3 = Date.now();
+          const cand = S3.bets.filter((x) => x.status === 'OPEN' && x.segment === RE.SEGMENTO
+            && x.kickoff_at && Date.parse(x.kickoff_at) > ahora3 && byPick3[x.pick_id]);
+          const out2 = [];
+          for (const sb of cand) {
+            const r2 = await RE.intentar(sb, byPick3[sb.pick_id], { cbIdx: db.cbEventIdx || {} }).catch((e) => ({ status: 'ERROR', motivo: e.message }));
+            if (r2) out2.push({ match: sb.match, linea: sb.line, estado: r2.status, motivo: r2.motivo || null, stake: r2.stake || null, cuota: r2.odds_real || r2.precio_vivo || null });
+          }
+          return json(res, 200, { candidatas: cand.length, resultado: out2 });
+        }
         if (run === 'plan') return json(res, 200, await realDailyMail('plan', { force: true }));
         if (run === 'parte') return json(res, 200, await realDailyMail('parte', { force: true }));
         return json(res, 400, { error: 'run=saldo|liquidar|plan|parte' });

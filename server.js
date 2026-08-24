@@ -8853,11 +8853,29 @@ function combatLoad(org) {
   // BOXEO: resultados frescos resueltos en caliente (db.boxingResults, ver boxingResultsSync). El archivo
   // del repo se congela en la fecha del último harvest; esto es la punta viva que hace que el panel de
   // "Finalizados" muestre las peleas de esta semana. Dedup por comp_id: si el harvest ya la trajo, manda él.
+  // FUSIONAR NO ES CONCATENAR SI EL ARCHIVO TRAE FANTASMAS (25-ago). El harvest no guarda solo lo peleado:
+  // guarda TAMBIÉN la cartelera futura, como filas con `completed: false`, sin ganador y sin método. Hoy hay
+  // 98 así en UFC. Cuando esa pelea se disputa, el archivo NO se entera —se congeló el día del harvest— y su
+  // fila fantasma se queda ahí para siempre.
+  //
+  // Por eso la regla "si el archivo ya la trae, manda el archivo" estaba mal: hacía ganar al fantasma sobre
+  // el resultado real. Ese era exactamente el fallo que Alexis veía —la pelea del sábado ya estaba en el
+  // archivo, sin resultado, y tapaba la de verdad—. La regla correcta es: **manda lo que está resuelto**, y
+  // entre dos resueltas manda el archivo, que es la fuente curada.
+  const fusionar = (base, vivos) => {
+    if (!vivos.length) return base;
+    const porId = new Map(base.map((f) => [f.comp_id, f]));
+    for (const v of vivos) {
+      const prev = porId.get(v.comp_id);
+      if (!prev || (!prev.completed && v.completed)) porId.set(v.comp_id, v);
+    }
+    return [...porId.values()];
+  };
+
   let liveBox = [];
   if (O.file === 'boxing') {
-    const have = new Set(C.own.map(f => f.comp_id));
-    liveBox = Object.values(db.boxingResults || {}).filter(f => f && f.comp_id && !have.has(f.comp_id));
-    if (liveBox.length) C.own = C.own.concat(liveBox);
+    liveBox = Object.values(db.boxingResults || {}).filter(f => f && f.comp_id);
+    C.own = fusionar(C.own, liveBox);
   }
   // MMA: la misma punta viva que boxeo ya tenía, y que aquí faltaba (25-ago). Sin esto, un peleador que
   // peleó anoche sigue enseñando la pelea anterior como su última: el récord, la racha, el Elo, el estilo y
@@ -8865,12 +8883,11 @@ function combatLoad(org) {
   // congelado en la fecha del último harvest. `mmaResultsSync` mantiene db.mmaResults al día desde ESPN.
   // Dedup por comp_id y el harvest manda: si el archivo ya la trae, la del repositorio es la buena.
   if (O.file !== 'boxing') {
-    const have = new Set(C.own.map(f => f.comp_id));
     // `lg` distingue de qué organización es cada resultado vivo, para no meter peleas de PFL en el archivo
     // de UFC: el récord de una organización tiene que seguir siendo el de esa organización.
-    const mios = Object.values(db.mmaResults || {}).filter(f => f && f.comp_id && !have.has(f.comp_id)
+    const mios = Object.values(db.mmaResults || {}).filter(f => f && f.comp_id && f.completed
       && (O.file === 'ufc' ? f.lg === 'ufc' : true));
-    if (mios.length) C.own = C.own.concat(mios);
+    C.own = fusionar(C.own, mios);
   }
   // POOL de rating: unión deduplicada por comp_id de los archivos de su deporte (ver COMBAT_ORGS.pool)
   const seenC = new Set(), pooled = [];
@@ -8882,17 +8899,21 @@ function combatLoad(org) {
   // los resultados frescos de boxeo también entran al POOL: es de ahí que sale el cockpit de una pelea ya
   // disputada (/api/combat/fight busca en C.fights), así que sin esto el panel de Finalizados enlazaría a
   // un 404. De paso el Elo cuenta con la pelea de anteayer en vez de esperar al próximo harvest.
-  for (const f of liveBox) { if (!seenC.has(f.comp_id)) { seenC.add(f.comp_id); pooled.push(f); } }
-  // y los de MMA, por la misma razón: el POOL es de donde salen el Elo, el estilo, el índice por peleador
-  // (última pelea, racha, KO encajados, minutos) y la ficha de una pelea ya disputada. Dejarlos fuera de
-  // aquí y solo dentro de `C.own` arreglaría el récord y dejaría el resto mintiendo, que es peor que no
-  // arreglar nada: media verdad en un perfil no se ve, se cree.
-  if (O.file !== 'boxing') {
-    for (const f of Object.values(db.mmaResults || {})) {
-      if (!f || !f.comp_id || seenC.has(f.comp_id)) continue;
-      seenC.add(f.comp_id); pooled.push(f);
+  // EL POOL, con la misma regla: lo resuelto pisa al fantasma. Aquí importa el doble, porque de este array
+  // salen el Elo, el estilo, el índice por peleador (última pelea, racha, KO encajados, minutos de jaula) y
+  // la ficha de una pelea ya disputada. Arreglar solo `C.own` habría corregido el récord y dejado el resto
+  // mintiendo, que es peor que no arreglar nada: media verdad en un perfil no se ve, se cree.
+  const donde = new Map(); pooled.forEach((f, i) => donde.set(f.comp_id, i));
+  const pisar = (vivos) => {
+    for (const v of vivos) {
+      if (!v || !v.comp_id || !v.completed) continue;
+      const i = donde.get(v.comp_id);
+      if (i === undefined) { donde.set(v.comp_id, pooled.length); pooled.push(v); seenC.add(v.comp_id); }
+      else if (!pooled[i].completed) pooled[i] = v;
     }
-  }
+  };
+  pisar(liveBox);
+  if (O.file !== 'boxing') pisar(Object.values(db.mmaResults || {}));
   // ORDEN CANÓNICO DEL POOL DE ENTRENAMIENTO (2-ago). ESPN lista PRIMERO al favorito y f1 gana el 59.8%
   // de las peleas. El engine es antisimétrico SIN intercepto A PROPÓSITO (para ser inmune al orden), así que
   // no puede expresar ese 59.8%: el SGD compensa deformando los pesos y el resultado es una probabilidad

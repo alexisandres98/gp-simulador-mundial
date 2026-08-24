@@ -427,6 +427,15 @@ async function betByReference(apiKey, referenceId) {
   return r2 && r2.ok ? r2.body : null;
 }
 
-module.exports = { fetchCloudbetSoccer, normalizeEvent, soccerCompetitions, HOST,
+// LO QUE HAY EN LA CACHÉ, SIN SALIR A BUSCAR NADA. `fetchCloudbetSoccer` con la caché vencida se lanza a
+// una cosecha entera —cientos de peticiones de detalle— y eso, llamado desde el barrido del ejecutor, lo
+// convierte en un trabajo de minutos: la primera vez que se intentó, la petición murió con un 502. Para
+// averiguar el id de un partido no hace falta nada fresco: los ids no cambian. Así que se lee lo último que
+// el colector dejó, con su edad al lado para que quien lo use pueda decidir si le sirve.
+function cachedSoccer() {
+  return { at: _cache.at, edad_min: _cache.at ? Math.round((Date.now() - _cache.at) / 60000) : null, data: _cache.data || [] };
+}
+
+module.exports = { fetchCloudbetSoccer, cachedSoccer, normalizeEvent, soccerCompetitions, HOST,
   balance, accountCurrencies, eventRaw, selectionFor, placeBet, betByReference };
 

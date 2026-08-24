@@ -4646,7 +4646,11 @@ async function cbResolveEvent(pick) {
   const meta = (db.clubsQuoteEvents || {})[ceid];
   if (!apiKey || !meta) return null;
   try {
-    const evs = await require('./market-scanner/venues/cloudbet').fetchCloudbetSoccer({ apiKey });
+    // SOLO LA CACHÉ, nunca una cosecha. Pedirle a `fetchCloudbetSoccer` con la caché vencida dispara
+    // cientos de peticiones de detalle y convierte el barrido en un trabajo de minutos — la primera versión
+    // de esto mató la petición con un 502. El colector refresca cada 10 minutos y un id de partido no
+    // caduca, así que lo último que dejó es exactamente igual de bueno.
+    const { data: evs } = require('./market-scanner/venues/cloudbet').cachedSoccer();
     const cb = (evs || []).find((e) => e.cb_id && (
       (cloudbetNameMatch(e.home, meta.home) && cloudbetNameMatch(e.away, meta.away)) ||
       (cloudbetNameMatch(e.home, meta.away) && cloudbetNameMatch(e.away, meta.home))));

@@ -87,6 +87,10 @@ function normalizeEvent(e) {
   const home = e.home && e.home.name, away = e.away && e.away.name;
   if (!home || !away || e.type !== 'EVENT_TYPE_EVENT') return null;
   const M = e.markets || {}, out = { home, away, kickoff: e.cutoffTime || null,
+    // EL ID DE LA CASA, que hasta hoy se tiraba. Sin él se puede leer un precio pero no colocar una apuesta:
+    // el id del evento es el primer campo que pide la API de colocación. Lo mismo con `marketUrl`, que la
+    // casa publica en CADA selección — no hay que construirlo ni adivinar su formato, hay que no perderlo.
+    cb_id: e.id || null,
     markets: { h2h: null, totals: [], dc: null, dnb: null, btts: null, ah: [], team_totals: [] } };
   const mo = M['soccer.match_odds'];
   if (mo && mo.submarkets) {
@@ -104,13 +108,19 @@ function normalizeEvent(e) {
       const line = Number(String(s.params || '').match(/total=([\d.]+)/)?.[1]);
       const p = Number(s.price);
       if (!(line > 0) || !(p > 1)) continue;
-      (byLine[line] = byLine[line] || {})[s.outcome] = { o: p, max: Number(s.maxStake) > 0 ? Number(s.maxStake) : null };
+      (byLine[line] = byLine[line] || {})[s.outcome] = { o: p, max: Number(s.maxStake) > 0 ? Number(s.maxStake) : null,
+        url: s.marketUrl || null, min: Number(s.minStake) > 0 ? Number(s.minStake) : null, st: s.status || null };
     }
     const rows = [];
     for (const line of Object.keys(byLine)) {
       const o = byLine[line];
       if (o.over && o.under && o.over.o > 1 && o.under.o > 1)
-        rows.push({ line: Number(line), over: o.over.o, under: o.under.o, max: { over: o.over.max, under: o.under.max } });
+        rows.push({ line: Number(line), over: o.over.o, under: o.under.o, max: { over: o.over.max, under: o.under.max },
+          // las coordenadas de colocación, por lado. Viajan al lado del precio y no en lugar de él: ningún
+          // consumidor existente las mira, y el ejecutor real no puede funcionar sin ellas.
+          url: { over: o.over.url, under: o.under.url },
+          min: { over: o.over.min, under: o.under.min },
+          st: { over: o.over.st, under: o.under.st } });
     }
     return rows;
   };
@@ -275,4 +285,109 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
   return out.length ? out : _cache.data;
 }
 
-module.exports = { fetchCloudbetSoccer, normalizeEvent, soccerCompetitions, HOST };
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// LA CUENTA: SALDO, COLOCACIÓN Y ESTADO DE UNA APUESTA (25-ago)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Hasta hoy este archivo solo LEÍA. Estas tres funciones son las que tocan dinero de verdad, y por eso van
+// aquí abajo, separadas y con sus propias reglas:
+//
+//   · NINGUNA decide nada. No miran el modelo, no calculan stake, no eligen partido. Reciben coordenadas
+//     exactas y las ejecutan. Toda la política vive en `real-executor/`, que es donde se puede auditar.
+//   · `referenceId` es la idempotencia. Cloudbet rechaza dos apuestas con la misma referencia, así que
+//     derivarla del id de la pick hace IMPOSIBLE colocar la misma apuesta dos veces, pase lo que pase con
+//     reintentos, despliegues o un contenedor que se reinicie a mitad.
+//   · `acceptPriceChange: 'BETTER'` — si el precio se movió a peor entre que lo leímos y llegamos, la casa
+//     rechaza en vez de ejecutar. Preferimos una apuesta perdida a una apuesta a un precio que no elegimos.
+//   · El `marketUrl` NUNCA se construye a mano. La casa lo publica en cada selección; se copia tal cual.
+//     Construirlo sería inventarse un formato y descubrir el error con dinero encima.
+
+const ACC_HOST = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
+
+async function cbFetch(path, apiKey, { method = 'GET', body = null, timeoutMs = 15000, host = ACC_HOST } = {}) {
+  const opts = {
+    method,
+    headers: { 'X-API-Key': apiKey, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  };
+  if (AbortSignal.timeout) opts.signal = AbortSignal.timeout(timeoutMs);
+  const r = await fetch(`${host}${path}`, opts);
+  const txt = await r.text();
+  let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { /* la casa devolvió algo que no es JSON */ }
+  return { ok: r.ok, status: r.status, body: j, raw: j ? null : txt.slice(0, 400) };
+}
+
+// saldo de la cuenta en una moneda. Devuelve null si la casa no contesta — y "null" NO significa cero:
+// el ejecutor tiene que distinguir "no lo sé" de "está vacía", porque con cero se para y con null se
+// deja que la casa rechace por fondos, que es una respuesta autoritativa y esta no.
+async function balance(apiKey, currency = 'USDT') {
+  if (!apiKey) return null;
+  const r = await cbFetch(`/pub/v1/account/balance?currency=${encodeURIComponent(currency)}`, apiKey).catch(() => null);
+  if (!r || !r.ok || !r.body) return null;
+  const a = Number(r.body.amount != null ? r.body.amount : r.body.balance);
+  return Number.isFinite(a) ? a : null;
+}
+
+// el evento en crudo, tal como lo publica la casa AHORA. El ejecutor lo relee justo antes de colocar: el
+// precio que guardó el barrido puede tener veinte minutos, y veinte minutos son suficientes para que la
+// línea ya no exista.
+async function eventRaw(apiKey, cbEventId, timeoutMs = 12000) {
+  if (!apiKey || !cbEventId) return null;
+  const r = await cbFetch(`/pub/v2/odds/events/${encodeURIComponent(cbEventId)}`, apiKey, { timeoutMs, host: HOST }).catch(() => null);
+  return r && r.ok ? r.body : null;
+}
+
+// la selección viva de un total (goles/córners/tarjetas) por clave de mercado, línea y lado. Devuelve las
+// coordenadas EXACTAS de colocación o null. No tolera aproximaciones de línea a propósito: apostar 5,5
+// cuando pediste 4,5 no es un redondeo, es otra apuesta.
+function selectionFor(evRaw, marketKey, line, outcome) {
+  const m = (evRaw && evRaw.markets && evRaw.markets[marketKey]) || null;
+  if (!m || !m.submarkets) return null;
+  for (const sm of Object.values(m.submarkets)) {
+    for (const s of ((sm && sm.selections) || [])) {
+      if (s.outcome !== outcome) continue;
+      const l = Number(String(s.params || '').match(/total=(-?[\d.]+)/)?.[1]);
+      if (!Number.isFinite(l) || Math.abs(l - Number(line)) > 1e-9) continue;
+      return {
+        marketUrl: s.marketUrl || null,
+        price: Number(s.price) || 0,
+        minStake: Number(s.minStake) > 0 ? Number(s.minStake) : null,
+        maxStake: Number(s.maxStake) > 0 ? Number(s.maxStake) : null,
+        status: s.status || null,
+        side: s.side || 'BACK',
+      };
+    }
+  }
+  return null;
+}
+
+// COLOCAR. Devuelve siempre un objeto con `ok`, nunca lanza: una excepción aquí, en el peor momento, es una
+// apuesta en estado desconocido. El cuerpo entero de la casa se devuelve tal cual para el libro mayor.
+async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, referenceId, acceptPriceChange = 'BETTER' }) {
+  if (!apiKey) return { ok: false, why: 'sin_api_key' };
+  if (!eventId || !marketUrl || !(price > 1) || !(stake > 0) || !referenceId) return { ok: false, why: 'coordenadas_incompletas' };
+  const body = {
+    acceptPriceChange, currency,
+    eventId: String(eventId),
+    marketUrl,
+    price: String(price),
+    stake: String(stake),
+    referenceId,
+  };
+  const r = await cbFetch('/pub/v3/bets/place', apiKey, { method: 'POST', body, timeoutMs: 20000 })
+    .catch((e) => ({ ok: false, status: 0, body: null, raw: String((e && e.message) || e).slice(0, 200) }));
+  return { ok: !!r.ok, status: r.status, body: r.body, raw: r.raw, enviado: body };
+}
+
+// el estado de una apuesta por su referencia. Es la fuente AUTORITATIVA de si ganó, perdió o se anuló:
+// nuestra propia liquidación sirve para el modelo, pero el dinero lo dice la casa.
+async function betByReference(apiKey, referenceId) {
+  if (!apiKey || !referenceId) return null;
+  const r = await cbFetch(`/pub/v3/bets/${encodeURIComponent(referenceId)}/status`, apiKey).catch(() => null);
+  if (r && r.ok && r.body) return r.body;
+  const r2 = await cbFetch(`/pub/v2/bets/${encodeURIComponent(referenceId)}/status`, apiKey).catch(() => null);
+  return r2 && r2.ok ? r2.body : null;
+}
+
+module.exports = { fetchCloudbetSoccer, normalizeEvent, soccerCompetitions, HOST,
+  balance, eventRaw, selectionFor, placeBet, betByReference };
+

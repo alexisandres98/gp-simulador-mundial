@@ -4132,6 +4132,13 @@ async function clubsQuotesSweep({ force = false } = {}) {
     }
     _clubsQuotesLast = Date.now();
     // poda: eventos con kickoff viejo (o sin refrescar hace 48h) salen del mapa — el scanner solo mira próximos
+    // el índice de ids de la casa caduca con el mismo reloj que el mapa de partidos: un id de un partido
+    // que ya se jugó no sirve para nada y engorda el archivo de la base
+    if (db.cbEventIdx) {
+      for (const [id, m] of Object.entries(db.cbEventIdx)) {
+        if (Date.now() - (m.at || 0) > 48 * 3600e3) delete db.cbEventIdx[id];
+      }
+    }
     if (db.clubsQuoteEvents) {
       for (const [id, m] of Object.entries(db.clubsQuoteEvents)) {
         const k = m.kickoff ? +new Date(m.kickoff) : 0;
@@ -4642,6 +4649,16 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
       const swapped = !(cloudbetNameMatch(cb.home, meta.home) && cloudbetNameMatch(cb.away, meta.away)); // Cloudbet home = nuestro away?
       out.matched++;
       if (out.samples.length < 8) out.samples.push({ cloudbet: cb.home + ' v ' + cb.away, matched: meta.home + ' v ' + meta.away, league: meta.league, h2h: cb.markets.h2h, totals: cb.markets.totals.length });
+      // EL PUENTE ENTRE NUESTRO PARTIDO Y EL SUYO (25-ago). El barrido ya resuelve el emparejamiento por
+      // nombre y luego lo tiraba: guardaba precios bajo NUESTRO id y perdía el de la casa. Para leer daba
+      // igual; para colocar una apuesta es el primer campo que pide la API. Se guarda aquí, donde el
+      // emparejamiento ya está hecho y verificado, en vez de rehacerlo por nombre en el momento de apostar
+      // —que es exactamente cuando un fallo de emparejamiento cuesta dinero en vez de una fila vacía.
+      if (cb.cb_id) {
+        db.cbEventIdx = db.cbEventIdx || {};
+        db.cbEventIdx[ceid] = { cb_id: cb.cb_id, swapped, home: cb.home, away: cb.away,
+          kickoff: cb.kickoff || meta.kickoff || null, at: Date.now() };
+      }
       if (dryRun) continue;
       const eid = 'cloudbet-' + ceid;
       const q = (fam, mid, odds, max, extra) => grepo.upsertGoalQuote({
@@ -11801,6 +11818,7 @@ async function shadowSweep() {
     save();
   }
   let placed = 0, settled = 0, unexec = 0;
+  let realIntentos = 0, realColocadas = 0;
   const seen = new Set(S.bets.map(b => b.pick_id).concat(S.unexec.map(u => u.pick_id)));
   const now = Date.now();
   for (const seg of S.cfg) {
@@ -11916,7 +11934,7 @@ async function shadowSweep() {
         continue;
       }
       const stake = shadowStake(S, p.model_prob || 0, ex.odds);
-      S.bets.push({
+      const sb = {
         id: 'sh_' + Math.random().toString(36).slice(2, 10), pick_id: p.pick_id, segment: seg.key,
         family: p.family, side: p.side || null, line: p.line != null ? p.line : null,
         league: p.league || null, match: p.event ? `${p.event.home} vs ${p.event.away}` : null,
@@ -11924,8 +11942,21 @@ async function shadowSweep() {
         model_prob: p.model_prob || null,
         stake, placed_at: new Date().toISOString(), kickoff_at: (p.event && p.event.kickoff_at) || null,
         status: 'OPEN', result: null, pnl: 0,
-      });
+      };
+      S.bets.push(sb);
       seen.add(p.pick_id); placed++;
+      // ── EL DINERO REAL VA COLGADO DE AQUÍ, Y NO ES CASUAL (25-ago) ────────────────────────────────────
+      // El ejecutor real no tiene su propio barrido ni su propia lógica de selección: se engancha JUSTO
+      // detrás del sombra, sobre la misma apuesta que el sombra acaba de anotar. Así, por construcción, el
+      // papel y el dinero ven la misma señal al mismo precio en el mismo instante, y toda diferencia entre
+      // los dos registros es ejecución —deslizamiento, rechazos, topes de la casa— y no dos criterios
+      // distintos discutiendo. Ese contraste es el único dato que este primer mes no se puede simular.
+      // Nunca lanza: un fallo colocando dinero real no puede tumbar el ejecutor en la sombra.
+      try {
+        const RE = require('./real-executor/store');
+        const r = await RE.intentar(sb, p, { cbIdx: db.cbEventIdx || {} });
+        if (r) { realIntentos++; if (r.status === 'PLACED') realColocadas++; }
+      } catch (e) { console.error('[real] intento fallido:', e.message); }
     }
   }
   // liquidación: espejo del resultado real de la pick (VOID/PUSH devuelve el stake → pnl 0).
@@ -12007,7 +12038,146 @@ async function shadowSweep() {
   }
   if (backCl) save();
   if (placed || settled) save();
-  return { placed, settled, bankroll: S.bankroll, open: S.bets.filter(b => b.status === 'OPEN').length, total_bets: S.bets.length };
+  // liquidar el dinero real contra la casa en la misma pasada. Va al final y protegido: si Cloudbet no
+  // contesta, el ejecutor en la sombra ya terminó su trabajo y no se entera.
+  let real = null;
+  try {
+    const RE = require('./real-executor/store');
+    if (RE.CFG().enabled) {
+      const liq = await RE.liquidar().catch((e) => ({ error: e.message }));
+      real = { intentos: realIntentos, colocadas: realColocadas, ...liq };
+      await realAvisoSaldo().catch(() => {});
+    } else if (realIntentos) real = { intentos: realIntentos, colocadas: realColocadas, apagado: true };
+  } catch (e) { real = { error: e.message }; }
+  return { placed, settled, bankroll: S.bankroll, open: S.bets.filter(b => b.status === 'OPEN').length, total_bets: S.bets.length, real };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS DOS CORREOS DEL DÍA
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// A las 08:00 el PLAN: con qué banco y qué saldo se sale, qué hay abierto, qué frenos están puestos y qué
+// se espera hoy. A las 23:30 el PARTE: qué se colocó, a qué precio contra el que decía el papel, qué se
+// rechazó y por qué, y cómo quedó el banco.
+//
+// NINGUNO DE LOS DOS LLEVA APUESTAS PARA COLOCAR, y eso es deliberado. Esta pierna es automática: cuando el
+// correo llega, la apuesta ya está puesta. Un correo con instrucciones sería el instrumento equivocado —para
+// cuando se lee, la mitad de los precios ya no existen— y sería además una invitación a apostar a mano
+// encima de lo que el ejecutor ya hizo, que es como se duplica una posición sin darse cuenta.
+//
+// El parte es el documento que convierte esto en algo auditable: sin él, dentro de un mes habría un saldo y
+// ninguna forma de saber de dónde salió.
+async function realDailyMail(cual, { force = false } = {}) {
+  const RE = require('./real-executor/store');
+  const C = RE.CFG();
+  if (!C.enabled && !force) return { skipped: 'apagado' };
+  const hoyS = new Date().toISOString().slice(0, 10);
+  // la marca de "ya enviado" vive en el libro mayor, no en memoria: un reinicio del contenedor a las 08:03
+  // mandaría el plan por segunda vez, y un correo diario que llega dos veces deja de leerse al tercer día.
+  const marca = 'mail:' + cual + ':' + hoyS;
+  if (!force && RE.load().avisos[marca]) return { skipped: 'ya_enviado' };
+  const b = RE.board({ limit: 60 });
+  const L = RE.load();
+  const fmt = (x) => (x >= 0 ? '+' : '') + Number(x).toFixed(2);
+  const sal = b.saldo && typeof b.saldo.amount === 'number' ? b.saldo.amount.toFixed(2) + ' ' + C.currency : 'desconocido';
+  let asunto, cuerpo;
+
+  if (cual === 'plan') {
+    const d = L.dias[hoyS] || { pnl: 0, apostado: 0, n: 0 };
+    asunto = `Plan del día · banco ${Number(L.nocional).toFixed(0)} · cartera ${sal}`;
+    cuerpo = [
+      `PLAN DEL DÍA — ${hoyS}`,
+      '',
+      `Banco nocional: ${Number(L.nocional).toFixed(2)} (inicial ${Number(L.nocional_inicial).toFixed(2)}, realizado ${fmt(L.realizado || 0)})`,
+      `Cartera Cloudbet: ${sal}`,
+      `Abiertas ahora: ${b.abiertas} por ${b.exposicion_abierta} · tope de exposición ${C.maxOpen}`,
+      '',
+      `Regla: ${RE.SEGMENTO} — solo ${RE.FAMILIA} ${RE.LADO} en ${RE.CASA}. Nada más está encendido.`,
+      `Stake: Kelly/4, tope ${(C.stakePct * 100).toFixed(1)}% del banco nocional (máx ${C.stakeMax}, mín ${C.stakeMin}).`,
+      `Frenos: parada diaria a ${(C.dayStopPct * 100).toFixed(0)}% · suelo de cartera ${C.minBalance} · deslizamiento máximo ${(C.minOddsSlipPct * 100).toFixed(0)}%.`,
+      C.dry ? 'MODO ENSAYO: se calcula todo y no se coloca nada.' : 'MODO REAL: se coloca dinero.',
+      '',
+      `Ritmo esperado: ~6 apuestas al día, ~${(6 * Math.min(C.stakeMax, C.stakePct * L.nocional)).toFixed(0)} de exposición nueva.`,
+      d.n ? `Hoy ya van ${d.n} apuestas por ${d.apostado.toFixed(2)}.` : 'Hoy todavía no se ha colocado nada.',
+      '',
+      'No hay nada que hacer a mano. Esto es contexto, no instrucciones.',
+    ].join('\n');
+  } else {
+    const hoyBets = L.bets.filter((x) => String(x.at || '').slice(0, 10) === hoyS);
+    const puestas = hoyBets.filter((x) => x.status === 'PLACED' || x.status === 'SETTLED');
+    const ensayos = hoyBets.filter((x) => x.status === 'ENSAYO');
+    const fallidas = hoyBets.filter((x) => x.status === 'RECHAZADA');
+    const d = L.dias[hoyS] || { pnl: 0, apostado: 0, n: 0 };
+    const porMotivo = {};
+    for (const x of fallidas) porMotivo[x.motivo || '?'] = (porMotivo[x.motivo || '?'] || 0) + 1;
+    const fila = (x) => `  ${x.match || '?'} · u${x.line} · ${Number(x.stake).toFixed(2)} @ ${x.odds_real || x.precio_vivo || x.odds_sombra}` +
+      (x.slippage_pct != null ? ` (papel ${x.odds_sombra}, ${fmt(x.slippage_pct)}%)` : '') +
+      (x.resultado ? ` → ${x.resultado} ${fmt(x.pnl || 0)}` : '');
+    asunto = `Parte del día · ${puestas.length} colocadas · ${fmt(d.pnl)} · banco ${Number(L.nocional).toFixed(0)}`;
+    cuerpo = [
+      `PARTE DEL DÍA — ${hoyS}`,
+      '',
+      `Colocadas hoy: ${puestas.length} por ${d.apostado.toFixed(2)} · P&L liquidado del día ${fmt(d.pnl)}`,
+      `Banco nocional: ${Number(L.nocional).toFixed(2)} · cartera ${sal}`,
+      `Abiertas: ${b.abiertas} por ${b.exposicion_abierta}`,
+      '',
+      puestas.length ? 'COLOCADAS\n' + puestas.map(fila).join('\n') : 'Ninguna colocada hoy.',
+      ensayos.length ? `\nENSAYOS (no se colocó dinero): ${ensayos.length}\n` + ensayos.map(fila).join('\n') : '',
+      fallidas.length ? `\nNO COLOCADAS: ${fallidas.length}\n` + Object.entries(porMotivo).map(([k, v]) => `  ${k}: ${v}`).join('\n') : '',
+      '',
+      `ACUMULADO — ${b.liquidadas} liquidadas, ${b.w}W-${b.l}L, apostado ${b.apostado}, P&L ${fmt(b.pnl)}` +
+        (b.roi_pct != null ? `, ROI ${fmt(b.roi_pct)}%` : ''),
+      b.deslizamiento_medio_pct != null
+        ? `Deslizamiento medio contra el precio de papel: ${fmt(b.deslizamiento_medio_pct)}% sobre ${b.deslizamiento_n} apuestas.`
+        : 'Deslizamiento: aún sin medir.',
+      b.recorte_por_tope_n ? `Recortadas por el tope de la casa: ${b.recorte_por_tope_n}.` : '',
+      '',
+      'Estimaciones de un modelo estadístico, no consejo financiero.',
+    ].filter((x) => x !== '').join('\n');
+  }
+
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  if (mailer.isConfigured()) {
+    try {
+      await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: '[GP Real] ' + asunto, text: cuerpo,
+        html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.replace(/</g, '&lt;')}</pre>` });
+    } catch (e) { console.error('[real] correo ' + cual + ':', e.message); return { error: e.message }; }
+  }
+  RE.load().avisos[marca] = new Date().toISOString(); RE.save();
+  return { sent: cual, asunto };
+}
+
+// AVISO DE SALDO BAJO. La cartera se fondea con $500 mientras el stake se calcula sobre un banco nocional
+// de $2.000: es una decisión tomada a sabiendas, y su consecuencia es que la cartera se agota antes que las
+// señales. Este aviso existe para que Alexis se entere por un correo y no por una lista de apuestas selladas
+// como `sin_fondos` el lunes siguiente. Una vez por umbral y por día, para no convertirlo en ruido.
+async function realAvisoSaldo() {
+  const RE = require('./real-executor/store');
+  const C = RE.CFG();
+  if (!C.enabled) return;
+  const L = RE.load();
+  const s = L.saldo && typeof L.saldo.amount === 'number' ? L.saldo.amount : null;
+  if (s == null || s > C.avisoSaldo) return;
+  const clave = 'saldo:' + new Date().toISOString().slice(0, 10) + ':' + (s < C.minBalance ? 'suelo' : 'bajo');
+  if (L.avisos[clave]) return;
+  L.avisos[clave] = new Date().toISOString(); RE.save();
+  const b = RE.board({ limit: 0 });
+  const sinFondos = (b.por_motivo || {}).sin_fondos || 0;
+  const asunto = s < C.minBalance ? `Cloudbet sin fondos: ${s.toFixed(2)} ${C.currency}` : `Cloudbet bajo: ${s.toFixed(2)} ${C.currency}`;
+  const cuerpo = [
+    `Saldo en Cloudbet: ${s.toFixed(2)} ${C.currency}.`,
+    `Suelo configurado: ${C.minBalance}. Por debajo del suelo el ejecutor deja de colocar y sella la señal como "sin_fondos".`,
+    `Apuestas abiertas ahora: ${b.abiertas} por ${b.exposicion_abierta} ${C.currency}.`,
+    sinFondos ? `Señales ya perdidas por falta de fondos: ${sinFondos}.` : 'Todavía no se ha perdido ninguna señal por fondos.',
+    '',
+    `Ritmo medido del segmento: ~6,4 apuestas al día a ~$28 = ~$180 diarios de exposición nueva.`,
+    'Recarga sugerida para no perder señales: 400-600.',
+  ].join('\n');
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  if (!mailer.isConfigured()) return;
+  try {
+    await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: '[GP Real] ' + asunto, text: cuerpo,
+      html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.replace(/</g, '&lt;')}</pre>` });
+  } catch (e) { console.error('[real] aviso saldo:', e.message); }
 }
 // POR SEGMENTO, Y CON EL RITMO DENTRO. El resumen global mezcla tres reglas distintas en una sola cifra,
 // y en cuanto el ejecutor lleva más de un segmento esa cifra deja de servir para decidir nada: no dice cuál
@@ -12139,6 +12309,23 @@ async function shadowWeeklyReport({ force = false } = {}) {
   }
   return report;
 }
+// EL RELOJ DE LOS DOS CORREOS. En hora LOCAL de Alexis (UTC−4 por defecto), no en UTC: un parte del día
+// que llega a las 19:30 no es el parte del día. La comprobación es cada 5 minutos y con memoria por fecha,
+// así que un reinicio del contenedor no duplica el correo ni se lo salta.
+if (String(process.env.GP_REAL_MAILS || 'true') !== 'false') {
+  const OFF = Number(process.env.GP_REAL_TZ_OFFSET || -4);
+  const PLAN_H = Number(process.env.GP_REAL_PLAN_HOUR || 8);
+  const PARTE_H = Number(process.env.GP_REAL_PARTE_HOUR || 23);
+  setInterval(() => {
+    try {
+      const t = new Date(Date.now() + OFF * 3600e3);
+      const h = t.getUTCHours(), m = t.getUTCMinutes();
+      if (h === PLAN_H && m < 10) realDailyMail('plan').catch((e) => console.error('[real] plan:', e.message));
+      if (h === PARTE_H && m >= 30 && m < 40) realDailyMail('parte').catch((e) => console.error('[real] parte:', e.message));
+    } catch (e) { console.error('[real] reloj:', e.message); }
+  }, 5 * 60 * 1000);
+}
+
 if (clubsShadowOn()) {
   setTimeout(() => { shadowSweep().catch((e) => console.error('[shadow]', e.message)); }, 150 * 1000);
   setInterval(() => {
@@ -18849,6 +19036,27 @@ const server = http.createServer(async (req, res) => {
       catch (e) { return json(res, 200, { error: e.message }); }
     }
     // EJECUTOR EN LA SOMBRA: GET = estado + resúmenes; POST ?run=sweep|report (report con force).
+    // ── EJECUTOR REAL (25-ago) ──────────────────────────────────────────────────────────────────────────
+    // Misma llave interna que el sombra y por la misma razón: la revisión del dinero real hay que poder
+    // hacerla sin navegador. GET devuelve el tablero entero (config, frenos, saldo, cada intento con su
+    // motivo). POST run=saldo|liquidar|plan|parte fuerza cada trabajo a mano — imprescindible mientras se
+    // calibra, porque esperar al barrido de 10 minutos para ver el efecto de un cambio convierte una
+    // iteración de un minuto en una de media hora.
+    if (p === '/api/internal/real') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const RE = require('./real-executor/store');
+      if (req.method === 'POST') {
+        const run = url.searchParams.get('run') || '';
+        if (run === 'saldo') return json(res, 200, { saldo: await RE.refrescarSaldo() });
+        if (run === 'liquidar') return json(res, 200, await RE.liquidar());
+        if (run === 'plan') return json(res, 200, await realDailyMail('plan', { force: true }));
+        if (run === 'parte') return json(res, 200, await realDailyMail('parte', { force: true }));
+        return json(res, 400, { error: 'run=saldo|liquidar|plan|parte' });
+      }
+      const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });
+      return json(res, 200, b);
+    }
     if (p === '/api/internal/shadow') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

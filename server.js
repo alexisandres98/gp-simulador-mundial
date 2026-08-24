@@ -19097,7 +19097,14 @@ const server = http.createServer(async (req, res) => {
               headers: { 'X-API-Key': ak, accept: 'application/json', 'content-type': 'application/json', 'user-agent': UA },
               body: JSON.stringify({ acceptPriceChange: 'NONE', currency: cur, eventId: '0', marketUrl: 'no.existe/under?total=0', price: '0', stake: '0' }),
               signal: AbortSignal.timeout(12000) });
-            out.push({ ruta: 'POST ' + ruta, con_llave: { status: r.status, cuerpo: (await r.text()).replace(/\s+/g, ' ').slice(0, 200) } });
+            const t2 = (await r.text());
+            // el 403 llega como página HTML de cortafuegos. Lo único que importa de esas mil líneas es el
+            // código de error y el rayo de la petición, que es lo que hay que darle al soporte de la casa.
+            const cf = (t2.match(/[Ee]rror code[^<]{0,40}|Cloudflare Ray ID:[^<]{0,60}|Access denied|1020|1010|1015|You are unable to access/g) || []).slice(0, 6);
+            out.push({ ruta: 'POST ' + ruta, con_llave: { status: r.status,
+              cuerpo: t2.replace(/\s+/g, ' ').slice(0, 200), cortafuegos: cf,
+              titulo: (t2.match(/<title>([^<]{0,120})<\/title>/) || [])[1] || null,
+              cf_ray: r.headers.get('cf-ray') || null, servidor: r.headers.get('server') || null } });
           } catch (e) { out.push({ ruta: 'POST ' + ruta, con_llave: { error: String(e.message || e).slice(0, 80) } }); }
         }
         return json(res, 200, { host, moneda: cur, llave_len: ak.length, rutas: out });

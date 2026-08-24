@@ -4626,6 +4626,39 @@ async function kalshiClubsSweep({ force = false, dryRun = false } = {}) {
   console.log('[kalshi] sweep:', JSON.stringify({ series: out.series, events: out.events, matched: out.matched, quotes: out.quotes, dry: out.dry_run, error: out.error || null }));
   return out;
 }
+// RESCATE DEL ID DE EVENTO (25-ago). El índice lo llena el barrido, y el barrido procesa 200 de los ~308
+// eventos que la casa lista: cuál de los 200 entra varía entre pasadas. Medido en producción: 15 partidos
+// en el índice y NINGUNA de las tres apuestas abiertas del segmento dentro, aunque el sombra sí tenía
+// precio de Cloudbet para las tres (venía de una pasada anterior, guardado en la tabla de cuotas).
+//
+// Si eso se quedara así, el ejecutor real se saltaría la mayoría de las apuestas por falta de un id que sí
+// se puede averiguar. Esto lo averigua en el momento, contra la lista que el colector ya tiene en caché
+// (60 s), con el MISMO emparejador de nombres que usa el barrido — no uno nuevo, para que un partido no
+// pueda resolverse de dos maneras distintas según quién pregunte. Lo que encuentra se guarda en el índice,
+// así que el rescate se paga una vez por partido y no una vez por apuesta.
+async function cbResolveEvent(pick) {
+  const ceid = pick && pick.event && pick.event.canonical_event_id;
+  if (!ceid) return null;
+  db.cbEventIdx = db.cbEventIdx || {};
+  const ya = db.cbEventIdx[ceid];
+  if (ya && ya.cb_id) return ya;
+  const apiKey = process.env.CLOUDBET_API_KEY || '';
+  const meta = (db.clubsQuoteEvents || {})[ceid];
+  if (!apiKey || !meta) return null;
+  try {
+    const evs = await require('./market-scanner/venues/cloudbet').fetchCloudbetSoccer({ apiKey });
+    const cb = (evs || []).find((e) => e.cb_id && (
+      (cloudbetNameMatch(e.home, meta.home) && cloudbetNameMatch(e.away, meta.away)) ||
+      (cloudbetNameMatch(e.home, meta.away) && cloudbetNameMatch(e.away, meta.home))));
+    if (!cb) return null;
+    const swapped = !(cloudbetNameMatch(cb.home, meta.home) && cloudbetNameMatch(cb.away, meta.away));
+    const fila = { cb_id: cb.cb_id, swapped, home: cb.home, away: cb.away,
+      kickoff: cb.kickoff || meta.kickoff || null, at: Date.now(), via: 'rescate' };
+    db.cbEventIdx[ceid] = fila;
+    return fila;
+  } catch { return null; }
+}
+
 async function cloudbetSweep({ force = false, dryRun = false } = {}) {
   const apiKey = process.env.CLOUDBET_API_KEY || '';
   if (!apiKey) return { skipped: 'no_key' };
@@ -11954,6 +11987,7 @@ async function shadowSweep() {
       // Nunca lanza: un fallo colocando dinero real no puede tumbar el ejecutor en la sombra.
       try {
         const RE = require('./real-executor/store');
+        await cbResolveEvent(p).catch(() => null);   // rellena el índice si el barrido no llegó a este partido
         const r = await RE.intentar(sb, p, { cbIdx: db.cbEventIdx || {} });
         if (r) { realIntentos++; if (r.status === 'PLACED') realColocadas++; }
       } catch (e) { console.error('[real] intento fallido:', e.message); }
@@ -19119,6 +19153,7 @@ const server = http.createServer(async (req, res) => {
           .slice(-Math.min(12, Math.max(1, +(url.searchParams.get('n') || 6))))
           .map((sb) => ({ sb, pick: byPick2[sb.pick_id] }))
           .filter((x) => x.pick);
+        for (const par of pares) await cbResolveEvent(par.pick).catch(() => null);
         return json(res, 200, { abiertas_del_segmento: pares.length,
           idx_eventos: Object.keys(db.cbEventIdx || {}).length,
           filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {} }) });

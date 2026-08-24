@@ -83,19 +83,42 @@ const server = http.createServer(async (req, res) => {
       ip = (t.match(/^ip=(.*)$/m) || [])[1] || null;
       colo = (t.match(/^colo=(.*)$/m) || [])[1] || null;
     } catch { /* el borde no contestó; el resto de la salud sigue valiendo */ }
-    // y una prueba REAL de si la ruta de colocación está abierta desde aquí: un POST sin llave y con un
-    // cuerpo imposible. No puede colocar nada. Si vuelve 401, la puerta está abierta y solo falta la llave;
-    // si vuelve 403, este sitio tampoco sirve y hay que desplegar en otra región.
+    // ¿está abierta la puerta de colocación desde aquí? Un POST CON LLAVE y un cuerpo imposible —evento 0,
+    // importe mínimo, referencia nueva— que no puede colocar nada. La respuesta separa las tres situaciones:
+    //   403 con página de cortafuegos → la cuenta todavía no puede operar por API (la casa exige un depósito
+    //                                   mínimo para habilitar el trading; con saldo de céntimos, bloquea)
+    //   4xx en JSON                   → la puerta está ABIERTA y solo se queja del cuerpo falso: todo listo
+    //   otra cosa                     → mirar el cuerpo
+    // Va con llave a propósito: la versión sin llave no distinguía "no puedes operar" de "no te identificaste".
     let puerta = null;
     try {
       const r2 = await fetch(CB_HOST + PLACE_PATH, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ currency: 'USDT', eventId: '0', marketUrl: 'no.existe/under?total=0', price: '0', stake: '0' }),
+        method: 'POST',
+        headers: { 'X-API-Key': KEY, accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ acceptPriceChange: 'NONE', currency: process.env.GP_RELAY_CURRENCY || 'USDT',
+          eventId: '0', marketUrl: 'soccer.total_bookings/under?total=0.5', price: '1.01', stake: '0.1',
+          referenceId: require('crypto').randomUUID() }),
         signal: AbortSignal.timeout(8000),
       });
-      puerta = { status: r2.status, abierta: r2.status !== 403 };
+      const t2 = (await r2.text());
+      const esHtml = /^\s*<!DOCTYPE|<html/i.test(t2);
+      puerta = { status: r2.status, abierta: !esHtml,
+        respuesta: esHtml ? 'pagina de cortafuegos' : t2.replace(/\s+/g, ' ').slice(0, 200),
+        lectura: esHtml
+          ? 'la cuenta aun no puede operar por API — la casa pide un deposito minimo para habilitar el trading'
+          : 'la puerta esta abierta: la casa contesta al cuerpo falso en vez de bloquear' };
     } catch (e) { puerta = { error: String((e && e.message) || e).slice(0, 80) }; }
-    return json(res, 200, { ok: true, salida: { ip, loc, colo }, puerta_de_colocacion: puerta,
+
+    // y el saldo, que es la causa mas probable de que la puerta este cerrada
+    let saldo = null;
+    try {
+      const cur = process.env.GP_RELAY_CURRENCY || 'USDT';
+      const r3 = await fetch(`${CB_HOST}/pub/v1/account/currencies/${cur}/balance`,
+        { headers: { 'X-API-Key': KEY, accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+      saldo = r3.ok ? await r3.json() : { status: r3.status };
+    } catch (e) { saldo = { error: String((e && e.message) || e).slice(0, 60) }; }
+
+    return json(res, 200, { ok: true, salida: { ip, loc, colo }, puerta_de_colocacion: puerta, saldo,
       tiene_llave: !!KEY, tiene_secreto: !!TOKEN });
   }
 

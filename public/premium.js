@@ -1203,7 +1203,9 @@
   // EL ADMIN CONSERVA EL ATAJO (23-ago, segunda orden de Alexis: "consérvalo en mi menú, solo para mí").
   // Para el usuario el ítem no existe en ninguna de las cinco puertas; para el admin sigue en su sitio.
   // El enrutador ya distinguía a los dos, así que aquí basta con no filtrarle la lista.
-  var PERF_VIEWS = ['perf', 'cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
+  // FÚTBOL VUELVE A ENSEÑAR SU RENDIMIENTO (25-ago, orden de Alexis). Es el único deporte con muestra
+  // pública que aguanta mirarse: la lista de abajo son los que SIGUEN ocultos. 'perf' sale de ella.
+  var PERF_VIEWS = ['cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
   // "El motor" describe CÓMO funciona el modelo, que es justo lo que la caja negra no publica. Se cierra
   // por la misma puerta que Rendimiento. En fútbol el equivalente es 'method', que ya era admin desde antes.
   var MODEL_VIEWS = ['esmodel', 'f1model', 'tenmodel', 'nflmodel'];

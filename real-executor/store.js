@@ -134,6 +134,8 @@ function stakeDe(prob, odds) {
   return Math.min(C.stakeMax, Math.max(C.stakeMin, Math.round(st * 100) / 100));
 }
 
+const CF_ESPERA_MS = num('GP_REAL_CF_ESPERA_MIN', 30) * 60e3;
+
 const abiertas = () => load().bets.filter((b) => b.status === 'PLACED');
 // LO EN EL AIRE TAMBIÉN CUENTA COMO EXPUESTO. Una apuesta que la casa está evaluando puede tener el dinero
 // ya retenido; dejarla fuera del cálculo haría que el tope de exposición permitiera comprometer más de lo
@@ -154,6 +156,15 @@ function frenos(stake) {
   if (d.pnl <= -tope) return { freno: 'parada_diaria', detalle: `${d.pnl.toFixed(2)} en el día, tope ${(-tope).toFixed(2)}` };
   const exp = expuesto();
   if (exp + stake > C.maxOpen) return { freno: 'exposicion_maxima', detalle: `${exp.toFixed(2)} abiertas + ${stake} > ${C.maxOpen}` };
+  // EL CORTAFUEGOS DE LA CASA NO SE VENCE INSISTIENDO (25-ago). Con la puerta de colocación bloqueada,
+  // ~25 apuestas pendientes reintentando cada diez minutos son 150 peticiones a la hora contra un sistema
+  // de seguridad que ya nos dijo que no. No arregla nada, es una falta de educación y puede endurecer el
+  // bloqueo. Tras tres respuestas seguidas de cortafuegos, el ejecutor se calla media hora y lo anota; una
+  // sola respuesta normal de la casa lo reabre al instante.
+  const cf = L.cortafuegos;
+  if (cf && cf.seguidos >= 3 && Date.now() - Date.parse(cf.ultimo || 0) < CF_ESPERA_MS) {
+    return { freno: 'puerta_cerrada', detalle: `la casa bloquea la colocación (${cf.seguidos} seguidas); se reintenta tras ${Math.round(CF_ESPERA_MS / 60000)} min` };
+  }
   const s = L.saldo && typeof L.saldo.amount === 'number' ? L.saldo.amount : null;
   // saldo NULL no frena: "no lo sé" no es "está vacía", y la casa rechaza por fondos con autoridad que
   // nosotros no tenemos. Saldo conocido y corto sí frena, y se anota con la cifra para poder facturarlo.
@@ -285,6 +296,15 @@ async function colocar(fila, { cbIdx = {} } = {}) {
   // con HTTP correcto, y la casa devuelve 200 con `status: REJECTED` cuando NO la acepta. Eso habría
   // anotado en el libro apuestas que no existen: el banco compondría con dinero imaginario y el informe
   // presumiría de un volumen que nunca se jugó. Hay tres desenlaces y cada uno lleva a un sitio distinto.
+  // el estado del cortafuegos se lleva aparte del resultado de la apuesta: una cosa es que la casa nos
+  // rechace una apuesta y otra que no nos deje ni preguntar.
+  if (r.cortafuegos) {
+    L.cortafuegos = { seguidos: ((L.cortafuegos && L.cortafuegos.seguidos) || 0) + 1,
+      ultimo: new Date().toISOString(), desde: (L.cortafuegos && L.cortafuegos.desde) || new Date().toISOString() };
+    return parar('cortafuegos_de_la_casa', { http: r.status });
+  }
+  if (L.cortafuegos && L.cortafuegos.seguidos) L.cortafuegos = { seguidos: 0, reabierto: new Date().toISOString() };
+
   const cuerpo = r.body || {};
   const est = String(cuerpo.status || (cuerpo.bet && cuerpo.bet.status) || '').toUpperCase();
 
@@ -544,6 +564,7 @@ function board({ limit = 40 } = {}) {
       parada_diaria_pct: +(C.dayStopPct * 100).toFixed(1), deslizamiento_max_pct: +(C.minOddsSlipPct * 100).toFixed(1),
     },
     saldo: L.saldo,
+    cortafuegos: L.cortafuegos || null,
     exposicion_abierta: expuesto(),
     senales: L.bets.length, colocadas: colocadas.length, abiertas: abiertas().length,
     en_el_aire: enElAire().length,

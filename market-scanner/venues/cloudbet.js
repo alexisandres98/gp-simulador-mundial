@@ -303,6 +303,15 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
 
 const ACC_HOST = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
 
+// ¿NOS ESTÁ CONTESTANDO LA CASA O SU CORTAFUEGOS? La diferencia decide qué hacer: a un rechazo de la casa
+// se le hace caso y se reintenta; contra un cortafuegos que nos ha bloqueado, insistir cada diez minutos no
+// arregla nada, molesta y puede empeorar el bloqueo. Se reconoce porque llega HTML en vez de JSON —la
+// página "Sorry, you have been blocked" de Cloudflare— y no por el código, que es 403 en los dos casos.
+function esCortafuegos(status, texto) {
+  if (status !== 403 || !texto) return false;
+  return /<!DOCTYPE|<html|Cloudflare|you have been blocked/i.test(String(texto));
+}
+
 async function cbFetch(path, apiKey, { method = 'GET', body = null, timeoutMs = 15000, host = ACC_HOST } = {}) {
   const opts = {
     method,
@@ -406,15 +415,18 @@ async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, re
       const rr = await fetch(relay.replace(/\/$/, '') + '/place', opt);
       const txt = await rr.text();
       let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { /* el reenviador devolvió algo que no es JSON */ }
+      const crudo = (j && j.crudo) || (j ? null : txt);
       return { ok: !!(rr.ok && j && j.ok), status: (j && j.status) || rr.status,
-        body: (j && j.cloudbet) || j, raw: j ? null : txt.slice(0, 300), enviado: body, via: 'relay' };
+        body: (j && j.cloudbet) || j, raw: j ? null : txt.slice(0, 300), enviado: body, via: 'relay',
+        cortafuegos: esCortafuegos((j && j.status) || rr.status, crudo) };
     } catch (e) {
       return { ok: false, status: 0, body: null, raw: 'relay: ' + String((e && e.message) || e).slice(0, 160), enviado: body, via: 'relay' };
     }
   }
   const r = await cbFetch('/pub/v3/bets/place', apiKey, { method: 'POST', body, timeoutMs: 20000 })
     .catch((e) => ({ ok: false, status: 0, body: null, raw: String((e && e.message) || e).slice(0, 200) }));
-  return { ok: !!r.ok, status: r.status, body: r.body, raw: r.raw, enviado: body, via: 'directo' };
+  return { ok: !!r.ok, status: r.status, body: r.body, raw: r.raw, enviado: body, via: 'directo',
+    cortafuegos: esCortafuegos(r.status, r.raw) };
 }
 
 // el estado de una apuesta por su referencia. Es la fuente AUTORITATIVA de si ganó, perdió o se anuló:

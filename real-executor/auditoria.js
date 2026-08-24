@@ -203,11 +203,30 @@ const ok = (cond, txt, detalle) => {
   ok(f21.motivo === 'parada_diaria', 'frena por pérdida del día', f21.motivo);
   L.dias[new Date().toISOString().slice(0, 10)].pnl = 0;
 
-  console.log('\n22. el tablero no se rompe y cuadra');
+  console.log('\n22. contra el cortafuegos de la casa, el ejecutor se calla');
+  casa.respuestaPlace = () => ({ ok: false, status: 403, body: null, raw: '<!DOCTYPE html> Sorry, you have been blocked', cortafuegos: true });
+  const cf1 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(cf1.motivo === 'cortafuegos_de_la_casa', 'lo distingue de un rechazo normal', cf1.motivo);
+  await RE.intentar(senal(), pick, { cbIdx: IDX });
+  await RE.intentar(senal(), pick, { cbIdx: IDX });
+  const antesCF = casa.colocaciones.length;
+  const cf4 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(cf4.motivo === 'puerta_cerrada', 'a la cuarta ya no envía', cf4.motivo);
+  ok(casa.colocaciones.length === antesCF, 'no se manda nada mientras dura el freno', casa.colocaciones.length - antesCF);
+  ok(RE.load().cortafuegos.seguidos >= 3, 'lleva la cuenta', RE.load().cortafuegos.seguidos);
+  // una respuesta normal lo reabre al instante
+  RE.load().cortafuegos.ultimo = new Date(Date.now() - 60 * 60e3).toISOString();
+  casa.respuestaPlace = (p) => ({ ok: true, status: 200, body: { status: 'ACCEPTED', price: p.price, stake: p.stake } });
+  const cf5 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(cf5.status === 'PLACED', 'pasada la espera vuelve a colocar', cf5.status);
+  ok(RE.load().cortafuegos.seguidos === 0, 'el contador se reinicia', RE.load().cortafuegos.seguidos);
+
+  console.log('\n23. el tablero no se rompe y cuadra');
   const b = RE.board({ limit: 5 });
   ok(typeof b.roi_pct === 'number', 'ROI calculado', b.roi_pct);
   ok(b.descuadres === 1, 'descuadres a la vista', b.descuadres);
   ok(b.liquidadas === 3, 'tres liquidadas', b.liquidadas);
+  ok(b.cortafuegos && b.cortafuegos.seguidos === 0, 'cortafuegos a la vista y reabierto', b.cortafuegos);
   const sumaPnl = RE.load().bets.filter((x) => x.status === 'SETTLED').reduce((a, x) => a + x.pnl, 0);
   ok(Math.abs(sumaPnl - RE.load().realizado) < 0.01, 'el realizado cuadra con la suma', [sumaPnl, RE.load().realizado]);
   ok(Math.abs(RE.load().nocional - (2000 + sumaPnl)) < 0.01, 'el banco cuadra con el realizado', RE.load().nocional);

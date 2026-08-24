@@ -19054,6 +19054,31 @@ const server = http.createServer(async (req, res) => {
         if (run === 'parte') return json(res, 200, await realDailyMail('parte', { force: true }));
         return json(res, 400, { error: 'run=saldo|liquidar|plan|parte' });
       }
+      // `?diag=1`: qué contesta la casa en cada ruta de cuenta. El saldo volvió null en el primer intento y
+      // "null" tapa tres cosas distintas —la ruta no es esa, la llave no tiene permiso de cuenta, o la
+      // cuenta está vacía— que se arreglan de tres formas distintas. Con $500 de cartera el saldo no es un
+      // adorno: es el freno que decide si se apuesta.
+      if (url.searchParams.get('diag') === '1') {
+        const ak = process.env.CLOUDBET_API_KEY || '';
+        if (!ak) return json(res, 200, { error: 'sin CLOUDBET_API_KEY' });
+        const cur = (process.env.GP_REAL_CURRENCY || 'USDT').toUpperCase();
+        const rutas = [
+          '/pub/v1/account/balance?currency=' + cur, '/pub/v1/account/balances', '/pub/v1/account',
+          '/pub/v2/account/balance?currency=' + cur, '/pub/v2/account/balances',
+          '/pub/v3/account/balance?currency=' + cur, '/pub/v3/account/balances',
+          '/pub/v3/bets/history?limit=1', '/pub/v2/bets/history?limit=1',
+        ];
+        const host = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
+        const out = [];
+        for (const ruta of rutas) {
+          try {
+            const r = await fetch(host + ruta, { headers: { 'X-API-Key': ak, accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
+            const t = (await r.text()).slice(0, 220);
+            out.push({ ruta, status: r.status, cuerpo: t });
+          } catch (e) { out.push({ ruta, error: String(e.message || e).slice(0, 80) }); }
+        }
+        return json(res, 200, { host, moneda: cur, rutas: out });
+      }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });
       return json(res, 200, b);
     }

@@ -12158,6 +12158,7 @@ async function shadowSweep() {
       const liq = await RE.liquidar(resultados).catch((e) => ({ error: e.message }));
       real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, confirmadas: conf, ...liq };
       await realAvisoPrimera().catch(() => {});
+      await realAvisoDivergencia().catch(() => {});
       await realAvisoSaldo().catch(() => {});
     } else if (realIntentos) real = { intentos: realIntentos, colocadas: realColocadas, apagado: true };
   } catch (e) { real = { error: e.message }; }
@@ -12267,6 +12268,47 @@ async function realDailyMail(cual, { force = false } = {}) {
   }
   RE.load().avisos[marca] = new Date().toISOString(); RE.save();
   return { sent: cual, asunto };
+}
+
+// LA ALARMA DE DIVERGENCIA (25-ago). La pregunta que hizo Alexis —"¿está roto o simplemente no hay nada que
+// colocar?"— no se puede contestar mirando el ejecutor real: un cero se ve idéntico en los dos casos. Lo que
+// sí la contesta es comparar con el papel, porque por construcción los dos ven la misma señal al mismo
+// precio en el mismo instante:
+//   · el sombra colocó y el real no  → algo se rompió entre los dos, y hay que mirarlo.
+//   · ninguno de los dos colocó      → no hubo señal ejecutable, y no hay nada que mirar.
+// Sin esto, la única forma de distinguirlo es que alguien sospeche y pregunte, que es justo lo que pasó hoy.
+async function realAvisoDivergencia() {
+  const RE = require('./real-executor/store');
+  if (!RE.CFG().enabled) return;
+  const L = RE.load();
+  const desde = Date.now() - 24 * 3600e3;
+  const S = shadowInit();
+  const papel = S.bets.filter((b) => b.segment === RE.SEGMENTO && Date.parse(b.placed_at || 0) >= desde).length;
+  const dinero = L.bets.filter((b) => (b.status === 'PLACED' || b.status === 'SETTLED')
+    && Date.parse(b.placed_at || b.at || 0) >= desde).length;
+  if (!papel || dinero) return;            // sin papel no hay con qué comparar; con dinero, todo en orden
+  const clave = 'divergencia:' + new Date().toISOString().slice(0, 13);   // como mucho una por hora
+  if (L.avisos[clave]) return;
+  L.avisos[clave] = new Date().toISOString(); RE.save();
+  const b = RE.board({ limit: 0 });
+  const cuerpo = [
+    'EL PAPEL COLOCÓ Y EL DINERO NO',
+    '',
+    `En las últimas 24 h el ejecutor en la sombra colocó ${papel} apuestas de ${RE.SEGMENTO} y el real ninguna.`,
+    'Los dos ven la misma señal al mismo precio, así que esto no debería pasar y hay que mirarlo.',
+    '',
+    `Pendientes: ${b.pendientes} · ${JSON.stringify(b.por_que_pendiente)}`,
+    `Caducadas: ${b.caducadas} · ${JSON.stringify(b.por_que_caducada)}`,
+    `Cortafuegos: ${JSON.stringify(b.cortafuegos)}`,
+    `Cartera: ${b.saldo && b.saldo.amount != null ? b.saldo.amount : '?'}`,
+  ].join('\n');
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  if (!mailer.isConfigured()) return;
+  try {
+    await mailer.sendMail({ to: adminTo, noListUnsub: true,
+      subject: `[GP Real] AVISO: el papel colocó ${papel} y el dinero 0`, text: cuerpo,
+      html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.replace(/</g, '&lt;')}</pre>` });
+  } catch (e) { console.error('[real] aviso divergencia:', e.message); }
 }
 
 // LA PRIMERA DE VERDAD. Todo lo demás de este ejecutor está pensado para no molestar: el plan a las 08:00 y
@@ -19502,6 +19544,25 @@ const server = http.createServer(async (req, res) => {
           filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null }) });
       }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });
+      // PAPEL CONTRA DINERO, EN LA MISMA PANTALLA. Un cero en "colocadas" no dice nada por sí solo: puede ser
+      // que algo se rompiera o que no hubiera señal. La única cifra que lo distingue es cuántas colocó el
+      // sombra en la misma ventana, así que viaja al lado y no en otra sonda.
+      try {
+        const S4 = shadowInit();
+        const desde4 = Date.now() - 24 * 3600e3;
+        const papel24 = S4.bets.filter((x) => x.segment === RE.SEGMENTO && Date.parse(x.placed_at || 0) >= desde4);
+        const unex24 = (S4.unexec || []).filter((x) => x.segment === RE.SEGMENTO && Date.parse(x.at || 0) >= desde4);
+        const motivos = {}; for (const x of unex24) motivos[x.reason || '?'] = (motivos[x.reason || '?'] || 0) + 1;
+        b.papel_vs_dinero_24h = {
+          sombra_coloco: papel24.length,
+          sombra_no_ejecutables: unex24.length,
+          por_que_no_ejecutable: motivos,
+          real_coloco: b.colocadas,
+          lectura: papel24.length === 0
+            ? 'el sombra tampoco colocó: no hubo señal con precio en una casa conectable. No hay nada roto, hay que esperar.'
+            : (b.colocadas ? 'los dos colocaron' : 'EL PAPEL COLOCÓ Y EL DINERO NO — hay que mirarlo'),
+        };
+      } catch (e) { b.papel_vs_dinero_24h = { error: e.message }; }
       return json(res, 200, b);
     }
     if (p === '/api/internal/shadow') {

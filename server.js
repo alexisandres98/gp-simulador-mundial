@@ -19456,9 +19456,14 @@ const server = http.createServer(async (req, res) => {
           const LR = RE.load();
           let reabiertas = 0;
           for (const b of LR.bets) {
-            if (b.status === 'DESCARTADA' && b.motivo === 'sin_ventaja'
+            // y lo mismo con lo que la casa rechazó por cuenta restringida: ese "definitivo" lo era mientras
+            // la petición salía desde el país equivocado. Arreglada la salida, la apuesta vuelve a ser
+            // colocable si su partido todavía no ha empezado. El `if` del saque es lo que impide que esto
+            // resucite algo que ya se jugó, que sería colocar a ciegas sobre un resultado conocido.
+            const reabrible = b.motivo === 'sin_ventaja' || /^cuenta_o_peticion:/.test(String(b.motivo || ''));
+            if (b.status === 'DESCARTADA' && reabrible
               && b.kickoff_at && Date.parse(b.kickoff_at) > ahora3) {
-              b.status = 'PENDIENTE'; b.motivo = null; reabiertas++;
+              b.status = 'PENDIENTE'; b.motivo = null; b.reabierta_at = new Date().toISOString(); reabiertas++;
             }
           }
           if (reabiertas) RE.save();

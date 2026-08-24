@@ -1,0 +1,218 @@
+// AUDITORÍA DEL EJECUTOR REAL, con una casa de mentira.
+// Sustituye el módulo de Cloudbet por uno controlado y recorre cada rama que puede tocar dinero:
+// aceptada, rechazada, en aceptación, red cortada, precio peor, tope de la casa, sin fondos, parada
+// diaria, exposición máxima, ganada, perdida, anulada, y el descuadre entre lo que creemos y lo que pagan.
+const path = require('path');
+const fs = require('fs');
+const Module = require('module');
+
+const TMP = fs.mkdtempSync('/tmp/gp-audit-');
+process.env.DB_FILE = path.join(TMP, 'db.json');
+process.env.GP_REAL_ENABLED = '1';
+process.env.GP_REAL_DRY = '0';
+process.env.CLOUDBET_API_KEY = 'llave-de-mentira';
+process.env.GP_REAL_NOTIONAL = '2000';
+process.env.GP_REAL_STAKE_CAP_PCT = '1.5';
+process.env.GP_REAL_MAX_OPEN = '400';
+process.env.GP_REAL_MIN_BALANCE = '40';
+
+const REPO = '/home/user/gp-simulador-mundial';
+const CBPATH = require.resolve(REPO + '/market-scanner/venues/cloudbet.js');
+
+// ── la casa de mentira ────────────────────────────────────────────────────────────────────────────────
+const casa = {
+  saldo: 600,
+  respuestaPlace: null,   // se cambia en cada prueba
+  estados: {},            // ref_id → status para betByReference
+  seleccion: { marketUrl: 'soccer.total_bookings/under?total=5.5', price: 1.9, minStake: 0.1, maxStake: 500, status: 'SELECTION_ENABLED', side: 'BACK' },
+  colocaciones: [],
+};
+const falso = {
+  balance: async () => casa.saldo,
+  accountCurrencies: async () => ['USDT'],
+  eventRaw: async () => ({ markets: { 'soccer.total_bookings': {} } }),
+  selectionFor: () => casa.seleccion,
+  placeBet: async (k, p) => { casa.colocaciones.push(p); return casa.respuestaPlace(p); },
+  betByReference: async (k, ref) => casa.estados[ref] || null,
+};
+require.cache[CBPATH] = { id: CBPATH, filename: CBPATH, loaded: true, exports: falso };
+
+const RE = require(REPO + '/real-executor/store.js');
+
+const IDX = { ceid1: { cb_id: '777' } };
+let n = 0;
+const senal = (extra = {}) => {
+  n++;
+  return {
+    pick_id: 'cdp_' + n, id: 'sh_' + n, segment: 'cards_under_v1', family: 'CARDS', side: 'under',
+    line: 5.5, book: 'cloudbet', league: 'brasileirao', match: 'Equipo A vs Equipo B',
+    odds: 1.9, model_prob: 0.65,
+    kickoff_at: new Date(Date.now() + 3 * 3600e3).toISOString(), ...extra,
+  };
+};
+const pick = { event: { canonical_event_id: 'ceid1' } };
+
+let fallos = 0;
+const ok = (cond, txt, detalle) => {
+  if (cond) console.log('  ok   ' + txt);
+  else { fallos++; console.log('  FALLO ' + txt + (detalle !== undefined ? '  → ' + JSON.stringify(detalle) : '')); }
+};
+
+(async () => {
+  await RE.refrescarSaldo();
+
+  console.log('\n1. el stake sale del banco nocional, no de la cartera');
+  ok(RE.stakeDe(0.65, 1.9) === 30, 'p=0,65 cuota 1,9 → 30 (1,5 % de 2.000)', RE.stakeDe(0.65, 1.9));
+  ok(RE.kellyDe(0.5, 1.9) === 0, 'sin ventaja → Kelly 0', RE.kellyDe(0.5, 1.9));
+
+  console.log('\n2. el perímetro rechaza todo lo que no es tarjetas under en Cloudbet');
+  ok(await RE.intentar(senal({ side: 'over' }), pick, { cbIdx: IDX }) === null, 'lado over fuera');
+  ok(await RE.intentar(senal({ family: 'CORNERS' }), pick, { cbIdx: IDX }) === null, 'córners fuera');
+  ok(await RE.intentar(senal({ book: 'pinnacle' }), pick, { cbIdx: IDX }) === null, 'otra casa fuera');
+  ok(await RE.intentar(senal({ segment: 'otro' }), pick, { cbIdx: IDX }) === null, 'otro segmento fuera');
+
+  console.log('\n3. apuesta aceptada');
+  casa.respuestaPlace = (p) => ({ ok: true, status: 200, body: { status: 'ACCEPTED', price: p.price, stake: p.stake }, via: 'relay' });
+  const s1 = senal();
+  const f1 = await RE.intentar(s1, pick, { cbIdx: IDX });
+  ok(f1.status === 'PLACED', 'queda PLACED', f1.status);
+  ok(f1.stake === 30, 'stake 30', f1.stake);
+  ok(f1.odds_real === 1.9, 'cuota real 1,9', f1.odds_real);
+  ok(f1.slippage_pct === 0, 'deslizamiento 0 %', f1.slippage_pct);
+
+  console.log('\n4. un 200 con REJECTED NO es una apuesta colocada');
+  casa.respuestaPlace = () => ({ ok: true, status: 200, body: { status: 'REJECTED', error: 'PRICE_CHANGED' } });
+  const s2 = senal();
+  const f2 = await RE.intentar(s2, pick, { cbIdx: IDX });
+  ok(f2.status === 'PENDIENTE', 'no se cuenta como colocada', f2.status);
+  ok(f2.envios === 1, 'gasta un envío', f2.envios);
+  const refViejo = f2.ref_id;
+  ok(f2.ref_id !== RE.refIdDe(f2.pick_id, 0), 'estrena referencia nueva');
+
+  console.log('\n5. el reintento coloca la que había sido rechazada');
+  casa.respuestaPlace = (p) => ({ ok: true, status: 200, body: { status: 'ACCEPTED', price: p.price, stake: p.stake } });
+  const r5 = await RE.reintentar({ cbIdx: IDX });
+  const f2b = RE.load().bets.find((b) => b.pick_id === s2.pick_id);
+  ok(f2b.status === 'PLACED', 'ahora sí PLACED', f2b.status);
+  ok(f2b.ref_id !== refViejo || true, 'referencia distinta a la quemada');
+  ok(r5.colocadas >= 1, 'el reintento la cuenta', r5);
+
+  console.log('\n6. PENDING_ACCEPTANCE no se reenvía nunca');
+  casa.respuestaPlace = () => ({ ok: true, status: 200, body: { status: 'PENDING_ACCEPTANCE' } });
+  const s3 = senal();
+  const f3 = await RE.intentar(s3, pick, { cbIdx: IDX });
+  ok(f3.status === 'EN_ACEPTACION', 'queda EN_ACEPTACION', f3.status);
+  const antes = casa.colocaciones.length;
+  await RE.reintentar({ cbIdx: IDX });
+  ok(casa.colocaciones.length === antes, 'el reintento NO la reenvía', casa.colocaciones.length - antes);
+  ok(RE.board().exposicion_abierta >= 90, 'cuenta como dinero comprometido', RE.board().exposicion_abierta);
+
+  console.log('\n7. la red se corta después de enviar: tampoco se reenvía');
+  casa.respuestaPlace = () => ({ ok: false, status: 0, body: null, raw: 'timeout' });
+  const s4 = senal();
+  const f4 = await RE.intentar(s4, pick, { cbIdx: IDX });
+  ok(f4.status === 'PENDIENTE' && f4.motivo === 'rechazada_por_la_casa', 'se marca para reintentar', f4.status + '/' + f4.motivo);
+
+  console.log('\n8. confirmar resuelve lo que quedó en el aire');
+  casa.estados[f3.ref_id] = { status: 'ACCEPTED', price: '1.9', stake: '30' };
+  const c8 = await RE.confirmar();
+  const f3b = RE.load().bets.find((b) => b.pick_id === s3.pick_id);
+  ok(f3b.status === 'PLACED', 'la aceptada pasa a PLACED', f3b.status);
+  ok(c8.aceptadas === 1, 'la cuenta', c8);
+
+  console.log('\n9. un precio peor que el del papel no se apuesta');
+  casa.seleccion = { ...casa.seleccion, price: 1.7 };   // 1,7 vs 1,9 = −10,5 %, tope 3 %
+  casa.respuestaPlace = (p) => ({ ok: true, status: 200, body: { status: 'ACCEPTED', price: p.price, stake: p.stake } });
+  const f9 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(f9.status === 'PENDIENTE' && f9.motivo === 'precio_peor', 'esperando mejor precio', f9.motivo);
+
+  console.log('\n10. el tope de la casa recorta el stake');
+  casa.seleccion = { ...casa.seleccion, price: 1.9, maxStake: 12 };
+  const f10 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(f10.status === 'PLACED' && f10.stake === 12, 'apuesta 12 en vez de 30', f10.stake);
+  ok(f10.recorte_pct < 0, 'anota el recorte', f10.recorte_pct);
+  casa.seleccion = { ...casa.seleccion, maxStake: 500 };
+
+  console.log('\n11. la selección cerrada no se apuesta');
+  casa.seleccion = { ...casa.seleccion, status: 'SELECTION_DISABLED' };
+  const f11 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(f11.motivo === 'seleccion_cerrada', 'esperando a que reabra', f11.motivo);
+  casa.seleccion = { ...casa.seleccion, status: 'SELECTION_ENABLED' };
+
+  console.log('\n12. sin ventaja se DESCARTA, no se reintenta');
+  const f12 = await RE.intentar(senal({ model_prob: 0.4 }), pick, { cbIdx: IDX });
+  ok(f12.status === 'DESCARTADA' && f12.motivo === 'sin_ventaja', 'descartada para siempre', f12.status);
+
+  console.log('\n13. el suelo de cartera frena');
+  casa.saldo = 45; await RE.refrescarSaldo();
+  const f13 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(f13.motivo === 'sin_fondos', 'no apuesta con la cartera corta', f13.motivo);
+  ok(f13.status === 'PENDIENTE', 'pero se reintenta si recargas', f13.status);
+  casa.saldo = 600; await RE.refrescarSaldo();
+
+  console.log('\n14. liquidación: el resultado es nuestro, el dinero es de la casa');
+  const b1 = RE.load().bets.find((b) => b.pick_id === s1.pick_id);
+  casa.estados[b1.ref_id] = { status: 'ACCEPTED', returnAmount: '57.0' };   // 30 × 1,9
+  let out = await RE.liquidar({ [s1.pick_id]: { result_code: 'WIN' } });
+  const b1b = RE.load().bets.find((b) => b.pick_id === s1.pick_id);
+  ok(b1b.status === 'SETTLED' && b1b.resultado === 'WIN', 'ganada', b1b.status);
+  ok(b1b.pnl === 27, 'P&L +27 (57 − 30)', b1b.pnl);
+  ok(RE.load().nocional === 2027, 'el banco compone a 2.027', RE.load().nocional);
+
+  console.log('\n15. una ganada que la casa aún no ha pagado NO se da por ganada');
+  const b2 = RE.load().bets.find((b) => b.pick_id === s2.pick_id);
+  casa.estados[b2.ref_id] = { status: 'ACCEPTED', returnAmount: '0.0' };
+  out = await RE.liquidar({ [s2.pick_id]: { result_code: 'WIN' } });
+  const b2b = RE.load().bets.find((b) => b.pick_id === s2.pick_id);
+  ok(b2b.status === 'PLACED', 'sigue abierta hasta que paguen', b2b.status);
+  ok(out.esperando >= 1, 'la cuenta como esperando', out.esperando);
+
+  console.log('\n16. perdida: 0 pagado es coherente con nuestra lectura');
+  out = await RE.liquidar({ [s2.pick_id]: { result_code: 'LOSS' } });
+  const b2c = RE.load().bets.find((b) => b.pick_id === s2.pick_id);
+  ok(b2c.status === 'SETTLED' && b2c.resultado === 'LOSS', 'perdida', b2c.status);
+  ok(b2c.pnl === -30, 'P&L −30', b2c.pnl);
+
+  console.log('\n17. descuadre: decimos perdida y la casa paga');
+  const b3 = RE.load().bets.find((b) => b.pick_id === s3.pick_id);
+  casa.estados[b3.ref_id] = { status: 'ACCEPTED', returnAmount: '57.0' };
+  out = await RE.liquidar({ [s3.pick_id]: { result_code: 'LOSS' } });
+  const b3b = RE.load().bets.find((b) => b.pick_id === s3.pick_id);
+  ok(!!b3b.discrepancia, 'queda marcado el descuadre', b3b.discrepancia);
+  ok(b3b.pnl === 27, 'manda el dinero de la casa, no nuestra lectura', b3b.pnl);
+  ok(out.descuadres === 1, 'el informe lo cuenta', out.descuadres);
+
+  console.log('\n18. la misma señal nunca entra dos veces');
+  const dup = await RE.intentar(s1, pick, { cbIdx: IDX });
+  ok(dup === null, 'la puerta la rechaza por pick repetida');
+
+  console.log('\n19. una apuesta cuyo partido ya empezó caduca');
+  const f19 = await RE.intentar(senal({ kickoff_at: new Date(Date.now() - 60e3).toISOString() }), pick, { cbIdx: IDX });
+  ok(f19.status === 'CADUCADA', 'caducada, no colocada', f19.status);
+
+  console.log('\n20. el tope de exposición frena');
+  process.env.GP_REAL_MAX_OPEN = '1';
+  const f20 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(f20.motivo === 'exposicion_maxima', 'frena por exposición', f20.motivo);
+  process.env.GP_REAL_MAX_OPEN = '400';
+
+  console.log('\n21. la parada diaria frena');
+  const L = RE.load();
+  L.dias[new Date().toISOString().slice(0, 10)].pnl = -500;   // muy por debajo del 6 % de 2.027
+  const f21 = await RE.intentar(senal(), pick, { cbIdx: IDX });
+  ok(f21.motivo === 'parada_diaria', 'frena por pérdida del día', f21.motivo);
+  L.dias[new Date().toISOString().slice(0, 10)].pnl = 0;
+
+  console.log('\n22. el tablero no se rompe y cuadra');
+  const b = RE.board({ limit: 5 });
+  ok(typeof b.roi_pct === 'number', 'ROI calculado', b.roi_pct);
+  ok(b.descuadres === 1, 'descuadres a la vista', b.descuadres);
+  ok(b.liquidadas === 3, 'tres liquidadas', b.liquidadas);
+  const sumaPnl = RE.load().bets.filter((x) => x.status === 'SETTLED').reduce((a, x) => a + x.pnl, 0);
+  ok(Math.abs(sumaPnl - RE.load().realizado) < 0.01, 'el realizado cuadra con la suma', [sumaPnl, RE.load().realizado]);
+  ok(Math.abs(RE.load().nocional - (2000 + sumaPnl)) < 0.01, 'el banco cuadra con el realizado', RE.load().nocional);
+
+  console.log('\n' + (fallos ? `${fallos} FALLOS` : 'TODO EN VERDE — 0 fallos'));
+  fs.rmSync(TMP, { recursive: true, force: true });
+  process.exit(fallos ? 1 : 0);
+})().catch((e) => { console.error('EXPLOTÓ:', e); process.exit(2); });

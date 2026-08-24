@@ -100,8 +100,18 @@ const dia = (d) => { const L = load(); L.dias[d] = L.dias[d] || { pnl: 0, aposta
 // referencia IDEMPOTENTE derivada del id de la pick. La casa rechaza referencias repetidas, así que esto
 // convierte "no colocar dos veces la misma apuesta" en algo que no depende de que nuestro código sea
 // correcto: aunque el barrido se ejecute dos veces, la segunda la rechaza la casa.
-function refIdDe(pickId) {
-  const h = crypto.createHash('sha256').update('gp-real:' + String(pickId)).digest('hex');
+// EL SEGUNDO ARGUMENTO NO ES DECORACIÓN. La casa consume la referencia en cuanto recibe el envío, gane o
+// pierda la petición: si RECHAZA una apuesta y quisiéramos reintentarla con la misma referencia, la
+// rechazaría por duplicada para siempre. Así que la referencia va por (pick, número de ENVÍO), y el número
+// de envío solo sube cuando de verdad se mandó algo y la casa contestó que NO la aceptó.
+//
+// La idempotencia se conserva donde importa: todo lo que falla ANTES de enviar (frenos, precio, id del
+// partido) no gasta referencia, y un envío cuyo desenlace desconocemos —se cortó la red, expiró el
+// tiempo— NO estrena referencia nueva: se pregunta por la vieja. Estrenar referencia sin saber qué pasó
+// con la anterior es la única forma de colocar dos veces la misma apuesta, y es exactamente lo que este
+// diseño impide.
+function refIdDe(pickId, envio = 0) {
+  const h = crypto.createHash('sha256').update('gp-real:' + String(pickId) + ':' + String(envio)).digest('hex');
   return [h.slice(0, 8), h.slice(8, 12), '4' + h.slice(13, 16),
     ((parseInt(h[16], 16) & 3) | 8).toString(16) + h.slice(17, 20), h.slice(20, 32)].join('-');
 }
@@ -125,7 +135,12 @@ function stakeDe(prob, odds) {
 }
 
 const abiertas = () => load().bets.filter((b) => b.status === 'PLACED');
-const expuesto = () => +abiertas().reduce((a, b) => a + (b.stake || 0), 0).toFixed(2);
+// LO EN EL AIRE TAMBIÉN CUENTA COMO EXPUESTO. Una apuesta que la casa está evaluando puede tener el dinero
+// ya retenido; dejarla fuera del cálculo haría que el tope de exposición permitiera comprometer más de lo
+// que creemos. Ante la duda, el dinero se cuenta como comprometido, no como libre.
+const enElAire = () => load().bets.filter((b) => b.status === 'EN_ACEPTACION');
+const expuesto = () => +[...abiertas(), ...enElAire()]
+  .reduce((a, b) => a + (b.stake || b.stake_comprometido || 0), 0).toFixed(2);
 
 // ── los frenos, en orden de gravedad ─────────────────────────────────────────────────────────────────────
 // Devuelve null si se puede apostar, o el motivo por el que no. El orden importa: primero lo que apaga todo,
@@ -151,6 +166,9 @@ async function refrescarSaldo() {
   const C = CFG();
   const a = await CB.balance(process.env.CLOUDBET_API_KEY || '', C.currency).catch(() => null);
   const L = load();
+  // si la casa no contesta, se CONSERVA el saldo estimado en vez de ponerlo a null: pasar de "sé
+  // aproximadamente cuánto queda" a "no lo sé" apagaría el freno de fondos justo cuando menos conviene.
+  if (a == null && L.saldo && typeof L.saldo.amount === 'number') { L.saldo.stale_at = new Date().toISOString(); save(); return L.saldo.amount; }
   L.saldo = { amount: a, at: new Date().toISOString(), currency: C.currency };
   save();
   return a;
@@ -178,7 +196,7 @@ const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro']);
 
 function filaNueva(sb, pick) {
   return {
-    ref_id: refIdDe(sb.pick_id), pick_id: sb.pick_id, shadow_id: sb.id || null,
+    ref_id: refIdDe(sb.pick_id, 0), envios: 0, pick_id: sb.pick_id, shadow_id: sb.id || null,
     match: sb.match, league: sb.league, line: sb.line, side: LADO,
     kickoff_at: sb.kickoff_at || null,
     ceid: (pick && pick.event && pick.event.canonical_event_id) || null,
@@ -256,21 +274,90 @@ async function colocar(fila, { cbIdx = {} } = {}) {
   //    verdad en vez de quedarse como un ensayo eterno.
   if (C.dry) return parar('ensayo');
 
-  // 7) el momento
+  // 7) el momento. A partir de aquí puede haber dinero comprometido, así que cada rama importa.
+  fila.enviado_at = new Date().toISOString();
   const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', peticion);
   fila.respuesta = r.body || r.raw || null;
   fila.http = r.status || null;
   fila.via = r.via || null;
-  if (!r.ok) return parar('rechazada_por_la_casa', { http: r.status });
+
+  // UN 200 DE LA CASA NO SIGNIFICA APUESTA COLOCADA. La primera versión daba por buena cualquier respuesta
+  // con HTTP correcto, y la casa devuelve 200 con `status: REJECTED` cuando NO la acepta. Eso habría
+  // anotado en el libro apuestas que no existen: el banco compondría con dinero imaginario y el informe
+  // presumiría de un volumen que nunca se jugó. Hay tres desenlaces y cada uno lleva a un sitio distinto.
+  const cuerpo = r.body || {};
+  const est = String(cuerpo.status || (cuerpo.bet && cuerpo.bet.status) || '').toUpperCase();
+
+  if (!r.ok || est === 'REJECTED') {
+    // rechazo explícito: la referencia queda quemada, así que el próximo intento estrena una.
+    fila.envios = (fila.envios || 0) + 1;
+    fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+    return parar('rechazada_por_la_casa', { http: r.status, error_casa: cuerpo.error || null });
+  }
+
+  if (est === 'PENDING_ACCEPTANCE' || (!est && r.ok)) {
+    // la casa la está evaluando, o contestó algo que no sabemos leer. En los dos casos PUEDE haber dinero
+    // comprometido, así que NO se reenvía nunca: se pregunta por esta misma referencia hasta saberlo.
+    fila.status = 'EN_ACEPTACION';
+    fila.motivo = est ? 'esperando_aceptacion' : 'respuesta_no_reconocida';
+    fila.stake_comprometido = stakeFinal;
+    save();
+    return fila;
+  }
 
   fila.status = 'PLACED';
   fila.motivo = null;
-  fila.odds_real = Number((r.body && (r.body.price || (r.body.bet && r.body.bet.price))) || sel.price) || sel.price;
+  fila.odds_real = Number(cuerpo.price || (cuerpo.bet && cuerpo.bet.price) || sel.price) || sel.price;
   fila.placed_at = new Date().toISOString();
   fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
   const d = dia(hoy()); d.apostado += stakeFinal; d.n += 1;
+  // EL SALDO BAJA AQUÍ, sin esperar a preguntarle a la casa. Un barrido puede colocar seis apuestas
+  // seguidas —180 dólares— y el suelo de cartera se estaba juzgando contra el saldo de la pasada anterior:
+  // las seis pasaban el freno mirando un dinero que ya no estaba. Se descuenta en el momento y la próxima
+  // consulta real lo corrige; equivocarse por abajo es la dirección segura.
+  if (L.saldo && typeof L.saldo.amount === 'number') {
+    L.saldo.amount = +(L.saldo.amount - stakeFinal).toFixed(2);
+    L.saldo.estimado = true;
+  }
   save();
   return fila;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// CONFIRMAR LO QUE QUEDÓ EN EL AIRE
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Todo envío cuyo desenlace no supimos —la casa dijo "la estoy evaluando", o se cortó la red a mitad—
+// termina aquí, y NUNCA en un reenvío. Se pregunta por la referencia: si la aceptó, es una apuesta puesta;
+// si la rechazó, se libera para reintentar con referencia nueva; si sigue evaluándola, se espera.
+// Sin este paso, la única salida honesta sería no reintentar nada, y la única salida cómoda sería
+// reenviar a ciegas y arriesgarse a apostar dos veces lo mismo.
+async function confirmar() {
+  const L = load();
+  const enAire = L.bets.filter((b) => b.status === 'EN_ACEPTACION');
+  let aceptadas = 0, rechazadas = 0, siguen = 0;
+  for (const fila of enAire) {
+    const st = await CB.betByReference(process.env.CLOUDBET_API_KEY || '', fila.ref_id).catch(() => null);
+    if (!st) { siguen++; continue; }
+    const raw = st.bet || st;
+    const est = String(raw.status || '').toUpperCase();
+    if (est === 'ACCEPTED') {
+      fila.status = 'PLACED'; fila.motivo = null;
+      fila.odds_real = Number(raw.price) || fila.precio_vivo || fila.odds_sombra;
+      fila.stake = Number(raw.stake) || fila.stake;
+      fila.placed_at = fila.placed_at || new Date().toISOString();
+      fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
+      const d = dia(String(fila.placed_at).slice(0, 10)); d.apostado += fila.stake; d.n += 1;
+      aceptadas++;
+    } else if (est === 'REJECTED') {
+      fila.envios = (fila.envios || 0) + 1;
+      fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+      fila.status = 'PENDIENTE'; fila.motivo = 'rechazada_por_la_casa';
+      fila.error_casa = raw.error || null;
+      rechazadas++;
+    } else siguen++;
+  }
+  if (aceptadas || rechazadas) save();
+  return { en_aire: enAire.length, aceptadas, rechazadas, siguen };
 }
 
 // LA PUERTA DE ENTRADA: una señal nueva del sombra. Crea la fila y hace el primer intento.
@@ -284,9 +371,10 @@ async function intentar(sb, pick, { cbIdx = {} } = {}) {
   if (String(sb.book || '').toLowerCase() !== CASA) return null;
   if (!(sb.line > 0)) return null;
 
-  const refId = refIdDe(sb.pick_id);
-  if (L.bets.some((b) => b.ref_id === refId)) return null;   // ya está en el libro; de reintentarla se
-                                                             // encarga `reintentar`, no esta puerta
+  // se busca por PICK, no por referencia: la referencia cambia cuando la casa rechaza un envío, así que
+  // buscar por ella crearía una fila nueva para la misma apuesta y podría duplicarla.
+  if (L.bets.some((b) => b.pick_id === sb.pick_id)) return null;   // ya está en el libro; de reintentarla
+                                                                   // se encarga `reintentar`, no esta puerta
   const fila = filaNueva(sb, pick);
   L.bets.push(fila);
   return colocar(fila, { cbIdx });
@@ -361,35 +449,72 @@ async function preflight(pares, { cbIdx = {} } = {}) {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Contra la casa, no contra nosotros. Nuestro liquidador sirve para medir el modelo; el dinero lo dice
 // Cloudbet, y cuando los dos no coinciden manda la casa y la discrepancia se anota para mirarla.
-async function liquidar() {
+// EL RESULTADO NO PUEDE SALIR DE LA CASA, Y LA PRIMERA VERSIÓN LO INTENTABA (corregido el 25-ago contra la
+// documentación oficial). Buscaba en el campo `status` valores como WON o LOST que no existen: la casa solo
+// dice ACCEPTED / PENDING_ACCEPTANCE / REJECTED, que es si ACEPTÓ la apuesta, no si ganó. Una apuesta
+// perdida y una todavía sin resolver son las dos ACCEPTED con `returnAmount: "0.0"`. De ahí no se puede
+// deducir el resultado, y el código anterior simplemente no habría liquidado nunca nada — el banco no
+// habría compuesto y la exposición abierta habría crecido hasta bloquear el ejecutor por su propio tope.
+//
+// El reparto correcto de autoridades es este:
+//   · el RESULTADO lo pone NUESTRA liquidación, la misma que cierra la pick del sombra. Sabe cuándo acabó
+//     el partido y con cuántas tarjetas.
+//   · el DINERO lo pone la casa, con `returnAmount`. Es lo que de verdad entró en la cuenta.
+//   · si los dos no cuadran, no se toca el banco y se marca `discrepancia`. Un descuadre entre lo que
+//     creemos y lo que nos pagaron es justo el fallo que un ejecutor automático NO puede tapar solo.
+//
+// `resultados` es un mapa pick_id → { result_code, } que el llamador saca de sus propias picks liquidadas.
+async function liquidar(resultados = {}) {
   const C = CFG();
   if (!process.env.CLOUDBET_API_KEY) return { settled: 0, why: 'sin_api_key' };
   const L = load();
   const pend = L.bets.filter((b) => b.status === 'PLACED');
-  let settled = 0;
+  let settled = 0, esperando = 0, descuadres = 0;
   for (const b of pend) {
+    const nuestro = String((resultados[b.pick_id] || {}).result_code || '').toUpperCase();
+    if (!nuestro) { esperando++; continue; }              // el partido aún no se ha resuelto para nosotros
+
     const st = await CB.betByReference(process.env.CLOUDBET_API_KEY, b.ref_id).catch(() => null);
-    if (!st) continue;
-    const raw = st.bet || st;
-    const estado = String(raw.status || raw.state || '').toUpperCase();
-    if (!/WON|LOST|VOID|CANCEL|PUSH|REFUND|SETTLED/.test(estado)) continue;
-    const ret = Number(raw.returnAmount != null ? raw.returnAmount : raw.payout);
+    const raw = (st && (st.bet || st)) || null;
+    const ret = raw && raw.returnAmount != null ? Number(raw.returnAmount) : null;
     const stake = Number(b.stake) || 0;
-    let pnl;
-    if (/VOID|CANCEL|REFUND|PUSH/.test(estado)) pnl = 0;
-    else if (Number.isFinite(ret)) pnl = +(ret - stake).toFixed(2);
-    else pnl = /WON/.test(estado) ? +(stake * ((b.odds_real || b.odds_sombra) - 1)).toFixed(2) : -stake;
+    const cuota = b.odds_real || b.precio_vivo || b.odds_sombra || 0;
+
+    if (nuestro === 'WIN') {
+      // una ganada TIENE que traer dinero de vuelta. Si la casa aún no ha pagado, se espera: dar por
+      // ganada una apuesta que nadie ha pagado es inventarse el saldo.
+      if (!(ret > 0)) { b.espera_pago = (b.espera_pago || 0) + 1; esperando++; continue; }
+      const esperado = +(stake * cuota).toFixed(2);
+      if (Math.abs(ret - esperado) > Math.max(0.05, esperado * 0.02)) {
+        b.discrepancia = { esperado, pagado: ret }; descuadres++;
+      }
+      b.pnl = +(ret - stake).toFixed(2);
+      b.resultado = 'WIN';
+    } else if (nuestro === 'LOSS') {
+      // una perdida no devuelve nada, y aquí `returnAmount: 0` es consistente con nuestra lectura. Si la
+      // casa SÍ pagó algo, es que uno de los dos se equivocó de resultado: se anota y se cree a la casa.
+      if (ret > 0) {
+        b.discrepancia = { esperado: 0, pagado: ret }; descuadres++;
+        b.pnl = +(ret - stake).toFixed(2); b.resultado = 'WIN';
+      } else { b.pnl = -stake; b.resultado = 'LOSS'; }
+    } else if (/VOID|PUSH|CANCEL/.test(nuestro)) {
+      // anulada: devuelve el stake. Si todavía no ha vuelto, se espera igual que con una ganada.
+      if (!(ret > 0)) { b.espera_pago = (b.espera_pago || 0) + 1; esperando++; continue; }
+      b.pnl = +(ret - stake).toFixed(2); b.resultado = 'VOID';
+    } else { esperando++; continue; }                      // SUPERSEDED u otro código que no resuelve dinero
+
     b.status = 'SETTLED';
-    b.resultado = /WON/.test(estado) ? 'WIN' : /LOST/.test(estado) ? 'LOSS' : 'VOID';
-    b.pnl = pnl; b.settled_at = new Date().toISOString(); b.casa_estado = estado;
-    L.realizado = +((L.realizado || 0) + pnl).toFixed(2);
-    L.nocional = +((L.nocional || C.nocional) + pnl).toFixed(2);
-    const d = dia(String(b.settled_at).slice(0, 10)); d.pnl = +(d.pnl + pnl).toFixed(2);
+    b.settled_at = new Date().toISOString();
+    b.pagado_por_la_casa = ret;
+    b.resultado_nuestro = nuestro;
+    L.realizado = +((L.realizado || 0) + b.pnl).toFixed(2);
+    L.nocional = +((L.nocional || C.nocional) + b.pnl).toFixed(2);
+    const d = dia(String(b.settled_at).slice(0, 10)); d.pnl = +(d.pnl + b.pnl).toFixed(2);
     settled++;
   }
-  if (settled) save();
+  if (settled || descuadres) save();
   await refrescarSaldo().catch(() => null);
-  return { settled, abiertas: abiertas().length };
+  return { settled, esperando, descuadres, abiertas: abiertas().length, en_el_aire: enElAire().length };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -421,6 +546,8 @@ function board({ limit = 40 } = {}) {
     saldo: L.saldo,
     exposicion_abierta: expuesto(),
     senales: L.bets.length, colocadas: colocadas.length, abiertas: abiertas().length,
+    en_el_aire: enElAire().length,
+    descuadres: L.bets.filter((b) => b.discrepancia).length,
     pendientes: pendientes.length, caducadas: caducadas.length,
     descartadas: L.bets.filter((b) => b.status === 'DESCARTADA').length,
     liquidadas: liq.length, w, l,
@@ -438,5 +565,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, colocar, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

@@ -12086,8 +12086,18 @@ async function shadowSweep() {
       // saldo que estaba corto, el id que aún no se había resuelto— tiene su segunda oportunidad aquí, y por
       // eso el ejecutor real no pierde una señal por un tropiezo de treinta segundos.
       const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {} }).catch((e) => ({ error: e.message }));
-      const liq = await RE.liquidar().catch((e) => ({ error: e.message }));
-      real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, ...liq };
+      // lo que quedó en el aire —la casa evaluando, o una respuesta que no supimos leer— se pregunta por su
+      // referencia. Nunca se reenvía: reenviar sin saber qué pasó es la única forma de apostar dos veces.
+      const conf = await RE.confirmar().catch((e) => ({ error: e.message }));
+      // EL RESULTADO LO PONEMOS NOSOTROS, EL DINERO LO PONE LA CASA. `byPick` ya tiene las picks liquidadas
+      // de este mismo barrido, así que la liquidación real usa exactamente el mismo veredicto que la del
+      // papel — que es lo que hace comparables los dos registros.
+      const resultados = {};
+      for (const [pid, q] of Object.entries(byPick)) {
+        if (q && q.status === 'SETTLED' && q.result_code) resultados[pid] = { result_code: q.result_code };
+      }
+      const liq = await RE.liquidar(resultados).catch((e) => ({ error: e.message }));
+      real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, confirmadas: conf, ...liq };
       await realAvisoSaldo().catch(() => {});
     } else if (realIntentos) real = { intentos: realIntentos, colocadas: realColocadas, apagado: true };
   } catch (e) { real = { error: e.message }; }
@@ -12145,12 +12155,16 @@ async function realDailyMail(cual, { force = false } = {}) {
     ].join('\n');
   } else {
     const hoyBets = L.bets.filter((x) => String(x.at || '').slice(0, 10) === hoyS);
+    // los estados son los del ejecutor de hoy: PENDIENTE (se reintenta), EN_ACEPTACION (la casa la evalúa),
+    // PLACED, SETTLED, CADUCADA (se acabó el tiempo) y DESCARTADA. Este correo llegó a filtrar por estados
+    // que ya no existían y habría enseñado ceros con el libro lleno.
     const puestas = hoyBets.filter((x) => x.status === 'PLACED' || x.status === 'SETTLED');
-    const ensayos = hoyBets.filter((x) => x.status === 'ENSAYO');
-    const fallidas = hoyBets.filter((x) => x.status === 'RECHAZADA');
+    const enAire = hoyBets.filter((x) => x.status === 'EN_ACEPTACION');
+    const esperando = hoyBets.filter((x) => x.status === 'PENDIENTE');
+    const perdidas = hoyBets.filter((x) => x.status === 'CADUCADA' || x.status === 'DESCARTADA');
     const d = L.dias[hoyS] || { pnl: 0, apostado: 0, n: 0 };
-    const porMotivo = {};
-    for (const x of fallidas) porMotivo[x.motivo || '?'] = (porMotivo[x.motivo || '?'] || 0) + 1;
+    const cuenta = (rows) => { const o = {}; for (const x of rows) o[x.motivo || '?'] = (o[x.motivo || '?'] || 0) + 1; return o; };
+    const descuadres = L.bets.filter((x) => x.discrepancia);
     const fila = (x) => `  ${x.match || '?'} · u${x.line} · ${Number(x.stake).toFixed(2)} @ ${x.odds_real || x.precio_vivo || x.odds_sombra}` +
       (x.slippage_pct != null ? ` (papel ${x.odds_sombra}, ${fmt(x.slippage_pct)}%)` : '') +
       (x.resultado ? ` → ${x.resultado} ${fmt(x.pnl || 0)}` : '');
@@ -12160,11 +12174,18 @@ async function realDailyMail(cual, { force = false } = {}) {
       '',
       `Colocadas hoy: ${puestas.length} por ${d.apostado.toFixed(2)} · P&L liquidado del día ${fmt(d.pnl)}`,
       `Banco nocional: ${Number(L.nocional).toFixed(2)} · cartera ${sal}`,
-      `Abiertas: ${b.abiertas} por ${b.exposicion_abierta}`,
+      `Abiertas: ${b.abiertas} por ${b.exposicion_abierta}${b.en_el_aire ? ` · en aceptación: ${b.en_el_aire}` : ''}`,
       '',
       puestas.length ? 'COLOCADAS\n' + puestas.map(fila).join('\n') : 'Ninguna colocada hoy.',
-      ensayos.length ? `\nENSAYOS (no se colocó dinero): ${ensayos.length}\n` + ensayos.map(fila).join('\n') : '',
-      fallidas.length ? `\nNO COLOCADAS: ${fallidas.length}\n` + Object.entries(porMotivo).map(([k, v]) => `  ${k}: ${v}`).join('\n') : '',
+      enAire.length ? `\nEN ACEPTACIÓN (la casa las está evaluando, NO se reenvían): ${enAire.length}\n` + enAire.map(fila).join('\n') : '',
+      esperando.length ? `\nESPERANDO, se reintentan hasta el saque: ${esperando.length}\n`
+        + Object.entries(cuenta(esperando)).map(([k, v]) => `  ${k}: ${v}`).join('\n') : '',
+      perdidas.length ? `\nNO LLEGARON: ${perdidas.length}\n`
+        + Object.entries(cuenta(perdidas)).map(([k, v]) => `  ${k}: ${v}`).join('\n') : '',
+      // un descuadre entre lo que creemos y lo que nos pagaron va ARRIBA y en mayúsculas: es lo único de
+      // este correo que exige que alguien mire, no que alguien se entere.
+      descuadres.length ? `\n*** DESCUADRES CON LA CASA: ${descuadres.length} — revisar ***\n`
+        + descuadres.slice(-5).map((x) => `  ${x.match}: esperábamos ${x.discrepancia.esperado}, pagó ${x.discrepancia.pagado}`).join('\n') : '',
       '',
       `ACUMULADO — ${b.liquidadas} liquidadas, ${b.w}W-${b.l}L, apostado ${b.apostado}, P&L ${fmt(b.pnl)}` +
         (b.roi_pct != null ? `, ROI ${fmt(b.roi_pct)}%` : ''),

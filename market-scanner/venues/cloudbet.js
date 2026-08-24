@@ -419,12 +419,21 @@ async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, re
 
 // el estado de una apuesta por su referencia. Es la fuente AUTORITATIVA de si ganó, perdió o se anuló:
 // nuestra propia liquidación sirve para el modelo, pero el dinero lo dice la casa.
+// ES POST, NO GET (comprobado contra la documentación oficial de la casa el 25-ago). La primera versión
+// preguntaba con GET, que no existe: ninguna apuesta se habría liquidado nunca, el banco no habría
+// compuesto y la exposición abierta habría crecido hasta bloquear el ejecutor por su propio tope. Es el
+// tipo de fallo que no da error visible — solo un registro que se queda quieto.
+//
+// La respuesta trae `status` (ACCEPTED / PENDING_ACCEPTANCE / REJECTED), `returnAmount`, `stake`, `price`
+// y `error`. OJO: `status` dice si la apuesta fue ACEPTADA, NO si ganó. Una apuesta perdida y una todavía
+// sin resolver son las dos ACCEPTED con returnAmount "0.0" — de ahí no se puede sacar el resultado, y
+// quien lo intente se inventará ganancias o pérdidas. El resultado sale de nuestra propia liquidación; de
+// aquí sale el DINERO.
 async function betByReference(apiKey, referenceId) {
   if (!apiKey || !referenceId) return null;
-  const r = await cbFetch(`/pub/v3/bets/${encodeURIComponent(referenceId)}/status`, apiKey).catch(() => null);
-  if (r && r.ok && r.body) return r.body;
-  const r2 = await cbFetch(`/pub/v2/bets/${encodeURIComponent(referenceId)}/status`, apiKey).catch(() => null);
-  return r2 && r2.ok ? r2.body : null;
+  const r = await cbFetch(`/pub/v3/bets/${encodeURIComponent(referenceId)}/status`, apiKey,
+    { method: 'POST', body: {} }).catch(() => null);
+  return r && r.ok ? r.body : null;
 }
 
 // LO QUE HAY EN LA CACHÉ, SIN SALIR A BUSCAR NADA. `fetchCloudbetSoccer` con la caché vencida se lanza a

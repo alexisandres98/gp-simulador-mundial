@@ -253,6 +253,43 @@ async function intentar(sb, pick, { cbIdx = {} } = {}) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// PRE-VUELO: LA MISMA RESOLUCIÓN, SIN ESCRIBIR NADA
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Recorre los mismos pasos que `intentar` —id del partido en la casa, precio vivo, coordenadas, topes,
+// deslizamiento— y no toca el libro mayor ni la cuenta. Existe porque la alternativa para saber si la cadena
+// funciona es esperar a que nazca una señal y luego mirar el registro, y eso son horas. Con esto se
+// comprueba en un segundo, sobre las apuestas que el sombra ya tiene abiertas, que cada eslabón resuelve.
+async function preflight(pares, { cbIdx = {} } = {}) {
+  const C = CFG();
+  const out = [];
+  for (const { sb, pick } of pares) {
+    const f = { match: sb.match, league: sb.league, line: sb.line, odds_sombra: sb.odds };
+    const ceid = (pick && pick.event && pick.event.canonical_event_id) || null;
+    f.ceid = ceid;
+    const idx = ceid ? (cbIdx || {})[ceid] : null;
+    if (!idx || !idx.cb_id) { f.paso = 'sin_id_de_evento'; out.push(f); continue; }
+    f.cb_event_id = idx.cb_id;
+    const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);
+    if (!ev) { f.paso = 'evento_ilegible'; out.push(f); continue; }
+    f.partido_casa = `${(ev.home || {}).name} v ${(ev.away || {}).name}`;
+    const sel = CB.selectionFor(ev, MARKET_KEY, sb.line, LADO);
+    if (!sel) {
+      f.paso = 'linea_no_cotizada';
+      f.familias_del_evento = Object.keys(ev.markets || {}).slice(0, 12);
+      out.push(f); continue;
+    }
+    f.paso = 'resuelta';
+    f.precio_vivo = sel.price; f.market_url = sel.marketUrl;
+    f.max_stake = sel.maxStake; f.min_stake = sel.minStake; f.estado = sel.status;
+    f.stake_que_pondriamos = stakeDe(sb.model_prob, sb.odds);
+    f.deslizamiento_pct = sb.odds > 0 ? +(100 * (sel.price / sb.odds - 1)).toFixed(2) : null;
+    f.pasaria_el_deslizamiento = sel.price >= sb.odds * (1 - C.minOddsSlipPct);
+    out.push(f);
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // LIQUIDAR
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Contra la casa, no contra nosotros. Nuestro liquidador sirve para medir el modelo; el dinero lo dice
@@ -328,5 +365,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

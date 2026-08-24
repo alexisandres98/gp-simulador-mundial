@@ -19109,6 +19109,20 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { host, moneda: cur, llave_len: ak.length, rutas: out });
       }
+      // `?preflight=1`: la misma resolución que haría una apuesta real, sobre las que el sombra ya tiene
+      // abiertas, sin escribir nada ni tocar la cuenta. Es la comprobación de que cada eslabón resuelve —id
+      // del partido en la casa, precio vivo, coordenadas, topes— sin esperar horas a que nazca una señal.
+      if (url.searchParams.get('preflight') === '1') {
+        const S2 = shadowInit();
+        const byPick2 = {}; for (const q of (db.clubDailyPicks || [])) byPick2[q.pick_id] = q;
+        const pares = S2.bets.filter((x) => x.status === 'OPEN' && x.segment === RE.SEGMENTO)
+          .slice(-Math.min(12, Math.max(1, +(url.searchParams.get('n') || 6))))
+          .map((sb) => ({ sb, pick: byPick2[sb.pick_id] }))
+          .filter((x) => x.pick);
+        return json(res, 200, { abiertas_del_segmento: pares.length,
+          idx_eventos: Object.keys(db.cbEventIdx || {}).length,
+          filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {} }) });
+      }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });
       return json(res, 200, b);
     }

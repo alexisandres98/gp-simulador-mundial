@@ -18298,6 +18298,14 @@ const server = http.createServer(async (req, res) => {
           diag: r.diag || null,
           filas: rows.length, por_dia: porDia, muestra: rows.slice(0, 8) });
       }
+      // `?clvwhy=<juego>` cuenta, pick a pick, por qué una liquidada se quedó sin CLV. El agregado no sirve
+      // para arreglar: "sin línea exacta" tapa cosas que se arreglan de formas distintas.
+      const cw = String(url.searchParams.get('clvwhy') || '');
+      if (cw) {
+        const ES3 = require('./esports-engine/store');
+        if (!ES3.ENGINES[cw]) return json(res, 400, { error: 'juego desconocido', games: ES3.GAME_ORDER });
+        return json(res, 200, ES3.clvWhy(cw, { limit: Math.min(40, Math.max(1, +(url.searchParams.get('n') || 12))) }));
+      }
       const sg = String(url.searchParams.get('settle') || '');
       if (sg) {
         const ES2 = require('./esports-engine/store');

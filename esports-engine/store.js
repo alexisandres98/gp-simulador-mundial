@@ -1716,6 +1716,45 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
 
 // El cuadro de rendimiento del deporte. Se publica el CLV SEPARADO del ROI y por delante, porque con
 // muestras pequeñas el ROI es ruido y el CLV ya tiene señal — es la lección que dejó baloncesto.
+// POR QUÉ UNA PICK LIQUIDADA SE QUEDÓ SIN CLV, contado caso por caso. El agregado ("165 sin línea
+// exacta") no permite arreglar nada: no distingue "la casa no publica escalera" de "el nombre del lado no
+// casa" de "la escalera existe pero solo por un lado". Cada una se arregla de forma distinta, así que el
+// diagnóstico tiene que decir cuál es.
+function clvWhy(game, { limit = 12 } = {}) {
+  const st = rd(PICKS_F(game));
+  const closes = rd(`closes-${game}.json`);
+  const all = st && st.picks ? Object.values(st.picks) : [];
+  const sin = all.filter((p) => p.status === 'SETTLED' && p.clv_pct == null);
+  const motivos = {}; const muestra = [];
+  for (const pk of sin) {
+    const c = closes && closes.closes && closes.closes[pk.event_id];
+    let why, det = null;
+    if (!c || !c.rows) why = 'sin_cierre_del_evento';
+    else {
+      const fam = c.rows.filter((r) => r.family === pk.family);
+      const misma = fam.filter((r) => r.side === pk.side && (r.map || null) === (pk.map || null)
+        && (r.team || null) === (pk.team || null));
+      const miCasa = misma.filter((r) => r.book === pk.book);
+      if (!fam.length) { why = 'cierre_sin_esa_familia'; det = { familias: [...new Set(c.rows.map((r) => r.family))].slice(0, 12) }; }
+      else if (!misma.length) { why = 'cierre_sin_ese_lado'; det = { pick: { side: pk.side, map: pk.map || null, team: pk.team || null },
+        cierre: fam.slice(0, 8).map((r) => ({ book: r.book, side: r.side, map: r.map || null, team: r.team || null, line: r.line })) }; }
+      else if (!miCasa.length) { why = 'cierre_sin_mi_casa'; det = { mi_casa: pk.book, casas: [...new Set(misma.map((r) => r.book))] }; }
+      else {
+        const lineas = [...new Set(miCasa.map((r) => (r.line == null ? null : +r.line)))].sort((a, b) => a - b);
+        const mia = pk.line == null ? null : +pk.line;
+        const cerca = lineas.filter((x) => x != null && mia != null && Math.abs(x - mia) <= CLOSE_MAX_GAP);
+        if (lineas.length === 1) { why = 'la_casa_publica_una_sola_linea'; det = { mi_linea: mia, cierre: lineas }; }
+        else if (cerca.length < 2) { why = 'escalera_lejos_de_mi_linea'; det = { mi_linea: mia, cierre: lineas }; }
+        else if (!(cerca.some((x) => x <= mia) && cerca.some((x) => x >= mia))) { why = 'mi_linea_fuera_de_la_escalera'; det = { mi_linea: mia, cierre: lineas }; }
+        else { why = 'deberia_haber_interpolado'; det = { mi_linea: mia, cierre: lineas }; }
+      }
+    }
+    motivos[why] = (motivos[why] || 0) + 1;
+    if (muestra.length < limit) muestra.push({ pick_id: pk.pick_id, family: pk.family, book: pk.book, line: pk.line ?? null, why, det });
+  }
+  return { game, settled_sin_clv: sin.length, motivos, muestra };
+}
+
 function track(game, { limit = 60 } = {}) {
   const st = rd(PICKS_F(game));
   const all = st && st.picks ? Object.values(st.picks) : [];
@@ -2440,7 +2479,8 @@ function picksRaw(game, { status = null } = {}) {
   return status ? all.filter((p) => p.status === status) : all;
 }
 
-module.exports = { tournamentsBoard, retireCrossedPicks,
+module.exports = {
+  clvWhy, tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne, picksRaw,

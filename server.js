@@ -19305,11 +19305,17 @@ const server = http.createServer(async (req, res) => {
         // en la fusión y no en los nombres ni en los identificadores. Sin esto, el diagnóstico es a ciegas.
         const vivos = Object.values(db.mmaResults || {});
         const enPool = new Set((CU.fights.fights || []).map((f) => f.comp_id));
+        // el careo que de verdad resuelve esto: el identificador que trae la punta viva contra el que usa
+        // el histórico. Si no son el mismo, la pelea está en el pool y aun así no es de ese peleador.
+        const careo = vivos.filter((f) => norm(f.f1.name).includes(norm(quien)) || norm(f.f2.name).includes(norm(quien)))
+          .slice(0, 3).map((f) => ({ comp_id: f.comp_id, fecha: f.date, completed: f.completed,
+            f1: `${f.f1.name}#${f.f1.id}`, f2: `${f.f2.name}#${f.f2.id}` }));
         return json(res, 200, { peleador: quien, encontrados: ids.length, perfiles: salida,
           diag: { pool: (CU.fights.fights || []).length, own: (CU.own || []).length,
             vivos_guardados: vivos.length,
             vivos_en_pool: vivos.filter((f) => enPool.has(f.comp_id)).length,
-            cache_edad_min: CU.at ? Math.round((Date.now() - CU.at) / 60000) : null } });
+            cache_edad_min: CU.at ? Math.round((Date.now() - CU.at) / 60000) : null },
+          careo_de_ids: careo, ids_en_el_indice: ids.map(([id, nm]) => `${nm}#${id}`) });
       }
       const R = db.mmaResults || {};
       const filas = Object.values(R).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));

@@ -2386,10 +2386,19 @@ function h2h(game, refA, refB) {
   };
 }
 
+// LAS PICKS EN CRUDO, para el ejecutor en la sombra. `track()` devuelve el agregado y `board()` la
+// pizarra; el ejecutor necesita la lista tal cual —con su cuota, su casa y las casas que la cotizan—
+// para decidir si tiene vía de ejecución. Solo lectura: nadie de fuera escribe aquí.
+function picksRaw(game, { status = null } = {}) {
+  const st = rd(PICKS_F(game));
+  const all = st && st.picks ? Object.values(st.picks) : [];
+  return status ? all.filter((p) => p.status === status) : all;
+}
+
 module.exports = { tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
-  teamSearch, simulate, recordPicks, settlePicks, track, settleOne,
+  teamSearch, simulate, recordPicks, settlePicks, track, settleOne, picksRaw,
   teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h, playerProfile,
   championsBoard,
 };

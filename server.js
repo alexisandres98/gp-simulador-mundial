@@ -11774,6 +11774,32 @@ async function shadowSweep() {
     });
     save();
   }
+  // ═ TERCER SEGMENTO: cs2_rounds_v1 (25-ago, revisión del lunes, aprobado por Alexis) ════════════════
+  // Entrada NUEVA anotada, nunca edición de un segmento vivo. La medición que lo justifica es la única de
+  // la casa que aguanta las dos pruebas a la vez: mercado VIVO (la línea se mueve, así que el CLV informa)
+  // y CLV positivo con muestra — +2,39 % sobre 106 medidas en 158 picks.
+  //
+  // PERO ENTRA CON UNA ADVERTENCIA ESCRITA, porque el desglose por casa la contradice a medias:
+  //     Pinnacle  n=79  +12,22 u  CLV +2,82 %
+  //     Bovada    n=55   +5,76 u  CLV +2,04 %
+  //     Cloudbet  n=24   −0,40 u  CLV +1,48 %
+  // La ventaja vive en Pinnacle. Cloudbet —la ÚNICA casa que este ejecutor puede tomar por API— sale
+  // plana. Si el segmento solo pudiera ejecutar en Cloudbet estaríamos midiendo la esquina donde el edge
+  // no está, y el resultado diría "CS2 no funciona" cuando lo que no funciona es el venue.
+  // Por eso este segmento admite DOS vías y las marca por separado: Cloudbet como automática y Pinnacle
+  // como MANUAL (Alexis tiene cuenta). Así el informe puede responder la pregunta que de verdad importa:
+  // cuánto de esto se puede automatizar y cuánto hay que colocar a mano.
+  //
+  // Solo RONDAS_HANDICAP. La familia hermana RONDAS (totales sin hándicap) pierde: 104 picks, −8,65 u.
+  if (!S.cfg.some((c) => c.key === 'cs2_rounds_v1')) {
+    S.cfg.push({
+      key: 'cs2_rounds_v1', sport: 'esports', game: 'cs2', family: 'RONDAS_HANDICAP',
+      frozen_at: new Date().toISOString(),
+      auto_books: ['cloudbet'], manual_books: ['pinnacle'],
+      note: 'REGLA CONGELADA (25-ago): toda RONDAS_HANDICAP de CS2 que publique el motor · stake kelly/4 cap 1.5% · entrada al precio de la casa que la cotiza mejor, SI es una que podemos usar (cloudbet=automática, pinnacle=manual). Bovada cotiza pero no es utilizable: cuenta como no ejecutable. Base: 158 picks, +17,57 u, CLV +2,39% sobre 106 medidas. Aviso: en Cloudbet el mismo edge sale plano (−0,40 u en 24).',
+    });
+    save();
+  }
   let placed = 0, settled = 0, unexec = 0;
   const seen = new Set(S.bets.map(b => b.pick_id).concat(S.unexec.map(u => u.pick_id)));
   const now = Date.now();
@@ -11825,6 +11851,47 @@ async function shadowSweep() {
       }
       continue;
     }
+    // ═ ESPORTS (25-ago): las picks viven en disco, no en `db`, así que se leen del almacén del motor.
+    // La vía de ejecución se decide por la casa que trae el MEJOR precio: si es una de las nuestras se
+    // toma (marcando si fue automática o manual); si es Bovada —que cotiza mucho y no podemos usar— se
+    // sella como no ejecutable, que es exactamente el dato de capacidad que este ejecutor existe para dar.
+    if (seg.sport === 'esports') {
+      let epicks = [];
+      try { epicks = require('./esports-engine/store').picksRaw(seg.game || 'cs2', { status: 'ACTIVE' }); }
+      catch (e) { epicks = []; }
+      for (const p of epicks) {
+        if ((p.family || '') !== seg.family) continue;
+        if (seen.has(p.pick_id)) continue;
+        const ko = Date.parse(p.start_at || 0);
+        if (!(ko > now) || !(p.odds > 1)) continue;
+        const bk = String(p.book || '').toLowerCase();
+        const via = (seg.auto_books || []).includes(bk) ? 'auto'
+          : (seg.manual_books || []).includes(bk) ? 'manual' : null;
+        if (!via) {
+          if (ko - now > 30 * 60e3) continue;   // aún puede aparecer mejor precio en una casa usable
+          S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(),
+            match: `${p.home} vs ${p.away}`, league: p.competition || null,
+            line: p.line != null ? p.line : null, side: p.side || null, best_odds: p.odds,
+            kickoff_at: p.start_at || null, reason: 'solo_casas_no_conectables',
+            books_con_mercado: bk ? [bk] : [] });
+          if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
+          S.unexec_count++; seen.add(p.pick_id); unexec++;
+          continue;
+        }
+        const stake = shadowStake(S, p.p_gp || 0, p.odds);
+        S.bets.push({
+          id: 'sh_' + Math.random().toString(36).slice(2, 10), pick_id: p.pick_id, segment: seg.key,
+          family: p.family, side: p.side || null, line: p.line != null ? p.line : null,
+          league: p.competition || null, match: `${p.home} vs ${p.away}`,
+          odds: p.odds, book: bk, via, ref_best_odds: p.odds, ref_best_book: bk,
+          model_prob: p.p_gp || null,
+          stake, placed_at: new Date().toISOString(), kickoff_at: p.start_at || null,
+          status: 'OPEN', result: null, pnl: 0,
+        });
+        seen.add(p.pick_id); placed++;
+      }
+      continue;
+    }
     if (seg.sport !== 'futbol') continue;
     for (const p of (db.clubDailyPicks || [])) {
       if (p.status !== 'ACTIVE' || p.family !== seg.family || (seg.side && p.side !== seg.side)) continue;
@@ -11863,7 +11930,14 @@ async function shadowSweep() {
   }
   // liquidación: espejo del resultado real de la pick (VOID/PUSH devuelve el stake → pnl 0).
   // 13-ago: indexa también combate — la misma liquidación sirve a cualquier segmento futuro.
+  // 25-ago: indexa también las de esports, que viven en disco. Sin esto una apuesta de CS2 se coloca
+  // y no se cierra nunca: el ejecutor la contaría como abierta para siempre y el ROI mentiría por
+  // omisión. Solo se leen los juegos que algún segmento declara, no los cuatro.
   const byPick = {}; for (const p of (db.clubDailyPicks || []).concat(db.combatPicks || [])) byPick[p.pick_id] = p;
+  for (const g of new Set(S.cfg.filter((c) => c.sport === 'esports').map((c) => c.game || 'cs2'))) {
+    try { for (const p of require('./esports-engine/store').picksRaw(g)) byPick[p.pick_id] = p; }
+    catch (e) { /* si el almacén no responde, las de ese juego quedan abiertas hasta el próximo pase */ }
+  }
   for (const b of S.bets) {
     if (b.status !== 'OPEN') continue;
     const p = byPick[b.pick_id];
@@ -11877,7 +11951,7 @@ async function shadowSweep() {
     // Ahora, si la pick fue superseded, la apuesta se liquida contra el total REAL del partido y contra SU
     // PROPIA línea —no la de la pick que la reemplazó—, que es la única lectura fiel a lo que se apostó.
     let code = p.result_code;
-    if (code === 'SUPERSEDED') {
+    if (code === 'SUPERSEDED' && b.segment && !/^cs2_/.test(b.segment)) {
       const tot = clubPropTotal(p.league, p.event, b.family);
       if (tot == null) {
         // sin dato todavía: se queda ABIERTA. Solo a las 72 h del kickoff se anula de verdad, mismo
@@ -11892,7 +11966,11 @@ async function shadowSweep() {
     }
     b.status = 'SETTLED'; b.result = code; b.settled_at = p.settled_at || new Date().toISOString();
     b.pnl = code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : code === 'LOSS' ? -b.stake : 0;
-    b.closing = (p.closing && p.closing.odds) || null; b.clv = (typeof p.clv === 'number') ? p.clv : null;
+    // Las picks de esports guardan el cierre con otro nombre (`close_odds` / `clv_pct`) porque su motor
+    // es anterior a este ejecutor. Se aceptan las dos formas en vez de renombrar nada en el otro lado:
+    // tocar el almacén de un motor vivo para que encaje con un consumidor es cómo se rompen los dos.
+    b.closing = (p.closing && p.closing.odds) || p.close_odds || null;
+    b.clv = (typeof p.clv === 'number') ? p.clv : (typeof p.clv_pct === 'number') ? p.clv_pct : null;
     // EL CLV DEL SOMBRA CON LOS PRECIOS DEL SOMBRA (17-ago, auditoría del lunes). El b.clv de arriba es el
     // de la PICK: mejor cuota al publicar contra mejor cuota al cierre. Pero esta apuesta entró al precio
     // EJECUTABLE, que suele ser peor — y copiar el CLV de otra entrada producía filas como "entrada 1,96 →

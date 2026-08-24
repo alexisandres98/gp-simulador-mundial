@@ -12030,7 +12030,10 @@ function shadowBySegment(sinceMs) {
     const pnl = st.reduce((a, b) => a + b.pnl, 0);
     const clvs = st.map((b) => b.clv_exec).filter((c) => typeof c === 'number');
     const desde = (cfgBy[k] && cfgBy[k].frozen_at) || (bs.length ? bs[0].placed_at : null);
-    const dias = desde ? Math.max(1, (Date.now() - Date.parse(desde)) / 864e5) : null;
+    // el ritmo se divide entre los días que la regla llevaba viva DENTRO de la ventana pedida. Dividir los
+    // 7 últimos días entre los 11 que lleva congelada da un ritmo que no es de ningún periodo.
+    const desdeMs = desde ? Math.max(Date.parse(desde), sinceMs || 0) : null;
+    const dias = desdeMs ? Math.max(1, (Date.now() - desdeMs) / 864e5) : null;
     const via = {}; for (const b of bs) { const v = b.via || 'auto'; via[v] = (via[v] || 0) + 1; }
     out[k] = {
       desde, dias_activo: dias ? +dias.toFixed(1) : null,

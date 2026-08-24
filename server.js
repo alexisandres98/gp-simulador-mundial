@@ -8859,6 +8859,19 @@ function combatLoad(org) {
     liveBox = Object.values(db.boxingResults || {}).filter(f => f && f.comp_id && !have.has(f.comp_id));
     if (liveBox.length) C.own = C.own.concat(liveBox);
   }
+  // MMA: la misma punta viva que boxeo ya tenía, y que aquí faltaba (25-ago). Sin esto, un peleador que
+  // peleó anoche sigue enseñando la pelea anterior como su última: el récord, la racha, el Elo, el estilo y
+  // los minutos de jaula salen todos de este array, y este array venía solo del archivo del repositorio,
+  // congelado en la fecha del último harvest. `mmaResultsSync` mantiene db.mmaResults al día desde ESPN.
+  // Dedup por comp_id y el harvest manda: si el archivo ya la trae, la del repositorio es la buena.
+  if (O.file !== 'boxing') {
+    const have = new Set(C.own.map(f => f.comp_id));
+    // `lg` distingue de qué organización es cada resultado vivo, para no meter peleas de PFL en el archivo
+    // de UFC: el récord de una organización tiene que seguir siendo el de esa organización.
+    const mios = Object.values(db.mmaResults || {}).filter(f => f && f.comp_id && !have.has(f.comp_id)
+      && (O.file === 'ufc' ? f.lg === 'ufc' : true));
+    if (mios.length) C.own = C.own.concat(mios);
+  }
   // POOL de rating: unión deduplicada por comp_id de los archivos de su deporte (ver COMBAT_ORGS.pool)
   const seenC = new Set(), pooled = [];
   C.fighters = {};
@@ -8870,6 +8883,16 @@ function combatLoad(org) {
   // disputada (/api/combat/fight busca en C.fights), así que sin esto el panel de Finalizados enlazaría a
   // un 404. De paso el Elo cuenta con la pelea de anteayer en vez de esperar al próximo harvest.
   for (const f of liveBox) { if (!seenC.has(f.comp_id)) { seenC.add(f.comp_id); pooled.push(f); } }
+  // y los de MMA, por la misma razón: el POOL es de donde salen el Elo, el estilo, el índice por peleador
+  // (última pelea, racha, KO encajados, minutos) y la ficha de una pelea ya disputada. Dejarlos fuera de
+  // aquí y solo dentro de `C.own` arreglaría el récord y dejaría el resto mintiendo, que es peor que no
+  // arreglar nada: media verdad en un perfil no se ve, se cree.
+  if (O.file !== 'boxing') {
+    for (const f of Object.values(db.mmaResults || {})) {
+      if (!f || !f.comp_id || seenC.has(f.comp_id)) continue;
+      seenC.add(f.comp_id); pooled.push(f);
+    }
+  }
   // ORDEN CANÓNICO DEL POOL DE ENTRENAMIENTO (2-ago). ESPN lista PRIMERO al favorito y f1 gana el 59.8%
   // de las peleas. El engine es antisimétrico SIN intercepto A PROPÓSITO (para ser inmune al orden), así que
   // no puede expresar ese 59.8%: el SGD compensa deformando los pesos y el resultado es una probabilidad
@@ -12823,6 +12846,100 @@ async function boxingResultsSync({ max = 8, graceH = 4, force = false } = {}) {
   if (out.resolved) { const Cb = (global._combat || {}).boxing; if (Cb) Cb.at = 0; } // fuerza recarga → entran a C.own
   return out;
 }
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// LA PUNTA VIVA DE MMA (25-ago) — reporte de Alexis: "los que pelearon el sábado, en su perfil no aparece"
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// El diagnóstico completo, porque el fallo es de diseño y no de un renglón: TODO el historial de MMA sale de
+// `data/combat/fights-*.json`, que son archivos del repositorio congelados en la fecha del último harvest —
+// hoy, 1 de agosto. Todo lo peleado después no existe para la plataforma: ni en el récord del peleador, ni
+// en "última pelea", ni en el Elo, ni en el estilo, ni en los minutos de jaula.
+//
+// El boxeo YA tenía resuelto exactamente este problema (`db.boxingResults`, ver `boxingResultsSync`) y la
+// nota de `combatLoad` lo explica: "el archivo del repo se congela en la fecha del último harvest; esto es
+// la punta viva". A MMA nunca se le puso esa punta. Esto se la pone, con el mismo patrón.
+//
+// POR QUÉ NO BASTABA CON MIRAR LAS PICKS. La liquidación de picks ya consulta a ESPN por los resultados,
+// así que la tentación es guardar de ahí. Pero solo pasa por las peleas que tuvieron pick: un peleador que
+// peleó el sábado en un combate que no publicamos seguiría con el perfil viejo, y eso es justo lo que se
+// ve. Este trabajo recorre la CARTELERA entera, con picks o sin ellas.
+//
+// El método y el round vienen del endpoint fino de ESPN (KO/TKO, sumisión, decisión), uno por pelea y solo
+// la primera vez: sin eso, una pelea nueva entraría sin método y ensuciaría el modelo de método, que es una
+// de las familias que publicamos.
+const MMA_LIGAS = { ufc: 'ufc', mma: 'pfl', regional: null };
+async function mmaResultsSync({ diasAtras = 10, force = false } = {}) {
+  const R = db.mmaResults = db.mmaResults || {};
+  const ahora = Date.now();
+  if (!force && db.mmaResultsAt && ahora - db.mmaResultsAt < 30 * 60e3) return { skipped: 'throttle' };
+  const fmt = (d) => new Date(d).toISOString().slice(0, 10).replace(/-/g, '');
+  const rango = `${fmt(ahora - diasAtras * 864e5)}-${fmt(ahora)}`;
+  const out = { rango, vistas: 0, nuevas: 0, con_metodo: 0, ligas: {}, errores: {} };
+
+  for (const [orgFile, liga] of Object.entries(MMA_LIGAS)) {
+    if (!liga) continue;
+    let sb = null;
+    try {
+      sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/${liga}/scoreboard?dates=${rango}&limit=100`,
+        { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
+    } catch (e) { out.errores[liga] = String(e.message || e).slice(0, 60); continue; }
+    let n = 0;
+    for (const e of ((sb && sb.events) || [])) {
+      for (const c of (e.competitions || [])) {
+        const st = (c.status || {}).type || {};
+        if (!st.completed) continue;
+        out.vistas++;
+        if (R[c.id]) continue;                               // ya la tenemos
+        const a = (c.competitors || [])[0] || {}, b = (c.competitors || [])[1] || {};
+        const idA = a.id || (a.athlete || {}).id, idB = b.id || (b.athlete || {}).id;
+        const nomA = (a.athlete || {}).displayName, nomB = (b.athlete || {}).displayName;
+        // sin los dos peleadores identificados no se guarda: una pelea a medias contamina el récord y el Elo
+        if (!idA || !idB || !nomA || !nomB) continue;
+        // y sin ganador tampoco (empate, sin resultado o feed a medio actualizar): el índice solo cuenta
+        // peleas decididas, y meterla sin ganador la haría invisible igual pero ocupando sitio.
+        if (!a.winner && !b.winner) continue;
+        const fila = {
+          comp_id: String(c.id), event_id: String(e.id), event: e.name || null,
+          date: e.date || c.date || null,
+          weight: (c.type || {}).abbreviation || null,
+          rounds_sched: ((c.format || {}).regulation || {}).periods || null,
+          f1: { id: String(idA), name: nomA, winner: !!a.winner },
+          f2: { id: String(idB), name: nomB, winner: !!b.winner },
+          end_round: (c.status || {}).period || null,
+          end_clock: (c.status || {}).displayClock || null,
+          completed: true,
+          method: null,
+          lg: orgFile === 'ufc' ? 'ufc' : liga,
+          src: 'espn_vivo',
+        };
+        // el método fino, una sola llamada por pelea nueva
+        try {
+          const s2 = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/leagues/${liga}/events/${e.id}/competitions/${c.id}/status?lang=en`,
+            { signal: AbortSignal.timeout(12000) }).then((x) => x.json());
+          const r2 = s2 && s2.result;
+          if (r2 && (r2.name || r2.displayName)) {
+            fila.method = { id: r2.id || null, name: String(r2.name || '').toLowerCase().replace(/[^a-z]/g, ''), display: r2.displayName || r2.name || null };
+            out.con_metodo++;
+          }
+          if (r2 && r2.period) fila.end_round = r2.period;
+          if (r2 && r2.displayClock) fila.end_clock = r2.displayClock;
+        } catch { /* sin método: la pelea entra igual, que es mejor que no entrar */ }
+        R[c.id] = fila; out.nuevas++; n++;
+      }
+    }
+    out.ligas[liga] = n;
+  }
+  // poda: un año de punta viva es de sobra. Lo viejo ya lo trae el harvest del repositorio.
+  const corte = ahora - 365 * 864e5;
+  for (const [k, v] of Object.entries(R)) if (v && v.date && Date.parse(v.date) < corte) delete R[k];
+  db.mmaResultsAt = ahora;
+  if (out.nuevas) {
+    save();
+    // invalidar el caché de combate para que el perfil enseñe la pelea de anoche sin esperar diez minutos
+    try { for (const k of Object.keys(global._combat || {})) delete global._combat[k]; } catch { /* nada que invalidar */ }
+  }
+  return out;
+}
+
 async function combatDoRefresh(C) {
   let ok = false;               // el diff de cartelera solo se corre si el feed VINO (ver combatCardWatch)
   // BOXEO: agenda propia (sin ESPN). OJO: sin esta rama, `C.upLeague || 'ufc'` haría que la vista de boxeo
@@ -13628,6 +13745,11 @@ if (combatPicksOn()) {
 // monitor de picks, y tiene que llenarse aunque las picks de combate estén apagadas. Una pelea que ya
 // terminó se resuelve en el primer ciclo posterior (Wikipedia suele publicar el mismo día).
 if (String(process.env.GP_BOXING_RESULTS || 'true') !== 'false') {
+  // MMA: la punta viva del historial. Cada media hora basta —una cartelera termina de madrugada y el perfil
+  // tiene que estar al día por la mañana, no al segundo— y la primera pasada va pronto tras el arranque
+  // porque un despliegue a media noche no puede dejar los perfiles viejos hasta la hora siguiente.
+  setTimeout(() => mmaResultsSync().then(r => { if (r && r.nuevas) console.log('[mma-results]', JSON.stringify(r)); }).catch((e) => console.error('[mma-results]', e.message)), 240 * 1000);
+  setInterval(() => mmaResultsSync().then(r => { if (r && r.nuevas) console.log('[mma-results]', JSON.stringify(r)); }).catch((e) => console.error('[mma-results]', e.message)), 30 * 60 * 1000);
   setTimeout(() => boxingResultsSync().then(r => { if (r && (r.resolved || r.due)) console.log('[boxing-results]', JSON.stringify(r)); }).catch(() => { }), 200 * 1000);
   setInterval(() => boxingResultsSync().then(r => { if (r && r.resolved) console.log('[boxing-results]', JSON.stringify(r)); }).catch(() => { }), 30 * 60 * 1000);
 }
@@ -19149,6 +19271,26 @@ const server = http.createServer(async (req, res) => {
     // motivo). POST run=saldo|liquidar|plan|parte fuerza cada trabajo a mano — imprescindible mientras se
     // calibra, porque esperar al barrido de 10 minutos para ver el efecto de un cambio convierte una
     // iteración de un minuto en una de media hora.
+    // La punta viva de MMA, a mano y con llave: `?dias=` cuánto atrás mirar, y devuelve lo que encontró.
+    // Sin esto, comprobar si el perfil de un peleador ya tiene la pelea de anoche exige esperar al pase de
+    // media hora, y eso convierte cada comprobación en media hora.
+    if (p === '/api/internal/mma-results') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        const dias = Math.min(90, Math.max(1, +(url.searchParams.get('dias') || 10)));
+        return json(res, 200, await mmaResultsSync({ diasAtras: dias, force: true }).catch((e) => ({ error: e.message })));
+      }
+      const R = db.mmaResults || {};
+      const filas = Object.values(R).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+      return json(res, 200, {
+        guardadas: filas.length, ultimo_pase: db.mmaResultsAt ? new Date(db.mmaResultsAt).toISOString() : null,
+        sin_metodo: filas.filter((f) => !f.method).length,
+        recientes: filas.slice(0, 15).map((f) => ({ fecha: f.date, evento: f.event, lg: f.lg,
+          pelea: `${f.f1.name} vs ${f.f2.name}`, gana: f.f1.winner ? f.f1.name : f.f2.name,
+          metodo: (f.method || {}).display || null, round: f.end_round, reloj: f.end_clock })),
+      });
+    }
     if (p === '/api/internal/real') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

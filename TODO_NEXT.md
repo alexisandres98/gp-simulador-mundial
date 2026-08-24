@@ -1,5 +1,67 @@
 # TODO_NEXT.md — GP Simulador
 
+## 💵 25-AGO: EJECUTOR CON DINERO REAL (léeme antes de tocar `real-executor/`)
+
+Hay **dinero real** en juego desde hoy. Cuenta de Cloudbet fondeada con 604 USDT.
+
+**Qué apuesta y qué no.** SOLO `cards_under_v1`: familia CARDS, lado under, casa cloudbet, fútbol. Las
+cinco condiciones están escritas en `real-executor/store.js` como constantes, **no** como variables de
+entorno, a propósito: un ejecutor de dinero real cuyo alcance se amplía cambiando una casilla en un panel
+es un accidente esperando a alguien con prisa. Para ampliarlo hay que editar el archivo y saber lo que se
+hace. CS2 sigue solo en la sombra por decisión de Alexis.
+
+**Cómo funciona.** Va colgado DETRÁS del ejecutor en la sombra, sobre la misma apuesta que el sombra acaba
+de anotar: misma señal, mismo precio, mismo instante. Así toda diferencia entre los dos registros es
+ejecución —deslizamiento, rechazos, topes de la casa— y no dos criterios distintos. Ese contraste es el
+único dato que el primer mes no se puede simular.
+
+**Stake:** Kelly/4 con tope del 1,5 % sobre un banco NOCIONAL de $2.000 (≈$30), aunque la cartera tenga
+menos. Decisión explícita de Alexis. El banco compone con el P&L real.
+
+**Reparto de autoridades, y esto es lo que más importa:**
+- el RESULTADO lo pone NUESTRA liquidación (la misma que cierra la pick del sombra),
+- el DINERO lo pone la casa con `returnAmount`,
+- si no cuadran, **no se toca el banco**: se marca `discrepancia` y sale en mayúsculas en el parte del día.
+
+No se puede sacar el resultado de la casa: su campo `status` dice si ACEPTÓ la apuesta (ACCEPTED /
+PENDING_ACCEPTANCE / REJECTED), no si ganó, y una perdida y una sin resolver son las dos ACCEPTED con
+`returnAmount: "0.0"`.
+
+**Tres cosas que parecen detalles y no lo son:**
+1. La consulta de estado de una apuesta es **POST** `/pub/v3/bets/{ref}/status`, no GET.
+2. Un **HTTP 200 con `status: REJECTED` NO es una apuesta colocada.**
+3. La referencia va por **(pick, número de ENVÍO)**: la casa la consume aunque rechace. El número solo sube
+   cuando se mandó algo y la casa dijo que no. Un envío cuyo desenlace desconocemos —red cortada, tiempo
+   agotado— **NO estrena referencia**: se pregunta por la vieja (`confirmar()`). Estrenar referencia sin
+   saber qué pasó con la anterior es la única forma de apostar dos veces lo mismo.
+
+**Estados:** PENDIENTE (se reintenta cada barrido hasta el saque) · EN_ACEPTACION (la casa la evalúa; nunca
+se reenvía) · PLACED · SETTLED · CADUCADA (se acabó el tiempo) · DESCARTADA (sin ventaja).
+
+**Frenos:** `GP_REAL_ENABLED` (maestro), `GP_REAL_DRY` (ensayo), tope por apuesta en dólares, tope de
+exposición abierta —lo que está en el aire cuenta como comprometido—, parada diaria por pérdida, suelo de
+cartera, deslizamiento máximo, y rechazo de cualquier apuesta con Kelly no positiva.
+
+**El reenviador (`real-executor/relay.js`, servicio `gp-relay-eu` en Fráncfort, $7/mes).** La colocación
+devuelve 403 de cortafuegos desde Oregón **y también desde Fráncfort**, con llave y sin ella, mientras las
+cuotas y el saldo responden sin problema desde los dos sitios. **No es geografía.** La causa está en la
+documentación de la casa: la cuenta necesita depósito para habilitar el trading, y la llave hay que
+generarla DESPUÉS de fondear. Si al regenerarla funciona directo desde Oregón, **el reenviador sobra y se
+puede borrar para ahorrar los $7** — se dejó porque aísla la llave de la casa del servidor público, que
+tiene mucha más superficie.
+
+**Antes de tocar nada:** `node real-executor/auditoria.js`. Levanta una casa de mentira y recorre 22
+escenarios del camino del dinero, incluido que el banco cuadre con la suma de resultados. No toca la red ni
+la cuenta. Si eso no está en verde, no se despliega.
+
+**Sondas:** `/api/internal/real?key=` (GET tablero, `&preflight=1` resolución sin escribir, POST
+`run=saldo|liquidar|plan|parte`) y `https://gp-relay-eu.onrender.com/health` (país de salida, estado de la
+puerta y saldo).
+
+**Correos:** plan a las 08:00 y parte a las 23:30, hora local. Ninguno lleva apuestas que colocar: esta
+pierna es automática y cuando el correo llega la apuesta ya está puesta.
+
+
 ## ✅ 23-AGO: LOS NUEVE, ABIERTOS
 Hecho hoy. El landing nuevo **ya es** `public/landing.html` — no se copió el fichero tal cual: el que
 estaba en el artifact era una maqueta **sin formulario de alta** (su botón enlazaba a la propia web), así

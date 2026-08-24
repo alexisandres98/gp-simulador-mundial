@@ -4674,6 +4674,21 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
   try {
     const cbEvents = await require('./market-scanner/venues/cloudbet').fetchCloudbetSoccer({ apiKey });
     out.events_cloudbet = cbEvents.length;
+    // LA AGENDA DE LA CASA, EN DISCO (25-ago). El colector deja su cosecha en una caché de PROCESO, y el
+    // ejecutor real la usa para encontrar el id de un partido cuando el índice de emparejados todavía no lo
+    // tiene. El problema: esa caché se vacía en cada despliegue, y con varios despliegues al día está fría
+    // la mayor parte del tiempo — medido: 121 eventos a las 15:30 y CERO a las 16:26, con tres apuestas
+    // esperando por "sin_id_de_evento" que sí estaban en la casa.
+    // Esto la persiste: solo id, nombres y hora, que es lo único que hace falta para resolver un partido, y
+    // de TODOS los eventos de la cosecha y no solo de los que emparejaron con nuestro calendario.
+    if (cbEvents.length) {
+      db.cbSlate = { at: Date.now(), ev: cbEvents.filter((e) => e.cb_id && e.home && e.away)
+        .map((e) => ({ id: e.cb_id, h: e.home, a: e.away, ko: e.kickoff || null })).slice(0, 1200) };
+    }
+    // poda: lo ya jugado no sirve para resolver nada y solo engorda la base
+    if (db.cbSlate && Array.isArray(db.cbSlate.ev)) {
+      db.cbSlate.ev = db.cbSlate.ev.filter((e) => !e.ko || Date.parse(e.ko) > Date.now() - 6 * 3600e3);
+    }
     const grepo = require('./goal-engine/repository');
     const known = Object.entries(db.clubsQuoteEvents || {}); // [ceid, {home,away,league,...}]
     for (const cb of cbEvents) {
@@ -12036,7 +12051,7 @@ async function shadowSweep() {
       try {
         const RE = require('./real-executor/store');
         await cbResolveEvent(p).catch(() => null);   // rellena el índice si el barrido no llegó a este partido
-        const r = await RE.intentar(sb, p, { cbIdx: db.cbEventIdx || {} });
+        const r = await RE.intentar(sb, p, { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null });
         if (r) { realIntentos++; if (r.status === 'PLACED') realColocadas++; }
       } catch (e) { console.error('[real] intento fallido:', e.message); }
     }
@@ -12129,7 +12144,7 @@ async function shadowSweep() {
       // REINTENTAR ANTES DE LIQUIDAR. Lo pendiente de barridos anteriores —el reenviador que se reinició, el
       // saldo que estaba corto, el id que aún no se había resuelto— tiene su segunda oportunidad aquí, y por
       // eso el ejecutor real no pierde una señal por un tropiezo de treinta segundos.
-      const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {} }).catch((e) => ({ error: e.message }));
+      const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null }).catch((e) => ({ error: e.message }));
       // lo que quedó en el aire —la casa evaluando, o una respuesta que no supimos leer— se pregunta por su
       // referencia. Nunca se reenvía: reenviar sin saber qué pasó es la única forma de apostar dos veces.
       const conf = await RE.confirmar().catch((e) => ({ error: e.message }));
@@ -19381,7 +19396,7 @@ const server = http.createServer(async (req, res) => {
             && x.kickoff_at && Date.parse(x.kickoff_at) > ahora3 && byPick3[x.pick_id]);
           const out2 = [];
           for (const sb of cand) {
-            const r2 = await RE.intentar(sb, byPick3[sb.pick_id], { cbIdx: db.cbEventIdx || {} }).catch((e) => ({ status: 'ERROR', motivo: e.message }));
+            const r2 = await RE.intentar(sb, byPick3[sb.pick_id], { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null }).catch((e) => ({ status: 'ERROR', motivo: e.message }));
             if (r2) out2.push({ match: sb.match, linea: sb.line, estado: r2.status, motivo: r2.motivo || null, stake: r2.stake || null, cuota: r2.odds_real || r2.precio_vivo || null });
           }
           return json(res, 200, { reabiertas, candidatas: cand.length, resultado: out2 });
@@ -19477,13 +19492,14 @@ const server = http.createServer(async (req, res) => {
         try { const c = require('./market-scanner/venues/cloudbet').cachedSoccer();
           despensa = { eventos: (c.data || []).length, edad_min: c.edad_min,
             con_id: (c.data || []).filter((e) => e.cb_id).length,
+            persistida: db.cbSlate ? { eventos: (db.cbSlate.ev || []).length, edad_min: Math.round((Date.now() - db.cbSlate.at) / 60000) } : null,
             muestra: (c.data || []).slice(0, 3).map((e) => `${e.home} v ${e.away}`) }; } catch (e) { despensa = { error: e.message }; }
         return json(res, 200, { abiertas_del_segmento: pares.length,
           idx_eventos: Object.keys(db.cbEventIdx || {}).length,
           cache_de_la_casa: despensa,
           cache_casa: { eventos: (cache.data || []).length, edad_min: cache.edad_min },
           por_que_sin_id: diagIdx,
-          filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {} }) });
+          filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null }) });
       }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });
       return json(res, 200, b);

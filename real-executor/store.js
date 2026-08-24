@@ -240,15 +240,22 @@ function casanNombres(a, b) {
   if (!x || !y || x.length < 3 || y.length < 3) return false;
   return x === y || x.includes(y) || y.includes(x);
 }
-function resolverPorNombre(fila) {
+// `slate` es la agenda PERSISTIDA de la casa (db.cbSlate). Se prefiere a la caché de proceso por una razón
+// medida: la caché se vacía en cada despliegue y con varios al día está fría la mayor parte del tiempo —
+// 121 eventos a las 15:30 y cero a las 16:26, con tres apuestas esperando por un id que sí existía.
+function resolverPorNombre(fila, slate) {
   const m = String(fila.match || '').split(/\s+vs\s+/i);
   if (m.length !== 2) return null;
   const [casa1, casa2] = m;
-  let cache = null;
-  try { cache = CB.cachedSoccer && CB.cachedSoccer(); } catch { return null; }
-  if (!cache || !Array.isArray(cache.data) || !cache.data.length) return null;
+  let lista = [];
+  if (slate && Array.isArray(slate.ev) && slate.ev.length) {
+    lista = slate.ev.map((e) => ({ cb_id: e.id, home: e.h, away: e.a, kickoff: e.ko }));
+  } else {
+    try { const c = CB.cachedSoccer && CB.cachedSoccer(); if (c && Array.isArray(c.data)) lista = c.data; } catch { return null; }
+  }
+  if (!lista.length) return null;
   const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
-  const cands = cache.data.filter((e) => {
+  const cands = lista.filter((e) => {
     if (!e.cb_id || !e.home || !e.away) return false;
     const directo = casanNombres(e.home, casa1) && casanNombres(e.away, casa2);
     const cruzado = casanNombres(e.home, casa2) && casanNombres(e.away, casa1);
@@ -263,7 +270,7 @@ function resolverPorNombre(fila) {
 }
 
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
-async function colocar(fila, { cbIdx = {} } = {}) {
+async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
   const C = CFG(), L = load();
   fila.intentos = (fila.intentos || 0) + 1;
   fila.ultimo_intento_at = new Date().toISOString();
@@ -309,7 +316,7 @@ async function colocar(fila, { cbIdx = {} } = {}) {
     // eventos por pasada, un partido puede tardar horas en entrar. Segundo camino, por NOMBRE, sobre lo
     // último que el colector dejó en memoria. Es deliberadamente desconfiado: apostar en el partido
     // equivocado es el peor fallo posible de todo este sistema, mucho peor que no apostar.
-    const porNombre = resolverPorNombre(fila);
+    const porNombre = resolverPorNombre(fila, slate);
     if (!porNombre) return parar('sin_id_de_evento');
     idx = porNombre; fila.id_resuelto_por = 'nombre';
   }
@@ -469,7 +476,7 @@ async function confirmar() {
 }
 
 // LA PUERTA DE ENTRADA: una señal nueva del sombra. Crea la fila y hace el primer intento.
-async function intentar(sb, pick, { cbIdx = {} } = {}) {
+async function intentar(sb, pick, { cbIdx = {}, slate = null } = {}) {
   const L = load();
 
   // 0) el perímetro. Cinco condiciones, y ninguna es configurable.
@@ -485,13 +492,13 @@ async function intentar(sb, pick, { cbIdx = {} } = {}) {
                                                                    // se encarga `reintentar`, no esta puerta
   const fila = filaNueva(sb, pick);
   L.bets.push(fila);
-  return colocar(fila, { cbIdx });
+  return colocar(fila, { cbIdx, slate });
 }
 
 // LOS REINTENTOS. Se llama una vez por barrido, después de la puerta de entrada. Recorre lo pendiente cuyo
 // partido no ha empezado y lo vuelve a intentar. Es lo que convierte un fallo pasajero en un retraso en vez
 // de en una apuesta perdida.
-async function reintentar({ cbIdx = {}, max = 25 } = {}) {
+async function reintentar({ cbIdx = {}, slate = null, max = 25 } = {}) {
   const L = load();
   const ahora = Date.now();
   const cola = L.bets.filter((b) => b.status === 'PENDIENTE'
@@ -500,7 +507,7 @@ async function reintentar({ cbIdx = {}, max = 25 } = {}) {
     .slice(0, max);
   let colocadas = 0;
   for (const fila of cola) {
-    const r = await colocar(fila, { cbIdx }).catch(() => null);
+    const r = await colocar(fila, { cbIdx, slate }).catch(() => null);
     if (r && r.status === 'PLACED') colocadas++;
   }
   // y las que se quedaron sin tiempo: se cierran para que no se reintenten eternamente ni figuren como
@@ -522,14 +529,15 @@ async function reintentar({ cbIdx = {}, max = 25 } = {}) {
 // deslizamiento— y no toca el libro mayor ni la cuenta. Existe porque la alternativa para saber si la cadena
 // funciona es esperar a que nazca una señal y luego mirar el registro, y eso son horas. Con esto se
 // comprueba en un segundo, sobre las apuestas que el sombra ya tiene abiertas, que cada eslabón resuelve.
-async function preflight(pares, { cbIdx = {} } = {}) {
+async function preflight(pares, { cbIdx = {}, slate = null } = {}) {
   const C = CFG();
   const out = [];
   for (const { sb, pick } of pares) {
     const f = { match: sb.match, league: sb.league, line: sb.line, odds_sombra: sb.odds };
     const ceid = (pick && pick.event && pick.event.canonical_event_id) || null;
     f.ceid = ceid;
-    const idx = ceid ? (cbIdx || {})[ceid] : null;
+    let idx = ceid ? (cbIdx || {})[ceid] : null;
+    if (!idx || !idx.cb_id) idx = resolverPorNombre({ match: sb.match, kickoff_at: sb.kickoff_at }, slate);
     if (!idx || !idx.cb_id) { f.paso = 'sin_id_de_evento'; out.push(f); continue; }
     f.cb_event_id = idx.cb_id;
     const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);

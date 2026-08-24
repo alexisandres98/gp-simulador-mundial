@@ -2,6 +2,21 @@
 
 ## 💵 25-AGO: EJECUTOR CON DINERO REAL (léeme antes de tocar `real-executor/`)
 
+**⛔ ESTADO (25-ago 00:20Z): LA CUENTA DE CLOUDBET NO PUEDE APOSTAR POR API TODAVÍA — Y NO ES UN BUG.**
+Mapeado con tres apuestas reales de prueba (0,5 USDT, todas rechazadas, ~0 de coste):
+tarjetas over 0,5 USDT → RESTRICTED · 1X2 principal de un partido cualquiera 0,5 USDT → RESTRICTED ·
+tarjetas 30 USDT → RESTRICTED. Da igual el mercado, el stake, el evento y el país de salida (Oregón y
+Fráncfort probados). La petición es correcta —el esquema GraphQL la valida y un cuerpo malformado devuelve
+MALFORMED_REQUEST, no RESTRICTED—. La descripción OFICIAL del código, sacada por introspección del esquema:
+"Your current account settings don't allow you to bet on this event. **Restrictions will be lifted
+automatically as your account attains tenure and trust.** Please contact customer support if you believe
+you qualify and we will review your account." La cuenta se creó el 23-ago y se fondeó el 24-ago: es
+antigüedad, no permiso manual ni fallo nuestro. Vías: (1) apostar a mano por la web para construir
+historial, (2) escribir a soporte pidiendo la revisión que la propia descripción ofrece, (3) esperar.
+**No insistir por API**: la casa marca cuentas con ratio alto de rechazos (bloqueo de hasta 7 días); el
+ejecutor tiene freno a los 3 rechazos de cuenta seguidos y `run=reset_rechazos` para cuando se levante.
+Cuando la cuenta pueda: reabrir con `run=recuperar` y el ejecutor sigue solo.
+
 Hay **dinero real** en juego desde hoy. Cuenta de Cloudbet fondeada con 604 USDT.
 
 **Qué apuesta y qué no.** SOLO `cards_under_v1`: familia CARDS, lado under, casa cloudbet, fútbol. Las

@@ -12009,6 +12009,47 @@ async function shadowSweep() {
   if (placed || settled) save();
   return { placed, settled, bankroll: S.bankroll, open: S.bets.filter(b => b.status === 'OPEN').length, total_bets: S.bets.length };
 }
+// POR SEGMENTO, Y CON EL RITMO DENTRO. El resumen global mezcla tres reglas distintas en una sola cifra,
+// y en cuanto el ejecutor lleva más de un segmento esa cifra deja de servir para decidir nada: no dice cuál
+// de las tres gana ni cuántas apuestas al día pide cada una. El ritmo (apuestas por día ACTIVO del
+// segmento, contando desde que se congeló) es el dato que falta para poder pasar una regla a dinero real:
+// sin él no se sabe si son dos apuestas al día o quince.
+function shadowBySegment(sinceMs) {
+  const S = shadowInit();
+  const cfgBy = {}; for (const c of (S.cfg || [])) cfgBy[c.key] = c;
+  const rows = S.bets.filter((b) => !sinceMs || Date.parse(b.placed_at) >= sinceMs);
+  const un = (S.unexec || []).filter((u) => !sinceMs || Date.parse(u.at) >= sinceMs);
+  const keys = [...new Set([...rows.map((b) => b.segment || '?'), ...un.map((u) => u.segment || '?')])];
+  const out = {};
+  for (const k of keys) {
+    const bs = rows.filter((b) => (b.segment || '?') === k);
+    const us = un.filter((u) => (u.segment || '?') === k);
+    const st = bs.filter((b) => b.status === 'SETTLED' && b.result !== 'SUPERSEDED');
+    const w = st.filter((b) => b.result === 'WIN').length, l = st.filter((b) => b.result === 'LOSS').length;
+    const stakedSet = st.reduce((a, b) => a + b.stake, 0);
+    const pnl = st.reduce((a, b) => a + b.pnl, 0);
+    const clvs = st.map((b) => b.clv_exec).filter((c) => typeof c === 'number');
+    const desde = (cfgBy[k] && cfgBy[k].frozen_at) || (bs.length ? bs[0].placed_at : null);
+    const dias = desde ? Math.max(1, (Date.now() - Date.parse(desde)) / 864e5) : null;
+    const via = {}; for (const b of bs) { const v = b.via || 'auto'; via[v] = (via[v] || 0) + 1; }
+    out[k] = {
+      desde, dias_activo: dias ? +dias.toFixed(1) : null,
+      señales: bs.length + us.length, apostadas: bs.length, no_ejecutadas: us.length,
+      por_dia: dias ? +(bs.length / dias).toFixed(2) : null,
+      señales_por_dia: dias ? +((bs.length + us.length) / dias).toFixed(2) : null,
+      via,
+      liquidadas: st.length, w, l,
+      staked: +stakedSet.toFixed(2), pnl: +pnl.toFixed(2),
+      roi_pct: stakedSet ? +(100 * pnl / stakedSet).toFixed(1) : null,
+      avg_odds: bs.length ? +(bs.reduce((a, b) => a + b.odds, 0) / bs.length).toFixed(2) : null,
+      avg_stake: bs.length ? +(bs.reduce((a, b) => a + b.stake, 0) / bs.length).toFixed(2) : null,
+      clv_exec_avg: clvs.length ? +(clvs.reduce((a, c) => a + c, 0) / clvs.length).toFixed(2) : null,
+      clv_n: clvs.length,
+    };
+  }
+  return out;
+}
+
 function shadowSummary(sinceMs) {
   const S = shadowInit();
   const rows = S.bets.filter(b => !sinceMs || Date.parse(b.placed_at) >= sinceMs);
@@ -18852,6 +18893,7 @@ const server = http.createServer(async (req, res) => {
         bankroll: S.bankroll, start: S.start_bankroll, created_at: S.created_at, cfg: S.cfg,
         exec_books: SHADOW_EXEC_BOOKS(),
         last7d: shadowSummary(Date.now() - 7 * 864e5), since_start: shadowSummary(0),
+        por_segmento: shadowBySegment(0), por_segmento_7d: shadowBySegment(Date.now() - 7 * 864e5),
         last_reports: S.reports.slice(-4), bets: S.bets.slice(-40), unexec: (S.unexec || []).slice(-40),
       });
     }

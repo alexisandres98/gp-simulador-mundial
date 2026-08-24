@@ -19428,6 +19428,18 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') {
         const run = url.searchParams.get('run') || '';
         if (run === 'saldo') return json(res, 200, { saldo: await RE.refrescarSaldo() });
+        // El contador de rechazos de cuenta para el ejecutor ENTERO a los tres seguidos, que es lo que
+        // queremos cuando la cuenta está de verdad restringida. Pero cuando la causa se ha arreglado —como
+        // hoy, que los dos RESTRICTED salieron de apostar desde el país equivocado— el contador se queda
+        // contando una historia que ya no es cierta y bloquea la primera apuesta buena. Esto lo pone a cero
+        // a mano, que es una decisión de persona y por eso no se hace sola.
+        if (run === 'reset_rechazos') {
+          const L5 = RE.load();
+          const antes = (L5.rechazos_cuenta && L5.rechazos_cuenta.seguidos) || 0;
+          L5.rechazos_cuenta = { seguidos: 0, reiniciado: new Date().toISOString(), antes };
+          RE.save();
+          return json(res, 200, { rechazos_antes: antes, ahora: 0 });
+        }
         if (run === 'liquidar') return json(res, 200, await RE.liquidar());
         // `run=recuperar`: mete en el libro las señales que el sombra YA tiene abiertas y que nunca pasaron
         // por el ejecutor real —las que nacieron antes de encenderlo—. Sin esto, la primera apuesta real

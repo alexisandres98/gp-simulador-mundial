@@ -19301,7 +19301,15 @@ const server = http.createServer(async (req, res) => {
               metodo: (hist[0].method || {}).display || null } : null,
             indice: idx ? { ultima_fecha: idx.last, racha: idx.res.slice(-5).join(''), ko_encajados: idx.koL } : null };
         });
-        return json(res, 200, { peleador: quien, encontrados: ids.length, perfiles: salida });
+        // los contadores del propio `combatLoad`: si el pool no ha crecido con la punta viva, el fallo está
+        // en la fusión y no en los nombres ni en los identificadores. Sin esto, el diagnóstico es a ciegas.
+        const vivos = Object.values(db.mmaResults || {});
+        const enPool = new Set((CU.fights.fights || []).map((f) => f.comp_id));
+        return json(res, 200, { peleador: quien, encontrados: ids.length, perfiles: salida,
+          diag: { pool: (CU.fights.fights || []).length, own: (CU.own || []).length,
+            vivos_guardados: vivos.length,
+            vivos_en_pool: vivos.filter((f) => enPool.has(f.comp_id)).length,
+            cache_edad_min: CU.at ? Math.round((Date.now() - CU.at) / 60000) : null } });
       }
       const R = db.mmaResults || {};
       const filas = Object.values(R).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));

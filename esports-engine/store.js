@@ -1747,6 +1747,29 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
 // exacta") no permite arreglar nada: no distingue "la casa no publica escalera" de "el nombre del lado no
 // casa" de "la escalera existe pero solo por un lado". Cada una se arregla de forma distinta, así que el
 // diagnóstico tiene que decir cuál es.
+// QUÉ HAY DENTRO DEL ARCHIVO DE CIERRES. Sin esto, comprobar si la fusión funciona exige esperar a que
+// una pick nueva se liquide —días— cuando la pregunta se contesta mirando el archivo.
+function closesBoard(game, { limit = 6 } = {}) {
+  const st = rd(`closes-${game}.json`);
+  const evs = Object.values((st && st.closes) || {});
+  evs.sort((a, b) => String(b.start_at || '').localeCompare(String(a.start_at || '')));
+  const famGlobal = {};
+  for (const e of evs) for (const f of new Set((e.rows || []).map((r) => r.family))) famGlobal[f] = (famGlobal[f] || 0) + 1;
+  return {
+    game, eventos: evs.length, at: (st && st.at) || null,
+    eventos_con_familia: famGlobal,
+    recientes: evs.slice(0, limit).map((e) => ({
+      id: e.id, start_at: e.start_at, moves: e.moves || 1, filas: (e.rows || []).length,
+      familias: [...new Set((e.rows || []).map((r) => r.family))],
+      casas: [...new Set((e.rows || []).map((r) => r.book))],
+      // cuántas filas llevan ya la marca temporal nueva y a qué distancia del inicio se vieron
+      con_pre_min: (e.rows || []).filter((r) => r.pre_min != null).length,
+      pre_min_rango: (() => { const v = (e.rows || []).map((r) => r.pre_min).filter((x) => x != null);
+        return v.length ? { min: Math.min(...v), max: Math.max(...v) } : null; })(),
+    })),
+  };
+}
+
 function clvWhy(game, { limit = 12 } = {}) {
   const st = rd(PICKS_F(game));
   const closes = rd(`closes-${game}.json`);
@@ -2516,7 +2539,7 @@ function picksRaw(game, { status = null } = {}) {
 }
 
 module.exports = {
-  clvWhy, tournamentsBoard, retireCrossedPicks,
+  clvWhy, closesBoard, tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
   teamSearch, simulate, recordPicks, settlePicks, track, settleOne, picksRaw,

@@ -18341,6 +18341,12 @@ const server = http.createServer(async (req, res) => {
       }
       // `?clvwhy=<juego>` cuenta, pick a pick, por qué una liquidada se quedó sin CLV. El agregado no sirve
       // para arreglar: "sin línea exacta" tapa cosas que se arreglan de formas distintas.
+      const cb2 = String(url.searchParams.get('closes') || '');
+      if (cb2) {
+        const ES4 = require('./esports-engine/store');
+        if (!ES4.ENGINES[cb2]) return json(res, 400, { error: 'juego desconocido', games: ES4.GAME_ORDER });
+        return json(res, 200, ES4.closesBoard(cb2, { limit: Math.min(20, Math.max(1, +(url.searchParams.get('n') || 6))) }));
+      }
       const cw = String(url.searchParams.get('clvwhy') || '');
       if (cw) {
         const ES3 = require('./esports-engine/store');

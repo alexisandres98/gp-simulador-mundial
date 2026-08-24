@@ -529,7 +529,10 @@ async function settleShadow() {
       const nameOf = (x) => D.norm(
         (x.athlete && (x.athlete.displayName || x.athlete.shortName || x.athlete.fullName))
         || x.displayName || x.shortName
-        || ((x.roster || []).map((r) => (r.athlete || {}).displayName || '').join(' '))
+        // `roster` no siempre viene como lista: en algunos partidos ESPN lo cuelga como objeto, y
+        // entonces `.map` no existe y revienta la liquidación ENTERA de la pasada — 3 partidos
+        // vencidos sin liquidar por esto (parte del 24-ago). Se comprueba antes de recorrerlo.
+        || (Array.isArray(x.roster) ? x.roster.map((r) => ((r && r.athlete) || {}).displayName || '').join(' ') : '')
         || ''
       );
       const hit = evs.find(({ comp }) => {

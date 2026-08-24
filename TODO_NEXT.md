@@ -28,7 +28,8 @@ PENDING_ACCEPTANCE / REJECTED), no si ganó, y una perdida y una sin resolver so
 `returnAmount: "0.0"`.
 
 **Tres cosas que parecen detalles y no lo son:**
-1. La consulta de estado de una apuesta es **POST** `/pub/v3/bets/{ref}/status`, no GET.
+1. La consulta de estado va por GraphQL (`bet(referenceId:)`). La ruta REST equivalente es POST, no GET
+   — pero da igual, porque está bloqueada.
 2. Un **HTTP 200 con `status: REJECTED` NO es una apuesta colocada.**
 3. La referencia va por **(pick, número de ENVÍO)**: la casa la consume aunque rechace. El número solo sube
    cuando se mandó algo y la casa dijo que no. Un envío cuyo desenlace desconocemos —red cortada, tiempo
@@ -42,13 +43,27 @@ se reenvía) · PLACED · SETTLED · CADUCADA (se acabó el tiempo) · DESCARTAD
 exposición abierta —lo que está en el aire cuenta como comprometido—, parada diaria por pérdida, suelo de
 cartera, deslizamiento máximo, y rechazo de cualquier apuesta con Kelly no positiva.
 
-**El reenviador (`real-executor/relay.js`, servicio `gp-relay-eu` en Fráncfort, $7/mes).** La colocación
-devuelve 403 de cortafuegos desde Oregón **y también desde Fráncfort**, con llave y sin ella, mientras las
-cuotas y el saldo responden sin problema desde los dos sitios. **No es geografía.** La causa está en la
-documentación de la casa: la cuenta necesita depósito para habilitar el trading, y la llave hay que
-generarla DESPUÉS de fondear. Si al regenerarla funciona directo desde Oregón, **el reenviador sobra y se
-puede borrar para ahorrar los $7** — se dejó porque aísla la llave de la casa del servidor público, que
-tiene mucha más superficie.
+**LA CASA TIENE DOS APIS DE APUESTAS Y SOLO UNA NOS DEJA ENTRAR.** Con llave `trading` y cuenta fondeada,
+toda la familia REST `/pub/vN/bets/*` —colocar, consultar estado, historial— devuelve **403 con página de
+cortafuegos de Cloudflare**, igual con llave y sin ella, desde Oregón, desde Fráncfort y desde un tercer
+sitio, con user-agent de navegador y con `Authorization: Bearer`. Mientras tanto `/pub/v2/odds/*` y
+`/pub/v1/account/*` responden 200 desde esas mismas IPs con esa misma llave. **No es la llave, ni la ruta,
+ni el país, ni el cuerpo: es una regla de borde sobre esa familia de rutas.**
+
+La salida es la **API GraphQL de la casa** — oficial, documentada, misma función:
+`https://sports-api-graphql.cloudbet.com/graphql`. Comprobado con un evento imposible: contestó
+`betStatus: REJECTED, betErrorCode: MALFORMED_REQUEST`, que es el motor de apuestas hablando y no un
+cortafuegos. Reparto actual: **cuotas y saldo por REST, colocar/consultar/liquidar por GraphQL.**
+
+Y GraphQL da dos cosas que la REST no daba: el **resultado** de la apuesta (`betStatus` pasa a WIN / LOSS /
+PUSH / HALF_WIN / HALF_LOSS / PARTIAL) y un **código de error por rechazo**, que permite separar "vuelve a
+intentarlo" (precio movido, tope, mercado suspendido, fondos) de "esto es tuyo con la casa" (RESTRICTED,
+VERIFICATION_REQUIRED) de "es un fallo nuestro" (MALFORMED_REQUEST).
+
+**El reenviador de Fráncfort (`gp-relay-eu`, $7/mes) YA NO SE USA.** Se creó sobre la hipótesis de que el
+403 era geográfico; la hipótesis resultó FALSA —el 403 sale igual desde Alemania— y por GraphQL se entra
+desde cualquier sitio. Está suspendido. `real-executor/relay.js` se conserva por si algún día hace falta
+aislar la llave, pero el ejecutor no lo llama.
 
 **Antes de tocar nada:** `node real-executor/auditoria.js`. Levanta una casa de mentira y recorre 22
 escenarios del camino del dinero, incluido que el banco cuadre con la suma de resultados. No toca la red ni

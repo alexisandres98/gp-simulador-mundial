@@ -136,6 +136,11 @@ function stakeDe(prob, odds) {
 
 const CF_ESPERA_MS = num('GP_REAL_CF_ESPERA_MIN', 30) * 60e3;
 
+// Rechazos de la casa que NO se arreglan reintentando: o es la cuenta de Alexis con la casa, o es un fallo
+// nuestro construyendo la petición. Los demás códigos (precio movido, tope cambiado, mercado suspendido,
+// fondos, límite de riesgo, error interno de la casa) sí se reintentan.
+const COD_DEFINITIVOS = new Set(['RESTRICTED', 'VERIFICATION_REQUIRED', 'MALFORMED_REQUEST']);
+
 const abiertas = () => load().bets.filter((b) => b.status === 'PLACED');
 // LO EN EL AIRE TAMBIÉN CUENTA COMO EXPUESTO. Una apuesta que la casa está evaluando puede tener el dinero
 // ya retenido; dejarla fuera del cálculo haría que el tope de exposición permitiera comprometer más de lo
@@ -306,13 +311,30 @@ async function colocar(fila, { cbIdx = {} } = {}) {
   if (L.cortafuegos && L.cortafuegos.seguidos) L.cortafuegos = { seguidos: 0, reabierto: new Date().toISOString() };
 
   const cuerpo = r.body || {};
-  const est = String(cuerpo.status || (cuerpo.bet && cuerpo.bet.status) || '').toUpperCase();
+  const est = String(r.betStatus || cuerpo.betStatus || '').toUpperCase();
+  const cod = String(r.betError || cuerpo.betErrorCode || '').toUpperCase();
+  fila.error_casa = cod || null;
 
   if (!r.ok || est === 'REJECTED') {
-    // rechazo explícito: la referencia queda quemada, así que el próximo intento estrena una.
+    // LA CASA AHORA DICE POR QUÉ, Y NO TODOS LOS "NO" SON IGUALES. Con la API vieja un rechazo era una
+    // pared sin letrero; GraphQL devuelve un código y eso separa tres mundos que exigen tres reacciones:
+    //   · el precio se movió, el tope cambió, el mercado se suspendió, faltan fondos → vuelve a intentarse,
+    //     porque lo que falló puede dejar de fallar en diez minutos;
+    //   · la referencia ya estaba usada → NO se estrena otra a ciegas: se pregunta por la vieja, que es el
+    //     único camino que no arriesga colocar dos veces lo mismo;
+    //   · la cuenta está restringida o sin verificar, o mandamos algo malformado → eso no lo arregla
+    //     insistir. Se descarta y se avisa, porque o es cosa de Alexis con la casa o es un fallo nuestro.
+    if (cod === 'DUPLICATE_REQUEST') {
+      fila.status = 'EN_ACEPTACION'; fila.motivo = 'referencia_ya_usada'; fila.stake_comprometido = stakeFinal;
+      save(); return fila;
+    }
+    if (COD_DEFINITIVOS.has(cod)) {
+      fila.status = 'DESCARTADA'; fila.motivo = 'cuenta_o_peticion:' + cod.toLowerCase();
+      save(); return fila;
+    }
     fila.envios = (fila.envios || 0) + 1;
     fila.ref_id = refIdDe(fila.pick_id, fila.envios);
-    return parar('rechazada_por_la_casa', { http: r.status, error_casa: cuerpo.error || null });
+    return parar('rechazada_por_la_casa', { http: r.status, error_casa: cod || null });
   }
 
   if (est === 'PENDING_ACCEPTANCE' || (!est && r.ok)) {
@@ -358,9 +380,14 @@ async function confirmar() {
   for (const fila of enAire) {
     const st = await CB.betByReference(process.env.CLOUDBET_API_KEY || '', fila.ref_id).catch(() => null);
     if (!st) { siguen++; continue; }
+    // `betStatus`, no `status`: la API GraphQL nombra así el campo, y leer el nombre de la API vieja dejaba
+    // toda apuesta en el aire atascada ahí para siempre —ni se confirmaba ni se liberaba— con el dinero
+    // comprometido contando contra el tope de exposición. Lo cazó la auditoría, no la producción.
     const raw = st.bet || st;
-    const est = String(raw.status || '').toUpperCase();
-    if (est === 'ACCEPTED') {
+    const est = String(raw.betStatus || raw.status || '').toUpperCase();
+    // si ya se resolvió el partido mientras estaba en el aire, la apuesta existió: se acepta y que la
+    // liquidación haga su trabajo en la pasada siguiente.
+    if (est === 'ACCEPTED' || CB.ESTADOS_LIQUIDADOS.has(est)) {
       fila.status = 'PLACED'; fila.motivo = null;
       fila.odds_real = Number(raw.price) || fila.precio_vivo || fila.odds_sombra;
       fila.stake = Number(raw.stake) || fila.stake;
@@ -491,42 +518,35 @@ async function liquidar(resultados = {}) {
   const pend = L.bets.filter((b) => b.status === 'PLACED');
   let settled = 0, esperando = 0, descuadres = 0;
   for (const b of pend) {
-    const nuestro = String((resultados[b.pick_id] || {}).result_code || '').toUpperCase();
-    if (!nuestro) { esperando++; continue; }              // el partido aún no se ha resuelto para nosotros
+    const raw = await CB.betByReference(process.env.CLOUDBET_API_KEY, b.ref_id).catch(() => null);
+    if (!raw) { esperando++; continue; }
+    const casa = String(raw.betStatus || '').toUpperCase();
+    // LA CASA MANDA, Y AHORA SÍ LO DICE. `betStatus` pasa de ACCEPTED a WIN / LOSS / PUSH / HALF_WIN /
+    // HALF_LOSS / PARTIAL cuando el partido se resuelve. Mientras no sea uno de esos, la apuesta sigue
+    // viva por mucho que nuestro liquidador ya haya cerrado la pick: el dinero no ha vuelto.
+    if (!CB.ESTADOS_LIQUIDADOS.has(casa)) { esperando++; continue; }
 
-    const st = await CB.betByReference(process.env.CLOUDBET_API_KEY, b.ref_id).catch(() => null);
-    const raw = (st && (st.bet || st)) || null;
-    const ret = raw && raw.returnAmount != null ? Number(raw.returnAmount) : null;
+    const ret = raw.returnAmount != null ? Number(raw.returnAmount) : 0;
     const stake = Number(b.stake) || 0;
-    const cuota = b.odds_real || b.precio_vivo || b.odds_sombra || 0;
+    b.pnl = +(ret - stake).toFixed(2);
+    b.resultado = casa === 'LOSS' ? 'LOSS' : casa === 'PUSH' ? 'VOID' : casa === 'WIN' ? 'WIN' : casa;
 
-    if (nuestro === 'WIN') {
-      // una ganada TIENE que traer dinero de vuelta. Si la casa aún no ha pagado, se espera: dar por
-      // ganada una apuesta que nadie ha pagado es inventarse el saldo.
-      if (!(ret > 0)) { b.espera_pago = (b.espera_pago || 0) + 1; esperando++; continue; }
-      const esperado = +(stake * cuota).toFixed(2);
-      if (Math.abs(ret - esperado) > Math.max(0.05, esperado * 0.02)) {
-        b.discrepancia = { esperado, pagado: ret }; descuadres++;
-      }
-      b.pnl = +(ret - stake).toFixed(2);
-      b.resultado = 'WIN';
-    } else if (nuestro === 'LOSS') {
-      // una perdida no devuelve nada, y aquí `returnAmount: 0` es consistente con nuestra lectura. Si la
-      // casa SÍ pagó algo, es que uno de los dos se equivocó de resultado: se anota y se cree a la casa.
-      if (ret > 0) {
-        b.discrepancia = { esperado: 0, pagado: ret }; descuadres++;
-        b.pnl = +(ret - stake).toFixed(2); b.resultado = 'WIN';
-      } else { b.pnl = -stake; b.resultado = 'LOSS'; }
-    } else if (/VOID|PUSH|CANCEL/.test(nuestro)) {
-      // anulada: devuelve el stake. Si todavía no ha vuelto, se espera igual que con una ganada.
-      if (!(ret > 0)) { b.espera_pago = (b.espera_pago || 0) + 1; esperando++; continue; }
-      b.pnl = +(ret - stake).toFixed(2); b.resultado = 'VOID';
-    } else { esperando++; continue; }                      // SUPERSEDED u otro código que no resuelve dinero
+    // NUESTRO VEREDICTO SE COMPARA, NO SE USA. El dinero es el de la casa; nuestra lectura del partido sirve
+    // para saber si el modelo y la realidad coinciden. Cuando no coinciden hay que mirarlo —o el liquidador
+    // nuestro está mal, o la casa resolvió de otra forma— y por eso el descuadre viaja al informe en vez de
+    // desaparecer detrás de un número que cuadra igual.
+    const nuestro = String((resultados[b.pick_id] || {}).result_code || '').toUpperCase();
+    if (nuestro && !/SUPERSEDED/.test(nuestro)) {
+      const nuestroDir = nuestro === 'WIN' ? 'WIN' : nuestro === 'LOSS' ? 'LOSS' : 'VOID';
+      const casaDir = b.pnl > 0.001 ? 'WIN' : b.pnl < -0.001 ? 'LOSS' : 'VOID';
+      if (nuestroDir !== casaDir) { b.discrepancia = { nuestro: nuestroDir, casa: casaDir, pagado: ret, stake }; descuadres++; }
+    }
 
     b.status = 'SETTLED';
     b.settled_at = new Date().toISOString();
     b.pagado_por_la_casa = ret;
-    b.resultado_nuestro = nuestro;
+    b.casa_estado = casa;
+    b.resultado_nuestro = nuestro || null;
     L.realizado = +((L.realizado || 0) + b.pnl).toFixed(2);
     L.nocional = +((L.nocional || C.nocional) + b.pnl).toFixed(2);
     const d = dia(String(b.settled_at).slice(0, 10)); d.pnl = +(d.pnl + b.pnl).toFixed(2);

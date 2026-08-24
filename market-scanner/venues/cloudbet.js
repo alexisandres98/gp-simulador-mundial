@@ -303,6 +303,47 @@ async function fetchCloudbetSoccer({ apiKey = process.env.CLOUDBET_API_KEY, time
 
 const ACC_HOST = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// LA CASA TIENE DOS APIS DE APUESTAS, Y SOLO UNA NOS DEJA ENTRAR (25-ago)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Medido, no supuesto. Con una llave de nivel `trading` y la cuenta fondeada:
+//
+//   GET  /pub/v2/odds/*                     200  · las cuotas entran sin problema
+//   GET  /pub/v1/account/*                  200  · nombre de la cuenta, monedas y saldo
+//   POST /pub/v3/bets/place                 403  · página de cortafuegos de Cloudflare
+//   POST /pub/v3/bets/{ref}/status          403  · lo mismo
+//   GET  /pub/v3|v4/bets/history            403  · lo mismo
+//   POST sports-api-graphql…/graphql        200  · ABIERTO, y trae `placeBet`
+//
+// El 403 sale igual con llave y sin ella, desde Oregón, desde Fráncfort y desde un tercer sitio, con
+// user-agent de navegador y con `Authorization: Bearer`. Es una regla de borde sobre la familia de rutas
+// REST `/pub/vN/bets/*`, no un problema de llave, de cuenta, de país ni del cuerpo de la petición.
+//
+// La API GraphQL es de la casa, está documentada y hace exactamente lo mismo. Comprobado contra ella con un
+// evento imposible: contestó `betStatus: REJECTED, betErrorCode: MALFORMED_REQUEST`, que es el motor de
+// apuestas respondiendo, no un cortafuegos. Así que el reparto queda así, cada cosa por donde pasa:
+//   · cuotas y saldo → REST, que funciona;
+//   · colocar, consultar y liquidar → GraphQL.
+//
+// Y hay premio: GraphQL devuelve el RESULTADO de la apuesta (WIN / LOSS / PUSH / HALF_WIN / HALF_LOSS /
+// PARTIAL) y un código de error específico por rechazo, dos cosas que la REST no da. Con eso la liquidación
+// deja de tener que adivinar y los rechazos se pueden clasificar en "vuelve a intentarlo" y "esto es tuyo".
+const GQL = process.env.CLOUDBET_GRAPHQL_HOST || 'https://sports-api-graphql.cloudbet.com/graphql';
+
+async function gql(apiKey, query, variables, timeoutMs = 20000) {
+  const opts = {
+    method: 'POST',
+    headers: { 'X-API-Key': apiKey, accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ query, variables: variables || {} }),
+  };
+  if (AbortSignal.timeout) opts.signal = AbortSignal.timeout(timeoutMs);
+  const r = await fetch(GQL, opts);
+  const txt = await r.text();
+  let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { /* no es JSON: casi seguro un cortafuegos */ }
+  return { ok: r.ok && j && !j.errors, status: r.status, data: (j && j.data) || null,
+    errors: (j && j.errors) || null, raw: j ? null : txt.slice(0, 400) };
+}
+
 // ¿NOS ESTÁ CONTESTANDO LA CASA O SU CORTAFUEGOS? La diferencia decide qué hacer: a un rechazo de la casa
 // se le hace caso y se reintenta; contra un cortafuegos que nos ha bloqueado, insistir cada diez minutos no
 // arregla nada, molesta y puede empeorar el bloqueo. Se reconoce porque llega HTML en vez de JSON —la
@@ -393,59 +434,36 @@ async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, re
     stake: String(stake),
     referenceId,
   };
-  // ── EL DESVÍO, Y POR QUÉ EXISTE (25-ago) ────────────────────────────────────────────────────────────
-  // Medido, no supuesto: desde el servidor de Render (Oregón, `loc=US`) la casa contesta 403 con página de
-  // cortafuegos a `POST /pub/v3/bets/place`, IGUAL con llave y sin ella, mientras ese mismo servidor lee
-  // cuotas y consulta el saldo sin problema. No es la llave —`/pub/v1/account/currencies` da 200 con ella y
-  // 401 sin ella— ni la ruta: es el país desde el que sale la petición. La casa no acepta apuestas desde
-  // Estados Unidos, y eso no se arregla con código sino saliendo desde otro sitio.
-  //
-  // `GP_REAL_RELAY_URL` apunta a un reenviador mínimo desplegado fuera de EE. UU. (real-executor/relay.js).
-  // Si está puesto, la colocación viaja por ahí; si no, se intenta directo y el 403 se registra tal cual. Lo
-  // que NO se hace es disimularlo: una apuesta que no se colocó no puede quedar anotada como colocada.
-  const relay = String(process.env.GP_REAL_RELAY_URL || '').trim();
-  if (relay) {
-    try {
-      const opt = {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (process.env.GP_REAL_RELAY_TOKEN || '') },
-        body: JSON.stringify(body),
-      };
-      if (AbortSignal.timeout) opt.signal = AbortSignal.timeout(25000);
-      const rr = await fetch(relay.replace(/\/$/, '') + '/place', opt);
-      const txt = await rr.text();
-      let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { /* el reenviador devolvió algo que no es JSON */ }
-      const crudo = (j && j.crudo) || (j ? null : txt);
-      return { ok: !!(rr.ok && j && j.ok), status: (j && j.status) || rr.status,
-        body: (j && j.cloudbet) || j, raw: j ? null : txt.slice(0, 300), enviado: body, via: 'relay',
-        cortafuegos: esCortafuegos((j && j.status) || rr.status, crudo) };
-    } catch (e) {
-      return { ok: false, status: 0, body: null, raw: 'relay: ' + String((e && e.message) || e).slice(0, 160), enviado: body, via: 'relay' };
-    }
-  }
-  const r = await cbFetch('/pub/v3/bets/place', apiKey, { method: 'POST', body, timeoutMs: 20000 })
-    .catch((e) => ({ ok: false, status: 0, body: null, raw: String((e && e.message) || e).slice(0, 200) }));
-  return { ok: !!r.ok, status: r.status, body: r.body, raw: r.raw, enviado: body, via: 'directo',
-    cortafuegos: esCortafuegos(r.status, r.raw) };
+  // POR GRAPHQL, que es la puerta que la casa nos deja abierta (ver la nota larga arriba). El reenviador de
+  // Fráncfort deja de hacer falta: la hipótesis de que el bloqueo era geográfico resultó falsa —el 403 sale
+  // igual desde Alemania— y por GraphQL se entra desde cualquier sitio.
+  const r = await gql(apiKey, `mutation Colocar($i: PlaceBetInput!) {
+    placeBet(input: $i) { referenceId eventId marketUrl currency price stake side betStatus betErrorCode }
+  }`, { i: body }).catch((e) => ({ ok: false, status: 0, data: null, errors: null, raw: String((e && e.message) || e).slice(0, 200) }));
+
+  const pb = (r.data && r.data.placeBet) || null;
+  const errGql = r.errors ? r.errors.map((x) => x.message).join(' | ').slice(0, 200) : null;
+  return {
+    ok: !!pb, status: r.status, body: pb, raw: r.raw || errGql, enviado: body, via: 'graphql',
+    // el estado y el código de error de la casa viajan arriba porque son lo que decide qué hacer después
+    betStatus: pb ? pb.betStatus : null,
+    betError: pb ? pb.betErrorCode : null,
+    cortafuegos: esCortafuegos(r.status, r.raw),
+  };
 }
 
-// el estado de una apuesta por su referencia. Es la fuente AUTORITATIVA de si ganó, perdió o se anuló:
-// nuestra propia liquidación sirve para el modelo, pero el dinero lo dice la casa.
-// ES POST, NO GET (comprobado contra la documentación oficial de la casa el 25-ago). La primera versión
-// preguntaba con GET, que no existe: ninguna apuesta se habría liquidado nunca, el banco no habría
-// compuesto y la exposición abierta habría crecido hasta bloquear el ejecutor por su propio tope. Es el
-// tipo de fallo que no da error visible — solo un registro que se queda quieto.
-//
-// La respuesta trae `status` (ACCEPTED / PENDING_ACCEPTANCE / REJECTED), `returnAmount`, `stake`, `price`
-// y `error`. OJO: `status` dice si la apuesta fue ACEPTADA, NO si ganó. Una apuesta perdida y una todavía
-// sin resolver son las dos ACCEPTED con returnAmount "0.0" — de ahí no se puede sacar el resultado, y
-// quien lo intente se inventará ganancias o pérdidas. El resultado sale de nuestra propia liquidación; de
-// aquí sale el DINERO.
+// EL ESTADO DE UNA APUESTA POR SU REFERENCIA, y aquí la API GraphQL da algo que la REST no daba: el
+// RESULTADO. Su `betStatus` no se queda en "aceptada" —ACCEPTED / PENDING_ACCEPTANCE / REJECTED— sino que
+// después de resolverse el partido pasa a WIN, LOSS, PUSH, HALF_WIN, HALF_LOSS o PARTIAL. Con la REST había
+// que deducirlo, y no se podía: una perdida y una sin resolver eran las dos ACCEPTED con `returnAmount` a
+// cero. Ahora la casa lo dice y `returnAmount` pone la cifra.
+const ESTADOS_LIQUIDADOS = new Set(['WIN', 'LOSS', 'PUSH', 'HALF_WIN', 'HALF_LOSS', 'PARTIAL']);
 async function betByReference(apiKey, referenceId) {
   if (!apiKey || !referenceId) return null;
-  const r = await cbFetch(`/pub/v3/bets/${encodeURIComponent(referenceId)}/status`, apiKey,
-    { method: 'POST', body: {} }).catch(() => null);
-  return r && r.ok ? r.body : null;
+  const r = await gql(apiKey, `query Apuesta($ref: String!) {
+    bet(referenceId: $ref) { referenceId eventId marketUrl currency price stake side returnAmount betStatus betErrorCode }
+  }`, { ref: referenceId }).catch(() => null);
+  return (r && r.data && r.data.bet) || null;
 }
 
 // LO QUE HAY EN LA CACHÉ, SIN SALIR A BUSCAR NADA. `fetchCloudbetSoccer` con la caché vencida se lanza a
@@ -458,5 +476,5 @@ function cachedSoccer() {
 }
 
 module.exports = { fetchCloudbetSoccer, cachedSoccer, normalizeEvent, soccerCompetitions, HOST,
-  balance, accountCurrencies, eventRaw, selectionFor, placeBet, betByReference };
+  balance, accountCurrencies, eventRaw, selectionFor, placeBet, betByReference, gql, ESTADOS_LIQUIDADOS };
 

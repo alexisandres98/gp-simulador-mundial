@@ -19158,8 +19158,25 @@ const server = http.createServer(async (req, res) => {
           .map((sb) => ({ sb, pick: byPick2[sb.pick_id] }))
           .filter((x) => x.pick);
         for (const par of pares) await cbResolveEvent(par.pick).catch(() => null);
+        // POR QUÉ FALLÓ EL RESCATE, no solo que falló. Tres cosas distintas dan el mismo "sin id": que la
+        // caché del colector esté vacía, que el partido no esté en el mapa de eventos conocidos, o que esté
+        // en los dos y el emparejador de nombres no lo case. La tercera es la única que se arregla tocando
+        // el emparejador, y sin distinguirlas se acaba tocando el que no era.
+        const cache = require('./market-scanner/venues/cloudbet').cachedSoccer();
+        const diagIdx = pares.map(({ sb, pick }) => {
+          const ceid2 = (pick.event || {}).canonical_event_id;
+          const meta2 = (db.clubsQuoteEvents || {})[ceid2] || null;
+          const cands = meta2 ? (cache.data || []).filter((e) => cloudbetNameMatch(e.home, meta2.home)
+            || cloudbetNameMatch(e.away, meta2.away) || cloudbetNameMatch(e.home, meta2.away)
+            || cloudbetNameMatch(e.away, meta2.home)).slice(0, 4).map((e) => e.home + ' v ' + e.away) : [];
+          return { match: sb.match, en_indice: !!(db.cbEventIdx || {})[ceid2],
+            en_mapa_de_eventos: !!meta2, nombres_del_mapa: meta2 ? [meta2.home, meta2.away] : null,
+            candidatos_en_cache: cands };
+        });
         return json(res, 200, { abiertas_del_segmento: pares.length,
           idx_eventos: Object.keys(db.cbEventIdx || {}).length,
+          cache_casa: { eventos: (cache.data || []).length, edad_min: cache.edad_min },
+          por_que_sin_id: diagIdx,
           filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {} }) });
       }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });

@@ -166,6 +166,14 @@ function frenos(stake) {
   // de seguridad que ya nos dijo que no. No arregla nada, es una falta de educación y puede endurecer el
   // bloqueo. Tras tres respuestas seguidas de cortafuegos, el ejecutor se calla media hora y lo anota; una
   // sola respuesta normal de la casa lo reabre al instante.
+  // LA CUENTA RESTRINGIDA PARA TODO EL EJECUTOR, no solo para una apuesta. Si la casa ha dicho RESTRICTED o
+  // VERIFICATION_REQUIRED varias veces seguidas, el problema no es el partido: es la cuenta. Cada envío
+  // nuevo sería un rechazo más contra el contador de abuso que la casa vigila, y el premio por insistir es
+  // que nos bloqueen una semana. Se para y se espera a que alguien lo resuelva con la casa.
+  const rc = L.rechazos_cuenta;
+  if (rc && rc.seguidos >= num('GP_REAL_RECHAZOS_TOPE', 3)) {
+    return { freno: 'cuenta_restringida', detalle: `la casa rechazó ${rc.seguidos} seguidas con ${rc.codigo}; hay que resolverlo con ella antes de seguir` };
+  }
   const cf = L.cortafuegos;
   if (cf && cf.seguidos >= 3 && Date.now() - Date.parse(cf.ultimo || 0) < CF_ESPERA_MS) {
     return { freno: 'puerta_cerrada', detalle: `la casa bloquea la colocación (${cf.seguidos} seguidas); se reintenta tras ${Math.round(CF_ESPERA_MS / 60000)} min` };
@@ -426,8 +434,16 @@ async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
     }
     if (COD_DEFINITIVOS.has(cod)) {
       fila.status = 'DESCARTADA'; fila.motivo = 'cuenta_o_peticion:' + cod.toLowerCase();
+      // Y SE DEJA DE INTENTAR CON TODAS, no solo con esta. La casa documenta que si el ratio de rechazos
+      // se dispara —hablan de más del 80 % de las últimas 100— marca la cuenta por abuso y la bloquea hasta
+      // siete días. Si el motivo es la cuenta, cada apuesta nueva es un rechazo más contra ese contador:
+      // seguir enviando no consigue nada y arriesga que nos cierren la única casa que podemos ejecutar.
+      L.rechazos_cuenta = { seguidos: ((L.rechazos_cuenta && L.rechazos_cuenta.seguidos) || 0) + 1,
+        codigo: cod, ultimo: new Date().toISOString(), via: r.via || null };
       save(); return fila;
     }
+    // cualquier respuesta que NO sea de cuenta restringida limpia el contador: el problema era otro
+    if (L.rechazos_cuenta && L.rechazos_cuenta.seguidos) L.rechazos_cuenta = { seguidos: 0, limpiado: new Date().toISOString() };
     fila.envios = (fila.envios || 0) + 1;
     fila.ref_id = refIdDe(fila.pick_id, fila.envios);
     return parar('rechazada_por_la_casa', { http: r.status, error_casa: cod || null });
@@ -445,6 +461,8 @@ async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
 
   fila.status = 'PLACED';
   fila.motivo = null;
+  // una aceptada demuestra que la cuenta puede operar: el contador de rechazos de cuenta se limpia
+  if (L.rechazos_cuenta && L.rechazos_cuenta.seguidos) L.rechazos_cuenta = { seguidos: 0, limpiado: new Date().toISOString() };
   fila.odds_real = Number(cuerpo.price || (cuerpo.bet && cuerpo.bet.price) || sel.price) || sel.price;
   fila.placed_at = new Date().toISOString();
   fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
@@ -684,6 +702,7 @@ function board({ limit = 40 } = {}) {
     },
     saldo: L.saldo,
     cortafuegos: L.cortafuegos || null,
+    rechazos_cuenta: L.rechazos_cuenta || null,
     exposicion_abierta: expuesto(),
     senales: L.bets.length, colocadas: colocadas.length, abiertas: abiertas().length,
     en_el_aire: enElAire().length,

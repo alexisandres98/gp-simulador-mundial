@@ -34,6 +34,7 @@ const http = require('http');
 
 const CB_HOST = process.env.CLOUDBET_HOST || 'https://sports-api.cloudbet.com';
 const PLACE_PATH = '/pub/v3/bets/place';
+const GQL_HOST = process.env.CLOUDBET_GRAPHQL_HOST || 'https://sports-api-graphql.cloudbet.com/graphql';
 const TOKEN = String(process.env.GP_RELAY_TOKEN || '');
 const KEY = String(process.env.CLOUDBET_API_KEY || '');
 const PORT = Number(process.env.PORT) || 8080;
@@ -120,6 +121,49 @@ const server = http.createServer(async (req, res) => {
 
     return json(res, 200, { ok: true, salida: { ip, loc, colo }, puerta_de_colocacion: puerta, saldo,
       tiene_llave: !!KEY, tiene_secreto: !!TOKEN });
+  }
+
+  // ── GRAPHQL (25-ago) ──────────────────────────────────────────────────────────────────────────────────
+  // La colocación se hace por GraphQL, no por REST, y hasta ahora esa llamada salía DIRECTA del servidor
+  // principal — es decir, desde Oregón. La casa contestó `betStatus: REJECTED · betErrorCode: RESTRICTED`
+  // en las dos primeras apuestas reales, y su propia documentación dice que el acceso a la API de trading
+  // está restringido por jurisdicción. Encaja: por GraphQL se atraviesa el borde, pero la restricción se
+  // aplica igual al apostar. Este camino manda la mutación desde Fráncfort para poder comprobarlo.
+  //
+  // Igual de estricto que /place: solo se reenvía la operación de colocar, y las variables tienen que traer
+  // las claves que la casa exige. Un reenviador que acepta cualquier consulta GraphQL es una llave maestra
+  // de la cuenta, no un reenviador.
+  if (ruta === '/gql' && req.method === 'POST') {
+    if (!TOKEN || !KEY) return json(res, 500, { ok: false, why: 'reenviador_sin_configurar' });
+    const auth2 = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!mismoSecreto(auth2, TOKEN)) return json(res, 401, { ok: false, why: 'secreto_invalido' });
+
+    let cuerpo2;
+    try { cuerpo2 = JSON.parse(await leerCuerpo(req, 16384)); }
+    catch (e) { return json(res, 400, { ok: false, why: 'cuerpo_ilegible', detalle: String((e && e.message) || e).slice(0, 80) }); }
+    const q = String((cuerpo2 && cuerpo2.query) || '');
+    const vars = (cuerpo2 && cuerpo2.variables) || null;
+    if (!/\bplaceBet\s*\(/.test(q)) return json(res, 400, { ok: false, why: 'solo_se_reenvia_placeBet' });
+    const input = vars && vars.i;
+    if (!input || typeof input !== 'object') return json(res, 400, { ok: false, why: 'falta_input' });
+    for (const k of ['currency', 'eventId', 'marketUrl', 'price', 'stake', 'referenceId']) {
+      if (input[k] === undefined || input[k] === null || input[k] === '') return json(res, 400, { ok: false, why: 'falta_' + k });
+    }
+    if (!/^[a-z0-9]+\.[a-z0-9_]+\//i.test(String(input.marketUrl))) return json(res, 400, { ok: false, why: 'market_url_con_forma_rara' });
+
+    try {
+      const r = await fetch(GQL_HOST, {
+        method: 'POST',
+        headers: { 'X-API-Key': KEY, accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ query: q, variables: { i: input } }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const txt = await r.text();
+      let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { /* la casa devolvió algo que no es JSON */ }
+      return json(res, 200, { ok: r.ok, status: r.status, gql: j, crudo: j ? null : txt.slice(0, 400) });
+    } catch (e) {
+      return json(res, 200, { ok: false, status: 0, gql: null, crudo: String((e && e.message) || e).slice(0, 160) });
+    }
   }
 
   if (ruta !== '/place' || req.method !== 'POST') return json(res, 404, { ok: false, why: 'no_encontrado' });

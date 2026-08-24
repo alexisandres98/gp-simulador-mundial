@@ -434,17 +434,46 @@ async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, re
     stake: String(stake),
     referenceId,
   };
-  // POR GRAPHQL, que es la puerta que la casa nos deja abierta (ver la nota larga arriba). El reenviador de
-  // Fráncfort deja de hacer falta: la hipótesis de que el bloqueo era geográfico resultó falsa —el 403 sale
-  // igual desde Alemania— y por GraphQL se entra desde cualquier sitio.
-  const r = await gql(apiKey, `mutation Colocar($i: PlaceBetInput!) {
+  // POR GRAPHQL, que es la puerta que la casa nos deja abierta (ver la nota larga arriba).
+  //
+  // Y POR EL REENVIADOR, SI ESTÁ PUESTO (25-ago, corrección). Di por muerta la hipótesis geográfica cuando
+  // el 403 salió igual desde Alemania, y la enterré demasiado pronto: por GraphQL se atraviesa el borde,
+  // pero las dos primeras apuestas reales volvieron con `betStatus: REJECTED · betErrorCode: RESTRICTED`,
+  // y la documentación de la casa dice que el acceso a su API de trading está restringido por jurisdicción.
+  // O sea: el borde nos dejó pasar y la restricción se aplicó una capa más adentro, al apostar. Esas dos
+  // salieron directas desde Oregón. Mandarlas desde Fráncfort es la forma de comprobarlo, y si acierta,
+  // el reenviador que casi borro resulta ser justo lo que hacía falta.
+  const MUT = `mutation Colocar($i: PlaceBetInput!) {
     placeBet(input: $i) { referenceId eventId marketUrl currency price stake side betStatus betErrorCode }
-  }`, { i: body }).catch((e) => ({ ok: false, status: 0, data: null, errors: null, raw: String((e && e.message) || e).slice(0, 200) }));
+  }`;
+  const relay = String(process.env.GP_REAL_RELAY_URL || '').trim();
+  let r;
+  if (relay) {
+    r = await (async () => {
+      const opt = { method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (process.env.GP_REAL_RELAY_TOKEN || '') },
+        body: JSON.stringify({ query: MUT, variables: { i: body } }) };
+      if (AbortSignal.timeout) opt.signal = AbortSignal.timeout(25000);
+      const rr = await fetch(relay.replace(/\/$/, '') + '/gql', opt);
+      const txt = await rr.text();
+      let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { /* el reenviador devolvió algo raro */ }
+      const g = (j && j.gql) || null;
+      return { ok: !!(rr.ok && j && j.ok), status: (j && j.status) || rr.status,
+        data: g && g.data, errors: g && g.errors, raw: g ? null : (j ? JSON.stringify(j).slice(0, 200) : txt.slice(0, 200)),
+        via: 'relay-graphql' };
+    })().catch((e) => ({ ok: false, status: 0, data: null, errors: null,
+      raw: 'relay: ' + String((e && e.message) || e).slice(0, 160), via: 'relay-graphql' }));
+  } else {
+    r = await gql(apiKey, MUT, { i: body })
+      .catch((e) => ({ ok: false, status: 0, data: null, errors: null, raw: String((e && e.message) || e).slice(0, 200) }));
+  }
 
   const pb = (r.data && r.data.placeBet) || null;
   const errGql = r.errors ? r.errors.map((x) => x.message).join(' | ').slice(0, 200) : null;
   return {
-    ok: !!pb, status: r.status, body: pb, raw: r.raw || errGql, enviado: body, via: 'graphql',
+    // `via` dice por dónde salió de verdad. Importa para el diagnóstico: un RESTRICTED con `via: graphql`
+    // salió desde Oregón y otro con `via: relay-graphql` salió desde Fráncfort, y son dos cosas distintas.
+    ok: !!pb, status: r.status, body: pb, raw: r.raw || errGql, enviado: body, via: r.via || 'graphql',
     // el estado y el código de error de la casa viajan arriba porque son lo que decide qué hacer después
     betStatus: pb ? pb.betStatus : null,
     betError: pb ? pb.betErrorCode : null,

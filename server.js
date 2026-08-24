@@ -19281,6 +19281,28 @@ const server = http.createServer(async (req, res) => {
         const dias = Math.min(90, Math.max(1, +(url.searchParams.get('dias') || 10)));
         return json(res, 200, await mmaResultsSync({ diasAtras: dias, force: true }).catch((e) => ({ error: e.message })));
       }
+      // `?peleador=<nombre>`: lo que el PERFIL enseñaría ahora mismo. Es la comprobación que de verdad
+      // importa —que la pelea de anoche llegue al historial del peleador— y no se puede hacer mirando el
+      // almacén: hay que preguntarle al mismo `combatLoad` del que bebe la pantalla.
+      const quien = String(url.searchParams.get('peleador') || '').trim();
+      if (quien) {
+        const CU = combatLoad(String(url.searchParams.get('org') || 'ufc'));
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const ids = Object.entries(CU.names || {}).filter(([id, nm]) => id === quien || norm(nm).includes(norm(quien)));
+        if (!ids.length) return json(res, 200, { peleador: quien, error: 'no está en el índice de nombres' });
+        const salida = ids.slice(0, 3).map(([id, nm]) => {
+          const hist = (CU.fights.fights || []).filter((f) => f.completed && (f.f1.id === id || f.f2.id === id))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+          const idx = (CU.idx || {})[id] || null;
+          return { id, nombre: nm, peleas_en_historial: hist.length,
+            ultima: hist[0] ? { fecha: hist[0].date, evento: hist[0].event, src: hist[0].src || 'harvest',
+              rival: hist[0].f1.id === id ? hist[0].f2.name : hist[0].f1.name,
+              gano: !!(hist[0].f1.id === id ? hist[0].f1 : hist[0].f2).winner,
+              metodo: (hist[0].method || {}).display || null } : null,
+            indice: idx ? { ultima_fecha: idx.last, racha: idx.res.slice(-5).join(''), ko_encajados: idx.koL } : null };
+        });
+        return json(res, 200, { peleador: quien, encontrados: ids.length, perfiles: salida });
+      }
       const R = db.mmaResults || {};
       const filas = Object.values(R).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
       return json(res, 200, {

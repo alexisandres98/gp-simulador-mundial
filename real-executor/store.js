@@ -162,8 +162,119 @@ async function refrescarSaldo() {
 // `sb` es la apuesta que el ejecutor en la sombra acaba de anotar; `pick` es la pick del motor. De ahí sale
 // TODO menos el precio: el precio se relee de la casa en este mismo instante, porque el del barrido puede
 // tener veinte minutos y en veinte minutos una línea de tarjetas de segunda división desaparece.
+// UN INTENTO FALLIDO NO ES UNA APUESTA PERDIDA (25-ago, corregido antes de mover un dólar).
+// La primera versión sellaba la fila al primer fallo y no volvía a mirarla nunca. Parecía prudente y era un
+// agujero: el sombra ofrece cada señal UNA sola vez —después la mete en su lista de vistas—, así que
+// cualquier tropiezo pasajero (el reenviador reiniciándose tras un despliegue, la casa tardando, el saldo
+// corto durante media hora, el id del partido aún sin resolver) borraba esa apuesta para siempre. Con
+// despliegues varias veces al día, eso no es un caso raro: es el caso normal.
+//
+// Ahora la fila NACE en PENDIENTE y se reintenta en cada barrido hasta que se coloca o hasta que el partido
+// empieza. Lo que cambia entre intentos es justo lo que hacía fallar: el saldo se recarga, el índice se
+// llena, el reenviador vuelve, el precio se recupera. Lo único definitivo es que el modelo no le vea valor
+// —eso no cambia— y que se acabe el tiempo.
+const REINTENTOS_MAX = 80;                 // freno de bucle, no de política: 80 barridos son ~13 horas
+const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro']);
+
+function filaNueva(sb, pick) {
+  return {
+    ref_id: refIdDe(sb.pick_id), pick_id: sb.pick_id, shadow_id: sb.id || null,
+    match: sb.match, league: sb.league, line: sb.line, side: LADO,
+    kickoff_at: sb.kickoff_at || null,
+    ceid: (pick && pick.event && pick.event.canonical_event_id) || null,
+    odds_sombra: sb.odds, model_prob: sb.model_prob,
+    at: new Date().toISOString(),
+    status: 'PENDIENTE', intentos: 0,
+  };
+}
+
+// EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
+async function colocar(fila, { cbIdx = {} } = {}) {
+  const C = CFG(), L = load();
+  fila.intentos = (fila.intentos || 0) + 1;
+  fila.ultimo_intento_at = new Date().toISOString();
+  fila.dry = C.dry;
+
+  // se para porque no da tiempo, no porque el intento fallara: la distinción importa para el informe.
+  const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
+  if (ko && ko <= Date.now()) { fila.status = 'CADUCADA'; save(); return fila; }
+  if (fila.intentos > REINTENTOS_MAX) { fila.status = 'CADUCADA'; fila.motivo = 'demasiados_intentos'; save(); return fila; }
+
+  const parar = (motivo, extra) => {
+    Object.assign(fila, { motivo, ...(extra || {}) });
+    fila.status = DEFINITIVOS.has(motivo) ? 'DESCARTADA' : 'PENDIENTE';
+    save(); return fila;
+  };
+
+  // 1) la ventaja y el stake. Si el modelo no le da valor a este precio no hay nada que apostar, y eso no
+  //    va a cambiar en el próximo barrido: es lo único que se descarta de verdad.
+  if (kellyDe(fila.model_prob, fila.odds_sombra) <= 0) return parar('sin_ventaja', { prob: fila.model_prob });
+  const stake = stakeDe(fila.model_prob, fila.odds_sombra);
+  fila.stake = stake;
+
+  const f = frenos(stake);
+  if (f) return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
+
+  // 2) el id del partido en la casa
+  const idx = fila.ceid ? (cbIdx || {})[fila.ceid] : null;
+  if (!idx || !idx.cb_id) return parar('sin_id_de_evento');
+  fila.cb_event_id = idx.cb_id;
+
+  // 3) el precio VIVO y sus coordenadas de colocación
+  const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);
+  if (!ev) return parar('evento_ilegible');
+  const sel = CB.selectionFor(ev, MARKET_KEY, fila.line, LADO);
+  if (!sel) return parar('linea_no_cotizada');
+  fila.precio_vivo = sel.price; fila.market_url = sel.marketUrl;
+  fila.max_stake = sel.maxStake; fila.min_stake = sel.minStake; fila.estado_seleccion = sel.status;
+
+  if (sel.status && /DISABLED|SUSPENDED|CLOSED/i.test(sel.status)) return parar('seleccion_cerrada', { estado: sel.status });
+  if (!(sel.price > 1)) return parar('sin_precio');
+  if (!sel.marketUrl) return parar('sin_market_url');
+
+  // 4) el deslizamiento. Si la casa empeoró el precio más de lo tolerado no se apuesta AHORA — pero se
+  //    vuelve a mirar: los precios se mueven en las dos direcciones y aquí no hay prisa.
+  const minAceptable = fila.odds_sombra * (1 - C.minOddsSlipPct);
+  if (sel.price < minAceptable) return parar('precio_peor', { ofrecido: sel.price, minimo: +minAceptable.toFixed(3) });
+
+  // 5) la profundidad de la casa. Si acepta menos de lo que queremos, se apuesta lo que acepta y se anota el
+  //    recorte — que es exactamente el dato de capacidad que este mes existe para medir. Si ni siquiera
+  //    llega al mínimo nuestro, no se apuesta: una apuesta de $2 no mide nada y ensucia el registro.
+  let stakeFinal = stake;
+  if (sel.maxStake != null && sel.maxStake < stakeFinal) stakeFinal = Math.floor(sel.maxStake * 100) / 100;
+  if (sel.minStake != null && stakeFinal < sel.minStake) return parar('minimo_de_la_casa', { minimo: sel.minStake });
+  if (stakeFinal < C.stakeMin) return parar('tope_de_la_casa_muy_bajo', { max_casa: sel.maxStake });
+  fila.stake = stakeFinal;
+  fila.recorte_pct = stake > 0 ? +(100 * (stakeFinal / stake - 1)).toFixed(2) : 0;
+
+  const peticion = { currency: C.currency, eventId: idx.cb_id, marketUrl: sel.marketUrl,
+    price: sel.price, stake: stakeFinal, referenceId: fila.ref_id, acceptPriceChange: 'BETTER' };
+  fila.peticion = peticion;
+
+  // 6) ENSAYO: todo lo de arriba se ha ejecutado de verdad; lo único que no ocurre es el movimiento de
+  //    dinero. La fila se queda PENDIENTE para que, el día que se encienda el dinero real, se coloque de
+  //    verdad en vez de quedarse como un ensayo eterno.
+  if (C.dry) return parar('ensayo');
+
+  // 7) el momento
+  const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', peticion);
+  fila.respuesta = r.body || r.raw || null;
+  fila.http = r.status || null;
+  fila.via = r.via || null;
+  if (!r.ok) return parar('rechazada_por_la_casa', { http: r.status });
+
+  fila.status = 'PLACED';
+  fila.motivo = null;
+  fila.odds_real = Number((r.body && (r.body.price || (r.body.bet && r.body.bet.price))) || sel.price) || sel.price;
+  fila.placed_at = new Date().toISOString();
+  fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
+  const d = dia(hoy()); d.apostado += stakeFinal; d.n += 1;
+  save();
+  return fila;
+}
+
+// LA PUERTA DE ENTRADA: una señal nueva del sombra. Crea la fila y hace el primer intento.
 async function intentar(sb, pick, { cbIdx = {} } = {}) {
-  const C = CFG();
   const L = load();
 
   // 0) el perímetro. Cinco condiciones, y ninguna es configurable.
@@ -174,82 +285,38 @@ async function intentar(sb, pick, { cbIdx = {} } = {}) {
   if (!(sb.line > 0)) return null;
 
   const refId = refIdDe(sb.pick_id);
-  if (L.bets.some((b) => b.ref_id === refId)) return null;   // ya intentada: no se repite jamás
+  if (L.bets.some((b) => b.ref_id === refId)) return null;   // ya está en el libro; de reintentarla se
+                                                             // encarga `reintentar`, no esta puerta
+  const fila = filaNueva(sb, pick);
+  L.bets.push(fila);
+  return colocar(fila, { cbIdx });
+}
 
-  const fila = {
-    ref_id: refId, pick_id: sb.pick_id, shadow_id: sb.id || null,
-    match: sb.match, league: sb.league, line: sb.line, side: LADO,
-    kickoff_at: sb.kickoff_at || null,
-    odds_sombra: sb.odds, model_prob: sb.model_prob,
-    at: new Date().toISOString(),
-    status: 'RECHAZADA', dry: C.dry,
-  };
-  const sellar = (motivo, extra) => { Object.assign(fila, { motivo, ...(extra || {}) }); L.bets.push(fila); save(); return fila; };
-
-  // 1) el stake, antes que nada: los frenos se juzgan contra la cifra real.
-  //    Y antes del stake, la ventaja: si el modelo no le da valor a este precio, no hay nada que apostar.
-  //    En el sombra da igual porque el motor solo publica picks con valor; con dinero real un cero de
-  //    ventaja no puede acabar en el tope de stake por un descuido aritmético.
-  if (kellyDe(sb.model_prob, sb.odds) <= 0) return sellar('sin_ventaja', { prob: sb.model_prob, odds: sb.odds });
-  const stake = stakeDe(sb.model_prob, sb.odds);
-  fila.stake = stake;
-
-  const f = frenos(stake);
-  if (f) return sellar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
-
-  // 2) el id del partido en la casa
-  const ceid = (pick && pick.event && pick.event.canonical_event_id) || null;
-  const idx = ceid ? (cbIdx || {})[ceid] : null;
-  if (!idx || !idx.cb_id) return sellar('sin_id_de_evento', { ceid });
-  fila.cb_event_id = idx.cb_id;
-
-  // 3) el precio VIVO y sus coordenadas de colocación
-  const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);
-  if (!ev) return sellar('evento_ilegible');
-  const sel = CB.selectionFor(ev, MARKET_KEY, sb.line, LADO);
-  if (!sel) return sellar('linea_no_cotizada', { linea: sb.line });
-  fila.precio_vivo = sel.price; fila.market_url = sel.marketUrl;
-  fila.max_stake = sel.maxStake; fila.min_stake = sel.minStake; fila.estado_seleccion = sel.status;
-
-  if (sel.status && /DISABLED|SUSPENDED|CLOSED/i.test(sel.status)) return sellar('seleccion_cerrada', { estado: sel.status });
-  if (!(sel.price > 1)) return sellar('sin_precio');
-  if (!sel.marketUrl) return sellar('sin_market_url');
-
-  // 4) el deslizamiento. Si la casa empeoró el precio más de lo tolerado, no se apuesta: la ventaja de esta
-  //    familia es de un dígito, y un 3 % de precio se la come entera.
-  const minAceptable = sb.odds * (1 - C.minOddsSlipPct);
-  if (sel.price < minAceptable) return sellar('precio_peor', { pedido: sb.odds, ofrecido: sel.price, minimo: +minAceptable.toFixed(3) });
-
-  // 5) la profundidad de la casa. Si acepta menos de lo que queremos, se apuesta lo que acepta y se anota el
-  //    recorte — que es exactamente el dato de capacidad que este mes existe para medir. Si ni siquiera
-  //    llega al mínimo nuestro, no se apuesta: una apuesta de $2 no mide nada y ensucia el registro.
-  let stakeFinal = stake;
-  if (sel.maxStake != null && sel.maxStake < stakeFinal) stakeFinal = Math.floor(sel.maxStake * 100) / 100;
-  if (sel.minStake != null && stakeFinal < sel.minStake) return sellar('minimo_de_la_casa', { minimo: sel.minStake, queriamos: stake });
-  if (stakeFinal < C.stakeMin) return sellar('tope_de_la_casa_muy_bajo', { max_casa: sel.maxStake, queriamos: stake });
-  fila.stake = stakeFinal;
-  fila.recorte_pct = stake > 0 ? +(100 * (stakeFinal / stake - 1)).toFixed(2) : 0;
-
-  const peticion = { currency: C.currency, eventId: idx.cb_id, marketUrl: sel.marketUrl,
-    price: sel.price, stake: stakeFinal, referenceId: refId, acceptPriceChange: 'BETTER' };
-
-  // 6) ENSAYO: todo lo de arriba se ha ejecutado de verdad; lo único que no ocurre es el movimiento de dinero
-  if (C.dry) { fila.status = 'ENSAYO'; return sellar('ensayo', { peticion }); }
-
-  // 7) el momento
-  const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', peticion);
-  fila.respuesta = r.body || r.raw || null;
-  fila.http = r.status || null;
-  if (!r.ok) return sellar('rechazada_por_la_casa', { peticion });
-
-  fila.status = 'PLACED';
-  fila.motivo = null;
-  fila.odds_real = Number((r.body && (r.body.price || (r.body.bet && r.body.bet.price))) || sel.price) || sel.price;
-  fila.placed_at = new Date().toISOString();
-  fila.slippage_pct = sb.odds > 0 ? +(100 * (fila.odds_real / sb.odds - 1)).toFixed(2) : null;
-  const d = dia(hoy()); d.apostado += stakeFinal; d.n += 1;
-  L.bets.push(fila); save();
-  return fila;
+// LOS REINTENTOS. Se llama una vez por barrido, después de la puerta de entrada. Recorre lo pendiente cuyo
+// partido no ha empezado y lo vuelve a intentar. Es lo que convierte un fallo pasajero en un retraso en vez
+// de en una apuesta perdida.
+async function reintentar({ cbIdx = {}, max = 25 } = {}) {
+  const L = load();
+  const ahora = Date.now();
+  const cola = L.bets.filter((b) => b.status === 'PENDIENTE'
+    && (!b.kickoff_at || Date.parse(b.kickoff_at) > ahora))
+    .sort((a, b) => Date.parse(a.kickoff_at || 0) - Date.parse(b.kickoff_at || 0))
+    .slice(0, max);
+  let colocadas = 0;
+  for (const fila of cola) {
+    const r = await colocar(fila, { cbIdx }).catch(() => null);
+    if (r && r.status === 'PLACED') colocadas++;
+  }
+  // y las que se quedaron sin tiempo: se cierran para que no se reintenten eternamente ni figuren como
+  // pendientes en el informe. Una apuesta que no llegó a tiempo es un dato, no un limbo.
+  let caducadas = 0;
+  for (const b of L.bets) {
+    if (b.status === 'PENDIENTE' && b.kickoff_at && Date.parse(b.kickoff_at) <= ahora) {
+      b.status = 'CADUCADA'; caducadas++;
+    }
+  }
+  if (caducadas) save();
+  return { revisadas: cola.length, colocadas, caducadas, pendientes: L.bets.filter((b) => b.status === 'PENDIENTE').length };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -331,14 +398,17 @@ async function liquidar() {
 function board({ limit = 40 } = {}) {
   const C = CFG(), L = load();
   const colocadas = L.bets.filter((b) => b.status === 'PLACED' || b.status === 'SETTLED');
+  const pendientes = L.bets.filter((b) => b.status === 'PENDIENTE');
+  const caducadas = L.bets.filter((b) => b.status === 'CADUCADA');
   const liq = L.bets.filter((b) => b.status === 'SETTLED');
   const w = liq.filter((b) => b.resultado === 'WIN').length;
   const l = liq.filter((b) => b.resultado === 'LOSS').length;
   const staked = liq.reduce((a, b) => a + (b.stake || 0), 0);
   const pnl = liq.reduce((a, b) => a + (b.pnl || 0), 0);
   const slip = colocadas.map((b) => b.slippage_pct).filter((x) => typeof x === 'number');
-  const porMotivo = {};
-  for (const b of L.bets) if (b.motivo) porMotivo[b.motivo] = (porMotivo[b.motivo] || 0) + 1;
+  // el motivo de las PENDIENTES es "por qué todavía no", y el de las CADUCADAS es "por qué nunca". Contarlos
+  // juntos mezcla un retraso con una pérdida, que es justo la confusión que este ejecutor tiene que evitar.
+  const cuenta = (rows) => { const o = {}; for (const b of rows) if (b.motivo) o[b.motivo] = (o[b.motivo] || 0) + 1; return o; };
   return {
     config: {
       encendido: C.enabled, ensayo: C.dry, moneda: C.currency,
@@ -350,7 +420,9 @@ function board({ limit = 40 } = {}) {
     },
     saldo: L.saldo,
     exposicion_abierta: expuesto(),
-    intentos: L.bets.length, colocadas: colocadas.length, abiertas: abiertas().length,
+    senales: L.bets.length, colocadas: colocadas.length, abiertas: abiertas().length,
+    pendientes: pendientes.length, caducadas: caducadas.length,
+    descartadas: L.bets.filter((b) => b.status === 'DESCARTADA').length,
     liquidadas: liq.length, w, l,
     apostado: +staked.toFixed(2), pnl: +pnl.toFixed(2),
     roi_pct: staked ? +(100 * pnl / staked).toFixed(2) : null,
@@ -359,11 +431,12 @@ function board({ limit = 40 } = {}) {
     deslizamiento_medio_pct: slip.length ? +(slip.reduce((a, x) => a + x, 0) / slip.length).toFixed(3) : null,
     deslizamiento_n: slip.length,
     recorte_por_tope_n: colocadas.filter((b) => (b.recorte_pct || 0) < 0).length,
-    por_motivo: porMotivo,
+    por_que_pendiente: cuenta(pendientes),
+    por_que_caducada: cuenta(caducadas),
     dias: L.dias,
     ultimas: L.bets.slice(-limit).reverse(),
   };
 }
 
-module.exports = { intentar, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, colocar, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

@@ -12082,8 +12082,12 @@ async function shadowSweep() {
   try {
     const RE = require('./real-executor/store');
     if (RE.CFG().enabled) {
+      // REINTENTAR ANTES DE LIQUIDAR. Lo pendiente de barridos anteriores —el reenviador que se reinició, el
+      // saldo que estaba corto, el id que aún no se había resuelto— tiene su segunda oportunidad aquí, y por
+      // eso el ejecutor real no pierde una señal por un tropiezo de treinta segundos.
+      const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {} }).catch((e) => ({ error: e.message }));
       const liq = await RE.liquidar().catch((e) => ({ error: e.message }));
-      real = { intentos: realIntentos, colocadas: realColocadas, ...liq };
+      real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, ...liq };
       await realAvisoSaldo().catch(() => {});
     } else if (realIntentos) real = { intentos: realIntentos, colocadas: realColocadas, apagado: true };
   } catch (e) { real = { error: e.message }; }
@@ -12199,13 +12203,16 @@ async function realAvisoSaldo() {
   if (L.avisos[clave]) return;
   L.avisos[clave] = new Date().toISOString(); RE.save();
   const b = RE.board({ limit: 0 });
-  const sinFondos = (b.por_motivo || {}).sin_fondos || 0;
+  // las que esperan por fondos AHORA (todavía recuperables si recargas) y las que ya no llegaron a tiempo
+  const esperando = (b.por_que_pendiente || {}).sin_fondos || 0;
+  const sinFondos = (b.por_que_caducada || {}).sin_fondos || 0;
   const asunto = s < C.minBalance ? `Cloudbet sin fondos: ${s.toFixed(2)} ${C.currency}` : `Cloudbet bajo: ${s.toFixed(2)} ${C.currency}`;
   const cuerpo = [
     `Saldo en Cloudbet: ${s.toFixed(2)} ${C.currency}.`,
     `Suelo configurado: ${C.minBalance}. Por debajo del suelo el ejecutor deja de colocar y sella la señal como "sin_fondos".`,
     `Apuestas abiertas ahora: ${b.abiertas} por ${b.exposicion_abierta} ${C.currency}.`,
-    sinFondos ? `Señales ya perdidas por falta de fondos: ${sinFondos}.` : 'Todavía no se ha perdido ninguna señal por fondos.',
+    esperando ? `Apuestas esperando fondos ahora mismo: ${esperando}. Si recargas antes del saque, entran solas.` : null,
+    sinFondos ? `Señales ya PERDIDAS por falta de fondos: ${sinFondos}.` : 'Todavía no se ha perdido ninguna señal por fondos.',
     '',
     `Ritmo medido del segmento: ~6,4 apuestas al día a ~$28 = ~$180 diarios de exposición nueva.`,
     'Recarga sugerida para no perder señales: 400-600.',

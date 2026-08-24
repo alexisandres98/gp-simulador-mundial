@@ -19272,8 +19272,16 @@ const server = http.createServer(async (req, res) => {
             en_mapa_de_eventos: !!meta2, nombres_del_mapa: meta2 ? [meta2.home, meta2.away] : null,
             candidatos_en_cache: cands };
         });
+        // la despensa del segundo camino: si está vacía, resolver por nombre no puede funcionar y el motivo
+        // `sin_id_de_evento` no significa "no está en la casa" sino "no hemos mirado".
+        let despensa = null;
+        try { const c = require('./market-scanner/venues/cloudbet').cachedSoccer();
+          despensa = { eventos: (c.data || []).length, edad_min: c.edad_min,
+            con_id: (c.data || []).filter((e) => e.cb_id).length,
+            muestra: (c.data || []).slice(0, 3).map((e) => `${e.home} v ${e.away}`) }; } catch (e) { despensa = { error: e.message }; }
         return json(res, 200, { abiertas_del_segmento: pares.length,
           idx_eventos: Object.keys(db.cbEventIdx || {}).length,
+          cache_de_la_casa: despensa,
           cache_casa: { eventos: (cache.data || []).length, edad_min: cache.edad_min },
           por_que_sin_id: diagIdx,
           filas: await RE.preflight(pares, { cbIdx: db.cbEventIdx || {} }) });

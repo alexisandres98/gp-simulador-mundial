@@ -285,7 +285,10 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
       // no se mide contra "el mercado": se mide contra un cierre concreto de una casa concreta, y el baremo
       // del sector es el de Pinnacle. Sin la etiqueta de casa, los cierres de tres casas se mezclan en una
       // media que no es el cierre de nadie y el día que haya resultados no se puede calcular nada hacia atrás.
-      rows: mk.markets.map((r) => ({ book: r.book, family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds })),
+      rows: mk.markets.map((r) => ({ book: r.book, family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds,
+        // cuándo se vio este precio y a cuántos minutos del inicio. Sin esto no se puede distinguir un
+        // cierre de verdad de un precio de hace diez horas, y los dos se estaban llamando igual.
+        at: mk.at, pre_min: Math.round((Date.parse(ev.start_at) - Date.parse(mk.at)) / 60000) })),
       books: (mk.by_book || []).filter((b) => b.rows).map((b) => b.book),
       at: mk.at,
     };
@@ -306,6 +309,29 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
     if (th || ta) {
       entry.tape.push({ t: mk.at, h: th, a: ta });
       if (entry.tape.length > 30) entry.tape.splice(0, entry.tape.length - 30);
+    }
+    // NO BORRAR LO QUE LA CASA DEJÓ DE COTIZAR (25-ago). Cada pasada sobreescribía `rows` entera, y eso
+    // parecía inocente: el último guardado antes del inicio es el cierre. Pero una casa no cotiza el mismo
+    // menú todo el rato. El hándicap de kills de LoL se publica horas antes y DESAPARECE del tablero cerca
+    // del inicio; la última pasada llegaba con MAPA/SERIE/HANDICAP/TOTAL_MAPAS y sin kills, y al sobreescribir
+    // borraba el único precio que había. Resultado medido: 115 de las 165 picks liquidadas sin CLV tenían su
+    // cierre guardado y sin su propia familia dentro. No era el casador de líneas: era esta línea.
+    //
+    // Ahora se FUSIONA por (casa · familia · línea · lado · periodo · mapa · equipo): la pasada nueva pisa lo
+    // que vuelve a ver, y lo que ya no cotiza nadie conserva su última observación con la hora y los minutos
+    // que faltaban para el inicio. Eso no convierte un precio viejo en un cierre —por eso viaja `pre_min`,
+    // para poder separarlos en el informe en vez de mezclarlos— pero es el mejor precio observado que existe,
+    // y perderlo era quedarse sin la métrica entera.
+    {
+      const keyOf = (r) => [r.book, r.family, r.line == null ? '' : r.line, r.side || '', r.period || '',
+        r.map || '', r.team || ''].join('|');
+      const m = new Map();
+      for (const r of ((prev && prev.rows) || [])) m.set(keyOf(r), r);
+      for (const r of entry.rows) m.set(keyOf(r), r);
+      let fus = [...m.values()];
+      // tope duro: si un evento acumula demasiadas combinaciones, se quedan las observaciones más recientes
+      if (fus.length > 1200) fus = fus.sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))).slice(0, 1200);
+      entry.rows = fus;
     }
     st.closes[ev.id] = entry;
     saved++;
@@ -1519,11 +1545,11 @@ function closeOddsFor(pk, closes) {
   const mejor = (rows) => {
     const mine = rows.filter((r) => r.book === pk.book);
     const pool = mine.length ? mine : rows;
-    return pool.reduce((mx, r) => Math.max(mx, r.odds || 0), 0) || null;
+    return pool.reduce((mx, r) => (r.odds > (mx ? mx.odds : 0) ? r : mx), null);
   };
   if (exactas.length) {
-    const o = mejor(exactas);
-    return o ? { odds: o, src: 'exacta' } : null;
+    const r = mejor(exactas);
+    return r && r.odds ? { odds: r.odds, src: 'exacta', pre_min: r.pre_min ?? null } : null;
   }
 
   // ── sin línea exacta: la escalera de la misma casa ──────────────────────────────────────────
@@ -1540,7 +1566,8 @@ function closeOddsFor(pk, closes) {
   const t = (mia - abajo.x) / (arriba.x - abajo.x);
   const pInterp = abajo.p + t * (arriba.p - abajo.p);
   if (!(pInterp > 0.01 && pInterp < 0.99)) return null;
-  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada' };
+  const preMin = escalera.reduce((mn, r) => (r.pre_min != null && (mn == null || r.pre_min < mn) ? r.pre_min : mn), null);
+  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada', pre_min: preMin };
 }
 
 const RES = require('../data-providers/esports/results');
@@ -1556,7 +1583,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   for (const p of Object.values(st.picks)) {
     if (p.status !== 'SETTLED' || p.clv_pct != null) continue;
     const co = closeOddsFor(p, closes0);
-    if (co) { p.close_odds = co.odds; p.close_src = co.src; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
+    if (co) { p.close_odds = co.odds; p.close_src = co.src; p.close_pre_min = co.pre_min ?? null; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
   }
   if (backfilled) wr(PICKS_F(game), st);
 
@@ -1684,7 +1711,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     pk.settled_at = new Date().toISOString();
     pk.result_source = r.source;
     const co = closeOddsFor(pk, closes);
-    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
+    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.close_pre_min = co.pre_min ?? null; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
     settled++;
   }
   st.at = new Date().toISOString();
@@ -1806,6 +1833,15 @@ function track(game, { limit = 60 } = {}) {
     hit_pct: (w + l) ? +(100 * w / (w + l)).toFixed(1) : null,
     clv_avg_pct: avg(clvs), clv_n: clvs.length,
     clv_src: srcCount(settled.filter((p) => p.clv_pct != null)),
+    // A CUÁNTOS MINUTOS DEL INICIO SE OBSERVÓ EL PRECIO QUE LLAMAMOS CIERRE. Con la fusión de cierres, una
+    // familia que la casa deja de cotizar conserva su última observación, y esa puede ser de horas antes.
+    // Sigue siendo el mejor precio que existe, pero no es un cierre, y el número tiene que decirlo solo.
+    clv_lag: (() => {
+      const v = settled.filter((p) => p.clv_pct != null && p.close_pre_min != null).map((p) => p.close_pre_min).sort((a, b) => a - b);
+      if (!v.length) return null;
+      return { n: v.length, p50_min: v[Math.floor(v.length / 2)],
+        hasta_60min: v.filter((x) => x <= 60).length, mas_de_180min: v.filter((x) => x > 180).length };
+    })(),
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, v]) => [k,
       { n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2),
         clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv), clv_src: srcCount(v.rows) }])),

@@ -19065,11 +19065,15 @@ const server = http.createServer(async (req, res) => {
         // Cada prueba se hace CON llave y SIN llave. Es lo que separa las tres hipótesis: si sin llave da
         // lo mismo que con llave, el problema es la ruta; si con llave da 401/403 y sin llave también, la
         // ruta existe y la llave no vale; si con llave pasa y sin llave no, todo está bien.
+        // Ronda 3. `/pub/v1/account/currencies` contesta 200 con llave y 401 sin ella, así que la llave vale
+        // y la familia de rutas es esa: el saldo cuelga de ahí, no de `/account/balance`. Y las de apuestas
+        // dan 403 IGUAL con llave y sin ella, que es huella de cortafuegos de borde y no de permiso — muy
+        // probablemente porque se estaban probando con GET rutas que solo aceptan POST.
         const rutas = [
-          '/pub/v1/account/balance?currency=' + cur, '/pub/v1/account/currencies', '/pub/v1/account/balances',
-          '/pub/v2/account/balance?currency=' + cur,
-          '/pub/v3/bets/history?limit=1', '/pub/v2/bets/history?limit=1', '/pub/v3/bets/place',
-          '/pub/v2/odds/sports',
+          '/pub/v1/account/currencies', '/pub/v1/account/currencies/' + cur,
+          '/pub/v1/account/currencies/' + cur + '/balance',
+          '/pub/v1/account/balance/' + cur, '/pub/v1/account/' + cur + '/balance',
+          '/pub/v2/bets/place', '/pub/v3/bets/place',
         ];
         const host = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
         const UA = 'Mozilla/5.0 (compatible; GPSimulador/1.0)';
@@ -19084,6 +19088,18 @@ const server = http.createServer(async (req, res) => {
         };
         const out = [];
         for (const ruta of rutas) out.push({ ruta, con_llave: await probar(ruta, true), sin_llave: await probar(ruta, false) });
+        // POST DELIBERADAMENTE INVÁLIDO a las dos rutas de colocación. No puede colocar nada —evento 0,
+        // mercado inexistente, importe 0— y es la única forma de distinguir "el cortafuegos bloquea el GET"
+        // de "esa ruta no existe": si contesta 400 con un error de validación, la ruta está viva.
+        for (const ruta of ['/pub/v2/bets/place', '/pub/v3/bets/place']) {
+          try {
+            const r = await fetch(host + ruta, { method: 'POST',
+              headers: { 'X-API-Key': ak, accept: 'application/json', 'content-type': 'application/json', 'user-agent': UA },
+              body: JSON.stringify({ acceptPriceChange: 'NONE', currency: cur, eventId: '0', marketUrl: 'no.existe/under?total=0', price: '0', stake: '0' }),
+              signal: AbortSignal.timeout(12000) });
+            out.push({ ruta: 'POST ' + ruta, con_llave: { status: r.status, cuerpo: (await r.text()).replace(/\s+/g, ' ').slice(0, 200) } });
+          } catch (e) { out.push({ ruta: 'POST ' + ruta, con_llave: { error: String(e.message || e).slice(0, 80) } }); }
+        }
         return json(res, 200, { host, moneda: cur, llave_len: ak.length, rutas: out });
       }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });

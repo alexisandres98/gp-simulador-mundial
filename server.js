@@ -4650,7 +4650,17 @@ async function cbResolveEvent(pick) {
     // cientos de peticiones de detalle y convierte el barrido en un trabajo de minutos — la primera versión
     // de esto mató la petición con un 502. El colector refresca cada 10 minutos y un id de partido no
     // caduca, así que lo último que dejó es exactamente igual de bueno.
-    const { data: evs } = require('./market-scanner/venues/cloudbet').cachedSoccer();
+    // …pero la caché de proceso se vacía en cada despliegue, y con varios al día está fría la mayor parte
+    // del tiempo: medido, 127 eventos a las 15:30 y CERO a las 16:26, con tres apuestas esperando por un id
+    // que sí existía. Por eso primero se mira la agenda PERSISTIDA (db.cbSlate, que el barrido guarda con
+    // id, nombres y hora) y solo se cae a la caché si aún no hay ninguna. Un id de partido no caduca, así
+    // que lo último que el colector dejó en disco vale exactamente igual.
+    let evs = [];
+    if (db.cbSlate && Array.isArray(db.cbSlate.ev) && db.cbSlate.ev.length) {
+      evs = db.cbSlate.ev.map((e) => ({ cb_id: e.id, home: e.h, away: e.a, kickoff: e.ko }));
+    } else {
+      evs = (require('./market-scanner/venues/cloudbet').cachedSoccer() || {}).data || [];
+    }
     const cb = (evs || []).find((e) => e.cb_id && (
       (cloudbetNameMatch(e.home, meta.home) && cloudbetNameMatch(e.away, meta.away)) ||
       (cloudbetNameMatch(e.home, meta.away) && cloudbetNameMatch(e.away, meta.home))));

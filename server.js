@@ -19062,22 +19062,29 @@ const server = http.createServer(async (req, res) => {
         const ak = process.env.CLOUDBET_API_KEY || '';
         if (!ak) return json(res, 200, { error: 'sin CLOUDBET_API_KEY' });
         const cur = (process.env.GP_REAL_CURRENCY || 'USDT').toUpperCase();
+        // Cada prueba se hace CON llave y SIN llave. Es lo que separa las tres hipótesis: si sin llave da
+        // lo mismo que con llave, el problema es la ruta; si con llave da 401/403 y sin llave también, la
+        // ruta existe y la llave no vale; si con llave pasa y sin llave no, todo está bien.
         const rutas = [
-          '/pub/v1/account/balance?currency=' + cur, '/pub/v1/account/balances', '/pub/v1/account',
-          '/pub/v2/account/balance?currency=' + cur, '/pub/v2/account/balances',
-          '/pub/v3/account/balance?currency=' + cur, '/pub/v3/account/balances',
-          '/pub/v3/bets/history?limit=1', '/pub/v2/bets/history?limit=1',
+          '/pub/v1/account/balance?currency=' + cur, '/pub/v1/account/currencies', '/pub/v1/account/balances',
+          '/pub/v2/account/balance?currency=' + cur,
+          '/pub/v3/bets/history?limit=1', '/pub/v2/bets/history?limit=1', '/pub/v3/bets/place',
+          '/pub/v2/odds/sports',
         ];
         const host = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
-        const out = [];
-        for (const ruta of rutas) {
+        const UA = 'Mozilla/5.0 (compatible; GPSimulador/1.0)';
+        const probar = async (ruta, conLlave) => {
           try {
-            const r = await fetch(host + ruta, { headers: { 'X-API-Key': ak, accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
-            const t = (await r.text()).slice(0, 220);
-            out.push({ ruta, status: r.status, cuerpo: t });
-          } catch (e) { out.push({ ruta, error: String(e.message || e).slice(0, 80) }); }
-        }
-        return json(res, 200, { host, moneda: cur, rutas: out });
+            const h = { accept: 'application/json', 'user-agent': UA };
+            if (conLlave) h['X-API-Key'] = ak;
+            const r = await fetch(host + ruta, { headers: h, signal: AbortSignal.timeout(12000) });
+            const t = (await r.text()).replace(/\s+/g, ' ').slice(0, 130);
+            return { status: r.status, cuerpo: t };
+          } catch (e) { return { error: String(e.message || e).slice(0, 60) }; }
+        };
+        const out = [];
+        for (const ruta of rutas) out.push({ ruta, con_llave: await probar(ruta, true), sin_llave: await probar(ruta, false) });
+        return json(res, 200, { host, moneda: cur, llave_len: ak.length, rutas: out });
       }
       const b = RE.board({ limit: Math.min(200, Math.max(1, +(url.searchParams.get('n') || 40))) });
       return json(res, 200, b);

@@ -109,11 +109,15 @@ const ok = (cond, txt, detalle) => {
   ok(casa.colocaciones.length === antes, 'el reintento NO la reenvía', casa.colocaciones.length - antes);
   ok(RE.board().exposicion_abierta >= 90, 'cuenta como dinero comprometido', RE.board().exposicion_abierta);
 
-  console.log('\n7. la red se corta después de enviar: tampoco se reenvía');
+  console.log('\n7. si la petición NO llegó a la casa, la referencia NO se quema');
   casa.respuestaPlace = () => ({ ok: false, status: 0, body: null, raw: 'timeout' });
   const s4 = senal();
+  const refAntes = RE.refIdDe(s4.pick_id, 0);
   const f4 = await RE.intentar(s4, pick, { cbIdx: IDX });
-  ok(f4.status === 'PENDIENTE' && f4.motivo === 'rechazada_por_la_casa', 'se marca para reintentar', f4.status + '/' + f4.motivo);
+  ok(f4.status === 'PENDIENTE', 'se marca para reintentar', f4.status);
+  ok(f4.motivo === 'no_llego_a_la_casa', 'y se distingue de un rechazo de la casa', f4.motivo);
+  ok(f4.ref_id === refAntes, 'la referencia sigue siendo la misma: nadie la consumió', f4.ref_id);
+  ok((f4.envios || 0) === 0, 'y no cuenta como envío', f4.envios);
 
   console.log('\n8. confirmar resuelve lo que quedó en el aire');
   casa.estados[f3.ref_id] = { betStatus: 'ACCEPTED', price: '1.9', stake: '30' };

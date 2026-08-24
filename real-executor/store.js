@@ -444,9 +444,17 @@ async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
     }
     // cualquier respuesta que NO sea de cuenta restringida limpia el contador: el problema era otro
     if (L.rechazos_cuenta && L.rechazos_cuenta.seguidos) L.rechazos_cuenta = { seguidos: 0, limpiado: new Date().toISOString() };
-    fila.envios = (fila.envios || 0) + 1;
-    fila.ref_id = refIdDe(fila.pick_id, fila.envios);
-    return parar('rechazada_por_la_casa', { http: r.status, error_casa: cod || null });
+
+    // LA REFERENCIA SOLO SE QUEMA SI LA CASA LLEGÓ A HABLAR (25-ago). La casa consume la referencia cuando
+    // recibe el envío, así que tras un rechazo suyo hay que estrenar otra. Pero si la petición NO llegó
+    // —el reenviador caído, la red cortada, el tiempo agotado— la referencia sigue virgen, y estrenar una
+    // por cada reintento haría dos cosas malas: llenar el registro de referencias muertas, y perder la
+    // única protección real contra colocar dos veces lo mismo si resultara que sí llegó.
+    // Se distingue por si hubo respuesta HTTP de la casa: sin código de estado, nadie nos contestó.
+    const hablo = Number(r.status) >= 200;
+    if (hablo) { fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios); }
+    return parar(hablo ? 'rechazada_por_la_casa' : 'no_llego_a_la_casa',
+      { http: r.status, error_casa: cod || null, via: r.via || null });
   }
 
   if (est === 'PENDING_ACCEPTANCE' || (!est && r.ok)) {

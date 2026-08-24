@@ -31,6 +31,7 @@ const falso = {
   balance: async () => casa.saldo,
   accountCurrencies: async () => ['USDT'],
   eventRaw: async () => ({ markets: { 'soccer.total_bookings': {} } }),
+  cachedSoccer: () => ({ data: casa.slate || [] }),
   selectionFor: () => casa.seleccion,
   placeBet: async (k, p) => { casa.colocaciones.push(p); return casa.respuestaPlace(p); },
   betByReference: async (k, ref) => casa.estados[ref] || null,
@@ -211,6 +212,26 @@ const ok = (cond, txt, detalle) => {
   ok(fr4.status === 'PENDIENTE', 'faltan fondos: se reintenta', fr4.status);
   ok(fr4.error_casa === 'INSUFFICIENT_FUNDS', 'con el código anotado', fr4.error_casa);
   casa.respuestaPlace = (p) => ({ ok: true, status: 200, betStatus: 'ACCEPTED', body: { betStatus: 'ACCEPTED', price: p.price, stake: p.stake } });
+
+  console.log('\n17c. resolver el partido por nombre es deliberadamente desconfiado');
+  const enTresHoras = new Date(Date.now() + 3 * 3600e3).toISOString();
+  const fil = (extra) => ({ match: 'Botafogo vs Atletico Paranaense', kickoff_at: enTresHoras, ...extra });
+  casa.slate = [{ cb_id: '900', home: 'Botafogo FR RJ', away: 'CA Paranaense PR', kickoff: enTresHoras }];
+  ok((RE.resolverPorNombre(fil()) || {}).cb_id === '900', 'casa nombres distintos del mismo equipo');
+  casa.slate = [{ cb_id: '901', home: 'CA Paranaense PR', away: 'Botafogo FR RJ', kickoff: enTresHoras }];
+  ok((RE.resolverPorNombre(fil()) || {}).cb_id === '901', 'y con local y visitante al reves');
+  casa.slate = [
+    { cb_id: '902', home: 'Botafogo FR RJ', away: 'CA Paranaense PR', kickoff: enTresHoras },
+    { cb_id: '903', home: 'Botafogo FR RJ', away: 'CA Paranaense PR', kickoff: enTresHoras },
+  ];
+  ok(RE.resolverPorNombre(fil()) === null, 'con dos candidatos NO apuesta');
+  casa.slate = [{ cb_id: '904', home: 'Botafogo FR RJ', away: 'Gremio', kickoff: enTresHoras }];
+  ok(RE.resolverPorNombre(fil()) === null, 'si solo casa un equipo, tampoco');
+  casa.slate = [{ cb_id: '905', home: 'Botafogo FR RJ', away: 'CA Paranaense PR', kickoff: new Date(Date.now() - 3600e3).toISOString() }];
+  ok(RE.resolverPorNombre(fil()) === null, 'ni con un partido ya empezado');
+  casa.slate = [{ cb_id: '906', home: 'Botafogo FR RJ', away: 'CA Paranaense PR', kickoff: new Date(Date.now() + 20 * 3600e3).toISOString() }];
+  ok(RE.resolverPorNombre(fil()) === null, 'ni con el saque a 20 horas del nuestro');
+  casa.slate = [];
 
   console.log('\n18. la misma señal nunca entra dos veces');
   const dup = await RE.intentar(s1, pick, { cbIdx: IDX });

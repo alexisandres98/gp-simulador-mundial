@@ -222,6 +222,46 @@ function filaNueva(sb, pick) {
   };
 }
 
+// ── EL SEGUNDO CAMINO PARA ENCONTRAR EL PARTIDO EN LA CASA ───────────────────────────────────────────────
+// Solo se usa cuando el índice del colector todavía no tiene ese partido. Y es a propósito más estricto que
+// el emparejador del colector, porque aquí un error no escribe una cuota mal: coloca dinero real en otro
+// partido. Cuatro condiciones, todas obligatorias:
+//   · los DOS equipos casan (en el orden que sea: la casa puede tener el local y el visitante al revés),
+//   · el saque no se aleja más de seis horas del nuestro,
+//   · el partido de la casa aún no ha empezado,
+//   · y sale UN solo candidato. Con dos, no se apuesta: dos partidos del mismo par en la misma ventana es
+//     exactamente el caso en el que una máquina se equivoca con toda confianza.
+const normNombre = (s) => String(s || '').toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/\b(fc|cf|sc|ac|afc|cd|ud|sd|club|deportivo|atletico|atletic|athletic|real|the)\b/g, ' ')
+  .replace(/[^a-z0-9]+/g, '');
+function casanNombres(a, b) {
+  const x = normNombre(a), y = normNombre(b);
+  if (!x || !y || x.length < 3 || y.length < 3) return false;
+  return x === y || x.includes(y) || y.includes(x);
+}
+function resolverPorNombre(fila) {
+  const m = String(fila.match || '').split(/\s+vs\s+/i);
+  if (m.length !== 2) return null;
+  const [casa1, casa2] = m;
+  let cache = null;
+  try { cache = CB.cachedSoccer && CB.cachedSoccer(); } catch { return null; }
+  if (!cache || !Array.isArray(cache.data) || !cache.data.length) return null;
+  const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
+  const cands = cache.data.filter((e) => {
+    if (!e.cb_id || !e.home || !e.away) return false;
+    const directo = casanNombres(e.home, casa1) && casanNombres(e.away, casa2);
+    const cruzado = casanNombres(e.home, casa2) && casanNombres(e.away, casa1);
+    if (!directo && !cruzado) return false;
+    const k2 = e.kickoff ? Date.parse(e.kickoff) : null;
+    if (k2 && k2 < Date.now()) return false;
+    if (ko && k2 && Math.abs(k2 - ko) > 6 * 3600e3) return false;
+    return true;
+  });
+  if (cands.length !== 1) return null;
+  return { cb_id: cands[0].cb_id, home: cands[0].home, away: cands[0].away, kickoff: cands[0].kickoff };
+}
+
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
 async function colocar(fila, { cbIdx = {} } = {}) {
   const C = CFG(), L = load();
@@ -263,8 +303,16 @@ async function colocar(fila, { cbIdx = {} } = {}) {
   if (f) return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
 
   // 2) el id del partido en la casa
-  const idx = fila.ceid ? (cbIdx || {})[fila.ceid] : null;
-  if (!idx || !idx.cb_id) return parar('sin_id_de_evento');
+  let idx = fila.ceid ? (cbIdx || {})[fila.ceid] : null;
+  if (!idx || !idx.cb_id) {
+    // el índice se llena cuando el colector empareja un partido, y no siempre llega a todos: con el cupo de
+    // eventos por pasada, un partido puede tardar horas en entrar. Segundo camino, por NOMBRE, sobre lo
+    // último que el colector dejó en memoria. Es deliberadamente desconfiado: apostar en el partido
+    // equivocado es el peor fallo posible de todo este sistema, mucho peor que no apostar.
+    const porNombre = resolverPorNombre(fila);
+    if (!porNombre) return parar('sin_id_de_evento');
+    idx = porNombre; fila.id_resuelto_por = 'nombre';
+  }
   fila.cb_event_id = idx.cb_id;
 
   // 3) el precio VIVO y sus coordenadas de colocación
@@ -638,5 +686,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, resolverPorNombre, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

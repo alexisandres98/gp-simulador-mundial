@@ -12098,6 +12098,7 @@ async function shadowSweep() {
       }
       const liq = await RE.liquidar(resultados).catch((e) => ({ error: e.message }));
       real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, confirmadas: conf, ...liq };
+      await realAvisoPrimera().catch(() => {});
       await realAvisoSaldo().catch(() => {});
     } else if (realIntentos) real = { intentos: realIntentos, colocadas: realColocadas, apagado: true };
   } catch (e) { real = { error: e.message }; }
@@ -12207,6 +12208,46 @@ async function realDailyMail(cual, { force = false } = {}) {
   }
   RE.load().avisos[marca] = new Date().toISOString(); RE.save();
   return { sent: cual, asunto };
+}
+
+// LA PRIMERA DE VERDAD. Todo lo demás de este ejecutor está pensado para no molestar: el plan a las 08:00 y
+// el parte a las 23:30 son resúmenes, no avisos. Pero la primera apuesta con dinero real es el momento en
+// que once días de papel se convierten en una posición, y esperar hasta la noche para contarlo sería
+// esconder justo el dato que Alexis lleva la semana esperando. Va en el momento, una sola vez en la vida
+// del libro, y con todo lo que hace falta para comprobarla en la cuenta de la casa.
+async function realAvisoPrimera() {
+  const RE = require('./real-executor/store');
+  if (!RE.CFG().enabled) return;
+  const L = RE.load();
+  if (L.avisos['primera_real']) return;
+  const puesta = L.bets.find((b) => b.status === 'PLACED' || b.status === 'SETTLED');
+  if (!puesta) return;
+  L.avisos['primera_real'] = new Date().toISOString(); RE.save();
+
+  const C = RE.CFG();
+  const cuerpo = [
+    'PRIMERA APUESTA CON DINERO REAL',
+    '',
+    `${puesta.match}`,
+    `Tarjetas under ${puesta.line} · ${Number(puesta.stake).toFixed(2)} ${C.currency} @ ${puesta.odds_real || puesta.precio_vivo}`,
+    puesta.slippage_pct != null ? `Precio de papel ${puesta.odds_sombra} · deslizamiento ${(puesta.slippage_pct >= 0 ? '+' : '') + puesta.slippage_pct}%` : '',
+    `Liga: ${puesta.league || '?'} · saque ${puesta.kickoff_at || '?'}`,
+    `Referencia en la casa: ${puesta.ref_id}`,
+    '',
+    `Banco nocional: ${Number(L.nocional).toFixed(2)} · cartera ${L.saldo && L.saldo.amount != null ? Number(L.saldo.amount).toFixed(2) : '?'} ${C.currency}`,
+    '',
+    'Puedes comprobarla en tu cuenta de Cloudbet buscando esa referencia.',
+    'A partir de aquí todo va en el parte de las 23:30. Este correo no se repite.',
+  ].filter(Boolean).join('\n');
+
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  if (!mailer.isConfigured()) return;
+  try {
+    await mailer.sendMail({ to: adminTo, noListUnsub: true,
+      subject: `[GP Real] PRIMERA APUESTA REAL · ${Number(puesta.stake).toFixed(2)} @ ${puesta.odds_real || puesta.precio_vivo} · ${puesta.match}`,
+      text: cuerpo,
+      html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.replace(/</g, '&lt;')}</pre>` });
+  } catch (e) { console.error('[real] aviso primera:', e.message); }
 }
 
 // AVISO DE SALDO BAJO. La cartera se fondea con $500 mientras el stake se calcula sobre un banco nocional

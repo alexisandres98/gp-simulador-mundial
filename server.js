@@ -12281,7 +12281,13 @@ async function realAvisoDivergencia() {
   const RE = require('./real-executor/store');
   if (!RE.CFG().enabled) return;
   const L = RE.load();
-  const desde = Date.now() - 24 * 3600e3;
+  // LA VENTANA EMPIEZA CUANDO EMPIEZA EL EJECUTOR, y esto no es un detalle: la primera vez que esta alarma
+  // corrió avisó de una divergencia que no existía. El sombra había colocado 4 la tarde anterior, cuando el
+  // ejecutor real todavía no estaba encendido — reprocharle no haberlas tomado es reprocharle no haber
+  // existido. Una alarma que grita por algo imposible se aprende a ignorar, y entonces no sirve el día que
+  // grita de verdad.
+  const nacimiento = Date.parse(L.created_at || 0) || 0;
+  const desde = Math.max(Date.now() - 24 * 3600e3, nacimiento);
   const S = shadowInit();
   const papel = S.bets.filter((b) => b.segment === RE.SEGMENTO && Date.parse(b.placed_at || 0) >= desde).length;
   const dinero = L.bets.filter((b) => (b.status === 'PLACED' || b.status === 'SETTLED')
@@ -19549,7 +19555,10 @@ const server = http.createServer(async (req, res) => {
       // sombra en la misma ventana, así que viaja al lado y no en otra sonda.
       try {
         const S4 = shadowInit();
-        const desde4 = Date.now() - 24 * 3600e3;
+        // misma corrección que en la alarma: no se le puede reprochar al ejecutor lo que ocurrió antes de
+        // que existiera. `desde` es el nacimiento del libro si es más reciente que las 24 h.
+        const L4 = RE.load();
+        const desde4 = Math.max(Date.now() - 24 * 3600e3, Date.parse(L4.created_at || 0) || 0);
         const papel24 = S4.bets.filter((x) => x.segment === RE.SEGMENTO && Date.parse(x.placed_at || 0) >= desde4);
         const unex24 = (S4.unexec || []).filter((x) => x.segment === RE.SEGMENTO && Date.parse(x.at || 0) >= desde4);
         const motivos = {}; for (const x of unex24) motivos[x.reason || '?'] = (motivos[x.reason || '?'] || 0) + 1;
@@ -19558,6 +19567,7 @@ const server = http.createServer(async (req, res) => {
           sombra_no_ejecutables: unex24.length,
           por_que_no_ejecutable: motivos,
           real_coloco: b.colocadas,
+          desde: new Date(desde4).toISOString(),
           lectura: papel24.length === 0
             ? 'el sombra tampoco colocó: no hubo señal con precio en una casa conectable. No hay nada roto, hay que esperar.'
             : (b.colocadas ? 'los dos colocaron' : 'EL PAPEL COLOCÓ Y EL DINERO NO — hay que mirarlo'),

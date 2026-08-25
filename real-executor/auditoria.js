@@ -237,6 +237,26 @@ const ok = (cond, txt, detalle) => {
   ok(RE.resolverPorNombre(fil()) === null, 'ni con el saque a 20 horas del nuestro');
   casa.slate = [];
 
+  console.log('\n17d. una apuesta colocada a mano entra al libro y se liquida con nuestro resultado');
+  casa.respuestaPlace = () => ({ ok: true, status: 200, betStatus: 'REJECTED', betError: 'RESTRICTED', body: { betStatus: 'REJECTED', betErrorCode: 'RESTRICTED' } });
+  const sM = senal();
+  await RE.intentar(sM, pick, { cbIdx: IDX });            // la casa la rechaza por cuenta
+  const am = RE.anotarManual(sM.pick_id, { odds: 2.45, stake: 30 });
+  ok(!am.error, 'se anota sobre la fila existente', am);
+  const fM = RE.load().bets.find((b) => b.pick_id === sM.pick_id);
+  ok(fM.status === 'PLACED' && fM.via === 'manual', 'queda PLACED via manual', fM.status + '/' + fM.via);
+  ok(fM.odds_real === 2.45 && fM.stake === 30, 'con la cuota y el stake reales', [fM.odds_real, fM.stake]);
+  const nocAntes = RE.load().nocional;
+  const outM = await RE.liquidar({ [sM.pick_id]: { result_code: 'WIN' } });
+  const fM2 = RE.load().bets.find((b) => b.pick_id === sM.pick_id);
+  ok(fM2.status === 'SETTLED' && fM2.resultado === 'WIN', 'liquidada con nuestro resultado', fM2.status);
+  ok(fM2.pnl === +(30 * 1.45).toFixed(2), 'P&L de la cuota real', fM2.pnl);
+  ok(fM2.verificacion === 'resultado_propio', 'marcada como no verificada contra la casa', fM2.verificacion);
+  ok(Math.abs(RE.load().nocional - nocAntes - fM2.pnl) < 0.01, 'el banco compone con ella', RE.load().nocional);
+  ok(RE.anotarManual(sM.pick_id, { odds: 2, stake: 30 }).error, 'no se puede anotar dos veces');
+  // limpiar el contador de rechazos que dejo el RESTRICTED de esta prueba
+  RE.load().rechazos_cuenta = { seguidos: 0 };
+
   console.log('\n18. la misma señal nunca entra dos veces');
   const dup = await RE.intentar(s1, pick, { cbIdx: IDX });
   ok(dup === null, 'la puerta la rechaza por pick repetida');
@@ -280,7 +300,7 @@ const ok = (cond, txt, detalle) => {
   const b = RE.board({ limit: 5 });
   ok(typeof b.roi_pct === 'number', 'ROI calculado', b.roi_pct);
   ok(b.descuadres === 1, 'descuadres a la vista', b.descuadres);
-  ok(b.liquidadas === 3, 'tres liquidadas', b.liquidadas);
+  ok(b.liquidadas === 4, 'cuatro liquidadas (tres por API y la manual)', b.liquidadas);
   ok(b.cortafuegos && b.cortafuegos.seguidos === 0, 'cortafuegos a la vista y reabierto', b.cortafuegos);
   const sumaPnl = RE.load().bets.filter((x) => x.status === 'SETTLED').reduce((a, x) => a + x.pnl, 0);
   ok(Math.abs(sumaPnl - RE.load().realizado) < 0.01, 'el realizado cuadra con la suma', [sumaPnl, RE.load().realizado]);

@@ -643,6 +643,28 @@ async function liquidar(resultados = {}) {
   const pend = L.bets.filter((b) => b.status === 'PLACED');
   let settled = 0, esperando = 0, descuadres = 0;
   for (const b of pend) {
+    // APUESTAS COLOCADAS A MANO (25-ago). Mientras la cuenta no pueda apostar por API, Alexis coloca por la
+    // web y aquí se anotan con `via: 'manual'`. La casa no nos deja preguntar por ellas —no tienen nuestra
+    // referencia y su historial no es legible desde fuera—, así que se liquidan con NUESTRO resultado, el
+    // mismo que cierra la pick del sombra, y quedan marcadas `verificacion: 'resultado_propio'` para que el
+    // informe nunca las confunda con las verificadas contra el dinero de la casa. El saldo real de la
+    // cartera, que sí es legible, sirve de contraste grueso al final del día.
+    if (b.via === 'manual') {
+      const mio = String((resultados[b.pick_id] || {}).result_code || '').toUpperCase();
+      if (!mio) { esperando++; continue; }
+      const stakeM = Number(b.stake) || 0;
+      if (mio === 'WIN') { b.pnl = +(stakeM * ((b.odds_real || b.odds_sombra) - 1)).toFixed(2); b.resultado = 'WIN'; }
+      else if (mio === 'LOSS') { b.pnl = -stakeM; b.resultado = 'LOSS'; }
+      else if (/VOID|PUSH|CANCEL/.test(mio)) { b.pnl = 0; b.resultado = 'VOID'; }
+      else { esperando++; continue; }
+      b.status = 'SETTLED'; b.settled_at = new Date().toISOString();
+      b.resultado_nuestro = mio; b.verificacion = 'resultado_propio';
+      L.realizado = +((L.realizado || 0) + b.pnl).toFixed(2);
+      L.nocional = +((L.nocional || C.nocional) + b.pnl).toFixed(2);
+      const dM = dia(String(b.settled_at).slice(0, 10)); dM.pnl = +(dM.pnl + b.pnl).toFixed(2);
+      settled++;
+      continue;
+    }
     const raw = await CB.betByReference(process.env.CLOUDBET_API_KEY, b.ref_id).catch(() => null);
     if (!raw) { esperando++; continue; }
     const casa = String(raw.betStatus || '').toUpperCase();
@@ -680,6 +702,33 @@ async function liquidar(resultados = {}) {
   if (settled || descuadres) save();
   await refrescarSaldo().catch(() => null);
   return { settled, esperando, descuadres, abiertas: abiertas().length, en_el_aire: enElAire().length };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// ANOTAR UNA APUESTA COLOCADA A MANO
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// La fila de esa pick ya existe en el libro —el ejecutor la intentó y la casa la rechazó por la cuenta—,
+// así que anotar la colocación manual es CONVERTIR esa fila, no crear otra: se conserva todo el rastro
+// (los intentos por API, el rechazo, el precio que había) y encima queda la cuota a la que Alexis entró de
+// verdad. El deslizamiento contra el precio de papel se mide igual que en una apuesta automática.
+function anotarManual(pickId, { odds, stake }) {
+  const L = load();
+  const fila = L.bets.find((b) => b.pick_id === pickId);
+  if (!fila) return { error: 'no hay fila con esa pick en el libro', pick: pickId };
+  if (fila.status === 'PLACED' || fila.status === 'SETTLED') return { error: 'esa fila ya está colocada o liquidada', status: fila.status };
+  const o = Number(odds), st = Number(stake);
+  if (!(o > 1) || !(st > 0)) return { error: 'hacen falta odds > 1 y stake > 0' };
+  fila.status = 'PLACED';
+  fila.via = 'manual';
+  fila.motivo = null;
+  fila.odds_real = o;
+  fila.stake = st;
+  fila.placed_at = new Date().toISOString();
+  fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (o / fila.odds_sombra - 1)).toFixed(2) : null;
+  const d = dia(hoy()); d.apostado += st; d.n += 1;
+  if (L.saldo && typeof L.saldo.amount === 'number') { L.saldo.amount = +(L.saldo.amount - st).toFixed(2); L.saldo.estimado = true; }
+  save();
+  return { anotada: fila.match, linea: fila.line, odds: o, stake: st, slippage_pct: fila.slippage_pct };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -751,5 +800,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

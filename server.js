@@ -19433,6 +19433,13 @@ const server = http.createServer(async (req, res) => {
         // hoy, que los dos RESTRICTED salieron de apostar desde el país equivocado— el contador se queda
         // contando una historia que ya no es cierta y bloquea la primera apuesta buena. Esto lo pone a cero
         // a mano, que es una decisión de persona y por eso no se hace sola.
+        // Anotar una apuesta que Alexis colocó A MANO por la web, mientras la cuenta no puede por API.
+        // `?pick=<pick_id>&odds=<cuota real>&stake=<monto>` — convierte la fila ya existente del libro.
+        if (run === 'anotar_manual') {
+          const out5 = RE.anotarManual(String(url.searchParams.get('pick') || ''),
+            { odds: +(url.searchParams.get('odds') || 0), stake: +(url.searchParams.get('stake') || 0) });
+          return json(res, 200, out5);
+        }
         if (run === 'reset_rechazos') {
           const L5 = RE.load();
           const antes = (L5.rechazos_cuenta && L5.rechazos_cuenta.seguidos) || 0;

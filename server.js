@@ -9062,6 +9062,21 @@ function combatLoad(org) {
   C.org = O.file; C.upLeague = O.upcoming;
   const sorted = (C.fights.fights || []).filter(f => f.completed).sort((a, b) => new Date(a.date) - new Date(b.date));
   C.names = {}; for (const f of (C.fights.fights || [])) { C.names[f.f1.id] = f.f1.name; C.names[f.f2.id] = f.f2.name; }
+  // PELEADORES SIN HISTORIAL (25-ago): los debutantes y fichajes nuevos salen en la cartelera pero no en
+  // ningún archivo de peleas → su ficha daba 404, su análisis "sin información" y sin foto. El overlay
+  // db.combatExtraFighters (lo llena combatFillMissingFighters desde ESPN, y boxingPhotoSync desde
+  // Wikipedia) SOLO tapa huecos — el archivo curado siempre manda — con una excepción: una foto marcada
+  // `verified` (validada contra la página del boxeador de verdad) pisa a la del archivo, que es
+  // exactamente el caso "la foto no es el peleador real".
+  for (const [idX, vX] of Object.entries((db.combatExtraFighters || {})[O.file] || {})) {
+    if (!vX || !vX.name) continue;
+    if (!C.names[idX]) C.names[idX] = vX.name;
+    if (!C.fighters[idX]) C.fighters[idX] = { ...vX };
+    else {
+      if (!C.fighters[idX].headshot && vX.headshot) C.fighters[idX].headshot = vX.headshot;
+      if (vX.verified && vX.headshot) C.fighters[idX].headshot = vX.headshot;
+    }
+  }
   // R4: stats finas (api-sports) — el matcher necesita C.names, por eso van ANTES del fit
   let finePF = null;
   try { const fx = combatFineStats(C); finePF = fx && fx.perFight; } catch { finePF = null; }
@@ -13091,10 +13106,115 @@ async function boxingWikiTitle(C, side) {
   const W = db.boxingWiki = db.boxingWiki || {};
   const k = BR.normName(side.name);
   if (!k) return null;
-  if (Object.prototype.hasOwnProperty.call(W, k)) return W[k] ? W[k].title : null;
+  if (Object.prototype.hasOwnProperty.call(W, k)) {
+    const hit = W[k];
+    if (hit && hit.title) return hit.title;
+    // el "no existe" caduca (25-ago): un fallo transitorio del buscador se cacheaba como null PARA SIEMPRE
+    // y esa pelea ya no se resolvía nunca. Un negativo vale 24h; después se vuelve a buscar.
+    const at = hit && hit.at ? Date.parse(hit.at) : 0;
+    if (Date.now() - at < 24 * 3600e3) return null;
+  }
   const title = await BR.searchTitle(side.name).catch(() => null);
-  W[k] = title ? { title, at: new Date().toISOString() } : null;
+  W[k] = title ? { title, at: new Date().toISOString() } : { title: null, at: new Date().toISOString() };
   return title;
+}
+// ═══ PELEADORES FALTANTES EN MMA/UFC (25-ago, reporte Alexis: fichas con error y sin foto en el
+// calendario). Los ids salen de la cartelera de ESPN, así que el perfil del atleta TAMBIÉN está en ESPN:
+// una llamada al core API trae nombre, foto y físico. Presupuestado (max por pasada), con backoff para
+// los que ESPN tampoco tiene, y persistido en db.combatExtraFighters → combatLoad lo funde al cargar. ═══
+async function combatFillMissingFighters(C, { max = 12 } = {}) {
+  if (!C || C.org === 'boxing') return { skipped: 'solo mma/ufc' };
+  const lg = C.upLeague || 'ufc';
+  const X = db.combatExtraFighters = db.combatExtraFighters || {};
+  const O2 = X[C.org] = X[C.org] || {};
+  const need = [], vistos = new Set();
+  for (const e of (C.upcoming || [])) for (const f of (e.fights || [])) {
+    for (const s of [f.f1, f.f2]) {
+      if (!s || !s.id || vistos.has(s.id)) continue;
+      vistos.add(s.id);
+      if (C.names[s.id] && (C.fighters[s.id] || {}).headshot) continue;
+      const prev = O2[s.id];
+      if (prev && prev.headshot) continue;
+      if (prev && (prev.tries || 0) >= 3 && Date.now() - Date.parse(prev.at || 0) < 7 * 864e5) continue;
+      need.push(s);
+    }
+  }
+  const out = { candidatos: need.length, rellenados: 0, sin_datos: 0 };
+  for (const s of need.slice(0, max)) {
+    try {
+      const a = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/leagues/${lg}/athletes/${s.id}?lang=en`,
+        { signal: AbortSignal.timeout(12000) }).then(r => r.ok ? r.json() : null);
+      const prev = O2[s.id] || {};
+      if (!a || !a.displayName) {
+        O2[s.id] = { ...prev, name: prev.name || s.name || null, tries: (prev.tries || 0) + 1, at: new Date().toISOString() };
+        out.sin_datos++; continue;
+      }
+      O2[s.id] = {
+        name: a.displayName, nick: a.nickname || null,
+        headshot: (a.headshot && a.headshot.href) || prev.headshot || null,
+        reach_in: a.reach || null, height_in: a.height || null, weight_lb: a.weight || null,
+        stance: (a.stance && (a.stance.text || a.stance.name)) || null,
+        dob: a.dateOfBirth || null, src: 'espn-core', tries: (prev.tries || 0) + 1, at: new Date().toISOString(),
+      };
+      out.rellenados++;
+    } catch { out.sin_datos++; }
+    await new Promise(r2 => setTimeout(r2, 250));
+  }
+  if (out.rellenados) { save(); C.at = 0; } // recarga → la fusión de combatLoad los mete
+  else if (out.sin_datos) save();
+  return out;
+}
+// ═══ FOTOS DE BOXEO (25-ago, reporte Alexis: fotos que no son el boxeador real y muchos sin foto). La
+// foto del harvest salía de la página de Wikipedia que casara por nombre — sin comprobar que fuera UN
+// BOXEADOR: un homónimo cualquiera colaba su foto. Este barrido VALIDA: la página tiene que tener la tabla
+// "Professional record" y casar el nombre; solo entonces su imagen vale, y entra como `verified` (pisa a
+// la del archivo). Presupuestado por pasada; prioridad a los de la cartelera y a los que no tienen foto. ═══
+async function boxingPhotoSync({ max = 10 } = {}) {
+  const C = combatLoad('boxing');
+  const BR = require('./combat-engine/boxing-results');
+  const X = db.combatExtraFighters = db.combatExtraFighters || {};
+  const O2 = X.boxing = X.boxing || {};
+  const SC = db.boxingPhotoScan = db.boxingPhotoScan || { checked: {} };
+  const enCartel = new Set();
+  for (const e of (C.upcoming || [])) for (const f of (e.fights || [])) [f.f1, f.f2].forEach(s => { if (s && s.id) enCartel.add(s.id); });
+  const now = Date.now();
+  const cands = Object.keys(C.names || {}).filter(id => {
+    const c = SC.checked[id];
+    if (!c) return true;
+    return now - Date.parse(c.at || 0) > (c.ok ? 45 : 7) * 864e5; // verificada aguanta 45d; fallida reintenta a la semana
+  }).sort((a, b) => {
+    const sc = (id) => (enCartel.has(id) ? 0 : 2) + (((C.fighters[id] || {}).headshot || (O2[id] || {}).headshot) ? 1 : 0);
+    return sc(a) - sc(b);
+  }).slice(0, max);
+  const out = { revisados: 0, verificadas: 0, corregidas: 0, sin_pagina: 0 };
+  for (const id of cands) {
+    out.revisados++;
+    SC.checked[id] = { ok: false, at: new Date().toISOString() };
+    try {
+      const nombre = C.names[id];
+      let title = (C.fighters[id] || {}).wiki || null;
+      if (!title) title = await BR.searchTitle(nombre).catch(() => null);
+      if (!title) { out.sin_pagina++; continue; }
+      const w = await BR.wikitext(title);
+      const esBoxeador = w && /==+\s*Professional (boxing )?record\s*==+/i.test(w) && BR.nameMatch(title, nombre);
+      if (!esBoxeador) { out.sin_pagina++; continue; }
+      const j = await fetch('https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&piprop=original&titles='
+        + encodeURIComponent(title) + '&redirects=1&format=json&formatversion=2',
+        { headers: { 'User-Agent': 'GPSimulador/1.0 (sports research; soporte@gpsimulador.com)' }, signal: AbortSignal.timeout(15000) })
+        .then(r => r.ok ? r.json() : null).catch(() => null);
+      const img = j && j.query && j.query.pages && j.query.pages[0] && j.query.pages[0].original && j.query.pages[0].original.source;
+      if (!img) { SC.checked[id] = { ok: true, at: new Date().toISOString() }; continue; } // boxeador validado, sin imagen en su página
+      const actual = (C.fighters[id] || {}).headshot || null;
+      O2[id] = { name: nombre, headshot: img, wiki: title, verified: true, src: 'wikipedia', at: new Date().toISOString() };
+      SC.checked[id] = { ok: true, at: new Date().toISOString() };
+      out.verificadas++;
+      if (actual && actual !== img) out.corregidas++;
+    } catch { /* siguiente pasada */ }
+    await new Promise(r2 => setTimeout(r2, 400));
+  }
+  save();
+  if (out.verificadas) { const Cb = (global._combat || {}).boxing; if (Cb) Cb.at = 0; }
+  return out;
 }
 async function boxingResultsSync({ max = 8, graceH = 4, force = false } = {}) {
   const BR = require('./combat-engine/boxing-results');
@@ -13853,7 +13973,14 @@ async function settleCombatPicks() {
         const done = ((c.status || {}).type || {}).completed;
         if (!done) continue;
         const win = (c.competitors || []).find(x => x.winner);
-        results[c.id] = { winner_id: win ? win.id : null, event_id: e.id, period: (c.status || {}).period || null, clock: (c.status || {}).displayClock || null };
+        const r0 = { winner_id: win ? win.id : null, event_id: e.id, comp_id: c.id, period: (c.status || {}).period || null, clock: (c.status || {}).displayClock || null };
+        results[c.id] = r0;
+        // SEGUNDA LLAVE, por PAREJA de atletas (25-ago, autopsia PFL Tampa): ESPN renumeró la competición
+        // —la pick guardaba 401881999 y el marcador publicó la misma pelea como 401913635— y la búsqueda
+        // por id de competición no encontraba un resultado que estaba ahí. Los ids de ATLETA sí son
+        // estables, así que la pareja ordenada es la llave de rescate. Determinista: ids, no nombres.
+        const ids = (c.competitors || []).map(x => String(x.id)).filter(Boolean).sort();
+        if (ids.length === 2) results['par:' + ids.join('~')] = r0;
       }
     }
   } catch { return { settled: 0, error: 'scoreboard' }; }
@@ -13900,7 +14027,8 @@ async function settleCombatPicks() {
   const clockMin2 = (c2) => { const m2 = String(c2 || '').match(/(\d+):(\d+)/); return m2 ? (+m2[1] + +m2[2] / 60) : 0; };
   const methodCache = {};
   const fetchMethod = async (p2, r2) => { // resultado fino (KO/Sub/Dec) del core API — pocas llamadas, solo pendientes
-    const compId2 = p2.event.canonical_event_id.replace(/^cb-/, '');
+    // con la competición renumerada, el id que vale es el del RESULTADO (el que ESPN publica hoy)
+    const compId2 = (r2 && r2.comp_id) || p2.event.canonical_event_id.replace(/^cb-/, '');
     if (methodCache[compId2] !== undefined) return methodCache[compId2];
     const lg2 = COMBAT_ORGS[p2.league || 'ufc'] ? COMBAT_ORGS[p2.league || 'ufc'].upcoming : 'ufc';
     const evId = p2.event.espn_event_id || (r2 && r2.event_id);
@@ -13912,7 +14040,9 @@ async function settleCombatPicks() {
   };
   for (const p of pend) {
     const compId = p.event.canonical_event_id.replace(/^cb-/, '');
-    const r = results[compId];
+    // primero por id de competición; si ESPN la renumeró, por la pareja de ids de atleta (ver arriba)
+    const r = results[compId]
+      || results['par:' + [String(p.event.home_id), String(p.event.away_id)].sort().join('~')];
     const finish = (code, units) => {
       p.status = 'SETTLED'; p.result_code = code; p.units = +units.toFixed(2); p.settled_at = new Date().toISOString();
       // CLV al cierre: cuota de entrada vs última pre-pelea (el juez del monitor; en props/blandas la doctrina
@@ -14047,6 +14177,15 @@ if (String(process.env.GP_BOXING_RESULTS || 'true') !== 'false') {
   setInterval(() => mmaResultsSync().then(r => { if (r && r.nuevas) console.log('[mma-results]', JSON.stringify(r)); }).catch((e) => console.error('[mma-results]', e.message)), 30 * 60 * 1000);
   setTimeout(() => boxingResultsSync().then(r => { if (r && (r.resolved || r.due)) console.log('[boxing-results]', JSON.stringify(r)); }).catch(() => { }), 200 * 1000);
   setInterval(() => boxingResultsSync().then(r => { if (r && r.resolved) console.log('[boxing-results]', JSON.stringify(r)); }).catch(() => { }), 30 * 60 * 1000);
+  // fichas y fotos (25-ago): debutantes de la cartelera MMA/UFC desde ESPN + fotos de boxeo verificadas
+  const cbFill = async () => {
+    for (const org of ['ufc', 'mma']) {
+      try { const C9 = combatLoad(org); await combatRefreshUpcoming(C9); const r = await combatFillMissingFighters(C9); if (r.rellenados) console.log('[combat-fill]', org, JSON.stringify(r)); } catch { /* siguiente pasada */ }
+    }
+    try { const r2 = await boxingPhotoSync(); if (r2.verificadas) console.log('[boxing-fotos]', JSON.stringify(r2)); } catch { /* siguiente pasada */ }
+  };
+  setTimeout(() => cbFill().catch(() => { }), 300 * 1000);
+  setInterval(() => cbFill().catch(() => { }), 3 * 3600e3);
 }
 // ===== OBSERVER DE COMBATE (R2b, 28-jul): la capa de noticias que mueve las líneas =========================
 // La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es CAMP/LESIÓN/PESAJE/REEMPLAZO.
@@ -19287,6 +19426,20 @@ const server = http.createServer(async (req, res) => {
         cloudbet_key: !!process.env.CLOUDBET_API_KEY,
       });
     }
+    // FICHAS Y FOTOS DE COMBATE (25-ago): dispara a mano el relleno de debutantes (org=ufc|mma, ESPN) o el
+    // barrido de fotos de boxeo verificadas (org=boxing, Wikipedia). Mismo código que corre solo cada 3h.
+    if (p === '/api/internal/combat-fill' && req.method === 'POST') {
+      const xkF = process.env.GP_EXPORT_KEY || '';
+      if (!xkF || url.searchParams.get('key') !== xkF) return json(res, 404, { error: 'No encontrado' });
+      const orgF = String(url.searchParams.get('org') || 'ufc');
+      const maxF = Math.max(1, Math.min(40, Number(url.searchParams.get('max')) || 12));
+      try {
+        if (orgF === 'boxing') return json(res, 200, await boxingPhotoSync({ max: maxF }));
+        const C9 = combatLoad(orgF);
+        await combatRefreshUpcoming(C9).catch(() => {});
+        return json(res, 200, await combatFillMissingFighters(C9, { max: maxF }));
+      } catch (e) { return json(res, 200, { error: e.message }); }
+    }
     if (p === '/api/internal/boxing-results') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -19297,6 +19450,23 @@ const server = http.createServer(async (req, res) => {
       }
       const P2 = db.boxingPending || {}, R2 = db.boxingResults || {};
       const nowB = Date.now();
+      // ?diag=<trozo del cid o del nombre>: para UNA pelea esperando, enseña los títulos que resuelve
+      // boxingWikiTitle y lo que contesta resolveBout — distingue "Wikipedia no la tiene" de "preguntamos mal".
+      const dq = url.searchParams.get('diag');
+      if (dq) {
+        const nq = dq.toLowerCase();
+        const x = Object.values(P2).find(y => String(y.cid).toLowerCase().includes(nq)
+          || `${(y.f1 || {}).name} ${(y.f2 || {}).name}`.toLowerCase().includes(nq));
+        if (!x) return json(res, 200, { error: 'sin pendiente que case', diag: dq });
+        const BRd = require('./combat-engine/boxing-results');
+        const Cd = combatLoad('boxing');
+        const w1 = await boxingWikiTitle(Cd, x.f1), w2 = await boxingWikiTitle(Cd, x.f2);
+        let r = null, errD = null;
+        try { r = await BRd.resolveBout({ a: { name: x.f1.name, wiki: w1 }, b: { name: x.f2.name, wiki: w2 }, date: x.date }); }
+        catch (e) { errD = e.message; }
+        return json(res, 200, { cid: x.cid, date: x.date, f1: x.f1, f2: x.f2, wiki_f1: w1, wiki_f2: w2,
+          ya_resuelta: !!R2[x.cid], resolucion: r === undefined ? 'undefined (fallo de red o sin títulos)' : r, error: errD });
+      }
       return json(res, 200, {
         tracked: Object.keys(P2).length, resolved: Object.keys(R2).length,
         waiting: Object.values(P2).filter(x => !R2[x.cid] && Date.parse(x.date || 0) < nowB)

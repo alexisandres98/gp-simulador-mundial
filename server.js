@@ -7780,18 +7780,24 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
     const etiqueta = { family: p.family, liga: p.competition_name || p.league,
       partido: `${p.event.home} - ${p.event.away}`, fecha: String(p.event.kickoff_at || '').slice(0, 10) };
     const afH = clubAfIdOf(p.league, p.event.home_team_id), afA = clubAfIdOf(p.league, p.event.away_team_id);
-    if (!afH || !afA) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'mapeo del equipo a API-Football' }); continue; }
-    let fx = null;
-    try {
-      // el cruce directo entre los dos equipos: evita depender de que la liga esté bien identificada
-      const r = await af(`/fixtures/headtohead?h2h=${afH}-${afA}&last=20`);
-      const ko = +new Date(p.event.kickoff_at || 0);
-      fx = r.find((x) => Math.abs(+new Date((x.fixture || {}).date || 0) - ko) < 2 * 86400e3
-        && String(((x.fixture || {}).status || {}).short || '') === 'FT') || null;
-    } catch (e) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'API-Football: ' + e.message }); continue; }
-    if (!fx) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'el partido no aparece terminado en API-Football' }); continue; }
+    // Los pasos de API-Football (mapeo → fixture) solo son FATALES para SOLID: córners/tarjetas tienen
+    // segunda fuente (TSA) que cruza por NUESTROS ids y no necesita nada de AF (25-ago).
+    const esStats = p.family !== 'SOLID';
+    let fx = null, motivoAF = null;
+    if (!afH || !afA) motivoAF = 'mapeo del equipo a API-Football';
+    else {
+      try {
+        // el cruce directo entre los dos equipos: evita depender de que la liga esté bien identificada
+        const r = await af(`/fixtures/headtohead?h2h=${afH}-${afA}&last=20`);
+        const ko = +new Date(p.event.kickoff_at || 0);
+        fx = r.find((x) => Math.abs(+new Date((x.fixture || {}).date || 0) - ko) < 2 * 86400e3
+          && String(((x.fixture || {}).status || {}).short || '') === 'FT') || null;
+        if (!fx) motivoAF = 'el partido no aparece terminado en API-Football';
+      } catch (e) { motivoAF = 'API-Football: ' + e.message; }
+    }
+    if (!fx && !esStats) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: motivoAF }); continue; }
     // orientar al local de la pick: API-Football tiene su propio local y puede no ser el nuestro
-    const flip = String((fx.teams || {}).home && fx.teams.home.id) !== String(afH);
+    const flip = fx ? String((fx.teams || {}).home && fx.teams.home.id) !== String(afH) : false;
     let code = null, fuente = 'api-football';
     if (p.family === 'SOLID') {
       const g = fx.goals || {};
@@ -7801,8 +7807,10 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
       code = String(p.selection_code || '').toLowerCase() === real ? 'WIN' : 'LOSS';
     } else {
       let st = [];
-      try { st = await af(`/fixtures/statistics?fixture=${fx.fixture.id}`); }
-      catch (e) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'estadísticas: ' + e.message }); continue; }
+      if (fx) {
+        try { st = await af(`/fixtures/statistics?fixture=${fx.fixture.id}`); }
+        catch { st = []; /* TSA abajo; si tampoco, el motivo lo anota el bloque final */ }
+      }
       const valor = (tipo) => st.reduce((acc, bloque) => {
         const it = (bloque.statistics || []).find((x) => String(x.type || '').toLowerCase() === tipo);
         const v = it ? Number(it.value) : null;
@@ -7832,7 +7840,7 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
         // mandaría a buscar donde no es.
         out.faltantes.push({ ...etiqueta,
           necesita: tot == null
-            ? `${p.family === 'CORNERS' ? 'córners' : 'tarjetas'}: la cuenta de API-Football no devuelve estadística de partido (/fixtures/statistics vacío) y TSA tampoco tiene el overview de este partido`
+            ? `${p.family === 'CORNERS' ? 'córners' : 'tarjetas'}: ${motivoAF || 'la cuenta de API-Football no devuelve estadística de partido (/fixtures/statistics vacío)'} y TSA tampoco tiene el overview de este partido`
             : 'la pick no tiene línea guardada' });
         continue;
       }

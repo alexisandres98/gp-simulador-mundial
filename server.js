@@ -12167,6 +12167,7 @@ async function shadowSweep() {
       }
       const liq = await RE.liquidar(resultados).catch((e) => ({ error: e.message }));
       real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, confirmadas: conf, ...liq };
+      await realAvisoApuestaManual().catch(() => {});
       await realAvisoPrimera().catch(() => {});
       await realAvisoDivergencia().catch(() => {});
       await realAvisoSaldo().catch(() => {});
@@ -12278,6 +12279,63 @@ async function realDailyMail(cual, { force = false } = {}) {
   }
   RE.load().avisos[marca] = new Date().toISOString(); RE.save();
   return { sent: cual, asunto };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// EL AVISO DE APUESTA PARA COLOCAR A MANO (25-ago)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Mientras la cuenta de Cloudbet no pueda apostar por API (RESTRICTED de cuenta nueva; se está gestionando
+// con la casa), Alexis coloca las señales A MANO desde la web. Para eso necesita enterarse EN EL MOMENTO:
+// una señal de tarjetas vive horas, no días, y el parte de las 23:30 llega tarde por definición.
+//
+// Este aviso se dispara desde el mismo barrido, justo después de que el ejecutor lo intente por API: si el
+// intento murió por la cuenta (rechazo RESTRICTED o el freno de cuenta ya echado), la apuesta sale por
+// correo con todo lo necesario para colocarla en dos minutos — partido, mercado, línea, lado, monto, cuota
+// mínima aceptable y hora del saque. La cuota mínima es la del papel menos el 3 % que el ejecutor
+// automático también tolera: mismas reglas por los dos canales, o los registros dejan de ser comparables.
+//
+// Cada fila avisa UNA vez (marca `aviso_manual`). Si además la API se desbloquea y una señal entra sola,
+// esa fila nunca llega aquí: el aviso es la red de abajo, no el camino principal.
+// Cuando Alexis la coloca, lo confirma en el chat y se anota con `run=anotar_manual` — a propósito no hay
+// un enlace clicable en el correo: los escáneres de correo abren los enlaces, y un escáner anotando
+// apuestas fantasma en el libro real es exactamente la clase de fallo silencioso que este sistema no puede
+// permitirse.
+async function realAvisoApuestaManual() {
+  const RE = require('./real-executor/store');
+  if (!RE.CFG().enabled) return;
+  const L = RE.load();
+  const ahora = Date.now();
+  const filas = L.bets.filter((b) => !b.aviso_manual
+    && (b.status === 'PENDIENTE' || b.status === 'DESCARTADA')
+    && /cuenta_o_peticion:|cuenta_restringida/.test(String(b.motivo || ''))
+    && b.kickoff_at && Date.parse(b.kickoff_at) > ahora + 10 * 60e3);   // con menos de 10 min no da tiempo
+  if (!filas.length) return;
+  const C = RE.CFG();
+  const cuerpo = ['APUESTAS PARA COLOCAR A MANO EN CLOUDBET', '',
+    'La API sigue restringida para la cuenta, así que estas van a mano. Mismas reglas que el ejecutor:',
+    'si la cuota que ves es MENOR que la mínima, déjala pasar — a ese precio la ventaja ya no está.', ''];
+  for (const b of filas) {
+    const minimo = +(b.odds_sombra * (1 - C.minOddsSlipPct)).toFixed(2);
+    cuerpo.push(
+      `▸ ${b.match}  (${b.league || '?'})`,
+      `  Mercado: Total de tarjetas (Bookings) — UNDER ${b.line}`,
+      `  Monto: ${Number(b.stake || 30).toFixed(0)} USDT · Cuota mínima: ${minimo} (papel ${b.odds_sombra})`,
+      `  Saque: ${b.kickoff_at}`,
+      '');
+    b.aviso_manual = new Date().toISOString();
+  }
+  cuerpo.push('Cuando las coloques, dile a Claude la cuota y el monto de cada una y las anota en el libro.',
+    '', 'Estimaciones de un modelo estadístico, no consejo financiero.');
+  RE.save();
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  if (!mailer.isConfigured()) return;
+  try {
+    await mailer.sendMail({ to: adminTo, noListUnsub: true,
+      subject: `[GP Real] PARA COLOCAR A MANO: ${filas.length} apuesta${filas.length > 1 ? 's' : ''} de tarjetas`,
+      text: cuerpo.join('\n'),
+      html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.join('\n').replace(/</g, '&lt;')}</pre>` });
+    console.log('[real] aviso manual enviado:', filas.length);
+  } catch (e) { console.error('[real] aviso manual:', e.message); }
 }
 
 // LA ALARMA DE DIVERGENCIA (25-ago). La pregunta que hizo Alexis —"¿está roto o simplemente no hay nada que
@@ -19435,6 +19493,7 @@ const server = http.createServer(async (req, res) => {
         // a mano, que es una decisión de persona y por eso no se hace sola.
         // Anotar una apuesta que Alexis colocó A MANO por la web, mientras la cuenta no puede por API.
         // `?pick=<pick_id>&odds=<cuota real>&stake=<monto>` — convierte la fila ya existente del libro.
+        if (run === 'aviso_manual') { await realAvisoApuestaManual(); return json(res, 200, { ok: true }); }
         if (run === 'anotar_manual') {
           const out5 = RE.anotarManual(String(url.searchParams.get('pick') || ''),
             { odds: +(url.searchParams.get('odds') || 0), stake: +(url.searchParams.get('stake') || 0) });
